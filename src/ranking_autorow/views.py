@@ -215,10 +215,16 @@ class RankingAutorow(ExportMixin, SingleTableView):
     def get_wydzialy(self):
         base_query = self.get_dostepne_wydzialy()
 
-        wydzialy = self.request.GET.getlist("wydzialy[]")
+        wydzialy = self.request.GET.dict().get("wydzialy[]", None)
         if wydzialy:
+            wydzialy_pk = []
             try:
-                wydzialy = base_query.filter(pk__in=[int(x) for x in wydzialy])
+                wydzialy_pk = [int(x.strip()) for x in wydzialy[1:-1].split(",")]
+            except (TypeError, ValueError):
+                pass
+
+            try:
+                wydzialy = base_query.filter(pk__in=[pk for pk in wydzialy_pk])
                 return wydzialy
             except (TypeError, ValueError):
                 pass

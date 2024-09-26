@@ -347,12 +347,12 @@ def autor_maker(db):
 
 
 @pytest.fixture(scope="function")
-def autor_jan_nowak(db, tytuly):
+def autor_jan_nowak(db, tytuly) -> Autor:
     return _autor_maker(imiona="Jan", nazwisko="Nowak")
 
 
 @pytest.fixture(scope="function")
-def autor(db, tytuly):
+def autor(db, tytuly) -> Autor:
     return baker.make(Autor)
 
 

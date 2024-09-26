@@ -37,10 +37,15 @@ distclean: clean
 	rm -rf dist
 
 
-yarn:
-	yarn install --no-progress --emoji false -s
+createdb:
+	-createdb bpp
+	python src/manage.py migrate
 
-assets: yarn
+yarn:
+	yarn cache clean && yarn install
+	# yarn install #  --no-progress --emoji false -s
+
+assets: createdb yarn
 	grunt build
 	poetry run src/manage.py collectstatic --noinput -v0 --traceback
 	poetry run src/manage.py compress --force  -v0 --traceback
@@ -163,7 +168,7 @@ loc: clean
 	pygount -N ... -F "...,staticroot,migrations,fixtures" src --format=summary
 
 
-DOCKER_VERSION="202407.1135"
+DOCKER_VERSION="202409.1136"
 DOCKER_BUILD=build --push --platform linux/amd64,linux/arm64
 #DOCKER_BUILD=build --platform linux/amd64,linux/arm64
 
@@ -173,7 +178,7 @@ set-build-context:
 build-dbserver: set-build-context
 	docker buildx ${DOCKER_BUILD} -t iplweb/bpp_dbserver:${DOCKER_VERSION} -t iplweb/bpp_dbserver:latest -f deploy/dbserver/Dockerfile deploy/dbserver/
 
-build-appserver-base: set-build-context
+build-appserver-base: assets set-build-context
 	docker buildx ${DOCKER_BUILD} -t iplweb/bpp_base:${DOCKER_VERSION} -t iplweb/bpp_base:latest -f deploy/bpp_base/Dockerfile .
 
 build-appserver: set-build-context

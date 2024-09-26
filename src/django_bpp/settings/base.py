@@ -471,6 +471,7 @@ REDIS_PORT = env("DJANGO_BPP_REDIS_PORT")
 BROKER_URL = f"redis://{REDIS_HOST}:{REDIS_PORT}/{env('DJANGO_BPP_REDIS_DB_BROKER')}"
 # CELERY_RESULT_BACKEND = BROKER_URL
 CELERY_RESULT_BACKEND = "django-db"
+CELERY_BROKER_URL = BROKER_URL
 
 #
 SESSION_REDIS_HOST = REDIS_HOST
@@ -529,10 +530,6 @@ CELERY_TRACK_STARTED = True
 CELERYBEAT_SCHEDULE = {
     "cleanup-integrator2-files": {
         "task": "integrator2.tasks.remove_old_integrator_files",
-        "schedule": timedelta(days=1),
-    },
-    "cleanup-report-files": {
-        "task": "bpp.tasks.remove_old_report_files",
         "schedule": timedelta(days=1),
     },
     "zaktualizuj-liczbe-cytowan": {
