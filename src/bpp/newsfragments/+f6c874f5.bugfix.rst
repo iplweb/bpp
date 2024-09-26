@@ -1,0 +1,2 @@
+
+poprawka błędu uniemożliwiającego zaznaczenie wydziałów w rankingu autorów

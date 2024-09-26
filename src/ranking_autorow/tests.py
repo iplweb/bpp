@@ -1,9 +1,12 @@
 import pytest
 from django.urls import reverse
+from model_bakery import baker
 
 from ranking_autorow.views import RankingAutorow
 
-from bpp.models import Jednostka
+from django.utils import timezone
+
+from bpp.models import Jednostka, Wydawnictwo_Ciagle
 
 TEST123 = "TEST123"
 
@@ -128,3 +131,48 @@ def test_ranking_autorow_bez_nieaktualnych(
         reverse("bpp:ranking-autorow", args=(0, 3030)) + "?bez_nieaktualnych=True"
     )
     assert "Kowalski" not in res.rendered_content
+
+
+@pytest.mark.django_db
+def test_ranking_autorow_wybor_wydzialu(
+    wydzial, drugi_wydzial, autor_jan_kowalski, autor_jan_nowak, admin_app, uczelnia
+):
+    jw1 = baker.make(Jednostka, wydzial=wydzial, uczelnia=uczelnia)
+    jw2 = baker.make(Jednostka, wydzial=drugi_wydzial, uczelnia=uczelnia)
+
+    autor_jan_nowak.dodaj_jednostke(jw1)
+    autor_jan_kowalski.dodaj_jednostke(jw2)
+
+    wc1 = baker.make(Wydawnictwo_Ciagle, impact_factor=10, rok=timezone.now().year)
+    wc1.dodaj_autora(autor_jan_nowak, jw1)
+
+    wc2 = baker.make(Wydawnictwo_Ciagle, impact_factor=10, rok=timezone.now().year)
+    wc2.dodaj_autora(autor_jan_kowalski, jw2)
+
+    # Wydzial 1
+    res = admin_app.get(
+        reverse(
+            "bpp:ranking_autorow_formularz",
+        )
+    )
+    res.forms[0]["wydzialy"].value = [
+        wydzial.pk,
+    ]
+
+    result = res.forms[0].submit().maybe_follow()
+    assert b"Kowalski" not in result.content
+    assert b"Nowak" in result.content
+
+    # Wydzial 2
+    res = admin_app.get(
+        reverse(
+            "bpp:ranking_autorow_formularz",
+        )
+    )
+    res.forms[0]["wydzialy"].value = [
+        drugi_wydzial.pk,
+    ]
+
+    result = res.forms[0].submit().maybe_follow()
+    assert b"Kowalski" in result.content
+    assert b"Nowak" not in result.content
