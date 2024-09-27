@@ -106,7 +106,7 @@ jobs:
       - run:
           name: Fix yarn on CI maybe
           command: |
-            yarn global add n
+            sudo yarn global add n
             sudo n 16.19.0
 
       - run:
