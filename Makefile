@@ -137,7 +137,6 @@ upgrade-version:
 	git flow release start $(NEW_VERSION)
 	bumpver update
 	-towncrier build --yes
-	emacs HISTORY.rst
 	-git commit -m "Opis zmian dla nowej wersji oprogramowania"
 	git flow release finish "$(NEW_VERSION)" -p -m "Nowa wersja: $(NEW_VERSION)"
 
@@ -168,7 +167,7 @@ loc: clean
 	pygount -N ... -F "...,staticroot,migrations,fixtures" src --format=summary
 
 
-DOCKER_VERSION="202409.1136"
+DOCKER_VERSION="202410.1137"
 DOCKER_BUILD=build --push --platform linux/amd64,linux/arm64
 #DOCKER_BUILD=build --platform linux/amd64,linux/arm64
 

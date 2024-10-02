@@ -104,6 +104,12 @@ jobs:
             poetry run src/manage.py migrate
 
       - run:
+          name: Fix yarn on CI maybe
+          command: |
+            sudo yarn global add n
+            sudo n 16.19.0
+
+      - run:
           name: make assets
           command: |
             poetry run make assets
