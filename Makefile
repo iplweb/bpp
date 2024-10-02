@@ -137,7 +137,6 @@ upgrade-version:
 	git flow release start $(NEW_VERSION)
 	bumpver update
 	-towncrier build --yes
-	emacs HISTORY.rst
 	-git commit -m "Opis zmian dla nowej wersji oprogramowania"
 	git flow release finish "$(NEW_VERSION)" -p -m "Nowa wersja: $(NEW_VERSION)"
 

@@ -135,7 +135,13 @@ def test_ranking_autorow_bez_nieaktualnych(
 
 @pytest.mark.django_db
 def test_ranking_autorow_wybor_wydzialu(
-    wydzial, drugi_wydzial, autor_jan_kowalski, autor_jan_nowak, admin_app, uczelnia
+    wydzial,
+    drugi_wydzial,
+    autor_jan_kowalski,
+    autor_jan_nowak,
+    admin_app,
+    uczelnia,
+    typy_odpowiedzialnosci,
 ):
     jw1 = baker.make(Jednostka, wydzial=wydzial, uczelnia=uczelnia)
     jw2 = baker.make(Jednostka, wydzial=drugi_wydzial, uczelnia=uczelnia)
@@ -180,7 +186,13 @@ def test_ranking_autorow_wybor_wydzialu(
 
 @pytest.mark.django_db
 def test_ranking_autorow_wszystkie_wydzialy(
-    wydzial, drugi_wydzial, autor_jan_kowalski, autor_jan_nowak, admin_app, uczelnia
+    wydzial,
+    drugi_wydzial,
+    autor_jan_kowalski,
+    autor_jan_nowak,
+    admin_app,
+    uczelnia,
+    typy_odpowiedzialnosci,
 ):
     jw1 = baker.make(Jednostka, wydzial=wydzial, uczelnia=uczelnia)
     jw2 = baker.make(Jednostka, wydzial=drugi_wydzial, uczelnia=uczelnia)
