@@ -59,7 +59,15 @@ ALLOWED_HOSTS = [
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
-EMAIL_BACKEND = "djcelery_email.backends.CeleryEmailBackend"
+
+if (
+    ".console." not in EMAIL_BACKEND  # noqa
+    and ".dummy." not in EMAIL_BACKEND  # noqa
+    and ".locmem." not in EMAIL_BACKEND  # noqa
+):
+    # Użyj djcelery_email wyłacznie gdy ustawiony jest "prawdziwy" backend
+    EMAIL_BACKEND = "djcelery_email.backends.CeleryEmailBackend"
+    INSTALLED_APPS.append("djcelery_email")  # noqa
 
 # django-easy-audit
 
@@ -67,6 +75,3 @@ INSTALLED_APPS.append("easyaudit")  # noqa
 MIDDLEWARE.append(  # noqa
     "easyaudit.middleware.easyaudit.EasyAuditMiddleware",
 )
-
-# djcelery_email
-INSTALLED_APPS.append("djcelery_email")  # noqa
