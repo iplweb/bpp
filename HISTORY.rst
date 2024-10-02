@@ -4,6 +4,16 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202410.1138 (2024-10-02)
+============================
+
+Naprawione
+----------
+
+- celery aktualizacja do 5.4.0 (lepsza współpraca z Python 3.11)
+- obsługuj "puste" email backends (dummy, console, memory) na produkcji (w przypadku nie działającego e-maila mogą się przydać)
+
+
 Bpp 202410.1137 (2024-10-02)
 ============================
 
