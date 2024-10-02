@@ -4,6 +4,15 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202410.1137 (2024-10-02)
+============================
+
+Naprawione
+----------
+
+- celery aktualizacja do 5.4.0 (lepsza współpraca z Python 3.11)
+
+
 Bpp 202409.1136 (2024-09-26)
 ============================
 
