@@ -38,8 +38,7 @@ distclean: clean
 
 
 yarn:
-	export PUPPETEER_SKIP_CHROME_DOWNLOAD=true PUPPETEER_SKIP_CHROME_HEADLESS_SHELL_DOWNLOAD=true && yarn cache clean && yarn install
-	# yarn install #  --no-progress --emoji false -s
+	export PUPPETEER_SKIP_CHROME_DOWNLOAD=true PUPPETEER_SKIP_CHROME_HEADLESS_SHELL_DOWNLOAD=true && yarn install  --no-progress --emoji false -s
 
 grunt-build:
 	grunt build
