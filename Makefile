@@ -164,8 +164,7 @@ loc: clean
 
 
 DOCKER_VERSION="202410.1138"
-DOCKER_BUILD=build # --platform linux/amd64,linux/arm64 # -- push
-#DOCKER_BUILD=build --platform linux/amd64,linux/arm64
+DOCKER_BUILD=build --platform linux/amd64,linux/arm64 -- push
 
 build-dbserver:
 	docker buildx ${DOCKER_BUILD} -t iplweb/bpp_dbserver:${DOCKER_VERSION} -t iplweb/bpp_dbserver:latest -f deploy/dbserver/Dockerfile deploy/dbserver/
