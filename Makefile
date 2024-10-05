@@ -164,25 +164,22 @@ loc: clean
 
 
 DOCKER_VERSION="202410.1138"
-DOCKER_BUILD=build --push --platform linux/amd64,linux/arm64
+DOCKER_BUILD=build --platform linux/amd64,linux/arm64 # -- push
 #DOCKER_BUILD=build --platform linux/amd64,linux/arm64
 
-set-build-context:
-	docker context use desktop-linux
-
-build-dbserver: set-build-context
+build-dbserver:
 	docker buildx ${DOCKER_BUILD} -t iplweb/bpp_dbserver:${DOCKER_VERSION} -t iplweb/bpp_dbserver:latest -f deploy/dbserver/Dockerfile deploy/dbserver/
 
-build-appserver-base: assets set-build-context
+build-appserver-base: assets
 	docker buildx ${DOCKER_BUILD} -t iplweb/bpp_base:${DOCKER_VERSION} -t iplweb/bpp_base:latest -f deploy/bpp_base/Dockerfile .
 
-build-appserver: set-build-context
+build-appserver:
 	docker buildx ${DOCKER_BUILD} -t iplweb/bpp_appserver:${DOCKER_VERSION} -t iplweb/bpp_appserver:latest -f deploy/appserver/Dockerfile .
 
-build-workerserver: set-build-context
+build-workerserver:
 	docker buildx ${DOCKER_BUILD} -t iplweb/bpp_workerserver:${DOCKER_VERSION} -t iplweb/bpp_workerserver:latest -f deploy/workerserver/Dockerfile .
 
-build-webserver: set-build-context
+build-webserver:
 	docker buildx ${DOCKER_BUILD} -t iplweb/bpp_webserver:${DOCKER_VERSION} -t iplweb/bpp_webserver:latest -f deploy/webserver/Dockerfile deploy/webserver/
 
 build-servers: build-appserver-base build-appserver build-workerserver
