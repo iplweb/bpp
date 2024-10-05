@@ -35,7 +35,7 @@ RUN --mount=type=cache,target=/root/.yarn YARN_CACHE_FOLDER=/root/.yarn yarn --p
 
 FROM python:3.11-slim-bullseye as runtime
 
-RUN --mount=type=cache,sharing=locked,target=/var/cache/apt apt-get update && apt-get -y install python3-pip libpango-1.0-0 libpangoft2-1.0-0 postgresql-client pandoc
+RUN --mount=type=cache,sharing=locked,target=/var/cache/apt apt-get update && apt-get -y install python3-pip libpango-1.0-0 libpangoft2-1.0-0 postgresql-client pandoc curl
 
 ENV VIRTUAL_ENV=/app/.venv \
     PATH="/app/.venv/bin:$PATH" \
