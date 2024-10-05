@@ -18,6 +18,8 @@ from django_bpp.version import VERSION
 
 logger = logging.getLogger(__name__)
 
+SCRIPT_PATH = os.path.abspath(os.path.dirname(__file__))
+
 SECRET_KEY_UNSET = "Please set the DJANGO_BPP_SECRET_KEY variable."
 
 # Ponieważ konieczna jest konfiguracja django-ldap-auth i potrzebne będą kolejne zmienne
@@ -111,6 +113,10 @@ env = environ.Env(
     # Konfiguracja widoczności opcji "Oświadczenie KEN"
     #
     DJANGO_BPP_POKAZUJ_OSWIADCZENIE_KEN=(bool, False),
+    #
+    # Statyczne pliki (CSS, JS, obrazki)
+    #
+    STATIC_ROOT=(str, os.path.abspath(os.path.join(SCRIPT_PATH, "..", "staticroot"))),
 )
 
 ENVFILE_PATH = os.path.join(os.path.expanduser("~"), ".env")
@@ -424,11 +430,9 @@ SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTOCOL", "https")
 
 MAT_VIEW_REFRESH_COUNTDOWN = 30
 
-SCRIPT_PATH = os.path.abspath(os.path.dirname(__file__))
-
 SITE_ROOT = os.path.abspath(os.path.join(SCRIPT_PATH, "..", ".."))
 
-STATIC_ROOT = os.path.abspath(os.path.join(SCRIPT_PATH, "..", "staticroot"))
+STATIC_ROOT = env("STATIC_ROOT")
 
 COMPRESS_CSS_FILTERS = [
     "compressor.filters.css_default.CssAbsoluteFilter",
