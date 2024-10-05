@@ -46,5 +46,3 @@ COPY --from=builder ${VIRTUAL_ENV} ${VIRTUAL_ENV}
 COPY --from=yarn-builder node_modules ./node_modules
 
 COPY src ./src
-
-RUN DATABASE_URL=postgres://whatever@whenever:5432/anydb python src/manage.py collectstatic --noinput
