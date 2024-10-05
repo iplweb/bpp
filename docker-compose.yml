@@ -29,12 +29,12 @@ services:
 #       ofelia.email-from: "Ofelia @ BPP <ofelia@bpp>"
 
   db:
-    image: iplweb/bpp_dbserver:202410.1138
+    image: iplweb/bpp_dbserver:latest
     volumes:
       - postgresql_data:/var/lib/postgresql/data
 
   appserver:
-    image: iplweb/bpp_appserver:202410.1138
+    image: iplweb/bpp_appserver:latest
     restart: always
     env_file: .env.docker
     depends_on:
@@ -64,54 +64,48 @@ services:
       ofelia.job-exec.pbn_integrator.command: "python src/manage.py tee pbn_integrator --enable-all --disable-multiprocessing"
 
   workserver:
-    image: iplweb/bpp_workerserver:202410.1138
+    image: iplweb/bpp_workerserver:latest
     env_file: .env.docker
     depends_on:
-      - redis
-      - appserver
+      appserver:
+        condition: service_healthy
 
   denormserver:
-    image: iplweb/bpp_appserver:202410.1138
+    image: iplweb/bpp_appserver:latest
     env_file: .env.docker
     entrypoint: ["python", "src/manage.py", "denorm_queue"]
+    healthcheck:
+      test: ['CMD','true'] # disable the healthcheck
 #    deploy:
 #      mode: replicated
 #      replicas: 4
     restart: always
     depends_on:
-      db:
+      appserver:
         condition: service_healthy
-      redis:
-        condition: service_started
 
   webserver:
-    image: iplweb/bpp_webserver:202410.1138
+    image: iplweb/bpp_webserver:latest
     restart: always
     depends_on:
-      - redis
-      - appserver
+      appserver:
+        condition: service_healthy
+
     ports:
       - 80:80
       - 443:443
     volumes:
       - staticfiles:/var/www/html/staticroot
       - media:/mediaroot
-      - ./deploy/webserver/key.pem:/etc/ssl/private/key.pem
-      - ./deploy/webserver/cert.pem:/etc/ssl/private/cert.pem
-#    secrets:
-#      - key.pem
-#      - cert.pem
 
   redis:
     image: redis:latest
-
-#secrets:
-#  key.pem:
-#    file: ./deploy/webserver/key.pem
-#  cert.pem:
-#    file: ./deploy/webserver/cert.pem
+    volumes:
+      - redis_data:/data
 
 volumes:
   staticfiles:
   media:
   postgresql_data:
+  redis_data:
+  nginx_certs:
