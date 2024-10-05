@@ -1,0 +1,1 @@
+autostash DOCKER_CONTEXT=desktop-linux
