@@ -6,7 +6,7 @@ COPY --chmod=755 deploy/appserver/entrypoint-appserver.sh /
 
 RUN pip install uvicorn
 
-#HEALTHCHECK --interval=5s --timeout=10s --retries=10 --start-period=3s \
-#  CMD "bash -c 'printf \"GET / HTTP/1.1\n\n\" > /dev/tcp/127.0.0.1/8000; exit $$?;'"
+HEALTHCHECK --interval=30s --timeout=5s --retries=4 --start-period=20s \
+    CMD curl --fail --silent --write-out 'HTTP CODE : %{http_code}\n' --output /dev/null http://127.0.0.1:8000/
 
 ENTRYPOINT ["/bin/bash", "-c", "/entrypoint-appserver.sh"]
