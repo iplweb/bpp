@@ -164,7 +164,7 @@ loc: clean
 
 
 DOCKER_VERSION="202410.1138"
-DOCKER_BUILD=build --platform linux/amd64,linux/arm64 # -- push
+DOCKER_BUILD=build # --platform linux/amd64,linux/arm64 # -- push
 #DOCKER_BUILD=build --platform linux/amd64,linux/arm64
 
 build-dbserver:
