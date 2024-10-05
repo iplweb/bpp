@@ -37,10 +37,6 @@ distclean: clean
 	rm -rf dist
 
 
-createdb:
-	-createdb bpp
-	python src/manage.py migrate
-
 yarn:
 	yarn cache clean && yarn install
 	# yarn install #  --no-progress --emoji false -s
