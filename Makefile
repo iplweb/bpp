@@ -45,10 +45,10 @@ yarn:
 	yarn cache clean && yarn install
 	# yarn install #  --no-progress --emoji false -s
 
-assets: createdb yarn
+grunt-build:
 	grunt build
-	poetry run src/manage.py collectstatic --noinput -v0 --traceback
-	poetry run src/manage.py compress --force  -v0 --traceback
+
+assets: yarn grunt-build
 
 production-assets: distclean assets
 # usuń ze staticroot niepotrzebne pakiety (Poetry pyproject.toml exclude
