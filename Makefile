@@ -169,8 +169,12 @@ DOCKER_VERSION="202410.1140"
 
 DOCKER_BUILD=build --platform linux/amd64,linux/arm64 --push
 
-# Na lokalnej maszynie użyj:
-# DOCKER_BUILD=build --platform linux/arm64
+
+# Na lokalnej maszynie nie uzywaj --push + buduj tylko ARM
+HOST="$(shell hostname)"
+ifeq (${HOST},"swift-beast.local")
+DOCKER_BUILD=build --platform linux/arm64
+endif
 
 build-dbserver:
 	docker buildx ${DOCKER_BUILD} -t iplweb/bpp_dbserver:${DOCKER_VERSION} -t iplweb/bpp_dbserver:latest -f deploy/dbserver/Dockerfile deploy/dbserver/
