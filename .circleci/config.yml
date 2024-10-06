@@ -302,12 +302,22 @@ jobs:
           name: Recreate db
           command: cat pg_dump.sql | psql bpp
 
+      - run:
+          name: Zainstaluj pakiety JavaScript
+          command: poetry run make yarn
+
+      # Doinstaluj explicte Chrome; normalnie przy 'yarn install' okazuje
+      # sie, ze apka 'puppeteer' nie jest w stanie go pobrac bo jest timeout;
+      # tutaj explicte instalujemy chrome, zeby widziec, gdzie i kiedy szlag
+      # trafia tą instalajce...
+      - run:
+          name: Instaluj Chrome dla JS testow
+          command: npx puppeteer browsers install chrome
+
       # Testy JavaScript
       - run:
           name: JS Tests
-          command: |
-            poetry run make yarn
-            poetry run make js-tests
+          command: poetry run make js-tests
 
   coveralls:
     docker:

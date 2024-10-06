@@ -67,7 +67,10 @@ bdist_wheel: distclean production-assets compilemessages
 upload:
 	twine upload dist/*whl
 
-js-tests: assets
+puppeteer-install-chrome:
+	npx puppeteer browsers install chrome
+
+js-tests: assets puppeteer-install-chrome
 	grunt qunit
 
 # cel: live-docs
