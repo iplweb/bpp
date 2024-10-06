@@ -1,2 +1,0 @@
-
-podpowiadaj dyscyplinę dla wpisywania autorów przez "zakładkę" (powyżej 25 autorów)
