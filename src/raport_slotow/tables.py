@@ -104,6 +104,7 @@ class RaportSlotowUczelniaBezJednostekIWydzialowTable(tables.Table):
             "jednostka",
             "pbn_id",
             "orcid",
+            "system_kadrowy_id",
             "dyscyplina",
             "pkd_aut_sum",
             "slot",
@@ -116,6 +117,7 @@ class RaportSlotowUczelniaBezJednostekIWydzialowTable(tables.Table):
     dyscyplina = Column()
     pbn_id = Column("PBN ID", "autor.pbn_id")
     orcid = Column("ORCID", "autor.orcid")
+    system_kadrowy_id = Column("System kadrowy ID", "autor.system_kadrowy_id")
     jednostka = Column("Aktualna jednostka")
 
     def __init__(self, od_roku, do_roku, slot, *args, **kw):
@@ -160,6 +162,7 @@ class RaportSlotowUczelniaTable(RaportSlotowUczelniaBezJednostekIWydzialowTable)
             "autor",
             "pbn_id",
             "orcid",
+            "system_kadrowy_id",
             "jednostka",
             "wydzial",
             "dyscyplina",

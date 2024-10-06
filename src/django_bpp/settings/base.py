@@ -20,6 +20,8 @@ logger = logging.getLogger(__name__)
 
 SCRIPT_PATH = os.path.abspath(os.path.dirname(__file__))
 
+SITE_ROOT = os.path.abspath(os.path.join(SCRIPT_PATH, "..", ".."))
+
 SECRET_KEY_UNSET = "Please set the DJANGO_BPP_SECRET_KEY variable."
 
 # Ponieważ konieczna jest konfiguracja django-ldap-auth i potrzebne będą kolejne zmienne
@@ -119,14 +121,27 @@ env = environ.Env(
     STATIC_ROOT=(str, os.path.abspath(os.path.join(SCRIPT_PATH, "..", "staticroot"))),
 )
 
-ENVFILE_PATH = os.path.join(os.path.expanduser("~"), ".env")
+ENVFILE_PATHS = []
 
 #
-# Odczytaj plik ~/.env oraz dodatkowo ~/.env.local ;
-# jeżeli zmienna jest zdefiniowana w tym drugim to nadpisz ten pierwszy...
+# Jeżeli NIE działąmy z site-packages, to prawdopodobnie działamy ze źródeł; w tej sytuacji skorzystaj z
+# pliku .env w głównym katalogu repozytorium:
 #
+if "site-packages" not in __file__:
+    ENVFILE_SOURCEDIR = os.path.abspath(os.path.join(SITE_ROOT, "..", ".env"))
+    ENVFILE_PATHS.append(ENVFILE_SOURCEDIR)
 
-for fn in [ENVFILE_PATH, ENVFILE_PATH + ".local"]:
+#
+# Kolejny plik w kolejności to plik w katalogu $HOME/.env oraz $HOME/.env.local:
+#
+ENVFILE_HOMEDIR = os.path.abspath(os.path.join(os.path.expanduser("~"), ".env"))
+ENVFILE_PATHS.append(ENVFILE_HOMEDIR)
+ENVFILE_PATHS.append(ENVFILE_HOMEDIR + ".local")
+
+# Jeżeli zmienna jest zdefiniowana w więcej, niż jednym pliku to zmienna będzie nadpisana
+# w kolejności plików:
+
+for fn in ENVFILE_PATHS:
     if os.path.exists(fn) and os.path.isfile(fn):
         environ.Env.read_env(fn, overwrite=True)
 
@@ -429,8 +444,6 @@ BAKER_CUSTOM_CLASS = "bpp.tests.bpp_baker.BPP_Baker"
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTOCOL", "https")
 
 MAT_VIEW_REFRESH_COUNTDOWN = 30
-
-SITE_ROOT = os.path.abspath(os.path.join(SCRIPT_PATH, "..", ".."))
 
 STATIC_ROOT = env("STATIC_ROOT")
 
@@ -936,7 +949,6 @@ if MICROSOFT_AUTH_CLIENT_ID:
         "Używam autoryzacji microsoft_auth, wbudowana w BPP polityka haseł (zmiany, skomplikowanie)"
         " została wyłączona"
     )
-
 
 #
 # Koniec konfiguracji django-microsoft-auth

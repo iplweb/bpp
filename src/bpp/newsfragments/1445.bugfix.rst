@@ -1,0 +1,2 @@
+
+usuń błąd który nie wyświetlał nie-obcych autorów w sytuacji gdy byli przypisani do obcej jednostki + błędnej jednostki (ale mieli dodatkowe przypisania, właściwe dla uczelni) w sytuacji wyłączonej opcji "pokazuj obcych autorów w przeglądaniu danych"

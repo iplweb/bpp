@@ -38,8 +38,7 @@ distclean: clean
 
 
 yarn:
-	export PUPPETEER_SKIP_CHROME_DOWNLOAD=true PUPPETEER_SKIP_CHROME_HEADLESS_SHELL_DOWNLOAD=true && yarn cache clean && yarn install
-	# yarn install #  --no-progress --emoji false -s
+	export PUPPETEER_SKIP_CHROME_DOWNLOAD=true PUPPETEER_SKIP_CHROME_HEADLESS_SHELL_DOWNLOAD=true && yarn install  --no-progress --emoji false -s
 
 grunt-build:
 	grunt build
@@ -68,7 +67,10 @@ bdist_wheel: distclean production-assets compilemessages
 upload:
 	twine upload dist/*whl
 
-js-tests: assets
+puppeteer-install-chrome:
+	npx puppeteer browsers install chrome
+
+js-tests: assets puppeteer-install-chrome
 	grunt qunit
 
 # cel: live-docs
@@ -163,7 +165,7 @@ loc: clean
 	pygount -N ... -F "...,staticroot,migrations,fixtures" src --format=summary
 
 
-DOCKER_VERSION="202410.1138"
+DOCKER_VERSION="202410.1139"
 DOCKER_BUILD=build --platform linux/amd64,linux/arm64 --push
 
 build-dbserver:

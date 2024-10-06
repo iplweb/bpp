@@ -7,6 +7,9 @@
   :align: center
   :alt: Logo projektu
 
+.. image:: https://github.com/iplweb/bpp/actions/workflows/build.yml/badge.svg
+   :targer: https://github.com/iplweb/bpp/actions/workflows/build.yml
+
 .. image:: https://circleci.com/gh/iplweb/bpp/tree/dev.svg?style=svg
    :target: https://circleci.com/gh/iplweb/bpp
 
