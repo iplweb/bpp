@@ -165,7 +165,7 @@ loc: clean
 	pygount -N ... -F "...,staticroot,migrations,fixtures" src --format=summary
 
 
-DOCKER_VERSION="202410.1139"
+DOCKER_VERSION="202410.1140"
 
 # Kiedyś było tak: 2 platformy + --push
 # DOCKER_BUILD=build --platform linux/amd64,linux/arm64 --push

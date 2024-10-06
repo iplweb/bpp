@@ -4,6 +4,24 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202410.1140 (2024-10-07)
+============================
+
+Naprawione
+----------
+
+- usuń błąd który nie wyświetlał nie-obcych autorów w sytuacji gdy byli przypisani do obcej jednostki + błędnej jednostki (ale mieli dodatkowe przypisania, właściwe dla uczelni) w sytuacji wyłączonej opcji "pokazuj obcych autorów w przeglądaniu danych" (#1445)
+- podpowiadaj dyscyplinę dla wpisywania autorów przez "zakładkę" (powyżej 25 autorów)
+- szybsze generowanie XLSa w raport slotów - ewaluacja
+
+
+Usprawnienie
+------------
+
+- maksymalny rok dla PBN ustawiony na 2025 (#1409)
+- wyswietlaj ID systemu kadrowego w raport slotów - uczelnia (#1412)
+
+
 Bpp 202410.1138 (2024-10-02)
 ============================
 
