@@ -127,9 +127,6 @@ push = false
 "src/django_bpp/version.py" = ['VERSION = "{pep440_version}"']
 "package.json" = ['"version": "{version}",']
 "Makefile" = [ 'DOCKER_VERSION="{pep440_version}"' ]
-"docker-compose.yml" = [ ":{pep440_version}"]
-
-
 
 
 [tool.poetry.dependencies]
