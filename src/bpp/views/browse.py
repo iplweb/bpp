@@ -167,7 +167,8 @@ class AutorzyView(Browser):
                     Q(
                         autor_jednostka__jednostka__pk=-1
                     )  # "BŁĄD: brak wpisanej jednostki"
-                    & Q(autor_jednostka__jednostka__pk=uczelnia.obca_jednostka_id),
+                    & Q(autor_jednostka__jednostka__pk=uczelnia.obca_jednostka_id)
+                    & Q(autor_jednostka__count__lte=2)
                 )
 
                 ret = ret.exclude(aktualna_jednostka=None, autor_jednostka__count=1)
