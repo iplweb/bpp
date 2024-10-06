@@ -14,6 +14,8 @@ def test_raport_ewaluacja_no_queries(
     autor_jan_kowalski,
     jednostka,
     dyscyplina1,
+    jezyki,
+    typy_odpowiedzialnosci,
 ):
     Autor_Dyscyplina.objects.create(
         rok=rok, autor=autor_jan_kowalski, dyscyplina_naukowa=dyscyplina1
