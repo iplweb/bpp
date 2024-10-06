@@ -167,11 +167,10 @@ loc: clean
 
 DOCKER_VERSION="202410.1140"
 
-# Kiedyś było tak: 2 platformy + --push
-# DOCKER_BUILD=build --platform linux/amd64,linux/arm64 --push
+DOCKER_BUILD=build --platform linux/amd64,linux/arm64 --push
 
-# Teraz jest Docker BuildCloud, budujemy lokalnie bez push
-DOCKER_BUILD=build --platform linux/arm64
+# Na lokalnej maszynie użyj:
+# DOCKER_BUILD=build --platform linux/arm64
 
 build-dbserver:
 	docker buildx ${DOCKER_BUILD} -t iplweb/bpp_dbserver:${DOCKER_VERSION} -t iplweb/bpp_dbserver:latest -f deploy/dbserver/Dockerfile deploy/dbserver/
