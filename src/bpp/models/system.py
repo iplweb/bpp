@@ -1,6 +1,7 @@
 """
 Małe klasy pomocnicze dla całego systemu
 """
+
 import warnings
 
 from django.db import models
@@ -88,6 +89,7 @@ class Charakter_Formalny(NazwaISkrot, MPTTModel):
         PROCEEDINGS_ARTICLE = 2, "proceedings-article"
         BOOK = 3, "book"
         BOOK_CHAPTER = 4, "book-chapter"
+        EDITED_BOOK = 5, "edited-book"
 
     denorm_always_skip = (
         "tree_id",

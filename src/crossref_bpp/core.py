@@ -16,6 +16,7 @@ from import_common.core import (
 from import_common.normalization import (
     normalize_doi,
     normalize_first_name,
+    normalize_isbn,
     normalize_issn,
     normalize_last_name,
     normalize_orcid,
@@ -108,7 +109,6 @@ class Komparator:
             "ISBN",
             "isbn-type",
             "publisher-location",
-            "edition-number",
             "link",
             "short-container-title",
             "container-title",
@@ -127,6 +127,7 @@ class Komparator:
             "page",
             "subject",
             "volume",
+            "edition-number",
         ]
 
         ignorowane = [
@@ -172,14 +173,19 @@ class Komparator:
         ]
 
     @classmethod
-    def znajdz_w_tabelach(cls, *args, **kwargs):
+    def znajdz_w_tabelach(cls, _wylacznie_zwarte=False, *args, **kwargs):
         qs1 = Wydawnictwo_Zwarte.objects.filter(*args, **kwargs).order_by(
             "-ostatnio_zmieniony"
         )
-        qs2 = Wydawnictwo_Ciagle.objects.filter(*args, **kwargs).order_by(
-            "-ostatnio_zmieniony"
-        )
-        return QuerySetSequence(qs1, qs2).order_by("-ostatnio_zmieniony")[:10]
+        if not _wylacznie_zwarte:
+            qs2 = Wydawnictwo_Ciagle.objects.filter(*args, **kwargs).order_by(
+                "-ostatnio_zmieniony"
+            )
+            ret = QuerySetSequence(qs1, qs2)
+        else:
+            ret = qs1
+
+        return ret.order_by("-ostatnio_zmieniony")[:10]
 
     @classmethod
     def porownaj_DOI(cls, wartosc):
@@ -242,8 +248,44 @@ class Komparator:
         )
 
     @classmethod
+    def porownaj_ISBN(cls, wartosc):
+        isbn = normalize_isbn(wartosc)
+        if isbn is None:
+            return WynikPorownania(StatusPorownania.BLAD, "niepirawidłowy ISBN")
+
+        for fld in "isbn", "e_isbn":
+            kw = {f"{fld}__icontains": isbn}
+
+            ile = cls.znajdz_w_tabelach(_wylacznie_zwarte=True, **kw)
+
+            if not ile.exists():
+                continue
+
+            if ile.count() == 1:
+                return WynikPorownania(
+                    StatusPorownania.DOKLADNE,
+                    "w BPP jest dokładnie jeden taki rekord o takim ISBN lub E-ISBN",
+                    rekordy=ile,
+                )
+
+            # wiecej, jak jeden rekord
+            return WynikPorownania(
+                StatusPorownania.WYMAGA_INGERENCJI,
+                "więcej, nż jeden rekord w BPP o takim ISBN lub E-ISBN",
+                rekordy=ile,
+            )
+
+        return WynikPorownania(
+            StatusPorownania.BRAK, "brak rekordów o takim ISBN lub E-ISBN w BPP"
+        )
+
+    @classmethod
     def porownaj_issn_type(cls, wartosc):
         return cls.porownaj_ISSN(wartosc.get("value"))
+
+    @classmethod
+    def porownaj_isbn_type(cls, wartosc):
+        return cls.porownaj_ISBN(wartosc.get("value"))
 
     @classmethod
     def porownaj_URL(cls, wartosc):

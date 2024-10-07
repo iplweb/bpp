@@ -28,7 +28,7 @@ def pobierz_z_crossref(request, context=None, crossref_templates=None):
         typ_pracy = dane_porownania_dict.get("type", {}).get("wartosc_z_crossref", "")
         doi = dane_porownania_dict.get("DOI", {}).get("wartosc_z_crossref", "")
 
-        if typ_pracy in ["book", "book-chapter"]:
+        if typ_pracy in ["book", "book-chapter", "edited-book"]:
             if "/wydawnictwo_ciagle/" in request.get_full_path():
                 return HttpResponseRedirect(
                     "../../wydawnictwo_zwarte/pobierz-z-crossref/?identyfikator_doi="
