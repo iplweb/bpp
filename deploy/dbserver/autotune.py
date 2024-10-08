@@ -83,8 +83,8 @@ def generate_config(ram_kb):
     config["effective_cache_size"] = ram_kb * 3 / 4
     config["maintenance_work_mem"] = min(ram_kb / 16, 2 * ONE_GB_IN_KB)
 
-    # 100 połaczeń na 1 GB RAM
-    conns = 100 * ram_kb / ONE_GB_IN_KB
+    # 100 połaczeń na 1 GB RAM, maksymalnie 250
+    conns = min(100 * ram_kb / ONE_GB_IN_KB, 250)
     config["max_connections"] = conns
     config["work_mem"] = (ram_kb * 3 / 4) / (conns * 3)
 
