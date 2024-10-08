@@ -101,7 +101,7 @@ def generate_config(ram_kb):
     config["work_mem"] = (ram_kb * 3 / 4) / (conns * 3) / max_parallel
 
     config["min_wal_size"] = ONE_GB_IN_KB
-    config["max_wal_size"] = 2 * ONE_GB_IN_KB
+    config["max_wal_size"] = 4 * ONE_GB_IN_KB
 
     config["wal_buffers"] = min(ram_kb * 3 / 4 / 100, 16 * ONE_MB_IN_KB)
 
