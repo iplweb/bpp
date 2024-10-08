@@ -4,6 +4,16 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202410.1141 (2024-10-08)
+============================
+
+Naprawione
+----------
+
+- parametryzacja czasu otwarcia połączeń + domyślne wyłączenie persistent connections na produkcji (do momentu Django 5,
+  gdzie można będzie użyć psycopg-pool)
+
+
 Bpp 202410.1140 (2024-10-07)
 ============================
 
