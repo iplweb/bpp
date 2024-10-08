@@ -32,6 +32,14 @@ SECRET_KEY_UNSET = "Please set the DJANGO_BPP_SECRET_KEY variable."
 # serwisu + docelowo będzie pewnie można zrezygnować z wielu plików konfiguracyjnych
 # (local, test, production).
 
+
+def int_or_none(v):
+    try:
+        return int(v)
+    except ValueError:
+        return None
+
+
 env = environ.Env(
     # casting, default value
     #
@@ -87,6 +95,7 @@ env = environ.Env(
     DJANGO_BPP_DB_PASSWORD=(str, "password"),
     DJANGO_BPP_DB_HOST=(str, "localhost"),
     DJANGO_BPP_DB_PORT=(int, 5432),
+    DJANGO_BPP_CONN_MAX_AGE=(int_or_none, 0),
     DJANGO_BPP_DB_DISABLE_SSL=(bool, False),
     DJANGO_BPP_SECRET_KEY=(str, SECRET_KEY_UNSET),
     DJANGO_BPP_MEDIA_ROOT=(str, os.path.join(os.getenv("HOME", "C:/"), "bpp-media")),
@@ -508,6 +517,7 @@ DATABASES = {
         "PASSWORD": env("DJANGO_BPP_DB_PASSWORD"),
         "HOST": env("DJANGO_BPP_DB_HOST"),
         "PORT": env("DJANGO_BPP_DB_PORT"),
+        "CONN_MAX_AGE": env("DJANGO_BPP_CONN_MAX_AGE"),
     },
 }
 

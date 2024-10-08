@@ -39,9 +39,6 @@ CACHE_MIDDLEWARE_SECONDS = 3600 * 24
 DATA_UPLOAD_MAX_MEMORY_SIZE = 2621440 * 3  # 7.5 MB
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 50000
 
-# Persistent connections
-DATABASES["default"]["CONN_MAX_AGE"] = None  # noqa
-
 CACHEOPS = {
     "bpp.bppmultiseekvisibility": {"ops": ("get", "fetch")},
     "dbtemplates.template": {"ops": ("fetch", "get")},
