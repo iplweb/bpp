@@ -68,7 +68,7 @@ def generate_config(ram_kb):
     # We're tweaking this a little bit here. While we allow up to 250
     # connections (because we've frequently seen customers with leaky or
     # misconfigured connection pools), we assume 50 per GB.
-    conns = 50 * ram_kb / ONE_GB_IN_KB
+    conns = 75 * ram_kb / ONE_GB_IN_KB
     config["max_connections"] = conns
     config["work_mem"] = (ram_kb * 3 / 4) / (conns * 3)
 
