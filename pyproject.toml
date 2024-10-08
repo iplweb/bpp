@@ -221,7 +221,7 @@ django-tinymce = "^3.6.1"
 crispy-bootstrap5 = "^0.7"
 crispy-bootstrap3 = "^2022.1"
 twisted = {extras = ["http2", "tls"], version = "^24.3.0"}
-psycopg = "^3.2.3"
+psycopg2 = "^2.9.9"
 
 [tool.poetry.dev-dependencies]
 model-bakery = ">=1.5.1"

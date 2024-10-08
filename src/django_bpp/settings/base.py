@@ -511,7 +511,7 @@ SESSION_SECURITY_PASSIVE_URLS = ["/messages/"]
 
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.postgresql",
+        "ENGINE": "django.db.backends.postgresql_psycopg2",
         "NAME": env("DJANGO_BPP_DB_NAME"),
         "USER": env("DJANGO_BPP_DB_USER"),
         "PASSWORD": env("DJANGO_BPP_DB_PASSWORD"),
