@@ -17,7 +17,7 @@ default_ram_for_postgres = int(os.environ.get("POSTGRESQL_DEFAULT_RAM", 4096))
 def total_ram_size_mb():
     if force_ram_for_postgres:
         print(
-            f"# autotune.py: RAM size for Postgres is {force_ram_for_postgres} kB, because of "
+            f"# autotune.py: RAM size for Postgres is {force_ram_for_postgres} MB, because of "
             f"env var POSTGRESQL_RAM_THIS_MUCH_DB setting. Change the env var to tweak it or"
             f"remove it to use automatic RAM size detection."
         )
@@ -37,7 +37,7 @@ def total_ram_size_mb():
             return how_much_ram_for_postgres * mem_total_kB / 1024
 
     print(
-        f"# autotune.py: unable to detect RAM size, returning default {default_ram_for_postgres} kB; "
+        f"# autotune.py: unable to detect RAM size, returning default {default_ram_for_postgres} MB; "
         f"change environment variable POSTGRESQL_DEFAULT_RAM if you need to change this"
     )
     return default_ram_for_postgres
@@ -78,25 +78,8 @@ def to_config_value(v, n=None):
 def generate_config(ram_kb):
     config = {}
 
-    # Directly form pgtune
-    config["shared_buffers"] = ram_kb / 4
-    config["effective_cache_size"] = ram_kb * 3 / 4
-    config["maintenance_work_mem"] = min(ram_kb / 16, 2 * ONE_GB_IN_KB)
-
-    # 100 połaczeń na 1 GB RAM, maksymalnie 250
-    conns = min(100 * ram_kb / ONE_GB_IN_KB, 250)
-    config["max_connections"] = conns
-    config["work_mem"] = (ram_kb * 3 / 4) / (conns * 3)
-
-    config["min_wal_size"] = ONE_GB_IN_KB
-    config["max_wal_size"] = 2 * ONE_GB_IN_KB
-
-    config["wal_buffers"] = min(ram_kb * 3 / 4 / 100, 16 * ONE_MB_IN_KB)
-
-    config["checkpoint_completion_target"] = "0.7"
-    config["default_statistics_target"] = "100"
-
     nproc = get_nproc()
+    max_parallel = 1
     if nproc >= 4:
 
         max_parallel = 2
@@ -106,6 +89,24 @@ def generate_config(ram_kb):
 
         if nproc >= 7:
             max_parallel = 4
+
+    # Directly form pgtune
+    config["shared_buffers"] = ram_kb / 4
+    config["effective_cache_size"] = ram_kb * 3 / 4
+    config["maintenance_work_mem"] = min(ram_kb / 16, 2 * ONE_GB_IN_KB)
+
+    # 100 połaczeń na 1 GB RAM, maksymalnie 250
+    conns = min(100 * ram_kb / ONE_GB_IN_KB, 250)
+    config["max_connections"] = conns
+    config["work_mem"] = (ram_kb * 3 / 4) / (conns * 3) / max_parallel
+
+    config["min_wal_size"] = ONE_GB_IN_KB
+    config["max_wal_size"] = 2 * ONE_GB_IN_KB
+
+    config["wal_buffers"] = min(ram_kb * 3 / 4 / 100, 16 * ONE_MB_IN_KB)
+
+    config["checkpoint_completion_target"] = "0.7"
+    config["default_statistics_target"] = "100"
 
     config["max_worker_processes"] = str(nproc)
     config["max_parallel_workers_per_gather"] = str(max_parallel)
