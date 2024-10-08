@@ -141,7 +141,7 @@ simplejson = "3.17.5"
 django-dbtemplates-iplweb = "4.1.0"
 django-reversion = "5.0.4"
 channels = { version = "~4", extras = ["daphne"] }
-uvicorn = { version = "0.18.2", extras = ["standard"] }
+uvicorn = {extras = ["standard"], version = "^0.31.0"}
 channels-redis = "~4"
 django-flexible-reports = ">0.2.9"
 django-group-by = "0.3.1"
