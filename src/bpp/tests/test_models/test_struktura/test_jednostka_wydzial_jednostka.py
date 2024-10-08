@@ -2,7 +2,7 @@ from datetime import date, datetime, timedelta
 
 import pytest
 from django.core.exceptions import ValidationError
-from django.db import OperationalError
+from django.db import InternalError, OperationalError
 from django.db.utils import IntegrityError
 from model_bakery import baker
 
@@ -50,7 +50,7 @@ def test_jednostka_before_insert():
     w1 = baker.make(Wydzial, uczelnia=u1)
     w2 = baker.make(Wydzial, uczelnia=u2)
 
-    with pytest.raises(OperationalError):
+    with pytest.raises((OperationalError, InternalError)):
         j = baker.make(Jednostka, uczelnia=u2, wydzial=w1)
 
     j = baker.make(Jednostka, uczelnia=u2, wydzial=w2)
@@ -74,7 +74,7 @@ def test_jednostka_wydzial_before_insert():
     assert j1.wydzial is None
 
     jw = Jednostka_Wydzial(jednostka=j1, wydzial=w2)
-    with pytest.raises(OperationalError):
+    with pytest.raises((OperationalError, InternalError)):
         jw.save()
 
     jw = Jednostka_Wydzial.objects.create(jednostka=j1, wydzial=w1)
@@ -145,7 +145,7 @@ def test_jednostka_wydzial_time_trigger_delete_1():
 
     jw1.jednostka = j2
 
-    with pytest.raises(OperationalError):
+    with pytest.raises((OperationalError, InternalError)):
         jw1.save()
 
     for elem in u1, w1, j1, j2, jw1:
