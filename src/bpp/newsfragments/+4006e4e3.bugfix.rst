@@ -1,0 +1,3 @@
+
+parametryzacja czasu otwarcia połączeń + domyślne wyłączenie persistent connections na produkcji (do momentu Django 5,
+gdzie można będzie użyć psycopg-pool)
