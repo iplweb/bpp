@@ -195,6 +195,10 @@ build-servers: build-appserver-base build-appserver build-workerserver
 
 docker: build-dbserver build-webserver build-servers
 
-reload-compose:
-	docker-compose pull
-	docker-compose up --build --force-recreate
+compose-restart:
+	docker compose stop
+	docker compose rm -f
+	docker compose up --force-recreate
+
+compose-dbshell:
+	docker compose exec db /bin/bash
