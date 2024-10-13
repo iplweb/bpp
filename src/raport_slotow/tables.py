@@ -14,7 +14,7 @@ from raport_slotow.models import (
 )
 from raport_slotow.models.uczelnia import RaportSlotowUczelniaWiersz
 
-from bpp.models import CHARAKTER_SLOTY
+from bpp.models import CHARAKTER_SLOTY, Punktacja_Zrodla
 from bpp.models.cache import (
     Cache_Punktacja_Autora_Query,
     Cache_Punktacja_Autora_Query_View,
@@ -207,6 +207,8 @@ class RaportSlotowEwaluacjaTable(RaportCommonMixin, tables.Table):
             "liczba_wszystkich_autorow",
             "punkty_pk",
             "impact_factor",
+            "kwartyl_wos",
+            "kwartyl_scopus",
             "autor",
             "aktualna_jednostka",
             "afiliowana_jednostka",
@@ -218,6 +220,7 @@ class RaportSlotowEwaluacjaTable(RaportCommonMixin, tables.Table):
             "procent_subdyscypliny",
             "dyscyplina_rekordu",
             "upowaznienie_pbn",
+            "pbn_uid_id",
             "profil_orcid",
             "pkdaut",
             "slot",
@@ -225,6 +228,7 @@ class RaportSlotowEwaluacjaTable(RaportCommonMixin, tables.Table):
 
     id = Column("ID publikacji", "rekord.id")
     tytul_oryginalny = Column("Tytuł oryginalny", "rekord")
+    pbn_uid_id = Column("PBN UID", "rekord.pbn_uid_id")
     autorzy = Column(
         "Autorzy", "rekord.opis_bibliograficzny_zapisani_autorzy_cache", orderable=False
     )
@@ -304,6 +308,29 @@ class RaportSlotowEwaluacjaTable(RaportCommonMixin, tables.Table):
     dyscyplina_rekordu = Column("dyscyplina rekordu", "autorzy.dyscyplina_naukowa")
     pkdaut = SummingColumn("Punkty dla autora", "pkdaut")
     slot = SummingColumn("Slot")
+
+    kwartyl_wos = Column("Kwartyl WoS Źródła", accessor="rekord")
+    kwartyl_scopus = Column("Kwartyl SCOPUS Źródła", accessor="rekord")
+
+    def render_kwartyl(self, value, attrname):
+        if value.zrodlo_id is not None:
+            try:
+                for elem in value.zrodlo.punktacja_zrodla_set.all():
+                    if elem.rok == value.rok:
+                        ret = getattr(elem, attrname, self.default)
+                        if ret is None:
+                            return self.default
+                        return ret
+            except Punktacja_Zrodla.DoesNotExist:
+                pass
+
+        return self.default
+
+    def render_kwartyl_wos(self, value):
+        return self.render_kwartyl(value, "kwartyl_w_wos")
+
+    def render_kwartyl_scopus(self, value):
+        return self.render_kwartyl(value, "kwartyl_w_scopus")
 
     def render_liczba_autorow_z_dyscypliny(self, value):
         if value:
