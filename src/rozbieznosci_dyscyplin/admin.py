@@ -5,6 +5,13 @@ from json import JSONDecodeError
 from django.http import HttpResponseRedirect
 from django.urls import path
 
+from rozbieznosci_dyscyplin.admin_utils import (
+    CachingPaginator,
+    DyscyplinaAutoraUstawionaFilter,
+    DyscyplinaRekorduUstawionaFilter,
+    DyscyplinaUstawionaFilter,
+    PracujeNaUczelni,
+)
 from rozbieznosci_dyscyplin.models import RozbieznosciView, RozbieznosciZrodelView
 
 from django.contrib import admin, messages
@@ -12,6 +19,7 @@ from django.contrib import admin, messages
 from django.utils.itercompat import is_iterable
 
 from bpp.admin.helpers import link_do_obiektu
+from bpp.admin.xlsx_export.mixins import EksportDanychMixin
 
 
 def parse_object_id(object_id, max_len=3):
@@ -156,7 +164,7 @@ class ReadonlyAdminMixin:
 
 
 @admin.register(RozbieznosciView)
-class RozbieznosciViewAdmin(ReadonlyAdminMixin, admin.ModelAdmin):
+class RozbieznosciViewAdmin(ReadonlyAdminMixin, EksportDanychMixin, admin.ModelAdmin):
     list_display = [
         "rekord",
         "rok",
@@ -175,8 +183,11 @@ class RozbieznosciViewAdmin(ReadonlyAdminMixin, admin.ModelAdmin):
 
     list_filter = [
         "dyscyplina_autora",
+        DyscyplinaAutoraUstawionaFilter,
+        DyscyplinaRekorduUstawionaFilter,
         "subdyscyplina_autora",
         "dyscyplina_rekordu",
+        PracujeNaUczelni,
         "rok",
     ]
 
@@ -230,22 +241,29 @@ class RozbieznosciViewAdmin(ReadonlyAdminMixin, admin.ModelAdmin):
 
 
 @admin.register(RozbieznosciZrodelView)
-class RozbieznosciZrodelViewAdmin(ReadonlyAdminMixin, admin.ModelAdmin):
+class RozbieznosciZrodelViewAdmin(
+    ReadonlyAdminMixin, EksportDanychMixin, admin.ModelAdmin
+):
+    paginator = CachingPaginator
+
     list_display = [
         "wydawnictwo_ciagle",
+        "rok",
         "zrodlo",
         "autor",
         "dyscyplina_naukowa",
     ]
-    list_select_related = [
-        "wydawnictwo_ciagle",
-        "zrodlo",
-        "autor",
+    list_select_related = ["wydawnictwo_ciagle", "zrodlo", "autor", "autor__tytul"]
+
+    list_prefetch_related = [
         "dyscyplina_naukowa",
     ]
 
     list_filter = [
+        DyscyplinaUstawionaFilter,
+        PracujeNaUczelni,
         "dyscyplina_naukowa",
+        "rok",
     ]
 
     list_per_page = 25

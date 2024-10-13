@@ -14,7 +14,7 @@ from raport_slotow.models import (
 )
 from raport_slotow.models.uczelnia import RaportSlotowUczelniaWiersz
 
-from bpp.models import CHARAKTER_SLOTY
+from bpp.models import CHARAKTER_SLOTY, Punktacja_Zrodla
 from bpp.models.cache import (
     Cache_Punktacja_Autora_Query,
     Cache_Punktacja_Autora_Query_View,
@@ -184,6 +184,8 @@ class RaportSlotowZerowyTable(tables.Table):
             "autor",
             "autor__aktualna_jednostka",
             "autor__pbn_id",
+            "autor__system_kadrowy_id",
+            "autor__pbn_uid_id",
             "autor__orcid",
             "lata",
             "dyscyplina_naukowa",
@@ -207,6 +209,8 @@ class RaportSlotowEwaluacjaTable(RaportCommonMixin, tables.Table):
             "liczba_wszystkich_autorow",
             "punkty_pk",
             "impact_factor",
+            "kwartyl_wos",
+            "kwartyl_scopus",
             "autor",
             "aktualna_jednostka",
             "afiliowana_jednostka",
@@ -218,6 +222,7 @@ class RaportSlotowEwaluacjaTable(RaportCommonMixin, tables.Table):
             "procent_subdyscypliny",
             "dyscyplina_rekordu",
             "upowaznienie_pbn",
+            "pbn_uid_id",
             "profil_orcid",
             "pkdaut",
             "slot",
@@ -225,6 +230,7 @@ class RaportSlotowEwaluacjaTable(RaportCommonMixin, tables.Table):
 
     id = Column("ID publikacji", "rekord.id")
     tytul_oryginalny = Column("Tytuł oryginalny", "rekord")
+    pbn_uid_id = Column("PBN UID", "rekord.pbn_uid_id")
     autorzy = Column(
         "Autorzy", "rekord.opis_bibliograficzny_zapisani_autorzy_cache", orderable=False
     )
@@ -305,6 +311,29 @@ class RaportSlotowEwaluacjaTable(RaportCommonMixin, tables.Table):
     pkdaut = SummingColumn("Punkty dla autora", "pkdaut")
     slot = SummingColumn("Slot")
 
+    kwartyl_wos = Column("Kwartyl WoS Źródła", accessor="rekord")
+    kwartyl_scopus = Column("Kwartyl SCOPUS Źródła", accessor="rekord")
+
+    def render_kwartyl(self, value, attrname):
+        if value.zrodlo_id is not None:
+            try:
+                for elem in value.zrodlo.punktacja_zrodla_set.all():
+                    if elem.rok == value.rok:
+                        ret = getattr(elem, attrname, self.default)
+                        if ret is None:
+                            return self.default
+                        return ret
+            except Punktacja_Zrodla.DoesNotExist:
+                pass
+
+        return self.default
+
+    def render_kwartyl_wos(self, value):
+        return self.render_kwartyl(value, "kwartyl_w_wos")
+
+    def render_kwartyl_scopus(self, value):
+        return self.render_kwartyl(value, "kwartyl_w_scopus")
+
     def render_liczba_autorow_z_dyscypliny(self, value):
         if value:
             return len(value)
@@ -324,6 +353,10 @@ class RaportSlotowEwaluacjaTable(RaportCommonMixin, tables.Table):
     def value_autorzy(self, value):
         return value
 
+    system_kadrowy_id = Column(
+        "System kadrowy ID", accessor="autorzy.autor.system_kadrowy_id"
+    )
+
 
 class RaportEwaluacjaUpowaznieniaTable(RaportSlotowEwaluacjaTable):
     class Meta:
@@ -342,6 +375,7 @@ class RaportEwaluacjaUpowaznieniaTable(RaportSlotowEwaluacjaTable):
             "punkty_pk",
             "autor",
             "pbn_id",
+            "system_kadrowy_id",
             "orcid",
             "aktualna_jednostka",
             "afiliowana_jednostka",
@@ -353,6 +387,8 @@ class RaportEwaluacjaUpowaznieniaTable(RaportSlotowEwaluacjaTable):
             "upowaznienie_pbn",
             "profil_orcid",
         )
+
+    pbn_uid_id = Column("PBN UID ID", accessor="autor")
 
     pkdaut = None
     slot = None

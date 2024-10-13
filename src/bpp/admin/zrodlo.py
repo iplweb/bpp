@@ -66,10 +66,12 @@ class Redakcja_ZrodlaInline(admin.TabularInline):
 
 class Dyscyplina_ZrodlaInline(admin.TabularInline):
     model = Dyscyplina_Zrodla
+    classes = ["grp-collapse grp-closed grp-never-open-automatically"]
     extra = 1
 
     class Meta:
         fields = [
+            "rok",
             "dyscyplina",
         ]
 
@@ -119,6 +121,7 @@ class ZrodloAdmin(
         "doi",
         "pbn_uid__pk",
     ]
+
     autocomplete_fields = ["pbn_uid"]
     list_display = ["nazwa", "skrot", "rodzaj", "www", "issn", "e_issn", "pbn_uid_id"]
     list_filter = [

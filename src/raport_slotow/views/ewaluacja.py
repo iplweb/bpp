@@ -109,6 +109,7 @@ class RaportSlotowEwaluacja(
             .prefetch_related(
                 "autorzy__autor__aktualna_jednostka",
                 "autorzy__jednostka",
+                "rekord__zrodlo__punktacja_zrodla_set",
             )
             .only(
                 "autorzy_z_dyscypliny",
@@ -126,9 +127,12 @@ class RaportSlotowEwaluacja(
                 "rekord__wydawnictwo_nadrzedne_id",
                 "rekord__wydawnictwo_nadrzedne__id",
                 "rekord__wydawnictwo_nadrzedne__tytul_oryginalny",
+                "rekord__charakter_formalny",
+                "rekord__pbn_uid_id",
                 "rekord__zrodlo_id",
                 "rekord__zrodlo__id",
                 "rekord__zrodlo__nazwa",
+                "rekord__zrodlo__punktacja_zrodla",
                 "autorzy__autor__nazwisko",
                 "autorzy__autor__pseudonim",
                 "autorzy__autor__poprzednie_nazwiska",
@@ -161,7 +165,6 @@ class RaportSlotowEwaluacja(
                 "autorzy__dyscyplina_naukowa__nazwa",
                 "autorzy__dyscyplina_naukowa__kod",
                 "autorzy__dyscyplina_naukowa__widoczna",
-                "rekord__charakter_formalny",
                 "autorzy__autor",
                 "autorzy__autor__tytul",
             )
