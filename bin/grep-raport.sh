@@ -5,5 +5,5 @@
 # pliku CSV.
 
 for a in PKT-0 PKT-1 PKT-2 PKT-3 PKT-4 PKT-5; do
-    grep $a $1 > $1-$a.csv;
+    grep $a $1 | sort | uniq > $1-$a.csv;
 done
