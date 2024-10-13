@@ -1,0 +1,2 @@
+
+nie pokazuj dyscyplin z nie-aktualnego roku
