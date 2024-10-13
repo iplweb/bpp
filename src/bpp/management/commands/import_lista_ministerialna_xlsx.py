@@ -51,8 +51,10 @@ class Command(BaseCommand):
 
         if not Path(fn).exists():
             if download:
+                print("Downloading", fn)
                 response = requests.get(url)
                 open(fn, "wb").write(response.content)
+                print("done")
             else:
                 raise ValueError(
                     f"Brak pliku {fn}. Podaj parametr --download aby pobrac"
@@ -112,7 +114,7 @@ class Command(BaseCommand):
                 pz = zrodlo.punktacja_zrodla_set.get(rok=rok)
                 if pz.punkty_kbn != punktacja:
                     logger.info(
-                        f"PKT-0; {zrodlo.nazwa}; różna punktacja;  "
+                        f"PKT-0; {zrodlo.nazwa}; różna punktacja (rok={rok});  "
                         f"BPP {pz.punkty_kbn}; "
                         f"XLS {punktacja}; Ustawiam na XLS."
                     )
@@ -127,11 +129,13 @@ class Command(BaseCommand):
 
             # Aktualne dyscypliny:
             aktualne_dyscypliny_zrodla = {
-                x.dyscyplina.nazwa for x in zrodlo.dyscyplina_zrodla_set.all()
+                x.dyscyplina.nazwa for x in zrodlo.dyscyplina_zrodla_set.filter(rok=rok)
             }
 
-            # Ustawmy mu wszystkie dyscypliny wg pliku XLS:
-            zrodlo.dyscyplina_zrodla_set.all().delete()
+            # Ustawmy mu wszystkie dyscypliny wg pliku XLS.
+
+            # W tym celu: kasujemy dyscypliny z danego roku
+            zrodlo.dyscyplina_zrodla_set.filter(rok=rok).delete()
 
             for nazwa_dyscypliny in list(elem.keys())[9:]:
                 if elem[nazwa_dyscypliny] == "x":
@@ -144,11 +148,13 @@ class Command(BaseCommand):
                             f"ERROR: brak dyscypliny naukowej '{nazwa_dyscypliny}' w systemie"
                         )
 
-                    zrodlo.dyscyplina_zrodla_set.create(dyscyplina=dyscyplina_naukowa)
+                    zrodlo.dyscyplina_zrodla_set.create(
+                        dyscyplina=dyscyplina_naukowa, rok=rok
+                    )
 
             # Nowe dyscypliny:
             nowe_dyscypliny_zrodla = {
-                x.dyscyplina.nazwa for x in zrodlo.dyscyplina_zrodla_set.all()
+                x.dyscyplina.nazwa for x in zrodlo.dyscyplina_zrodla_set.filter(rok=rok)
             }
 
             # Roznica:
@@ -156,10 +162,14 @@ class Command(BaseCommand):
             usuniete = aktualne_dyscypliny_zrodla.difference(nowe_dyscypliny_zrodla)
 
             if dodane:
-                logger.info(f"PKT-1; {zrodlo.nazwa} ;+++   DODANE; {dodane}")
+                logger.info(
+                    f"PKT-1; {zrodlo.nazwa} ;+++   DODANE (rok={rok}); {dodane}"
+                )
 
             if usuniete:
-                logger.info(f"PKT-2; {zrodlo.nazwa} ;--- USUNIETE; {usuniete}")
+                logger.info(
+                    f"PKT-2; {zrodlo.nazwa} ;--- USUNIETE (rok={rok}); {usuniete}"
+                )
 
         if dry_run:
             transaction.rollback()

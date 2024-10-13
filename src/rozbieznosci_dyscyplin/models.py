@@ -58,6 +58,7 @@ class RozbieznosciZrodelView(models.Model):
 
     id = TupleField(models.IntegerField(), size=4, primary_key=True)
     zrodlo = models.ForeignKey("bpp.Zrodlo", on_delete=DO_NOTHING, related_name="+")
+    rok = YearField()
     wydawnictwo_ciagle = models.ForeignKey(
         "bpp.Wydawnictwo_Ciagle", on_delete=DO_NOTHING, related_name="+"
     )

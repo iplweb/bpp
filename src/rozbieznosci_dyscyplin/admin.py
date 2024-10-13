@@ -5,6 +5,7 @@ from json import JSONDecodeError
 from django.http import HttpResponseRedirect
 from django.urls import path
 
+from rozbieznosci_dyscyplin.admin_utils import CachingPaginator
 from rozbieznosci_dyscyplin.models import RozbieznosciView, RozbieznosciZrodelView
 
 from django.contrib import admin, messages
@@ -12,6 +13,7 @@ from django.contrib import admin, messages
 from django.utils.itercompat import is_iterable
 
 from bpp.admin.helpers import link_do_obiektu
+from bpp.admin.xlsx_export.mixins import EksportDanychMixin
 
 
 def parse_object_id(object_id, max_len=3):
@@ -230,9 +232,14 @@ class RozbieznosciViewAdmin(ReadonlyAdminMixin, admin.ModelAdmin):
 
 
 @admin.register(RozbieznosciZrodelView)
-class RozbieznosciZrodelViewAdmin(ReadonlyAdminMixin, admin.ModelAdmin):
+class RozbieznosciZrodelViewAdmin(
+    ReadonlyAdminMixin, EksportDanychMixin, admin.ModelAdmin
+):
+    paginator = CachingPaginator
+
     list_display = [
         "wydawnictwo_ciagle",
+        "rok",
         "zrodlo",
         "autor",
         "dyscyplina_naukowa",
@@ -241,6 +248,7 @@ class RozbieznosciZrodelViewAdmin(ReadonlyAdminMixin, admin.ModelAdmin):
         "wydawnictwo_ciagle",
         "zrodlo",
         "autor",
+        "autor__tytul",
         "dyscyplina_naukowa",
     ]
 
