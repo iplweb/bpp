@@ -1,2 +1,7 @@
 
-obsługa dyscyplin źródeł dla kolejnych lat
+obsługa dyscyplin źródeł dla kolejnych lat; możliwość odfiltrowania autorów nie będących pracownikami w rozbieżności
+dyscyplin źródeł, możliwość filtrowania po roku, ograniczenie wyświetlanych prac do prac
+z roku 2017 i wyższych;
+
+
+możliwość eksportowania rozbiezności dyscyplin źródeł/rekordów do formatu XLS,

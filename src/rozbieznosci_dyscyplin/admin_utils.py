@@ -1,6 +1,12 @@
 from django.core.cache import cache
 from django.core.paginator import Paginator
 from django.db import connection
+from django.db.models import Q
+
+from django.contrib.admin import SimpleListFilter
+
+from bpp.admin.filters import SimpleNotNullFilter
+from bpp.models import Uczelnia
 
 
 class CachingPaginator(Paginator):
@@ -49,3 +55,55 @@ class CachingPaginator(Paginator):
         return self._count
 
     count = property(_get_count)
+
+
+class DyscyplinaUstawionaFilter(SimpleNotNullFilter):
+    title = "Dyscyplina ustawiona"
+    parameter_name = "dyscyplina_naukowa_id"
+
+
+class DyscyplinaAutoraUstawionaFilter(SimpleNotNullFilter):
+    title = "Dyscyplina autora ustawiona"
+    parameter_name = "dyscyplina_autora_id"
+
+
+class DyscyplinaRekorduUstawionaFilter(SimpleNotNullFilter):
+    title = "Dyscyplina rekordu ustawiona"
+    parameter_name = "dyscyplina_rekordu_id"
+
+
+class PracujeNaUczelni(SimpleListFilter):
+    title = "Autor pracuje na uczelni?"
+    parameter_name = "pracuje_na_uczelni"
+
+    def lookups(self, request, model_admin):
+        return [
+            ("tak", "pracuje (ma aktualna, nie-obca jednostke)"),
+            ("nie", "nie pracuje (brak akt. jedn. lub obca)"),
+        ]
+
+    def queryset(self, request, queryset):
+        v = self.value()
+
+        uczelnia = Uczelnia.objects.get_for_request(request)
+        obca_jednostka_id = None
+        if hasattr(uczelnia, "obca_jednostka_id"):
+            obca_jednostka_id = uczelnia.obca_jednostka_id
+
+        if v == "tak":
+            queryset = queryset.exclude(autor__aktualna_jednostka_id=None)
+            if obca_jednostka_id is not None:
+                queryset = queryset.exclude(
+                    autor__aktualna_jednostka_id=obca_jednostka_id
+                )
+
+        elif v == "nie":
+            if obca_jednostka_id is not None:
+                queryset = queryset.filter(
+                    Q(autor__aktualna_jednostka_id=None)
+                    | Q(autor__aktualna_jednostka_id=obca_jednostka_id)
+                )
+            else:
+                queryset = queryset.filter(Q(autor__aktualna_jednostka_id=None))
+
+        return queryset
