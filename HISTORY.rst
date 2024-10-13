@@ -4,6 +4,29 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202410.1142 (2024-10-14)
+============================
+
+Naprawione
+----------
+
+- nie pokazuj dyscyplin z nie-aktualnego roku (#1314)
+
+
+Usprawnienie
+------------
+
+- obsługa dyscyplin źródeł dla kolejnych lat; możliwość odfiltrowania autorów nie będących pracownikami w rozbieżności
+  dyscyplin źródeł, możliwość filtrowania po roku, ograniczenie wyświetlanych prac do prac
+  z roku 2017 i wyższych;
+
+
+  możliwość eksportowania rozbiezności dyscyplin źródeł/rekordów do formatu XLS, (#1411)
+- dodaj ID systemu kadrowego do raportu slotów zerowego i raportu slotów ewaluacja upoważnienia (#1458)
+- dodaj PBN UID do raportu slotów - ewaluacja (#1459)
+- wyświetlaj kwartyl źródła (WoS i SCOPUS) w raporcie slotów - ewaluacja (#1464)
+
+
 Bpp 202410.1141 (2024-10-08)
 ============================
 
