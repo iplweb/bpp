@@ -1,0 +1,2 @@
+
+dodaj ID systemu kadrowego do raportu slotów zerowego i raportu slotów ewaluacja upoważnienia

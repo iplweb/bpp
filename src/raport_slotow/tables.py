@@ -184,6 +184,8 @@ class RaportSlotowZerowyTable(tables.Table):
             "autor",
             "autor__aktualna_jednostka",
             "autor__pbn_id",
+            "autor__system_kadrowy_id",
+            "autor__pbn_uid_id",
             "autor__orcid",
             "lata",
             "dyscyplina_naukowa",
@@ -351,6 +353,10 @@ class RaportSlotowEwaluacjaTable(RaportCommonMixin, tables.Table):
     def value_autorzy(self, value):
         return value
 
+    system_kadrowy_id = Column(
+        "System kadrowy ID", accessor="autorzy.autor.system_kadrowy_id"
+    )
+
 
 class RaportEwaluacjaUpowaznieniaTable(RaportSlotowEwaluacjaTable):
     class Meta:
@@ -369,6 +375,7 @@ class RaportEwaluacjaUpowaznieniaTable(RaportSlotowEwaluacjaTable):
             "punkty_pk",
             "autor",
             "pbn_id",
+            "system_kadrowy_id",
             "orcid",
             "aktualna_jednostka",
             "afiliowana_jednostka",
@@ -380,6 +387,8 @@ class RaportEwaluacjaUpowaznieniaTable(RaportSlotowEwaluacjaTable):
             "upowaznienie_pbn",
             "profil_orcid",
         )
+
+    pbn_uid_id = Column("PBN UID ID", accessor="autor")
 
     pkdaut = None
     slot = None
