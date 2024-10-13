@@ -31,9 +31,10 @@ class Command(BaseCommand):
         parser.add_argument("--rok", default=2023, type=int)
         parser.add_argument("--dry-run", action="store_true")
         parser.add_argument("--download", action="store_true")
+        parser.add_argument("--force-download", action="store_true")
 
     @transaction.atomic
-    def handle(self, url, fn, rok, dry_run, download, *args, **options):
+    def handle(self, url, fn, rok, dry_run, download, force_download, *args, **options):
         # Usuń zbędne spacje z systemowego słownika dyscyplin BPP,
         # napraw literówki
 
@@ -49,10 +50,12 @@ class Command(BaseCommand):
 
         # Pobierz plik z listą z URLa
 
-        if not Path(fn).exists():
-            if download:
+        if not Path(fn).exists() or force_download:
+            if download or force_download:
+                print("Downloading", fn)
                 response = requests.get(url)
                 open(fn, "wb").write(response.content)
+                print("done")
             else:
                 raise ValueError(
                     f"Brak pliku {fn}. Podaj parametr --download aby pobrac"
@@ -97,7 +100,7 @@ class Command(BaseCommand):
                 disable_skrot=True,
             )
             if zrodlo is None:
-                logger.info(f"PKT-5; {tytul_zrodla}; brak dopasowania w BPP")
+                logger.info(f"{tytul_zrodla}; PKT-5; brak dopasowania w BPP")
                 continue
 
             try:
@@ -112,7 +115,7 @@ class Command(BaseCommand):
                 pz = zrodlo.punktacja_zrodla_set.get(rok=rok)
                 if pz.punkty_kbn != punktacja:
                     logger.info(
-                        f"PKT-0; {zrodlo.nazwa}; różna punktacja;  "
+                        f"{zrodlo.nazwa}; PKT-0; różna punktacja; {rok};  "
                         f"BPP {pz.punkty_kbn}; "
                         f"XLS {punktacja}; Ustawiam na XLS."
                     )
@@ -120,18 +123,20 @@ class Command(BaseCommand):
                     pz.save(update_fields=["punkty_kbn"])
             else:
                 logger.info(
-                    f"PKT-4; {zrodlo.nazwa}; ustawiam; {punktacja}; "
+                    f"{zrodlo.nazwa}; PKT-4; ustawiam; {punktacja}; "
                     f"za rok {rok}; (w XLS: {elem['Tytuł 1']}) "
                 )
                 zrodlo.punktacja_zrodla_set.create(rok=rok, punkty_kbn=punktacja)
 
             # Aktualne dyscypliny:
             aktualne_dyscypliny_zrodla = {
-                x.dyscyplina.nazwa for x in zrodlo.dyscyplina_zrodla_set.all()
+                x.dyscyplina.nazwa for x in zrodlo.dyscyplina_zrodla_set.filter(rok=rok)
             }
 
-            # Ustawmy mu wszystkie dyscypliny wg pliku XLS:
-            zrodlo.dyscyplina_zrodla_set.all().delete()
+            # Ustawmy mu wszystkie dyscypliny wg pliku XLS.
+
+            # W tym celu: kasujemy dyscypliny z danego roku
+            zrodlo.dyscyplina_zrodla_set.filter(rok=rok).delete()
 
             for nazwa_dyscypliny in list(elem.keys())[9:]:
                 if elem[nazwa_dyscypliny] == "x":
@@ -144,11 +149,13 @@ class Command(BaseCommand):
                             f"ERROR: brak dyscypliny naukowej '{nazwa_dyscypliny}' w systemie"
                         )
 
-                    zrodlo.dyscyplina_zrodla_set.create(dyscyplina=dyscyplina_naukowa)
+                    zrodlo.dyscyplina_zrodla_set.create(
+                        dyscyplina=dyscyplina_naukowa, rok=rok
+                    )
 
             # Nowe dyscypliny:
             nowe_dyscypliny_zrodla = {
-                x.dyscyplina.nazwa for x in zrodlo.dyscyplina_zrodla_set.all()
+                x.dyscyplina.nazwa for x in zrodlo.dyscyplina_zrodla_set.filter(rok=rok)
             }
 
             # Roznica:
@@ -156,10 +163,14 @@ class Command(BaseCommand):
             usuniete = aktualne_dyscypliny_zrodla.difference(nowe_dyscypliny_zrodla)
 
             if dodane:
-                logger.info(f"PKT-1; {zrodlo.nazwa} ;+++   DODANE; {dodane}")
+                logger.info(
+                    f"{zrodlo.nazwa}; PKT-1; +++   DODANE; {rok}; {sorted(dodane)}"
+                )
 
             if usuniete:
-                logger.info(f"PKT-2; {zrodlo.nazwa} ;--- USUNIETE; {usuniete}")
+                logger.info(
+                    f"{zrodlo.nazwa}; PKT-2; --- USUNIETE; {rok}; {sorted(usuniete)}"
+                )
 
         if dry_run:
             transaction.rollback()

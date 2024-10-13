@@ -34,6 +34,10 @@
                             has_value = true;
                     });
 
+                    if ($(this).hasClass("grp-never-open-automatically")) {
+                        has_value = false;
+                    }
+
                     if (has_value) {
                         $(this).addClass("grp-open").removeClass("grp-closed");
                     }

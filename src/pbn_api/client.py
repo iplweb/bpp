@@ -489,8 +489,14 @@ class JournalsMixin:
     def get_journals_mnisw(self, *args, **kw):
         return self.transport.get_pages("/api/v1/journals/mnisw/page", *args, **kw)
 
+    def get_journals_mnisw_v2(self, *args, **kw):
+        return self.transport.get_pages("/api/v2/journals/mnisw/page", *args, **kw)
+
     def get_journals(self, *args, **kw):
         return self.transport.get_pages("/api/v1/journals/page", *args, **kw)
+
+    def get_journals_v2(self, *args, **kw):
+        return self.transport.get_pages("/api/v2/journals/page", *args, **kw)
 
     def get_journal_by_version(self, version):
         return self.transport.get(f"/api/v1/journals/version/{version}")
