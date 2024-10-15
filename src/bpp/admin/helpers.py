@@ -211,7 +211,7 @@ MODEL_PUNKTOWANY_WYDAWNICTWO_CIAGLE_FIELDSET = (
     "Punktacja",
     {
         "classes": ("",),
-        "fields": MODEL_PUNKTOWANY_Z_KWARTYLAMI + ("uzupelnij_punktacje",),
+        "fields": MODEL_PUNKTOWANY + ("uzupelnij_punktacje",),
     },
 )
 

@@ -9,7 +9,6 @@ from bpp.models import (
     BazaModeluStreszczen,
     ManagerModeliZOplataZaPublikacjeMixin,
     MaProcentyMixin,
-    ModelZKwartylami,
     ModelZOplataZaPublikacje,
     parse_informacje,
     wez_zakres_stron,
@@ -119,7 +118,6 @@ class Wydawnictwo_Ciagle(
     DodajAutoraMixin,
     DirtyFieldsMixin,
     ModelZPrzeliczaniemDyscyplin,
-    ModelZKwartylami,
 ):
     """Wydawnictwo ciągłe, czyli artykuły z czasopism, komentarze, listy
     do redakcji, publikacje w suplemencie, etc."""
@@ -141,6 +139,18 @@ class Wydawnictwo_Ciagle(
         verbose_name = "wydawnictwo ciągłe"
         verbose_name_plural = "wydawnictwa ciągłe"
         app_label = "bpp"
+
+    @property
+    def kwartyl_w_wos(self):
+        pz = self.punktacja_zrodla
+        if pz is not None:
+            return pz.kwartyl_w_wos
+
+    @property
+    def kwartyl_w_scopus(self):
+        pz = self.punktacja_zrodla
+        if pz is not None:
+            return pz.kwartyl_w_scopus
 
     def punktacja_zrodla(self):
         """Funkcja - skrót do użycia w templatkach, zwraca punktację zrodla
