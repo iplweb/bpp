@@ -44,6 +44,8 @@ grunt-build:
 	grunt build
 
 assets: yarn grunt-build
+
+collectstatic:
 	python src/manage.py collectstatic --noinput -v0
 
 production-assets: distclean assets
