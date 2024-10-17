@@ -26,6 +26,7 @@ from bpp.models import (
     ModelZDOI,
     ModelZeStatusem,
     ModelZISBN,
+    ModelZKwartylami,
     ModelZPBN_UID,
     Typ_Odpowiedzialnosci,
     Wydawnictwo_Zwarte,
@@ -313,6 +314,7 @@ class RekordBase(
     ModelZKonferencja,
     ModelZISBN,
     ModelZeStatusem,
+    ModelZKwartylami,
     models.Model,
 ):
     id = TupleField(models.IntegerField(), size=2, primary_key=True)
