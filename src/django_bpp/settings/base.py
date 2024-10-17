@@ -1066,7 +1066,6 @@ DYNAMIC_COLUMNS_ALLOWED_IMPORT_PATHS = [
 ]
 
 DYNAMIC_COLUMNS_FORBIDDEN_COLUMN_NAMES = [
-    "^kc_.*",
     ".*_cache$",
     ".*_sort$",
     "search_index",
