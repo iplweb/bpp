@@ -89,6 +89,8 @@
                         "index_copernicus": $("input[name=index_copernicus]").val(),
                         "punktacja_wewnetrzna": $("input[name=punktacja_wewnetrzna]").val(),
                         "punktacja_snip": $("input[name=punktacja_snip]").val(),
+                        "kwartyl_w_wos": $("input[name=kwartyl_w_wos]").val(),
+                        "kwartyl_w_scopus": $("input[name=kwartyl_w_scopus]").val(),
 
                         "kc_punkty_kbn": $("input[name=kc_punkty_kbn]").val(),
                         "kc_impact_factor": $("input[name=kc_impact_factor]").val(),
@@ -120,10 +122,7 @@
 
                 wypelnij_pola_punktacji = "Wypełnij pola punktacji";
                 dodaj_punktacje_do_zrodla = "Dodaj punktację do źródła";
-                names = ['impact_factor', 'index_copernicus',
-                    'kc_impact_factor', 'kc_index_copernicus',
-                    'kc_punkty_kbn', 'punktacja_wewnetrzna',
-                    'punkty_kbn', 'punktacja_snip'];
+                names = {{ BPP_POLA_PUNKTACJI|safe }};
 
                 /*
                  W razie zmiany źródła LUB roku, ustaw domyślne wartości tekstu
@@ -181,7 +180,6 @@
                     names.forEach(function (n) {
                         data[n] = $("#id_" + n).val();
                     });
-                    console.log(data);
 
                     var y = $.ajax({type: "POST", url: url, data: data});
 
@@ -249,11 +247,7 @@
 
                     z.done(
                         function (data) {
-
-                            names = ['impact_factor', 'index_copernicus',
-                                'kc_impact_factor', 'kc_index_copernicus',
-                                'kc_punkty_kbn', 'punktacja_wewnetrzna',
-                                'punkty_kbn', 'punktacja_snip'];
+                            names = {{ BPP_POLA_PUNKTACJI|safe }};
 
                             names.forEach(function (n) {
                                 $("#id_" + n).val(data[n]);
