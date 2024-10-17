@@ -24,6 +24,7 @@ packages = [
     { include = "miniblog", from = "src" },
     { include = "notifications", from = "src" },
     { include = "nowe_raporty", from = "src" },
+    { include = "oswiadczenia", from = "src" },
     { include = "pbn_api", from = "src" },
     { include = "raport_slotow", from = "src" },
     { include = "ranking_autorow", from = "src" },
@@ -138,7 +139,7 @@ pygad = "2.16.1"
 django-denorm-iplweb = "1.1.1"
 django-tabular-permissions = "2.9.1"
 simplejson = "3.17.5"
-django-dbtemplates-iplweb = "4.1.0"
+# django-dbtemplates-iplweb = "4.1.0"
 django-reversion = "5.0.4"
 channels = { version = "~4", extras = ["daphne"] }
 uvicorn = {extras = ["standard"], version = "^0.31.0"}
@@ -222,6 +223,7 @@ crispy-bootstrap5 = "^0.7"
 crispy-bootstrap3 = "^2022.1"
 twisted = {extras = ["http2", "tls"], version = "^24.3.0"}
 psycopg2 = "^2.9.9"
+django-dbtemplates = "^4.0"
 
 [tool.poetry.dev-dependencies]
 model-bakery = ">=1.5.1"
