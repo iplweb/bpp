@@ -671,12 +671,6 @@ class LiczbaAutorowQueryObject(BppMultiseekVisibilityMixin, IntegerQueryObject):
     field_name = "liczba_autorow"
 
 
-class KCImpactQueryObject(ImpactQueryObject):
-    field_name = "kc_impact_factor"
-    label = "KC: Impact factor"
-    public = False
-
-
 class PunktacjaWewnetrznaEnabledMixin:
     def option_enabled(self, request):
         return settings.UZYWAJ_PUNKTACJI_WEWNETRZNEJ
@@ -697,12 +691,6 @@ class PunktacjaSNIP(BppMultiseekVisibilityMixin, DecimalQueryObject):
 class PunktyKBNQueryObject(BppMultiseekVisibilityMixin, DecimalQueryObject):
     label = "Punkty MNiSW/MEiN"
     field_name = "punkty_kbn"
-
-
-class KCPunktyKBNQueryObject(PunktyKBNQueryObject):
-    label = "KC: punkty MNiSW/MEiN"
-    field_name = "kc_punkty_kbn"
-    public = False
 
 
 class IndexCopernicusQueryObject(BppMultiseekVisibilityMixin, DecimalQueryObject):
@@ -1174,8 +1162,6 @@ multiseek_fields = [
     IndexCopernicusQueryObject(),
     PunktacjaSNIP(),
     PunktacjaWewnetrznaQueryObject(),
-    KCImpactQueryObject(),
-    KCPunktyKBNQueryObject(),
     InformacjeQueryObject(),
     SzczegolyQueryObject(),
     UwagiQueryObject(),
