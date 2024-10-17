@@ -28,6 +28,7 @@ from bpp.models import (
     Dyscyplina_Naukowa,
     Jednostka,
     Kierunek_Studiow,
+    Status_Korekty,
     Uczelnia,
     Wydawca,
     Zewnetrzna_Baza_Danych,
@@ -312,6 +313,13 @@ class AutorAutocompleteBase(autocomplete.Select2QuerySetView):
         if self.q:
             return Autor.objects.fulltext_filter(self.q).select_related("tytul")
         return Autor.objects.all()
+
+
+class PublicStatusKorektyAutocomplete(autocomplete.Select2QuerySetView):
+    def get_queryset(self):
+        if self.q:
+            return Status_Korekty.objects.filter(nazwa__icontains=self.q)
+        return Status_Korekty.objects.all()
 
 
 class AutorAutocomplete(GroupRequiredMixin, AutorAutocompleteBase):

@@ -60,6 +60,7 @@ from bpp.models import (
     Jezyk,
     Kierunek_Studiow,
     SlowaKluczoweView,
+    Status_Korekty,
     Typ_Odpowiedzialnosci,
     Uczelnia,
     Wydawnictwo_Zwarte,
@@ -247,6 +248,35 @@ class WydawnictwoNadrzedneQueryObject(
     def real_query(self, value, operation):
         if operation in EQUALITY_OPS_ALL:
             ret = Q(wydawnictwo_nadrzedne=value)
+
+        else:
+            raise UnknownOperation(operation)
+
+        if operation in DIFFERENT_ALL:
+            return ~ret
+
+        return ret
+
+
+class StatusKorektyQueryObject(
+    BppMultiseekVisibilityMixin, ForeignKeyDescribeMixin, AutocompleteQueryObject
+):
+    label = "Status korekty"
+    type = AUTOCOMPLETE
+    ops = [
+        EQUAL_NONE,
+        DIFFERENT_NONE,
+    ]
+    model = Status_Korekty
+    search_fields = [
+        "status_korekty",
+    ]
+    field_name = "status_korekty"
+    url = "bpp:public-status-korekty-autocomplete"
+
+    def real_query(self, value, operation):
+        if operation in EQUALITY_OPS_ALL:
+            ret = Q(status_korekty=value)
 
         else:
             raise UnknownOperation(operation)
@@ -1191,6 +1221,7 @@ multiseek_fields = [
     RodzajJednostkiQueryObject(),
     KierunekStudiowQueryObject(),
     OswiadczenieKENQueryObject(),
+    StatusKorektyQueryObject(),
 ]
 
 

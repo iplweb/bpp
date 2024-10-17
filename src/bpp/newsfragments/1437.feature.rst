@@ -1,0 +1,2 @@
+
+przeszukiwanie po polu "Status korekty" w multiwyszukiwarce

@@ -45,6 +45,7 @@ from bpp.views.autocomplete import (
     PublicAutorAutocomplete,
     PublicJednostkaAutocomplete,
     PublicKonferencjaAutocomplete,
+    PublicStatusKorektyAutocomplete,
     PublicTaggitTagAutocomplete,
     PublicWydawnictwo_NadrzedneAutocomplete,
     PublicWydzialAutocomplete,
@@ -250,6 +251,11 @@ urlpatterns = [
         r"^publication-autocomplete/$",
         PublicationAutocomplete.as_view(),
         name="publication-autocomplete",
+    ),
+    url(
+        r"^status-korekty-autocomplete/$",
+        PublicStatusKorektyAutocomplete.as_view(),
+        name="public-status-korekty-autocomplete",
     ),
     url(
         r"^scientist-autocomplete/$",
