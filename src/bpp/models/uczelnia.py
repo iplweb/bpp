@@ -364,6 +364,17 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
     )
     deklaracja_dostepnosci_url = URLField(blank=True, null=True)
 
+    drukuj_oswiadczenia = models.BooleanField(
+        verbose_name="Drukuj oświadczenia dla autorów",
+        default=True,
+        help_text="Włącza wydruk oświadczeń z podstrony rekordu - wyłącznie dla osób z grupy 'wprowadzanie danych'.",
+    )
+    drukuj_alternatywne_oswiadczenia = models.BooleanField(
+        verbose_name="Drukuj alternatywne oświadczenia dla autorów",
+        default=True,
+        help_text="Jeżeli autor ma dwie dyscypliny, drukuj zawsze dwa oświadczenia.",
+    )
+
     objects = UczelniaManager()
 
     class Meta:

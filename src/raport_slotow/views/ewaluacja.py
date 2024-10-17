@@ -122,6 +122,8 @@ class RaportSlotowEwaluacja(
                 "rekord__opis_bibliograficzny_autorzy_cache",
                 "rekord__punkty_kbn",
                 "rekord__impact_factor",
+                "rekord__kwartyl_w_wos",
+                "rekord__kwartyl_w_scopus",
                 "rekord__informacje",
                 "rekord__opis_bibliograficzny_zapisani_autorzy_cache",
                 "rekord__wydawnictwo_nadrzedne_id",

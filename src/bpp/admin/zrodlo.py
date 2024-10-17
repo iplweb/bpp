@@ -16,7 +16,6 @@ from .filters import PBN_UID_IDObecnyFilter
 from .helpers import (
     ADNOTACJE_FIELDSET,
     CHARMAP_SINGLE_LINE,
-    MODEL_PUNKTOWANY_KOMISJA_CENTRALNA,
     MODEL_PUNKTOWANY_Z_KWARTYLAMI_BAZA,
     ZapiszZAdnotacjaMixin,
 )
@@ -38,11 +37,7 @@ class Punktacja_ZrodlaForm(forms.ModelForm):
 class Punktacja_ZrodlaInline(admin.TabularInline):
     model = Punktacja_Zrodla
     form = Punktacja_ZrodlaForm
-    fields = (
-        ("rok",)
-        + MODEL_PUNKTOWANY_Z_KWARTYLAMI_BAZA
-        + MODEL_PUNKTOWANY_KOMISJA_CENTRALNA
-    )
+    fields = ("rok",) + MODEL_PUNKTOWANY_Z_KWARTYLAMI_BAZA
     extra = 1
 
 

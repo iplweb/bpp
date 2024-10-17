@@ -27,6 +27,7 @@ class LiczbaNDlaUczelniInline(admin.TabularInline):
 
 
 class WydzialInline(admin.TabularInline):
+    classes = ["grp-collapse grp-closed grp-never-open-automatically"]
     model = Wydzial
     form = WydzialInlineForm
     extra = 0
@@ -140,6 +141,8 @@ class UczelniaAdmin(
                     "wydruk_logo",
                     "wydruk_logo_szerokosc",
                     "wydruk_parametry_zapytania",
+                    "drukuj_oswiadczenia",
+                    "drukuj_alternatywne_oswiadczenia",
                 ),
             },
         ),
@@ -168,7 +171,11 @@ class UczelniaAdmin(
         (
             "Deklaracja dostępności",
             {
-                "classes": ("grp-collapse grp-closed"),
+                "classes": (
+                    "grp-collapse",
+                    "grp-closed",
+                    "grp-never-open-automatically",
+                ),
                 "fields": (
                     "pokazuj_deklaracje_dostepnosci",
                     "deklaracja_dostepnosci_url",

@@ -60,6 +60,7 @@ from bpp.models import (
     Jezyk,
     Kierunek_Studiow,
     SlowaKluczoweView,
+    Status_Korekty,
     Typ_Odpowiedzialnosci,
     Uczelnia,
     Wydawnictwo_Zwarte,
@@ -247,6 +248,35 @@ class WydawnictwoNadrzedneQueryObject(
     def real_query(self, value, operation):
         if operation in EQUALITY_OPS_ALL:
             ret = Q(wydawnictwo_nadrzedne=value)
+
+        else:
+            raise UnknownOperation(operation)
+
+        if operation in DIFFERENT_ALL:
+            return ~ret
+
+        return ret
+
+
+class StatusKorektyQueryObject(
+    BppMultiseekVisibilityMixin, ForeignKeyDescribeMixin, AutocompleteQueryObject
+):
+    label = "Status korekty"
+    type = AUTOCOMPLETE
+    ops = [
+        EQUAL_NONE,
+        DIFFERENT_NONE,
+    ]
+    model = Status_Korekty
+    search_fields = [
+        "status_korekty",
+    ]
+    field_name = "status_korekty"
+    url = "bpp:public-status-korekty-autocomplete"
+
+    def real_query(self, value, operation):
+        if operation in EQUALITY_OPS_ALL:
+            ret = Q(status_korekty=value)
 
         else:
             raise UnknownOperation(operation)
@@ -671,12 +701,6 @@ class LiczbaAutorowQueryObject(BppMultiseekVisibilityMixin, IntegerQueryObject):
     field_name = "liczba_autorow"
 
 
-class KCImpactQueryObject(ImpactQueryObject):
-    field_name = "kc_impact_factor"
-    label = "KC: Impact factor"
-    public = False
-
-
 class PunktacjaWewnetrznaEnabledMixin:
     def option_enabled(self, request):
         return settings.UZYWAJ_PUNKTACJI_WEWNETRZNEJ
@@ -697,12 +721,6 @@ class PunktacjaSNIP(BppMultiseekVisibilityMixin, DecimalQueryObject):
 class PunktyKBNQueryObject(BppMultiseekVisibilityMixin, DecimalQueryObject):
     label = "Punkty MNiSW/MEiN"
     field_name = "punkty_kbn"
-
-
-class KCPunktyKBNQueryObject(PunktyKBNQueryObject):
-    label = "KC: punkty MNiSW/MEiN"
-    field_name = "kc_punkty_kbn"
-    public = False
 
 
 class IndexCopernicusQueryObject(BppMultiseekVisibilityMixin, DecimalQueryObject):
@@ -1174,8 +1192,6 @@ multiseek_fields = [
     IndexCopernicusQueryObject(),
     PunktacjaSNIP(),
     PunktacjaWewnetrznaQueryObject(),
-    KCImpactQueryObject(),
-    KCPunktyKBNQueryObject(),
     InformacjeQueryObject(),
     SzczegolyQueryObject(),
     UwagiQueryObject(),
@@ -1205,6 +1221,7 @@ multiseek_fields = [
     RodzajJednostkiQueryObject(),
     KierunekStudiowQueryObject(),
     OswiadczenieKENQueryObject(),
+    StatusKorektyQueryObject(),
 ]
 
 

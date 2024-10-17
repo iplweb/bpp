@@ -1,0 +1,3 @@
+
+możliwość wydruku oświadczeń dot. dyscyplin z poziomu widoku publikacji dla osób zalogowanych, z uprawnieniem do dodawania
+rekordów

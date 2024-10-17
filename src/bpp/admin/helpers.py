@@ -178,12 +178,6 @@ MODEL_PUNKTOWANY_Z_KWARTYLAMI = MODEL_PUNKTOWANY_Z_KWARTYLAMI_BAZA + (
     "weryfikacja_punktacji",
 )
 
-MODEL_PUNKTOWANY_KOMISJA_CENTRALNA = (
-    "kc_impact_factor",
-    "kc_punkty_kbn",
-    "kc_index_copernicus",
-)
-
 MODEL_Z_INFORMACJA_Z = ("informacja_z",)
 
 MODEL_Z_LICZBA_ZNAKOW_WYDAWNICZYCH = ("liczba_znakow_wydawniczych",)
@@ -215,13 +209,6 @@ MODEL_PUNKTOWANY_WYDAWNICTWO_CIAGLE_FIELDSET = (
     },
 )
 
-MODEL_PUNKTOWANY_KOMISJA_CENTRALNA_FIELDSET = (
-    "Punktacja Komisji Centralnej",
-    {
-        "classes": ("grp-collapse grp-closed",),
-        "fields": MODEL_PUNKTOWANY_KOMISJA_CENTRALNA,
-    },
-)
 
 MODEL_OPCJONALNIE_NIE_EKSPORTOWANY_DO_API_FIELDSET = (
     "Eksport do API",

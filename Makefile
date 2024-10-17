@@ -44,6 +44,7 @@ grunt-build:
 	grunt build
 
 assets: yarn grunt-build
+	python src/manage.py collectstatic --noinput -v0
 
 production-assets: distclean assets
 # usuń ze staticroot niepotrzebne pakiety (Poetry pyproject.toml exclude
@@ -165,7 +166,7 @@ loc: clean
 	pygount -N ... -F "...,staticroot,migrations,fixtures" src --format=summary
 
 
-DOCKER_VERSION="202410.1142"
+DOCKER_VERSION="202410.1143"
 
 DOCKER_BUILD=build --platform linux/amd64,linux/arm64 --push
 

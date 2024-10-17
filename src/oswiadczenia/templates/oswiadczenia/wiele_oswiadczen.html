@@ -1,0 +1,20 @@
+<body>
+<style>
+    @media print {
+        footer {
+            page-break-after: always;
+        }
+    }
+</style>
+{% for punktacja in punktacje %}
+    {% if punktacja.czy_autor_ma_alternatywna_dyscypline and uczelnia.drukuj_alternatywne_oswiadczenia %}
+        {% include "oswiadczenia/tresc_jednego_oswiadczenia.html" with autor=punktacja.autor dyscyplina_naukowa=punktacja.dyscypliny_autora.dyscyplina_naukowa subdyscyplina_naukowa=punktacja.dyscypliny_autora.subdyscyplina_naukowa uczelnia=uczelnia object=object dyscyplina_pracy=punktacja.dyscypliny_autora.dyscyplina_naukowa %}
+        <footer></footer>
+        {% include "oswiadczenia/tresc_jednego_oswiadczenia.html" with autor=punktacja.autor dyscyplina_naukowa=punktacja.dyscypliny_autora.dyscyplina_naukowa subdyscyplina_naukowa=punktacja.dyscypliny_autora.subdyscyplina_naukowa uczelnia=uczelnia object=object dyscyplina_pracy=punktacja.dyscypliny_autora.subdyscyplina_naukowa %}
+    {% else %}
+        {% include "oswiadczenia/tresc_jednego_oswiadczenia.html" with autor=punktacja.autor dyscyplina_naukowa=punktacja.dyscypliny_autora.dyscyplina_naukowa subdyscyplina_naukowa=punktacja.dyscypliny_autora.subdyscyplina_naukowa uczelnia=uczelnia object=object dyscyplina_pracy=punktacja.dyscyplina_pracy %}
+    {% endif %}
+    <footer></footer>
+{% endfor %}
+{% include "oswiadczenia/print_then_close.html" %}
+</body>

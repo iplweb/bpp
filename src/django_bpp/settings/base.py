@@ -259,9 +259,7 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 "password_policies.context_processors.password_status",
                 "bpp.context_processors.uczelnia.uczelnia",
-                "bpp.context_processors.config.theme_name",
-                "bpp.context_processors.config.enable_new_reports",
-                "bpp.context_processors.config.max_no_authors_on_browse_jednostka_page",
+                "bpp.context_processors.config.bpp_configuration",
                 "bpp.context_processors.global_nav.user",
                 "bpp.context_processors.google_analytics.google_analytics",
                 "cookielaw.context_processors.cookielaw",
@@ -402,6 +400,8 @@ INSTALLED_APPS = [
     "test_bpp",
     #
     "dbtemplates",
+    #
+    "oswiadczenia",
 ]
 
 # Profile użytkowników
@@ -1066,7 +1066,6 @@ DYNAMIC_COLUMNS_ALLOWED_IMPORT_PATHS = [
 ]
 
 DYNAMIC_COLUMNS_FORBIDDEN_COLUMN_NAMES = [
-    "^kc_.*",
     ".*_cache$",
     ".*_sort$",
     "search_index",

@@ -160,3 +160,13 @@ class Autor_Dyscyplina(models.Model):
                 raise ValidationError(
                     {"subdyscyplina_naukowa": "Wpisano tą samą dyscyplinę dwukrotnie."}
                 )
+
+    def dwie_dyscypliny(self):
+        # Zwraca True, jezeli rekord zawiera dwie rozne dyscypliny
+        if (
+            self.dyscyplina_naukowa_id is not None
+            and self.subdyscyplina_naukowa_id is not None
+            and self.dyscyplina_naukowa_id != self.subdyscyplina_naukowa_id
+        ):
+            return True
+        return False

@@ -49,6 +49,7 @@ from bpp.multiseek_registry import (
     RodzajJednostkiQueryObject,
     RodzajKonferenckjiQueryObject,
     SlowaKluczoweQueryObject,
+    StatusKorektyQueryObject,
     StronaWWWUstawionaQueryObject,
     Typ_OdpowiedzialnosciQueryObject,
     TypOgolnyAutorQueryObject,
@@ -511,4 +512,17 @@ def test_KierunekStudiowQueryObject(param, kierunek_studiow):
 @pytest.mark.parametrize("value", [True, False, None])
 def test_OswiadczenieKENQueryObject(param, value):
     ret = OswiadczenieKENQueryObject().real_query(value, param)
+    assert Rekord.objects.filter(*(ret,)).count() == 0
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "param",
+    [
+        logic.EQUAL,
+        logic.DIFFERENT,
+    ],
+)
+def test_StatusKorektyQueryObject(param, statusy_korekt):
+    ret = StatusKorektyQueryObject().real_query(statusy_korekt["przed korektą"], param)
     assert Rekord.objects.filter(*(ret,)).count() == 0

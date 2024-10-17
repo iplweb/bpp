@@ -1,6 +1,7 @@
 """
 Klasy abstrakcyjne
 """
+
 import re
 from decimal import Decimal
 
@@ -336,42 +337,6 @@ class ModelPunktowanyBaza(models.Model):
         help_text="""CiteScore SNIP (Source Normalized Impact per Paper)""",
     )
 
-    kc_impact_factor = models.DecimalField(
-        "KC: Impact factor",
-        max_digits=6,
-        decimal_places=3,
-        default=None,
-        blank=True,
-        null=True,
-        help_text="""Jeżeli wpiszesz
-        wartość w to pole, to zostanie ona użyta w raporcie dla Komisji
-        Centralnej w punkcie IXa tego raportu.""",
-        db_index=True,
-    )
-    kc_punkty_kbn = models.DecimalField(
-        "KC: punkty MNiSW/MEiN",
-        max_digits=6,
-        decimal_places=2,
-        default=None,
-        blank=True,
-        null=True,
-        help_text="""Jeżeli wpiszesz
-        wartość w to pole, to zostanie ona użyta w raporcie dla Komisji
-        Centralnej w punkcie IXa i IXb tego raportu.""",
-        db_index=True,
-    )
-    kc_index_copernicus = models.DecimalField(
-        "KC: Index Copernicus",
-        max_digits=6,
-        decimal_places=2,
-        default=None,
-        blank=True,
-        null=True,
-        help_text="""Jeżeli wpiszesz
-        wartość w to pole, to zostanie ona użyta w raporcie dla Komisji
-        Centralnej w punkcie IXa i IXb tego raportu.""",
-    )
-
     class Meta:
         abstract = True
 
@@ -402,16 +367,6 @@ class ModelPunktowany(ModelPunktowanyBaza):
                     return True
 
         return False
-
-
-POLA_PUNKTACJI = [
-    x.name
-    for x in ModelPunktowany._meta.fields
-    if x.name
-    not in [
-        "weryfikacja_punktacji",
-    ]
-]
 
 
 class ModelTypowany(models.Model):
@@ -457,6 +412,11 @@ class ModelZKwartylami(models.Model):
 
     class Meta:
         abstract = True
+
+
+POLA_PUNKTACJI = [
+    x.name for x in ModelPunktowany._meta.fields if x.name != "weryfikacja_punktacji"
+] + [x.name for x in ModelZKwartylami._meta.fields]
 
 
 class BazaModeluOdpowiedzialnosciAutorow(models.Model):

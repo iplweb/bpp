@@ -19,6 +19,7 @@ from bpp.views.autocomplete import (
     GlobalNavigationAutocomplete,
     JednostkaMixin,
     PublicAutorAutocomplete,
+    PublicStatusKorektyAutocomplete,
 )
 from bpp.views.autocomplete.pbn_api import JournalAutocomplete, PublicationAutocomplete
 
@@ -389,3 +390,14 @@ def test_JournalAutocomplete_post(pbn_uczelnia, pbn_client, rf, admin_user, pbn_
     ac.request = rf.post("/", data={"text": UID_REKORDU})
     ac.request.user = admin_user
     assert ac.create_object(UID_REKORDU)
+
+
+@pytest.mark.django_db
+def test_Status_KorektyAutocomplete(statusy_korekt):
+    s = PublicStatusKorektyAutocomplete()
+    s.q = None
+    assert len(s.get_queryset()) == len(statusy_korekt)
+
+    s = PublicStatusKorektyAutocomplete()
+    s.q = "przed"
+    assert len(s.get_queryset()) == 1
