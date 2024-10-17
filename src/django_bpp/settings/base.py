@@ -400,6 +400,8 @@ INSTALLED_APPS = [
     "test_bpp",
     #
     "dbtemplates",
+    #
+    "oswiadczenia",
 ]
 
 # Profile użytkowników

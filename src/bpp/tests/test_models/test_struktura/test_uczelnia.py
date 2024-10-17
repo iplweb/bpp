@@ -149,7 +149,7 @@ def test_pokazuj_tabele_slotow_na_stronie_rekordu(
 ):
     url = browse_praca_url(praca_z_dyscyplina)
 
-    S = "Punktacja dyscyplin i sloty"
+    S = "Punkty i sloty autorów"
 
     uczelnia.pokazuj_tabele_slotow_na_stronie_rekordu = (
         OpcjaWyswietlaniaField.POKAZUJ_ZAWSZE

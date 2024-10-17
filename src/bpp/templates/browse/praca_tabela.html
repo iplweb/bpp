@@ -1,4 +1,4 @@
-{% load prace %}
+{% load prace user_in_group %}
 <table width="{{ width|default:"100%" }}"
        class="szczegolyRekordu {{ htmlclass|default:"naglowki_z_lewej" }}">
     <tr>
@@ -26,8 +26,8 @@
                 {% else %}{% if links == "normal" %}<a href="{% url "bpp:browse_autor" autor.autor.slug %}">{% else %}
                 {% endif %}{% endif %}{% if links %}{{ autor.zapisany_jako }}{% else %}
                 {{ autor.zapisany_jako|upper }}{% endif %}{% if links == "admin" or links == "normal" %}</a>{% endif %}
-            {% if not forloop.last %}, {% else %}{{ praca.tekst_po_ostatnim_autorze|default:"" }}.
-            {% endif %}{% endfor %}
+                {% if not forloop.last %}, {% else %}{{ praca.tekst_po_ostatnim_autorze|default:"" }}.
+                {% endif %}{% endfor %}
         </td>
     </tr>
     {% if praca.zrodlo or praca.wydawnictwo_nadrzedne or praca.informacje or praca.szczegoly %}
@@ -423,31 +423,75 @@
 
 {% if rekord.ma_punktacje_sloty %}
     {% if uczelnia.pokazuj_tabele_slotow_na_stronie_rekordu == "always" or uczelnia.pokazuj_tabele_slotow_na_stronie_rekordu == "logged-in" and not request.user.is_anonymous %}
-        <h4>Punktacja dyscyplin i sloty</h4>
+        <h4>Punkty i sloty autorów
+            {% if uczelnia.drukuj_oswiadczenia %}
+                {% if request.user.is_superuser or request.user|has_group:"wprowadzanie-danych" %}
+                    <a target="_blank" href="{% url "oswiadczenia:wiele-oswiadczen" rekord.id.0 rekord.id.1 %}">
+                        <span class="fi-print"></span>
+                    </a>
+                {% endif %}
+            {% endif %}
+
+        </h4>
         <table>
             <tr>
                 <th>Autor</th>
                 <th>Dyscyplina</th>
                 <th>PkD / PkDAut</th>
                 <th>Slot</th>
+                {% if uczelnia.drukuj_oswiadczenia %}
+                    {% if request.user.is_superuser or request.user|has_group:"wprowadzanie-danych" %}
+                        <th>Oświadczenia</th>
+                    {% endif %}
+                {% endif %}
             </tr>
-            {% for pd in rekord.punktacja_dyscypliny.select_related %}
-                <tr>
-                    <td>praca</td>
-                    <td>{{ pd.dyscyplina.nazwa }}</td>
-                    <td>{{ pd.pkd }}</td>
-                    <td>{{ pd.slot }}</td>
-                </tr>
-            {% endfor %}
+
             {% for pa in rekord.punktacja_autora.select_related %}
                 <tr>
                     <td>{{ pa.autor }}</td>
                     <td>{{ pa.dyscyplina.nazwa }}</td>
                     <td>{{ pa.pkdaut }}</td>
                     <td>{{ pa.slot }}</td>
+                    {% if uczelnia.drukuj_oswiadczenia %}
+                        {% if request.user.is_superuser or request.user|has_group:"wprowadzanie-danych" %}
+                            <td>
+                                <!-- wydruk oswiadczenia -->
+                                <a target="_blank"
+                                   title="Wydruk dyscypliny zgłoszonej dla publikacji"
+                                   href="{% url "oswiadczenia:jedno-oswiadczenie" rekord.id.0 rekord.id.1 pa.autor.id pa.dyscyplina.id %}">
+                                    <span class="fi-print"></span>
+                                </a>
+                                <!-- wydruk drugiego oswiadczenia jezeli ma subdyscypline -->
+                                {% if pa.czy_autor_ma_alternatywna_dyscypline and uczelnia.drukuj_alternatywne_oswiadczenia %}
+                                    <a target="_blank"
+                                       title="Wydruk alternatywnej dyscypliny autora (innej, niż zgłoszona dla publikacji)"
+                                       href="{% url "oswiadczenia:jedno-oswiadczenie-druga-dyscyplina" rekord.id.0 rekord.id.1 pa.autor.id pa.dyscyplina.id %}">
+                                        <span class="fi-print" style="color: palevioletred;"></span>
+                                    </a>
+                                {% endif %}
+                            </td>
+                        {% endif %}
+                    {% endif %}
                 </tr>
             {% endfor %}
         </table>
+        <h4>Punkty i sloty dyscyplin</h4>
+        <table>
+            <tr>
+                <th>Dyscyplina</th>
+                <th>PkD / PkDAut</th>
+                <th>Slot</th>
+            </tr>
+            {% for pd in rekord.punktacja_dyscypliny.select_related %}
+                <tr>
+                    <td>{{ pd.dyscyplina.nazwa }}</td>
+                    <td>{{ pd.pkd }}</td>
+                    <td>{{ pd.slot }}</td>
+                    {% load user_in_group %}
+                </tr>
+            {% endfor %}
+        </table>
+
     {% endif %}
 {% endif %}
 

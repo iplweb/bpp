@@ -21,6 +21,7 @@ from django.utils.functional import cached_property
 
 from bpp.models import (
     Autor,
+    Autor_Dyscyplina,
     Dyscyplina_Naukowa,
     Jednostka,
     ModelZDOI,
@@ -513,6 +514,26 @@ class Cache_Punktacja_Autora(Cache_Punktacja_Autora_Base):
             str(self.pkdaut),
             str(self.slot),
         ]
+
+    def dyscyplina_pracy(self):
+        return self.dyscyplina
+
+    def dyscypliny_autora(self):
+        return Autor_Dyscyplina.objects.get(
+            rok=Rekord.objects.get(pk=self.rekord_id).rok,
+            autor_id=self.autor_id,
+        )
+
+    def czy_autor_ma_alternatywna_dyscypline(self):
+        # Zwraca True jeżeli autor ma drugą dyscyplinę za ten rok, inną niż obecnie wybrana;
+        # używane do wydruków oświadczeń
+        try:
+            ad = self.dyscypliny_autora()
+        except Autor_Dyscyplina.DoesNotExist:
+            return False
+
+        if ad.dwie_dyscypliny():
+            return True
 
 
 class Cache_Punktacja_Autora_Query(Cache_Punktacja_Autora_Base):
