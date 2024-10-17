@@ -463,6 +463,7 @@
                                 </a>
                                 <!-- wydruk drugiego oswiadczenia jezeli ma subdyscypline -->
                                 {% if pa.czy_autor_ma_alternatywna_dyscypline and uczelnia.drukuj_alternatywne_oswiadczenia %}
+                                    &nbsp;
                                     <a target="_blank"
                                        title="Wydruk alternatywnej dyscypliny autora (innej, niż zgłoszona dla publikacji)"
                                        href="{% url "oswiadczenia:jedno-oswiadczenie-druga-dyscyplina" rekord.id.0 rekord.id.1 pa.autor.id pa.dyscyplina.id %}">
