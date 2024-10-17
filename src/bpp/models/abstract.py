@@ -1,6 +1,7 @@
 """
 Klasy abstrakcyjne
 """
+
 import re
 from decimal import Decimal
 
@@ -404,16 +405,6 @@ class ModelPunktowany(ModelPunktowanyBaza):
         return False
 
 
-POLA_PUNKTACJI = [
-    x.name
-    for x in ModelPunktowany._meta.fields
-    if x.name
-    not in [
-        "weryfikacja_punktacji",
-    ]
-]
-
-
 class ModelTypowany(models.Model):
     """Model zawierający typ MNiSW/MEiN oraz język."""
 
@@ -457,6 +448,11 @@ class ModelZKwartylami(models.Model):
 
     class Meta:
         abstract = True
+
+
+POLA_PUNKTACJI = [
+    x.name for x in ModelPunktowany._meta.fields if x.name != "weryfikacja_punktacji"
+] + [x.name for x in ModelZKwartylami._meta.fields]
 
 
 class BazaModeluOdpowiedzialnosciAutorow(models.Model):

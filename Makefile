@@ -44,7 +44,7 @@ grunt-build:
 	grunt build
 
 assets: yarn grunt-build
-	python src/manage.py collectstatic
+	python src/manage.py collectstatic --noinput -v0
 
 production-assets: distclean assets
 # usuń ze staticroot niepotrzebne pakiety (Poetry pyproject.toml exclude
