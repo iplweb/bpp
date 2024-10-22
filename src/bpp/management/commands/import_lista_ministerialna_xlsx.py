@@ -85,7 +85,7 @@ class Command(BaseCommand):
         except KeyError:
             pass
 
-        data = data.to_dict("record")
+        data = data.to_dict("records")
 
         # Dane z XLSa będą miały klucze z nazwami dyscyplin czyli np { 'archeologia': 'x' }
 

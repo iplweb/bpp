@@ -87,6 +87,12 @@ urlpatterns = (
             ),
         ),
         url(
+            r"^import_polon/",
+            include(
+                ("import_polon.urls", "import_polon"),
+            ),
+        ),
+        url(
             r"^import_list_if/",
             include(
                 ("import_list_if.urls", "import_list_if"),
