@@ -97,6 +97,9 @@ PBN_MAX_ROK = 2025
 
 PBN_LATA = list(range(PBN_MIN_ROK, PBN_MAX_ROK + 1))
 
+PBN_AKTUALNA_EWALUACJA_START = 2022
+PBN_AKTUALNA_EWALUACJA_STOP = 2025
+
 
 KWARTYLE = [(None, "brak"), (1, "Q1"), (2, "Q2"), (3, "Q3"), (4, "Q4")]
 
