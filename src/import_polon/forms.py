@@ -11,7 +11,7 @@ from bpp.util import formdefaults_html_after, formdefaults_html_before
 class NowyImportForm(forms.ModelForm):
     class Meta:
         model = ImportPlikuPolon
-        fields = ["plik"]
+        fields = ["plik", "rok"]
 
     def __init__(self, *args, **kwargs):
         self.helper = FormHelper()
@@ -21,6 +21,9 @@ class NowyImportForm(forms.ModelForm):
             Fieldset(
                 "Wybierz parametry",
                 formdefaults_html_before(self),
+                Row(
+                    Column("rok", css_class="large-12 small-12"),
+                ),
                 Row(
                     Column("plik", css_class="large-12 small-12"),
                 ),

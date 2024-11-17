@@ -22,11 +22,16 @@
         <table>
             <thead>
             <tr>
-                <th>Wiersz XLS</th>
-                <th>Dane w pliku XLS</th>
-                <th>Autor po stronie BPP</th>
-                <th>Dyscyplina po stronie BPP</th>
-                <th>Subdyscyplina po stronie BPP</th>
+                <th>Wiersz</th>
+                <th>Autor</th>
+                <th>Dyscyplina</th>
+                <th>Subdyscyplina</th>
+                <th>Procent dyscypliny</th>
+                <th class="table-border-right">Wielkość etatu (dziesiętna)</th>
+                <th>Match autora w BPP</th>
+                <th>Match dyscypliny w BPP</th>
+                <th class="table-border-right">Match subdyscypliny w BPP</th>
+                <th>Rezultat importu</th>
             </tr>
 
             </thead>
@@ -34,10 +39,19 @@
             {% for row in object_list %}
                 <tr>
                     <td>{{ row.nr_wiersza }}</td>
-                    <td>{{ row.dane_z_xls }}</td>
-                    <td><a href="{% url "bpp:browse_autor" row.autor.pk %}">{{ row.autor }}</a></td>
-                    <td>{{ row.dyscyplina_naukowa }}</td>
-                    <td>{{ row.subdyscyplina_naukowa }}</td>
+                    <td>{{ row.dane_z_xls.NAZWISKO }} {{ row.dane_z_xls.IMIE }} {{ row.dane_z_xls.STOPIEN_TYTUL_AKTUALNY_NA_DZIEN_WYGENEROWANIA_RAPORTU }}</td>
+                    <td>{{ row.dane_z_xls.DYSCYPLINA_N|default:"" }}</td>
+                    <td>{{ row.dane_z_xls.DYSCYPLINA_N_KOLEJNA|default:"" }}</td>
+                    <td>{{ row.dane_z_xls.PROCENTOWY_UDZIAL_PIERWSZA_DYSCYPLINA|default:"" }}</td>
+                    <td class="table-border-right">{{ row.dane_z_xls.WIELKOSC_ETATU_PREZENTACJA_DZIESIETNA }}</td>
+                    <td>
+                        {% if row.autor %}
+                            <a href="{% url "bpp:browse_autor" row.autor.pk %}">{{ row.autor }}</a>
+                        {% endif %}
+                    </td>
+                    <td>{{ row.dyscyplina_naukowa|default:"" }}</td>
+                    <td class="table-border-right">{{ row.subdyscyplina_naukowa|default:"" }}</td>
+                    <td>{{ row.rezultat|default:"" }}</td>
                 </tr>
             {% endfor %}
             </tbody>
