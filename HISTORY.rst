@@ -4,6 +4,21 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202411.1144 (2024-11-18)
+============================
+
+Usprawnienie
+------------
+
+- import list ministerialnych, kolory dla dyscyplin (#1411)
+- przeszukiwanie po polu "Status korekty" w multiwyszukiwarce (#1437)
+- możliwość wydruku oświadczeń dot. dyscyplin z poziomu widoku publikacji dla osób zalogowanych, z uprawnieniem do dodawania
+  rekordów (#1438)
+- dodaj punktację do źródła / uzupełnij punktację ze źródła obsługuje również kwartyle (#1460)
+- usunięto odwołania do pól dla Komisji Centralnej z kodu (#1462)
+- wyświetlaj kwartyl WoS/SCOPUS w raportach (#1464)
+
+
 Bpp 202410.1142 (2024-10-14)
 ============================
 
