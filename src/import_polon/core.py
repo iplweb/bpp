@@ -57,6 +57,10 @@ def analyze_excel_file_import_polon(fn, parent_model: ImportPlikuPolon):
 
         bledy = []
         if autor is None:
+            if parent_model.ukryj_niezmatchowanych_autorow:
+                # Nie rejestruj, że autora nie udało się zmatchować
+                continue
+
             bledy.append("Nie udało się dopasować autora")
 
         dyscyplina_xlsx = matchuj_dyscypline(kod=None, nazwa=dyscyplina_naukowa)
@@ -84,7 +88,7 @@ def analyze_excel_file_import_polon(fn, parent_model: ImportPlikuPolon):
                     "danych (decimal.Decimal)"
                 )
         procent_subdyscypliny = Decimal("100.00") - procent_dyscypliny
-        wymiar_etatu = row["WIELKOSC_ETATU_PREZENTACJA_DZIESIETNA"]
+        wymiar_etatu = row.get("WIELKOSC_ETATU_PREZENTACJA_DZIESIETNA")
         if wymiar_etatu is None and autor is not None:
             bledy.append(
                 "Pole Wymiar etatu nie może być puste dla zidentyfikowanego autora."
@@ -115,14 +119,15 @@ def analyze_excel_file_import_polon(fn, parent_model: ImportPlikuPolon):
                 ad = autor.autor_dyscyplina_set.get(rok=parent_model.rok)
             except Autor_Dyscyplina.DoesNotExist:
                 if dyscyplina_xlsx:
-                    autor.autor_dyscyplina_set.create(
-                        rok=parent_model.rok,
-                        dyscyplina_naukowa=dyscyplina_xlsx,
-                        subdyscyplina_naukowa=subdyscyplina_xlsx,
-                        wymiar_etatu=wymiar_etatu,
-                        procent_dyscypliny=procent_dyscypliny,
-                        procent_subdyscypliny=procent_subdyscypliny,
-                    )
+                    if parent_model.zapisz_zmiany_do_bazy:
+                        autor.autor_dyscyplina_set.create(
+                            rok=parent_model.rok,
+                            dyscyplina_naukowa=dyscyplina_xlsx,
+                            subdyscyplina_naukowa=subdyscyplina_xlsx,
+                            wymiar_etatu=wymiar_etatu,
+                            procent_dyscypliny=procent_dyscypliny,
+                            procent_subdyscypliny=procent_subdyscypliny,
+                        )
                     ops.append("Brak wpisu dla tego roku, utworzono zgodnie z XLSX")
                 else:
                     ops.append(
@@ -166,7 +171,8 @@ def analyze_excel_file_import_polon(fn, parent_model: ImportPlikuPolon):
                     ad.wymiar_etatu = wymiar_etatu
 
                 if ops:
-                    ad.save()
+                    if parent_model.zapisz_zmiany_do_bazy:
+                        ad.save()
 
                 if not ops:
                     ops.append("W BPP jest identycznie jak w XLSX")

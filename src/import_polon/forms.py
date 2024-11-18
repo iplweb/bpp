@@ -11,7 +11,12 @@ from bpp.util import formdefaults_html_after, formdefaults_html_before
 class NowyImportForm(forms.ModelForm):
     class Meta:
         model = ImportPlikuPolon
-        fields = ["plik", "rok"]
+        fields = [
+            "plik",
+            "rok",
+            "zapisz_zmiany_do_bazy",
+            "ukryj_niezmatchowanych_autorow",
+        ]
 
     def __init__(self, *args, **kwargs):
         self.helper = FormHelper()
@@ -23,6 +28,14 @@ class NowyImportForm(forms.ModelForm):
                 formdefaults_html_before(self),
                 Row(
                     Column("rok", css_class="large-12 small-12"),
+                ),
+                Row(
+                    Column(
+                        "ukryj_niezmatchowanych_autorow", css_class="large-12 small-12"
+                    ),
+                ),
+                Row(
+                    Column("zapisz_zmiany_do_bazy", css_class="large-12 small-12"),
                 ),
                 Row(
                     Column("plik", css_class="large-12 small-12"),

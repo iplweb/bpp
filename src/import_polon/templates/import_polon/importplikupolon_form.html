@@ -10,15 +10,8 @@
 {% endblock %}
 
 {% block content %}{% load static %}
-    <h1>Utwórz nowy import:
+    <h1>Utwórz nowy import - dane z POLON:
     </h1>
-    <p>
-    Po zatwierdzeniu formularza wgrasz import dyscyplin, subdyscyplin, wymiaru etatu z pliku importu
-    POLON.<br/>Wyświetlony zostanie rezultat importu.<br/>Baza danych <strong>zostanie zmodyfikowana</strong>.<br/>Jeżeli
-    dane w pliku XLSX będą w prawidłowym formacie i plik zostanie zaimportowany poprawnie, baza danych zostanie
-    zmodyfikowana zgodnie z plikiem XLSX.
-
-    </p>
     {% load crispy_forms_tags %}
     {% crispy form %}
 {% endblock %}

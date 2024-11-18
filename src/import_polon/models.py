@@ -11,6 +11,8 @@ from bpp.models import Autor, Dyscyplina_Naukowa
 class ImportPlikuPolon(ASGINotificationMixin, Operation):
     rok = YearField()
     plik = models.FileField(upload_to="import_polon")
+    ukryj_niezmatchowanych_autorow = models.BooleanField(default=True)
+    zapisz_zmiany_do_bazy = models.BooleanField(default=False)
 
     def on_reset(self):
         self.wierszimportuplikupolon_set.all().delete()
