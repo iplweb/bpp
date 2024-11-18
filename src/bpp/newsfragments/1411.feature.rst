@@ -1,2 +1,2 @@
 
-kolory dla dyscyplin
+import list ministerialnych, kolory dla dyscyplin

@@ -93,6 +93,12 @@ urlpatterns = (
             ),
         ),
         url(
+            r"^import_list_ministerialnych/",
+            include(
+                ("import_list_ministerialnych.urls", "import_list_ministerialnych"),
+            ),
+        ),
+        url(
             r"^import_list_if/",
             include(
                 ("import_list_if.urls", "import_list_if"),

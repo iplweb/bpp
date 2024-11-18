@@ -404,6 +404,7 @@ INSTALLED_APPS = [
     #
     "oswiadczenia",
     "import_polon",
+    "import_list_ministerialnych",
 ]
 
 # Profile użytkowników
