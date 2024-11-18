@@ -318,6 +318,7 @@ if TESTING:
 
 INSTALLED_APPS = [
     # "django_werkzeug",
+    "daphne",
     "tinymce",
     "tee",
     "formtools",
@@ -402,6 +403,8 @@ INSTALLED_APPS = [
     "dbtemplates",
     #
     "oswiadczenia",
+    "import_polon",
+    "import_list_ministerialnych",
 ]
 
 # Profile użytkowników

@@ -197,3 +197,14 @@ class Zrodlo(LinkDoPBNMixin, ModelZAdnotacjami, ModelZISSN):
             .distinct()
             .order_by("rok")
         )
+
+    def dyscypliny_aktualna_ewaluacja(
+        self,
+        min_year=const.PBN_AKTUALNA_EWALUACJA_START,
+        max_year=const.PBN_AKTUALNA_EWALUACJA_STOP,
+    ):
+        return (
+            self.dyscyplina_zrodla_set.filter(rok__gte=min_year, rok__lte=max_year)
+            .select_related()
+            .order_by("rok", "dyscyplina__kod")
+        )

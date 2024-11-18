@@ -425,7 +425,7 @@
     {% if uczelnia.pokazuj_tabele_slotow_na_stronie_rekordu == "always" or uczelnia.pokazuj_tabele_slotow_na_stronie_rekordu == "logged-in" and not request.user.is_anonymous %}
         <h4>Punkty i sloty autorów
             {% if uczelnia.drukuj_oswiadczenia %}
-                {% if request.user.is_superuser or request.user|has_group:"wprowadzanie-danych" %}
+                {% if request.user.is_superuser or request.user|has_group:"wprowadzanie danych" %}
                     <a target="_blank" href="{% url "oswiadczenia:wiele-oswiadczen" rekord.id.0 rekord.id.1 %}">
                         <span class="fi-print"></span>
                     </a>
@@ -440,7 +440,7 @@
                 <th>PkD / PkDAut</th>
                 <th>Slot</th>
                 {% if uczelnia.drukuj_oswiadczenia %}
-                    {% if request.user.is_superuser or request.user|has_group:"wprowadzanie-danych" %}
+                    {% if request.user.is_superuser or request.user|has_group:"wprowadzanie danych" %}
                         <th>Oświadczenia</th>
                     {% endif %}
                 {% endif %}
@@ -453,7 +453,7 @@
                     <td>{{ pa.pkdaut }}</td>
                     <td>{{ pa.slot }}</td>
                     {% if uczelnia.drukuj_oswiadczenia %}
-                        {% if request.user.is_superuser or request.user|has_group:"wprowadzanie-danych" %}
+                        {% if request.user.is_superuser or request.user|has_group:"wprowadzanie danych" %}
                             <td>
                                 <!-- wydruk oswiadczenia -->
                                 <a target="_blank"
@@ -463,6 +463,7 @@
                                 </a>
                                 <!-- wydruk drugiego oswiadczenia jezeli ma subdyscypline -->
                                 {% if pa.czy_autor_ma_alternatywna_dyscypline and uczelnia.drukuj_alternatywne_oswiadczenia %}
+                                    &nbsp;
                                     <a target="_blank"
                                        title="Wydruk alternatywnej dyscypliny autora (innej, niż zgłoszona dla publikacji)"
                                        href="{% url "oswiadczenia:jedno-oswiadczenie-druga-dyscyplina" rekord.id.0 rekord.id.1 pa.autor.id pa.dyscyplina.id %}">
