@@ -4,6 +4,7 @@ import django
 import pytest
 from django.urls import reverse
 
+from raport_slotow.forms.zerowy import RaportSlotowZerowyParametryFormularz
 from raport_slotow.views.zerowy import RaportSlotowZerowyWyniki
 
 from bpp.models import OpcjaWyswietlaniaField, Uczelnia
@@ -53,6 +54,27 @@ def fikstura_raportu_slotow(
     )
 
     return (autor_jan_kowalski, autor_jan_nowak)
+
+
+def test_raport_slotow_zerowy_get_querylist_zerowy(fikstura_raportu_slotow):
+    jk, jn = fikstura_raportu_slotow
+    rszw = RaportSlotowZerowyWyniki(min_pk=0)
+
+    # Domyslnie to "suma lat"
+
+    rszw.form = MagicMock()
+    rszw.form.cleaned_data = dict()
+    rszw.form.cleaned_data["od_roku"] = 2020
+    rszw.form.cleaned_data["do_roku"] = 2021
+    rszw.form.cleaned_data["min_pk"] = 0
+    rszw.form.cleaned_data[
+        "rodzaj_raportu"
+    ] = RaportSlotowZerowyParametryFormularz.RodzajeRaportu.SUMA_LAT
+
+    res = rszw.get_queryset()
+    res = res.values_list("autor_id", flat=True)
+
+    assert res.count() == 1
 
 
 def test_raport_slotow_zerowy_get_querylist_min_pk(fikstura_raportu_slotow):

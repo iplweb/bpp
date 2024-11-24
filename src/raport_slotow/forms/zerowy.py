@@ -57,7 +57,11 @@ class RaportSlotowZerowyParametryFormularz(forms.Form):
         autorów którzy są "zerowi" w każdym roku z zakresu, czyli wyżej wymieniony przykładowy autor w takim raporcie
         nie wyświetli się wcale. Raport będzie zawierał wyłącznie nazwiska osób "zerowych" przez cały wybrany
         czasokres, czyli w tym przykładzie autorów którzy byli zerowi od 2020 do 2025 w każdym z lat: 2020, 2021,
-        2022, 2023, 2024, 2025.
+        2022, 2023, 2024, 2025. Jednakże, jeżeli autor nie ma zadeklarowanych dyscyplin za niektóre z lat będących w
+        zakresie, to te lata w ogóle nie będą poddawane analizie pod kątem "zerowości", czyli jeżeli autor miał
+        prace w 2020, 2021, 2022, 2023, ale nie ma za te lata deklaracji dyscyplin, ale za to ma deklarację za 2024
+        i 2025 ale nie posiada prac, to będzie traktowany tak, jakby w całym czasokresie był zerowy, czyli w tej opcji
+        się pojawi w wykazie.
         """,
     )
 
