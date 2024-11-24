@@ -4,6 +4,17 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202411.1145 (2024-11-25)
+============================
+
+Naprawione
+----------
+
+- korekta raportu zerowego -- opcja "pokazuj występujących we wszystkich latach
+  z zakresu" poprawnie obsługuje autorów nie mających deklaracji dyscyplin
+  za cały raportowany czasokres (#1413)
+
+
 Bpp 202411.1144 (2024-11-18)
 ============================
 
