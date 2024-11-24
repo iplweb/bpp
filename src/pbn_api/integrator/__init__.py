@@ -80,7 +80,7 @@ from bpp.models import (
 from bpp.util import pbar
 
 
-def integruj_jezyki(client):
+def integruj_jezyki(client, create_if_not_exists=False):
     for remote_lang in client.get_languages():
         try:
             lang = Language.objects.get(code=remote_lang["code"])
@@ -97,23 +97,35 @@ def integruj_jezyki(client):
     for elem in Language.objects.all():
         try:
             qry = Q(skrot__istartswith=elem.language.get("639-2")) | Q(
-                skrot__istartswith=elem.code
+                skrot__iexact=elem.code
             )
             if elem.language.get("639-1"):
-                qry |= Q(skrot__istartswith=elem.language["639-1"])
+                qry |= Q(skrot__iexact=elem.language["639-1"])
 
             jezyk = Jezyk.objects.get(qry)
         except Jezyk.DoesNotExist:
             if elem.language.get("pl") is not None:
                 try:
-                    jezyk = Jezyk.objects.get(
-                        nazwa__istartswith=elem.language.get("pl")
-                    )
+                    jezyk = Jezyk.objects.get(nazwa__iexact=elem.language.get("pl"))
                 except Jezyk.DoesNotExist:
-                    # warnings.warn(f"Brak jezyka po stronie BPP: {elem}")
+                    if create_if_not_exists:
+                        Jezyk.objects.create(
+                            nazwa=elem.language.get("pl"),
+                            skrot=elem.language.get("639-2"),
+                            pbn_uid=elem,
+                        )
+                    else:
+                        warnings.warn(f"Brak jezyka po stronie BPP: {elem}")
                     continue
             else:
-                # warnings.warn(f"Brak jezyka po stronie BPP: {elem}")
+                if create_if_not_exists:
+                    Jezyk.objects.create(
+                        nazwa=elem.language.get("en"),
+                        skrot=elem.language.get("639-2"),
+                        pbn_uid=elem,
+                    )
+                else:
+                    warnings.warn(f"Brak jezyka po stronie BPP: {elem}")
                 continue
 
         if jezyk.pbn_uid_id is None:
@@ -126,7 +138,7 @@ def integruj_kraje(client):
         try:
             c = Country.objects.get(code=remote_country["code"])
         except Country.DoesNotExist:
-            c = Country.objects.create(
+            Country.objects.create(
                 code=remote_country["code"], description=remote_country["description"]
             )
             continue
@@ -369,7 +381,24 @@ def pobierz_zrodla(client: PBNClient):
     for status in [DELETED, ACTIVE]:
         data = client.get_journals(status=status, page_size=500)
         threaded_page_getter(
-            client, data, klass=ZrodlaGetter, label=f"poboerz_zrodla_{status}"
+            client,
+            data,
+            klass=ZrodlaGetter,
+            label=f"poboerz_zrodla_{status}",
+            no_threads=1,
+        )
+
+
+def pobierz_zrodla_mnisw(client: PBNClient):
+    for status in [ACTIVE, DELETED]:
+        print(f"{status=}")
+        data = client.get_journals_mnisw_v2(status=status, page_size=8)
+        threaded_page_getter(
+            client,
+            data,
+            klass=ZrodlaGetter,
+            label=f"poboerz_zrodla_mnisw_{status}",
+            no_threads=24,
         )
 
 
@@ -842,7 +871,7 @@ def integruj_wszystkich_niezintegrowanych_autorow():
             autor.save()
 
 
-def integruj_zrodla(disable_progress_bar):
+def integruj_zrodla(disable_progress_bar=False):
     def fun(qry):
         found = False
         try:
