@@ -1,0 +1,4 @@
+
+korekta raportu zerowego -- opcja "pokazuj występujących we wszystkich latach
+z zakresu" poprawnie obsługuje autorów nie mających deklaracji dyscyplin
+za cały raportowany czasokres

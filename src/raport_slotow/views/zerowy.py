@@ -1,7 +1,7 @@
 import urllib
 
-from django.db import connection
-from django.db.models import CharField, Count
+from django.db import connection, transaction
+from django.db.models import CharField, Count, F
 from django.db.models.functions import Cast
 from django.http import HttpResponseRedirect
 from django.urls import reverse
@@ -65,6 +65,7 @@ class RaportSlotowZerowyWyniki(
 
         return super().get(request, *args, **kwargs)
 
+    @transaction.atomic
     def render_to_response(self, context, **kwargs):
         # Kod z django_tables2/export/views.py
         if self.request.GET.get("submit") == "Pobierz XLS":
@@ -100,12 +101,13 @@ class RaportSlotowZerowyWyniki(
         ).annotate(
             lata=StringAgg(Cast("rok", CharField()), ", ", ordering=("rok")),
             ile_lat=Count("rok"),
+            ile_deklaracji=Count("dyscyplina_naukowa"),
         )
 
         if (
             self.form.cleaned_data["rodzaj_raportu"]
             == RaportSlotowZerowyParametryFormularz.RodzajeRaportu.SUMA_LAT
         ):
-            qset = qset.filter(ile_lat=do_roku - od_roku + 1)
+            qset = qset.filter(ile_lat=F("ile_deklaracji"))
 
         return qset
