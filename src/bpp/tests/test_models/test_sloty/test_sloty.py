@@ -345,6 +345,22 @@ def test_ISlot_wydawnictwo_zwarte_hst_tier3(zwarte_z_dyscyplinami_hst):
 
 
 @pytest.mark.django_db
+def test_ISlot_wydawnictwo_zwarte_hst_oraz_nie_hst(
+    zwarte_z_dyscyplinami_hst_oraz_nie_hst,
+):
+    zwarte_z_dyscyplinami_hst_oraz_nie_hst.rok = 2021
+
+    zwarte_z_dyscyplinami_hst_oraz_nie_hst.punkty_kbn = 20
+    i = ISlot(zwarte_z_dyscyplinami_hst_oraz_nie_hst)
+    assert isinstance(i, SlotKalkulator_Wydawnictwo_Zwarte_Prog3)
+
+    autorzy = list(zwarte_z_dyscyplinami_hst_oraz_nie_hst.autorzy_set.all())
+
+    assert i.pkd_dla_autora(autorzy[0]) == 15
+    assert i.pkd_dla_autora(autorzy[1]) == 10
+
+
+@pytest.mark.django_db
 def test_ISlot_wydawnictwo_zwarte_tier3_rok_2022(zwarte_z_dyscyplinami):
     zwarte_z_dyscyplinami.rok = 2022
     i = ISlot(zwarte_z_dyscyplinami)

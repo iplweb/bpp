@@ -159,17 +159,20 @@ def ISlot(original, uczelnia=None):
             Dyscyplina_Naukowa.objects.get(pk=x[0]).dyscyplina_hst
             for x in original.wszystkie_dyscypliny_rekordu()
         }
-        if len(rodzaje_hst) > 1:
-            raise CannotAdapt(
-                """Rekord zawiera zarówno dyscypliny z grupy HST (nauki humanistyczne, nauki społeczne
-                i nauki teologiczne) jak i dyscypliny spoza tej grupy. Na obecną chwilę algorytm tego
-                oprogramowania nie obsługuje takich rekordów. Proszę o weryfikację rekordu i ewentualne
-                zgłoszenie problemu. """
-            )
-        elif len(rodzaje_hst) == 0:
-            raise CannotAdapt("Rekord nie zawiera danych dyscyplin.")
 
-        tryb_hst = list(rodzaje_hst)[0]
+        match len(rodzaje_hst):
+            case 0:
+                raise CannotAdapt("Rekord nie zawiera danych dyscyplin.")
+            case 1:
+                wiele_hst = False
+                tryb_hst = list(rodzaje_hst)[0]
+            case 2:
+                wiele_hst = True
+                tryb_hst = None
+            case _:
+                raise CannotAdapt(
+                    "sytuacja przy obliczaniu punktacji nieprzewidziana, zgłoś autorowi oprogramowania"
+                )
 
         if poziom_wydawcy == 2:
             warunek_dla_monografii = (
@@ -193,9 +196,16 @@ def ISlot(original, uczelnia=None):
                 or (tryb_hst is True and original.punkty_kbn == 75)
             )
 
+            if wiele_hst is True and original.punkty_kbn in [300, 150, 75]:
+                raise CannotAdapt(
+                    "Publikacja ma autorów z dyscyplin HST oraz nie-HST; dla rekordu wpisz punktację "
+                    "bazową (czyli np. 200, 100, 50 punktów). Dla autorów dyscyplin HST przy "
+                    "obliczeniach punktacja zostanie zwiększona automatycznie. "
+                )
+
             if warunek_dla_monografii or warunek_dla_redakcji or warunek_dla_rozdzialow:
                 return SlotKalkulator_Wydawnictwo_Zwarte_Prog1(
-                    original, tryb_kalkulacji
+                    original, tryb_kalkulacji, wiele_hst=wiele_hst
                 )
 
         elif poziom_wydawcy == 1:
@@ -220,9 +230,16 @@ def ISlot(original, uczelnia=None):
                 or (tryb_hst is True and original.punkty_kbn == 20)
             )
 
+            if wiele_hst is True and original.punkty_kbn in [120, 40, 20]:
+                raise CannotAdapt(
+                    "Publikacja ma autorów z dyscyplin HST oraz nie-HST; dla rekordu wpisz punktację "
+                    "bazową (czyli np. 80, 20, 10 punktów). Dla autorów dyscyplin HST przy "
+                    "obliczeniach punktacja zostanie zwiększona automatycznie. "
+                )
+
             if warunek_dla_monografii or warunek_dla_redakcji or warunek_dla_rozdzialow:
                 return SlotKalkulator_Wydawnictwo_Zwarte_Prog2(
-                    original, tryb_kalkulacji
+                    original, tryb_kalkulacji, wiele_hst=True
                 )
 
         else:
@@ -247,25 +264,23 @@ def ISlot(original, uczelnia=None):
                 or (tryb_hst is True and original.punkty_kbn in [5, 20])
             )
 
+            if wiele_hst is True and original.punkty_kbn in [
+                120,
+            ]:
+                raise CannotAdapt(
+                    "Publikacja ma autorów z dyscyplin HST oraz nie-HST; dla rekordu wpisz punktację "
+                    "bazową (czyli np 5, 10, 20 punkta). Dla autorów dyscyplin HST przy "
+                    "obliczeniach punktacja zostanie zwiększona automatycznie. "
+                )
+
             if warunek_dla_monografii or warunek_dla_redakcji or warunek_dla_rozdzialow:
                 return SlotKalkulator_Wydawnictwo_Zwarte_Prog3(
-                    original, tryb_kalkulacji
+                    original, tryb_kalkulacji, wiele_hst=True
                 )
 
         raise CannotAdapt(
-            "Rekordu nie można dopasować do żadnej z grup monografii. Poziom "
-            "wydawcy: %(poziom_wydawcy)s, ksiazka: %(ksiazka)s, rozdzial: %(rozdzial)s, "
-            "autorstwo: %(autorstwo)s, redakcja: %(redakcja)s, punkty MNiSW/MEiN: %(punkty_kbn)s, "
-            "tryb_hst: %(tryb_hst)s"
-            % dict(
-                poziom_wydawcy=poziom_wydawcy,
-                ksiazka=ksiazka,
-                rozdzial=rozdzial,
-                autorstwo=autorstwo,
-                redakcja=redakcja,
-                punkty_kbn=original.punkty_kbn,
-                tryb_hst=tryb_hst,
-            )
+            f"Rekordu nie można dopasować do żadnej z grup monografii. {poziom_wydawcy=}, {ksiazka=},"
+            f"{rozdzial=}, {autorstwo=}, {redakcja=}, {original.punkty_kbn=}, {tryb_hst=}, {wiele_hst=}"
         )
 
     if hasattr(original, "rok") and hasattr(original, "punkty_kbn"):
