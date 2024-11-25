@@ -167,9 +167,6 @@ SENTRYSDK_CONFIG_URL = (
 
 PROCESS_INTERACTIVE = sys.stdin.isatty()
 
-SENTRYSDK_CONFIG_URL = "https://03ecc78ec9618bf598accdb65bc019f2@o313675.ingest.us.sentry.io/4507984482795520"
-PROCESS_INTERACTIVE = False
-
 if SENTRYSDK_CONFIG_URL and not PROCESS_INTERACTIVE:
     # Ignore common errors
     from ..sentry_support import global_stacktrace_filter
