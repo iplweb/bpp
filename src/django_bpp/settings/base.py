@@ -9,7 +9,7 @@ from textwrap import dedent
 
 import environ
 import sentry_sdk
-from django.core.exceptions import DisallowedHost, ImproperlyConfigured
+from django.core.exceptions import ImproperlyConfigured
 from sentry_sdk.integrations.django import DjangoIntegration
 
 from bpp.util import slugify_function
@@ -167,27 +167,19 @@ SENTRYSDK_CONFIG_URL = (
 
 PROCESS_INTERACTIVE = sys.stdin.isatty()
 
+SENTRYSDK_CONFIG_URL = "https://03ecc78ec9618bf598accdb65bc019f2@o313675.ingest.us.sentry.io/4507984482795520"
+PROCESS_INTERACTIVE = False
+
 if SENTRYSDK_CONFIG_URL and not PROCESS_INTERACTIVE:
     # Ignore common errors
-    def before_send(event, hint):
-        if "exc_info" in hint:
-            errors_to_ignore = (
-                DisallowedHost,
-                RuntimeError("Response content shorter than Content-Length"),
-            )
-            exc_value = hint["exc_info"][1]
-
-            if isinstance(exc_value, errors_to_ignore):
-                return None
-
-        return event
+    from ..sentry_support import global_stacktrace_filter
 
     sentry_sdk.init(
         dsn=SENTRYSDK_CONFIG_URL,
         traces_sample_rate=env("SENTRYSDK_TRACES_SAMPLE_RATE"),
         integrations=[DjangoIntegration()],
         release=VERSION,
-        before_send=before_send,
+        before_send=global_stacktrace_filter,
         send_default_pii=True,
     )
 

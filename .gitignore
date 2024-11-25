@@ -130,3 +130,6 @@ received-emails/
 mniswid-bez-informacji.txt
 raport.txt
 uml-import.txt
+src/bpp/static/scss/app-blue.css.map
+src/bpp/static/scss/app-green.css.map
+src/bpp/static/scss/app-orange.css.map
