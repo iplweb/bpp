@@ -4,6 +4,15 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202411.1148 (2024-11-25)
+============================
+
+Usprawnienie
+------------
+
+- obsługa publikacji z punktacją HST + nie-HST (#1316)
+
+
 Bpp 202411.1145 (2024-11-25)
 ============================
 
