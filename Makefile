@@ -145,7 +145,10 @@ poetry-lock:
 	poetry lock
 	-git commit -m "Update lockfile" poetry.lock
 
-new-release: poetry-lock upgrade-version bdist_wheel upload docker
+gh-run-watch:
+	gh run watch
+
+new-release: poetry-lock upgrade-version bdist_wheel upload docker gh-run-watch
 
 release: tests js-tests new-release
 
