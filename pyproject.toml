@@ -225,6 +225,7 @@ crispy-bootstrap3 = "^2022.1"
 twisted = {extras = ["http2", "tls"], version = "^24.3.0"}
 psycopg2 = "^2.9.9"
 django-dbtemplates = "^4.0"
+django-soft-delete = "^1.0.15"
 
 [tool.poetry.dev-dependencies]
 model-bakery = ">=1.5.1"
