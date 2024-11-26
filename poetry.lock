@@ -2013,6 +2013,17 @@ files = [
 django = "*"
 
 [[package]]
+name = "django-soft-delete"
+version = "1.0.15"
+description = "Soft delete models, managers, queryset for Django"
+optional = false
+python-versions = ">=3.6"
+files = [
+    {file = "django-soft-delete-1.0.15.tar.gz", hash = "sha256:36cf26a9eaa5f4c0fdb5cb6367ea183e91b7f73783cad173e4071a4747dd1277"},
+    {file = "django_soft_delete-1.0.15-py3-none-any.whl", hash = "sha256:fc16c870020984b7f58254adead12fdfb637a6c2f4bd8a93a3a636b18b1463e0"},
+]
+
+[[package]]
 name = "django-static-sitemaps"
 version = "5.0.0"
 description = "Tool for generating sitemaps as static files"
@@ -6977,4 +6988,4 @@ office365 = ["django-microsoft-auth"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<3.12"
-content-hash = "ee0b58b78115ca0793577ec1b6413ef75ceb56455298077d522e2820d3fc6df7"
+content-hash = "3e1b5f494b8b62cd9d6208b1be61641a5c0cf9b03db04a5226d14bcd4b042b60"
