@@ -1,2 +1,0 @@
-
-specjalny widok do testowania konfiguracji Sentry

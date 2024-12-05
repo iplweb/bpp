@@ -4,6 +4,16 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202412.1149 (2024-12-05)
+============================
+
+Usprawnienie
+------------
+
+- zaimplementowano "miękkie kasowanie" w zgłoszeniach publikacji (#1468)
+- specjalny widok do testowania konfiguracji Sentry
+
+
 Bpp 202411.1148 (2024-11-25)
 ============================
 
