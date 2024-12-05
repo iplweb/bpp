@@ -1,2 +1,0 @@
-
-zaimplementowano "miękkie kasowanie" w zgłoszeniach publikacji
