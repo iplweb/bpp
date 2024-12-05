@@ -23,8 +23,8 @@ def global_stacktrace_filter(event, hint):
     return event
 
 
-class RequireUSING_SENTRYSDKTrue(logging.Filter):
+class RequireUSING_SENTRYSDKFalse(logging.Filter):
     def filter(self, record):
         from django.conf import settings
 
-        return getattr(settings, "USING_SENTRYSDK", False)
+        return not getattr(settings, "USING_SENTRYSDK", False)

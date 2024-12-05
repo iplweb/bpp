@@ -705,7 +705,7 @@ LOGGING = {
             "()": "django.utils.log.RequireDebugTrue",
         },
         "require_sentrysdk_false": {
-            "()": "django_bpp.sentry_support.RequireUSING_SENTRYSDKTrue"
+            "()": "django_bpp.sentry_support.RequireUSING_SENTRYSDKFalse"
         },
     },
     "formatters": {
