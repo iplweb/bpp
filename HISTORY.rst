@@ -4,6 +4,45 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202412.1150 (2024-12-05)
+============================
+
+Usprawnienie
+------------
+
+- wyłączaj wysyłanie e-mail gdy SentrySDK skonfigurowane
+
+
+Bpp 202412.1149 (2024-12-05)
+============================
+
+Usprawnienie
+------------
+
+- zaimplementowano "miękkie kasowanie" w zgłoszeniach publikacji (#1468)
+- specjalny widok do testowania konfiguracji Sentry
+
+
+Bpp 202411.1148 (2024-11-25)
+============================
+
+Usprawnienie
+------------
+
+- obsługa publikacji z punktacją HST + nie-HST (#1316)
+
+
+Bpp 202411.1145 (2024-11-25)
+============================
+
+Naprawione
+----------
+
+- korekta raportu zerowego -- opcja "pokazuj występujących we wszystkich latach
+  z zakresu" poprawnie obsługuje autorów nie mających deklaracji dyscyplin
+  za cały raportowany czasokres (#1413)
+
+
 Bpp 202411.1144 (2024-11-18)
 ============================
 

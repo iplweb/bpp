@@ -9,7 +9,7 @@ from textwrap import dedent
 
 import environ
 import sentry_sdk
-from django.core.exceptions import DisallowedHost, ImproperlyConfigured
+from django.core.exceptions import ImproperlyConfigured
 from sentry_sdk.integrations.django import DjangoIntegration
 
 from bpp.util import slugify_function
@@ -165,31 +165,24 @@ SENTRYSDK_CONFIG_URL = (
     or os.getenv("DJANGO_BPP_SENTRYSDK_CONFIG_URL", None)
 )
 
+USING_SENTRYSDK = False
+
 PROCESS_INTERACTIVE = sys.stdin.isatty()
 
 if SENTRYSDK_CONFIG_URL and not PROCESS_INTERACTIVE:
     # Ignore common errors
-    def before_send(event, hint):
-        if "exc_info" in hint:
-            errors_to_ignore = (
-                DisallowedHost,
-                RuntimeError("Response content shorter than Content-Length"),
-            )
-            exc_value = hint["exc_info"][1]
-
-            if isinstance(exc_value, errors_to_ignore):
-                return None
-
-        return event
+    from ..sentry_support import global_stacktrace_filter
 
     sentry_sdk.init(
         dsn=SENTRYSDK_CONFIG_URL,
         traces_sample_rate=env("SENTRYSDK_TRACES_SAMPLE_RATE"),
         integrations=[DjangoIntegration()],
         release=VERSION,
-        before_send=before_send,
+        before_send=global_stacktrace_filter,
         send_default_pii=True,
     )
+
+    USING_SENTRYSDK = True
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
@@ -711,6 +704,9 @@ LOGGING = {
         "require_debug_true": {
             "()": "django.utils.log.RequireDebugTrue",
         },
+        "require_sentrysdk_false": {
+            "()": "django_bpp.sentry_support.RequireUSING_SENTRYSDKFalse"
+        },
     },
     "formatters": {
         "django.server": {
@@ -737,7 +733,7 @@ LOGGING = {
         },
         "mail_admins": {
             "level": "ERROR",
-            "filters": ["require_debug_false"],
+            "filters": ["require_debug_false", "require_sentrysdk_false"],
             "class": "django.utils.log.AdminEmailHandler",
         },
     },

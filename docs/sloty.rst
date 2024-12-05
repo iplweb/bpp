@@ -209,3 +209,18 @@ Wydawnictwa zwarte
      będzie posiadał jednocześnie autorów oraz redaktorów lub też rekord
      nie będzie posiadał ani autorów, ani redaktorów, system wyświeli komunikat
      o braku możliwości obliczenia slotów.
+
+Wydawnictwa HST
+---------------
+
+Dla dyscyplin będących w grupie HST (nauki humanistyczne, nauki społeczne, teologia):
+
+* jeżeli publikacja zawiera wyłącznie takie dyscypliny, należy zwiększyć punktację PK
+  w sposób przewidziany w ustawie (czyli zamiast 80 punktów PK wpisujemy od razu 120),
+
+* jeżeli publikacja zawiera dyscypliny HST oraz dyscypliny "zwykłe", wpisujemy punktację bazową;
+  system w takim przypadku zwiększy o 1.5x punktację bazową dla dyscyplin HST przy obliczeniach
+  punktacji za slot.
+
+W ten sposób może dochodzić do rozbieżności w raportach, gdy zbierana (sumowana) jest punktacja PK całego rekordu
+nie zaś punktacja slotu.

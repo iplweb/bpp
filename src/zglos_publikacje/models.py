@@ -2,6 +2,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q
+from django_softdelete.models import SoftDeleteModel
 
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
@@ -17,10 +18,7 @@ from bpp.models.abstract import (
 
 
 class Zgloszenie_Publikacji(
-    ModelZRokiem,
-    DwaTytuly,
-    ModelZDOI,
-    ModelZOplataZaPublikacje,
+    ModelZRokiem, DwaTytuly, ModelZDOI, ModelZOplataZaPublikacje, SoftDeleteModel
 ):
     email = models.EmailField("E-mail zgłaszającego")
 

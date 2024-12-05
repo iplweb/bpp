@@ -26,6 +26,7 @@ from bpp.views.mymultiseek import (
     bpp_remove_by_hand,
     bpp_remove_from_removed_by_hand,
 )
+from bpp.views.sentry_tester import sentry_teset_view
 
 admin.autodiscover()
 
@@ -33,6 +34,7 @@ admin.autodiscover()
 urlpatterns = (
     [
         url(r"^favicon\.ico$", cache_page(60 * 60)(favicon)),
+        path("sentry_test/", login_required(sentry_teset_view)),
         path("tinymce/", include("tinymce.urls")),
         url(
             r"^admin/bpp/wydawnictwo_ciagle/toz/(?P<pk>[\d]+)/$",

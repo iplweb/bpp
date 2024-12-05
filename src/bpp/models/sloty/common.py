@@ -72,11 +72,10 @@ class SlotMixin:
         if azd == 0:
             return
 
-        pkd = Decimal(self.punkty_pkd(dyscyplina))
+        pkd = self.punkty_pkd(dyscyplina)
         if pkd is None:
             return
-
-        return pkd / azd
+        return Decimal(pkd) / Decimal(azd)
 
     def slot_dla_autora(self, wca):
         """Normalnie punktację 'slot dla autora z danej dyscypliny' dostajemy w ten
