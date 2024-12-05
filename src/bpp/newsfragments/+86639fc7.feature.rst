@@ -1,2 +1,0 @@
-
-wyłączaj wysyłanie e-mail gdy SentrySDK skonfigurowane
