@@ -165,6 +165,8 @@ SENTRYSDK_CONFIG_URL = (
     or os.getenv("DJANGO_BPP_SENTRYSDK_CONFIG_URL", None)
 )
 
+USING_SENTRYSDK = False
+
 PROCESS_INTERACTIVE = sys.stdin.isatty()
 
 if SENTRYSDK_CONFIG_URL and not PROCESS_INTERACTIVE:
@@ -179,6 +181,8 @@ if SENTRYSDK_CONFIG_URL and not PROCESS_INTERACTIVE:
         before_send=global_stacktrace_filter,
         send_default_pii=True,
     )
+
+    USING_SENTRYSDK = True
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
@@ -700,6 +704,9 @@ LOGGING = {
         "require_debug_true": {
             "()": "django.utils.log.RequireDebugTrue",
         },
+        "require_sentrysdk_false": {
+            "()": "django_bpp.sentry_support.RequireUSING_SENTRYSDKTrue"
+        },
     },
     "formatters": {
         "django.server": {
@@ -726,7 +733,7 @@ LOGGING = {
         },
         "mail_admins": {
             "level": "ERROR",
-            "filters": ["require_debug_false"],
+            "filters": ["require_debug_false", "require_sentrysdk_false"],
             "class": "django.utils.log.AdminEmailHandler",
         },
     },

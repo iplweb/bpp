@@ -4,6 +4,15 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202412.1150 (2024-12-05)
+============================
+
+Usprawnienie
+------------
+
+- wyłączaj wysyłanie e-mail gdy SentrySDK skonfigurowane
+
+
 Bpp 202412.1149 (2024-12-05)
 ============================
 

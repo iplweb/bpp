@@ -1,3 +1,5 @@
+import logging
+
 from django.core.exceptions import DisallowedHost
 
 
@@ -19,3 +21,10 @@ def global_stacktrace_filter(event, hint):
             return
 
     return event
+
+
+class RequireUSING_SENTRYSDKTrue(logging.Filter):
+    def filter(self, record):
+        from django.conf import settings
+
+        return getattr(settings, "USING_SENTRYSDK", False)
