@@ -441,8 +441,8 @@ class InstitutionsMixin:
     def get_institution_metadata(self, id):
         return self.transport.get_pages(f"/api/v1/institutions/{id}/metadata")
 
-    def get_institutions_polon(self):
-        return self.transport.get_pages("/api/v1/institutions/polon/page")
+    def get_institutions_polon(self, *args, **kw):
+        return self.transport.get_pages("/api/v1/institutions/polon/page", *args, **kw)
 
     def get_institutions_polon_by_uid(self, uid):
         return self.transport.get(f"/api/v1/institutions/polon/uid/{uid}")
@@ -578,18 +578,12 @@ class PublicationsMixin:
         return self.transport.get(f"/api/v1/publications/version/{version}")
 
 
-class AuthorMixin:
-    def get_author_by_id(self, id):
-        return self.transport.get(f"/api/v1/author/{id}")
-
-
 class SearchMixin:
     def search_publications(self, *args, **kw):
         return self.transport.post_pages(PBN_SEARCH_PUBLICATIONS_URL, body=kw)
 
 
 class PBNClient(
-    AuthorMixin,
     ConferencesMixin,
     DictionariesMixin,
     InstitutionsMixin,
@@ -766,12 +760,6 @@ class PBNClient(
 
         return self.post_publication_fee(pub.pbn_uid_id, fee)
 
-    def demo(self):
-        from bpp.models import Wydawnictwo_Ciagle
-
-        pub = Wydawnictwo_Ciagle.objects.filter(rok=2020).exclude(doi=None).first()
-        self.sync_publication(pub, force_upload=True)
-
     def exec(self, cmd):
         try:
             fun = getattr(self, cmd[0])
@@ -876,6 +864,8 @@ class PBNClient(
             wpis_tlumacza.save()
 
         for discipline in cur_dg.discipline_set.all():
+            if discipline.name == "weterynaria":
+                pass
             # Każda dyscyplina z aktualnego słownika powinna być wpisana do systemu BPP
             try:
                 TlumaczDyscyplin.objects.get(pbn_2022_now=discipline)

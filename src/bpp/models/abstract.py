@@ -1092,6 +1092,12 @@ class ModelZOpenAccess(models.Model):
         help_text="Ilość miesięcy jakie upłynęły od momentu opublikowania do momentu udostępnienia",
     )
 
+    openaccess_data_opublikowania = models.DateField(
+        "OpenAccess: data publikacji",
+        blank=True,
+        null=True,
+    )
+
     class Meta:
         abstract = True
 

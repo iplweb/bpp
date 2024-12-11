@@ -69,6 +69,7 @@ from bpp.models import (
     Praca_Doktorska,
     Praca_Habilitacyjna,
     Rekord,
+    Tytul,
     Uczelnia,
     Wydawca,
     Wydawnictwo_Ciagle,
@@ -316,7 +317,27 @@ def pobierz_mongodb(
 def pobierz_instytucje(client: PBNClient):
     for status in [ACTIVE, DELETED]:
         pobierz_mongodb(
-            client.get_institutions(status=status, page_size=1000), Institution
+            client.get_institutions(status=status, page_size=1000),
+            Institution,
+            pbar_label="pobieram slownik instytucji...",
+        )
+
+
+class InstitutionGetter(ThreadedMongoDBSaver):
+    pbn_api_klass = Institution
+
+
+def pobierz_instytucje_polon(client: PBNClient):
+    for status in [ACTIVE, DELETED]:
+        print(f"{status=}")
+        data = client.get_institutions_polon(status=status, page_size=10)
+
+        threaded_page_getter(
+            client,
+            data,
+            klass=InstitutionGetter,
+            label=f"pobierz_instytucje_POLON_{status}",
+            no_threads=24,
         )
 
 
@@ -407,6 +428,7 @@ class PublisherGetter(ThreadedMongoDBSaver):
 
 
 def pobierz_wydawcow_mnisw(client: PBNClient):
+    # XXX: TODO: obecnie jest ich 800, nie ma sensu robić threaded page getter tutaj...
     data = client.get_publishers_mnisw(page_size=1000)
     threaded_page_getter(
         client, data, klass=PublisherGetter, label="poboerz_wydawcow_mnisw"
@@ -660,9 +682,9 @@ def pobierz_prace_po_isbn(client: PBNClient):
     wait_for_results(p, results)
 
 
-def _single_unit_ludzie_z_uczelni(client, personId):
+def pobierz_i_zapisz_dane_jednej_osoby(client, personId) -> Scientist:
     scientist = client.get_person_by_id(personId)
-    zapisz_mongodb(scientist, Scientist, from_institution_api=True)
+    return zapisz_mongodb(scientist, Scientist, from_institution_api=True)
 
 
 def pobierz_ludzi_z_uczelni(client: PBNClient, instutition_id):
@@ -684,32 +706,37 @@ def pobierz_ludzi_z_uczelni(client: PBNClient, instutition_id):
 
     for person in pbar(elementy, count=len(elementy), label="pobierz ludzi z uczelni"):
         result = pool.apply_async(
-            _single_unit_ludzie_z_uczelni, args=(client, person["personId"])
+            pobierz_i_zapisz_dane_jednej_osoby, args=(client, person["personId"])
         )
         results.append(result)
     wait_for_results(pool, results)
 
 
-def integruj_autorow_z_uczelni(client: PBNClient, instutition_id):
+def integruj_autorow_z_uczelni(
+    client: PBNClient, instutition_id, import_unexistent=False
+):
     """
     Ta procedure uruchamiamy dopiero po zaciągnięciu bazy osób.
     """
     for person in Scientist.objects.filter(from_institution_api=True):
-        pbn_id = None
-        if person.value("object", "legacyIdentifiers", return_none=True):
-            pbn_id = person.value("object", "legacyIdentifiers")[0]
 
         autor = matchuj_autora(
             imiona=person.value("object", "name", return_none=True),
             nazwisko=person.value("object", "lastName", return_none=True),
             orcid=person.value("object", "orcid", return_none=True),
-            pbn_id=pbn_id,
+            pbn_id=pbn_json_wez_pbn_id_stare(person),
             pbn_uid_id=person.pk,
             tytul_str=person.value("object", "qualifications", return_none=True),
         )
+
         if autor is None:
-            print(f"Brak dopasowania w jednostce dla autora {person}")
-            continue
+
+            if not import_unexistent:
+                # Brak autora po stronie BPP, nie chcemy tworzyć nowych rekordów
+                print(f"Brak dopasowania w jednostce dla autora {person}")
+                continue
+
+            autor = utworz_wpis_dla_jednego_autora(person)
 
         if autor.pbn_uid_id is None:
             autor.pbn_uid_id = person.mongoId
@@ -721,6 +748,50 @@ def integruj_autorow_z_uczelni(client: PBNClient, instutition_id):
             )
             autor.pbn_uid = person
             autor.save()
+
+
+def pbn_json_wez_pbn_id_stare(person):
+    pbn_id = None
+    if person.value("object", "legacyIdentifiers", return_none=True):
+        pbn_id = person.value("object", "legacyIdentifiers")[0]
+    return pbn_id
+
+
+def utworz_wpis_dla_jednego_autora(person):
+    # Brak autora po stronie BPP, utwórz nowy rekord
+    bpp_tytul = None
+    cv = person.current_version
+    pbn_tytul = cv["object"].pop("qualifications", None)
+    if pbn_tytul:
+        # jeżeli po stronie PBN podany jest tytuł, to jest on w skrótowej formie (np
+        # mgr. inż.). Jeżeli po stronie BPP jest taki tytuł to OK, jeżeli nie, to
+        # utwórzmy go, z taką samą nazwą:
+        bpp_tytul = Tytul.objects.get_or_create(
+            skrot=pbn_tytul, defaults={"nazwa": pbn_tytul}
+        )[0]
+
+    orcid = cv["object"].pop("orcid", None)
+    if not orcid:
+        orcid = None
+
+    autor = Autor.objects.create(
+        imiona=cv["object"].pop("name"),
+        nazwisko=cv["object"].pop("lastName"),
+        orcid=orcid,
+        pbn_id=pbn_json_wez_pbn_id_stare(person),
+        pbn_uid_id=person.pk,
+        tytul=bpp_tytul,
+    )
+
+    cv["object"].pop("legacyIdentifiers", None)
+
+    for ignoredKey in ["verifiedOrcid", "currentEmployments"]:
+        cv["object"].pop(ignoredKey, None)
+
+    from pbn_api.importer import assert_dictionary_empty
+
+    assert_dictionary_empty(cv["object"])
+    return autor
 
 
 def weryfikuj_orcidy(client: PBNClient, instutition_id):
@@ -1039,7 +1110,7 @@ def _integruj_publikacje(
 
         if disable_multiprocessing:
             _integruj_single_part(elem)
-            print(f"{label} {no} of {len(pubs)//BATCH_SIZE}...", end="\r")
+            print(f"{label} {no} of {len(pubs) // BATCH_SIZE}...", end="\r")
             sys.stdout.flush()
         else:
             result = pool.apply_async(_integruj_single_part, args=(elem,))
