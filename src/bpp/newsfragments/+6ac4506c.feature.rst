@@ -1,2 +1,0 @@
-
-umożliwiaj podanie parametru roku za który wgrywane będą informacje o opłatach do PBN
