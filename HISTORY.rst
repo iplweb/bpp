@@ -4,6 +4,15 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202412.1152 (2024-12-29)
+============================
+
+Usprawnienie
+------------
+
+- umożliwiaj podanie parametru roku za który wgrywane będą informacje o opłatach do PBN
+
+
 Bpp 202412.1150 (2024-12-05)
 ============================
 
