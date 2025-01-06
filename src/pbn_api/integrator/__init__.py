@@ -1676,9 +1676,13 @@ def usun_zerowe_oswiadczenia(client):
                 elem.delete()
 
 
-def wyslij_informacje_o_platnosciach(client: PBNClient):
+def wyslij_informacje_o_platnosciach(client: PBNClient, rok=None):
     for model in Wydawnictwo_Ciagle, Wydawnictwo_Zwarte:
-        for elem in pbar(model.objects.rekordy_z_oplata()):
+        qset = model.objects.rekordy_z_oplata()
+        if rok:
+            qset = qset.filter(rok=rok)
+
+        for elem in pbar(qset):
             try:
                 client.upload_publication_fee(elem)
             except NoPBNUIDException:
