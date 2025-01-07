@@ -607,6 +607,18 @@ class PBNClient(
             PBN_POST_PUBLICATION_FEE_URL.format(id=publicationId), body=json
         )
 
+    def get_publication_fee(self, publicationId):
+        res = self.transport.post_pages(
+            "/api/v1/institutionProfile/publications/search/fees",
+            body={"publicationIds": [str(publicationId)]},
+        )
+        if not res.count():
+            return
+        elif res.count() == 1:
+            return list(res)[0]
+        else:
+            raise NotImplementedError("count > 1")
+
     def upload_publication(
         self, rec, force_upload=False, export_pk_zero=None, always_affiliate_to_uid=None
     ):

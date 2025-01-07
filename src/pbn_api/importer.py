@@ -23,6 +23,7 @@ from bpp.models import (
     Jezyk,
     Licencja_OpenAccess,
     ModelZOpenAccess,
+    Punktacja_Zrodla,
     Rekord,
     Rodzaj_Zrodla,
     Status_Korekty,
@@ -275,6 +276,12 @@ def importuj_artykul(mongoId, default_jednostka: Jednostka, client: PBNClient):
     importuj_openaccess(
         ret, pbn_json, klasa_bazowa_tryb_dostepu=Tryb_OpenAccess_Wydawnictwo_Ciagle
     )
+    try:
+        ret.punkty_kbn = zrodlo.punktacja_zrodla_set.get(rok=ret.rok).punkty_kbn
+    except Punktacja_Zrodla.DoesNotExist:
+        print(
+            f"Dla rekordu {ret=}, zrodlo {zrodlo=} nie ma punktacji za rok {ret.rok=}"
+        )
 
     ret.save()
 
