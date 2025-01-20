@@ -37,6 +37,7 @@ from pbn_api.const import (
 )
 from pbn_api.exceptions import (
     AccessDeniedException,
+    AuthenticationConfigurationError,
     AuthenticationResponseError,
     HttpException,
     NeedsPBNAuthorisationException,
@@ -133,6 +134,13 @@ class OAuthMixin:
         try:
             response.json()
         except ValueError:
+            if response.content.startswith(b"Mismatched X-APP-TOKEN: "):
+                raise AuthenticationConfigurationError(
+                    "Token aplikacji PBN nieprawidłowy. Poproś administratora "
+                    "o skonfigurowanie prawidłowego tokena aplikacji PBN w "
+                    "ustawieniach obiektu Uczelnia. "
+                )
+
             raise AuthenticationResponseError(response.content)
 
         return response.json().get("X-User-Token")
@@ -868,7 +876,7 @@ class PBNClient(
             wpis_tlumacza.pbn_2022_now = matchuj_aktualna_dyscypline_pbn(
                 dyscyplina.kod, dyscyplina.nazwa
             )
-            # Domyślnie szuka dla lat 2017-2022
+            # Domyślnie szuka dla lat 2018-2022
             wpis_tlumacza.pbn_2017_2021 = matchuj_nieaktualna_dyscypline_pbn(
                 dyscyplina.kod, dyscyplina.nazwa
             )

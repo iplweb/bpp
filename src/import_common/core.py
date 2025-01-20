@@ -79,11 +79,29 @@ def matchuj_wymiar_etatu(wymiar_etatu: str) -> Wymiar_Etatu:
     return Wymiar_Etatu.objects.get(nazwa__iexact=wymiar_etatu)
 
 
+def wytnij_skrot(jednostka):
+    if jednostka.find("(") >= 0 and jednostka.find(")") >= 0:
+        jednostka, skrot = jednostka.split("(", 2)
+        jednostka = jednostka.strip()
+        skrot = skrot[:-1].strip()
+        return jednostka, skrot
+
+    return jednostka, None
+
+
 def matchuj_jednostke(nazwa, wydzial=None):
     if nazwa is None:
         return
 
     nazwa = normalize_nazwa_jednostki(nazwa)
+    skrot = nazwa
+
+    if "(" in nazwa and ")" in nazwa:
+        nazwa_bez_nawiasow, skrot = wytnij_skrot(nazwa)
+        try:
+            return Jednostka.objects.get(skrot=skrot)
+        except Jednostka.DoesNotExist:
+            pass
 
     try:
         return Jednostka.objects.get(Q(nazwa__iexact=nazwa) | Q(skrot__iexact=nazwa))
@@ -553,7 +571,7 @@ def matchuj_aktualna_dyscypline_pbn(kod, nazwa):
         pass
 
 
-def matchuj_nieaktualna_dyscypline_pbn(kod, nazwa, rok_min=2017, rok_max=2022):
+def matchuj_nieaktualna_dyscypline_pbn(kod, nazwa, rok_min=2018, rok_max=2022):
     kod = normalize_kod_dyscypliny_pbn(kod)
 
     from pbn_api.models import Discipline

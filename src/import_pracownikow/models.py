@@ -6,6 +6,7 @@ from django import forms
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import DataError, IntegrityError, models, transaction
 from django.db.models import JSONField, Q
+from django.db.models.expressions import RawSQL
 
 from import_common.core import (
     matchuj_autora,
@@ -57,7 +58,7 @@ class AutorForm(forms.Form):
     numer = forms.IntegerField(required=False)
     orcid = forms.CharField(max_length=19, required=False)
     tytuł_stopień = forms.CharField(max_length=200, required=False)
-    pbn_uuid = forms.UUIDField(required=False)
+    pbn_uuid = forms.CharField(required=False, max_length=24, min_length=24)
     bpp_id = forms.IntegerField(required=False)
 
     stanowisko = forms.CharField(max_length=200)
@@ -254,14 +255,22 @@ class ImportPracownikow(ASGINotificationMixin, Operation):
         return self.importpracownikowrow_set.filter(zmiany_potrzebne=True)
 
     def get_details_set(self):
-        return self.importpracownikowrow_set.all().select_related(
-            "autor",
-            "jednostka",
-            "jednostka__wydzial",
-            "autor__tytul",
-            "grupa_pracownicza",
-            "funkcja_autora",
-            "wymiar_etatu",
+        return (
+            self.importpracownikowrow_set.all()
+            .annotate(
+                nr_wiersza=RawSQL("(dane_z_xls->>'__xls_loc_row__')::int+1", []),
+                nr_arkusza=RawSQL("(dane_z_xls->>'__xls_loc_sheet__')::int+1", []),
+            )
+            .order_by("nr_arkusza", "nr_wiersza")
+            .select_related(
+                "autor",
+                "jednostka",
+                "jednostka__wydzial",
+                "autor__tytul",
+                "grupa_pracownicza",
+                "funkcja_autora",
+                "wymiar_etatu",
+            )
         )
 
     def autorzy_spoza_pliku_set(self, uczelnia=None, today=None):
@@ -345,7 +354,7 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
     MAPPING_DANE_NA_AUTOR = [
         ("numer", "system_kadrowy_id"),
         ("orcid", "orcid"),
-        ("pbn_uuid", "pbn_uuid"),
+        ("pbn_uuid", "pbn_uid_id"),
     ]
 
     @property
