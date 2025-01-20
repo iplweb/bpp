@@ -142,7 +142,11 @@ def test_ranking_autorow_wybor_wydzialu(
     admin_app,
     uczelnia,
     typy_odpowiedzialnosci,
+    rok,
 ):
+    wydzial.zezwalaj_na_ranking_autorow = True
+    wydzial.save()
+
     jw1 = baker.make(Jednostka, wydzial=wydzial, uczelnia=uczelnia)
     jw2 = baker.make(Jednostka, wydzial=drugi_wydzial, uczelnia=uczelnia)
 
@@ -164,6 +168,8 @@ def test_ranking_autorow_wybor_wydzialu(
     res.forms[0]["wydzialy"].value = [
         wydzial.pk,
     ]
+    res.forms[0]["od_roku"] = rok
+    res.forms[0]["do_roku"] = rok
 
     result = res.forms[0].submit().maybe_follow()
     assert b"Kowalski" not in result.content
@@ -178,6 +184,8 @@ def test_ranking_autorow_wybor_wydzialu(
     res.forms[0]["wydzialy"].value = [
         drugi_wydzial.pk,
     ]
+    res.forms[0]["od_roku"] = rok
+    res.forms[0]["do_roku"] = rok
 
     result = res.forms[0].submit().maybe_follow()
     assert b"Kowalski" in result.content
@@ -193,7 +201,11 @@ def test_ranking_autorow_wszystkie_wydzialy(
     admin_app,
     uczelnia,
     typy_odpowiedzialnosci,
+    rok,
 ):
+    wydzial.zezwalaj_na_ranking_autorow = True
+    wydzial.save()
+
     jw1 = baker.make(Jednostka, wydzial=wydzial, uczelnia=uczelnia)
     jw2 = baker.make(Jednostka, wydzial=drugi_wydzial, uczelnia=uczelnia)
 
@@ -211,6 +223,9 @@ def test_ranking_autorow_wszystkie_wydzialy(
             "bpp:ranking_autorow_formularz",
         )
     )
+
+    res.forms[0]["od_roku"] = rok
+    res.forms[0]["do_roku"] = rok
 
     result = res.forms[0].submit().maybe_follow()
     assert b"Kowalski" in result.content

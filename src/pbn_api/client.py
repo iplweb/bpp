@@ -37,6 +37,7 @@ from pbn_api.const import (
 )
 from pbn_api.exceptions import (
     AccessDeniedException,
+    AuthenticationConfigurationError,
     AuthenticationResponseError,
     HttpException,
     NeedsPBNAuthorisationException,
@@ -133,6 +134,13 @@ class OAuthMixin:
         try:
             response.json()
         except ValueError:
+            if response.content.startswith(b"Mismatched X-APP-TOKEN: "):
+                raise AuthenticationConfigurationError(
+                    "Token aplikacji PBN nieprawidłowy. Poproś administratora "
+                    "o skonfigurowanie prawidłowego tokena aplikacji PBN w "
+                    "ustawieniach obiektu Uczelnia. "
+                )
+
             raise AuthenticationResponseError(response.content)
 
         return response.json().get("X-User-Token")
@@ -441,8 +449,8 @@ class InstitutionsMixin:
     def get_institution_metadata(self, id):
         return self.transport.get_pages(f"/api/v1/institutions/{id}/metadata")
 
-    def get_institutions_polon(self):
-        return self.transport.get_pages("/api/v1/institutions/polon/page")
+    def get_institutions_polon(self, *args, **kw):
+        return self.transport.get_pages("/api/v1/institutions/polon/page", *args, **kw)
 
     def get_institutions_polon_by_uid(self, uid):
         return self.transport.get(f"/api/v1/institutions/polon/uid/{uid}")
@@ -578,18 +586,12 @@ class PublicationsMixin:
         return self.transport.get(f"/api/v1/publications/version/{version}")
 
 
-class AuthorMixin:
-    def get_author_by_id(self, id):
-        return self.transport.get(f"/api/v1/author/{id}")
-
-
 class SearchMixin:
     def search_publications(self, *args, **kw):
         return self.transport.post_pages(PBN_SEARCH_PUBLICATIONS_URL, body=kw)
 
 
 class PBNClient(
-    AuthorMixin,
     ConferencesMixin,
     DictionariesMixin,
     InstitutionsMixin,
@@ -612,6 +614,18 @@ class PBNClient(
         return self.transport.post(
             PBN_POST_PUBLICATION_FEE_URL.format(id=publicationId), body=json
         )
+
+    def get_publication_fee(self, publicationId):
+        res = self.transport.post_pages(
+            "/api/v1/institutionProfile/publications/search/fees",
+            body={"publicationIds": [str(publicationId)]},
+        )
+        if not res.count():
+            return
+        elif res.count() == 1:
+            return list(res)[0]
+        else:
+            raise NotImplementedError("count > 1")
 
     def upload_publication(
         self, rec, force_upload=False, export_pk_zero=None, always_affiliate_to_uid=None
@@ -766,12 +780,6 @@ class PBNClient(
 
         return self.post_publication_fee(pub.pbn_uid_id, fee)
 
-    def demo(self):
-        from bpp.models import Wydawnictwo_Ciagle
-
-        pub = Wydawnictwo_Ciagle.objects.filter(rok=2020).exclude(doi=None).first()
-        self.sync_publication(pub, force_upload=True)
-
     def exec(self, cmd):
         try:
             fun = getattr(self, cmd[0])
@@ -868,7 +876,7 @@ class PBNClient(
             wpis_tlumacza.pbn_2022_now = matchuj_aktualna_dyscypline_pbn(
                 dyscyplina.kod, dyscyplina.nazwa
             )
-            # Domyślnie szuka dla lat 2017-2022
+            # Domyślnie szuka dla lat 2018-2022
             wpis_tlumacza.pbn_2017_2021 = matchuj_nieaktualna_dyscypline_pbn(
                 dyscyplina.kod, dyscyplina.nazwa
             )
@@ -876,6 +884,8 @@ class PBNClient(
             wpis_tlumacza.save()
 
         for discipline in cur_dg.discipline_set.all():
+            if discipline.name == "weterynaria":
+                pass
             # Każda dyscyplina z aktualnego słownika powinna być wpisana do systemu BPP
             try:
                 TlumaczDyscyplin.objects.get(pbn_2022_now=discipline)
