@@ -132,6 +132,14 @@ class OswiadczenieInstytucji(models.Model):
         except Autor.DoesNotExist:
             return
 
+    def get_bpp_discipline(self):
+        from bpp.models import Dyscyplina_Naukowa
+
+        if self.disciplines is None:
+            return
+
+        return Dyscyplina_Naukowa.objects.get(nazwa=self.disciplines["name"])
+
     class Meta:
         verbose_name = "Oświadczenie instytucji"
         verbose_name_plural = "Oświadczenia instytucji"

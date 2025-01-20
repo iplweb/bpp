@@ -224,7 +224,7 @@ class RankingAutorow(ExportMixin, SingleTableView):
                 pass
 
             try:
-                wydzialy = base_query.filter(pk__in=[pk for pk in wydzialy_pk])
+                wydzialy = base_query.filter(pk__in=wydzialy_pk)
                 return wydzialy
             except (TypeError, ValueError):
                 pass

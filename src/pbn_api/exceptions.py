@@ -35,6 +35,10 @@ class SciencistDoesNotExist(Exception):
     pass
 
 
+class AuthenticationConfigurationError(Exception):
+    pass
+
+
 class AuthenticationResponseError(Exception):
     pass
 
