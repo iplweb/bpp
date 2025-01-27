@@ -43,8 +43,13 @@ class Command(BaseCommand):
         "Czyści dane z PBNu oraz dane z bazy BPP (autorzy, źródła, wydawcy, publikacje)"
     )
 
+    def add_arguments(self, parser):
+        super().add_arguments(parser)
+
+        parser.add_argument("--tylko-publikacje", action="store_true", default=False),
+
     @transaction.atomic
-    def handle(self, *args, **options):
+    def handle(self, tylko_publikacje, *args, **options):
         challenge = "".join(random.sample("abcdefghijklmnopqrstuvwxzy!@#$^^&", 5))
         print("Informacje o systemie")
         print("=====================")
@@ -57,27 +62,38 @@ class Command(BaseCommand):
         print("")
         print("Kasowanie danych?")
         print("=================")
-        print(
-            f"Aby skasować wszystkich autorów, publikacje i dane z PBN, wpisz znaki '{challenge}' "
-            f"lub naciśnij CTRL+C aby wyjść. "
-        )
+
+        if not tylko_publikacje:
+            print(
+                f"Aby skasować wszystkich autorów, publikacje i dane z PBN, wpisz znaki '{challenge}' "
+                f"lub naciśnij CTRL+C aby wyjść. "
+            )
+        else:
+            print(
+                f"Aby skasować tylko publikacje -- BEZ autorow i danych z PBN, wpisz znaki '{challenge}' "
+                f"lub naciśnij CTRL+C aby wyjść. "
+            )
 
         reply = input("> ")
         if challenge != reply:
             print("Wychodzę z programu")
             return
 
-        for klass in pbar(
-            [
+        klasy_do_skasowania = [
+            # BPP
+            Wydawnictwo_Ciagle_Autor,
+            Wydawnictwo_Zwarte_Autor,
+            Patent_Autor,
+            Wydawnictwo_Ciagle,
+            Wydawnictwo_Zwarte,
+            Patent,
+            Praca_Doktorska,
+            Praca_Habilitacyjna,
+        ]
+
+        if not tylko_publikacje:
+            klasy_do_skasowania += [
                 # BPP
-                Wydawnictwo_Ciagle_Autor,
-                Wydawnictwo_Zwarte_Autor,
-                Patent_Autor,
-                Wydawnictwo_Ciagle,
-                Wydawnictwo_Zwarte,
-                Patent,
-                Praca_Doktorska,
-                Praca_Habilitacyjna,
                 Zrodlo,
                 Wydawca,
                 Konferencja,
@@ -96,7 +112,10 @@ class Command(BaseCommand):
                 Publisher,
                 Scientist,
                 SentData,
-            ],
+            ]
+
+        for klass in pbar(
+            klasy_do_skasowania,
             label="Kasuję dane z bazy BPP:",
         ):
             klass.objects.all().delete()
