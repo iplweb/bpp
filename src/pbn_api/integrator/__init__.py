@@ -328,17 +328,15 @@ class InstitutionGetter(ThreadedMongoDBSaver):
 
 
 def pobierz_instytucje_polon(client: PBNClient):
-    for status in [ACTIVE, DELETED]:
-        print(f"{status=}")
-        data = client.get_institutions_polon(status=status, page_size=10)
+    data = client.get_institutions_polon(page_size=10)
 
-        threaded_page_getter(
-            client,
-            data,
-            klass=InstitutionGetter,
-            label=f"pobierz_instytucje_POLON_{status}",
-            no_threads=24,
-        )
+    threaded_page_getter(
+        client,
+        data,
+        klass=InstitutionGetter,
+        label="pobierz_instytucje_polon",
+        no_threads=24,
+    )
 
 
 def integruj_uczelnie():
@@ -411,16 +409,15 @@ def pobierz_zrodla(client: PBNClient):
 
 
 def pobierz_zrodla_mnisw(client: PBNClient):
-    for status in [ACTIVE, DELETED]:
-        print(f"{status=}")
-        data = client.get_journals_mnisw_v2(status=status, page_size=8)
-        threaded_page_getter(
-            client,
-            data,
-            klass=ZrodlaGetter,
-            label=f"poboerz_zrodla_mnisw_{status}",
-            no_threads=24,
-        )
+    # status tu nie ma znaczenia
+    data = client.get_journals_mnisw_v2(includeAllVersions="false", page_size=8)
+    threaded_page_getter(
+        client,
+        data,
+        klass=ZrodlaGetter,
+        label="poboerz_zrodla_mnisw",
+        no_threads=24,
+    )
 
 
 class PublisherGetter(ThreadedMongoDBSaver):
@@ -729,25 +726,25 @@ def integruj_autorow_z_uczelni(
             tytul_str=person.value("object", "qualifications", return_none=True),
         )
 
-        if autor is None:
+        if autor is not None:
+            if autor.pbn_uid_id is None:
+                autor.pbn_uid_id = person.mongoId
+                autor.save()
+            else:
+                if autor.pbn_uid_id != person.pk:
+                    print(
+                        f"UWAGA: autor {autor} zmatchował się z PBN UID {person.pk} czyli {person}, "
+                        f"sprawdź czy przypadkiem nie masz zdublowanych wpisów po stronie PBN!"
+                    )
 
+        else:
+            # autor is None:
             if not import_unexistent:
                 # Brak autora po stronie BPP, nie chcemy tworzyć nowych rekordów
                 print(f"Brak dopasowania w jednostce dla autora {person}")
                 continue
 
-            autor = utworz_wpis_dla_jednego_autora(person)
-
-        if autor.pbn_uid_id is None:
-            autor.pbn_uid_id = person.mongoId
-            autor.save()
-
-        if autor.pbn_uid_id != person.pk:
-            print(
-                f"UWAGA Zmieniam powiązanie PBN UID dla autora {autor} z {autor.pbn_uid_id} na {person.pk}"
-            )
-            autor.pbn_uid = person
-            autor.save()
+            utworz_wpis_dla_jednego_autora(person)
 
 
 def pbn_json_wez_pbn_id_stare(person):
@@ -785,7 +782,14 @@ def utworz_wpis_dla_jednego_autora(person):
 
     cv["object"].pop("legacyIdentifiers", None)
 
-    for ignoredKey in ["verifiedOrcid", "currentEmployments"]:
+    # Ignorujemy poprzednie miejsca pracy + zewnetrzne identyfiaktory + obecne
+    # miesjca pracy...
+    for ignoredKey in [
+        "verifiedOrcid",
+        "currentEmployments",
+        "externalIdentifiers",
+        "archivalEmployments",
+    ]:
         cv["object"].pop(ignoredKey, None)
 
     from pbn_api.importer import assert_dictionary_empty
