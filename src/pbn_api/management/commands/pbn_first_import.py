@@ -1,5 +1,6 @@
 import django
 
+from import_common.core import matchuj_uczelnie
 from pbn_api.importer import importuj_publikacje_instytucji
 from pbn_api.models import OswiadczenieInstytucji
 
@@ -15,6 +16,7 @@ from pbn_api.integrator import (
     integruj_kraje,
     integruj_publikacje_instytucji,
     pobierz_instytucje_polon,
+    pobierz_konferencje,
     pobierz_ludzi_z_uczelni,
     pobierz_oswiadczenia_z_instytucji,
     pobierz_publikacje_z_instytucji,
@@ -45,6 +47,9 @@ class Command(PBNBaseCommand):
 
         parser.add_argument("--disable-initial", action="store_true", default=False),
         parser.add_argument("--disable-zrodla", action="store_true", default=False),
+        parser.add_argument(
+            "--disable-konferencje", action="store_true", default=False
+        ),
         parser.add_argument("--disable-wydawcy", action="store_true", default=False),
         parser.add_argument("--disable-autorzy", action="store_true", default=False),
         parser.add_argument("--disable-publikacje", action="store_true", default=False),
@@ -63,6 +68,7 @@ class Command(PBNBaseCommand):
         disable_zrodla,
         disable_wydawcy,
         disable_autorzy,
+        disable_konferencje,
         disable_publikacje,
         disable_oplaty,
         disable_oswiadczenia,
@@ -84,6 +90,18 @@ class Command(PBNBaseCommand):
             # Na pustej bazie nie ma instytucji, stąd trzeba pobrać i ustawić dla obiektu Uczelnia
             pobierz_instytucje_polon(client)
 
+            # Dopasuj uczelnie po nazwie
+            if uczelnia.pbn_uid_id is None:
+                res = matchuj_uczelnie(uczelnia.nazwa)
+
+                if res is None:
+                    raise NotImplementedError(
+                        "Teraz musisz uruchomic serwer, zalogowac sie do admina i wybrac PBN UID dla uczelni. Bez "
+                        "możliwości automatycznego dopasowania wpisu dla uczelni"
+                    )
+                uczelnia.pbn_uid = res
+                uczelnia.save()
+
         if not disable_zrodla:
             pobierz_zrodla_mnisw(client)
             importer.importuj_zrodla()
@@ -91,6 +109,9 @@ class Command(PBNBaseCommand):
         if not disable_wydawcy:
             pobierz_wydawcow_mnisw(client)
             importer.importuj_wydawcow()
+
+        if not disable_konferencje:
+            pobierz_konferencje(client)
 
         if not disable_autorzy:
             pobierz_ludzi_z_uczelni(client, Uczelnia.objects.default.pbn_uid_id)
@@ -155,7 +176,8 @@ class Command(PBNBaseCommand):
                     Wydawnictwo_Ciagle_Autor.DoesNotExist,
                 ):
                     print(
-                        f"brak autora {bpp_aut=} w pracy {bpp_pub=}, a w PBN jest... moze zaimportuj dane raz jeszcze"
+                        f"brak autora {bpp_aut=} w pracy {bpp_pub=}, a w PBN jest... "
+                        f"potencjalnie zdublowani autorzy po stronie PBN?"
                     )
                     continue
 
