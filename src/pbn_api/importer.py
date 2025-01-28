@@ -212,8 +212,14 @@ def importuj_wydawcow(verbosity=1):
         call_command("zamapuj_wydawcow")
 
 
-def assert_dictionary_empty(dct):
-    assert not dct.keys(), f"some data still left in dictionary {dct=}"
+def assert_dictionary_empty(dct, warn=False):
+    if dct.keys():
+        msg = f"some data still left in dictionary {dct=}"
+        if warn:
+            print("WARNING: ", msg)
+            return
+
+        raise AssertionError(msg)
 
 
 def importuj_streszczenia(pbn_json, ret, klasa_bazowa=Wydawnictwo_Ciagle_Streszczenie):
