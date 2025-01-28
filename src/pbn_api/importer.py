@@ -512,7 +512,7 @@ def utworz_autorow(ret, pbn_json, client, default_jednostka):
 
         assert_dictionary_empty(pbn_autor)
 
-    assert_dictionary_empty(afiliacje)
+    assert_dictionary_empty(afiliacje, warn=True)
 
 
 @transaction.atomic
