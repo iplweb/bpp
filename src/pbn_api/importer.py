@@ -343,10 +343,42 @@ def importuj_artykul(mongoId, default_jednostka: Jednostka, client: PBNClient):
     pbn_keywords = pbn_json.pop("keywords", {})
     pbn_keywords_pl = pbn_keywords_to_slowa_kluczowe(pbn_keywords, "pol")
     if pbn_keywords_pl:
+        if len(pbn_keywords_pl) == 1:
+
+            # hotfix...
+
+            if (
+                "pasze pasze lecznicze substancje przeciwbakteryjne antybiotyki antybiotykooporność zdrowie publiczne "
+                "urzędowa kontrola" in pbn_keywords_pl
+            ):
+                pbn_keywords_pl = {
+                    "pasze",
+                    "pasze lecznicze",
+                    "substancje przeciwbakteryjne",
+                    "antybiotyki",
+                    "antybiotykooporność",
+                    "zdrowie publiczne",
+                    "urzędowa kontrola",
+                }
         ret.slowa_kluczowe.add(*(pbn_keywords_pl))
 
     pbn_keywords_en = pbn_keywords_to_slowa_kluczowe(pbn_keywords, "eng")
     if pbn_keywords_en:
+        if len(pbn_keywords_en) == 1:
+            if (
+                "animal feed medicated feed antibacterial substances antibiotics antimicrobial resistance public "
+                "health official controll" in pbn_keywords_en
+            ):
+                pbn_keywords_en = {
+                    "animal feed",
+                    "medicated feed",
+                    "antibacterial substances",
+                    "antibiotics",
+                    "antimicrobial resistance",
+                    "public health",
+                    "official control",
+                }
+
         ret.slowa_kluczowe_eng = pbn_keywords_en
 
     importuj_streszczenia(pbn_json, ret)
