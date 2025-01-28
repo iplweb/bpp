@@ -795,6 +795,12 @@ def importuj_ksiazke(mongoId, default_jednostka: Jednostka, client: PBNClient):
                     raise NotImplementedError(f"Nie wiem {typ=}")
 
                 pbn_institution_id = ta_afiliacja.pop("institutionId")
+                if pbn_institution_id == Uczelnia.objects.get_default().pbn_uid_id:
+                    print(
+                        f"Publikacja {pbn_publication=} ma afiliację na obce uczelnie {ta_afiliacja=}"
+                    )
+                    continue
+
                 assert_dictionary_empty(ta_afiliacja)
 
                 if pbn_institution_id == Uczelnia.objects.default.pbn_uid_id:
