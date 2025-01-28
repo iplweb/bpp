@@ -9,7 +9,6 @@ from bpp.util import pbar
 django.setup()
 
 from pbn_api import importer
-from pbn_api.exceptions import IntegracjaWylaczonaException
 from pbn_api.integrator import (
     integruj_autorow_z_uczelni,
     integruj_jezyki,
@@ -78,7 +77,9 @@ class Command(PBNBaseCommand):
         uczelnia = Uczelnia.objects.get_default()
         if uczelnia is not None:
             if not uczelnia.pbn_integracja:
-                raise IntegracjaWylaczonaException()
+                uczelnia.pbn_integracja = True
+                uczelnia.save(update_fields=["pbn_integracja"])
+                # raise IntegracjaWylaczonaException()
         client = self.get_client(app_id, app_token, base_url, user_token)
 
         if not disable_initial:
