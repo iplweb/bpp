@@ -70,8 +70,8 @@ class Command(BaseCommand):
             )
         else:
             print(
-                f"Aby skasować tylko publikacje -- BEZ autorow i danych z PBN, wpisz znaki '{challenge}' "
-                f"lub naciśnij CTRL+C aby wyjść. "
+                f"Aby skasować tylko publikacje po stronie BPP -- BEZ autorow w BPP, bez Źródeł w BPP, bez danych z "
+                f"PBN, wpisz znaki '{challenge}' lub naciśnij CTRL+C aby wyjść. "
             )
 
         reply = input("> ")
