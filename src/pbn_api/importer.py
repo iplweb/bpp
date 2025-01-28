@@ -781,10 +781,18 @@ def importuj_ksiazke(mongoId, default_jednostka: Jednostka, client: PBNClient):
             ta_afiliacja = afiliacje.pop(autor.pbn_uid_id, None)
 
             if ta_afiliacja is not None:
-                if isinstance(ta_afiliacja, list) and len(ta_afiliacja) > 1:
-                    raise NotImplementedError(f"lista dluga {ta_afiliacja=}")
-                else:
-                    ta_afiliacja = ta_afiliacja[0]
+
+                # Weź tylko afiliacje dla obecnie analizowanego typu (autorzy, redaktorzy)
+                fnd = False
+                for _ in ta_afiliacja:
+                    if _.get("type") == pbn_rodzaj_autora:
+                        ta_afiliacja = _
+                        fnd = True
+                        break
+
+                assert (
+                    fnd
+                ), f"Nie znaleziono w ['affiliations'] kluicza dla obecnego {pbn_rodzaj_autora=}"
 
                 typ = ta_afiliacja.pop("type")
                 if typ == "AUTHOR":
