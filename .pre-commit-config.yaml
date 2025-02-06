@@ -17,6 +17,11 @@ repos:
           entry: 'breakpoint\(\)|set_trace'
           language: pygrep
 
+    - repo: https://github.com/zahorniak/pre-commit-circleci.git
+      rev: v1.1.0 # Ensure this is the latest tag, comparing to the Releases tab
+      hooks:
+        - id: circleci_validate
+
     - repo: https://github.com/PyCQA/autoflake
       rev: 'v2.2.1'
       hooks:
