@@ -57,8 +57,8 @@ jobs:
         wget https://github.com/mozilla/geckodriver/releases/download/v0.35.0/geckodriver-v0.35.0-linux-aarch64.tar.gz
         tar -xvzf geckodriver*
         chmod +x geckodriver
-        cp geckodriver /usr/bin/
-        cp geckodriver /usr/local/bin/
+        sudo cp geckodriver /usr/bin/
+        sudo cp geckodriver /usr/local/bin/
 
     - run: firefox -version
     - run: geckodriver --version
