@@ -104,17 +104,6 @@ exclude = [
 [tool.poetry.scripts]
 "bpp-manage.py" = "django_bpp.manage_command:entry_point"
 
-[tool.poetry.group.dev.dependencies]
-bumpver = "^2023.1124"
-pytest-recording = "^0.12.1"
-vcrpy = "4.4.0"
-towncrier = "^22.8.0"
-pytest-sugar = "^0.9.7"
-pytest-rerunfailures = "^14.0"
-django-debug-toolbar = "^4.4.6"
-watchdog = "^5.0.3"
-
-
 [tool.bumpver]
 current_version = "v202501.1153"
 version_pattern = "vYYYY0M.BUILD[-TAGNUM][GITHASH]"
@@ -228,7 +217,15 @@ psycopg2 = "^2.9.9"
 django-dbtemplates = "^4.0"
 django-soft-delete = "^1.0.15"
 
-[poetry.group.dev.dependencies]
+[tool.poetry.group.dev.dependencies]
+bumpver = "^2023.1124"
+pytest-recording = "^0.12.1"
+vcrpy = "4.4.0"
+towncrier = "^22.8.0"
+pytest-sugar = "^0.9.7"
+pytest-rerunfailures = "^14.0"
+django-debug-toolbar = "^4.4.6"
+watchdog = "^5.0.3"
 model-bakery = ">=1.5.1"
 django-dynamic-fixture = ">=1.8.0"
 mock = "2.0.0"
