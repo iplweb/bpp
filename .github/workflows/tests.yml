@@ -65,4 +65,4 @@ jobs:
         DJANGO_BPP_DB_PORT: 5433
         DJANGO_BPP_DB_USER: postgres
       run: |
-        poetry run pytest -k test_wyrzuc
+        poetry run pytest --splinter-headless -k test_wyrzuc
