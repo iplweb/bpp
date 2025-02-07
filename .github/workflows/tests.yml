@@ -67,5 +67,5 @@ jobs:
         DJANGO_BPP_DB_USER: postgres
       run: |
         make assets
-        poetry run src/manage.py collectstatic --yes
+        poetry run src/manage.py collectstatic --noinput
         poetry run pytest --splinter-headless -k test_wyrzuc
