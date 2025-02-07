@@ -68,4 +68,4 @@ jobs:
       run: |
         make assets
         poetry run src/manage.py collectstatic --noinput
-        poetry run pytest --splinter-headless -k test_wyrzuc
+        poetry run pytest --splinter-headless --splinter-webdriver-executable=/usr/lib/firefox/firefox # -k test_wyrzuc
