@@ -60,7 +60,7 @@ jobs:
         python -m pip install pip poetry
         poetry install --with=dev
 
-    - name: Run Tests
+    - name: Tests (no selenium)
       env:
         DJANGO_BPP_DB_HOST: 127.0.0.1
         DJANGO_BPP_DB_PORT: 5433
@@ -68,4 +68,23 @@ jobs:
       run: |
         make assets
         poetry run src/manage.py collectstatic --noinput
-        poetry run pytest --splinter-headless --splinter-webdriver-executable=/usr/lib/firefox/firefox # -k test_wyrzuc
+        poetry run pytest -m "not selenium" --splinter-headless --splinter-webdriver-executable=/usr/lib/firefox/firefox
+
+    - name: Selenium tests
+      env:
+        DJANGO_BPP_DB_HOST: 127.0.0.1
+        DJANGO_BPP_DB_PORT: 5433
+        DJANGO_BPP_DB_USER: postgres
+      run: |
+        poetry run pytest -m selenium" --splinter-headless --splinter-webdriver-executable=/usr/lib/firefox/firefox
+
+    - name: Tests (no selenium) with Microsoft Auth
+      env:
+        DJANGO_BPP_DB_HOST: 127.0.0.1
+        DJANGO_BPP_DB_PORT: 5433
+        DJANGO_BPP_DB_USER: postgres
+      run: |
+        poetry run pip install django_microsoft_auth
+        echo MICROSOFT_AUTH_CLIENT_ID=foobar > ~/.env.local
+        echo MICROSOFT_AUTH_CLIENT_SECRET=foobar >> ~/.env.local
+        poetry run pytest -m "not selenium" --splinter-headless --splinter-webdriver-executable=/usr/lib/firefox/firefox
