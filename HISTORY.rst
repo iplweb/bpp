@@ -4,6 +4,15 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202502.1154 (2025-02-16)
+============================
+
+Naprawione
+----------
+
+- zabezpieczaj przed pojawianiem się błędu "Connection already closed" po restarcie serwera bazodanowego
+
+
 Bpp 202412.1152 (2024-12-29)
 ============================
 
