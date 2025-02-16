@@ -357,6 +357,11 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         default=True,
     )
 
+    pokazuj_zrodla_bez_prac_w_przegladaniu_danych = models.BooleanField(
+        verbose_name="Pokazuj źródła bez powiązanych rekordów w przeglądaniu danych",
+        default=False,
+    )
+
     deklaracja_dostepnosci_tekst = HTMLField(
         verbose_name="Tekst na stronę BPP dla deklaracji dostępności",
         blank=True,

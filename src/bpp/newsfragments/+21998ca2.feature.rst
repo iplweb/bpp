@@ -1,0 +1,2 @@
+
+pokazuj źródła bez prac w przeglądaniu danych -- opcja
