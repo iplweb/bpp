@@ -410,7 +410,7 @@ def pobierz_zrodla(client: PBNClient):
 
 def pobierz_zrodla_mnisw(client: PBNClient):
     # status tu nie ma znaczenia
-    data = client.get_journals_mnisw_v2(includeAllVersions="false", page_size=8)
+    data = client.get_journals_mnisw_v2(includeAllVersions="true", page_size=8)
     threaded_page_getter(
         client,
         data,

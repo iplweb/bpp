@@ -451,7 +451,7 @@ class InstitutionsMixin:
     def get_institution_metadata(self, id):
         return self.transport.get_pages(f"/api/v1/institutions/{id}/metadata")
 
-    def get_institutions_polon(self, includeAllVersions="false", *args, **kw):
+    def get_institutions_polon(self, includeAllVersions="true", *args, **kw):
         return self.transport.get_pages(
             "/api/v1/institutions/polon/page",
             includeAllVersions=includeAllVersions,
