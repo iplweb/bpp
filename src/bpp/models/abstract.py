@@ -13,7 +13,7 @@ from django.db.models import CASCADE, SET_NULL, Q, Sum
 from django.urls.base import reverse
 from taggit.managers import TaggableManager
 
-from django.contrib.postgres.fields import HStoreField
+from django.contrib.postgres.fields import ArrayField, HStoreField
 from django.contrib.postgres.search import SearchVectorField as VectorField
 
 from bpp import const
@@ -648,6 +648,25 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
         return super().save(*args, **kw)
 
 
+class ModelZeSlowamiKluczowymi(models.Model):
+    class Meta:
+        abstract = True
+
+    slowa_kluczowe = TaggableManager(
+        "Słowa kluczowe -- język polski",
+        help_text="Lista słów kluczowych -- język polski.",
+        blank=True,
+    )
+
+    slowa_kluczowe_eng = ArrayField(
+        base_field=models.CharField(max_length=255, blank=True),
+        verbose_name="Słowa kluczowe -- język angielski",
+        help_text="Lista słów kluczowych -- język angielski",
+        null=True,
+        blank=True,
+    )
+
+
 class ModelZeSzczegolami(models.Model):
     """Model zawierający pola: informacje, szczegóły, uwagi, słowa kluczowe."""
 
@@ -658,12 +677,6 @@ class ModelZeSzczegolami(models.Model):
     )
 
     uwagi = models.TextField(null=True, blank=True, db_index=True)
-
-    slowa_kluczowe = TaggableManager(
-        "Słowa kluczowe",
-        help_text="Lista słów kluczowych, oddzielonych przecinkiem.",
-        blank=True,
-    )
 
     utworzono = models.DateTimeField(
         "Utworzono", auto_now_add=True, blank=True, null=True

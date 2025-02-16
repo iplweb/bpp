@@ -212,8 +212,14 @@ def importuj_wydawcow(verbosity=1):
         call_command("zamapuj_wydawcow")
 
 
-def assert_dictionary_empty(dct):
-    assert not dct.keys(), f"some data still left in dictionary {dct=}"
+def assert_dictionary_empty(dct, warn=False):
+    if dct.keys():
+        msg = f"some data still left in dictionary {dct=}"
+        if warn:
+            print("WARNING: ", msg)
+            return
+
+        raise AssertionError(msg)
 
 
 def importuj_streszczenia(pbn_json, ret, klasa_bazowa=Wydawnictwo_Ciagle_Streszczenie):
@@ -225,6 +231,27 @@ def importuj_streszczenia(pbn_json, ret, klasa_bazowa=Wydawnictwo_Ciagle_Streszc
             jezyk_streszczenia=Jezyk.objects.get(pbn_uid_id=language),
             streszczenie=value,
         )
+
+
+def pbn_keywords_to_slowa_kluczowe(keywords, lang="pol"):
+    slowa_kluczowe = keywords.get(lang, [])
+
+    if isinstance(slowa_kluczowe, list):
+        match len(slowa_kluczowe):
+            case 1:
+                slowa_kluczowe = slowa_kluczowe[0]
+            case 0:
+                return []
+            case _:
+                return set(slowa_kluczowe)
+
+    # Mamy ciąg znaków z przecinkami albo średnikami...
+
+    for separator in ",;":
+        if slowa_kluczowe.find(separator) >= 0:
+            break
+
+    return set(slowa_kluczowe.split(separator))
 
 
 @transaction.atomic
@@ -244,8 +271,11 @@ def importuj_artykul(mongoId, default_jednostka: Jednostka, client: PBNClient):
     pbn_zrodlo_id = pbn_json.pop("journal", {}).get("id", None)
 
     if pbn_zrodlo_id is None:
-        print("NIE ZAIMPORTUJE ARTYKULU BEZ ZRODLA", pbn_json.pop("title"))
-        return
+        zrodlo = Zrodlo.objects.get_or_create(
+            nazwa="Brak źródła po stronie PBN",
+            skrot="BPBN",
+            rodzaj=Rodzaj_Zrodla.objects.get(nazwa="źródło nieindeksowane"),
+        )[0]
     try:
         zrodlo = Zrodlo.objects.get(pbn_uid_id=pbn_zrodlo_id)
     except Zrodlo.DoesNotExist:
@@ -303,28 +333,83 @@ def importuj_artykul(mongoId, default_jednostka: Jednostka, client: PBNClient):
                 f"{ret.tytul_oryginalny} {zrodlo.nazwa}"
             )
         if "number" in journalIssue or "volume" in journalIssue:
-            print(f"DOROB journalISSUE {journalIssue=}")
+            ret.adnotacje += "JournalIssue: " + str(journalIssue) + "\n"
+            ret.save(update_fields=["adnotacje"])
             journalIssue.pop("number", "")
             journalIssue.pop("volume", "")
         journalIssue.pop("doi", None)
         assert_dictionary_empty(journalIssue)
 
-    slowa_kluczowe = pbn_json.pop("keywords", None)
-    if slowa_kluczowe:
-        print("SLOWA KLUCZOWE DOROBIC!!!")
+    pbn_keywords = pbn_json.pop("keywords", {})
+    pbn_keywords_pl = pbn_keywords_to_slowa_kluczowe(pbn_keywords, "pol")
+    if pbn_keywords_pl:
+        if len(pbn_keywords_pl) == 1:
+
+            # hotfix...
+
+            if (
+                "pasze pasze lecznicze substancje przeciwbakteryjne antybiotyki antybiotykooporność zdrowie publiczne "
+                "urzędowa kontrola" in pbn_keywords_pl
+            ):
+                pbn_keywords_pl = {
+                    "pasze",
+                    "pasze lecznicze",
+                    "substancje przeciwbakteryjne",
+                    "antybiotyki",
+                    "antybiotykooporność",
+                    "zdrowie publiczne",
+                    "urzędowa kontrola",
+                }
+        ret.slowa_kluczowe.add(*(pbn_keywords_pl))
+
+    pbn_keywords_en = pbn_keywords_to_slowa_kluczowe(pbn_keywords, "eng")
+    if pbn_keywords_en:
+        if len(pbn_keywords_en) == 1:
+            if (
+                "animal feed medicated feed antibacterial substances antibiotics antimicrobial resistance public "
+                "health official controll" in pbn_keywords_en
+            ):
+                pbn_keywords_en = {
+                    "animal feed",
+                    "medicated feed",
+                    "antibacterial substances",
+                    "antibiotics",
+                    "antimicrobial resistance",
+                    "public health",
+                    "official control",
+                }
+
+        ret.slowa_kluczowe_eng = pbn_keywords_en
 
     importuj_streszczenia(pbn_json, ret)
 
-    if pbn_json.pop("conference", None):
-        print("KONFERENCJE DO ZROBIENIA")
-    if pbn_json.pop("evaluationData", None):
-        print("EVALUATION DATA DO ZROBIENIA")
-    if pbn_json.pop("conferenceSeries", None):
-        print("CSERIES DO ZROBIENIA")
+    conference = pbn_json.pop("conference", None)
+    if conference:
+        ret.adnotacje += "Conference: " + str(conference) + "\n"
+        ret.save(update_fields=["adnotacje"])
+
+    evaluationData = pbn_json.pop("evaluationData", None)
+    if evaluationData:
+        ret.adnotacje += "EvaluationData: " + str(evaluationData) + "\n"
+        ret.save(update_fields=["adnotacje"])
+
+    conferenceSeries = pbn_json.pop("conferenceSeries", None)
+    if conferenceSeries:
+        ret.adnotacje += "ConferenceSeries: " + str(conferenceSeries) + "\n"
+        ret.save(update_fields=["adnotacje"])
+
+    proceedings = pbn_json.pop("proceedings", None)
+    if proceedings:
+        ret.adnotacje += "Proceedings: " + str(proceedings) + "\n"
+        ret.save(update_fields=["adnotacje"])
 
     if "titles" in pbn_json:
         titles = pbn_json.pop("titles")
-        ret.tytul = titles.pop("eng")
+        try:
+            ret.tytul = titles.pop("eng")
+        except KeyError:
+            ret.tytul = titles.pop("pol")
+
         assert_dictionary_empty(titles)
 
     assert_dictionary_empty(pbn_json)
@@ -427,7 +512,7 @@ def utworz_autorow(ret, pbn_json, client, default_jednostka):
 
         assert_dictionary_empty(pbn_autor)
 
-    assert_dictionary_empty(afiliacje)
+    assert_dictionary_empty(afiliacje, warn=True)
 
 
 @transaction.atomic
@@ -466,11 +551,14 @@ def importuj_rozdzial(
         )
         pbn_chapter_json = {}
     pbn_chapter_json.pop("title", None)
+    pbn_chapter_json.pop("titles", None)
     pbn_chapter_json.pop("type", None)
 
     if "abstracts" in pbn_chapter_json and "abstracts" in pbn_json:
-        print("ROZDZIAL I NADRZENED MA STRESZCZENIA, POROWNAC")
-        pbn_chapter_json.pop("abstracts")
+        print(
+            "ROZDZIAL I NADRZENED MA STRESZCZENIA, ale importuje tu rozdzial wiec ignoruje streszczenie nadrzednego"
+        )
+        pbn_json.pop("abstracts")
 
     pbn_wydawca_id = pbn_json.pop("publisher")["id"]
     try:
@@ -498,10 +586,31 @@ def importuj_rozdzial(
         status_korekty=Status_Korekty.objects.get(nazwa="przed korektą"),
     )
 
+    if "titles" in pbn_json:
+        titles = pbn_json.pop("titles")
+        try:
+            ret.tytul = titles.pop("eng")
+        except KeyError:
+            ret.tytul = titles.pop("pol")
+
+        assert_dictionary_empty(titles)
+
     ret.save()
 
     # importuj_streszczenia(pbn_chapter_json, ret, Wydawnictwo_Zwarte_Streszczenie)
-    importuj_streszczenia(pbn_json, ret, Wydawnictwo_Zwarte_Streszczenie)
+    importuj_streszczenia(pbn_chapter_json, ret, Wydawnictwo_Zwarte_Streszczenie)
+    pbn_json.pop("abstracts", None)
+
+    pbn_json.pop("keywords", None)
+    pbn_keywords = pbn_chapter_json.pop("keywords", {})
+    pbn_keywords_pl = pbn_keywords_to_slowa_kluczowe(pbn_keywords, "pol")
+    if pbn_keywords_pl:
+        ret.slowa_kluczowe.add(*(pbn_keywords_pl))
+
+    pbn_keywords_en = pbn_keywords_to_slowa_kluczowe(pbn_keywords, "eng")
+    if pbn_keywords_en:
+        ret.slowa_kluczowe_eng = pbn_keywords_en
+
     assert_dictionary_empty(pbn_chapter_json)
 
     utworz_autorow(ret, pbn_json, client, default_jednostka)
@@ -561,32 +670,42 @@ def importuj_openaccess(
             reldate = reldate.split("T")[0]
             ret.openaccess_data_opublikowania = reldate
 
-        if "releaseDateYear" in oa_json and "releaseDateMonth" in oa_json:
-            strMonth = {
-                "JANUARY": 1,
-                "FEBRUARY": 2,
-                "MARCH": 3,
-                "APRIL": 4,
-                "MAY": 5,
-                "JUNE": 6,
-                "JULY": 7,
-                "AUGUST": 8,
-                "SEPTEMBER": 9,
-                "OCTOBER": 10,
-                "NOVEMBER": 11,
-                "DECEMBER": 12,
-            }
+            oa_json.pop("releaseDateYear", None)
+            oa_json.pop("releaseDateMonth", None)
+        else:
+            if "releaseDateYear" in oa_json and "releaseDateMonth" in oa_json:
+                strMonth = {
+                    "JANUARY": 1,
+                    "FEBRUARY": 2,
+                    "MARCH": 3,
+                    "APRIL": 4,
+                    "MAY": 5,
+                    "JUNE": 6,
+                    "JULY": 7,
+                    "AUGUST": 8,
+                    "SEPTEMBER": 9,
+                    "OCTOBER": 10,
+                    "NOVEMBER": 11,
+                    "DECEMBER": 12,
+                }
 
-            assert ret.openaccess_data_opublikowania is None
+                assert ret.openaccess_data_opublikowania is None
 
-            reldate_year = oa_json.pop("releaseDateYear")
-            if reldate_year is None:
-                print("bez zartow BLAD DDATY")
-            else:
+                reldate_year = oa_json.pop("releaseDateYear")
+                if reldate_year is None:
+                    print("bez zartow BLAD DDATY")
+                else:
 
+                    ret.openaccess_data_opublikowania = date(
+                        int(reldate_year),
+                        strMonth.get(oa_json.pop("releaseDateMonth")),
+                        1,
+                    )
+
+            if "releaseDateYear" in oa_json:  # sam rok
                 ret.openaccess_data_opublikowania = date(
-                    int(reldate_year),
-                    strMonth.get(oa_json.pop("releaseDateMonth")),
+                    int(oa_json.pop("releaseDateYear")),
+                    1,
                     1,
                 )
 
@@ -694,10 +813,18 @@ def importuj_ksiazke(mongoId, default_jednostka: Jednostka, client: PBNClient):
             ta_afiliacja = afiliacje.pop(autor.pbn_uid_id, None)
 
             if ta_afiliacja is not None:
-                if isinstance(ta_afiliacja, list) and len(ta_afiliacja) > 1:
-                    raise NotImplementedError(f"lista dluga {ta_afiliacja=}")
-                else:
-                    ta_afiliacja = ta_afiliacja[0]
+
+                # Weź tylko afiliacje dla obecnie analizowanego typu (autorzy, redaktorzy)
+                fnd = False
+                for _ in ta_afiliacja:
+                    if _.get("type") == pbn_rodzaj_autora:
+                        ta_afiliacja = _
+                        fnd = True
+                        break
+
+                assert (
+                    fnd
+                ), f"Nie znaleziono w ['affiliations'] kluicza dla obecnego {pbn_rodzaj_autora=}"
 
                 typ = ta_afiliacja.pop("type")
                 if typ == "AUTHOR":
@@ -708,6 +835,12 @@ def importuj_ksiazke(mongoId, default_jednostka: Jednostka, client: PBNClient):
                     raise NotImplementedError(f"Nie wiem {typ=}")
 
                 pbn_institution_id = ta_afiliacja.pop("institutionId")
+                if pbn_institution_id == Uczelnia.objects.get_default().pbn_uid_id:
+                    print(
+                        f"Publikacja {pbn_publication=} ma afiliację na obce uczelnie {ta_afiliacja=}"
+                    )
+                    continue
+
                 assert_dictionary_empty(ta_afiliacja)
 
                 if pbn_institution_id == Uczelnia.objects.default.pbn_uid_id:

@@ -24,6 +24,7 @@ SITE_ROOT = os.path.abspath(os.path.join(SCRIPT_PATH, "..", ".."))
 
 SECRET_KEY_UNSET = "Please set the DJANGO_BPP_SECRET_KEY variable."
 
+
 # Ponieważ konieczna jest konfiguracja django-ldap-auth i potrzebne będą kolejne zmienne
 # środowiskowe, ponieważ z Pipenv przeszedłem na poetry, ponieważ tych konfiguracji i
 # serwerów (testowych, produkcyjnych) robi się coraz więcej -- z tych okazji zaczynam
@@ -507,7 +508,8 @@ SESSION_SECURITY_PASSIVE_URLS = ["/messages/"]
 
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.postgresql_psycopg2",
+        # "ENGINE": "django.db.backends.postgresql_psycopg2",
+        "ENGINE": "django_bpp.db_connclosed_fix",
         "NAME": env("DJANGO_BPP_DB_NAME"),
         "USER": env("DJANGO_BPP_DB_USER"),
         "PASSWORD": env("DJANGO_BPP_DB_PASSWORD"),

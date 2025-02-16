@@ -437,8 +437,10 @@ class DictionariesMixin:
 
 
 class InstitutionsMixin:
-    def get_institutions(self, *args, **kw):
-        return self.transport.get_pages("/api/v1/institutions/page", *args, **kw)
+    def get_institutions(self, status="ACTIVE", *args, **kw):
+        return self.transport.get_pages(
+            "/api/v1/institutions/page", status=status, *args, **kw
+        )
 
     def get_institution_by_id(self, id):
         return self.transport.get_pages(f"/api/v1/institutions/{id}")
@@ -449,8 +451,13 @@ class InstitutionsMixin:
     def get_institution_metadata(self, id):
         return self.transport.get_pages(f"/api/v1/institutions/{id}/metadata")
 
-    def get_institutions_polon(self, *args, **kw):
-        return self.transport.get_pages("/api/v1/institutions/polon/page", *args, **kw)
+    def get_institutions_polon(self, includeAllVersions="true", *args, **kw):
+        return self.transport.get_pages(
+            "/api/v1/institutions/polon/page",
+            includeAllVersions=includeAllVersions,
+            *args,
+            **kw,
+        )
 
     def get_institutions_polon_by_uid(self, uid):
         return self.transport.get(f"/api/v1/institutions/polon/uid/{uid}")

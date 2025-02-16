@@ -105,6 +105,7 @@ MODEL_ZE_SZCZEGOLAMI = (
     "szczegoly",
     "uwagi",
     "slowa_kluczowe",
+    "slowa_kluczowe_eng",
     "strony",
     "tom",
 )
