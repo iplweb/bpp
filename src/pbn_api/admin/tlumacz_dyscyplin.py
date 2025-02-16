@@ -1,10 +1,11 @@
 from pbn_api.models import TlumaczDyscyplin
+from rozbieznosci_dyscyplin.admin import ReadonlyAdminMixin
 
 from django.contrib import admin
 
 
 @admin.register(TlumaczDyscyplin)
-class PublisherAdmin(admin.ModelAdmin):
+class TlumaczDyscyplinAdmin(ReadonlyAdminMixin, admin.ModelAdmin):
     list_display = [
         "dyscyplina_w_bpp",
         "pbn_2017_2021",

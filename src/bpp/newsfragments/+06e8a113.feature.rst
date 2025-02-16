@@ -1,0 +1,2 @@
+
+lepsze wyświetlanie danych z PBN w module redagowania
