@@ -1,0 +1,2 @@
+
+zabezpieczaj przed pojawianiem się błędu "Connection already closed" po restarcie serwera bazodanowego
