@@ -84,7 +84,7 @@
         <div class="small-12 large-6 cell">{% load deklinacja %}
             <h2>Wybierz {% rzeczownik_jednostkę %}</h2>
             <ul class="no-bullet" style="line-height: 250%;">
-                {% for jednostka in uczelnia.aktualne_jednostki %}
+                {% for jednostka in uczelnia.jednostki %}
                     <li>
                         <a href="{% url "bpp:browse_jednostka" jednostka.slug %}">{{ jednostka }}</a>
                     </li>

@@ -399,6 +399,11 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
 
         return Wydzial.objects.filter(uczelnia=self, widoczny=True)
 
+    def jednostki(self):
+        from .jednostka import Jednostka
+
+        return Jednostka.objects.filter(uczelnia=self, widoczna=True, parent=None)
+
     def clean(self):
         if self.obca_jednostka is not None:
             if self.obca_jednostka.skupia_pracownikow:

@@ -4,6 +4,15 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202502.1156 (2025-02-17)
+============================
+
+Naprawione
+----------
+
+- popraw niepoprawne wyświetlanie jednostek na pierwszej stronie uczelni
+
+
 Bpp 202502.1155 (2025-02-17)
 ============================
 
