@@ -1,9 +1,10 @@
 from django import forms
 from django.core.exceptions import ValidationError
+from django.db import models
 
 from pbn_api.admin.base import BaseMongoDBAdmin
 from pbn_api.admin.filters import OdpowiednikWBPPFilter
-from pbn_api.admin.helpers import format_json
+from pbn_api.admin.widgets import PrettyJSONWidgetReadonly
 from pbn_api.models import Publication
 
 from django.contrib import admin
@@ -38,7 +39,9 @@ class PublicationFromMongoIdForm(forms.ModelForm):
 
 
 @admin.register(Publication)
-class PublicationAdmin(BaseMongoDBAdmin):
+class PublicationAdmin(
+    BaseMongoDBAdmin,
+):
     show_full_result_count = False
 
     list_display = [
@@ -58,29 +61,26 @@ class PublicationAdmin(BaseMongoDBAdmin):
         "publicUri",
     ]
 
+    formfield_overrides = {models.JSONField: {"widget": PrettyJSONWidgetReadonly}}
+
     fields = BaseMongoDBAdmin.readonly_fields + [
-        "pretty_json",
+        "versions",
     ]
 
     list_filter = [OdpowiednikWBPPFilter] + BaseMongoDBAdmin.list_filter
 
-    def pretty_json(self, obj=None):
-        return format_json(obj, "versions")
-
-    pretty_json.short_description = "Odebrane dane (versions)"
-
     def has_add_permission(self, request):
-        return True
+        return False
 
     def get_fields(self, request, obj=None):
         if obj is None:
             return ["mongoId"]
-        return super(PublicationAdmin, self).get_fields(request, obj)
+        return super().get_fields(request, obj)
 
     def get_readonly_fields(self, request, obj=None):
         if obj is None:
             return []
-        return super(PublicationAdmin, self).get_readonly_fields(request, obj)
+        return super().get_readonly_fields(request, obj)
 
     def get_form(self, request, obj=None, change=False, **kwargs):
         if not change:
@@ -92,9 +92,7 @@ class PublicationAdmin(BaseMongoDBAdmin):
 
             return RequestPublicationFromMongoIdForm
 
-        return super(PublicationAdmin, self).get_form(
-            request=request, obj=obj, change=change, **kwargs
-        )
+        return super().get_form(request=request, obj=obj, change=change, **kwargs)
 
     def save_model(self, request, obj, form, change):
         """

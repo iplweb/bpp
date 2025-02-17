@@ -1,18 +1,18 @@
 # Register your models here.
 
 
-from django.db.models import JSONField
+from django.db import models
 
 # class JsonAdmin(admin.ModelAdmin):
 from .mixins import ReadOnlyListChangeFormAdminMixin
-from .widgets import PrettyJSONWidget
+from .widgets import PrettyJSONWidgetReadonly
 
 from django.contrib import admin
 
 
 class BasePBNAPIAdminNoReadonly(admin.ModelAdmin):
     list_per_page = 25
-    formfield_overrides = {JSONField: {"widget": PrettyJSONWidget}}
+    formfield_overrides = {models.JSONField: {"widget": PrettyJSONWidgetReadonly}}
 
 
 class BasePBNAPIAdmin(ReadOnlyListChangeFormAdminMixin, BasePBNAPIAdminNoReadonly):
@@ -29,7 +29,6 @@ class BaseMongoDBAdmin(BasePBNAPIAdmin):
         "verified",
         "created_on",
         "last_updated_on",
-        # "versions",
     ]
 
     fields = readonly_fields + [

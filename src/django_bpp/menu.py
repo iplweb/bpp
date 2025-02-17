@@ -5,6 +5,7 @@ the classes for the admin menu, you can customize this class as you want.
 To activate your custom menu add the following to your settings.py::
     ADMIN_TOOLS_MENU = 'django_bpp.menu.CustomMenu'
 """
+
 from admin_tools.menu import Menu, items
 from django.urls import reverse
 
@@ -75,9 +76,9 @@ WEB_MENU = [
 ]
 
 STRUKTURA_MENU = [
-    ("Uczelnie", "/admin/bpp/uczelnia/"),
+    ("Uczelnie, instytuty", "/admin/bpp/uczelnia/"),
     ("Wydziały", "/admin/bpp/wydzial/"),
-    ("Jednostki", "/admin/bpp/jednostka/"),
+    ("Jednostki, zakłady, zespoły", "/admin/bpp/jednostka/"),
     ("Kierunki studiów", "/admin/bpp/kierunek_studiow/"),
 ]
 

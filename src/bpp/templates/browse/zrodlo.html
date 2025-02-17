@@ -30,7 +30,11 @@
         <p><a title="PBN UID: {{ zrodlo.pbn_uid_id }}" target="_blank"
               href="{{ uczelnia.pbn_api_root }}/core/#/journal/view/{{ zrodlo.pbn_uid_id }}/current">
             Kliknij, aby pokazać w PBN
-        </a></p>
+        </a>
+        {% if zrodlo.pbn_uid.status == "DELETED" %}
+            <br/>❌ usunięty z PBN 🙅proponuję zmianę PBN ID tego rekordu po stronie BPP
+            {% endif %}
+        </p>
     {% endif %}
     <form method="post"
           action="{% url "bpp:browse_build_search" %}" class="browserForm">
