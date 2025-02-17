@@ -11,6 +11,7 @@ from django.urls import reverse
 
 from django.utils.translation import gettext_lazy as _
 
+from bpp.admin.helpers import lazy_rzeczownik_title
 from bpp.const import GR_WPROWADZANIE_DANYCH, GR_ZGLOSZENIA_PUBLIKACJI
 
 PBN_MENU = [
@@ -76,9 +77,9 @@ WEB_MENU = [
 ]
 
 STRUKTURA_MENU = [
-    ("Uczelnie, instytuty", "/admin/bpp/uczelnia/"),
-    ("Wydziały", "/admin/bpp/wydzial/"),
-    ("Jednostki, zakłady, zespoły", "/admin/bpp/jednostka/"),
+    (lazy_rzeczownik_title("UCZELNIA"), "/admin/bpp/uczelnia/"),
+    (lazy_rzeczownik_title("WYDZIAL_PL"), "/admin/bpp/wydzial/"),
+    (lazy_rzeczownik_title("JEDNOSTKA_PL"), "/admin/bpp/jednostka/"),
     ("Kierunki studiów", "/admin/bpp/kierunek_studiow/"),
 ]
 
@@ -155,6 +156,15 @@ class CustomMenu(Menu):
 
         flt("dane systemowe", "PBN API", PBN_MENU)
         flt("dane systemowe", "Dane systemowe", SYSTEM_MENU)
+
+        from django.conf import settings
+
+        if (
+            not getattr(settings, "DJANGO_BPP_UCZELNIA_UZYWA_WYDZIALOW", True)
+            and STRUKTURA_MENU[1][1].find("wydzial") >= 0
+        ):
+            STRUKTURA_MENU.pop(1)
+
         flt("struktura", "Struktura", STRUKTURA_MENU)
         flt(GR_WPROWADZANIE_DANYCH, "Wprowadzanie danych", REDAKTOR_MENU)
         if GR_ZGLOSZENIA_PUBLIKACJI not in groups and not user.is_superuser:

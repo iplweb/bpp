@@ -671,3 +671,13 @@ def sprawdz_duplikaty_www_doi(request, obj):
             messages.warning(
                 request, const.ZDUBLOWANE_POLE_KOMUNIKAT.format(label=label)
             )
+
+
+def lazy_rzeczownik_title(uid, p="m"):
+    class Lazy:
+        def __str__(self):
+            from bpp.models import Rzeczownik
+
+            return getattr(Rzeczownik.objects.get(uid=uid), p)
+
+    return Lazy()

@@ -133,6 +133,7 @@ env = environ.Env(
     # Wyświetlanie nazwy wydziału przez jednostki
     #
     DJANGO_BPP_SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI=(bool, True),
+    DJANGO_BPP_UCZELNIA_UZYWA_WYDZIALOW=(bool, True),
 )
 
 ENVFILE_PATHS = []
