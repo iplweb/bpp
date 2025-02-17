@@ -11,7 +11,7 @@ from django.urls import reverse
 
 from django.utils.translation import gettext_lazy as _
 
-from bpp.admin.helpers import lazy_rzeczownik_title
+from bpp import jezyk_polski
 from bpp.const import GR_WPROWADZANIE_DANYCH, GR_ZGLOSZENIA_PUBLIKACJI
 
 PBN_MENU = [
@@ -77,9 +77,9 @@ WEB_MENU = [
 ]
 
 STRUKTURA_MENU = [
-    (lazy_rzeczownik_title("UCZELNIA"), "/admin/bpp/uczelnia/"),
-    (lazy_rzeczownik_title("WYDZIAL_PL"), "/admin/bpp/wydzial/"),
-    (lazy_rzeczownik_title("JEDNOSTKA_PL"), "/admin/bpp/jednostka/"),
+    (jezyk_polski.lazy_rzeczownik_title("UCZELNIA"), "/admin/bpp/uczelnia/"),
+    (jezyk_polski.lazy_rzeczownik_title("WYDZIAL_PL"), "/admin/bpp/wydzial/"),
+    (jezyk_polski.lazy_rzeczownik_title("JEDNOSTKA_PL"), "/admin/bpp/jednostka/"),
     ("Kierunki studiów", "/admin/bpp/kierunek_studiow/"),
 ]
 
