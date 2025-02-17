@@ -362,6 +362,9 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         default=False,
     )
 
+    pokazuj_jednostki_na_pierwszej_stronie = models.BooleanField(default=False)
+    pokazuj_wydzialy_na_pierwszej_stronie = models.BooleanField(default=True)
+
     deklaracja_dostepnosci_tekst = HTMLField(
         verbose_name="Tekst na stronę BPP dla deklaracji dostępności",
         blank=True,

@@ -38,6 +38,7 @@ from bpp.models.kierunek_studiow import Kierunek_Studiow  # noqa
 from bpp.models.konferencja import *  # noqa
 from bpp.models.openaccess import *  # noqa
 from bpp.models.opi_2012 import *  # noqa
+from bpp.models.rzeczownik import *  # noqa
 from bpp.models.seria_wydawnicza import *  # noqa
 from bpp.models.sumy_views import *  # noqa
 

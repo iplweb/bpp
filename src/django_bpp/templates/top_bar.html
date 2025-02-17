@@ -14,9 +14,9 @@
             </li>
             <li>
                 <a href="#"><i class="fi-list"></i> przeglądaj</a>
-                <ul class="menu vertical">
-                    <li><a href="/">uczelnia</a></li>
-                    <li><a href="{% url "bpp:browse_jednostki" %}">jednostki</a></li>
+                <ul class="menu vertical">{% load deklinacja %}
+                    <li><a href="/">{% rzeczownik_uczelnia %}</a></li>
+                    <li><a href="{% url "bpp:browse_jednostki" %}">{% rzeczownik_jednostki_m %}</a></li>
                     <li><a href="{% url "bpp:browse_autorzy" %}">autorzy</a></li>
                     <li><a href="{% url "bpp:browse_zrodla" %}">źródła</a></li>
                 </ul>
@@ -58,17 +58,11 @@
                         {% end_czy_pokazywac %}
                     {% endif %}
                     {% czy_pokazywac ranking_autorow %}
-                        <hr id="top-bar-menu-raportow-hr-kreseczka">
-                        <script type="text/javascript">
-                        if (document.getElementById("top-bar-menu-raportow").firstElementChild.tagName == "HR") {
-                            document.getElementById("top-bar-menu-raportow-hr-kreseczka").remove();
-                        }
-                        </script>
+                        <hr/>
                         <li><a href="{% url "bpp:ranking_autorow_formularz" %}">ranking
                             autorów</a></li>
                         <hr>
                     {% end_czy_pokazywac %}
-
                     {% czy_pokazywac raport_slotow_autor %}
                         <li><a href="{% url "raport_slotow:index" %}">raport slotów - autor</a></li>
                     {% end_czy_pokazywac %}
@@ -88,9 +82,19 @@
                         </li>
                     {% end_czy_pokazywac %}
 
-
                 </ul>
             </li>
+
+            <script type="text/javascript">
+                if (document.getElementById("top-bar-menu-raportow").firstElementChild.tagName == "HR") {
+                    document.getElementById("top-bar-menu-raportow").firstElementChild.remove();
+                }
+
+                if (document.getElementById("top-bar-menu-raportow").lastElementChild.tagName == "HR") {
+                    document.getElementById("top-bar-menu-raportow").lastElementChild.remove();
+                }
+            </script>
+
             {% if not request.user.is_anonymous %}
 
                 {% if request.user.is_superuser or request.user|has_group:"wprowadzanie danych" %}
@@ -102,7 +106,8 @@
                                 <li><a href="{% url "integrator2:main" %}">import danych</a></li>
                                 <li><a href="{% url "import_pracownikow:index" %}">import pracowników</a></li>
                                 <li><a href="{% url "import_polon:index" %}">import z POLON</a></li>
-                                <li><a href="{% url "import_list_ministerialnych:index" %}">import list ministerialnych</a></li>
+                                <li><a href="{% url "import_list_ministerialnych:index" %}">import list
+                                    ministerialnych</a></li>
                                 <li><a href="{% url "ewaluacja2021:lista-importow" %}">import udziałów dla
                                     autorów</a>
                                 </li>

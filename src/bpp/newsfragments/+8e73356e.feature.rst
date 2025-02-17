@@ -1,0 +1,2 @@
+
+możliwość zmiany nazewnictwa, uczelnia -> instytut, wydział -> zakład, jednostka -> zespół, i inne

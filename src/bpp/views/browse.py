@@ -198,7 +198,7 @@ class ZrodlaView(Browser):
         qry = (
             super()
             .get_queryset()
-            .only("nazwa", "poprzednia_nazwa", "slug")
+            .only("nazwa", "poprzednia_nazwa", "slug", "pbn_uid__status")
             .order_by("nazwa")
         )
 
