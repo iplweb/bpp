@@ -52,13 +52,19 @@ for uid, wyraz, przypadek in [
 ]:
 
     @register.simple_tag(name="rzeczownik_" + wyraz)
-    def konkretny_rzeczownik(przypadek=przypadek, uid=uid):
+    def konkretny_rzeczownik(przypadek=przypadek, uid=uid, wyraz=wyraz):
         from bpp.models import Rzeczownik
 
-        return getattr(Rzeczownik.objects.get(uid=uid), przypadek)
+        try:
+            return getattr(Rzeczownik.objects.get(uid=uid), przypadek)
+        except Rzeczownik.DoesNotExist:
+            return wyraz
 
     @register.simple_tag(name="rzeczownik_" + wyraz + "_" + przypadek)
-    def konkretny_rzeczownik_z_przypadkiem(przypadek=przypadek, uid=uid):
+    def konkretny_rzeczownik_z_przypadkiem(przypadek=przypadek, uid=uid, wyraz=wyraz):
         from bpp.models import Rzeczownik
 
-        return getattr(Rzeczownik.objects.get(uid=uid), przypadek)
+        try:
+            return getattr(Rzeczownik.objects.get(uid=uid), przypadek)
+        except Rzeczownik.DoesNotExist:
+            return wyraz
