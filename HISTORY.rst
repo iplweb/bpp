@@ -4,6 +4,17 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202502.1155 (2025-02-17)
+============================
+
+Usprawnienie
+------------
+
+- lepsze wyświetlanie danych z PBN w module redagowania
+- możliwość zmiany nazewnictwa, uczelnia -> instytut, wydział -> zakład, jednostka -> zespół, i inne
+- pokazuj źródła bez prac w przeglądaniu danych -- opcja
+
+
 Bpp 202502.1154 (2025-02-16)
 ============================
 
