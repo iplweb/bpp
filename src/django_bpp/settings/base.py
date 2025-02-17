@@ -129,6 +129,10 @@ env = environ.Env(
     # Statyczne pliki (CSS, JS, obrazki)
     #
     STATIC_ROOT=(str, os.path.abspath(os.path.join(SCRIPT_PATH, "..", "staticroot"))),
+    #
+    # Wyświetlanie nazwy wydziału przez jednostki
+    #
+    DJANGO_BPP_SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI=(bool, True),
 )
 
 ENVFILE_PATHS = []
@@ -1146,3 +1150,7 @@ X_FRAME_OPTIONS = "SAMEORIGIN"
 STATICSITEMAPS_ROOT_DIR = os.path.relpath(STATIC_ROOT, os.getcwd())
 
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 5000
+
+DJANGO_BPP_SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI = env(
+    "DJANGO_BPP_SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI"
+)
