@@ -4,6 +4,15 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202502.1157 (2025-02-18)
+============================
+
+Usprawnienie
+------------
+
+- możliwość wysyłki prac do PBN za pomocą kolejki - w tle (work in progress...)
+
+
 Bpp 202502.1156 (2025-02-17)
 ============================
 
