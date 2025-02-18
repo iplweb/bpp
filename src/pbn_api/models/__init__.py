@@ -10,6 +10,7 @@ from .journal import Journal  # noqa
 from .language import Language  # noqa
 from .publication import Publication  # noqa
 from .publisher import Publisher  # noqa
+from .queue import PBN_Export_Queue  # noqa
 from .scientist import Scientist  # noqa
 from .sentdata import SentData  # noqa
 from .tlumacz_dyscyplin import TlumaczDyscyplin, TlumaczDyscyplinManager  # noqa

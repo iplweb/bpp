@@ -261,6 +261,7 @@ TEMPLATES = [
                 "bpp.context_processors.config.bpp_configuration",
                 "bpp.context_processors.global_nav.user",
                 "bpp.context_processors.google_analytics.google_analytics",
+                "bpp.context_processors.pbn_token_aktualny.pbn_token_aktualny",
                 "cookielaw.context_processors.cookielaw",
             ],
         },
@@ -500,7 +501,7 @@ BROKER_URL = f"redis://{REDIS_HOST}:{REDIS_PORT}/{env('DJANGO_BPP_REDIS_DB_BROKE
 # CELERY_RESULT_BACKEND = BROKER_URL
 CELERY_RESULT_BACKEND = "django-db"
 CELERY_BROKER_URL = BROKER_URL
-
+CELERY_RESULT_EXTENDED = True
 #
 SESSION_REDIS_HOST = REDIS_HOST
 SESSION_REDIS_PORT = REDIS_PORT
@@ -565,6 +566,14 @@ CELERYBEAT_SCHEDULE = {
     "zaktualizuj-liczbe-cytowan": {
         "task": "bpp.tasks.zaktualizuj_liczbe_cytowan",
         "schedule": timedelta(days=5),
+    },
+    "pbn-api-kolejka-wyczysc-wpisy-bez-rekordow": {
+        "task": "pbn_api.tasks.kolejka_wyczysc_wpisy_bez_rekordow",
+        "schedule": timedelta(days=7),
+    },
+    "pbn-api-kolejka-ponow-wyslanie-prac": {
+        "task": "pbn_api.tasks.kolejka_ponow_wysylke_prac",
+        "schedule": timedelta(minutes=15),
     },
 }
 

@@ -1,13 +1,17 @@
 # Create your views here.
 import sentry_sdk
+from django.db import transaction
 from django.http import HttpResponseBadRequest
 from django.views.generic import RedirectView
 
 from .client import OAuthMixin
 from .exceptions import AuthenticationConfigurationError, AuthenticationResponseError
+from .signals import token_set_successfully
 
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
+
+from django.utils import timezone
 
 from bpp.models import Uczelnia
 
@@ -36,7 +40,10 @@ class TokenLandingPage(LoginRequiredMixin, RedirectView):
             )
             user = self.request.user
             user.pbn_token = user_token
+            user.pbn_token_updated = timezone.now()
             user.save()
+
+            transaction.on_commit(lambda: token_set_successfully.send(sender=user))
 
             messages.info(
                 self.request, "Autoryzacja w PBN API przeprowadzona pomyślnie."

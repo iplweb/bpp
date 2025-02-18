@@ -443,7 +443,7 @@ class InstitutionsMixin:
         )
 
     def get_institution_by_id(self, id):
-        return self.transport.get_pages(f"/api/v1/institutions/{id}")
+        return self.transport.get(f"/api/v1/institutions/{id}")
 
     def get_institution_by_version(self, version):
         return self.transport.get_pages(f"/api/v1/institutions/version/{version}")

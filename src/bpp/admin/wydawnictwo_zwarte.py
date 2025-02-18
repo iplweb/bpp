@@ -12,6 +12,7 @@ from .actions import (
     ustaw_przed_korekta,
     ustaw_w_trakcie_korekty,
     wyslij_do_pbn,
+    wyslij_do_pbn_w_tle,
 )
 from .core import BaseBppAdminMixin, KolumnyZeSkrotamiMixin, generuj_inline_dla_autorow
 from .crossref_api_helpers import (
@@ -70,6 +71,7 @@ class Wydawnictwo_ZwarteAdmin_Baza(BaseBppAdminMixin, admin.ModelAdmin):
         ustaw_w_trakcie_korekty,
         ustaw_przed_korekta,
         wyslij_do_pbn,
+        wyslij_do_pbn_w_tle,
     ]
 
     list_display_always = [

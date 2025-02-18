@@ -4,6 +4,7 @@ from .institution import *  # noqa
 from .journal import *  # noqa
 from .monkeypatch_nowrap_foreignkey_admin import *  # noqa
 from .oswiadczenieinstytucji import *  # noqa
+from .pbn_export_queue import *  # noqa
 from .publication import *  # noqa
 from .publikacjainstytucji import *  # noqa
 from .publisher import *  # noqa

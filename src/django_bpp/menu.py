@@ -29,6 +29,7 @@ PBN_MENU = [
     # ("Publikacje instytucji", "/admin/pbn_api/publikacjainstytucji"),
     ("Oświadczenia instytucji", "/admin/pbn_api/oswiadczenieinstytucji"),
     ("Przesłane dane", "/admin/pbn_api/sentdata"),
+    ("Kolejka eksportu", "/admin/pbn_api/pbn_export_queue"),
 ]
 
 

@@ -19,9 +19,11 @@
         {% if show_save_and_continue %}
         	<li><input type="submit" value="{% trans 'Save and continue editing' %}" class="grp-button" name="_continue" /></li>
         {% endif %}
-        {% if show_save_and_pbn %}
-        	<li><input type="submit" value="Zapisz i wyślij do PBN" class="grp-button" name="_continue_and_pbn" /></li>
-        {% endif %}
-    {% endblock %}
+            {% if show_save_and_pbn %}
+                <li><input type="submit" value="Zapisz i wyślij do PBN" class="grp-button" name="_continue_and_pbn"/>
+                <li><input type="submit" value="Zapisz i wyślij do PBN w tle" class="grp-button" name="_continue_and_pbn_later"/>
+                </li>
+            {% endif %}
+        {% endblock %}
     </ul>
 </footer>
