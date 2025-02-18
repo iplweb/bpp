@@ -1,7 +1,19 @@
 import json
 
 
+class AlreadyEnqueuedError(Exception):
+    pass
+
+
+class CharakterFormalnyNieobslugiwanyError(Exception):
+    pass
+
+
 class TlumaczDyscyplinException(ValueError):
+    pass
+
+
+class BrakZdefiniowanegoObiektuUczelniaWSystemieError(Exception):
     pass
 
 

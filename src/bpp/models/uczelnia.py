@@ -25,7 +25,7 @@ from bpp.models import ModelZAdnotacjami, NazwaISkrot
 from bpp.models.abstract import ModelZPBN_ID, NazwaWDopelniaczu
 
 if TYPE_CHECKING:
-    from pbn_api import client  # noqa
+    import pbn_api  # noqa
 
 
 class UczelniaManager(models.Manager):
@@ -464,7 +464,7 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
 
         return WoSClient(self.clarivate_username, self.clarivate_password)
 
-    def pbn_client(self, pbn_user_token=None) -> "client.PBNClient":
+    def pbn_client(self, pbn_user_token=None) -> "pbn_api.client.PBNClient":
         """
         Zwraca klienta PBNu
         """

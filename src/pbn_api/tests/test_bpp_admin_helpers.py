@@ -14,7 +14,7 @@ from pbn_api.tests.utils import middleware
 
 from django.contrib.messages import get_messages
 
-from bpp.admin.helpers import sprobuj_wgrac_do_pbn
+from bpp.admin.helpers import sprobuj_wgrac_do_pbn_gui
 from bpp.models import Charakter_Formalny
 
 
@@ -30,7 +30,7 @@ def test_sprobuj_wgrac_do_pbn_charakter_zly(
     )
 
     with middleware(req):
-        sprobuj_wgrac_do_pbn(req, pbn_wydawnictwo_zwarte)
+        sprobuj_wgrac_do_pbn_gui(req, pbn_wydawnictwo_zwarte)
 
     msg = get_messages(req)
 
@@ -44,7 +44,7 @@ def test_sprobuj_wgrac_do_pbn_uczelnia_brak_obiektu(
     req = rf.get("/")
 
     with middleware(req):
-        sprobuj_wgrac_do_pbn(req, pbn_wydawnictwo_zwarte_z_charakterem)
+        sprobuj_wgrac_do_pbn_gui(req, pbn_wydawnictwo_zwarte_z_charakterem)
 
     msg = get_messages(req)
 
@@ -62,10 +62,10 @@ def test_sprobuj_wgrac_do_pbn_uczelnia_integracja_wylaczona(
     uczelnia.save()
 
     with middleware(req):
-        sprobuj_wgrac_do_pbn(req, pbn_wydawnictwo_zwarte_z_charakterem)
+        sprobuj_wgrac_do_pbn_gui(req, pbn_wydawnictwo_zwarte_z_charakterem)
 
     msg = get_messages(req)
-    assert len(msg) == 0
+    assert len(msg) == 1
 
 
 @pytest.mark.django_db
@@ -80,7 +80,7 @@ def test_sprobuj_wgrac_do_pbn_dane_juz_wyslane(
     req = rf.get("/")
 
     with middleware(req):
-        sprobuj_wgrac_do_pbn(
+        sprobuj_wgrac_do_pbn_gui(
             req, pbn_wydawnictwo_zwarte_z_charakterem, pbn_client=pbn_client
         )
 
@@ -99,7 +99,7 @@ def test_sprobuj_wgrac_do_pbn_access_denied(
     ] = AccessDeniedException(url="foo", content="testujemy")
 
     with middleware(req):
-        sprobuj_wgrac_do_pbn(
+        sprobuj_wgrac_do_pbn_gui(
             req, pbn_wydawnictwo_zwarte_z_charakterem, pbn_client=pbn_client
         )
 
@@ -116,7 +116,7 @@ def test_sprobuj_wgrac_do_pbn_inny_exception(
     pbn_client.transport.return_values[PBN_POST_PUBLICATIONS_URL] = ZeroDivisionError
 
     with middleware(req):
-        sprobuj_wgrac_do_pbn(
+        sprobuj_wgrac_do_pbn_gui(
             req, pbn_wydawnictwo_zwarte_z_charakterem, pbn_client=pbn_client
         )
 
@@ -133,7 +133,7 @@ def test_sprobuj_wgrac_do_pbn_inny_blad(
     pbn_client.transport.return_values[PBN_POST_PUBLICATIONS_URL] = Exception("test")
 
     with middleware(req):
-        sprobuj_wgrac_do_pbn(
+        sprobuj_wgrac_do_pbn_gui(
             req, pbn_wydawnictwo_zwarte_z_charakterem, pbn_client=pbn_client
         )
 
@@ -156,7 +156,7 @@ def test_sprobuj_wgrac_do_pbn_sukces(
     ] = []
 
     with middleware(req):
-        sprobuj_wgrac_do_pbn(
+        sprobuj_wgrac_do_pbn_gui(
             req, pbn_wydawnictwo_zwarte_z_charakterem, pbn_client=pbn_client
         )
 

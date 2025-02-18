@@ -22,3 +22,6 @@ class Rzeczownik(models.Model):
 
     class Meta:
         verbose_name_plural = "rzeczowniki"
+
+    def __str__(self):
+        return f"Rzeczownik UID={self.uid} ({self.m}, {self.d}, {self.c}, ...)"

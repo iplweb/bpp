@@ -1,5 +1,7 @@
 from django import template
 
+from bpp import jezyk_polski
+
 register = template.Library()
 
 
@@ -20,36 +22,18 @@ def rzeczownik(context, uid, przypadek, *args, **kwargs):
     return getattr(rzeczownik, przypadek)
 
 
-for uid, wyraz, przypadek in [
-    ("WYDZIAL", "wydział", "m"),
-    ("WYDZIAL", "wydziału", "d"),
-    ("WYDZIAL", "wydziałowi", "c"),
-    ("WYDZIAL", "wydział", "b"),
-    ("WYDZIAL", "wydziałem", "n"),
-    ("WYDZIAL", "wydziale", "ms"),
-    ("WYDZIAL", "wydział", "w"),
-    ("UCZELNIA", "uczelnia", "m"),
-    ("UCZELNIA", "uczelni", "d"),
-    ("UCZELNIA", "uczelni", "c"),
-    ("UCZELNIA", "uczelni", "b"),
-    ("UCZELNIA", "uczelnią", "n"),
-    ("UCZELNIA", "uczelni", "ms"),
-    ("UCZELNIA", "uczelnio", "w"),
-    ("JEDNOSTKA", "jednostka", "m"),
-    ("JEDNOSTKA", "jednostki", "d"),
-    ("JEDNOSTKA", "jednostce", "c"),
-    ("JEDNOSTKA", "jednostkę", "b"),
-    ("JEDNOSTKA", "jednostką", "n"),
-    ("JEDNOSTKA", "jednostce", "ms"),
-    ("JEDNOSTKA", "jednostko", "w"),
-    ("JEDNOSTKA_PL", "jednostki", "m"),
-    ("JEDNOSTKA_PL", "jednostek", "d"),
-    ("JEDNOSTKA_PL", "jednostkom", "c"),
-    ("JEDNOSTKA_PL", "jednostki", "b"),
-    ("JEDNOSTKA_PL", "jednostkami", "n"),
-    ("JEDNOSTKA_PL", "jednostkach", "ms"),
-    ("JEDNOSTKA_PL", "jednostki", "w"),
-]:
+for uid, wyraz, przypadek in jezyk_polski.deklinacja:
+    #
+    # Rejestruj tagi {% rzeczownik_wydział %}
+    # oraz {% rzeczownik_wydział_m %}
+    # i dla każdego innego przypadku.
+
+    # Umożliwia to pisanie {% rzeczownik_wydziału %}
+    # oraz {% rzeczownik_uczelni_d %} co pozwala potem tłumaczyć to na
+    # bardziej poprawne formy.
+
+    # Do rozważenia: zarejestrować też wersje z UIDem bo wersje 'wyrazowe'
+    # mimo, iż czytelne w kodzie to są dwuznaczne.
 
     @register.simple_tag(name="rzeczownik_" + wyraz)
     def konkretny_rzeczownik(przypadek=przypadek, uid=uid, wyraz=wyraz):

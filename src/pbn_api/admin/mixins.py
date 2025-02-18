@@ -27,3 +27,8 @@ class ReadOnlyListChangeFormAdminMixin:
             "Obiekt NIE został zapisany -- nie można edytować tej części serwisu.",
         )
         return
+
+
+class ReadOnlyListChangeFormAdminAddTooMixin(ReadOnlyListChangeFormAdminMixin):
+    def has_change_permission(self, *args, **kw):
+        return False

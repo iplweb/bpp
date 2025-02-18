@@ -2,6 +2,68 @@
 Ten moduł zawiera rozwiązania dla języka polskiego.
 """
 
+deklinacja = [
+    ("WYDZIAL", "wydział", "m"),
+    ("WYDZIAL", "wydziału", "d"),
+    ("WYDZIAL", "wydziałowi", "c"),
+    ("WYDZIAL", "wydział", "b"),
+    ("WYDZIAL", "wydziałem", "n"),
+    ("WYDZIAL", "wydziale", "ms"),
+    ("WYDZIAL", "wydział", "w"),
+    ("UCZELNIA", "uczelnia", "m"),
+    ("UCZELNIA", "uczelni", "d"),
+    ("UCZELNIA", "uczelni", "c"),
+    ("UCZELNIA", "uczelni", "b"),
+    ("UCZELNIA", "uczelnią", "n"),
+    ("UCZELNIA", "uczelni", "ms"),
+    ("UCZELNIA", "uczelnio", "w"),
+    ("UCZELNIA_PL", "uczelnie", "m"),
+    ("UCZELNIA_PL", "uczelni", "d"),
+    ("UCZELNIA_PL", "uczelniom", "c"),
+    ("UCZELNIA_PL", "uczelnie", "b"),
+    ("UCZELNIA_PL", "uczelniami", "n"),
+    ("UCZELNIA_PL", "uczelniach", "ms"),
+    ("UCZELNIA_PL", "uczelnie", "w"),
+    ("JEDNOSTKA", "jednostka", "m"),
+    ("JEDNOSTKA", "jednostki", "d"),
+    ("JEDNOSTKA", "jednostce", "c"),
+    ("JEDNOSTKA", "jednostkę", "b"),
+    ("JEDNOSTKA", "jednostką", "n"),
+    ("JEDNOSTKA", "jednostce", "ms"),
+    ("JEDNOSTKA", "jednostko", "w"),
+    ("JEDNOSTKA_PL", "jednostki", "m"),
+    ("JEDNOSTKA_PL", "jednostek", "d"),
+    ("JEDNOSTKA_PL", "jednostkom", "c"),
+    ("JEDNOSTKA_PL", "jednostki", "b"),
+    ("JEDNOSTKA_PL", "jednostkami", "n"),
+    ("JEDNOSTKA_PL", "jednostkach", "ms"),
+    ("JEDNOSTKA_PL", "jednostki", "w"),
+]
+
+
+def znajdz_rzeczownik(uid, p):
+    for _uid, wartosc, przypadek in deklinacja:
+        if p == przypadek and uid == _uid:
+            return wartosc
+    return f"(brak deklinacji dla {uid=} {p=}"
+
+
+def lazy_rzeczownik_title(uid, p="m"):
+    class Lazy:
+        def __str__(self):
+            from bpp.models import Rzeczownik
+
+            try:
+                return getattr(Rzeczownik.objects.get(uid=uid), p)
+            except Rzeczownik.DoesNotExist:
+                return znajdz_rzeczownik(
+                    uid=uid,
+                    p=p,
+                )
+
+    return Lazy()
+
+
 czasownik_byc = dict(
     czas_przeszly=dict(K="była", M="był", default="był(a)"),
     czas_terazniejszy=dict(K="jest", M="jest", default="jest"),

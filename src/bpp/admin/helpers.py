@@ -12,12 +12,16 @@ from sentry_sdk import capture_exception
 from import_common.normalization import normalize_isbn
 from pbn_api.exceptions import (
     AccessDeniedException,
+    AlreadyEnqueuedError,
+    BrakZdefiniowanegoObiektuUczelniaWSystemieError,
+    CharakterFormalnyNieobslugiwanyError,
     NeedsPBNAuthorisationException,
     PKZeroExportDisabled,
     PraceSerwisoweException,
     SameDataUploadedRecently,
 )
-from pbn_api.models import SentData
+from pbn_api.models import PBN_Export_Queue, SentData
+from pbn_api.tasks import task_sprobuj_wyslac_do_pbn
 
 from django.contrib import messages
 from django.contrib.admin.utils import quote
@@ -28,7 +32,7 @@ from django.utils.safestring import mark_safe
 
 from bpp import const
 from bpp.const import PBN_MAX_ROK, PBN_MIN_ROK
-from bpp.models import Status_Korekty
+from bpp.models import Status_Korekty, Uczelnia
 from bpp.models.sloty.core import ISlot
 from bpp.models.sloty.exceptions import CannotAdapt
 
@@ -130,7 +134,6 @@ MODEL_Z_OPLATA_ZA_PUBLIKACJE_FIELDSET = (
     {"classes": ("grp-collapse grp-closed",), "fields": MODEL_Z_OPLATA_ZA_PUBLIKACJE},
 )
 
-
 MODEL_Z_ISBN = (
     "isbn",
     "e_isbn",
@@ -209,7 +212,6 @@ MODEL_PUNKTOWANY_WYDAWNICTWO_CIAGLE_FIELDSET = (
         "fields": MODEL_PUNKTOWANY_Z_KWARTYLAMI + ("uzupelnij_punktacje",),
     },
 )
-
 
 MODEL_OPCJONALNIE_NIE_EKSPORTOWANY_DO_API_FIELDSET = (
     "Eksport do API",
@@ -391,19 +393,50 @@ def sprobuj_policzyc_sloty(request, obj):
         )
 
 
-def sprobuj_wgrac_do_pbn(request, obj, force_upload=False, pbn_client=None):
-    from bpp.models.uczelnia import Uczelnia
+def sprawdz_czy_ustawiono_wysylke_tego_charakteru_formalnego(charakter_formalny):
+    if charakter_formalny.rodzaj_pbn is None:
+        raise CharakterFormalnyNieobslugiwanyError(
+            "ten rekord nie może być wyeksportowany do PBN, gdyż ustawienia jego charakteru formalnego "
+            "po stronie bazy BPP na to nie pozwalają"
+        )
 
-    if obj.charakter_formalny.rodzaj_pbn is None:
+
+def sprawdz_czy_ustawiono_wysylke_tego_charakteru_formalnego_gui(request, obj):
+    try:
+        sprawdz_czy_ustawiono_wysylke_tego_charakteru_formalnego(obj.charakter_formalny)
+    except CharakterFormalnyNieobslugiwanyError:
         messages.info(
             request,
             'Rekord "%s" nie będzie eksportowany do PBN zgodnie z ustawieniem dla charakteru formalnego.'
             % link_do_obiektu(obj),
         )
-        return
+        return False
+    return True
+
+
+def sprawdz_wysylke_do_pbn_w_parametrach_uczelni(uczelnia):
+    """
+    :param uczelnia:
+    :return: zwraca False jeżeli integracja wyłączona lub aktualizowanie na bieżąco wyłączone;
+    zwraca obiekt uczelnia jeżeli jest OK,
+    podnosi wyjątek jeżeli brak obiektu Uczelnia
+    """
+    if uczelnia is None:
+        raise BrakZdefiniowanegoObiektuUczelniaWSystemieError()
+
+    if not uczelnia.pbn_integracja or not uczelnia.pbn_aktualizuj_na_biezaco:
+        return False
+
+    return uczelnia
+
+
+def sprawdz_wysylke_do_pbn_w_parametrach_uczelni_gui(request, obj):
+    from bpp.models.uczelnia import Uczelnia
 
     uczelnia = Uczelnia.objects.get_for_request(request)
-    if uczelnia is None:
+    try:
+        res = sprawdz_wysylke_do_pbn_w_parametrach_uczelni(uczelnia)
+    except BrakZdefiniowanegoObiektuUczelniaWSystemieError:
         messages.info(
             request,
             'Rekord "%s" nie zostanie wyeksportowany do PBN, ponieważ w systemie brakuje obiektu "Uczelnia", a'
@@ -411,11 +444,161 @@ def sprobuj_wgrac_do_pbn(request, obj, force_upload=False, pbn_client=None):
         )
         return
 
-    if not uczelnia.pbn_integracja or not uczelnia.pbn_aktualizuj_na_biezaco:
+    return res
+
+
+def sprobuj_utworzyc_zlecenie_eksportu_do_PBN_gui(request, obj):
+    if not sprawdz_czy_ustawiono_wysylke_tego_charakteru_formalnego_gui(request, obj):
+        return
+
+    try:
+        res = sprawdz_wysylke_do_pbn_w_parametrach_uczelni_gui(request, obj)
+    except BrakZdefiniowanegoObiektuUczelniaWSystemieError:
+        messages.error("Brak zdefiniowanego w systemie obiektu Uczelnia.")
+
+    if res is False:
+        messages.error("Wysyłka do PBN nie skonfigurowana w obiektu Uczelnia.")
+
+    try:
+        ret = PBN_Export_Queue.objects.sprobuj_utowrzyc_wpis(request.user, obj)
+    except AlreadyEnqueuedError:
+        messages.warning(
+            request, f"Rekord {obj} jest już w kolejce do eksportu do PBN."
+        )
+        return
+
+    link_do_kolejki = reverse("admin:pbn_api_pbn_export_queue_change", args=(ret.pk,))
+
+    messages.info(
+        request,
+        f"Utworzono zlecenie wysyłki rekordu {obj} w tle do PBN. <a href={link_do_kolejki}>"
+        f"Kliknij tutaj, aby śledzić stan.</a>",
+    )
+
+    task_sprobuj_wyslac_do_pbn.delay_on_commit(ret.pk)
+
+
+class TextNotificator:
+    def __init__(self, *args, **kw):
+        self.output = []
+
+    def info(self, msg, level="INFO"):
+        self.output.append(f"{level} {msg}")
+
+    def warning(self, msg):
+        self.info(msg, level="WARNING")
+
+    def error(self, msg):
+        self.info(msg, level="WARNING")
+
+    def success(self, msg):
+        self.info(msg, level="WARNING")
+
+    def as_text(self):
+        return "\n".join(self.output)
+
+
+class MessagesNotificator:
+    def __init__(self, request):
+        self.request = request
+
+    def info(self, msg):
+        messages.info(self.request, msg)
+
+    def warning(self, msg):
+        messages.warning(self.request, msg)
+
+    def error(self, msg):
+        messages.error(self.request, msg)
+
+    def success(self, msg):
+        messages.success(self.request, msg)
+
+
+def sprobuj_wgrac_do_pbn_gui(request, obj, force_upload=False, pbn_client=None):
+    if not sprawdz_czy_ustawiono_wysylke_tego_charakteru_formalnego_gui(request, obj):
+        return
+
+    uczelnia = sprawdz_wysylke_do_pbn_w_parametrach_uczelni_gui(request, obj)
+    if uczelnia is None:
+        return
+
+    if uczelnia is False:
+        messages.error(request, "Wysyłka do PBN nie skonfigurowana w obiektu Uczelnia.")
         return
 
     if pbn_client is None:
         pbn_client = uczelnia.pbn_client(request.user.pbn_token)
+
+    sprobuj_wgrac_do_pbn(
+        obj=obj,
+        uczelnia=uczelnia,
+        force_upload=force_upload,
+        pbn_client=pbn_client,
+        notificator=MessagesNotificator(request),
+    )
+
+
+def sprobuj_wgrac_do_pbn_celery(user, obj, force_upload=False, pbn_client=None):
+    try:
+        sprawdz_czy_ustawiono_wysylke_tego_charakteru_formalnego(obj.charakter_formalny)
+    except CharakterFormalnyNieobslugiwanyError:
+        return (
+            None,
+            [
+                "Charakter formalny tego rekordu nie jest ustawiony jako wysyłany do PBN. Zmień konfigurację "
+                "bazy BPP, Redagowanie -> Dane systemowe -> Charaktery formalne"
+            ],
+        )
+
+    try:
+        uczelnia = sprawdz_wysylke_do_pbn_w_parametrach_uczelni(
+            Uczelnia.objects.get_default()
+        )
+    except BrakZdefiniowanegoObiektuUczelniaWSystemieError:
+        return (None, ["W systemie brak obiektu Uczelnia."])
+
+    if uczelnia is False:
+        return (None, ["Wysyłka do PBN nie skonfigurowana w obiekcie Uczelnia"])
+
+    if uczelnia is None:
+        return (None, ["Brak obiektu uczelnia w systemie"])
+
+    if user.pbn_token is None:
+        return (
+            None,
+            [
+                "Nie masz autoryzacji w PBN. Wykonaj autoryzację w PBN przez główną stronę serwisu. "
+            ],
+        )
+
+    if pbn_client is None:
+        pbn_client = uczelnia.pbn_client(user.pbn_token)
+
+    try:
+        pbn_client.get_institution_by_id(uczelnia.pbn_uid_id)
+    except AccessDeniedException:
+        return (
+            None,
+            [
+                "Nie masz autoryzacji w PBN. Wykonaj autoryzację w PBN przez główną stronę serwisu. "
+            ],
+        )
+
+    notificator = TextNotificator()
+
+    sent_data = sprobuj_wgrac_do_pbn(
+        obj=obj,
+        uczelnia=uczelnia,
+        force_upload=force_upload,
+        pbn_client=pbn_client,
+        notificator=notificator,
+    )
+
+    return (sent_data, notificator)
+
+
+def sprobuj_wgrac_do_pbn(obj, pbn_client, uczelnia, notificator, force_upload=False):
 
     # Sprawdź, czy wydawnictwo nadrzędne ma odpowoednik PBN:
     if (
@@ -424,8 +607,7 @@ def sprobuj_wgrac_do_pbn(request, obj, force_upload=False, pbn_client=None):
     ):
         wn = obj.wydawnictwo_nadrzedne
         if wn.pbn_uid_id is None:
-            messages.info(
-                request,
+            notificator.info(
                 "Wygląda na to, że wydawnictwo nadrzędne tego rekordu nie posiada odpowiednika "
                 "w PBN, spróbuję go pobrać.",
             )
@@ -439,21 +621,18 @@ def sprobuj_wgrac_do_pbn(request, obj, force_upload=False, pbn_client=None):
                     try:
                         res = _pobierz_prace_po_elemencie(pbn_client, "isbn", ni)
                     except PraceSerwisoweException:
-                        messages.warning(
-                            request,
+                        notificator.warning(
                             "Pobieranie z PBN odpowiednika wydawnictwa nadrzędnego pracy po ISBN nie powiodło się "
                             "-- trwają prace serwisowe po stronie PBN. ",
                         )
                     except NeedsPBNAuthorisationException:
-                        messages.warning(
-                            request,
+                        notificator.warning(
                             "Wyszukanie PBN UID wydawnictwa nadrzędnego po ISBN nieudane - "
                             "autoryzuj się najpierw w PBN. ",
                         )
 
                     if res:
-                        messages.info(
-                            request,
+                        notificator.info(
                             f"Udało się dopasować PBN UID wydawnictwa nadrzędnego po ISBN "
                             f"({', '.join([x.tytul_oryginalny for x in res])}). ",
                         )
@@ -468,29 +647,25 @@ def sprobuj_wgrac_do_pbn(request, obj, force_upload=False, pbn_client=None):
                     try:
                         res = _pobierz_prace_po_elemencie(pbn_client, "doi", nd)
                     except PraceSerwisoweException:
-                        messages.warning(
-                            request,
+                        notificator.warning(
                             "Pobieranie z PBN odpowiednika wydawnictwa nadrzędnego pracy po DOI nie powiodło się "
                             "-- trwają prace serwisowe po stronie PBN. ",
                         )
                     except NeedsPBNAuthorisationException:
-                        messages.warning(
-                            request,
+                        notificator.warning(
                             "Wyszukanie PBN UID wydawnictwa nadrzędnego po DOI nieudane - "
                             "autoryzuj się najpierw w PBN. ",
                         )
 
                     if res:
-                        messages.info(
-                            request,
+                        notificator.info(
                             f"Udało się dopasować PBN UID wydawnictwa nadrzędnego po DOI. "
                             f"({', '.join([x.tytul_oryginalny for x in res])}). ",
                         )
                         udalo = True
 
             if not udalo:
-                messages.warning(
-                    request,
+                notificator.warning(
                     "Wygląda na to, że nie udało się dopasować rekordu nadrzędnego po ISBN/DOI do rekordu "
                     "po stronie PBN. Jeżeli jednak dokonano autoryzacji w PBN, to pewne rekordy z PBN "
                     "zostały teraz pobrane i możesz spróbować ustawić odpowiednik "
@@ -498,8 +673,6 @@ def sprobuj_wgrac_do_pbn(request, obj, force_upload=False, pbn_client=None):
                 )
 
     try:
-        uczelnia = Uczelnia.objects.get_for_request(request)
-
         pbn_client.sync_publication(
             obj,
             force_upload=force_upload,
@@ -518,8 +691,7 @@ def sprobuj_wgrac_do_pbn(request, obj, force_upload=False, pbn_client=None):
             args=(SentData.objects.get_for_rec(obj).pk,),
         )
 
-        messages.info(
-            request,
+        notificator.info(
             f'Identyczne dane rekordu "{link_do_obiektu(obj)}" zostały wgrane do PBN w dniu {e}. '
             f"Nie aktualizuję w PBN API. Jeżeli chcesz wysłać ten rekord do PBN, musisz dokonać jakiejś zmiany "
             f"danych rekodu lub "
@@ -530,8 +702,7 @@ def sprobuj_wgrac_do_pbn(request, obj, force_upload=False, pbn_client=None):
         return
 
     except AccessDeniedException as e:
-        messages.warning(
-            request,
+        notificator.warning(
             f'Nie można zsynchronizować obiektu "{link_do_obiektu(obj)}" z PBN pod adresem '
             f"API {e.url}. Brak dostępu -- najprawdopodobniej użytkownik nie posiada odpowiednich uprawnień "
             f"po stronie PBN/POLON. ",
@@ -539,16 +710,14 @@ def sprobuj_wgrac_do_pbn(request, obj, force_upload=False, pbn_client=None):
         return
 
     except PKZeroExportDisabled:
-        messages.warning(
-            request,
+        notificator.warning(
             f"Eksport prac z PK=0 jest wyłączony w konfiguracji. Próba wysyłki do PBN rekordu "
             f'"{link_do_obiektu(obj)}" nie została podjęta z uwagi na konfigurację systemu. ',
         )
         return
 
     except NeedsPBNAuthorisationException as e:
-        messages.warning(
-            request,
+        notificator.warning(
             f'Nie można zsynchronizować obiektu "{link_do_obiektu(obj)}" z PBN pod adresem '
             f"API {e.url}. Brak dostępu z powodu nieprawidłowego tokena -- wymagana autoryzacja w PBN. "
             f'<a target=_blank href="{reverse("pbn_api:authorize")}">Kliknij tutaj, aby autoryzować sesję</a>.',
@@ -571,8 +740,7 @@ def sprobuj_wgrac_do_pbn(request, obj, force_upload=False, pbn_client=None):
                 % link_do_wyslanych
             )
 
-        messages.warning(
-            request,
+        notificator.warning(
             'Nie można zsynchronizować obiektu "%s" z PBN. Kod błędu: %r. %s'
             % (link_do_obiektu(obj), e, extra),
         )
@@ -593,12 +761,13 @@ def sprobuj_wgrac_do_pbn(request, obj, force_upload=False, pbn_client=None):
         sent_data.pbn_uid,
         "Kliknij tutaj, aby otworzyć zwrotnie otrzymane z PBN dane o rekordzie. ",
     )
-    messages.success(
-        request,
+    notificator.success(
         f"Dane w PBN dla rekordu {link_do_obiektu(obj)} zostały zaktualizowane. "
         f'<a target=_blank href="{obj.link_do_pbn()}">Kliknij tutaj, aby otworzyć w PBN</a>. '
         f"{sent_data_link}{publication_link}",
     )
+
+    return sent_data
 
 
 def get_rekord_id_from_GET_qs(request):
@@ -626,19 +795,24 @@ class OptionalPBNSaveMixin:
 
     def response_post_save_change(self, request, obj):
         if "_continue_and_pbn" in request.POST:
-            sprobuj_wgrac_do_pbn(request, obj)
+            sprobuj_wgrac_do_pbn_gui(request, obj)
 
-            opts = self.model._meta
-            route = f"admin:{opts.app_label}_{opts.model_name}_change"
+        elif "_continue_and_pbn_later" in request.POST:
+            sprobuj_utworzyc_zlecenie_eksportu_do_PBN_gui(request, obj)
 
-            post_url = reverse(route, args=(obj.pk,))
-
-            from django.http import HttpResponseRedirect
-
-            return HttpResponseRedirect(post_url)
         else:
             # Otherwise, use default behavior
             return super().response_post_save_change(request, obj)
+
+        # Przekieruj użytkownika na formularz zmian
+        opts = self.model._meta
+        route = f"admin:{opts.app_label}_{opts.model_name}_change"
+
+        post_url = reverse(route, args=(obj.pk,))
+
+        from django.http import HttpResponseRedirect
+
+        return HttpResponseRedirect(post_url)
 
 
 def sprawdz_duplikaty_www_doi(request, obj):

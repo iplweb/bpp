@@ -14,6 +14,7 @@ from .actions import (
     ustaw_przed_korekta,
     ustaw_w_trakcie_korekty,
     wyslij_do_pbn,
+    wyslij_do_pbn_w_tle,
 )
 from .core import KolumnyZeSkrotamiMixin, generuj_inline_dla_autorow
 from .crossref_api_helpers import (
@@ -220,6 +221,7 @@ class Wydawnictwo_CiagleAdmin(
         ustaw_w_trakcie_korekty,
         ustaw_przed_korekta,
         wyslij_do_pbn,
+        wyslij_do_pbn_w_tle,
     ]
 
     form = Wydawnictwo_CiagleForm

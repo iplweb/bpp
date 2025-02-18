@@ -2,12 +2,15 @@
 Profile użytkowników serwisu BPP
 """
 
+from datetime import timedelta
+
 from django.conf import settings
 from django.db import models
 from django.dispatch import receiver
 
 from django.contrib.auth.models import AbstractUser, UserManager
 
+from django.utils import timezone
 from django.utils.functional import cached_property
 from django.utils.itercompat import is_iterable
 
@@ -41,6 +44,21 @@ class BppUser(AbstractUser, ModelZAdnotacjami):
     )
 
     pbn_token = models.CharField(max_length=128, null=True, blank=True)
+    pbn_token_updated = models.DateTimeField(null=True, blank=True)
+
+    def pbn_token_possibly_valid(self):
+        if (
+            self.pbn_token is None
+            or not self.pbn_token
+            or self.pbn_token_updated is None
+        ):
+            return False
+
+        delta = timezone.now() - self.pbn_token_updated
+        if delta > timedelta(hours=6):
+            return False
+
+        return True
 
     class Meta:
         app_label = "bpp"
