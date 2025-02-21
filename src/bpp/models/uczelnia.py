@@ -316,7 +316,7 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
 
     pbn_api_afiliacja_zawsze_na_uczelnie = models.BooleanField(
         "Wysyłaj zawsze PBN UID uczelni jako afiliację",
-        default=False,
+        default=True,
         help_text="Jeżeli praca jest w jednostce z wypełnionym PBN UID bądź w jednostce "
         "innej-niż-obca, zatrudniającej-pracowników, to zaznaczenie tej opcji spowoduje, ze  zamiast PBN "
         "UID tej jednostki zostanie użyty PBN UID uczelni, co efektywnie "

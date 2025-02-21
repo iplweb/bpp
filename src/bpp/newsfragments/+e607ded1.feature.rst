@@ -1,0 +1,2 @@
+
+w przypadku nowych instalacji, włączaj domyślnie opcję "Wysyłaj zawsze PBN UID uczelni jako afiliację"

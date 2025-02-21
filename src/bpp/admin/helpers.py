@@ -18,6 +18,7 @@ from pbn_api.exceptions import (
     NeedsPBNAuthorisationException,
     PKZeroExportDisabled,
     PraceSerwisoweException,
+    ResourceLockedException,
     SameDataUploadedRecently,
 )
 from pbn_api.models import PBN_Export_Queue, SentData
@@ -497,6 +498,9 @@ class TextNotificator:
     def as_text(self):
         return "\n".join(self.output)
 
+    def as_list(self):
+        return self.output
+
 
 class MessagesNotificator:
     def __init__(self, request):
@@ -543,12 +547,9 @@ def sprobuj_wgrac_do_pbn_celery(user, obj, force_upload=False, pbn_client=None):
     try:
         sprawdz_czy_ustawiono_wysylke_tego_charakteru_formalnego(obj.charakter_formalny)
     except CharakterFormalnyNieobslugiwanyError:
-        return (
-            None,
-            [
-                "Charakter formalny tego rekordu nie jest ustawiony jako wysyłany do PBN. Zmień konfigurację "
-                "bazy BPP, Redagowanie -> Dane systemowe -> Charaktery formalne"
-            ],
+        raise ValueError(
+            "Charakter formalny tego rekordu nie jest ustawiony jako wysyłany do PBN. Zmień konfigurację "
+            "bazy BPP, Redagowanie -> Dane systemowe -> Charaktery formalne"
         )
 
     try:
@@ -556,34 +557,21 @@ def sprobuj_wgrac_do_pbn_celery(user, obj, force_upload=False, pbn_client=None):
             Uczelnia.objects.get_default()
         )
     except BrakZdefiniowanegoObiektuUczelniaWSystemieError:
-        return (None, ["W systemie brak obiektu Uczelnia."])
+        raise ValueError("W systemie brak obiektu Uczelnia.")
 
     if uczelnia is False:
-        return (None, ["Wysyłka do PBN nie skonfigurowana w obiekcie Uczelnia"])
+        raise ValueError("Wysyłka do PBN nie skonfigurowana w obiekcie Uczelnia")
 
     if uczelnia is None:
-        return (None, ["Brak obiektu uczelnia w systemie"])
+        return ValueError("Brak obiektu uczelnia w systemie")
 
     if user.pbn_token is None:
-        return (
-            None,
-            [
-                "Nie masz autoryzacji w PBN. Wykonaj autoryzację w PBN przez główną stronę serwisu. "
-            ],
+        raise NeedsPBNAuthorisationException(
+            None, None, "Wymagana wcześniejsza autoryzacja w PBN"
         )
 
     if pbn_client is None:
         pbn_client = uczelnia.pbn_client(user.pbn_token)
-
-    try:
-        pbn_client.get_institution_by_id(uczelnia.pbn_uid_id)
-    except AccessDeniedException:
-        return (
-            None,
-            [
-                "Nie masz autoryzacji w PBN. Wykonaj autoryzację w PBN przez główną stronę serwisu. "
-            ],
-        )
 
     notificator = TextNotificator()
 
@@ -593,12 +581,15 @@ def sprobuj_wgrac_do_pbn_celery(user, obj, force_upload=False, pbn_client=None):
         force_upload=force_upload,
         pbn_client=pbn_client,
         notificator=notificator,
+        raise_exceptions=True,
     )
 
-    return (sent_data, notificator)
+    return (sent_data, notificator.as_list())
 
 
-def sprobuj_wgrac_do_pbn(obj, pbn_client, uczelnia, notificator, force_upload=False):
+def sprobuj_wgrac_do_pbn(
+    obj, pbn_client, uczelnia, notificator, force_upload=False, raise_exceptions=False
+):
 
     # Sprawdź, czy wydawnictwo nadrzędne ma odpowoednik PBN:
     if (
@@ -646,16 +637,21 @@ def sprobuj_wgrac_do_pbn(obj, pbn_client, uczelnia, notificator, force_upload=Fa
                     res = None
                     try:
                         res = _pobierz_prace_po_elemencie(pbn_client, "doi", nd)
-                    except PraceSerwisoweException:
+                    except PraceSerwisoweException as e:
                         notificator.warning(
                             "Pobieranie z PBN odpowiednika wydawnictwa nadrzędnego pracy po DOI nie powiodło się "
                             "-- trwają prace serwisowe po stronie PBN. ",
                         )
-                    except NeedsPBNAuthorisationException:
+                        if raise_exceptions:
+                            raise e
+
+                    except NeedsPBNAuthorisationException as e:
                         notificator.warning(
                             "Wyszukanie PBN UID wydawnictwa nadrzędnego po DOI nieudane - "
                             "autoryzuj się najpierw w PBN. ",
                         )
+                        if raise_exceptions:
+                            raise e
 
                     if res:
                         notificator.info(
@@ -699,6 +695,9 @@ def sprobuj_wgrac_do_pbn(obj, pbn_client, uczelnia, notificator, force_upload=Fa
             f"(Redagowanie -> PBN API -> Wysłane informacje). "
             f'<a target=_blank href="{obj.link_do_pbn()}">Kliknij tutaj, aby otworzyć w PBN</a>. ',
         )
+        if raise_exceptions:
+            raise e
+
         return
 
     except AccessDeniedException as e:
@@ -707,13 +706,19 @@ def sprobuj_wgrac_do_pbn(obj, pbn_client, uczelnia, notificator, force_upload=Fa
             f"API {e.url}. Brak dostępu -- najprawdopodobniej użytkownik nie posiada odpowiednich uprawnień "
             f"po stronie PBN/POLON. ",
         )
+        if raise_exceptions:
+            raise e
+
         return
 
-    except PKZeroExportDisabled:
+    except PKZeroExportDisabled as e:
         notificator.warning(
             f"Eksport prac z PK=0 jest wyłączony w konfiguracji. Próba wysyłki do PBN rekordu "
             f'"{link_do_obiektu(obj)}" nie została podjęta z uwagi na konfigurację systemu. ',
         )
+        if raise_exceptions:
+            raise e
+
         return
 
     except NeedsPBNAuthorisationException as e:
@@ -722,6 +727,20 @@ def sprobuj_wgrac_do_pbn(obj, pbn_client, uczelnia, notificator, force_upload=Fa
             f"API {e.url}. Brak dostępu z powodu nieprawidłowego tokena -- wymagana autoryzacja w PBN. "
             f'<a target=_blank href="{reverse("pbn_api:authorize")}">Kliknij tutaj, aby autoryzować sesję</a>.',
         )
+        if raise_exceptions:
+            raise e
+
+        return
+
+    except ResourceLockedException as e:
+        notificator.warning(
+            f'Nie można zsynchronizować obiektu "{link_do_obiektu(obj)}" z PBN pod adresem '
+            f"API {e.url}, ponieważ obiekt po stronie serwera PBN jest zablokowany. Spróbuj ponownie za jakiś czas."
+        )
+
+        if raise_exceptions:
+            raise e
+
         return
 
     except Exception as e:
@@ -747,6 +766,9 @@ def sprobuj_wgrac_do_pbn(obj, pbn_client, uczelnia, notificator, force_upload=Fa
 
         # Zaloguj problem do Sentry, bo w sumie nie wiadomo, co to za problem na tym etapie...
         capture_exception(e)
+
+        if raise_exceptions:
+            raise e
 
         return
 
