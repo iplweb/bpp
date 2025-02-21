@@ -242,6 +242,10 @@ class BppUserAdmin(UserAdmin):
         "lista_grup",
     )
 
+    fieldsets = UserAdmin.fieldsets + (
+        ("PBN API", {"fields": ("przedstawiaj_w_pbn_jako",)}),
+    )
+
     add_form = BppUserCreationForm
 
     # change_form_template = 'loginas/change_form.html'

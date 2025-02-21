@@ -10,6 +10,7 @@ import requests
 from django.db import transaction
 from django.db.models import Model
 from requests import ConnectionError
+from requests.exceptions import JSONDecodeError as RequestsJSONDecodeError
 from requests.exceptions import SSLError
 from simplejson.errors import JSONDecodeError
 
@@ -44,6 +45,7 @@ from pbn_api.exceptions import (
     NoFeeDataException,
     NoPBNUIDException,
     PraceSerwisoweException,
+    ResourceLockedException,
     SameDataUploadedRecently,
 )
 from pbn_api.models import TlumaczDyscyplin
@@ -227,7 +229,7 @@ class RequestsTransport(OAuthMixin, PBNClientTransport):
 
         try:
             return ret.json()
-        except JSONDecodeError as e:
+        except (RequestsJSONDecodeError, JSONDecodeError) as e:
             if ret.status_code == 200 and b"prace serwisowe" in ret.content:
                 # open("pbn_client_dump.html", "wb").write(ret.content)
                 raise PraceSerwisoweException()
@@ -291,7 +293,6 @@ class RequestsTransport(OAuthMixin, PBNClientTransport):
                 self.authorize(self.base_url, self.app_id, self.app_token)
                 # self.authorize()
 
-        #
         # mpasternak 7.09.2021, poniżej "przymiarki" do analizowania zwróconych błędów z PBN
         #
         # if ret.status_code == 400:
@@ -312,11 +313,16 @@ class RequestsTransport(OAuthMixin, PBNClientTransport):
         #                   "details":{"doi":"DOI jest błędny lub nie udało się pobrać informacji z serwisu DOI!"}}')
 
         if ret.status_code >= 400:
+            if ret.status_code == 423 and smart_content(ret.content) == "Locked":
+                raise ResourceLockedException(
+                    ret.status_code, url, smart_content(ret.content)
+                )
+
             raise HttpException(ret.status_code, url, smart_content(ret.content))
 
         try:
             return ret.json()
-        except JSONDecodeError as e:
+        except (RequestsJSONDecodeError, JSONDecodeError) as e:
             if ret.status_code == 200:
                 if ret.content == b"":
                     return

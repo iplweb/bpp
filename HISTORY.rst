@@ -4,6 +4,15 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202502.1158 (2025-02-22)
+============================
+
+Usprawnienie
+------------
+
+- w przypadku nowych instalacji, włączaj domyślnie opcję "Wysyłaj zawsze PBN UID uczelni jako afiliację"
+
+
 Bpp 202502.1157 (2025-02-18)
 ============================
 

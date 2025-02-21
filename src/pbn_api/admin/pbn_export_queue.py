@@ -23,11 +23,12 @@ class PBN_Export_QueueAdmin(ReadOnlyListChangeFormAdminMixin, admin.ModelAdmin):
         "wysylke_zakonczono",
         "ilosc_prob",
         "zakonczono_pomyslnie",
+        "retry_after_user_authorised",
     ]
 
     search_fields = ["zamowil__username", "zamowil__email"]
 
-    list_filter = ["zamowil", "zakonczono_pomyslnie"]
+    list_filter = ["zamowil", "zakonczono_pomyslnie", "retry_after_user_authorised"]
 
     date_hierarchy = "zamowiono"
 
@@ -40,6 +41,7 @@ class PBN_Export_QueueAdmin(ReadOnlyListChangeFormAdminMixin, admin.ModelAdmin):
         "wysylke_zakonczono",
         "ilosc_prob",
         "zakonczono_pomyslnie",
+        "retry_after_user_authorised",
     ]
 
     def has_delete_permission(self, request, *args, **kw):

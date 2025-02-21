@@ -44,6 +44,13 @@ class TokenLandingPage(LoginRequiredMixin, RedirectView):
             user.save()
 
             transaction.on_commit(lambda: token_set_successfully.send(sender=user))
+            from pbn_api.tasks import kolejka_ponow_wysylke_prac_po_zalogowaniu
+
+            transaction.on_commit(
+                lambda user_pk=user.pk: kolejka_ponow_wysylke_prac_po_zalogowaniu.delay(
+                    user_pk
+                )
+            )
 
             messages.info(
                 self.request, "Autoryzacja w PBN API przeprowadzona pomyślnie."

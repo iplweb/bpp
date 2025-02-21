@@ -571,10 +571,6 @@ CELERYBEAT_SCHEDULE = {
         "task": "pbn_api.tasks.kolejka_wyczysc_wpisy_bez_rekordow",
         "schedule": timedelta(days=7),
     },
-    "pbn-api-kolejka-ponow-wyslanie-prac": {
-        "task": "pbn_api.tasks.kolejka_ponow_wysylke_prac",
-        "schedule": timedelta(minutes=15),
-    },
 }
 
 

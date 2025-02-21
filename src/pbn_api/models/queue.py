@@ -1,12 +1,19 @@
 import traceback
+from enum import Enum
 
 from django.db import models
 from django.db.models import PositiveIntegerField
 from django.urls import reverse
 from sentry_sdk import capture_exception
 
-from pbn_api.exceptions import AlreadyEnqueuedError
-from pbn_api.tasks import task_sprobuj_wyslac_do_pbn
+from pbn_api.exceptions import (
+    AccessDeniedException,
+    AlreadyEnqueuedError,
+    NeedsPBNAuthorisationException,
+    PKZeroExportDisabled,
+    PraceSerwisoweException,
+    ResourceLockedException,
+)
 
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
@@ -34,6 +41,17 @@ class PBN_Export_QueueManager(models.Manager):
         )
 
 
+class SendStatus(Enum):
+    RETRY_SOON = 0  # few seconds, 423 Locked
+    RETRY_LATER = 1  # few minutes
+    RETRY_MUCH_LATER = 2  # few hours, PraceSerwisoweExecption
+
+    RETRY_AFTER_USER_AUTHORISED = 3  # when user logs in + authorizes
+
+    FINISHED_OKAY = 5
+    FINISHED_ERROR = 6
+
+
 class PBN_Export_Queue(models.Model):
     objects = PBN_Export_QueueManager()
 
@@ -52,6 +70,10 @@ class PBN_Export_Queue(models.Model):
     zakonczono_pomyslnie = models.BooleanField(null=True, default=None, db_index=True)
     komunikat = models.TextField(null=True, blank=True)
 
+    retry_after_user_authorised = models.BooleanField(
+        null=True, default=None, db_index=True
+    )
+
     class Meta:
         verbose_name = "Kolejka eksportu do PBN"
         verbose_name_plural = "Kolejka eksportu do PBN"
@@ -68,7 +90,7 @@ class PBN_Export_Queue(models.Model):
     def dopisz_komunikat(self, msg):
         res = str(timezone.now())
         res += "\n" + "==============================================================="
-        res += "\n" + msg
+        res += "\n" + msg + "\n"
         if self.komunikat:
             self.komunikat = "\n" + res + "\n" + self.komunikat
         else:
@@ -79,22 +101,26 @@ class PBN_Export_Queue(models.Model):
         self.zakonczono_pomyslnie = False
         self.dopisz_komunikat(msg)
         self.save()
+        return SendStatus.FINISHED_ERROR
 
     def send_to_pbn(self):
+        """
+        :return: (int : SendStatus,)
+        """
+
         if not self.check_if_record_still_exists():
             if self.wysylke_zakonczono is not None:
                 raise Exception(
                     "System próbuje ponownie wysyłać rekordy, których wysyłać nie powinien"
                 )
 
-            self.wysylke_zakonczono = timezone.now()
-            self.zakonczono_pomyslnie = False
-            msg = "Rekord został usunięty nim wysyłka była możliwa."
-            self.dopisz_komunikat(msg)
-            self.save()
-            return msg
+            return self.error("Rekord został usunięty nim wysyłka była możliwa.")
 
         self.wysylke_podjeto = timezone.now()
+        if self.retry_after_user_authorised:
+            self.retry_after_user_authorised = (
+                None  # Zresetuj wartosc tego pola, rekord wysyłany n-ty raz
+            )
         self.ilosc_prob += 1
         self.save()
 
@@ -102,38 +128,51 @@ class PBN_Export_Queue(models.Model):
 
         try:
             sent_data, notificator = sprobuj_wgrac_do_pbn_celery(
-                user=self.zamowil,
+                user=self.zamowil.get_pbn_user(),
                 obj=self.rekord_do_wysylki,
                 force_upload=True,
             )
-        except Exception as e:
-            self.error(
-                "Wystąpił nieobsługiwany błąd, załączam traceback:\n"
-                + traceback.format_exc()
+        except PraceSerwisoweException:
+            self.dopisz_komunikat("Prace serwisowe w PBN, spróbuję za kilka godzin")
+            self.save()
+            return SendStatus.RETRY_MUCH_LATER
+
+        except NeedsPBNAuthorisationException:
+            self.dopisz_komunikat(
+                "Użytkownik bez autoryzacji w PBN, spróbuję po zalogowaniu do PBN."
             )
+            self.retry_after_user_authorised = True
+            self.save()
+            return SendStatus.RETRY_AFTER_USER_AUTHORISED
+
+        except AccessDeniedException:
+            return self.error(
+                "Brak uprawnień, załączam traceback:\n" + traceback.format_exc()
+            )
+            SendStatus.FINISHED_ERROR
+
+        except PKZeroExportDisabled:
+            self.error(
+                "Eksport prac bez punktów PK wyłączony w konfiguracji, nie wysłano."
+            )
+            return SendStatus.FINISHED_ERROR
+
+        except ResourceLockedException as e:
+            self.dopisz_komunikat(f"{e}, ponowiam wysyłkę za kilka minut...")
+            self.save()
+            return SendStatus.RETRY_LATER
+
+        except Exception as e:
             capture_exception(e)
-            return (
+            return self.error(
                 "Wystąpił nieobsługiwany błąd, załączam traceback:\n"
                 + traceback.format_exc()
             )
 
         if sent_data is None:
-            log = notificator.as_text()
-            if log.find("HttpException(423, '/api/v1/publications', 'Locked')"):
-                self.dopisz_komunikat("Http423 Locked, ponowie wysylke za 5 miunt...")
-                self.save()
-                task_sprobuj_wyslac_do_pbn.apply_async(args=[self.pk], countdown=5 * 60)
-                return "Http423 Locked, ponowie wysylke za 5 miunt..."
-
-            self.dopisz_komunikat(
-                "Rekord nie wysłany -- załączam log z próby. Zapewne zostaną podjęte kolejne.\n"
-                + log
-            )
-            self.save()
-
-            return (
-                "Rekord nie wysłany -- załączam log z próby. Zapewne zostaną podjęte kolejne.\n"
-                + log
+            return self.error(
+                "Wystąpił błąd, dane nie zostały wysłane, wyjaśnienie poniżej.\n\n"
+                + "\n".join(notificator)
             )
 
         msg = (
@@ -145,4 +184,5 @@ class PBN_Export_Queue(models.Model):
         self.dopisz_komunikat(msg)
         self.zakonczono_pomyslnie = True
         self.save()
-        return msg
+
+        return SendStatus.FINISHED_OKAY

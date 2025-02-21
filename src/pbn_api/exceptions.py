@@ -33,6 +33,10 @@ class HttpException(Exception):
             self.json = None
 
 
+class ResourceLockedException(HttpException):
+    pass
+
+
 class AccessDeniedException(Exception):
     def __init__(self, url, content):
         self.url = url
