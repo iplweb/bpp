@@ -128,7 +128,7 @@ class PBN_Export_Queue(models.Model):
 
         try:
             sent_data, notificator = sprobuj_wgrac_do_pbn_celery(
-                user=self.zamowil,
+                user=self.zamowil.get_pbn_user(),
                 obj=self.rekord_do_wysylki,
                 force_upload=True,
             )

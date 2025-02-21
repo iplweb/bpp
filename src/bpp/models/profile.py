@@ -46,6 +46,15 @@ class BppUser(AbstractUser, ModelZAdnotacjami):
     pbn_token = models.CharField(max_length=128, null=True, blank=True)
     pbn_token_updated = models.DateTimeField(null=True, blank=True)
 
+    przedstawiaj_w_pbn_jako = models.ForeignKey(
+        "bpp.BppUser",
+        blank=True,
+        null=True,
+        on_delete=models.SET_NULL,
+        help_text="Jeżeli wybrany użytkownik nie ma konta w PBNie, może nadal wysyłać prace jako inny użytkiownik "
+        "systemu BPP; wybierz konto z którego ma być wysyłane w tym polu. ",
+    )
+
     def pbn_token_possibly_valid(self):
         if (
             self.pbn_token is None
@@ -70,6 +79,21 @@ class BppUser(AbstractUser, ModelZAdnotacjami):
     @cached_property
     def cached_groups(self):
         return self.groups.all()
+
+    def clean(self):
+        if self.przedstawiaj_w_pbn_jako_id == self.pk:
+            from django.forms import ValidationError
+
+            raise ValidationError(
+                {
+                    "przedstawiaj_w_pbn_jako": "Nie ma potrzeby ustawiać tego pola jako linku do samego siebie. "
+                }
+            )
+
+    def get_pbn_user(self):
+        if self.przedstawiaj_w_pbn_jako_id:
+            return self.przedstawiaj_w_pbn_jako
+        return self
 
 
 # Uzupełnianie pól użytkownika na bazie LDAP:
