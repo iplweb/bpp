@@ -81,14 +81,15 @@ class BppUser(AbstractUser, ModelZAdnotacjami):
         return self.groups.all()
 
     def clean(self):
-        if self.przedstawiaj_w_pbn_jako_id == self.pk:
-            from django.forms import ValidationError
+        if self.pk is not None:
+            if self.przedstawiaj_w_pbn_jako_id == self.pk:
+                from django.forms import ValidationError
 
-            raise ValidationError(
-                {
-                    "przedstawiaj_w_pbn_jako": "Nie ma potrzeby ustawiać tego pola jako linku do samego siebie. "
-                }
-            )
+                raise ValidationError(
+                    {
+                        "przedstawiaj_w_pbn_jako": "Nie ma potrzeby ustawiać tego pola jako linku do samego siebie. "
+                    }
+                )
 
     def get_pbn_user(self):
         if self.przedstawiaj_w_pbn_jako_id:
