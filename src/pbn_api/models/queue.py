@@ -9,6 +9,7 @@ from sentry_sdk import capture_exception
 from pbn_api.exceptions import (
     AccessDeniedException,
     AlreadyEnqueuedError,
+    CharakterFormalnyNieobslugiwanyError,
     NeedsPBNAuthorisationException,
     PKZeroExportDisabled,
     PraceSerwisoweException,
@@ -124,7 +125,7 @@ class PBN_Export_Queue(models.Model):
         self.ilosc_prob += 1
         self.save()
 
-        from bpp.admin.helpers import sprobuj_wyslac_do_pbn_celery
+        from bpp.admin.helpers.pbn_api.cli import sprobuj_wyslac_do_pbn_celery
 
         try:
             sent_data, notificator = sprobuj_wyslac_do_pbn_celery(
@@ -145,11 +146,18 @@ class PBN_Export_Queue(models.Model):
             self.save()
             return SendStatus.RETRY_AFTER_USER_AUTHORISED
 
+        except CharakterFormalnyNieobslugiwanyError:
+            self.error(
+                "Charakter formalny tego rekordu nie jest ustawiony jako wysyłany do PBN. Zmień konfigurację "
+                "bazy BPP, Redagowanie -> Dane systemowe -> Charaktery formalne"
+            )
+            return SendStatus.FINISHED_ERROR
+
         except AccessDeniedException:
             return self.error(
                 "Brak uprawnień, załączam traceback:\n" + traceback.format_exc()
             )
-            SendStatus.FINISHED_ERROR
+            return SendStatus.FINISHED_ERROR
 
         except PKZeroExportDisabled:
             self.error(

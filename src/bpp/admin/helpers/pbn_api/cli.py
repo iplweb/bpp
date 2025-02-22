@@ -1,6 +1,5 @@
 from pbn_api.exceptions import (
     BrakZdefiniowanegoObiektuUczelniaWSystemieError,
-    CharakterFormalnyNieobslugiwanyError,
     NeedsPBNAuthorisationException,
 )
 
@@ -36,13 +35,7 @@ class TextNotificator:
 
 
 def sprobuj_wyslac_do_pbn_celery(user, obj, force_upload=False, pbn_client=None):
-    try:
-        sprawdz_czy_ustawiono_wysylke_tego_charakteru_formalnego(obj.charakter_formalny)
-    except CharakterFormalnyNieobslugiwanyError:
-        raise ValueError(
-            "Charakter formalny tego rekordu nie jest ustawiony jako wysyłany do PBN. Zmień konfigurację "
-            "bazy BPP, Redagowanie -> Dane systemowe -> Charaktery formalne"
-        )
+    sprawdz_czy_ustawiono_wysylke_tego_charakteru_formalnego(obj.charakter_formalny)
 
     try:
         uczelnia = sprawdz_wysylke_do_pbn_w_parametrach_uczelni(
@@ -53,9 +46,6 @@ def sprobuj_wyslac_do_pbn_celery(user, obj, force_upload=False, pbn_client=None)
 
     if uczelnia is False:
         raise ValueError("Wysyłka do PBN nie skonfigurowana w obiekcie Uczelnia")
-
-    if uczelnia is None:
-        return ValueError("Brak obiektu uczelnia w systemie")
 
     if user.pbn_token is None:
         raise NeedsPBNAuthorisationException(
