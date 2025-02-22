@@ -1,6 +1,6 @@
 from django.utils.translation import ngettext
 
-from bpp.admin.helpers import (
+from bpp.admin.helpers.pbn_api.gui import (
     sprobuj_utworzyc_zlecenie_eksportu_do_PBN_gui,
     sprobuj_wyslac_do_pbn_gui,
 )

@@ -23,7 +23,7 @@ from pbn_api.tests.utils import middleware
 
 from django.contrib.messages import get_messages
 
-from bpp.admin.helpers import sprobuj_wyslac_do_pbn_gui
+from bpp.admin.helpers.pbn_api.gui import sprobuj_wyslac_do_pbn_gui
 from bpp.decorators import json
 from bpp.models import Dyscyplina_Naukowa
 

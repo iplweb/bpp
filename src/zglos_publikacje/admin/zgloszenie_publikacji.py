@@ -16,7 +16,7 @@ from django.contrib import admin, messages
 from django.contrib.admin import helpers
 from django.contrib.admin.templatetags.admin_urls import add_preserved_filters
 
-from bpp.admin.helpers import MODEL_Z_OPLATA_ZA_PUBLIKACJE
+from bpp.admin.helpers.fieldsets import MODEL_Z_OPLATA_ZA_PUBLIKACJE
 
 
 class Zgloszenie_Publikacji_AutorInline(admin.StackedInline):

@@ -4,7 +4,7 @@ from pbn_api.models import SentData
 
 from django.contrib import admin
 
-from bpp.admin.helpers import sprobuj_wyslac_do_pbn_gui
+from bpp.admin.helpers.pbn_api.gui import sprobuj_wyslac_do_pbn_gui
 
 
 @admin.register(SentData)

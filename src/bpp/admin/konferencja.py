@@ -3,7 +3,7 @@ from django import forms
 from miniblog.admin import SmallerTextarea
 from ..models.konferencja import Konferencja
 from .core import BaseBppAdminMixin
-from .helpers import ADNOTACJE_FIELDSET
+from .helpers.fieldsets import ADNOTACJE_FIELDSET
 
 from django.contrib import admin
 

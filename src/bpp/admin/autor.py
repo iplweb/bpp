@@ -20,7 +20,8 @@ from .filters import (
     PBN_UID_IDObecnyFilter,
     PBNIDObecnyFilter,
 )
-from .helpers import ADNOTACJE_FIELDSET, CHARMAP_SINGLE_LINE, ZapiszZAdnotacjaMixin
+from .helpers.fieldsets import ADNOTACJE_FIELDSET, ZapiszZAdnotacjaMixin
+from .helpers.widgets import CHARMAP_SINGLE_LINE
 from .xlsx_export import resources
 from .xlsx_export.mixins import EksportDanychMixin
 
