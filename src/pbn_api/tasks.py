@@ -49,7 +49,18 @@ def kolejka_wyczysc_wpisy_bez_rekordow():
 def kolejka_ponow_wysylke_prac_po_zalogowaniu(pk):
     from pbn_api.models import PBN_Export_Queue
 
+    # Użytkownik o ID pk zalogował się.
+    # Odśwież do wysyłki prace które były jego po zalogowaniu
     for elem in PBN_Export_Queue.objects.filter(
         retry_after_user_authorised=True, zamowil_id=pk, wysylke_zakonczono=None
+    ):
+        task_sprobuj_wyslac_do_pbn.delay(elem.pk)
+
+    # ... ale i odświez prace wszystkich użytkowników, którzy mają jego konto
+    # jako konto do wysyłki:
+    for elem in PBN_Export_Queue.objects.filter(
+        retry_after_user_authorised=True,
+        zamowil__przedstawiaj_w_pbn_jako_id=pk,
+        wysylke_zakonczono=None,
     ):
         task_sprobuj_wyslac_do_pbn.delay(elem.pk)

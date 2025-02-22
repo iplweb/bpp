@@ -2,7 +2,7 @@ from django.utils.translation import ngettext
 
 from bpp.admin.helpers import (
     sprobuj_utworzyc_zlecenie_eksportu_do_PBN_gui,
-    sprobuj_wgrac_do_pbn_gui,
+    sprobuj_wyslac_do_pbn_gui,
 )
 from bpp.models import Status_Korekty
 
@@ -47,7 +47,7 @@ ustaw_w_trakcie_korekty.short_description = "Ustaw status korekty: w trakcie kor
 
 def wyslij_do_pbn(modeladmin, request, queryset):
     for elem in queryset:
-        sprobuj_wgrac_do_pbn_gui(request, elem)
+        sprobuj_wyslac_do_pbn_gui(request, elem)
 
 
 wyslij_do_pbn.short_description = "Wyślij do PBN"

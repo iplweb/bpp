@@ -519,7 +519,7 @@ class MessagesNotificator:
         messages.success(self.request, msg)
 
 
-def sprobuj_wgrac_do_pbn_gui(request, obj, force_upload=False, pbn_client=None):
+def sprobuj_wyslac_do_pbn_gui(request, obj, force_upload=False, pbn_client=None):
     if not sprawdz_czy_ustawiono_wysylke_tego_charakteru_formalnego_gui(request, obj):
         return
 
@@ -534,7 +534,7 @@ def sprobuj_wgrac_do_pbn_gui(request, obj, force_upload=False, pbn_client=None):
     if pbn_client is None:
         pbn_client = uczelnia.pbn_client(request.user.pbn_token)
 
-    sprobuj_wgrac_do_pbn(
+    sprobuj_wyslac_do_pbn(
         obj=obj,
         uczelnia=uczelnia,
         force_upload=force_upload,
@@ -543,7 +543,7 @@ def sprobuj_wgrac_do_pbn_gui(request, obj, force_upload=False, pbn_client=None):
     )
 
 
-def sprobuj_wgrac_do_pbn_celery(user, obj, force_upload=False, pbn_client=None):
+def sprobuj_wyslac_do_pbn_celery(user, obj, force_upload=False, pbn_client=None):
     try:
         sprawdz_czy_ustawiono_wysylke_tego_charakteru_formalnego(obj.charakter_formalny)
     except CharakterFormalnyNieobslugiwanyError:
@@ -575,7 +575,7 @@ def sprobuj_wgrac_do_pbn_celery(user, obj, force_upload=False, pbn_client=None):
 
     notificator = TextNotificator()
 
-    sent_data = sprobuj_wgrac_do_pbn(
+    sent_data = sprobuj_wyslac_do_pbn(
         obj=obj,
         uczelnia=uczelnia,
         force_upload=force_upload,
@@ -587,7 +587,7 @@ def sprobuj_wgrac_do_pbn_celery(user, obj, force_upload=False, pbn_client=None):
     return (sent_data, notificator.as_list())
 
 
-def sprobuj_wgrac_do_pbn(
+def sprobuj_wyslac_do_pbn(
     obj, pbn_client, uczelnia, notificator, force_upload=False, raise_exceptions=False
 ):
 
@@ -817,7 +817,7 @@ class OptionalPBNSaveMixin:
 
     def response_post_save_change(self, request, obj):
         if "_continue_and_pbn" in request.POST:
-            sprobuj_wgrac_do_pbn_gui(request, obj)
+            sprobuj_wyslac_do_pbn_gui(request, obj)
 
         elif "_continue_and_pbn_later" in request.POST:
             sprobuj_utworzyc_zlecenie_eksportu_do_PBN_gui(request, obj)

@@ -23,7 +23,7 @@ from pbn_api.tests.utils import middleware
 
 from django.contrib.messages import get_messages
 
-from bpp.admin.helpers import sprobuj_wgrac_do_pbn_gui
+from bpp.admin.helpers import sprobuj_wyslac_do_pbn_gui
 from bpp.decorators import json
 from bpp.models import Dyscyplina_Naukowa
 
@@ -216,7 +216,7 @@ def test_helpers_wysylka_z_zerowym_pk(
 
     # I jeszcze test z poziomu admina czy parametr z pbn_uczelnia jest przekazywany
     with middleware(req):
-        sprobuj_wgrac_do_pbn_gui(req, pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina)
+        sprobuj_wyslac_do_pbn_gui(req, pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina)
         msg = list(get_messages(req))
 
     assert "wyłączony w konfiguracji" in msg[0].message
@@ -260,7 +260,7 @@ def test_helpers_wysylka_z_uid_uczelni(
     req.user = admin_user
 
     with middleware(req):
-        sprobuj_wgrac_do_pbn_gui(req, pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina)
+        sprobuj_wyslac_do_pbn_gui(req, pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina)
         msg = list(get_messages(req))
 
     assert len(msg) == 1 and str(msg[0]).find("y zaktualizowane") > -1
@@ -309,7 +309,7 @@ def test_helpers_wysylka_bez_uid_uczelni(
     req.user = admin_user
 
     with middleware(req):
-        sprobuj_wgrac_do_pbn_gui(req, pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina)
+        sprobuj_wyslac_do_pbn_gui(req, pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina)
         msg = list(get_messages(req))
 
     assert len(msg) == 1 and str(msg[0]).find("y zaktualizowane") > -1

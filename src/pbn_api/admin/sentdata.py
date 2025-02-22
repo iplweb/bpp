@@ -4,7 +4,7 @@ from pbn_api.models import SentData
 
 from django.contrib import admin
 
-from bpp.admin.helpers import sprobuj_wgrac_do_pbn_gui
+from bpp.admin.helpers import sprobuj_wyslac_do_pbn_gui
 
 
 @admin.register(SentData)
@@ -39,7 +39,7 @@ class SentDataAdmin(BasePBNAPIAdminNoReadonly):
 
         for elem in qset:
             obj = elem.object
-            sprobuj_wgrac_do_pbn_gui(request, obj)
+            sprobuj_wyslac_do_pbn_gui(request, obj)
 
     wyslij_ponownie.short_description = "Wyślij ponownie (tylko błędne)"
 
@@ -48,7 +48,7 @@ class SentDataAdmin(BasePBNAPIAdminNoReadonly):
 
         for elem in qset:
             obj = elem.object
-            sprobuj_wgrac_do_pbn_gui(request, obj, force_upload=True)
+            sprobuj_wyslac_do_pbn_gui(request, obj, force_upload=True)
 
     wyslij_ponownie_force.short_description = (
         "Wyślij ponownie (wszystko; wymuś ponowny transfer)"

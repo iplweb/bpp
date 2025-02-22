@@ -124,10 +124,10 @@ class PBN_Export_Queue(models.Model):
         self.ilosc_prob += 1
         self.save()
 
-        from bpp.admin.helpers import sprobuj_wgrac_do_pbn_celery
+        from bpp.admin.helpers import sprobuj_wyslac_do_pbn_celery
 
         try:
-            sent_data, notificator = sprobuj_wgrac_do_pbn_celery(
+            sent_data, notificator = sprobuj_wyslac_do_pbn_celery(
                 user=self.zamowil.get_pbn_user(),
                 obj=self.rekord_do_wysylki,
                 force_upload=True,

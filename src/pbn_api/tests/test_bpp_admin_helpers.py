@@ -14,12 +14,12 @@ from pbn_api.tests.utils import middleware
 
 from django.contrib.messages import get_messages
 
-from bpp.admin.helpers import sprobuj_wgrac_do_pbn_gui
+from bpp.admin.helpers import sprobuj_wyslac_do_pbn_gui
 from bpp.models import Charakter_Formalny
 
 
 @pytest.mark.django_db
-def test_sprobuj_wgrac_do_pbn_charakter_zly(
+def test_sprobuj_wyslac_do_pbn_charakter_zly(
     rf,
     pbn_wydawnictwo_zwarte,
 ):
@@ -30,7 +30,7 @@ def test_sprobuj_wgrac_do_pbn_charakter_zly(
     )
 
     with middleware(req):
-        sprobuj_wgrac_do_pbn_gui(req, pbn_wydawnictwo_zwarte)
+        sprobuj_wyslac_do_pbn_gui(req, pbn_wydawnictwo_zwarte)
 
     msg = get_messages(req)
 
@@ -38,13 +38,13 @@ def test_sprobuj_wgrac_do_pbn_charakter_zly(
 
 
 @pytest.mark.django_db
-def test_sprobuj_wgrac_do_pbn_uczelnia_brak_obiektu(
+def test_sprobuj_wyslac_do_pbn_uczelnia_brak_obiektu(
     rf, pbn_wydawnictwo_zwarte_z_charakterem
 ):
     req = rf.get("/")
 
     with middleware(req):
-        sprobuj_wgrac_do_pbn_gui(req, pbn_wydawnictwo_zwarte_z_charakterem)
+        sprobuj_wyslac_do_pbn_gui(req, pbn_wydawnictwo_zwarte_z_charakterem)
 
     msg = get_messages(req)
 
@@ -52,7 +52,7 @@ def test_sprobuj_wgrac_do_pbn_uczelnia_brak_obiektu(
 
 
 @pytest.mark.django_db
-def test_sprobuj_wgrac_do_pbn_uczelnia_integracja_wylaczona(
+def test_sprobuj_wyslac_do_pbn_uczelnia_integracja_wylaczona(
     rf, pbn_wydawnictwo_zwarte_z_charakterem, uczelnia
 ):
     req = rf.get("/")
@@ -62,14 +62,14 @@ def test_sprobuj_wgrac_do_pbn_uczelnia_integracja_wylaczona(
     uczelnia.save()
 
     with middleware(req):
-        sprobuj_wgrac_do_pbn_gui(req, pbn_wydawnictwo_zwarte_z_charakterem)
+        sprobuj_wyslac_do_pbn_gui(req, pbn_wydawnictwo_zwarte_z_charakterem)
 
     msg = get_messages(req)
     assert len(msg) == 1
 
 
 @pytest.mark.django_db
-def test_sprobuj_wgrac_do_pbn_dane_juz_wyslane(
+def test_sprobuj_wyslac_do_pbn_dane_juz_wyslane(
     pbn_wydawnictwo_zwarte_z_charakterem, pbn_uczelnia, pbn_client, rf
 ):
     SentData.objects.updated(
@@ -80,7 +80,7 @@ def test_sprobuj_wgrac_do_pbn_dane_juz_wyslane(
     req = rf.get("/")
 
     with middleware(req):
-        sprobuj_wgrac_do_pbn_gui(
+        sprobuj_wyslac_do_pbn_gui(
             req, pbn_wydawnictwo_zwarte_z_charakterem, pbn_client=pbn_client
         )
 
@@ -89,7 +89,7 @@ def test_sprobuj_wgrac_do_pbn_dane_juz_wyslane(
 
 
 @pytest.mark.django_db
-def test_sprobuj_wgrac_do_pbn_access_denied(
+def test_sprobuj_wyslac_do_pbn_access_denied(
     pbn_wydawnictwo_zwarte_z_charakterem, pbn_client, rf, pbn_uczelnia
 ):
     req = rf.get("/")
@@ -99,7 +99,7 @@ def test_sprobuj_wgrac_do_pbn_access_denied(
     ] = AccessDeniedException(url="foo", content="testujemy")
 
     with middleware(req):
-        sprobuj_wgrac_do_pbn_gui(
+        sprobuj_wyslac_do_pbn_gui(
             req, pbn_wydawnictwo_zwarte_z_charakterem, pbn_client=pbn_client
         )
 
@@ -108,7 +108,7 @@ def test_sprobuj_wgrac_do_pbn_access_denied(
 
 
 @pytest.mark.django_db
-def test_sprobuj_wgrac_do_pbn_inny_exception(
+def test_sprobuj_wyslac_do_pbn_inny_exception(
     pbn_wydawnictwo_zwarte_z_charakterem, pbn_client, rf, pbn_uczelnia
 ):
     req = rf.get("/")
@@ -116,7 +116,7 @@ def test_sprobuj_wgrac_do_pbn_inny_exception(
     pbn_client.transport.return_values[PBN_POST_PUBLICATIONS_URL] = ZeroDivisionError
 
     with middleware(req):
-        sprobuj_wgrac_do_pbn_gui(
+        sprobuj_wyslac_do_pbn_gui(
             req, pbn_wydawnictwo_zwarte_z_charakterem, pbn_client=pbn_client
         )
 
@@ -125,7 +125,7 @@ def test_sprobuj_wgrac_do_pbn_inny_exception(
 
 
 @pytest.mark.django_db
-def test_sprobuj_wgrac_do_pbn_inny_blad(
+def test_sprobuj_wyslac_do_pbn_inny_blad(
     pbn_wydawnictwo_zwarte_z_charakterem, pbn_client, rf, pbn_uczelnia
 ):
     req = rf.get("/")
@@ -133,7 +133,7 @@ def test_sprobuj_wgrac_do_pbn_inny_blad(
     pbn_client.transport.return_values[PBN_POST_PUBLICATIONS_URL] = Exception("test")
 
     with middleware(req):
-        sprobuj_wgrac_do_pbn_gui(
+        sprobuj_wyslac_do_pbn_gui(
             req, pbn_wydawnictwo_zwarte_z_charakterem, pbn_client=pbn_client
         )
 
@@ -142,7 +142,7 @@ def test_sprobuj_wgrac_do_pbn_inny_blad(
 
 
 @pytest.mark.django_db
-def test_sprobuj_wgrac_do_pbn_sukces(
+def test_sprobuj_wyslac_do_pbn_sukces(
     pbn_wydawnictwo_zwarte_z_charakterem, pbn_client, rf, pbn_uczelnia
 ):
     req = rf.get("/")
@@ -156,7 +156,7 @@ def test_sprobuj_wgrac_do_pbn_sukces(
     ] = []
 
     with middleware(req):
-        sprobuj_wgrac_do_pbn_gui(
+        sprobuj_wyslac_do_pbn_gui(
             req, pbn_wydawnictwo_zwarte_z_charakterem, pbn_client=pbn_client
         )
 
