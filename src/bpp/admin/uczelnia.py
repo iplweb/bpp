@@ -6,7 +6,8 @@ from ..models import Uczelnia, Ukryj_Status_Korekty, Wydzial
 
 # Uczelnia
 from .core import BaseBppAdminMixin, RestrictDeletionToAdministracjaGroupMixin
-from .helpers import ADNOTACJE_FIELDSET, ZapiszZAdnotacjaMixin
+from .helpers.fieldsets import ADNOTACJE_FIELDSET
+from .helpers.mixins import ZapiszZAdnotacjaMixin
 
 from django.contrib import admin, messages
 

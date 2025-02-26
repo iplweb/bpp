@@ -211,6 +211,7 @@ class RaportSlotowEwaluacjaTable(RaportCommonMixin, tables.Table):
             "impact_factor",
             "kwartyl_w_wos",
             "kwartyl_w_scopus",
+            "licencja_openaccess",
             "autor",
             "aktualna_jednostka",
             "afiliowana_jednostka",
@@ -312,6 +313,9 @@ class RaportSlotowEwaluacjaTable(RaportCommonMixin, tables.Table):
     slot = SummingColumn("Slot")
 
     kwartyl_w_wos = Column("Kwartyl WoS", accessor="rekord.kwartyl_w_wos")
+    licencja_openaccess = Column(
+        "Licencja OpenAccess", accessor="rekord.openaccess_licencja"
+    )
     kwartyl_w_scopus = Column("Kwartyl SCOPUS", accessor="rekord.kwartyl_w_scopus")
 
     def render_liczba_autorow_z_dyscypliny(self, value):

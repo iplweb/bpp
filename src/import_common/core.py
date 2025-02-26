@@ -241,6 +241,36 @@ def matchuj_autora(
             ):
                 pass
 
+    # Jeżeli nie ma nadal jednego autora który spełnia te kryteria, spróbuj znaleźć konto
+    # z ORCIDem i tytułem. W przypadku importów z PBNu często było tak, że autorzy byli zdublowani, ale
+    # tylko jeden miał orcid i tytuł:
+
+    try:
+        return Autor.objects.get(
+            Q(
+                Q(nazwisko__iexact=nazwisko.strip())
+                | Q(poprzednie_nazwiska__icontains=nazwisko.strip()),
+                imiona__iexact=imiona.strip(),
+            ),
+            orcid__isnull=False,
+            tytul_id__isnull=False,
+        )
+    except (Autor.DoesNotExist, Autor.MultipleObjectsReturned):
+        pass
+
+    # .. albo tylko z tytułem:
+    try:
+        return Autor.objects.get(
+            Q(
+                Q(nazwisko__iexact=nazwisko.strip())
+                | Q(poprzednie_nazwiska__icontains=nazwisko.strip()),
+                imiona__iexact=imiona.strip(),
+            ),
+            tytul_id__isnull=False,
+        )
+    except (Autor.DoesNotExist, Autor.MultipleObjectsReturned):
+        pass
+
     return None
 
 

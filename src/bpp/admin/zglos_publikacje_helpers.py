@@ -1,10 +1,11 @@
 """Klasy pomocnicze dla klas ModelAdmin które chcą korzystać z parametru
 GET ``numer_zgloszenia`` czyli wypełniać dane wstępne wg zawartości zgłoszenia
-o danym numerze ID. """
+o danym numerze ID."""
+
 from django.utils import timezone
 
 from bpp import const
-from bpp.admin.helpers import MODEL_Z_OPLATA_ZA_PUBLIKACJE
+from bpp.admin.helpers.fieldsets import MODEL_Z_OPLATA_ZA_PUBLIKACJE
 
 
 class KorzystaZNumeruZgloszeniaMixin:

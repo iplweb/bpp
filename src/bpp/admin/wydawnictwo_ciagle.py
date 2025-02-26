@@ -25,12 +25,12 @@ from .crossref_api_helpers import (
 # Widget do automatycznego uzupełniania punktacji wydawnictwa ciągłego
 from .element_repozytorium import Element_RepozytoriumInline
 from .grant import Grant_RekorduInline
-from .helpers import (
+from .helpers import sprawdz_duplikaty_www_doi
+from .helpers.fieldsets import (
     MODEL_OPCJONALNIE_NIE_EKSPORTOWANY_DO_API_FIELDSET,
     MODEL_Z_OPLATA_ZA_PUBLIKACJE_FIELDSET,
-    OptionalPBNSaveMixin,
-    sprawdz_duplikaty_www_doi,
 )
+from .helpers.mixins import OptionalPBNSaveMixin
 from .xlsx_export import resources
 from .xlsx_export.mixins import EksportDanychMixin
 from .zglos_publikacje_helpers import UzupelniajWstepneDanePoNumerzeZgloszeniaMixin
@@ -46,7 +46,7 @@ from bpp.admin.filters import (
     PBN_UID_IDObecnyFilter,
     UtworzonePrzezFilter,
 )
-from bpp.admin.helpers import (
+from bpp.admin.helpers.fieldsets import (
     ADNOTACJE_Z_DATAMI_ORAZ_PBN_FIELDSET,
     DWA_TYTULY,
     EKSTRA_INFORMACJE_WYDAWNICTWO_CIAGLE_FIELDSET,
@@ -54,15 +54,15 @@ from bpp.admin.helpers import (
     MODEL_TYPOWANY_FIELDSET,
     MODEL_Z_ROKIEM,
     MODEL_ZE_SZCZEGOLAMI,
-    NIZSZE_TEXTFIELD_Z_MAPA_ZNAKOW,
     OPENACCESS_FIELDSET,
     POZOSTALE_MODELE_WYDAWNICTWO_CIAGLE_FIELDSET,
     PRACA_WYBITNA_FIELDSET,
     PRZED_PO_LISCIE_AUTOROW_FIELDSET,
     AdnotacjeZDatamiOrazPBNMixin,
-    DomyslnyStatusKorektyMixin,
-    sprobuj_policzyc_sloty,
 )
+from bpp.admin.helpers.mixins import DomyslnyStatusKorektyMixin
+from bpp.admin.helpers.pbn_api.gui import sprobuj_policzyc_sloty
+from bpp.admin.helpers.widgets import NIZSZE_TEXTFIELD_Z_MAPA_ZNAKOW
 from bpp.admin.nagroda import NagrodaInline
 from bpp.models import (  # Publikacja_Habilitacyjna
     Charakter_Formalny,

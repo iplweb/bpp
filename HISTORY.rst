@@ -4,6 +4,16 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202502.1159 (2025-02-27)
+============================
+
+Usprawnienie
+------------
+
+- ostrzegaj w przypadku wysyłki PBN, jeżeli autor z dyscypliną nie posiada odpowiednika w PBN
+- pokazuj wartość licencji OpenAccess w raporcie uczelnia - ewaluacja
+
+
 Bpp 202502.1158 (2025-02-22)
 ============================
 

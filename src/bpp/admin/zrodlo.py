@@ -13,12 +13,9 @@ from ..models import (  # Publikacja_Habilitacyjna
 )
 from .core import BaseBppAdminMixin
 from .filters import PBN_UID_IDObecnyFilter
-from .helpers import (
-    ADNOTACJE_FIELDSET,
-    CHARMAP_SINGLE_LINE,
-    MODEL_PUNKTOWANY_Z_KWARTYLAMI_BAZA,
-    ZapiszZAdnotacjaMixin,
-)
+from .helpers.fieldsets import ADNOTACJE_FIELDSET, MODEL_PUNKTOWANY_Z_KWARTYLAMI_BAZA
+from .helpers.mixins import ZapiszZAdnotacjaMixin
+from .helpers.widgets import CHARMAP_SINGLE_LINE
 
 from django.contrib import admin
 

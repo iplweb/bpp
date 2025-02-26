@@ -21,7 +21,8 @@ from .crossref_api_helpers import (
 )
 from .element_repozytorium import Element_RepozytoriumInline
 from .grant import Grant_RekorduInline
-from .helpers import OptionalPBNSaveMixin, sprawdz_duplikaty_www_doi
+from .helpers import sprawdz_duplikaty_www_doi
+from .helpers.mixins import OptionalPBNSaveMixin
 from .nagroda import NagrodaInline
 
 # Proste tabele
@@ -43,6 +44,7 @@ from bpp.admin.filters import (
     PBN_UID_IDObecnyFilter,
     UtworzonePrzezFilter,
 )
+from bpp.admin.helpers import fieldsets
 from bpp.models import (
     Charakter_Formalny,
     Wydawca,
@@ -64,7 +66,7 @@ class Wydawnictwo_Zwarte_StreszczenieInline(
 
 
 class Wydawnictwo_ZwarteAdmin_Baza(BaseBppAdminMixin, admin.ModelAdmin):
-    formfield_overrides = helpers.NIZSZE_TEXTFIELD_Z_MAPA_ZNAKOW
+    formfield_overrides = helpers.widgets.NIZSZE_TEXTFIELD_Z_MAPA_ZNAKOW
 
     actions = [
         ustaw_po_korekcie,
@@ -161,7 +163,9 @@ class Wydawnictwo_ZwarteAdmin_Baza(BaseBppAdminMixin, admin.ModelAdmin):
 
 
 class Wydawnictwo_ZwarteForm(
-    helpers.Wycinaj_W_z_InformacjiMixin, CleanDOIWWWPublicWWWMixin, forms.ModelForm
+    helpers.mixins.Wycinaj_W_z_InformacjiMixin,
+    CleanDOIWWWPublicWWWMixin,
+    forms.ModelForm,
 ):
     wydawnictwo_nadrzedne = forms.ModelChoiceField(
         required=False,
@@ -210,7 +214,7 @@ class Wydawnictwo_ZwarteForm(
         required=True, queryset=Charakter_Formalny.objects.all()
     )
 
-    status_korekty = helpers.DomyslnyStatusKorektyMixin.status_korekty
+    status_korekty = helpers.mixins.DomyslnyStatusKorektyMixin.status_korekty
 
     class Meta:
         fields = "__all__"
@@ -235,7 +239,7 @@ class Wydawnictwo_Zwarte_Zewnetrzna_Baza_DanychInline(admin.StackedInline):
 class Wydawnictwo_ZwarteAdmin(
     DjangoQLSearchMixin,
     KolumnyZeSkrotamiMixin,
-    helpers.AdnotacjeZDatamiOrazPBNMixin,
+    helpers.mixins.AdnotacjeZDatamiOrazPBNMixin,
     OptionalPBNSaveMixin,
     EksportDanychMixin,
     UzupelniajWstepneDanePoNumerzeZgloszeniaMixin,
@@ -290,8 +294,8 @@ class Wydawnictwo_ZwarteAdmin(
         (
             "Wydawnictwo zwarte",
             {
-                "fields": helpers.DWA_TYTULY
-                + helpers.MODEL_ZE_SZCZEGOLAMI
+                "fields": fieldsets.DWA_TYTULY
+                + fieldsets.MODEL_ZE_SZCZEGOLAMI
                 + (
                     "wydawnictwo_nadrzedne",
                     "konferencja",
@@ -302,21 +306,21 @@ class Wydawnictwo_ZwarteAdmin(
                     "wydawca",
                     "wydawca_opis",
                 )
-                + helpers.MODEL_Z_ISBN
-                + helpers.MODEL_Z_ROKIEM
+                + fieldsets.MODEL_Z_ISBN
+                + fieldsets.MODEL_Z_ROKIEM
             },
         ),
-        helpers.SERIA_WYDAWNICZA_FIELDSET,
-        helpers.EKSTRA_INFORMACJE_WYDAWNICTWO_ZWARTE_FIELDSET,
-        helpers.MODEL_TYPOWANY_FIELDSET,
-        helpers.MODEL_PUNKTOWANY_FIELDSET,
-        helpers.POZOSTALE_MODELE_WYDAWNICTWO_ZWARTE_FIELDSET,
-        helpers.ADNOTACJE_Z_DATAMI_ORAZ_PBN_FIELDSET,
-        helpers.MODEL_OPCJONALNIE_NIE_EKSPORTOWANY_DO_API_FIELDSET,
-        helpers.OPENACCESS_FIELDSET,
-        helpers.PRACA_WYBITNA_FIELDSET,
-        helpers.PRZED_PO_LISCIE_AUTOROW_FIELDSET,
-        helpers.MODEL_Z_OPLATA_ZA_PUBLIKACJE_FIELDSET,
+        fieldsets.SERIA_WYDAWNICZA_FIELDSET,
+        fieldsets.EKSTRA_INFORMACJE_WYDAWNICTWO_ZWARTE_FIELDSET,
+        fieldsets.MODEL_TYPOWANY_FIELDSET,
+        fieldsets.MODEL_PUNKTOWANY_FIELDSET,
+        fieldsets.POZOSTALE_MODELE_WYDAWNICTWO_ZWARTE_FIELDSET,
+        fieldsets.ADNOTACJE_Z_DATAMI_ORAZ_PBN_FIELDSET,
+        fieldsets.MODEL_OPCJONALNIE_NIE_EKSPORTOWANY_DO_API_FIELDSET,
+        fieldsets.OPENACCESS_FIELDSET,
+        fieldsets.PRACA_WYBITNA_FIELDSET,
+        fieldsets.PRZED_PO_LISCIE_AUTOROW_FIELDSET,
+        fieldsets.MODEL_Z_OPLATA_ZA_PUBLIKACJE_FIELDSET,
     )
 
     def save_model(self, request, obj, form, change):
@@ -332,7 +336,7 @@ class Wydawnictwo_ZwarteAdmin(
                 % helpers.link_do_obiektu(obj),
             )
         else:
-            helpers.sprobuj_policzyc_sloty(request, obj)
+            helpers.pbn_api.gui.sprobuj_policzyc_sloty(request, obj)
 
         sprawdz_duplikaty_www_doi(request, obj)
 

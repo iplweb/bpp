@@ -9,7 +9,7 @@ from taggit.forms import TextareaTagWidget
 
 from .element_repozytorium import Element_RepozytoriumInline
 from .grant import Grant_RekorduInline
-from .helpers import (
+from .helpers.fieldsets import (
     ADNOTACJE_Z_DATAMI_FIELDSET,
     DWA_TYTULY,
     EKSTRA_INFORMACJE_DOKTORSKA_HABILITACYJNA_FIELDSET,
@@ -21,9 +21,8 @@ from .helpers import (
     MODEL_Z_ROKIEM,
     MODEL_ZE_SZCZEGOLAMI,
     POZOSTALE_MODELE_FIELDSET,
-    DomyslnyStatusKorektyMixin,
-    Wycinaj_W_z_InformacjiMixin,
 )
+from .helpers.mixins import DomyslnyStatusKorektyMixin, Wycinaj_W_z_InformacjiMixin
 from .praca_doktorska import Praca_Doktorska_Habilitacyjna_Admin_Base
 
 #

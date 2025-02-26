@@ -9,6 +9,7 @@ from sentry_sdk import capture_exception
 from pbn_api.exceptions import (
     AccessDeniedException,
     AlreadyEnqueuedError,
+    CharakterFormalnyNieobslugiwanyError,
     NeedsPBNAuthorisationException,
     PKZeroExportDisabled,
     PraceSerwisoweException,
@@ -124,10 +125,10 @@ class PBN_Export_Queue(models.Model):
         self.ilosc_prob += 1
         self.save()
 
-        from bpp.admin.helpers import sprobuj_wgrac_do_pbn_celery
+        from bpp.admin.helpers.pbn_api.cli import sprobuj_wyslac_do_pbn_celery
 
         try:
-            sent_data, notificator = sprobuj_wgrac_do_pbn_celery(
+            sent_data, notificator = sprobuj_wyslac_do_pbn_celery(
                 user=self.zamowil.get_pbn_user(),
                 obj=self.rekord_do_wysylki,
                 force_upload=True,
@@ -145,11 +146,18 @@ class PBN_Export_Queue(models.Model):
             self.save()
             return SendStatus.RETRY_AFTER_USER_AUTHORISED
 
+        except CharakterFormalnyNieobslugiwanyError:
+            self.error(
+                "Charakter formalny tego rekordu nie jest ustawiony jako wysyłany do PBN. Zmień konfigurację "
+                "bazy BPP, Redagowanie -> Dane systemowe -> Charaktery formalne"
+            )
+            return SendStatus.FINISHED_ERROR
+
         except AccessDeniedException:
             return self.error(
                 "Brak uprawnień, załączam traceback:\n" + traceback.format_exc()
             )
-            SendStatus.FINISHED_ERROR
+            return SendStatus.FINISHED_ERROR
 
         except PKZeroExportDisabled:
             self.error(
@@ -178,8 +186,14 @@ class PBN_Export_Queue(models.Model):
         msg = (
             "Wysłano poprawnie. Link do wysłanego kodu JSON <a href="
             + reverse("admin:pbn_api_sentdata_change", args=[sent_data.pk])
-            + ">tutaj</a>"
+            + ">tutaj</a>. "
         )
+        extra_info = "\n".join(notificator)
+        # Jeżeli notyfikator zawiera cokolwiek, a może zawierać np ostrzeżenia czy uwagi do
+        # wysłanego rekordu to dołącz to
+        if extra_info:
+            msg += "\n\nDodatkowe informacje:\n" + extra_info
+
         self.wysylke_zakonczono = timezone.now()
         self.dopisz_komunikat(msg)
         self.zakonczono_pomyslnie = True

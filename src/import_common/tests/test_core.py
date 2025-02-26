@@ -105,10 +105,11 @@ def test_matchuj_autora_po_tytule():
         imiona="Jan",
         nazwisko="Kowalski",
     )
-    assert a is None
+    # Jeżeli szukamy autora a jest podobny w systemie to matchuj tego ktory ma tytuł lub orcid
+    assert a.pk == a1.pk
 
     a = matchuj_autora(imiona="Jan", nazwisko="Kowalski", tytul_str="lol.")
-    assert a == a1
+    assert a.pk == a1.pk
 
 
 @pytest.mark.django_db

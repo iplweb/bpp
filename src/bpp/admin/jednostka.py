@@ -7,7 +7,9 @@ from mptt.admin import DraggableMPTTAdmin
 from ..models.struktura import Jednostka, Jednostka_Wydzial
 from .core import BaseBppAdminMixin, RestrictDeletionToAdministracjaGroupMixin
 from .filters import PBN_UID_IDObecnyFilter
-from .helpers import ADNOTACJE_FIELDSET, LimitingFormset, ZapiszZAdnotacjaMixin
+from .helpers import LimitingFormset
+from .helpers.fieldsets import ADNOTACJE_FIELDSET
+from .helpers.mixins import ZapiszZAdnotacjaMixin
 
 from django.contrib import admin
 
