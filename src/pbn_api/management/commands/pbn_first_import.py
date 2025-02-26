@@ -37,6 +37,22 @@ from bpp.models import (
 )
 
 
+def zrob_skrot(s: str):
+    res = ""
+    for elem in s:
+        if elem.isspace():
+            continue
+
+        if not elem.isalnum():
+            res += elem
+            continue
+
+        if elem.isupper():
+            res += elem
+
+    return res
+
+
 class Command(PBNBaseCommand):
     def send_progress(self, msg):
         print(msg)
@@ -53,6 +69,8 @@ class Command(PBNBaseCommand):
         parser.add_argument("--disable-autorzy", action="store_true", default=False),
         parser.add_argument("--disable-publikacje", action="store_true", default=False),
         parser.add_argument("--disable-oplaty", action="store_true", default=False),
+        parser.add_argument("--wydzial-domyslny", default="Wydział Domyślny"),
+        parser.add_argument("--wydzial-domyslny-skrot", default=None),
         parser.add_argument(
             "--disable-oswiadczenia", action="store_true", default=False
         ),
@@ -71,6 +89,8 @@ class Command(PBNBaseCommand):
         disable_publikacje,
         disable_oplaty,
         disable_oswiadczenia,
+        wydzial_domyslny,
+        wydzial_domyslny_skrot,
         *args,
         **kw,
     ):
@@ -125,7 +145,9 @@ class Command(PBNBaseCommand):
             pobierz_oswiadczenia_z_instytucji(client)
 
             wydzial = Wydzial.objects.get_or_create(
-                nazwa="Wydział Domyślny", skrot="WD", uczelnia=Uczelnia.objects.default
+                nazwa=wydzial_domyslny,
+                skrot=wydzial_domyslny_skrot or zrob_skrot(wydzial_domyslny),
+                uczelnia=Uczelnia.objects.default,
             )[0]
 
             jednostka = Jednostka.objects.get_or_create(
