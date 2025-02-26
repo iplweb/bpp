@@ -176,9 +176,12 @@ def pbn_wydawnictwo_zwarte_z_charakterem(
 
 @pytest.fixture
 def pbn_uczelnia(pbn_client) -> Uczelnia:
-    uczelnia = baker.make(
-        Uczelnia,
-    )
+
+    uczelnia = Uczelnia.objects.get_default()
+    if uczelnia is None:
+        uczelnia = baker.make(
+            Uczelnia,
+        )
 
     uczelnia.pbn_client = lambda *args, **kw: pbn_client
     pbn_client.transport.return_values[PBN_GET_LANGUAGES_URL] = {"1": "23"}

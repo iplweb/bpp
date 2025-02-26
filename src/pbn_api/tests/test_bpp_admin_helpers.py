@@ -162,3 +162,40 @@ def test_sprobuj_wyslac_do_pbn_sukces(
 
     msg = get_messages(req)
     assert "zostały zaktualizowane" in list(msg)[0].message
+
+
+@pytest.mark.django_db
+def test_sprobuj_wyslac_do_pbn_ostrzezenie_brak_dyscypliny_autora(
+    pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina, pbn_client, rf, pbn_uczelnia
+):
+    req = rf.get("/")
+
+    for wza in pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.autorzy_set.all():
+        wza.afiliuje = True
+        wza.przypieta = True
+        wza.save()
+
+        jednostka = wza.jednostka
+        jednostka.skupia_pracownikow = True
+        jednostka.save()
+
+        autor = wza.autor
+        autor.pbn_uid = None
+        autor.pbn_uid_id = None
+        autor.save()
+
+    pbn_client.transport.return_values[PBN_POST_PUBLICATIONS_URL] = {"objectId": "123"}
+    pbn_client.transport.return_values[
+        PBN_GET_PUBLICATION_BY_ID_URL.format(id="123")
+    ] = MOCK_RETURNED_MONGODB_DATA
+    pbn_client.transport.return_values[
+        PBN_GET_INSTITUTION_STATEMENTS + "?publicationId=123&size=5120"
+    ] = []
+
+    with middleware(req):
+        sprobuj_wyslac_do_pbn_gui(
+            req, pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina, pbn_client=pbn_client
+        )
+
+    msg = get_messages(req)
+    assert "nie zostanie oświadczona" in list(msg)[0].message

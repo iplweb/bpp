@@ -124,6 +124,24 @@ def sprobuj_wyslac_do_pbn(
                     "PBN dla wydawnictwa nadrzędnego ręcznie. ",
                 )
 
+    #
+    # Sprawdź, czy każdy autor z dyscypliną ma odpowiednik w PBN, jeżeli nie -- wyświetl ostrzeżenie
+    #
+
+    for autor in (
+        obj.autorzy_set.exclude(dyscyplina_naukowa=None)
+        .exclude(jednostka__skupia_pracownikow=False)
+        .exclude(afiliuje=False)
+        .exclude(przypieta=False)
+        .filter(autor__pbn_uid_id=None)
+    ):
+        url = reverse("admin:bpp_autor_change", args=(autor.autor_id,))
+        notificator.warning(
+            f"Autor {autor} ma w tej pracy przypiętą dyscyplinę i afiluje, ale nie "
+            f"zostanie oświadczona w PBN, gdyż autor nie posiada odpowiednika w PBN. <a href={url} target=_blank>"
+            f"Kliknij tutaj</a> aby wyedytować tego autora. "
+        )
+
     try:
         pbn_client.sync_publication(
             obj,
