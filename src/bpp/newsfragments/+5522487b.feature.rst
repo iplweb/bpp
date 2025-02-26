@@ -1,2 +1,0 @@
-
-ostrzegaj w przypadku wysyłki PBN, jeżeli autor z dyscypliną nie posiada odpowiednika w PBN
