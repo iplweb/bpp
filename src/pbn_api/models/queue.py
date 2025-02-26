@@ -186,8 +186,14 @@ class PBN_Export_Queue(models.Model):
         msg = (
             "Wysłano poprawnie. Link do wysłanego kodu JSON <a href="
             + reverse("admin:pbn_api_sentdata_change", args=[sent_data.pk])
-            + ">tutaj</a>"
+            + ">tutaj</a>. "
         )
+        extra_info = "\n".join(notificator)
+        # Jeżeli notyfikator zawiera cokolwiek, a może zawierać np ostrzeżenia czy uwagi do
+        # wysłanego rekordu to dołącz to
+        if extra_info:
+            msg += "\n\nDodatkowe informacje:\n" + extra_info
+
         self.wysylke_zakonczono = timezone.now()
         self.dopisz_komunikat(msg)
         self.zakonczono_pomyslnie = True
