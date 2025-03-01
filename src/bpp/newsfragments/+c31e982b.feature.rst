@@ -1,0 +1,2 @@
+
+umożliwiaj dla wydawnictw zwartych wprowadzanie "okładek" z PBNu czyli wydawnictw nadrzędnych tylko w PBN
