@@ -474,7 +474,7 @@ class InstitutionsMixin:
 
 class InstitutionsProfileMixin:
     # XXX: wymaga autoryzacji
-    def get_institution_publications(self, page_size=10):
+    def get_institution_publications(self, page_size=10) -> PageableResource:
         return self.transport.get_pages(
             "/api/v1/institutionProfile/publications/page", page_size=page_size
         )

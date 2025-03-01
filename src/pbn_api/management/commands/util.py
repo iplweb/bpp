@@ -22,7 +22,7 @@ class PBNBaseCommand(BaseCommand):
                 app_token = uczelnia.pbn_app_token
             if uczelnia.pbn_api_root:
                 base_url = uczelnia.pbn_api_root
-            if uczelnia.pbn_api_user_id:
+            if uczelnia.pbn_api_user_id is not None:
                 user_token = uczelnia.pbn_api_user.pbn_token
 
         parser.add_argument("--app-id", default=app_id)
