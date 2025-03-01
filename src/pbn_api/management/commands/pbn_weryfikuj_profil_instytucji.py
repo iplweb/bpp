@@ -23,9 +23,6 @@ class Command(PBNBaseCommand):
         page_data: PageableResource = client.get_institution_publications(page_size=5)
         pages = simple_page_getter(client, page_data, skip_page_on_failure=True)
 
-        # manager = enlighten.Manager()
-        # pbar = manager.counter(total=page_data.total_pages, desc="Strony")
-
         print(
             "   Tytuł;Status PBN;PBN UID;DOI;Rok;BPP ID 1;BPP PBN ID 1;BPP ID 2;BPP PBN ID 2"
         )
