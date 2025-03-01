@@ -9,16 +9,19 @@ from bpp.models import Rekord
 
 
 class Command(PBNBaseCommand):
+    """Pozwala na zweryfikowanie tego, co znajduje się na profilu instytucji. Realnie, zwraca
+    w formacie CSV prace, których odpowiedników NIE ma w BPP, następnie wyszukuje rekordy
+    o identycznym tytule i ewentualnie pokazuje, ze są w BPP (i jakie mają PBN UIDy)
+    """
+
     def handle(
         self, app_id, app_token, base_url, user_token, command=None, *args, **options
     ):
         widziane = set()
         client = self.get_client(app_id, app_token, base_url, user_token)
 
-        page_data: PageableResource = client.get_institution_publications(
-            page_size=1000
-        )
-        pages = simple_page_getter(client, page_data)
+        page_data: PageableResource = client.get_institution_publications(page_size=5)
+        pages = simple_page_getter(client, page_data, skip_page_on_failure=True)
 
         # manager = enlighten.Manager()
         # pbar = manager.counter(total=page_data.total_pages, desc="Strony")
