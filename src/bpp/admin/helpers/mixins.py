@@ -82,3 +82,11 @@ class OptionalPBNSaveMixin:
         from django.http import HttpResponseRedirect
 
         return HttpResponseRedirect(post_url)
+
+
+class RestrictDeletionWhenPBNUIDSetMixin:
+    def has_delete_permission(self, request, obj=None):
+        if obj is not None:
+            if obj.pbn_uid_id is not None:
+                return False
+        return super().has_delete_permission(request, obj)

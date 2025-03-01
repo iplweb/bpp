@@ -22,7 +22,7 @@ from .crossref_api_helpers import (
 from .element_repozytorium import Element_RepozytoriumInline
 from .grant import Grant_RekorduInline
 from .helpers import sprawdz_duplikaty_www_doi
-from .helpers.mixins import OptionalPBNSaveMixin
+from .helpers.mixins import OptionalPBNSaveMixin, RestrictDeletionWhenPBNUIDSetMixin
 from .nagroda import NagrodaInline
 
 # Proste tabele
@@ -246,6 +246,7 @@ class Wydawnictwo_ZwarteAdmin(
     UzupelniajWstepneDanePoCrossRefAPIMixin,
     DynamicColumnsMixin,
     AdminCrossrefAPIMixin,
+    RestrictDeletionWhenPBNUIDSetMixin,
     Wydawnictwo_ZwarteAdmin_Baza,
 ):
     change_list_template = "admin/bpp/wydawnictwo_zwarte/change_list.html"
