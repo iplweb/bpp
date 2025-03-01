@@ -216,6 +216,7 @@ twisted = {extras = ["http2", "tls"], version = "^24.3.0"}
 psycopg2 = "^2.9.9"
 django-dbtemplates = "^4.0"
 django-soft-delete = "^1.0.15"
+tqdm = "^4.67.1"
 
 [tool.poetry.group.dev.dependencies]
 bumpver = "^2023.1124"
