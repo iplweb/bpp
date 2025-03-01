@@ -1,3 +1,4 @@
+import re
 from collections import defaultdict
 from typing import Generator, List
 
@@ -206,3 +207,38 @@ def rename_duplicate_columns(s: List[str], marker: str = "_") -> List[str]:
             ret.append(f"{elem}{marker}{no_seen}")
         seen[elem] += 1
     return ret
+
+
+doi_regexp = re.compile("10.\\d{4,9}/[-._;()/:A-Za-z0-9]+")
+
+
+def strip_doi_urls(s: str) -> str:
+    if not s:
+        return
+
+    return (
+        s.replace("https://dx.doi.org/", "")
+        .replace("http://dx.doi.org/", "")
+        .replace("https://doi.org/", "")
+        .replace("http://doi.org/", "")
+        .replace("dx.doi.org/", "")
+        .replace("doi.org/", "")
+        .strip()
+    )
+
+
+def check_if_doi(s: str):
+    """Sprawdza, czy wpisany ciąg znaków to może być DOI, POD WARUNKIEM że
+    numeryczne DOI jest na początku (bez spacji itp)"""
+
+    if not s:
+        return False
+
+    s = strip_doi_urls(s)
+
+    ret = doi_regexp.search(s)
+    if ret is not None:
+        if ret.span()[0] == 0:
+            return True
+
+    return False
