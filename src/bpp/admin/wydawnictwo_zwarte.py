@@ -170,8 +170,24 @@ class Wydawnictwo_ZwarteForm(
     wydawnictwo_nadrzedne = forms.ModelChoiceField(
         required=False,
         queryset=Wydawnictwo_Zwarte.objects.all(),
+        label="Wydawnictwo nadrzędne",
         widget=autocomplete.ModelSelect2(
             url="bpp:wydawnictwo-nadrzedne-autocomplete",
+            attrs=dict(style="width: 746px;"),
+        ),
+    )
+
+    wydawnictwo_nadrzedne_w_pbn = forms.ModelChoiceField(
+        required=False,
+        queryset=Publication.objects.all(),
+        label="Wydawnictwo nadrzędne w PBN",
+        help_text="""Jeżeli ten rekord to rozdział, a redakcja książki nie jest z obecnej instytucji, możesz uzupełnić
+    to pole, aby móc wysłać 'swój' rozdział do PBNu i jednocześnie nie musieć dodawać do bazy BPP 'cudzej' książki.
+    Innymi słowy, jeżeli 'okładki' dla Twojego rozdziału znajdują się w PBN i nie chcesz ich dodawać do BPP,
+    to skorzystaj z tego pola. Jeżeli jednak wypełnisz to pole, to musisz pozostawić oryginalne
+    'Wydawnictwo nadrzędne' puste. """,
+        widget=autocomplete.ModelSelect2(
+            url="bpp:wydawnictwo-nadrzedne-w-pbn-autocomplete",
             attrs=dict(style="width: 746px;"),
         ),
     )
@@ -299,6 +315,7 @@ class Wydawnictwo_ZwarteAdmin(
                 + fieldsets.MODEL_ZE_SZCZEGOLAMI
                 + (
                     "wydawnictwo_nadrzedne",
+                    "wydawnictwo_nadrzedne_w_pbn",
                     "konferencja",
                     "calkowita_liczba_autorow",
                     "calkowita_liczba_redaktorow",
