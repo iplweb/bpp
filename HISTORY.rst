@@ -4,6 +4,17 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202503.1160 (2025-03-02)
+============================
+
+Usprawnienie
+------------
+
+- umożliwiaj dla wydawnictw zwartych wprowadzanie "okładek" z PBNu czyli wydawnictw nadrzędnych tylko w PBN
+- uszczelnianie PBN UID: odmawiaj ustawienia istniejącego PBN UID dla nowego rekordu (dublowanie PBN UID) oraz ostrzegaj, gdy PBN UID dla rekordu jest modyfikowany (czyli rekord ma PBN UID i po wysyłce wg odpowiedzi z PBNu powinien być ten UID inny...)
+- wyłącz bezpośrednią modyfikację pola PBN UID
+
+
 Bpp 202502.1159 (2025-02-27)
 ============================
 
