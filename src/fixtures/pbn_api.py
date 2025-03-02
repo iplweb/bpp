@@ -12,12 +12,14 @@ from bpp import const
 from bpp.const import RODZAJ_PBN_KSIAZKA
 from bpp.models import Charakter_Formalny, Jezyk, Uczelnia, Wydawnictwo_Ciagle
 
+MOCK_MONGO_ID = "123"
+
 MOCK_RETURNED_MONGODB_DATA = dict(
     status="foo",
     verificationLevel="bar",
     verified=True,
     versions=[{"current": True, "baz": "quux"}],
-    mongoId="123",
+    mongoId=MOCK_MONGO_ID,
 )
 
 

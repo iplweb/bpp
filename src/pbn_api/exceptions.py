@@ -108,3 +108,14 @@ class NoFeeDataException(ValueError):
 
 class NoPBNUIDException(ValueError):
     pass
+
+
+class PBNUIDChangedException(ValueError):
+    """Podnoszony w sytuacji gdy wysłanej pracy która już posiada PBN UID należałoby zmienić PBN UID na inny
+    na skutek odpowiedzi serwera. Technicznie nie jest to błąd i ten PBN UID jest ustawiany. Ten Exception
+    jest używany przez Sentry do zgłoszenia (wysłania) sytuacji."""
+
+
+class PBNUIDSetToExistentException(ValueError):
+    """Podnoszony gdy wg serwera PBN pracy nowo wysyłanej nalezałoby ustawić PBN UID
+    istniejącego rekordu. Używany do wysłania przez Sentry zgłoszenia o sytuacji."""

@@ -55,6 +55,7 @@ from bpp.views.autocomplete import (
     WidocznaJednostkaAutocomplete,
     WydawcaAutocomplete,
     Wydawnictwo_CiagleAdminAutocomplete,
+    Wydawnictwo_Nadrzedne_W_PBNAutocomplete,
     Wydawnictwo_NadrzedneAutocomplete,
     Wydawnictwo_ZwarteAdminAutocomplete,
     WydzialAutocomplete,
@@ -401,6 +402,11 @@ urlpatterns = [
         r"^public-wydawnictwo-nadrzedne-autocomplete/$",
         PublicWydawnictwo_NadrzedneAutocomplete.as_view(),
         name="public-wydawnictwo-nadrzedne-autocomplete",
+    ),
+    url(
+        r"^wydawnictwo-nadrzedne-w-pbn-autocomplete/$",
+        Wydawnictwo_Nadrzedne_W_PBNAutocomplete.as_view(),
+        name="wydawnictwo-nadrzedne-w-pbn-autocomplete",
     ),
     url(
         r"^podrzedna-publikacja-habilitacyjna-autocomplete/$",

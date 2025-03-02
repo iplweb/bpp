@@ -145,6 +145,7 @@ def sprobuj_wyslac_do_pbn(
     try:
         pbn_client.sync_publication(
             obj,
+            notificator=notificator,
             force_upload=force_upload,
             delete_statements_before_upload=uczelnia.pbn_api_kasuj_przed_wysylka,
             export_pk_zero=not uczelnia.pbn_api_nie_wysylaj_prac_bez_pk,

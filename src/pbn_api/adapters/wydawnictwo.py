@@ -396,6 +396,9 @@ class WydawnictwoPBNAdapter:
                 ret["book"] = WydawnictwoNadrzednePBNAdapter(
                     self.original.wydawnictwo_nadrzedne
                 ).pbn_get_json()
+        elif hasattr(self.original, "wydawnictwo_nadrzedne_w_pbn_id"):
+            if self.original.wydawnictwo_nadrzedne_w_pbn_id is not None:
+                ret["book"] = {"objectId": self.original.wydawnictwo_nadrzedne_w_pbn_id}
 
         institutions = {}
         for jednostka in jednostki:

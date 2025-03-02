@@ -3,6 +3,7 @@ import warnings
 
 from denorm import denormalized, depend_on_related
 from dirtyfields.dirtyfields import DirtyFieldsMixin
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import CASCADE, PROTECT, JSONField
 from django.db.models.expressions import RawSQL
@@ -204,6 +205,20 @@ class Wydawnictwo_Zwarte(
         related_name="wydawnictwa_powiazane_set",
     )
 
+    wydawnictwo_nadrzedne_w_pbn = models.ForeignKey(
+        "pbn_api.Publication",
+        models.PROTECT,
+        blank=True,
+        null=True,
+        verbose_name="Wydawnictwo nadrzędne w PBN",
+        help_text="""Jeżeli ten rekord to rozdział, a redakcja książki nie jest z obecnej instytucji, możesz uzupełnić
+        to pole, aby móc wysłać 'swój' rozdział do PBNu i jednocześnie nie musieć dodawać do bazy BPP 'cudzej' książki.
+        Innymi słowy, jeżeli 'okładki' dla Twojego rozdziału znajdują się w PBN i nie chcesz ich dodawać do BPP,
+        to skorzystaj z tego pola. Jeżeli jednak wypełnisz to pole, to musisz pozostawić oryginalne
+        'Wydawnictwo nadrzędne' puste. """,
+        related_name="+",
+    )
+
     calkowita_liczba_autorow = models.PositiveIntegerField(
         blank=True,
         null=True,
@@ -326,6 +341,19 @@ class Wydawnictwo_Zwarte(
     def clean(self):
         DwaTytuly.clean(self)
         ModelZOplataZaPublikacje.clean(self)
+
+        if (
+            self.wydawnictwo_nadrzedne_w_pbn_id is not None
+            and self.wydawnictwo_nadrzedne_id is not None
+        ):
+            raise ValidationError(
+                {
+                    "wydawnictwo_nadrzedne": "Jeżeli chcesz ustawić pole 'Wydawnictwo nadrzędne w PBN' to musisz "
+                    "usunąć wartośc z tego pola. ",
+                    "wydawnictwo_nadrzedne_w_pbn": "Jeżeli chcesz ustawić pole 'Wydawnictwo nadrzędne w PBN' to "
+                    "musisz wyczyścić wartość w polu 'Wydawnictwo nadrzędne'. ",
+                }
+            )
 
 
 class Wydawnictwo_Zwarte_Zewnetrzna_Baza_Danych(models.Model):

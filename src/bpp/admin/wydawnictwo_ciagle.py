@@ -30,7 +30,7 @@ from .helpers.fieldsets import (
     MODEL_OPCJONALNIE_NIE_EKSPORTOWANY_DO_API_FIELDSET,
     MODEL_Z_OPLATA_ZA_PUBLIKACJE_FIELDSET,
 )
-from .helpers.mixins import OptionalPBNSaveMixin
+from .helpers.mixins import OptionalPBNSaveMixin, RestrictDeletionWhenPBNUIDSetMixin
 from .xlsx_export import resources
 from .xlsx_export.mixins import EksportDanychMixin
 from .zglos_publikacje_helpers import UzupelniajWstepneDanePoNumerzeZgloszeniaMixin
@@ -200,6 +200,7 @@ class Wydawnictwo_CiagleAdmin(
     AdminCrossrefAPIMixin,
     EksportDanychMixin,
     DynamicColumnsMixin,
+    RestrictDeletionWhenPBNUIDSetMixin,
     admin.ModelAdmin,
 ):
     change_list_template = "admin/bpp/wydawnictwo_ciagle/change_list.html"

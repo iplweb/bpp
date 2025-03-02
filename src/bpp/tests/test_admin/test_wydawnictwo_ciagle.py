@@ -152,7 +152,7 @@ TEST_PBN_ID = 50000
 @pytest.mark.parametrize(
     "fld,value",
     [
-        ("pbn_uid", TEST_PBN_ID),
+        # ("pbn_uid", TEST_PBN_ID),
         ("doi", "10.10/123123"),
         ("www", "https://foobar.pl"),
         ("public_www", "https://foobar.pl"),

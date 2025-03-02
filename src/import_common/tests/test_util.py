@@ -1,7 +1,7 @@
 import pytest
 
 from import_common.exceptions import HeaderNotFoundException
-from import_common.util import rename_duplicate_columns, znajdz_naglowek
+from import_common.util import check_if_doi, rename_duplicate_columns, znajdz_naglowek
 
 
 def test_znajdz_naglowek_dobry(test1_xlsx):
@@ -23,3 +23,8 @@ def test_rename_duplicate_columns():
     o = ["issn", "test", "issn_2", "jeszcze", "raz", "test_2", "issn_3"]
 
     assert rename_duplicate_columns(i) == o
+
+
+@pytest.mark.parametrize("doi,expect", [("10.1002/clc.21018", True)])
+def test_check_if_doi(doi, expect):
+    assert check_if_doi(doi) == expect
