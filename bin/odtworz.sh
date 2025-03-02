@@ -22,7 +22,7 @@ createdb $LOCAL_DATABASE_NAME
 createuser -s mimooh || true
 createuser -s bpp || true
 
-/opt/local/lib/postgresql16/bin/pg_restore -j 6 -d $LOCAL_DATABASE_NAME  "$1" || true
+pg_restore -j 6 -d $LOCAL_DATABASE_NAME  "$1" || true
 
 for tbl in `psql -qAt -c "select tablename from pg_tables where schemaname = 'public';" $LOCAL_DATABASE_NAME` ; do  psql -c "alter table \"$tbl\" owner to postgres" $LOCAL_DATABASE_NAME ; done
 
