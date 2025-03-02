@@ -1,0 +1,2 @@
+
+uszczelnianie PBN UID: odmawiaj ustawienia istniejącego PBN UID dla nowego rekordu (dublowanie PBN UID) oraz ostrzegaj, gdy PBN UID dla rekordu jest modyfikowany (czyli rekord ma PBN UID i po wysyłce wg odpowiedzi z PBNu powinien być ten UID inny...)

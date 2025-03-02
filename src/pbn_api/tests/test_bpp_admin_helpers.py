@@ -1,6 +1,7 @@
 import pytest
 from model_bakery import baker
 
+from fixtures import MOCK_MONGO_ID
 from fixtures.pbn_api import MOCK_RETURNED_MONGODB_DATA
 from pbn_api.adapters.wydawnictwo import WydawnictwoPBNAdapter
 from pbn_api.client import (
@@ -9,13 +10,13 @@ from pbn_api.client import (
     PBN_POST_PUBLICATIONS_URL,
 )
 from pbn_api.exceptions import AccessDeniedException
-from pbn_api.models import SentData
+from pbn_api.models import Publication, SentData
 from pbn_api.tests.utils import middleware
 
 from django.contrib.messages import get_messages
 
 from bpp.admin.helpers.pbn_api.gui import sprobuj_wyslac_do_pbn_gui
-from bpp.models import Charakter_Formalny
+from bpp.models import Charakter_Formalny, Wydawnictwo_Ciagle
 
 
 @pytest.mark.django_db
@@ -199,3 +200,87 @@ def test_sprobuj_wyslac_do_pbn_ostrzezenie_brak_dyscypliny_autora(
 
     msg = get_messages(req)
     assert "nie zostanie oświadczona" in list(msg)[0].message
+
+
+@pytest.mark.django_db
+def test_sprobuj_wyslac_do_pbn_przychodzi_istniejacy_pbn_uid_dla_nowego_rekordu(
+    pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina: Wydawnictwo_Ciagle,
+    pbn_client,
+    rf,
+    pbn_uczelnia,
+):
+    """Ten test sprawdza, jak zachowa się system w przypadku wysyłki nowego rekordu, gdy przyjdzie PBN UID
+    takiego rekordu, który już istnieje"""
+
+    req = rf.get("/")
+
+    # To jest istniejące w bazie wydawnictwo ciągłe z PBN UID = MOCK_MONGO_ID ("123")
+    publikacja = baker.make(Publication, pk=MOCK_MONGO_ID)
+    istniejace_wydawnictwo_ciagle = baker.make(  # noqa
+        Wydawnictwo_Ciagle, pbn_uid=publikacja
+    )
+
+    # To jest NOWO WYSYŁANE wydawnictwo ciągłe, które nie ma PBN UID
+    pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.pbn_uid = None
+    pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.save(update_fields=["pbn_uid"])
+
+    # To jest odpowiedź z PBNu gdzie zwrotnie przyjdzie objectId = MOCK_MONGO_ID
+    pbn_client.transport.return_values[PBN_POST_PUBLICATIONS_URL] = {
+        "objectId": MOCK_MONGO_ID
+    }
+    pbn_client.transport.return_values[
+        PBN_GET_PUBLICATION_BY_ID_URL.format(id=MOCK_MONGO_ID)
+    ] = MOCK_RETURNED_MONGODB_DATA
+    pbn_client.transport.return_values[
+        PBN_GET_INSTITUTION_STATEMENTS + f"?publicationId={MOCK_MONGO_ID}&size=5120"
+    ] = []
+
+    with middleware(req):
+        sprobuj_wyslac_do_pbn_gui(
+            req, pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina, pbn_client=pbn_client
+        )
+
+    msg = get_messages(req)
+    assert (
+        "w odpowiedzi z serwera PBN numer UID rekordu JUŻ ISTNIEJĄCEGO"
+        in list(msg)[0].message
+    )
+
+
+@pytest.mark.django_db
+def test_sprobuj_wyslac_do_pbn_przychodzi_inny_pbn_uid_dla_starego_rekordu(
+    pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina: Wydawnictwo_Ciagle,
+    pbn_client,
+    rf,
+    pbn_uczelnia,
+):
+    """Ten test sprawdza, jak zachowa się system w przypadku wysyłki nowego rekordu, gdy przyjdzie PBN UID
+    takiego rekordu, który już istnieje"""
+
+    req = rf.get("/")
+
+    # To jest istniejące w bazie wydawnictwo ciągłe z PBN UID = MOCK_MONGO_ID ("123")
+    publikacja = baker.make(Publication, pk=MOCK_MONGO_ID)
+
+    # To jest wydawnictwo ciągłe, które ma PBN UID
+    pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.pbn_uid = publikacja
+    pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.save(update_fields=["pbn_uid"])
+
+    # To jest odpowiedź z PBNu gdzie zwrotnie przyjdzie objectId = MOCK_MONGO_ID*2
+    pbn_client.transport.return_values[PBN_POST_PUBLICATIONS_URL] = {
+        "objectId": MOCK_MONGO_ID * 2
+    }
+    pbn_client.transport.return_values[
+        PBN_GET_PUBLICATION_BY_ID_URL.format(id=MOCK_MONGO_ID * 2)
+    ] = MOCK_RETURNED_MONGODB_DATA
+    pbn_client.transport.return_values[
+        PBN_GET_INSTITUTION_STATEMENTS + f"?publicationId={MOCK_MONGO_ID}&size=5120"
+    ] = []
+
+    with middleware(req):
+        sprobuj_wyslac_do_pbn_gui(
+            req, pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina, pbn_client=pbn_client
+        )
+
+    msg = get_messages(req)
+    assert "Wg danych z PBN zmodyfikowano PBN UID tego rekordu " in list(msg)[0].message

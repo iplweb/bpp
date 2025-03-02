@@ -7,11 +7,13 @@ from pprint import pprint
 from urllib.parse import parse_qs, quote, urlparse
 
 import requests
+from django.core.mail import mail_admins
 from django.db import transaction
 from django.db.models import Model
 from requests import ConnectionError
 from requests.exceptions import JSONDecodeError as RequestsJSONDecodeError
 from requests.exceptions import SSLError
+from sentry_sdk import capture_exception
 from simplejson.errors import JSONDecodeError
 
 from import_common.core import (
@@ -44,6 +46,8 @@ from pbn_api.exceptions import (
     NeedsPBNAuthorisationException,
     NoFeeDataException,
     NoPBNUIDException,
+    PBNUIDChangedException,
+    PBNUIDSetToExistentException,
     PraceSerwisoweException,
     ResourceLockedException,
     SameDataUploadedRecently,
@@ -693,6 +697,7 @@ class PBNClient(
     def sync_publication(
         self,
         pub,
+        notificator=None,
         force_upload=False,
         delete_statements_before_upload=False,
         export_pk_zero=None,
@@ -763,8 +768,77 @@ class PBNClient(
         # utworzony nowy rekord po stronie PBN, to pbn_uid_id musi wskazywać na
         # bazę w tabeli Publication, która została chwile temu pobrana...
         SentData.objects.updated(pub, js, pbn_uid_id=ret["objectId"])
+        if pub.pbn_uid_id is not None and pub.pbn_uid_id != ret["objectId"]:
+            SentData.objects.updated(pub, js, pbn_uid_id=pub.pbn_uid_id)
 
         if pub.pbn_uid_id != ret["objectId"]:
+            # Rekord dostaje nowe objectId z PBNu.
+
+            # Czy rekord JUŻ Z PBN UID dostaje nowe PBN UID z PBNu? Powiadom użytkownika.
+            if pub.pbn_uid_id is not None:
+                if notificator is not None:
+                    notificator.error(
+                        f"UWAGA UWAGA UWAGA. Wg danych z PBN zmodyfikowano PBN UID tego rekordu "
+                        f"z wartości {pub.pbn_uid_id} na {ret['objectId']}. Technicznie nie jest to błąd, "
+                        f"ale w praktyce dobrze by było zweryfikować co się zadziało, zarówno po stronie"
+                        f"PBNu jak i BPP. Być może operujesz na rekordzie ze zdublowanym DOI/stronie WWW."
+                    )
+
+                message = (
+                    f"Zarejestrowano zmianę ZAPISANEGO WCZEŚNIEJ PBN UID publikacji przez PBN, \n"
+                    f"Publikacja:\n{pub}\n\n"
+                    f"z UIDu {pub.pbn_uid_id} na {ret['objectId']}"
+                )
+
+                try:
+                    raise PBNUIDChangedException(message)
+                except PBNUIDChangedException as e:
+                    capture_exception(e)
+
+                mail_admins(
+                    "Zmiana PBN UID publikacji przez serwer PBN",
+                    message,
+                    fail_silently=True,
+                )
+
+            # Z kolei poniższy kod odpowiada na sytuację dość niepożądana. Zakładamy, że do PBN został wysłany nowy,
+            # czysty rekord czyli bez PBN UID, zas PBN odpowiedział PBN UIDem istniejącego już w bazie rekordu.
+            from bpp.models import Rekord
+
+            istniejace_rekordy = Rekord.objects.filter(pbn_uid_id=ret["objectId"])
+            if pub.pbn_uid_id is None and istniejace_rekordy.exists():
+                if notificator is not None:
+                    notificator.error(
+                        f'UWAGA UWAGA UWAGA. Wysłany rekord "{pub}" dostał w odpowiedzi z serwera PBN numer UID '
+                        f"rekordu JUŻ ISTNIEJĄCEGO W BAZIE DANYCH BPP, a konkretnie {istniejace_rekordy.all()}. "
+                        f"Z przyczyn oczywistych NIE MOGĘ ustawić takiego PBN UID gdyż wówczas unikalność numerów PBN "
+                        f"UID byłaby naruszona. Zapewne też doszło do "
+                        f"NADPISANIA danych w/wym rekordu po stronie PBNu. Powinieneś/aś wycofać zmiany w PBNie "
+                        f"za pomocą GUI, zgłosić tą sytuację do administratora oraz zaprzestać prób wysyłki "
+                        f"tego rekordu do wyjaśnienia. "
+                    )
+
+                message = (
+                    f"Zarejestrowano ustawienie nowo wysłanej pracy ISTNIEJĄCEGO JUŻ W BAZIE PBN UID\n"
+                    f"Publikacja:\n{pub}\n\n"
+                    f"UIDu {ret['objectId']}\n"
+                    f"Istniejąca praca/e: {istniejace_rekordy.all()}"
+                )
+
+                try:
+                    raise PBNUIDSetToExistentException(message)
+                except PBNUIDSetToExistentException as e:
+                    capture_exception(e)
+
+                mail_admins(
+                    "Ustawienie ISTNIEJĄCEGO JUŻ W BAZIE PBN UID publikacji przez serwer PBN",
+                    message,
+                    fail_silently=True,
+                )
+
+                # NIE zapisuj takiego numeru PBN
+                return
+
             pub.pbn_uid = publication
             pub.save()
 
