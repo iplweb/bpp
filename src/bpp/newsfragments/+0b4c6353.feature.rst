@@ -1,2 +1,0 @@
-
-wyłącz bezpośrednią modyfikację pola PBN UID
