@@ -211,7 +211,6 @@ class Wydawnictwo_ZwarteForm(
     pbn_uid = forms.ModelChoiceField(
         label="Odpowiednik w PBN",
         required=False,
-        disabled=True,
         queryset=Publication.objects.all(),
         widget=autocomplete.ModelSelect2(
             url="bpp:publication-autocomplete",
