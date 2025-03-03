@@ -64,7 +64,7 @@ class BppUser(AbstractUser, ModelZAdnotacjami):
             return False
 
         delta = timezone.now() - self.pbn_token_updated
-        if delta > timedelta(hours=6):
+        if delta > timedelta(hours=settings.PBN_TOKEN_HOURS_GRACE_TIME):
             return False
 
         return True
