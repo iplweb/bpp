@@ -22,10 +22,10 @@ class TextNotificator:
         self.info(msg, level="WARNING")
 
     def error(self, msg):
-        self.info(msg, level="WARNING")
+        self.info(msg, level="ERROR")
 
     def success(self, msg):
-        self.info(msg, level="WARNING")
+        self.info(msg, level="SUCCESS")
 
     def as_text(self):
         return "\n".join(self.output)

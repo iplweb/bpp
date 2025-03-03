@@ -4,6 +4,21 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202503.1161 (2025-03-03)
+============================
+
+Naprawione
+----------
+
+- prawidłowa obsługa ostrzeżeń w TextNotificatorze
+
+
+Usprawnienie
+------------
+
+- zwiększ czas grace-time dla tokena PBN do 24 godzin
+
+
 Bpp 202503.1160 (2025-03-02)
 ============================
 
