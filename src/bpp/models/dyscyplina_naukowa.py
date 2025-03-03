@@ -144,6 +144,8 @@ class Autor_Dyscyplina(models.Model):
         verbose_name = "powiązanie autor-dyscyplina"
         verbose_name_plural = "powiązania autor-dyscyplina"
 
+        ordering = ("rok",)
+
     def clean(self):
         p1 = self.procent_dyscypliny or Decimal("0.00")
         p2 = self.procent_subdyscypliny or Decimal("0.00")
