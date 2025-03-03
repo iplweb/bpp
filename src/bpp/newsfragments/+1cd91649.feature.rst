@@ -1,0 +1,2 @@
+
+możliwość ukrywania języków - dla danych nieużywanych

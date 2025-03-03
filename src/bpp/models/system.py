@@ -1,6 +1,7 @@
 """
 Małe klasy pomocnicze dla całego systemu
 """
+
 import warnings
 
 from django.db import models
@@ -303,6 +304,8 @@ class Jezyk(NazwaISkrot):
     pbn_uid = models.ForeignKey(
         "pbn_api.Language", null=True, blank=True, on_delete=models.SET_NULL
     )
+
+    widoczny = models.BooleanField(default=True)
 
     class Meta:
         verbose_name = "język"
