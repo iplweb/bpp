@@ -1,0 +1,2 @@
+
+zwiększ czas grace-time dla tokena PBN do 24 godzin
