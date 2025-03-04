@@ -65,7 +65,7 @@ from bpp.models.openaccess import (
 class JezykAdmin(RestrictDeletionToAdministracjaGroupAdmin):
     list_display = ["nazwa", "skrot", "pbn_uid", "skrot_crossref", "widoczny"]
     list_filter = ["widoczny"]
-    search_fields = ["nazwa", "skrot", "pbn_uid", "skrot_crossref"]
+    search_fields = ["nazwa", "skrot", "pbn_uid__pk", "skrot_crossref"]
 
 
 class Funkcja_AutoraAdmin(RestrictDeletionToAdministracjaGroupAdmin):
