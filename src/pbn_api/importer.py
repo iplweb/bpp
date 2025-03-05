@@ -3,6 +3,7 @@ from datetime import date
 
 from django.core.management import call_command
 from django.db import DataError, transaction
+from tqdm import tqdm
 
 from pbn_api.client import PBNClient
 from pbn_api.integrator import (
@@ -423,94 +424,114 @@ def utworz_autorow(ret, pbn_json, client, default_jednostka):
 
     pbn_kolejnosci = pbn_json.pop("orderList", {})
 
-    for pbn_uid_autora, pbn_autor in pbn_json.pop("authors").items():
-        try:
-            autor = Autor.objects.get(pbn_uid_id=pbn_uid_autora)
-        except Autor.DoesNotExist:
-            pbn_scientist = pobierz_i_zapisz_dane_jednej_osoby(
-                client=client, personId=pbn_uid_autora
-            )
+    typ_odpowiedzialnosci_autor = Typ_Odpowiedzialnosci.objects.get(nazwa="autor")
+    typ_odpowiedzialnosci_redaktor = Typ_Odpowiedzialnosci.objects.get(nazwa="redaktor")
 
-            if (
-                pbn_scientist.orcid
-                and Autor.objects.filter(orcid=pbn_scientist.orcid).exists()
-            ):
-                print(
-                    f"UWAGA Wiecej niz jeden autor w PBNie ma TEN SAM ORCID: {pbn_scientist.orcid=}"
+    for (
+        pbn_typ_odpowiedzialnosci,
+        pbn_klucz_slownika_autorow,
+        typ_odpowiedzialnosci,
+    ) in [
+        ("EDITOR", "editors", typ_odpowiedzialnosci_redaktor),
+        ("AUTHOR", "authors", typ_odpowiedzialnosci_autor),
+    ]:
+        for pbn_uid_autora, pbn_autor in pbn_json.pop(
+            pbn_klucz_slownika_autorow, {}
+        ).items():
+            try:
+                autor = Autor.objects.get(pbn_uid_id=pbn_uid_autora)
+            except Autor.DoesNotExist:
+                pbn_scientist = pobierz_i_zapisz_dane_jednej_osoby(
+                    client=client, personId=pbn_uid_autora
                 )
-                print("ID autorow: ", pbn_scientist.pk, pbn_uid_autora)
 
-                autor = Autor.objects.get(orcid=pbn_scientist.orcid)
-            else:
-                autor = utworz_wpis_dla_jednego_autora(pbn_scientist)
-
-        jednostka = Uczelnia.objects.default.obca_jednostka
-        afiliuje = False
-        pbn_typ_odpowiedzialnosci = "AUTHOR"
-        typ_odpowiedzialnosci_autor = Typ_Odpowiedzialnosci.objects.get(nazwa="autor")
-        typ_odpowiedzialnosci = typ_odpowiedzialnosci_autor
-
-        ta_afiliacja = afiliacje.pop(autor.pbn_uid_id, None)
-        if ta_afiliacja is not None:
-            if isinstance(ta_afiliacja, list) and len(ta_afiliacja) == 1:
-                ta_afiliacja = ta_afiliacja[0]
-            else:
-                jest_nasz = False
-                typ_autora = ta_afiliacja[0]["type"]
                 if (
-                    ta_afiliacja[0]["institutionId"]
-                    == Uczelnia.objects.default.pbn_uid_id
+                    pbn_scientist.orcid
+                    and Autor.objects.filter(orcid=pbn_scientist.orcid).exists()
                 ):
-                    jest_nasz = True
-                for elem in ta_afiliacja[1:]:
-                    if elem["type"] != typ_autora:
-                        raise NotImplementedError(
-                            f"autor w afiliacji jako kilka roznych typow {ta_afiliacja=}"
-                        )
-                    if elem["institutionId"] == Uczelnia.objects.default.pbn_uid_id:
+                    print(
+                        f"UWAGA Wiecej niz jeden autor w PBNie ma TEN SAM ORCID: {pbn_scientist.orcid=}"
+                    )
+                    print("ID autorow: ", pbn_scientist.pk, pbn_uid_autora)
+
+                    autor = Autor.objects.get(orcid=pbn_scientist.orcid)
+                else:
+                    autor = utworz_wpis_dla_jednego_autora(pbn_scientist)
+
+            jednostka = Uczelnia.objects.default.obca_jednostka
+            afiliuje = False
+
+            ta_afiliacja = afiliacje.pop(autor.pbn_uid_id, None)
+            if ta_afiliacja is not None:
+                if isinstance(ta_afiliacja, list) and len(ta_afiliacja) == 1:
+                    ta_afiliacja = ta_afiliacja[0]
+                else:
+                    jest_nasz = False
+                    typ_autora = ta_afiliacja[0]["type"]
+                    if (
+                        ta_afiliacja[0]["institutionId"]
+                        == Uczelnia.objects.default.pbn_uid_id
+                    ):
                         jest_nasz = True
-                ta_afiliacja = {
-                    "type": typ_autora,
-                    "institutionId": (
-                        Uczelnia.objects.default.pbn_uid_id if jest_nasz else "123"
+                    for elem in ta_afiliacja[1:]:
+                        if elem["type"] != typ_autora:
+                            print(
+                                "UWAGA: autor w afiliacji jako kilka roznych typow {ta_afiliacja=}"
+                            )
+                            continue
+
+                        if elem["institutionId"] == Uczelnia.objects.default.pbn_uid_id:
+                            jest_nasz = True
+
+                    ta_afiliacja = {
+                        "type": typ_autora,
+                        "institutionId": (
+                            Uczelnia.objects.default.pbn_uid_id if jest_nasz else "123"
+                        ),
+                    }
+
+                pbn_typ_odpowiedzialnosci = ta_afiliacja.pop("type")
+                if pbn_typ_odpowiedzialnosci == "AUTHOR":
+                    typ_odpowiedzialnosci = typ_odpowiedzialnosci_autor
+                elif pbn_typ_odpowiedzialnosci == "EDITOR":
+                    typ_odpowiedzialnosci = typ_odpowiedzialnosci_redaktor
+                else:
+                    raise NotImplementedError(f"{pbn_typ_odpowiedzialnosci=}")
+
+                pbn_institution_id = ta_afiliacja.pop("institutionId")
+
+                if pbn_institution_id == Uczelnia.objects.default.pbn_uid_id:
+                    jednostka = default_jednostka
+                    afiliuje = True
+
+                assert_dictionary_empty(ta_afiliacja)
+
+            try:
+                kolejnosc = pbn_kolejnosci.get(pbn_typ_odpowiedzialnosci, []).index(
+                    autor.pbn_uid_id
+                )
+            except ValueError:
+                kolejnosc = wyliczona_kolejnosc
+
+            while ret.autorzy_set.filter(kolejnosc=kolejnosc).exists():
+                kolejnosc += 1
+
+            ret.autorzy_set.update_or_create(
+                autor=autor,
+                typ_odpowiedzialnosci=typ_odpowiedzialnosci,
+                defaults=dict(
+                    jednostka=jednostka,
+                    kolejnosc=kolejnosc,
+                    zapisany_jako=" ".join(
+                        [pbn_autor.pop("lastName"), pbn_autor.pop("name")]
                     ),
-                }
-
-            pbn_typ_odpowiedzialnosci = ta_afiliacja.pop("type")
-            if pbn_typ_odpowiedzialnosci == "AUTHOR":
-                typ_odpowiedzialnosci = typ_odpowiedzialnosci_autor
-            else:
-                raise NotImplementedError(f"{pbn_typ_odpowiedzialnosci=}")
-
-            pbn_institution_id = ta_afiliacja.pop("institutionId")
-
-            if pbn_institution_id == Uczelnia.objects.default.pbn_uid_id:
-                jednostka = default_jednostka
-                afiliuje = True
-
-            assert_dictionary_empty(ta_afiliacja)
-
-        try:
-            kolejnosc = pbn_kolejnosci.get(pbn_typ_odpowiedzialnosci, []).index(
-                autor.pbn_uid_id
+                    afiliuje=afiliuje,
+                ),
             )
-        except ValueError:
-            kolejnosc = wyliczona_kolejnosc
 
-        while ret.autorzy_set.filter(kolejnosc=kolejnosc).exists():
-            kolejnosc += 1
+            wyliczona_kolejnosc += 1
 
-        ret.autorzy_set.create(
-            autor=autor,
-            jednostka=jednostka,
-            typ_odpowiedzialnosci=typ_odpowiedzialnosci,
-            kolejnosc=kolejnosc,
-            zapisany_jako=" ".join([pbn_autor.pop("lastName"), pbn_autor.pop("name")]),
-            afiliuje=afiliuje,
-        )
-        wyliczona_kolejnosc += 1
-
-        assert_dictionary_empty(pbn_autor)
+            assert_dictionary_empty(pbn_autor)
 
     assert_dictionary_empty(afiliacje, warn=True)
 
@@ -719,6 +740,115 @@ def sciagnij_i_zapisz_wydawce(pbn_wydawca_id, client):
     return Wydawca.objects.get(pbn_uid_id=pbn_wydawca_id)
 
 
+# def importuj_autorow(pbn_orderList, pbn_json, afiliacje, ret):
+#     kolejnosc = 0
+#
+#     if not pbn_orderList and (pbn_json["editors"] or pbn_json["authors"]):
+#         pbn_orderList = []
+#         if pbn_json.get("editors"):
+#             pbn_orderList = ["EDITOR"]
+#         if pbn_json.get("authors"):
+#             pbn_orderList = ["AUTHOR"]
+#
+#     for pbn_rodzaj_autora in pbn_orderList:
+#         # data['orderList'] -> kolejnosc
+#         # Box({'EDITOR': ['5e70923e878c28a0473924asdf', '5e70926c878c28a0473955zz', ...
+#         # data['editors'] -> redaktorzy
+#         # Box({'5e7091f9878c28a04738dasd': {'name': 'IZABELA', 'lastName': 'X'}, ...
+#         match pbn_rodzaj_autora:
+#             case "EDITOR":
+#                 klucz_json_obiektu = "editors"
+#             case "AUTHOR":
+#                 klucz_json_obiektu = "authors"
+#             case _:
+#                 raise NotImplementedError(
+#                     f"Nie wiem, jak obsłużyć {pbn_rodzaj_autora=}"
+#                 )
+#
+#         for pbn_uid_autora, pbn_autor in pbn_json.pop(klucz_json_obiektu).items():
+#             try:
+#                 autor = Autor.objects.get(pbn_uid_id=pbn_uid_autora)
+#             except Autor.DoesNotExist:
+#                 pbn_scientist = pobierz_i_zapisz_dane_jednej_osoby(
+#                     client=client, personId=pbn_uid_autora
+#                 )
+#
+#                 if (
+#                     pbn_scientist.orcid
+#                     and Autor.objects.filter(orcid=pbn_scientist.orcid).exists()
+#                 ):
+#                     print(
+#                         f"UWAGA Wiecej niz jeden autor w PBNie ma TEN SAM ORCID: {pbn_scientist.orcid=}"
+#                     )
+#                     print("ID autorow: ", pbn_scientist.pk, pbn_uid_autora)
+#
+#                     autor = Autor.objects.get(orcid=pbn_scientist.orcid)
+#                 else:
+#                     autor = utworz_wpis_dla_jednego_autora(pbn_scientist)
+#
+#             jednostka = Uczelnia.objects.default.obca_jednostka
+#             afiliuje = False
+#
+#             if pbn_rodzaj_autora == "AUTHOR":
+#                 typ_odpowiedzialnosci_nazwa = "autor"
+#             elif pbn_rodzaj_autora == "EDITOR":
+#                 typ_odpowiedzialnosci_nazwa = "redaktor"
+#
+#             ta_afiliacja = afiliacje.pop(autor.pbn_uid_id, None)
+#
+#             if ta_afiliacja is not None:
+#
+#                 # Weź tylko afiliacje dla obecnie analizowanego typu (autorzy, redaktorzy)
+#                 fnd = False
+#                 for _ in ta_afiliacja:
+#                     if _.get("type") == pbn_rodzaj_autora:
+#                         ta_afiliacja = _
+#                         fnd = True
+#                         break
+#
+#                 assert (
+#                     fnd
+#                 ), f"Nie znaleziono w ['affiliations'] kluicza dla obecnego {pbn_rodzaj_autora=}"
+#
+#                 typ = ta_afiliacja.pop("type")
+#                 if typ == "AUTHOR":
+#                     typ_odpowiedzialnosci_nazwa = "autor"
+#                 elif typ == "EDITOR":
+#                     typ_odpowiedzialnosci_nazwa = "redaktor"
+#                 else:
+#                     raise NotImplementedError(f"Nie wiem {typ=}")
+#
+#                 pbn_institution_id = ta_afiliacja.pop("institutionId")
+#                 if pbn_institution_id == Uczelnia.objects.get_default().pbn_uid_id:
+#                     print(
+#                         f"Publikacja {pbn_publication=} ma afiliację na obce uczelnie {ta_afiliacja=}"
+#                     )
+#                     continue
+#
+#                 assert_dictionary_empty(ta_afiliacja)
+#
+#                 if pbn_institution_id == Uczelnia.objects.default.pbn_uid_id:
+#                     jednostka = default_jednostka
+#                     afiliuje = True
+#
+#             ret.autorzy_set.create(
+#                 autor=autor,
+#                 jednostka=jednostka,
+#                 typ_odpowiedzialnosci=Typ_Odpowiedzialnosci.objects.get(
+#                     nazwa=typ_odpowiedzialnosci_nazwa
+#                 ),
+#                 kolejnosc=kolejnosc,
+#                 zapisany_jako=" ".join(
+#                     [pbn_autor.pop("lastName"), pbn_autor.pop("name")]
+#                 ),
+#                 afiliuje=afiliuje,
+#             )
+#             kolejnosc += 1
+#
+#             assert_dictionary_empty(pbn_autor)
+#
+
+
 @transaction.atomic
 def importuj_ksiazke(mongoId, default_jednostka: Jednostka, client: PBNClient):
     try:
@@ -763,105 +893,11 @@ def importuj_ksiazke(mongoId, default_jednostka: Jednostka, client: PBNClient):
 
     ret.save()
 
-    pbn_orderList = pbn_json.pop("orderList", {})
-    afiliacje = pbn_json.pop("affiliations", {})
-    kolejnosc = 0
-    for pbn_rodzaj_autora in pbn_orderList:
-        # data['orderList'] -> kolejnosc
-        # Box({'EDITOR': ['5e70923e878c28a0473924asdf', '5e70926c878c28a0473955zz', ...
-        # data['editors'] -> redaktorzy
-        # Box({'5e7091f9878c28a04738dasd': {'name': 'IZABELA', 'lastName': 'X'}, ...
-        match pbn_rodzaj_autora:
-            case "EDITOR":
-                klucz_json_obiektu = "editors"
-            case "AUTHOR":
-                klucz_json_obiektu = "authors"
-            case _:
-                raise NotImplementedError(
-                    f"Nie wiem, jak obsłużyć {pbn_rodzaj_autora=}"
-                )
+    # pbn_orderList = pbn_json.pop("orderList", {})
+    # afiliacje = pbn_json.pop("affiliations", {})
 
-        for pbn_uid_autora, pbn_autor in pbn_json.pop(klucz_json_obiektu).items():
-            try:
-                autor = Autor.objects.get(pbn_uid_id=pbn_uid_autora)
-            except Autor.DoesNotExist:
-                pbn_scientist = pobierz_i_zapisz_dane_jednej_osoby(
-                    client=client, personId=pbn_uid_autora
-                )
-
-                if (
-                    pbn_scientist.orcid
-                    and Autor.objects.filter(orcid=pbn_scientist.orcid).exists()
-                ):
-                    print(
-                        f"UWAGA Wiecej niz jeden autor w PBNie ma TEN SAM ORCID: {pbn_scientist.orcid=}"
-                    )
-                    print("ID autorow: ", pbn_scientist.pk, pbn_uid_autora)
-
-                    autor = Autor.objects.get(orcid=pbn_scientist.orcid)
-                else:
-                    autor = utworz_wpis_dla_jednego_autora(pbn_scientist)
-
-            jednostka = Uczelnia.objects.default.obca_jednostka
-            afiliuje = False
-
-            if pbn_rodzaj_autora == "AUTHOR":
-                typ_odpowiedzialnosci_nazwa = "autor"
-            elif pbn_rodzaj_autora == "EDITOR":
-                typ_odpowiedzialnosci_nazwa = "redaktor"
-
-            ta_afiliacja = afiliacje.pop(autor.pbn_uid_id, None)
-
-            if ta_afiliacja is not None:
-
-                # Weź tylko afiliacje dla obecnie analizowanego typu (autorzy, redaktorzy)
-                fnd = False
-                for _ in ta_afiliacja:
-                    if _.get("type") == pbn_rodzaj_autora:
-                        ta_afiliacja = _
-                        fnd = True
-                        break
-
-                assert (
-                    fnd
-                ), f"Nie znaleziono w ['affiliations'] kluicza dla obecnego {pbn_rodzaj_autora=}"
-
-                typ = ta_afiliacja.pop("type")
-                if typ == "AUTHOR":
-                    typ_odpowiedzialnosci_nazwa = "autor"
-                elif typ == "EDITOR":
-                    typ_odpowiedzialnosci_nazwa = "redaktor"
-                else:
-                    raise NotImplementedError(f"Nie wiem {typ=}")
-
-                pbn_institution_id = ta_afiliacja.pop("institutionId")
-                if pbn_institution_id == Uczelnia.objects.get_default().pbn_uid_id:
-                    print(
-                        f"Publikacja {pbn_publication=} ma afiliację na obce uczelnie {ta_afiliacja=}"
-                    )
-                    continue
-
-                assert_dictionary_empty(ta_afiliacja)
-
-                if pbn_institution_id == Uczelnia.objects.default.pbn_uid_id:
-                    jednostka = default_jednostka
-                    afiliuje = True
-
-            ret.autorzy_set.create(
-                autor=autor,
-                jednostka=jednostka,
-                typ_odpowiedzialnosci=Typ_Odpowiedzialnosci.objects.get(
-                    nazwa=typ_odpowiedzialnosci_nazwa
-                ),
-                kolejnosc=kolejnosc,
-                zapisany_jako=" ".join(
-                    [pbn_autor.pop("lastName"), pbn_autor.pop("name")]
-                ),
-                afiliuje=afiliuje,
-            )
-            kolejnosc += 1
-
-            assert_dictionary_empty(pbn_autor)
+    # importuj_autorow(pbn_orderList, pbn_json, afiliacje, ret)
+    utworz_autorow(ret, pbn_json, client, default_jednostka)
 
     # afiliacje -> zawsze na instytucję... można zignorować
     # Box({'5e70923e878c28a0473924e9': [{'type': 'EDITOR', 'institutionId': '5e70918b878c28a04737debe'}]})
@@ -875,34 +911,40 @@ def importuj_ksiazke(mongoId, default_jednostka: Jednostka, client: PBNClient):
     return ret
 
 
-def importuj_publikacje_instytucji(client: PBNClient, default_jednostka: Jednostka):
+def importuj_publikacje_instytucji(
+    client: PBNClient, default_jednostka: Jednostka, pbn_uid_id=None
+):
     niechciane = list(Rekord.objects.values_list("pbn_uid_id", flat=True))
     chciane = Publication.objects.all().exclude(pk__in=niechciane)
-    for pbn_publication in pbar(chciane):
+
+    if pbn_uid_id:
+        chciane = chciane.filter(pk=pbn_uid_id)
+
+    for pbn_publication in tqdm(chciane):
         cv = pbn_publication.current_version
 
         # XXX: TODO:traktowac slownik 'authors' czy 'affiliations' jako ORDERED DICT
         match cv["object"].pop("type"):
             case "BOOK":
-                importuj_ksiazke(
+                ret = importuj_ksiazke(
                     pbn_publication.pk,
                     default_jednostka=default_jednostka,
                     client=client,
                 )
             case "EDITED_BOOK":
-                importuj_ksiazke(
+                ret = importuj_ksiazke(
                     pbn_publication.pk,
                     default_jednostka=default_jednostka,
                     client=client,
                 )
             case "CHAPTER":
-                importuj_ksiazke(
+                ret = importuj_ksiazke(
                     cv["object"]["book"]["id"],
                     default_jednostka=default_jednostka,
                     client=client,
                 )
 
-                importuj_rozdzial(
+                ret = importuj_rozdzial(
                     pbn_publication.pk,
                     default_jednostka=default_jednostka,
                     client=client,
@@ -910,10 +952,13 @@ def importuj_publikacje_instytucji(client: PBNClient, default_jednostka: Jednost
 
             case "ARTICLE":
                 # maybe = client.get_publication_by_id(pbn_publication.pk)
-                importuj_artykul(
+                ret = importuj_artykul(
                     pbn_publication.pk,
                     default_jednostka=default_jednostka,
                     client=client,
                 )
             case _:
                 raise NotImplementedError(f"Nie obsluze {cv['object']['type']}")
+
+        if pbn_uid_id:
+            return ret

@@ -89,5 +89,5 @@ class RaportSlotowUczelniaEwaluacjaFilter(django_filters.FilterSet):
     )
 
     autorzy__dyscyplina_naukowa = django_filters.ModelChoiceFilter(
-        queryset=Dyscyplina_Naukowa.objects.all()
+        queryset=Dyscyplina_Naukowa.objects.filter(widoczna=True)
     )

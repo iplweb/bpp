@@ -43,7 +43,7 @@ yarn:
 grunt-build:
 	grunt build
 
-assets: yarn grunt-build
+assets: yarn grunt-build collectstatic
 
 collectstatic:
 	python src/manage.py collectstatic --noinput -v0
@@ -171,7 +171,7 @@ loc: clean
 	pygount -N ... -F "...,staticroot,migrations,fixtures" src --format=summary
 
 
-DOCKER_VERSION="202503.1161"
+DOCKER_VERSION="202503.1162"
 
 DOCKER_BUILD=build --platform linux/amd64,linux/arm64 --push
 

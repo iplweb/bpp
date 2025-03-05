@@ -4,6 +4,21 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202503.1162 (2025-03-05)
+============================
+
+Naprawione
+----------
+
+- errata importu PBN (redaktorzy)
+
+
+Usprawnienie
+------------
+
+- możliwość ukrywania języków - dla danych nieużywanych
+
+
 Bpp 202503.1161 (2025-03-03)
 ============================
 

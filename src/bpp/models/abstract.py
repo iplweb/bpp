@@ -373,7 +373,9 @@ class ModelTypowany(models.Model):
     """Model zawierający typ MNiSW/MEiN oraz język."""
 
     typ_kbn = models.ForeignKey("Typ_KBN", CASCADE, verbose_name="typ MNiSW/MEiN")
-    jezyk = models.ForeignKey("Jezyk", CASCADE, verbose_name="Język")
+    jezyk = models.ForeignKey(
+        "Jezyk", CASCADE, verbose_name="Język", limit_choices_to={"widoczny": True}
+    )
     jezyk_alt = models.ForeignKey(
         "Jezyk",
         SET_NULL,
