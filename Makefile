@@ -43,7 +43,7 @@ yarn:
 grunt-build:
 	grunt build
 
-assets: yarn grunt-build
+assets: yarn grunt-build collectstatic
 
 collectstatic:
 	python src/manage.py collectstatic --noinput -v0
