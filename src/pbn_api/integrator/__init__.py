@@ -11,6 +11,7 @@ import django
 from django.db import transaction
 from django.db.models import F, Func, IntegerField, Q
 from django.db.models.functions import Length
+from tqdm import tqdm
 
 from pbn_api.integrator import istarmap  # noqa
 
@@ -1522,6 +1523,129 @@ def integruj_oswiadczenia_z_instytucji():
         if not rec.profil_orcid:
             rec.profil_orcid = True
             rec.save(update_fields=["profil_orcid"])
+
+
+def integruj_oswiadczenia_pbn_first_import(
+    client=None,
+    default_jednostka=None,
+    dopisuj_zwrotnie_dyscypliny_autorom=True,
+    koryguj_afiliacje=True,
+):
+    first = True
+    for oswiadczenie in tqdm(OswiadczenieInstytucji.objects.all()):
+        bpp_pub = oswiadczenie.get_bpp_publication()
+
+        if bpp_pub is None:
+            if client is not None:
+                from pbn_api.importer import importuj_publikacje_instytucji
+
+                bpp_pub = importuj_publikacje_instytucji(
+                    client, default_jednostka, oswiadczenie.publicationId_id
+                )
+
+                if isinstance(bpp_pub, Rekord):
+                    bpp_pub = bpp_pub.original
+
+            if bpp_pub is None:
+                print(
+                    f"Brak odpowiednika publikacji po stronie BPP dla pracy w PBN {oswiadczenie.publicationId}, "
+                    f"moze zaimportuj baze raz jeszcze"
+                )
+                continue
+
+        bpp_aut = oswiadczenie.get_bpp_autor()
+        bpp_dyscyplina = oswiadczenie.get_bpp_discipline()
+        bpp_typ_odpowiedzialnosci = oswiadczenie.get_typ_odpowiedzialnosci()
+
+        try:
+            rekord_aut = bpp_pub.autorzy_set.get(
+                autor=bpp_aut, typ_odpowiedzialnosci=bpp_typ_odpowiedzialnosci
+            )
+        except (
+            Wydawnictwo_Zwarte_Autor.DoesNotExist,
+            Wydawnictwo_Ciagle_Autor.DoesNotExist,
+        ):
+            if first:
+                print(
+                    "Tytuł;Rok;mongoId;Autor przypisany;UID autora przypisanego;"
+                    "Autor oświadczony;UID autora z oświadczeń"
+                )
+                first = False
+
+            try:
+                przypisany = bpp_pub.autorzy_set.get(
+                    autor__nazwisko=bpp_aut.nazwisko, autor__imiona=bpp_aut.imiona
+                ).autor
+            except (
+                Wydawnictwo_Zwarte_Autor.DoesNotExist,
+                Wydawnictwo_Ciagle_Autor.DoesNotExist,
+            ):
+
+                class Przypisany:
+                    pbn_uid_id = "NIE UMIEM ZLOKALIZOWAC"
+
+                    def __str__(self):
+                        return "NIE UMIEM ZLOKALIZOWAC"
+
+                przypisany = Przypisany()
+
+            print(
+                f"{bpp_pub.tytul_oryginalny};{bpp_pub.rok};{bpp_pub.pbn_uid_id};{przypisany};{przypisany.pbn_uid_id};"
+                f"{oswiadczenie.personId.lastName} {oswiadczenie.personId.name};{oswiadczenie.personId_id}"
+            )
+            continue
+
+        if (
+            rekord_aut.dyscyplina_naukowa is not None
+            and rekord_aut.dyscyplina_naukowa != bpp_dyscyplina
+        ):
+            raise NotImplementedError(
+                f"dyscyplina juz jest w bazie i sie rozni {bpp_pub}"
+            )
+
+        rekord_aut.dyscyplina_naukowa = bpp_dyscyplina
+
+        if bpp_dyscyplina is not None and dopisuj_zwrotnie_dyscypliny_autorom:
+            # Spróbujmy zwrotnie przypisać autorowi dyscyplinę za dany rok:
+            try:
+                ad = bpp_aut.autor_dyscyplina_set.get(rok=bpp_pub.rok)
+            except Autor_Dyscyplina.DoesNotExist:
+                # Nie ma przypisania za dany rok -- tworzomy nowy wpis
+                bpp_aut.autor_dyscyplina_set.create(
+                    rok=bpp_pub.rok, dyscyplina_naukowa=bpp_dyscyplina
+                )
+            else:
+                # JEst przypisanie. Czy występuje w nim dyscuyplina?
+                if (
+                    ad.dyscyplina_naukowa == bpp_dyscyplina
+                    or ad.subdyscyplina_naukowa == bpp_dyscyplina
+                ):
+                    # Tak, występuje, zostawiamy.
+                    pass
+                elif (
+                    ad.dyscyplina_naukowa != bpp_dyscyplina
+                    and ad.subdyscyplina_naukowa is None
+                ):
+                    # Nie, nie wystepuję, ale można wpisać do pustej sub-dyscypliny
+                    ad.subdyscyplina_naukowa = bpp_dyscyplina
+                    ad.save()
+                else:
+                    # Nie, nie występuje i nie można wpisać
+                    raise NotImplementedError(
+                        f"Autor miałby mieć 3 przypisania dyscyplin za {bpp_pub.rok}, sprawdź kod"
+                    )
+
+        if koryguj_afiliacje:
+            if rekord_aut.jednostka.skupia_pracownikow and not rekord_aut.afiliuje:
+                rekord_aut.afiliuje = True
+
+            if not rekord_aut.jednostka.skupia_pracownikow and rekord_aut.afiliuje:
+                rekord_aut.afiliuje = False
+
+        rekord_aut.save()
+
+        # Przelicz punktację
+        bpp_pub.save()
 
 
 def wyswietl_niezmatchowane_ze_zblizonymi_tytulami():

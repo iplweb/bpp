@@ -6,6 +6,8 @@ from .base import BasePBNMongoDBModel
 
 from django.utils.functional import cached_property
 
+from bpp.models import Typ_Odpowiedzialnosci
+
 
 class Institution(BasePBNMongoDBModel):
     class Meta:
@@ -123,6 +125,14 @@ class OswiadczenieInstytucji(models.Model):
                 )
             except klass.DoesNotExist:
                 pass
+
+    def get_typ_odpowiedzialnosci(self):
+        if self.type == "EDITOR":
+            return Typ_Odpowiedzialnosci.objects.get(nazwa="redaktor")
+        elif self.type == "AUTHOR":
+            return Typ_Odpowiedzialnosci.objects.get(nazwa="autor")
+        else:
+            raise NotImplementedError(self.type)
 
     def get_bpp_autor(self):
         from bpp.models import Autor

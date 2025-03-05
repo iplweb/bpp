@@ -2,7 +2,6 @@ import django
 
 from import_common.core import matchuj_uczelnie
 from pbn_api.importer import importuj_publikacje_instytucji
-from pbn_api.models import OswiadczenieInstytucji
 
 from bpp.util import pbar
 
@@ -13,6 +12,7 @@ from pbn_api.integrator import (
     integruj_autorow_z_uczelni,
     integruj_jezyki,
     integruj_kraje,
+    integruj_oswiadczenia_z_instytucji,
     integruj_publikacje_instytucji,
     pobierz_instytucje_polon,
     pobierz_konferencje,
@@ -25,14 +25,11 @@ from pbn_api.integrator import (
 from pbn_api.management.commands.util import PBNBaseCommand
 
 from bpp.models import (
-    Autor_Dyscyplina,
     Jednostka,
     Uczelnia,
     Wersja_Tekstu_OpenAccess,
     Wydawnictwo_Ciagle,
-    Wydawnictwo_Ciagle_Autor,
     Wydawnictwo_Zwarte,
-    Wydawnictwo_Zwarte_Autor,
     Wydzial,
 )
 
@@ -181,73 +178,7 @@ class Command(PBNBaseCommand):
             integruj_publikacje_instytucji(disable_multiprocessing=True)
 
         if not disable_oswiadczenia:
-            for oswiadczenie in OswiadczenieInstytucji.objects.all():
-                bpp_pub = oswiadczenie.get_bpp_publication()
-                if bpp_pub is None:
-                    print(
-                        f"Brak odpowiednika publikacji po stronie BPP dla pracy w PBN {oswiadczenie.publicationId}, "
-                        f"moze zaimportuj baze raz jeszcze"
-                    )
-                    continue
-                bpp_aut = oswiadczenie.get_bpp_autor()
-                bpp_dyscyplina = oswiadczenie.get_bpp_discipline()
-
-                try:
-                    rekord_aut = bpp_pub.autorzy_set.get(autor=bpp_aut)
-                except (
-                    Wydawnictwo_Zwarte_Autor.DoesNotExist,
-                    Wydawnictwo_Ciagle_Autor.DoesNotExist,
-                ):
-                    print(
-                        f"brak autora {bpp_aut=} w pracy {bpp_pub=}, a w PBN jest... "
-                        f"potencjalnie zdublowani autorzy po stronie PBN?"
-                    )
-                    continue
-
-                if (
-                    rekord_aut.dyscyplina_naukowa is not None
-                    and rekord_aut.dyscyplina_naukowa != bpp_dyscyplina
-                ):
-                    raise NotImplementedError(
-                        f"dyscyplina juz jest w bazie i sie rozni {bpp_pub}"
-                    )
-
-                rekord_aut.dyscyplina_naukowa = bpp_dyscyplina
-
-                if bpp_dyscyplina is not None:
-                    # Spróbujmy zwrotnie przypisać autorowi dyscyplinę za dany rok:
-                    try:
-                        ad = bpp_aut.autor_dyscyplina_set.get(rok=bpp_pub.rok)
-                    except Autor_Dyscyplina.DoesNotExist:
-                        # Nie ma przypisania za dany rok -- tworzomy nowy wpis
-                        bpp_aut.autor_dyscyplina_set.create(
-                            rok=bpp_pub.rok, dyscyplina_naukowa=bpp_dyscyplina
-                        )
-                    else:
-                        # JEst przypisanie. Czy występuje w nim dyscuyplina?
-                        if (
-                            ad.dyscyplina_naukowa == bpp_dyscyplina
-                            or ad.subdyscyplina_naukowa == bpp_dyscyplina
-                        ):
-                            # Tak, występuje, zostawiamy.
-                            pass
-                        elif (
-                            ad.dyscyplina_naukowa != bpp_dyscyplina
-                            and ad.subdyscyplina_naukowa is None
-                        ):
-                            # Nie, nie wystepuję, ale można wpisać do pustej sub-dyscypliny
-                            ad.subdyscyplina_naukowa = bpp_dyscyplina
-                            ad.save()
-                        else:
-                            # Nie, nie występuje i nie można wpisać
-                            raise NotImplementedError(
-                                f"Autor miałby mieć 3 przypisania dyscyplin za {bpp_pub.rok}, sprawdź kod"
-                            )
-
-                rekord_aut.save()
-
-                # Przelicz punktację
-                bpp_pub.save()
+            integruj_oswiadczenia_z_instytucji()
 
         if not disable_oplaty:
             for klass in Wydawnictwo_Ciagle, Wydawnictwo_Zwarte:
