@@ -476,7 +476,7 @@ def utworz_autorow(ret, pbn_json, client, default_jednostka):
                     for elem in ta_afiliacja[1:]:
                         if elem["type"] != typ_autora:
                             print(
-                                "UWAGA: autor w afiliacji jako kilka roznych typow {ta_afiliacja=}"
+                                f"UWAGA: autor w afiliacji {ret=} -- jako kilka roznych typow {ta_afiliacja=}"
                             )
                             continue
 
