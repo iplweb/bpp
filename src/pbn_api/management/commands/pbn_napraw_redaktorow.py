@@ -25,6 +25,10 @@ class Command(PBNBaseCommand):
             bpp_orig = elem.original
             pbn_orig = elem.pbn_uid
 
+            if pbn_orig is None:
+                print(f"Brak odpowiednika w PBN dla rekordu {bpp_orig=}")
+                continue
+
             pbn_json = pbn_orig.current_version["object"]
 
             pbn_autorzy = pbn_json.get("authors", {})
