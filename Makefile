@@ -43,7 +43,7 @@ yarn:
 grunt-build:
 	grunt build
 
-assets: yarn grunt-build collectstatic
+assets: yarn grunt-build
 
 collectstatic:
 	python src/manage.py collectstatic --noinput -v0
@@ -73,7 +73,7 @@ upload:
 puppeteer-install-chrome:
 	npx puppeteer browsers install chrome
 
-js-tests: assets puppeteer-install-chrome
+js-tests: assets collectstatic puppeteer-install-chrome
 	grunt qunit
 
 # cel: live-docs
