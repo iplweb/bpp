@@ -115,11 +115,11 @@ def normalize_exception_reason(s: str) -> str:
 
 
 def normalize_tytul_zrodla(s):
-    return normalize_skrot(s)
+    return remove_extra_spaces(fix_spaces_before_dots_and_commas(s))
 
 
 def normalize_nazwa_dyscypliny(s):
-    return normalize_skrot(s)
+    return remove_extra_spaces(fix_spaces_before_dots_and_commas(s))
 
 
 def normalize_isbn(isbn: str) -> str | None:

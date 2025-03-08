@@ -322,21 +322,24 @@ def matchuj_zrodlo(
 
 
 def matchuj_dyscypline(kod, nazwa):
-    nazwa = normalize_nazwa_dyscypliny(nazwa)
-    try:
-        return Dyscyplina_Naukowa.objects.get(nazwa=nazwa)
-    except Dyscyplina_Naukowa.DoesNotExist:
-        pass
-    except Dyscyplina_Naukowa.MultipleObjectsReturned:
-        pass
+    if nazwa:
+        for nazwa in [nazwa, nazwa.split("(", 2)[0]]:
+            nazwa = normalize_nazwa_dyscypliny(nazwa)
+            try:
+                return Dyscyplina_Naukowa.objects.get(nazwa=nazwa)
+            except Dyscyplina_Naukowa.DoesNotExist:
+                pass
+            except Dyscyplina_Naukowa.MultipleObjectsReturned:
+                pass
 
-    kod = normalize_kod_dyscypliny(kod)
-    try:
-        return Dyscyplina_Naukowa.objects.get(kod=kod)
-    except Dyscyplina_Naukowa.DoesNotExist:
-        pass
-    except Dyscyplina_Naukowa.MultipleObjectsReturned:
-        pass
+    if kod:
+        kod = normalize_kod_dyscypliny(kod)
+        try:
+            return Dyscyplina_Naukowa.objects.get(kod=kod)
+        except Dyscyplina_Naukowa.DoesNotExist:
+            pass
+        except Dyscyplina_Naukowa.MultipleObjectsReturned:
+            pass
 
 
 def matchuj_wydawce(nazwa, pbn_uid_id=None, similarity=0.9):

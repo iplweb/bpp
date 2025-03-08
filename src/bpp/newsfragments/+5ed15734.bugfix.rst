@@ -1,0 +1,2 @@
+
+lepsze matchowanie dyscyplin zawierających wielkie litery, spacje, nawiasy z opisem w imporcie POLON

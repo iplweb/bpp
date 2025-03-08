@@ -118,10 +118,28 @@ def test_matchuj_autora_tytul_bug(jednostka):
     assert True
 
 
+@pytest.mark.parametrize(
+    "kod,nazwa",
+    [
+        ("403_0", "aoijsdf"),
+        ("403_0", None),
+        (None, "foo"),
+        ("403_0", "aoijsdf     "),
+        ("403", "aoijsdf"),
+        ("4.3", "aoijsdf"),
+        ("nieno", "foo"),
+        ("xxx", "foo (dziedzina nauk bylejakich)"),
+    ],
+)
 @pytest.mark.django_db
-def test_matchuj_dyscypline():
+def test_matchuj_dyscypline(kod, nazwa):
     d = Dyscyplina_Naukowa.objects.create(nazwa="foo", kod="4.3")
-    assert matchuj_dyscypline("403_0", "aoijsdf") == d
-    assert matchuj_dyscypline("403", "aoijsdf") == d
-    assert matchuj_dyscypline("4.3", "aoijsdf") == d
-    assert matchuj_dyscypline("nieno", "foo") == d
+
+    assert matchuj_dyscypline(kod, nazwa) == d
+
+
+@pytest.mark.django_db
+def test_matchuj_dyscypline_o_Ziemi():
+    NAZWA = "nauki o Ziemi i środowisku"
+    d = Dyscyplina_Naukowa.objects.create(kod="123", nazwa=NAZWA)
+    assert matchuj_dyscypline(kod=None, nazwa=NAZWA).pk == d.pk
