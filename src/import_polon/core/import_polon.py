@@ -28,34 +28,32 @@ def analyze_excel_file_import_polon(fn, parent_model: ImportPlikuPolon):
             ),
         )
 
-        dyscyplina_naukowa = row.get("DYSCYPLINA_N")
-        subdyscyplina_naukowa = row.get("DYSCYPLINA_N_KOLEJNA")
+        bledy = []
+        jest_w_n_xlsx = False
 
+        if row.get("OSWIADCZENIE_N", "").lower() == "tak":
+            jest_w_n_xlsx = True
+
+            dyscyplina_naukowa = row.get("DYSCYPLINA_N")
+            subdyscyplina_naukowa = row.get("DYSCYPLINA_N_KOLEJNA")
+        elif row.get("OSWIADCZENIE_O_DYSCYPLINACH", "").lower() == "tak":
+            dyscyplina_naukowa = row.get("OSWIADCZONA_DYSCYPLINA_PIERWSZA")
+            subdyscyplina_naukowa = row.get("OSWIADCZONA_DYSCYPLINA_DRUGA")
+        else:
+            bledy.append(
+                "Brak oświadczenia o dyscyplinach N, brak oświadczenia o dyscyplinach. "
+            )
+
+        # W XLS pozostają takie pola:
         # PODSTAWOWE_MIEJSCE_PRACY
         # WYMIAR_ETATU
-        # WIELKOSC_ETATU
-        # WIELKOSC_ETATU_PREZENTACJA_DZIESIETNA
         # ZATRUDNIENIE_OD
         # ZATRUDNIENIE_DO
         # DATA_ZLOZENIA_OSWIADCZENIA
         # OSWIADCZENIE_O_DYSCYPLINACH
-        # OSWIADCZONA_DYSCYPLINA_PIERWSZA
-        # OSWIADCZONA_DYSCYPLINA_DRUGA
-        #
-        # PROCENTOWY_UDZIAL_PIERWSZA_DYSCYPLINA
-        #
-        # OSWIADCZENIE_N
-        # ILOSC_DYSCYPLIN_W_OSWIADCZENIU_N
-        # DYSCYPLINA_N
-        # DYSCYPLINA_N_KOLEJNA
-        #
         # CHARAKTER_PRACY
         # GRUPA_STANOWISK
-        #
-        # IDETYFIKATOR_OSOBY_PBN
-        # ORCID
 
-        bledy = []
         if autor is None:
             if parent_model.ukryj_niezmatchowanych_autorow:
                 # Nie rejestruj, że autora nie udało się zmatchować
@@ -88,6 +86,7 @@ def analyze_excel_file_import_polon(fn, parent_model: ImportPlikuPolon):
                     "danych (decimal.Decimal)"
                 )
         procent_subdyscypliny = Decimal("100.00") - procent_dyscypliny
+
         wymiar_etatu = row.get("WIELKOSC_ETATU_PREZENTACJA_DZIESIETNA")
         if wymiar_etatu is None and autor is not None:
             bledy.append(
@@ -127,6 +126,7 @@ def analyze_excel_file_import_polon(fn, parent_model: ImportPlikuPolon):
                             wymiar_etatu=wymiar_etatu,
                             procent_dyscypliny=procent_dyscypliny,
                             procent_subdyscypliny=procent_subdyscypliny,
+                            jest_w_N=jest_w_n_xlsx,
                         )
                     ops.append("Brak wpisu dla tego roku, utworzono zgodnie z XLSX")
                 else:
@@ -169,6 +169,12 @@ def analyze_excel_file_import_polon(fn, parent_model: ImportPlikuPolon):
                         f"Zmieniam wymiar etatu z {ad.wymiar_etatu} na {wymiar_etatu}"
                     )
                     ad.wymiar_etatu = wymiar_etatu
+
+                if ad.jest_w_N != jest_w_n_xlsx:
+                    ops.append(
+                        f"Zmieniam 'Jest w N' z {ad.jest_w_N} na {jest_w_n_xlsx}"
+                    )
+                    ad.jest_w_N = jest_w_n_xlsx
 
                 if ops:
                     if parent_model.zapisz_zmiany_do_bazy:

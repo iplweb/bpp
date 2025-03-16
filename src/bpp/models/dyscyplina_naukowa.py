@@ -172,3 +172,15 @@ class Autor_Dyscyplina(models.Model):
         ):
             return True
         return False
+
+
+class Autor_Absencja(models.Model):
+    autor = models.ForeignKey("bpp.Autor", CASCADE)
+
+    rok = PositiveSmallIntegerField()
+    ile_dni = models.PositiveSmallIntegerField()
+
+    class Meta:
+        unique_together = [("rok", "autor")]
+        verbose_name = "absencj a autora za rok"
+        verbose_name_plural = "absencje autora za lata"
