@@ -131,6 +131,9 @@ class Autor_Dyscyplina(models.Model):
         max_digits=5, decimal_places=2, null=True, blank=True
     )
 
+    zatrudnienie_od = models.DateTimeField(blank=True, null=True)
+    zatrudnienie_do = models.DateTimeField(blank=True, null=True)
+
     objects = Autor_DyscyplinaManager()
 
     def __str__(self):

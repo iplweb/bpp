@@ -43,13 +43,12 @@ def analyze_file_import_polon(fn, parent_model: ImportPlikuPolon):
                 "Brak oświadczenia o dyscyplinach N, brak oświadczenia o dyscyplinach. "
             )
 
-        # W XLS pozostają takie pola:
+        zatrudnienie_od = row.get("ZATRUDNIENIE_OD")
+        zatrudnienie_do = row.get("ZATRUDNIENIE_DO")
+
+        # W XLS pozostają takie pola, ktorymi sie jeszcze nie zajalem:
         # PODSTAWOWE_MIEJSCE_PRACY
-        # WYMIAR_ETATU
-        # ZATRUDNIENIE_OD
-        # ZATRUDNIENIE_DO
         # DATA_ZLOZENIA_OSWIADCZENIA
-        # OSWIADCZENIE_O_DYSCYPLINACH
         # CHARAKTER_PRACY
         # GRUPA_STANOWISK
 
@@ -131,6 +130,8 @@ def analyze_file_import_polon(fn, parent_model: ImportPlikuPolon):
                             wymiar_etatu=wymiar_etatu,
                             procent_dyscypliny=procent_dyscypliny,
                             procent_subdyscypliny=procent_subdyscypliny,
+                            zatrudnienie_od=zatrudnienie_od,
+                            zatrudnienie_do=zatrudnienie_do,
                         )
                     ops.append("Brak wpisu dla tego roku, utworzono zgodnie z XLSX")
                 else:
@@ -200,6 +201,9 @@ def analyze_file_import_polon(fn, parent_model: ImportPlikuPolon):
 
                 if ops:
                     if parent_model.zapisz_zmiany_do_bazy:
+                        ad.zatrudnienie_od = zatrudnienie_od
+                        ad.zatrudnienie_do = zatrudnienie_do
+
                         ad.save()
 
                         if rodzaj_autora_zmieniony:
