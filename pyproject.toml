@@ -218,6 +218,7 @@ django-dbtemplates = "^4.0"
 django-soft-delete = "^1.0.15"
 tqdm = "^4.67.1"
 isbnlib = "^3.10.14"
+chardet = "^5.2.0"
 
 [tool.poetry.group.dev.dependencies]
 bumpver = "^2023.1124"

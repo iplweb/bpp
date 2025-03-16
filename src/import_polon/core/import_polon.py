@@ -1,17 +1,16 @@
 import decimal
 from decimal import Decimal
 
-import numpy
-import pandas
-
 from import_common.core import matchuj_autora, matchuj_dyscypline
 from import_polon.models import ImportPlikuPolon, WierszImportuPlikuPolon
+from import_polon.utils import read_excel_or_csv_dataframe_guess_encoding
 
 from bpp.models import Autor_Dyscyplina, przebuduj_prace_autora_po_udanej_transakcji
 
 
-def analyze_excel_file_import_polon(fn, parent_model: ImportPlikuPolon):
-    data = pandas.read_excel(fn, header=0).replace({numpy.nan: None})
+def analyze_file_import_polon(fn, parent_model: ImportPlikuPolon):
+    data = read_excel_or_csv_dataframe_guess_encoding(fn)
+    # pandas.read_excel(fn, header=0).replace({numpy.nan: None})
     records = data.to_dict("records")
     total = len(records)
     for n_row, row in enumerate(records):

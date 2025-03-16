@@ -16,9 +16,9 @@ class ImportPlikuAbsencji(ASGINotificationMixin, Operation):
         self.wierszimportuplikuabsencji_set.all().delete()
 
     def perform(self):
-        from .core.import_absencji import analyze_excel_file_import_absencji
+        from .core.import_absencji import analyze_file_import_absencji
 
-        analyze_excel_file_import_absencji(self.plik.path, self)
+        analyze_file_import_absencji(self.plik.path, self)
 
     def get_details_set(self):
         return self.wierszimportuplikuabsencji_set.all()
@@ -50,9 +50,9 @@ class ImportPlikuPolon(ASGINotificationMixin, Operation):
         self.wierszimportuplikupolon_set.all().delete()
 
     def perform(self):
-        from import_polon.core import analyze_excel_file_import_polon
+        from import_polon.core import analyze_file_import_polon
 
-        analyze_excel_file_import_polon(self.plik.path, self)
+        analyze_file_import_polon(self.plik.path, self)
 
     def get_details_set(self):
         return WierszImportuPlikuPolon.objects.filter(parent=self)

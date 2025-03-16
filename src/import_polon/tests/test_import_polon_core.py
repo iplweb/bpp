@@ -3,7 +3,7 @@ from denorm import denorms
 from django.db import transaction
 from model_bakery import baker
 
-from import_polon.core import analyze_excel_file_import_polon
+from import_polon.core import analyze_file_import_polon
 from import_polon.models import ImportPlikuPolon
 
 from bpp.models import (
@@ -21,7 +21,7 @@ def test_analyze_excel_file_import_polon_zly_plik(fn_test_import_absencji):
     ipp: ImportPlikuPolon = baker.make(
         ImportPlikuPolon, zapisz_zmiany_do_bazy=True, rok=ROK
     )
-    analyze_excel_file_import_polon(fn_test_import_absencji, ipp)
+    analyze_file_import_polon(fn_test_import_absencji, ipp)
 
 
 def test_analyze_excel_file_import_polon(
@@ -84,7 +84,7 @@ def test_analyze_excel_file_import_polon(
             rodzaj_autora=Autor_Dyscyplina.RODZAJE_AUTORA.Z,
         )
 
-        analyze_excel_file_import_polon(fn_test_import_polon, ipp)
+        analyze_file_import_polon(fn_test_import_polon, ipp)
 
         assert (
             artur_dyscyplinazn.autor_dyscyplina_set.get(rok=ROK).rodzaj_autora
