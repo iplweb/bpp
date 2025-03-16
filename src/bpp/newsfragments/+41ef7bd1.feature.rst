@@ -1,0 +1,2 @@
+
+PBN UID dla publikacji musi być unikalny na całą bazę

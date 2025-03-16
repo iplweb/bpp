@@ -825,12 +825,13 @@ class LinkDoPBNMixin:
 
 
 class ModelZPBN_UID(LinkDoPBNMixin, models.Model):
-    pbn_uid = models.ForeignKey(
+    pbn_uid = models.OneToOneField(
         "pbn_api.Publication",
         verbose_name=const.PBN_UID_FIELD_LABEL,
         null=True,
         blank=True,
         on_delete=models.SET_NULL,
+        unique=True,
     )
 
     url_do_pbn = const.LINK_PBN_DO_PUBLIKACJI
