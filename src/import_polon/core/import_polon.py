@@ -31,7 +31,7 @@ def analyze_excel_file_import_polon(fn, parent_model: ImportPlikuPolon):
         bledy = []
         jest_w_n_xlsx = False
 
-        if row.get("OSWIADCZENIE_N", "").lower() == "tak":
+        if (row.get("OSWIADCZENIE_N", "") or "").strip().lower() == "tak":
             jest_w_n_xlsx = True
 
             dyscyplina_naukowa = row.get("DYSCYPLINA_N")
@@ -119,14 +119,19 @@ def analyze_excel_file_import_polon(fn, parent_model: ImportPlikuPolon):
             except Autor_Dyscyplina.DoesNotExist:
                 if dyscyplina_xlsx:
                     if parent_model.zapisz_zmiany_do_bazy:
+
+                        rodzaj_autora = Autor_Dyscyplina.RODZAJE_AUTORA.Z
+                        if jest_w_n_xlsx:
+                            rodzaj_autora = Autor_Dyscyplina.RODZAJE_AUTORA.N
+
                         autor.autor_dyscyplina_set.create(
+                            rodzaj_autora=rodzaj_autora,
                             rok=parent_model.rok,
                             dyscyplina_naukowa=dyscyplina_xlsx,
                             subdyscyplina_naukowa=subdyscyplina_xlsx,
                             wymiar_etatu=wymiar_etatu,
                             procent_dyscypliny=procent_dyscypliny,
                             procent_subdyscypliny=procent_subdyscypliny,
-                            jest_w_N=jest_w_n_xlsx,
                         )
                     ops.append("Brak wpisu dla tego roku, utworzono zgodnie z XLSX")
                 else:
@@ -170,11 +175,25 @@ def analyze_excel_file_import_polon(fn, parent_model: ImportPlikuPolon):
                     )
                     ad.wymiar_etatu = wymiar_etatu
 
-                if ad.jest_w_N != jest_w_n_xlsx:
-                    ops.append(
-                        f"Zmieniam 'Jest w N' z {ad.jest_w_N} na {jest_w_n_xlsx}"
-                    )
-                    ad.jest_w_N = jest_w_n_xlsx
+                if jest_w_n_xlsx:
+                    # Wg pliku XLSX autor jest w N.
+                    # Jeżeli w systemie autor nie-jest-w-N, to nalezy ustawić, że jest-w-N
+                    # Doktorant zostanie "promowany" do liczby N.
+                    if ad.rodzaj_autora != Autor_Dyscyplina.RODZAJE_AUTORA.N:
+                        ops.append(
+                            f"Zmieniam rodzaj autora na {Autor_Dyscyplina.RODZAJE_AUTORA['N']}"
+                        )
+                        ad.rodzaj_autora = Autor_Dyscyplina.RODZAJE_AUTORA.N
+
+                else:
+                    # Wg pliku XLSX autor NIE jest w N.
+                    # Ustawiamy, że nie-jest-w-N.
+                    # Doktorantów NIE ruszamy.
+                    if ad.rodzaj_autora == Autor_Dyscyplina.RODZAJE_AUTORA.N:
+                        ops.append(
+                            f"Zmieniam rodzaj autora na {Autor_Dyscyplina.RODZAJE_AUTORA['N']}"
+                        )
+                        ad.rodzaj_autora = Autor_Dyscyplina.RODZAJE_AUTORA.Z
 
                 if ops:
                     if parent_model.zapisz_zmiany_do_bazy:
