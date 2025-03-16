@@ -4,6 +4,15 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202503.1165 (2025-03-16)
+============================
+
+Usprawnienie
+------------
+
+- Lepsza wysyłka wydawnictwa nadrzędnego w PBN
+
+
 Bpp 202503.1164 (2025-03-16)
 ============================
 
