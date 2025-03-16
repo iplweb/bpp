@@ -26,7 +26,7 @@ class UtworzImportPlikuPolon(BaseImportPlikuPolonMixin, CreateLongRunningOperati
 
 
 class ImportPolonRouterView(BaseImportPlikuPolonMixin, LongRunningRouterView):
-    redirect_prefix = "import_polon:importplikupolon"
+    redirect_prefix = "import_polon:importplikuabsencji"
 
 
 class ImportPolonDetailsView(BaseImportPlikuPolonMixin, LongRunningDetailsView):

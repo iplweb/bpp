@@ -8,6 +8,7 @@ from ewaluacja2021.models import IloscUdzialowDlaAutora
 from pbn_api.models import Scientist
 from ..models import (  # Publikacja_Habilitacyjna
     Autor,
+    Autor_Absencja,
     Autor_Dyscyplina,
     Autor_Jednostka,
     Dyscyplina_Naukowa,
@@ -36,6 +37,7 @@ class IloscUdzialowDlaAutoraInline(admin.TabularInline):
     model = IloscUdzialowDlaAutora
     extra = 1
     fields = ["dyscyplina_naukowa", "ilosc_udzialow", "ilosc_udzialow_monografie"]
+    # readonly_fields = fields
 
     def get_formset(self, request, obj=None, **kwargs):
         formset = super().get_formset(request, obj, **kwargs)
@@ -93,6 +95,12 @@ class Autor_DyscyplinaInline(admin.TabularInline):
         "subdyscyplina_naukowa",
         "procent_subdyscypliny",
     )
+
+
+class Autor_AbsencjaInline(admin.TabularInline):
+    model = Autor_Absencja
+    extra = 1
+    fields = ("rok", "ile_dni")
 
 
 # Autor_Jednostka
@@ -195,6 +203,7 @@ class AutorAdmin(
     inlines = [
         Autor_JednostkaInline,
         Autor_DyscyplinaInline,
+        Autor_AbsencjaInline,
         IloscUdzialowDlaAutoraInline,
     ]
     list_filter = [

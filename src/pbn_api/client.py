@@ -760,6 +760,22 @@ class PBNClient(
             always_affiliate_to_uid=always_affiliate_to_uid,
         )
 
+        if not ret.get("objectId", ""):
+            msg = (
+                f"UWAGA. Serwer PBN nie odpowiedział prawidłowym PBN UID dla"
+                f" wysyłanego rekordu. Zgłoś sytuację do administratora serwisu. "
+                f"{ret=}, {js=}, {pub=}"
+            )
+            if notificator is not None:
+                notificator.error(msg)
+
+            try:
+                raise NoPBNUIDException(msg)
+            except NoPBNUIDException as e:
+                capture_exception(e)
+
+            mail_admins("Serwer PBN nie zwrocil ID publikacji", msg, fail_silently=True)
+
         # Pobierz zwrotnie dane z PBN
         publication = self.download_publication(objectId=ret["objectId"])
         self.download_statements_of_publication(publication)

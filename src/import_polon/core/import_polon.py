@@ -1,17 +1,16 @@
 import decimal
 from decimal import Decimal
 
-import numpy
-import pandas
-
 from import_common.core import matchuj_autora, matchuj_dyscypline
 from import_polon.models import ImportPlikuPolon, WierszImportuPlikuPolon
+from import_polon.utils import read_excel_or_csv_dataframe_guess_encoding
 
-from bpp.models import Autor_Dyscyplina
+from bpp.models import Autor_Dyscyplina, przebuduj_prace_autora_po_udanej_transakcji
 
 
-def analyze_excel_file_import_polon(fn, parent_model: ImportPlikuPolon):
-    data = pandas.read_excel(fn, header=0).replace({numpy.nan: None})
+def analyze_file_import_polon(fn, parent_model: ImportPlikuPolon):
+    data = read_excel_or_csv_dataframe_guess_encoding(fn)
+    # pandas.read_excel(fn, header=0).replace({numpy.nan: None})
     records = data.to_dict("records")
     total = len(records)
     for n_row, row in enumerate(records):
@@ -28,34 +27,31 @@ def analyze_excel_file_import_polon(fn, parent_model: ImportPlikuPolon):
             ),
         )
 
-        dyscyplina_naukowa = row.get("DYSCYPLINA_N")
-        subdyscyplina_naukowa = row.get("DYSCYPLINA_N_KOLEJNA")
+        bledy = []
+        jest_w_n_xlsx = False
 
+        if (row.get("OSWIADCZENIE_N", "") or "").strip().lower() == "tak":
+            jest_w_n_xlsx = True
+
+            dyscyplina_naukowa = row.get("DYSCYPLINA_N")
+            subdyscyplina_naukowa = row.get("DYSCYPLINA_N_KOLEJNA")
+        elif row.get("OSWIADCZENIE_O_DYSCYPLINACH", "").lower() == "tak":
+            dyscyplina_naukowa = row.get("OSWIADCZONA_DYSCYPLINA_PIERWSZA")
+            subdyscyplina_naukowa = row.get("OSWIADCZONA_DYSCYPLINA_DRUGA")
+        else:
+            bledy.append(
+                "Brak oświadczenia o dyscyplinach N, brak oświadczenia o dyscyplinach. "
+            )
+
+        zatrudnienie_od = row.get("ZATRUDNIENIE_OD")
+        zatrudnienie_do = row.get("ZATRUDNIENIE_DO")
+
+        # W XLS pozostają takie pola, ktorymi sie jeszcze nie zajalem:
         # PODSTAWOWE_MIEJSCE_PRACY
-        # WYMIAR_ETATU
-        # WIELKOSC_ETATU
-        # WIELKOSC_ETATU_PREZENTACJA_DZIESIETNA
-        # ZATRUDNIENIE_OD
-        # ZATRUDNIENIE_DO
         # DATA_ZLOZENIA_OSWIADCZENIA
-        # OSWIADCZENIE_O_DYSCYPLINACH
-        # OSWIADCZONA_DYSCYPLINA_PIERWSZA
-        # OSWIADCZONA_DYSCYPLINA_DRUGA
-        #
-        # PROCENTOWY_UDZIAL_PIERWSZA_DYSCYPLINA
-        #
-        # OSWIADCZENIE_N
-        # ILOSC_DYSCYPLIN_W_OSWIADCZENIU_N
-        # DYSCYPLINA_N
-        # DYSCYPLINA_N_KOLEJNA
-        #
         # CHARAKTER_PRACY
         # GRUPA_STANOWISK
-        #
-        # IDETYFIKATOR_OSOBY_PBN
-        # ORCID
 
-        bledy = []
         if autor is None:
             if parent_model.ukryj_niezmatchowanych_autorow:
                 # Nie rejestruj, że autora nie udało się zmatchować
@@ -88,6 +84,7 @@ def analyze_excel_file_import_polon(fn, parent_model: ImportPlikuPolon):
                     "danych (decimal.Decimal)"
                 )
         procent_subdyscypliny = Decimal("100.00") - procent_dyscypliny
+
         wymiar_etatu = row.get("WIELKOSC_ETATU_PREZENTACJA_DZIESIETNA")
         if wymiar_etatu is None and autor is not None:
             bledy.append(
@@ -120,13 +117,21 @@ def analyze_excel_file_import_polon(fn, parent_model: ImportPlikuPolon):
             except Autor_Dyscyplina.DoesNotExist:
                 if dyscyplina_xlsx:
                     if parent_model.zapisz_zmiany_do_bazy:
+
+                        rodzaj_autora = Autor_Dyscyplina.RODZAJE_AUTORA.Z
+                        if jest_w_n_xlsx:
+                            rodzaj_autora = Autor_Dyscyplina.RODZAJE_AUTORA.N
+
                         autor.autor_dyscyplina_set.create(
+                            rodzaj_autora=rodzaj_autora,
                             rok=parent_model.rok,
                             dyscyplina_naukowa=dyscyplina_xlsx,
                             subdyscyplina_naukowa=subdyscyplina_xlsx,
                             wymiar_etatu=wymiar_etatu,
                             procent_dyscypliny=procent_dyscypliny,
                             procent_subdyscypliny=procent_subdyscypliny,
+                            zatrudnienie_od=zatrudnienie_od,
+                            zatrudnienie_do=zatrudnienie_do,
                         )
                     ops.append("Brak wpisu dla tego roku, utworzono zgodnie z XLSX")
                 else:
@@ -170,9 +175,41 @@ def analyze_excel_file_import_polon(fn, parent_model: ImportPlikuPolon):
                     )
                     ad.wymiar_etatu = wymiar_etatu
 
+                rodzaj_autora_zmieniony = False
+
+                if jest_w_n_xlsx:
+                    # Wg pliku XLSX autor jest w N.
+                    # Jeżeli w systemie autor nie-jest-w-N, to nalezy ustawić, że jest-w-N
+                    # Doktorant zostanie "promowany" do liczby N.
+                    if ad.rodzaj_autora != Autor_Dyscyplina.RODZAJE_AUTORA.N:
+                        ops.append(
+                            f"Zmieniam rodzaj autora na {Autor_Dyscyplina.RODZAJE_AUTORA['N']}"
+                        )
+                        ad.rodzaj_autora = Autor_Dyscyplina.RODZAJE_AUTORA.N
+                        rodzaj_autora_zmieniony = True
+
+                else:
+                    # Wg pliku XLSX autor NIE jest w N.
+                    # Ustawiamy, że nie-jest-w-N.
+                    # Doktorantów NIE ruszamy.
+                    if ad.rodzaj_autora == Autor_Dyscyplina.RODZAJE_AUTORA.N:
+                        ops.append(
+                            f"Zmieniam rodzaj autora na {Autor_Dyscyplina.RODZAJE_AUTORA['N']}"
+                        )
+                        ad.rodzaj_autora = Autor_Dyscyplina.RODZAJE_AUTORA.Z
+                        rodzaj_autora_zmieniony = True
+
                 if ops:
                     if parent_model.zapisz_zmiany_do_bazy:
+                        ad.zatrudnienie_od = zatrudnienie_od
+                        ad.zatrudnienie_do = zatrudnienie_do
+
                         ad.save()
+
+                        if rodzaj_autora_zmieniony:
+                            przebuduj_prace_autora_po_udanej_transakcji(
+                                autor_id=ad.autor_id, rok=ad.rok
+                            )
 
                 if not ops:
                     ops.append("W BPP jest identycznie jak w XLSX")

@@ -13,7 +13,7 @@ from bpp.models import Uczelnia
 
 class Wydawnictwo_Nadrzedne_W_PBNAutocomplete(autocomplete.Select2QuerySetView):
     # Ile rekordów maksymalnie ściągać z PBN?
-    MAX_RECORDS_DOWNLOADED = 10
+    MAX_RECORDS_DOWNLOADED = 5
 
     MONGO_ID = "mongoId"
     ISBN = "ISBN"

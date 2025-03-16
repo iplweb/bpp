@@ -2,7 +2,6 @@ from django.db import transaction
 from tqdm import tqdm
 
 from pbn_api.importer import utworz_autorow
-from pbn_api.integrator import integruj_oswiadczenia_pbn_first_import
 from pbn_api.management.commands.util import PBNBaseCommand
 
 from bpp.models import Jednostka, Rekord
@@ -25,6 +24,10 @@ class Command(PBNBaseCommand):
             bpp_orig = elem.original
             pbn_orig = elem.pbn_uid
 
+            if pbn_orig is None:
+                print(f"Brak odpowiednika w PBN dla rekordu {bpp_orig=}")
+                continue
+
             pbn_json = pbn_orig.current_version["object"]
 
             pbn_autorzy = pbn_json.get("authors", {})
@@ -41,4 +44,4 @@ class Command(PBNBaseCommand):
                 )
 
         if updates:
-            integruj_oswiadczenia_pbn_first_import()
+            print("Uruchom pbn_integruj_oswiadczenia")

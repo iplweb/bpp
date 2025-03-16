@@ -134,3 +134,4 @@ src/bpp/static/scss/app-blue.css.map
 src/bpp/static/scss/app-green.css.map
 src/bpp/static/scss/app-orange.css.map
 .checkpointing
+celerybeat-schedule.db

@@ -3,6 +3,7 @@ import pytest
 from import_common.normalization import (
     normalize_doi,
     normalize_kod_dyscypliny,
+    normalize_nazwa_dyscypliny,
     normalize_orcid,
     normalize_tytul_publikacji,
 )
@@ -46,6 +47,11 @@ def test_normalize_kod_dyscypliny(i, o):
 )
 def test_normalize_doi(i, o):
     assert normalize_doi(i) == o
+
+
+def test_normalize_nazwa_dyscypliny():
+    NAZWA = "nauki o Ziemi i środowisku"
+    assert normalize_nazwa_dyscypliny(NAZWA) == NAZWA
 
 
 @pytest.mark.parametrize(

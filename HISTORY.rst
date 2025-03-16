@@ -4,6 +4,29 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202503.1164 (2025-03-16)
+============================
+
+Naprawione
+----------
+
+- lepsze matchowanie dyscyplin zawierających wielkie litery, spacje, nawiasy z opisem w imporcie POLON
+
+
+Usprawnienie
+------------
+
+- PBN UID dla publikacji musi być unikalny na całą bazę
+- import absencji z POLON
+- importuj "zatrudnienie do" i "zatrudnienie od" z POLONu
+- lepsze drukowanie oświadczeń
+- możliwość importu POLON z CSV
+- ostrzegaj, jeżeli serwer PBN nie odpowie PBN UID
+- uwzględniaj pole 'rodzaj autora' obiektu Autor_Dyscyplina przy obliczeniach -- autorzy
+  z innym rodzajem niż "pracownik zaliczany do liczby N" lub "doktorant" NIE będą mieli
+  obliczanych punktów za dyscypliny
+
+
 Bpp 202503.1162 (2025-03-05)
 ============================
 

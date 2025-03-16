@@ -1,4 +1,4 @@
-<body>
+<body onload="window.print()" onfocus="window.close()">
 <style>
     @media print {
         footer {
@@ -16,5 +16,4 @@
     {% endif %}
     <footer></footer>
 {% endfor %}
-{% include "oswiadczenia/print_then_close.html" %}
 </body>

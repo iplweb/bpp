@@ -109,6 +109,25 @@ def test_sprobuj_wyslac_do_pbn_access_denied(
 
 
 @pytest.mark.django_db
+def test_sprobuj_wyslac_do_pbn_brak_prawidlowej_odpowiedzi(
+    pbn_wydawnictwo_zwarte_z_charakterem, pbn_client, rf, pbn_uczelnia
+):
+    req = rf.get("/")
+
+    pbn_client.transport.return_values[PBN_POST_PUBLICATIONS_URL] = {
+        "elem": "coz, jakby nie. "
+    }
+
+    with middleware(req):
+        sprobuj_wyslac_do_pbn_gui(
+            req, pbn_wydawnictwo_zwarte_z_charakterem, pbn_client=pbn_client
+        )
+
+    msg = get_messages(req)
+    assert "nie odpowiedział prawidłowym PBN UID" in list(msg)[0].message
+
+
+@pytest.mark.django_db
 def test_sprobuj_wyslac_do_pbn_inny_exception(
     pbn_wydawnictwo_zwarte_z_charakterem, pbn_client, rf, pbn_uczelnia
 ):
