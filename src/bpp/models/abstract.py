@@ -502,6 +502,20 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
     def __str__(self):
         return str(self.autor) + " - " + str(self.jednostka.skrot)
 
+    def rodzaj_autora_uwzgledniany_w_kalkulacjach_slotow(self):
+        try:
+            ad = self.autor.autor_dyscyplina_set.get(rok=self.rekord.rok)
+        except Autor_Dyscyplina.DoesNotExist:
+            return False
+
+        if ad.rodzaj_autora in [
+            Autor_Dyscyplina.RODZAJE_AUTORA.N,
+            Autor_Dyscyplina.RODZAJE_AUTORA.D,
+        ]:
+            return True
+
+        return False
+
     def okresl_dyscypline(self):
         return self.dyscyplina_naukowa
 

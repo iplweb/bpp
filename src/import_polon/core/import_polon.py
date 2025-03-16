@@ -7,7 +7,7 @@ import pandas
 from import_common.core import matchuj_autora, matchuj_dyscypline
 from import_polon.models import ImportPlikuPolon, WierszImportuPlikuPolon
 
-from bpp.models import Autor_Dyscyplina
+from bpp.models import Autor_Dyscyplina, przebuduj_prace_autora_po_udanej_transakcji
 
 
 def analyze_excel_file_import_polon(fn, parent_model: ImportPlikuPolon):
@@ -175,6 +175,8 @@ def analyze_excel_file_import_polon(fn, parent_model: ImportPlikuPolon):
                     )
                     ad.wymiar_etatu = wymiar_etatu
 
+                rodzaj_autora_zmieniony = False
+
                 if jest_w_n_xlsx:
                     # Wg pliku XLSX autor jest w N.
                     # Jeżeli w systemie autor nie-jest-w-N, to nalezy ustawić, że jest-w-N
@@ -184,6 +186,7 @@ def analyze_excel_file_import_polon(fn, parent_model: ImportPlikuPolon):
                             f"Zmieniam rodzaj autora na {Autor_Dyscyplina.RODZAJE_AUTORA['N']}"
                         )
                         ad.rodzaj_autora = Autor_Dyscyplina.RODZAJE_AUTORA.N
+                        rodzaj_autora_zmieniony = True
 
                 else:
                     # Wg pliku XLSX autor NIE jest w N.
@@ -194,10 +197,16 @@ def analyze_excel_file_import_polon(fn, parent_model: ImportPlikuPolon):
                             f"Zmieniam rodzaj autora na {Autor_Dyscyplina.RODZAJE_AUTORA['N']}"
                         )
                         ad.rodzaj_autora = Autor_Dyscyplina.RODZAJE_AUTORA.Z
+                        rodzaj_autora_zmieniony = True
 
                 if ops:
                     if parent_model.zapisz_zmiany_do_bazy:
                         ad.save()
+
+                        if rodzaj_autora_zmieniony:
+                            przebuduj_prace_autora_po_udanej_transakcji(
+                                autor_id=ad.autor_id, rok=ad.rok
+                            )
 
                 if not ops:
                     ops.append("W BPP jest identycznie jak w XLSX")

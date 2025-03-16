@@ -21,9 +21,17 @@ class SlotMixin:
 
         for elem in self.original.autorzy_set.filter(afiliuje=True, przypieta=True):
             if elem.okresl_dyscypline() == dyscyplina_naukowa:
+
+                # Upewnij się, ze za ten rok ten konkretny autor ma rodzaj "jest w N"
+                # lub jest doktorantem:
+                if not elem.rodzaj_autora_uwzgledniany_w_kalkulacjach_slotow():
+                    continue
+
+                # Czy typ ogólny autora (autor, redaktor) to ten, którego poszukujemy?
                 if typ_ogolny is not None:
                     if elem.typ_odpowiedzialnosci.typ_ogolny != typ_ogolny:
                         continue
+
                 ret.append(elem)
         return ret
 

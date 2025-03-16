@@ -1,0 +1,4 @@
+
+uwzględniaj pole 'rodzaj autora' obiektu Autor_Dyscyplina przy obliczeniach -- autorzy
+z innym rodzajem niż "pracownik zaliczany do liczby N" lub "doktorant" NIE będą mieli
+obliczanych punktów za dyscypliny

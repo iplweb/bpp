@@ -106,7 +106,7 @@ class Autor_Dyscyplina(models.Model):
     rodzaj_autora = models.CharField(
         max_length=1,
         choices=RODZAJE_AUTORA,
-        default=" ",
+        default="N",
     )
 
     wymiar_etatu = models.DecimalField(
@@ -182,5 +182,36 @@ class Autor_Absencja(models.Model):
 
     class Meta:
         unique_together = [("rok", "autor")]
-        verbose_name = "absencj a autora za rok"
+        verbose_name = "absencja autora za rok"
         verbose_name_plural = "absencje autora za lata"
+
+
+def przebuduj_prace_autora_po_udanej_transakcji(autor_id, rok):
+    # Zaznacz wszystkie rekordy z tym autorem z danego roku po zakończeniu
+    # transakcji jako "brudne" aby prawidłowo przekalkulować ich punktacje.
+    #
+    # W tej chwili nie ma prostej możliwości połączenia zależności bazodanowych
+    # za pomocą django_denorm, a niespecjalnie jestem zainteresowany rozbudowywaniem
+    # tej biblioteki (chociaż byłoby to do zrobienia, myślę, ale nie w tym momencie).
+    #
+    # Zatem, zlecamy przekalkulowanie wszystkich instancji prac tego autora
+    # po zapisaniu danych do bazy.
+    #
+    # Nie mam lepszych pomysłów na ten moment + po ręcznej zmianie typu autora dla
+    # powiązania autor+dyscyplina automatyczna rekalkulacja NIE będzie wykonana;
+    # będzie trzeba czekać na rekalkulację wieczorna bądź otworzyć/zapisać dany rekord.
+    #
+    # ... chyba, że uruchomię tą funkcję po zapisaniu (zmianie) wartości rodzaj_autora
+    # przez admina, ale to jest TODO:
+    #
+    # -- mpasternak, 16.03.2025
+
+    from denorm.denorms import rebuild_instances_of
+
+    from bpp.models import Patent, Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
+
+    def _(autor_id=autor_id, rok=rok):
+        for klass in [Wydawnictwo_Ciagle, Wydawnictwo_Zwarte, Patent]:
+            rebuild_instances_of(klass, rok=rok, autorzy_set__autor_id=autor_id)
+
+    transaction.on_commit(_)
