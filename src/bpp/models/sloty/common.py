@@ -19,22 +19,24 @@ class SlotMixin:
     def autorzy_z_dyscypliny(self, dyscyplina_naukowa, typ_ogolny=None):
         ret = []
 
+        elem_kw = {}
+        if typ_ogolny is not None:
+            # Czy typ ogólny autora (autor, redaktor) to ten, którego poszukujemy?
+            elem_kw = {"typ_odpowiedzialnosci__typ_ogolny": typ_ogolny}
+
         for elem in self.original.autorzy_set.filter(
-            afiliuje=True, przypieta=True, upowaznienie_pbn=True
+            afiliuje=True,
+            przypieta=True,
+            upowaznienie_pbn=True,
+            dyscyplina_naukowa=dyscyplina_naukowa,
+            **elem_kw
         ):
-            if elem.okresl_dyscypline() == dyscyplina_naukowa:
+            # Upewnij się, ze za ten rok ten konkretny autor ma rodzaj "jest w N"
+            # lub jest doktorantem:
+            if not elem.rodzaj_autora_uwzgledniany_w_kalkulacjach_slotow():
+                continue
 
-                # Upewnij się, ze za ten rok ten konkretny autor ma rodzaj "jest w N"
-                # lub jest doktorantem:
-                if not elem.rodzaj_autora_uwzgledniany_w_kalkulacjach_slotow():
-                    continue
-
-                # Czy typ ogólny autora (autor, redaktor) to ten, którego poszukujemy?
-                if typ_ogolny is not None:
-                    if elem.typ_odpowiedzialnosci.typ_ogolny != typ_ogolny:
-                        continue
-
-                ret.append(elem)
+            ret.append(elem)
         return ret
 
     @cached_property
