@@ -1,0 +1,2 @@
+
+wymagaj zaklikanego pola 'upowaznienie PBN' do obliczenia punktacji pracy

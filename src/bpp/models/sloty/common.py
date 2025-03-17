@@ -19,7 +19,9 @@ class SlotMixin:
     def autorzy_z_dyscypliny(self, dyscyplina_naukowa, typ_ogolny=None):
         ret = []
 
-        for elem in self.original.autorzy_set.filter(afiliuje=True, przypieta=True):
+        for elem in self.original.autorzy_set.filter(
+            afiliuje=True, przypieta=True, upowaznienie_pbn=True
+        ):
             if elem.okresl_dyscypline() == dyscyplina_naukowa:
 
                 # Upewnij się, ze za ten rok ten konkretny autor ma rodzaj "jest w N"
