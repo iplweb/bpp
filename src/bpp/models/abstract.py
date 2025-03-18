@@ -469,7 +469,7 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
 
     upowaznienie_pbn = models.BooleanField(
         "Upoważnienie PBN",
-        default=True,
+        default=False,
         help_text='Tik w polu "upoważnienie PBN" oznacza, że dany autor upoważnił '
         "Uczelnię do sprawozdania tej publikacji w ocenie parametrycznej Uczelni",
     )
