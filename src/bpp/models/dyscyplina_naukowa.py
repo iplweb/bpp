@@ -131,6 +131,10 @@ class Autor_Dyscyplina(models.Model):
         max_digits=5, decimal_places=2, null=True, blank=True
     )
 
+    #
+    # Te pola są importowane przez import_polon, ale nie są nigdzie wyświetlane na UI
+    # na ten moment (mpasternak, 18.03.2025)
+    #
     zatrudnienie_od = models.DateTimeField(blank=True, null=True)
     zatrudnienie_do = models.DateTimeField(blank=True, null=True)
 
@@ -175,6 +179,28 @@ class Autor_Dyscyplina(models.Model):
         ):
             return True
         return False
+
+    def policz_udzialy(self):
+        if self.wymiar_etatu is None:
+            return
+
+        if (
+            self.dyscyplina_naukowa_id is not None
+            and self.procent_dyscypliny is not None
+        ):
+            yield (
+                self.dyscyplina_naukowa,
+                self.wymiar_etatu * self.procent_dyscypliny / Decimal("100.0"),
+            )
+
+        if (
+            self.subdyscyplina_naukowa_id is not None
+            and self.procent_subdyscypliny is not None
+        ):
+            yield (
+                self.subdyscyplina_naukowa,
+                self.wymiar_etatu * self.procent_subdyscypliny / Decimal("100.0"),
+            )
 
 
 class Autor_Absencja(models.Model):

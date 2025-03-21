@@ -99,7 +99,7 @@ class PlikRaportu3N(GroupRequiredMixin, generic.DetailView):
     model = ZamowienieNaRaport
 
     def get(self, request, *args, **kw):
-        from sendfile import sendfile
+        from django_sendfile import sendfile
 
         self.object = self.get_object()
         return sendfile(
@@ -115,7 +115,7 @@ class WykresRaportu3N(GroupRequiredMixin, generic.DetailView):
     model = ZamowienieNaRaport
 
     def get(self, request, *args, **kw):
-        from sendfile import sendfile
+        from django_sendfile import sendfile
 
         self.object = self.get_object()
         return sendfile(

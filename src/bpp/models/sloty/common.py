@@ -27,7 +27,9 @@ class SlotMixin:
         for elem in self.original.autorzy_set.filter(
             afiliuje=True,
             przypieta=True,
-            upowaznienie_pbn=True,
+            # explicte -- nie chcemy, aby to pole brało udział w kalkulacjach
+            # mpasternak 18.03.2025
+            # upowaznienie_pbn=True,
             dyscyplina_naukowa=dyscyplina_naukowa,
             **elem_kw
         ):
