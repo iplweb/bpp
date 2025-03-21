@@ -4,6 +4,19 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202503.1166 (2025-03-21)
+============================
+
+Usprawnienie
+------------
+
+- Lepsza wysyłka wydawnictwa nadrzędnego w PBN
+- automatyczne obliczanie liczby N dla uczelni
+- licz dyscypliny dla autora rodzaju 'inny zatrudniony'
+- raporty ewaluacyjne 2022-2025
+- tłumacz dyscyplin PBN obsługuje teraz 3 zakresy lat
+
+
 Bpp 202503.1165 (2025-03-16)
 ============================
 

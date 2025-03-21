@@ -1,2 +1,0 @@
-
-automatyczne obliczanie liczby N dla uczelni
