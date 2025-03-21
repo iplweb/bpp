@@ -463,6 +463,6 @@ def test_sync_disciplines(pbn_client):
     assert Dyscyplina_Naukowa.objects.count() > 2
     d1.refresh_from_db(), d2.refresh_from_db()
 
-    assert TlumaczDyscyplin.objects.przetlumacz_dyscypline(d1, 2022) is not None
+    assert TlumaczDyscyplin.objects.przetlumacz_dyscypline(d1, 2024) is not None
 
-    assert TlumaczDyscyplin.objects.przetlumacz_dyscypline(d2, 2022) is not None
+    assert TlumaczDyscyplin.objects.przetlumacz_dyscypline(d2, 2024) is not None

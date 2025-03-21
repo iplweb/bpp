@@ -1,7 +1,10 @@
 import pytest
 from model_bakery import baker
 
-from ewaluacja2021.models import IloscUdzialowDlaAutora, LiczbaNDlaUczelni
+from ewaluacja2021.models import (
+    IloscUdzialowDlaAutora_2022_2025,
+    LiczbaNDlaUczelni_2022_2025,
+)
 
 from bpp.models import Autor_Dyscyplina, Wydawnictwo_Ciagle
 
@@ -25,14 +28,14 @@ def genetyczny_3n(
         autor=autor_jan_nowak, rok=ROK, dyscyplina_naukowa=dyscyplina1
     )
 
-    IloscUdzialowDlaAutora.objects.create(
+    IloscUdzialowDlaAutora_2022_2025.objects.create(
         autor=autor_jan_nowak,
         ilosc_udzialow=10,
         ilosc_udzialow_monografie=10,
         dyscyplina_naukowa=dyscyplina1,
     )
 
-    LiczbaNDlaUczelni.objects.create(
+    LiczbaNDlaUczelni_2022_2025.objects.create(
         dyscyplina_naukowa=dyscyplina1, uczelnia=uczelnia, liczba_n=100
     )
 

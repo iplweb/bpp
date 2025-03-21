@@ -88,6 +88,9 @@ class WypelnienieXLSX(CalosciowyXLSX):
         for autor in Autor.objects.filter(pk__in=id_autorow):
 
             maks_pkt_aut_calosc = self.dane["maks_pkt_aut_calosc"].get(str(autor.pk))
+            if maks_pkt_aut_calosc is None or maks_pkt_aut_calosc <= 0:
+                continue
+
             maks_pkt_aut_monografie = self.dane["maks_pkt_aut_monografie"].get(
                 str(autor.pk)
             )

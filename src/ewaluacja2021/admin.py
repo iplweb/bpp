@@ -1,12 +1,13 @@
 # Register your models here.
-
-from ewaluacja2021.models import IloscUdzialowDlaAutora
+from ewaluacja2021.models import IloscUdzialowDlaAutora_2022_2025
 
 from django.contrib import admin
 
+from bpp.admin.xlsx_export.mixins import EksportDanychMixin
 
-@admin.register(IloscUdzialowDlaAutora)
-class IloscUdzialowDlaAutoraAdmin(admin.ModelAdmin):
+
+@admin.register(IloscUdzialowDlaAutora_2022_2025)
+class IloscUdzialowDlaAutora_2022_2025_Admin(EksportDanychMixin, admin.ModelAdmin):
     list_display = [
         "autor",
         "dyscyplina_naukowa",

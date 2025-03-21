@@ -1,7 +1,10 @@
 from model_bakery import baker
 
 from ewaluacja2021.core.util import get_lista_prac
-from ewaluacja2021.models import IloscUdzialowDlaAutora, LiczbaNDlaUczelni
+from ewaluacja2021.models import (
+    IloscUdzialowDlaAutora_2022_2025,
+    LiczbaNDlaUczelni_2022_2025,
+)
 
 from bpp.models import Autor_Dyscyplina, Wydawnictwo_Ciagle
 
@@ -13,10 +16,10 @@ def test_get_lista_prac_zakres_lat(
 
     # Zrob dane testowe od 2015 do 2025
 
-    LiczbaNDlaUczelni.objects.create(
+    LiczbaNDlaUczelni_2022_2025.objects.create(
         dyscyplina_naukowa=dyscyplina1, uczelnia=uczelnia, liczba_n=100
     )
-    IloscUdzialowDlaAutora.objects.create(
+    IloscUdzialowDlaAutora_2022_2025.objects.create(
         autor=autor_jan_nowak,
         ilosc_udzialow=10,
         ilosc_udzialow_monografie=10,

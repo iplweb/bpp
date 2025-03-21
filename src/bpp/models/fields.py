@@ -1,6 +1,11 @@
-# -*- encoding: utf-8 -*-
-
 from django.db import models
+
+from django.contrib.postgres.fields import ArrayField
+
+
+class TupleField(ArrayField):
+    def from_db_value(self, value, expression, connection):
+        return tuple(value)
 
 
 class OpcjaWyswietlaniaField(models.CharField):
@@ -25,7 +30,7 @@ class OpcjaWyswietlaniaField(models.CharField):
         *args,
         **kw
     ):
-        super(OpcjaWyswietlaniaField, self).__init__(
+        super().__init__(
             verbose_name=verbose_name,
             max_length=max_length,
             choices=choices,

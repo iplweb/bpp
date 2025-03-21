@@ -106,6 +106,6 @@ def test_analyze_excel_file_import_polon(
         )
     denorms.flush()
 
-    assert not Cache_Punktacja_Autora.objects.filter(
+    assert Cache_Punktacja_Autora.objects.filter(
         rekord_id=rekord.pk, autor=dariusz_dyscyplinabezn
-    ).exists()
+    ).exists()  # dla autora "Z" też liczymy.

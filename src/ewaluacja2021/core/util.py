@@ -20,9 +20,9 @@ def get_lista_prac(nazwa_dyscypliny):
     """Zwraca liste prac - potencjalnych kandydatow do ewaluacji, ale wyłcznie dla dozwolonych
     autorow, tzn posiadajacych udzialy jednostkowe w danej dyscyplinie oraz dla lat 2018-2021
     """
-    from ewaluacja2021.models import IloscUdzialowDlaAutora
+    from ewaluacja2021.models import IloscUdzialowDlaAutora_2022_2025
 
-    dozwoleni_autorzy = IloscUdzialowDlaAutora.objects.filter(
+    dozwoleni_autorzy = IloscUdzialowDlaAutora_2022_2025.objects.filter(
         dyscyplina_naukowa__nazwa=nazwa_dyscypliny
     ).values_list("autor_id")
 
@@ -87,6 +87,7 @@ def get_lista_prac_as_tuples(nazwa_dyscypliny):
 
 
 def policz_knapsack(lista_prac, maks_slot=4.0):
+
     res = intsack(
         maks_slot,
         [x.slot for x in lista_prac],
@@ -105,22 +106,22 @@ def encode_datetime(obj):
 
 
 def maks_pkt_aut_calosc_get_from_db(nazwa_dyscypliny):
-    from ewaluacja2021.models import IloscUdzialowDlaAutora
+    from ewaluacja2021.models import IloscUdzialowDlaAutora_2022_2025
 
     return {
         int(x["autor_id"]): x["ilosc_udzialow"]
-        for x in IloscUdzialowDlaAutora.objects.filter(
+        for x in IloscUdzialowDlaAutora_2022_2025.objects.filter(
             dyscyplina_naukowa__nazwa=nazwa_dyscypliny
         ).values("autor_id", "ilosc_udzialow")
     }
 
 
 def maks_pkt_aut_monografie_get_from_db(nazwa_dyscypliny):
-    from ewaluacja2021.models import IloscUdzialowDlaAutora
+    from ewaluacja2021.models import IloscUdzialowDlaAutora_2022_2025
 
     return {
         int(x["autor_id"]): x["ilosc_udzialow_monografie"]
-        for x in IloscUdzialowDlaAutora.objects.filter(
+        for x in IloscUdzialowDlaAutora_2022_2025.objects.filter(
             dyscyplina_naukowa__nazwa=nazwa_dyscypliny
         ).values("autor_id", "ilosc_udzialow_monografie")
     }

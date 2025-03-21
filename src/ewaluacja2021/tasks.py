@@ -103,7 +103,7 @@ def generuj_algorytm(pk, *args, **kw):
             f"{rodzaj_zamowienia}_{string2fn(zamowienie.dyscyplina_naukowa.nazwa)}.json",
         )
 
-        suma_pkdaut = suma_pkdaut_json(json_file)
+        suma_pkdaut = suma_pkdaut_json(json_file) or 0
 
         if suma_pkdaut < poprzedni_wynik:
             # poprzendi wynik był lepszy, przywracam przypięcia, wychodze z programu
@@ -111,6 +111,7 @@ def generuj_algorytm(pk, *args, **kw):
             przywroc_przypiecia(rekordy_odpiete_przed, rekordy_odpiete_po)
             denorm.flush()
             suma_pkdaut = poprzedni_wynik
+
         else:
             poprzedni_wynik = suma_pkdaut
             zamowienie.status = "Przetwarzanie! Osiagnieto %s PKD" % suma_pkdaut

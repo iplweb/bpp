@@ -26,6 +26,7 @@ class DisciplineGroup(BasePBNModel):
     class Meta:
         verbose_name = "słownik dyscyplin PBN"
         verbose_name_plural = "słowniki dyscyplin PBN"
+        ordering = ("validityDateFrom",)
 
     @cached_property
     def is_current(self):
@@ -62,11 +63,12 @@ class Discipline(BasePBNModel):
     class Meta:
         verbose_name = "Dyscyplina PBN"
         verbose_name_plural = "Dyscypliny PBN"
+        ordering = ("name", "code")
 
     def __str__(self):
         ret = f"Dyscyplina {self.name} ("
         if self.parent_group.is_current:
             ret += "słownik: aktualny)"
         else:
-            ret += "słownik: nieaktualny)"
+            ret += f"słownik: {self.parent_group.validityDateFrom.year}-{self.parent_group.validityDateTo.year})"
         return ret

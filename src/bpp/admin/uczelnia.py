@@ -1,6 +1,6 @@
 from django import forms
 
-from ewaluacja2021.models import LiczbaNDlaUczelni
+from ewaluacja2021.models import LiczbaNDlaUczelni_2022_2025
 from pbn_api.exceptions import PraceSerwisoweException
 from ..models import Uczelnia, Ukryj_Status_Korekty, Wydzial
 
@@ -19,9 +19,9 @@ class WydzialInlineForm(forms.ModelForm):
         widgets = {"kolejnosc": forms.HiddenInput}
 
 
-class LiczbaNDlaUczelniInline(admin.TabularInline):
-    model = LiczbaNDlaUczelni
-    extra = 1
+class LiczbaNDlaUczelni_2022_2025Inline(admin.TabularInline):
+    model = LiczbaNDlaUczelni_2022_2025
+    extra = 0
 
     class Meta:
         fields = ["dyscyplina_naukowa", "liczba_n"]
@@ -192,7 +192,7 @@ class UczelniaAdmin(
     inlines = [
         WydzialInline,
         Ukryj_Status_KorektyInline,
-        LiczbaNDlaUczelniInline,
+        LiczbaNDlaUczelni_2022_2025Inline,
     ]
 
     def save_model(self, request, obj, form, change):
