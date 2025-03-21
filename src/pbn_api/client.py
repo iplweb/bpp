@@ -976,12 +976,16 @@ class PBNClient(
                 dyscyplina_w_bpp=dyscyplina
             )[0]
 
-            wpis_tlumacza.pbn_2022_now = matchuj_aktualna_dyscypline_pbn(
+            wpis_tlumacza.pbn_2024_now = matchuj_aktualna_dyscypline_pbn(
                 dyscyplina.kod, dyscyplina.nazwa
             )
             # Domyślnie szuka dla lat 2018-2022
             wpis_tlumacza.pbn_2017_2021 = matchuj_nieaktualna_dyscypline_pbn(
-                dyscyplina.kod, dyscyplina.nazwa
+                dyscyplina.kod, dyscyplina.nazwa, rok_min=2018, rok_max=2022
+            )
+
+            wpis_tlumacza.pbn_2022_2023 = matchuj_nieaktualna_dyscypline_pbn(
+                dyscyplina.kod, dyscyplina.nazwa, rok_min=2023, rok_max=2024
             )
 
             wpis_tlumacza.save()
@@ -991,7 +995,7 @@ class PBNClient(
                 pass
             # Każda dyscyplina z aktualnego słownika powinna być wpisana do systemu BPP
             try:
-                TlumaczDyscyplin.objects.get(pbn_2022_now=discipline)
+                TlumaczDyscyplin.objects.get(pbn_2024_now=discipline)
             except TlumaczDyscyplin.DoesNotExist:
                 try:
                     dyscyplina_w_bpp = Dyscyplina_Naukowa.objects.get(

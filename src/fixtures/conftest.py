@@ -108,7 +108,10 @@ def _dyscyplina_maker(nazwa, kod, dyscyplina_pbn):
     dyscyplin"""
     d = Dyscyplina_Naukowa.objects.get_or_create(nazwa=nazwa, kod=kod)[0]
     TlumaczDyscyplin.objects.get_or_create(
-        dyscyplina_w_bpp=d, pbn_2017_2021=dyscyplina_pbn, pbn_2022_now=dyscyplina_pbn
+        dyscyplina_w_bpp=d,
+        pbn_2017_2021=dyscyplina_pbn,
+        pbn_2022_2023=dyscyplina_pbn,
+        pbn_2024_now=dyscyplina_pbn,
     )
     return d
 

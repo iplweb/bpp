@@ -14,7 +14,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 
-CREATE OR REPLACE TRIGGER bpp_autor_dyscyplina_update_trigger
+CREATE OR REPLACE TRIGGER bpp_autor_dyscyplina_zaznacz_Cache_Liczba_N_trigger
     AFTER INSERT OR UPDATE OR DELETE
     ON bpp_autor_dyscyplina
 EXECUTE PROCEDURE zaznacz_Cache_Liczba_N_Last_Updated_wymaga_przeliczenia_trigger();

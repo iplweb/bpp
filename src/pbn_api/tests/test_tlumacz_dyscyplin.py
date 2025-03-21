@@ -11,7 +11,8 @@ def test_tlumacz_dyscyplin_bez_aktualnej(pbn_dyscyplina1):
     dyscyplina1 = baker.make(Dyscyplina_Naukowa)
     TlumaczDyscyplin.objects.create(
         dyscyplina_w_bpp=dyscyplina1,
-        pbn_2022_now=None,
+        pbn_2024_now=pbn_dyscyplina1,
+        pbn_2022_2023=None,
         pbn_2017_2021=pbn_dyscyplina1,
     )
 
@@ -24,7 +25,8 @@ def test_tlumacz_dyscyplin_bez_nieaktualnej(pbn_dyscyplina1):
 
     TlumaczDyscyplin.objects.create(
         dyscyplina_w_bpp=dyscyplina1,
-        pbn_2022_now=pbn_dyscyplina1,
+        pbn_2022_2023=pbn_dyscyplina1,
+        pbn_2024_now=pbn_dyscyplina1,
         pbn_2017_2021=None,
     )
 
@@ -45,7 +47,8 @@ def test_tlumacz_dyscyplin_obydwie(pbn_dyscyplina1):
 
     TlumaczDyscyplin.objects.create(
         dyscyplina_w_bpp=dyscyplina1,
-        pbn_2022_now=pbn_dyscyplina1,
+        pbn_2022_2023=pbn_dyscyplina1,
+        pbn_2024_now=pbn_dyscyplina1,
         pbn_2017_2021=pbn_dyscyplina1,
     )
 

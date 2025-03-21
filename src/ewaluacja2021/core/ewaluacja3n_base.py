@@ -5,7 +5,7 @@ from operator import attrgetter
 
 import simplejson
 
-from ..models import LiczbaNDlaUczelni
+from ..models import LiczbaNDlaUczelni_2022_2025
 from .sumator_base import SumatorBase
 from .util import (
     encode_datetime,
@@ -39,7 +39,7 @@ class Ewaluacja3NBase(SumatorBase):
             self.nazwa_dyscypliny
         )
 
-        self.liczba_n = LiczbaNDlaUczelni.objects.get(
+        self.liczba_n = LiczbaNDlaUczelni_2022_2025.objects.get(
             dyscyplina_naukowa__nazwa=self.nazwa_dyscypliny
         ).liczba_n
 

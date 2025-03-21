@@ -26,9 +26,15 @@ class TlumaczDyscyplinManager(models.Manager):
                 return td.pbn_2017_2021
 
             raise BrakWpisuException
-        elif rok >= 2022:
-            if td.pbn_2022_now is not None:
-                return td.pbn_2022_now
+        elif rok >= 2022 and rok <= 2023:
+            if td.pbn_2022_2023 is not None:
+                return td.pbn_2022_2023
+
+            raise BrakWpisuException
+
+        elif rok >= 2024:
+            if td.pbn_2024_now is not None:
+                return td.pbn_2024_now
 
             raise BrakWpisuException
 
