@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/sh -e
 
 export PGUSER="${DJANGO_BPP_DB_USER}"
 export PGHOST="${DJANGO_BPP_DB_HOST}"
