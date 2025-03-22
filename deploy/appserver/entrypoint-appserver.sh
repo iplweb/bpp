@@ -20,5 +20,9 @@ echo -n "Running compress... "
 ./src/manage.py compress -v0 --force --traceback
 echo "done."
 
+echo -n "Recalculating n-count for evaluation... "
+./src/manage.py przelicz_liczbe_n_dla_uczelni
+echo "done."
+
 echo "Starting uvicorn... "
 uvicorn --host 0 --port 8000 django_bpp.asgi:application
