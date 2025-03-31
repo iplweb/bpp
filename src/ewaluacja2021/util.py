@@ -164,7 +164,7 @@ def string2fn(s):
 
 
 def autor2fn(autor):
-    return string2fn(f"{autor.nazwisko}_{autor.imiona}".lower())
+    return string2fn(f"{autor.nazwisko}_{autor.imiona}")
 
 
 def normalize_xlsx_header_column_name(s):
