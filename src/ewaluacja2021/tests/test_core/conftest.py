@@ -22,7 +22,7 @@ def genetyczny_3n(
     Duży test integracyjny, sprawdza generowanie raportu genetycznego
     3N na bazie jednej pracy.
     """
-    ROK = 2021
+    ROK = 2022
 
     Autor_Dyscyplina.objects.create(
         autor=autor_jan_nowak, rok=ROK, dyscyplina_naukowa=dyscyplina1

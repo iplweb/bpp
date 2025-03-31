@@ -12,7 +12,7 @@ from bpp.models import Autor_Dyscyplina, Wydawnictwo_Ciagle
 def test_get_lista_prac_zakres_lat(
     autor_jan_nowak, dyscyplina1, jednostka, uczelnia, denorms, typy_odpowiedzialnosci
 ):
-    """Sprawdza, czy lista prac odrzuca prace spoza zakresu 2017-2021"""
+    """Sprawdza, czy lista prac odrzuca prace spoza zakresu 2022-2025"""
 
     # Zrob dane testowe od 2015 do 2025
 
@@ -41,4 +41,4 @@ def test_get_lista_prac_zakres_lat(
 
     denorms.flush()
 
-    assert (len(list(get_lista_prac(dyscyplina1.nazwa)))) == 5
+    assert (len(list(get_lista_prac(dyscyplina1.nazwa)))) == 4
