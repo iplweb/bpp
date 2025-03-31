@@ -4,6 +4,15 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202503.1171 (2025-03-31)
+============================
+
+Naprawione
+----------
+
+- workerserver nie wymaga obecności polecenia zip(1)
+
+
 Bpp 202503.1169 (2025-03-31)
 ============================
 
