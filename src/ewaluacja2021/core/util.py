@@ -18,7 +18,7 @@ class NieArtykul(Transform):
 
 def get_lista_prac(nazwa_dyscypliny):
     """Zwraca liste prac - potencjalnych kandydatow do ewaluacji, ale wyłcznie dla dozwolonych
-    autorow, tzn posiadajacych udzialy jednostkowe w danej dyscyplinie oraz dla lat 2018-2021
+    autorow, tzn posiadajacych udzialy jednostkowe w danej dyscyplinie oraz dla lat 2022-2025
     """
     from ewaluacja2021.models import IloscUdzialowDlaAutora_2022_2025
 
