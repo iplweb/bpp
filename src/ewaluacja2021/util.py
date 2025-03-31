@@ -38,7 +38,6 @@ import random
 def shuffle_array(
     array, start, length, no_shuffles=1, shuffle_type=SHUFFLE_TYPE.MIDDLE
 ):
-
     first = array[:start]
     second = array[start : start + length]
     third = array[start + length :]
