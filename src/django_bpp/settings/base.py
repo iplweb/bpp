@@ -405,6 +405,8 @@ INSTALLED_APPS = [
     "oswiadczenia",
     "import_polon",
     "import_list_ministerialnych",
+    "snapshot_odpiec",
+    "stan_systemu",
 ]
 
 # Profile użytkowników
@@ -668,6 +670,7 @@ YARN_FILE_PATTERNS = {
     # Zostana pozniej usuniete przez MANIFEST.in
     "qunit": ["qunit/qunit.js", "qunit/qunit.css"],
     "sinon": ["pkg/sinon.js"],
+    "htmx.org": ["dist/htmx.js"],
 }
 
 REST_FRAMEWORK = {

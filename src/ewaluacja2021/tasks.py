@@ -31,6 +31,20 @@ def suma_odpietych_dyscyplin():
     )
 
 
+def suma_przypietych_dyscyplin():
+    return (
+        Wydawnictwo_Ciagle_Autor.objects.exclude(dyscyplina_naukowa=None)
+        .exclude(przypieta=False)
+        .count()
+        + Wydawnictwo_Zwarte_Autor.objects.exclude(dyscyplina_naukowa=None)
+        .exclude(przypieta=False)
+        .count()
+        + Patent_Autor.objects.exclude(dyscyplina_naukowa=None)
+        .exclude(przypieta=False)
+        .count()
+    )
+
+
 def suma_pkdaut_json(fn):
     dane = load_data(open(fn))
     rec = rekordy(dane)
