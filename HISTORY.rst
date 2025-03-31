@@ -4,6 +4,15 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202503.1169 (2025-03-31)
+============================
+
+Usprawnienie
+------------
+
+- można zapisywać/wczytywać snapshoty przypięć i odpięć w module optymalizacji
+
+
 Bpp 202503.1166 (2025-03-21)
 ============================
 
