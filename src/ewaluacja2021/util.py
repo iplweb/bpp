@@ -38,7 +38,6 @@ import random
 def shuffle_array(
     array, start, length, no_shuffles=1, shuffle_type=SHUFFLE_TYPE.MIDDLE
 ):
-
     first = array[:start]
     second = array[start : start + length]
     third = array[start + length :]
@@ -165,7 +164,7 @@ def string2fn(s):
 
 
 def autor2fn(autor):
-    return string2fn(f"{autor.nazwisko}_{autor.imiona}".lower())
+    return string2fn(f"{autor.nazwisko}_{autor.imiona}")
 
 
 def normalize_xlsx_header_column_name(s):
@@ -253,3 +252,22 @@ def float_or_string_or_int_or_none_to_decimal(i, decimal_places=4):
     if isinstance(i, float):
         return Decimal(f"%.{decimal_places}f" % round(i, decimal_places))
     raise NotImplementedError(f"Type {type(i)} not supported.")
+
+
+import os
+import zipfile
+
+
+def zipdir(path, ziph):
+    # https://stackoverflow.com/a/1855118/401516
+    for root, dirs, files in os.walk(path):
+        for file in files:
+            ziph.write(
+                os.path.join(root, file),
+                os.path.relpath(os.path.join(root, file), os.path.join(path, "..")),
+            )
+
+
+def create_zip_archive(output_fn, input_dir):
+    with zipfile.ZipFile(output_fn, "w", zipfile.ZIP_DEFLATED) as zipf:
+        zipdir(input_dir, zipf)
