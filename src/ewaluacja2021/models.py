@@ -19,7 +19,7 @@ from bpp.models.uczelnia import Uczelnia
 
 
 def dyscypliny_naukowe_w_bazie():
-    dyscypliny_z_liczba_n = LiczbaNDlaUczelni.objects.values_list(
+    dyscypliny_z_liczba_n = LiczbaNDlaUczelni_2022_2025.objects.values_list(
         "dyscyplina_naukowa", flat=True
     )
 
