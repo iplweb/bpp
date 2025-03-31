@@ -253,3 +253,22 @@ def float_or_string_or_int_or_none_to_decimal(i, decimal_places=4):
     if isinstance(i, float):
         return Decimal(f"%.{decimal_places}f" % round(i, decimal_places))
     raise NotImplementedError(f"Type {type(i)} not supported.")
+
+
+import os
+import zipfile
+
+
+def zipdir(path, ziph):
+    # https://stackoverflow.com/a/1855118/401516
+    for root, dirs, files in os.walk(path):
+        for file in files:
+            ziph.write(
+                os.path.join(root, file),
+                os.path.relpath(os.path.join(root, file), os.path.join(path, "..")),
+            )
+
+
+def create_zip_archive(output_fn, input_dir):
+    with zipfile.ZipFile(output_fn, "w", zipfile.ZIP_DEFLATED) as zipf:
+        zipdir(input_dir, zipf)

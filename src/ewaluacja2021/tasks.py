@@ -10,7 +10,7 @@ from django.db.models import Sum
 
 from ewaluacja2021.models import ZamowienieNaRaport
 from ewaluacja2021.reports import load_data, rekordy
-from ewaluacja2021.util import string2fn
+from ewaluacja2021.util import create_zip_archive, string2fn
 
 from bpp.models import Patent_Autor, Wydawnictwo_Ciagle_Autor, Wydawnictwo_Zwarte_Autor
 
@@ -136,10 +136,7 @@ def generuj_algorytm(pk, *args, **kw):
             xls_output_dir = json_file.replace(".json", "_output")
             zip_path = os.path.join(outdir, "results.zip")
 
-            cwd = os.getcwd()
-            os.chdir(outdir)
-            os.system(f'zip -r "{zip_path}" "{os.path.basename(xls_output_dir)}/"')
-            os.chdir(cwd)
+            create_zip_archive(output_fn=zip_path, input_dir=xls_output_dir)
 
             zamowienie.plik_wyjsciowy.save(
                 basename(xls_output_dir) + ".zip", content=File(open(zip_path, "rb"))
