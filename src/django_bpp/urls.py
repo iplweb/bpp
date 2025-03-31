@@ -115,6 +115,20 @@ urlpatterns = (
             ),
         ),
         url(
+            r"^snapshot_odpiec/",
+            include(
+                "snapshot_odpiec.urls",
+                namespace="snapshot_odpiec",
+            ),
+        ),
+        url(
+            r"^stan_systemu/",
+            include(
+                "stan_systemu.urls",
+                namespace="stan_systemu",
+            ),
+        ),
+        url(
             r"^nowe_raporty/",
             include(("nowe_raporty.urls", "nowe_raporty"), namespace="nowe_raporty"),
         ),

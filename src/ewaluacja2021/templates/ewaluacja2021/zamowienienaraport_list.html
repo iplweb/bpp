@@ -17,21 +17,42 @@
             nowy raport
         </a>
     </h2>
-    {% if object_list.exists %}
-        <p>
-            Obecnie ilość odpiętych dyscyplin w bazie wynosi: {{ ilosc_odpietych_dyscyplin }}
-            {% if ilosc_odpietych_dyscyplin > 0 and request.user.is_staff %}
-                {% if ilosc_elementow_w_kolejce %}
-                    Przycisk resetu dyscyplin dostępny będzie po przeliczeniu punktacji. Odśwież stronę za chwilę.
-                {% else %}
-                    <a class="button warning" id="resetuj-przypiecia" href="?resetuj=1"
-                       onclick="return confirm('Czy na pewno?')">
-                        <i class="fi-refresh"></i>
-                        resetuj przypięcia
-                    </a>
-                {% endif %}
+    <hr>
+    <h4>Liczby N 2022-2025<a class="button info" href="?przelicz=1">przelicz liczby N</a>
+
+    </h4>
+    <table>
+        <tr>
+            <th>Dyscyplina</th>
+            <th>Liczba N</th>
+        </tr>
+        {% for elem in liczby_n_uczelni %}
+            <tr>
+                <td>{{ elem.dyscyplina_naukowa.nazwa }}</td>
+                <td>{{ elem.liczba_n }}</td>
+            </tr>
+        {% endfor %}
+    </table>
+    <hr>
+    <h4>Przypięcia dyscyplin</h4>
+    <p>
+        Obecnie ilość odpiętych dyscyplin w bazie wynosi: {{ ilosc_odpietych_dyscyplin }}
+        {% if ilosc_odpietych_dyscyplin > 0 and request.user.is_staff %}
+            {% if ilosc_elementow_w_kolejce %}
+                Przycisk resetu dyscyplin dostępny będzie po przeliczeniu punktacji. Odśwież stronę za chwilę.
+            {% else %}
+                <a class="button warning" id="resetuj-przypiecia" href="?resetuj=1"
+                   onclick="return confirm('Czy na pewno?')">
+                    <i class="fi-refresh"></i>
+                    resetuj przypięcia
+                </a>
             {% endif %}
-        </p>
+        {% endif %}
+        <a class="button info" href="{% url "snapshot_odpiec:index" %}">snapshoty odpieć</a>
+    </p>
+    <hr>
+    <h4>Zamówione raporty</h4>
+    {% if object_list.exists %}
         <p>
             Poniżej znajduje się lista raportów zamówionych w systemie w ciągu ostatnich 7 dni.
         </p>

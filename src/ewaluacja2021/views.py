@@ -8,14 +8,24 @@ from django.http import HttpResponseRedirect
 from django.views import generic
 
 from ewaluacja2021.forms import ImportMaksymalnychSlotowForm, ZamowienieNaRaportForm
-from ewaluacja2021.models import ImportMaksymalnychSlotow, ZamowienieNaRaport
+from ewaluacja2021.models import (
+    ImportMaksymalnychSlotow,
+    LiczbaNDlaUczelni_2022_2025,
+    ZamowienieNaRaport,
+)
 from ewaluacja2021.tasks import generuj_algorytm, suma_odpietych_dyscyplin
 from long_running.tasks import perform_generic_long_running_task
 
 from django.utils import timezone
 
 from bpp.const import GR_WPROWADZANIE_DANYCH
-from bpp.models import Patent_Autor, Wydawnictwo_Ciagle_Autor, Wydawnictwo_Zwarte_Autor
+from bpp.models import (
+    Patent_Autor,
+    Uczelnia,
+    Wydawnictwo_Ciagle_Autor,
+    Wydawnictwo_Zwarte_Autor,
+)
+from bpp.models.cache.utils import oblicz_liczby_n_dla_ewaluacji_2022_2025
 
 
 class NowyImport(GroupRequiredMixin, generic.CreateView):
@@ -64,6 +74,11 @@ class ListaRaporto3N(GroupRequiredMixin, generic.ListView):
     model = ZamowienieNaRaport
 
     def get(self, request, *args, **kwargs):
+        if request.GET.get("przelicz") == "1" and request.user.is_staff:
+            oblicz_liczby_n_dla_ewaluacji_2022_2025(
+                uczelnia=Uczelnia.objects.get_default()
+            )
+            return HttpResponseRedirect(".")
 
         if request.GET.get("resetuj") == "1" and request.user.is_staff:
             with transaction.atomic():
@@ -88,6 +103,7 @@ class ListaRaporto3N(GroupRequiredMixin, generic.ListView):
     def get_context_data(self, *, object_list=None, **kwargs):
         return super().get_context_data(
             object_list=object_list,
+            liczby_n_uczelni=LiczbaNDlaUczelni_2022_2025.objects.all(),
             ilosc_odpietych_dyscyplin=suma_odpietych_dyscyplin(),
             ilosc_elementow_w_kolejce=DirtyInstance.objects.count(),
             **kwargs,

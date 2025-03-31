@@ -1,6 +1,6 @@
 {
     "name": "bpp-iplweb",
-    "version": "v202503.1168",
+    "version": "v202503.1169",
     "license": "MIT",
     "devDependencies": {
         "grunt": ">=1.6.1",
@@ -18,6 +18,7 @@
         "font-awesome": "4.1.0",
         "foundation-datepicker": "^1.5.6",
         "foundation-sites": "^6.7.5",
+        "htmx.org": "^1.9.12",
         "jinplace": "1.0.1",
         "jquery": "^3.4.0",
         "jquery-plugin": "^0.0.0-ignored",
