@@ -149,7 +149,7 @@ class GAD(FitnessFuncMixin, Ewaluacja3NBase):
                 num_parents_mating=2,
                 initial_population=initial_population,
                 gene_type=int,
-                gene_space=baza_dla_randomizera,
+                gene_space=baza_dla_randomizera or None,
                 crossover_type="single_point",
                 mutation_type="swap",
                 # mutation_num_genes=int(math.ceil(len(najlepszy_osobnik) * 0.5)),
