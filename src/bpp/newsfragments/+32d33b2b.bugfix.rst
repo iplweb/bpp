@@ -1,2 +1,0 @@
-
-workerserver nie wymaga obecności polecenia zip(1)
