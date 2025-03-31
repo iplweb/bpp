@@ -25,7 +25,8 @@ def oblicz_liczby_n_dla_ewaluacji_2022_2025(uczelnia, rok_min=2022, rok_max=2025
             latami = autor_rok_dyscyplina_na_udzial[autor_id][dyscyplina_id]
 
             suma = sum(latami.values())
-            ilosc = len(latami.values())
+            # Zawsze na 4 lata:
+            ilosc = 4  # len(latami.values())
 
             IloscUdzialowDlaAutora_2022_2025.objects.update_or_create(
                 autor_id=autor_id,

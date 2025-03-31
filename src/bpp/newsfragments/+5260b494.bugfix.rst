@@ -1,0 +1,2 @@
+
+poprawne liczenie liczby N
