@@ -66,6 +66,3 @@ def oblicz_liczby_n_dla_ewaluacji_2022_2025(uczelnia, rok_min=2022, rok_max=2025
     Cache_Liczba_N_Last_Updated.objects.update_or_create(
         pk=1, defaults=dict(wymaga_przeliczenia=False)
     )
-
-    for elem in LiczbaNDlaUczelni_2022_2025.objects.all():
-        print(elem)
