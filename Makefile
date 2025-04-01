@@ -67,8 +67,8 @@ bdist_wheel: distclean production-assets compilemessages
 	poetry build
 	ls -lash dist
 
-upload:
-	twine upload dist/*whl
+#upload:
+#	twine upload dist/*whl
 
 puppeteer-install-chrome:
 	npx puppeteer browsers install chrome
@@ -148,7 +148,7 @@ poetry-lock:
 gh-run-watch:
 	gh run watch
 
-new-release: poetry-lock upgrade-version bdist_wheel upload docker gh-run-watch
+new-release: poetry-lock upgrade-version bdist_wheel docker gh-run-watch
 
 release: tests js-tests new-release
 
