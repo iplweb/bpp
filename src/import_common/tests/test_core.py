@@ -46,6 +46,11 @@ def test_matchuj_autora_imiona_nazwisko(autor_jan_nowak):
     assert a == autor_jan_nowak
 
 
+def test_matchuj_autora_imiona_nazwisko_dwa_imiona_w_matchu(autor_jan_nowak):
+    a = matchuj_autora("Jan Tadeusz Wiśniowiecki", "Nowak", jednostka=None)
+    assert a == autor_jan_nowak
+
+
 @pytest.mark.django_db
 def test_matchuj_autora_po_aktualnej_jednostce():
     j1 = baker.make(Jednostka)

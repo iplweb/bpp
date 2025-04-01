@@ -200,11 +200,17 @@ def matchuj_autora(
             Q(nazwisko__iexact=nazwisko.strip())
             | Q(poprzednie_nazwiska__icontains=nazwisko.strip()),
             imiona__iexact=imiona.strip(),
-        )
+        ),
+        Q(
+            Q(nazwisko__iexact=nazwisko.strip())
+            | Q(poprzednie_nazwiska__icontains=nazwisko.strip()),
+            imiona__iexact=imiona.strip().split(" ")[0],
+        ),
     ]
 
     if tytul_str:
-        queries.append(queries[0] & Q(tytul__skrot=tytul_str))
+        for query in queries[: len(queries)]:
+            queries.append(query & Q(tytul__skrot=tytul_str))
 
     for qry in queries:
         try:

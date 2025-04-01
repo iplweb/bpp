@@ -136,3 +136,4 @@ src/bpp/static/scss/app-orange.css.map
 celerybeat-schedule.db
 cov.xml
 src/ewaluacja2021/tests/test_core/genetyczny_memetyka_stosowana_output
+genetyczny_memetyka_stosowana_output
