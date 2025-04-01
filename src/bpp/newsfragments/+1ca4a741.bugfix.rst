@@ -1,0 +1,2 @@
+
+błąd importu POLON przy określonym autorze, ale nie określonych polach dyscyplin

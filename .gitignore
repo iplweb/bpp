@@ -111,7 +111,6 @@ dump-*.dump
 *.gz
 /src/bpp/static/scss/.sass-cache/
 *.psql
-*.xlsx
 pbn_json_data
 integracja-publikacji-bg-up.txt
 *.csv
@@ -136,3 +135,4 @@ src/bpp/static/scss/app-orange.css.map
 .checkpointing
 celerybeat-schedule.db
 cov.xml
+src/ewaluacja2021/tests/test_core/genetyczny_memetyka_stosowana_output

@@ -30,6 +30,9 @@ def analyze_file_import_polon(fn, parent_model: ImportPlikuPolon):
         bledy = []
         jest_w_n_xlsx = False
 
+        dyscyplina_naukowa = None
+        subdyscyplina_naukowa = None
+
         if (row.get("OSWIADCZENIE_N", "") or "").strip().lower() == "tak":
             jest_w_n_xlsx = True
 
