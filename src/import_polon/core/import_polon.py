@@ -14,14 +14,18 @@ def analyze_file_import_polon(fn, parent_model: ImportPlikuPolon):
     records = data.to_dict("records")
     total = len(records)
     for n_row, row in enumerate(records):
+
+        orcid = row.get("ORCID", "") or ""
+        nazwisko = row.get("NAZWISKO", "")
+
         autor = matchuj_autora(
             imiona=(
                 (row.get("IMIE", "") or "") + " " + (row.get("DRUGIE", "") or "")
             ).strip(),
-            nazwisko=row.get("NAZWISKO", ""),
+            nazwisko=nazwisko,
             pbn_uid_id=row.get("IDETYFIKATOR_OSOBY_PBN")
             or row.get("IDENTYFIKATOR_OSOBY_PBN"),
-            orcid=row.get("ORCID", ""),
+            orcid=orcid,
             tytul_str=row.get(
                 "STOPIEN_TYTUL_AKTUALNY_NA_DZIEN_WYGENEROWANIA_RAPORTU", None
             ),
@@ -216,6 +220,12 @@ def analyze_file_import_polon(fn, parent_model: ImportPlikuPolon):
 
                 if not ops:
                     ops.append("W BPP jest identycznie jak w XLSX")
+
+            if autor.orcid is None and orcid:
+                autor.orcid = orcid
+                ops.append("Ustawiam ORCID. ")
+                if parent_model.zapisz_zmiany_do_bazy:
+                    autor.save()
 
             rezultat = ", ".join(ops)
 
