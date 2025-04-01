@@ -24,6 +24,18 @@ def test_analyze_excel_file_import_polon_zly_plik(fn_test_import_absencji):
     analyze_file_import_polon(fn_test_import_absencji, ipp)
 
 
+@pytest.mark.django_db
+def test_analyze_excel_file_import_polon_plik_bez_dyscyplin(
+    fn_test_import_polon_bledny,
+):
+    ROK = 2020
+    ipp: ImportPlikuPolon = baker.make(
+        ImportPlikuPolon, zapisz_zmiany_do_bazy=True, rok=ROK
+    )
+    baker.make(Autor, nazwisko="Kowalski", imiona="Aleksander Bolesław")
+    analyze_file_import_polon(fn_test_import_polon_bledny, ipp)
+
+
 def test_analyze_excel_file_import_polon(
     transactional_db,
     fn_test_import_polon,

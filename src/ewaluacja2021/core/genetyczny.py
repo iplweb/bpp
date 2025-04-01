@@ -50,16 +50,17 @@ class GAD(FitnessFuncMixin, Ewaluacja3NBase):
         self.ile_zupelnie_losowych = ile_zupelnie_losowych
 
     def on_generation(self, ga_instance: pygad.GA):
-        no_generations = ga_instance.generations_completed or 1
-        best_solution = ga_instance.best_solution()
-
-        print(
-            f"Generacja: {no_generations}\t"
-            f"Procent: {no_generations * 100 // self.max_gen} \t"
-            f"Najlepsze rozwiązanie: {best_solution[1]}\t"
-            "\r",
-            end="",
-        )
+        return
+        # no_generations = ga_instance.generations_completed or 1
+        # best_solution = ga_instance.best_solution()
+        #
+        # print(
+        #     f"Generacja: {no_generations}\t"
+        #     f"Procent: {no_generations * 100 // self.max_gen} \t"
+        #     f"Najlepsze rozwiązanie: {best_solution[1]}\t"
+        #     "\r",
+        #     end="",
+        # )
 
     def pracuj(self):
 

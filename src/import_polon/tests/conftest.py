@@ -11,6 +11,11 @@ def fn_test_import_polon():
 
 
 @pytest.fixture
+def fn_test_import_polon_bledny():
+    return Path(__file__).parent / "test_import_polon_bledny.xlsx"
+
+
+@pytest.fixture
 def fn_test_import_absencji():
     return Path(__file__).parent / "test_import_absencji.xlsx"
 

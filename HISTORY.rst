@@ -4,6 +4,16 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202504.1174 (2025-04-01)
+============================
+
+Naprawione
+----------
+
+- błąd importu POLON przy określonym autorze, ale nie określonych polach dyscyplin
+- lepsze parsowanie daty w plikach importu POLON w formacie CSV
+
+
 Bpp 202503.1172 (2025-03-31)
 ============================
 
