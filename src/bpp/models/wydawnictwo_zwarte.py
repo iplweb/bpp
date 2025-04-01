@@ -11,6 +11,7 @@ from django.db.models.expressions import RawSQL
 from django.contrib.contenttypes.fields import GenericRelation
 from django.contrib.postgres.fields import ArrayField
 
+from bpp import const
 from bpp.models import (
     BazaModeluStreszczen,
     DodajAutoraMixin,
@@ -354,6 +355,32 @@ class Wydawnictwo_Zwarte(
                     "musisz wyczyścić wartość w polu 'Wydawnictwo nadrzędne'. ",
                 }
             )
+
+    def warunek_redakcja(self):
+        from bpp.models import Typ_Odpowiedzialnosci
+
+        for elem in Typ_Odpowiedzialnosci.objects.filter(
+            pk__in=self.autorzy_set.values_list("typ_odpowiedzialnosci_id")
+        ).distinct():
+            if elem.typ_ogolny == const.TO_REDAKTOR:
+                return True
+
+    def warunek_autorstwo(self):
+        from bpp.models import Typ_Odpowiedzialnosci
+
+        for elem in Typ_Odpowiedzialnosci.objects.filter(
+            pk__in=self.autorzy_set.values_list("typ_odpowiedzialnosci_id")
+        ).distinct():
+            if elem.typ_ogolny == const.TO_AUTOR:
+                return True
+
+    def warunek_ksiazka(self):
+        if self.charakter_formalny.charakter_sloty == const.CHARAKTER_SLOTY_KSIAZKA:
+            return True
+
+    def warunek_rozdzial(self):
+        if self.charakter_formalny.charakter_sloty == const.CHARAKTER_SLOTY_ROZDZIAL:
+            return True
 
 
 class Wydawnictwo_Zwarte_Zewnetrzna_Baza_Danych(models.Model):

@@ -587,6 +587,9 @@ def importuj_rozdzial(
     except Wydawca.DoesNotExist:
         wydawca = sciagnij_i_zapisz_wydawce(pbn_wydawca_id, client)
 
+    if not isinstance(wydawnictwo_nadrzedne, Wydawnictwo_Zwarte):
+        wydawnictwo_nadrzedne = wydawnictwo_nadrzedne.original
+
     ret = Wydawnictwo_Zwarte(
         tytul_oryginalny=pbn_json.pop("title"),
         isbn=wydawnictwo_nadrzedne.isbn,
@@ -594,6 +597,7 @@ def importuj_rozdzial(
         strony=pbn_json.pop("pagesFromTo", pbn_chapter_json.pop("pagesFromTo", None)),
         public_www=pbn_chapter_json.pop("publicUri", pbn_json.pop("publicUri", None)),
         wydawca=wydawca,
+        wydawnictwo_nadrzedne=wydawnictwo_nadrzedne,
         jezyk=Jezyk.objects.get(
             pbn_uid=pbn_json.pop(
                 "mainLanguage", pbn_chapter_json.pop("mainLanguage", None)
@@ -849,14 +853,21 @@ def sciagnij_i_zapisz_wydawce(pbn_wydawca_id, client):
 #
 
 
-@transaction.atomic
-def importuj_ksiazke(mongoId, default_jednostka: Jednostka, client: PBNClient):
+def get_or_download_publication(mongoId, client):
+
     try:
         pbn_publication = Publication.objects.get(pk=mongoId)
     except Publication.DoesNotExist:
         res = client.get_publication_by_id(mongoId)
         zapisz_mongodb(res, Publication)
         pbn_publication = Publication.objects.get(pk=mongoId)
+
+    return pbn_publication
+
+
+@transaction.atomic
+def importuj_ksiazke(mongoId, default_jednostka: Jednostka, client: PBNClient):
+    pbn_publication = get_or_download_publication(mongoId, client)
 
     ret = pbn_publication.rekord_w_bpp
 
@@ -911,6 +922,54 @@ def importuj_ksiazke(mongoId, default_jednostka: Jednostka, client: PBNClient):
     return ret
 
 
+def importuj_publikacje_po_pbn_uid_id(
+    pbn_uid_id, client: PBNClient, default_jednostka: Jednostka
+):
+    pbn_publication = get_or_download_publication(pbn_uid_id, client)
+    assert pbn_publication is not None
+
+    cv = pbn_publication.current_version
+
+    # XXX: TODO:traktowac slownik 'authors' czy 'affiliations' jako ORDERED DICT
+    match cv["object"].pop("type"):
+        case "BOOK":
+            ret = importuj_ksiazke(
+                pbn_publication.pk,
+                default_jednostka=default_jednostka,
+                client=client,
+            )
+        case "EDITED_BOOK":
+            ret = importuj_ksiazke(
+                pbn_publication.pk,
+                default_jednostka=default_jednostka,
+                client=client,
+            )
+        case "CHAPTER":
+            ret = importuj_ksiazke(
+                cv["object"]["book"]["id"],
+                default_jednostka=default_jednostka,
+                client=client,
+            )
+
+            ret = importuj_rozdzial(
+                pbn_publication.pk,
+                default_jednostka=default_jednostka,
+                client=client,
+            )
+
+        case "ARTICLE":
+            # maybe = client.get_publication_by_id(pbn_publication.pk)
+            ret = importuj_artykul(
+                pbn_publication.pk,
+                default_jednostka=default_jednostka,
+                client=client,
+            )
+        case _:
+            raise NotImplementedError(f"Nie obsluze {cv['object']['type']}")
+
+    return ret
+
+
 def importuj_publikacje_instytucji(
     client: PBNClient, default_jednostka: Jednostka, pbn_uid_id=None
 ):
@@ -921,44 +980,9 @@ def importuj_publikacje_instytucji(
         chciane = chciane.filter(pk=pbn_uid_id)
 
     for pbn_publication in tqdm(chciane):
-        cv = pbn_publication.current_version
-
-        # XXX: TODO:traktowac slownik 'authors' czy 'affiliations' jako ORDERED DICT
-        match cv["object"].pop("type"):
-            case "BOOK":
-                ret = importuj_ksiazke(
-                    pbn_publication.pk,
-                    default_jednostka=default_jednostka,
-                    client=client,
-                )
-            case "EDITED_BOOK":
-                ret = importuj_ksiazke(
-                    pbn_publication.pk,
-                    default_jednostka=default_jednostka,
-                    client=client,
-                )
-            case "CHAPTER":
-                ret = importuj_ksiazke(
-                    cv["object"]["book"]["id"],
-                    default_jednostka=default_jednostka,
-                    client=client,
-                )
-
-                ret = importuj_rozdzial(
-                    pbn_publication.pk,
-                    default_jednostka=default_jednostka,
-                    client=client,
-                )
-
-            case "ARTICLE":
-                # maybe = client.get_publication_by_id(pbn_publication.pk)
-                ret = importuj_artykul(
-                    pbn_publication.pk,
-                    default_jednostka=default_jednostka,
-                    client=client,
-                )
-            case _:
-                raise NotImplementedError(f"Nie obsluze {cv['object']['type']}")
+        ret = importuj_publikacje_po_pbn_uid_id(
+            pbn_publication.mongoId, client=client, default_jednostka=default_jednostka
+        )
 
         if pbn_uid_id:
             return ret
