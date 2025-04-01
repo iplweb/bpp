@@ -1,7 +1,7 @@
 import decimal
 from decimal import Decimal
 
-from import_common.core import matchuj_autora, matchuj_dyscypline
+from import_common.core import matchuj_autora, matchuj_dyscypline, normalize_date
 from import_polon.models import ImportPlikuPolon, WierszImportuPlikuPolon
 from import_polon.utils import read_excel_or_csv_dataframe_guess_encoding
 
@@ -46,8 +46,8 @@ def analyze_file_import_polon(fn, parent_model: ImportPlikuPolon):
                 "Brak oświadczenia o dyscyplinach N, brak oświadczenia o dyscyplinach. "
             )
 
-        zatrudnienie_od = row.get("ZATRUDNIENIE_OD")
-        zatrudnienie_do = row.get("ZATRUDNIENIE_DO")
+        zatrudnienie_od = normalize_date(row.get("ZATRUDNIENIE_OD"))
+        zatrudnienie_do = normalize_date(row.get("ZATRUDNIENIE_DO"))
 
         # W XLS pozostają takie pola, ktorymi sie jeszcze nie zajalem:
         # PODSTAWOWE_MIEJSCE_PRACY

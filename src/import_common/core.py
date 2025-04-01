@@ -1,5 +1,6 @@
 from typing import Union
 
+import dateutil
 from django.db.models import Q, Value
 from django.db.models.functions import Lower, Replace, Trim
 
@@ -398,6 +399,21 @@ normalized_db_zrodlo_skrot = Trim(
 
 def normalize_zrodlo_skrot_for_db_lookup(s):
     return s.lower().replace(" ", "").strip().replace("-", "").replace(".", "")
+
+
+def normalize_date(s):
+    if s is None:
+        return s
+
+    if isinstance(s, str):
+        s = s.strip()
+
+        if not s:
+            return
+
+        return dateutil.parser.parse(s)
+
+    return s
 
 
 # Znormalizowany skrot zrodla do wyszukiwania -- wyrzucone wszystko procz kropek

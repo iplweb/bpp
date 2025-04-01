@@ -1,5 +1,8 @@
+import datetime
+
 import pytest
 
+from import_common.core import normalize_date
 from import_common.normalization import (
     normalize_doi,
     normalize_kod_dyscypliny,
@@ -80,3 +83,18 @@ def test_normalize_orcid(i, o):
 )
 def test_normalize_tytul_publikacji(i, o):
     assert normalize_tytul_publikacji(i) == o
+
+
+@pytest.mark.parametrize(
+    "i,o",
+    [
+        (None, None),
+        ("", None),
+        (" ", None),
+        (" 2024.11.20 ", datetime.datetime(2024, 11, 20, 0, 0)),
+        ("30.04.2021", datetime.datetime(2021, 4, 30, 0, 0)),
+        (datetime.datetime(2020, 1, 1), datetime.datetime(2020, 1, 1, 0, 0)),
+    ],
+)
+def test_normalize_date(i, o):
+    assert normalize_date(i) == o
