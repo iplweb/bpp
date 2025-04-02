@@ -674,7 +674,7 @@ class JezykQueryObject(BppMultiseekVisibilityMixin, QueryObject):
     label = "Język"
     type = VALUE_LIST
     ops = EQUALITY_OPS_MALE
-    values = Jezyk.objects.all()
+    values = Jezyk.objects.filter(widoczny=True)
     field_name = "jezyk"
 
     def value_from_web(self, value):
