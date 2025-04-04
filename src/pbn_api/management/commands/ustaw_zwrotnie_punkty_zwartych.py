@@ -1,5 +1,3 @@
-from decimal import Decimal
-
 from tqdm import tqdm
 
 from pbn_api.management.commands.util import PBNBaseCommand
@@ -13,8 +11,8 @@ class Command(PBNBaseCommand):
 
     def handle(self, *args, **kw):
         punkty_dct = [
-            {"KS": 20, "RED": 5, "ROZ": Decimal("2.5")},
-            {"KS": 100, "RED": 20, "ROZ": 10},
+            {"KS": 20, "RED": 5, "ROZ": 5},
+            {"KS": 80, "RED": 20, "ROZ": 20},
             {"KS": 200, "RED": 100, "ROZ": 50},
         ]
 
