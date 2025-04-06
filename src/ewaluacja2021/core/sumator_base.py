@@ -1,38 +1,37 @@
 import logging
 from collections import defaultdict
 
-from ewaluacja2021.const import LATA_2017_2018, LATA_2019_2021
-
 logger = logging.getLogger(__name__)
 
 
 class SumatorBase:
     def __init__(
-        self, liczba_2_2_n, liczba_0_8_n, maks_pkt_aut_calosc, maks_pkt_aut_monografie
+        self,
+        liczba_3n,
+        procent_monografii,
+        maks_pkt_aut_calosc,
+        maks_pkt_aut_monografie,
     ):
-        self.liczba_2_2_n = liczba_2_2_n
-        self.liczba_0_8_n = liczba_0_8_n
+        self.liczba_3n = liczba_3n
+        self.liczba_3n_monografie = liczba_3n * procent_monografii
+
+        # mapa autor -> ile slotów
         self.maks_pkt_aut_calosc = maks_pkt_aut_calosc
+
+        # mapa autor -> ile slotów za monografie
         self.maks_pkt_aut_monografie = maks_pkt_aut_monografie
-        self.liczba_2_2_n_minus_2 = self.liczba_2_2_n - 2
-        self.liczba_0_8_n_minus_2 = self.liczba_0_8_n - 2
 
         self.zeruj()
 
     def czy_moze_przejsc_warunek_uczelnia(self, praca):
-        if (
-            self.sumy_slotow[LATA_2019_2021] < self.liczba_2_2_n_minus_2
-            and self.sumy_slotow[LATA_2017_2018] < self.liczba_0_8_n_minus_2
-        ):
-            return True
+        if praca.monografia:
+            if praca.poziom_wydawcy != 2:
+                # maksymalnie 5% monografii lub 20% w przypadku HST
+                if self.suma_slotow_monografie + praca.slot > self.liczba_3n_monografie:
+                    return False
 
-        # Czy uczelnia nie ma już dość takich publikacji?
-        if praca.rok >= 2019 or praca.monografia:
-            if self.sumy_slotow[LATA_2019_2021] + praca.slot > self.liczba_2_2_n:
-                return False
-        else:
-            if self.sumy_slotow[LATA_2017_2018] + praca.slot > self.liczba_0_8_n:
-                return False
+        if self.suma_slotow + praca.slot > self.liczba_3n:
+            return False
 
         # Uczelnia nie ma dość takich publikacji. Idziemy dalej.
         return True
@@ -69,11 +68,7 @@ class SumatorBase:
         if indeks_solucji is not None:
             self.indeksy_solucji.add(indeks_solucji)
 
-        if praca.rok >= 2019 or praca.monografia:
-            self.sumy_slotow[LATA_2019_2021] += praca.slot
-        else:
-            self.sumy_slotow[LATA_2017_2018] += praca.slot
-
+        self.suma_slotow += praca.slot
         self.suma_prac_autorow_wszystko[praca.autor_id] += praca.slot
         if praca.monografia:
             self.suma_prac_autorow_monografie[praca.autor_id] += praca.slot
@@ -82,7 +77,8 @@ class SumatorBase:
         self.id_rekordow = set()
 
         self.suma_pkd = 0
-        self.sumy_slotow = [0, 0]
+        self.suma_slotow = 0
+        self.suma_slotow_monografie = 0
         self.indeksy_solucji = set()
 
         self.suma_prac_autorow_wszystko = defaultdict(int)

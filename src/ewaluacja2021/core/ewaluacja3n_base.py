@@ -16,6 +16,8 @@ from .util import (
     maks_pkt_aut_monografie_get_from_db,
 )
 
+from bpp.models import Dyscyplina_Naukowa
+
 logger = logging.getLogger(__name__)
 
 
@@ -43,10 +45,16 @@ class Ewaluacja3NBase(SumatorBase):
             dyscyplina_naukowa__nazwa=self.nazwa_dyscypliny
         ).liczba_n
 
+        self.procent_monografii = (
+            Decimal("0.2")
+            if Dyscyplina_Naukowa.objects.get(nazwa=nazwa_dyscypliny).dyscyplina_hst
+            else Decimal("0.05")
+        )
+
         SumatorBase.__init__(
             self=self,
-            liczba_2_2_n=Decimal("2.2") * self.liczba_n,
-            liczba_0_8_n=Decimal("0.8") * self.liczba_n,
+            liczba_3n=Decimal("3") * self.liczba_n,
+            procent_monografii=self.procent_monografii,
             maks_pkt_aut_calosc=maks_pkt_aut_calosc,
             maks_pkt_aut_monografie=maks_pkt_aut_monografie,
         )
@@ -67,10 +75,7 @@ class Ewaluacja3NBase(SumatorBase):
         logger.info("get_data finished")
 
     def powitanie(self):
-        print(
-            f"Szukam dla: {self.nazwa_dyscypliny}, liczba N: {self.liczba_n}, 2.2*N: {self.liczba_2_2_n}, "
-            f"0.8*N: {self.liczba_0_8_n}"
-        )
+        print(f"Szukam dla: {self.nazwa_dyscypliny}, liczba 3N: {3*self.liczba_n}")
 
     def pozegnanie(self):
         print(
@@ -86,9 +91,9 @@ class Ewaluacja3NBase(SumatorBase):
             ),
             "dyscyplina": self.nazwa_dyscypliny,
             "liczba_n": self.liczba_n,
-            "liczba_0_8_n": self.liczba_0_8_n,
-            "liczba_2_2_n": self.liczba_2_2_n,
-            "sumy_slotow": self.sumy_slotow,
+            "liczba_3n": self.liczba_n * 3,
+            "procent_monografii": self.procent_monografii,
+            "suma_slotow": self.suma_slotow,
             "maks_pkt_aut_calosc": self.maks_pkt_aut_calosc,
             "maks_pkt_aut_monografie": self.maks_pkt_aut_monografie,
             "wejscie": [x for x in self.lista_prac],

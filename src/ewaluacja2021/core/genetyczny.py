@@ -87,8 +87,8 @@ class GAD(FitnessFuncMixin, Ewaluacja3NBase):
             initializer=multiprocessing_gad_pool_initializer,
             initargs=(
                 self.lista_prac_by_index,
-                self.liczba_2_2_n,
-                self.liczba_0_8_n,
+                self.liczba_3n,
+                self.procent_monografii,
                 self.maks_pkt_aut_calosc,
                 self.maks_pkt_aut_monografie,
             ),

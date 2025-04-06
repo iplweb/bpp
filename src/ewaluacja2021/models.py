@@ -44,6 +44,7 @@ class ZamowienieNaRaport(models.Model):
             ("genetyczny", "genetyczny"),
             ("genetyczny_z_odpinaniem", "genetyczny z odpinaniem"),
         ],
+        default="genetyczny",
     )
     dyscyplina_naukowa = models.ForeignKey(
         Dyscyplina_Naukowa,

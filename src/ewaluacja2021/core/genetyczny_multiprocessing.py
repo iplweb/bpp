@@ -29,8 +29,8 @@ def fitness_wrapper(lista_prac):
 
 def multiprocessing_gad_pool_initializer(
     lista_prac_by_index,
-    liczba_2_2_n,
-    liczba_0_8_n,
+    liczba_3n,
+    procent_monografii,
     maks_pkt_aut_calosc,
     maks_pkt_aut_monografie,
 ):
@@ -44,8 +44,8 @@ def multiprocessing_gad_pool_initializer(
     dla populacji w sposób wielowątkowy."""
     sumator = GenetycznySumator(
         lista_prac_by_index=lista_prac_by_index,
-        liczba_2_2_n=liczba_2_2_n,
-        liczba_0_8_n=liczba_0_8_n,
+        liczba_3n=liczba_3n,
+        procent_monografii=procent_monografii,
         maks_pkt_aut_calosc=maks_pkt_aut_calosc,
         maks_pkt_aut_monografie=maks_pkt_aut_monografie,
     )
