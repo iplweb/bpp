@@ -1,7 +1,11 @@
 import django
+from django.core.management import call_command
 
 from import_common.core import matchuj_uczelnie
-from pbn_api.importer import importuj_publikacje_instytucji
+from pbn_api.importer import (
+    importuj_publikacje_instytucji,
+    importuj_publikacje_po_pbn_uid_id,
+)
 
 from bpp.util import pbar
 
@@ -65,6 +69,11 @@ class Command(PBNBaseCommand):
         parser.add_argument("--disable-wydawcy", action="store_true", default=False),
         parser.add_argument("--disable-autorzy", action="store_true", default=False),
         parser.add_argument("--disable-publikacje", action="store_true", default=False),
+        parser.add_argument("--disable-reimport", action="store_true", default=False),
+
+        parser.add_argument(
+            "--disable-publikacje-download", action="store_true", default=False
+        ),
         parser.add_argument("--disable-oplaty", action="store_true", default=False),
         parser.add_argument("--wydzial-domyslny", default="Wydział Domyślny"),
         parser.add_argument("--wydzial-domyslny-skrot", default=None),
@@ -84,6 +93,8 @@ class Command(PBNBaseCommand):
         disable_autorzy,
         disable_konferencje,
         disable_publikacje,
+        disable_reimport,
+        disable_publikacje_download,
         disable_oplaty,
         disable_oswiadczenia,
         wydzial_domyslny,
@@ -137,52 +148,70 @@ class Command(PBNBaseCommand):
                 client, Uczelnia.objects.default.pbn_uid_id, import_unexistent=True
             )
 
+        # Setup przed kolejnymi krokami
+
+        wydzial = Wydzial.objects.get_or_create(
+            nazwa=wydzial_domyslny,
+            skrot=wydzial_domyslny_skrot or zrob_skrot(wydzial_domyslny),
+            uczelnia=Uczelnia.objects.default,
+        )[0]
+
+        jednostka = Jednostka.objects.get_or_create(
+            nazwa="Jednostka Domyślna",
+            skrot="JD",
+            uczelnia=Uczelnia.objects.default,
+        )[0]
+
+        if not jednostka.jednostka_wydzial_set.filter(wydzial=wydzial).exists():
+            jednostka.jednostka_wydzial_set.create(wydzial=wydzial)
+
+        obca_jednostka = Jednostka.objects.get_or_create(
+            nazwa="Obca jednostka",
+            skrot="O",
+            uczelnia=Uczelnia.objects.default,
+            skupia_pracownikow=False,
+        )[0]
+
+        if not obca_jednostka.jednostka_wydzial_set.filter(wydzial=wydzial).exists():
+            obca_jednostka.jednostka_wydzial_set.create(wydzial=wydzial)
+
+        u = Uczelnia.objects.default
+        u.obca_jednostka = obca_jednostka
+        u.save()
+
+        Wersja_Tekstu_OpenAccess.objects.get_or_create(nazwa="Inna", skrot="OTHER")
+
+        # Koniec setupu przed kolejnymi krokami
+
         if not disable_publikacje:
-            pobierz_publikacje_z_instytucji(client)
-            pobierz_oswiadczenia_z_instytucji(client)
+            if not disable_publikacje_download:
+                pobierz_publikacje_z_instytucji(client)
+                pobierz_oswiadczenia_z_instytucji(client)
 
-            wydzial = Wydzial.objects.get_or_create(
-                nazwa=wydzial_domyslny,
-                skrot=wydzial_domyslny_skrot or zrob_skrot(wydzial_domyslny),
-                uczelnia=Uczelnia.objects.default,
-            )[0]
-
-            jednostka = Jednostka.objects.get_or_create(
-                nazwa="Jednostka Domyślna",
-                skrot="JD",
-                uczelnia=Uczelnia.objects.default,
-            )[0]
-
-            if not jednostka.jednostka_wydzial_set.filter(wydzial=wydzial).exists():
-                jednostka.jednostka_wydzial_set.create(wydzial=wydzial)
-
-            obca_jednostka = Jednostka.objects.get_or_create(
-                nazwa="Obca jednostka",
-                skrot="O",
-                uczelnia=Uczelnia.objects.default,
-                skupia_pracownikow=False,
-            )[0]
-
-            if not obca_jednostka.jednostka_wydzial_set.filter(
-                wydzial=wydzial
-            ).exists():
-                obca_jednostka.jednostka_wydzial_set.create(wydzial=wydzial)
-
-            u = Uczelnia.objects.default
-            u.obca_jednostka = obca_jednostka
-            u.save()
-
-            Wersja_Tekstu_OpenAccess.objects.get_or_create(nazwa="Inna", skrot="OTHER")
+            if not disable_reimport:
+                Wydawnictwo_Zwarte.objects.exclude(pbn_uid_id=None).delete()
+                Wydawnictwo_Ciagle.objects.exclude(pbn_uid_id=None).delete()
 
             importuj_publikacje_instytucji(client=client, default_jednostka=jednostka)
             integruj_publikacje_instytucji(disable_multiprocessing=True)
 
         if not disable_oswiadczenia:
-            integruj_oswiadczenia_z_instytucji()
+
+            def missing_publication_callback(pbn_uid_id):
+                return importuj_publikacje_po_pbn_uid_id(
+                    pbn_uid_id,
+                    client=client,
+                    default_jednostka=jednostka,
+                )
+
+            integruj_oswiadczenia_z_instytucji(missing_publication_callback)
 
         if not disable_oplaty:
             for klass in Wydawnictwo_Ciagle, Wydawnictwo_Zwarte:
-                for rekord in pbar(klass.objects.exclude(pbn_uid_id=None)):
+                for rekord in pbar(
+                    klass.objects.exclude(pbn_uid_id=None),
+                    label=f"import oplat dla {klass}",
+                ):
                     res = client.get_publication_fee(rekord.pbn_uid_id)
                     if res is not None:
                         rekord.opl_pub_cost_free = res["fee"]["costFreePublication"]
@@ -204,3 +233,9 @@ class Command(PBNBaseCommand):
                                 "opl_pub_amount",
                             ]
                         )
+
+        call_command("ustaw_zwrotnie_punkty_zwartych")
+        call_command("ustaw_zwrotnie_punkty_ciaglych")
+        call_command("przypisz_rekordy_aktualnym_jednostkom_autorow")
+
+        call_command("denorm_flush")

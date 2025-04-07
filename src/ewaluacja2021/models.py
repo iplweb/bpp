@@ -39,11 +39,27 @@ class ZamowienieNaRaport(models.Model):
         verbose_name="Rodzaj algorytmu",
         max_length=25,
         choices=[
-            ("plecakowy", "plecakowy"),
-            ("plecakowy_bez_limitu", "plecakowy bez limitu na uczelnię"),
-            ("genetyczny", "genetyczny"),
-            ("genetyczny_z_odpinaniem", "genetyczny z odpinaniem"),
+            (
+                "plecakowy",
+                "plecakowy - szybki wynik, dokładne wyliczenia dla autora, niezbyt dokładne dla uczelni",
+            ),
+            (
+                "plecakowy_bez_limitu",
+                "plecakowy bez limitu na uczelnię - szybki wynik, dokładne wyliczenia dla autora, "
+                "ale bez warunku limitu na uczelnię",
+            ),
+            (
+                "genetyczny",
+                "genetyczny - dokładne wyliczenia dla autora i uczelni, dłuższy czas oczekiwania; uwzględnia "
+                "przypięcia/odpięcia dyscyplin",
+            ),
+            (
+                "genetyczny_z_odpinaniem",
+                "genetyczny z odpinaniem - dokładne wyliczenia dla autora i instytucji, "
+                "następnie odpina dyscypliny i ponawia kalkulację i tak kilka razy...",
+            ),
         ],
+        default="genetyczny_z_odpinaniem",
     )
     dyscyplina_naukowa = models.ForeignKey(
         Dyscyplina_Naukowa,

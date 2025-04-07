@@ -704,7 +704,7 @@ class PodrzednaPublikacjaHabilitacyjnaAutocomplete(Select2QuerySetSequenceView):
 
 class Dyscyplina_NaukowaAutocomplete(autocomplete.Select2QuerySetView):
     def get_queryset(self):
-        qs = Dyscyplina_Naukowa.objects.all()
+        qs = Dyscyplina_Naukowa.objects.filter(widoczna=True)
         if self.q:
             qs = qs.filter(Q(nazwa__icontains=self.q) | Q(kod__icontains=self.q))
         return qs

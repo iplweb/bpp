@@ -12,7 +12,7 @@ from django.contrib.contenttypes.models import ContentType
 
 from django.utils.functional import cached_property
 
-from bpp.models import Dyscyplina_Naukowa, Typ_Odpowiedzialnosci, Uczelnia, Wydawca
+from bpp.models import Dyscyplina_Naukowa, Uczelnia, Wydawca
 from bpp.models.cache import Cache_Punktacja_Autora, Cache_Punktacja_Dyscypliny
 from bpp.models.patent import Patent
 from bpp.models.sloty.wydawnictwo_ciagle import SlotKalkulator_Wydawnictwo_Ciagle_Prog3
@@ -115,28 +115,15 @@ def ISlot(original, uczelnia=None):
 
         rozdzial = ksiazka = autorstwo = redakcja = False
 
-        if (
-            original.charakter_formalny.charakter_sloty
-            == const.CHARAKTER_SLOTY_ROZDZIAL
-        ):
-            rozdzial = True
-
-        if original.charakter_formalny.charakter_sloty == const.CHARAKTER_SLOTY_KSIAZKA:
-            ksiazka = True
+        rozdzial = original.warunek_rozdzial()
+        ksiazka = original.warunek_ksiazka()
 
         if ksiazka and rozdzial:
             raise NotImplementedError("To sie nie powinno wydarzyc)")
 
         if ksiazka and original.pk:
-            for elem in Typ_Odpowiedzialnosci.objects.filter(
-                pk__in=original.autorzy_set.values_list("typ_odpowiedzialnosci_id")
-            ).distinct():
-                if elem.typ_ogolny == const.TO_AUTOR:
-                    autorstwo = True
-                    continue
-                if elem.typ_ogolny == const.TO_REDAKTOR:
-                    redakcja = True
-                    continue
+            autorstwo = original.warunek_autorstwo()
+            redakcja = original.warunek_redakcja()
 
             if autorstwo and redakcja:
                 raise CannotAdapt("Rekord ma jednocześnie autorów i redaktorów.")

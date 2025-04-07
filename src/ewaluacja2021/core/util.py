@@ -8,6 +8,7 @@ from ewaluacja2021 import const
 from django.contrib.postgres.aggregates import ArrayAgg
 
 from bpp.const import RODZAJ_PBN_ARTYKUL
+from bpp.models import Cache_Punktacja_Autora_Query
 from bpp.util import intsack
 
 
@@ -42,8 +43,10 @@ def get_lista_prac(nazwa_dyscypliny):
         )
         .exclude(rekord__charakter_formalny__charakter_ogolny=None)
         .annotate(
+            # stąd się bierze .monografia, monografia=
             monografia=NieArtykul(F("rekord__charakter_formalny__rodzaj_pbn")),
             rok=F("rekord__rok"),
+            poziom_wydawcy=F("rekord__wydawca__poziom_wydawcy__poziom"),
         )
         .select_related(
             "rekord",
@@ -62,7 +65,7 @@ def get_lista_autorow_na_rekord(nazwa_dyscypliny):
     }
 
 
-def lista_prac_na_tuples(lista_prac, lista_autorow):
+def lista_prac_na_tuples(lista_prac: list[Cache_Punktacja_Autora_Query], lista_autorow):
     return tuple(
         Praca(
             id=elem.id,
@@ -72,6 +75,7 @@ def lista_prac_na_tuples(lista_prac, lista_autorow):
             rok=elem.rekord.rok,
             pkdaut=elem.pkdaut,
             monografia=elem.monografia,
+            poziom_wydawcy=elem.poziom_wydawcy,
             autorzy=lista_autorow.get(elem.rekord_id),
             ostatnio_zmieniony=elem.rekord.ostatnio_zmieniony,
         )
@@ -141,6 +145,7 @@ Praca = namedtuple(
         "rok",
         "pkdaut",
         "monografia",
+        "poziom_wydawcy",
         "autorzy",
         "ostatnio_zmieniony",
     ],

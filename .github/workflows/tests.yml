@@ -79,7 +79,7 @@ jobs:
         make assets
         poetry run src/manage.py collectstatic --noinput
 
-    - name: Tests (no selenium)
+    - name: Tests without Selenium
       env:
         DJANGO_BPP_DB_HOST: 127.0.0.1
         DJANGO_BPP_DB_PORT: 5433
@@ -87,13 +87,13 @@ jobs:
       run: |
         poetry run pytest -m "not selenium" --splinter-headless --splinter-webdriver-executable=/usr/lib/firefox/firefox
 
-    - name: Tests (only selenium)
+    - name: Tests -- only Selenium
       env:
         DJANGO_BPP_DB_HOST: 127.0.0.1
         DJANGO_BPP_DB_PORT: 5433
         DJANGO_BPP_DB_USER: postgres
       run: |
-        poetry run pytest -m "selenium" --splinter-headless --splinter-webdriver-executable=/usr/lib/firefox/firefox
+        poetry run pytest --verbose -m "selenium" --splinter-headless --splinter-webdriver-executable=/usr/lib/firefox/firefox
 
     - name: Tests (no selenium) with Microsoft Auth
       env:

@@ -83,7 +83,7 @@ class Plecakowy(Ewaluacja3NBase):
             )
 
             if pkt_nie_monografie_maks > (pkt_nie_monografie_min + pkt_monografie):
-                [self.zsumuj_pojedyncza_prace(x) for x in prace_nie_monografie_maks]
+                list(self.zsumuj_pojedyncza_prace(x) for x in prace_nie_monografie_maks)
             else:
-                [self.zsumuj_pojedyncza_prace(x) for x in prace_monografie]
-                [self.zsumuj_pojedyncza_prace(x) for x in prace_nie_monografie_min]
+                list(self.zsumuj_pojedyncza_prace(x) for x in prace_monografie)
+                list(self.zsumuj_pojedyncza_prace(x) for x in prace_nie_monografie_min)

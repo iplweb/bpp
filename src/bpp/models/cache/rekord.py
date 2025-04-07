@@ -227,6 +227,10 @@ class RekordBase(
     opis_bibliograficzny_zapisani_autorzy_cache = models.TextField()
     slug = models.TextField()
 
+    wydawca = models.ForeignKey(
+        "bpp.Wydawca", on_delete=DO_NOTHING, null=True, blank=True
+    )
+
     strony = None
     nr_zeszytu = None
     tom = None

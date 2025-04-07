@@ -4,6 +4,15 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202504.1176 (2025-04-07)
+============================
+
+Naprawione
+----------
+
+- nie licz punktacji N dla autorów spoza N
+
+
 Bpp 202504.1174 (2025-04-01)
 ============================
 

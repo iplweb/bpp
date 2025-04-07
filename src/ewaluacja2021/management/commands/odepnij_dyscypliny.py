@@ -12,17 +12,28 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument("wejscie", type=FileType("r"))
+        parser.add_argument("--ostatecznie", action="store_true", default=False)
 
-    def handle(self, wejscie, *args, **options):
+    def handle(self, wejscie, ostatecznie, *args, **options):
 
         dane = load_data(wejscie)
 
         rekordy_danych = rekordy(dane)
-        a = 0
+
+        query = rekordy_danych.exclude(do_ewaluacji=True).exclude(slot=1)
+        if ostatecznie:
+            # Odpinanie ostateczne -- odpinaj wszystkie dyscypliny na koniec raportu
+            query = rekordy_danych.exclude(do_ewaluacji=True)
 
         with transaction.atomic():
-            for rekord in rekordy_danych.exclude(do_ewaluacji=True).exclude(slot=1):
+            for rekord in query:
                 original = rekord.rekord.original
+                if ostatecznie:
+                    original.autorzy_set.filter(
+                        autor=rekord.autor, dyscyplina_naukowa=rekord.dyscyplina
+                    ).update(przypieta=False)
+                    continue
+
                 # Odpinaj tylko w pracach, gdzie jest więcej jak jeden autor, ktoremu mozna odpiac:
                 if (
                     original.autorzy_set.exclude(dyscyplina_naukowa_id=None)
@@ -33,7 +44,5 @@ class Command(BaseCommand):
                     original.autorzy_set.filter(
                         autor=rekord.autor, dyscyplina_naukowa=rekord.dyscyplina
                     ).update(przypieta=False)
-                    a += 1
 
-        print(f"Odpieto {a} dyscyplin; przeliczam...")
         denorms.flush()

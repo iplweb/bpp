@@ -4,7 +4,6 @@ from decimal import Decimal
 import openpyxl
 from django.db.models import Sum, Value
 
-from ewaluacja2021.const import LATA_2017_2018, LATA_2019_2021
 from ewaluacja2021.reports import get_data_for_report, write_data_to_report
 from ewaluacja2021.util import autor2fn, output_table_to_xlsx
 
@@ -59,19 +58,11 @@ class CalosciowyXLSX(WyjsciowyXLSX):
         self.ws.append(["Stan na dzień/moment", self.dane["ostatnia_zmiana"]])
         self.ws.append(["Dyscyplina", self.dane["dyscyplina"]])
         self.ws.append(["Liczba N", self.dane["liczba_n"]])
-        self.ws.append(["Liczba 0.8N", self.dane["liczba_0_8_n"]])
-        self.ws.append(["Liczba 2.2N", self.dane["liczba_2_2_n"]])
         self.ws.append(["Liczba 3*N", Decimal("3.0") * self.dane["liczba_n"]])
         self.ws.append(
             [
-                "Suma slotów za lata 2017-2018",
-                self.dane["sumy_slotow"][LATA_2017_2018],
-            ]
-        )
-        self.ws.append(
-            [
-                "Suma slotów za lata 2019-2021",
-                self.dane["sumy_slotow"][LATA_2019_2021],
+                "Suma slotów",
+                self.dane["suma_slotow"],
             ]
         )
 
