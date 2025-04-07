@@ -26,7 +26,9 @@ class SnapshotOdpiec(models.Model):
     objects = SnapshotOdpiecManager()
 
     created_on = models.DateTimeField(auto_now_add=True, editable=False)
-    owner = models.ForeignKey("bpp.BppUser", on_delete=models.PROTECT)
+    owner = models.ForeignKey(
+        "bpp.BppUser", on_delete=models.PROTECT, null=True, blank=True
+    )
     comment = models.TextField(null=True, blank=True)
 
     def apply(self):

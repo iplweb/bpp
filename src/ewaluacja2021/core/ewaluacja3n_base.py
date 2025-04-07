@@ -79,7 +79,7 @@ class Ewaluacja3NBase(SumatorBase):
 
     def pozegnanie(self):
         print(
-            f"Obecna maks pkd: {self.suma_pkd}, suma slotow: {self.sumy_slotow}, ilosc prac: {len(self.id_rekordow)}"
+            f"Obecna maks pkd: {self.suma_pkd}, suma slotow: {self.suma_slotow}, ilosc prac: {len(self.id_rekordow)}"
         )
 
     def zrzuc_dane(self, nazwa):
