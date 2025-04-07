@@ -134,8 +134,8 @@ def generuj_algorytm(pk, *args, **kw):
             nazwa_dyscypliny=zamowienie.dyscyplina_naukowa.nazwa,
         )
 
-        if suma_pkdaut < poprzedni_wynik:
-            # poprzendi wynik był lepszy, przywracam przypięcia, wychodze z programu
+        if suma_pkdaut <= poprzedni_wynik:
+            # poprzendi wynik był lepszy (lub identyczny), przywracam przypięcia, wychodze z programu
             odpinaj_dyscypliny = False
             przywroc_przypiecia(rekordy_odpiete_przed, rekordy_odpiete_po)
             denorm.flush()
