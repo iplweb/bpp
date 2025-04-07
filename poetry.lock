@@ -1757,15 +1757,15 @@ sqlparse = ">=0.2"
 
 [[package]]
 name = "django-denorm-iplweb"
-version = "1.1.5"
+version = "1.1.2"
 description = "Denormalization magic for Django"
 optional = false
 python-versions = "*"
 groups = ["main"]
 markers = "python_version <= \"3.11\""
 files = [
-    {file = "django_denorm_iplweb-1.1.5-py3-none-any.whl", hash = "sha256:31231858672575c6da98fdeb353074562027292ef8d4332c1e6d45e22a3a6e49"},
-    {file = "django_denorm_iplweb-1.1.5.tar.gz", hash = "sha256:578737c7be19a63e7988f769221f01604c4482c3e33a359040b7c6690502704a"},
+    {file = "django_denorm_iplweb-1.1.2-py3-none-any.whl", hash = "sha256:69b82bddf071f526cfcd71c19571382d4026b31043d0b40f10f710cdccf47bd9"},
+    {file = "django_denorm_iplweb-1.1.2.tar.gz", hash = "sha256:b14967e8fb122370206b7212ea426628b5c60231ed95b72466eb1a5f56989f3a"},
 ]
 
 [[package]]
@@ -7703,4 +7703,4 @@ office365 = ["django-microsoft-auth"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<3.12"
-content-hash = "cbf581c9e7a93fb911dbfaf1ae07ee741b58481b319e3bb54d7a9c1a439bff74"
+content-hash = "c3e49904e930c892ac9ddd8e1514f66fa70ce86e9c9b4a2c6b3337f42f05f26a"
