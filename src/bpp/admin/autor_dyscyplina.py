@@ -15,7 +15,6 @@ from bpp.models import Autor, Autor_Dyscyplina
 
 class Autor_DyscyplinaResource(resources.ModelResource):
     def get_queryset(self):
-
         return (
             super()
             .get_queryset()
