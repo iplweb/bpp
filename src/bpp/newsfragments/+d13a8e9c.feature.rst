@@ -1,2 +1,0 @@
-
-dodaj system kadrowy ID do eksportu danych autor+dyscyplina z modułu redagowania

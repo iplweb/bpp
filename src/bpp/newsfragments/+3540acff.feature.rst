@@ -1,2 +1,0 @@
-
-w przypadku zdublowania adresu strony WWW, wymuszaj unikalny dodając hashtag i losowe znaki
