@@ -87,7 +87,7 @@ STRUKTURA_MENU = [
 REDAKTOR_MENU = [
     ("Autorzy", "/admin/bpp/autor/"),
     (
-        "Autorzy - udziały (Ewaluacja 2022-2025)",
+        "Autorzy - udziały (2022-2025)",
         "/admin/ewaluacja2021/iloscudzialowdlaautora_2022_2025/",
     ),
     ("Źródła", "/admin/bpp/zrodlo/"),
