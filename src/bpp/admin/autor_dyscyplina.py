@@ -1,7 +1,6 @@
 from dal import autocomplete
 from djangoql.admin import DjangoQLSearchMixin
 from import_export import resources
-from import_export.admin import ExportMixin
 from import_export.fields import Field
 
 from django.contrib import admin
@@ -10,12 +9,12 @@ from bpp.admin.filters import (
     OrcidAutoraDyscyplinyObecnyFilter,
     PBN_UID_IDAutoraObecnyFilter,
 )
+from bpp.admin.xlsx_export.mixins import EksportDanychMixin
 from bpp.models import Autor, Autor_Dyscyplina
 
 
 class Autor_DyscyplinaResource(resources.ModelResource):
     def get_queryset(self):
-
         return (
             super()
             .get_queryset()
@@ -45,6 +44,7 @@ class Autor_DyscyplinaResource(resources.ModelResource):
             "wymiar_etatu",
             "autor__pbn_uid_id",
             "autor__orcid",
+            "autor__system_kadrowy_id",
             "dyscyplina_naukowa__nazwa",
             "dyscyplina_naukowa__kod",
             "procent_dyscypliny",
@@ -69,9 +69,11 @@ class Autor_DyscyplinaForm(forms.ModelForm):
         fields = "__all__"
 
 
-class Autor_DyscyplinaAdmin(DjangoQLSearchMixin, ExportMixin, admin.ModelAdmin):
+class Autor_DyscyplinaAdmin(DjangoQLSearchMixin, EksportDanychMixin, admin.ModelAdmin):
     djangoql_completion_enabled_by_default = True
     djangoql_completion = True
+
+    max_allowed_export_items = 10000
 
     resource_class = Autor_DyscyplinaResource
     form = Autor_DyscyplinaForm

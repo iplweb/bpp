@@ -1,3 +1,4 @@
+import random
 from urllib.parse import parse_qs
 from urllib.parse import quote as urlquote
 
@@ -50,6 +51,56 @@ def get_rekord_id_from_GET_qs(request):
             return int(data.get("rekord__id__exact")[0])
         except (ValueError, TypeError):
             pass
+
+
+def poszukaj_duplikatu_pola_www_i_ewentualnie_zmien(request, obj):
+    """Sprawdza, czy w bazie są inne rekordy z takim polem public_www bądź www.
+    Jeżeli są, to dokleja do tych pól hash i randomowy ciąg znaków w taki sposób, aby
+    to pole NIE było zdublowane. Potrzebne to jest w sytuacji, gdy dodajemy do PBNu
+    rozdziały np z PDFu który nie ma DOI ale za to jest pod jednym adresem WWW, stąd
+    żeby wszystkich rozdziałów nie zakodować na jednym PBN UID -- strona WWW będzie wymuszana
+    unikalna.
+
+    Wymuszenie unikalnosci -- dokleja hash, 8 cyferek losowych, informuje o tym
+    użytkownika."""
+    from bpp.models.cache import Rekord
+
+    for field, drugie in (("www", "public_www"), ("public_www", "www")):
+        cur_value = getattr(obj, field)
+        if cur_value is None:
+            continue
+
+        rekord_pk = None
+        if obj.pk:
+            rekord_pk = (ContentType.objects.get_for_model(obj).pk, obj.pk)
+
+        qry = Rekord.objects.filter(
+            Q(**{field + "__iexact": cur_value}) | Q(**{drugie + "__iexact": cur_value})
+        )
+        if rekord_pk is not None:
+            qry = qry.exclude(pk=rekord_pk)
+
+        new_value = None
+        while qry.exists():
+            new_value = (
+                cur_value + "#bpp-auto-url-" + "".join(random.sample("0123456789", 7))
+            )
+            setattr(obj, field, new_value)
+
+            qry = Rekord.objects.filter(
+                Q(**{field + "__iexact": new_value})
+                | Q(**{drugie + "__iexact": new_value})
+            )
+            if rekord_pk is not None:
+                qry = qry.exclude(pk=rekord_pk)
+
+        if new_value:
+            messages.info(
+                request,
+                const.ZMIENIONO_AUTOMATYCZNIE_WARTOSC_POLA.format(
+                    field=field, value=new_value
+                ),
+            )
 
 
 def sprawdz_duplikaty_www_doi(request, obj):

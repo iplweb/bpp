@@ -25,7 +25,10 @@ from .crossref_api_helpers import (
 # Widget do automatycznego uzupełniania punktacji wydawnictwa ciągłego
 from .element_repozytorium import Element_RepozytoriumInline
 from .grant import Grant_RekorduInline
-from .helpers import sprawdz_duplikaty_www_doi
+from .helpers import (
+    poszukaj_duplikatu_pola_www_i_ewentualnie_zmien,
+    sprawdz_duplikaty_www_doi,
+)
 from .helpers.fieldsets import (
     MODEL_OPCJONALNIE_NIE_EKSPORTOWANY_DO_API_FIELDSET,
     MODEL_Z_OPLATA_ZA_PUBLIKACJE_FIELDSET,
@@ -335,6 +338,7 @@ class Wydawnictwo_CiagleAdmin(
     zrodlo_col.short_description = "Źródło"
 
     def save_model(self, request, obj, form, change):
+        poszukaj_duplikatu_pola_www_i_ewentualnie_zmien(request, obj)
         super().save_model(request, obj, form, change)
         sprobuj_policzyc_sloty(request, obj)
         sprawdz_duplikaty_www_doi(request, obj)

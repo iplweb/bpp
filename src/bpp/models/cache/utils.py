@@ -18,15 +18,19 @@ def oblicz_liczby_n_dla_ewaluacji_2022_2025(uczelnia, rok_min=2022, rok_max=2025
 
     for ad in Autor_Dyscyplina.objects.filter(rok__gte=rok_min, rok__lte=rok_max):
         for dyscyplina, slot in ad.policz_udzialy():
-            autor_rok_dyscyplina_na_udzial[ad.autor_id][dyscyplina.pk][ad.rok] = slot
+            autor_rok_dyscyplina_na_udzial[ad.autor_id][dyscyplina.pk][ad.rok] = (
+                slot,
+                ad.rodzaj_autora,
+            )
 
     for autor_id in autor_rok_dyscyplina_na_udzial:
         for dyscyplina_id in autor_rok_dyscyplina_na_udzial[autor_id]:
             latami = autor_rok_dyscyplina_na_udzial[autor_id][dyscyplina_id]
 
-            suma = sum(latami.values())
+            suma = sum(slot for slot, rodzaj_autora in latami.values())
+
             # Zawsze na 4 lata:
-            ilosc = 4  # len(latami.values())
+            ilosc = Decimal(4)  # len(latami.values())
 
             IloscUdzialowDlaAutora_2022_2025.objects.update_or_create(
                 autor_id=autor_id,
@@ -36,7 +40,12 @@ def oblicz_liczby_n_dla_ewaluacji_2022_2025(uczelnia, rok_min=2022, rok_max=2025
                 ),
             )
 
-            uczelnia_dyscyplina_udzial[dyscyplina_id].append(suma / ilosc)
+            suma_dla_uczelni = sum(
+                slot if rodzaj_autora == Autor_Dyscyplina.RODZAJE_AUTORA.N else 0
+                for slot, rodzaj_autora in latami.values()
+            )
+
+            uczelnia_dyscyplina_udzial[dyscyplina_id].append(suma_dla_uczelni / ilosc)
 
     LiczbaNDlaUczelni_2022_2025.objects.filter(uczelnia=uczelnia).delete()
 

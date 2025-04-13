@@ -5,6 +5,7 @@ on:
     branches:
       - dev
       - master
+      - feature/*
   pull_request:
     branches:
       - dev
@@ -93,7 +94,7 @@ jobs:
         DJANGO_BPP_DB_PORT: 5433
         DJANGO_BPP_DB_USER: postgres
       run: |
-        poetry run pytest --verbose -m "selenium" --splinter-headless --splinter-webdriver-executable=/usr/lib/firefox/firefox
+        poetry run pytest --timeout=1200 --verbose -m "selenium" --splinter-headless --splinter-webdriver-executable=/usr/lib/firefox/firefox
 
     - name: Tests (no selenium) with Microsoft Auth
       env:

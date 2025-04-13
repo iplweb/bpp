@@ -116,6 +116,11 @@ ZDUBLOWANE_POLE_KOMUNIKAT = (
     "z systemami zewnętrznymi, np z bazą danych PBN."
 )
 
+ZMIENIONO_AUTOMATYCZNIE_WARTOSC_POLA = (
+    'Aby uniknąć zdublowania w bazie i w PBN wartości pola "{field}", '
+    'ustawiono je automatycznie na "{value}". '
+)
+
 PUSTY_ADRES_EMAIL = "brak@email.pl"
 
 NUMER_ZGLOSZENIA_PARAM = "numer_zgloszenia"

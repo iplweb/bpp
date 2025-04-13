@@ -26,16 +26,21 @@ def test_waliduj_format_kodu_numer():
         waliduj_format_kodu_numer("500.2")
 
 
-def test_policz_udzialy(autor_jan_nowak, dyscyplina1):
+@pytest.mark.parametrize(
+    "rodzaj_autora",
+    [
+        Autor_Dyscyplina.RODZAJE_AUTORA.N,
+        Autor_Dyscyplina.RODZAJE_AUTORA.D,
+        Autor_Dyscyplina.RODZAJE_AUTORA.Z,
+    ],
+)
+def test_policz_udzialy_rodzaj_ndz(autor_jan_nowak, dyscyplina1, rodzaj_autora):
     ad = Autor_Dyscyplina.objects.create(
         autor=autor_jan_nowak,
         dyscyplina_naukowa=dyscyplina1,
         wymiar_etatu=1,
         rok=2020,
         procent_dyscypliny=100,
+        rodzaj_autora=rodzaj_autora,
     )
     assert list(ad.policz_udzialy()) == [(dyscyplina1, 1)]
-
-    ad.rodzaj_autora = Autor_Dyscyplina.RODZAJE_AUTORA.Z
-    ad.save()
-    assert not list(ad.policz_udzialy())
