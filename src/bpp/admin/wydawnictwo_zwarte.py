@@ -21,7 +21,10 @@ from .crossref_api_helpers import (
 )
 from .element_repozytorium import Element_RepozytoriumInline
 from .grant import Grant_RekorduInline
-from .helpers import sprawdz_duplikaty_www_doi
+from .helpers import (
+    poszukaj_duplikatu_pola_www_i_ewentualnie_zmien,
+    sprawdz_duplikaty_www_doi,
+)
 from .helpers.mixins import OptionalPBNSaveMixin, RestrictDeletionWhenPBNUIDSetMixin
 from .nagroda import NagrodaInline
 
@@ -343,6 +346,7 @@ class Wydawnictwo_ZwarteAdmin(
     )
 
     def save_model(self, request, obj, form, change):
+        poszukaj_duplikatu_pola_www_i_ewentualnie_zmien(request, obj)
         super().save_model(request, obj, form, change)
         if (
             obj.rok >= 2017

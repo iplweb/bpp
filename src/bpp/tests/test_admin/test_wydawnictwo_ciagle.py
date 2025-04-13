@@ -154,8 +154,10 @@ TEST_PBN_ID = 50000
     [
         # ("pbn_uid", TEST_PBN_ID),
         ("doi", "10.10/123123"),
-        ("www", "https://foobar.pl"),
-        ("public_www", "https://foobar.pl"),
+        # 13.04.2025 mpasternak duplikaty WWW i public WWW już nie powstaną, system dopisze
+        # do nich losowy ciąg znaków...
+        # ("www", "https://foobar.pl"),
+        # ("public_www", "https://foobar.pl"),
     ],
 )
 def test_Wydawnictwo_Ciagle_Admin_sprawdz_duplikaty_www_doi_pbn(
