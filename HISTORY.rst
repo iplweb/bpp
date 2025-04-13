@@ -4,6 +4,22 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202504.1178 (2025-04-13)
+============================
+
+Naprawione
+----------
+
+- naliczaj udziały dla doktorantów/innych zatrudnionych, ale nie wliczaj ich do liczby N
+
+
+Usprawnienie
+------------
+
+- dodaj system kadrowy ID do eksportu danych autor+dyscyplina z modułu redagowania
+- w przypadku zdublowania adresu strony WWW, wymuszaj unikalny dodając hashtag i losowe znaki
+
+
 Bpp 202504.1176 (2025-04-07)
 ============================
 

@@ -1,2 +1,0 @@
-
-naliczaj udziały dla doktorantów/innych zatrudnionych, ale nie wliczaj ich do liczby N
