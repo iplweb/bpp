@@ -184,10 +184,6 @@ class Autor_Dyscyplina(models.Model):
         if self.wymiar_etatu is None:
             return
 
-        if self.rodzaj_autora == self.RODZAJE_AUTORA.Z:
-            # Nie obliczaj udziałów dla osób NIE będących w N
-            return
-
         if (
             self.dyscyplina_naukowa_id is not None
             and self.procent_dyscypliny is not None
