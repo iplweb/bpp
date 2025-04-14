@@ -94,7 +94,7 @@ jobs:
         DJANGO_BPP_DB_PORT: 5433
         DJANGO_BPP_DB_USER: postgres
       run: |
-        poetry run pytest -k test_bpp_notifications --durations=0 --timeout=1200 --verbose -m "selenium" --splinter-headless --splinter-webdriver-executable=/usr/lib/firefox/firefox
+        poetry run pytest -k integration_tests --durations=0 --timeout=1200 --verbose -m "selenium" --splinter-headless --splinter-webdriver-executable=/usr/lib/firefox/firefox
 
     - name: Tests (no selenium) with Microsoft Auth
       env:
