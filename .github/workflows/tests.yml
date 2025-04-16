@@ -94,7 +94,7 @@ jobs:
         DJANGO_BPP_DB_PORT: 5433
         DJANGO_BPP_DB_USER: postgres
       run: |
-        poetry run pytest --durations=0 --timeout=1200 --verbose -m "selenium" --splinter-headless --splinter-webdriver-executable=/usr/lib/firefox/firefox
+        poetry run pytest -k integration_tests --timeout=1200 --verbose -m "selenium" --splinter-headless --splinter-webdriver-executable=/usr/lib/firefox/firefox
 
     - name: Tests (no selenium) with Microsoft Auth
       env:
@@ -105,4 +105,4 @@ jobs:
         poetry run pip install django_microsoft_auth
         echo MICROSOFT_AUTH_CLIENT_ID=foobar > ~/.env.local
         echo MICROSOFT_AUTH_CLIENT_SECRET=foobar >> ~/.env.local
-        poetry run pytest -k integration_tests -m "not selenium" --splinter-headless --splinter-webdriver-executable=/usr/lib/firefox/firefox
+        poetry run pytest -m "not selenium" --splinter-headless --splinter-webdriver-executable=/usr/lib/firefox/firefox
