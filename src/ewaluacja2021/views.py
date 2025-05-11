@@ -9,12 +9,15 @@ from django.views import generic
 
 from ewaluacja2021.forms import ImportMaksymalnychSlotowForm, ZamowienieNaRaportForm
 from ewaluacja2021.models import (
+    DyscyplinaNieRaportowana_2022_2025,
     ImportMaksymalnychSlotow,
     LiczbaNDlaUczelni_2022_2025,
     ZamowienieNaRaport,
 )
 from ewaluacja2021.tasks import generuj_algorytm, suma_odpietych_dyscyplin
 from long_running.tasks import perform_generic_long_running_task
+
+from django.contrib import messages
 
 from django.utils import timezone
 
@@ -78,6 +81,10 @@ class ListaRaporto3N(GroupRequiredMixin, generic.ListView):
             oblicz_liczby_n_dla_ewaluacji_2022_2025(
                 uczelnia=Uczelnia.objects.get_default()
             )
+            messages.info(
+                request,
+                "Dokonano przeliczenia liczby N dla instytucji oraz udziałów dla autorów. ",
+            )
             return HttpResponseRedirect(".")
 
         if request.GET.get("resetuj") == "1" and request.user.is_staff:
@@ -104,6 +111,9 @@ class ListaRaporto3N(GroupRequiredMixin, generic.ListView):
         return super().get_context_data(
             object_list=object_list,
             liczby_n_uczelni=LiczbaNDlaUczelni_2022_2025.objects.all(),
+            dyscypliny_nie_raportowane=DyscyplinaNieRaportowana_2022_2025.objects.filter(
+                uczelnia=Uczelnia.objects.get_for_request(self.request)
+            ),
             ilosc_odpietych_dyscyplin=suma_odpietych_dyscyplin(),
             ilosc_elementow_w_kolejce=DirtyInstance.objects.count(),
             **kwargs,

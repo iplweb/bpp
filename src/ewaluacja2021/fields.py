@@ -7,6 +7,6 @@ class LiczbaNField(models.DecimalField):
             kw["max_digits"] = 9
 
         if "decimal_places" not in kw:
-            kw["decimal_places"] = 4
+            kw["decimal_places"] = 2
 
-        super(LiczbaNField, self).__init__(*args, **kw)
+        super().__init__(*args, **kw)
