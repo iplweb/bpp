@@ -148,7 +148,7 @@ poetry-lock:
 gh-run-watch:
 	gh run watch
 
-new-release: poetry-lock upgrade-version bdist_wheel docker gh-run-watch
+new-release: poetry-lock upgrade-version docker gh-run-watch
 
 release: tests js-tests new-release
 
