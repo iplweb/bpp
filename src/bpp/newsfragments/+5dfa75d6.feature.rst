@@ -1,2 +1,0 @@
-
-obsługa dyscyplin nie raportowanych (ilość slotów mniejsza niż 12 za ostatni rok ewaluacji)

@@ -1,3 +1,0 @@
-
-jeżeli ilość slotów za 4 lata jest mniejsza, jak 1 to podciągaj slot dla artykułów do 1; analogicznie slot dla
-monografii za 4 lata -- jeżeli mniejszy, jak 1 to podciągaj do 1.

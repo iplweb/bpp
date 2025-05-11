@@ -1,2 +1,0 @@
-
-flaga dla obiektu Uczelnia umożliwiająca włączenie/wyłączenie zaokrąglania udziałów do pełnych slotów
