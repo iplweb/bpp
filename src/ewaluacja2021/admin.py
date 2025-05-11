@@ -94,7 +94,7 @@ class IloscUdzialowDlaAutora_2022_2025_Admin(
         "dyscyplina_naukowa__kod",
         "dyscyplina_naukowa__nazwa",
     ]
-    list_filter = ["dyscyplina_naukowa"]
+    list_filter = ["dyscyplina_naukowa", "ilosc_udzialow"]
     ordering = ("autor__nazwisko", "autor__imiona", "dyscyplina_naukowa__nazwa")
 
 
@@ -117,5 +117,5 @@ class IloscUdzialowDlaAutoraZaRokAdmin(
         "dyscyplina_naukowa__kod",
         "dyscyplina_naukowa__nazwa",
     ]
-    list_filter = ["dyscyplina_naukowa", "rok"]
+    list_filter = ["dyscyplina_naukowa", "rok", "ilosc_udzialow"]
     ordering = ("autor__nazwisko", "autor__imiona", "dyscyplina_naukowa__nazwa", "rok")

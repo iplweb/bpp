@@ -28,7 +28,7 @@ def oblicz_liczby_n_dla_ewaluacji_2022_2025(uczelnia, rok_min=2022, rok_max=2025
         for dyscyplina_id in autor_rok_dyscyplina_na_udzial[autor_id]:
             latami = autor_rok_dyscyplina_na_udzial[autor_id][dyscyplina_id]
 
-            suma = sum(slot for slot, rodzaj_autora in latami.values())
+            # Wrzuć do bazy ilość udziałów za kazdy rok
 
             for rok, (slot, rodzaj_autora) in latami.items():
                 IloscUdzialowDlaAutoraZaRok.objects.update_or_create(
@@ -41,18 +41,22 @@ def oblicz_liczby_n_dla_ewaluacji_2022_2025(uczelnia, rok_min=2022, rok_max=2025
                     ),
                 )
 
+            # Jeżeli suma udziałów za 4 lata jest mniejsza jak 1, to zwiększ do 1 slota:
+            suma = max(1, sum(slot for slot, rodzaj_autora in latami.values()))
+            suma_monografie = max(1, suma / Decimal("2.0"))
+
             IloscUdzialowDlaAutora_2022_2025.objects.update_or_create(
                 autor_id=autor_id,
                 dyscyplina_naukowa_id=dyscyplina_id,
                 defaults=dict(
-                    ilosc_udzialow=suma, ilosc_udzialow_monografie=suma / Decimal("2.0")
+                    ilosc_udzialow=suma, ilosc_udzialow_monografie=suma_monografie
                 ),
             )
 
-            suma_dla_uczelni = sum(
-                slot if rodzaj_autora == Autor_Dyscyplina.RODZAJE_AUTORA.N else 0
-                for slot, rodzaj_autora in latami.values()
-            )
+            suma_dla_uczelni = 0
+            if rodzaj_autora == Autor_Dyscyplina.RODZAJE_AUTORA.N:
+                # Bierz ZAOKRĄGLONĄ sumę udziałów jako sumę dla uczelni
+                suma_dla_uczelni = suma
 
             # Zawsze na 4 lata:
             ilosc = Decimal(4)  # len(latami.values())
