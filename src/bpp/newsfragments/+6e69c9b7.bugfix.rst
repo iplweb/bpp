@@ -1,2 +1,0 @@
-
-zaokrąglaj ilość udziałów oraz liczby N do 2 miejsc po przecinku

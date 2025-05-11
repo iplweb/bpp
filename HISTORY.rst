@@ -4,6 +4,26 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202505.1179 (2025-05-11)
+============================
+
+Naprawione
+----------
+
+- jeżeli ilość slotów za 4 lata jest mniejsza, jak 1 to podciągaj slot dla artykułów do 1; analogicznie slot dla
+  monografii za 4 lata -- jeżeli mniejszy, jak 1 to podciągaj do 1.
+- zaokrąglaj ilość udziałów oraz liczby N do 2 miejsc po przecinku
+
+
+Usprawnienie
+------------
+
+- flaga dla obiektu Uczelnia umożliwiająca włączenie/wyłączenie zaokrąglania udziałów do pełnych slotów
+- obniżaj ilość udziałów do 4 jeżeli wyjdzie więcej
+- obsługa dyscyplin nie raportowanych (ilość slotów mniejsza niż 12 za ostatni rok ewaluacji)
+- podgląd ilości udziałów autorów za każdy rok wraz z eksportem
+
+
 Bpp 202504.1178 (2025-04-13)
 ============================
 
