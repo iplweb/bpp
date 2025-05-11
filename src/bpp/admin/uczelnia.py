@@ -23,6 +23,15 @@ class LiczbaNDlaUczelni_2022_2025Inline(admin.TabularInline):
     model = LiczbaNDlaUczelni_2022_2025
     extra = 0
 
+    def has_add_permission(self, request, obj):
+        return False
+
+    def has_delete_permission(self, request, obj=...):
+        return False
+
+    def has_change_permission(self, request, obj=...):
+        return False
+
     class Meta:
         fields = ["dyscyplina_naukowa", "liczba_n"]
 
@@ -162,6 +171,13 @@ class UczelniaAdmin(
             {
                 "classes": ("grp-collapse grp-opened",),
                 "fields": ("wymagaj_informacji_o_oplatach",),
+            },
+        ),
+        (
+            "Ewaluacja",
+            {
+                "classes": ("grp-collapse grp-opened",),
+                "fields": ("przydzielaj_1_slot_gdy_udzial_mniejszy",),
             },
         ),
         ADNOTACJE_FIELDSET,

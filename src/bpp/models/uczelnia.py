@@ -335,6 +335,16 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         null=True,
     )
 
+    przydzielaj_1_slot_gdy_udzial_mniejszy = models.BooleanField(
+        "Przydzielaj 1 slot gdy udziały za 4 lata mniejsze",
+        default=False,
+        help_text="""Jeżeli zaznaczone, system będzie przydzielać 1 slot dla autorów, którzy za 4 lata ewaluacji"
+                  mieliby mieć mniej, niż 1 slot. Obowiązuje zarówno dla artykułów jak i dla monografii. Zatem,
+                  jeżeli ktoś za 4 lata ewaluacji będzie miał zdać 0.8 slota, to gdy ta flaga jest zaznaczona to
+                  system zwiększy to do 1 slota za artykuły oraz do 1 slota za monografie. Jeżeli ta flaga jest
+                  nie zaznaczona, to system policzy takiej osobie 0.8 slota za artykuły i 0.4 slota za monografie. """,
+    )
+
     class DeklaracjaDostepnosciChoices(models.IntegerChoices):
         NIE_POKAZUJ = 0, "nie pokazuj"
         ZEWNETRZNY_URL = 1, "zewnętrzny adres URL"

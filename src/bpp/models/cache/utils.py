@@ -41,9 +41,14 @@ def oblicz_liczby_n_dla_ewaluacji_2022_2025(uczelnia, rok_min=2022, rok_max=2025
                     ),
                 )
 
-            # Jeżeli suma udziałów za 4 lata jest mniejsza jak 1, to zwiększ do 1 slota:
-            suma = max(1, sum(slot for slot, rodzaj_autora in latami.values()))
-            suma_monografie = max(1, suma / Decimal("2.0"))
+            suma = sum(slot for slot, rodzaj_autora in latami.values())
+            suma_monografie = suma / Decimal("2.0")
+
+            # Jeżeli suma udziałów za 4 lata jest mniejsza jak 1 i jest włączona odpowiednia flaga
+            # to zwiększ do 1 slota:
+            if uczelnia.przydzielaj_1_slot_gdy_udzial_mniejszy:
+                suma = max(1, suma)
+                suma_monografie = max(1, suma_monografie)
 
             IloscUdzialowDlaAutora_2022_2025.objects.update_or_create(
                 autor_id=autor_id,
@@ -55,12 +60,10 @@ def oblicz_liczby_n_dla_ewaluacji_2022_2025(uczelnia, rok_min=2022, rok_max=2025
 
             suma_dla_uczelni = 0
             if rodzaj_autora == Autor_Dyscyplina.RODZAJE_AUTORA.N:
-                # Bierz ZAOKRĄGLONĄ sumę udziałów jako sumę dla uczelni
                 suma_dla_uczelni = suma
 
             # Zawsze na 4 lata:
             ilosc = Decimal(4)  # len(latami.values())
-
             uczelnia_dyscyplina_udzial[dyscyplina_id].append(suma_dla_uczelni / ilosc)
 
     LiczbaNDlaUczelni_2022_2025.objects.filter(uczelnia=uczelnia).delete()

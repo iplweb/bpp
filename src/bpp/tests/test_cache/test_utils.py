@@ -10,10 +10,12 @@ from bpp.models import Autor, Autor_Dyscyplina
 from bpp.models.cache.utils import oblicz_liczby_n_dla_ewaluacji_2022_2025
 
 
+@pytest.mark.parametrize("zaokraglaj", [True, False])
 def test_oblicz_liczby_n_dla_ewaluacji_2022_2025_prosty(
     uczelnia,
     autor_jan_nowak,
     dyscyplina1,
+    zaokraglaj,
 ):
     ad_kwargs = dict(
         dyscyplina_naukowa=dyscyplina1,
@@ -30,6 +32,9 @@ def test_oblicz_liczby_n_dla_ewaluacji_2022_2025_prosty(
         Autor_Dyscyplina.objects.create(autor=autor, **ad_kwargs)
 
     Autor_Dyscyplina.objects.create(autor=autor_jan_nowak, **ad_kwargs)
+
+    uczelnia.przydzielaj_1_slot_gdy_udzial_mniejszy = zaokraglaj
+    uczelnia.save()
 
     oblicz_liczby_n_dla_ewaluacji_2022_2025(uczelnia)
 
