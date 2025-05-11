@@ -1,7 +1,10 @@
 from collections import defaultdict
 from decimal import Decimal
 
+from django.db.models import Sum
+
 from ewaluacja2021.models import (
+    DyscyplinaNieRaportowana_2022_2025,
     IloscUdzialowDlaAutora_2022_2025,
     IloscUdzialowDlaAutoraZaRok,
     LiczbaNDlaUczelni_2022_2025,
@@ -50,6 +53,9 @@ def oblicz_liczby_n_dla_ewaluacji_2022_2025(uczelnia, rok_min=2022, rok_max=2025
                 suma = max(1, suma)
                 suma_monografie = max(1, suma_monografie)
 
+            suma = min(4, suma)
+            suma_monografie = min(4, suma)
+
             IloscUdzialowDlaAutora_2022_2025.objects.update_or_create(
                 autor_id=autor_id,
                 dyscyplina_naukowa_id=dyscyplina_id,
@@ -77,19 +83,41 @@ def oblicz_liczby_n_dla_ewaluacji_2022_2025(uczelnia, rok_min=2022, rok_max=2025
             liczba_n=suma_srednich,
         )
 
-    nie_raportowane = LiczbaNDlaUczelni_2022_2025.objects.filter(liczba_n__lt=12)
+    # Policz dyscypliny za ostatni rok ewaluacji które mają < 12 slotów:
+    nie_raportowane = (
+        IloscUdzialowDlaAutoraZaRok.objects.filter(rok=2025)
+        .values("dyscyplina_naukowa")
+        .annotate(Sum("ilosc_udzialow"))
+        .filter(ilosc_udzialow__sum__lt=12)
+    )
+
+    DyscyplinaNieRaportowana_2022_2025.objects.filter(uczelnia=uczelnia).delete()
 
     # Dolicz +1 slot dla każdej nie-raportowanej dyscypliny
     for nie_raportowana in nie_raportowane:
+        DyscyplinaNieRaportowana_2022_2025.objects.get_or_create(
+            uczelnia=uczelnia,
+            dyscyplina_naukowa_id=nie_raportowana["dyscyplina_naukowa"],
+        )
+
         for elem in IloscUdzialowDlaAutora_2022_2025.objects.filter(
-            dyscyplina_naukowa=nie_raportowana.dyscyplina_naukowa
+            dyscyplina_naukowa_id=nie_raportowana["dyscyplina_naukowa"]
         ):
             elem.ilosc_udzialow = min(4, elem.ilosc_udzialow + 1)
             elem.ilosc_udzialow_monografie = elem.ilosc_udzialow / Decimal("2.0")
             elem.save(update_fields=["ilosc_udzialow", "ilosc_udzialow_monografie"])
 
-    # Usuń nie-raportowane dyscypliny z bazy
-    nie_raportowane.delete()
+    # Usuń liczby N za nie-raportowane dyscypliny z bazy
+    for dyscyplina_nie_raportowana in DyscyplinaNieRaportowana_2022_2025.objects.filter(
+        uczelnia=uczelnia
+    ):
+        IloscUdzialowDlaAutora_2022_2025.objects.filter(
+            dyscyplina_naukowa=dyscyplina_nie_raportowana.dyscyplina_naukowa
+        ).delete()
+
+        IloscUdzialowDlaAutoraZaRok.objects.filter(
+            dyscyplina_naukowa=dyscyplina_nie_raportowana.dyscyplina_naukowa
+        ).delete()
 
     # Zaznacz, że policzone
     Cache_Liczba_N_Last_Updated.objects.update_or_create(

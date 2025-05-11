@@ -334,3 +334,13 @@ class WierszImportuMaksymalnychSlotow(models.Model):
 
         self.zintegrowany = True
         self.save()
+
+
+class DyscyplinaNieRaportowana_2022_2025(models.Model):
+    uczelnia = models.ForeignKey("bpp.Uczelnia", on_delete=models.CASCADE)
+    dyscyplina_naukowa = models.ForeignKey(
+        "bpp.Dyscyplina_Naukowa", on_delete=models.CASCADE
+    )
+
+    class Meta:
+        unique_together = [("uczelnia", "dyscyplina_naukowa")]

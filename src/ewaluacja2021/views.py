@@ -9,6 +9,7 @@ from django.views import generic
 
 from ewaluacja2021.forms import ImportMaksymalnychSlotowForm, ZamowienieNaRaportForm
 from ewaluacja2021.models import (
+    DyscyplinaNieRaportowana_2022_2025,
     ImportMaksymalnychSlotow,
     LiczbaNDlaUczelni_2022_2025,
     ZamowienieNaRaport,
@@ -110,6 +111,9 @@ class ListaRaporto3N(GroupRequiredMixin, generic.ListView):
         return super().get_context_data(
             object_list=object_list,
             liczby_n_uczelni=LiczbaNDlaUczelni_2022_2025.objects.all(),
+            dyscypliny_nie_raportowane=DyscyplinaNieRaportowana_2022_2025.objects.filter(
+                uczelnia=Uczelnia.objects.get_for_request(self.request)
+            ),
             ilosc_odpietych_dyscyplin=suma_odpietych_dyscyplin(),
             ilosc_elementow_w_kolejce=DirtyInstance.objects.count(),
             **kwargs,

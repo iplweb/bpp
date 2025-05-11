@@ -33,6 +33,14 @@
             </tr>
         {% endfor %}
     </table>
+    {% if dyscypliny_nie_raportowane %}
+    <h4>Dyscypliny nie raportowane:</h4>
+        <ul>
+        {% for dyscyplina_nie_raportowana in dyscypliny_nie_raportowane %}
+            <li>{{ dyscyplina_nie_raportowana.dyscyplina_naukowa }}</li>
+        {% endfor %}
+        </ul>
+    {% endif %}
     <hr>
     <h4>Przypięcia dyscyplin</h4>
     <p>
