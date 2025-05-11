@@ -16,6 +16,8 @@ from ewaluacja2021.models import (
 from ewaluacja2021.tasks import generuj_algorytm, suma_odpietych_dyscyplin
 from long_running.tasks import perform_generic_long_running_task
 
+from django.contrib import messages
+
 from django.utils import timezone
 
 from bpp.const import GR_WPROWADZANIE_DANYCH
@@ -77,6 +79,10 @@ class ListaRaporto3N(GroupRequiredMixin, generic.ListView):
         if request.GET.get("przelicz") == "1" and request.user.is_staff:
             oblicz_liczby_n_dla_ewaluacji_2022_2025(
                 uczelnia=Uczelnia.objects.get_default()
+            )
+            messages.info(
+                request,
+                "Dokonano przeliczenia liczby N dla instytucji oraz udziałów dla autorów. ",
             )
             return HttpResponseRedirect(".")
 

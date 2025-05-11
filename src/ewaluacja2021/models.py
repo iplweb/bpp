@@ -12,6 +12,7 @@ from .fields import LiczbaNField
 from .util import InputXLSX, float_or_string_or_int_or_none_to_decimal
 from .validators import xlsx_header_validator
 
+from bpp.fields import YearField
 from bpp.models import Cache_Punktacja_Autora_Query
 from bpp.models.autor import Autor
 from bpp.models.dyscyplina_naukowa import Dyscyplina_Naukowa
@@ -152,6 +153,15 @@ class IloscUdzialowDlaAutora_2022_2025(BazaIlosciUdzialowDlaAutora):
                 "dyscyplina_naukowa",
             )
         ]
+
+
+class IloscUdzialowDlaAutoraZaRok(BazaIlosciUdzialowDlaAutora):
+    rok = YearField()
+
+    class Meta:
+        verbose_name = "ilość udziałów dla autora za rok"
+        verbose_name_plural = "ilości udziałów dla autorów za lata"
+        unique_together = [("autor", "dyscyplina_naukowa", "rok")]
 
 
 class ImportMaksymalnychSlotow(models.Model):

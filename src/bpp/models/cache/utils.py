@@ -3,6 +3,7 @@ from decimal import Decimal
 
 from ewaluacja2021.models import (
     IloscUdzialowDlaAutora_2022_2025,
+    IloscUdzialowDlaAutoraZaRok,
     LiczbaNDlaUczelni_2022_2025,
 )
 from .liczba_n import Cache_Liczba_N_Last_Updated
@@ -29,8 +30,16 @@ def oblicz_liczby_n_dla_ewaluacji_2022_2025(uczelnia, rok_min=2022, rok_max=2025
 
             suma = sum(slot for slot, rodzaj_autora in latami.values())
 
-            # Zawsze na 4 lata:
-            ilosc = Decimal(4)  # len(latami.values())
+            for rok, (slot, rodzaj_autora) in latami.items():
+                IloscUdzialowDlaAutoraZaRok.objects.update_or_create(
+                    autor_id=autor_id,
+                    rok=rok,
+                    dyscyplina_naukowa_id=dyscyplina_id,
+                    defaults=dict(
+                        ilosc_udzialow=slot,
+                        ilosc_udzialow_monografie=slot / Decimal("2.0"),
+                    ),
+                )
 
             IloscUdzialowDlaAutora_2022_2025.objects.update_or_create(
                 autor_id=autor_id,
@@ -44,6 +53,9 @@ def oblicz_liczby_n_dla_ewaluacji_2022_2025(uczelnia, rok_min=2022, rok_max=2025
                 slot if rodzaj_autora == Autor_Dyscyplina.RODZAJE_AUTORA.N else 0
                 for slot, rodzaj_autora in latami.values()
             )
+
+            # Zawsze na 4 lata:
+            ilosc = Decimal(4)  # len(latami.values())
 
             uczelnia_dyscyplina_udzial[dyscyplina_id].append(suma_dla_uczelni / ilosc)
 

@@ -90,6 +90,10 @@ REDAKTOR_MENU = [
         "Autorzy - udziały (2022-2025)",
         "/admin/ewaluacja2021/iloscudzialowdlaautora_2022_2025/",
     ),
+    (
+        "Autorzy - udziały za rok",
+        "/admin/ewaluacja2021/iloscudzialowdlaautorazarok/",
+    ),
     ("Źródła", "/admin/bpp/zrodlo/"),
     ("Serie wydawnicze", "/admin/bpp/seria_wydawnicza/"),
     ("Konferencje", "/admin/bpp/konferencja/"),
