@@ -1,0 +1,2 @@
+
+opcjonalne pole z pytaniem o publikację pełnego tekstu pracy

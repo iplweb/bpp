@@ -36,6 +36,7 @@ class Zgloszenie_PublikacjiAdmin(admin.ModelAdmin):
         "wydzial_pierwszego_autora",
         "email",
         "status",
+        "zgoda_na_publikacje_pelnego_tekstu",
     ]
     list_filter = [
         "status",
@@ -43,6 +44,7 @@ class Zgloszenie_PublikacjiAdmin(admin.ModelAdmin):
         WydzialJednostkiPierwszegoAutora,
         "rodzaj_zglaszanej_publikacji",
         "rok",
+        "zgoda_na_publikacje_pelnego_tekstu",
     ]
 
     fields = (
@@ -59,6 +61,7 @@ class Zgloszenie_PublikacjiAdmin(admin.ModelAdmin):
             "status",
             "przyczyna_zwrotu",
             "kod_do_edycji",
+            "zgoda_na_publikacje_pelnego_tekstu",
         )
     )
 
