@@ -4,6 +4,21 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202506.1181 (2025-06-04)
+============================
+
+Naprawione
+----------
+
+- errata do mappera punktów dla wydawnictw ciągłych
+
+
+Usprawnienie
+------------
+
+- procedura weryfikująca zamapowania autorów przy pierwszym imporcie z PBN
+
+
 Bpp 202506.1180 (2025-06-04)
 ============================
 
