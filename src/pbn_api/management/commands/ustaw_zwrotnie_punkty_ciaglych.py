@@ -24,6 +24,6 @@ class Command(PBNBaseCommand):
                         f"Brak punktacji dla {elem.zrodlo} za {elem.rok}, przyznaję 5 punktów"
                     )
                     seen.add(zrodlo_rok)
-                elem.punkt_kbn = 5
+                elem.punkty_kbn = 5
 
             elem.save()
