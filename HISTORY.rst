@@ -4,6 +4,16 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202506.1180 (2025-06-04)
+============================
+
+Usprawnienie
+------------
+
+- popraw przypisywanie punktów PK po imporcie z PBN (#1490)
+- opcjonalne pole z pytaniem o publikację pełnego tekstu pracy (#1491)
+
+
 Bpp 202505.1179 (2025-05-11)
 ============================
 

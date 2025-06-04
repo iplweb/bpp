@@ -1,2 +1,0 @@
-
-popraw przypisywanie punktów PK po imporcie z PBN
