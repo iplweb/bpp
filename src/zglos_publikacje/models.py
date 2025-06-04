@@ -44,6 +44,10 @@ class Zgloszenie_Publikacji(
     kod_do_edycji = models.UUIDField(editable=False, unique=True, null=True, blank=True)
     przyczyna_zwrotu = models.TextField(blank=True, null=True)
 
+    zgoda_na_publikacje_pelnego_tekstu = models.BooleanField(
+        "Zgoda na publikację pełnego tekstu", default=False
+    )
+
     class Statusy(models.IntegerChoices):
         NOWY = 0, "nowe zgłoszenie"
         ZAAKCEPTOWANY = 1, "zaakceptowany - dodany do bazy BPP"

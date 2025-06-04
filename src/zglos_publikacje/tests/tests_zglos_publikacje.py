@@ -19,6 +19,30 @@ EMAIL = "test@panie.random.lol.pl"
 
 
 @pytest.mark.django_db
+def test_pierwsza_strona_wymagaj_zgody_na_publikacje(webtest_app, uczelnia):
+    uczelnia.pytaj_o_zgode_na_publikacje_pelnego_tekstu = True
+    uczelnia.save()
+
+    url = reverse("zglos_publikacje:nowe_zgloszenie")
+    page = webtest_app.get(url)
+    page.forms[0]["0-tytul_oryginalny"] = "123"
+    page.forms[0]["0-rok"] = "2020"
+    page.forms[0][
+        "0-rodzaj_zglaszanej_publikacji"
+    ] = Zgloszenie_Publikacji.Rodzaje.ARTYKUL_LUB_MONOGRAFIA
+    page.forms[0]["0-email"] = "123@123.pl"
+
+    page2 = page.forms[0].submit()
+    assert page2.status_code == 200
+    assert b"To pole jest wymagane" in page2.content
+
+    page2.forms[0]["0-zgoda_na_publikacje_pelnego_tekstu"] = "False"
+    page2 = page2.forms[0].submit()
+    assert page2.status_code == 200
+    assert b"Plik" in page2.content
+
+
+@pytest.mark.django_db
 def test_pierwsza_strona_wymagaj_pliku(webtest_app, uczelnia):
     url = reverse("zglos_publikacje:nowe_zgloszenie")
     page = webtest_app.get(url)

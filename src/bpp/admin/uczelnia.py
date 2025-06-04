@@ -134,6 +134,7 @@ class UczelniaAdmin(
                     "pokazuj_raport_slotow_zerowy",
                     "pokazuj_raport_slotow_uczelnia",
                     "pokazuj_formularz_zglaszania_publikacji",
+                    "pytaj_o_zgode_na_publikacje_pelnego_tekstu",
                     "pokazuj_autorow_obcych_w_przegladaniu_danych",
                     "pokazuj_autorow_bez_prac_w_przegladaniu_danych",
                     "pokazuj_zrodla_bez_prac_w_przegladaniu_danych",

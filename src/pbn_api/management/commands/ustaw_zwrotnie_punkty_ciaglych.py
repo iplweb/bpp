@@ -7,12 +7,12 @@ from bpp.models import Punktacja_Zrodla, Wydawnictwo_Ciagle
 
 class Command(PBNBaseCommand):
     def add_arguments(self, parser):
-        super().add_arguments(parser)
+        parser.add_argument("--min-rok", type=int, default=2022)
 
-    def handle(self, *args, **kw):
+    def handle(self, min_rok, *args, **kw):
         seen = set()
 
-        for elem in tqdm(Wydawnictwo_Ciagle.objects.filter(rok__gte=2022)):
+        for elem in tqdm(Wydawnictwo_Ciagle.objects.filter(rok__gte=min_rok)):
             try:
                 elem.punkty_kbn = elem.zrodlo.punktacja_zrodla_set.get(
                     rok=elem.rok
@@ -20,8 +20,10 @@ class Command(PBNBaseCommand):
             except Punktacja_Zrodla.DoesNotExist:
                 zrodlo_rok = (elem.zrodlo.pk, elem.rok)
                 if zrodlo_rok not in seen:
-                    print(f"Brak punktacji dla {elem.zrodlo} za {elem.rok}")
+                    print(
+                        f"Brak punktacji dla {elem.zrodlo} za {elem.rok}, przyznaję 5 punktów"
+                    )
                     seen.add(zrodlo_rok)
-                continue
+                elem.punkt_kbn = 5
 
             elem.save()

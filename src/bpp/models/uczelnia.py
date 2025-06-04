@@ -393,6 +393,11 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         help_text="Jeżeli autor ma dwie dyscypliny, drukuj zawsze dwa oświadczenia.",
     )
 
+    pytaj_o_zgode_na_publikacje_pelnego_tekstu = models.BooleanField(
+        verbose_name="Pytaj o zgodę na publikację pełnego tekstu w formularzu zgłoszeniowym prac",
+        default=False,
+    )
+
     objects = UczelniaManager()
 
     class Meta:

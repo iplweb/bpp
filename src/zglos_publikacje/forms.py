@@ -9,7 +9,7 @@ from django.forms.widgets import HiddenInput
 from zglos_publikacje.models import Zgloszenie_Publikacji, Zgloszenie_Publikacji_Autor
 from zglos_publikacje.validators import validate_file_extension_pdf
 
-from bpp.models import Autor, Dyscyplina_Naukowa, Jednostka
+from bpp.models import Autor, Dyscyplina_Naukowa, Jednostka, Uczelnia
 
 
 class Zgloszenie_Publikacji_DaneOgolneForm(forms.ModelForm):
@@ -29,6 +29,21 @@ class Zgloszenie_Publikacji_DaneOgolneForm(forms.ModelForm):
         "zostanie skierowana dalsza korespondencja."
     )
 
+    zgoda_na_publikacje_pelnego_tekstu = forms.ChoiceField(
+        choices=[
+            (None, "proszę określić"),
+            (
+                True,
+                "tak, wyrażam zgodę na umieszczenie pełnego tekstu publikacji w repozytorium otwartego dostępu ",
+            ),
+            (
+                False,
+                "nie, nie wyrażam zgody na umieszczenie pełnego tekstu publikacji w repozytorium otwartego dostępu ",
+            ),
+        ],
+        required=True,
+    )
+
     class Meta:
         model = Zgloszenie_Publikacji
         fields = [
@@ -37,6 +52,7 @@ class Zgloszenie_Publikacji_DaneOgolneForm(forms.ModelForm):
             "rok",
             "strona_www",
             "email",
+            "zgoda_na_publikacje_pelnego_tekstu",
         ]
 
     def __init__(self, *args, **kw):
@@ -54,6 +70,11 @@ class Zgloszenie_Publikacji_DaneOgolneForm(forms.ModelForm):
             ),
         )
         super().__init__(*args, **kw)
+
+        if (
+            not Uczelnia.objects.get_default().pytaj_o_zgode_na_publikacje_pelnego_tekstu
+        ):
+            self.fields.pop("zgoda_na_publikacje_pelnego_tekstu", None)
 
 
 class Zgloszenie_Publikacji_Plik(forms.ModelForm):
