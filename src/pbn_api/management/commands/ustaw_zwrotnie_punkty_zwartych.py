@@ -7,16 +7,16 @@ from bpp.models import Wydawnictwo_Zwarte
 
 class Command(PBNBaseCommand):
     def add_arguments(self, parser):
-        super().add_arguments(parser)
+        parser.add_argument("--min-rok", type=int, default=2022)
 
-    def handle(self, *args, **kw):
+    def handle(self, min_rok, *args, **kw):
         punkty_dct = [
             {"KS": 20, "RED": 5, "ROZ": 5},
             {"KS": 80, "RED": 20, "ROZ": 20},
             {"KS": 200, "RED": 100, "ROZ": 50},
         ]
 
-        for elem in tqdm(Wydawnictwo_Zwarte.objects.filter(rok__gte=2022)):
+        for elem in tqdm(Wydawnictwo_Zwarte.objects.filter(rok__gte=min_rok)):
             poziom_wydawcy = elem.wydawca.get_tier(elem.rok)
             if poziom_wydawcy == -1:
                 poziom_wydawcy = 0
