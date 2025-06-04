@@ -12,9 +12,13 @@ BASEDIR=$(dirname "$0")
 
 LOCAL_DATABASE_NAME=bpp
 
-pkill -TERM -f "src/manage.py runserver" || true
-
-sleep 1
+# Opcjonalnie: możnaby tu ubić serwer Django, ale ponieważ jest dropdb -f,
+# to nie ma takiej potrzeby. Ewentualnie możnaby go zrestartować po wszystkim, wysyłając
+# sygnał, ale Django chyba na ten moment nie obsługuje czegoś takiego...
+# https://stackoverflow.com/questions/79652902/can-the-django-development-server-be-restarted-with-a-signal
+#
+# pkill -TERM -f "src/manage.py runserver" || true
+# sleep 1
 
 dropdb -f --if-exists $LOCAL_DATABASE_NAME
 
