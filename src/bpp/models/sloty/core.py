@@ -208,25 +208,32 @@ def ISlot(original, uczelnia=None):
                 ksiazka
                 and redakcja
                 and (
-                    (tryb_hst is not True and original.punkty_kbn in [20, 10])
+                    (tryb_hst is not True and original.punkty_kbn == 20)
                     or (tryb_hst is True and original.punkty_kbn == 40)
                 )
             )
             warunek_dla_rozdzialow = rozdzial and (
-                (tryb_hst is not True and original.punkty_kbn in [20, 10])
+                (tryb_hst is not True and original.punkty_kbn == 20)
                 or (tryb_hst is True and original.punkty_kbn == 20)
             )
 
-            if wiele_hst is True and original.punkty_kbn in [120, 40, 20]:
+            if wiele_hst is True and original.punkty_kbn in [120, 40]:
                 raise CannotAdapt(
                     "Publikacja ma autorów z dyscyplin HST oraz nie-HST; dla rekordu wpisz punktację "
-                    "bazową (czyli np. 80, 20, 10 punktów). Dla autorów dyscyplin HST przy "
+                    "bazową (czyli np. 80 lub 20). Dla autorów dyscyplin HST przy "
                     "obliczeniach punktacja zostanie zwiększona automatycznie. "
                 )
 
             if warunek_dla_monografii or warunek_dla_redakcji or warunek_dla_rozdzialow:
+                _wiele_hst = True
+                if warunek_dla_rozdzialow:
+                    _wiele_hst = False
+
                 return SlotKalkulator_Wydawnictwo_Zwarte_Prog2(
-                    original, tryb_kalkulacji, wiele_hst=True
+                    original,
+                    tryb_kalkulacji,
+                    wiele_hst=_wiele_hst,
+                    poziom_wydawcy=poziom_wydawcy,
                 )
 
         else:

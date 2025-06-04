@@ -1,5 +1,6 @@
 from decimal import Decimal
 
+from bpp import const
 from bpp.models.sloty.wydawnictwo_ciagle import (
     SlotKalkulator_Wydawnictwo_Ciagle_Prog1,
     SlotKalkulator_Wydawnictwo_Ciagle_Prog2,
@@ -13,27 +14,40 @@ class SlotKalkulator_Wydawnictwo_Zwarte_Baza:
     (80, 200 itp).
     """
 
-    def __init__(self, original, tryb_kalkulacji, wiele_hst=False):
+    def __init__(self, original, tryb_kalkulacji, wiele_hst=False, poziom_wydawcy=None):
         self.original = original
         self.tryb_kalkulacji = tryb_kalkulacji
         self.wiele_hst = wiele_hst
+        self.poziom_wydawcy = poziom_wydawcy
 
     def punkty_pkd(self, dyscyplina):
-        # Jeżeli jest włączony tryb HST to pomnóz 1.5 razy:
         val = super().punkty_pkd(dyscyplina)
         if not self.wiele_hst:
             return val
 
+        # Jeżeli jest włączony tryb HST to pomnóz 1.5 razy:
         if val is not None and dyscyplina.dyscyplina_hst:
             # UWAGA ** UWAGA ** UWAGA
             #
             # Ta procedura da dobry wynik tak długo, jak długo punkty PK będą w "liczniku" czyli
             # całe działanie (zwracane przez super().punkty_pkd(dyscyplina) będzie możliwe do przemnożenia
-            # przez 1.5.
+            # przez 1.5.  Do tego, podnosi tą wartość wyłącznie dla dyscyplin HST. Z wyłaczeniem rozdziału
+            # i redakcji monografii na poziomie 1, gdyż tam mnożnik wynosi 1.0
             #
-            # Do tego, podnosi tą wartość wyłącznie dla dyscyplin HST.
-            #
-            return val * Decimal("1.5")
+
+            mnoznik = Decimal("1.5")
+
+            if (
+                self.tryb_kalkulacji
+                in [
+                    const.TRYB_KALKULACJI.ROZDZIAL_W_MONOGRAFI,
+                    const.TRYB_KALKULACJI.REDAKCJA_MONOGRAFI,
+                ]
+                and self.poziom_wydawcy == 1
+            ):
+                mnoznik = Decimal("1.0")
+
+            return val * mnoznik
 
         return val
 

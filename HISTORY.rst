@@ -4,6 +4,15 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202506.1182 (2025-06-04)
+============================
+
+Naprawione
+----------
+
+- nie stosuj mnożnika 1.5 dla HST poziom 1 redakcja monografi, autorstwo rozdziału
+
+
 Bpp 202506.1181 (2025-06-04)
 ============================
 
