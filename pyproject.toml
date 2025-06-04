@@ -220,6 +220,7 @@ tqdm = "^4.67.1"
 isbnlib = "^3.10.14"
 chardet = "^5.2.0"
 python-dateutil = "^2.9.0.post0"
+thefuzz = "^0.22.1"
 
 [tool.poetry.group.dev.dependencies]
 bumpver = "^2023.1124"

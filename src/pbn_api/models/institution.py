@@ -1,3 +1,4 @@
+from django.core.exceptions import MultipleObjectsReturned
 from django.db import models, transaction
 from django.db.models import JSONField
 
@@ -141,6 +142,24 @@ class OswiadczenieInstytucji(models.Model):
             return Autor.objects.get(pbn_uid_id=self.personId_id)
         except Autor.DoesNotExist:
             return
+
+    def get_bpp_wa(self):
+        """Zwróć Wydawnictwo_*_Autor"""
+        pub = self.get_bpp_publication()
+        if pub is None:
+            return
+
+        aut = self.get_bpp_autor()
+        if aut is None:
+            return
+
+        try:
+            return pub.autorzy_set.get(autor=aut)
+        except MultipleObjectsReturned:
+            return pub.autorzy_set.get(
+                autor=aut,
+                typ_odpowiedzialnosci=self.get_typ_odpowiedzialnosci(),
+            )
 
     def get_bpp_discipline(self):
         from bpp.models import Dyscyplina_Naukowa
