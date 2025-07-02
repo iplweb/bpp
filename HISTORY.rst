@@ -4,6 +4,15 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202507.1183 (2025-07-02)
+============================
+
+Naprawione
+----------
+
+- usuń problem z przeliczaniem publikacji HST (PKd autora większe niż PK pracy)
+
+
 Bpp 202506.1182 (2025-06-04)
 ============================
 
