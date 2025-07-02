@@ -225,7 +225,7 @@ def ISlot(original, uczelnia=None):
                 )
 
             if warunek_dla_monografii or warunek_dla_redakcji or warunek_dla_rozdzialow:
-                _wiele_hst = True
+                _wiele_hst = wiele_hst
                 if warunek_dla_rozdzialow:
                     _wiele_hst = False
 
