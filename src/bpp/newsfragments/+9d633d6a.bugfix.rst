@@ -1,2 +1,0 @@
-
-usuń problem z przeliczaniem publikacji HST (PKd autora większe niż PK pracy)
