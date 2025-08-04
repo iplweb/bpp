@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python src/manage.py test:*)",
+      "Bash(python src/manage.py export_bibtex:*)"
+    ],
+    "deny": []
+  }
+}
