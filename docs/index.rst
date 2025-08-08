@@ -16,6 +16,7 @@ Contents:
    raporty_rankingi
    sloty
    pbn
+   konfiguracja_pbn
    import_pracownikow
    zglos_publikacje
    usage_admin
