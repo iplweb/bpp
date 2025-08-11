@@ -128,3 +128,11 @@ class PBNUIDSetToExistentException(ValueError):
 class DaneLokalneWymagajaAktualizacjiException(Exception):
     """Podnoszony, gdy lokalne dane powinny zostać zaktualizowane, aby odzwierciedlać
     zmiany po stronie PBN."""
+
+
+class PublikacjaInstytucjiV2NieZnalezionaException(Exception):
+    """Publikacja instytucji nie znaleziona po ID w api V2"""
+
+
+class ZnalezionoWielePublikacjiInstytucjiV2Exception(Exception):
+    pass
