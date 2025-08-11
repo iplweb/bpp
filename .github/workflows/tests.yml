@@ -14,6 +14,7 @@ jobs:
   build:
 
     runs-on: ubuntu-latest
+    timeout-minutes: 45  # Add job-level timeout
 
     strategy:
       max-parallel: 4
@@ -40,15 +41,19 @@ jobs:
         ports:
           - 5433:5432
         # Set health checks to wait until postgres has started
-#        options: >-
-#          --health-cmd pg_"isready --username=postgres"
-#          --health-interval 10s
-#          --health-timeout 5s
-#          --health-retries 5
+        options: >-
+          --health-cmd "pg_isready --username=postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
-    - run: |
+    - name: System setup and dependencies
+      timeout-minutes: 10
+      run: |
+        set -e  # Exit on any error
         uname -a
+        sudo apt update
         sudo apt install software-properties-common
         sudo add-apt-repository -d -y -n ppa:mozillateam/ppa
         sudo add-apt-repository -d -y -n ppa:deadsnakes/ppa
@@ -67,11 +72,13 @@ jobs:
     - uses: actions/checkout@v4
 
     - name: Install Python deps via poetry
+      timeout-minutes: 10
       run: |
         python -m pip install pip poetry
         poetry install --with=dev
 
     - name: Build assets (yarn, collectstatic)
+      timeout-minutes: 10
       env:
         DJANGO_BPP_DB_HOST: 127.0.0.1
         DJANGO_BPP_DB_PORT: 5433
@@ -88,14 +95,40 @@ jobs:
     #   run: |
     #     poetry run pytest -m "not selenium" --splinter-headless --splinter-webdriver-executable=/usr/lib/firefox/firefox
 
+    - name: Wait for services
+      timeout-minutes: 2
+      run: |
+        # Wait for PostgreSQL to be ready
+        until pg_isready -h 127.0.0.1 -p 5433 -U postgres; do
+          echo "Waiting for PostgreSQL..."
+          sleep 2
+        done
+        # Wait for Redis to be ready
+        until redis-cli -h 127.0.0.1 -p 6379 ping; do
+          echo "Waiting for Redis..."
+          sleep 2
+        done
+
     - name: Tests -- only Selenium
+      timeout-minutes: 25
       env:
         DJANGO_BPP_DB_HOST: 127.0.0.1
         DJANGO_BPP_DB_PORT: 5433
         DJANGO_BPP_DB_USER: postgres
       run: |
-        poetry run pytest -k "admin or integration_tests or notifications" --timeout=1200 --verbose -m "selenium" --splinter-headless --splinter-webdriver-executable=/usr/lib/firefox/firefox
-        # poetry run pytest -k "integration_tests or notifications" --timeout=1200 --verbose -m "selenium" --splinter-headless --splinter-webdriver-executable=/usr/lib/firefox/firefox
+        # Show Firefox version for debugging
+        firefox --version
+        geckodriver --version
+
+        # Run tests with more verbose output and shorter timeout per test
+        poetry run pytest -k "admin or integration_tests or notifications" \
+          --timeout=600 \
+          --verbose \
+          --tb=short \
+          -m "selenium" \
+          --splinter-headless \
+          --splinter-webdriver-executable=/usr/lib/firefox/firefox \
+          --maxfail=3
 
     # - name: Tests (no selenium) with Microsoft Auth
     #   env:
