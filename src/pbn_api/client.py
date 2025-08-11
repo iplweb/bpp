@@ -53,8 +53,10 @@ from pbn_api.exceptions import (
     PBNUIDChangedException,
     PBNUIDSetToExistentException,
     PraceSerwisoweException,
+    PublikacjaInstytucjiV2NieZnalezionaException,
     ResourceLockedException,
     SameDataUploadedRecently,
+    ZnalezionoWielePublikacjiInstytucjiV2Exception,
 )
 from pbn_api.models import TlumaczDyscyplin
 from pbn_api.models.discipline import Discipline, DisciplineGroup
@@ -510,6 +512,14 @@ class InstitutionsProfileMixin:
             page_size=page_size,
         )
 
+    def get_institution_publication_v2(
+        self,
+        objectId,
+    ):
+        return self.transport.get_pages(
+            PBN_GET_INSTITUTION_PUBLICATIONS_V2 + f"?publicationId={objectId}",
+        )
+
     def delete_all_publication_statements(self, publicationId):
         url = PBN_DELETE_PUBLICATION_STATEMENT.format(publicationId=publicationId)
         try:
@@ -738,6 +748,18 @@ class PBNClient(
             disable_progress_bar=True,
         )
 
+    def pobierz_publikacje_instytucji_v2(self, objectId):
+        from pbn_api.integrator import zapisz_publikacje_instytucji_v2
+
+        elem = list(self.get_institution_publication_v2(objectId=objectId))
+        if not elem:
+            raise PublikacjaInstytucjiV2NieZnalezionaException(objectId)
+
+        if len(elem) != 1:
+            raise ZnalezionoWielePublikacjiInstytucjiV2Exception(objectId)
+
+        return zapisz_publikacje_instytucji_v2(self, elem[0])
+
     def sync_publication(
         self,
         pub,
@@ -823,6 +845,7 @@ class PBNClient(
         # Pobierz zwrotnie dane z PBN
         publication = self.download_publication(objectId=ret["objectId"])
         self.download_statements_of_publication(publication)
+        self.pobierz_publikacje_instytucji_v2(objectId=ret["objectId"])
 
         # Utwórz obiekt zapisanych danych. Dopiero w tym miejscu, bo jeżeli zostanie
         # utworzony nowy rekord po stronie PBN, to pbn_uid_id musi wskazywać na

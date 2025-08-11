@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 # Polecenie towarzyszące poleceniu z systemu `import_lista_ministerialna_2023`
 # dzieli plik wyjściowy na kilka strumieni, każdy wysyła do oddzielnego

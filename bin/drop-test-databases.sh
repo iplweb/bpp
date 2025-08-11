@@ -1,4 +1,5 @@
 #!/bin/sh
+set -euo pipefail
 
 dropdb -f test_bpp
 

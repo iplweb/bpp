@@ -1,4 +1,5 @@
 #!/usr/bin/expect
+set -euo pipefail
 
 set timeout -1;
 spawn python src/manage.py changepassword admin;

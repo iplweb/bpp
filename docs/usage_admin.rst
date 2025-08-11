@@ -218,3 +218,105 @@ na dole tabeli wybrać jedno z działań np włączyć lub wyłączyć grupowo w
 
 .. note:: Im więcej kolumn wybranych, tym więcej danych musi przetworzyć system. Im mniej
     - tym tabele będą wyświetlały się szybciej.
+
+
+Uzupełnianie pustych dat oświadczeń PBN w rekordach publikacji
+--------------------------------------------------------------
+
+W systemie BPP może wystąpić sytuacja, gdy rekordy powiązań autorów z publikacjami
+(Wydawnictwo_Ciagle_Autor, Wydawnictwo_Zwarte_Autor) nie mają wypełnionych dat oświadczeń
+potrzebnych do prawidłowej integracji z PBN. System udostępnia procedury do automatycznego
+wypełnienia tych dat oraz wysłania oświadczeń do PBN.
+
+Procedura uzupełniania dat oświadczeń
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+1. **Wypełnienie pustych dat oświadczeń**
+
+   Pierwszym krokiem jest uruchomienie procedury, która automatycznie ustawi daty oświadczeń
+   na podstawie daty utworzenia rekordu publikacji:
+
+   .. code-block:: bash
+
+      python src/manage.py ustaw_daty_oswiadczenia_pbn
+
+   Ta procedura:
+
+   - Wyszukuje wszystkie rekordy powiązań autor-publikacja z pustymi datami oświadczeń
+   - Uwzględnia tylko publikacje z rokiem wydania >= 2022
+   - Ustawia datę oświadczenia na datę utworzenia nadrzędnego rekordu publikacji
+   - Aktualizuje rekordy w tabelach ``Wydawnictwo_Ciagle_Autor`` i ``Wydawnictwo_Zwarte_Autor``
+
+   .. note::
+
+      Przed właściwym uruchomieniem procedury zaleca się wykonanie testu za pomocą opcji ``--dry-run``,
+      aby sprawdzić, które rekordy zostaną zaktualizowane:
+
+      .. code-block:: bash
+
+         python src/manage.py ustaw_daty_oswiadczenia_pbn --dry-run
+
+2. **Autoryzacja w systemie PBN**
+
+   Przed wysyłaniem oświadczeń należy się upewnić, że system jest autoryzowany w PBN.
+   W przypadku braku autoryzacji należy wykonać procedurę logowania opisaną w dokumentacji
+   konfiguracji PBN.
+
+3. **Aktualizacja danych lokalnych przed pierwszym importem**
+
+   Przed pierwszym wysłaniem oświadczeń do PBN należy upewnić się, że dane lokalne publikacji
+   są aktualne i zsynchronizowane z systemem PBN. W tym celu należy pobrać publikacje z profilu
+   instytucji za pomocą API v2:
+
+   .. code-block:: bash
+
+      python src/manage.py pbn_pobierz_publikacje_z_instytucji_v2
+
+   Ta procedura:
+
+   - Pobiera wszystkie publikacje z profilu instytucji w systemie PBN
+   - Synchronizuje dane lokalne z danymi w PBN
+   - Zapewnia spójność przed wysyłką oświadczeń
+
+4. **Wysyłanie oświadczeń do PBN**
+
+   Po uzupełnieniu dat oświadczeń można przystąpić do ich wysłania do systemu PBN:
+
+   .. code-block:: bash
+
+      python src/manage.py pbn_wyslij_oswiadczenia_instytucji --year 2023
+
+   Opcje dostępne przy wysyłaniu oświadczeń:
+
+   - ``--year <rok>`` - wysyła oświadczenia dla wszystkich publikacji z określonego roku
+   - ``--dry-run`` - tryb testowy, pokazuje co zostałoby wysłane bez faktycznej wysyłki
+   - ``<model>:<id>`` - wysyła oświadczenie dla konkretnej publikacji (np. ``wydawnictwo_ciagle:123``)
+
+   .. warning::
+
+      Podczas wysyłania publikacji do PBN, jeżeli w API v2 PBN znajdą się publikacje,
+      których nie ma w lokalnej bazie danych, zostaną one automatycznie pobrane,
+      a ich nazwy wypisane na standardowym wyjściu programu.
+
+Przykład kompletnej procedury
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: bash
+
+   # 1. Test uzupełniania dat (opcjonalnie)
+   python src/manage.py ustaw_daty_oswiadczenia_pbn --dry-run
+
+   # 2. Uzupełnienie dat oświadczeń
+   python src/manage.py ustaw_daty_oswiadczenia_pbn
+
+   # 3. Aktualizacja danych lokalnych (przed pierwszym importem)
+   python src/manage.py pbn_pobierz_publikacje_z_instytucji_v2
+
+   # 4. Wysłanie oświadczeń dla publikacji z 2023 roku
+   python src/manage.py pbn_wyslij_oswiadczenia_instytucji --year 2023
+
+.. note::
+
+   Wszystkie powyższe operacje wymagają prawidłowej konfiguracji integracji z PBN
+   oraz autoryzacji użytkownika w systemie PBN. Szczegóły konfiguracji znajdują
+   się w dokumentacji :doc:`konfiguracja_pbn`.

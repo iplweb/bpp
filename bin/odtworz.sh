@@ -1,4 +1,5 @@
-#!/bin/bash -e
+#!/bin/bash
+set -euo pipefail
 
 # Ten skrypt:
 # 1) ubija proces runserver

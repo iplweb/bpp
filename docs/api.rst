@@ -90,3 +90,167 @@ wymaga jednak zalogowania jako użytkownik będący członkiem grupy "generowani
 
 #. dane w formacie JSON są stronnicowane, po kilka wpisów na stronę, aby nie przeciążać serwera. Warto zwrócić
    uwagę na parametry ``count``, ``next`` i ``previous``, znajdujące się w słowniku.
+
+Pobieranie danych z systemu BPP przez JSON HTTP REST API
+--------------------------------------------------------
+
+System BPP udostępnia szereg endpoint'ów REST API dla pobierania danych o publikacjach i powiązanych obiektach.
+API jest tylko-do-odczytu i nie wymaga autoryzacji dla dostępu do danych publikacji.
+
+Główne endpoint'y API
+~~~~~~~~~~~~~~~~~~~~
+
+System udostępnia następujące główne endpoint'y dla pobierania danych publikacji:
+
+* ``/api/v1/wydawnictwo_ciagle/`` - wydawnictwa ciągłe (artykuły w czasopismach)
+* ``/api/v1/wydawnictwo_zwarte/`` - wydawnictwa zwarte (książki, rozdziały)
+* ``/api/v1/patent/`` - patenty
+* ``/api/v1/praca_doktorska/`` - prace doktorskie
+* ``/api/v1/praca_habilitacyjna/`` - prace habilitacyjne
+
+Dane pomocnicze dostępne są przez następujące endpoint'y:
+
+* ``/api/v1/autor/`` - autorzy
+* ``/api/v1/jednostka/`` - jednostki organizacyjne
+* ``/api/v1/uczelnia/`` - uczelnie
+* ``/api/v1/wydawca/`` - wydawcy
+* ``/api/v1/zrodlo/`` - źródła publikacji
+* ``/api/v1/charakter_formalny/`` - charaktery formalne
+
+Przykłady użycia CURL
+~~~~~~~~~~~~~~~~~~~~
+
+#. **Pobranie listy wydawnictw ciągłych:**
+
+   .. code-block:: shell
+
+      curl "https://adres.serwera/api/v1/wydawnictwo_ciagle/" | python -m json.tool
+
+   To polecenie zwróci listę wydawnictw ciągłych w formacie JSON z paginacją.
+
+#. **Pobranie konkretnego wydawnictwa ciągłego:**
+
+   .. code-block:: shell
+
+      curl "https://adres.serwera/api/v1/wydawnictwo_ciagle/123/" | python -m json.tool
+
+   Gdzie ``123`` to ID konkretnego wydawnictwa.
+
+#. **Filtrowanie wydawnictw po roku:**
+
+   .. code-block:: shell
+
+      curl "https://adres.serwera/api/v1/wydawnictwo_ciagle/?rok__gte=2020&rok__lte=2023" | python -m json.tool
+
+   To polecenie zwróci wydawnictwa z lat 2020-2023.
+
+#. **Pobranie wydawnictw zmienionych w określonym okresie:**
+
+   .. code-block:: shell
+
+      curl "https://adres.serwera/api/v1/wydawnictwo_ciagle/?ostatnio_zmieniony__gte=2023-01-01T00:00:00Z" | python -m json.tool
+
+   To polecenie zwróci wydawnictwa zmienione od 1 stycznia 2023 roku.
+
+#. **Pobranie listy autorów:**
+
+   .. code-block:: shell
+
+      curl "https://adres.serwera/api/v1/autor/" | python -m json.tool
+
+#. **Pobranie konkretnego autora:**
+
+   .. code-block:: shell
+
+      curl "https://adres.serwera/api/v1/autor/456/" | python -m json.tool
+
+   Gdzie ``456`` to ID konkretnego autora.
+
+Przykłady użycia w Postman
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. note::
+   Postman to darmowe narzędzie do testowania API. Można je pobrać ze strony https://www.postman.com/downloads/
+
+#. **Konfiguracja podstawowa:**
+
+   * Method: GET
+   * URL: ``https://adres.serwera/api/v1/wydawnictwo_ciagle/``
+   * Headers: ``Accept: application/json``
+
+#. **Pobieranie z filtrowaniem po roku:**
+
+   * Method: GET
+   * URL: ``https://adres.serwera/api/v1/wydawnictwo_ciagle/``
+   * Params:
+     * ``rok__gte``: ``2020``
+     * ``rok__lte``: ``2023``
+
+#. **Pobieranie z paginacją:**
+
+   * Method: GET
+   * URL: ``https://adres.serwera/api/v1/wydawnictwo_ciagle/``
+   * Params:
+     * ``page``: ``2``
+     * ``page_size``: ``50``
+
+#. **Pobieranie konkretnego rekordu:**
+
+   * Method: GET
+   * URL: ``https://adres.serwera/api/v1/wydawnictwo_ciagle/123/``
+
+Format odpowiedzi
+~~~~~~~~~~~~~~~~
+
+API zwraca dane w formacie JSON. Przykład odpowiedzi dla listy wydawnictw:
+
+.. code-block:: json
+
+    {
+        "count": 1500,
+        "next": "https://adres.serwera/api/v1/wydawnictwo_ciagle/?page=2",
+        "previous": null,
+        "results": [
+            {
+                "id": 123,
+                "tytul": "Przykładowy tytuł artykułu",
+                "rok": 2023,
+                "charakter_formalny": {
+                    "nazwa": "Artykuł w czasopiśmie"
+                },
+                "autorzy_set": [
+                    {
+                        "autor": {
+                            "imiona": "Jan",
+                            "nazwisko": "Kowalski"
+                        }
+                    }
+                ],
+                "ostatnio_zmieniony": "2023-12-01T10:30:00Z"
+            }
+        ]
+    }
+
+Parametry filtrowania
+~~~~~~~~~~~~~~~~~~~
+
+Większość endpoint'ów obsługuje następujące parametry filtrowania:
+
+* ``rok`` - filtrowanie po roku publikacji
+* ``rok__gte`` - publikacje od podanego roku (włącznie)
+* ``rok__lte`` - publikacje do podanego roku (włącznie)
+* ``ostatnio_zmieniony`` - filtrowanie po dacie ostatniej modyfikacji
+* ``ostatnio_zmieniony__gte`` - rekordy zmienione od podanej daty
+* ``charakter_formalny`` - filtrowanie po charakterze formalnym publikacji
+
+Paginacja
+~~~~~~~~
+
+Wszystkie listy są paginowane. Odpowiedzi zawierają:
+
+* ``count`` - łączna liczba rekordów
+* ``next`` - URL do następnej strony (jeśli istnieje)
+* ``previous`` - URL do poprzedniej strony (jeśli istnieje)
+* ``results`` - aktualne wyniki
+
+Domyślnie zwracane jest 20 rekordów na stronę. Można to zmienić parametrem ``page_size``.

@@ -561,21 +561,25 @@ def pobierz_publikacje_z_instytucji(client: PBNClient):
     )
 
 
+def zapisz_publikacje_instytucji_v2(client: PBNClient, elem: dict):
+    uuid = elem.get("uuid")
+    objectId_id = elem.get("objectId")
+
+    try:
+        objectId = Publication.objects.get(pk=objectId_id)
+    except Publication.DoesNotExist:
+        objectId = _pobierz_pojedyncza_prace(client, objectId_id)
+        print(f"Pobrano brakującą pracę: {objectId}")
+
+    return PublikacjaInstytucji_V2.objects.update_or_create(
+        uuid=uuid, objectId=objectId, defaults={"json_data": elem}
+    )
+
+
 def pobierz_publikacje_z_instytucji_v2(client: PBNClient):
     res = client.get_institution_publications_v2()
     for elem in tqdm(res, total=res.count()):
-        uuid = elem.get("uuid")
-        objectId_id = elem.get("objectId")
-
-        try:
-            objectId = Publication.objects.get(pk=objectId_id)
-        except Publication.DoesNotExist:
-            objectId = _pobierz_pojedyncza_prace(client, objectId_id)
-            print(f"Pobrano brakującą pracę: {objectId}")
-
-        PublikacjaInstytucji_V2.objects.update_or_create(
-            uuid=uuid, objectId=objectId, defaults={"json_data": elem}
-        )
+        zapisz_publikacje_instytucji_v2(client, elem)
 
 
 def pobierz_oswiadczenia_z_instytucji(client: PBNClient):

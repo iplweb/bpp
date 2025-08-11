@@ -1,7 +1,7 @@
 import pytest
 from model_bakery import baker
 
-from fixtures import MOCK_MONGO_ID
+from fixtures import MOCK_MONGO_ID, MOCK_RETURNED_INSTITUTION_PUBLICATION_V2_DATA
 from fixtures.pbn_api import MOCK_RETURNED_MONGODB_DATA
 from pbn_api.adapters.wydawnictwo import WydawnictwoPBNAdapter
 from pbn_api.client import (
@@ -9,6 +9,7 @@ from pbn_api.client import (
     PBN_GET_PUBLICATION_BY_ID_URL,
     PBN_POST_PUBLICATIONS_URL,
 )
+from pbn_api.const import PBN_GET_INSTITUTION_PUBLICATIONS_V2
 from pbn_api.exceptions import AccessDeniedException
 from pbn_api.models import Publication, SentData
 from pbn_api.tests.utils import middleware
@@ -95,9 +96,9 @@ def test_sprobuj_wyslac_do_pbn_access_denied(
 ):
     req = rf.get("/")
 
-    pbn_client.transport.return_values[
-        PBN_POST_PUBLICATIONS_URL
-    ] = AccessDeniedException(url="foo", content="testujemy")
+    pbn_client.transport.return_values[PBN_POST_PUBLICATIONS_URL] = (
+        AccessDeniedException(url="foo", content="testujemy")
+    )
 
     with middleware(req):
         sprobuj_wyslac_do_pbn_gui(
@@ -172,8 +173,14 @@ def test_sprobuj_wyslac_do_pbn_sukces(
         PBN_GET_PUBLICATION_BY_ID_URL.format(id="123")
     ] = MOCK_RETURNED_MONGODB_DATA
     pbn_client.transport.return_values[
+        PBN_GET_PUBLICATION_BY_ID_URL.format(id="456")
+    ] = MOCK_RETURNED_MONGODB_DATA
+    pbn_client.transport.return_values[
         PBN_GET_INSTITUTION_STATEMENTS + "?publicationId=123&size=5120"
     ] = []
+    pbn_client.transport.return_values[
+        PBN_GET_INSTITUTION_PUBLICATIONS_V2 + "?publicationId=123&size=10"
+    ] = MOCK_RETURNED_INSTITUTION_PUBLICATION_V2_DATA
 
     with middleware(req):
         sprobuj_wyslac_do_pbn_gui(
@@ -251,8 +258,17 @@ def test_sprobuj_wyslac_do_pbn_przychodzi_istniejacy_pbn_uid_dla_nowego_rekordu(
         PBN_GET_PUBLICATION_BY_ID_URL.format(id=MOCK_MONGO_ID)
     ] = MOCK_RETURNED_MONGODB_DATA
     pbn_client.transport.return_values[
+        PBN_GET_PUBLICATION_BY_ID_URL.format(id=MOCK_MONGO_ID)
+    ] = MOCK_RETURNED_MONGODB_DATA
+    pbn_client.transport.return_values[PBN_GET_PUBLICATION_BY_ID_URL.format(id=456)] = (
+        MOCK_RETURNED_MONGODB_DATA
+    )
+    pbn_client.transport.return_values[
         PBN_GET_INSTITUTION_STATEMENTS + f"?publicationId={MOCK_MONGO_ID}&size=5120"
     ] = []
+    pbn_client.transport.return_values[
+        PBN_GET_INSTITUTION_PUBLICATIONS_V2 + "?publicationId=123&size=10"
+    ] = MOCK_RETURNED_INSTITUTION_PUBLICATION_V2_DATA
 
     with middleware(req):
         sprobuj_wyslac_do_pbn_gui(
@@ -292,9 +308,15 @@ def test_sprobuj_wyslac_do_pbn_przychodzi_inny_pbn_uid_dla_starego_rekordu(
     pbn_client.transport.return_values[
         PBN_GET_PUBLICATION_BY_ID_URL.format(id=MOCK_MONGO_ID * 2)
     ] = MOCK_RETURNED_MONGODB_DATA
+    pbn_client.transport.return_values[PBN_GET_PUBLICATION_BY_ID_URL.format(id=456)] = (
+        MOCK_RETURNED_MONGODB_DATA
+    )
     pbn_client.transport.return_values[
         PBN_GET_INSTITUTION_STATEMENTS + f"?publicationId={MOCK_MONGO_ID}&size=5120"
     ] = []
+    pbn_client.transport.return_values[
+        PBN_GET_INSTITUTION_PUBLICATIONS_V2 + "?publicationId=123123&size=10"
+    ] = MOCK_RETURNED_INSTITUTION_PUBLICATION_V2_DATA
 
     with middleware(req):
         sprobuj_wyslac_do_pbn_gui(
