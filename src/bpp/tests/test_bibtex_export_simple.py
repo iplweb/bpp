@@ -1,9 +1,8 @@
 """
 Simplified tests for BibTeX export functionality.
 """
-from unittest.mock import Mock
 
-from django.test import TestCase
+from unittest.mock import Mock
 
 from bpp.bibtex_export import (
     export_to_bibtex,
@@ -14,7 +13,7 @@ from bpp.bibtex_export import (
 )
 
 
-class BibTeXExportSimpleTestCase(TestCase):
+class TestBibTeXExportSimple:
     def test_sanitize_bibtex_string(self):
         """Test that problematic characters are properly escaped."""
         test_cases = [
@@ -31,9 +30,10 @@ class BibTeXExportSimpleTestCase(TestCase):
         ]
 
         for input_str, expected in test_cases:
-            with self.subTest(input_str=input_str):
-                result = sanitize_bibtex_string(input_str)
-                self.assertEqual(result, expected)
+            result = sanitize_bibtex_string(input_str)
+            assert (
+                result == expected
+            ), f"Input: {input_str}, Expected: {expected}, Got: {result}"
 
     def test_generate_bibtex_key_basic(self):
         """Test basic BibTeX key generation with minimal mock."""
@@ -43,8 +43,8 @@ class BibTeXExportSimpleTestCase(TestCase):
         wydawnictwo.autorzy_dla_opisu.return_value.first.return_value = None
 
         key = generate_bibtex_key(wydawnictwo)
-        self.assertIn("2023", key)
-        self.assertIn("id123", key)
+        assert "2023" in key
+        assert "id123" in key
 
     def test_wydawnictwo_ciagle_minimal_bibtex(self):
         """Test minimal BibTeX export for Wydawnictwo_Ciagle."""
@@ -69,10 +69,10 @@ class BibTeXExportSimpleTestCase(TestCase):
         bibtex = wydawnictwo_ciagle_to_bibtex(wydawnictwo)
 
         # Check basic structure
-        self.assertIn("@article{", bibtex)
-        self.assertIn("title = {Test Article}", bibtex)
-        self.assertIn("year = {2023}", bibtex)
-        self.assertTrue(bibtex.endswith("}\n"))
+        assert "@article{" in bibtex
+        assert "title = {Test Article}" in bibtex
+        assert "year = {2023}" in bibtex
+        assert bibtex.endswith("}\n")
 
     def test_wydawnictwo_zwarte_minimal_bibtex(self):
         """Test minimal BibTeX export for Wydawnictwo_Zwarte."""
@@ -102,17 +102,17 @@ class BibTeXExportSimpleTestCase(TestCase):
         bibtex = wydawnictwo_zwarte_to_bibtex(wydawnictwo)
 
         # Check basic structure
-        self.assertIn("@book{", bibtex)
-        self.assertIn("title = {Test Book}", bibtex)
-        self.assertIn("publisher = {Test Publisher}", bibtex)
-        self.assertIn("year = {2022}", bibtex)
-        self.assertIn("address = {New York}", bibtex)
-        self.assertTrue(bibtex.endswith("}\n"))
+        assert "@book{" in bibtex
+        assert "title = {Test Book}" in bibtex
+        assert "publisher = {Test Publisher}" in bibtex
+        assert "year = {2022}" in bibtex
+        assert "address = {New York}" in bibtex
+        assert bibtex.endswith("}\n")
 
     def test_export_to_bibtex_empty_list(self):
         """Test export with empty publication list."""
         result = export_to_bibtex([])
-        self.assertEqual(result, "")
+        assert result == ""
 
     def test_export_to_bibtex_mixed_publications(self):
         """Test export with mixed publication types."""
@@ -163,7 +163,7 @@ class BibTeXExportSimpleTestCase(TestCase):
         result = export_to_bibtex(publications)
 
         # Should contain both entries
-        self.assertIn("@article{", result)
-        self.assertIn("@book{", result)
-        self.assertIn("Article", result)
-        self.assertIn("Book", result)
+        assert "@article{" in result
+        assert "@book{" in result
+        assert "Article" in result
+        assert "Book" in result
