@@ -21,6 +21,8 @@ PBN_MENU = [
     ("Wydawcy", "/admin/pbn_api/publisher"),
     ("Naukowcy", "/admin/pbn_api/scientist"),
     ("Publikacje", "/admin/pbn_api/publication"),
+    ("Publikacje instytucji V1", "/admin/pbn_api/publikacjainstytucji"),
+    ("Publikacje instytucji V2", "/admin/pbn_api/publikacjainstytucji_v2"),
     ("Słowniki dyscyplin", "/admin/pbn_api/disciplinegroup"),
     ("Dyscypliny", "/admin/pbn_api/discipline"),
     ("Tłumacz dyscyplin", "/admin/pbn_api/tlumaczdyscyplin"),

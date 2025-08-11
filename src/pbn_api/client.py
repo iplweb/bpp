@@ -1,3 +1,4 @@
+import json
 import random
 import sys
 import time
@@ -30,10 +31,12 @@ from pbn_api.const import (
     NEEDS_PBN_AUTH_MSG,
     PBN_DELETE_PUBLICATION_STATEMENT,
     PBN_GET_DISCIPLINES_URL,
+    PBN_GET_INSTITUTION_PUBLICATIONS_V2,
     PBN_GET_INSTITUTION_STATEMENTS,
     PBN_GET_JOURNAL_BY_ID,
     PBN_GET_LANGUAGES_URL,
     PBN_GET_PUBLICATION_BY_ID_URL,
+    PBN_POST_INSTITUTION_STATEMENTS_URL,
     PBN_POST_PUBLICATION_FEE_URL,
     PBN_POST_PUBLICATIONS_URL,
     PBN_SEARCH_PUBLICATIONS_URL,
@@ -42,6 +45,7 @@ from pbn_api.exceptions import (
     AccessDeniedException,
     AuthenticationConfigurationError,
     AuthenticationResponseError,
+    CannotDeleteStatementsException,
     HttpException,
     NeedsPBNAuthorisationException,
     NoFeeDataException,
@@ -157,7 +161,7 @@ class OAuthMixin:
         if self.access_token:
             return True
 
-        self.access_token = getattr(settings, "PBN_CLIENT_USER_TOKEN")
+        self.access_token = getattr(settings, "PBN_CLIENT_USER_TOKEN", None)
         if self.access_token:
             return True
 
@@ -260,6 +264,11 @@ class RequestsTransport(OAuthMixin, PBNClientTransport):
             method = requests.delete
 
         ret = method(self.base_url + url, headers=sent_headers, json=body)
+
+        # if ret.status_code != 200:
+        #     pprint(sent_headers)
+        #     pprint(body)
+
         if ret.status_code == 403:
             try:
                 ret_json = ret.json()
@@ -477,11 +486,15 @@ class InstitutionsMixin:
 
 
 class InstitutionsProfileMixin:
-    # XXX: wymaga autoryzacji
     def get_institution_publications(self, page_size=10) -> PageableResource:
         return self.transport.get_pages(
             "/api/v1/institutionProfile/publications/page", page_size=page_size
         )
+
+    def get_institution_publications_v2(
+        self,
+    ) -> PageableResource:
+        return self.transport.get_pages(PBN_GET_INSTITUTION_PUBLICATIONS_V2)
 
     def get_institution_statements(self, page_size=10):
         return self.transport.get_pages(
@@ -498,15 +511,46 @@ class InstitutionsProfileMixin:
         )
 
     def delete_all_publication_statements(self, publicationId):
-        return self.transport.delete(
-            PBN_DELETE_PUBLICATION_STATEMENT.format(publicationId=publicationId),
-            body={"all": True, "statementsOfPersons": []},
-        )
+        url = PBN_DELETE_PUBLICATION_STATEMENT.format(publicationId=publicationId)
+        try:
+            return self.transport.delete(
+                url,
+                body={"all": True, "statementsOfPersons": []},
+            )
+        except HttpException as e:
+            if e.status_code != 400 or not e.url.startswith(url):
+                raise e
+            try:
+                ret_json = json.loads(e.content)
+            except BaseException:
+                raise e
+
+            if (
+                ret_json.get("description") != "Validation failed."
+                or e.content.find("Nie można usunąć oświadczeń") < 0
+            ):
+                raise e
+
+            raise CannotDeleteStatementsException(e.content)
 
     def delete_publication_statement(self, publicationId, personId, role):
         return self.transport.delete(
             PBN_DELETE_PUBLICATION_STATEMENT.format(publicationId=publicationId),
             body={"statementsOfPersons": [{"personId": personId, "role": role}]},
+        )
+
+    def post_discipline_statements(self, statements_data):
+        """
+        Send discipline statements to PBN API.
+
+        Args:
+            statements_data (list): List of statement dictionaries containing discipline information
+
+        Returns:
+            dict: Response from PBN API
+        """
+        return self.transport.post(
+            PBN_POST_INSTITUTION_STATEMENTS_URL, body=statements_data
         )
 
 
