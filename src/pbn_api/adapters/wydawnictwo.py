@@ -3,11 +3,13 @@ from __future__ import annotations
 from import_common.normalization import normalize_isbn, normalize_issn
 from ..exceptions import (
     CharakterFormalnyMissingPBNUID,
+    DaneLokalneWymagajaAktualizacjiException,
     DOIorWWWMissing,
     LanguageMissingPBNUID,
     PKZeroExportDisabled,
     StatementsMissing,
 )
+from ..models import PublikacjaInstytucji_V2
 from .autor import AutorSimplePBNAdapter, AutorZDyscyplinaPBNAdapter
 from .wydawca import WydawcaPBNAdapter
 from .wydawnictwo_autor import WydawnictwoAutorToStatementPBNAdapter
@@ -164,6 +166,65 @@ class WydawnictwoPBNAdapter:
                 f"Rodzaj dla PBN nie określony dla charakteru formalnego {self.original.charakter_formalny}"
             )
 
+    def pbn_get_json_statements(self, _lst=None):
+        """
+        Extract and return only the discipline statements for this publication.
+
+        Returns:
+            list: List of statement dictionaries containing discipline information
+        """
+        statements = []
+
+        if _lst is None:
+            _lst = self.original.autorzy_set.all().select_related(
+                "jednostka",
+                "typ_odpowiedzialnosci",
+                "dyscyplina_naukowa",
+                "autor__pbn_uid",
+                "autor",
+            )
+
+        for elem in _lst:
+            statement = WydawnictwoAutorToStatementPBNAdapter(elem).pbn_get_json()
+            if statement:
+                statements.append(statement)
+        return statements
+
+    def pbn_get_api_statements(self):
+        """
+        Zwraca oświadczenia publikacji wraz z jej ID w formie słownika JSON który może być
+        wysłany do API.
+        """
+
+        def _convert_stmt(statement):
+            if "disciplineId" in statement and "disciplineUuid" in statement:
+                del statement["disciplineId"]
+
+            if "type" in statement:
+                statement["personRole"] = statement.pop("type")
+
+            statement.pop("personNaturalId", None)
+
+            return statement
+
+        try:
+            publicationUuid = PublikacjaInstytucji_V2.objects.get(
+                objectId=self.original.pbn_uid_id
+            )
+        except PublikacjaInstytucji_V2.DoesNotExist:
+            raise DaneLokalneWymagajaAktualizacjiException(
+                "Pobierz dane z profilu instytucji o publikacjach przez API V2. Brakuje "
+                f"informacji o UUID publikacji {self.original.pbn_uid}",
+                self.original.pbn_uid,
+            )
+
+        return {
+            "publicationUuid": str(publicationUuid.pk),
+            "statements": [
+                _convert_stmt(stmt) for stmt in self.pbn_get_json_statements()
+            ],
+        }
+
     def pbn_get_json(self):
         ret = {
             "title": strip_html(self.original.tytul_oryginalny),
@@ -284,9 +345,14 @@ class WydawnictwoPBNAdapter:
         editors = []
         translators = []
         translationEditors = []
-        statements = []
         jednostki = set()
-        for elem in self.original.autorzy_set.all().select_related():
+
+        _lst = self.original.autorzy_set.all().select_related()
+        statements = self.pbn_get_json_statements(_lst)
+        if statements:
+            ret["statements"] = statements
+
+        for elem in _lst:
             elem: BazaModeluOdpowiedzialnosciAutorow
             #
             # Jeżeli dany rekord Wydawnictwo_..._Autor ma dyscyplinę, to takiego autora
@@ -321,10 +387,6 @@ class WydawnictwoPBNAdapter:
                         author["affiliations"] = [jednostka.pbn_uid_id]
                         jednostki.add(elem.jednostka)
 
-                statement = WydawnictwoAutorToStatementPBNAdapter(elem).pbn_get_json()
-                if statement:
-                    statements.append(statement)
-
             if elem.typ_odpowiedzialnosci.typ_ogolny == const.TO_REDAKTOR:
                 editors.append(author)
             elif elem.typ_odpowiedzialnosci.typ_ogolny == const.TO_TLUMACZ:
@@ -342,8 +404,6 @@ class WydawnictwoPBNAdapter:
             ret["editors"] = editors
         if translationEditors:
             ret["translationEditors"] = translationEditors
-        if statements:
-            ret["statements"] = statements
 
         if hasattr(self.original, "isbn"):
             if self.original.isbn:

@@ -129,6 +129,15 @@ def test_WydawnictwoPBNAdapter_przypinanie_dyscyplin(
 
 
 @pytest.mark.django_db
+def test_WydawnictwoPBNAdapter_eksport_oswiadczen(
+    zwarte_z_dyscyplinami,
+):
+    assert (
+        len(WydawnictwoPBNAdapter(zwarte_z_dyscyplinami).pbn_get_json_statements()) == 2
+    )
+
+
+@pytest.mark.django_db
 def test_WydawnictwoPBNAdapter_eksport_artykulu_bez_oswiadczen_zwraca_blad(
     praca_z_dyscyplina_pbn,
 ):

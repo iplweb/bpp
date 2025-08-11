@@ -1,9 +1,10 @@
 """
 Tests for BibTeX export functionality.
 """
+
 from unittest.mock import Mock
 
-from django.test import TestCase
+import pytest
 from model_bakery import baker
 
 from bpp.bibtex_export import (
@@ -16,7 +17,8 @@ from bpp.bibtex_export import (
 from bpp.models import Autor, Wydawnictwo_Ciagle, Wydawnictwo_Zwarte, Zrodlo
 
 
-class BibTeXExportTestCase(TestCase):
+@pytest.mark.django_db
+class TestBibTeXExport:
     def test_sanitize_bibtex_string(self):
         """Test that problematic characters are properly escaped."""
         test_cases = [
@@ -33,9 +35,10 @@ class BibTeXExportTestCase(TestCase):
         ]
 
         for input_str, expected in test_cases:
-            with self.subTest(input_str=input_str):
-                result = sanitize_bibtex_string(input_str)
-                self.assertEqual(result, expected)
+            result = sanitize_bibtex_string(input_str)
+            assert (
+                result == expected
+            ), f"Input: {input_str}, Expected: {expected}, Got: {result}"
 
     def test_generate_bibtex_key(self):
         """Test BibTeX key generation."""
@@ -55,9 +58,9 @@ class BibTeXExportTestCase(TestCase):
         wydawnictwo.autorzy_dla_opisu.return_value.first.return_value = autor_rel
 
         key = generate_bibtex_key(wydawnictwo)
-        self.assertIn("Kowalski", key)
-        self.assertIn("2023", key)
-        self.assertIn("id123", key)
+        assert "Kowalski" in key
+        assert "2023" in key
+        assert "id123" in key
 
     def test_wydawnictwo_ciagle_to_bibtex(self):
         """Test BibTeX export for Wydawnictwo_Ciagle."""
@@ -84,8 +87,10 @@ class BibTeXExportTestCase(TestCase):
         wydawnictwo.issn = "1234-5678"
         wydawnictwo.www = "https://example.com"
         wydawnictwo.pk = 1
-        wydawnictwo.autorzy_dla_opisu.return_value = [autor_rel]
-        wydawnictwo.autorzy_dla_opisu.return_value.first.return_value = autor_rel
+        mock_queryset = Mock()
+        mock_queryset.first.return_value = autor_rel
+        mock_queryset.__iter__ = Mock(return_value=iter([autor_rel]))
+        wydawnictwo.autorzy_dla_opisu.return_value = mock_queryset
         wydawnictwo.numer_tomu.return_value = None
         wydawnictwo.numer_wydania.return_value = None
         wydawnictwo.zakres_stron.return_value = "10-20"
@@ -93,16 +98,16 @@ class BibTeXExportTestCase(TestCase):
         bibtex = wydawnictwo_ciagle_to_bibtex(wydawnictwo)
 
         # Check that all expected fields are present
-        self.assertIn("@article{", bibtex)
-        self.assertIn("title = {Test Article Title}", bibtex)
-        self.assertIn("author = {Smith, John}", bibtex)
-        self.assertIn("journal = {Test Journal}", bibtex)
-        self.assertIn("year = {2023}", bibtex)
-        self.assertIn("doi = {10.1000/test}", bibtex)
-        self.assertIn("issn = {1234-5678}", bibtex)
-        self.assertIn("url = {https://example.com}", bibtex)
-        self.assertIn("pages = {10-20}", bibtex)
-        self.assertTrue(bibtex.endswith("}\n"))
+        assert "@article{" in bibtex
+        assert "title = {Test Article Title}" in bibtex
+        assert "author = {Smith, John}" in bibtex
+        assert "journal = {Test Journal}" in bibtex
+        assert "year = {2023}" in bibtex
+        assert "doi = {10.1000/test}" in bibtex
+        assert "issn = {1234-5678}" in bibtex
+        assert "url = {https://example.com}" in bibtex
+        assert "pages = {10-20}" in bibtex
+        assert bibtex.endswith("}\n")
 
     def test_wydawnictwo_zwarte_to_bibtex(self):
         """Test BibTeX export for Wydawnictwo_Zwarte."""
@@ -133,16 +138,16 @@ class BibTeXExportTestCase(TestCase):
         bibtex = wydawnictwo_zwarte_to_bibtex(wydawnictwo)
 
         # Check that all expected fields are present
-        self.assertIn("@book{", bibtex)
-        self.assertIn("title = {Test Book Title}", bibtex)
-        self.assertIn("author = {Johnson, Jane}", bibtex)
-        self.assertIn("publisher = {Test Publisher}", bibtex)
-        self.assertIn("year = {2022}", bibtex)
-        self.assertIn("address = {New York}", bibtex)
-        self.assertIn("isbn = {978-0-123456-78-9}", bibtex)
-        self.assertIn("url = {https://book.example.com}", bibtex)
-        self.assertIn("pages = {1-300}", bibtex)
-        self.assertTrue(bibtex.endswith("}\n"))
+        assert "@book{" in bibtex
+        assert "title = {Test Book Title}" in bibtex
+        assert "author = {Johnson, Jane}" in bibtex
+        assert "publisher = {Test Publisher}" in bibtex
+        assert "year = {2022}" in bibtex
+        assert "address = {New York}" in bibtex
+        assert "isbn = {978-0-123456-78-9}" in bibtex
+        assert "url = {https://book.example.com}" in bibtex
+        assert "pages = {1-300}" in bibtex
+        assert bibtex.endswith("}\n")
 
     def test_wydawnictwo_zwarte_chapter_to_bibtex(self):
         """Test BibTeX export for book chapter (Wydawnictwo_Zwarte with parent)."""
@@ -176,11 +181,11 @@ class BibTeXExportTestCase(TestCase):
         bibtex = wydawnictwo_zwarte_to_bibtex(chapter)
 
         # Check that it's formatted as incollection
-        self.assertIn("@incollection{", bibtex)
-        self.assertIn("title = {Chapter Title}", bibtex)
-        self.assertIn("booktitle = {Parent Book Title}", bibtex)
-        self.assertIn("author = {Brown, Bob}", bibtex)
-        self.assertIn("pages = {45-60}", bibtex)
+        assert "@incollection{" in bibtex
+        assert "title = {Chapter Title}" in bibtex
+        assert "booktitle = {Parent Book Title}" in bibtex
+        assert "author = {Brown, Bob}" in bibtex
+        assert "pages = {45-60}" in bibtex
 
     def test_export_to_bibtex_multiple(self):
         """Test bulk export of multiple publications."""
@@ -220,12 +225,12 @@ class BibTeXExportTestCase(TestCase):
         bibtex = export_to_bibtex(publications)
 
         # Check that both publications are included
-        self.assertIn("@article{", bibtex)
-        self.assertIn("@book{", bibtex)
-        self.assertIn("Article Title", bibtex)
-        self.assertIn("Book Title", bibtex)
-        self.assertIn("First, Author", bibtex)
-        self.assertIn("Second, Author", bibtex)
+        assert "@article{" in bibtex
+        assert "@book{" in bibtex
+        assert "Article Title" in bibtex
+        assert "Book Title" in bibtex
+        assert "First, Author" in bibtex
+        assert "Second, Author" in bibtex
 
     def test_model_to_bibtex_methods(self):
         """Test that model instances have to_bibtex methods."""
@@ -234,13 +239,13 @@ class BibTeXExportTestCase(TestCase):
         zwarte = baker.make(Wydawnictwo_Zwarte, tytul_oryginalny="Test Book")
 
         # Test that methods exist and return strings
-        self.assertTrue(hasattr(ciagle, "to_bibtex"))
-        self.assertTrue(hasattr(zwarte, "to_bibtex"))
+        assert hasattr(ciagle, "to_bibtex")
+        assert hasattr(zwarte, "to_bibtex")
 
         ciagle_bibtex = ciagle.to_bibtex()
         zwarte_bibtex = zwarte.to_bibtex()
 
-        self.assertIsInstance(ciagle_bibtex, str)
-        self.assertIsInstance(zwarte_bibtex, str)
-        self.assertIn("Test Article", ciagle_bibtex)
-        self.assertIn("Test Book", zwarte_bibtex)
+        assert isinstance(ciagle_bibtex, str)
+        assert isinstance(zwarte_bibtex, str)
+        assert "Test Article" in ciagle_bibtex
+        assert "Test Book" in zwarte_bibtex
