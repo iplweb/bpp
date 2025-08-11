@@ -58,7 +58,7 @@ master_doc = "index"
 
 # General information about the project.
 project = "Bibliografia Publikacji Pracowników"
-copyright = "2017-2022, iplweb.pl Michał Pasternak"
+copyright = "2005-2025, iplweb.pl Michał Pasternak"
 
 # The version info for the project you're documenting, acts as replacement
 # for |version| and |release|, also used in various other places throughout
