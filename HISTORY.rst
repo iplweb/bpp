@@ -4,6 +4,15 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202508.1186 (2025-08-11)
+============================
+
+Naprawione
+----------
+
+- dodaj charakter ``edited-book`` dla importu z CrossRef (#1455)
+
+
 Bpp 202508.1184 (2025-08-11)
 ============================
 

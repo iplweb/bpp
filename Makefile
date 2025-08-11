@@ -137,8 +137,9 @@ upgrade-version:
 	$(eval NEW_VERSION=$(shell bumpver test $(CUR_VERSION) 'vYYYY0M.BUILD[-TAGNUM]' |head -1|cut -d: -f2))
 	git flow release start $(NEW_VERSION)
 	bumpver update
+	-towncrier build --draft > /tmp/towncrier.txt
 	-towncrier build --yes
-	-git commit -m "Opis zmian dla nowej wersji oprogramowania"
+	-git commit -F /tmp/towncrier.txt
 	git flow release finish "$(NEW_VERSION)" -p -m "Nowa wersja: $(NEW_VERSION)"
 
 poetry-lock:
@@ -171,7 +172,7 @@ loc: clean
 	pygount -N ... -F "...,staticroot,migrations,fixtures" src --format=summary
 
 
-DOCKER_VERSION="202508.1185"
+DOCKER_VERSION="202508.1186"
 
 DOCKER_BUILD=build --platform linux/amd64,linux/arm64 --push
 

@@ -283,5 +283,6 @@ SearchForm._meta.verbose_name_plural = "formularze wyszukiwania"
 
 admin.site.register(SearchForm, SearchFormAdmin)
 
+from .crossref_mapper import Crossref_Mapper_Admin  # noqa
 from .templates import TemplateAdmin  # noqa
 from .zrodlo import ZrodloAdmin  # noqa
