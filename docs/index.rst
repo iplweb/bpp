@@ -3,27 +3,65 @@ Witamy w dokumentacji systemu Bibliografia Publikacji Pracowników
 
 Contents:
 
+Wprowadzenie
+============
+
 .. toctree::
    :maxdepth: 2
 
    readme
    instalacja_ansible
-   edycja_uczelnia
-   edycja_wydawnictwo
-   edycja_autor
-   edycja_jednostka
+   faq
+
+Instrukcja użytkownika
+======================
+
+.. toctree::
+   :maxdepth: 2
+
+   konfiguracja_pbn
+   zglos_publikacje
    wyszukiwanie_redagowanie
+
+Instrukcja administratora
+=========================
+
+.. toctree::
+   :maxdepth: 2
+
+   usage_admin
+   edycja_uczelnia
+   edycja_jednostka
+   edycja_autor
+   edycja_wydawnictwo
+   import_pracownikow
+
+Funkcje zaawansowane
+====================
+
+.. toctree::
+   :maxdepth: 2
+
    raporty_rankingi
    sloty
    pbn
-   konfiguracja_pbn
-   import_pracownikow
-   zglos_publikacje
-   usage_admin
-   api
    advanced
+
+API i rozwój
+=============
+
+.. toctree::
+   :maxdepth: 2
+
+   api
    contributing
-   faq
+
+Informacje o projekcie
+======================
+
+.. toctree::
+   :maxdepth: 2
+
    authors
    history
 
