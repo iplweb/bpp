@@ -201,41 +201,10 @@ build-servers: build-appserver-base build-appserver build-workerserver
 
 docker: build-dbserver build-webserver build-servers
 
-# Docker Compose management
-compose-up: ## Uruchom wszystkie serwisy
-	docker compose up -d
-
-compose-down: ## Zatrzymaj wszystkie serwisy
-	docker compose down
-
-compose-restart: ## Restart wszystkich serwisów
+compose-restart:
 	docker compose stop
 	docker compose rm -f
 	docker compose up --force-recreate
 
-compose-logs: ## Pokaż logi wszystkich serwisów
-	docker compose logs -f
-
-compose-logs-app: ## Pokaż logi aplikacji
-	docker compose logs -f appserver
-
-compose-shell: ## Otwórz shell w kontenerze aplikacji
-	docker compose exec appserver bash
-
-compose-dbshell: ## Otwórz shell bazy danych
+compose-dbshell:
 	docker compose exec db /bin/bash
-
-compose-db-backup: ## Stwórz backup bazy danych
-	mkdir -p ./backups
-	docker compose exec db pg_dump -U postgres bpp_database > ./backups/backup_$(shell date +%Y%m%d_%H%M%S).sql
-
-compose-health: ## Sprawdź status wszystkich serwisów
-	docker compose ps
-
-compose-clean: ## Wyczyść nieużywane obrazy i wolumeny
-	docker system prune -f
-	docker volume prune -f
-
-compose-update: ## Aktualizuj obrazy i restart
-	docker compose pull
-	docker compose up -d
