@@ -341,6 +341,16 @@ System CrossRef API wykorzystuje następujące typy charakterów publikacji:
 * ``book-chapter`` - rozdziały w książkach
 * ``edited-book`` - książki redagowane
 * ``proceedings`` - materiały konferencyjne
+* ``monograph`` - monografie
+* ``reference-book`` - książki referencyjne/podręczniki
+* ``book-series`` - serie książkowe
+* ``book-set`` - zestawy książek
+* ``book-section`` - sekcje książek
+* ``book-part`` - części książek
+* ``dissertation`` - dysertacje/prace doktorskie
+* ``posted-content`` - treści opublikowane online (preprints, itp.)
+* ``peer-review`` - recenzje
+* ``other`` - inne typy publikacji
 
 Konfiguracja mapowania w module Redagowania
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
