@@ -10,8 +10,6 @@ Wprowadzenie
    :maxdepth: 2
 
    readme
-   instalacja_ansible
-   faq
 
 Instrukcja użytkownika
 ======================
@@ -19,8 +17,10 @@ Instrukcja użytkownika
 .. toctree::
    :maxdepth: 2
 
-   konfiguracja_pbn
-   zglos_publikacje
+   edycja_uczelnia
+   edycja_jednostka
+   edycja_autor
+   edycja_wydawnictwo
    wyszukiwanie_redagowanie
 
 Instrukcja administratora
@@ -30,10 +30,8 @@ Instrukcja administratora
    :maxdepth: 2
 
    usage_admin
-   edycja_uczelnia
-   edycja_jednostka
-   edycja_autor
-   edycja_wydawnictwo
+   zglos_publikacje
+   konfiguracja_pbn
    import_pracownikow
 
 Funkcje zaawansowane

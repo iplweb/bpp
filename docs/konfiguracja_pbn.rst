@@ -1,6 +1,6 @@
-=========================================================
-Konfiguracja integracji z serwisami PBN - dla użytkownika
-=========================================================
+=======================================
+Konfiguracja integracji z serwisami PBN
+=======================================
 
 System BPP oferuje integrację z Polską Bibliografią Naukową (PBN), umożliwiając automatyczne
 wysyłanie publikacji do PBN oraz pobieranie danych ze źródeł PBN. Niniejsza dokumentacja
@@ -74,6 +74,11 @@ Opcje eksportu danych
     - **Pole:** ``pbn_api_nie_wysylaj_prac_bez_pk``
     - **Domyślnie:** Nie zaznaczone
     - **Opis:** Blokuje wysyłanie do PBN publikacji bez punktów MNiSW
+
+**Wysyłaj prace bez oświadczeń**
+    - **Pole:** ``pbn_wysylaj_bez_oswiadczen``
+    - **Domyślnie:** Nie zaznaczone
+    - **Opis:** Umożliwia wysyłanie do PBN publikacji bez oświadczeń dyscyplinowych. Takie publikacje trafiają do repozytorium PBN zamiast do systemu ewaluacyjnego i nie zawierają informacji o dyscyplinach naukowych autorów
 
 **Wysyłaj zawsze PBN UID uczelni jako afiliację**
     - **Pole:** ``pbn_api_afiliacja_zawsze_na_uczelnie``

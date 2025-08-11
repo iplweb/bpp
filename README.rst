@@ -8,7 +8,7 @@
   :alt: Logo projektu
 
 .. image:: https://github.com/iplweb/bpp/actions/workflows/build.yml/badge.svg
-   :targer: https://github.com/iplweb/bpp/actions/workflows/build.yml
+   :target: https://github.com/iplweb/bpp/actions/workflows/build.yml
 
 .. image:: https://circleci.com/gh/iplweb/bpp/tree/dev.svg?style=svg
    :target: https://circleci.com/gh/iplweb/bpp
@@ -36,17 +36,14 @@ Dokumentacja dostępna jest na stronie https://bpp.readthedocs.io/ .
 Wersja demo serwisu
 -------------------
 
-Live-demo serwisu dostępne jest pod adresem http://bppdemo.iplweb.pl . W razie
-pytań lub problemów z dostępem do serwisu demonstracyjnego prosimy o kontakt
+Live-demo serwisu dostępne jest na żądanie -- prosimy o kontakt
 pod adresem e-mail michal.dtz@gmail.com.
 
 Obsługa komercyjna
 ------------------
 
 Jeżeli jesteś bibliotekarzem i szukasz sposobu na szybkie wdrożenie systemu BPP
-w swojej instytucji, zapraszam na stronę firmy IPLWeb_ . Znajdziesz tam m.in.
-kontener maszyny wirtualnej zawierającej pre-instalowany system BPP, gotowy do
-pracy, jak równiez bogatą ofertę wsparcia komercyjnego. Szczegóły na stronie
+w swojej instytucji, zapraszam na stronę firmy IPLWeb_ . Szczegóły na stronie
 projektu http://bpp.iplweb.pl/
 
 .. _IPLWeb: http://bpp.iplweb.pl/
