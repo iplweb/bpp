@@ -1,6 +1,7 @@
 """
 Autorzy
 """
+
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta
@@ -209,11 +210,7 @@ class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID):
                 autor=self, rok=timezone.now().date().year
             )
         except Autor_Dyscyplina.DoesNotExist:
-            # Spróbuj pobrać jakiś wpis z lat poprzednich:
-            ret = Autor_Dyscyplina.objects.filter(autor=self).order_by("-rok").first()
-
-        if ret is None:
-            return None
+            return
 
         return getattr(ret, pole)
 

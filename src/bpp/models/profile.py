@@ -2,12 +2,15 @@
 Profile użytkowników serwisu BPP
 """
 
+from datetime import timedelta
+
 from django.conf import settings
 from django.db import models
 from django.dispatch import receiver
 
 from django.contrib.auth.models import AbstractUser, UserManager
 
+from django.utils import timezone
 from django.utils.functional import cached_property
 from django.utils.itercompat import is_iterable
 
@@ -41,6 +44,30 @@ class BppUser(AbstractUser, ModelZAdnotacjami):
     )
 
     pbn_token = models.CharField(max_length=128, null=True, blank=True)
+    pbn_token_updated = models.DateTimeField(null=True, blank=True)
+
+    przedstawiaj_w_pbn_jako = models.ForeignKey(
+        "bpp.BppUser",
+        blank=True,
+        null=True,
+        on_delete=models.SET_NULL,
+        help_text="Jeżeli wybrany użytkownik nie ma konta w PBNie, może nadal wysyłać prace jako inny użytkiownik "
+        "systemu BPP; wybierz konto z którego ma być wysyłane w tym polu. ",
+    )
+
+    def pbn_token_possibly_valid(self):
+        if (
+            self.pbn_token is None
+            or not self.pbn_token
+            or self.pbn_token_updated is None
+        ):
+            return False
+
+        delta = timezone.now() - self.pbn_token_updated
+        if delta > timedelta(hours=settings.PBN_TOKEN_HOURS_GRACE_TIME):
+            return False
+
+        return True
 
     class Meta:
         app_label = "bpp"
@@ -52,6 +79,22 @@ class BppUser(AbstractUser, ModelZAdnotacjami):
     @cached_property
     def cached_groups(self):
         return self.groups.all()
+
+    def clean(self):
+        if self.pk is not None:
+            if self.przedstawiaj_w_pbn_jako_id == self.pk:
+                from django.forms import ValidationError
+
+                raise ValidationError(
+                    {
+                        "przedstawiaj_w_pbn_jako": "Nie ma potrzeby ustawiać tego pola jako linku do samego siebie. "
+                    }
+                )
+
+    def get_pbn_user(self):
+        if self.przedstawiaj_w_pbn_jako_id:
+            return self.przedstawiaj_w_pbn_jako
+        return self
 
 
 # Uzupełnianie pól użytkownika na bazie LDAP:

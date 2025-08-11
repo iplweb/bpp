@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load user_in_group %}
+{% load user_in_group deklinacja %}
 
 {% block extratitle %}
     Uczelnia
@@ -23,13 +23,14 @@
                 {{ uczelnia.nazwa_dopelniacz }}
             </h2>
         </div>
-    <div class="large-12 cell">
-        <hr size="1">
-    </div>
-    <a href="/zglos_publikacje/nowe_zgloszenie/">Masz nową publikację? Dodaj ją do bazy!</a>
-    <div class="large-12 cell">
-        <hr size="1"><br/>
-    </div>
+        <div class="large-12 cell">
+            <hr size="1">
+        </div>
+        <a href="/zglos_publikacje/nowe_zgloszenie/">Masz nową publikację? Dodaj ją do bazy!</a>
+        <div class="large-12 cell">
+            <hr size="1">
+            <br/>
+        </div>
     </div>
 
     <div class="grid-x grid-margin-x">
@@ -64,19 +65,35 @@
 
             {% endif %}
         {% endif %}
-        <div class="small-12 large-6 cell">
-
-            <h2>Wybierz wydział</h2>
+        {% if uczelnia.pokazuj_wydzialy_na_pierwszej_stronie %}
+            <div class="small-12 large-6 cell">
+                <h2>Wybierz {% rzeczownik_wydział %}</h2>
+                <ul class="no-bullet" style="line-height: 250%;">
+                    {% for wydzial in uczelnia.wydzialy %}
+                        <li>
+                            <a href="{% url "bpp:browse_wydzial" wydzial.slug %}">{{ wydzial }}</a>
+                        </li>
+                    {% endfor %}
+                </ul>
+                {% include "browse/go_to_admin_list.html" with group="struktura" url="admin:bpp_wydzial_changelist" text="<i class='fi-wrench'></i> zarządzaj wydziałami" %}
+                {% include "browse/go_to_admin_change.html" with url="admin:bpp_uczelnia_change" pk=uczelnia.pk group="struktura" text="ustawienia dla uczelni" %}
+            </div>
+            </div>
+        {% endif %}
+    {% if uczelnia.pokazuj_jednostki_na_pierwszej_stronie %}
+        <div class="small-12 large-6 cell">{% load deklinacja %}
+            <h2>Wybierz {% rzeczownik_jednostkę %}</h2>
             <ul class="no-bullet" style="line-height: 250%;">
-                {% for wydzial in uczelnia.wydzialy %}
+                {% for jednostka in uczelnia.jednostki %}
                     <li>
-                        <a href="{% url "bpp:browse_wydzial" wydzial.slug %}">{{ wydzial }}</a>
+                        <a href="{% url "bpp:browse_jednostka" jednostka.slug %}">{{ jednostka }}</a>
                     </li>
                 {% endfor %}
             </ul>
-            {% include "browse/go_to_admin_list.html" with group="struktura" url="admin:bpp_wydzial_changelist" text="<i class='fi-wrench'></i> zarządzaj wydziałami" %}
+            {% include "browse/go_to_admin_list.html" with group="struktura" url="admin:bpp_jednostka_changelist" text="<i class='fi-wrench'></i> zarządzaj jednostkami" %}
             {% include "browse/go_to_admin_change.html" with url="admin:bpp_uczelnia_change" pk=uczelnia.pk group="struktura" text="ustawienia dla uczelni" %}
         </div>
-    </div>
+        </div>
+    {% endif %}
 
 {% endblock %}

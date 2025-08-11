@@ -79,10 +79,13 @@ def test_autorzy_z_dyscypliny(
     dyscyplina1,
     dyscyplina2,
     dyscyplina3,
+    rok,
 ):
     ciagle_z_dyscyplinami.punkty_kbn = 30
     ciagle_z_dyscyplinami.rok = 2017
     ciagle_z_dyscyplinami.save()
+
+    powiel_wpisy_dyscyplin_autorow(ciagle_z_dyscyplinami, rok, 2017)
 
     slot = ISlot(ciagle_z_dyscyplinami)
 
@@ -102,9 +105,9 @@ def test_autorzy_z_dyscypliny(
     # Pierwszy autor to Jan Nowak z dyscyplina "memetyka stosowana" czyli dyscyplina1
     # Wcześniej przypisz tego autora do tej dyscypliny na ten rok
 
-    Autor_Dyscyplina.objects.create(
-        autor=autor_jan_nowak, rok=2017, dyscyplina_naukowa=dyscyplina1
-    )
+    # Autor_Dyscyplina.objects.create(
+    #     autor=autor_jan_nowak, rok=2017, dyscyplina_naukowa=dyscyplina1
+    # )
 
     wca1 = ciagle_z_dyscyplinami.autorzy_set.first()
 
@@ -146,10 +149,12 @@ def test_slot_artykuly(
     punkty,
     ma_byc_1,
     ma_byc_2,
+    rok,
 ):
     ciagle_z_dyscyplinami.punkty_kbn = punkty
     ciagle_z_dyscyplinami.rok = ustaw_rok
     ciagle_z_dyscyplinami.save()
+    powiel_wpisy_dyscyplin_autorow(ciagle_z_dyscyplinami, rok, ustaw_rok)
 
     slot = ISlot(ciagle_z_dyscyplinami)
 
@@ -178,10 +183,13 @@ def test_IPunktacjaCacher(
     dyscyplina1,
     dyscyplina2,
     dyscyplina3,
+    rok,
 ):
     ciagle_z_dyscyplinami.punkty_kbn = 30
     ciagle_z_dyscyplinami.rok = 2017
     ciagle_z_dyscyplinami.save()
+    powiel_wpisy_dyscyplin_autorow(ciagle_z_dyscyplinami, rok, 2017)
+
     denorms.flush()
 
     ipc = IPunktacjaCacher(ciagle_z_dyscyplinami)
@@ -220,11 +228,14 @@ def test_IPunktacjaCacher_brak_afiliacji(
 
 @pytest.mark.django_db
 def test_slotkalkulator_wydawnictwo_ciagle_prog3_punkty_pkd(
-    ciagle_z_dyscyplinami, dyscyplina1
+    ciagle_z_dyscyplinami, dyscyplina1, rok
 ):
+
     ciagle_z_dyscyplinami.rok = 2018
     ciagle_z_dyscyplinami.punkty_kbn = 5
     ciagle_z_dyscyplinami.save()
+
+    powiel_wpisy_dyscyplin_autorow(ciagle_z_dyscyplinami, rok, 2018)
 
     slot = SlotKalkulator_Wydawnictwo_Ciagle_Prog3(ciagle_z_dyscyplinami)
 
@@ -246,10 +257,19 @@ def test_slotkalkulator_wydawnictwo_ciagle_prog3_punkty_pkd(
     assert str(round(slot.slot_dla_dyscypliny(dyscyplina1), 4)) == "0.0000"
 
 
+def powiel_wpisy_dyscyplin_autorow(wydawnictwo, rok_z, rok_do):
+    for wca in wydawnictwo.autorzy_set.all():
+        ad = wca.autor.autor_dyscyplina_set.get(rok=rok_z)
+        ad.pk = None
+        ad.rok = rok_do
+        ad.save()
+
+
 @pytest.mark.django_db
 def test_slotkalkulator_wydawnictwo_ciagle_prog2_punkty_pkd(
-    ciagle_z_dyscyplinami, dyscyplina1
+    ciagle_z_dyscyplinami, dyscyplina1, rok
 ):
+    powiel_wpisy_dyscyplin_autorow(ciagle_z_dyscyplinami, rok, 2018)
     ciagle_z_dyscyplinami.rok = 2018
     ciagle_z_dyscyplinami.punkty_kbn = 20
     ciagle_z_dyscyplinami.save()
@@ -342,6 +362,79 @@ def test_ISlot_wydawnictwo_zwarte_hst_tier3(zwarte_z_dyscyplinami_hst):
     zwarte_z_dyscyplinami_hst.punkty_kbn = 120
     i = ISlot(zwarte_z_dyscyplinami_hst)
     assert isinstance(i, SlotKalkulator_Wydawnictwo_Zwarte_Prog3)
+
+
+@pytest.mark.django_db
+def test_ISlot_wydawnictwo_zwarte_hst_oraz_nie_hst(
+    zwarte_z_dyscyplinami_hst_oraz_nie_hst, rok
+):
+    zwarte_z_dyscyplinami_hst_oraz_nie_hst.rok = 2021
+    zwarte_z_dyscyplinami_hst_oraz_nie_hst.save()
+
+    powiel_wpisy_dyscyplin_autorow(zwarte_z_dyscyplinami_hst_oraz_nie_hst, rok, 2021)
+
+    zwarte_z_dyscyplinami_hst_oraz_nie_hst.punkty_kbn = 20
+    i = ISlot(zwarte_z_dyscyplinami_hst_oraz_nie_hst)
+    assert isinstance(i, SlotKalkulator_Wydawnictwo_Zwarte_Prog3)
+
+    autorzy = list(zwarte_z_dyscyplinami_hst_oraz_nie_hst.autorzy_set.all())
+
+    assert i.pkd_dla_autora(autorzy[0]) == 15
+    assert i.pkd_dla_autora(autorzy[1]) == 10
+
+
+@pytest.mark.django_db
+def test_ISlot_wydawnictwo_zwarte_rozdzial_hst_oraz_nie_hst_prog_1_bez_zwiekszenia(
+    zwarte_z_dyscyplinami_hst_oraz_nie_hst, rok, charakter_formalny_rozdzial
+):
+    wydawca = zwarte_z_dyscyplinami_hst_oraz_nie_hst.wydawca
+    wydawca.poziom_wydawcy_set.create(rok=2022, poziom=1)
+
+    zwarte_z_dyscyplinami_hst_oraz_nie_hst.rok = 2022
+    zwarte_z_dyscyplinami_hst_oraz_nie_hst.charakter_formalny = (
+        charakter_formalny_rozdzial
+    )
+    zwarte_z_dyscyplinami_hst_oraz_nie_hst.punkty_kbn = 20
+
+    zwarte_z_dyscyplinami_hst_oraz_nie_hst.save()
+
+    powiel_wpisy_dyscyplin_autorow(zwarte_z_dyscyplinami_hst_oraz_nie_hst, rok, 2022)
+
+    i = ISlot(zwarte_z_dyscyplinami_hst_oraz_nie_hst)
+    assert isinstance(i, SlotKalkulator_Wydawnictwo_Zwarte_Prog2)
+
+    autorzy = list(zwarte_z_dyscyplinami_hst_oraz_nie_hst.autorzy_set.all())
+
+    # assert i.slot_dla_autora(autorzy[0]) == 0.7
+    assert round(i.pkd_dla_autora(autorzy[0]), 0) == 14
+
+    # assert i.slot_dla_autora(autorzy[1]) == 0.7
+    assert round(i.pkd_dla_autora(autorzy[1]), 0) == 14
+
+
+@pytest.mark.django_db
+def test_ISlot_wydawnictwo_zwarte_rozdzial_hst_oraz_nie_hst_prog_2_ze_zwiekszaniem(
+    zwarte_z_dyscyplinami_hst_oraz_nie_hst, rok, charakter_formalny_rozdzial
+):
+    zwarte_z_dyscyplinami_hst_oraz_nie_hst.rok = 2022
+    zwarte_z_dyscyplinami_hst_oraz_nie_hst.charakter_formalny = (
+        charakter_formalny_rozdzial
+    )
+    zwarte_z_dyscyplinami_hst_oraz_nie_hst.punkty_kbn = 50
+    zwarte_z_dyscyplinami_hst_oraz_nie_hst.save()
+
+    wydawca = zwarte_z_dyscyplinami_hst_oraz_nie_hst.wydawca
+    wydawca.poziom_wydawcy_set.create(rok=2022, poziom=2)
+
+    powiel_wpisy_dyscyplin_autorow(zwarte_z_dyscyplinami_hst_oraz_nie_hst, rok, 2022)
+
+    i = ISlot(zwarte_z_dyscyplinami_hst_oraz_nie_hst)
+    assert isinstance(i, SlotKalkulator_Wydawnictwo_Zwarte_Prog1)
+
+    autorzy = list(zwarte_z_dyscyplinami_hst_oraz_nie_hst.autorzy_set.all())
+
+    assert i.pkd_dla_autora(autorzy[0]) == 75
+    assert i.pkd_dla_autora(autorzy[1]) == 50
 
 
 @pytest.mark.django_db
@@ -488,10 +581,14 @@ def test_ISlot_wydawnictwo_zwarte_hst_tier3_autorstwo(
 def test_ISlot_wydawnictwo_zwarte_tier1_brak_afiliacji(
     zwarte_z_dyscyplinami, wydawca, rok, dyscyplina1, dyscyplina2
 ):
-    rok = 2021
-    wydawca.poziom_wydawcy_set.create(rok=rok, poziom=2)
+
+    _rok = 2021
+    wydawca.poziom_wydawcy_set.create(rok=_rok, poziom=2)
     zwarte_z_dyscyplinami.punkty_kbn = 200
-    zwarte_z_dyscyplinami.rok = rok
+    zwarte_z_dyscyplinami.rok = _rok
+    zwarte_z_dyscyplinami.save()
+
+    powiel_wpisy_dyscyplin_autorow(zwarte_z_dyscyplinami, rok, 2021)
 
     i = ISlot(zwarte_z_dyscyplinami)
     assert i.autorzy_z_dyscypliny(dyscyplina1)
@@ -510,11 +607,13 @@ def test_ISlot_wydawnictwo_ciagle_bez_punktow_kbn(ciagle_z_dyscyplinami):
 
 @pytest.mark.django_db
 def test_cache_slotow_kasowanie_wpisow_przy_zmianie_pk_ciagle(
-    ciagle_z_dyscyplinami, denorms
+    ciagle_z_dyscyplinami, denorms, rok
 ):
     ciagle_z_dyscyplinami.punkty_kbn = 30
     ciagle_z_dyscyplinami.rok = 2017
     ciagle_z_dyscyplinami.save()
+
+    powiel_wpisy_dyscyplin_autorow(ciagle_z_dyscyplinami, rok, 2017)
 
     assert ISlot(ciagle_z_dyscyplinami) is not None
 
@@ -542,11 +641,13 @@ def test_cache_slotow_kasowanie_wpisow_przy_zmianie_pk_ciagle(
 
 @pytest.mark.django_db
 def test_cache_slotow_kasowanie_wpisow_przy_zmianie_pk_zwarte(
-    zwarte_z_dyscyplinami, denorms
+    zwarte_z_dyscyplinami, denorms, rok
 ):
     zwarte_z_dyscyplinami.punkty_kbn = 20
     zwarte_z_dyscyplinami.rok = 2017
     zwarte_z_dyscyplinami.save()
+
+    powiel_wpisy_dyscyplin_autorow(zwarte_z_dyscyplinami, rok, 2017)
 
     assert ISlot(zwarte_z_dyscyplinami) is not None
 
@@ -590,10 +691,11 @@ def test_ISlot_patent(patent):
 
 @pytest.mark.parametrize("akcja", ["wszystko", None])
 @pytest.mark.django_db
-def test_autor_Autor_zbieraj_sloty(zwarte_z_dyscyplinami, akcja, denorms):
+def test_autor_Autor_zbieraj_sloty(zwarte_z_dyscyplinami, akcja, denorms, rok):
     zwarte_z_dyscyplinami.punkty_kbn = 20
     zwarte_z_dyscyplinami.rok = 2017
     zwarte_z_dyscyplinami.save()
+    powiel_wpisy_dyscyplin_autorow(zwarte_z_dyscyplinami, rok, 2017)
 
     denorms.flush()
 

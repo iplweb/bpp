@@ -1,6 +1,7 @@
 """
 Klasy abstrakcyjne
 """
+
 import re
 from decimal import Decimal
 
@@ -12,7 +13,7 @@ from django.db.models import CASCADE, SET_NULL, Q, Sum
 from django.urls.base import reverse
 from taggit.managers import TaggableManager
 
-from django.contrib.postgres.fields import HStoreField
+from django.contrib.postgres.fields import ArrayField, HStoreField
 from django.contrib.postgres.search import SearchVectorField as VectorField
 
 from bpp import const
@@ -336,42 +337,6 @@ class ModelPunktowanyBaza(models.Model):
         help_text="""CiteScore SNIP (Source Normalized Impact per Paper)""",
     )
 
-    kc_impact_factor = models.DecimalField(
-        "KC: Impact factor",
-        max_digits=6,
-        decimal_places=3,
-        default=None,
-        blank=True,
-        null=True,
-        help_text="""Jeżeli wpiszesz
-        wartość w to pole, to zostanie ona użyta w raporcie dla Komisji
-        Centralnej w punkcie IXa tego raportu.""",
-        db_index=True,
-    )
-    kc_punkty_kbn = models.DecimalField(
-        "KC: punkty MNiSW/MEiN",
-        max_digits=6,
-        decimal_places=2,
-        default=None,
-        blank=True,
-        null=True,
-        help_text="""Jeżeli wpiszesz
-        wartość w to pole, to zostanie ona użyta w raporcie dla Komisji
-        Centralnej w punkcie IXa i IXb tego raportu.""",
-        db_index=True,
-    )
-    kc_index_copernicus = models.DecimalField(
-        "KC: Index Copernicus",
-        max_digits=6,
-        decimal_places=2,
-        default=None,
-        blank=True,
-        null=True,
-        help_text="""Jeżeli wpiszesz
-        wartość w to pole, to zostanie ona użyta w raporcie dla Komisji
-        Centralnej w punkcie IXa i IXb tego raportu.""",
-    )
-
     class Meta:
         abstract = True
 
@@ -404,21 +369,13 @@ class ModelPunktowany(ModelPunktowanyBaza):
         return False
 
 
-POLA_PUNKTACJI = [
-    x.name
-    for x in ModelPunktowany._meta.fields
-    if x.name
-    not in [
-        "weryfikacja_punktacji",
-    ]
-]
-
-
 class ModelTypowany(models.Model):
     """Model zawierający typ MNiSW/MEiN oraz język."""
 
     typ_kbn = models.ForeignKey("Typ_KBN", CASCADE, verbose_name="typ MNiSW/MEiN")
-    jezyk = models.ForeignKey("Jezyk", CASCADE, verbose_name="Język")
+    jezyk = models.ForeignKey(
+        "Jezyk", CASCADE, verbose_name="Język", limit_choices_to={"widoczny": True}
+    )
     jezyk_alt = models.ForeignKey(
         "Jezyk",
         SET_NULL,
@@ -457,6 +414,11 @@ class ModelZKwartylami(models.Model):
 
     class Meta:
         abstract = True
+
+
+POLA_PUNKTACJI = [
+    x.name for x in ModelPunktowany._meta.fields if x.name != "weryfikacja_punktacji"
+] + [x.name for x in ModelZKwartylami._meta.fields]
 
 
 class BazaModeluOdpowiedzialnosciAutorow(models.Model):
@@ -539,6 +501,16 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
 
     def __str__(self):
         return str(self.autor) + " - " + str(self.jednostka.skrot)
+
+    def rodzaj_autora_uwzgledniany_w_kalkulacjach_slotow(self):
+        return self.autor.autor_dyscyplina_set.filter(
+            rok=self.rekord.rok,
+            rodzaj_autora__in=[
+                Autor_Dyscyplina.RODZAJE_AUTORA.N,
+                Autor_Dyscyplina.RODZAJE_AUTORA.D,
+                Autor_Dyscyplina.RODZAJE_AUTORA.Z,
+            ],
+        ).exists()
 
     def okresl_dyscypline(self):
         return self.dyscyplina_naukowa
@@ -688,6 +660,25 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
         return super().save(*args, **kw)
 
 
+class ModelZeSlowamiKluczowymi(models.Model):
+    class Meta:
+        abstract = True
+
+    slowa_kluczowe = TaggableManager(
+        "Słowa kluczowe -- język polski",
+        help_text="Lista słów kluczowych -- język polski.",
+        blank=True,
+    )
+
+    slowa_kluczowe_eng = ArrayField(
+        base_field=models.CharField(max_length=255, blank=True),
+        verbose_name="Słowa kluczowe -- język angielski",
+        help_text="Lista słów kluczowych -- język angielski",
+        null=True,
+        blank=True,
+    )
+
+
 class ModelZeSzczegolami(models.Model):
     """Model zawierający pola: informacje, szczegóły, uwagi, słowa kluczowe."""
 
@@ -698,12 +689,6 @@ class ModelZeSzczegolami(models.Model):
     )
 
     uwagi = models.TextField(null=True, blank=True, db_index=True)
-
-    slowa_kluczowe = TaggableManager(
-        "Słowa kluczowe",
-        help_text="Lista słów kluczowych, oddzielonych przecinkiem.",
-        blank=True,
-    )
 
     utworzono = models.DateTimeField(
         "Utworzono", auto_now_add=True, blank=True, null=True
@@ -836,12 +821,13 @@ class LinkDoPBNMixin:
 
 
 class ModelZPBN_UID(LinkDoPBNMixin, models.Model):
-    pbn_uid = models.ForeignKey(
+    pbn_uid = models.OneToOneField(
         "pbn_api.Publication",
         verbose_name=const.PBN_UID_FIELD_LABEL,
         null=True,
         blank=True,
         on_delete=models.SET_NULL,
+        unique=True,
     )
 
     url_do_pbn = const.LINK_PBN_DO_PUBLIKACJI
@@ -1130,6 +1116,12 @@ class ModelZOpenAccess(models.Model):
         blank=True,
         null=True,
         help_text="Ilość miesięcy jakie upłynęły od momentu opublikowania do momentu udostępnienia",
+    )
+
+    openaccess_data_opublikowania = models.DateField(
+        "OpenAccess: data publikacji",
+        blank=True,
+        null=True,
     )
 
     class Meta:

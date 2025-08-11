@@ -25,7 +25,7 @@ from bpp.models import ModelZAdnotacjami, NazwaISkrot
 from bpp.models.abstract import ModelZPBN_ID, NazwaWDopelniaczu
 
 if TYPE_CHECKING:
-    from pbn_api import client  # noqa
+    import pbn_api  # noqa
 
 
 class UczelniaManager(models.Manager):
@@ -316,7 +316,7 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
 
     pbn_api_afiliacja_zawsze_na_uczelnie = models.BooleanField(
         "Wysyłaj zawsze PBN UID uczelni jako afiliację",
-        default=False,
+        default=True,
         help_text="Jeżeli praca jest w jednostce z wypełnionym PBN UID bądź w jednostce "
         "innej-niż-obca, zatrudniającej-pracowników, to zaznaczenie tej opcji spowoduje, ze  zamiast PBN "
         "UID tej jednostki zostanie użyty PBN UID uczelni, co efektywnie "
@@ -333,6 +333,16 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         "(wgrywanie) rekordów przez niego na serwer PBN. ",
         blank=True,
         null=True,
+    )
+
+    przydzielaj_1_slot_gdy_udzial_mniejszy = models.BooleanField(
+        "Przydzielaj 1 slot gdy udziały za 4 lata mniejsze",
+        default=False,
+        help_text="""Jeżeli zaznaczone, system będzie przydzielać 1 slot dla autorów, którzy za 4 lata ewaluacji"
+                  mieliby mieć mniej, niż 1 slot. Obowiązuje zarówno dla artykułów jak i dla monografii. Zatem,
+                  jeżeli ktoś za 4 lata ewaluacji będzie miał zdać 0.8 slota, to gdy ta flaga jest zaznaczona to
+                  system zwiększy to do 1 slota za artykuły oraz do 1 slota za monografie. Jeżeli ta flaga jest
+                  nie zaznaczona, to system policzy takiej osobie 0.8 slota za artykuły i 0.4 slota za monografie. """,
     )
 
     class DeklaracjaDostepnosciChoices(models.IntegerChoices):
@@ -357,12 +367,36 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         default=True,
     )
 
+    pokazuj_zrodla_bez_prac_w_przegladaniu_danych = models.BooleanField(
+        verbose_name="Pokazuj źródła bez powiązanych rekordów w przeglądaniu danych",
+        default=False,
+    )
+
+    pokazuj_jednostki_na_pierwszej_stronie = models.BooleanField(default=False)
+    pokazuj_wydzialy_na_pierwszej_stronie = models.BooleanField(default=True)
+
     deklaracja_dostepnosci_tekst = HTMLField(
         verbose_name="Tekst na stronę BPP dla deklaracji dostępności",
         blank=True,
         null=True,
     )
     deklaracja_dostepnosci_url = URLField(blank=True, null=True)
+
+    drukuj_oswiadczenia = models.BooleanField(
+        verbose_name="Drukuj oświadczenia dla autorów",
+        default=True,
+        help_text="Włącza wydruk oświadczeń z podstrony rekordu - wyłącznie dla osób z grupy 'wprowadzanie danych'.",
+    )
+    drukuj_alternatywne_oswiadczenia = models.BooleanField(
+        verbose_name="Drukuj alternatywne oświadczenia dla autorów",
+        default=True,
+        help_text="Jeżeli autor ma dwie dyscypliny, drukuj zawsze dwa oświadczenia.",
+    )
+
+    pytaj_o_zgode_na_publikacje_pelnego_tekstu = models.BooleanField(
+        verbose_name="Pytaj o zgodę na publikację pełnego tekstu w formularzu zgłoszeniowym prac",
+        default=False,
+    )
 
     objects = UczelniaManager()
 
@@ -379,6 +413,11 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         from .wydzial import Wydzial
 
         return Wydzial.objects.filter(uczelnia=self, widoczny=True)
+
+    def jednostki(self):
+        from .jednostka import Jednostka
+
+        return Jednostka.objects.filter(uczelnia=self, widoczna=True, parent=None)
 
     def clean(self):
         if self.obca_jednostka is not None:
@@ -440,7 +479,7 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
 
         return WoSClient(self.clarivate_username, self.clarivate_password)
 
-    def pbn_client(self, pbn_user_token=None) -> "client.PBNClient":
+    def pbn_client(self, pbn_user_token=None) -> "pbn_api.client.PBNClient":
         """
         Zwraca klienta PBNu
         """

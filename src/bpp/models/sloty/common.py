@@ -19,12 +19,26 @@ class SlotMixin:
     def autorzy_z_dyscypliny(self, dyscyplina_naukowa, typ_ogolny=None):
         ret = []
 
-        for elem in self.original.autorzy_set.filter(afiliuje=True, przypieta=True):
-            if elem.okresl_dyscypline() == dyscyplina_naukowa:
-                if typ_ogolny is not None:
-                    if elem.typ_odpowiedzialnosci.typ_ogolny != typ_ogolny:
-                        continue
-                ret.append(elem)
+        elem_kw = {}
+        if typ_ogolny is not None:
+            # Czy typ ogólny autora (autor, redaktor) to ten, którego poszukujemy?
+            elem_kw = {"typ_odpowiedzialnosci__typ_ogolny": typ_ogolny}
+
+        for elem in self.original.autorzy_set.filter(
+            afiliuje=True,
+            przypieta=True,
+            # explicte -- nie chcemy, aby to pole brało udział w kalkulacjach
+            # mpasternak 18.03.2025
+            # upowaznienie_pbn=True,
+            dyscyplina_naukowa=dyscyplina_naukowa,
+            **elem_kw
+        ):
+            # Upewnij się, ze za ten rok ten konkretny autor ma rodzaj "jest w N"
+            # lub jest doktorantem:
+            if not elem.rodzaj_autora_uwzgledniany_w_kalkulacjach_slotow():
+                continue
+
+            ret.append(elem)
         return ret
 
     @cached_property
@@ -72,11 +86,10 @@ class SlotMixin:
         if azd == 0:
             return
 
-        pkd = Decimal(self.punkty_pkd(dyscyplina))
+        pkd = self.punkty_pkd(dyscyplina)
         if pkd is None:
             return
-
-        return pkd / azd
+        return Decimal(pkd) / Decimal(azd)
 
     def slot_dla_autora(self, wca):
         """Normalnie punktację 'slot dla autora z danej dyscypliny' dostajemy w ten

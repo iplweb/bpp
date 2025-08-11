@@ -4,6 +4,8 @@ from pbn_api.models import SentData
 
 from django.contrib import admin
 
+from bpp.admin.helpers.pbn_api.gui import sprobuj_wyslac_do_pbn_gui
+
 
 @admin.register(SentData)
 class SentDataAdmin(BasePBNAPIAdminNoReadonly):
@@ -33,20 +35,20 @@ class SentDataAdmin(BasePBNAPIAdminNoReadonly):
     list_per_page = 25
 
     def wyslij_ponownie(self, request, qset):
-        from bpp.admin.helpers import sprobuj_wgrac_do_pbn
+        pass
 
         for elem in qset:
             obj = elem.object
-            sprobuj_wgrac_do_pbn(request, obj)
+            sprobuj_wyslac_do_pbn_gui(request, obj)
 
     wyslij_ponownie.short_description = "Wyślij ponownie (tylko błędne)"
 
     def wyslij_ponownie_force(self, request, qset):
-        from bpp.admin.helpers import sprobuj_wgrac_do_pbn
+        pass
 
         for elem in qset:
             obj = elem.object
-            sprobuj_wgrac_do_pbn(request, obj, force_upload=True)
+            sprobuj_wyslac_do_pbn_gui(request, obj, force_upload=True)
 
     wyslij_ponownie_force.short_description = (
         "Wyślij ponownie (wszystko; wymuś ponowny transfer)"

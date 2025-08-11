@@ -1,10 +1,8 @@
-# -*- encoding: utf-8 -*-
 from django.db import models
 from django.db.models import DO_NOTHING, QuerySet
 from django_group_by.mixin import GroupByMixin
 
-from bpp.models import ModelPunktowany, ModelZLiczbaCytowan, ModelZeStatusem
-
+from bpp.models import ModelPunktowany, ModelZLiczbaCytowan
 
 # Poniżej ważne jest to on_delete=DO_NOTHING, ponieważ bez tego Django
 # będzie próbowało usuwać dane z tych tabel również, a te tabele to
@@ -32,6 +30,12 @@ class Nowe_Sumy_View(ModelZLiczbaCytowan, ModelPunktowany, models.Model):
         app_label = "bpp"
         managed = False
         unique_together = ("autor", "jednostka", "wydzial", "rok")
+
+    def __str__(self):
+        return (
+            f"{self.autor=} {self.jednostka=} {self.wydzial=} "
+            f"{self.rok=} {self.impact_factor=} {self.punkty_kbn=}"
+        )
 
 
 Sumy = Nowe_Sumy_View

@@ -4,6 +4,7 @@ from importlib import import_module
 import pytest
 from celery.result import AsyncResult
 from django.urls import reverse
+from model_bakery import baker
 
 from rozbieznosci_dyscyplin.admin import (
     DYSCYPLINA_AUTORA,
@@ -15,14 +16,14 @@ from rozbieznosci_dyscyplin.admin import (
     ustaw_dyscypline_task_or_instant,
     ustaw_pierwsza_dyscypline,
 )
-from rozbieznosci_dyscyplin.models import RozbieznosciView
+from rozbieznosci_dyscyplin.models import RozbieznosciView, RozbieznosciZrodelView
 
 from django.contrib.admin import AdminSite
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.messages import get_messages
 from django.contrib.messages.middleware import MessageMiddleware
 
-from bpp.models import Autor_Dyscyplina
+from bpp.models import Autor_Dyscyplina, Dyscyplina_Zrodla, Wydawnictwo_Ciagle
 
 
 @contextlib.contextmanager
@@ -323,3 +324,26 @@ def test_RozbieznosciAutorZrodloAdmin(admin_app):
         reverse("admin:rozbieznosci_dyscyplin_rozbieznoscizrodelview_changelist")
     )
     assert res.status_code == 200
+
+
+def test_RozbieznosciZrodelView(
+    autor_z_dyscyplina,
+    rok,
+    zrodlo,
+    dyscyplina1,
+    dyscyplina2,
+    jednostka,
+    typy_odpowiedzialnosci,
+):
+    assert RozbieznosciZrodelView.objects.count() == 0
+
+    Dyscyplina_Zrodla.objects.create(rok=rok, zrodlo=zrodlo, dyscyplina=dyscyplina2)
+    wc: Wydawnictwo_Ciagle = baker.make(Wydawnictwo_Ciagle, rok=rok, zrodlo=zrodlo)
+    wc.dodaj_autora(
+        autor_z_dyscyplina.autor, jednostka, dyscyplina_naukowa=dyscyplina1
+    )  # Zrodlo nie ma tej dysc.
+
+    assert RozbieznosciZrodelView.objects.count() == 1
+
+    Dyscyplina_Zrodla.objects.create(rok=rok, zrodlo=zrodlo, dyscyplina=dyscyplina1)
+    assert RozbieznosciZrodelView.objects.count() == 0

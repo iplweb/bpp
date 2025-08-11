@@ -74,4 +74,4 @@ def test_nieaktualna_dyscyplina(autor_jan_kowalski, dyscyplina1):
         autor=autor_jan_kowalski, rok=2000, dyscyplina_naukowa=dyscyplina1
     )
 
-    assert autor_jan_kowalski.aktualna_dyscyplina().pk == dyscyplina1.pk
+    assert autor_jan_kowalski.aktualna_dyscyplina() is None

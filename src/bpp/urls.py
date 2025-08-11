@@ -45,6 +45,7 @@ from bpp.views.autocomplete import (
     PublicAutorAutocomplete,
     PublicJednostkaAutocomplete,
     PublicKonferencjaAutocomplete,
+    PublicStatusKorektyAutocomplete,
     PublicTaggitTagAutocomplete,
     PublicWydawnictwo_NadrzedneAutocomplete,
     PublicWydzialAutocomplete,
@@ -54,6 +55,7 @@ from bpp.views.autocomplete import (
     WidocznaJednostkaAutocomplete,
     WydawcaAutocomplete,
     Wydawnictwo_CiagleAdminAutocomplete,
+    Wydawnictwo_Nadrzedne_W_PBNAutocomplete,
     Wydawnictwo_NadrzedneAutocomplete,
     Wydawnictwo_ZwarteAdminAutocomplete,
     WydzialAutocomplete,
@@ -252,6 +254,11 @@ urlpatterns = [
         name="publication-autocomplete",
     ),
     url(
+        r"^status-korekty-autocomplete/$",
+        PublicStatusKorektyAutocomplete.as_view(),
+        name="public-status-korekty-autocomplete",
+    ),
+    url(
         r"^scientist-autocomplete/$",
         ScientistAutocomplete.as_view(),
         name="scientist-autocomplete",
@@ -395,6 +402,11 @@ urlpatterns = [
         r"^public-wydawnictwo-nadrzedne-autocomplete/$",
         PublicWydawnictwo_NadrzedneAutocomplete.as_view(),
         name="public-wydawnictwo-nadrzedne-autocomplete",
+    ),
+    url(
+        r"^wydawnictwo-nadrzedne-w-pbn-autocomplete/$",
+        Wydawnictwo_Nadrzedne_W_PBNAutocomplete.as_view(),
+        name="wydawnictwo-nadrzedne-w-pbn-autocomplete",
     ),
     url(
         r"^podrzedna-publikacja-habilitacyjna-autocomplete/$",

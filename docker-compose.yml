@@ -71,7 +71,7 @@ services:
         condition: service_healthy
 
   denormserver:
-    image: iplweb/bpp_appserver:latest
+    image: iplweb/bpp_base:latest
     env_file: .env.docker
     entrypoint: ["python", "src/manage.py", "denorm_queue"]
     healthcheck:

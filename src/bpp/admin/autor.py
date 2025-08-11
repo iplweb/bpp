@@ -1,13 +1,16 @@
 from dal import autocomplete
 from django import forms
-from django.db.models import Q
 from djangoql.admin import DjangoQLSearchMixin
 
 from dynamic_columns.mixins import DynamicColumnsMixin
-from ewaluacja2021.models import IloscUdzialowDlaAutora
+from ewaluacja2021.models import (
+    IloscUdzialowDlaAutora_2022_2025,
+    IloscUdzialowDlaAutoraZaRok,
+)
 from pbn_api.models import Scientist
 from ..models import (  # Publikacja_Habilitacyjna
     Autor,
+    Autor_Absencja,
     Autor_Dyscyplina,
     Autor_Jednostka,
     Dyscyplina_Naukowa,
@@ -20,7 +23,8 @@ from .filters import (
     PBN_UID_IDObecnyFilter,
     PBNIDObecnyFilter,
 )
-from .helpers import ADNOTACJE_FIELDSET, CHARMAP_SINGLE_LINE, ZapiszZAdnotacjaMixin
+from .helpers.fieldsets import ADNOTACJE_FIELDSET, ZapiszZAdnotacjaMixin
+from .helpers.widgets import CHARMAP_SINGLE_LINE
 from .xlsx_export import resources
 from .xlsx_export.mixins import EksportDanychMixin
 
@@ -31,31 +35,41 @@ from django.contrib import admin
 # Autor_Dyscyplina
 
 
-class IloscUdzialowDlaAutoraInline(admin.TabularInline):
-    model = IloscUdzialowDlaAutora
+class IloscUdzialowDlaAutora_2022_2025_Inline(admin.TabularInline):
+    model = IloscUdzialowDlaAutora_2022_2025
     extra = 1
     fields = ["dyscyplina_naukowa", "ilosc_udzialow", "ilosc_udzialow_monografie"]
+    readonly_fields = fields
 
-    def get_formset(self, request, obj=None, **kwargs):
-        formset = super().get_formset(request, obj, **kwargs)
+    def has_delete_permission(self, request, obj=...):
+        return False
 
-        dyscypliny_autora = Autor_Dyscyplina.objects.filter(autor=obj).values(
-            "dyscyplina_naukowa_id",
-        )
-        subdyscypliny_autora = (
-            Autor_Dyscyplina.objects.filter(autor=obj)
-            .exclude(subdyscyplina_naukowa=None)
-            .values(
-                "subdyscyplina_naukowa_id",
-            )
-        )
-        formset.form.base_fields[
-            "dyscyplina_naukowa"
-        ].queryset = Dyscyplina_Naukowa.objects.filter(
-            Q(pk__in=dyscypliny_autora) | Q(pk__in=subdyscypliny_autora)
-        )
+    def has_add_permission(self, request, obj):
+        return False
 
-        return formset
+    def has_change_permission(self, request, obj=...):
+        return False
+
+
+class IloscUdzialowDlaAutoraZaRokInline(admin.TabularInline):
+    model = IloscUdzialowDlaAutoraZaRok
+    extra = 1
+    fields = [
+        "rok",
+        "dyscyplina_naukowa",
+        "ilosc_udzialow",
+        "ilosc_udzialow_monografie",
+    ]
+    readonly_fields = fields
+
+    def has_delete_permission(self, request, obj=...):
+        return False
+
+    def has_add_permission(self, request, obj):
+        return False
+
+    def has_change_permission(self, request, obj=...):
+        return False
 
 
 class Autor_DyscyplinaInlineForm(forms.ModelForm):
@@ -92,6 +106,12 @@ class Autor_DyscyplinaInline(admin.TabularInline):
         "subdyscyplina_naukowa",
         "procent_subdyscypliny",
     )
+
+
+class Autor_AbsencjaInline(admin.TabularInline):
+    model = Autor_Absencja
+    extra = 1
+    fields = ("rok", "ile_dni")
 
 
 # Autor_Jednostka
@@ -194,7 +214,9 @@ class AutorAdmin(
     inlines = [
         Autor_JednostkaInline,
         Autor_DyscyplinaInline,
-        IloscUdzialowDlaAutoraInline,
+        Autor_AbsencjaInline,
+        IloscUdzialowDlaAutora_2022_2025_Inline,
+        IloscUdzialowDlaAutoraZaRokInline,
     ]
     list_filter = [
         JednostkaFilter,

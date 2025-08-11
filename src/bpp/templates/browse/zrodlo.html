@@ -14,17 +14,27 @@
     <h1>{{ zrodlo.nazwa }}</h1>
     {% include "browse/go_to_admin_change.html" with url="admin:bpp_zrodlo_change" pk=zrodlo.pk group="wprowadzanie danych" %}
     {% include "browse/go_to_admin_list.html" with url="admin:bpp_zrodlo_add" group="wprowadzanie danych" text="dodaj nowy rekord" %}
-    {% if zrodlo.dyscyplina_zrodla_set.all %}
-        Dyscypliny przypisane do źródła:
-        <ul>
-            {% for elem in zrodlo.dyscyplina_zrodla_set.all.select_related %}
-                <li>{{ elem.dyscyplina }}</li>
-            {% endfor %}</ul>
+    {% if zrodlo.dyscypliny_aktualna_ewaluacja.exists %}
+        <div class="dyscypliny">
+            {% for elem in zrodlo.dyscypliny_aktualna_ewaluacja %}
+            {% ifchanged elem.rok %}
+                <div style="clear: both;"></div>
+                <div class="rok">{{ elem.rok }}</div>
+            {% endifchanged %}
+            <div class="dyscyplina dziedzina-{{ elem.dyscyplina.kod_dziedziny }} dyscyplina-{{ elem.dyscyplina.kod }}">{{ elem.dyscyplina }}</div>
+        {% endfor %}
+        </div>
+        <div style="clear:both;"></div>
     {% endif %}
     {% if zrodlo.pbn_uid_id %}
-        <p><a title="PBN UID: {{ zrodlo.pbn_uid_id }}" target="_blank" href="{{ uczelnia.pbn_api_root }}/core/#/journal/view/{{ zrodlo.pbn_uid_id }}/current">
+        <p><a title="PBN UID: {{ zrodlo.pbn_uid_id }}" target="_blank"
+              href="{{ uczelnia.pbn_api_root }}/core/#/journal/view/{{ zrodlo.pbn_uid_id }}/current">
             Kliknij, aby pokazać w PBN
-        </a></p>
+        </a>
+        {% if zrodlo.pbn_uid.status == "DELETED" %}
+            <br/>❌ usunięty z PBN 🙅proponuję zmianę PBN ID tego rekordu po stronie BPP
+            {% endif %}
+        </p>
     {% endif %}
     <form method="post"
           action="{% url "bpp:browse_build_search" %}" class="browserForm">

@@ -5,11 +5,13 @@ the classes for the admin menu, you can customize this class as you want.
 To activate your custom menu add the following to your settings.py::
     ADMIN_TOOLS_MENU = 'django_bpp.menu.CustomMenu'
 """
+
 from admin_tools.menu import Menu, items
 from django.urls import reverse
 
 from django.utils.translation import gettext_lazy as _
 
+from bpp import jezyk_polski
 from bpp.const import GR_WPROWADZANIE_DANYCH, GR_ZGLOSZENIA_PUBLIKACJI
 
 PBN_MENU = [
@@ -19,6 +21,8 @@ PBN_MENU = [
     ("Wydawcy", "/admin/pbn_api/publisher"),
     ("Naukowcy", "/admin/pbn_api/scientist"),
     ("Publikacje", "/admin/pbn_api/publication"),
+    ("Publikacje instytucji V1", "/admin/pbn_api/publikacjainstytucji"),
+    ("Publikacje instytucji V2", "/admin/pbn_api/publikacjainstytucji_v2"),
     ("Słowniki dyscyplin", "/admin/pbn_api/disciplinegroup"),
     ("Dyscypliny", "/admin/pbn_api/discipline"),
     ("Tłumacz dyscyplin", "/admin/pbn_api/tlumaczdyscyplin"),
@@ -27,6 +31,7 @@ PBN_MENU = [
     # ("Publikacje instytucji", "/admin/pbn_api/publikacjainstytucji"),
     ("Oświadczenia instytucji", "/admin/pbn_api/oswiadczenieinstytucji"),
     ("Przesłane dane", "/admin/pbn_api/sentdata"),
+    ("Kolejka eksportu", "/admin/pbn_api/pbn_export_queue"),
 ]
 
 
@@ -75,17 +80,21 @@ WEB_MENU = [
 ]
 
 STRUKTURA_MENU = [
-    ("Uczelnie", "/admin/bpp/uczelnia/"),
-    ("Wydziały", "/admin/bpp/wydzial/"),
-    ("Jednostki", "/admin/bpp/jednostka/"),
+    (jezyk_polski.lazy_rzeczownik_title("UCZELNIA"), "/admin/bpp/uczelnia/"),
+    (jezyk_polski.lazy_rzeczownik_title("WYDZIAL_PL"), "/admin/bpp/wydzial/"),
+    (jezyk_polski.lazy_rzeczownik_title("JEDNOSTKA_PL"), "/admin/bpp/jednostka/"),
     ("Kierunki studiów", "/admin/bpp/kierunek_studiow/"),
 ]
 
 REDAKTOR_MENU = [
     ("Autorzy", "/admin/bpp/autor/"),
     (
-        "Autorzy - udziały (Ewaluacja 2021)",
-        "/admin/ewaluacja2021/iloscudzialowdlaautora/",
+        "Autorzy - udziały (2022-2025)",
+        "/admin/ewaluacja2021/iloscudzialowdlaautora_2022_2025/",
+    ),
+    (
+        "Autorzy - udziały za rok",
+        "/admin/ewaluacja2021/iloscudzialowdlaautorazarok/",
     ),
     ("Źródła", "/admin/bpp/zrodlo/"),
     ("Serie wydawnicze", "/admin/bpp/seria_wydawnicza/"),
@@ -154,6 +163,15 @@ class CustomMenu(Menu):
 
         flt("dane systemowe", "PBN API", PBN_MENU)
         flt("dane systemowe", "Dane systemowe", SYSTEM_MENU)
+
+        from django.conf import settings
+
+        if (
+            not getattr(settings, "DJANGO_BPP_UCZELNIA_UZYWA_WYDZIALOW", True)
+            and STRUKTURA_MENU[1][1].find("wydzial") >= 0
+        ):
+            STRUKTURA_MENU.pop(1)
+
         flt("struktura", "Struktura", STRUKTURA_MENU)
         flt(GR_WPROWADZANIE_DANYCH, "Wprowadzanie danych", REDAKTOR_MENU)
         if GR_ZGLOSZENIA_PUBLIKACJI not in groups and not user.is_superuser:

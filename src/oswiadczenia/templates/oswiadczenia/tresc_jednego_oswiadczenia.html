@@ -1,0 +1,36 @@
+<h1>Oświadczenie upoważaniające podmiot do wykazania osiągnięć w ewaluacji jakości działalności naukowej</h1>
+<hr>
+<p>
+<h2>{{ autor.nazwisko }} {{ autor.imiona }}</h2>
+ORCID: <strong>{{ autor.orcid }}</strong>
+</p>
+<p>
+    Dyscypliny:
+<ul>
+    <li>{{ dyscyplina_naukowa }}</li>
+    {% if subdyscyplina_naukowa %}
+        <li>{{ subdyscyplina_naukowa }}</li>
+    {% endif %}
+</ul>
+</p>
+<p>
+    Ja, <strong>{{ autor.nazwisko }} {{ autor.imiona }}</strong>, zgodnie z art. 265 ust. 13 ustawy z dnia
+    20 lipca 2018 r. – Prawo  o szkolnictwie
+    wyższym i nauce (Dz. U. z 2021 r. poz. 478, z późn. zm.) upoważniam do wykazania na potrzeby
+    ewaluacji jakości działalności naukowej za lata <strong>2022-2025</strong> moich, wymienionych w niniejszym
+    oświadczeniu osiągnięć przez <strong>{{ uczelnia.nazwa }}</strong> w dyscyplinie:
+    <strong>{{ dyscyplina_pracy }}</strong>.
+</p>
+<p>
+    Oświadczam, że osiągnięcia te powstały w związku z prowadzeniem przeze mnie działalności naukowej
+    w tym podmiocie (nie dotyczy osiągnięć artystycznych).
+</p>
+<br/>
+<br/>
+<div width="10%" style="text-align: center; width:50%; float: right;">
+    <p>...........................................................</p>
+    <p>(data i podpis)</p>
+</div>
+<div style="clear:both;"></div>
+<h3>Dotyczy:</h3>
+{{ object.opis_bibliograficzny_cache|safe }}

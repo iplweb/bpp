@@ -1,0 +1,42 @@
+{% extends "base.html" %}{% load humanize %}
+
+
+{% block title %}
+    Snapshoty odpiętych dyscyplin
+{% endblock %}
+
+{% block content %}
+    <h1>Snapshoty odpiętych dyscyplin</h1>
+    <a class="button warning" href="./nowy/">Utwórz nowy</a><br/>
+    Kliknij wybrany snapshot, aby zaaplikować go na bazę danych. <span hx-get="{% url "stan_systemu:ilosc_obiektow_w_denorm_queue" %}" hx-trigger="every 2s">...
+    </span><br/>
+    <strong>Stan przypięć w bazie: </strong>
+    przypiętych: {{ przypiete }},
+    odpiętych: {{ odpiete }}<p></p>
+    <table>
+        <tr>
+            <th>Snapshot</th>
+            <th>Utworzony</th>
+            <th>Adnotacje</th>
+            <th>Przypiętych</th>
+            <th>Odpiętych</th>
+            <th>W sumie</th>
+        </tr>
+
+        {% for elem in object_list %}
+            <tr>
+                <td>
+                    <a onclick="return confirm('Czy na pewno chcesz zaaplikować snapshot odpięć nr {{ elem.pk }}?');"
+                       href="{% url "snapshot_odpiec:aplikuj" elem.pk %}">snapshot {{ elem.pk }}</a>
+                </td>
+                <td>{{ elem.created_on }}<br><small>{{ elem.created_on|naturaltime }}</td>
+                <td>{{ elem.comment|capfirst }}</td>
+                <td>{{ elem.przypiete }}</td>
+                <td>{{ elem.odpiete }}</td>
+                <td>{{ elem.calosc }}</td>
+            </tr>
+
+        {% endfor %}
+
+    </table>
+{% endblock %}

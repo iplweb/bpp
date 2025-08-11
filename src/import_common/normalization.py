@@ -115,11 +115,11 @@ def normalize_exception_reason(s: str) -> str:
 
 
 def normalize_tytul_zrodla(s):
-    return normalize_skrot(s)
+    return remove_extra_spaces(fix_spaces_before_dots_and_commas(s))
 
 
 def normalize_nazwa_dyscypliny(s):
-    return normalize_skrot(s)
+    return remove_extra_spaces(fix_spaces_before_dots_and_commas(s))
 
 
 def normalize_isbn(isbn: str) -> str | None:
@@ -141,6 +141,11 @@ def normalize_kod_dyscypliny(k):
         return f"{k[0]}.{int(k[1:])}"
     if k.find(".") >= 0:
         return k
+
+    if len(k) == 4 and k[0] in "123456789":
+        # 1001 -> 10.1
+        return f"{k[0]}{k[1]}.{int(k[2:])}"
+
     return f"{k[0]}.{int(k[1:])}"
 
 

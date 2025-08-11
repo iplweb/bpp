@@ -2,6 +2,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q
+from django_softdelete.models import SoftDeleteModel
 
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
@@ -17,10 +18,7 @@ from bpp.models.abstract import (
 
 
 class Zgloszenie_Publikacji(
-    ModelZRokiem,
-    DwaTytuly,
-    ModelZDOI,
-    ModelZOplataZaPublikacje,
+    ModelZRokiem, DwaTytuly, ModelZDOI, ModelZOplataZaPublikacje, SoftDeleteModel
 ):
     email = models.EmailField("E-mail zgłaszającego")
 
@@ -45,6 +43,10 @@ class Zgloszenie_Publikacji(
 
     kod_do_edycji = models.UUIDField(editable=False, unique=True, null=True, blank=True)
     przyczyna_zwrotu = models.TextField(blank=True, null=True)
+
+    zgoda_na_publikacje_pelnego_tekstu = models.BooleanField(
+        "Zgoda na publikację pełnego tekstu", default=False
+    )
 
     class Statusy(models.IntegerChoices):
         NOWY = 0, "nowe zgłoszenie"

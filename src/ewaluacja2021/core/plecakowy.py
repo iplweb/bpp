@@ -60,6 +60,9 @@ class Plecakowy(Ewaluacja3NBase):
             nie_monografie = [x for x in wszystkie if not x.monografia]
 
             maksymalny_slot_za_calosc = self.maks_pkt_aut_calosc.get(autor_id)
+            if maksymalny_slot_za_calosc is None or maksymalny_slot_za_calosc <= 0:
+                continue
+
             maksymalny_slot_za_monografie = self.maks_pkt_aut_monografie.get(autor_id)
 
             pkt_monografie, prace_monografie = policz_knapsack(
@@ -80,7 +83,7 @@ class Plecakowy(Ewaluacja3NBase):
             )
 
             if pkt_nie_monografie_maks > (pkt_nie_monografie_min + pkt_monografie):
-                [self.zsumuj_pojedyncza_prace(x) for x in prace_nie_monografie_maks]
+                list(self.zsumuj_pojedyncza_prace(x) for x in prace_nie_monografie_maks)
             else:
-                [self.zsumuj_pojedyncza_prace(x) for x in prace_monografie]
-                [self.zsumuj_pojedyncza_prace(x) for x in prace_nie_monografie_min]
+                list(self.zsumuj_pojedyncza_prace(x) for x in prace_monografie)
+                list(self.zsumuj_pojedyncza_prace(x) for x in prace_nie_monografie_min)

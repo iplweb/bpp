@@ -33,7 +33,7 @@ class Publisher(LinkDoPBNMixin, BasePBNMongoDBModel):
 
     @property
     def points(self):
-        return self.current_version["object"]["points"]
+        return self.current_version["object"].get("points", {})
 
     def rekord_w_bpp(self):
         from bpp.models import Wydawca

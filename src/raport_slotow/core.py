@@ -61,8 +61,8 @@ def autorzy_z_punktami(
 
 def autorzy_zerowi(od_roku=None, do_roku=None, min_pk=None):
     """
-    Zwraca listę krotek w postaci (autor_id, rok, dyscyplina_id) która zawiera listę
-    autorów zerowych czyli autorów, którzy mimo zadeklarowanych na dany rok dyscyplin
+    Zwraca listę krotek w postaci (autor_id, rok, dyscyplina_id), która zawiera listę
+    autorów zerowych, czyli autorów, którzy mimo zadeklarowanych na dany rok dyscyplin
     nie posiadają w bazie żadnych punktowanych rekordów.
     """
     # wartośći zadeklarowane w bazie danych

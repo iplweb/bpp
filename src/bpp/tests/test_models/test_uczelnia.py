@@ -6,6 +6,14 @@ from model_bakery import baker
 from bpp.models import Uczelnia
 
 
+def test_Uczelnia_wydzialy(uczelnia, wydzial):
+    assert uczelnia.wydzialy().exists()
+
+
+def test_Uczelnia_jednostki(uczelnia, jednostka):
+    assert uczelnia.jednostki().exists()
+
+
 def test_Uczelnia_clean_pbn_biezaco_tak_integracja_nie(uczelnia):
     uczelnia.pbn_aktualizuj_na_biezaco = True
     uczelnia.pbn_integracja = False

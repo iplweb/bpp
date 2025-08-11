@@ -306,6 +306,8 @@ class Jezyk(NazwaISkrot):
         "pbn_api.Language", null=True, blank=True, on_delete=models.SET_NULL
     )
 
+    widoczny = models.BooleanField(default=True)
+
     class Meta:
         verbose_name = "język"
         verbose_name_plural = "języki"

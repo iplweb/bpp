@@ -3,6 +3,7 @@ from pathlib import Path
 import pytest
 from model_bakery import baker
 
+from fixtures import MOCK_RETURNED_INSTITUTION_PUBLICATION_V2_DATA
 from fixtures.pbn_api import MOCK_RETURNED_MONGODB_DATA
 from pbn_api.adapters.wydawnictwo import WydawnictwoPBNAdapter
 from pbn_api.client import (
@@ -11,7 +12,7 @@ from pbn_api.client import (
     PBN_GET_PUBLICATION_BY_ID_URL,
     PBN_POST_PUBLICATIONS_URL,
 )
-from pbn_api.const import PBN_GET_DISCIPLINES_URL
+from pbn_api.const import PBN_GET_DISCIPLINES_URL, PBN_GET_INSTITUTION_PUBLICATIONS_V2
 from pbn_api.exceptions import (
     HttpException,
     PKZeroExportDisabled,
@@ -23,7 +24,7 @@ from pbn_api.tests.utils import middleware
 
 from django.contrib.messages import get_messages
 
-from bpp.admin.helpers import sprobuj_wgrac_do_pbn
+from bpp.admin.helpers.pbn_api.gui import sprobuj_wyslac_do_pbn_gui
 from bpp.decorators import json
 from bpp.models import Dyscyplina_Naukowa
 
@@ -53,9 +54,9 @@ class PBNTestClientException(Exception):
 def test_PBNClient_test_upload_publication_exception(
     pbn_client, pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina
 ):
-    pbn_client.transport.return_values[
-        PBN_POST_PUBLICATIONS_URL
-    ] = PBNTestClientException("nei")
+    pbn_client.transport.return_values[PBN_POST_PUBLICATIONS_URL] = (
+        PBNTestClientException("nei")
+    )
 
     with pytest.raises(PBNTestClientException):
         pbn_client.upload_publication(pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina)
@@ -95,6 +96,13 @@ def test_sync_publication_to_samo_id(
         PBN_GET_PUBLICATION_BY_ID_URL.format(id=pbn_publication.pk)
     ] = MOCK_RETURNED_MONGODB_DATA
     pbn_client.transport.return_values[
+        PBN_GET_INSTITUTION_PUBLICATIONS_V2 + "?publicationId=123&size=10"
+    ] = MOCK_RETURNED_INSTITUTION_PUBLICATION_V2_DATA
+    pbn_client.transport.return_values[PBN_GET_PUBLICATION_BY_ID_URL.format(id=456)] = (
+        MOCK_RETURNED_MONGODB_DATA
+    )
+
+    pbn_client.transport.return_values[
         PBN_GET_INSTITUTION_STATEMENTS + "?publicationId=123&size=5120"
     ] = [
         {
@@ -126,6 +134,14 @@ def test_sync_publication_tekstowo_podane_id(
     pbn_client.transport.return_values[
         PBN_GET_PUBLICATION_BY_ID_URL.format(id=pbn_publication.pk)
     ] = MOCK_RETURNED_MONGODB_DATA
+
+    pbn_client.transport.return_values[PBN_GET_PUBLICATION_BY_ID_URL.format(id=456)] = (
+        MOCK_RETURNED_MONGODB_DATA
+    )
+    pbn_client.transport.return_values[
+        PBN_GET_INSTITUTION_PUBLICATIONS_V2 + "?publicationId=123&size=10"
+    ] = MOCK_RETURNED_INSTITUTION_PUBLICATION_V2_DATA
+
     pbn_client.transport.return_values[
         PBN_GET_INSTITUTION_STATEMENTS + "?publicationId=123&size=5120"
     ] = []
@@ -155,6 +171,12 @@ def test_sync_publication_nowe_id(
     pbn_client.transport.return_values[
         PBN_GET_INSTITUTION_STATEMENTS + "?publicationId=123&size=5120"
     ] = []
+    pbn_client.transport.return_values[PBN_GET_PUBLICATION_BY_ID_URL.format(id=456)] = (
+        MOCK_RETURNED_MONGODB_DATA
+    )
+    pbn_client.transport.return_values[
+        PBN_GET_INSTITUTION_PUBLICATIONS_V2 + "?publicationId=123&size=10"
+    ] = MOCK_RETURNED_INSTITUTION_PUBLICATION_V2_DATA
 
     pbn_client.sync_publication(pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina)
 
@@ -183,8 +205,18 @@ def test_sync_publication_wysylka_z_zerowym_pk(
         PBN_GET_PUBLICATION_BY_ID_URL.format(id=pbn_publication.pk)
     ] = MOCK_RETURNED_MONGODB_DATA
     pbn_client.transport.return_values[
+        PBN_GET_INSTITUTION_PUBLICATIONS_V2 + "?publicationId=123&size=10"
+    ] = MOCK_RETURNED_INSTITUTION_PUBLICATION_V2_DATA
+    pbn_client.transport.return_values[PBN_GET_PUBLICATION_BY_ID_URL.format(id=456)] = (
+        MOCK_RETURNED_MONGODB_DATA
+    )
+
+    pbn_client.transport.return_values[
         PBN_GET_INSTITUTION_STATEMENTS + "?publicationId=123&size=5120"
     ] = []
+    pbn_client.transport.return_values[
+        PBN_GET_INSTITUTION_PUBLICATIONS_V2 + "?publicationId=123&size=10"
+    ] = MOCK_RETURNED_INSTITUTION_PUBLICATION_V2_DATA
 
     # To pójdzie
     pbn_client.sync_publication(
@@ -202,9 +234,9 @@ def test_sync_publication_wysylka_z_zerowym_pk(
 def test_helpers_wysylka_z_zerowym_pk(
     rf, pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina, pbn_uczelnia, admin_user
 ):
-    pbn_uczelnia.pbn_integracja = (
-        pbn_uczelnia.pbn_aktualizuj_na_biezaco
-    ) = pbn_uczelnia.pbn_api_nie_wysylaj_prac_bez_pk = True
+    pbn_uczelnia.pbn_integracja = pbn_uczelnia.pbn_aktualizuj_na_biezaco = (
+        pbn_uczelnia.pbn_api_nie_wysylaj_prac_bez_pk
+    ) = True
     pbn_uczelnia.save()
 
     pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.punkty_kbn = 0
@@ -216,7 +248,7 @@ def test_helpers_wysylka_z_zerowym_pk(
 
     # I jeszcze test z poziomu admina czy parametr z pbn_uczelnia jest przekazywany
     with middleware(req):
-        sprobuj_wgrac_do_pbn(req, pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina)
+        sprobuj_wyslac_do_pbn_gui(req, pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina)
         msg = list(get_messages(req))
 
     assert "wyłączony w konfiguracji" in msg[0].message
@@ -250,6 +282,13 @@ def test_helpers_wysylka_z_uid_uczelni(
             id=pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.pk
         )
     ] = MOCK_RETURNED_MONGODB_DATA
+    pbn_client.transport.return_values[
+        PBN_GET_INSTITUTION_PUBLICATIONS_V2
+        + f"?publicationId={pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.pk}&size=10"
+    ] = MOCK_RETURNED_INSTITUTION_PUBLICATION_V2_DATA
+    pbn_client.transport.return_values[PBN_GET_PUBLICATION_BY_ID_URL.format(id=456)] = (
+        MOCK_RETURNED_MONGODB_DATA
+    )
 
     pbn_client.transport.return_values[
         PBN_GET_INSTITUTION_STATEMENTS + "?publicationId=123&size=5120"
@@ -260,7 +299,7 @@ def test_helpers_wysylka_z_uid_uczelni(
     req.user = admin_user
 
     with middleware(req):
-        sprobuj_wgrac_do_pbn(req, pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina)
+        sprobuj_wyslac_do_pbn_gui(req, pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina)
         msg = list(get_messages(req))
 
     assert len(msg) == 1 and str(msg[0]).find("y zaktualizowane") > -1
@@ -300,6 +339,15 @@ def test_helpers_wysylka_bez_uid_uczelni(
         )
     ] = MOCK_RETURNED_MONGODB_DATA
 
+    pbn_client.transport.return_values[PBN_GET_PUBLICATION_BY_ID_URL.format(id=456)] = (
+        MOCK_RETURNED_MONGODB_DATA
+    )
+
+    pbn_client.transport.return_values[
+        PBN_GET_INSTITUTION_PUBLICATIONS_V2
+        + f"?publicationId={pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.pk}&size=10"
+    ] = MOCK_RETURNED_INSTITUTION_PUBLICATION_V2_DATA
+
     pbn_client.transport.return_values[
         PBN_GET_INSTITUTION_STATEMENTS + "?publicationId=123&size=5120"
     ] = []
@@ -309,7 +357,7 @@ def test_helpers_wysylka_bez_uid_uczelni(
     req.user = admin_user
 
     with middleware(req):
-        sprobuj_wgrac_do_pbn(req, pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina)
+        sprobuj_wyslac_do_pbn_gui(req, pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina)
         msg = list(get_messages(req))
 
     assert len(msg) == 1 and str(msg[0]).find("y zaktualizowane") > -1
@@ -341,6 +389,13 @@ def test_sync_publication_kasuj_oswiadczenia_przed_wszystko_dobrze(
     pbn_client.transport.return_values[
         PBN_GET_PUBLICATION_BY_ID_URL.format(id=pbn_publication.pk)
     ] = MOCK_RETURNED_MONGODB_DATA
+    pbn_client.transport.return_values[
+        PBN_GET_INSTITUTION_PUBLICATIONS_V2 + "?publicationId=123&size=10"
+    ] = MOCK_RETURNED_INSTITUTION_PUBLICATION_V2_DATA
+    pbn_client.transport.return_values[PBN_GET_PUBLICATION_BY_ID_URL.format(id=456)] = (
+        MOCK_RETURNED_MONGODB_DATA
+    )
+
     pbn_client.transport.return_values[
         PBN_DELETE_PUBLICATION_STATEMENT.format(publicationId=pbn_publication.pk)
     ] = []
@@ -388,6 +443,13 @@ def test_sync_publication_kasuj_oswiadczenia_przed_blad_400_nie_zaburzy(
     pbn_client.transport.return_values[
         PBN_GET_PUBLICATION_BY_ID_URL.format(id=pbn_publication.pk)
     ] = MOCK_RETURNED_MONGODB_DATA
+    pbn_client.transport.return_values[
+        PBN_GET_INSTITUTION_PUBLICATIONS_V2
+        + f"?publicationId={pbn_publication.pk}&size=10"
+    ] = MOCK_RETURNED_INSTITUTION_PUBLICATION_V2_DATA
+    pbn_client.transport.return_values[PBN_GET_PUBLICATION_BY_ID_URL.format(id=456)] = (
+        MOCK_RETURNED_MONGODB_DATA
+    )
 
     url = PBN_DELETE_PUBLICATION_STATEMENT.format(publicationId=pbn_publication.pk)
     err_json = {
@@ -463,6 +525,6 @@ def test_sync_disciplines(pbn_client):
     assert Dyscyplina_Naukowa.objects.count() > 2
     d1.refresh_from_db(), d2.refresh_from_db()
 
-    assert TlumaczDyscyplin.objects.przetlumacz_dyscypline(d1, 2022) is not None
+    assert TlumaczDyscyplin.objects.przetlumacz_dyscypline(d1, 2024) is not None
 
-    assert TlumaczDyscyplin.objects.przetlumacz_dyscypline(d2, 2022) is not None
+    assert TlumaczDyscyplin.objects.przetlumacz_dyscypline(d2, 2024) is not None

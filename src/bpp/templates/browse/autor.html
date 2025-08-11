@@ -51,7 +51,9 @@
 
     {% if request.user.is_authenticated %}
         {% if not autor.pokazuj_poprzednie_nazwiska %}
-            <small>Poprzednie nazwiska (ukryte): {{ autor.poprzednie_nazwiska }}</small>
+            {% if autor.poprzednie_nazwiska %}
+                <small>Poprzednie nazwiska (ukryte): {{ autor.poprzednie_nazwiska }}</small>
+            {% endif %}
         {% endif %}
     {% endif %}
 

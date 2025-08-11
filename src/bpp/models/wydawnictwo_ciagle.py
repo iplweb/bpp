@@ -9,6 +9,7 @@ from bpp.models import (
     BazaModeluStreszczen,
     ManagerModeliZOplataZaPublikacjeMixin,
     MaProcentyMixin,
+    ModelZeSlowamiKluczowymi,
     ModelZKwartylami,
     ModelZOplataZaPublikacje,
     parse_informacje,
@@ -101,6 +102,7 @@ class Wydawnictwo_Ciagle(
     ModelPunktowany,
     ModelTypowany,
     ModelZeSzczegolami,
+    ModelZeSlowamiKluczowymi,
     ModelZISSN,
     ModelZInformacjaZ,
     ModelZAdnotacjami,
@@ -259,6 +261,12 @@ class Wydawnictwo_Ciagle(
     @depend_on_related("bpp.Zrodlo", only=("nazwa", "skrot"))
     def slug(self):
         return self.get_slug()
+
+    def to_bibtex(self):
+        """Export this publication to BibTeX format."""
+        from bpp.bibtex_export import wydawnictwo_ciagle_to_bibtex
+
+        return wydawnictwo_ciagle_to_bibtex(self)
 
     def clean(self):
         DwaTytuly.clean(self)

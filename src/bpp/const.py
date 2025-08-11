@@ -44,6 +44,8 @@ class DZIEDZINA(IntEnum):
     NAUKI_SCISLE = 6
     NAUKI_TEOLOGICZNE = 7
     NAUKI_SZTUKA = 8
+    NAUKI_RODZINA = 9
+    NAUKI_WETERYNARYJNE = 10
 
 
 DZIEDZINY_HST = [
@@ -97,6 +99,9 @@ PBN_MAX_ROK = 2025
 
 PBN_LATA = list(range(PBN_MIN_ROK, PBN_MAX_ROK + 1))
 
+PBN_AKTUALNA_EWALUACJA_START = 2022
+PBN_AKTUALNA_EWALUACJA_STOP = 2025
+
 
 KWARTYLE = [(None, "brak"), (1, "Q1"), (2, "Q2"), (3, "Q3"), (4, "Q4")]
 
@@ -109,6 +114,11 @@ ZDUBLOWANE_POLE_KOMUNIKAT = (
     'Uwaga, uwaga. W bazie danych istnieją inne rekordy z identycznym polem "{label}". '
     "Technicznie nie jest to błąd, ale mogą pojawić się problemy przy synchronizacji danych "
     "z systemami zewnętrznymi, np z bazą danych PBN."
+)
+
+ZMIENIONO_AUTOMATYCZNIE_WARTOSC_POLA = (
+    'Aby uniknąć zdublowania w bazie i w PBN wartości pola "{field}", '
+    'ustawiono je automatycznie na "{value}". '
 )
 
 PUSTY_ADRES_EMAIL = "brak@email.pl"

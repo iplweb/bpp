@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 python src/manage.py mapuj_kola_naukowe &> res.txt
 grep "nie ma zadnego" res.txt > brak_kol.txt

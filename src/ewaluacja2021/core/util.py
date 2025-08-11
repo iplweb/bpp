@@ -8,6 +8,7 @@ from ewaluacja2021 import const
 from django.contrib.postgres.aggregates import ArrayAgg
 
 from bpp.const import RODZAJ_PBN_ARTYKUL
+from bpp.models import Cache_Punktacja_Autora_Query
 from bpp.util import intsack
 
 
@@ -18,11 +19,11 @@ class NieArtykul(Transform):
 
 def get_lista_prac(nazwa_dyscypliny):
     """Zwraca liste prac - potencjalnych kandydatow do ewaluacji, ale wyłcznie dla dozwolonych
-    autorow, tzn posiadajacych udzialy jednostkowe w danej dyscyplinie oraz dla lat 2018-2021
+    autorow, tzn posiadajacych udzialy jednostkowe w danej dyscyplinie oraz dla lat 2022-2025
     """
-    from ewaluacja2021.models import IloscUdzialowDlaAutora
+    from ewaluacja2021.models import IloscUdzialowDlaAutora_2022_2025
 
-    dozwoleni_autorzy = IloscUdzialowDlaAutora.objects.filter(
+    dozwoleni_autorzy = IloscUdzialowDlaAutora_2022_2025.objects.filter(
         dyscyplina_naukowa__nazwa=nazwa_dyscypliny
     ).values_list("autor_id")
 
@@ -42,8 +43,10 @@ def get_lista_prac(nazwa_dyscypliny):
         )
         .exclude(rekord__charakter_formalny__charakter_ogolny=None)
         .annotate(
+            # stąd się bierze .monografia, monografia=
             monografia=NieArtykul(F("rekord__charakter_formalny__rodzaj_pbn")),
             rok=F("rekord__rok"),
+            poziom_wydawcy=F("rekord__wydawca__poziom_wydawcy__poziom"),
         )
         .select_related(
             "rekord",
@@ -62,7 +65,7 @@ def get_lista_autorow_na_rekord(nazwa_dyscypliny):
     }
 
 
-def lista_prac_na_tuples(lista_prac, lista_autorow):
+def lista_prac_na_tuples(lista_prac: list[Cache_Punktacja_Autora_Query], lista_autorow):
     return tuple(
         Praca(
             id=elem.id,
@@ -72,6 +75,7 @@ def lista_prac_na_tuples(lista_prac, lista_autorow):
             rok=elem.rekord.rok,
             pkdaut=elem.pkdaut,
             monografia=elem.monografia,
+            poziom_wydawcy=elem.poziom_wydawcy,
             autorzy=lista_autorow.get(elem.rekord_id),
             ostatnio_zmieniony=elem.rekord.ostatnio_zmieniony,
         )
@@ -87,6 +91,7 @@ def get_lista_prac_as_tuples(nazwa_dyscypliny):
 
 
 def policz_knapsack(lista_prac, maks_slot=4.0):
+
     res = intsack(
         maks_slot,
         [x.slot for x in lista_prac],
@@ -105,22 +110,22 @@ def encode_datetime(obj):
 
 
 def maks_pkt_aut_calosc_get_from_db(nazwa_dyscypliny):
-    from ewaluacja2021.models import IloscUdzialowDlaAutora
+    from ewaluacja2021.models import IloscUdzialowDlaAutora_2022_2025
 
     return {
         int(x["autor_id"]): x["ilosc_udzialow"]
-        for x in IloscUdzialowDlaAutora.objects.filter(
+        for x in IloscUdzialowDlaAutora_2022_2025.objects.filter(
             dyscyplina_naukowa__nazwa=nazwa_dyscypliny
         ).values("autor_id", "ilosc_udzialow")
     }
 
 
 def maks_pkt_aut_monografie_get_from_db(nazwa_dyscypliny):
-    from ewaluacja2021.models import IloscUdzialowDlaAutora
+    from ewaluacja2021.models import IloscUdzialowDlaAutora_2022_2025
 
     return {
         int(x["autor_id"]): x["ilosc_udzialow_monografie"]
-        for x in IloscUdzialowDlaAutora.objects.filter(
+        for x in IloscUdzialowDlaAutora_2022_2025.objects.filter(
             dyscyplina_naukowa__nazwa=nazwa_dyscypliny
         ).values("autor_id", "ilosc_udzialow_monografie")
     }
@@ -140,6 +145,7 @@ Praca = namedtuple(
         "rok",
         "pkdaut",
         "monografia",
+        "poziom_wydawcy",
         "autorzy",
         "ostatnio_zmieniony",
     ],

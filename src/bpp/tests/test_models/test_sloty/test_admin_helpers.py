@@ -4,7 +4,7 @@ from pbn_api.tests.utils import middleware
 
 from django.contrib.messages import get_messages
 
-from bpp.admin.helpers import sprobuj_policzyc_sloty
+from bpp.admin.helpers.pbn_api.gui import sprobuj_policzyc_sloty
 from bpp.const import PBN_MAX_ROK, PBN_MIN_ROK
 
 

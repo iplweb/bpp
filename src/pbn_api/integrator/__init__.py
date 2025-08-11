@@ -8,9 +8,11 @@ import warnings
 from functools import reduce
 
 import django
+from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import F, Func, IntegerField, Q
 from django.db.models.functions import Length
+from tqdm import tqdm
 
 from pbn_api.integrator import istarmap  # noqa
 
@@ -53,6 +55,7 @@ from pbn_api.models import (
     OswiadczenieInstytucji,
     Publication,
     PublikacjaInstytucji,
+    PublikacjaInstytucji_V2,
     Publisher,
     Scientist,
     SentData,
@@ -69,6 +72,7 @@ from bpp.models import (
     Praca_Doktorska,
     Praca_Habilitacyjna,
     Rekord,
+    Tytul,
     Uczelnia,
     Wydawca,
     Wydawnictwo_Ciagle,
@@ -80,7 +84,7 @@ from bpp.models import (
 from bpp.util import pbar
 
 
-def integruj_jezyki(client):
+def integruj_jezyki(client, create_if_not_exists=False):
     for remote_lang in client.get_languages():
         try:
             lang = Language.objects.get(code=remote_lang["code"])
@@ -97,23 +101,35 @@ def integruj_jezyki(client):
     for elem in Language.objects.all():
         try:
             qry = Q(skrot__istartswith=elem.language.get("639-2")) | Q(
-                skrot__istartswith=elem.code
+                skrot__iexact=elem.code
             )
             if elem.language.get("639-1"):
-                qry |= Q(skrot__istartswith=elem.language["639-1"])
+                qry |= Q(skrot__iexact=elem.language["639-1"])
 
             jezyk = Jezyk.objects.get(qry)
         except Jezyk.DoesNotExist:
             if elem.language.get("pl") is not None:
                 try:
-                    jezyk = Jezyk.objects.get(
-                        nazwa__istartswith=elem.language.get("pl")
-                    )
+                    jezyk = Jezyk.objects.get(nazwa__iexact=elem.language.get("pl"))
                 except Jezyk.DoesNotExist:
-                    # warnings.warn(f"Brak jezyka po stronie BPP: {elem}")
+                    if create_if_not_exists:
+                        Jezyk.objects.create(
+                            nazwa=elem.language.get("pl"),
+                            skrot=elem.language.get("639-2"),
+                            pbn_uid=elem,
+                        )
+                    else:
+                        warnings.warn(f"Brak jezyka po stronie BPP: {elem}")
                     continue
             else:
-                # warnings.warn(f"Brak jezyka po stronie BPP: {elem}")
+                if create_if_not_exists:
+                    Jezyk.objects.create(
+                        nazwa=elem.language.get("en"),
+                        skrot=elem.language.get("639-2"),
+                        pbn_uid=elem,
+                    )
+                else:
+                    warnings.warn(f"Brak jezyka po stronie BPP: {elem}")
                 continue
 
         if jezyk.pbn_uid_id is None:
@@ -126,7 +142,7 @@ def integruj_kraje(client):
         try:
             c = Country.objects.get(code=remote_country["code"])
         except Country.DoesNotExist:
-            c = Country.objects.create(
+            Country.objects.create(
                 code=remote_country["code"], description=remote_country["description"]
             )
             continue
@@ -304,8 +320,26 @@ def pobierz_mongodb(
 def pobierz_instytucje(client: PBNClient):
     for status in [ACTIVE, DELETED]:
         pobierz_mongodb(
-            client.get_institutions(status=status, page_size=1000), Institution
+            client.get_institutions(status=status, page_size=1000),
+            Institution,
+            pbar_label="pobieram slownik instytucji...",
         )
+
+
+class InstitutionGetter(ThreadedMongoDBSaver):
+    pbn_api_klass = Institution
+
+
+def pobierz_instytucje_polon(client: PBNClient):
+    data = client.get_institutions_polon(page_size=10)
+
+    threaded_page_getter(
+        client,
+        data,
+        klass=InstitutionGetter,
+        label="pobierz_instytucje_polon",
+        no_threads=24,
+    )
 
 
 def integruj_uczelnie():
@@ -369,8 +403,24 @@ def pobierz_zrodla(client: PBNClient):
     for status in [DELETED, ACTIVE]:
         data = client.get_journals(status=status, page_size=500)
         threaded_page_getter(
-            client, data, klass=ZrodlaGetter, label=f"poboerz_zrodla_{status}"
+            client,
+            data,
+            klass=ZrodlaGetter,
+            label=f"poboerz_zrodla_{status}",
+            no_threads=1,
         )
+
+
+def pobierz_zrodla_mnisw(client: PBNClient):
+    # status tu nie ma znaczenia
+    data = client.get_journals_mnisw_v2(includeAllVersions="true", page_size=8)
+    threaded_page_getter(
+        client,
+        data,
+        klass=ZrodlaGetter,
+        label="poboerz_zrodla_mnisw",
+        no_threads=24,
+    )
 
 
 class PublisherGetter(ThreadedMongoDBSaver):
@@ -378,6 +428,7 @@ class PublisherGetter(ThreadedMongoDBSaver):
 
 
 def pobierz_wydawcow_mnisw(client: PBNClient):
+    # XXX: TODO: obecnie jest ich 800, nie ma sensu robić threaded page getter tutaj...
     data = client.get_publishers_mnisw(page_size=1000)
     threaded_page_getter(
         client, data, klass=PublisherGetter, label="poboerz_wydawcow_mnisw"
@@ -510,6 +561,27 @@ def pobierz_publikacje_z_instytucji(client: PBNClient):
     )
 
 
+def zapisz_publikacje_instytucji_v2(client: PBNClient, elem: dict):
+    uuid = elem.get("uuid")
+    objectId_id = elem.get("objectId")
+
+    try:
+        objectId = Publication.objects.get(pk=objectId_id)
+    except Publication.DoesNotExist:
+        objectId = _pobierz_pojedyncza_prace(client, objectId_id)
+        print(f"Pobrano brakującą pracę: {objectId}")
+
+    return PublikacjaInstytucji_V2.objects.update_or_create(
+        uuid=uuid, objectId=objectId, defaults={"json_data": elem}
+    )
+
+
+def pobierz_publikacje_z_instytucji_v2(client: PBNClient):
+    res = client.get_institution_publications_v2()
+    for elem in tqdm(res, total=res.count()):
+        zapisz_publikacje_instytucji_v2(client, elem)
+
+
 def pobierz_oswiadczenia_z_instytucji(client: PBNClient):
     pobierz_mongodb(
         client.get_institution_statements(page_size=1000),
@@ -631,9 +703,9 @@ def pobierz_prace_po_isbn(client: PBNClient):
     wait_for_results(p, results)
 
 
-def _single_unit_ludzie_z_uczelni(client, personId):
+def pobierz_i_zapisz_dane_jednej_osoby(client, personId) -> Scientist:
     scientist = client.get_person_by_id(personId)
-    zapisz_mongodb(scientist, Scientist, from_institution_api=True)
+    return zapisz_mongodb(scientist, Scientist, from_institution_api=True)
 
 
 def pobierz_ludzi_z_uczelni(client: PBNClient, instutition_id):
@@ -655,43 +727,99 @@ def pobierz_ludzi_z_uczelni(client: PBNClient, instutition_id):
 
     for person in pbar(elementy, count=len(elementy), label="pobierz ludzi z uczelni"):
         result = pool.apply_async(
-            _single_unit_ludzie_z_uczelni, args=(client, person["personId"])
+            pobierz_i_zapisz_dane_jednej_osoby, args=(client, person["personId"])
         )
         results.append(result)
     wait_for_results(pool, results)
 
 
-def integruj_autorow_z_uczelni(client: PBNClient, instutition_id):
+def integruj_autorow_z_uczelni(
+    client: PBNClient, instutition_id, import_unexistent=False
+):
     """
     Ta procedure uruchamiamy dopiero po zaciągnięciu bazy osób.
     """
     for person in Scientist.objects.filter(from_institution_api=True):
-        pbn_id = None
-        if person.value("object", "legacyIdentifiers", return_none=True):
-            pbn_id = person.value("object", "legacyIdentifiers")[0]
 
         autor = matchuj_autora(
             imiona=person.value("object", "name", return_none=True),
             nazwisko=person.value("object", "lastName", return_none=True),
             orcid=person.value("object", "orcid", return_none=True),
-            pbn_id=pbn_id,
+            pbn_id=pbn_json_wez_pbn_id_stare(person),
             pbn_uid_id=person.pk,
             tytul_str=person.value("object", "qualifications", return_none=True),
         )
-        if autor is None:
-            print(f"Brak dopasowania w jednostce dla autora {person}")
-            continue
 
-        if autor.pbn_uid_id is None:
-            autor.pbn_uid_id = person.mongoId
-            autor.save()
+        if autor is not None:
+            if autor.pbn_uid_id is None:
+                autor.pbn_uid_id = person.mongoId
+                autor.save()
+            else:
+                if autor.pbn_uid_id != person.pk:
+                    print(
+                        f"UWAGA: autor {autor} zmatchował się z PBN UID {person.pk} czyli {person}, "
+                        f"sprawdź czy przypadkiem nie masz zdublowanych wpisów po stronie PBN!"
+                    )
 
-        if autor.pbn_uid_id != person.pk:
-            print(
-                f"UWAGA Zmieniam powiązanie PBN UID dla autora {autor} z {autor.pbn_uid_id} na {person.pk}"
-            )
-            autor.pbn_uid = person
-            autor.save()
+        else:
+            # autor is None:
+            if not import_unexistent:
+                # Brak autora po stronie BPP, nie chcemy tworzyć nowych rekordów
+                print(f"Brak dopasowania w jednostce dla autora {person}")
+                continue
+
+            utworz_wpis_dla_jednego_autora(person)
+
+
+def pbn_json_wez_pbn_id_stare(person):
+    pbn_id = None
+    if person.value("object", "legacyIdentifiers", return_none=True):
+        pbn_id = person.value("object", "legacyIdentifiers")[0]
+    return pbn_id
+
+
+def utworz_wpis_dla_jednego_autora(person):
+    # Brak autora po stronie BPP, utwórz nowy rekord
+    bpp_tytul = None
+    cv = person.current_version
+    pbn_tytul = cv["object"].pop("qualifications", None)
+    if pbn_tytul:
+        # jeżeli po stronie PBN podany jest tytuł, to jest on w skrótowej formie (np
+        # mgr. inż.). Jeżeli po stronie BPP jest taki tytuł to OK, jeżeli nie, to
+        # utwórzmy go, z taką samą nazwą:
+        bpp_tytul = Tytul.objects.get_or_create(
+            skrot=pbn_tytul, defaults={"nazwa": pbn_tytul}
+        )[0]
+
+    orcid = cv["object"].pop("orcid", None)
+    if not orcid:
+        orcid = None
+
+    autor = Autor.objects.create(
+        imiona=cv["object"].pop("name"),
+        nazwisko=cv["object"].pop("lastName"),
+        orcid=orcid,
+        pbn_id=pbn_json_wez_pbn_id_stare(person),
+        pbn_uid_id=person.pk,
+        tytul=bpp_tytul,
+    )
+
+    cv["object"].pop("legacyIdentifiers", None)
+
+    # Ignorujemy poprzednie miejsca pracy + zewnetrzne identyfiaktory + obecne
+    # miesjca pracy...
+    for ignoredKey in [
+        "verifiedOrcid",
+        "currentEmployments",
+        "externalIdentifiers",
+        "archivalEmployments",
+    ]:
+        cv["object"].pop(ignoredKey, None)
+
+    from pbn_api.importer import assert_dictionary_empty
+
+    assert_dictionary_empty(cv["object"])
+    return autor
 
 
 def weryfikuj_orcidy(client: PBNClient, instutition_id):
@@ -842,7 +970,7 @@ def integruj_wszystkich_niezintegrowanych_autorow():
             autor.save()
 
 
-def integruj_zrodla(disable_progress_bar):
+def integruj_zrodla(disable_progress_bar=False):
     def fun(qry):
         found = False
         try:
@@ -936,8 +1064,8 @@ def zweryfikuj_lub_stworz_match(elem, bpp_rekord):
     if bpp_rekord is not None:
         if bpp_rekord.pbn_uid_id is not None and bpp_rekord.pbn_uid_id != elem.pk:
             print(
-                f"\r\n*** Rekord BPP {bpp_rekord} ma już PBN UID {bpp_rekord.pbn_uid_id}, "
-                f"pasuje też do {elem} PBN UID {elem.pk}"
+                f"\r\n*** Rekord BPP {bpp_rekord} {bpp_rekord.rok} ma już PBN UID {bpp_rekord.pbn_uid_id}, "
+                f"ale i pasuje też do {elem} PBN UID {elem.pk}"
             )
             return
 
@@ -963,7 +1091,7 @@ def split_list(lst, n):
         yield lst[i : i + n]
 
 
-CPU_COUNT = "auto"
+CPU_COUNT = "auto"  # noqa
 
 DEFAULT_CONTEXT = "spawn"
 
@@ -975,8 +1103,6 @@ def _init():
 
 
 def initialize_pool(multipler=1):
-    global CPU_COUNT
-
     if CPU_COUNT == "auto":
         cpu_count = os.cpu_count() * 3 // 4
         if cpu_count < 1:
@@ -1010,7 +1136,7 @@ def _integruj_publikacje(
 
         if disable_multiprocessing:
             _integruj_single_part(elem)
-            print(f"{label} {no} of {len(pubs)//BATCH_SIZE}...", end="\r")
+            print(f"{label} {no} of {len(pubs) // BATCH_SIZE}...", end="\r")
             sys.stdout.flush()
         else:
             result = pool.apply_async(_integruj_single_part, args=(elem,))
@@ -1065,7 +1191,6 @@ MODELE_Z_PBN_UID = (
     Praca_Doktorska,
     Praca_Habilitacyjna,
 )
-
 
 #
 # Poniżej wersja iterująca po rekordach w BPP, szukająca matchy w pbn_api.Publication
@@ -1375,27 +1500,34 @@ def clear_all():
         model.objects.all()._raw_delete(model.objects.db)
 
 
-def integruj_oswiadczenia_z_instytucji():
+def integruj_oswiadczenia_z_instytucji(missing_publication_callback=None):
     noted_pub = set()
     noted_aut = set()
     for elem in pbar(
-        OswiadczenieInstytucji.objects.filter(inOrcid=True),
+        OswiadczenieInstytucji.objects.all(),
         label="integruj_oswiadczenia_z_instytucji",
     ):
         pub = elem.get_bpp_publication()
         if pub is None:
-            pub = elem.publicationId.matchuj_do_rekordu_bpp()
-
-            if pub is None:
-                if elem.publicationId_id not in noted_pub:
-                    print(
-                        f"\r\nPPP Brak odpowiednika publikacji w BPP dla pracy {elem.publicationId}, "
-                        f"parametr inOrcid dla tej pracy nie zostanie zaimportowany!"
-                    )
-                    noted_pub.add(elem.publicationId_id)
-                continue
+            if missing_publication_callback:
+                pub = missing_publication_callback(elem.publicationId_id)
+                assert pub is not None
             else:
-                zweryfikuj_lub_stworz_match(elem.publicationId, pub)
+                pub = elem.publicationId.matchuj_do_rekordu_bpp()
+
+                if pub is None:
+                    if elem.publicationId_id not in noted_pub:
+                        print(
+                            f"\r\nPPP Brak odpowiednika publikacji w BPP dla pracy {elem.publicationId}, "
+                            f"parametr inOrcid oraz dyscypliny dla tej pracy nie zostanie zaimportowany!"
+                        )
+                        noted_pub.add(elem.publicationId_id)
+                    continue
+                else:
+                    zweryfikuj_lub_stworz_match(elem.publicationId, pub)
+
+        if isinstance(pub, Rekord):
+            pub = pub.original
 
         aut = elem.get_bpp_autor()
         if aut is None:
@@ -1408,16 +1540,195 @@ def integruj_oswiadczenia_z_instytucji():
             continue
 
         try:
-            rec = pub.autorzy_set.get(autor=aut)
+            rec: Wydawnictwo_Zwarte_Autor = pub.autorzy_set.get(
+                autor=aut, typ_odpowiedzialnosci=elem.get_typ_odpowiedzialnosci()
+            )
         except pub.autorzy_set.model.DoesNotExist:
             print(
+                f"===========================================================\n"
                 f"XXX Po stronie PBN: {elem.publicationId}, \n"
                 f"XXX po stronie BPP: {pub}, {aut} -- nie ma ta praca takiego autora!"
             )
 
-        if not rec.profil_orcid:
-            rec.profil_orcid = True
-            rec.save(update_fields=["profil_orcid"])
+            try:
+                rec = pub.autorzy_set.get(
+                    autor__nazwisko__iexact=aut.nazwisko,
+                    autor__imiona__iexact=aut.imiona,
+                    typ_odpowiedzialnosci=elem.get_typ_odpowiedzialnosci(),
+                )
+            except pub.autorzy_set.model.DoesNotExist:
+                try:
+                    rec = pub.autorzy_set.get(
+                        autor__nazwisko__iexact=aut.imiona,
+                        autor__imiona__iexact=aut.nazwisko,
+                        typ_odpowiedzialnosci=elem.get_typ_odpowiedzialnosci(),
+                    )
+                except pub.autorzy_set.model.DoesNotExist:
+                    print(
+                        "XXX NIE MOGE NAPRAWIC TEGO AUTOMATYCZNIE -- SPRAWDŹ RĘCZNIE\n"
+                        "==========================================================="
+                    )
+                    continue
+
+            if elem.disciplines:
+
+                print(
+                    f"XXX NADPISZE w tej pracy autora {rec.autor} autorem {aut}, wyslij ta prace do PBNu "
+                    f"ponownie! (dyscyplina: {elem.get_bpp_discipline()})\n"
+                    f"==========================================================="
+                )
+                rec.autor = aut
+            else:
+                print(
+                    f"XXX NIE NADPISZE w tej pracy autora {rec.autor} autorem {aut}, bo nei ma dyscyplin\n"
+                    f"SPRAWDZ REKORD RECZNIE\n"
+                    f"==========================================================="
+                )
+
+        if elem.disciplines:
+            if elem.get_bpp_discipline().pk != rec.dyscyplina_naukowa_id:
+                rec.dyscyplina_naukowa_id = elem.get_bpp_discipline().pk
+                try:
+                    rec.clean()
+                except ValidationError:
+                    try:
+                        Autor_Dyscyplina.objects.get(
+                            rok=rec.rekord.rok, autor=rec.autor
+                        )
+                        raise Exception(
+                            f"Nie ma przypsiania do {elem.get_bpp_discipline()}, ale jakeis inne jest..."
+                        )
+                    except Autor_Dyscyplina.DoesNotExist:
+                        rec.autor.autor_dyscyplina_set.update_or_create(
+                            rok=rec.rekord.rok,
+                            defaults={"dyscyplina_naukowa": elem.get_bpp_discipline()},
+                        )
+
+        rec.profil_orcid = elem.inOrcid
+        rec.save()
+
+
+def integruj_oswiadczenia_pbn_first_import(
+    client=None,
+    default_jednostka=None,
+    dopisuj_zwrotnie_dyscypliny_autorom=True,
+    koryguj_afiliacje=True,
+):
+    first = True
+    for oswiadczenie in tqdm(OswiadczenieInstytucji.objects.all()):
+        bpp_pub = oswiadczenie.get_bpp_publication()
+
+        if bpp_pub is None:
+            if client is not None:
+                from pbn_api.importer import importuj_publikacje_instytucji
+
+                bpp_pub = importuj_publikacje_instytucji(
+                    client, default_jednostka, oswiadczenie.publicationId_id
+                )
+
+                if isinstance(bpp_pub, Rekord):
+                    bpp_pub = bpp_pub.original
+
+            if bpp_pub is None:
+                print(
+                    f"Brak odpowiednika publikacji po stronie BPP dla pracy w PBN {oswiadczenie.publicationId}, "
+                    f"moze zaimportuj baze raz jeszcze"
+                )
+                continue
+
+        bpp_aut = oswiadczenie.get_bpp_autor()
+        bpp_dyscyplina = oswiadczenie.get_bpp_discipline()
+        bpp_typ_odpowiedzialnosci = oswiadczenie.get_typ_odpowiedzialnosci()
+
+        try:
+            rekord_aut = bpp_pub.autorzy_set.get(
+                autor=bpp_aut, typ_odpowiedzialnosci=bpp_typ_odpowiedzialnosci
+            )
+        except (
+            Wydawnictwo_Zwarte_Autor.DoesNotExist,
+            Wydawnictwo_Ciagle_Autor.DoesNotExist,
+        ):
+            if first:
+                print(
+                    "Tytuł;Rok;mongoId;Autor przypisany;UID autora przypisanego;"
+                    "Autor oświadczony;UID autora z oświadczeń"
+                )
+                first = False
+
+            try:
+                przypisany = bpp_pub.autorzy_set.get(
+                    autor__nazwisko=bpp_aut.nazwisko, autor__imiona=bpp_aut.imiona
+                ).autor
+            except (
+                Wydawnictwo_Zwarte_Autor.DoesNotExist,
+                Wydawnictwo_Ciagle_Autor.DoesNotExist,
+            ):
+
+                class Przypisany:
+                    pbn_uid_id = "NIE UMIEM ZLOKALIZOWAC"
+
+                    def __str__(self):
+                        return "NIE UMIEM ZLOKALIZOWAC"
+
+                przypisany = Przypisany()
+
+            print(
+                f"{bpp_pub.tytul_oryginalny};{bpp_pub.rok};{bpp_pub.pbn_uid_id};{przypisany};{przypisany.pbn_uid_id};"
+                f"{oswiadczenie.personId.lastName} {oswiadczenie.personId.name};{oswiadczenie.personId_id}"
+            )
+            continue
+
+        if (
+            rekord_aut.dyscyplina_naukowa is not None
+            and rekord_aut.dyscyplina_naukowa != bpp_dyscyplina
+        ):
+            raise NotImplementedError(
+                f"dyscyplina juz jest w bazie i sie rozni {bpp_pub}"
+            )
+
+        rekord_aut.dyscyplina_naukowa = bpp_dyscyplina
+
+        if bpp_dyscyplina is not None and dopisuj_zwrotnie_dyscypliny_autorom:
+            # Spróbujmy zwrotnie przypisać autorowi dyscyplinę za dany rok:
+            try:
+                ad = bpp_aut.autor_dyscyplina_set.get(rok=bpp_pub.rok)
+            except Autor_Dyscyplina.DoesNotExist:
+                # Nie ma przypisania za dany rok -- tworzomy nowy wpis
+                bpp_aut.autor_dyscyplina_set.create(
+                    rok=bpp_pub.rok, dyscyplina_naukowa=bpp_dyscyplina
+                )
+            else:
+                # JEst przypisanie. Czy występuje w nim dyscuyplina?
+                if (
+                    ad.dyscyplina_naukowa == bpp_dyscyplina
+                    or ad.subdyscyplina_naukowa == bpp_dyscyplina
+                ):
+                    # Tak, występuje, zostawiamy.
+                    pass
+                elif (
+                    ad.dyscyplina_naukowa != bpp_dyscyplina
+                    and ad.subdyscyplina_naukowa is None
+                ):
+                    # Nie, nie wystepuję, ale można wpisać do pustej sub-dyscypliny
+                    ad.subdyscyplina_naukowa = bpp_dyscyplina
+                    ad.save()
+                else:
+                    # Nie, nie występuje i nie można wpisać
+                    raise NotImplementedError(
+                        f"Autor miałby mieć 3 przypisania dyscyplin za {bpp_pub.rok}, sprawdź kod"
+                    )
+
+        if koryguj_afiliacje:
+            if rekord_aut.jednostka.skupia_pracownikow and not rekord_aut.afiliuje:
+                rekord_aut.afiliuje = True
+
+            if not rekord_aut.jednostka.skupia_pracownikow and rekord_aut.afiliuje:
+                rekord_aut.afiliuje = False
+
+        rekord_aut.save()
+
+        # Przelicz punktację
+        bpp_pub.save()
 
 
 def wyswietl_niezmatchowane_ze_zblizonymi_tytulami():
@@ -1505,7 +1816,7 @@ def _pobierz_pojedyncza_prace(client, publicationId):
             )
             return
         raise e
-    zapisz_mongodb(data, Publication, client)
+    return zapisz_mongodb(data, Publication, client)
 
 
 def pobierz_rekordy_publikacji_instytucji(client: PBNClient):
@@ -1576,9 +1887,13 @@ def usun_zerowe_oswiadczenia(client):
                 elem.delete()
 
 
-def wyslij_informacje_o_platnosciach(client: PBNClient):
+def wyslij_informacje_o_platnosciach(client: PBNClient, rok=None):
     for model in Wydawnictwo_Ciagle, Wydawnictwo_Zwarte:
-        for elem in pbar(model.objects.rekordy_z_oplata()):
+        qset = model.objects.rekordy_z_oplata()
+        if rok:
+            qset = qset.filter(rok=rok)
+
+        for elem in pbar(qset):
             try:
                 client.upload_publication_fee(elem)
             except NoPBNUIDException:

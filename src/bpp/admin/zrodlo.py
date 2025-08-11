@@ -13,13 +13,9 @@ from ..models import (  # Publikacja_Habilitacyjna
 )
 from .core import BaseBppAdminMixin
 from .filters import PBN_UID_IDObecnyFilter
-from .helpers import (
-    ADNOTACJE_FIELDSET,
-    CHARMAP_SINGLE_LINE,
-    MODEL_PUNKTOWANY_KOMISJA_CENTRALNA,
-    MODEL_PUNKTOWANY_Z_KWARTYLAMI_BAZA,
-    ZapiszZAdnotacjaMixin,
-)
+from .helpers.fieldsets import ADNOTACJE_FIELDSET, MODEL_PUNKTOWANY_Z_KWARTYLAMI_BAZA
+from .helpers.mixins import ZapiszZAdnotacjaMixin
+from .helpers.widgets import CHARMAP_SINGLE_LINE
 
 from django.contrib import admin
 
@@ -38,11 +34,7 @@ class Punktacja_ZrodlaForm(forms.ModelForm):
 class Punktacja_ZrodlaInline(admin.TabularInline):
     model = Punktacja_Zrodla
     form = Punktacja_ZrodlaForm
-    fields = (
-        ("rok",)
-        + MODEL_PUNKTOWANY_Z_KWARTYLAMI_BAZA
-        + MODEL_PUNKTOWANY_KOMISJA_CENTRALNA
-    )
+    fields = ("rok",) + MODEL_PUNKTOWANY_Z_KWARTYLAMI_BAZA
     extra = 1
 
 
@@ -66,10 +58,12 @@ class Redakcja_ZrodlaInline(admin.TabularInline):
 
 class Dyscyplina_ZrodlaInline(admin.TabularInline):
     model = Dyscyplina_Zrodla
+    classes = ["grp-collapse grp-closed grp-never-open-automatically"]
     extra = 1
 
     class Meta:
         fields = [
+            "rok",
             "dyscyplina",
         ]
 
@@ -119,6 +113,7 @@ class ZrodloAdmin(
         "doi",
         "pbn_uid__pk",
     ]
+
     autocomplete_fields = ["pbn_uid"]
     list_display = ["nazwa", "skrot", "rodzaj", "www", "issn", "e_issn", "pbn_uid_id"]
     list_filter = [

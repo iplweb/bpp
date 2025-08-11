@@ -5,19 +5,17 @@ from .core import generuj_inline_dla_autorow
 from .element_repozytorium import Element_RepozytoriumInline
 from .filters import OstatnioZmienionePrzezFilter, UtworzonePrzezFilter
 from .grant import Grant_RekorduInline
-from .helpers import (
+from .helpers.fieldsets import (
     ADNOTACJE_Z_DATAMI_FIELDSET,
     MODEL_OPCJONALNIE_NIE_EKSPORTOWANY_DO_API_FIELDSET,
     MODEL_PUNKTOWANY_FIELDSET,
-    MODEL_PUNKTOWANY_KOMISJA_CENTRALNA_FIELDSET,
     MODEL_Z_ROKIEM,
     MODEL_Z_WWW,
     MODEL_ZE_SZCZEGOLAMI,
     POZOSTALE_MODELE_FIELDSET,
     AdnotacjeZDatamiMixin,
-    DomyslnyStatusKorektyMixin,
-    Wycinaj_W_z_InformacjiMixin,
 )
+from .helpers.mixins import DomyslnyStatusKorektyMixin, Wycinaj_W_z_InformacjiMixin
 from .wydawnictwo_zwarte import Wydawnictwo_ZwarteAdmin_Baza
 
 from django.contrib import admin
@@ -85,7 +83,6 @@ class Patent_Admin(AdnotacjeZDatamiMixin, Wydawnictwo_ZwarteAdmin_Baza):
             },
         ),
         MODEL_PUNKTOWANY_FIELDSET,
-        MODEL_PUNKTOWANY_KOMISJA_CENTRALNA_FIELDSET,
         POZOSTALE_MODELE_FIELDSET,
         ADNOTACJE_Z_DATAMI_FIELDSET,
         MODEL_OPCJONALNIE_NIE_EKSPORTOWANY_DO_API_FIELDSET,

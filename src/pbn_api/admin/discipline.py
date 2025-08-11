@@ -6,7 +6,7 @@ from django.contrib import admin
 
 @admin.register(DisciplineGroup)
 class DisciplineGroupAdmin(BasePBNAPIAdmin):
-    pass
+    readonly_fields = ["uuid", "validityDateTo", "validityDateFrom"]
 
 
 @admin.register(Discipline)
@@ -21,3 +21,12 @@ class DisciplineAdmin(BasePBNAPIAdmin):
     ]
     list_display = ["name", "code", "polonCode", "scientificFieldName", "parent_group"]
     list_filter = ["parent_group", "scientificFieldName"]
+
+    readonly_fields = [
+        "name",
+        "code",
+        "polonCode",
+        "scientificFieldName",
+        "uuid",
+        "parent_group",
+    ]

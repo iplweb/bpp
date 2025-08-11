@@ -1,5 +1,6 @@
 from typing import Union
 
+import dateutil
 from django.db.models import Q, Value
 from django.db.models.functions import Lower, Replace, Trim
 
@@ -79,11 +80,29 @@ def matchuj_wymiar_etatu(wymiar_etatu: str) -> Wymiar_Etatu:
     return Wymiar_Etatu.objects.get(nazwa__iexact=wymiar_etatu)
 
 
+def wytnij_skrot(jednostka):
+    if jednostka.find("(") >= 0 and jednostka.find(")") >= 0:
+        jednostka, skrot = jednostka.split("(", 2)
+        jednostka = jednostka.strip()
+        skrot = skrot[:-1].strip()
+        return jednostka, skrot
+
+    return jednostka, None
+
+
 def matchuj_jednostke(nazwa, wydzial=None):
     if nazwa is None:
         return
 
     nazwa = normalize_nazwa_jednostki(nazwa)
+    skrot = nazwa
+
+    if "(" in nazwa and ")" in nazwa:
+        nazwa_bez_nawiasow, skrot = wytnij_skrot(nazwa)
+        try:
+            return Jednostka.objects.get(skrot=skrot)
+        except Jednostka.DoesNotExist:
+            pass
 
     try:
         return Jednostka.objects.get(Q(nazwa__iexact=nazwa) | Q(skrot__iexact=nazwa))
@@ -181,11 +200,17 @@ def matchuj_autora(
             Q(nazwisko__iexact=nazwisko.strip())
             | Q(poprzednie_nazwiska__icontains=nazwisko.strip()),
             imiona__iexact=imiona.strip(),
-        )
+        ),
+        Q(
+            Q(nazwisko__iexact=nazwisko.strip())
+            | Q(poprzednie_nazwiska__icontains=nazwisko.strip()),
+            imiona__iexact=imiona.strip().split(" ")[0],
+        ),
     ]
 
     if tytul_str:
-        queries.append(queries[0] & Q(tytul__skrot=tytul_str))
+        for query in queries[: len(queries)]:
+            queries.append(query & Q(tytul__skrot=tytul_str))
 
     for qry in queries:
         try:
@@ -222,6 +247,36 @@ def matchuj_autora(
                 Autor_Jednostka.DoesNotExist,
             ):
                 pass
+
+    # Jeżeli nie ma nadal jednego autora który spełnia te kryteria, spróbuj znaleźć konto
+    # z ORCIDem i tytułem. W przypadku importów z PBNu często było tak, że autorzy byli zdublowani, ale
+    # tylko jeden miał orcid i tytuł:
+
+    try:
+        return Autor.objects.get(
+            Q(
+                Q(nazwisko__iexact=nazwisko.strip())
+                | Q(poprzednie_nazwiska__icontains=nazwisko.strip()),
+                imiona__iexact=imiona.strip(),
+            ),
+            orcid__isnull=False,
+            tytul_id__isnull=False,
+        )
+    except (Autor.DoesNotExist, Autor.MultipleObjectsReturned):
+        pass
+
+    # .. albo tylko z tytułem:
+    try:
+        return Autor.objects.get(
+            Q(
+                Q(nazwisko__iexact=nazwisko.strip())
+                | Q(poprzednie_nazwiska__icontains=nazwisko.strip()),
+                imiona__iexact=imiona.strip(),
+            ),
+            tytul_id__isnull=False,
+        )
+    except (Autor.DoesNotExist, Autor.MultipleObjectsReturned):
+        pass
 
     return None
 
@@ -274,21 +329,24 @@ def matchuj_zrodlo(
 
 
 def matchuj_dyscypline(kod, nazwa):
-    nazwa = normalize_nazwa_dyscypliny(nazwa)
-    try:
-        return Dyscyplina_Naukowa.objects.get(nazwa=nazwa)
-    except Dyscyplina_Naukowa.DoesNotExist:
-        pass
-    except Dyscyplina_Naukowa.MultipleObjectsReturned:
-        pass
+    if nazwa:
+        for nazwa in [nazwa, nazwa.split("(", 2)[0]]:
+            nazwa = normalize_nazwa_dyscypliny(nazwa)
+            try:
+                return Dyscyplina_Naukowa.objects.get(nazwa=nazwa)
+            except Dyscyplina_Naukowa.DoesNotExist:
+                pass
+            except Dyscyplina_Naukowa.MultipleObjectsReturned:
+                pass
 
-    kod = normalize_kod_dyscypliny(kod)
-    try:
-        return Dyscyplina_Naukowa.objects.get(kod=kod)
-    except Dyscyplina_Naukowa.DoesNotExist:
-        pass
-    except Dyscyplina_Naukowa.MultipleObjectsReturned:
-        pass
+    if kod:
+        kod = normalize_kod_dyscypliny(kod)
+        try:
+            return Dyscyplina_Naukowa.objects.get(kod=kod)
+        except Dyscyplina_Naukowa.DoesNotExist:
+            pass
+        except Dyscyplina_Naukowa.MultipleObjectsReturned:
+            pass
 
 
 def matchuj_wydawce(nazwa, pbn_uid_id=None, similarity=0.9):
@@ -347,6 +405,21 @@ normalized_db_zrodlo_skrot = Trim(
 
 def normalize_zrodlo_skrot_for_db_lookup(s):
     return s.lower().replace(" ", "").strip().replace("-", "").replace(".", "")
+
+
+def normalize_date(s):
+    if s is None:
+        return s
+
+    if isinstance(s, str):
+        s = s.strip()
+
+        if not s:
+            return
+
+        return dateutil.parser.parse(s)
+
+    return s
 
 
 # Znormalizowany skrot zrodla do wyszukiwania -- wyrzucone wszystko procz kropek
@@ -553,7 +626,7 @@ def matchuj_aktualna_dyscypline_pbn(kod, nazwa):
         pass
 
 
-def matchuj_nieaktualna_dyscypline_pbn(kod, nazwa, rok_min=2017, rok_max=2022):
+def matchuj_nieaktualna_dyscypline_pbn(kod, nazwa, rok_min=2018, rok_max=2022):
     kod = normalize_kod_dyscypliny_pbn(kod)
 
     from pbn_api.models import Discipline
@@ -570,3 +643,21 @@ def matchuj_nieaktualna_dyscypline_pbn(kod, nazwa, rok_min=2017, rok_max=2022):
         return Discipline.objects.get(*nieaktualna_parent_group_args, name=nazwa)
     except Discipline.DoesNotExist:
         pass
+
+
+def matchuj_uczelnie(nazwa):
+    from pbn_api.models import Institution
+
+    try:
+        return Institution.objects.get(name=nazwa)
+    except Institution.DoesNotExist:
+        pass
+
+    res = (
+        Institution.objects.annotate(similarity=TrigramSimilarity("name", nazwa))
+        .filter(similarity__gte=0.8)
+        .order_by("-similarity")
+    )
+
+    if res.count() == 1:
+        return res.first()

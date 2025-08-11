@@ -1,14 +1,14 @@
-{% extends "base.html" %}
+{% extends "base.html" %}{% load deklinacja %}
 
 {% block extratitle %}
-    Indeks jednostek{% if wybrana != None %} - litera {{ wybrana }}{% endif %}
+    Indeks {% rzeczownik_jednostek_d %}{% if wybrana != None %} - litera {{ wybrana }}{% endif %}
 {% endblock %}
 
 {% block breadcrumbs %}
     {{ block.super }}
     <li {% if wybrana == None %}class="current"{% endif %}>
         {% if wybrana != None %}<a  href="{% url "bpp:browse_jednostki" %}">{% endif %}
-            Jednostki
+            {% rzeczownik_jednostki %}
         {% if wybrana != None %}</a>{% endif %}
     </li>
 {% endblock %}
@@ -46,7 +46,7 @@
         {% endfor %}
         {% if not object_list %}
             <div class="callout cell warning">
-                Nie znaleziono takich jednostek. <p></p>
+                Nie znaleziono takich {% rzeczownik_jednostek %}. <p></p>
                 <a href="{% url "bpp:browse_jednostki" %}">Kliknij tutaj, aby spróbować ponownie.</a>
             </div>
 

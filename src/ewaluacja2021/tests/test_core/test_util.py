@@ -1,7 +1,10 @@
 from model_bakery import baker
 
 from ewaluacja2021.core.util import get_lista_prac
-from ewaluacja2021.models import IloscUdzialowDlaAutora, LiczbaNDlaUczelni
+from ewaluacja2021.models import (
+    IloscUdzialowDlaAutora_2022_2025,
+    LiczbaNDlaUczelni_2022_2025,
+)
 
 from bpp.models import Autor_Dyscyplina, Wydawnictwo_Ciagle
 
@@ -9,14 +12,14 @@ from bpp.models import Autor_Dyscyplina, Wydawnictwo_Ciagle
 def test_get_lista_prac_zakres_lat(
     autor_jan_nowak, dyscyplina1, jednostka, uczelnia, denorms, typy_odpowiedzialnosci
 ):
-    """Sprawdza, czy lista prac odrzuca prace spoza zakresu 2017-2021"""
+    """Sprawdza, czy lista prac odrzuca prace spoza zakresu 2022-2025"""
 
     # Zrob dane testowe od 2015 do 2025
 
-    LiczbaNDlaUczelni.objects.create(
+    LiczbaNDlaUczelni_2022_2025.objects.create(
         dyscyplina_naukowa=dyscyplina1, uczelnia=uczelnia, liczba_n=100
     )
-    IloscUdzialowDlaAutora.objects.create(
+    IloscUdzialowDlaAutora_2022_2025.objects.create(
         autor=autor_jan_nowak,
         ilosc_udzialow=10,
         ilosc_udzialow_monografie=10,
@@ -38,4 +41,4 @@ def test_get_lista_prac_zakres_lat(
 
     denorms.flush()
 
-    assert (len(list(get_lista_prac(dyscyplina1.nazwa)))) == 5
+    assert (len(list(get_lista_prac(dyscyplina1.nazwa)))) == 4

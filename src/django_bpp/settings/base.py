@@ -9,7 +9,7 @@ from textwrap import dedent
 
 import environ
 import sentry_sdk
-from django.core.exceptions import DisallowedHost, ImproperlyConfigured
+from django.core.exceptions import ImproperlyConfigured
 from sentry_sdk.integrations.django import DjangoIntegration
 
 from bpp.util import slugify_function
@@ -24,6 +24,7 @@ SITE_ROOT = os.path.abspath(os.path.join(SCRIPT_PATH, "..", ".."))
 
 SECRET_KEY_UNSET = "Please set the DJANGO_BPP_SECRET_KEY variable."
 
+
 # Ponieważ konieczna jest konfiguracja django-ldap-auth i potrzebne będą kolejne zmienne
 # środowiskowe, ponieważ z Pipenv przeszedłem na poetry, ponieważ tych konfiguracji i
 # serwerów (testowych, produkcyjnych) robi się coraz więcej -- z tych okazji zaczynam
@@ -31,6 +32,14 @@ SECRET_KEY_UNSET = "Please set the DJANGO_BPP_SECRET_KEY variable."
 # konfigurację LDAPa, docelowo przez django-environ powinna iść cała konfiguracja
 # serwisu + docelowo będzie pewnie można zrezygnować z wielu plików konfiguracyjnych
 # (local, test, production).
+
+
+def int_or_none(v):
+    try:
+        return int(v)
+    except ValueError:
+        return None
+
 
 env = environ.Env(
     # casting, default value
@@ -87,6 +96,7 @@ env = environ.Env(
     DJANGO_BPP_DB_PASSWORD=(str, "password"),
     DJANGO_BPP_DB_HOST=(str, "localhost"),
     DJANGO_BPP_DB_PORT=(int, 5432),
+    DJANGO_BPP_CONN_MAX_AGE=(int_or_none, 0),
     DJANGO_BPP_DB_DISABLE_SSL=(bool, False),
     DJANGO_BPP_SECRET_KEY=(str, SECRET_KEY_UNSET),
     DJANGO_BPP_MEDIA_ROOT=(str, os.path.join(os.getenv("HOME", "C:/"), "bpp-media")),
@@ -119,6 +129,11 @@ env = environ.Env(
     # Statyczne pliki (CSS, JS, obrazki)
     #
     STATIC_ROOT=(str, os.path.abspath(os.path.join(SCRIPT_PATH, "..", "staticroot"))),
+    #
+    # Wyświetlanie nazwy wydziału przez jednostki
+    #
+    DJANGO_BPP_SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI=(bool, True),
+    DJANGO_BPP_UCZELNIA_UZYWA_WYDZIALOW=(bool, True),
 )
 
 ENVFILE_PATHS = []
@@ -156,31 +171,24 @@ SENTRYSDK_CONFIG_URL = (
     or os.getenv("DJANGO_BPP_SENTRYSDK_CONFIG_URL", None)
 )
 
+USING_SENTRYSDK = False
+
 PROCESS_INTERACTIVE = sys.stdin.isatty()
 
 if SENTRYSDK_CONFIG_URL and not PROCESS_INTERACTIVE:
     # Ignore common errors
-    def before_send(event, hint):
-        if "exc_info" in hint:
-            errors_to_ignore = (
-                DisallowedHost,
-                RuntimeError("Response content shorter than Content-Length"),
-            )
-            exc_value = hint["exc_info"][1]
-
-            if isinstance(exc_value, errors_to_ignore):
-                return None
-
-        return event
+    from ..sentry_support import global_stacktrace_filter
 
     sentry_sdk.init(
         dsn=SENTRYSDK_CONFIG_URL,
         traces_sample_rate=env("SENTRYSDK_TRACES_SAMPLE_RATE"),
         integrations=[DjangoIntegration()],
         release=VERSION,
-        before_send=before_send,
+        before_send=global_stacktrace_filter,
         send_default_pii=True,
     )
+
+    USING_SENTRYSDK = True
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
@@ -250,11 +258,10 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 "password_policies.context_processors.password_status",
                 "bpp.context_processors.uczelnia.uczelnia",
-                "bpp.context_processors.config.theme_name",
-                "bpp.context_processors.config.enable_new_reports",
-                "bpp.context_processors.config.max_no_authors_on_browse_jednostka_page",
+                "bpp.context_processors.config.bpp_configuration",
                 "bpp.context_processors.global_nav.user",
                 "bpp.context_processors.google_analytics.google_analytics",
+                "bpp.context_processors.pbn_token_aktualny.pbn_token_aktualny",
                 "cookielaw.context_processors.cookielaw",
             ],
         },
@@ -311,6 +318,7 @@ if TESTING:
 
 INSTALLED_APPS = [
     # "django_werkzeug",
+    "daphne",
     "tinymce",
     "tee",
     "formtools",
@@ -393,6 +401,12 @@ INSTALLED_APPS = [
     "test_bpp",
     #
     "dbtemplates",
+    #
+    "oswiadczenia",
+    "import_polon",
+    "import_list_ministerialnych",
+    "snapshot_odpiec",
+    "stan_systemu",
 ]
 
 # Profile użytkowników
@@ -489,7 +503,7 @@ BROKER_URL = f"redis://{REDIS_HOST}:{REDIS_PORT}/{env('DJANGO_BPP_REDIS_DB_BROKE
 # CELERY_RESULT_BACKEND = BROKER_URL
 CELERY_RESULT_BACKEND = "django-db"
 CELERY_BROKER_URL = BROKER_URL
-
+CELERY_RESULT_EXTENDED = True
 #
 SESSION_REDIS_HOST = REDIS_HOST
 SESSION_REDIS_PORT = REDIS_PORT
@@ -502,12 +516,14 @@ SESSION_SECURITY_PASSIVE_URLS = ["/messages/"]
 
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.postgresql",
+        # "ENGINE": "django.db.backends.postgresql_psycopg2",
+        "ENGINE": "django_bpp.db_connclosed_fix",
         "NAME": env("DJANGO_BPP_DB_NAME"),
         "USER": env("DJANGO_BPP_DB_USER"),
         "PASSWORD": env("DJANGO_BPP_DB_PASSWORD"),
         "HOST": env("DJANGO_BPP_DB_HOST"),
         "PORT": env("DJANGO_BPP_DB_PORT"),
+        "CONN_MAX_AGE": env("DJANGO_BPP_CONN_MAX_AGE"),
     },
 }
 
@@ -552,6 +568,10 @@ CELERYBEAT_SCHEDULE = {
     "zaktualizuj-liczbe-cytowan": {
         "task": "bpp.tasks.zaktualizuj_liczbe_cytowan",
         "schedule": timedelta(days=5),
+    },
+    "pbn-api-kolejka-wyczysc-wpisy-bez-rekordow": {
+        "task": "pbn_api.tasks.kolejka_wyczysc_wpisy_bez_rekordow",
+        "schedule": timedelta(days=7),
     },
 }
 
@@ -650,6 +670,7 @@ YARN_FILE_PATTERNS = {
     # Zostana pozniej usuniete przez MANIFEST.in
     "qunit": ["qunit/qunit.js", "qunit/qunit.css"],
     "sinon": ["pkg/sinon.js"],
+    "htmx.org": ["dist/htmx.js"],
 }
 
 REST_FRAMEWORK = {
@@ -698,6 +719,9 @@ LOGGING = {
         "require_debug_true": {
             "()": "django.utils.log.RequireDebugTrue",
         },
+        "require_sentrysdk_false": {
+            "()": "django_bpp.sentry_support.RequireUSING_SENTRYSDKFalse"
+        },
     },
     "formatters": {
         "django.server": {
@@ -724,7 +748,7 @@ LOGGING = {
         },
         "mail_admins": {
             "level": "ERROR",
-            "filters": ["require_debug_false"],
+            "filters": ["require_debug_false", "require_sentrysdk_false"],
             "class": "django.utils.log.AdminEmailHandler",
         },
     },
@@ -1056,7 +1080,6 @@ DYNAMIC_COLUMNS_ALLOWED_IMPORT_PATHS = [
 ]
 
 DYNAMIC_COLUMNS_FORBIDDEN_COLUMN_NAMES = [
-    "^kc_.*",
     ".*_cache$",
     ".*_sort$",
     "search_index",
@@ -1134,3 +1157,15 @@ LANGUAGE_COOKIE_SECURE = True
 X_FRAME_OPTIONS = "SAMEORIGIN"
 
 STATICSITEMAPS_ROOT_DIR = os.path.relpath(STATIC_ROOT, os.getcwd())
+
+DATA_UPLOAD_MAX_NUMBER_FIELDS = 5000
+
+DJANGO_BPP_SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI = env(
+    "DJANGO_BPP_SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI"
+)
+
+#
+# Po zalogowaniu się do PBN ustalamy, że token jest ważny [TYLE] godzin
+#
+
+PBN_TOKEN_HOURS_GRACE_TIME = 24

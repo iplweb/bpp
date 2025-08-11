@@ -7,6 +7,7 @@ from ..models import (
     Grupa_Pracownicza,
     Jezyk,
     Rodzaj_Zrodla,
+    Rzeczownik,
     Status_Korekty,
     Typ_KBN,
     Typ_Odpowiedzialnosci,
@@ -62,7 +63,9 @@ from bpp.models.openaccess import (
 
 
 class JezykAdmin(RestrictDeletionToAdministracjaGroupAdmin):
-    list_display = ["nazwa", "skrot", "pbn_uid", "skrot_crossref"]
+    list_display = ["nazwa", "skrot", "pbn_uid", "skrot_crossref", "widoczny"]
+    list_filter = ["widoczny"]
+    search_fields = ["nazwa", "skrot", "pbn_uid__pk", "skrot_crossref"]
 
 
 class Funkcja_AutoraAdmin(RestrictDeletionToAdministracjaGroupAdmin):
@@ -87,6 +90,22 @@ class Zewnetrzna_Baza_DanychAdmin(
     RestrictDeletionToAdministracjaGroupAdmin, BaseBppAdminMixin, admin.ModelAdmin
 ):
     list_display = ["nazwa", "skrot"]
+
+
+@admin.register(Rzeczownik)
+class RzeczownikAdmin(
+    RestrictDeletionToAdministracjaGroupAdmin, BaseBppAdminMixin, admin.ModelAdmin
+):
+    list_display = ["uid", "m", "d", "c", "b", "n", "ms", "w"]
+    search_fields = ["uid", "m", "d", "c", "b", "n", "ms", "w"]
+    list_filter = ["uid"]
+    readonly_fields = ["uid"]
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
 
 class Charakter_PBNAdmin(
@@ -223,6 +242,10 @@ class BppUserAdmin(UserAdmin):
         "is_active",
         "is_superuser",
         "lista_grup",
+    )
+
+    fieldsets = UserAdmin.fieldsets + (
+        ("PBN API", {"fields": ("przedstawiaj_w_pbn_jako",)}),
     )
 
     add_form = BppUserCreationForm

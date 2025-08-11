@@ -1,6 +1,7 @@
 """
 Źródła.
 """
+
 from autoslug import AutoSlugField
 from django.db import models
 from django.db.models import CASCADE, SET_NULL
@@ -88,18 +89,19 @@ class Punktacja_Zrodla(ModelPunktowanyBaza, ModelZKwartylami, models.Model):
 
 
 class Dyscyplina_Zrodla(models.Model):
+    rok = YearField()
     zrodlo = models.ForeignKey("Zrodlo", on_delete=CASCADE)
     dyscyplina = models.ForeignKey("Dyscyplina_Naukowa", on_delete=CASCADE)
 
     class Meta:
         verbose_name = "przypisanie dyscypliny do źródła"
         verbose_name_plural = "przypisanie dyscyplin do źródła"
-        ordering = ["zrodlo__nazwa", "dyscyplina__nazwa"]
-        unique_together = [("zrodlo", "dyscyplina")]
+        ordering = ["zrodlo__nazwa", "rok", "dyscyplina__nazwa"]
+        unique_together = [("zrodlo", "dyscyplina", "rok")]
         app_label = "bpp"
 
     def __str__(self):
-        return f'Przypisanie dyscypliny "{self.dyscyplina}" do źródła "{self.zrodlo}"'
+        return f'Przypisanie dyscypliny "{self.dyscyplina}" do źródła "{self.zrodlo}" dla roku {self.rok}'
 
 
 class ZrodloManager(FulltextSearchMixin, models.Manager):
@@ -194,4 +196,15 @@ class Zrodlo(LinkDoPBNMixin, ModelZAdnotacjami, ModelZISSN):
             .values_list("rok", flat=True)
             .distinct()
             .order_by("rok")
+        )
+
+    def dyscypliny_aktualna_ewaluacja(
+        self,
+        min_year=const.PBN_AKTUALNA_EWALUACJA_START,
+        max_year=const.PBN_AKTUALNA_EWALUACJA_STOP,
+    ):
+        return (
+            self.dyscyplina_zrodla_set.filter(rok__gte=min_year, rok__lte=max_year)
+            .select_related()
+            .order_by("rok", "dyscyplina__kod")
         )

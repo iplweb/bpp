@@ -22,11 +22,12 @@ class GAD(FitnessFuncMixin, Ewaluacja3NBase):
         self,
         nazwa_dyscypliny="nauki medyczne",
         max_gen=1000,
-        saturate=500,
+        saturate=750,
         ile_najlepszych=50,
         ile_losowych=100,
         ile_zupelnie_losowych=50,
-        ile_epok=5,
+        ile_epok=10,
+        ile_epok_wysycenie=2,
         output_path=None,
     ):
         Ewaluacja3NBase.__init__(
@@ -42,6 +43,7 @@ class GAD(FitnessFuncMixin, Ewaluacja3NBase):
         self.starting_pkd = 0
 
         self.maks_epok = ile_epok
+        self.ile_epok_wysycenie = ile_epok_wysycenie
 
         self.lista_prac_dict = {x.id: x for x in self.lista_prac_tuples}
 
@@ -50,16 +52,17 @@ class GAD(FitnessFuncMixin, Ewaluacja3NBase):
         self.ile_zupelnie_losowych = ile_zupelnie_losowych
 
     def on_generation(self, ga_instance: pygad.GA):
-        no_generations = ga_instance.generations_completed or 1
-        best_solution = ga_instance.best_solution()
-
-        print(
-            f"Generacja: {no_generations}\t"
-            f"Procent: {no_generations * 100 // self.max_gen} \t"
-            f"Najlepsze rozwiązanie: {best_solution[1]}\t"
-            "\r",
-            end="",
-        )
+        return
+        # no_generations = ga_instance.generations_completed or 1
+        # best_solution = ga_instance.best_solution()
+        #
+        # print(
+        #     f"Generacja: {no_generations}\t"
+        #     f"Procent: {no_generations * 100 // self.max_gen} \t"
+        #     f"NNajlepsze rozwiązanie: {best_solution[1]}\t"
+        #     "\r",
+        #     end="",
+        # )
 
     def pracuj(self):
 
@@ -79,6 +82,15 @@ class GAD(FitnessFuncMixin, Ewaluacja3NBase):
             )
         ]
 
+        self.najlepszy_osobnik_odpiecia = [
+            self.index_prac_by_id[x.id]
+            for x in sorted(
+                self.lista_prac_tuples,
+                key=lambda x: attrgetter("slot")(x) / attrgetter("pkdaut")(x),
+                reverse=True,
+            )
+        ]
+
         no_workers = int(math.ceil(os.cpu_count() * 0.75))
 
         self.pool = multiprocessing.Pool(
@@ -86,8 +98,8 @@ class GAD(FitnessFuncMixin, Ewaluacja3NBase):
             initializer=multiprocessing_gad_pool_initializer,
             initargs=(
                 self.lista_prac_by_index,
-                self.liczba_2_2_n,
-                self.liczba_0_8_n,
+                self.liczba_3n,
+                self.procent_monografii,
                 self.maks_pkt_aut_calosc,
                 self.maks_pkt_aut_monografie,
             ),
@@ -135,6 +147,7 @@ class GAD(FitnessFuncMixin, Ewaluacja3NBase):
 
             initial_population = (
                 [najlepszy_osobnik] * self.ile_najlepszych
+                + [self.najlepszy_osobnik_odpiecia] * self.ile_najlepszych
                 + osbn_losowe
                 + osbn_czesciowo_losowe
             )
@@ -149,7 +162,7 @@ class GAD(FitnessFuncMixin, Ewaluacja3NBase):
                 num_parents_mating=2,
                 initial_population=initial_population,
                 gene_type=int,
-                gene_space=baza_dla_randomizera,
+                gene_space=baza_dla_randomizera or None,
                 crossover_type="single_point",
                 mutation_type="swap",
                 # mutation_num_genes=int(math.ceil(len(najlepszy_osobnik) * 0.5)),
@@ -161,51 +174,52 @@ class GAD(FitnessFuncMixin, Ewaluacja3NBase):
 
             solution, fitness, idx = self.ga_instance.best_solution()
 
-            print(f"\n\nNajlepsze rozwiązanie z algorytmu genetycznego: {fitness}")
+            print(f"Najlepsze rozwiązanie z algorytmu genetycznego: {fitness}")
 
             solution = solution.tolist()
-            print("Przeprowadzam przesuwanie bąbelkowe...")
-            direction = 1
-            ile_razy_nie_znaleziono_lepszych = 0
-            while True:
 
-                znaleziono_lepsze = False
-
-                for a in range(0, len(solution)):
-                    if a == 0 and direction == 1:
-                        continue
-
-                    if a == len(solution) - 1 and direction == -1:
-                        continue
-
-                    new_solution = solution[:]
-                    if direction == 1:
-                        new_solution.insert(0, new_solution.pop(a))
-                    else:
-                        new_solution.append(new_solution.pop(a))
-
-                    self.fitness_func(new_solution)
-
-                    if self.suma_pkd > fitness:
-                        fitness = self.suma_pkd
-                        print(
-                            f"Nowe rozwiązanie z przesuwania bąbelkowego: {fitness}\r",
-                            end="",
-                        )
-                        solution = new_solution
-                        ile_razy_nie_znaleziono_lepszych = 0
-                        znaleziono_lepsze = True
-
-                if not znaleziono_lepsze:
-                    direction = -direction
-                    ile_razy_nie_znaleziono_lepszych += 1
-
-                    if ile_razy_nie_znaleziono_lepszych == 2:
-                        # Nie znaleziono lepszych zestawów w obydwu kierunkach
-                        break
-
-            self.fitness_func(solution)
-            print(f"Po przesuwaniu bąbelkowym: {self.suma_pkd}")
+            # print("Przeprowadzam przesuwanie bąbelkowe...")
+            #
+            # ile_razy_nie_znaleziono_lepszych = 0
+            # direction = 1
+            #
+            # while True:
+            #     znaleziono_lepsze = False
+            #     for a in range(0, len(solution)):
+            #         if a == 0 and direction == 1:
+            #             continue
+            #
+            #         if a == len(solution) - 1 and direction == -1:
+            #             continue
+            #
+            #         new_solution = solution[:]
+            #         if direction == 1:
+            #             new_solution.insert(0, new_solution.pop(a))
+            #         else:
+            #             new_solution.append(new_solution.pop(a))
+            #
+            #         self.fitness_func(new_solution)
+            #
+            #         if self.suma_pkd > fitness:
+            #             fitness = self.suma_pkd
+            #             print(
+            #                 f"Nowe rozwiązanie z przesuwania bąbelkowego: {fitness}\r",
+            #                 end="",
+            #             )
+            #             solution = new_solution
+            #             ile_razy_nie_znaleziono_lepszych = 0
+            #             znaleziono_lepsze = True
+            #
+            #     if not znaleziono_lepsze:
+            #         direction = -direction
+            #         ile_razy_nie_znaleziono_lepszych += 1
+            #
+            #         if ile_razy_nie_znaleziono_lepszych == 2:
+            #             # Nie znaleziono lepszych zestawów w obydwu kierunkach
+            #             break
+            #
+            # self.fitness_func(solution)
+            # print(f"Po przesuwaniu bąbelkowym: {self.suma_pkd}")
 
             return solution
 
@@ -214,11 +228,26 @@ class GAD(FitnessFuncMixin, Ewaluacja3NBase):
 
         solution = self.najlepszy_osobnik
 
+        pre = self.suma_pkd
+        wysycenie_epok = self.ile_epok_wysycenie
         while ile_epok < self.maks_epok:  # and poprzedni_wynik < self.suma_pkd:
             ile_epok += 1
             print(f"Obliczam epoke nr {ile_epok}")
-            solution = cykl_genetyczny(solution, nr_cyklu=ile_epok)
-            self.fitness_func(solution)
+            new_solution = cykl_genetyczny(solution, nr_cyklu=ile_epok)
+            res = self.fitness_func(new_solution)
+
+            if res > pre:
+                solution = new_solution
+                pre = res
+
+            elif res <= pre:
+                # Obliczylismy tyle samo albo mniej niz bylo, wroc do poprzedniej wersji, ale tez
+                # zmniejsz wysycenie epok, zeby po 4 takich akcjach wyjsc z pętli...
+                wysycenie_epok -= 1
+
+            if wysycenie_epok < 0:
+                print("Wysycenie epok")
+                ile_epok = self.maks_epok
 
         # self.fitness_func(solution)
         self.lista_prac = self.lista_prac_tuples

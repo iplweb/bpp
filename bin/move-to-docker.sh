@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 # Skrypt ułatwiający przeniesienie bazy danych BPP z "metalowego" PostgreSQL
 # na PostgreSQL w dockerze + deinstalujący pakiety z "metalowego" serwera

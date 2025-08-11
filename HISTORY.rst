@@ -4,6 +4,380 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202508.1184 (2025-08-11)
+============================
+
+Usprawnienie
+------------
+
+- eksport samych oświadczeń
+- polecenie do ustawienia pustych dat oświadczeń rekordów po 2022.
+
+
+Bpp 202507.1183 (2025-07-02)
+============================
+
+Naprawione
+----------
+
+- usuń problem z przeliczaniem publikacji HST (PKd autora większe niż PK pracy)
+
+
+Bpp 202506.1182 (2025-06-04)
+============================
+
+Naprawione
+----------
+
+- nie stosuj mnożnika 1.5 dla HST poziom 1 redakcja monografi, autorstwo rozdziału
+
+
+Bpp 202506.1181 (2025-06-04)
+============================
+
+Naprawione
+----------
+
+- errata do mappera punktów dla wydawnictw ciągłych
+
+
+Usprawnienie
+------------
+
+- procedura weryfikująca zamapowania autorów przy pierwszym imporcie z PBN
+
+
+Bpp 202506.1180 (2025-06-04)
+============================
+
+Usprawnienie
+------------
+
+- popraw przypisywanie punktów PK po imporcie z PBN (#1490)
+- opcjonalne pole z pytaniem o publikację pełnego tekstu pracy (#1491)
+
+
+Bpp 202505.1179 (2025-05-11)
+============================
+
+Naprawione
+----------
+
+- jeżeli ilość slotów za 4 lata jest mniejsza, jak 1 to podciągaj slot dla artykułów do 1; analogicznie slot dla
+  monografii za 4 lata -- jeżeli mniejszy, jak 1 to podciągaj do 1.
+- zaokrąglaj ilość udziałów oraz liczby N do 2 miejsc po przecinku
+
+
+Usprawnienie
+------------
+
+- flaga dla obiektu Uczelnia umożliwiająca włączenie/wyłączenie zaokrąglania udziałów do pełnych slotów
+- obniżaj ilość udziałów do 4 jeżeli wyjdzie więcej
+- obsługa dyscyplin nie raportowanych (ilość slotów mniejsza niż 12 za ostatni rok ewaluacji)
+- podgląd ilości udziałów autorów za każdy rok wraz z eksportem
+
+
+Bpp 202504.1178 (2025-04-13)
+============================
+
+Naprawione
+----------
+
+- naliczaj udziały dla doktorantów/innych zatrudnionych, ale nie wliczaj ich do liczby N
+
+
+Usprawnienie
+------------
+
+- dodaj system kadrowy ID do eksportu danych autor+dyscyplina z modułu redagowania
+- w przypadku zdublowania adresu strony WWW, wymuszaj unikalny dodając hashtag i losowe znaki
+
+
+Bpp 202504.1176 (2025-04-07)
+============================
+
+Naprawione
+----------
+
+- nie licz punktacji N dla autorów spoza N
+
+
+Bpp 202504.1174 (2025-04-01)
+============================
+
+Naprawione
+----------
+
+- błąd importu POLON przy określonym autorze, ale nie określonych polach dyscyplin
+- lepsze parsowanie daty w plikach importu POLON w formacie CSV
+
+
+Bpp 202503.1172 (2025-03-31)
+============================
+
+Naprawione
+----------
+
+- poprawne liczenie liczby N
+
+
+Bpp 202503.1171 (2025-03-31)
+============================
+
+Naprawione
+----------
+
+- workerserver nie wymaga obecności polecenia zip(1)
+
+
+Bpp 202503.1169 (2025-03-31)
+============================
+
+Usprawnienie
+------------
+
+- można zapisywać/wczytywać snapshoty przypięć i odpięć w module optymalizacji
+
+
+Bpp 202503.1166 (2025-03-21)
+============================
+
+Usprawnienie
+------------
+
+- Lepsza wysyłka wydawnictwa nadrzędnego w PBN
+- automatyczne obliczanie liczby N dla uczelni
+- licz dyscypliny dla autora rodzaju 'inny zatrudniony'
+- raporty ewaluacyjne 2022-2025
+- tłumacz dyscyplin PBN obsługuje teraz 3 zakresy lat
+
+
+Bpp 202503.1165 (2025-03-16)
+============================
+
+Usprawnienie
+------------
+
+- Lepsza wysyłka wydawnictwa nadrzędnego w PBN
+
+
+Bpp 202503.1164 (2025-03-16)
+============================
+
+Naprawione
+----------
+
+- lepsze matchowanie dyscyplin zawierających wielkie litery, spacje, nawiasy z opisem w imporcie POLON
+
+
+Usprawnienie
+------------
+
+- PBN UID dla publikacji musi być unikalny na całą bazę
+- import absencji z POLON
+- importuj "zatrudnienie do" i "zatrudnienie od" z POLONu
+- lepsze drukowanie oświadczeń
+- możliwość importu POLON z CSV
+- ostrzegaj, jeżeli serwer PBN nie odpowie PBN UID
+- uwzględniaj pole 'rodzaj autora' obiektu Autor_Dyscyplina przy obliczeniach -- autorzy
+  z innym rodzajem niż "pracownik zaliczany do liczby N" lub "doktorant" NIE będą mieli
+  obliczanych punktów za dyscypliny
+
+
+Bpp 202503.1162 (2025-03-05)
+============================
+
+Naprawione
+----------
+
+- errata importu PBN (redaktorzy)
+
+
+Usprawnienie
+------------
+
+- możliwość ukrywania języków - dla danych nieużywanych
+
+
+Bpp 202503.1161 (2025-03-03)
+============================
+
+Naprawione
+----------
+
+- prawidłowa obsługa ostrzeżeń w TextNotificatorze
+
+
+Usprawnienie
+------------
+
+- zwiększ czas grace-time dla tokena PBN do 24 godzin
+
+
+Bpp 202503.1160 (2025-03-02)
+============================
+
+Usprawnienie
+------------
+
+- umożliwiaj dla wydawnictw zwartych wprowadzanie "okładek" z PBNu czyli wydawnictw nadrzędnych tylko w PBN
+- uszczelnianie PBN UID: odmawiaj ustawienia istniejącego PBN UID dla nowego rekordu (dublowanie PBN UID) oraz ostrzegaj, gdy PBN UID dla rekordu jest modyfikowany (czyli rekord ma PBN UID i po wysyłce wg odpowiedzi z PBNu powinien być ten UID inny...)
+- wyłącz bezpośrednią modyfikację pola PBN UID
+
+
+Bpp 202502.1159 (2025-02-27)
+============================
+
+Usprawnienie
+------------
+
+- ostrzegaj w przypadku wysyłki PBN, jeżeli autor z dyscypliną nie posiada odpowiednika w PBN
+- pokazuj wartość licencji OpenAccess w raporcie uczelnia - ewaluacja
+
+
+Bpp 202502.1158 (2025-02-22)
+============================
+
+Usprawnienie
+------------
+
+- w przypadku nowych instalacji, włączaj domyślnie opcję "Wysyłaj zawsze PBN UID uczelni jako afiliację"
+
+
+Bpp 202502.1157 (2025-02-18)
+============================
+
+Usprawnienie
+------------
+
+- możliwość wysyłki prac do PBN za pomocą kolejki - w tle (work in progress...)
+
+
+Bpp 202502.1156 (2025-02-17)
+============================
+
+Naprawione
+----------
+
+- popraw niepoprawne wyświetlanie jednostek na pierwszej stronie uczelni
+
+
+Bpp 202502.1155 (2025-02-17)
+============================
+
+Usprawnienie
+------------
+
+- lepsze wyświetlanie danych z PBN w module redagowania
+- możliwość zmiany nazewnictwa, uczelnia -> instytut, wydział -> zakład, jednostka -> zespół, i inne
+- pokazuj źródła bez prac w przeglądaniu danych -- opcja
+
+
+Bpp 202502.1154 (2025-02-16)
+============================
+
+Naprawione
+----------
+
+- zabezpieczaj przed pojawianiem się błędu "Connection already closed" po restarcie serwera bazodanowego
+
+
+Bpp 202412.1152 (2024-12-29)
+============================
+
+Usprawnienie
+------------
+
+- umożliwiaj podanie parametru roku za który wgrywane będą informacje o opłatach do PBN
+
+
+Bpp 202412.1150 (2024-12-05)
+============================
+
+Usprawnienie
+------------
+
+- wyłączaj wysyłanie e-mail gdy SentrySDK skonfigurowane
+
+
+Bpp 202412.1149 (2024-12-05)
+============================
+
+Usprawnienie
+------------
+
+- zaimplementowano "miękkie kasowanie" w zgłoszeniach publikacji (#1468)
+- specjalny widok do testowania konfiguracji Sentry
+
+
+Bpp 202411.1148 (2024-11-25)
+============================
+
+Usprawnienie
+------------
+
+- obsługa publikacji z punktacją HST + nie-HST (#1316)
+
+
+Bpp 202411.1145 (2024-11-25)
+============================
+
+Naprawione
+----------
+
+- korekta raportu zerowego -- opcja "pokazuj występujących we wszystkich latach
+  z zakresu" poprawnie obsługuje autorów nie mających deklaracji dyscyplin
+  za cały raportowany czasokres (#1413)
+
+
+Bpp 202411.1144 (2024-11-18)
+============================
+
+Usprawnienie
+------------
+
+- import list ministerialnych, kolory dla dyscyplin (#1411)
+- przeszukiwanie po polu "Status korekty" w multiwyszukiwarce (#1437)
+- możliwość wydruku oświadczeń dot. dyscyplin z poziomu widoku publikacji dla osób zalogowanych, z uprawnieniem do dodawania
+  rekordów (#1438)
+- dodaj punktację do źródła / uzupełnij punktację ze źródła obsługuje również kwartyle (#1460)
+- usunięto odwołania do pól dla Komisji Centralnej z kodu (#1462)
+- wyświetlaj kwartyl WoS/SCOPUS w raportach (#1464)
+
+
+Bpp 202410.1142 (2024-10-14)
+============================
+
+Naprawione
+----------
+
+- nie pokazuj dyscyplin z nie-aktualnego roku (#1314)
+
+
+Usprawnienie
+------------
+
+- obsługa dyscyplin źródeł dla kolejnych lat; możliwość odfiltrowania autorów nie będących pracownikami w rozbieżności
+  dyscyplin źródeł, możliwość filtrowania po roku, ograniczenie wyświetlanych prac do prac
+  z roku 2017 i wyższych;
+
+
+  możliwość eksportowania rozbiezności dyscyplin źródeł/rekordów do formatu XLS, (#1411)
+- dodaj ID systemu kadrowego do raportu slotów zerowego i raportu slotów ewaluacja upoważnienia (#1458)
+- dodaj PBN UID do raportu slotów - ewaluacja (#1459)
+- wyświetlaj kwartyl źródła (WoS i SCOPUS) w raporcie slotów - ewaluacja (#1464)
+
+
+Bpp 202410.1141 (2024-10-08)
+============================
+
+Naprawione
+----------
+
+- parametryzacja czasu otwarcia połączeń + domyślne wyłączenie persistent connections na produkcji (do momentu Django 5,
+  gdzie można będzie użyć psycopg-pool)
+
+
 Bpp 202410.1140 (2024-10-07)
 ============================
 

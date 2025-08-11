@@ -46,6 +46,11 @@ def test_matchuj_autora_imiona_nazwisko(autor_jan_nowak):
     assert a == autor_jan_nowak
 
 
+def test_matchuj_autora_imiona_nazwisko_dwa_imiona_w_matchu(autor_jan_nowak):
+    a = matchuj_autora("Jan Tadeusz Wiśniowiecki", "Nowak", jednostka=None)
+    assert a == autor_jan_nowak
+
+
 @pytest.mark.django_db
 def test_matchuj_autora_po_aktualnej_jednostce():
     j1 = baker.make(Jednostka)
@@ -105,10 +110,11 @@ def test_matchuj_autora_po_tytule():
         imiona="Jan",
         nazwisko="Kowalski",
     )
-    assert a is None
+    # Jeżeli szukamy autora a jest podobny w systemie to matchuj tego ktory ma tytuł lub orcid
+    assert a.pk == a1.pk
 
     a = matchuj_autora(imiona="Jan", nazwisko="Kowalski", tytul_str="lol.")
-    assert a == a1
+    assert a.pk == a1.pk
 
 
 @pytest.mark.django_db
@@ -117,10 +123,28 @@ def test_matchuj_autora_tytul_bug(jednostka):
     assert True
 
 
+@pytest.mark.parametrize(
+    "kod,nazwa",
+    [
+        ("403_0", "aoijsdf"),
+        ("403_0", None),
+        (None, "foo"),
+        ("403_0", "aoijsdf     "),
+        ("403", "aoijsdf"),
+        ("4.3", "aoijsdf"),
+        ("nieno", "foo"),
+        ("xxx", "foo (dziedzina nauk bylejakich)"),
+    ],
+)
 @pytest.mark.django_db
-def test_matchuj_dyscypline():
+def test_matchuj_dyscypline(kod, nazwa):
     d = Dyscyplina_Naukowa.objects.create(nazwa="foo", kod="4.3")
-    assert matchuj_dyscypline("403_0", "aoijsdf") == d
-    assert matchuj_dyscypline("403", "aoijsdf") == d
-    assert matchuj_dyscypline("4.3", "aoijsdf") == d
-    assert matchuj_dyscypline("nieno", "foo") == d
+
+    assert matchuj_dyscypline(kod, nazwa) == d
+
+
+@pytest.mark.django_db
+def test_matchuj_dyscypline_o_Ziemi():
+    NAZWA = "nauki o Ziemi i środowisku"
+    d = Dyscyplina_Naukowa.objects.create(kod="123", nazwa=NAZWA)
+    assert matchuj_dyscypline(kod=None, nazwa=NAZWA).pk == d.pk

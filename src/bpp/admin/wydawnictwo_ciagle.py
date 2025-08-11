@@ -14,6 +14,7 @@ from .actions import (
     ustaw_przed_korekta,
     ustaw_w_trakcie_korekty,
     wyslij_do_pbn,
+    wyslij_do_pbn_w_tle,
 )
 from .core import KolumnyZeSkrotamiMixin, generuj_inline_dla_autorow
 from .crossref_api_helpers import (
@@ -25,11 +26,14 @@ from .crossref_api_helpers import (
 from .element_repozytorium import Element_RepozytoriumInline
 from .grant import Grant_RekorduInline
 from .helpers import (
-    MODEL_OPCJONALNIE_NIE_EKSPORTOWANY_DO_API_FIELDSET,
-    MODEL_Z_OPLATA_ZA_PUBLIKACJE_FIELDSET,
-    OptionalPBNSaveMixin,
+    poszukaj_duplikatu_pola_www_i_ewentualnie_zmien,
     sprawdz_duplikaty_www_doi,
 )
+from .helpers.fieldsets import (
+    MODEL_OPCJONALNIE_NIE_EKSPORTOWANY_DO_API_FIELDSET,
+    MODEL_Z_OPLATA_ZA_PUBLIKACJE_FIELDSET,
+)
+from .helpers.mixins import OptionalPBNSaveMixin, RestrictDeletionWhenPBNUIDSetMixin
 from .xlsx_export import resources
 from .xlsx_export.mixins import EksportDanychMixin
 from .zglos_publikacje_helpers import UzupelniajWstepneDanePoNumerzeZgloszeniaMixin
@@ -45,24 +49,23 @@ from bpp.admin.filters import (
     PBN_UID_IDObecnyFilter,
     UtworzonePrzezFilter,
 )
-from bpp.admin.helpers import (
+from bpp.admin.helpers.fieldsets import (
     ADNOTACJE_Z_DATAMI_ORAZ_PBN_FIELDSET,
     DWA_TYTULY,
     EKSTRA_INFORMACJE_WYDAWNICTWO_CIAGLE_FIELDSET,
-    MODEL_PUNKTOWANY_KOMISJA_CENTRALNA_FIELDSET,
     MODEL_PUNKTOWANY_WYDAWNICTWO_CIAGLE_FIELDSET,
     MODEL_TYPOWANY_FIELDSET,
     MODEL_Z_ROKIEM,
     MODEL_ZE_SZCZEGOLAMI,
-    NIZSZE_TEXTFIELD_Z_MAPA_ZNAKOW,
     OPENACCESS_FIELDSET,
     POZOSTALE_MODELE_WYDAWNICTWO_CIAGLE_FIELDSET,
     PRACA_WYBITNA_FIELDSET,
     PRZED_PO_LISCIE_AUTOROW_FIELDSET,
     AdnotacjeZDatamiOrazPBNMixin,
-    DomyslnyStatusKorektyMixin,
-    sprobuj_policzyc_sloty,
 )
+from bpp.admin.helpers.mixins import DomyslnyStatusKorektyMixin
+from bpp.admin.helpers.pbn_api.gui import sprobuj_policzyc_sloty
+from bpp.admin.helpers.widgets import NIZSZE_TEXTFIELD_Z_MAPA_ZNAKOW
 from bpp.admin.nagroda import NagrodaInline
 from bpp.models import (  # Publikacja_Habilitacyjna
     Charakter_Formalny,
@@ -200,6 +203,7 @@ class Wydawnictwo_CiagleAdmin(
     AdminCrossrefAPIMixin,
     EksportDanychMixin,
     DynamicColumnsMixin,
+    RestrictDeletionWhenPBNUIDSetMixin,
     admin.ModelAdmin,
 ):
     change_list_template = "admin/bpp/wydawnictwo_ciagle/change_list.html"
@@ -221,6 +225,7 @@ class Wydawnictwo_CiagleAdmin(
         ustaw_w_trakcie_korekty,
         ustaw_przed_korekta,
         wyslij_do_pbn,
+        wyslij_do_pbn_w_tle,
     ]
 
     form = Wydawnictwo_CiagleForm
@@ -304,7 +309,6 @@ class Wydawnictwo_CiagleAdmin(
         EKSTRA_INFORMACJE_WYDAWNICTWO_CIAGLE_FIELDSET,
         MODEL_TYPOWANY_FIELDSET,
         MODEL_PUNKTOWANY_WYDAWNICTWO_CIAGLE_FIELDSET,
-        MODEL_PUNKTOWANY_KOMISJA_CENTRALNA_FIELDSET,
         POZOSTALE_MODELE_WYDAWNICTWO_CIAGLE_FIELDSET,
         ADNOTACJE_Z_DATAMI_ORAZ_PBN_FIELDSET,
         MODEL_OPCJONALNIE_NIE_EKSPORTOWANY_DO_API_FIELDSET,
@@ -334,6 +338,7 @@ class Wydawnictwo_CiagleAdmin(
     zrodlo_col.short_description = "Źródło"
 
     def save_model(self, request, obj, form, change):
+        poszukaj_duplikatu_pola_www_i_ewentualnie_zmien(request, obj)
         super().save_model(request, obj, form, change)
         sprobuj_policzyc_sloty(request, obj)
         sprawdz_duplikaty_www_doi(request, obj)

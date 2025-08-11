@@ -1,0 +1,60 @@
+{% extends "base.html" %}{% load render_table from django_tables2 %}
+
+{% block extratitle %}
+    Import Polon - szczegóły {{ object.plik.name }}
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url "import_list_ministerialnych:index" %}">import list ministerialnych</a></li>
+    <li class="current">import {{ object.plik.name }}</li>
+{% endblock %}
+
+
+{% block content %}
+    <h1>Import danych {{ object.plik.name }}</h1>
+    {% if object.zapisz_zmiany_do_bazy %}
+        <div class="panel callout success">
+            <h2>Zmiany wprowadzono do bazy danych</h2>
+        </div>
+    {% else %}
+        <div class="panel callout warning">
+            <h2>Zmiany nie zostały wprowadzone do bazy danych.</h2> Import został uruchomiony bez opcji zapisywania
+            danych do bazy, więc to co widzisz poniżej, to informacja, która byłaby wprowadzona do bazy, gdyby
+            zaznaczono opcję zapisywania zmian do bazy.
+        </div>
+    {% endif %}
+    {% include "long_running/operation_details.html" %}
+
+    {% if object.finished_successfully %}
+
+        {% include "pagination.html" %}
+        <table>
+            <thead>
+            <tr>
+                <th>Wiersz w XLSX</th>
+                <th>Zrodlo XLS</th>
+                <th>Zrodlo BPP</th>
+                <th>Rezultat</th>
+            </tr>
+
+            </thead>
+            <tbody>
+            {% for row in object_list %}
+                <tr>
+                    <td>{{ row.nr_wiersza }}</td>
+                    <td>{{ row.dane_z_xls.Tytul_1 }} ({{ row.dane_z_xls.issn }})</td>
+                    <td>{% if row.zrodlo_id %}
+                        {{ row.zrodlo.nazwa }} ({{ row.zrodlo.issn }})
+                    {% else %}-
+                    {% endif %}</td>
+                    <td>{{ row.rezultat }}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+
+    {% endif %}
+
+
+{% endblock %}

@@ -1,4 +1,5 @@
-#!/bin/bash -e
+#!/bin/bash
+set -euo pipefail
 
 # Ten skrypt:
 # 1) ubija proces runserver
@@ -12,9 +13,13 @@ BASEDIR=$(dirname "$0")
 
 LOCAL_DATABASE_NAME=bpp
 
-pkill -TERM -f "src/manage.py runserver" || true
-
-sleep 1
+# Opcjonalnie: możnaby tu ubić serwer Django, ale ponieważ jest dropdb -f,
+# to nie ma takiej potrzeby. Ewentualnie możnaby go zrestartować po wszystkim, wysyłając
+# sygnał, ale Django chyba na ten moment nie obsługuje czegoś takiego...
+# https://stackoverflow.com/questions/79652902/can-the-django-development-server-be-restarted-with-a-signal
+#
+# pkill -TERM -f "src/manage.py runserver" || true
+# sleep 1
 
 dropdb -f --if-exists $LOCAL_DATABASE_NAME
 
@@ -22,7 +27,7 @@ createdb $LOCAL_DATABASE_NAME
 createuser -s mimooh || true
 createuser -s bpp || true
 
-/opt/local/lib/postgresql16/bin/pg_restore -j 6 -d $LOCAL_DATABASE_NAME  "$1" || true
+pg_restore -j 6 -d $LOCAL_DATABASE_NAME  "$1" || true
 
 for tbl in `psql -qAt -c "select tablename from pg_tables where schemaname = 'public';" $LOCAL_DATABASE_NAME` ; do  psql -c "alter table \"$tbl\" owner to postgres" $LOCAL_DATABASE_NAME ; done
 

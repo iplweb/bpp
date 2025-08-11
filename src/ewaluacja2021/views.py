@@ -8,14 +8,27 @@ from django.http import HttpResponseRedirect
 from django.views import generic
 
 from ewaluacja2021.forms import ImportMaksymalnychSlotowForm, ZamowienieNaRaportForm
-from ewaluacja2021.models import ImportMaksymalnychSlotow, ZamowienieNaRaport
+from ewaluacja2021.models import (
+    DyscyplinaNieRaportowana_2022_2025,
+    ImportMaksymalnychSlotow,
+    LiczbaNDlaUczelni_2022_2025,
+    ZamowienieNaRaport,
+)
 from ewaluacja2021.tasks import generuj_algorytm, suma_odpietych_dyscyplin
 from long_running.tasks import perform_generic_long_running_task
+
+from django.contrib import messages
 
 from django.utils import timezone
 
 from bpp.const import GR_WPROWADZANIE_DANYCH
-from bpp.models import Patent_Autor, Wydawnictwo_Ciagle_Autor, Wydawnictwo_Zwarte_Autor
+from bpp.models import (
+    Patent_Autor,
+    Uczelnia,
+    Wydawnictwo_Ciagle_Autor,
+    Wydawnictwo_Zwarte_Autor,
+)
+from bpp.models.cache.utils import oblicz_liczby_n_dla_ewaluacji_2022_2025
 
 
 class NowyImport(GroupRequiredMixin, generic.CreateView):
@@ -64,6 +77,15 @@ class ListaRaporto3N(GroupRequiredMixin, generic.ListView):
     model = ZamowienieNaRaport
 
     def get(self, request, *args, **kwargs):
+        if request.GET.get("przelicz") == "1" and request.user.is_staff:
+            oblicz_liczby_n_dla_ewaluacji_2022_2025(
+                uczelnia=Uczelnia.objects.get_default()
+            )
+            messages.info(
+                request,
+                "Dokonano przeliczenia liczby N dla instytucji oraz udziałów dla autorów. ",
+            )
+            return HttpResponseRedirect(".")
 
         if request.GET.get("resetuj") == "1" and request.user.is_staff:
             with transaction.atomic():
@@ -88,6 +110,10 @@ class ListaRaporto3N(GroupRequiredMixin, generic.ListView):
     def get_context_data(self, *, object_list=None, **kwargs):
         return super().get_context_data(
             object_list=object_list,
+            liczby_n_uczelni=LiczbaNDlaUczelni_2022_2025.objects.all(),
+            dyscypliny_nie_raportowane=DyscyplinaNieRaportowana_2022_2025.objects.filter(
+                uczelnia=Uczelnia.objects.get_for_request(self.request)
+            ),
             ilosc_odpietych_dyscyplin=suma_odpietych_dyscyplin(),
             ilosc_elementow_w_kolejce=DirtyInstance.objects.count(),
             **kwargs,
@@ -99,7 +125,7 @@ class PlikRaportu3N(GroupRequiredMixin, generic.DetailView):
     model = ZamowienieNaRaport
 
     def get(self, request, *args, **kw):
-        from sendfile import sendfile
+        from django_sendfile import sendfile
 
         self.object = self.get_object()
         return sendfile(
@@ -115,7 +141,7 @@ class WykresRaportu3N(GroupRequiredMixin, generic.DetailView):
     model = ZamowienieNaRaport
 
     def get(self, request, *args, **kw):
-        from sendfile import sendfile
+        from django_sendfile import sendfile
 
         self.object = self.get_object()
         return sendfile(

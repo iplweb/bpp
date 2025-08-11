@@ -1,13 +1,29 @@
 import json
 
 
+class AlreadyEnqueuedError(Exception):
+    pass
+
+
+class CharakterFormalnyNieobslugiwanyError(Exception):
+    pass
+
+
 class TlumaczDyscyplinException(ValueError):
+    pass
+
+
+class BrakZdefiniowanegoObiektuUczelniaWSystemieError(Exception):
     pass
 
 
 class PraceSerwisoweException(Exception):
     def __str__(self):
         return "Po stronie PBN trwają prace serwisowe. Prosimy spróbować później. "
+
+
+class CannotDeleteStatementsException(Exception):
+    pass
 
 
 class HttpException(Exception):
@@ -21,6 +37,10 @@ class HttpException(Exception):
             self.json = None
 
 
+class ResourceLockedException(HttpException):
+    pass
+
+
 class AccessDeniedException(Exception):
     def __init__(self, url, content):
         self.url = url
@@ -32,6 +52,10 @@ class BrakIDPracyPoStroniePBN(HttpException):
 
 
 class SciencistDoesNotExist(Exception):
+    pass
+
+
+class AuthenticationConfigurationError(Exception):
     pass
 
 
@@ -87,4 +111,28 @@ class NoFeeDataException(ValueError):
 
 
 class NoPBNUIDException(ValueError):
+    pass
+
+
+class PBNUIDChangedException(ValueError):
+    """Podnoszony w sytuacji gdy wysłanej pracy która już posiada PBN UID należałoby zmienić PBN UID na inny
+    na skutek odpowiedzi serwera. Technicznie nie jest to błąd i ten PBN UID jest ustawiany. Ten Exception
+    jest używany przez Sentry do zgłoszenia (wysłania) sytuacji."""
+
+
+class PBNUIDSetToExistentException(ValueError):
+    """Podnoszony gdy wg serwera PBN pracy nowo wysyłanej nalezałoby ustawić PBN UID
+    istniejącego rekordu. Używany do wysłania przez Sentry zgłoszenia o sytuacji."""
+
+
+class DaneLokalneWymagajaAktualizacjiException(Exception):
+    """Podnoszony, gdy lokalne dane powinny zostać zaktualizowane, aby odzwierciedlać
+    zmiany po stronie PBN."""
+
+
+class PublikacjaInstytucjiV2NieZnalezionaException(Exception):
+    """Publikacja instytucji nie znaleziona po ID w api V2"""
+
+
+class ZnalezionoWielePublikacjiInstytucjiV2Exception(Exception):
     pass

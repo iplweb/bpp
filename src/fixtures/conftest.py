@@ -2,7 +2,7 @@ import json
 import os
 import random
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 from uuid import uuid4
 
 import django_webtest
@@ -14,10 +14,7 @@ from django_webtest import DjangoTestApp
 from rest_framework.test import APIClient
 from splinter.driver import DriverAPI
 
-from pbn_api.models import Discipline, Language, TlumaczDyscyplin
-from pbn_api.models.discipline import DisciplineGroup
-
-from django.utils import timezone
+from pbn_api.models import Discipline, Language
 
 from bpp.models.szablondlaopisubibliograficznego import SzablonDlaOpisuBibliograficznego
 from bpp.util import get_fixture
@@ -34,7 +31,6 @@ from bpp import const
 from bpp.fixtures import get_openaccess_data
 from bpp.models import (
     Autor_Dyscyplina,
-    Dyscyplina_Naukowa,
     Kierunek_Studiow,
     Wydawca,
     Zewnetrzna_Baza_Danych,
@@ -77,50 +73,6 @@ def rok():
 
 
 @pytest.fixture
-def pbn_discipline_group(db):
-    n = timezone.now().date()
-    try:
-        return DisciplineGroup.objects.get_or_create(
-            validityDateTo=None,
-            validityDateFrom=n - timedelta(days=7),
-            defaults=dict(uuid=uuid4()),
-        )[0]
-    except DisciplineGroup.MultipleObjectsReturned:
-        return DisciplineGroup.objects.filter(
-            validityDateTo=None,
-            validityDateFrom=n - timedelta(days=7),
-        ).first()
-
-
-@pytest.fixture
-def pbn_dyscyplina1(db, pbn_discipline_group):
-    return Discipline.objects.get_or_create(
-        parent_group=pbn_discipline_group,
-        code="301",
-        name="memetyka stosowana",
-        scientificFieldName="Dziedzina memetyk",
-        defaults=dict(uuid=uuid4()),
-    )[0]
-
-
-def _dyscyplina_maker(nazwa, kod, dyscyplina_pbn):
-    """Produkuje dyscypliny naukowe WRAZ z odpowiednim wpisem tłumacza
-    dyscyplin"""
-    d = Dyscyplina_Naukowa.objects.get_or_create(nazwa=nazwa, kod=kod)[0]
-    TlumaczDyscyplin.objects.get_or_create(
-        dyscyplina_w_bpp=d, pbn_2017_2021=dyscyplina_pbn, pbn_2022_now=dyscyplina_pbn
-    )
-    return d
-
-
-@pytest.fixture
-def dyscyplina1(db, pbn_dyscyplina1):
-    return _dyscyplina_maker(
-        nazwa="memetyka stosowana", kod="3.1", dyscyplina_pbn=pbn_dyscyplina1
-    )
-
-
-@pytest.fixture
 def pbn_dyscyplina1_hst(db, pbn_discipline_group):
     return Discipline.objects.get_or_create(
         parent_group=pbn_discipline_group,
@@ -132,31 +84,6 @@ def pbn_dyscyplina1_hst(db, pbn_discipline_group):
 
 
 @pytest.fixture
-def dyscyplina1_hst(db, pbn_dyscyplina1_hst):
-    return _dyscyplina_maker(
-        nazwa="nauka teologiczna", kod="7.1", dyscyplina_pbn=pbn_dyscyplina1_hst
-    )
-
-
-@pytest.fixture
-def pbn_dyscyplina2(db, pbn_discipline_group):
-    return Discipline.objects.get_or_create(
-        parent_group=pbn_discipline_group,
-        uuid=uuid4(),
-        code="202",
-        name="druga dyscyplina",
-        scientificFieldName="Dziedzina drugich dyscyplin",
-    )[0]
-
-
-@pytest.fixture
-def dyscyplina2(db, pbn_dyscyplina2):
-    return _dyscyplina_maker(
-        nazwa="druga dyscyplina", kod="2.2", dyscyplina_pbn=pbn_dyscyplina2
-    )
-
-
-@pytest.fixture
 def pbn_dyscyplina2_hst(db, pbn_discipline_group):
     return Discipline.objects.get_or_create(
         parent_group=pbn_discipline_group,
@@ -165,6 +92,23 @@ def pbn_dyscyplina2_hst(db, pbn_discipline_group):
         name="nauka humanistyczna",
         scientificFieldName="Dziedzina nauk humanistycznych",
     )[0]
+
+
+def _dyscyplina_maker(nazwa, kod, dyscyplina_pbn):
+    """Produkuje dyscypliny naukowe WRAZ z odpowiednim wpisem tłumacza
+    dyscyplin"""
+    from pbn_api.models import TlumaczDyscyplin
+
+    from bpp.models import Dyscyplina_Naukowa
+
+    d = Dyscyplina_Naukowa.objects.get_or_create(nazwa=nazwa, kod=kod)[0]
+    TlumaczDyscyplin.objects.get_or_create(
+        dyscyplina_w_bpp=d,
+        pbn_2017_2021=dyscyplina_pbn,
+        pbn_2022_2023=dyscyplina_pbn,
+        pbn_2024_now=dyscyplina_pbn,
+    )
+    return d
 
 
 @pytest.fixture

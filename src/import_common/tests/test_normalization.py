@@ -1,8 +1,12 @@
+import datetime
+
 import pytest
 
+from import_common.core import normalize_date
 from import_common.normalization import (
     normalize_doi,
     normalize_kod_dyscypliny,
+    normalize_nazwa_dyscypliny,
     normalize_orcid,
     normalize_tytul_publikacji,
 )
@@ -15,6 +19,8 @@ from import_common.normalization import (
         ("111_0", "1.11"),
         ("407", "4.7"),
         ("411", "4.11"),
+        ("1001", "10.1"),
+        ("1010", "10.10"),
         ("4.1", "4.1"),
     ],
 )
@@ -46,6 +52,11 @@ def test_normalize_doi(i, o):
     assert normalize_doi(i) == o
 
 
+def test_normalize_nazwa_dyscypliny():
+    NAZWA = "nauki o Ziemi i środowisku"
+    assert normalize_nazwa_dyscypliny(NAZWA) == NAZWA
+
+
 @pytest.mark.parametrize(
     "i,o",
     [
@@ -72,3 +83,18 @@ def test_normalize_orcid(i, o):
 )
 def test_normalize_tytul_publikacji(i, o):
     assert normalize_tytul_publikacji(i) == o
+
+
+@pytest.mark.parametrize(
+    "i,o",
+    [
+        (None, None),
+        ("", None),
+        (" ", None),
+        (" 2024.11.20 ", datetime.datetime(2024, 11, 20, 0, 0)),
+        ("30.04.2021", datetime.datetime(2021, 4, 30, 0, 0)),
+        (datetime.datetime(2020, 1, 1), datetime.datetime(2020, 1, 1, 0, 0)),
+    ],
+)
+def test_normalize_date(i, o):
+    assert normalize_date(i) == o

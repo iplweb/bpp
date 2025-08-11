@@ -14,6 +14,7 @@ from taggit.models import Tag
 from import_common.core import normalized_db_isbn
 from import_common.normalization import normalize_isbn
 from pbn_api.models import Publisher
+from .wydawnictwo_nadrzedne_w_pbn import Wydawnictwo_Nadrzedne_W_PBNAutocomplete  # noqa
 
 from django.contrib.auth.mixins import UserPassesTestMixin
 from django.contrib.postgres.search import TrigramSimilarity
@@ -28,6 +29,7 @@ from bpp.models import (
     Dyscyplina_Naukowa,
     Jednostka,
     Kierunek_Studiow,
+    Status_Korekty,
     Uczelnia,
     Wydawca,
     Zewnetrzna_Baza_Danych,
@@ -312,6 +314,13 @@ class AutorAutocompleteBase(autocomplete.Select2QuerySetView):
         if self.q:
             return Autor.objects.fulltext_filter(self.q).select_related("tytul")
         return Autor.objects.all()
+
+
+class PublicStatusKorektyAutocomplete(autocomplete.Select2QuerySetView):
+    def get_queryset(self):
+        if self.q:
+            return Status_Korekty.objects.filter(nazwa__icontains=self.q)
+        return Status_Korekty.objects.all()
 
 
 class AutorAutocomplete(GroupRequiredMixin, AutorAutocompleteBase):
@@ -695,7 +704,7 @@ class PodrzednaPublikacjaHabilitacyjnaAutocomplete(Select2QuerySetSequenceView):
 
 class Dyscyplina_NaukowaAutocomplete(autocomplete.Select2QuerySetView):
     def get_queryset(self):
-        qs = Dyscyplina_Naukowa.objects.all()
+        qs = Dyscyplina_Naukowa.objects.filter(widoczna=True)
         if self.q:
             qs = qs.filter(Q(nazwa__icontains=self.q) | Q(kod__icontains=self.q))
         return qs

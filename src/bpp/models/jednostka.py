@@ -1,9 +1,11 @@
 """
 Struktura uczelni.
 """
+
 from datetime import date, timedelta
 
 from autoslug import AutoSlugField
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import CASCADE
@@ -166,6 +168,9 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
 
     def __str__(self):
         ret = self.nazwa
+
+        if getattr(settings, "DJANGO_BPP_SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI") is False:
+            return ret
 
         try:
             wydzial = self.wydzial

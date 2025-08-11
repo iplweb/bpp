@@ -1,4 +1,5 @@
 #!/bin/bash -e
+set -euo pipefail
 
 # Pobiera dump bazy danych ze zdalnego serwera i uruchamia procedurę
 # odtworz.sh; do tego wczesniej zapisuje baze danych w $OUTDIR

@@ -45,6 +45,9 @@ grunt-build:
 
 assets: yarn grunt-build
 
+collectstatic:
+	python src/manage.py collectstatic --noinput -v0
+
 production-assets: distclean assets
 # usuń ze staticroot niepotrzebne pakiety (Poetry pyproject.toml exclude
 # nie do końca to załatwia...)
@@ -64,13 +67,13 @@ bdist_wheel: distclean production-assets compilemessages
 	poetry build
 	ls -lash dist
 
-upload:
-	twine upload dist/*whl
+#upload:
+#	twine upload dist/*whl
 
 puppeteer-install-chrome:
 	npx puppeteer browsers install chrome
 
-js-tests: assets puppeteer-install-chrome
+js-tests: assets collectstatic puppeteer-install-chrome
 	grunt qunit
 
 # cel: live-docs
@@ -134,15 +137,19 @@ upgrade-version:
 	$(eval NEW_VERSION=$(shell bumpver test $(CUR_VERSION) 'vYYYY0M.BUILD[-TAGNUM]' |head -1|cut -d: -f2))
 	git flow release start $(NEW_VERSION)
 	bumpver update
+	-towncrier build --draft > /tmp/towncrier.txt
 	-towncrier build --yes
-	-git commit -m "Opis zmian dla nowej wersji oprogramowania"
+	-git commit -F /tmp/towncrier.txt
 	git flow release finish "$(NEW_VERSION)" -p -m "Nowa wersja: $(NEW_VERSION)"
 
 poetry-lock:
 	poetry lock
 	-git commit -m "Update lockfile" poetry.lock
 
-new-release: poetry-lock upgrade-version bdist_wheel upload docker
+gh-run-watch:
+	gh run watch
+
+new-release: poetry-lock upgrade-version docker gh-run-watch
 
 release: tests js-tests new-release
 
@@ -165,7 +172,7 @@ loc: clean
 	pygount -N ... -F "...,staticroot,migrations,fixtures" src --format=summary
 
 
-DOCKER_VERSION="202410.1140"
+DOCKER_VERSION="202508.1185"
 
 DOCKER_BUILD=build --platform linux/amd64,linux/arm64 --push
 
@@ -195,6 +202,10 @@ build-servers: build-appserver-base build-appserver build-workerserver
 
 docker: build-dbserver build-webserver build-servers
 
-reload-compose:
-	docker-compose pull
-	docker-compose up --build --force-recreate
+compose-restart:
+	docker compose stop
+	docker compose rm -f
+	docker compose up --force-recreate
+
+compose-dbshell:
+	docker compose exec db /bin/bash

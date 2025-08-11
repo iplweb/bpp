@@ -1,3 +1,4 @@
+import json
 import random
 import sys
 import time
@@ -7,10 +8,13 @@ from pprint import pprint
 from urllib.parse import parse_qs, quote, urlparse
 
 import requests
+from django.core.mail import mail_admins
 from django.db import transaction
 from django.db.models import Model
 from requests import ConnectionError
+from requests.exceptions import JSONDecodeError as RequestsJSONDecodeError
 from requests.exceptions import SSLError
+from sentry_sdk import capture_exception
 from simplejson.errors import JSONDecodeError
 
 from import_common.core import (
@@ -27,23 +31,32 @@ from pbn_api.const import (
     NEEDS_PBN_AUTH_MSG,
     PBN_DELETE_PUBLICATION_STATEMENT,
     PBN_GET_DISCIPLINES_URL,
+    PBN_GET_INSTITUTION_PUBLICATIONS_V2,
     PBN_GET_INSTITUTION_STATEMENTS,
     PBN_GET_JOURNAL_BY_ID,
     PBN_GET_LANGUAGES_URL,
     PBN_GET_PUBLICATION_BY_ID_URL,
+    PBN_POST_INSTITUTION_STATEMENTS_URL,
     PBN_POST_PUBLICATION_FEE_URL,
     PBN_POST_PUBLICATIONS_URL,
     PBN_SEARCH_PUBLICATIONS_URL,
 )
 from pbn_api.exceptions import (
     AccessDeniedException,
+    AuthenticationConfigurationError,
     AuthenticationResponseError,
+    CannotDeleteStatementsException,
     HttpException,
     NeedsPBNAuthorisationException,
     NoFeeDataException,
     NoPBNUIDException,
+    PBNUIDChangedException,
+    PBNUIDSetToExistentException,
     PraceSerwisoweException,
+    PublikacjaInstytucjiV2NieZnalezionaException,
+    ResourceLockedException,
     SameDataUploadedRecently,
+    ZnalezionoWielePublikacjiInstytucjiV2Exception,
 )
 from pbn_api.models import TlumaczDyscyplin
 from pbn_api.models.discipline import Discipline, DisciplineGroup
@@ -133,6 +146,13 @@ class OAuthMixin:
         try:
             response.json()
         except ValueError:
+            if response.content.startswith(b"Mismatched X-APP-TOKEN: "):
+                raise AuthenticationConfigurationError(
+                    "Token aplikacji PBN nieprawidłowy. Poproś administratora "
+                    "o skonfigurowanie prawidłowego tokena aplikacji PBN w "
+                    "ustawieniach obiektu Uczelnia. "
+                )
+
             raise AuthenticationResponseError(response.content)
 
         return response.json().get("X-User-Token")
@@ -143,7 +163,7 @@ class OAuthMixin:
         if self.access_token:
             return True
 
-        self.access_token = getattr(settings, "PBN_CLIENT_USER_TOKEN")
+        self.access_token = getattr(settings, "PBN_CLIENT_USER_TOKEN", None)
         if self.access_token:
             return True
 
@@ -219,7 +239,7 @@ class RequestsTransport(OAuthMixin, PBNClientTransport):
 
         try:
             return ret.json()
-        except JSONDecodeError as e:
+        except (RequestsJSONDecodeError, JSONDecodeError) as e:
             if ret.status_code == 200 and b"prace serwisowe" in ret.content:
                 # open("pbn_client_dump.html", "wb").write(ret.content)
                 raise PraceSerwisoweException()
@@ -246,6 +266,11 @@ class RequestsTransport(OAuthMixin, PBNClientTransport):
             method = requests.delete
 
         ret = method(self.base_url + url, headers=sent_headers, json=body)
+
+        # if ret.status_code != 200:
+        #     pprint(sent_headers)
+        #     pprint(body)
+
         if ret.status_code == 403:
             try:
                 ret_json = ret.json()
@@ -283,7 +308,6 @@ class RequestsTransport(OAuthMixin, PBNClientTransport):
                 self.authorize(self.base_url, self.app_id, self.app_token)
                 # self.authorize()
 
-        #
         # mpasternak 7.09.2021, poniżej "przymiarki" do analizowania zwróconych błędów z PBN
         #
         # if ret.status_code == 400:
@@ -304,11 +328,16 @@ class RequestsTransport(OAuthMixin, PBNClientTransport):
         #                   "details":{"doi":"DOI jest błędny lub nie udało się pobrać informacji z serwisu DOI!"}}')
 
         if ret.status_code >= 400:
+            if ret.status_code == 423 and smart_content(ret.content) == "Locked":
+                raise ResourceLockedException(
+                    ret.status_code, url, smart_content(ret.content)
+                )
+
             raise HttpException(ret.status_code, url, smart_content(ret.content))
 
         try:
             return ret.json()
-        except JSONDecodeError as e:
+        except (RequestsJSONDecodeError, JSONDecodeError) as e:
             if ret.status_code == 200:
                 if ret.content == b"":
                     return
@@ -429,11 +458,13 @@ class DictionariesMixin:
 
 
 class InstitutionsMixin:
-    def get_institutions(self, *args, **kw):
-        return self.transport.get_pages("/api/v1/institutions/page", *args, **kw)
+    def get_institutions(self, status="ACTIVE", *args, **kw):
+        return self.transport.get_pages(
+            "/api/v1/institutions/page", status=status, *args, **kw
+        )
 
     def get_institution_by_id(self, id):
-        return self.transport.get_pages(f"/api/v1/institutions/{id}")
+        return self.transport.get(f"/api/v1/institutions/{id}")
 
     def get_institution_by_version(self, version):
         return self.transport.get_pages(f"/api/v1/institutions/version/{version}")
@@ -441,8 +472,13 @@ class InstitutionsMixin:
     def get_institution_metadata(self, id):
         return self.transport.get_pages(f"/api/v1/institutions/{id}/metadata")
 
-    def get_institutions_polon(self):
-        return self.transport.get_pages("/api/v1/institutions/polon/page")
+    def get_institutions_polon(self, includeAllVersions="true", *args, **kw):
+        return self.transport.get_pages(
+            "/api/v1/institutions/polon/page",
+            includeAllVersions=includeAllVersions,
+            *args,
+            **kw,
+        )
 
     def get_institutions_polon_by_uid(self, uid):
         return self.transport.get(f"/api/v1/institutions/polon/uid/{uid}")
@@ -452,11 +488,15 @@ class InstitutionsMixin:
 
 
 class InstitutionsProfileMixin:
-    # XXX: wymaga autoryzacji
-    def get_institution_publications(self, page_size=10):
+    def get_institution_publications(self, page_size=10) -> PageableResource:
         return self.transport.get_pages(
             "/api/v1/institutionProfile/publications/page", page_size=page_size
         )
+
+    def get_institution_publications_v2(
+        self,
+    ) -> PageableResource:
+        return self.transport.get_pages(PBN_GET_INSTITUTION_PUBLICATIONS_V2)
 
     def get_institution_statements(self, page_size=10):
         return self.transport.get_pages(
@@ -472,11 +512,36 @@ class InstitutionsProfileMixin:
             page_size=page_size,
         )
 
-    def delete_all_publication_statements(self, publicationId):
-        return self.transport.delete(
-            PBN_DELETE_PUBLICATION_STATEMENT.format(publicationId=publicationId),
-            body={"all": True, "statementsOfPersons": []},
+    def get_institution_publication_v2(
+        self,
+        objectId,
+    ):
+        return self.transport.get_pages(
+            PBN_GET_INSTITUTION_PUBLICATIONS_V2 + f"?publicationId={objectId}",
         )
+
+    def delete_all_publication_statements(self, publicationId):
+        url = PBN_DELETE_PUBLICATION_STATEMENT.format(publicationId=publicationId)
+        try:
+            return self.transport.delete(
+                url,
+                body={"all": True, "statementsOfPersons": []},
+            )
+        except HttpException as e:
+            if e.status_code != 400 or not e.url.startswith(url):
+                raise e
+            try:
+                ret_json = json.loads(e.content)
+            except BaseException:
+                raise e
+
+            if (
+                ret_json.get("description") != "Validation failed."
+                or e.content.find("Nie można usunąć oświadczeń") < 0
+            ):
+                raise e
+
+            raise CannotDeleteStatementsException(e.content)
 
     def delete_publication_statement(self, publicationId, personId, role):
         return self.transport.delete(
@@ -484,13 +549,33 @@ class InstitutionsProfileMixin:
             body={"statementsOfPersons": [{"personId": personId, "role": role}]},
         )
 
+    def post_discipline_statements(self, statements_data):
+        """
+        Send discipline statements to PBN API.
+
+        Args:
+            statements_data (list): List of statement dictionaries containing discipline information
+
+        Returns:
+            dict: Response from PBN API
+        """
+        return self.transport.post(
+            PBN_POST_INSTITUTION_STATEMENTS_URL, body=statements_data
+        )
+
 
 class JournalsMixin:
     def get_journals_mnisw(self, *args, **kw):
         return self.transport.get_pages("/api/v1/journals/mnisw/page", *args, **kw)
 
+    def get_journals_mnisw_v2(self, *args, **kw):
+        return self.transport.get_pages("/api/v2/journals/mnisw/page", *args, **kw)
+
     def get_journals(self, *args, **kw):
         return self.transport.get_pages("/api/v1/journals/page", *args, **kw)
+
+    def get_journals_v2(self, *args, **kw):
+        return self.transport.get_pages("/api/v2/journals/page", *args, **kw)
 
     def get_journal_by_version(self, version):
         return self.transport.get(f"/api/v1/journals/version/{version}")
@@ -572,18 +657,12 @@ class PublicationsMixin:
         return self.transport.get(f"/api/v1/publications/version/{version}")
 
 
-class AuthorMixin:
-    def get_author_by_id(self, id):
-        return self.transport.get(f"/api/v1/author/{id}")
-
-
 class SearchMixin:
     def search_publications(self, *args, **kw):
         return self.transport.post_pages(PBN_SEARCH_PUBLICATIONS_URL, body=kw)
 
 
 class PBNClient(
-    AuthorMixin,
     ConferencesMixin,
     DictionariesMixin,
     InstitutionsMixin,
@@ -606,6 +685,18 @@ class PBNClient(
         return self.transport.post(
             PBN_POST_PUBLICATION_FEE_URL.format(id=publicationId), body=json
         )
+
+    def get_publication_fee(self, publicationId):
+        res = self.transport.post_pages(
+            "/api/v1/institutionProfile/publications/search/fees",
+            body={"publicationIds": [str(publicationId)]},
+        )
+        if not res.count():
+            return
+        elif res.count() == 1:
+            return list(res)[0]
+        else:
+            raise NotImplementedError("count > 1")
 
     def upload_publication(
         self, rec, force_upload=False, export_pk_zero=None, always_affiliate_to_uid=None
@@ -657,9 +748,22 @@ class PBNClient(
             disable_progress_bar=True,
         )
 
+    def pobierz_publikacje_instytucji_v2(self, objectId):
+        from pbn_api.integrator import zapisz_publikacje_instytucji_v2
+
+        elem = list(self.get_institution_publication_v2(objectId=objectId))
+        if not elem:
+            raise PublikacjaInstytucjiV2NieZnalezionaException(objectId)
+
+        if len(elem) != 1:
+            raise ZnalezionoWielePublikacjiInstytucjiV2Exception(objectId)
+
+        return zapisz_publikacje_instytucji_v2(self, elem[0])
+
     def sync_publication(
         self,
         pub,
+        notificator=None,
         force_upload=False,
         delete_statements_before_upload=False,
         export_pk_zero=None,
@@ -722,16 +826,102 @@ class PBNClient(
             always_affiliate_to_uid=always_affiliate_to_uid,
         )
 
+        if not ret.get("objectId", ""):
+            msg = (
+                f"UWAGA. Serwer PBN nie odpowiedział prawidłowym PBN UID dla"
+                f" wysyłanego rekordu. Zgłoś sytuację do administratora serwisu. "
+                f"{ret=}, {js=}, {pub=}"
+            )
+            if notificator is not None:
+                notificator.error(msg)
+
+            try:
+                raise NoPBNUIDException(msg)
+            except NoPBNUIDException as e:
+                capture_exception(e)
+
+            mail_admins("Serwer PBN nie zwrocil ID publikacji", msg, fail_silently=True)
+
         # Pobierz zwrotnie dane z PBN
         publication = self.download_publication(objectId=ret["objectId"])
         self.download_statements_of_publication(publication)
+        self.pobierz_publikacje_instytucji_v2(objectId=ret["objectId"])
 
         # Utwórz obiekt zapisanych danych. Dopiero w tym miejscu, bo jeżeli zostanie
         # utworzony nowy rekord po stronie PBN, to pbn_uid_id musi wskazywać na
         # bazę w tabeli Publication, która została chwile temu pobrana...
         SentData.objects.updated(pub, js, pbn_uid_id=ret["objectId"])
+        if pub.pbn_uid_id is not None and pub.pbn_uid_id != ret["objectId"]:
+            SentData.objects.updated(pub, js, pbn_uid_id=pub.pbn_uid_id)
 
         if pub.pbn_uid_id != ret["objectId"]:
+            # Rekord dostaje nowe objectId z PBNu.
+
+            # Czy rekord JUŻ Z PBN UID dostaje nowe PBN UID z PBNu? Powiadom użytkownika.
+            if pub.pbn_uid_id is not None:
+                if notificator is not None:
+                    notificator.error(
+                        f"UWAGA UWAGA UWAGA. Wg danych z PBN zmodyfikowano PBN UID tego rekordu "
+                        f"z wartości {pub.pbn_uid_id} na {ret['objectId']}. Technicznie nie jest to błąd, "
+                        f"ale w praktyce dobrze by było zweryfikować co się zadziało, zarówno po stronie"
+                        f"PBNu jak i BPP. Być może operujesz na rekordzie ze zdublowanym DOI/stronie WWW."
+                    )
+
+                message = (
+                    f"Zarejestrowano zmianę ZAPISANEGO WCZEŚNIEJ PBN UID publikacji przez PBN, \n"
+                    f"Publikacja:\n{pub}\n\n"
+                    f"z UIDu {pub.pbn_uid_id} na {ret['objectId']}"
+                )
+
+                try:
+                    raise PBNUIDChangedException(message)
+                except PBNUIDChangedException as e:
+                    capture_exception(e)
+
+                mail_admins(
+                    "Zmiana PBN UID publikacji przez serwer PBN",
+                    message,
+                    fail_silently=True,
+                )
+
+            # Z kolei poniższy kod odpowiada na sytuację dość niepożądana. Zakładamy, że do PBN został wysłany nowy,
+            # czysty rekord czyli bez PBN UID, zas PBN odpowiedział PBN UIDem istniejącego już w bazie rekordu.
+            from bpp.models import Rekord
+
+            istniejace_rekordy = Rekord.objects.filter(pbn_uid_id=ret["objectId"])
+            if pub.pbn_uid_id is None and istniejace_rekordy.exists():
+                if notificator is not None:
+                    notificator.error(
+                        f'UWAGA UWAGA UWAGA. Wysłany rekord "{pub}" dostał w odpowiedzi z serwera PBN numer UID '
+                        f"rekordu JUŻ ISTNIEJĄCEGO W BAZIE DANYCH BPP, a konkretnie {istniejace_rekordy.all()}. "
+                        f"Z przyczyn oczywistych NIE MOGĘ ustawić takiego PBN UID gdyż wówczas unikalność numerów PBN "
+                        f"UID byłaby naruszona. Zapewne też doszło do "
+                        f"NADPISANIA danych w/wym rekordu po stronie PBNu. Powinieneś/aś wycofać zmiany w PBNie "
+                        f"za pomocą GUI, zgłosić tą sytuację do administratora oraz zaprzestać prób wysyłki "
+                        f"tego rekordu do wyjaśnienia. "
+                    )
+
+                message = (
+                    f"Zarejestrowano ustawienie nowo wysłanej pracy ISTNIEJĄCEGO JUŻ W BAZIE PBN UID\n"
+                    f"Publikacja:\n{pub}\n\n"
+                    f"UIDu {ret['objectId']}\n"
+                    f"Istniejąca praca/e: {istniejace_rekordy.all()}"
+                )
+
+                try:
+                    raise PBNUIDSetToExistentException(message)
+                except PBNUIDSetToExistentException as e:
+                    capture_exception(e)
+
+                mail_admins(
+                    "Ustawienie ISTNIEJĄCEGO JUŻ W BAZIE PBN UID publikacji przez serwer PBN",
+                    message,
+                    fail_silently=True,
+                )
+
+                # NIE zapisuj takiego numeru PBN
+                return
+
             pub.pbn_uid = publication
             pub.save()
 
@@ -759,12 +949,6 @@ class PBNClient(
             )
 
         return self.post_publication_fee(pub.pbn_uid_id, fee)
-
-    def demo(self):
-        from bpp.models import Wydawnictwo_Ciagle
-
-        pub = Wydawnictwo_Ciagle.objects.filter(rok=2020).exclude(doi=None).first()
-        self.sync_publication(pub, force_upload=True)
 
     def exec(self, cmd):
         try:
@@ -859,20 +1043,26 @@ class PBNClient(
                 dyscyplina_w_bpp=dyscyplina
             )[0]
 
-            wpis_tlumacza.pbn_2022_now = matchuj_aktualna_dyscypline_pbn(
+            wpis_tlumacza.pbn_2024_now = matchuj_aktualna_dyscypline_pbn(
                 dyscyplina.kod, dyscyplina.nazwa
             )
-            # Domyślnie szuka dla lat 2017-2022
+            # Domyślnie szuka dla lat 2018-2022
             wpis_tlumacza.pbn_2017_2021 = matchuj_nieaktualna_dyscypline_pbn(
-                dyscyplina.kod, dyscyplina.nazwa
+                dyscyplina.kod, dyscyplina.nazwa, rok_min=2018, rok_max=2022
+            )
+
+            wpis_tlumacza.pbn_2022_2023 = matchuj_nieaktualna_dyscypline_pbn(
+                dyscyplina.kod, dyscyplina.nazwa, rok_min=2023, rok_max=2024
             )
 
             wpis_tlumacza.save()
 
         for discipline in cur_dg.discipline_set.all():
+            if discipline.name == "weterynaria":
+                pass
             # Każda dyscyplina z aktualnego słownika powinna być wpisana do systemu BPP
             try:
-                TlumaczDyscyplin.objects.get(pbn_2022_now=discipline)
+                TlumaczDyscyplin.objects.get(pbn_2024_now=discipline)
             except TlumaczDyscyplin.DoesNotExist:
                 try:
                     dyscyplina_w_bpp = Dyscyplina_Naukowa.objects.get(

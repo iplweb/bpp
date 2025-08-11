@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 import numpy
 import pygad
 
@@ -5,7 +7,7 @@ from .sumator_base import SumatorBase
 
 
 class FitnessFuncMixin:
-    def fitness_func(self, lista_prac):
+    def fitness_func(self, lista_prac, sol_idx=None):
         self.zeruj()
         for praca_idx in lista_prac:
             praca_tuple = self.lista_prac_by_index.get(praca_idx, None)
@@ -27,8 +29,8 @@ def fitness_wrapper(lista_prac):
 
 def multiprocessing_gad_pool_initializer(
     lista_prac_by_index,
-    liczba_2_2_n,
-    liczba_0_8_n,
+    liczba_3n,
+    procent_monografii,
     maks_pkt_aut_calosc,
     maks_pkt_aut_monografie,
 ):
@@ -42,13 +44,25 @@ def multiprocessing_gad_pool_initializer(
     dla populacji w sposób wielowątkowy."""
     sumator = GenetycznySumator(
         lista_prac_by_index=lista_prac_by_index,
-        liczba_2_2_n=liczba_2_2_n,
-        liczba_0_8_n=liczba_0_8_n,
+        liczba_3n=liczba_3n,
+        procent_monografii=procent_monografii,
         maks_pkt_aut_calosc=maks_pkt_aut_calosc,
         maks_pkt_aut_monografie=maks_pkt_aut_monografie,
     )
 
     fitness_wrapper.instancja_genetycznego_sumatora = sumator
+
+
+# Monkeypatch potrzebny, zeby nie wysypywało się w funkcji "ParentSelection.sort_solutions_nsga2"
+# gdyz biblioteka PyGAD w wersji 2.2.0 nie wziela pod uwage, ze ktos moze chciec liczyc
+# na decimal.Decimal...
+
+pygad.GA.supported_float_types = pygad.GA.supported_int_float_types + [
+    Decimal,
+]
+pygad.GA.supported_int_float_types = (
+    pygad.GA.supported_float_types + pygad.GA.supported_int_types
+)
 
 
 class MultiprocessingGAD(pygad.GA):

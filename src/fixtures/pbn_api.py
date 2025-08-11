@@ -12,13 +12,65 @@ from bpp import const
 from bpp.const import RODZAJ_PBN_KSIAZKA
 from bpp.models import Charakter_Formalny, Jezyk, Uczelnia, Wydawnictwo_Ciagle
 
+MOCK_MONGO_ID = "123"
+
 MOCK_RETURNED_MONGODB_DATA = dict(
     status="foo",
     verificationLevel="bar",
     verified=True,
     versions=[{"current": True, "baz": "quux"}],
-    mongoId="123",
+    mongoId=MOCK_MONGO_ID,
 )
+
+MOCK_RETURNED_INSTITUTION_PUBLICATION_V2_DATA = [
+    {
+        "authors": [
+            {"firstName": "Joanna", "lastName": "Kowalska", "statement": False},
+            {"firstName": "Magdalena", "lastName": "Kowalska", "statement": False},
+            {
+                "firstName": "Dariusz",
+                "lastName": "Kowalska",
+                "objectId": "5e7093d7878c28a0473b1ac0",
+                "statement": True,
+            },
+        ],
+        "doi": "10.5281/ojjejc.1234",
+        "evaluated": True,
+        "evaluationDataArticle": {
+            "indexedJournal": False,
+            "review": False,
+            "wosConference": False,
+        },
+        "feeMandatory": False,
+        "institutionId": "5e70918b878c28a047300000",
+        "issue": "8",
+        "journal": {
+            "eissn": "2391-8306",
+            "metadataSource": "USER",
+            "ministryId": 201159,
+            "title": "Journal of Education, Health and Sport",
+            "website": "http://onet.pl/index.php/johs/index",
+        },
+        "mainLanguage": "pol",
+        "objectId": "456",
+        "openAccess": {
+            "license": "CC_BY_NC",
+            "mode": "OPEN_JOURNAL",
+            "releaseDateMode": "AT_PUBLICATION",
+            "textVersion": "FINAL_PUBLISHED",
+        },
+        "pagesFromTo": "296-308",
+        "publicUri": "http://onet.pl",
+        "title": "Cokolwiek",
+        "translation": False,
+        "type": "ARTICLE",
+        "uuid": "fff626f9-bdcc-4a29-8479-ede6ad6dbc09",
+        "ver": 1,
+        "versionHash": "379cdf03-1179-40d3-8954-8cb927a7f68f",
+        "volume": "7",
+        "year": 2017,
+    }
+]
 
 
 @pytest.fixture
@@ -176,9 +228,12 @@ def pbn_wydawnictwo_zwarte_z_charakterem(
 
 @pytest.fixture
 def pbn_uczelnia(pbn_client) -> Uczelnia:
-    uczelnia = baker.make(
-        Uczelnia,
-    )
+
+    uczelnia = Uczelnia.objects.get_default()
+    if uczelnia is None:
+        uczelnia = baker.make(
+            Uczelnia,
+        )
 
     uczelnia.pbn_client = lambda *args, **kw: pbn_client
     pbn_client.transport.return_values[PBN_GET_LANGUAGES_URL] = {"1": "23"}

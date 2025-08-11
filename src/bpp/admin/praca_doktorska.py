@@ -8,27 +8,26 @@ from .core import BaseBppAdminMixin
 from .element_repozytorium import Element_RepozytoriumInline
 from .filters import OstatnioZmienionePrzezFilter, UtworzonePrzezFilter
 from .grant import Grant_RekorduInline
-from .helpers import (
+from .helpers.fieldsets import (
     ADNOTACJE_Z_DATAMI_FIELDSET,
     DWA_TYTULY,
     EKSTRA_INFORMACJE_DOKTORSKA_HABILITACYJNA_FIELDSET,
     MODEL_OPCJONALNIE_NIE_EKSPORTOWANY_DO_API_FIELDSET,
     MODEL_PUNKTOWANY_FIELDSET,
-    MODEL_PUNKTOWANY_KOMISJA_CENTRALNA_FIELDSET,
     MODEL_TYPOWANY_BEZ_CHARAKTERU_FIELDSET,
     MODEL_Z_ISBN,
     MODEL_Z_OPLATA_ZA_PUBLIKACJE_FIELDSET,
     MODEL_Z_ROKIEM,
     MODEL_ZE_SZCZEGOLAMI,
-    NIZSZE_TEXTFIELD_Z_MAPA_ZNAKOW,
     POZOSTALE_MODELE_FIELDSET,
     AdnotacjeZDatamiMixin,
-    DomyslnyStatusKorektyMixin,
-    Wycinaj_W_z_InformacjiMixin,
 )
+from .helpers.mixins import DomyslnyStatusKorektyMixin, Wycinaj_W_z_InformacjiMixin
 from .wydawnictwo_ciagle import CleanDOIWWWPublicWWWMixin
 
 from django.contrib import admin
+
+from bpp.admin.helpers.widgets import NIZSZE_TEXTFIELD_Z_MAPA_ZNAKOW
 
 # Proste tabele
 
@@ -139,7 +138,6 @@ class Praca_DoktorskaAdmin(Praca_Doktorska_Habilitacyjna_Admin_Base):
         EKSTRA_INFORMACJE_DOKTORSKA_HABILITACYJNA_FIELDSET,
         MODEL_TYPOWANY_BEZ_CHARAKTERU_FIELDSET,
         MODEL_PUNKTOWANY_FIELDSET,
-        MODEL_PUNKTOWANY_KOMISJA_CENTRALNA_FIELDSET,
         POZOSTALE_MODELE_FIELDSET,
         ADNOTACJE_Z_DATAMI_FIELDSET,
         MODEL_OPCJONALNIE_NIE_EKSPORTOWANY_DO_API_FIELDSET,

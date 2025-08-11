@@ -10,7 +10,8 @@ from django.db.models import Sum
 
 from ewaluacja2021.models import ZamowienieNaRaport
 from ewaluacja2021.reports import load_data, rekordy
-from ewaluacja2021.util import string2fn
+from ewaluacja2021.util import create_zip_archive, string2fn
+from snapshot_odpiec.models import SnapshotOdpiec
 
 from bpp.models import Patent_Autor, Wydawnictwo_Ciagle_Autor, Wydawnictwo_Zwarte_Autor
 
@@ -27,6 +28,20 @@ def suma_odpietych_dyscyplin():
         .count()
         + Patent_Autor.objects.exclude(dyscyplina_naukowa=None)
         .exclude(przypieta=True)
+        .count()
+    )
+
+
+def suma_przypietych_dyscyplin():
+    return (
+        Wydawnictwo_Ciagle_Autor.objects.exclude(dyscyplina_naukowa=None)
+        .exclude(przypieta=False)
+        .count()
+        + Wydawnictwo_Zwarte_Autor.objects.exclude(dyscyplina_naukowa=None)
+        .exclude(przypieta=False)
+        .count()
+        + Patent_Autor.objects.exclude(dyscyplina_naukowa=None)
+        .exclude(przypieta=False)
         .count()
     )
 
@@ -61,7 +76,11 @@ def przywroc_przypiecia(odpiete_przed, odpiete_po):
 
 @celery_tasks.app.task
 def generuj_algorytm(pk, *args, **kw):
-    zamowienie = ZamowienieNaRaport.objects.get(pk=pk)
+    try:
+        zamowienie = ZamowienieNaRaport.objects.get(pk=pk)
+    except ZamowienieNaRaport.DoesNotExist:
+        return
+
     zamowienie.uid_zadania = generuj_algorytm.request.id
     zamowienie.status = "Przetwarzanie"
     zamowienie.save()
@@ -84,33 +103,44 @@ def generuj_algorytm(pk, *args, **kw):
             f"Nie mam kodu dla rodzaju zamowienia {zamowienie.rodzaj}"
         )
 
-    suma_pkdaut = poprzedni_wynik = 0
+    poprzedni_wynik = 0
     rekordy_odpiete_przed = set()
     rekordy_odpiete_po = set()
+    ilosc_nieudanych_odpiec = 0
 
-    while True:
+    def odpal_raport(rodzaj_zamowienia, nazwa_dyscypliny):
         outdir = mkdtemp()
 
         call_command(
             f"raport_3n_{rodzaj_zamowienia}",
-            dyscyplina=zamowienie.dyscyplina_naukowa.nazwa,
+            dyscyplina=nazwa_dyscypliny,
             output_path=outdir,
             **kwargs,
         )
 
         json_file = os.path.join(
             outdir,
-            f"{rodzaj_zamowienia}_{string2fn(zamowienie.dyscyplina_naukowa.nazwa)}.json",
+            f"{rodzaj_zamowienia}_{string2fn(nazwa_dyscypliny)}.json",
         )
 
-        suma_pkdaut = suma_pkdaut_json(json_file)
+        suma_pkdaut = suma_pkdaut_json(json_file) or 0
 
-        if suma_pkdaut < poprzedni_wynik:
-            # poprzendi wynik był lepszy, przywracam przypięcia, wychodze z programu
+        return json_file, suma_pkdaut, outdir
+
+    while True:
+
+        json_file, suma_pkdaut, outdir = odpal_raport(
+            rodzaj_zamowienia=rodzaj_zamowienia,
+            nazwa_dyscypliny=zamowienie.dyscyplina_naukowa.nazwa,
+        )
+
+        if suma_pkdaut <= poprzedni_wynik:
+            # poprzendi wynik był lepszy (lub identyczny), przywracam przypięcia, wychodze z programu
             odpinaj_dyscypliny = False
             przywroc_przypiecia(rekordy_odpiete_przed, rekordy_odpiete_po)
             denorm.flush()
             suma_pkdaut = poprzedni_wynik
+
         else:
             poprzedni_wynik = suma_pkdaut
             zamowienie.status = "Przetwarzanie! Osiagnieto %s PKD" % suma_pkdaut
@@ -121,10 +151,7 @@ def generuj_algorytm(pk, *args, **kw):
             xls_output_dir = json_file.replace(".json", "_output")
             zip_path = os.path.join(outdir, "results.zip")
 
-            cwd = os.getcwd()
-            os.chdir(outdir)
-            os.system(f'zip -r "{zip_path}" "{os.path.basename(xls_output_dir)}/"')
-            os.chdir(cwd)
+            create_zip_archive(output_fn=zip_path, input_dir=xls_output_dir)
 
             zamowienie.plik_wyjsciowy.save(
                 basename(xls_output_dir) + ".zip", content=File(open(zip_path, "rb"))
@@ -151,17 +178,42 @@ def generuj_algorytm(pk, *args, **kw):
             odpiete_po = suma_odpietych_dyscyplin()
 
             if odpiete_przed != odpiete_po:
+                # Jezeli ilosc punktow przed i po odpieciu sie rozni, to dzialaj dalej
                 zamowienie.status = (
                     f"Przetwarzanie! Odpieto kolejne {odpiete_po-odpiete_przed} dyscyplin. Osiagnieto %s PKD"
                     % suma_pkdaut
                 )
                 zamowienie.save()
 
+            else:
+                ilosc_nieudanych_odpiec += 1
+
+            if ilosc_nieudanych_odpiec < 4:
                 jeszcze_jedna_petla = True
 
-        shutil.rmtree(outdir)
-
         if not jeszcze_jedna_petla:
+            if zamowienie.rodzaj == "genetyczny_z_odpinaniem":
+                print("Wychodze z generowania, robie snapshot odpiec.")
+
+                SnapshotOdpiec.objects.create(
+                    owner=None,
+                    comment=f"{zamowienie.dyscyplina_naukowa.nazwa}: PKD {suma_pkdaut}",
+                )
+
+                if odpinaj_dyscypliny:
+                    print("Odpinam ostateczne dyscypliny")
+                    call_command("odepnij_dyscypliny", json_file, ostatecznie=True)
+
+                shutil.rmtree(outdir)
+
+                if odpinaj_dyscypliny:
+                    print("Przeliczam genetycznie ostateczne dyscypliny")
+                    json_file, suma_pkdaut, outdir = odpal_raport(
+                        rodzaj_zamowienia, zamowienie.dyscyplina_naukowa.nazwa
+                    )
+            else:
+                shutil.rmtree(outdir)
+
             break
 
     zamowienie.status = f"Zakonczono! Osiagnieto {suma_pkdaut}"

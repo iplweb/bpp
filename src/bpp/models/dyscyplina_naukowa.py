@@ -106,7 +106,7 @@ class Autor_Dyscyplina(models.Model):
     rodzaj_autora = models.CharField(
         max_length=1,
         choices=RODZAJE_AUTORA,
-        default=" ",
+        default="N",
     )
 
     wymiar_etatu = models.DecimalField(
@@ -131,6 +131,13 @@ class Autor_Dyscyplina(models.Model):
         max_digits=5, decimal_places=2, null=True, blank=True
     )
 
+    #
+    # Te pola są importowane przez import_polon, ale nie są nigdzie wyświetlane na UI
+    # na ten moment (mpasternak, 18.03.2025)
+    #
+    zatrudnienie_od = models.DateTimeField(blank=True, null=True)
+    zatrudnienie_do = models.DateTimeField(blank=True, null=True)
+
     objects = Autor_DyscyplinaManager()
 
     def __str__(self):
@@ -143,6 +150,8 @@ class Autor_Dyscyplina(models.Model):
         unique_together = [("rok", "autor")]
         verbose_name = "powiązanie autor-dyscyplina"
         verbose_name_plural = "powiązania autor-dyscyplina"
+
+        ordering = ("rok",)
 
     def clean(self):
         p1 = self.procent_dyscypliny or Decimal("0.00")
@@ -160,3 +169,78 @@ class Autor_Dyscyplina(models.Model):
                 raise ValidationError(
                     {"subdyscyplina_naukowa": "Wpisano tą samą dyscyplinę dwukrotnie."}
                 )
+
+    def dwie_dyscypliny(self):
+        # Zwraca True, jezeli rekord zawiera dwie rozne dyscypliny
+        if (
+            self.dyscyplina_naukowa_id is not None
+            and self.subdyscyplina_naukowa_id is not None
+            and self.dyscyplina_naukowa_id != self.subdyscyplina_naukowa_id
+        ):
+            return True
+        return False
+
+    def policz_udzialy(self):
+        if self.wymiar_etatu is None:
+            return
+
+        if (
+            self.dyscyplina_naukowa_id is not None
+            and self.procent_dyscypliny is not None
+        ):
+            yield (
+                self.dyscyplina_naukowa,
+                self.wymiar_etatu * self.procent_dyscypliny / Decimal("100.0"),
+            )
+
+        if (
+            self.subdyscyplina_naukowa_id is not None
+            and self.procent_subdyscypliny is not None
+        ):
+            yield (
+                self.subdyscyplina_naukowa,
+                self.wymiar_etatu * self.procent_subdyscypliny / Decimal("100.0"),
+            )
+
+
+class Autor_Absencja(models.Model):
+    autor = models.ForeignKey("bpp.Autor", CASCADE)
+
+    rok = PositiveSmallIntegerField()
+    ile_dni = models.PositiveSmallIntegerField()
+
+    class Meta:
+        unique_together = [("rok", "autor")]
+        verbose_name = "absencja autora za rok"
+        verbose_name_plural = "absencje autora za lata"
+
+
+def przebuduj_prace_autora_po_udanej_transakcji(autor_id, rok):
+    # Zaznacz wszystkie rekordy z tym autorem z danego roku po zakończeniu
+    # transakcji jako "brudne" aby prawidłowo przekalkulować ich punktacje.
+    #
+    # W tej chwili nie ma prostej możliwości połączenia zależności bazodanowych
+    # za pomocą django_denorm, a niespecjalnie jestem zainteresowany rozbudowywaniem
+    # tej biblioteki (chociaż byłoby to do zrobienia, myślę, ale nie w tym momencie).
+    #
+    # Zatem, zlecamy przekalkulowanie wszystkich instancji prac tego autora
+    # po zapisaniu danych do bazy.
+    #
+    # Nie mam lepszych pomysłów na ten moment + po ręcznej zmianie typu autora dla
+    # powiązania autor+dyscyplina automatyczna rekalkulacja NIE będzie wykonana;
+    # będzie trzeba czekać na rekalkulację wieczorna bądź otworzyć/zapisać dany rekord.
+    #
+    # ... chyba, że uruchomię tą funkcję po zapisaniu (zmianie) wartości rodzaj_autora
+    # przez admina, ale to jest TODO:
+    #
+    # -- mpasternak, 16.03.2025
+
+    from denorm.denorms import rebuild_instances_of
+
+    from bpp.models import Patent, Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
+
+    def _(autor_id=autor_id, rok=rok):
+        for klass in [Wydawnictwo_Ciagle, Wydawnictwo_Zwarte, Patent]:
+            rebuild_instances_of(klass, rok=rok, autorzy_set__autor_id=autor_id)
+
+    transaction.on_commit(_)

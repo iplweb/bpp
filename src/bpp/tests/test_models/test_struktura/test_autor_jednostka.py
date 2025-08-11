@@ -1,7 +1,7 @@
 from datetime import date, datetime, timedelta
 
 import pytest
-from django.db import IntegrityError, OperationalError
+from django.db import IntegrityError, InternalError, OperationalError
 from model_bakery import baker
 
 from bpp.models.autor import Autor_Jednostka
@@ -13,7 +13,7 @@ def test_autor_jednostka_trigger_nie_mozna_zmienic_id_autora(
 ):
     aj = baker.make(Autor_Jednostka, autor=autor_jan_kowalski, jednostka=jednostka)
     aj.autor = autor_jan_nowak
-    with pytest.raises(OperationalError):
+    with pytest.raises((OperationalError, InternalError)):
         aj.save()
 
 

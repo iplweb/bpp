@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/sh -e
 
 export PGUSER="${DJANGO_BPP_DB_USER}"
 export PGHOST="${DJANGO_BPP_DB_HOST}"
@@ -18,6 +18,10 @@ echo "done."
 
 echo -n "Running compress... "
 ./src/manage.py compress -v0 --force --traceback
+echo "done."
+
+echo -n "Recalculating n-count for evaluation... "
+./src/manage.py przelicz_liczbe_n_dla_uczelni
 echo "done."
 
 echo "Starting uvicorn... "

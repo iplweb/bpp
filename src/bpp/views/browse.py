@@ -194,12 +194,25 @@ class ZrodlaView(Browser):
     paginate_by = 70
 
     def get_queryset(self):
-        return (
+
+        qry = (
             super()
             .get_queryset()
-            .only("nazwa", "poprzednia_nazwa", "slug")
+            .only("nazwa", "poprzednia_nazwa", "slug", "pbn_uid__status")
             .order_by("nazwa")
         )
+
+        uczelnia = Uczelnia.objects.get_for_request(self.request)
+        if uczelnia is not None:
+            if not uczelnia.pokazuj_zrodla_bez_prac_w_przegladaniu_danych:
+                from bpp.models import Wydawnictwo_Ciagle
+
+                qry = qry.filter(
+                    pk__in=Wydawnictwo_Ciagle.objects.values_list(
+                        "zrodlo_id", flat=True
+                    ).distinct()
+                )
+        return qry
 
 
 class JednostkiView(Browser):

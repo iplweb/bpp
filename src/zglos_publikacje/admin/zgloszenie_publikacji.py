@@ -16,7 +16,7 @@ from django.contrib import admin, messages
 from django.contrib.admin import helpers
 from django.contrib.admin.templatetags.admin_urls import add_preserved_filters
 
-from bpp.admin.helpers import MODEL_Z_OPLATA_ZA_PUBLIKACJE
+from bpp.admin.helpers.fieldsets import MODEL_Z_OPLATA_ZA_PUBLIKACJE
 
 
 class Zgloszenie_Publikacji_AutorInline(admin.StackedInline):
@@ -36,6 +36,7 @@ class Zgloszenie_PublikacjiAdmin(admin.ModelAdmin):
         "wydzial_pierwszego_autora",
         "email",
         "status",
+        "zgoda_na_publikacje_pelnego_tekstu",
     ]
     list_filter = [
         "status",
@@ -43,6 +44,7 @@ class Zgloszenie_PublikacjiAdmin(admin.ModelAdmin):
         WydzialJednostkiPierwszegoAutora,
         "rodzaj_zglaszanej_publikacji",
         "rok",
+        "zgoda_na_publikacje_pelnego_tekstu",
     ]
 
     fields = (
@@ -59,6 +61,7 @@ class Zgloszenie_PublikacjiAdmin(admin.ModelAdmin):
             "status",
             "przyczyna_zwrotu",
             "kod_do_edycji",
+            "zgoda_na_publikacje_pelnego_tekstu",
         )
     )
 
