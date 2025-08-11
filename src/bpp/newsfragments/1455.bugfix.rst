@@ -1,2 +1,0 @@
-
-dodaj charakter ``edited-book`` dla importu z CrossRef
