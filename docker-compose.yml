@@ -10,16 +10,38 @@
 #       -- mpasternak 12.06.2024
 #
 
+version: '3.8'
+
+networks:
+  bpp-network:
+    driver: bridge
+
 services:
   # Ofelia to taki cron...
   ofelia:
     image: mcuadros/ofelia:latest
+    container_name: bpp-scheduler
     env_file: .env.docker
     depends_on:
-      - appserver
+      appserver:
+        condition: service_healthy
     command: daemon --docker
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - bpp-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 64M
+    healthcheck:
+      test: ["CMD", "ps", "aux", "|", "grep", "ofelia"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 #    labels:
 #       ofelia.smtp-host:
 #       ofelia.smtp-port:
@@ -30,21 +52,59 @@ services:
 
   db:
     image: iplweb/bpp_dbserver:latest
+    container_name: bpp-database
+    env_file: .env.docker
     volumes:
       - postgresql_data:/var/lib/postgresql/data
+      - ./backups:/backups
+    networks:
+      - bpp-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 512M
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    environment:
+      - POSTGRES_SHARED_PRELOAD_LIBRARIES=pg_stat_statements
+      - POSTGRES_MAX_CONNECTIONS=200
+      - POSTGRES_SHARED_BUFFERS=256MB
+      - POSTGRES_EFFECTIVE_CACHE_SIZE=1GB
 
   appserver:
     image: iplweb/bpp_appserver:latest
-    restart: always
+    container_name: bpp-app
+    restart: unless-stopped
     env_file: .env.docker
     depends_on:
       redis:
-        condition: service_started
+        condition: service_healthy
       db:
         condition: service_healthy
     volumes:
       - staticfiles:/staticroot
       - media:/mediaroot
+      - ./logs:/app/logs
+    networks:
+      - bpp-network
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 512M
+    healthcheck:
+      test: ["CMD", "python", "src/manage.py", "check", "--deploy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     labels:
       ofelia.enabled: "true"
 
@@ -63,49 +123,112 @@ services:
       ofelia.job-exec.pbn_integrator.schedule: "0 30 21 * * 6"
       ofelia.job-exec.pbn_integrator.command: "python src/manage.py tee pbn_integrator --enable-all --disable-multiprocessing"
 
+      ofelia.job-exec.db_backup.schedule: "0 0 2 * * *"
+      ofelia.job-exec.db_backup.command: "pg_dump -h db -U ${POSTGRES_USER:-postgres} ${POSTGRES_DB:-bpp} > /backups/backup_$(date +%Y%m%d_%H%M%S).sql"
+
   workserver:
     image: iplweb/bpp_workerserver:latest
+    container_name: bpp-worker
     env_file: .env.docker
     depends_on:
       appserver:
         condition: service_healthy
+    networks:
+      - bpp-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 256M
+    healthcheck:
+      test: ["CMD", "celery", "inspect", "ping", "-A", "django_bpp"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   denormserver:
     image: iplweb/bpp_base:latest
+    container_name: bpp-denorm
     env_file: .env.docker
     entrypoint: ["python", "src/manage.py", "denorm_queue"]
-    healthcheck:
-      test: ['CMD','true'] # disable the healthcheck
-#    deploy:
-#      mode: replicated
-#      replicas: 4
-    restart: always
+    networks:
+      - bpp-network
+    restart: unless-stopped
     depends_on:
       appserver:
         condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 256M
+    healthcheck:
+      test: ["CMD", "ps", "aux", "|", "grep", "denorm_queue"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   webserver:
     image: iplweb/bpp_webserver:latest
-    restart: always
+    container_name: bpp-nginx
+    restart: unless-stopped
     depends_on:
       appserver:
         condition: service_healthy
-
     ports:
-      - 80:80
-      - 443:443
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
     volumes:
-      - staticfiles:/var/www/html/staticroot
-      - media:/mediaroot
+      - staticfiles:/var/www/html/staticroot:ro
+      - media:/mediaroot:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    networks:
+      - bpp-network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 128M
+    healthcheck:
+      test: ["CMD", "nginx", "-t"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   redis:
-    image: redis:latest
+    image: redis:7-alpine
+    container_name: bpp-redis
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
     volumes:
       - redis_data:/data
+    networks:
+      - bpp-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+        reservations:
+          memory: 256M
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
 volumes:
   staticfiles:
+    driver: local
   media:
+    driver: local
   postgresql_data:
+    driver: local
   redis_data:
+    driver: local
   nginx_certs:
+    driver: local

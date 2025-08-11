@@ -1,0 +1,33 @@
+# Plik override dla środowiska deweloperskiego
+# Automatycznie ładowany przez docker-compose
+
+version: '3.8'
+
+services:
+  appserver:
+    environment:
+      - DEBUG=True
+      - DJANGO_LOG_LEVEL=DEBUG
+    volumes:
+      - ./src:/app/src:ro  # Mount source code for development
+    ports:
+      - "8000:8000"  # Expose Django dev server
+
+  db:
+    ports:
+      - "5432:5432"  # Expose PostgreSQL for debugging
+
+  redis:
+    ports:
+      - "6379:6379"  # Expose Redis for debugging
+
+  # Dodatkowy serwis do monitoringu w dev
+  adminer:
+    image: adminer:latest
+    container_name: bpp-adminer
+    ports:
+      - "8080:8080"
+    networks:
+      - bpp-network
+    depends_on:
+      - db
