@@ -781,20 +781,23 @@ class PBNClient(
                     SentData.objects.get_for_rec(rec).last_updated_on
                 )
 
-        bez_oswiadczen = None
-
         try:
             if "statements" in js:
                 ret = self.post_publication(js)
                 objectId = ret.get("objectId", None)
-                bez_oswiadczen = True
+                bez_oswiadczen = False
 
             else:
                 ret = self.post_publication_no_statements(js)
 
                 if len(ret) == 1:
-                    objectId = ret[0].get("id", None)
-                    bez_oswiadczen = False
+                    try:
+                        objectId = ret[0].get("id", None)
+                    except KeyError:
+                        raise Exception(
+                            f"Serwer zwrócił nieoczekiwaną odpowiedź. {ret=}"
+                        )
+                    bez_oswiadczen = True
                 else:
                     raise Exception(
                         "Lista zwróconych obiektów przy wysyłce pracy bez oświadczeń różna od jednego. "
@@ -914,9 +917,10 @@ class PBNClient(
         )
 
         if bez_oswiadczen:
-            notificator.info(
-                "Rekord nie posiada oświadczeń - wysłano do repozytorium. "
-            )
+            if notificator is not None:
+                notificator.info(
+                    "Rekord nie posiada oświadczeń - wysłano do repozytorium. "
+                )
 
         if not objectId:
             msg = (
@@ -933,6 +937,8 @@ class PBNClient(
                 capture_exception(e)
 
             mail_admins("Serwer PBN nie zwrocil ID publikacji", msg, fail_silently=True)
+
+            return
 
         # Pobierz zwrotnie dane z PBN
         publication = self.download_publication(objectId=objectId)

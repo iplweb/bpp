@@ -74,10 +74,10 @@ def test_PBNClient_test_upload_publication_wszystko_ok(
         "objectId": pbn_publication.pk
     }
 
-    ret, js = pbn_client.upload_publication(
+    objectId, ret, js, bez_oswiadczen = pbn_client.upload_publication(
         pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina
     )
-    assert ret["objectId"] == pbn_publication.pk
+    assert objectId == pbn_publication.pk
 
 
 @pytest.mark.django_db
@@ -327,7 +327,9 @@ def test_helpers_wysylka_z_uid_uczelni(
         sprobuj_wyslac_do_pbn_gui(req, pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina)
         msg = list(get_messages(req))
 
-    assert len(msg) == 1 and str(msg[0]).find("y zaktualizowane") > -1
+    assert len(msg) == 1
+    # assert str(msg[0]).find("nie posiada oświadczeń") > -1
+    assert str(msg[0]).find("y zaktualizowane") > -1
 
     iv = pbn_client.transport.input_values["/api/v1/publications"]
     assert iv["body"]["authors"][0]["affiliations"][0] == odpowiednik.pk
