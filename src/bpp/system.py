@@ -2,6 +2,7 @@
 
 groups - lista grup wraz z uprawnieniami do edycji poszczególnych obiektów.
 """
+
 from dbtemplates.models import Template
 from django.db import transaction
 from favicon.models import Favicon, FaviconImg
@@ -48,6 +49,7 @@ from bpp.models import (
     Autor_Jednostka,
     BppMultiseekVisibility,
     Charakter_Formalny,
+    Crossref_Mapper,
     Dyscyplina_Naukowa,
     Dyscyplina_Zrodla,
     Element_Repozytorium,
@@ -107,6 +109,7 @@ User = get_user_model()
 groups = {
     "dane systemowe": [
         Charakter_Formalny,
+        Crossref_Mapper,
         Kierunek_Studiow,
         Charakter_PBN,
         Funkcja_Autora,
