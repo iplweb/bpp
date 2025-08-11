@@ -26,6 +26,10 @@ BPP (Bibliografia Publikacji Pracowników) is a Polish academic bibliography man
 - `pytest --ds=django_bpp.settings.local` - Run tests with specific settings
 - `pytest --selenium` - Include Selenium tests (marked with @pytest.mark.selenium)
 - `pytest -k "not selenium"` - Run tests excluding Selenium tests
+- `make tests-without-selenium` - Run tests excluding Selenium tests with parallelization
+- `make tests-with-selenium` - Run only Selenium tests with parallelization
+- `make tests` - Run complete test suite including JS tests
+- `make full-tests` - Run tests with Microsoft Auth integration
 
 ### Code Quality Commands
 - `black .` - Format Python code
@@ -37,6 +41,10 @@ BPP (Bibliografia Publikacji Pracowników) is a Polish academic bibliography man
 - `make clean` - Clean build artifacts and cache files
 - `make distclean` - Deep clean including node_modules and staticroot
 - `bumpver bump` - Bump version (configured in pyproject.toml)
+- `make destroy-test-databases` - Remove all test databases
+- `make js-tests` - Run JavaScript/QUnit tests
+- `make docker` - Build all Docker containers
+- `make bdist_wheel` - Build distribution wheel for production
 
 ## Architecture Overview
 
@@ -52,6 +60,7 @@ The project uses multiple Django applications in `src/`:
 - `import_dyscyplin/` - Import academic disciplines
 - `import_pracownikow/` - Import employee data
 - `import_list_if/` - Import impact factor data
+- `import_list_ministerialnych/` - Import ministerial journal lists
 - `import_polon/` - Import from POLON system
 - `pbn_api/` - Integration with Polish Bibliography Network (PBN)
 - `crossref_bpp/` - CrossRef API integration
@@ -68,6 +77,14 @@ The project uses multiple Django applications in `src/`:
 - `formdefaults/` - Form default values management
 - `dynamic_columns/` - Dynamic column management
 - `zglos_publikacje/` - Publication submission system
+- `integrator2/` - Data integration utilities
+- `miniblog/` - Internal blog system
+- `oswiadczenia/` - Declaration management
+- `rozbieznosci_dyscyplin/` - Discipline discrepancy reports
+- `rozbieznosci_if/` - Impact factor discrepancy reports
+- `snapshot_odpiec/` - Snapshot management
+- `stan_systemu/` - System status monitoring
+- `tee/` - Data flow utilities
 
 ### Database
 - PostgreSQL database with custom SQL functions and triggers
@@ -81,10 +98,10 @@ The project uses multiple Django applications in `src/`:
 - Static files management via Django's collectstatic
 
 ### Settings Structure
-- `django_bpp/settings/base.py` - Base settings
-- `django_bpp/settings/local.py` - Development settings
-- `django_bpp/settings/production.py` - Production settings
-- `django_bpp/settings/test.py` - Test settings
+- `src/django_bpp/settings/base.py` - Base settings
+- `src/django_bpp/settings/local.py` - Development settings
+- `src/django_bpp/settings/production.py` - Production settings
+- `src/django_bpp/settings/test.py` - Test settings
 
 ### Key Features
 - Multi-institutional academic publication management
@@ -96,12 +113,15 @@ The project uses multiple Django applications in `src/`:
 - Open Access classification and tracking
 
 ### Development Notes
-- Uses Poetry for Python dependency management
+- Uses Poetry for Python dependency management (pyproject.toml)
 - Extensive test suite with pytest and Selenium integration
 - Pre-commit hooks for code quality
 - Celery for background task processing
 - Django Channels for WebSocket support
 - Internationalization support (Polish primary language)
+- Docker support with multi-architecture builds
+- Yarn for Node.js dependency management
+- Grunt for frontend asset compilation
 
 ## Common File Locations
 - Main models: `src/bpp/models/`
@@ -110,3 +130,14 @@ The project uses multiple Django applications in `src/`:
 - Templates: Look for `templates/` directories in each app
 - Static files: `src/*/static/` directories
 - Test files: `src/*/tests/` directories or `test_*.py` files
+- Management commands: `src/bpp/management/commands/`
+- Migrations (including SQL): `src/*/migrations/`
+- Frontend assets: `src/bpp/static/` and build via Grunt
+- Configuration files: `pytest.ini`, `pyproject.toml`, `package.json`, `Gruntfile.js`
+
+## Database Schema and Migrations
+The project uses a sophisticated migration system with both Python and SQL migrations:
+- Standard Django migrations for model changes
+- Custom SQL migrations for database views, functions, and triggers
+- Cache invalidation triggers and materialized views
+- Complex reporting views for academic evaluation
