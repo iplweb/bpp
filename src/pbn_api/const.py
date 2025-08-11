@@ -3,6 +3,8 @@ ACTIVE = "ACTIVE"
 
 PBN_POST_PUBLICATIONS_URL = "/api/v1/publications"
 
+PBN_POST_PUBLICATION_NO_STATEMENTS_URL = "/api/v1/repositorium/publications"
+
 PBN_POST_PUBLICATION_FEE_URL = "/api/v1/institutionProfile/publications/fees/{id}"
 
 PBN_GET_LANGUAGES_URL = "/api/v1/dictionary/languages"

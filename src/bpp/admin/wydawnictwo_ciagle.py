@@ -43,6 +43,7 @@ from django.contrib import admin
 from django.utils.safestring import mark_safe
 
 from bpp.admin.filters import (
+    BezJakichkolwiekDyscyplinFilter,
     DOIUstawioneFilter,
     LiczbaZnakowFilter,
     OstatnioZmienionePrzezFilter,
@@ -286,6 +287,7 @@ class Wydawnictwo_CiagleAdmin(
         OstatnioZmienionePrzezFilter,
         UtworzonePrzezFilter,
         PBN_UID_IDObecnyFilter,
+        BezJakichkolwiekDyscyplinFilter,
     ]
 
     autocomplete_fields = [

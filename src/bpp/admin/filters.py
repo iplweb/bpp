@@ -1,5 +1,4 @@
-# -*- encoding: utf-8 -*-
-from django.db.models import F, IntegerField, Max
+from django.db.models import Count, F, IntegerField, Max, Q
 from django.db.models.functions import Cast
 
 from django.contrib.admin.filters import SimpleListFilter
@@ -54,6 +53,40 @@ class SimpleNotNullFilter(SimpleListFilter):
             return queryset.filter(**{field: None})
         elif v == "jest":
             return queryset.exclude(**{field: None})
+
+        return queryset
+
+
+class BezJakichkolwiekDyscyplinFilter(SimpleListFilter):
+    title = "Bez jakichkolwiek dyscyplin"
+    parameter_name = "_bjkd_"
+    db_field_name = None
+
+    def lookups(self, request, model_admin):
+        return [
+            ("tak", "tak, brak dyscyplin"),
+        ]
+
+    def queryset(self, request, queryset):
+        v = self.value()
+
+        field = self.db_field_name
+        if field is None:
+            field = self.parameter_name
+
+        if v == "tak":
+            return queryset.annotate(
+                total_authors=Count("autorzy_set"),
+                authors_without_discipline=Count(
+                    "autorzy_set",
+                    filter=Q(autorzy_set__dyscyplina_naukowa__isnull=True),
+                ),
+            ).filter(
+                total_authors__gt=0,  # Ma autorów
+                total_authors=F(
+                    "authors_without_discipline"
+                ),  # Wszyscy autorzy bez dyscypliny
+            )
 
         return queryset
 
@@ -167,7 +200,7 @@ class LogEntryFilterBase(SimpleListFilter):
 
     def __init__(self, request, params, model, model_admin):
         self.content_type = ContentType.objects.get_for_model(model)
-        super(LogEntryFilterBase, self).__init__(
+        super().__init__(
             request=request, params=params, model=model, model_admin=model_admin
         )
 

@@ -38,6 +38,7 @@ from django.contrib import admin, messages
 
 from bpp.admin import helpers
 from bpp.admin.filters import (
+    BezJakichkolwiekDyscyplinFilter,
     CalkowitaLiczbaAutorowFilter,
     DOIUstawioneFilter,
     JestWydawnictwemNadrzednymDlaFilter,
@@ -132,6 +133,7 @@ class Wydawnictwo_ZwarteAdmin_Baza(BaseBppAdminMixin, admin.ModelAdmin):
         OstatnioZmienionePrzezFilter,
         UtworzonePrzezFilter,
         PBN_UID_IDObecnyFilter,
+        BezJakichkolwiekDyscyplinFilter,
     ]
 
     # Usunąć przed wcomitowaniem

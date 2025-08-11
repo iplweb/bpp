@@ -38,6 +38,7 @@ from pbn_api.const import (
     PBN_GET_PUBLICATION_BY_ID_URL,
     PBN_POST_INSTITUTION_STATEMENTS_URL,
     PBN_POST_PUBLICATION_FEE_URL,
+    PBN_POST_PUBLICATION_NO_STATEMENTS_URL,
     PBN_POST_PUBLICATIONS_URL,
     PBN_SEARCH_PUBLICATIONS_URL,
 )
@@ -662,6 +663,35 @@ class SearchMixin:
         return self.transport.post_pages(PBN_SEARCH_PUBLICATIONS_URL, body=kw)
 
 
+def rename_dict_key(data, old_key, new_key):
+    """
+    Recursively rename a dictionary key in a dictionary and all nested dictionaries.
+
+    Args:
+        data: Dictionary or any data structure that may contain dictionaries
+        old_key: The key to be renamed
+        new_key: The new key name
+
+    Returns:
+        The modified data structure with renamed keys
+    """
+    if isinstance(data, dict):
+        # Create a new dictionary with renamed keys
+        new_dict = {}
+        for key, value in data.items():
+            # Rename the key if it matches
+            new_key_name = new_key if key == old_key else key
+            # Recursively process the value
+            new_dict[new_key_name] = rename_dict_key(value, old_key, new_key)
+        return new_dict
+    elif isinstance(data, list):
+        # Process each item in the list
+        return [rename_dict_key(item, old_key, new_key) for item in data]
+    else:
+        # Return the value unchanged if it's not a dict or list
+        return data
+
+
 class PBNClient(
     ConferencesMixin,
     DictionariesMixin,
@@ -680,6 +710,34 @@ class PBNClient(
 
     def post_publication(self, json):
         return self.transport.post(PBN_POST_PUBLICATIONS_URL, body=json)
+
+    def post_publication_no_statements(self, json):
+        """
+        Ta funkcja służy do wysyłania publikacji BEZ oświadczeń.
+
+        Bierzemy słownik JSON z publikacji-z-oświadczeniami i przetwarzamy go.
+
+        :param json:
+        :return:
+        """
+
+        # PBN zmienił givenNames na firstName
+        for elem in json.get("authors", []):
+            elem["firstName"] = elem.pop("givenNames")
+
+        # PBN życzy abstrakty w root
+        abstracts = json.pop("languageData", {}).get("abstracts", [])
+        if abstracts:
+            json["abstracts"] = abstracts
+
+        # PBN nie życzy opłat
+        json.pop("fee", None)
+
+        # PBN zmienił nazwę mniswId na ministryId
+        json = rename_dict_key(json, "mniswId", "ministryId")
+
+        # Można próbować
+        return self.transport.post(PBN_POST_PUBLICATION_NO_STATEMENTS_URL, body=[json])
 
     def post_publication_fee(self, publicationId, json):
         return self.transport.post(
@@ -701,24 +759,53 @@ class PBNClient(
     def upload_publication(
         self, rec, force_upload=False, export_pk_zero=None, always_affiliate_to_uid=None
     ):
+        """
+        Ta funkcja wysyła dane publikacji na serwer, w zależności od obecności oświadczeń
+        w JSONie (klucz: "statements") używa albo api /v1/ do wysyłki publikacji "ze wszystkim",
+        albo korzysta z api /v1/ repozytoryjnego.
+
+        Zwracane wyniki wyjściowe też różnią się w zależnosci od użytego API stąd też ta funkcja
+        stara się w miarę rozsądnie to ogarnąć.
+        """
+
         js = WydawnictwoPBNAdapter(
             rec,
             export_pk_zero=export_pk_zero,
             always_affiliate_to_uid=always_affiliate_to_uid,
         ).pbn_get_json()
+
         if not force_upload:
             needed = SentData.objects.check_if_needed(rec, js)
             if not needed:
                 raise SameDataUploadedRecently(
                     SentData.objects.get_for_rec(rec).last_updated_on
                 )
+
+        bez_oswiadczen = None
+
         try:
-            ret = self.post_publication(js)
+            if "statements" in js:
+                ret = self.post_publication(js)
+                objectId = ret.get("objectId", None)
+                bez_oswiadczen = True
+
+            else:
+                ret = self.post_publication_no_statements(js)
+
+                if len(ret) == 1:
+                    objectId = ret[0].get("id", None)
+                    bez_oswiadczen = False
+                else:
+                    raise Exception(
+                        "Lista zwróconych obiektów przy wysyłce pracy bez oświadczeń różna od jednego. "
+                        "Sytuacja nieobsługiwana, proszę o kontakt z autorem programu. "
+                    )
+
         except Exception as e:
             SentData.objects.updated(rec, js, uploaded_okay=False, exception=str(e))
             raise e
 
-        return ret, js
+        return objectId, ret, js, bez_oswiadczen
 
     def download_publication(self, doi=None, objectId=None):
         from .integrator import zapisz_mongodb
@@ -819,14 +906,19 @@ class PBNClient(
                     raise e
 
         # Wgraj dane do PBN
-        ret, js = self.upload_publication(
+        objectId, ret, js, bez_oswiadczen = self.upload_publication(
             pub,
             force_upload=force_upload,
             export_pk_zero=export_pk_zero,
             always_affiliate_to_uid=always_affiliate_to_uid,
         )
 
-        if not ret.get("objectId", ""):
+        if bez_oswiadczen:
+            notificator.info(
+                "Rekord nie posiada oświadczeń - wysłano do repozytorium. "
+            )
+
+        if not objectId:
             msg = (
                 f"UWAGA. Serwer PBN nie odpowiedział prawidłowym PBN UID dla"
                 f" wysyłanego rekordu. Zgłoś sytuację do administratora serwisu. "
@@ -843,18 +935,25 @@ class PBNClient(
             mail_admins("Serwer PBN nie zwrocil ID publikacji", msg, fail_silently=True)
 
         # Pobierz zwrotnie dane z PBN
-        publication = self.download_publication(objectId=ret["objectId"])
-        self.download_statements_of_publication(publication)
-        self.pobierz_publikacje_instytucji_v2(objectId=ret["objectId"])
+        publication = self.download_publication(objectId=objectId)
+
+        if not bez_oswiadczen:
+            self.download_statements_of_publication(publication)
+            try:
+                self.pobierz_publikacje_instytucji_v2(objectId=objectId)
+            except PublikacjaInstytucjiV2NieZnalezionaException:
+                notificator.warning(
+                    "Nie znaleziono oświadczeń dla publikacji po stronie PBN w wersji V2 API."
+                )
 
         # Utwórz obiekt zapisanych danych. Dopiero w tym miejscu, bo jeżeli zostanie
         # utworzony nowy rekord po stronie PBN, to pbn_uid_id musi wskazywać na
         # bazę w tabeli Publication, która została chwile temu pobrana...
-        SentData.objects.updated(pub, js, pbn_uid_id=ret["objectId"])
-        if pub.pbn_uid_id is not None and pub.pbn_uid_id != ret["objectId"]:
+        SentData.objects.updated(pub, js, pbn_uid_id=objectId)
+        if pub.pbn_uid_id is not None and pub.pbn_uid_id != objectId:
             SentData.objects.updated(pub, js, pbn_uid_id=pub.pbn_uid_id)
 
-        if pub.pbn_uid_id != ret["objectId"]:
+        if pub.pbn_uid_id != objectId:
             # Rekord dostaje nowe objectId z PBNu.
 
             # Czy rekord JUŻ Z PBN UID dostaje nowe PBN UID z PBNu? Powiadom użytkownika.
@@ -862,7 +961,7 @@ class PBNClient(
                 if notificator is not None:
                     notificator.error(
                         f"UWAGA UWAGA UWAGA. Wg danych z PBN zmodyfikowano PBN UID tego rekordu "
-                        f"z wartości {pub.pbn_uid_id} na {ret['objectId']}. Technicznie nie jest to błąd, "
+                        f"z wartości {pub.pbn_uid_id} na {objectId}. Technicznie nie jest to błąd, "
                         f"ale w praktyce dobrze by było zweryfikować co się zadziało, zarówno po stronie"
                         f"PBNu jak i BPP. Być może operujesz na rekordzie ze zdublowanym DOI/stronie WWW."
                     )
@@ -870,7 +969,7 @@ class PBNClient(
                 message = (
                     f"Zarejestrowano zmianę ZAPISANEGO WCZEŚNIEJ PBN UID publikacji przez PBN, \n"
                     f"Publikacja:\n{pub}\n\n"
-                    f"z UIDu {pub.pbn_uid_id} na {ret['objectId']}"
+                    f"z UIDu {pub.pbn_uid_id} na {objectId}"
                 )
 
                 try:
@@ -888,7 +987,7 @@ class PBNClient(
             # czysty rekord czyli bez PBN UID, zas PBN odpowiedział PBN UIDem istniejącego już w bazie rekordu.
             from bpp.models import Rekord
 
-            istniejace_rekordy = Rekord.objects.filter(pbn_uid_id=ret["objectId"])
+            istniejace_rekordy = Rekord.objects.filter(pbn_uid_id=objectId)
             if pub.pbn_uid_id is None and istniejace_rekordy.exists():
                 if notificator is not None:
                     notificator.error(
@@ -904,7 +1003,7 @@ class PBNClient(
                 message = (
                     f"Zarejestrowano ustawienie nowo wysłanej pracy ISTNIEJĄCEGO JUŻ W BAZIE PBN UID\n"
                     f"Publikacja:\n{pub}\n\n"
-                    f"UIDu {ret['objectId']}\n"
+                    f"UIDu {objectId}\n"
                     f"Istniejąca praca/e: {istniejace_rekordy.all()}"
                 )
 
@@ -924,6 +1023,8 @@ class PBNClient(
 
             pub.pbn_uid = publication
             pub.save()
+
+        return publication
 
     def eventually_coerce_to_publication(self, pub: Model | str) -> Model:
         if type(pub) is str:
