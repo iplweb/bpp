@@ -10,4 +10,4 @@ class Crossref_Mapper_Admin(BaseBppAdminMixin, admin.ModelAdmin):
     list_select_related = ["charakter_formalny_bpp"]
 
     list_filter = ("charakter_crossref", "charakter_formalny_bpp")
-    search_fields = ["charakter_crossref", "charakter_formalny_bpp"]
+    search_fields = ["charakter_formalny_bpp__nazwa", "charakter_formalny_bpp__skrot"]
