@@ -37,6 +37,7 @@ PBN_MENU = [
 
 SYSTEM_MENU = [
     ("Charaktery formalne", "/admin/bpp/charakter_formalny/"),
+    ("Crossref Mapper", "/admin/bpp/crossref_mapper/"),
     ("Charakter PBN", "/admin/bpp/charakter_pbn/"),
     ("Dyscypliny naukowe", "/admin/bpp/dyscyplina_naukowa/"),
     ("Formularze - wartości domyślne", "/admin/formdefaults/formrepresentation/"),
@@ -50,6 +51,9 @@ SYSTEM_MENU = [
     ("OpenAccess: licencja", "/admin/bpp/licencja_openaccess"),
     ("OpenAccess: wersja tekstu", "/admin/bpp/wersja_tekstu_openaccess"),
     ("Organy przyznające nagrody", "/admin/bpp/organprzyznajacynagrody/"),
+]
+
+SYSTEM_MENU_2 = [
     ("Rodzaje źródeł", "/admin/bpp/rodzaj_zrodla/"),
     ("Rodzaje praw patentowych", "/admin/bpp/rodzaj_prawa_patentowego/"),
     ("Statusy korekt", "/admin/bpp/status_korekty/"),
@@ -162,7 +166,8 @@ class CustomMenu(Menu):
         flt("web", "WWW", WEB_MENU)
 
         flt("dane systemowe", "PBN API", PBN_MENU)
-        flt("dane systemowe", "Dane systemowe", SYSTEM_MENU)
+        flt("dane systemowe", "Dane", SYSTEM_MENU)
+        flt("dane systemowe", "systemowe", SYSTEM_MENU_2)
 
         from django.conf import settings
 
