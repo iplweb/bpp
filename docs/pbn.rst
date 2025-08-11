@@ -42,7 +42,18 @@ Integracja z PBN API - dla adminsitratora
    - zrodlo musi mieć okreslony odpowiednik dla PBN,
    - wydawca musi mieć określony odpowiednik dla PBN,
    - autorzy mogą lecz nie muszą mieć określony odpowiednik dla PBN,
-   - autorzy powinni mieć uzupełnione numery ORCID.
+   - autorzy powinni mieć uzupełnione numery ORCID,
+   - autorzy muszą mieć przypisaną dyscyplinę naukową (w przypadku wysyłania prac z oświadczeniami).
+
+#. System umożliwia także wysyłanie prac **bez oświadczeń** do PBN. Takie prace są wysyłane
+   do repozytorium PBN i nie zawierają informacji o dyscyplinach naukowych autorów.
+   Prace bez oświadczeń wysyła się identycznie jak prace z oświadczeniami - z poziomu
+   panelu Redagowania systemu BPP. Użytkownik otrzymuje informację o tym, że praca została
+   wysłana bez oświadczeń.
+
+   Możliwość wysyłki prac bez oświadczeń zależy od **konfiguracji systemu** - należy
+   ją włączyć w panelu Redagowania, w zakładce Struktura → Uczelnia/Instytut, w sekcji
+   ustawień PBN API.
 
 Wgrywanie wyłącznie opłat do PBN przez API
 ------------------------------------------

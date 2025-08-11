@@ -4,6 +4,15 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202508.1188 (2025-08-11)
+============================
+
+Usprawnienie
+------------
+
+- możliwość wysyłki prac PBN bez zadeklarowanych oświadczeń (#1414)
+
+
 Bpp 202508.1186 (2025-08-11)
 ============================
 

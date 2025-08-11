@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "bpp_iplweb"
-version = "202508.1187"
+version = "202508.1188"
 description = ""
 authors = ["Michał Pasternak <michal.dtz@gmail.com>"]
 license = "MIT"
@@ -105,7 +105,7 @@ exclude = [
 "bpp-manage.py" = "django_bpp.manage_command:entry_point"
 
 [tool.bumpver]
-current_version = "v202508.1187"
+current_version = "v202508.1188"
 version_pattern = "vYYYY0M.BUILD[-TAGNUM][GITHASH]"
 commit_message = "bump version {old_version} -> {new_version}"
 commit = true
@@ -197,7 +197,7 @@ django-taggit = "4.0.0"
 weasyprint = "55.0"
 requests-oauthlib = "1.3.0"
 django-cacheops = "7.0.2"
-djangoql = "0.17.1"
+djangoql = "0.18.1"
 django-weasyprint = "^2.1.0"
 django-templated-email = "^3.0.0"
 django-formtools = "2.3"
@@ -272,7 +272,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.towncrier]
 package = "bpp"
-version = "202508.1187"
+version = "202508.1188"
 package_dir = "src"
 filename = "HISTORY.rst"
 

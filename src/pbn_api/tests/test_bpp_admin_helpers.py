@@ -9,7 +9,10 @@ from pbn_api.client import (
     PBN_GET_PUBLICATION_BY_ID_URL,
     PBN_POST_PUBLICATIONS_URL,
 )
-from pbn_api.const import PBN_GET_INSTITUTION_PUBLICATIONS_V2
+from pbn_api.const import (
+    PBN_GET_INSTITUTION_PUBLICATIONS_V2,
+    PBN_POST_PUBLICATION_NO_STATEMENTS_URL,
+)
 from pbn_api.exceptions import AccessDeniedException
 from pbn_api.models import Publication, SentData
 from pbn_api.tests.utils import middleware
@@ -96,7 +99,7 @@ def test_sprobuj_wyslac_do_pbn_access_denied(
 ):
     req = rf.get("/")
 
-    pbn_client.transport.return_values[PBN_POST_PUBLICATIONS_URL] = (
+    pbn_client.transport.return_values[PBN_POST_PUBLICATION_NO_STATEMENTS_URL] = (
         AccessDeniedException(url="foo", content="testujemy")
     )
 
@@ -115,7 +118,7 @@ def test_sprobuj_wyslac_do_pbn_brak_prawidlowej_odpowiedzi(
 ):
     req = rf.get("/")
 
-    pbn_client.transport.return_values[PBN_POST_PUBLICATIONS_URL] = {
+    pbn_client.transport.return_values[PBN_POST_PUBLICATION_NO_STATEMENTS_URL] = {
         "elem": "coz, jakby nie. "
     }
 
@@ -125,7 +128,7 @@ def test_sprobuj_wyslac_do_pbn_brak_prawidlowej_odpowiedzi(
         )
 
     msg = get_messages(req)
-    assert "nie odpowiedział prawidłowym PBN UID" in list(msg)[0].message
+    assert "zwrócił nieoczekiwaną odpowiedź" in list(msg)[0].message
 
 
 @pytest.mark.django_db
@@ -163,8 +166,8 @@ def test_sprobuj_wyslac_do_pbn_inny_blad(
 
 
 @pytest.mark.django_db
-def test_sprobuj_wyslac_do_pbn_sukces(
-    pbn_wydawnictwo_zwarte_z_charakterem, pbn_client, rf, pbn_uczelnia
+def test_sprobuj_wyslac_do_pbn_z_oswiadczeniami(
+    pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina, pbn_client, rf, pbn_uczelnia
 ):
     req = rf.get("/")
 
@@ -184,11 +187,34 @@ def test_sprobuj_wyslac_do_pbn_sukces(
 
     with middleware(req):
         sprobuj_wyslac_do_pbn_gui(
-            req, pbn_wydawnictwo_zwarte_z_charakterem, pbn_client=pbn_client
+            req, pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina, pbn_client=pbn_client
         )
 
     msg = get_messages(req)
     assert "zostały zaktualizowane" in list(msg)[0].message
+
+
+@pytest.mark.django_db
+def test_sprobuj_wyslac_do_pbn_bez_oswiadczen_sukces(
+    pbn_wydawnictwo_zwarte_z_charakterem, pbn_client, rf, pbn_uczelnia
+):
+    req = rf.get("/")
+
+    pbn_client.transport.return_values[PBN_POST_PUBLICATION_NO_STATEMENTS_URL] = [
+        {"id": "123"}
+    ]
+    pbn_client.transport.return_values[
+        PBN_GET_PUBLICATION_BY_ID_URL.format(id="123")
+    ] = MOCK_RETURNED_MONGODB_DATA
+
+    with middleware(req):
+        sprobuj_wyslac_do_pbn_gui(
+            req, pbn_wydawnictwo_zwarte_z_charakterem, pbn_client=pbn_client
+        )
+
+    msg = get_messages(req)
+    assert "nie posiada oświadczeń" in list(msg)[0].message
+    assert "zostały zaktualizowane" in list(msg)[1].message
 
 
 @pytest.mark.django_db

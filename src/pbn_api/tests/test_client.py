@@ -12,7 +12,11 @@ from pbn_api.client import (
     PBN_GET_PUBLICATION_BY_ID_URL,
     PBN_POST_PUBLICATIONS_URL,
 )
-from pbn_api.const import PBN_GET_DISCIPLINES_URL, PBN_GET_INSTITUTION_PUBLICATIONS_V2
+from pbn_api.const import (
+    PBN_GET_DISCIPLINES_URL,
+    PBN_GET_INSTITUTION_PUBLICATIONS_V2,
+    PBN_POST_PUBLICATION_NO_STATEMENTS_URL,
+)
 from pbn_api.exceptions import (
     HttpException,
     PKZeroExportDisabled,
@@ -70,10 +74,10 @@ def test_PBNClient_test_upload_publication_wszystko_ok(
         "objectId": pbn_publication.pk
     }
 
-    ret, js = pbn_client.upload_publication(
+    objectId, ret, js, bez_oswiadczen = pbn_client.upload_publication(
         pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina
     )
-    assert ret["objectId"] == pbn_publication.pk
+    assert objectId == pbn_publication.pk
 
 
 @pytest.mark.django_db
@@ -183,6 +187,27 @@ def test_sync_publication_nowe_id(
     pbn_publication.refresh_from_db()
     assert pbn_publication.versions[0]["baz"] == "quux"
     assert stare_id != pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.pbn_uid_id
+
+
+@pytest.mark.django_db
+def test_PBNClient_post_publication_no_statements(
+    pbn_client, pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina, uczelnia
+):
+    uczelnia.pbn_wysylaj_bez_oswiadczen = True
+    uczelnia.save()
+
+    pbn_client.transport.return_values[PBN_POST_PUBLICATION_NO_STATEMENTS_URL] = [
+        {"id": 123}
+    ]
+    pbn_client.transport.return_values[PBN_GET_PUBLICATION_BY_ID_URL.format(id=123)] = (
+        MOCK_RETURNED_MONGODB_DATA
+    )
+
+    pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.autorzy_set.all().update(
+        dyscyplina_naukowa=None
+    )
+    ret = pbn_client.sync_publication(pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina)
+    assert ret
 
 
 @pytest.mark.django_db
@@ -302,7 +327,9 @@ def test_helpers_wysylka_z_uid_uczelni(
         sprobuj_wyslac_do_pbn_gui(req, pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina)
         msg = list(get_messages(req))
 
-    assert len(msg) == 1 and str(msg[0]).find("y zaktualizowane") > -1
+    assert len(msg) == 1
+    # assert str(msg[0]).find("nie posiada oświadczeń") > -1
+    assert str(msg[0]).find("y zaktualizowane") > -1
 
     iv = pbn_client.transport.input_values["/api/v1/publications"]
     assert iv["body"]["authors"][0]["affiliations"][0] == odpowiednik.pk

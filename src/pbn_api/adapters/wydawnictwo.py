@@ -88,18 +88,21 @@ class WydawnictwoPBNAdapter:
 
         self.pbn_wysylaj_bez_oswiadczen = False
 
+        if request is not None and uczelnia is None:
+            uczelnia = Uczelnia.objects.get_for_request(request)
+
+        if uczelnia is None:
+            uczelnia = Uczelnia.objects.get_default()
+
+        if uczelnia is not None:
+            if uczelnia.pbn_api_nie_wysylaj_prac_bez_pk:
+                self.export_pk_zero = False
+
+            if uczelnia.pbn_wysylaj_bez_oswiadczen:
+                self.pbn_wysylaj_bez_oswiadczen = True
+
         if export_pk_zero is not None:
             self.export_pk_zero = export_pk_zero
-        else:
-            if request is not None and uczelnia is None:
-                uczelnia = Uczelnia.objects.get_for_request(request)
-
-            if uczelnia is not None:
-                if uczelnia.pbn_api_nie_wysylaj_prac_bez_pk:
-                    self.export_pk_zero = False
-
-                if uczelnia.pbn_wysylaj_bez_oswiadczen:
-                    self.pbn_wysylaj_bez_oswiadczen = True
 
         if always_affiliate_to_uid is not None:
             self.always_affiliate_to_uid = always_affiliate_to_uid
