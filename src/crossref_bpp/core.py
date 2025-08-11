@@ -28,7 +28,7 @@ from django.utils.functional import cached_property
 
 from bpp.models import (
     Autor,
-    Charakter_Formalny,
+    Crossref_Mapper,
     Jezyk,
     Licencja_OpenAccess,
     Rekord,
@@ -57,9 +57,7 @@ class WynikPorownania:
         opis: str = "",
         rekordy: [
             Union[
-                List[
-                    models.Model,
-                ],
+                List[models.Model,],
                 None,
             ]
         ] = None,
@@ -529,30 +527,31 @@ class Komparator:
 
     @classmethod
     def porownaj_type(cls, wartosc):
-        if wartosc not in Charakter_Formalny.CHARAKTER_CROSSREF.labels:
+        if wartosc not in Crossref_Mapper.CHARAKTER_CROSSREF.labels:
             return WynikPorownania(
                 StatusPorownania.BLAD,
-                f'w systemie BPP nie zdefiniowano wartosci dla typu charakteru formalnego "{wartosc}",'
+                f'w systemie BPP nie zdefiniowano wartosci dla typu charakteru crossref "{wartosc}",'
                 f" prosimy o zgłoszenie tej sytuacji autorowi programu. ",
             )
 
-        try:
-            c = Charakter_Formalny.objects.get(
-                charakter_crossref=getattr(
-                    Charakter_Formalny.CHARAKTER_CROSSREF,
-                    wartosc.upper().replace("-", "_"),
-                )
+        c = Crossref_Mapper.objects.get_or_create(
+            charakter_crossref=getattr(
+                Crossref_Mapper.CHARAKTER_CROSSREF,
+                wartosc.upper().replace("-", "_"),
             )
+        )[0]
+
+        if c.charakter_formalny_bpp_id is not None:
             return WynikPorownania(
                 StatusPorownania.DOKLADNE, "określony charakter formalny", rekordy=[c]
             )
-        except Charakter_Formalny.DoesNotExist:
-            return WynikPorownania(
-                StatusPorownania.BLAD,
-                f'w systemie BPP nie zdefiniowano wartosci dla typu charakteru formalnego "{wartosc}",'
-                f" wejdz w Dane Systemowe -> Charaktery formalne i wybierz typ charakteru crossref "
-                f"dla któregoś z charakteru. ",
-            )
+
+        return WynikPorownania(
+            StatusPorownania.BLAD,
+            f'w systemie BPP nie zdefiniowano wartosci dla typu charakteru formalnego "{wartosc}",'
+            f" wejdz w Dane Systemowe -> Crossref Mapper i wybierz typ charakteru formalnego "
+            f"dla {wartosc} . ",
+        )
 
     @classmethod
     def porownaj_license(cls, wartosc):

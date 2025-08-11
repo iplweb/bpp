@@ -320,3 +320,90 @@ Przykład kompletnej procedury
    Wszystkie powyższe operacje wymagają prawidłowej konfiguracji integracji z PBN
    oraz autoryzacji użytkownika w systemie PBN. Szczegóły konfiguracji znajdują
    się w dokumentacji :doc:`konfiguracja_pbn`.
+
+
+Konfiguracja mapowania charakterów CrossRef API na charaktery formalne BPP
+--------------------------------------------------------------------------
+
+System BPP umożliwia integrację z CrossRef API do pobierania danych publikacji.
+Aby prawidłowo zaimportować dane z CrossRef, konieczne jest skonfigurowanie mapowania
+między charakterami formalnej publikacji używanymi przez CrossRef API a charakterami
+formalnymi zdefiniowanymi w systemie BPP.
+
+Dostępne charaktery CrossRef API
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+System CrossRef API wykorzystuje następujące typy charakterów publikacji:
+
+* ``journal-article`` - artykuły w czasopismach
+* ``proceedings-article`` - artykuły w materiałach konferencyjnych
+* ``book`` - książki
+* ``book-chapter`` - rozdziały w książkach
+* ``edited-book`` - książki redagowane
+* ``proceedings`` - materiały konferencyjne
+
+Konfiguracja mapowania w module Redagowania
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Aby skonfigurować mapowanie charakterów CrossRef na charaktery formalne BPP:
+
+1. **Wejście do modułu administracyjnego**
+
+   Zaloguj się jako administrator i przejdź do modułu Redagowania pod adresem ``/admin/``
+
+2. **Przejście do konfiguracji mapowania**
+
+   W sekcji "Dane systemowe" znajdź i kliknij opcję **"Crossref Mapper"**
+
+
+3. **Przeglądanie istniejących mapowań**
+
+   Wyświetli się lista wszystkich dostępnych charakterów CrossRef API wraz z ich
+   aktualnymi mapowaniami na charaktery formalne BPP:
+
+
+4. **Konfiguracja mapowania**
+
+   Dla każdego charakteru CrossRef:
+
+   a) Kliknij na rekord, który chcesz skonfigurować
+   b) W polu "Charakter formalny bpp" wybierz odpowiedni charakter z listy rozwijanej
+   c) Zapisz zmiany przyciskiem "Zapisz"
+
+
+Ważne zasady mapowania
+~~~~~~~~~~~~~~~~~~~~~
+
+.. warning::
+   **Jeden rodzaj CrossRef może mieć tylko jedno mapowanie na charakter formalny systemu BPP.**
+   System nie pozwoli na przypisanie tego samego charakteru CrossRef do dwóch różnych
+   charakterów formalnych BPP.
+
+.. note::
+   * Mapowanie jest opcjonalne - charaktery CrossRef mogą pozostać bez przypisania
+   * Rekordy bez mapowania będą wyświetlane jako "[brak zamapowania]"
+   * Zmiana mapowania wpłynie na wszystkie przyszłe importy z CrossRef API
+
+Przykłady typowych mapowań
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Poniżej przedstawiono sugerowane mapowania dla typowych charakterów:
+
+* ``journal-article`` → "Artykuł w czasopiśmie"
+* ``book`` → "Książka"
+* ``book-chapter`` → "Rozdział w książce"
+* ``edited-book`` → "Książka redagowana"
+* ``proceedings-article`` → "Artykuł w materiałach konferencyjnych"
+* ``proceedings`` → "Materiały konferencyjne"
+
+.. note::
+   Dokładne nazwy charakterów formalnych mogą się różnić w zależności od konfiguracji
+   danej instancji systemu BPP. Należy dopasować mapowanie do charakterów formalnych
+   zdefiniowanych w danej uczelni.
+
+Weryfikacja poprawności mapowania
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Po skonfigurowaniu mapowań zaleca się przeprowadzenie testowego importu -
+wykonaj próbny import publikacji z CrossRef API aby sprawdzić, czy
+charaktery są poprawnie przypisywane
