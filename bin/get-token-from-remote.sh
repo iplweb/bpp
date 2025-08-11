@@ -1,4 +1,5 @@
 #!/bin/zsh
+set -euo pipefail
 
 # Pobiera token PBN ze zdalnej bazy i ustawia go dla wszystkich użytkowników
 # w bazie lokalnej. Używane do testów.

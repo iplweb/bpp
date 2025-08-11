@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 export KATALOG="$1/raport.txt"
 

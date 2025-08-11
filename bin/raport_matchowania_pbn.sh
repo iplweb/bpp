@@ -1,4 +1,5 @@
 #!/bin/sh
+set -euo pipefail
 
 perform() {
     psql --csv bpp -c "$2" | python bin/csv2xlsx.py > $1

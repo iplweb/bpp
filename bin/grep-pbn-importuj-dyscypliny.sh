@@ -1,4 +1,6 @@
 #!/bin/bash
+set -euo pipefail
+
 
 # Polecenie towarzyszące poleceniu z systemu `pbn_importuj_dyscypliny_i_punkty_zrodel`
 # dzieli plik wyjściowy na kilka strumieni, każdy wysyła do oddzielnego
