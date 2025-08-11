@@ -4,6 +4,16 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202508.1184 (2025-08-11)
+============================
+
+Usprawnienie
+------------
+
+- eksport samych oświadczeń
+- polecenie do ustawienia pustych dat oświadczeń rekordów po 2022.
+
+
 Bpp 202507.1183 (2025-07-02)
 ============================
 
