@@ -262,6 +262,12 @@ class Wydawnictwo_Ciagle(
     def slug(self):
         return self.get_slug()
 
+    def to_bibtex(self):
+        """Export this publication to BibTeX format."""
+        from bpp.bibtex_export import wydawnictwo_ciagle_to_bibtex
+
+        return wydawnictwo_ciagle_to_bibtex(self)
+
     def clean(self):
         DwaTytuly.clean(self)
         ModelZOplataZaPublikacje.clean(self)

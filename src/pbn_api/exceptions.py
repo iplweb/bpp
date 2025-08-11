@@ -22,6 +22,10 @@ class PraceSerwisoweException(Exception):
         return "Po stronie PBN trwają prace serwisowe. Prosimy spróbować później. "
 
 
+class CannotDeleteStatementsException(Exception):
+    pass
+
+
 class HttpException(Exception):
     def __init__(self, status_code, url, content):
         self.status_code = status_code
@@ -119,3 +123,8 @@ class PBNUIDChangedException(ValueError):
 class PBNUIDSetToExistentException(ValueError):
     """Podnoszony gdy wg serwera PBN pracy nowo wysyłanej nalezałoby ustawić PBN UID
     istniejącego rekordu. Używany do wysłania przez Sentry zgłoszenia o sytuacji."""
+
+
+class DaneLokalneWymagajaAktualizacjiException(Exception):
+    """Podnoszony, gdy lokalne dane powinny zostać zaktualizowane, aby odzwierciedlać
+    zmiany po stronie PBN."""

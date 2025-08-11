@@ -1,5 +1,5 @@
-Integracja z PBN API
-====================
+Integracja z PBN API - dla adminsitratora
+=========================================
 
 #. Celem uzyskania dostępu do PBN API, należy po stronie PBN z użytkownika mającego
    rolę "Menadżer aplikacji" utworzyć aplikację o danym identyfikatorze (np. "BPP") oraz

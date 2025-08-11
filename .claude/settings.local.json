@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python src/manage.py test:*)",
+      "Bash(python src/manage.py export_bibtex:*)",
+      "Bash(python -m pytest bpp/tests/test_bibtex_export.py -v)",
+      "Bash(python -m pytest bpp/tests/test_bibtex_export.py bpp/tests/test_bibtex_export_simple.py -v)"
+    ],
+    "deny": []
+  }
+}

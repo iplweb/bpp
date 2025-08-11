@@ -23,6 +23,7 @@ class OswiadczeniaInstytucjiAdmin(BasePBNAPIAdmin):
         "publicationId__pk",
         "personId__lastName",
         "personId__name",
+        "id",
     ]
 
     list_display = [

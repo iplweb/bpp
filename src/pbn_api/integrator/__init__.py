@@ -55,6 +55,7 @@ from pbn_api.models import (
     OswiadczenieInstytucji,
     Publication,
     PublikacjaInstytucji,
+    PublikacjaInstytucji_V2,
     Publisher,
     Scientist,
     SentData,
@@ -558,6 +559,23 @@ def pobierz_publikacje_z_instytucji(client: PBNClient):
         client=client,
         pbar_label="pobierz_publikacje_instytucji",
     )
+
+
+def pobierz_publikacje_z_instytucji_v2(client: PBNClient):
+    res = client.get_institution_publications_v2()
+    for elem in tqdm(res, total=res.count()):
+        uuid = elem.get("uuid")
+        objectId_id = elem.get("objectId")
+
+        try:
+            objectId = Publication.objects.get(pk=objectId_id)
+        except Publication.DoesNotExist:
+            objectId = _pobierz_pojedyncza_prace(client, objectId_id)
+            print(f"Pobrano brakującą pracę: {objectId}")
+
+        PublikacjaInstytucji_V2.objects.update_or_create(
+            uuid=uuid, objectId=objectId, defaults={"json_data": elem}
+        )
 
 
 def pobierz_oswiadczenia_z_instytucji(client: PBNClient):
@@ -1069,7 +1087,7 @@ def split_list(lst, n):
         yield lst[i : i + n]
 
 
-CPU_COUNT = "auto"
+CPU_COUNT = "auto"  # noqa
 
 DEFAULT_CONTEXT = "spawn"
 
@@ -1081,8 +1099,6 @@ def _init():
 
 
 def initialize_pool(multipler=1):
-    global CPU_COUNT
-
     if CPU_COUNT == "auto":
         cpu_count = os.cpu_count() * 3 // 4
         if cpu_count < 1:
@@ -1796,7 +1812,7 @@ def _pobierz_pojedyncza_prace(client, publicationId):
             )
             return
         raise e
-    zapisz_mongodb(data, Publication, client)
+    return zapisz_mongodb(data, Publication, client)
 
 
 def pobierz_rekordy_publikacji_instytucji(client: PBNClient):

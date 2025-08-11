@@ -25,3 +25,7 @@ PBN_GET_INSTITUTION_STATEMENTS = (
 )
 
 PBN_GET_DISCIPLINES_URL = "/api/v2/dictionary/disciplines"
+
+PBN_POST_INSTITUTION_STATEMENTS_URL = "/api/v2/institution-profile/statements"
+
+PBN_GET_INSTITUTION_PUBLICATIONS_V2 = "/api/v2/institution-profile/publications"
