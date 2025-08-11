@@ -25,7 +25,11 @@ from queryset_sequence import QuerySetSequence
 from tqdm import tqdm
 
 from pbn_api.adapters.wydawnictwo import WydawnictwoPBNAdapter
-from pbn_api.exceptions import CannotDeleteStatementsException, HttpException
+from pbn_api.exceptions import (
+    CannotDeleteStatementsException,
+    DaneLokalneWymagajaAktualizacjiException,
+    HttpException,
+)
 from pbn_api.management.commands.util import PBNBaseCommand
 
 from django.contrib.contenttypes.models import ContentType
@@ -87,7 +91,12 @@ class Command(PBNBaseCommand):
             return
 
         for publication in tqdm(publications, desc="Wysyłam oświadczenia"):
-            json_data = WydawnictwoPBNAdapter(publication).pbn_get_api_statements()
+            try:
+                json_data = WydawnictwoPBNAdapter(publication).pbn_get_api_statements()
+            except DaneLokalneWymagajaAktualizacjiException as e:
+                self.stdout.write(self.style.ERROR(str(e)))
+                continue
+
             if not json_data:
                 continue
 
