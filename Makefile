@@ -140,6 +140,7 @@ upgrade-version:
 	-towncrier build --draft > /tmp/towncrier.txt
 	-towncrier build --yes
 	-git commit -F /tmp/towncrier.txt
+	@afplay /System/Library/Sounds/Funk.aiff
 	git flow release finish "$(NEW_VERSION)" -p -m "Nowa wersja: $(NEW_VERSION)"
 
 poetry-lock:
