@@ -216,8 +216,9 @@ class WydawnictwoPBNAdapter:
             )
         except PublikacjaInstytucji_V2.DoesNotExist:
             raise DaneLokalneWymagajaAktualizacjiException(
-                "Pobierz dane z profilu instytucji o publikacjach przez API V2. Brakuje "
-                f"informacji o UUID publikacji {self.original.pbn_uid}",
+                "Nie jestem w stanie ustalić lokalnie identyfikatora UUID dla publikacji"
+                f"{self.original.pbn_uid}. Pobierz dane z profilu instytucji o publikacjach przez "
+                f"API V2 przez CLI lub wyślij tą publikację w całości do PBN. ",
                 self.original.pbn_uid,
             )
 

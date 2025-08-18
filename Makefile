@@ -107,16 +107,7 @@ tests-with-selenium:
 tests: disable-microsoft-auth tests-without-selenium tests-with-selenium js-tests
 
 destroy-test-databases:
-	-dropdb --force test_bpp
-	-dropdb --force test_bpp_gw0
-	-dropdb --force test_bpp_gw1
-	-dropdb --force test_bpp_gw2
-	-dropdb --force test_bpp_gw3
-	-dropdb --force test_bpp_gw4
-	-dropdb --force test_bpp_gw5
-	-dropdb --force test_bpp_gw6
-	-dropdb --force test_bpp_gw8
-	-dropdb --force test_bpp_gw7
+	-./bin/drop-test-databases.sh
 
 full-tests: destroy-test-databases tests-with-microsoft-auth tests
 
@@ -140,6 +131,7 @@ upgrade-version:
 	-towncrier build --draft > /tmp/towncrier.txt
 	-towncrier build --yes
 	-git commit -F /tmp/towncrier.txt
+	@afplay /System/Library/Sounds/Funk.aiff
 	git flow release finish "$(NEW_VERSION)" -p -m "Nowa wersja: $(NEW_VERSION)"
 
 poetry-lock:
@@ -151,7 +143,7 @@ gh-run-watch:
 
 new-release: poetry-lock upgrade-version docker gh-run-watch
 
-release: tests js-tests new-release
+release: destroy-test-databases tests js-tests new-release
 
 set-version-from-vcs:
 	$(eval CUR_VERSION_VCS=$(shell git describe | sed s/\-/\./ | sed s/\-/\+/))
@@ -172,7 +164,7 @@ loc: clean
 	pygount -N ... -F "...,staticroot,migrations,fixtures" src --format=summary
 
 
-DOCKER_VERSION="202508.1189"
+DOCKER_VERSION="202508.1190"
 
 DOCKER_BUILD=build --platform linux/amd64,linux/arm64 --push
 
