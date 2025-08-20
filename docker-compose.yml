@@ -108,7 +108,7 @@ services:
         condition: service_healthy
       workerserver-denorm:
         condition: service_healthy
-
+    profiles: ['manual']
 
   denorm-queue:
     # run only SINGLE service, this is only a mechanism to pass
