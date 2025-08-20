@@ -71,6 +71,9 @@ services:
     image: iplweb/bpp_workerserver:latest
     env_file: .env.docker
     command: worker -Q celery
+    volumes:
+      - staticfiles:/staticroot
+      - media:/mediaroot
     depends_on:
       # Musi czekać na appserver, gdyż appserver aktualizuje ewentualnie baze danych.
       # Czy nawet w ogóle ją buduje...
@@ -81,6 +84,9 @@ services:
     image: iplweb/bpp_workerserver:latest
     env_file: .env.docker
     command: worker -Q denorm
+    volumes:
+      - staticfiles:/staticroot
+      - media:/mediaroot
     depends_on:
       # Musi czekać na appserver, gdyż appserver aktualizuje ewentualnie baze danych.
       # Czy nawet w ogóle ją buduje...
@@ -96,6 +102,7 @@ services:
         condition: service_healthy
       workerserver-denorm:
         condition: service_healthy
+    profiles: ['manual']
 
   flower:
     image: iplweb/flower:latest
@@ -108,7 +115,7 @@ services:
         condition: service_healthy
       workerserver-denorm:
         condition: service_healthy
-
+    profiles: ['manual']
 
   denorm-queue:
     # run only SINGLE service, this is only a mechanism to pass
