@@ -35,15 +35,35 @@ distclean: clean
 	rm -rf node_modules src/node_modules src/django_bpp/staticroot
 	rm -rf .vagrant splintershots src/components/bower_components src/media
 	rm -rf dist
+	rm src/bpp/static/scss/*.css
+	rm src/bpp/static/scss/*.map
 
 
-yarn:
-	export PUPPETEER_SKIP_CHROME_DOWNLOAD=true PUPPETEER_SKIP_CHROME_HEADLESS_SHELL_DOWNLOAD=true && yarn install  --no-progress --emoji false -s
+#yarn:
+#	export PUPPETEER_SKIP_CHROME_DOWNLOAD=true PUPPETEER_SKIP_CHROME_HEADLESS_SHELL_DOWNLOAD=true && yarn install  --no-progress --emoji false -s
 
 grunt-build:
 	grunt build
 
-assets: yarn grunt-build
+# CSS output files (targets)
+CSS_TARGETS := src/bpp/static/scss/app-blue.css src/bpp/static/scss/app-green.css src/bpp/static/scss/app-orange.css
+
+# SCSS source files
+SCSS_SOURCES := $(wildcard src/bpp/static/scss/*.scss)
+
+# Node modules dependency
+NODE_MODULES := node_modules/.installed
+
+$(NODE_MODULES): package.json yarn.lock
+	export PUPPETEER_SKIP_CHROME_DOWNLOAD=true PUPPETEER_SKIP_CHROME_HEADLESS_SHELL_DOWNLOAD=true && yarn install  --no-progress --emoji false -s
+	touch $(NODE_MODULES)
+
+$(CSS_TARGETS): $(SCSS_SOURCES) $(NODE_MODULES)
+	grunt build
+
+assets: $(CSS_TARGETS)
+
+yarn: $(NODE_MODULES)
 
 collectstatic:
 	python src/manage.py collectstatic --noinput -v0
