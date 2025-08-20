@@ -18,11 +18,14 @@ RUN touch README.md
 # RUN --mount=type=cache,sharing=locked,target=/etc/apt/sources.list.d/  \
 RUN sed -i s/http/https/g /etc/apt/sources.list.d/debian.sources
 
-RUN --mount=type=cache,sharing=locked,target=/var/cache/apt apt update && apt install -y libsasl2-dev python-dev-is-python3 libldap2-dev libssl-dev
+# RUN --mount=type=cache,sharing=locked,target=/var/cache/apt  \
+RUN apt update && apt install -y libsasl2-dev python-dev-is-python3 libldap2-dev libssl-dev
 
-RUN --mount=type=cache,target=/root/.cache/pip pip install django-auth-ldap django-microsoft-auth
+# RUN --mount=type=cache,target=/root/.cache/pip  \
+RUN pip install django-auth-ldap django-microsoft-auth
 
-RUN --mount=type=cache,target=$POETRY_CACHE_DIR poetry install --without dev --all-extras --no-root
+# RUN --mount=type=cache,target=$POETRY_CACHE_DIR  \
+RUN poetry install --without dev --all-extras --no-root
 
 ##########################################################################################
 
@@ -41,7 +44,8 @@ FROM python:3.11.13-slim-trixie AS runtime
 # RUN --mount=type=cache,sharing=locked,target=/etc/apt/sources.list.d/  \
 RUN sed -i s/http/https/g /etc/apt/sources.list.d/debian.sources
 
-RUN --mount=type=cache,sharing=locked,target=/var/cache/apt apt-get update && apt-get -y install python3-pip libpango-1.0-0 libpangoft2-1.0-0 postgresql-client pandoc curl
+# RUN --mount=type=cache,sharing=locked,target=/var/cache/apt apt-get update &&  \
+RUN apt update && apt install -y python3-pip libpango-1.0-0 libpangoft2-1.0-0 postgresql-client pandoc curl
 
 ENV VIRTUAL_ENV=/app/.venv \
     PATH="/app/.venv/bin:$PATH" \
