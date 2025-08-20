@@ -9,6 +9,10 @@
 #
 #       -- mpasternak 12.06.2024
 #
+# Podobnie, "odbezpieczony" port 5555 na celery flower.
+#
+#        -- mpasternak, 20.08.2025
+#
 
 services:
   # Ofelia to taki cron...
@@ -39,7 +43,7 @@ services:
     env_file: .env.docker
     depends_on:
       redis:
-        condition: service_started
+        condition: service_healthy
       db:
         condition: service_healthy
     volumes:
@@ -63,25 +67,60 @@ services:
       ofelia.job-exec.pbn_integrator.schedule: "0 30 21 * * 6"
       ofelia.job-exec.pbn_integrator.command: "python src/manage.py tee pbn_integrator --enable-all --disable-multiprocessing"
 
-  workserver:
+  workerserver-general:
     image: iplweb/bpp_workerserver:latest
     env_file: .env.docker
+    command: worker -Q celery
     depends_on:
+      # Musi czekać na appserver, gdyż appserver aktualizuje ewentualnie baze danych.
+      # Czy nawet w ogóle ją buduje...
       appserver:
         condition: service_healthy
 
-  denormserver:
+  workerserver-denorm:
+    image: iplweb/bpp_workerserver:latest
+    env_file: .env.docker
+    command: worker -Q denorm
+    depends_on:
+      # Musi czekać na appserver, gdyż appserver aktualizuje ewentualnie baze danych.
+      # Czy nawet w ogóle ją buduje...
+      appserver:
+        condition: service_healthy
+
+  workerserver-status:
+    image: iplweb/bpp_workerserver:latest
+    env_file: .env.docker
+    command: status
+    depends_on:
+      workerserver-general:
+        condition: service_healthy
+      workerserver-denorm:
+        condition: service_healthy
+
+  flower:
+    image: iplweb/flower:latest
+    env_file: .env.docker
+    command: status
+    ports:
+      - 5555:5555
+    depends_on:
+      workerserver-general:
+        condition: service_healthy
+      workerserver-denorm:
+        condition: service_healthy
+
+
+  denorm-queue:
+    # run only SINGLE service, this is only a mechanism to pass
+    # PostgreSQL LISTEN to Celery queue
     image: iplweb/bpp_base:latest
     env_file: .env.docker
     entrypoint: ["python", "src/manage.py", "denorm_queue"]
     healthcheck:
       test: ['CMD','true'] # disable the healthcheck
-#    deploy:
-#      mode: replicated
-#      replicas: 4
     restart: always
     depends_on:
-      appserver:
+      workerserver-denorm:
         condition: service_healthy
 
   webserver:
@@ -100,6 +139,12 @@ services:
 
   redis:
     image: redis:latest
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      start_period: 5s
+      interval: 5s
+      timeout: 5s
+      retries: 3
     volumes:
       - redis_data:/data
 

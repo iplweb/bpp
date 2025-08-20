@@ -509,6 +509,28 @@ CELERY_RESULT_BACKEND = "django-db"
 CELERY_BROKER_URL = BROKER_URL
 CELERY_RESULT_EXTENDED = True
 CELERY_RESULT_EXPIRES = timedelta(days=env("CELERY_RESULT_EXPIRES_DAYS"))
+CELERYD_HIJACK_ROOT_LOGGER = False
+CELERY_TRACK_STARTED = True
+
+CELERY_ROUTES = [
+    {"denorm.tasks.flush_single": {"queue": "denorm"}},
+]
+
+CELERYBEAT_SCHEDULE = {
+    "cleanup-integrator2-files": {
+        "task": "integrator2.tasks.remove_old_integrator_files",
+        "schedule": timedelta(days=1),
+    },
+    "zaktualizuj-liczbe-cytowan": {
+        "task": "bpp.tasks.zaktualizuj_liczbe_cytowan",
+        "schedule": timedelta(days=5),
+    },
+    "pbn-api-kolejka-wyczysc-wpisy-bez-rekordow": {
+        "task": "pbn_api.tasks.kolejka_wyczysc_wpisy_bez_rekordow",
+        "schedule": timedelta(days=7),
+    },
+}
+
 
 #
 SESSION_REDIS_HOST = REDIS_HOST
@@ -561,25 +583,6 @@ SESSION_SERIALIZER = "django.contrib.sessions.serializers.PickleSerializer"
 MESSAGE_STORAGE = "messages_extends.storages.FallbackStorage"
 
 TEST_NON_SERIALIZED_APPS = ["django.contrib.contenttypes", "django.contrib.auth"]
-
-CELERYD_HIJACK_ROOT_LOGGER = False
-
-CELERY_TRACK_STARTED = True
-
-CELERYBEAT_SCHEDULE = {
-    "cleanup-integrator2-files": {
-        "task": "integrator2.tasks.remove_old_integrator_files",
-        "schedule": timedelta(days=1),
-    },
-    "zaktualizuj-liczbe-cytowan": {
-        "task": "bpp.tasks.zaktualizuj_liczbe_cytowan",
-        "schedule": timedelta(days=5),
-    },
-    "pbn-api-kolejka-wyczysc-wpisy-bez-rekordow": {
-        "task": "pbn_api.tasks.kolejka_wyczysc_wpisy_bez_rekordow",
-        "schedule": timedelta(days=7),
-    },
-}
 
 
 def can_login_as(request, target_user):
