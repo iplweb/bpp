@@ -184,7 +184,7 @@ loc: clean
 	pygount -N ... -F "...,staticroot,migrations,fixtures" src --format=summary
 
 
-DOCKER_VERSION="202508.1197"
+DOCKER_VERSION="202508.1198"
 
 DOCKER_BUILD=build --platform linux/amd64,linux/arm64 --push
 
@@ -210,10 +210,13 @@ build-workerserver:
 build-webserver:
 	docker buildx ${DOCKER_BUILD} -t iplweb/bpp_webserver:${DOCKER_VERSION} -t iplweb/bpp_webserver:latest -f deploy/webserver/Dockerfile deploy/webserver/
 
+build-beatserver:
+	docker buildx ${DOCKER_BUILD} -t iplweb/bpp_beatserver:${DOCKER_VERSION} -t iplweb/bpp_beatserver:latest -f deploy/beatserver/Dockerfile deploy/beatserver/
+
 build-flower:
 	docker buildx ${DOCKER_BUILD} -t iplweb/flower:${DOCKER_VERSION} -t iplweb/flower:latest -f deploy/flower/Dockerfile deploy/flower/
 
-build-servers: build-appserver-base build-appserver build-workerserver build-flower
+build-servers: build-appserver-base build-appserver build-workerserver build-beatserver build-flower
 
 docker: build-dbserver build-webserver build-servers
 
