@@ -20,6 +20,10 @@ echo -n "Running compress... "
 ./src/manage.py compress -v0 --force --traceback
 echo "done."
 
+echo -n "Flushing all pending denorms via queue..."
+./src/manage.py denorm_flush_via_queue
+echo "done. "
+
 echo -n "Recalculating n-count for evaluation... "
 ./src/manage.py przelicz_liczbe_n_dla_uczelni
 echo "done."
