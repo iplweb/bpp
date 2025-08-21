@@ -582,6 +582,22 @@ zookeeper = ["kazoo (>=1.3.1)"]
 zstd = ["zstandard (==0.22.0)"]
 
 [[package]]
+name = "celery-singleton"
+version = "0.3.1"
+description = "Prevent duplicate celery tasks"
+optional = false
+python-versions = ">=3.6,<4.0"
+groups = ["main"]
+files = [
+    {file = "celery-singleton-0.3.1.tar.gz", hash = "sha256:260ce4978e631f8682ea0ccb03d7f3b87d42bc20e04e9bd46ddb78a2f8035d1e"},
+    {file = "celery_singleton-0.3.1-py3-none-any.whl", hash = "sha256:76b30a1bbe31d42030924b3eecfcaae2ab3ab99bf43e607cd46437f012434420"},
+]
+
+[package.dependencies]
+celery = ">=4"
+redis = "*"
+
+[[package]]
 name = "certifi"
 version = "2024.12.14"
 description = "Python package for providing Mozilla's CA Bundle."
@@ -1692,14 +1708,14 @@ sqlparse = ">=0.2"
 
 [[package]]
 name = "django-denorm-iplweb"
-version = "1.3.0"
+version = "1.4.0"
 description = "Denormalization magic for Django"
 optional = false
 python-versions = "*"
 groups = ["main"]
 files = [
-    {file = "django_denorm_iplweb-1.3.0-py3-none-any.whl", hash = "sha256:a1638d9fcc66f5dcc04cd9f33814c1bdf8c021bbb66a67911344798f5e729a5a"},
-    {file = "django_denorm_iplweb-1.3.0.tar.gz", hash = "sha256:0b260978d100a12f74b19ead0c8e9caa16f7d84823d04c159677b7e4a0c4dad9"},
+    {file = "django_denorm_iplweb-1.4.0-py3-none-any.whl", hash = "sha256:462d8d4077c26a224dfd567db823e64aa743cf7d9ab5d40d32f8d95f6a076805"},
+    {file = "django_denorm_iplweb-1.4.0.tar.gz", hash = "sha256:42189e96c4319eb3a004e30be3aa4a9250e2b3896778a307028d82a971d9fbee"},
 ]
 
 [[package]]
@@ -7529,4 +7545,4 @@ office365 = ["django-microsoft-auth"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<3.12"
-content-hash = "29bcbc240e49e4d25cec6e34a24c72de89a1597764ed15bc319fb21c82dbc345"
+content-hash = "c623e6919eba7120f4b12b745a4d4dd3c6edd840956fb1d30f492ee002c9b883"
