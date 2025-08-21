@@ -11,12 +11,18 @@ class MyAuthenticationForm(AuthenticationForm):
         self.helper = FormHelper()
         self.helper.form_class = "custom"
         self.helper.form_action = "."
+
+        # Get the next parameter from the request
+        next_url = ""
+        if request:
+            next_url = request.GET.get(REDIRECT_FIELD_NAME, "")
+
         self.helper.layout = Layout(
             Fieldset(
                 "Zaloguj się!",
                 "username",
                 "password",
-                Hidden(REDIRECT_FIELD_NAME, """"{{next}}"""),
+                Hidden(REDIRECT_FIELD_NAME, next_url),
             ),
             ButtonHolder(
                 Submit(
