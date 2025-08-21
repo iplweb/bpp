@@ -12,20 +12,16 @@ echo -n "Database migrations, if any... "
 ./src/manage.py migrate
 echo "done."
 
-echo -n "Running collectstatic... "
-./src/manage.py collectstatic --noinput -v0 --traceback
+echo -n "Running collectstatic and compress in the background... "
+./src/manage.py collectstatic --noinput -v0 --traceback && ./src/manage.py compress -v0 --force --traceback &
 echo "done."
 
-echo -n "Running compress... "
-./src/manage.py compress -v0 --force --traceback
-echo "done."
-
-echo -n "Flushing all pending denorms via queue..."
-./src/manage.py denorm_flush_via_queue
+echo -n "Flushing all pending denorms via queue in the background..."
+./src/manage.py denorm_flush_via_queue &
 echo "done. "
 
-echo -n "Recalculating n-count for evaluation... "
-./src/manage.py przelicz_liczbe_n_dla_uczelni
+echo -n "Recalculating n-count for evaluation in the background... "
+./src/manage.py przelicz_liczbe_n_dla_uczelni &
 echo "done."
 
 echo "Starting uvicorn... "
