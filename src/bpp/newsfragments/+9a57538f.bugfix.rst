@@ -1,0 +1,3 @@
+
+Poprawnie pokazuj pole "Przedstawiaj w PBN jako" dla formularza użytkownika w module redagowania dla
+instalacji używających Microsoft Auth.

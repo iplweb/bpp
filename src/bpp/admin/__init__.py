@@ -47,6 +47,7 @@ from .wydawnictwo_zwarte_autor import Wydawnictwo_Zwarte_Autor_Admin  # noqa
 from .wydzial import WydzialAdmin  # noqa
 
 from django.contrib import admin
+from django.contrib.admin.sites import AlreadyRegistered
 from django.contrib.auth.forms import UserCreationForm
 
 from .bppmultiseekvisibility import BppMulitiseekVisibilityAdmin  # noqa
@@ -269,7 +270,14 @@ class BppUserAdmin(UserAdmin):
         return ", ".join([x.name for x in row.groups.all()])
 
 
-admin.site.register(BppUser, BppUserAdmin)
+try:
+    admin.site.register(BppUser, BppUserAdmin)
+except AlreadyRegistered:
+    # W przypadku użycia django_microsoft_auth, formularz będzie już zarejestrowany (przez microsoft_auth),
+    # stąd trzeba go od-rejestrować i nadpisać. Problem polega na tym, że gdy zostawimy formularz
+    # microsoft_auth to zginie nam pole "Przedstawiaj w PBN jako"
+    admin.site.unregister(BppUser)
+    admin.site.register(BppUser, BppUserAdmin)
 
 
 class SearchFormAdmin(admin.ModelAdmin):
