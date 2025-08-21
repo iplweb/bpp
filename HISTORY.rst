@@ -4,6 +4,17 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202508.1199 (2025-08-21)
+============================
+
+Naprawione
+----------
+
+- Poprawnie pokazuj pole "Przedstawiaj w PBN jako" dla formularza użytkownika w module redagowania dla
+  instalacji używających Microsoft Auth.
+- spraw, aby formularz logowania poprawnie przesyłał na stronę docelową
+
+
 Bpp 202508.1188 (2025-08-11)
 ============================
 
