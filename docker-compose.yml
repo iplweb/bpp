@@ -37,6 +37,17 @@ services:
     volumes:
       - postgresql_data:/var/lib/postgresql/data
 
+  celerybeat:
+    image: iplweb/bpp_beatserver:latest
+    env_file: .env.docker
+    restart: always
+    volumes:
+      - staticfiles:/staticroot
+      - media:/mediaroot
+    depends_on:
+      - redis
+      - appserver
+
   appserver:
     image: iplweb/bpp_appserver:latest
     restart: always

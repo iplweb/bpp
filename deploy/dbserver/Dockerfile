@@ -7,7 +7,7 @@ ENV LANG=pl_PL.utf-8
 ENV POSTGRES_INITDB_ARGS="--locale-provider=icu --icu-locale=pl-PL"
 ENV POSTGRES_HOST_AUTH_METHOD=trust
 
-HEALTHCHECK --interval=10s --timeout=3s --retries=5 \
+HEALTHCHECK --interval=5s --timeout=3s --retries=5 \
   CMD pg_isready -U postgres
 
 RUN apt update && apt install -y postgresql-plpython3-16 python-is-python3
