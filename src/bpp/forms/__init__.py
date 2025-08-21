@@ -1,9 +1,27 @@
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Hidden
+from crispy_forms.utils import TEMPLATE_PACK
 from crispy_forms_foundation.layout import ButtonHolder, Fieldset, Layout, Submit
+from django.template.loader import render_to_string
 
 from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.contrib.auth.forms import AuthenticationForm
+
+
+class SecureNextLink(Hidden):
+    def render(self, form, context, template_pack=TEMPLATE_PACK, **kwargs):
+        """
+        Renders an `<input />` if container is used as a Layout object.
+        Input button value can be a variable in context.
+        """
+        # django-crispy-forms traktuje wartość jako... templatkę, więc w ten sposób moglibyśmy
+        # umożliwić zdalnemu użytkownikowi uruchamianie kodu na serwerze:
+
+        # self.value = Template(str(self.value)).render(context)
+
+        template = self.get_template_name(template_pack)
+        context.update({"input": self})
+        return render_to_string(template, context.flatten())
 
 
 class MyAuthenticationForm(AuthenticationForm):
@@ -22,7 +40,7 @@ class MyAuthenticationForm(AuthenticationForm):
                 "Zaloguj się!",
                 "username",
                 "password",
-                Hidden(REDIRECT_FIELD_NAME, next_url),
+                SecureNextLink(REDIRECT_FIELD_NAME, next_url),
             ),
             ButtonHolder(
                 Submit(
