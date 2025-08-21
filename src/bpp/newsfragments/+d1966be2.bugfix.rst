@@ -1,2 +1,0 @@
-
-spraw, aby formularz logowania poprawnie przesyłał na stronę docelową
