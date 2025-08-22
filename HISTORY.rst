@@ -4,6 +4,15 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202508.1201 (2025-08-22)
+============================
+
+Naprawione
+----------
+
+- napraw (raz jeszcze) formularz użytkownika przy zainstalowanej autoryzacji microsoft_auth
+
+
 Bpp 202508.1199 (2025-08-21)
 ============================
 

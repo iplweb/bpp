@@ -1,2 +1,0 @@
-
-napraw (raz jeszcze) formularz użytkownika przy zainstalowanej autoryzacji microsoft_auth
