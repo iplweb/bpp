@@ -6,6 +6,9 @@
       "Bash(python -m pytest bpp/tests/test_bibtex_export.py -v)",
       "Bash(python -m pytest bpp/tests/test_bibtex_export.py bpp/tests/test_bibtex_export_simple.py -v)"
     ],
-    "deny": []
+    "deny": [],
+    "additionalDirectories": [
+      "/Users/mpasternak/Library/Caches/pypoetry/virtualenvs/bpp-iplweb-61_RsGZW-py3.11/lib/python3.11/site-packages"
+    ]
   }
 }
