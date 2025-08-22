@@ -958,10 +958,7 @@ if MICROSOFT_AUTH_CLIENT_ID:
     MICROSOFT_AUTH_EXTRA_SCOPES = env("MICROSOFT_AUTH_EXTRA_SCOPES")
 
     # Zgodnie z dokumentacją z https://django-microsoft-auth.readthedocs.io/en/latest/usage.html,
-    # wstaw microsoft_auth po contrib_sites. Ten zabieg jest potrzebny, gdyż microsoft_auth
-    # modyfikuje formularz admina dla użytkownika, stąd nasz formularz by nie przeszedł.
-    # Problem polega na tym, że gdy zostawimy formularz microsoft_auth to zginie nam
-    # pole "Przedstawiaj w PBN jako"
+    # wstaw microsoft_auth po contrib_sites.
     contrib_sites_index = INSTALLED_APPS.index("django.contrib.sites")
     INSTALLED_APPS = (
         INSTALLED_APPS[: contrib_sites_index + 1]
