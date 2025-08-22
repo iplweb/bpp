@@ -1,6 +1,6 @@
 BRANCH=`git branch | sed -n '/\* /s///p'`
 
-.PHONY: clean distclean tests release tests-without-selenium tests-with-selenium docker
+.PHONY: clean distclean tests release tests-without-selenium tests-with-selenium docker destroy-test-databases
 
 PYTHON=python3
 
@@ -124,12 +124,12 @@ tests-with-microsoft-auth: enable-microsoft-auth tests-without-selenium-with-mic
 tests-with-selenium:
 	poetry run pytest -n 12 --splinter-headless -m "selenium" --maxfail 50
 
-tests: disable-microsoft-auth tests-without-selenium tests-with-selenium js-tests
+tests: tests-without-selenium tests-with-selenium js-tests
 
 destroy-test-databases:
 	-./bin/drop-test-databases.sh
 
-full-tests: destroy-test-databases tests-with-microsoft-auth tests
+full-tests: destroy-test-databases tests-with-microsoft-auth destroy-test-databases tests js-tests
 
 
 integration-start-from-match:
@@ -163,7 +163,7 @@ gh-run-watch:
 
 new-release: poetry-lock upgrade-version docker gh-run-watch
 
-release: destroy-test-databases tests js-tests new-release
+release: full-tests new-release
 
 set-version-from-vcs:
 	$(eval CUR_VERSION_VCS=$(shell git describe | sed s/\-/\./ | sed s/\-/\+/))
@@ -184,7 +184,7 @@ loc: clean
 	pygount -N ... -F "...,staticroot,migrations,fixtures" src --format=summary
 
 
-DOCKER_VERSION="202508.1200"
+DOCKER_VERSION="202508.1201"
 
 DOCKER_BUILD=build --platform linux/amd64,linux/arm64 --push
 

@@ -19,11 +19,21 @@ class BppConfig(AppConfig):
     def _register_bpp_user_admin(self):
         """Re-register BppUserAdmin to override any previous registrations."""
 
-        # Ten zabieg jest potrzebny, gdyż microsoft_auth modyfikuje formularz admina dla
-        # użytkownika, stąd nasz formularz by nie przeszedł. Problem polega na tym, że
-        # gdy zostawimy formularz microsoft_auth to zginie nam pole "Przedstawiaj w PBN jako"
+        # microsoft_auth at the currently used version modifies USER_MODEL admin form.
+        # bpp.admin also wants to modify it. With the current Django module resolution,
+        # the bpp.admin is imported, then bpp.apps.ready is called, then microsoft_auth.admin
+        # is imported... this is something we don't want.
+        #
+        # So, we import the microsoft_auth.admin here so it gets executed and then we re-register
+        # the module.
 
-        from django.contrib import admin
+        try:
+            from microsoft_auth import admin  # noqa
+        except ImportError:
+            # If there is no microsoft_auth module, this whole function is not actually needed.
+            return
+
+        from django.contrib import admin  # noqa
 
         from bpp.admin import BppUserAdmin
         from bpp.models import BppUser
