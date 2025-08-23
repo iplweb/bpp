@@ -4,6 +4,15 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202508.1202 (2025-08-23)
+============================
+
+Usprawnienie
+------------
+
+- nie pozwalaj na dwukrotne kliknięcie przycisków "Zapisz..." w module redagowania
+
+
 Bpp 202508.1201 (2025-08-22)
 ============================
 
