@@ -2,28 +2,115 @@
 <footer class="grp-module grp-submit-row grp-fixed-footer">
     <header style="display:none"><h1>Submit Options</h1></header>
     <ul>
-    {% block submit-row %}
-        {% if show_delete_link %}
-            {% url opts|admin_urlname:'delete' original.pk|admin_urlquote as delete_url %}
-            <li class="grp-float-left"><a href="{% add_preserved_filters delete_url %}" class="grp-button grp-delete-link">{% trans "Delete" %}</a></li>
-        {% endif %}
-        {% if show_save %}
-        	<li><input type="submit" value="{% trans 'Save' %}" class="grp-button grp-default" name="_save" /></li>
-        {% endif %}
-        {% if show_save_as_new %}
-        	<li><input type="submit" value="{% trans 'Save as new' %}" class="grp-button" name="_saveasnew" /></li>
-        {% endif %}
-        {% if show_save_and_add_another %}
-        	<li><input type="submit" value="{% trans 'Save and add another' %}" class="grp-button" name="_addanother" /></li>
-        {% endif %}
-        {% if show_save_and_continue %}
-        	<li><input type="submit" value="{% trans 'Save and continue editing' %}" class="grp-button" name="_continue" /></li>
-        {% endif %}
+        {% block submit-row %}
+            {% if show_delete_link %}
+                {% url opts|admin_urlname:'delete' original.pk|admin_urlquote as delete_url %}
+                <li class="grp-float-left"><a href="{% add_preserved_filters delete_url %}"
+                                              class="grp-button grp-delete-link">{% trans "Delete" %}</a></li>
+            {% endif %}
+            {% if show_save %}
+                <li><input type="submit" value="{% trans 'Save' %}" class="grp-button grp-default" name="_save"/></li>
+            {% endif %}
+            {% if show_save_as_new %}
+                <li><input type="submit" value="{% trans 'Save as new' %}" class="grp-button" name="_saveasnew"/></li>
+            {% endif %}
+            {% if show_save_and_add_another %}
+                <li><input type="submit" value="{% trans 'Save and add another' %}" class="grp-button"
+                           name="_addanother"/></li>
+            {% endif %}
+            {% if show_save_and_continue %}
+                <li><input type="submit" value="{% trans 'Save and continue editing' %}" class="grp-button"
+                           name="_continue"/></li>
+            {% endif %}
             {% if show_save_and_pbn %}
                 <li><input type="submit" value="Zapisz i wyślij do PBN" class="grp-button" name="_continue_and_pbn"/>
-                <li><input type="submit" value="Zapisz i wyślij do PBN w tle" class="grp-button" name="_continue_and_pbn_later"/>
+                <li><input type="submit" value="Zapisz i wyślij do PBN w tle" class="grp-button"
+                           name="_continue_and_pbn_later"/>
                 </li>
             {% endif %}
         {% endblock %}
     </ul>
 </footer>
+
+<script>
+    let isSubmitting = false;
+
+    document.addEventListener('DOMContentLoaded', function () {
+        /**
+         * Prevents double-clicking on submit buttons by disabling them after first click,
+         * showing visual feedback with animations and spinner, and blocking subsequent clicks.
+         */
+        function preventDoubleSubmit() {
+            // Find all submit buttons in the page
+            const submitButtons = document.querySelectorAll('input[type="submit"]');
+
+            // Attach click event listener to each submit button
+            submitButtons.forEach(function (button) {
+                button.addEventListener('click', function (event) {
+                    // If form is already being submitted, block this click completely
+                    if (isSubmitting) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        return false;
+                    }
+
+                    // Find the form this button belongs to
+                    const form = button.closest('form');
+                    if (!form) return;
+
+                    // Set global flag to prevent further clicks
+                    isSubmitting = true;
+
+                    // Use setTimeout to allow the default form submission to happen first
+                    setTimeout(function () {
+                        // Disable all submit buttons and fade them out with animation
+                        submitButtons.forEach(function (btn) {
+                            btn.disabled = true;
+                            django.jQuery(btn).animate({
+                                opacity: 0.6
+                            }, 300).css('cursor', 'not-allowed');
+                        });
+
+                        // Store original button text and prepare spinner characters
+                        const originalValue = button.value;
+                        const spinnerChars = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+                        let spinnerIndex = 0;
+
+                        // Measure current button width to prepare for smooth resize
+                        const $button = django.jQuery(button);
+                        const originalWidth = $button.outerWidth();
+
+                        // Temporarily add spinner text to measure required width
+                        const tempValue = button.value;
+                        button.value = spinnerChars[0] + ' ' + originalValue;
+                        const newWidth = $button.outerWidth();
+                        button.value = tempValue; // Restore original text temporarily
+
+                        // Smoothly animate button width to accommodate spinner, then start animation
+                        $button.animate({
+                            width: newWidth
+                        }, 150, function () {
+                            // Start rotating spinner animation after width animation completes
+                            const rotateInterval = setInterval(function () {
+                                button.value = spinnerChars[spinnerIndex] + ' ' + originalValue;
+                                spinnerIndex = (spinnerIndex + 1) % spinnerChars.length;
+                            }, 75);
+
+                            // Cleanup function to stop spinner animation
+                            const cleanup = function () {
+                                clearInterval(rotateInterval);
+                            };
+
+                            // Stop spinner when form actually submits
+                            form.addEventListener('submit', cleanup, {once: true});
+                            // Failsafe: stop spinner after 30 seconds in case form doesn't submit
+                            setTimeout(cleanup, 30000);
+                        });
+                    }, 10); // Small delay to ensure form submission isn't blocked
+                });
+            });
+        }
+
+        preventDoubleSubmit();
+    });
+</script>

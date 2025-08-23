@@ -150,3 +150,20 @@ select.admin-autocomplete {
 .select2-results {
     max-height: 100%;
 }
+
+/* -------------------------------------------------------------------------------- */
+/* Disabled submit buttons readability fix */
+/* -------------------------------------------------------------------------------- */
+
+input[type="submit"]:disabled,
+input[type="submit"].grp-button:disabled {
+    color: #666 !important;
+    background-color: #f5f5f5 !important;
+    border-color: #ccc !important;
+}
+
+input[type="submit"]:disabled:hover,
+input[type="submit"].grp-button:disabled:hover {
+    color: #666 !important;
+    background-color: #f5f5f5 !important;
+}
