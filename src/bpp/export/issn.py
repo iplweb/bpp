@@ -1,3 +1,5 @@
+import random
+
 from django.db.models import Exists, OuterRef, Q
 from openpyxl import Workbook
 
@@ -49,7 +51,7 @@ def get_issns_from_last_5_years():
 
 def generate_issn_xlsx_workbook(issns):
     """
-    Generuje workbook z ISSN pogrupowanymi po 600 elementów w kolumnie.
+    Generuje workbook z ISSN pogrupowanymi po losowej liczbie elementów (450-595) w kolumnie.
 
     Args:
         issns (list): Lista ISSN do umieszczenia w pliku
@@ -62,18 +64,22 @@ def generate_issn_xlsx_workbook(issns):
     ws = wb.active
     ws.title = "ISSN Czasopism"
 
-    # Grupuj ISSN po 600 w kolumnie
     col = 1
     row = 1
+    items_in_current_col = 0
+    max_rows_in_current_col = random.randint(450, 595)
 
-    for i, issn in enumerate(issns):
-        # Jeśli przekroczono 600 wierszy, przejdź do następnej kolumny
-        if i > 0 and i % 600 == 0:
+    for issn in issns:
+        # Jeśli osiągnięto maksymalną liczbę wierszy dla bieżącej kolumny, przejdź do następnej
+        if items_in_current_col >= max_rows_in_current_col:
             col += 1
             row = 1
+            items_in_current_col = 0
+            max_rows_in_current_col = random.randint(450, 595)
 
         ws.cell(row=row, column=col, value=issn)
         row += 1
+        items_in_current_col += 1
 
     return wb
 
@@ -81,7 +87,7 @@ def generate_issn_xlsx_workbook(issns):
 def generate_issn_xlsx():
     """
     Generuje workbook z ISSN czasopism które miały publikacje w ostatnich 5 latach,
-    pogrupowanymi po 600 elementów w kolumnie.
+    pogrupowanymi po losowej liczbie elementów (450-595) w kolumnie.
 
     Returns:
         openpyxl.Workbook: Workbook z danymi ISSN
