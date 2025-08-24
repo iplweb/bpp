@@ -167,7 +167,7 @@ gh-run-watch-docker-images:
 gh-run-watch-docker-images-alt:
 	gh run list --workflow="build-docker-images" --limit=1 --json databaseId --jq '.[0].databaseId' | xargs gh run watch
 
-new-release: poetry-lock upgrade-version docker gh-run-watch
+new-release: poetry-lock upgrade-version gh-run-watch-docker-images
 
 release: full-tests new-release
 
@@ -190,7 +190,7 @@ loc: clean
 	pygount -N ... -F "...,staticroot,migrations,fixtures" src --format=summary
 
 
-DOCKER_VERSION="202508.1205"
+DOCKER_VERSION="202508.1206"
 
 DOCKER_BUILD=build --platform linux/amd64,linux/arm64 --push
 
@@ -204,7 +204,10 @@ endif
 build-dbserver: deploy/dbserver/Dockerfile deploy/dbserver/autotune.py deploy/dbserver/docker-entrypoint-autotune.sh
 	docker buildx ${DOCKER_BUILD} -t iplweb/bpp_dbserver:${DOCKER_VERSION} -t iplweb/bpp_dbserver:latest -f deploy/dbserver/Dockerfile deploy/dbserver/
 
-build-appserver-base: assets $(shell find src -type f)
+# Source files for appserver base (excluding tests)
+APPSERVER_BASE_SOURCES := $(shell find src -type f \( -name "*.html" -o -name "*.py" -o -name "*.css" -o -name "*.js" -o -name "*.svg" \) ! -path "*/tests/*" ! -name "test_*")
+
+build-appserver-base: assets $(APPSERVER_BASE_SOURCES)
 	docker buildx ${DOCKER_BUILD} -t iplweb/bpp_base:${DOCKER_VERSION} -t iplweb/bpp_base:latest -f deploy/bpp_base/Dockerfile .
 
 build-appserver: build-appserver-base
