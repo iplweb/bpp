@@ -142,6 +142,16 @@ def sprobuj_wyslac_do_pbn(
             f"Kliknij tutaj</a> aby wyedytować tego autora. "
         )
 
+    open_in_pbn_link = ""
+    if obj.pbn_uid_id:
+        open_in_pbn_link = (
+            f'<a target=_blank href="{obj.link_do_pbn()}">Otwórz w PBN</a>. '
+        )
+
+    open_in_pi_link = obj.link_do_pi() or ""
+    if open_in_pi_link:
+        open_in_pi_link = f'<a target=_blank href="{open_in_pi_link}">Otwórz w Profilu Instytucji</a>. '
+
     try:
         pbn_client.sync_publication(
             obj,
@@ -156,6 +166,13 @@ def sprobuj_wyslac_do_pbn(
             ),
         )
 
+        # Być moze obj.pbn_uid_id uległ zmianie. Jeżeli tak -- zregeneruj link:
+        if obj.pbn_uid_id:
+            open_in_pbn_link = f'<a target=_blank href="{obj.link_do_pbn()}">Kliknij tutaj, aby otworzyć w PBN</a>. '
+        open_in_pi_link = obj.link_do_pi() or ""
+        if open_in_pi_link:
+            open_in_pi_link = f'<a target=_blank href="{open_in_pi_link}">Otwórz w Profilu Instytucji</a>. '
+
     except SameDataUploadedRecently as e:
         link_do_wyslanych = reverse(
             "admin:pbn_api_sentdata_change",
@@ -167,8 +184,7 @@ def sprobuj_wyslac_do_pbn(
             f"Nie aktualizuję w PBN API. Jeżeli chcesz wysłać ten rekord do PBN, musisz dokonać jakiejś zmiany "
             f"danych rekodu lub "
             f'usunąć informacje o <a target=_blank href="{link_do_wyslanych}">wcześniej wysłanych danych do PBN</a> '
-            f"(Redagowanie -> PBN API -> Wysłane informacje). "
-            f'<a target=_blank href="{obj.link_do_pbn()}">Kliknij tutaj, aby otworzyć w PBN</a>. ',
+            f"(Redagowanie -> PBN API -> Wysłane informacje). {open_in_pbn_link}{open_in_pi_link}"
         )
         if raise_exceptions:
             raise e
@@ -179,7 +195,7 @@ def sprobuj_wyslac_do_pbn(
         notificator.warning(
             f'Nie można zsynchronizować obiektu "{link_do_obiektu(obj)}" z PBN pod adresem '
             f"API {e.url}. Brak dostępu -- najprawdopodobniej użytkownik nie posiada odpowiednich uprawnień "
-            f"po stronie PBN/POLON. ",
+            f"po stronie PBN/POLON. {open_in_pbn_link}{open_in_pi_link}",
         )
         if raise_exceptions:
             raise e
@@ -200,7 +216,8 @@ def sprobuj_wyslac_do_pbn(
         notificator.warning(
             f'Nie można zsynchronizować obiektu "{link_do_obiektu(obj)}" z PBN pod adresem '
             f"API {e.url}. Brak dostępu z powodu nieprawidłowego tokena -- wymagana autoryzacja w PBN. "
-            f'<a target=_blank href="{reverse("pbn_api:authorize")}">Kliknij tutaj, aby autoryzować sesję</a>.',
+            f'<a target=_blank href="{reverse("pbn_api:authorize")}">Kliknij tutaj, aby autoryzować sesję</a>. '
+            f"{open_in_pbn_link}{open_in_pi_link}",
         )
         if raise_exceptions:
             raise e
@@ -210,7 +227,8 @@ def sprobuj_wyslac_do_pbn(
     except ResourceLockedException as e:
         notificator.warning(
             f'Nie można zsynchronizować obiektu "{link_do_obiektu(obj)}" z PBN pod adresem '
-            f"API {e.url}, ponieważ obiekt po stronie serwera PBN jest zablokowany. Spróbuj ponownie za jakiś czas."
+            f"API {e.url}, ponieważ obiekt po stronie serwera PBN jest zablokowany. Spróbuj ponownie za jakiś czas. "
+            f"{open_in_pbn_link}{open_in_pi_link}",
         )
 
         if raise_exceptions:
@@ -235,8 +253,8 @@ def sprobuj_wyslac_do_pbn(
             )
 
         notificator.warning(
-            'Nie można zsynchronizować obiektu "%s" z PBN. Kod błędu: %r. %s'
-            % (link_do_obiektu(obj), e, extra),
+            f'Nie można zsynchronizować obiektu "{link_do_obiektu(obj)}" z PBN. '
+            f"Kod błędu: {e}. {extra} {open_in_pbn_link}{open_in_pi_link}"
         )
 
         # Zaloguj problem do Sentry, bo w sumie nie wiadomo, co to za problem na tym etapie...
@@ -250,18 +268,16 @@ def sprobuj_wyslac_do_pbn(
     sent_data = SentData.objects.get(
         content_type=ContentType.objects.get_for_model(obj), object_id=obj.pk
     )
-    sent_data_link = link_do_obiektu(
-        sent_data, "Kliknij tutaj, aby otworzyć widok wysłanych danych. "
-    )
+    sent_data_link = link_do_obiektu(sent_data, "Otwórz widok wysłanych danych. ")
 
     publication_link = link_do_obiektu(
         sent_data.pbn_uid,
-        "Kliknij tutaj, aby otworzyć zwrotnie otrzymane z PBN dane o rekordzie. ",
+        "Otwórz lokalną kopię danych z PBN. ",
     )
+
     notificator.success(
         f"Dane w PBN dla rekordu {link_do_obiektu(obj)} zostały zaktualizowane. "
-        f'<a target=_blank href="{obj.link_do_pbn()}">Kliknij tutaj, aby otworzyć w PBN</a>. '
-        f"{sent_data_link}{publication_link}",
+        f"{open_in_pbn_link}{open_in_pi_link}{sent_data_link}{publication_link}",
     )
 
     return sent_data

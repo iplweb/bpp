@@ -2,8 +2,11 @@
 
 {% block object-tools-items %}
     {% if original.pbn_uid_id %}
-        <li><a target="_blank" href="{{ original.pbn_uid.link_do_pbn }}">Zobacz w PBN</a></li>
-        <li><a target="_blank" href="/admin/pbn_api/publication/{{ original.pbn_uid_id }}/change">Lokalny PBN</a></li>
+        <li><a target="_blank" href="{{ original.pbn_uid.link_do_pbn }}">PBN</a></li>
+        {% if original.link_do_pi %}
+            <li><a target="_blank" href="{{ original.link_do_pi }}">PI</a></li>
+        {% endif %}
+        <li><a target="_blank" href="/admin/pbn_api/publication/{{ original.pbn_uid_id }}/change">Kopia PBN</a></li>
     {% endif %}
     {% if original.pk %}
         <li><a
