@@ -31,7 +31,7 @@ from .nagroda import NagrodaInline
 # Proste tabele
 from .wydawnictwo_ciagle import CleanDOIWWWPublicWWWMixin
 from .xlsx_export import resources
-from .xlsx_export.mixins import EksportDanychMixin
+from .xlsx_export.mixins import EksportDanychZFormatowanieMixin, ExportActionsMixin
 from .zglos_publikacje_helpers import UzupelniajWstepneDanePoNumerzeZgloszeniaMixin
 
 from django.contrib import admin, messages
@@ -263,7 +263,8 @@ class Wydawnictwo_ZwarteAdmin(
     KolumnyZeSkrotamiMixin,
     helpers.mixins.AdnotacjeZDatamiOrazPBNMixin,
     OptionalPBNSaveMixin,
-    EksportDanychMixin,
+    EksportDanychZFormatowanieMixin,
+    ExportActionsMixin,
     UzupelniajWstepneDanePoNumerzeZgloszeniaMixin,
     UzupelniajWstepneDanePoCrossRefAPIMixin,
     DynamicColumnsMixin,
@@ -284,6 +285,7 @@ class Wydawnictwo_ZwarteAdmin(
     djangoql_completion = True
     search_fields = Wydawnictwo_ZwarteAdmin_Baza.search_fields
     resource_class = resources.Wydawnictwo_ZwarteResource
+    bibtex_resource_class = resources.Wydawnictwo_ZwarteBibTeXResource
 
     inlines = (
         generuj_inline_dla_autorow(Wydawnictwo_Zwarte_Autor),

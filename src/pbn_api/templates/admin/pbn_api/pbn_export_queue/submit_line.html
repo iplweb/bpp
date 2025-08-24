@@ -1,0 +1,8 @@
+{% extends "admin/submit_line.html" %}
+{% load i18n %}
+
+{% block submit-row %}
+    {% if original %}
+        <li><input type="submit" value="Wyślij ponownie do PBN" class="grp-button" name="_resend_to_pbn"/></li>
+    {% endif %}
+{% endblock %}

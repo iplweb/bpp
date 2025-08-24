@@ -1,0 +1,8 @@
+{% extends "admin/change_form.html" %}
+
+{% block object-tools-items %}
+    {% if original.rekord_do_wysylki %}
+        <li><a target="_blank" href="/admin/{{ original.content_type.app_label }}/{{ original.content_type.model }}/{{ original.object_id }}/change">BPP</a></li>
+    {% endif %}
+    {{ block.super }}
+{% endblock %}

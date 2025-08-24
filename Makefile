@@ -161,6 +161,12 @@ poetry-lock:
 gh-run-watch:
 	gh run watch
 
+gh-run-watch-docker-images:
+	gh run watch $$(gh run list --workflow="build-docker-images" --limit=1 --json databaseId --jq '.[0].databaseId')
+
+gh-run-watch-docker-images-alt:
+	gh run list --workflow="build-docker-images" --limit=1 --json databaseId --jq '.[0].databaseId' | xargs gh run watch
+
 new-release: poetry-lock upgrade-version docker gh-run-watch
 
 release: full-tests new-release
@@ -184,7 +190,7 @@ loc: clean
 	pygount -N ... -F "...,staticroot,migrations,fixtures" src --format=summary
 
 
-DOCKER_VERSION="202508.1204"
+DOCKER_VERSION="202508.1205"
 
 DOCKER_BUILD=build --platform linux/amd64,linux/arm64 --push
 
@@ -195,22 +201,22 @@ ifeq (${HOST},"swift-beast.local")
 DOCKER_BUILD=build --platform linux/arm64
 endif
 
-build-dbserver:
+build-dbserver: deploy/dbserver/Dockerfile deploy/dbserver/autotune.py deploy/dbserver/docker-entrypoint-autotune.sh
 	docker buildx ${DOCKER_BUILD} -t iplweb/bpp_dbserver:${DOCKER_VERSION} -t iplweb/bpp_dbserver:latest -f deploy/dbserver/Dockerfile deploy/dbserver/
 
-build-appserver-base: assets
+build-appserver-base: assets $(shell find src -type f)
 	docker buildx ${DOCKER_BUILD} -t iplweb/bpp_base:${DOCKER_VERSION} -t iplweb/bpp_base:latest -f deploy/bpp_base/Dockerfile .
 
-build-appserver:
+build-appserver: build-appserver-base
 	docker buildx ${DOCKER_BUILD} -t iplweb/bpp_appserver:${DOCKER_VERSION} -t iplweb/bpp_appserver:latest -f deploy/appserver/Dockerfile .
 
-build-workerserver:
+build-workerserver: build-appserver-base
 	docker buildx ${DOCKER_BUILD} -t iplweb/bpp_workerserver:${DOCKER_VERSION} -t iplweb/bpp_workerserver:latest -f deploy/workerserver/Dockerfile .
 
-build-webserver:
+build-webserver: deploy/webserver/Dockerfile deploy/webserver/default.conf
 	docker buildx ${DOCKER_BUILD} -t iplweb/bpp_webserver:${DOCKER_VERSION} -t iplweb/bpp_webserver:latest -f deploy/webserver/Dockerfile deploy/webserver/
 
-build-beatserver:
+build-beatserver: build-appserver-base
 	docker buildx ${DOCKER_BUILD} -t iplweb/bpp_beatserver:${DOCKER_VERSION} -t iplweb/bpp_beatserver:latest -f deploy/beatserver/Dockerfile deploy/beatserver/
 
 build-flower:
