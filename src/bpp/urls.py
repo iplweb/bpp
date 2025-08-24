@@ -85,6 +85,7 @@ from bpp.views.browse import (
     ZrodloView,
 )
 from bpp.views.oai import OAIView
+from bpp.views.xlsx_issn_chunks import xlsx_issn_chunks
 
 urlpatterns = [
     url(
@@ -417,5 +418,10 @@ urlpatterns = [
         r"^dyscyplina-naukowa-przypisanie-autocomplete/$",
         Dyscyplina_Naukowa_PrzypisanieAutocomplete.as_view(),
         name="dyscyplina-naukowa-przypisanie-autocomplete",
+    ),
+    url(
+        r"^xlsx-issn-chunks/$",
+        xlsx_issn_chunks,
+        name="xlsx-issn-chunks",
     ),
 ]
