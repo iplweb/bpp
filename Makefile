@@ -167,7 +167,10 @@ gh-run-watch-docker-images:
 gh-run-watch-docker-images-alt:
 	gh run list --workflow="build-docker-images" --limit=1 --json databaseId --jq '.[0].databaseId' | xargs gh run watch
 
-new-release: poetry-lock upgrade-version gh-run-watch-docker-images
+sleep-3:
+	sleep 3
+
+new-release: poetry-lock upgrade-version sleep-3 gh-run-watch-docker-images
 
 release: full-tests new-release
 
