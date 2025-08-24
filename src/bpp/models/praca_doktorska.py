@@ -149,3 +149,9 @@ class Praca_Doktorska(Praca_Doktorska_Baza):
     def clean(self):
         DwaTytuly.clean(self)
         ModelZOplataZaPublikacje.clean(self)
+
+    def to_bibtex(self):
+        """Export this doctoral thesis to BibTeX format."""
+        from bpp.export.bibtex import praca_doktorska_to_bibtex
+
+        return praca_doktorska_to_bibtex(self)

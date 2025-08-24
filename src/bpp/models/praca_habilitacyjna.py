@@ -57,3 +57,9 @@ class Praca_Habilitacyjna(Praca_Doktorska_Baza):
     def clean(self):
         DwaTytuly.clean(self)
         ModelZOplataZaPublikacje.clean(self)
+
+    def to_bibtex(self):
+        """Export this habilitation thesis to BibTeX format."""
+        from bpp.export.bibtex import praca_habilitacyjna_to_bibtex
+
+        return praca_habilitacyjna_to_bibtex(self)
