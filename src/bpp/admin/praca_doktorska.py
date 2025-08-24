@@ -25,7 +25,7 @@ from .helpers.fieldsets import (
 from .helpers.mixins import DomyslnyStatusKorektyMixin, Wycinaj_W_z_InformacjiMixin
 from .wydawnictwo_ciagle import CleanDOIWWWPublicWWWMixin
 from .xlsx_export import resources
-from .xlsx_export.mixins import EksportDanychZFormatowanieMixin
+from .xlsx_export.mixins import EksportDanychZFormatowanieMixin, ExportActionsMixin
 
 from django.contrib import admin
 
@@ -132,10 +132,21 @@ class Praca_DoktorskaForm(
         }
 
 
+class Praca_DoktorskaResource(resources.Wydawnictwo_ResourceBase):
+    class Meta:
+        model = Praca_Doktorska
+        exclude = resources.WYDAWNICTWO_TYPOWE_EXCLUDES
+        export_order = resources.WYDAWNICTWO_TYPOWY_EXPORT_ORDER
+
+
 class Praca_DoktorskaAdmin(
-    EksportDanychZFormatowanieMixin, Praca_Doktorska_Habilitacyjna_Admin_Base
+    EksportDanychZFormatowanieMixin,
+    ExportActionsMixin,
+    Praca_Doktorska_Habilitacyjna_Admin_Base,
 ):
+    resource_class = Praca_DoktorskaResource
     bibtex_resource_class = resources.Praca_DoktorskaBibTeXResource
+
     form = Praca_DoktorskaForm
 
     fieldsets = (

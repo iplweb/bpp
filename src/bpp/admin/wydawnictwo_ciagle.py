@@ -35,7 +35,7 @@ from .helpers.fieldsets import (
 )
 from .helpers.mixins import OptionalPBNSaveMixin, RestrictDeletionWhenPBNUIDSetMixin
 from .xlsx_export import resources
-from .xlsx_export.mixins import EksportDanychZFormatowanieMixin
+from .xlsx_export.mixins import EksportDanychZFormatowanieMixin, ExportActionsMixin
 from .zglos_publikacje_helpers import UzupelniajWstepneDanePoNumerzeZgloszeniaMixin
 
 from django.contrib import admin
@@ -203,6 +203,7 @@ class Wydawnictwo_CiagleAdmin(
     UzupelniajWstepneDanePoCrossRefAPIMixin,
     AdminCrossrefAPIMixin,
     EksportDanychZFormatowanieMixin,
+    ExportActionsMixin,
     DynamicColumnsMixin,
     RestrictDeletionWhenPBNUIDSetMixin,
     admin.ModelAdmin,
@@ -222,6 +223,7 @@ class Wydawnictwo_CiagleAdmin(
     djangoql_completion = True
 
     formfield_overrides = NIZSZE_TEXTFIELD_Z_MAPA_ZNAKOW
+
     actions = [
         ustaw_po_korekcie,
         ustaw_w_trakcie_korekty,

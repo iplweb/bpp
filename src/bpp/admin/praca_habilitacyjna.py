@@ -31,7 +31,7 @@ from .praca_doktorska import Praca_Doktorska_Habilitacyjna_Admin_Base
 #
 from .wydawnictwo_ciagle import CleanDOIWWWPublicWWWMixin
 from .xlsx_export import resources
-from .xlsx_export.mixins import EksportDanychZFormatowanieMixin
+from .xlsx_export.mixins import EksportDanychZFormatowanieMixin, ExportActionsMixin
 
 from django.contrib import admin
 
@@ -111,9 +111,19 @@ class Praca_HabilitacyjnaForm(forms.ModelForm):
         }
 
 
+class Praca_HabilitacyjnaResource(resources.Wydawnictwo_ResourceBase):
+    class Meta:
+        model = Praca_Habilitacyjna
+        exclude = resources.WYDAWNICTWO_TYPOWE_EXCLUDES
+        export_order = resources.WYDAWNICTWO_TYPOWY_EXPORT_ORDER
+
+
 class Praca_HabilitacyjnaAdmin(
-    EksportDanychZFormatowanieMixin, Praca_Doktorska_Habilitacyjna_Admin_Base
+    EksportDanychZFormatowanieMixin,
+    ExportActionsMixin,
+    Praca_Doktorska_Habilitacyjna_Admin_Base,
 ):
+    resource_class = Praca_HabilitacyjnaResource
     bibtex_resource_class = resources.Praca_HabilitacyjnaBibTeXResource
 
     inlines = [

@@ -138,7 +138,12 @@ env = environ.Env(
     # Ile dni trzymać wyniki działań Celery - domyślnie tydzień
     #
     CELERY_RESULT_EXPIRES_DAYS=(int, 7),
+    #
+    # Maksymalna ilość eksportowanych wierszy z Admina
+    #
+    DJANGO_BPP_MAX_ALLOWED_EXPORT_ITEMS=(int, 1500),
 )
+
 
 ENVFILE_PATHS = []
 
@@ -870,8 +875,6 @@ DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
 # django-import-export, używaj transakcji:
 IMPORT_EXPORT_USE_TRANSACTIONS = True
 
-# Maksymalna
-BPP_MAX_ALLOWED_EXPORT_ITEMS = 1500
 
 #
 # Konfiguracja LDAP
@@ -1189,3 +1192,9 @@ DJANGO_BPP_SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI = env(
 #
 
 PBN_TOKEN_HOURS_GRACE_TIME = 24
+
+#
+# Ograniczanie eksportu z Admina
+#
+
+BPP_MAX_ALLOWED_EXPORT_ITEMS = env("DJANGO_BPP_MAX_ALLOWED_EXPORT_ITEMS")
