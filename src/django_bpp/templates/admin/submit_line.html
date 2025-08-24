@@ -32,13 +32,20 @@
     </ul>
 </footer>
 
+<style>
+    .submit-button-animating {
+        transition: opacity 0.3s ease, width 0.15s ease;
+        cursor: not-allowed !important;
+    }
+</style>
+
 <script>
     let isSubmitting = false;
-
     document.addEventListener('DOMContentLoaded', function () {
         /**
          * Prevents double-clicking on submit buttons by disabling them after first click,
-         * showing visual feedback with animations and spinner, and blocking subsequent clicks.
+         * showing visual feedback with native animations and spinner, and blocking subsequent clicks.
+         * Uses native Web Animations API and CSS transitions instead of jQuery.
          */
         function preventDoubleSubmit() {
             // Find all submit buttons in the page
@@ -63,12 +70,11 @@
 
                     // Use setTimeout to allow the default form submission to happen first
                     setTimeout(function () {
-                        // Disable all submit buttons and fade them out with animation
+                        // Disable all submit buttons and fade them out with CSS transitions
                         submitButtons.forEach(function (btn) {
                             btn.disabled = true;
-                            django.jQuery(btn).animate({
-                                opacity: 0.6
-                            }, 300).css('cursor', 'not-allowed');
+                            btn.classList.add('submit-button-animating');
+                            btn.style.opacity = '0.6';
                         });
 
                         // Store original button text and prepare spinner characters
@@ -76,24 +82,29 @@
                         const spinnerChars = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
                         let spinnerIndex = 0;
 
-                        // Measure current button width to prepare for smooth resize
-                        const $button = django.jQuery(button);
-                        const originalWidth = $button.outerWidth();
+                        // Measure current button width using native methods
+                        const originalWidth = button.offsetWidth;
+
+                        // Set initial width explicitly to enable smooth transition
+                        button.style.width = originalWidth + 'px';
 
                         // Temporarily add spinner text to measure required width
                         const tempValue = button.value;
                         button.value = spinnerChars[0] + ' ' + originalValue;
-                        const newWidth = $button.outerWidth();
+                        const newWidth = button.scrollWidth + 13; // Add some padding
                         button.value = tempValue; // Restore original text temporarily
 
                         // Right-align text when button starts expanding
-                        $button.css('text-align', 'right');
+                        button.style.textAlign = 'right';
 
-                        // Smoothly animate button width to accommodate spinner, then start animation
-                        $button.animate({
-                            width: newWidth
-                        }, 150, function () {
-                            // Start rotating spinner animation after width animation completes
+                        // Force a reflow to ensure the initial width is applied before transition
+                        button.offsetHeight;
+
+                        // Smoothly animate button width using CSS transition
+                        button.style.width = newWidth + 'px';
+
+                        // Start rotating spinner animation after width transition completes
+                        setTimeout(function () {
                             const rotateInterval = setInterval(function () {
                                 button.value = spinnerChars[spinnerIndex] + ' ' + originalValue;
                                 spinnerIndex = (spinnerIndex + 1) % spinnerChars.length;
@@ -108,7 +119,7 @@
                             form.addEventListener('submit', cleanup, {once: true});
                             // Failsafe: stop spinner after 30 seconds in case form doesn't submit
                             setTimeout(cleanup, 30000);
-                        });
+                        }, 150); // Wait for width transition to complete (matches CSS transition duration)
                     }, 10); // Small delay to ensure form submission isn't blocked
                 });
             });

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "bpp_iplweb"
-version = "202508.1206"
+version = "202508.1207"
 description = ""
 authors = ["Michał Pasternak <michal.dtz@gmail.com>"]
 license = "MIT"
@@ -105,7 +105,7 @@ exclude = [
 "bpp-manage.py" = "django_bpp.manage_command:entry_point"
 
 [tool.bumpver]
-current_version = "v202508.1206"
+current_version = "v202508.1207"
 version_pattern = "vYYYY0M.BUILD[-TAGNUM][GITHASH]"
 commit_message = "bump version {old_version} -> {new_version}"
 commit = true
@@ -159,7 +159,7 @@ crispy-forms-foundation = "1.0.1"
 django-compressor = "4.4"
 sentry-sdk = {version = "^2.19.0", extras = ["django"]}
 bleach = ">=3.3.0"
-django-session-security = "2.6.7"
+django-session-security = "^2.6.7"
 django-password-policies-iplweb = "0.8.5"
 dj-pagination = "2.4.0"
 requests = "^2.32.3"
@@ -273,7 +273,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.towncrier]
 package = "bpp"
-version = "202508.1206"
+version = "202508.1207"
 package_dir = "src"
 filename = "HISTORY.rst"
 
