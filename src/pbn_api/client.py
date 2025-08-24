@@ -913,7 +913,8 @@ class PBNClient(
                 self.pobierz_publikacje_instytucji_v2(objectId=objectId)
             except PublikacjaInstytucjiV2NieZnalezionaException:
                 notificator.warning(
-                    "Nie znaleziono oświadczeń dla publikacji po stronie PBN w wersji V2 API."
+                    "Nie znaleziono oświadczeń dla publikacji po stronie PBN w wersji V2 API. Ten komunikat nie jest "
+                    "błędem. "
                 )
 
         # Utwórz obiekt zapisanych danych. Dopiero w tym miejscu, bo jeżeli zostanie
