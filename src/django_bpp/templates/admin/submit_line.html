@@ -86,6 +86,9 @@
                         const newWidth = $button.outerWidth();
                         button.value = tempValue; // Restore original text temporarily
 
+                        // Right-align text when button starts expanding
+                        $button.css('text-align', 'right');
+
                         // Smoothly animate button width to accommodate spinner, then start animation
                         $button.animate({
                             width: newWidth
