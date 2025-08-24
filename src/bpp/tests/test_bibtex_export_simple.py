@@ -4,7 +4,7 @@ Simplified tests for BibTeX export functionality.
 
 from unittest.mock import Mock
 
-from bpp.bibtex_export import (
+from bpp.export.bibtex import (
     export_to_bibtex,
     generate_bibtex_key,
     sanitize_bibtex_string,

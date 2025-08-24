@@ -4,6 +4,7 @@ BibTeX export functionality for BPP publication models.
 This module provides utilities to export Wydawnictwo_Ciagle and Wydawnictwo_Zwarte
 models to BibTeX format.
 """
+
 import re
 
 
