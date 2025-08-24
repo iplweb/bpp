@@ -251,7 +251,7 @@ def test_pbn_export_queue_admin_response_change_normal(
             "pbn_api.admin.pbn_export_queue.task_sprobuj_wyslac_do_pbn.delay"
         ) as mock_task:
             with patch.object(
-                admin_instance.__class__.__bases__[1], "response_change"
+                admin_instance.__class__.__bases__[0], "response_change"
             ) as mock_super:
                 mock_super.return_value = "super_response"
 
