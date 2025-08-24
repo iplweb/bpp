@@ -52,7 +52,7 @@ class TestBibTeXExportInAdmin(TestCase):
         xlsx_format = PrettyXLSX()
 
         self.assertEqual(bibtex_format.get_title(), "BibTeX")
-        self.assertEqual(xlsx_format.get_title(), "elegancki eksport do XLSX")
+        self.assertEqual(xlsx_format.get_title(), "prettyxlsx")
 
     def test_patent_bibtex_resource_export(self):
         """Test that Patent BibTeX resource can export patents."""
