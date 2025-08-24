@@ -27,6 +27,11 @@ class BppConfig(AppConfig):
         # So, we import the microsoft_auth.admin here so it gets executed and then we re-register
         # the module.
 
+        from django.apps import apps
+
+        if not apps.is_installed("microsoft_auth"):
+            return
+
         try:
             from microsoft_auth import admin  # noqa
         except ImportError:
