@@ -52,7 +52,7 @@ def format_authors_bibtex(wydawnictwo) -> str:
             if hasattr(autor_obj, "zapisany_jako") and autor_obj.zapisany_jako:
                 authors.append(autor_obj.zapisany_jako)
             elif hasattr(autor_obj, "autor"):
-                full_name = f"{autor_obj.autor.nazwisko}, {autor_obj.autor.imiona}"
+                full_name = f"{autor_obj.autor.nazwisko} {autor_obj.autor.imiona}"
                 authors.append(full_name)
     except Exception:
         # Fallback to cached authors if available
@@ -60,10 +60,8 @@ def format_authors_bibtex(wydawnictwo) -> str:
             hasattr(wydawnictwo, "opis_bibliograficzny_autorzy_cache")
             and wydawnictwo.opis_bibliograficzny_autorzy_cache
         ):
-            authors = [
-                f"{author.split()[-1]}, {' '.join(author.split()[:-1])}"
-                for author in wydawnictwo.opis_bibliograficzny_autorzy_cache
-            ]
+            # The cached authors are already in "LastName FirstName" format
+            authors = wydawnictwo.opis_bibliograficzny_autorzy_cache
 
     return " and ".join(authors)
 

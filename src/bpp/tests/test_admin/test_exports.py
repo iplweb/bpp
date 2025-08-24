@@ -66,7 +66,11 @@ def test_xlsx_export_data(urlname, klass, cname, admin_app: DjangoTestApp):
         reverse(f"admin:bpp_{urlname}_changelist")
     )
 
-    xlsx_binary_data = page.click(NAZWA_LINKU_EKSPORTU).forms[1].submit()
+    if urlname != "autor":
+        xlsx_binary_data = page.click(NAZWA_LINKU_EKSPORTU).forms[1].submit()
+    else:
+        xlsx_binary_data = page.click(NAZWA_LINKU_EKSPORTU)
+
     wb = openpyxl.load_workbook(BytesIO(xlsx_binary_data.content))
     assert wb.active["A1"].value == cname
 
