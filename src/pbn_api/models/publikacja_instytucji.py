@@ -32,6 +32,8 @@ class PublikacjaInstytucji_V2(models.Model):
         return self.json_data.get("title")
 
     uuid = models.UUIDField(primary_key=True)
+    # objectId powinno być realnie OneToOne, ale ja za cholerę nie wiem, czy PBN ma realnie to unikalne,
+    # potem będzie się mój system wykrzaczał jeżeli oni mają zdublowane, więc:
     objectId = models.ForeignKey("pbn_api.Publication", on_delete=models.CASCADE)
     json_data = models.JSONField()
 

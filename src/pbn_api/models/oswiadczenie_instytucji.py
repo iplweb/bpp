@@ -3,10 +3,12 @@ from django.db import models, transaction
 
 from ..exceptions import HttpException, StatementDeletionError
 
-from bpp.models import Typ_Odpowiedzialnosci
+from bpp.models import LinkDoPBNMixin, Typ_Odpowiedzialnosci
 
 
-class OswiadczenieInstytucji(models.Model):
+class OswiadczenieInstytucji(LinkDoPBNMixin, models.Model):
+    atrybut_dla_url_do_pbn = "publicationId_id"
+
     primary_key = models.AutoField(primary_key=True, editable=False)
     id = models.UUIDField("UID w PBN", null=True, blank=True)
     addedTimestamp = models.DateField()

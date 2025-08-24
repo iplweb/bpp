@@ -2,6 +2,7 @@
 
 Klasy określające w jaki sposób dane są eksportowane z systemu.
 """
+
 from django.urls import reverse
 from import_export import resources
 from import_export.fields import Field
@@ -9,7 +10,7 @@ from import_export.formats import base_formats
 
 from django.contrib.sites.models import Site
 
-from bpp.bibtex_export import export_to_bibtex
+from bpp.export.bibtex import export_to_bibtex
 from bpp.models import Autor, Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
 
 

@@ -532,18 +532,30 @@ class InstitutionsProfileMixin:
         except HttpException as e:
             if e.status_code != 400 or not e.url.startswith(url):
                 raise e
+
             try:
                 ret_json = json.loads(e.content)
             except BaseException:
                 raise e
 
-            if (
-                ret_json.get("description") != "Validation failed."
-                or e.content.find("Nie można usunąć oświadczeń") < 0
-            ):
-                raise e
+            NIE_MOZNA_USUNAC = "Nie można usunąć oświadczeń."
+            NIE_ISTNIEJA = "Nie istnieją oświadczenia dla publikacji"
 
-            raise CannotDeleteStatementsException(e.content)
+            if ret_json:
+                try:
+                    try:
+                        msg = e.json["details"]["publicationId"]
+                    except KeyError:
+                        msg = e.json["details"][f"publicationId.{publicationId}"]
+                    if NIE_ISTNIEJA in msg and NIE_MOZNA_USUNAC in msg:
+                        # Opis odpowiada sytuacji "Nie można usunąć oświadczeń, nie istnieją"
+                        raise CannotDeleteStatementsException(e.content)
+
+                except (TypeError, KeyError):
+                    if NIE_ISTNIEJA in e.content and NIE_MOZNA_USUNAC in e.content:
+                        raise CannotDeleteStatementsException(e.content)
+
+            raise e
 
     def delete_publication_statement(self, publicationId, personId, role):
         return self.transport.delete(
@@ -695,6 +707,9 @@ class PBNClient(
 
         # PBN zmienił givenNames na firstName
         for elem in json.get("authors", []):
+            elem["firstName"] = elem.pop("givenNames")
+
+        for elem in json.get("editors", []):
             elem["firstName"] = elem.pop("givenNames")
 
         # PBN życzy abstrakty w root
@@ -853,32 +868,9 @@ class PBNClient(
                 # Jeżeli zostały skasowane dane, to wymuś wysłanie rekordu, niezależnie
                 # od stanu tabeli SentData
                 force_upload = True
-            except HttpException as e:
-                NIE_ISTNIEJA = "Nie istnieją oświadczenia dla publikacji"
-
-                ignored_exception = False
-
-                if e.status_code == 400:
-                    if e.json:
-                        try:
-                            try:
-                                msg = e.json["details"]["publicationId"]
-                            except KeyError:
-                                msg = e.json["details"][
-                                    f"publicationId.{pub.pbn_uid_id}"
-                                ]
-                            if NIE_ISTNIEJA in msg:
-                                ignored_exception = True
-                        except (TypeError, KeyError):
-                            if NIE_ISTNIEJA in e.content:
-                                ignored_exception = True
-
-                    else:
-                        if NIE_ISTNIEJA in e.content:
-                            ignored_exception = True
-
-                if not ignored_exception:
-                    raise e
+            except CannotDeleteStatementsException:
+                # Ignoruj, jeżeli nie można skasowac oświadczeń publikacji. Mogą nie istnieć
+                pass
 
         # Wgraj dane do PBN
         objectId, ret, js, bez_oswiadczen = self.upload_publication(
@@ -891,7 +883,7 @@ class PBNClient(
         if bez_oswiadczen:
             if notificator is not None:
                 notificator.info(
-                    "Rekord nie posiada oświadczeń - wysłano do repozytorium. "
+                    "Rekord nie posiada oświadczeń - wysłano wyłącznie do repozytorium PBN. "
                 )
 
         if not objectId:
@@ -921,7 +913,8 @@ class PBNClient(
                 self.pobierz_publikacje_instytucji_v2(objectId=objectId)
             except PublikacjaInstytucjiV2NieZnalezionaException:
                 notificator.warning(
-                    "Nie znaleziono oświadczeń dla publikacji po stronie PBN w wersji V2 API."
+                    "Nie znaleziono oświadczeń dla publikacji po stronie PBN w wersji V2 API. Ten komunikat nie jest "
+                    "błędem. "
                 )
 
         # Utwórz obiekt zapisanych danych. Dopiero w tym miejscu, bo jeżeli zostanie

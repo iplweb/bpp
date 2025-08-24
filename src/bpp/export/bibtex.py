@@ -4,6 +4,7 @@ BibTeX export functionality for BPP publication models.
 This module provides utilities to export Wydawnictwo_Ciagle and Wydawnictwo_Zwarte
 models to BibTeX format.
 """
+
 import re
 
 
@@ -305,12 +306,213 @@ def wydawnictwo_zwarte_to_bibtex(wydawnictwo_zwarte) -> str:
     return bibtex_entry
 
 
+def patent_to_bibtex(patent) -> str:
+    """
+    Convert Patent instance to BibTeX format.
+
+    Args:
+        patent: Patent model instance
+
+    Returns:
+        BibTeX formatted string
+    """
+    key = generate_bibtex_key(patent)
+    authors = format_authors_bibtex(patent)
+
+    bibtex_entry = f"@misc{{{key},\n"
+
+    # Title
+    if patent.tytul_oryginalny:
+        title = sanitize_bibtex_string(patent.tytul_oryginalny)
+        bibtex_entry += f"  title = {{{title}}},\n"
+
+    # Authors
+    if authors:
+        bibtex_entry += f"  author = {{{sanitize_bibtex_string(authors)}}},\n"
+
+    # Year
+    if patent.rok:
+        bibtex_entry += f"  year = {{{patent.rok}}},\n"
+
+    # Note with patent-specific information
+    note_parts = []
+    if hasattr(patent, "numer_zgloszenia") and patent.numer_zgloszenia:
+        note_parts.append(f"Numer zgłoszenia: {patent.numer_zgloszenia}")
+
+    if hasattr(patent, "numer_prawa_wylacznego") and patent.numer_prawa_wylacznego:
+        note_parts.append(f"Numer prawa wyłącznego: {patent.numer_prawa_wylacznego}")
+
+    if hasattr(patent, "data_zgloszenia") and patent.data_zgloszenia:
+        note_parts.append(f"Data zgłoszenia: {patent.data_zgloszenia}")
+
+    if hasattr(patent, "data_decyzji") and patent.data_decyzji:
+        note_parts.append(f"Data decyzji: {patent.data_decyzji}")
+
+    if note_parts:
+        note = sanitize_bibtex_string(". ".join(note_parts))
+        bibtex_entry += f"  note = {{{note}}},\n"
+
+    # URL
+    if hasattr(patent, "www") and patent.www:
+        url = sanitize_bibtex_string(patent.www)
+        bibtex_entry += f"  url = {{{url}}},\n"
+
+    # Remove trailing comma and newline, add closing brace
+    bibtex_entry = bibtex_entry.rstrip(",\n") + "\n}\n"
+
+    return bibtex_entry
+
+
+def praca_doktorska_to_bibtex(praca_doktorska) -> str:
+    """
+    Convert Praca_Doktorska instance to BibTeX format.
+
+    Args:
+        praca_doktorska: Praca_Doktorska model instance
+
+    Returns:
+        BibTeX formatted string
+    """
+    key = generate_bibtex_key(praca_doktorska)
+    authors = format_authors_bibtex(praca_doktorska)
+
+    bibtex_entry = f"@phdthesis{{{key},\n"
+
+    # Title
+    if praca_doktorska.tytul_oryginalny:
+        title = sanitize_bibtex_string(praca_doktorska.tytul_oryginalny)
+        bibtex_entry += f"  title = {{{title}}},\n"
+
+    # Author
+    if authors:
+        bibtex_entry += f"  author = {{{sanitize_bibtex_string(authors)}}},\n"
+
+    # School (University)
+    if hasattr(praca_doktorska, "jednostka") and praca_doktorska.jednostka:
+        if (
+            hasattr(praca_doktorska.jednostka, "wydzial")
+            and praca_doktorska.jednostka.wydzial
+        ):
+            school = sanitize_bibtex_string(praca_doktorska.jednostka.wydzial.nazwa)
+            bibtex_entry += f"  school = {{{school}}},\n"
+
+    # Year
+    if praca_doktorska.rok:
+        bibtex_entry += f"  year = {{{praca_doktorska.rok}}},\n"
+
+    # Type
+    bibtex_entry += "  type = {Rozprawa doktorska},\n"
+
+    # Publisher/address from miejsce_i_rok
+    if hasattr(praca_doktorska, "miejsce_i_rok") and praca_doktorska.miejsce_i_rok:
+        miejsce_i_rok = praca_doktorska.miejsce_i_rok.strip()
+        # Try to extract address and year
+        parts = miejsce_i_rok.split()
+        if parts:
+            # Last part might be year if it's 4 digits
+            if len(parts) > 1 and re.match(r"\d{4}", parts[-1]):
+                address = " ".join(parts[:-1])
+                if address:
+                    bibtex_entry += (
+                        f"  address = {{{sanitize_bibtex_string(address)}}},\n"
+                    )
+            else:
+                # Whole field as address
+                bibtex_entry += (
+                    f"  address = {{{sanitize_bibtex_string(miejsce_i_rok)}}},\n"
+                )
+
+    # URL
+    if hasattr(praca_doktorska, "www") and praca_doktorska.www:
+        url = sanitize_bibtex_string(praca_doktorska.www)
+        bibtex_entry += f"  url = {{{url}}},\n"
+
+    # Remove trailing comma and newline, add closing brace
+    bibtex_entry = bibtex_entry.rstrip(",\n") + "\n}\n"
+
+    return bibtex_entry
+
+
+def praca_habilitacyjna_to_bibtex(praca_habilitacyjna) -> str:
+    """
+    Convert Praca_Habilitacyjna instance to BibTeX format.
+
+    Args:
+        praca_habilitacyjna: Praca_Habilitacyjna model instance
+
+    Returns:
+        BibTeX formatted string
+    """
+    key = generate_bibtex_key(praca_habilitacyjna)
+    authors = format_authors_bibtex(praca_habilitacyjna)
+
+    bibtex_entry = f"@misc{{{key},\n"
+
+    # Title
+    if praca_habilitacyjna.tytul_oryginalny:
+        title = sanitize_bibtex_string(praca_habilitacyjna.tytul_oryginalny)
+        bibtex_entry += f"  title = {{{title}}},\n"
+
+    # Author
+    if authors:
+        bibtex_entry += f"  author = {{{sanitize_bibtex_string(authors)}}},\n"
+
+    # Year
+    if praca_habilitacyjna.rok:
+        bibtex_entry += f"  year = {{{praca_habilitacyjna.rok}}},\n"
+
+    # Note indicating this is a habilitation thesis
+    bibtex_entry += "  note = {Rozprawa habilitacyjna},\n"
+
+    # School (University)
+    if hasattr(praca_habilitacyjna, "jednostka") and praca_habilitacyjna.jednostka:
+        if (
+            hasattr(praca_habilitacyjna.jednostka, "wydzial")
+            and praca_habilitacyjna.jednostka.wydzial
+        ):
+            school = sanitize_bibtex_string(praca_habilitacyjna.jednostka.wydzial.nazwa)
+            bibtex_entry += f"  school = {{{school}}},\n"
+
+    # Publisher/address from miejsce_i_rok
+    if (
+        hasattr(praca_habilitacyjna, "miejsce_i_rok")
+        and praca_habilitacyjna.miejsce_i_rok
+    ):
+        miejsce_i_rok = praca_habilitacyjna.miejsce_i_rok.strip()
+        # Try to extract address and year
+        parts = miejsce_i_rok.split()
+        if parts:
+            # Last part might be year if it's 4 digits
+            if len(parts) > 1 and re.match(r"\d{4}", parts[-1]):
+                address = " ".join(parts[:-1])
+                if address:
+                    bibtex_entry += (
+                        f"  address = {{{sanitize_bibtex_string(address)}}},\n"
+                    )
+            else:
+                # Whole field as address
+                bibtex_entry += (
+                    f"  address = {{{sanitize_bibtex_string(miejsce_i_rok)}}},\n"
+                )
+
+    # URL
+    if hasattr(praca_habilitacyjna, "www") and praca_habilitacyjna.www:
+        url = sanitize_bibtex_string(praca_habilitacyjna.www)
+        bibtex_entry += f"  url = {{{url}}},\n"
+
+    # Remove trailing comma and newline, add closing brace
+    bibtex_entry = bibtex_entry.rstrip(",\n") + "\n}\n"
+
+    return bibtex_entry
+
+
 def export_to_bibtex(publications) -> str:
     """
     Export multiple publications to BibTeX format.
 
     Args:
-        publications: Queryset or list of Wydawnictwo_Ciagle/Wydawnictwo_Zwarte instances
+        publications: Queryset or list of Wydawnictwo_Ciagle/Wydawnictwo_Zwarte/Patent/
+                     Praca_Doktorska/Praca_Habilitacyjna instances
 
     Returns:
         Complete BibTeX file content as string
@@ -324,5 +526,11 @@ def export_to_bibtex(publications) -> str:
                 bibtex_entries.append(wydawnictwo_ciagle_to_bibtex(pub))
             elif model_name == "wydawnictwo_zwarte":
                 bibtex_entries.append(wydawnictwo_zwarte_to_bibtex(pub))
+            elif model_name == "patent":
+                bibtex_entries.append(patent_to_bibtex(pub))
+            elif model_name == "praca_doktorska":
+                bibtex_entries.append(praca_doktorska_to_bibtex(pub))
+            elif model_name == "praca_habilitacyjna":
+                bibtex_entries.append(praca_habilitacyjna_to_bibtex(pub))
 
     return "\n".join(bibtex_entries)

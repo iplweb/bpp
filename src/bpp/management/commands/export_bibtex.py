@@ -1,12 +1,13 @@
 """
 Django management command to export publications to BibTeX format.
 """
+
 import sys
 
 from django.core.management.base import BaseCommand, CommandError
 from django.db.models import Q
 
-from bpp.bibtex_export import export_to_bibtex
+from bpp.export.bibtex import export_to_bibtex
 from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
 
 

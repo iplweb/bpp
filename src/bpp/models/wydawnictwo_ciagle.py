@@ -264,7 +264,7 @@ class Wydawnictwo_Ciagle(
 
     def to_bibtex(self):
         """Export this publication to BibTeX format."""
-        from bpp.bibtex_export import wydawnictwo_ciagle_to_bibtex
+        from bpp.export.bibtex import wydawnictwo_ciagle_to_bibtex
 
         return wydawnictwo_ciagle_to_bibtex(self)
 

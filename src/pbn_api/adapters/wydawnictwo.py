@@ -9,7 +9,6 @@ from ..exceptions import (
     PKZeroExportDisabled,
     StatementsMissing,
 )
-from ..models import PublikacjaInstytucji_V2
 from .autor import AutorSimplePBNAdapter, AutorZDyscyplinaPBNAdapter
 from .wydawca import WydawcaPBNAdapter
 from .wydawnictwo_autor import WydawnictwoAutorToStatementPBNAdapter
@@ -210,11 +209,8 @@ class WydawnictwoPBNAdapter:
 
             return statement
 
-        try:
-            publicationUuid = PublikacjaInstytucji_V2.objects.get(
-                objectId=self.original.pbn_uid_id
-            )
-        except PublikacjaInstytucji_V2.DoesNotExist:
+        publicationUuid = self.original.get_pbn_uuid()
+        if not publicationUuid:
             raise DaneLokalneWymagajaAktualizacjiException(
                 "Nie jestem w stanie ustalić lokalnie identyfikatora UUID dla publikacji"
                 f"{self.original.pbn_uid}. Pobierz dane z profilu instytucji o publikacjach przez "

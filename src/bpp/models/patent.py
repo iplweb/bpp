@@ -197,3 +197,9 @@ class Patent(
     )
     def slug(self):
         return self.get_slug()
+
+    def to_bibtex(self):
+        """Export this patent to BibTeX format."""
+        from bpp.export.bibtex import patent_to_bibtex
+
+        return patent_to_bibtex(self)

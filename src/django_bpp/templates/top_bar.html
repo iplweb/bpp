@@ -104,6 +104,7 @@
                         <ul class="menu vertical">
                             {% if request.user|has_group:"wprowadzanie danych" or request.user.is_superuser %}
                                 <li><a href="{% url "pbn_api:authorize" %}">autoryzuj PBN API</a></li>
+                                <hr/>
                                 <li><a href="{% url "integrator2:main" %}">import danych</a></li>
                                 <li><a href="{% url "import_pracownikow:index" %}">import pracowników</a></li>
                                 <li><a href="{% url "import_polon:index" %}">import z POLON</a></li>
@@ -115,12 +116,15 @@
 {#                                </li>#}
                                 <li><a href="{% url "import_list_if:index" %}">import list IF</a></li>
                                 <li><a href="{% url "import_dyscyplin:index" %}">import dyscyplin</a></li>
+                                <li><a href="{% url "bpp:xlsx-issn-chunks" %}">eksport aktualnych ISSNów</a></li>
+                                <hr/>
                                 <li><a href="{% url "admin:rozbieznosci_dyscyplin_rozbieznosciview_changelist" %}">
                                     rozbieżności dyscyplin</a></li>
                                 <li><a href="{% url "rozbieznosci_if:index" %}">rozbieżności
                                     punktacji IF</a></li>
                             {% endif %}
                             {% if not microsoft_login_enabled %}
+                                <hr/>
                                 <li><a id="password-change-link" href="{% url "password_change" %}">zmiana hasła</a>
                             {% endif %}
                             </li>

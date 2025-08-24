@@ -4,6 +4,17 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202508.1203 (2025-08-24)
+============================
+
+Usprawnienie
+------------
+
+- eksport ISSNów i e-ISSNów źródeł z publikacjami z ostatnich 5 lat
+- eksport ISSNów i e-ISSNów źródeł z publikacjami z ostatnich 5 lat do formatu XLSX
+- umożliwiaj łatwe przechodzenie na profil instytucji celem weryfikacji danych
+
+
 Bpp 202508.1202 (2025-08-23)
 ============================
 

@@ -24,12 +24,10 @@ BPP (Bibliografia Publikacji Pracowników) is a Polish academic bibliography man
 ### Testing Commands
 - `pytest` - Run tests (configured in pytest.ini)
 - `pytest --ds=django_bpp.settings.local` - Run tests with specific settings
-- `pytest --selenium` - Include Selenium tests (marked with @pytest.mark.selenium)
-- `pytest -k "not selenium"` - Run tests excluding Selenium tests
-- `make tests-without-selenium` - Run tests excluding Selenium tests with parallelization
-- `make tests-with-selenium` - Run only Selenium tests with parallelization
-- `make tests` - Run complete test suite including JS tests
-- `make full-tests` - Run tests with Microsoft Auth integration
+- `make tests-without-selenium` - Run tests excluding Selenium tests with parallelization (fast)
+- `make tests-with-selenium` - Run only Selenium tests with parallelization (slow)
+- `make tests` - Run quick test suite
+- `make full-tests` - Run complete test suite
 
 ### Code Quality Commands
 - `black .` - Format Python code
@@ -141,3 +139,9 @@ The project uses a sophisticated migration system with both Python and SQL migra
 - Custom SQL migrations for database views, functions, and triggers
 - Cache invalidation triggers and materialized views
 - Complex reporting views for academic evaluation
+
+## Tests
+
+- pytest style,
+- use available fixtures from conftest.py files in src/ and subdirectories,
+- typically use model_bakery.baker.make for creation of new database objects.

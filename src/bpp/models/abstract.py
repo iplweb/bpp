@@ -819,6 +819,43 @@ class LinkDoPBNMixin:
                 pbn_uid_id=self.link_do_pbn_wartosc_id(),
             )
 
+    def link_do_pi(self):
+        pbn_uid_id = self.link_do_pbn_wartosc_id()
+
+        if not pbn_uid_id:
+            return
+
+        versionHash = None
+        try:
+            # bpp.models.Wydawnictwo_Ciagle, bpp.models.Wydawnictwo_Zwarte
+            current_version = self.pbn_uid.current_version
+            if current_version is not None:
+                # w testach moze tak byc, ze bedzie None
+                versionHash = current_version.get("versionHash", None)
+        except AttributeError:
+            try:
+                # pbn_api.models.OswiadczenieInstytucji
+                versionHash = self.publicationId.current_version.get(
+                    "versionHash", None
+                )
+            except AttributeError:
+                # pbn_api.models.Publication
+                versionHash = self.current_version.get("versionHash", None)
+
+        if versionHash is None:
+            return
+
+        from bpp import const
+        from bpp.models import Uczelnia
+
+        uczelnia = Uczelnia.objects.get_default()
+        if uczelnia is not None:
+            return const.LINK_PI_WSZYSTKO.format(
+                pbn_api_root=uczelnia.pbn_api_root,
+                pbn_uid_id=pbn_uid_id,
+                versionHash=versionHash,
+            )
+
 
 class ModelZPBN_UID(LinkDoPBNMixin, models.Model):
     pbn_uid = models.OneToOneField(
@@ -831,6 +868,27 @@ class ModelZPBN_UID(LinkDoPBNMixin, models.Model):
     )
 
     url_do_pbn = const.LINK_PBN_DO_PUBLIKACJI
+
+    def get_pbn_uuid(self):
+        """Nazwa tej funkcji to NIE literówka; alias to PBN UID V2
+
+        get_pbn_uid_v2
+        get_pbn_uuid_v2
+
+        Ta funkcja próbuje zwrócić PBN UUID, pod warunkiem, że został zaciągnięty z API oświadczeń instytucji
+        V2. Oraz, pod warunkiem, że self.pbn_uid_id jest ustawione."""
+
+        if self.pbn_uid_id is None:
+            return
+
+        from pbn_api.models.publikacja_instytucji import PublikacjaInstytucji_V2
+
+        publicationUuid = PublikacjaInstytucji_V2.objects.filter(
+            objectId=self.pbn_uid_id
+        ).values_list("uuid", flat=True)[:1]
+
+        if publicationUuid:
+            return publicationUuid[0]
 
     class Meta:
         abstract = True

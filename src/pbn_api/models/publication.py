@@ -41,6 +41,27 @@ class Publication(LinkDoPBNMixin, BasePBNMongoDBModel):
     def journal(self):
         return self.value_or_none("object", "journal")
 
+    def get_pbn_uuid(self):
+        """Nazwa tej funkcji to NIE literówka; alias to PBN UID V2
+
+        get_pbn_uid_v2
+        get_pbn_uuid_v2
+
+        Ta funkcja próbuje zwrócić PBN UUID, pod warunkiem, że został zaciągnięty z API oświadczeń instytucji
+        V2. Oraz, pod warunkiem, że self.pbn_uid_id jest ustawione."""
+
+        if self.mongoId is None:
+            return
+
+        from pbn_api.models.publikacja_instytucji import PublikacjaInstytucji_V2
+
+        publicationUuid = PublikacjaInstytucji_V2.objects.filter(
+            objectId=self.mongoId
+        ).values_list("uuid", flat=True)[:1]
+
+        if publicationUuid:
+            return publicationUuid[0]
+
     def pull_up_year(self):
         year = self.value_or_none("object", "year")
         if year is None:
