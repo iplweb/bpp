@@ -825,9 +825,13 @@ class LinkDoPBNMixin:
         if not pbn_uid_id:
             return
 
+        versionHash = None
         try:
             # bpp.models.Wydawnictwo_Ciagle, bpp.models.Wydawnictwo_Zwarte
-            versionHash = self.pbn_uid.current_version.get("versionHash", None)
+            current_version = self.pbn_uid.current_version
+            if current_version is not None:
+                # w testach moze tak byc, ze bedzie None
+                versionHash = current_version.get("versionHash", None)
         except AttributeError:
             try:
                 # pbn_api.models.OswiadczenieInstytucji
@@ -837,6 +841,9 @@ class LinkDoPBNMixin:
             except AttributeError:
                 # pbn_api.models.Publication
                 versionHash = self.current_version.get("versionHash", None)
+
+        if versionHash is None:
+            return
 
         from bpp import const
         from bpp.models import Uczelnia
