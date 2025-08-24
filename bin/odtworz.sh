@@ -11,6 +11,15 @@ set -euo pipefail
 
 BASEDIR=$(dirname "$0")
 
+# Sprawdź czy podano parametr z plikiem pg_dump
+if [ $# -eq 0 ]; then
+    echo "Błąd: Wymagana jest ścieżka do pliku pg_dump"
+    echo "Użycie: $0 <ścieżka_do_pliku_pg_dump>"
+    echo ""
+    echo "Ten skrypt odtwarza bazę danych BPP z backupu."
+    exit 1
+fi
+
 LOCAL_DATABASE_NAME=bpp
 
 # Opcjonalnie: możnaby tu ubić serwer Django, ale ponieważ jest dropdb -f,
