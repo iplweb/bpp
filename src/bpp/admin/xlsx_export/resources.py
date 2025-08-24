@@ -11,14 +11,21 @@ from import_export.formats import base_formats
 from django.contrib.sites.models import Site
 
 from bpp.export.bibtex import export_to_bibtex
-from bpp.models import Autor, Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
+from bpp.models import (
+    Autor,
+    Patent,
+    Praca_Doktorska,
+    Praca_Habilitacyjna,
+    Wydawnictwo_Ciagle,
+    Wydawnictwo_Zwarte,
+)
 
 
 class BibTeXFormat(base_formats.Format):
     """Custom BibTeX export format for django-import-export."""
 
     def get_title(self):
-        return "bibtex"
+        return "BibTeX"
 
     def get_read_mode(self):
         return "r"
@@ -32,7 +39,7 @@ class BibTeXFormat(base_formats.Format):
     def can_export(self):
         return True
 
-    def export_data(self, dataset):
+    def export_data(self, dataset, *args, **kwargs):
         # Convert dataset to publication objects and export as BibTeX
         # This is a simplified approach - the dataset structure may need adjustment
         publications = []
@@ -152,6 +159,78 @@ class Wydawnictwo_CiagleBibTeXResource(resources.ModelResource):
 
     class Meta:
         model = Wydawnictwo_Ciagle
+
+    def export(self, queryset=None, *args, **kwargs):
+        if queryset is None:
+            queryset = self.get_queryset()
+
+        # Convert queryset to BibTeX format
+        bibtex_content = export_to_bibtex(queryset)
+
+        # Create a simple dataset-like object for compatibility
+        class BibTeXDataset:
+            def __init__(self, content):
+                self.content = content
+
+            def __str__(self):
+                return self.content
+
+        return BibTeXDataset(bibtex_content)
+
+
+class PatentBibTeXResource(resources.ModelResource):
+    """Specialized resource for BibTeX export of Patent."""
+
+    class Meta:
+        model = Patent
+
+    def export(self, queryset=None, *args, **kwargs):
+        if queryset is None:
+            queryset = self.get_queryset()
+
+        # Convert queryset to BibTeX format
+        bibtex_content = export_to_bibtex(queryset)
+
+        # Create a simple dataset-like object for compatibility
+        class BibTeXDataset:
+            def __init__(self, content):
+                self.content = content
+
+            def __str__(self):
+                return self.content
+
+        return BibTeXDataset(bibtex_content)
+
+
+class Praca_DoktorskaBibTeXResource(resources.ModelResource):
+    """Specialized resource for BibTeX export of Praca_Doktorska."""
+
+    class Meta:
+        model = Praca_Doktorska
+
+    def export(self, queryset=None, *args, **kwargs):
+        if queryset is None:
+            queryset = self.get_queryset()
+
+        # Convert queryset to BibTeX format
+        bibtex_content = export_to_bibtex(queryset)
+
+        # Create a simple dataset-like object for compatibility
+        class BibTeXDataset:
+            def __init__(self, content):
+                self.content = content
+
+            def __str__(self):
+                return self.content
+
+        return BibTeXDataset(bibtex_content)
+
+
+class Praca_HabilitacyjnaBibTeXResource(resources.ModelResource):
+    """Specialized resource for BibTeX export of Praca_Habilitacyjna."""
+
+    class Meta:
+        model = Praca_Habilitacyjna
 
     def export(self, queryset=None, *args, **kwargs):
         if queryset is None:

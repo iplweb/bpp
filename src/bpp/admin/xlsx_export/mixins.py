@@ -5,6 +5,7 @@ from import_export.admin import ExportMixin
 from import_export.signals import post_export
 
 from .formats import PrettyXLSX
+from .resources import BibTeXFormat
 
 from django.contrib.admin.options import IncorrectLookupParameters
 
@@ -53,6 +54,59 @@ class EksportDanychMixin(ExportMixin):
 
         post_export.send(sender=None, model=self.model)
         return response
+
+
+class EksportDanychZFormatowanieMixin(ExportMixin):
+    """Klasa do eksportu danych z obsługą wyboru formatu (XLSX, BibTeX).
+
+    Rozszerza standardową funkcjonalność eksportu o możliwość wyboru między
+    formatami XLSX (domyślny z upiększaniem) i BibTeX.
+    """
+
+    max_allowed_export_items = None
+    bibtex_resource_class = None  # To be set in subclasses
+
+    def get_export_formats(self):
+        """
+        Return available export formats.
+        """
+        formats = (PrettyXLSX, BibTeXFormat)
+        return [f for f in formats if f().can_export()]
+
+    def get_resource_class_for_format(self, file_format):
+        """
+        Get appropriate resource class based on export format.
+        """
+        if isinstance(file_format, BibTeXFormat) and self.bibtex_resource_class:
+            return self.bibtex_resource_class
+        return self.resource_class
+
+    def get_export_data(self, file_format, queryset, *args, **kwargs):
+        """
+        Override to use format-specific resource classes.
+        """
+        if isinstance(file_format, BibTeXFormat) and self.bibtex_resource_class:
+            # Use BibTeX-specific resource
+            resource = self.bibtex_resource_class()
+            return resource.export(queryset, *args, **kwargs)
+        else:
+            # Use default resource
+            return super().get_export_data(file_format, queryset, *args, **kwargs)
+
+    def has_export_permission(self, request):
+        try:
+            cl = self.get_changelist_instance(request)
+        except IncorrectLookupParameters:
+            return
+
+        max_allowed_export_items = self.max_allowed_export_items
+        if max_allowed_export_items is None:
+            max_allowed_export_items = getattr(
+                settings, "BPP_MAX_ALLOWED_EXPORT_ITEMS", 100
+            )
+
+        if cl.result_count < max_allowed_export_items:
+            return True
 
     def get_export_queryset(self, request):
         """

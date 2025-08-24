@@ -35,7 +35,7 @@ from .helpers.fieldsets import (
 )
 from .helpers.mixins import OptionalPBNSaveMixin, RestrictDeletionWhenPBNUIDSetMixin
 from .xlsx_export import resources
-from .xlsx_export.mixins import EksportDanychMixin
+from .xlsx_export.mixins import EksportDanychZFormatowanieMixin
 from .zglos_publikacje_helpers import UzupelniajWstepneDanePoNumerzeZgloszeniaMixin
 
 from django.contrib import admin
@@ -202,7 +202,7 @@ class Wydawnictwo_CiagleAdmin(
     UzupelniajWstepneDanePoNumerzeZgloszeniaMixin,
     UzupelniajWstepneDanePoCrossRefAPIMixin,
     AdminCrossrefAPIMixin,
-    EksportDanychMixin,
+    EksportDanychZFormatowanieMixin,
     DynamicColumnsMixin,
     RestrictDeletionWhenPBNUIDSetMixin,
     admin.ModelAdmin,
@@ -216,6 +216,7 @@ class Wydawnictwo_CiagleAdmin(
     }
 
     resource_class = resources.Wydawnictwo_CiagleResource
+    bibtex_resource_class = resources.Wydawnictwo_CiagleBibTeXResource
 
     djangoql_completion_enabled_by_default = False
     djangoql_completion = True

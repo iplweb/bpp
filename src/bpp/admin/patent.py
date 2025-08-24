@@ -17,6 +17,8 @@ from .helpers.fieldsets import (
 )
 from .helpers.mixins import DomyslnyStatusKorektyMixin, Wycinaj_W_z_InformacjiMixin
 from .wydawnictwo_zwarte import Wydawnictwo_ZwarteAdmin_Baza
+from .xlsx_export import resources
+from .xlsx_export.mixins import EksportDanychZFormatowanieMixin
 
 from django.contrib import admin
 
@@ -34,7 +36,11 @@ class Patent_Form(Wycinaj_W_z_InformacjiMixin, forms.ModelForm):
         }
 
 
-class Patent_Admin(AdnotacjeZDatamiMixin, Wydawnictwo_ZwarteAdmin_Baza):
+class Patent_Admin(
+    AdnotacjeZDatamiMixin, EksportDanychZFormatowanieMixin, Wydawnictwo_ZwarteAdmin_Baza
+):
+    bibtex_resource_class = resources.PatentBibTeXResource
+
     inlines = (
         generuj_inline_dla_autorow(Patent_Autor),
         Grant_RekorduInline,
