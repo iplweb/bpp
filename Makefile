@@ -219,8 +219,20 @@ build-appserver: build-appserver-base
 build-workerserver: build-appserver-base
 	docker buildx ${DOCKER_BUILD} -t iplweb/bpp_workerserver:${DOCKER_VERSION} -t iplweb/bpp_workerserver:latest -f deploy/workerserver/Dockerfile .
 
-build-webserver: deploy/webserver/Dockerfile deploy/webserver/default.conf
+build-webserver: deploy/webserver/Dockerfile deploy/webserver/default.conf deploy/webserver/maintenance.html deploy/webserver/key.pem deploy/webserver/cert.pem
 	docker buildx ${DOCKER_BUILD} -t iplweb/bpp_webserver:${DOCKER_VERSION} -t iplweb/bpp_webserver:latest -f deploy/webserver/Dockerfile deploy/webserver/
+
+run-webserver-without-appserver-for-testing: build-webserver
+	@echo "Odpalamy webserver wyłącznie, żeby zobaczyć, jak wygląda jego strona błędu..."
+	@echo "=============================================================================="
+	@echo ""
+	@echo http://localhost:10080 and https://localhost:10443
+	@echo ""
+	@echo "=============================================================================="
+	@docker run -d --name appserver --rm alpine sleep infinity &
+	@sleep 3
+	@docker run --rm -it --link appserver:appserver  -p 10080:80 -p 10443:443 -v ./deploy/webserver/:/etc/ssl/private iplweb/bpp_webserver
+	@docker stop -s 9 -t 1 appserver
 
 build-beatserver: build-appserver-base
 	docker buildx ${DOCKER_BUILD} -t iplweb/bpp_beatserver:${DOCKER_VERSION} -t iplweb/bpp_beatserver:latest -f deploy/beatserver/Dockerfile deploy/beatserver/
