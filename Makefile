@@ -216,7 +216,7 @@ build-dbserver: deploy/dbserver/Dockerfile deploy/dbserver/autotune.py deploy/db
 # Source files for appserver base (excluding tests)
 APPSERVER_BASE_SOURCES := $(shell find src -type f \( -name "*.html" -o -name "*.py" -o -name "*.css" -o -name "*.js" -o -name "*.svg" \) ! -path "*/tests/*" ! -name "test_*")
 
-build-appserver-base: assets $(APPSERVER_BASE_SOURCES)
+build-appserver-base: $(APPSERVER_BASE_SOURCES)
 	docker buildx ${DOCKER_BUILD} -t iplweb/bpp_base:${DOCKER_VERSION} -t iplweb/bpp_base:latest -f deploy/bpp_base/Dockerfile .
 
 build-appserver: build-appserver-base
