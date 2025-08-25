@@ -49,6 +49,7 @@ from bpp.admin.filters import (
     UtworzonePrzezFilter,
 )
 from bpp.admin.helpers import fieldsets
+from bpp.admin.helpers.widgets import COMMA_DECIMAL_FIELD_OVERRIDE
 from bpp.models import (
     Charakter_Formalny,
     Wydawca,
@@ -70,7 +71,10 @@ class Wydawnictwo_Zwarte_StreszczenieInline(
 
 
 class Wydawnictwo_ZwarteAdmin_Baza(BaseBppAdminMixin, admin.ModelAdmin):
-    formfield_overrides = helpers.widgets.NIZSZE_TEXTFIELD_Z_MAPA_ZNAKOW
+    formfield_overrides = {
+        **helpers.widgets.NIZSZE_TEXTFIELD_Z_MAPA_ZNAKOW,
+        **COMMA_DECIMAL_FIELD_OVERRIDE,
+    }
 
     actions = [
         ustaw_po_korekcie,

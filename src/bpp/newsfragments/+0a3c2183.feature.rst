@@ -1,0 +1,2 @@
+
+umożliwiaj wpisywanie przecinków zamiast kropek w DecimalField
