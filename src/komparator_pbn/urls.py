@@ -16,4 +16,12 @@ urlpatterns = [
         views.PBNMissingInBPPView.as_view(),
         name="pbn_missing_in_bpp",
     ),
+    # API endpoints
+    path(
+        "api/start-download/",
+        views.StartPbnDownloadView.as_view(),
+        name="start_download",
+    ),
+    path("api/task-status/", views.TaskStatusView.as_view(), name="task_status"),
+    path("api/retry-task/", views.RetryTaskView.as_view(), name="retry_task"),
 ]

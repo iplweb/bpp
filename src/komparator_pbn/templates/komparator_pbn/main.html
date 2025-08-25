@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% csrf_token %}
 
 {% block title %}Komparator PBN - {{ block.super }}{% endblock %}
 
@@ -16,7 +17,59 @@
                 <strong>UWAGA:</strong> ta funkcja wymaga pobrania świeżych danych z PBN. Analizy, które widzisz,
                 opierają się na <strong>LOKALNEJ KOPII</strong> danych z PBN.
                 <br/><br/>
-                <span style="color: #f39c12; font-size: 1.5em;">😊 Don't Panic!</span>
+                <div style="text-align: center;">
+                    <span style="color: #f39c12; font-size: 2.5em;">😊</span>
+                    <br>
+                    <span style="color: #f39c12; font-size: 1.5em;">Don't Panic!</span>
+                </div>
+
+                <div style="margin-top: 1rem;">
+                    <button id="download-btn" class="button success expanded">
+                        <i class="fi-cloud-download"></i> Pobierz świeże dane z PBN
+                    </button>
+
+                    <!-- Task status display -->
+                    <div id="task-status" style="margin-top: 1rem; display: none;">
+                        <div class="panel callout">
+                            <h5 id="task-status-title">Status zadania</h5>
+                            <div id="task-status-content">
+                                <div id="task-running" style="display: none;">
+                                    <i class="fi-refresh"></i> <strong>Pobieranie danych w toku...</strong>
+                                    <br><small id="current-step">Inicjalizacja...</small>
+                                    <div class="progress" style="margin: 0.5rem 0; background-color: #e6e6e6; border-radius: 3px; height: 20px; overflow: hidden;">
+                                        <div id="progress-meter" class="meter" style="width: 0%; height: 100%; background-color: #28a745; transition: width 0.3s ease; border-radius: 3px;"></div>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; font-size: 0.8em;">
+                                        <span id="progress-percentage">0%</span>
+                                        <span id="progress-details"></span>
+                                    </div>
+                                    <small style="color: #666; margin-top: 0.5rem; display: block;">To może potrwać kilka minut. Możesz spokojnie zamknąć okno przeglądarki i wrócić tu za jakiś czas.</small>
+                                </div>
+
+                                <div id="task-completed" style="display: none;">
+                                    <div class="callout success">
+                                        <i class="fi-check"></i> <strong>Dane zostały pobrane pomyślnie!</strong>
+                                        <br><small>Ostatnia aktualizacja: <span id="last-update"></span></small>
+                                        <br><small>Wykonane przez: <span id="task-user"></span></small>
+                                    </div>
+                                </div>
+
+                                <div id="task-failed" style="display: none;">
+                                    <div class="callout alert">
+                                        <i class="fi-alert"></i> <strong>Wystąpił błąd podczas pobierania danych</strong>
+                                        <br><small>Błąd: <span id="error-message"></span></small>
+                                        <br><small>Czas błędu: <span id="error-time"></span></small>
+                                        <div style="margin-top: 0.5rem;">
+                                            <button id="retry-btn" class="button warning small">
+                                                <i class="fi-refresh"></i> Spróbuj ponownie
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -185,5 +238,187 @@
         .panel h4 {
             margin-bottom: 0.5rem;
         }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        /* Ensure progress bar is properly styled */
+        .progress {
+            background-color: #e6e6e6 !important;
+            border-radius: 3px !important;
+            height: 20px !important;
+            overflow: hidden !important;
+            box-shadow: inset 0 1px 2px rgba(0,0,0,.1);
+        }
+
+        .progress .meter {
+            background-color: #28a745 !important;
+            height: 100% !important;
+            transition: width 0.3s ease !important;
+            border-radius: 3px !important;
+            display: block !important;
+        }
     </style>
+
+    <script>
+        $(document).ready(function() {
+            // Check task status on page load and then periodically
+            checkTaskStatus();
+            var statusInterval = setInterval(checkTaskStatus, 5000); // Check every 5 seconds
+
+            // Start download button click handler
+            $('#download-btn').click(function() {
+                var btn = $(this);
+
+                if (btn.hasClass('disabled')) {
+                    return false;
+                }
+
+                btn.addClass('disabled').html('<i class="fi-refresh"></i> Rozpoczynam pobieranie...');
+
+                $.ajax({
+                    url: '{% url "komparator_pbn:start_download" %}',
+                    type: 'POST',
+                    headers: {
+                        'X-CSRFToken': $('[name=csrfmiddlewaretoken]').val()
+                    },
+                    success: function(data) {
+                        if (data.success) {
+                            checkTaskStatus();
+                        } else {
+                            alert('Błąd: ' + data.error);
+                            btn.removeClass('disabled').html('<i class="fi-cloud-download"></i> Pobierz świeże dane z PBN');
+                        }
+                    },
+                    error: function() {
+                        alert('Wystąpił błąd podczas komunikacji z serwerem');
+                        btn.removeClass('disabled').html('<i class="fi-cloud-download"></i> Pobierz świeże dane z PBN');
+                    }
+                });
+            });
+
+            // Retry button click handler
+            $(document).on('click', '#retry-btn', function() {
+                var btn = $(this);
+                btn.addClass('disabled').html('<i class="fi-refresh"></i> Ponawiam...');
+
+                $.ajax({
+                    url: '{% url "komparator_pbn:retry_task" %}',
+                    type: 'POST',
+                    headers: {
+                        'X-CSRFToken': $('[name=csrfmiddlewaretoken]').val()
+                    },
+                    success: function(data) {
+                        if (data.success) {
+                            checkTaskStatus();
+                        } else {
+                            alert('Błąd: ' + data.error);
+                            btn.removeClass('disabled').html('<i class="fi-refresh"></i> Spróbuj ponownie');
+                        }
+                    },
+                    error: function() {
+                        alert('Wystąpił błąd podczas komunikacji z serwerem');
+                        btn.removeClass('disabled').html('<i class="fi-refresh"></i> Spróbuj ponownie');
+                    }
+                });
+            });
+
+            function checkTaskStatus() {
+                $.ajax({
+                    url: '{% url "komparator_pbn:task_status" %}',
+                    type: 'GET',
+                    success: function(data) {
+                        updateTaskStatus(data);
+                    },
+                    error: function() {
+                        console.log('Error checking task status');
+                    }
+                });
+            }
+
+            function updateTaskStatus(data) {
+                var downloadBtn = $('#download-btn');
+                var taskStatus = $('#task-status');
+                var taskRunning = $('#task-running');
+                var taskCompleted = $('#task-completed');
+                var taskFailed = $('#task-failed');
+
+
+                // Hide all status divs
+                taskRunning.hide();
+                taskCompleted.hide();
+                taskFailed.hide();
+
+                if (data.is_running) {
+                    // Task is currently running
+                    downloadBtn.addClass('disabled').html('<i class="fi-refresh"></i> Pobieranie w toku...');
+                    taskStatus.show();
+                    taskRunning.show();
+
+                    // Update progress information if available
+                    if (data.latest_task) {
+                        var task = data.latest_task;
+                        if (task.current_step) {
+                            $('#current-step').text(task.current_step);
+                        }
+                        if (task.progress_percentage !== undefined && task.progress_percentage !== null) {
+                            var percentage = Math.max(0, Math.min(100, parseInt(task.progress_percentage)));
+                            $('#progress-percentage').text(percentage + '%');
+                            $('#progress-meter').css('width', percentage + '%');
+                        }
+
+                        // Show progress details if available
+                        var details = [];
+                        if (task.publications_processed > 0 || task.total_publications) {
+                            details.push('Publikacje: ' + (task.publications_processed || 0) +
+                                        (task.total_publications ? '/' + task.total_publications : ''));
+                        }
+                        if (task.statements_processed > 0 || task.total_statements) {
+                            details.push('Oświadczenia: ' + (task.statements_processed || 0) +
+                                        (task.total_statements ? '/' + task.total_statements : ''));
+                        }
+                        $('#progress-details').text(details.join(', '));
+                    }
+                } else if (data.latest_task) {
+                    // Show task status based on latest task
+                    var task = data.latest_task;
+
+                    if (task.status === 'completed') {
+                        downloadBtn.removeClass('disabled').html('<i class="fi-cloud-download"></i> Pobierz świeże dane z PBN');
+                        taskStatus.show();
+                        taskCompleted.show();
+
+                        $('#last-update').text(formatDate(task.completed_at));
+                        $('#task-user').text(task.user);
+
+                        // Optionally hide status after showing success
+                        setTimeout(function() {
+                            taskStatus.fadeOut();
+                        }, 10000);
+
+                    } else if (task.status === 'failed') {
+                        downloadBtn.removeClass('disabled').html('<i class="fi-cloud-download"></i> Pobierz świeże dane z PBN');
+                        taskStatus.show();
+                        taskFailed.show();
+
+                        $('#error-message').text(task.error_message || 'Nieznany błąd');
+                        $('#error-time').text(formatDate(task.completed_at));
+                    }
+                } else {
+                    // No tasks yet
+                    downloadBtn.removeClass('disabled').html('<i class="fi-cloud-download"></i> Pobierz świeże dane z PBN');
+                    taskStatus.hide();
+                }
+            }
+
+            function formatDate(isoString) {
+                if (!isoString) return '';
+                var date = new Date(isoString);
+                return date.toLocaleString('pl-PL');
+            }
+        });
+    </script>
 {% endblock %}

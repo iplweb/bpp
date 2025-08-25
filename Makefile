@@ -66,7 +66,7 @@ $(CSS_TARGETS): $(SCSS_SOURCES) $(NODE_MODULES)
 	grunt build
 
 $(MO_FILES): $(PO_FILES)
-	export PYTHONPATH=. && cd src && django-admin compilemessages
+	export PYTHONPATH=. && cd src && (django-admin compilemessages || django-admin.py compilemessages)
 
 assets: $(CSS_TARGETS) $(MO_FILES)
 
@@ -199,7 +199,7 @@ loc: clean
 	pygount -N ... -F "...,staticroot,migrations,fixtures" src --format=summary
 
 
-DOCKER_VERSION="202508.1208"
+DOCKER_VERSION="202508.1209"
 
 DOCKER_BUILD=build --platform linux/amd64,linux/arm64 --push
 
