@@ -1,0 +1,11 @@
+{% extends "admin/app_index.html" %}
+{% load i18n %}
+{% block breadcrumbs %}
+    <ul>
+        <li><a href="{% url 'admin:index' %}">🏠</a></li>
+        {% for app in app_list %}
+            {% blocktrans with app.name as name %}
+                <li>{{ name }}</li>{% endblocktrans %}
+        {% endfor %}
+    </ul>
+{% endblock %}
