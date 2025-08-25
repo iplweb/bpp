@@ -2,6 +2,7 @@ import json
 import re
 
 from django.db.models import Count
+from django.http import JsonResponse
 
 from django.contrib.contenttypes.models import ContentType
 
@@ -459,3 +460,54 @@ class WyswietlDeklaracjeDostepnosci(TemplateView):
         url = uczelnia.deklaracja_dostepnosci_tekst
 
         return {"tekst": tekst, "url": url, "uczelnia": uczelnia}
+
+
+def bibtex_view(request, model, pk):
+    """
+    AJAX endpoint to get BibTeX representation of a publication.
+
+    Args:
+        request: HTTP request
+        model: Model name (content type name or ID)
+        pk: Primary key of the publication
+
+    Returns:
+        JsonResponse with BibTeX content or error message
+    """
+    try:
+        # Handle model parameter (can be name or ContentType ID)
+        try:
+            content_type_id = int(model)
+        except ValueError:
+            try:
+                content_type = ContentType.objects.get_by_natural_key("bpp", model)
+                content_type_id = content_type.pk
+            except ContentType.DoesNotExist:
+                return JsonResponse({"error": "Invalid model type"}, status=400)
+
+        # Get the publication record
+        try:
+            rekord = Rekord.objects.get(pk=[content_type_id, pk])
+        except Rekord.DoesNotExist:
+            return JsonResponse({"error": "Publication not found"}, status=404)
+
+        # Get the actual publication object
+        praca = rekord.original
+
+        # Generate BibTeX using the model's to_bibtex method
+        if hasattr(praca, "to_bibtex"):
+            bibtex_content = praca.to_bibtex()
+            return JsonResponse(
+                {
+                    "bibtex": bibtex_content,
+                    "title": getattr(praca, "tytul_oryginalny", "Publication"),
+                }
+            )
+        else:
+            return JsonResponse(
+                {"error": "BibTeX export not available for this publication type"},
+                status=400,
+            )
+
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
