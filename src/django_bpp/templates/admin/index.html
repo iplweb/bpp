@@ -1,0 +1,94 @@
+{% extends "admin/index.html" %}
+{% load i18n admin_urls static %}
+
+{% block breadcrumbs %}
+<ul>
+    <li id="welcome-message">Witamy w panelu Redagowania systemu Bibliografia Publikacji Pracowników.</li>
+</ul>
+{% endblock %}
+
+{% block extrahead %}
+    {{ block.super }}
+    <style>
+        #welcome-message {
+            transition: opacity 1.5s ease-in-out;
+            min-height: 1.2em;
+            display: flex;
+            align-items: center;
+        }
+        .fade-out {
+            opacity: 0;
+        }
+        .fade-in {
+            opacity: 1;
+        }
+    </style>
+{% endblock %}
+
+{% block javascripts %}
+    {{ block.super }}
+    <script type="text/javascript">
+        (function($) {
+            $(document).ready(function() {
+                const tips = [
+                    "💡 Rób 5-minutową przerwę co godzinę - Twoje oczy i mózg będą wdzięczne!",
+                    "🤲 Rozciągnij dłonie i nadgarstki - połóż dłonie płasko i delikatnie naciśnij.",
+                    "👀 Zastosuj zasadę 20-20-20: co 20 minut patrz na obiekt oddalony o 20 stóp przez 20 sekund.",
+                    "☕ Ogranicz kawę do 2-3 filiżanek dziennie - nadmiar kofeiny może powodować drżenie rąk.",
+                    "🏃 Wstań i przejdź się kilka kroków - aktywizuj krążenie!",
+                    "🔐 Zawsze blokuj komputer wychodząc z miejsca pracy - bezpieczeństwo to podstawa.",
+                    "💧 Pamiętaj o piciu wody - odwodnienie wpływa na koncentrację.",
+                    "🖥️ Górna krawędź monitora powinna być na poziomie oczu lub nieco niżej.",
+                    "⌨️ Trzymaj nadgarstki w neutralnej pozycji podczas pisania.",
+                    "🪑 Stopy powinny płasko stać na podłodze - użyj podnóżka jeśli potrzeba.",
+                    "🔄 Co 30 minut zmień pozycję ciała - ruch to życie!",
+                    "😌 Rób głębokie oddechy - tlen poprawia pracę mózgu.",
+                    "🔆 Ustaw jasność monitora odpowiednio do oświetlenia pomieszczenia.",
+                    "📱 Nie trzymaj telefonu między uchem a ramieniem - użyj słuchawek.",
+                    "🧘 Rozluźnij ramiona - nie napinaj ich podczas pracy.",
+                    "🔑 Używaj silnych, unikalnych haseł.",
+                    "💾 Regularnie zapisuj swoją pracę!",
+                    "🌿 Postaw roślinę przy biurku - oczyszcza powietrze i uspokaja.",
+                    "🔊 Zrób sobie ciszę lub użyj białego szumu do lepszej koncentracji.",
+                    "🤸 Wykonaj proste ćwiczenia rozciągające szyję - lekko pochyl głowę w każdą stronę.",
+                    "🍎 Jedz zdrowe przekąski - orzechy, owoce - zamiast słodyczy.",
+                    "💻 Czyść regularnie klawiaturę i mysz - higiena to zdrowie!",
+                    "📧 Nie klikaj w podejrzane linki w e-mailach - sprawdź nadawcę!",
+                    "🕒 Ustal stałe godziny pracy i je przestrzegaj - work-life balance jest ważny.",
+                    "👁️ Mrugaj często - podczas pracy przy komputerze mrugamy 3x rzadziej!",
+                    "🖱️ Użyj całej dłoni do poruszania myszą, nie tylko nadgarstka.",
+                    "📊 Rób backup ważnych danych - lepiej dmuchać na zimne!",
+                    "🌙 Włącz tryb nocny po zmroku - chroni oczy przed niebieskim światłem.",
+                    "🎧 Używaj słuchawek z mikrofoneami na długich rozmowach.",
+                    "⚡ Regularnie aktualizuj oprogramowanie - bezpieczeństwo przede wszystkim!",
+                    "🧠 Zaplanuj najtrudsze zadania na poranne godziny - wtedy mózg pracuje najlepiej.",
+                    "🔄 Zmień sposób pracy co jakiś czas - monotonia zabija kreatywność."
+                ];
+
+                let currentTipIndex = 0;
+                const messageElement = $('#welcome-message');
+
+                function showNextTip() {
+                    // Fade out
+                    messageElement.addClass('fade-out');
+
+                    setTimeout(function() {
+                        // Change text
+                        messageElement.text(tips[currentTipIndex]);
+                        currentTipIndex = (currentTipIndex + 1) % tips.length;
+
+                        // Fade in
+                        messageElement.removeClass('fade-out').addClass('fade-in');
+                    }, 1500);
+                }
+
+                // Start cycling after 15 seconds
+                setTimeout(function() {
+                    showNextTip();
+                    // Then show a new tip every 15 seconds
+                    setInterval(showNextTip, 15000);
+                }, 15000);
+            });
+        })(django.jQuery);
+    </script>
+{% endblock %}
