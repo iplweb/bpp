@@ -29,7 +29,10 @@ from .xlsx_export.mixins import EksportDanychZFormatowanieMixin, ExportActionsMi
 
 from django.contrib import admin
 
-from bpp.admin.helpers.widgets import NIZSZE_TEXTFIELD_Z_MAPA_ZNAKOW
+from bpp.admin.helpers.widgets import (
+    COMMA_DECIMAL_FIELD_OVERRIDE,
+    NIZSZE_TEXTFIELD_Z_MAPA_ZNAKOW,
+)
 
 # Proste tabele
 
@@ -54,7 +57,10 @@ DOKTORSKA_FIELDS = (
 class Praca_Doktorska_Habilitacyjna_Admin_Base(
     AdnotacjeZDatamiMixin, BaseBppAdminMixin, admin.ModelAdmin
 ):
-    formfield_overrides = NIZSZE_TEXTFIELD_Z_MAPA_ZNAKOW
+    formfield_overrides = {
+        **NIZSZE_TEXTFIELD_Z_MAPA_ZNAKOW,
+        **COMMA_DECIMAL_FIELD_OVERRIDE,
+    }
     actions = [ustaw_po_korekcie, ustaw_w_trakcie_korekty, ustaw_przed_korekta]
 
     list_display = [

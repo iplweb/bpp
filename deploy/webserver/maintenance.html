@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prace serwisowe - BPP</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #333;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 3rem 2.5rem;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            max-width: 600px;
+            width: 90%;
+            backdrop-filter: blur(10px);
+            margin: 30px auto;
+        }
+
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            color: #4a5568;
+            font-weight: 700;
+        }
+
+        .subtitle {
+            font-size: 1.3rem;
+            margin-bottom: 2rem;
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .message {
+            font-size: 1.1rem;
+            line-height: 1.6;
+            color: #666;
+            margin-bottom: 2.5rem;
+        }
+
+        .info-box {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 15px;
+            margin-bottom: 2rem;
+            font-weight: 500;
+        }
+
+        .contact-info {
+            background: #f7fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 1.5rem;
+            font-size: 0.95rem;
+            color: #4a5568;
+        }
+
+
+        .braille-throbber {
+            display: inline-block;
+            font-family: monospace;
+            font-size: 1.2rem;
+            margin-left: 5px;
+        }
+
+        .braille-throbber::after {
+            content: '⠋';
+            animation: braille-spin 1s linear infinite;
+        }
+
+        @keyframes braille-spin {
+            0% {
+                content: '⠋';
+            }
+            12.5% {
+                content: '⠙';
+            }
+            25% {
+                content: '⠹';
+            }
+            37.5% {
+                content: '⠸';
+            }
+            50% {
+                content: '⠼';
+            }
+            62.5% {
+                content: '⠴';
+            }
+            75% {
+                content: '⠦';
+            }
+            87.5% {
+                content: '⠧';
+            }
+            100% {
+                content: '⠇';
+            }
+        }
+
+        .refresh-timer {
+            margin-top: 1rem;
+            font-size: 0.9rem;
+            color: #718096;
+            font-weight: 500;
+        }
+
+        .game-section {
+            margin-top: 2rem;
+            padding: 1.5rem 0;
+            border-top: 2px solid #667eea;
+            border-bottom: 2px solid #667eea;
+        }
+
+        .game-title {
+            font-size: 1.2rem;
+            color: #4a5568;
+            margin-bottom: 1rem;
+            font-weight: 600;
+        }
+
+        .tic-tac-toe {
+            display: grid;
+            grid-template-columns: repeat(4, 60px);
+            grid-template-rows: repeat(4, 60px);
+            gap: 3px;
+            justify-content: center;
+            margin: 1rem 0;
+            background: #4a5568;
+            border-radius: 8px;
+            padding: 3px;
+        }
+
+        .cell {
+            background: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: #4a5568;
+        }
+
+        .cell:hover:not([disabled]) {
+            background: #f7fafc;
+            transform: scale(0.95);
+        }
+
+        .cell.x {
+            color: #e53e3e;
+        }
+
+        .cell.o {
+            color: #3182ce;
+        }
+
+        .cell:disabled {
+            cursor: not-allowed;
+        }
+
+        .game-status {
+            font-size: 0.9rem;
+            margin: 1rem 0;
+            font-weight: 500;
+            min-height: 1.2rem;
+        }
+
+        .reset-button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: background 0.2s ease;
+        }
+
+        .reset-button:hover {
+            background: #5a67d8;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 2rem 1.5rem;
+                margin: 1rem;
+            }
+
+            h1 {
+                font-size: 2rem;
+            }
+
+            .subtitle {
+                font-size: 1.1rem;
+            }
+
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <h1>Prace serwisowe</h1>
+    <div class="subtitle">Bibliografia Publikacji Pracowników</div>
+
+    <div class="message">
+        System jest obecnie niedostępny z powodu prac konserwacyjnych<span
+            class="braille-throbber"></span>
+    </div>
+
+    <div class="info-box">
+        <strong>Przepraszamy za niedogodności</strong><br>
+        Pracujemy nad przywróceniem pełnej funkcjonalności systemu
+    </div>
+
+    <div class="refresh-timer">
+        Ta strona odświeży się za <span id="countdown">--</span> s.
+    </div>
+
+    <div style="margin-top: 1rem;">
+        <a href="#" onclick="window.location.reload(); return false;"
+           style="color: #667eea; text-decoration: none; font-size: 0.9rem; cursor: pointer;">
+            Kliknij tutaj, aby odświeżyć stronę teraz.
+        </a>
+    </div>
+
+    <div class="game-section">
+        <div class="game-title">🎮 Kółko i Krzyżyk - zabij czas podczas oczekiwania!</div>
+        <div class="tic-tac-toe" id="tic-tac-toe">
+            <button class="cell" data-index="0"></button>
+            <button class="cell" data-index="1"></button>
+            <button class="cell" data-index="2"></button>
+            <button class="cell" data-index="3"></button>
+            <button class="cell" data-index="4"></button>
+            <button class="cell" data-index="5"></button>
+            <button class="cell" data-index="6"></button>
+            <button class="cell" data-index="7"></button>
+            <button class="cell" data-index="8"></button>
+            <button class="cell" data-index="9"></button>
+            <button class="cell" data-index="10"></button>
+            <button class="cell" data-index="11"></button>
+            <button class="cell" data-index="12"></button>
+            <button class="cell" data-index="13"></button>
+            <button class="cell" data-index="14"></button>
+            <button class="cell" data-index="15"></button>
+        </div>
+        <div class="game-status" id="game-status">Twoja kolej! (X)</div>
+        <button class="reset-button" onclick="resetGame()">Nowa gra</button>
+    </div>
+</div>
+
+<script>
+    // Professional refresh mechanism with exponential backoff
+    class RefreshManager {
+        constructor() {
+            this.intervals = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32767, 65535]; // seconds
+            this.currentIndex = 0;
+            this.countdownElement = document.getElementById('countdown');
+            this.timeLeft = 0;
+            this.countdownTimer = null;
+            this.refreshTimer = null;
+
+            this.init();
+        }
+
+        init() {
+            this.scheduleNextRefresh();
+            this.addInteractivity();
+        }
+
+        scheduleNextRefresh() {
+            // Clear any existing timers
+            if (this.refreshTimer) clearTimeout(this.refreshTimer);
+            if (this.countdownTimer) clearInterval(this.countdownTimer);
+
+            // Get current interval
+            const interval = this.intervals[this.currentIndex];
+            this.timeLeft = interval;
+
+            // Start countdown display
+            this.updateCountdown();
+            this.countdownTimer = setInterval(() => {
+                this.timeLeft--;
+                this.updateCountdown();
+
+                if (this.timeLeft <= 0) {
+                    clearInterval(this.countdownTimer);
+                }
+            }, 1000);
+
+            // Schedule refresh
+            this.refreshTimer = setTimeout(() => {
+                // Move to next interval (with wraparound)
+                this.currentIndex = (this.currentIndex + 1) % this.intervals.length;
+
+                // Try to refresh
+                this.attemptRefresh();
+            }, interval * 1000);
+        }
+
+        updateCountdown() {
+            if (this.countdownElement) {
+                this.countdownElement.textContent = this.timeLeft;
+            }
+        }
+
+        attemptRefresh() {
+            // Store current interval index in sessionStorage for persistence
+            sessionStorage.setItem('refreshIndex', this.currentIndex.toString());
+
+            // Reload the page
+            window.location.reload();
+        }
+
+        addInteractivity() {
+            const container = document.querySelector('.container');
+
+            // Add subtle hover effect
+            container.addEventListener('mouseenter', function () {
+                this.style.transform = 'scale(1.02)';
+                this.style.transition = 'transform 0.3s ease';
+            });
+
+            container.addEventListener('mouseleave', function () {
+                this.style.transform = 'scale(1)';
+            });
+        }
+    }
+
+    // Initialize when DOM is ready
+    document.addEventListener('DOMContentLoaded', function () {
+        // Get stored refresh index or start from beginning
+        const storedIndex = sessionStorage.getItem('refreshIndex');
+        const refreshManager = new RefreshManager();
+
+        if (storedIndex !== null) {
+            refreshManager.currentIndex = parseInt(storedIndex, 10) % refreshManager.intervals.length;
+        }
+
+        // Start the refresh cycle
+        refreshManager.scheduleNextRefresh();
+    });
+
+    // Tic Tac Toe Game Logic (4x4)
+    let board = ['', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''];
+    let currentPlayer = 'X'; // Player is always X
+    let gameActive = true;
+    let gameStatus = document.getElementById('game-status');
+
+    const winningConditions = [
+        // Rows
+        [0, 1, 2, 3], [4, 5, 6, 7], [8, 9, 10, 11], [12, 13, 14, 15],
+        // Columns
+        [0, 4, 8, 12], [1, 5, 9, 13], [2, 6, 10, 14], [3, 7, 11, 15],
+        // Diagonals
+        [0, 5, 10, 15], [3, 6, 9, 12]
+    ];
+
+    // Initialize game
+    document.addEventListener('DOMContentLoaded', function() {
+        const cells = document.querySelectorAll('.cell');
+        cells.forEach(cell => {
+            cell.addEventListener('click', handleCellClick);
+        });
+        updateGameStatus('Twoja kolej! (X)');
+    });
+
+    function handleCellClick(event) {
+        const clickedCell = event.target;
+        const clickedCellIndex = parseInt(clickedCell.getAttribute('data-index'));
+
+        if (board[clickedCellIndex] !== '' || !gameActive || currentPlayer !== 'X') {
+            return;
+        }
+
+        makeMove(clickedCellIndex, 'X');
+
+        if (gameActive && checkResult() === null) {
+            currentPlayer = 'O';
+            updateGameStatus('Komputer myśli...');
+
+            // Computer move with slight delay for better UX
+            setTimeout(() => {
+                if (gameActive) {
+                    const computerMove = getBestMove();
+                    makeMove(computerMove, 'O');
+                    currentPlayer = 'X';
+
+                    if (gameActive) {
+                        updateGameStatus('Twoja kolej! (X)');
+                    }
+                }
+            }, 500);
+        }
+    }
+
+    function makeMove(index, player) {
+        board[index] = player;
+        const cell = document.querySelector(`[data-index="${index}"]`);
+        cell.textContent = player;
+        cell.classList.add(player.toLowerCase());
+        cell.disabled = true;
+
+        checkResult();
+    }
+
+    function checkResult() {
+        let winner = null;
+
+        // Check for winner (need 4 in a row for 4x4)
+        for (let condition of winningConditions) {
+            const [a, b, c, d] = condition;
+            if (board[a] && board[a] === board[b] && board[a] === board[c] && board[a] === board[d]) {
+                winner = board[a];
+                gameActive = false;
+
+                // Highlight winning cells
+                condition.forEach(index => {
+                    document.querySelector(`[data-index="${index}"]`).style.background = '#48bb78';
+                });
+
+                if (winner === 'X') {
+                    updateGameStatus('🎉 Wygrałeś! Brawo!');
+                } else {
+                    updateGameStatus('🤖 Komputer wygrał! Spróbuj ponownie.');
+                }
+                return winner;
+            }
+        }
+
+        // Check for tie
+        if (!board.includes('')) {
+            gameActive = false;
+            updateGameStatus('🤝 Remis! Dobra gra!');
+            return 'tie';
+        }
+
+        return null;
+    }
+
+    // Smart but efficient AI for 4x4 board (no minimax - too slow)
+    function getBestMove() {
+        // 1. Try to win
+        for (let condition of winningConditions) {
+            const [a, b, c, d] = condition;
+            let oCount = 0;
+            let emptyIndex = -1;
+
+            for (let index of [a, b, c, d]) {
+                if (board[index] === 'O') oCount++;
+                else if (board[index] === '' && emptyIndex === -1) emptyIndex = index;
+            }
+
+            if (oCount === 3 && emptyIndex !== -1) {
+                return emptyIndex; // Win!
+            }
+        }
+
+        // 2. Block player from winning
+        for (let condition of winningConditions) {
+            const [a, b, c, d] = condition;
+            let xCount = 0;
+            let emptyIndex = -1;
+
+            for (let index of [a, b, c, d]) {
+                if (board[index] === 'X') xCount++;
+                else if (board[index] === '' && emptyIndex === -1) emptyIndex = index;
+            }
+
+            if (xCount === 3 && emptyIndex !== -1) {
+                return emptyIndex; // Block!
+            }
+        }
+
+        // 3. Look for good offensive opportunities (2 in a row with 2 empty)
+        for (let condition of winningConditions) {
+            const [a, b, c, d] = condition;
+            let oCount = 0;
+            let emptyIndices = [];
+
+            for (let index of [a, b, c, d]) {
+                if (board[index] === 'O') oCount++;
+                else if (board[index] === '') emptyIndices.push(index);
+            }
+
+            if (oCount === 2 && emptyIndices.length === 2) {
+                return emptyIndices[Math.floor(Math.random() * emptyIndices.length)];
+            }
+        }
+
+        // 4. Block player's 2 in a row
+        for (let condition of winningConditions) {
+            const [a, b, c, d] = condition;
+            let xCount = 0;
+            let emptyIndices = [];
+
+            for (let index of [a, b, c, d]) {
+                if (board[index] === 'X') xCount++;
+                else if (board[index] === '') emptyIndices.push(index);
+            }
+
+            if (xCount === 2 && emptyIndices.length === 2) {
+                return emptyIndices[Math.floor(Math.random() * emptyIndices.length)];
+            }
+        }
+
+        // 5. Take center positions if available
+        const centerPositions = [5, 6, 9, 10];
+        const availableCenters = centerPositions.filter(pos => board[pos] === '');
+        if (availableCenters.length > 0) {
+            return availableCenters[Math.floor(Math.random() * availableCenters.length)];
+        }
+
+        // 6. Take corners if available
+        const corners = [0, 3, 12, 15];
+        const availableCorners = corners.filter(pos => board[pos] === '');
+        if (availableCorners.length > 0) {
+            return availableCorners[Math.floor(Math.random() * availableCorners.length)];
+        }
+
+        // 7. Take any available position
+        const availablePositions = [];
+        for (let i = 0; i < 16; i++) {
+            if (board[i] === '') {
+                availablePositions.push(i);
+            }
+        }
+
+        return availablePositions[Math.floor(Math.random() * availablePositions.length)];
+    }
+
+    function evaluateBoard() {
+        for (let condition of winningConditions) {
+            const [a, b, c, d] = condition;
+            if (board[a] && board[a] === board[b] && board[a] === board[c] && board[a] === board[d]) {
+                return board[a];
+            }
+        }
+        return null;
+    }
+
+    function updateGameStatus(message) {
+        if (gameStatus) {
+            gameStatus.textContent = message;
+        }
+    }
+
+    function resetGame() {
+        board = ['', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''];
+        currentPlayer = 'X';
+        gameActive = true;
+
+        const cells = document.querySelectorAll('.cell');
+        cells.forEach(cell => {
+            cell.textContent = '';
+            cell.disabled = false;
+            cell.classList.remove('x', 'o');
+            cell.style.background = 'white';
+        });
+
+        updateGameStatus('Twoja kolej! (X)');
+    }
+</script>
+</body>
+</html>

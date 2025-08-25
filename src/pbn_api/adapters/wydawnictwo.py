@@ -212,14 +212,14 @@ class WydawnictwoPBNAdapter:
         publicationUuid = self.original.get_pbn_uuid()
         if not publicationUuid:
             raise DaneLokalneWymagajaAktualizacjiException(
-                "Nie jestem w stanie ustalić lokalnie identyfikatora UUID dla publikacji"
+                "Nie jestem w stanie ustalić lokalnie identyfikatora UUID dla publikacji "
                 f"{self.original.pbn_uid}. Pobierz dane z profilu instytucji o publikacjach przez "
                 f"API V2 przez CLI lub wyślij tą publikację w całości do PBN. ",
                 self.original.pbn_uid,
             )
 
         return {
-            "publicationUuid": str(publicationUuid.pk),
+            "publicationUuid": str(publicationUuid),
             "statements": [
                 _convert_stmt(stmt) for stmt in self.pbn_get_json_statements()
             ],

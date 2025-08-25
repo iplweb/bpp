@@ -13,13 +13,13 @@ from typing import Dict, List
 import bleach
 import lxml.html
 import openpyxl.worksheet.worksheet
-import progressbar
 from django.apps import apps
 from django.conf import settings
 from django.db.models import Max, Min, Value
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.filters import AutoFilter
 from openpyxl.worksheet.table import Table, TableColumn, TableStyleInfo
+from tqdm import tqdm
 from unidecode import unidecode
 
 from django.contrib.postgres.search import SearchQuery, SearchRank
@@ -286,21 +286,7 @@ def pbar(query, count=None, label="Progres...", disable_progress_bar=False):
             elif hasattr(query, "__len__"):
                 count = len(query)
 
-        return progressbar.progressbar(
-            query,
-            max_value=count,
-            widgets=[
-                progressbar.FormatLabel(label),
-                " ",
-                progressbar.AnimatedMarker(),
-                " ",
-                progressbar.SimpleProgress(),
-                " ",
-                progressbar.Timer(),
-                " ",
-                progressbar.ETA(),
-            ],
-        )
+        return tqdm(query, total=count, desc=label, unit="items")
     else:
         # You're being piped or redirected
         return query

@@ -142,6 +142,11 @@ The project uses a sophisticated migration system with both Python and SQL migra
 
 ## Tests
 
-- pytest style,
-- use available fixtures from conftest.py files in src/ and subdirectories,
-- typically use model_bakery.baker.make for creation of new database objects.
+**IMPORTANT: Always use pytest conventions - NEVER create unittest.TestCase tests**
+
+- Use pytest style with standalone functions (no classes)
+- Function names should follow pattern: `test_module_functionality_specific_case()`
+- Use available fixtures from conftest.py files in src/ and subdirectories
+- Use model_bakery.baker.make for creating database objects in tests
+- Never use unittest.TestCase classes or Django's TestCase
+- All test functions should be standalone functions with pytest fixtures

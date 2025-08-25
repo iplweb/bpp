@@ -1,6 +1,7 @@
 from django import forms
 from django.core.exceptions import ValidationError
 from django.db import models
+from djangoql.admin import DjangoQLSearchMixin
 
 from pbn_api.admin.base import BaseMongoDBAdmin
 from pbn_api.admin.filters import OdpowiednikWBPPFilter
@@ -40,9 +41,12 @@ class PublicationFromMongoIdForm(forms.ModelForm):
 
 @admin.register(Publication)
 class PublicationAdmin(
+    DjangoQLSearchMixin,
     BaseMongoDBAdmin,
 ):
     show_full_result_count = False
+    djangoql_completion_enabled_by_default = False
+    djangoql_completion = True
 
     list_display = [
         "title",

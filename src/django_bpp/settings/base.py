@@ -205,6 +205,10 @@ TIME_ZONE = "Europe/Warsaw"
 LANGUAGE_CODE = "pl"
 LANGUAGES = (("pl", "Polish"),)
 
+LOCALE_PATHS = [
+    os.path.join(BASE_DIR, "locale"),
+]
+
 SITE_ID = 1  # dla static-sitemaps
 USE_I18N = True
 USE_L10N = True
@@ -412,6 +416,7 @@ INSTALLED_APPS = [
     "dbtemplates",
     #
     "oswiadczenia",
+    "komparator_pbn",
     "import_polon",
     "import_list_ministerialnych",
     "snapshot_odpiec",

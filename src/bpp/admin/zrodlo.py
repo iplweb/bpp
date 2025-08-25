@@ -15,7 +15,7 @@ from .core import BaseBppAdminMixin
 from .filters import PBN_UID_IDObecnyFilter
 from .helpers.fieldsets import ADNOTACJE_FIELDSET, MODEL_PUNKTOWANY_Z_KWARTYLAMI_BAZA
 from .helpers.mixins import ZapiszZAdnotacjaMixin
-from .helpers.widgets import CHARMAP_SINGLE_LINE
+from .helpers.widgets import CHARMAP_SINGLE_LINE, COMMA_DECIMAL_FIELD_OVERRIDE
 
 from django.contrib import admin
 
@@ -34,6 +34,7 @@ class Punktacja_ZrodlaForm(forms.ModelForm):
 class Punktacja_ZrodlaInline(admin.TabularInline):
     model = Punktacja_Zrodla
     form = Punktacja_ZrodlaForm
+    formfield_overrides = COMMA_DECIMAL_FIELD_OVERRIDE
     fields = ("rok",) + MODEL_PUNKTOWANY_Z_KWARTYLAMI_BAZA
     extra = 1
 

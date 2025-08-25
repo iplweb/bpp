@@ -540,6 +540,7 @@ class InstitutionsProfileMixin:
 
             NIE_MOZNA_USUNAC = "Nie można usunąć oświadczeń."
             NIE_ISTNIEJA = "Nie istnieją oświadczenia dla publikacji"
+            NIE_ISTNIEJE = "Nie istnieje oświadczenie dla publikacji"
 
             if ret_json:
                 try:
@@ -547,12 +548,17 @@ class InstitutionsProfileMixin:
                         msg = e.json["details"]["publicationId"]
                     except KeyError:
                         msg = e.json["details"][f"publicationId.{publicationId}"]
-                    if NIE_ISTNIEJA in msg and NIE_MOZNA_USUNAC in msg:
+
+                    if (
+                        NIE_ISTNIEJA in msg or NIE_ISTNIEJE in msg
+                    ) and NIE_MOZNA_USUNAC in msg:
                         # Opis odpowiada sytuacji "Nie można usunąć oświadczeń, nie istnieją"
                         raise CannotDeleteStatementsException(e.content)
 
                 except (TypeError, KeyError):
-                    if NIE_ISTNIEJA in e.content and NIE_MOZNA_USUNAC in e.content:
+                    if (
+                        NIE_ISTNIEJA in e.content or NIE_ISTNIEJE in e.content
+                    ) and NIE_MOZNA_USUNAC in e.content:
                         raise CannotDeleteStatementsException(e.content)
 
             raise e

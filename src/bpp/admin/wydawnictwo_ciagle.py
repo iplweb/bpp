@@ -66,7 +66,10 @@ from bpp.admin.helpers.fieldsets import (
 )
 from bpp.admin.helpers.mixins import DomyslnyStatusKorektyMixin
 from bpp.admin.helpers.pbn_api.gui import sprobuj_policzyc_sloty
-from bpp.admin.helpers.widgets import NIZSZE_TEXTFIELD_Z_MAPA_ZNAKOW
+from bpp.admin.helpers.widgets import (
+    COMMA_DECIMAL_FIELD_OVERRIDE,
+    NIZSZE_TEXTFIELD_Z_MAPA_ZNAKOW,
+)
 from bpp.admin.nagroda import NagrodaInline
 from bpp.models import (  # Publikacja_Habilitacyjna
     Charakter_Formalny,
@@ -222,7 +225,10 @@ class Wydawnictwo_CiagleAdmin(
     djangoql_completion_enabled_by_default = False
     djangoql_completion = True
 
-    formfield_overrides = NIZSZE_TEXTFIELD_Z_MAPA_ZNAKOW
+    formfield_overrides = {
+        **NIZSZE_TEXTFIELD_Z_MAPA_ZNAKOW,
+        **COMMA_DECIMAL_FIELD_OVERRIDE,
+    }
 
     actions = [
         ustaw_po_korekcie,

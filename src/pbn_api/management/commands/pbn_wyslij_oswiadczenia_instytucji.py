@@ -18,7 +18,8 @@ Examples:
 """
 import json
 import time
-import traceback
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from threading import Lock
 
 from django.core.management.base import CommandError
 from queryset_sequence import QuerySetSequence
@@ -31,10 +32,210 @@ from pbn_api.exceptions import (
     HttpException,
 )
 from pbn_api.management.commands.util import PBNBaseCommand
+from pbn_api.models import PublikacjaInstytucji_V2, Scientist
 
 from django.contrib.contenttypes.models import ContentType
 
 from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
+
+
+def post_discipline_statements_error_handler(json_response):
+    """
+    Parse JSON response from PBN API and convert UUIDs and IDs to model instances.
+
+    Args:
+        json_response (dict): JSON response from PBN API with format:
+        {
+            "data": [
+                {
+                    "publicationUuid": "8b25d071-6fbb-45ce-9082-65be455dcbb4",
+                    "statements": [
+                        {
+                            "status": "IGNORED|INVALID",
+                            "personObjectId": "5e709224878c28a0473908ed",
+                            "personRole": "AUTHOR",
+                            "statementErrors": [
+                                {
+                                    "code": "PERSON_NOT_IN_PUBLICATION",
+                                    "description": "Wskazana osoba nie pełni podanej roli w publikacji."
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+
+    Returns:
+        list: List of parsed publication data with resolved model instances
+    """
+    parsed_data = []
+
+    if not json_response or "data" not in json_response:
+        return parsed_data
+
+    for publication_data in json_response["data"]:
+        publication_uuid = publication_data.get("publicationUuid")
+        statements = publication_data.get("statements", [])
+
+        # Resolve publication instance
+        publikacja_instytucji = None
+        if publication_uuid:
+            try:
+                publikacja_instytucji = PublikacjaInstytucji_V2.objects.get(
+                    uuid=publication_uuid
+                )
+            except PublikacjaInstytucji_V2.DoesNotExist:
+                # Publication not found in local database
+                pass
+
+        parsed_statements = []
+        for statement in statements:
+            person_object_id = statement.get("personObjectId")
+            status = statement.get("status")
+            person_role = statement.get("personRole")
+            statement_errors = statement.get("statementErrors", [])
+
+            # Resolve scientist instance
+            scientist = None
+            if person_object_id:
+                try:
+                    scientist = Scientist.objects.get(mongoId=person_object_id)
+                except Scientist.DoesNotExist:
+                    # Scientist not found in local database
+                    pass
+
+            parsed_statement = {
+                "raw_person_object_id": person_object_id,
+                "scientist": scientist,
+                "status": status,
+                "person_role": person_role,
+                "statement_errors": statement_errors,
+                "has_errors": status == "INVALID" and len(statement_errors) > 0,
+                "should_ignore": status == "IGNORED",
+            }
+
+            parsed_statements.append(parsed_statement)
+
+        parsed_publication = {
+            "raw_publication_uuid": publication_uuid,
+            "publikacja_instytucji": publikacja_instytucji,
+            "statements": parsed_statements,
+            "has_any_errors": any(stmt["has_errors"] for stmt in parsed_statements),
+            "error_count": sum(1 for stmt in parsed_statements if stmt["has_errors"]),
+        }
+
+        parsed_data.append(parsed_publication)
+
+    return parsed_data
+
+
+def process_single_publication(
+    publication: Wydawnictwo_Ciagle | Wydawnictwo_Ciagle,
+    pbn_client,
+    dry_run=False,
+    progress_lock=None,
+    stdout=None,
+    style=None,
+):
+    """
+    Process a single publication for sending statements to PBN.
+
+    Args:
+        publication: Publication instance to process
+        pbn_client: PBN API client
+        dry_run: If True, only show what would be sent
+        progress_lock: Threading lock for thread-safe output
+        stdout: Command stdout for output
+        style: Command style for colored output
+
+    Returns:
+        dict: Result of processing with success/error information
+    """
+    result = {
+        "publication": publication,
+        "success": False,
+        "error": None,
+        "json_data": None,
+    }
+
+    try:
+        json_data = WydawnictwoPBNAdapter(publication).pbn_get_api_statements()
+        result["json_data"] = json_data
+
+    except DaneLokalneWymagajaAktualizacjiException as e:
+        result["error"] = str(e)
+        if stdout and style and progress_lock:
+            with progress_lock:
+                tqdm.write(
+                    style.ERROR(f"{publication.pk};{publication.tytul_oryginalny};{e}")
+                )
+        return result
+
+    if not json_data:
+        result["success"] = True  # No data to send is considered success
+        return result
+
+    try:
+        if dry_run:
+            if stdout and progress_lock:
+                with progress_lock:
+                    tqdm.write(f"// wysyłam: publikacja {publication}")
+                    tqdm.write(f"// BPP ID {publication.pk}")
+                    tqdm.write(json.dumps(json_data, indent=2))
+            result["success"] = True
+        else:
+            try:
+                pbn_client.delete_all_publication_statements(publication.pbn_uid_id)
+                time.sleep(0.5)
+            except CannotDeleteStatementsException:
+                # Skoro nie można usunąć to PRAWDOPODOBNIE ich tam po prostu nie ma.
+                pass
+
+            max_tries = 5
+            while max_tries > 0:
+                max_tries -= 1
+
+                try:
+                    pbn_client.post_discipline_statements({"data": [json_data]})
+                    result["success"] = True
+                    break
+                except HttpException as e:
+                    if e.status_code == 500:
+                        time.sleep(1)
+                        continue
+
+                    if e.status_code == 400:
+                        try:
+                            error_json = json.loads(e.content)
+                        except json.decoder.JSONDecodeError:
+                            raise e
+
+                        res = post_discipline_statements_error_handler(error_json)
+                        # Store parsed errors in result for potential debugging
+                        result["parsed_errors"] = res
+                        raise e
+
+                    if (
+                        e.status_code == 423
+                        and "Oświadczenie zostało zablokowane z uwagi na równoległą operację. "
+                        "Prosimy spróbować ponownie." in e.content
+                    ):
+                        time.sleep(1)
+                        continue
+
+                    raise e
+
+    except Exception as e:
+        result["error"] = str(e)
+        if stdout and style and progress_lock:
+            with progress_lock:
+                tqdm.write(
+                    style.ERROR(f"{publication.pk};{publication.tytul_oryginalny};{e}")
+                )
+                # tqdm.write(traceback.format_exc())
+
+    return result
 
 
 class Command(PBNBaseCommand):
@@ -58,11 +259,29 @@ class Command(PBNBaseCommand):
             action="store_true",
             help="Show what would be sent without actually sending to PBN",
         )
+        parser.add_argument(
+            "--threads",
+            type=int,
+            default=12,
+            help="Number of threads to use for parallel processing (default: 12, max: 32)",
+        )
+        parser.add_argument(
+            "--no-threads",
+            action="store_true",
+            help="Disable threading for debugging purposes",
+        )
 
     def handle(self, app_id, app_token, base_url, user_token, *args, **options):
         publication_id = options.get("publication_id")
         year = options.get("year")
         dry_run = options["dry_run"]
+        num_threads = max(
+            1, min(32, options.get("threads", 12))
+        )  # Clamp between 1 and 12
+        no_threads = options.get("no_threads", False)
+
+        if no_threads:
+            num_threads = 1
 
         pbn_client = self.get_client(app_id, app_token, base_url, user_token)
 
@@ -74,92 +293,107 @@ class Command(PBNBaseCommand):
             raise CommandError("Cannot specify both publication_id and --year")
 
         if dry_run:
-            self.stdout.write(
-                self.style.WARNING("DRY RUN MODE - No data will be sent to PBN")
+            tqdm.write(self.style.WARNING("DRY RUN MODE - No data will be sent to PBN"))
+
+        if num_threads > 1:
+            tqdm.write(
+                self.style.SUCCESS(
+                    f"Using {num_threads} threads for parallel processing"
+                )
+            )
+        else:
+            tqdm.write(
+                self.style.WARNING("Threading disabled - processing sequentially")
             )
 
         if publication_id:
             # Single publication mode
-            publication = self._get_single_publication(publication_id)
+            try:
+                publication = self._get_single_publication(publication_id)
+            except CommandError:
+                from bpp.models import Rekord
+
+                publication = Rekord.objects.get(pbn_uid_id=publication_id).original
             publications = [publication]
         else:
             # Batch processing mode
             publications = self._get_publications_by_year(year)
 
         if not publications:
-            self.stdout.write(self.style.WARNING("No publications found to process"))
+            tqdm.write(self.style.WARNING("No publications found to process"))
             return
 
-        for publication in tqdm(publications, desc="Wysyłam oświadczenia"):
-            try:
-                json_data = WydawnictwoPBNAdapter(publication).pbn_get_api_statements()
-            except DaneLokalneWymagajaAktualizacjiException as e:
-                self.stdout.write(self.style.ERROR(str(e)))
-                continue
+        # Initialize progress tracking
+        progress_lock = Lock()
+        total_publications = (
+            len(publications)
+            if hasattr(publications, "__len__")
+            else sum(1 for _ in publications)
+        )
 
-            if not json_data:
-                continue
+        success_count = 0
+        error_count = 0
 
-            # json_data["publicationUuid"] = "275da353-ddad-4234-b456-71af3b417ac6"
-            try:
-                if dry_run:
-                    print(f"// wysyłam: publikacja {publication}")
-                    print(f"// BPP ID {publication.pk}")
-                    print(json.dumps(json_data, indent=2))
+        if num_threads == 1 or no_threads:
+            # Sequential processing for debugging
+            for publication in tqdm(publications, desc="Wysyłam oświadczenia"):
+                result = process_single_publication(
+                    publication,
+                    pbn_client,
+                    dry_run,
+                    progress_lock,
+                    self.stdout,
+                    self.style,
+                )
+                if result["success"]:
+                    success_count += 1
                 else:
-                    try:
-                        pbn_client.delete_all_publication_statements(
-                            publication.pbn_uid_id
-                        )
-                        time.sleep(0.5)
-                    except CannotDeleteStatementsException:
-                        pass
+                    error_count += 1
+        else:
+            # Parallel processing with ThreadPoolExecutor
+            with ThreadPoolExecutor(max_workers=num_threads) as executor:
+                # Submit all tasks - each publication gets submitted exactly once
+                future_to_publication = {
+                    executor.submit(
+                        process_single_publication,
+                        publication,
+                        pbn_client,
+                        dry_run,
+                        progress_lock,
+                        self.stdout,
+                        self.style,
+                    ): publication
+                    for publication in publications
+                }
 
-                    max_tries = 5
-                    while max_tries > 0:
-                        max_tries -= 1
-
-                        try:
-                            pbn_client.post_discipline_statements({"data": [json_data]})
-                            break
-                        except HttpException as e:
-                            if e.status_code == 500:
-
-                                #
-                                # Problem, PBN?
-                                #
-                                # ⠀⠀⠀⠀⠀⠀⢀⣤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⢤⣤⣀⣀⡀⠀⠀⠀⠀⠀⠀
-                                # ⠀⠀⠀⠀⢀⡼⠋⠀⣀⠄⡂⠍⣀⣒⣒⠂⠀⠬⠤⠤⠬⠍⠉⠝⠲⣄⡀⠀⠀
-                                # ⠀⠀⠀⢀⡾⠁⠀⠊⢔⠕⠈⣀⣀⡀⠈⠆⠀⠀⠀⡍⠁⠀⠁⢂⠀⠈⣷⠀⠀
-                                # ⠀⠀⣠⣾⠥⠀⠀⣠⢠⣞⣿⣿⣿⣉⠳⣄⠀⠀⣀⣤⣶⣶⣶⡄⠀⠀⣘⢦⡀
-                                # ⢀⡞⡍⣠⠞⢋⡛⠶⠤⣤⠴⠚⠀⠈⠙⠁⠀⠀⢹⡏⠁⠀⣀⣠⠤⢤⡕⠱⣷
-                                # ⠘⡇⠇⣯⠤⢾⡙⠲⢤⣀⡀⠤⠀⢲⡖⣂⣀⠀⠀⢙⣶⣄⠈⠉⣸⡄⠠⣠⡿
-                                # ⠀⠹⣜⡪⠀⠈⢷⣦⣬⣏⠉⠛⠲⣮⣧⣁⣀⣀⠶⠞⢁⣀⣨⢶⢿⣧⠉⡼⠁
-                                # ⠀⠀⠈⢷⡀⠀⠀⠳⣌⡟⠻⠷⣶⣧⣀⣀⣹⣉⣉⣿⣉⣉⣇⣼⣾⣿⠀⡇⠀
-                                # ⠀⠀⠀⠈⢳⡄⠀⠀⠘⠳⣄⡀⡼⠈⠉⠛⡿⠿⠿⡿⠿⣿⢿⣿⣿⡇⠀⡇⠀
-                                # ⠀⠀⠀⠀⠀⠙⢦⣕⠠⣒⠌⡙⠓⠶⠤⣤⣧⣀⣸⣇⣴⣧⠾⠾⠋⠀⠀⡇⠀
-                                # ⠀⠀⠀⠀⠀⠀⠀⠈⠙⠶⣭⣒⠩⠖⢠⣤⠄⠀⠀⠀⠀⠀⠠⠔⠁⡰⠀⣧⠀
-                                # ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠉⠛⠲⢤⣀⣀⠉⠉⠀⠀⠀⠀⠀⠁⠀⣠⠏⠀
-                                # ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠉⠉⠛⠒⠲⠶⠤⠴⠒⠚⠁⠀⠀
-                                time.sleep(1)
-                                continue
-
-                            if (
-                                e.status_code == 423
-                                and "Oświadczenie zostało zablokowane z uwagi na równoległą operację. "
-                                "Prosimy spróbować ponownie." in e.content
-                            ):
-                                time.sleep(1)
-                                continue
-
-                            raise e
-
-            except Exception as e:
-                self.stdout.write(
-                    self.style.ERROR(f"Error processing {publication}: {e}")
+                tasks_submitted = len(future_to_publication)
+                tqdm.write(
+                    self.style.SUCCESS(
+                        f"Submitted {tasks_submitted} tasks to {num_threads} worker threads"
+                    )
                 )
 
-                self.stdout.write(traceback.format_exc())
+                # Process completed tasks with progress bar
+                with tqdm(
+                    total=total_publications, desc="Wysyłam oświadczenia"
+                ) as pbar:
+                    for future in as_completed(future_to_publication):
+                        result = future.result()
+                        if result["success"]:
+                            success_count += 1
+                        else:
+                            error_count += 1
+                        pbar.update(1)
+
+        # Print final summary
+        tqdm.write(
+            self.style.SUCCESS(
+                f"\nCompleted processing {success_count + error_count} publications"
+            )
+        )
+        tqdm.write(self.style.SUCCESS(f"Successful: {success_count}"))
+        if error_count > 0:
+            tqdm.write(self.style.ERROR(f"Errors: {error_count}"))
 
     def _get_single_publication(self, publication_id):
         """Get a single publication by ID."""
