@@ -3,7 +3,6 @@ import multiprocessing
 import operator
 import os
 import re
-import sys
 from datetime import datetime, timedelta
 from functools import reduce
 from math import ceil, floor
@@ -276,20 +275,16 @@ def rebuild_contenttypes():
 
 
 def pbar(query, count=None, label="Progres...", disable_progress_bar=False):
-    if sys.stdout.isatty() and not disable_progress_bar:
-        if count is None:
-            if hasattr(query, "count"):
-                try:
-                    count = query.count()
-                except TypeError:
-                    count = len(query)
-            elif hasattr(query, "__len__"):
+    if count is None:
+        if hasattr(query, "count"):
+            try:
+                count = query.count()
+            except TypeError:
                 count = len(query)
+        elif hasattr(query, "__len__"):
+            count = len(query)
 
-        return tqdm(query, total=count, desc=label, unit="items")
-    else:
-        # You're being piped or redirected
-        return query
+    return tqdm(query, total=count, desc=label, unit="items")
 
 
 #
