@@ -1,3 +1,6 @@
+from celery_singleton import Singleton
+from django.core.management import call_command
+
 from long_running.util import wait_for_object
 from pbn_api.models.queue import SendStatus
 
@@ -64,3 +67,13 @@ def kolejka_ponow_wysylke_prac_po_zalogowaniu(pk):
         wysylke_zakonczono=None,
     ):
         task_sprobuj_wyslac_do_pbn.delay(elem.pk)
+
+
+@app.task(base=Singleton)
+def download_institution_publications():
+    """
+    Download institution publications using PBN API management commands.
+    This task uses Singleton to ensure only one instance runs at a time.
+    """
+    call_command("pbn_pobierz_publikacje_z_instytucji_v2")
+    call_command("pbn_pobierz_oswiadczenia_i_publikacje_v1")
