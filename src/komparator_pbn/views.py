@@ -1,4 +1,6 @@
 from django.db.models import Q
+from django.http import JsonResponse
+from django.views import View
 from django.views.generic import ListView
 from django.views.generic.base import TemplateView
 
@@ -138,6 +140,12 @@ class KomparatorMainView(TemplateView):
                 "charaktery_wysylane_do_pbn": charaktery_wysylane_do_pbn,
             }
         )
+
+        # Add latest task information
+        from komparator_pbn.models import PbnDownloadTask
+
+        latest_task = PbnDownloadTask.get_latest_task()
+        context["latest_task"] = latest_task
 
         return context
 
@@ -294,3 +302,147 @@ class PBNMissingInBPPView(ListView):
         context["evaluation_start_year"] = EVALUATION_START_YEAR
         context["evaluation_end_year"] = EVALUATION_END_YEAR
         return context
+
+
+@method_decorator(staff_member_required, name="dispatch")
+class StartPbnDownloadView(View):
+    """API view to start PBN download task."""
+
+    def post(self, request):
+        # Check if user has PBN authorization
+        user = request.user
+        pbn_user = user.get_pbn_user()
+
+        if not pbn_user.pbn_token:
+            return JsonResponse(
+                {
+                    "success": False,
+                    "error": "You are not authorized in PBN. Please log in to PBN first.",
+                }
+            )
+
+        if not pbn_user.pbn_token_possibly_valid():
+            return JsonResponse(
+                {
+                    "success": False,
+                    "error": "Your PBN token has expired. Please log in to PBN again.",
+                }
+            )
+
+        # Check if task is already running using database lock
+        from komparator_pbn.models import PbnDownloadTask
+        from pbn_api.tasks import download_institution_publications
+
+        # Clean up any stale running tasks first
+        PbnDownloadTask.cleanup_stale_running_tasks()
+
+        running_task = PbnDownloadTask.objects.filter(status="running").first()
+        if running_task:
+            return JsonResponse(
+                {
+                    "success": False,
+                    "error": "Download task is already running. Please wait for it to complete.",
+                }
+            )
+
+        # Start the task
+        try:
+            download_institution_publications.delay(user.pk)
+            return JsonResponse({"success": True, "message": "Download task started."})
+        except Exception as e:
+            return JsonResponse(
+                {"success": False, "error": f"Failed to start task: {str(e)}"}
+            )
+
+
+@method_decorator(staff_member_required, name="dispatch")
+class TaskStatusView(View):
+    """API view to check task status."""
+
+    def get(self, request):
+        from komparator_pbn.models import PbnDownloadTask
+
+        # Get latest task
+        latest_task = PbnDownloadTask.get_latest_task()
+
+        # Check if any task is currently running using database
+        is_running = PbnDownloadTask.objects.filter(status="running").exists()
+
+        response_data = {"is_running": is_running, "latest_task": None}
+
+        if latest_task:
+            response_data["latest_task"] = {
+                "id": latest_task.id,
+                "status": latest_task.status,
+                "started_at": latest_task.started_at.isoformat(),
+                "completed_at": (
+                    latest_task.completed_at.isoformat()
+                    if latest_task.completed_at
+                    else None
+                ),
+                "error_message": latest_task.error_message,
+                "user": latest_task.user.username,
+                "current_step": latest_task.current_step,
+                "progress_percentage": latest_task.progress_percentage,
+                "publications_processed": latest_task.publications_processed,
+                "statements_processed": latest_task.statements_processed,
+                "total_publications": latest_task.total_publications,
+                "total_statements": latest_task.total_statements,
+                "last_updated": latest_task.last_updated.isoformat(),
+            }
+
+        return JsonResponse(response_data)
+
+
+@method_decorator(staff_member_required, name="dispatch")
+class RetryTaskView(View):
+    """API view to retry a failed task."""
+
+    def post(self, request):
+        # Check if user has PBN authorization
+        user = request.user
+        pbn_user = user.get_pbn_user()
+
+        if not pbn_user.pbn_token:
+            return JsonResponse(
+                {
+                    "success": False,
+                    "error": "You are not authorized in PBN. Please log in to PBN first.",
+                }
+            )
+
+        if not pbn_user.pbn_token_possibly_valid():
+            return JsonResponse(
+                {
+                    "success": False,
+                    "error": "Your PBN token has expired. Please log in to PBN again.",
+                }
+            )
+
+        # Check if task is already running using database lock
+        from komparator_pbn.models import PbnDownloadTask
+
+        # Clean up any stale running tasks first
+        PbnDownloadTask.cleanup_stale_running_tasks()
+
+        running_task = PbnDownloadTask.objects.filter(status="running").first()
+        if running_task:
+            return JsonResponse(
+                {
+                    "success": False,
+                    "error": "Download task is already running. Please wait for it to complete.",
+                }
+            )
+
+        # Start the task
+        try:
+            from pbn_api.tasks import download_institution_publications
+
+            download_institution_publications.delay(user.pk)
+            return JsonResponse(
+                {"success": True, "message": "Download task restarted."}
+            )
+        except Exception as e:
+            return JsonResponse(
+                {"success": False, "error": f"Failed to restart task: {str(e)}"}
+            )
