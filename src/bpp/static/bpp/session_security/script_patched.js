@@ -1,4 +1,10 @@
-// Use 'yourlabs' as namespace.
+/*
+
+ TEN SKRYPT MA BYĆ IDENTYCZNY JAK session_security/static/js/script.js
+
+ Jednakże ma używać grp.jQuery
+ */
+// Use 'yourlabs' as namespace.;
 if (window.yourlabs == undefined) window.yourlabs = {};
 
 // Session security constructor. These are the required options:

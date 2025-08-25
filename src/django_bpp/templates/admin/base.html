@@ -91,23 +91,35 @@
     <!-- EXTRAHEAD -->
     {% block extrahead %}{% endblock %}
 
+    {# Session security, bo nie uzywało grp.jQuery#}
+    {% load session_security_tags %}
+    {% load i18n l10n %}
+    {% load static %}
 
-{#    <script>#}
-{#        console.log('GRP ver', grp.jQuery.fn.jquery);#}
-{#        console.log('GRP sel', grp.jQuery.fn.select2);#}
-{#        console.log('DJG ver', django.jQuery.fn.jquery);#}
-{#        console.log('DJG sel', django.jQuery.fn.select2);#}
-{#        console.log('  $ fun', window.$);#}
-{#        if (window.$) {#}
-{#            if (window.$.jQuery)#}
-{#                if (window.$.jQuery.fn) {#}
-{#                    console.log('  $ ver', $.jQuery.fn.jquery);#}
-{#                    console.log('  $ sel', $.jQuery.fn.select2);#}
-{#                }#}
-{#        }#}
-{#        var $ = grp.jQuery;#}
-{#    </script>#}
-    {% include 'session_security/all.html' %}
+    {# If the user is not authenticated then there is no session to secure ! #}
+    {% if request.user.is_authenticated %}
+
+        {# The modal dialog stylesheet, it's pretty light so it should be easy to hack #}
+        <link rel="stylesheet" type="text/css" href="{% static 'session_security/style.css' %}">
+
+        {# Include the template that actually contains the modal dialog #}
+        {% include 'session_security/dialog.html' %}
+
+        {# Load SessionSecurity javascript 'class', jquery should be loaded - by you - at this point #}
+        <script type="text/javascript" src="{% static 'bpp/session_security/script_patched.js' %}"></script>
+
+        {# Bootstrap a SessionSecurity instance as the sessionSecurity global variable #}
+        {% localize off %}
+            <script type="text/javascript">
+                var sessionSecurity = new yourlabs.SessionSecurity({
+                    pingUrl: '{% url 'session_security_ping' %}',
+                    warnAfter: {{ request|warn_after|unlocalize }},
+                    expireAfter: {{ request|expire_after|unlocalize }},
+                    confirmFormDiscard: "{% trans 'You have unsaved changes in a form of this page.' %}"
+                });
+            </script>
+        {% endlocalize %}
+    {% endif %}
 
 </head>
 <body class="{% if is_popup %}grp-popup {% endif %}{% block bodyclass %}{% endblock %}{% if LANGUAGE_BIDI %} rtl{% endif %}">
