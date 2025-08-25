@@ -54,6 +54,10 @@ SCSS_SOURCES := $(wildcard src/bpp/static/scss/*.scss)
 # Node modules dependency
 NODE_MODULES := node_modules/.installed
 
+# Translation files
+PO_FILES := $(shell find src -name "*.po" -type f)
+MO_FILES := $(PO_FILES:.po=.mo)
+
 $(NODE_MODULES): package.json yarn.lock
 	export PUPPETEER_SKIP_CHROME_DOWNLOAD=true PUPPETEER_SKIP_CHROME_HEADLESS_SHELL_DOWNLOAD=true && yarn install  --no-progress --emoji false -s
 	touch $(NODE_MODULES)
@@ -61,7 +65,10 @@ $(NODE_MODULES): package.json yarn.lock
 $(CSS_TARGETS): $(SCSS_SOURCES) $(NODE_MODULES)
 	grunt build
 
-assets: $(CSS_TARGETS)
+$(MO_FILES): $(PO_FILES)
+	export PYTHONPATH=. && cd src && django-admin compilemessages
+
+assets: $(CSS_TARGETS) $(MO_FILES)
 
 yarn: $(NODE_MODULES)
 
@@ -80,8 +87,7 @@ production-assets: distclean assets
 	rm -rf src/django_bpp/staticroot/vendor/select2/docs
 	rm -rf src/django_bpp/staticroot/scss/*.scss
 
-compilemessages:
-	export PYTHONPATH=. && cd src && django-admin compilemessages
+compilemessages: $(MO_FILES)
 
 bdist_wheel: distclean production-assets compilemessages
 	poetry build
