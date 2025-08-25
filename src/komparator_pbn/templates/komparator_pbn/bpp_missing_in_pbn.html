@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}BPP oświadczenia nie wysłane do PBN - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="large-12 columns">
+        <h1>BPP oświadczenia nie wysłane do PBN</h1>
+        <p class="lead">Oświadczenia autorów z BPP (przypieta=True, afiliuje=True), które nie zostały jeszcze wysłane do PBN</p>
+
+        <a href="{% url 'komparator_pbn:main' %}" class="button secondary small">← Powrót do głównej</a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="large-12 columns">
+        <div class="panel">
+            <form method="get" class="search-form">
+                <div class="row">
+                    <div class="medium-4 columns">
+                        <label for="type">Typ publikacji:</label>
+                        <select name="type" id="type">
+                            <option value="ciagle" {% if publication_type == 'ciagle' %}selected{% endif %}>Wydawnictwa ciągłe</option>
+                            <option value="zwarte" {% if publication_type == 'zwarte' %}selected{% endif %}>Wydawnictwa zwarte</option>
+                        </select>
+                    </div>
+                    <div class="medium-6 columns">
+                        <label for="q">Szukaj:</label>
+                        <input type="text" name="q" id="q" value="{{ query }}" placeholder="Tytuł, autor, jednostka...">
+                    </div>
+                    <div class="medium-2 columns">
+                        <label>&nbsp;</label>
+                        <button type="submit" class="button expanded">Szukaj</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="large-12 columns">
+        {% if statements %}
+            <div class="statements-list">
+                <h4>
+                    BPP oświadczenia -
+                    {% if publication_type == 'ciagle' %}Wydawnictwa ciągłe{% else %}Wydawnictwa zwarte{% endif %}
+                    ({{ evaluation_start_year }}-{{ evaluation_end_year }})
+                </h4>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Autor</th>
+                            <th>Publikacja</th>
+                            <th>Rok</th>
+                            <th>Jednostka</th>
+                            <th>Dyscyplina</th>
+                            <th>Status PBN</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for statement in statements %}
+                            <tr>
+                                <td>
+                                    <strong>{{ statement.autor.nazwisko }}, {{ statement.autor.imiona }}</strong>
+                                </td>
+                                <td>
+                                    {{ statement.rekord.tytul_oryginalny|truncatewords:8 }}
+                                </td>
+                                <td>{{ statement.rekord.rok }}</td>
+                                <td>{{ statement.jednostka.nazwa|truncatewords:6 }}</td>
+                                <td>
+                                    {% if statement.dyscyplina_naukowa %}
+                                        <span class="label info">{{ statement.dyscyplina_naukowa.nazwa|truncatewords:3 }}</span>
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if statement.rekord.pbn_uid_id %}
+                                        <span class="label warning">Publikacja w PBN, brak oświadczenia</span>
+                                    {% else %}
+                                        <span class="label secondary">Nie wysłano do PBN</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {% if is_paginated %}
+                <div class="pagination-centered">
+                    <ul class="pagination">
+                        {% if page_obj.has_previous %}
+                            <li class="arrow">
+                                <a href="?{% if query %}q={{ query }}&{% endif %}{% if publication_type %}type={{ publication_type }}&{% endif %}page={{ page_obj.previous_page_number }}">&laquo;</a>
+                            </li>
+                        {% endif %}
+
+                        {% for i in paginator.page_range %}
+                            {% if page_obj.number == i %}
+                                <li class="current"><a href="#">{{ i }}</a></li>
+                            {% else %}
+                                <li><a href="?{% if query %}q={{ query }}&{% endif %}{% if publication_type %}type={{ publication_type }}&{% endif %}page={{ i }}">{{ i }}</a></li>
+                            {% endif %}
+                        {% endfor %}
+
+                        {% if page_obj.has_next %}
+                            <li class="arrow">
+                                <a href="?{% if query %}q={{ query }}&{% endif %}{% if publication_type %}type={{ publication_type }}&{% endif %}page={{ page_obj.next_page_number }}">&raquo;</a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </div>
+            {% endif %}
+
+        {% else %}
+            <div class="panel callout">
+                <h4>Brak wyników</h4>
+                {% if query %}
+                    <p>Nie znaleziono oświadczeń pasujących do kryteriów: "{{ query }}"</p>
+                {% else %}
+                    <p>Wszystkie oświadczenia BPP zostały już wysłane do PBN lub nie ma oświadczeń dla wybranego typu.</p>
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.statements-list table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.statements-list th,
+.statements-list td {
+    padding: 8px 12px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+.statements-list th {
+    background-color: #f8f8f8;
+    font-weight: bold;
+}
+
+.label {
+    padding: 2px 6px;
+    border-radius: 3px;
+    color: white;
+    font-size: 11px;
+    margin-right: 0.3rem;
+    margin-bottom: 0.3rem;
+    display: inline-block;
+}
+
+.label.success { background-color: #43AC6A; }
+.label.info { background-color: #5BC0DE; }
+.label.secondary { background-color: #999; }
+.label.warning { background-color: #f08a24; }
+
+.search-form {
+    margin-bottom: 1rem;
+}
+</style>
+{% endblock %}

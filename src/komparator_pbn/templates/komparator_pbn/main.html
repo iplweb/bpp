@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Komparator PBN - {{ block.super }}{% endblock %}
+
+{% block content %}
+    <div class="row">
+        <div class="large-12 columns">
+            <h1>Komparator PBN <span class="label alert">BETA</span></h1>
+            <p class="lead">Narzędzie do porównywania danych BPP z danymi PBN</p>
+            <div class="panel callout secondary">
+                <h4><i class="fi-calendar"></i> Okres ewaluacyjny: {{ evaluation_start_year }}
+                    - {{ evaluation_end_year }}</h4>
+                <p>Analizowane są tylko publikacje z okresu najnowszej ewaluacji
+                    ({{ evaluation_start_year }}-{{ evaluation_end_year }}).</p>
+                <strong>UWAGA:</strong> ta funkcja wymaga pobrania świeżych danych z PBN. Analizy, które widzisz,
+                opierają się na <strong>LOKALNEJ KOPII</strong> danych z PBN.
+                <br/><br/>
+                <span style="color: #f39c12; font-size: 1.5em;">😊 Don't Panic!</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="large-12 columns">
+            <div class="panel callout">
+                <h3>Statystyki publikacji</h3>
+                <div class="row">
+                    <div class="medium-6 columns">
+                        <div class="stat-box">
+                            <h4>Nigdy nie wysłane do PBN</h4>
+                            <div class="row">
+                                <div class="medium-6 columns">
+                                    <strong>Wydawnictwa ciągłe:</strong> {{ ciagle_not_sent|default:0 }}
+                                </div>
+                                <div class="medium-6 columns">
+                                    <strong>Wydawnictwa zwarte:</strong> {{ zwarte_not_sent|default:0 }}
+                                </div>
+                            </div>
+                            <p><strong>Razem: {{ total_not_sent|default:0 }}</strong></p>
+                        </div>
+                    </div>
+                    <div class="medium-6 columns">
+                        <div class="stat-box">
+                            <h4>Wysłane do PBN</h4>
+                            <div class="row">
+                                <div class="medium-6 columns">
+                                    <strong>Wydawnictwa ciągłe:</strong> {{ ciagle_sent|default:0 }}
+                                </div>
+                                <div class="medium-6 columns">
+                                    <strong>Wydawnictwa zwarte:</strong> {{ zwarte_sent|default:0 }}
+                                </div>
+                            </div>
+                            <p><strong>Razem: {{ total_sent|default:0 }}</strong></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="large-12 columns">
+            <h3>Publikacje nigdy nie wysłane do PBN</h3>
+            <p>Przeglądaj publikacje nie wysłane do PBN przez Django Admin z automatycznym filtrowaniem.</p>
+            {% if uczelnia.pbn_api_nie_wysylaj_prac_bez_pk %}
+                Praca <strong>musi</strong> mieć punkty PK, zgodnie z ustawieniami obiektu Uczelnia.<br/>
+                Praca <strong>musi</strong> mieć DOI lub adres strony WWW (pole WWW lub Dostęp płatny).<br/>
+                Praca <strong>musi</strong> mieć charakter formalny jeden z:
+                {% for charakter in  charaktery_wysylane_do_pbn %}{{ charakter.nazwa }}, {% endfor %}
+            {% endif %}
+            <div class="row">
+                <div class="medium-6 columns">
+                    <div class="panel">
+                        <h4>Wydawnictwa ciągłe ({{ ciagle_not_sent }})</h4>
+                        <p>Publikacje ciągłe z okresu {{ evaluation_start_year }}-{{ evaluation_end_year }} nie wysłane
+                            do PBN.</p>
+                        <a href="/admin/bpp/wydawnictwo_ciagle/?q-l=on&q=rok+%3E%3D+2022+and+rok+%3C%3D+2025+and+pbn_uid+%3D+None+and+%28doi%21%3DNone+or+www%21%3DNone+or+public_www+%21%3DNone%29+and+charakter_formalny.rodzaj_pbn+%21%3D+None{% if uczelnia.pbn_api_nie_wysylaj_prac_bez_pk %}+and+punkty_kbn+%3E+0{% endif %}"
+                           class="button expanded success" target="_blank">
+                            <i class="fi-list"></i> Pokaż w module redagowania
+                        </a>
+                    </div>
+                </div>
+                <div class="medium-6 columns">
+                    <div class="panel">
+                        <h4>Wydawnictwa zwarte ({{ zwarte_not_sent }})</h4>
+                        <p>Publikacje zwarte z okresu {{ evaluation_start_year }}-{{ evaluation_end_year }} nie wysłane
+                            do PBN.</p>
+                        <a href="/admin/bpp/wydawnictwo_zwarte/?q-l=on&q=rok+%3E%3D+2022+and+rok+%3C%3D+2025+and+pbn_uid+%3D+None+and+%28doi%21%3DNone+or+www%21%3DNone+or+public_www+%21%3DNone%29+and+charakter_formalny.rodzaj_pbn+%21%3D+None{% if uczelnia.pbn_api_nie_wysylaj_prac_bez_pk %}+and+punkty_kbn+%3E+0{% endif %}"
+                           class="button expanded info" target="_blank">
+                            <i class="fi-list"></i> Pokaż w module redagowania
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="large-12 columns">
+            <div class="panel callout alert">
+                <h3>Publikacje istniejące w bazie PBN ({{ evaluation_start_year }}-{{ evaluation_end_year }}), które nie
+                    mają odpowiednika w BPP.</h3>
+                <div class="stat-box">
+                    <h4><i class="fi-alert"></i> Publikacje PBN nieistniejące w BPP</h4>
+                    <p><strong>Liczba publikacji: {{ pbn_publications_not_in_bpp|default:0 }}</strong></p>
+                    <small>Publikacje z lat {{ evaluation_start_year }}-{{ evaluation_end_year }} w bazie PBN, których
+                        PBN UID ID nie występuje w tabeli rekordów.
+                        <br/>Potencjalnie:
+                        <ul>
+                            <li>mogły zostać dopisane przez użytkowników PBNu poza bazą - przez interfejs GUI, </li>
+
+                            <li>mogą być to też zdublowane (po stronie PBN) rekordy, które
+                                powstały na skutek błędu podczas wysyłki do PBN (wysłane z BPP, ale system BPP nie
+                                otrzymał
+                                nigdy ich PBN UID ID zwrotnie, stąd były wysyłane kolejno),
+                            </li>
+                        </ul>
+                    </small>
+                    <div style="margin-top: 1rem;">
+                        <a href="/admin/pbn_api/publication/?odpowiednik=brak&q=year+%3E%3D+2022+and+year+%3C%3D+2025+&q-l=on"
+                           class="button expanded alert" target="_blank">
+                            <i class="fi-list"></i> Pokaż w module redagowania
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {##}
+    {#    <div class="row">#}
+    {#        <div class="large-12 columns">#}
+    {#            <div class="panel callout">#}
+    {#                <h3>Statystyki oświadczeń</h3>#}
+    {#                <div class="row">#}
+    {#                    <div class="medium-6 columns">#}
+    {#                        <div class="stat-box">#}
+    {#                            <h4>Oświadczenia BPP ({{ evaluation_start_year }}-{{ evaluation_end_year }})</h4>#}
+    {#                            <div class="row">#}
+    {#                                <div class="medium-6 columns">#}
+    {#                                    <strong>Wydawnictwa ciągłe:</strong> {{ bpp_ciagle_statements|default:0 }}#}
+    {#                                </div>#}
+    {#                                <div class="medium-6 columns">#}
+    {#                                    <strong>Wydawnictwa zwarte:</strong> {{ bpp_zwarte_statements|default:0 }}#}
+    {#                                </div>#}
+    {#                            </div>#}
+    {#                            <p><strong>Razem BPP: {{ bpp_total_statements|default:0 }}</strong></p>#}
+    {#                            <small>Oświadczenia autorów z przypieta=True, afiliuje=True i dyscyplina_naukowa</small>#}
+    {#                        </div>#}
+    {#                    </div>#}
+    {#                    <div class="medium-6 columns">#}
+    {#                        <div class="stat-box">#}
+    {#                            <h4>Oświadczenia PBN ({{ evaluation_start_year }}-{{ evaluation_end_year }})</h4>#}
+    {#                            <p><strong>Razem PBN: {{ pbn_statements|default:0 }}</strong></p>#}
+    {#                            <small>Oświadczenia instytucji PBN dla publikacji z#}
+    {#                                okresu {{ evaluation_start_year }}-{{ evaluation_end_year }}</small>#}
+    {##}
+    {#                            <div style="margin-top: 1rem;">#}
+    {#                                <a href="{% url 'komparator_pbn:bpp_missing_in_pbn' %}" class="button small success">#}
+    {#                                    BPP nie wysłane do PBN#}
+    {#                                </a>#}
+    {#                                <a href="{% url 'komparator_pbn:pbn_missing_in_bpp' %}" class="button small alert"#}
+    {#                                   style="margin-top: 0.5rem;">#}
+    {#                                    PBN nieistniejące w BPP#}
+    {#                                </a>#}
+    {#                            </div>#}
+    {#                        </div>#}
+    {#                    </div>#}
+    {#                </div>#}
+    {#            </div>#}
+    {#        </div>#}
+    {#    </div>#}
+    {##}
+    {##}
+
+    <style>
+        .stat-box {
+            background: #f8f8f8;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border: 1px solid #ddd;
+        }
+
+        .panel h4 {
+            margin-bottom: 0.5rem;
+        }
+    </style>
+{% endblock %}

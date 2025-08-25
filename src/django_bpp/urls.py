@@ -135,6 +135,10 @@ urlpatterns = (
         path("raport_slotow/", include("raport_slotow.urls")),
         url(r"^bpp/", include(("bpp.urls", "bpp"), namespace="bpp")),
         url(r"^oswiadczenia/", include("oswiadczenia.urls", namespace="oswiadczenia")),
+        path(
+            "komparator_pbn/",
+            include("komparator_pbn.urls", namespace="komparator_pbn"),
+        ),
         path("rozbieznosci_dyscyplin/", include("rozbieznosci_dyscyplin.urls")),
         path("rozbieznosci_if/", include("rozbieznosci_if.urls")),
         url(

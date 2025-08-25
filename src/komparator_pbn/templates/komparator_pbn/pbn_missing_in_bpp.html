@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}PBN oświadczenia nieistniejące w BPP - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="large-12 columns">
+        <h1>PBN oświadczenia nieistniejące w BPP</h1>
+        <p class="lead">Oświadczenia instytucji z PBN, dla których nie ma odpowiadających publikacji w BPP</p>
+
+        <a href="{% url 'komparator_pbn:main' %}" class="button secondary small">← Powrót do głównej</a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="large-12 columns">
+        <div class="panel">
+            <form method="get" class="search-form">
+                <div class="row">
+                    <div class="medium-8 columns">
+                        <label for="q">Szukaj:</label>
+                        <input type="text" name="q" id="q" value="{{ query }}" placeholder="Tytuł publikacji, imię, nazwisko...">
+                    </div>
+                    <div class="medium-4 columns">
+                        <label>&nbsp;</label>
+                        <button type="submit" class="button expanded">Szukaj</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="large-12 columns">
+        {% if statements %}
+            <div class="statements-list">
+                <h4>Oświadczenia PBN bez publikacji w BPP ({{ evaluation_start_year }}-{{ evaluation_end_year }})</h4>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Autor</th>
+                            <th>Publikacja</th>
+                            <th>Typ</th>
+                            <th>Data dodania</th>
+                            <th>W ORCID</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for statement in statements %}
+                            <tr>
+                                <td>
+                                    {% if statement.personId.name %}
+                                        <strong>{{ statement.personId.lastName }}, {{ statement.personId.name }}</strong>
+                                    {% else %}
+                                        Brak danych autora
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if statement.publicationId.title %}
+                                        {{ statement.publicationId.title|truncatewords:8 }}
+                                    {% else %}
+                                        Brak tytułu
+                                    {% endif %}
+                                    {% if statement.publicationId.year %}
+                                        <br><small>({{ statement.publicationId.year }})</small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="label {% if statement.type == 'AUTHOR' %}success{% elif statement.type == 'EDITOR' %}info{% else %}secondary{% endif %}">
+                                        {{ statement.type }}
+                                    </span>
+                                </td>
+                                <td>{{ statement.addedTimestamp|date:"Y-m-d" }}</td>
+                                <td>
+                                    {% if statement.inOrcid %}
+                                        <span class="label success">Tak</span>
+                                    {% else %}
+                                        <span class="label secondary">Nie</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {% if is_paginated %}
+                <div class="pagination-centered">
+                    <ul class="pagination">
+                        {% if page_obj.has_previous %}
+                            <li class="arrow">
+                                <a href="?{% if query %}q={{ query }}&{% endif %}page={{ page_obj.previous_page_number }}">&laquo;</a>
+                            </li>
+                        {% endif %}
+
+                        {% for i in paginator.page_range %}
+                            {% if page_obj.number == i %}
+                                <li class="current"><a href="#">{{ i }}</a></li>
+                            {% else %}
+                                <li><a href="?{% if query %}q={{ query }}&{% endif %}page={{ i }}">{{ i }}</a></li>
+                            {% endif %}
+                        {% endfor %}
+
+                        {% if page_obj.has_next %}
+                            <li class="arrow">
+                                <a href="?{% if query %}q={{ query }}&{% endif %}page={{ page_obj.next_page_number }}">&raquo;</a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </div>
+            {% endif %}
+
+        {% else %}
+            <div class="panel callout">
+                <h4>Brak wyników</h4>
+                {% if query %}
+                    <p>Nie znaleziono oświadczeń PBN pasujących do kryteriów: "{{ query }}"</p>
+                {% else %}
+                    <p>Wszystkie oświadczenia PBN mają odpowiadające publikacje w BPP.</p>
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.statements-list table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.statements-list th,
+.statements-list td {
+    padding: 8px 12px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+.statements-list th {
+    background-color: #f8f8f8;
+    font-weight: bold;
+}
+
+.label {
+    padding: 2px 6px;
+    border-radius: 3px;
+    color: white;
+    font-size: 11px;
+    margin-right: 0.3rem;
+    margin-bottom: 0.3rem;
+    display: inline-block;
+}
+
+.label.success { background-color: #43AC6A; }
+.label.info { background-color: #5BC0DE; }
+.label.secondary { background-color: #999; }
+
+.search-form {
+    margin-bottom: 1rem;
+}
+
+small {
+    color: #666;
+    font-style: italic;
+}
+</style>
+{% endblock %}

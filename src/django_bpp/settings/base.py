@@ -416,6 +416,7 @@ INSTALLED_APPS = [
     "dbtemplates",
     #
     "oswiadczenia",
+    "komparator_pbn",
     "import_polon",
     "import_list_ministerialnych",
     "snapshot_odpiec",
