@@ -3,7 +3,7 @@ from django.apps import AppConfig
 
 class BppConfig(AppConfig):
     name = "bpp"
-    verbose_name = "Biblioteka Publikacji Pracowników"
+    verbose_name = "BPP"
 
     def ready(self):
         from django.db.models.signals import post_migrate
