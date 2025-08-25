@@ -141,14 +141,73 @@ select.admin-autocomplete {
     box-shadow: #ccc 0 0 6px  ;
 }
 
-.select2-dropdown {
-    box-shadow: #ccc 0 0 6px  ;
-    max-height: 500px;
+#id_global_nav .select2-dropdown {
+    box-shadow: #ccc 0 0 8px  ;
+    min-height: 5vw;
+    max-height: 80vw;
     overflow: scroll;
 }
 
-.select2-results {
-    max-height: 100%;
+.select2 {
+    min-width: 600px;
+}
+
+.select2-container--default .select2-results > .select2-results__options {
+    max-height: 20vw !important;
+}
+
+.globalNavAdmin .select2-results > .select2-results__options {
+    max-height: 40vw !important;
+}
+.select2-results__options {
+    margin-left: 2px;
+    background: white;
+
+}
+.globalNavAdmin .select2-results__group , .select2-results__group {
+    background: #eeeeee;
+    font-weight: bold;
+}
+
+/* -------------------------------------------------------------------------------- */
+/* Responsive global navigation select2 widget */
+/* -------------------------------------------------------------------------------- */
+
+#div_id_global_nav_value .select2-container {
+    width: 100% !important;
+    min-width: 200px;
+    max-width: 600px;
+}
+
+/* Responsive breakpoints for global nav select2 */
+@media (min-width: 1320px) {
+    #div_id_global_nav_value .select2-container {
+        min-width: 18vw  !important;
+    }
+}
+
+@media (min-width: 1200px) {
+    #div_id_global_nav_value .select2-container {
+        min-width: 35vw;
+        max-width: 40vw;
+    }
+}
+
+@media (max-width: 768px) {
+    #div_id_global_nav_value .select2-container {
+        min-width: 20vw;
+        max-width: 50vw;
+    }
+}
+
+@media (max-width: 915px) {
+    #div_id_global_nav_value {
+        display: none !important;
+    }
+
+    button#bookmark-button {
+        display: none !important;
+    }
 }
 
 /* -------------------------------------------------------------------------------- */
@@ -166,4 +225,36 @@ input[type="submit"]:disabled:hover,
 input[type="submit"].grp-button:disabled:hover {
     color: #666 !important;
     background-color: #f5f5f5 !important;
+}
+
+/* -------------------------------------------------------------------------------- */
+/* Breadcrumbs truncation for long object titles */
+/* -------------------------------------------------------------------------------- */
+
+nav#grp-breadcrumbs {
+    overflow: hidden;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 90%;
+}
+
+nav#grp-breadcrumbs ul li {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 40vw;
+}
+
+/* Responsive font size for breadcrumbs */
+@media (max-width: 768px) {
+    nav#grp-breadcrumbs {
+        font-size: 10px;
+    }
+}
+
+@media (max-width: 480px) {
+    nav#grp-breadcrumbs {
+        font-size: 8px;
+    }
 }
