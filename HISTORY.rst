@@ -4,6 +4,22 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202508.1208 (2025-08-25)
+============================
+
+Usprawnienie
+------------
+
+- eksport ISSNów i e-ISSNów źródeł z publikacjami z ostatnich 5 lat do formatu XLSX
+- export BibTeX z poziomu administratora
+- komparator PBN -- BETA
+- możliwość eksportu XLSX oraz BibTeX jako akcja admina
+- możliwość ponownej wysyłki elementu z kolejki eksportu PBN
+- umożliwiaj wpisywanie przecinków zamiast kropek w DecimalField
+- umożliwiaj łatwe przechodzenie na profil instytucji celem weryfikacji danych
+- ładniejsza strona 503,503,504 serwera nginx
+
+
 Bpp 202508.1207 (2025-08-25)
 ============================
 

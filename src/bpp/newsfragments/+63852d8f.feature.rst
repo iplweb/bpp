@@ -1,2 +1,0 @@
-
-eksport ISSNów i e-ISSNów źródeł z publikacjami z ostatnich 5 lat do formatu XLSX
