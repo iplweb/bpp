@@ -1,8 +1,9 @@
 from datetime import timedelta
 
-from crossref.restful import Works
 from django.db import models
 from django.db.models import JSONField
+
+from crossref_bpp.monkey_patches import PatchedWorks
 
 from django.utils import timezone
 
@@ -24,7 +25,7 @@ class CrossrefAPICacheManager(models.Manager):
         self.cache_last_run = timezone.now()
 
     def api_get_by_doi(self, doi):
-        works = Works()
+        works = PatchedWorks()
         return works.doi(doi)
 
     def get_by_doi(self, doi):
