@@ -83,6 +83,7 @@ from bpp.views.browse import (
     WyswietlDeklaracjeDostepnosci,
     ZrodlaView,
     ZrodloView,
+    bibtex_view,
 )
 from bpp.views.oai import OAIView
 from bpp.views.xlsx_issn_chunks import xlsx_issn_chunks
@@ -92,6 +93,11 @@ urlpatterns = [
         r"^api/rok-habilitacji/$",
         csrf_exempt(RokHabilitacjiView.as_view()),
         name="api_rok_habilitacji",
+    ),
+    url(
+        r"^api/bibtex/(?P<model>[\w_-]+)/(?P<pk>[\d]+)/$",
+        bibtex_view,
+        name="bibtex_view",
     ),
     url(
         r"^api/ustaw-orcid/$",
