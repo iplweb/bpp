@@ -1,5 +1,10 @@
 from .fields import PunktacjaWewnetrznaReportType, ReportType, multiseek_fields  # noqa
 
+
+class BibTeXReportType(ReportType):
+    """Custom ReportType for BibTeX export format."""
+
+
 multiseek_report_types = [
     ReportType("list", "lista"),
     ReportType("table", "tabela"),
@@ -17,4 +22,5 @@ multiseek_report_types = [
     ReportType(
         "pkt_wewn_bez_cytowania", "punktacja sumaryczna z liczbą cytowań", public=False
     ),
+    BibTeXReportType("bibtex", "BibTeX"),
 ]

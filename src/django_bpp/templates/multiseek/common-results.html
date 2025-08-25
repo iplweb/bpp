@@ -99,7 +99,21 @@
         {% endif %}
     {% endif %}
 
-    {% if report_type == "list" or report_type == "numer_list" or report_type == None %}
+    {% if report_type == "bibtex" %}
+        <pre style="font-family: 'Courier New', Consolas, Monaco, monospace; font-size: 12px; background-color: #f8f8f8; border: 1px solid #ccc; border-radius: 3px; padding: 15px; white-space: pre-wrap; word-wrap: break-word; overflow-x: auto;">{% for element in object_list %}{{ element.original.to_bibtex }}{% if not forloop.last %}
+
+{% endif %}{% endfor %}</pre>
+        {% if object_list %}
+            <div style="margin-top: 10px;">
+                <button onclick="copyBibTeXToClipboard()" class="button success" type="button">
+                    📄 Skopiuj wszystko do schowka
+                </button>
+                <span id="bibtex-copy-feedback" style="margin-left: 10px; color: green; display: none;">
+                    ✓ Skopiowane!
+                </span>
+            </div>
+        {% endif %}
+    {% elif report_type == "list" or report_type == "numer_list" or report_type == None %}
         <ol start="{{ page_obj.start_index }}">
             {% for element in object_list %}
 
@@ -244,4 +258,51 @@
 <script type="text/javascript">
     if (queryDict.print == "1")
         window.print();
+
+    // BibTeX copy to clipboard functionality
+    function copyBibTeXToClipboard() {
+        var preElement = document.querySelector('pre');
+        var bibtexContent = preElement.textContent || preElement.innerText;
+        var copyFeedback = document.getElementById('bibtex-copy-feedback');
+
+        // Modern Clipboard API
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(bibtexContent).then(function() {
+                showBibTeXCopyFeedback(copyFeedback);
+            }, function(err) {
+                fallbackBibTeXCopy(bibtexContent, copyFeedback);
+            });
+        } else {
+            fallbackBibTeXCopy(bibtexContent, copyFeedback);
+        }
+    }
+
+    function fallbackBibTeXCopy(content, feedbackElement) {
+        // Create temporary textarea for fallback copy
+        var tempTextarea = document.createElement('textarea');
+        tempTextarea.value = content;
+        tempTextarea.style.position = 'fixed';
+        tempTextarea.style.left = '-999999px';
+        tempTextarea.style.top = '-999999px';
+        document.body.appendChild(tempTextarea);
+
+        tempTextarea.focus();
+        tempTextarea.select();
+
+        try {
+            document.execCommand('copy');
+            showBibTeXCopyFeedback(feedbackElement);
+        } catch (err) {
+            alert('Nie można skopiować do schowka. Proszę zaznacz tekst i skopiuj ręcznie (Ctrl+C).');
+        } finally {
+            document.body.removeChild(tempTextarea);
+        }
+    }
+
+    function showBibTeXCopyFeedback(feedbackElement) {
+        feedbackElement.style.display = 'inline';
+        setTimeout(function() {
+            feedbackElement.style.display = 'none';
+        }, 2000);
+    }
 </script>
