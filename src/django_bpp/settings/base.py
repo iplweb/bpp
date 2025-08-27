@@ -421,6 +421,7 @@ INSTALLED_APPS = [
     "import_list_ministerialnych",
     "snapshot_odpiec",
     "stan_systemu",
+    "deduplicator",
 ]
 
 # Profile użytkowników
