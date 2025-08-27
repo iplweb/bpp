@@ -66,6 +66,13 @@
                                         </div>
                                     </div>
                                 </div>
+
+                                <div id="task-no-data" style="display: none;">
+                                    <div class="callout secondary">
+                                        <i class="fi-info"></i> <strong>Brak danych</strong>
+                                        <br><small>Nie wykonano jeszcze pobierania danych z PBN. Kliknij przycisk powyżej, aby rozpocząć.</small>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -345,12 +352,13 @@
                 var taskRunning = $('#task-running');
                 var taskCompleted = $('#task-completed');
                 var taskFailed = $('#task-failed');
-
+                var taskNoData = $('#task-no-data');
 
                 // Hide all status divs
                 taskRunning.hide();
                 taskCompleted.hide();
                 taskFailed.hide();
+                taskNoData.hide();
 
                 if (data.is_running) {
                     // Task is currently running
@@ -383,7 +391,7 @@
                         $('#progress-details').text(details.join(', '));
                     }
                 } else if (data.latest_task) {
-                    // Show task status based on latest task
+                    // Show task status based on latest task - keep it permanently visible
                     var task = data.latest_task;
 
                     if (task.status === 'completed') {
@@ -394,10 +402,7 @@
                         $('#last-update').text(formatDate(task.completed_at));
                         $('#task-user').text(task.user);
 
-                        // Optionally hide status after showing success
-                        setTimeout(function() {
-                            taskStatus.fadeOut();
-                        }, 10000);
+                        // Keep the success status visible permanently - removed auto-hide
 
                     } else if (task.status === 'failed') {
                         downloadBtn.removeClass('disabled').html('<i class="fi-cloud-download"></i> Pobierz świeże dane z PBN');
@@ -408,9 +413,10 @@
                         $('#error-time').text(formatDate(task.completed_at));
                     }
                 } else {
-                    // No tasks yet
+                    // No tasks yet - show "no data" message and keep the status box visible
                     downloadBtn.removeClass('disabled').html('<i class="fi-cloud-download"></i> Pobierz świeże dane z PBN');
-                    taskStatus.hide();
+                    taskStatus.show();
+                    taskNoData.show();
                 }
             }
 

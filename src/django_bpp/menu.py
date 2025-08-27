@@ -20,6 +20,7 @@ PBN_MENU = [
     ("Zrodla", "/admin/pbn_api/journal"),
     ("Wydawcy", "/admin/pbn_api/publisher"),
     ("Naukowcy", "/admin/pbn_api/scientist"),
+    ("Osoby z instytucji", "/admin/pbn_api/osobazinstytucji"),
     ("Publikacje", "/admin/pbn_api/publication"),
     ("Publikacje instytucji V1", "/admin/pbn_api/publikacjainstytucji"),
     ("Publikacje instytucji V2", "/admin/pbn_api/publikacjainstytucji_v2"),

@@ -703,9 +703,13 @@ def pobierz_prace_po_isbn(client: PBNClient):
     wait_for_results(p, results)
 
 
-def pobierz_i_zapisz_dane_jednej_osoby(client, personId) -> Scientist:
+def pobierz_i_zapisz_dane_jednej_osoby(
+    client, personId, from_institution_api
+) -> Scientist:
     scientist = client.get_person_by_id(personId)
-    return zapisz_mongodb(scientist, Scientist, from_institution_api=True)
+    return zapisz_mongodb(
+        scientist, Scientist, from_institution_api=from_institution_api
+    )
 
 
 def pobierz_ludzi_z_uczelni(client: PBNClient, instutition_id):
@@ -715,11 +719,7 @@ def pobierz_ludzi_z_uczelni(client: PBNClient, instutition_id):
     """
     assert instutition_id is not None
 
-    Scientist.objects.filter(from_institution_api=True).update(
-        from_institution_api=False
-    )
-
-    pool = initialize_pool()
+    pool = initialize_pool(multipler=1)
     results = []
     elementy = client.get_people_by_institution_id(instutition_id)
 
@@ -727,10 +727,43 @@ def pobierz_ludzi_z_uczelni(client: PBNClient, instutition_id):
 
     for person in pbar(elementy, count=len(elementy), label="pobierz ludzi z uczelni"):
         result = pool.apply_async(
-            pobierz_i_zapisz_dane_jednej_osoby, args=(client, person["personId"])
+            pobierz_i_zapisz_dane_jednej_osoby,
+            kwds={
+                "client": client,
+                "personId": person["personId"],
+                "from_institution_api": True,
+            },
         )
         results.append(result)
+
     wait_for_results(pool, results)
+
+    from pbn_api.models.institution import Institution
+    from pbn_api.models.osoba_z_instytucji import OsobaZInstytucji
+
+    for person in elementy:
+        if not Institution.objects.filter(pk=person["institutionId"]).exists():
+            print(f"Pobieram extra instytucję {person['institutionName']}")
+            zapisz_mongodb(
+                client.get_institution_by_id(person["institutionId"]),
+                Institution,
+                client,
+            )
+
+        OsobaZInstytucji.objects.update_or_create(
+            personId=Scientist.objects.get(pk=person["personId"]),
+            defaults={
+                "firstName": person["firstName"],
+                "lastName": person["lastName"],
+                "institutionId": Institution.objects.get(pk=person["institutionId"]),
+                "institutionName": person["institutionName"],
+                "title": person.get("title"),
+                "polonUuid": person["polonUuid"],
+                "phdStudent": person["phdStudent"],
+                "_from": person.get("from"),
+                "_to": person.get("to"),
+            },
+        )
 
 
 def integruj_autorow_z_uczelni(
