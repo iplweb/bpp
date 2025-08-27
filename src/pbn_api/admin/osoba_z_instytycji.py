@@ -1,12 +1,13 @@
-from pbn_api.admin import BasePBNAPIAdmin
+from pbn_api.admin.mixins import ReadOnlyListChangeFormAdminMixin
 from pbn_api.models import OsobaZInstytucji
 
 from django.contrib import admin
 
 
 @admin.register(OsobaZInstytucji)
-class OsobaZInstytucjiAdmin(BasePBNAPIAdmin):
+class OsobaZInstytucjiAdmin(ReadOnlyListChangeFormAdminMixin, admin.ModelAdmin):
     show_full_result_count = False
+    autocomplete_fields = ["institutionId", "personId"]
     list_display = [
         "lastName",
         "firstName",
