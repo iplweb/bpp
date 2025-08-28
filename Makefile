@@ -72,9 +72,6 @@ assets: $(CSS_TARGETS) $(MO_FILES)
 
 yarn: $(NODE_MODULES)
 
-collectstatic:
-	python src/manage.py collectstatic --noinput -v0
-
 production-assets: distclean assets
 # usuń ze staticroot niepotrzebne pakiety (Poetry pyproject.toml exclude
 # nie do końca to załatwia...)
@@ -99,7 +96,7 @@ bdist_wheel: distclean production-assets compilemessages
 puppeteer-install-chrome:
 	npx puppeteer browsers install chrome
 
-js-tests: assets collectstatic puppeteer-install-chrome
+js-tests: assets puppeteer-install-chrome
 	grunt qunit
 
 # cel: live-docs
