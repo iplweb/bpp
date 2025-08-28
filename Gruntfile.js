@@ -40,13 +40,20 @@ module.exports = function (grunt) {
 
         qunit: {
             all: ['src/notifications/static/notifications/js/tests/index.html']
+        },
+
+        shell: {
+            collectstatic: {
+                command: 'python src/manage.py collectstatic --noinput -v0'
+            }
         }
     });
 
     grunt.loadNpmTasks('grunt-sass');
     grunt.loadNpmTasks('grunt-contrib-watch');
     grunt.loadNpmTasks('grunt-contrib-qunit');
+    grunt.loadNpmTasks('grunt-shell');
 
-    grunt.registerTask('build', ['sass',]);
+    grunt.registerTask('build', ['sass', 'shell:collectstatic']);
     grunt.registerTask('default', ['build', 'watch']);
 }
