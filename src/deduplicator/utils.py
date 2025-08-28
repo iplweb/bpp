@@ -7,6 +7,7 @@ from django.db.models import Q, QuerySet
 from pbn_api.models import OsobaZInstytucji
 
 from bpp.models import Autor
+from bpp.models.cache import Rekord
 
 
 def szukaj_kopii(osoba_z_instytucji: OsobaZInstytucji) -> QuerySet[Autor]:
@@ -141,6 +142,65 @@ def analiza_duplikatow(osoba_z_instytucji: OsobaZInstytucji) -> dict:
 
     for duplikat in duplikaty:
         analiza = {"autor": duplikat, "powody_podobienstwa": [], "pewnosc": 0}  # 0-100%
+
+        # Analiza liczby publikacji - autorzy z wieloma publikacjami rzadziej są duplikatami
+        publikacje_duplikat = Rekord.objects.prace_autora(duplikat).count()
+        publikacje_glowny = Rekord.objects.prace_autora(glowny_autor).count()
+
+        # Sprawdź czy potencjalny duplikat ma więcej publikacji niż główny autor
+        if publikacje_duplikat > publikacje_glowny and publikacje_duplikat > 3:
+            analiza["powody_podobienstwa"].append(
+                f"duplikat ma więcej publikacji ({publikacje_duplikat}) niż główny "
+                f"({publikacje_glowny}) - prawdopodobnie NIE jest duplikatem"
+            )
+            analiza["pewnosc"] -= 30  # znacznie zmniejsz pewność
+        elif publikacje_duplikat > 10:
+            analiza["powody_podobienstwa"].append(
+                f"wiele publikacji ({publikacje_duplikat}) - mało prawdopodobny duplikat"
+            )
+            analiza["pewnosc"] -= 20  # znacznie zmniejsz pewność
+        elif publikacje_duplikat > 5:
+            analiza["powody_podobienstwa"].append(
+                f"średnio publikacji ({publikacje_duplikat}) - możliwy duplikat"
+            )
+            analiza["pewnosc"] -= 10  # zmniejsz pewność
+        elif publikacje_duplikat <= 5:
+            analiza["powody_podobienstwa"].append(
+                f"mało publikacji ({publikacje_duplikat}) - prawdopodobny duplikat"
+            )
+            analiza[
+                "pewnosc"
+            ] += 10  # zwiększ pewność dla autorów z małą liczbą publikacji
+
+        # Analiza tytułu naukowego
+        if not duplikat.tytul and glowny_autor.tytul:
+            analiza["powody_podobienstwa"].append(
+                "brak tytułu naukowego - prawdopodobny duplikat"
+            )
+            analiza["pewnosc"] += 15
+        elif duplikat.tytul and glowny_autor.tytul:
+            if duplikat.tytul == glowny_autor.tytul:
+                analiza["powody_podobienstwa"].append("identyczny tytuł naukowy")
+                analiza["pewnosc"] += 10
+            else:
+                analiza["powody_podobienstwa"].append(
+                    "różny tytuł naukowy - mniej prawdopodobny duplikat"
+                )
+                analiza["pewnosc"] -= 15
+
+        # Analiza ORCID
+        if not duplikat.orcid and glowny_autor.orcid:
+            analiza["powody_podobienstwa"].append("brak ORCID - prawdopodobny duplikat")
+            analiza["pewnosc"] += 15
+        elif duplikat.orcid and glowny_autor.orcid:
+            if duplikat.orcid == glowny_autor.orcid:
+                analiza["powody_podobienstwa"].append(
+                    "identyczny ORCID - to ten sam autor"
+                )
+                analiza["pewnosc"] += 50  # bardzo wysoka pewność
+            else:
+                analiza["powody_podobienstwa"].append("różny ORCID - to różni autorzy")
+                analiza["pewnosc"] -= 50  # bardzo zmniejsz pewność
 
         # Analiza nazwiska
         if duplikat.nazwisko and glowny_autor.nazwisko:
