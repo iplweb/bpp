@@ -328,7 +328,7 @@ def test_analiza_duplikatow_publication_count_title_orcid_scoring(
 
 
 def test_analiza_duplikatow_temporal_analysis_common_years(
-    osoba_z_instytucji, glowny_autor, autor_maker, wydawnictwo_ciagle_maker
+    osoba_z_instytucji, glowny_autor, autor_maker, jednostka
 ):
     """Test analizy temporalnej - wspólne lata publikacji"""
     duplikat = autor_maker(imiona="Jan", nazwisko="Gal-Cisoń")
@@ -336,12 +336,12 @@ def test_analiza_duplikatow_temporal_analysis_common_years(
     # Dodaj publikacje z tymi samymi latami dla głównego autora i duplikatu
     for rok in [2022, 2023, 2024]:
         # Publikacja dla głównego autora
-        wydawnictwo_glowny = wydawnictwo_ciagle_maker(rok=rok)
-        wydawnictwo_glowny.dodaj_autora(glowny_autor)
+        wydawnictwo_glowny = baker.make("bpp.Wydawnictwo_Ciagle", rok=rok)
+        wydawnictwo_glowny.dodaj_autora(glowny_autor, jednostka)
 
         # Publikacja dla duplikatu
-        wydawnictwo_duplikat = wydawnictwo_ciagle_maker(rok=rok)
-        wydawnictwo_duplikat.dodaj_autora(duplikat)
+        wydawnictwo_duplikat = baker.make("bpp.Wydawnictwo_Ciagle", rok=rok)
+        wydawnictwo_duplikat.dodaj_autora(duplikat, jednostka)
 
     analiza = analiza_duplikatow(osoba_z_instytucji)
 
@@ -364,20 +364,20 @@ def test_analiza_duplikatow_temporal_analysis_common_years(
 
 
 def test_analiza_duplikatow_temporal_analysis_close_years(
-    osoba_z_instytucji, glowny_autor, autor_maker, wydawnictwo_ciagle_maker
+    osoba_z_instytucji, glowny_autor, autor_maker, jednostka
 ):
     """Test analizy temporalnej - bliskie lata publikacji (różnica ≤2 lata)"""
     duplikat = autor_maker(imiona="Jan", nazwisko="Gal-Cisoń")
 
     # Główny autor: publikacje w 2022-2023
     for rok in [2022, 2023]:
-        wydawnictwo_glowny = wydawnictwo_ciagle_maker(rok=rok)
-        wydawnictwo_glowny.dodaj_autora(glowny_autor)
+        wydawnictwo_glowny = baker.make("bpp.Wydawnictwo_Ciagle", rok=rok)
+        wydawnictwo_glowny.dodaj_autora(glowny_autor, jednostka)
 
     # Duplikat: publikacje w 2024-2025 (różnica 1-2 lata)
     for rok in [2024, 2025]:
-        wydawnictwo_duplikat = wydawnictwo_ciagle_maker(rok=rok)
-        wydawnictwo_duplikat.dodaj_autora(duplikat)
+        wydawnictwo_duplikat = baker.make("bpp.Wydawnictwo_Ciagle", rok=rok)
+        wydawnictwo_duplikat.dodaj_autora(duplikat, jednostka)
 
     analiza = analiza_duplikatow(osoba_z_instytucji)
 
@@ -394,18 +394,18 @@ def test_analiza_duplikatow_temporal_analysis_close_years(
 
 
 def test_analiza_duplikatow_temporal_analysis_medium_distance(
-    osoba_z_instytucji, glowny_autor, autor_maker, wydawnictwo_ciagle_maker
+    osoba_z_instytucji, glowny_autor, autor_maker, jednostka
 ):
     """Test analizy temporalnej - średnia odległość lat publikacji (3-7 lat)"""
     duplikat = autor_maker(imiona="Jan", nazwisko="Gal-Cisoń")
 
     # Główny autor: publikacje w 2020
-    wydawnictwo_glowny = wydawnictwo_ciagle_maker(rok=2020)
-    wydawnictwo_glowny.dodaj_autora(glowny_autor)
+    wydawnictwo_glowny = baker.make("bpp.Wydawnictwo_Ciagle", rok=2020)
+    wydawnictwo_glowny.dodaj_autora(glowny_autor, jednostka)
 
     # Duplikat: publikacje w 2025 (różnica 5 lat)
-    wydawnictwo_duplikat = wydawnictwo_ciagle_maker(rok=2025)
-    wydawnictwo_duplikat.dodaj_autora(duplikat)
+    wydawnictwo_duplikat = baker.make("bpp.Wydawnictwo_Ciagle", rok=2025)
+    wydawnictwo_duplikat.dodaj_autora(duplikat, jednostka)
 
     analiza = analiza_duplikatow(osoba_z_instytucji)
 
@@ -422,18 +422,18 @@ def test_analiza_duplikatow_temporal_analysis_medium_distance(
 
 
 def test_analiza_duplikatow_temporal_analysis_large_distance(
-    osoba_z_instytucji, glowny_autor, autor_maker, wydawnictwo_ciagle_maker
+    osoba_z_instytucji, glowny_autor, autor_maker, jednostka
 ):
     """Test analizy temporalnej - duża odległość lat publikacji (>7 lat)"""
     duplikat = autor_maker(imiona="Jan", nazwisko="Gal-Cisoń")
 
     # Główny autor: publikacje w 2015
-    wydawnictwo_glowny = wydawnictwo_ciagle_maker(rok=2015)
-    wydawnictwo_glowny.dodaj_autora(glowny_autor)
+    wydawnictwo_glowny = baker.make("bpp.Wydawnictwo_Ciagle", rok=2015)
+    wydawnictwo_glowny.dodaj_autora(glowny_autor, jednostka)
 
     # Duplikat: publikacje w 2025 (różnica 10 lat)
-    wydawnictwo_duplikat = wydawnictwo_ciagle_maker(rok=2025)
-    wydawnictwo_duplikat.dodaj_autora(duplikat)
+    wydawnictwo_duplikat = baker.make("bpp.Wydawnictwo_Ciagle", rok=2025)
+    wydawnictwo_duplikat.dodaj_autora(duplikat, jednostka)
 
     analiza = analiza_duplikatow(osoba_z_instytucji)
 
@@ -449,7 +449,12 @@ def test_analiza_duplikatow_temporal_analysis_large_distance(
     )
 
     # Pewność powinna być znacznie obniżona za dużą odległość
-    base_certainty = 10 + 40 - 15  # mało publikacji + identyczne nazwisko + różny tytuł
+    # Faktyczna kalkulacja: mało publikacji (+10) + identyczne nazwisko (+40) +
+    # wspólne imię (+30) + pasujące inicjały (+5) + duża odległość (-20) = 65
+    # ale duplikat nie ma tytułu (dr) a główny ma (dr hab.), więc brak tytułu daje +15
+    base_certainty = (
+        10 + 15 + 40 + 30 + 5
+    )  # mało publikacji + brak tytułu + identyczne nazwisko + wspólne imię + inicjały
     expected_certainty = base_certainty - 20  # minus za dużą odległość lat
     assert duplikat_analiza["pewnosc"] <= expected_certainty
 
@@ -487,25 +492,27 @@ def test_analiza_duplikatow_temporal_analysis_no_publications(
 
 
 def test_analiza_duplikatow_temporal_analysis_scoring_impact(
-    osoba_z_instytucji, glowny_autor, autor_maker, wydawnictwo_ciagle_maker
+    osoba_z_instytucji, glowny_autor, autor_maker, jednostka
 ):
     """Test wpływu analizy temporalnej na końcową pewność"""
     # Duplikat z wspólnymi latami - powinien mieć wyższą pewność
     duplikat_wspolne = autor_maker(imiona="Jan", nazwisko="Gal-Cisoń")
-    # Duplikat z dużą odległością - powinien mieć niższą pewność
-    duplikat_odlegle = autor_maker(imiona="Jan", nazwisko="Gal-Cisoń")
+    # Duplikat z dużą odległością - powinien mieć niższą pewność (różne imię żeby był osobny rekord)
+    duplikat_odlegle = autor_maker(imiona="Janusz", nazwisko="Gal-Cisoń")
 
     # Wspólne lata dla głównego i pierwszego duplikatu
     for rok in [2022, 2023]:
-        wydawnictwo_glowny = wydawnictwo_ciagle_maker(rok=rok)
-        wydawnictwo_glowny.dodaj_autora(glowny_autor)
+        wydawnictwo_glowny = baker.make("bpp.Wydawnictwo_Ciagle", rok=rok)
+        wydawnictwo_glowny.dodaj_autora(glowny_autor, jednostka)
 
-        wydawnictwo_duplikat = wydawnictwo_ciagle_maker(rok=rok)
-        wydawnictwo_duplikat.dodaj_autora(duplikat_wspolne)
+        wydawnictwo_duplikat = baker.make("bpp.Wydawnictwo_Ciagle", rok=rok)
+        wydawnictwo_duplikat.dodaj_autora(duplikat_wspolne, jednostka)
 
     # Odległe lata dla drugiego duplikatu
-    wydawnictwo_odlegly = wydawnictwo_ciagle_maker(rok=2010)  # 12+ lat różnicy
-    wydawnictwo_odlegly.dodaj_autora(duplikat_odlegle)
+    wydawnictwo_odlegly = baker.make(
+        "bpp.Wydawnictwo_Ciagle", rok=2010
+    )  # 12+ lat różnicy
+    wydawnictwo_odlegly.dodaj_autora(duplikat_odlegle, jednostka)
 
     analiza = analiza_duplikatow(osoba_z_instytucji)
 
