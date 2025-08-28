@@ -9,6 +9,22 @@ from pbn_api.models import OsobaZInstytucji
 from bpp.models import Autor
 from bpp.models.cache import Rekord
 
+# Stałe reprezentujące maksymalną i minimalną możliwą pewność duplikatu
+# Obliczone na podstawie wszystkich kryteriów oceny w analiza_duplikatow()
+
+# Maksymalna teoretyczna pewność (optymalne warunki):
+# +10 (≤5 publikacji) +15 (brak tytułu) +50 (identyczny ORCID) +40 (identyczne nazwisko)
+# +90 (3 identyczne imiona: 30*3) +45 (3 podobne imiona: 15*3) +15 (3 inicjały: 5*3)
+# +10 (brak imion) +20 (wspólne lata publikacji)
+# = +295 (w praktyce rzadko przekracza 200 ze względu na wzajemne wykluczanie się warunków)
+MAX_PEWNOSC = 200
+
+# Minimalna teoretyczna pewność (najgorsze warunki):
+# -30 (więcej publikacji niż główny) -15 (różny tytuł) -50 (różny ORCID)
+# -20 (duża odległość lat publikacji)
+# = -115
+MIN_PEWNOSC = -115
+
 
 def szukaj_kopii(osoba_z_instytucji: OsobaZInstytucji) -> QuerySet[Autor]:
     """
@@ -284,6 +300,51 @@ def analiza_duplikatow(osoba_z_instytucji: OsobaZInstytucji) -> dict:
         elif not duplikat.imiona and glowny_autor.imiona:
             analiza["powody_podobienstwa"].append("brak imion w duplikacie")
             analiza["pewnosc"] += 10
+
+        # Analiza temporalna - porównanie lat publikacji
+        lata_glowny = set(
+            Rekord.objects.prace_autora(glowny_autor)
+            .filter(rok__isnull=False)
+            .values_list("rok", flat=True)
+        )
+        lata_duplikat = set(
+            Rekord.objects.prace_autora(duplikat)
+            .filter(rok__isnull=False)
+            .values_list("rok", flat=True)
+        )
+
+        if lata_glowny and lata_duplikat:
+            # Sprawdź czy są wspólne lata lub bliskie lata (+/- 2)
+            wspolne_lata = lata_glowny & lata_duplikat
+
+            if wspolne_lata:
+                analiza["powody_podobienstwa"].append(
+                    f"wspólne lata publikacji: {sorted(wspolne_lata)}"
+                )
+                analiza["pewnosc"] += 20  # wysokie prawdopodobieństwo duplikatu
+            else:
+                # Sprawdź bliskie lata (+/- 2 lata)
+                min_odleglosc = float("inf")
+                for rok_glowny in lata_glowny:
+                    for rok_duplikat in lata_duplikat:
+                        odleglosc = abs(rok_glowny - rok_duplikat)
+                        min_odleglosc = min(min_odleglosc, odleglosc)
+
+                if min_odleglosc <= 2:
+                    analiza["powody_podobienstwa"].append(
+                        f"bliskie lata publikacji (różnica {min_odleglosc} lat) - prawdopodobny duplikat"
+                    )
+                    analiza["pewnosc"] += 15
+                elif min_odleglosc <= 7:
+                    analiza["powody_podobienstwa"].append(
+                        f"średnia odległość lat publikacji ({min_odleglosc} lat) - możliwy duplikat"
+                    )
+                    analiza["pewnosc"] -= 5
+                else:
+                    analiza["powody_podobienstwa"].append(
+                        f"duża odległość lat publikacji ({min_odleglosc} lat) - mało prawdopodobny duplikat"
+                    )
+                    analiza["pewnosc"] -= 20
 
         analiza_duplikatow_lista.append(analiza)
 
