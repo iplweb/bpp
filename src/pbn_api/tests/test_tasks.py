@@ -12,7 +12,7 @@ from pbn_api.tasks import (
 )
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_kolejka_wyczysc_wpisy_bez_rekordow():
     baker.make(PBN_Export_Queue, object_id=0xBEEF)
     assert PBN_Export_Queue.objects.count() == 1
