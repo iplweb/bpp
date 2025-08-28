@@ -11,15 +11,13 @@ BPP (Bibliografia Publikacji Pracowników) is a Polish academic bibliography man
 ### Development Commands
 - `python src/manage.py runserver` - Start development server (default settings: django_bpp.settings.local)
 - `python src/manage.py migrate` - Apply database migrations
-- `python src/manage.py collectstatic` - Collect static files
 - `python src/manage.py shell` - Django shell
 - `bpp-manage.py` - Alternative management command entry point
 
 ### Frontend Build Commands
 - `yarn install` - Install Node.js dependencies
 - `grunt build` - Build frontend assets using Grunt
-- `make assets` - Run both yarn install and grunt build
-- `make collectstatic` - Collect Django static files
+- `make assets` - Run both yarn install and grunt build and Django collectstatic
 
 ### Testing Commands
 - `pytest` - Run tests (configured in pytest.ini)
@@ -95,7 +93,8 @@ The project uses multiple Django applications in `src/`:
 - Foundation CSS framework
 - jQuery and various plugins (DataTables, Select2, HTMX)
 - Grunt build system for asset compilation
-- Static files management via Django's collectstatic
+
+**IMPORTANT** if you change any SCSS files, remember to run "grunt build" after.
 
 ### Settings Structure
 - `src/django_bpp/settings/base.py` - Base settings
