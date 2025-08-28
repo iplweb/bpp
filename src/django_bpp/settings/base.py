@@ -410,6 +410,7 @@ INSTALLED_APPS = [
     "adminsortable2",
     "import_export",
     "ewaluacja2021",
+    "ewaluacja_liczba_n",
     # Zostawiamy - bezwarunkowo
     "test_bpp",
     #

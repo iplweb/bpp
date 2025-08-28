@@ -1,6 +1,6 @@
 from django import forms
 
-from ewaluacja2021.models import LiczbaNDlaUczelni_2022_2025
+from ewaluacja_liczba_n.models import LiczbaNDlaUczelni_2022_2025
 from pbn_api.exceptions import PraceSerwisoweException
 from ..models import Uczelnia, Ukryj_Status_Korekty, Wydzial
 

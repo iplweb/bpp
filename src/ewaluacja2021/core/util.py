@@ -21,7 +21,7 @@ def get_lista_prac(nazwa_dyscypliny):
     """Zwraca liste prac - potencjalnych kandydatow do ewaluacji, ale wyłcznie dla dozwolonych
     autorow, tzn posiadajacych udzialy jednostkowe w danej dyscyplinie oraz dla lat 2022-2025
     """
-    from ewaluacja2021.models import IloscUdzialowDlaAutora_2022_2025
+    from ewaluacja_liczba_n.models import IloscUdzialowDlaAutora_2022_2025
 
     dozwoleni_autorzy = IloscUdzialowDlaAutora_2022_2025.objects.filter(
         dyscyplina_naukowa__nazwa=nazwa_dyscypliny
@@ -110,7 +110,7 @@ def encode_datetime(obj):
 
 
 def maks_pkt_aut_calosc_get_from_db(nazwa_dyscypliny):
-    from ewaluacja2021.models import IloscUdzialowDlaAutora_2022_2025
+    from ewaluacja_liczba_n.models import IloscUdzialowDlaAutora_2022_2025
 
     return {
         int(x["autor_id"]): x["ilosc_udzialow"]
@@ -121,7 +121,7 @@ def maks_pkt_aut_calosc_get_from_db(nazwa_dyscypliny):
 
 
 def maks_pkt_aut_monografie_get_from_db(nazwa_dyscypliny):
-    from ewaluacja2021.models import IloscUdzialowDlaAutora_2022_2025
+    from ewaluacja_liczba_n.models import IloscUdzialowDlaAutora_2022_2025
 
     return {
         int(x["autor_id"]): x["ilosc_udzialow_monografie"]

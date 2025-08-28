@@ -5,7 +5,7 @@ from operator import attrgetter
 
 import simplejson
 
-from ..models import LiczbaNDlaUczelni_2022_2025
+from ewaluacja_liczba_n.models import LiczbaNDlaUczelni_2022_2025
 from .sumator_base import SumatorBase
 from .util import (
     encode_datetime,

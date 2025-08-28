@@ -12,7 +12,6 @@ from .fields import LiczbaNField
 from .util import InputXLSX, float_or_string_or_int_or_none_to_decimal
 from .validators import xlsx_header_validator
 
-from bpp.fields import YearField
 from bpp.models import Cache_Punktacja_Autora_Query
 from bpp.models.autor import Autor
 from bpp.models.dyscyplina_naukowa import Dyscyplina_Naukowa
@@ -20,6 +19,8 @@ from bpp.models.uczelnia import Uczelnia
 
 
 def dyscypliny_naukowe_w_bazie():
+    from ewaluacja_liczba_n.models import LiczbaNDlaUczelni_2022_2025
+
     dyscypliny_z_liczba_n = LiczbaNDlaUczelni_2022_2025.objects.values_list(
         "dyscyplina_naukowa", flat=True
     )
@@ -102,15 +103,6 @@ class LiczbaNDlaUczelni(BazaLiczbyNDlaUczelni):
         ]
 
 
-class LiczbaNDlaUczelni_2022_2025(BazaLiczbyNDlaUczelni):
-    class Meta:
-        verbose_name = "Liczba N dla uczelni 2022-2025"
-        verbose_name_plural = "Liczby N dla uczelni 2022-2025"
-        unique_together = [
-            ("uczelnia", "dyscyplina_naukowa"),
-        ]
-
-
 class BazaIlosciUdzialowDlaAutora(models.Model):
     autor = models.ForeignKey(Autor, on_delete=models.CASCADE)
     dyscyplina_naukowa = models.ForeignKey(Dyscyplina_Naukowa, on_delete=models.CASCADE)
@@ -141,27 +133,6 @@ class IloscUdzialowDlaAutora(BazaIlosciUdzialowDlaAutora):
                 "dyscyplina_naukowa",
             )
         ]
-
-
-class IloscUdzialowDlaAutora_2022_2025(BazaIlosciUdzialowDlaAutora):
-    class Meta:
-        verbose_name = "ilość udziałów dla autora 2022-2025"
-        verbose_name_plural = "ilości udziałów dla autorów 2022-2025"
-        unique_together = [
-            (
-                "autor",
-                "dyscyplina_naukowa",
-            )
-        ]
-
-
-class IloscUdzialowDlaAutoraZaRok(BazaIlosciUdzialowDlaAutora):
-    rok = YearField()
-
-    class Meta:
-        verbose_name = "ilość udziałów dla autora za rok"
-        verbose_name_plural = "ilości udziałów dla autorów za lata"
-        unique_together = [("autor", "dyscyplina_naukowa", "rok")]
 
 
 class ImportMaksymalnychSlotow(models.Model):
@@ -334,13 +305,3 @@ class WierszImportuMaksymalnychSlotow(models.Model):
 
         self.zintegrowany = True
         self.save()
-
-
-class DyscyplinaNieRaportowana_2022_2025(models.Model):
-    uczelnia = models.ForeignKey("bpp.Uczelnia", on_delete=models.CASCADE)
-    dyscyplina_naukowa = models.ForeignKey(
-        "bpp.Dyscyplina_Naukowa", on_delete=models.CASCADE
-    )
-
-    class Meta:
-        unique_together = [("uczelnia", "dyscyplina_naukowa")]

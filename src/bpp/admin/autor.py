@@ -3,7 +3,7 @@ from django import forms
 from djangoql.admin import DjangoQLSearchMixin
 
 from dynamic_columns.mixins import DynamicColumnsMixin
-from ewaluacja2021.models import (
+from ewaluacja_liczba_n.models import (
     IloscUdzialowDlaAutora_2022_2025,
     IloscUdzialowDlaAutoraZaRok,
 )

@@ -8,13 +8,13 @@ from django.http import HttpResponseRedirect
 from django.views import generic
 
 from ewaluacja2021.forms import ImportMaksymalnychSlotowForm, ZamowienieNaRaportForm
-from ewaluacja2021.models import (
-    DyscyplinaNieRaportowana_2022_2025,
-    ImportMaksymalnychSlotow,
-    LiczbaNDlaUczelni_2022_2025,
-    ZamowienieNaRaport,
-)
+from ewaluacja2021.models import ImportMaksymalnychSlotow, ZamowienieNaRaport
 from ewaluacja2021.tasks import generuj_algorytm, suma_odpietych_dyscyplin
+from ewaluacja_liczba_n.models import (
+    DyscyplinaNieRaportowana_2022_2025,
+    LiczbaNDlaUczelni_2022_2025,
+)
+from ewaluacja_liczba_n.utils import oblicz_liczby_n_dla_ewaluacji_2022_2025
 from long_running.tasks import perform_generic_long_running_task
 
 from django.contrib import messages
@@ -28,7 +28,6 @@ from bpp.models import (
     Wydawnictwo_Ciagle_Autor,
     Wydawnictwo_Zwarte_Autor,
 )
-from bpp.models.cache.utils import oblicz_liczby_n_dla_ewaluacji_2022_2025
 
 
 class NowyImport(GroupRequiredMixin, generic.CreateView):
