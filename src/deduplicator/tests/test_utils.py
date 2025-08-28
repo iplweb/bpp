@@ -328,7 +328,11 @@ def test_analiza_duplikatow_publication_count_title_orcid_scoring(
 
 
 def test_analiza_duplikatow_temporal_analysis_common_years(
-    osoba_z_instytucji, glowny_autor, autor_maker, jednostka
+    osoba_z_instytucji,
+    glowny_autor,
+    autor_maker,
+    jednostka,
+    typ_odpowiedzialnosci_autor,
 ):
     """Test analizy temporalnej - wspólne lata publikacji"""
     duplikat = autor_maker(imiona="Jan", nazwisko="Gal-Cisoń")
@@ -364,7 +368,11 @@ def test_analiza_duplikatow_temporal_analysis_common_years(
 
 
 def test_analiza_duplikatow_temporal_analysis_close_years(
-    osoba_z_instytucji, glowny_autor, autor_maker, jednostka
+    osoba_z_instytucji,
+    glowny_autor,
+    autor_maker,
+    jednostka,
+    typ_odpowiedzialnosci_autor,
 ):
     """Test analizy temporalnej - bliskie lata publikacji (różnica ≤2 lata)"""
     duplikat = autor_maker(imiona="Jan", nazwisko="Gal-Cisoń")
@@ -394,7 +402,11 @@ def test_analiza_duplikatow_temporal_analysis_close_years(
 
 
 def test_analiza_duplikatow_temporal_analysis_medium_distance(
-    osoba_z_instytucji, glowny_autor, autor_maker, jednostka
+    osoba_z_instytucji,
+    glowny_autor,
+    autor_maker,
+    jednostka,
+    typ_odpowiedzialnosci_autor,
 ):
     """Test analizy temporalnej - średnia odległość lat publikacji (3-7 lat)"""
     duplikat = autor_maker(imiona="Jan", nazwisko="Gal-Cisoń")
@@ -422,7 +434,11 @@ def test_analiza_duplikatow_temporal_analysis_medium_distance(
 
 
 def test_analiza_duplikatow_temporal_analysis_large_distance(
-    osoba_z_instytucji, glowny_autor, autor_maker, jednostka
+    osoba_z_instytucji,
+    glowny_autor,
+    autor_maker,
+    jednostka,
+    typ_odpowiedzialnosci_autor,
 ):
     """Test analizy temporalnej - duża odległość lat publikacji (>7 lat)"""
     duplikat = autor_maker(imiona="Jan", nazwisko="Gal-Cisoń")
@@ -492,7 +508,11 @@ def test_analiza_duplikatow_temporal_analysis_no_publications(
 
 
 def test_analiza_duplikatow_temporal_analysis_scoring_impact(
-    osoba_z_instytucji, glowny_autor, autor_maker, jednostka
+    osoba_z_instytucji,
+    glowny_autor,
+    autor_maker,
+    jednostka,
+    typ_odpowiedzialnosci_autor,
 ):
     """Test wpływu analizy temporalnej na końcową pewność"""
     # Duplikat z wspólnymi latami - powinien mieć wyższą pewność
