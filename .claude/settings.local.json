@@ -9,7 +9,8 @@
       "Bash(python -m pytest src/bpp/tests/test_export/test_export_bibtex.py src/bpp/tests/test_export/test_bibtex_export_in_admin.py -v)",
       "Bash(python -m pytest src/bpp/tests/test_export/test_bibtex_export_in_admin.py::TestBibTeXExportInAdmin::test_patent_bibtex_resource_export src/bpp/tests/test_export/test_bibtex_export_in_admin.py::TestBibTeXExportInAdmin::test_praca_doktorska_bibtex_resource_export src/bpp/tests/test_export/test_bibtex_export_in_admin.py::TestBibTeXExportInAdmin::test_praca_habilitacyjna_bibtex_resource_export -v)",
       "Bash(python:*)",
-      "Bash(grunt build)"
+      "Bash(grunt build)",
+      "WebSearch"
     ],
     "deny": [],
     "additionalDirectories": [
