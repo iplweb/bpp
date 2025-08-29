@@ -1,0 +1,420 @@
+{% extends "base.html" %}
+{% load static %}
+{% csrf_token %}
+
+{% block title %}PBN Downloader - {{ block.super }}{% endblock %}
+
+{% block content %}
+    <div class="row">
+        <div class="large-12 columns">
+            <h1>PBN Downloader <span class="label secondary">BETA</span></h1>
+            <p class="lead">Narzędzie do pobierania danych z Polskiej Bibliografii Naukowej (PBN)</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="large-6 columns">
+            <div class="panel callout secondary">
+                <h4><i class="fi-page-multiple"></i> Pobieranie publikacji i oświadczeń</h4>
+                <p>Pobieranie publikacji instytucji oraz oświadczeń autorów z PBN.</p>
+                <strong>UWAGA:</strong> Proces pobierania może potrwać kilka minut.
+                <br/><br/>
+                <div style="text-align: center;">
+                    <span style="color: #0066cc; font-size: 2em;">📄</span>
+                    <br>
+                    <span style="color: #0066cc; font-size: 1.2em;">Publications</span>
+                </div>
+
+                <div style="margin-top: 1rem;">
+                    <button id="download-btn" class="button success expanded">
+                        <i class="fi-cloud-download"></i> Pobierz publikacje z PBN
+                    </button>
+
+                    <!-- Task status display -->
+                    <div id="task-status" style="margin-top: 1rem; display: none;">
+                        <div class="panel callout">
+                            <h5 id="task-status-title">Status pobierania</h5>
+                            <div id="task-status-content">
+                                <div id="task-running" style="display: none;">
+                                    <i class="fi-refresh"></i> <strong>Pobieranie danych w toku...</strong>
+                                    <br><small id="current-step">Inicjalizacja...</small>
+                                    <div class="progress" style="margin: 0.5rem 0; background-color: #e6e6e6; border-radius: 3px; height: 20px; overflow: hidden;">
+                                        <div id="progress-meter" class="meter" style="width: 0%; height: 100%; background-color: #28a745; transition: width 0.3s ease; border-radius: 3px;"></div>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; font-size: 0.8em;">
+                                        <span id="progress-percentage">0%</span>
+                                        <span id="progress-details"></span>
+                                    </div>
+                                    <small style="color: #666; margin-top: 0.5rem; display: block;">To może potrwać kilka minut. Możesz spokojnie zamknąć okno przeglądarki i wrócić tu za jakiś czas.</small>
+                                </div>
+
+                                <div id="task-completed" style="display: none;">
+                                    <div class="callout success">
+                                        <i class="fi-check"></i> <strong>Dane zostały pobrane pomyślnie!</strong>
+                                        <br><small>Ostatnia aktualizacja: <span id="last-update"></span></small>
+                                        <br><small>Wykonane przez: <span id="task-user"></span></small>
+                                    </div>
+                                </div>
+
+                                <div id="task-failed" style="display: none;">
+                                    <div class="callout alert">
+                                        <i class="fi-alert"></i> <strong>Wystąpił błąd podczas pobierania danych</strong>
+                                        <br><small>Błąd: <span id="error-message"></span></small>
+                                        <br><small>Czas błędu: <span id="error-time"></span></small>
+                                        <div style="margin-top: 0.5rem;">
+                                            <button id="retry-btn" class="button warning small">
+                                                <i class="fi-refresh"></i> Spróbuj ponownie
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div id="task-no-data" style="display: none;">
+                                    <div class="callout secondary">
+                                        <i class="fi-info"></i> <strong>Brak danych</strong>
+                                        <br><small>Nie wykonano jeszcze pobierania danych z PBN. Kliknij przycisk powyżej, aby rozpocząć.</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="large-6 columns">
+            <div class="panel callout warning">
+                <h4><i class="fi-torsos-all"></i> Pobieranie osób z instytucji</h4>
+                <p>Pobieranie danych osób powiązanych z instytucją z PBN.</p>
+                <strong>UWAGA:</strong> Proces może potrwać kilka minut.
+                <br/><br/>
+                <div style="text-align: center;">
+                    <span style="color: #e07600; font-size: 2em;">👥</span>
+                    <br>
+                    <span style="color: #e07600; font-size: 1.2em;">People</span>
+                </div>
+
+                <div style="margin-top: 1rem;">
+                    <button id="people-download-btn" class="button warning expanded">
+                        <i class="fi-torsos-all"></i> Pobierz osoby z PBN
+                    </button>
+
+                    <!-- People Task status display -->
+                    <div id="people-task-status" style="margin-top: 1rem; display: none;">
+                        <div class="panel callout">
+                            <h5 id="people-task-status-title">Status pobierania osób</h5>
+                            <div id="people-task-status-content">
+                                <div id="people-task-running" style="display: none;">
+                                    <i class="fi-refresh"></i> <strong>Pobieranie osób w toku...</strong>
+                                    <br><small id="people-current-step">Inicjalizacja...</small>
+                                    <div class="progress" style="margin: 0.5rem 0; background-color: #e6e6e6; border-radius: 3px; height: 20px; overflow: hidden;">
+                                        <div id="people-progress-meter" class="meter" style="width: 0%; height: 100%; background-color: #e07600; transition: width 0.3s ease; border-radius: 3px;"></div>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; font-size: 0.8em;">
+                                        <span id="people-progress-percentage">0%</span>
+                                        <span id="people-progress-details"></span>
+                                    </div>
+                                    <small style="color: #666; margin-top: 0.5rem; display: block;">Pobieranie osób powiązanych z instytucją.</small>
+                                </div>
+
+                                <div id="people-task-completed" style="display: none;">
+                                    <div class="callout success">
+                                        <i class="fi-check"></i> <strong>Osoby zostały pobrane pomyślnie!</strong>
+                                        <br><small>Ostatnia aktualizacja: <span id="people-last-update"></span></small>
+                                        <br><small>Wykonane przez: <span id="people-task-user"></span></small>
+                                    </div>
+                                </div>
+
+                                <div id="people-task-failed" style="display: none;">
+                                    <div class="callout alert">
+                                        <i class="fi-alert"></i> <strong>Wystąpił błąd podczas pobierania osób</strong>
+                                        <br><small>Błąd: <span id="people-error-message"></span></small>
+                                        <br><small>Czas błędu: <span id="people-error-time"></span></small>
+                                        <div style="margin-top: 0.5rem;">
+                                            <button id="people-retry-btn" class="button alert small">
+                                                <i class="fi-refresh"></i> Spróbuj ponownie
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div id="people-task-no-data" style="display: none;">
+                                    <div class="callout secondary">
+                                        <i class="fi-info"></i> <strong>Brak danych</strong>
+                                        <br><small>Nie wykonano jeszcze pobierania osób z PBN. Kliknij przycisk powyżej, aby rozpocząć.</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="large-12 columns">
+            <div class="panel callout info">
+                <h3><i class="fi-info"></i> Informacje o pobieraniu</h3>
+                <div class="row">
+                    <div class="medium-6 columns">
+                        <h4>📄 Pobieranie publikacji</h4>
+                        <p>Składa się z dwóch głównych etapów:</p>
+                        <ul>
+                            <li><strong>Faza 1:</strong> Pobieranie publikacji instytucji z PBN</li>
+                            <li><strong>Faza 2:</strong> Pobieranie oświadczeń i publikacji</li>
+                        </ul>
+                    </div>
+                    <div class="medium-6 columns">
+                        <h4>👥 Pobieranie osób</h4>
+                        <p>Pobieranie danych osób powiązanych z instytucją:</p>
+                        <ul>
+                            <li>Pobieranie listy osób z instytucji</li>
+                            <li>Aktualizacja danych naukowców w systemie</li>
+                        </ul>
+                    </div>
+                </div>
+                <p><strong>Uwaga:</strong> Do rozpoczęcia pobierania wymagana jest ważna autoryzacja w systemie PBN. Upewnij się, że jesteś zalogowany w PBN i posiadasz odpowiednie uprawnienia.</p>
+            </div>
+        </div>
+    </div>
+
+    {% if latest_task or latest_people_task %}
+    <div class="row">
+        <div class="large-12 columns">
+            <div class="panel callout">
+                <h3><i class="fi-clock"></i> Historia ostatnich zadań</h3>
+                <div class="row">
+                    {% if latest_task %}
+                    <div class="medium-6 columns">
+                        <h4>📄 Ostatnie pobieranie publikacji</h4>
+                <div class="row">
+                    <div class="medium-6 columns">
+                        <strong>Status:</strong>
+                        <span class="label
+                            {% if latest_task.status == 'completed' %}success
+                            {% elif latest_task.status == 'failed' %}alert
+                            {% elif latest_task.status == 'running' %}warning
+                            {% endif %}">
+                            {{ latest_task.get_status_display }}
+                        </span>
+                    </div>
+                    <div class="medium-6 columns">
+                        <strong>Użytkownik:</strong> {{ latest_task.user.username }}
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="medium-6 columns">
+                        <strong>Rozpoczęte:</strong> {{ latest_task.started_at|date:"d.m.Y H:i:s" }}
+                    </div>
+                    <div class="medium-6 columns">
+                        <strong>Zakończone:</strong>
+                        {% if latest_task.completed_at %}
+                            {{ latest_task.completed_at|date:"d.m.Y H:i:s" }}
+                        {% else %}
+                            <em>W toku</em>
+                        {% endif %}
+                    </div>
+                </div>
+                {% if latest_task.current_step %}
+                <div class="row">
+                    <div class="large-12 columns">
+                        <strong>Aktualny krok:</strong> {{ latest_task.current_step }}
+                    </div>
+                </div>
+                {% endif %}
+                {% if latest_task.error_message %}
+                <div class="row">
+                    <div class="large-12 columns">
+                        <strong>Błąd:</strong>
+                        <div class="callout alert">
+                            {{ latest_task.error_message }}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <style>
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        /* Ensure progress bar is properly styled */
+        .progress {
+            background-color: #e6e6e6 !important;
+            border-radius: 3px !important;
+            height: 20px !important;
+            overflow: hidden !important;
+            box-shadow: inset 0 1px 2px rgba(0,0,0,.1);
+        }
+
+        .progress .meter {
+            background-color: #28a745 !important;
+            height: 100% !important;
+            transition: width 0.3s ease !important;
+            border-radius: 3px !important;
+            display: block !important;
+        }
+    </style>
+
+    <script>
+        $(document).ready(function() {
+            // Check task status on page load and then periodically
+            checkTaskStatus();
+            var statusInterval = setInterval(checkTaskStatus, 5000); // Check every 5 seconds
+
+            // Start download button click handler
+            $('#download-btn').click(function() {
+                var btn = $(this);
+
+                if (btn.hasClass('disabled')) {
+                    return false;
+                }
+
+                btn.addClass('disabled').html('<i class="fi-refresh"></i> Rozpoczynam pobieranie...');
+
+                $.ajax({
+                    url: '{% url "pbn_downloader_app:start_download" %}',
+                    type: 'POST',
+                    headers: {
+                        'X-CSRFToken': $('[name=csrfmiddlewaretoken]').val()
+                    },
+                    success: function(data) {
+                        if (data.success) {
+                            checkTaskStatus();
+                        } else {
+                            alert('Błąd: ' + data.error);
+                            btn.removeClass('disabled').html('<i class="fi-cloud-download"></i> Pobierz dane z PBN');
+                        }
+                    },
+                    error: function() {
+                        alert('Wystąpił błąd podczas komunikacji z serwerem');
+                        btn.removeClass('disabled').html('<i class="fi-cloud-download"></i> Pobierz dane z PBN');
+                    }
+                });
+            });
+
+            // Retry button click handler
+            $(document).on('click', '#retry-btn', function() {
+                var btn = $(this);
+                btn.addClass('disabled').html('<i class="fi-refresh"></i> Ponawiam...');
+
+                $.ajax({
+                    url: '{% url "pbn_downloader_app:retry_task" %}',
+                    type: 'POST',
+                    headers: {
+                        'X-CSRFToken': $('[name=csrfmiddlewaretoken]').val()
+                    },
+                    success: function(data) {
+                        if (data.success) {
+                            checkTaskStatus();
+                        } else {
+                            alert('Błąd: ' + data.error);
+                            btn.removeClass('disabled').html('<i class="fi-refresh"></i> Spróbuj ponownie');
+                        }
+                    },
+                    error: function() {
+                        alert('Wystąpił błąd podczas komunikacji z serwerem');
+                        btn.removeClass('disabled').html('<i class="fi-refresh"></i> Spróbuj ponownie');
+                    }
+                });
+            });
+
+            function checkTaskStatus() {
+                $.ajax({
+                    url: '{% url "pbn_downloader_app:task_status" %}',
+                    type: 'GET',
+                    success: function(data) {
+                        updateTaskStatus(data);
+                    },
+                    error: function() {
+                        console.log('Error checking task status');
+                    }
+                });
+            }
+
+            function updateTaskStatus(data) {
+                var downloadBtn = $('#download-btn');
+                var taskStatus = $('#task-status');
+                var taskRunning = $('#task-running');
+                var taskCompleted = $('#task-completed');
+                var taskFailed = $('#task-failed');
+                var taskNoData = $('#task-no-data');
+
+                // Hide all status divs
+                taskRunning.hide();
+                taskCompleted.hide();
+                taskFailed.hide();
+                taskNoData.hide();
+
+                if (data.is_running) {
+                    // Task is currently running
+                    downloadBtn.addClass('disabled').html('<i class="fi-refresh"></i> Pobieranie w toku...');
+                    taskStatus.show();
+                    taskRunning.show();
+
+                    // Update progress information if available
+                    if (data.latest_task) {
+                        var task = data.latest_task;
+                        if (task.current_step) {
+                            $('#current-step').text(task.current_step);
+                        }
+                        if (task.progress_percentage !== undefined && task.progress_percentage !== null) {
+                            var percentage = Math.max(0, Math.min(100, parseInt(task.progress_percentage)));
+                            $('#progress-percentage').text(percentage + '%');
+                            $('#progress-meter').css('width', percentage + '%');
+                        }
+
+                        // Show progress details if available
+                        var details = [];
+                        if (task.publications_processed > 0 || task.total_publications) {
+                            details.push('Publikacje: ' + (task.publications_processed || 0) +
+                                        (task.total_publications ? '/' + task.total_publications : ''));
+                        }
+                        if (task.statements_processed > 0 || task.total_statements) {
+                            details.push('Oświadczenia: ' + (task.statements_processed || 0) +
+                                        (task.total_statements ? '/' + task.total_statements : ''));
+                        }
+                        $('#progress-details').text(details.join(', '));
+                    }
+                } else if (data.latest_task) {
+                    // Show task status based on latest task - keep it permanently visible
+                    var task = data.latest_task;
+
+                    if (task.status === 'completed') {
+                        downloadBtn.removeClass('disabled').html('<i class="fi-cloud-download"></i> Pobierz dane z PBN');
+                        taskStatus.show();
+                        taskCompleted.show();
+
+                        $('#last-update').text(formatDate(task.completed_at));
+                        $('#task-user').text(task.user);
+
+                    } else if (task.status === 'failed') {
+                        downloadBtn.removeClass('disabled').html('<i class="fi-cloud-download"></i> Pobierz dane z PBN');
+                        taskStatus.show();
+                        taskFailed.show();
+
+                        $('#error-message').text(task.error_message || 'Nieznany błąd');
+                        $('#error-time').text(formatDate(task.completed_at));
+                    }
+                } else {
+                    // No tasks yet - show "no data" message and keep the status box visible
+                    downloadBtn.removeClass('disabled').html('<i class="fi-cloud-download"></i> Pobierz dane z PBN');
+                    taskStatus.show();
+                    taskNoData.show();
+                }
+            }
+
+            function formatDate(isoString) {
+                if (!isoString) return '';
+                var date = new Date(isoString);
+                return date.toLocaleString('pl-PL');
+            }
+        });
+    </script>
+{% endblock %}
