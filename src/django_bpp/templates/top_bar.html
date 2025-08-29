@@ -3,7 +3,7 @@
     <div class="title-bar-title hide-for-print">Menu</div>
 </div>
 
-<div class="top-bar stacked-for-medium hide-for-print" id="example-menu" data-sticky data-options="marginTop:0;">
+<div class="top-bar stacked-for-medium hide-for-print" id="example-menu" style="position: sticky; top: 0; z-index: 1000; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);">
     <div class="top-bar-left">
         <ul class="dropdown menu" data-dropdown-menu>
             <li class="menu-text" style="cursor:pointer;"
@@ -105,6 +105,7 @@
                             {% if request.user|has_group:"wprowadzanie danych" or request.user.is_superuser %}
                                 <li><a href="{% url "pbn_api:authorize" %}">autoryzuj PBN API</a></li>
                                 <li><a href="{% url "komparator_pbn:main" %}">komparator PBN</a></li>
+                                <li><a href="{% url "pbn_downloader_app:main" %}">pobieranie danych z PBN</a></li>
                                 <li><a href="{% url "deduplikator_autorow:duplicate_authors" %}">deduplikator autorow</a></li>
                                 <hr/>
                                 <li><a href="{% url "integrator2:main" %}">import danych</a></li>

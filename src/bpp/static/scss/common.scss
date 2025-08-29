@@ -371,3 +371,60 @@ div.table-container ul.pagination {
 .table-border-right {
   border-right: 2px solid silver;
 }
+
+// ZURB Foundation Dropdown Menu Shadow Variables
+// Override Foundation's dropdown shadow settings for nicer pop-up shadows
+$dropdownmenu-border: 1px solid rgba(0, 0, 0, 0.15) !default;
+$dropdown-border: 1px solid rgba(0, 0, 0, 0.15) !default;
+
+// Custom shadow mixins for dropdown menus
+@mixin dropdown-shadow {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15),
+              0 2px 6px rgba(0, 0, 0, 0.10);
+}
+
+// Apply nice shadows to dropdown menus
+.dropdown-pane,
+.dropdown.menu .submenu {
+  @include dropdown-shadow;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+}
+
+// Enhanced shadows for top-bar dropdown menus
+.top-bar .dropdown.menu .submenu {
+  @include dropdown-shadow;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  background-color: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(8px);
+}
+
+// Additional shadow for generic dropdowns
+.js-dropdown-active,
+.dropdown-pane.is-open {
+  @include dropdown-shadow;
+}
+
+// Enhanced hover effects for dropdown menu items
+.dropdown.menu .submenu li a:hover,
+.top-bar .dropdown.menu .submenu li a:hover,
+.dropdown-pane a:hover {
+  background-color: rgba(23, 121, 186, 0.08);
+  color: #1779ba;
+  transition: all 0.2s ease-in-out;
+  transform: translateX(2px);
+}
+
+// Hover effect for top-bar menu items (main level)
+.top-bar .dropdown.menu > li > a:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+  transition: background-color 0.2s ease-in-out;
+}
+
+// Enhanced hover state for nested menu items
+.dropdown.menu .submenu li {
+  transition: background-color 0.2s ease-in-out;
+}
+
+.dropdown.menu .submenu li:hover {
+  background-color: rgba(23, 121, 186, 0.05);
+}

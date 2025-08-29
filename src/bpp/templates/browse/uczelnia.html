@@ -1,11 +1,90 @@
 {% extends "base.html" %}
-{% load user_in_group deklinacja %}
+{% load user_in_group deklinacja cache %}
 
 {% block extratitle %}
     Uczelnia
 {% endblock %}
 
-{% block breadcrumbs %}
+{% block breadcrumbs-html %}
+    <!-- Tips section in place of breadcrumbs for main page -->
+        <div id="breadcrumbs-wrapper" class="grid-container-fluid hide-for-small-only" style="background-color: rgba(240, 240, 240, 0.85); border-bottom: 1px solid #d6d6d6; padding: 10px 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); position: sticky; top: 50px; z-index: 1; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);">
+        <div class="grid-x">
+            <div class="cell">
+                <div id="rotating-tips" style="text-align: center; font-size: 14px; line-height: 1.4;">
+                    <div class="tip-content" style="display: none; opacity: 0; transition: opacity 0.5s ease-in-out;">
+                        💡 <strong>Porady BPP:</strong> <span id="tip-text">Ładowanie porad...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const tips = [
+            'Użyj <a href="/multiseek/">wyszukiwarki zaawansowanej</a> aby znaleźć publikacje według różnych kryteriów.',
+            'W <a href="/admin/">panelu administracyjnym</a> możesz zarządzać rekordami publikacji i autorów.',
+            'Skorzystaj z <a href="/bpp/ranking-autorow/">rankingu autorów</a> aby zobaczyć najaktywniejszych badaczy.',
+            'Funkcja <strong>eksportu do PBN</strong> pozwala na synchronizację danych z Polską Bibliografią Naukową.',
+            'W module <strong>raportów</strong> znajdziesz szczegółowe zestawienia publikacji według jednostek i wydziałów.',
+            'Użyj filtrów <strong>według roku</strong> aby ograniczyć wyniki wyszukiwania do określonego okresu.',
+            'System automatycznie <strong>przypisuje punktację</strong> publikacjom zgodnie z aktualnymi listami ministeralnymi.',
+            'Funkcja <strong>duplikatów</strong> pomaga w identyfikacji i usuwaniu powtarzających się rekordów.',
+            'W <strong>profilach autorów</strong> znajdziesz pełną listę ich publikacji i współprac.',
+            'System obsługuje import danych z <strong>zewnętrznych baz</strong> jak CrossRef czy Web of Science.',
+            'Użyj opcji <strong>"Zgłoś publikację"</strong> aby dodać nowe pozycje do bazy danych.',
+            'Funkcja <strong>oświadczeń autorów</strong> pozwala na przypisanie publikacji do właściwych dyscyplin naukowych.',
+            'W module <strong>statystyk</strong> znajdziesz wykresy pokazujące trendy publikacyjne uczelni.',
+            'System automatycznie <strong>aktualizuje cytowania</strong> z baz Web of Science i Scopus.',
+            'Skorzystaj z <strong>eksportu do BibTeX</strong> aby zaimportować publikacje do programów bibliograficznych.'
+        ];
+
+        const tipTextElement = document.getElementById('tip-text');
+        const tipContentElement = document.querySelector('.tip-content');
+        let usedTips = [];
+
+        function getRandomTip() {
+            // If all tips have been used, reset the array
+            if (usedTips.length >= tips.length) {
+                usedTips = [];
+            }
+
+            let randomIndex;
+            do {
+                randomIndex = Math.floor(Math.random() * tips.length);
+            } while (usedTips.includes(randomIndex));
+
+            usedTips.push(randomIndex);
+            return tips[randomIndex];
+        }
+
+        function showNextTip() {
+            // Fade out current tip
+            tipContentElement.style.opacity = '0';
+
+            setTimeout(function() {
+                // Change text while invisible
+                tipTextElement.innerHTML = getRandomTip();
+                tipContentElement.style.display = 'block';
+
+                // Fade in new tip
+                setTimeout(function() {
+                    tipContentElement.style.opacity = '1';
+                }, 50);
+            }, 500); // Wait for fade out to complete
+        }
+
+        // Show first tip immediately
+        tipTextElement.innerHTML = getRandomTip();
+        tipContentElement.style.display = 'block';
+        setTimeout(function() {
+            tipContentElement.style.opacity = '1';
+        }, 100);
+
+        // Rotate tips every 15 seconds
+        setInterval(showNextTip, 15000);
+    });
+    </script>
 {% endblock %}
 
 {% block content %}
@@ -93,6 +172,58 @@
             {% include "browse/go_to_admin_list.html" with group="struktura" url="admin:bpp_jednostka_changelist" text="<i class='fi-wrench'></i> zarządzaj jednostkami" %}
             {% include "browse/go_to_admin_change.html" with url="admin:bpp_uczelnia_change" pk=uczelnia.pk group="struktura" text="ustawienia dla uczelni" %}
         </div>
+        </div>
+    {% endif %}
+
+    {% if recently_updated or recent_abstracts %}
+        <div class="grid-x grid-margin-x">
+            {% if recently_updated %}
+                {% cache 3600 recent_publications uczelnia.pk %}
+                <div class="small-12 large-6 cell">
+                    <h2>📚 Niedawno zaktualizowane rekordy:</h2>
+                    <ul class="no-bullet" style="line-height: 180%;">
+                        {% for rekord in recently_updated %}
+                            <li style="margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #e6e6e6;">
+                                <a href="{{ rekord.get_absolute_url }}" style="font-size: 14px; line-height: 1.4; display: block;">
+                                    {{ rekord.opis_bibliograficzny_cache|safe }}
+                                </a>
+                                <div style="font-size: 12px; color: #666; margin-top: 5px;">
+                                    {{ rekord.ostatnio_zmieniony|date:"d.m.Y H:i" }}
+                                    {% if rekord.rok %} • {{ rekord.rok }}{% endif %}
+                                </div>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                    <div style="text-align: center; margin-top: 15px;">
+                        <a href="/multiseek/" class="button secondary expanded">Zobacz wszystkie publikacje</a>
+                    </div>
+                </div>
+                {% endcache %}
+            {% endif %}
+
+            {% if recent_abstracts %}
+                {% cache 3600 recent_abstracts uczelnia.pk %}
+                <div class="small-12 large-6 cell">
+                    <h2>📄 Najnowsze streszczenia:</h2>
+                    <ul class="no-bullet" style="line-height: 180%;">
+                        {% for rekord in recent_abstracts %}
+                            <li style="margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #e6e6e6;">
+                                <a href="{{ rekord.rekord.get_absolute_url }}" style="font-size: 14px; line-height: 1.4; display: block; font-weight: bold; margin-bottom: 8px;">
+                                    {{ rekord.rekord.opis_bibliograficzny_cache|safe }}
+                                </a>
+                                <div style="font-size: 13px; line-height: 1.4; color: #333; margin-bottom: 5px;">
+                                    {{ rekord.streszczenie|safe|truncatewords:130 }}
+                                </div>
+                                <div style="font-size: 12px; color: #666;">
+                                    {{ rekord.ostatnio_zmieniony|date:"d.m.Y H:i" }}
+                                    {% if rekord.rok %} • {{ rekord.rok }}{% endif %}
+                                </div>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endcache %}
+            {% endif %}
         </div>
     {% endif %}
 

@@ -25,6 +25,11 @@
     <script type="text/javascript" src="/bpp/jsi18n/?language={{ LANGUAGE_CODE }}"></script>
 
     {#        bare.html #}
+    <style>
+        .fouc-hidden { visibility: hidden; opacity: 0; transition: opacity 0.3s ease-in-out; }
+        .fouc-visible { visibility: visible; opacity: 1; }
+    </style>
+
     {% compress css %}
         {#        base.html #}
         <link rel="stylesheet" type="text/css" href="{% static THEME_NAME %}"/>
@@ -100,7 +105,7 @@
         {% place_favicon %}
     {% endcache %}
 </head>
-<body style="display: none;">
+<body class="fouc-hidden">
 {% block body %}
 {% endblock %}
 <script type="text/javascript">
@@ -124,6 +129,11 @@
         "lengthMenu": [[10, 25, 50, 100, -1], [10, 25, 50, 100, "wszystkie"]]
     });
 
+    // Show body after DOM is ready and styles are loaded
+    $(document).ready(function() {
+        $('body').removeClass('fouc-hidden').addClass('fouc-visible');
+    });
+
 
 </script>
 </body>
@@ -132,15 +142,13 @@
     <!-- wygenerowano dnia {% bpp_localtime %}, wersja {% bpp_version %} -->
 </footer>
 
-<!-----Flash of Unstyled Content---------->
-<script>
-    document.getElementsByTagName("body")[0].style.display = '';
-</script>
 <noscript>
-    <style>body {
-        display: block !important;
-    }</style>
+    <style>
+        body.fouc-hidden {
+            visibility: visible !important;
+            opacity: 1 !important;
+        }
+    </style>
 </noscript>
-<!-----Flash of Unstyled Content---------->
 
 </html>
