@@ -1,6 +1,7 @@
 import traceback
 from enum import Enum
 
+from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
 from django.db.models import PositiveIntegerField
 from django.urls import reverse
@@ -53,6 +54,14 @@ class SendStatus(Enum):
     FINISHED_ERROR = 6
 
 
+def model_table_exists(model):
+    """Check if a model's table exists"""
+    from django.db import connection
+
+    table_name = model._meta.db_table
+    return table_name in connection.introspection.table_names()
+
+
 class PBN_Export_Queue(models.Model):
     objects = PBN_Export_QueueManager()
 
@@ -84,9 +93,22 @@ class PBN_Export_Queue(models.Model):
         return f"Zlecenie wysyłki do PBN dla {self.rekord_do_wysylki}"
 
     def check_if_record_still_exists(self):
-        if self.rekord_do_wysylki is None:
+        if not self.content_type_id:
             return False
-        return True
+
+        try:
+            # Check iftable exists for that model...
+            if not model_table_exists(self.content_type.model_class()):
+                return False
+
+            try:
+                if self.content_type.get_object_for_this_type(pk=self.object_id):
+                    return True
+
+            except ObjectDoesNotExist:
+                return False
+        except self.content_type.model_class().DoesNotExist:
+            return False
 
     def dopisz_komunikat(self, msg):
         res = str(timezone.now())
