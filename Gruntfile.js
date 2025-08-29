@@ -44,7 +44,7 @@ module.exports = function (grunt) {
 
         shell: {
             collectstatic: {
-                command: 'python src/manage.py collectstatic --noinput -v0'
+                command: 'poetry run python src/manage.py collectstatic --noinput -v0'
             }
         }
     });
@@ -54,6 +54,7 @@ module.exports = function (grunt) {
     grunt.loadNpmTasks('grunt-contrib-qunit');
     grunt.loadNpmTasks('grunt-shell');
 
+    grunt.registerTask('shell-test', ['shell:collectstatic']);
     grunt.registerTask('build', ['sass', 'shell:collectstatic']);
     grunt.registerTask('default', ['build', 'watch']);
 }
