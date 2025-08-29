@@ -105,6 +105,7 @@
                             {% if request.user|has_group:"wprowadzanie danych" or request.user.is_superuser %}
                                 <li><a href="{% url "pbn_api:authorize" %}">autoryzuj PBN API</a></li>
                                 <li><a href="{% url "komparator_pbn:main" %}">komparator PBN</a></li>
+                                <li><a href="{% url "deduplikator_autorow:duplicate_authors" %}">deduplikator autorow</a></li>
                                 <hr/>
                                 <li><a href="{% url "integrator2:main" %}">import danych</a></li>
                                 <li><a href="{% url "import_pracownikow:index" %}">import pracowników</a></li>

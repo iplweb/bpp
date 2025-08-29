@@ -141,6 +141,13 @@ urlpatterns = (
         ),
         path("rozbieznosci_dyscyplin/", include("rozbieznosci_dyscyplin.urls")),
         path("rozbieznosci_if/", include("rozbieznosci_if.urls")),
+        path(
+            "deduplikator_autorow/",
+            include(
+                ("deduplikator_autorow.urls", "deduplikator_autorow"),
+                namespace="deduplikator_autorow",
+            ),
+        ),
         url(
             r"^multiseek/results/$",
             csrf_exempt(

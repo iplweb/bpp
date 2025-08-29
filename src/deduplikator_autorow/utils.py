@@ -2,9 +2,12 @@
 Moduł do wyszukiwania zdublowanych autorów w systemie BPP.
 """
 
+from typing import List, Optional
+
 from django.db.models import Q, QuerySet
 
-from pbn_api.models import OsobaZInstytucji
+from deduplikator_autorow.models import NotADuplicate
+from pbn_api.models import OsobaZInstytucji, Scientist
 
 from bpp.models import Autor
 from bpp.models.cache import Rekord
@@ -125,6 +128,28 @@ def szukaj_kopii(osoba_z_instytucji: OsobaZInstytucji) -> QuerySet[Autor]:
                 filtr_imion | Q(imiona__isnull=True) | Q(imiona__exact="")
             )
 
+    # # Wyklucz autorów oznaczonych jako nie-duplikaty
+    # # Importuj lokalnie aby uniknąć circular imports
+    # from .models import NotADuplicate
+    #
+    # # Pobierz listę wszystkich scientist_pk oznaczonych jako nie-duplikaty
+    # not_duplicate_scientist_pks = set(
+    #     NotADuplicate.objects.values_list("scientist_pk", flat=True)
+    # )
+    #
+    # # Filtruj kandydatów - wyklucz tych, którzy są oznaczeni jako nie-duplikaty
+    # if not_duplicate_scientist_pks:
+    #     # # Znajdź Scientists którzy mają kandydatów jako rekord_w_bpp
+    #     # scientists_to_exclude = Scientist.objects.filter(
+    #     #     pk__in=not_duplicate_scientist_pks
+    #     # ).values_list("rekord_w_bpp", flat=True)
+    #     #
+    #     # Wyklucz tych kandydatów
+
+    kandydaci = kandydaci.exclude(
+        pk__in=NotADuplicate.objects.values_list("autor_id", flat=True)
+    )
+    #
     return kandydaci.distinct()
 
 
@@ -357,3 +382,370 @@ def analiza_duplikatow(osoba_z_instytucji: OsobaZInstytucji) -> dict:
         "analiza": analiza_duplikatow_lista,
         "ilosc_duplikatow": duplikaty.count(),
     }
+
+
+def znajdz_pierwszego_autora_z_duplikatami(
+    excluded_authors: Optional[List[Scientist]] = None,
+) -> Optional[Scientist]:
+    """
+    Znajduje pierwszego autora (Scientist), który ma możliwe duplikaty w systemie BPP.
+
+    Funkcja iteruje przez wszystkie rekordy OsobaZInstytucji i dla każdego sprawdza,
+    czy istnieją potencjalne duplikaty używając funkcji szukaj_kopii().
+
+    Args:
+        excluded_authors: Lista autorów (Scientist), którzy mają być wykluczeni
+                         z wyszukiwania duplikatów. Domyślnie None.
+
+    Returns:
+        Optional[Scientist]: Pierwszy znaleziony autor z duplikatami lub None,
+                            jeśli nie znaleziono żadnego autora z duplikatami.
+    """
+    if excluded_authors is None:
+        excluded_authors = []
+
+    # Pobierz IDs wykluczonych autorów
+    excluded_scientist_ids = [author.pk for author in excluded_authors]
+
+    # Przeszukaj wszystkie rekordy OsobaZInstytucji, wykluczając określonych autorów
+    osoby_query = (
+        OsobaZInstytucji.objects.select_related("personId").all().order_by("lastName")
+    )
+
+    if excluded_scientist_ids:
+        osoby_query = osoby_query.exclude(personId__pk__in=excluded_scientist_ids)
+
+    for osoba_z_instytucji in osoby_query:
+        # Sprawdź czy istnieje Scientist dla tej osoby
+        if not osoba_z_instytucji.personId:
+            continue
+
+        scientist = osoba_z_instytucji.personId
+
+        # Sprawdź czy Scientist ma odpowiednik w BPP
+        if not hasattr(scientist, "rekord_w_bpp") or not scientist.rekord_w_bpp:
+            continue
+
+        # Wyszukaj duplikaty dla tego autora
+        duplikaty = szukaj_kopii(osoba_z_instytucji)
+
+        # Jeśli znaleziono duplikaty, zwróć tego Scientist
+        if duplikaty.exists():
+            return scientist
+
+    # Jeśli nie znaleziono żadnego autora z duplikatami
+    return None
+
+
+def scal_autorow(main_scientist_id: str, duplicate_scientist_id: str) -> dict:
+    """
+    Scala automatycznie duplikaty autorów.
+
+    Args:
+        main_scientist_id: ID głównego autora (Scientist)
+        duplicate_scientist_id: ID duplikatu autora (Scientist)
+
+    Returns:
+        dict: Wynik operacji scalania
+
+    Raises:
+        NotImplementedError: Funkcja nie jest jeszcze zaimplementowana
+    """
+    raise NotImplementedError("Funkcja scal_autorow nie jest jeszcze zaimplementowana")
+
+
+from cacheops import cached
+
+
+@cached(timeout=5 * 60)
+def count_authors_with_duplicates() -> int:
+    """
+    Zlicza wszystkich autorów (Scientist), którzy mają potencjalne duplikaty w systemie BPP.
+
+    Returns:
+        int: Liczba autorów z duplikatami
+    """
+    count = 0
+
+    # Przeszukaj wszystkie rekordy OsobaZInstytucji
+    for osoba_z_instytucji in OsobaZInstytucji.objects.select_related("personId").all():
+        # Sprawdź czy istnieje Scientist dla tej osoby
+        if not osoba_z_instytucji.personId:
+            continue
+
+        scientist = osoba_z_instytucji.personId
+
+        # Sprawdź czy Scientist ma odpowiednik w BPP
+        if not hasattr(scientist, "rekord_w_bpp") or not scientist.rekord_w_bpp:
+            continue
+
+        # Wyszukaj duplikaty dla tego autora
+        duplikaty = szukaj_kopii(osoba_z_instytucji)
+
+        # Jeśli znaleziono duplikaty, zwiększ licznik
+        if duplikaty.exists():
+            count += 1
+
+    return count
+
+
+def search_author_by_lastname(search_term, excluded_authors=None):
+    """
+    Wyszukuje pierwszego autora z duplikatami według części nazwiska.
+
+    Args:
+        search_term: część nazwiska do wyszukania
+        excluded_authors: lista autorów do wykluczenia
+
+    Returns:
+        Scientist object lub None jeśli nie znaleziono
+    """
+    if not search_term:
+        return None
+
+    if excluded_authors is None:
+        excluded_authors = []
+
+    excluded_ids = [author.pk for author in excluded_authors if hasattr(author, "pk")]
+
+    # Wyszukaj autorów z BPP o nazwisku zawierającym wyszukiwany termin
+    matching_authors = (
+        Autor.objects.filter(nazwisko__icontains=search_term)
+        .exclude(pbn_uid_id__in=excluded_ids)
+        .select_related("pbn_uid", "pbn_uid__osobazinstytucji")
+    )
+
+    # Znajdź pierwszego z duplikatami
+    for autor in matching_authors[:100]:
+        # Sprawdź czy autor ma odpowiednik w Scientist
+        if autor.pbn_uid_id:
+            try:
+                if autor.pbn_uid.osobazinstytucji:
+                    duplikaty = szukaj_kopii(autor.pbn_uid.osobazinstytucji)
+                    if duplikaty.exists():
+                        return autor.pbn_uid
+            except Scientist.osobazinstytucji.RelatedObjectDoesNotExist:
+                continue
+
+    return None
+
+
+def count_authors_with_lastname(search_term):
+    """
+    Zlicza autorów o nazwisku zawierającym wyszukiwany termin, którzy mają duplikaty.
+
+    Args:
+        search_term: część nazwiska do wyszukania
+
+    Returns:
+        liczba autorów z duplikatami pasujących do wyszukiwania
+    """
+    if not search_term:
+        return 0
+
+    count = 0
+
+    # Wyszukaj autorów z BPP o nazwisku zawierającym wyszukiwany termin
+    matching_authors = Autor.objects.filter(
+        nazwisko__icontains=search_term
+    ).select_related("pbn_uid", "pbn_uid__osobazinstytucji")
+
+    for autor in matching_authors[:100]:
+        scientist = autor.pbn_uid
+
+        # Sprawdź czy ma duplikaty
+        try:
+            if scientist.osobazinstytucji:
+                duplikaty = szukaj_kopii(scientist.osobazinstytucji)
+                if duplikaty.exists():
+                    count += 1
+        except Scientist.osobazinstytucji.RelatedObjectDoesNotExist:
+            continue
+
+    return count
+
+
+def export_duplicates_to_xlsx():
+    """
+    Eksportuje wszystkich autorów z duplikatami do formatu XLSX.
+
+    Struktura pliku XLSX:
+    - Kolumna A: Główny autor (NAZWISKO IMIĘ)
+    - Kolumna B: BPP ID głównego autora
+    - Kolumna C: BPP URL głównego autora (kliknij link)
+    - Kolumna D: PBN UID głównego autora
+    - Kolumna E: PBN URL głównego autora (kliknij link)
+    - Kolumna F: Duplikat (NAZWISKO IMIĘ)
+    - Kolumna G: BPP ID duplikatu
+    - Kolumna H: BPP URL duplikatu (kliknij link)
+    - Kolumna I: PBN UID duplikatu
+    - Kolumna J: PBN URL duplikatu (kliknij link)
+    - Kolumna K: Pewność podobieństwa (0.0-1.0)
+    - Kolumna L: Ilość duplikatów
+
+    Returns:
+        bytes: Zawartość pliku XLSX
+    """
+    from io import BytesIO
+
+    from openpyxl.styles import Font
+    from openpyxl.workbook import Workbook
+
+    from django.contrib.sites.models import Site
+
+    from bpp.util import worksheet_columns_autosize, worksheet_create_table
+
+    # Pobierz domenę serwisu do konstrukcji pełnych URLi
+    try:
+        current_site = Site.objects.get_current()
+        site_domain = f"https://{current_site.domain}"
+    except BaseException:
+        # Fallback jeśli Site nie jest skonfigurowany
+        site_domain = "https://bpp.iplweb.pl"
+
+    def create_pbn_url(pbn_uid):
+        """Helper function to create PBN author URL"""
+        if pbn_uid:
+            return f"https://pbn.nauka.gov.pl/sedno-webapp/persons/details/{pbn_uid}"
+        return ""
+
+    # Pobierz wszystkich autorów z duplikatami
+    # Najpierw pobierz IDs autorów oznaczonych jako nie-duplikat
+    excluded_author_ids = list(NotADuplicate.objects.values_list("autor", flat=True))
+
+    # Następnie znajdź Scientists, którzy mają związanych autorów BPP z duplikatami
+    scientists_with_authors = Scientist.objects.filter(
+        osobazinstytucji__isnull=False,
+        autor__isnull=False,  # Scientist musi mieć związanego autora BPP
+    ).exclude(autor__in=excluded_author_ids)
+
+    # Przygotuj dane do eksportu
+    data_rows = []
+    processed_scientists = set()
+
+    for scientist in scientists_with_authors:
+        if scientist.pk in processed_scientists:
+            continue
+
+        try:
+            # Pobierz analizę duplikatów
+            analiza_result = analiza_duplikatow(scientist.osobazinstytucji)
+
+            if "error" in analiza_result or not analiza_result.get("analiza"):
+                continue
+
+            glowny_autor = analiza_result["glowny_autor"]
+            duplikaty = analiza_result["analiza"]
+
+            if not duplikaty:
+                continue
+
+            # Dodaj głównego autora do przetworzonych
+            processed_scientists.add(scientist.pk)
+
+            # Przygotuj dane głównego autora
+            # Format: NAZWISKO IMIĘ
+            glowny_autor_name = (
+                f"{glowny_autor.nazwisko or ''} {glowny_autor.imiona or ''}".strip()
+            )
+            glowny_bpp_id = glowny_autor.pk
+            glowny_bpp_url = f"{site_domain}/bpp/autor/{glowny_autor.pk}/"
+            glowny_pbn_uid = glowny_autor.pbn_uid_id if glowny_autor.pbn_uid_id else ""
+            glowny_pbn_url = create_pbn_url(glowny_pbn_uid)
+
+            # Liczba duplikatów dla tego autora
+            duplicate_count = len(duplikaty)
+
+            # Dodaj każdy duplikat jako osobny wiersz
+            for duplikat_info in duplikaty:
+                autor_duplikat = duplikat_info["autor"]
+                pewnosc = duplikat_info["pewnosc"]
+
+                # Oznacz duplikat jako przetworzony
+                if hasattr(autor_duplikat, "pbn_uid") and autor_duplikat.pbn_uid:
+                    processed_scientists.add(autor_duplikat.pbn_uid.pk)
+
+                # Przygotuj dane duplikatu
+                # Format: NAZWISKO IMIĘ
+                duplikat_name = f"{autor_duplikat.nazwisko or ''} {autor_duplikat.imiona or ''}".strip()
+                duplikat_bpp_id = autor_duplikat.pk
+                duplikat_bpp_url = f"{site_domain}/bpp/autor/{autor_duplikat.pk}/"
+                duplikat_pbn_uid = (
+                    autor_duplikat.pbn_uid_id if autor_duplikat.pbn_uid_id else ""
+                )
+                duplikat_pbn_url = create_pbn_url(duplikat_pbn_uid)
+
+                data_rows.append(
+                    [
+                        glowny_autor_name,
+                        glowny_bpp_id,
+                        glowny_bpp_url,
+                        glowny_pbn_uid,
+                        glowny_pbn_url,
+                        duplikat_name,
+                        duplikat_bpp_id,
+                        duplikat_bpp_url,
+                        duplikat_pbn_uid,
+                        duplikat_pbn_url,
+                        round(pewnosc / 100, 2),  # Convert percentage to decimal
+                        duplicate_count,  # Number of duplicates for this main author
+                    ]
+                )
+
+        except Exception:
+            # Pomiń autorów z błędami w analizie
+            continue
+
+    # Stwórz plik XLSX
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Duplikaty autorów"
+
+    # Sortuj dane alfabetycznie po głównym autorze
+    data_rows.sort(key=lambda x: x[0])  # Sort by main author name
+
+    # Nagłówki
+    headers = [
+        "Główny autor",
+        "BPP ID głównego autora",
+        "BPP URL głównego autora",
+        "PBN UID głównego autora",
+        "PBN URL głównego autora",
+        "Duplikat",
+        "BPP ID duplikatu",
+        "BPP URL duplikatu",
+        "PBN UID duplikatu",
+        "PBN URL duplikatu",
+        "Pewność podobieństwa",
+        "Ilość duplikatów",
+    ]
+
+    ws.append(headers)
+
+    # Dodaj dane
+    for row in data_rows:
+        ws.append(row)
+
+    # Sformatuj URL-e jako klikalne linki
+    if len(data_rows) > 0:
+        # Kolumny z URL-ami: C (BPP główny), E (PBN główny), H (BPP duplikat), J (PBN duplikat)
+        url_columns = [3, 5, 8, 10]  # 0-indexed: C=2, E=4, H=7, J=9
+
+        for row_idx in range(2, len(data_rows) + 2):  # Start from row 2 (after header)
+            for col_idx in url_columns:
+                cell = ws.cell(row=row_idx, column=col_idx + 1)  # Excel is 1-indexed
+                if cell.value and str(cell.value).startswith("https://"):
+                    # Make it a hyperlink
+                    cell.hyperlink = cell.value
+                    cell.style = "Hyperlink"
+                    cell.font = Font(color="0000FF", underline="single")
+
+    # Sformatuj arkusz
+    worksheet_columns_autosize(ws)
+    if len(data_rows) > 0:
+        worksheet_create_table(ws)
+
+    # Zapisz do BytesIO
+    stream = BytesIO()
+    wb.save(stream)
+    return stream.getvalue()

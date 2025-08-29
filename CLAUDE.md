@@ -151,3 +151,4 @@ The project uses a sophisticated migration system with both Python and SQL migra
 - Use model_bakery.baker.make for creating database objects in tests
 - Never use unittest.TestCase classes or Django's TestCase
 - All test functions should be standalone functions with pytest fixtures
+- use ```@pytest.mark.django_db`` for tests using database

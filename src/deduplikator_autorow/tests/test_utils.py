@@ -5,7 +5,11 @@ Testy dla modułu deduplikator_autorow.utils
 import pytest
 from model_bakery import baker
 
-from deduplikator_autorow.utils import analiza_duplikatow, szukaj_kopii
+from deduplikator_autorow.utils import (
+    analiza_duplikatow,
+    szukaj_kopii,
+    znajdz_pierwszego_autora_z_duplikatami,
+)
 from pbn_api.models import OsobaZInstytucji, Scientist
 
 
@@ -551,3 +555,87 @@ def test_analiza_duplikatow_temporal_analysis_scoring_impact(
 
     # Różnica powinna być co najmniej 40 punktów (+20 vs -20)
     assert analiza_wspolne["pewnosc"] - analiza_odlegle["pewnosc"] >= 40
+
+
+def test_znajdz_pierwszego_autora_z_duplikatami_with_duplicates(
+    osoba_z_instytucji, glowny_autor, autor_maker, tytuly
+):
+    """Test znajdowania pierwszego autora z duplikatami"""
+    # Utwórz duplikat dla głównego autora
+    autor_maker(imiona="Jan", nazwisko="Gal-Cisoń")
+
+    # Uruchom funkcję
+    result = znajdz_pierwszego_autora_z_duplikatami()
+
+    # Powinien zwrócić Scientist
+    assert result is not None
+    assert isinstance(result, Scientist)
+    assert result == osoba_z_instytucji.personId
+
+
+@pytest.mark.django_db
+def test_znajdz_pierwszego_autora_z_duplikatami_no_duplicates():
+    """Test gdy nie ma duplikatów"""
+    # Nie tworzymy żadnych duplikatów - tylko główny autor istnieje
+
+    result = znajdz_pierwszego_autora_z_duplikatami()
+
+    # Nie powinien znaleźć żadnego autora z duplikatami
+    assert result is None
+
+
+def test_znajdz_pierwszego_autora_z_duplikatami_with_excluded_authors(
+    osoba_z_instytucji, glowny_autor, autor_maker, tytuly
+):
+    """Test wykluczania określonych autorów z wyszukiwania"""
+    # Utwórz duplikat dla głównego autora
+    autor_maker(imiona="Jan", nazwisko="Gal-Cisoń")  # noqa
+
+    # Wyklucz głównego autora (Scientist)
+    excluded_authors = [osoba_z_instytucji.personId]
+
+    result = znajdz_pierwszego_autora_z_duplikatami(excluded_authors)
+
+    # Nie powinien znaleźć żadnego autora, bo główny został wykluczony
+    assert result is None
+
+
+def test_znajdz_pierwszego_autora_z_duplikatami_multiple_authors_with_duplicates(
+    autor_maker, jednostka, tytuly
+):
+    """Test z wieloma autorami mającymi duplikaty - powinien zwrócić pierwszego"""
+    # Utwórz pierwszego autora z duplikatem
+    autor1 = autor_maker(imiona="Jan", nazwisko="Kowalski")
+    scientist1 = baker.make(Scientist, lastName="Kowalski", name="Jan")
+    autor1.pbn_uid = scientist1
+    autor1.save()
+    osoba1 = baker.make(OsobaZInstytucji, personId=scientist1)  # noqa
+    duplikat1 = autor_maker(imiona="J.", nazwisko="Kowalski")  # noqa
+
+    # Utwórz drugiego autora z duplikatem
+    autor2 = autor_maker(imiona="Anna", nazwisko="Nowak")
+    scientist2 = baker.make(Scientist, lastName="Nowak", name="Anna")
+    autor2.pbn_uid = scientist2
+    autor2.save()
+    osoba2 = baker.make(OsobaZInstytucji, personId=scientist2)  # noqa
+    duplikat2 = autor_maker(imiona="A.", nazwisko="Nowak")  # noqa
+
+    result = znajdz_pierwszego_autora_z_duplikatami()
+
+    # Powinien zwrócić któregoś z autorów (pierwszego znalezionego)
+    assert result is not None
+    assert isinstance(result, Scientist)
+    assert result in [scientist1, scientist2]
+
+
+@pytest.mark.django_db
+def test_znajdz_pierwszego_autora_z_duplikatami_no_bpp_author():
+    """Test gdy Scientist nie ma odpowiedniego autora BPP"""
+    # Utwórz Scientist bez powiązania z BPP
+    scientist = baker.make(Scientist, lastName="Test", name="Test")
+    osoba = baker.make(OsobaZInstytucji, personId=scientist)  # noqa
+
+    result = znajdz_pierwszego_autora_z_duplikatami()
+
+    # Nie powinien znaleźć żadnego autora, bo nie ma powiązania z BPP
+    assert result is None

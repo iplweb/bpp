@@ -1,0 +1,335 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Deduplikator Autorów{% endblock %}
+
+{% block breadcrumbs %}
+    <li><a href="/">Strona główna</a></li>
+    <li><a href="{% url "deduplikator_autorow:duplicate_authors" %}">Deduplikator autorów</a></li>
+{% endblock %}
+
+{% block content %}
+    <div class="row">
+        <div class="column">
+            <div class="grid-x grid-padding-x align-middle" style="margin-bottom: 20px;">
+                <div class="cell auto">
+                    <h1>Deduplikator Autorów <span class="label warning" style="font-size: 0.6em; vertical-align: top;">BETA</span> {% if total_authors_with_duplicates %}
+                        <small style="color: #666;">({{ total_authors_with_duplicates }} autor
+                            {% if total_authors_with_duplicates != 1 %}ów{% endif %} z duplikatami)</small>{% endif %}</h1>
+                </div>
+                <div class="cell shrink">
+                    <a href="{% url 'deduplikator_autorow:download_duplicates_xlsx' %}"
+                       class="button success"
+                       style="margin: 0;"
+                       title="Pobierz wszystkich autorów z duplikatami w formacie XLSX">
+                        📊 Pobierz XLSX duplikatów
+                    </a>
+                </div>
+            </div>
+
+            <!-- Search form -->
+            <div class="callout secondary" style="margin-bottom: 20px;">
+                <form method="get" action="{% url 'deduplikator_autorow:duplicate_authors' %}"
+                      style="margin-bottom: 0;">
+                    <div class="grid-x grid-padding-x align-middle">
+                        <div class="cell medium-6">
+                            <label for="search_lastname">Szukaj autora po nazwisku:</label>
+                            <input type="text" id="search_lastname" name="search_lastname"
+                                   value="{{ search_lastname|default:'' }}"
+                                   placeholder="Wpisz część nazwiska..."
+                                   class="form-control">
+                        </div>
+                        <div class="cell medium-3">
+                            <button type="submit" class="button primary" style="margin-top: 24px;">
+                                🔍 Szukaj
+                            </button>
+                            {% if search_lastname %}
+                                <a href="{% url 'deduplikator_autorow:duplicate_authors' %}"
+                                   class="button secondary" style="margin-top: 24px; margin-left: 5px;">
+                                    Wyczyść
+                                </a>
+                            {% endif %}
+                        </div>
+                        <div class="cell medium-3">
+                            {% if search_lastname %}
+                                <p style="margin-top: 24px; margin-bottom: 0; font-size: 0.9em; color: #666;">
+                                    <strong>Szukano:</strong> "{{ search_lastname }}"
+                                    {% if search_results_count is not None %}
+                                        <br><strong>Znaleziono:</strong> {{ search_results_count }} autor
+                                        {% if search_results_count != 1 %}ów{% endif %}
+                                    {% endif %}
+                                </p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            {% if not scientist %}
+                <div class="callout warning">
+                    <p><strong>Nie znaleziono autorów z duplikatami.</strong></p>
+                    <p>Wszystkie duplikaty zostały prawdopodobnie już przetworzone lub nie ma autorów wymagających
+                        deduplikacji.</p>
+                </div>
+            {% else %}
+                {% if glowny_autor %}
+                    <div class="callout primary">
+                        <h3>Główny rekord autora</h3>
+                        <div class="grid-x grid-padding-x">
+                            <div class="cell medium-4">
+                                <strong>Imię i nazwisko:</strong><br>
+                                <span style="font-size: 1.5em; font-weight: bold; color: #1779ba;">
+                                <a href="{% url 'bpp:browse_autor' glowny_autor.pk %}" target="_blank"
+                                   style="color: inherit; text-decoration: none;">
+                                    {% if glowny_autor.imiona %}{{ glowny_autor.imiona }}{% endif %}
+                                    {{ glowny_autor.nazwisko|default:"[brak nazwiska]" }}
+                                </a>
+                            </span><br/>
+                                <strong>ORCID:</strong>
+                                {% if glowny_autor.orcid %}
+                                    <a href="https://orcid.org/{{ glowny_autor.orcid }}"
+                                       target="_blank">{{ glowny_autor.orcid }}</a>
+                                {% else %}
+                                    brak
+                                {% endif %}
+                                {% if glowny_autor.pbn_uid_id %}
+                                    <br><strong>PBN:</strong> <a href="{{ glowny_autor.link_do_pbn }}"
+                                                                 target="_blank">{{ glowny_autor.pbn_uid_id }}</a><br/>
+                                    <strong>{{ glowny_autor.pbn_uid.x.pbn_uid.currentEmploymentsInstitutionDisplayName }}</strong>
+                                {% endif %}
+                            </div>
+                            <div class="cell medium-4">
+                                <strong>Tytuł naukowy:</strong> {{ glowny_autor.tytul|default:"brak" }}<br/>
+                                <strong>Liczba publikacji:</strong><br>
+                                <span style="font-size: 1.3em; font-weight: bold; color: #2ba6cb; background-color: #e7f4fd; padding: 5px 10px; border-radius: 5px; display: inline-block;">
+                                {{ glowne_publikacje_count|default:0 }} publikacji
+                            </span>
+                            </div>
+                            <div class="cell medium-4">
+                                {% if not search_lastname %}
+                                    <div class="button-group">
+                                        {% if has_previous_authors %}
+                                            <a href="{% url 'deduplikator_autorow:duplicate_authors' %}?go_previous=1"
+                                               class="button secondary">← Poprzedni autor</a>
+                                        {% endif %}
+                                        <a href="{% url 'deduplikator_autorow:duplicate_authors' %}?skip_current=1"
+                                           class="button primary">Następny autor →</a>
+                                    </div>
+                                    {% if has_skipped_authors %}
+                                        <br><a href="{% url 'deduplikator_autorow:reset_skipped_authors' %}"
+                                               class="button alert" style="margin-top: 5px;">Zacznij od początku</a>
+                                    {% endif %}
+                                {% else %}
+                                    <div class="callout secondary" style="text-align: center; padding: 10px;">
+                                        <p style="margin: 0; font-size: 0.9em; color: #666;">
+                                            <strong>Tryb wyszukiwania aktywny</strong><br>
+                                            <small>Wyczyść wyszukiwanie aby przywrócić nawigację</small>
+                                        </p>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+
+                        {% if glowne_publikacje %}
+                            <h4>Publikacje głównego autora:{% if glowne_publikacje_year_range %}
+                                <small style="color: #666;">({{ glowne_publikacje_year_range }})</small>{% endif %}</h4>
+                            <div class="publikacje-lista"
+                                 style="max-height: 300px; overflow-y: auto; border: 1px solid #e1e1e1; padding: 10px;">
+                                {% for publikacja in glowne_publikacje %}
+                                    <div class="publikacja-item"
+                                         style="margin-bottom: 8px; padding: 5px; border-left: 3px solid #1779ba;">
+                                        <small><strong>
+                                            <a href="{% url 'bpp:browse_praca_old' publikacja.content_type.model publikacja.pk.1 %}"
+                                               target="_blank" style="color: #1779ba; text-decoration: none;">
+                                                {{ publikacja.tytul_oryginalny }}
+                                            </a>
+                                            {% if publikacja.rok %}
+                                                <span style="color: #666; font-weight: normal;"> ({{ publikacja.rok }})</span>{% endif %}
+                                        </strong></small><br>
+                                        <small>{{ publikacja.opis_bibliograficzny_cache|truncatewords:20 }}</small>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <h3>Możliwe duplikaty ({{ duplikaty_z_publikacjami|length }})</h3>
+
+                    {% for duplikat_data in duplikaty_z_publikacjami %}
+                        <div class="callout {% if duplikat_data.analiza.pewnosc > 50 %}success{% elif duplikat_data.analiza.pewnosc > 0 %}warning{% else %}alert{% endif %}"
+                             style="margin-bottom: 20px;">
+                            <div class="grid-x grid-padding-x">
+                                <div class="cell medium-8">
+                                    <div style="margin-bottom: 10px;">
+                                    <span style="font-size: 1.4em; font-weight: bold; color: #333;">
+                                        <a href="{% url 'bpp:browse_autor' duplikat_data.autor.pk %}" target="_blank"
+                                           style="color: inherit; text-decoration: none;">
+                                            {% if duplikat_data.autor.imiona %}
+                                                {{ duplikat_data.autor.imiona }}{% endif %}
+                                            {{ duplikat_data.autor.nazwisko|default:"[brak nazwiska]" }}
+                                        </a>
+                                    </span><br>
+                                        <span class="label {% if duplikat_data.analiza.pewnosc > 50 %}success{% elif duplikat_data.analiza.pewnosc > 0 %}warning{% else %}alert{% endif %}">
+                                        Pewność: {{ duplikat_data.analiza.pewnosc }}%
+                                    </span>
+                                    </div>
+
+                                    <div class="grid-x grid-padding-x">
+                                        <div class="cell medium-6">
+                                            <strong>Tytuł naukowy:</strong>
+                                            {{ duplikat_data.autor.tytul|default:"brak" }}
+                                        </div>
+                                        <div class="cell medium-6">
+                                            <strong>ORCID:</strong>
+                                            {% if duplikat_data.autor.orcid %}
+                                                <a href="https://orcid.org/{{ duplikat_data.autor.orcid }}"
+                                                   target="_blank">{{ duplikat_data.autor.orcid }}</a>
+                                            {% else %}
+                                                brak
+                                            {% endif %}
+                                            {% if duplikat_data.autor.pbn_uid_id %}
+                                                <br><strong>PBN:</strong>
+                                                <a href="{{ duplikat_data.autor.link_do_pbn }}"
+                                                   target="_blank">{{ duplikat_data.autor.pbn_uid_id }}</a>
+                                            {% endif %}
+                                        </div>
+                                        <div class="cell medium-12">
+                                            <strong>Liczba publikacji:</strong><br>
+                                            <span style="font-size: 1.2em; font-weight: bold; color: #5e5e5e; background-color: #f4f4f4; padding: 3px 8px; border-radius: 3px; display: inline-block;">
+                                            {{ duplikat_data.publikacje_count|default:0 }} publikacji
+                                        </span>
+                                        </div>
+                                    </div>
+
+                                    <div style="margin-top: 10px;">
+                                        <h5>Powody podobieństwa:</h5>
+                                        <ul>
+                                            {% for powod in duplikat_data.analiza.powody_podobienstwa %}
+                                                <li>{{ powod }}</li>
+                                                {% empty %}
+                                                <li>Brak szczegółowych powodów</li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                </div>
+
+                                <div class="cell medium-4 text-right">
+                                    <div class="button-group stacked">
+                                        <a href="#" class="button small primary" onclick="return confirmMerge();"
+                                           style="width: 100%;">Scal automatycznie</a>
+                                        <form method="post" action="{% url 'deduplikator_autorow:mark_non_duplicate' %}"
+                                              style="display: block; width: 100%;">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="scientist_pk"
+                                                   value="{{ duplikat_data.autor.pk }}">
+                                            <button type="submit" class="button small secondary" style="width: 100%;">
+                                                Nie są duplikatami
+                                            </button>
+                                        </form>
+                                        {% if duplikat_data.publikacje_count == 0 %}
+                                            <button class="button small alert"
+                                                    onclick="return confirmDelete({{ duplikat_data.autor.pk }});"
+                                                    style="width: 100%;">Usuń autora (brak publikacji)
+                                            </button>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {% if duplikat_data.publikacje %}
+                                <h5 style="margin-top: 15px;">Publikacje duplikatu:
+                                    {% if duplikat_data.publikacje_year_range %}
+                                        <small style="color: #666;">({{ duplikat_data.publikacje_year_range }})</small>{% endif %}
+                                </h5>
+                                <div class="publikacje-lista"
+                                     style="max-height: 250px; overflow-y: auto; border: 1px solid #e1e1e1; padding: 10px; background-color: #f9f9f9;">
+                                    {% for publikacja in duplikat_data.publikacje %}
+                                        <div class="publikacja-item"
+                                             style="margin-bottom: 6px; padding: 3px; border-left: 2px solid #8a8a8a;">
+                                            <small><strong>
+                                                <a href="{% url 'bpp:browse_praca' publikacja.pk.0 publikacja.pk.1 %}"
+                                                   target="_blank" style="color: #333; text-decoration: none;">
+                                                    {{ publikacja.tytul_oryginalny }}
+                                                </a>
+                                                {% if publikacja.rok %}
+                                                    <span style="color: #666; font-weight: normal;"> ({{ publikacja.rok }})</span>{% endif %}
+                                            </strong></small><br>
+                                            <small style="color: #666;">
+                                                {{ publikacja.opis_bibliograficzny_cache|truncatewords:15 }}</small>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        {% empty %}
+                        <div class="callout secondary">
+                            <p>Nie znaleziono duplikatów dla tego autora.</p>
+                        </div>
+                    {% endfor %}
+
+                {% else %}
+                    <div class="callout alert">
+                        <p><strong>Błąd:</strong> Nie można pobrać danych głównego autora.</p>
+                    </div>
+                {% endif %}
+            {% endif %}
+
+            {% if not_duplicate_count > 0 %}
+                <div class="grid-x grid-padding-x"
+                     style="margin-top: 20px; border-top: 1px solid #e6e6e6; padding-top: 20px;">
+                    <div class="cell">
+                        <h4>Zarządzanie oznaczonymi autorami</h4>
+                        <div class="button-group">
+                            <a href="/admin/deduplikator_autorow/notaduplicate/" class="button secondary"
+                               target="_blank">
+                                Obejrz oznaczonych jako nie-duplikaty
+                            </a>
+                            <form method="post" action="{% url 'deduplikator_autorow:reset_not_duplicates' %}"
+                                  style="display: inline-block;">
+                                {% csrf_token %}
+                                <button type="submit" class="button warning"
+                                        onclick="return confirm('Czy na pewno chcesz zresetować wszystkie oznaczenia nie-duplikatów? Tej operacji nie można cofnąć.');">
+                                    Zresetuj liczbę oznaczonych jako nie-duplikat (obecnie: {{ not_duplicate_count }})
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <script>
+        function confirmMerge() {
+            return confirm('Czy jesteś pewny/a? W ten sposób przypiszesz wszystkie publikacje potencjalnego duplikatu autorowi głównemu, domyślnie z główną dyscypliną. Zostanie zlecona też wysyłka tych prac do PBN w tle. Tej operacji nie można cofnąć.');
+        }
+
+        function confirmDelete(authorId) {
+            if (confirm('Czy na pewno chcesz usunąć tego autora? Ta operacja jest nieodwracalna. Ta operacja NIE USUWA ' +
+                'DANYCH AUTORA Z PBN.')) {
+                // Create form and submit
+                var form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '{% url "deduplikator_autorow:delete_author" %}';
+
+                var csrfToken = document.createElement('input');
+                csrfToken.type = 'hidden';
+                csrfToken.name = 'csrfmiddlewaretoken';
+                csrfToken.value = '{{ csrf_token }}';
+                form.appendChild(csrfToken);
+
+                var authorIdInput = document.createElement('input');
+                authorIdInput.type = 'hidden';
+                authorIdInput.name = 'author_id';
+                authorIdInput.value = authorId;
+                form.appendChild(authorIdInput);
+
+                document.body.appendChild(form);
+                form.submit();
+                return true;
+            }
+            return false;
+        }
+    </script>
+{% endblock %}

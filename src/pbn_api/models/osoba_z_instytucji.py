@@ -2,7 +2,7 @@ from django.db import models
 
 
 class OsobaZInstytucji(models.Model):
-    personId = models.ForeignKey(
+    personId = models.OneToOneField(
         "pbn_api.Scientist", on_delete=models.PROTECT, db_index=True
     )
     firstName = models.TextField()
@@ -16,3 +16,6 @@ class OsobaZInstytucji(models.Model):
     _to = models.DateField(null=True, blank=True)
 
     last_updated = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.personId_id} {self.firstName} {self.lastName}"
