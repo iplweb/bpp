@@ -375,6 +375,13 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
     pokazuj_jednostki_na_pierwszej_stronie = models.BooleanField(default=False)
     pokazuj_wydzialy_na_pierwszej_stronie = models.BooleanField(default=True)
 
+    uzywaj_wydzialow = models.BooleanField(
+        verbose_name="Używaj wydziałów",
+        default=True,
+        help_text="""Jeżeli struktura instytucji jest 2-progowa: uczelnia -> wydział -> jednostka, zaznacz na TAK.
+        Jeżeli struktura instytucji jest 1-progowa: instytut -> dział, zaznacz na NIE. """,
+    )
+
     deklaracja_dostepnosci_tekst = HTMLField(
         verbose_name="Tekst na stronę BPP dla deklaracji dostępności",
         blank=True,

@@ -138,6 +138,7 @@ class UczelniaAdmin(
                     "pokazuj_autorow_obcych_w_przegladaniu_danych",
                     "pokazuj_autorow_bez_prac_w_przegladaniu_danych",
                     "pokazuj_zrodla_bez_prac_w_przegladaniu_danych",
+                    "uzywaj_wydzialow",
                     "pokazuj_jednostki_na_pierwszej_stronie",
                     "pokazuj_wydzialy_na_pierwszej_stronie",
                     "wyszukiwanie_rekordy_na_strone_anonim",

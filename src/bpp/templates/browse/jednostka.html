@@ -6,10 +6,10 @@
 {% endblock %}
 
 {% block breadcrumbs %}
-    {{ block.super }}
+    {{ block.super }}{% if uczelnia.uzywaj_wydzialow %}
     <li>
         <a href="{% url "bpp:browse_wydzial" jednostka.wydzial.slug %}">{{ jednostka.wydzial }}</a>
-    </li>
+    </li>{% endif %}
     <li class="current">{{ jednostka }}</li>
 {% endblock %}
 

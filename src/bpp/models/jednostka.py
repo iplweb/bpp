@@ -169,7 +169,10 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
     def __str__(self):
         ret = self.nazwa
 
-        if getattr(settings, "DJANGO_BPP_SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI") is False:
+        if (
+            getattr(settings, "DJANGO_BPP_SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI") is False
+            or getattr(settings, "DJANGO_BPP_UCZELNIA_UZYWA_WYDZIALOW") is False
+        ):
             return ret
 
         try:

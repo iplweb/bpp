@@ -176,10 +176,12 @@ class CustomMenu(Menu):
 
         from django.conf import settings
 
+        from bpp.models import Uczelnia
+
         if (
-            not getattr(settings, "DJANGO_BPP_UCZELNIA_UZYWA_WYDZIALOW", True)
-            and STRUKTURA_MENU[1][1].find("wydzial") >= 0
-        ):
+            (not getattr(settings, "DJANGO_BPP_UCZELNIA_UZYWA_WYDZIALOW", True))
+            or (not Uczelnia.objects.get_default().uzywaj_wydzialow)
+        ) and STRUKTURA_MENU[1][1].find("wydzial") >= 0:
             STRUKTURA_MENU.pop(1)
 
         flt("struktura", "Struktura", STRUKTURA_MENU)
