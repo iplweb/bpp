@@ -1,11 +1,11 @@
 """
-Testy dla modułu deduplicator.utils
+Testy dla modułu deduplikator_autorow.utils
 """
 
 import pytest
 from model_bakery import baker
 
-from deduplicator.utils import analiza_duplikatow, szukaj_kopii
+from deduplikator_autorow.utils import analiza_duplikatow, szukaj_kopii
 from pbn_api.models import OsobaZInstytucji, Scientist
 
 
