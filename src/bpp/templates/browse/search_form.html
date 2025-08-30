@@ -1,3 +1,4 @@
+{% if paginator.num_pages > 1 %}
 <form method="get" action="{{ url }}">
     <input type="text" name="{{ name }}" placeholder="{{ tekst }}" id="search_form_input"
             {% if flt %}
@@ -9,3 +10,4 @@
         $("#search_form_input").focus();
     });
 </script>
+{% endif %}

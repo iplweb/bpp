@@ -1,0 +1,29 @@
+// Top Bar Styles
+// Main navigation bar styles
+
+.top-bar {
+    &.sticky-header {
+        position: sticky;
+        top: 0;
+        z-index: 1000;
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+    }
+}
+
+// Menu text styling
+.menu-text {
+    cursor: pointer;
+}
+
+// Global navigation select2 container
+.global-nav-container {
+    #div_id_global_nav_value {
+        transition: all 0.3s ease;
+
+        .select2-container {
+            width: 100% !important;
+            transition: all 0.3s ease;
+        }
+    }
+}

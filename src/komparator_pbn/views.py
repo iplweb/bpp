@@ -2,7 +2,7 @@ from django.db.models import Q
 from django.views.generic import ListView
 from django.views.generic.base import TemplateView
 
-from pbn_api.models import OswiadczenieInstytucji, Publication
+from pbn_api.models import OswiadczenieInstytucji, Publication, Scientist
 
 from django.contrib.admin.views.decorators import staff_member_required
 
@@ -119,6 +119,28 @@ class KomparatorMainView(TemplateView):
             .count()
         )
 
+        # Count PBN scientists without BPP equivalents
+        # Get all mongoIds from Autor table where pbn_uid_id is not null
+        from bpp.models import Autor
+
+        bpp_autor_pbn_uids = set(
+            Autor.objects.exclude(pbn_uid_id__isnull=True).values_list(
+                "pbn_uid_id", flat=True
+            )
+        )
+
+        # Count PBN scientists from institution API that are not in BPP
+        pbn_scientists_not_in_bpp = (
+            Scientist.objects.filter(from_institution_api=True)
+            .exclude(mongoId__in=bpp_autor_pbn_uids)
+            .count()
+        )
+
+        # Count authors with potential duplicates
+        from deduplikator_autorow.utils import count_authors_with_duplicates
+
+        duplicate_authors_count = count_authors_with_duplicates()
+
         context.update(
             {
                 "ciagle_not_sent": ciagle_not_sent,
@@ -132,6 +154,8 @@ class KomparatorMainView(TemplateView):
                 "bpp_total_statements": bpp_ciagle_statements + bpp_zwarte_statements,
                 "pbn_statements": pbn_statements,
                 "pbn_publications_not_in_bpp": pbn_publications_not_in_bpp,
+                "pbn_scientists_not_in_bpp": pbn_scientists_not_in_bpp,
+                "duplicate_authors_count": duplicate_authors_count,
                 "evaluation_start_year": EVALUATION_START_YEAR,
                 "evaluation_end_year": EVALUATION_END_YEAR,
                 "uczelnia": uczelnia,

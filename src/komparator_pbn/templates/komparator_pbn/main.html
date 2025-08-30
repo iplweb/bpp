@@ -166,6 +166,46 @@
         </div>
     </div>
 
+    <div class="row">
+        <div class="large-12 columns">
+            <div class="panel callout warning">
+                <h3>Autorzy</h3>
+                <div class="row">
+                    <div class="medium-6 columns">
+                        <div class="stat-box">
+                            <h4><i class="fi-torso"></i> Autorzy w PBN bez odpowiednika w BPP</h4>
+                            <p><strong>Liczba autorów: {{ pbn_scientists_not_in_bpp|default:0 }}</strong></p>
+                            <small>Autorzy z PBN API instytucji (from_institution_api=True), których mongoId nie występuje w tabeli bpp.Autor.
+                                <br/>Są to autorzy pobrani z API instytucji PBN, którzy nie zostali jeszcze powiązani z autorami w systemie BPP.
+                            </small>
+                            <div style="margin-top: 1rem;">
+                                <a href="/admin/pbn_api/scientist/?from_institution_api__exact=1&odpowiednik=brak"
+                                   class="button expanded warning" target="_blank">
+                                    <i class="fi-list"></i> Pokaż w module redagowania
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="medium-6 columns">
+                        <div class="stat-box">
+                            <h4><i class="fi-duplicate"></i> Zduplikowane autorzy</h4>
+                            <p><strong>Liczba autorów z duplikatami: {{ duplicate_authors_count|default:0 }}</strong></p>
+                            <small>Autorzy w systemie BPP, którzy prawdopodobnie mają duplikaty na podstawie analizy nazwisk, imion i innych kryteriów.
+                                <br/>Wymagają przeglądu i ewentualnego scalenia duplikatów.
+                            </small>
+                            <div style="margin-top: 1rem;">
+                                <a href="{% url 'deduplikator_autorow:duplicate_authors' %}"
+                                   class="button expanded secondary" target="_blank">
+                                    <i class="fi-list"></i> Przejdź do deduplikatora autorów
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     {##}
     {#    <div class="row">#}
     {#        <div class="large-12 columns">#}

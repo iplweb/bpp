@@ -11,42 +11,169 @@
 {% endblock %}
 
 {% block content %}
-    <h1>{{ zrodlo.nazwa }}</h1>
-    {% include "browse/go_to_admin_change.html" with url="admin:bpp_zrodlo_change" pk=zrodlo.pk group="wprowadzanie danych" %}
-    {% include "browse/go_to_admin_list.html" with url="admin:bpp_zrodlo_add" group="wprowadzanie danych" text="dodaj nowy rekord" %}
-    {% if zrodlo.dyscypliny_aktualna_ewaluacja.exists %}
-        <div class="dyscypliny">
-            {% for elem in zrodlo.dyscypliny_aktualna_ewaluacja %}
-            {% ifchanged elem.rok %}
-                <div style="clear: both;"></div>
-                <div class="rok">{{ elem.rok }}</div>
-            {% endifchanged %}
-            <div class="dyscyplina dziedzina-{{ elem.dyscyplina.kod_dziedziny }} dyscyplina-{{ elem.dyscyplina.kod }}">{{ elem.dyscyplina }}</div>
-        {% endfor %}
+    <!-- Modern Header Section -->
+    <div class="source-header" style="margin-bottom: 30px;">
+        <div class="grid-x grid-margin-x align-middle">
+            <div class="cell auto">
+                <h1 style="color: #2c3e50; font-size: 2rem; margin-bottom: 10px;">{{ zrodlo.nazwa }}</h1>
+            </div>
+            <div class="cell shrink">
+                {% include "browse/go_to_admin_change.html" with url="admin:bpp_zrodlo_change" pk=zrodlo.pk group="wprowadzanie danych" %}
+                {% include "browse/go_to_admin_list.html" with url="admin:bpp_zrodlo_add" group="wprowadzanie danych" text="dodaj nowy rekord" %}
+            </div>
         </div>
-        <div style="clear:both;"></div>
-    {% endif %}
-    {% if zrodlo.pbn_uid_id %}
-        <p><a title="PBN UID: {{ zrodlo.pbn_uid_id }}" target="_blank"
-              href="{{ uczelnia.pbn_api_root }}/core/#/journal/view/{{ zrodlo.pbn_uid_id }}/current">
-            Kliknij, aby pokazać w PBN
-        </a>
-        {% if zrodlo.pbn_uid.status == "DELETED" %}
-            <br/>❌ usunięty z PBN 🙅proponuję zmianę PBN ID tego rekordu po stronie BPP
+    </div>
+
+    <!-- Quick Actions -->
+    <div style="text-align: center; margin-bottom: 30px;">
+        <form method="post" action="{% url "bpp:browse_build_search" %}" style="display: inline;">
+            {% csrf_token %}
+            <input type="hidden" name="zrodlo" value="{{ zrodlo.pk }}"/>
+            <input type="hidden" name="suggested-title" value="{{ zrodlo }}"/>
+            <button type="submit"
+                    class="button primary large"
+                    style="background: #27ae60; border: none; padding: 12px 24px; font-size: 1rem; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: all 0.2s ease;"
+                    onmouseover="this.style.backgroundColor='#229954'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.15)'"
+                    onmouseout="this.style.backgroundColor='#27ae60'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)'">
+                <i class="fi-list-bullet" style="margin-right: 8px;"></i>Pokaż wszystkie publikacje
+            </button>
+        </form>
+    </div>
+
+    <!-- Main Content Layout -->
+    <div class="grid-x grid-margin-x">
+        <!-- Left Column - Search Form -->
+        <div class="cell large-8 medium-12">
+            <!-- Modern Search Form -->
+            <div class="search-container" style="background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); padding: 30px; margin-bottom: 30px;">
+        <div class="search-header" style="margin-bottom: 25px;">
+            <h3 style="color: #2c3e50; margin-bottom: 5px;">
+                <i class="fi-magnifying-glass" style="margin-right: 10px;"></i>Wyszukaj w źródle
+            </h3>
+            <p style="color: #7f8c8d; margin: 0; font-size: 0.9rem;">
+                Znajdź publikacje w źródle "{{ zrodlo.nazwa }}"
+            </p>
+        </div>
+
+        <form method="post" action="{% url "bpp:browse_build_search" %}" class="browserForm">
+            {% csrf_token %}
+            <input type="hidden" name="suggested-title" value="{{ zrodlo }}"/>
+            <input type="hidden" name="zrodlo" value="{{ zrodlo.pk }}"/>
+
+            <!-- Years Selection Card -->
+            <div class="card" style="margin-bottom: 20px; border: 1px solid #e9ecef;">
+                <div class="card-section">
+                    <h6 style="color: #2c3e50; margin-bottom: 15px; font-weight: 600;">
+                        <i class="fi-calendar" style="margin-right: 5px;"></i>Opracowane w latach:
+                    </h6>
+                    <div class="grid-x grid-margin-x">
+                        {% for rok in zrodlo.prace_w_latach reversed %}
+                            <div class="cell small-6 medium-4 large-2" style="margin-bottom: 10px;">
+                                <input type="checkbox" name="rok"
+                                       id="rok_{{ rok }}" value="{{ rok }}"
+                                       style="margin-right: 8px;"/>
+                                <label for="rok_{{ rok }}" style="margin-bottom: 0; display: inline;">
+                                    {{ rok }}
+                                </label>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Report Title Card -->
+            <div class="card" style="margin-bottom: 20px; border: 1px solid #e9ecef;">
+                <div class="card-section">
+                    <h6 style="color: #2c3e50; margin-bottom: 15px; font-weight: 600;">
+                        <i class="fi-page-edit" style="margin-right: 5px;"></i>Tytuł raportu:
+                    </h6>
+                    <div class="grid-x grid-margin-x align-middle">
+                        <div class="cell auto">
+                            <input type="text" name="suggested-title" value="{{ zrodlo }}"
+                                   style="margin-bottom: 0; border: 1px solid #e9ecef; border-radius: 4px;"/>
+                        </div>
+                    </div>
+                    <small style="color: #7f8c8d; font-style: italic;">
+                        Tytuł wyszukiwania możesz zmienić, klikając go dwukrotnie.
+                    </small>
+                </div>
+            </div>
+
+            <!-- Search Button -->
+            <div style="text-align: center; margin-top: 25px; padding-top: 20px; border-top: 1px solid #e9ecef;">
+                <button type="submit"
+                        class="button primary large"
+                        style="background: #3498db; border: none; padding: 15px 30px; font-size: 1.1rem; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: all 0.2s ease;"
+                        onmouseover="this.style.backgroundColor='#2980b9'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.15)'"
+                        onmouseout="this.style.backgroundColor='#3498db'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)'">
+                    <i class="fi-magnifying-glass" style="margin-right: 8px; color: white;"></i>Szukaj publikacji
+                </button>
+            </div>
+        </form>
+            </div>
+        </div>
+
+        <!-- Right Column - PBN Info and Disciplines -->
+        <div class="cell large-4 medium-12">
+            <!-- PBN Information Panel -->
+            {% if zrodlo.pbn_uid_id %}
+                <div class="callout" style="background: #f8f9fa; border: 1px solid #e9ecef; margin-bottom: 25px;">
+                    <h6 style="color: #2c3e50; margin-bottom: 15px; font-weight: 600;">
+                        <i class="fi-link" style="margin-right: 5px;"></i>Identyfikatory zewnętrzne
+                    </h6>
+                    <div class="grid-x grid-margin-x" style="gap: 10px;">
+                        <div class="cell">
+                            <div class="callout" style="background: #ffffff; border: 1px solid #e9ecef; border-radius: 6px; padding: 12px; margin: 0; text-align: center;">
+                                <div style="color: #2c3e50; font-weight: 600; font-size: 0.85rem; margin-bottom: 4px;">PBN UID</div>
+                                <a href="{{ uczelnia.pbn_api_root }}/core/#/journal/view/{{ zrodlo.pbn_uid_id }}/current"
+                                   target="_blank"
+                                   style="color: #3498db; text-decoration: none; font-family: monospace; font-size: 0.9rem;"
+                                   title="PBN UID: {{ zrodlo.pbn_uid_id }}">
+                                    {{ zrodlo.pbn_uid_id }}
+                                </a>
+                                {% if zrodlo.pbn_uid.status == "DELETED" %}
+                                    <div style="color: #e74c3c; margin-top: 5px; font-size: 0.8rem;">
+                                        <i class="fi-alert" style="margin-right: 3px;"></i>Usunięty z PBN
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
             {% endif %}
-        </p>
-    {% endif %}
-    <form method="post"
-          action="{% url "bpp:browse_build_search" %}" class="browserForm">
-        {% csrf_token %}
-        <input type="hidden" name="suggested-title" value="{{ zrodlo }}"/>
-        <input type="hidden" name="zrodlo" value="{{ zrodlo.pk }}"/>
-        <p>
-            Wyszukaj w tym źródle rekordy...
-        </p>
-        {% include "browse/w_latach.html" with prace_w_latach=zrodlo.prace_w_latach %}
-        {% include "browse/tytul_raportu.html" with obj=zrodlo %}
-        <input class="submit button" type="submit" value="Szukaj"/>
-    </form>
+
+            <!-- Disciplines -->
+            {% if zrodlo.dyscypliny_aktualna_ewaluacja.exists %}
+                <div class="callout secondary" style="margin-bottom: 30px; border-left: 4px solid #6c757d;">
+                    <h6 style="color: #2c3e50; margin-bottom: 15px; font-weight: 600;">
+                        <i class="fi-book" style="margin-right: 5px;"></i>Dyscypliny naukowe w ewaluacji
+                    </h6>
+                    <ul class="accordion" data-accordion data-allow-all-closed="false" style="border: none; margin-bottom: 0;">
+                        {% regroup zrodlo.dyscypliny_aktualna_ewaluacja by rok as disciplines_by_year %}
+                        {% for year_group in disciplines_by_year reversed %}
+                            <li class="accordion-item{% if year_group.grouper == 2025 %} is-active{% endif %}" data-accordion-item style="border: none;">
+                                <a href="#" class="accordion-title" style="background: #f8f9fa; padding: 12px 18px; border-radius: 4px; color: #495057; font-weight: 500;">
+                                    <i class="fi-calendar" style="margin-right: 8px; font-size: 0.9rem;"></i>
+                                    Rok {{ year_group.grouper }}
+                                    <span style="background: #6c757d; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.8rem; margin-left: 10px;">
+                                        {{ year_group.list|length }}
+                                    </span>
+                                </a>
+                                <div class="accordion-content dyscypliny" data-tab-content style="padding: 15px 5px 5px 5px;">
+{#                                    <div class="dyscypliny">#}
+                                        {% for discipline in year_group.list %}
+                                            <div class="dyscyplina dziedzina-{{ discipline.dyscyplina.kod_dziedziny }} dyscyplina-{{ discipline.dyscyplina.kod }}">
+                                                {{ discipline.dyscyplina }}
+                                            </div>
+                                        {% endfor %}
+{#                                    </div>#}
+                                </div>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
+        </div>
+    </div>
 
 {% endblock %}

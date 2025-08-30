@@ -3,10 +3,10 @@
     <div class="title-bar-title hide-for-print">Menu</div>
 </div>
 
-<div class="top-bar stacked-for-medium hide-for-print" id="example-menu" style="position: sticky; top: 0; z-index: 1000; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);">
+<div class="top-bar stacked-for-medium hide-for-print sticky-header" id="example-menu">
     <div class="top-bar-left">
         <ul class="dropdown menu" data-dropdown-menu>
-            <li class="menu-text" style="cursor:pointer;"
+            <li class="menu-text"
                 onclick="location.href='/';">
                 BPP
             </li>
@@ -171,17 +171,7 @@
     <div class="top-bar-right">
         <ul class="dropdown menu" data-dropdown-menu>
             {% block global-nav %}
-                <li>{% load crispy_forms_tags %}
-                    <style>
-                        #div_id_global_nav_value {
-                            transition: all 0.3s ease;
-                        }
-
-                        #div_id_global_nav_value .select2-container {
-                            width: 100% !important;
-                            transition: all 0.3s ease;
-                        }
-                    </style>
+                <li class="global-nav-container">{% load crispy_forms_tags %}
                     {% crispy global_nav_form %}
                     <script type="text/javascript">
                         $(document).ready(function () {

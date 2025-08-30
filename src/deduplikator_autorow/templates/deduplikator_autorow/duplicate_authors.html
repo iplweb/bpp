@@ -9,78 +9,10 @@
 {% endblock %}
 
 {% block content %}
-    <style>
-        #deduplikator-sidebar {
-            position: fixed;
-            left: 0;
-            width: 280px;
-            border-right: 1px solid rgba(0, 0, 0, 0.1);
-            overflow-y: auto;
-            z-index: 0;
-        }
-
-        #main-content-wrapper {
-            margin-left: 300px;
-            padding: 20px;
-            padding-left: 10px;
-        }
-
-        /* Remove borders and style accordion items */
-        #deduplikator-sidebar .accordion-item {
-            border: none !important;
-            margin-bottom: 0 !important;
-        }
-
-        #deduplikator-sidebar .accordion-title {
-            font-weight: normal !important;
-            font-size: 1rem !important;
-            padding: 12px 15px !important;
-            background: transparent !important;
-            color: #333 !important;
-            transition: all 0.2s ease !important;
-        }
-
-        #deduplikator-sidebar .accordion-title:hover {
-            background: rgba(23, 121, 186, 0.08) !important;
-            transform: translateX(5px);
-        }
-
-        #deduplikator-sidebar .accordion-content {
-            font-size: 0.95rem !important;
-            background: rgba(248, 248, 248, 0.5) !important;
-            padding: 12px 15px !important;
-        }
-
-        #deduplikator-sidebar .accordion-content p {
-            font-size: 0.95rem !important;
-            font-weight: normal !important;
-        }
-
-        @media print {
-            #deduplikator-sidebar {
-                display: none;
-            }
-            #main-content-wrapper {
-                margin-left: 0;
-            }
-        }
-
-        @media screen and (max-width: 64em) {
-            #deduplikator-sidebar {
-                position: static;
-                width: 100%;
-                height: auto !important;
-            }
-            #main-content-wrapper {
-                margin-left: 0;
-            }
-        }
-    </style>
-
-    <div id="deduplikator-container">
+    <div id="left-menu-container">
         <!-- Left Sidebar Menu -->
-        <div id="deduplikator-sidebar">
-            <div class="deduplikator-menu">
+        <div class="left-menu-sidebar">
+            <div class="left-menu-menu">
                 <ul class="accordion" data-accordion data-allow-all-closed="true" data-multi-expand="true" style="border: none; padding: 0; margin: 0;">
                     {% if total_authors_with_duplicates %}
                     <!-- Liczba autorów z duplikatami -->
@@ -238,7 +170,7 @@
         </div>
 
         <!-- Main Content -->
-        <div id="main-content-wrapper">
+        <div class="main-content-with-sidebar">
             <div class="grid-x grid-padding-x align-middle" style="margin-bottom: 20px;">
                 <div class="cell auto">
                     <h1>Deduplikator Autorów PBN <span class="label warning" style="font-size: 0.6em; vertical-align: top;">BETA</span></h1>
@@ -464,7 +396,7 @@
     <script>
         // Adjust sidebar position and height
         function adjustSidebarPosition() {
-            const sidebar = document.getElementById('deduplikator-sidebar');
+            const sidebar = document.querySelector('.left-menu-sidebar');
             const breadcrumbs = document.getElementById('breadcrumbs-wrapper');
             const footer = document.querySelector('.grid-container-fluid[style*="z-index: 10"]') ||
                           document.querySelector('.grid-container-fluid[style*="background-color: #f8f8f8"]');

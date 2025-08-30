@@ -166,11 +166,11 @@ class Browser(ListView):
 
 
 class AutorzyView(Browser):
-    template_name = "browse/autorzy.html"
+    template_name = "browse/autorzy_modern_bordered.html"
     model = Autor
     param = "search"
     literka_field = "nazwisko"
-    paginate_by = 252
+    paginate_by = 50
 
     def get_queryset(self):
 
@@ -204,8 +204,17 @@ class AutorzyView(Browser):
                 # Nie pokazuj autorów bez prac
                 ret = ret.exclude(autorzyview=None)
 
-        return ret.only("nazwisko", "imiona", "slug", "poprzednie_nazwiska").order_by(
-            "nazwisko", "imiona"
+        return (
+            ret.select_related("aktualna_jednostka", "aktualna_jednostka__wydzial")
+            .only(
+                "nazwisko",
+                "imiona",
+                "slug",
+                "poprzednie_nazwiska",
+                "aktualna_jednostka__nazwa",
+                "aktualna_jednostka__wydzial__nazwa",
+            )
+            .order_by("nazwisko", "imiona")
         )
 
 

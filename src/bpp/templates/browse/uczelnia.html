@@ -12,7 +12,7 @@
             <div class="cell">
                 <div id="rotating-tips" style="text-align: center; font-size: 14px; line-height: 1.4;">
                     <div class="tip-content" style="display: none; opacity: 0; transition: opacity 0.5s ease-in-out;">
-                        💡 <strong>Porady BPP:</strong> <span id="tip-text">Ładowanie porad...</span>
+                        <i class="fi-lightbulb"></i> <strong>Porady BPP:</strong> <span id="tip-text">Ładowanie porad...</span>
                     </div>
                 </div>
             </div>
@@ -105,9 +105,12 @@
         <div class="large-12 cell">
             <div class="shaded-hr-div"></div>
         </div>
-        <div class="large-12 cell" style="text-align: center; margin: 15px 0;">
-            <a href="/zglos_publikacje/nowe_zgloszenie/" class="button secondary" style="border-radius: 12px; padding: 8px 16px; font-size: 14px;">
-                📝 Masz nową publikację? Dodaj ją do bazy!
+        <div class="large-12 cell" style="text-align: center; margin: 20px 0;">
+            <a href="/zglos_publikacje/nowe_zgloszenie/" class="button" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 8px; padding: 10px 18px; font-size: 14px; font-weight: 500; box-shadow: 0 3px 6px rgba(102, 126, 234, 0.2); transition: all 0.3s ease; margin-right: 8px; text-decoration: none; border: none;" onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 10px rgba(102, 126, 234, 0.3)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 3px 6px rgba(102, 126, 234, 0.2)';">
+                <i class="fi-page-add" style="font-size: 16px; margin-right: 6px;"></i> Masz nową publikację? Dodaj ją do bazy
+            </a>
+            <a href="{% url 'multiseek:index' %}" class="button secondary" style="background: #f8f9fa; color: #495057; border-radius: 8px; padding: 10px 18px; font-size: 14px; font-weight: 500; box-shadow: 0 2px 4px rgba(0,0,0,0.08); transition: all 0.3s ease; text-decoration: none; border: 1px solid #dee2e6;" onmouseover="this.style.background='#e9ecef'; this.style.transform='translateY(-1px)'; this.style.boxShadow='0 3px 6px rgba(0,0,0,0.12)';" onmouseout="this.style.background='#f8f9fa'; this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.08)';">
+                <i class="fi-magnifying-glass" style="font-size: 16px; margin-right: 6px;"></i> Przeglądaj wszystkie prace
             </a>
         </div>
         <div class="large-12 cell">
@@ -127,7 +130,9 @@
         {% else %}
             {% if miniblog.exists or request.user.is_superuser or request.user|has_group:"web" %}
                 <div class="small-12 large-6 cell">
-                    <h2>Aktualności</h2>
+                    <h3 style="color: #2c3e50; font-size: 1.3rem; font-weight: 600; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #e9ecef;">
+                        <i class="fi-megaphone" style="margin-right: 8px; color: #95a5a6;"></i>Aktualności
+                    </h3>
                     {% for article in miniblog %}
                         <h3><strong>{{ article.title }}</strong></h3>
                         <p>
@@ -149,14 +154,26 @@
         {% endif %}
         {% if uczelnia.pokazuj_wydzialy_na_pierwszej_stronie %}
             <div class="small-12 large-6 cell">
-                <h2>Wybierz {% rzeczownik_wydział %}</h2>
-                <ul class="no-bullet" style="line-height: 250%;">
+                <h3 style="color: #2c3e50; font-size: 1.3rem; font-weight: 600; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #e9ecef;">
+                    <i class="fi-foundation" style="margin-right: 8px; color: #95a5a6;"></i>Wybierz {% rzeczownik_wydział %}
+                </h3>
+                <div class="wydzial-list" style="margin-bottom: 20px;">
                     {% for wydzial in uczelnia.wydzialy %}
-                        <li>
-                            <a href="{% url "bpp:browse_wydzial" wydzial.slug %}">{{ wydzial }}</a>
-                        </li>
+                        <div class="wydzial-card" style="background: white; border-radius: 6px; padding: 15px; margin-bottom: 12px; border: 2px solid #e9ecef; transition: all 0.2s ease; position: relative;"
+                             onmouseover="this.style.borderColor='#667eea'; this.style.background='#fafbfc'; this.style.transform='translateX(4px)';"
+                             onmouseout="this.style.borderColor='#e9ecef'; this.style.background='white'; this.style.transform='translateX(0)';">
+                            <div style="position: absolute; top: 50%; right: 15px; transform: translateY(-50%); color: #bdc3c7;">
+                                <i class="fi-arrow-right" style="font-size: 1.2rem;"></i>
+                            </div>
+                            <a href="{% url "bpp:browse_wydzial" wydzial.slug %}"
+                               style="color: #2c3e50; text-decoration: none; font-weight: 500; font-size: 0.95rem; line-height: 1.4; display: block; padding-right: 30px;"
+                               onmouseover="this.style.color='#667eea';"
+                               onmouseout="this.style.color='#2c3e50';">
+                                {{ wydzial }}
+                            </a>
+                        </div>
                     {% endfor %}
-                </ul>
+                </div>
                 {% include "browse/go_to_admin_list.html" with group="struktura" url="admin:bpp_wydzial_changelist" text="<i class='fi-wrench'></i> zarządzaj wydziałami" %}
                 {% include "browse/go_to_admin_change.html" with url="admin:bpp_uczelnia_change" pk=uczelnia.pk group="struktura" text="ustawienia dla uczelni" %}
             </div>
@@ -164,14 +181,26 @@
         {% endif %}
     {% if uczelnia.pokazuj_jednostki_na_pierwszej_stronie %}
         <div class="small-12 large-6 cell">{% load deklinacja %}
-            <h2>Wybierz {% rzeczownik_jednostkę %}</h2>
-            <ul class="no-bullet" style="line-height: 250%;">
+            <h3 style="color: #2c3e50; font-size: 1.3rem; font-weight: 600; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #e9ecef;">
+                <i class="fi-home" style="margin-right: 8px; color: #95a5a6;"></i>Wybierz {% rzeczownik_jednostkę %}
+            </h3>
+            <div class="jednostka-list" style="margin-bottom: 20px;">
                 {% for jednostka in uczelnia.jednostki %}
-                    <li>
-                        <a href="{% url "bpp:browse_jednostka" jednostka.slug %}">{{ jednostka }}</a>
-                    </li>
+                    <div class="jednostka-card" style="background: white; border-radius: 6px; padding: 15px; margin-bottom: 12px; border: 2px solid #e9ecef; transition: all 0.2s ease; position: relative;"
+                         onmouseover="this.style.borderColor='#667eea'; this.style.background='#fafbfc'; this.style.transform='translateX(4px)';"
+                         onmouseout="this.style.borderColor='#e9ecef'; this.style.background='white'; this.style.transform='translateX(0)';">
+                        <div style="position: absolute; top: 50%; right: 15px; transform: translateY(-50%); color: #bdc3c7;">
+                            <i class="fi-arrow-right" style="font-size: 1.2rem;"></i>
+                        </div>
+                        <a href="{% url "bpp:browse_jednostka" jednostka.slug %}"
+                           style="color: #2c3e50; text-decoration: none; font-weight: 500; font-size: 0.95rem; line-height: 1.4; display: block; padding-right: 30px;"
+                           onmouseover="this.style.color='#667eea';"
+                           onmouseout="this.style.color='#2c3e50';">
+                            {{ jednostka }}
+                        </a>
+                    </div>
                 {% endfor %}
-            </ul>
+            </div>
             {% include "browse/go_to_admin_list.html" with group="struktura" url="admin:bpp_jednostka_changelist" text="<i class='fi-wrench'></i> zarządzaj jednostkami" %}
             {% include "browse/go_to_admin_change.html" with url="admin:bpp_uczelnia_change" pk=uczelnia.pk group="struktura" text="ustawienia dla uczelni" %}
         </div>
@@ -183,7 +212,9 @@
             {% if recently_updated %}
                 {% cache 3600 recent_publications uczelnia.pk %}
                 <div class="small-12 large-6 cell">
-                    <h2>📚 Niedawno zaktualizowane rekordy:</h2>
+                    <h3 style="color: #2c3e50; font-size: 1.3rem; font-weight: 600; margin-top: 30px; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #e9ecef;">
+                        <i class="fi-book" style="margin-right: 8px; color: #95a5a6;"></i>Niedawno zaktualizowane rekordy
+                    </h3>
                     <ul class="no-bullet" style="line-height: 180%;">
                         {% for rekord in recently_updated %}
                             <li style="margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #e6e6e6;">
@@ -207,7 +238,9 @@
             {% if recent_abstracts %}
                 {% cache 3600 recent_abstracts uczelnia.pk %}
                 <div class="small-12 large-6 cell">
-                    <h2>📄 Najnowsze streszczenia:</h2>
+                    <h3 style="color: #2c3e50; font-size: 1.3rem; font-weight: 600; margin-top: 30px; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #e9ecef;">
+                        <i class="fi-page-multiple" style="margin-right: 8px; color: #95a5a6;"></i>Najnowsze streszczenia
+                    </h3>
                     <ul class="no-bullet" style="line-height: 180%;">
                         {% for rekord in recent_abstracts %}
                             <li style="margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #e6e6e6;">

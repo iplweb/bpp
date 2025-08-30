@@ -1,3 +1,4 @@
+{% if paginator.num_pages > 1 %}
 <div class="tabs hide-for-print" id="literki-tabs" style="margin-bottom: 10px;">
 
     <span class="tabs-title {% if wybrana == None %}is-active{% endif %}">
@@ -17,5 +18,4 @@
         </span>
     {% endfor %}
 </div>
-
-
+{% endif %}

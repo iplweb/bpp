@@ -1,6 +1,6 @@
 <div class="cell">
     <div class="hide-for-print cell">
-        <div style="text-align: center; font-size: 70%;">
+        <div class="footer__content">
             {% if uczelnia.pokazuj_deklaracje_dostepnosci == 1 %}
                 <a href="{{ uczelnia.deklaracja_dostepnosci_url }}">deklaracja dostępności</a> |
             {% endif %}
@@ -14,13 +14,13 @@
             {% endif %}
             Oprogramowanie <a href="http://bpp.iplweb.pl/">Bibliografia Publikacji Pracowników</a> &copy;
             2004-2025 <a href="http://iplweb.pl">IPLweb</a>; wersja {% load bpp_version %}{% bpp_version %}
-            <div id="test-image-copyright" style="display: none;">
+            <div id="test-image-copyright" class="footer__test-copyright">
                 Obrazek tła dla serwera testowego: <a href=http://www.freepik.com>Designed by pch.vector /
                 Freepik</a>.
             </div>
         </div>
     </div>
-    <div class="show-for-print">
+    <div class="show-for-print footer__print">
         <div class="text-right">
             <small>
                 Dokument wygenerowano przy pomocy systemu Bibliografia Publikacji Pracowników w

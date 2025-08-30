@@ -5,7 +5,7 @@
     {% if original.rekord_w_bpp %}
         <li><a target="_blank" href="{{ original.rekord_w_bpp.get_absolute_url }}">Zobacz w BPP</a></li>
     {% else %}
-        <li><a href="#" class="disabled">Brak dopasowania w BPP</a></li>
+        <li><a href="{{ create_in_bpp_url }}" class="addlink">Utwórz w BPP</a></li>
     {% endif %}
     {{ block.super }}
 {% endblock %}

@@ -1,0 +1,29 @@
+.footer__content {
+  text-align: center;
+  font-size: 70%;
+}
+.footer__test-copyright {
+  display: none;
+}
+.footer__print .text-right {
+  text-align: right;
+}
+.footer__print small {
+  font-size: 85%;
+}
+
+@media print {
+  .hide-for-print {
+    display: none !important;
+  }
+  .show-for-print {
+    display: block !important;
+  }
+}
+@media screen {
+  .show-for-print {
+    display: none !important;
+  }
+}
+
+/*# sourceMappingURL=base_footer.css.map */

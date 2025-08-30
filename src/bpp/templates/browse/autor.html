@@ -11,126 +11,284 @@
 {% endblock %}
 
 {% block content %}
-<h1>{{ autor }}{% if autor.aktualna_jednostka %}{% if autor.aktualna_funkcja.pokazuj_za_nazwiskiem %},
-    {{ autor.aktualna_funkcja }}{% endif %}
-{% endif %}</h1>
-{% include "browse/go_to_admin_change.html" with url="admin:bpp_autor_change" pk=autor.pk group="wprowadzanie danych" %}
+<div class="author-header">
+    <div class="grid-x grid-margin-x align-middle">
+        <div class="cell auto">
+            <h1 style="margin-bottom: 8px;">{{ autor }}</h1>
+            {% if autor.aktualna_funkcja.pokazuj_za_nazwiskiem %}
+                <div class="author-title">{{ autor.aktualna_funkcja }}</div>
+            {% endif %}
+        </div>
+        <div class="cell shrink">
+            {% include "browse/go_to_admin_change.html" with url="admin:bpp_autor_change" pk=autor.pk group="wprowadzanie danych" %}
+        </div>
+    </div>
+</div>
 
-{% if autor.praca_doktorska_set.exists %}
-    {% for praca_doktorska in autor.praca_doktorska_set.all %}
-        <p>
-            Praca doktorska:
-            <a href="{% url "bpp:browse_praca_old" "praca_doktorska" praca_doktorska.pk %}">
-                {{ praca_doktorska|safe }}
-            </a>
-        </p>
-    {% endfor %}
-{% endif %}
+<!-- Quick Actions -->
+<div style="text-align: center; margin-bottom: 30px;">
+    <form method="post" action="{% url "bpp:browse_build_search" %}" style="display: inline;">
+        {% csrf_token %}
+        <input type="hidden" name="autor" value="{{ autor.pk }}"/>
+        <input type="hidden" name="suggested-title" value="{{ autor }}"/>
+        <button type="submit"
+                class="button primary large"
+                style="background: #27ae60; border: none; padding: 12px 24px; font-size: 1rem; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: all 0.2s ease;"
+                onmouseover="this.style.backgroundColor='#229954'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.15)'"
+                onmouseout="this.style.backgroundColor='#27ae60'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)'">
+            <i class="fi-list-bullet" style="margin-right: 8px;"></i>Pokaż wszystkie prace
+        </button>
+    </form>
+</div>
 
-{% if autor.praca_habilitacyjna %}
-    <p>
-        Praca habilitacyjna:
-        <a href="{% url "bpp:browse_praca_old" "praca_habilitacyjna" autor.praca_habilitacyjna.pk %}">
-            {{ autor.praca_habilitacyjna|safe }}
-        </a>
-    </p>
-{% endif %}
-    {% if autor.aktualna_jednostka and autor.aktualna_jednostka != uczelnia.obca_jednostka %}
-        <p>Aktualna jednostka:
-            <a href="{% url "bpp:browse_jednostka" autor.aktualna_jednostka.slug %}">{{ autor.aktualna_jednostka.nazwa }}</a>
-        </p>
-    {% endif %}
+<div class="shaded-hr-div-small"></div>
 
-    {% if autor.aktualna_dyscyplina %}
-        <p>Dyscyplina: {{ autor.aktualna_dyscyplina }}</p>
-    {% endif %}
+<div class="row">
+    <div class="large-12 columns">
+        <!-- Current workplace and affiliation -->
+        {% if autor.aktualna_jednostka and autor.aktualna_jednostka != uczelnia.obca_jednostka %}
+            <div class="author-info-section">
+                <h3><i class="fi-home"></i> Aktualna jednostka</h3>
+                <p><a href="{% url "bpp:browse_jednostka" autor.aktualna_jednostka.slug %}">{{ autor.aktualna_jednostka.nazwa }}</a></p>
+            </div>
+            <div class="shaded-hr-div-small"></div>
+        {% endif %}
 
-    {% if autor.aktualna_subdyscyplina %}
-        <p>Druga dyscyplina: {{ autor.aktualna_subdyscyplina }}</p>
-    {% endif %}
+        <!-- Disciplines -->
+        {% if autor.aktualna_dyscyplina or autor.aktualna_subdyscyplina %}
+            <div class="author-info-section">
+                <h3><i class="fi-book"></i> Dyscypliny naukowe</h3>
+                {% if autor.aktualna_dyscyplina %}
+                    <p><strong>Dyscyplina:</strong> {{ autor.aktualna_dyscyplina }}</p>
+                {% endif %}
+                {% if autor.aktualna_subdyscyplina %}
+                    <p><strong>Druga dyscyplina:</strong> {{ autor.aktualna_subdyscyplina }}</p>
+                {% endif %}
+            </div>
+            <div class="shaded-hr-div-small"></div>
+        {% endif %}
 
-    {% if request.user.is_authenticated %}
-        {% if not autor.pokazuj_poprzednie_nazwiska %}
-            {% if autor.poprzednie_nazwiska %}
-                <small>Poprzednie nazwiska (ukryte): {{ autor.poprzednie_nazwiska }}</small>
+        <!-- External identifiers -->
+        {% if autor.orcid or autor.pbn_uid_id or autor.pbn_id or autor.system_kadrowy_id %}
+            <div class="author-info-section">
+                <h3><i class="fi-link"></i> Identyfikatory</h3>
+                <div class="grid-x grid-margin-x" style="gap: 10px;">
+                    {% if autor.orcid %}
+                        <div class="cell shrink">
+                            <div class="callout" style="background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px; padding: 12px; margin: 0; text-align: center; min-width: 120px;">
+                                <div style="color: #2c3e50; font-weight: 600; font-size: 0.85rem; margin-bottom: 4px;">ORCID</div>
+                                <a href="https://orcid.org/{{ autor.orcid }}" target="_blank" style="color: #3498db; text-decoration: none; font-family: monospace; font-size: 0.9rem;">{{ autor.orcid }}</a>
+                            </div>
+                        </div>
+                    {% endif %}
+                    {% if autor.pbn_uid_id %}
+                        <div class="cell shrink">
+                            <div class="callout" style="background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px; padding: 12px; margin: 0; text-align: center; min-width: 120px;">
+                                <div style="color: #2c3e50; font-weight: 600; font-size: 0.85rem; margin-bottom: 4px;">PBN UID</div>
+                                <a href="{{ autor.link_do_pbn }}" target="_blank" style="color: #3498db; text-decoration: none; font-family: monospace; font-size: 0.9rem;">{{ autor.pbn_uid_id }}</a>
+                            </div>
+                        </div>
+                    {% endif %}
+                    {% if autor.pbn_id %}
+                        <div class="cell shrink">
+                            <div class="callout" style="background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px; padding: 12px; margin: 0; text-align: center; min-width: 120px;">
+                                <div style="color: #2c3e50; font-weight: 600; font-size: 0.85rem; margin-bottom: 4px;">PBN ID</div>
+                                <div style="color: #7f8c8d; font-family: monospace; font-size: 0.9rem;">{{ autor.pbn_id }}</div>
+                            </div>
+                        </div>
+                    {% endif %}
+                    {% if autor.system_kadrowy_id %}
+                        <div class="cell shrink">
+                            <div class="callout" style="background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px; padding: 12px; margin: 0; text-align: center; min-width: 120px;">
+                                <div style="color: #2c3e50; font-weight: 600; font-size: 0.85rem; margin-bottom: 4px;">System kadrowy</div>
+                                <div style="color: #7f8c8d; font-family: monospace; font-size: 0.9rem;">{{ autor.system_kadrowy_id }}</div>
+                            </div>
+                        </div>
+                    {% endif %}
+                    <div class="cell shrink">
+                        <div class="callout" style="background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px; padding: 12px; margin: 0; text-align: center; min-width: 120px;">
+                            <div style="color: #2c3e50; font-weight: 600; font-size: 0.85rem; margin-bottom: 4px;">BPP ID</div>
+                            <span data-tooltip class="top" data-click-open="false" tabindex="2"
+                                  title="Unikalny, wewnętrzny identyfikator autora w systemie BPP"
+                                  style="color: #7f8c8d; font-family: monospace; font-size: 0.9rem;">
+                                {{ autor.pk }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+
+        <!-- Academic degrees -->
+        {% if autor.praca_doktorska_set.exists or autor.praca_habilitacyjna %}
+            <div class="author-info-section">
+                <h3><i class="fi-trophy"></i> Stopnie naukowe</h3>
+                {% if autor.praca_doktorska_set.exists %}
+                    {% for praca_doktorska in autor.praca_doktorska_set.all %}
+                        <p>
+                            <strong>Praca doktorska:</strong>
+                            <a href="{% url "bpp:browse_praca_old" "praca_doktorska" praca_doktorska.pk %}">
+                                {{ praca_doktorska|safe }}
+                            </a>
+                        </p>
+                    {% endfor %}
+                {% endif %}
+                {% if autor.praca_habilitacyjna %}
+                    <p>
+                        <strong>Praca habilitacyjna:</strong>
+                        <a href="{% url "bpp:browse_praca_old" "praca_habilitacyjna" autor.praca_habilitacyjna.pk %}">
+                            {{ autor.praca_habilitacyjna|safe }}
+                        </a>
+                    </p>
+                {% endif %}
+            </div>
+            <div class="shaded-hr-div-small"></div>
+        {% endif %}
+
+        <!-- Previous names (for authenticated users) -->
+        {% if request.user.is_authenticated %}
+            {% if not autor.pokazuj_poprzednie_nazwiska %}
+                {% if autor.poprzednie_nazwiska %}
+                    <div class="author-info-section">
+                        <small><strong>Poprzednie nazwiska (ukryte):</strong> {{ autor.poprzednie_nazwiska }}</small>
+                    </div>
+                    <div class="shaded-hr-div-small"></div>
+                {% endif %}
             {% endif %}
         {% endif %}
-    {% endif %}
 
-{% if autor.pokazuj_opis and autor.opis %}
-{{ autor.opis|safe }}
-{% endif %}
+        <!-- Description -->
+        {% if autor.pokazuj_opis and autor.opis %}
+            <div class="author-info-section">
+                <h3><i class="fi-info"></i> Opis</h3>
+                {{ autor.opis|safe }}
+            </div>
+            <div class="shaded-hr-div-small"></div>
+        {% endif %}
 
-{% load czy_pokazywac %}
-{% czy_pokazywac liczbe_cytowan_na_stronie_autora ignoruj_grupe %}
-    {% if autor.liczba_cytowan %}
-        <p><strong>Liczba cytowań: </strong>{{ autor.liczba_cytowan }}</p>
-        <p><strong>Liczba cytowań z jednostek
-            afiliowanych: </strong>{{ autor.liczba_cytowan_afiliowane|default:"brak" }}</p>
-    {% endif %}
-{% end_czy_pokazywac %}
-<p>
-    {% if autor.orcid %}
-        <strong>ORCID:</strong> <a href="https://orcid.org/{{ autor.orcid }}"
-                                   target="_blank">{{ autor.orcid }}</a>
-    {% endif %}
-    {% if autor.pbn_uid_id %}
-        <strong>PBN UID:</strong>
-        <a href="{{ autor.link_do_pbn }}" target="_blank">{{ autor.pbn_uid_id }}</a>
-    {% endif %}
-
-
-    {% if autor.pbn_id %}
-        <strong>PBN ID:</strong> {{ autor.pbn_id }}
-    {% endif %}
-    {% if autor.system_kadrowy_id %}
-        <strong>System kadrowy ID:</strong> {{ autor.system_kadrowy_id }}
-    {% endif %}
-    <span data-tooltip class="top" data-click-open="false" tabindex="2"
-          title="Unikalny, wewnętrzny identyfikator autora w systemie BPP">
-        BPP ID</span>: {{ autor.pk }}
-
-<form method="post"
-      action="{% url "bpp:browse_build_search" %}"
-      class="browserForm">
-    {% csrf_token %}
-    <input type="hidden" name="suggested-title" value="{{ autor }}"/>
-    <input type="hidden" name="autor" value="{{ autor.pk }}"/>
-
-    <fieldset>
-        <legend>
-            Wyszukaj dla tego autora:
-
-        </legend>
-        {% include "browse/typy.html" %}
-    </fieldset>
-
-    <fieldset>
-        <legend>
-            ... opracowane w jednostkach:
-        </legend>
-        <div class="row">
-            {% for jednostka in autor.jednostki_gdzie_ma_publikacje %}
-                <div class="large-6 small-12">
-                    <input type="checkbox"
-                           name="jednostka"
-                           value="{{ jednostka.pk }}"
-                           id="jednostka_{{ jednostka.pk }}"
-                    />
-                    <label for="jednostka_{{ jednostka.pk }}">
-                        {{ jednostka.nazwa }}
-                        <a href="{% url "bpp:browse_jednostka" jednostka.slug %}">►</a>
-                    </label>
+        <!-- Citations -->
+        {% load czy_pokazywac %}
+        {% czy_pokazywac liczbe_cytowan_na_stronie_autora ignoruj_grupe %}
+            {% if autor.liczba_cytowan %}
+                <div class="author-info-section">
+                    <h3><i class="fi-graph-trend"></i> Cytowania</h3>
+                    <p><strong>Liczba cytowań:</strong> {{ autor.liczba_cytowan }}</p>
+                    <p><strong>Liczba cytowań z jednostek afiliowanych:</strong> {{ autor.liczba_cytowan_afiliowane|default:"brak" }}</p>
                 </div>
-            {% endfor %}
-        </div>
-    </fieldset>
+                <div class="shaded-hr-div-small"></div>
+            {% endif %}
+        {% end_czy_pokazywac %}
+    </div>
+</div>
 
-    <p>
-        {% include "browse/w_latach.html" with prace_w_latach=autor.prace_w_latach %}
-        {% include "browse/tytul_raportu.html" with obj=autor %}
-        <input class="submit button" type="submit" value="Szukaj"/>
-</form>
+
+<!-- Modern Search Form -->
+<div class="search-container" style="background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); padding: 30px; margin-bottom: 30px;">
+    <div class="search-header" style="margin-bottom: 25px;">
+        <h3 style="color: #2c3e50; margin-bottom: 5px;">
+            <i class="fi-magnifying-glass" style="margin-right: 10px;"></i>Wyszukaj publikacje autora
+        </h3>
+        <p style="color: #7f8c8d; margin: 0; font-size: 0.9rem;">
+            Znajdź publikacje powiązane z autorem {{ autor }}
+        </p>
+    </div>
+
+    <form method="post"
+          action="{% url "bpp:browse_build_search" %}"
+          class="browserForm">
+        {% csrf_token %}
+        <input type="hidden" name="suggested-title" value="{{ autor }}"/>
+        <input type="hidden" name="autor" value="{{ autor.pk }}"/>
+
+        <div class="card" style="margin-bottom: 20px; border: 1px solid #e9ecef;">
+            <div class="card-section">
+                <h6 style="color: #2c3e50; margin-bottom: 15px; font-weight: 600;">
+                    <i class="fi-list" style="margin-right: 5px;"></i>Typ publikacji:
+                </h6>
+                {% include "browse/typy.html" %}
+            </div>
+        </div>
+
+        {% if autor.jednostki_gdzie_ma_publikacje %}
+            <div class="card" style="margin-bottom: 20px; border: 1px solid #e9ecef;">
+                <div class="card-section">
+                    <h6 style="color: #2c3e50; margin-bottom: 15px; font-weight: 600;">
+                        <i class="fi-home" style="margin-right: 5px;"></i>Opracowane w jednostkach:
+                    </h6>
+                    <div class="grid-x grid-margin-x">
+                        {% for jednostka in autor.jednostki_gdzie_ma_publikacje %}
+                            <div class="cell medium-6" style="margin-bottom: 8px;">
+                                <input type="checkbox"
+                                       name="jednostka"
+                                       value="{{ jednostka.pk }}"
+                                       id="jednostka_{{ jednostka.pk }}"
+                                       style="margin-right: 8px;"/>
+                                <label for="jednostka_{{ jednostka.pk }}" style="margin-bottom: 0; display: inline;">
+                                    {{ jednostka.nazwa }}
+                                    <a href="{% url "bpp:browse_jednostka" jednostka.slug %}"
+                                       style="margin-left: 5px; color: #3498db; text-decoration: none;"
+                                       title="Zobacz jednostkę">
+                                        <i class="fi-home" style="font-size: 0.9rem;"></i>
+                                    </a>
+                                </label>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+
+        <!-- Years Selection Card -->
+        <div class="card" style="margin-bottom: 20px; border: 1px solid #e9ecef;">
+            <div class="card-section">
+                <h6 style="color: #2c3e50; margin-bottom: 15px; font-weight: 600;">
+                    <i class="fi-calendar" style="margin-right: 5px;"></i>Opracowane w latach:
+                </h6>
+                <div class="grid-x grid-margin-x">
+                    {% for rok in autor.prace_w_latach reversed %}
+                        <div class="cell small-6 medium-4 large-2" style="margin-bottom: 10px;">
+                            <input type="checkbox" name="rok"
+                                   id="rok_{{ rok }}" value="{{ rok }}"
+                                   style="margin-right: 8px;"/>
+                            <label for="rok_{{ rok }}" style="margin-bottom: 0; display: inline;">
+                                {{ rok }}
+                            </label>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Report Title Card -->
+        <div class="card" style="margin-bottom: 20px; border: 1px solid #e9ecef;">
+            <div class="card-section">
+                <h6 style="color: #2c3e50; margin-bottom: 15px; font-weight: 600;">
+                    <i class="fi-page-edit" style="margin-right: 5px;"></i>Tytuł raportu:
+                </h6>
+                <div class="grid-x grid-margin-x align-middle">
+                    <div class="cell auto">
+                        <input type="text" name="suggested-title" value="{{ autor }}"
+                               style="margin-bottom: 0; border: 1px solid #e9ecef; border-radius: 4px;"/>
+                    </div>
+                </div>
+                <small style="color: #7f8c8d; font-style: italic;">
+                    Tytuł wyszukiwania możesz zmienić, klikając go dwukrotnie.
+                </small>
+            </div>
+        </div>
+
+        <!-- Search Button -->
+        <div style="text-align: center; margin-top: 25px; padding-top: 20px; border-top: 1px solid #e9ecef;">
+            <button type="submit"
+                    class="button primary large"
+                    style="background: #3498db; border: none; padding: 15px 30px; font-size: 1.1rem; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: all 0.2s ease;"
+                    onmouseover="this.style.backgroundColor='#2980b9'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.15)'"
+                    onmouseout="this.style.backgroundColor='#3498db'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)'">
+                <i class="fi-magnifying-glass" style="margin-right: 8px; color: white;"></i>Szukaj publikacji
+            </button>
+        </div>
+    </form>
+</div>
 
 
 {% endblock %}
