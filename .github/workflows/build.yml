@@ -26,5 +26,14 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Instal eventual build tools
+        run: python3 -m pip install django
+
+      - name: Instal eventual build tools
+        run: sudo apt update
+
+      - name: Instal eventual build tools
+        run: sudo apt install gettext
+
       - name: Build and push
-        run: make docker
+        run: make assets docker

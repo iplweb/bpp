@@ -44,7 +44,7 @@ module.exports = function (grunt) {
 
         shell: {
             collectstatic: {
-                command: 'poetry run python src/manage.py collectstatic --noinput -v0'
+                command: 'python src/manage.py collectstatic --noinput -v0 --traceback'
             }
         }
     });
