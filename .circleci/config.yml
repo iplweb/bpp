@@ -106,7 +106,7 @@ jobs:
       - run:
           name: make assets
           command: |
-            poetry run make assets
+            make assets
 
 #      - run:
 #          name: debug -- show cache content

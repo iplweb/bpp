@@ -44,7 +44,7 @@ module.exports = function (grunt) {
 
         shell: {
             collectstatic: {
-                command: 'python src/manage.py collectstatic --noinput -v0 --traceback'
+                command: 'django-admin collectstatic --noinput -v0 --traceback'
             }
         }
     });
