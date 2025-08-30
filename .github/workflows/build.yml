@@ -33,7 +33,7 @@ jobs:
         run: sudo apt update
 
       - name: Instal eventual build tools
-        run: sudo apt install gettext
+        run: sudo apt install -y gettext
 
       - name: Build and push
         run: make assets docker
