@@ -132,3 +132,6 @@ cov.xml
 src/ewaluacja2021/tests/test_core/genetyczny_memetyka_stosowana_output
 genetyczny_memetyka_stosowana_output
 .aider*
+src/bpp/static/scss/*.css
+src/bpp/static/scss/*.map
+src/bpp/static/scss/*.css.map
