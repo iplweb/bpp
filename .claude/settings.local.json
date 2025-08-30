@@ -1,18 +1,12 @@
 {
   "permissions": {
     "allow": [
-      "Bash(python src/manage.py test:*)",
-      "Bash(python src/manage.py export_bibtex:*)",
-      "Bash(python -m pytest *)",
-      "Bash(python -m pytest bpp/tests/test_bibtex_export.py -v)",
-      "Bash(python -m pytest bpp/tests/test_bibtex_export.py bpp/tests/test_bibtex_export_simple.py -v)",
-      "Bash(python -m pytest src/bpp/tests/test_export/test_export_bibtex.py src/bpp/tests/test_export/test_bibtex_export_in_admin.py -v)",
-      "Bash(python -m pytest src/bpp/tests/test_export/test_bibtex_export_in_admin.py::TestBibTeXExportInAdmin::test_patent_bibtex_resource_export src/bpp/tests/test_export/test_bibtex_export_in_admin.py::TestBibTeXExportInAdmin::test_praca_doktorska_bibtex_resource_export src/bpp/tests/test_export/test_bibtex_export_in_admin.py::TestBibTeXExportInAdmin::test_praca_habilitacyjna_bibtex_resource_export -v)",
-      "Bash(python:*)",
       "Bash(grunt build)",
-      "WebSearch"
+      "Bash(python:*)",
+      "Bash(curl:*)"
     ],
     "deny": [],
+    "ask": [],
     "additionalDirectories": [
       "/Users/mpasternak/Library/Caches/pypoetry/virtualenvs/bpp-iplweb-61_RsGZW-py3.11/lib/python3.11/site-packages"
     ]

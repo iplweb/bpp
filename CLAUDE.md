@@ -6,6 +6,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 BPP (Bibliografia Publikacji Pracowników) is a Polish academic bibliography management system built with Django. It manages publication records for academic institutions and libraries in Poland.
 
+## General rule
+
+**IMPORANT: if anything is unclear to you, feel free to ask questions before taking on any non-trivial tasks.**
+
+**IMPORTANT: if using icons, refrain from emojis, rather use monochrome Foundation-Icons (<span class="fi-icon"/>)**
+
 ## Key Commands
 
 ### Development Commands
