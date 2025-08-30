@@ -88,8 +88,6 @@ releases/
 *.retry
 *.ova
 
-src/bpp/static/scss/app.css
-
 PO_IMPORCIE.SQL
 log.txt
 test-import.sh
@@ -101,7 +99,6 @@ import_log_calosc.txt
 *.xz
 log
 .pytest_cache
-/src/bpp/static/scss/app-*.css
 dump-*.dump
 *.pgdump
 
@@ -129,9 +126,6 @@ received-emails/
 mniswid-bez-informacji.txt
 raport.txt
 uml-import.txt
-src/bpp/static/scss/app-blue.css.map
-src/bpp/static/scss/app-green.css.map
-src/bpp/static/scss/app-orange.css.map
 .checkpointing
 celerybeat-schedule.db
 cov.xml
