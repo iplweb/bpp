@@ -390,6 +390,7 @@ INSTALLED_APPS = [
     "crispy_bootstrap5",
     "crispy_bootstrap3",  # dla django-rest-api HTML
     "crispy_forms_foundation",
+    "powiazania_autorow",
     "compressor",
     "session_security",
     "notifications",
