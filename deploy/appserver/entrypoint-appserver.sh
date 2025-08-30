@@ -19,8 +19,10 @@ echo "---------------------------------------------------------------"
 echo "END OF LIST"
 echo "==============================================================="
 
-echo -n "Running collectstatic and compress in the background... "
-./src/manage.py collectstatic --noinput -v0 --traceback && ./src/manage.py compress -v0 --force --traceback &
+echo -n "Running collectstatic and compress"
+./src/manage.py collectstatic --noinput -v0 --traceback
+./src/manage.py compress -v0 --force --traceback
+./src/manage.py compilemessages -v0 --traceback
 echo "done."
 
 echo -n "Flushing all pending denorms via queue in the background..."
