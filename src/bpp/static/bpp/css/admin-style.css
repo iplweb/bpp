@@ -258,3 +258,19 @@ nav#grp-breadcrumbs ul li {
         font-size: 8px;
     }
 }
+
+/* -------------------------------------------------------------------------------- */
+/* Discipline fields styling - make select2 fields for disciplines wider */
+/* -------------------------------------------------------------------------------- */
+
+.grp-td.dyscyplina_naukowa .select2-container,
+.grp-td.subdyscyplina_naukowa .select2-container {
+    min-width: 200px !important;
+    width: 200px !important;
+}
+
+.grp-td.dyscyplina_naukowa select.admin-autocomplete,
+.grp-td.subdyscyplina_naukowa select.admin-autocomplete {
+    min-width: 200px !important;
+    width: 200px !important;
+}
