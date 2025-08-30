@@ -30,10 +30,14 @@ BPP (Bibliografia Publikacji Pracowników) is a Polish academic bibliography man
 - `pytest --ds=django_bpp.settings.local` - Run tests with specific settings
 - `make tests-without-selenium` - Run tests excluding Selenium tests with parallelization (fast)
 - `make tests-with-selenium` - Run only Selenium tests with parallelization (slow)
-- `make tests` - **PRIMARY COMMAND** - Run full test suite (takes 5-7 minutes, DO NOT use timeout)
+- `make tests` - **PRIMARY COMMAND** - Run full test suite
 - `make full-tests` - Run complete test suite
 
-**IMPORTANT:** Always use `make tests` to run the full test suite. Do not apply timeout restrictions as tests take 5-7 minutes to complete.
+**CRITICAL TEST EXECUTION TIME:**
+- Full test suite (`pytest src/` or `make tests`) takes **UP TO 10 MINUTES** to complete
+- **NEVER use timeout restrictions** when running tests
+- Always set timeout to at least 600000ms (10 minutes) when running `pytest src/`
+- Tests may appear to hang but are actually running - be patient
 
 ### Code Quality Commands
 - `black .` - Format Python code
