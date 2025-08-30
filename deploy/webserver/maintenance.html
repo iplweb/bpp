@@ -273,7 +273,7 @@
     // Professional refresh mechanism with exponential backoff
     class RefreshManager {
         constructor() {
-            this.intervals = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32767, 65535]; // seconds
+            this.intervals = [32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32767, 65535]; // seconds
             this.currentIndex = 0;
             this.countdownElement = document.getElementById('countdown');
             this.timeLeft = 0;
