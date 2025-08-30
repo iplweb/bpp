@@ -6,6 +6,7 @@ from django.shortcuts import redirect, render
 from django.views.decorators.http import require_http_methods
 
 from pbn_api.models import Scientist
+from pbn_downloader_app.models import PbnDownloadTask
 from .models import NotADuplicate
 from .utils import (
     analiza_duplikatow,
@@ -109,9 +110,13 @@ def duplicate_authors_view(request):
     # Policz liczbę autorów oznaczonych jako nie-duplikat
     not_duplicate_count = NotADuplicate.objects.count()
 
+    # Get latest PBN download task
+    latest_pbn_download = PbnDownloadTask.get_latest_task()
+
     context = {
         "scientist": scientist,
         "glowny_autor": None,
+        "latest_pbn_download": latest_pbn_download,
         "duplikaty_z_publikacjami": [],
         "analiza": None,
         "has_skipped_authors": len(request.session.get("skipped_authors", [])) > 0,
@@ -210,7 +215,7 @@ def duplicate_authors_view(request):
 
 
 @group_required(GR_WPROWADZANIE_DANYCH)
-@require_http_methods(["POST"])
+@require_http_methods(["GET", "POST"])
 def scal_autorow_view(request):
     """
     Widok do scalania autorów automatycznie.
@@ -221,8 +226,12 @@ def scal_autorow_view(request):
 
     Zwraca wynik operacji w formacie JSON.
     """
-    main_scientist_id = request.POST.get("main_scientist_id")
-    duplicate_scientist_id = request.POST.get("duplicate_scientist_id")
+    if request.method == "GET":
+        main_scientist_id = request.GET.get("main_scientist_id")
+        duplicate_scientist_id = request.GET.get("duplicate_scientist_id")
+    else:
+        main_scientist_id = request.POST.get("main_scientist_id")
+        duplicate_scientist_id = request.POST.get("duplicate_scientist_id")
 
     if not main_scientist_id or not duplicate_scientist_id:
         return JsonResponse(
@@ -234,8 +243,8 @@ def scal_autorow_view(request):
         )
 
     try:
-        result = scal_autorow(main_scientist_id, duplicate_scientist_id)
-        return JsonResponse({"success": True, "result": result})
+        result = scal_autorow(main_scientist_id, duplicate_scientist_id, request.user)
+        return JsonResponse({"success": result.get("success", False), "result": result})
     except NotImplementedError as e:
         return JsonResponse({"success": False, "error": str(e)}, status=501)
     except Exception as e:

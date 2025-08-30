@@ -9,6 +9,8 @@ from django.db.models import Q, QuerySet
 from deduplikator_autorow.models import NotADuplicate
 from pbn_api.models import OsobaZInstytucji, Scientist
 
+from django.contrib.contenttypes.models import ContentType
+
 from bpp.models import Autor
 from bpp.models.cache import Rekord
 
@@ -437,7 +439,7 @@ def znajdz_pierwszego_autora_z_duplikatami(
     return None
 
 
-def scal_autora(glowny_autor, autor_duplikat):
+def scal_autora(glowny_autor, autor_duplikat, user):
     """
     Scala duplikat autora na głównego autora.
 
@@ -497,8 +499,11 @@ def scal_autora(glowny_autor, autor_duplikat):
 
                 # Dodaj do kolejki PBN
                 if wc_autor.rekord:
-                    PBN_Export_Queue.objects.get_or_create(
-                        rekord=wc_autor.rekord, defaults={"created_by": None}
+                    content_type = ContentType.objects.get_for_model(wc_autor.rekord)
+                    PBN_Export_Queue.objects.create(
+                        content_type=content_type,
+                        object_id=wc_autor.rekord.pk,
+                        zamowil=user,
                     )
                     results["publications_queued_for_pbn"].append(str(wc_autor.rekord))
 
@@ -613,6 +618,8 @@ def scal_autora(glowny_autor, autor_duplikat):
                 results["updated_records"].append(f"Praca_Doktorska: {praca_dokt}")
                 results["total_updated"] += 1
 
+            autor_duplikat.delete()
+
             return results
 
     except Exception as e:
@@ -621,7 +628,7 @@ def scal_autora(glowny_autor, autor_duplikat):
         return results
 
 
-def scal_autorow(main_scientist_id: str, duplicate_scientist_id: str) -> dict:
+def scal_autorow(main_scientist_id: str, duplicate_scientist_id: str, user) -> dict:
     """
     Scala automatycznie duplikaty autorów.
 
@@ -639,12 +646,8 @@ def scal_autorow(main_scientist_id: str, duplicate_scientist_id: str) -> dict:
 
     try:
         # Pobierz głównego Scientist
-        main_scientist = Scientist.objects.get(pk=main_scientist_id)
-        duplicate_scientist = Scientist.objects.get(pk=duplicate_scientist_id)
-
-        # Pobierz odpowiadające obiekty Autor
-        glowny_autor = main_scientist.rekord_w_bpp
-        autor_duplikat = duplicate_scientist.rekord_w_bpp
+        glowny_autor = Autor.objects.get(pk=main_scientist_id)
+        autor_duplikat = Autor.objects.get(pk=duplicate_scientist_id)
 
         if not glowny_autor or not autor_duplikat:
             return {
@@ -653,13 +656,13 @@ def scal_autorow(main_scientist_id: str, duplicate_scientist_id: str) -> dict:
             }
 
         # Sprawdź czy duplikat jest na liście duplikatów głównego autora
-        if not main_scientist.osobazinstytucji:
+        if not glowny_autor.pbn_uid.osobazinstytucji:
             return {
                 "success": False,
                 "error": "Główny autor nie ma związanej osoby z instytucji",
             }
 
-        analiza_result = analiza_duplikatow(main_scientist.osobazinstytucji)
+        analiza_result = analiza_duplikatow(glowny_autor.pbn_uid.osobazinstytucji)
 
         if "error" in analiza_result:
             return {
@@ -676,7 +679,7 @@ def scal_autorow(main_scientist_id: str, duplicate_scientist_id: str) -> dict:
             }
 
         # Wykonaj scalanie
-        result = scal_autora(glowny_autor, autor_duplikat)
+        result = scal_autora(glowny_autor, autor_duplikat, user)
 
         # Dodaj informacje o autorach do wyniku
         result["main_author"] = str(glowny_autor)
