@@ -106,6 +106,7 @@ jobs:
       - run:
           name: make assets
           command: |
+            unset DJANGO_SETTINGS_MODULE
             make assets
 
 #      - run:
