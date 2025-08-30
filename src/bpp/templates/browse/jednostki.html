@@ -38,7 +38,7 @@
                     {% for item in col %}
                         <li>
                             <a href="{% url "bpp:browse_jednostka" item.slug %}">
-                                {{ item.nazwa }} ({{ item.wydzial.skrot }})</a>
+                                {{ item.nazwa }}{% if uczelnia.uzywaj_wydzialow %} ({{ item.wydzial.skrot }}){% endif %}</a>
                         </li>
                     {% endfor %}
                 </ul>
