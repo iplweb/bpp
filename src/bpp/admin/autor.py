@@ -277,5 +277,161 @@ class AutorAdmin(
         ADNOTACJE_FIELDSET,
     )
 
+    def get_changeform_initial_data(self, request):
+        """Get initial data for the main form and prepare inline data."""
+        initial_data = super().get_changeform_initial_data(request)
+
+        # Store inline initial data in request for later use in get_formset_kwargs
+        inline_initial_data = self._prepare_inline_initial_data(request, initial_data)
+        if inline_initial_data:
+            if not hasattr(request, "_autor_inline_initial_data"):
+                request._autor_inline_initial_data = {}
+            request._autor_inline_initial_data.update(inline_initial_data)
+
+        return initial_data
+
+    def _prepare_inline_initial_data(self, request, main_initial_data):
+        """
+        Prepare initial data for inlines based on URL parameters or main form data.
+
+        Handles the Django formset parameter format used by the "Utwórz w BPP" button
+        from the scientist admin, such as:
+        autor_dyscyplina_set-0-rok=2025
+        autor_dyscyplina_set-0-dyscyplina_naukowa=55
+        autor_dyscyplina_set-0-procent_dyscypliny=100.0
+        autor_jednostka_set-0-jednostka=123
+
+        Returns a dictionary with keys as inline prefixes and values as lists of
+        initial data dictionaries for each inline form.
+        """
+        inline_data = {}
+
+        # Parse Django formset parameters from GET request
+        inline_data.update(self._parse_formset_parameters(request.GET))
+
+        # Also support simple parameter format for backwards compatibility
+        inline_data.update(self._parse_simple_parameters(request.GET))
+
+        return inline_data
+
+    def _parse_formset_parameters(self, get_params):
+        """
+        Parse Django formset parameters from GET request.
+
+        Handles parameters like:
+        autor_dyscyplina_set-0-rok=2025
+        autor_dyscyplina_set-0-dyscyplina_naukowa=55
+        autor_dyscyplina_set-0-procent_dyscypliny=100.0
+        autor_jednostka_set-0-jednostka=123
+        autor_jednostka_set-0-rozpoczal_prace=2024-01-01
+        """
+        import re
+        from collections import defaultdict
+
+        inline_data = defaultdict(list)
+        formset_data = defaultdict(lambda: defaultdict(dict))
+
+        # Pattern to match formset parameters: prefix-index-field
+        formset_pattern = re.compile(r"^(autor_\w+_set)-(\d+)-(\w+)$")
+
+        for key, value in get_params.items():
+            match = formset_pattern.match(key)
+            if match:
+                prefix, index, field = match.groups()
+                index = int(index)
+
+                # Convert values to appropriate types
+                converted_value = self._convert_formset_value(field, value)
+                if converted_value is not None:
+                    formset_data[prefix][index][field] = converted_value
+
+        # Convert to the expected format: list of dictionaries
+        for prefix, indexed_data in formset_data.items():
+            # Sort by index and create list
+            sorted_indices = sorted(indexed_data.keys())
+            inline_data[prefix] = [indexed_data[i] for i in sorted_indices]
+
+        return dict(inline_data)
+
+    def _convert_formset_value(self, field_name, value):
+        """Convert formset field values to appropriate Python types."""
+        if not value:
+            return None
+
+        try:
+            # Handle numeric fields
+            if field_name in [
+                "dyscyplina_naukowa",
+                "subdyscyplina_naukowa",
+                "jednostka",
+                "rok",
+                "tytul",
+            ]:
+                return int(value)
+            elif field_name in [
+                "procent_dyscypliny",
+                "procent_subdyscypliny",
+                "wymiar_etatu",
+            ]:
+                return float(value)
+            elif field_name in ["rozpoczal_prace", "zakonczyl_prace"]:
+                # Handle date fields
+                from datetime import datetime
+
+                return datetime.strptime(value, "%Y-%m-%d").date()
+            else:
+                # Return as string for other fields
+                return value
+        except (ValueError, TypeError):
+            # If conversion fails, return the original value
+            return value
+
+    def _parse_simple_parameters(self, get_params):
+        """
+        Parse simple parameter format for backwards compatibility.
+
+        Handles parameters like:
+        jednostka=123
+        dyscyplina_naukowa=456&rok=2024
+        """
+        inline_data = {}
+
+        # Check for jednostka parameter
+        jednostka_id = get_params.get("jednostka")
+        if jednostka_id:
+            try:
+                inline_data["autor_jednostka_set"] = [{"jednostka": int(jednostka_id)}]
+            except (ValueError, TypeError):
+                pass
+
+        # Check for dyscyplina parameter
+        dyscyplina_id = get_params.get("dyscyplina_naukowa")
+        rok = get_params.get("rok")
+        if dyscyplina_id:
+            try:
+                dyscyplina_data = {"dyscyplina_naukowa": int(dyscyplina_id)}
+                if rok:
+                    try:
+                        dyscyplina_data["rok"] = int(rok)
+                    except (ValueError, TypeError):
+                        pass
+                inline_data["autor_dyscyplina_set"] = [dyscyplina_data]
+            except (ValueError, TypeError):
+                pass
+
+        return inline_data
+
+    def get_formset_kwargs(self, request, obj, inline, prefix):
+        """Override to provide initial data for inlines."""
+        kwargs = super().get_formset_kwargs(request, obj, inline, prefix)
+
+        # Only set initial data for new objects (when obj.pk is None)
+        if obj.pk is None and hasattr(request, "_autor_inline_initial_data"):
+            inline_initial_data = request._autor_inline_initial_data.get(prefix, [])
+            if inline_initial_data:
+                kwargs["initial"] = inline_initial_data
+
+        return kwargs
+
 
 admin.site.register(Autor, AutorAdmin)
