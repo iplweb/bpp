@@ -32,11 +32,10 @@ jobs:
       - name: Instal eventual build tools
         run: sudo apt install python3 python3-pip python3-django
 
-#      - name: Instal eventual build tools
-#        run: python3 -m pip install django
-
       - name: Instal eventual build tools
         run: sudo apt install -y gettext
 
       - name: Build and push
         run: make assets docker
+        env:
+          DJANGO_SETTINGS_MODULE: django_bpp.settings.local
