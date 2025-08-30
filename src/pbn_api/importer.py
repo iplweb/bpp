@@ -442,7 +442,9 @@ def utworz_autorow(ret, pbn_json, client, default_jednostka):
                 autor = Autor.objects.get(pbn_uid_id=pbn_uid_autora)
             except Autor.DoesNotExist:
                 pbn_scientist = pobierz_i_zapisz_dane_jednej_osoby(
-                    client=client, personId=pbn_uid_autora, from_institution_api=False
+                    client_or_token=client,
+                    personId=pbn_uid_autora,
+                    from_institution_api=False,
                 )
 
                 if (
