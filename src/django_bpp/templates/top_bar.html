@@ -172,9 +172,65 @@
         <ul class="dropdown menu" data-dropdown-menu>
             {% block global-nav %}
                 <li>{% load crispy_forms_tags %}
+                    <style>
+                        #div_id_global_nav_value {
+                            transition: all 0.3s ease;
+                        }
+
+                        #div_id_global_nav_value .select2-container {
+                            width: 100% !important;
+                            transition: all 0.3s ease;
+                        }
+                    </style>
                     {% crispy global_nav_form %}
                     <script type="text/javascript">
                         $(document).ready(function () {
+                            // Function to scale global_nav based on window width
+                            function scaleGlobalNav() {
+                                const windowWidth = window.innerWidth;
+                                const navContainer = $('#div_id_global_nav_value');
+                                const select2Container = navContainer.find('.select2-container');
+
+                                let navWidth;
+
+                                // Calculate width based on window size
+                                if (windowWidth < 640) {
+                                    // Mobile
+                                    navWidth = Math.min(windowWidth * 0.4, 200);
+                                } else if (windowWidth < 1024) {
+                                    // Tablet
+                                    navWidth = Math.min(windowWidth * 0.35, 300);
+                                } else if (windowWidth < 1440) {
+                                    // Small desktop
+                                    navWidth = Math.min(windowWidth * 0.25, 350);
+                                } else {
+                                    // Large desktop
+                                    navWidth = Math.min(windowWidth * 0.4, 450);
+                                }
+
+                                // Apply the calculated width
+                                navContainer.css({
+                                    'min-width': navWidth + 'px',
+                                    'width': navWidth + 'px'
+                                });
+
+                                select2Container.css({
+                                    'min-width': navWidth + 'px',
+                                    'width': navWidth + 'px'
+                                });
+                            }
+
+                            // Initial scale
+                            scaleGlobalNav();
+
+                            // Scale on window resize with debouncing
+                            let resizeTimer;
+                            $(window).on('resize', function() {
+                                clearTimeout(resizeTimer);
+                                resizeTimer = setTimeout(scaleGlobalNav, 100);
+                            });
+
+                            // Original change handler
                             $(':input[name$=global_nav_value]').on('change', function () {
                                 location.href = "/global-nav-redir/" + $(this).val() +
                                     "/?source=user";

@@ -1,69 +1,222 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}Deduplikator Autorów{% endblock %}
+{% block title %}Deduplikator Autorów PBN{% endblock %}
 
 {% block breadcrumbs %}
     <li><a href="/">Strona główna</a></li>
-    <li><a href="{% url "deduplikator_autorow:duplicate_authors" %}">Deduplikator autorów</a></li>
+    <li><a href="{% url "deduplikator_autorow:duplicate_authors" %}">Deduplikator autorów PBN</a></li>
 {% endblock %}
 
 {% block content %}
-    <div class="row">
-        <div class="column">
+    <style>
+        #deduplikator-sidebar {
+            position: fixed;
+            left: 0;
+            width: 280px;
+            border-right: 1px solid rgba(0, 0, 0, 0.1);
+            overflow-y: auto;
+            z-index: 0;
+        }
+
+        #main-content-wrapper {
+            margin-left: 300px;
+            padding: 20px;
+            padding-left: 10px;
+        }
+
+        /* Remove borders and style accordion items */
+        #deduplikator-sidebar .accordion-item {
+            border: none !important;
+            margin-bottom: 0 !important;
+        }
+
+        #deduplikator-sidebar .accordion-title {
+            font-weight: normal !important;
+            font-size: 1rem !important;
+            padding: 12px 15px !important;
+            background: transparent !important;
+            color: #333 !important;
+            transition: all 0.2s ease !important;
+        }
+
+        #deduplikator-sidebar .accordion-title:hover {
+            background: rgba(23, 121, 186, 0.08) !important;
+            transform: translateX(5px);
+        }
+
+        #deduplikator-sidebar .accordion-content {
+            font-size: 0.95rem !important;
+            background: rgba(248, 248, 248, 0.5) !important;
+            padding: 12px 15px !important;
+        }
+
+        #deduplikator-sidebar .accordion-content p {
+            font-size: 0.95rem !important;
+            font-weight: normal !important;
+        }
+
+        @media print {
+            #deduplikator-sidebar {
+                display: none;
+            }
+            #main-content-wrapper {
+                margin-left: 0;
+            }
+        }
+
+        @media screen and (max-width: 64em) {
+            #deduplikator-sidebar {
+                position: static;
+                width: 100%;
+                height: auto !important;
+            }
+            #main-content-wrapper {
+                margin-left: 0;
+            }
+        }
+    </style>
+
+    <div id="deduplikator-container">
+        <!-- Left Sidebar Menu -->
+        <div id="deduplikator-sidebar">
+            <div class="deduplikator-menu">
+                <ul class="accordion" data-accordion data-allow-all-closed="true" data-multi-expand="true" style="border: none; padding: 0; margin: 0;">
+                    {% if total_authors_with_duplicates %}
+                    <!-- Liczba autorów z duplikatami -->
+                    <li class="accordion-item is-active" data-accordion-item>
+                        <a class="accordion-title" href="#" aria-expanded="true" style="pointer-events: none; cursor: default;">
+                            👥 {{ total_authors_with_duplicates }} autor{% if total_authors_with_duplicates != 1 %}ów{% endif %} z duplikatami
+                        </a>
+                        <div class="accordion-content" data-tab-content style="display: none;"></div>
+                    </li>
+                    {% endif %}
+
+                    <!-- Zacznij od początku -->
+                    {% if has_skipped_authors and not search_lastname %}
+                    <li class="accordion-item is-active" data-accordion-item>
+                        <a class="accordion-title" href="#" aria-expanded="true" style="pointer-events: none; cursor: default;">
+                            🔁 Nawigacja
+                        </a>
+                        <div class="accordion-content" data-tab-content style="display: block;">
+                            <p style="margin-bottom: 10px;">Prześledzileś już kilku autorów.</p>
+                            <a href="{% url 'deduplikator_autorow:reset_skipped_authors' %}"
+                               class="button alert expanded small">
+                                Zacznij od początku
+                            </a>
+                        </div>
+                    </li>
+                    {% endif %}
+
+                    <!-- Wyszukiwanie autora -->
+                    <li class="accordion-item {% if search_lastname %}is-active{% endif %}" data-accordion-item>
+                        <a class="accordion-title" href="#" {% if search_lastname %}aria-expanded="true"{% endif %}>
+                            🔍 Szukaj autora
+                        </a>
+                        <div class="accordion-content" data-tab-content {% if search_lastname %}style="display: block;"{% endif %}>
+                            <form method="get" action="{% url 'deduplikator_autorow:duplicate_authors' %}" style="margin-bottom: 0;">
+                                <label for="search_lastname" style="font-size: 0.9rem;">Po nazwisku:</label>
+                                <input type="text" id="search_lastname" name="search_lastname"
+                                       value="{{ search_lastname|default:'' }}"
+                                       placeholder="Wpisz część nazwiska..."
+                                       style="margin-bottom: 10px; font-size: 0.9rem;">
+                                <button type="submit" class="button primary expanded small">
+                                    🔍 Szukaj
+                                </button>
+                                {% if search_lastname %}
+                                    <a href="{% url 'deduplikator_autorow:duplicate_authors' %}"
+                                       class="button secondary expanded small" style="margin-top: 5px;">
+                                        Wyczyść
+                                    </a>
+                                    <div style="margin-top: 10px; font-size: 0.85rem; color: #666;">
+                                        <strong>Szukano:</strong> "{{ search_lastname }}"
+                                        {% if search_results_count is not None %}
+                                            <br><strong>Znaleziono:</strong> {{ search_results_count }} autor{% if search_results_count != 1 %}ów{% endif %}
+                                        {% endif %}
+                                    </div>
+                                {% endif %}
+                            </form>
+                        </div>
+                    </li>
+
+                    <!-- Pobierz XLSX -->
+                    <li class="accordion-item" data-accordion-item>
+                        <a class="accordion-title" href="#">
+                            📊 Pobierz XLSX duplikatów
+                        </a>
+                        <div class="accordion-content" data-tab-content>
+                            <p style="margin-bottom: 10px;">Pobierz wszystkich autorów z duplikatami w formacie Excel.</p>
+                            <a href="{% url 'deduplikator_autorow:download_duplicates_xlsx' %}"
+                               class="button success expanded"
+                               style="margin: 0;">
+                                📥 Pobierz XLSX
+                            </a>
+                        </div>
+                    </li>
+
+                    <!-- Obejrz nie-duplikaty -->
+                    <li class="accordion-item {% if not_duplicate_count > 0 %}is-active{% endif %}" data-accordion-item>
+                        <a class="accordion-title" href="#" {% if not_duplicate_count > 0 %}aria-expanded="true"{% endif %}>
+                            👁️ Obejrz nie-duplikaty
+                        </a>
+                        <div class="accordion-content" data-tab-content {% if not_duplicate_count > 0 %}style="display: block;"{% endif %}>
+                            <p style="margin-bottom: 10px;">Przejrzyj autorów oznaczonych jako nie będących duplikatami.</p>
+                            <a href="/admin/deduplikator_autorow/notaduplicate/"
+                               class="button secondary expanded"
+                               target="_blank"
+                               style="margin: 0;">
+                                🔍 Otwórz listę
+                            </a>
+                        </div>
+                    </li>
+
+                    <!-- Reset nie-duplikatów -->
+                    {% if not_duplicate_count > 0 %}
+                    <li class="accordion-item" data-accordion-item>
+                        <a class="accordion-title" href="#">
+                            🔄 Zresetuj listę ({{ not_duplicate_count }})
+                        </a>
+                        <div class="accordion-content" data-tab-content>
+                            <p style="margin-bottom: 10px;">Wyczyść wszystkie oznaczenia nie-duplikatów.</p>
+                            <p style="margin-bottom: 10px; color: #d63031;">
+                                ⚠️ Obecnie: {{ not_duplicate_count }} oznaczonych
+                            </p>
+                            <form method="post" action="{% url 'deduplikator_autorow:reset_not_duplicates' %}" style="margin: 0;">
+                                {% csrf_token %}
+                                <button type="submit"
+                                        class="button alert expanded"
+                                        style="margin: 0;"
+                                        onclick="return confirm('Czy na pewno chcesz zresetować wszystkie oznaczenia nie-duplikatów? Tej operacji nie można cofnąć.');">
+                                    🗑️ Zresetuj wszystkie
+                                </button>
+                            </form>
+                        </div>
+                    </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div id="main-content-wrapper">
             <div class="grid-x grid-padding-x align-middle" style="margin-bottom: 20px;">
                 <div class="cell auto">
-                    <h1>Deduplikator Autorów <span class="label warning" style="font-size: 0.6em; vertical-align: top;">BETA</span> {% if total_authors_with_duplicates %}
-                        <small style="color: #666;">({{ total_authors_with_duplicates }} autor
-                            {% if total_authors_with_duplicates != 1 %}ów{% endif %} z duplikatami)</small>{% endif %}</h1>
+                    <h1>Deduplikator Autorów PBN <span class="label warning" style="font-size: 0.6em; vertical-align: top;">BETA</span></h1>
                 </div>
                 <div class="cell shrink">
-                    <a href="{% url 'deduplikator_autorow:download_duplicates_xlsx' %}"
-                       class="button success"
-                       style="margin: 0;"
-                       title="Pobierz wszystkich autorów z duplikatami w formacie XLSX">
-                        📊 Pobierz XLSX duplikatów
-                    </a>
+                    {% if not search_lastname %}
+                        <div class="button-group">
+                            {% if has_previous_authors %}
+                                <a href="{% url 'deduplikator_autorow:duplicate_authors' %}?go_previous=1"
+                                   class="button secondary">← Poprzedni autor</a>
+                            {% endif %}
+                            <a href="{% url 'deduplikator_autorow:duplicate_authors' %}?skip_current=1"
+                               class="button primary">Następny autor →</a>
+                        </div>
+                    {% endif %}
                 </div>
             </div>
 
-            <!-- Search form -->
-            <div class="callout secondary" style="margin-bottom: 20px;">
-                <form method="get" action="{% url 'deduplikator_autorow:duplicate_authors' %}"
-                      style="margin-bottom: 0;">
-                    <div class="grid-x grid-padding-x align-middle">
-                        <div class="cell medium-6">
-                            <label for="search_lastname">Szukaj autora po nazwisku:</label>
-                            <input type="text" id="search_lastname" name="search_lastname"
-                                   value="{{ search_lastname|default:'' }}"
-                                   placeholder="Wpisz część nazwiska..."
-                                   class="form-control">
-                        </div>
-                        <div class="cell medium-3">
-                            <button type="submit" class="button primary" style="margin-top: 24px;">
-                                🔍 Szukaj
-                            </button>
-                            {% if search_lastname %}
-                                <a href="{% url 'deduplikator_autorow:duplicate_authors' %}"
-                                   class="button secondary" style="margin-top: 24px; margin-left: 5px;">
-                                    Wyczyść
-                                </a>
-                            {% endif %}
-                        </div>
-                        <div class="cell medium-3">
-                            {% if search_lastname %}
-                                <p style="margin-top: 24px; margin-bottom: 0; font-size: 0.9em; color: #666;">
-                                    <strong>Szukano:</strong> "{{ search_lastname }}"
-                                    {% if search_results_count is not None %}
-                                        <br><strong>Znaleziono:</strong> {{ search_results_count }} autor
-                                        {% if search_results_count != 1 %}ów{% endif %}
-                                    {% endif %}
-                                </p>
-                            {% endif %}
-                        </div>
-                    </div>
-                </form>
-            </div>
 
             {% if not scientist %}
                 <div class="callout warning">
@@ -106,27 +259,7 @@
                             </span>
                             </div>
                             <div class="cell medium-4">
-                                {% if not search_lastname %}
-                                    <div class="button-group">
-                                        {% if has_previous_authors %}
-                                            <a href="{% url 'deduplikator_autorow:duplicate_authors' %}?go_previous=1"
-                                               class="button secondary">← Poprzedni autor</a>
-                                        {% endif %}
-                                        <a href="{% url 'deduplikator_autorow:duplicate_authors' %}?skip_current=1"
-                                           class="button primary">Następny autor →</a>
-                                    </div>
-                                    {% if has_skipped_authors %}
-                                        <br><a href="{% url 'deduplikator_autorow:reset_skipped_authors' %}"
-                                               class="button alert" style="margin-top: 5px;">Zacznij od początku</a>
-                                    {% endif %}
-                                {% else %}
-                                    <div class="callout secondary" style="text-align: center; padding: 10px;">
-                                        <p style="margin: 0; font-size: 0.9em; color: #666;">
-                                            <strong>Tryb wyszukiwania aktywny</strong><br>
-                                            <small>Wyczyść wyszukiwanie aby przywrócić nawigację</small>
-                                        </p>
-                                    </div>
-                                {% endif %}
+                                <!-- Navigation moved to header -->
                             </div>
                         </div>
 
@@ -275,32 +408,70 @@
                 {% endif %}
             {% endif %}
 
-            {% if not_duplicate_count > 0 %}
-                <div class="grid-x grid-padding-x"
-                     style="margin-top: 20px; border-top: 1px solid #e6e6e6; padding-top: 20px;">
-                    <div class="cell">
-                        <h4>Zarządzanie oznaczonymi autorami</h4>
-                        <div class="button-group">
-                            <a href="/admin/deduplikator_autorow/notaduplicate/" class="button secondary"
-                               target="_blank">
-                                Obejrz oznaczonych jako nie-duplikaty
-                            </a>
-                            <form method="post" action="{% url 'deduplikator_autorow:reset_not_duplicates' %}"
-                                  style="display: inline-block;">
-                                {% csrf_token %}
-                                <button type="submit" class="button warning"
-                                        onclick="return confirm('Czy na pewno chcesz zresetować wszystkie oznaczenia nie-duplikatów? Tej operacji nie można cofnąć.');">
-                                    Zresetuj liczbę oznaczonych jako nie-duplikat (obecnie: {{ not_duplicate_count }})
-                                </button>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-            {% endif %}
         </div>
     </div>
 
     <script>
+        // Adjust sidebar position and height
+        function adjustSidebarPosition() {
+            const sidebar = document.getElementById('deduplikator-sidebar');
+            const breadcrumbs = document.getElementById('breadcrumbs-wrapper');
+            const footer = document.querySelector('.grid-container-fluid[style*="z-index: 10"]') ||
+                          document.querySelector('.grid-container-fluid[style*="background-color: #f8f8f8"]');
+
+            if (sidebar && breadcrumbs) {
+                // Get breadcrumbs exact bottom position (including its border)
+                const breadcrumbsRect = breadcrumbs.getBoundingClientRect();
+                const breadcrumbsStyles = window.getComputedStyle(breadcrumbs);
+                const breadcrumbsBorder = parseFloat(breadcrumbsStyles.borderBottomWidth) || 0;
+                const topPosition = breadcrumbsRect.bottom; // This already includes the border
+
+                // Set sidebar top position to align exactly with breadcrumbs bottom
+                sidebar.style.top = topPosition + 'px';
+
+                // Calculate height to stop before footer
+                let sidebarHeight;
+                if (footer) {
+                    const footerRect = footer.getBoundingClientRect();
+
+                    // If footer is visible in viewport, adjust height to stop at footer
+                    if (footerRect.top < window.innerHeight) {
+                        // Calculate exact height to stop just before footer
+                        sidebarHeight = footerRect.top - topPosition - 10; // 10px gap before footer
+
+                        // If the calculated height is too small, set minimum height
+                        if (sidebarHeight < 300) {
+                            sidebarHeight = 300;
+                        }
+                    } else {
+                        // Footer not in viewport, use full viewport height
+                        sidebarHeight = window.innerHeight - topPosition;
+                    }
+                } else {
+                    // No footer found, use full viewport height
+                    sidebarHeight = window.innerHeight - topPosition ;
+                }
+
+                // Apply the calculated height
+                sidebar.style.height = sidebarHeight + 'px';
+
+                // Keep z-index at 0 so sidebar remains visible but behind other elements
+                sidebar.style.zIndex = '0';
+            }
+        }
+
+        // Adjust on page load
+        document.addEventListener('DOMContentLoaded', adjustSidebarPosition);
+
+        // Adjust on window resize and scroll
+        window.addEventListener('resize', adjustSidebarPosition);
+        window.addEventListener('scroll', adjustSidebarPosition);
+
+        // Adjust after Foundation initializes
+        $(document).ready(function() {
+            setTimeout(adjustSidebarPosition, 100);
+        });
+
         function confirmMerge() {
             return confirm('Czy jesteś pewny/a? W ten sposób przypiszesz wszystkie publikacje potencjalnego duplikatu autorowi głównemu, domyślnie z główną dyscypliną. Zostanie zlecona też wysyłka tych prac do PBN w tle. Tej operacji nie można cofnąć.');
         }

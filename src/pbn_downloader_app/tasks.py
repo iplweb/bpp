@@ -265,11 +265,6 @@ def download_institution_people(user_id):
                 progress_percentage=0,
             )
 
-        # Create PBN client
-        from pbn_api.client import PBNClient
-
-        client = PBNClient(pbn_user.pbn_token)
-
         # Monkey-patch tqdm to capture progress and save to database
         from threading import Lock
 
@@ -351,7 +346,7 @@ def download_institution_people(user_id):
 
             from pbn_api.integrator import pobierz_ludzi_z_uczelni
 
-            pobierz_ludzi_z_uczelni(client, uczelnia.pbn_uid_id)
+            pobierz_ludzi_z_uczelni(pbn_user.pbn_token, uczelnia.pbn_uid_id)
 
             task_record.current_step = "Finalizowanie pobierania osób..."
             task_record.progress_percentage = 95

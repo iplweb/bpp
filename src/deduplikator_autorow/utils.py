@@ -437,6 +437,190 @@ def znajdz_pierwszego_autora_z_duplikatami(
     return None
 
 
+def scal_autora(glowny_autor, autor_duplikat):
+    """
+    Scala duplikat autora na głównego autora.
+
+    Args:
+        glowny_autor: Obiekt Autor głównego autora
+        autor_duplikat: Obiekt Autor duplikatu
+
+    Returns:
+        dict: Wynik operacji scalania zawierający szczegóły przemapowań
+    """
+    from django.db import transaction
+
+    from pbn_api.models import PBN_Export_Queue
+
+    from bpp.models import (
+        Autor_Dyscyplina,
+        Patent_Autor,
+        Praca_Doktorska,
+        Praca_Habilitacyjna,
+        Wydawnictwo_Ciagle_Autor,
+        Wydawnictwo_Zwarte_Autor,
+    )
+
+    results = {
+        "success": True,
+        "warnings": [],
+        "updated_records": [],
+        "total_updated": 0,
+        "publications_queued_for_pbn": [],
+    }
+
+    try:
+        with transaction.atomic():
+            # 1. Wydawnictwo_Ciagle_Autor
+            wc_autorzy = Wydawnictwo_Ciagle_Autor.objects.filter(autor=autor_duplikat)
+            for wc_autor in wc_autorzy:
+                # Sprawdź dyscypliny
+                if wc_autor.dyscyplina_naukowa:
+                    rok = wc_autor.rekord.rok if wc_autor.rekord else None
+                    if (
+                        rok
+                        and not Autor_Dyscyplina.objects.filter(
+                            autor=glowny_autor,
+                            rok=rok,
+                            dyscyplina_naukowa=wc_autor.dyscyplina_naukowa,
+                        ).exists()
+                    ):
+                        results["warnings"].append(
+                            f"Autor główny nie ma dyscypliny {wc_autor.dyscyplina_naukowa} "
+                            f"za rok {rok}. Dyscyplina została usunięta z publikacji: {wc_autor.rekord}"
+                        )
+                        wc_autor.dyscyplina_naukowa = None
+
+                # Przemapuj autora
+                wc_autor.autor = glowny_autor
+                wc_autor.save()
+
+                # Dodaj do kolejki PBN
+                if wc_autor.rekord:
+                    PBN_Export_Queue.objects.get_or_create(
+                        rekord=wc_autor.rekord, defaults={"created_by": None}
+                    )
+                    results["publications_queued_for_pbn"].append(str(wc_autor.rekord))
+
+                results["updated_records"].append(
+                    f"Wydawnictwo_Ciagle_Autor: {wc_autor.rekord}"
+                )
+                results["total_updated"] += 1
+
+            # 2. Wydawnictwo_Zwarte_Autor
+            wz_autorzy = Wydawnictwo_Zwarte_Autor.objects.filter(autor=autor_duplikat)
+            for wz_autor in wz_autorzy:
+                # Sprawdź dyscypliny
+                if wz_autor.dyscyplina_naukowa:
+                    rok = wz_autor.rekord.rok if wz_autor.rekord else None
+                    if (
+                        rok
+                        and not Autor_Dyscyplina.objects.filter(
+                            autor=glowny_autor,
+                            rok=rok,
+                            dyscyplina_naukowa=wz_autor.dyscyplina_naukowa,
+                        ).exists()
+                    ):
+                        results["warnings"].append(
+                            f"Autor główny nie ma dyscypliny {wz_autor.dyscyplina_naukowa} "
+                            f"za rok {rok}. Dyscyplina została usunięta z publikacji: {wz_autor.rekord}"
+                        )
+                        wz_autor.dyscyplina_naukowa = None
+
+                # Przemapuj autora
+                wz_autor.autor = glowny_autor
+                wz_autor.save()
+
+                # Dodaj do kolejki PBN
+                if wz_autor.rekord:
+                    PBN_Export_Queue.objects.get_or_create(
+                        rekord=wz_autor.rekord, defaults={"created_by": None}
+                    )
+                    results["publications_queued_for_pbn"].append(str(wz_autor.rekord))
+
+                results["updated_records"].append(
+                    f"Wydawnictwo_Zwarte_Autor: {wz_autor.rekord}"
+                )
+                results["total_updated"] += 1
+
+            # 3. Patent_Autor
+            patent_autorzy = Patent_Autor.objects.filter(autor=autor_duplikat)
+            for patent_autor in patent_autorzy:
+                # Sprawdź dyscypliny
+                if patent_autor.dyscyplina_naukowa:
+                    rok = patent_autor.rekord.rok if patent_autor.rekord else None
+                    if (
+                        rok
+                        and not Autor_Dyscyplina.objects.filter(
+                            autor=glowny_autor,
+                            rok=rok,
+                            dyscyplina_naukowa=patent_autor.dyscyplina_naukowa,
+                        ).exists()
+                    ):
+                        results["warnings"].append(
+                            f"Autor główny nie ma dyscypliny {patent_autor.dyscyplina_naukowa} "
+                            f"za rok {rok}. Dyscyplina została usunięta z publikacji: {patent_autor.rekord}"
+                        )
+                        patent_autor.dyscyplina_naukowa = None
+
+                # Przemapuj autora
+                patent_autor.autor = glowny_autor
+                patent_autor.save()
+
+                # Dodaj do kolejki PBN
+                if patent_autor.rekord:
+                    PBN_Export_Queue.objects.get_or_create(
+                        rekord=patent_autor.rekord, defaults={"created_by": None}
+                    )
+                    results["publications_queued_for_pbn"].append(
+                        str(patent_autor.rekord)
+                    )
+
+                results["updated_records"].append(
+                    f"Patent_Autor: {patent_autor.rekord}"
+                )
+                results["total_updated"] += 1
+
+            # 4. Praca_Habilitacyjna
+            prace_hab = Praca_Habilitacyjna.objects.filter(autor=autor_duplikat)
+            for praca_hab in prace_hab:
+                # Przemapuj autora
+                praca_hab.autor = glowny_autor
+                praca_hab.save()
+
+                # Dodaj do kolejki PBN
+                PBN_Export_Queue.objects.get_or_create(
+                    rekord=praca_hab, defaults={"created_by": None}
+                )
+                results["publications_queued_for_pbn"].append(str(praca_hab))
+
+                results["updated_records"].append(f"Praca_Habilitacyjna: {praca_hab}")
+                results["total_updated"] += 1
+
+            # 5. Praca_Doktorska
+            prace_dokt = Praca_Doktorska.objects.filter(autor=autor_duplikat)
+            for praca_dokt in prace_dokt:
+                # Przemapuj autora
+                praca_dokt.autor = glowny_autor
+                praca_dokt.save()
+
+                # Dodaj do kolejki PBN
+                PBN_Export_Queue.objects.get_or_create(
+                    rekord=praca_dokt, defaults={"created_by": None}
+                )
+                results["publications_queued_for_pbn"].append(str(praca_dokt))
+
+                results["updated_records"].append(f"Praca_Doktorska: {praca_dokt}")
+                results["total_updated"] += 1
+
+            return results
+
+    except Exception as e:
+        results["success"] = False
+        results["error"] = str(e)
+        return results
+
+
 def scal_autorow(main_scientist_id: str, duplicate_scientist_id: str) -> dict:
     """
     Scala automatycznie duplikaty autorów.
@@ -449,9 +633,61 @@ def scal_autorow(main_scientist_id: str, duplicate_scientist_id: str) -> dict:
         dict: Wynik operacji scalania
 
     Raises:
-        NotImplementedError: Funkcja nie jest jeszcze zaimplementowana
+        ValueError: Gdy autorzy nie są na liście duplikatów lub nie istnieją
     """
-    raise NotImplementedError("Funkcja scal_autorow nie jest jeszcze zaimplementowana")
+    from pbn_api.models import Scientist
+
+    try:
+        # Pobierz głównego Scientist
+        main_scientist = Scientist.objects.get(pk=main_scientist_id)
+        duplicate_scientist = Scientist.objects.get(pk=duplicate_scientist_id)
+
+        # Pobierz odpowiadające obiekty Autor
+        glowny_autor = main_scientist.rekord_w_bpp
+        autor_duplikat = duplicate_scientist.rekord_w_bpp
+
+        if not glowny_autor or not autor_duplikat:
+            return {
+                "success": False,
+                "error": "Jeden z autorów nie ma odpowiednika w BPP",
+            }
+
+        # Sprawdź czy duplikat jest na liście duplikatów głównego autora
+        if not main_scientist.osobazinstytucji:
+            return {
+                "success": False,
+                "error": "Główny autor nie ma związanej osoby z instytucji",
+            }
+
+        analiza_result = analiza_duplikatow(main_scientist.osobazinstytucji)
+
+        if "error" in analiza_result:
+            return {
+                "success": False,
+                "error": f'Błąd analizy duplikatów: {analiza_result["error"]}',
+            }
+
+        # Sprawdź czy autor_duplikat jest w liście duplikatów
+        duplikaty_ids = [d["autor"].pk for d in analiza_result["analiza"]]
+        if autor_duplikat.pk not in duplikaty_ids:
+            return {
+                "success": False,
+                "error": "Autor duplikat nie znajduje się na liście duplikatów głównego autora",
+            }
+
+        # Wykonaj scalanie
+        result = scal_autora(glowny_autor, autor_duplikat)
+
+        # Dodaj informacje o autorach do wyniku
+        result["main_author"] = str(glowny_autor)
+        result["duplicate_author"] = str(autor_duplikat)
+
+        return result
+
+    except Scientist.DoesNotExist as e:
+        return {"success": False, "error": f"Nie znaleziono Scientist o ID: {str(e)}"}
+    except Exception as e:
+        return {"success": False, "error": f"Nieoczekiwany błąd: {str(e)}"}
 
 
 from cacheops import cached

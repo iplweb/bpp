@@ -704,20 +704,30 @@ def pobierz_prace_po_isbn(client: PBNClient):
 
 
 def pobierz_i_zapisz_dane_jednej_osoby(
-    client, personId, from_institution_api
+    client_or_token, personId, from_institution_api
 ) -> Scientist:
+    client = client_or_token
+    if isinstance(client_or_token, str):
+        # Create PBN client
+        client = Uczelnia.objects.get_default().pbn_client(client_or_token)
+
     scientist = client.get_person_by_id(personId)
     return zapisz_mongodb(
         scientist, Scientist, from_institution_api=from_institution_api
     )
 
 
-def pobierz_ludzi_z_uczelni(client: PBNClient, instutition_id):
+def pobierz_ludzi_z_uczelni(client_or_token: PBNClient, instutition_id):
     """
     Ta procedura pobierze dane wszystkich osob z uczelni, mozna uruchamiac
     zamiast pobierz_ludzi
     """
     assert instutition_id is not None
+
+    client = client_or_token
+    if isinstance(client_or_token, str):
+        # Create PBN client
+        client = Uczelnia.objects.get_default().pbn_client(client_or_token)
 
     pool = initialize_pool(multipler=1)
     results = []
@@ -729,7 +739,7 @@ def pobierz_ludzi_z_uczelni(client: PBNClient, instutition_id):
         result = pool.apply_async(
             pobierz_i_zapisz_dane_jednej_osoby,
             kwds={
-                "client": client,
+                "client_or_token": client_or_token,
                 "personId": person["personId"],
                 "from_institution_api": True,
             },
@@ -745,9 +755,9 @@ def pobierz_ludzi_z_uczelni(client: PBNClient, instutition_id):
         if not Institution.objects.filter(pk=person["institutionId"]).exists():
             print(f"Pobieram extra instytucję {person['institutionName']}")
             zapisz_mongodb(
-                client.get_institution_by_id(person["institutionId"]),
+                client_or_token.get_institution_by_id(person["institutionId"]),
                 Institution,
-                client,
+                client_or_token,
             )
 
         OsobaZInstytucji.objects.update_or_create(

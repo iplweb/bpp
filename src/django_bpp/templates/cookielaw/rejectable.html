@@ -1,13 +1,114 @@
 {% load i18n %}
 
-<div id="CookielawBanner" class="sticky hide-for-print" data-sticky data-stick-to="bottom">
+<div id="CookielawBanner" class="hide-for-print">
     <div class="callout warning">
-        <h3>{% trans "COOKIE_INFO_HEADER" %}</h3>
-        <p>
-            {% trans "COOKIE_INFO_PARA" %}<p/>
-            <a class="btn btn-primary pull-right" href="javascript:Cookielaw.accept();"><b>Zgadzam się</b></a>
-        <p/>
-            <a class="btn pull-right reject" href="javascript:Cookielaw.reject();"><b>Nie zgadzam się</b></a>
+        <h3 style="font-size: 1.4em;"><span class="cookie-icon"></span>Informacja o ciasteczkach (tych internetowych, nie tych słodkich i chrupiących...)</h3>
+        <p style="font-size: 1.1em; line-height: 1.4;">
+            Ta strona wykorzystuje pliki cookie do poprawy funkcjonalności i analizy ruchu.
+            Możesz zaakceptować wszystkie pliki cookie lub zarządzać swoimi preferencjami prywatności.
+            Nawet, jeżeli nie zgodzisz się na używanie plików cookie na tej stronie, to informację o tym musimy zapamiętać w formie... pliku cookie, zatem jeżeli chcesz zadbać o swoją prywatność w pełni, zapoznaj się z informacjami, jak <strong>zupełnie</strong> wyłączyć możliwości śledzenia Ciebie w internecie.
         </p>
+
+        <div class="cookie-info-links" style="font-size: 1.05em;">
+            <strong style="font-size: 1.1em;">Chroń swoją prywatność:</strong><br/>
+            <div id="browser-specific-links"></div>
+            <a href="https://www.nask.pl/aktualnosci/slodka-nazwa-gorzkie-konsekwencje-co-tak-naprawde-robia-pliki-cookie" target="_blank" rel="noopener">
+                Słodka nazwa, gorzkie konsekwencje – co tak naprawdę robią pliki cookie? (NASK)
+            </a>
+        </div>
+
+        <script>
+        (function() {
+            // Browser detection function
+            function detectBrowser() {
+                const userAgent = navigator.userAgent.toLowerCase();
+
+                if (userAgent.includes('chrome') && !userAgent.includes('edge') && !userAgent.includes('edg')) {
+                    return 'chrome';
+                } else if (userAgent.includes('firefox')) {
+                    return 'firefox';
+                } else if (userAgent.includes('edge') || userAgent.includes('edg')) {
+                    return 'edge';
+                } else if (userAgent.includes('safari') && !userAgent.includes('chrome')) {
+                    return 'safari';
+                } else {
+                    return 'unknown';
+                }
+            }
+
+            // Browser-specific links
+            const browserLinks = {
+                chrome: {
+                    url: 'https://support.google.com/chrome/answer/95647',
+                    text: 'Zarządzaj cookies w Chrome'
+                },
+                firefox: {
+                    url: 'https://support.mozilla.org/pl/kb/usuwanie-ciasteczek-i-danych-stron-firefox',
+                    text: 'Zarządzaj cookies w Firefox'
+                },
+                edge: {
+                    url: 'https://support.microsoft.com/pl-pl/microsoft-edge/usuń-pliki-cookie-w-przeglądarce-microsoft-edge-63947406-40ac-c3b8-57b9-2a946a29ae09',
+                    text: 'Zarządzaj cookies w Edge'
+                },
+                safari: {
+                    url: 'https://support.apple.com/pl-pl/105082',
+                    text: 'Zarządzaj cookies w Safari'
+                }
+            };
+
+            // Detect browser and create appropriate link
+            const browser = detectBrowser();
+            const linksContainer = document.getElementById('browser-specific-links');
+
+            if (browser !== 'unknown' && browserLinks[browser]) {
+                const link = browserLinks[browser];
+                linksContainer.innerHTML =
+                    '<a href="' + link.url + '" target="_blank" rel="noopener">' +
+                    link.text +
+                    '</a><br/>';
+            } else {
+                // Fallback: show all browser links if detection fails
+                let allLinksHtml = '';
+                for (const browserName in browserLinks) {
+                    const link = browserLinks[browserName];
+                    allLinksHtml +=
+                        '<a href="' + link.url + '" target="_blank" rel="noopener">' +
+                        link.text +
+                        '</a> ';
+                }
+                linksContainer.innerHTML = allLinksHtml + '<br/>';
+            }
+        })();
+
+        // Cookielaw JavaScript functions
+        window.Cookielaw = {
+            accept: function() {
+                // Set cookie to remember user's acceptance
+                document.cookie = 'cookielaw_accepted=1; max-age=31536000; path=/; SameSite=Lax';
+                // Hide the banner
+                document.getElementById('CookielawBanner').style.display = 'none';
+                // Reload page to reflect changes
+                window.location.reload();
+            },
+
+            reject: function() {
+                // Set cookie to remember user's rejection
+                document.cookie = 'cookielaw_accepted=0; max-age=31536000; path=/; SameSite=Lax';
+                // Hide the banner
+                document.getElementById('CookielawBanner').style.display = 'none';
+                // Reload page to reflect changes
+                window.location.reload();
+            }
+        };
+        </script>
+
+        <div style="margin-top: 15px;">
+            <a class="button success" href="javascript:Cookielaw.accept();" style="margin-right: 10px;">
+                <b>✓ Zgadzam się</b>
+            </a>
+            <a class="button secondary reject" href="javascript:Cookielaw.reject();">
+                <b>✗ Nie zgadzam się</b>
+            </a>
+        </div>
     </div>
 </div>

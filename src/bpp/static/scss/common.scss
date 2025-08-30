@@ -109,14 +109,6 @@ form.custom .custom.checkbox.checked:before {
   height: 1.8em;
 }
 
-#global-nav-table {
-  border-top: none;
-  border-bottom: none;
-  border-left: none;
-  border-right: none;
-  padding: 0px;
-  margin: 0px;
-}
 
 body ol li {
   list-style-type: decimal;
@@ -380,7 +372,7 @@ $dropdown-border: 1px solid rgba(0, 0, 0, 0.15) !default;
 // Custom shadow mixins for dropdown menus
 @mixin dropdown-shadow {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15),
-              0 2px 6px rgba(0, 0, 0, 0.10);
+  0 2px 6px rgba(0, 0, 0, 0.10);
 }
 
 // Apply nice shadows to dropdown menus
@@ -427,4 +419,275 @@ $dropdown-border: 1px solid rgba(0, 0, 0, 0.15) !default;
 
 .dropdown.menu .submenu li:hover {
   background-color: rgba(23, 121, 186, 0.05);
+}
+
+// Make global nav expand to take available space
+.top-bar-right {
+  flex: 1 !important;
+}
+
+.top-bar-right .dropdown.menu {
+  width: 100% !important;
+  justify-content: flex-end !important;
+}
+
+// Add rounded borders to flash messages (callouts)
+.callout {
+  border-radius: 8px !important;
+}
+
+// Also apply to alert boxes for consistency
+.alert-box {
+  border-radius: 8px !important;
+}
+
+// Foundation ZURB variables for rounded corners
+$button-radius: 8px;
+$input-radius: 6px;
+$select-radius: 6px;
+$global-radius: 6px;
+
+// Custom styled HR divider
+.shaded-hr-div {
+  background: linear-gradient(to right, transparent, rgba(0, 0, 0, 0.1), transparent);
+  height: 1px;
+  margin: 20px 0;
+  border: none;
+}
+
+// Nice shadows for fieldsets
+fieldset {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08),
+  0 1px 4px rgba(0, 0, 0, 0.06);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 8px;
+  background-color: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  transition: box-shadow 0.2s ease-in-out;
+  margin-top: 1em;
+  margin-bottom: 1em;
+}
+
+// Enhanced shadow on fieldset hover
+fieldset:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12),
+  0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+// Style fieldset legends nicely
+fieldset legend {
+  background-color: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border-radius: 6px;
+  padding: 8px 12px !important;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  margin-left: 20px;
+}
+
+// Gradient background class with Safari compatibility
+
+// Gradient background class
+.gradient-background {
+  background: -webkit-linear-gradient(top, #e6e6e6 0%, #f8f8f8 100%) !important;
+  background: -o-linear-gradient(top, #e6e6e6 0%, #f8f8f8 100%) !important;
+  background: linear-gradient(to bottom, #e6e6e6 0%, #f8f8f8 100%) !important;
+  background-attachment: fixed !important;
+  min-height: 100vh !important;
+}
+
+// Apply gradient background to body
+body {
+  @extend .gradient-background;
+}
+
+// Set main content area to white background
+.grid-container-fluid[data-sticky-container] {
+  background-color: white;
+  min-height: calc(100vh - 200px); // Ensure content area has minimum height
+}
+
+// Also apply white background to main content container
+#content {
+  background-color: white !important;
+}
+
+#CookielawBanner {
+  // Make the banner container cover the entire viewport
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  background-color: rgba(0, 0, 0, 0.6) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  z-index: 9998 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+#CookielawBanner > div:first-child {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 4px 16px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 12px;
+  background-color: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  max-height: 90vh;
+  overflow-y: auto;
+  // Responsive width
+  width: 90vw;
+
+  @media screen and (min-width: 768px) {
+    width: 50vw;
+  }
+}
+
+// CSS Cookie Icons
+.cookie-icon {
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  background: linear-gradient(135deg, #d2691e 0%, #8b4513 100%);
+  border-radius: 50%;
+  position: relative;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+.cookie-icon::before {
+  content: '';
+  position: absolute;
+  top: 4px;
+  left: 6px;
+  width: 3px;
+  height: 3px;
+  background: #654321;
+  border-radius: 50%;
+  box-shadow: 8px 2px 0 #654321,
+  4px 8px 0 #654321,
+  12px 10px 0 #654321,
+  2px 12px 0 #654321,
+  10px 4px 0 #654321;
+}
+
+// Privacy icon
+.privacy-icon {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.privacy-icon::before {
+  content: '🛡️';
+  font-size: 16px;
+}
+
+// Information links styling
+.cookie-info-links {
+  margin-top: 10px;
+  font-size: 0.85em;
+}
+
+.cookie-info-links a {
+  color: #1779ba;
+  text-decoration: none;
+  margin-right: 15px;
+}
+
+.cookie-info-links a:hover {
+  text-decoration: underline;
+}
+
+// Remove borders for nested fieldsets (except in multiseek)
+fieldset fieldset {
+  border: none !important;
+  box-shadow: none !important;
+  background-color: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.multiseekFrame .button-group {
+  margin-top: 8px !important;
+}
+
+
+// Add borders for nested fields in multiseek page
+.multiseekFrame fieldset fieldset {
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04) !important;
+  background-color: rgba(248, 248, 248, 0.3) !important;
+  border-radius: 4px !important;
+  padding-bottom: 4px !important;
+  margin-bottom: 24px !important;
+}
+
+// Style multiseek nested fieldset legends
+.multiseekFrame fieldset fieldset legend {
+  background-color: rgba(255, 255, 255, 0.8) !important;
+  padding: 4px 8px !important;
+  font-size: 0.9em !important;
+  border-radius: 3px !important;
+}
+
+// Add shadows to input fields on focus and hover
+input[type="text"]:hover,
+input[type="email"]:hover,
+input[type="password"]:hover,
+input[type="number"]:hover,
+input[type="search"]:hover,
+input[type="url"]:hover,
+input[type="tel"]:hover,
+textarea:hover,
+select:hover {
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.06) !important;
+  transition: box-shadow 0.2s ease-in-out !important;
+}
+
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus,
+input[type="number"]:focus,
+input[type="search"]:focus,
+input[type="url"]:focus,
+input[type="tel"]:focus,
+textarea:focus,
+select:focus {
+  box-shadow: 0 3px 8px rgba(23, 121, 186, 0.12), 0 2px 4px rgba(23, 121, 186, 0.08) !important;
+  transition: box-shadow 0.2s ease-in-out !important;
+}
+
+// Add shadows to buttons on hover and active
+.button:hover,
+button:hover,
+input[type="submit"]:hover,
+input[type="button"]:hover {
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.12), 0 2px 4px rgba(0, 0, 0, 0.08) !important;
+  transition: all 0.2s ease-in-out !important;
+  transform: translateY(-1px) !important;
+}
+
+.button:active,
+button:active,
+input[type="submit"]:active,
+input[type="button"]:active {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.16), 0 1px 2px rgba(0, 0, 0, 0.12) !important;
+  transform: translateY(0) !important;
+  transition: all 0.1s ease-in-out !important;
+}
+
+// Special styling for primary/success buttons
+.button.success:hover {
+  box-shadow: 0 3px 8px rgba(40, 167, 69, 0.15), 0 2px 4px rgba(40, 167, 69, 0.10) !important;
+}
+
+.button.alert:hover {
+  box-shadow: 0 3px 8px rgba(220, 53, 69, 0.15), 0 2px 4px rgba(220, 53, 69, 0.10) !important;
 }

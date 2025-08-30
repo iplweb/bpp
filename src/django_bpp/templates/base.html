@@ -151,7 +151,7 @@
     <div class="grid-container-fluid" data-sticky-container>
         <div class="grid-container">
             <div class="grid-x">
-                <div class="cell">
+                <div class="cell"><p/>
                     <div id="messagesPlaceholder"></div>
                     <div id="content">
 
@@ -170,7 +170,7 @@
                                     </form>
                                 </div>
                             </div>
-                        {% else %}
+                        {% else %}<p/>
                             {% block content %}
                             {% endblock %}
                         {% endif %}
@@ -183,7 +183,7 @@
     </div>
 
     <!-- Full-width footer -->
-    <div class="grid-container-fluid" style="background-color: #f8f8f8; border-top: 1px solid #e6e6e6; margin-top: 20px; padding: 40px 0;">
+    <div class="grid-container-fluid" style="background-color: #f8f8f8; border-top: 1px solid #e6e6e6; margin-top: 0px; padding: 40px 0; z-index: 10 !important; ">
         <div class="grid-container">
             <div class="grid-x">
                 {% include "base_footer.html" %}

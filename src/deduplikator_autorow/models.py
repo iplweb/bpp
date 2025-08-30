@@ -21,8 +21,8 @@ class NotADuplicate(models.Model):
     )
 
     class Meta:
-        verbose_name = "Not a duplicate"
-        verbose_name_plural = "Not duplicates"
+        verbose_name = "Oznaczony jako nie-duplikat"
+        verbose_name_plural = "Oznaczeni jako nie-duplikaty"
         ordering = ["-created_on"]
 
     def __str__(self):
