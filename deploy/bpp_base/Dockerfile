@@ -45,7 +45,7 @@ FROM python:3.11.13-slim-trixie AS runtime
 RUN sed -i s/http/https/g /etc/apt/sources.list.d/debian.sources
 
 # RUN --mount=type=cache,sharing=locked,target=/var/cache/apt apt-get update &&  \
-RUN apt update && apt install -y python3-pip libpango-1.0-0 libpangoft2-1.0-0 postgresql-client pandoc curl
+RUN apt update && apt install -y python3-pip libpango-1.0-0 libpangoft2-1.0-0 postgresql-client pandoc curl gettext
 
 ENV VIRTUAL_ENV=/app/.venv \
     PATH="/app/.venv/bin:$PATH" \
