@@ -139,8 +139,19 @@ urlpatterns = (
             "komparator_pbn/",
             include("komparator_pbn.urls", namespace="komparator_pbn"),
         ),
+        path(
+            "pbn_downloader_app/",
+            include("pbn_downloader_app.urls", namespace="pbn_downloader_app"),
+        ),
         path("rozbieznosci_dyscyplin/", include("rozbieznosci_dyscyplin.urls")),
         path("rozbieznosci_if/", include("rozbieznosci_if.urls")),
+        path(
+            "deduplikator_autorow/",
+            include(
+                ("deduplikator_autorow.urls", "deduplikator_autorow"),
+                namespace="deduplikator_autorow",
+            ),
+        ),
         url(
             r"^multiseek/results/$",
             csrf_exempt(

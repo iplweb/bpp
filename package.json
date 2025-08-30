@@ -1,12 +1,13 @@
 {
     "name": "bpp-iplweb",
-    "version": "v202508.1210",
+    "version": "v202508.1211",
     "license": "MIT",
     "devDependencies": {
         "grunt": ">=1.6.1",
         "grunt-contrib-qunit": "^10.1.1",
         "grunt-contrib-watch": "^1.1.0",
         "grunt-sass": "^3.1.0",
+        "grunt-shell": "^4.0.0",
         "qunit": "^2.20.0",
         "sass": "^1.79.4",
         "sinon": "^19.0.2"

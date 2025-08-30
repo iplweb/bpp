@@ -6,141 +6,275 @@
 {% endblock %}
 
 {% block breadcrumbs %}
-    {{ block.super }}
+    {{ block.super }}{% if uczelnia.uzywaj_wydzialow %}
     <li>
         <a href="{% url "bpp:browse_wydzial" jednostka.wydzial.slug %}">{{ jednostka.wydzial }}</a>
-    </li>
+    </li>{% endif %}
     <li class="current">{{ jednostka }}</li>
 {% endblock %}
 
 {% block content %}
-    <h1>{{ jednostka }}</h1>
-    {% include "browse/go_to_admin_change.html" with url="admin:bpp_jednostka_change" pk=jednostka.pk group="struktura" %}
-
-    {#    <h2><a href="{% url "bpp:browse_wydzial" jednostka.wydzial.slug %}">#}
-    {#    {{ jednostka.wydzial }}</a></h2>#}
-
-    {% if jednostka.kierownik %}
-        Kierownik: {{ jednostka.kierownik }}
-    {% endif %}
-    </a>
-
-    {% if jednostka.parent %}
-        Wchodzi w skład:
-        <ul>
-              <li><a href="{% url "bpp:browse_jednostka" jednostka.parent.slug %}">{{ jednostka.parent }}</a></li>
-        </ul>
-    {% endif %}
-
-    {% if jednostka.children.exists %}
-        Jest nadrzędną jednostką dla:<ul>
-        {% for child in jednostka.children.all %}
-            <li><a href="{% url "bpp:browse_jednostka" child.slug %}">{{ child }}</a></li>
-        {% endfor %}
-        </ul>
-    {% endif %}
-
-    {% if jednostka.pokazuj_opis and jednostka.opis %}
-        {{ jednostka.opis|safe }}
-    {% endif %}
-
-    <form method="post"
-          action="{% url "bpp:browse_build_search" %}"
-          class="browserForm">
-        {% csrf_token %}
-        <input type="hidden" name="jednostka" value="{{ jednostka.pk }}"/>
-        <input type="hidden" name="suggested-title" value="{{ jednostka }}"/>
-        <fieldset>
-            <legend>Wyszukaj:</legend>
-            {% include "browse/typy.html" %}
-        </fieldset>
-
-    {% if jednostka.pracownicy.exists and jednostka.pracownicy.count < MAX_NO_AUTHORS_ON_BROWSE_JEDNOSTKA_PAGE %}
-            <fieldset>
-                <legend>... napisane przez obecnych pracowników:</legend>
-
-            <div class="row">
-                {% for col in jednostka.pracownicy|columns:2 %}
-                    <div class="large-6 medium-12 small-12 columns"  style="white-spacE:nowrap;">
-                        {% for autor in col %}
-                            <input type="checkbox" name="autor"
-                                       value="{{ autor.pk }}"
-                                       id="autor_{{ autor.pk }}"
-                                       />
-                            <label for="autor_{{ autor.pk }}">
-                                    <span class="custom checkbox"></span>
-                                    {{ autor }}{% if autor.aktualna_funkcja.pokazuj_za_nazwiskiem %}, {{ autor.aktualna_funkcja }}{% endif %}
-                                    <a href="{% url "bpp:browse_autor" autor.slug %}">►</a>
-                            </label><br/>
-                        {% endfor %}
+    <!-- Modern Header Section -->
+    <div class="unit-header" style="margin-bottom: 30px;">
+        <div class="grid-x grid-margin-x align-middle">
+            <div class="cell auto">
+                <h1 style="color: #2c3e50; font-size: 2rem; margin-bottom: 10px;">{{ jednostka }}</h1>
+                {% if jednostka.kierownik %}
+                    <div class="subheader" style="color: #7f8c8d; font-size: 1.1rem; margin-bottom: 15px;">
+                        <i class="fi-torso" style="margin-right: 5px;"></i>Kierownik: {{ jednostka.kierownik }}
                     </div>
-                {% endfor %}
+                {% endif %}
+            </div>
+            <div class="cell shrink">
+                {% include "browse/go_to_admin_change.html" with url="admin:bpp_jednostka_change" pk=jednostka.pk group="struktura" %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Unit Hierarchy Cards -->
+    {% if jednostka.parent or jednostka.children.exists %}
+        <div class="grid-x grid-margin-x" style="margin-bottom: 25px;">
+            {% if jednostka.parent %}
+                <div class="cell medium-6">
+                    <div class="callout primary" style="border-left: 4px solid #3498db;">
+                        <h6 style="margin-bottom: 10px; color: #2c3e50;">
+                            <i class="fi-arrow-up" style="margin-right: 5px;"></i>Wchodzi w skład:
+                        </h6>
+                        <a href="{% url "bpp:browse_jednostka" jednostka.parent.slug %}"
+                           style="color: #3498db; text-decoration: none; font-weight: 500;">
+                            {{ jednostka.parent }}
+                        </a>
+                    </div>
+                </div>
+            {% endif %}
+
+            {% if jednostka.children.exists %}
+                <div class="cell medium-6">
+                    <div class="callout secondary" style="border-left: 4px solid #95a5a6;">
+                        <h6 style="margin-bottom: 10px; color: #2c3e50;">
+                            <i class="fi-arrow-down" style="margin-right: 5px;"></i>Jednostki podrzędne:
+                        </h6>
+                        <ul class="no-bullet" style="margin: 0;">
+                            {% for child in jednostka.children.all %}
+                                <li style="margin-bottom: 5px;">
+                                    <a href="{% url "bpp:browse_jednostka" child.slug %}"
+                                       style="color: #7f8c8d; text-decoration: none;">
+                                        {{ child }}
+                                    </a>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    {% endif %}
+
+    <!-- Unit Description -->
+    {% if jednostka.pokazuj_opis and jednostka.opis %}
+        <div class="callout" style="background: #f8f9fa; border: 1px solid #e9ecef; margin-bottom: 30px;">
+            {{ jednostka.opis|safe }}
+        </div>
+    {% endif %}
+
+    <!-- Quick Actions -->
+    <div style="text-align: center; margin-bottom: 30px;">
+        <form method="post" action="{% url "bpp:browse_build_search" %}" style="display: inline;">
+            {% csrf_token %}
+            <input type="hidden" name="jednostka" value="{{ jednostka.pk }}"/>
+            <input type="hidden" name="suggested-title" value="{{ jednostka }}"/>
+            <button type="submit"
+                    class="button primary large"
+                    style="background: #27ae60; border: none; padding: 12px 24px; font-size: 1rem; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: all 0.2s ease;"
+                    onmouseover="this.style.backgroundColor='#229954'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.15)'"
+                    onmouseout="this.style.backgroundColor='#27ae60'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)'">
+                <i class="fi-list-bullet" style="margin-right: 8px;"></i>Pokaż wszystkie publikacje
+            </button>
+        </form>
+    </div>
+
+
+    <!-- Modern Search Form -->
+    <div class="search-container" style="background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); padding: 30px; margin-bottom: 30px;">
+        <div class="search-header" style="margin-bottom: 25px;">
+            <h3 style="color: #2c3e50; margin-bottom: 5px;">
+                <i class="fi-magnifying-glass" style="margin-right: 10px;"></i>Wyszukaj publikacje
+            </h3>
+            <p style="color: #7f8c8d; margin: 0; font-size: 0.9rem;">
+                Znajdź publikacje powiązane z jednostką {{ jednostka }}
+            </p>
+        </div>
+
+        <form method="post"
+              action="{% url "bpp:browse_build_search" %}"
+              class="browserForm">
+            {% csrf_token %}
+            <input type="hidden" name="jednostka" value="{{ jednostka.pk }}"/>
+            <input type="hidden" name="suggested-title" value="{{ jednostka }}"/>
+
+            <div class="card" style="margin-bottom: 20px; border: 1px solid #e9ecef;">
+                <div class="card-section">
+                    <h6 style="color: #2c3e50; margin-bottom: 15px; font-weight: 600;">
+                        <i class="fi-list" style="margin-right: 5px;"></i>Typ publikacji:
+                    </h6>
+                    {% include "browse/typy.html" %}
+                </div>
             </div>
 
-            </fieldset>
-
-        {% if jednostka.wspolpracowali.exists and jednostka.wspolpracowali.count < MAX_NO_AUTHORS_ON_BROWSE_JEDNOSTKA_PAGE %}
-<ul class="accordion" data-accordion data-allow-all-closed="true">
-    <li class="accordion-item " data-accordion-item>
-        <a href="#" class="accordion-title">... oraz osoby wcześniej związane z jednostką (kliknij aby rozwinąć listę)</a>
-        <div class="accordion-content" data-tab-content>
-            <fieldset>
-                <div class="row">
-                    {% for col in jednostka.wspolpracowali|columns:2 %}
-                        <div class="large-6 medium-12 small-12 columns" style="white-spacE:nowrap;">
-                            {% for autor in col %}
-                                <input type="checkbox" name="autor"
-                                       value="{{ autor.pk }}"
-                                       id="autor_{{ autor.pk }}"
-                                />
-                                <label for="autor_{{ autor.pk }}">
-                                    <span class="custom checkbox"></span>
-                                    {{ autor }}
-                                    <a href="{% url "bpp:browse_autor" autor.slug %}">►</a>
-                                </label><br/>
+            {% if jednostka.pracownicy.exists and jednostka.pracownicy.count < MAX_NO_AUTHORS_ON_BROWSE_JEDNOSTKA_PAGE %}
+                <div class="card" style="margin-bottom: 20px; border: 1px solid #e9ecef;">
+                    <div class="card-section">
+                        <h6 style="color: #2c3e50; margin-bottom: 15px; font-weight: 600;">
+                            <i class="fi-torsos-all" style="margin-right: 5px;"></i>Obecni pracownicy:
+                        </h6>
+                        <div class="grid-x grid-margin-x">
+                            {% for col in jednostka.pracownicy|columns:2 %}
+                                <div class="cell medium-6">
+                                    {% for autor in col %}
+                                        <div style="margin-bottom: 8px;">
+                                            <input type="checkbox" name="autor"
+                                                   value="{{ autor.pk }}"
+                                                   id="autor_{{ autor.pk }}"
+                                                   style="margin-right: 8px;"/>
+                                            <label for="autor_{{ autor.pk }}" style="margin-bottom: 0; display: inline;">
+                                                {{ autor }}{% if autor.aktualna_funkcja.pokazuj_za_nazwiskiem %},
+                                                <span style="color: #7f8c8d; font-size: 0.9em;">{{ autor.aktualna_funkcja }}</span>{% endif %}
+                                                <a href="{% url "bpp:browse_autor" autor.slug %}"
+                                                   style="margin-left: 5px; color: #3498db; text-decoration: none;"
+                                                   title="Zobacz profil autora">
+                                                    <i class="fi-torso" style="font-size: 0.9rem;"></i>
+                                                </a>
+                                            </label>
+                                        </div>
+                                    {% endfor %}
+                                </div>
                             {% endfor %}
                         </div>
-                    {% endfor %}
+                    </div>
                 </div>
 
-            </fieldset>
-        </div>
-    </li>
-</ul>
-        {% endif %}
-    {% else %}
+                {% if jednostka.wspolpracowali.exists and jednostka.wspolpracowali.count < MAX_NO_AUTHORS_ON_BROWSE_JEDNOSTKA_PAGE %}
+                    <div class="card" style="margin-bottom: 20px; border: 1px solid #e9ecef;">
+                        <div class="card-section">
+                            <h6 style="color: #2c3e50; margin-bottom: 15px; font-weight: 600;">
+                                <i class="fi-torsos" style="margin-right: 5px;"></i>Byli pracownicy:
+                            </h6>
+                            <ul class="accordion" data-accordion data-allow-all-closed="true" style="border: none;">
+                                <li class="accordion-item" data-accordion-item style="border: none;">
+                                    <a href="#" class="accordion-title" style="background: #f8f9fa; padding: 10px 15px; border-radius: 4px;">
+                                        <i class="fi-plus" style="margin-right: 5px;"></i>Kliknij aby rozwinąć listę
+                                    </a>
+                                    <div class="accordion-content" data-tab-content style="padding: 15px 0 0 0;">
+                                        <div class="grid-x grid-margin-x">
+                                            {% for col in jednostka.wspolpracowali|columns:2 %}
+                                                <div class="cell medium-6">
+                                                    {% for autor in col %}
+                                                        <div style="margin-bottom: 8px;">
+                                                            <input type="checkbox" name="autor"
+                                                                   value="{{ autor.pk }}"
+                                                                   id="autor_{{ autor.pk }}"
+                                                                   style="margin-right: 8px;"/>
+                                                            <label for="autor_{{ autor.pk }}" style="margin-bottom: 0; display: inline;">
+                                                                {{ autor }}
+                                                                <a href="{% url "bpp:browse_autor" autor.slug %}"
+                                                                   style="margin-left: 5px; color: #3498db; text-decoration: none;"
+                                                                   title="Zobacz profil autora">
+                                                                    <i class="fi-torso" style="font-size: 0.9rem;"></i></a>
+                                                            </label>
+                                                        </div>
+                                                    {% endfor %}
+                                                </div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                {% endif %}
+            {% else %}
+                {% if jednostka.autorzy_na_strone_jednostki.exists and jednostka.autorzy_na_strone_jednostki.count < MAX_NO_AUTHORS_ON_BROWSE_JEDNOSTKA_PAGE %}
+                    <div class="card" style="margin-bottom: 20px; border: 1px solid #e9ecef;">
+                        <div class="card-section">
+                            <h6 style="color: #2c3e50; margin-bottom: 15px; font-weight: 600;">
+                                <i class="fi-torsos-all" style="margin-right: 5px;"></i>Autorzy publikacji:
+                            </h6>
+                            <div class="grid-x grid-margin-x">
+                                {% for col in jednostka.autorzy_na_strone_jednostki|columns:2 %}
+                                    <div class="cell medium-6">
+                                        {% for autor in col %}
+                                            <div style="margin-bottom: 8px;">
+                                                <input type="checkbox" name="autor"
+                                                       value="{{ autor.pk }}"
+                                                       id="autor_{{ autor.pk }}"
+                                                       style="margin-right: 8px;"/>
+                                                <label for="autor_{{ autor.pk }}" style="margin-bottom: 0; display: inline;">
+                                                    {{ autor }}
+                                                    <a href="{% url "bpp:browse_autor" autor.slug %}"
+                                                       style="margin-left: 5px; color: #3498db; text-decoration: none;"
+                                                       title="Zobacz profil autora">
+                                                        <i class="fi-torso" style="font-size: 0.9rem;"></i></a>
+                                                </label>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                {% endif %}
+            {% endif %}
 
-        {% if jednostka.autorzy_na_strone_jednostki.exists and jednostka.autorzy_na_strone_jednostki.count < MAX_NO_AUTHORS_ON_BROWSE_JEDNOSTKA_PAGE %}
-
-            <fieldset>
-                <legend>... napisane przez:</legend>
-
-            <div class="row">
-                {% for col in jednostka.autorzy_na_strone_jednostki|columns:2 %}
-                    <div class="large-6 medium-12 small-12 columns"  style="white-spacE:nowrap;">
-                        {% for autor in col %}
-                            <input type="checkbox" name="autor"
-                                       value="{{ autor.pk }}"
-                                       id="autor_{{ autor.pk }}"
-                                       />
-                            <label for="autor_{{ autor.pk }}">
-                                    <span class="custom checkbox"></span>
-                                    {{ autor }}
-                                    <a href="{% url "bpp:browse_autor" autor.slug %}">►</a>
-                            </label><br/>
+            <!-- Years Selection Card -->
+            <div class="card" style="margin-bottom: 20px; border: 1px solid #e9ecef;">
+                <div class="card-section">
+                    <h6 style="color: #2c3e50; margin-bottom: 15px; font-weight: 600;">
+                        <i class="fi-calendar" style="margin-right: 5px;"></i>Opracowane w latach:
+                    </h6>
+                    <div class="grid-x grid-margin-x">
+                        {% for rok in jednostka.prace_w_latach reversed %}
+                            <div class="cell small-6 medium-4 large-2" style="margin-bottom: 10px;">
+                                <input type="checkbox" name="rok"
+                                       id="rok_{{ rok }}" value="{{ rok }}"
+                                       style="margin-right: 8px;"/>
+                                <label for="rok_{{ rok }}" style="margin-bottom: 0; display: inline;">
+                                    {{ rok }}
+                                </label>
+                            </div>
                         {% endfor %}
                     </div>
-                {% endfor %}
+                </div>
             </div>
 
-            </fieldset>
-        {% endif %}
+            <!-- Report Title Card -->
+            <div class="card" style="margin-bottom: 20px; border: 1px solid #e9ecef;">
+                <div class="card-section">
+                    <h6 style="color: #2c3e50; margin-bottom: 15px; font-weight: 600;">
+                        <i class="fi-page-edit" style="margin-right: 5px;"></i>Tytuł raportu:
+                    </h6>
+                    <div class="grid-x grid-margin-x align-middle">
+                        <div class="cell auto">
+                            <input type="text" name="suggested-title" value="{{ jednostka }}"
+                                   style="margin-bottom: 0; border: 1px solid #e9ecef; border-radius: 4px;"/>
+                        </div>
+                    </div>
+                    <small style="color: #7f8c8d; font-style: italic;">
+                        Tytuł wyszukiwania możesz zmienić, klikając go dwukrotnie.
+                    </small>
+                </div>
+            </div>
 
-    {% endif %}
-
-        {% include "browse/w_latach.html" with prace_w_latach=jednostka.prace_w_latach %}
-        {% include "browse/tytul_raportu.html" with obj=jednostka %}
-        <input class="submit button" type="submit" value="Szukaj"/>
-    </form>
+            <!-- Search Button -->
+            <div style="text-align: center; margin-top: 25px; padding-top: 20px; border-top: 1px solid #e9ecef;">
+                <button type="submit"
+                        class="button primary large"
+                        style="background: #3498db; border: none; padding: 15px 30px; font-size: 1.1rem; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: all 0.2s ease;"
+                        onmouseover="this.style.backgroundColor='#2980b9'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.15)'"
+                        onmouseout="this.style.backgroundColor='#3498db'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)'">
+                    <i class="fi-magnifying-glass" style="margin-right: 8px; color: white;"></i>Szukaj publikacji
+                </button>
+            </div>
+        </form>
+    </div>
 
 {% endblock %}

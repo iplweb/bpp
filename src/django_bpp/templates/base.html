@@ -24,6 +24,28 @@
 {% endblock %}
 
 {% block body %}
+    <script type="text/javascript">
+        function adjustBreadcrumbsPosition() {
+            var topBar = document.getElementById('example-menu');
+            var breadcrumbs = document.getElementById('breadcrumbs-wrapper');
+
+            if (topBar && breadcrumbs) {
+                var topBarHeight = topBar.offsetHeight -5;
+                breadcrumbs.style.top = topBarHeight + 'px';
+            }
+        }
+
+        // Adjust on page load
+        document.addEventListener('DOMContentLoaded', adjustBreadcrumbsPosition);
+
+        // Adjust on window resize
+        window.addEventListener('resize', adjustBreadcrumbsPosition);
+
+        // Adjust after Foundation initializes (in case it changes heights)
+        $(document).ready(function() {
+            setTimeout(adjustBreadcrumbsPosition, 10);
+        });
+    </script>
         {% load notifications %}
         <div id="messageTemplate" style="display: none;">
         {% verbatim messageTemplate %}
@@ -110,19 +132,26 @@
     {% endif %}
 
     {% include "top_bar.html" %}
-    <div class="grid-container-fluid" data-sticky-container>
-        <div class="grid-container">
-            {% block before-breadcrumbs %}{% endblock %}
-            <div class="grid-x hide-for-small-only">
-                <ul class="breadcrumbs hide-for-print" style="margin-top: 10px;">
-                    {% block breadcrumbs %}
-                        <li><a href="/">Strona główna</a></li>
-                    {% endblock %}
-                </ul>
-            </div>
-
+    {% block before-breadcrumbs %}{% endblock %}
+    {% block breadcrumbs-html %}
+        <div id="breadcrumbs-wrapper" class="grid-container-fluid hide-for-small-only" style="background-color: rgba(240, 240, 240, 0.85); border-bottom: 1px solid #d6d6d6; padding: 10px 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); position: sticky; top: 50px; z-index: 1; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);">
             <div class="grid-x">
                 <div class="cell">
+                    <ul class="breadcrumbs" style="margin: 0; background: transparent;">
+                        {% block breadcrumbs %}
+                            <li><a href="/">{{ uczelnia.skrot }}</a></li>
+                        {% endblock %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    {% endblock %}
+
+
+    <div class="grid-container-fluid" data-sticky-container>
+        <div class="grid-container">
+            <div class="grid-x">
+                <div class="cell"><p/>
                     <div id="messagesPlaceholder"></div>
                     <div id="content">
 
@@ -141,16 +170,24 @@
                                     </form>
                                 </div>
                             </div>
-                        {% else %}
+                        {% else %}<p/>
                             {% block content %}
                             {% endblock %}
                         {% endif %}
                     </div>
                 </div>
-                {% include "base_footer.html" %}
             </div>
             {% load cookielaw_tags %}
             {% if cookielaw.notset %}{% rejectable_cookielaw_banner %}{% endif %}
+        </div>
+    </div>
+
+    <!-- Full-width footer -->
+    <div class="grid-container-fluid" style="background-color: #f8f8f8; border-top: 1px solid #e6e6e6; margin-top: 0px; padding: 40px 0; z-index: 10 !important; ">
+        <div class="grid-container">
+            <div class="grid-x">
+                {% include "base_footer.html" %}
+            </div>
         </div>
     </div>
 

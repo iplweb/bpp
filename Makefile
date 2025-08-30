@@ -66,14 +66,11 @@ $(CSS_TARGETS): $(SCSS_SOURCES) $(NODE_MODULES)
 	grunt build
 
 $(MO_FILES): $(PO_FILES)
-	export PYTHONPATH=. && cd src && (django-admin compilemessages || django-admin.py compilemessages)
+	cd src && poetry run django-admin compilemessages
 
 assets: $(CSS_TARGETS) $(MO_FILES)
 
 yarn: $(NODE_MODULES)
-
-collectstatic:
-	python src/manage.py collectstatic --noinput -v0
 
 production-assets: distclean assets
 # usuń ze staticroot niepotrzebne pakiety (Poetry pyproject.toml exclude
@@ -99,7 +96,7 @@ bdist_wheel: distclean production-assets compilemessages
 puppeteer-install-chrome:
 	npx puppeteer browsers install chrome
 
-js-tests: assets collectstatic puppeteer-install-chrome
+js-tests: assets puppeteer-install-chrome
 	grunt qunit
 
 # cel: live-docs
@@ -199,7 +196,7 @@ loc: clean
 	pygount -N ... -F "...,staticroot,migrations,fixtures" src --format=summary
 
 
-DOCKER_VERSION="202508.1210"
+DOCKER_VERSION="202508.1211"
 
 DOCKER_BUILD=build --platform linux/amd64,linux/arm64 --push
 

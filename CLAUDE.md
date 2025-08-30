@@ -6,28 +6,38 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 BPP (Bibliografia Publikacji Pracowników) is a Polish academic bibliography management system built with Django. It manages publication records for academic institutions and libraries in Poland.
 
+## General rule
+
+**IMPORANT: if anything is unclear to you, feel free to ask questions before taking on any non-trivial tasks.**
+
+**IMPORTANT: if using icons, refrain from emojis, rather use monochrome Foundation-Icons (<span class="fi-icon"/>)**
+
 ## Key Commands
 
 ### Development Commands
 - `python src/manage.py runserver` - Start development server (default settings: django_bpp.settings.local)
 - `python src/manage.py migrate` - Apply database migrations
-- `python src/manage.py collectstatic` - Collect static files
 - `python src/manage.py shell` - Django shell
 - `bpp-manage.py` - Alternative management command entry point
 
 ### Frontend Build Commands
 - `yarn install` - Install Node.js dependencies
 - `grunt build` - Build frontend assets using Grunt
-- `make assets` - Run both yarn install and grunt build
-- `make collectstatic` - Collect Django static files
+- `make assets` - Run both yarn install and grunt build and Django collectstatic
 
 ### Testing Commands
 - `pytest` - Run tests (configured in pytest.ini)
 - `pytest --ds=django_bpp.settings.local` - Run tests with specific settings
 - `make tests-without-selenium` - Run tests excluding Selenium tests with parallelization (fast)
 - `make tests-with-selenium` - Run only Selenium tests with parallelization (slow)
-- `make tests` - Run quick test suite
+- `make tests` - **PRIMARY COMMAND** - Run full test suite
 - `make full-tests` - Run complete test suite
+
+**CRITICAL TEST EXECUTION TIME:**
+- Full test suite (`pytest src/` or `make tests`) takes **UP TO 10 MINUTES** to complete
+- **NEVER use timeout restrictions** when running tests
+- Always set timeout to at least 600000ms (10 minutes) when running `pytest src/`
+- Tests may appear to hang but are actually running - be patient
 
 ### Code Quality Commands
 - `black .` - Format Python code
@@ -93,7 +103,8 @@ The project uses multiple Django applications in `src/`:
 - Foundation CSS framework
 - jQuery and various plugins (DataTables, Select2, HTMX)
 - Grunt build system for asset compilation
-- Static files management via Django's collectstatic
+
+**IMPORTANT** if you change any SCSS files, remember to run "grunt build" after.
 
 ### Settings Structure
 - `src/django_bpp/settings/base.py` - Base settings
@@ -150,3 +161,4 @@ The project uses a sophisticated migration system with both Python and SQL migra
 - Use model_bakery.baker.make for creating database objects in tests
 - Never use unittest.TestCase classes or Django's TestCase
 - All test functions should be standalone functions with pytest fixtures
+- use ```@pytest.mark.django_db`` for tests using database

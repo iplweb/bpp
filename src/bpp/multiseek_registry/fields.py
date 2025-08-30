@@ -1163,7 +1163,14 @@ multiseek_fields = [
     TytulPracyQueryObject(),
     NazwiskoIImieQueryObject(),
     JednostkaQueryObject(),
-    WydzialQueryObject(),
+]
+
+if getattr(settings, "DJANGO_BPP_UCZELNIA_UZYWA_WYDZIALOW", True):
+    multiseek_fields += [
+        WydzialQueryObject(),
+    ]
+
+multiseek_fields += [
     Typ_OdpowiedzialnosciQueryObject(),
     TypOgolnyAutorQueryObject(),
     TypOgolnyRedaktorQueryObject(),
@@ -1180,7 +1187,14 @@ multiseek_fields = [
     WydawnictwoNadrzedneQueryObject(),
     PierwszeNazwiskoIImie(),
     PierwszaJednostkaQueryObject(),
-    PierwszyWydzialQueryObject(),
+]
+
+if getattr(settings, "DJANGO_BPP_UCZELNIA_UZYWA_WYDZIALOW", True):
+    multiseek_fields += [
+        PierwszyWydzialQueryObject(),
+    ]
+
+multiseek_fields += [
     NazwiskoIImie1do3(),
     NazwiskoIImie1do5(),
     OstatnieNazwiskoIImie(),

@@ -703,23 +703,33 @@ def pobierz_prace_po_isbn(client: PBNClient):
     wait_for_results(p, results)
 
 
-def pobierz_i_zapisz_dane_jednej_osoby(client, personId) -> Scientist:
+def pobierz_i_zapisz_dane_jednej_osoby(
+    client_or_token, personId, from_institution_api
+) -> Scientist:
+    client = client_or_token
+    if isinstance(client_or_token, str):
+        # Create PBN client
+        client = Uczelnia.objects.get_default().pbn_client(client_or_token)
+
     scientist = client.get_person_by_id(personId)
-    return zapisz_mongodb(scientist, Scientist, from_institution_api=True)
+    return zapisz_mongodb(
+        scientist, Scientist, from_institution_api=from_institution_api
+    )
 
 
-def pobierz_ludzi_z_uczelni(client: PBNClient, instutition_id):
+def pobierz_ludzi_z_uczelni(client_or_token: PBNClient, instutition_id):
     """
     Ta procedura pobierze dane wszystkich osob z uczelni, mozna uruchamiac
     zamiast pobierz_ludzi
     """
     assert instutition_id is not None
 
-    Scientist.objects.filter(from_institution_api=True).update(
-        from_institution_api=False
-    )
+    client = client_or_token
+    if isinstance(client_or_token, str):
+        # Create PBN client
+        client = Uczelnia.objects.get_default().pbn_client(client_or_token)
 
-    pool = initialize_pool()
+    pool = initialize_pool(multipler=1)
     results = []
     elementy = client.get_people_by_institution_id(instutition_id)
 
@@ -727,10 +737,43 @@ def pobierz_ludzi_z_uczelni(client: PBNClient, instutition_id):
 
     for person in pbar(elementy, count=len(elementy), label="pobierz ludzi z uczelni"):
         result = pool.apply_async(
-            pobierz_i_zapisz_dane_jednej_osoby, args=(client, person["personId"])
+            pobierz_i_zapisz_dane_jednej_osoby,
+            kwds={
+                "client_or_token": client_or_token,
+                "personId": person["personId"],
+                "from_institution_api": True,
+            },
         )
         results.append(result)
+
     wait_for_results(pool, results)
+
+    from pbn_api.models.institution import Institution
+    from pbn_api.models.osoba_z_instytucji import OsobaZInstytucji
+
+    for person in elementy:
+        if not Institution.objects.filter(pk=person["institutionId"]).exists():
+            print(f"Pobieram extra instytucję {person['institutionName']}")
+            zapisz_mongodb(
+                client_or_token.get_institution_by_id(person["institutionId"]),
+                Institution,
+                client_or_token,
+            )
+
+        OsobaZInstytucji.objects.update_or_create(
+            personId=Scientist.objects.get(pk=person["personId"]),
+            defaults={
+                "firstName": person["firstName"],
+                "lastName": person["lastName"],
+                "institutionId": Institution.objects.get(pk=person["institutionId"]),
+                "institutionName": person["institutionName"],
+                "title": person.get("title"),
+                "polonUuid": person["polonUuid"],
+                "phdStudent": person["phdStudent"],
+                "_from": person.get("from"),
+                "_to": person.get("to"),
+            },
+        )
 
 
 def integruj_autorow_z_uczelni(
@@ -1500,6 +1543,108 @@ def clear_all():
         model.objects.all()._raw_delete(model.objects.db)
 
 
+def integruj_oswiadczenia_z_instytucji_pojedyncza_praca(
+    elem, noted_pub, noted_aut, missing_publication_callback=None
+):
+    pub = elem.get_bpp_publication()
+    if pub is None:
+        if missing_publication_callback:
+            pub = missing_publication_callback(elem.publicationId_id)
+            assert pub is not None
+        else:
+            pub = elem.publicationId.matchuj_do_rekordu_bpp()
+
+            if pub is None:
+                if elem.publicationId_id not in noted_pub:
+                    print(
+                        f"\r\nPPP Brak odpowiednika publikacji w BPP dla pracy {elem.publicationId}, "
+                        f"parametr inOrcid oraz dyscypliny dla tej pracy nie zostanie zaimportowany!"
+                    )
+                    noted_pub.add(elem.publicationId_id)
+                return
+            else:
+                zweryfikuj_lub_stworz_match(elem.publicationId, pub)
+
+    if isinstance(pub, Rekord):
+        pub = pub.original
+
+    aut = elem.get_bpp_autor()
+    if aut is None:
+        if elem.personId_id not in noted_aut:
+            print(
+                f"\r\nAAA Brak odpowiednika autora w BPP dla autora {elem.personId}, "
+                f"parametr inOrcid dla tego autora nie zostanie zaimportowany!"
+            )
+            noted_aut.add(elem.publicationId_id)
+        return
+
+    try:
+        rec: Wydawnictwo_Zwarte_Autor = pub.autorzy_set.get(
+            autor=aut, typ_odpowiedzialnosci=elem.get_typ_odpowiedzialnosci()
+        )
+    except pub.autorzy_set.model.DoesNotExist:
+        print(
+            f"===========================================================\n"
+            f"XXX Po stronie PBN: {elem.publicationId}, \n"
+            f"XXX po stronie BPP: {pub}, {aut} -- nie ma ta praca takiego autora!"
+        )
+
+        try:
+            rec = pub.autorzy_set.get(
+                autor__nazwisko__iexact=aut.nazwisko,
+                autor__imiona__iexact=aut.imiona,
+                typ_odpowiedzialnosci=elem.get_typ_odpowiedzialnosci(),
+            )
+        except pub.autorzy_set.model.DoesNotExist:
+            try:
+                rec = pub.autorzy_set.get(
+                    autor__nazwisko__iexact=aut.imiona,
+                    autor__imiona__iexact=aut.nazwisko,
+                    typ_odpowiedzialnosci=elem.get_typ_odpowiedzialnosci(),
+                )
+            except pub.autorzy_set.model.DoesNotExist:
+                print(
+                    "XXX NIE MOGE NAPRAWIC TEGO AUTOMATYCZNIE -- SPRAWDŹ RĘCZNIE\n"
+                    "==========================================================="
+                )
+                return
+
+        if elem.disciplines:
+
+            print(
+                f"XXX NADPISZE w tej pracy autora {rec.autor} autorem {aut}, wyslij ta prace do PBNu "
+                f"ponownie! (dyscyplina: {elem.get_bpp_discipline()})\n"
+                f"==========================================================="
+            )
+            rec.autor = aut
+        else:
+            print(
+                f"XXX NIE NADPISZE w tej pracy autora {rec.autor} autorem {aut}, bo nei ma dyscyplin\n"
+                f"SPRAWDZ REKORD RECZNIE\n"
+                f"==========================================================="
+            )
+
+    if elem.disciplines:
+        if elem.get_bpp_discipline().pk != rec.dyscyplina_naukowa_id:
+            rec.dyscyplina_naukowa_id = elem.get_bpp_discipline().pk
+            try:
+                rec.clean()
+            except ValidationError:
+                try:
+                    Autor_Dyscyplina.objects.get(rok=rec.rekord.rok, autor=rec.autor)
+                    raise Exception(
+                        f"Nie ma przypsiania do {elem.get_bpp_discipline()}, ale jakeis inne jest..."
+                    )
+                except Autor_Dyscyplina.DoesNotExist:
+                    rec.autor.autor_dyscyplina_set.update_or_create(
+                        rok=rec.rekord.rok,
+                        defaults={"dyscyplina_naukowa": elem.get_bpp_discipline()},
+                    )
+
+    rec.profil_orcid = elem.inOrcid
+    rec.save()
+
+
 def integruj_oswiadczenia_z_instytucji(missing_publication_callback=None):
     noted_pub = set()
     noted_aut = set()
@@ -1507,105 +1652,9 @@ def integruj_oswiadczenia_z_instytucji(missing_publication_callback=None):
         OswiadczenieInstytucji.objects.all(),
         label="integruj_oswiadczenia_z_instytucji",
     ):
-        pub = elem.get_bpp_publication()
-        if pub is None:
-            if missing_publication_callback:
-                pub = missing_publication_callback(elem.publicationId_id)
-                assert pub is not None
-            else:
-                pub = elem.publicationId.matchuj_do_rekordu_bpp()
-
-                if pub is None:
-                    if elem.publicationId_id not in noted_pub:
-                        print(
-                            f"\r\nPPP Brak odpowiednika publikacji w BPP dla pracy {elem.publicationId}, "
-                            f"parametr inOrcid oraz dyscypliny dla tej pracy nie zostanie zaimportowany!"
-                        )
-                        noted_pub.add(elem.publicationId_id)
-                    continue
-                else:
-                    zweryfikuj_lub_stworz_match(elem.publicationId, pub)
-
-        if isinstance(pub, Rekord):
-            pub = pub.original
-
-        aut = elem.get_bpp_autor()
-        if aut is None:
-            if elem.personId_id not in noted_aut:
-                print(
-                    f"\r\nAAA Brak odpowiednika autora w BPP dla autora {elem.personId}, "
-                    f"parametr inOrcid dla tego autora nie zostanie zaimportowany!"
-                )
-                noted_aut.add(elem.publicationId_id)
-            continue
-
-        try:
-            rec: Wydawnictwo_Zwarte_Autor = pub.autorzy_set.get(
-                autor=aut, typ_odpowiedzialnosci=elem.get_typ_odpowiedzialnosci()
-            )
-        except pub.autorzy_set.model.DoesNotExist:
-            print(
-                f"===========================================================\n"
-                f"XXX Po stronie PBN: {elem.publicationId}, \n"
-                f"XXX po stronie BPP: {pub}, {aut} -- nie ma ta praca takiego autora!"
-            )
-
-            try:
-                rec = pub.autorzy_set.get(
-                    autor__nazwisko__iexact=aut.nazwisko,
-                    autor__imiona__iexact=aut.imiona,
-                    typ_odpowiedzialnosci=elem.get_typ_odpowiedzialnosci(),
-                )
-            except pub.autorzy_set.model.DoesNotExist:
-                try:
-                    rec = pub.autorzy_set.get(
-                        autor__nazwisko__iexact=aut.imiona,
-                        autor__imiona__iexact=aut.nazwisko,
-                        typ_odpowiedzialnosci=elem.get_typ_odpowiedzialnosci(),
-                    )
-                except pub.autorzy_set.model.DoesNotExist:
-                    print(
-                        "XXX NIE MOGE NAPRAWIC TEGO AUTOMATYCZNIE -- SPRAWDŹ RĘCZNIE\n"
-                        "==========================================================="
-                    )
-                    continue
-
-            if elem.disciplines:
-
-                print(
-                    f"XXX NADPISZE w tej pracy autora {rec.autor} autorem {aut}, wyslij ta prace do PBNu "
-                    f"ponownie! (dyscyplina: {elem.get_bpp_discipline()})\n"
-                    f"==========================================================="
-                )
-                rec.autor = aut
-            else:
-                print(
-                    f"XXX NIE NADPISZE w tej pracy autora {rec.autor} autorem {aut}, bo nei ma dyscyplin\n"
-                    f"SPRAWDZ REKORD RECZNIE\n"
-                    f"==========================================================="
-                )
-
-        if elem.disciplines:
-            if elem.get_bpp_discipline().pk != rec.dyscyplina_naukowa_id:
-                rec.dyscyplina_naukowa_id = elem.get_bpp_discipline().pk
-                try:
-                    rec.clean()
-                except ValidationError:
-                    try:
-                        Autor_Dyscyplina.objects.get(
-                            rok=rec.rekord.rok, autor=rec.autor
-                        )
-                        raise Exception(
-                            f"Nie ma przypsiania do {elem.get_bpp_discipline()}, ale jakeis inne jest..."
-                        )
-                    except Autor_Dyscyplina.DoesNotExist:
-                        rec.autor.autor_dyscyplina_set.update_or_create(
-                            rok=rec.rekord.rok,
-                            defaults={"dyscyplina_naukowa": elem.get_bpp_discipline()},
-                        )
-
-        rec.profil_orcid = elem.inOrcid
-        rec.save()
+        integruj_oswiadczenia_z_instytucji_pojedyncza_praca(
+            elem, noted_pub, noted_aut, missing_publication_callback
+        )
 
 
 def integruj_oswiadczenia_pbn_first_import(

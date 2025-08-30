@@ -4,10 +4,18 @@
     Zgłoś publikację
 {% endblock %}
 
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url "zglos_publikacje:nowe_zgloszenie" %}">Zgłoś publikację</a></li>
+{% endblock %}
+
 {% block extrahead %}
     {{ wizard.form.media }}
 {% endblock %}
 {% block content %}
+
+    <h1>Zgłoś publikację</h1>
+    <p class="subheader">Formularz umożliwia zgłoszenie publikacji do biblioteki.</p>
 
     {% load crispy_forms_tags %}
 

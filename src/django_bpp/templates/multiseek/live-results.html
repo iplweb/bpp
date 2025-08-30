@@ -7,7 +7,8 @@
 {% block extratitle %}
     Rezultat wyszukiwania
 {% endblock %}
-{% block body %}
+{% block body %}<div style="background: white !important;">
     {% include "print-title.html" %}
     {% include "multiseek/common-results.html" with paging=5 live="1" %}
+    </div>
 {% endblock %}

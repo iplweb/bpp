@@ -11,11 +11,39 @@ from pbn_api.tasks import (
     task_sprobuj_wyslac_do_pbn,
 )
 
+from django.contrib.contenttypes.models import ContentType
 
-@pytest.mark.django_db
+from bpp.models import Wydawnictwo_Ciagle
+
+
+@pytest.mark.django_db(transaction=True)
 def test_kolejka_wyczysc_wpisy_bez_rekordow():
-    baker.make(PBN_Export_Queue, object_id=0xBEEF)
+    # Jeżeli NIE damy content_type i nie wpiszemy klasy, to losowo dostaniemy klase np bpp.cache.Autorzy
+    # albo bpp.cache.Rekord, a tam klucz jest złożony i będzie, że nie może castnąć int do int[],
+    # albo dostaniemy tabelę cache temporary (cpaq)
+    baker.make(
+        PBN_Export_Queue,
+        object_id=0xBEEF,
+        content_type=ContentType.objects.get_for_model(Wydawnictwo_Ciagle),
+    )
     assert PBN_Export_Queue.objects.count() == 1
+    kolejka_wyczysc_wpisy_bez_rekordow()
+    assert PBN_Export_Queue.objects.count() == 0
+
+
+@pytest.mark.django_db(transaction=True)
+def test_kolejka_wyczysc_wpisy_bez_rekordow_missing_table():
+    """Test that the function handles missing database tables gracefully."""
+    from bpp.models.cache.punktacja import Cache_Punktacja_Autora_Sum
+
+    # Use ContentType for Cache_Punktacja_Autora_Sum which uses temporary table
+    content_type = ContentType.objects.get_for_model(Cache_Punktacja_Autora_Sum)
+
+    # Create a PBN_Export_Queue entry pointing to the temporary table that doesn't exist
+    baker.make(PBN_Export_Queue, object_id=0xBEEF, content_type=content_type)
+    assert PBN_Export_Queue.objects.count() == 1
+
+    # This should handle the missing table gracefully and delete the orphaned record
     kolejka_wyczysc_wpisy_bez_rekordow()
     assert PBN_Export_Queue.objects.count() == 0
 

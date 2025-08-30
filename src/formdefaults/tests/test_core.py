@@ -44,7 +44,8 @@ def test_get_form_defaults_change_label_form(test_form):
 
     core.get_form_defaults(test_form, "456")
 
-    assert FormRepresentation.objects.first().label == "456"
+    form_repr = FormRepresentation.objects.get(full_name=full_name(test_form))
+    assert form_repr.label == "456"
 
 
 @pytest.mark.django_db

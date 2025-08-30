@@ -20,6 +20,7 @@ PBN_MENU = [
     ("Zrodla", "/admin/pbn_api/journal"),
     ("Wydawcy", "/admin/pbn_api/publisher"),
     ("Naukowcy", "/admin/pbn_api/scientist"),
+    ("Osoby z instytucji", "/admin/pbn_api/osobazinstytucji"),
     ("Publikacje", "/admin/pbn_api/publication"),
     ("Publikacje instytucji V1", "/admin/pbn_api/publikacjainstytucji"),
     ("Publikacje instytucji V2", "/admin/pbn_api/publikacjainstytucji_v2"),
@@ -32,6 +33,10 @@ PBN_MENU = [
     ("Oświadczenia instytucji", "/admin/pbn_api/oswiadczenieinstytucji"),
     ("Przesłane dane", "/admin/pbn_api/sentdata"),
     ("Kolejka eksportu", "/admin/pbn_api/pbn_export_queue"),
+    (
+        "Deduplikator autorów - nie duplikaty",
+        "/admin/deduplikator_autorow/notaduplicate/",
+    ),
 ]
 
 
@@ -171,10 +176,12 @@ class CustomMenu(Menu):
 
         from django.conf import settings
 
+        from bpp.models import Uczelnia
+
         if (
-            not getattr(settings, "DJANGO_BPP_UCZELNIA_UZYWA_WYDZIALOW", True)
-            and STRUKTURA_MENU[1][1].find("wydzial") >= 0
-        ):
+            (not getattr(settings, "DJANGO_BPP_UCZELNIA_UZYWA_WYDZIALOW", True))
+            or (not Uczelnia.objects.get_default().uzywaj_wydzialow)
+        ) and STRUKTURA_MENU[1][1].find("wydzial") >= 0:
             STRUKTURA_MENU.pop(1)
 
         flt("struktura", "Struktura", STRUKTURA_MENU)

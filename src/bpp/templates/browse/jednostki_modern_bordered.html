@@ -1,0 +1,237 @@
+{% extends "base.html" %}{% load deklinacja %}
+
+{% load columns %}
+
+{% block extratitle %}
+    Indeks {% rzeczownik_jednostek_d %}{% if wybrana != None %} - litera {{ wybrana }}{% endif %}
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li {% if wybrana == None %}class="current"{% endif %}>
+        {% if wybrana != None %}<a href="{% url "bpp:browse_jednostki" %}">{% endif %}
+            {% rzeczownik_jednostki %}
+        {% if wybrana != None %}</a>{% endif %}
+    </li>
+
+    {% if wybrana != None %}
+        <li class="current">litera {{ wybrana }}</li>
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+    {% url "bpp:browse_jednostki" as browse_jednostki %}
+
+    <!-- Modern Header Section -->
+    <div class="modern-header" style="background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); padding: 30px; margin-bottom: 30px;">
+        <div class="grid-x grid-margin-x align-middle">
+            <div class="cell auto">
+                <h2 style="color: #2c3e50; margin-bottom: 5px;">
+                    <i class="fi-home" style="margin-right: 10px;"></i>Indeks {% rzeczownik_jednostek_d %}
+                    {% if wybrana %} - litera {{ wybrana }}{% endif %}
+                </h2>
+                {% if paginator %}
+                    <p style="color: #7f8c8d; margin: 0; font-size: 0.9rem;">
+                        {% if object_list %}
+                            Wyświetlono {{ object_list|length }} z {{ paginator.count }} {% rzeczownik_jednostek_d %}
+                        {% else %}
+                            Brak {% rzeczownik_jednostek_d %} do wyświetlenia
+                        {% endif %}
+                    </p>
+                {% endif %}
+            </div>
+            <div class="cell shrink">
+                {% include "browse/go_to_admin_list.html" with url="admin:bpp_jednostka_changelist" group="struktura" text="<i class='fi-wrench'></i> Edytuj" %}
+            </div>
+        </div>
+
+        <!-- Centered Search -->
+        <div class="text-center" style="margin-top: 25px;">
+            <form method="get" action="{{ browse_jednostki }}" style="display: inline-block; max-width: 500px; width: 100%;">
+                <div class="input-group" style="background: #f8f9fa; border-radius: 6px; border: 1px solid #e9ecef;">
+                    <span class="input-group-label" style="background: transparent; border: none; color: #7f8c8d;">
+                        <i class="fi-magnifying-glass"></i>
+                    </span>
+                    <input type="text"
+                           name="search"
+                           placeholder="Wpisz część nazwy i wciśnij ENTER..."
+                           value="{{ flt|default:'' }}"
+                           class="input-group-field"
+                           style="background: transparent; border: none; font-size: 1rem; padding: 12px;"
+                           id="search_form_input"/>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modern Letter Index -->
+    <div class="letter-index" style="background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 20px; margin-bottom: 30px;">
+        <div class="grid-x grid-margin-x align-center">
+            <div class="cell auto text-center">
+                <div class="letter-pills" style="display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;">
+                    <!-- All Button -->
+                    <a href="{{ browse_jednostki }}"
+                       class="letter-pill {% if wybrana == None %}active{% endif %}"
+                       style="display: inline-block; padding: 8px 16px; border-radius: 20px; text-decoration: none; font-weight: 500; transition: all 0.2s ease;
+                              {% if wybrana == None %}background: var(--primary-color, #3498db); color: white; box-shadow: 0 2px 4px rgba(52, 152, 219, 0.3);
+                              {% else %}background: #f8f9fa; color: #2c3e50; border: 1px solid #e9ecef;{% endif %}"
+                       onmouseover="if (!this.classList.contains('active')) { this.style.background='#e9ecef'; this.style.borderColor='#dee2e6'; }"
+                       onmouseout="if (!this.classList.contains('active')) { this.style.background='#f8f9fa'; this.style.borderColor='#e9ecef'; }">
+                        Wszystkie
+                    </a>
+
+                    <!-- Letter Buttons -->
+                    {% for literka in literki %}
+                        <a href="{{ browse_jednostki }}{{ literka }}/"
+                           class="letter-pill {% if literka == wybrana %}active{% endif %}"
+                           style="display: inline-block; padding: 8px 12px; border-radius: 20px; text-decoration: none; font-weight: 500; transition: all 0.2s ease; min-width: 40px; text-align: center;
+                                  {% if literka == wybrana %}background: var(--primary-color, #3498db); color: white; box-shadow: 0 2px 4px rgba(52, 152, 219, 0.3);
+                                  {% else %}background: #f8f9fa; color: #2c3e50; border: 1px solid #e9ecef;{% endif %}"
+                           onmouseover="if (!this.classList.contains('active')) { this.style.background='#e9ecef'; this.style.borderColor='#dee2e6'; }"
+                           onmouseout="if (!this.classList.contains('active')) { this.style.background='#f8f9fa'; this.style.borderColor='#e9ecef'; }">
+                            {{ literka }}
+                        </a>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Jednostki Grid - BORDERED CARDS -->
+    {% if object_list %}
+        <div class="grid-x grid-margin-x">
+            {% for col in object_list|columns:3 %}
+                <div class="large-4 medium-6 small-12 cell">
+                    {% for item in col %}
+                        <!-- Jednostka Card -->
+                        <div class="jednostka-card" style="background: white; border-radius: 6px; padding: 20px; margin-bottom: 15px;
+                                                         border: 2px solid #e9ecef; transition: all 0.2s ease; position: relative;"
+                             onmouseover="this.style.borderColor='var(--primary-color, #3498db)'; this.style.background='#fafbfc';"
+                             onmouseout="this.style.borderColor='#e9ecef'; this.style.background='white';">
+
+                            <!-- Jednostka Icon -->
+                            <div style="position: absolute; top: 20px; right: 20px; color: #bdc3c7;">
+                                <i class="fi-home" style="font-size: 1.5rem;"></i>
+                            </div>
+
+                            <div class="jednostka-name" style="margin-bottom: 8px;">
+                                <a href="{% url "bpp:browse_jednostka" item.slug %}"
+                                   style="color: #2c3e50; text-decoration: none; font-weight: 600; font-size: 1.1rem; line-height: 1.4;"
+                                   onmouseover="this.style.color='var(--primary-color, #3498db)';"
+                                   onmouseout="this.style.color='#2c3e50';">
+                                    {{ item.nazwa }}
+                                </a>
+                            </div>
+
+                            <div class="jednostka-details" style="color: #7f8c8d; font-size: 0.9rem; line-height: 1.3; padding-top: 8px; border-top: 1px solid #f8f9fa;">
+                                {% if uczelnia.uzywaj_wydzialow and item.wydzial %}
+                                    <div style="margin-bottom: 4px;">
+                                        <i class="fi-foundation" style="margin-right: 5px; color: #bdc3c7;"></i>
+                                        {{ item.wydzial.skrot }}
+                                    </div>
+                                {% endif %}
+
+                                {% if item.aktualna_jednostka.count > 0 %}
+                                    <div style="font-size: 0.8rem; color: #95a5a6;">
+                                        <i class="fi-torsos-all" style="margin-right: 5px;"></i>
+                                        {{ item.aktualna_jednostka.count }} {% if item.aktualna_jednostka.count == 1 %}autor{% elif item.aktualna_jednostka.count < 5 %}autorów{% else %}autorów{% endif %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="callout warning" style="text-align: center; padding: 40px; border-radius: 8px;">
+            <h4 style="color: #856404; margin-bottom: 15px;">
+                <i class="fi-alert" style="margin-right: 10px;"></i>Nie znaleziono {% rzeczownik_jednostek_d %}
+            </h4>
+            <p style="margin-bottom: 20px; color: #6c5c00;">
+                Brak {% rzeczownik_jednostek_d %} spełniających podane kryteria wyszukiwania.
+            </p>
+            <a href="{% url "bpp:browse_jednostki" %}" class="button" style="background: #ffc107; color: #212529;">
+                <i class="fi-arrow-left" style="margin-right: 5px;"></i>Pokaż wszystkie {% rzeczownik_jednostki_w %}
+            </a>
+        </div>
+    {% endif %}
+
+    <!-- Modern Pagination -->
+    {% if is_paginated %}
+        <div class="modern-pagination" style="background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 20px; margin-top: 30px; text-align: center;">
+            <div class="pagination-info" style="margin-bottom: 15px; color: #7f8c8d; font-size: 0.9rem;">
+                Strona {{ page_obj.number }} z {{ paginator.num_pages }}
+                ({{ paginator.count }} {% if paginator.count == 1 %}{% rzeczownik_jednostka %}{% elif paginator.count < 5 %}{% rzeczownik_jednostek_d %}{% else %}{% rzeczownik_jednostek_d %}{% endif %})
+            </div>
+
+            <ul class="pagination" role="navigation" aria-label="Pagination" style="display: inline-flex; gap: 5px; margin: 0;">
+                {% if page_obj.has_previous %}
+                    <li>
+                        <a href="?page={{ page_obj.previous_page_number }}{% if flt %}&search={{ flt }}{% endif %}{% if wybrana %}&literka={{ wybrana }}{% endif %}"
+                           style="display: inline-flex; align-items: center; padding: 8px 12px; background: #f8f9fa; color: #2c3e50; border-radius: 6px; text-decoration: none; border: 1px solid #e9ecef; transition: all 0.2s ease;"
+                           onmouseover="this.style.background='#e9ecef';"
+                           onmouseout="this.style.background='#f8f9fa';">
+                            <i class="fi-arrow-left" style="margin-right: 5px;"></i>Poprzednia
+                        </a>
+                    </li>
+                {% endif %}
+
+                {% if page_obj.number >= 5 %}
+                    <li><a href="?page=1{% if flt %}&search={{ flt }}{% endif %}{% if wybrana %}&literka={{ wybrana }}{% endif %}" class="page-btn">1</a></li>
+                    <li style="padding: 8px 4px; color: #bdc3c7;">...</li>
+                {% endif %}
+
+                {% if page_obj.number|add:"-2" >= 1 %}
+                    <li><a href="?page={{ page_obj.number|add:"-2" }}{% if flt %}&search={{ flt }}{% endif %}{% if wybrana %}&literka={{ wybrana }}{% endif %}" class="page-btn">{{ page_obj.number|add:"-2" }}</a></li>
+                {% endif %}
+                {% if page_obj.number|add:"-1" >= 1 %}
+                    <li><a href="?page={{ page_obj.number|add:"-1" }}{% if flt %}&search={{ flt }}{% endif %}{% if wybrana %}&literka={{ wybrana }}{% endif %}" class="page-btn">{{ page_obj.number|add:"-1" }}</a></li>
+                {% endif %}
+
+                <li>
+                    <span style="display: inline-block; padding: 8px 12px; background: var(--primary-color, #3498db); color: white; border-radius: 6px; font-weight: 600;">
+                        {{ page_obj.number }}
+                    </span>
+                </li>
+
+                {% if page_obj.number|add:"1" <= paginator.num_pages %}
+                    <li><a href="?page={{ page_obj.number|add:"1" }}{% if flt %}&search={{ flt }}{% endif %}{% if wybrana %}&literka={{ wybrana }}{% endif %}" class="page-btn">{{ page_obj.number|add:"1" }}</a></li>
+                {% endif %}
+                {% if page_obj.number|add:"2" <= paginator.num_pages %}
+                    <li><a href="?page={{ page_obj.number|add:"2" }}{% if flt %}&search={{ flt }}{% endif %}{% if wybrana %}&literka={{ wybrana }}{% endif %}" class="page-btn">{{ page_obj.number|add:"2" }}</a></li>
+                {% endif %}
+
+                {% if page_obj.number|add:"2" <= paginator.num_pages|add:"-2" %}
+                    <li style="padding: 8px 4px; color: #bdc3c7;">...</li>
+                    <li><a href="?page={{ paginator.num_pages }}{% if flt %}&search={{ flt }}{% endif %}{% if wybrana %}&literka={{ wybrana }}{% endif %}" class="page-btn">{{ paginator.num_pages }}</a></li>
+                {% endif %}
+
+                {% if page_obj.has_next %}
+                    <li>
+                        <a href="?page={{ page_obj.next_page_number }}{% if flt %}&search={{ flt }}{% endif %}{% if wybrana %}&literka={{ wybrana }}{% endif %}"
+                           style="display: inline-flex; align-items: center; padding: 8px 12px; background: #f8f9fa; color: #2c3e50; border-radius: 6px; text-decoration: none; border: 1px solid #e9ecef; transition: all 0.2s ease;"
+                           onmouseover="this.style.background='#e9ecef';"
+                           onmouseout="this.style.background='#f8f9fa';">
+                            Następna<i class="fi-arrow-right" style="margin-left: 5px;"></i>
+                        </a>
+                    </li>
+                {% endif %}
+            </ul>
+        </div>
+    {% endif %}
+
+    <script type="text/javascript">
+        $(document).ready(function(){
+            $("#search_form_input").focus();
+        });
+
+        // Add hover styles for page buttons
+        document.querySelectorAll('.page-btn').forEach(function(btn) {
+            btn.style.cssText = 'display: inline-block; padding: 8px 12px; background: #f8f9fa; color: #2c3e50; border-radius: 6px; text-decoration: none; border: 1px solid #e9ecef; transition: all 0.2s ease; min-width: 40px; text-align: center;';
+            btn.onmouseover = function() { this.style.background='#e9ecef'; };
+            btn.onmouseout = function() { this.style.background='#f8f9fa'; };
+        });
+    </script>
+
+{% endblock %}

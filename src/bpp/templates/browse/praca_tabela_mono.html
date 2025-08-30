@@ -1,0 +1,973 @@
+{% load prace user_in_group %}
+
+<!-- Main publication container with modern card layout -->
+<div class="publication-detail-container" style="max-width: 1400px; margin: 0 auto; padding: 20px;">
+
+    <!-- Title Section - Most prominent -->
+    <div class="publication-title-section" style="margin-bottom: 30px;">
+        <h2 style="font-size: 1.8rem; line-height: 1.3; margin-bottom: 20px; color: #2c3e50;">
+            {% if praca.tytul %}
+                {{ praca.tytul_oryginalny|safe }}
+                <span style="color: #7f8c8d; font-size: 0.9em;">({{ praca.tytul|safe }})</span>
+            {% else %}
+                {{ praca.tytul_oryginalny|znak_na_koncu:"."|safe }}
+            {% endif %}
+            {% if praca.charakter_formalny.charakter_ogolny != 'roz' %}
+                <span style="font-weight: normal; font-size: 0.8em;">{{ praca.oznaczenie_wydania|default:""|znak_na_koncu:"." }}</span>
+            {% endif %}
+        </h2>
+
+        <!-- Authors Section -->
+        <div class="authors-section"
+             style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+            <div style="font-size: 1.1rem; line-height: 1.6;">
+                {{ praca.tekst_przed_pierwszym_autorem|default:"" }}
+                {% for autor in praca.autorzy_dla_opisu %}
+                    {% ifchanged autor.typ_odpowiedzialnosci %}
+                        <span class="author-type-badge"
+                              style="background: #95a5a6; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.75em; margin: 0 3px;">{{ autor.typ_odpowiedzialnosci.skrot|upper }}</span>
+                    {% endifchanged %}
+                    {% if links == "admin" %}
+                        <a href="{% url "admin:bpp_autor_change" autor.autor.pk %}"
+                           style="color: #3498db; text-decoration: none;">
+                    {% elif links == "normal" %}
+                        <a href="{% url "bpp:browse_autor" autor.autor.slug %}"
+                           style="color: #3498db; text-decoration: none;">
+                    {% endif %}
+                <span class="author-name"
+                      style="{% if links %}color: #3498db;{% else %}color: #2c3e50; font-weight: 500;{% endif %}">
+                        {{ autor.zapisany_jako|upper }}
+                    </span>
+                {% if links == "admin" or links == "normal" %}</a>{% endif %}{% if not forloop.last %},
+                    {% else %}{{ praca.tekst_po_ostatnim_autorze|default:"" }}.{% endif %}
+                {% endfor %}
+            </div>
+
+            <!-- Show more authors button if there are many -->
+            <div id="authors-toggle" style="display: none; margin-top: 10px;">
+                <button class="button tiny secondary" onclick="toggleAuthors()">Pokaż wszystkich autorów</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main content in two columns -->
+    <div class="content-columns" style="display: flex; gap: 30px; flex-wrap: wrap;">
+
+        <!-- Left Column - Bibliographic Information -->
+        <div class="left-column" style="flex: 1 1 60%; min-width: 300px;">
+
+            <!-- Bibliographic Description Card -->
+            <div class="info-card"
+                 style="background: white; border: 1px solid #e1e4e8; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+                <h3 style="font-size: 1.2rem; margin-bottom: 15px; color: #2c3e50; padding-bottom: 8px;">
+                    <span class="fi-page-copy"></span> Opis bibliograficzny
+                    <div class="shaded-hr-div-small"></div>
+                </h3>
+                <div id="bibliographic-description"
+                     style="padding: 10px; background: #f8f9fa; border-radius: 4px; cursor: pointer; position: relative;"
+                     onclick="copyBibliographicDescription()"
+                     title="Kliknij aby skopiować do schowka">
+                    <div style="font-size: 0.95em; line-height: 1.6; color: #333;">
+                        {{ praca.opis_bibliograficzny_cache|safe }}
+                    </div>
+                    <div id="copy-biblio-feedback"
+                         style="position: absolute; top: 10px; right: 10px; display: none; background: #27ae60; color: white; padding: 5px 10px; border-radius: 4px; font-size: 0.85em;">
+                        ✓ Skopiowane!
+                    </div>
+                </div>
+                <small style="color: #7f8c8d; display: block; margin-top: 10px;">Kliknij opis aby skopiować do
+                    schowka</small>
+            </div>
+
+            <!-- Publication Details Card -->
+            <div class="info-card"
+                 style="background: white; border: 1px solid #e1e4e8; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+                <h3 style="font-size: 1.2rem; margin-bottom: 15px; color: #2c3e50; padding-bottom: 8px;">
+                    <span class="fi-clipboard-notes"></span> Szczegóły publikacji
+                    <div class="shaded-hr-div-small"></div>
+                </h3>
+
+                {% if praca.zrodlo or praca.wydawnictwo_nadrzedne or praca.informacje or praca.szczegoly %}
+                    <div class="detail-row" style="margin-bottom: 12px;">
+                        <strong style="color: #7f8c8d;">Źródło:</strong>
+                        <div style="margin-left: 20px; margin-top: 5px;">
+                            {% if praca.zrodlo %}
+                                {% if links == "admin" %}
+                                    <a href="{% url "admin:bpp_zrodlo_change" praca.zrodlo.pk %}">{{ praca.zrodlo }}</a>
+                                {% else %}
+                                    <a href="{% url "bpp:browse_zrodlo" praca.zrodlo.slug %}">{{ praca.zrodlo }}</a>
+                                {% endif %}
+                            {% endif %}
+                            {% if praca.wydawnictwo_nadrzedne %}
+                                <a href="{% url "bpp:browse_praca" "wydawnictwo_zwarte" praca.wydawnictwo_nadrzedne.pk %}">
+                                    {% if not praca.informacje and not praca.szczegoly %}
+                                        {% if praca.wydawnictwo_nadrzedne.opis_bibliograficzny %}
+                                            W: {{ praca.wydawnictwo_nadrzedne.opis_bibliograficzny|safe }}
+                                        {% endif %}
+                                    {% endif %}
+                                </a>
+                            {% endif %}
+                            {{ praca.informacje|default:""|znak_na_koncu:", "|safe }}
+                            {{ praca.szczegoly|default:""|safe }}
+                        </div>
+                    </div>
+                {% endif %}
+
+                {% if praca.wydawca or praca.wydawca_opis %}
+                    <div class="detail-row" style="margin-bottom: 12px;">
+                        <strong style="color: #7f8c8d;">Wydawca:</strong>
+                        <div style="margin-left: 20px; margin-top: 5px;">
+                            {{ praca.wydawca|default:"" }} {{ praca.wydawca_opis|default:"" }}
+                        </div>
+                    </div>
+                {% endif %}
+
+                <div class="detail-row" style="margin-bottom: 12px;">
+                    <strong style="color: #7f8c8d;">Rok:</strong>
+                    <span style="margin-left: 10px;">{{ praca.rok }}</span>
+                </div>
+
+                <div class="detail-row" style="margin-bottom: 12px;">
+                    <strong style="color: #7f8c8d;">Język:</strong>
+                    <span style="margin-left: 10px;">{{ praca.jezyk }}</span>
+                </div>
+
+                <div class="detail-row" style="margin-bottom: 12px;">
+                    <strong style="color: #7f8c8d;">Charakter formalny:</strong>
+                    <span style="margin-left: 10px;">{{ praca.charakter_formalny }}</span>
+                </div>
+
+                {% if praca.typ_kbn %}
+                    <div class="detail-row" style="margin-bottom: 12px;">
+                        <strong style="color: #7f8c8d;">Typ MNiSW/MEiN:</strong>
+                        <span style="margin-left: 10px;">{{ praca.typ_kbn }}</span>
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Abstracts Card -->
+            {% if praca.streszczenia.exists %}
+                <div class="info-card"
+                     style="background: white; border: 1px solid #e1e4e8; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+                    <h3 style="font-size: 1.2rem; margin-bottom: 15px; color: #2c3e50; padding-bottom: 8px;">
+                        <span class="fi-page-edit"></span> Streszczenia
+                        <div class="shaded-hr-div-small"></div>
+                    </h3>
+                    {% for streszczenie in praca.streszczenia.all %}
+                        <div style="margin-bottom: 15px;">
+                            {% if praca.streszczenia.count > 1 %}
+                                <strong style="color: #7f8c8d; display: block; margin-bottom: 5px;">
+                                    {{ streszczenie.jezyk_streszczenia.nazwa }}:
+                                </strong>
+                            {% endif %}
+                            <p style="text-align: justify; line-height: 1.6;">{{ streszczenie.streszczenie|safe }}</p>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            <!-- OpenAccess Card -->
+            {% if praca.openaccess_tryb_dostepu or praca.openaccess_wersja_tekstu or praca.openaccess_licencja %}
+                <div class="info-card"
+                     style="background: #f0f9ff; border: 1px solid #3498db; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+                    <h3 style="font-size: 1.2rem; margin-bottom: 15px; color: #2c3e50; padding-bottom: 8px;">
+                        <span class="fi-unlock"></span> Open Access
+                        <div class="shaded-hr-div-small"></div>
+                    </h3>
+                    <div style="display: grid; grid-template-columns: auto 1fr; gap: 10px;">
+                        {% if praca.openaccess_tryb_dostepu %}
+                            <strong>Tryb dostępu:</strong> <span>{{ praca.openaccess_tryb_dostepu|lower }}</span>
+                        {% endif %}
+                        {% if praca.openaccess_wersja_tekstu %}
+                            <strong>Wersja tekstu:</strong> <span>{{ praca.openaccess_wersja_tekstu|lower }}</span>
+                        {% endif %}
+                        {% if praca.openaccess_licencja %}
+                            <strong>Licencja:</strong>
+                            <span>
+                            {% if praca.openaccess_licencja.webname %}
+                                <a target="_blank"
+                                   href="https://creativecommons.org/licenses/{{ praca.openaccess_licencja.webname }}/3.0/pl/#content">
+                                    {{ praca.openaccess_licencja }}
+                                </a>
+                            {% else %}
+                                {{ praca.openaccess_licencja }}
+                            {% endif %}
+                        </span>
+                        {% endif %}
+                        {% if praca.openaccess_czas_publikacji %}
+                            <strong>Czas udostępnienia:</strong>
+                            <span>{{ praca.openaccess_czas_publikacji|lower }}</span>
+                        {% endif %}
+                        {% if praca.openaccess_ilosc_miesiecy %}
+                            <strong>Ilość miesięcy:</strong>
+                            <span>{{ praca.openaccess_ilosc_miesiecy }} <small>(od publikacji do udostępnienia)</small></span>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endif %}
+
+            <!-- Additional Information Card - Show here if no abstracts -->
+            {% if not praca.streszczenia.exists %}
+                <div class="info-card"
+                     style="background: white; border: 1px solid #e1e4e8; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+                    <h3 style="font-size: 1.2rem; margin-bottom: 15px; color: #2c3e50; padding-bottom: 8px;">
+                        <span class="fi-widget"></span> Informacje dodatkowe
+                        <div class="shaded-hr-div-small"></div>
+                    </h3>
+                    <div style="margin-top: 15px;">
+                        <table style="width: 100%;">
+                            {% if praca.charakter_formalny.skrot == "PAT" %}
+                                <tr>
+                                    <td colspan="2"
+                                        style="padding: 10px; background: #f8f9fa; border-radius: 6px; margin-bottom: 10px;">
+                                        <strong>Patent:</strong><br/>
+                                        <div style="margin-left: 20px; margin-top: 10px;">
+                                            <b>Numer zgłoszenia:</b> {{ praca.numer_zgloszenia|default:"brak" }}<br/>
+                                            <b>Wydział:</b> {{ praca.wydzial|default:"brak" }}<br/>
+                                            <b>Rodzaj prawa:</b> {{ praca.rodzaj_prawa|default:"brak" }}<br/>
+                                            <b>Data zgłoszenia:</b> {{ praca.data_zgloszenia|default:"brak" }}<br/>
+                                            <b>Data decyzji:</b> {{ praca.data_decyzji|default:"brak" }}<br/>
+                                            <b>Numer prawa wyłącznego:</b>
+                                            {{ praca.numer_prawa_wylacznego|default:"brak" }}<br/>
+                                            <b>Wdrożenie:</b> {% if praca.wdrozenie %}tak{% else %}nie{% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endif %}
+
+                            {% if praca.liczba_znakow_wydawniczych %}
+                                <tr>
+                                    <th style="padding: 10px;">Liczba arkuszy wydawniczych:</th>
+                                    <td style="padding: 10px;">{{ praca.wymiar_wydawniczy_w_arkuszach }}</td>
+                                </tr>
+                            {% endif %}
+
+                            {% if uczelnia.pokazuj_status_korekty == "always" or uczelnia.pokazuj_status_korekty == "logged-in" and not request.user.is_anonymous %}
+                                <tr>
+                                    <th style="padding: 10px;">Status:</th>
+                                    <td style="padding: 10px;">{{ praca.status_korekty }}</td>
+                                </tr>
+                            {% endif %}
+
+                            {% if uczelnia.pokazuj_praca_recenzowana == "always" or uczelnia.pokazuj_praca_recenzowana == "logged-in" and not request.user.is_anonymous %}
+                                <tr>
+                                    <th style="padding: 10px;">Praca recenzowana:</th>
+                                    <td style="padding: 10px;">{{ praca.recenzowana|yesno }}</td>
+                                </tr>
+                            {% endif %}
+
+                            {% if praca.ma_procenty %}
+                                <tr>
+                                    <th style="padding: 10px; vertical-align: top;">Odpowiedzialność za powstanie
+                                        pracy:
+                                    </th>
+                                    <td style="padding: 10px;">
+                                        {% for autor in praca.autorzy_set.all %}
+                                            {% if autor.procent %}
+                                                {{ autor.procent }}% {{ autor.zapisany_jako }}<br/>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </td>
+                                </tr>
+                            {% endif %}
+
+                            {% if praca.zewnetrzna_baza_danych.exists %}
+                                <tr>
+                                    <th style="padding: 10px; vertical-align: top;">Zewnętrzna baza danych:</th>
+                                    <td style="padding: 10px;">
+                                        {% for db in praca.zewnetrzna_baza_danych.all %}
+                                            • {{ db.baza.nazwa }}<br/>
+                                        {% endfor %}
+                                    </td>
+                                </tr>
+                            {% endif %}
+
+                            {% if praca.wydawnictwa_powiazane_set.exists %}
+                                <tr>
+                                    <th style="padding: 10px; vertical-align: top;">Rekordy powiązane:</th>
+                                    <td style="padding: 10px;">
+                                        {% for elem in praca.wydawnictwa_powiazane_posortowane.all %}
+                                            • <a href="{% url "bpp:browse_praca" "wydawnictwo_zwarte" elem.pk %}">
+                                            {{ elem.opis_bibliograficzny_cache|safe }}
+                                        </a><br/>
+                                        {% endfor %}
+                                    </td>
+                                </tr>
+                            {% endif %}
+
+                            <tr>
+                                <th style="padding: 10px;">Rekord utworzony:</th>
+                                <td style="padding: 10px;">{{ praca.utworzono }}</td>
+                            </tr>
+
+                            <tr>
+                                <th style="padding: 10px;">Ostatnia aktualizacja:</th>
+                                <td style="padding: 10px;">{{ praca.ostatnio_zmieniony }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Right Column - Identifiers and Metadata -->
+        <div class="right-column" style="flex: 1 1 35%; min-width: 300px;">
+
+            <!-- External Links Card - Priority for PBN -->
+            {% if praca.pbn_uid_id or praca.doi or praca.pubmed_id or praca.pmc_id or praca.public_www or praca.www %}
+                <div class="info-card"
+                     style="background: white; border: 1px solid #e1e4e8; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+                    <h3 style="font-size: 1.2rem; margin-bottom: 15px; color: #2c3e50; padding-bottom: 8px;">
+                        <span class="fi-web"></span> Linki zewnętrzne
+                        <div class="shaded-hr-div-small"></div>
+                    </h3>
+
+                    {% if praca.pbn_uid_id %}
+                        <div class="link-item"
+                             style="margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 6px;">
+                            <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                                <span class="fi-home" style="font-size: 1.5em; margin-right: 10px;"></span>
+                                <strong>PBN UID</strong>
+                            </div>
+                            <button class="button expanded" type="button"
+                                    onclick="window.open('{{ praca.link_do_pbn }}', '_blank')"
+                                    style="margin-bottom: 5px;">
+                                Otwórz w PBN: {{ praca.pbn_uid_id }}
+                            </button>
+                            {% if not request.user.is_anonymous and praca.link_do_pi %}
+                                <button class="button expanded secondary" type="button"
+                                        onclick="window.open('{{ praca.link_do_pi }}', '_blank')">
+                                    Profil instytucji
+                                </button>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+
+                    {% if praca.doi %}
+                        <div class="link-item" style="margin-bottom: 12px;">
+                            <span class="fi-bookmark" style="font-size: 1.2em; margin-right: 8px;"></span>
+                            <strong>DOI:</strong>
+                            <a target="_blank" href="http://doi.org/{{ praca.doi }}"
+                               style="color: #3498db; word-break: break-all;">
+                                {{ praca.doi }}
+                            </a>
+                        </div>
+                    {% endif %}
+
+                    {% if praca.pubmed_id %}
+                        <div class="link-item" style="margin-bottom: 12px;">
+                            <span class="fi-first-aid" style="font-size: 1.2em; margin-right: 8px;"></span>
+                            <strong>PubMed:</strong>
+                            <a target="_blank" href="https://www.ncbi.nlm.nih.gov/pubmed/{{ praca.pubmed_id }}"
+                               style="color: #3498db;">
+                                {{ praca.pubmed_id }}
+                            </a>
+                        </div>
+                    {% endif %}
+
+                    {% if praca.pmc_id %}
+                        <div class="link-item" style="margin-bottom: 12px;">
+                            <span class="fi-book" style="font-size: 1.2em; margin-right: 8px;"></span>
+                            <strong>PMC:</strong>
+                            <a href="https://www.ncbi.nlm.nih.gov/pmc/{{ praca.pmc_id }}" style="color: #3498db;">
+                                {{ praca.pmc_id }}
+                            </a>
+                        </div>
+                    {% endif %}
+
+                    {% if praca.public_www or praca.www %}
+                        <div class="link-item" style="margin-bottom: 12px;">
+                            <span class="fi-web" style="font-size: 1.2em; margin-right: 8px;"></span>
+                            <strong>WWW:</strong>
+                            {% if praca.public_www %}
+                                <a href="{{ praca.public_www }}" style="color: #3498db; word-break: break-all;">
+                                    {{ praca.public_www|truncatechars:60 }}
+                                </a>
+                            {% elif praca.www %}
+                                <a href="{{ praca.www }}" style="color: #3498db; word-break: break-all;">
+                                    {{ praca.www|truncatechars:60 }}
+                                </a>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                </div>
+            {% endif %}
+
+            <!-- Identifiers Card -->
+            <div class="info-card"
+                 style="background: white; border: 1px solid #e1e4e8; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+                <h3 style="font-size: 1.2rem; margin-bottom: 15px; color: #2c3e50; padding-bottom: 8px;">
+                    <span class="fi-credit-card"></span> Identyfikatory
+                    <div class="shaded-hr-div-small"></div>
+                </h3>
+
+                {% if praca.isbn %}
+                    <div class="id-item" style="margin-bottom: 10px;">
+                        <span class="fi-book" style="font-size: 1.2em; margin-right: 8px;"></span>
+                        <strong>ISBN:</strong> {{ praca.isbn }}
+                    </div>
+                {% endif %}
+
+                {% if praca.e_isbn %}
+                    <div class="id-item" style="margin-bottom: 10px;">
+                        <span class="fi-laptop" style="font-size: 1.2em; margin-right: 8px;"></span>
+                        <strong>e-ISBN:</strong> {{ praca.e_isbn }}
+                    </div>
+                {% endif %}
+
+                {% if praca.issn %}
+                    <div class="id-item" style="margin-bottom: 10px;">
+                        <span class="fi-page-multiple" style="font-size: 1.2em; margin-right: 8px;"></span>
+                        <strong>ISSN:</strong> {{ praca.issn }}
+                    </div>
+                {% endif %}
+
+                {% if praca.e_issn %}
+                    <div class="id-item" style="margin-bottom: 10px;">
+                        <span class="fi-save" style="font-size: 1.2em; margin-right: 8px;"></span>
+                        <strong>e-ISSN:</strong> {{ praca.e_issn }}
+                    </div>
+                {% endif %}
+
+                <div class="id-item" style="margin-bottom: 10px;">
+                    <span class="fi-tag" style="font-size: 1.2em; margin-right: 8px;"></span>
+                    <strong>BPP ID:</strong> {{ rekord.pk }}
+                    <small style="color: #7f8c8d; display: block; margin-left: 28px;">
+                        {{ rekord.describe_content_type }} #{{ praca.pk }}
+                    </small>
+                </div>
+
+                {% if praca.pbn_id %}
+                    <div class="id-item" style="margin-bottom: 10px;">
+                        <span class="fi-clipboard" style="font-size: 1.2em; margin-right: 8px;"></span>
+                        <strong>PBN ID (hist.):</strong> {{ praca.pbn_id }}
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Metrics Card -->
+            <div class="info-card"
+                 style="background: white; border: 1px solid #e1e4e8; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+                <h3 style="font-size: 1.2rem; margin-bottom: 15px; color: #2c3e50; padding-bottom: 8px;">
+                    <span class="fi-graph-bar"></span> Metryki
+                    <div class="shaded-hr-div-small"></div>
+                </h3>
+
+                <div class="metrics-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div style="text-align: center; padding: 10px; background: #f8f9fa; border-radius: 6px;">
+                        <div style="font-size: 1.5em; font-weight: bold; color: #e74c3c;">
+                            {{ praca.punkty_kbn|default:"0" }}</div>
+                        <div style="font-size: 0.9em; color: #7f8c8d;">Punkty MNiSW/MEiN</div>
+                    </div>
+
+                    <div style="text-align: center; padding: 10px; background: #f8f9fa; border-radius: 6px;">
+                        <div style="font-size: 1.5em; font-weight: bold; color: #3498db;">
+                            {{ praca.impact_factor|default:"0" }}</div>
+                        <div style="font-size: 0.9em; color: #7f8c8d;">Impact Factor</div>
+                    </div>
+
+                    {% if praca.kwartyl_w_scopus %}
+                        <div style="text-align: center; padding: 10px; background: #f8f9fa; border-radius: 6px;">
+                            <div style="font-size: 1.5em; font-weight: bold; color: #27ae60;">
+                                Q{{ praca.kwartyl_w_scopus }}</div>
+                            <div style="font-size: 0.9em; color: #7f8c8d;">SCOPUS</div>
+                        </div>
+                    {% endif %}
+
+                    {% if praca.kwartyl_w_wos %}
+                        <div style="text-align: center; padding: 10px; background: #f8f9fa; border-radius: 6px;">
+                            <div style="font-size: 1.5em; font-weight: bold; color: #9b59b6;">
+                                Q{{ praca.kwartyl_w_wos }}</div>
+                            <div style="font-size: 0.9em; color: #7f8c8d;">WoS</div>
+                        </div>
+                    {% endif %}
+
+                    {% if praca.liczba_cytowan %}
+                        <div style="text-align: center; padding: 10px; background: #f8f9fa; border-radius: 6px;">
+                            <div style="font-size: 1.5em; font-weight: bold; color: #f39c12;">{{ praca.liczba_cytowan }}</div>
+                            <div style="font-size: 0.9em; color: #7f8c8d;">Cytowania</div>
+                        </div>
+                    {% endif %}
+
+                    {% if uczelnia.pokazuj_punktacja_snip and praca.punktacja_snip %}
+                        <div style="text-align: center; padding: 10px; background: #f8f9fa; border-radius: 6px;">
+                            <div style="font-size: 1.5em; font-weight: bold; color: #16a085;">{{ praca.punktacja_snip }}</div>
+                            <div style="font-size: 0.9em; color: #7f8c8d;">SNIP</div>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- BibTeX Card (Collapsible) -->
+            <div class="info-card"
+                 style="background: white; border: 1px solid #e1e4e8; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+                <h3 style="font-size: 1.2rem; margin-bottom: 15px; color: #2c3e50; padding-bottom: 8px;">
+                    <span class="fi-page-copy"></span> BibTeX
+                    <div class="shaded-hr-div-small"></div>
+                </h3>
+                <button id="bibtex-toggle-btn" class="button expanded secondary" type="button">
+                    Pokaż BibTeX
+                </button>
+                <button id="bibtex-copy-btn" class="button expanded success" type="button"
+                        style="margin-top: 10px; display: none;">
+                    Skopiuj do schowka
+                </button>
+                <span id="bibtex-copy-feedback" style="display: none; color: #27ae60; font-weight: bold;">
+                    ✓ Skopiowane!
+                </span>
+                <div id="bibtex-container" style="display: none; margin-top: 15px;">
+                    <textarea id="bibtex-content" readonly
+                              style="width: 100%; min-height: 200px; font-family: monospace; font-size: 0.9em; padding: 10px; border: 1px solid #ddd; border-radius: 4px; background: #f8f9fa;"></textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Points and Slots Tables -->
+    {% if rekord.ma_punktacje_sloty %}
+        {% if uczelnia.pokazuj_tabele_slotow_na_stronie_rekordu == "always" or uczelnia.pokazuj_tabele_slotow_na_stronie_rekordu == "logged-in" and not request.user.is_anonymous %}
+            <div class="slots-section" style="margin-top: 30px;">
+                <div class="info-card"
+                     style="background: white; border: 1px solid #e1e4e8; border-radius: 8px; padding: 20px;">
+                    <h3 style="font-size: 1.2rem; margin-bottom: 15px; color: #2c3e50; padding-bottom: 8px;">
+                        <span class="fi-torsos-all"></span> Punkty i sloty autorów
+                        {% if uczelnia.drukuj_oswiadczenia %}
+                            {% if request.user.is_superuser or request.user|has_group:"wprowadzanie danych" %}
+                                <a target="_blank"
+                                   href="{% url "oswiadczenia:wiele-oswiadczen" rekord.id.0 rekord.id.1 %}"
+                                   style="float: right;">
+                                    <span class="fi-print"></span>
+                                </a>
+                            {% endif %}
+                        {% endif %}
+
+                        <div class="shaded-hr-div-small"></div>
+                    </h3>
+
+                    <div style="overflow-x: auto;">
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <thead style="background: #f8f9fa;">
+                            <tr>
+                                <th style="padding: 10px; text-align: left; border-bottom: 2px solid #dee2e6;">Autor
+                                </th>
+                                <th style="padding: 10px; text-align: left; border-bottom: 2px solid #dee2e6;">
+                                    Dyscyplina
+                                </th>
+                                <th style="padding: 10px; text-align: center; border-bottom: 2px solid #dee2e6;">PkD /
+                                    PkDAut
+                                </th>
+                                <th style="padding: 10px; text-align: center; border-bottom: 2px solid #dee2e6;">Slot
+                                </th>
+                                {% if uczelnia.drukuj_oswiadczenia %}
+                                    {% if request.user.is_superuser or request.user|has_group:"wprowadzanie danych" %}
+                                        <th style="padding: 10px; text-align: center; border-bottom: 2px solid #dee2e6;">
+                                            Oświadczenia
+                                        </th>
+                                    {% endif %}
+                                {% endif %}
+                            </tr>
+                            </thead>
+                            <tbody>
+                            {% for pa in rekord.punktacja_autora.select_related %}
+                                <tr style="border-bottom: 1px solid #dee2e6;">
+                                    <td style="padding: 10px;">{{ pa.autor }}</td>
+                                    <td style="padding: 10px;">{{ pa.dyscyplina.nazwa }}</td>
+                                    <td style="padding: 10px; text-align: center;">
+                                        <span style="background: #e3f2fd; padding: 2px 8px; border-radius: 4px;">{{ pa.pkdaut }}</span>
+                                    </td>
+                                    <td style="padding: 10px; text-align: center;">
+                                        <span style="background: #fff3e0; padding: 2px 8px; border-radius: 4px;">{{ pa.slot }}</span>
+                                    </td>
+                                    {% if uczelnia.drukuj_oswiadczenia %}
+                                        {% if request.user.is_superuser or request.user|has_group:"wprowadzanie danych" %}
+                                            <td style="padding: 10px; text-align: center;">
+                                                <a target="_blank" title="Wydruk dyscypliny zgłoszonej dla publikacji"
+                                                   href="{% url "oswiadczenia:jedno-oswiadczenie" rekord.id.0 rekord.id.1 pa.autor.id pa.dyscyplina.id %}">
+                                                    <span class="fi-print"></span>
+                                                </a>
+                                                {% if pa.czy_autor_ma_alternatywna_dyscypline and uczelnia.drukuj_alternatywne_oswiadczenia %}
+                                                    &nbsp;
+                                                    <a target="_blank" title="Wydruk alternatywnej dyscypliny autora"
+                                                       href="{% url "oswiadczenia:jedno-oswiadczenie-druga-dyscyplina" rekord.id.0 rekord.id.1 pa.autor.id pa.dyscyplina.id %}">
+                                                        <span class="fi-print" style="color: palevioletred;"></span>
+                                                    </a>
+                                                {% endif %}
+                                            </td>
+                                        {% endif %}
+                                    {% endif %}
+                                </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <h3 style="font-size: 1.2rem; margin-top: 30px; margin-bottom: 15px; color: #2c3e50; padding-bottom: 8px;">
+                        <span class="fi-graph-trend"></span> Punkty i sloty dyscyplin
+                        <div class="shaded-hr-div-small"></div>
+                    </h3>
+
+                    <div style="overflow-x: auto;">
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <thead style="background: #f8f9fa;">
+                            <tr>
+                                <th style="padding: 10px; text-align: left; border-bottom: 2px solid #dee2e6;">
+                                    Dyscyplina
+                                </th>
+                                <th style="padding: 10px; text-align: center; border-bottom: 2px solid #dee2e6;">PkD /
+                                    PkDAut
+                                </th>
+                                <th style="padding: 10px; text-align: center; border-bottom: 2px solid #dee2e6;">Slot
+                                </th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            {% for pd in rekord.punktacja_dyscypliny.select_related %}
+                                <tr style="border-bottom: 1px solid #dee2e6;">
+                                    <td style="padding: 10px;">{{ pd.dyscyplina.nazwa }}</td>
+                                    <td style="padding: 10px; text-align: center;">
+                                        <span style="background: #e8f5e9; padding: 2px 8px; border-radius: 4px;">{{ pd.pkd }}</span>
+                                    </td>
+                                    <td style="padding: 10px; text-align: center;">
+                                        <span style="background: #fce4ec; padding: 2px 8px; border-radius: 4px;">{{ pd.slot }}</span>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+    {% endif %}
+
+    <!-- Additional Information Card - Show here if there are abstracts -->
+    {% if praca.streszczenia.exists %}
+        <div class="additional-info" style="margin-top: 30px;">
+            <div class="info-card"
+                 style="background: white; border: 1px solid #e1e4e8; border-radius: 8px; padding: 20px;">
+                <h3 style="font-size: 1.2rem; margin-bottom: 15px; color: #2c3e50; padding-bottom: 8px;">
+                    <span class="fi-widget"></span> Informacje dodatkowe
+                    <div class="shaded-hr-div"></div>
+                </h3>
+                <div style="margin-top: 15px;">
+                    <table style="width: 100%;">
+                        {% if praca.charakter_formalny.skrot == "PAT" %}
+                            <tr>
+                                <td colspan="2"
+                                    style="padding: 10px; background: #f8f9fa; border-radius: 6px; margin-bottom: 10px;">
+                                    <strong>Patent:</strong><br/>
+                                    <div style="margin-left: 20px; margin-top: 10px;">
+                                        <b>Numer zgłoszenia:</b> {{ praca.numer_zgloszenia|default:"brak" }}<br/>
+                                        <b>Wydział:</b> {{ praca.wydzial|default:"brak" }}<br/>
+                                        <b>Rodzaj prawa:</b> {{ praca.rodzaj_prawa|default:"brak" }}<br/>
+                                        <b>Data zgłoszenia:</b> {{ praca.data_zgloszenia|default:"brak" }}<br/>
+                                        <b>Data decyzji:</b> {{ praca.data_decyzji|default:"brak" }}<br/>
+                                        <b>Numer prawa wyłącznego:</b> {{ praca.numer_prawa_wylacznego|default:"brak" }}<br/>
+                                        <b>Wdrożenie:</b> {% if praca.wdrozenie %}tak{% else %}nie{% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endif %}
+
+                        {% if praca.liczba_znakow_wydawniczych %}
+                            <tr>
+                                <th style="padding: 10px;">Liczba arkuszy wydawniczych:</th>
+                                <td style="padding: 10px;">{{ praca.wymiar_wydawniczy_w_arkuszach }}</td>
+                            </tr>
+                        {% endif %}
+
+                        {% if uczelnia.pokazuj_status_korekty == "always" or uczelnia.pokazuj_status_korekty == "logged-in" and not request.user.is_anonymous %}
+                            <tr>
+                                <th style="padding: 10px;">Status:</th>
+                                <td style="padding: 10px;">{{ praca.status_korekty }}</td>
+                            </tr>
+                        {% endif %}
+
+                        {% if uczelnia.pokazuj_praca_recenzowana == "always" or uczelnia.pokazuj_praca_recenzowana == "logged-in" and not request.user.is_anonymous %}
+                            <tr>
+                                <th style="padding: 10px;">Praca recenzowana:</th>
+                                <td style="padding: 10px;">{{ praca.recenzowana|yesno }}</td>
+                            </tr>
+                        {% endif %}
+
+                        {% if praca.ma_procenty %}
+                            <tr>
+                                <th style="padding: 10px; vertical-align: top;">Odpowiedzialność za powstanie pracy:
+                                </th>
+                                <td style="padding: 10px;">
+                                    {% for autor in praca.autorzy_set.all %}
+                                        {% if autor.procent %}
+                                            {{ autor.procent }}% {{ autor.zapisany_jako }}<br/>
+                                        {% endif %}
+                                    {% endfor %}
+                                </td>
+                            </tr>
+                        {% endif %}
+
+                        {% if praca.zewnetrzna_baza_danych.exists %}
+                            <tr>
+                                <th style="padding: 10px; vertical-align: top;">Zewnętrzna baza danych:</th>
+                                <td style="padding: 10px;">
+                                    {% for db in praca.zewnetrzna_baza_danych.all %}
+                                        • {{ db.baza.nazwa }}<br/>
+                                    {% endfor %}
+                                </td>
+                            </tr>
+                        {% endif %}
+
+                        {% if praca.wydawnictwa_powiazane_set.exists %}
+                            <tr>
+                                <th style="padding: 10px; vertical-align: top;">Rekordy powiązane:</th>
+                                <td style="padding: 10px;">
+                                    {% for elem in praca.wydawnictwa_powiazane_posortowane.all %}
+                                        • <a href="{% url "bpp:browse_praca" "wydawnictwo_zwarte" elem.pk %}">
+                                        {{ elem.opis_bibliograficzny_cache|safe }}
+                                    </a><br/>
+                                    {% endfor %}
+                                </td>
+                            </tr>
+                        {% endif %}
+
+                        <tr>
+                            <th style="padding: 10px;">Rekord utworzony:</th>
+                            <td style="padding: 10px;">{{ praca.utworzono }}</td>
+                        </tr>
+
+                        <tr>
+                            <th style="padding: 10px;">Ostatnia aktualizacja:</th>
+                            <td style="padding: 10px;">{{ praca.ostatnio_zmieniony }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- "Odpięte" dyscypliny -->
+    {% if rekord.ma_odpiete_dyscypliny %}
+        {% if uczelnia.pokazuj_tabele_slotow_na_stronie_rekordu == "always" or uczelnia.pokazuj_tabele_slotow_na_stronie_rekordu == "logged-in" and not request.user.is_anonymous %}
+            <div class="detached-disciplines" style="margin-top: 30px;">
+                <div class="info-card"
+                     style="background: #fff5f5; border: 1px solid #ffcccc; border-radius: 8px; padding: 20px;">
+                    <h3 style="font-size: 1.2rem; margin-bottom: 15px; color: #2c3e50; padding-bottom: 8px;">
+                        <span class="fi-unlink"></span> "Odpięte" dyscypliny
+                        <div class="shaded-hr-div-small"></div>
+                    </h3>
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead style="background: #ffe5e5;">
+                        <tr>
+                            <th style="padding: 10px; text-align: left;">Autor</th>
+                            <th style="padding: 10px; text-align: left;">Dyscyplina</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {% for pa in praca.odpiete_dyscypliny.select_related %}
+                            <tr style="border-bottom: 1px solid #ffcccc;">
+                                <td style="padding: 10px;">{{ pa.autor }}</td>
+                                <td style="padding: 10px;">{{ pa.dyscyplina_naukowa.nazwa }}</td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        {% endif %}
+    {% endif %}
+</div>
+
+<!-- JavaScript for interactive elements -->
+<script type="text/javascript">
+    (function ($) {
+        $(document).ready(function () {
+            // BibTeX functionality
+            var bibtexToggleBtn = $('#bibtex-toggle-btn');
+            var bibtexContainer = $('#bibtex-container');
+            var bibtexContent = $('#bibtex-content');
+            var bibtexCopyBtn = $('#bibtex-copy-btn');
+            var bibtexCopyFeedback = $('#bibtex-copy-feedback');
+            var bibtexLoaded = false;
+
+            bibtexToggleBtn.click(function () {
+                if (bibtexContainer.is(':visible')) {
+                    bibtexContainer.hide();
+                    bibtexToggleBtn.text('Pokaż BibTeX');
+                    bibtexCopyBtn.hide();
+                } else {
+                    if (!bibtexLoaded) {
+                        loadBibTeX();
+                    } else {
+                        bibtexContainer.show();
+                        bibtexToggleBtn.text('Ukryj BibTeX');
+                        bibtexCopyBtn.show();
+                    }
+                }
+            });
+
+            bibtexCopyBtn.click(function () {
+                copyToClipboard();
+            });
+
+            function loadBibTeX() {
+                bibtexToggleBtn.prop('disabled', true).text('⏳ Ładowanie...');
+                var modelName = '{{ rekord.content_type.model }}';
+                var pk = '{{ praca.pk }}';
+                var url = '/bpp/api/bibtex/' + modelName + '/' + pk + '/';
+
+                $.ajax({
+                    url: url,
+                    type: 'GET',
+                    dataType: 'json',
+                    success: function (data) {
+                        bibtexContent.val(data.bibtex);
+                        bibtexContainer.show();
+                        bibtexToggleBtn.text('Ukryj BibTeX');
+                        bibtexCopyBtn.show();
+                        bibtexLoaded = true;
+                    },
+                    error: function (xhr, status, error) {
+                        var errorMsg = 'Błąd podczas pobierania BibTeX';
+                        if (xhr.responseJSON && xhr.responseJSON.error) {
+                            errorMsg += ': ' + xhr.responseJSON.error;
+                        }
+                        bibtexContent.val(errorMsg);
+                        bibtexContainer.show();
+                        bibtexToggleBtn.text('Ukryj BibTeX (błąd)');
+                    },
+                    complete: function () {
+                        bibtexToggleBtn.prop('disabled', false);
+                    }
+                });
+            }
+
+            function copyToClipboard() {
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(bibtexContent.val()).then(function () {
+                        showCopyFeedback();
+                    }, function (err) {
+                        fallbackCopy();
+                    });
+                } else {
+                    fallbackCopy();
+                }
+            }
+
+            function fallbackCopy() {
+                bibtexContent.select();
+                bibtexContent[0].setSelectionRange(0, 99999);
+                try {
+                    document.execCommand('copy');
+                    showCopyFeedback();
+                } catch (err) {
+                    alert('Nie można skopiować do schowka. Proszę zaznacz tekst i skopiuj ręcznie (Ctrl+C).');
+                }
+            }
+
+            function showCopyFeedback() {
+                bibtexCopyFeedback.show();
+                setTimeout(function () {
+                    bibtexCopyFeedback.fadeOut();
+                }, 2000);
+            }
+
+            // Check if there are many authors and implement show/hide
+            var authorsList = $('.author-name');
+            if (authorsList.length > 10) {
+                // Implementation for show more authors would go here
+            }
+        });
+    })(jQuery || django.jQuery || $);
+
+    // Copy bibliographic description to clipboard
+    function copyBibliographicDescription() {
+        var descriptionDiv = document.getElementById('bibliographic-description');
+        var textContent = descriptionDiv.innerText || descriptionDiv.textContent;
+        var feedbackDiv = document.getElementById('copy-biblio-feedback');
+
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(textContent).then(function () {
+                // Show feedback
+                feedbackDiv.style.display = 'block';
+                setTimeout(function () {
+                    feedbackDiv.style.display = 'none';
+                }, 2000);
+            }, function (err) {
+                // Fallback for older browsers
+                fallbackCopyBiblio(textContent, feedbackDiv);
+            });
+        } else {
+            fallbackCopyBiblio(textContent, feedbackDiv);
+        }
+    }
+
+    function fallbackCopyBiblio(text, feedbackDiv) {
+        // Create temporary textarea
+        var textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+
+        try {
+            document.execCommand('copy');
+            feedbackDiv.style.display = 'block';
+            setTimeout(function () {
+                feedbackDiv.style.display = 'none';
+            }, 2000);
+        } catch (err) {
+            alert('Nie można skopiować do schowka. Proszę zaznaczyć tekst i skopiować ręcznie (Ctrl+C).');
+        }
+
+        document.body.removeChild(textarea);
+    }
+</script>
+
+<!-- Responsive styles -->
+<style>
+    @media screen and (max-width: 768px) {
+        .content-columns {
+            flex-direction: column !important;
+        }
+
+        .left-column, .right-column {
+            flex: 1 1 100% !important;
+            min-width: 100% !important;
+        }
+
+        .metrics-grid {
+            grid-template-columns: 1fr !important;
+        }
+
+        table {
+            font-size: 0.9em;
+        }
+
+        .publication-title-section h2 {
+            font-size: 1.4rem !important;
+        }
+    }
+
+    /* Hover effects */
+    .info-card {
+        transition: box-shadow 0.3s ease;
+    }
+
+    .info-card:hover {
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Print styles */
+    @media print {
+        .button, #bibtex-toggle-btn, #bibtex-copy-btn {
+            display: none !important;
+        }
+
+        #additional-content {
+            display: block !important;
+        }
+
+        .info-card {
+            break-inside: avoid;
+        }
+    }
+</style>

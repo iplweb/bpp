@@ -1,0 +1,41 @@
+// Base Footer Styles
+// Footer section with copyright and information
+
+.footer {
+    &__content {
+        text-align: center;
+        font-size: 70%;
+    }
+
+    &__test-copyright {
+        display: none;
+    }
+
+    // Print styles
+    &__print {
+        .text-right {
+            text-align: right;
+        }
+
+        small {
+            font-size: 85%;
+        }
+    }
+}
+
+// Hide/show for print
+@media print {
+    .hide-for-print {
+        display: none !important;
+    }
+
+    .show-for-print {
+        display: block !important;
+    }
+}
+
+@media screen {
+    .show-for-print {
+        display: none !important;
+    }
+}

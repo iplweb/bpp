@@ -21,7 +21,15 @@ from multiseek.views import MULTISEEK_SESSION_KEY, MULTISEEK_SESSION_KEY_REMOVED
 
 from miniblog.models import Article
 
-from bpp.models import Autor, Jednostka, Rekord, Uczelnia, Wydzial, Zrodlo
+from bpp.models import (
+    Autor,
+    Jednostka,
+    Rekord,
+    Uczelnia,
+    Wydawnictwo_Ciagle_Streszczenie,
+    Wydzial,
+    Zrodlo,
+)
 from bpp.multiseek_registry import (
     JednostkaQueryObject,
     NazwiskoIImieQueryObject,
@@ -61,6 +69,20 @@ class UczelniaView(DetailView):
             context["miniblog"] = Article.objects.filter(
                 status=Article.STATUS.published
             )[:5]
+
+            # Add 5 most recently updated records
+            context["recently_updated"] = Rekord.objects.order_by(
+                "-ostatnio_zmieniony"
+            )[:5]
+
+            # Add 5 recent records with abstracts
+            context["recent_abstracts"] = (
+                Wydawnictwo_Ciagle_Streszczenie.objects.exclude(
+                    streszczenie__isnull=True
+                )
+                .exclude(streszczenie__exact="")
+                .order_by("-rekord__ostatnio_zmieniony")[:5]
+            )
 
         context.update(kwargs)
         return super().get_context_data(**context)
@@ -144,11 +166,11 @@ class Browser(ListView):
 
 
 class AutorzyView(Browser):
-    template_name = "browse/autorzy.html"
+    template_name = "browse/autorzy_modern_bordered.html"
     model = Autor
     param = "search"
     literka_field = "nazwisko"
-    paginate_by = 252
+    paginate_by = 50
 
     def get_queryset(self):
 
@@ -182,8 +204,17 @@ class AutorzyView(Browser):
                 # Nie pokazuj autorów bez prac
                 ret = ret.exclude(autorzyview=None)
 
-        return ret.only("nazwisko", "imiona", "slug", "poprzednie_nazwiska").order_by(
-            "nazwisko", "imiona"
+        return (
+            ret.select_related("aktualna_jednostka", "aktualna_jednostka__wydzial")
+            .only(
+                "nazwisko",
+                "imiona",
+                "slug",
+                "poprzednie_nazwiska",
+                "aktualna_jednostka__nazwa",
+                "aktualna_jednostka__wydzial__nazwa",
+            )
+            .order_by("nazwisko", "imiona")
         )
 
 

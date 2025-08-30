@@ -14,7 +14,7 @@
 
 
 {% block content %}
-    {% include "browse/praca_tabela.html" with praca=rekord.original autorzy=rekord.original.autorzy_dla_opisu rekord=rekord links="normal"%}
+    {% include "browse/praca_tabela_mono.html" with praca=rekord.original autorzy=rekord.original.autorzy_dla_opisu rekord=rekord links="normal"%}
     {% include "browse/google_scholar.html" with praca=rekord.original autorzy=rekord.original.autorzy_dla_opisu rekord=rekord %}
 
     {% with rekord as r %}

@@ -79,7 +79,7 @@ def download_institution_publications(user_id):
     """
     from django.db import transaction
 
-    from komparator_pbn.models import PbnDownloadTask
+    from pbn_downloader_app.models import PbnDownloadTask
 
     from django.utils import timezone
 

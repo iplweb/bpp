@@ -410,6 +410,7 @@ INSTALLED_APPS = [
     "adminsortable2",
     "import_export",
     "ewaluacja2021",
+    "ewaluacja_liczba_n",
     # Zostawiamy - bezwarunkowo
     "test_bpp",
     #
@@ -421,6 +422,8 @@ INSTALLED_APPS = [
     "import_list_ministerialnych",
     "snapshot_odpiec",
     "stan_systemu",
+    "deduplikator_autorow",
+    "pbn_downloader_app",
 ]
 
 # Profile użytkowników
@@ -1191,6 +1194,8 @@ DATA_UPLOAD_MAX_NUMBER_FIELDS = 5000
 DJANGO_BPP_SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI = env(
     "DJANGO_BPP_SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI"
 )
+
+DJANGO_BPP_UCZELNIA_UZYWA_WYDZIALOW = env("DJANGO_BPP_UCZELNIA_UZYWA_WYDZIALOW")
 
 #
 # Po zalogowaniu się do PBN ustalamy, że token jest ważny [TYLE] godzin

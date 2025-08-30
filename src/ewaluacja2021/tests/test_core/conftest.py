@@ -1,7 +1,7 @@
 import pytest
 from model_bakery import baker
 
-from ewaluacja2021.models import (
+from ewaluacja_liczba_n.models import (
     IloscUdzialowDlaAutora_2022_2025,
     LiczbaNDlaUczelni_2022_2025,
 )

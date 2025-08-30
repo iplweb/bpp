@@ -1,11 +1,19 @@
 {% extends "base.html" %}
 
 {% block extratitle %}
-    Zgłoś publikację
+    Zgłoś publikację - Sukces
 {% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url "zglos_publikacje:nowe_zgloszenie" %}">Zgłoś publikację</a></li>
+    <li class="current">Sukces</li>
+{% endblock %}
+
 {% block content %}
 
     <h1>Dziękujemy!</h1>
+    <p class="subheader">Zgłoszenie zostało przesłane pomyślnie.</p>
 
     <p>
         Dziękujemy za zgłoszenie.</p>

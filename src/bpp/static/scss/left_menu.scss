@@ -1,0 +1,73 @@
+// Left Menu Sidebar Styles
+// Used for navigation sidebars in various views
+
+.left-menu-sidebar {
+    position: fixed;
+    left: 0;
+    width: 280px;
+    border-right: 1px solid rgba(0, 0, 0, 0.1);
+    overflow-y: auto;
+    z-index: 0;
+
+    // Accordion styles
+    .accordion-item {
+        border: none !important;
+        margin-bottom: 0 !important;
+    }
+
+    .accordion-title {
+        font-weight: normal !important;
+        font-size: 1rem !important;
+        padding: 12px 15px !important;
+        background: transparent !important;
+        color: #333 !important;
+        transition: all 0.2s ease !important;
+
+        &:hover {
+            background: rgba(23, 121, 186, 0.08) !important;
+            transform: translateX(5px);
+        }
+    }
+
+    .accordion-content {
+        font-size: 0.95rem !important;
+        background: rgba(248, 248, 248, 0.5) !important;
+        padding: 12px 15px !important;
+
+        p {
+            font-size: 0.95rem !important;
+            font-weight: normal !important;
+        }
+    }
+}
+
+// Main content wrapper when sidebar is present
+.main-content-with-sidebar {
+    margin-left: 300px;
+    padding: 20px;
+    padding-left: 10px;
+}
+
+// Print styles
+@media print {
+    .left-menu-sidebar {
+        display: none;
+    }
+
+    .main-content-with-sidebar {
+        margin-left: 0;
+    }
+}
+
+// Mobile responsive styles
+@media screen and (max-width: 64em) {
+    .left-menu-sidebar {
+        position: static;
+        width: 100%;
+        height: auto !important;
+    }
+
+    .main-content-with-sidebar {
+        margin-left: 0;
+    }
+}
