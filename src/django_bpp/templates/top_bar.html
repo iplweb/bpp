@@ -15,8 +15,8 @@
     <div class="top-bar-left">
         <ul class="dropdown menu" data-dropdown-menu>
             <li class="menu-text bpp-logo-item"
-                onclick="location.href='/';" style="padding: 0.3rem 0.5rem;">
-                <img src="{% load static %}{% static 'images/bpp-icon.png' %}" alt="BPP" class="bpp-logo" style="height: 24px; width: auto; vertical-align: middle; filter: grayscale(100%); transition: filter 0.3s ease, transform 0.3s ease;">
+                onclick="location.href='/';" style="padding: 0.5rem 0.5rem;">
+                <img src="{% load static %}{% static 'images/bpp-icon.png' %}" alt="BPP" class="bpp-logo" style="height: 24px; width: auto; vertical-align: middle; filter: grayscale(100%); transition: filter 0.3s ease, transform 0.3s ease; margin-top: -2px;">
             </li>
             <li><a href="{% url "multiseek:index" %}"><i class="fi-magnifying-glass" style="font-size: 1.6rem; margin-right: 0.4rem; vertical-align: middle;"></i> szukaj</a>
             </li>
@@ -210,9 +210,16 @@
 
             {% if request.user.is_anonymous %}
                 {% if microsoft_login_enabled %}
-                    <li><a href="{% url "microsoft_auth:to-auth-redirect" %}?next={{ request.get_full_path }}">
-                        <i class="fi-lock" style="font-size: 1.6rem; margin-right: 0.4rem; vertical-align: middle;"></i>
-                        zaloguj</a></li>
+                    <li>
+                        <a href="#"><i class="fi-lock" style="font-size: 1.6rem; margin-right: 0.4rem; vertical-align: middle;"></i>
+                        zaloguj</a>
+                        <ul class="menu vertical">
+                            <li><a href="{% url "microsoft_auth:to-auth-redirect" %}?next={{ request.get_full_path }}">
+                                <i class="fi-torso" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> logowanie</a></li>
+                            <li><a href="/admin/">
+                                <i class="fi-alert" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> logowanie awaryjne</a></li>
+                        </ul>
+                    </li>
                 {% else %}
                     <li><a href="{% url "login_form" %}?next={{ request.get_full_path }}">
                         <i class="fi-lock" style="font-size: 1.6rem; margin-right: 0.4rem; vertical-align: middle;"></i>
