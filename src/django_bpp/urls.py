@@ -145,11 +145,20 @@ urlpatterns = (
         ),
         path("rozbieznosci_dyscyplin/", include("rozbieznosci_dyscyplin.urls")),
         path("rozbieznosci_if/", include("rozbieznosci_if.urls")),
+        path("komparator-pbn-udzialy/", include("komparator_pbn_udzialy.urls")),
+        path("komparator-publikacji-pbn/", include("komparator_publikacji_pbn.urls")),
         path(
             "deduplikator_autorow/",
             include(
                 ("deduplikator_autorow.urls", "deduplikator_autorow"),
                 namespace="deduplikator_autorow",
+            ),
+        ),
+        path(
+            "importer_autorow_pbn/",
+            include(
+                ("importer_autorow_pbn.urls", "importer_autorow_pbn"),
+                namespace="importer_autorow_pbn",
             ),
         ),
         url(

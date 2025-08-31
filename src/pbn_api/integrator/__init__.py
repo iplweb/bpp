@@ -5,6 +5,7 @@ import operator
 import os
 import sys
 import warnings
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from functools import reduce
 
 import django
@@ -729,24 +730,40 @@ def pobierz_ludzi_z_uczelni(client_or_token: PBNClient, instutition_id):
         # Create PBN client
         client = Uczelnia.objects.get_default().pbn_client(client_or_token)
 
-    pool = initialize_pool(multipler=1)
-    results = []
     elementy = client.get_people_by_institution_id(instutition_id)
 
-    _bede_uzywal_bazy_danych_z_multiprocessing_z_django()
+    # Determine number of threads (similar to initialize_pool logic)
+    if CPU_COUNT == "auto":
+        max_workers = os.cpu_count() * 3 // 4
+        if max_workers < 1:
+            max_workers = 1
+    elif CPU_COUNT == "single":
+        max_workers = 1
+    else:
+        max_workers = 4  # Default fallback
 
-    for person in pbar(elementy, count=len(elementy), label="pobierz ludzi z uczelni"):
-        result = pool.apply_async(
-            pobierz_i_zapisz_dane_jednej_osoby,
-            kwds={
-                "client_or_token": client_or_token,
-                "personId": person["personId"],
-                "from_institution_api": True,
-            },
-        )
-        results.append(result)
+    # Use ThreadPoolExecutor instead of multiprocessing
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = []
+        for person in pbar(
+            elementy, count=len(elementy), label="pobierz ludzi z uczelni"
+        ):
+            future = executor.submit(
+                pobierz_i_zapisz_dane_jednej_osoby,
+                client_or_token=client_or_token,
+                personId=person["personId"],
+                from_institution_api=True,
+            )
+            futures.append(future)
 
-    wait_for_results(pool, results)
+        # Wait for all futures to complete
+        for future in pbar(
+            as_completed(futures), count=len(futures), label="Waiting for results"
+        ):
+            try:
+                future.result()
+            except Exception as e:
+                print(f"Error processing person: {e}")
 
     from pbn_api.models.institution import Institution
     from pbn_api.models.osoba_z_instytucji import OsobaZInstytucji

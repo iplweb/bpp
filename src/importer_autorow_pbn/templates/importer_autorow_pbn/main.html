@@ -1,0 +1,437 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Importer autorów PBN - {{ block.super }}{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li class="current">Importer autorów PBN</li>
+{% endblock %}
+
+{% block content %}
+    <div class="row">
+        <div class="large-12 columns">
+            <h1>Importer autorów PBN</h1>
+            <p class="lead">Naukowcy z PBN bez odpowiedników w BPP</p>
+
+            <div class="panel callout secondary">
+                <h5><i class="fi-info"></i> Informacje</h5>
+                <p>Ta strona pokazuje naukowców pobranych z API instytucji PBN, którzy nie mają jeszcze odpowiedników w bazie BPP.</p>
+                <p>Możesz:</p>
+                <ul>
+                    <li><strong>Utworzyć nowego autora</strong> - otworzy formularz w panelu administracyjnym z wypełnionymi danymi</li>
+                    <li><strong>Powiązać z istniejącym</strong> - jeśli system znalazł potencjalne dopasowanie</li>
+                    <li><strong>Ignorować na zawsze</strong> - naukowiec nie będzie więcej pokazywany na tej liście</li>
+                </ul>
+            </div>
+
+            <div class="row">
+                <div class="medium-6 columns">
+                    <div class="stat-box">
+                        <h4><i class="fi-torso"></i> Statystyki</h4>
+                        <p><strong>Nieprzypisani naukowcy:</strong> {{ total_unmatched }}</p>
+                        <p><strong>Naukowcy z dopasowaniem:</strong> {{ total_with_matches }}</p>
+                        <p><strong>Naukowcy bez dopasowania:</strong> {{ total_unmatched|add:"-"|add:total_with_matches }}</p>
+                        <p><strong>Ignorowani naukowcy:</strong> {{ total_ignored }}</p>
+                        {% if total_ignored > 0 %}
+                            <a href="/admin/importer_autorow_pbn/donotremind/" class="button small secondary" target="_blank">
+                                <i class="fi-eye"></i> Zobacz ignorowanych
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="medium-6 columns">
+                    <div class="panel">
+                        <h5><i class="fi-magnifying-glass"></i> Wyszukiwanie</h5>
+                        <form method="get" action="">
+                            <div class="input-group">
+                                <input type="text" name="q" value="{{ query }}" placeholder="Nazwisko, imię lub ORCID..." class="input-group-field">
+                                <div class="input-group-button">
+                                    <button type="submit" class="button"><i class="fi-magnifying-glass"></i> Szukaj</button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            {% if total_with_matches > 0 or total_unmatched > total_with_matches %}
+                <div class="row">
+                    <div class="large-12 columns">
+                        <div class="panel">
+                            <h5><i class="fi-widget"></i> Akcje masowe</h5>
+                            <div class="button-group">
+                                {% if total_with_matches > 0 %}
+                                    <button class="button success" id="link-all-btn">
+                                        <i class="fi-link"></i> Powiąż wszystkich z dopasowaniem ({{ total_with_matches }})
+                                    </button>
+                                {% endif %}
+                                {% if total_unmatched > total_with_matches %}
+                                    <button class="button warning" id="create-all-unmatched-btn">
+                                        <i class="fi-plus"></i> Utwórz wszystkich bez dopasowania ({{ total_unmatched|add:"-"|add:total_with_matches }})
+                                    </button>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+
+            {% if scientists %}
+                <table class="hover">
+                    <thead>
+                        <tr>
+                            <th>Nazwisko i imię</th>
+                            <th>ORCID</th>
+                            <th>Tytuł</th>
+                            <th>Instytucja</th>
+                            <th>Sugerowane dopasowanie</th>
+                            <th>Akcje</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for scientist in scientists %}
+                            <tr data-scientist-id="{{ scientist.mongoId }}">
+                                <td>
+                                    <strong>{{ scientist.lastName|default:"" }} {{ scientist.name|default:"" }}</strong>
+                                    <br>
+                                    <small class="text-muted">ID: {{ scientist.mongoId }}</small>
+                                </td>
+                                <td>
+                                    {% if scientist.orcid %}
+                                        <a href="https://orcid.org/{{ scientist.orcid }}" target="_blank">
+                                            {{ scientist.orcid }}
+                                        </a>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ scientist.qualifications|default:"-" }}</td>
+                                <td>
+                                    {{ scientist.currentEmploymentsInstitutionDisplayName|default:"-" }}
+                                </td>
+                                <td>
+                                    {% if scientist.match_suggestion %}
+                                        <div class="callout success small">
+                                            <strong>Znaleziono dopasowanie:</strong><br>
+                                            <a href="{{ scientist.match_suggestion.get_absolute_url }}" target="_blank">
+                                                {{ scientist.match_suggestion }}
+                                            </a>
+                                            <br>
+                                            <button class="button tiny success link-to-existing"
+                                                    data-scientist-id="{{ scientist.mongoId }}"
+                                                    data-autor-id="{{ scientist.match_suggestion.pk }}"
+                                                    data-autor-name="{{ scientist.match_suggestion }}">
+                                                <i class="fi-link"></i> Powiąż
+                                            </button>
+                                        </div>
+                                    {% else %}
+                                        <span class="text-muted">Brak dopasowania</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="button-group tiny">
+                                        <a href="{{ scientist.create_url }}"
+                                           class="button success"
+                                           target="_blank"
+                                           title="Utwórz nowego autora w BPP">
+                                            <i class="fi-plus"></i> Utwórz w BPP
+                                        </a>
+                                        <button class="button alert ignore-forever"
+                                                data-scientist-id="{{ scientist.mongoId }}"
+                                                data-scientist-name="{{ scientist.lastName }} {{ scientist.name }}"
+                                                title="Ignoruj tego naukowca na zawsze">
+                                            <i class="fi-x"></i> Ignoruj
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+
+                {% if is_paginated %}
+                    <nav aria-label="Pagination">
+                        <ul class="pagination text-center" role="navigation">
+                            {% if page_obj.has_previous %}
+                                <li class="pagination-previous">
+                                    <a href="?page={{ page_obj.previous_page_number }}{% if query %}&q={{ query }}{% endif %}">
+                                        <span class="fi-arrow-left"></span> Poprzednia
+                                    </a>
+                                </li>
+                                <li><a href="?page=1{% if query %}&q={{ query }}{% endif %}">1</a></li>
+                                {% if page_obj.previous_page_number > 2 %}
+                                    <li class="ellipsis"></li>
+                                {% endif %}
+                                {% if page_obj.previous_page_number > 1 %}
+                                    <li><a href="?page={{ page_obj.previous_page_number }}{% if query %}&q={{ query }}{% endif %}">{{ page_obj.previous_page_number }}</a></li>
+                                {% endif %}
+                            {% else %}
+                                <li class="pagination-previous disabled">Poprzednia</li>
+                            {% endif %}
+
+                            <li class="current"><span class="show-for-sr">Jesteś na stronie</span> {{ page_obj.number }}</li>
+
+                            {% if page_obj.has_next %}
+                                {% if page_obj.next_page_number < page_obj.paginator.num_pages %}
+                                    <li><a href="?page={{ page_obj.next_page_number }}{% if query %}&q={{ query }}{% endif %}">{{ page_obj.next_page_number }}</a></li>
+                                {% endif %}
+                                {% if page_obj.next_page_number < page_obj.paginator.num_pages|add:"-1" %}
+                                    <li class="ellipsis"></li>
+                                {% endif %}
+                                <li><a href="?page={{ page_obj.paginator.num_pages }}{% if query %}&q={{ query }}{% endif %}">{{ page_obj.paginator.num_pages }}</a></li>
+                                <li class="pagination-next">
+                                    <a href="?page={{ page_obj.next_page_number }}{% if query %}&q={{ query }}{% endif %}">
+                                        Następna <span class="fi-arrow-right"></span>
+                                    </a>
+                                </li>
+                            {% else %}
+                                <li class="pagination-next disabled">Następna</li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                {% endif %}
+            {% else %}
+                <div class="callout primary">
+                    <h5>Brak nieprzypisanych naukowców</h5>
+                    <p>Wszyscy naukowcy z PBN zostali przypisani do autorów w BPP lub zignor owani.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Modal for ignore confirmation -->
+    <div class="reveal" id="ignoreModal" data-reveal>
+        <h3>Ignoruj naukowca</h3>
+        <p>Czy na pewno chcesz zignorować naukowca <strong id="ignore-scientist-name"></strong>?</p>
+        <p>Naukowiec nie będzie więcej pokazywany na liście nieprzypisanych.</p>
+        <form id="ignore-form">
+            <label>Powód (opcjonalny):
+                <textarea name="reason" rows="3"></textarea>
+            </label>
+            <input type="hidden" id="ignore-scientist-id" name="scientist_id">
+        </form>
+        <div class="button-group">
+            <button class="button alert" id="confirm-ignore">Ignoruj</button>
+            <button class="button secondary" data-close>Anuluj</button>
+        </div>
+        <button class="close-button" data-close aria-label="Zamknij" type="button">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+
+    <!-- Modal for bulk link confirmation -->
+    <div class="reveal" id="linkAllModal" data-reveal>
+        <h3>Powiąż wszystkich naukowców z dopasowaniem</h3>
+        <p>Czy na pewno chcesz automatycznie powiązać <strong>{{ total_with_matches }}</strong> naukowców PBN z ich sugerowanymi odpowiednikami w BPP?</p>
+        <div class="callout warning">
+            <p><strong>Uwaga:</strong> Ta operacja powiąże wszystkich naukowców, którzy mają sugerowane dopasowanie.</p>
+        </div>
+        <div class="button-group">
+            <button class="button success" id="confirm-link-all">Powiąż wszystkich</button>
+            <button class="button secondary" data-close>Anuluj</button>
+        </div>
+        <button class="close-button" data-close aria-label="Zamknij" type="button">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+
+    <!-- Modal for bulk create confirmation -->
+    <div class="reveal" id="createAllModal" data-reveal>
+        <h3>Utwórz wszystkich naukowców bez dopasowania</h3>
+        <p>Czy na pewno chcesz automatycznie utworzyć <strong>{{ total_unmatched|add:"-"|add:total_with_matches }}</strong> nowych autorów w BPP?</p>
+        <div class="callout warning">
+            <p><strong>Uwaga:</strong> Ta operacja utworzy nowych autorów dla wszystkich naukowców, którzy nie mają sugerowanego dopasowania.</p>
+        </div>
+        <div class="button-group">
+            <button class="button warning" id="confirm-create-all">Utwórz wszystkich</button>
+            <button class="button secondary" data-close>Anuluj</button>
+        </div>
+        <button class="close-button" data-close aria-label="Zamknij" type="button">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+
+    <!-- Modal for link confirmation -->
+    <div class="reveal" id="linkModal" data-reveal>
+        <h3>Powiąż naukowca z autorem</h3>
+        <p>Czy na pewno chcesz powiązać naukowca PBN z autorem <strong id="link-autor-name"></strong>?</p>
+        <input type="hidden" id="link-scientist-id">
+        <input type="hidden" id="link-autor-id">
+        <div class="button-group">
+            <button class="button success" id="confirm-link">Powiąż</button>
+            <button class="button secondary" data-close>Anuluj</button>
+        </div>
+        <button class="close-button" data-close aria-label="Zamknij" type="button">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+
+    <style>
+        .stat-box {
+            background: #f8f8f8;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border: 1px solid #ddd;
+        }
+
+        .pagination {
+            text-align: center;
+            margin: 2rem 0;
+        }
+
+        .pagination .current {
+            padding: 0.5rem 1rem;
+            background: #f8f8f8;
+            border-radius: 3px;
+            margin: 0 0.5rem;
+        }
+    </style>
+
+    <script>
+        $(document).ready(function() {
+            var csrftoken = $('[name=csrfmiddlewaretoken]').val();
+
+            // Handle ignore button click
+            $('.ignore-forever').on('click', function() {
+                var scientistId = $(this).data('scientist-id');
+                var scientistName = $(this).data('scientist-name');
+
+                $('#ignore-scientist-id').val(scientistId);
+                $('#ignore-scientist-name').text(scientistName);
+                $('#ignoreModal').foundation('open');
+            });
+
+            // Confirm ignore
+            $('#confirm-ignore').on('click', function() {
+                var scientistId = $('#ignore-scientist-id').val();
+                var reason = $('textarea[name="reason"]').val();
+
+                $.ajax({
+                    url: '{% url "importer_autorow_pbn:ignore_scientist" "PLACEHOLDER" %}'.replace('PLACEHOLDER', scientistId),
+                    type: 'POST',
+                    data: {
+                        'reason': reason,
+                        'csrfmiddlewaretoken': csrftoken
+                    },
+                    success: function(response) {
+                        if (response.status === 'success') {
+                            // Remove the row
+                            $('tr[data-scientist-id="' + scientistId + '"]').fadeOut();
+                            $('#ignoreModal').foundation('close');
+                            // Show success message
+                            alert('Naukowiec został zignorowany.');
+                        } else if (response.status === 'already_ignored') {
+                            alert('Ten naukowiec jest już ignorowany.');
+                        }
+                    },
+                    error: function() {
+                        alert('Wystąpił błąd podczas ignorowania naukowca.');
+                    }
+                });
+            });
+
+            // Handle link button click
+            $('.link-to-existing').on('click', function() {
+                var scientistId = $(this).data('scientist-id');
+                var autorId = $(this).data('autor-id');
+                var autorName = $(this).data('autor-name');
+
+                $('#link-scientist-id').val(scientistId);
+                $('#link-autor-id').val(autorId);
+                $('#link-autor-name').text(autorName);
+                $('#linkModal').foundation('open');
+            });
+
+            // Confirm link
+            $('#confirm-link').on('click', function() {
+                var scientistId = $('#link-scientist-id').val();
+                var autorId = $('#link-autor-id').val();
+
+                $.ajax({
+                    url: '{% url "importer_autorow_pbn:link_scientist" "PLACEHOLDER" %}'.replace('PLACEHOLDER', scientistId),
+                    type: 'POST',
+                    data: {
+                        'autor_id': autorId,
+                        'csrfmiddlewaretoken': csrftoken
+                    },
+                    success: function(response) {
+                        if (response.status === 'success') {
+                            // Reload the page to show updated data
+                            location.reload();
+                        } else {
+                            alert('Błąd: ' + response.message);
+                        }
+                    },
+                    error: function() {
+                        alert('Wystąpił błąd podczas powiązywania naukowca.');
+                    }
+                });
+            });
+
+            // Handle link all button
+            $('#link-all-btn').on('click', function() {
+                $('#linkAllModal').foundation('open');
+            });
+
+            // Confirm link all
+            $('#confirm-link-all').on('click', function() {
+                $(this).prop('disabled', true).text('Powiązywanie...');
+
+                $.ajax({
+                    url: '{% url "importer_autorow_pbn:link_all_scientists" %}',
+                    type: 'POST',
+                    data: {
+                        'csrfmiddlewaretoken': csrftoken
+                    },
+                    success: function(response) {
+                        if (response.status === 'success') {
+                            if (response.errors && response.errors.length > 0) {
+                                alert('Powiązano ' + response.linked_count + ' naukowców.\n\nBłędy:\n' + response.errors.join('\n'));
+                            } else {
+                                alert('Pomyślnie powiązano ' + response.linked_count + ' naukowców.');
+                            }
+                            location.reload();
+                        }
+                    },
+                    error: function() {
+                        alert('Wystąpił błąd podczas powiązywania naukowców.');
+                        $('#confirm-link-all').prop('disabled', false).text('Powiąż wszystkich');
+                    }
+                });
+            });
+
+            // Handle create all button
+            $('#create-all-unmatched-btn').on('click', function() {
+                $('#createAllModal').foundation('open');
+            });
+
+            // Confirm create all
+            $('#confirm-create-all').on('click', function() {
+                $(this).prop('disabled', true).text('Tworzenie...');
+
+                $.ajax({
+                    url: '{% url "importer_autorow_pbn:create_all_unmatched" %}',
+                    type: 'POST',
+                    data: {
+                        'csrfmiddlewaretoken': csrftoken
+                    },
+                    success: function(response) {
+                        if (response.status === 'success') {
+                            if (response.errors && response.errors.length > 0) {
+                                alert('Utworzono ' + response.created_count + ' autorów.\n\nBłędy:\n' + response.errors.join('\n'));
+                            } else {
+                                alert('Pomyślnie utworzono ' + response.created_count + ' autorów.');
+                            }
+                            location.reload();
+                        }
+                    },
+                    error: function() {
+                        alert('Wystąpił błąd podczas tworzenia autorów.');
+                        $('#confirm-create-all').prop('disabled', false).text('Utwórz wszystkich');
+                    }
+                });
+            });
+        });
+    </script>
+{% endblock %}

@@ -56,7 +56,7 @@
 }
 
 #grp-navigation ul#navigation-menu li.first a {
-    margin: 5px 0 0 12px;
+    margin: 5px 0 0 24px;
     padding-top: 4px;
     text-indent: 14px;
     background: transparent url(/static/admin_tools/images/admin-tools.png) no-repeat 0 -385px;
@@ -196,4 +196,71 @@ header#grp-header #grp-navigation ul#grp-user-tools > li a {
 
 header#grp-header #grp-navigation ul#grp-user-tools > li.grp-user-options-container:last-child {
     width: 100px;
+}
+
+/* -------------------------------------------------------------------------------- */
+/* Two-column menu layout for "Dane systemowe" */
+/* -------------------------------------------------------------------------------- */
+
+/* Hide the dropdown by default */
+#grp-navigation ul#navigation-menu li.has-columns ul {
+    display: none;
+    width: 500px !important;
+    position: absolute;
+    top: auto;
+    left: auto;
+    margin: 0;
+    padding: 0;
+    z-index: 1010;
+    background: #222222;
+    border: 1px solid #090909;
+    border-radius: 0 !important; /* No rounded corners */
+}
+
+/* Show dropdown on hover */
+#grp-navigation ul#navigation-menu li.has-columns:hover ul,
+#grp-navigation ul#navigation-menu li.has-columns.over ul {
+    display: flex !important;
+    flex-direction: column;
+    flex-wrap: wrap;
+    max-height: 525px; /* 15 items * ~35px per item */
+}
+
+#grp-navigation ul#navigation-menu li.has-columns ul li {
+    width: 250px;
+    box-sizing: border-box;
+    margin: 0 !important;
+    padding: 0 !important;
+    float: none;
+    background: #222222;
+    border: none;
+    border-radius: 0 !important; /* No rounded corners */
+}
+
+#grp-navigation ul#navigation-menu li.has-columns ul li.column-1 {
+    order: 1;
+}
+
+#grp-navigation ul#navigation-menu li.has-columns ul li.column-2 {
+    order: 2;
+    border-left: 1px solid #343434;
+}
+
+#grp-navigation ul#navigation-menu li.has-columns ul li a {
+    display: block;
+    border: none;
+    border-bottom: 1px solid #090909;
+    border-radius: 0 !important; /* No rounded corners */
+    min-width: 240px;
+    margin: 0;
+    padding: 9px 15px;
+    height: 35px; /* Fixed height for consistent layout */
+    line-height: 17px; /* Center text vertically */
+    box-sizing: border-box;
+}
+
+/* Remove border from last row items */
+#grp-navigation ul#navigation-menu li.has-columns ul li:last-child a,
+#grp-navigation ul#navigation-menu li.has-columns ul li:nth-last-child(2) a {
+    border-bottom: none;
 }

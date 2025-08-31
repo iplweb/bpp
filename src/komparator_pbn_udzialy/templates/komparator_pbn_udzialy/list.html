@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}Rozbieżności dyscyplin BPP-PBN{% endblock %}
+
+{% block breadcrumbs %}
+    <li><a href="/">Strona główna</a></li>
+    <li class="active">Rozbieżności dyscyplin BPP-PBN</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="large-12 columns">
+        <h2>Rozbieżności dyscyplin BPP-PBN</h2>
+
+        <!-- Statystyki -->
+        <div class="panel">
+            <h4>Statystyki</h4>
+            <div class="row">
+                <div class="medium-3 columns">
+                    <div class="stat-box">
+                        <strong>Wszystkie rozbieżności:</strong> {{ total_count }}
+                    </div>
+                </div>
+                <div class="medium-3 columns">
+                    <div class="stat-box">
+                        <strong>Brak w BPP:</strong> {{ bpp_empty_count }}
+                    </div>
+                </div>
+                <div class="medium-3 columns">
+                    <div class="stat-box">
+                        <strong>Brak w PBN:</strong> {{ pbn_empty_count }}
+                    </div>
+                </div>
+                <div class="medium-3 columns">
+                    <div class="stat-box">
+                        <strong>Różne dyscypliny:</strong> {{ both_present_count }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filtry -->
+        <div class="panel">
+            <form method="get">
+                <div class="row">
+                    <div class="medium-3 columns">
+                        <label>Szukaj:
+                            <input type="text" name="search" value="{{ search }}" placeholder="Tytuł, nazwa dyscypliny...">
+                        </label>
+                    </div>
+                    <div class="medium-3 columns">
+                        <label>Filtruj:
+                            <select name="filter">
+                                <option value="">Wszystkie</option>
+                                <option value="bpp_empty" {% if filter == 'bpp_empty' %}selected{% endif %}>Brak dyscypliny w BPP</option>
+                                <option value="pbn_empty" {% if filter == 'pbn_empty' %}selected{% endif %}>Brak dyscypliny w PBN</option>
+                                <option value="both_present" {% if filter == 'both_present' %}selected{% endif %}>Różne dyscypliny</option>
+                            </select>
+                        </label>
+                    </div>
+                    <div class="medium-2 columns">
+                        <label>Rok od:
+                            <input type="number" name="rok_min" value="{{ rok_min }}" min="2000" max="2050">
+                        </label>
+                    </div>
+                    <div class="medium-2 columns">
+                        <label>Rok do:
+                            <input type="number" name="rok_max" value="{{ rok_max }}" min="2000" max="2050">
+                        </label>
+                    </div>
+                    <div class="medium-2 columns">
+                        <label>&nbsp;</label>
+                        <button type="submit" class="button expanded">Filtruj</button>
+                        <a href="{% url 'komparator_pbn_udzialy:list' %}" class="button secondary expanded">Wyczyść</a>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- Akcje -->
+        <div class="panel">
+            <a href="{% url 'komparator_pbn_udzialy:rebuild' %}" class="button alert">
+                <span class="fi-refresh"></span> Przebuduj rozbieżności
+            </a>
+
+            {% if request.session.komparator_task_id %}
+            <a href="{% url 'komparator_pbn_udzialy:task_status' request.session.komparator_task_id %}" class="button info">
+                <span class="fi-magnifying-glass"></span> Sprawdź status ostatniego zadania
+            </a>
+            {% endif %}
+        </div>
+
+        <!-- Tabela rozbieżności -->
+        {% if rozbieznosci %}
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Autor</th>
+                    <th>Publikacja</th>
+                    <th>Rok</th>
+                    <th>Dyscyplina BPP</th>
+                    <th>Dyscyplina PBN</th>
+                    <th>Data wykrycia</th>
+                    <th>Akcje</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for rozbieznosc in rozbieznosci %}
+                <tr>
+                    <td>
+                        {% if rozbieznosc.get_autor %}
+                            {{ rozbieznosc.get_autor }}
+                        {% else %}
+                            <em>Brak danych</em>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if rozbieznosc.get_publikacja %}
+                            {{ rozbieznosc.get_publikacja|truncatechars:50 }}
+                        {% else %}
+                            <em>Brak danych</em>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if rozbieznosc.oswiadczenie_instytucji.publicationId.year %}
+                            {{ rozbieznosc.oswiadczenie_instytucji.publicationId.year }}
+                        {% else %}
+                            <em>Brak danych</em>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if rozbieznosc.dyscyplina_bpp %}
+                            <span class="label">{{ rozbieznosc.dyscyplina_bpp.nazwa }}</span>
+                        {% else %}
+                            <span class="label alert">Brak</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if rozbieznosc.dyscyplina_pbn %}
+                            <span class="label">{{ rozbieznosc.dyscyplina_pbn.nazwa }}</span>
+                        {% else %}
+                            <span class="label alert">Brak</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ rozbieznosc.created_at|date:"Y-m-d H:i" }}</td>
+                    <td>
+                        <a href="{% url 'komparator_pbn_udzialy:detail' rozbieznosc.pk %}" class="button tiny">
+                            <span class="fi-magnifying-glass"></span> Szczegóły
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <!-- Paginacja -->
+        {% if is_paginated %}
+        <div class="pagination">
+            <span class="page-links">
+                {% if page_obj.has_previous %}
+                    <a href="?page=1{% if search %}&search={{ search }}{% endif %}{% if filter %}&filter={{ filter }}{% endif %}{% if rok_min %}&rok_min={{ rok_min }}{% endif %}{% if rok_max %}&rok_max={{ rok_max }}{% endif %}">« pierwsza</a>
+                    <a href="?page={{ page_obj.previous_page_number }}{% if search %}&search={{ search }}{% endif %}{% if filter %}&filter={{ filter }}{% endif %}{% if rok_min %}&rok_min={{ rok_min }}{% endif %}{% if rok_max %}&rok_max={{ rok_max }}{% endif %}">poprzednia</a>
+                {% endif %}
+
+                <span class="current">
+                    Strona {{ page_obj.number }} z {{ page_obj.paginator.num_pages }}
+                </span>
+
+                {% if page_obj.has_next %}
+                    <a href="?page={{ page_obj.next_page_number }}{% if search %}&search={{ search }}{% endif %}{% if filter %}&filter={{ filter }}{% endif %}{% if rok_min %}&rok_min={{ rok_min }}{% endif %}{% if rok_max %}&rok_max={{ rok_max }}{% endif %}">następna</a>
+                    <a href="?page={{ page_obj.paginator.num_pages }}{% if search %}&search={{ search }}{% endif %}{% if filter %}&filter={{ filter }}{% endif %}{% if rok_min %}&rok_min={{ rok_min }}{% endif %}{% if rok_max %}&rok_max={{ rok_max }}{% endif %}">ostatnia »</a>
+                {% endif %}
+            </span>
+        </div>
+        {% endif %}
+
+        {% else %}
+        <div class="alert-box info">
+            Nie znaleziono żadnych rozbieżności.
+            {% if search or filter %}
+                <a href="{% url 'komparator_pbn_udzialy:list' %}">Pokaż wszystkie</a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.stat-box {
+    background: #f2f2f2;
+    padding: 10px;
+    border-radius: 3px;
+    text-align: center;
+    margin-bottom: 10px;
+}
+.pagination {
+    text-align: center;
+    margin: 20px 0;
+}
+.page-links a {
+    padding: 5px 10px;
+    margin: 0 5px;
+    background: #f2f2f2;
+    text-decoration: none;
+    border-radius: 3px;
+}
+.page-links a:hover {
+    background: #e0e0e0;
+}
+.current {
+    padding: 5px 10px;
+    margin: 0 5px;
+}
+</style>
+{% endblock %}

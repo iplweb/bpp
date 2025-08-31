@@ -147,6 +147,28 @@ def submenu(label, tuples):
     )
 
 
+def submenu_multicolumn(label, column1_tuples, column2_tuples):
+    """Create a two-column submenu"""
+    children = []
+
+    # Add column 1 items first (they will appear in the left column)
+    for item_label, link in column1_tuples:
+        menu_item = items.MenuItem(item_label, link)
+        menu_item.css_classes = ["column-1"]
+        children.append(menu_item)
+
+    # Add column 2 items second (they will appear in the right column)
+    for item_label, link in column2_tuples:
+        menu_item = items.MenuItem(item_label, link)
+        menu_item.css_classes = ["column-2"]
+        children.append(menu_item)
+
+    # Create parent menu item with children
+    parent = items.MenuItem(label, children=children)
+    parent.css_classes = ["has-columns"]
+    return parent
+
+
 class CustomMenu(Menu):
     def __init__(self, **kwargs):
         Menu.__init__(self, **kwargs)
@@ -171,8 +193,12 @@ class CustomMenu(Menu):
         flt("web", "WWW", WEB_MENU)
 
         flt("dane systemowe", "PBN API", PBN_MENU)
-        flt("dane systemowe", "Dane", SYSTEM_MENU)
-        flt("dane systemowe", "systemowe", SYSTEM_MENU_2)
+
+        # Combine "Dane" and "systemowe" into single 2-column menu
+        if user.is_superuser or "dane systemowe" in groups:
+            self.children += [
+                submenu_multicolumn("Dane systemowe", SYSTEM_MENU, SYSTEM_MENU_2),
+            ]
 
         from django.conf import settings
 

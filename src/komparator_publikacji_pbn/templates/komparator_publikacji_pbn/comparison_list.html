@@ -1,0 +1,230 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Komparator publikacji PBN - {{ block.super }}{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url 'komparator_pbn:main' %}">Komparator PBN</a></li>
+    <li class="current">Komparator publikacji</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="large-12 columns">
+        <h1>Komparator publikacji PBN</h1>
+        <p class="lead">Porównanie danych publikacji między BPP a PBN API</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="large-12 columns">
+        <div class="panel">
+            <form method="get" class="search-form" id="filter-form">
+                <div class="row">
+                    <div class="medium-3 columns">
+                        <label for="type">Typ publikacji:</label>
+                        <select name="type" id="type">
+                            <option value="all" {% if publication_type == 'all' %}selected{% endif %}>Wszystkie</option>
+                            <option value="ciagle" {% if publication_type == 'ciagle' %}selected{% endif %}>Wydawnictwa ciągłe</option>
+                            <option value="zwarte" {% if publication_type == 'zwarte' %}selected{% endif %}>Wydawnictwa zwarte</option>
+                        </select>
+                    </div>
+                    <div class="medium-2 columns">
+                        <label for="year_min">Rok od:</label>
+                        <input type="number" name="year_min" id="year_min" value="{{ year_min }}" min="1900" max="2100">
+                    </div>
+                    <div class="medium-2 columns">
+                        <label for="year_max">Rok do:</label>
+                        <input type="number" name="year_max" id="year_max" value="{{ year_max }}" min="1900" max="2100">
+                    </div>
+                    <div class="medium-5 columns">
+                        <label for="q">Szukaj:</label>
+                        <input type="text" name="q" id="q" value="{{ query }}" placeholder="Tytuł, DOI, ISBN...">
+                    </div>
+                </div>
+
+                <div class="row" style="margin-top: 1rem;">
+                    <div class="large-12 columns">
+                        <fieldset>
+                            <legend>Porównywane pola:</legend>
+                            <div style="display: flex; flex-wrap: wrap; gap: 1rem;">
+                                {% for field_key, field_name in all_fields.items %}
+                                    <label style="display: inline-flex; align-items: center;">
+                                        <input type="checkbox" name="fields" value="{{ field_key }}"
+                                               {% if field_key in enabled_fields %}checked{% endif %}>
+                                        <span style="margin-left: 0.5rem;">{{ field_name }}</span>
+                                    </label>
+                                {% endfor %}
+                            </div>
+                        </fieldset>
+                    </div>
+                </div>
+
+                <div class="row" style="margin-top: 1rem;">
+                    <div class="large-12 columns">
+                        <button type="submit" class="button">Zastosuj filtry</button>
+                        <a href="{% url 'komparator_publikacji_pbn:comparison_list' %}" class="button secondary">Resetuj</a>
+                        {% if comparisons %}
+                            <a href="{{ export_url }}" class="button success">
+                                <span class="fi-download"></span> Eksportuj do XLSX
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="large-12 columns">
+        {% if comparisons %}
+            <div class="comparisons-list">
+                <h4>Publikacje z różnicami między BPP a PBN</h4>
+
+                {% for comparison in comparisons %}
+                    <div class="panel" style="margin-bottom: 2rem;">
+                        <div class="row">
+                            <div class="large-12 columns">
+                                <h5>
+                                    {% if comparison.type == 'ciagle' %}
+                                        <span class="label secondary">Wydawnictwo ciągłe</span>
+                                    {% else %}
+                                        <span class="label primary">Wydawnictwo zwarte</span>
+                                    {% endif %}
+                                    {{ comparison.bpp_publication.tytul_oryginalny|truncatewords:15 }}
+                                </h5>
+                                <p class="text-muted">
+                                    <small>
+                                        BPP ID: {{ comparison.bpp_id }} |
+                                        PBN ID: {{ comparison.pbn_id }} |
+                                        Rok: {{ comparison.bpp_publication.rok }}
+                                    </small>
+                                </p>
+                            </div>
+                        </div>
+
+                        {% if comparison.differences %}
+                            <table class="comparison-table" style="width: 100%;">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 20%;">Pole</th>
+                                        <th style="width: 40%;">Wartość w BPP</th>
+                                        <th style="width: 40%;">Wartość w PBN</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for diff in comparison.differences %}
+                                        <tr>
+                                            <td><strong>{{ diff.field }}</strong></td>
+                                            <td>
+                                                {% if diff.bpp_value %}
+                                                    <span style="background-color: #fff3cd; padding: 2px 4px;">
+                                                        {{ diff.bpp_value }}
+                                                    </span>
+                                                {% else %}
+                                                    <em class="text-muted">(brak)</em>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if diff.pbn_value %}
+                                                    <span style="background-color: #d1ecf1; padding: 2px 4px;">
+                                                        {{ diff.pbn_value }}
+                                                    </span>
+                                                {% else %}
+                                                    <em class="text-muted">(brak)</em>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        {% endif %}
+
+                        <div class="row" style="margin-top: 1rem;">
+                            <div class="large-12 columns">
+                                <a href="/admin/bpp/wydawnictwo_{{ comparison.type }}/{{ comparison.bpp_id }}/"
+                                   target="_blank"
+                                   class="button tiny secondary">
+                                    <span class="fi-pencil"></span> Edytuj w BPP
+                                </a>
+                                <a href="{{ comparison.pbn_publication.link_do_pbn }}"
+                                   target="_blank"
+                                   class="button tiny info">
+                                    <span class="fi-link"></span> Zobacz w PBN
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+
+            {% if is_paginated %}
+                <div class="pagination-centered">
+                    <ul class="pagination">
+                        {% if page_obj.has_previous %}
+                            <li class="arrow">
+                                <a href="?{% if query %}q={{ query }}&{% endif %}{% if publication_type %}type={{ publication_type }}&{% endif %}page={{ page_obj.previous_page_number }}">
+                                    &laquo;
+                                </a>
+                            </li>
+                        {% else %}
+                            <li class="arrow unavailable"><a href="">&laquo;</a></li>
+                        {% endif %}
+
+                        {% for num in page_obj.paginator.page_range %}
+                            {% if page_obj.number == num %}
+                                <li class="current"><a href="">{{ num }}</a></li>
+                            {% else %}
+                                <li>
+                                    <a href="?{% if query %}q={{ query }}&{% endif %}{% if publication_type %}type={{ publication_type }}&{% endif %}page={{ num }}">
+                                        {{ num }}
+                                    </a>
+                                </li>
+                            {% endif %}
+                        {% endfor %}
+
+                        {% if page_obj.has_next %}
+                            <li class="arrow">
+                                <a href="?{% if query %}q={{ query }}&{% endif %}{% if publication_type %}type={{ publication_type }}&{% endif %}page={{ page_obj.next_page_number }}">
+                                    &raquo;
+                                </a>
+                            </li>
+                        {% else %}
+                            <li class="arrow unavailable"><a href="">&raquo;</a></li>
+                        {% endif %}
+                    </ul>
+                </div>
+            {% endif %}
+        {% else %}
+            <div class="alert-box info">
+                {% if query or publication_type != 'all' %}
+                    Nie znaleziono publikacji z różnicami dla podanych kryteriów.
+                {% else %}
+                    Nie znaleziono publikacji z różnicami między BPP a PBN.
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+    .comparison-table {
+        border-collapse: collapse;
+    }
+    .comparison-table th {
+        background-color: #f8f9fa;
+        padding: 8px;
+        text-align: left;
+        border: 1px solid #dee2e6;
+    }
+    .comparison-table td {
+        padding: 8px;
+        border: 1px solid #dee2e6;
+    }
+    .text-muted {
+        color: #6c757d;
+    }
+</style>
+{% endblock %}
