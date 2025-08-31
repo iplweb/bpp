@@ -54,7 +54,7 @@ jobs:
         set -e  # Exit on any error
         uname -a
         sudo apt update
-        sudo apt install software-properties-common
+        sudo apt install software-properties-common gettext
         sudo add-apt-repository -d -y -n ppa:mozillateam/ppa
         sudo add-apt-repository -d -y -n ppa:deadsnakes/ppa
         echo '
