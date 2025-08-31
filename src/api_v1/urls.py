@@ -2,6 +2,7 @@ from django.urls import include
 from django.urls import re_path as url
 from rest_framework import routers
 
+from api_v1.views import CustomAPIRootView
 from api_v1.viewsets.autor import (
     Autor_JednostkaViewSet,
     AutorViewSet,
@@ -41,7 +42,12 @@ from api_v1.viewsets.wydawnictwo_zwarte import (
 )
 from api_v1.viewsets.zrodlo import Rodzaj_ZrodlaViewSet, ZrodloViewSet
 
-router = routers.DefaultRouter()
+
+class CustomRouter(routers.DefaultRouter):
+    APIRootView = CustomAPIRootView
+
+
+router = CustomRouter()
 
 #
 # Read-only JSON API
