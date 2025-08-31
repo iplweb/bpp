@@ -432,6 +432,7 @@ INSTALLED_APPS = [
     "importer_autorow_pbn",
     "pbn_downloader_app",
     "komparator_pbn_udzialy",
+    "komparator_publikacji_pbn",
 ]
 
 # Profile użytkowników
