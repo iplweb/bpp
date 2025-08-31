@@ -15,7 +15,6 @@ jobs:
           PGDATABASE: bpp
           DJANGO_BPP_SECRET_KEY: foobar
           DJANGO_SETTINGS_MODULE: django_bpp.settings.test
-          PYTHONPATH: src/
 
       - image: mpasternak79/cimg-postgres:14
         environment:
@@ -107,6 +106,7 @@ jobs:
       - run:
           name: make assets
           command: |
+            export PYTHONPATH=src/
             poetry run make assets
 
 #      - run:
