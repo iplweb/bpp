@@ -14,17 +14,15 @@
     <div class="large-12 columns">
         <h1>Komparator publikacji PBN</h1>
         <p class="lead">Porównanie danych publikacji między BPP a PBN API</p>
-
-        <a href="{% url 'komparator_pbn:main' %}" class="button secondary small">← Powrót do głównej</a>
     </div>
 </div>
 
 <div class="row">
     <div class="large-12 columns">
         <div class="panel">
-            <form method="get" class="search-form">
+            <form method="get" class="search-form" id="filter-form">
                 <div class="row">
-                    <div class="medium-4 columns">
+                    <div class="medium-3 columns">
                         <label for="type">Typ publikacji:</label>
                         <select name="type" id="type">
                             <option value="all" {% if publication_type == 'all' %}selected{% endif %}>Wszystkie</option>
@@ -32,13 +30,46 @@
                             <option value="zwarte" {% if publication_type == 'zwarte' %}selected{% endif %}>Wydawnictwa zwarte</option>
                         </select>
                     </div>
-                    <div class="medium-6 columns">
+                    <div class="medium-2 columns">
+                        <label for="year_min">Rok od:</label>
+                        <input type="number" name="year_min" id="year_min" value="{{ year_min }}" min="1900" max="2100">
+                    </div>
+                    <div class="medium-2 columns">
+                        <label for="year_max">Rok do:</label>
+                        <input type="number" name="year_max" id="year_max" value="{{ year_max }}" min="1900" max="2100">
+                    </div>
+                    <div class="medium-5 columns">
                         <label for="q">Szukaj:</label>
                         <input type="text" name="q" id="q" value="{{ query }}" placeholder="Tytuł, DOI, ISBN...">
                     </div>
-                    <div class="medium-2 columns">
-                        <label>&nbsp;</label>
-                        <button type="submit" class="button expanded">Szukaj</button>
+                </div>
+
+                <div class="row" style="margin-top: 1rem;">
+                    <div class="large-12 columns">
+                        <fieldset>
+                            <legend>Porównywane pola:</legend>
+                            <div style="display: flex; flex-wrap: wrap; gap: 1rem;">
+                                {% for field_key, field_name in all_fields.items %}
+                                    <label style="display: inline-flex; align-items: center;">
+                                        <input type="checkbox" name="fields" value="{{ field_key }}"
+                                               {% if field_key in enabled_fields %}checked{% endif %}>
+                                        <span style="margin-left: 0.5rem;">{{ field_name }}</span>
+                                    </label>
+                                {% endfor %}
+                            </div>
+                        </fieldset>
+                    </div>
+                </div>
+
+                <div class="row" style="margin-top: 1rem;">
+                    <div class="large-12 columns">
+                        <button type="submit" class="button">Zastosuj filtry</button>
+                        <a href="{% url 'komparator_publikacji_pbn:comparison_list' %}" class="button secondary">Resetuj</a>
+                        {% if comparisons %}
+                            <a href="{{ export_url }}" class="button success">
+                                <span class="fi-download"></span> Eksportuj do XLSX
+                            </a>
+                        {% endif %}
                     </div>
                 </div>
             </form>
