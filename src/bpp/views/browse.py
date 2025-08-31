@@ -366,15 +366,25 @@ class BuildSearch(RedirectView):
                 self.request.POST, "wydzial", WydzialQueryObject
             )
 
-        self.request.session[MULTISEEK_SESSION_KEY] = zrob_formularz(
-            zrodla_box,
-            autorzy_box,
-            typy_box,
-            jednostki_box,
-            wydzialy_box,
-            lata_box,
-            zakres_lat_box,
-        )
+            self.request.session[MULTISEEK_SESSION_KEY] = zrob_formularz(
+                zrodla_box,
+                autorzy_box,
+                typy_box,
+                jednostki_box,
+                wydzialy_box,
+                lata_box,
+                zakres_lat_box,
+            )
+        else:
+
+            self.request.session[MULTISEEK_SESSION_KEY] = zrob_formularz(
+                zrodla_box,
+                autorzy_box,
+                typy_box,
+                jednostki_box,
+                lata_box,
+                zakres_lat_box,
+            )
 
         self.request.session["MULTISEEK_TITLE"] = self.request.POST.get(
             "suggested-title", ""
