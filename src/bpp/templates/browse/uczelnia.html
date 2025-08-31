@@ -122,7 +122,7 @@
                 </form>
             {% else %}
                 <a href="{% url 'multiseek:index' %}" class="main-page-button-secondary">
-                    <i class="fi-magnifying-glass"></i> Przeglądaj najnowsze prace
+                    <i class="fi-magnifying-glass"></i> Przeglądaj wszystkie prace
                 </a>
             {% endif %}
         </div>
@@ -169,7 +169,52 @@
                 </article>
             </div>
         {% else %}
-            {% if miniblog.exists or request.user.is_superuser or request.user|has_group:"web" %}
+            {% if request.user.is_superuser or request.user|has_group:"web" %}
+                <div class="small-12 large-6 cell">
+                    <h3 class="section-title">
+                        <i class="fi-megaphone section-icon"></i>Aktualności
+                    </h3>
+                    <div class="news-articles">
+                        {% for article in miniblog %}
+                            <article class="news-article-card">
+                                <div class="article-date-badge">
+                                    <span class="day">{{ article.published_on|date:"d" }}</span>
+                                    <span class="month">{{ article.published_on|date:"M" }}</span>
+                                    <span class="year">{{ article.published_on|date:"Y" }}</span>
+                                </div>
+                                <div class="article-content">
+                                    <h4 class="article-title">
+                                        <a href="{% url "bpp:browse_artykul" uczelnia.slug article.slug %}">
+                                            {{ article.title }}
+                                        </a>
+                                    </h4>
+                                    <div class="article-meta">
+                                        <i class="fi-calendar"></i> {{ article.published_on|date:"j E Y" }}
+                                    </div>
+                                    <div class="article-excerpt">
+                                        {{ article.article_body.excerpt|safe }}
+                                    </div>
+                                    {% if article.article_body.has_more %}
+                                        <div class="article-read-more">
+                                            <a href="{% url "bpp:browse_artykul" uczelnia.slug article.slug %}" class="read-more-link">
+                                                Czytaj więcej <i class="fi-arrow-right"></i>
+                                            </a>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </article>
+                        {% empty %}
+                            <div class="news-empty-state">
+                                <p><i class="fi-page"></i> Brak opublikowanych aktualności.</p>
+                            </div>
+                        {% endfor %}
+                    </div>
+                    <div class="news-admin-links">
+                        {% include "browse/go_to_admin_list.html" with group="web" url="admin:miniblog_article_changelist" text="<i class='fi-wrench'></i> zarządzaj aktualnościami" %}
+                        {% include "browse/go_to_admin_list.html" with group="web" url="admin:miniblog_article_add" text="<i class='fi-page-add'></i> dodaj artykuł" %}
+                    </div>
+                </div>
+            {% elif miniblog.exists %}
                 <div class="small-12 large-6 cell">
                     <h3 class="section-title">
                         <i class="fi-megaphone section-icon"></i>Aktualności
@@ -205,57 +250,100 @@
                             </article>
                         {% endfor %}
                     </div>
-                    <div class="news-admin-links">
-                        {% include "browse/go_to_admin_list.html" with group="web" url="admin:miniblog_article_changelist" text="<i class='fi-wrench'></i> zarządzaj aktualnościami" %}
-                        {% include "browse/go_to_admin_list.html" with group="web" url="admin:miniblog_article_add" text="<i class='fi-page-add'></i> dodaj artykuł" %}
-                    </div>
                 </div>
-
             {% endif %}
         {% endif %}
         {% if uczelnia.pokazuj_wydzialy_na_pierwszej_stronie %}
-            <div class="small-12 large-6 cell">
+            {% if not miniblog.exists and not request.user.is_superuser and not request.user|has_group:"web" %}
+                <div class="small-12 large-12 cell">
+                    <h3 class="section-title">
+                        <i class="fi-foundation section-icon"></i>Wybierz {% rzeczownik_wydział %}
+                    </h3>
+                    <div class="grid-x grid-margin-x">
+                        {% for wydzial in uczelnia.wydzialy %}
+                            <div class="small-12 medium-6 large-6 cell">
+                                <div class="wydzial-card">
+                                    <div class="arrow-icon">
+                                        <i class="fi-arrow-right"></i>
+                                    </div>
+                                    <a href="{% url "bpp:browse_wydzial" wydzial.slug %}">
+                                        {{ wydzial }}
+                                    </a>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                    {% include "browse/go_to_admin_list.html" with group="struktura" url="admin:bpp_wydzial_changelist" text="<i class='fi-wrench'></i> zarządzaj wydziałami" %}
+                    {% include "browse/go_to_admin_change.html" with url="admin:bpp_uczelnia_change" pk=uczelnia.pk group="struktura" text="ustawienia dla uczelni" %}
+                </div>
+            {% else %}
+                <div class="small-12 large-6 cell">
+                    <h3 class="section-title">
+                        <i class="fi-foundation section-icon"></i>Wybierz {% rzeczownik_wydział %}
+                    </h3>
+                    <div class="wydzial-list">
+                        {% for wydzial in uczelnia.wydzialy %}
+                            <div class="wydzial-card">
+                                <div class="arrow-icon">
+                                    <i class="fi-arrow-right"></i>
+                                </div>
+                                <a href="{% url "bpp:browse_wydzial" wydzial.slug %}">
+                                    {{ wydzial }}
+                                </a>
+                            </div>
+                        {% endfor %}
+                    </div>
+                    {% include "browse/go_to_admin_list.html" with group="struktura" url="admin:bpp_wydzial_changelist" text="<i class='fi-wrench'></i> zarządzaj wydziałami" %}
+                    {% include "browse/go_to_admin_change.html" with url="admin:bpp_uczelnia_change" pk=uczelnia.pk group="struktura" text="ustawienia dla uczelni" %}
+                </div>
+            {% endif %}
+        {% endif %}
+    {% if uczelnia.pokazuj_jednostki_na_pierwszej_stronie %}
+        {% if not miniblog.exists and not request.user.is_superuser and not request.user|has_group:"web" %}
+            <div class="small-12 large-12 cell">{% load deklinacja %}
                 <h3 class="section-title">
-                    <i class="fi-foundation section-icon"></i>Wybierz {% rzeczownik_wydział %}
+                    <i class="fi-home section-icon"></i>Wybierz {% rzeczownik_jednostkę %}
                 </h3>
-                <div class="wydzial-list">
-                    {% for wydzial in uczelnia.wydzialy %}
-                        <div class="wydzial-card">
+                <div class="grid-x grid-margin-x">
+                    {% for jednostka in uczelnia.jednostki %}
+                        <div class="small-12 medium-6 large-6 cell">
+                            <div class="jednostka-card-main">
+                                <div class="arrow-icon">
+                                    <i class="fi-arrow-right"></i>
+                                </div>
+                                <a href="{% url "bpp:browse_jednostka" jednostka.slug %}">
+                                    {{ jednostka }}
+                                </a>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+                {% include "browse/go_to_admin_list.html" with group="struktura" url="admin:bpp_jednostka_changelist" text="<i class='fi-wrench'></i> zarządzaj jednostkami" %}
+                {% include "browse/go_to_admin_change.html" with url="admin:bpp_uczelnia_change" pk=uczelnia.pk group="struktura" text="ustawienia dla uczelni" %}
+            </div>
+        {% else %}
+            <div class="small-12 large-6 cell">{% load deklinacja %}
+                <h3 class="section-title">
+                    <i class="fi-home section-icon"></i>Wybierz {% rzeczownik_jednostkę %}
+                </h3>
+                <div class="jednostka-list">
+                    {% for jednostka in uczelnia.jednostki %}
+                        <div class="jednostka-card-main">
                             <div class="arrow-icon">
                                 <i class="fi-arrow-right"></i>
                             </div>
-                            <a href="{% url "bpp:browse_wydzial" wydzial.slug %}">
-                                {{ wydzial }}
+                            <a href="{% url "bpp:browse_jednostka" jednostka.slug %}">
+                                {{ jednostka }}
                             </a>
                         </div>
                     {% endfor %}
                 </div>
-                {% include "browse/go_to_admin_list.html" with group="struktura" url="admin:bpp_wydzial_changelist" text="<i class='fi-wrench'></i> zarządzaj wydziałami" %}
+                {% include "browse/go_to_admin_list.html" with group="struktura" url="admin:bpp_jednostka_changelist" text="<i class='fi-wrench'></i> zarządzaj jednostkami" %}
                 {% include "browse/go_to_admin_change.html" with url="admin:bpp_uczelnia_change" pk=uczelnia.pk group="struktura" text="ustawienia dla uczelni" %}
             </div>
         {% endif %}
-    {% if uczelnia.pokazuj_jednostki_na_pierwszej_stronie %}
-        <div class="small-12 large-6 cell">{% load deklinacja %}
-            <h3 class="section-title">
-                <i class="fi-home section-icon"></i>Wybierz {% rzeczownik_jednostkę %}
-            </h3>
-            <div class="jednostka-list">
-                {% for jednostka in uczelnia.jednostki %}
-                    <div class="jednostka-card-main">
-                        <div class="arrow-icon">
-                            <i class="fi-arrow-right"></i>
-                        </div>
-                        <a href="{% url "bpp:browse_jednostka" jednostka.slug %}">
-                            {{ jednostka }}
-                        </a>
-                    </div>
-                {% endfor %}
-            </div>
-            {% include "browse/go_to_admin_list.html" with group="struktura" url="admin:bpp_jednostka_changelist" text="<i class='fi-wrench'></i> zarządzaj jednostkami" %}
-            {% include "browse/go_to_admin_change.html" with url="admin:bpp_uczelnia_change" pk=uczelnia.pk group="struktura" text="ustawienia dla uczelni" %}
-        </div>
-    </div>
     {% endif %}
+    </div>
 
     {% if recently_updated or recent_abstracts %}
         <div class="grid-x grid-margin-x">

@@ -254,6 +254,8 @@ if not apps.is_installed("microsoft_auth"):
         url(r"^logout/$", LogoutView.as_view(), name="logout"),
     ]
 else:
+    from django_bpp.views import MicrosoftLogoutView
+
     urlpatterns += [
         url(
             r"^accounts/login/$",
@@ -262,9 +264,7 @@ else:
         ),
         url(
             r"^logout/$",
-            RedirectView.as_view(
-                url="https://login.microsoftonline.com/common/oauth2/v2.0/logout"
-            ),
+            MicrosoftLogoutView.as_view(),
             name="logout",
         ),
     ]

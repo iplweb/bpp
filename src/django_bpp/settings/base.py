@@ -1011,6 +1011,11 @@ if MICROSOFT_AUTH_CLIENT_ID:
         " została wyłączona"
     )
 
+# Konfiguracja logout redirect dla Microsoft Auth
+# To jest URL, na który użytkownik zostanie przekierowany po wylogowaniu z Microsoft
+# Musi być zarejestrowany w aplikacji Azure AD jako Reply URL
+MICROSOFT_AUTH_LOGOUT_REDIRECT_URL = "/"
+
 #
 # Koniec konfiguracji django-microsoft-auth
 #

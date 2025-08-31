@@ -183,14 +183,15 @@
                 {% endif %}
 
                 <li>
-                    <a
-                        {% if microsoft_login_enabled %}
-                            href="https://login.microsoftonline.com/common/oauth2/v2.0/logout"
-                        {% else %}
-                            href="{% url "logout" %}"
-                        {% endif %}
-                    ><i class="fi-power" style="font-size: 1.6rem; margin-right: 0.4rem; vertical-align: middle;"></i> wyloguj</a>
+                    <a href="#" onclick="document.getElementById('logout-form').submit(); return false;">
+                        <i class="fi-power" style="font-size: 1.6rem; margin-right: 0.4rem; vertical-align: middle;"></i> wyloguj
+                    </a>
                     <ul class="menu vertical">
+                        <li>
+                            <a href="#" onclick="document.getElementById('logout-form').submit(); return false;">
+                                <i class="fi-power" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> wyloguj
+                            </a>
+                        </li>
                         {% if not microsoft_login_enabled %}
                             <li><a id="password-change-link" href="{% url "password_change" %}"><i class="fi-key" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> zmiana hasła</a></li>
                         {% endif %}
@@ -199,6 +200,11 @@
                         {% endif %}
                     </ul>
                 </li>
+
+                <!-- Hidden logout form -->
+                <form id="logout-form" action="{% url "logout" %}" method="post" style="display: none;">
+                    {% csrf_token %}
+                </form>
 
             {% endif %}
 
