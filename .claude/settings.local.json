@@ -10,7 +10,9 @@
       "mcp__playwright__browser_navigate",
       "mcp__playwright__browser_snapshot",
       "mcp__playwright__browser_evaluate",
-      "Bash(psql:*)"
+      "Bash(psql:*)",
+      "WebSearch",
+      "WebFetch(domain:django-microsoft-auth.readthedocs.io)"
     ],
     "deny": [],
     "ask": [],
