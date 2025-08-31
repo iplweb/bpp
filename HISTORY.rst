@@ -4,6 +4,15 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202508.1214 (2025-08-31)
+============================
+
+Naprawione
+----------
+
+- poprawnie wylogowuj z Microsoft Office
+
+
 Bpp 202508.1213 (2025-08-31)
 ============================
 
