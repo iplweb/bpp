@@ -4,6 +4,11 @@
     Rozbieżności IF
 {% endblock %}
 
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li class="current">Rozbieżności IF</li>
+{% endblock %}
+
 {% block content %}
     <a href="{% url "admin:rozbieznosci_if_ignorujrozbieznoscif_changelist" %}">pokaż ignorowane rekordy</a>
     {% include "pagination.html" %}

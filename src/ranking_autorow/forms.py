@@ -2,11 +2,12 @@ from crispy_forms.helper import FormHelper
 from crispy_forms_foundation.layout import ButtonHolder
 from crispy_forms_foundation.layout import Column as F4Column
 from crispy_forms_foundation.layout import Fieldset, Hidden, Layout, Row, Submit
+from dal import autocomplete
 from django import forms
 from django.core import validators
-from django_tables2.export.export import TableExport
+from django.db.models import Exists, OuterRef, Q
 
-from bpp.models import Uczelnia, Wydzial
+from bpp.models import Jednostka, Uczelnia, Wydzial
 
 
 def ustaw_rok(rok, lata):
@@ -28,35 +29,53 @@ def ustaw_rok(rok, lata):
         rok.field.validators.append(validators.MinValueValidator(rok.field.min_value))
 
 
-class WydzialChoiceField(forms.ModelMultipleChoiceField):
+class WydzialChoiceField(forms.ModelChoiceField):
+    def label_from_instance(self, obj):
+        return obj.nazwa
+
+
+class JednostkaChoiceField(forms.ModelChoiceField):
     def label_from_instance(self, obj):
         return obj.nazwa
 
 
 OUTPUT_FORMATS = [
-    ("html", "wyświetl w przeglądarce"),
+    ("html", "Wyświetl w przeglądarce"),
+    ("json", "JSON"),
+    ("csv", "CSV"),
+    ("xlsx", "XLSX"),
+    ("xls", "XLS"),
+    ("ods", "ODS"),
 ]
-
-OUTPUT_FORMATS.extend(
-    zip(
-        list(TableExport.FORMATS.keys()),
-        [x.upper() for x in list(TableExport.FORMATS.keys())],
-    )
-)
 
 
 class RankingAutorowForm(forms.Form):
-    wydzialy = WydzialChoiceField(
-        label="Ogranicz do wydziału (wydziałów):",
+    wydzial = WydzialChoiceField(
+        label="Ogranicz do wydziału:",
         required=False,
-        widget=forms.SelectMultiple(attrs={"size": "8"}),
-        queryset=Wydzial.objects.filter(
-            widoczny=True, zezwalaj_na_ranking_autorow=True
+        widget=autocomplete.ModelSelect2(
+            url="bpp:wydzial-autocomplete",
+            attrs={
+                "data-placeholder": "Wybierz wydział...",
+                "data-allow-clear": "true",
+            },
         ),
-        help_text="Jeżeli nie wybierzesz żadnego wydziału, system wygeneruje "
-        "dane dla wszystkich wydziałów. Przytrzymaj przycisk CTRL ("
-        "CMD na Maku) gdy klikasz, aby wybrać więcej, niż jeden "
-        "wydział lub odznaczyć już zaznaczony wydział. ",
+        queryset=Wydzial.objects.none(),  # Will be set in __init__
+        help_text="Jeżeli nie wybierzesz wydziału, system wygeneruje dane dla wszystkich wydziałów.",
+    )
+
+    jednostka = JednostkaChoiceField(
+        label="Ogranicz do:",
+        required=False,
+        widget=autocomplete.ModelSelect2(
+            url="bpp:jednostka-autocomplete",
+            attrs={
+                "data-placeholder": "Wybierz jednostkę...",
+                "data-allow-clear": "true",
+            },
+        ),
+        queryset=Jednostka.objects.none(),  # Will be set in __init__
+        help_text="Jeżeli nie wybierzesz jednostki, system wygeneruje dane dla wszystkich jednostek.",
     )
 
     rozbij_na_jednostki = forms.BooleanField(
@@ -84,28 +103,139 @@ class RankingAutorowForm(forms.Form):
     do_roku = forms.IntegerField(initial=Uczelnia.objects.do_roku_default)
 
     _export = forms.ChoiceField(
-        label="Format wyjściowy", required=True, choices=OUTPUT_FORMATS
+        label="Format wyjściowy", required=True, choices=OUTPUT_FORMATS, initial="html"
     )
 
     def __init__(self, lata, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Import models here to avoid circular imports
+        from bpp.models import (
+            Patent_Autor,
+            Praca_Doktorska,
+            Praca_Habilitacyjna,
+            Wydawnictwo_Ciagle_Autor,
+            Wydawnictwo_Zwarte_Autor,
+        )
+
+        # Filter Jednostka to show only those with associated works
+        jednostka_with_works = (
+            Jednostka.objects.filter(widoczna=True, wchodzi_do_raportow=True)
+            .filter(
+                Q(
+                    Exists(
+                        Wydawnictwo_Ciagle_Autor.objects.filter(
+                            jednostka=OuterRef("pk")
+                        )
+                    )
+                )
+                | Q(
+                    Exists(
+                        Wydawnictwo_Zwarte_Autor.objects.filter(
+                            jednostka=OuterRef("pk")
+                        )
+                    )
+                )
+                | Q(Exists(Patent_Autor.objects.filter(jednostka=OuterRef("pk"))))
+                | Q(Exists(Praca_Doktorska.objects.filter(jednostka=OuterRef("pk"))))
+                | Q(
+                    Exists(Praca_Habilitacyjna.objects.filter(jednostka=OuterRef("pk")))
+                )
+            )
+            .distinct()
+        )
+
+        self.fields["jednostka"].queryset = jednostka_with_works
+
         self.helper = FormHelper()
         self.helper.form_method = "post"
 
-        self.helper.layout = Layout(
-            Fieldset(
-                "Ranking autorów",
-                Row(
-                    F4Column("od_roku", css_class="large-6 small-6"),
-                    F4Column("do_roku", css_class="large-6 small-6"),
-                ),
-                Row(F4Column("_export", css_class="large-12 small-12")),
-                Row(F4Column("rozbij_na_jednostki", css_class="large-12 small-12")),
-                Row(F4Column("tylko_afiliowane", css_class="large-12 small-12")),
-                Row(F4Column("bez_nieaktualnych", css_class="large-12 small-12")),
-                Row(F4Column("wydzialy", css_class="large-12 small-12")),
-                Hidden("report", "ranking-autorow"),
+        # Check if uczelnia uses wydzialy
+        uczelnia = Uczelnia.objects.first()
+        uzywaj_wydzialow = uczelnia.uzywaj_wydzialow if uczelnia else True
+
+        # Build layout fields based on uzywaj_wydzialow
+        layout_fields = [
+            Row(
+                F4Column("od_roku", css_class="large-6 small-6"),
+                F4Column("do_roku", css_class="large-6 small-6"),
             ),
+            Row(F4Column("_export", css_class="large-12 small-12")),
+            Row(F4Column("rozbij_na_jednostki", css_class="large-12 small-12")),
+            Row(F4Column("tylko_afiliowane", css_class="large-12 small-12")),
+            Row(F4Column("bez_nieaktualnych", css_class="large-12 small-12")),
+        ]
+
+        # Always show jednostka field
+        layout_fields.append(Row(F4Column("jednostka", css_class="large-12 small-12")))
+
+        if uzywaj_wydzialow:
+            # Filter Wydzial to show only those with associated works through their jednostki
+            wydzial_with_works = (
+                Wydzial.objects.filter(widoczny=True, zezwalaj_na_ranking_autorow=True)
+                .filter(
+                    Exists(
+                        Jednostka.objects.filter(
+                            wydzial=OuterRef("pk"),
+                            widoczna=True,
+                            wchodzi_do_raportow=True,
+                        ).filter(
+                            Q(
+                                Exists(
+                                    Wydawnictwo_Ciagle_Autor.objects.filter(
+                                        jednostka=OuterRef("pk")
+                                    )
+                                )
+                            )
+                            | Q(
+                                Exists(
+                                    Wydawnictwo_Zwarte_Autor.objects.filter(
+                                        jednostka=OuterRef("pk")
+                                    )
+                                )
+                            )
+                            | Q(
+                                Exists(
+                                    Patent_Autor.objects.filter(
+                                        jednostka=OuterRef("pk")
+                                    )
+                                )
+                            )
+                            | Q(
+                                Exists(
+                                    Praca_Doktorska.objects.filter(
+                                        jednostka=OuterRef("pk")
+                                    )
+                                )
+                            )
+                            | Q(
+                                Exists(
+                                    Praca_Habilitacyjna.objects.filter(
+                                        jednostka=OuterRef("pk")
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+                .distinct()
+            )
+
+            self.fields["wydzial"].queryset = wydzial_with_works
+
+            # Also show wydzial field when using wydzialy
+            layout_fields.append(
+                Row(F4Column("wydzial", css_class="large-12 small-12"))
+            )
+        else:
+            # Remove wydzial field from form when not using wydzialy
+            del self.fields["wydzial"]
+            # Update rozbij_na_jednostki label when not using wydzialy
+            self.fields["rozbij_na_jednostki"].label = "Rozbij punktację na jednostki"
+
+        layout_fields.append(Hidden("report", "ranking-autorow"))
+
+        self.helper.layout = Layout(
+            Fieldset("Ranking autorów", *layout_fields),
             ButtonHolder(Submit("submit", "Otwórz", css_class="button white")),
         )
-
-        super().__init__(*args, **kwargs)

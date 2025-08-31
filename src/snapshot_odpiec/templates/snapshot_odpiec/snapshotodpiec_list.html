@@ -5,6 +5,11 @@
     Snapshoty odpiętych dyscyplin
 {% endblock %}
 
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li class="current">Snapshoty odpiętych dyscyplin</li>
+{% endblock %}
+
 {% block content %}
     <h1>Snapshoty odpiętych dyscyplin</h1>
     <a class="button warning" href="./nowy/">Utwórz nowy</a><br/>

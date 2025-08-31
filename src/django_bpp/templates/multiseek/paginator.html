@@ -1,35 +1,38 @@
 {% load pagination_tags %}
-<ul class="menu hide-for-print">
-    <li><a href="#"><i class="fi-database"></i> rekordów: {{ paginator_count }}</a></li>
-    {% if live == "0" %}
-        <li><a href=".."><i class="fi-arrow-left"></i> powrót do formularza</a>
-        </li>
-    {% endif %}
-
-    {% if paginator_count > 0 and paginator_count < max_rows %}
-        {% if live == "1" %}
-            <li>
-                <a target="_blank"
-                   href="/multiseek/results/?all=1&print=1{% if print_removed %}&print-removed=1{% endif %}"><i
-                        class="fi-print"></i> drukuj</a>
+<div class="multiseek-pagination-wrapper" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+    <ul class="menu hide-for-print" style="margin-bottom: 0;">
+        <li><a href="#"><i class="fi-database"></i> Rekordów: {{ paginator_count }}</a></li>
+        {% if not is_live %}
+            <li><a href=".."><i class="fi-arrow-left"></i> Powrót do formularza</a>
             </li>
-            {% if request.GET.all != "1" %}
+        {% endif %}
+        {% if paginator_count > 0 and paginator_count < max_rows %}
+            {% if is_live %}
                 <li>
-                    <a target="_blank" href="/multiseek/results/?all=1"><i class="fi-page-multiple"></i>
-                        wyświetl&nbsp;wszystkie</a>
+                    <a target="_blank"
+                       href="/multiseek/results/?all=1&print=1{% if print_removed %}&print-removed=1{% endif %}"><i
+                            class="fi-print"></i> Drukuj</a>
                 </li>
-            {% endif %}
-        {% else %}
-            <li>
-                <a href="?all=1&print=1{% if print_removed %}&print-removed=1{% endif %}"><i
-                        class="fi-print"></i> drukuj</a>
-            </li>
-            {% if request.GET.all != "1" and paginator.num_pages > 1 %}
-                <li><a href="?all=1"><i class="fi-page-multiple"></i> wyświetl wszystkie</a></li>
+                {% if request.GET.all != "1" %}
+                    <li>
+                        <a target="_blank" href="/multiseek/results/?all=1"><i class="fi-page-multiple"></i>
+                            Wyświetl&nbsp;wszystkie</a>
+                    </li>
+                {% endif %}
+            {% else %}
+                <li>
+                    <a href="?all=1&print=1{% if print_removed %}&print-removed=1{% endif %}"><i
+                            class="fi-print"></i> Drukuj</a>
+                </li>
+                {% if request.GET.all != "1" and paginator.num_pages > 1 %}
+                    <li><a href="?all=1"><i class="fi-page-multiple"></i> Wyświetl wszystkie</a></li>
+                {% endif %}
             {% endif %}
         {% endif %}
+    </ul>
+    {% if paginator.num_pages > 1 %}
+    <div style="margin-left: auto;">
+        {% paginate %}
+    </div>
     {% endif %}
-</ul>
-{% if paginator.num_pages > 1 %}
-{% paginate %}
-{% endif %}
+</div>

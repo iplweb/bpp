@@ -8,8 +8,9 @@
 
 {% block breadcrumbs %}
     {{ block.super }}
-    <li><a href="{% url "raport_slotow:lista-raport-slotow-uczelnia" %}">raport slotów - uczelnia</a></li>
-    <li class="current">raport slotów - uczelnia za {{ object.od_roku }}
+    <li>ewaluacja</li>
+    <li><a href="{% url "raport_slotow:lista-raport-slotow-uczelnia" %}">Raport slotów - uczelnia</a></li>
+    <li class="current">Raport za {{ object.od_roku }}
         {% if object.do_roku != object.od_roku %} - {{ object.do_roku }}{% endif %}</li>
 {% endblock %}
 

@@ -106,12 +106,25 @@
             <div class="shaded-hr-div"></div>
         </div>
         <div class="large-12 cell uczelnia-main-content">
-            <a href="/zglos_publikacje/nowe_zgloszenie/" class="button main-page-button-primary">
+            <a href="/zglos_publikacje/nowe_zgloszenie/" class=" main-page-button-primary">
                 <i class="fi-page-add"></i> Masz nową publikację? Dodaj ją do bazy
             </a>
-            <a href="{% url 'multiseek:index' %}" class="button main-page-button-secondary">
-                <i class="fi-magnifying-glass"></i> Przeglądaj wszystkie prace
-            </a>
+            {% if total_rekord_count > 25000 %}
+                <form method="post" action="{% url 'bpp:browse_build_search' %}" style="display: inline;">
+                    {% csrf_token %}
+                    <input type="hidden" name="zakres_lat" value="[2022,{{ current_year }}]">
+                    <input type="hidden" name="suggested-title" value="Cała baza to {{ total_rekord_count }} rekordów. Oglądasz wycinek - rekordy od 2022r"/>
+                    <button type="submit" class="main-page-button-secondary" style="border: none; background: none; padding: 0;">
+                        <span class="main-page-button-secondary" style="display: inline-block;">
+                            <i class="fi-magnifying-glass"></i> Przeglądaj najnowsze prace
+                        </span>
+                    </button>
+                </form>
+            {% else %}
+                <a href="{% url 'multiseek:index' %}" class="main-page-button-secondary">
+                    <i class="fi-magnifying-glass"></i> Przeglądaj najnowsze prace
+                </a>
+            {% endif %}
         </div>
         <div class="large-12 cell">
             <div class="shaded-hr-div"></div>
@@ -121,11 +134,39 @@
     <div class="grid-x grid-margin-x">
         {% if article %}
             <div class="small-12 large-6 cell">
-                <h2>{{ article.title }}</h2>
-                {% include "browse/go_to_admin_change.html" with group="web" url="admin:miniblog_article_change" pk=article.pk text="otwórz do edycji" %}
-                <p>opublikowano {{ article.published_on }}</p>
-                <p>{{ article.article_body.content|safe }}</p>
-                <a href="..">wstecz</a>
+                <article class="single-article-container">
+                    <div class="article-header">
+                        <nav class="article-breadcrumb">
+                            <a href=".." class="back-link">
+                                <i class="fi-arrow-left"></i> Powrót do strony głównej
+                            </a>
+                        </nav>
+                        <h1 class="article-main-title">{{ article.title }}</h1>
+                        <div class="article-metadata">
+                            <div class="metadata-item">
+                                <i class="fi-calendar"></i>
+                                <time datetime="{{ article.published_on|date:'Y-m-d' }}">
+                                    {{ article.published_on|date:"j E Y, H:i" }}
+                                </time>
+                            </div>
+                            {% if article.author %}
+                                <div class="metadata-item">
+                                    <i class="fi-torso"></i>
+                                    <span>{{ article.author }}</span>
+                                </div>
+                            {% endif %}
+                            {% if request.user.is_superuser or request.user|has_group:"web" %}
+                                <div class="metadata-item admin-link">
+                                    {% include "browse/go_to_admin_change.html" with group="web" url="admin:miniblog_article_change" pk=article.pk text="<i class='fi-pencil'></i> Edytuj artykuł" %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="article-body">
+                        {{ article.article_body.content|safe }}
+                    </div>
+                </article>
             </div>
         {% else %}
             {% if miniblog.exists or request.user.is_superuser or request.user|has_group:"web" %}
@@ -133,21 +174,41 @@
                     <h3 class="section-title">
                         <i class="fi-megaphone section-icon"></i>Aktualności
                     </h3>
-                    {% for article in miniblog %}
-                        <h3><strong>{{ article.title }}</strong></h3>
-                        <p>
-                            opublikowano {{ article.published_on }}</p>
-                        <p>{{ article.article_body.excerpt|safe }}</p>
-                        {% if article.article_body.has_more %}
-                            <p>
-                                <a href="{% url "bpp:browse_artykul" uczelnia.slug article.slug %}">
-                                    więcej
-                                </a>
-                            </p>
-                        {% endif %}
-                    {% endfor %}
-                    {% include "browse/go_to_admin_list.html" with group="web" url="admin:miniblog_article_changelist" text="<i class='fi-wrench'></i> zarządzaj aktualnościami" %}
-                    {% include "browse/go_to_admin_list.html" with group="web" url="admin:miniblog_article_add" text="<i class='fi-page-add'></i> dodaj artykuł" %}
+                    <div class="news-articles">
+                        {% for article in miniblog %}
+                            <article class="news-article-card">
+                                <div class="article-date-badge">
+                                    <span class="day">{{ article.published_on|date:"d" }}</span>
+                                    <span class="month">{{ article.published_on|date:"M" }}</span>
+                                    <span class="year">{{ article.published_on|date:"Y" }}</span>
+                                </div>
+                                <div class="article-content">
+                                    <h4 class="article-title">
+                                        <a href="{% url "bpp:browse_artykul" uczelnia.slug article.slug %}">
+                                            {{ article.title }}
+                                        </a>
+                                    </h4>
+                                    <div class="article-meta">
+                                        <i class="fi-calendar"></i> {{ article.published_on|date:"j E Y" }}
+                                    </div>
+                                    <div class="article-excerpt">
+                                        {{ article.article_body.excerpt|safe }}
+                                    </div>
+                                    {% if article.article_body.has_more %}
+                                        <div class="article-read-more">
+                                            <a href="{% url "bpp:browse_artykul" uczelnia.slug article.slug %}" class="read-more-link">
+                                                Czytaj więcej <i class="fi-arrow-right"></i>
+                                            </a>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </article>
+                        {% endfor %}
+                    </div>
+                    <div class="news-admin-links">
+                        {% include "browse/go_to_admin_list.html" with group="web" url="admin:miniblog_article_changelist" text="<i class='fi-wrench'></i> zarządzaj aktualnościami" %}
+                        {% include "browse/go_to_admin_list.html" with group="web" url="admin:miniblog_article_add" text="<i class='fi-page-add'></i> dodaj artykuł" %}
+                    </div>
                 </div>
 
             {% endif %}

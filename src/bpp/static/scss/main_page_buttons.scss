@@ -30,29 +30,31 @@
   }
 }
 
-// Secondary button style
+// Secondary button style - neutral styling
 .main-page-button-secondary {
-  background: #f8f9fa;
+  background: white;
   color: #495057;
-  border-radius: 8px;
+  border-radius: 6px;
   padding: 10px 18px;
   font-size: 14px;
   font-weight: 500;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
   text-decoration: none;
-  border: 1px solid #dee2e6;
+  border: 2px solid #d1d5db;
   display: inline-block;
 
   .fi-magnifying-glass {
     font-size: 16px;
     margin-right: 6px;
+    color: #6c757d;
   }
 
   &:hover {
-    background: #e9ecef;
-    transform: translateY(-1px);
-    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.12);
-    color: #495057;
+    border-color: #9ca3af;
+    color: #374151;
+
+    .fi-magnifying-glass {
+      color: #374151;
+    }
   }
 }

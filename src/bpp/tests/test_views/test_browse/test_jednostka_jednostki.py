@@ -31,7 +31,7 @@ def test_jednostka_nie_wyswietlaj_autorow_gdy_wielu(client, jednostka):
 def test_browse_jednostka_nadrzedna(jednostka, jednostka_podrzedna, client):
     url = reverse("bpp:browse_jednostka", args=(jednostka.slug,))
     page = client.get(url)
-    assert "Jest nadrzędną jednostką dla" in normalize_html(page.rendered_content)
+    assert "Jednostki podrzędne" in normalize_html(page.rendered_content)
 
     url = reverse("bpp:browse_jednostka", args=(jednostka_podrzedna.slug,))
     page = client.get(url)
@@ -78,11 +78,11 @@ def test_browse_jednostka_sortowanie(jednostka, jednostka_podrzedna, uczelnia, c
 def test_browse_jednostka_nadrzedna_tekst(jednostka_podrzedna, jednostka, client):
     url = reverse("bpp:browse_jednostka", args=(jednostka.slug,))
     res = client.get(url)
-    assert "Jest nadrzędną jednostką dla" in normalize_html(res.rendered_content)
+    assert "Jednostki podrzędne:" in normalize_html(res.rendered_content)
 
     url = reverse("bpp:browse_jednostka", args=(jednostka_podrzedna.slug,))
     res = client.get(url)
-    assert "Jest nadrzędną jednostką dla" not in normalize_html(res.rendered_content)
+    assert "Jednostki podrzędne:" not in normalize_html(res.rendered_content)
 
 
 def test_browse_pokazuj_tylko_jednostki_nadrzedne_nie(
@@ -134,6 +134,5 @@ def test_jednostka_aktualni_pracownicy(
     url = reverse("bpp:browse_jednostka", args=(jednostka.slug,))
     res = client.get(url)
     html = normalize_html(res.rendered_content)
-    assert "napisane przez obecnych pracowników" in html
-    assert "osoby wcześniej związane" in html
-    assert "napisane przez:" not in html
+    assert "Obecni pracownicy" in html
+    assert "Byli pracownicy" in html

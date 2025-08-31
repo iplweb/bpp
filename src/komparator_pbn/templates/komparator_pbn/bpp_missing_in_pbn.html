@@ -3,6 +3,12 @@
 
 {% block title %}BPP oświadczenia nie wysłane do PBN - {{ block.super }}{% endblock %}
 
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url 'komparator_pbn:main' %}">Komparator PBN</a></li>
+    <li class="current">BPP oświadczenia nie wysłane do PBN</li>
+{% endblock %}
+
 {% block content %}
 <div class="row">
     <div class="large-12 columns">

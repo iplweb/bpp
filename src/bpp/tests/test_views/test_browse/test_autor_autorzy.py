@@ -79,21 +79,23 @@ def test_AutorView_funkcja_za_nazwiskiem(app):
     page = app.get(url)
     assert page.status_code == 200
     res = normalize_html(str(page.content, "utf-8"))
-    assert res.find("<h1>Foo Bar </h1>") >= 0
+    assert res.find("Foo Bar") >= 0
+    assert res.find('<div class="author-title">') < 0
 
     aj.rozpoczal_prace = date(2020, 1, 1)
     aj.save()
 
     page = app.get(url)
     res = normalize_html(str(page.content, "utf-8"))
-    assert res.find("<h1>Foo Bar </h1>") >= 0
+    assert res.find("Foo Bar") >= 0
+    assert res.find('<div class="author-title">') < 0
 
     funkcja.pokazuj_za_nazwiskiem = True
     funkcja.save()
 
     page = app.get(url)
     res = normalize_html(str(page.content, "utf-8"))
-    assert res.find("<h1>Foo Bar, profesor uczelni </h1>") >= 0
+    assert res.find('<div class="author-title">') >= 0
 
 
 @pytest.fixture
@@ -156,8 +158,8 @@ def test_browse_autor_podstrona_liczba_cytowan_zawsze(
 
     content = normalize_html(res.rendered_content)
     assert "Liczba cytowań" in content
-    assert "Liczba cytowań: </strong>500" in content
-    assert "Liczba cytowań z jednostek afiliowanych: </strong>200" in content
+    assert "Liczba cytowań:</strong> 500" in content
+    assert "Liczba cytowań z jednostek afiliowanych:</strong> 200" in content
 
 
 @pytest.mark.django_db

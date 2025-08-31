@@ -7,6 +7,7 @@
 @import "browse_autorzy";
 @import "browse_jednostki";
 @import "external_links";
+@import "ranking_autorow";
 @import 'foundation';
 
 @include foundation-global-styles;
@@ -68,17 +69,7 @@ input[type=radio] {
   }
 }
 
-.wydzial-stats {
-  .stat-item {
-    &.stat-jednostki {
-      border-left-color: $primary-color;
-    }
-
-    &.stat-kola {
-      border-left-color: $secondary-color;
-    }
-  }
-}
+// Wydzial stats styling removed - using neutral colors from browse.scss
 
 .section-header {
   h2 {
@@ -92,31 +83,7 @@ input[type=radio] {
   }
 }
 
-.jednostka-card {
-  &.card-aktualne {
-    border-color: color.adjust($primary-color, $lightness: 30%);
-
-    &:hover {
-      border-color: $primary-color;
-    }
-
-    .card-icon {
-      color: color.adjust($primary-color, $lightness: 20%);
-    }
-  }
-
-  &.card-kola {
-    border-color: color.adjust($secondary-color, $lightness: 30%);
-
-    &:hover {
-      border-color: $secondary-color;
-    }
-
-    .card-icon {
-      color: color.adjust($secondary-color, $lightness: 20%);
-    }
-  }
-}
+// Jednostka card styling removed - using neutral colors from browse.scss
 
 .jednostka-name a {
   &:hover {

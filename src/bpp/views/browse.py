@@ -1,10 +1,13 @@
 import json
 import re
 
+from django.conf import settings
 from django.db.models import Count
 from django.http import JsonResponse
 
 from django.contrib.contenttypes.models import ContentType
+
+from django.utils import timezone
 
 try:
     from django.core.urlresolvers import reverse
@@ -35,6 +38,8 @@ from bpp.multiseek_registry import (
     NazwiskoIImieQueryObject,
     RokQueryObject,
     TypRekorduObject,
+    WydzialQueryObject,
+    ZakresLatQueryObject,
     ZrodloQueryObject,
 )
 
@@ -83,6 +88,8 @@ class UczelniaView(DetailView):
                 .exclude(streszczenie__exact="")
                 .order_by("-rekord__ostatnio_zmieniony")[:5]
             )
+            context["total_rekord_count"] = Rekord.objects.count()
+            context["current_year"] = timezone.now().date().year
 
         context.update(kwargs)
         return super().get_context_data(**context)
@@ -329,6 +336,9 @@ def zrob_formularz(*args):
 
 
 class BuildSearch(RedirectView):
+    """Widok przyjmuje zmienne w request.GET i buduje w sesji formularz wyszukiwawczy
+    dla multiseek."""
+
     def get_redirect_url(self, **kwargs):
         url = self.request.build_absolute_uri(reverse("multiseek:index"))
         scheme = self.request.META.get("HTTP_X_SCHEME", "").lower()
@@ -347,8 +357,23 @@ class BuildSearch(RedirectView):
             self.request.POST, "autor", NazwiskoIImieQueryObject
         )
 
+        zakres_lat_box = zrob_box_z_requestu(
+            self.request.POST, "zakres_lat", ZakresLatQueryObject
+        )
+
+        if getattr(settings, "DJANGO_BPP_UCZELNIA_UZYWA_WYDZIALOW", True):
+            wydzialy_box = zrob_box_z_requestu(
+                self.request.POST, "wydzial", WydzialQueryObject
+            )
+
         self.request.session[MULTISEEK_SESSION_KEY] = zrob_formularz(
-            zrodla_box, autorzy_box, typy_box, jednostki_box, lata_box
+            zrodla_box,
+            autorzy_box,
+            typy_box,
+            jednostki_box,
+            wydzialy_box,
+            lata_box,
+            zakres_lat_box,
         )
 
         self.request.session["MULTISEEK_TITLE"] = self.request.POST.get(

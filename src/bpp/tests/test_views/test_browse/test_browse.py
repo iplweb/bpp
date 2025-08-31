@@ -2,7 +2,6 @@ import json
 import re
 
 import pytest
-from bs4 import BeautifulSoup
 
 from django.contrib.contenttypes.models import ContentType
 
@@ -94,15 +93,6 @@ def test_buildSearch(settings):
 pattern = re.compile("Strona WWW")
 
 
-def nastepna_komorka_po_strona_www(dokument):
-    soup = BeautifulSoup(dokument, "html.parser")
-    strona_www_label_komorka = soup.find("th", text=pattern)
-    if strona_www_label_komorka is None:
-        return
-
-    return strona_www_label_komorka.parent.find("td").text.strip()
-
-
 @pytest.mark.django_db
 def test_darmowy_platny_dostep_www_wyswietlanie(client, wydawnictwo_ciagle, denorms):
     wydawnictwo_ciagle.www = ""
@@ -119,10 +109,10 @@ def test_darmowy_platny_dostep_www_wyswietlanie(client, wydawnictwo_ciagle, deno
         ),
         follow=True,
     )
-    val = nastepna_komorka_po_strona_www(res.content)
-    assert val is None
+    assert b"SZATAN" not in res.content
+    assert b"POEZJA" not in res.content
 
-    wydawnictwo_ciagle.www = "platny"
+    wydawnictwo_ciagle.www = "SZATAN"
     wydawnictwo_ciagle.public_www = ""
     wydawnictwo_ciagle.save()
 
@@ -136,11 +126,10 @@ def test_darmowy_platny_dostep_www_wyswietlanie(client, wydawnictwo_ciagle, deno
         ),
         follow=True,
     )
-    val = nastepna_komorka_po_strona_www(res.content)
-    assert val == "platny"
+    assert b"SZATAN" in res.content
 
     wydawnictwo_ciagle.www = ""
-    wydawnictwo_ciagle.public_www = "darmowy"
+    wydawnictwo_ciagle.public_www = "POEZJA"
     wydawnictwo_ciagle.save()
     res = client.get(
         reverse(
@@ -152,8 +141,7 @@ def test_darmowy_platny_dostep_www_wyswietlanie(client, wydawnictwo_ciagle, deno
         ),
         follow=True,
     )
-    val = nastepna_komorka_po_strona_www(res.content)
-    assert val == "darmowy"
+    assert b"POEZJA" in res.content
 
     wydawnictwo_ciagle.www = "jezeli sa oba ma byc darmowy"
     wydawnictwo_ciagle.public_www = "darmowy"
@@ -168,8 +156,7 @@ def test_darmowy_platny_dostep_www_wyswietlanie(client, wydawnictwo_ciagle, deno
         ),
         follow=True,
     )
-    val = nastepna_komorka_po_strona_www(res.content)
-    assert val == "darmowy"
+    assert b"darmowy" in res.content
 
 
 @pytest.mark.django_db

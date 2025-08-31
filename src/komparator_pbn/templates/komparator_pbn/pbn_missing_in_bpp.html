@@ -3,6 +3,12 @@
 
 {% block title %}PBN oświadczenia nieistniejące w BPP - {{ block.super }}{% endblock %}
 
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url 'komparator_pbn:main' %}">Komparator PBN</a></li>
+    <li class="current">PBN oświadczenia nieistniejące w BPP</li>
+{% endblock %}
+
 {% block content %}
 <div class="row">
     <div class="large-12 columns">

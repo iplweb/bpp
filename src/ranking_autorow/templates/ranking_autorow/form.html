@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block extratitle %}
+    Ranking autorów - wybór parametrów
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li class="current">Ranking autorów</li>
+{% endblock %}
+
+{% block content %}
+    <div class="ranking-autorow-form-container">
+        <h2><span class="fi-trophy"></span> Ranking autorów</h2>
+        <p class="lead">Wygeneruj ranking autorów na podstawie ich dorobku naukowego</p>
+
+        {% crispy form %}
+
+        {{ form.media }}
+
+        {% include "raporty/strona_raportow/ostatnio_wygenerowane.html" %}
+    </div>
+{% endblock %}

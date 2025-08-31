@@ -14,7 +14,8 @@
 
 {% block breadcrumbs %}
     {{ block.super }}
-    <li><a href="{% url "raport_slotow:index" %}">raport slotów</a></li>
+    <li>ewaluacja</li>
+    <li><a href="{% url "raport_slotow:index" %}">Raport slotów - autor</a></li>
     <li class="current">{{ autor }} za {{ od_roku }}
         - {{ do_roku }}, {{ opis_dzialania }}</li>
 {% endblock %}

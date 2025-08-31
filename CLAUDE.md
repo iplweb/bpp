@@ -16,6 +16,7 @@ BPP (Bibliografia Publikacji Pracowników) is a Polish academic bibliography man
 
 ### Development Commands
 - `python src/manage.py runserver` - Start development server (default settings: django_bpp.settings.local)
+  - **NOTE:** If you see "Listen failure: Couldn't listen on 127.0.0.1:8000: [Errno 48] Address already in use." it means the server is ALREADY RUNNING in the background as another process. This is expected behavior - no action needed.
 - `python src/manage.py migrate` - Apply database migrations
 - `python src/manage.py shell` - Django shell
 - `bpp-manage.py` - Alternative management command entry point

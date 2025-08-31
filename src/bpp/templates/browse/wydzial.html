@@ -14,11 +14,22 @@
 {% block content %}
     <!-- Modern Header Section -->
     <div class="modern-header">
-        <div class="grid-x grid-margin-x align-middle">
-            <div class="cell auto">
+        <div class="grid-x grid-margin-x">
+            <div class="cell">
                 <h1 class="page-title">
                     <i class="fi-foundation"></i>{{ wydzial }}
                 </h1>
+
+                {% if wydzial.opis %}
+                    <div class="wydzial-description">
+                        {{ wydzial.opis|safe }}
+                    </div>
+                {% endif %}
+
+                <div style="margin-top: 15px; margin-bottom: 15px;">
+                    {% include "browse/go_to_admin_change.html" with url="admin:bpp_wydzial_change" pk=wydzial.pk group="struktura" text="<i class='fi-wrench'></i> Edytuj" %}
+                </div>
+
                 {% cache 3600 wydzial_stats wydzial.pk %}
                     {% with total_jednostki=wydzial.aktualne_jednostki.count kola_count=wydzial.kola_naukowe.count hist_count=wydzial.historyczne_jednostki.count %}
                         <div class="wydzial-stats">
@@ -43,18 +54,21 @@
                         </div>
                     {% endwith %}
                 {% endcache %}
-
-                {% if wydzial.pokazuj_opis and wydzial.opis %}
-                    <div class="wydzial-description">
-                        {{ wydzial.opis|safe }}
-                    </div>
-                {% endif %}
-            </div>
-            <div class="cell shrink">
-                {% include "browse/go_to_admin_change.html" with url="admin:bpp_wydzial_change" pk=wydzial.pk group="struktura" text="<i class='fi-wrench'></i> Edytuj" %}
             </div>
         </div>
 
+    </div>
+
+    <!-- Quick Actions -->
+    <div style="text-align: center; margin-bottom: 30px;">
+        <form method="post" action="{% url "bpp:browse_build_search" %}" style="display: inline;">
+            {% csrf_token %}
+            <input type="hidden" name="wydzial" value="{{ wydzial.pk }}"/>
+            <input type="hidden" name="suggested-title" value="{{ wydzial }}"/>
+            <button type="submit" class="button button-show-all">
+                <i class="fi-list-bullet"></i>Pokaż wszystkie publikacje
+            </button>
+        </form>
     </div>
 
     <!-- Modern Navigation -->

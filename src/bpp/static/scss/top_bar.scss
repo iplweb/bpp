@@ -1,6 +1,8 @@
 // Top Bar Styles
 // Main navigation bar styles
 
+// Import Foundation settings to access $primary-color
+
 .top-bar {
     &.sticky-header {
         position: sticky;
@@ -9,12 +11,274 @@
         backdrop-filter: blur(8px);
         -webkit-backdrop-filter: blur(8px);
     }
+
+    // Dropdown menu animations
+    .dropdown.menu {
+        > li {
+            position: relative;
+
+            // Dropdown submenu styling and animation
+            > .menu.vertical,
+            > ul.menu {
+                // Initial hidden state
+                max-height: 0;
+                opacity: 0;
+                transform: translateY(-20px) scaleY(0.8);
+                transform-origin: top center;
+                transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+                           opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                           transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+                border-radius: 12px;  // More rounded corners
+                overflow: hidden;
+                display: block !important;
+                visibility: hidden;
+            }
+
+            // Show dropdown on hover with animation
+            &:hover > .menu.vertical,
+            &:hover > ul.menu,
+            &.is-dropdown-submenu-parent.is-active > .menu.vertical,
+            &.is-dropdown-submenu-parent.is-active > ul.menu,
+            &.is-active > .menu.vertical,
+            &.is-active > ul.menu {
+                max-height: 800px;  // Increased to accommodate larger menus
+                opacity: 1;
+                transform: translateY(0) scaleY(1);
+                visibility: visible;
+            }
+        }
+    }
+
+    // Override Foundation's default instant show/hide
+    .dropdown.menu [data-submenu]:not(.menu-columns-wrapper) {
+        display: block !important;
+    }
+
+    // Keep flex display for menu-columns-wrapper
+    .dropdown.menu .menu-columns-wrapper[data-submenu] {
+        display: flex !important;
+    }
+
+    // Ensure submenu positioning
+    .dropdown.menu > li.is-dropdown-submenu-parent > a::after {
+        transition: transform 0.3s ease;
+    }
+
+    .dropdown.menu > li.is-dropdown-submenu-parent:hover > a::after,
+    .dropdown.menu > li.is-dropdown-submenu-parent.is-active > a::after {
+        transform: rotate(90deg);
+    }
+
+    // Theme-aware menu item hover effects with improved readability
+    .dropdown.menu {
+        // Main menu items - improved contrast and readability
+        > li > a {
+            color: #2c3e50;  // Much darker text for better contrast
+            font-weight: 500;  // Medium weight for better visibility
+            font-size: 0.95rem;  // Slightly larger text
+            padding: 10px 15px;  // More padding for easier clicking
+            transition: background-color 0.2s ease, color 0.2s ease;
+
+            &:hover {
+                background-color: rgba($primary-color, 0.1);
+                color: $primary-color;
+            }
+        }
+
+        // Dropdown submenus - bigger with more padding
+        .menu.vertical,
+        ul.menu.vertical {
+            background: #ffffff;  // Solid white background for better contrast
+            min-width: 280px;  // Wider dropdowns for better readability
+            padding: 10px 0;  // Vertical padding for the menu
+            border: 1px solid rgba(0, 0, 0, 0.1);  // Subtle border
+            border-radius: 12px;  // More rounded corners
+            display: block !important;  // Ensure display is block
+
+            li a {
+                padding: 14px 24px;  // Much more padding for better click targets
+                color: #2c3e50;  // Dark text for excellent contrast
+                font-size: 0.95rem;  // Larger font size
+                font-weight: 400;  // Normal weight but still readable
+                line-height: 1.6;  // Better line spacing
+                transition: background-color 0.2s ease, color 0.2s ease, padding-left 0.2s ease;
+
+                &:hover {
+                    background-color: rgba($primary-color, 0.08);  // Lighter hover background
+                    color: $primary-color;
+                    padding-left: 28px;  // Subtle indent on hover
+                }
+
+                // Icons in menu items
+                i {
+                    margin-right: 8px;
+                    width: 16px;
+                    display: inline-block;
+                }
+            }
+
+            // Horizontal dividers
+            hr {
+                margin: 8px 0;
+                border-color: rgba(0, 0, 0, 0.08);
+                width: 100%;  // Full width for column layout
+                grid-column: 1 / -1;  // Span all columns in grid
+            }
+
+        }
+
+    }
+
+    // Two-column menu wrapper for operacje
+    .menu-columns-wrapper {
+        background: #ffffff;
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        border-radius: 12px;  // More rounded corners
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        padding: 0;  // No padding on wrapper
+        min-width: 600px;
+        display: flex !important;  // Keep flex for two columns
+        gap: 0;  // No gap, use border instead
+
+        // Initial hidden state for animation
+        max-height: 0;
+        opacity: 0;
+        transform: translateY(-20px) scaleY(0.8);
+        transform-origin: top center;
+        transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+                   opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                   transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        overflow: hidden;
+        visibility: hidden;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        z-index: 1000;
+
+        // Override any inherited display:block from general menu rules
+        &[data-submenu] {
+            display: flex !important;
+        }
+
+        ul.menu.vertical {
+            flex: 1;
+            min-width: 280px;
+            background: transparent;
+            border: none;
+            box-shadow: none;
+            padding: 8px 0;  // Small vertical padding only
+            margin: 0;
+
+            &.column-1 {
+                border-right: 1px solid rgba(0, 0, 0, 0.08);
+                padding-right: 0;  // No padding on the right
+            }
+
+            &.column-2 {
+                padding-left: 0;  // No padding on the left
+            }
+
+            li {
+                margin: 0;
+
+                a {
+                    padding: 12px 24px;  // Horizontal padding for text spacing
+                    color: #2c3e50;
+                    font-size: 0.95rem;
+                    display: block;
+                    transition: all 0.2s ease;
+                    border-radius: 0;  // No border radius for full-width hover
+
+                    &:hover {
+                        background-color: rgba($primary-color, 0.08);
+                        color: $primary-color;
+                        padding-left: 28px;  // Subtle indent on hover
+                    }
+                }
+            }
+        }
+    }
+
+    // Show menu-columns-wrapper on hover
+    .dropdown.menu > li:hover > .menu-columns-wrapper,
+    .dropdown.menu > li.has-submenu:hover > .menu-columns-wrapper {
+        max-height: 800px;
+        opacity: 1;
+        transform: translateY(0) scaleY(1);
+        visibility: visible;
+        display: flex !important;  // Ensure flex display is maintained when visible
+    }
+
+    // Add arrow for has-submenu items (like operacje)
+    .dropdown.menu > li.has-submenu > a::after {
+        content: "";
+        display: inline-block;
+        width: 0;
+        height: 0;
+        border: inset 6px;
+        border-color: rgba(44, 62, 80, 0.6) transparent transparent transparent;
+        border-top-style: solid;
+        margin-left: 5px;
+        vertical-align: middle;
+        transition: transform 0.3s ease;
+    }
+
+    .dropdown.menu > li.has-submenu:hover > a::after,
+    .dropdown.menu > li.has-submenu.is-active > a::after {
+        transform: rotate(90deg);
+    }
+
+    // Fix hover state persistence - ensure proper hiding
+    .dropdown.menu > li {
+        > .menu-columns-wrapper,
+        > .menu.vertical,
+        > ul.menu {
+            pointer-events: none;  // Prevent ghost hovering
+        }
+
+        &:hover {
+            > .menu-columns-wrapper,
+            > .menu.vertical,
+            > ul.menu {
+                pointer-events: auto;  // Enable interaction when visible
+            }
+        }
+    }
 }
 
 // Menu text styling
 .menu-text {
     cursor: pointer;
+    color: #2c3e50;  // Darker text for logo/brand
+    font-weight: 600;
 }
+
+// Special styling for specific menu items
+.top-bar {
+    // Ensure good contrast for all menu items
+    .dropdown.menu a {
+        color: #2c3e50;  // Default dark color for all links
+    }
+
+    // PBN menu - give it a distinct look
+    li > a[href="#"]:contains("PBN") {
+        font-weight: 500;
+    }
+
+    // Logout menu styling
+    li > a[href*="logout"],
+    li > a[href*="microsoftonline"] {
+        color: #495057;  // Slightly different color for logout
+
+        &:hover {
+            color: #dc3545;  // Red on hover for logout
+            background-color: rgba(220, 53, 69, 0.08);
+        }
+    }
+}
+
+
 
 // Global navigation select2 container
 .global-nav-container {

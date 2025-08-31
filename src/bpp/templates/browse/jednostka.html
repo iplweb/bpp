@@ -33,15 +33,14 @@
 
     <!-- Unit Hierarchy Cards -->
     {% if jednostka.parent or jednostka.children.exists %}
-        <div class="grid-x grid-margin-x" style="margin-bottom: 25px;">
+        <div class="grid-x grid-margin-x unit-hierarchy">
             {% if jednostka.parent %}
                 <div class="cell medium-6">
-                    <div class="callout primary" style="border-left: 4px solid #3498db;">
-                        <h6 style="margin-bottom: 10px; color: #2c3e50;">
-                            <i class="fi-arrow-up" style="margin-right: 5px;"></i>Wchodzi w skład:
+                    <div class="callout hierarchy-card hierarchy-parent">
+                        <h6>
+                            <i class="fi-arrow-up"></i>Wchodzi w skład:
                         </h6>
-                        <a href="{% url "bpp:browse_jednostka" jednostka.parent.slug %}"
-                           style="color: #3498db; text-decoration: none; font-weight: 500;">
+                        <a href="{% url "bpp:browse_jednostka" jednostka.parent.slug %}">
                             {{ jednostka.parent }}
                         </a>
                     </div>
@@ -50,15 +49,14 @@
 
             {% if jednostka.children.exists %}
                 <div class="cell medium-6">
-                    <div class="callout secondary" style="border-left: 4px solid #95a5a6;">
-                        <h6 style="margin-bottom: 10px; color: #2c3e50;">
-                            <i class="fi-arrow-down" style="margin-right: 5px;"></i>Jednostki podrzędne:
+                    <div class="callout hierarchy-card hierarchy-children">
+                        <h6>
+                            <i class="fi-arrow-down"></i>Jednostki podrzędne:
                         </h6>
-                        <ul class="no-bullet" style="margin: 0;">
+                        <ul class="no-bullet">
                             {% for child in jednostka.children.all %}
-                                <li style="margin-bottom: 5px;">
-                                    <a href="{% url "bpp:browse_jednostka" child.slug %}"
-                                       style="color: #7f8c8d; text-decoration: none;">
+                                <li>
+                                    <a href="{% url "bpp:browse_jednostka" child.slug %}">
                                         {{ child }}
                                     </a>
                                 </li>
@@ -82,6 +80,9 @@
         <form method="post" action="{% url "bpp:browse_build_search" %}" style="display: inline;">
             {% csrf_token %}
             <input type="hidden" name="jednostka" value="{{ jednostka.pk }}"/>
+            {% for descendant in jednostka.get_descendants %}
+                <input type="hidden" name="jednostka" value="{{ descendant.pk }}"/>
+            {% endfor %}
             <input type="hidden" name="suggested-title" value="{{ jednostka }}"/>
             <button type="submit"
                     class="button primary large"
@@ -110,6 +111,9 @@
               class="browserForm">
             {% csrf_token %}
             <input type="hidden" name="jednostka" value="{{ jednostka.pk }}"/>
+            {% for descendant in jednostka.get_descendants %}
+                <input type="hidden" name="jednostka" value="{{ descendant.pk }}"/>
+            {% endfor %}
             <input type="hidden" name="suggested-title" value="{{ jednostka }}"/>
 
             <div class="card" style="margin-bottom: 20px; border: 1px solid #e9ecef;">

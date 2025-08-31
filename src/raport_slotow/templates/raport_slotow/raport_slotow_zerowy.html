@@ -6,7 +6,8 @@
 
 {% block breadcrumbs %}
     {{ block.super }}
-    <li><a href="{% url "raport_slotow:raport-slotow-zerowy-parametry" %}">raport slotów - zerowy</a></li>
+    <li>ewaluacja</li>
+    <li><a href="{% url "raport_slotow:raport-slotow-zerowy-parametry" %}">Raport slotów - zerowy</a></li>
     <li class="current">wygenerowany raport
     {% if min_pk %}
         , minimalne PK = {{ min_pk }}
