@@ -5,6 +5,9 @@ $topbar-background: green;
 @import "checkbox";
 @import "main_page_buttons";
 @import "browse";
+@import "browse_autorzy";
+@import "browse_jednostki";
+@import "external_links";
 
 @import 'foundation';
 @include foundation-global-styles;

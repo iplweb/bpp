@@ -1,0 +1,168 @@
+// External Links Section Styles
+
+.external-links-card {
+  background: white;
+  border: 1px solid #e1e4e8;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+
+  h3 {
+    font-size: 1.2rem;
+    margin-bottom: 15px;
+    color: #2c3e50;
+    padding-bottom: 8px;
+
+    .fi-web {
+      margin-right: 8px;
+      color: rgba($primary-color, 0.7);
+    }
+  }
+}
+
+.external-links-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.external-link-item {
+  display: flex;
+  align-items: center;
+  padding: 10px;
+  background: #f8f9fa;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+
+  &:hover {
+    background: #f1f3f5;
+    border-color: rgba($primary-color, 0.2);
+    transform: translateX(2px);
+  }
+
+  .link-icon {
+    font-size: 1.3em;
+    margin-right: 12px;
+    color: #7f8c8d;
+    transition: color 0.2s ease;
+  }
+
+  &:hover .link-icon {
+    color: rgba($primary-color, 0.8);
+  }
+
+  .link-content {
+    flex: 1;
+    min-width: 0; // Allow truncation
+
+    .link-label {
+      font-size: 0.9em;
+      font-weight: bold;
+      color: #2c3e50;
+      margin-bottom: 2px;
+    }
+
+    .link-value {
+      font-size: 0.85em;
+      color: #7f8c8d;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
+
+  .link-actions {
+    display: flex;
+    gap: 4px;
+
+    .button {
+      margin: 0;
+      padding: 0.4rem 0.7rem;
+      font-size: 0.8rem;
+
+      &.copy-button {
+        background: #e9ecef;
+        color: #495057;
+        border: 1px solid #dee2e6;
+
+        &:hover {
+          background: #dee2e6;
+          border-color: #ced4da;
+        }
+
+        &.copied {
+          background: #d4edda;
+          color: #155724;
+          border-color: #c3e6cb;
+        }
+      }
+
+      &.open-button {
+        background: rgba($primary-color, 0.9);
+        color: white;
+
+        &:hover {
+          background: $primary-color;
+          transform: translateX(1px);
+        }
+
+        i {
+          margin-right: 3px;
+        }
+      }
+    }
+  }
+}
+
+// Specific link type colors
+.external-link-item {
+  &.link-pbn {
+    .link-icon { color: #27ae60; }
+    &:hover .link-icon { color: #229954; }
+  }
+
+  &.link-doi {
+    .link-icon { color: #3498db; }
+    &:hover .link-icon { color: #2980b9; }
+  }
+
+  &.link-pubmed {
+    .link-icon { color: #e74c3c; }
+    &:hover .link-icon { color: #c0392b; }
+  }
+
+  &.link-pmc {
+    .link-icon { color: #9b59b6; }
+    &:hover .link-icon { color: #8e44ad; }
+  }
+
+  &.link-www {
+    .link-icon { color: #34495e; }
+    &:hover .link-icon { color: #2c3e50; }
+  }
+}
+
+// Responsive adjustments
+@media screen and (max-width: 640px) {
+  .external-link-item {
+    flex-direction: column;
+    align-items: flex-start;
+
+    .link-icon {
+      margin-bottom: 8px;
+    }
+
+    .link-content {
+      margin-bottom: 10px;
+      width: 100%;
+    }
+
+    .link-actions {
+      width: 100%;
+
+      .button {
+        flex: 1;
+      }
+    }
+  }
+}

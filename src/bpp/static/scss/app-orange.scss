@@ -1,8 +1,12 @@
+@use "sass:color";
 @import "settings_orange";
 @import "common";
 @import "checkbox";
 @import "main_page_buttons";
 @import "browse";
+@import "browse_autorzy";
+@import "browse_jednostki";
+@import "external_links";
 @import 'foundation';
 
 @include foundation-global-styles;
@@ -53,6 +57,97 @@ $info-color: #DEF3B6;
 input[type=checkbox],
 input[type=radio] {
   accent-color: #f26621;
+}
+
+// Theme-specific overrides for browse.scss
+.modern-header {
+  h1, h2 {
+    .fi-foundation {
+      color: $primary-color;
+    }
+  }
+}
+
+.wydzial-stats {
+  .stat-item {
+    &.stat-jednostki {
+      border-left-color: $primary-color;
+    }
+
+    &.stat-kola {
+      border-left-color: $secondary-color;
+    }
+  }
+}
+
+.section-header {
+  h2 {
+    .fi-home {
+      color: $primary-color;
+    }
+
+    .fi-torsos-all {
+      color: $secondary-color;
+    }
+  }
+}
+
+.jednostka-card {
+  &.card-aktualne {
+    border-color: color.adjust($primary-color, $lightness: 30%);
+
+    &:hover {
+      border-color: $primary-color;
+    }
+
+    .card-icon {
+      color: color.adjust($primary-color, $lightness: 20%);
+    }
+  }
+
+  &.card-kola {
+    border-color: color.adjust($secondary-color, $lightness: 30%);
+
+    &:hover {
+      border-color: $secondary-color;
+    }
+
+    .card-icon {
+      color: color.adjust($secondary-color, $lightness: 20%);
+    }
+  }
+}
+
+.jednostka-name a {
+  &:hover {
+    &.link-aktualne {
+      color: $primary-color;
+    }
+
+    &.link-kola {
+      color: $secondary-color;
+    }
+  }
+}
+
+.button-search {
+  background: $primary-color;
+
+  &:hover {
+    background-color: color.adjust($primary-color, $lightness: -10%);
+  }
+}
+
+.button-show-all {
+  background: $secondary-color;
+
+  &:hover {
+    background-color: color.adjust($secondary-color, $lightness: -10%);
+  }
+}
+
+.author-profile-link {
+  color: $primary-color;
 }
 
 .ui-state-focus {

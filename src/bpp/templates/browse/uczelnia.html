@@ -7,11 +7,11 @@
 
 {% block breadcrumbs-html %}
     <!-- Tips section in place of breadcrumbs for main page -->
-        <div id="breadcrumbs-wrapper" class="grid-container-fluid hide-for-small-only" style="background-color: rgba(240, 240, 240, 0.85); border-bottom: 1px solid #d6d6d6; padding: 10px 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); position: sticky; top: 50px; z-index: 1; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);">
+        <div id="breadcrumbs-wrapper" class="grid-container-fluid hide-for-small-only breadcrumbs-tips-wrapper">
         <div class="grid-x">
             <div class="cell">
-                <div id="rotating-tips" style="text-align: center; font-size: 14px; line-height: 1.4;">
-                    <div class="tip-content" style="display: none; opacity: 0; transition: opacity 0.5s ease-in-out;">
+                <div id="rotating-tips">
+                    <div class="tip-content">
                         <i class="fi-lightbulb"></i> <strong>Porady BPP:</strong> <span id="tip-text">Ładowanie porad...</span>
                     </div>
                 </div>
@@ -105,7 +105,7 @@
         <div class="large-12 cell">
             <div class="shaded-hr-div"></div>
         </div>
-        <div class="large-12 cell" style="text-align: center; margin: 20px 0;">
+        <div class="large-12 cell uczelnia-main-content">
             <a href="/zglos_publikacje/nowe_zgloszenie/" class="button main-page-button-primary">
                 <i class="fi-page-add"></i> Masz nową publikację? Dodaj ją do bazy
             </a>
@@ -130,8 +130,8 @@
         {% else %}
             {% if miniblog.exists or request.user.is_superuser or request.user|has_group:"web" %}
                 <div class="small-12 large-6 cell">
-                    <h3 style="color: #2c3e50; font-size: 1.3rem; font-weight: 600; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #e9ecef;">
-                        <i class="fi-megaphone" style="margin-right: 8px; color: #95a5a6;"></i>Aktualności
+                    <h3 class="section-title">
+                        <i class="fi-megaphone section-icon"></i>Aktualności
                     </h3>
                     {% for article in miniblog %}
                         <h3><strong>{{ article.title }}</strong></h3>
@@ -154,21 +154,16 @@
         {% endif %}
         {% if uczelnia.pokazuj_wydzialy_na_pierwszej_stronie %}
             <div class="small-12 large-6 cell">
-                <h3 style="color: #2c3e50; font-size: 1.3rem; font-weight: 600; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #e9ecef;">
-                    <i class="fi-foundation" style="margin-right: 8px; color: #95a5a6;"></i>Wybierz {% rzeczownik_wydział %}
+                <h3 class="section-title">
+                    <i class="fi-foundation section-icon"></i>Wybierz {% rzeczownik_wydział %}
                 </h3>
-                <div class="wydzial-list" style="margin-bottom: 20px;">
+                <div class="wydzial-list">
                     {% for wydzial in uczelnia.wydzialy %}
-                        <div class="wydzial-card" style="background: white; border-radius: 6px; padding: 15px; margin-bottom: 12px; border: 2px solid #e9ecef; transition: all 0.2s ease; position: relative;"
-                             onmouseover="this.style.borderColor='#667eea'; this.style.background='#fafbfc'; this.style.transform='translateX(4px)';"
-                             onmouseout="this.style.borderColor='#e9ecef'; this.style.background='white'; this.style.transform='translateX(0)';">
-                            <div style="position: absolute; top: 50%; right: 15px; transform: translateY(-50%); color: #bdc3c7;">
-                                <i class="fi-arrow-right" style="font-size: 1.2rem;"></i>
+                        <div class="wydzial-card">
+                            <div class="arrow-icon">
+                                <i class="fi-arrow-right"></i>
                             </div>
-                            <a href="{% url "bpp:browse_wydzial" wydzial.slug %}"
-                               style="color: #2c3e50; text-decoration: none; font-weight: 500; font-size: 0.95rem; line-height: 1.4; display: block; padding-right: 30px;"
-                               onmouseover="this.style.color='#667eea';"
-                               onmouseout="this.style.color='#2c3e50';">
+                            <a href="{% url "bpp:browse_wydzial" wydzial.slug %}">
                                 {{ wydzial }}
                             </a>
                         </div>
@@ -177,25 +172,19 @@
                 {% include "browse/go_to_admin_list.html" with group="struktura" url="admin:bpp_wydzial_changelist" text="<i class='fi-wrench'></i> zarządzaj wydziałami" %}
                 {% include "browse/go_to_admin_change.html" with url="admin:bpp_uczelnia_change" pk=uczelnia.pk group="struktura" text="ustawienia dla uczelni" %}
             </div>
-            </div>
         {% endif %}
     {% if uczelnia.pokazuj_jednostki_na_pierwszej_stronie %}
         <div class="small-12 large-6 cell">{% load deklinacja %}
-            <h3 style="color: #2c3e50; font-size: 1.3rem; font-weight: 600; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #e9ecef;">
-                <i class="fi-home" style="margin-right: 8px; color: #95a5a6;"></i>Wybierz {% rzeczownik_jednostkę %}
+            <h3 class="section-title">
+                <i class="fi-home section-icon"></i>Wybierz {% rzeczownik_jednostkę %}
             </h3>
-            <div class="jednostka-list" style="margin-bottom: 20px;">
+            <div class="jednostka-list">
                 {% for jednostka in uczelnia.jednostki %}
-                    <div class="jednostka-card" style="background: white; border-radius: 6px; padding: 15px; margin-bottom: 12px; border: 2px solid #e9ecef; transition: all 0.2s ease; position: relative;"
-                         onmouseover="this.style.borderColor='#667eea'; this.style.background='#fafbfc'; this.style.transform='translateX(4px)';"
-                         onmouseout="this.style.borderColor='#e9ecef'; this.style.background='white'; this.style.transform='translateX(0)';">
-                        <div style="position: absolute; top: 50%; right: 15px; transform: translateY(-50%); color: #bdc3c7;">
-                            <i class="fi-arrow-right" style="font-size: 1.2rem;"></i>
+                    <div class="jednostka-card-main">
+                        <div class="arrow-icon">
+                            <i class="fi-arrow-right"></i>
                         </div>
-                        <a href="{% url "bpp:browse_jednostka" jednostka.slug %}"
-                           style="color: #2c3e50; text-decoration: none; font-weight: 500; font-size: 0.95rem; line-height: 1.4; display: block; padding-right: 30px;"
-                           onmouseover="this.style.color='#667eea';"
-                           onmouseout="this.style.color='#2c3e50';">
+                        <a href="{% url "bpp:browse_jednostka" jednostka.slug %}">
                             {{ jednostka }}
                         </a>
                     </div>
@@ -204,7 +193,7 @@
             {% include "browse/go_to_admin_list.html" with group="struktura" url="admin:bpp_jednostka_changelist" text="<i class='fi-wrench'></i> zarządzaj jednostkami" %}
             {% include "browse/go_to_admin_change.html" with url="admin:bpp_uczelnia_change" pk=uczelnia.pk group="struktura" text="ustawienia dla uczelni" %}
         </div>
-        </div>
+    </div>
     {% endif %}
 
     {% if recently_updated or recent_abstracts %}
@@ -212,23 +201,23 @@
             {% if recently_updated %}
                 {% cache 3600 recent_publications uczelnia.pk %}
                 <div class="small-12 large-6 cell">
-                    <h3 style="color: #2c3e50; font-size: 1.3rem; font-weight: 600; margin-top: 30px; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #e9ecef;">
-                        <i class="fi-book" style="margin-right: 8px; color: #95a5a6;"></i>Niedawno zaktualizowane rekordy
+                    <h3 class="section-title" style="margin-top: 30px;">
+                        <i class="fi-book section-icon"></i>Niedawno zaktualizowane rekordy
                     </h3>
-                    <ul class="no-bullet" style="line-height: 180%;">
+                    <ul class="no-bullet">
                         {% for rekord in recently_updated %}
-                            <li style="margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #e6e6e6;">
-                                <a href="{{ rekord.get_absolute_url }}" style="font-size: 14px; line-height: 1.4; display: block;">
+                            <li class="recent-publication-item">
+                                <a href="{{ rekord.get_absolute_url }}">
                                     {{ rekord.opis_bibliograficzny_cache|safe }}
                                 </a>
-                                <div style="font-size: 12px; color: #666; margin-top: 5px;">
+                                <div class="publication-meta">
                                     {{ rekord.ostatnio_zmieniony|date:"d.m.Y H:i" }}
-                                    {% if rekord.rok %} • {{ rekord.rok }}{% endif %}
+                                    {% if rekord.rok %} &bull; {{ rekord.rok }}{% endif %}
                                 </div>
                             </li>
                         {% endfor %}
                     </ul>
-                    <div style="text-align: center; margin-top: 15px;">
+                    <div class="text-center" style="margin-top: 15px;">
                         <a href="/multiseek/" class="button secondary expanded">Zobacz wszystkie publikacje</a>
                     </div>
                 </div>
@@ -238,21 +227,21 @@
             {% if recent_abstracts %}
                 {% cache 3600 recent_abstracts uczelnia.pk %}
                 <div class="small-12 large-6 cell">
-                    <h3 style="color: #2c3e50; font-size: 1.3rem; font-weight: 600; margin-top: 30px; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #e9ecef;">
-                        <i class="fi-page-multiple" style="margin-right: 8px; color: #95a5a6;"></i>Najnowsze streszczenia
+                    <h3 class="section-title" style="margin-top: 30px;">
+                        <i class="fi-page-multiple section-icon"></i>Najnowsze streszczenia
                     </h3>
-                    <ul class="no-bullet" style="line-height: 180%;">
+                    <ul class="no-bullet">
                         {% for rekord in recent_abstracts %}
-                            <li style="margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #e6e6e6;">
-                                <a href="{{ rekord.rekord.get_absolute_url }}" style="font-size: 14px; line-height: 1.4; display: block; font-weight: bold; margin-bottom: 8px;">
+                            <li class="recent-abstract-item">
+                                <a href="{{ rekord.rekord.get_absolute_url }}">
                                     {{ rekord.rekord.opis_bibliograficzny_cache|safe }}
                                 </a>
-                                <div style="font-size: 13px; line-height: 1.4; color: #333; margin-bottom: 5px;">
+                                <div class="abstract-content">
                                     {{ rekord.streszczenie|safe|truncatewords:130 }}
                                 </div>
-                                <div style="font-size: 12px; color: #666;">
+                                <div class="abstract-meta">
                                     {{ rekord.ostatnio_zmieniony|date:"d.m.Y H:i" }}
-                                    {% if rekord.rok %} • {{ rekord.rok }}{% endif %}
+                                    {% if rekord.rok %} &bull; {{ rekord.rok }}{% endif %}
                                 </div>
                             </li>
                         {% endfor %}

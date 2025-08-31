@@ -7,24 +7,40 @@ module.exports = function (grunt) {
         sass: {
             options: {
                 implementation: sass,
+                api: 'modern-compiler', // or "modern"
                 includePaths: [
                     'node_modules/foundation-sites/scss'
                 ]
             },
-            dist: {
+            blue: {
                 options: {
                     outputStyle: 'compressed',
                     loadPath: ['node_modules/foundation-sites/scss'],
                 },
                 files: {
                     'src/bpp/static/scss/app-blue.css':
-                        'src/bpp/static/scss/app-blue.scss',
-
+                        'src/bpp/static/scss/app-blue.scss'
+                }
+            },
+            green: {
+                files: {
                     'src/bpp/static/scss/app-green.css':
-                        'src/bpp/static/scss/app-green.scss',
+                        'src/bpp/static/scss/app-green.scss'
+                }
+            },
+            orange: {
+                files: {
                     'src/bpp/static/scss/app-orange.css':
                         'src/bpp/static/scss/app-orange.scss'
+                }
+            }
+        },
 
+        concurrent: {
+            themes: {
+                tasks: ['sass:blue', 'sass:green', 'sass:orange'],
+                options: {
+                    logConcurrentOutput: true
                 }
             }
         },
@@ -34,7 +50,7 @@ module.exports = function (grunt) {
 
             sass: {
                 files: 'src/bpp/static/scss/*.scss',
-                tasks: ['sass']
+                tasks: ['concurrent:themes']
             }
         },
 
@@ -53,8 +69,9 @@ module.exports = function (grunt) {
     grunt.loadNpmTasks('grunt-contrib-watch');
     grunt.loadNpmTasks('grunt-contrib-qunit');
     grunt.loadNpmTasks('grunt-shell');
+    grunt.loadNpmTasks('grunt-concurrent');
 
     grunt.registerTask('shell-test', ['shell:collectstatic']);
-    grunt.registerTask('build', ['sass', 'shell:collectstatic']);
+    grunt.registerTask('build', ['concurrent:themes', 'shell:collectstatic']);
     grunt.registerTask('default', ['build', 'watch']);
 }

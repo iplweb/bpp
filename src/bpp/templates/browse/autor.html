@@ -290,5 +290,203 @@
     </form>
 </div>
 
+<!-- Embed Code Section -->
+<div class="row" style="margin-top: 30px;">
+    <div class="large-12 columns">
+        <div class="author-info-section">
+            <h3 style="cursor: pointer; user-select: none; display: flex; align-items: center; justify-content: space-between;" onclick="toggleEmbedCode()">
+                <span><i class="fi-page-export"></i> Kod do osadzenia publikacji na stronie WWW</span>
+                <span id="embed-toggle-icon" style="transition: transform 0.3s; font-size: 0.8em;">▶</span>
+            </h3>
+            <p style="color: #7f8c8d; margin-bottom: 15px; font-size: 0.9rem;">
+                Kliknij aby rozwinąć i skopiować kod JavaScript do wyświetlania Twoich publikacji na własnej stronie
+            </p>
+        </div>
+        <div class="shaded-hr-div-small"></div>
+
+        <div id="embed-content" style="display: none;">
+            <div style="background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); padding: 30px; margin-top: 20px; margin-bottom: 20px;">
+        <div style="margin-bottom: 15px;">
+            <p style="color: #2c3e50; margin-bottom: 10px;">
+                <strong>Instrukcja:</strong> Skopiuj poniższy kod i wklej go w miejscu na swojej stronie WWW,
+                gdzie chcesz wyświetlić listę swoich najnowszych publikacji z systemu BPP.
+            </p>
+        </div>
+
+        <div style="position: relative;">
+            <pre id="embed-code" style="background: #f5f5f5; color: #333; padding: 20px; border: 1px solid #ddd; border-radius: 6px; overflow-x: auto; font-size: 0.85rem; line-height: 1.5; margin-bottom: 10px;"><code>&lt;!-- BPP - Lista publikacji autora {{ autor }} --&gt;
+&lt;!-- Ten kod automatycznie pobiera i wyświetla 25 najnowszych publikacji z systemu BPP --&gt;
+&lt;div id="bpp-publikacje" style="font-family: Arial, sans-serif;"&gt;
+    &lt;div style="text-align: center; padding: 20px; color: #666;"&gt;
+        Ładowanie publikacji...
+    &lt;/div&gt;
+&lt;/div&gt;
+
+&lt;script&gt;
+(function() {
+    // Konfiguracja - te wartości są już ustawione dla Twojego profilu
+    const BPP_SERVER = '{{ request.scheme }}://{{ request.get_host }}';  // Adres serwera BPP
+    const AUTOR_ID = {{ autor.pk }};  // Twój identyfikator w systemie BPP
+
+    // Funkcja pobierająca i wyświetlająca publikacje
+    async function zaladujPublikacjeBPP() {
+        const container = document.getElementById('bpp-publikacje');
+
+        try {
+            // Pobierz dane z API BPP
+            const response = await fetch(`${BPP_SERVER}/api/v1/recent_author_publications/${AUTOR_ID}/`);
+
+            if (!response.ok) {
+                throw new Error('Nie udało się pobrać danych');
+            }
+
+            const data = await response.json();
+
+            // Wyczyść kontener
+            container.innerHTML = '';
+
+            // Sprawdź czy są publikacje
+            if (data.publications && data.publications.length > 0) {
+                // Utwórz nagłówek
+                const header = document.createElement('h3');
+                header.textContent = 'Publikacje';
+                header.style.cssText = 'color: #2c3e50; margin-bottom: 20px; font-size: 1.5rem;';
+                container.appendChild(header);
+
+                // Utwórz listę publikacji
+                const list = document.createElement('ol');
+                list.style.cssText = 'padding-left: 20px; line-height: 1.8;';
+
+                data.publications.forEach(pub => {
+                    const item = document.createElement('li');
+                    item.style.cssText = 'margin-bottom: 15px; color: #333;';
+
+                    // Opis bibliograficzny
+                    const opis = document.createElement('span');
+                    opis.innerHTML = pub.opis_bibliograficzny;
+                    item.appendChild(opis);
+
+                    // Link do szczegółów
+                    const link = document.createElement('a');
+                    link.href = pub.url;
+                    link.target = '_blank';
+                    link.textContent = ' [szczegóły]';
+                    link.style.cssText = 'color: #3498db; text-decoration: none; font-size: 0.9em;';
+                    link.onmouseover = function() { this.style.textDecoration = 'underline'; };
+                    link.onmouseout = function() { this.style.textDecoration = 'none'; };
+                    item.appendChild(link);
+
+                    list.appendChild(item);
+                });
+
+                container.appendChild(list);
+
+                // Dodaj stopkę z informacją
+                const footer = document.createElement('p');
+                footer.style.cssText = 'margin-top: 20px; padding-top: 15px; border-top: 1px solid #e9ecef; color: #7f8c8d; font-size: 0.85em; font-style: italic;';
+                footer.innerHTML = `Wyświetlono ${data.count} ostatnich publikacji. ` +
+                                 `&lt;a href="${BPP_SERVER}/bpp/autor/{{ autor.slug }}/" target="_blank" style="color: #3498db;"&gt;` +
+                                 `Zobacz pełny profil w systemie BPP &rarr;&lt;/a&gt;`;
+                container.appendChild(footer);
+
+            } else {
+                container.innerHTML = '&lt;p style="color: #7f8c8d;"&gt;Brak publikacji do wyświetlenia.&lt;/p&gt;';
+            }
+
+        } catch (error) {
+            // Obsługa błędów
+            console.error('Błąd BPP:', error);
+            container.innerHTML = `
+                &lt;div style="padding: 20px; background: #fee; border: 1px solid #fcc; border-radius: 4px; color: #c00;"&gt;
+                    Nie udało się załadować listy publikacji.
+                    &lt;a href="${BPP_SERVER}/bpp/autor/{{ autor.slug }}/" target="_blank" style="color: #3498db;"&gt;
+                        Zobacz publikacje w systemie BPP
+                    &lt;/a&gt;
+                &lt;/div&gt;
+            `;
+        }
+    }
+
+    // Uruchom po załadowaniu strony
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', zaladujPublikacjeBPP);
+    } else {
+        zaladujPublikacjeBPP();
+    }
+})();
+&lt;/script&gt;</code></pre>
+
+            <button onclick="copyEmbedCode()"
+                    id="copy-button"
+                    style="position: absolute; top: 10px; right: 10px; background: #3498db; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 0.9rem; transition: background 0.2s;"
+                    onmouseover="this.style.backgroundColor='#2980b9'"
+                    onmouseout="this.style.backgroundColor='#3498db'">
+                <i class="fi-clipboard"></i> Kopiuj kod
+            </button>
+        </div>
+
+        <div style="background: #e8f5e9; border-left: 4px solid #4caf50; padding: 15px; margin-top: 15px; border-radius: 4px;">
+            <p style="margin: 0; color: #2e7d32;">
+                <strong>💡 Podpowiedź:</strong> Ten kod jest w pełni samodzielny i będzie działał na każdej stronie HTML.
+                Automatycznie pobiera najnowsze publikacje z systemu BPP i wyświetla je w czytelnej formie.
+            </p>
+        </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleEmbedCode() {
+    const content = document.getElementById('embed-content');
+    const icon = document.getElementById('embed-toggle-icon');
+
+    if (content.style.display === 'none') {
+        content.style.display = 'block';
+        icon.style.transform = 'rotate(90deg)';
+    } else {
+        content.style.display = 'none';
+        icon.style.transform = 'rotate(0deg)';
+    }
+}
+
+function copyEmbedCode() {
+    const codeElement = document.getElementById('embed-code');
+    const button = document.getElementById('copy-button');
+    const codeText = codeElement.textContent || codeElement.innerText;
+
+    // Utwórz tymczasowy element textarea
+    const textarea = document.createElement('textarea');
+    textarea.value = codeText;
+    textarea.style.position = 'fixed';
+    textarea.style.top = '-9999px';
+    document.body.appendChild(textarea);
+
+    // Zaznacz i skopiuj
+    textarea.select();
+    textarea.setSelectionRange(0, 99999); // Dla urządzeń mobilnych
+
+    try {
+        document.execCommand('copy');
+
+        // Zmień tekst przycisku na potwierdzenie
+        const originalHTML = button.innerHTML;
+        button.innerHTML = '<i class="fi-check"></i> Skopiowano!';
+        button.style.backgroundColor = '#27ae60';
+
+        // Przywróć oryginalny tekst po 2 sekundach
+        setTimeout(() => {
+            button.innerHTML = originalHTML;
+            button.style.backgroundColor = '#3498db';
+        }, 2000);
+    } catch (err) {
+        console.error('Nie udało się skopiować:', err);
+        alert('Nie udało się skopiować kodu. Zaznacz go ręcznie i użyj Ctrl+C (lub Cmd+C na Mac).');
+    }
+
+    // Usuń tymczasowy element
+    document.body.removeChild(textarea);
+}
+</script>
 
 {% endblock %}

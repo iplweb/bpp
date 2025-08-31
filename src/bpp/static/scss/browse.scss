@@ -1,3 +1,5 @@
+@use "sass:color";
+
 // Browse pages styles
 // Common styles for browse pages like wydzial, jednostka, autorzy, zrodla
 
@@ -19,7 +21,7 @@
 
     .fi-foundation {
       margin-right: 15px;
-      color: #3498db;
+      color: $primary-color;
     }
 
     .fi-book {
@@ -51,15 +53,15 @@
     border-radius: 6px;
 
     &.stat-jednostki {
-      border-left: 4px solid #3498db;
+      border-left: 4px solid $primary-color;
     }
 
     &.stat-kola {
-      border-left: 4px solid #e74c3c;
+      border-left: 4px solid rgba($primary-color, 0.7);
     }
 
     &.stat-historyczne {
-      border-left: 4px solid #95a5a6;
+      border-left: 4px solid rgba($primary-color, 0.4);
     }
 
     div:first-child {
@@ -135,17 +137,17 @@
 
     .fi-home {
       margin-right: 10px;
-      color: #3498db;
+      color: $primary-color;
     }
 
     .fi-torsos-all {
       margin-right: 10px;
-      color: #e74c3c;
+      color: rgba($primary-color, 0.8);
     }
 
     .fi-clock {
       margin-right: 10px;
-      color: #95a5a6;
+      color: rgba($primary-color, 0.5);
     }
 
     span {
@@ -161,23 +163,40 @@
   background: white;
   border-radius: 6px;
   padding: 20px;
+  padding-left: 55px; // Make room for icon on the left
   margin-bottom: 15px;
   transition: all 0.2s ease;
   position: relative;
+  border: 2px solid #e9ecef;
 
-  &.card-aktualne {
-    border: 2px solid #d6eaf8;
+  .jednostka-name a {
+    color: #2c3e50; // Dark grey/black text by default
+    text-decoration: none;
+    font-weight: 600;
 
     &:hover {
-      border-color: #3498db;
-      background: #fafbfc;
+      color: $primary-color;
+    }
+  }
+
+  &:hover {
+    border-color: $primary-color;
+    background: rgba($primary-color, 0.02);
+  }
+
+  &.card-aktualne {
+    border: 2px solid rgba($primary-color, 0.15);
+
+    &:hover {
+      border-color: rgba(color.adjust($primary-color, $lightness: -15%), 0.5);
+      background: rgba($primary-color, 0.03);
     }
 
     .card-icon {
       position: absolute;
       top: 15px;
-      right: 15px;
-      color: #aed6f1;
+      left: 15px;
+      color: rgba($primary-color, 0.4);
 
       .fi-home {
         font-size: 1.2rem;
@@ -186,18 +205,18 @@
   }
 
   &.card-kola {
-    border: 2px solid #fadbd8;
+    border: 2px solid rgba($primary-color, 0.12);
 
     &:hover {
-      border-color: #e74c3c;
-      background: #fafbfc;
+      border-color: rgba(color.adjust($primary-color, $lightness: -15%), 0.5);
+      background: rgba($primary-color, 0.03);
     }
 
     .card-icon {
       position: absolute;
       top: 15px;
-      right: 15px;
-      color: #f1c0c0;
+      left: 15px;
+      color: rgba($primary-color, 0.35);
 
       .fi-torsos-all {
         font-size: 1.2rem;
@@ -206,18 +225,18 @@
   }
 
   &.card-historyczne {
-    border: 2px solid #d5dbdb;
+    border: 2px solid rgba($primary-color, 0.1);
 
     &:hover {
-      border-color: #95a5a6;
-      background: #fafbfc;
+      border-color: rgba(color.adjust($primary-color, $lightness: -15%), 0.5);
+      background: rgba($primary-color, 0.03);
     }
 
     .card-icon {
       position: absolute;
       top: 15px;
-      right: 15px;
-      color: #bdc3c7;
+      left: 15px;
+      color: rgba($primary-color, 0.3);
 
       .fi-clock {
         font-size: 1.2rem;
@@ -234,16 +253,18 @@
       line-height: 1.4;
 
       &:hover {
+        color: rgba($primary-color, 0.8);
+
         &.link-aktualne {
-          color: #3498db;
+          color: rgba($primary-color, 0.8);
         }
 
         &.link-kola {
-          color: #e74c3c;
+          color: rgba($primary-color, 0.8);
         }
 
         &.link-historyczne {
-          color: #95a5a6;
+          color: rgba($primary-color, 0.8);
         }
       }
     }
@@ -251,7 +272,7 @@
 
   .jednostka-stats {
     font-size: 0.8rem;
-    color: #95a5a6;
+    color: rgba($primary-color, 0.9);
     margin-top: 8px;
     padding-top: 8px;
     border-top: 1px solid #f8f9fa;
@@ -305,7 +326,7 @@
 
 // Action buttons
 .button-show-all {
-  background: #27ae60;
+  background: rgba($primary-color, 0.85);
   border: none;
   padding: 12px 24px;
   font-size: 1rem;
@@ -315,7 +336,7 @@
   color: white;
 
   &:hover {
-    background-color: #229954;
+    background-color: rgba($primary-color, 0.95);
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
     color: white;
   }
@@ -326,7 +347,7 @@
 }
 
 .button-search {
-  background: #3498db;
+  background: $primary-color;
   border: none;
   padding: 15px 30px;
   font-size: 1.1rem;
@@ -336,7 +357,7 @@
   color: white;
 
   &:hover {
-    background-color: #2980b9;
+    background-color: color.adjust($primary-color, $lightness: -10%);
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
     color: white;
   }
@@ -366,7 +387,7 @@
     position: absolute;
     top: 20px;
     right: 20px;
-    color: #bdc3c7;
+    color: rgba($primary-color, 0.25);
 
     .fi-book {
       font-size: 1.5rem;
@@ -406,6 +427,158 @@
   }
 }
 
+// Uczelnia page specific styles
+.breadcrumbs-tips-wrapper {
+  background-color: rgba(240, 240, 240, 0.85);
+  border-bottom: 1px solid #d6d6d6;
+  padding: 10px 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  position: sticky;
+  top: 50px;
+  z-index: 1;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+#rotating-tips {
+  text-align: center;
+  font-size: 14px;
+  line-height: 1.4;
+
+  .tip-content {
+    display: none;
+    opacity: 0;
+    transition: opacity 0.5s ease-in-out;
+
+    .fi-lightbulb {
+      margin-right: 5px;
+    }
+  }
+}
+
+.uczelnia-main-content {
+  text-align: center;
+  margin: 20px 0;
+}
+
+.main-page-button-primary {
+  .fi-page-add {
+    margin-right: 5px;
+  }
+}
+
+.main-page-button-secondary {
+  .fi-magnifying-glass {
+    margin-right: 5px;
+  }
+}
+
+.section-title {
+  color: #2c3e50;
+  font-size: 1.3rem;
+  font-weight: 600;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #e9ecef;
+
+  .section-icon {
+    margin-right: 8px;
+    color: rgba($primary-color, 0.4);
+  }
+}
+
+.wydzial-list,
+.jednostka-list {
+  margin-bottom: 20px;
+}
+
+.wydzial-card,
+.jednostka-card-main {
+  background: white;
+  border-radius: 6px;
+  padding: 15px;
+  margin-bottom: 12px;
+  border: 2px solid #e9ecef;
+  transition: all 0.2s ease;
+  position: relative;
+
+  &:hover {
+    border-color: rgba($primary-color, 0.3);
+    background: rgba($primary-color, 0.02);
+    transform: translateX(4px);
+  }
+
+  .arrow-icon {
+    position: absolute;
+    top: 50%;
+    right: 15px;
+    transform: translateY(-50%);
+    color: rgba($primary-color, 0.25);
+
+    .fi-arrow-right {
+      font-size: 1.2rem;
+    }
+  }
+
+  a {
+    color: #2c3e50;
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 0.95rem;
+    line-height: 1.4;
+    display: block;
+    padding-right: 30px;
+
+    &:hover {
+      color: rgba($primary-color, 0.8);
+    }
+  }
+}
+
+.recent-publication-item {
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e6e6e6;
+
+  a {
+    font-size: 14px;
+    line-height: 1.4;
+    display: block;
+  }
+
+  .publication-meta {
+    font-size: 12px;
+    color: #666;
+    margin-top: 5px;
+  }
+}
+
+.recent-abstract-item {
+  margin-bottom: 15px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #e6e6e6;
+
+  a {
+    font-size: 14px;
+    line-height: 1.4;
+    display: block;
+    font-weight: bold;
+    margin-bottom: 8px;
+  }
+
+  .abstract-content {
+    font-size: 13px;
+    line-height: 1.4;
+    color: #333;
+    margin-bottom: 5px;
+  }
+
+  .abstract-meta {
+    font-size: 12px;
+    color: #666;
+  }
+}
+
 // Letter index navigation
 .letter-index {
   background: white;
@@ -432,15 +605,16 @@
       border: 1px solid #e9ecef;
 
       &:hover {
-        background: #e9ecef;
-        border-color: #dee2e6;
+        background: rgba($primary-color, 0.08);
+        border-color: rgba($primary-color, 0.3);
+        color: rgba($primary-color, 0.9);
       }
 
       &.active {
-        background: $primary-color;
+        background: rgba($primary-color, 0.9);
         color: white;
         box-shadow: 0 2px 4px rgba($primary-color, 0.3);
-        border: 1px solid $primary-color;
+        border: 1px solid rgba($primary-color, 0.9);
       }
 
       &.letter-single {
@@ -546,11 +720,162 @@
 
   a.author-profile-link {
     margin-left: 5px;
-    color: #3498db;
+    color: $primary-color;
     text-decoration: none;
 
     .fi-torso {
       font-size: 0.9rem;
+    }
+  }
+}
+
+// Author list items for browse/autorzy.html
+.author-list-item {
+  a {
+    color: #2c3e50;
+    text-decoration: none;
+    padding: 8px 12px;
+    display: block;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+
+    &:hover {
+      background: rgba($primary-color, 0.05);
+      color: rgba($primary-color, 0.8);
+      padding-left: 16px;
+    }
+  }
+}
+
+// Source (zrodlo) page specific styles
+.source-header {
+  margin-bottom: 30px;
+
+  h1 {
+    color: #2c3e50;
+    font-size: 2rem;
+    margin-bottom: 10px;
+  }
+}
+
+.source-quick-actions {
+  text-align: center;
+  margin-bottom: 30px;
+
+  form {
+    display: inline;
+  }
+}
+
+.search-button-wrapper {
+  text-align: center;
+  margin-top: 25px;
+  padding-top: 20px;
+  border-top: 1px solid #e9ecef;
+}
+
+.form-hint {
+  color: #7f8c8d;
+  font-style: italic;
+}
+
+.source-sidebar {
+  .external-ids-panel {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    margin-bottom: 25px;
+
+    h6 {
+      color: #2c3e50;
+      margin-bottom: 15px;
+      font-weight: 600;
+
+      .fi-link {
+        margin-right: 5px;
+      }
+    }
+
+    .id-badge {
+      background: #ffffff;
+      border: 1px solid #e9ecef;
+      border-radius: 6px;
+      padding: 12px;
+      margin: 0;
+      text-align: center;
+
+      .id-label {
+        color: #2c3e50;
+        font-weight: 600;
+        font-size: 0.85rem;
+        margin-bottom: 4px;
+      }
+
+      a {
+        color: $primary-color;
+        text-decoration: none;
+        font-family: monospace;
+        font-size: 0.9rem;
+      }
+
+      .deleted-notice {
+        color: #e74c3c;
+        margin-top: 5px;
+        font-size: 0.8rem;
+
+        .fi-alert {
+          margin-right: 3px;
+        }
+      }
+    }
+  }
+
+  .disciplines-panel {
+    margin-bottom: 30px;
+    border-left: 4px solid #6c757d;
+
+    h6 {
+      color: #2c3e50;
+      margin-bottom: 15px;
+      font-weight: 600;
+
+      .fi-book {
+        margin-right: 5px;
+      }
+    }
+
+    .accordion {
+      border: none;
+      margin-bottom: 0;
+
+      .accordion-item {
+        border: none;
+
+        .accordion-title {
+          background: #f8f9fa;
+          padding: 12px 18px;
+          border-radius: 4px;
+          color: #495057;
+          font-weight: 500;
+
+          .fi-calendar {
+            margin-right: 8px;
+            font-size: 0.9rem;
+          }
+
+          .count-badge {
+            background: #6c757d;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            margin-left: 10px;
+          }
+        }
+
+        .accordion-content {
+          padding: 15px 5px 5px 5px;
+        }
+      }
     }
   }
 }

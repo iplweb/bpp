@@ -28,14 +28,12 @@
                               style="background: #95a5a6; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.75em; margin: 0 3px;">{{ autor.typ_odpowiedzialnosci.skrot|upper }}</span>
                     {% endifchanged %}
                     {% if links == "admin" %}
-                        <a href="{% url "admin:bpp_autor_change" autor.autor.pk %}"
-                           style="color: #3498db; text-decoration: none;">
+                        <a href="{% url "admin:bpp_autor_change" autor.autor.pk %}">
                     {% elif links == "normal" %}
-                        <a href="{% url "bpp:browse_autor" autor.autor.slug %}"
-                           style="color: #3498db; text-decoration: none;">
+                        <a href="{% url "bpp:browse_autor" autor.autor.slug %}">
                     {% endif %}
                 <span class="author-name"
-                      style="{% if links %}color: #3498db;{% else %}color: #2c3e50; font-weight: 500;{% endif %}">
+                      style="{% if not links %}font-weight: 500;{% endif %}">
                         {{ autor.zapisany_jako|upper }}
                     </span>
                 {% if links == "admin" or links == "normal" %}</a>{% endif %}{% if not forloop.last %},
@@ -313,83 +311,127 @@
         <!-- Right Column - Identifiers and Metadata -->
         <div class="right-column" style="flex: 1 1 35%; min-width: 300px;">
 
-            <!-- External Links Card - Priority for PBN -->
+            <!-- External Links Card - Redesigned -->
             {% if praca.pbn_uid_id or praca.doi or praca.pubmed_id or praca.pmc_id or praca.public_www or praca.www %}
-                <div class="info-card"
-                     style="background: white; border: 1px solid #e1e4e8; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
-                    <h3 style="font-size: 1.2rem; margin-bottom: 15px; color: #2c3e50; padding-bottom: 8px;">
+                <div class="external-links-card">
+                    <h3>
                         <span class="fi-web"></span> Linki zewnętrzne
                         <div class="shaded-hr-div-small"></div>
                     </h3>
 
-                    {% if praca.pbn_uid_id %}
-                        <div class="link-item"
-                             style="margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 6px;">
-                            <div style="display: flex; align-items: center; margin-bottom: 8px;">
-                                <span class="fi-home" style="font-size: 1.5em; margin-right: 10px;"></span>
-                                <strong>PBN UID</strong>
+                    <div class="external-links-grid">
+                        {% if praca.pbn_uid_id %}
+                            <div class="external-link-item link-pbn">
+                                <span class="fi-home link-icon"></span>
+                                <div class="link-content">
+                                    <div class="link-label">PBN</div>
+                                    <div class="link-value">{{ praca.pbn_uid_id }}</div>
+                                </div>
+                                <div class="link-actions">
+                                    <button class="button copy-button" type="button"
+                                            onclick="navigator.clipboard.writeText('{{ praca.pbn_uid_id }}'); this.classList.add('copied'); this.innerHTML='<i class=\'fi-check\'></i>'; setTimeout(() => { this.classList.remove('copied'); this.innerHTML='<i class=\'fi-clipboard\'></i>'; }, 2000);"
+                                            title="Kopiuj identyfikator">
+                                        <i class="fi-clipboard"></i>
+                                    </button>
+                                    <button class="button open-button" type="button"
+                                            onclick="window.open('{{ praca.link_do_pbn }}', '_blank')"
+                                            title="Otwórz w PBN">
+                                        <i class="fi-arrow-right"></i> Otwórz
+                                    </button>
+                                </div>
                             </div>
-                            <button class="button expanded" type="button"
-                                    onclick="window.open('{{ praca.link_do_pbn }}', '_blank')"
-                                    style="margin-bottom: 5px;">
-                                Otwórz w PBN: {{ praca.pbn_uid_id }}
-                            </button>
-                            {% if not request.user.is_anonymous and praca.link_do_pi %}
-                                <button class="button expanded secondary" type="button"
-                                        onclick="window.open('{{ praca.link_do_pi }}', '_blank')">
-                                    Profil instytucji
-                                </button>
-                            {% endif %}
-                        </div>
-                    {% endif %}
+                        {% endif %}
 
-                    {% if praca.doi %}
-                        <div class="link-item" style="margin-bottom: 12px;">
-                            <span class="fi-bookmark" style="font-size: 1.2em; margin-right: 8px;"></span>
-                            <strong>DOI:</strong>
-                            <a target="_blank" href="http://doi.org/{{ praca.doi }}"
-                               style="color: #3498db; word-break: break-all;">
-                                {{ praca.doi }}
-                            </a>
-                        </div>
-                    {% endif %}
+                        {% if praca.doi %}
+                            <div class="external-link-item link-doi">
+                                <span class="fi-bookmark link-icon"></span>
+                                <div class="link-content">
+                                    <div class="link-label">DOI</div>
+                                    <div class="link-value">{{ praca.doi }}</div>
+                                </div>
+                                <div class="link-actions">
+                                    <button class="button copy-button" type="button"
+                                            onclick="navigator.clipboard.writeText('{{ praca.doi }}'); this.classList.add('copied'); this.innerHTML='<i class=\'fi-check\'></i>'; setTimeout(() => { this.classList.remove('copied'); this.innerHTML='<i class=\'fi-clipboard\'></i>'; }, 2000);"
+                                            title="Kopiuj DOI">
+                                        <i class="fi-clipboard"></i>
+                                    </button>
+                                    <button class="button open-button" type="button"
+                                            onclick="window.open('http://doi.org/{{ praca.doi }}', '_blank')"
+                                            title="Otwórz stronę DOI">
+                                        <i class="fi-arrow-right"></i> Otwórz
+                                    </button>
+                                </div>
+                            </div>
+                        {% endif %}
 
-                    {% if praca.pubmed_id %}
-                        <div class="link-item" style="margin-bottom: 12px;">
-                            <span class="fi-first-aid" style="font-size: 1.2em; margin-right: 8px;"></span>
-                            <strong>PubMed:</strong>
-                            <a target="_blank" href="https://www.ncbi.nlm.nih.gov/pubmed/{{ praca.pubmed_id }}"
-                               style="color: #3498db;">
-                                {{ praca.pubmed_id }}
-                            </a>
-                        </div>
-                    {% endif %}
+                        {% if praca.pubmed_id %}
+                            <div class="external-link-item link-pubmed">
+                                <span class="fi-first-aid link-icon"></span>
+                                <div class="link-content">
+                                    <div class="link-label">PubMed</div>
+                                    <div class="link-value">{{ praca.pubmed_id }}</div>
+                                </div>
+                                <div class="link-actions">
+                                    <button class="button copy-button" type="button"
+                                            onclick="navigator.clipboard.writeText('{{ praca.pubmed_id }}'); this.classList.add('copied'); this.innerHTML='<i class=\'fi-check\'></i>'; setTimeout(() => { this.classList.remove('copied'); this.innerHTML='<i class=\'fi-clipboard\'></i>'; }, 2000);"
+                                            title="Kopiuj ID">
+                                        <i class="fi-clipboard"></i>
+                                    </button>
+                                    <button class="button open-button" type="button"
+                                            onclick="window.open('https://www.ncbi.nlm.nih.gov/pubmed/{{ praca.pubmed_id }}', '_blank')"
+                                            title="Otwórz w PubMed">
+                                        <i class="fi-arrow-right"></i> Otwórz
+                                    </button>
+                                </div>
+                            </div>
+                        {% endif %}
 
-                    {% if praca.pmc_id %}
-                        <div class="link-item" style="margin-bottom: 12px;">
-                            <span class="fi-book" style="font-size: 1.2em; margin-right: 8px;"></span>
-                            <strong>PMC:</strong>
-                            <a href="https://www.ncbi.nlm.nih.gov/pmc/{{ praca.pmc_id }}" style="color: #3498db;">
-                                {{ praca.pmc_id }}
-                            </a>
-                        </div>
-                    {% endif %}
+                        {% if praca.pmc_id %}
+                            <div class="external-link-item link-pmc">
+                                <span class="fi-book link-icon"></span>
+                                <div class="link-content">
+                                    <div class="link-label">PMC</div>
+                                    <div class="link-value">{{ praca.pmc_id }}</div>
+                                </div>
+                                <div class="link-actions">
+                                    <button class="button copy-button" type="button"
+                                            onclick="navigator.clipboard.writeText('{{ praca.pmc_id }}'); this.classList.add('copied'); this.innerHTML='<i class=\'fi-check\'></i>'; setTimeout(() => { this.classList.remove('copied'); this.innerHTML='<i class=\'fi-clipboard\'></i>'; }, 2000);"
+                                            title="Kopiuj ID">
+                                        <i class="fi-clipboard"></i>
+                                    </button>
+                                    <button class="button open-button" type="button"
+                                            onclick="window.open('https://www.ncbi.nlm.nih.gov/pmc/{{ praca.pmc_id }}', '_blank')"
+                                            title="Otwórz w PMC">
+                                        <i class="fi-arrow-right"></i> Otwórz
+                                    </button>
+                                </div>
+                            </div>
+                        {% endif %}
 
-                    {% if praca.public_www or praca.www %}
-                        <div class="link-item" style="margin-bottom: 12px;">
-                            <span class="fi-web" style="font-size: 1.2em; margin-right: 8px;"></span>
-                            <strong>WWW:</strong>
-                            {% if praca.public_www %}
-                                <a href="{{ praca.public_www }}" style="color: #3498db; word-break: break-all;">
-                                    {{ praca.public_www|truncatechars:60 }}
-                                </a>
-                            {% elif praca.www %}
-                                <a href="{{ praca.www }}" style="color: #3498db; word-break: break-all;">
-                                    {{ praca.www|truncatechars:60 }}
-                                </a>
-                            {% endif %}
-                        </div>
-                    {% endif %}
+                        {% if praca.public_www or praca.www %}
+                            {% with url=praca.public_www|default:praca.www %}
+                            <div class="external-link-item link-www">
+                                <span class="fi-web link-icon"></span>
+                                <div class="link-content">
+                                    <div class="link-label">Strona WWW</div>
+                                    <div class="link-value">{{ url|truncatechars:40 }}</div>
+                                </div>
+                                <div class="link-actions">
+                                    <button class="button copy-button" type="button"
+                                            onclick="navigator.clipboard.writeText('{{ url }}'); this.classList.add('copied'); this.innerHTML='<i class=\'fi-check\'></i>'; setTimeout(() => { this.classList.remove('copied'); this.innerHTML='<i class=\'fi-clipboard\'></i>'; }, 2000);"
+                                            title="Kopiuj adres">
+                                        <i class="fi-clipboard"></i>
+                                    </button>
+                                    <button class="button open-button" type="button"
+                                            onclick="window.open('{{ url }}', '_blank')"
+                                            title="Otwórz stronę">
+                                        <i class="fi-arrow-right"></i> Otwórz
+                                    </button>
+                                </div>
+                            </div>
+                            {% endwith %}
+                        {% endif %}
+                    </div>
                 </div>
             {% endif %}
 

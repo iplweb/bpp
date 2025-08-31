@@ -1,9 +1,13 @@
+@use "sass:color";
 @import "settings_green";
 // $primary-color: #1E90F3;
 @import "common";
 @import "checkbox";
 @import "main_page_buttons";
 @import "browse";
+@import "browse_autorzy";
+@import "browse_jednostki";
+@import "external_links";
 @import 'foundation';
 
 @include foundation-global-styles;
@@ -54,6 +58,66 @@ $info-color: #DEF3B6;
 input[type=checkbox],
 input[type=radio] {
   accent-color: green;
+}
+
+// Theme-specific overrides for browse.scss
+.modern-header {
+  h1, h2 {
+    .fi-foundation {
+      color: $primary-color;
+    }
+  }
+}
+
+.wydzial-stats {
+  .stat-item {
+    &.stat-jednostki {
+      border-left-color: $primary-color;
+    }
+  }
+}
+
+.section-header {
+  h2 {
+    .fi-home {
+      color: $primary-color;
+    }
+  }
+}
+
+.jednostka-card {
+  &.card-aktualne {
+    //border-color: darken($primary-color, 10%);
+    color: color.adjust($primary-color, $lightness: 10%);
+    &:hover {
+      border-color: $primary-color;
+    }
+
+    .card-icon {
+      color: color.adjust($primary-color, $lightness: 10%);
+    }
+  }
+
+}
+
+.jednostka-name a {
+  &:hover {
+    &.link-aktualne {
+      color: $primary-color;
+    }
+  }
+}
+
+.button-search {
+  background: $primary-color;
+
+  &:hover {
+    background-color: color.adjust($primary-color, $lightness: -10%);
+  }
+}
+
+.author-profile-link {
+  color: $primary-color;
 }
 
 .ui-state-focus {

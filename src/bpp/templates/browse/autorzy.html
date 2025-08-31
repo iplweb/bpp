@@ -25,20 +25,21 @@
 {% endblock %}
 
 {% block content %}
-    {% url "bpp:browse_autorzy" as browse_autorzy %}
-    {% include "browse/literki.html" with pierwszy_tab="wszyscy" url=browse_autorzy %}
-    {% include "browse/go_to_admin_list.html" with url="admin:bpp_autor_changelist" group="wprowadzanie danych" text="<i class='fi-wrench'></i> wyświetl w module redagowania" %}
+    <div class="autorzy-page">
+        {% url "bpp:browse_autorzy" as browse_autorzy %}
+        {% include "browse/literki.html" with pierwszy_tab="wszyscy" url=browse_autorzy %}
+        {% include "browse/go_to_admin_list.html" with url="admin:bpp_autor_changelist" group="wprowadzanie danych" text="<i class='fi-wrench'></i> wyświetl w module redagowania" %}
 
-    {% url "bpp:browse_autorzy" as browse_autorzy %}
+        {% url "bpp:browse_autorzy" as browse_autorzy %}
 
-    <div class="grid-x hide-for-print">
-        <div class="large-4 medium-4 small-12 columns">
-            {% include "browse/search_form.html" with url=browse_autorzy tekst="Wpisz początek nazwiska i wciśnij ENTER..." name="search" flt=flt %}
+        <div class="grid-x hide-for-print">
+            <div class="large-4 medium-4 small-12 columns">
+                {% include "browse/search_form.html" with url=browse_autorzy tekst="Wpisz początek nazwiska i wciśnij ENTER..." name="search" flt=flt %}
+            </div>
+            <div class="large-8 medium-8 small-12 columns autorzy-pagination-container">
+                {% include "pagination.html" %}
+            </div>
         </div>
-        <div class="large-8 medium-8 small-12 columns" style="text-align: right;">
-            {% include "pagination.html" %}
-        </div>
-    </div>
 
 
 
@@ -67,8 +68,7 @@
             </div>
 
         {% endif %}
-    </div><!-- /row -->
-
-
+        </div><!-- /row -->
+    </div><!-- /autorzy-page -->
 
 {% endblock %}
