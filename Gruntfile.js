@@ -7,16 +7,14 @@ module.exports = function (grunt) {
         sass: {
             options: {
                 implementation: sass,
-                api: 'modern-compiler', // or "modern"
-                includePaths: [
+                api: 'modern-compiler',
+                style: 'compressed',
+		silenceDeprecations: ['global-builtin', 'import'],
+                loadPaths: [
                     'node_modules/foundation-sites/scss'
                 ]
             },
             blue: {
-                options: {
-                    outputStyle: 'compressed',
-                    loadPath: ['node_modules/foundation-sites/scss'],
-                },
                 files: {
                     'src/bpp/static/scss/app-blue.css':
                         'src/bpp/static/scss/app-blue.scss'
