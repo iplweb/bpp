@@ -84,7 +84,7 @@ jobs:
         DJANGO_BPP_DB_PORT: 5433
         DJANGO_BPP_DB_USER: postgres
       run: |
-        make assets
+        poetry run make assets
 
     # - name: Tests without Selenium
     #   env:
