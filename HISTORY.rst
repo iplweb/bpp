@@ -4,6 +4,15 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202508.1213 (2025-08-31)
+============================
+
+Usprawnienie
+------------
+
+- możliwość umieszczenia prostego "widgetu" z pracami autora na jego stronie
+
+
 Bpp 202508.1208 (2025-08-25)
 ============================
 

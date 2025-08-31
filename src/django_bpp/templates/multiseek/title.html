@@ -1,24 +1,17 @@
     {% if request.session.MULTISEEK_TITLE %}
-        <div class="row">
-            <div class="large-12 columns">
-                <h1 class="editable bpp-multiseek-title"
-                    data-activator="#edit-activator"
-                    style="display: inline;"
-                    data-input-class="short"
-                    data-text-only="false"
-                    data-type="textarea"
-                    data-url="{% url 'bpp:update_multiseek_title' %}">{{ request.session.MULTISEEK_TITLE|safe }}
-                </h1>
-                <button
-                        title="Kliknij, aby zmienić tytuł wyszukiwania"
-                        id="edit-activator"
-                        src= width="24"
-                        class="button tiny hide-for-print">
-                    edycja
-                    </button>
-
-            </div>
-        </div>
+        <div class="multiseek-report-title">
+            <h1 class="editable bpp-multiseek-title"
+                data-activator="#edit-activator"
+                data-input-class="short"
+                data-text-only="false"
+                data-type="textarea"
+                data-url="{% url 'bpp:update_multiseek_title' %}">{{ request.session.MULTISEEK_TITLE|safe }}</h1>
+            <button
+                    title="Kliknij, aby zmienić tytuł wyszukiwania"
+                    id="edit-activator"
+                    class="title-edit-btn hide-for-print">
+                ✏️ Edytuj tytuł
+            </button>
         </div>
 
         <script type="text/javascript">

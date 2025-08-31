@@ -21,9 +21,9 @@ from bpp.models.struktura import Wydzial
 
 class RankingAutorowFormularz(FormView):
     form_class = RankingAutorowForm
-    nazwa_raportu = "Ranking autorow"
+    nazwa_raportu = "Ranking autorów"
 
-    template_name = "raporty/strona_raportow/podstrona.html"
+    template_name = "ranking_autorow/form.html"
     success_url = "."
 
     def get_context_data(self, **kwargs):
@@ -58,9 +58,15 @@ class RankingAutorowFormularz(FormView):
 
         params = {}
 
-        w = form.cleaned_data["wydzialy"]
+        # Handle wydzial if present in form (single selection)
+        w = form.cleaned_data.get("wydzial")
         if w:
-            params["wydzialy[]"] = [x.pk for x in w]
+            params["wydzial"] = w.pk
+
+        # Handle jednostka if present in form (single selection)
+        j = form.cleaned_data.get("jednostka")
+        if j:
+            params["jednostka"] = j.pk
 
         e = form.cleaned_data["_export"]
         if e:
@@ -135,7 +141,15 @@ class RankingAutorowJednostkaWydzialTable(RankingAutorowTable):
 
 
 class RankingAutorow(ExportMixin, SingleTableView):
-    template_name = "raporty/ranking-autorow.html"
+    template_name = "ranking_autorow/results.html"
+    export_formats = ["csv", "json", "xls", "xlsx", "ods"]
+
+    def get_export_filename(self, export_format):
+        """Generate filename for exports"""
+        from datetime import datetime
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        return f"ranking_autorow_{self.kwargs['od_roku']}_{self.kwargs['do_roku']}_{timestamp}.{export_format}"
 
     def get_table_class(self):
         if self.rozbij_na_wydzialy:
@@ -167,9 +181,22 @@ class RankingAutorow(ExportMixin, SingleTableView):
         qset = qset.filter(
             rok__gte=self.kwargs["od_roku"], rok__lte=self.kwargs["do_roku"]
         )
-        wydzialy = self.get_wydzialy()
-        if wydzialy:
-            qset = qset.filter(jednostka__wydzial__in=wydzialy)
+
+        # Always check for jednostki filter first
+        jednostki = self.get_jednostki()
+        if jednostki:
+            qset = qset.filter(jednostka__in=jednostki)
+
+        # Also check for wydzialy filter if uczelnia uses wydzialy
+        uczelnia = Uczelnia.objects.first()
+        if uczelnia and uczelnia.uzywaj_wydzialow:
+            wydzialy = self.get_wydzialy()
+            if wydzialy:
+                # If both jednostki and wydzialy are specified,
+                # jednostki filter takes precedence (already applied above)
+                # Only apply wydzial filter if no jednostki filter was applied
+                if not jednostki:
+                    qset = qset.filter(jednostka__wydzial__in=wydzialy)
 
         if self.tylko_afiliowane:
             qset = qset.filter(jednostka__skupia_pracownikow=True)
@@ -213,23 +240,33 @@ class RankingAutorow(ExportMixin, SingleTableView):
         return Wydzial.objects.filter(zezwalaj_na_ranking_autorow=True)
 
     def get_wydzialy(self):
-        base_query = self.get_dostepne_wydzialy()
-
-        wydzialy = self.request.GET.dict().get("wydzialy[]", None)
-        if wydzialy:
-            wydzialy_pk = []
+        # Handle single wydzial selection
+        wydzial_pk = self.request.GET.get("wydzial", None)
+        if wydzial_pk:
             try:
-                wydzialy_pk = [int(x.strip()) for x in wydzialy[1:-1].split(",")]
+                base_query = self.get_dostepne_wydzialy()
+                return base_query.filter(pk=int(wydzial_pk))
             except (TypeError, ValueError):
                 pass
 
+        # Return None when no wydzial is explicitly selected
+        return None
+
+    def get_dostepne_jednostki(self):
+        return Jednostka.objects.filter(widoczna=True, wchodzi_do_raportow=True)
+
+    def get_jednostki(self):
+        # Handle single jednostka selection
+        jednostka_pk = self.request.GET.get("jednostka", None)
+        if jednostka_pk:
             try:
-                wydzialy = base_query.filter(pk__in=wydzialy_pk)
-                return wydzialy
+                base_query = self.get_dostepne_jednostki()
+                return base_query.filter(pk=int(jednostka_pk))
             except (TypeError, ValueError):
                 pass
 
-        return base_query
+        # Return None when no jednostka is explicitly selected
+        return None
 
     def get_context_data(self, **kwargs):
         context = super(SingleTableView, self).get_context_data(**kwargs)
@@ -240,9 +277,11 @@ class RankingAutorow(ExportMixin, SingleTableView):
             context["rok"] = self.kwargs["od_roku"]
             jeden_rok = True
 
-        wydzialy = self.get_wydzialy()
-        context["wydzialy"] = wydzialy
+        # Always handle jednostki
+        jednostki = self.get_jednostki()
+        context["jednostki"] = jednostki if jednostki else []
 
+        # Build title
         if jeden_rok:
             context["table_title"] = "Ranking autorów za rok %s" % context["rok"]
         else:
@@ -250,9 +289,28 @@ class RankingAutorow(ExportMixin, SingleTableView):
                 context["od_roku"],
                 context["do_roku"],
             )
-        context["tab_subtitle"] = ""
-        if len(wydzialy) != len(self.get_dostepne_wydzialy()):
-            context["table_subtitle"] = ", ".join([x.nazwa for x in wydzialy])
+
+        # Build subtitle based on filters
+        subtitle_parts = []
+
+        # Add jednostki to subtitle if filtered
+        if jednostki:
+            subtitle_parts.append(", ".join([x.nazwa for x in jednostki]))
+
+        # Check if uczelnia uses wydzialy and handle them
+        uczelnia = Uczelnia.objects.first()
+        if uczelnia and uczelnia.uzywaj_wydzialow:
+            wydzialy = self.get_wydzialy()
+            context["wydzialy"] = wydzialy if wydzialy else []
+
+            # Add wydzialy to subtitle if filtered and no jednostki filter
+            if not subtitle_parts and wydzialy:
+                subtitle_parts.append(", ".join([x.nazwa for x in wydzialy]))
+        else:
+            context["wydzialy"] = []  # For compatibility
+
+        context["table_subtitle"] = ", ".join(subtitle_parts) if subtitle_parts else ""
+
         return context
 
     def get_table_kwargs(self):

@@ -106,6 +106,7 @@ jobs:
       - run:
           name: make assets
           command: |
+            export PYTHONPATH=src/
             poetry run make assets
 
 #      - run:

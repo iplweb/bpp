@@ -22,11 +22,11 @@
     {% url "bpp:browse_zrodla" as browse_zrodla %}
 
     <!-- Modern Header Section -->
-    <div class="modern-header" style="background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); padding: 30px; margin-bottom: 30px;">
+    <div class="modern-header">
         <div class="grid-x grid-margin-x align-middle">
             <div class="cell auto">
-                <h2 style="color: #2c3e50; margin-bottom: 5px;">
-                    <i class="fi-book" style="margin-right: 10px;"></i>Indeks źródeł
+                <h2>
+                    <i class="fi-book"></i>Indeks źródeł
                     {% if wybrana %} - litera {{ wybrana }}{% endif %}
                 </h2>
                 {% if paginator %}
@@ -67,30 +67,20 @@
 
     <!-- Modern Letter Index -->
     {% if paginator.num_pages > 1 %}
-    <div class="letter-index" style="background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 20px; margin-bottom: 30px;">
+    <div class="letter-index">
         <div class="grid-x grid-margin-x align-center">
             <div class="cell auto text-center">
-                <div class="letter-pills" style="display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;">
+                <div class="letter-pills">
                     <!-- All Button -->
                     <a href="{{ browse_zrodla }}"
-                       class="letter-pill {% if wybrana == None %}active{% endif %}"
-                       style="display: inline-block; padding: 8px 16px; border-radius: 20px; text-decoration: none; font-weight: 500; transition: all 0.2s ease;
-                              {% if wybrana == None %}background: var(--primary-color, #3498db); color: white; box-shadow: 0 2px 4px rgba(52, 152, 219, 0.3);
-                              {% else %}background: #f8f9fa; color: #2c3e50; border: 1px solid #e9ecef;{% endif %}"
-                       onmouseover="if (!this.classList.contains('active')) { this.style.background='#e9ecef'; this.style.borderColor='#dee2e6'; }"
-                       onmouseout="if (!this.classList.contains('active')) { this.style.background='#f8f9fa'; this.style.borderColor='#e9ecef'; }">
+                       class="letter-pill {% if wybrana == None %}active{% endif %}">
                         Wszystkie
                     </a>
 
                     <!-- Letter Buttons -->
                     {% for literka in literki %}
                         <a href="{{ browse_zrodla }}{{ literka }}/"
-                           class="letter-pill {% if literka == wybrana %}active{% endif %}"
-                           style="display: inline-block; padding: 8px 12px; border-radius: 20px; text-decoration: none; font-weight: 500; transition: all 0.2s ease; min-width: 40px; text-align: center;
-                                  {% if literka == wybrana %}background: var(--primary-color, #3498db); color: white; box-shadow: 0 2px 4px rgba(52, 152, 219, 0.3);
-                                  {% else %}background: #f8f9fa; color: #2c3e50; border: 1px solid #e9ecef;{% endif %}"
-                           onmouseover="if (!this.classList.contains('active')) { this.style.background='#e9ecef'; this.style.borderColor='#dee2e6'; }"
-                           onmouseout="if (!this.classList.contains('active')) { this.style.background='#f8f9fa'; this.style.borderColor='#e9ecef'; }">
+                           class="letter-pill letter-single {% if literka == wybrana %}active{% endif %}">
                             {{ literka }}
                         </a>
                     {% endfor %}
@@ -107,36 +97,30 @@
                 <div class="large-4 medium-6 small-12 cell">
                     {% for item in col %}
                         <!-- Zrodlo Card -->
-                        <div class="zrodlo-card" style="background: white; border-radius: 6px; padding: 20px; margin-bottom: 15px;
-                                                     border: 2px solid #e9ecef; transition: all 0.2s ease; position: relative;"
-                             onmouseover="this.style.borderColor='var(--primary-color, #3498db)'; this.style.background='#fafbfc';"
-                             onmouseout="this.style.borderColor='#e9ecef'; this.style.background='white';">
+                        <div class="zrodlo-card">
 
                             <!-- Zrodlo Icon -->
-                            <div style="position: absolute; top: 20px; right: 20px; color: #bdc3c7;">
-                                <i class="fi-book" style="font-size: 1.5rem;"></i>
+                            <div class="zrodlo-icon">
+                                <i class="fi-book"></i>
                             </div>
 
-                            <div class="zrodlo-name" style="margin-bottom: 8px;">
-                                <a href="{% url "bpp:browse_zrodlo" item.slug %}"
-                                   style="color: #2c3e50; text-decoration: none; font-weight: 600; font-size: 1.1rem; line-height: 1.4;"
-                                   onmouseover="this.style.color='var(--primary-color, #3498db)';"
-                                   onmouseout="this.style.color='#2c3e50';">
+                            <div class="zrodlo-name">
+                                <a href="{% url "bpp:browse_zrodlo" item.slug %}">
                                     {{ item }}
                                 </a>
                             </div>
 
-                            <div class="zrodlo-details" style="color: #7f8c8d; font-size: 0.9rem; line-height: 1.3; padding-top: 8px; border-top: 1px solid #f8f9fa;">
+                            <div class="zrodlo-details">
                                 {% if item.pbn_uid.status == "DELETED" %}
                                     <div style="margin-bottom: 4px; color: #dc3545; font-size: 0.8rem;">
-                                        <i class="fi-alert" style="margin-right: 5px;"></i>
+                                        <i class="fi-alert"></i>
                                         Usunięty z PBN
                                     </div>
                                 {% endif %}
 
                                 {% if item.rekord_set.count > 0 %}
                                     <div style="font-size: 0.8rem; color: #95a5a6;">
-                                        <i class="fi-page-multiple" style="margin-right: 5px;"></i>
+                                        <i class="fi-page-multiple"></i>
                                         {{ item.rekord_set.count }} {% if item.rekord_set.count == 1 %}publikacja{% elif item.rekord_set.count < 5 %}publikacje{% else %}publikacji{% endif %}
                                     </div>
                                 {% endif %}
@@ -162,13 +146,13 @@
 
     <!-- Modern Pagination -->
     {% if is_paginated %}
-        <div class="modern-pagination" style="background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 20px; margin-top: 30px; text-align: center;">
-            <div class="pagination-info" style="margin-bottom: 15px; color: #7f8c8d; font-size: 0.9rem;">
+        <div class="modern-pagination">
+            <div class="pagination-info">
                 Strona {{ page_obj.number }} z {{ paginator.num_pages }}
                 ({{ paginator.count }} {% if paginator.count == 1 %}źródło{% elif paginator.count < 5 %}źródła{% else %}źródeł{% endif %})
             </div>
 
-            <ul class="pagination" role="navigation" aria-label="Pagination" style="display: inline-flex; gap: 5px; margin: 0;">
+            <ul class="pagination" role="navigation" aria-label="Pagination">
                 {% if page_obj.has_previous %}
                     <li>
                         <a href="?page={{ page_obj.previous_page_number }}{% if flt %}&search={{ flt }}{% endif %}{% if wybrana %}&literka={{ wybrana }}{% endif %}"

@@ -75,6 +75,10 @@ env = environ.Env(
     SENTRYSDK_CONFIG_URL=(str, None),
     SENTRYSDK_TRACES_SAMPLE_RATE=(float, 0.2),
     #
+    # Theme
+    #
+    DJANGO_BPP_THEME_NAME=(str, "app-green"),
+    #
     # Konfiguracja hosta Redisa
     #
     DJANGO_BPP_REDIS_HOST=(str, "localhost"),
@@ -365,6 +369,7 @@ INSTALLED_APPS = [
     "zglos_publikacje.apps.ZglosPublikacjeConfig",
     "formdefaults.apps.FormdefaultsConfig",
     "raport_slotow",
+    "ranking_autorow",
     # Musi być PRZED django-autocomplete-light do momentu
     # dal 3.3.0-release, musi być naprawiony o ten błąd:
     # https://github.com/yourlabs/django-autocomplete-light/issues/981
@@ -626,7 +631,7 @@ SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 
 UZYWAJ_PUNKTACJI_WEWNETRZNEJ = env("DJANGO_BPP_UZYWAJ_PUNKTACJI_WEWNETRZNEJ")
 
-THEME_NAME = os.getenv("DJANGO_BPP_THEME_NAME", "app-blue")
+THEME_NAME = env("DJANGO_BPP_THEME_NAME")
 
 ENABLE_NEW_REPORTS = env("DJANGO_BPP_ENABLE_NEW_REPORTS")
 
@@ -1209,3 +1214,12 @@ PBN_TOKEN_HOURS_GRACE_TIME = 24
 #
 
 BPP_MAX_ALLOWED_EXPORT_ITEMS = env("DJANGO_BPP_MAX_ALLOWED_EXPORT_ITEMS")
+
+#
+# Pagination configuration for dj_pagination
+#
+# This controls how many page numbers are shown around the current page
+# With WINDOW=2, it shows: first ... [current-2] [current-1] current [current+1] [current+2] ... last
+# This results in maximum 8 elements in the pagination
+PAGINATION_DEFAULT_WINDOW = 2
+PAGINATION_DEFAULT_MARGIN = 1

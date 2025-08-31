@@ -1,0 +1,60 @@
+@use "sass:color";
+
+// Main page button styles
+// These are used for prominent call-to-action buttons on the main page
+
+// Primary CTA button with gradient background
+.main-page-button-primary {
+  background: linear-gradient(135deg, color.adjust($primary-color, $lightness: 10%) 0%, color.adjust($primary-color, $lightness: -10%) 100%);
+  color: white;
+  border-radius: 8px;
+  padding: 10px 18px;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: 0 3px 6px rgba($primary-color, 0.2);
+  transition: all 0.3s ease;
+  margin-right: 8px;
+  text-decoration: none;
+  border: none;
+  display: inline-block;
+
+  .fi-page-add {
+    font-size: 16px;
+    margin-right: 6px;
+  }
+
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba($primary-color, 0.3);
+    color: white;
+  }
+}
+
+// Secondary button style - neutral styling
+.main-page-button-secondary {
+  background: white;
+  color: #495057;
+  border-radius: 6px;
+  padding: 10px 18px;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  border: 2px solid #d1d5db;
+  display: inline-block;
+
+  .fi-magnifying-glass {
+    font-size: 16px;
+    margin-right: 6px;
+    color: #6c757d;
+  }
+
+  &:hover {
+    border-color: #9ca3af;
+    color: #374151;
+
+    .fi-magnifying-glass {
+      color: #374151;
+    }
+  }
+}

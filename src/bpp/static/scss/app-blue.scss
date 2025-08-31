@@ -3,6 +3,12 @@ $topbar-background: green;
 @import "settings";
 @import "common";
 @import "checkbox";
+@import "main_page_buttons";
+@import "browse";
+@import "browse_autorzy";
+@import "browse_jednostki";
+@import "external_links";
+@import "ranking_autorow";
 
 @import 'foundation';
 @include foundation-global-styles;
@@ -48,9 +54,11 @@ $topbar-background: green;
 
 
 
-input[type=checkbox]:checked + label {
-  background-image: url(/static/bpp/images/lite-blue-check.png);
-  background-position: 0 -15px;
+/* Blue theme checkbox and radio button accent color */
+/* Using Foundation's primary color (#1779ba) for the blue theme */
+input[type=checkbox],
+input[type=radio] {
+  accent-color: #1779ba;
 }
 
 

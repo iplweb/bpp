@@ -1,3 +1,5 @@
+@use "sass:color";
+
 // Import modular SCSS files
 @import "left_menu";
 @import "top_bar";
@@ -15,6 +17,109 @@
 
 a:hover {
   text-decoration: underline;
+}
+
+// External links styling - OPT-IN ONLY (use rel="external" or class="external-link")
+a[rel~="external"],
+a.external-link {
+  &::after {
+    content: "↗";
+    display: inline-block;
+    margin-left: 3px;
+    font-size: 0.85em;
+    font-weight: bold;
+    color: rgba($primary-color, 0.7);
+    transition: all 0.2s ease;
+    transform: translateY(-2px);
+    text-decoration: none !important;
+  }
+
+  &:hover::after {
+    color: $primary-color;
+    transform: translate(2px, -4px);
+  }
+}
+
+// Alternative external link styles with different arrow types
+a.external-arrow-box {
+  position: relative;
+  padding-right: 18px;
+
+  &::after {
+    content: "⧉";
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 1.1em;
+    color: rgba($primary-color, 0.6);
+    transition: all 0.2s ease;
+  }
+
+  &:hover::after {
+    color: $primary-color;
+    transform: translateY(-50%) rotate(15deg) scale(1.2);
+  }
+}
+
+// External link with curved arrow
+a.external-arrow-curved {
+  &::after {
+    content: "⤴";
+    display: inline-block;
+    margin-left: 4px;
+    font-size: 0.9em;
+    color: rgba($primary-color, 0.7);
+    transition: all 0.2s ease;
+  }
+
+  &:hover::after {
+    color: $primary-color;
+    transform: translateY(-2px) rotate(-10deg);
+  }
+}
+
+// External link with double arrow
+a.external-arrow-double {
+  &::after {
+    content: "»";
+    display: inline-block;
+    margin-left: 4px;
+    font-size: 1em;
+    font-weight: bold;
+    color: rgba($primary-color, 0.6);
+    transition: all 0.2s ease;
+  }
+
+  &:hover::after {
+    color: $primary-color;
+    margin-left: 6px;
+  }
+}
+
+// External link with window icon
+a.external-window {
+  &::after {
+    content: "🗗";
+    display: inline-block;
+    margin-left: 4px;
+    font-size: 0.85em;
+    color: rgba($primary-color, 0.6);
+    transition: all 0.2s ease;
+    transform: translateY(-1px);
+  }
+
+  &:hover::after {
+    color: $primary-color;
+    transform: translateY(-2px) scale(1.1);
+  }
+}
+
+// Disable external indicators when explicitly requested
+a.no-external-indicator {
+  &::after {
+    content: none !important;
+  }
 }
 
 ul.pagination a {
@@ -140,6 +245,598 @@ body ol li {
 .multiseek-range-field-label {
   padding-left: 0.5em !important;
   padding-top: 0.5em !important;
+}
+
+// Remove ellipsis dots from pagination
+.pagination .ellipsis::after {
+  content: "" !important;
+}
+
+// Pagination styling
+.multiseek-pagination-wrapper {
+  margin-bottom: 5px !important;
+}
+
+.pagination {
+  font-size: 0.85rem !important;
+
+  li {
+    a, span {
+      font-size: 0.85rem !important;
+    }
+  }
+}
+
+// Multiseek Report Styles
+.multiseek-report-container {
+  background: white;
+  padding: 0 10px;
+  min-height: 100vh;
+}
+
+// Mixin for menu bar styling
+@mixin multiseek-menu-style {
+  background: linear-gradient(to bottom, #ffffff, #f8f9fa);
+  border-radius: 8px;
+  padding: 12px 20px;
+  margin-bottom: 20px;
+  border: 1px solid #dee2e6;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+
+  li {
+    margin: 0;
+
+    a {
+      color: #495057;
+      padding: 8px 14px;
+      border-radius: 6px;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 500;
+
+      &:hover {
+        background: white;
+        color: $primary-color;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+        transform: translateY(-1px);
+      }
+
+      i {
+        font-size: 1rem;
+        opacity: 0.8;
+      }
+
+      // Special styling for action buttons
+      &[href*="print"] {
+        &:hover {
+          color: #28a745;
+        }
+      }
+
+      &[href*="all=1"]:not([href*="print"]) {
+        &:hover {
+          color: #17a2b8;
+        }
+      }
+    }
+
+    // Style for the record count (first item)
+    &:first-child a {
+      background: white;
+      border: 1px solid #e9ecef;
+      font-weight: 600;
+      cursor: default;
+
+      &:hover {
+        transform: none;
+        box-shadow: none;
+        color: #495057;
+      }
+    }
+  }
+}
+
+// Multiseek pagination and menu bar styling
+.multiseek-pagination-wrapper {
+  margin-bottom: 25px;
+
+  // Menu bar styling
+  ul.menu {
+    @include multiseek-menu-style;
+  }
+
+  // Pagination controls styling
+  ul.pagination {
+    background: white;
+    border-radius: 8px;
+    padding: 12px 16px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    border: 1px solid #e9ecef;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin: 20px auto;
+
+    li {
+      list-style: none;
+      margin: 0;
+
+      a, span {
+        display: inline-block;
+        padding: 6px 12px;
+        border-radius: 6px;
+        text-decoration: none;
+        transition: all 0.2s ease;
+        font-size: 0.9rem;
+        font-weight: 500;
+        min-width: 36px;
+        text-align: center;
+      }
+
+      a {
+        color: #495057;
+        background: #f8f9fa;
+        border: 1px solid transparent;
+
+        &:hover {
+          background: rgba($primary-color, 0.1);
+          color: $primary-color;
+          border-color: rgba($primary-color, 0.2);
+          transform: translateY(-1px);
+        }
+      }
+
+      // Current page
+      &.current {
+        span, a {
+          background: $primary-color;
+          color: white;
+          font-weight: 600;
+          box-shadow: 0 2px 4px rgba($primary-color, 0.3);
+        }
+      }
+
+      // Disabled state
+      &.disabled {
+        span {
+          color: #adb5bd;
+          background: transparent;
+          cursor: not-allowed;
+          opacity: 0.5;
+        }
+      }
+
+      // Previous/Next buttons
+      &.pagination-previous,
+      &.pagination-next {
+        a, span {
+          padding: 6px 16px;
+          font-weight: 500;
+        }
+
+        a {
+          background: white;
+          border: 1px solid #dee2e6;
+
+          &:hover {
+            background: rgba($primary-color, 0.05);
+          }
+        }
+      }
+
+      // Ellipsis
+      &.ellipsis {
+        padding: 6px 8px;
+        color: #6c757d;
+
+        &:before {
+          content: "•••";
+        }
+      }
+    }
+  }
+}
+
+// Ensure menu bar in report container also gets styled
+.multiseek-report-container > ul.menu {
+  @include multiseek-menu-style;
+}
+
+// Report title styling
+.multiseek-report-title {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  padding: 8px 15px;
+  margin-bottom: 8px;
+  margin-top: 0;
+  border: 1px solid #e9ecef;
+
+  h1 {
+    color: #2c3e50;
+    font-size: 1.4rem;
+    margin: 0;
+    display: inline-block;
+    line-height: 1.3;
+  }
+
+  .title-edit-btn {
+    margin-left: 15px;
+    padding: 6px 12px;
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    color: #6c757d;
+    font-size: 0.85rem;
+    transition: all 0.2s ease;
+
+    &:hover {
+      background: #e9ecef;
+      border-color: #adb5bd;
+      color: #495057;
+    }
+  }
+}
+
+// Query parameters card
+.multiseek-query-params {
+  background: #f8f9fa;
+  border-left: 4px solid #6c757d;
+  border-radius: 6px;
+  padding: 15px 20px;
+  margin-bottom: 20px;
+  color: #495057;
+
+  strong {
+    color: #2c3e50;
+    font-weight: 600;
+  }
+}
+
+// Removed records panel
+.multiseek-removed-panel {
+  background: #fff3cd;
+  border: 1px solid #ffc107;
+  border-left: 4px solid #ffc107;
+  border-radius: 6px;
+  padding: 15px 20px;
+  margin-bottom: 20px;
+  color: #856404;
+
+  .removed-count {
+    font-weight: 600;
+    color: #664d03;
+  }
+
+  .removed-actions {
+    margin-top: 10px;
+
+    a {
+      color: #997404;
+      text-decoration: none;
+      margin-right: 15px;
+      padding: 4px 8px;
+      border-radius: 4px;
+      display: inline-block;
+      transition: all 0.2s ease;
+
+      &:hover {
+        background: rgba(255, 193, 7, 0.2);
+        color: #664d03;
+      }
+    }
+  }
+
+  .removed-list {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid rgba(255, 193, 7, 0.3);
+
+    ul {
+      margin: 0;
+      padding-left: 20px;
+    }
+
+    li {
+      margin-bottom: 8px;
+      padding: 8px;
+      background: rgba(255, 255, 255, 0.5);
+      border-radius: 4px;
+      list-style: none;
+      position: relative;
+      padding-left: 15px;
+
+      &:before {
+        content: "•";
+        position: absolute;
+        left: 5px;
+        color: #ffc107;
+      }
+    }
+  }
+}
+
+// BibTeX container
+.multiseek-bibtex-container {
+  background: white;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+
+  pre {
+    font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', Consolas, 'Liberation Mono', Menlo, 'Courier New', monospace;
+    font-size: 13px;
+    background-color: #fafbfc;  // Slightly lighter background
+    border: 1px solid #d1d5da;  // Slightly darker border
+    border-radius: 6px;
+    padding: 20px;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-x: auto;
+    margin: 0;
+    color: #24292e;  // Darker text for better contrast
+    line-height: 1.6;
+    font-weight: 400;  // Regular weight for better readability
+  }
+
+  .bibtex-actions {
+    padding: 15px 0;
+    border-bottom: 1px solid #e9ecef;
+    margin-bottom: 15px;
+
+    &.bibtex-actions-top {
+      padding-top: 0;
+      padding-bottom: 15px;
+      border-top: none;
+      border-bottom: 1px solid #e9ecef;
+      margin-top: 0;
+      margin-bottom: 15px;
+    }
+
+    button {
+      background: #28a745;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      font-weight: 500;
+      transition: all 0.2s ease;
+
+      &:hover {
+        background: #218838;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(40, 167, 69, 0.3);
+      }
+    }
+
+    .copy-feedback {
+      margin-left: 15px;
+      color: #28a745;
+      font-weight: 500;
+    }
+  }
+}
+
+// List report styling
+.multiseek-list-report {
+  background: white;
+  border-radius: 8px;
+
+  ol {
+    margin: 0;
+    padding-left: 0;  // Remove all padding
+    list-style: none;  // Disable native numbering
+    counter-reset: list-counter var(--start-value, 0);  // Initialize CSS counter with start value
+  }
+
+  li {
+    counter-increment: list-counter;  // Increment counter for each item
+    margin-bottom: 15px;
+    padding: 15px;
+    padding-left: 50px;  // Make room for the number
+    background: #ffffff;
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+    position: relative;
+    transition: all 0.2s ease;
+    list-style: none;  // Ensure no bullet points
+
+    &::before {
+      content: counter(list-counter) ".";
+      position: absolute;
+      left: 15px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-weight: 600;
+      color: #6c757d;
+      font-size: 1.1rem;
+    }
+
+    &:hover {
+      border-color: #dee2e6;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+      transform: translateX(2px);
+    }
+
+    .multiseek-element {
+      display: block;
+      line-height: 1.6;
+
+      a {
+        color: inherit;  // Use default text color
+        text-decoration: none;
+        transition: color 0.2s ease;
+
+        &:hover {
+          color: $primary-color;  // Use primary color on hover
+        }
+      }
+    }
+
+    .multiseek-remove-from-results {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      opacity: 0;
+      transition: opacity 0.2s ease;
+
+      a {
+        display: inline-block;
+        width: 24px;
+        height: 24px;
+        line-height: 24px;
+        text-align: center;
+        border-radius: 4px;
+        background: #f8f9fa;
+        transition: all 0.2s ease;
+
+        &:hover {
+          background: #dc3545;
+          transform: scale(1.1);
+        }
+      }
+    }
+
+    &:hover .multiseek-remove-from-results {
+      opacity: 1;
+    }
+  }
+}
+
+// Table report styling
+.multiseek-table-report {
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  margin-bottom: 20px;
+
+  table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    margin: 0;
+  }
+
+  th {
+    background: linear-gradient(to bottom, #f8f9fa, #e9ecef);
+    color: #2c3e50;
+    font-weight: 600;
+    padding: 12px 15px;
+    text-align: left;
+    font-size: 0.9rem;
+    border-bottom: 2px solid #dee2e6;
+    white-space: nowrap;
+  }
+
+  td {
+    padding: 12px 15px;
+    border-bottom: 1px solid #f1f3f4;
+    color: #495057;
+    vertical-align: top;
+  }
+
+  tr {
+    transition: background-color 0.2s ease;
+
+    &:hover {
+      background-color: #f8f9fa;
+    }
+
+    &:last-child td {
+      border-bottom: none;
+    }
+  }
+
+  tfoot {
+    background: #f8f9fa;
+    font-weight: 600;
+
+    td {
+      border-top: 2px solid #dee2e6;
+      border-bottom: none;
+      color: #2c3e50;
+      padding: 15px;
+    }
+  }
+
+  .multiseek-element {
+    a {
+      color: inherit;  // Use default text color
+      text-decoration: none;
+
+      &:hover {
+        color: $primary-color;  // Use primary color on hover
+      }
+    }
+  }
+
+  .multiseek-remove-from-results {
+    display: inline-block;
+    margin-left: 10px;
+    opacity: 0.5;
+    transition: opacity 0.2s ease;
+
+    &:hover {
+      opacity: 1;
+    }
+
+    a {
+      color: #dc3545;
+      text-decoration: none;
+    }
+  }
+}
+
+// Responsive table wrapper
+@media (max-width: 768px) {
+  .multiseek-table-report {
+    overflow-x: auto;
+
+    table {
+      min-width: 600px;
+    }
+  }
+}
+
+// Print styles for reports
+@media print {
+  .multiseek-removed-panel,
+  .multiseek-remove-from-results,
+  .bibtex-actions,
+  .title-edit-btn {
+    display: none !important;
+  }
+
+  .multiseek-report-title {
+    box-shadow: none;
+    border: none;
+    padding: 10px 0;
+  }
+
+  .multiseek-list-report li {
+    page-break-inside: avoid;
+    border: none;
+    box-shadow: none;
+  }
+
+  .multiseek-table-report {
+    box-shadow: none;
+
+    tr {
+      page-break-inside: avoid;
+    }
+  }
 }
 
 @media print {
@@ -814,4 +1511,123 @@ input[type="button"]:active {
 
 .button.alert:hover {
   box-shadow: 0 3px 8px rgba(220, 53, 69, 0.15), 0 2px 4px rgba(220, 53, 69, 0.10) !important;
+}
+
+// Native select multiple styling
+select[multiple] {
+  // Basic styling
+  padding: 8px;
+  border: 1px solid #cacaca;
+  border-radius: 4px;
+  background-color: #fefefe;
+  font-size: 1rem;
+  line-height: 1.6;
+  transition: all 0.2s ease;
+
+  // Remove default styling
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+
+  // Scrollbar styling for webkit browsers
+  &::-webkit-scrollbar {
+    width: 10px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: #b8b8b8;
+    border-radius: 4px;
+
+    &:hover {
+      background: #999;
+    }
+  }
+
+  // Focus state with primary color
+  &:focus {
+    outline: none;
+    border-color: rgba($primary-color, 0.6);
+    box-shadow: 0 0 0 3px rgba($primary-color, 0.15);
+    background-color: #fff;
+  }
+
+  // Hover state
+  &:hover {
+    border-color: rgba($primary-color, 0.4);
+    background-color: #fcfcfc;
+  }
+
+  // Option styling
+  option {
+    padding: 8px 12px;
+    font-size: 1rem;
+    line-height: 1.6;
+    border-bottom: 1px solid #f0f0f0;
+    transition: all 0.15s ease;
+
+    // Selected state with lighter primary color
+    &:checked {
+      background: linear-gradient(0deg, rgba($primary-color, 0.85) 0%, rgba($primary-color, 0.85) 100%);
+      color: white;
+      font-weight: 500;
+    }
+
+    // Hover state
+    &:hover:not(:checked) {
+      background-color: rgba($primary-color, 0.08);
+      color: color.adjust($primary-color, $lightness: -10%);
+    }
+
+    // Disabled state
+    &:disabled {
+      color: #999;
+      background-color: #f5f5f5;
+      cursor: not-allowed;
+    }
+  }
+
+  // Disabled state for select
+  &:disabled {
+    background-color: #e6e6e6;
+    cursor: not-allowed;
+    opacity: 0.6;
+
+    option {
+      cursor: not-allowed;
+    }
+  }
+
+  // Size variations
+  &.small {
+    font-size: 0.9rem;
+    padding: 6px;
+
+    option {
+      padding: 6px 10px;
+      font-size: 0.9rem;
+    }
+  }
+
+  &.large {
+    font-size: 1.1rem;
+    padding: 10px;
+
+    option {
+      padding: 10px 14px;
+      font-size: 1.1rem;
+    }
+  }
+}
+
+// Firefox specific adjustments
+@-moz-document url-prefix() {
+  select[multiple] option:checked {
+    background-color: rgba($primary-color, 0.85) !important;
+    color: white !important;
+  }
 }

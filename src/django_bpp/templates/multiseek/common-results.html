@@ -6,7 +6,7 @@
 
 {% include "multiseek/print-logo.html" %}
 {% include "multiseek/title.html" %}
-<div style="background: white !important;">
+<div class="multiseek-report-container">
     {%  if paginator_count > 25000 %}
         <div style="padding-left: 4em; padding-right: 4em;">
         <p>Wynik obecnego zapytania do bazy dałby w rezultacie {{ paginator_count }} rekordów. Jest to dość duża ilość
@@ -17,7 +17,7 @@
             Prosimy, postaraj się ograniczyć zapytanie do bazy danych w taki sposób, aby dawało w rezultacie maksymalnie
                 do 25 tysięcy rekordów - wówczas zostaną one wyświetlone w wybranym przez Ciebie formacie w tym miejscu.</p>
         <p>Jeżeli potrzebujesz pobrać wszystkie rekordy z systemu BPP, skorzystaj z dostępu przez API. Obsługiwane
-            API to <a target="_blank" href="/api/v1/">JSON-REST</a> oraz <a target="_blank" href="/bpp/oai/?verb=ListSets">protokół OAI-PMH</a>.
+            API to <a target="_blank" class="external-arrow-box" href="/api/v1/">JSON-REST</a> oraz <a target="_blank" class="external-arrow-box" href="/bpp/oai/?verb=ListSets">protokół OAI-PMH</a>.
         </div>
     {% else %}
 
@@ -39,17 +39,16 @@
 {% endif %}
 
 {% if request.user.is_anonymous %}
-    {% include "multiseek/paginator.html" with max_rows=uczelnia.wyszukiwanie_rekordy_na_strone_anonim %}
+    {% include "multiseek/paginator.html" with max_rows=uczelnia.wyszukiwanie_rekordy_na_strone_anonim is_live=is_live %}
 {% else %}
-    {% include "multiseek/paginator.html" with max_rows=uczelnia.wyszukiwanie_rekordy_na_strone_zalogowany %}
+    {% include "multiseek/paginator.html" with max_rows=uczelnia.wyszukiwanie_rekordy_na_strone_zalogowany is_live=is_live %}
 {% endif %}
 
 <div style="padding: 10px;">
 
     {% if description %}
-        <div class="callout secondary {% if not uczelnia.wydruk_parametry_zapytania %}hide-for-print{% endif %}">
-            <strong>Parametry
-                zapytania: </strong>{{ description|default:"brak"|safe }}
+        <div class="multiseek-query-params {% if not uczelnia.wydruk_parametry_zapytania %}hide-for-print{% endif %}">
+            <strong>Parametry zapytania:</strong> {{ description|default:"brak"|safe }}
         </div>
     {% endif %}
 
@@ -64,15 +63,19 @@
         });
         </script>
         {% if not print_removed %}
-            <div class="callout info hide-for-print" id="panel-removed-by-hand">
-                Z zapytania usunięto ręcznie <span id="no-removed-recs">{{ removed_ids|length }}</span> rekord(ów).
-                <a id="pokaz-jakie" onclick="togglePokaz()">Pokaż, jakie.</a>
-                | <a onclick="return confirm('Czy na pewno dodać wszystkie ręcznie usunięte prace do wyników wyszukiwania ponownie?');" href="../reenable-removed-ids/">Kliknij tutaj, aby dodać je wszystkie do wyszukiwania z powrotem.</a>
-                | <a href=".">Odśwież stronę</a>
-                | <a href="?print-removed=1&all=1">Pokaż tylko rekordy usunięte ręcznie</a>
-                | <a href="?print=1&print-removed=1&all=1">Wydrukuj tylko rekordy usunięte ręcznie</a>
+            <div class="multiseek-removed-panel hide-for-print" id="panel-removed-by-hand">
+                <div>
+                    Z zapytania usunięto ręcznie <span class="removed-count">{{ removed_ids|length }}</span> rekord(ów).
+                </div>
+                <div class="removed-actions">
+                    <a id="pokaz-jakie" onclick="togglePokaz()">📋 Pokaż, jakie</a>
+                    <a onclick="return confirm('Czy na pewno dodać wszystkie ręcznie usunięte prace do wyników wyszukiwania ponownie?');" href="../reenable-removed-ids/">↩️ Przywróć wszystkie</a>
+                    <a href=".">🔄 Odśwież stronę</a>
+                    <a href="?print-removed=1&all=1">👁️ Pokaż tylko usunięte</a>
+                    <a href="?print=1&print-removed=1&all=1">🖨️ Wydrukuj tylko usunięte</a>
+                </div>
 
-                <div id="rekordy-usuniete">
+                <div id="rekordy-usuniete" class="removed-list">
                     <p>
                     <ul>
                         {% for elem in removed_ids %}
@@ -92,30 +95,35 @@
 
             </div>
         {% else %}
-           <div class="callout info hide-for-print" id="panel-removed-by-hand">
-           <strong>Wyświetlam listę rekordów usuniętych ręcznie z zapytania. </strong><p></p>
-           <a href=".">Kliknij tutaj, aby wyświetlić wszystkie rekordy.</a>
+           <div class="multiseek-removed-panel hide-for-print" id="panel-removed-by-hand">
+               <strong>Wyświetlam listę rekordów usuniętych ręcznie z zapytania.</strong>
+               <div class="removed-actions">
+                   <a href=".">↩️ Pokaż wszystkie rekordy</a>
+               </div>
             </div>
         {% endif %}
     {% endif %}
 
     {% if report_type == "bibtex" %}
-        <pre style="font-family: 'Courier New', Consolas, Monaco, monospace; font-size: 12px; background-color: #f8f8f8; border: 1px solid #ccc; border-radius: 3px; padding: 15px; white-space: pre-wrap; word-wrap: break-word; overflow-x: auto;">{% for element in object_list %}{{ element.original.to_bibtex }}{% if not forloop.last %}
+        <div class="multiseek-bibtex-container">
+            {% if object_list %}
+                <div class="bibtex-actions bibtex-actions-top">
+                    <button onclick="copyBibTeXToClipboard()" type="button">
+                        📋 Skopiuj wszystko do schowka
+                    </button>
+                    <span id="bibtex-copy-feedback" class="copy-feedback" style="display: none;">
+                        ✓ Skopiowane!
+                    </span>
+                </div>
+            {% endif %}
+            <pre>{% for element in object_list %}{{ element.original.to_bibtex }}{% if not forloop.last %}
 
 {% endif %}{% endfor %}</pre>
-        {% if object_list %}
-            <div style="margin-top: 10px;">
-                <button onclick="copyBibTeXToClipboard()" class="button success" type="button">
-                    📄 Skopiuj wszystko do schowka
-                </button>
-                <span id="bibtex-copy-feedback" style="margin-left: 10px; color: green; display: none;">
-                    ✓ Skopiowane!
-                </span>
-            </div>
-        {% endif %}
+        </div>
     {% elif report_type == "list" or report_type == "numer_list" or report_type == None %}
-        <ol start="{{ page_obj.start_index }}">
-            {% for element in object_list %}
+        <div class="multiseek-list-report">
+            <ol style="counter-reset: list-counter {{ page_obj.start_index|add:-1 }}">
+                {% for element in object_list %}
 
                 <li class="multiseek-row" id="multiseek-row-{{ element.js_safe_pk }}">
                     <span class="multiseek-element">
@@ -140,12 +148,14 @@
                     </span>
                 {% endif %}
                 </li>
-            {% empty %}
-                {% trans "No elements" %}
-            {% endfor %}
-        </ol>
+                {% empty %}
+                    <li style="text-align: center; color: #6c757d; padding: 20px;">{% trans "No elements" %}</li>
+                {% endfor %}
+            </ol>
+        </div>
     {% else %}
-        <table class="kbntab">
+        <div class="multiseek-table-report">
+            <table>
             <tr>
                 <th>Lp.</th>
                 <th>Tytuł, autorzy, źródło</th>
@@ -240,20 +250,22 @@
                 </tfoot>
             {% endif %}
 
-        </table>
+            </table>
+        </div>
     {% endif %}
 
 </div>
 
-{% if live != "1" and paginator.num_pages > 1 %}
+{% if not is_live and paginator.num_pages > 1 %}
     {% if request.user.is_anonymous %}
-        {% include "multiseek/paginator.html" with max_rows=uczelnia.wyszukiwanie_rekordy_na_strone_anonim magellan="no" suffix="_object_list" %}
+        {% include "multiseek/paginator.html" with max_rows=uczelnia.wyszukiwanie_rekordy_na_strone_anonim is_live=is_live magellan="no" suffix="_object_list" %}
     {% else %}
-        {% include "multiseek/paginator.html" with max_rows=uczelnia.wyszukiwanie_rekordy_na_strone_zalogowany magellan="no" %}
+        {% include "multiseek/paginator.html" with max_rows=uczelnia.wyszukiwanie_rekordy_na_strone_zalogowany is_live=is_live magellan="no" %}
     {% endif %}
 {% endif %}
 
     {% endif %}
+</div>
 
 <script type="text/javascript">
     if (queryDict.print == "1")
@@ -306,4 +318,3 @@
         }, 2000);
     }
 </script>
-</div>

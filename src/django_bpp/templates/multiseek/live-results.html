@@ -7,8 +7,33 @@
 {% block extratitle %}
     Rezultat wyszukiwania
 {% endblock %}
-{% block body %}<div style="background: white !important;">
-    {% include "print-title.html" %}
-    {% include "multiseek/common-results.html" with paging=5 live="1" %}
+
+{% block extrahead %}
+    <style>
+        html, body {
+            height: auto;
+            min-height: 100%;
+            margin: 0;
+            padding: 0;
+            background-color: white;
+        }
+
+        body {
+            display: block;
+            background-color: red;
+            padding-bottom: 20px;
+        }
+
+        .content-wrapper {
+            background-color: white;
+            min-height: 100vh;
+        }
+    </style>
+{% endblock %}
+
+{% block body %}
+    <div class="content-wrapper">
+        {% include "print-title.html" %}
+        {% include "multiseek/common-results.html" with paging=10 is_live=True %}
     </div>
 {% endblock %}

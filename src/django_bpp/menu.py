@@ -178,9 +178,14 @@ class CustomMenu(Menu):
 
         from bpp.models import Uczelnia
 
+        uczelnia = Uczelnia.objects.get_default()
+        uzywaj_wydzialow = True
+        if uczelnia is not None:
+            uzywaj_wydzialow = uczelnia.uzywaj_wydzialow
+
         if (
             (not getattr(settings, "DJANGO_BPP_UCZELNIA_UZYWA_WYDZIALOW", True))
-            or (not Uczelnia.objects.get_default().uzywaj_wydzialow)
+            or (not uzywaj_wydzialow)
         ) and STRUKTURA_MENU[1][1].find("wydzial") >= 0:
             STRUKTURA_MENU.pop(1)
 

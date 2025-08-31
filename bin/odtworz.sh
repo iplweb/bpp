@@ -44,5 +44,9 @@ for tbl in `psql -qAt -c "select sequence_name from information_schema.sequences
 
 cd "$BASEDIR/.."
 python src/manage.py migrate
+
+# Update django_site domain to localhost for development
+psql $LOCAL_DATABASE_NAME -c "UPDATE django_site SET domain='127.0.0.1:8000' WHERE id=1;" || true
+
 python src/manage.py createsuperuser --noinput --username admin --email michal.dtz@gmail.com || true
 ./bin/ustaw-domyslne-haslo-admina.sh

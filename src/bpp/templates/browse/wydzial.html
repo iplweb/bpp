@@ -13,71 +13,84 @@
 
 {% block content %}
     <!-- Modern Header Section -->
-    <div class="modern-header" style="background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); padding: 30px; margin-bottom: 30px;">
-        <div class="grid-x grid-margin-x align-middle">
-            <div class="cell auto">
-                <h1 style="color: #2c3e50; margin-bottom: 10px; font-size: 2.5rem;">
-                    <i class="fi-foundation" style="margin-right: 15px; color: #3498db;"></i>{{ wydzial }}
+    <div class="modern-header">
+        <div class="grid-x grid-margin-x">
+            <div class="cell">
+                <h1 class="page-title">
+                    <i class="fi-foundation"></i>{{ wydzial }}
                 </h1>
+
+                {% if wydzial.opis %}
+                    <div class="wydzial-description">
+                        {{ wydzial.opis|safe }}
+                    </div>
+                {% endif %}
+
+                <div style="margin-top: 15px; margin-bottom: 15px;">
+                    {% include "browse/go_to_admin_change.html" with url="admin:bpp_wydzial_change" pk=wydzial.pk group="struktura" text="<i class='fi-wrench'></i> Edytuj" %}
+                </div>
+
                 {% cache 3600 wydzial_stats wydzial.pk %}
                     {% with total_jednostki=wydzial.aktualne_jednostki.count kola_count=wydzial.kola_naukowe.count hist_count=wydzial.historyczne_jednostki.count %}
-                        <div class="wydzial-stats" style="display: flex; gap: 20px; flex-wrap: wrap; margin-top: 15px;">
+                        <div class="wydzial-stats">
                             {% if total_jednostki > 0 %}
-                                <div class="stat-item" style="background: #ecf0f1; padding: 10px 15px; border-radius: 6px; border-left: 4px solid #3498db;">
-                                    <div style="font-size: 0.9rem; color: #7f8c8d;">Jednostki aktualne</div>
-                                    <div style="font-size: 1.4rem; font-weight: 600; color: #2c3e50;">{{ total_jednostki }}</div>
+                                <div class="stat-item stat-jednostki">
+                                    <div>Jednostki aktualne</div>
+                                    <div>{{ total_jednostki }}</div>
                                 </div>
                             {% endif %}
                             {% if kola_count > 0 %}
-                                <div class="stat-item" style="background: #ecf0f1; padding: 10px 15px; border-radius: 6px; border-left: 4px solid #e74c3c;">
-                                    <div style="font-size: 0.9rem; color: #7f8c8d;">Koła naukowe</div>
-                                    <div style="font-size: 1.4rem; font-weight: 600; color: #2c3e50;">{{ kola_count }}</div>
+                                <div class="stat-item stat-kola">
+                                    <div>Koła naukowe</div>
+                                    <div>{{ kola_count }}</div>
                                 </div>
                             {% endif %}
                             {% if hist_count > 0 %}
-                                <div class="stat-item" style="background: #ecf0f1; padding: 10px 15px; border-radius: 6px; border-left: 4px solid #95a5a6;">
-                                    <div style="font-size: 0.9rem; color: #7f8c8d;">Jednostki historyczne</div>
-                                    <div style="font-size: 1.4rem; font-weight: 600; color: #2c3e50;">{{ hist_count }}</div>
+                                <div class="stat-item stat-historyczne">
+                                    <div>Jednostki historyczne</div>
+                                    <div>{{ hist_count }}</div>
                                 </div>
                             {% endif %}
                         </div>
                     {% endwith %}
                 {% endcache %}
-
-                {% if wydzial.pokazuj_opis and wydzial.opis %}
-                    <div class="wydzial-description" style="margin-top: 20px; padding: 20px; background: #f8f9fa; border-radius: 6px; line-height: 1.6;">
-                        {{ wydzial.opis|safe }}
-                    </div>
-                {% endif %}
-            </div>
-            <div class="cell shrink">
-                {% include "browse/go_to_admin_change.html" with url="admin:bpp_wydzial_change" pk=wydzial.pk group="struktura" text="<i class='fi-wrench'></i> Edytuj" %}
             </div>
         </div>
 
+    </div>
+
+    <!-- Quick Actions -->
+    <div style="text-align: center; margin-bottom: 30px;">
+        <form method="post" action="{% url "bpp:browse_build_search" %}" style="display: inline;">
+            {% csrf_token %}
+            <input type="hidden" name="wydzial" value="{{ wydzial.pk }}"/>
+            <input type="hidden" name="suggested-title" value="{{ wydzial }}"/>
+            <button type="submit" class="button button-show-all">
+                <i class="fi-list-bullet"></i>Pokaż wszystkie publikacje
+            </button>
+        </form>
     </div>
 
     <!-- Modern Navigation -->
     {% if wydzial.wymaga_nawigacji %}
         <div data-sticky-container id="navStickyContainer" class="wydzial-nav">
             <div data-sticky class="sticky"
-                 style="background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 20px;"
                  data-anchor="listyJednostek" data-margin-top="4">
-                <nav class="sticky-container" style="padding: 15px 25px;">
-                    <ul class="menu expanded" data-magellan style="margin: 0;">
+                <nav class="sticky-container">
+                    <ul class="menu expanded" data-magellan>
                         {% if wydzial.aktualne_jednostki.exists %}
-                            <li><a href="#aktualne" style="color: #2c3e50; font-weight: 500; padding: 10px 15px; border-radius: 6px; transition: all 0.2s ease;" onmouseover="this.style.background='#f8f9fa';" onmouseout="this.style.background='transparent';">
-                                <i class="fi-home" style="margin-right: 8px;"></i>Jednostki aktualne
+                            <li><a href="#aktualne">
+                                <i class="fi-home"></i>Jednostki aktualne
                             </a></li>
                         {% endif %}
                         {% if wydzial.kola_naukowe.exists %}
-                            <li><a href="#kola_naukowe" style="color: #2c3e50; font-weight: 500; padding: 10px 15px; border-radius: 6px; transition: all 0.2s ease;" onmouseover="this.style.background='#f8f9fa';" onmouseout="this.style.background='transparent';">
-                                <i class="fi-torsos-all" style="margin-right: 8px;"></i>Koła naukowe
+                            <li><a href="#kola_naukowe">
+                                <i class="fi-torsos-all"></i>Koła naukowe
                             </a></li>
                         {% endif %}
                         {% if wydzial.historyczne_jednostki.exists %}
-                            <li><a href="#historyczne" style="color: #2c3e50; font-weight: 500; padding: 10px 15px; border-radius: 6px; transition: all 0.2s ease;" onmouseover="this.style.background='#f8f9fa';" onmouseout="this.style.background='transparent';">
-                                <i class="fi-clock" style="margin-right: 8px;"></i>Jednostki historyczne
+                            <li><a href="#historyczne">
+                                <i class="fi-clock"></i>Jednostki historyczne
                             </a></li>
                         {% endif %}
                     </ul>
@@ -88,12 +101,53 @@
 
     <!-- Modern Units Display -->
     <div class="sections" id="listyJednostek">
+        {% if wydzial.aktualne_jednostki.exists %}
+            <section id="aktualne" data-magellan-target="aktualne" style="margin-bottom: 40px;">
+                <div class="section-header">
+                    <h2>
+                        <i class="fi-home"></i>Jednostki aktualne
+                        <span>({{ wydzial.aktualne_jednostki.count }})</span>
+                    </h2>
+                </div>
+                <div class="grid-x grid-margin-x">
+                    {% for col in wydzial.aktualne_jednostki|columns:3 %}
+                        <div class="large-4 medium-6 small-12 cell">
+                            {% for jednostka in col %}
+                                <!-- Unit Card -->
+                                <div class="jednostka-card card-aktualne">
+
+                                    <div class="card-icon">
+                                        <i class="fi-home"></i>
+                                    </div>
+
+                                    <div class="jednostka-name">
+                                        <a href="{% url "bpp:browse_jednostka" jednostka.slug %}" class="link-aktualne">
+                                            {{ jednostka.nazwa }}
+                                        </a>
+                                    </div>
+
+                                    {% cache 3600 jednostka_stats jednostka.pk %}
+                                        {% if jednostka.aktualna_jednostka.count > 0 %}
+                                            <div class="jednostka-stats">
+                                                <i class="fi-torso"></i>
+                                                {{ jednostka.aktualna_jednostka.count }} {% if jednostka.aktualna_jednostka.count == 1 %}pracownik{% elif jednostka.aktualna_jednostka.count < 5 %}pracowników{% else %}pracowników{% endif %}
+                                            </div>
+                                        {% endif %}
+                                    {% endcache %}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endfor %}
+                </div>
+            </section>
+        {% endif %}
+
         {% if wydzial.kola_naukowe.exists %}
             <section id="kola_naukowe" data-magellan-target="kola_naukowe" style="margin-bottom: 40px;">
-                <div class="section-header" style="background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 20px; margin-bottom: 20px;">
-                    <h2 style="color: #2c3e50; margin: 0; font-size: 1.8rem;">
-                        <i class="fi-torsos-all" style="margin-right: 10px; color: #e74c3c;"></i>Koła naukowe
-                        <span style="font-size: 0.8rem; color: #7f8c8d; font-weight: 400;">({{ wydzial.kola_naukowe.count }})</span>
+                <div class="section-header">
+                    <h2>
+                        <i class="fi-torsos-all"></i>Koła naukowe
+                        <span>({{ wydzial.kola_naukowe.count }})</span>
                     </h2>
                 </div>
                 <div class="grid-x grid-margin-x">
@@ -101,28 +155,22 @@
                         <div class="large-4 medium-6 small-12 cell">
                             {% for jednostka in col %}
                                 <!-- Koło Card -->
-                                <div class="jednostka-card" style="background: white; border-radius: 6px; padding: 20px; margin-bottom: 15px;
-                                                                 border: 2px solid #fadbd8; transition: all 0.2s ease; position: relative;"
-                                     onmouseover="this.style.borderColor='#e74c3c'; this.style.background='#fafbfc';"
-                                     onmouseout="this.style.borderColor='#fadbd8'; this.style.background='white';">
+                                <div class="jednostka-card card-kola">
 
-                                    <div style="position: absolute; top: 15px; right: 15px; color: #f1c0c0;">
-                                        <i class="fi-torsos-all" style="font-size: 1.2rem;"></i>
+                                    <div class="card-icon">
+                                        <i class="fi-torsos-all"></i>
                                     </div>
 
                                     <div class="jednostka-name">
-                                        <a href="{% url "bpp:browse_jednostka" jednostka.slug %}"
-                                           style="color: #2c3e50; text-decoration: none; font-weight: 600; font-size: 1.1rem; line-height: 1.4;"
-                                           onmouseover="this.style.color='#e74c3c';"
-                                           onmouseout="this.style.color='#2c3e50';">
+                                        <a href="{% url "bpp:browse_jednostka" jednostka.slug %}" class="link-kola">
                                             {{ jednostka.nazwa }}
                                         </a>
                                     </div>
 
                                     {% cache 3600 kolo_stats jednostka.pk %}
                                         {% if jednostka.aktualna_jednostka.count > 0 %}
-                                            <div style="font-size: 0.8rem; color: #95a5a6; margin-top: 8px; padding-top: 8px; border-top: 1px solid #f8f9fa;">
-                                                <i class="fi-torsos-all" style="margin-right: 5px;"></i>
+                                            <div class="jednostka-stats">
+                                                <i class="fi-torsos-all"></i>
                                                 {{ jednostka.aktualna_jednostka.count }} {% if jednostka.aktualna_jednostka.count == 1 %}członek{% elif jednostka.aktualna_jednostka.count < 5 %}członków{% else %}członków{% endif %}
                                             </div>
                                         {% endif %}
@@ -137,10 +185,10 @@
 
         {% if wydzial.historyczne_jednostki.exists %}
             <section id="historyczne" data-magellan-target="historyczne" style="margin-bottom: 40px;">
-                <div class="section-header" style="background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 20px; margin-bottom: 20px;">
-                    <h2 style="color: #2c3e50; margin: 0; font-size: 1.8rem;">
-                        <i class="fi-clock" style="margin-right: 10px; color: #95a5a6;"></i>Jednostki historyczne
-                        <span style="font-size: 0.8rem; color: #7f8c8d; font-weight: 400;">({{ wydzial.historyczne_jednostki.count }})</span>
+                <div class="section-header">
+                    <h2>
+                        <i class="fi-clock"></i>Jednostki historyczne
+                        <span>({{ wydzial.historyczne_jednostki.count }})</span>
                     </h2>
                 </div>
                 <div class="grid-x grid-margin-x">
@@ -148,26 +196,20 @@
                         <div class="large-4 medium-6 small-12 cell">
                             {% for jednostka in col %}
                                 <!-- Historical Unit Card -->
-                                <div class="jednostka-card" style="background: white; border-radius: 6px; padding: 20px; margin-bottom: 15px;
-                                                                 border: 2px solid #d5dbdb; transition: all 0.2s ease; position: relative;"
-                                     onmouseover="this.style.borderColor='#95a5a6'; this.style.background='#fafbfc';"
-                                     onmouseout="this.style.borderColor='#d5dbdb'; this.style.background='white';">
+                                <div class="jednostka-card card-historyczne">
 
-                                    <div style="position: absolute; top: 15px; right: 15px; color: #bdc3c7;">
-                                        <i class="fi-clock" style="font-size: 1.2rem;"></i>
+                                    <div class="card-icon">
+                                        <i class="fi-clock"></i>
                                     </div>
 
                                     <div class="jednostka-name">
-                                        <a href="{% url "bpp:browse_jednostka" jednostka.slug %}"
-                                           style="color: #2c3e50; text-decoration: none; font-weight: 600; font-size: 1.1rem; line-height: 1.4;"
-                                           onmouseover="this.style.color='#95a5a6';"
-                                           onmouseout="this.style.color='#2c3e50';">
+                                        <a href="{% url "bpp:browse_jednostka" jednostka.slug %}" class="link-historyczne">
                                             {{ jednostka.nazwa }}
                                         </a>
                                     </div>
 
-                                    <div style="font-size: 0.8rem; color: #95a5a6; margin-top: 8px; padding-top: 8px; border-top: 1px solid #f8f9fa;">
-                                        <i class="fi-info" style="margin-right: 5px;"></i>Jednostka historyczna
+                                    <div class="jednostka-stats">
+                                        <i class="fi-info"></i>Jednostka historyczna
                                     </div>
                                 </div>
                             {% endfor %}

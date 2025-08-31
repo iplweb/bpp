@@ -110,7 +110,8 @@
                     <i class="fi-refresh"></i> Odśwież podgląd
                 </button>
 
-                <button type="button" class="button alert" onclick="if (confirm('Czy na pewno? Zatwierdzenie tej opcji spowoduje zresetowanie formularza do stanu wyjściowego.')) { resetMultiseekTitle(this); return false; }"
+                <button type="button" class="button alert"
+                        onclick="if (confirm('Czy na pewno? Zatwierdzenie tej opcji spowoduje zresetowanie formularza do stanu wyjściowego.')) { resetMultiseekTitle(this); return false; }"
                         id="resetFormButton">
                     <i class="fi-x"></i> Resetuj formularz
                 </button>
@@ -177,15 +178,18 @@
         </script>
     </form>
     <hr size="1"/>
+    <style>
+        #if {
+            display: block;
+            overflow: auto;
+            min-height: 400px;
+            border: none;
+        }
+    </style>
     <iframe src="./live-results/" width="100%" id="if"
-            name="list_frame" frameborder="0" scroll="no" scrolling="no"
-            height="400" onload="resizeIframe(this)">
+            name="list_frame"   scrolling="no">
     </iframe>
     <script type="text/javascript">
-
-        function resizeIframe(obj) {
-            obj.style.height = obj.contentWindow.document.body.scrollHeight + 'px';
-        }
         function resetMultiseekTitle(form) {
             $.ajax({
                 method: 'POST',
@@ -196,6 +200,111 @@
                 }
             });
         }
+
+        function adjustIframeHeight() {
+            var iframe = document.getElementById('if');
+
+            if (iframe) {
+                try {
+                    // Access iframe content (only works for same-origin)
+                    var iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                    if (iframeDoc && iframeDoc.body) {
+                        // Get the actual content height
+                        var contentHeight = Math.max(
+                            iframeDoc.body.scrollHeight,
+                            iframeDoc.body.offsetHeight,
+                            iframeDoc.documentElement.scrollHeight,
+                            iframeDoc.documentElement.offsetHeight
+                        );
+                        // Add some padding for better appearance
+                        contentHeight += 20;
+
+                        // Set the iframe height to match content
+                        iframe.style.height = contentHeight + 'px';
+                    }
+                } catch (e) {
+                    // Cross-origin or access denied - set a default height
+                    console.log('Cannot access iframe content:', e);
+                    iframe.style.height = '600px';
+                }
+            }
+        }
+
+        // Function to setup iframe height adjustment after its document is ready
+        function setupIframeHeightAdjustment() {
+            var iframe = document.getElementById('if');
+
+            if (iframe) {
+                // Listen for iframe load event
+                iframe.addEventListener('load', function() {
+                    // Wait for iframe's document.ready
+                    try {
+                        var iframeWindow = iframe.contentWindow;
+                        if (iframeWindow && iframeWindow.$) {
+                            // Use jQuery from iframe if available
+                            iframeWindow.$(iframeWindow.document).ready(function() {
+                                adjustIframeHeight();
+                            });
+                        } else if (iframeWindow && iframeWindow.document) {
+                            // Fallback to DOMContentLoaded if jQuery not available in iframe
+                            if (iframeWindow.document.readyState === 'complete' ||
+                                iframeWindow.document.readyState === 'interactive') {
+                                // Document already loaded
+                                adjustIframeHeight();
+                            } else {
+                                iframeWindow.document.addEventListener('DOMContentLoaded', function() {
+                                    adjustIframeHeight();
+                                });
+                            }
+                        }
+                    } catch (e) {
+                        // If we can't access iframe content, adjust after a delay
+                        setTimeout(adjustIframeHeight, 100);
+                    }
+                });
+
+                // Also handle iframe content changes via mutation observer if possible
+                try {
+                    var iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                    if (iframeDoc && window.MutationObserver) {
+                        var observer = new MutationObserver(function(mutations) {
+                            adjustIframeHeight();
+                        });
+
+                        observer.observe(iframeDoc.body, {
+                            childList: true,
+                            subtree: true,
+                            attributes: true,
+                            characterData: true
+                        });
+                    }
+                } catch (e) {
+                    // Can't access iframe content for mutation observer
+                }
+            }
+        }
+
+        // Initialize when main document is ready
+        document.addEventListener('DOMContentLoaded', function() {
+            setupIframeHeightAdjustment();
+            // Initial adjustment
+            adjustIframeHeight();
+        });
+
+        // Also initialize with jQuery for compatibility
+        $(document).ready(function() {
+            setupIframeHeightAdjustment();
+
+            // Re-adjust when iframe src changes (after form submissions)
+            $('#sendQueryButton, #multiseek-szukaj').on('click', function() {
+                setTimeout(function() {
+                    setupIframeHeightAdjustment();
+                }, 100);
+            });
+        });
+
+        // Adjust iframe height on window resize
+        window.addEventListener('resize', adjustIframeHeight);
     </script>
 
 {% endblock %}

@@ -13,10 +13,22 @@
     <h2>{{ title }}</h2>
     {# go_to_admin_change.html #}
     {% load user_in_group %}{% if request.user.is_superuser or request.user|has_group:"raporty" %}
-        <div class="callout warning hide-for-print">
-            <a target="_blank" href="{% url "admin:flexible_reports_report_change" report.pk %}">
-                <i class="fi-page-edit"></i>
-                {{ text|default:"otwórz do edycji" }}</a>
+        <div class="hide-for-print" style="margin-top: 10px; margin-bottom: 15px;">
+            <a target="_blank" href="{% url "admin:flexible_reports_report_change" report.pk %}"
+               style="display: inline-block;
+                      background: #f8f9fa;
+                      color: #6c757d;
+                      padding: 6px 12px;
+                      border-radius: 4px;
+                      text-decoration: none;
+                      font-size: 0.85rem;
+                      border: 1px solid #e9ecef;
+                      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+                      transition: all 0.2s ease;"
+               onmouseover="this.style.backgroundColor='#e9ecef'; this.style.color='#495057'; this.style.boxShadow='0 2px 6px rgba(0,0,0,0.15)'"
+               onmouseout="this.style.backgroundColor='#f8f9fa'; this.style.color='#6c757d'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.1)'">
+                <i class="fi-page-edit" style="margin-right: 4px; font-size: 0.8rem;"></i>{{ text|default:"otwórz do edycji" }}
+            </a>
         </div>
     {% endif %}
     <div class="grid-x">

@@ -19,7 +19,30 @@ def test_praca_tabela_oswiadczenia_drukuj(
         ),
         follow=True,
     )
-    assert b"<!-- wydruk oswiadczenia -->" in res.content
+    assert (
+        b"Wydruk dyscypliny zg" in res.content
+        and b"oszonej dla publikacji" in res.content
+    )
+
+
+@pytest.mark.django_db
+def test_praca_tabela_oswiadczenia_NIE_drukuj(
+    zwarte_z_dyscyplinami, admin_client, uczelnia  # noqa
+):  # noqa
+    uczelnia.drukuj_oswiadczenia = False
+    uczelnia.save()
+
+    res = admin_client.get(
+        reverse(
+            "bpp:browse_rekord",
+            args=Rekord.objects.get_for_model(zwarte_z_dyscyplinami).pk,
+        ),
+        follow=True,
+    )
+    assert (
+        b"Wydruk dyscypliny zg" not in res.content
+        or b"oszonej dla publikacji" not in res.content
+    )
 
 
 @pytest.mark.django_db

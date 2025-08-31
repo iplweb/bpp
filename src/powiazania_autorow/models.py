@@ -11,14 +11,14 @@ class AuthorConnection(models.Model):
     primary_author = models.ForeignKey(
         Autor,
         on_delete=models.CASCADE,
-        related_name="primary_connections",
+        related_name="+",
         db_index=True,
         verbose_name="Autor główny",
     )
     secondary_author = models.ForeignKey(
         Autor,
         on_delete=models.CASCADE,
-        related_name="secondary_connections",
+        related_name="+",
         db_index=True,
         verbose_name="Autor powiązany",
     )

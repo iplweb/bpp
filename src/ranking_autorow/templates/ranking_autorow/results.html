@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% load render_table from django_tables2 %}
+
+{% block extratitle %}
+    {{ table_title }}{% if table_subtitle %} - {{ table_subtitle }}{% endif %}
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url "bpp:ranking_autorow_formularz" %}">Ranking autorów</a></li>
+    <li class="current">Wyniki</li>
+{% endblock %}
+
+{% block content %}
+    <div class="ranking-results-container">
+        <div class="results-header">
+            <div class="title-section">
+                <h1><span class="fi-trophy"></span> {{ table_title }}</h1>
+                {% if table_subtitle %}
+                    <h2 class="subtitle">{{ table_subtitle }}</h2>
+                {% endif %}
+            </div>
+
+            <div class="export-section">
+                <a href="?{{ request.GET.urlencode }}&_export=xlsx" class="button export-button" title="Pobierz jako XLSX">
+                    <span class="fi-page-export"></span> Pobierz XLSX
+                </a>
+                <div class="export-dropdown">
+                    <button class="button dropdown-button" data-toggle="export-dropdown">
+                        Inne formaty <span class="fi-arrow-down"></span>
+                    </button>
+                    <ul id="export-dropdown" class="dropdown-content" data-dropdown data-auto-focus="true">
+                        <li><a href="?{{ request.GET.urlencode }}&_export=csv">
+                            <span class="fi-page-csv"></span> CSV
+                        </a></li>
+                        <li><a href="?{{ request.GET.urlencode }}&_export=json">
+                            <span class="fi-page-code"></span> JSON
+                        </a></li>
+                        <li><a href="?{{ request.GET.urlencode }}&_export=xls">
+                            <span class="fi-page-export"></span> XLS (Legacy)
+                        </a></li>
+                        <li><a href="?{{ request.GET.urlencode }}&_export=ods">
+                            <span class="fi-page"></span> ODS
+                        </a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="results-info">
+            <p class="info-text">
+                <span class="fi-info"></span>
+                Zakres lat: <strong>{{ od_roku }} - {{ do_roku }}</strong>
+                {% if jednostki %}
+                    | Jednostka: <strong>{{ jednostki.0.nazwa }}</strong>
+                {% elif wydzialy %}
+                    | Wydział: <strong>{{ wydzialy.0.nazwa }}</strong>
+                {% endif %}
+            </p>
+        </div>
+
+        <div class="table-wrapper">
+            {% render_table table %}
+        </div>
+    </div>
+
+    <script>
+        $(document).ready(function() {
+            // Handle dropdown toggle
+            $('.dropdown-button').on('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                $('#export-dropdown').toggleClass('is-open');
+            });
+
+            // Close dropdown when clicking outside
+            $(document).on('click', function(e) {
+                if (!$(e.target).closest('.export-dropdown').length) {
+                    $('#export-dropdown').removeClass('is-open');
+                }
+            });
+        });
+    </script>
+{% endblock %}

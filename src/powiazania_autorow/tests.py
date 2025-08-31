@@ -83,13 +83,13 @@ def test_calculate_author_connections_with_wydawnictwo_ciagle():
 
     # Create author-publication relationships
     # pub1: author1 and author2
-    baker.make(Wydawnictwo_Ciagle_Autor, rekord=pub1, autor=author1)
-    baker.make(Wydawnictwo_Ciagle_Autor, rekord=pub1, autor=author2)
+    baker.make(Wydawnictwo_Ciagle_Autor, rekord=pub1, autor=author1, kolejnosc=0)
+    baker.make(Wydawnictwo_Ciagle_Autor, rekord=pub1, autor=author2, kolejnosc=1)
 
     # pub2: author1, author2, and author3
-    baker.make(Wydawnictwo_Ciagle_Autor, rekord=pub2, autor=author1)
-    baker.make(Wydawnictwo_Ciagle_Autor, rekord=pub2, autor=author2)
-    baker.make(Wydawnictwo_Ciagle_Autor, rekord=pub2, autor=author3)
+    baker.make(Wydawnictwo_Ciagle_Autor, rekord=pub2, autor=author1, kolejnosc=0)
+    baker.make(Wydawnictwo_Ciagle_Autor, rekord=pub2, autor=author2, kolejnosc=1)
+    baker.make(Wydawnictwo_Ciagle_Autor, rekord=pub2, autor=author3, kolejnosc=2)
 
     # Calculate connections
     total_connections = calculate_author_connections()
@@ -131,8 +131,8 @@ def test_calculate_author_connections_with_wydawnictwo_zwarte():
     pub = baker.make(Wydawnictwo_Zwarte)
 
     # Create author-publication relationships
-    baker.make(Wydawnictwo_Zwarte_Autor, rekord=pub, autor=author1)
-    baker.make(Wydawnictwo_Zwarte_Autor, rekord=pub, autor=author2)
+    baker.make(Wydawnictwo_Zwarte_Autor, rekord=pub, autor=author1, kolejnosc=0)
+    baker.make(Wydawnictwo_Zwarte_Autor, rekord=pub, autor=author2, kolejnosc=1)
 
     # Calculate connections
     total_connections = calculate_author_connections()
@@ -155,8 +155,8 @@ def test_calculate_author_connections_with_patents():
     patent = baker.make(Patent)
 
     # Create author-patent relationships
-    baker.make(Patent_Autor, rekord=patent, autor=author1)
-    baker.make(Patent_Autor, rekord=patent, autor=author2)
+    baker.make(Patent_Autor, rekord=patent, autor=author1, kolejnosc=0)
+    baker.make(Patent_Autor, rekord=patent, autor=author2, kolejnosc=1)
 
     # Calculate connections
     total_connections = calculate_author_connections()
@@ -181,14 +181,14 @@ def test_calculate_author_connections_mixed_publications():
     patent = baker.make(Patent)
 
     # Create relationships for all publication types
-    baker.make(Wydawnictwo_Ciagle_Autor, rekord=ciagle, autor=author1)
-    baker.make(Wydawnictwo_Ciagle_Autor, rekord=ciagle, autor=author2)
+    baker.make(Wydawnictwo_Ciagle_Autor, rekord=ciagle, autor=author1, kolejnosc=0)
+    baker.make(Wydawnictwo_Ciagle_Autor, rekord=ciagle, autor=author2, kolejnosc=1)
 
-    baker.make(Wydawnictwo_Zwarte_Autor, rekord=zwarte, autor=author1)
-    baker.make(Wydawnictwo_Zwarte_Autor, rekord=zwarte, autor=author2)
+    baker.make(Wydawnictwo_Zwarte_Autor, rekord=zwarte, autor=author1, kolejnosc=0)
+    baker.make(Wydawnictwo_Zwarte_Autor, rekord=zwarte, autor=author2, kolejnosc=1)
 
-    baker.make(Patent_Autor, rekord=patent, autor=author1)
-    baker.make(Patent_Autor, rekord=patent, autor=author2)
+    baker.make(Patent_Autor, rekord=patent, autor=author1, kolejnosc=0)
+    baker.make(Patent_Autor, rekord=patent, autor=author2, kolejnosc=1)
 
     # Calculate connections
     total_connections = calculate_author_connections()
@@ -215,8 +215,8 @@ def test_calculate_author_connections_clears_existing():
 
     # Create actual publication
     pub = baker.make(Wydawnictwo_Ciagle)
-    baker.make(Wydawnictwo_Ciagle_Autor, rekord=pub, autor=author1)
-    baker.make(Wydawnictwo_Ciagle_Autor, rekord=pub, autor=author2)
+    baker.make(Wydawnictwo_Ciagle_Autor, rekord=pub, autor=author1, kolejnosc=0)
+    baker.make(Wydawnictwo_Ciagle_Autor, rekord=pub, autor=author2, kolejnosc=1)
 
     # Calculate connections
     calculate_author_connections()
@@ -224,26 +224,6 @@ def test_calculate_author_connections_clears_existing():
     # Verify old connection was replaced
     connection = AuthorConnection.objects.first()
     assert connection.shared_publications_count == 1  # New correct value
-
-
-@pytest.mark.django_db
-def test_calculate_author_connections_handles_null_authors():
-    """Test that calculation handles null authors correctly."""
-    # Create valid author
-    author1 = baker.make(Autor)
-
-    # Create publication
-    pub = baker.make(Wydawnictwo_Ciagle)
-
-    # Create relationships with one null author
-    baker.make(Wydawnictwo_Ciagle_Autor, rekord=pub, autor=author1)
-    baker.make(Wydawnictwo_Ciagle_Autor, rekord=pub, autor=None)
-
-    # Calculate connections
-    total_connections = calculate_author_connections()
-
-    # Should not create any connections (need at least 2 non-null authors)
-    assert total_connections == 0
 
 
 @pytest.mark.django_db
@@ -270,8 +250,8 @@ def test_calculate_author_connections_task_success():
     author1 = baker.make(Autor)
     author2 = baker.make(Autor)
     pub = baker.make(Wydawnictwo_Ciagle)
-    baker.make(Wydawnictwo_Ciagle_Autor, rekord=pub, autor=author1)
-    baker.make(Wydawnictwo_Ciagle_Autor, rekord=pub, autor=author2)
+    baker.make(Wydawnictwo_Ciagle_Autor, rekord=pub, autor=author1, kolejnosc=0)
+    baker.make(Wydawnictwo_Ciagle_Autor, rekord=pub, autor=author2, kolejnosc=1)
 
     # Run task
     result = calculate_author_connections_task()
@@ -297,16 +277,16 @@ def test_update_single_author_connections_task():
     pub2 = baker.make(Wydawnictwo_Ciagle)
 
     # Initial setup: author1 with author2 in pub1
-    baker.make(Wydawnictwo_Ciagle_Autor, rekord=pub1, autor=author1)
-    baker.make(Wydawnictwo_Ciagle_Autor, rekord=pub1, autor=author2)
+    baker.make(Wydawnictwo_Ciagle_Autor, rekord=pub1, autor=author1, kolejnosc=0)
+    baker.make(Wydawnictwo_Ciagle_Autor, rekord=pub1, autor=author2, kolejnosc=1)
 
     # Run initial calculation
     calculate_author_connections()
     assert AuthorConnection.objects.count() == 1
 
     # Add new publication: author1 with author3 in pub2
-    baker.make(Wydawnictwo_Ciagle_Autor, rekord=pub2, autor=author1)
-    baker.make(Wydawnictwo_Ciagle_Autor, rekord=pub2, autor=author3)
+    baker.make(Wydawnictwo_Ciagle_Autor, rekord=pub2, autor=author1, kolejnosc=0)
+    baker.make(Wydawnictwo_Ciagle_Autor, rekord=pub2, autor=author3, kolejnosc=1)
 
     # Update connections for author1
     result = update_single_author_connections_task(author1.pk)

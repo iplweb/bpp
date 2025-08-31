@@ -26,5 +26,22 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Instal eventual build tools
+        run: sudo apt update
+
+      - name: Instal eventual build tools
+        run: sudo apt install -y python3 python3-pip python3-venv gettext
+
+      - name: Setup poetry
+        run: python3 -m venv .venv
+
+      - name: Setup poetry
+        run: .venv/bin/python -m pip install poetry
+
+      - name: Setup poetry
+        run: .venv/bin/poetry install
+
       - name: Build and push
-        run: make docker
+        run: .venv/bin/poetry run make assets docker
+        env:
+          DJANGO_SETTINGS_MODULE: django_bpp.settings.local

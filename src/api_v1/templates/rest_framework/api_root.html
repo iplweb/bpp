@@ -1,0 +1,99 @@
+{% extends "rest_framework/base.html" %}
+{% load i18n %}
+{% load rest_framework %}
+
+{% block title %}BPP API - Bibliografia Publikacji Pracowników{% endblock %}
+
+{% block branding %}
+    <a class="navbar-brand" rel="nofollow" href="{% url 'api-root' %}">
+        BPP API <small>v1</small>
+    </a>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-sm-12">
+            <div class="page-header">
+                <h1>System BPP - Bibliografia Publikacji Pracowników</h1>
+                <h2>BPP System - Academic Staff Publications Bibliography</h2>
+            </div>
+
+            <div class="alert alert-info" style="margin: 20px 0;">
+                <h4><span class="fi-info"></span> Informacja / Information</h4>
+                <p><strong>PL:</strong> To jest interfejs programistyczny (API) systemu BPP, który umożliwia dostęp
+                do danych bibliograficznych publikacji naukowych.
+                Kliknij na dowolny z poniższych adresów URL, aby przeglądać dostępne zasoby
+                i wykonywać zapytania do bazy danych.</p>
+
+                <p><strong>EN:</strong> This is the BPP system API (Application Programming Interface) that provides access
+                to bibliographic data of academic publications.
+                Click on any of the URLs below to browse available resources
+                and perform database queries.</p>
+            </div>
+
+            <div class="well" style="background-color: #f8f9fa; border-left: 4px solid #007bff;">
+                <h3><span class="fi-link"></span> Dostępne zasoby / Available resources</h3>
+                <p class="text-muted">
+                    <strong>PL:</strong> Kliknij na adresy poniżej, aby eksplorować dostępne dane.<br>
+                    <strong>EN:</strong> Click on the addresses below to explore available data.
+                </p>
+            </div>
+
+            <div class="response-info">
+                <pre class="prettyprint"><span class="lit">{{ content|urlize_quoted_links }}</span></pre>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .page-header h1 {
+        color: #2c3e50;
+        font-size: 28px;
+        margin-bottom: 10px;
+    }
+
+    .page-header h2 {
+        color: #7f8c8d;
+        font-size: 20px;
+        font-weight: 300;
+    }
+
+    .alert-info {
+        background-color: #e3f2fd;
+        border-color: #2196f3;
+        color: #0d47a1;
+    }
+
+    .alert-info h4 {
+        color: #1565c0;
+        margin-bottom: 15px;
+    }
+
+    .well h3 {
+        color: #2c3e50;
+        margin-top: 0;
+    }
+
+    .response-info {
+        margin-top: 20px;
+    }
+
+    .prettyprint {
+        background-color: #f5f5f5;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        padding: 15px;
+    }
+
+    .prettyprint a {
+        font-weight: 500;
+        text-decoration: none;
+    }
+
+    .prettyprint a:hover {
+        text-decoration: underline;
+    }
+</style>
+{% endblock %}

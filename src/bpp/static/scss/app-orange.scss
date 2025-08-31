@@ -1,6 +1,13 @@
+@use "sass:color";
 @import "settings_orange";
 @import "common";
 @import "checkbox";
+@import "main_page_buttons";
+@import "browse";
+@import "browse_autorzy";
+@import "browse_jednostki";
+@import "external_links";
+@import "ranking_autorow";
 @import 'foundation';
 
 @include foundation-global-styles;
@@ -46,9 +53,68 @@
 
 $info-color: #DEF3B6;
 
-input[type=checkbox]:checked + label {
-  background-image: url(/static/bpp/images/lite-red-check.png);
-  background-position: 0 -15px;
+/* Orange theme checkbox and radio button accent color */
+/* Using Foundation's primary color (#f26621) for the orange theme */
+input[type=checkbox],
+input[type=radio] {
+  accent-color: #f26621;
+}
+
+// Theme-specific overrides for browse.scss
+.modern-header {
+  h1, h2 {
+    .fi-foundation {
+      color: $primary-color;
+    }
+  }
+}
+
+// Wydzial stats styling removed - using neutral colors from browse.scss
+
+.section-header {
+  h2 {
+    .fi-home {
+      color: $primary-color;
+    }
+
+    .fi-torsos-all {
+      color: $secondary-color;
+    }
+  }
+}
+
+// Jednostka card styling removed - using neutral colors from browse.scss
+
+.jednostka-name a {
+  &:hover {
+    &.link-aktualne {
+      color: $primary-color;
+    }
+
+    &.link-kola {
+      color: $secondary-color;
+    }
+  }
+}
+
+.button-search {
+  background: $primary-color;
+
+  &:hover {
+    background-color: color.adjust($primary-color, $lightness: -10%);
+  }
+}
+
+.button-show-all {
+  background: $secondary-color;
+
+  &:hover {
+    background-color: color.adjust($secondary-color, $lightness: -10%);
+  }
+}
+
+.author-profile-link {
+  color: $primary-color;
 }
 
 .ui-state-focus {

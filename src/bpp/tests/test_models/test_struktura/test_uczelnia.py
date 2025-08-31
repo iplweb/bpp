@@ -91,7 +91,7 @@ def test_uczelnia_praca_pokazuj_pozostale(
 
 
 lista_stron_raportow = [
-    ("pokazuj_ranking_autorow", "ranking-autorow"),
+    ("pokazuj_ranking_autorow", 'ranking-autorow/wybierz/"><i'),
     ("pokazuj_raport_autorow", "nowe_raporty/autor"),
     ("pokazuj_raport_jednostek", "nowe_raporty/jednostka"),
     ("pokazuj_raport_wydzialow", "nowe_raporty/wydzial"),

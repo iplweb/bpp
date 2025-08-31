@@ -1,35 +1,41 @@
-/* CSS Created by CSS CHECKBOX */
-/**********************************/
-/**** www.CSScheckbox.com *********/
+/* Modern accessible checkbox styling using accent-color */
+/* Ensures proper contrast ratio of 3:1 for accessibility */
 
-/*general styles for all CSS Checkboxes*/
-label {
--webkit-touch-callout: none;
--webkit-user-select: none;
--khtml-user-select: none;
--moz-user-select: none;
--ms-user-select: none;
-user-select: none;
-}
-
+/* Modern checkbox styling using native browser checkboxes with accent-color */
 input[type=checkbox] {
-	position: absolute;
-    overflow: hidden;
-    clip: rect(0 0 0 0);
-    height:1px;
-    width:1px;
-    margin:-1px;
-    padding:0;
-    border:0;
+  /* Use default browser checkbox appearance */
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+  vertical-align: baseline;
+  position: relative;
+  top: 0.125em; /* Fine-tune vertical alignment with text baseline */
+  cursor: pointer;
+  flex-shrink: 0;
 }
 
+/* When checkbox is followed by a label */
 input[type=checkbox] + label {
-	padding-left:20px;
-	display:inline-block;
-	background-repeat:no-repeat;
-	background-position: 0 3px;
-	//font-size:15px;
-	vertical-align:middle;
-	cursor:pointer;
-	background-image: url(/static/bpp/images/no-check.png);
+  display: inline;
+  vertical-align: baseline;
+  cursor: pointer;
+  margin-bottom: 0;
+  line-height: 1.5;
+}
+
+/* Also apply accent-color and alignment to radio buttons for consistency */
+input[type=radio] {
+  margin: 0;
+  vertical-align: baseline;
+  position: relative;
+  top: 0.125em;
+  cursor: pointer;
+}
+
+input[type=radio] + label {
+  display: inline;
+  vertical-align: baseline;
+  cursor: pointer;
+  margin-bottom: 0;
+  line-height: 1.5;
 }
