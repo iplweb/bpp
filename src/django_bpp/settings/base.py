@@ -966,7 +966,7 @@ if MICROSOFT_AUTH_CLIENT_ID:
                 co wskazuje na chęć skorzystania z autoryzacji serwerem Microsoft (Office 365,
                 Teams, etc). Niestety, biblioteka `microsoft_auth` języka Python nie jest
                 możliwa do zaimportowania. Upewnij się, ze zainstalowano pakiet
-                `bpp-iplweb[office365]`. Wyjątek przy próbie importu: {e}"""
+                `django_microsoft_auth`. Wyjątek przy próbie importu: {e}"""
             )
         )
     MICROSOFT_AUTH_CLIENT_SECRET = env("MICROSOFT_AUTH_CLIENT_SECRET")
