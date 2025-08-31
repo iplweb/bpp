@@ -2,12 +2,13 @@ import django_filters
 from rest_framework import viewsets
 
 from api_v1.serializers.autor import (
+    Autor_JednostkaSerializer,
     AutorSerializer,
     Funkcja_AutoraSerializer,
     TytulSerializer,
-    Autor_JednostkaSerializer,
 )
-from bpp.models import Autor, Funkcja_Autora, Tytul, Autor_Jednostka
+
+from bpp.models import Autor, Autor_Jednostka, Funkcja_Autora, Tytul
 
 
 class AutorFilterSet(django_filters.rest_framework.FilterSet):

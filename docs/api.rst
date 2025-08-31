@@ -254,3 +254,229 @@ Wszystkie listy są paginowane. Odpowiedzi zawierają:
 * ``results`` - aktualne wyniki
 
 Domyślnie zwracane jest 20 rekordów na stronę. Można to zmienić parametrem ``page_size``.
+
+API dla ostatnich publikacji autora
+-----------------------------------
+
+System BPP udostępnia specjalny endpoint umożliwiający pobranie listy ostatnich publikacji konkretnego autora.
+Jest to przydatne dla autorów, którzy chcą wyświetlić swoją listę prac na własnej stronie internetowej.
+
+Endpoint
+~~~~~~~~
+
+Aby pobrać ostatnie publikacje autora, należy użyć następującego endpoint'u:
+
+``/api/v1/recent_author_publications/{id}/``
+
+Gdzie ``{id}`` to identyfikator autora w systemie BPP.
+
+Funkcjonalność
+~~~~~~~~~~~~~
+
+* Zwraca 25 ostatnich publikacji autora
+* Publikacje są sortowane według daty ostatniej modyfikacji (od najnowszej)
+* Dla każdej publikacji zwracany jest:
+
+  * Identyfikator publikacji
+  * Pełny opis bibliograficzny
+  * Data ostatniej modyfikacji
+  * URL do szczegółowej strony publikacji w systemie BPP
+
+Format odpowiedzi
+~~~~~~~~~~~~~~~~
+
+.. code-block:: json
+
+    {
+        "autor_id": 123,
+        "autor_nazwa": "prof. dr hab. Jan Kowalski",
+        "count": 25,
+        "publications": [
+            {
+                "id": "[1, 456]",
+                "opis_bibliograficzny": "Kowalski J., Nowak A.: Przykładowy tytuł artykułu. Czasopismo Naukowe 2023, vol. 15, s. 123-145.",
+                "ostatnio_zmieniony": "2023-12-15T14:30:00+01:00",
+                "url": "https://bpp.uczelnia.pl/bpp/browse/praca/przykładowy-tytuł-artykułu-kowalski-j-nowak-a-2023"
+            },
+            {
+                "id": "[1, 457]",
+                "opis_bibliograficzny": "Kowalski J.: Monografia naukowa. Wydawnictwo Uczelniane, Warszawa 2023, ISBN 978-83-1234-567-8.",
+                "ostatnio_zmieniony": "2023-11-20T10:15:00+01:00",
+                "url": "https://bpp.uczelnia.pl/bpp/browse/praca/monografia-naukowa-kowalski-j-2023"
+            }
+        ]
+    }
+
+Przykład użycia CURL
+~~~~~~~~~~~~~~~~~~
+
+.. code-block:: shell
+
+    curl "https://bpp.uczelnia.pl/api/v1/recent_author_publications/123/" | python -m json.tool
+
+Przykład integracji na stronie WWW autora
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Poniżej znajduje się przykładowy kod JavaScript, który może być użyty na stronie internetowej autora
+do automatycznego pobierania i wyświetlania listy jego publikacji:
+
+.. code-block:: html
+
+    <!DOCTYPE html>
+    <html lang="pl">
+    <head>
+        <meta charset="UTF-8">
+        <title>Moje publikacje</title>
+        <style>
+            .publikacje-container {
+                max-width: 1200px;
+                margin: 0 auto;
+                padding: 20px;
+                font-family: Arial, sans-serif;
+            }
+            .publikacja-item {
+                margin-bottom: 20px;
+                padding: 15px;
+                border-left: 3px solid #0066cc;
+                background-color: #f5f5f5;
+            }
+            .publikacja-opis {
+                margin-bottom: 8px;
+                line-height: 1.5;
+            }
+            .publikacja-link {
+                color: #0066cc;
+                text-decoration: none;
+                font-size: 14px;
+            }
+            .publikacja-link:hover {
+                text-decoration: underline;
+            }
+            .publikacja-data {
+                color: #666;
+                font-size: 12px;
+                margin-top: 5px;
+            }
+            .loading {
+                text-align: center;
+                padding: 40px;
+            }
+            .error {
+                color: #cc0000;
+                padding: 20px;
+                border: 1px solid #cc0000;
+                background-color: #ffe6e6;
+                border-radius: 4px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="publikacje-container">
+            <h2>Moje ostatnie publikacje</h2>
+            <div id="publikacje-lista" class="loading">
+                Ładowanie publikacji...
+            </div>
+        </div>
+
+        <script>
+            // Konfiguracja - zmień te wartości na właściwe dla swojego przypadku
+            const BPP_URL = 'https://bpp.uczelnia.pl';  // Adres serwera BPP
+            const AUTOR_ID = 123;  // Twój ID autora w systemie BPP
+
+            // Funkcja do pobierania publikacji
+            async function pobierzPublikacje() {
+                const container = document.getElementById('publikacje-lista');
+
+                try {
+                    // Pobierz dane z API
+                    const response = await fetch(`${BPP_URL}/api/v1/recent_author_publications/${AUTOR_ID}/`);
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+
+                    // Wyczyść kontener
+                    container.innerHTML = '';
+                    container.classList.remove('loading');
+
+                    // Sprawdź czy są publikacje
+                    if (data.publications && data.publications.length > 0) {
+                        // Utwórz HTML dla każdej publikacji
+                        data.publications.forEach((pub, index) => {
+                            const pubDiv = document.createElement('div');
+                            pubDiv.className = 'publikacja-item';
+
+                            // Formatuj datę
+                            const dataObj = new Date(pub.ostatnio_zmieniony);
+                            const dataFormatowana = dataObj.toLocaleDateString('pl-PL', {
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric'
+                            });
+
+                            pubDiv.innerHTML = `
+                                <div class="publikacja-opis">
+                                    ${index + 1}. ${pub.opis_bibliograficzny}
+                                </div>
+                                <a href="${pub.url}" target="_blank" class="publikacja-link">
+                                    Zobacz szczegóły →
+                                </a>
+                                <div class="publikacja-data">
+                                    Ostatnia aktualizacja: ${dataFormatowana}
+                                </div>
+                            `;
+
+                            container.appendChild(pubDiv);
+                        });
+
+                        // Dodaj informację o liczbie publikacji
+                        const info = document.createElement('p');
+                        info.style.marginTop = '20px';
+                        info.style.fontStyle = 'italic';
+                        info.style.color = '#666';
+                        info.textContent = `Wyświetlono ${data.count} ostatnich publikacji.`;
+                        container.appendChild(info);
+                    } else {
+                        container.innerHTML = '<p>Brak publikacji do wyświetlenia.</p>';
+                    }
+
+                } catch (error) {
+                    // Obsługa błędów
+                    console.error('Błąd podczas pobierania publikacji:', error);
+                    container.innerHTML = `
+                        <div class="error">
+                            Nie udało się pobrać listy publikacji.
+                            Spróbuj ponownie później lub skontaktuj się z administratorem.
+                            <br><small>Szczegóły błędu: ${error.message}</small>
+                        </div>
+                    `;
+                    container.classList.remove('loading');
+                }
+            }
+
+            // Wywołaj funkcję po załadowaniu strony
+            document.addEventListener('DOMContentLoaded', pobierzPublikacje);
+        </script>
+    </body>
+    </html>
+
+Uwagi dotyczące CORS
+~~~~~~~~~~~~~~~~~~~
+
+CORS (Cross-Origin Resource Sharing) to mechanizm bezpieczeństwa przeglądarek internetowych, który kontroluje
+dostęp do zasobów między różnymi domenami. Gdy strona internetowa próbuje pobrać dane z innej domeny
+(np. strona autora z domeny ``autor.pl`` próbuje pobrać dane z ``bpp.uczelnia.pl``), przeglądarka
+sprawdza, czy serwer docelowy zezwala na takie połączenie.
+
+System BPP domyślnie konfiguruje nagłówki CORS tak, aby umożliwić pobieranie danych API przez przeglądarki
+internetowe z różnych lokalizacji. Oznacza to, że endpoint ``/api/v1/recent_author_publications/`` jest
+standardowo dostępny dla zewnętrznych stron WWW.
+
+Jednak ze względu na różne uwarunkowania konfiguracyjne (np. dodatkowe proxy, loadbalancery, specyficzne
+ustawienia serwera WWW lub wymagania bezpieczeństwa instytucji), domyślna konfiguracja CORS może okazać się
+niewystarczająca.
+
+W przypadku wystąpienia błędów CORS (widocznych w konsoli przeglądarki jako błędy typu "CORS policy blocked"),
+należy skontaktować się z administratorem systemu BPP w celu dostosowania konfiguracji do konkretnych potrzeb.
