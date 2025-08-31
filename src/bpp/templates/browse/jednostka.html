@@ -135,7 +135,7 @@
                                             <input type="checkbox" name="autor"
                                                    value="{{ autor.pk }}"
                                                    id="autor_{{ autor.pk }}"
-                                                   style="margin-right: 8px;"/>
+                                                   />
                                             <label for="autor_{{ autor.pk }}" style="margin-bottom: 0; display: inline;">
                                                 {{ autor }}{% if autor.aktualna_funkcja.pokazuj_za_nazwiskiem %},
                                                 <span style="color: #7f8c8d; font-size: 0.9em;">{{ autor.aktualna_funkcja }}</span>{% endif %}
@@ -173,7 +173,7 @@
                                                             <input type="checkbox" name="autor"
                                                                    value="{{ autor.pk }}"
                                                                    id="autor_{{ autor.pk }}"
-                                                                   style="margin-right: 8px;"/>
+                                                                   style="margin-left: 8px;"/>
                                                             <label for="autor_{{ autor.pk }}" style="margin-bottom: 0; display: inline;">
                                                                 {{ autor }}
                                                                 <a href="{% url "bpp:browse_autor" autor.slug %}"
@@ -207,7 +207,7 @@
                                                 <input type="checkbox" name="autor"
                                                        value="{{ autor.pk }}"
                                                        id="autor_{{ autor.pk }}"
-                                                       style="margin-right: 8px;"/>
+                                                       />
                                                 <label for="autor_{{ autor.pk }}" style="margin-bottom: 0; display: inline;">
                                                     {{ autor }}
                                                     <a href="{% url "bpp:browse_autor" autor.slug %}"

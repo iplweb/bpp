@@ -2,6 +2,8 @@
 // $primary-color: #1E90F3;
 @import "common";
 @import "checkbox";
+@import "main_page_buttons";
+@import "browse";
 @import 'foundation';
 
 @include foundation-global-styles;
@@ -47,9 +49,11 @@
 
 $info-color: #DEF3B6;
 
-input[type=checkbox]:checked + label {
-  background-image: url(/static/bpp/images/lite-green-check.png);
-  background-position: 0 -15px;
+/* Green theme checkbox and radio button accent color */
+/* Using Foundation's primary color (green) for the green theme */
+input[type=checkbox],
+input[type=radio] {
+  accent-color: green;
 }
 
 .ui-state-focus {

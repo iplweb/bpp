@@ -1,6 +1,8 @@
 @import "settings_orange";
 @import "common";
 @import "checkbox";
+@import "main_page_buttons";
+@import "browse";
 @import 'foundation';
 
 @include foundation-global-styles;
@@ -46,9 +48,11 @@
 
 $info-color: #DEF3B6;
 
-input[type=checkbox]:checked + label {
-  background-image: url(/static/bpp/images/lite-red-check.png);
-  background-position: 0 -15px;
+/* Orange theme checkbox and radio button accent color */
+/* Using Foundation's primary color (#f26621) for the orange theme */
+input[type=checkbox],
+input[type=radio] {
+  accent-color: #f26621;
 }
 
 .ui-state-focus {
