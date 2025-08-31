@@ -429,7 +429,9 @@ INSTALLED_APPS = [
     "snapshot_odpiec",
     "stan_systemu",
     "deduplikator_autorow",
+    "importer_autorow_pbn",
     "pbn_downloader_app",
+    "komparator_pbn_udzialy",
 ]
 
 # Profile użytkowników

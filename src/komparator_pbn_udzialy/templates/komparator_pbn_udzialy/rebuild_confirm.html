@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}Przebudowa rozbieżności dyscyplin{% endblock %}
+
+{% block breadcrumbs %}
+    <li><a href="/">Strona główna</a></li>
+    <li><a href="{% url 'komparator_pbn_udzialy:list' %}">Rozbieżności dyscyplin BPP-PBN</a></li>
+    <li class="active">Przebudowa</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="large-12 columns">
+        <h2>Przebudowa rozbieżności dyscyplin</h2>
+
+        <div class="panel">
+            <h3>Potwierdzenie operacji</h3>
+
+            <div class="alert-box warning">
+                <strong>Uwaga!</strong> Ta operacja może zająć kilka minut w zależności od liczby rekordów do przetworzenia.
+            </div>
+
+            <p>Obecnie w bazie znajduje się <strong>{{ current_count }}</strong> zidentyfikowanych rozbieżności.</p>
+
+            <p>Operacja przebudowy:</p>
+            <ul>
+                <li>Przejrzy wszystkie oświadczenia PBN (OswiadczenieInstytucji)</li>
+                <li>Dla każdego znajdzie odpowiedni rekord Wydawnictwo_*_Autor w BPP</li>
+                <li>Porówna przypisane dyscypliny</li>
+                <li>Zapisze znalezione rozbieżności do bazy danych</li>
+            </ul>
+
+            <form method="post">
+                {% csrf_token %}
+
+                <div class="row">
+                    <div class="medium-6 columns">
+                        <label>
+                            <input type="checkbox" name="clear_existing" id="clear_existing">
+                            Usuń istniejące rozbieżności przed przebudową
+                        </label>
+                        <p class="help-text">
+                            Zaznacz, jeśli chcesz rozpocząć od zera.
+                            W przeciwnym razie istniejące rozbieżności zostaną zaktualizowane, a nowe dodane.
+                        </p>
+                    </div>
+                    <div class="medium-6 columns">
+                        <label>
+                            <input type="checkbox" name="run_async" id="run_async" checked>
+                            Uruchom w tle (zalecane)
+                        </label>
+                        <p class="help-text">
+                            Zadanie zostanie uruchomione w tle przez Celery.
+                            Będziesz mógł śledzić postęp i kontynuować pracę w systemie.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="button-group">
+                    <button type="submit" class="button alert">
+                        <span class="fi-refresh"></span> Rozpocznij przebudowę
+                    </button>
+                    <a href="{% url 'komparator_pbn_udzialy:list' %}" class="button secondary">
+                        <span class="fi-x"></span> Anuluj
+                    </a>
+                </div>
+            </form>
+        </div>
+
+        <div class="panel">
+            <h4>Informacje dodatkowe</h4>
+            <p>Możesz również uruchomić przebudowę z linii poleceń:</p>
+            <pre><code>python src/manage.py porownaj_dyscypliny_pbn --clear</code></pre>
+            <p>Opcje komendy:</p>
+            <ul>
+                <li><code>--clear</code> - usuwa istniejące rozbieżności przed porównaniem</li>
+                <li><code>--no-progress</code> - nie pokazuje paska postępu</li>
+                <li><code>--verbose</code> - włącza szczegółowe logowanie</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<style>
+.help-text {
+    font-size: 0.875rem;
+    color: #666;
+    margin-top: 5px;
+}
+pre {
+    background: #f4f4f4;
+    padding: 10px;
+    border-radius: 3px;
+    overflow-x: auto;
+}
+code {
+    background: #f4f4f4;
+    padding: 2px 5px;
+    border-radius: 3px;
+}
+</style>
+{% endblock %}

@@ -113,7 +113,9 @@ class KomparatorMainView(TemplateView):
         # Count PBN publications in 2022-2025 that are not in BPP
         pbn_publications_not_in_bpp = (
             Publication.objects.filter(
-                year__gte=EVALUATION_START_YEAR, year__lte=EVALUATION_END_YEAR
+                year__gte=EVALUATION_START_YEAR,
+                year__lte=EVALUATION_END_YEAR,
+                status="ACTIVE",
             )
             .exclude(mongoId__in=bpp_pbn_uids)
             .count()
@@ -129,10 +131,18 @@ class KomparatorMainView(TemplateView):
             )
         )
 
-        # Count PBN scientists from institution API that are not in BPP
+        # Get ignored scientist IDs from DoNotRemind model
+        from importer_autorow_pbn.models import DoNotRemind
+
+        ignored_scientist_ids = set(
+            DoNotRemind.objects.values_list("scientist_id", flat=True)
+        )
+
+        # Count PBN scientists from institution API that are not in BPP and not ignored
         pbn_scientists_not_in_bpp = (
             Scientist.objects.filter(from_institution_api=True)
             .exclude(mongoId__in=bpp_autor_pbn_uids)
+            .exclude(mongoId__in=ignored_scientist_ids)
             .count()
         )
 
@@ -140,6 +150,40 @@ class KomparatorMainView(TemplateView):
         from deduplikator_autorow.utils import count_authors_with_duplicates
 
         duplicate_authors_count = count_authors_with_duplicates()
+
+        # Count deleted PBN publications that still exist in BPP
+        # Get all pbn_uid_ids from BPP that point to DELETED Publications
+        deleted_pbn_in_bpp = (
+            Rekord.objects.exclude(pbn_uid_id__isnull=True)
+            .filter(pbn_uid__status="DELETED")
+            .count()
+        )
+
+        # Add discipline discrepancy statistics for 2022-2025
+        from komparator_pbn_udzialy.models import RozbieznoscDyscyplinPBN
+
+        # Get discrepancy statistics filtered by year
+        discipline_discrepancies_qs = RozbieznoscDyscyplinPBN.objects.select_related(
+            "oswiadczenie_instytucji__publicationId"
+        ).filter(
+            oswiadczenie_instytucji__publicationId__year__gte=EVALUATION_START_YEAR,
+            oswiadczenie_instytucji__publicationId__year__lte=EVALUATION_END_YEAR,
+        )
+
+        total_discipline_discrepancies = discipline_discrepancies_qs.count()
+
+        # Count by type of discrepancy
+        bpp_empty_disciplines = discipline_discrepancies_qs.filter(
+            dyscyplina_bpp__isnull=True
+        ).count()
+
+        pbn_empty_disciplines = discipline_discrepancies_qs.filter(
+            dyscyplina_pbn__isnull=True
+        ).count()
+
+        both_present_different = discipline_discrepancies_qs.filter(
+            dyscyplina_bpp__isnull=False, dyscyplina_pbn__isnull=False
+        ).count()
 
         context.update(
             {
@@ -156,10 +200,16 @@ class KomparatorMainView(TemplateView):
                 "pbn_publications_not_in_bpp": pbn_publications_not_in_bpp,
                 "pbn_scientists_not_in_bpp": pbn_scientists_not_in_bpp,
                 "duplicate_authors_count": duplicate_authors_count,
+                "deleted_pbn_in_bpp": deleted_pbn_in_bpp,
                 "evaluation_start_year": EVALUATION_START_YEAR,
                 "evaluation_end_year": EVALUATION_END_YEAR,
                 "uczelnia": uczelnia,
                 "charaktery_wysylane_do_pbn": charaktery_wysylane_do_pbn,
+                # Discipline discrepancy statistics
+                "total_discipline_discrepancies": total_discipline_discrepancies,
+                "bpp_empty_disciplines": bpp_empty_disciplines,
+                "pbn_empty_disciplines": pbn_empty_disciplines,
+                "both_present_different": both_present_different,
             }
         )
 

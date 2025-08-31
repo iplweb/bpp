@@ -177,6 +177,9 @@ class PublicationAdmin(
                 str(obj.rekord_w_bpp),
             )
         else:
+            if obj.status != "ACTIVE":
+                return format_html("Skasowany w PBN - nie można importować.")
+
             # If no BPP record, show import link
             import_url = reverse(
                 "admin:pbn_api_publication_import_to_bpp", args=[obj.pk]

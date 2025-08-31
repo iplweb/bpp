@@ -791,6 +791,8 @@ def count_authors_with_lastname(search_term):
 
     for autor in matching_authors[:100]:
         scientist = autor.pbn_uid
+        if scientist is None:
+            continue
 
         # Sprawdź czy ma duplikaty
         try:

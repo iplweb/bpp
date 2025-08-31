@@ -132,9 +132,11 @@
                             <ul class="menu vertical">
                                 {% if request.user|has_group:"wprowadzanie danych" or request.user.is_superuser %}
                                     <li><a href="{% url "pbn_api:authorize" %}"><i class="fi-key" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> autoryzuj PBN API</a></li>
-                                    <li><a href="{% url "komparator_pbn:main" %}"><i class="fi-arrows-compress" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> komparator PBN</a></li>
                                     <li><a href="{% url "pbn_downloader_app:main" %}"><i class="fi-download" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> pobieranie danych z PBN</a></li>
-                                    <li><a href="{% url "deduplikator_autorow:duplicate_authors" %}"><i class="fi-filter" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> deduplikator autorów</a></li>
+                                    <li><a href="{% url "komparator_pbn:main" %}"><i class="fi-arrows-compress" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> komparator PBN</a></li>
+                                    <li><a href="{% url "komparator_pbn_udzialy:list" %}"><i class="fi-alert" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> komparator udziałów PBN</a></li>
+                                    <li><a href="{% url "importer_autorow_pbn:main" %}"><i class="fi-torsos-female-male" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> importer autorów PBN</a></li>
+                                    <li><a href="{% url "deduplikator_autorow:duplicate_authors" %}"><i class="fi-filter" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> deduplikator autorów PBN</a></li>
                                 {% endif %}
                             </ul>
                         </li>
@@ -145,12 +147,6 @@
                         <div class="menu-columns-wrapper" data-submenu>
                             {% if request.user|has_group:"wprowadzanie danych" or request.user.is_superuser %}
                                 <ul class="menu vertical column-1">
-                                    {% if not uczelnia.pbn_integracja %}
-                                        <li><a href="{% url "pbn_api:authorize" %}"><i class="fi-key" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> autoryzuj PBN API</a></li>
-                                        <li><a href="{% url "komparator_pbn:main" %}"><i class="fi-arrows-compress" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> komparator PBN</a></li>
-                                        <li><a href="{% url "pbn_downloader_app:main" %}"><i class="fi-cloud-download" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> pobieranie danych z PBN</a></li>
-                                        <li><a href="{% url "deduplikator_autorow:duplicate_authors" %}"><i class="fi-filter" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> deduplikator autorów</a></li>
-                                    {% endif %}
                                     <li><a href="{% url "integrator2:main" %}"><i class="fi-upload" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> import danych</a></li>
                                     <li><a href="{% url "import_pracownikow:index" %}"><i class="fi-torsos" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> import pracowników</a></li>
                                     <li><a href="{% url "import_polon:index" %}"><i class="fi-database" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> import z POLON</a></li>

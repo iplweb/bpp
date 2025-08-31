@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}Status zadania{% endblock %}
+
+{% block breadcrumbs %}
+    <li><a href="/">Strona główna</a></li>
+    <li><a href="{% url 'komparator_pbn_udzialy:list' %}">Rozbieżności dyscyplin BPP-PBN</a></li>
+    <li class="active">Status zadania</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="large-12 columns">
+        <h2>Status przebudowy rozbieżności</h2>
+
+        <div class="panel">
+            <h3>Zadanie: {{ task_id }}</h3>
+
+            <div id="status-container">
+                <div class="alert-box info">
+                    <span class="fi-loop"></span> Sprawdzanie statusu zadania...
+                </div>
+            </div>
+
+            <div id="progress-container" style="display: none;">
+                <div class="progress" role="progressbar" tabindex="0" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                    <div class="progress-meter" id="progress-bar" style="width: 0%">
+                        <p class="progress-meter-text" id="progress-text">0%</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="stats-container" style="display: none; margin-top: 20px;">
+                <h4>Statystyki</h4>
+                <dl class="dl-horizontal">
+                    <dt>Przetworzono:</dt>
+                    <dd id="stat-processed">0</dd>
+
+                    <dt>Znaleziono rozbieżności:</dt>
+                    <dd id="stat-discrepancies">0</dd>
+
+                    <dt>Pominięto:</dt>
+                    <dd id="stat-skipped">0</dd>
+
+                    <dt>Błędy:</dt>
+                    <dd id="stat-errors">0</dd>
+                </dl>
+            </div>
+
+            <div class="button-group" style="margin-top: 20px;">
+                <a href="{% url 'komparator_pbn_udzialy:list' %}" class="button secondary">
+                    <span class="fi-arrow-left"></span> Powrót do listy
+                </a>
+                <button id="refresh-button" class="button" onclick="checkStatus()">
+                    <span class="fi-refresh"></span> Odśwież status
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.dl-horizontal dt {
+    font-weight: bold;
+    float: left;
+    width: 200px;
+    clear: left;
+    text-align: right;
+    margin-right: 10px;
+}
+.dl-horizontal dd {
+    margin-left: 210px;
+    margin-bottom: 10px;
+}
+.progress {
+    background-color: #f3f3f3;
+    height: 30px;
+    border-radius: 3px;
+    margin: 20px 0;
+}
+.progress-meter {
+    background-color: #2199e8;
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.5s ease;
+    position: relative;
+}
+.progress-meter-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-weight: bold;
+    margin: 0;
+}
+</style>
+
+<script>
+let intervalId = null;
+const taskId = "{{ task_id }}";
+
+function updateUI(data) {
+    const statusContainer = document.getElementById('status-container');
+    const progressContainer = document.getElementById('progress-container');
+    const statsContainer = document.getElementById('stats-container');
+    const progressBar = document.getElementById('progress-bar');
+    const progressText = document.getElementById('progress-text');
+
+    if (data.status === 'PENDING') {
+        statusContainer.innerHTML = '<div class="alert-box info"><span class="fi-clock"></span> Zadanie oczekuje w kolejce...</div>';
+        progressContainer.style.display = 'none';
+        statsContainer.style.display = 'none';
+    } else if (data.status === 'PROGRESS') {
+        statusContainer.innerHTML = '<div class="alert-box info"><span class="fi-loop"></span> ' + (data.message || 'Przetwarzanie...') + '</div>';
+
+        if (data.total > 0) {
+            progressContainer.style.display = 'block';
+            const percentage = Math.round((data.current / data.total) * 100);
+            progressBar.style.width = percentage + '%';
+            progressText.textContent = percentage + '%';
+        }
+
+        if (data.stats) {
+            statsContainer.style.display = 'block';
+            document.getElementById('stat-processed').textContent = data.stats.processed || 0;
+            document.getElementById('stat-discrepancies').textContent = data.stats.discrepancies_found || 0;
+            document.getElementById('stat-skipped').textContent = data.stats.skipped || 0;
+            document.getElementById('stat-errors').textContent = data.stats.errors || 0;
+        }
+    } else if (data.status === 'SUCCESS') {
+        statusContainer.innerHTML = '<div class="alert-box success"><span class="fi-check"></span> ' + (data.message || 'Zadanie zakończone pomyślnie!') + '</div>';
+        progressContainer.style.display = 'block';
+        progressBar.style.width = '100%';
+        progressText.textContent = '100%';
+
+        if (data.stats) {
+            statsContainer.style.display = 'block';
+            document.getElementById('stat-processed').textContent = data.stats.processed || 0;
+            document.getElementById('stat-discrepancies').textContent = data.stats.discrepancies_found || 0;
+            document.getElementById('stat-skipped').textContent = data.stats.skipped || 0;
+            document.getElementById('stat-errors').textContent = data.stats.errors || 0;
+        }
+
+        // Stop auto-refresh on success
+        if (intervalId) {
+            clearInterval(intervalId);
+            intervalId = null;
+        }
+    } else if (data.status === 'FAILURE' || data.status === 'ERROR') {
+        statusContainer.innerHTML = '<div class="alert-box alert"><span class="fi-x"></span> Błąd: ' + (data.message || 'Nieznany błąd') + '</div>';
+        progressContainer.style.display = 'none';
+
+        // Stop auto-refresh on error
+        if (intervalId) {
+            clearInterval(intervalId);
+            intervalId = null;
+        }
+    }
+}
+
+function checkStatus() {
+    fetch("{% url 'komparator_pbn_udzialy:task_status_api' task_id %}")
+        .then(response => response.json())
+        .then(data => {
+            updateUI(data);
+        })
+        .catch(error => {
+            console.error('Error fetching status:', error);
+            document.getElementById('status-container').innerHTML =
+                '<div class="alert-box alert"><span class="fi-x"></span> Błąd podczas pobierania statusu: ' + error + '</div>';
+        });
+}
+
+// Initial check
+checkStatus();
+
+// Auto-refresh every 2 seconds
+intervalId = setInterval(checkStatus, 2000);
+
+// Clean up on page unload
+window.addEventListener('beforeunload', function() {
+    if (intervalId) {
+        clearInterval(intervalId);
+    }
+});
+</script>
+{% endblock %}

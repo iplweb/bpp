@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}Szczegóły rozbieżności dyscyplin{% endblock %}
+
+{% block breadcrumbs %}
+    <li><a href="/">Strona główna</a></li>
+    <li><a href="{% url 'komparator_pbn_udzialy:list' %}">Rozbieżności dyscyplin BPP-PBN</a></li>
+    <li class="active">Szczegóły</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="large-12 columns">
+        <h2>Szczegóły rozbieżności dyscyplin</h2>
+
+        <!-- Informacje o rozbieżności -->
+        <div class="panel">
+            <h3>Porównanie dyscyplin</h3>
+            <div class="row">
+                <div class="medium-6 columns">
+                    <div class="alert-box {% if not rozbieznosc.dyscyplina_bpp %}alert{% else %}info{% endif %}">
+                        <h4>Dyscyplina w BPP</h4>
+                        {% if rozbieznosc.dyscyplina_bpp %}
+                            <p><strong>Kod:</strong> {{ rozbieznosc.dyscyplina_bpp.kod }}</p>
+                            <p><strong>Nazwa:</strong> {{ rozbieznosc.dyscyplina_bpp.nazwa }}</p>
+                        {% else %}
+                            <p><em>Brak przypisanej dyscypliny</em></p>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="medium-6 columns">
+                    <div class="alert-box {% if not rozbieznosc.dyscyplina_pbn %}alert{% else %}info{% endif %}">
+                        <h4>Dyscyplina w PBN</h4>
+                        {% if rozbieznosc.dyscyplina_pbn %}
+                            <p><strong>Kod:</strong> {{ rozbieznosc.dyscyplina_pbn.kod }}</p>
+                            <p><strong>Nazwa:</strong> {{ rozbieznosc.dyscyplina_pbn.nazwa }}</p>
+                        {% else %}
+                            <p><em>Brak przypisanej dyscypliny</em></p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Informacje o autorze -->
+        {% if autor %}
+        <div class="panel">
+            <h3>Autor</h3>
+            <dl class="dl-horizontal">
+                <dt>Imię i nazwisko:</dt>
+                <dd>{{ autor }}</dd>
+
+                {% if autor.orcid %}
+                <dt>ORCID:</dt>
+                <dd>{{ autor.orcid }}</dd>
+                {% endif %}
+
+                {% if autor.pbn_id %}
+                <dt>PBN ID:</dt>
+                <dd>{{ autor.pbn_id }}</dd>
+                {% endif %}
+            </dl>
+
+            <a href="{% url 'admin:bpp_autor_change' autor.pk %}" class="button tiny" target="_blank">
+                <span class="fi-pencil"></span> Edytuj autora w panelu administracyjnym
+            </a>
+        </div>
+        {% endif %}
+
+        <!-- Informacje o publikacji -->
+        {% if publikacja %}
+        <div class="panel">
+            <h3>Publikacja</h3>
+            <dl class="dl-horizontal">
+                <dt>Tytuł:</dt>
+                <dd>{{ publikacja.tytul_oryginalny }}</dd>
+
+                {% if publikacja.rok %}
+                <dt>Rok:</dt>
+                <dd>{{ publikacja.rok }}</dd>
+                {% endif %}
+
+                {% if publikacja.pbn_id %}
+                <dt>PBN ID:</dt>
+                <dd>{{ publikacja.pbn_id }}</dd>
+                {% endif %}
+            </dl>
+
+            {% if wydawnictwo_autor %}
+            <a href="{% url 'admin:bpp_wydawnictwo_ciagle_autor_change' wydawnictwo_autor.pk %}" class="button tiny" target="_blank">
+                <span class="fi-pencil"></span> Edytuj przypisanie autora w panelu administracyjnym
+            </a>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- Informacje o roku publikacji -->
+        {% if publikacja %}
+        <div class="panel">
+            <h3>Rok publikacji</h3>
+            <dl class="dl-horizontal">
+                <dt>Rok:</dt>
+                <dd>
+                    {% if publikacja.rok %}
+                        {{ publikacja.rok }}
+                    {% else %}
+                        <em>Brak danych</em>
+                    {% endif %}
+                </dd>
+            </dl>
+        </div>
+        {% endif %}
+
+        <!-- Informacje o oświadczeniu PBN -->
+        <div class="panel">
+            <h3>Oświadczenie PBN</h3>
+            <dl class="dl-horizontal">
+                <dt>ID oświadczenia:</dt>
+                <dd>{{ rozbieznosc.oswiadczenie_instytucji.pk }}</dd>
+
+                {% if rozbieznosc.oswiadczenie_instytucji.publicationId %}
+                <dt>ID publikacji PBN:</dt>
+                <dd>{{ rozbieznosc.oswiadczenie_instytucji.publicationId }}</dd>
+                {% endif %}
+
+                {% if rozbieznosc.oswiadczenie_instytucji.personId %}
+                <dt>ID osoby PBN:</dt>
+                <dd>{{ rozbieznosc.oswiadczenie_instytucji.personId }}</dd>
+                {% endif %}
+
+                {% if rozbieznosc.oswiadczenie_instytucji.institutionId %}
+                <dt>ID instytucji PBN:</dt>
+                <dd>{{ rozbieznosc.oswiadczenie_instytucji.institutionId }}</dd>
+                {% endif %}
+
+                {% if rozbieznosc.oswiadczenie_instytucji.disciplines %}
+                <dt>Dyscypliny (JSON):</dt>
+                <dd><code>{{ rozbieznosc.oswiadczenie_instytucji.disciplines }}</code></dd>
+                {% endif %}
+            </dl>
+        </div>
+
+        <!-- Metadane -->
+        <div class="panel">
+            <h3>Metadane</h3>
+            <dl class="dl-horizontal">
+                <dt>Data wykrycia:</dt>
+                <dd>{{ rozbieznosc.created_at|date:"Y-m-d H:i:s" }}</dd>
+
+                <dt>Ostatnia aktualizacja:</dt>
+                <dd>{{ rozbieznosc.updated_at|date:"Y-m-d H:i:s" }}</dd>
+            </dl>
+        </div>
+
+        <!-- Akcje -->
+        <div class="panel">
+            <a href="{% url 'komparator_pbn_udzialy:list' %}" class="button secondary">
+                <span class="fi-arrow-left"></span> Powrót do listy
+            </a>
+        </div>
+    </div>
+</div>
+
+<style>
+.dl-horizontal dt {
+    font-weight: bold;
+    float: left;
+    width: 200px;
+    clear: left;
+    text-align: right;
+    margin-right: 10px;
+}
+.dl-horizontal dd {
+    margin-left: 210px;
+    margin-bottom: 10px;
+}
+.alert-box.info {
+    background-color: #d9edf7;
+    border-color: #bce8f1;
+    color: #31708f;
+}
+.alert-box.alert {
+    background-color: #f2dede;
+    border-color: #ebccd1;
+    color: #a94442;
+}
+</style>
+{% endblock %}
