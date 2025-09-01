@@ -115,9 +115,7 @@ class PublicWydawnictwo_NadrzedneAutocomplete(Wydawnictwo_NadrzedneAutocomplete)
 class JednostkaMixin:
     def get_result_label(self, result):
         if result is not None:
-            if hasattr(result, "wydzial") and result.wydzial is not None:
-                return f"{result.nazwa} ({result.wydzial.skrot})"
-            return f"{result.nazwa} (bez wydziału)"
+            return str(result)
 
 
 class JednostkaAutocomplete(JednostkaMixin, autocomplete.Select2QuerySetView):

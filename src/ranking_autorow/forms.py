@@ -68,7 +68,7 @@ class RankingAutorowForm(forms.Form):
         label="Ogranicz do:",
         required=False,
         widget=autocomplete.ModelSelect2(
-            url="bpp:jednostka-autocomplete",
+            url="bpp:public-jednostka-autocomplete",
             attrs={
                 "data-placeholder": "Wybierz jednostkę...",
                 "data-allow-clear": "true",
