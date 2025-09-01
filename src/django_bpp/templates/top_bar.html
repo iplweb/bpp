@@ -76,12 +76,22 @@
             </li>
 
             <script type="text/javascript">
-                if (document.getElementById("top-bar-menu-raportow").firstElementChild.tagName == "HR") {
-                    document.getElementById("top-bar-menu-raportow").firstElementChild.remove();
+                var raportMenu = document.getElementById("top-bar-menu-raportow");
+
+                // Remove leading HR elements
+                while (raportMenu.firstElementChild && raportMenu.firstElementChild.tagName == "HR") {
+                    raportMenu.firstElementChild.remove();
                 }
 
-                if (document.getElementById("top-bar-menu-raportow").lastElementChild.tagName == "HR") {
-                    document.getElementById("top-bar-menu-raportow").lastElementChild.remove();
+                // Remove trailing HR elements
+                while (raportMenu.lastElementChild && raportMenu.lastElementChild.tagName == "HR") {
+                    raportMenu.lastElementChild.remove();
+                }
+
+                // Hide the entire raporty menu if it's empty
+                if (raportMenu.children.length === 0) {
+                    // Find and hide the parent <li> element that contains the "raporty" link and submenu
+                    raportMenu.parentElement.style.display = 'none';
                 }
             </script>
 
@@ -179,11 +189,11 @@
                     </li>
                 {% endif %}
 
-                <li>
+                <li id="wyloguj-menu-item">
                     <a href="#" onclick="document.getElementById('logout-form').submit(); return false;">
                         <i class="fi-power" style="font-size: 1.6rem; margin-right: 0.4rem; vertical-align: middle;"></i> wyloguj
                     </a>
-                    <ul class="menu vertical">
+                    <ul class="menu vertical" id="wyloguj-submenu">
                         <li>
                             <a href="#" onclick="document.getElementById('logout-form').submit(); return false;">
                                 <i class="fi-power" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> wyloguj
@@ -197,6 +207,35 @@
                         {% endif %}
                     </ul>
                 </li>
+
+                <script type="text/javascript">
+                    // Check if wyloguj menu has only one item and simplify if so
+                    document.addEventListener('DOMContentLoaded', function() {
+                        var wylogujMenuItem = document.getElementById('wyloguj-menu-item');
+                        var wylogujSubmenu = document.getElementById('wyloguj-submenu');
+
+                        if (wylogujMenuItem && wylogujSubmenu) {
+                            // Count the number of submenu items
+                            var submenuItems = wylogujSubmenu.querySelectorAll('li');
+
+                            if (submenuItems.length === 1) {
+                                // Remove the submenu entirely
+                                wylogujSubmenu.remove();
+
+                                // Remove the dropdown behavior by removing data attributes
+                                var mainLink = wylogujMenuItem.querySelector('a');
+                                if (mainLink) {
+                                    // The main link already has the logout onclick handler, so we just need to ensure
+                                    // it doesn't act as a dropdown trigger
+                                    wylogujMenuItem.classList.remove('has-submenu');
+
+                                    // Remove any Foundation dropdown attributes that might have been added
+                                    delete wylogujMenuItem.dataset.dropdownMenu;
+                                }
+                            }
+                        }
+                    });
+                </script>
 
                 <!-- Hidden logout form -->
                 <form id="logout-form" action="{% url "logout" %}" method="post" style="display: none;">
@@ -214,7 +253,7 @@
                             <li><a href="{% url "microsoft_auth:to-auth-redirect" %}?next={{ request.get_full_path }}">
                                 <i class="fi-torso" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> logowanie</a></li>
                             <li><a href="/admin/">
-                                <i class="fi-alert" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> logowanie awaryjne</a></li>
+                                <i class="fi-home" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> logowanie lokalne</a></li>
                         </ul>
                     </li>
                 {% else %}

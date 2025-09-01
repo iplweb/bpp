@@ -37,6 +37,7 @@ ALLOWED_HOSTS = [
     "localhost",
     "127.0.0.1",
     "mac.iplweb",
+    "publikacje-test",
     "test.unexistenttld",
     env("DJANGO_BPP_HOSTNAME"),  # noqa
 ]
