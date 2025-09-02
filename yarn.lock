@@ -832,7 +832,7 @@ foundation-datepicker@^1.5.6:
   resolved "https://registry.yarnpkg.com/foundation-datepicker/-/foundation-datepicker-1.5.6.tgz#6dc891f3f6422028219f74284d1684548a8ca4bf"
   integrity sha512-f7kAGWJ/NLIStXBeO+bz5jokPZDYBXr30vWDKdmBM+aAoLb5yEM6TO7NwXd4QRKvmUi9F79ZFy+5wQexmIoiDQ==
 
-foundation-sites@^6.7.5:
+foundation-sites@^6.9.0:
   version "6.9.0"
   resolved "https://registry.yarnpkg.com/foundation-sites/-/foundation-sites-6.9.0.tgz#ef4d51fa1c669cbdf61d080d8a328686ff85992a"
   integrity sha512-bZpjL6lxuGViy1UU/NuMddyAAJP0YgJYKNh+8ZtDWhQRtiY1yQISxHmgF4V8EFx7DWHDTdZC1fwFysnMAYkdQg==
@@ -1977,10 +1977,10 @@ sass@^1.91.0:
     grunt-contrib-sass "^1.0.0"
     grunt-contrib-watch "^0.6.1"
 
-select2@^4.0.13:
-  version "4.0.13"
-  resolved "https://registry.yarnpkg.com/select2/-/select2-4.0.13.tgz#0dbe377df3f96167c4c1626033e924372d8ef44d"
-  integrity sha512-1JeB87s6oN/TDxQQYCvS5EFoQyvV6eYMZZ0AeA4tdFDYWN3BAGZ8npr17UBFddU0lgAt3H0yjX3X6/ekOj1yjw==
+select2@^4.1.0-rc.0:
+  version "4.1.0-rc.0"
+  resolved "https://registry.yarnpkg.com/select2/-/select2-4.1.0-rc.0.tgz#ba3cd3901dda0155e1c0219ab41b74ba51ea22d8"
+  integrity sha512-Hr9TdhyHCZUtwznEH2CBf7967mEM0idtJ5nMtjvk3Up5tPukOLXbHUNmh10oRfeNIhj+3GD3niu+g6sVK+gK0A==
 
 semver@^7.6.3:
   version "7.6.3"
