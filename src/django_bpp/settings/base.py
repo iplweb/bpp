@@ -279,6 +279,7 @@ TEMPLATES = [
                 "bpp.context_processors.global_nav.user",
                 "bpp.context_processors.google_analytics.google_analytics",
                 "bpp.context_processors.pbn_token_aktualny.pbn_token_aktualny",
+                "bpp.context_processors.microsoft_auth.microsoft_auth_status",
                 "cookielaw.context_processors.cookielaw",
             ],
         },
@@ -986,9 +987,8 @@ if MICROSOFT_AUTH_CLIENT_ID:
         + INSTALLED_APPS[contrib_sites_index + 1 :]
     )
 
-    TEMPLATES[0]["OPTIONS"]["context_processors"].append(
-        "microsoft_auth.context_processors.microsoft",
-    )
+    # Context processor removed - using MicrosoftAuthRedirect view instead
+    # to avoid unnecessary network traffic on every page load
 
     AUTHENTICATION_BACKENDS = [
         "microsoft_auth.backends.MicrosoftAuthenticationBackend",

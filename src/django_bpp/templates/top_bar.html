@@ -4,6 +4,11 @@
         cursor: pointer;
         transform: scale(1.1);
     }
+
+    /* Hide the dropdown arrow for single-item menus */
+    .dropdown.menu > li.no-dropdown-arrow > a::after {
+        display: none !important;
+    }
 </style>
 
 <div class="title-bar" data-responsive-toggle="example-menu" data-hide-for="medium">
@@ -18,7 +23,22 @@
                 onclick="location.href='/';" style="padding: 0.5rem 0.5rem;">
                 <img src="{% load static %}{% static 'images/bpp-icon.png' %}" alt="BPP" class="bpp-logo" style="height: 24px; width: auto; vertical-align: middle; filter: grayscale(100%); transition: filter 0.3s ease, transform 0.3s ease;">
             </li>
-            <li><a href="{% url "multiseek:index" %}"><i class="fi-magnifying-glass" style="font-size: 1.6rem; margin-right: 0.4rem; vertical-align: middle;"></i> szukaj</a>
+            <li>
+                <a href="#"><i class="fi-magnifying-glass" style="font-size: 1.6rem; margin-right: 0.4rem; vertical-align: middle;"></i> szukaj</a>
+                <ul class="menu vertical">
+                    <li><a href="{% url "multiseek:index" %}"><i class="fi-page-search" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> formularz wyszukiwania</a></li>
+                    <li class="global-nav-container">{% load crispy_forms_tags %}
+                        {% crispy global_nav_form %}
+                        <script type="text/javascript">
+                            $(document).ready(function () {
+                                $(':input[name$=global_nav_value]').on('change', function () {
+                                    location.href = "/global-nav-redir/" + $(this).val() +
+                                        "/?source=user";
+                                });
+                            });
+                        </script>
+                    </li>
+                </ul>
             </li>
             <li>
                 <a href="#"><i class="fi-list" style="font-size: 1.6rem; margin-right: 0.4rem; vertical-align: middle;"></i> przeglądaj</a>
@@ -229,8 +249,14 @@
                                     // it doesn't act as a dropdown trigger
                                     wylogujMenuItem.classList.remove('has-submenu');
 
+                                    // Remove the class that adds the dropdown arrow
+                                    wylogujMenuItem.classList.remove('is-dropdown-submenu-parent');
+
                                     // Remove any Foundation dropdown attributes that might have been added
                                     delete wylogujMenuItem.dataset.dropdownMenu;
+
+                                    // Add a specific class to hide the arrow for this item only
+                                    wylogujMenuItem.classList.add('no-dropdown-arrow');
                                 }
                             }
                         }
@@ -250,9 +276,9 @@
                         <a href="#"><i class="fi-lock" style="font-size: 1.6rem; margin-right: 0.4rem; vertical-align: middle;"></i>
                         zaloguj</a>
                         <ul class="menu vertical">
-                            <li><a href="{% url "microsoft_auth:to-auth-redirect" %}?next={{ request.get_full_path }}">
+                            <li><a href="{% url "bpp:microsoft_auth_redirect" %}?next={{ request.get_full_path|urlencode }}">
                                 <i class="fi-torso" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> logowanie</a></li>
-                            <li><a href="/admin/">
+                            <li><a href="/admin/?next={{ request.get_full_path|urlencode }}">
                                 <i class="fi-home" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> logowanie lokalne</a></li>
                         </ul>
                     </li>
@@ -264,70 +290,6 @@
 
             {% endif %}
 
-
-        </ul>
-    </div>
-    <div class="top-bar-right">
-        <ul class="dropdown menu" data-dropdown-menu>
-            {% block global-nav %}
-                <li class="global-nav-container">{% load crispy_forms_tags %}
-                    {% crispy global_nav_form %}
-                    <script type="text/javascript">
-                        $(document).ready(function () {
-                            // Function to scale global_nav based on window width
-                            function scaleGlobalNav() {
-                                const windowWidth = window.innerWidth;
-                                const navContainer = $('#div_id_global_nav_value');
-                                const select2Container = navContainer.find('.select2-container');
-
-                                let navWidth;
-
-                                // Calculate width based on window size
-                                if (windowWidth < 640) {
-                                    // Mobile
-                                    navWidth = Math.min(windowWidth * 0.4, 200);
-                                } else if (windowWidth < 1024) {
-                                    // Tablet
-                                    navWidth = Math.min(windowWidth * 0.35, 300);
-                                } else if (windowWidth < 1440) {
-                                    // Small desktop
-                                    navWidth = Math.min(windowWidth * 0.25, 350);
-                                } else {
-                                    // Large desktop
-                                    navWidth = Math.min(windowWidth * 0.4, 450);
-                                }
-
-                                // Apply the calculated width
-                                navContainer.css({
-                                    'min-width': navWidth + 'px',
-                                    'width': navWidth + 'px'
-                                });
-
-                                select2Container.css({
-                                    'min-width': navWidth + 'px',
-                                    'width': navWidth + 'px'
-                                });
-                            }
-
-                            // Initial scale
-                            scaleGlobalNav();
-
-                            // Scale on window resize with debouncing
-                            let resizeTimer;
-                            $(window).on('resize', function() {
-                                clearTimeout(resizeTimer);
-                                resizeTimer = setTimeout(scaleGlobalNav, 100);
-                            });
-
-                            // Original change handler
-                            $(':input[name$=global_nav_value]').on('change', function () {
-                                location.href = "/global-nav-redir/" + $(this).val() +
-                                    "/?source=user";
-                            });
-                        });
-                    </script>
-                </li>
-            {% endblock %}
 
         </ul>
     </div>
