@@ -54,6 +54,35 @@
         <!-- Left Column - Bibliographic Information -->
         <div class="left-column" style="flex: 1 1 60%; min-width: 300px;">
 
+            <!-- Edit Record Panel - Only for authorized users -->
+            {% if request.user.is_superuser or request.user|has_group:"wprowadzanie danych" %}
+                <div class="info-card edit-panel hide-for-print">
+                    <h3>
+                        <span class="fi-pencil"></span> Edycja rekordu
+                        <div class="shaded-hr-div-small"></div>
+                    </h3>
+                    <div class="edit-buttons">
+                        <a target="_blank"
+                           href="{% url "admin:"|add:rekord.content_type.app_label|add:"_"|add:rekord.content_type.model|add:"_change" rekord.object_id %}"
+                           class="button btn-edit">
+                            <span class="fi-page-edit"></span>
+                            Otwórz do edycji
+                        </a>
+
+                        <a target="_blank"
+                           href="{% url "admin:"|add:rekord.content_type.app_label|add:"_"|add:rekord.content_type.model|add:"_add" %}"
+                           class="button btn-add">
+                            <span class="fi-plus"></span>
+                            Dodaj nowy rekord
+                        </a>
+                    </div>
+                    <small class="edit-info">
+                        <span class="fi-info"></span>
+                        Linki otwierają się w nowej karcie
+                    </small>
+                </div>
+            {% endif %}
+
             <!-- Bibliographic Description Card -->
             <div class="info-card"
                  style="background: white; border: 1px solid #e1e4e8; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
@@ -591,6 +620,8 @@
                             {% if request.user.is_superuser or request.user|has_group:"wprowadzanie danych" %}
                                 <a target="_blank"
                                    href="{% url "oswiadczenia:wiele-oswiadczen" rekord.id.0 rekord.id.1 %}"
+                                   class="print-button print-button-header"
+                                   title="Wydrukuj wszystkie oświadczenia"
                                    style="float: right;">
                                     <span class="fi-print"></span>
                                 </a>
@@ -637,15 +668,19 @@
                                     {% if uczelnia.drukuj_oswiadczenia %}
                                         {% if request.user.is_superuser or request.user|has_group:"wprowadzanie danych" %}
                                             <td style="padding: 10px; text-align: center;">
-                                                <a target="_blank" title="Wydruk dyscypliny zgłoszonej dla publikacji"
-                                                   href="{% url "oswiadczenia:jedno-oswiadczenie" rekord.id.0 rekord.id.1 pa.autor.id pa.dyscyplina.id %}">
+                                                <a target="_blank"
+                                                   title="Wydruk dyscypliny zgłoszonej dla publikacji"
+                                                   href="{% url "oswiadczenia:jedno-oswiadczenie" rekord.id.0 rekord.id.1 pa.autor.id pa.dyscyplina.id %}"
+                                                   class="print-button print-button-small">
                                                     <span class="fi-print"></span>
                                                 </a>
                                                 {% if pa.czy_autor_ma_alternatywna_dyscypline and uczelnia.drukuj_alternatywne_oswiadczenia %}
                                                     &nbsp;
-                                                    <a target="_blank" title="Wydruk alternatywnej dyscypliny autora"
-                                                       href="{% url "oswiadczenia:jedno-oswiadczenie-druga-dyscyplina" rekord.id.0 rekord.id.1 pa.autor.id pa.dyscyplina.id %}">
-                                                        <span class="fi-print" style="color: palevioletred;"></span>
+                                                    <a target="_blank"
+                                                       title="Wydruk alternatywnej dyscypliny autora"
+                                                       href="{% url "oswiadczenia:jedno-oswiadczenie-druga-dyscyplina" rekord.id.0 rekord.id.1 pa.autor.id pa.dyscyplina.id %}"
+                                                       class="print-button print-button-small print-button-alt">
+                                                        <span class="fi-print"></span>
                                                     </a>
                                                 {% endif %}
                                             </td>

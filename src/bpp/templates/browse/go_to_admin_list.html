@@ -1,19 +1,16 @@
 {% load user_in_group %}{% if request.user.is_superuser or request.user|has_group:group %}
     <div class="hide-for-print">
-        <a target="_blank" href="{% url url %}"
-           style="display: inline-block;
-                  background: #f8f9fa;
-                  color: #6c757d;
-                  padding: 6px 12px;
-                  border-radius: 4px;
-                  text-decoration: none;
-                  font-size: 0.85rem;
-                  border: 1px solid #e9ecef;
-                  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-                  transition: all 0.2s ease;"
-           onmouseover="this.style.backgroundColor='#e9ecef'; this.style.color='#495057'; this.style.boxShadow='0 2px 6px rgba(0,0,0,0.15)'"
-           onmouseout="this.style.backgroundColor='#f8f9fa'; this.style.color='#6c757d'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.1)'">
-            <i class="fi-plus" style="margin-right: 4px; font-size: 0.8rem;"></i>{{ text|default:"dodaj nowy rekord" }}
+        <a target="_blank" href="{% url url %}" class="{% if 'edycji' in text or 'Otwórz' in text %}jednostka-edit-button{% else %}jednostka-add-button{% endif %}">
+            {% if '<i' in text %}
+                {{ text|safe }}
+            {% else %}
+                {% if 'edycji' in text or 'Otwórz' in text %}
+                    <span class="fi fi-page-edit"></span>
+                {% else %}
+                    <span class="fi fi-plus"></span>
+                {% endif %}
+                {{ text|default:"Dodaj nowy rekord" }}
+            {% endif %}
         </a>
     </div>
 {% endif %}

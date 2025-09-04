@@ -64,7 +64,7 @@
                 <div class="row" style="margin-top: 1rem;">
                     <div class="large-12 columns">
                         <button type="submit" class="button">Zastosuj filtry</button>
-                        <a href="{% url 'komparator_publikacji_pbn:comparison_list' %}" class="button secondary">Resetuj</a>
+                        <a href="{% url 'komparator_publikacji_pbn:comparison_list' %}?reset=1" class="button secondary">Resetuj</a>
                         {% if comparisons %}
                             <a href="{{ export_url }}" class="button success">
                                 <span class="fi-download"></span> Eksportuj do XLSX
@@ -165,7 +165,7 @@
                     <ul class="pagination">
                         {% if page_obj.has_previous %}
                             <li class="arrow">
-                                <a href="?{% if query %}q={{ query }}&{% endif %}{% if publication_type %}type={{ publication_type }}&{% endif %}page={{ page_obj.previous_page_number }}">
+                                <a href="?page={{ page_obj.previous_page_number }}">
                                     &laquo;
                                 </a>
                             </li>
@@ -178,7 +178,7 @@
                                 <li class="current"><a href="">{{ num }}</a></li>
                             {% else %}
                                 <li>
-                                    <a href="?{% if query %}q={{ query }}&{% endif %}{% if publication_type %}type={{ publication_type }}&{% endif %}page={{ num }}">
+                                    <a href="?page={{ num }}">
                                         {{ num }}
                                     </a>
                                 </li>
@@ -187,7 +187,7 @@
 
                         {% if page_obj.has_next %}
                             <li class="arrow">
-                                <a href="?{% if query %}q={{ query }}&{% endif %}{% if publication_type %}type={{ publication_type }}&{% endif %}page={{ page_obj.next_page_number }}">
+                                <a href="?page={{ page_obj.next_page_number }}">
                                     &raquo;
                                 </a>
                             </li>

@@ -29,29 +29,33 @@
                 </div>
 
                 {% if latest_task %}
-                    <div style="margin-top: 1rem;">
-                        <div class="callout secondary">
-                            <h6><i class="fi-info"></i> Status pobierania danych z PBN</h6>
-                            {% if latest_task.status == 'completed' %}
-                                <div class="callout success">
-                                    <i class="fi-check"></i> <strong>Ostatnie pobieranie zakończone pomyślnie</strong>
-                                    <br><small>Data: {{ latest_task.completed_at|date:"d.m.Y H:i:s" }}</small>
-                                    <br><small>Użytkownik: {{ latest_task.user.username }}</small>
+                    <div style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #d3d3d3;">
+                        <h6><i class="fi-info"></i> Status pobierania danych z PBN</h6>
+                        {% if latest_task.status == 'completed' %}
+                            <div style="padding: 1rem; background-color: #d4edda; border-left: 4px solid #28a745; margin: 0.5rem 0;">
+                                <i class="fi-check" style="color: #28a745;"></i> <strong style="color: #155724;">Ostatnie pobieranie zakończone pomyślnie</strong>
+                                <div style="margin-top: 0.5rem; font-size: 0.9em; color: #155724;">
+                                    Data: {{ latest_task.completed_at|date:"d.m.Y H:i:s" }}<br>
+                                    Użytkownik: {{ latest_task.user.username }}
                                 </div>
-                            {% elif latest_task.status == 'failed' %}
-                                <div class="callout alert">
-                                    <i class="fi-alert"></i> <strong>Ostatnie pobieranie nie powiodło się</strong>
-                                    <br><small>Data: {{ latest_task.completed_at|date:"d.m.Y H:i:s" }}</small>
-                                    <br><small>Błąd: {{ latest_task.error_message|truncatewords:10 }}</small>
+                            </div>
+                        {% elif latest_task.status == 'failed' %}
+                            <div style="padding: 1rem; background-color: #f8d7da; border-left: 4px solid #dc3545; margin: 0.5rem 0;">
+                                <i class="fi-alert" style="color: #dc3545;"></i> <strong style="color: #721c24;">Ostatnie pobieranie nie powiodło się</strong>
+                                <div style="margin-top: 0.5rem; font-size: 0.9em; color: #721c24;">
+                                    Data: {{ latest_task.completed_at|date:"d.m.Y H:i:s" }}<br>
+                                    Błąd: {{ latest_task.error_message|truncatewords:10 }}
                                 </div>
-                            {% elif latest_task.status == 'running' %}
-                                <div class="callout warning">
-                                    <i class="fi-refresh"></i> <strong>Pobieranie w toku...</strong>
-                                    <br><small>Rozpoczęte: {{ latest_task.started_at|date:"d.m.Y H:i:s" }}</small>
-                                    <br><small>Aktualny krok: {{ latest_task.current_step }}</small>
+                            </div>
+                        {% elif latest_task.status == 'running' %}
+                            <div style="padding: 1rem; background-color: #fff3cd; border-left: 4px solid #ffc107; margin: 0.5rem 0;">
+                                <i class="fi-refresh" style="color: #ffc107; animation: pulse 1s infinite;"></i> <strong style="color: #856404;">Pobieranie w toku...</strong>
+                                <div style="margin-top: 0.5rem; font-size: 0.9em; color: #856404;">
+                                    Rozpoczęte: {{ latest_task.started_at|date:"d.m.Y H:i:s" }}<br>
+                                    Aktualny krok: {{ latest_task.current_step }}
                                 </div>
-                            {% endif %}
-                        </div>
+                            </div>
+                        {% endif %}
                     </div>
                 {% endif %}
 
@@ -141,57 +145,49 @@
 
     <div class="row">
         <div class="large-12 columns">
-            <div class="panel callout alert">
-                <h3>Publikacje istniejące w bazie PBN ({{ evaluation_start_year }}-{{ evaluation_end_year }}), które nie
-                    mają odpowiednika w BPP.</h3>
-                <div class="stat-box">
-                    <h4><i class="fi-alert"></i> Publikacje PBN nieistniejące w BPP</h4>
-                    <p><strong>Liczba publikacji: {{ pbn_publications_not_in_bpp|default:0 }}</strong></p>
-                    <small>Publikacje z lat {{ evaluation_start_year }}-{{ evaluation_end_year }} w bazie PBN, których
-                        PBN UID ID nie występuje w tabeli rekordów.
-                        <br/>Potencjalnie:
-                        <ul>
-                            <li>mogły zostać dopisane przez użytkowników PBNu poza bazą - przez interfejs GUI, </li>
-
-                            <li>mogą być to też zdublowane (po stronie PBN) rekordy, które
-                                powstały na skutek błędu podczas wysyłki do PBN (wysłane z BPP, ale system BPP nie
-                                otrzymał
-                                nigdy ich PBN UID ID zwrotnie, stąd były wysyłane kolejno),
-                            </li>
-                        </ul>
-                    </small>
-                    <div style="margin-top: 1rem;">
-                        <a href="/admin/pbn_api/publication/?odpowiednik=brak&q=year+%3E%3D+2022+and+year+%3C%3D+2025+&q-l=on&status=ACTIVE"
-                           class="button expanded alert" target="_blank">
-                            <i class="fi-list"></i> Pokaż w module redagowania
-                        </a>
+            <div class="panel callout info">
+                <h3>Publikacje - rozbieżności między PBN a BPP</h3>
+                <div class="row">
+                    <div class="medium-6 columns">
+                        <div class="stat-box">
+                            <h4><i class="fi-alert"></i> Publikacje PBN nieistniejące w BPP</h4>
+                            <p><strong>Liczba publikacji: {{ pbn_publications_not_in_bpp|default:0 }}</strong></p>
+                            <small>Publikacje z lat {{ evaluation_start_year }}-{{ evaluation_end_year }} w bazie PBN, których
+                                PBN UID ID nie występuje w tabeli rekordów.
+                                <br/>Potencjalnie:
+                                <ul style="margin-top: 0.5rem; margin-bottom: 0;">
+                                    <li>mogły zostać dopisane przez użytkowników PBNu poza bazą - przez interfejs GUI,</li>
+                                    <li>mogą być to też zdublowane (po stronie PBN) rekordy, które powstały na skutek błędu podczas wysyłki do PBN.</li>
+                                </ul>
+                            </small>
+                            <div style="margin-top: 1rem;">
+                                <a href="/admin/pbn_api/publication/?odpowiednik=brak&q=year+%3E%3D+2022+and+year+%3C%3D+2025+&q-l=on&status=ACTIVE"
+                                   class="button expanded alert" target="_blank">
+                                    <i class="fi-list"></i> Pokaż w module redagowania
+                                </a>
+                            </div>
+                        </div>
                     </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="row">
-        <div class="large-12 columns">
-            <div class="panel callout alert">
-                <h3>Publikacje skasowane w PBN, a istniejące w BPP</h3>
-                <div class="stat-box">
-                    <h4><i class="fi-trash"></i> Publikacje PBN ze statusem DELETED istniejące w BPP</h4>
-                    <p><strong>Liczba publikacji: {{ deleted_pbn_in_bpp|default:0 }}</strong></p>
-                    <small>Publikacje z bazy BPP, które mają przypisany PBN UID wskazujący na publikację ze statusem DELETED w bazie PBN.
-                        <br/>Te publikacje zostały usunięte po stronie PBN, ale nadal istnieją w BPP z referencją do usuniętej publikacji.
-                        <br/>Wymaga to przeglądu i ewentualnego:
-                        <ul>
-                            <li>ponownego wysłania publikacji do PBN (jeśli została usunięta przez pomyłkę),</li>
-                            <li>usunięcia powiązania PBN UID w BPP (jeśli publikacja ma pozostać tylko w BPP),</li>
-                            <li>weryfikacji czy publikacja nie została zduplikowana w PBN z nowym ID.</li>
-                        </ul>
-                    </small>
-                    <div style="margin-top: 1rem;">
-                        <a href="/admin/pbn_api/publication/?odpowiednik=jest&status=DELETED"
-                           class="button expanded alert" target="_blank">
-                            <i class="fi-list"></i> Pokaż w module redagowania
-                        </a>
+                    <div class="medium-6 columns">
+                        <div class="stat-box stat-box-deleted-pbn">
+                            <h4><i class="fi-trash"></i> Publikacje skasowane w PBN, a istniejące w BPP</h4>
+                            <p><strong>Liczba publikacji: {{ deleted_pbn_in_bpp|default:0 }}</strong></p>
+                            <small>Publikacje z bazy BPP, które mają przypisany PBN UID wskazujący na publikację ze statusem DELETED w bazie PBN.
+                                <br/>Te publikacje zostały usunięte po stronie PBN, ale nadal istnieją w BPP z referencją do usuniętej publikacji.
+                                <br/>Wymaga to przeglądu i ewentualnego:
+                                <ul style="margin-top: 0.5rem; margin-bottom: 0;">
+                                    <li>ponownego wysłania publikacji do PBN (jeśli została usunięta przez pomyłkę),</li>
+                                    <li>usunięcia powiązania PBN UID w BPP (jeśli publikacja ma pozostać tylko w BPP),</li>
+                                    <li>weryfikacji czy publikacja nie została zduplikowana w PBN z nowym ID.</li>
+                                </ul>
+                            </small>
+                            <div style="margin-top: 1rem;">
+                                <a href="/admin/pbn_api/publication/?odpowiednik=jest&status=DELETED"
+                                   class="button expanded warning" target="_blank">
+                                    <i class="fi-list"></i> Pokaż w module redagowania
+                                </a>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -203,7 +199,7 @@
             <div class="panel callout warning">
                 <h3>Autorzy</h3>
                 <div class="row">
-                    <div class="medium-6 columns">
+                    <div class="medium-4 columns">
                         <div class="stat-box">
                             <h4><i class="fi-torso"></i> Autorzy w PBN bez odpowiednika w BPP</h4>
                             <p><strong>Liczba autorów: {{ pbn_scientists_not_in_bpp|default:0 }}</strong></p>
@@ -222,7 +218,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="medium-6 columns">
+                    <div class="medium-4 columns">
                         <div class="stat-box">
                             <h4><i class="fi-duplicate"></i> Zduplikowani autorzy</h4>
                             <p><strong>Liczba autorów z duplikatami: {{ duplicate_authors_count|default:0 }}</strong></p>
@@ -233,6 +229,26 @@
                                 <a href="{% url 'deduplikator_autorow:duplicate_authors' %}"
                                    class="button expanded secondary" target="_blank">
                                     <i class="fi-list"></i> Przejdź do deduplikatora autorów
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="medium-4 columns">
+                        <div class="stat-box stat-box-deleted-scientists">
+                            <h4><i class="fi-trash"></i> Autorzy skasowani w PBN, a istniejący w BPP</h4>
+                            <p><strong>Liczba autorów: {{ deleted_pbn_scientists_in_bpp|default:0 }}</strong></p>
+                            <small>Autorzy w BPP, którzy mają przypisany PBN UID wskazujący na naukowca ze statusem DELETED w bazie PBN.
+                                <br/>Ci autorzy zostali usunięci po stronie PBN, ale nadal istnieją w BPP z referencją do usuniętego naukowca.
+                                <br/>Wymaga to przeglądu i ewentualnego:
+                                <ul style="margin-top: 0.5rem; margin-bottom: 0;">
+                                    <li>ponownego powiązania z aktywnym naukowcem PBN,</li>
+                                    <li>usunięcia powiązania PBN UID w BPP.</li>
+                                </ul>
+                            </small>
+                            <div style="margin-top: 1rem;">
+                                <a href="/admin/pbn_api/scientist/?status=DELETED"
+                                   class="button expanded warning" target="_blank">
+                                    <i class="fi-list"></i> Pokaż w module redagowania
                                 </a>
                             </div>
                         </div>
@@ -252,21 +268,21 @@
 
                     <div class="row" style="margin-top: 1rem;">
                         <div class="medium-4 columns">
-                            <div class="callout secondary">
+                            <div class="discipline-discrepancy-card empty-bpp">
                                 <h5><i class="fi-x-circle"></i> Brak dyscypliny w BPP</h5>
                                 <p class="lead">{{ bpp_empty_disciplines|default:0 }}</p>
                                 <small>Przypadki gdzie PBN ma przypisaną dyscyplinę, ale BPP nie ma</small>
                             </div>
                         </div>
                         <div class="medium-4 columns">
-                            <div class="callout secondary">
+                            <div class="discipline-discrepancy-card empty-pbn">
                                 <h5><i class="fi-x-circle"></i> Brak dyscypliny w PBN</h5>
                                 <p class="lead">{{ pbn_empty_disciplines|default:0 }}</p>
                                 <small>Przypadki gdzie BPP ma przypisaną dyscyplinę, ale PBN nie ma</small>
                             </div>
                         </div>
                         <div class="medium-4 columns">
-                            <div class="callout alert">
+                            <div class="discipline-discrepancy-card different-disciplines">
                                 <h5><i class="fi-alert"></i> Różne dyscypliny</h5>
                                 <p class="lead">{{ both_present_different|default:0 }}</p>
                                 <small>Przypadki gdzie obie strony mają dyscypliny, ale są różne</small>
@@ -290,7 +306,7 @@
 
                     <div style="margin-top: 1rem;">
                         <a href="{% url 'komparator_pbn_udzialy:list' %}?rok_min={{ evaluation_start_year }}&rok_max={{ evaluation_end_year }}"
-                           class="button expanded info">
+                           class="button expanded">
                             <i class="fi-magnifying-glass"></i> Przejdź do szczegółowego komparatora udziałów
                         </a>
                     </div>
@@ -345,40 +361,5 @@
     {##}
     {##}
 
-    <style>
-        .stat-box {
-            background: #f8f8f8;
-            padding: 1rem;
-            margin-bottom: 1rem;
-            border: 1px solid #ddd;
-        }
-
-        .panel h4 {
-            margin-bottom: 0.5rem;
-        }
-
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.5; }
-            100% { opacity: 1; }
-        }
-
-        /* Ensure progress bar is properly styled */
-        .progress {
-            background-color: #e6e6e6 !important;
-            border-radius: 3px !important;
-            height: 20px !important;
-            overflow: hidden !important;
-            box-shadow: inset 0 1px 2px rgba(0,0,0,.1);
-        }
-
-        .progress .meter {
-            background-color: #28a745 !important;
-            height: 100% !important;
-            transition: width 0.3s ease !important;
-            border-radius: 3px !important;
-            display: block !important;
-        }
-    </style>
 
 {% endblock %}

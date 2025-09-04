@@ -33,6 +33,7 @@ admin.autodiscover()
 
 urlpatterns = (
     [
+        path("setup/", include("bpp_setup_wizard.urls")),  # Setup wizard URLs
         url(r"^favicon\.ico$", cache_page(60 * 60)(favicon)),
         path("sentry_test/", login_required(sentry_teset_view)),
         path("tinymce/", include("tinymce.urls")),

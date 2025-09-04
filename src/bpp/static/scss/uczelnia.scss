@@ -1,0 +1,72 @@
+// Uczelnia page styles
+@use "sass:color";
+
+// Admin buttons - shared styles for all management buttons
+.admin-buttons-centered {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-bottom: 20px;
+
+    .button {
+        margin-bottom: 0;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        background: white;
+        border: 1px solid #dee2e6;
+        color: #495057;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+
+        .fi {
+            margin-right: 6px;
+            vertical-align: middle;
+            transition: color 0.2s ease;
+        }
+
+        // Manage button - subtle orange accent on hover
+        &.btn-manage {
+            &:hover {
+                background: #fff5eb;
+                border-color: #ff9800;
+                color: #e68900;
+                box-shadow: 0 2px 6px rgba(255, 152, 0, 0.15);
+                transform: translateY(-1px);
+
+                .fi {
+                    color: #ff9800;
+                }
+            }
+        }
+
+        // Add button - subtle blue accent on hover
+        &.btn-add {
+            &:hover {
+                background: #f0f7ff;
+                border-color: #007bff;
+                color: #0056b3;
+                box-shadow: 0 2px 6px rgba(0, 123, 255, 0.15);
+                transform: translateY(-1px);
+
+                .fi {
+                    color: #007bff;
+                }
+            }
+        }
+
+        // Settings button - subtle purple accent on hover
+        &.btn-settings {
+            &:hover {
+                background: #f8f5ff;
+                border-color: #6f42c1;
+                color: #5a32a3;
+                box-shadow: 0 2px 6px rgba(111, 66, 193, 0.15);
+                transform: translateY(-1px);
+
+                .fi {
+                    color: #6f42c1;
+                }
+            }
+        }
+    }
+}

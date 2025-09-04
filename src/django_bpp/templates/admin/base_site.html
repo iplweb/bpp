@@ -19,9 +19,65 @@
                 {% crispy global_nav_form %}
                 <script type="text/javascript">
                     (function($){
+                        // Handle select2 change event
                         $(':input[name$=global_nav_value]').on('change', function () {
                             location.href = "/global-nav-redir/" + $(this).val() +
                                 "?source=admin";
+                        });
+
+                        // Add "/" hotkey to open global search
+                        $(document).on('keydown', function(e) {
+                            // Don't trigger if user is typing in an input/textarea
+                            if ($(e.target).is('input, textarea, select')) {
+                                return;
+                            }
+
+                            // Check for "/" key
+                            if (e.key === '/') {
+                                e.preventDefault();
+
+                                // Find the select2 container and open it
+                                var $select = $('#id_global_nav_value');
+
+                                if ($select.length > 0) {
+                                    // Use select2:open event to ensure dropdown is fully rendered
+                                    $select.one('select2:open', function() {
+                                        // Try multiple strategies with increasing delays
+                                        var attempts = [50, 150, 300];
+                                        var attemptIndex = 0;
+
+                                        function tryFocus() {
+                                            setTimeout(function() {
+                                                // Try different selectors
+                                                var $search1 = $('.select2-container--open .select2-search__field');
+                                                var $search2 = $('.select2-search--dropdown .select2-search__field');
+                                                var $search3 = $('input.select2-search__field:visible');
+
+                                                // Try to find the search field
+                                                var $search = $search1.length ? $search1 : ($search2.length ? $search2 : $search3);
+
+                                                if ($search.length > 0) {
+                                                    // Force focus
+                                                    $search[0].focus();
+                                                    $search.trigger('focus');
+                                                    $search.select();
+                                                } else {
+                                                    // If not found and more attempts available, try again
+                                                    if (attemptIndex < attempts.length - 1) {
+                                                        attemptIndex++;
+                                                        tryFocus();
+                                                    }
+                                                }
+                                            }, attempts[attemptIndex]);
+                                        }
+
+                                        tryFocus();
+                                    });
+
+                                    // Open the dropdown
+                                    $select.select2('open');
+                                }
+                            }
                         });
                     })(django.jQuery || $);
                 </script>

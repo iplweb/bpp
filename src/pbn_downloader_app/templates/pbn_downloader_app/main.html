@@ -17,141 +17,129 @@
         </div>
     </div>
 
-    <div class="row">
-        <div class="large-6 columns">
-            <div class="panel callout secondary">
-                <h4><i class="fi-page-multiple"></i> Pobieranie publikacji i oświadczeń</h4>
-                <p>Pobieranie publikacji instytucji oraz oświadczeń autorów z PBN.</p>
-                <strong>UWAGA:</strong> Proces pobierania może potrwać kilka minut.
-                <br/><br/>
-                <div style="text-align: center;">
-                    <span style="color: #0066cc; font-size: 2em;">📄</span>
-                    <br>
-                    <span style="color: #0066cc; font-size: 1.2em;">Publications</span>
+    <div class="row equal-height-panels">
+        <div class="large-12 xlarge-6 columns">
+            <div class="panel callout secondary download-panel">
+                <div class="panel-header">
+                    <h4><i class="fi-page-multiple"></i> Pobieranie publikacji i oświadczeń</h4>
+                    <p>Pobieranie publikacji instytucji oraz oświadczeń autorów z PBN.</p>
                 </div>
 
-                <div style="margin-top: 1rem;">
+                <div class="panel-icon">
+                    <span style="color: #0066cc; font-size: 2em;">📄</span>
+                    <span style="color: #0066cc; font-size: 1.2em; display: block;">Publications</span>
+                </div>
+
+                <div class="panel-action">
                     <button id="download-btn" class="button success expanded">
                         <i class="fi-cloud-download"></i> Pobierz publikacje z PBN
                     </button>
+                </div>
 
-                    <!-- Task status display -->
-                    <div id="task-status" style="margin-top: 1rem; display: none;">
-                        <div class="panel callout">
-                            <h5 id="task-status-title">Status pobierania publikacji</h5>
-                            <div id="task-status-content">
-                                <div id="task-running" style="display: none;">
-                                    <i class="fi-refresh"></i> <strong>Pobieranie danych w toku...</strong>
-                                    <br><small id="current-step">Inicjalizacja...</small>
-                                    <div class="progress" style="margin: 0.5rem 0; background-color: #e6e6e6; border-radius: 3px; height: 20px; overflow: hidden;">
-                                        <div id="progress-meter" class="meter" style="width: 0%; height: 100%; background-color: #28a745; transition: width 0.3s ease; border-radius: 3px;"></div>
-                                    </div>
-                                    <div style="display: flex; justify-content: space-between; font-size: 0.8em;">
-                                        <span id="progress-percentage">0%</span>
-                                        <span id="progress-details"></span>
-                                    </div>
-                                    <small style="color: #666; margin-top: 0.5rem; display: block;">To może potrwać kilka minut. Możesz spokojnie zamknąć okno przeglądarki i wrócić tu za jakiś czas.</small>
-                                </div>
+                <!-- Simplified status display -->
+                <div id="task-status" class="status-section" style="display: none;">
+                    <hr />
+                    <h5 class="status-title">Status pobierania</h5>
 
-                                <div id="task-completed" style="display: none;">
-                                    <div class="callout success">
-                                        <i class="fi-check"></i> <strong>Dane zostały pobrane pomyślnie!</strong>
-                                        <br><small>Ostatnia aktualizacja: <span id="last-update"></span></small>
-                                        <br><small>Wykonane przez: <span id="task-user"></span></small>
-                                    </div>
-                                </div>
-
-                                <div id="task-failed" style="display: none;">
-                                    <div class="callout alert">
-                                        <i class="fi-alert"></i> <strong>Wystąpił błąd podczas pobierania danych</strong>
-                                        <br><small>Błąd: <span id="error-message"></span></small>
-                                        <br><small>Czas błędu: <span id="error-time"></span></small>
-                                        <div style="margin-top: 0.5rem;">
-                                            <button id="retry-btn" class="button warning small">
-                                                <i class="fi-refresh"></i> Spróbuj ponownie
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div id="task-no-data" style="display: none;">
-                                    <div class="callout secondary">
-                                        <i class="fi-info"></i> <strong>Brak danych</strong>
-                                        <br><small>Nie wykonano jeszcze pobierania danych z PBN. Kliknij przycisk powyżej, aby rozpocząć.</small>
-                                    </div>
-                                </div>
-                            </div>
+                    <div id="task-running" class="status-content" style="display: none;">
+                        <div class="status-message">
+                            <i class="fi-refresh"></i> <strong>Pobieranie w toku...</strong>
+                            <small id="current-step" class="step-info">Inicjalizacja...</small>
+                        </div>
+                        <div class="progress">
+                            <div id="progress-meter" class="meter success" style="width: 0%;"></div>
+                        </div>
+                        <div class="progress-info">
+                            <span id="progress-percentage">0%</span>
+                            <span id="progress-details"></span>
                         </div>
                     </div>
+
+                    <div id="task-completed" class="status-badge success" style="display: none;">
+                        <i class="fi-check"></i> <strong>Pobrane pomyślnie</strong>
+                        <small>Ostatnia aktualizacja: <span id="last-update"></span></small>
+                        <small>Użytkownik: <span id="task-user"></span></small>
+                    </div>
+
+                    <div id="task-failed" class="status-badge alert" style="display: none;">
+                        <i class="fi-alert"></i> <strong>Błąd pobierania</strong>
+                        <small><span id="error-message"></span></small>
+                        <button id="retry-btn" class="button warning tiny">
+                            <i class="fi-refresh"></i> Ponów
+                        </button>
+                    </div>
+
+                    <div id="task-no-data" class="status-badge secondary" style="display: none;">
+                        <i class="fi-info"></i> <strong>Brak danych</strong>
+                        <small>Nie wykonano jeszcze pobierania</small>
+                    </div>
+                </div>
+
+                <div class="panel-footer">
+                    <small class="text-muted"><strong>Info:</strong> Proces może potrwać kilka minut</small>
                 </div>
             </div>
         </div>
 
-        <div class="large-6 columns">
-            <div class="panel callout warning">
-                <h4><i class="fi-torsos-all"></i> Pobieranie osób z instytucji</h4>
-                <p>Pobieranie danych osób powiązanych z instytucją z PBN.</p>
-                <strong>UWAGA:</strong> Proces może potrwać kilka minut.
-                <br/><br/>
-                <div style="text-align: center;">
-                    <span style="color: #e07600; font-size: 2em;">👥</span>
-                    <br>
-                    <span style="color: #e07600; font-size: 1.2em;">People</span>
+        <div class="large-12 xlarge-6 columns">
+            <div class="panel callout warning download-panel">
+                <div class="panel-header">
+                    <h4><i class="fi-torsos-all"></i> Pobieranie osób z instytucji</h4>
+                    <p>Pobieranie danych osób powiązanych z instytucją z PBN.</p>
                 </div>
 
-                <div style="margin-top: 1rem;">
+                <div class="panel-icon">
+                    <span style="color: #e07600; font-size: 2em;">👥</span>
+                    <span style="color: #e07600; font-size: 1.2em; display: block;">People</span>
+                </div>
+
+                <div class="panel-action">
                     <button id="people-download-btn" class="button warning expanded">
                         <i class="fi-torsos-all"></i> Pobierz osoby z PBN
                     </button>
+                </div>
 
-                    <!-- People Task status display -->
-                    <div id="people-task-status" style="margin-top: 1rem; display: none;">
-                        <div class="panel callout">
-                            <h5 id="people-task-status-title">Status pobierania osób</h5>
-                            <div id="people-task-status-content">
-                                <div id="people-task-running" style="display: none;">
-                                    <i class="fi-refresh"></i> <strong>Pobieranie osób w toku...</strong>
-                                    <br><small id="people-current-step">Inicjalizacja...</small>
-                                    <div class="progress" style="margin: 0.5rem 0; background-color: #e6e6e6; border-radius: 3px; height: 20px; overflow: hidden;">
-                                        <div id="people-progress-meter" class="meter" style="width: 0%; height: 100%; background-color: #e07600; transition: width 0.3s ease; border-radius: 3px;"></div>
-                                    </div>
-                                    <div style="display: flex; justify-content: space-between; font-size: 0.8em;">
-                                        <span id="people-progress-percentage">0%</span>
-                                        <span id="people-progress-details"></span>
-                                    </div>
-                                    <small style="color: #666; margin-top: 0.5rem; display: block;">Pobieranie osób powiązanych z instytucją.</small>
-                                </div>
+                <!-- Simplified status display -->
+                <div id="people-task-status" class="status-section" style="display: none;">
+                    <hr />
+                    <h5 class="status-title">Status pobierania</h5>
 
-                                <div id="people-task-completed" style="display: none;">
-                                    <div class="callout success">
-                                        <i class="fi-check"></i> <strong>Osoby zostały pobrane pomyślnie!</strong>
-                                        <br><small>Ostatnia aktualizacja: <span id="people-last-update"></span></small>
-                                        <br><small>Wykonane przez: <span id="people-task-user"></span></small>
-                                    </div>
-                                </div>
-
-                                <div id="people-task-failed" style="display: none;">
-                                    <div class="callout alert">
-                                        <i class="fi-alert"></i> <strong>Wystąpił błąd podczas pobierania osób</strong>
-                                        <br><small>Błąd: <span id="people-error-message"></span></small>
-                                        <br><small>Czas błędu: <span id="people-error-time"></span></small>
-                                        <div style="margin-top: 0.5rem;">
-                                            <button id="people-retry-btn" class="button alert small">
-                                                <i class="fi-refresh"></i> Spróbuj ponownie
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div id="people-task-no-data" style="display: none;">
-                                    <div class="callout secondary">
-                                        <i class="fi-info"></i> <strong>Brak danych</strong>
-                                        <br><small>Nie wykonano jeszcze pobierania osób z PBN. Kliknij przycisk powyżej, aby rozpocząć.</small>
-                                    </div>
-                                </div>
-                            </div>
+                    <div id="people-task-running" class="status-content" style="display: none;">
+                        <div class="status-message">
+                            <i class="fi-refresh"></i> <strong>Pobieranie w toku...</strong>
+                            <small id="people-current-step" class="step-info">Inicjalizacja...</small>
+                        </div>
+                        <div class="progress">
+                            <div id="people-progress-meter" class="meter warning" style="width: 0%;"></div>
+                        </div>
+                        <div class="progress-info">
+                            <span id="people-progress-percentage">0%</span>
+                            <span id="people-progress-details"></span>
                         </div>
                     </div>
+
+                    <div id="people-task-completed" class="status-badge success" style="display: none;">
+                        <i class="fi-check"></i> <strong>Pobrane pomyślnie</strong>
+                        <small>Ostatnia aktualizacja: <span id="people-last-update"></span></small>
+                        <small>Użytkownik: <span id="people-task-user"></span></small>
+                    </div>
+
+                    <div id="people-task-failed" class="status-badge alert" style="display: none;">
+                        <i class="fi-alert"></i> <strong>Błąd pobierania</strong>
+                        <small><span id="people-error-message"></span></small>
+                        <button id="people-retry-btn" class="button alert tiny">
+                            <i class="fi-refresh"></i> Ponów
+                        </button>
+                    </div>
+
+                    <div id="people-task-no-data" class="status-badge secondary" style="display: none;">
+                        <i class="fi-info"></i> <strong>Brak danych</strong>
+                        <small>Nie wykonano jeszcze pobierania</small>
+                    </div>
+                </div>
+
+                <div class="panel-footer">
+                    <small class="text-muted"><strong>Info:</strong> Proces może potrwać kilka minut</small>
                 </div>
             </div>
         </div>
@@ -268,20 +256,143 @@
             100% { opacity: 1; }
         }
 
-        /* Ensure progress bar is properly styled */
+        /* Equal height panels with flexbox */
+        .equal-height-panels {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .equal-height-panels > .columns {
+            display: flex;
+            margin-bottom: 1rem;
+            flex: 1 1 100%;
+        }
+
+        @media screen and (min-width: 1440px) {
+            .equal-height-panels > .xlarge-6 {
+                flex: 1 1 calc(50% - 0.5rem);
+            }
+        }
+
+        .download-panel {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            min-height: 450px;
+            width: 100%;
+        }
+
+        .panel-header {
+            flex-shrink: 0;
+        }
+
+        .panel-icon {
+            text-align: center;
+            padding: 1rem 0;
+            flex-shrink: 0;
+        }
+
+        .panel-action {
+            flex-shrink: 0;
+        }
+
+        .status-section {
+            flex: 1;
+            margin-top: 1rem;
+        }
+
+        .panel-footer {
+            margin-top: auto;
+            padding-top: 1rem;
+            border-top: 1px solid #e6e6e6;
+            flex-shrink: 0;
+        }
+
+        /* Simplified status styles */
+        .status-title {
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+            color: #666;
+        }
+
+        .status-content {
+            padding: 0.5rem 0;
+        }
+
+        .status-message {
+            margin-bottom: 0.5rem;
+        }
+
+        .status-message small {
+            display: block;
+            margin-top: 0.25rem;
+            color: #666;
+        }
+
+        .status-badge {
+            padding: 0.75rem;
+            border-radius: 3px;
+            margin-top: 0.5rem;
+        }
+
+        .status-badge.success {
+            background: #e6f4ea;
+            border: 1px solid #34a853;
+            color: #137333;
+        }
+
+        .status-badge.alert {
+            background: #fce8e6;
+            border: 1px solid #ea4335;
+            color: #a50e0e;
+        }
+
+        .status-badge.secondary {
+            background: #f8f9fa;
+            border: 1px solid #dadce0;
+            color: #5f6368;
+        }
+
+        .status-badge small {
+            display: block;
+            margin-top: 0.25rem;
+        }
+
+        .status-badge button {
+            margin-top: 0.5rem;
+        }
+
+        /* Progress bar styles */
         .progress {
-            background-color: #e6e6e6 !important;
-            border-radius: 3px !important;
-            height: 20px !important;
-            overflow: hidden !important;
+            background-color: #e6e6e6;
+            border-radius: 3px;
+            height: 20px;
+            overflow: hidden;
             box-shadow: inset 0 1px 2px rgba(0,0,0,.1);
+            margin: 0.5rem 0;
         }
 
         .progress .meter {
-            height: 100% !important;
-            transition: width 0.3s ease !important;
-            border-radius: 3px !important;
-            display: block !important;
+            height: 100%;
+            transition: width 0.3s ease;
+            border-radius: 3px;
+            display: block;
+        }
+
+        .progress .meter.success {
+            background-color: #28a745;
+        }
+
+        .progress .meter.warning {
+            background-color: #e07600;
+        }
+
+        .progress-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8em;
+            color: #666;
         }
 
         .stat-box {
@@ -289,6 +400,20 @@
             background: #f8f8f8;
             border-radius: 3px;
             margin-bottom: 1rem;
+        }
+
+        .text-muted {
+            color: #6c757d;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 640px) {
+            .equal-height-panels {
+                display: block;
+            }
+            .download-panel {
+                min-height: auto;
+            }
         }
     </style>
 

@@ -295,6 +295,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "bpp_setup_wizard.middleware.SetupWizardMiddleware",  # After auth middleware to have request.user
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "password_policies.middleware.PasswordChangeMiddleware",
@@ -336,6 +337,7 @@ if TESTING:
 
 INSTALLED_APPS = [
     # "django_werkzeug",
+    "bpp_setup_wizard",  # Must be early to enable setup wizard
     "daphne",
     "tinymce",
     "tee",

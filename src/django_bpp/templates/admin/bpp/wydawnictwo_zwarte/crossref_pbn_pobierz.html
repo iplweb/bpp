@@ -1,0 +1,67 @@
+{% extends "admin/base_site.html" %}
+{% load static i18n admin_modify admin_urls grp_tags %}
+
+<!-- STYLESHEETS -->
+{% block stylesheets %}
+    {{ block.super }}
+{% endblock %}
+
+{% block extrahead %}
+    <link rel="stylesheet" type="text/css"
+          href="{% static "foundation-datepicker/foundation/fonts/foundation-icons.css" %}">
+{% endblock %}
+
+<!-- BREADCRUMBS -->
+{% block breadcrumbs %}
+    <ul>
+        <li><a href="{% url 'admin:index' %}"><span class="fi-home"></span></a></li>
+        <li><a href="/admin/bpp/">BPP</a></li>
+        <li><a href="{% url 'admin:bpp_wydawnictwo_zwarte_changelist' %}">Wydawnictwa zwarte</a></li>
+        <li>Pobierz z CrossRef ORAZ PBN</li>
+    </ul>
+{% endblock %}
+
+<!-- CONTENT -->
+{% block content %}
+    <div style="border: 2px solid blue; border-style: groove; padding: 10px; width: auto; margin-bottom: 20px;">
+        <p><strong><span class="fi-info"></span> Funkcja łączona CrossRef + PBN</strong></p>
+        <p>Ta funkcja pobiera dane zarówno z CrossRef API jak i z PBN API, łącząc je w jeden zestaw danych.</p>
+        <p>Dane z CrossRef stanowią bazę, która jest wzbogacana o informacje z PBN (np. punktacja ministerialna, polskie klasyfikacje).</p>
+    </div>
+
+    <h1>Pobierz dane z CrossRef ORAZ PBN</h1>
+
+    <form method="post">
+        {% csrf_token %}
+
+        <div class="form-row field-identyfikator_doi">
+            <div>
+                <label for="id_identyfikator_doi" class="required">Identyfikator DOI:</label>
+                {{ crossref_form.identyfikator_doi }}
+                <div class="help">{{ crossref_form.identyfikator_doi.help_text|safe }}</div>
+                {% if crossref_form.identyfikator_doi.errors %}
+                    <ul class="errorlist">
+                        {% for error in crossref_form.identyfikator_doi.errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="submit-row">
+            <input type="submit" value="Pobierz z CrossRef ORAZ PBN" class="default" />
+        </div>
+    </form>
+
+    <div style="margin-top: 30px; padding: 10px; background-color: #f5f5f5;">
+        <h3>Jak to działa?</h3>
+        <ol>
+            <li>Wprowadź identyfikator DOI publikacji</li>
+            <li>System pobierze dane z CrossRef API</li>
+            <li>Następnie spróbuje znaleźć tę publikację w PBN API używając tego samego DOI</li>
+            <li>Dane zostaną połączone, z zaznaczeniem źródła każdego pola</li>
+            <li>Będziesz mógł przejrzeć połączone dane przed dodaniem do bazy</li>
+        </ol>
+    </div>
+{% endblock %}

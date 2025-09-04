@@ -88,6 +88,61 @@
 {% endblock %}
 
 {% block content %}
+
+{% include 'search_banner.html' %}
+
+<script>
+
+    // Check if banner was already dismissed
+    document.addEventListener('DOMContentLoaded', function() {
+        const banner = document.getElementById('search-shortcut-banner');
+        const bannerDismissed = localStorage.getItem('searchBannerDismissed');
+        const dismissedDate = localStorage.getItem('searchBannerDismissedDate');
+
+        // Show banner if not dismissed or if dismissed more than 30 days ago
+        if (!bannerDismissed || (dismissedDate && daysSince(dismissedDate) > 30)) {
+            setTimeout(function() {
+                banner.style.display = 'block';
+            }, 500); // Small delay for better UX
+        }
+    });
+
+    function daysSince(dateString) {
+        const date = new Date(dateString);
+        const now = new Date();
+        const diffTime = Math.abs(now - date);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        return diffDays;
+    }
+
+    function closeSearchBanner() {
+        const banner = document.getElementById('search-shortcut-banner');
+        banner.classList.add('closing');
+
+        // Save dismissal state
+        localStorage.setItem('searchBannerDismissed', 'true');
+        localStorage.setItem('searchBannerDismissedDate', new Date().toISOString());
+
+        // Remove from DOM after animation
+        setTimeout(function() {
+            banner.style.display = 'none';
+            banner.remove();
+        }, 300);
+    }
+
+    // Also close banner when user uses the shortcut
+    document.addEventListener('keydown', function(e) {
+        if (e.key === '/' && !$(e.target).is('input, textarea, select')) {
+            const banner = document.getElementById('search-shortcut-banner');
+            if (banner && banner.style.display !== 'none') {
+                closeSearchBanner();
+            }
+        }
+    });
+</script>
+
+
+
     <div class="grid-x grid-padding-x align-middle align-center">
         {% if uczelnia.logo_www %}
             <div class="large-4 medium-2 cell">
@@ -174,6 +229,22 @@
                     <h3 class="section-title">
                         <i class="fi-megaphone section-icon"></i>Aktualności
                     </h3>
+                    {% if request.user.is_superuser or request.user|has_group:"web" %}
+                        <div class="admin-buttons-centered hide-for-print">
+                            <a target="_blank"
+                               href="{% url "admin:miniblog_article_changelist" %}"
+                               class="button btn-manage">
+                                <span class="fi-wrench"></span>
+                                Zarządzaj aktualnościami
+                            </a>
+                            <a target="_blank"
+                               href="{% url "admin:miniblog_article_add" %}"
+                               class="button btn-add">
+                                <span class="fi-page-add"></span>
+                                Dodaj artykuł
+                            </a>
+                        </div>
+                    {% endif %}
                     <div class="news-articles">
                         {% for article in miniblog %}
                             <article class="news-article-card">
@@ -208,10 +279,6 @@
                                 <p><i class="fi-page"></i> Brak opublikowanych aktualności.</p>
                             </div>
                         {% endfor %}
-                    </div>
-                    <div class="news-admin-links">
-                        {% include "browse/go_to_admin_list.html" with group="web" url="admin:miniblog_article_changelist" text="<i class='fi-wrench'></i> zarządzaj aktualnościami" %}
-                        {% include "browse/go_to_admin_list.html" with group="web" url="admin:miniblog_article_add" text="<i class='fi-page-add'></i> dodaj artykuł" %}
                     </div>
                 </div>
             {% elif miniblog.exists %}
@@ -259,6 +326,22 @@
                     <h3 class="section-title">
                         <i class="fi-foundation section-icon"></i>Wybierz {% rzeczownik_wydział %}
                     </h3>
+                    {% if request.user.is_superuser or request.user|has_group:"struktura" %}
+                        <div class="admin-buttons-centered hide-for-print">
+                            <a target="_blank"
+                               href="{% url "admin:bpp_wydzial_changelist" %}"
+                               class="button btn-manage">
+                                <span class="fi-wrench"></span>
+                                Zarządzaj wydziałami
+                            </a>
+                            <a target="_blank"
+                               href="{% url "admin:bpp_uczelnia_change" uczelnia.pk %}"
+                               class="button btn-settings">
+                                <span class="fi-widget"></span>
+                                Ustawienia dla uczelni
+                            </a>
+                        </div>
+                    {% endif %}
                     <div class="grid-x grid-margin-x">
                         {% for wydzial in uczelnia.wydzialy %}
                             <div class="small-12 medium-6 large-6 cell">
@@ -273,14 +356,28 @@
                             </div>
                         {% endfor %}
                     </div>
-                    {% include "browse/go_to_admin_list.html" with group="struktura" url="admin:bpp_wydzial_changelist" text="<i class='fi-wrench'></i> zarządzaj wydziałami" %}
-                    {% include "browse/go_to_admin_change.html" with url="admin:bpp_uczelnia_change" pk=uczelnia.pk group="struktura" text="ustawienia dla uczelni" %}
                 </div>
             {% else %}
                 <div class="small-12 large-6 cell">
                     <h3 class="section-title">
                         <i class="fi-foundation section-icon"></i>Wybierz {% rzeczownik_wydział %}
                     </h3>
+                    {% if request.user.is_superuser or request.user|has_group:"struktura" %}
+                        <div class="admin-buttons-centered hide-for-print">
+                            <a target="_blank"
+                               href="{% url "admin:bpp_wydzial_changelist" %}"
+                               class="button btn-manage">
+                                <span class="fi-wrench"></span>
+                                Zarządzaj wydziałami
+                            </a>
+                            <a target="_blank"
+                               href="{% url "admin:bpp_uczelnia_change" uczelnia.pk %}"
+                               class="button btn-settings">
+                                <span class="fi-widget"></span>
+                                Ustawienia dla uczelni
+                            </a>
+                        </div>
+                    {% endif %}
                     <div class="wydzial-list">
                         {% for wydzial in uczelnia.wydzialy %}
                             <div class="wydzial-card">
@@ -293,8 +390,6 @@
                             </div>
                         {% endfor %}
                     </div>
-                    {% include "browse/go_to_admin_list.html" with group="struktura" url="admin:bpp_wydzial_changelist" text="<i class='fi-wrench'></i> zarządzaj wydziałami" %}
-                    {% include "browse/go_to_admin_change.html" with url="admin:bpp_uczelnia_change" pk=uczelnia.pk group="struktura" text="ustawienia dla uczelni" %}
                 </div>
             {% endif %}
         {% endif %}
@@ -304,6 +399,22 @@
                 <h3 class="section-title">
                     <i class="fi-home section-icon"></i>Wybierz {% rzeczownik_jednostkę %}
                 </h3>
+                {% if request.user.is_superuser or request.user|has_group:"struktura" %}
+                    <div class="admin-buttons-centered hide-for-print">
+                        <a target="_blank"
+                           href="{% url "admin:bpp_jednostka_changelist" %}"
+                           class="button btn-manage">
+                            <span class="fi-wrench"></span>
+                            Zarządzaj jednostkami
+                        </a>
+                        <a target="_blank"
+                           href="{% url "admin:bpp_uczelnia_change" uczelnia.pk %}"
+                           class="button btn-settings">
+                            <span class="fi-widget"></span>
+                            Ustawienia dla uczelni
+                        </a>
+                    </div>
+                {% endif %}
                 <div class="grid-x grid-margin-x">
                     {% for jednostka in uczelnia.jednostki %}
                         <div class="small-12 medium-6 large-6 cell">
@@ -318,14 +429,28 @@
                         </div>
                     {% endfor %}
                 </div>
-                {% include "browse/go_to_admin_list.html" with group="struktura" url="admin:bpp_jednostka_changelist" text="<i class='fi-wrench'></i> zarządzaj jednostkami" %}
-                {% include "browse/go_to_admin_change.html" with url="admin:bpp_uczelnia_change" pk=uczelnia.pk group="struktura" text="ustawienia dla uczelni" %}
             </div>
         {% else %}
             <div class="small-12 large-6 cell">{% load deklinacja %}
                 <h3 class="section-title">
                     <i class="fi-home section-icon"></i>Wybierz {% rzeczownik_jednostkę %}
                 </h3>
+                {% if request.user.is_superuser or request.user|has_group:"struktura" %}
+                    <div class="admin-buttons-centered hide-for-print">
+                        <a target="_blank"
+                           href="{% url "admin:bpp_jednostka_changelist" %}"
+                           class="button btn-manage">
+                            <span class="fi-wrench"></span>
+                            Zarządzaj jednostkami
+                        </a>
+                        <a target="_blank"
+                           href="{% url "admin:bpp_uczelnia_change" uczelnia.pk %}"
+                           class="button btn-settings">
+                            <span class="fi-widget"></span>
+                            Ustawienia dla uczelni
+                        </a>
+                    </div>
+                {% endif %}
                 <div class="jednostka-list">
                     {% for jednostka in uczelnia.jednostki %}
                         <div class="jednostka-card-main">
@@ -338,12 +463,225 @@
                         </div>
                     {% endfor %}
                 </div>
-                {% include "browse/go_to_admin_list.html" with group="struktura" url="admin:bpp_jednostka_changelist" text="<i class='fi-wrench'></i> zarządzaj jednostkami" %}
-                {% include "browse/go_to_admin_change.html" with url="admin:bpp_uczelnia_change" pk=uczelnia.pk group="struktura" text="ustawienia dla uczelni" %}
             </div>
         {% endif %}
     {% endif %}
     </div>
+
+    <!-- Poznaj Bibliografię Publikacji Pracowników Section -->
+    <div class="grid-x grid-margin-x">
+        <div class="small-12 cell">
+            <div class="funkcja-dnia-container light-theme">
+                <div class="grid-x align-middle">
+                    <div class="small-12 medium-auto cell">
+                        <h3>
+                            <i class="fi-star"></i>Poznaj Bibliografię Publikacji Pracowników
+                        </h3>
+                    </div>
+                </div>
+                <div class="grid-x">
+                    <div class="small-12 cell">
+                        <div id="daily-feature-content">
+                            <!-- Content will be inserted by JavaScript -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Functions for anonymous users
+        const anonymousFeatures = [
+            {
+                name: "Wyszukiwarka zaawansowana",
+                description: "Potężne narzędzie do przeszukiwania bazy publikacji według wielu kryteriów: autor, tytuł, rok wydania, jednostka, typ publikacji i wiele innych. Pozwala na tworzenie złożonych zapytań z operatorami logicznymi.",
+                link: "/multiseek/",
+                icon: "fi-magnifying-glass"
+            },
+            {
+                name: "Formularz wyszukiwania (Multiseek)",
+                description: "Zaawansowany kreator zapytań umożliwiający budowanie skomplikowanych wyszukiwań krok po kroku. Idealne narzędzie do precyzyjnego filtrowania wyników według dowolnych kombinacji parametrów.",
+                link: "/multiseek/",
+                icon: "fi-page-search"
+            },
+            {
+                name: "Przeglądanie jednostek",
+                description: "Hierarchiczny widok struktury organizacyjnej uczelni. Pozwala na nawigację po wydziałach, instytutach i katedrach wraz z przypisanymi do nich publikacjami.",
+                link: "/bpp/jednostka/",
+                icon: "fi-home"
+            },
+            {
+                name: "Przeglądanie autorów",
+                description: "Alfabetyczna lista wszystkich autorów w systemie. Umożliwia szybkie znalezienie profilu autora i przeglądanie jego dorobku naukowego.",
+                link: "/bpp/autor/",
+                icon: "fi-torsos-all"
+            },
+            {
+                name: "Przeglądanie źródeł",
+                description: "Kompletna lista czasopism naukowych i źródeł publikacji. Zawiera informacje o punktacji, współczynnikach wpływu oraz przynależności do list ministerialnych.",
+                link: "/bpp/zrodlo/",
+                icon: "fi-book"
+            },
+            {% if uczelnia.pokazuj_wydzialy %}
+            {
+                name: "Przeglądanie wydziałów",
+                description: "Struktura wydziałowa uczelni z możliwością przeglądania jednostek i publikacji przypisanych do każdego wydziału.",
+                link: "/bpp/wydzial/",
+                icon: "fi-foundation"
+            },
+            {% endif %}
+            {
+                name: "Ranking autorów",
+                description: "Zestawienie najbardziej produktywnych naukowców według różnych kryteriów: liczby publikacji, punktacji, cytowań. Pozwala na analizę dorobku w wybranych okresach.",
+                link: "/bpp/ranking-autorow/",
+                icon: "fi-trophy"
+            }
+        ];
+
+        // Additional functions for logged-in users
+        const loggedInFeatures = [
+            {
+                name: "Komparator PBN",
+                description: "Narzędzie do porównywania danych lokalnych z Polską Bibliografią Naukową. Pomaga wykryć różnice i synchronizować informacje o publikacjach między systemami.",
+                link: "/pbn_api/komparator/",
+                icon: "fi-arrows-compress"
+            },
+            {
+                name: "Eksport do PBN",
+                description: "Funkcja eksportująca wybrane publikacje do formatu zgodnego z Polską Bibliografią Naukową. Automatyzuje proces raportowania publikacji do systemu ministerialnego.",
+                link: "/pbn_api/eksport/",
+                icon: "fi-upload"
+            },
+            {
+                name: "Import z systemu POLON",
+                description: "Moduł importujący dane o publikacjach bezpośrednio z systemu POL-on. Oszczędza czas przy wprowadzaniu danych już istniejących w systemie ministerialnym.",
+                link: "/import_polon/",
+                icon: "fi-download"
+            },
+            {
+                name: "Raport slotów - Ewaluacja",
+                description: "Kompleksowy raport slotów publikacyjnych dla potrzeb ewaluacji jednostek naukowych. Automatycznie wylicza punkty i sloty zgodnie z obowiązującymi przepisami.",
+                link: "/raport-slotow/",
+                icon: "fi-graph-bar"
+            },
+            {
+                name: "Raport slotów autora",
+                description: "Indywidualny raport pokazujący wkład punktowy i sloty konkretnego autora. Pomocny przy ocenach pracowniczych i awansach naukowych.",
+                link: "/raport-slotow/autor/",
+                icon: "fi-torso"
+            },
+            {
+                name: "Raport slotów zerowy",
+                description: "Specjalny raport identyfikujący publikacje bez przypisanych slotów lub z zerowymi punktami. Pomaga w wykrywaniu błędów i uzupełnianiu brakujących danych.",
+                link: "/raport-slotow/zerowy/",
+                icon: "fi-alert"
+            },
+            {
+                name: "Komparator udziałów PBN",
+                description: "Narzędzie porównujące udziały procentowe autorów w publikacjach między systemem lokalnym a PBN. Wykrywa i pomaga korygować niezgodności w deklaracjach autorskich.",
+                link: "/komparator-pbn-udzialy/",
+                icon: "fi-percent"
+            },
+            {
+                name: "Zgłoś publikację",
+                description: "Formularz do zgłaszania nowych publikacji do bazy. Umożliwia autorom samodzielne wprowadzanie swoich prac do systemu bibliograficznego.",
+                link: "/zglos_publikacje/nowe_zgloszenie/",
+                icon: "fi-page-add"
+            },
+            {
+                name: "Oświadczenia autorów",
+                description: "System zarządzania oświadczeniami dotyczącymi przypisania publikacji do dyscyplin naukowych. Kluczowe dla prawidłowej ewaluacji jednostek.",
+                link: "/oswiadczenia/",
+                icon: "fi-clipboard-notes"
+            },
+            {
+                name: "Import list ministerialnych",
+                description: "Narzędzie do aktualizacji list czasopism punktowanych MEiN. Automatycznie pobiera i integruje najnowsze wykazy ministerialne.",
+                link: "/import_list_ministerialnych/",
+                icon: "fi-list-thumbnails"
+            },
+            {
+                name: "Import list IF",
+                description: "Moduł importujący współczynniki Impact Factor z baz Clarivate Analytics. Aktualizuje wartości IF dla czasopism w systemie.",
+                link: "/import_list_if/",
+                icon: "fi-graph-trend"
+            },
+            {
+                name: "Import dyscyplin",
+                description: "Funkcja importująca i aktualizująca słownik dyscyplin naukowych zgodnie z klasyfikacją ministerialną.",
+                link: "/import_dyscyplin/",
+                icon: "fi-folder"
+            },
+            {
+                name: "Rozbieżności dyscyplin",
+                description: "Raport wykrywający niezgodności w przypisaniu publikacji do dyscyplin naukowych. Pomaga w weryfikacji poprawności deklaracji.",
+                link: "/rozbieznosci_dyscyplin/",
+                icon: "fi-x-circle"
+            },
+            {
+                name: "Rozbieżności IF",
+                description: "Analiza różnic między wartościami Impact Factor w systemie lokalnym a bazami zewnętrznymi. Wykrywa błędy i nieaktualne dane.",
+                link: "/rozbieznosci_if/",
+                icon: "fi-shuffle"
+            },
+            {
+                name: "Nowe raporty",
+                description: "Zaawansowany moduł raportowania z możliwością tworzenia własnych zestawień i eksportu danych do różnych formatów.",
+                link: "/nowe_raporty/",
+                icon: "fi-page-export"
+            },
+            {
+                name: "Zmiana hasła",
+                description: "Panel zmiany hasła do konta w systemie BPP. Regularna zmiana hasła zwiększa bezpieczeństwo Twoich danych.",
+                link: "/password_change/",
+                icon: "fi-key"
+            },
+            {
+                name: "Import pracowników",
+                description: "Masowy import danych o pracownikach z plików Excel lub CSV. Przyspiesza proces wprowadzania nowych autorów do systemu.",
+                link: "/import_pracownikow/",
+                icon: "fi-torsos"
+            }
+        ];
+
+        // Check if user is authenticated
+        const isAuthenticated = {% if request.user.is_authenticated %}true{% else %}false{% endif %};
+
+        // Combine anonymous features with logged-in features if authenticated
+        let features = anonymousFeatures;
+        if (isAuthenticated) {
+            // For logged-in users, show all features
+            features = [...anonymousFeatures, ...loggedInFeatures];
+        }
+
+        // Get today's date and use it as seed for deterministic selection
+        const today = new Date();
+        const dayOfYear = Math.floor((today - new Date(today.getFullYear(), 0, 0)) / 1000 / 60 / 60 / 24);
+        const featureIndex = dayOfYear % features.length;
+        const todayFeature = features[featureIndex];
+
+        // Display the feature
+        const contentDiv = document.getElementById('daily-feature-content');
+        if (contentDiv && todayFeature) {
+            contentDiv.innerHTML = `
+                <div class="grid-x align-middle">
+                    <div class="small-12 medium-2 large-1 cell text-center">
+                        <i class="${todayFeature.icon} feature-icon"></i>
+                    </div>
+                    <div class="small-12 medium-10 large-11 cell feature-content">
+                        <h4>${todayFeature.name}</h4>
+                        <p>${todayFeature.description}</p>
+                        <a href="${todayFeature.link}" class="feature-button">
+                            <i class="fi-arrow-right"></i>Odkryj tę funkcję
+                        </a>
+                    </div>
+                </div>
+            `;
+        }
+    });
+    </script>
 
     {% if recently_updated or recent_abstracts %}
         <div class="grid-x grid-margin-x">

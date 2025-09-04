@@ -15,6 +15,12 @@ urlpatterns = [
     path(
         "reset-not-duplicates/", views.reset_not_duplicates, name="reset_not_duplicates"
     ),
+    path("ignore-author/", views.ignore_author, name="ignore_author"),
+    path(
+        "reset-ignored-authors/",
+        views.reset_ignored_authors,
+        name="reset_ignored_authors",
+    ),
     path("delete-author/", views.delete_author, name="delete_author"),
     path("scal-autorow/", views.scal_autorow_view, name="scal_autorow"),
     path(

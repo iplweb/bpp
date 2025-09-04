@@ -133,8 +133,13 @@ class PageableResource:
 
 class OAuthMixin:
     @classmethod
-    def get_auth_url(klass, base_url, app_id):
-        return f"{base_url}/auth/pbn/api/registration/user/token/{app_id}"
+    def get_auth_url(klass, base_url, app_id, state=None):
+        url = f"{base_url}/auth/pbn/api/registration/user/token/{app_id}"
+        if state:
+            from urllib.parse import quote
+
+            url += f"?state={quote(state)}"
+        return url
 
     @classmethod
     def get_user_token(klass, base_url, app_id, app_token, one_time_token):

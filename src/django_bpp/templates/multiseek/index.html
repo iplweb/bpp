@@ -201,26 +201,49 @@
             });
         }
 
+        // Global variables to track listeners and observers
+        var iframeLoadHandler = null;
+        var iframeMutationObserver = null;
+        var isIframeInitialized = false;
+        var adjustHeightTimeout = null;
+
         function adjustIframeHeight() {
             var iframe = document.getElementById('if');
 
             if (iframe) {
                 try {
+                    // CRITICAL: Reset iframe height to auto BEFORE measuring content
+                    // This prevents cumulative growth
+                    iframe.style.height = 'auto';
+
                     // Access iframe content (only works for same-origin)
                     var iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-                    if (iframeDoc && iframeDoc.body) {
-                        // Get the actual content height
-                        var contentHeight = Math.max(
-                            iframeDoc.body.scrollHeight,
-                            iframeDoc.body.offsetHeight,
-                            iframeDoc.documentElement.scrollHeight,
-                            iframeDoc.documentElement.offsetHeight
-                        );
-                        // Add some padding for better appearance
-                        contentHeight += 20;
+                    if (iframeDoc) {
+                        // Force a reflow to ensure the auto height is applied
+                        void iframe.offsetHeight;
 
-                        // Set the iframe height to match content
-                        iframe.style.height = contentHeight + 'px';
+                        // Look for the end-of-content marker
+                        var endMarker = iframeDoc.getElementById('end-of-content');
+
+                        if (endMarker) {
+                            // Get the absolute position of the marker from top of document
+                            var contentHeight = endMarker.offsetTop + endMarker.offsetHeight;
+                            // Add a small buffer for any margins/padding
+                            contentHeight += 20;
+
+                            // Set the iframe height to match content
+                            iframe.style.height = contentHeight + 'px';
+                        } else {
+                            // Fallback to old method if marker not found
+                            var contentHeight = Math.max(
+                                iframeDoc.body.scrollHeight,
+                                iframeDoc.body.offsetHeight,
+                                iframeDoc.documentElement.scrollHeight,
+                                iframeDoc.documentElement.offsetHeight
+                            );
+                            contentHeight += 20;
+                            iframe.style.height = contentHeight + 'px';
+                        }
                     }
                 } catch (e) {
                     // Cross-origin or access denied - set a default height
@@ -234,68 +257,102 @@
         function setupIframeHeightAdjustment() {
             var iframe = document.getElementById('if');
 
-            if (iframe) {
-                // Listen for iframe load event
-                iframe.addEventListener('load', function() {
-                    // Wait for iframe's document.ready
-                    try {
-                        var iframeWindow = iframe.contentWindow;
-                        if (iframeWindow && iframeWindow.$) {
-                            // Use jQuery from iframe if available
-                            iframeWindow.$(iframeWindow.document).ready(function() {
+            if (!iframe) return;
+
+            // Remove old load event listener if it exists
+            if (iframeLoadHandler) {
+                iframe.removeEventListener('load', iframeLoadHandler);
+                iframeLoadHandler = null;
+            }
+
+            // Disconnect old mutation observer if it exists
+            if (iframeMutationObserver) {
+                iframeMutationObserver.disconnect();
+                iframeMutationObserver = null;
+            }
+
+            // Create new load handler
+            iframeLoadHandler = function() {
+                // Wait for iframe's document.ready
+                try {
+                    var iframeWindow = iframe.contentWindow;
+                    if (iframeWindow && iframeWindow.$) {
+                        // Use jQuery from iframe if available
+                        iframeWindow.$(iframeWindow.document).ready(function() {
+                            adjustIframeHeight();
+                        });
+                    } else if (iframeWindow && iframeWindow.document) {
+                        // Fallback to DOMContentLoaded if jQuery not available in iframe
+                        if (iframeWindow.document.readyState === 'complete' ||
+                            iframeWindow.document.readyState === 'interactive') {
+                            // Document already loaded
+                            adjustIframeHeight();
+                        } else {
+                            iframeWindow.document.addEventListener('DOMContentLoaded', function() {
                                 adjustIframeHeight();
                             });
-                        } else if (iframeWindow && iframeWindow.document) {
-                            // Fallback to DOMContentLoaded if jQuery not available in iframe
-                            if (iframeWindow.document.readyState === 'complete' ||
-                                iframeWindow.document.readyState === 'interactive') {
-                                // Document already loaded
-                                adjustIframeHeight();
-                            } else {
-                                iframeWindow.document.addEventListener('DOMContentLoaded', function() {
-                                    adjustIframeHeight();
-                                });
-                            }
                         }
-                    } catch (e) {
-                        // If we can't access iframe content, adjust after a delay
-                        setTimeout(adjustIframeHeight, 100);
                     }
-                });
+                } catch (e) {
+                    // If we can't access iframe content, adjust after a delay
+                    setTimeout(adjustIframeHeight, 100);
+                }
 
-                // Also handle iframe content changes via mutation observer if possible
+                // Setup mutation observer for content changes (inside load handler to ensure document is ready)
                 try {
                     var iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
                     if (iframeDoc && window.MutationObserver) {
-                        var observer = new MutationObserver(function(mutations) {
-                            adjustIframeHeight();
+                        // Disconnect any existing observer first
+                        if (iframeMutationObserver) {
+                            iframeMutationObserver.disconnect();
+                        }
+
+                        iframeMutationObserver = new MutationObserver(function(mutations) {
+                            // Debounce the height adjustment to prevent rapid successive calls
+                            if (adjustHeightTimeout) {
+                                clearTimeout(adjustHeightTimeout);
+                            }
+                            adjustHeightTimeout = setTimeout(function() {
+                                adjustIframeHeight();
+                            }, 50);
                         });
 
-                        observer.observe(iframeDoc.body, {
+                        iframeMutationObserver.observe(iframeDoc.body, {
                             childList: true,
                             subtree: true,
-                            attributes: true,
-                            characterData: true
+                            attributes: false, // Don't watch attribute changes to reduce calls
+                            characterData: false // Don't watch text changes to reduce calls
                         });
                     }
                 } catch (e) {
                     // Can't access iframe content for mutation observer
                 }
+            };
+
+            // Add the new load event listener
+            iframe.addEventListener('load', iframeLoadHandler);
+
+            // If iframe is already loaded, call the handler directly
+            try {
+                if (iframe.contentDocument && iframe.contentDocument.readyState === 'complete') {
+                    iframeLoadHandler();
+                }
+            } catch (e) {
+                // Can't access iframe
             }
         }
 
-        // Initialize when main document is ready
+        // Initialize only once when main document is ready
         document.addEventListener('DOMContentLoaded', function() {
-            setupIframeHeightAdjustment();
-            // Initial adjustment
-            adjustIframeHeight();
+            if (!isIframeInitialized) {
+                setupIframeHeightAdjustment();
+                adjustIframeHeight();
+                isIframeInitialized = true;
+            }
         });
 
-        // Also initialize with jQuery for compatibility
+        // Re-setup when iframe content changes (after form submissions)
         $(document).ready(function() {
-            setupIframeHeightAdjustment();
-
-            // Re-adjust when iframe src changes (after form submissions)
             $('#sendQueryButton, #multiseek-szukaj').on('click', function() {
                 setTimeout(function() {
                     setupIframeHeightAdjustment();

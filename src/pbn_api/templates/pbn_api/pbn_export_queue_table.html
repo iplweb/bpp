@@ -1,0 +1,102 @@
+{% load humanize %}
+<table>
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Rekord</th>
+            <th>Zamówił</th>
+            <th>Zamówiono</th>
+            <th>Ilość prób</th>
+            <th>Status</th>
+            <th>Akcje</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in export_queue_items %}
+            <tr style="cursor: pointer;" onclick="window.location='{% url 'pbn_api:export-queue-detail' item.pk %}';">
+                <td><a href="{% url 'pbn_api:export-queue-detail' item.pk %}" style="color: inherit;">{{ item.pk }}</a></td>
+                <td>
+                    <a href="{% url 'pbn_api:export-queue-detail' item.pk %}" style="color: inherit;">
+                        {% if item.rekord_do_wysylki %}
+                            {% with rekord=item.rekord_do_wysylki %}
+                                {% if rekord.opis_bibliograficzny_cache %}
+                                    {{ rekord.opis_bibliograficzny_cache|safe|truncatechars:50 }}
+                                {% elif rekord.tytul_oryginalny %}
+                                    {{ rekord.tytul_oryginalny|truncatechars:50 }}
+                                {% else %}
+                                    {{ rekord|truncatechars:50 }}
+                                {% endif %}
+                            {% endwith %}
+                        {% else %}
+                            <em>Rekord usunięty</em>
+                        {% endif %}
+                    </a>
+                </td>
+                <td><a href="{% url 'pbn_api:export-queue-detail' item.pk %}" style="color: inherit;">{{ item.zamowil }}</a></td>
+                <td><a href="{% url 'pbn_api:export-queue-detail' item.pk %}" style="color: inherit;">{{ item.zamowiono|naturaltime }}</a></td>
+                <td><a href="{% url 'pbn_api:export-queue-detail' item.pk %}" style="color: inherit;">{{ item.ilosc_prob }}</a></td>
+                <td>
+                    <a href="{% url 'pbn_api:export-queue-detail' item.pk %}" style="color: inherit;">
+                        {% if item.zakonczono_pomyslnie == True %}
+                            <span class="label success">Pomyślnie</span>
+                        {% elif item.zakonczono_pomyslnie == False %}
+                            <span class="label alert">Błąd</span>
+                        {% elif item.retry_after_user_authorised %}
+                            <span class="label warning">Oczekuje na autoryzację</span>
+                        {% else %}
+                            <span class="label secondary">W kolejce</span>
+                        {% endif %}
+                    </a>
+                </td>
+                <td>
+                    <a href="{% url 'pbn_api:export-queue-detail' item.pk %}" class="button tiny">
+                        <span class="fi-magnifying-glass"></span> Szczegóły
+                    </a>
+                </td>
+            </tr>
+        {% empty %}
+            <tr>
+                <td colspan="7" class="text-center">Brak elementów w kolejce eksportu do PBN.</td>
+            </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% if is_paginated %}
+    <nav aria-label="Pagination">
+        <ul class="pagination text-center" role="navigation">
+            <li class="pagination-previous {% if not page_obj.has_previous %}disabled{% endif %}">
+                {% if page_obj.has_previous %}
+                    <a href="?page={{ page_obj.previous_page_number }}{% if current_filter != 'all' %}&zakonczono_pomyslnie={{ request.GET.zakonczono_pomyslnie }}{% endif %}"
+                       hx-get="{% url 'pbn_api:export-queue-table' %}?page={{ page_obj.previous_page_number }}{% if current_filter != 'all' %}&zakonczono_pomyslnie={{ request.GET.zakonczono_pomyslnie }}{% endif %}"
+                       hx-target="#export-queue-table"
+                       hx-swap="innerHTML">« Poprzednia</a>
+                {% else %}
+                    <span>« Poprzednia</span>
+                {% endif %}
+            </li>
+
+            {% for page_num in page_obj.paginator.page_range %}
+                {% if page_num == page_obj.number %}
+                    <li class="current"><span class="show-for-sr">Jesteś na stronie</span> {{ page_num }}</li>
+                {% else %}
+                    <li><a href="?page={{ page_num }}{% if current_filter != 'all' %}&zakonczono_pomyslnie={{ request.GET.zakonczono_pomyslnie }}{% endif %}"
+                           hx-get="{% url 'pbn_api:export-queue-table' %}?page={{ page_num }}{% if current_filter != 'all' %}&zakonczono_pomyslnie={{ request.GET.zakonczono_pomyslnie }}{% endif %}"
+                           hx-target="#export-queue-table"
+                           hx-swap="innerHTML">{{ page_num }}</a></li>
+                {% endif %}
+            {% endfor %}
+
+            <li class="pagination-next {% if not page_obj.has_next %}disabled{% endif %}">
+                {% if page_obj.has_next %}
+                    <a href="?page={{ page_obj.next_page_number }}{% if current_filter != 'all' %}&zakonczono_pomyslnie={{ request.GET.zakonczono_pomyslnie }}{% endif %}"
+                       hx-get="{% url 'pbn_api:export-queue-table' %}?page={{ page_obj.next_page_number }}{% if current_filter != 'all' %}&zakonczono_pomyslnie={{ request.GET.zakonczono_pomyslnie }}{% endif %}"
+                       hx-target="#export-queue-table"
+                       hx-swap="innerHTML">Następna »</a>
+                {% else %}
+                    <span>Następna »</span>
+                {% endif %}
+            </li>
+        </ul>
+    </nav>
+{% endif %}

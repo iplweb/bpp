@@ -26,61 +26,436 @@
 
 <!-- CONTENT -->
 {% block content %}
+<div class="crossref-content">
     <div style="border: 2px solid red; border-style: groove; padding: 5px; width: auto;">
         <p><strong>Prace w toku!</strong></p>
         <p>Oglądasz część serwisu udostępnioną jako podgląd technologiczny nadchodzących zmian.
             Funkcja nie została jeszcze ukończona. </p>
 
     </div>
+
+    <!-- Enhanced Styles -->
     {% if rekord_po_stronie_bpp %}
-        <h1>Rekord prawdopodobnie już istnieje w BPP!</h1>
-        <p>Wygląda na to, że po stronie BPP może już istnieć taki rekord.</p><br/>
-        <p>
-            <a href="{{ rekord_po_stronie_bpp.get_absolute_url }}">{{ rekord_po_stronie_bpp.opis_bibliograficzny_cache|safe }}</a>
-        </p>
-        <br/>
-        <p>Poniżej możesz obejrzeć dane, które otrzymane zostały z CrossRef API oraz ich ewentualne
-            porównanie z tym, co znajduje się po stronie BPP. </p>
-        <br/>
-    <p>Możesz też mimo to spróbować <a href="../add/?identyfikator_doi={{ identyfikator_doi }}">dodać nowy
-        rekord</a>, ale
-        istnieje dość duże ryzyko, że zdublujesz istniejący już wpis. </p>
+        <div class="danger-card">
+            <h1><span class="fi-alert"></span> Rekord prawdopodobnie już istnieje w BPP!</h1>
+            <p>Wygląda na to, że po stronie BPP może już istnieć taki rekord.</p>
+
+            <div class="bibliographic-desc">
+                <a href="{{ rekord_po_stronie_bpp.get_absolute_url }}" class="record-link">{{ rekord_po_stronie_bpp.opis_bibliograficzny_cache|safe }}</a>
+            </div>
+
+            <p>Poniżej możesz obejrzeć dane, które otrzymane zostały z CrossRef API oraz ich ewentualne
+                porównanie z tym, co znajduje się po stronie BPP.</p>
+
+            <p>Możesz też mimo to spróbować <a href="../add/?identyfikator_doi={{ identyfikator_doi }}" class="link-button warning">Dodaj nowy rekord (ryzyko duplikatu)</a></p>
+        </div>
     {% else %}
-        <h1>Brak odpowiednika po stronie BPP</h1>
-        <p>Wygląda na to (bazując na polach DOI, alternative-id oraz title), że w bazie BPP nie ma takiego
-            rekordu. Możesz kliknąć poniższy link, aby przejść do formularza tworzenia nowego rekordu.
-            Uwaga - po zatwierdzeniu formularza zostanie utworzony nowy rekord w bazie.</p>
-        <br/>
-        <p><a href="../add/?identyfikator_doi={{ identyfikator_doi }}">Dodaj nowy rekord</a></p>
+        <div class="success-card">
+            <h1><span class="fi-check"></span> Brak odpowiednika po stronie BPP</h1>
+            <p>Wygląda na to (bazując na polach DOI, alternative-id oraz title), że w bazie BPP nie ma takiego
+                rekordu. Możesz kliknąć poniższy link, aby przejść do formularza tworzenia nowego rekordu.
+                <strong>Uwaga</strong> - po zatwierdzeniu formularza zostanie utworzony nowy rekord w bazie.</p>
+
+            <p><a href="../add/?identyfikator_doi={{ identyfikator_doi }}" class="link-button primary">Dodaj nowy rekord</a></p>
+        </div>
     {% endif %}
     <style>
+        /* Base Styles - scoped to crossref content only */
+        .crossref-content {
+            background: transparent;
+            position: relative;
+        }
+
+        /* Card Containers */
+        .crossref-content .result-card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .crossref-content .warning-card {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .crossref-content .success-card {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .crossref-content .danger-card {
+            background: #f8d7da;
+            border-left: 4px solid #dc3545;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .crossref-content .info-card {
+            background: #d1ecf1;
+            border-left: 4px solid #17a2b8;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        /* Headers - scoped to crossref content */
+        .crossref-content h1 {
+            color: #2c3e50;
+            font-size: 24px;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e1e8ed;
+        }
+
+        .crossref-content h2 {
+            color: #34495e;
+            font-size: 20px;
+            margin-top: 25px;
+            margin-bottom: 15px;
+        }
+
+        .crossref-content h3 {
+            color: #34495e;
+            font-size: 18px;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+
+        /* Tables */
+        .data-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            background: white;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            overflow: hidden;
+            font-size: 14px !important;
+        }
+
+        .data-table th {
+            background: #f8f9fa;
+            color: #495057;
+            font-weight: 600;
+            padding: 12px;
+            text-align: left;
+            border-bottom: 2px solid #dee2e6;
+            font-size: 14px !important;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .data-table td {
+            padding: 12px;
+            border-bottom: 1px solid #dee2e6;
+            vertical-align: top;
+            font-size: 14px !important;
+        }
+
+        .data-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .data-table tr:hover {
+            background-color: #f8f9fa;
+        }
+
+        /* Column widths for matchowanie table */
+        .matchowanie-table td:nth-child(1) { /* Atrybut */
+            width: 15%;
+            min-width: 120px;
+        }
+
+        .matchowanie-table td:nth-child(2) { /* Wartość z CrossRef */
+            width: 35%;
+            min-width: 250px;
+        }
+
+        .matchowanie-table td:nth-child(3) { /* Status icon */
+            width: 5%;
+            min-width: 50px;
+            text-align: center;
+        }
+
+        .matchowanie-table td:nth-child(4) { /* Wynik porównania */
+            width: 25%;
+            min-width: 150px;
+        }
+
+        .matchowanie-table td:nth-child(5) { /* Odsyłacze */
+            width: 20%;
+            min-width: 150px;
+        }
+
+        /* Column widths for kopiowanie table */
+        .kopiowanie-table td:nth-child(1) { /* Atrybut */
+            width: 20%;
+            min-width: 120px;
+        }
+
+        .kopiowanie-table td:nth-child(2) { /* Wartość */
+            width: 40%;
+            min-width: 200px;
+        }
+
+        .kopiowanie-table.with-bpp td:nth-child(3) { /* Wartość po stronie BPP */
+            width: 40%;
+            min-width: 200px;
+        }
+
+        .kopiowanie-table.with-bpp td:nth-child(4) { /* Sugerowane działania */
+            width: 20%;
+        }
+
+        /* Status Badges */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            font-size: 18px;
+        }
+
+        .status-ok {
+            background: #d4edda;
+            color: #28a745;
+        }
+
+        .status-user {
+            background: #f8d7da;
+            color: #dc3545;
+        }
+
+        .status-loose {
+            background: #fff3cd;
+            color: #ffc107;
+        }
+
+        .status-none {
+            background: #e2e3e5;
+            color: #6c757d;
+        }
+
+        .status-error {
+            background: #f8d7da;
+            color: #dc3545;
+        }
+
+        /* Pre and Code */
         pre {
-            font-family: monospace !important;
-            white-space: pre !important;
-            word-break: break-all;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace !important;
+            white-space: pre-wrap !important;
+            word-break: break-word;
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            font-size: 14px !important;
+            line-height: 1.6;
+            max-width: 600px;
+            margin: 0;
+            color: #212529;
+        }
+
+        code {
+            background: #f8f9fa;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 14px !important;
+        }
+
+        /* Buttons and Links */
+        .action-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 4px 0;
+            transition: background 0.2s;
+        }
+
+        .action-button:hover {
+            background: #0056b3;
+        }
+
+        .action-button.success {
+            background: #28a745;
+        }
+
+        .action-button.success:hover {
+            background: #218838;
+        }
+
+        .action-button.warning {
+            background: #ffc107;
+            color: #212529;
+        }
+
+        .action-button.warning:hover {
+            background: #e0a800;
+        }
+
+        .link-button {
+            display: inline-block;
+            padding: 8px 16px;
+            background: #6c757d;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            margin: 4px 0;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+
+        .link-button:hover {
+            background: #5a6268;
+            color: white;
+            text-decoration: none;
+        }
+
+        .link-button.primary {
+            background: #007bff;
+        }
+
+        .link-button.primary:hover {
+            background: #0056b3;
+        }
+
+        /* New Source Box */
+        .new-source-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .new-source-box strong {
+            color: #ffd700;
+        }
+
+        /* Explanation Box */
+        .crossref-content .explanation-box {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        /* Details Summary */
+        details {
+            margin: 20px 0;
+        }
+
+        details summary {
+            cursor: pointer;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        details summary:hover {
+            background: #e9ecef;
+        }
+
+        details[open] summary {
+            border-radius: 4px 4px 0 0;
+            background: #e9ecef;
+        }
+
+        /* Attribute Column */
+        .attribute-name {
+            font-weight: 600;
+            color: #495057;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 14px !important;
+        }
+
+        /* General text improvements - scoped to CrossRef pages only */
+        .crossref-content p,
+        .crossref-content li {
+            font-size: 14px !important;
+            line-height: 1.6;
+        }
+
+        .crossref-content .explanation-box p,
+        .crossref-content .explanation-box li {
+            font-size: 14px !important;
+        }
+
+        .crossref-content .result-card p {
+            font-size: 14px !important;
+        }
+
+        /* Icon Adjustments */
+        .fi-check, .fi-results, .fi-die-five, .fi-prohibited, .fi-skull {
+            font-size: 20px;
+        }
+
+        /* Record Link */
+        .record-link {
+            color: #007bff;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .record-link:hover {
+            text-decoration: underline;
+        }
+
+        /* Bibliographic Description */
+        .bibliographic-desc {
+            background: #f8f9fa;
+            padding: 15px;
+            border-left: 3px solid #007bff;
+            margin: 10px 0;
+            border-radius: 4px;
         }
     </style>
     <script type="text/javascript">
-        window.addEventListener("load", () => {
+        // Use DOMContentLoaded instead of load to avoid conflicts
+        document.addEventListener("DOMContentLoaded", () => {
             function sendData(form) {
                 const XHR = new XMLHttpRequest();
                 const FD = new FormData(form);
 
                 XHR.addEventListener("load", (event) => {
                     const btn = form.querySelector("input[type=submit]");
-                    btn.value = "Wykonano!";
+                    if (btn) btn.value = "Wykonano!";
                 });
 
                 XHR.addEventListener("error", (event) => {
-                    form.querySelector("input[type=submit]").value = "Wystąpił błąd...";
-                    alert('Wystąpił bład podczas wysyłania zapytania.');
+                    const btn = form.querySelector("input[type=submit]");
+                    if (btn) btn.value = "Wystąpił błąd...";
+                    alert('Wystąpił błąd podczas wysyłania zapytania.');
                 });
 
                 XHR.open("POST", form.action);
                 XHR.send(FD);
             }
 
-            const forms = document.querySelectorAll("form.ajax-form");
+            // More specific selector to avoid catching nav search form
+            const forms = document.querySelectorAll(".crossref-content form.ajax-form");
 
             forms.forEach(function (item, idx) {
                 item.addEventListener('submit', function (event) {
@@ -91,18 +466,21 @@
         });
     </script>
 
-    <h1>Matchowanie danych</h1>
-    Poniżej znajdują się elementy danych z CrossRef API które po stronie BPP są indeksowane bądź
-    są identyfikatorami. Oznacza to, że dla istniejących rekordów po stronie BPP powinien pojawić
-    się match (luźny bądź dopasowany) oraz odsyłacz do tego matchu. W przypadku, gdy matchowanie
-    jest niejedoznaczne, pojawi się lista możliwych dopasowań. Gdy nie można dopasować żadnego
-    rekordu, należy upewnić się, że jest tak w istocie - to znaczy, że po stronie BPP na pewno
-    nie ma takiego wpisu. W sytuacji, gdy system nie matchuje prawidłowo istniejącego rekordu
-    po stronie BPP, za taką sytuację winę mogą ponosić różne formy tekstowego zapisu np nazwisk
-    (brak drugiego nazwiska, rozdzielenie znakiem minusa kontra rozdzielenie myślnikiem,
-    brak polskiej literki przy tekstowym dopasowaniu dokładnym) itp.
-    </p>
-    <table class="grp-table">
+    <div class="result-card">
+        <h1>Matchowanie danych</h1>
+        <div class="explanation-box">
+            <p><strong>Wyjaśnienie procesu matchowania:</strong></p>
+            <p>Poniżej znajdują się elementy danych z CrossRef API które po stronie BPP są indeksowane bądź
+            są identyfikatorami. Dla istniejących rekordów po stronie BPP powinien pojawić
+            się match (luźny bądź dopasowany) oraz odsyłacz do tego matchu.</p>
+            <ul>
+                <li>W przypadku niejednoznacznego matchowania - pojawi się lista możliwych dopasowań</li>
+                <li>Gdy nie można dopasować żadnego rekordu - upewnij się, że po stronie BPP na pewno nie ma takiego wpisu</li>
+                <li>Problemy z matchowaniem mogą wynikać z różnych form tekstowego zapisu (np. nazwisk, myślników, polskich znaków)</li>
+            </ul>
+        </div>
+
+        <table class="data-table matchowanie-table">
         <tr>
             <th>Atrybut</th>
             <th>Wartość z CrossRef</th>
@@ -112,21 +490,21 @@
         </tr>
         {% for elem in dane_porownania %}
             <tr>
-                <td>{{ elem.atrybut }}</td>
-                <td class="pre">
+                <td><span class="attribute-name">{{ elem.atrybut }}</span></td>
+                <td>
                     <pre>{{ elem.wartosc_z_crossref_print }}</pre>
                 </td>
                 <td>
                     {% if elem.rezultat.status == 'ok' %}
-                        <span class="fi-check" style="color:green;"></span>
+                        <span class="status-badge status-ok"><span class="fi-check"></span></span>
                     {% elif elem.rezultat.status == 'user' %}
-                        <span class="fi-results" style="color:pink;"></span>
+                        <span class="status-badge status-user"><span class="fi-results"></span></span>
                     {% elif elem.rezultat.status == 'luzne' %}
-                        <span class="fi-die-five" style="color:orange;"></span>
+                        <span class="status-badge status-loose"><span class="fi-die-five"></span></span>
                     {% elif elem.rezultat.status == 'brak' %}
-                        <span class="fi-prohibited" style="color:black;"></span>
+                        <span class="status-badge status-none"><span class="fi-prohibited"></span></span>
                     {% elif elem.rezultat.status == 'blad' %}
-                        <span class="fi-skull" style="color:red;"></span>
+                        <span class="status-badge status-error"><span class="fi-skull"></span></span>
                     {% else %}
                         Brak templatki dla statusu {{ elem.rezultat.status }} -- należy poprawić
                         w kodzie oprogramowania BPP. Powiadom administratora serwisu.
@@ -135,7 +513,7 @@
                 <td>{{ elem.rezultat.opis }}</td>
                 <td>
                     {% for rekord in elem.rezultat.rekordy %}
-                        <a target="_blank" href="{{ rekord.get_absolute_url }}">
+                        <a target="_blank" href="{{ rekord.get_absolute_url }}" class="record-link">
                             {{ rekord }}{% if rekord.aktualna_jednostka %} -
                                 {{ rekord.aktualna_jednostka }}{% endif %}</a>
                         <br/>
@@ -147,7 +525,7 @@
                                 <input type="hidden" name="nazwa" value="{{ dane_nowego_zrodla.nazwa }}"/>
                                 <input type="hidden" name="skrot" value="{{ dane_nowego_zrodla.skrot }}"/>
                                 <input type="hidden" name="issn" value="{{ dane_nowego_zrodla.issn }}"/>
-                                <input type="submit" value="Utwórz nowe źródło"/>
+                                <input type="submit" value="Utwórz nowe źródło" class="action-button success"/>
                             </form>
                         {% endif %}
                     {% endif %}
@@ -159,7 +537,7 @@
                                 <input type="hidden" name="nazwisko" value="{{ elem.wartosc_z_crossref.family }}"/>
                                 <input type="hidden" name="imiona" value="{{ elem.wartosc_z_crossref.given }}"/>
                                 <input type="hidden" name="orcid" value="{{ elem.wartosc_z_crossref.ORCID }}"/>
-                                <input type="submit" value="Utwórz nowego autora"/>
+                                <input type="submit" value="Utwórz nowego autora" class="action-button"/>
                             </form>
                         {% endif %}
 
@@ -174,7 +552,7 @@
                                         <input type="hidden" name="autor" value="{{ elem.rezultat.rekordy.0.pk }}"/>
                                         <input type="hidden" name="orcid" value="{{ elem.wartosc_z_crossref.ORCID }}"/>
                                         <input type="submit" id="id_ustaw_orcid_button_{{ elem.atrybut }}"
-                                               value="Skopiuj ORCID do rekordu autora"/>
+                                               value="Skopiuj ORCID do rekordu autora" class="action-button warning"/>
                                     </form>
                                 {% endif %}
                             {% endif %}
@@ -184,10 +562,12 @@
             </tr>
         {% endfor %}
     </table>
+    </div>
 
-    <h1>Kopiowanie danych!</h1>
-    Poniższe pola są znane i mogą zostać skopiowane do docelowego rekordu z niewielkimi przeróbkami.
-    <table class=" grp-table">
+    <div class="result-card">
+    <h1>Kopiowanie danych</h1>
+    <p>Poniższe pola są znane i mogą zostać skopiowane do docelowego rekordu z niewielkimi przeróbkami.</p>
+    <table class="data-table kopiowanie-table {% if rekord_po_stronie_bpp %}with-bpp{% endif %}">
         <tr>
             <th>Atrybut</th>
             <th>Wartość</th>
@@ -199,8 +579,8 @@
         </tr>
         {% for key, value in do_skopiowania %}
             <tr>
-                <td>{{ key }}</td>
-                <td class="pre">
+                <td><span class="attribute-name">{{ key }}</span></td>
+                <td>
                     <pre>{{ value.print }}</pre>
                 </td>
                 {% if rekord_po_stronie_bpp %}
@@ -265,7 +645,7 @@
                                            value="{{ rekord_po_stronie_bpp.form_post_pk }}"/>
                                     <input type="hidden" name="streszczenie" value="{{ value.original|escape }}"/>
                                     <input type="submit" id="id_ustaw_streszczenie_button"
-                                           value="Skopiuj wartość do rekordu"/>
+                                           value="Skopiuj wartość do rekordu" class="action-button"/>
                                 </form>
                             {% else %}
                                 System BPP na ten moment potrafi dodać streszczenie, gdy nie ma po stronie BPP
@@ -283,7 +663,7 @@
                                            value="{{ rekord_po_stronie_bpp.form_post_pk }}"/>
                                     <input type="hidden" name="strony" value="{{ value.original }}"/>
                                     <input type="submit" id="id_ustaw_strony_button"
-                                           value="Skopiuj wartość do rekordu"/>
+                                           value="Skopiuj wartość do rekordu" class="action-button"/>
                                 </form>
                             {% endif %}
                         {% endif %}
@@ -297,7 +677,7 @@
                                            value="{{ rekord_po_stronie_bpp.form_post_pk }}"/>
                                     <input type="hidden" name="tom" value="{{ value.original }}"/>
                                     <input type="submit" id="id_ustaw_tom_button"
-                                           value="Skopiuj wartość do rekordu"/>
+                                           value="Skopiuj wartość do rekordu" class="action-button"/>
                                 </form>
                             {% endif %}
                         {% endif %}
@@ -312,7 +692,7 @@
                                            value="{{ rekord_po_stronie_bpp.form_post_pk }}"/>
                                     <input type="hidden" name="nr_zeszytu" value="{{ value.original }}"/>
                                     <input type="submit" id="id_ustaw_nr_zeszytu_button"
-                                           value="Skopiuj wartość do rekordu"/>
+                                           value="Skopiuj wartość do rekordu" class="action-button"/>
                                 </form>
                             {% endif %}
                         {% endif %}
@@ -327,37 +707,47 @@
             </tr>
         {% endfor %}
     </table>
+    </div>
 
-    <h1>Ignorowane dane...</h1>
-    Poniższe pola zostały oznaczone w kodzie BPP jako ignorowane. Oznacza to, że wiemy,
-    że pojawiają się w danych z CrossRef API, ale nie wiemy, co sobą reprezentują,
-    nie mamy wskazówek, w jaki sposób je wykorzystać lub też wiemy, czym są i po co są,
-    ale nie zrobimy z nimi po stronie BPP nic użytecznego:
-    <table class="grp-table">
+    <div class="result-card">
+    <h2>Ignorowane dane</h2>
+    <div class="explanation-box">
+        <p>Poniższe pola zostały oznaczone w kodzie BPP jako ignorowane. Oznacza to, że wiemy,
+        że pojawiają się w danych z CrossRef API, ale nie wiemy, co sobą reprezentują,
+        nie mamy wskazówek, w jaki sposób je wykorzystać lub też wiemy, czym są i po co są,
+        ale nie zrobimy z nimi po stronie BPP nic użytecznego:</p>
+    </div>
+    <table class="data-table">
         {% for key, value in ignorowane %}
             <tr>
-                <td>{{ key }}</td>
-                <td class="pre">
+                <td><span class="attribute-name">{{ key }}</span></td>
+                <td>
                     <pre>{{ value.print }}</pre>
                 </td>
             </tr>
         {% endfor %}
     </table>
+    </div>
 
     {% if obce %}
-        <h1>Dane obce</h1>
-        Poniższe pola nie figurują w kodzie BPP i nie ma na ten moment w kodzie żadnych wskazówek,
-        do jakiej grupy je zakwalifikować.
-        <table class="grp-table">
+        <div class="result-card">
+        <h2>Dane obce</h2>
+        <div class="explanation-box">
+            <p>Poniższe pola nie figurują w kodzie BPP i nie ma na ten moment w kodzie żadnych wskazówek,
+            do jakiej grupy je zakwalifikować.</p>
+        </div>
+        <table class="data-table">
             {% for key, value in obce %}
                 <tr>
-                    <td>{{ key }}</td>
-                    <td class="pre">
+                    <td><span class="attribute-name">{{ key }}</span></td>
+                    <td>
                         <pre>{{ value.print }}</pre>
                     </td>
                 </tr>
             {% endfor %}
         </table>
+        </div>
     {% endif %}
+</div><!-- end crossref-content -->
 
 {% endblock %}

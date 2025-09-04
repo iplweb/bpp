@@ -159,6 +159,14 @@ class KomparatorMainView(TemplateView):
             .count()
         )
 
+        # Count deleted PBN scientists that still exist in BPP
+        # Get all authors in BPP that have pbn_uid pointing to DELETED Scientists
+        deleted_pbn_scientists_in_bpp = (
+            Autor.objects.exclude(pbn_uid_id__isnull=True)
+            .filter(pbn_uid__status="DELETED")
+            .count()
+        )
+
         # Add discipline discrepancy statistics for 2022-2025
         from komparator_pbn_udzialy.models import RozbieznoscDyscyplinPBN
 
@@ -201,6 +209,7 @@ class KomparatorMainView(TemplateView):
                 "pbn_scientists_not_in_bpp": pbn_scientists_not_in_bpp,
                 "duplicate_authors_count": duplicate_authors_count,
                 "deleted_pbn_in_bpp": deleted_pbn_in_bpp,
+                "deleted_pbn_scientists_in_bpp": deleted_pbn_scientists_in_bpp,
                 "evaluation_start_year": EVALUATION_START_YEAR,
                 "evaluation_end_year": EVALUATION_END_YEAR,
                 "uczelnia": uczelnia,

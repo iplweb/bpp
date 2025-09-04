@@ -4,7 +4,7 @@ from djangoql.admin import DjangoQLSearchMixin
 from mptt.forms import TreeNodeChoiceField
 from taggit.forms import TextareaTagWidget
 
-from crossref_bpp.mixins import AdminCrossrefAPIMixin
+from crossref_bpp.mixins import AdminCrossrefAPIMixin, AdminCrossrefPBNAPIMixin
 from dynamic_columns.mixins import DynamicColumnsMixin
 from pbn_api.models import Publication
 from .actions import (
@@ -273,6 +273,7 @@ class Wydawnictwo_ZwarteAdmin(
     UzupelniajWstepneDanePoCrossRefAPIMixin,
     DynamicColumnsMixin,
     AdminCrossrefAPIMixin,
+    AdminCrossrefPBNAPIMixin,
     RestrictDeletionWhenPBNUIDSetMixin,
     Wydawnictwo_ZwarteAdmin_Baza,
 ):
@@ -282,6 +283,11 @@ class Wydawnictwo_ZwarteAdmin(
     crossref_templates = {
         "form": "admin/bpp/wydawnictwo_zwarte/crossref_pobierz.html",
         "show": "admin/bpp/wydawnictwo_zwarte/crossref_pokaz.html",
+    }
+
+    crossref_pbn_templates = {
+        "form": "admin/bpp/wydawnictwo_zwarte/crossref_pbn_pobierz.html",
+        "show": "admin/bpp/wydawnictwo_zwarte/crossref_pbn_pokaz.html",
     }
 
     form = Wydawnictwo_ZwarteForm

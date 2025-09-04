@@ -3,7 +3,6 @@ from django.http import HttpResponseRedirect
 from django.urls import reverse
 
 from pbn_api.models.queue import PBN_Export_Queue
-from pbn_api.tasks import task_sprobuj_wyslac_do_pbn
 
 from django.contrib import admin, messages
 
@@ -59,17 +58,10 @@ class PBN_Export_QueueAdmin(admin.ModelAdmin):
 
     formfield_overrides = {models.TextField: {"widget": RenderHTMLWidget}}
 
-    def _resend_single_item(self, obj, user, message_suffix=""):
+    def _resend_single_item(self, obj: PBN_Export_Queue, user, message_suffix=""):
         """Common logic for resending a single PBN export queue item"""
-        obj.refresh_from_db()
-        obj.wysylke_zakonczono = None
-        obj.zakonczono_pomyslnie = None
-        obj.retry_after_user_authorised = None
-        obj.dopisz_komunikat(
-            f"Ponownie wysłano przez użytkownika: {user}{message_suffix}"
-        )
-        obj.save()
-        task_sprobuj_wyslac_do_pbn.delay(obj.pk)
+        obj.prepare_for_resend()
+        obj.sprobuj_wyslac_do_pbn()
 
     def resend_to_pbn_action(self, request, queryset):
         count = 0

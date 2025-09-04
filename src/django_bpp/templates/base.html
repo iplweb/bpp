@@ -25,6 +25,20 @@
 
 {% block body %}
     <script type="text/javascript">
+        // Global search hotkey handler
+        document.addEventListener('DOMContentLoaded', function() {
+            document.addEventListener('keydown', function(e) {
+                // Check if "/" key is pressed and not in an input field
+                if (e.key === '/' && !$(e.target).is('input, textarea, select')) {
+                    e.preventDefault(); // Prevent default search behavior
+                    if (typeof openGlobalSearch === 'function') {
+                        openGlobalSearch(null, true); // Pass true to indicate keyboard trigger
+                    }
+                }
+            });
+        });
+    </script>
+    <script type="text/javascript">
         function adjustBreadcrumbsPosition() {
             var topBar = document.getElementById('example-menu');
             var breadcrumbs = document.getElementById('breadcrumbs-wrapper');
