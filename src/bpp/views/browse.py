@@ -300,6 +300,16 @@ class ZrodloView(DetailView):
     model = Zrodlo
     template_name = "browse/zrodlo.html"
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # Check if the source has any publications
+        from bpp.models import Wydawnictwo_Ciagle
+
+        context["has_publications"] = Wydawnictwo_Ciagle.objects.filter(
+            zrodlo=self.object
+        ).exists()
+        return context
+
 
 def zrob_box(values, name, qo):
     ret = []
