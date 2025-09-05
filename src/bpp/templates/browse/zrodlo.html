@@ -24,6 +24,21 @@
         </div>
     </div>
 
+    <!-- Banner for sources without publications -->
+    {% if not has_publications %}
+    <div class="callout warning">
+        <div class="grid-x align-middle">
+            <div class="cell shrink">
+                <span class="fi-alert" style="font-size: 1.5rem; margin-right: 0.5rem;"></span>
+            </div>
+            <div class="cell auto">
+                <p style="margin: 0;"><strong>Brak publikacji</strong></p>
+                <p style="margin: 0;">To źródło nie zawiera jeszcze żadnych prac. Możesz dodać pierwszą publikację korzystając z przycisku "Dodaj nowy rekord" powyżej.</p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Quick Actions -->
     <div class="source-quick-actions">
         <form method="post" action="{% url "bpp:browse_build_search" %}" style="display: inline;">
