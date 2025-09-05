@@ -65,95 +65,95 @@ docker-compose -f docker-compose.ssl.yml down
 docker-compose -f docker-compose.ssl.yml up -d
 ```
 
-## Architecture
+## Architektura
 
-### Services
+### Usługi
 
-- **webserver_http**: Nginx server for ACME challenges (port 80)
-- **certbot**: Let's Encrypt client for certificate management
-- **webserver_https**: Main Nginx server with SSL (ports 80 & 443)
-- **appserver**: Django application server
-- **db**: PostgreSQL database
-- **redis**: Cache and message broker
-- **celerybeat**: Scheduled task runner
-- **workerserver-***: Background task workers
-- **ofelia**: Cron scheduler for container tasks
+- **webserver_http**: Serwer Nginx do obsługi wyzwań ACME (port 80)
+- **certbot**: Klient Let's Encrypt do zarządzania certyfikatami
+- **webserver_https**: Główny serwer Nginx z SSL (porty 80 i 443)
+- **appserver**: Serwer aplikacji Django
+- **db**: Baza danych PostgreSQL
+- **redis**: Pamięć podręczna i broker wiadomości
+- **celerybeat**: Wykonywanie zaplanowanych zadań
+- **workerserver-***: Procesy wykonujące zadania w tle
+- **ofelia**: Harmonogram cron dla zadań kontenerów
 
-### Volumes
+### Wolumeny
 
-- `certbot-etc`: SSL certificates (`/etc/letsencrypt`)
-- `certbot-var`: Let's Encrypt working directory
-- `web-root`: Web root for ACME challenges
-- `staticfiles`: Django static files
-- `media`: User-uploaded media files
-- `postgresql_data`: Database storage
-- `redis_data`: Redis persistence
+- `certbot-etc`: Certyfikaty SSL (`/etc/letsencrypt`)
+- `certbot-var`: Katalog roboczy Let's Encrypt
+- `web-root`: Katalog główny dla wyzwań ACME
+- `staticfiles`: Pliki statyczne Django
+- `media`: Pliki przesłane przez użytkowników
+- `postgresql_data`: Przechowywanie bazy danych
+- `redis_data`: Trwałość Redis
 
-## Certificate Management
+## Zarządzanie certyfikatami
 
-### Automatic Renewal
+### Automatyczne odnawianie
 
-Certificates are automatically renewed weekly via Ofelia cron job:
-- Runs every Sunday at 2 AM
-- Certificates are renewed if expiring within 30 days
+Certyfikaty są automatycznie odnawiane co tydzień przez zadanie cron Ofelia:
+- Uruchamiane w każdą niedzielę o 2:00 w nocy
+- Certyfikaty są odnawiane jeśli wygasają w ciągu 30 dni
 
-### Manual Renewal
+### Ręczne odnawianie
 
 ```bash
-# Using the setup script
+# Używając skryptu konfiguracyjnego
 ./deploy/ssl-setup.sh
-# Choose option 3
+# Wybierz opcję 3
 
-# Or directly with docker-compose
+# Lub bezpośrednio przez docker-compose
 docker-compose -f docker-compose.ssl.yml run --rm certbot renew
 docker-compose -f docker-compose.ssl.yml exec webserver_https nginx -s reload
 ```
 
-### Check Certificate Status
+### Sprawdzanie statusu certyfikatu
 
 ```bash
-# Using the setup script
+# Używając skryptu konfiguracyjnego
 ./deploy/ssl-setup.sh
-# Choose option 4
+# Wybierz opcję 4
 
-# Or directly
+# Lub bezpośrednio
 docker-compose -f docker-compose.ssl.yml run --rm certbot certificates
 ```
 
-## Testing
+## Testowanie
 
-### Staging Certificates
+### Certyfikaty testowe (staging)
 
-For testing, use Let's Encrypt staging environment:
+Do testowania użyj środowiska staging Let's Encrypt:
 
 ```bash
-# Using the setup script
+# Używając skryptu konfiguracyjnego
 ./deploy/ssl-setup.sh
-# Choose option 5
+# Wybierz opcję 5
 
-# Note: Staging certificates are not trusted by browsers
-# They are only for testing the setup process
+# Uwaga: Certyfikaty staging nie są zaufane przez przeglądarki
+# Służą tylko do testowania procesu konfiguracji
 ```
 
-### Health Checks
+### Sprawdzanie stanu zdrowia
 
 ```bash
-# Check HTTP server
-curl http://your-domain.com/health
+# Sprawdź serwer HTTP
+curl http://twoja-domena.pl/health
 
-# Check HTTPS server
-curl https://your-domain.com/health
+# Sprawdź serwer HTTPS
+curl https://twoja-domena.pl/health
 ```
 
-## Security Features
+## Funkcje bezpieczeństwa
 
-### SSL/TLS Configuration
-- TLS 1.2 and 1.3 only
-- Strong cipher suites
-- OCSP stapling enabled
-- SSL session caching
+### Konfiguracja SSL/TLS
+- Tylko TLS 1.2 i 1.3
+- Silne zestawy szyfrów
+- Włączone OCSP stapling
+- Buforowanie sesji SSL
 
-### Security Headers
+### Nagłówki bezpieczeństwa
 - Strict-Transport-Security (HSTS)
 - X-Frame-Options
 - X-Content-Type-Options
@@ -161,131 +161,131 @@ curl https://your-domain.com/health
 - Content-Security-Policy
 - Referrer-Policy
 
-### Rate Limiting
-- API endpoints: 10 requests/second
-- Login endpoints: 5 requests/minute
+### Ograniczanie szybkości
+- Punkty końcowe API: 10 żądań/sekundę
+- Punkty końcowe logowania: 5 żądań/minutę
 
-### Additional Security
-- Hidden files blocked
-- Backup files blocked
-- Uploaded script execution prevented
-- Server tokens hidden
+### Dodatkowe zabezpieczenia
+- Blokowanie ukrytych plików
+- Blokowanie plików kopii zapasowych
+- Zapobieganie wykonywaniu przesłanych skryptów
+- Ukryte tokeny serwera
 
-## Troubleshooting
+## Rozwiązywanie problemów
 
-### Certificate obtainment fails
+### Niepowodzenie uzyskania certyfikatu
 
-1. Check DNS resolution:
+1. Sprawdź rozwiązywanie DNS:
 ```bash
-nslookup your-domain.com
+nslookup twoja-domena.pl
 ```
 
-2. Check port 80 accessibility:
+2. Sprawdź dostępność portu 80:
 ```bash
-# From another machine
-curl http://your-domain.com/.well-known/acme-challenge/test
+# Z innej maszyny
+curl http://twoja-domena.pl/.well-known/acme-challenge/test
 ```
 
-3. Check certbot logs:
+3. Sprawdź logi certbot:
 ```bash
 docker-compose -f docker-compose.ssl.yml logs certbot
 ```
 
-### HTTPS not working
+### HTTPS nie działa
 
-1. Check if certificates exist:
+1. Sprawdź czy certyfikaty istnieją:
 ```bash
 docker-compose -f docker-compose.ssl.yml run --rm --entrypoint sh certbot \
   -c "ls -la /etc/letsencrypt/live/certyfikaty_ssl/"
 ```
 
-2. Check nginx configuration:
+2. Sprawdź konfigurację nginx:
 ```bash
 docker-compose -f docker-compose.ssl.yml exec webserver_https nginx -t
 ```
 
-3. Check nginx error logs:
+3. Sprawdź logi błędów nginx:
 ```bash
 docker-compose -f docker-compose.ssl.yml logs webserver_https
 ```
 
-### Rate Limits
+### Limity szybkości
 
-Let's Encrypt has rate limits:
-- 50 certificates per domain per week
-- 5 duplicate certificates per week
-- 300 new orders per account per 3 hours
+Let's Encrypt ma limity szybkości:
+- 50 certyfikatów na domenę tygodniowo
+- 5 duplikatów certyfikatów tygodniowo
+- 300 nowych zamówień na konto co 3 godziny
 
-If you hit rate limits, use staging certificates for testing.
+Jeśli osiągniesz limity, użyj certyfikatów staging do testowania.
 
-## Monitoring
+## Monitorowanie
 
-### Logs
+### Logi
 
-View logs for all services:
+Wyświetl logi wszystkich usług:
 ```bash
 docker-compose -f docker-compose.ssl.yml logs -f
 ```
 
-View logs for specific service:
+Wyświetl logi konkretnej usługi:
 ```bash
 docker-compose -f docker-compose.ssl.yml logs -f webserver_https
 ```
 
-### Service Status
+### Status usług
 
 ```bash
 docker-compose -f docker-compose.ssl.yml ps
 ```
 
-## Backup
+## Kopia zapasowa
 
-### Backup Certificates
+### Kopia zapasowa certyfikatów
 
 ```bash
-# Create backup
+# Tworzenie kopii zapasowej
 docker run --rm -v bpp_certbot-etc:/data -v $(pwd):/backup \
   alpine tar czf /backup/letsencrypt-backup.tar.gz -C /data .
 
-# Restore backup
+# Przywracanie kopii zapasowej
 docker run --rm -v bpp_certbot-etc:/data -v $(pwd):/backup \
   alpine tar xzf /backup/letsencrypt-backup.tar.gz -C /data
 ```
 
-## Clean Start
+## Czysty start
 
-To remove all SSL configuration and start fresh:
+Aby usunąć całą konfigurację SSL i rozpocząć od nowa:
 
 ```bash
-# Stop all services
+# Zatrzymaj wszystkie usługi
 docker-compose -f docker-compose.ssl.yml down
 
-# Remove volumes
+# Usuń wolumeny
 docker volume rm bpp_certbot-etc bpp_certbot-var bpp_web-root
 
-# Start fresh
+# Rozpocznij od nowa
 ./deploy/ssl-setup.sh
 ```
 
-## Production Checklist
+## Lista kontrolna dla produkcji
 
-- [ ] Domain DNS configured correctly
-- [ ] Firewall allows ports 80 and 443
-- [ ] Environment variables configured in `.env.docker`
-- [ ] Strong `SECRET_KEY` generated
-- [ ] `DEBUG=False` in production
-- [ ] Database credentials secured
-- [ ] Email configuration for notifications
-- [ ] Monitoring and alerting configured
-- [ ] Backup strategy implemented
-- [ ] Log rotation configured
-- [ ] Security headers verified
-- [ ] Rate limiting tested
+- [ ] Poprawnie skonfigurowany DNS domeny
+- [ ] Firewall zezwala na porty 80 i 443
+- [ ] Zmienne środowiskowe skonfigurowane w `.env.docker`
+- [ ] Wygenerowany silny `SECRET_KEY`
+- [ ] `DEBUG=False` na produkcji
+- [ ] Zabezpieczone dane dostępowe do bazy danych
+- [ ] Konfiguracja email dla powiadomień
+- [ ] Skonfigurowane monitorowanie i alerty
+- [ ] Wdrożona strategia kopii zapasowych
+- [ ] Skonfigurowana rotacja logów
+- [ ] Zweryfikowane nagłówki bezpieczeństwa
+- [ ] Przetestowane ograniczanie szybkości
 
-## Support
+## Wsparcie
 
-For issues with:
-- **Let's Encrypt**: Check https://letsencrypt.org/docs/
-- **Certbot**: Check https://certbot.eff.org/docs/
-- **Nginx**: Check https://nginx.org/en/docs/
-- **BPP Application**: Check BPP documentation
+W przypadku problemów z:
+- **Let's Encrypt**: Sprawdź https://letsencrypt.org/docs/
+- **Certbot**: Sprawdź https://certbot.eff.org/docs/
+- **Nginx**: Sprawdź https://nginx.org/en/docs/
+- **Aplikacja BPP**: Sprawdź dokumentację BPP
