@@ -82,6 +82,10 @@ urlpatterns = (
             "pbn_api/",
             include("pbn_api.urls"),
         ),
+        path(
+            "pbn_import/",
+            include("pbn_import.urls"),
+        ),
         url(
             r"^import_pracownikow/",
             include(

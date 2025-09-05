@@ -274,7 +274,9 @@ def rebuild_contenttypes():
 #
 
 
-def pbar(query, count=None, label="Progres...", disable_progress_bar=False):
+def pbar(
+    query, count=None, label="Progres...", disable_progress_bar=False, callback=None
+):
     if count is None:
         if hasattr(query, "count"):
             try:
@@ -284,7 +286,19 @@ def pbar(query, count=None, label="Progres...", disable_progress_bar=False):
         elif hasattr(query, "__len__"):
             count = len(query)
 
-    return tqdm(query, total=count, desc=label, unit="items")
+    if callback:
+        # Callback provided but progress bar disabled - only use callback
+        def callback_only_wrapper():
+            for i, item in enumerate(query):
+                callback.update(i + 1, count, label)
+                yield item
+            callback.clear()
+
+        return callback_only_wrapper()
+
+    return tqdm(
+        query, total=count, desc=label, unit="items", disable=disable_progress_bar
+    )
 
 
 #
