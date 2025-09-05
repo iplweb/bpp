@@ -434,6 +434,8 @@ INSTALLED_APPS = [
     "deduplikator_autorow",
     "importer_autorow_pbn",
     "pbn_downloader_app",
+    "pbn_integrator",
+    "pbn_import",
     "komparator_pbn_udzialy",
     "komparator_publikacji_pbn",
 ]

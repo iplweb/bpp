@@ -226,7 +226,7 @@ class RequestsTransport(OAuthMixin, PBNClientTransport):
             if fail_on_auth_missing:
                 raise AccessDeniedException(url, smart_content(ret.content))
             # Needs auth
-            if ret.json()["message"] == "Access Denied":
+            if ret.json()["message"] in ["Access Denied", "Forbidden"]:
                 # Autoryzacja użytkownika jest poprawna, jednakże nie ma on po stronie PBN
                 # takiego uprawnienia...
                 raise AccessDeniedException(url, smart_content(ret.content))

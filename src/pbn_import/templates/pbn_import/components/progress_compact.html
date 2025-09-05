@@ -1,0 +1,244 @@
+<!-- Compact Progress Component for HTMX updates -->
+<div class="import-progress-compact">
+    <!-- Progress Bar with Label -->
+    <div class="progress-main">
+        <div class="progress-info">
+            <span class="progress-step">{{ session.current_step|default:"Inicjalizacja..." }}</span>
+            <span class="progress-percent">{{ session.overall_progress }}%</span>
+        </div>
+        <div class="progress-bar">
+            <div class="progress-fill" style="width: {{ session.overall_progress }}%;"></div>
+        </div>
+        <div class="progress-meta">
+            <span>Krok {{ session.completed_steps }}/{{ session.total_steps }}</span>
+            <span class="status-label status-{{ session.status }}">{{ session.get_status_display }}</span>
+        </div>
+    </div>
+
+    <!-- Sub-task Progress (if available) -->
+    {% if session.progress_data.current_subtask %}
+    <div class="subtask-progress">
+        <div class="subtask-info">
+            <span class="subtask-name">{{ session.progress_data.current_subtask.name }}</span>
+            <span class="subtask-percent">{{ session.progress_data.current_subtask.percentage }}%</span>
+        </div>
+        <div class="subtask-bar">
+            <div class="subtask-fill" style="width: {{ session.progress_data.current_subtask.percentage }}%;"></div>
+        </div>
+        <div class="subtask-meta">
+            <span>{{ session.progress_data.current_subtask.description|default:"" }}</span>
+            <span>{{ session.progress_data.current_subtask.current }}/{{ session.progress_data.current_subtask.total }}</span>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Controls -->
+    <div class="progress-controls">
+        {% if session.status == 'running' %}
+        <form method="post" action="{% url 'pbn_import:cancel' session.id %}"
+              style="display: inline;"
+              onsubmit="return confirm('Czy na pewno chcesz anulować import?');">
+            {% csrf_token %}
+            <button type="submit" class="button small alert">
+                <span class="fi-x"></span> Anuluj
+            </button>
+        </form>
+        {% endif %}
+
+        {% if not hide_details_button %}
+        <a href="{% url 'pbn_import:session_detail' session.id %}" class="button small">
+            <span class="fi-magnifying-glass"></span> Szczegóły
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.import-progress-compact {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 15px;
+}
+
+.progress-main {
+    margin-bottom: 15px;
+}
+
+.progress-info {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    font-size: 0.95rem;
+}
+
+.progress-step {
+    color: #4a5568;
+    font-weight: 500;
+}
+
+.progress-percent {
+    color: #667eea;
+    font-weight: bold;
+}
+
+.progress-bar {
+    height: 24px;
+    background: #f7fafc;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid #e2e8f0;
+    position: relative;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+    transition: width 0.8s cubic-bezier(0.4, 0.0, 0.2, 1);
+    border-radius: 12px;
+    position: relative;
+    overflow: hidden;
+}
+
+.progress-fill::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    background: linear-gradient(
+        105deg,
+        transparent 40%,
+        rgba(255, 255, 255, 0.7) 50%,
+        transparent 60%
+    );
+    animation: shimmer 2s infinite;
+}
+
+.progress-meta {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 8px;
+    font-size: 0.85rem;
+    color: #718096;
+}
+
+.status-label {
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 0.8rem;
+    font-weight: bold;
+}
+
+.status-label.status-running {
+    background: #cce5ff;
+    color: #004085;
+}
+
+
+.status-label.status-completed {
+    background: #d4edda;
+    color: #155724;
+}
+
+.status-label.status-failed {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.progress-controls {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.progress-controls .button {
+    margin: 0;
+}
+
+.subtask-progress {
+    margin-top: 15px;
+    padding: 10px;
+    background: rgba(102, 126, 234, 0.05);
+    border-radius: 8px;
+    border: 1px solid rgba(102, 126, 234, 0.2);
+}
+
+.subtask-info {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 6px;
+    font-size: 0.85rem;
+}
+
+.subtask-name {
+    color: #667eea;
+    font-weight: 500;
+}
+
+.subtask-percent {
+    color: #764ba2;
+    font-weight: bold;
+}
+
+.subtask-bar {
+    height: 16px;
+    background: #f7fafc;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid #e2e8f0;
+    position: relative;
+}
+
+.subtask-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #a5b4fc 0%, #c084fc 100%);
+    transition: width 0.5s cubic-bezier(0.4, 0.0, 0.2, 1);
+    border-radius: 8px;
+    position: relative;
+    overflow: hidden;
+}
+
+.subtask-fill::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    background: linear-gradient(
+        105deg,
+        transparent 40%,
+        rgba(255, 255, 255, 0.6) 50%,
+        transparent 60%
+    );
+    animation: shimmer-subtask 1.5s infinite;
+}
+
+@keyframes shimmer {
+    0% {
+        transform: translateX(-100%);
+    }
+    100% {
+        transform: translateX(200%);
+    }
+}
+
+@keyframes shimmer-subtask {
+    0% {
+        transform: translateX(-100%);
+    }
+    100% {
+        transform: translateX(200%);
+    }
+}
+
+.subtask-meta {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 6px;
+    font-size: 0.8rem;
+    color: #718096;
+}
+</style>

@@ -1,0 +1,141 @@
+<!-- Active sessions list -->
+{% for session in sessions %}
+<div class="active-session-item">
+    <div class="session-info">
+        <strong>Import #{{ session.id }}</strong>
+        <span class="user-badge">{{ session.user.get_full_name|default:session.user.username }}</span>
+    </div>
+
+    <div class="session-progress">
+        <div class="mini-progress">
+            <div class="mini-progress-fill" style="width: {{ session.overall_progress }}%"></div>
+        </div>
+        <span class="progress-text">{{ session.overall_progress }}%</span>
+    </div>
+
+    <div class="session-status">
+        <span class="status-badge status-{{ session.status }}">
+            {% if session.status == 'running' %}
+                <span class="fi-play"></span>
+            {% endif %}
+            {{ session.get_status_display }}
+        </span>
+    </div>
+</div>
+{% empty %}
+<div class="no-sessions">
+    <span class="fi-folder" style="font-size: 2rem; color: #ccc;"></span>
+    <p>Brak aktywnych importów</p>
+</div>
+{% endfor %}
+
+<style>
+.active-session-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 15px;
+    background: white;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    border: 2px solid #e0e0e0;
+    transition: all 0.3s;
+}
+
+.active-session-item:hover {
+    border-color: #667eea;
+    transform: translateX(5px);
+    box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+}
+
+.session-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.user-badge {
+    background: #e0e0e0;
+    padding: 3px 8px;
+    border-radius: 15px;
+    font-size: 0.85rem;
+    color: #666;
+}
+
+.session-progress {
+    flex: 1;
+    margin: 0 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.mini-progress {
+    flex: 1;
+    height: 8px;
+    background: #f0f0f0;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.mini-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+    transition: width 0.8s cubic-bezier(0.4, 0.0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.mini-progress-fill::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    background: linear-gradient(
+        105deg,
+        transparent 40%,
+        rgba(255,255,255,0.5) 50%,
+        transparent 60%
+    );
+    animation: mini-shimmer 2.5s infinite;
+}
+
+@keyframes mini-shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(200%); }
+}
+
+.progress-text {
+    font-weight: bold;
+    color: #667eea;
+    min-width: 40px;
+}
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: bold;
+}
+
+.status-running {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.status-running .fi-play {
+    animation: pulse 1.5s infinite;
+}
+
+
+.no-sessions {
+    text-align: center;
+    padding: 30px;
+    color: #999;
+}
+</style>

@@ -1,0 +1,177 @@
+<!-- Statistics card for import session -->
+{% if stats %}
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon"><span class="fi-torsos-all"></span></div>
+        <div class="stat-value">{{ stats.authors_imported|default:0 }}</div>
+        <div class="stat-label">Autorzy</div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon"><span class="fi-page-copy"></span></div>
+        <div class="stat-value">{{ stats.publications_imported|default:0 }}</div>
+        <div class="stat-label">Publikacje</div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon"><span class="fi-book"></span></div>
+        <div class="stat-value">{{ stats.journals_imported|default:0 }}</div>
+        <div class="stat-label">Czasopisma</div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon"><span class="fi-page-multiple"></span></div>
+        <div class="stat-value">{{ stats.publishers_imported|default:0 }}</div>
+        <div class="stat-label">Wydawcy</div>
+    </div>
+
+    {% if stats.coffee_breaks_recommended > 0 %}
+    <div class="stat-card coffee-card">
+        <div class="stat-icon">☕</div>
+        <div class="stat-value">{{ stats.coffee_breaks_recommended }}</div>
+        <div class="stat-label">Przerwy na kawę</div>
+    </div>
+    {% endif %}
+
+    {% if stats.total_api_calls > 0 %}
+    <div class="stat-card api-card">
+        <div class="stat-icon"><span class="fi-link"></span></div>
+        <div class="stat-value">{{ stats.total_api_calls }}</div>
+        <div class="stat-label">Wywołania API</div>
+        {% if stats.total_api_time > 0 %}
+        <div class="stat-sublabel">
+            Śr. {{ stats.total_api_time|floatformat:2 }}s
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% with total_failed=stats.institutions_failed|add:stats.authors_failed|add:stats.publications_failed %}
+    {% if total_failed > 0 %}
+    <div class="stat-card error-card">
+        <div class="stat-icon"><span class="fi-x"></span></div>
+        <div class="stat-value">{{ total_failed }}</div>
+        <div class="stat-label">Błędy</div>
+    </div>
+    {% endif %}
+    {% endwith %}
+</div>
+
+<style>
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.stat-card {
+    background: white;
+    border-radius: 10px;
+    padding: 15px;
+    text-align: center;
+    border: 2px solid #e0e0e0;
+    transition: all 0.3s;
+    position: relative;
+    overflow: hidden;
+}
+
+.stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.5s ease;
+}
+
+.stat-card:hover::before {
+    transform: scaleX(1);
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+    border-color: #667eea;
+}
+
+.stat-icon {
+    font-size: 2rem;
+    color: #667eea;
+    margin-bottom: 10px;
+}
+
+.stat-value {
+    font-size: 1.8rem;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 5px;
+    animation: countUp 1s ease-out;
+}
+
+@keyframes countUp {
+    from {
+        transform: scale(0);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.stat-label {
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.stat-sublabel {
+    color: #999;
+    font-size: 0.8rem;
+    margin-top: 5px;
+}
+
+.coffee-card {
+    background: linear-gradient(135deg, #fff5e6 0%, #ffe6cc 100%);
+    border-color: #d4a574;
+}
+
+.coffee-card .stat-icon {
+    font-size: 2.5rem;
+    animation: steam 3s infinite;
+}
+
+@keyframes steam {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+}
+
+.error-card {
+    background: linear-gradient(135deg, #ffe6e6 0%, #ffcccc 100%);
+    border-color: #ff6b6b;
+}
+
+.error-card .stat-icon {
+    color: #dc3545;
+}
+
+.api-card .stat-icon {
+    color: #17a2b8;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+</style>
+{% else %}
+<div class="text-center text-muted">
+    <span class="fi-graph-bar" style="font-size: 2rem;"></span>
+    <p>Statystyki będą dostępne podczas importu</p>
+</div>
+{% endif %}

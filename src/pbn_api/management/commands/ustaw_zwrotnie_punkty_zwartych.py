@@ -8,15 +8,27 @@ from bpp.models import Wydawnictwo_Zwarte
 class Command(PBNBaseCommand):
     def add_arguments(self, parser):
         parser.add_argument("--min-rok", type=int, default=2022)
+        parser.add_argument(
+            "--overwrite",
+            action="store_true",
+            default=False,
+            help="Overwrite existing punkty_kbn values (default: skip records with punkty_kbn > 0)",
+        )
 
-    def handle(self, min_rok, *args, **kw):
+    def handle(self, min_rok, overwrite=False, *args, **kw):
         punkty_dct = [
             {"KS": 20, "RED": 5, "ROZ": 5},
             {"KS": 80, "RED": 20, "ROZ": 20},
             {"KS": 200, "RED": 100, "ROZ": 50},
         ]
 
-        for elem in tqdm(Wydawnictwo_Zwarte.objects.filter(rok__gte=min_rok)):
+        # Build queryset based on overwrite option
+        queryset = Wydawnictwo_Zwarte.objects.filter(rok__gte=min_rok)
+        if not overwrite:
+            # Exclude records that already have points
+            queryset = queryset.exclude(punkty_kbn__gt=0)
+
+        for elem in tqdm(queryset):
             poziom_wydawcy = elem.wydawca.get_tier(elem.rok)
             if poziom_wydawcy == -1:
                 poziom_wydawcy = 0
@@ -39,13 +51,11 @@ class Command(PBNBaseCommand):
             elif rozdzial and autorstwo:
                 punkty_pk = values["ROZ"]
             else:
-                print(
-                    f"NIE ZAIMPLEMENTOWANO  {ksiazka=} {rozdzial=} {redakcja=} {autorstwo=}"
+                raise NotImplementedError(
+                    f"NIE ZAIMPLEMENTOWANO  {ksiazka=} {rozdzial=} {redakcja=} {autorstwo=}",
+                    elem,
+                    elem.autorzy_set.all(),
                 )
-                print(elem)
-                print(elem.autorzy_set.all())
-                print("=" * 80)
-                continue
 
             elem.punkty_kbn = punkty_pk
             elem.save()

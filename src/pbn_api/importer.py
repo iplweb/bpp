@@ -81,10 +81,10 @@ def importuj_zrodla():
 
     # Dodaj do tabeli Źródła wszystkie źródła MNISW z PBNu, których tam jeszcze nie ma.
 
+    # Robimy jako lista bo się popsuje zapytanie
+    exclude_list = list(Zrodlo.objects.values_list("pbn_uid_id", flat=True))
     for pbn_journal in pbar(
-        query=Journal.objects.filter(status="ACTIVE").exclude(
-            pk__in=Zrodlo.objects.values_list("pbn_uid_id", flat=True)
-        ),
+        query=Journal.objects.filter(status="ACTIVE").exclude(pk__in=exclude_list),
         label="Dopisywanie źródeł MNISW...",
     ):
         dopisz_jedno_zrodlo(pbn_journal)

@@ -375,6 +375,7 @@
                             <ul class="menu vertical">
                                 {% if request.user|has_group:"wprowadzanie danych" or request.user.is_superuser %}
                                     <li><a href="{% url "pbn_api:authorize" %}" onclick="this.href='{% url "pbn_api:authorize" %}?next=' + encodeURIComponent(window.location.pathname + window.location.search + window.location.hash)"><i class="fi-key" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> autoryzuj PBN API</a></li>
+                                    <li><a href="{% url "pbn_import:dashboard" %}"><i class="fi-burst-new" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> 🚀 Import z PBN</a></li>
                                     <li><a href="{% url "pbn_downloader_app:main" %}"><i class="fi-download" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> pobieranie danych z PBN</a></li>
                                     <li><a href="{% url "pbn_api:export-queue-list" %}"><i class="fi-list" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> kolejka eksportu do PBN</a></li>
                                     <li><a href="{% url "komparator_pbn:main" %}"><i class="fi-arrows-compress" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> komparator PBN</a></li>

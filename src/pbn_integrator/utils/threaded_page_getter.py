@@ -39,7 +39,6 @@ def threaded_page_getter(
     no_threads=12,
     label="getting...",
     method="threads",
-    callback=None,
 ):
     """Odświeża wszystkie publikacje, które są w lokalnej tabeli."""
 
@@ -74,7 +73,6 @@ def threaded_page_getter(
         ),
         data.total_pages,
         label=label,
-        callback=callback,
     ):
         pass
 

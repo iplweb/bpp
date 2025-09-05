@@ -299,7 +299,6 @@ def zapisz_oswiadczenie_instytucji(elem, klass, client=None, **extra):
     OswiadczenieInstytucji.objects.update_or_create(id=elem["id"], defaults=elem)
 
 
-@transaction.atomic
 def pobierz_mongodb(
     elems,
     klass,
@@ -307,27 +306,39 @@ def pobierz_mongodb(
     fun=zapisz_mongodb,
     client=None,
     disable_progress_bar=False,
+    callback=None,
 ):
+    # Determine the total count
+    count = None
     if hasattr(elems, "total_elements"):
         count = elems.total_elements
     elif hasattr(elems, "__len__"):
         count = len(elems)
+    else:
+        # Try to get count from iterator if possible
+        try:
+            count = elems.count() if hasattr(elems, "count") else elems.count
+        except Exception:
+            count = None
 
+    # Use pbar with callback support for database progress tracking
     for elem in pbar(
-        elems, count, pbar_label, disable_progress_bar=disable_progress_bar
+        elems,
+        count,
+        pbar_label,
+        disable_progress_bar=disable_progress_bar,
+        callback=callback,
     ):
         fun(elem, klass, client=client)
 
 
-def pobierz_instytucje(client: PBNClient):
+def pobierz_instytucje(client: PBNClient, callback=None):
     for status in [ACTIVE, DELETED]:
-        data = client.get_institutions(status=status, page_size=1000)
-        threaded_page_getter(
-            client,
-            data,
-            klass=InstitutionGetter,
-            label=f"pobieram slownik instytucji {status}...",
-            no_threads=24,
+        pobierz_mongodb(
+            client.get_institutions(status=status, page_size=1000),
+            Institution,
+            pbar_label=f"Pobieranie instytucji ({status})",
+            callback=callback,
         )
 
 
@@ -335,15 +346,16 @@ class InstitutionGetter(ThreadedMongoDBSaver):
     pbn_api_klass = Institution
 
 
-def pobierz_instytucje_polon(client: PBNClient):
+def pobierz_instytucje_polon(client: PBNClient, callback=None):
     data = client.get_institutions_polon(page_size=10)
 
     threaded_page_getter(
         client,
         data,
         klass=InstitutionGetter,
-        label="pobierz_instytucje_polon",
+        label="Pobieranie instytucji POLON",
         no_threads=24,
+        callback=callback,
     )
 
 
@@ -392,18 +404,12 @@ def integruj_instytucje():
             j.save()
 
 
-class ConferenceGetter(ThreadedMongoDBSaver):
-    pbn_api_klass = Conference
-
-
-def pobierz_konferencje(client: PBNClient):
-    data = client.get_conferences_mnisw(page_size=1000)
-    threaded_page_getter(
-        client,
-        data,
-        klass=ConferenceGetter,
-        label="pobierz_konferencje",
-        no_threads=24,
+def pobierz_konferencje(client: PBNClient, callback=None):
+    pobierz_mongodb(
+        client.get_conferences_mnisw(page_size=1000),
+        Conference,
+        pbar_label="Pobieranie konferencji",
+        callback=callback,
     )
 
 
@@ -419,18 +425,20 @@ def pobierz_zrodla(client: PBNClient):
             data,
             klass=ZrodlaGetter,
             label=f"poboerz_zrodla_{status}",
+            no_threads=1,
         )
 
 
-def pobierz_zrodla_mnisw(client: PBNClient):
+def pobierz_zrodla_mnisw(client: PBNClient, callback=None):
     # status tu nie ma znaczenia
-    data = client.get_journals_mnisw_v2(includeAllVersions="true", page_size=100)
+    data = client.get_journals_mnisw_v2(includeAllVersions="true", page_size=8)
     threaded_page_getter(
         client,
         data,
         klass=ZrodlaGetter,
-        label="poboerz_zrodla_mnisw",
+        label="Pobieranie źródeł MNiSW",
         no_threads=24,
+        callback=callback,
     )
 
 
@@ -554,42 +562,62 @@ def wgraj_prace_z_offline_do_bazy():
     return _wgraj_z_offline_do_bazy("publications", Publication)
 
 
-class PublicationGetter(ThreadedMongoDBSaver):
-    pbn_api_klass = Publication
-
-
 def pobierz_prace(client: PBNClient):
-    data = client.get_publications(status=ACTIVE, page_size=5000)
-    threaded_page_getter(
-        client,
-        data,
-        klass=PublicationGetter,
-        label="pobierz_aktywne_prace",
-        no_threads=24,
+    pobierz_mongodb(
+        client.get_publications(status=ACTIVE, page_size=5000),
+        Publication,
+        pbar_label="pobierz_aktywne_prace",
     )
 
 
 class PublikacjeInstytucjiGetter(ThreadedPageGetter):
-    def pool_init(self, _client, _data):
-        import django
-
-        django.setup()
-        self.client = _client
-        self.data = _data
+    """Threaded getter for institution publications"""
 
     def process_element(self, elem):
         zapisz_publikacje_instytucji(elem, None, client=self.client)
 
 
-def pobierz_publikacje_z_instytucji(client: PBNClient):
-    data = client.get_institution_publications(page_size=2000)
-    threaded_page_getter(
-        client,
-        data,
-        klass=PublikacjeInstytucjiGetter,
-        label="pobierz_publikacje_instytucji",
-        no_threads=24,
-    )
+class OswiadczeniaInstytucjiGetter(ThreadedPageGetter):
+    """Threaded getter for institution statements"""
+
+    def process_element(self, elem):
+        zapisz_oswiadczenie_instytucji(elem, None, client=self.client)
+
+
+def pobierz_publikacje_z_instytucji(
+    client: PBNClient, callback=None, use_threads=True, no_threads=8
+):
+    """
+    Pobiera publikacje instytucji z PBN.
+
+    Args:
+        client: PBN API client
+        callback: Optional progress callback for database tracking
+        use_threads: Whether to use threading (default: True)
+        no_threads: Number of threads to use (default: 8)
+    """
+    if use_threads:
+        # Use threaded version for better performance
+        data = client.get_institution_publications(page_size=2000)
+
+        threaded_page_getter(
+            client,
+            data,
+            klass=PublikacjeInstytucjiGetter,
+            label="Pobieranie publikacji instytucji",
+            no_threads=no_threads,
+            callback=callback,
+        )
+    else:
+        # Fall back to single-threaded version if needed
+        pobierz_mongodb(
+            client.get_institution_publications(page_size=2000),
+            None,
+            fun=zapisz_publikacje_instytucji,
+            client=client,
+            pbar_label="Pobieranie publikacji instytucji",
+            callback=callback,
+        )
 
 
 def zapisz_publikacje_instytucji_v2(client: PBNClient, elem: dict):
@@ -613,27 +641,40 @@ def pobierz_publikacje_z_instytucji_v2(client: PBNClient):
         zapisz_publikacje_instytucji_v2(client, elem)
 
 
-class OswiadczenieInstytucjiGetter(ThreadedPageGetter):
-    def pool_init(self, _client, _data):
-        import django
+def pobierz_oswiadczenia_z_instytucji(
+    client: PBNClient, callback=None, use_threads=True, no_threads=8
+):
+    """
+    Pobiera oświadczenia instytucji z PBN.
 
-        django.setup()
-        self.client = _client
-        self.data = _data
+    Args:
+        client: PBN API client
+        callback: Optional progress callback for database tracking
+        use_threads: Whether to use threading (default: True)
+        no_threads: Number of threads to use (default: 8)
+    """
+    if use_threads:
+        # Use threaded version for better performance
+        data = client.get_institution_statements(page_size=1000)
 
-    def process_element(self, elem):
-        zapisz_oswiadczenie_instytucji(elem, None, client=self.client)
-
-
-def pobierz_oswiadczenia_z_instytucji(client: PBNClient):
-    data = client.get_institution_statements(page_size=1000)
-    threaded_page_getter(
-        client,
-        data,
-        klass=OswiadczenieInstytucjiGetter,
-        label="oswiadczenia instytucji",
-        no_threads=24,
-    )
+        threaded_page_getter(
+            client,
+            data,
+            klass=OswiadczeniaInstytucjiGetter,
+            label="Pobieranie oświadczeń instytucji",
+            no_threads=no_threads,
+            callback=callback,
+        )
+    else:
+        # Fall back to single-threaded version if needed
+        pobierz_mongodb(
+            client.get_institution_statements(page_size=1000),
+            None,
+            fun=zapisz_oswiadczenie_instytucji,
+            client=client,
+            pbar_label="Pobieranie oświadczeń instytucji",
+            callback=callback,
+        )
 
 
 def _pobierz_prace_po_elemencie(
@@ -691,26 +732,25 @@ def pobierz_prace_po_doi(client: PBNClient):
         nd = normalize_doi(praca.doi)
         dois.add(nd)
 
-    with ThreadPoolExecutor(max_workers=24) as executor:
-        futures = []
-        for doi in dois:
-            future = executor.submit(
-                _pobierz_prace_po_elemencie,
-                client,
-                "doi",
-                doi,
-            )
-            futures.append(future)
+    _bede_uzywal_bazy_danych_z_multiprocessing_z_django()
 
-        for future in pbar(
-            as_completed(futures),
-            count=len(futures),
-            label="pobierz_prace_po_doi_processing",
-        ):
-            try:
-                future.result()
-            except Exception as e:
-                print(f"Error processing DOI: {e}")
+    p = initialize_pool()
+
+    results = []
+
+    for doi in dois:
+        results.append(
+            p.apply_async(
+                _pobierz_prace_po_elemencie,
+                args=(
+                    client,
+                    "doi",
+                    doi,
+                ),
+            )
+        )
+
+    wait_for_results(p, results)
 
 
 def pobierz_prace_po_isbn(client: PBNClient):
@@ -727,26 +767,25 @@ def pobierz_prace_po_isbn(client: PBNClient):
         nd = normalize_isbn(praca.isbn)
         isbns.add(nd)
 
-    with ThreadPoolExecutor(max_workers=24) as executor:
-        futures = []
-        for isbn in isbns:
-            future = executor.submit(
-                _pobierz_prace_po_elemencie,
-                client,
-                "isbn",
-                isbn,
-            )
-            futures.append(future)
+    _bede_uzywal_bazy_danych_z_multiprocessing_z_django()
 
-        for future in pbar(
-            as_completed(futures),
-            count=len(futures),
-            label="pobierz_prace_po_isbn_processing",
-        ):
-            try:
-                future.result()
-            except Exception as e:
-                print(f"Error processing ISBN: {e}")
+    p = initialize_pool()
+
+    results = []
+
+    for isbn in isbns:
+        results.append(
+            p.apply_async(
+                _pobierz_prace_po_elemencie,
+                args=(
+                    client,
+                    "isbn",
+                    isbn,
+                ),
+            )
+        )
+
+    wait_for_results(p, results)
 
 
 def pobierz_i_zapisz_dane_jednej_osoby(
@@ -763,7 +802,7 @@ def pobierz_i_zapisz_dane_jednej_osoby(
     )
 
 
-def pobierz_ludzi_z_uczelni(client_or_token: PBNClient, instutition_id):
+def pobierz_ludzi_z_uczelni(client_or_token: PBNClient, instutition_id, callback=None):
     """
     Ta procedura pobierze dane wszystkich osob z uczelni, mozna uruchamiac
     zamiast pobierz_ludzi
@@ -791,7 +830,10 @@ def pobierz_ludzi_z_uczelni(client_or_token: PBNClient, instutition_id):
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = []
         for person in pbar(
-            elementy, count=len(elementy), label="pobierz ludzi z uczelni"
+            elementy,
+            count=len(elementy),
+            label="Pobieranie autorów z uczelni",
+            callback=callback,
         ):
             future = executor.submit(
                 pobierz_i_zapisz_dane_jednej_osoby,
@@ -803,7 +845,10 @@ def pobierz_ludzi_z_uczelni(client_or_token: PBNClient, instutition_id):
 
         # Wait for all futures to complete
         for future in pbar(
-            as_completed(futures), count=len(futures), label="Waiting for results"
+            as_completed(futures),
+            count=len(futures),
+            label="Oczekiwanie na wyniki",
+            callback=callback,
         ):
             try:
                 future.result()
@@ -839,12 +884,15 @@ def pobierz_ludzi_z_uczelni(client_or_token: PBNClient, instutition_id):
 
 
 def integruj_autorow_z_uczelni(
-    client: PBNClient, instutition_id, import_unexistent=False
+    client: PBNClient, instutition_id, import_unexistent=False, callback=None
 ):
     """
     Ta procedure uruchamiamy dopiero po zaciągnięciu bazy osób.
     """
-    for person in Scientist.objects.filter(from_institution_api=True):
+    scientists = Scientist.objects.filter(from_institution_api=True)
+    total = scientists.count()
+
+    for person in pbar(scientists, total, "Integrowanie autorów", callback=callback):
 
         autor = matchuj_autora(
             imiona=person.value("object", "name", return_none=True),
@@ -1939,23 +1987,19 @@ def pobierz_rekordy_publikacji_instytucji(client: PBNClient):
         publicationId = elem["publicationId"]
         seen.add(publicationId)
 
-    with ThreadPoolExecutor(
-        max_workers=48
-    ) as executor:  # doubled from 24 since original used multipler=2
-        futures = []
-        for _id in seen:
-            future = executor.submit(_pobierz_pojedyncza_prace, client, _id)
-            futures.append(future)
+    _bede_uzywal_bazy_danych_z_multiprocessing_z_django()
+    pool = initialize_pool(multipler=2)
 
-        for future in pbar(
-            as_completed(futures),
-            label="pobierz_rekordy_publikacji_instytucji",
-            count=len(futures),
-        ):
-            try:
-                future.result()
-            except Exception as e:
-                print(f"Error processing publication {e}")
+    args = [(client, _id) for _id in seen]
+    for _ in pbar(
+        pool.istarmap(_pobierz_pojedyncza_prace, args),
+        label="pobierz_rekordy_publikacj_instytucji",
+        count=len(args),
+    ):
+        pass
+
+    pool.close()
+    pool.join()
 
 
 def usun_wszystkie_oswiadczenia(client):
