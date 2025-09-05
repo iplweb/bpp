@@ -1,0 +1,163 @@
+{% extends "admin/object_history.html" %}
+{% load i18n admin_urls %}
+
+{% block extrahead %}
+    {{ block.super }}
+    <style>
+        /* Grappelli-compatible styling for reversion history */
+        #grp-change-history {
+            width: 100%;
+            border-collapse: collapse;
+            border-spacing: 0;
+            margin: 0;
+            background: #fff;
+        }
+
+        #grp-change-history thead th {
+            padding: 10px 20px;
+            text-align: left;
+            font-weight: bold;
+            background: #e4e4e4;
+            background-image: linear-gradient(#f7f7f7, #e4e4e4);
+            border-bottom: 1px solid #d4d4d4;
+            border-right: 1px solid #d4d4d4;
+            color: #666;
+            text-shadow: 0 1px 0 rgba(255,255,255,0.5);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        #grp-change-history tbody tr {
+            border-bottom: 1px solid #e4e4e4;
+        }
+
+        #grp-change-history tbody tr:nth-child(even) {
+            background: #f9f9f9;
+        }
+
+        #grp-change-history tbody tr:hover {
+            background: #f0f0f0;
+        }
+
+        #grp-change-history tbody th,
+        #grp-change-history tbody td {
+            padding: 10px 20px;
+            vertical-align: top;
+            font-size: 12px;
+            line-height: 15px;
+        }
+
+        #grp-change-history tbody th {
+            font-weight: normal;
+        }
+
+        #grp-change-history tbody th a {
+            color: #309bbf;
+            font-weight: bold;
+            text-decoration: none;
+        }
+
+        #grp-change-history tbody th a:hover {
+            color: #444;
+            text-decoration: underline;
+        }
+
+        .grp-module {
+            margin: 0 0 20px;
+            border: 1px solid #d4d4d4;
+            border-radius: 3px;
+            background: #fff;
+        }
+
+        .grp-module h2 {
+            padding: 10px 20px;
+            margin: 0;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: bold;
+            color: #666;
+            background: #e4e4e4;
+            background-image: linear-gradient(#f7f7f7, #e4e4e4);
+            border-bottom: 1px solid #d4d4d4;
+            border-radius: 2px 2px 0 0;
+        }
+
+        .grp-module .grp-row {
+            padding: 10px 20px;
+            border-bottom: 1px solid #e4e4e4;
+        }
+
+        .grp-module .grp-row:last-child {
+            border-bottom: none;
+        }
+
+        .grp-description {
+            padding: 10px 20px;
+            background: #f9f9f9;
+            border-bottom: 1px solid #e4e4e4;
+            color: #666;
+            font-size: 12px;
+            line-height: 18px;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="g-d-c">
+        <div class="g-d-12 g-m-12">
+            <div class="grp-module">
+                <h2>{% trans 'History' %}</h2>
+                <div class="grp-description">
+                    <p>{% blocktrans %}Choose a date from the list below to revert to a previous version of this object.{% endblocktrans %}</p>
+                </div>
+                {% if action_list %}
+                    <table id="grp-change-history" class="grp-table">
+                        <thead>
+                            <tr>
+                                <th scope="col">{% trans 'Date/time' %}</th>
+                                <th scope="col">{% trans 'User' %}</th>
+                                <th scope="col">{% trans 'Action' %}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for action in action_list %}
+                                <tr class="{% cycle 'grp-row-even' 'grp-row-odd' %}">
+                                    <th scope="row">
+                                        {% if action.url %}
+                                            <a href="{{ action.url }}">{{ action.revision.date_created|date:"j E Y, H:i" }}</a>
+                                        {% else %}
+                                            {{ action.revision.date_created|date:"j E Y, H:i" }}
+                                        {% endif %}
+                                    </th>
+                                    <td>
+                                        {% if action.revision.user %}
+                                            {{ action.revision.user.get_username }}
+                                            {% if action.revision.user.get_full_name %}
+                                                <br/><span style="color: #999; font-size: 11px;">({{ action.revision.user.get_full_name }})</span>
+                                            {% endif %}
+                                        {% else %}
+                                            <span style="color: #999;">&mdash;</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if action.revision.comment %}
+                                            {{ action.revision.comment|linebreaksbr }}
+                                        {% else %}
+                                            <span style="color: #999; font-style: italic;">{% trans 'No comment' %}</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}
+                    <div class="grp-row">
+                        <p style="color: #999;">{% trans "This object doesn't have a change history. It probably wasn't added via this admin site." %}</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+{% endblock %}

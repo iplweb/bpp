@@ -1,4 +1,5 @@
 from django import forms
+from reversion.admin import VersionAdmin
 
 from ewaluacja_liczba_n.models import LiczbaNDlaUczelni_2022_2025
 from pbn_api.exceptions import PraceSerwisoweException
@@ -62,7 +63,7 @@ class UczelniaAdmin(
     RestrictDeletionToAdministracjaGroupMixin,
     ZapiszZAdnotacjaMixin,
     BaseBppAdminMixin,
-    admin.ModelAdmin,
+    VersionAdmin,
 ):
     list_display = ["nazwa", "nazwa_dopelniacz_field", "skrot", "pbn_uid"]
     autocomplete_fields = ["pbn_uid", "obca_jednostka"]
