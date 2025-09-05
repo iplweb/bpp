@@ -491,9 +491,11 @@
                         zaloguj</a>
                         <ul class="menu vertical">
                             <li><a href="{% url "bpp:microsoft_auth_redirect" %}?next={{ request.get_full_path|urlencode }}">
-                                <i class="fi-torso" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> logowanie</a></li>
-                            <li><a href="/admin/?next={{ request.get_full_path|urlencode }}">
+                                <i class="fi-cloud" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> logowanie</a></li>
+                            <li><a href="{% url "local_login_form" %}?next={{ request.get_full_path|urlencode }}">
                                 <i class="fi-home" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> logowanie lokalne</a></li>
+                            <li><a href="{% url "admin:login" %}?next={{ request.get_full_path|urlencode }}">
+                                <i class="fi-pencil" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> redagowanie</a></li>
                         </ul>
                     </li>
                 {% else %}

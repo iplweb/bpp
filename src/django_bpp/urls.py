@@ -267,6 +267,13 @@ else:
     from django_bpp.views import MicrosoftLogoutView
 
     urlpatterns += [
+        # Local login route - always available even with Microsoft auth
+        url(
+            r"^accounts/login/local/$",
+            LoginView.as_view(authentication_form=MyAuthenticationForm),
+            name="local_login_form",
+        ),
+        # Default login redirects to Microsoft
         url(
             r"^accounts/login/$",
             RedirectView.as_view(pattern_name="microsoft_auth:to-auth-redirect"),
