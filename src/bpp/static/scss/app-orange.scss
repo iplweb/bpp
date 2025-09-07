@@ -1,5 +1,6 @@
 @use "sass:color";
 @import "settings_orange";
+
 @import "common";
 @import "checkbox";
 @import "main_page_buttons";
@@ -125,4 +126,8 @@ input[type=radio] {
 .select2-results__option--highlighted {
   background: $primary-color !important;
   color: white;
+}
+
+.fi-calendar {
+  color: $primary-color;
 }

@@ -1,225 +1,3 @@
-<style>
-    .dropdown.menu > li > a:hover .bpp-logo {
-        filter: grayscale(0%) drop-shadow(0 0 8px rgba(255, 150, 0, 0.8)) !important;
-        transform: scale(1.1);
-    }
-
-    /* Hide the dropdown arrow for single-item menus */
-    .dropdown.menu > li.no-dropdown-arrow > a::after {
-        display: none !important;
-    }
-
-    /* Global search modal closing animations */
-    .global-search-modal {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0, 0, 0, 0.4);
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
-        z-index: 10000;
-        opacity: 0;
-        transition: opacity 0.3s ease;
-    }
-
-    .global-search-modal.show {
-        display: block;
-        opacity: 1;
-    }
-
-    .global-search-modal.closing {
-        animation: fadeOutModal 0.4s ease-out forwards;
-    }
-
-    @keyframes fadeOutModal {
-        from {
-            opacity: 1;
-        }
-        to {
-            opacity: 0;
-        }
-    }
-
-    .global-search-container {
-        position: fixed;
-        width: 85vw;
-        max-width: 1200px;
-        min-height: 300px;
-        background: white;
-        border-radius: 12px;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-        padding: 30px;
-        opacity: 0;
-        transform: scale(0);
-        pointer-events: none;
-    }
-
-    .global-search-modal.show .global-search-container {
-        pointer-events: auto;
-    }
-
-    /* Animation from search button */
-    .global-search-modal.show .global-search-container:not(.animating-out) {
-        animation: expandFromButton 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-    }
-
-    .global-search-container.animating-out {
-        animation: collapseToButton 0.4s cubic-bezier(0.64, 0, 0.66, 0.44) forwards !important;
-        pointer-events: none !important;
-    }
-
-    @keyframes expandFromButton {
-        from {
-            transform: scale(0);
-            opacity: 0;
-        }
-        60% {
-            transform: scale(1.05);
-            opacity: 1;
-        }
-        to {
-            transform: scale(1);
-            opacity: 1;
-        }
-    }
-
-    @keyframes collapseToButton {
-        from {
-            transform: scale(1);
-            opacity: 1;
-        }
-        40% {
-            transform: scale(1.05);
-            opacity: 1;
-        }
-        to {
-            transform: scale(0);
-            opacity: 0;
-        }
-    }
-
-    .global-search-input {
-        width: 100%;
-        font-size: 1.2rem;
-        padding: 15px;
-        border: 2px solid #e0e0e0;
-        border-radius: 8px;
-        outline: none;
-        transition: border-color 0.3s;
-        background-color: #f9f9f9;
-    }
-
-    .global-search-input:focus {
-        border-color: #007bff;
-        background-color: white;
-    }
-
-    .global-search-results {
-        max-height: 60vh;
-        overflow-y: auto;
-        margin-top: 15px;
-        padding-top: 5px;
-        scroll-behavior: smooth;
-    }
-
-    .search-result-group {
-        padding: 8px 0;
-    }
-
-    .search-result-group-title {
-        font-weight: 600;
-        color: #2c3e50;
-        padding: 8px 15px;
-        background: linear-gradient(90deg, #f8f9fa 0%, #ffffff 100%);
-        margin: 10px 0 5px 0;
-        font-size: 0.85rem;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        border-left: 4px solid #007bff;
-        display: flex;
-        align-items: center;
-    }
-
-    .search-result-group-title i {
-        font-size: 1.1rem;
-        margin-right: 8px;
-        color: #007bff;
-        opacity: 0.8;
-    }
-
-    .search-result-item {
-        padding: 10px 15px;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        border-radius: 6px;
-        margin: 2px 10px;
-        position: relative;
-        font-size: 0.95rem;
-        color: #333;
-        border: 1px solid transparent;
-    }
-
-    .search-result-item:hover {
-        background: linear-gradient(90deg, #f0f7ff 0%, #f8fbff 100%);
-        transform: translateX(5px);
-        box-shadow: 0 2px 8px rgba(0, 123, 255, 0.1);
-        border-color: #e3f2fd;
-    }
-
-    .search-result-item.selected {
-        background: linear-gradient(90deg, #e3f2fd 0%, #f0f7ff 100%);
-        border-left: 3px solid #007bff;
-        padding-left: 12px;
-        box-shadow: 0 2px 12px rgba(0, 123, 255, 0.15);
-    }
-
-    .global-search-close {
-        position: absolute;
-        top: 15px;
-        right: 25px;
-        font-size: 1.5rem;
-        cursor: pointer;
-        color: #999;
-        background: none;
-        border: none;
-        padding: 0;
-        width: 30px;
-        height: 30px;
-        line-height: 30px;
-        text-align: center;
-    }
-
-    .global-search-close:hover {
-        color: #333;
-    }
-
-    .global-search-loading {
-        text-align: center;
-        padding: 20px;
-        color: #666;
-    }
-
-    .global-search-no-results {
-        text-align: center;
-        padding: 20px;
-        color: #999;
-    }
-
-    .search-hint {
-        position: absolute;
-        top: 15px;
-        right: 60px;
-        color: #999;
-        font-size: 0.8rem;
-        background: rgba(255, 255, 255, 0.9);
-        padding: 4px 8px;
-        border-radius: 4px;
-        border: 1px solid #e0e0e0;
-    }
-</style>
 
 <div class="title-bar" data-responsive-toggle="example-menu" data-hide-for="medium">
     <button class="menu-icon" type="button" data-toggle="example-menu"></button>
@@ -231,39 +9,39 @@
         <ul class="dropdown menu" data-dropdown-menu>
             <li>
                 <a href="/">
-                    <img src="{% load static %}{% static 'images/bpp-icon.png' %}" alt="BPP" class="bpp-logo" style="height: 24px; width: auto; vertical-align: middle; filter: grayscale(100%); transition: filter 0.3s ease, transform 0.3s ease; margin-right: 0.4rem;">
+                    <img src="{% load static %}{% static 'images/bpp-icon.png' %}" alt="BPP" class="bpp-logo">
                     BPP
                 </a>
             </li>
             <li>
-                <a href="#"><i class="fi-magnifying-glass" style="font-size: 1.6rem; margin-right: 0.4rem; vertical-align: middle;"></i> szukaj</a>
+                <a href="#"><i class="fi-magnifying-glass"></i> szukaj</a>
                 <ul class="menu vertical">
                     <li>
                         <a href="#" onclick="openGlobalSearch(event); return false;">
-                            <i class="fi-magnifying-glass" style="font-size: 1.6rem; margin-right: 0.8rem;"></i>
+                            <i class="fi-magnifying-glass"></i>
                             szybko
-                            <span style="float: right; border: 1px solid #ccc; border-radius: 50%; width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; color: #666; font-size: 0.85rem; font-weight: 500; margin-left: 20px; background: #f8f8f8;">/</span>
+                            <span class="keyboard-shortcut">/</span>
                         </a>
                     </li>
                     <li>
                         <a href="{% url "multiseek:index" %}">
-                            <i class="fi-page-search" style="font-size: 1.6rem; margin-right: 0.8rem;"></i>
+                            <i class="fi-page-search"></i>
                             precyzyjnie
                         </a>
                     </li>
                 </ul>
             </li>
             <li>
-                <a href="#"><i class="fi-list" style="font-size: 1.6rem; margin-right: 0.4rem; vertical-align: middle;"></i> przeglądaj</a>
+                <a href="#"><i class="fi-list"></i> przeglądaj</a>
                 <ul class="menu vertical">{% load deklinacja %}
-                    <li><a href="/"><i class="fi-foundation" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> {% rzeczownik_uczelnia %}</a></li>
-                    <li><a href="{% url "bpp:browse_jednostki" %}"><i class="fi-results-demographics" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> {% rzeczownik_jednostki_m %}</a></li>
-                    <li><a href="{% url "bpp:browse_autorzy" %}"><i class="fi-torsos-all" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> autorzy</a></li>
-                    <li><a href="{% url "bpp:browse_zrodla" %}"><i class="fi-book" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> źródła</a></li>
+                    <li><a href="/"><i class="fi-foundation"></i> {% rzeczownik_uczelnia %}</a></li>
+                    <li><a href="{% url "bpp:browse_jednostki" %}"><i class="fi-results-demographics"></i> {% rzeczownik_jednostki_m %}</a></li>
+                    <li><a href="{% url "bpp:browse_autorzy" %}"><i class="fi-torsos-all"></i> autorzy</a></li>
+                    <li><a href="{% url "bpp:browse_zrodla" %}"><i class="fi-book"></i> źródła</a></li>
                 </ul>
             </li>
             <li>
-                <a href="#"><i class="fi-graph-trend" style="font-size: 1.6rem; margin-right: 0.4rem; vertical-align: middle;"></i> raporty</a>
+                <a href="#"><i class="fi-graph-trend"></i> raporty</a>
                 <ul class="menu vertical" id="top-bar-menu-raportow">
                     {% load czy_pokazywac %}
                     {% load user_in_group %}
@@ -272,35 +50,35 @@
                         {% czy_pokazywac raport_uczelni %}
                             <li>
                                 <a href="{% url "nowe_raporty:uczelnia_form" %}">
-                                    <i class="fi-foundation" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> raport uczelni
+                                    <i class="fi-foundation"></i> raport uczelni
                                 </a>
                             </li>
                         {% end_czy_pokazywac %}
                         {% czy_pokazywac raport_wydzialow %}
                             <li>
                                 <a href="{% url "nowe_raporty:wydzial_form" %}">
-                                    <i class="fi-results-demographics" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> raport wydziałów
+                                    <i class="fi-results-demographics"></i> raport wydziałów
                                 </a>
                             </li>
                         {% end_czy_pokazywac %}
                         {% czy_pokazywac raport_jednostek %}
                             <li>
                                 <a href="{% url "nowe_raporty:jednostka_form" %}">
-                                    <i class="fi-map" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> raport jednostek
+                                    <i class="fi-map"></i> raport jednostek
                                 </a>
                             </li>
                         {% end_czy_pokazywac %}
                         {% czy_pokazywac raport_autorow %}
                             <li>
                                 <a href="{% url "nowe_raporty:autor_form" %}">
-                                    <i class="fi-torsos-all" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> raport autorów
+                                    <i class="fi-torsos-all"></i> raport autorów
                                 </a>
                             </li>
                         {% end_czy_pokazywac %}
                     {% endif %}
                     {% czy_pokazywac ranking_autorow %}
                         <hr/>
-                        <li><a href="{% url "bpp:ranking_autorow_formularz" %}"><i class="fi-trophy" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> ranking
+                        <li><a href="{% url "bpp:ranking_autorow_formularz" %}"><i class="fi-trophy"></i> ranking
                             autorów</a></li>
                         <hr>
                     {% end_czy_pokazywac %}
@@ -329,32 +107,32 @@
             </script>
 
             <li>
-                <a href="#"><i class="fi-graph-bar" style="font-size: 1.6rem; margin-right: 0.4rem; vertical-align: middle;"></i> ewaluacja</a>
+                <a href="#"><i class="fi-graph-bar"></i> ewaluacja</a>
                 <ul class="menu vertical" id="top-bar-menu-ewaluacji">
                     {% if request.user.is_superuser or request.user|has_group:"wprowadzanie danych" %}
-                        <li><a href="{% url "ewaluacja_liczba_n:index" %}"><i class="fi-list-number" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> liczba N</a></li>
-                        <li><a href="{% url "ewaluacja_metryki:lista" %}"><i class="fi-graph-trend" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> metryki ewaluacyjne</a></li>
-                        <li><a href="{% url "ewaluacja_optymalizacja:index" %}"><i class="fi-target-two" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> optymalizacja ewaluacji</a></li>
-                        <li><a href="{% url "snapshot_odpiec:index" %}"><i class="fi-camera" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> snapshoty odpięć</a></li>
+                        <li><a href="{% url "ewaluacja_liczba_n:index" %}"><i class="fi-list-number"></i> liczba N</a></li>
+                        <li><a href="{% url "ewaluacja_metryki:lista" %}"><i class="fi-graph-trend"></i> metryki ewaluacyjne</a></li>
+                        <li><a href="{% url "ewaluacja_optymalizacja:index" %}"><i class="fi-target-two"></i> optymalizacja ewaluacji</a></li>
+                        <li><a href="{% url "snapshot_odpiec:index" %}"><i class="fi-camera"></i> snapshoty odpięć</a></li>
                     <hr>
                     {% endif %}
                     {% load czy_pokazywac %}
                     {% load user_in_group %}
 
                     {% czy_pokazywac raport_slotow_autor %}
-                        <li><a href="{% url "raport_slotow:index" %}"><i class="fi-torso" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> raport slotów - autor</a></li>
+                        <li><a href="{% url "raport_slotow:index" %}"><i class="fi-torso"></i> raport slotów - autor</a></li>
                     {% end_czy_pokazywac %}
                     {% czy_pokazywac raport_slotow_zerowy %}
-                        <li><a href="{% url "raport_slotow:raport-slotow-zerowy-parametry" %}"><i class="fi-clipboard-notes" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> raport slotów -
+                        <li><a href="{% url "raport_slotow:raport-slotow-zerowy-parametry" %}"><i class="fi-clipboard-notes"></i> raport slotów -
                             zerowy</a>
                         </li>
                     {% end_czy_pokazywac %}
 
                     {% czy_pokazywac raport_slotow_uczelnia %}
-                        <li><a href="{% url "raport_slotow:lista-raport-slotow-uczelnia" %}"><i class="fi-foundation" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> raport slotów -
+                        <li><a href="{% url "raport_slotow:lista-raport-slotow-uczelnia" %}"><i class="fi-foundation"></i> raport slotów -
                             uczelnia</a></li>
-                        <li><a href="{% url "raport_slotow:index-ewaluacja" %}"><i class="fi-clipboard-pencil" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> raport slotów - ewaluacja</a>
-                        <li><a href="{% url "raport_slotow:index-upowaznienia" %}"><i class="fi-shield" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> raport ewaluacja -
+                        <li><a href="{% url "raport_slotow:index-ewaluacja" %}"><i class="fi-clipboard-pencil"></i> raport slotów - ewaluacja</a>
+                        <li><a href="{% url "raport_slotow:index-upowaznienia" %}"><i class="fi-shield"></i> raport ewaluacja -
                             upoważnienia</a>
                         {# Disabled 3N report #}
                         {# <li><a href="{% url "ewaluacja2021:lista-raportow3n" %}"><i class="fi-page-multiple" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> raport ewaluacja - 3N</a> #}
@@ -378,46 +156,46 @@
                 {% if request.user.is_superuser or request.user|has_group:"wprowadzanie danych" %}
                     {% if uczelnia.pbn_integracja %}
                         <li>
-                            <a href="#"><i class="fi-link" style="font-size: 1.6rem; margin-right: 0.4rem; vertical-align: middle;"></i> PBN</a>
+                            <a href="#"><i class="fi-link"></i> PBN</a>
                             <ul class="menu vertical">
                                 {% if request.user|has_group:"wprowadzanie danych" or request.user.is_superuser %}
-                                    <li><a href="{% url "pbn_api:authorize" %}" onclick="this.href='{% url "pbn_api:authorize" %}?next=' + encodeURIComponent(window.location.pathname + window.location.search + window.location.hash)"><i class="fi-key" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> autoryzuj PBN API</a></li>
-                                    <li><a href="{% url "pbn_import:dashboard" %}"><i class="fi-burst-new" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> Import z PBN</a></li>
-                                    <li><a href="{% url "pbn_downloader_app:main" %}"><i class="fi-download" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> pobieranie danych z PBN</a></li>
-                                    <li><a href="{% url "pbn_api:export-queue-list" %}"><i class="fi-list" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> kolejka eksportu do PBN</a></li>
-                                    <li><a href="{% url "komparator_pbn:main" %}"><i class="fi-arrows-compress" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> komparator PBN</a></li>
-                                    <li><a href="{% url "komparator_pbn_udzialy:list" %}"><i class="fi-alert" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> komparator udziałów PBN</a></li>
-                                    <li><a href="{% url "komparator_publikacji_pbn:comparison_list" %}"><i class="fi-page-search" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> komparator publikacji PBN</a></li>
-                                    <li><a href="{% url "importer_autorow_pbn:main" %}"><i class="fi-torsos-female-male" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> importer autorów PBN</a></li>
-                                    <li><a href="{% url "deduplikator_autorow:duplicate_authors" %}"><i class="fi-filter" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> deduplikator autorów PBN</a></li>
+                                    <li><a href="{% url "pbn_api:authorize" %}" onclick="this.href='{% url "pbn_api:authorize" %}?next=' + encodeURIComponent(window.location.pathname + window.location.search + window.location.hash)"><i class="fi-key"></i> autoryzuj PBN API</a></li>
+                                    <li><a href="{% url "pbn_import:dashboard" %}"><i class="fi-burst-new"></i> Import z PBN</a></li>
+                                    <li><a href="{% url "pbn_downloader_app:main" %}"><i class="fi-download"></i> pobieranie danych z PBN</a></li>
+                                    <li><a href="{% url "pbn_api:export-queue-list" %}"><i class="fi-list"></i> kolejka eksportu do PBN</a></li>
+                                    <li><a href="{% url "komparator_pbn:main" %}"><i class="fi-arrows-compress"></i> komparator PBN</a></li>
+                                    <li><a href="{% url "komparator_pbn_udzialy:list" %}"><i class="fi-alert"></i> komparator udziałów PBN</a></li>
+                                    <li><a href="{% url "komparator_publikacji_pbn:comparison_list" %}"><i class="fi-page-search"></i> komparator publikacji PBN</a></li>
+                                    <li><a href="{% url "importer_autorow_pbn:main" %}"><i class="fi-torsos-female-male"></i> importer autorów PBN</a></li>
+                                    <li><a href="{% url "deduplikator_autorow:duplicate_authors" %}"><i class="fi-filter"></i> deduplikator autorów PBN</a></li>
                                 {% endif %}
                             </ul>
                         </li>
                     {% endif %}
 
                     <li class="has-submenu">
-                        <a href="#" data-toggle><i class="fi-wrench" style="font-size: 1.6rem; margin-right: 0.4rem; vertical-align: middle;"></i> operacje</a>
+                        <a href="#" data-toggle><i class="fi-wrench"></i> operacje</a>
                         <div class="menu-columns-wrapper" data-submenu>
                             {% if request.user|has_group:"wprowadzanie danych" or request.user.is_superuser %}
                                 <ul class="menu vertical column-1">
-                                    <li><a href="{% url "integrator2:main" %}"><i class="fi-upload" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> import danych</a></li>
-                                    <li><a href="{% url "import_pracownikow:index" %}"><i class="fi-torsos" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> import pracowników</a></li>
-                                    <li><a href="{% url "import_polon:index" %}"><i class="fi-database" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> import z POLON</a></li>
-                                    <li><a href="{% url "import_polon:index-absencji" %}"><i class="fi-calendar" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> import absencji</a></li>
-                                    <li><a href="{% url "import_list_ministerialnych:index" %}"><i class="fi-clipboard-notes" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> import list
+                                    <li><a href="{% url "integrator2:main" %}"><i class="fi-upload"></i> import danych</a></li>
+                                    <li><a href="{% url "import_pracownikow:index" %}"><i class="fi-torsos"></i> import pracowników</a></li>
+                                    <li><a href="{% url "import_polon:index" %}"><i class="fi-database"></i> import z POLON</a></li>
+                                    <li><a href="{% url "import_polon:index-absencji" %}"><i class="fi-calendar"></i> import absencji</a></li>
+                                    <li><a href="{% url "import_list_ministerialnych:index" %}"><i class="fi-clipboard-notes"></i> import list
                                         ministerialnych</a></li>
 {#                                    <li><a href="{% url "ewaluacja2021:lista-importow" %}">import udziałów dla#}
 {#                                        autorów</a>#}
 {#                                    </li>#}
-                                    <li><a href="{% url "import_list_if:index" %}"><i class="fi-graph-bar" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> import list IF</a></li>
-                                    <li><a href="{% url "import_dyscyplin:index" %}"><i class="fi-folder" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> import dyscyplin</a></li>
+                                    <li><a href="{% url "import_list_if:index" %}"><i class="fi-graph-bar"></i> import list IF</a></li>
+                                    <li><a href="{% url "import_dyscyplin:index" %}"><i class="fi-folder"></i> import dyscyplin</a></li>
                                     <hr/>
-                                    <li><a href="{% url "bpp:xlsx-issn-chunks" %}"><i class="fi-download" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> eksport ISSNów</a></li>
+                                    <li><a href="{% url "bpp:xlsx-issn-chunks" %}"><i class="fi-download"></i> eksport ISSNów</a></li>
                                 </ul>
                                 <ul class="menu vertical column-2">
                                     <li><a href="{% url "admin:rozbieznosci_dyscyplin_rozbieznosciview_changelist" %}">
-                                        <i class="fi-alert" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> rozbieżności dyscyplin</a></li>
-                                    <li><a href="{% url "rozbieznosci_if:index" %}"><i class="fi-alert" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> rozbieżności
+                                        <i class="fi-alert"></i> rozbieżności dyscyplin</a></li>
+                                    <li><a href="{% url "rozbieznosci_if:index" %}"><i class="fi-alert"></i> rozbieżności
                                         punktacji IF</a></li>
                                 </ul>
                             {% endif %}
@@ -427,49 +205,49 @@
 
                 {% if request.user.is_staff %}
                     <li>
-                        <a href="#"><i class="fi-pencil" style="font-size: 1.6rem; margin-right: 0.4rem; vertical-align: middle;"></i> redagowanie</a>
+                        <a href="#"><i class="fi-pencil"></i> redagowanie</a>
                         <ul class="menu vertical">
                             <li>
                                 <a target="_blank" href="{% url "admin:index" %}">
-                                    <i class="fi-pencil" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> redagowanie
+                                    <i class="fi-pencil"></i> redagowanie
                                 </a>
                             </li>
                             <hr/>
                             <li>
                                 <a target="_blank" href="{% url "admin:bpp_autor_changelist" %}">
-                                    <i class="fi-torso" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> Autor
+                                    <i class="fi-torso"></i> Autor
                                 </a>
                             </li>
                             <li>
                                 <a target="_blank" href="{% url "admin:bpp_wydawnictwo_ciagle_changelist" %}">
-                                    <i class="fi-book" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> Wydawnictwo Ciągłe
+                                    <i class="fi-book"></i> Wydawnictwo Ciągłe
                                 </a>
                             </li>
                             <li>
                                 <a target="_blank" href="{% url "admin:bpp_wydawnictwo_zwarte_changelist" %}">
-                                    <i class="fi-book" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> Wydawnictwo Zwarte
+                                    <i class="fi-book"></i> Wydawnictwo Zwarte
                                 </a>
                             </li>
                             <li>
                                 <a target="_blank" href="{% url "admin:bpp_zrodlo_changelist" %}">
-                                    <i class="fi-page-multiple" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> Źródło
+                                    <i class="fi-page-multiple"></i> Źródło
                                 </a>
                             </li>
                             <li>
                                 <a target="_blank" href="{% url "admin:zglos_publikacje_zgloszenie_publikacji_changelist" %}">
-                                    <i class="fi-upload" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> Zgłoszenia publikacji
+                                    <i class="fi-upload"></i> Zgłoszenia publikacji
                                 </a>
                             </li>
                             {% if request.user.is_superuser %}
                                 <hr/>
                                 <li>
                                     <a target="_blank" href="{% url "admin:bpp_bppuser_changelist" %}">
-                                        <i class="fi-torsos-all" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> Użytkownicy
+                                        <i class="fi-torsos-all"></i> Użytkownicy
                                     </a>
                                 </li>
                                 <li>
                                     <a target="_blank" href="{% url "admin:auth_group_changelist" %}">
-                                        <i class="fi-results-demographics" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> Grupy
+                                        <i class="fi-results-demographics"></i> Grupy
                                     </a>
                                 </li>
                             {% endif %}
@@ -479,19 +257,19 @@
 
                 <li id="wyloguj-menu-item">
                     <a href="#" onclick="document.getElementById('logout-form').submit(); return false;">
-                        <i class="fi-power" style="font-size: 1.6rem; margin-right: 0.4rem; vertical-align: middle;"></i> wyloguj
+                        <i class="fi-power"></i> wyloguj
                     </a>
                     <ul class="menu vertical" id="wyloguj-submenu">
                         <li>
                             <a href="#" onclick="document.getElementById('logout-form').submit(); return false;">
-                                <i class="fi-power" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> wyloguj
+                                <i class="fi-power"></i> wyloguj
                             </a>
                         </li>
                         {% if not microsoft_login_enabled %}
-                            <li><a id="password-change-link" href="{% url "password_change" %}"><i class="fi-key" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> zmiana hasła</a></li>
+                            <li><a id="password-change-link" href="{% url "password_change" %}"><i class="fi-key"></i> zmiana hasła</a></li>
                         {% endif %}
                         {% if request.user.is_superuser %}
-                            <li><a href="/admin/bpp/bppuser/" target="_blank"><i class="fi-torso-business" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> zaloguj jako inny użytkownik</a></li>
+                            <li><a href="/admin/bpp/bppuser/" target="_blank"><i class="fi-torso-business"></i> zaloguj jako inny użytkownik</a></li>
                         {% endif %}
                     </ul>
                 </li>
@@ -532,7 +310,7 @@
                 </script>
 
                 <!-- Hidden logout form -->
-                <form id="logout-form" action="{% url "logout" %}" method="post" style="display: none;">
+                <form id="logout-form" action="{% url "logout" %}" method="post" class="hidden-logout-form">
                     {% csrf_token %}
                 </form>
 
@@ -541,26 +319,26 @@
             {% if request.user.is_anonymous %}
                 {% if microsoft_login_enabled %}
                     <li>
-                        <a href="#"><i class="fi-lock" style="font-size: 1.6rem; margin-right: 0.4rem; vertical-align: middle;"></i>
+                        <a href="#"><i class="fi-lock"></i>
                         zaloguj</a>
                         <ul class="menu vertical">
                             <li><a href="{% url "bpp:microsoft_auth_redirect" %}?next={{ request.get_full_path|urlencode }}">
-                                <i class="fi-cloud" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> logowanie instytucjonalne</a></li>
+                                <i class="fi-cloud"></i> logowanie instytucjonalne</a></li>
                             <li><a href="{% url "local_login_form" %}?next={{ request.get_full_path|urlencode }}">
-                                <i class="fi-home" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> logowanie BPP</a></li>
+                                <i class="fi-home"></i> logowanie BPP</a></li>
                             <li><a href="{% url "admin:login" %}?next={{ request.get_full_path|urlencode }}">
-                                <i class="fi-pencil" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> redagowanie</a></li>
+                                <i class="fi-pencil"></i> redagowanie</a></li>
                         </ul>
                     </li>
                 {% else %}
                     <li>
-                        <a href="#"><i class="fi-lock" style="font-size: 1.6rem; margin-right: 0.4rem; vertical-align: middle;"></i>
+                        <a href="#"><i class="fi-lock"></i>
                         zaloguj</a>
                         <ul class="menu vertical">
                             <li><a href="{% url "login_form" %}?next={{ request.get_full_path|urlencode }}">
-                                <i class="fi-home" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> logowanie</a></li>
+                                <i class="fi-home"></i> logowanie</a></li>
                             <li><a href="{% url "admin:login" %}?next={{ request.get_full_path|urlencode }}">
-                                <i class="fi-pencil" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> redagowanie</a></li>
+                                <i class="fi-pencil"></i> redagowanie</a></li>
                         </ul>
                     </li>
                 {% endif %}

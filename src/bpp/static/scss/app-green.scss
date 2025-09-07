@@ -1,8 +1,9 @@
 @use "sass:color";
+
 @import "settings_green";
-// $primary-color: #1E90F3;
 @import "common";
 @import "checkbox";
+
 @import "main_page_buttons";
 @import "browse";
 @import "browse_autorzy";
@@ -108,6 +109,10 @@ input[type=radio] {
 }
 
 .select2-results__option--highlighted {
-  background: darkgreen !important;
+  background: $primary-color !important;
   color: white;
+}
+
+.fi-calendar {
+  color: $primary-color;
 }

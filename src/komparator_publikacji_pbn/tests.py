@@ -487,6 +487,77 @@ def test_field_selection(admin_user):
 
 
 @pytest.mark.django_db
+def test_html_tags_stripped_from_title_comparison(admin_user):
+    """Test that HTML tags are stripped from BPP titles when comparing with PBN."""
+    client = Client()
+    client.force_login(admin_user)
+
+    # Create PBN publication with plain text title
+    pbn_pub = baker.make(
+        Publication,
+        mongoId="html123",
+        title="Test Publication Title",
+        year=2023,
+        status="ACTIVE",
+        versions=[{"current": True, "object": {"title": "Test Publication Title"}}],
+    )
+
+    # Create BPP publication with HTML tags in title that should match PBN when stripped
+    baker.make(
+        Wydawnictwo_Ciagle,
+        tytul_oryginalny="<i>Test Publication Title</i>",  # HTML tags should be stripped
+        rok=2023,
+        pbn_uid=pbn_pub,
+    )
+
+    url = reverse("komparator_publikacji_pbn:comparison_list")
+    response = client.get(url, {"fields": ["title"]})
+
+    assert response.status_code == 200
+    comparisons = response.context["comparisons"]
+
+    # Should show no differences since HTML-stripped titles match
+    assert len(comparisons) == 0
+
+
+@pytest.mark.django_db
+def test_html_tags_different_titles_after_stripping(admin_user):
+    """Test that differences are detected when titles differ after HTML tag stripping."""
+    client = Client()
+    client.force_login(admin_user)
+
+    # Create PBN publication
+    pbn_pub = baker.make(
+        Publication,
+        mongoId="html456",
+        title="PBN Title",
+        year=2023,
+        status="ACTIVE",
+        versions=[{"current": True, "object": {"title": "PBN Title"}}],
+    )
+
+    # Create BPP publication with HTML tags but different actual text content
+    baker.make(
+        Wydawnictwo_Ciagle,
+        tytul_oryginalny="<strong>Different BPP Title</strong>",
+        rok=2023,
+        pbn_uid=pbn_pub,
+    )
+
+    url = reverse("komparator_publikacji_pbn:comparison_list")
+    response = client.get(url, {"fields": ["title"]})
+
+    assert response.status_code == 200
+    comparisons = response.context["comparisons"]
+
+    # Should show differences since titles differ even after HTML stripping
+    assert len(comparisons) == 1
+    comparison = comparisons[0]
+    field_names = [d["field"] for d in comparison["differences"]]
+    assert "Tytuł" in field_names
+
+
+@pytest.mark.django_db
 def test_xlsx_export(admin_user):
     """Test XLSX export functionality."""
     client = Client()

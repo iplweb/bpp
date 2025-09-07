@@ -1540,7 +1540,6 @@ def integruj_wszystkie_publikacje(
 
 
 def integruj_publikacje_instytucji(
-    ignore_already_matched=False,
     skip_pages=0,
     callback=None,
     use_threads=False,

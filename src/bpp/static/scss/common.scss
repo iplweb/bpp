@@ -1110,8 +1110,8 @@ $dropdown-border: 1px solid rgba(0, 0, 0, 0.15) !default;
 .dropdown.menu .submenu li a:hover,
 .top-bar .dropdown.menu .submenu li a:hover,
 .dropdown-pane a:hover {
-  background-color: rgba(23, 121, 186, 0.08);
-  color: #1779ba;
+  background-color: rgba($primary-color, 0.08);
+  color: $primary-color;
   transition: all 0.2s ease-in-out;
   transform: translateX(2px);
 }
@@ -1128,7 +1128,7 @@ $dropdown-border: 1px solid rgba(0, 0, 0, 0.15) !default;
 }
 
 .dropdown.menu .submenu li:hover {
-  background-color: rgba(23, 121, 186, 0.05);
+  background-color: rgba($primary-color, 0.05);
 }
 
 // Make global nav expand to take available space
@@ -1425,7 +1425,7 @@ body {
 }
 
 .cookie-info-links a {
-  color: #1779ba;
+  color: $primary-color;
   text-decoration: none;
   margin-right: 15px;
 }
@@ -1489,7 +1489,7 @@ input[type="url"]:focus,
 input[type="tel"]:focus,
 textarea:focus,
 select:focus {
-  box-shadow: 0 3px 8px rgba(23, 121, 186, 0.12), 0 2px 4px rgba(23, 121, 186, 0.08) !important;
+  box-shadow: 0 3px 8px rgba($primary-color, 0.12), 0 2px 4px rgba($primary-color, 0.08) !important;
   transition: box-shadow 0.2s ease-in-out !important;
 }
 
@@ -1633,9 +1633,17 @@ select[multiple] {
 }
 
 // Firefox specific adjustments
+
 @-moz-document url-prefix() {
   select[multiple] option:checked {
     background-color: rgba($primary-color, 0.85) !important;
     color: white !important;
   }
+}
+
+
+
+#test-div {
+  background-color: $primary-color !important;
+  border: 2px solid red;
 }

@@ -23,11 +23,13 @@ def test_oblicz_metryki_command_basic():
     """Test podstawowego działania komendy oblicz_metryki"""
 
     # Stwórz dane testowe
-    autor = baker.make(Autor, nazwisko="Testowy", imiona="Jan")
-    dyscyplina = baker.make(Dyscyplina_Naukowa, nazwa="Informatyka")
     jednostka = baker.make(Jednostka, nazwa="Instytut")
+    autor = baker.make(
+        Autor, nazwisko="Testowy", imiona="Jan", aktualna_jednostka=jednostka
+    )
+    dyscyplina = baker.make(Dyscyplina_Naukowa, nazwa="Informatyka")
 
-    # Powiąż autora z jednostką
+    # Powiąż autora z jednostką (dla zachowania zgodności z innymi częściami systemu)
     baker.make(
         Autor_Jednostka, autor=autor, jednostka=jednostka, podstawowe_miejsce_pracy=True
     )
@@ -89,15 +91,16 @@ def test_oblicz_metryki_command_basic():
 def test_oblicz_metryki_command_filters():
     """Test filtrowania po autorze, dyscyplinie i jednostce"""
 
-    # Stwórz dwóch autorów
-    autor1 = baker.make(Autor, nazwisko="Autor1")
-    autor2 = baker.make(Autor, nazwisko="Autor2")
+    # Stwórz jednostki najpierw
+    jednostka1 = baker.make(Jednostka, nazwa="Jednostka1")
+    jednostka2 = baker.make(Jednostka, nazwa="Jednostka2")
+
+    # Stwórz dwóch autorów z aktualną jednostką
+    autor1 = baker.make(Autor, nazwisko="Autor1", aktualna_jednostka=jednostka1)
+    autor2 = baker.make(Autor, nazwisko="Autor2", aktualna_jednostka=jednostka2)
 
     dyscyplina1 = baker.make(Dyscyplina_Naukowa, nazwa="Dyscyplina1")
     dyscyplina2 = baker.make(Dyscyplina_Naukowa, nazwa="Dyscyplina2")
-
-    jednostka1 = baker.make(Jednostka, nazwa="Jednostka1")
-    jednostka2 = baker.make(Jednostka, nazwa="Jednostka2")
 
     # Powiązania
     baker.make(

@@ -164,7 +164,7 @@ class PublicationImporter(ImportStepBase):
         self.log("info", "Integrowanie publikacji")
 
         try:
-            integruj_publikacje_instytucji(disable_multiprocessing=True)
+            integruj_publikacje_instytucji(use_threads=True)
             self.log("success", "Publikacje zintegrowane pomyślnie")
         except Exception as e:
             self.handle_error(e, "Nie udało się zintegrować publikacji")
@@ -201,7 +201,7 @@ class PublicationImporter(ImportStepBase):
         for i, pbn_publication in enumerate(
             pbar(
                 chciane,
-                total=total,
+                count=total,
                 label="Importowanie publikacji do bazy",
                 callback=import_callback,
             )
@@ -252,7 +252,7 @@ class PublicationImporter(ImportStepBase):
 
         # Use pbar for consistent progress tracking
         for i, elem in enumerate(
-            pbar(res, total=total, label="Pobieranie publikacji v2", callback=callback)
+            pbar(res, count=total, label="Pobieranie publikacji v2", callback=callback)
         ):
             # Check cancellation every 10 items
             if i % 10 == 0:
