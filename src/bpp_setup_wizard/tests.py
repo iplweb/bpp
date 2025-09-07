@@ -9,6 +9,25 @@ from bpp.models import Uczelnia
 BppUser = get_user_model()
 
 
+@pytest.fixture(autouse=True)
+def enable_setup_wizard_middleware(settings):
+    """Enable SetupWizardMiddleware for all tests in this module."""
+    middleware = list(settings.MIDDLEWARE)
+    if "bpp_setup_wizard.middleware.SetupWizardMiddleware" not in middleware:
+        # Add the middleware after AuthenticationMiddleware to ensure user is available
+        try:
+            auth_index = middleware.index(
+                "django.contrib.auth.middleware.AuthenticationMiddleware"
+            )
+            middleware.insert(
+                auth_index + 1, "bpp_setup_wizard.middleware.SetupWizardMiddleware"
+            )
+        except ValueError:
+            # If AuthenticationMiddleware is not found, add at the beginning
+            middleware.insert(0, "bpp_setup_wizard.middleware.SetupWizardMiddleware")
+        settings.MIDDLEWARE = middleware
+
+
 @pytest.mark.django_db
 def test_setup_wizard_redirect_when_no_users():
     """Test that the middleware redirects to setup when no users exist."""
@@ -279,6 +298,10 @@ def test_middleware_redirects_to_uczelnia_setup_after_user_setup():
     # Should redirect to main page
     assert response.status_code == 302
     assert response.url == "/"
+
+    # Login as the admin user we just created
+    admin = BppUser.objects.get(username="testadmin")
+    client.force_login(admin)
 
     # Now trying to access main page should redirect to Uczelnia setup
     # (since user is logged in as superuser and no Uczelnia exists)

@@ -12,12 +12,20 @@
       "mcp__playwright__browser_evaluate",
       "Bash(psql:*)",
       "WebSearch",
-      "WebFetch(domain:django-microsoft-auth.readthedocs.io)"
+      "WebFetch(domain:django-microsoft-auth.readthedocs.io)",
+      "Bash(mkdir:*)",
+      "Read(//Volumes/Dane zaszyfrowane/UP/publikacje_test_up_lublin_pl/**)",
+      "Read(//Users/mpasternak/Programowanie/pass_the_pes/**)",
+      "Bash(tree:*)",
+      "Read(//private/tmp/**)",
+      "Bash(find:*)",
+      "Bash(nc:*)"
     ],
     "deny": [],
     "ask": [],
     "additionalDirectories": [
       "/Users/mpasternak/Library/Caches/pypoetry/virtualenvs/bpp-iplweb-61_RsGZW-py3.11/lib/python3.11/site-packages"
     ]
-  }
+  },
+  "outputStyle": "Explanatory"
 }

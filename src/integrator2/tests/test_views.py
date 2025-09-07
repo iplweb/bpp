@@ -14,10 +14,10 @@ def test_serwer_testowy(client):
     # W przypadku, gdy domena zawiera słowo "test", to na stronie powinien
     # pojawić się obrazek tła oraz słowo "SERWER TESTOWY" w tytule
     response = client.get("/", SERVER_NAME="test.unexistenttld")
-    assert b"<b>Serwer testowy" in response.content
+    assert b"** SERWER TESTOWY **" in response.content
 
     response = client.get("/", SERVER_NAME="127.0.0.1")
-    assert b"<b>Serwer testowy" not in response.content
+    assert b"** SERWER TESTOWY **" not in response.content
 
 
 def test_views_main(admin_client):
@@ -28,7 +28,15 @@ def test_views_main(admin_client):
 def test_views_upload_lista_ministerialna(admin_app):
     page = admin_app.get(reverse("integrator2:upload_lista_ministerialna"))
 
-    form = page.form
+    # Find the upload form (not the logout form)
+    form = None
+    for f in page.forms.values():
+        if "file" in f.fields:
+            form = f
+            break
+
+    assert form is not None, "Could not find upload form"
+
     form["file"] = Upload(os.path.dirname(__file__) + "/xls/lista_a_krotka.xlsx")
     res = form.submit().maybe_follow()
 

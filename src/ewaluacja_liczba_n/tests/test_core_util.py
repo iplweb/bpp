@@ -1,6 +1,6 @@
 from model_bakery import baker
 
-from ewaluacja2021.core.util import get_lista_prac
+from ewaluacja_common.utils import get_lista_prac
 from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaRok, LiczbaNDlaUczelni
 
 from bpp.models import Autor_Dyscyplina, Wydawnictwo_Ciagle

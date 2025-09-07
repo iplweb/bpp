@@ -12,38 +12,11 @@ from ewaluacja2021.models import ZamowienieNaRaport
 from ewaluacja2021.reports import load_data, rekordy
 from ewaluacja2021.util import create_zip_archive, string2fn
 from snapshot_odpiec.models import SnapshotOdpiec
+from snapshot_odpiec.tasks import suma_odpietych_dyscyplin
 
 from bpp.models import Patent_Autor, Wydawnictwo_Ciagle_Autor, Wydawnictwo_Zwarte_Autor
 
 from django_bpp import celery_tasks
-
-
-def suma_odpietych_dyscyplin():
-    return (
-        Wydawnictwo_Ciagle_Autor.objects.exclude(dyscyplina_naukowa=None)
-        .exclude(przypieta=True)
-        .count()
-        + Wydawnictwo_Zwarte_Autor.objects.exclude(dyscyplina_naukowa=None)
-        .exclude(przypieta=True)
-        .count()
-        + Patent_Autor.objects.exclude(dyscyplina_naukowa=None)
-        .exclude(przypieta=True)
-        .count()
-    )
-
-
-def suma_przypietych_dyscyplin():
-    return (
-        Wydawnictwo_Ciagle_Autor.objects.exclude(dyscyplina_naukowa=None)
-        .exclude(przypieta=False)
-        .count()
-        + Wydawnictwo_Zwarte_Autor.objects.exclude(dyscyplina_naukowa=None)
-        .exclude(przypieta=False)
-        .count()
-        + Patent_Autor.objects.exclude(dyscyplina_naukowa=None)
-        .exclude(przypieta=False)
-        .count()
-    )
 
 
 def suma_pkdaut_json(fn):

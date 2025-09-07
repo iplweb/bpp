@@ -77,6 +77,7 @@ RAPORTY_MENU = [
     ("Źródła danych", "/admin/flexible_reports/datasource/"),
     ("Tabele", "/admin/flexible_reports/table/"),
     ("Metryki ewaluacyjne", "/ewaluacja_metryki/"),
+    ("Optymalizacja ewaluacji", "/ewaluacja_optymalizacja/"),
 ]
 
 WEB_MENU = [

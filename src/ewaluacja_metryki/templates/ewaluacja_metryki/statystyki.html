@@ -23,13 +23,16 @@
         {% include "ewaluacja_metryki/disclaimer.html" %}
 
         <!-- Navigation menu -->
-        <div class="callout" style="background-color: #f7f7f7; border: 1px solid #e0e0e0;">
+        <div class="callout stats-navigation">
             <div class="button-group expanded">
                 <a href="#statystyki-globalne" class="button hollow secondary">
                     <span class="fi-database"></span> Statystyki globalne
                 </a>
                 <a href="#top-autorzy" class="button hollow secondary">
-                    <span class="fi-trophy"></span> Top autorzy
+                    <span class="fi-trophy"></span> Top PKDaut/slot
+                </a>
+                <a href="#top-sloty" class="button hollow secondary">
+                    <span class="fi-trophy"></span> Top sloty
                 </a>
                 <a href="#bottom-autorzy" class="button hollow secondary">
                     <span class="fi-arrow-down"></span> Bottom PKDaut/slot
@@ -86,13 +89,16 @@
         </div>
 
         <!-- Navigation menu before Top autorzy -->
-        <div class="callout" style="background-color: #f7f7f7; border: 1px solid #e0e0e0; margin-top: 2rem;">
+        <div class="callout stats-navigation">
             <div class="button-group expanded small">
                 <a href="#statystyki-globalne" class="button hollow secondary">
                     <span class="fi-database"></span> Statystyki globalne
                 </a>
                 <a href="#top-autorzy" class="button hollow secondary">
-                    <span class="fi-trophy"></span> Top autorzy
+                    <span class="fi-trophy"></span> Top PKDaut/slot
+                </a>
+                <a href="#top-sloty" class="button hollow secondary">
+                    <span class="fi-trophy"></span> Top sloty
                 </a>
                 <a href="#bottom-autorzy" class="button hollow secondary">
                     <span class="fi-arrow-down"></span> Bottom PKDaut/slot
@@ -121,7 +127,7 @@
                             <span class="fi-page-export"></span> Export XLSX
                         </a>
                     </div>
-                    <h4><span class="fi-trophy"></span> Top 20 autorów</h4>
+                    <h4><span class="fi-trophy"></span> Top 20 autorów PKDaut/slot</h4>
                     <table class="hover">
                         <thead>
                             <tr>
@@ -134,6 +140,66 @@
                         </thead>
                         <tbody>
                             {% for metryka in top_autorzy %}
+                            <tr>
+                                <td>{{ forloop.counter }}</td>
+                                <td>
+                                    <a href="{% url 'bpp:browse_autor' metryka.autor.pk %}" target="_blank" title="Szczegóły autora w BPP">
+                                        {{ metryka.autor }}
+                                    </a>
+                                    <a href="{% url 'ewaluacja_metryki:szczegoly' metryka.pk %}" title="Szczegóły metryki">
+                                        <span class="fi-graph-bar"></span>
+                                    </a>
+                                </td>
+                                <td>
+                                    <small class="text-muted">
+                                        {% if metryka.jednostka %}
+                                            {{ metryka.jednostka.skrot|default:metryka.jednostka.nazwa }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </small>
+                                </td>
+                                <td class="text-center">
+                                    <div class="progress" style="width: 120px; margin: 0 auto;">
+                                        <div class="progress-meter success"
+                                             style="width: {{ metryka.procent_wykorzystania_slotow|floatformat:0 }}%">
+                                            <p class="progress-meter-text">{{ metryka.slot_nazbierany|floatformat:2 }}</p>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="text-center">
+                                    {% temperature_display metryka.srednia_za_slot_nazbierana %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Top 20 autorów - sloty wypełnione -->
+        <div class="row">
+            <div class="medium-12 columns">
+                <div class="callout primary" id="top-sloty" style="background-color: #2ca8ff; border-color: #0e90db;">
+                    <div class="float-right">
+                        <a href="{% url 'ewaluacja_metryki:export_xlsx' 'top-sloty' %}" class="button tiny success">
+                            <span class="fi-page-export"></span> Export XLSX
+                        </a>
+                    </div>
+                    <h4><span class="fi-trophy"></span> Top 20 autorów sloty wypełnione</h4>
+                    <table class="hover">
+                        <thead>
+                            <tr>
+                                <th width="50">Lp.</th>
+                                <th>Autor</th>
+                                <th>Jednostka</th>
+                                <th class="text-center">Sloty wypełnione</th>
+                                <th class="text-center">PKDaut/slot</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for metryka in top_autorzy_sloty %}
                             <tr>
                                 <td>{{ forloop.counter }}</td>
                                 <td>
@@ -211,13 +277,16 @@
         </div>
 
         <!-- Navigation menu before Bottom autorzy -->
-        <div class="callout" style="background-color: #f7f7f7; border: 1px solid #e0e0e0; margin-top: 2rem;">
+        <div class="callout stats-navigation">
             <div class="button-group expanded small">
                 <a href="#statystyki-globalne" class="button hollow secondary">
                     <span class="fi-database"></span> Statystyki globalne
                 </a>
                 <a href="#top-autorzy" class="button hollow secondary">
-                    <span class="fi-trophy"></span> Top autorzy
+                    <span class="fi-trophy"></span> Top PKDaut/slot
+                </a>
+                <a href="#top-sloty" class="button hollow secondary">
+                    <span class="fi-trophy"></span> Top sloty
                 </a>
                 <a href="#bottom-autorzy" class="button hollow secondary">
                     <span class="fi-arrow-down"></span> Bottom PKDaut/slot
@@ -358,13 +427,16 @@
         </div>
 
         <!-- Navigation menu before Autorzy zerowi -->
-        <div class="callout" style="background-color: #f7f7f7; border: 1px solid #e0e0e0; margin-top: 2rem;">
+        <div class="callout stats-navigation">
             <div class="button-group expanded small">
                 <a href="#statystyki-globalne" class="button hollow secondary">
                     <span class="fi-database"></span> Statystyki globalne
                 </a>
                 <a href="#top-autorzy" class="button hollow secondary">
-                    <span class="fi-trophy"></span> Top autorzy
+                    <span class="fi-trophy"></span> Top PKDaut/slot
+                </a>
+                <a href="#top-sloty" class="button hollow secondary">
+                    <span class="fi-trophy"></span> Top sloty
                 </a>
                 <a href="#bottom-autorzy" class="button hollow secondary">
                     <span class="fi-arrow-down"></span> Bottom PKDaut/slot
@@ -418,9 +490,13 @@
                                     </a>
                                 </td>
                                 <td>
-                                    <span class="label secondary">
-                                        {{ metryka.rok_min }}-{{ metryka.rok_max }}
-                                    </span>
+                                    {% for rok in metryka.lata_zerowe %}
+                                        <span class="label secondary" style="margin-right: 2px;">{{ rok }}</span>
+                                    {% empty %}
+                                        <span class="label secondary">
+                                            {{ metryka.rok_min }}-{{ metryka.rok_max }}
+                                        </span>
+                                    {% endfor %}
                                 </td>
                                 <td>
                                     <small class="text-muted">
@@ -449,13 +525,16 @@
         </div>
 
         <!-- Navigation menu before Jednostki -->
-        <div class="callout" style="background-color: #f7f7f7; border: 1px solid #e0e0e0; margin-top: 2rem;">
+        <div class="callout stats-navigation">
             <div class="button-group expanded small">
                 <a href="#statystyki-globalne" class="button hollow secondary">
                     <span class="fi-database"></span> Statystyki globalne
                 </a>
                 <a href="#top-autorzy" class="button hollow secondary">
-                    <span class="fi-trophy"></span> Top autorzy
+                    <span class="fi-trophy"></span> Top PKDaut/slot
+                </a>
+                <a href="#top-sloty" class="button hollow secondary">
+                    <span class="fi-trophy"></span> Top sloty
                 </a>
                 <a href="#bottom-autorzy" class="button hollow secondary">
                     <span class="fi-arrow-down"></span> Bottom PKDaut/slot
@@ -517,13 +596,16 @@
         </div>
 
         <!-- Navigation menu before Dyscypliny -->
-        <div class="callout" style="background-color: #f7f7f7; border: 1px solid #e0e0e0; margin-top: 2rem;">
+        <div class="callout stats-navigation">
             <div class="button-group expanded small">
                 <a href="#statystyki-globalne" class="button hollow secondary">
                     <span class="fi-database"></span> Statystyki globalne
                 </a>
                 <a href="#top-autorzy" class="button hollow secondary">
-                    <span class="fi-trophy"></span> Top autorzy
+                    <span class="fi-trophy"></span> Top PKDaut/slot
+                </a>
+                <a href="#top-sloty" class="button hollow secondary">
+                    <span class="fi-trophy"></span> Top sloty
                 </a>
                 <a href="#bottom-autorzy" class="button hollow secondary">
                     <span class="fi-arrow-down"></span> Bottom PKDaut/slot

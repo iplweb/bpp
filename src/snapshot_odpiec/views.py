@@ -3,7 +3,7 @@ from django.http import HttpResponseRedirect
 from django.views import View
 from django.views.generic import DetailView, ListView
 
-from ewaluacja2021.tasks import suma_odpietych_dyscyplin, suma_przypietych_dyscyplin
+from snapshot_odpiec.tasks import suma_odpietych_dyscyplin, suma_przypietych_dyscyplin
 from .models import SnapshotOdpiec
 
 from django.contrib import messages

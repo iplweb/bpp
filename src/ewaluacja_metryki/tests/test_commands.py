@@ -9,7 +9,13 @@ from model_bakery import baker
 from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaCalosc
 from ewaluacja_metryki.models import MetrykaAutora
 
-from bpp.models import Autor, Autor_Jednostka, Dyscyplina_Naukowa, Jednostka
+from bpp.models import (
+    Autor,
+    Autor_Dyscyplina,
+    Autor_Jednostka,
+    Dyscyplina_Naukowa,
+    Jednostka,
+)
 
 
 @pytest.mark.django_db
@@ -33,6 +39,15 @@ def test_oblicz_metryki_command_basic():
         dyscyplina_naukowa=dyscyplina,
         ilosc_udzialow=Decimal("4.0"),
         ilosc_udzialow_monografie=Decimal("1.0"),
+    )
+
+    # Stwórz Autor_Dyscyplina z rodzajem 'N'
+    baker.make(
+        Autor_Dyscyplina,
+        autor=autor,
+        dyscyplina_naukowa=dyscyplina,
+        rodzaj_autora="N",
+        rok=2024,
     )
 
     # Mockuj metodę zbieraj_sloty
@@ -96,6 +111,15 @@ def test_oblicz_metryki_command_nadpisz():
         dyscyplina_naukowa=dyscyplina,
         ilosc_udzialow=Decimal("4.0"),
         ilosc_udzialow_monografie=Decimal("1.0"),
+    )
+
+    # Stwórz Autor_Dyscyplina z rodzajem 'N'
+    baker.make(
+        Autor_Dyscyplina,
+        autor=autor,
+        dyscyplina_naukowa=dyscyplina,
+        rodzaj_autora="N",
+        rok=2024,
     )
 
     with patch.object(Autor, "zbieraj_sloty") as mock_zbieraj:
@@ -167,6 +191,22 @@ def test_oblicz_metryki_command_filters():
         ilosc_udzialow_monografie=Decimal("1.0"),
     )
 
+    # Stwórz Autor_Dyscyplina z rodzajem 'N' dla obu autorów
+    baker.make(
+        Autor_Dyscyplina,
+        autor=autor1,
+        dyscyplina_naukowa=dyscyplina1,
+        rodzaj_autora="N",
+        rok=2024,
+    )
+    baker.make(
+        Autor_Dyscyplina,
+        autor=autor2,
+        dyscyplina_naukowa=dyscyplina2,
+        rodzaj_autora="N",
+        rok=2024,
+    )
+
     with patch.object(Autor, "zbieraj_sloty") as mock_zbieraj:
         mock_zbieraj.return_value = (Decimal("100.0"), [1], Decimal("2.5"))
 
@@ -205,6 +245,15 @@ def test_oblicz_metryki_command_error_handling():
         ilosc_udzialow_monografie=Decimal("1.0"),
     )
 
+    # Stwórz Autor_Dyscyplina z rodzajem 'N'
+    baker.make(
+        Autor_Dyscyplina,
+        autor=autor,
+        dyscyplina_naukowa=dyscyplina,
+        rodzaj_autora="N",
+        rok=2024,
+    )
+
     # Mockuj zbieraj_sloty aby rzucił wyjątek
     with patch.object(Autor, "zbieraj_sloty") as mock_zbieraj:
         mock_zbieraj.side_effect = Exception("Test error")
@@ -238,6 +287,15 @@ def test_oblicz_metryki_command_parameters():
         ilosc_udzialow_monografie=Decimal("1.0"),
     )
 
+    # Stwórz Autor_Dyscyplina z rodzajem 'N'
+    baker.make(
+        Autor_Dyscyplina,
+        autor=autor,
+        dyscyplina_naukowa=dyscyplina,
+        rodzaj_autora="N",
+        rok=2024,
+    )
+
     with patch.object(Autor, "zbieraj_sloty") as mock_zbieraj:
         mock_zbieraj.return_value = (Decimal("100.0"), [1], Decimal("2.5"))
 
@@ -265,3 +323,72 @@ def test_oblicz_metryki_command_parameters():
     metryka = MetrykaAutora.objects.first()
     assert metryka.rok_min == 2020
     assert metryka.rok_max == 2023
+
+
+@pytest.mark.django_db
+def test_oblicz_metryki_command_rodzaj_autora_filter():
+    """Test filtrowania po rodzaju autora"""
+
+    # Stwórz dwóch autorów z różnymi rodzajami
+    autor_n = baker.make(Autor, nazwisko="Pracownik")
+    autor_d = baker.make(Autor, nazwisko="Doktorant")
+
+    dyscyplina = baker.make(Dyscyplina_Naukowa, nazwa="Testowa")
+
+    # Ilości udziałów dla obu
+    baker.make(
+        IloscUdzialowDlaAutoraZaCalosc,
+        autor=autor_n,
+        dyscyplina_naukowa=dyscyplina,
+        ilosc_udzialow=Decimal("4.0"),
+        ilosc_udzialow_monografie=Decimal("1.0"),
+    )
+    baker.make(
+        IloscUdzialowDlaAutoraZaCalosc,
+        autor=autor_d,
+        dyscyplina_naukowa=dyscyplina,
+        ilosc_udzialow=Decimal("4.0"),
+        ilosc_udzialow_monografie=Decimal("1.0"),
+    )
+
+    # Autor_Dyscyplina - jeden N, drugi D
+    baker.make(
+        Autor_Dyscyplina,
+        autor=autor_n,
+        dyscyplina_naukowa=dyscyplina,
+        rodzaj_autora="N",
+        rok=2024,
+    )
+    baker.make(
+        Autor_Dyscyplina,
+        autor=autor_d,
+        dyscyplina_naukowa=dyscyplina,
+        rodzaj_autora="D",
+        rok=2024,
+    )
+
+    with patch.object(Autor, "zbieraj_sloty") as mock_zbieraj:
+        mock_zbieraj.return_value = (Decimal("100.0"), [1], Decimal("2.5"))
+
+        # Domyślnie powinno generować tylko dla N
+        out = StringIO()
+        call_command("oblicz_metryki", "--bez-liczby-n", stdout=out)
+
+        assert MetrykaAutora.objects.filter(autor=autor_n).exists()
+        assert not MetrykaAutora.objects.filter(autor=autor_d).exists()
+        assert "Pominięto Doktorant" in out.getvalue()
+        assert "rodzaj_autora = 'D'" in out.getvalue()
+
+        MetrykaAutora.objects.all().delete()
+
+        # Z opcją --rodzaje-autora N D powinno generować dla obu
+        out = StringIO()
+        call_command(
+            "oblicz_metryki", "--bez-liczby-n", "--rodzaje-autora", "N", "D", stdout=out
+        )
+
+        assert MetrykaAutora.objects.filter(autor=autor_n).exists()
+        assert MetrykaAutora.objects.filter(autor=autor_d).exists()
+        # Nie powinno być komunikatu o pominiętym autorze Doktorant
+        assert "Pominięto Doktorant" not in out.getvalue()
+        assert "rodzaj_autora = 'D'" not in out.getvalue()

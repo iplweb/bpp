@@ -1,0 +1,88 @@
+// Ewaluacja Metryki specific styles
+
+// Navigation menu with proper spacing
+.stats-navigation {
+    background-color: #f7f7f7;
+    border: 1px solid #e0e0e0;
+    // Add some visual breathing room
+    margin-bottom: 2rem;
+
+    // Ensure button group stays centered
+    .button-group {
+        margin: 0;
+
+        // Make buttons responsive
+        @media screen and (max-width: 639px) {
+            flex-wrap: wrap;
+
+            .button {
+                width: 100%;
+                margin-bottom: 0.5rem;
+            }
+        }
+    }
+}
+
+// Additional styles for statistics tables
+.statistics-table {
+    margin-top: 2rem;
+
+    h4 {
+        margin-bottom: 1.5rem;
+    }
+}
+
+// Improve the visual hierarchy
+.callout {
+    &.statistics-section {
+        position: relative;
+
+        .export-button {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+        }
+    }
+}
+
+// Modal styling with rounded corners
+#generowanie-modal {
+    border-radius: 12px;
+    overflow: hidden;
+
+    // Ensure close button is properly positioned with rounded corners
+    .close-button {
+        border-top-right-radius: 12px;
+    }
+}
+
+// Author types display - vertical layout
+#generowanie-modal {
+    fieldset {
+        // Add spacing after the fieldset
+        margin-bottom: 2rem;
+
+        legend {
+            margin-bottom: 1rem;
+            font-weight: bold;
+        }
+
+        // Style the checkbox labels
+        label {
+            display: block;
+            margin-bottom: 1rem;
+            padding: 0.5rem 0;
+            cursor: pointer;
+
+            input[type="checkbox"] {
+                margin-right: 0.75rem;
+                vertical-align: middle;
+            }
+        }
+
+        // Remove bottom margin from last checkbox
+        .columns:last-child label {
+            margin-bottom: 0;
+        }
+    }
+}

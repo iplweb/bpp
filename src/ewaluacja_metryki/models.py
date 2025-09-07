@@ -177,6 +177,10 @@ class StatusGenerowania(models.Model):
         default=0, help_text="Liczba przetworzonych autorów"
     )
 
+    liczba_do_przetworzenia = models.IntegerField(
+        default=0, help_text="Całkowita liczba autorów do przetworzenia"
+    )
+
     liczba_bledow = models.IntegerField(
         default=0, help_text="Liczba błędów podczas generowania"
     )
@@ -204,12 +208,13 @@ class StatusGenerowania(models.Model):
         obj, created = cls.objects.get_or_create(pk=1)
         return obj
 
-    def rozpocznij_generowanie(self, task_id=""):
+    def rozpocznij_generowanie(self, task_id="", liczba_do_przetworzenia=0):
         """Oznacz rozpoczęcie generowania"""
         self.data_rozpoczecia = timezone.now()
         self.data_zakonczenia = None
         self.w_trakcie = True
         self.liczba_przetworzonych = 0
+        self.liczba_do_przetworzenia = liczba_do_przetworzenia
         self.liczba_bledow = 0
         self.ostatni_komunikat = "Rozpoczęto generowanie metryk"
         self.task_id = task_id

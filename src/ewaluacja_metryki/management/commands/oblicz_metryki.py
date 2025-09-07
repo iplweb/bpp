@@ -49,6 +49,18 @@ class Command(BaseCommand):
             action="store_true",
             help="Pomiń przeliczanie liczby N (domyślnie przelicza)",
         )
+        parser.add_argument(
+            "--rodzaje-autora",
+            nargs="+",
+            choices=["N", "D", "Z"],
+            default=["N"],
+            help="Rodzaje autorów do przetworzenia (N=pracownik, D=doktorant, Z=inny zatrudniony). Domyślnie: N",
+        )
+        parser.add_argument(
+            "--progress-callback",
+            type=str,
+            help="Callback function for progress updates (internal use)",
+        )
 
     def handle(self, *args, **options):
         rok_min = options["rok_min"]
@@ -56,6 +68,7 @@ class Command(BaseCommand):
         minimalny_pk = Decimal(str(options["minimalny_pk"]))
         nadpisz = options["nadpisz"]
         bez_liczby_n = options["bez_liczby_n"]
+        rodzaje_autora = options.get("rodzaje_autora", ["N"])
 
         # Krok 1: Przelicz liczby N, chyba że pominięto
         if not bez_liczby_n:
@@ -92,6 +105,15 @@ class Command(BaseCommand):
         )
         self.stdout.write(f"Minimalny próg punktów: {minimalny_pk}")
 
+        # Wyświetl informację o rodzajach autorów
+        rodzaje_nazwy = {
+            "N": "Pracownicy (N)",
+            "D": "Doktoranci (D)",
+            "Z": "Inni zatrudnieni (Z)",
+        }
+        rodzaje_str = ", ".join([rodzaje_nazwy.get(r, r) for r in rodzaje_autora])
+        self.stdout.write(f"Rodzaje autorów: {rodzaje_str}")
+
         # Filtruj IloscUdzialowDlaAutoraZaCalosc
         ilosc_udzialow_qs = IloscUdzialowDlaAutoraZaCalosc.objects.all()
 
@@ -120,28 +142,62 @@ class Command(BaseCommand):
         skipped = 0
         errors = 0
 
-        for ilosc_udzialow in ilosc_udzialow_qs.select_related(
-            "autor", "dyscyplina_naukowa"
+        # Get progress callback if running from Celery
+        progress_callback = options.get("progress_callback")
+
+        if nadpisz:
+            MetrykaAutora.objects.all().delete()
+
+        for idx, ilosc_udzialow in enumerate(
+            ilosc_udzialow_qs.select_related("autor", "dyscyplina_naukowa"), 1
         ):
             autor = ilosc_udzialow.autor
             dyscyplina = ilosc_udzialow.dyscyplina_naukowa
             slot_maksymalny = ilosc_udzialow.ilosc_udzialow
 
-            # Sprawdź czy metryka już istnieje
-            if (
-                not nadpisz
-                and MetrykaAutora.objects.filter(
-                    autor=autor, dyscyplina_naukowa=dyscyplina
-                ).exists()
-            ):
-                skipped += 1
-                continue
+            # Update progress if callback is available
+            if progress_callback:
+                try:
+                    from ewaluacja_metryki.models import StatusGenerowania
+
+                    status = StatusGenerowania.get_or_create()
+                    status.liczba_przetworzonych = processed
+                    status.ostatni_komunikat = (
+                        f"Przetwarzanie {autor} - {dyscyplina.nazwa} ({idx}/{total})"
+                    )
+                    status.save()
+                except BaseException:
+                    pass  # Ignore errors in progress reporting
 
             try:
                 with transaction.atomic():
-                    # Pobierz główną jednostkę autora
-                    from bpp.models import Autor_Jednostka
+                    # Sprawdź rodzaj_autora jeśli włączone filtrowanie
+                    from bpp.models import Autor_Dyscyplina, Autor_Jednostka
 
+                    # Pobierz najnowszy wpis Autor_Dyscyplina dla tego autora i dyscypliny
+                    autor_dyscyplina = (
+                        Autor_Dyscyplina.objects.filter(
+                            autor=autor, dyscyplina_naukowa=dyscyplina
+                        )
+                        .order_by("-rok")
+                        .first()
+                    )
+
+                    # Sprawdź czy rodzaj autora jest na liście do przetworzenia
+                    if (
+                        not autor_dyscyplina
+                        or autor_dyscyplina.rodzaj_autora not in rodzaje_autora
+                    ):
+                        skipped += 1
+                        self.stdout.write(
+                            self.style.WARNING(
+                                f"Pominięto {autor} - {dyscyplina.nazwa}: rodzaj_autora = "
+                                f"'{autor_dyscyplina.rodzaj_autora if autor_dyscyplina else 'brak danych'}'"
+                            )
+                        )
+                        continue
+
+                    # Pobierz główną jednostkę autora
                     jednostka = None
                     aj = Autor_Jednostka.objects.filter(
                         autor=autor, podstawowe_miejsce_pracy=True
@@ -150,26 +206,30 @@ class Command(BaseCommand):
                         jednostka = aj.jednostka
 
                     # Oblicz metryki algorytmem plecakowym
-                    punkty_nazbierane, prace_nazbierane_ids, slot_nazbierany = (
-                        autor.zbieraj_sloty(
-                            zadany_slot=slot_maksymalny,
-                            rok_min=rok_min,
-                            rok_max=rok_max,
-                            minimalny_pk=minimalny_pk,
-                            dyscyplina_id=dyscyplina.pk,
-                        )
+                    (
+                        punkty_nazbierane,
+                        prace_nazbierane_ids,
+                        slot_nazbierany,
+                    ) = autor.zbieraj_sloty(
+                        zadany_slot=slot_maksymalny,
+                        rok_min=rok_min,
+                        rok_max=rok_max,
+                        minimalny_pk=minimalny_pk,
+                        dyscyplina_id=dyscyplina.pk,
                     )
 
                     # Oblicz metryki dla wszystkich prac
-                    punkty_wszystkie, prace_wszystkie_ids, slot_wszystkie = (
-                        autor.zbieraj_sloty(
-                            zadany_slot=slot_maksymalny,
-                            rok_min=rok_min,
-                            rok_max=rok_max,
-                            minimalny_pk=minimalny_pk,
-                            dyscyplina_id=dyscyplina.pk,
-                            akcja="wszystko",
-                        )
+                    (
+                        punkty_wszystkie,
+                        prace_wszystkie_ids,
+                        slot_wszystkie,
+                    ) = autor.zbieraj_sloty(
+                        zadany_slot=slot_maksymalny,
+                        rok_min=rok_min,
+                        rok_max=rok_max,
+                        minimalny_pk=minimalny_pk,
+                        dyscyplina_id=dyscyplina.pk,
+                        akcja="wszystko",
                     )
 
                     # Utwórz lub zaktualizuj metrykę

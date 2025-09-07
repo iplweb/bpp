@@ -140,6 +140,12 @@ The project uses multiple Django applications in `src/`:
 
 **IMPORTANT** if you change any SCSS files, remember to run "grunt build" after.
 
+**CRITICAL: NEVER override Foundation's grid classes in SCSS!**
+- DO NOT override grid classes like `medium-4`, `medium-6`, `large-12`, `large-10`, etc. in SCSS files
+- If you need different column widths, change the classes in the HTML template instead
+- Foundation's grid system classes should remain untouched to maintain framework integrity
+- Example: To make a column wider, change `<div class="medium-4 columns">` to `<div class="medium-12 columns">` in the HTML, don't override `.medium-4` in SCSS
+
 ### Settings Structure
 - `src/django_bpp/settings/base.py` - Base settings
 - `src/django_bpp/settings/local.py` - Development settings

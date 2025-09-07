@@ -44,9 +44,12 @@
                             <strong>Generowanie metryk w trakcie...</strong>
                             Przetworzono: <span id="liczba-przetworzonych">{{ status_generowania.liczba_przetworzonych }}</span> autorów
                         </p>
-                        <div class="progress" role="progressbar" tabindex="0" aria-valuenow="20" aria-valuemin="0" aria-valuemax="100">
-                            <div class="progress-meter" style="width: 20%" id="progress-bar"></div>
+                        <div class="progress" role="progressbar" tabindex="0" aria-valuenow="{{ progress_procent|floatformat:0 }}" aria-valuemin="0" aria-valuemax="100">
+                            <div class="progress-meter" style="width: {{ progress_procent|floatformat:0 }}%" id="progress-bar">
+                                <p class="progress-meter-text">{{ progress_procent|floatformat:0 }}%</p>
+                            </div>
                         </div>
+                        <p><small>{{ status_generowania.liczba_przetworzonych }} z {{ status_generowania.liczba_do_przetworzenia }} autorów</small></p>
                     {% elif status_generowania.data_zakonczenia %}
                         <p>
                             <span class="fi-check"></span>
@@ -112,7 +115,7 @@
                     </label>
                 </div>
 
-                {% if uzywa_wydzialow %}
+                {% if uzywa_wydzialow and not tylko_jeden_wydzial %}
                 <div class="medium-3 columns">
                     <label>Wydział
                         <select name="wydzial" class="auto-submit-field">
@@ -140,6 +143,7 @@
                     </label>
                 </div>
 
+                {% if not tylko_jedna_dyscyplina %}
                 <div class="medium-3 columns">
                     <label>Dyscyplina
                         <select name="dyscyplina" class="auto-submit-field">
@@ -152,6 +156,7 @@
                         </select>
                     </label>
                 </div>
+                {% endif %}
 
                 <div class="medium-12 columns">
                     <button type="submit" class="button">
@@ -162,6 +167,9 @@
                     </a>
                     <a href="{% url 'ewaluacja_metryki:statystyki' %}" class="button success float-right">
                         <span class="fi-graph-bar"></span> Statystyki
+                    </a>
+                    <a href="{% url 'ewaluacja_metryki:export_lista_xlsx' %}?{{ request.GET.urlencode }}" class="button warning float-right" style="margin-right: 0.5rem;">
+                        <span class="fi-download"></span> Pobierz XLSX
                     </a>
                 </div>
             </form>
@@ -200,7 +208,9 @@
                             Autor <span class="fi-arrow-{% if request.GET.sort == 'autor__nazwisko' %}up{% elif request.GET.sort == '-autor__nazwisko' %}down{% else %}down{% endif %}"></span>
                         </a>
                     </th>
+                    {% if not tylko_jedna_dyscyplina %}
                     <th>Dyscyplina</th>
+                    {% endif %}
                     <th>Jednostka</th>
                     <th class="text-center">
                         <a href="{% if request.GET.sort == '-srednia_za_slot_nazbierana' %}{% update_query_param request 'sort' 'srednia_za_slot_nazbierana' %}{% else %}{% update_query_param request 'sort' '-srednia_za_slot_nazbierana' %}{% endif %}">
@@ -225,7 +235,9 @@
                             </a>
                         </strong>
                     </td>
+                    {% if not tylko_jedna_dyscyplina %}
                     <td>{{ metryka.dyscyplina_naukowa.nazwa }}</td>
+                    {% endif %}
                     <td>
                         {% if metryka.jednostka %}
                             {{ metryka.jednostka.skrot|default:metryka.jednostka.nazwa }}
@@ -261,7 +273,7 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="6" class="text-center">
+                    <td colspan="{% if tylko_jedna_dyscyplina %}5{% else %}6{% endif %}" class="text-center">
                         <em>Brak danych do wyświetlenia. Uruchom komendę 'python manage.py oblicz_metryki' aby wygenerować dane.</em>
                     </td>
                 </tr>
@@ -466,6 +478,34 @@
             </div>
         </div>
 
+        <div class="row">
+            <div class="medium-12 columns">
+                <fieldset style="padding-left:20px;padding-right:20px;padding-bottom:20px;">
+                    <legend>Rodzaje autorów do przetworzenia:</legend>
+                    <div class="row">
+                        <div class="medium-10 columns">
+                            <label>
+                                <input type="checkbox" name="rodzaj_autora" value="N" checked>
+                                Pracownicy (N) - zaliczani do liczby N
+                            </label>
+                        </div>
+                        <div class="medium-12 columns">
+                            <label>
+                                <input type="checkbox" name="rodzaj_autora" value="D">
+                                Doktoranci (D)
+                            </label>
+                        </div>
+                        <div class="medium-12 columns">
+                            <label>
+                                <input type="checkbox" name="rodzaj_autora" value="Z">
+                                Inni zatrudnieni (Z)
+                            </label>
+                        </div>
+                    </div>
+                </fieldset>
+            </div>
+        </div>
+
         <div class="callout warning">
             <p>
                 <span class="fi-alert"></span>
@@ -502,20 +542,37 @@
                 } else {
                     // Aktualizuj licznik
                     document.getElementById('liczba-przetworzonych').textContent = data.liczba_przetworzonych;
-                    // Aktualizuj progress bar (przykładowy procent)
-                    var procent = Math.min(data.procent || 20, 100);
-                    document.getElementById('progress-bar').style.width = procent + '%';
+
+                    // Aktualizuj progress bar
+                    var procent = data.procent !== undefined ? data.procent : 0;
+                    procent = Math.min(Math.max(procent, 0), 100); // Clamp between 0 and 100
+
+                    var progressBar = document.getElementById('progress-bar');
+                    progressBar.style.width = procent + '%';
+
+                    // Aktualizuj tekst w progress bar
+                    var progressText = progressBar.querySelector('.progress-meter-text');
+                    if (progressText) {
+                        progressText.textContent = Math.round(procent) + '%';
+                    }
+
+                    // Aktualizuj aria-valuenow
+                    progressBar.parentElement.setAttribute('aria-valuenow', Math.round(procent));
+
+                    // Aktualizuj dodatkowe informacje
+                    console.log('Progress update:', data.liczba_przetworzonych + ' / ' + data.liczba_do_przetworzenia + ' (' + procent + '%)');
                 }
             })
             .catch(error => {
                 console.error('Błąd pobierania statusu:', error);
             });
-    }, 5000); // Co 5 sekund
+    }, 2000); // Co 2 sekundy dla bardziej płynnej aktualizacji
 
-    // Zatrzymaj odświeżanie po 10 minutach
+    // Zatrzymaj odświeżanie po 15 minutach (na wypadek bardzo długiego przetwarzania)
     setTimeout(function() {
         clearInterval(statusInterval);
-    }, 600000);
+        console.log('Stopped automatic progress updates after 15 minutes');
+    }, 900000);
 {% endif %}
 
 // Inicjalizacja Foundation

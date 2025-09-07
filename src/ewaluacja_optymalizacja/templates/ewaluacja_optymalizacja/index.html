@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}Optymalizacja ewaluacji{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="/">Strona główna</a></li>
+    <li class="current">Optymalizacja ewaluacji</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="columns">
+        <div class="text-center" style="padding: 60px 0;">
+            <h1 style="font-size: 3rem; margin-bottom: 30px;">
+                <span class="fi-target-two" style="font-size: 4rem; display: block; margin-bottom: 20px;"></span>
+                Optymalizacja ewaluacji
+            </h1>
+
+            <div class="callout secondary" style="max-width: 600px; margin: 40px auto;">
+                <h2 style="font-size: 2rem; margin-bottom: 20px;">
+                    <span class="fi-clock"></span> Już wkrótce
+                </h2>
+                <p style="font-size: 1.2rem; line-height: 1.6;">
+                    Moduł optymalizacji ewaluacji jest obecnie w przygotowaniu.
+                </p>
+                <p style="font-size: 1.1rem; line-height: 1.6; margin-top: 20px;">
+                    Wkrótce udostępnimy narzędzia do optymalizacji doboru publikacji
+                    oraz analizy różnych scenariuszy ewaluacyjnych.
+                </p>
+            </div>
+
+            <div style="margin-top: 40px;">
+                <a href="/" class="button">
+                    <span class="fi-arrow-left"></span> Powrót do strony głównej
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

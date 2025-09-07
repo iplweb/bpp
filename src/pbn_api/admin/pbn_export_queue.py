@@ -60,7 +60,7 @@ class PBN_Export_QueueAdmin(admin.ModelAdmin):
 
     def _resend_single_item(self, obj: PBN_Export_Queue, user, message_suffix=""):
         """Common logic for resending a single PBN export queue item"""
-        obj.prepare_for_resend()
+        obj.prepare_for_resend(user=user, message_suffix=message_suffix)
         obj.sprobuj_wyslac_do_pbn()
 
     def resend_to_pbn_action(self, request, queryset):

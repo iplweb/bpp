@@ -418,9 +418,11 @@ INSTALLED_APPS = [
     "api_v1",
     "adminsortable2",
     "import_export",
+    "ewaluacja_common",
     "ewaluacja2021",
     "ewaluacja_liczba_n",
     "ewaluacja_metryki",
+    "ewaluacja_optymalizacja",
     # Zostawiamy - bezwarunkowo
     "test_bpp",
     #

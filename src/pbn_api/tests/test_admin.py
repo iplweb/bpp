@@ -114,9 +114,7 @@ def test_pbn_export_queue_admin_resend_single_item(wydawnictwo_ciagle, admin_use
 
     admin_instance = PBN_Export_QueueAdmin(PBN_Export_Queue, AdminSite())
 
-    with patch(
-        "pbn_api.admin.pbn_export_queue.task_sprobuj_wyslac_do_pbn.delay"
-    ) as mock_task:
+    with patch("pbn_api.tasks.task_sprobuj_wyslac_do_pbn.delay") as mock_task:
         admin_instance._resend_single_item(queue_item, admin_user, " (test)")
 
         # Check that status fields were reset
@@ -162,9 +160,7 @@ def test_pbn_export_queue_admin_resend_action(wydawnictwo_ciagle, admin_user, rf
     admin_instance = PBN_Export_QueueAdmin(PBN_Export_Queue, AdminSite())
 
     with middleware(request):
-        with patch(
-            "pbn_api.admin.pbn_export_queue.task_sprobuj_wyslac_do_pbn.delay"
-        ) as mock_task:
+        with patch("pbn_api.tasks.task_sprobuj_wyslac_do_pbn.delay") as mock_task:
             admin_instance.resend_to_pbn_action(request, queryset)
 
             # Check that both items were processed
@@ -209,9 +205,7 @@ def test_pbn_export_queue_admin_response_change_resend(
     admin_instance = PBN_Export_QueueAdmin(PBN_Export_Queue, AdminSite())
 
     with middleware(request):
-        with patch(
-            "pbn_api.admin.pbn_export_queue.task_sprobuj_wyslac_do_pbn.delay"
-        ) as mock_task:
+        with patch("pbn_api.tasks.task_sprobuj_wyslac_do_pbn.delay") as mock_task:
             response = admin_instance.response_change(request, queue_item)
 
             # Check that we get a redirect response
@@ -247,9 +241,7 @@ def test_pbn_export_queue_admin_response_change_normal(
     admin_instance = PBN_Export_QueueAdmin(PBN_Export_Queue, AdminSite())
 
     with middleware(request):
-        with patch(
-            "pbn_api.admin.pbn_export_queue.task_sprobuj_wyslac_do_pbn.delay"
-        ) as mock_task:
+        with patch("pbn_api.tasks.task_sprobuj_wyslac_do_pbn.delay") as mock_task:
             with patch.object(
                 admin_instance.__class__.__bases__[0], "response_change"
             ) as mock_super:

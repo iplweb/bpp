@@ -809,7 +809,7 @@ class PBNClient(
         return objectId, ret, js, bez_oswiadczen
 
     def download_publication(self, doi=None, objectId=None):
-        from .integrator import zapisz_mongodb
+        from pbn_integrator.utils import zapisz_mongodb
         from .models import Publication
 
         assert doi or objectId
@@ -824,7 +824,7 @@ class PBNClient(
     @transaction.atomic
     def download_statements_of_publication(self, pub):
         from pbn_api.models import OswiadczenieInstytucji
-        from .integrator import pobierz_mongodb, zapisz_oswiadczenie_instytucji
+        from pbn_integrator.utils import pobierz_mongodb, zapisz_oswiadczenie_instytucji
 
         OswiadczenieInstytucji.objects.filter(publicationId_id=pub.pk).delete()
 

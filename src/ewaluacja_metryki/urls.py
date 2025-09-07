@@ -23,4 +23,9 @@ urlpatterns = [
         views.ExportStatystykiXLSX.as_view(),
         name="export_xlsx",
     ),
+    path(
+        "export-lista-xlsx/",
+        views.ExportListaXLSX.as_view(),
+        name="export_lista_xlsx",
+    ),
 ]
