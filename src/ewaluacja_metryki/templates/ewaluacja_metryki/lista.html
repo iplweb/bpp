@@ -21,17 +21,6 @@
         <!-- Disclaimer komunikat -->
         {% include "ewaluacja_metryki/disclaimer.html" %}
 
-        <!-- Komunikaty Django Messages -->
-        {% if messages %}
-            {% for message in messages %}
-                <div class="callout {% if message.tags == 'error' %}alert{% elif message.tags == 'success' %}success{% elif message.tags == 'warning' %}warning{% else %}primary{% endif %}" data-closable>
-                    {{ message }}
-                    <button class="close-button" aria-label="Dismiss alert" type="button" data-close>
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-            {% endfor %}
-        {% endif %}
 
         <!-- Status generowania -->
         {% if status_generowania %}

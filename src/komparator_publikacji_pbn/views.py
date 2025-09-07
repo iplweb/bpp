@@ -12,6 +12,7 @@ from import_common.normalization import normalize_isbn, normalize_issn
 from django.contrib.admin.views.decorators import staff_member_required
 
 from django.utils.decorators import method_decorator
+from django.utils.html import strip_tags
 
 from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
 
@@ -173,7 +174,9 @@ class PublicationComparisonView(ListView):
         if "title" in enabled_fields:
             bpp_title = bpp_pub.tytul_oryginalny or ""
             pbn_title = pbn_pub.title or pbn_pub.value_or_none("object", "title") or ""
-            if bpp_title.strip() != pbn_title.strip():
+            # Strip HTML tags from BPP title for comparison (PBN titles don't have HTML tags)
+            bpp_title_clean = strip_tags(bpp_title)
+            if bpp_title_clean.strip() != pbn_title.strip():
                 differences.append(
                     {
                         "field": "Tytuł",

@@ -198,12 +198,7 @@ class Command(BaseCommand):
                         continue
 
                     # Pobierz główną jednostkę autora
-                    jednostka = None
-                    aj = Autor_Jednostka.objects.filter(
-                        autor=autor, podstawowe_miejsce_pracy=True
-                    ).first()
-                    if aj:
-                        jednostka = aj.jednostka
+                    jednostka = autor.aktualna_jednostka
 
                     # Oblicz metryki algorytmem plecakowym
                     (

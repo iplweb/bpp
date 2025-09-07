@@ -227,9 +227,21 @@ def importuj_streszczenia(pbn_json, ret, klasa_bazowa=Wydawnictwo_Ciagle_Streszc
     abstracts = pbn_json.pop("abstracts", {})
 
     for language, value in abstracts.items():
+        try:
+            jezyk = Jezyk.objects.get(pbn_uid_id=language)
+        except Jezyk.DoesNotExist:
+            try:
+                jezyk = Jezyk.objects.get(skrot__startswith=language)
+            except Jezyk.DoesNotExist:
+                print(
+                    f"NIE ZAIMPORTUJE STRESZCZENIA ZA {ret=} poniewaz jego jezyk to {language=} a nie "
+                    f"mam go w tabeli Jezyki"
+                )
+                continue
+
         klasa_bazowa.objects.create(
             rekord=ret,
-            jezyk_streszczenia=Jezyk.objects.get(pbn_uid_id=language),
+            jezyk_streszczenia=jezyk,
             streszczenie=value,
         )
 
@@ -257,6 +269,7 @@ def pbn_keywords_to_slowa_kluczowe(keywords, lang="pol"):
 
 @transaction.atomic
 def importuj_artykul(mongoId, default_jednostka: Jednostka, client: PBNClient):
+    # print(f"importing artykul {mongoId}")
     try:
         pbn_publication = Publication.objects.get(pk=mongoId)
     except Publication.DoesNotExist:
@@ -285,11 +298,24 @@ def importuj_artykul(mongoId, default_jednostka: Jednostka, client: PBNClient):
         dopisz_jedno_zrodlo(pbn_journal)
         zrodlo = Zrodlo.objects.get(pbn_uid_id=pbn_zrodlo_id)
 
+    mainLanguage = pbn_json.pop("mainLanguage")
+    try:
+        jezyk = Jezyk.objects.get(pbn_uid_id=mainLanguage)
+    except Jezyk.DoesNotExist:
+        try:
+            jezyk = Jezyk.objects.get(skrot__startswith=mainLanguage)
+        except Jezyk.DoesNotExist:
+            print(f" &&& JEZYK NIE ISTNIEJE {mainLanguage=}")
+            print(
+                f" *** PRACA {pbn_json.get('title')} zostanie utworzona z jezykiem PIERWSZYM NA LISCIE"
+            )
+            jezyk = Jezyk.objects.all().first()
+
     ret = Wydawnictwo_Ciagle(
         tytul_oryginalny=pbn_json.pop("title"),
         rok=pbn_json.pop("year"),
         public_www=pbn_json.pop("publicUri", None),
-        jezyk=Jezyk.objects.get(pbn_uid_id=pbn_json.pop("mainLanguage")),
+        jezyk=jezyk,
         strony=pbn_json.pop("pagesFromTo", None),
         tom=pbn_json.pop("volume", None),
         nr_zeszytu=pbn_json.pop("issue", None),
@@ -315,9 +341,7 @@ def importuj_artykul(mongoId, default_jednostka: Jednostka, client: PBNClient):
         )
 
     ret.save()
-
     utworz_autorow(ret, pbn_json, client, default_jednostka)
-
     pbn_json.pop("type")
 
     journalIssue = pbn_json.pop("journalIssue", {})
@@ -544,6 +568,7 @@ def importuj_rozdzial(
     default_jednostka: Jednostka,
     client: PBNClient,
 ):
+    # print(f"importuj rozdzial {mongoId=}")
     try:
         pbn_publication = Publication.objects.get(pk=mongoId)
     except Publication.DoesNotExist:
@@ -869,6 +894,7 @@ def get_or_download_publication(mongoId, client):
 
 @transaction.atomic
 def importuj_ksiazke(mongoId, default_jednostka: Jednostka, client: PBNClient):
+    # print(f"importuj ksiazke {mongoId=}")
     pbn_publication = get_or_download_publication(mongoId, client)
 
     ret = pbn_publication.rekord_w_bpp
@@ -927,7 +953,9 @@ def importuj_ksiazke(mongoId, default_jednostka: Jednostka, client: PBNClient):
 def importuj_publikacje_po_pbn_uid_id(
     pbn_uid_id, client: PBNClient, default_jednostka: Jednostka
 ):
+    # print(f"importuj publikacje {pbn_uid_id=}")
     pbn_publication = get_or_download_publication(pbn_uid_id, client)
+
     assert pbn_publication is not None
 
     cv = pbn_publication.current_version

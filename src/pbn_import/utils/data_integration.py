@@ -132,7 +132,8 @@ class DataIntegrator(ImportStepBase):
             with OutputCapture(tee_mode=self.tee_mode) as capture:
                 # Run integration with multiprocessing disabled as requested
                 integruj_publikacje_instytucji(
-                    disable_multiprocessing=True, callback=subtask_callback
+                    callback=subtask_callback,
+                    use_threads=True,
                 )
 
             # Store captured output

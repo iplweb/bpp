@@ -10,10 +10,10 @@ pytestmark = pytest.mark.uruchom_tylko_bez_microsoft_auth
 def wyslij(wd_app, plik):
     assert Import_Dyscyplin.objects.all().count() == 0
     c = wd_app.get(reverse("import_dyscyplin:create")).maybe_follow()
-    c.forms[0]["plik"].value = [
+    c.forms[1]["plik"].value = [
         plik,
     ]
-    res = c.forms[0].submit().maybe_follow()
+    res = c.forms[1].submit().maybe_follow()
     assert Import_Dyscyplin.objects.all().count() == 1
 
     return res

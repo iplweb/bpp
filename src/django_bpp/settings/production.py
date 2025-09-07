@@ -41,6 +41,10 @@ DATA_UPLOAD_MAX_NUMBER_FIELDS = 50000
 
 CACHEOPS = {
     "bpp.bppmultiseekvisibility": {"ops": ("get", "fetch")},
+    "pbn_api.scientist": {"ops": ("get", "fetch")},
+    "pbn_api.journal": {"ops": ("get", "fetch")},
+    "pbn_api.publisher": {"ops": ("get", "fetch")},
+    "pbn_api.publication": {"ops": ("get", "fetch")},
     "dbtemplates.template": {"ops": ("fetch", "get")},
     "bpp.szablondlaopisubibliograficznego": {"ops": ("fetch", "get")},
     "miniblog.article": {"ops": ("get", "fetch")},

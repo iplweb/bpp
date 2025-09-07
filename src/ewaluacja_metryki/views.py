@@ -118,16 +118,27 @@ class MetrykiListView(EwaluacjaRequiredMixin, ListView):
         uczelnia = Uczelnia.objects.get_default()
         context["uzywa_wydzialow"] = uczelnia.uzywaj_wydzialow if uczelnia else False
 
-        # Listy do filtrów
+        # Listy do filtrów - jednostki na podstawie aktualnych jednostek autorów z metrykami
+        from bpp.models import Autor
+
         context["jednostki"] = (
-            Jednostka.objects.filter(metryka_autora__isnull=False)
+            Jednostka.objects.filter(
+                pk__in=Autor.objects.filter(metryki__isnull=False)
+                .values_list("aktualna_jednostka", flat=True)
+                .distinct()
+            )
             .distinct()
             .order_by("nazwa")
         )
 
         if context["uzywa_wydzialow"]:
+            # Buduj listę wydziałów na podstawie aktualnych jednostek autorów z metrykami
             context["wydzialy"] = (
-                Wydzial.objects.filter(jednostka__metryka_autora__isnull=False)
+                Wydzial.objects.filter(
+                    jednostka__in=Autor.objects.filter(metryki__isnull=False)
+                    .values_list("aktualna_jednostka", flat=True)
+                    .distinct()
+                )
                 .distinct()
                 .order_by("nazwa")
             )
