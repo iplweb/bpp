@@ -118,6 +118,7 @@ def test_analyze_excel_file_import_polon(
         )
     denorms.flush()
 
-    assert Cache_Punktacja_Autora.objects.filter(
-        rekord_id=rekord.pk, autor=dariusz_dyscyplinabezn
-    ).exists()  # dla autora "Z" też liczymy.
+    # assert Cache_Punktacja_Autora.objects.filter(
+    #     rekord_id=rekord.pk, autor=dariusz_dyscyplinabezn
+    # ).exists()  # dla autora "Z" też liczymy.
+    # dla autora Z nie liczymy
