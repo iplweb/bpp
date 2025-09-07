@@ -372,6 +372,7 @@ class IPunktacjaCacher:
                 not wa.afiliuje
                 or not wa.jednostka.skupia_pracownikow
                 or not wa.przypieta
+                or not wa.rodzaj_autora_uwzgledniany_w_kalkulacjach_slotow()
             ):
                 # Jeżeli autor NIE afiliuje lub afiliuje, ale jednostka nie skupia
                 # pracowników (czyli jest OBCA, czyli realnie wpis błędny), lub
