@@ -1,0 +1,112 @@
+// Search shortcut banner styles
+@use "sass:color";
+
+.search-shortcut-banner {
+    // Light background with primary color border for a cleaner, lighter look
+    background: color.scale($primary-color, $alpha: -95%); // Very light tint of primary color
+    border: 2px solid $primary-color;
+    border-radius: 8px; // Match site's common border radius
+    color: $black; // Dark text for better readability on light background
+    padding: 12px 0;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px color.scale($primary-color, $alpha: -85%);
+    animation: slideDown 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+    z-index: 0; // Set to 0 to ensure no interference with any elements
+}
+
+@keyframes slideDown {
+    from {
+        transform: translateY(-100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateY(-100%);
+        opacity: 0;
+    }
+}
+
+.search-shortcut-banner.closing {
+    animation: slideUp 0.3s ease-out forwards;
+}
+
+.banner-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 0.95rem;
+}
+
+.banner-icon {
+    font-size: 1.3rem;
+    color: $primary-color;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.1);
+    }
+}
+
+.banner-text kbd {
+    background-color: $primary-color;
+    color: white;
+    border: 1px solid color.scale($primary-color, $lightness: -10%);
+    border-radius: 4px;
+    padding: 3px 8px;
+    margin: 0 4px;
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    font-size: 1.1rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    display: inline-block;
+    vertical-align: middle;
+}
+
+.banner-close {
+    background: transparent;
+    border: 1px solid $primary-color;
+    color: $primary-color;
+    cursor: pointer;
+    padding: 6px 10px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    font-size: 1.2rem;
+    line-height: 1;
+
+    &:hover {
+        background: $primary-color;
+        color: white;
+        transform: scale(1.1);
+    }
+}
+
+// Mobile adjustments
+@media (max-width: 640px) {
+    .search-shortcut-banner {
+        padding: 10px 0;
+    }
+
+    .banner-content {
+        font-size: 0.85rem;
+    }
+
+    .banner-icon {
+        display: none;
+    }
+}

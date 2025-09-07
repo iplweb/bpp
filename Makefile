@@ -156,7 +156,7 @@ upgrade-version:
 	-towncrier build --yes
 	-git commit -F /tmp/towncrier.txt
 	@afplay /System/Library/Sounds/Funk.aiff
-	git flow release finish "$(NEW_VERSION)" -p -m "Nowa wersja: $(NEW_VERSION)"
+	GIT_MERGE_AUTOEDIT=no git flow release finish "$(NEW_VERSION)" -p -m "Release $(NEW_VERSION)"
 
 poetry-lock:
 	poetry lock
@@ -197,7 +197,7 @@ loc: clean
 	pygount -N ... -F "...,staticroot,migrations,fixtures" src --format=summary
 
 
-DOCKER_VERSION="202508.1219"
+DOCKER_VERSION="202509.1220"
 
 DOCKER_BUILD=build --platform linux/amd64,linux/arm64 --push
 

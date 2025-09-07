@@ -1,10 +1,7 @@
 from model_bakery import baker
 
-from ewaluacja2021.core.util import get_lista_prac
-from ewaluacja_liczba_n.models import (
-    IloscUdzialowDlaAutora_2022_2025,
-    LiczbaNDlaUczelni_2022_2025,
-)
+from ewaluacja_common.utils import get_lista_prac
+from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaRok, LiczbaNDlaUczelni
 
 from bpp.models import Autor_Dyscyplina, Wydawnictwo_Ciagle
 
@@ -16,20 +13,24 @@ def test_get_lista_prac_zakres_lat(
 
     # Zrob dane testowe od 2015 do 2025
 
-    LiczbaNDlaUczelni_2022_2025.objects.create(
+    LiczbaNDlaUczelni.objects.create(
         dyscyplina_naukowa=dyscyplina1, uczelnia=uczelnia, liczba_n=100
-    )
-    IloscUdzialowDlaAutora_2022_2025.objects.create(
-        autor=autor_jan_nowak,
-        ilosc_udzialow=10,
-        ilosc_udzialow_monografie=10,
-        dyscyplina_naukowa=dyscyplina1,
     )
 
     for ROK in range(2015, 2026):
         Autor_Dyscyplina.objects.create(
             autor=autor_jan_nowak, rok=ROK, dyscyplina_naukowa=dyscyplina1
         )
+
+        # Create IloscUdzialowDlaAutoraZaRok only for years 2022-2025
+        if 2022 <= ROK <= 2025:
+            IloscUdzialowDlaAutoraZaRok.objects.create(
+                autor=autor_jan_nowak,
+                rok=ROK,
+                ilosc_udzialow=1,
+                ilosc_udzialow_monografie=1,
+                dyscyplina_naukowa=dyscyplina1,
+            )
 
         wc: Wydawnictwo_Ciagle = baker.make(
             Wydawnictwo_Ciagle,

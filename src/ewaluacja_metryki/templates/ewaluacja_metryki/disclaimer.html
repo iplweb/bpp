@@ -1,0 +1,132 @@
+<!-- Disclaimer komunikat o charakterze prezentowanych danych -->
+<div id="ewaluacja-disclaimer" class="callout warning" style="position: relative; display: none;">
+    <button type="button" class="close-button" aria-label="Zamknij"
+            style="position: absolute; top: 0.5rem; right: 0.5rem; font-size: 1.5rem;"
+            onclick="closeDisclaimer()">
+        <span aria-hidden="true">&times;</span>
+    </button>
+
+    <h5><span class="fi-info"></span> Ważna informacja o charakterze prezentowanych danych</h5>
+    <p>
+        Prezentowane na tej stronie statystyki i metryki ewaluacyjne stanowią wyłącznie <strong>ogólne tendencje</strong>
+        i wskaźniki orientacyjne oparte na aktualnie dostępnych danych bibliograficznych. Przedstawione wartości punktowe,
+        współczynniki PKDaut/slot oraz inne wskaźniki mają charakter <strong>poglądowy i informacyjny</strong>,
+        służąc jedynie do wstępnej oceny dorobku publikacyjnego.
+    </p>
+    <p>
+        Należy podkreślić, że prezentowane dane <strong>nie mogą stanowić podstawy do jakichkolwiek roszczeń</strong>
+        w przypadku, gdy w ostatecznej ewaluacji ministerialnej dana publikacja nie zostanie uwzględniona,
+        otrzyma inną punktację lub zostanie zakwalifikowana w odmienny sposób. Ostateczna ocena publikacji
+        i przyznanie punktów ewaluacyjnych następuje zgodnie z obowiązującymi przepisami prawa, rozporządzeniami
+        ministerialnymi oraz wytycznymi Komisji Ewaluacji Nauki.
+    </p>
+    <p>
+        System prezentuje dane w oparciu o bieżący stan bazy danych, który może ulegać zmianom.
+        <strong>Rzeczywiste wyniki ewaluacji mogą różnić się od prezentowanych statystyk</strong>
+        ze względu na stosowanie dodatkowych kryteriów oceny, weryfikację danych, zmiany przepisów
+        lub inne czynniki uwzględniane w procesie ewaluacji ministerialnej.
+    </p>
+</div>
+
+<script>
+(function() {
+    // Funkcje pomocnicze do obsługi cookies
+    function setCookie(name, value, days) {
+        var expires = "";
+        if (days) {
+            var date = new Date();
+            date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+            expires = "; expires=" + date.toUTCString();
+        }
+        document.cookie = name + "=" + (value || "") + expires + "; path=/; SameSite=Lax";
+    }
+
+    function getCookie(name) {
+        var nameEQ = name + "=";
+        var ca = document.cookie.split(';');
+        for (var i = 0; i < ca.length; i++) {
+            var c = ca[i];
+            while (c.charAt(0) == ' ') c = c.substring(1, c.length);
+            if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length, c.length);
+        }
+        return null;
+    }
+
+    // Funkcja zamykająca disclaimer
+    window.closeDisclaimer = function() {
+        var disclaimer = document.getElementById('ewaluacja-disclaimer');
+        if (disclaimer) {
+            // Animacja zanikania
+            disclaimer.style.transition = 'opacity 0.3s ease-out';
+            disclaimer.style.opacity = '0';
+
+            setTimeout(function() {
+                disclaimer.style.display = 'none';
+                // Zapisz informację o zamknięciu na 14 dni
+                setCookie('ewaluacja_disclaimer_closed', 'true', 14);
+            }, 300);
+        }
+    };
+
+    // Sprawdź przy załadowaniu strony
+    document.addEventListener('DOMContentLoaded', function() {
+        var disclaimer = document.getElementById('ewaluacja-disclaimer');
+        if (disclaimer) {
+            var closed = getCookie('ewaluacja_disclaimer_closed');
+
+            if (!closed || closed !== 'true') {
+                // Pokaż disclaimer jeśli nie był zamknięty lub minął czas
+                disclaimer.style.display = 'block';
+                // Animacja pojawiania
+                setTimeout(function() {
+                    disclaimer.style.opacity = '1';
+                    disclaimer.style.transition = 'opacity 0.3s ease-in';
+                }, 10);
+            }
+        }
+    });
+})();
+</script>
+
+<style>
+#ewaluacja-disclaimer {
+    opacity: 1;
+    margin-bottom: 1rem;
+}
+
+#ewaluacja-disclaimer .close-button {
+    background: none;
+    border: none;
+    color: #333;
+    cursor: pointer;
+    padding: 0;
+    width: 2rem;
+    height: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s ease;
+}
+
+#ewaluacja-disclaimer .close-button:hover {
+    transform: scale(1.1);
+    color: #000;
+}
+
+#ewaluacja-disclaimer .close-button:focus {
+    outline: 2px solid #0a4b78;
+    outline-offset: 2px;
+}
+
+/* Dostosowanie do małych ekranów */
+@media (max-width: 640px) {
+    #ewaluacja-disclaimer .close-button {
+        top: 0.25rem;
+        right: 0.25rem;
+    }
+
+    #ewaluacja-disclaimer {
+        padding-right: 2.5rem;
+    }
+}
+</style>

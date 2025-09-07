@@ -62,7 +62,7 @@ def sprobuj_wyslac_do_pbn(
             if wn.isbn:
                 ni = normalize_isbn(wn.isbn)
                 if ni:
-                    from pbn_api.integrator import _pobierz_prace_po_elemencie
+                    from pbn_integrator.utils import _pobierz_prace_po_elemencie
 
                     res = None
                     try:
@@ -88,7 +88,7 @@ def sprobuj_wyslac_do_pbn(
             elif wn.doi:
                 nd = normalize_isbn(wn.doi)
                 if nd:
-                    from pbn_api.integrator import _pobierz_prace_po_elemencie
+                    from pbn_integrator.utils import _pobierz_prace_po_elemencie
 
                     res = None
                     try:

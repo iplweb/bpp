@@ -3,10 +3,7 @@ from django import forms
 from djangoql.admin import DjangoQLSearchMixin
 
 from dynamic_columns.mixins import DynamicColumnsMixin
-from ewaluacja_liczba_n.models import (
-    IloscUdzialowDlaAutora_2022_2025,
-    IloscUdzialowDlaAutoraZaRok,
-)
+from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaRok
 from pbn_api.models import Scientist
 from ..models import (  # Publikacja_Habilitacyjna
     Autor,
@@ -33,22 +30,6 @@ from django.contrib import admin
 # Proste tabele
 
 # Autor_Dyscyplina
-
-
-class IloscUdzialowDlaAutora_2022_2025_Inline(admin.TabularInline):
-    model = IloscUdzialowDlaAutora_2022_2025
-    extra = 1
-    fields = ["dyscyplina_naukowa", "ilosc_udzialow", "ilosc_udzialow_monografie"]
-    readonly_fields = fields
-
-    def has_delete_permission(self, request, obj=...):
-        return False
-
-    def has_add_permission(self, request, obj):
-        return False
-
-    def has_change_permission(self, request, obj=...):
-        return False
 
 
 class IloscUdzialowDlaAutoraZaRokInline(admin.TabularInline):
@@ -215,7 +196,6 @@ class AutorAdmin(
         Autor_JednostkaInline,
         Autor_DyscyplinaInline,
         Autor_AbsencjaInline,
-        IloscUdzialowDlaAutora_2022_2025_Inline,
         IloscUdzialowDlaAutoraZaRokInline,
     ]
     list_filter = [

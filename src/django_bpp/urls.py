@@ -33,6 +33,7 @@ admin.autodiscover()
 
 urlpatterns = (
     [
+        path("setup/", include("bpp_setup_wizard.urls")),  # Setup wizard URLs
         url(r"^favicon\.ico$", cache_page(60 * 60)(favicon)),
         path("sentry_test/", login_required(sentry_teset_view)),
         path("tinymce/", include("tinymce.urls")),
@@ -57,10 +58,29 @@ urlpatterns = (
             r"^integrator2/",
             include(("integrator2.urls", "integrator2"), namespace="integrator2"),
         ),
+        # Disabled ewaluacja2021 (contains 3N reports)
+        # path(
+        #     "ewaluacja2021/",
+        #     include(
+        #         "ewaluacja2021.urls",
+        #     ),
+        # ),
         path(
-            "ewaluacja2021/",
+            "ewaluacja_liczba_n/",
             include(
-                "ewaluacja2021.urls",
+                "ewaluacja_liczba_n.urls",
+            ),
+        ),
+        path(
+            "ewaluacja_metryki/",
+            include(
+                "ewaluacja_metryki.urls",
+            ),
+        ),
+        path(
+            "ewaluacja_optymalizacja/",
+            include(
+                "ewaluacja_optymalizacja.urls",
             ),
         ),
         url(
@@ -80,6 +100,10 @@ urlpatterns = (
         path(
             "pbn_api/",
             include("pbn_api.urls"),
+        ),
+        path(
+            "pbn_import/",
+            include("pbn_import.urls"),
         ),
         url(
             r"^import_pracownikow/",
@@ -266,6 +290,13 @@ else:
     from django_bpp.views import MicrosoftLogoutView
 
     urlpatterns += [
+        # Local login route - always available even with Microsoft auth
+        url(
+            r"^accounts/login/local/$",
+            LoginView.as_view(authentication_form=MyAuthenticationForm),
+            name="local_login_form",
+        ),
+        # Default login redirects to Microsoft
         url(
             r"^accounts/login/$",
             RedirectView.as_view(pattern_name="microsoft_auth:to-auth-redirect"),

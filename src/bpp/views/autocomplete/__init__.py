@@ -19,6 +19,7 @@ from .wydawnictwo_nadrzedne_w_pbn import Wydawnictwo_Nadrzedne_W_PBNAutocomplete
 from django.contrib.auth.mixins import UserPassesTestMixin
 from django.contrib.postgres.search import TrigramSimilarity
 
+from django.utils.safestring import mark_safe
 from django.utils.text import capfirst
 
 from bpp import const
@@ -115,9 +116,7 @@ class PublicWydawnictwo_NadrzedneAutocomplete(Wydawnictwo_NadrzedneAutocomplete)
 class JednostkaMixin:
     def get_result_label(self, result):
         if result is not None:
-            if hasattr(result, "wydzial") and result.wydzial is not None:
-                return f"{result.nazwa} ({result.wydzial.skrot})"
-            return f"{result.nazwa} (bez wydziału)"
+            return str(result)
 
 
 class JednostkaAutocomplete(JednostkaMixin, autocomplete.Select2QuerySetView):
@@ -297,6 +296,60 @@ class ZrodloAutocomplete(GroupRequiredMixin, PublicZrodloAutocomplete):
     create_field = "nazwa"
     group_required = GR_WPROWADZANIE_DANYCH
 
+    def get_queryset(self):
+        qs = Zrodlo.objects.all().select_related("pbn_uid")
+        if self.q:
+            for token in [x.strip() for x in self.q.split(" ") if x.strip()]:
+                qs = qs.filter(
+                    Q(nazwa__icontains=token)
+                    | Q(poprzednia_nazwa__icontains=token)
+                    | Q(nazwa_alternatywna__icontains=token)
+                    | Q(skrot__istartswith=token)
+                    | Q(skrot_nazwy_alternatywnej__istartswith=token)
+                    | Q(issn__icontains=token)
+                    | Q(e_issn__icontains=token)
+                )
+
+            # Prioritize sources with PBN identifiers (both pbn_uid and mniswId)
+            qs_with_full_pbn = qs.filter(
+                pbn_uid__isnull=False, pbn_uid__mniswId__isnull=False
+            )[:10]
+            qs_with_pbn_no_mnisw = qs.filter(
+                pbn_uid__isnull=False, pbn_uid__mniswId__isnull=True
+            )[:10]
+            qs_without_pbn = qs.filter(pbn_uid__isnull=True)[:10]
+
+            # Use QuerySetSequence to chain querysets with priority
+            res = QuerySetSequence(
+                qs_with_full_pbn, qs_with_pbn_no_mnisw, qs_without_pbn
+            )
+            res.model = Zrodlo  # django-autocomplete-light tego potrzebuje
+            return res
+
+        return qs
+
+    def get_result_label(self, result):
+        parts = [str(result.nazwa)]
+
+        # Add ISSN/E-ISSN if available
+        issn_parts = []
+        if result.issn:
+            issn_parts.append(f"ISSN: {result.issn}")
+        if result.e_issn:
+            issn_parts.append(f"E-ISSN: {result.e_issn}")
+        if issn_parts:
+            parts.append(f"[{', '.join(issn_parts)}]")
+
+        # Add indicator for sources with MNiSW identifier
+        if result.pbn_uid_id:
+            parts.append("📚 PBN")
+            if hasattr(result, "pbn_uid") and result.pbn_uid:
+                if result.pbn_uid.mniswId:
+                    # Using Foundation Icon for ministry/government building
+                    parts.append("🏛️ MNiSW")
+
+        return mark_safe(" ".join(parts))
+
     def create_object(self, text):
         try:
             rz = Rodzaj_Zrodla.objects.get(nazwa="periodyk")
@@ -431,6 +484,8 @@ class GlobalNavigationAutocomplete(Select2QuerySetSequenceView):
         if isinstance(result, Autor):
             if result.aktualna_funkcja_id is not None:
                 return str(result) + ", " + str(result.aktualna_funkcja.nazwa)
+        elif isinstance(result, Rekord):
+            return result.opis_bibliograficzny_cache
         return str(result)
 
     def get_results(self, context):

@@ -1,0 +1,282 @@
+{% extends "admin/base_site.html" %}
+{% load compress %}
+{% load static i18n admin_modify admin_urls grp_tags %}
+
+<!-- STYLESHEETS -->
+{% block stylesheets %}
+    {{ block.super }}
+    <style>
+        .data-source-badge {
+            display: inline-block;
+            padding: 2px 6px;
+            margin-left: 5px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .source-crossref {
+            background-color: #3498db;
+            color: white;
+        }
+        .source-pbn {
+            background-color: #e74c3c;
+            color: white;
+        }
+        .source-both {
+            background-color: #9b59b6;
+            color: white;
+        }
+        .merged-data-info {
+            background-color: #ecf0f1;
+            padding: 15px;
+            margin: 20px 0;
+            border-left: 4px solid #3498db;
+        }
+        .pbn-data-info {
+            background-color: #ffe5e5;
+            padding: 15px;
+            margin: 20px 0;
+            border-left: 4px solid #e74c3c;
+        }
+        pre {
+            font-family: monospace !important;
+            white-space: pre !important;
+            word-break: break-all;
+        }
+    </style>
+{% endblock %}
+
+{% block extrahead %}
+    <link rel="stylesheet" type="text/css"
+          href="{% static "foundation-datepicker/foundation/fonts/foundation-icons.css" %}">
+{% endblock %}
+
+<!-- BREADCRUMBS -->
+{% block breadcrumbs %}
+    <ul>
+        <li><a href="{% url 'admin:index' %}"><span class="fi-home"></span></a></li>
+        <li><a href="/admin/bpp/">BPP</a></li>
+        <li><a href="{% url 'admin:bpp_wydawnictwo_ciagle_changelist' %}">Wydawnictwa ciągłe</a></li>
+        <li>Pobierz z CrossRef ORAZ PBN - Wyniki</li>
+    </ul>
+{% endblock %}
+
+<!-- CONTENT -->
+{% block content %}
+    <div style="border: 2px solid blue; border-style: groove; padding: 10px; width: auto;">
+        <p><strong><span class="fi-info"></span> Dane połączone z CrossRef i PBN</strong></p>
+        <p>Poniżej znajdują się dane pobrane z obu źródeł. Pola oznaczone są kolorami wskazującymi źródło danych:</p>
+        <ul style="list-style: none; margin: 5px 0;">
+            <li><span class="data-source-badge source-crossref">CrossRef</span> - dane tylko z CrossRef</li>
+            <li><span class="data-source-badge source-pbn">PBN</span> - dane tylko z PBN</li>
+            <li><span class="data-source-badge source-both">CrossRef+PBN</span> - dane z obu źródeł</li>
+        </ul>
+    </div>
+
+    {% if has_pbn_data %}
+        <div class="pbn-data-info">
+            <h3><span class="fi-check"></span> Znaleziono dane w PBN!</h3>
+            <p>Publikacja została znaleziona w PBN API. Dane zostały połączone z danymi CrossRef.</p>
+            {% if merged_data.pbn_uid %}
+                <p>PBN UID: <strong>{{ merged_data.pbn_uid }}</strong></p>
+            {% endif %}
+        </div>
+    {% else %}
+        {% if pbn_error %}
+            <div class="merged-data-info">
+                <h3><span class="fi-alert"></span> Brak danych PBN</h3>
+                <p>{{ pbn_error }}</p>
+                <p>Pokazane są tylko dane z CrossRef API.</p>
+            </div>
+        {% endif %}
+    {% endif %}
+
+    {% if rekord_po_stronie_bpp %}
+        <h1>Rekord prawdopodobnie już istnieje w BPP!</h1>
+        <p>Wygląda na to, że po stronie BPP może już istnieć taki rekord.</p><br/>
+        <p>
+            <a href="{{ rekord_po_stronie_bpp.get_absolute_url }}">{{ rekord_po_stronie_bpp.opis_bibliograficzny_cache|safe }}</a>
+        </p>
+        <br/>
+        <p>Poniżej możesz obejrzeć dane, które otrzymane zostały z CrossRef API{% if has_pbn_data %} oraz PBN API{% endif %} oraz ich ewentualne
+            porównanie z tym, co znajduje się po stronie BPP. </p>
+        <br/>
+        <p>Możesz też mimo to spróbować <a href="../add/?identyfikator_doi={{ identyfikator_doi }}">dodać nowy
+            rekord</a>, ale istnieje dość duże ryzyko, że zdublujesz istniejący już wpis. </p>
+    {% else %}
+        <h1>Brak odpowiednika po stronie BPP</h1>
+        <p>Wygląda na to (bazując na polach DOI, alternative-id oraz title), że w bazie BPP nie ma takiego
+            rekordu. Możesz kliknąć poniższy link, aby przejść do formularza tworzenia nowego rekordu.
+            Uwaga - po zatwierdzeniu formularza zostanie utworzony nowy rekord w bazie.</p>
+        <br/>
+        <p><a href="../add/?identyfikator_doi={{ identyfikator_doi }}">Dodaj nowy rekord z połączonymi danymi</a></p>
+    {% endif %}
+
+    <h2>Dane porównawcze z oznaczeniem źródeł</h2>
+
+    <script type="text/javascript">
+        window.addEventListener("load", () => {
+            function sendData(form) {
+                const XHR = new XMLHttpRequest();
+                const FD = new FormData(form);
+
+                XHR.addEventListener("load", (event) => {
+                    const btn = form.querySelector("input[type=submit]");
+                    btn.value = "Wykonano!";
+                });
+
+                XHR.addEventListener("error", (event) => {
+                    form.querySelector("input[type=submit]").value = "Wystąpił błąd...";
+                    alert('Wystąpił błąd podczas wysyłania zapytania.');
+                });
+
+                XHR.open("POST", form.action);
+                XHR.send(FD);
+            }
+
+            document.querySelectorAll("form.ustaw-wartosc").forEach((form) => {
+                form.addEventListener("submit", (event) => {
+                    event.preventDefault();
+                    sendData(form);
+                });
+            });
+        });
+    </script>
+
+    {% if dane_nowego_zrodla %}
+        <p style="margin: 20px; padding: 20px; background-color: #CCBBBB;">
+            Wygląda na to, że źródło tej publikacji nie istnieje po stronie BPP.
+            Jeżeli chcesz, możesz je dodać korzystając z poniższych danych. <br/><br/>
+
+            Nazwa: <strong>{{ dane_nowego_zrodla.nazwa }}</strong><br/>
+            Skrót: <strong>{{ dane_nowego_zrodla.skrot }}</strong><br/>
+            ISSN: <strong>{{ dane_nowego_zrodla.issn }}</strong><br/>
+        </p>
+    {% endif %}
+
+    <h2>Dane do skopiowania</h2>
+    <table>
+        <thead>
+        <tr>
+            <th>Atrybut</th>
+            <th>Wartość z CrossRef/PBN</th>
+            <th>Źródło</th>
+            <th>Pole BPP</th>
+            <th>Wartość po stronie BPP</th>
+            <th>Porównanie</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for elem in dane_porownania %}
+            <tr>
+                <td><code>{{ elem.orig_atrybut }}</code></td>
+                <td style="max-width: 400px;">
+                    <pre>{{ elem.wartosc_z_crossref }}</pre>
+                    {% if elem.zrodlo_danych %}
+                        <span class="data-source-badge {% if 'PBN' in elem.zrodlo_danych %}{% if 'CrossRef' in elem.zrodlo_danych %}source-both{% else %}source-pbn{% endif %}{% else %}source-crossref{% endif %}">
+                            {{ elem.zrodlo_danych }}
+                        </span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% for key, source in data_sources.items %}
+                        {% if key == elem.orig_atrybut %}
+                            <span class="data-source-badge {% if 'PBN' in source %}{% if 'CrossRef' in source %}source-both{% else %}source-pbn{% endif %}{% else %}source-crossref{% endif %}">
+                                {{ source }}
+                            </span>
+                        {% endif %}
+                    {% endfor %}
+                </td>
+                <td>{{ elem.pole_w_bpp|default:"-" }}</td>
+                <td>
+                    {% if elem.wartosc_w_bpp != None %}
+                        <strong>{{ elem.wartosc_w_bpp }}</strong>
+                    {% else %}
+                        -
+                    {% endif %}
+                </td>
+                <td>{{ elem.rezultat|default:"-" }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+
+    {% if do_skopiowania %}
+        <h3>Pole do automatycznego skopiowania</h3>
+        <p>Poniższe dane zostaną automatycznie wypełnione w formularzu:</p>
+        <table>
+            <thead>
+            <tr>
+                <th>Atrybut</th>
+                <th>Wartość</th>
+                <th>Źródło</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for key, val in do_skopiowania.items %}
+                <tr>
+                    <td><code>{{ key }}</code></td>
+                    <td><pre>{{ val }}</pre></td>
+                    <td>
+                        {% for dskey, source in data_sources.items %}
+                            {% if dskey == key %}
+                                <span class="data-source-badge {% if 'PBN' in source %}{% if 'CrossRef' in source %}source-both{% else %}source-pbn{% endif %}{% else %}source-crossref{% endif %}">
+                                    {{ source }}
+                                </span>
+                            {% endif %}
+                        {% endfor %}
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+
+    {% if ignorowane %}
+        <h3>Dane ignorowane</h3>
+        <details>
+            <summary>Kliknij aby zobaczyć dane, które nie będą kopiowane</summary>
+            <table>
+                <thead>
+                <tr>
+                    <th>Atrybut</th>
+                    <th>Wartość</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for key, val in ignorowane.items %}
+                    <tr>
+                        <td><code>{{ key }}</code></td>
+                        <td><pre>{{ val }}</pre></td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </details>
+    {% endif %}
+
+    {% if obce %}
+        <h3>Dane obce (nieznane dla BPP)</h3>
+        <details>
+            <summary>Kliknij aby zobaczyć dane nierozpoznane przez system</summary>
+            <table>
+                <thead>
+                <tr>
+                    <th>Atrybut</th>
+                    <th>Wartość</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for key, val in obce.items %}
+                    <tr>
+                        <td><code>{{ key }}</code></td>
+                        <td><pre>{{ val }}</pre></td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </details>
+    {% endif %}
+
+{% endblock %}

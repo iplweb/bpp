@@ -6,7 +6,7 @@ from typing import List, Optional
 
 from django.db.models import Q, QuerySet
 
-from deduplikator_autorow.models import NotADuplicate
+from deduplikator_autorow.models import IgnoredAuthor, NotADuplicate
 from pbn_api.models import OsobaZInstytucji, Scientist
 
 from django.contrib.contenttypes.models import ContentType
@@ -409,13 +409,20 @@ def znajdz_pierwszego_autora_z_duplikatami(
     # Pobierz IDs wykluczonych autorów
     excluded_scientist_ids = [author.pk for author in excluded_authors]
 
+    # Pobierz IDs ignorowanych autorów
+    ignored_scientist_ids = list(
+        IgnoredAuthor.objects.values_list("scientist_id", flat=True)
+    )
+
     # Przeszukaj wszystkie rekordy OsobaZInstytucji, wykluczając określonych autorów
     osoby_query = (
         OsobaZInstytucji.objects.select_related("personId").all().order_by("lastName")
     )
 
-    if excluded_scientist_ids:
-        osoby_query = osoby_query.exclude(personId__pk__in=excluded_scientist_ids)
+    # Exclude both explicitly excluded and ignored authors
+    all_excluded_ids = excluded_scientist_ids + ignored_scientist_ids
+    if all_excluded_ids:
+        osoby_query = osoby_query.exclude(personId__pk__in=all_excluded_ids)
 
     for osoba_z_instytucji in osoby_query:
         # Sprawdź czy istnieje Scientist dla tej osoby
@@ -439,13 +446,14 @@ def znajdz_pierwszego_autora_z_duplikatami(
     return None
 
 
-def scal_autora(glowny_autor, autor_duplikat, user):
+def scal_autora(glowny_autor, autor_duplikat, user, skip_pbn=False):
     """
     Scala duplikat autora na głównego autora.
 
     Args:
         glowny_autor: Obiekt Autor głównego autora
         autor_duplikat: Obiekt Autor duplikatu
+        skip_pbn: Jeśli True, nie dodawaj publikacji do kolejki PBN
 
     Returns:
         dict: Wynik operacji scalania zawierający szczegóły przemapowań
@@ -469,13 +477,81 @@ def scal_autora(glowny_autor, autor_duplikat, user):
         "updated_records": [],
         "total_updated": 0,
         "publications_queued_for_pbn": [],
+        "disciplines_transferred": [],
     }
 
     try:
         with transaction.atomic():
+            # Import logging model
+            from deduplikator_autorow.models import LogScalania
+
+            # Store duplicate info before deletion
+            duplicate_autor_str = str(autor_duplikat)
+            duplicate_autor_id = autor_duplikat.pk
+
+            # Get Scientist references if available
+            main_scientist = (
+                glowny_autor.pbn_uid if hasattr(glowny_autor, "pbn_uid") else None
+            )
+            duplicate_scientist = (
+                autor_duplikat.pbn_uid if hasattr(autor_duplikat, "pbn_uid") else None
+            )
+
+            # 0. Transfer disciplines from duplicate to main author
+            duplicate_disciplines = Autor_Dyscyplina.objects.filter(
+                autor=autor_duplikat
+            )
+
+            for dup_disc in duplicate_disciplines:
+                # Check if main author already has this discipline for this year
+                existing = Autor_Dyscyplina.objects.filter(
+                    autor=glowny_autor,
+                    rok=dup_disc.rok,
+                    dyscyplina_naukowa=dup_disc.dyscyplina_naukowa,
+                ).exists()
+
+                if not existing:
+                    # Create new discipline record for main author
+                    new_disc = Autor_Dyscyplina.objects.create(
+                        autor=glowny_autor,
+                        rok=dup_disc.rok,
+                        rodzaj_autora=dup_disc.rodzaj_autora,
+                        wymiar_etatu=dup_disc.wymiar_etatu,
+                        dyscyplina_naukowa=dup_disc.dyscyplina_naukowa,
+                        procent_dyscypliny=dup_disc.procent_dyscypliny,
+                        subdyscyplina_naukowa=dup_disc.subdyscyplina_naukowa,
+                        procent_subdyscypliny=dup_disc.procent_subdyscypliny,
+                    )
+                    results["disciplines_transferred"].append(
+                        f"{dup_disc.dyscyplina_naukowa} ({dup_disc.rok})"
+                    )
+
+                    # Log discipline transfer
+                    LogScalania.objects.create(
+                        main_autor=glowny_autor,
+                        duplicate_autor_str=duplicate_autor_str,
+                        duplicate_autor_id=duplicate_autor_id,
+                        main_scientist=main_scientist,
+                        duplicate_scientist=duplicate_scientist,
+                        content_type=ContentType.objects.get_for_model(
+                            Autor_Dyscyplina
+                        ),
+                        object_id=new_disc.pk,
+                        modified_record=new_disc,
+                        dyscyplina_after=dup_disc.dyscyplina_naukowa,
+                        operation_type="DISCIPLINE_TRANSFER",
+                        operation_details=f"Przeniesiono dyscyplinę {dup_disc.dyscyplina_naukowa} "
+                        f"za rok {dup_disc.rok}",
+                        created_by=user,
+                        disciplines_transferred=1,
+                    )
+
             # 1. Wydawnictwo_Ciagle_Autor
             wc_autorzy = Wydawnictwo_Ciagle_Autor.objects.filter(autor=autor_duplikat)
             for wc_autor in wc_autorzy:
+                # Store old discipline before any changes
+                old_discipline = wc_autor.dyscyplina_naukowa
+
                 # Sprawdź dyscypliny
                 if wc_autor.dyscyplina_naukowa:
                     rok = wc_autor.rekord.rok if wc_autor.rekord else None
@@ -497,8 +573,31 @@ def scal_autora(glowny_autor, autor_duplikat, user):
                 wc_autor.autor = glowny_autor
                 wc_autor.save()
 
+                # Log publication transfer
+                LogScalania.objects.create(
+                    main_autor=glowny_autor,
+                    duplicate_autor_str=duplicate_autor_str,
+                    duplicate_autor_id=duplicate_autor_id,
+                    main_scientist=main_scientist,
+                    duplicate_scientist=duplicate_scientist,
+                    content_type=ContentType.objects.get_for_model(wc_autor.rekord),
+                    object_id=wc_autor.rekord.pk,
+                    modified_record=wc_autor.rekord,
+                    dyscyplina_before=old_discipline,
+                    dyscyplina_after=wc_autor.dyscyplina_naukowa,
+                    operation_type="PUBLICATION_TRANSFER",
+                    operation_details=f"Przeniesiono publikację: {wc_autor.rekord}",
+                    created_by=user,
+                    publications_transferred=1,
+                    warnings=(
+                        results["warnings"][-1]
+                        if old_discipline and not wc_autor.dyscyplina_naukowa
+                        else ""
+                    ),
+                )
+
                 # Dodaj do kolejki PBN
-                if wc_autor.rekord:
+                if not skip_pbn and wc_autor.rekord:
                     content_type = ContentType.objects.get_for_model(wc_autor.rekord)
                     PBN_Export_Queue.objects.create(
                         content_type=content_type,
@@ -537,7 +636,7 @@ def scal_autora(glowny_autor, autor_duplikat, user):
                 wz_autor.save()
 
                 # Dodaj do kolejki PBN
-                if wz_autor.rekord:
+                if not skip_pbn and wz_autor.rekord:
                     PBN_Export_Queue.objects.get_or_create(
                         rekord=wz_autor.rekord, defaults={"created_by": None}
                     )
@@ -573,7 +672,7 @@ def scal_autora(glowny_autor, autor_duplikat, user):
                 patent_autor.save()
 
                 # Dodaj do kolejki PBN
-                if patent_autor.rekord:
+                if not skip_pbn and patent_autor.rekord:
                     PBN_Export_Queue.objects.get_or_create(
                         rekord=patent_autor.rekord, defaults={"created_by": None}
                     )
@@ -594,10 +693,11 @@ def scal_autora(glowny_autor, autor_duplikat, user):
                 praca_hab.save()
 
                 # Dodaj do kolejki PBN
-                PBN_Export_Queue.objects.get_or_create(
-                    rekord=praca_hab, defaults={"created_by": None}
-                )
-                results["publications_queued_for_pbn"].append(str(praca_hab))
+                if not skip_pbn:
+                    PBN_Export_Queue.objects.get_or_create(
+                        rekord=praca_hab, defaults={"created_by": None}
+                    )
+                    results["publications_queued_for_pbn"].append(str(praca_hab))
 
                 results["updated_records"].append(f"Praca_Habilitacyjna: {praca_hab}")
                 results["total_updated"] += 1
@@ -610,10 +710,11 @@ def scal_autora(glowny_autor, autor_duplikat, user):
                 praca_dokt.save()
 
                 # Dodaj do kolejki PBN
-                PBN_Export_Queue.objects.get_or_create(
-                    rekord=praca_dokt, defaults={"created_by": None}
-                )
-                results["publications_queued_for_pbn"].append(str(praca_dokt))
+                if not skip_pbn:
+                    PBN_Export_Queue.objects.get_or_create(
+                        rekord=praca_dokt, defaults={"created_by": None}
+                    )
+                    results["publications_queued_for_pbn"].append(str(praca_dokt))
 
                 results["updated_records"].append(f"Praca_Doktorska: {praca_dokt}")
                 results["total_updated"] += 1
@@ -628,13 +729,17 @@ def scal_autora(glowny_autor, autor_duplikat, user):
         return results
 
 
-def scal_autorow(main_scientist_id: str, duplicate_scientist_id: str, user) -> dict:
+def scal_autorow(
+    main_scientist_id: str, duplicate_scientist_id: str, user, skip_pbn: bool = False
+) -> dict:
     """
     Scala automatycznie duplikaty autorów.
 
     Args:
         main_scientist_id: ID głównego autora (Scientist)
         duplicate_scientist_id: ID duplikatu autora (Scientist)
+        user: Użytkownik zlecający operację
+        skip_pbn: Jeśli True, nie dodawaj publikacji do kolejki PBN
 
     Returns:
         dict: Wynik operacji scalania
@@ -678,12 +783,38 @@ def scal_autorow(main_scientist_id: str, duplicate_scientist_id: str, user) -> d
                 "error": "Autor duplikat nie znajduje się na liście duplikatów głównego autora",
             }
 
+        # Store duplicate info before deletion
+        duplicate_autor_str = str(autor_duplikat)
+        duplicate_autor_pk = autor_duplikat.pk
+
         # Wykonaj scalanie
-        result = scal_autora(glowny_autor, autor_duplikat, user)
+        result = scal_autora(glowny_autor, autor_duplikat, user, skip_pbn=skip_pbn)
 
         # Dodaj informacje o autorach do wyniku
         result["main_author"] = str(glowny_autor)
-        result["duplicate_author"] = str(autor_duplikat)
+        result["duplicate_author"] = duplicate_autor_str
+
+        # Create summary log entry if successful
+        if result.get("success", False):
+            from deduplikator_autorow.models import LogScalania
+
+            # Create a summary log entry for the entire merge operation
+            LogScalania.objects.create(
+                main_autor=glowny_autor,
+                duplicate_autor_str=duplicate_autor_str,
+                duplicate_autor_id=duplicate_autor_pk,  # Use the stored PK from before deletion
+                main_scientist=Scientist.objects.filter(pk=main_scientist_id).first(),
+                duplicate_scientist=Scientist.objects.filter(
+                    pk=duplicate_scientist_id
+                ).first(),
+                operation_type="AUTHOR_DELETED",
+                operation_details=f"Scalono autora: przeniesiono {result.get('total_updated', 0)} "
+                f"publikacji i {len(result.get('disciplines_transferred', []))} dyscyplin",
+                created_by=user,
+                publications_transferred=result.get("total_updated", 0),
+                disciplines_transferred=len(result.get("disciplines_transferred", [])),
+                warnings="\n".join(result.get("warnings", [])),
+            )
 
         return result
 

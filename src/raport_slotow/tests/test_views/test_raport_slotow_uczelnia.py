@@ -53,41 +53,77 @@ def raport_slotow_uczelnia_page(
 def test_raport_uczelnia_filtry_autor__nazwisko(
     raport_slotow_uczelnia_page,
 ):
-    raport_slotow_uczelnia_page.forms[0]["autor__nazwisko"] = "test"
-    assert raport_slotow_uczelnia_page.forms[0].submit().status_code == 200
+    # Find the filter form (not the logout form)
+    filter_form = None
+    for form in raport_slotow_uczelnia_page.forms.values():
+        if "autor__nazwisko" in form.fields:
+            filter_form = form
+            break
+
+    assert filter_form is not None, "Filter form not found"
+    filter_form["autor__nazwisko"] = "test"
+    assert filter_form.submit().status_code == 200
 
 
 def test_raport_uczelnia_filtry_dyscyplina(
     raport_slotow_uczelnia_page,
     dyscyplina1,
 ):
+    # Find the filter form (not the logout form)
+    filter_form = None
+    for form in raport_slotow_uczelnia_page.forms.values():
+        if "dyscyplina" in form.fields:
+            filter_form = form
+            break
 
-    raport_slotow_uczelnia_page.forms[0]["dyscyplina"] = dyscyplina1.pk
-    assert raport_slotow_uczelnia_page.forms[0].submit().status_code == 200
+    assert filter_form is not None, "Filter form not found"
+    filter_form["dyscyplina"] = dyscyplina1.pk
+    assert filter_form.submit().status_code == 200
 
 
 def test_raport_uczelnia_filtry_suma__min(
     raport_slotow_uczelnia_page,
 ):
+    # Find the filter form (not the logout form)
+    filter_form = None
+    for form in raport_slotow_uczelnia_page.forms.values():
+        if "suma__min" in form.fields:
+            filter_form = form
+            break
 
-    raport_slotow_uczelnia_page.forms[0]["suma__min"] = 5
-    assert raport_slotow_uczelnia_page.forms[0].submit().status_code == 200
+    assert filter_form is not None, "Filter form not found"
+    filter_form["suma__min"] = 5
+    assert filter_form.submit().status_code == 200
 
 
 def test_raport_uczelnia_filtry_slot__min(
     raport_slotow_uczelnia_page,
 ):
+    # Find the filter form (not the logout form)
+    filter_form = None
+    for form in raport_slotow_uczelnia_page.forms.values():
+        if "slot__min" in form.fields:
+            filter_form = form
+            break
 
-    raport_slotow_uczelnia_page.forms[0]["slot__min"] = 5
-    assert raport_slotow_uczelnia_page.forms[0].submit().status_code == 200
+    assert filter_form is not None, "Filter form not found"
+    filter_form["slot__min"] = 5
+    assert filter_form.submit().status_code == 200
 
 
 def test_raport_uczelnia_filtry_avg__min(
     raport_slotow_uczelnia_page,
 ):
+    # Find the filter form (not the logout form)
+    filter_form = None
+    for form in raport_slotow_uczelnia_page.forms.values():
+        if "avg__min" in form.fields:
+            filter_form = form
+            break
 
-    raport_slotow_uczelnia_page.forms[0]["avg__min"] = 5
-    assert raport_slotow_uczelnia_page.forms[0].submit().status_code == 200
+    assert filter_form is not None, "Filter form not found"
+    filter_form["avg__min"] = 5
+    assert filter_form.submit().status_code == 200
 
 
 def test_raport_uczelnia_xlsx(raport_slotow_uczelnia_wiersz, admin_app):

@@ -279,6 +279,7 @@ TEMPLATES = [
                 "bpp.context_processors.global_nav.user",
                 "bpp.context_processors.google_analytics.google_analytics",
                 "bpp.context_processors.pbn_token_aktualny.pbn_token_aktualny",
+                "bpp.context_processors.microsoft_auth.microsoft_auth_status",
                 "cookielaw.context_processors.cookielaw",
             ],
         },
@@ -294,6 +295,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "bpp_setup_wizard.middleware.SetupWizardMiddleware",  # After auth middleware to have request.user
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "password_policies.middleware.PasswordChangeMiddleware",
@@ -335,6 +337,7 @@ if TESTING:
 
 INSTALLED_APPS = [
     # "django_werkzeug",
+    "bpp_setup_wizard",  # Must be early to enable setup wizard
     "daphne",
     "tinymce",
     "tee",
@@ -415,8 +418,11 @@ INSTALLED_APPS = [
     "api_v1",
     "adminsortable2",
     "import_export",
+    "ewaluacja_common",
     "ewaluacja2021",
     "ewaluacja_liczba_n",
+    "ewaluacja_metryki",
+    "ewaluacja_optymalizacja",
     # Zostawiamy - bezwarunkowo
     "test_bpp",
     #
@@ -431,6 +437,8 @@ INSTALLED_APPS = [
     "deduplikator_autorow",
     "importer_autorow_pbn",
     "pbn_downloader_app",
+    "pbn_integrator",
+    "pbn_import",
     "komparator_pbn_udzialy",
     "komparator_publikacji_pbn",
 ]
@@ -986,9 +994,8 @@ if MICROSOFT_AUTH_CLIENT_ID:
         + INSTALLED_APPS[contrib_sites_index + 1 :]
     )
 
-    TEMPLATES[0]["OPTIONS"]["context_processors"].append(
-        "microsoft_auth.context_processors.microsoft",
-    )
+    # Context processor removed - using MicrosoftAuthRedirect view instead
+    # to avoid unnecessary network traffic on every page load
 
     AUTHENTICATION_BACKENDS = [
         "microsoft_auth.backends.MicrosoftAuthenticationBackend",

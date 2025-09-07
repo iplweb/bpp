@@ -1,5 +1,5 @@
 """
-Management command to generate author connections visualization.
+Management command to generate author connections visualization using Sigma.js.
 """
 
 from pathlib import Path
@@ -8,11 +8,11 @@ from django.conf import settings
 from django.core.management.base import BaseCommand
 
 from ...core import calculate_author_connections
-from ...visualization import generate_ogma_visualization, generate_visualization_html
+from ...visualization import generate_sigma_visualization, generate_visualization_html
 
 
 class Command(BaseCommand):
-    help = "Generate OGMA visualization of author connections"
+    help = "Generate Sigma.js visualization of author connections"
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -46,6 +46,13 @@ class Command(BaseCommand):
         parser.add_argument(
             "--static", action="store_true", help="Save to Django static directory"
         )
+        parser.add_argument(
+            "--layout",
+            type=str,
+            choices=["force", "circular", "random"],
+            default="force",
+            help="Graph layout algorithm (default: force)",
+        )
 
     def handle(self, *args, **options):
         # Recalculate connections if requested
@@ -77,16 +84,22 @@ class Command(BaseCommand):
                 output_path = static_dir / "author_connections.js"
 
         # Generate visualization
-        self.stdout.write("Generating visualization...")
+        self.stdout.write("Generating Sigma.js visualization...")
 
         try:
             if options["html"]:
-                result = generate_visualization_html(output_path=output_path)
-            else:
-                result = generate_ogma_visualization(
+                result = generate_visualization_html(
                     output_path=output_path,
                     min_connections=options["min_connections"],
                     max_nodes=options["max_nodes"],
+                    layout=options["layout"],
+                )
+            else:
+                result = generate_sigma_visualization(
+                    output_path=output_path,
+                    min_connections=options["min_connections"],
+                    max_nodes=options["max_nodes"],
+                    layout=options["layout"],
                 )
 
             if output_path:

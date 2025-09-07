@@ -8,11 +8,23 @@ from bpp.models import Punktacja_Zrodla, Wydawnictwo_Ciagle
 class Command(PBNBaseCommand):
     def add_arguments(self, parser):
         parser.add_argument("--min-rok", type=int, default=2022)
+        parser.add_argument(
+            "--overwrite",
+            action="store_true",
+            default=False,
+            help="Overwrite existing punkty_kbn values (default: skip records with punkty_kbn > 0)",
+        )
 
-    def handle(self, min_rok, *args, **kw):
+    def handle(self, min_rok, overwrite=False, *args, **kw):
         seen = set()
 
-        for elem in tqdm(Wydawnictwo_Ciagle.objects.filter(rok__gte=min_rok)):
+        # Build queryset based on overwrite option
+        queryset = Wydawnictwo_Ciagle.objects.filter(rok__gte=min_rok)
+        if not overwrite:
+            # Exclude records that already have points
+            queryset = queryset.exclude(punkty_kbn__gt=0)
+
+        for elem in tqdm(queryset):
             try:
                 elem.punkty_kbn = elem.zrodlo.punktacja_zrodla_set.get(
                     rok=elem.rok

@@ -169,14 +169,23 @@
             box-shadow: none;
             padding: 8px 0;  // Small vertical padding only
             margin: 0;
+            border-radius: 0;  // Remove all border radius from inner columns
 
             &.column-1 {
                 border-right: 1px solid rgba(0, 0, 0, 0.08);
                 padding-right: 0;  // No padding on the right
+                border-top-left-radius: 12px;  // Keep rounded corners only on outer edges
+                border-bottom-left-radius: 12px;
+                border-top-right-radius: 0;  // Explicitly remove inner right corners
+                border-bottom-right-radius: 0;
             }
 
             &.column-2 {
                 padding-left: 0;  // No padding on the left
+                border-top-right-radius: 12px;  // Keep rounded corners only on outer edges
+                border-bottom-right-radius: 12px;
+                border-top-left-radius: 0;  // Explicitly remove inner left corners
+                border-bottom-left-radius: 0;
             }
 
             li {

@@ -119,6 +119,31 @@
             </div>
         {% endif %}
 
+        <!-- Evaluation metrics -->
+        {% if autor.metryki.exists %}
+            <div class="author-info-section">
+                <h3><i class="fi-graph-trend"></i> Metryki ewaluacyjne</h3>
+                <div class="grid-x grid-margin-x" style="gap: 10px;">
+                    {% for metryka in autor.metryki.all %}
+                        <div class="cell shrink">
+                            <a href="{% url 'ewaluacja_metryki:szczegoly' metryka.pk %}"
+                               class="button primary"
+                               style="background: #3498db; border: none; padding: 10px 16px; font-size: 0.9rem; border-radius: 6px; transition: all 0.2s ease;"
+                               onmouseover="this.style.backgroundColor='#2980b9'; this.style.transform='translateY(-2px)'"
+                               onmouseout="this.style.backgroundColor='#3498db'; this.style.transform='translateY(0)'">
+                                <i class="fi-eye" style="margin-right: 6px;"></i>
+                                Metryka dla {{ metryka.dyscyplina_naukowa.nazwa }}
+                                {% if autor.metryki.count > 1 and metryka.jednostka %}
+                                    ({{ metryka.jednostka.skrot|default:metryka.jednostka.nazwa }})
+                                {% endif %}
+                            </a>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="shaded-hr-div-small"></div>
+        {% endif %}
+
         <!-- Academic degrees -->
         {% if autor.praca_doktorska_set.exists or autor.praca_habilitacyjna %}
             <div class="author-info-section">

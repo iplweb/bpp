@@ -1,0 +1,297 @@
+// Flash Messages / Callout Modernization
+@use "sass:color";
+
+// Messages placeholder container
+#messagesPlaceholder {
+    margin-bottom: 20px;
+
+    // Stack multiple messages with spacing
+    .callout + .callout {
+        margin-top: 12px;
+    }
+}
+
+// Modern callout styling - override Foundation defaults
+.callout {
+    position: relative;
+    padding: 16px 20px;
+    margin-bottom: 16px;
+    border-radius: 8px;
+    border-width: 1px;
+    border-style: solid;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease;
+
+    // Hover effect
+    &:hover {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+        transform: translateY(-1px);
+    }
+
+    // Close button styling - override Foundation defaults
+    .close-button {
+        position: absolute !important;
+        top: 50% !important;
+        right: 16px !important;
+        transform: translateY(-50%) !important;
+        opacity: 0.6;
+        transition: all 0.3s ease;
+        font-size: 1.2rem;
+        border-radius: 50%;
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        &:hover {
+            opacity: 1;
+            box-shadow: 0 0 0 6px rgba(0, 0, 0, 0.1);
+            background: rgba(255, 255, 255, 0.5);
+            transform: translateY(-50%) scale(1.1) !important;
+            top: 50% !important;  // Ensure top doesn't change on hover
+            position: absolute !important;  // Lock position
+        }
+
+        &:focus {
+            outline: 2px solid currentColor;
+            outline-offset: 2px;
+            border-radius: 50%;
+            transform: translateY(-50%) !important;  // Keep centered on focus
+            top: 50% !important;
+        }
+    }
+
+    // Links inside callouts
+    a:not(.close-button) {
+        color: inherit;
+        font-weight: bolder;  // Changed from 600 to normal
+        text-decoration: none;  // Remove underline
+
+        &:hover {
+            text-decoration: underline;  // Only underline on hover
+        }
+    }
+
+    // Icon support (if using Foundation icons)
+    .fi {
+        margin-right: 8px;
+        font-size: 1.1em;
+        vertical-align: middle;
+    }
+
+    // Add padding-right when closable
+    &[data-closable] {
+        padding-right: 48px;
+    }
+}
+
+// Color variants with modern styling
+.callout {
+    // Default/Primary - Blue theme
+    &.primary {
+        background: linear-gradient(135deg, #f0f7ff 0%, #e6f2ff 100%);
+        border-color: #0066cc;
+        color: #003d7a;
+
+        .close-button {
+            color: #0066cc;
+        }
+
+        // Add subtle left border accent
+        &::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: #0066cc;
+            border-radius: 8px 0 0 8px;
+        }
+    }
+
+    // Success - Green theme
+    &.success {
+        background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+        border-color: #16a34a;
+        color: #14532d;
+
+        .close-button {
+            color: #16a34a;
+        }
+
+        &::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: #16a34a;
+            border-radius: 8px 0 0 8px;
+        }
+    }
+
+    // Warning - Amber theme
+    &.warning {
+        background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+        border-color: #d97706;
+        color: #78350f;
+
+        .close-button {
+            color: #d97706;
+        }
+
+        &::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: #f59e0b;
+            border-radius: 8px 0 0 8px;
+        }
+    }
+
+    // Alert/Error - Red theme
+    &.alert,
+    &.error {
+        background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+        border-color: #dc2626;
+        color: #7f1d1d;
+
+        .close-button {
+            color: #dc2626;
+        }
+
+        &::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: #dc2626;
+            border-radius: 8px 0 0 8px;
+        }
+    }
+
+    // Info - Light blue theme
+    &.info {
+        background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+        border-color: #0284c7;
+        color: #075985;
+
+        .close-button {
+            color: #0284c7;
+        }
+
+        &::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: #0284c7;
+            border-radius: 8px 0 0 8px;
+        }
+    }
+
+    // Secondary - Gray theme
+    &.secondary {
+        background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+        border-color: #6b7280;
+        color: #374151;
+
+        .close-button {
+            color: #6b7280;
+        }
+
+        &::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: #6b7280;
+            border-radius: 8px 0 0 8px;
+        }
+    }
+
+    // Debug - Purple theme (for development)
+    &.debug {
+        background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%);
+        border-color: #9333ea;
+        color: #581c87;
+
+        .close-button {
+            color: #9333ea;
+        }
+
+        &::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: #9333ea;
+            border-radius: 8px 0 0 8px;
+        }
+    }
+}
+
+// Animation for new messages
+@keyframes slideInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+// Apply animation to new callouts
+#messagesPlaceholder .callout {
+    animation: slideInDown 0.3s ease-out;
+}
+
+// Responsive adjustments
+@media (max-width: 640px) {
+    .callout {
+        padding: 12px 16px;
+        font-size: 0.9rem;
+
+        &[data-closable] {
+            padding-right: 40px;
+        }
+
+        .close-button {
+            right: 12px;
+        }
+    }
+}
+
+// Print styles
+@media print {
+    .callout {
+        box-shadow: none !important;
+        border-left-width: 4px !important;
+
+        &::before {
+            display: none !important;
+        }
+
+        .close-button {
+            display: none !important;
+        }
+    }
+}

@@ -1,9 +1,9 @@
 from tqdm import tqdm
 
 from pbn_api.client import PageableResource
-from pbn_api.integrator.simple_page_getter import simple_page_getter
 from pbn_api.management.commands.util import PBNBaseCommand
 from pbn_api.models import Publication
+from pbn_integrator.utils.simple_page_getter import simple_page_getter
 
 from bpp.models import Rekord
 

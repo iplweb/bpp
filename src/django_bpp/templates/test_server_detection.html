@@ -1,17 +1,55 @@
-{% if "test" in request.get_host %}{% load static %}
+{% if "test" in request.get_host %}
     {#                         Najprostsza, naiwna identyfikacja serwera testowego - słowo 'test' w nazwie domeny.#}
-    <div class="hide-on-print callout alert">
-        <b>Serwer testowy</b>. Zmiany mogą zostać nadpisane zgodnie z ustawieniami aktualizacji.
-    </div>
     <style>
-        body {
-            background-image: url("{% static "bpp/images/test_server_background.jpg" %}") !important;
-            background-size: 100%;
-            background-repeat: repeat-y;
+        /* Subtle test server indicator */
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: repeating-linear-gradient(
+                45deg,
+                #ff9800,
+                #ff9800 10px,
+                #ffcc80 10px,
+                #ffcc80 20px
+            );
+            z-index: 10000;
+            pointer-events: none;
         }
 
-        #test-image-copyright {
-            display: block !important;
+        .test-server-watermark {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(255, 152, 0, 0.1);
+            color: #ff6600;
+            padding: 8px 16px;
+            border-radius: 20px;
+            border: 2px dashed rgba(255, 152, 0, 0.3);
+            font-weight: 600;
+            font-size: 0.85rem;
+            z-index: 9999;
+            pointer-events: none;
+            backdrop-filter: blur(5px);
+            animation: pulse 3s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.7; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.02); }
+        }
+
+        @media print {
+            body::before,
+            .test-server-watermark {
+                display: none !important;
+            }
         }
     </style>
+    <div class="test-server-watermark hide-on-print">
+        <span class="fi-alert"></span> SERWER TESTOWY - ZMIANY MOGĄ ZOSTAĆ NADPISANE BEZ OSTRZEŻENIA
+    </div>
 {% endif %}

@@ -1,0 +1,160 @@
+// Function of the Day panel styles
+@use "sass:color";
+@import "settings";
+
+// Define fallback variables if not in settings
+$header-font-color: #2c3e50 !default;
+$body-font-color: #495057 !default;
+
+.funkcja-dnia-container {
+    // Use subtle gradient with primary color
+    background: linear-gradient(135deg,
+        color.adjust($primary-color, $lightness: 10%) 0%,
+        $primary-color 100%);
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba($primary-color, 0.15);
+    color: white;
+    margin-top: 20px;
+    margin-bottom: 20px;
+
+    h3 {
+        color: white;
+        margin: 0;
+        font-size: 1.25rem;
+        font-weight: 500;
+
+        i {
+            margin-right: 8px;
+            opacity: 0.9;
+        }
+    }
+
+    #daily-feature-content {
+        margin-top: 15px;
+
+        h4 {
+            color: white;
+            margin-bottom: 8px;
+            font-size: 1.1rem;
+            font-weight: 500;
+        }
+
+        p {
+            color: rgba(255, 255, 255, 0.9);
+            margin-bottom: 12px;
+            line-height: 1.5;
+            font-size: 0.95rem;
+        }
+
+        .feature-icon {
+            font-size: 2.5rem;
+            opacity: 0.85;
+
+            @include breakpoint(small only) {
+                font-size: 2rem;
+                margin-bottom: 10px;
+            }
+        }
+
+        .feature-button {
+            background: white;
+            color: $primary-color;
+            font-weight: 500;
+            border-radius: 4px;
+            padding: 8px 20px;
+            transition: all 0.2s ease;
+            display: inline-block;
+            font-size: 0.9rem;
+            text-decoration: none;
+
+            &:hover {
+                transform: translateY(-1px);
+                box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+                background: color.adjust(white, $lightness: -3%);
+                color: color.adjust($primary-color, $lightness: -10%);
+            }
+
+            i {
+                margin-right: 6px;
+            }
+        }
+    }
+
+    // More compact layout
+    @include breakpoint(medium) {
+        .feature-content {
+            padding-left: 1rem;
+        }
+    }
+
+    // Mobile responsive adjustments
+    @include breakpoint(small only) {
+        padding: 15px;
+
+        h3 {
+            font-size: 1.1rem;
+        }
+    }
+}
+
+// Alternative lighter theme option
+.funkcja-dnia-container.light-theme {
+    background: #ffffff;
+    background: linear-gradient(135deg,
+        #ffffff 0%,
+        #f8f9fa 100%);
+    color: #212529 !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    border: 2px solid $primary-color;
+
+    h3 {
+        color: #212529 !important;
+
+        i {
+            color: $primary-color;
+            opacity: 1;
+        }
+    }
+
+    // Override styles for dynamically generated content
+    #daily-feature-content {
+        h4 {
+            color: #212529 !important;
+        }
+
+        p {
+            color: #495057 !important;
+            opacity: 1 !important;
+        }
+
+        .feature-icon {
+            color: $primary-color !important;
+            opacity: 0.9;
+        }
+    }
+
+    .feature-button {
+        background: $primary-color !important;
+        color: white !important;
+        border: 1px solid $primary-color !important;
+        padding: 8px 20px !important;
+        border-radius: 4px !important;
+        display: inline-block !important;
+        text-decoration: none !important;
+        font-weight: 500 !important;
+
+        &:hover {
+            background: color.adjust($primary-color, $lightness: -10%) !important;
+            border-color: color.adjust($primary-color, $lightness: -10%) !important;
+            color: white !important;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba($primary-color, 0.25);
+        }
+
+        i {
+            color: white !important;
+            margin-right: 6px !important;
+        }
+    }
+}

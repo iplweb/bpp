@@ -110,6 +110,29 @@ class PBN_Export_Queue(models.Model):
         except self.content_type.model_class().DoesNotExist:
             return False
 
+    def prepare_for_resend(self, user=None, message_suffix=""):
+        """Przygotowuje obiekt do ponownej wysyłki."""
+        self.refresh_from_db()
+        self.wysylke_zakonczono = None
+        self.zakonczono_pomyslnie = None
+        self.retry_after_user_authorised = None
+
+        msg = "Ponownie wysłano"
+        if user is not None:
+            self.zamowil = user
+            msg += f" przez użytkownika: {user}"
+        if message_suffix is not None:
+            msg += f"{message_suffix}"
+        msg += ". "
+        self.dopisz_komunikat(msg)
+
+        self.save()
+
+    def sprobuj_wyslac_do_pbn(self):
+        from pbn_api.tasks import task_sprobuj_wyslac_do_pbn
+
+        task_sprobuj_wyslac_do_pbn.delay(self.pk)
+
     def dopisz_komunikat(self, msg):
         res = str(timezone.now())
         res += "\n" + "==============================================================="

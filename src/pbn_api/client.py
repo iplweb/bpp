@@ -133,8 +133,13 @@ class PageableResource:
 
 class OAuthMixin:
     @classmethod
-    def get_auth_url(klass, base_url, app_id):
-        return f"{base_url}/auth/pbn/api/registration/user/token/{app_id}"
+    def get_auth_url(klass, base_url, app_id, state=None):
+        url = f"{base_url}/auth/pbn/api/registration/user/token/{app_id}"
+        if state:
+            from urllib.parse import quote
+
+            url += f"?state={quote(state)}"
+        return url
 
     @classmethod
     def get_user_token(klass, base_url, app_id, app_token, one_time_token):
@@ -221,7 +226,7 @@ class RequestsTransport(OAuthMixin, PBNClientTransport):
             if fail_on_auth_missing:
                 raise AccessDeniedException(url, smart_content(ret.content))
             # Needs auth
-            if ret.json()["message"] == "Access Denied":
+            if ret.json()["message"] in ["Access Denied", "Forbidden"]:
                 # Autoryzacja użytkownika jest poprawna, jednakże nie ma on po stronie PBN
                 # takiego uprawnienia...
                 raise AccessDeniedException(url, smart_content(ret.content))
@@ -804,7 +809,7 @@ class PBNClient(
         return objectId, ret, js, bez_oswiadczen
 
     def download_publication(self, doi=None, objectId=None):
-        from .integrator import zapisz_mongodb
+        from pbn_integrator.utils import zapisz_mongodb
         from .models import Publication
 
         assert doi or objectId
@@ -819,7 +824,7 @@ class PBNClient(
     @transaction.atomic
     def download_statements_of_publication(self, pub):
         from pbn_api.models import OswiadczenieInstytucji
-        from .integrator import pobierz_mongodb, zapisz_oswiadczenie_instytucji
+        from pbn_integrator.utils import pobierz_mongodb, zapisz_oswiadczenie_instytucji
 
         OswiadczenieInstytucji.objects.filter(publicationId_id=pub.pk).delete()
 
@@ -832,7 +837,7 @@ class PBNClient(
         )
 
     def pobierz_publikacje_instytucji_v2(self, objectId):
-        from pbn_api.integrator import zapisz_publikacje_instytucji_v2
+        from pbn_integrator.utils import zapisz_publikacje_instytucji_v2
 
         elem = list(self.get_institution_publication_v2(objectId=objectId))
         if not elem:

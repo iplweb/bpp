@@ -1,0 +1,386 @@
+<!-- Progress Component for HTMX updates -->
+<div class="import-progress-container">
+    <div class="progress-header">
+        <h3>
+            <span class="fi-{% if session.status == 'running' %}play{% else %}check{% endif %}"></span>
+            {{ session.get_status_display }}
+        </h3>
+        <div class="progress-controls">
+            {% if session.status == 'running' %}
+            <form method="post" action="{% url 'pbn_import:cancel' session.id %}"
+                  style="display: inline;"
+                  onsubmit="return confirm('Czy na pewno chcesz anulować import?');">
+                {% csrf_token %}
+                <button type="submit" class="button small alert">
+                    <span class="fi-x"></span> Anuluj
+                </button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Main Progress Bar -->
+    <div class="main-progress">
+        <div class="progress-label">
+            <span>{{ session.current_step|default:"Inicjalizacja..." }}</span>
+            <span class="progress-percentage">{{ session.overall_progress }}%</span>
+        </div>
+        <div class="progress-bar-container">
+            <div class="progress-bar-fill"
+                 style="width: {{ session.overall_progress }}%;
+                        background: linear-gradient(90deg, #667eea 0%, #764ba2 {{ session.overall_progress }}%);">
+                <div class="progress-bar-glow"></div>
+            </div>
+        </div>
+        <div class="progress-stats">
+            <span>Krok {{ session.completed_steps }} z {{ session.total_steps }}</span>
+            {% if session.duration %}
+            <span>Czas: {{ session.duration }}</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Sub-task Progress (if available) -->
+    {% if session.progress_data.current_subtask %}
+    <div class="subtask-progress-section">
+        <div class="subtask-header">
+            <span class="fi-target"></span> Pod-zadanie
+        </div>
+        <div class="subtask-content">
+            <div class="subtask-label">
+                <span>{{ session.progress_data.current_subtask.name }}</span>
+                <span class="subtask-percentage">{{ session.progress_data.current_subtask.percentage }}%</span>
+            </div>
+            <div class="subtask-progress-bar">
+                <div class="subtask-progress-fill" style="width: {{ session.progress_data.current_subtask.percentage }}%;"></div>
+            </div>
+            <div class="subtask-details">
+                <span>{{ session.progress_data.current_subtask.description|default:"Przetwarzanie..." }}</span>
+                <span>{{ session.progress_data.current_subtask.current }} / {{ session.progress_data.current_subtask.total }} elementów</span>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Step Progress Indicators -->
+    <div class="steps-progress">
+        {% for step in session.progress_data.steps.items %}
+        <div class="step-indicator {% if step.1.progress == 100 %}completed{% elif step.0 == session.current_step %}active{% endif %}">
+            <div class="step-icon">
+                {% if step.1.progress == 100 %}
+                <span class="fi-check"></span>
+                {% elif step.0 == session.current_step %}
+                <span class="fi-loop spinning"></span>
+                {% else %}
+                <span class="fi-minus"></span>
+                {% endif %}
+            </div>
+            <div class="step-name">{{ step.0 }}</div>
+            <div class="step-progress">
+                <div class="mini-progress-bar">
+                    <div class="mini-progress-fill" style="width: {{ step.1.progress }}%"></div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Live Statistics -->
+    <div class="live-stats"
+         hx-get="{% url 'pbn_import:stats' session.id %}"
+         hx-trigger="load, every 10s"
+         hx-swap="innerHTML">
+        <!-- Stats will load immediately on page load -->
+    </div>
+
+    <!-- Log Window -->
+    <div class="log-window-container">
+        <div class="log-window-header">
+            <span class="fi-list"></span> Dziennik importu
+            <button class="button tiny secondary" onclick="toggleLogWindow()">
+                <span class="fi-arrows-compress"></span>
+            </button>
+        </div>
+        <div class="log-window"
+             id="log-window-{{ session.id }}"
+             hx-get="{% url 'pbn_import:logs' session.id %}"
+             hx-trigger="load, every 5s"
+             hx-swap="innerHTML">
+            <!-- Logs will load immediately on page load -->
+        </div>
+    </div>
+</div>
+
+<style>
+.import-progress-container {
+    padding: 20px;
+}
+
+.progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.progress-controls button {
+    margin-left: 10px;
+}
+
+.main-progress {
+    margin-bottom: 30px;
+}
+
+.progress-label {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    font-weight: 600;
+}
+
+.progress-percentage {
+    color: #764ba2;
+    font-size: 1.2rem;
+}
+
+.progress-bar-container {
+    height: 30px;
+    background: #f0f0f0;
+    border-radius: 15px;
+    overflow: hidden;
+    position: relative;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    transition: width 0.8s cubic-bezier(0.4, 0.0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.progress-bar-glow {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+        105deg,
+        transparent 40%,
+        rgba(255,255,255,0.7) 50%,
+        transparent 60%
+    );
+    animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(200%); }
+}
+
+.progress-stats {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 10px;
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.steps-progress {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 15px;
+    margin-bottom: 30px;
+}
+
+.step-indicator {
+    background: white;
+    border: 2px solid #e0e0e0;
+    border-radius: 10px;
+    padding: 15px;
+    text-align: center;
+    transition: all 0.3s;
+}
+
+.step-indicator.active {
+    border-color: #667eea;
+    background: linear-gradient(135deg, rgba(102,126,234,0.1) 0%, rgba(118,75,162,0.1) 100%);
+    transform: scale(1.05);
+}
+
+.step-indicator.completed {
+    border-color: #43e97b;
+    background: linear-gradient(135deg, rgba(67,233,123,0.1) 0%, rgba(56,249,215,0.1) 100%);
+}
+
+.step-icon {
+    font-size: 1.5rem;
+    margin-bottom: 5px;
+    color: #667eea;
+}
+
+.step-indicator.completed .step-icon {
+    color: #43e97b;
+}
+
+.step-name {
+    font-weight: 600;
+    font-size: 0.9rem;
+    margin-bottom: 10px;
+}
+
+.mini-progress-bar {
+    height: 4px;
+    background: #f0f0f0;
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.mini-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+    transition: width 0.8s cubic-bezier(0.4, 0.0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.mini-progress-fill::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    background: linear-gradient(
+        105deg,
+        transparent 30%,
+        rgba(255,255,255,0.5) 50%,
+        transparent 70%
+    );
+    animation: mini-shimmer 3s infinite;
+}
+
+@keyframes mini-shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(200%); }
+}
+
+.log-window-container {
+    background: #2d2d2d;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.log-window-header {
+    background: #1a1a1a;
+    color: white;
+    padding: 10px 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.log-window {
+    height: 300px;
+    overflow-y: auto;
+    padding: 15px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+    color: #f0f0f0;
+}
+
+.spinning {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.subtask-progress-section {
+    background: linear-gradient(135deg, rgba(165,180,252,0.1) 0%, rgba(192,132,252,0.1) 100%);
+    border: 1px solid rgba(165,180,252,0.3);
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 20px;
+}
+
+.subtask-header {
+    font-weight: 600;
+    color: #667eea;
+    margin-bottom: 10px;
+    font-size: 0.9rem;
+}
+
+.subtask-label {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    font-size: 0.9rem;
+}
+
+.subtask-percentage {
+    color: #764ba2;
+    font-weight: bold;
+}
+
+.subtask-progress-bar {
+    height: 20px;
+    background: #f0f0f0;
+    border-radius: 10px;
+    overflow: hidden;
+    position: relative;
+}
+
+.subtask-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #a5b4fc 0%, #c084fc 100%);
+    transition: width 0.5s cubic-bezier(0.4, 0.0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.subtask-progress-fill::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    background: linear-gradient(
+        105deg,
+        transparent 40%,
+        rgba(255,255,255,0.6) 50%,
+        transparent 60%
+    );
+    animation: shimmer-subtask 1.5s infinite;
+}
+
+@keyframes shimmer-subtask {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(200%); }
+}
+
+.subtask-details {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 8px;
+    font-size: 0.85rem;
+    color: #666;
+}
+</style>
+
+<script>
+function toggleLogWindow() {
+    const logWindow = document.querySelector('.log-window');
+    logWindow.classList.toggle('collapsed');
+}
+
+// Auto-scroll log window to bottom
+document.addEventListener('htmx:afterSwap', function(evt) {
+    if (evt.target.classList.contains('log-window')) {
+        evt.target.scrollTop = evt.target.scrollHeight;
+    }
+});
+</script>

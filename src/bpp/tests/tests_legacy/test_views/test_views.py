@@ -118,7 +118,7 @@ class TestBrowseAutor(UserTestCase):
     def test_autor(self):
         a = baker.make(Autor)
         res = self.client.get(reverse("bpp:browse_autor", args=(a.slug,)))
-        self.assertNotContains(res, "otwórz do edycji")
+        self.assertNotContains(res, "Otwórz do edycji")
 
 
 class TestBrowseAutorStaff(SuperuserTestCase):
@@ -129,7 +129,7 @@ class TestBrowseAutorStaff(SuperuserTestCase):
     def test_autor(self):
         a = baker.make(Autor)
         res = self.client.get(reverse("bpp:browse_autor", args=(a.slug,)))
-        self.assertContains(res, "otwórz do edycji")
+        self.assertContains(res, "Otwórz do edycji")
 
 
 class TestOAI(UserTestCase):

@@ -37,14 +37,15 @@ ALLOWED_HOSTS = [
     "localhost",
     "127.0.0.1",
     "mac.iplweb",
+    "publikacje-test",
     "test.unexistenttld",
     env("DJANGO_BPP_HOSTNAME"),  # noqa
 ]
 
 HTML_MINIFY = False
 
-CELERY_ALWAYS_EAGER = True
 # CELERY_ALWAYS_EAGER = False
+CELERY_ALWAYS_EAGER = True
 CELERY_EAGER_PROPAGATES_EXCEPTIONS = True
 
 PUNKTUJ_MONOGRAFIE = False
@@ -76,3 +77,13 @@ TEMPLATES[0]["OPTIONS"]["loaders"] = [  # noqa
     "django.template.loaders.filesystem.Loader",
     "django.template.loaders.app_directories.Loader",
 ]
+
+# Disable setup wizard middleware during tests
+import sys
+
+if "pytest" in sys.modules:
+    MIDDLEWARE = [
+        m
+        for m in MIDDLEWARE
+        if m != "bpp_setup_wizard.middleware.SetupWizardMiddleware"
+    ]

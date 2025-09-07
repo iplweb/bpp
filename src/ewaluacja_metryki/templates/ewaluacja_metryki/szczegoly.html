@@ -1,0 +1,443 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}Metryki - {{ metryka.autor }}{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="/">Strona główna</a></li>
+    <li><a href="{% url 'ewaluacja_metryki:lista' %}">Metryki ewaluacyjne</a></li>
+    <li class="current">{{ metryka.autor }}</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="columns">
+
+        <h1>
+            <span class="fi-torso"></span> {{ metryka.autor }}
+            <a href="{% url 'bpp:browse_autor' metryka.autor.pk %}"
+               class="button small secondary"
+               style="margin-left: 1rem; vertical-align: middle;"
+               target="_blank"
+               title="Zobacz profil autora w BPP">
+                <span class="fi-magnifying-glass"></span> Profil w BPP
+            </a>
+        </h1>
+
+        <!-- Disclaimer komunikat -->
+        {% include "ewaluacja_metryki/disclaimer.html" %}
+
+        {% if inne_dyscypliny %}
+        <div class="callout" style="background-color: #f0f4f8; border: 1px solid #d0d8e0;">
+            <strong>Inne dyscypliny tego autora:</strong>
+            <div class="button-group stacked-for-small" style="margin-top: 0.5rem;">
+                {% for inna in inne_dyscypliny %}
+                    <a href="{% url 'ewaluacja_metryki:szczegoly' inna.pk %}"
+                       class="button hollow"
+                       style="background-color: #ffffff; border: 1px solid #cbd5e0; color: #2c3e50; margin-bottom: 0.5rem; text-align: left; padding: 0.75rem;">
+                        <span style="display: inline-block; margin-right: 1rem;">
+                            {{ inna.dyscyplina_naukowa.nazwa }}
+                        </span>
+                        <span class="float-right badge {% if inna.srednia_za_slot_nazbierana > metryka.srednia_za_slot_nazbierana %}success{% elif inna.srednia_za_slot_nazbierana < metryka.srednia_za_slot_nazbierana %}alert{% else %}secondary{% endif %}"
+                              style="font-size: 0.9rem; padding: 0.3rem 0.6rem;">
+                            {{ inna.srednia_za_slot_nazbierana|floatformat:2 }}
+                        </span>
+                    </a>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="row">
+            <div class="medium-6 columns">
+                <div class="callout">
+                    <h4><span class="fi-info"></span> Informacje podstawowe</h4>
+                    <table>
+                        <tbody>
+                            <tr>
+                                <th>Dyscyplina:</th>
+                                <td>{{ metryka.dyscyplina_naukowa.nazwa }}</td>
+                            </tr>
+                            <tr>
+                                <th>Jednostka:</th>
+                                <td>{{ metryka.jednostka.nazwa|default:"-" }}</td>
+                            </tr>
+                            <tr>
+                                <th>Okres ewaluacji:</th>
+                                <td>{{ metryka.rok_min }} - {{ metryka.rok_max }}</td>
+                            </tr>
+                            <tr>
+                                <th>Data obliczenia:</th>
+                                <td>{{ metryka.data_obliczenia|date:"Y-m-d H:i" }}</td>
+                            </tr>
+                            {% if pozycja_w_jednostce %}
+                            <tr>
+                                <th>Pozycja w jednostce:</th>
+                                <td>{{ pozycja_w_jednostce }} / {{ liczba_w_jednostce }}</td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="medium-6 columns">
+                <div class="callout secondary">
+                    <h4><span class="fi-graph-bar"></span> Wykorzystanie slotów</h4>
+
+                    <div class="progress large" role="progressbar" tabindex="0"
+                         aria-valuenow="{{ metryka.procent_wykorzystania_slotow|floatformat:0 }}"
+                         aria-valuemin="0" aria-valuemax="100">
+                        <div class="progress-meter {% if metryka.procent_wykorzystania_slotow >= 90 %}success{% elif metryka.procent_wykorzystania_slotow >= 70 %}warning{% else %}alert{% endif %}"
+                             style="width: {{ metryka.procent_wykorzystania_slotow|floatformat:0 }}%">
+                            <p class="progress-meter-text">{{ metryka.procent_wykorzystania_slotow|floatformat:1 }}%</p>
+                        </div>
+                    </div>
+
+                    <table>
+                        <tbody>
+                            <tr>
+                                <th>Slot maksymalny:</th>
+                                <td class="text-right">{{ metryka.slot_maksymalny|floatformat:2 }}</td>
+                            </tr>
+                            <tr>
+                                <th>Slot wykorzystany:</th>
+                                <td class="text-right">{{ metryka.slot_nazbierany|floatformat:2 }}</td>
+                            </tr>
+                            <tr>
+                                <th>Slot niewykorzystany:</th>
+                                <td class="text-right">{{ metryka.slot_niewykorzystany|floatformat:2 }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Wymiar etatu i procent dyscypliny -->
+        {% if dyscyplina_lata %}
+        <div class="row">
+            <div class="medium-12 columns">
+                <div class="callout">
+                    <h4><span class="fi-calendar"></span> Wymiar etatu i procent dyscypliny w latach {{ metryka.rok_min }}-{{ metryka.rok_max }}</h4>
+                    <table class="hover">
+                        <thead>
+                            <tr>
+                                <th class="text-center">Rok</th>
+                                <th class="text-center">Wymiar etatu</th>
+                                <th class="text-center">Procent dyscypliny</th>
+                                <th class="text-center">Rodzaj autora</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for rok_data in dyscyplina_lata %}
+                            <tr>
+                                <td class="text-center">
+                                    <strong>{{ rok_data.rok }}</strong>
+                                </td>
+                                <td class="text-center">
+                                    {% if rok_data.wymiar_etatu %}
+                                        <span class="label {% if rok_data.wymiar_etatu == 1.00 %}success{% elif rok_data.wymiar_etatu >= 0.50 %}warning{% else %}secondary{% endif %}">
+                                            {{ rok_data.wymiar_etatu|floatformat:2 }}
+                                        </span>
+                                    {% else %}
+                                        <span class="label secondary">-</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    {% if rok_data.subdyscyplina_naukowa and rok_data.subdyscyplina_naukowa == metryka.dyscyplina_naukowa %}
+                                        {% if rok_data.procent_subdyscypliny %}
+                                            <span class="label {% if rok_data.procent_subdyscypliny >= 75 %}success{% elif rok_data.procent_subdyscypliny >= 50 %}warning{% else %}alert{% endif %}">
+                                                {{ rok_data.procent_subdyscypliny|floatformat:2 }}%
+                                            </span>
+                                            <small class="text-muted">(subdyscyplina)</small>
+                                        {% else %}
+                                            <span class="label secondary">-</span>
+                                        {% endif %}
+                                    {% else %}
+                                        {% if rok_data.procent_dyscypliny %}
+                                            <span class="label {% if rok_data.procent_dyscypliny >= 75 %}success{% elif rok_data.procent_dyscypliny >= 50 %}warning{% else %}alert{% endif %}">
+                                                {{ rok_data.procent_dyscypliny|floatformat:2 }}%
+                                            </span>
+                                        {% else %}
+                                            <span class="label secondary">-</span>
+                                        {% endif %}
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    {% if rok_data.rodzaj_autora == 'N' %}
+                                        <span class="label success" title="Pracownik zaliczany do liczby N">N</span>
+                                    {% elif rok_data.rodzaj_autora == 'D' %}
+                                        <span class="label warning" title="Doktorant">D</span>
+                                    {% elif rok_data.rodzaj_autora == 'Z' %}
+                                        <span class="label secondary" title="Inny zatrudniony">Z</span>
+                                    {% else %}
+                                        <span class="label secondary" title="Brak danych">-</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center">
+                                    <em>Brak danych o wymiarze etatu i dyscyplinie dla tego autora</em>
+                                </td>
+                            </tr>
+                            {% endfor %}
+
+                            {% if srednia_etatu or srednia_procent %}
+                            <!-- Podsumowanie -->
+                            <tr style="border-top: 2px solid #ddd; background-color: #f7f7f7;">
+                                <td class="text-center">
+                                    <strong>Średnia</strong>
+                                </td>
+                                <td class="text-center">
+                                    {% if srednia_etatu %}
+                                        <strong>{{ srednia_etatu|floatformat:2 }}</strong>
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    {% if srednia_procent %}
+                                        <strong>{{ srednia_procent|floatformat:2 }}%</strong>
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    -
+                                </td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+
+                    {% if dyscyplina_lata %}
+                    <div class="callout secondary" style="margin-top: 1rem;">
+                        <p style="margin: 0;">
+                            <small>
+                                <strong>Legenda rodzaju autora:</strong>
+                                N = Pracownik zaliczany do liczby N,
+                                D = Doktorant,
+                                Z = Inny zatrudniony
+                            </small>
+                        </p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Porównanie metryk -->
+        <div class="row">
+            <div class="medium-6 columns">
+                <div class="callout success">
+                    <h4><span class="fi-check"></span> Prace nazbierane (algorytm plecakowy)</h4>
+                    <table>
+                        <tbody>
+                            <tr>
+                                <th>Liczba prac:</th>
+                                <td class="text-right">{{ prace_nazbierane|length }}</td>
+                            </tr>
+                            <tr>
+                                <th>Suma punktów PKDaut:</th>
+                                <td class="text-right"><strong>{{ metryka.punkty_nazbierane|floatformat:2 }}</strong></td>
+                            </tr>
+                            <tr>
+                                <th>Suma slotów:</th>
+                                <td class="text-right">{{ metryka.slot_nazbierany|floatformat:2 }}</td>
+                            </tr>
+                            <tr>
+                                <th>Średnia PKDaut/slot:</th>
+                                <td class="text-right">
+                                    <span class="label success large">{{ metryka.srednia_za_slot_nazbierana|floatformat:2 }}</span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="medium-6 columns">
+                <div class="callout">
+                    <h4><span class="fi-list"></span> Wszystkie prace</h4>
+                    <table>
+                        <tbody>
+                            <tr>
+                                <th>Liczba prac:</th>
+                                <td class="text-right">{{ metryka.liczba_prac_wszystkie }}</td>
+                            </tr>
+                            <tr>
+                                <th>Suma punktów PKDaut:</th>
+                                <td class="text-right">{{ metryka.punkty_wszystkie|floatformat:2 }}</td>
+                            </tr>
+                            <tr>
+                                <th>Suma slotów:</th>
+                                <td class="text-right">{{ metryka.slot_wszystkie|floatformat:2 }}</td>
+                            </tr>
+                            <tr>
+                                <th>Średnia PKDaut/slot:</th>
+                                <td class="text-right">
+                                    <span class="label secondary">{{ metryka.srednia_za_slot_wszystkie|floatformat:2 }}</span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lista prac nazbieranych -->
+        {% if prace_nazbierane %}
+        <div class="callout">
+            <h4><span class="fi-page-multiple"></span> Szczegóły prac nazbieranych</h4>
+            <table class="hover">
+                <thead>
+                    <tr>
+                        <th>Lp.</th>
+                        <th>Tytuł</th>
+                        <th>Rok</th>
+                        <th class="text-right">PKDaut</th>
+                        <th class="text-right">Slot</th>
+                        <th class="text-right">PKDaut/Slot</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for praca in prace_nazbierane %}
+                    <tr>
+                        <td>{{ forloop.counter }}</td>
+                        <td>
+                            <a href="{% url 'bpp:browse_praca_by_slug' praca.rekord.slug %}">
+                                {{ praca.rekord.tytul_oryginalny|truncatewords:10 }}
+                            </a>
+                        </td>
+                        <td>{{ praca.rekord.rok }}</td>
+                        <td class="text-right">{{ praca.pkdaut|floatformat:2 }}</td>
+                        <td class="text-right">{{ praca.slot|floatformat:4 }}</td>
+                        <td class="text-right">
+                            {% if praca.pkdaut_per_slot %}
+                                {{ praca.pkdaut_per_slot|floatformat:2 }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+
+        <!-- Przycisk pokazywania wszystkich prac -->
+        {% if prace_wszystkie %}
+        <div class="callout secondary">
+            <h4>
+                <span class="fi-page-multiple"></span> Wszystkie prace w okresie
+                <button class="button small float-right" onclick="toggleAllPapers()">
+                    <span class="fi-eye"></span> Pokaż/Ukryj
+                </button>
+            </h4>
+            <div id="all-papers" style="display: none;">
+                <table class="hover">
+                    <thead>
+                        <tr>
+                            <th>Lp.</th>
+                            <th>Tytuł</th>
+                            <th>Rok</th>
+                            <th class="text-right">PKDaut</th>
+                            <th class="text-right">Slot</th>
+                            <th class="text-right">PKDaut/Slot</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for praca in prace_wszystkie %}
+                        <tr {% if praca.pk in metryka.prace_nazbierane %}class="success"{% endif %}>
+                            <td>{{ forloop.counter }}</td>
+                            <td>
+                            <a href="{% url 'bpp:browse_praca_by_slug' praca.rekord.slug %}">
+                                    {{ praca.rekord.tytul_oryginalny|truncatewords:10 }}
+                                </a>
+                                {% if praca.pk in metryka.prace_nazbierane %}
+                                    <span class="label success">Wybrana</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ praca.rekord.rok }}</td>
+                            <td class="text-right">{{ praca.pkdaut|floatformat:2 }}</td>
+                            <td class="text-right">{{ praca.slot|floatformat:4 }}</td>
+                            <td class="text-right">
+                                {% if praca.pkdaut_per_slot %}
+                                    {{ praca.pkdaut_per_slot|floatformat:2 }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="button-group">
+            <a href="{% url 'ewaluacja_metryki:lista' %}" class="button secondary">
+                <span class="fi-arrow-left"></span> Powrót do listy
+            </a>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleAllPapers() {
+    var papers = document.getElementById('all-papers');
+    if (papers.style.display === 'none') {
+        papers.style.display = 'block';
+    } else {
+        papers.style.display = 'none';
+    }
+}
+</script>
+
+<style>
+    .progress.large {
+        height: 2rem;
+        margin-bottom: 1rem;
+    }
+    .progress.large .progress-meter-text {
+        font-size: 1.2rem;
+        line-height: 2rem;
+    }
+    tr.success {
+        background-color: #e1faea;
+    }
+
+    /* Discipline buttons styling */
+    .button-group.stacked-for-small .button {
+        display: block;
+        width: 100%;
+        transition: all 0.2s ease;
+    }
+
+    .button-group.stacked-for-small .button:hover {
+        background-color: #f7fafc !important;
+        border-color: #a0aec0 !important;
+        transform: translateX(2px);
+    }
+
+    .button-group.stacked-for-small .badge {
+        min-width: 60px;
+        text-align: center;
+    }
+
+    /* Responsive layout for discipline buttons */
+    @media screen and (min-width: 640px) {
+        .button-group.stacked-for-small {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+    }
+</style>
+{% endblock %}

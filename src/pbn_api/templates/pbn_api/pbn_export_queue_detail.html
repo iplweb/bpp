@@ -1,0 +1,264 @@
+{% extends "base.html" %}
+{% load humanize static pbn_extras %}
+
+{% block extratitle %}
+    Szczegóły eksportu do PBN #{{ export_queue_item.pk }}
+{% endblock %}
+
+{% block extrahead %}
+<style>
+    /* Remove underlines only from buttons within this specific page */
+    .pbn-export-detail .button-group a.button,
+    .pbn-export-detail .button-group a.button:hover,
+    .pbn-export-detail .button-group a.button:focus,
+    .pbn-export-detail .button-group a.button:visited {
+        text-decoration: none !important;
+    }
+</style>
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url 'pbn_api:export-queue-list' %}">Kolejka eksportu do PBN</a></li>
+    <li class="current">Szczegóły #{{ export_queue_item.pk }}</li>
+{% endblock %}
+
+{% block content %}
+    <div class="pbn-export-detail">
+        <div class="row">
+            <div class="large-6 columns">
+                <h2>Szczegóły eksportu do PBN #{{ export_queue_item.pk }}</h2>
+            </div>
+            <div class="large-6 columns" style="text-align: right; padding-top: 20px;">
+                <div class="button-group">
+                    <a href="{% url 'pbn_api:export-queue-list' %}" class="button secondary">
+                        <span class="fi-arrow-left"></span> Powrót do listy
+                    </a>
+
+                    {% if export_queue_item.rekord_do_wysylki %}
+                        <form method="post" action="{% url 'pbn_api:export-queue-resend' export_queue_item.pk %}" style="display: inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="button success"
+                                    onclick="return confirm('Czy na pewno chcesz wysłać ten rekord do PBN?')">
+                                <span class="fi-upload"></span> Wyślij do PBN
+                            </button>
+                        </form>
+                    {% else %}
+                        <div class="button alert disabled">
+                            <span class="fi-alert"></span> Rekord źródłowy został usunięty
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        {% if request.user.is_staff or perms.pbn_api %}
+            <div class="row">
+                <div class="large-12 columns">
+                <div class="callout">
+                    <h4>Informacje podstawowe</h4>
+                    <table>
+                        <tbody>
+                            <tr>
+                                <th width="200">ID:</th>
+                                <td>{{ export_queue_item.pk }}</td>
+                            </tr>
+                            <tr>
+                                <th>Rekord do wysyłki:</th>
+                                <td>
+                                    {% if export_queue_item.rekord_do_wysylki %}
+                                        {% with rekord=export_queue_item.rekord_do_wysylki %}
+                                            {% if rekord.slug %}
+                                                <a href="{% url 'bpp:browse_praca_by_slug' rekord.slug %}" target="_blank" style="text-decoration: none; color: inherit;">
+                                            {% endif %}
+                                            {% if rekord.opis_bibliograficzny_cache %}
+                                                {{ rekord.opis_bibliograficzny_cache|safe }}
+                                            {% elif rekord.tytul_oryginalny %}
+                                                {{ rekord.tytul_oryginalny }}
+                                            {% else %}
+                                                {{ rekord }}
+                                            {% endif %}
+                                            {% if rekord.slug %}
+                                                </a>
+                                            {% endif %}
+                                        {% endwith %}
+                                        <br>
+                                        <small>Typ: {{ export_queue_item.content_type }}</small>
+                                        <br>
+                                        <div class="button-group small" style="margin-top: 5px;">
+                                            {% if export_queue_item.rekord_do_wysylki.slug %}
+                                                <a href="{% url 'bpp:browse_praca_by_slug' export_queue_item.rekord_do_wysylki.slug %}"
+                                                   target="_blank"
+                                                   class="button tiny secondary">
+                                                    <span class="fi-eye"></span> Zobacz w BPP
+                                                </a>
+                                            {% endif %}
+                                            {% if record_admin_url and request.user.is_staff %}
+                                                <a href="{{ record_admin_url }}"
+                                                   target="_blank"
+                                                   class="button tiny warning">
+                                                    <span class="fi-pencil"></span> Edytuj w admin
+                                                </a>
+                                            {% endif %}
+                                        </div>
+                                    {% else %}
+                                        <em class="alert label">Rekord został usunięty</em>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Zamówił:</th>
+                                <td>{{ export_queue_item.zamowil }}</td>
+                            </tr>
+                            <tr>
+                                <th>Data zamówienia:</th>
+                                <td>{{ export_queue_item.zamowiono }} ({{ export_queue_item.zamowiono|naturaltime }})</td>
+                            </tr>
+                            <tr>
+                                <th>Wysyłkę podjęto:</th>
+                                <td>
+                                    {% if export_queue_item.wysylke_podjeto %}
+                                        {{ export_queue_item.wysylke_podjeto }} ({{ export_queue_item.wysylke_podjeto|naturaltime }})
+                                    {% else %}
+                                        <em>Nie podjęto</em>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Wysyłkę zakończono:</th>
+                                <td>
+                                    {% if export_queue_item.wysylke_zakonczono %}
+                                        {{ export_queue_item.wysylke_zakonczono }} ({{ export_queue_item.wysylke_zakonczono|naturaltime }})
+                                    {% else %}
+                                        <em>Nie zakończono</em>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Ilość prób:</th>
+                                <td>{{ export_queue_item.ilosc_prob }}</td>
+                            </tr>
+                            <tr>
+                                <th>Status:</th>
+                                <td>
+                                    {% if export_queue_item.zakonczono_pomyslnie == True %}
+                                        <span class="label success">Zakończono pomyślnie</span>
+                                    {% elif export_queue_item.zakonczono_pomyslnie == False %}
+                                        <span class="label alert">Zakończono z błędem</span>
+                                    {% elif export_queue_item.retry_after_user_authorised %}
+                                        <span class="label warning">Oczekuje na autoryzację użytkownika</span>
+                                    {% else %}
+                                        <span class="label secondary">W kolejce / w trakcie</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                {% if export_queue_item.zakonczono_pomyslnie == True and parsed_links %}
+                    <div class="callout success">
+                        <h4>Linki do wysłanego rekordu</h4>
+                        <div class="button-group">
+                            {% if pbn_publication_url %}
+                                <a href="{{ pbn_publication_url }}" target="_blank" class="button primary">
+                                    <span class="fi-link"></span> Zobacz w PBN
+                                </a>
+                            {% endif %}
+
+                            {% if sent_data %}
+                                <a href="{% url 'admin:pbn_api_sentdata_change' sent_data.pk %}" target="_blank" class="button secondary">
+                                    <span class="fi-page-filled"></span> JSON wysłanych danych
+                                </a>
+                            {% elif parsed_links.sentdata_url %}
+                                <a href="{{ parsed_links.sentdata_url }}" target="_blank" class="button secondary">
+                                    <span class="fi-page-filled"></span> JSON wysłanych danych
+                                </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endif %}
+
+                {% if export_queue_item.komunikat %}
+                    <div class="callout">
+                        <h4>Historia komunikatów</h4>
+
+                        {% with messages=export_queue_item.komunikat|parse_historia_komunikatow %}
+                        {% if messages %}
+                            <!-- Formatted view with toggle -->
+                            <div style="margin-bottom: 10px;">
+                                <button type="button" class="button tiny secondary" onclick="toggleKomunikatView()">
+                                    <span class="fi-arrows-expand"></span> Przełącz widok (sformatowany/surowy)
+                                </button>
+                            </div>
+
+                            <!-- Formatted messages view -->
+                            <div id="formatted-messages" style="max-height: 500px; overflow-y: auto;">
+                                {% for msg in messages %}
+                                <div class="message-block" style="background: white; border-left: 4px solid {{ msg.type|message_color }}; border-radius: 4px; padding: 12px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                                    <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                                        <span class="{{ msg.type|message_icon }}" style="color: {{ msg.type|message_color }}; font-size: 1.2em; margin-right: 10px;"></span>
+                                        <strong style="color: #2c3e50;">{{ msg.datetime|format_datetime_pl }}</strong>
+                                        {% if msg.type == 'error' %}
+                                            <span class="label alert" style="margin-left: 10px;">Błąd</span>
+                                        {% elif msg.type == 'success' %}
+                                            <span class="label success" style="margin-left: 10px;">Sukces</span>
+                                        {% elif msg.type == 'warning' %}
+                                            <span class="label warning" style="margin-left: 10px;">Ostrzeżenie</span>
+                                        {% elif msg.type == 'resend' %}
+                                            <span class="label info" style="margin-left: 10px;">Ponowna wysyłka</span>
+                                        {% endif %}
+                                    </div>
+                                    <div style="color: #495057; font-size: 0.95em;">
+                                        {% if msg.is_traceback %}
+                                            <details>
+                                                <summary style="cursor: pointer; color: #dc3545; font-weight: 500;">
+                                                    Wystąpił błąd (kliknij aby zobaczyć szczegóły)
+                                                </summary>
+                                                <pre style="margin-top: 10px; padding: 10px; background: #f8f9fa; border-radius: 4px; font-size: 0.85em; overflow-x: auto;">{{ msg.content|safe }}</pre>
+                                            </details>
+                                        {% else %}
+                                            <div style="white-space: pre-wrap; word-wrap: break-word;">{{ msg.content|safe }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+
+                            <!-- Raw text view (hidden by default) -->
+                            <div id="raw-messages" style="display: none; background-color: #f4f4f4; padding: 10px; border-radius: 3px; max-height: 500px; overflow-y: auto;">
+                                <pre style="white-space: pre-wrap; word-wrap: break-word; margin: 0;">{{ export_queue_item.komunikat|safe }}</pre>
+                            </div>
+
+                            <script>
+                                function toggleKomunikatView() {
+                                    var formatted = document.getElementById('formatted-messages');
+                                    var raw = document.getElementById('raw-messages');
+
+                                    if (formatted.style.display === 'none') {
+                                        formatted.style.display = 'block';
+                                        raw.style.display = 'none';
+                                    } else {
+                                        formatted.style.display = 'none';
+                                        raw.style.display = 'block';
+                                    }
+                                }
+                            </script>
+                        {% else %}
+                            <!-- Fallback to raw view if parsing fails -->
+                            <div style="background-color: #f4f4f4; padding: 10px; border-radius: 3px; max-height: 500px; overflow-y: auto;">
+                                <pre style="white-space: pre-wrap; word-wrap: break-word;">{{ export_queue_item.komunikat|safe }}</pre>
+                            </div>
+                        {% endif %}
+                        {% endwith %}
+                    </div>
+                {% endif %}
+
+            </div>
+        </div>
+        {% else %}
+            <p class="alert-box alert">Brak uprawnień do przeglądania szczegółów eksportu.</p>
+        {% endif %}
+    </div>
+
+{% endblock %}

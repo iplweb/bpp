@@ -11,7 +11,7 @@ def test_Wydawnictwo_Nadrzedne_W_PBNAutocomplete_post_mniej_jak_max_wiecej_jak_1
 ):
     x = Wydawnictwo_Nadrzedne_W_PBNAutocomplete()
 
-    mocker.patch("pbn_api.integrator.zapisz_mongodb")
+    mocker.patch("pbn_integrator.utils.zapisz_mongodb")
     search_publications = mocker.patch("pbn_api.client.PBNClient.search_publications")
     mocker.patch("pbn_api.client.PBNClient.get_publication_by_id")
 

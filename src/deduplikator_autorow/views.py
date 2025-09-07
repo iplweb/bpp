@@ -7,7 +7,7 @@ from django.views.decorators.http import require_http_methods
 
 from pbn_api.models import Scientist
 from pbn_downloader_app.models import PbnDownloadTask
-from .models import NotADuplicate
+from .models import IgnoredAuthor, LogScalania, NotADuplicate
 from .utils import (
     analiza_duplikatow,
     count_authors_with_duplicates,
@@ -110,8 +110,18 @@ def duplicate_authors_view(request):
     # Policz liczbę autorów oznaczonych jako nie-duplikat
     not_duplicate_count = NotADuplicate.objects.count()
 
+    # Policz liczbę ignorowanych autorów
+    ignored_authors_count = IgnoredAuthor.objects.count()
+
     # Get latest PBN download task
     latest_pbn_download = PbnDownloadTask.get_latest_task()
+
+    # Get recent merge logs for current user
+    recent_merges = (
+        LogScalania.objects.filter(created_by=request.user)
+        .select_related("main_autor", "dyscyplina_before", "dyscyplina_after")
+        .order_by("-created_on")[:10]
+    )
 
     context = {
         "scientist": scientist,
@@ -123,8 +133,10 @@ def duplicate_authors_view(request):
         "has_previous_authors": len(request.session.get("navigation_history", [])) > 0,
         "total_authors_with_duplicates": total_authors_with_duplicates,
         "not_duplicate_count": not_duplicate_count,
+        "ignored_authors_count": ignored_authors_count,
         "search_lastname": search_lastname,
         "search_results_count": search_results_count,
+        "recent_merges": recent_merges,
     }
 
     if scientist:
@@ -186,6 +198,27 @@ def duplicate_authors_view(request):
 
             # Pobierz publikacje głównego autora (do 500)
             if context["glowny_autor"]:
+                # Pobierz dyscypliny głównego autora dla lat 2022-2025
+                from bpp.models import Autor_Dyscyplina
+
+                context["glowny_autor_dyscypliny"] = (
+                    Autor_Dyscyplina.objects.filter(
+                        autor=context["glowny_autor"], rok__gte=2022, rok__lte=2025
+                    )
+                    .select_related("dyscyplina_naukowa", "subdyscyplina_naukowa")
+                    .order_by("rok")
+                )
+
+                # Pobierz dyscypliny dla każdego duplikatu
+                for duplikat_data in duplikaty_z_publikacjami:
+                    duplikat_data["dyscypliny"] = (
+                        Autor_Dyscyplina.objects.filter(
+                            autor=duplikat_data["autor"], rok__gte=2022, rok__lte=2025
+                        )
+                        .select_related("dyscyplina_naukowa", "subdyscyplina_naukowa")
+                        .order_by("rok")
+                    )
+
                 glowne_publikacje = Rekord.objects.prace_autora(
                     context["glowny_autor"]
                 )[:500]
@@ -223,15 +256,18 @@ def scal_autorow_view(request):
     Przyjmuje parametry:
     - main_scientist_id: ID głównego autora (Scientist)
     - duplicate_scientist_id: ID duplikatu autora (Scientist)
+    - skip_pbn: Opcjonalnie, jeśli true nie wysyła publikacji do PBN
 
     Zwraca wynik operacji w formacie JSON.
     """
     if request.method == "GET":
         main_scientist_id = request.GET.get("main_scientist_id")
         duplicate_scientist_id = request.GET.get("duplicate_scientist_id")
+        skip_pbn = request.GET.get("skip_pbn", "false").lower() == "true"
     else:
         main_scientist_id = request.POST.get("main_scientist_id")
         duplicate_scientist_id = request.POST.get("duplicate_scientist_id")
+        skip_pbn = request.POST.get("skip_pbn", "false").lower() == "true"
 
     if not main_scientist_id or not duplicate_scientist_id:
         return JsonResponse(
@@ -243,7 +279,9 @@ def scal_autorow_view(request):
         )
 
     try:
-        result = scal_autorow(main_scientist_id, duplicate_scientist_id, request.user)
+        result = scal_autorow(
+            main_scientist_id, duplicate_scientist_id, request.user, skip_pbn=skip_pbn
+        )
         return JsonResponse({"success": result.get("success", False), "result": result})
     except NotImplementedError as e:
         return JsonResponse({"success": False, "error": str(e)}, status=501)
@@ -317,6 +355,66 @@ def reset_skipped_authors(request):
             "Lista pominiętych autorów i historia nawigacji zostały wyczyszczone. Rozpoczynasz od początku.",
         )
 
+    return redirect("deduplikator_autorow:duplicate_authors")
+
+
+@group_required(GR_WPROWADZANIE_DANYCH)
+@require_http_methods(["POST"])
+def ignore_author(request):
+    """
+    Mark a scientist as ignored in the deduplication process.
+
+    Parameters:
+    - scientist_id: ID of the Scientist to ignore
+    - reason: Optional reason for ignoring (from POST)
+    """
+    scientist_id = request.POST.get("scientist_id")
+    reason = request.POST.get("reason", "")
+
+    if not scientist_id:
+        messages.error(request, "Brak wymaganego parametru: scientist_id")
+        return redirect("deduplikator_autorow:duplicate_authors")
+
+    try:
+        scientist = Scientist.objects.get(pk=scientist_id)
+
+        # Check if already ignored
+        if IgnoredAuthor.objects.filter(scientist=scientist).exists():
+            messages.warning(
+                request, f"Autor {scientist} jest już oznaczony jako ignorowany."
+            )
+        else:
+            # Get the BPP author if available
+            autor = None
+            if hasattr(scientist, "rekord_w_bpp"):
+                autor = scientist.rekord_w_bpp
+
+            IgnoredAuthor.objects.create(
+                scientist=scientist, autor=autor, reason=reason, created_by=request.user
+            )
+            messages.success(
+                request, f"Autor {scientist} został oznaczony jako ignorowany."
+            )
+
+        return redirect("deduplikator_autorow:duplicate_authors")
+
+    except Scientist.DoesNotExist:
+        messages.error(request, f"Nie znaleziono Scientist o ID: {scientist_id}")
+        return redirect("deduplikator_autorow:duplicate_authors")
+    except Exception as e:
+        messages.error(request, f"Błąd podczas ignorowania autora: {str(e)}")
+        return redirect("deduplikator_autorow:duplicate_authors")
+
+
+@group_required(GR_WPROWADZANIE_DANYCH)
+@require_http_methods(["POST"])
+def reset_ignored_authors(request):
+    """
+    Remove all ignored author markings.
+    """
+    count = IgnoredAuthor.objects.count()
+    IgnoredAuthor.objects.all().delete()
+    messages.success(request, f"Zresetowano {count} ignorowanych autorów.")
     return redirect("deduplikator_autorow:duplicate_authors")
 
 

@@ -1,6 +1,7 @@
 from django import forms
+from reversion.admin import VersionAdmin
 
-from ewaluacja_liczba_n.models import LiczbaNDlaUczelni_2022_2025
+from ewaluacja_liczba_n.models import LiczbaNDlaUczelni
 from pbn_api.exceptions import PraceSerwisoweException
 from ..models import Uczelnia, Ukryj_Status_Korekty, Wydzial
 
@@ -19,8 +20,8 @@ class WydzialInlineForm(forms.ModelForm):
         widgets = {"kolejnosc": forms.HiddenInput}
 
 
-class LiczbaNDlaUczelni_2022_2025Inline(admin.TabularInline):
-    model = LiczbaNDlaUczelni_2022_2025
+class LiczbaNDlaUczelniInline(admin.TabularInline):
+    model = LiczbaNDlaUczelni
     extra = 0
 
     def has_add_permission(self, request, obj):
@@ -62,7 +63,7 @@ class UczelniaAdmin(
     RestrictDeletionToAdministracjaGroupMixin,
     ZapiszZAdnotacjaMixin,
     BaseBppAdminMixin,
-    admin.ModelAdmin,
+    VersionAdmin,
 ):
     list_display = ["nazwa", "nazwa_dopelniacz_field", "skrot", "pbn_uid"]
     autocomplete_fields = ["pbn_uid", "obca_jednostka"]
@@ -210,7 +211,7 @@ class UczelniaAdmin(
     inlines = [
         WydzialInline,
         Ukryj_Status_KorektyInline,
-        LiczbaNDlaUczelni_2022_2025Inline,
+        LiczbaNDlaUczelniInline,
     ]
 
     def save_model(self, request, obj, form, change):

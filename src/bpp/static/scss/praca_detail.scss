@@ -1,0 +1,585 @@
+// Publication detail page styles
+@use "sass:color";
+
+// Main container
+.publication-detail-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+// Title section
+.publication-title-section {
+    margin-bottom: 30px;
+
+    h2 {
+        font-size: 1.8rem;
+        line-height: 1.3;
+        margin-bottom: 20px;
+        color: #2c3e50;
+
+        span {
+            color: #7f8c8d;
+            font-size: 0.9em;
+        }
+
+        .edition-mark {
+            font-weight: normal;
+            font-size: 0.8em;
+        }
+    }
+}
+
+// Authors section
+.authors-section {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+
+    .authors-list {
+        font-size: 1.1rem;
+        line-height: 1.6;
+    }
+
+    .author-type-badge {
+        background: #95a5a6;
+        color: white;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 0.75em;
+        margin: 0 3px;
+    }
+
+    .author-name {
+        font-weight: 500;
+    }
+}
+
+// Main content columns
+.content-columns {
+    display: flex;
+    gap: 30px;
+    flex-wrap: wrap;
+}
+
+.left-column {
+    flex: 1 1 60%;
+    min-width: 300px;
+}
+
+.right-column {
+    flex: 1 1 35%;
+    min-width: 300px;
+}
+
+// Info card - standard style for all panels
+.info-card {
+    background: white;
+    border: 1px solid #e1e4e8;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    transition: box-shadow 0.3s ease;
+
+    &:hover {
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    h3 {
+        font-size: 1.2rem;
+        margin-bottom: 15px;
+        color: #2c3e50;
+        padding-bottom: 8px;
+
+        .fi {
+            margin-right: 8px;
+        }
+    }
+}
+
+// Detail rows in cards
+.detail-row {
+    margin-bottom: 12px;
+
+    strong {
+        color: #7f8c8d;
+    }
+
+    > div {
+        margin-left: 20px;
+        margin-top: 5px;
+    }
+}
+
+// Bibliographic description
+#bibliographic-description {
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 4px;
+    cursor: pointer;
+    position: relative;
+
+    .biblio-text {
+        font-size: 0.95em;
+        line-height: 1.6;
+        color: #333;
+    }
+}
+
+#copy-biblio-feedback {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    display: none;
+    background: #27ae60;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 0.85em;
+}
+
+// External links card
+.external-links-card {
+    @extend .info-card;
+
+    h3 {
+        .fi-web {
+            margin-right: 8px;
+        }
+    }
+}
+
+.external-links-grid {
+    .external-link-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px;
+        margin-bottom: 12px;
+        border: 1px solid #e1e4e8;
+        border-radius: 6px;
+        background: #f8f9fa;
+        overflow: hidden; // Prevent overflow
+
+        &.link-pbn {
+            border-left: 4px solid #17a2b8;
+        }
+
+        &.link-doi {
+            border-left: 4px solid #ffc107;
+        }
+
+        &.link-pubmed {
+            border-left: 4px solid #dc3545;
+        }
+
+        &.link-pmc {
+            border-left: 4px solid #28a745;
+        }
+
+        &.link-www {
+            border-left: 4px solid #6f42c1;
+        }
+
+        .link-icon {
+            font-size: 1.3rem;
+            color: #6c757d;
+            flex-shrink: 0; // Prevent icon from shrinking
+        }
+
+        .link-content {
+            flex: 1;
+            min-width: 0; // Allow content to shrink below its min-content size
+            overflow: hidden; // Hide overflow
+
+            .link-label {
+                font-size: 0.75rem;
+                color: #6c757d;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+
+            .link-value {
+                font-size: 0.85rem; // Smaller font
+                color: #212529;
+                font-weight: 500;
+                word-break: break-all; // Break long URLs/IDs
+                overflow-wrap: anywhere; // Wrap anywhere if needed
+                line-height: 1.3;
+            }
+        }
+
+        .link-actions {
+            display: flex;
+            gap: 4px; // Smaller gap
+            flex-shrink: 0; // Prevent buttons from shrinking
+
+            .button {
+                padding: 4px 8px; // Smaller padding
+                font-size: 0.75rem; // Smaller font
+                margin: 0;
+                white-space: nowrap; // Prevent text wrap in buttons
+
+                &.copy-button {
+                    background: #6c757d;
+                    padding: 4px 6px; // Even more compact for copy
+
+                    i {
+                        margin: 0; // Remove margin from icon
+                    }
+
+                    &.copied {
+                        background: #28a745;
+                    }
+                }
+
+                &.open-button {
+                    background: $primary-color;
+
+                    i {
+                        margin-right: 3px; // Small margin for icon
+                    }
+                }
+            }
+        }
+    }
+
+    // Mobile adjustments
+    @media (max-width: 640px) {
+        .external-link-item {
+            flex-wrap: wrap; // Allow wrapping on very small screens
+
+            .link-icon {
+                font-size: 1.1rem;
+            }
+
+            .link-content {
+                flex: 1 1 calc(100% - 40px); // Take full width minus icon
+            }
+
+            .link-actions {
+                flex: 1 1 100%; // Full width on new line
+                margin-top: 8px;
+                justify-content: flex-end;
+            }
+        }
+    }
+}
+
+// Identifiers section
+.id-item {
+    margin-bottom: 10px;
+
+    .fi {
+        font-size: 1.2em;
+        margin-right: 8px;
+    }
+
+    small {
+        color: #7f8c8d;
+        display: block;
+        margin-left: 28px;
+    }
+}
+
+// Metrics grid
+.metrics-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+
+    > div {
+        text-align: center;
+        padding: 10px;
+        background: #f8f9fa;
+        border-radius: 6px;
+
+        .metric-value {
+            font-size: 1.5em;
+            font-weight: bold;
+
+            &.points { color: #e74c3c; }
+            &.impact { color: #3498db; }
+            &.scopus { color: #27ae60; }
+            &.wos { color: #9b59b6; }
+            &.citations { color: #f39c12; }
+            &.snip { color: #16a085; }
+            &.ic { color: #2c3e50; }
+            &.internal { color: #34495e; }
+        }
+
+        .metric-label {
+            font-size: 0.9em;
+            color: #7f8c8d;
+        }
+    }
+}
+
+// OpenAccess card
+.openaccess-card {
+    background: #f0f9ff;
+    border: 1px solid #3498db;
+
+    .openaccess-grid {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 10px;
+    }
+}
+
+// Slots tables
+.slots-section {
+    margin-top: 30px;
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+
+        thead {
+            background: #f8f9fa;
+
+            th {
+                padding: 10px;
+                text-align: left;
+                border-bottom: 2px solid #dee2e6;
+
+                &.text-center {
+                    text-align: center;
+                }
+            }
+        }
+
+        tbody {
+            tr {
+                border-bottom: 1px solid #dee2e6;
+
+                td {
+                    padding: 10px;
+
+                    &.text-center {
+                        text-align: center;
+                    }
+
+                    .slot-badge {
+                        padding: 2px 8px;
+                        border-radius: 4px;
+
+                        &.pkd {
+                            background: #e3f2fd;
+                        }
+
+                        &.slot {
+                            background: #fff3e0;
+                        }
+
+                        &.discipline-pkd {
+                            background: #e8f5e9;
+                        }
+
+                        &.discipline-slot {
+                            background: #fce4ec;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Detached disciplines
+.detached-disciplines {
+    margin-top: 30px;
+
+    .detached-card {
+        background: #fff5f5;
+        border: 1px solid #ffcccc;
+
+        thead {
+            background: #ffe5e5;
+        }
+
+        tbody tr {
+            border-bottom: 1px solid #ffcccc;
+        }
+    }
+}
+
+// Edit panel specific styles
+.edit-panel {
+    .edit-buttons {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+
+        .button {
+            margin-bottom: 0;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            background: white;
+            border: 1px solid #dee2e6;
+            color: #495057;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+
+            .fi {
+                margin-right: 6px;
+                vertical-align: middle;
+                transition: color 0.2s ease;
+            }
+
+            // Edit button - subtle green accent on hover
+            &.btn-edit {
+                &:hover {
+                    background: #f0fff4;
+                    border-color: #28a745;
+                    color: #1e7e34;
+                    box-shadow: 0 2px 6px rgba(40, 167, 69, 0.15);
+                    transform: translateY(-1px);
+
+                    .fi {
+                        color: #28a745;
+                    }
+                }
+            }
+
+            // Add button - subtle blue accent on hover
+            &.btn-add {
+                &:hover {
+                    background: #f0f7ff;
+                    border-color: #007bff;
+                    color: #0056b3;
+                    box-shadow: 0 2px 6px rgba(0, 123, 255, 0.15);
+                    transform: translateY(-1px);
+
+                    .fi {
+                        color: #007bff;
+                    }
+                }
+            }
+        }
+    }
+
+    .edit-info {
+        color: #7f8c8d;
+        display: block;
+        margin-top: 10px;
+        font-size: 0.85rem;
+
+        .fi-info {
+            font-size: 0.9em;
+            margin-right: 3px;
+        }
+    }
+}
+
+// Responsive styles
+@media screen and (max-width: 768px) {
+    .content-columns {
+        flex-direction: column !important;
+    }
+
+    .left-column, .right-column {
+        flex: 1 1 100% !important;
+        min-width: 100% !important;
+    }
+
+    .metrics-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    table {
+        font-size: 0.9em;
+    }
+
+    .publication-title-section h2 {
+        font-size: 1.4rem !important;
+    }
+}
+
+// Print button styles
+.print-button {
+    display: inline-block;
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 6px 10px;
+    color: #495057;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    cursor: pointer;
+
+    &:hover {
+        background: #e9ecef;
+        border-color: #adb5bd;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        transform: translateY(-1px);
+        text-decoration: none;
+    }
+
+    &:active {
+        transform: translateY(0);
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    }
+
+    .fi-print {
+        margin: 0;
+        font-size: 1.1rem;
+        vertical-align: middle;
+    }
+
+    // Header print button (in h3)
+    &.print-button-header {
+        padding: 5px 8px;
+        margin-left: 10px;
+
+        .fi-print {
+            font-size: 1rem;
+        }
+    }
+
+    // Small print button (in table cells)
+    &.print-button-small {
+        padding: 4px 8px;
+        font-size: 0.9rem;
+
+        .fi-print {
+            font-size: 0.95rem;
+        }
+    }
+
+    // Alternative discipline print button
+    &.print-button-alt {
+        background: #fff5f5;
+        border-color: #ffcccc;
+        color: palevioletred;
+
+        &:hover {
+            background: #ffe5e5;
+            border-color: #ff9999;
+            color: #c71585;
+        }
+
+        .fi-print {
+            color: inherit;
+        }
+    }
+}
+
+// Print styles
+@media print {
+    .button,
+    #bibtex-toggle-btn,
+    #bibtex-copy-btn,
+    .hide-for-print,
+    .print-button {
+        display: none !important;
+    }
+
+    #additional-content {
+        display: block !important;
+    }
+
+    .info-card {
+        break-inside: avoid;
+    }
+}

@@ -1,8 +1,8 @@
 from django.db import transaction
 from tqdm import tqdm
 
-from pbn_api.importer import utworz_autorow
 from pbn_api.management.commands.util import PBNBaseCommand
+from pbn_integrator.importer import utworz_autorow
 
 from bpp.models import Jednostka, Rekord
 

@@ -19,10 +19,25 @@
             </div>
             <div class="cell shrink">
                 {% include "browse/go_to_admin_change.html" with url="admin:bpp_zrodlo_change" pk=zrodlo.pk group="wprowadzanie danych" %}
-                {% include "browse/go_to_admin_list.html" with url="admin:bpp_zrodlo_add" group="wprowadzanie danych" text="dodaj nowy rekord" %}
+                {% include "browse/go_to_admin_list.html" with url="admin:bpp_zrodlo_add" group="wprowadzanie danych" text="Dodaj nowy rekord" %}
             </div>
         </div>
     </div>
+
+    <!-- Banner for sources without publications -->
+    {% if not has_publications %}
+    <div class="callout warning">
+        <div class="grid-x align-middle">
+            <div class="cell shrink">
+                <span class="fi-alert" style="font-size: 1.5rem; margin-right: 0.5rem;"></span>
+            </div>
+            <div class="cell auto">
+                <p style="margin: 0;"><strong>Brak publikacji</strong></p>
+                <p style="margin: 0;">To źródło nie zawiera jeszcze żadnych prac. Możesz dodać pierwszą publikację korzystając z przycisku "Dodaj nowy rekord" powyżej.</p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 
     <!-- Quick Actions -->
     <div class="source-quick-actions">

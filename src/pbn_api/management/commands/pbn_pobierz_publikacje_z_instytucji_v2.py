@@ -3,8 +3,8 @@ from threading import Lock
 
 from tqdm import tqdm
 
-from pbn_api import integrator
 from pbn_api.management.commands.util import PBNBaseCommand
+from pbn_integrator import utils as integrator
 
 
 def process_single_page_v2(

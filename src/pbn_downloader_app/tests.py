@@ -127,7 +127,7 @@ def test_start_pbn_download_view_no_token():
 
     data = json.loads(response.content)
     assert data["success"] is False
-    assert "not authorized in PBN" in data["error"]
+    assert "Nie jesteś zalogowany w PBN" in data["error"]
 
 
 @pytest.mark.django_db
@@ -286,4 +286,4 @@ def test_start_people_download_view_no_token():
 
     data = json.loads(response.content)
     assert data["success"] is False
-    assert "not authorized in PBN" in data["error"]
+    assert "Nie jesteś zalogowany w PBN" in data["error"]

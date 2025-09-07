@@ -14,26 +14,68 @@
 #        -- mpasternak, 20.08.2025
 #
 
+# Logging configuration for production use
+x-logging:
+  &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+    tag: "{{.Name}}/{{.ID}}"
+  # For production, consider using syslog driver:
+  # driver: syslog
+  # options:
+  #   tag: "{{.Name}}/{{.ID}}"
+
 services:
   # Ofelia to taki cron...
   ofelia:
     image: mcuadros/ofelia:latest
+    restart: always
     env_file: .env.docker
     depends_on:
       - appserver
     command: daemon --docker
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-#    labels:
-#       ofelia.smtp-host:
-#       ofelia.smtp-port:
-#       ofelia.smtp-user:
-#       ofelia.smtp-password:
-#       ofelia.email-to:
-#       ofelia.email-from: "Ofelia @ BPP <ofelia@bpp>"
+    logging: *default-logging
+    labels:
+      # Email notification configuration (uncomment and configure for production):
+      # ofelia.smtp-host: "smtp.example.com"
+      # ofelia.smtp-port: "587"
+      # ofelia.smtp-user: "user@example.com"
+      # ofelia.smtp-password: "password"
+      # ofelia.email-to: "admin@example.com"
+      # ofelia.email-from: "Ofelia @ BPP <ofelia@bpp>"
+
+      # Slack webhook for notifications (uncomment and configure for production):
+      # ofelia.slack-webhook: "https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
+
+  # Rclone - backup and cloud synchronization container (COMMENTED OUT - example configuration)
+  # Uncomment and configure for backup functionality
+  # rclone:
+  #   image: rclone/rclone:latest
+  #   restart: always
+  #   entrypoint: sleep infinity
+  #   logging: *default-logging
+  #   volumes:
+  #     - backup:/backup
+  #     - media:/mediaroot
+  #     - rclone_config:/config/rclone
+  #   # Labels for Ofelia scheduled tasks (uncomment for production backups):
+  #   # labels:
+  #     # ofelia.enabled: "true"
+  #     # Create tar archive of mediaroot at 5am on weekdays:
+  #     # ofelia.job-exec.tar_media.schedule: "0 0 5 * * 1,2,3,4,5"
+  #     # ofelia.job-exec.tar_media.command: "tar czf /backup/mediaroot.tgz /mediaroot"
+  #     # Sync files to cloud storage at 6am on weekdays:
+  #     # ofelia.job-exec.rclone.schedule: "0 0 6 * * 1,2,3,4,5"
+  #     # ofelia.job-exec.rclone.command: "rclone sync /backup/ backup_enc:`date +%Y-%m`/`date +%d`/"
 
   db:
     image: iplweb/bpp_dbserver:latest
+    restart: always
+    logging: *default-logging
     volumes:
       - postgresql_data:/var/lib/postgresql/data
 
@@ -41,6 +83,7 @@ services:
     image: iplweb/bpp_beatserver:latest
     env_file: .env.docker
     restart: always
+    logging: *default-logging
     volumes:
       - staticfiles:/staticroot
       - media:/mediaroot
@@ -52,6 +95,7 @@ services:
     image: iplweb/bpp_appserver:latest
     restart: always
     env_file: .env.docker
+    logging: *default-logging
     depends_on:
       redis:
         condition: service_healthy
@@ -82,6 +126,8 @@ services:
     image: iplweb/bpp_workerserver:latest
     env_file: .env.docker
     command: worker -Q celery
+    logging: *default-logging
+    restart: always
     volumes:
       - staticfiles:/staticroot
       - media:/mediaroot
@@ -95,6 +141,8 @@ services:
     image: iplweb/bpp_workerserver:latest
     env_file: .env.docker
     command: worker -Q denorm
+    logging: *default-logging
+    restart: always
     volumes:
       - staticfiles:/staticroot
       - media:/mediaroot
@@ -108,6 +156,7 @@ services:
     image: iplweb/bpp_workerserver:latest
     env_file: .env.docker
     command: status
+    logging: *default-logging
     depends_on:
       workerserver-general:
         condition: service_healthy
@@ -119,6 +168,7 @@ services:
     image: iplweb/flower:latest
     env_file: .env.docker
     command: status
+    logging: *default-logging
     ports:
       - 5555:5555
     depends_on:
@@ -134,6 +184,7 @@ services:
     image: iplweb/bpp_base:latest
     env_file: .env.docker
     entrypoint: ["python", "src/manage.py", "denorm_queue"]
+    logging: *default-logging
     healthcheck:
       test: ['CMD','true'] # disable the healthcheck
     restart: always
@@ -144,6 +195,7 @@ services:
   webserver:
     image: iplweb/bpp_webserver:latest
     restart: always
+    logging: *default-logging
     depends_on:
       appserver:
         condition: service_healthy
@@ -154,9 +206,12 @@ services:
     volumes:
       - staticfiles:/var/www/html/staticroot
       - media:/mediaroot
+      - ssl_certs:/etc/ssl/private
 
   redis:
     image: redis:latest
+    restart: always
+    logging: *default-logging
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       start_period: 5s
@@ -171,4 +226,6 @@ volumes:
   media:
   postgresql_data:
   redis_data:
-  nginx_certs:
+  ssl_certs:     # SSL certificates for production
+  backup:        # Backup storage (used by rclone)
+  rclone_config: # Rclone configuration

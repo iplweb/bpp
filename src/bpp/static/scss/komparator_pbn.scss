@@ -1,0 +1,357 @@
+// Komparator PBN styles with improved color contrast
+
+// Stat box base styling
+.stat-box {
+  background: #f8f8f8;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  transition: all 0.2s ease;
+
+  h4 {
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+
+    i {
+      font-size: 1.2em;
+    }
+  }
+
+  p {
+    margin: 0.5rem 0;
+
+    strong {
+      font-weight: 600;
+    }
+  }
+
+  small {
+    display: block;
+    color: #666;
+    line-height: 1.4;
+
+    ul {
+      margin-top: 0.5rem;
+      margin-bottom: 0;
+      padding-left: 1.2rem;
+
+      li {
+        margin-bottom: 0.3rem;
+        list-style-type: disc;
+      }
+    }
+  }
+}
+
+// Deleted publications stat box - Using a warning/amber color scheme instead of red
+.stat-box-deleted-pbn {
+  border-color: #f0ad4e;
+  background: linear-gradient(135deg, #fffbf5 0%, #fff9f0 100%);
+  border-left: 4px solid #f0ad4e;
+
+  h4 {
+    color: #d58512;
+
+    i {
+      color: #ec971f;
+    }
+  }
+
+  p strong {
+    color: #d58512;
+  }
+
+  small {
+    color: #856404;
+  }
+}
+
+// Scientists deleted stat box - Similar amber/warning styling
+.stat-box-deleted-scientists {
+  border-color: #f0ad4e;
+  background: linear-gradient(135deg, #fef9f3 0%, #fef6ea 100%);
+  border-left: 4px solid #f0ad4e;
+  border-radius: 5px;
+
+  h4 {
+    color: #d58512;
+
+    i {
+      color: #ec971f;
+    }
+  }
+
+  p strong {
+    color: #d58512;
+  }
+
+  small {
+    color: #856404;
+
+    ul {
+      margin-top: 0.5rem;
+      margin-bottom: 0;
+
+      li {
+        margin-bottom: 0.3rem;
+      }
+    }
+  }
+}
+
+// Fix button contrast issues inside stat boxes
+.stat-box {
+  .button {
+    margin-top: 1rem;
+    font-weight: 500;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s ease;
+
+    i {
+      margin-right: 0.5rem;
+    }
+
+    &:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
+    }
+
+    // Ensure good contrast for all button types
+    &.alert {
+      background-color: #dc3545;
+      color: white;
+      border: 1px solid #dc3545;
+
+      &:hover {
+        background-color: #c82333;
+        border-color: #bd2130;
+        color: white;
+      }
+    }
+
+    &.warning {
+      background-color: #ffc107;
+      color: #212529;  // Dark text on yellow for better contrast
+      border: 1px solid #ffc107;
+
+      &:hover {
+        background-color: #e0a800;
+        border-color: #d39e00;
+        color: #212529;
+      }
+    }
+
+    &.success {
+      background-color: #28a745;
+      color: white;
+      border: 1px solid #28a745;
+
+      &:hover {
+        background-color: #218838;
+        border-color: #1e7e34;
+        color: white;
+      }
+    }
+
+    &.info {
+      background-color: #17a2b8;
+      color: white;
+      border: 1px solid #17a2b8;
+
+      &:hover {
+        background-color: #138496;
+        border-color: #117a8b;
+        color: white;
+      }
+    }
+
+    &.secondary {
+      background-color: #6c757d;
+      color: white;
+      border: 1px solid #6c757d;
+
+      &:hover {
+        background-color: #5a6268;
+        border-color: #545b62;
+        color: white;
+      }
+    }
+
+    // Default button styling
+    &:not(.alert):not(.warning):not(.success):not(.info):not(.secondary) {
+      background-color: #0066cc;
+      color: white;
+      border: 1px solid #0066cc;
+
+      &:hover {
+        background-color: #0056b3;
+        border-color: #004a99;
+        color: white;
+      }
+    }
+  }
+}
+
+// Animation for spinner
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+
+// Progress bar styles (referenced in the template)
+.progress {
+  background-color: #e6e6e6 !important;
+  border-radius: 3px !important;
+  height: 20px !important;
+  overflow: hidden !important;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,.1);
+
+  .meter {
+    background-color: #28a745 !important;
+    height: 100% !important;
+    transition: width 0.3s ease !important;
+    border-radius: 3px !important;
+    display: block !important;
+  }
+}
+
+// Panel callout info styling
+.panel.callout.info {
+  background-color: #f0f8ff;
+  border-left: 4px solid #17a2b8;
+
+  h3 {
+    color: #004a99;
+  }
+}
+
+// Panel callout warning styling
+.panel.callout.warning {
+  background-color: #fffbf0;
+  border-left: 4px solid #f0ad4e;
+
+  h3 {
+    color: #d58512;
+  }
+}
+
+// Panel callout secondary styling
+.panel.callout.secondary {
+  background-color: #f8f9fa;
+  border-left: 4px solid #6c757d;
+
+  h3, h4 {
+    color: #495057;
+  }
+}
+
+// Special styling for the main comparison boxes
+.komparator-main-stats {
+  .stat-box {
+    min-height: 200px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+}
+
+// Improve discipline discrepancy cards
+.discipline-discrepancy-card {
+  padding: 1rem;
+  border: 1px solid #dee2e6;
+  border-radius: 3px;
+  transition: all 0.2s ease;
+
+  &:hover {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+  }
+
+  h5 {
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+
+    i {
+      font-size: 1.2em;
+    }
+  }
+
+  .lead {
+    font-size: 2rem;
+    margin: 0.5rem 0;
+    font-weight: 600;
+  }
+
+  small {
+    display: block;
+    line-height: 1.4;
+  }
+
+  // Different color schemes for different types
+  &.empty-bpp {
+    background: #f8f9fa;
+
+    h5 {
+      color: #6c757d;
+
+      i {
+        color: #6c757d;
+      }
+    }
+
+    .lead {
+      color: #495057;
+    }
+
+    small {
+      color: #6c757d;
+    }
+  }
+
+  &.empty-pbn {
+    background: #f8f9fa;
+
+    h5 {
+      color: #6c757d;
+
+      i {
+        color: #6c757d;
+      }
+    }
+
+    .lead {
+      color: #495057;
+    }
+
+    small {
+      color: #6c757d;
+    }
+  }
+
+  &.different-disciplines {
+    background: #f8d7da;
+    border-color: #f5c6cb;
+
+    h5 {
+      color: #dc3545;
+
+      i {
+        color: #dc3545;
+      }
+    }
+
+    .lead {
+      color: #721c24;
+    }
+
+    small {
+      color: #721c24;
+    }
+  }
+}

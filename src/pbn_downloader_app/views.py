@@ -31,7 +31,7 @@ def group_required(group_name):
             else:
                 from django.core.exceptions import PermissionDenied
 
-                raise PermissionDenied("You don't have permission to access this page")
+                raise PermissionDenied("Nie masz uprawnień do dostępu do tej strony")
 
         return _wrapped_view
 
@@ -69,7 +69,7 @@ class StartPbnDownloadView(View):
             return JsonResponse(
                 {
                     "success": False,
-                    "error": "You are not authorized in PBN. Please log in to PBN first.",
+                    "error": "Nie jesteś zalogowany w PBN. Proszę najpierw zalogować się do PBN.",
                 }
             )
 
@@ -77,7 +77,7 @@ class StartPbnDownloadView(View):
             return JsonResponse(
                 {
                     "success": False,
-                    "error": "Your PBN token has expired. Please log in to PBN again.",
+                    "error": "Twój token PBN wygasł. Proszę zalogować się ponownie do PBN.",
                 }
             )
 
@@ -90,17 +90,22 @@ class StartPbnDownloadView(View):
             return JsonResponse(
                 {
                     "success": False,
-                    "error": "Download task is already running. Please wait for it to complete.",
+                    "error": "Zadanie pobierania jest już uruchomione. Proszę poczekać na jego zakończenie.",
                 }
             )
 
         # Start the task
         try:
             download_institution_publications.delay(user.pk)
-            return JsonResponse({"success": True, "message": "Download task started."})
+            return JsonResponse(
+                {"success": True, "message": "Zadanie pobierania rozpoczęte."}
+            )
         except Exception as e:
             return JsonResponse(
-                {"success": False, "error": f"Failed to start task: {str(e)}"}
+                {
+                    "success": False,
+                    "error": f"Nie udało się uruchomić zadania: {str(e)}",
+                }
             )
 
 
@@ -154,7 +159,7 @@ class RetryTaskView(View):
             return JsonResponse(
                 {
                     "success": False,
-                    "error": "You are not authorized in PBN. Please log in to PBN first.",
+                    "error": "Nie jesteś zalogowany w PBN. Proszę najpierw zalogować się do PBN.",
                 }
             )
 
@@ -162,7 +167,7 @@ class RetryTaskView(View):
             return JsonResponse(
                 {
                     "success": False,
-                    "error": "Your PBN token has expired. Please log in to PBN again.",
+                    "error": "Twój token PBN wygasł. Proszę zalogować się ponownie do PBN.",
                 }
             )
 
@@ -175,7 +180,7 @@ class RetryTaskView(View):
             return JsonResponse(
                 {
                     "success": False,
-                    "error": "Download task is already running. Please wait for it to complete.",
+                    "error": "Zadanie pobierania jest już uruchomione. Proszę poczekać na jego zakończenie.",
                 }
             )
 
@@ -183,11 +188,14 @@ class RetryTaskView(View):
         try:
             download_institution_publications.delay(user.pk)
             return JsonResponse(
-                {"success": True, "message": "Download task restarted."}
+                {"success": True, "message": "Zadanie pobierania uruchomione ponownie."}
             )
         except Exception as e:
             return JsonResponse(
-                {"success": False, "error": f"Failed to restart task: {str(e)}"}
+                {
+                    "success": False,
+                    "error": f"Nie udało się ponownie uruchomić zadania: {str(e)}",
+                }
             )
 
 
@@ -204,7 +212,7 @@ class StartPbnPeopleDownloadView(View):
             return JsonResponse(
                 {
                     "success": False,
-                    "error": "You are not authorized in PBN. Please log in to PBN first.",
+                    "error": "Nie jesteś zalogowany w PBN. Proszę najpierw zalogować się do PBN.",
                 }
             )
 
@@ -212,7 +220,7 @@ class StartPbnPeopleDownloadView(View):
             return JsonResponse(
                 {
                     "success": False,
-                    "error": "Your PBN token has expired. Please log in to PBN again.",
+                    "error": "Twój token PBN wygasł. Proszę zalogować się ponownie do PBN.",
                 }
             )
 
@@ -225,7 +233,7 @@ class StartPbnPeopleDownloadView(View):
             return JsonResponse(
                 {
                     "success": False,
-                    "error": "People download task is already running. Please wait for it to complete.",
+                    "error": "Zadanie pobierania osób jest już uruchomione. Proszę poczekać na jego zakończenie.",
                 }
             )
 
@@ -233,11 +241,14 @@ class StartPbnPeopleDownloadView(View):
         try:
             download_institution_people.delay(user.pk)
             return JsonResponse(
-                {"success": True, "message": "People download task started."}
+                {"success": True, "message": "Zadanie pobierania osób rozpoczęte."}
             )
         except Exception as e:
             return JsonResponse(
-                {"success": False, "error": f"Failed to start people task: {str(e)}"}
+                {
+                    "success": False,
+                    "error": f"Nie udało się uruchomić zadania pobierania osób: {str(e)}",
+                }
             )
 
 
@@ -289,7 +300,7 @@ class RetryPeopleTaskView(View):
             return JsonResponse(
                 {
                     "success": False,
-                    "error": "You are not authorized in PBN. Please log in to PBN first.",
+                    "error": "Nie jesteś zalogowany w PBN. Proszę najpierw zalogować się do PBN.",
                 }
             )
 
@@ -297,7 +308,7 @@ class RetryPeopleTaskView(View):
             return JsonResponse(
                 {
                     "success": False,
-                    "error": "Your PBN token has expired. Please log in to PBN again.",
+                    "error": "Twój token PBN wygasł. Proszę zalogować się ponownie do PBN.",
                 }
             )
 
@@ -310,7 +321,7 @@ class RetryPeopleTaskView(View):
             return JsonResponse(
                 {
                     "success": False,
-                    "error": "People download task is already running. Please wait for it to complete.",
+                    "error": "Zadanie pobierania osób jest już uruchomione. Proszę poczekać na jego zakończenie.",
                 }
             )
 
@@ -318,9 +329,15 @@ class RetryPeopleTaskView(View):
         try:
             download_institution_people.delay(user.pk)
             return JsonResponse(
-                {"success": True, "message": "People download task restarted."}
+                {
+                    "success": True,
+                    "message": "Zadanie pobierania osób uruchomione ponownie.",
+                }
             )
         except Exception as e:
             return JsonResponse(
-                {"success": False, "error": f"Failed to restart people task: {str(e)}"}
+                {
+                    "success": False,
+                    "error": f"Nie udało się ponownie uruchomić zadania pobierania osób: {str(e)}",
+                }
             )

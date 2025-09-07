@@ -7,6 +7,42 @@ from model_bakery import baker
 
 from django.utils import timezone
 
+# Fix for VCR.py compatibility with urllib3
+# This resolves the AttributeError: 'VCRHTTPConnection' has no attribute 'debuglevel'
+
+
+def pytest_configure(config):
+    try:
+        import http.client
+
+        import vcr
+
+        # Patch VCR's HTTP connection classes to include debuglevel attribute
+        original_vcr_stubs_init = (
+            vcr.stubs.VCRHTTPConnection.__init__ if hasattr(vcr, "stubs") else None
+        )
+
+        def patched_init(self, *args, **kwargs):
+            # Set default debuglevel before calling original init
+            self.debuglevel = getattr(http.client.HTTPConnection, "debuglevel", 0)
+            if original_vcr_stubs_init:
+                original_vcr_stubs_init(self, *args, **kwargs)
+
+        if hasattr(vcr, "stubs"):
+            vcr.stubs.VCRHTTPConnection.__init__ = patched_init
+            vcr.stubs.VCRHTTPSConnection.__init__ = patched_init
+
+            # Also ensure the class has the attribute
+            if not hasattr(vcr.stubs.VCRHTTPConnection, "debuglevel"):
+                vcr.stubs.VCRHTTPConnection.debuglevel = 0
+            if not hasattr(vcr.stubs.VCRHTTPSConnection, "debuglevel"):
+                vcr.stubs.VCRHTTPSConnection.debuglevel = 0
+
+    except ImportError:
+        # VCR not installed, skip configuration
+        pass
+
+
 pytest.mark.uruchom_tylko_bez_microsoft_auth = pytest.mark.skipif(
     apps.is_installed("microsoft_auth"),
     reason="działa wyłącznie bez django_microsoft_auth. Ta "

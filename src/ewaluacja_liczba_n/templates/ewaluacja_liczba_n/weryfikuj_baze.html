@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Weryfikacja poprawności bazy - Liczba N{% endblock %}
+
+{% block breadcrumbs %}
+    <li><a href="/">Strona główna</a></li>
+    <li><a href="{% url 'ewaluacja_liczba_n:index' %}">Liczba N</a></li>
+    <li class="current">Weryfikacja poprawności bazy</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="large-12 columns">
+        <h1><i class="fi-magnifying-glass"></i> Weryfikacja poprawności bazy danych</h1>
+        <p class="lead">Analiza poprawności danych Autor_Dyscyplina dla lat 2022-2025</p>
+
+        <!-- Section 1: By rodzaj_pracownika -->
+        <div class="callout">
+            <h3>1. Autor_Dyscyplina według rodzaju pracownika (2022-2025)</h3>
+            <table class="hover stack">
+                <thead>
+                    <tr>
+                        <th>Rodzaj pracownika</th>
+                        <th class="text-right">Liczba rekordów</th>
+                        <th class="text-center">Akcje</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in rodzaje_pracownika %}
+                    <tr>
+                        <td>{{ item.nazwa }}</td>
+                        <td class="text-right">{{ item.liczba }}</td>
+                        <td class="text-center">
+                            {% if item.liczba > 0 %}
+                            <a href="/admin/bpp/autor_dyscyplina/?q={% if item.query_key == 'rodzaj_n' %}{{ djangoql_queries.rodzaj_n|urlencode }}{% elif item.query_key == 'rodzaj_d' %}{{ djangoql_queries.rodzaj_d|urlencode }}{% elif item.query_key == 'rodzaj_z' %}{{ djangoql_queries.rodzaj_z|urlencode }}{% else %}{{ djangoql_queries.brak_danych|urlencode }}{% endif %}"
+                               class="button tiny primary" target="_blank">
+                                <i class="fi-link"></i> Zobacz w admin
+                            </a>
+                            {% else %}
+                            <span class="label secondary">Brak rekordów</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="3" class="text-center">Brak danych</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Section 2: Without wymiar_etatu -->
+        <div class="callout {% if bez_wymiaru_etatu > 0 %}alert{% else %}success{% endif %}">
+            <h3>2. Autor_Dyscyplina bez informacji o wymiarze etatu</h3>
+            <div class="grid-x grid-margin-x">
+                <div class="cell medium-8">
+                    <p>Liczba rekordów bez wymiaru etatu lub z wymiarem równym 0: <strong>{{ bez_wymiaru_etatu }}</strong></p>
+                    {% if bez_wymiaru_etatu > 0 %}
+                    <p><small>Brak wymiaru etatu uniemożliwia poprawne obliczenie liczby N dla dyscypliny.</small></p>
+                    {% endif %}
+                </div>
+                <div class="cell medium-4 text-right">
+                    {% if bez_wymiaru_etatu > 0 %}
+                        <a href="/admin/bpp/autor_dyscyplina/?q={{ djangoql_queries.bez_wymiaru|urlencode }}"
+                           class="button alert" target="_blank">
+                            <i class="fi-alert"></i> Zobacz problematyczne rekordy
+                        </a>
+                    {% else %}
+                        <span class="button success disabled">
+                            <i class="fi-check"></i> Wszystko w porządku
+                        </span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 3: Without procent_dyscypliny -->
+        <div class="callout {% if bez_procent > 0 %}alert{% else %}success{% endif %}">
+            <h3>3. Autor_Dyscyplina z brakującymi procentami dyscyplin</h3>
+            <div class="grid-x grid-margin-x">
+                <div class="cell medium-8">
+                    <p>Liczba rekordów z problemami: <strong>{{ bez_procent }}</strong></p>
+                    {% if bez_procent > 0 %}
+                    <p><small>Sprawdzane problemy:</small></p>
+                    <ul style="font-size: 0.9rem;">
+                        <li>Brak procent_dyscypliny (dla dyscypliny głównej)</li>
+                        <li>Przypisana subdyscyplina ale brak procent_subdyscypliny</li>
+                    </ul>
+                    <p><small>Brak procentów uniemożliwia poprawne przypisanie udziałów do dyscyplin.</small></p>
+                    {% endif %}
+                </div>
+                <div class="cell medium-4 text-right">
+                    {% if bez_procent > 0 %}
+                        <a href="/admin/bpp/autor_dyscyplina/?q={{ djangoql_queries.bez_procent|urlencode }}"
+                           class="button alert" target="_blank">
+                            <i class="fi-alert"></i> Zobacz problematyczne rekordy
+                        </a>
+                    {% else %}
+                        <span class="button success disabled">
+                            <i class="fi-check"></i> Wszystko w porządku
+                        </span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 4: Sum of percentages not equal to 100 -->
+        <div class="callout {% if zla_suma_procent > 0 %}alert{% else %}success{% endif %}">
+            <h3>4. Autor_Dyscyplina z nieprawidłową sumą procentów</h3>
+            <div class="grid-x grid-margin-x">
+                <div class="cell medium-8">
+                    <p>Liczba rekordów gdzie suma procentów ≠ 100%: <strong>{{ zla_suma_procent }}</strong></p>
+                    {% if zla_suma_procent > 0 %}
+                    <p><small>Suma procent_dyscypliny i procent_subdyscypliny powinna wynosić dokładnie 100%.</small></p>
+                    {% if zla_suma_procent_przykłady %}
+                    <p><small><strong>Przykłady problemów:</strong></small></p>
+                    <ul style="font-size: 0.85rem;">
+                        {% for przykład in zla_suma_procent_przykłady %}
+                        <li>{{ przykład.autor }} ({{ przykład.rok }}) - suma: {{ przykład.suma }}%</li>
+                        {% endfor %}
+                        {% if zla_suma_procent > 5 %}
+                        <li><em>... i {{ zla_suma_procent|add:"-5" }} więcej</em></li>
+                        {% endif %}
+                    </ul>
+                    {% endif %}
+                    {% endif %}
+                </div>
+                <div class="cell medium-4 text-right">
+                    {% if zla_suma_procent > 0 %}
+                        <a href="/admin/bpp/autor_dyscyplina/?q={{ djangoql_queries.zla_suma|urlencode }}"
+                           class="button alert" target="_blank">
+                            <i class="fi-alert"></i> Zobacz w admin
+                        </a>
+                    {% else %}
+                        <span class="button success disabled">
+                            <i class="fi-check"></i> Wszystko w porządku
+                        </span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Summary -->
+        <div class="callout secondary">
+            <h4>Podsumowanie</h4>
+            <ul>
+                <li>Liczba autorów (unikalnych):
+                    <strong>{{ distinct_authors_count }}</strong>
+                </li>
+                <li>Całkowita liczba rekordów Autor_Dyscyplina (2022-2025):
+                    <strong>{{ total_count }}</strong>
+                </li>
+                {% if bez_wymiaru_etatu > 0 %}
+                <li class="alert-text">⚠️ Wykryto {{ bez_wymiaru_etatu }} rekordów bez wymiaru etatu</li>
+                {% endif %}
+                {% if bez_procent > 0 %}
+                <li class="alert-text">⚠️ Wykryto {{ bez_procent }} rekordów z brakującymi procentami dyscyplin</li>
+                {% endif %}
+                {% if zla_suma_procent > 0 %}
+                <li class="alert-text">⚠️ Wykryto {{ zla_suma_procent }} rekordów z nieprawidłową sumą procentów</li>
+                {% endif %}
+                {% if bez_wymiaru_etatu == 0 and bez_procent == 0 and zla_suma_procent == 0 %}
+                <li class="success-text">✓ Wszystkie rekordy zawierają poprawne dane</li>
+                {% endif %}
+            </ul>
+        </div>
+
+        <div class="button-group">
+            <a href="{% url 'ewaluacja_liczba_n:index' %}" class="button secondary">
+                <i class="fi-arrow-left"></i> Powrót do Liczby N
+            </a>
+            <a href="/admin/bpp/autor_dyscyplina/" class="button primary" target="_blank">
+                <i class="fi-database"></i> Otwórz panel administracyjny
+            </a>
+        </div>
+    </div>
+</div>
+
+<style>
+    .alert-text {
+        color: #cc4b37;
+        font-weight: bold;
+    }
+    .success-text {
+        color: #3adb76;
+        font-weight: bold;
+    }
+</style>
+{% endblock %}

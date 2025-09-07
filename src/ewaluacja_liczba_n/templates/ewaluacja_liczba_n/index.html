@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}Liczba N - Ewaluacja 2022-2025{% endblock %}
+
+{% block breadcrumbs %}
+    <li><a href="/">Strona główna</a></li>
+    <li class="current">Liczba N</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="large-12 columns">
+        <h1><i class="fi-list-number"></i> Liczba N - Ewaluacja 2022-2025</h1>
+
+        <div class="callout primary">
+            <h4>Obliczanie liczby N</h4>
+            <p>Kliknij poniższy przycisk, aby obliczyć liczbę N dla ewaluacji 2022-2025.</p>
+            <form method="post" action="{% url 'ewaluacja_liczba_n:oblicz' %}">
+                {% csrf_token %}
+                <button type="submit" class="button large success">
+                    <i class="fi-refresh"></i> Oblicz liczbę N
+                </button>
+            </form>
+        </div>
+
+        <div class="row">
+            <div class="medium-6 columns">
+                <div class="callout">
+                    <h4>Podsumowanie</h4>
+                    <p><strong>Uczelnia:</strong> {{ uczelnia.nazwa }}</p>
+                    <p><strong>Liczba dyscyplin:</strong> {{ liczby_n|length }}</p>
+                    <p><strong>Suma liczby N:</strong> <span class="label large success">{{ suma_liczby_n|floatformat:2 }}</span></p>
+                </div>
+            </div>
+
+            <div class="medium-6 columns">
+                <div class="callout" style="display: flex; flex-direction: column; height: 100%;">
+                    <h4>Akcje</h4>
+                    <div style="display: flex; flex-direction: column; gap: 10px; margin-top: auto;">
+                        <div style="display: flex; gap: 10px;">
+                            <a href="{% url 'ewaluacja_liczba_n:autorzy-list' %}" class="button primary" style="margin-bottom: 0; flex: 1;">
+                                <i class="fi-list"></i> Lista udziałów za rok
+                            </a>
+                            <a href="{% url 'ewaluacja_liczba_n:autorzy-export' %}" class="button success" style="margin-bottom: 0; flex: 1;">
+                                <i class="fi-download"></i> Eksportuj udziały za rok
+                            </a>
+                        </div>
+                        <div style="display: flex; gap: 10px;">
+                            <a href="{% url 'ewaluacja_liczba_n:udzialy-za-calosc-list' %}" class="button primary" style="margin-bottom: 0; flex: 1;">
+                                <i class="fi-list"></i> Lista udziałów
+                            </a>
+                            <a href="{% url 'ewaluacja_liczba_n:udzialy-za-calosc-export' %}" class="button success" style="margin-bottom: 0; flex: 1;">
+                                <i class="fi-download"></i> Eksportuj udziały
+                            </a>
+                        </div>
+                        <div style="display: flex; gap: 10px;">
+                            <a href="{% url 'ewaluacja_liczba_n:weryfikuj-baze' %}" class="button warning" style="margin-bottom: 0; flex: 1;">
+                                <i class="fi-magnifying-glass"></i> Weryfikuj poprawność bazy
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <h3>Liczba N dla poszczególnych dyscyplin</h3>
+        {% if liczby_n %}
+            <table class="hover stack">
+                <thead>
+                    <tr>
+                        <th>Lp.</th>
+                        <th>Dyscyplina</th>
+                        <th>Kod</th>
+                        <th class="text-right">Liczba N</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for liczba in liczby_n %}
+                    <tr>
+                        <td>{{ forloop.counter }}</td>
+                        <td>{{ liczba.dyscyplina_naukowa.nazwa }}</td>
+                        <td>{{ liczba.dyscyplina_naukowa.kod }}</td>
+                        <td class="text-right">{{ liczba.liczba_n|floatformat:2 }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <th colspan="3" class="text-right">SUMA:</th>
+                        <th class="text-right">{{ suma_liczby_n|floatformat:2 }}</th>
+                    </tr>
+                </tfoot>
+            </table>
+        {% else %}
+            <div class="callout warning">
+                <p>Brak danych. Kliknij przycisk "Oblicz liczbę N" aby wygenerować dane.</p>
+            </div>
+        {% endif %}
+
+        {% if dyscypliny_nieraportowane %}
+        <h3>Dyscypliny nieraportowane</h3>
+        <div class="callout alert">
+            <p>Poniższe dyscypliny nie są raportowane w ewaluacji ze względu na liczbę N poniżej progu 12:</p>
+            <table class="hover stack">
+                <thead>
+                    <tr>
+                        <th>Lp.</th>
+                        <th>Dyscyplina</th>
+                        <th>Kod</th>
+                        <th class="text-right">Liczba N</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for dn in dyscypliny_nieraportowane %}
+                    <tr>
+                        <td>{{ forloop.counter }}</td>
+                        <td>{{ dn.dyscyplina_naukowa.nazwa }}</td>
+                        <td>{{ dn.dyscyplina_naukowa.kod }}</td>
+                        <td class="text-right">
+                            {{ dn.liczba_n|floatformat:2 }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

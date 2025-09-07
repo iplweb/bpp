@@ -54,9 +54,18 @@ class TestJednostka(TestCase):
         Funkcja_Autora.objects.get_or_create(nazwa="kierownik", skrot="kier.")
 
     def test_jednostka(self):
+        from django.conf import settings
+
         any_wydzial(skrot="BAR")
         j = any_jednostka(nazwa="foo", wydzial_skrot="BAR")
-        self.assertEqual(str(j), "foo (BAR)")
+
+        # Check if wydzial should be included in the string representation
+        if getattr(settings, "DJANGO_BPP_UCZELNIA_UZYWA_WYDZIALOW", True) and getattr(
+            settings, "DJANGO_BPP_SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI", True
+        ):
+            self.assertEqual(str(j), "foo (BAR)")
+        else:
+            self.assertEqual(str(j), "foo")
 
     def test_obecni_autorzy(self):
         j1 = any_jednostka()

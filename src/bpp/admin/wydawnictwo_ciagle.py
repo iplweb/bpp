@@ -5,7 +5,7 @@ from djangoql.admin import DjangoQLSearchMixin
 from mptt.forms import TreeNodeChoiceField
 from taggit.forms import TextareaTagWidget
 
-from crossref_bpp.mixins import AdminCrossrefAPIMixin
+from crossref_bpp.mixins import AdminCrossrefAPIMixin, AdminCrossrefPBNAPIMixin
 from dynamic_columns.mixins import DynamicColumnsMixin
 from pbn_api.models import Publication
 from . import BaseBppAdminMixin
@@ -205,6 +205,7 @@ class Wydawnictwo_CiagleAdmin(
     UzupelniajWstepneDanePoNumerzeZgloszeniaMixin,
     UzupelniajWstepneDanePoCrossRefAPIMixin,
     AdminCrossrefAPIMixin,
+    AdminCrossrefPBNAPIMixin,
     EksportDanychZFormatowanieMixin,
     ExportActionsMixin,
     DynamicColumnsMixin,
@@ -217,6 +218,11 @@ class Wydawnictwo_CiagleAdmin(
     crossref_templates = {
         "form": "admin/bpp/wydawnictwo_ciagle/crossref_pobierz.html",
         "show": "admin/bpp/wydawnictwo_ciagle/crossref_pokaz.html",
+    }
+
+    crossref_pbn_templates = {
+        "form": "admin/bpp/wydawnictwo_ciagle/crossref_pbn_pobierz.html",
+        "show": "admin/bpp/wydawnictwo_ciagle/crossref_pbn_pokaz.html",
     }
 
     resource_class = resources.Wydawnictwo_CiagleResource

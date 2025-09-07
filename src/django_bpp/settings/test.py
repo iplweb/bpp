@@ -38,3 +38,10 @@ CACHES = {
 }
 
 PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
+
+# Disable setup wizard middleware during tests
+MIDDLEWARE = [
+    m
+    for m in MIDDLEWARE  # noqa
+    if m != "bpp_setup_wizard.middleware.SetupWizardMiddleware"  # noqa
+]

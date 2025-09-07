@@ -7,6 +7,8 @@ from django.views.generic import ListView
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 
+from import_common.normalization import normalize_isbn, normalize_issn
+
 from django.contrib.admin.views.decorators import staff_member_required
 
 from django.utils.decorators import method_decorator
@@ -51,13 +53,68 @@ class PublicationComparisonView(ListView):
     def get_queryset(self):
         """Get all publications with pbn_uid_id and compare them."""
         comparisons = []
-        query = self.request.GET.get("q", "")
-        publication_type = self.request.GET.get("type", "all")
 
-        # Get year filters
-        year_min = self.request.GET.get("year_min", "")
-        year_max = self.request.GET.get("year_max", "")
+        # Handle filter parameters - save to session if present in GET, otherwise load from session
+        session_key = "komparator_publikacji_filters"
 
+        # Check if we have any filter parameters in GET request
+        has_filter_params = any(
+            key in self.request.GET
+            for key in ["q", "type", "year_min", "year_max", "fields"]
+        )
+
+        if has_filter_params:
+            # Save current filters to session
+            filters = {
+                "query": self.request.GET.get("q", ""),
+                "publication_type": self.request.GET.get("type", "all"),
+                "year_min": self.request.GET.get("year_min", str(DEFAULT_YEAR_MIN)),
+                "year_max": self.request.GET.get("year_max", str(DEFAULT_YEAR_MAX)),
+                "enabled_fields": self.request.GET.getlist("fields"),
+            }
+
+            # If no fields selected in GET, use default set
+            if not filters["enabled_fields"]:
+                filters["enabled_fields"] = [
+                    "title",
+                    "year",
+                    "doi",
+                    "isbn",
+                    "issn",
+                    "url",
+                    "authors",
+                ]
+
+            self.request.session[session_key] = filters
+        else:
+            # Load filters from session or use defaults
+            filters = self.request.session.get(
+                session_key,
+                {
+                    "query": "",
+                    "publication_type": "all",
+                    "year_min": str(DEFAULT_YEAR_MIN),
+                    "year_max": str(DEFAULT_YEAR_MAX),
+                    "enabled_fields": [
+                        "title",
+                        "year",
+                        "doi",
+                        "isbn",
+                        "issn",
+                        "url",
+                        "authors",
+                    ],
+                },
+            )
+
+        # Extract filter values
+        query = filters["query"]
+        publication_type = filters["publication_type"]
+        year_min = filters["year_min"]
+        year_max = filters["year_max"]
+        enabled_fields = filters["enabled_fields"]
+
+        # Convert years to integers
         try:
             year_min = int(year_min) if year_min else DEFAULT_YEAR_MIN
         except ValueError:
@@ -67,12 +124,6 @@ class PublicationComparisonView(ListView):
             year_max = int(year_max) if year_max else DEFAULT_YEAR_MAX
         except ValueError:
             year_max = DEFAULT_YEAR_MAX
-
-        # Get enabled comparison fields
-        enabled_fields = self.request.GET.getlist("fields")
-        if not enabled_fields:
-            # If no fields selected, use default set
-            enabled_fields = ["title", "year", "doi", "isbn", "issn", "url", "authors"]
 
         # Get Wydawnictwo_Ciagle with pbn_uid_id
         if publication_type in ["all", "ciagle"]:
@@ -161,12 +212,38 @@ class PublicationComparisonView(ListView):
             and pub_type == "zwarte"
             and hasattr(bpp_pub, "isbn")
         ):
-            bpp_isbn = bpp_pub.isbn or ""
-            pbn_isbn = pbn_pub.isbn or pbn_pub.value_or_none("object", "isbn") or ""
-            if bpp_isbn.strip() != pbn_isbn.strip():
-                differences.append(
-                    {"field": "ISBN", "bpp_value": bpp_isbn, "pbn_value": pbn_isbn}
-                )
+            # Get raw values for display
+            bpp_isbn_raw = bpp_pub.isbn or ""
+            pbn_isbn_raw = pbn_pub.isbn or pbn_pub.value_or_none("object", "isbn") or ""
+
+            # Normalize for comparison
+            bpp_isbn_normalized = normalize_isbn(bpp_isbn_raw) or ""
+            pbn_isbn_normalized = normalize_isbn(pbn_isbn_raw) or ""
+
+            # Also check e_isbn if main ISBN doesn't match
+            if bpp_isbn_normalized != pbn_isbn_normalized:
+                # Try e_isbn if available
+                if hasattr(bpp_pub, "e_isbn") and bpp_pub.e_isbn:
+                    bpp_e_isbn_normalized = normalize_isbn(bpp_pub.e_isbn) or ""
+                    if bpp_e_isbn_normalized == pbn_isbn_normalized:
+                        # E-ISBN matches PBN ISBN, so no difference
+                        pass
+                    else:
+                        differences.append(
+                            {
+                                "field": "ISBN",
+                                "bpp_value": bpp_isbn_raw,
+                                "pbn_value": pbn_isbn_raw,
+                            }
+                        )
+                else:
+                    differences.append(
+                        {
+                            "field": "ISBN",
+                            "bpp_value": bpp_isbn_raw,
+                            "pbn_value": pbn_isbn_raw,
+                        }
+                    )
 
         # Compare public URI/WWW
         if "url" in enabled_fields:
@@ -256,12 +333,65 @@ class PublicationComparisonView(ListView):
 
         # Compare ISSN
         if "issn" in enabled_fields and hasattr(bpp_pub, "issn"):
-            bpp_issn = bpp_pub.issn or ""
-            pbn_issn = pbn_pub.value_or_none("object", "issn") or ""
-            if bpp_issn.strip() != pbn_issn.strip():
-                differences.append(
-                    {"field": "ISSN", "bpp_value": bpp_issn, "pbn_value": pbn_issn}
-                )
+            # Get raw values for display
+            bpp_issn_raw = bpp_pub.issn or ""
+            pbn_issn_raw = (
+                pbn_pub.value_or_none("object", "issn")
+                or pbn_pub.value_or_none("object", "journal", "issn")
+                or ""
+            )
+
+            # Normalize for comparison
+            bpp_issn_normalized = normalize_issn(bpp_issn_raw) or ""
+            pbn_issn_normalized = normalize_issn(pbn_issn_raw) or ""
+
+            # Also check e_issn if main ISSN doesn't match
+            if bpp_issn_normalized != pbn_issn_normalized:
+                # Try e_issn if available
+                if hasattr(bpp_pub, "e_issn") and bpp_pub.e_issn:
+                    bpp_e_issn_normalized = normalize_issn(bpp_pub.e_issn) or ""
+                    if bpp_e_issn_normalized == pbn_issn_normalized:
+                        # E-ISSN matches PBN ISSN, so no difference
+                        pass
+                    else:
+                        # Also check if PBN has eissn field (for journal articles)
+                        pbn_eissn = (
+                            pbn_pub.value_or_none("object", "journal", "eissn") or ""
+                        )
+                        pbn_eissn_normalized = normalize_issn(pbn_eissn) or ""
+
+                        if (
+                            bpp_issn_normalized == pbn_eissn_normalized
+                            or bpp_e_issn_normalized == pbn_eissn_normalized
+                        ):
+                            # One of the BPP ISSNs matches PBN eISSN, so no difference
+                            pass
+                        else:
+                            differences.append(
+                                {
+                                    "field": "ISSN",
+                                    "bpp_value": bpp_issn_raw,
+                                    "pbn_value": pbn_issn_raw,
+                                }
+                            )
+                else:
+                    # Check if PBN has eissn field
+                    pbn_eissn = (
+                        pbn_pub.value_or_none("object", "journal", "eissn") or ""
+                    )
+                    pbn_eissn_normalized = normalize_issn(pbn_eissn) or ""
+
+                    if bpp_issn_normalized == pbn_eissn_normalized:
+                        # BPP ISSN matches PBN eISSN, so no difference
+                        pass
+                    else:
+                        differences.append(
+                            {
+                                "field": "ISSN",
+                                "bpp_value": bpp_issn_raw,
+                                "pbn_value": pbn_issn_raw,
+                            }
+                        )
 
         # Compare issue number (numer zeszytu)
         if "issue" in enabled_fields and pub_type == "ciagle":
@@ -435,9 +565,20 @@ class PublicationComparisonView(ListView):
         }
 
     def get(self, request, *args, **kwargs):
-        """Handle GET request, including XLSX export."""
+        """Handle GET request, including XLSX export and reset."""
         if request.GET.get("export") == "xlsx":
             return self.export_xlsx()
+
+        # Handle reset action
+        if request.GET.get("reset") == "1":
+            session_key = "komparator_publikacji_filters"
+            if session_key in request.session:
+                del request.session[session_key]
+            # Redirect to clean URL
+            from django.shortcuts import redirect
+
+            return redirect("komparator_publikacji_pbn:comparison_list")
+
         return super().get(request, *args, **kwargs)
 
     def export_xlsx(self):
@@ -535,22 +676,57 @@ class PublicationComparisonView(ListView):
         context["comparisons"] = page_obj.object_list
         context["page_obj"] = page_obj
         context["is_paginated"] = page_obj.has_other_pages()
-        context["query"] = self.request.GET.get("q", "")
-        context["publication_type"] = self.request.GET.get("type", "all")
-        context["year_min"] = self.request.GET.get("year_min", DEFAULT_YEAR_MIN)
-        context["year_max"] = self.request.GET.get("year_max", DEFAULT_YEAR_MAX)
 
-        # Pass enabled fields and all available fields
-        enabled_fields = self.request.GET.getlist("fields")
-        if not enabled_fields:
-            # Default fields to check
-            enabled_fields = ["title", "year", "doi", "isbn", "issn", "url", "authors"]
-        context["enabled_fields"] = enabled_fields
+        # Get filters from session
+        session_key = "komparator_publikacji_filters"
+        filters = self.request.session.get(
+            session_key,
+            {
+                "query": "",
+                "publication_type": "all",
+                "year_min": str(DEFAULT_YEAR_MIN),
+                "year_max": str(DEFAULT_YEAR_MAX),
+                "enabled_fields": [
+                    "title",
+                    "year",
+                    "doi",
+                    "isbn",
+                    "issn",
+                    "url",
+                    "authors",
+                ],
+            },
+        )
+
+        context["query"] = filters["query"]
+        context["publication_type"] = filters["publication_type"]
+        context["year_min"] = filters["year_min"]
+        context["year_max"] = filters["year_max"]
+        context["enabled_fields"] = filters["enabled_fields"]
         context["all_fields"] = COMPARISON_FIELDS
 
         # Build export URL with current filters
-        export_params = self.request.GET.copy()
-        export_params["export"] = "xlsx"
-        context["export_url"] = f"?{export_params.urlencode()}"
+        export_params = {
+            "q": filters["query"],
+            "type": filters["publication_type"],
+            "year_min": filters["year_min"],
+            "year_max": filters["year_max"],
+            "export": "xlsx",
+        }
+        # Add fields to export params
+        for field in filters["enabled_fields"]:
+            if "fields" not in export_params:
+                export_params["fields"] = []
+            export_params["fields"].append(field)
+
+        # Build URL string
+        export_url_parts = []
+        for key, value in export_params.items():
+            if key == "fields":
+                for field_val in value:
+                    export_url_parts.append(f"fields={field_val}")
+            else:
+                export_url_parts.append(f"{key}={value}")
+        context["export_url"] = f"?{'&'.join(export_url_parts)}"
 
         return context

@@ -85,10 +85,16 @@ from bpp.views.browse import (
     ZrodloView,
     bibtex_view,
 )
+from bpp.views.microsoft_auth_redirect import MicrosoftAuthRedirectView
 from bpp.views.oai import OAIView
 from bpp.views.xlsx_issn_chunks import xlsx_issn_chunks
 
 urlpatterns = [
+    url(
+        r"^microsoft-auth-redirect/$",
+        MicrosoftAuthRedirectView.as_view(),
+        name="microsoft_auth_redirect",
+    ),
     url(
         r"^api/rok-habilitacji/$",
         csrf_exempt(RokHabilitacjiView.as_view()),

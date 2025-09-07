@@ -508,7 +508,9 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
             rodzaj_autora__in=[
                 Autor_Dyscyplina.RODZAJE_AUTORA.N,
                 Autor_Dyscyplina.RODZAJE_AUTORA.D,
-                Autor_Dyscyplina.RODZAJE_AUTORA.Z,
+                # Nie liczymy slotów dla autorów "Z"
+                # -- mpoasternak, 7.09.2025
+                #    Autor_Dyscyplina.RODZAJE_AUTORA.Z,
             ],
         ).exists()
 

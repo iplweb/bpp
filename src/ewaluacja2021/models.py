@@ -19,9 +19,9 @@ from bpp.models.uczelnia import Uczelnia
 
 
 def dyscypliny_naukowe_w_bazie():
-    from ewaluacja_liczba_n.models import LiczbaNDlaUczelni_2022_2025
+    from ewaluacja_liczba_n.models import LiczbaNDlaUczelni
 
-    dyscypliny_z_liczba_n = LiczbaNDlaUczelni_2022_2025.objects.values_list(
+    dyscypliny_z_liczba_n = LiczbaNDlaUczelni.objects.values_list(
         "dyscyplina_naukowa", flat=True
     )
 
@@ -83,8 +83,10 @@ class ZamowienieNaRaport(models.Model):
 
 
 class BazaLiczbyNDlaUczelni(models.Model):
-    uczelnia = models.ForeignKey(Uczelnia, on_delete=models.CASCADE)
-    dyscyplina_naukowa = models.ForeignKey(Dyscyplina_Naukowa, on_delete=models.CASCADE)
+    uczelnia = models.ForeignKey(Uczelnia, on_delete=models.CASCADE, related_name="+")
+    dyscyplina_naukowa = models.ForeignKey(
+        Dyscyplina_Naukowa, on_delete=models.CASCADE, related_name="+"
+    )
     liczba_n = LiczbaNField()
 
     class Meta:
