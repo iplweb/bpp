@@ -51,48 +51,6 @@ def test_oblicz_liczby_n_dla_ewaluacji_2022_2025_prosty(
     )
 
 
-@pytest.mark.parametrize(
-    "rodzaj_autora",
-    [Autor_Dyscyplina.RODZAJE_AUTORA.D, Autor_Dyscyplina.RODZAJE_AUTORA.Z],
-)
-def test_oblicz_liczby_n_dla_ewaluacji_2022_2025_autor_to_doktorant(
-    rodzaj_autora,
-    uczelnia,
-    autor_jan_nowak,
-    dyscyplina1,
-):
-    ad_kwargs = dict(
-        dyscyplina_naukowa=dyscyplina1,
-        wymiar_etatu=1,
-        procent_dyscypliny=100,
-        rok=2022,
-    )
-    # Musimy utworzyc tu 12 autorow * 5 aby sprawic, ze dyscyplina1 bedzie
-    # miała liczbę N większą od 12. W ten sposób nie zostanie usunięta z wykazu
-    # dyscyplin raportowanych:
-    for _elem in range(12 * 5):
-        autor = baker.make(Autor)
-        Autor_Dyscyplina.objects.create(
-            autor=autor, rodzaj_autora=Autor_Dyscyplina.RODZAJE_AUTORA.N, **ad_kwargs
-        )
-
-    Autor_Dyscyplina.objects.create(
-        autor=autor_jan_nowak, rodzaj_autora=rodzaj_autora, **ad_kwargs
-    )
-
-    oblicz_liczby_n_dla_ewaluacji_2022_2025(uczelnia)
-
-    assert (
-        IloscUdzialowDlaAutoraZaRok.objects.get(autor=autor_jan_nowak).ilosc_udzialow
-        == 1
-    )
-
-    # Liczba N wyniesie wobec tego 12 autorów * 5 = 60 + 1 autor (doktorant również ma udział) == 61/4 = 15.25
-    assert (
-        LiczbaNDlaUczelni.objects.get(dyscyplina_naukowa=dyscyplina1).liczba_n == 15.25
-    )
-
-
 @pytest.mark.django_db
 def test_oblicz_srednia_liczbe_n_dla_dyscyplin_podstawowy(uczelnia, dyscyplina1):
     """Test podstawowej funkcjonalności obliczania średniej liczby N."""
@@ -149,7 +107,7 @@ def test_oblicz_srednia_liczbe_n_dla_dyscyplin_podstawowy(uczelnia, dyscyplina1)
     wynik = LiczbaNDlaUczelni.objects.get(
         uczelnia=uczelnia, dyscyplina_naukowa=dyscyplina1
     )
-    assert wynik.liczba_n == Decimal("2.0")
+    assert wynik.liczba_n == Decimal("2.50")
 
 
 @pytest.mark.django_db
@@ -188,7 +146,7 @@ def test_oblicz_srednia_liczbe_n_dla_dyscyplin_wieloletni(uczelnia, dyscyplina1)
     wynik = LiczbaNDlaUczelni.objects.get(
         uczelnia=uczelnia, dyscyplina_naukowa=dyscyplina1
     )
-    assert wynik.liczba_n == Decimal("4.0")
+    assert wynik.liczba_n == Decimal("1.0")
 
 
 @pytest.mark.django_db

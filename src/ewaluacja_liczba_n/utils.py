@@ -50,6 +50,9 @@ def oblicz_srednia_liczbe_n_dla_dyscyplin(uczelnia, rok_min=2022, rok_max=2025):
             if udzial.dyscyplina_naukowa_id == autor_dyscyplina.dyscyplina_naukowa_id:
                 # Udział dotyczy DYSCYPLLINYE
 
+                if autor_dyscyplina.wymiar_etatu is None:
+                    continue
+
                 dyscyplina_stats[udzial.dyscyplina_naukowa]["suma_etatow"] += (
                     udzial.ilosc_udzialow
                     * autor_dyscyplina.wymiar_etatu
