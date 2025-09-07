@@ -11,11 +11,7 @@ from multiseek.models import SearchForm
 from robots.models import Rule, Url
 
 from dynamic_columns.models import ModelAdmin, ModelAdminColumn
-from ewaluacja2021.models import IloscUdzialowDlaAutora, LiczbaNDlaUczelni
-from ewaluacja_liczba_n.models import (
-    IloscUdzialowDlaAutora_2022_2025,
-    LiczbaNDlaUczelni_2022_2025,
-)
+from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaRok, LiczbaNDlaUczelni
 from formdefaults.models import FormFieldRepresentation, FormRepresentation
 from miniblog.models import Article
 from pbn_api.models import (
@@ -153,7 +149,6 @@ groups = {
     "struktura": [
         Uczelnia,
         LiczbaNDlaUczelni,
-        LiczbaNDlaUczelni_2022_2025,
         Wydzial,
         Jednostka,
         Jednostka_Wydzial,
@@ -187,8 +182,7 @@ groups = {
         Poziom_Wydawcy,
         Grant_Rekordu,
         Element_Repozytorium,
-        IloscUdzialowDlaAutora,
-        IloscUdzialowDlaAutora_2022_2025,
+        IloscUdzialowDlaAutoraZaRok,
         RozbieznosciView,
         RozbieznosciZrodelView,
     ],

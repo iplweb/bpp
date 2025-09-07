@@ -6,13 +6,13 @@ from django.db import DataError, transaction
 from tqdm import tqdm
 
 from pbn_api.client import PBNClient
-from pbn_api.integrator import (
+from pbn_api.models import Journal, Publication, Publisher
+from pbn_integrator.utils import (
     integruj_zrodla,
     pobierz_i_zapisz_dane_jednej_osoby,
     utworz_wpis_dla_jednego_autora,
     zapisz_mongodb,
 )
-from pbn_api.models import Journal, Publication, Publisher
 
 from bpp import const
 from bpp.models import (

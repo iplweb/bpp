@@ -344,7 +344,7 @@ def download_institution_people(user_id):
             task_record.progress_percentage = 10
             task_record.save()
 
-            from pbn_api.integrator import pobierz_ludzi_z_uczelni
+            from pbn_integrator.utils import pobierz_ludzi_z_uczelni
 
             pobierz_ludzi_z_uczelni(pbn_user.pbn_token, uczelnia.pbn_uid_id)
 

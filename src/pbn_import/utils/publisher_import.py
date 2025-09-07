@@ -1,6 +1,6 @@
 """Publisher import utilities"""
 
-from pbn_api import importer
+from pbn_integrator import importer
 from pbn_integrator.utils import pobierz_wydawcow_mnisw
 from .base import ImportStepBase
 

@@ -20,7 +20,6 @@ from .normalization import (
     normalize_wymiar_etatu,
 )
 
-from django.contrib.contenttypes.models import ContentType
 from django.contrib.postgres.search import TrigramSimilarity
 
 from bpp.models import (
@@ -447,6 +446,8 @@ def matchuj_publikacje(
     isbn_matchuj_tylko_nadrzedne=True,
     doi_matchuj_tylko_nadrzedne=True,
 ):
+    from django.contrib.contenttypes.models import ContentType
+
     if doi is not None:
         doi = normalize_doi(doi)
         if doi:

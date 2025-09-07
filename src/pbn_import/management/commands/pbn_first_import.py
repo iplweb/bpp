@@ -2,7 +2,7 @@ import django
 from django.core.management import call_command
 
 from import_common.core import matchuj_uczelnie
-from pbn_api.importer import (
+from pbn_integrator.importer import (
     importuj_publikacje_instytucji,
     importuj_publikacje_po_pbn_uid_id,
 )
@@ -11,8 +11,9 @@ from bpp.util import pbar
 
 django.setup()
 
-from pbn_api import importer
-from pbn_api.integrator import (
+from pbn_api.management.commands.util import PBNBaseCommand
+from pbn_integrator import importer
+from pbn_integrator.utils import (
     integruj_autorow_z_uczelni,
     integruj_jezyki,
     integruj_kraje,
@@ -26,7 +27,6 @@ from pbn_api.integrator import (
     pobierz_wydawcow_mnisw,
     pobierz_zrodla_mnisw,
 )
-from pbn_api.management.commands.util import PBNBaseCommand
 
 from bpp.models import (
     Jednostka,

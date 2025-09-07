@@ -3,15 +3,16 @@ import sys
 import django
 from django.core.management import call_command
 
-from pbn_api.integrator.odswiez_tabele_publikacji import odswiez_tabele_publikacji
-from pbn_api.integrator.pobierz_skasowane_prace import pobierz_skasowane_prace
+from pbn_integrator.utils.odswiez_tabele_publikacji import odswiez_tabele_publikacji
+from pbn_integrator.utils.pobierz_skasowane_prace import pobierz_skasowane_prace
 
 django.setup()
 
 
-from pbn_api import integrator
 from pbn_api.exceptions import IntegracjaWylaczonaException
-from pbn_api.integrator import (
+from pbn_api.management.commands.util import PBNBaseCommand
+from pbn_integrator import utils as integrator
+from pbn_integrator.utils import (
     integruj_autorow_z_uczelni,
     integruj_instytucje,
     integruj_jezyki,
@@ -40,7 +41,6 @@ from pbn_api.integrator import (
     weryfikuj_orcidy,
     wyswietl_niezmatchowane_ze_zblizonymi_tytulami,
 )
-from pbn_api.management.commands.util import PBNBaseCommand
 
 from bpp.models import Uczelnia
 

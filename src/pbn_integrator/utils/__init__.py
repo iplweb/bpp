@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import csv
 import json
 import multiprocessing
@@ -7,30 +9,47 @@ import sys
 import warnings
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from functools import reduce
+from typing import TYPE_CHECKING
 
-import django
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import F, Func, IntegerField, Q
 from django.db.models.functions import Length
 from tqdm import tqdm
 
-from pbn_api.integrator import istarmap  # noqa
+from pbn_integrator.utils import istarmap  # noqa
 
 from bpp.const import PBN_MIN_ROK
 
-try:
-    django.setup()
-except RuntimeError:
-    pass
+if TYPE_CHECKING:
+    from pbn_api.client import PBNClient
 
-from import_common.core import matchuj_autora, matchuj_wydawce
-from import_common.normalization import (
-    normalize_doi,
-    normalize_isbn,
-    normalize_tytul_publikacji,
-)
-from pbn_api.client import PBNClient
+# Import Django-dependent modules only when Django is ready
+try:
+    from django.apps import apps
+
+    if apps.ready:
+        from import_common.core import matchuj_autora, matchuj_wydawce
+        from import_common.normalization import (
+            normalize_doi,
+            normalize_isbn,
+            normalize_tytul_publikacji,
+        )
+    else:
+        # Defer imports until Django is ready
+        matchuj_autora = None
+        matchuj_wydawce = None
+        normalize_doi = None
+        normalize_isbn = None
+        normalize_tytul_publikacji = None
+except:  # noqa
+    # Django not available or not configured
+    matchuj_autora = None
+    matchuj_wydawce = None
+    normalize_doi = None
+    normalize_isbn = None
+    normalize_tytul_publikacji = None
+
 from pbn_api.const import ACTIVE, DELETED
 from pbn_api.exceptions import (
     BrakIDPracyPoStroniePBN,
@@ -41,11 +60,33 @@ from pbn_api.exceptions import (
     StatementDeletionError,
     WillNotExportError,
 )
-from pbn_api.integrator.threaded_page_getter import (
+from pbn_integrator.utils.threaded_page_getter import (
     ThreadedMongoDBSaver,
     ThreadedPageGetter,
     threaded_page_getter,
 )
+
+
+def _ensure_django_imports():
+    """Ensure Django-dependent imports are available"""
+    global matchuj_autora, matchuj_wydawce, normalize_doi, normalize_isbn, normalize_tytul_publikacji
+
+    if matchuj_autora is None:
+        from import_common.core import matchuj_autora as _matchuj_autora
+        from import_common.core import matchuj_wydawce as _matchuj_wydawce
+        from import_common.normalization import normalize_doi as _normalize_doi
+        from import_common.normalization import normalize_isbn as _normalize_isbn
+        from import_common.normalization import (
+            normalize_tytul_publikacji as _normalize_tytul_publikacji,
+        )
+
+        matchuj_autora = _matchuj_autora
+        matchuj_wydawce = _matchuj_wydawce
+        normalize_doi = _normalize_doi
+        normalize_isbn = _normalize_isbn
+        normalize_tytul_publikacji = _normalize_tytul_publikacji
+
+
 from pbn_api.models import (
     Conference,
     Country,
@@ -889,6 +930,8 @@ def integruj_autorow_z_uczelni(
     """
     Ta procedure uruchamiamy dopiero po zaciągnięciu bazy osób.
     """
+    _ensure_django_imports()
+
     scientists = Scientist.objects.filter(from_institution_api=True)
     total = scientists.count()
 
@@ -969,7 +1012,7 @@ def utworz_wpis_dla_jednego_autora(person):
     ]:
         cv["object"].pop(ignoredKey, None)
 
-    from pbn_api.importer import assert_dictionary_empty
+    from pbn_integrator.importer import assert_dictionary_empty
 
     assert_dictionary_empty(cv["object"])
     return autor
@@ -1276,21 +1319,35 @@ def initialize_pool(multipler=1):
 
 
 def _integruj_publikacje(
-    pubs, disable_multiprocessing=False, skip_pages=0, label="_integruj_publikacje"
+    pubs,
+    disable_multiprocessing=False,
+    skip_pages=0,
+    label="_integruj_publikacje",
+    callback=None,
 ):
     _bede_uzywal_bazy_danych_z_multiprocessing_z_django()
     pool = initialize_pool()
 
     BATCH_SIZE = 128
     results = []
+    total_batches = len(pubs) // BATCH_SIZE + (1 if len(pubs) % BATCH_SIZE else 0)
+
     for no, elem in enumerate(split_list(pubs, BATCH_SIZE)):
         if no < skip_pages:
             continue
 
         if disable_multiprocessing:
             _integruj_single_part(elem)
-            print(f"{label} {no} of {len(pubs) // BATCH_SIZE}...", end="\r")
+            print(f"{label} {no} of {total_batches}...", end="\r")
             sys.stdout.flush()
+
+            # Update callback if provided
+            if callback:
+                callback.update(
+                    no + 1,
+                    total_batches,
+                    f"Integrowanie publikacji: batch {no + 1}/{total_batches}",
+                )
         else:
             result = pool.apply_async(_integruj_single_part, args=(elem,))
             results.append(result)
@@ -1298,9 +1355,162 @@ def _integruj_publikacje(
     wait_for_results(pool, results, label=label)
 
 
-def integruj_wszystkie_publikacje(
-    disable_multiprocessing=False, ignore_already_matched=False, skip_pages=0
+def _integruj_publikacje_threaded(
+    pubs,
+    disable_threading=False,
+    skip_pages=0,
+    label="_integruj_publikacje",
+    callback=None,
+    max_workers=None,
 ):
+    """Thread-based implementation of _integruj_publikacje with proper thread safety.
+
+    This implementation uses threads instead of processes, which is more efficient
+    for I/O-bound operations like database queries and network requests.
+
+    Args:
+        pubs: List of publication IDs to process
+        disable_threading: If True, runs in single-threaded mode
+        skip_pages: Number of batches to skip
+        label: Label for progress display
+        callback: Optional callback for progress updates
+        max_workers: Maximum number of worker threads (default: CPU count * 3/4)
+
+    Thread Safety Measures:
+        - Each thread gets its own database connection
+        - Print statements are protected by locks
+        - Callback updates are synchronized
+        - Progress counters are thread-safe
+    """
+    import threading
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    # Thread-safe locks for shared resources
+    _print_lock = threading.Lock()
+    _callback_lock = threading.Lock()
+    _progress_lock = threading.Lock()
+
+    BATCH_SIZE = 128
+    total_batches = len(pubs) // BATCH_SIZE + (1 if len(pubs) % BATCH_SIZE else 0)
+    completed_batches = [skip_pages]  # Use list for mutable integer in closure
+
+    def _thread_safe_integruj_single_part(batch_data):
+        """Thread-safe wrapper for _integruj_single_part"""
+        batch_ids, batch_no = batch_data
+
+        # Each thread needs its own database connection
+        from django.db import close_old_connections
+
+        close_old_connections()
+
+        try:
+            # Process the batch
+            _integruj_single_part(batch_ids)
+
+            # Thread-safe progress update
+            with _progress_lock:
+                completed_batches[0] += 1
+                current_progress = completed_batches[0]
+
+            # Thread-safe print
+            with _print_lock:
+                print(f"{label} {current_progress} of {total_batches}...", end="\r")
+                sys.stdout.flush()
+
+            # Thread-safe callback update
+            if callback:
+                with _callback_lock:
+                    callback.update(
+                        current_progress,
+                        total_batches,
+                        f"Integrowanie publikacji: batch {current_progress}/{total_batches}",
+                    )
+
+            return batch_no, True, None
+
+        except Exception as e:
+            # Log errors with thread safety
+            with _print_lock:
+                print(f"\nError in batch {batch_no}: {str(e)}")
+            return batch_no, False, str(e)
+
+        finally:
+            # Clean up database connections
+            close_old_connections()
+
+    # Prepare batches with their indices
+    batches = []
+    for no, batch_ids in enumerate(split_list(pubs, BATCH_SIZE)):
+        if no < skip_pages:
+            continue
+        batches.append((batch_ids, no))
+
+    if disable_threading:
+        # Single-threaded execution
+        for batch_ids, batch_no in batches:
+            _thread_safe_integruj_single_part((batch_ids, batch_no))
+    else:
+        # Multi-threaded execution
+        if max_workers is None:
+            # Default to 3/4 of CPU cores for threads (more than processes since threads are lighter)
+            max_workers = max(1, os.cpu_count() * 3 // 4)
+
+        # Use ThreadPoolExecutor for better thread management
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            # Submit all tasks
+            futures = {
+                executor.submit(
+                    _thread_safe_integruj_single_part, batch_data
+                ): batch_data[1]
+                for batch_data in batches
+            }
+
+            # Process results as they complete
+            errors = []
+            for future in as_completed(futures):
+                batch_no = futures[future]
+                try:
+                    batch_no, success, error = future.result()
+                    if not success and error:
+                        errors.append(f"Batch {batch_no}: {error}")
+                except Exception as e:
+                    with _print_lock:
+                        print(f"\nUnexpected error in batch {batch_no}: {str(e)}")
+                    errors.append(f"Batch {batch_no}: {str(e)}")
+
+            # Report any errors at the end
+            if errors:
+                with _print_lock:
+                    print(f"\n{len(errors)} batches failed during processing:")
+                    for error in errors[:5]:  # Show first 5 errors
+                        print(f"  - {error}")
+                    if len(errors) > 5:
+                        print(f"  ... and {len(errors) - 5} more")
+
+    # Final cleanup
+    with _print_lock:
+        print(
+            f"\n{label} completed: {completed_batches[0]}/{total_batches} batches processed"
+        )
+        sys.stdout.flush()
+
+
+def integruj_wszystkie_publikacje(
+    disable_multiprocessing=False,
+    ignore_already_matched=False,
+    skip_pages=0,
+    use_threads=False,
+    callback=None,
+):
+    """
+    Integrate all publications from PBN with BPP.
+
+    :param disable_multiprocessing: If True, runs in single-process/thread mode
+    :param ignore_already_matched: If True, skips publications already matched
+    :param skip_pages: Number of batches to skip
+    :param use_threads: If True, uses threaded implementation instead of multiprocessing
+    :param callback: Optional progress callback
+    """
     pubs = Publication.objects.all()
 
     if ignore_already_matched:
@@ -1313,17 +1523,33 @@ def integruj_wszystkie_publikacje(
     pubs = pubs.order_by("-pk")
     pubs = list(pubs.values_list("pk", flat=True).distinct())
 
-    return _integruj_publikacje(
-        pubs, disable_multiprocessing=disable_multiprocessing, skip_pages=skip_pages
-    )
+    if use_threads:
+        return _integruj_publikacje_threaded(
+            pubs,
+            disable_threading=disable_multiprocessing,
+            skip_pages=skip_pages,
+            callback=callback,
+        )
+    else:
+        return _integruj_publikacje(
+            pubs,
+            disable_multiprocessing=disable_multiprocessing,
+            skip_pages=skip_pages,
+            callback=callback,
+        )
 
 
 def integruj_publikacje_instytucji(
-    disable_multiprocessing=False, ignore_already_matched=False, skip_pages=0
+    ignore_already_matched=False,
+    skip_pages=0,
+    callback=None,
+    use_threads=False,
 ):
     """
     :param ignore_already_matched: jeżeli True, to publikacje, które już mają swój match
     po stronie BPP nie będa analizowane.
+    :param callback: Optional callback function for progress tracking
+    :param use_threads: If True, uses the threaded implementation instead of multiprocessing
 
     """
 
@@ -1333,9 +1559,21 @@ def integruj_publikacje_instytucji(
         .order_by("-pk")
         .distinct()
     )
-    return _integruj_publikacje(
-        pubs, disable_multiprocessing=disable_multiprocessing, skip_pages=skip_pages
-    )
+
+    if use_threads:
+        return _integruj_publikacje_threaded(
+            pubs,
+            skip_pages=skip_pages,
+            callback=callback,
+        )
+    else:
+        # Zostawiamy wersje z multiprocessing ALE wyłączamy to
+        return _integruj_publikacje(
+            pubs,
+            disable_multiprocessing=True,
+            skip_pages=skip_pages,
+            callback=callback,
+        )
 
 
 MODELE_Z_PBN_UID = (
@@ -1755,12 +1993,15 @@ def integruj_oswiadczenia_z_instytucji_pojedyncza_praca(
     rec.save()
 
 
-def integruj_oswiadczenia_z_instytucji(missing_publication_callback=None):
+def integruj_oswiadczenia_z_instytucji(
+    missing_publication_callback=None, callback=None
+):
     noted_pub = set()
     noted_aut = set()
     for elem in pbar(
         OswiadczenieInstytucji.objects.all(),
         label="integruj_oswiadczenia_z_instytucji",
+        callback=callback,
     ):
         integruj_oswiadczenia_z_instytucji_pojedyncza_praca(
             elem, noted_pub, noted_aut, missing_publication_callback
@@ -1779,7 +2020,7 @@ def integruj_oswiadczenia_pbn_first_import(
 
         if bpp_pub is None:
             if client is not None:
-                from pbn_api.importer import importuj_publikacje_instytucji
+                from pbn_integrator.importer import importuj_publikacje_instytucji
 
                 bpp_pub = importuj_publikacje_instytucji(
                     client, default_jednostka, oswiadczenie.publicationId_id

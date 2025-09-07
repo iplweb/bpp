@@ -107,7 +107,7 @@ class Wydawnictwo_Nadrzedne_W_PBNAutocomplete(autocomplete.Select2QuerySetView):
         """Create an object given a text after checking permissions."""
 
         # Nie ruszamy tego importu -- ma pozostać tutaj, bo inaczej testy nie mogą zostać spatchowane
-        from pbn_api.integrator import zapisz_mongodb
+        from pbn_integrator.utils import zapisz_mongodb
 
         uczelnia: Uczelnia = Uczelnia.objects.get_for_request(self.request)
         try:

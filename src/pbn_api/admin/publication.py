@@ -8,8 +8,8 @@ from djangoql.admin import DjangoQLSearchMixin
 from pbn_api.admin.base import BaseMongoDBAdmin
 from pbn_api.admin.filters import OdpowiednikWBPPFilter
 from pbn_api.admin.widgets import PrettyJSONWidgetReadonly
-from pbn_api.integrator import zapisz_oswiadczenie_instytucji
 from pbn_api.models import OswiadczenieInstytucji, Publication
+from pbn_integrator.utils import zapisz_oswiadczenie_instytucji
 
 from django.contrib import admin, messages
 
@@ -110,7 +110,7 @@ class PublicationAdmin(
         """
         Given a model instance save it to the database.
         """
-        from pbn_api.integrator import zapisz_mongodb
+        from pbn_integrator.utils import zapisz_mongodb
 
         zapisz_mongodb(form.cleaned_data["json"], Publication)
         obj.refresh_from_db()
@@ -209,8 +209,8 @@ class PublicationAdmin(
     @transaction.atomic
     def import_to_bpp_view(self, request, object_id):
         """View to handle single publication import to BPP"""
-        from pbn_api.importer import importuj_publikacje_po_pbn_uid_id
-        from pbn_api.integrator import (
+        from pbn_integrator.importer import importuj_publikacje_po_pbn_uid_id
+        from pbn_integrator.utils import (
             integruj_oswiadczenia_z_instytucji_pojedyncza_praca,
         )
 

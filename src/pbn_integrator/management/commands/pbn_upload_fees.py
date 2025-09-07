@@ -1,5 +1,5 @@
-from pbn_api.integrator import wyslij_informacje_o_platnosciach
 from pbn_api.management.commands.util import PBNBaseCommand
+from pbn_integrator.utils import wyslij_informacje_o_platnosciach
 
 
 class Command(PBNBaseCommand):

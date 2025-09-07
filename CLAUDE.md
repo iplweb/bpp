@@ -14,11 +14,42 @@ BPP (Bibliografia Publikacji Pracowników) is a Polish academic bibliography man
 
 **IMPORTANT: if using icons, refrain from emojis, rather use monochrome Foundation-Icons (<span class="fi-icon"/>)**
 
+## Python and Django Execution
+
+**CRITICAL: Always execute Python commands that require Django models, views, or any Django functionality through `python src/manage.py shell`**
+
+- Use `python src/manage.py shell` for any Python code that needs Django initialization
+- This ensures Django settings are properly loaded and database connections are established
+- Only use plain `python` command when debugging issues with manage.py itself
+- For quick Django model queries or data manipulation, always use the Django shell
+
+Example:
+```bash
+# CORRECT - for Django-related Python code:
+python src/manage.py shell
+
+# Then in the shell:
+from bpp.models import Autor
+Autor.objects.count()
+
+# ONLY use plain python when debugging manage.py issues:
+python --version  # OK - checking Python version
+python src/manage.py  # OK - debugging manage.py startup issues
+```
+
 ## Key Commands
 
 ### Development Commands
+
+**CRITICAL: ALWAYS check if the development server is already running before starting it:**
+```bash
+nc -zv localhost 8000  # Check if port 8000 is in use
+# If connection succeeded, server is already running - no need to start it again
+```
+
 - `python src/manage.py runserver` - Start development server (default settings: django_bpp.settings.local)
   - **NOTE:** If you see "Listen failure: Couldn't listen on 127.0.0.1:8000: [Errno 48] Address already in use." it means the server is ALREADY RUNNING in the background as another process. This is expected behavior - no action needed.
+  - **IMPORTANT:** During Claude development sessions, the server often runs in the background. ALWAYS check with `nc -zv localhost 8000` before attempting to start the server.
 - `python src/manage.py migrate` - Apply database migrations
 - `python src/manage.py shell` - Django shell
 - `bpp-manage.py` - Alternative management command entry point

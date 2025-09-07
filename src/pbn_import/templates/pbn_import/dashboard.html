@@ -134,6 +134,28 @@
     .status-failed { background: #f8d7da; color: #721c24; }
     .status-cancelled { background: #e2e3e5; color: #383d41; }
 
+    /* Custom styling for import configuration modal */
+    #import-config-modal {
+        border-radius: 20px;
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1), 0 5px 15px rgba(0, 0, 0, 0.07);
+        border: none;
+        overflow: hidden;
+    }
+
+    #import-config-modal h2 {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        margin: -1rem -1rem 1.5rem -1rem;
+        padding: 1.5rem;
+        border-radius: 20px 20px 0 0;
+    }
+
+    #import-config-modal .callout.primary {
+        border-radius: 15px;
+        border: 1px solid #c7d2fe;
+        background: linear-gradient(135deg, #f0f4ff 0%, #e0e7ff 100%);
+    }
+
     /* Removed floating elements */
 </style>
 {% endblock %}
@@ -259,6 +281,11 @@
             <label>
                 <input type="checkbox" name="publikacje" checked>
                 <span class="fi-page-copy"></span> Publikacje
+            </label>
+
+            <label>
+                <input type="checkbox" name="integracja" checked>
+                <span class="fi-link"></span> Integracja danych
             </label>
 
             <label>

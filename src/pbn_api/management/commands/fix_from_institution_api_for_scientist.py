@@ -1,6 +1,6 @@
-from pbn_api.integrator import pobierz_ludzi_z_uczelni
 from pbn_api.management.commands.util import PBNBaseCommand
 from pbn_api.models import Scientist
+from pbn_integrator.utils import pobierz_ludzi_z_uczelni
 
 from bpp.models import Uczelnia
 

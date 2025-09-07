@@ -1,7 +1,7 @@
 from django.db import transaction
 
-from pbn_api.integrator import integruj_oswiadczenia_pbn_first_import
 from pbn_api.management.commands.util import PBNBaseCommand
+from pbn_integrator.utils import integruj_oswiadczenia_pbn_first_import
 
 from bpp.models import Jednostka
 

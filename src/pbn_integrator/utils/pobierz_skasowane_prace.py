@@ -19,11 +19,11 @@ def _init(_client, _data):
     client = _client
     data = _data
 
-    from pbn_api.integrator import pobierz_mongodb as _p
+    from pbn_integrator.utils import pobierz_mongodb as _p
 
     pobierz_mongodb = _p
 
-    from pbn_api.integrator import zapisz_mongodb as _p
+    from pbn_integrator.utils import zapisz_mongodb as _p
 
     zapisz_mongodb = _p
 
@@ -42,7 +42,7 @@ def pobierz_skasowane_prace(client):
 
     from multiprocessing import Pool
 
-    from pbn_api.integrator import DELETED
+    from pbn_api.const import DELETED
 
     from bpp.util import pbar
 

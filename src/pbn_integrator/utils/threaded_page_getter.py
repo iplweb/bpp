@@ -26,7 +26,7 @@ class ThreadedPageGetter:
 class ThreadedMongoDBSaver(ThreadedPageGetter):
     def process_element(self, elem):
         if not hasattr(self, "zapisz_mongodb"):
-            from pbn_api.integrator import zapisz_mongodb
+            from pbn_integrator.utils import zapisz_mongodb
 
             self.zapisz_mongodb = zapisz_mongodb
         self.zapisz_mongodb(elem, self.pbn_api_klass)
@@ -39,6 +39,7 @@ def threaded_page_getter(
     no_threads=12,
     label="getting...",
     method="threads",
+    callback=None,
 ):
     """Odświeża wszystkie publikacje, które są w lokalnej tabeli."""
 
@@ -47,7 +48,7 @@ def threaded_page_getter(
     if method == "processes":
         import multiprocessing
 
-        from pbn_api.integrator import (
+        from pbn_integrator.utils import (
             _bede_uzywal_bazy_danych_z_multiprocessing_z_django,
         )
 
@@ -73,6 +74,7 @@ def threaded_page_getter(
         ),
         data.total_pages,
         label=label,
+        callback=callback,
     ):
         pass
 

@@ -837,7 +837,7 @@ class PBNClient(
         )
 
     def pobierz_publikacje_instytucji_v2(self, objectId):
-        from pbn_api.integrator import zapisz_publikacje_instytucji_v2
+        from pbn_integrator.utils import zapisz_publikacje_instytucji_v2
 
         elem = list(self.get_institution_publication_v2(objectId=objectId))
         if not elem:

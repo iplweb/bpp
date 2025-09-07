@@ -1,5 +1,5 @@
-from pbn_api import importer
 from pbn_api.management.commands.util import PBNBaseCommand
+from pbn_integrator import importer
 
 
 class Command(PBNBaseCommand):

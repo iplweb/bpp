@@ -33,20 +33,20 @@
     {% endif %}
 
     <!-- Controls -->
-    <div class="progress-controls">
+    <div class="progress-controls" style="margin-top: 20px;">
         {% if session.status == 'running' %}
         <form method="post" action="{% url 'pbn_import:cancel' session.id %}"
               style="display: inline;"
               onsubmit="return confirm('Czy na pewno chcesz anulować import?');">
             {% csrf_token %}
-            <button type="submit" class="button small alert">
+            <button type="submit" class="button alert">
                 <span class="fi-x"></span> Anuluj
             </button>
         </form>
         {% endif %}
 
         {% if not hide_details_button %}
-        <a href="{% url 'pbn_import:session_detail' session.id %}" class="button small">
+        <a href="{% url 'pbn_import:session_detail' session.id %}" class="button">
             <span class="fi-magnifying-glass"></span> Szczegóły
         </a>
         {% endif %}

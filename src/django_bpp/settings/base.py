@@ -420,6 +420,7 @@ INSTALLED_APPS = [
     "import_export",
     "ewaluacja2021",
     "ewaluacja_liczba_n",
+    "ewaluacja_metryki",
     # Zostawiamy - bezwarunkowo
     "test_bpp",
     #

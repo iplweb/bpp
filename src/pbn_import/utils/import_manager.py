@@ -9,6 +9,7 @@ from ..models import ImportLog, ImportSession, ImportStatistics, ImportStep
 from .author_import import AuthorImporter
 from .base import CancelledException
 from .conference_import import ConferenceImporter
+from .data_integration import DataIntegrator
 from .fee_import import FeeImporter
 from .initial_setup import InitialSetup
 from .institution_import import InstitutionImporter
@@ -145,6 +146,18 @@ class ImportManager:
                 }
             )
 
+        # Data Integration - integrate new data after publication import
+        if not self.config.get("disable_integracja"):
+            steps.append(
+                {
+                    "name": "data_integration",
+                    "display": "Integruj nowe dane",
+                    "class": DataIntegrator,
+                    "args": {},
+                    "required": False,
+                }
+            )
+
         # Statements
         if not self.config.get("disable_oswiadczenia"):
             steps.append(
@@ -195,6 +208,7 @@ class ImportManager:
             "conference_import": "fi-calendar",
             "author_import": "fi-torsos-all",
             "publication_import": "fi-page-copy",
+            "data_integration": "fi-link",
             "statement_import": "fi-clipboard-pencil",
             "fee_import": "fi-dollar",
         }

@@ -1,7 +1,7 @@
 """Publication import utilities"""
 
-from pbn_api.importer import importuj_publikacje_po_pbn_uid_id
 from pbn_api.models import Publication
+from pbn_integrator.importer import importuj_publikacje_po_pbn_uid_id
 from pbn_integrator.utils import (
     integruj_publikacje_instytucji,
     pobierz_publikacje_z_instytucji,

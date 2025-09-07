@@ -58,10 +58,23 @@ urlpatterns = (
             r"^integrator2/",
             include(("integrator2.urls", "integrator2"), namespace="integrator2"),
         ),
+        # Disabled ewaluacja2021 (contains 3N reports)
+        # path(
+        #     "ewaluacja2021/",
+        #     include(
+        #         "ewaluacja2021.urls",
+        #     ),
+        # ),
         path(
-            "ewaluacja2021/",
+            "ewaluacja_liczba_n/",
             include(
-                "ewaluacja2021.urls",
+                "ewaluacja_liczba_n.urls",
+            ),
+        ),
+        path(
+            "ewaluacja_metryki/",
+            include(
+                "ewaluacja_metryki.urls",
             ),
         ),
         url(

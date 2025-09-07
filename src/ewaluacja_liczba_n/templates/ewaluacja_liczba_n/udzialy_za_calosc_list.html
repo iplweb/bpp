@@ -1,0 +1,299 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% load url_helpers %}
+
+{% block title %}Lista udziałów za cały okres - Liczba N{% endblock %}
+
+{% block breadcrumbs %}
+    <li><a href="/">Strona główna</a></li>
+    <li><a href="{% url 'ewaluacja_liczba_n:index' %}">Liczba N</a></li>
+    <li class="current">Lista udziałów za cały okres</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="large-12 columns">
+        <h1><i class="fi-list"></i> Lista udziałów za cały okres (2022-2025)</h1>
+
+        <div class="row">
+            <div class="medium-8 columns">
+                <form method="get" action="." class="form-inline" id="filter-form">
+                    <div class="input-group">
+                        <span class="input-group-label">Autor:</span>
+                        <input type="text" name="search" value="{{ search }}"
+                               placeholder="Nazwisko lub imię"
+                               class="input-group-field" id="search-input">
+                    </div>
+
+                    <div class="input-group">
+                        <span class="input-group-label">Dyscyplina:</span>
+                        <select name="dyscyplina" class="input-group-field auto-submit">
+                            <option value="">-- Wszystkie --</option>
+                            {% for dyscyplina in dyscypliny %}
+                                <option value="{{ dyscyplina.pk }}" {% if selected_dyscyplina == dyscyplina.pk|stringformat:"s" %}selected{% endif %}>
+                                    {{ dyscyplina.nazwa }} ({{ dyscyplina.kod }})
+                                </option>
+                            {% empty %}
+                                <option disabled>Brak dyscyplin z danymi</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <button type="submit" class="button primary">
+                        <i class="fi-magnifying-glass"></i> Filtruj
+                    </button>
+                    <a href="{% url 'ewaluacja_liczba_n:udzialy-za-calosc-list' %}" class="button secondary">
+                        <i class="fi-refresh"></i> Wyczyść filtry
+                    </a>
+                </form>
+            </div>
+
+            <div class="medium-4 columns text-right">
+                <a href="{% url 'ewaluacja_liczba_n:udzialy-za-calosc-export' %}?{{ request.GET.urlencode }}" class="button success">
+                    <i class="fi-download"></i> Eksport do XLSX
+                </a>
+                <a href="{% url 'ewaluacja_liczba_n:index' %}" class="button">
+                    <i class="fi-arrow-left"></i> Powrót
+                </a>
+            </div>
+        </div>
+
+        <hr>
+
+        {% if udzialy_data %}
+            <!-- Podsumowanie dla przefiltrowanych danych -->
+            <div class="callout primary">
+                <div class="row">
+                    <div class="medium-4 columns">
+                        <h5>Podsumowanie dla wybranych filtrów:</h5>
+                        <p><strong>Liczba rekordów:</strong> {{ total_count|intcomma }}</p>
+                    </div>
+                    <div class="medium-4 columns">
+                        <p><strong>Suma ilości udziałów:</strong>
+                            <span class="label large success">{{ suma_udzialow|floatformat:2 }}</span>
+                        </p>
+                    </div>
+                    <div class="medium-4 columns">
+                        <p><strong>Suma udziałów - monografie:</strong>
+                            <span class="label large warning">{{ suma_monografie|floatformat:2 }}</span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <table class="hover stack">
+                <thead>
+                    <tr>
+                        <th>
+                            <a href="{% get_sort_url 'autor' %}"
+                               class="sort-link">
+                                Autor
+                                {% if current_sort == 'autor' %}
+                                    <i class="fi-arrow-down"></i>
+                                {% elif current_sort == '-autor' %}
+                                    <i class="fi-arrow-up"></i>
+                                {% else %}
+                                    <i class="fi-arrows-expand" style="opacity: 0.3;"></i>
+                                {% endif %}
+                            </a>
+                        </th>
+                        <th>
+                            <a href="{% get_sort_url 'dyscyplina' %}"
+                               class="sort-link">
+                                Dyscyplina
+                                {% if current_sort == 'dyscyplina' %}
+                                    <i class="fi-arrow-down"></i>
+                                {% elif current_sort == '-dyscyplina' %}
+                                    <i class="fi-arrow-up"></i>
+                                {% else %}
+                                    <i class="fi-arrows-expand" style="opacity: 0.3;"></i>
+                                {% endif %}
+                            </a>
+                        </th>
+                        <th class="text-center">
+                            <a href="{% get_sort_url 'udzialy' %}"
+                               class="sort-link">
+                                Ilość udziałów<br>(2022-2025)
+                                {% if current_sort == 'udzialy' %}
+                                    <i class="fi-arrow-down"></i>
+                                {% elif current_sort == '-udzialy' %}
+                                    <i class="fi-arrow-up"></i>
+                                {% else %}
+                                    <i class="fi-arrows-expand" style="opacity: 0.3;"></i>
+                                {% endif %}
+                            </a>
+                        </th>
+                        <th class="text-center">
+                            <a href="{% get_sort_url 'monografie' %}"
+                               class="sort-link">
+                                Udziały - monografie
+                                {% if current_sort == 'monografie' %}
+                                    <i class="fi-arrow-down"></i>
+                                {% elif current_sort == '-monografie' %}
+                                    <i class="fi-arrow-up"></i>
+                                {% else %}
+                                    <i class="fi-arrows-expand" style="opacity: 0.3;"></i>
+                                {% endif %}
+                            </a>
+                        </th>
+                        <th>Komentarz</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for udzial in udzialy_data %}
+                    <tr>
+                        <td>
+                            <a href="{% url 'bpp:browse_autor' udzial.autor.pk %}">
+                                {{ udzial.autor }}
+                            </a>
+                        </td>
+                        <td>
+                            {{ udzial.dyscyplina_naukowa.nazwa }}
+                            <small class="text-muted">({{ udzial.dyscyplina_naukowa.kod }})</small>
+                        </td>
+                        <td class="text-center">{{ udzial.ilosc_udzialow|floatformat:2 }}</td>
+                        <td class="text-center">{{ udzial.ilosc_udzialow_monografie|floatformat:2 }}</td>
+                        <td>
+                            <small class="text-muted">{{ udzial.komentarz|default:"" }}</small>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr class="text-bold">
+                        <td colspan="2" class="text-right"><strong>Sumy dla bieżącej strony:</strong></td>
+                        <td class="text-center">
+                            <strong>{{ page_suma_udzialow|floatformat:2 }}</strong>
+                        </td>
+                        <td class="text-center">
+                            <strong>{{ page_suma_monografie|floatformat:2 }}</strong>
+                        </td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
+
+            {% if is_paginated %}
+            <nav aria-label="Pagination">
+                <ul class="pagination text-center" role="navigation">
+                    {% if page_obj.has_previous %}
+                        <li class="pagination-previous">
+                            <a href="?{% url_replace page=page_obj.previous_page_number %}" aria-label="Previous page">
+                                Poprzednia
+                            </a>
+                        </li>
+                    {% else %}
+                        <li class="pagination-previous disabled">Poprzednia</li>
+                    {% endif %}
+
+                    {% for num in page_obj.paginator.page_range %}
+                        {% if page_obj.number == num %}
+                            <li class="current"><span class="show-for-sr">Jesteś na stronie</span> {{ num }}</li>
+                        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                            <li><a href="?{% url_replace page=num %}" aria-label="Page {{ num }}">{{ num }}</a></li>
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if page_obj.has_next %}
+                        <li class="pagination-next">
+                            <a href="?{% url_replace page=page_obj.next_page_number %}" aria-label="Next page">
+                                Następna
+                            </a>
+                        </li>
+                    {% else %}
+                        <li class="pagination-next disabled">Następna</li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+
+        {% else %}
+            <div class="callout warning">
+                <p>Brak danych do wyświetlenia. Upewnij się, że obliczono liczbę N dla ewaluacji.</p>
+                <a href="{% url 'ewaluacja_liczba_n:index' %}" class="button">
+                    <i class="fi-arrow-left"></i> Wróć do strony głównej
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+    .input-group {
+        margin-bottom: 1rem;
+        margin-right: 1rem;
+        display: inline-table;
+    }
+    .form-inline .input-group-label {
+        display: table-cell;
+        padding: 0.5rem 1rem;
+        background: #e6e6e6;
+        border: 1px solid #cacaca;
+        border-right: 0;
+        white-space: nowrap;
+        vertical-align: middle;
+    }
+    .form-inline .input-group-field {
+        display: table-cell;
+        border-radius: 0;
+        height: 2.5rem;
+    }
+    tfoot tr {
+        background-color: #f0f0f0;
+        font-weight: bold;
+    }
+    .sort-link {
+        color: inherit;
+        text-decoration: none;
+        display: block;
+    }
+    .sort-link:hover {
+        color: #1779ba;
+    }
+    .sort-link i {
+        font-size: 0.9em;
+        margin-left: 5px;
+    }
+</style>
+
+<script type="text/javascript">
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-focus on search input
+    var searchInput = document.getElementById('search-input');
+    if (searchInput) {
+        searchInput.focus();
+        // Move cursor to end of input if there's existing text
+        var val = searchInput.value;
+        searchInput.value = '';
+        searchInput.value = val;
+    }
+
+    // Auto-submit form on select change
+    var autoSubmitElements = document.querySelectorAll('.auto-submit');
+    autoSubmitElements.forEach(function(element) {
+        element.addEventListener('change', function() {
+            document.getElementById('filter-form').submit();
+        });
+    });
+
+    // Auto-submit form on search input with debounce
+    var searchTimer = null;
+
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(function() {
+                document.getElementById('filter-form').submit();
+            }, 500); // Wait 500ms after user stops typing
+        });
+
+        // Also submit on Enter key
+        searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                clearTimeout(searchTimer);
+                document.getElementById('filter-form').submit();
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

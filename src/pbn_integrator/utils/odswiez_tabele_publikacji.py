@@ -1,5 +1,5 @@
+from pbn_api.const import DELETED
 from pbn_api.exceptions import BrakIDPracyPoStroniePBN
-from pbn_api.integrator import DELETED
 
 
 def odswiez_tabele_publikacji_init(_client):
@@ -10,7 +10,7 @@ def odswiez_tabele_publikacji_init(_client):
     global client, _pobierz_pojedyncza_prace
     client = _client
 
-    from pbn_api.integrator import _pobierz_pojedyncza_prace as f
+    from pbn_integrator.utils import _pobierz_pojedyncza_prace as f
 
     _pobierz_pojedyncza_prace = f
 
@@ -37,8 +37,8 @@ def odswiez_tabele_single_task(mongoId):
 
 def odswiez_tabele_publikacji(client):
     """Odświeża wszystkie publikacje, które są w lokalnej tabeli."""
-    from pbn_api.integrator import _bede_uzywal_bazy_danych_z_multiprocessing_z_django
     from pbn_api.models import Publication
+    from pbn_integrator.utils import _bede_uzywal_bazy_danych_z_multiprocessing_z_django
 
     from bpp.util import pbar
 

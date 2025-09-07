@@ -1,7 +1,7 @@
 import pytest
 from model_bakery import baker
 
-from pbn_api.integrator import (
+from pbn_integrator.utils import (
     wydawnictwa_ciagle_do_synchronizacji,
     wydawnictwa_zwarte_do_synchronizacji,
 )

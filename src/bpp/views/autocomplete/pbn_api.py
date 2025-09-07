@@ -7,8 +7,8 @@ from sentry_sdk import capture_exception
 
 from pbn_api.client import PBNClient
 from pbn_api.exceptions import AccessDeniedException
-from pbn_api.integrator import ACTIVE, zapisz_mongodb
 from pbn_api.models import Journal, Publication, Scientist
+from pbn_integrator.utils import ACTIVE, zapisz_mongodb
 
 from django.contrib.auth.mixins import LoginRequiredMixin
 

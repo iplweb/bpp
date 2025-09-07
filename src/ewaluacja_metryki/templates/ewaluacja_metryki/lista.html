@@ -1,0 +1,542 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% load temperature_filters %}
+{% load url_utils %}
+
+{% block title %}Metryki ewaluacyjne autorów{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="/">Strona główna</a></li>
+    <li class="current">Metryki ewaluacyjne</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="columns">
+        <h1>
+            <span class="fi-graph-trend"></span> Metryki ewaluacyjne autorów
+        </h1>
+
+        <!-- Disclaimer komunikat -->
+        {% include "ewaluacja_metryki/disclaimer.html" %}
+
+        <!-- Komunikaty Django Messages -->
+        {% if messages %}
+            {% for message in messages %}
+                <div class="callout {% if message.tags == 'error' %}alert{% elif message.tags == 'success' %}success{% elif message.tags == 'warning' %}warning{% else %}primary{% endif %}" data-closable>
+                    {{ message }}
+                    <button class="close-button" aria-label="Dismiss alert" type="button" data-close>
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <!-- Status generowania -->
+        {% if status_generowania %}
+        <div class="callout {% if status_generowania.w_trakcie %}warning{% elif status_generowania.data_zakonczenia %}success{% else %}secondary{% endif %}" id="status-box">
+            <div class="row">
+                <div class="medium-9 columns">
+                    {% if status_generowania.w_trakcie %}
+                        <p>
+                            <span class="fi-clock"></span>
+                            <strong>Generowanie metryk w trakcie...</strong>
+                            Przetworzono: <span id="liczba-przetworzonych">{{ status_generowania.liczba_przetworzonych }}</span> autorów
+                        </p>
+                        <div class="progress" role="progressbar" tabindex="0" aria-valuenow="20" aria-valuemin="0" aria-valuemax="100">
+                            <div class="progress-meter" style="width: 20%" id="progress-bar"></div>
+                        </div>
+                    {% elif status_generowania.data_zakonczenia %}
+                        <p>
+                            <span class="fi-check"></span>
+                            <strong>Wizualizacja wygenerowana w dniu {{ status_generowania.data_zakonczenia|date:"Y-m-d" }} o godzinie {{ status_generowania.data_zakonczenia|date:"H:i:s" }}</strong><br>
+                            Przetworzono: {{ status_generowania.liczba_przetworzonych }} autorów
+                            {% if status_generowania.liczba_bledow > 0 %}
+                                | Błędy: {{ status_generowania.liczba_bledow }}
+                            {% endif %}
+                            {% if status_generowania.czas_trwania %}
+                                | Czas trwania: {{ status_generowania.czas_trwania }}
+                            {% endif %}
+                        </p>
+                    {% else %}
+                        <p>
+                            <span class="fi-info"></span>
+                            <strong>Brak danych o generowaniu.</strong>
+                            Uruchom generowanie metryk aby wyświetlić dane.
+                        </p>
+                    {% endif %}
+                </div>
+                <div class="medium-3 columns text-right">
+                    {% if user.is_staff %}
+                        {% if not status_generowania.w_trakcie %}
+                            <button class="button primary" data-open="generowanie-modal">
+                                <span class="fi-play"></span> Uruchom generowanie
+                            </button>
+                        {% else %}
+                            <button class="button secondary" disabled>
+                                <span class="fi-clock"></span> Generowanie w trakcie
+                            </button>
+                        {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Panel filtrów -->
+        <div class="callout">
+            {% if request.GET.autor_id %}
+            <div class="callout warning">
+                <p>
+                    <span class="fi-filter"></span>
+                    <strong>Tryb kadrowania aktywny</strong> - pokazywane są tylko wpisy dla autora:
+                    {% if filtered_autor %}
+                        <strong>{{ filtered_autor }}</strong>
+                    {% else %}
+                        <strong>ID: {{ request.GET.autor_id }}</strong>
+                    {% endif %}
+                    <a href="{% url 'ewaluacja_metryki:lista' %}" class="button tiny alert float-right">
+                        <span class="fi-x"></span> Wyłącz kadrowanie
+                    </a>
+                </p>
+            </div>
+            {% endif %}
+            <form method="get" class="row" id="filter-form">
+                {% if request.GET.autor_id %}
+                <input type="hidden" name="autor_id" value="{{ request.GET.autor_id }}">
+                {% endif %}
+                <div class="medium-3 columns">
+                    <label>Nazwisko/Imię
+                        <input type="text" name="nazwisko" value="{{ request.GET.nazwisko }}" placeholder="Wpisz nazwisko lub imię" class="auto-submit-field">
+                    </label>
+                </div>
+
+                {% if uzywa_wydzialow %}
+                <div class="medium-3 columns">
+                    <label>Wydział
+                        <select name="wydzial" class="auto-submit-field">
+                            <option value="">-- Wszystkie --</option>
+                            {% for wydzial in wydzialy %}
+                                <option value="{{ wydzial.id }}" {% if request.GET.wydzial == wydzial.id|stringformat:"s" %}selected{% endif %}>
+                                    {{ wydzial.nazwa }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                </div>
+                {% endif %}
+
+                <div class="medium-3 columns">
+                    <label>Jednostka
+                        <select name="jednostka" class="auto-submit-field">
+                            <option value="">-- Wszystkie --</option>
+                            {% for jednostka in jednostki %}
+                                <option value="{{ jednostka.id }}" {% if request.GET.jednostka == jednostka.id|stringformat:"s" %}selected{% endif %}>
+                                    {{ jednostka.nazwa }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                </div>
+
+                <div class="medium-3 columns">
+                    <label>Dyscyplina
+                        <select name="dyscyplina" class="auto-submit-field">
+                            <option value="">-- Wszystkie --</option>
+                            {% for dyscyplina in dyscypliny %}
+                                <option value="{{ dyscyplina.id }}" {% if request.GET.dyscyplina == dyscyplina.id|stringformat:"s" %}selected{% endif %}>
+                                    {{ dyscyplina.nazwa }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                </div>
+
+                <div class="medium-12 columns">
+                    <button type="submit" class="button">
+                        <span class="fi-magnifying-glass"></span> Filtruj
+                    </button>
+                    <a href="{% url 'ewaluacja_metryki:lista' %}" class="button secondary">
+                        <span class="fi-x"></span> Wyczyść filtry
+                    </a>
+                    <a href="{% url 'ewaluacja_metryki:statystyki' %}" class="button success float-right">
+                        <span class="fi-graph-bar"></span> Statystyki
+                    </a>
+                </div>
+            </form>
+        </div>
+
+        <!-- Statystyki wyników -->
+        {% if statystyki %}
+        <div class="callout secondary">
+            <div class="row">
+                <div class="medium-3 columns text-center">
+                    <h5>Liczba wierszy</h5>
+                    <p class="stat">{{ statystyki.liczba_wierszy|default:"0" }}</p>
+                </div>
+                <div class="medium-3 columns text-center">
+                    <h5>Liczba autorów</h5>
+                    <p class="stat">{{ statystyki.liczba_autorow|default:"0" }}</p>
+                </div>
+                <div class="medium-3 columns text-center">
+                    <h5>Średnie wykorzystanie slotów</h5>
+                    <p class="stat">{{ statystyki.srednia_wykorzystania|floatformat:1|default:"0" }}%</p>
+                </div>
+                <div class="medium-3 columns text-center">
+                    <h5>Średnia PKDaut/slot</h5>
+                    <p class="stat">{{ statystyki.srednia_pkd_slot|floatformat:2|default:"0" }}</p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Tabela wyników -->
+        <table class="hover stack">
+            <thead>
+                <tr>
+                    <th>
+                        <a href="{% if request.GET.sort == 'autor__nazwisko' %}{% update_query_param request 'sort' '-autor__nazwisko' %}{% else %}{% update_query_param request 'sort' 'autor__nazwisko' %}{% endif %}">
+                            Autor <span class="fi-arrow-{% if request.GET.sort == 'autor__nazwisko' %}up{% elif request.GET.sort == '-autor__nazwisko' %}down{% else %}down{% endif %}"></span>
+                        </a>
+                    </th>
+                    <th>Dyscyplina</th>
+                    <th>Jednostka</th>
+                    <th class="text-center">
+                        <a href="{% if request.GET.sort == '-srednia_za_slot_nazbierana' %}{% update_query_param request 'sort' 'srednia_za_slot_nazbierana' %}{% else %}{% update_query_param request 'sort' '-srednia_za_slot_nazbierana' %}{% endif %}">
+                            Średnia PKDaut/slot <span class="fi-arrow-{% if request.GET.sort == '-srednia_za_slot_nazbierana' %}down{% else %}up{% endif %}"></span>
+                        </a>
+                    </th>
+                    <th class="text-center">
+                        <a href="{% if request.GET.sort == '-procent_wykorzystania_slotow' %}{% update_query_param request 'sort' 'procent_wykorzystania_slotow' %}{% else %}{% update_query_param request 'sort' '-procent_wykorzystania_slotow' %}{% endif %}">
+                            Wykorzystanie slotów <span class="fi-arrow-{% if request.GET.sort == '-procent_wykorzystania_slotow' %}down{% else %}up{% endif %}"></span>
+                        </a>
+                    </th>
+                    <th class="text-center">Akcje</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for metryka in metryki %}
+                <tr>
+                    <td>
+                        <strong>
+                            <a href="{% url 'ewaluacja_metryki:szczegoly' metryka.pk %}" title="Szczegóły metryki ewaluacyjnej">
+                                {{ metryka.autor }}
+                            </a>
+                        </strong>
+                    </td>
+                    <td>{{ metryka.dyscyplina_naukowa.nazwa }}</td>
+                    <td>
+                        {% if metryka.jednostka %}
+                            {{ metryka.jednostka.skrot|default:metryka.jednostka.nazwa }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                    <td class="text-center">
+                        {% temperature_display metryka.srednia_za_slot_nazbierana %}
+                    </td>
+                    <td>
+                        <div class="progress" role="progressbar" tabindex="0" aria-valuenow="{{ metryka.procent_wykorzystania_slotow|floatformat:0 }}" aria-valuemin="0" aria-valuemax="100">
+                            <div class="progress-meter {% if metryka.procent_wykorzystania_slotow >= 90 %}success{% elif metryka.procent_wykorzystania_slotow >= 70 %}warning{% else %}alert{% endif %}"
+                                 style="width: {{ metryka.procent_wykorzystania_slotow|floatformat:0 }}%">
+                                <p class="progress-meter-text">{{ metryka.procent_wykorzystania_slotow|floatformat:1 }}%</p>
+                            </div>
+                        </div>
+                        <small>{{ metryka.slot_nazbierany|floatformat:2 }} / {{ metryka.slot_maksymalny|floatformat:2 }}</small>
+                    </td>
+                    <td class="text-center" style="break-inside: avoid;">
+                        <a href="{% url 'ewaluacja_metryki:szczegoly' metryka.pk %}" class="button" title="Szczegóły metryki">
+                            <span class="fi-eye"></span>
+                        </a>
+                        <a href="{% url 'bpp:browse_autor' metryka.autor.pk %}" class="button success" target="_blank" title="Profil autora w BPP">
+                            <span class="fi-torso"></span>
+                        </a>
+                        {% if metryka.autor_discipline_count > 1 %}
+                        <a href="{% url 'ewaluacja_metryki:lista' %}?autor_id={{ metryka.autor.pk }}" class="button secondary" title="Kadruj - pokaż tylko tego autora">
+                            <span class="fi-crop"></span>
+                        </a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center">
+                        <em>Brak danych do wyświetlenia. Uruchom komendę 'python manage.py oblicz_metryki' aby wygenerować dane.</em>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <!-- Paginacja -->
+        {% if is_paginated %}
+        <nav aria-label="Pagination">
+            <ul class="pagination text-center" role="navigation">
+                {% if page_obj.has_previous %}
+                    <li class="pagination-previous">
+                        <a href="{% preserve_filters request page=page_obj.previous_page_number %}">Poprzednia</a>
+                    </li>
+                {% endif %}
+
+                {% for num in page_obj.paginator.page_range %}
+                    {% if page_obj.number == num %}
+                        <li class="current"><span class="show-for-sr">Jesteś na stronie</span> {{ num }}</li>
+                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                        <li><a href="{% preserve_filters request page=num %}">{{ num }}</a></li>
+                    {% endif %}
+                {% endfor %}
+
+                {% if page_obj.has_next %}
+                    <li class="pagination-next">
+                        <a href="{% preserve_filters request page=page_obj.next_page_number %}">Następna</a>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+    .progress {
+        margin-bottom: 0.5rem;
+    }
+    .stat {
+        font-size: 2rem;
+        font-weight: bold;
+        color: #1779ba;
+    }
+
+    /* Temperature gradient classes */
+    .temperature-display {
+        display: inline-block;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-weight: bold;
+        color: white;
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+        transition: all 0.3s ease;
+        position: relative;
+        min-width: 80px;
+    }
+
+    .temperature-display:hover {
+        transform: scale(1.05);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+
+    .temperature-icon {
+        font-size: 0.9em;
+        margin-left: 4px;
+        opacity: 0.9;
+    }
+
+    /* Temperature gradient colors - from freezing cold to blazing hot */
+    .temp-0 {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        /* Freezing purple */
+    }
+
+    .temp-20 {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        /* Very cold blue */
+    }
+
+    .temp-40 {
+        background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+        /* Cold cyan */
+    }
+
+    .temp-60 {
+        background: linear-gradient(135deg, #30cfd0 0%, #330867 100%);
+        /* Cool teal */
+    }
+
+    .temp-80 {
+        background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+        /* Moderate pastel */
+        color: #333;
+        text-shadow: 1px 1px 2px rgba(255,255,255,0.5);
+    }
+
+    .temp-100 {
+        background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+        /* Moderate warm */
+        color: #333;
+        text-shadow: 1px 1px 2px rgba(255,255,255,0.5);
+    }
+
+    .temp-120 {
+        background: linear-gradient(135deg, #ff9a56 0%, #ff6a88 100%);
+        /* Warm */
+    }
+
+    .temp-140 {
+        background: linear-gradient(135deg, #ff6a88 0%, #ff3838 100%);
+        /* Warm-hot */
+    }
+
+    .temp-160 {
+        background: linear-gradient(135deg, #ff3838 0%, #ff0844 100%);
+        /* Hot red */
+    }
+
+    .temp-180 {
+        background: linear-gradient(135deg, #ff0844 0%, #ffb199 100%);
+        /* Very hot */
+    }
+
+    .temp-200 {
+        background: linear-gradient(135deg, #ff0844 0%, #ffd700 50%, #ffffff 100%);
+        /* Blazing hot - red to gold to white */
+        animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+        0% {
+            box-shadow: 0 0 0 0 rgba(255, 8, 68, 0.7);
+        }
+        70% {
+            box-shadow: 0 0 0 10px rgba(255, 8, 68, 0);
+        }
+        100% {
+            box-shadow: 0 0 0 0 rgba(255, 8, 68, 0);
+        }
+    }
+
+    /* Additional visual indicator */
+    .temperature-display::after {
+        content: '';
+        position: absolute;
+        top: -2px;
+        right: -2px;
+        bottom: -2px;
+        left: -2px;
+        border-radius: 20px;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+        z-index: -1;
+    }
+
+    .temp-200::after {
+        background: linear-gradient(45deg, #ff0844, #ffd700, #ff0844);
+        animation: rotate 3s linear infinite;
+        opacity: 0.5;
+    }
+
+    @keyframes rotate {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+</style>
+
+<!-- Modal generowania -->
+<div class="reveal" id="generowanie-modal" data-reveal>
+    <h3><span class="fi-play"></span> Uruchom generowanie metryk</h3>
+
+    <form method="post" action="{% url 'ewaluacja_metryki:uruchom_generowanie' %}">
+        {% csrf_token %}
+
+        <div class="row">
+            <div class="medium-6 columns">
+                <label>Rok początkowy
+                    <input type="number" name="rok_min" value="2022" min="2000" max="2050">
+                </label>
+            </div>
+            <div class="medium-6 columns">
+                <label>Rok końcowy
+                    <input type="number" name="rok_max" value="2025" min="2000" max="2050">
+                </label>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="medium-6 columns">
+                <label>Minimalny próg punktów
+                    <input type="number" name="minimalny_pk" value="0.01" step="0.01" min="0">
+                </label>
+            </div>
+            <div class="medium-6 columns">
+                <label>
+                    <input type="checkbox" name="nadpisz" checked>
+                    Nadpisz istniejące metryki
+                </label>
+            </div>
+        </div>
+
+        <div class="callout warning">
+            <p>
+                <span class="fi-alert"></span>
+                <strong>Uwaga:</strong> Generowanie może potrwać kilka minut w zależności od liczby autorów.
+                Po uruchomieniu strona będzie automatycznie odświeżana co 5 sekund.
+            </p>
+        </div>
+
+        <div class="button-group">
+            <button type="submit" class="button primary">
+                <span class="fi-play"></span> Uruchom generowanie
+            </button>
+            <button class="button secondary" data-close aria-label="Close modal" type="button">
+                <span class="fi-x"></span> Anuluj
+            </button>
+        </div>
+    </form>
+
+    <button class="close-button" data-close aria-label="Close modal" type="button">
+        <span aria-hidden="true">&times;</span>
+    </button>
+</div>
+
+<script>
+// Automatyczne odświeżanie statusu gdy generowanie jest w trakcie
+{% if status_generowania.w_trakcie %}
+    var statusInterval = setInterval(function() {
+        fetch("{% url 'ewaluacja_metryki:status_generowania' %}")
+            .then(response => response.json())
+            .then(data => {
+                if (!data.w_trakcie) {
+                    // Generowanie zakończone - odśwież całą stronę
+                    window.location.reload();
+                } else {
+                    // Aktualizuj licznik
+                    document.getElementById('liczba-przetworzonych').textContent = data.liczba_przetworzonych;
+                    // Aktualizuj progress bar (przykładowy procent)
+                    var procent = Math.min(data.procent || 20, 100);
+                    document.getElementById('progress-bar').style.width = procent + '%';
+                }
+            })
+            .catch(error => {
+                console.error('Błąd pobierania statusu:', error);
+            });
+    }, 5000); // Co 5 sekund
+
+    // Zatrzymaj odświeżanie po 10 minutach
+    setTimeout(function() {
+        clearInterval(statusInterval);
+    }, 600000);
+{% endif %}
+
+// Inicjalizacja Foundation
+$(document).foundation();
+
+// Auto-submit form na zmianę pól
+$(document).ready(function() {
+    var submitTimer;
+
+    // Dla pól tekstowych - submit po zatrzymaniu pisania
+    $('.auto-submit-field[type="text"]').on('input', function() {
+        clearTimeout(submitTimer);
+        submitTimer = setTimeout(function() {
+            $('#filter-form').submit();
+        }, 500); // Czekaj 500ms po zatrzymaniu pisania
+    });
+
+    // Dla select - natychmiastowy submit
+    $('select.auto-submit-field').on('change', function() {
+        $('#filter-form').submit();
+    });
+});
+</script>
+{% endblock %}

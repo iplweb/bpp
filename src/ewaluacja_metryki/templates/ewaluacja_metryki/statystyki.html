@@ -1,0 +1,736 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% load temperature_filters %}
+
+{% block title %}Statystyki metryk ewaluacyjnych{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="/">Strona główna</a></li>
+    <li><a href="{% url 'ewaluacja_metryki:lista' %}">Metryki ewaluacyjne</a></li>
+    <li class="current">Statystyki</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="columns">
+
+        <h1>
+            <span class="fi-graph-bar"></span> Statystyki metryk ewaluacyjnych
+        </h1>
+
+        <!-- Disclaimer komunikat -->
+        {% include "ewaluacja_metryki/disclaimer.html" %}
+
+        <!-- Navigation menu -->
+        <div class="callout" style="background-color: #f7f7f7; border: 1px solid #e0e0e0;">
+            <div class="button-group expanded">
+                <a href="#statystyki-globalne" class="button hollow secondary">
+                    <span class="fi-database"></span> Statystyki globalne
+                </a>
+                <a href="#top-autorzy" class="button hollow secondary">
+                    <span class="fi-trophy"></span> Top autorzy
+                </a>
+                <a href="#bottom-autorzy" class="button hollow secondary">
+                    <span class="fi-arrow-down"></span> Bottom PKDaut/slot
+                </a>
+                <a href="#bottom-sloty" class="button hollow secondary">
+                    <span class="fi-arrow-down"></span> Bottom sloty
+                </a>
+                <a href="#autorzy-zerowi" class="button hollow secondary">
+                    <span class="fi-minus-circle"></span> Autorzy zerowi
+                </a>
+                <a href="#jednostki" class="button hollow secondary">
+                    <span class="fi-home"></span> Jednostki
+                </a>
+                <a href="#dyscypliny" class="button hollow secondary">
+                    <span class="fi-book"></span> Dyscypliny
+                </a>
+            </div>
+        </div>
+
+        <!-- Statystyki globalne -->
+        <div class="callout primary" id="statystyki-globalne">
+            <div class="float-right">
+                <a href="{% url 'ewaluacja_metryki:export_xlsx' 'globalne' %}" class="button tiny success">
+                    <span class="fi-page-export"></span> Export XLSX
+                </a>
+            </div>
+            <h3><span class="fi-database"></span> Statystyki globalne</h3>
+            <div class="row">
+                <div class="medium-2 columns text-center">
+                    <h5>Liczba wierszy</h5>
+                    <p class="stat">{{ statystyki_globalne.liczba_wierszy|default:"0" }}</p>
+                </div>
+                <div class="medium-2 columns text-center">
+                    <h5>Liczba autorów</h5>
+                    <p class="stat">{{ statystyki_globalne.liczba_autorow|default:"0" }}</p>
+                </div>
+                <div class="medium-2 columns text-center">
+                    <h5>Średnie wykorzystanie</h5>
+                    <p class="stat">{{ statystyki_globalne.srednia_wykorzystania|floatformat:1|default:"0" }}%</p>
+                </div>
+                <div class="medium-2 columns text-center">
+                    <h5>Średnia PKDaut/slot</h5>
+                    <p class="stat">{{ statystyki_globalne.srednia_pkd_slot|floatformat:2|default:"0" }}</p>
+                </div>
+                <div class="medium-2 columns text-center">
+                    <h5>Suma punktów</h5>
+                    <p class="stat">{{ statystyki_globalne.suma_punktow|floatformat:0|default:"0" }}</p>
+                </div>
+                <div class="medium-2 columns text-center">
+                    <h5>Suma slotów</h5>
+                    <p class="stat">{{ statystyki_globalne.suma_slotow|floatformat:0|default:"0" }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation menu before Top autorzy -->
+        <div class="callout" style="background-color: #f7f7f7; border: 1px solid #e0e0e0; margin-top: 2rem;">
+            <div class="button-group expanded small">
+                <a href="#statystyki-globalne" class="button hollow secondary">
+                    <span class="fi-database"></span> Statystyki globalne
+                </a>
+                <a href="#top-autorzy" class="button hollow secondary">
+                    <span class="fi-trophy"></span> Top autorzy
+                </a>
+                <a href="#bottom-autorzy" class="button hollow secondary">
+                    <span class="fi-arrow-down"></span> Bottom PKDaut/slot
+                </a>
+                <a href="#bottom-sloty" class="button hollow secondary">
+                    <span class="fi-arrow-down"></span> Bottom sloty
+                </a>
+                <a href="#autorzy-zerowi" class="button hollow secondary">
+                    <span class="fi-minus-circle"></span> Autorzy zerowi
+                </a>
+                <a href="#jednostki" class="button hollow secondary">
+                    <span class="fi-home"></span> Jednostki
+                </a>
+                <a href="#dyscypliny" class="button hollow secondary">
+                    <span class="fi-book"></span> Dyscypliny
+                </a>
+            </div>
+        </div>
+
+        <!-- Top 20 autorów - wide list -->
+        <div class="row">
+            <div class="medium-12 columns">
+                <div class="callout success" id="top-autorzy">
+                    <div class="float-right">
+                        <a href="{% url 'ewaluacja_metryki:export_xlsx' 'top-autorzy' %}" class="button tiny success">
+                            <span class="fi-page-export"></span> Export XLSX
+                        </a>
+                    </div>
+                    <h4><span class="fi-trophy"></span> Top 20 autorów</h4>
+                    <table class="hover">
+                        <thead>
+                            <tr>
+                                <th width="50">Lp.</th>
+                                <th>Autor</th>
+                                <th>Jednostka</th>
+                                <th class="text-center">Sloty wypełnione</th>
+                                <th class="text-center">PKDaut/slot</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for metryka in top_autorzy %}
+                            <tr>
+                                <td>{{ forloop.counter }}</td>
+                                <td>
+                                    <a href="{% url 'bpp:browse_autor' metryka.autor.pk %}" target="_blank" title="Szczegóły autora w BPP">
+                                        {{ metryka.autor }}
+                                    </a>
+                                    <a href="{% url 'ewaluacja_metryki:szczegoly' metryka.pk %}" title="Szczegóły metryki">
+                                        <span class="fi-graph-bar"></span>
+                                    </a>
+                                </td>
+                                <td>
+                                    <small class="text-muted">
+                                        {% if metryka.jednostka %}
+                                            {{ metryka.jednostka.skrot|default:metryka.jednostka.nazwa }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </small>
+                                </td>
+                                <td class="text-center">
+                                    <div class="progress" style="width: 120px; margin: 0 auto;">
+                                        <div class="progress-meter success"
+                                             style="width: {{ metryka.procent_wykorzystania_slotow|floatformat:0 }}%">
+                                            <p class="progress-meter-text">{{ metryka.slot_nazbierany|floatformat:2 }}</p>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="text-center">
+                                    {% temperature_display metryka.srednia_za_slot_nazbierana %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Rozkład wykorzystania slotów -->
+        <div class="row">
+            <div class="medium-6 columns">
+                <div class="callout">
+                    <div class="float-right">
+                        <a href="{% url 'ewaluacja_metryki:export_xlsx' 'wykorzystanie' %}" class="button tiny success">
+                            <span class="fi-page-export"></span> Export XLSX
+                        </a>
+                    </div>
+                    <h4><span class="fi-graph-pie"></span> Rozkład wykorzystania slotów</h4>
+                    <table class="hover">
+                        <thead>
+                            <tr>
+                                <th>Przedział</th>
+                                <th class="text-right">Liczba wierszy</th>
+                                <th>Wykres</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for range, count in wykorzystanie_ranges.items %}
+                            <tr>
+                                <td>{{ range }}</td>
+                                <td class="text-right">{{ count }}</td>
+                                <td>
+                                    <div class="progress" style="margin: 0;">
+                                        <div class="progress-meter"
+                                             style="width: {% widthratio count statystyki_globalne.liczba_wierszy 100 %}%">
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation menu before Bottom autorzy -->
+        <div class="callout" style="background-color: #f7f7f7; border: 1px solid #e0e0e0; margin-top: 2rem;">
+            <div class="button-group expanded small">
+                <a href="#statystyki-globalne" class="button hollow secondary">
+                    <span class="fi-database"></span> Statystyki globalne
+                </a>
+                <a href="#top-autorzy" class="button hollow secondary">
+                    <span class="fi-trophy"></span> Top autorzy
+                </a>
+                <a href="#bottom-autorzy" class="button hollow secondary">
+                    <span class="fi-arrow-down"></span> Bottom PKDaut/slot
+                </a>
+                <a href="#bottom-sloty" class="button hollow secondary">
+                    <span class="fi-arrow-down"></span> Bottom sloty
+                </a>
+                <a href="#autorzy-zerowi" class="button hollow secondary">
+                    <span class="fi-minus-circle"></span> Autorzy zerowi
+                </a>
+                <a href="#jednostki" class="button hollow secondary">
+                    <span class="fi-home"></span> Jednostki
+                </a>
+                <a href="#dyscypliny" class="button hollow secondary">
+                    <span class="fi-book"></span> Dyscypliny
+                </a>
+            </div>
+        </div>
+
+        <!-- Bottom 20 autorów wg PKDaut/slot (nie-zerowych) -->
+        <div class="row">
+            <div class="medium-12 columns">
+                <div class="callout warning" id="bottom-autorzy">
+                    <div class="float-right">
+                        <a href="{% url 'ewaluacja_metryki:export_xlsx' 'bottom-pkd' %}" class="button tiny success">
+                            <span class="fi-page-export"></span> Export XLSX
+                        </a>
+                    </div>
+                    <h4><span class="fi-arrow-down"></span> Bottom 20 autorów wg PKDaut/slot (nie-zerowych)</h4>
+                    <table class="hover">
+                        <thead>
+                            <tr>
+                                <th width="50">Lp.</th>
+                                <th>Autor</th>
+                                <th>Jednostka</th>
+                                <th class="text-center">Sloty wypełnione</th>
+                                <th class="text-center">PKDaut/slot</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for metryka in bottom_autorzy_pkd %}
+                            <tr>
+                                <td>{{ forloop.counter }}</td>
+                                <td>
+                                    <a href="{% url 'bpp:browse_autor' metryka.autor.pk %}" target="_blank" title="Szczegóły autora w BPP">
+                                        {{ metryka.autor }}
+                                    </a>
+                                    <a href="{% url 'ewaluacja_metryki:szczegoly' metryka.pk %}" title="Szczegóły metryki">
+                                        <span class="fi-graph-bar"></span>
+                                    </a>
+                                </td>
+                                <td>
+                                    <small class="text-muted">
+                                        {% if metryka.jednostka %}
+                                            {{ metryka.jednostka.skrot|default:metryka.jednostka.nazwa }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </small>
+                                </td>
+                                <td class="text-center">
+                                    <div class="progress" style="width: 120px; margin: 0 auto;">
+                                        <div class="progress-meter warning"
+                                             style="width: {{ metryka.procent_wykorzystania_slotow|floatformat:0 }}%">
+                                            <p class="progress-meter-text">{{ metryka.slot_nazbierany|floatformat:2 }}</p>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="text-center">
+                                    {% temperature_display metryka.srednia_za_slot_nazbierana %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom 20 autorów wg slotów wypełnionych (nie-zerowych) -->
+        <div class="row">
+            <div class="medium-12 columns">
+                <div class="callout alert" id="bottom-sloty">
+                    <div class="float-right">
+                        <a href="{% url 'ewaluacja_metryki:export_xlsx' 'bottom-sloty' %}" class="button tiny success">
+                            <span class="fi-page-export"></span> Export XLSX
+                        </a>
+                    </div>
+                    <h4><span class="fi-arrow-down"></span> Bottom 20 autorów wg slotów wypełnionych (nie-zerowych)</h4>
+                    <table class="hover">
+                        <thead>
+                            <tr>
+                                <th width="50">Lp.</th>
+                                <th>Autor</th>
+                                <th>Jednostka</th>
+                                <th class="text-center">Sloty wypełnione</th>
+                                <th class="text-center">PKDaut/slot</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for metryka in bottom_autorzy_sloty %}
+                            <tr>
+                                <td>{{ forloop.counter }}</td>
+                                <td>
+                                    <a href="{% url 'bpp:browse_autor' metryka.autor.pk %}" target="_blank" title="Szczegóły autora w BPP">
+                                        {{ metryka.autor }}
+                                    </a>
+                                    <a href="{% url 'ewaluacja_metryki:szczegoly' metryka.pk %}" title="Szczegóły metryki">
+                                        <span class="fi-graph-bar"></span>
+                                    </a>
+                                </td>
+                                <td>
+                                    <small class="text-muted">
+                                        {% if metryka.jednostka %}
+                                            {{ metryka.jednostka.skrot|default:metryka.jednostka.nazwa }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </small>
+                                </td>
+                                <td class="text-center">
+                                    <div class="progress" style="width: 120px; margin: 0 auto;">
+                                        <div class="progress-meter alert"
+                                             style="width: {{ metryka.procent_wykorzystania_slotow|floatformat:0 }}%">
+                                            <p class="progress-meter-text">{{ metryka.slot_nazbierany|floatformat:2 }}</p>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="text-center">
+                                    {% temperature_display metryka.srednia_za_slot_nazbierana %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation menu before Autorzy zerowi -->
+        <div class="callout" style="background-color: #f7f7f7; border: 1px solid #e0e0e0; margin-top: 2rem;">
+            <div class="button-group expanded small">
+                <a href="#statystyki-globalne" class="button hollow secondary">
+                    <span class="fi-database"></span> Statystyki globalne
+                </a>
+                <a href="#top-autorzy" class="button hollow secondary">
+                    <span class="fi-trophy"></span> Top autorzy
+                </a>
+                <a href="#bottom-autorzy" class="button hollow secondary">
+                    <span class="fi-arrow-down"></span> Bottom PKDaut/slot
+                </a>
+                <a href="#bottom-sloty" class="button hollow secondary">
+                    <span class="fi-arrow-down"></span> Bottom sloty
+                </a>
+                <a href="#autorzy-zerowi" class="button hollow secondary">
+                    <span class="fi-minus-circle"></span> Autorzy zerowi
+                </a>
+                <a href="#jednostki" class="button hollow secondary">
+                    <span class="fi-home"></span> Jednostki
+                </a>
+                <a href="#dyscypliny" class="button hollow secondary">
+                    <span class="fi-book"></span> Dyscypliny
+                </a>
+            </div>
+        </div>
+
+        <!-- Lista autorów zerowych -->
+        <div class="row">
+            <div class="medium-12 columns">
+                <div class="callout secondary" id="autorzy-zerowi">
+                    <div class="float-right">
+                        <a href="{% url 'ewaluacja_metryki:export_xlsx' 'zerowi' %}" class="button tiny success">
+                            <span class="fi-page-export"></span> Export XLSX
+                        </a>
+                    </div>
+                    <h4><span class="fi-minus-circle"></span> Lista autorów zerowych</h4>
+                    <p class="text-muted">Liczba autorów z wynikiem PKDaut/slot = 0: <strong>{{ autorzy_zerowi|length }}</strong></p>
+                    <table class="hover">
+                        <thead>
+                            <tr>
+                                <th>Lp.</th>
+                                <th>Autor</th>
+                                <th>Lata</th>
+                                <th>Dyscyplina</th>
+                                <th>Jednostka</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for metryka in autorzy_zerowi %}
+                            <tr>
+                                <td>{{ forloop.counter }}</td>
+                                <td>
+                                    <a href="{% url 'bpp:browse_autor' metryka.autor.pk %}" target="_blank" title="Szczegóły autora w BPP">
+                                        {{ metryka.autor }}
+                                    </a>
+                                    <a href="{% url 'ewaluacja_metryki:szczegoly' metryka.pk %}" title="Szczegóły metryki">
+                                        <span class="fi-graph-bar"></span>
+                                    </a>
+                                </td>
+                                <td>
+                                    <span class="label secondary">
+                                        {{ metryka.rok_min }}-{{ metryka.rok_max }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <small class="text-muted">
+                                        {% if metryka.dyscyplina_naukowa %}
+                                            {{ metryka.dyscyplina_naukowa.nazwa }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </small>
+                                </td>
+                                <td>
+                                    <small class="text-muted">
+                                        {% if metryka.jednostka %}
+                                            {{ metryka.jednostka.skrot|default:metryka.jednostka.nazwa }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </small>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation menu before Jednostki -->
+        <div class="callout" style="background-color: #f7f7f7; border: 1px solid #e0e0e0; margin-top: 2rem;">
+            <div class="button-group expanded small">
+                <a href="#statystyki-globalne" class="button hollow secondary">
+                    <span class="fi-database"></span> Statystyki globalne
+                </a>
+                <a href="#top-autorzy" class="button hollow secondary">
+                    <span class="fi-trophy"></span> Top autorzy
+                </a>
+                <a href="#bottom-autorzy" class="button hollow secondary">
+                    <span class="fi-arrow-down"></span> Bottom PKDaut/slot
+                </a>
+                <a href="#bottom-sloty" class="button hollow secondary">
+                    <span class="fi-arrow-down"></span> Bottom sloty
+                </a>
+                <a href="#autorzy-zerowi" class="button hollow secondary">
+                    <span class="fi-minus-circle"></span> Autorzy zerowi
+                </a>
+                <a href="#jednostki" class="button hollow secondary">
+                    <span class="fi-home"></span> Jednostki
+                </a>
+                <a href="#dyscypliny" class="button hollow secondary">
+                    <span class="fi-book"></span> Dyscypliny
+                </a>
+            </div>
+        </div>
+
+        <!-- Statystyki wg jednostek -->
+        <div class="callout" id="jednostki">
+            <div class="float-right">
+                <a href="{% url 'ewaluacja_metryki:export_xlsx' 'jednostki' %}" class="button tiny success">
+                    <span class="fi-page-export"></span> Export XLSX
+                </a>
+            </div>
+            <h4><span class="fi-home"></span> Top 10 jednostek wg średniej PKDaut/slot</h4>
+            <table class="hover">
+                <thead>
+                    <tr>
+                        <th>Jednostka</th>
+                        <th class="text-center">Liczba autorów</th>
+                        <th class="text-center">Śr. wykorzystanie</th>
+                        <th class="text-center">Śr. PKDaut/slot</th>
+                        <th class="text-center">Suma punktów</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for stat in jednostki_stats %}
+                    <tr>
+                        <td>
+                            {{ stat.jednostka__nazwa }}
+                            {% if stat.jednostka__skrot %}
+                                ({{ stat.jednostka__skrot }})
+                            {% endif %}
+                        </td>
+                        <td class="text-center">{{ stat.liczba_autorow }}</td>
+                        <td class="text-center">{{ stat.srednia_wykorzystania|floatformat:1 }}%</td>
+                        <td class="text-center">
+                            <span class="label {% if stat.srednia_pkd_slot >= 40 %}success{% elif stat.srednia_pkd_slot >= 25 %}warning{% else %}secondary{% endif %}">
+                                {{ stat.srednia_pkd_slot|floatformat:2 }}
+                            </span>
+                        </td>
+                        <td class="text-center">{{ stat.suma_punktow|floatformat:0 }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Navigation menu before Dyscypliny -->
+        <div class="callout" style="background-color: #f7f7f7; border: 1px solid #e0e0e0; margin-top: 2rem;">
+            <div class="button-group expanded small">
+                <a href="#statystyki-globalne" class="button hollow secondary">
+                    <span class="fi-database"></span> Statystyki globalne
+                </a>
+                <a href="#top-autorzy" class="button hollow secondary">
+                    <span class="fi-trophy"></span> Top autorzy
+                </a>
+                <a href="#bottom-autorzy" class="button hollow secondary">
+                    <span class="fi-arrow-down"></span> Bottom PKDaut/slot
+                </a>
+                <a href="#bottom-sloty" class="button hollow secondary">
+                    <span class="fi-arrow-down"></span> Bottom sloty
+                </a>
+                <a href="#autorzy-zerowi" class="button hollow secondary">
+                    <span class="fi-minus-circle"></span> Autorzy zerowi
+                </a>
+                <a href="#jednostki" class="button hollow secondary">
+                    <span class="fi-home"></span> Jednostki
+                </a>
+                <a href="#dyscypliny" class="button hollow secondary">
+                    <span class="fi-book"></span> Dyscypliny
+                </a>
+            </div>
+        </div>
+
+        <!-- Statystyki wg dyscyplin -->
+        <div class="callout secondary" id="dyscypliny">
+            <div class="float-right">
+                <a href="{% url 'ewaluacja_metryki:export_xlsx' 'dyscypliny' %}" class="button tiny success">
+                    <span class="fi-page-export"></span> Export XLSX
+                </a>
+            </div>
+            <h4><span class="fi-book"></span> Statystyki wg dyscyplin</h4>
+            <table class="hover">
+                <thead>
+                    <tr>
+                        <th>Dyscyplina</th>
+                        <th class="text-center">Kod</th>
+                        <th class="text-center">Liczba autorów</th>
+                        <th class="text-center">Śr. wykorzystanie</th>
+                        <th class="text-center">Śr. PKDaut/slot</th>
+                        <th class="text-center">Suma punktów</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for stat in dyscypliny_stats %}
+                    <tr>
+                        <td>{{ stat.dyscyplina_naukowa__nazwa }}</td>
+                        <td class="text-center">{{ stat.dyscyplina_naukowa__kod|default:"-" }}</td>
+                        <td class="text-center">{{ stat.liczba_autorow }}</td>
+                        <td class="text-center">{{ stat.srednia_wykorzystania|floatformat:1 }}%</td>
+                        <td class="text-center">
+                            <span class="label {% if stat.srednia_pkd_slot >= 40 %}success{% elif stat.srednia_pkd_slot >= 25 %}warning{% else %}secondary{% endif %}">
+                                {{ stat.srednia_pkd_slot|floatformat:2 }}
+                            </span>
+                        </td>
+                        <td class="text-center">{{ stat.suma_punktow|floatformat:0 }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="button-group">
+            <a href="{% url 'ewaluacja_metryki:lista' %}" class="button secondary">
+                <span class="fi-arrow-left"></span> Powrót do listy
+            </a>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Fix for anchor scrolling under fixed header */
+    html {
+        scroll-padding-top: 120px; /* Adjust based on your header height */
+    }
+
+    .stat {
+        font-size: 2rem;
+        font-weight: bold;
+        color: #1779ba;
+    }
+    .text-muted {
+        color: #8a8a8a;
+    }
+
+    /* Temperature gradient classes */
+    .temperature-display {
+        display: inline-block;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-weight: bold;
+        color: white;
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+        transition: all 0.3s ease;
+        position: relative;
+        min-width: 80px;
+    }
+
+    .temperature-display:hover {
+        transform: scale(1.05);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+
+    .temperature-icon {
+        font-size: 0.9em;
+        margin-left: 4px;
+        opacity: 0.9;
+    }
+
+    /* Temperature gradient colors - from freezing cold to blazing hot */
+    .temp-0 {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        /* Freezing purple */
+    }
+
+    .temp-20 {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        /* Very cold blue */
+    }
+
+    .temp-40 {
+        background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+        /* Cold cyan */
+    }
+
+    .temp-60 {
+        background: linear-gradient(135deg, #30cfd0 0%, #330867 100%);
+        /* Cool teal */
+    }
+
+    .temp-80 {
+        background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+        /* Moderate pastel */
+        color: #333;
+        text-shadow: 1px 1px 2px rgba(255,255,255,0.5);
+    }
+
+    .temp-100 {
+        background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+        /* Moderate warm */
+        color: #333;
+        text-shadow: 1px 1px 2px rgba(255,255,255,0.5);
+    }
+
+    .temp-120 {
+        background: linear-gradient(135deg, #ff9a56 0%, #ff6a88 100%);
+        /* Warm */
+    }
+
+    .temp-140 {
+        background: linear-gradient(135deg, #ff6a88 0%, #ff3838 100%);
+        /* Warm-hot */
+    }
+
+    .temp-160 {
+        background: linear-gradient(135deg, #ff3838 0%, #ff0844 100%);
+        /* Hot red */
+    }
+
+    .temp-180 {
+        background: linear-gradient(135deg, #ff0844 0%, #ffb199 100%);
+        /* Very hot */
+    }
+
+    .temp-200 {
+        background: linear-gradient(135deg, #ff0844 0%, #ffd700 50%, #ffffff 100%);
+        /* Blazing hot - red to gold to white */
+        animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+        0% {
+            box-shadow: 0 0 0 0 rgba(255, 8, 68, 0.7);
+        }
+        70% {
+            box-shadow: 0 0 0 10px rgba(255, 8, 68, 0);
+        }
+        100% {
+            box-shadow: 0 0 0 0 rgba(255, 8, 68, 0);
+        }
+    }
+
+    /* Additional visual indicator */
+    .temperature-display::after {
+        content: '';
+        position: absolute;
+        top: -2px;
+        right: -2px;
+        bottom: -2px;
+        left: -2px;
+        border-radius: 20px;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+        z-index: -1;
+    }
+
+    .temp-200::after {
+        background: linear-gradient(45deg, #ff0844, #ffd700, #ff0844);
+        animation: rotate 3s linear infinite;
+        opacity: 0.5;
+    }
+
+    @keyframes rotate {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    /* Progress meter text styles */
+    .progress-meter-text {
+        font-size: 0.75rem;
+        font-weight: bold;
+    }
+</style>
+{% endblock %}
