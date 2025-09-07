@@ -28,6 +28,8 @@ def test_metryki_list_view_logged_in(admin_user, client):
     # Stwórz dane testowe
     autor = baker.make(Autor, nazwisko="Kowalski", imiona="Jan")
     dyscyplina = baker.make(Dyscyplina_Naukowa, nazwa="Informatyka")
+    # Create a second discipline with a metric to ensure the discipline column is shown
+    dyscyplina2 = baker.make(Dyscyplina_Naukowa, nazwa="Matematyka")
     jednostka = baker.make(Jednostka, nazwa="Instytut Informatyki")
 
     metryka = baker.make(
@@ -41,6 +43,17 @@ def test_metryki_list_view_logged_in(admin_user, client):
         slot_wszystkie=Decimal("4.0"),
         punkty_wszystkie=Decimal("150.0"),
         procent_wykorzystania_slotow=Decimal("87.5"),
+    )
+
+    # Create a second metric with the second discipline to make it count
+    baker.make(
+        MetrykaAutora,
+        dyscyplina_naukowa=dyscyplina2,
+        slot_maksymalny=Decimal("4.0"),
+        slot_nazbierany=Decimal("3.0"),
+        punkty_nazbierane=Decimal("120.0"),
+        slot_wszystkie=Decimal("3.0"),
+        punkty_wszystkie=Decimal("120.0"),
     )
 
     url = reverse("ewaluacja_metryki:lista")

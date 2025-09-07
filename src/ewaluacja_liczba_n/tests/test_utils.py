@@ -87,9 +87,10 @@ def test_oblicz_liczby_n_dla_ewaluacji_2022_2025_autor_to_doktorant(
         == 1
     )
 
-    # Liczba N wyniesie wobec tego 12 autorów * 5 = 60, zaś autor doktorant NIE zostanie dodany do
-    # # liczby N zatem 60/4 = 15.
-    assert LiczbaNDlaUczelni.objects.get(dyscyplina_naukowa=dyscyplina1).liczba_n == 15
+    # Liczba N wyniesie wobec tego 12 autorów * 5 = 60 + 1 autor (doktorant również ma udział) == 61/4 = 15.25
+    assert (
+        LiczbaNDlaUczelni.objects.get(dyscyplina_naukowa=dyscyplina1).liczba_n == 15.25
+    )
 
 
 @pytest.mark.django_db
