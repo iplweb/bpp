@@ -310,7 +310,7 @@
                         <td>{{ forloop.counter }}</td>
                         <td>
                             <a href="{% url 'bpp:browse_praca_by_slug' praca.rekord.slug %}">
-                                {{ praca.rekord.tytul_oryginalny|truncatewords:10 }}
+                                {{ praca.rekord.tytul_oryginalny|safe|truncatewords:10 }}
                             </a>
                         </td>
                         <td>{{ praca.rekord.rok }}</td>
@@ -357,7 +357,7 @@
                             <td>{{ forloop.counter }}</td>
                             <td>
                             <a href="{% url 'bpp:browse_praca_by_slug' praca.rekord.slug %}">
-                                    {{ praca.rekord.tytul_oryginalny|truncatewords:10 }}
+                                    {{ praca.rekord.tytul_oryginalny|safe|truncatewords:10 }}
                                 </a>
                                 {% if praca.pk in metryka.prace_nazbierane %}
                                     <span class="label success">Wybrana</span>
