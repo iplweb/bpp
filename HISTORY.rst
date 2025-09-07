@@ -4,6 +4,15 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202509.1221 (2025-09-07)
+============================
+
+Naprawione
+----------
+
+- nie licz slotów/punktów za publikację autorom "inny zatrudniony"
+
+
 Bpp 202508.1214 (2025-08-31)
 ============================
 

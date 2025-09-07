@@ -1,4 +1,4 @@
-VERSION = "202509.1220"
+VERSION = "202509.1221"
 
 if __name__ == "__main__":
     import sys
