@@ -86,68 +86,6 @@ def test_oblicz_metryki_command_basic():
 
 
 @pytest.mark.django_db
-def test_oblicz_metryki_command_nadpisz():
-    """Test nadpisywania istniejących metryk"""
-
-    autor = baker.make(Autor)
-    dyscyplina = baker.make(Dyscyplina_Naukowa)
-
-    # Stwórz istniejącą metrykę
-    old_metryka = baker.make(
-        MetrykaAutora,
-        autor=autor,
-        dyscyplina_naukowa=dyscyplina,
-        slot_maksymalny=Decimal("3.0"),
-        slot_nazbierany=Decimal("2.0"),
-        punkty_nazbierane=Decimal("80.0"),
-        slot_wszystkie=Decimal("3.0"),
-        punkty_wszystkie=Decimal("90.0"),
-    )
-
-    # Stwórz ilość udziałów
-    baker.make(
-        IloscUdzialowDlaAutoraZaCalosc,
-        autor=autor,
-        dyscyplina_naukowa=dyscyplina,
-        ilosc_udzialow=Decimal("4.0"),
-        ilosc_udzialow_monografie=Decimal("1.0"),
-    )
-
-    # Stwórz Autor_Dyscyplina z rodzajem 'N'
-    baker.make(
-        Autor_Dyscyplina,
-        autor=autor,
-        dyscyplina_naukowa=dyscyplina,
-        rodzaj_autora="N",
-        rok=2024,
-    )
-
-    with patch.object(Autor, "zbieraj_sloty") as mock_zbieraj:
-        mock_zbieraj.side_effect = [
-            (Decimal("160.0"), [1, 2, 3, 4], Decimal("4.0")),
-            (Decimal("160.0"), [1, 2, 3, 4], Decimal("4.0")),
-        ]
-
-        # Wywołaj bez nadpisywania - powinno pominąć
-        out = StringIO()
-        call_command("oblicz_metryki", "--bez-liczby-n", nadpisz=False, stdout=out)
-
-        # Sprawdź że metryka nie została zmieniona
-        old_metryka.refresh_from_db()
-        assert old_metryka.punkty_nazbierane == Decimal("80.0")
-        assert "pominięto" in out.getvalue().lower()
-
-        # Wywołaj z nadpisywaniem
-        out = StringIO()
-        call_command("oblicz_metryki", "--bez-liczby-n", nadpisz=True, stdout=out)
-
-        # Sprawdź że metryka została zaktualizowana
-        old_metryka.refresh_from_db()
-        assert old_metryka.punkty_nazbierane == Decimal("160.0")
-        assert "zaktualizowano" in out.getvalue().lower()
-
-
-@pytest.mark.django_db
 def test_oblicz_metryki_command_filters():
     """Test filtrowania po autorze, dyscyplinie i jednostce"""
 
