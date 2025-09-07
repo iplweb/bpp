@@ -188,6 +188,40 @@ class MetrykaDetailView(EwaluacjaRequiredMixin, DetailView):
         )
         context["dyscyplina_lata"] = dyscyplina_lata
 
+        # Oblicz średnie dla wymiaru etatu i procentu dyscypliny
+        if dyscyplina_lata:
+            from decimal import Decimal
+
+            suma_etatu = Decimal("0")
+            liczba_etatu = 0
+            suma_procent = Decimal("0")
+            liczba_procent = 0
+
+            for rok_data in dyscyplina_lata:
+                if rok_data.wymiar_etatu:
+                    suma_etatu += rok_data.wymiar_etatu
+                    liczba_etatu += 1
+
+                # Sprawdź czy to subdyscyplina czy dyscyplina główna
+                if (
+                    rok_data.subdyscyplina_naukowa
+                    and rok_data.subdyscyplina_naukowa == metryka.dyscyplina_naukowa
+                ):
+                    if rok_data.procent_subdyscypliny:
+                        suma_procent += rok_data.procent_subdyscypliny
+                        liczba_procent += 1
+                else:
+                    if rok_data.procent_dyscypliny:
+                        suma_procent += rok_data.procent_dyscypliny
+                        liczba_procent += 1
+
+            context["srednia_etatu"] = (
+                (suma_etatu / liczba_etatu) if liczba_etatu > 0 else None
+            )
+            context["srednia_procent"] = (
+                (suma_procent / liczba_procent) if liczba_procent > 0 else None
+            )
+
         # Pobierz szczegóły prac nazbieranych
         if metryka.prace_nazbierane:
             from bpp.models.cache import Cache_Punktacja_Autora_Query

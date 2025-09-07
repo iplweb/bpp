@@ -32,6 +32,7 @@ def test_oblicz_metryki_command_basic():
         autor=autor,
         dyscyplina_naukowa=dyscyplina,
         ilosc_udzialow=Decimal("4.0"),
+        ilosc_udzialow_monografie=Decimal("1.0"),
     )
 
     # Mockuj metodę zbieraj_sloty
@@ -44,7 +45,7 @@ def test_oblicz_metryki_command_basic():
 
         # Wywołaj komendę
         out = StringIO()
-        call_command("oblicz_metryki", stdout=out)
+        call_command("oblicz_metryki", "--bez-liczby-n", stdout=out)
 
         output = out.getvalue()
 
@@ -94,6 +95,7 @@ def test_oblicz_metryki_command_nadpisz():
         autor=autor,
         dyscyplina_naukowa=dyscyplina,
         ilosc_udzialow=Decimal("4.0"),
+        ilosc_udzialow_monografie=Decimal("1.0"),
     )
 
     with patch.object(Autor, "zbieraj_sloty") as mock_zbieraj:
@@ -104,7 +106,7 @@ def test_oblicz_metryki_command_nadpisz():
 
         # Wywołaj bez nadpisywania - powinno pominąć
         out = StringIO()
-        call_command("oblicz_metryki", nadpisz=False, stdout=out)
+        call_command("oblicz_metryki", "--bez-liczby-n", nadpisz=False, stdout=out)
 
         # Sprawdź że metryka nie została zmieniona
         old_metryka.refresh_from_db()
@@ -113,7 +115,7 @@ def test_oblicz_metryki_command_nadpisz():
 
         # Wywołaj z nadpisywaniem
         out = StringIO()
-        call_command("oblicz_metryki", nadpisz=True, stdout=out)
+        call_command("oblicz_metryki", "--bez-liczby-n", nadpisz=True, stdout=out)
 
         # Sprawdź że metryka została zaktualizowana
         old_metryka.refresh_from_db()
@@ -155,33 +157,35 @@ def test_oblicz_metryki_command_filters():
         autor=autor1,
         dyscyplina_naukowa=dyscyplina1,
         ilosc_udzialow=Decimal("4.0"),
+        ilosc_udzialow_monografie=Decimal("1.0"),
     )
     baker.make(
         IloscUdzialowDlaAutoraZaCalosc,
         autor=autor2,
         dyscyplina_naukowa=dyscyplina2,
         ilosc_udzialow=Decimal("4.0"),
+        ilosc_udzialow_monografie=Decimal("1.0"),
     )
 
     with patch.object(Autor, "zbieraj_sloty") as mock_zbieraj:
         mock_zbieraj.return_value = (Decimal("100.0"), [1], Decimal("2.5"))
 
         # Test filtra po autorze
-        call_command("oblicz_metryki", autor_id=autor1.pk)
+        call_command("oblicz_metryki", "--bez-liczby-n", autor_id=autor1.pk)
         assert MetrykaAutora.objects.filter(autor=autor1).exists()
         assert not MetrykaAutora.objects.filter(autor=autor2).exists()
 
         MetrykaAutora.objects.all().delete()
 
         # Test filtra po dyscyplinie
-        call_command("oblicz_metryki", dyscyplina_id=dyscyplina2.pk)
+        call_command("oblicz_metryki", "--bez-liczby-n", dyscyplina_id=dyscyplina2.pk)
         assert not MetrykaAutora.objects.filter(dyscyplina_naukowa=dyscyplina1).exists()
         assert MetrykaAutora.objects.filter(dyscyplina_naukowa=dyscyplina2).exists()
 
         MetrykaAutora.objects.all().delete()
 
         # Test filtra po jednostce
-        call_command("oblicz_metryki", jednostka_id=jednostka1.pk)
+        call_command("oblicz_metryki", "--bez-liczby-n", jednostka_id=jednostka1.pk)
         assert MetrykaAutora.objects.filter(autor=autor1).exists()
         assert not MetrykaAutora.objects.filter(autor=autor2).exists()
 
@@ -198,6 +202,7 @@ def test_oblicz_metryki_command_error_handling():
         autor=autor,
         dyscyplina_naukowa=dyscyplina,
         ilosc_udzialow=Decimal("4.0"),
+        ilosc_udzialow_monografie=Decimal("1.0"),
     )
 
     # Mockuj zbieraj_sloty aby rzucił wyjątek
@@ -205,7 +210,7 @@ def test_oblicz_metryki_command_error_handling():
         mock_zbieraj.side_effect = Exception("Test error")
 
         out = StringIO()
-        call_command("oblicz_metryki", stdout=out)
+        call_command("oblicz_metryki", "--bez-liczby-n", stdout=out)
 
         output = out.getvalue()
 
@@ -230,12 +235,19 @@ def test_oblicz_metryki_command_parameters():
         autor=autor,
         dyscyplina_naukowa=dyscyplina,
         ilosc_udzialow=Decimal("4.0"),
+        ilosc_udzialow_monografie=Decimal("1.0"),
     )
 
     with patch.object(Autor, "zbieraj_sloty") as mock_zbieraj:
         mock_zbieraj.return_value = (Decimal("100.0"), [1], Decimal("2.5"))
 
-        call_command("oblicz_metryki", rok_min=2020, rok_max=2023, minimalny_pk=5.0)
+        call_command(
+            "oblicz_metryki",
+            "--bez-liczby-n",
+            rok_min=2020,
+            rok_max=2023,
+            minimalny_pk=5.0,
+        )
 
         # Sprawdź że parametry zostały przekazane do zbieraj_sloty
         calls = mock_zbieraj.call_args_list

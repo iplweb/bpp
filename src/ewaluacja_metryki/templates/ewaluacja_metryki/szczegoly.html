@@ -115,6 +115,121 @@
             </div>
         </div>
 
+        <!-- Wymiar etatu i procent dyscypliny -->
+        {% if dyscyplina_lata %}
+        <div class="row">
+            <div class="medium-12 columns">
+                <div class="callout">
+                    <h4><span class="fi-calendar"></span> Wymiar etatu i procent dyscypliny w latach {{ metryka.rok_min }}-{{ metryka.rok_max }}</h4>
+                    <table class="hover">
+                        <thead>
+                            <tr>
+                                <th class="text-center">Rok</th>
+                                <th class="text-center">Wymiar etatu</th>
+                                <th class="text-center">Procent dyscypliny</th>
+                                <th class="text-center">Rodzaj autora</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for rok_data in dyscyplina_lata %}
+                            <tr>
+                                <td class="text-center">
+                                    <strong>{{ rok_data.rok }}</strong>
+                                </td>
+                                <td class="text-center">
+                                    {% if rok_data.wymiar_etatu %}
+                                        <span class="label {% if rok_data.wymiar_etatu == 1.00 %}success{% elif rok_data.wymiar_etatu >= 0.50 %}warning{% else %}secondary{% endif %}">
+                                            {{ rok_data.wymiar_etatu|floatformat:2 }}
+                                        </span>
+                                    {% else %}
+                                        <span class="label secondary">-</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    {% if rok_data.subdyscyplina_naukowa and rok_data.subdyscyplina_naukowa == metryka.dyscyplina_naukowa %}
+                                        {% if rok_data.procent_subdyscypliny %}
+                                            <span class="label {% if rok_data.procent_subdyscypliny >= 75 %}success{% elif rok_data.procent_subdyscypliny >= 50 %}warning{% else %}alert{% endif %}">
+                                                {{ rok_data.procent_subdyscypliny|floatformat:2 }}%
+                                            </span>
+                                            <small class="text-muted">(subdyscyplina)</small>
+                                        {% else %}
+                                            <span class="label secondary">-</span>
+                                        {% endif %}
+                                    {% else %}
+                                        {% if rok_data.procent_dyscypliny %}
+                                            <span class="label {% if rok_data.procent_dyscypliny >= 75 %}success{% elif rok_data.procent_dyscypliny >= 50 %}warning{% else %}alert{% endif %}">
+                                                {{ rok_data.procent_dyscypliny|floatformat:2 }}%
+                                            </span>
+                                        {% else %}
+                                            <span class="label secondary">-</span>
+                                        {% endif %}
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    {% if rok_data.rodzaj_autora == 'N' %}
+                                        <span class="label success" title="Pracownik zaliczany do liczby N">N</span>
+                                    {% elif rok_data.rodzaj_autora == 'D' %}
+                                        <span class="label warning" title="Doktorant">D</span>
+                                    {% elif rok_data.rodzaj_autora == 'Z' %}
+                                        <span class="label secondary" title="Inny zatrudniony">Z</span>
+                                    {% else %}
+                                        <span class="label secondary" title="Brak danych">-</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center">
+                                    <em>Brak danych o wymiarze etatu i dyscyplinie dla tego autora</em>
+                                </td>
+                            </tr>
+                            {% endfor %}
+
+                            {% if srednia_etatu or srednia_procent %}
+                            <!-- Podsumowanie -->
+                            <tr style="border-top: 2px solid #ddd; background-color: #f7f7f7;">
+                                <td class="text-center">
+                                    <strong>Średnia</strong>
+                                </td>
+                                <td class="text-center">
+                                    {% if srednia_etatu %}
+                                        <strong>{{ srednia_etatu|floatformat:2 }}</strong>
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    {% if srednia_procent %}
+                                        <strong>{{ srednia_procent|floatformat:2 }}%</strong>
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    -
+                                </td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+
+                    {% if dyscyplina_lata %}
+                    <div class="callout secondary" style="margin-top: 1rem;">
+                        <p style="margin: 0;">
+                            <small>
+                                <strong>Legenda rodzaju autora:</strong>
+                                N = Pracownik zaliczany do liczby N,
+                                D = Doktorant,
+                                Z = Inny zatrudniony
+                            </small>
+                        </p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
         <!-- Porównanie metryk -->
         <div class="row">
             <div class="medium-6 columns">
