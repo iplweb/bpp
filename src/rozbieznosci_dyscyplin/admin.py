@@ -3,7 +3,10 @@ import json
 from json import JSONDecodeError
 
 from django.http import HttpResponseRedirect
-from django.urls import path
+from django.urls import path, reverse
+from djangoql.admin import DjangoQLSearchMixin
+from import_export import resources
+from import_export.fields import Field
 
 from rozbieznosci_dyscyplin.admin_utils import (
     CachingPaginator,
@@ -15,6 +18,7 @@ from rozbieznosci_dyscyplin.admin_utils import (
 from rozbieznosci_dyscyplin.models import RozbieznosciView, RozbieznosciZrodelView
 
 from django.contrib import admin, messages
+from django.contrib.sites.models import Site
 
 from django.utils.itercompat import is_iterable
 
@@ -163,8 +167,112 @@ class ReadonlyAdminMixin:
         return False
 
 
+class RozbieznosciViewResource(resources.ModelResource):
+    rekord_tytul_oryginalny = Field(attribute="rekord__tytul_oryginalny")
+    autor_nazwisko = Field(attribute="autor__nazwisko")
+    autor_imiona = Field(attribute="autor__imiona")
+    nazwa_dyscypliny_autora = Field(attribute="dyscyplina_autora__nazwa")
+    nazwa_subdyscypliny_autora = Field(attribute="subdyscyplina_autora__nazwa")
+    bpp_strona_url = Field()
+
+    class Meta:
+        model = RozbieznosciView
+        fields = (
+            "rekord_tytul_oryginalny",
+            "autor_nazwisko",
+            "autor_imiona",
+            "nazwa_dyscypliny_autora",
+            "nazwa_subdyscypliny_autora",
+            "bpp_strona_url",
+        )
+        export_order = (
+            "rekord_tytul_oryginalny",
+            "autor_nazwisko",
+            "autor_imiona",
+            "nazwa_dyscypliny_autora",
+            "nazwa_subdyscypliny_autora",
+            "bpp_strona_url",
+        )
+
+    def get_site_url(self):
+        """Get the base site URL."""
+        return "https://" + Site.objects.all().first().domain
+
+    def dehydrate_bpp_strona_url(self, obj):
+        """Generate BPP work page URL."""
+        return self.get_site_url() + reverse(
+            "bpp:browse_praca",
+            args=(obj.rekord.original._meta.model_name, obj.rekord.original.pk),
+        )
+
+
+class RozbieznosciZrodelViewResource(resources.ModelResource):
+    wydawnictwo_ciagle_tytul = Field(attribute="wydawnictwo_ciagle__tytul_oryginalny")
+    zrodlo_nazwa = Field(attribute="zrodlo__nazwa")
+    autor_nazwisko = Field(attribute="autor__nazwisko")
+    autor_imiona = Field(attribute="autor__imiona")
+    dyscyplina_naukowa_nazwa = Field(attribute="dyscyplina_naukowa__nazwa")
+    dyscypliny_zrodla = Field()
+    zrodlo_strona_url = Field()
+    bpp_strona_url = Field()
+
+    class Meta:
+        model = RozbieznosciZrodelView
+        fields = (
+            "wydawnictwo_ciagle_tytul",
+            "rok",
+            "zrodlo_nazwa",
+            "dyscypliny_zrodla",
+            "zrodlo_strona_url",
+            "autor_nazwisko",
+            "autor_imiona",
+            "dyscyplina_naukowa_nazwa",
+            "bpp_strona_url",
+        )
+        export_order = (
+            "wydawnictwo_ciagle_tytul",
+            "rok",
+            "zrodlo_nazwa",
+            "dyscypliny_zrodla",
+            "zrodlo_strona_url",
+            "autor_nazwisko",
+            "autor_imiona",
+            "dyscyplina_naukowa_nazwa",
+            "bpp_strona_url",
+        )
+
+    def dehydrate_dyscypliny_zrodla(self, obj):
+        """Get source disciplines for the publication year."""
+        zrodlo = obj.zrodlo
+        disciplines = zrodlo.dyscyplina_zrodla_set.filter(rok=obj.rok)
+        if disciplines.exists():
+            return "; ".join(disciplines.values_list("dyscyplina__nazwa", flat=True))
+        return ""
+
+    def dehydrate_zrodlo_strona_url(self, obj):
+        """Generate BPP source page URL."""
+        return self.get_site_url() + reverse("bpp:browse_zrodlo", args=[obj.zrodlo.pk])
+
+    def get_site_url(self):
+        """Get the base site URL."""
+        return "https://" + Site.objects.all().first().domain
+
+    def dehydrate_bpp_strona_url(self, obj):
+        """Generate BPP work page URL."""
+        return self.get_site_url() + reverse(
+            "bpp:browse_praca",
+            args=(obj.wydawnictwo_ciagle._meta.model_name, obj.wydawnictwo_ciagle.pk),
+        )
+
+
 @admin.register(RozbieznosciView)
-class RozbieznosciViewAdmin(ReadonlyAdminMixin, EksportDanychMixin, admin.ModelAdmin):
+class RozbieznosciViewAdmin(
+    DjangoQLSearchMixin, ReadonlyAdminMixin, EksportDanychMixin, admin.ModelAdmin
+):
+    resource_class = RozbieznosciViewResource
+    djangoql_completion_enabled_by_default = False
+    max_allowed_export_items = 10000
+
     list_display = [
         "rekord",
         "rok",
@@ -242,9 +350,11 @@ class RozbieznosciViewAdmin(ReadonlyAdminMixin, EksportDanychMixin, admin.ModelA
 
 @admin.register(RozbieznosciZrodelView)
 class RozbieznosciZrodelViewAdmin(
-    ReadonlyAdminMixin, EksportDanychMixin, admin.ModelAdmin
+    DjangoQLSearchMixin, ReadonlyAdminMixin, EksportDanychMixin, admin.ModelAdmin
 ):
+    resource_class = RozbieznosciZrodelViewResource
     paginator = CachingPaginator
+    max_allowed_export_items = 10000
 
     list_display = [
         "wydawnictwo_ciagle",

@@ -335,9 +335,12 @@ class IPunktacjaCacher:
 
         return ret1, ret2
 
+    def get_pk(self):
+        return (self.ctype, self.original.pk)
+
     @transaction.atomic
     def rebuildEntries(self):
-        pk = (self.ctype, self.original.pk)
+        pk = self.get_pk()
 
         # Jeżeli nie można zaadaptować danego rekordu do kalkulatora
         # punktacji, to po skasowaniu ewentualnej scache'owanej punktacji
@@ -386,7 +389,6 @@ class IPunktacjaCacher:
             pkdaut = self.slot.pkd_dla_autora(wa)
             if pkdaut is None:
                 continue
-
             Cache_Punktacja_Autora.objects.create(
                 rekord_id=[pk[0], pk[1]],
                 autor_id=wa.autor_id,

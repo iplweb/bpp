@@ -193,9 +193,11 @@
                                     <li><a href="{% url "bpp:xlsx-issn-chunks" %}"><i class="fi-download"></i> eksport ISSNów</a></li>
                                 </ul>
                                 <ul class="menu vertical column-2">
-                                    <li><a href="{% url "admin:rozbieznosci_dyscyplin_rozbieznosciview_changelist" %}">
-                                        <i class="fi-alert"></i> rozbieżności dyscyplin</a></li>
-                                    <li><a href="{% url "rozbieznosci_if:index" %}"><i class="fi-alert"></i> rozbieżności
+                                    <li><a href="{% url "admin:rozbieznosci_dyscyplin_rozbieznosciview_changelist" %}?q-l=on&q=rok%3E%3D2022&pracuje_na_uczelni=tak">
+                                        <i class="fi-results-demographics"></i> rozbieżności dyscyplin autorów</a></li>
+                                    <li><a href="{% url "admin:rozbieznosci_dyscyplin_rozbieznoscizrodelview_changelist" %}?q-l=on&q=rok%3E%3D2022&pracuje_na_uczelni=tak">
+                                        <i class="fi-page-search"></i> rozbieżności dyscyplin źródeł</a></li>
+                                    <li><a href="{% url "rozbieznosci_if:index" %}"><i class="fi-graph-pie"></i> rozbieżności
                                         punktacji IF</a></li>
                                 </ul>
                             {% endif %}
