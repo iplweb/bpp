@@ -180,10 +180,12 @@ def wszystkie_wersje_pracy(rekord: Wydawnictwo_Zwarte | Wydawnictwo_Ciagle):
                 s = dict(
                     wydawnictwo_ciagle=isinstance(rekord, Wydawnictwo_Ciagle),
                     wydawnictwo_zwarte=isinstance(rekord, Wydawnictwo_Zwarte),
+                    typ_ogolny=rekord.charakter_formalny.charakter_ogolny,
                     content_type=ipc.ctype,
                     record_id=rekord.pk,
                     autor_id=cpa.autor_id,
                     dyscyplina_ud=cpa.dyscyplina_id,
+                    pkd_rekord=rekord.punkty_kbn,
                     pkdaut=cpa.pkdaut,
                     slot=cpa.slot,
                     avg_pkdaut_per_slot=cpa.pkdaut / cpa.slot,
