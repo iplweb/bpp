@@ -4,6 +4,15 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202509.1223 (2025-09-08)
+============================
+
+Naprawione
+----------
+
+- eksport raportu rozbieżności dyscyplin: zamiast numerków czytelny plik XLSX + przejście z głównej strony na stronę z filtrowaniem rok >= 2022
+
+
 Bpp 202509.1221 (2025-09-07)
 ============================
 
