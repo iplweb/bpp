@@ -6,7 +6,31 @@ from bpp.models import Autor_Absencja
 
 
 def analyze_file_import_absencji(fn, parent_model: ImportPlikuAbsencji):
-    data = read_excel_or_csv_dataframe_guess_encoding(fn)
+    try:
+        data = read_excel_or_csv_dataframe_guess_encoding(fn)
+    except ValueError as e:
+        # Handle file format errors gracefully
+        error_msg = str(e)
+        WierszImportuPlikuAbsencji.objects.create(
+            parent=parent_model,
+            dane_z_xls={},
+            nr_wiersza=0,
+            rezultat=f"Błąd: {error_msg}",
+        )
+        parent_model.send_notification(error_msg, "error")
+        raise ValueError(error_msg)
+    except Exception as e:
+        # Handle any other unexpected errors
+        error_msg = f"Błąd podczas wczytywania pliku: {str(e)}"
+        WierszImportuPlikuAbsencji.objects.create(
+            parent=parent_model,
+            dane_z_xls={},
+            nr_wiersza=0,
+            rezultat=error_msg,
+        )
+        parent_model.send_notification(error_msg, "error")
+        raise
+
     # pandas.read_excel(fn, header=0).replace({numpy.nan: None})
     records = data.to_dict("records")
     total = len(records)

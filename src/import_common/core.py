@@ -284,6 +284,7 @@ def matchuj_zrodlo(
     s: Union[str, None],
     issn: Union[str, None] = None,
     e_issn: Union[str, None] = None,
+    mnisw_id: Union[int, str, None] = None,
     alt_nazwa=None,
     disable_fuzzy=False,
     disable_skrot=False,
@@ -302,6 +303,29 @@ def matchuj_zrodlo(
             return Zrodlo.objects.get(e_issn=e_issn)
         except (Zrodlo.DoesNotExist, Zrodlo.MultipleObjectsReturned):
             pass
+
+    # Try matching by mniswId through PBN Journal
+    if mnisw_id is not None:
+        from pbn_api.models import Journal
+
+        try:
+            mnisw_id = int(mnisw_id) if isinstance(mnisw_id, str) else mnisw_id
+        except (ValueError, TypeError):
+            pass
+        else:
+            try:
+                pbn_journal = Journal.objects.get(mniswId=mnisw_id)
+                zrodlo = Zrodlo.objects.filter(pbn_uid=pbn_journal).first()
+                if zrodlo:
+                    return zrodlo
+            except Journal.DoesNotExist:
+                pass
+            except Journal.MultipleObjectsReturned:
+                # If multiple journals with same mniswId, try to get the first one with a Zrodlo
+                for pbn_journal in Journal.objects.filter(mniswId=mnisw_id):
+                    zrodlo = Zrodlo.objects.filter(pbn_uid=pbn_journal).first()
+                    if zrodlo:
+                        return zrodlo
 
     for elem in s, alt_nazwa:
         if elem is None:

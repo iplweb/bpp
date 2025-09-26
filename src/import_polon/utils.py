@@ -7,7 +7,22 @@ def read_excel_or_csv_dataframe_guess_encoding(fn, header=0):
     fnl = fn.lower().strip()
 
     if fnl.endswith(".xlsx") or fnl.endswith(".xls"):
-        return pd.read_excel(fn, header=0).replace({np.nan: None})
+        try:
+            return pd.read_excel(fn, header=0).replace({np.nan: None})
+        except ValueError as e:
+            if "Excel file format cannot be determined" in str(e):
+                raise ValueError(
+                    "Plik nie jest rozpoznawany jako prawidłowy plik Excel. "
+                    "Proszę sprawdzić, czy plik ma właściwy format .xlsx lub .xls "
+                    "i czy nie jest uszkodzony."
+                ) from e
+            raise
+        except Exception as e:
+            if "not supported" in str(e).lower():
+                raise ValueError(
+                    "Format pliku nie jest obsługiwany. Proszę użyć pliku Excel (.xlsx, .xls) lub CSV."
+                ) from e
+            raise
     elif fnl.endswith(".csv"):
 
         try:
@@ -25,4 +40,8 @@ def read_excel_or_csv_dataframe_guess_encoding(fn, header=0):
             ).replace({np.nan: None})
 
     else:
-        raise ValueError(f"Nieznany format pliku: {fn}")
+        file_extension = fn.split(".")[-1] if "." in fn else "brak rozszerzenia"
+        raise ValueError(
+            f"Niewłaściwy format pliku (rozszerzenie: .{file_extension}). "
+            f"Proszę przesłać plik Excel (.xlsx, .xls) lub CSV (.csv)."
+        )
