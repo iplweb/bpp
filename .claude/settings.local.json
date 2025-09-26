@@ -21,7 +21,8 @@
       "Bash(find:*)",
       "Bash(nc:*)",
       "Bash(yarn add:*)",
-      "Bash(flake8:*)"
+      "Bash(flake8:*)",
+      "Bash(python3:*)"
     ],
     "deny": [],
     "ask": [],
