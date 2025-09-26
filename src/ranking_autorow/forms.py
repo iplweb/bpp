@@ -1,5 +1,5 @@
 from crispy_forms.helper import FormHelper
-from crispy_forms_foundation.layout import ButtonHolder
+from crispy_forms_foundation.layout import HTML, ButtonHolder
 from crispy_forms_foundation.layout import Column as F4Column
 from crispy_forms_foundation.layout import Fieldset, Hidden, Layout, Row, Submit
 from dal import autocomplete
@@ -7,7 +7,7 @@ from django import forms
 from django.core import validators
 from django.db.models import Exists, OuterRef, Q
 
-from bpp.models import Jednostka, Uczelnia, Wydzial
+from bpp.models import Charakter_Formalny, Jednostka, Typ_KBN, Uczelnia, Wydzial
 
 
 def ustaw_rok(rok, lata):
@@ -106,6 +106,30 @@ class RankingAutorowForm(forms.Form):
         label="Format wyjściowy", required=True, choices=OUTPUT_FORMATS, initial="html"
     )
 
+    charakter_formalny = forms.ModelMultipleChoiceField(
+        label="Ogranicz do charakteru formalnego:",
+        queryset=Charakter_Formalny.objects.filter(wliczaj_do_rankingu=True).order_by(
+            "nazwa"
+        ),
+        required=False,
+        widget=forms.CheckboxSelectMultiple(attrs={"class": "charakter-checkboxes"}),
+        help_text=(
+            "Możesz wybrać jeden lub więcej charakterów formalnych. "
+            "Jeżeli nie wybierzesz żadnego, system uwzględni wszystkie."
+        ),
+    )
+
+    typ_kbn = forms.ModelMultipleChoiceField(
+        label="Ogranicz do typu MNiSW/MEiN:",
+        queryset=Typ_KBN.objects.filter(wliczaj_do_rankingu=True).order_by("nazwa"),
+        required=False,
+        widget=forms.CheckboxSelectMultiple(attrs={"class": "typ-kbn-checkboxes"}),
+        help_text=(
+            "Możesz wybrać jeden lub więcej typów publikacji. "
+            "Jeżeli nie wybierzesz żadnego, system uwzględni wszystkie."
+        ),
+    )
+
     def __init__(self, lata, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -164,6 +188,52 @@ class RankingAutorowForm(forms.Form):
             Row(F4Column("rozbij_na_jednostki", css_class="large-12 small-12")),
             Row(F4Column("tylko_afiliowane", css_class="large-12 small-12")),
             Row(F4Column("bez_nieaktualnych", css_class="large-12 small-12")),
+            # Collapsible section for charakter_formalny
+            HTML(
+                """
+                <div class="row">
+                    <div class="large-12 small-12 columns">
+                        <div class="collapsible-section">
+                            <a href="#" class="collapsible-trigger" data-target="charakter-section">
+                                <span class="fi-plus"></span> <span class="fi-minus" style="display:none;"></span>
+                                Filtry charakteru formalnego (opcjonalne)
+                            </a>
+                            <div id="charakter-section" class="collapsible-content"
+                                 style="display:none; margin-top: 1rem;">
+                """
+            ),
+            Row(F4Column("charakter_formalny", css_class="large-12 small-12")),
+            HTML(
+                """
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                """
+            ),
+            # Collapsible section for typ_kbn
+            HTML(
+                """
+                <div class="row">
+                    <div class="large-12 small-12 columns">
+                        <div class="collapsible-section">
+                            <a href="#" class="collapsible-trigger" data-target="typ-kbn-section">
+                                <span class="fi-plus"></span> <span class="fi-minus" style="display:none;"></span>
+                                Filtry typu MNiSW/MEiN (opcjonalne)
+                            </a>
+                            <div id="typ-kbn-section" class="collapsible-content"
+                                 style="display:none; margin-top: 1rem;">
+                """
+            ),
+            Row(F4Column("typ_kbn", css_class="large-12 small-12")),
+            HTML(
+                """
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                """
+            ),
         ]
 
         # Always show jednostka field
@@ -223,10 +293,14 @@ class RankingAutorowForm(forms.Form):
 
             self.fields["wydzial"].queryset = wydzial_with_works
 
-            # Also show wydzial field when using wydzialy
-            layout_fields.append(
-                Row(F4Column("wydzial", css_class="large-12 small-12"))
-            )
+            # Only show wydzial field when there's more than one wydział
+            if wydzial_with_works.count() > 1:
+                layout_fields.append(
+                    Row(F4Column("wydzial", css_class="large-12 small-12"))
+                )
+            else:
+                # Remove wydzial field if only one wydział exists
+                del self.fields["wydzial"]
         else:
             # Remove wydzial field from form when not using wydzialy
             del self.fields["wydzial"]

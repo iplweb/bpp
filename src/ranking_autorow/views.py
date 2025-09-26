@@ -15,7 +15,16 @@ from .forms import RankingAutorowForm
 
 from django.utils.functional import cached_property
 
-from bpp.models import Autor, Jednostka, OpcjaWyswietlaniaField, Rekord, Sumy, Uczelnia
+from bpp.models import (
+    Autor,
+    Charakter_Formalny,
+    Jednostka,
+    OpcjaWyswietlaniaField,
+    Rekord,
+    Sumy,
+    Typ_KBN,
+    Uczelnia,
+)
 from bpp.models.struktura import Wydzial
 
 
@@ -75,6 +84,18 @@ class RankingAutorowFormularz(FormView):
         params["rozbij_na_jednostki"] = form.cleaned_data["rozbij_na_jednostki"]
         params["tylko_afiliowane"] = form.cleaned_data["tylko_afiliowane"]
         params["bez_nieaktualnych"] = form.cleaned_data["bez_nieaktualnych"]
+
+        # Handle charakter_formalny filter (multiple selection)
+        charakter_formalny = form.cleaned_data.get("charakter_formalny")
+        if charakter_formalny:
+            params["charakter_formalny"] = ",".join(
+                [str(c.pk) for c in charakter_formalny]
+            )
+
+        # Handle typ_kbn filter (multiple selection)
+        typ_kbn = form.cleaned_data.get("typ_kbn")
+        if typ_kbn:
+            params["typ_kbn"] = ",".join([str(t.pk) for t in typ_kbn])
 
         return HttpResponseRedirect(url + "?" + urlencode(params))
 
@@ -149,7 +170,34 @@ class RankingAutorow(ExportMixin, SingleTableView):
         from datetime import datetime
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        return f"ranking_autorow_{self.kwargs['od_roku']}_{self.kwargs['do_roku']}_{timestamp}.{export_format}"
+
+        # Build filename parts
+        filename_parts = [
+            "ranking_autorow",
+            str(self.kwargs["od_roku"]),
+            str(self.kwargs["do_roku"]),
+        ]
+
+        # Add filter abbreviations if any
+        charakter_ids = self.get_charakter_formalny_ids()
+        if charakter_ids:
+            charaktery = Charakter_Formalny.objects.filter(
+                pk__in=charakter_ids
+            ).values_list("skrot", flat=True)
+            if charaktery:
+                filename_parts.append("ch_" + "_".join(charaktery))
+
+        typ_ids = self.get_typ_kbn_ids()
+        if typ_ids:
+            typy = Typ_KBN.objects.filter(pk__in=typ_ids).values_list(
+                "skrot", flat=True
+            )
+            if typy:
+                filename_parts.append("typ_" + "_".join(typy))
+
+        filename_parts.append(timestamp)
+
+        return f"{'_'.join(filename_parts)}.{export_format}"
 
     def get_table_class(self):
         if self.rozbij_na_wydzialy:
@@ -197,6 +245,16 @@ class RankingAutorow(ExportMixin, SingleTableView):
                 # Only apply wydzial filter if no jednostki filter was applied
                 if not jednostki:
                     qset = qset.filter(jednostka__wydzial__in=wydzialy)
+
+        # Apply charakter_formalny filter if provided
+        charakter_formalny_ids = self.get_charakter_formalny_ids()
+        if charakter_formalny_ids:
+            qset = qset.filter(charakter_formalny_id__in=charakter_formalny_ids)
+
+        # Apply typ_kbn filter if provided
+        typ_kbn_ids = self.get_typ_kbn_ids()
+        if typ_kbn_ids:
+            qset = qset.filter(typ_kbn_id__in=typ_kbn_ids)
 
         if self.tylko_afiliowane:
             qset = qset.filter(jednostka__skupia_pracownikow=True)
@@ -268,6 +326,26 @@ class RankingAutorow(ExportMixin, SingleTableView):
         # Return None when no jednostka is explicitly selected
         return None
 
+    def get_charakter_formalny_ids(self):
+        # Handle multiple charakter_formalny selection
+        charakter_formalny_param = self.request.GET.get("charakter_formalny", None)
+        if charakter_formalny_param:
+            try:
+                return [int(pk) for pk in charakter_formalny_param.split(",")]
+            except (TypeError, ValueError):
+                pass
+        return None
+
+    def get_typ_kbn_ids(self):
+        # Handle multiple typ_kbn selection
+        typ_kbn_param = self.request.GET.get("typ_kbn", None)
+        if typ_kbn_param:
+            try:
+                return [int(pk) for pk in typ_kbn_param.split(",")]
+            except (TypeError, ValueError):
+                pass
+        return None
+
     def get_context_data(self, **kwargs):
         context = super(SingleTableView, self).get_context_data(**kwargs)
         context["od_roku"] = self.kwargs["od_roku"]
@@ -310,6 +388,23 @@ class RankingAutorow(ExportMixin, SingleTableView):
             context["wydzialy"] = []  # For compatibility
 
         context["table_subtitle"] = ", ".join(subtitle_parts) if subtitle_parts else ""
+
+        # Add selected filters to context
+        charakter_ids = self.get_charakter_formalny_ids()
+        if charakter_ids:
+            context["selected_charaktery"] = Charakter_Formalny.objects.filter(
+                pk__in=charakter_ids
+            ).order_by("nazwa")
+        else:
+            context["selected_charaktery"] = []
+
+        typ_ids = self.get_typ_kbn_ids()
+        if typ_ids:
+            context["selected_typy"] = Typ_KBN.objects.filter(pk__in=typ_ids).order_by(
+                "nazwa"
+            )
+        else:
+            context["selected_typy"] = []
 
         return context
 

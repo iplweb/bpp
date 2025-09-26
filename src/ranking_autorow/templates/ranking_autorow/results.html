@@ -57,6 +57,22 @@
                     | Wydział: <strong>{{ wydzialy.0.nazwa }}</strong>
                 {% endif %}
             </p>
+
+            {% if selected_charaktery %}
+            <p class="filter-info">
+                <span class="fi-filter"></span>
+                <strong>Charakter formalny:</strong>
+                {% for charakter in selected_charaktery %}{{ charakter.nazwa }}{% if not forloop.last %}, {% endif %}{% endfor %}
+            </p>
+            {% endif %}
+
+            {% if selected_typy %}
+            <p class="filter-info">
+                <span class="fi-filter"></span>
+                <strong>Typ MNiSW/MEiN:</strong>
+                {% for typ in selected_typy %}{{ typ.nazwa }}{% if not forloop.last %}, {% endif %}{% endfor %}
+            </p>
+            {% endif %}
         </div>
 
         <div class="table-wrapper">

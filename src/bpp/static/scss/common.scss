@@ -1443,6 +1443,30 @@ fieldset fieldset {
   -webkit-backdrop-filter: none !important;
 }
 
+// Help text spacing for checkboxes
+// Fixes the issue where help text is too close to checkbox labels
+.holder.checkbox {
+  .help-text {
+    margin-top: 0.5rem;  // Add space between label and help text
+    margin-bottom: 0.75rem;  // Consistent bottom spacing
+    padding-left: 1.5rem;  // Indent to align with checkbox
+    color: #6c757d;  // Slightly muted color for better hierarchy
+    font-size: 0.875rem;  // Slightly smaller font for visual hierarchy
+    line-height: 1.4;  // Better line height for readability
+    display: block;  // Ensure it's on its own line
+  }
+
+  // Remove any default margins that might interfere
+  label {
+    margin-bottom: 0.25rem;  // Small space between label and help text
+  }
+}
+
+// Ensure proper spacing between consecutive checkbox groups
+.holder.checkbox + .holder.checkbox {
+  margin-top: 0.5rem;
+}
+
 .multiseekFrame .button-group {
   margin-top: 8px !important;
 }
