@@ -11,8 +11,8 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RunSQL(
-            sql=load_custom_sql("0390_add_filters_to_sumy_view"),
-            reverse_sql="-- Reverse migration not implemented",
+        migrations.RunPython(
+            lambda *args, **kw: load_custom_sql("0390_add_filters_to_sumy_view"),
+            migrations.RunPython.noop,
         ),
     ]

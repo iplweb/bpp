@@ -14,6 +14,8 @@ BPP (Bibliografia Publikacji Pracowników) is a Polish academic bibliography man
 
 **IMPORTANT: if using icons, refrain from emojis, rather use monochrome Foundation-Icons (<span class="fi-icon"/>)**
 
+**IMPORTANT**: respect the maximum line length limit of 120 characters; if the line would be longer, please break it up to smaller pieces without losing its function.
+
 ## Python and Django Execution
 
 **CRITICAL: Always execute Python commands that require Django models, views, or any Django functionality through `python src/manage.py shell`**
