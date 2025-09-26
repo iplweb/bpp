@@ -1,0 +1,16 @@
+{% block subject %}Test email send by sendtesttemplatedemail management command{% endblock %}
+
+{% block plain %}
+  Hello,
+
+  {{ message }}
+
+{% endblock %}
+
+{% block html %}
+
+    <h1>Hello,</h1>
+
+    <p>{{ message }}</p>
+
+{% endblock %}
