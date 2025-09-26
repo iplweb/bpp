@@ -1,0 +1,2 @@
+
+nie pozwalaj na import innych formatów niz XSLX i CSV w import_polon i import_list_ministerialnych

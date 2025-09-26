@@ -20,7 +20,24 @@ def napraw_literowki_w_bazie():
 
 
 def wczytaj_plik_importu_dyscyplin_zrodel(fn):
-    data = pandas.read_excel(fn, header=1).replace({numpy.nan: None})
+    try:
+        data = pandas.read_excel(fn, header=1).replace({numpy.nan: None})
+    except ValueError as e:
+        if "Excel file format cannot be determined" in str(e):
+            # Re-raise with a more user-friendly message
+            raise ValueError(
+                "Plik nie jest rozpoznawany jako prawidłowy plik Excel. "
+                "Proszę sprawdzić, czy plik ma rozszerzenie .xlsx lub .xls "
+                "i czy nie jest uszkodzony."
+            ) from e
+        raise
+    except Exception as e:
+        # Handle other pandas errors
+        if "not supported" in str(e).lower():
+            raise ValueError(
+                "Format pliku nie jest obsługiwany. Proszę użyć pliku Excel (.xlsx lub .xls)."
+            ) from e
+        raise
 
     # Problem polega na tym, że numerki w XLSie to nie sa kody dyscyplin. Oczko wyżej są ich
     # nazwy, które zakładam, że są prawidłowe; moglibyśmy wczytać tylko jeden plik ale wówczas

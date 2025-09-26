@@ -19,7 +19,9 @@
       "Bash(tree:*)",
       "Read(//private/tmp/**)",
       "Bash(find:*)",
-      "Bash(nc:*)"
+      "Bash(nc:*)",
+      "Bash(yarn add:*)",
+      "Bash(flake8:*)"
     ],
     "deny": [],
     "ask": [],

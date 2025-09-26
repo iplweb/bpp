@@ -39,5 +39,14 @@ class WierszImportuListyMinisterialnej(models.Model):
 
     rezultat = models.TextField(blank=True, null=True)
 
+    # Duplicate tracking fields
+    is_duplicate = models.BooleanField(default=False)
+    duplicate_of_row = models.PositiveIntegerField(null=True, blank=True)
+    duplicate_reason = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Type of duplicate: ISSN, E-ISSN, mniswId, or combination",
+    )
+
     class Meta:
         ordering = ("nr_wiersza",)

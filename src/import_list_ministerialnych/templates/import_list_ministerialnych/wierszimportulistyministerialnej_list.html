@@ -1,4 +1,4 @@
-{% extends "base.html" %}{% load render_table from django_tables2 %}
+{% extends "base.html" %}{% load render_table from django_tables2 %}{% load static %}
 
 {% block extratitle %}
     Import Polon - szczegóły {{ object.plik.name }}
@@ -8,6 +8,23 @@
     {{ block.super }}
     <li><a href="{% url "import_list_ministerialnych:index" %}">import list ministerialnych</a></li>
     <li class="current">import {{ object.plik.name }}</li>
+{% endblock %}
+
+{% block extrahead %}
+    {{ block.super }}
+    <script type="text/javascript">
+        // Function to toggle filter parameters
+        function toggleFilter(filterName) {
+            var form = document.getElementById('filter-form');
+            var input = form.querySelector('input[name="' + filterName + '"]');
+
+            // Toggle the value
+            input.value = input.value === '1' ? '0' : '1';
+
+            // Submit the form
+            form.submit();
+        }
+    </script>
 {% endblock %}
 
 
@@ -27,6 +44,79 @@
     {% include "long_running/operation_details.html" %}
 
     {% if object.finished_successfully %}
+        {# Statistics section #}
+        <div class="panel">
+            <h3><span class="fi-graph-bar"></span> Statystyki importu</h3>
+            <div class="row">
+                <div class="medium-3 columns">
+                    <strong>Wszystkich wierszy:</strong> {{ total_count }}
+                </div>
+                <div class="medium-3 columns">
+                    <strong>Duplikatów:</strong> {{ duplicate_count }}
+                    {% if duplicate_count > 0 %}
+                        <span class="label warning">{{ duplicate_count }}</span>
+                    {% endif %}
+                </div>
+                <div class="medium-3 columns">
+                    <strong>Identyczna punktacja:</strong> {{ identical_punkty_count }}
+                </div>
+                <div class="medium-3 columns">
+                    <strong>Identyczne dyscypliny:</strong> {{ identical_dyscypliny_count }}
+                </div>
+            </div>
+        </div>
+
+        {# Filter controls #}
+        <div class="panel">
+            <h3><span class="fi-filter"></span> Filtry</h3>
+            <div class="row">
+                <div class="medium-12 columns">
+                    <form method="get" id="filter-form">
+                        <div class="button-group">
+                            <button type="button" class="button small {% if exclude_identical_punkty %}success{% else %}secondary{% endif %}"
+                                    onclick="toggleFilter('exclude_identical_punkty')">
+                                {% if exclude_identical_punkty %}
+                                    <span class="fi-check"></span>
+                                {% endif %}
+                                Ukryj identyczną punktację
+                            </button>
+                            <button type="button" class="button small {% if exclude_identical_dyscypliny %}success{% else %}secondary{% endif %}"
+                                    onclick="toggleFilter('exclude_identical_dyscypliny')">
+                                {% if exclude_identical_dyscypliny %}
+                                    <span class="fi-check"></span>
+                                {% endif %}
+                                Ukryj identyczne dyscypliny
+                            </button>
+                            <button type="button" class="button small {% if only_duplicates %}warning{% else %}secondary{% endif %}"
+                                    onclick="toggleFilter('only_duplicates')">
+                                {% if only_duplicates %}
+                                    <span class="fi-check"></span>
+                                {% endif %}
+                                Pokaż tylko duplikaty
+                            </button>
+                            {% if exclude_identical_punkty or exclude_identical_dyscypliny or only_duplicates %}
+                                <a href="?" class="button small alert">
+                                    <span class="fi-x"></span> Wyczyść filtry
+                                </a>
+                            {% endif %}
+                        </div>
+                        <input type="hidden" name="exclude_identical_punkty" value="{{ exclude_identical_punkty|yesno:'1,0' }}">
+                        <input type="hidden" name="exclude_identical_dyscypliny" value="{{ exclude_identical_dyscypliny|yesno:'1,0' }}">
+                        <input type="hidden" name="only_duplicates" value="{{ only_duplicates|yesno:'1,0' }}">
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        {# Duplicate summary section #}
+        {% with duplicates=object.wierszimportulistyministerialnej_set.filter|dictsortreversed:"is_duplicate"|first %}
+        {% if duplicates.is_duplicate %}
+            <div class="panel callout warning">
+                <h3><span class="fi-alert"></span> Wykryto duplikaty w pliku Excel</h3>
+                <p>Znaleziono powtarzające się czasopisma w pliku importu. Szczegóły znajdują się w tabeli poniżej.</p>
+            </div>
+        {% endif %}
+        {% endwith %}
 
         {% include "pagination.html" %}
         <table>
@@ -41,14 +131,32 @@
             </thead>
             <tbody>
             {% for row in object_list %}
-                <tr>
-                    <td>{{ row.nr_wiersza }}</td>
-                    <td>{{ row.dane_z_xls.Tytul_1 }} ({{ row.dane_z_xls.issn }})</td>
+                <tr {% if row.is_duplicate %}class="duplicate-row" style="background-color: #fff3cd;"{% endif %}>
+                    <td>
+                        {{ row.nr_wiersza }}
+                        {% if row.is_duplicate %}
+                            <br/><small style="color: #856404;">
+                                <span class="fi-link"></span> Duplikat wiersza {{ row.duplicate_of_row }}
+                            </small>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {{ row.dane_z_xls.Tytul_1 }}
+                        {% if row.dane_z_xls.issn %}(ISSN: {{ row.dane_z_xls.issn }}){% endif %}
+                        {% if row.is_duplicate and row.duplicate_reason %}
+                            <br/><small style="color: #856404;">Duplikat po: {{ row.duplicate_reason }}</small>
+                        {% endif %}
+                    </td>
                     <td>{% if row.zrodlo_id %}
                         {{ row.zrodlo.nazwa }} ({{ row.zrodlo.issn }})
                     {% else %}-
                     {% endif %}</td>
-                    <td>{{ row.rezultat }}</td>
+                    <td>
+                        {% if row.is_duplicate %}
+                            <span class="fi-alert" style="color: #856404;"></span>
+                        {% endif %}
+                        {{ row.rezultat }}
+                    </td>
                 </tr>
             {% endfor %}
             </tbody>
