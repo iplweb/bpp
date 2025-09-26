@@ -4,6 +4,21 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202509.1224 (2025-09-26)
+============================
+
+Naprawione
+----------
+
+- import POLON: nie importuj osób z plików XLS/CSV którzy są zatrudnieni w innych instytucjach
+
+
+Usprawnienie
+------------
+
+- możliwość filtrowania rankingu autorów po rodzajach prac
+
+
 Bpp 202509.1223 (2025-09-08)
 ============================
 

@@ -1,2 +1,0 @@
-
-import POLON: nie importuj osób z plików XLS/CSV którzy są zatrudnieni w innych instytucjach
