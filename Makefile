@@ -199,7 +199,7 @@ loc: clean
 
 DOCKER_VERSION="202509.1225"
 
-DOCKER_BUILD=build --platform linux/amd64,linux/arm64 --push
+DOCKER_BUILD=build --platform linux/amd64 --push
 
 
 # Na lokalnej maszynie nie uzywaj --push + buduj tylko ARM
