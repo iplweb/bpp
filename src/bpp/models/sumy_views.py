@@ -24,6 +24,12 @@ class Nowe_Sumy_View(ModelZLiczbaCytowan, ModelPunktowany, models.Model):
 
     status_korekty = models.ForeignKey("Status_Korekty", DO_NOTHING)
 
+    # New fields for filtering
+    charakter_formalny = models.ForeignKey(
+        "Charakter_Formalny", DO_NOTHING, null=True, blank=True
+    )
+    typ_kbn = models.ForeignKey("Typ_KBN", DO_NOTHING, null=True, blank=True)
+
     objects = Nowe_SumyQuerySet.as_manager()
 
     class Meta:

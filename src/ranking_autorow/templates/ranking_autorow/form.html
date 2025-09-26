@@ -21,4 +21,109 @@
 
         {% include "raporty/strona_raportow/ostatnio_wygenerowane.html" %}
     </div>
+
+    <script>
+$(document).ready(function() {
+    // Handle collapsible sections
+    $(document).on('click', '.collapsible-trigger', function(e) {
+        e.preventDefault();
+
+        var targetId = $(this).attr('data-target');
+        var $content = $('#' + targetId);
+        var $plusIcon = $(this).find('.fi-plus');
+        var $minusIcon = $(this).find('.fi-minus');
+
+        if ($content.is(':visible')) {
+            $content.slideUp(300);
+            $plusIcon.show();
+            $minusIcon.hide();
+        } else {
+            $content.slideDown(300);
+            $plusIcon.hide();
+            $minusIcon.show();
+        }
+
+        return false;
+    });
+
+    // Add select all/deselect all functionality for checkbox lists
+    function addSelectAllButton(sectionId) {
+        var $section = $('#' + sectionId);
+
+        if ($section.length && !$section.find('.select-all-container').length) {
+            var $checkboxes = $section.find('input[type="checkbox"]');
+
+            if ($checkboxes.length > 5) { // Only add if there are many checkboxes
+                var $buttonContainer = $('<div class="select-all-container" style="margin-bottom: 1rem;"></div>');
+                var $selectAllBtn = $('<a href="#" class="button secondary">Zaznacz wszystkie</a>');
+                var $deselectAllBtn = $('<a href="#" class="button secondary" style="margin-left: 0.5rem;">Odznacz wszystkie</a>');
+
+                $selectAllBtn.on('click', function(e) {
+                    e.preventDefault();
+                    $checkboxes.prop('checked', true);
+                });
+
+                $deselectAllBtn.on('click', function(e) {
+                    e.preventDefault();
+                    $checkboxes.prop('checked', false);
+                });
+
+                $buttonContainer.append($selectAllBtn).append($deselectAllBtn);
+                $section.prepend($buttonContainer);
+            }
+        }
+    }
+
+    // Add select all buttons to collapsible sections
+    setTimeout(function() {
+        addSelectAllButton('charakter-section');
+        addSelectAllButton('typ-kbn-section');
+    }, 100);
+});
+</script>
+<style>
+    .collapsible-trigger {
+        display: block;
+        padding: 0.5rem;
+        background-color: #f4f4f4;
+        border: 1px solid #ddd;
+        border-radius: 3px;
+        color: #333;
+        text-decoration: none;
+        transition: background-color 0.3s;
+    }
+
+    .collapsible-trigger:hover {
+        background-color: #e8e8e8;
+        color: #333;
+    }
+
+    .collapsible-trigger .fi-plus,
+    .collapsible-trigger .fi-minus {
+        margin-right: 0.5rem;
+    }
+
+    .collapsible-content {
+        padding: 1rem;
+        border: 1px solid #ddd;
+        border-top: none;
+        background-color: #fafafa;
+    }
+
+    .collapsible-content ul {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+
+    .collapsible-content li {
+        margin-bottom: 0.25rem;
+    }
+
+    .select-all-container {
+        padding-top: 0.5rem;
+        border-bottom: 1px solid #ddd;
+        padding-bottom: 0.5rem;
+    }
+</style>
 {% endblock %}
