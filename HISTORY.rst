@@ -4,6 +4,17 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202509.1225 (2025-09-26)
+============================
+
+Usprawnienie
+------------
+
+- filtruj efekt importu list ministerialnych
+- matchuj import źródeł po mniswId (ID ministerialne) - import_list_ministerialnych
+- nie pozwalaj na import innych formatów niz XSLX i CSV w import_polon i import_list_ministerialnych
+
+
 Bpp 202509.1224 (2025-09-26)
 ============================
 
