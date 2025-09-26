@@ -5,7 +5,31 @@ from import_common.core import matchuj_autora, matchuj_dyscypline, normalize_dat
 from import_polon.models import ImportPlikuPolon, WierszImportuPlikuPolon
 from import_polon.utils import read_excel_or_csv_dataframe_guess_encoding
 
-from bpp.models import Autor_Dyscyplina, przebuduj_prace_autora_po_udanej_transakcji
+from bpp.models import (
+    Autor_Dyscyplina,
+    Uczelnia,
+    przebuduj_prace_autora_po_udanej_transakcji,
+)
+
+
+def validate_zatrudnienie_starts_with_university(zatrudnienie_value):
+    """
+    Check if ZATRUDNIENIE field starts with any university name from the system.
+    Returns (is_valid, university_name) tuple.
+    """
+    if not zatrudnienie_value or not isinstance(zatrudnienie_value, str):
+        return False, None
+
+    zatrudnienie_clean = zatrudnienie_value.strip()
+
+    # Get all university names from the system
+    university_names = Uczelnia.objects.values_list("nazwa", flat=True)
+
+    for university_name in university_names:
+        if zatrudnienie_clean.startswith(university_name):
+            return True, university_name
+
+    return False, None
 
 
 def analyze_file_import_polon(fn, parent_model: ImportPlikuPolon):
@@ -17,6 +41,30 @@ def analyze_file_import_polon(fn, parent_model: ImportPlikuPolon):
 
         orcid = row.get("ORCID", "") or ""
         nazwisko = row.get("NAZWISKO", "")
+
+        # Validate ZATRUDNIENIE field - must start with university name
+        zatrudnienie = row.get("ZATRUDNIENIE", "")
+        (
+            is_valid_employment,
+            matched_university,
+        ) = validate_zatrudnienie_starts_with_university(zatrudnienie)
+
+        # If ZATRUDNIENIE doesn't start with university name, ignore this record
+        if not is_valid_employment:
+            WierszImportuPlikuPolon.objects.create(
+                parent=parent_model,
+                dane_z_xls=row,
+                nr_wiersza=n_row + 1,
+                autor=None,  # No author match since we're ignoring
+                dyscyplina_naukowa=None,
+                subdyscyplina_naukowa=None,
+                rezultat=(
+                    f"REKORD ZIGNOROWANY: Pole 'ZATRUDNIENIE' ('{zatrudnienie}') "
+                    f"nie zaczyna się od nazwy żadnej uczelni w systemie."
+                ),
+            )
+            parent_model.send_progress(n_row * 100.0 / total)
+            continue  # Skip to next record
 
         autor = matchuj_autora(
             imiona=(
