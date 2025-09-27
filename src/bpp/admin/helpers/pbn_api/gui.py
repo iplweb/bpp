@@ -5,8 +5,8 @@ from pbn_api.exceptions import (
     BrakZdefiniowanegoObiektuUczelniaWSystemieError,
     CharakterFormalnyNieobslugiwanyError,
 )
-from pbn_api.models import PBN_Export_Queue
-from pbn_api.tasks import task_sprobuj_wyslac_do_pbn
+from pbn_export_queue.models import PBN_Export_Queue
+from pbn_export_queue.tasks import task_sprobuj_wyslac_do_pbn
 
 from django.contrib import messages
 

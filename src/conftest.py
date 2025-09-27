@@ -17,7 +17,7 @@ def pytest_configure(config):
 
         import vcr
 
-        # Patch VCR's HTTP connection classes to include debuglevel attribute
+        # Patch VCR's HTTP connection classes to include required attributes
         original_vcr_stubs_init = (
             vcr.stubs.VCRHTTPConnection.__init__ if hasattr(vcr, "stubs") else None
         )
@@ -32,11 +32,21 @@ def pytest_configure(config):
             vcr.stubs.VCRHTTPConnection.__init__ = patched_init
             vcr.stubs.VCRHTTPSConnection.__init__ = patched_init
 
-            # Also ensure the class has the attribute
+            # Ensure the class has all required attributes from http.client
             if not hasattr(vcr.stubs.VCRHTTPConnection, "debuglevel"):
                 vcr.stubs.VCRHTTPConnection.debuglevel = 0
             if not hasattr(vcr.stubs.VCRHTTPSConnection, "debuglevel"):
                 vcr.stubs.VCRHTTPSConnection.debuglevel = 0
+
+            # Add _http_vsn and _http_vsn_str attributes required by urllib3
+            if not hasattr(vcr.stubs.VCRHTTPConnection, "_http_vsn"):
+                vcr.stubs.VCRHTTPConnection._http_vsn = 11
+            if not hasattr(vcr.stubs.VCRHTTPConnection, "_http_vsn_str"):
+                vcr.stubs.VCRHTTPConnection._http_vsn_str = "HTTP/1.1"
+            if not hasattr(vcr.stubs.VCRHTTPSConnection, "_http_vsn"):
+                vcr.stubs.VCRHTTPSConnection._http_vsn = 11
+            if not hasattr(vcr.stubs.VCRHTTPSConnection, "_http_vsn_str"):
+                vcr.stubs.VCRHTTPSConnection._http_vsn_str = "HTTP/1.1"
 
     except ImportError:
         # VCR not installed, skip configuration
@@ -179,3 +189,11 @@ def dyscyplina2(db, pbn_dyscyplina2):
     return _dyscyplina_maker(
         nazwa="druga dyscyplina", kod="2.2", dyscyplina_pbn=pbn_dyscyplina2
     )
+
+
+# Import Playwright fixtures
+from fixtures.playwright_fixtures import (  # noqa
+    admin_page,
+    preauth_asgi_page,
+    preauth_page,
+)

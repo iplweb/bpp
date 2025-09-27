@@ -379,6 +379,7 @@ INSTALLED_APPS = [
     "bpp",
     "crossref_bpp",
     "pbn_api",
+    "pbn_export_queue",
     "dal",
     "dal_select2",
     "grappelli",
@@ -713,6 +714,7 @@ YARN_FILE_PATTERNS = {
     "qunit": ["qunit/qunit.js", "qunit/qunit.css"],
     "sinon": ["pkg/sinon.js"],
     "htmx.org": ["dist/htmx.js"],
+    "tone": ["build/Tone.js", "build/Tone.js.map"],
 }
 
 REST_FRAMEWORK = {

@@ -9,7 +9,6 @@ from .oswiadczenie_instytucji import OswiadczenieInstytucji  # noqa
 from .publication import Publication  # noqa
 from .publikacja_instytucji import PublikacjaInstytucji, PublikacjaInstytucji_V2  # noqa
 from .publisher import Publisher  # noqa
-from .queue import PBN_Export_Queue  # noqa
 from .scientist import Scientist  # noqa
 from .sentdata import SentData  # noqa
 from .tlumacz_dyscyplin import TlumaczDyscyplin, TlumaczDyscyplinManager  # noqa

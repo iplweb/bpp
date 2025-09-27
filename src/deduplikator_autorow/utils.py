@@ -460,7 +460,7 @@ def scal_autora(glowny_autor, autor_duplikat, user, skip_pbn=False):
     """
     from django.db import transaction
 
-    from pbn_api.models import PBN_Export_Queue
+    from pbn_export_queue.models import PBN_Export_Queue
 
     from bpp.models import (
         Autor_Dyscyplina,

@@ -1,0 +1,223 @@
+{% extends "base.html" %}
+{% load humanize static %}
+
+{% block extratitle %}
+    Kolejka eksportu do PBN
+{% endblock %}
+
+{% block extrahead %}
+<style>
+    /* Remove underlines from clickable table rows in export queue only */
+    #export-queue-table tr[onclick] td a,
+    #export-queue-table tr[onclick] td a:hover,
+    #export-queue-table tr[onclick] td a:focus,
+    #export-queue-table tr[onclick] td a:visited {
+        text-decoration: none !important;
+    }
+
+
+    /* Filter buttons de-emphasis */
+    .filter-section {
+        margin: 20px 0;
+    }
+
+    .filter-section h4 {
+        font-size: 0.9rem;
+        color: #666;
+        margin-bottom: 10px;
+    }
+
+    .filter-section .button-group .button.secondary {
+        background-color: transparent;
+        border: 1px solid #cacaca;
+        color: #333;
+    }
+
+    .filter-section .button-group .button.secondary:hover {
+        background-color: #f0f0f0;
+    }
+
+    /* Refresh toggle styling */
+    .refresh-control {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        margin-bottom: 15px;
+        gap: 10px;
+    }
+
+    .progress-bar-container {
+        width: 100px;
+        height: 6px;
+        background-color: #e0e0e0;
+        border-radius: 3px;
+        overflow: hidden;
+        display: none;
+    }
+
+    .progress-bar-container.active {
+        display: block;
+    }
+
+    .progress-bar {
+        height: 100%;
+        background-color: #1779ba;
+        width: 0%;
+        border-radius: 3px;
+        animation: countdown 5s linear infinite;
+    }
+
+    @keyframes countdown {
+        from {
+            width: 0%;
+        }
+        to {
+            width: 100%;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li class="current">Kolejka eksportu do PBN</li>
+{% endblock %}
+
+{% block content %}
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px;">
+        <h2 style="margin: 0;">Kolejka eksportu do PBN</h2>
+
+        {% if request.user.is_staff or perms.pbn_api %}
+            {% if error_count > 0 or waiting_count > 0 %}
+            <div style="text-align: right;">
+                {% if error_count > 0 %}
+                <form method="post" action="{% url 'pbn_export_queue:export-queue-resend-all-errors' %}" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="button alert" onclick="return confirm('Czy na pewno chcesz wysłać ponownie wszystkie {{ error_count }} rekordów z błędami?');">
+                        <span class="fi-refresh"></span> Wyślij ponownie błędy ({{ error_count }})
+                    </button>
+                </form>
+                {% endif %}
+                {% if waiting_count > 0 %}
+                <form method="post" action="{% url 'pbn_export_queue:export-queue-resend-all-waiting' %}" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="button warning" onclick="return confirm('Czy na pewno chcesz wysłać ponownie wszystkie {{ waiting_count }} rekordów oczekujących na autoryzację?');">
+                        <span class="fi-clock"></span> Wyślij oczekujące ({{ waiting_count }})
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+            {% endif %}
+        {% endif %}
+    </div>
+
+    {% if request.user.is_staff or perms.pbn_api %}
+
+        <div class="filter-section" style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <h4>Filtry</h4>
+                <div class="button-group">
+                    <a href="?" class="button {% if current_filter == 'all' %}primary{% else %}secondary{% endif %}">
+                        <span class="fi-list"></span> Wszystkie ({{ total_count }})
+                    </a>
+                    <a href="?zakonczono_pomyslnie=true" class="button {% if current_filter == 'true' %}success{% else %}secondary{% endif %}">
+                        <span class="fi-check"></span> Zakończone pomyślnie ({{ success_count }})
+                    </a>
+                    <a href="?zakonczono_pomyslnie=false" class="button {% if current_filter == 'false' %}alert{% else %}secondary{% endif %}">
+                        <span class="fi-x"></span> Zakończone z błędem ({{ error_count }})
+                    </a>
+                    <a href="?zakonczono_pomyslnie=none" class="button {% if current_filter == 'none' %}warning{% else %}secondary{% endif %}">
+                        <span class="fi-clock"></span> W trakcie/oczekujące ({{ pending_count }})
+                    </a>
+                </div>
+            </div>
+
+            <div class="refresh-control">
+                <div class="progress-bar-container" id="progress-container">
+                    <div class="progress-bar" id="progress-bar"></div>
+                </div>
+                <label style="font-weight: normal;">
+                    <input type="checkbox" id="auto-refresh-toggle" style="margin-right: 5px;">
+                    <span class="fi-refresh"></span> Odświeżaj co 5 sekund
+                </label>
+            </div>
+        </div>
+
+        <hr>
+
+        <div id="export-queue-table"
+             hx-get="{% url 'pbn_export_queue:export-queue-table' %}?{% if request.GET.zakonczono_pomyslnie %}zakonczono_pomyslnie={{ request.GET.zakonczono_pomyslnie }}&{% endif %}sort={{ current_sort|default:'-ostatnia_aktualizacja' }}"
+             hx-swap="innerHTML">
+            {% include 'pbn_export_queue/pbn_export_queue_table.html' %}
+        </div>
+
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                var refreshToggle = document.getElementById('auto-refresh-toggle');
+                var tableDiv = document.getElementById('export-queue-table');
+                var progressContainer = document.getElementById('progress-container');
+                var progressBar = document.getElementById('progress-bar');
+                var refreshInterval = null;
+
+                // Load saved preference from localStorage
+                var savedPreference = localStorage.getItem('pbn_export_queue_auto_refresh');
+                if (savedPreference === 'true') {
+                    refreshToggle.checked = true;
+                    startAutoRefresh();
+                }
+
+                refreshToggle.addEventListener('change', function() {
+                    localStorage.setItem('pbn_export_queue_auto_refresh', refreshToggle.checked);
+                    if (refreshToggle.checked) {
+                        startAutoRefresh();
+                    } else {
+                        stopAutoRefresh();
+                    }
+                });
+
+                function startAutoRefresh() {
+                    // Show progress bar
+                    progressContainer.classList.add('active');
+
+                    // Reset animation
+                    progressBar.style.animation = 'none';
+                    void progressBar.offsetHeight; // Trigger reflow
+                    progressBar.style.animation = 'countdown 5s linear infinite';
+
+                    // Initial refresh
+                    refreshTable();
+
+                    // Set up interval for continuous polling
+                    refreshInterval = setInterval(function() {
+                        refreshTable();
+                        // Reset animation
+                        progressBar.style.animation = 'none';
+                        void progressBar.offsetHeight; // Trigger reflow
+                        progressBar.style.animation = 'countdown 5s linear infinite';
+                    }, 5000);
+                }
+
+                function stopAutoRefresh() {
+                    // Hide progress bar
+                    progressContainer.classList.remove('active');
+
+                    // Clear the interval
+                    if (refreshInterval) {
+                        clearInterval(refreshInterval);
+                        refreshInterval = null;
+                    }
+
+                    // Stop animation
+                    progressBar.style.animation = 'none';
+                }
+
+                function refreshTable() {
+                    htmx.ajax('GET', tableDiv.getAttribute('hx-get'), {target: '#export-queue-table', swap: 'innerHTML'});
+                }
+            });
+        </script>
+    {% else %}
+        <p class="alert-box alert">Brak uprawnień do przeglądania kolejki eksportu.</p>
+    {% endif %}
+
+{% endblock %}

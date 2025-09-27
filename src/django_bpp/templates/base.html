@@ -88,8 +88,7 @@
         {{ extraChannels|json_script:"extra-channels" }}
         <script type="text/javascript">
             $(document).ready(function () {
-                bppNotifications.init("{% static "bpp/wav/alert.wav" %}",
-                    document.getElementById('extra-channels').textContent);
+                bppNotifications.init(document.getElementById('extra-channels').textContent);
 
                 $(document).on('closed.zf', function (event) {
                     if ($(event.target).hasClass("ajax-on-close")) {
@@ -124,7 +123,7 @@
 
         <script type="text/javascript">
             $(document).ready(function () {
-                bppNotifications.init("{% static "bpp/wav/alert.wav" %}");
+                bppNotifications.init();
 
                 {% if messages %}
                     {% for message in messages %}

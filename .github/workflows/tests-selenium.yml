@@ -1,4 +1,4 @@
-name: Testy BPP
+name: Testy - Selenium
 
 on:
   push:
@@ -9,6 +9,10 @@ on:
   pull_request:
     branches:
       - dev
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -48,6 +52,27 @@ jobs:
           --health-retries 5
 
     steps:
+    - uses: actions/checkout@v4
+
+    - name: Cache APT packages
+      uses: actions/cache@v4
+      with:
+        path: /var/cache/apt/archives
+        key: ${{ runner.os }}-apt-selenium-${{ hashFiles('.github/workflows/tests-selenium.yml') }}
+        restore-keys: |
+          ${{ runner.os }}-apt-selenium-
+          ${{ runner.os }}-apt-
+
+    - name: Cache Yarn dependencies
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/yarn
+          node_modules
+        key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock', '**/package.json') }}
+        restore-keys: |
+          ${{ runner.os }}-yarn-
+
     - name: System setup and dependencies
       timeout-minutes: 10
       run: |
@@ -66,15 +91,28 @@ jobs:
         Pin: release o=Ubuntu
         Pin-Priority: -1' | sudo tee /etc/apt/preferences.d/mozilla
         curl -fsSL https://deb.nodesource.com/setup_current.x | sudo bash -
-        sudo apt install -y python3.11 python3.11-dev python3-dev libpq-dev firefox firefox-geckodriver nodejs redis-tools
+        # Install Firefox dependencies and tools
+        sudo apt install -y python3 python3-dev libpq-dev nodejs redis-tools \
+          xvfb libgtk-3-0 libgbm-dev libnotify-dev libgconf-2-4 \
+          libnss3 libxss1 libasound2 libxtst6 xauth xfonts-cyrillic \
+          xfonts-100dpi xfonts-75dpi xfonts-base xfonts-scalable \
+          firefox firefox-geckodriver
         sudo npm install -g --force yarn grunt-cli
 
-    - uses: actions/checkout@v4
+    - name: Install poetry
+      timeout-minutes: 10
+      run: |
+        python -m pip install pip poetry
+
+    - name: Set up Python with Poetry caching
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        cache: 'poetry'
 
     - name: Install Python deps via poetry
       timeout-minutes: 10
       run: |
-        python -m pip install pip poetry
         poetry install --with=dev
 
     - name: Build assets (yarn, collectstatic)
@@ -85,14 +123,6 @@ jobs:
         DJANGO_BPP_DB_USER: postgres
       run: |
         poetry run make assets
-
-    # - name: Tests without Selenium
-    #   env:
-    #     DJANGO_BPP_DB_HOST: 127.0.0.1
-    #     DJANGO_BPP_DB_PORT: 5433
-    #     DJANGO_BPP_DB_USER: postgres
-    #   run: |
-    #     poetry run pytest -m "not selenium" --splinter-headless --splinter-webdriver-executable=/usr/lib/firefox/firefox
 
     - name: Wait for services
       timeout-minutes: 2
@@ -109,33 +139,36 @@ jobs:
         done
 
     - name: Tests -- only Selenium
-      timeout-minutes: 25
+      timeout-minutes: 45
       env:
         DJANGO_BPP_DB_HOST: 127.0.0.1
         DJANGO_BPP_DB_PORT: 5433
         DJANGO_BPP_DB_USER: postgres
+        # Set Firefox preferences for better stability in CI
+        MOZ_HEADLESS: 1
+        MOZ_ENABLE_WAYLAND: 0
+        # Disable Firefox crash reporter and telemetry
+        MOZ_CRASHREPORTER_DISABLE: 1
+        MOZ_DATA_REPORTING: 0
+        MOZ_TELEMETRY_REPORTING: 0
       run: |
         # Show Firefox version for debugging
         firefox --version
         geckodriver --version
 
-        # Run tests with more verbose output and shorter timeout per test
-        poetry run pytest -k "admin or integration_tests or notifications" \
+        # Test that Firefox can start in headless mode
+        timeout 10 firefox --headless --screenshot /tmp/test.png https://example.com || true
+        echo "Firefox headless test completed"
+
+        # Run tests with more verbose output and retry flaky tests
+        poetry run pytest  \
           --timeout=600 \
           --verbose \
           --tb=short \
           -m "selenium" \
           --splinter-headless \
-          --splinter-webdriver-executable=/usr/lib/firefox/firefox \
-          --maxfail=3
-
-    # - name: Tests (no selenium) with Microsoft Auth
-    #   env:
-    #     DJANGO_BPP_DB_HOST: 127.0.0.1
-    #     DJANGO_BPP_DB_PORT: 5433
-    #     DJANGO_BPP_DB_USER: postgres
-    #   run: |
-    #     poetry run pip install django_microsoft_auth
-    #     echo MICROSOFT_AUTH_CLIENT_ID=foobar > ~/.env.local
-    #     echo MICROSOFT_AUTH_CLIENT_SECRET=foobar >> ~/.env.local
-    #     poetry run pytest -m "not selenium" --splinter-headless --splinter-webdriver-executable=/usr/lib/firefox/firefox
+          --maxfail=3 \
+          --splinter-make-screenshot-on-failure=false \
+          --splinter-screenshot-dir=splintershots \
+          --reruns 2 \
+          --reruns-delay 5

@@ -3,9 +3,8 @@ from unittest.mock import MagicMock
 import pytest
 from model_bakery import baker
 
-from pbn_api.models import PBN_Export_Queue
-from pbn_api.models.queue import SendStatus
-from pbn_api.tasks import (
+from pbn_export_queue.models import PBN_Export_Queue, SendStatus
+from pbn_export_queue.tasks import (
     kolejka_ponow_wysylke_prac_po_zalogowaniu,
     kolejka_wyczysc_wpisy_bez_rekordow,
     task_sprobuj_wyslac_do_pbn,
@@ -58,7 +57,7 @@ def test_kolejka_ponow_wysylke_prac_po_zalogowaniu(wydawnictwo_ciagle, mocker):
     )
 
     task_sprobuj_wyslac_do_pbn = mocker.patch(
-        "pbn_api.tasks.task_sprobuj_wyslac_do_pbn"
+        "pbn_export_queue.tasks.task_sprobuj_wyslac_do_pbn"
     )
 
     kolejka_ponow_wysylke_prac_po_zalogowaniu(peq.zamowil.pk)
@@ -72,10 +71,10 @@ def test_kolejka_ponow_wysylke_prac_po_zalogowaniu(wydawnictwo_ciagle, mocker):
 )
 def test_task_sprobuj_wyslac_do_pbn_retry_later(mocker, send_status):
     task_sprobuj_wyslac_do_pbn_apply_async = mocker.patch(
-        "pbn_api.tasks.task_sprobuj_wyslac_do_pbn.apply_async"
+        "pbn_export_queue.tasks.task_sprobuj_wyslac_do_pbn.apply_async"
     )
 
-    wait_for_object = mocker.patch("pbn_api.tasks.wait_for_object")
+    wait_for_object = mocker.patch("pbn_export_queue.tasks.wait_for_object")
 
     mock_peq = MagicMock()
     mock_peq.send_to_pbn.return_value = send_status
@@ -97,9 +96,9 @@ def test_task_sprobuj_wyslac_do_pbn_retry_later(mocker, send_status):
     ],
 )
 def test_task_sprobuj_wyslac_do_pbn_finished(mocker, send_status):
-    mocker.patch("pbn_api.tasks.task_sprobuj_wyslac_do_pbn.apply_async")
+    mocker.patch("pbn_export_queue.tasks.task_sprobuj_wyslac_do_pbn.apply_async")
 
-    wait_for_object = mocker.patch("pbn_api.tasks.wait_for_object")
+    wait_for_object = mocker.patch("pbn_export_queue.tasks.wait_for_object")
 
     mock_peq = MagicMock()
     mock_peq.send_to_pbn.return_value = send_status
@@ -110,7 +109,7 @@ def test_task_sprobuj_wyslac_do_pbn_finished(mocker, send_status):
 
 
 def test_task_sprobuj_wyslac_do_pbn_raises(mocker):
-    wait_for_object = mocker.patch("pbn_api.tasks.wait_for_object")
+    wait_for_object = mocker.patch("pbn_export_queue.tasks.wait_for_object")
 
     mock_peq = MagicMock()
     mock_peq.send_to_pbn.side_return_value = 0xBEEF

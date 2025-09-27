@@ -25,15 +25,15 @@ except ImportError:
     from django.urls import reverse
 
 import pytest
-from selenium.webdriver.support.wait import WebDriverWait
+from playwright.sync_api import Page, expect
 
 from fixtures import NORMAL_DJANGO_USER_PASSWORD
 
 from bpp.models.system import Charakter_Formalny, Jezyk, Status_Korekty, Typ_KBN
 
-from django_bpp.selenium_util import SHORT_WAIT_TIME, wait_for_page_load
+from django_bpp.playwright_util import wait_for_page_load
 
-pytestmark = [pytest.mark.slow, pytest.mark.selenium]
+pytestmark = [pytest.mark.slow]
 
 
 def test_caching_enabled(
@@ -88,76 +88,84 @@ def test_caching_enabled(
     assert found
 
 
-def test_live_server(live_server, browser):
-    browser.visit(live_server.url)
-    assert "Wystąpił błąd" not in browser.html
+def test_live_server(live_server, page: Page):
+    page.goto(live_server.url)
+    expect(page.locator("body")).not_to_contain_text("Wystąpił błąd")
 
 
 @pytest.mark.django_db(transaction=True)
-def test_channels_live_server(preauth_asgi_browser):
+def test_channels_live_server(preauth_asgi_page: Page):
 
     s = "test notyfikacji 123 456"
     call_command(
         "send_notification",
-        preauth_asgi_browser.authorized_user.username,
+        preauth_asgi_page.authorized_user.username,
         s,
         verbosity=0,
     )
 
-    WebDriverWait(preauth_asgi_browser, SHORT_WAIT_TIME).until(
-        lambda browser: browser.is_text_present(s)
+    page = preauth_asgi_page
+
+    page.wait_for_function(
+        f"() => document.body.textContent.includes('{s}')", timeout=1000
     )
 
 
-def test_bpp_notifications(preauth_asgi_browser):
+def test_bpp_notifications(preauth_asgi_page: Page):
     """Sprawdz, czy notyfikacje dochodza.
     Wymaga uruchomionego staging-server.
     """
     s = "test notyfikacji 123 456"
-    assert preauth_asgi_browser.is_text_not_present(s)
+    page = preauth_asgi_page
+    expect(page.locator("body")).not_to_contain_text(s)
     call_command(
         "send_notification",
-        preauth_asgi_browser.authorized_user.username,
+        preauth_asgi_page.authorized_user.username,
         s,
         verbosity=0,
     )
-    assert preauth_asgi_browser.is_text_present(s)
+    # Give time for notification to arrive
+    page.wait_for_timeout(1000)
+    expect(page.locator("body")).to_contain_text(s, timeout=15000)
 
 
-def test_bpp_notifications_and_messages(preauth_asgi_browser):
+def test_bpp_notifications_and_messages(preauth_asgi_page: Page):
     """Sprawdz, czy notyfikacje dochodza."""
 
     s = "test notyfikacji 123 456 902309093209092"
-    assert preauth_asgi_browser.is_text_not_present(s)
+    page = preauth_asgi_page
+    expect(page.locator("body")).not_to_contain_text(s)
 
-    call_command("send_message", preauth_asgi_browser.authorized_user.username, s)
+    call_command("send_message", preauth_asgi_page.authorized_user.username, s)
 
-    WebDriverWait(preauth_asgi_browser, SHORT_WAIT_TIME).until(
-        lambda browser: browser.is_text_present(s)
+    page.wait_for_timeout(1000)  # Give time for message to be sent
+    page.wait_for_function(
+        f"() => document.body.textContent.includes('{s}')", timeout=15000
     )
 
-    with wait_for_page_load(preauth_asgi_browser):
-        preauth_asgi_browser.reload()
+    page.reload()
+    wait_for_page_load(page)
 
-    WebDriverWait(preauth_asgi_browser, SHORT_WAIT_TIME).until(
-        lambda browser: browser.is_text_present(s)
+    page.wait_for_function(
+        f"() => document.body.textContent.includes('{s}')", timeout=15000
     )
 
 
-def test_preauth_browser(preauth_browser, live_server):
+def test_preauth_browser(preauth_page: Page, live_server):
     """Sprawdz, czy pre-autoryzowany browser zwyklego uzytkownika
     funkcjonuje poprawnie."""
-    preauth_browser.visit(live_server + "/admin/")
-    assert preauth_browser.is_text_present("Login") or preauth_browser.is_text_present(
-        "Zaloguj si"
-    )
+    page = preauth_page
+    page.goto(live_server.url + "/admin/")
+    page_content = page.content()
+    assert "Login" in page_content or "Zaloguj si" in page_content
 
 
 @pytest.mark.django_db
-def test_admin_browser(admin_browser, channels_live_server):
+def test_admin_browser(admin_page: Page, channels_live_server):
     """Sprawdz, czy pre-autoryzowany browser admina funkcjonuje poprawnie"""
-    admin_browser.visit(channels_live_server.url + "/admin/")
-    assert admin_browser.is_text_present("Redagowanie")
+    page = admin_page
+    page.goto(channels_live_server.url + "/admin/")
+    expect(page.locator("body")).to_contain_text("Redagowanie")
 
 
 @pytest.mark.django_db

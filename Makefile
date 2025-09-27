@@ -118,15 +118,15 @@ disable-microsoft-auth:
 	poetry run pip uninstall -y django_microsoft_auth
 
 tests-without-selenium:
-	poetry run pytest -n 10 --splinter-headless -m "not selenium" --maxfail 50
+	poetry run pytest -n auto --splinter-headless -m "not selenium and not playwright" --maxfail 50
 
 tests-without-selenium-with-microsoft-auth:
-	poetry run pytest -n 10 --splinter-headless -m "not selenium" --maxfail 50
+	poetry run pytest -n auto --splinter-headless -m "not selenium and not playwright" --maxfail 50
 
 tests-with-microsoft-auth: enable-microsoft-auth tests-without-selenium-with-microsoft-auth disable-microsoft-auth
 
 tests-with-selenium:
-	poetry run pytest -n 12 --splinter-headless -m "selenium" --maxfail 50
+	poetry run pytest -n auto --splinter-headless -m "selenium or playwright" --maxfail 50
 
 tests: tests-without-selenium tests-with-selenium js-tests
 
@@ -197,9 +197,9 @@ loc: clean
 	pygount -N ... -F "...,staticroot,migrations,fixtures" src --format=summary
 
 
-DOCKER_VERSION="202509.1225"
+DOCKER_VERSION="202509.1226"
 
-DOCKER_BUILD=build --platform linux/amd64,linux/arm64 --push
+DOCKER_BUILD=build --platform linux/amd64 --push
 
 
 # Na lokalnej maszynie nie uzywaj --push + buduj tylko ARM

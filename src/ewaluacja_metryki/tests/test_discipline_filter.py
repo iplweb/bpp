@@ -18,7 +18,15 @@ def test_discipline_filter_hidden_when_only_one(admin_user, db):
 
     # Create metrics for only one discipline
     baker.make(
-        MetrykaAutora, autor=autor, dyscyplina_naukowa=dyscyplina, jednostka=jednostka
+        MetrykaAutora,
+        autor=autor,
+        dyscyplina_naukowa=dyscyplina,
+        jednostka=jednostka,
+        slot_maksymalny=4.0,
+        slot_nazbierany=2.0,
+        punkty_nazbierane=100.0,
+        slot_wszystkie=3.0,
+        punkty_wszystkie=150.0,
     )
 
     # Add user to required group
@@ -51,10 +59,26 @@ def test_discipline_filter_shown_when_multiple(admin_user, db):
 
     # Create metrics for multiple disciplines
     baker.make(
-        MetrykaAutora, autor=autor, dyscyplina_naukowa=dyscyplina1, jednostka=jednostka
+        MetrykaAutora,
+        autor=autor,
+        dyscyplina_naukowa=dyscyplina1,
+        jednostka=jednostka,
+        slot_maksymalny=4.0,
+        slot_nazbierany=2.0,
+        punkty_nazbierane=100.0,
+        slot_wszystkie=3.0,
+        punkty_wszystkie=150.0,
     )
     baker.make(
-        MetrykaAutora, autor=autor, dyscyplina_naukowa=dyscyplina2, jednostka=jednostka
+        MetrykaAutora,
+        autor=autor,
+        dyscyplina_naukowa=dyscyplina2,
+        jednostka=jednostka,
+        slot_maksymalny=4.0,
+        slot_nazbierany=1.5,
+        punkty_nazbierane=80.0,
+        slot_wszystkie=2.5,
+        punkty_wszystkie=120.0,
     )
 
     # Add user to required group
@@ -87,7 +111,15 @@ def test_column_sizing_with_one_discipline(admin_user, db):
     jednostka = baker.make("bpp.Jednostka")
 
     baker.make(
-        MetrykaAutora, autor=autor, dyscyplina_naukowa=dyscyplina, jednostka=jednostka
+        MetrykaAutora,
+        autor=autor,
+        dyscyplina_naukowa=dyscyplina,
+        jednostka=jednostka,
+        slot_maksymalny=4.0,
+        slot_nazbierany=2.0,
+        punkty_nazbierane=100.0,
+        slot_wszystkie=3.0,
+        punkty_wszystkie=150.0,
     )
 
     # Add user to required group

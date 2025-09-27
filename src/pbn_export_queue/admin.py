@@ -2,7 +2,7 @@ from django import forms
 from django.http import HttpResponseRedirect
 from django.urls import reverse
 
-from pbn_api.models.queue import PBN_Export_Queue
+from .models import PBN_Export_Queue
 
 from django.contrib import admin, messages
 

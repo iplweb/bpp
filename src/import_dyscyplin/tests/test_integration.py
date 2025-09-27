@@ -3,35 +3,47 @@ import os
 import pytest
 from django.urls import reverse
 from model_bakery import baker
+from playwright.sync_api import Page
 
 from bpp.models import Uczelnia
-from bpp.tests import proper_click_element
 
-from django_bpp.selenium_util import wait_for_page_load
+from django_bpp.playwright_util import proper_click_element, wait_for_page_load
 
 
 @pytest.mark.django_db(transaction=True)
-def test_integracyjny(admin_browser, channels_live_server):
+def test_integracyjny(admin_page: Page, channels_live_server, settings):
+    settings.CELERY_ALWAYS_EAGER = True
+    settings.CELERY_EAGER_PROPAGATES_EXCEPTIONS = True
+
     baker.make(Uczelnia)
-    admin_browser.visit(channels_live_server.url + reverse("import_dyscyplin:index"))
+    admin_page.goto(channels_live_server.url + reverse("import_dyscyplin:index"))
 
-    with wait_for_page_load(admin_browser):
-        admin_browser.find_by_id("add-new-file").click()
+    # Accept cookies
+    admin_page.evaluate("Cookielaw.accept()")
+    wait_for_page_load(admin_page)
 
-    admin_browser.find_by_id("id_plik").type(
-        os.path.join(
-            os.path.dirname(__file__), "../static/import_dyscyplin/xlsx/default.xlsx"
-        )
+    # Click add new file button
+    admin_page.click("#add-new-file")
+
+    # Upload file
+    file_path = os.path.join(
+        os.path.dirname(__file__), "../static/import_dyscyplin/xlsx/default.xlsx"
     )
+    admin_page.set_input_files("#id_plik", file_path)
 
-    with wait_for_page_load(admin_browser):
-        admin_browser.find_by_id("id_submit").click()
+    # Click submit button
+    admin_page.click("#id_submit")
+    wait_for_page_load(admin_page)
 
-    btn = admin_browser.find_by_id("submit-id-submit")
-    btn[0]._element.location_once_scrolled_into_view
+    # Check if there's a second submit button on the next page
+    if admin_page.locator("#submit-id-submit").count() > 0:
+        # Scroll submit button into view and click it
+        submit_btn = admin_page.locator("#submit-id-submit")
+        submit_btn.scroll_into_view_if_needed()
+        proper_click_element(admin_page, "#submit-id-submit")
+        wait_for_page_load(admin_page)
 
-    with wait_for_page_load(admin_browser):
-        proper_click_element(admin_browser, btn)
-        # btn.click()
-
-    admin_browser.wait_for_condition(lambda browser: "Lubelski" in admin_browser.html)
+    # Wait for "Lubelski" to appear in the page content
+    admin_page.wait_for_function(
+        "() => document.body.textContent.includes('Lubelski')", timeout=5000
+    )

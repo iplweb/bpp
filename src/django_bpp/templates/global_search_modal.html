@@ -501,8 +501,6 @@
 
         // Perform search
         function performSearch(query) {
-            console.log('*** performSearch called with:', query);
-
             if (query.length < 3) {
                 document.getElementById('globalSearchResults').innerHTML =
                     '<div class="global-search-no-results">Wpisz minimum 3 znaki</div>';
@@ -515,7 +513,6 @@
 
             // Cancel previous request if exists
             if (currentRequest) {
-                console.log('Aborting previous request');
                 currentRequest.abort();
                 currentRequest = null;
             }
@@ -526,7 +523,6 @@
 
             // Store search term in closure for this specific request
             var searchTermForThisRequest = query;
-            console.log('Search term captured for this request:', searchTermForThisRequest);
 
             // Make AJAX request - no highlighting in dataFilter
             currentRequest = $.ajax({
@@ -534,16 +530,11 @@
                 data: { q: query },
                 dataType: 'json',
                 success: function(data) {
-                    console.log('AJAX success for term:', searchTermForThisRequest);
-                    console.log('Current input value:', $('#globalSearchInput').val());
-                    console.log('Data received:', data.results ? data.results.length + ' groups' : 'no results');
-
                     // First display results WITHOUT highlighting
                     displayResultsPlain(data.results || []);
 
                     // Then apply highlighting to the DOM after a small delay
                     setTimeout(function() {
-                        console.log('Applying highlights to DOM for term:', searchTermForThisRequest);
                         applyHighlightsToDom(searchTermForThisRequest);
                     }, 100);  // Slightly longer delay for smoother experience
 
@@ -562,9 +553,6 @@
 
         // Display results WITHOUT highlighting
         function displayResultsPlain(results) {
-            console.log('>>> displayResultsPlain called');
-            console.log('Number of result groups:', results ? results.length : 0);
-
             var resultsContainer = document.getElementById('globalSearchResults');
             searchResults = [];
 
@@ -578,7 +566,6 @@
             var html = '';
             results.forEach(function(group, groupIndex) {
                 if (group.children && group.children.length > 0) {
-                    console.log('Processing group', groupIndex, 'with', group.children.length, 'items');
                     var groupText = (group.text || '').toLowerCase();
                     var icon = '';
 
@@ -610,7 +597,6 @@
                 }
             });
 
-            console.log('Inserting plain HTML, length:', html.length);
             resultsContainer.innerHTML = html;
             selectedIndex = -1;
 
@@ -623,26 +609,21 @@
 
         // Apply highlights to already-rendered DOM with staggered animation
         function applyHighlightsToDom(searchTerm) {
-            console.log('=== applyHighlightsToDom called with:', searchTerm);
-
             if (!searchTerm || searchTerm.length < 1) {
-                console.log('No search term, skipping highlights');
                 return;
             }
 
             var words = searchTerm.trim().split(/\s+/).filter(function(word) {
-                return word.length > 0;
+                // Only highlight words with 2 or more characters
+                return word.length >= 2;
             });
 
             if (words.length === 0) {
                 return;
             }
 
-            console.log('Words to highlight:', words);
-
             // Get all search result items
             var resultItems = document.querySelectorAll('.search-result-item');
-            console.log('Found', resultItems.length, 'result items to process');
 
             // Add staggered animation delay for each item
             var totalHighlights = 0;
@@ -653,7 +634,7 @@
                     var originalHTML = item.innerHTML;
                     var highlightedHTML = originalHTML;
 
-                    // Apply highlighting for each word
+                    // Apply highlighting for each word (only those with 2+ characters)
                     words.forEach(function(word, wordIndex) {
                         var escapedWord = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
                         var colorClass = 'search-highlight-' + ((wordIndex % 5) + 1);
@@ -674,7 +655,6 @@
                             item.style.opacity = '1';
                         }, 10);
 
-                        console.log('Item', itemIndex, 'highlighted with animation');
                         totalHighlights++;
                     }
                 }, itemIndex * 20); // 20ms delay between each item
@@ -683,7 +663,6 @@
             // Verify highlights were applied after all items are processed
             setTimeout(function() {
                 var highlights = document.querySelectorAll('[class*="search-highlight"]');
-                console.log('FINAL: Applied', highlights.length, 'highlight spans with animation');
 
                 // Add a subtle pulse to all highlights once they're all added
                 highlights.forEach(function(highlight, i) {
@@ -697,124 +676,6 @@
             }, resultItems.length * 20 + 100);
         }
 
-        // REMOVED OLD displayResultsWithHighlight function
-        // Now using displayResultsPlain + applyHighlightsToDom instead
-
-        /*
-        function displayResultsWithHighlight(results, searchTerm) {
-            console.log('>>> displayResultsWithHighlight called');
-            console.log('Search term passed:', searchTerm);
-            console.log('Number of result groups:', results ? results.length : 0);
-
-            var resultsContainer = document.getElementById('globalSearchResults');
-            searchResults = [];
-
-            if (!results || results.length === 0) {
-                resultsContainer.innerHTML =
-                    '<div class="global-search-no-results">Brak wyników</div>';
-                return;
-            }
-
-            // Build HTML with highlighting applied NOW
-            var html = '';
-            results.forEach(function(group, groupIndex) {
-                if (group.children && group.children.length > 0) {
-                    console.log('Processing group', groupIndex, 'with', group.children.length, 'items');
-                    var groupText = (group.text || '').toLowerCase();
-                    var icon = '';
-
-                    // Map Polish category names to Foundation Icons
-                    if (groupText.includes('jednostk')) {
-                        icon = '<i class="fi-home"></i>';
-                    } else if (groupText.includes('autor')) {
-                        icon = '<i class="fi-torso"></i>';
-                    } else if (groupText.includes('źródł') || groupText.includes('zrodl')) {
-                        icon = '<i class="fi-book"></i>';
-                    } else if (groupText.includes('rekord')) {
-                        icon = '<i class="fi-page"></i>';
-                    }
-
-                    html += '<div class="search-result-group">';
-                    html += '<div class="search-result-group-title">' + icon + (group.text || '') + '</div>';
-
-                    group.children.forEach(function(item) {
-                        var index = searchResults.length;
-                        searchResults.push(item);
-
-                        // Apply highlighting RIGHT NOW at display time
-                        var originalText = item.text || '';
-                        var displayText = originalText;
-
-                        console.log('Item ' + index + ' BEFORE highlighting:', originalText.substring(0, 80));
-
-                        if (searchTerm && searchTerm.trim()) {
-                            displayText = applyHighlightingNow(originalText, searchTerm);
-                            console.log('Item ' + index + ' AFTER highlighting:', displayText.substring(0, 120));
-                            console.log('Contains highlight spans?', displayText.includes('search-highlight'));
-                        } else {
-                            console.log('NO SEARCH TERM for item ' + index);
-                        }
-
-                        html += '<div class="search-result-item" data-index="' + index + '" data-id="' + item.id + '">';
-                        html += displayText;
-                        html += '</div>';
-                    });
-
-                    html += '</div>';
-                }
-            });
-
-            console.log('FINAL HTML being inserted:', html.length, 'characters');
-            console.log('HTML contains search-highlight?', html.includes('search-highlight'));
-            var highlightCount = (html.match(/search-highlight/g) || []).length;
-            console.log('Number of highlight spans in HTML:', highlightCount);
-
-            // Store HTML for comparison
-            window.debugHTML = html;
-
-            resultsContainer.innerHTML = html;
-            selectedIndex = -1;
-
-            // Check multiple times to catch any overwriting
-            console.log('=== CHECKING RENDERED DOM ===');
-
-            // Immediate check
-            var immediateHighlights = resultsContainer.querySelectorAll('[class*="search-highlight"]');
-            console.log('IMMEDIATE (0ms): Found', immediateHighlights.length, 'highlights');
-
-            // Check after 10ms
-            setTimeout(function() {
-                var renderedHighlights = resultsContainer.querySelectorAll('[class*="search-highlight"]');
-                console.log('AFTER 10ms: Found', renderedHighlights.length, 'highlights');
-
-                // Check if innerHTML changed
-                if (window.debugHTML !== resultsContainer.innerHTML) {
-                    console.warn('WARNING: innerHTML was CHANGED after insertion!');
-                    console.log('Original had highlights:', window.debugHTML.includes('search-highlight'));
-                    console.log('Current has highlights:', resultsContainer.innerHTML.includes('search-highlight'));
-                }
-            }, 10);
-
-            // Check after 100ms
-            setTimeout(function() {
-                var renderedHighlights = resultsContainer.querySelectorAll('[class*="search-highlight"]');
-                console.log('AFTER 100ms: Found', renderedHighlights.length, 'highlights');
-            }, 100);
-
-            // Check after 500ms
-            setTimeout(function() {
-                var renderedHighlights = resultsContainer.querySelectorAll('[class*="search-highlight"]');
-                console.log('AFTER 500ms: Found', renderedHighlights.length, 'highlights');
-                console.log('=== END DOM CHECK ===');
-            }, 500);
-
-            // Add click handlers to results
-            $('.search-result-item').on('click', function() {
-                var itemId = $(this).data('id');
-                navigateToResult(itemId);
-            });
-        }
-        */
 
         // Navigate to selected result
         function navigateToResult(itemId) {
@@ -864,17 +725,14 @@
         // Input handler with debouncing
         $('#globalSearchInput').on('input', function() {
             var query = $(this).val();
-            console.log('INPUT EVENT - Query:', query, 'Timer exists?', !!searchTimer);
 
             // Clear previous timer
             if (searchTimer) {
                 clearTimeout(searchTimer);
-                console.log('Cleared previous timer');
             }
 
             // Set new timer
             searchTimer = setTimeout(function() {
-                console.log('Timer fired, calling performSearch with:', query);
                 performSearch(query);
             }, 300);
         });

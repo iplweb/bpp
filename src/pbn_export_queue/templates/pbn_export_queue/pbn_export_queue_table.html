@@ -1,0 +1,175 @@
+{% load humanize %}
+<table>
+    <thead>
+        <tr>
+            <th>
+                <a href="?{% if current_filter != 'all' %}zakonczono_pomyslnie={{ request.GET.zakonczono_pomyslnie }}&{% endif %}sort={% if current_sort == 'pk' %}-pk{% else %}pk{% endif %}"
+                   hx-get="{% url 'pbn_export_queue:export-queue-table' %}?{% if current_filter != 'all' %}zakonczono_pomyslnie={{ request.GET.zakonczono_pomyslnie }}&{% endif %}sort={% if current_sort == 'pk' %}-pk{% else %}pk{% endif %}"
+                   hx-target="#export-queue-table"
+                   hx-swap="innerHTML"
+                   hx-push-url="false">
+                    ID {% if current_sort == 'pk' %}▲{% elif current_sort == '-pk' %}▼{% endif %}
+                </a>
+            </th>
+            <th>Rekord</th>
+            <th>Zamówił</th>
+            <th>
+                <a href="?{% if current_filter != 'all' %}zakonczono_pomyslnie={{ request.GET.zakonczono_pomyslnie }}&{% endif %}sort={% if current_sort == 'zamowiono' %}-zamowiono{% else %}zamowiono{% endif %}"
+                   hx-get="{% url 'pbn_export_queue:export-queue-table' %}?{% if current_filter != 'all' %}zakonczono_pomyslnie={{ request.GET.zakonczono_pomyslnie }}&{% endif %}sort={% if current_sort == 'zamowiono' %}-zamowiono{% else %}zamowiono{% endif %}"
+                   hx-target="#export-queue-table"
+                   hx-swap="innerHTML"
+                   hx-push-url="false">
+                    Zamówiono {% if current_sort == 'zamowiono' %}▲{% elif current_sort == '-zamowiono' %}▼{% endif %}
+                </a>
+            </th>
+            <th>
+                <a href="?{% if current_filter != 'all' %}zakonczono_pomyslnie={{ request.GET.zakonczono_pomyslnie }}&{% endif %}sort={% if current_sort == 'ostatnia_aktualizacja' %}-ostatnia_aktualizacja{% else %}ostatnia_aktualizacja{% endif %}"
+                   hx-get="{% url 'pbn_export_queue:export-queue-table' %}?{% if current_filter != 'all' %}zakonczono_pomyslnie={{ request.GET.zakonczono_pomyslnie }}&{% endif %}sort={% if current_sort == 'ostatnia_aktualizacja' %}-ostatnia_aktualizacja{% else %}ostatnia_aktualizacja{% endif %}"
+                   hx-target="#export-queue-table"
+                   hx-swap="innerHTML"
+                   hx-push-url="false">
+                    Ostatnia aktualizacja {% if current_sort == 'ostatnia_aktualizacja' %}▲{% elif current_sort == '-ostatnia_aktualizacja' %}▼{% endif %}
+                </a>
+            </th>
+            <th>
+                <a href="?{% if current_filter != 'all' %}zakonczono_pomyslnie={{ request.GET.zakonczono_pomyslnie }}&{% endif %}sort={% if current_sort == 'ilosc_prob' %}-ilosc_prob{% else %}ilosc_prob{% endif %}"
+                   hx-get="{% url 'pbn_export_queue:export-queue-table' %}?{% if current_filter != 'all' %}zakonczono_pomyslnie={{ request.GET.zakonczono_pomyslnie }}&{% endif %}sort={% if current_sort == 'ilosc_prob' %}-ilosc_prob{% else %}ilosc_prob{% endif %}"
+                   hx-target="#export-queue-table"
+                   hx-swap="innerHTML"
+                   hx-push-url="false">
+                    Ilość prób {% if current_sort == 'ilosc_prob' %}▲{% elif current_sort == '-ilosc_prob' %}▼{% endif %}
+                </a>
+            </th>
+            <th>
+                <a href="?{% if current_filter != 'all' %}zakonczono_pomyslnie={{ request.GET.zakonczono_pomyslnie }}&{% endif %}sort={% if current_sort == 'zakonczono_pomyslnie' %}-zakonczono_pomyslnie{% else %}zakonczono_pomyslnie{% endif %}"
+                   hx-get="{% url 'pbn_export_queue:export-queue-table' %}?{% if current_filter != 'all' %}zakonczono_pomyslnie={{ request.GET.zakonczono_pomyslnie }}&{% endif %}sort={% if current_sort == 'zakonczono_pomyslnie' %}-zakonczono_pomyslnie{% else %}zakonczono_pomyslnie{% endif %}"
+                   hx-target="#export-queue-table"
+                   hx-swap="innerHTML"
+                   hx-push-url="false">
+                    Status {% if current_sort == 'zakonczono_pomyslnie' %}▲{% elif current_sort == '-zakonczono_pomyslnie' %}▼{% endif %}
+                </a>
+            </th>
+            <th>Akcje</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in export_queue_items %}
+            <tr style="cursor: pointer;" onclick="if (!event.defaultPrevented) { window.location='{% url 'pbn_export_queue:export-queue-detail' item.pk %}'; }">
+                <td><a href="{% url 'pbn_export_queue:export-queue-detail' item.pk %}" style="color: inherit;">{{ item.pk }}</a></td>
+                <td>
+                    <a href="{% url 'pbn_export_queue:export-queue-detail' item.pk %}" style="color: inherit;">
+                        {% if item.rekord_do_wysylki %}
+                            {% with rekord=item.rekord_do_wysylki %}
+                                {% if rekord.opis_bibliograficzny_cache %}
+                                    {{ rekord.opis_bibliograficzny_cache|safe|truncatechars:50 }}
+                                {% elif rekord.tytul_oryginalny %}
+                                    {{ rekord.tytul_oryginalny|truncatechars:50 }}
+                                {% else %}
+                                    {{ rekord|truncatechars:50 }}
+                                {% endif %}
+                            {% endwith %}
+                        {% else %}
+                            <em>Rekord usunięty</em>
+                        {% endif %}
+                    </a>
+                </td>
+                <td><a href="{% url 'pbn_export_queue:export-queue-detail' item.pk %}" style="color: inherit;">{{ item.zamowil }}</a></td>
+                <td><a href="{% url 'pbn_export_queue:export-queue-detail' item.pk %}" style="color: inherit;">{{ item.zamowiono|naturaltime }}</a></td>
+                <td><a href="{% url 'pbn_export_queue:export-queue-detail' item.pk %}" style="color: inherit;">{{ item.ostatnia_aktualizacja|naturaltime }}</a></td>
+                <td><a href="{% url 'pbn_export_queue:export-queue-detail' item.pk %}" style="color: inherit;">{{ item.ilosc_prob }}</a></td>
+                <td>
+                    <a href="{% url 'pbn_export_queue:export-queue-detail' item.pk %}" style="color: inherit;">
+                        {% if item.zakonczono_pomyslnie == True %}
+                            <span class="label success">Pomyślnie</span>
+                        {% elif item.zakonczono_pomyslnie == False %}
+                            <span class="label alert" style="cursor: crosshair;" onclick="toggleError({{ item.pk }}); event.stopPropagation(); event.preventDefault();">Błąd ▼</span>
+                        {% elif item.retry_after_user_authorised %}
+                            <span class="label warning">Oczekuje na autoryzację</span>
+                        {% else %}
+                            <span class="label secondary">W kolejce</span>
+                        {% endif %}
+                    </a>
+                </td>
+                <td>
+                    <a href="{% url 'pbn_export_queue:export-queue-detail' item.pk %}" class="button tiny">
+                        <span class="fi-magnifying-glass"></span> Szczegóły
+                    </a>
+                </td>
+            </tr>
+            {% if item.zakonczono_pomyslnie == False and item.komunikat %}
+            <tr id="error-{{ item.pk }}" style="display: none;">
+                <td colspan="8" style="background-color: #ffeeee; padding: 10px;">
+                    <div style="max-height: 400px; overflow-y: auto;">
+                        <strong>Komunikat błędu:</strong>
+                        <pre style="white-space: pre-wrap; word-wrap: break-word; font-family: monospace; font-size: 0.9em;">{{ item.komunikat|linebreaksbr }}</pre>
+                    </div>
+                </td>
+            </tr>
+            {% endif %}
+        {% empty %}
+            <tr>
+                <td colspan="8" class="text-center">Brak elementów w kolejce eksportu do PBN.</td>
+            </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% if is_paginated %}
+    <nav aria-label="Pagination">
+        <ul class="pagination text-center" role="navigation">
+            <li class="pagination-previous {% if not page_obj.has_previous %}disabled{% endif %}">
+                {% if page_obj.has_previous %}
+                    <a href="?page={{ page_obj.previous_page_number }}{% if current_filter != 'all' %}&zakonczono_pomyslnie={{ request.GET.zakonczono_pomyslnie }}{% endif %}{% if current_sort != '-pk' %}&sort={{ current_sort }}{% endif %}"
+                       hx-get="{% url 'pbn_export_queue:export-queue-table' %}?page={{ page_obj.previous_page_number }}{% if current_filter != 'all' %}&zakonczono_pomyslnie={{ request.GET.zakonczono_pomyslnie }}{% endif %}{% if current_sort != '-pk' %}&sort={{ current_sort }}{% endif %}"
+                       hx-target="#export-queue-table"
+                       hx-swap="innerHTML">« Poprzednia</a>
+                {% else %}
+                    <span>« Poprzednia</span>
+                {% endif %}
+            </li>
+
+            {% for page_num in page_obj.paginator.page_range %}
+                {% if page_num == page_obj.number %}
+                    <li class="current"><span class="show-for-sr">Jesteś na stronie</span> {{ page_num }}</li>
+                {% else %}
+                    <li><a href="?page={{ page_num }}{% if current_filter != 'all' %}&zakonczono_pomyslnie={{ request.GET.zakonczono_pomyslnie }}{% endif %}{% if current_sort != '-pk' %}&sort={{ current_sort }}{% endif %}"
+                           hx-get="{% url 'pbn_export_queue:export-queue-table' %}?page={{ page_num }}{% if current_filter != 'all' %}&zakonczono_pomyslnie={{ request.GET.zakonczono_pomyslnie }}{% endif %}{% if current_sort != '-pk' %}&sort={{ current_sort }}{% endif %}"
+                           hx-target="#export-queue-table"
+                           hx-swap="innerHTML">{{ page_num }}</a></li>
+                {% endif %}
+            {% endfor %}
+
+            <li class="pagination-next {% if not page_obj.has_next %}disabled{% endif %}">
+                {% if page_obj.has_next %}
+                    <a href="?page={{ page_obj.next_page_number }}{% if current_filter != 'all' %}&zakonczono_pomyslnie={{ request.GET.zakonczono_pomyslnie }}{% endif %}{% if current_sort != '-pk' %}&sort={{ current_sort }}{% endif %}"
+                       hx-get="{% url 'pbn_export_queue:export-queue-table' %}?page={{ page_obj.next_page_number }}{% if current_filter != 'all' %}&zakonczono_pomyslnie={{ request.GET.zakonczono_pomyslnie }}{% endif %}{% if current_sort != '-pk' %}&sort={{ current_sort }}{% endif %}"
+                       hx-target="#export-queue-table"
+                       hx-swap="innerHTML">Następna »</a>
+                {% else %}
+                    <span>Następna »</span>
+                {% endif %}
+            </li>
+        </ul>
+    </nav>
+{% endif %}
+
+<script>
+function toggleError(itemId) {
+    var errorRow = document.getElementById('error-' + itemId);
+    var labelSpan = event.target;
+    if (errorRow) {
+        if (errorRow.style.display === 'none' || errorRow.style.display === '') {
+            errorRow.style.display = 'table-row';
+            if (labelSpan && labelSpan.tagName === 'SPAN') {
+                labelSpan.innerHTML = labelSpan.innerHTML.replace('▼', '▲');
+            }
+        } else {
+            errorRow.style.display = 'none';
+            if (labelSpan && labelSpan.tagName === 'SPAN') {
+                labelSpan.innerHTML = labelSpan.innerHTML.replace('▲', '▼');
+            }
+        }
+    }
+    return false;
+}
+</script>
