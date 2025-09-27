@@ -2,30 +2,6 @@ import pytest
 
 
 @pytest.mark.django_db
-@pytest.mark.skip(reason="Celery task testing requires complex setup")
-def test_generuj_metryki_task_success():
-    """Test pomyślnego wykonania taska generowania metryk"""
-
-
-@pytest.mark.django_db
-@pytest.mark.skip(reason="Celery task testing requires complex setup")
-def test_generuj_metryki_task_already_running():
-    """Test gdy generowanie jest już w trakcie"""
-
-
-@pytest.mark.django_db
-@pytest.mark.skip(reason="Celery task testing requires complex setup")
-def test_generuj_metryki_task_error():
-    """Test obsługi błędu podczas generowania"""
-
-
-@pytest.mark.django_db
-@pytest.mark.skip(reason="Celery task testing requires complex setup")
-def test_generuj_metryki_task_parsowanie_outputu():
-    """Test parsowania outputu z management command"""
-
-
-@pytest.mark.django_db
 def test_generowanie_wywoluje_obliczanie_liczby_n():
     """Test sprawdzający, że moduł ewaluacja_metryki korzysta z funkcji obliczania liczby N"""
     # Ten test sprawdza integrację między modułami

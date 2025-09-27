@@ -13,7 +13,7 @@ pytestmark = pytest.mark.uruchom_tylko_bez_microsoft_auth
 
 def test_global_search_user(
     channels_live_server,
-    browser,
+    splinter_browser,
     transactional_db,
 ):
     rec = None
@@ -24,12 +24,12 @@ def test_global_search_user(
         assert Rekord.objects.count() >= 1
         assert Rekord.objects.filter(tytul_oryginalny__icontains="Test").exists()
 
-        with wait_for_page_load(browser):
-            browser.visit(channels_live_server.url)
+        with wait_for_page_load(splinter_browser):
+            splinter_browser.visit(channels_live_server.url)
 
-        with wait_for_page_load(browser):
+        with wait_for_page_load(splinter_browser):
             select_select2_autocomplete(
-                browser,
+                splinter_browser,
                 "id_global_nav_value",
                 "Test",
                 value_before_enter="Rekord",
@@ -37,11 +37,11 @@ def test_global_search_user(
             )
 
         try:
-            WebDriverWait(browser, LONG_WAIT_TIME).until(
+            WebDriverWait(splinter_browser, LONG_WAIT_TIME).until(
                 lambda browser: "Charakter formalny" in browser.html
             )
         except TimeoutException:
-            raise TimeoutException(f"Browser.html dump: {browser.html}")
+            raise TimeoutException(f"Browser.html dump: {splinter_browser.html}")
     finally:
         if rec is not None:
             rec.delete()

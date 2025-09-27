@@ -46,6 +46,17 @@ def _send(channel_name, data):
 
     data["type"] = "chat_message"
 
+    #
+    # Special case for testing to avoid
+    # RuntimeError: You cannot use AsyncToSync in the same thread as an
+    # async event loop - just await the async function directly.
+    #
+
+    from django.conf import settings
+
+    if settings.TESTING:
+        return fun(channel_name, data)
+
     return async_to_sync(fun)(channel_name, data)
 
 

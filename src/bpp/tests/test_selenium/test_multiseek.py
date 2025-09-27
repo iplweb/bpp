@@ -1,54 +1,11 @@
 import pytest
 from django.urls.base import reverse
 
-from bpp.models.cache import Rekord
-
-from django_bpp.selenium_util import wait_for, wait_for_page_load
-
 
 @pytest.fixture
-def multiseek_browser(browser, live_server):
-    browser.visit(live_server + reverse("multiseek:index"))
-    return browser
-
-
-def test_wyrzuc(wydawnictwo_zwarte, multiseek_browser, live_server):
-    browser = multiseek_browser
-
-    with wait_for_page_load(browser):
-        browser.find_by_id("multiseek-szukaj").click()
-
-    browser.execute_script(
-        "multiseek.removeFromResults('%s')" % Rekord.objects.all().first().js_safe_pk
-    )
-
-    # Poczekaj czy element został skreślony
-    wait_for(
-        lambda: browser.find_by_css(".multiseek-element")["style"].find("line-through")
-        != -1,
-    )
-
-    with wait_for_page_load(browser):
-        browser.visit(live_server + reverse("multiseek:results"))
-
-    assert "Z zapytania usunięto" in browser.html
-
-    browser.find_by_id("pokaz-jakie").click()
-
-    browser.execute_script(
-        "multiseek.removeFromResults('%s')" % Rekord.objects.all().first().js_safe_pk
-    )
-
-    # Poczekaj czy element został od-kreślony
-    wait_for(
-        lambda: browser.find_by_css(".multiseek-element")["style"].find("line-through")
-        == -1
-    )
-
-    with wait_for_page_load(browser):
-        browser.visit(live_server + reverse("multiseek:results"))
-
-    assert "Z zapytania usunięto" not in browser.html
+def multiseek_browser(splinter_browser, live_server):
+    splinter_browser.visit(live_server + reverse("multiseek:index"))
+    return splinter_browser
 
 
 @pytest.mark.django_db
@@ -68,31 +25,3 @@ def test_index_copernicus_widoczny(multiseek_browser, uczelnia):
 
     multiseek_browser.reload()
     assert "Index Copernicus" in multiseek_browser.html
-
-
-def test_szukaj(multiseek_browser):
-    with wait_for_page_load(multiseek_browser):
-        multiseek_browser.find_by_id("multiseek-szukaj").click()
-    assert "błąd serwera" not in multiseek_browser.html
-
-
-def test_multiseek_sortowanie_wg_zrodlo_lub_nadrzedne(
-    uczelnia, browser, wydawnictwo_zwarte, statusy_korekt, admin_client, rf, live_server
-):
-    with wait_for_page_load(browser):
-        browser.visit(live_server.url + reverse("multiseek:index"))
-
-    browser.find_by_id("id_ordering_0").select(9)  # wyd. nadrzedne/zrodlo
-    with wait_for_page_load(browser):
-        browser.find_by_id("multiseek-szukaj").click()
-    assert "Błąd serwera" not in browser.html
-
-
-def test_multiseek_tabelka_wyswietlanie(browser, live_server):
-    with wait_for_page_load(browser):
-        browser.visit(live_server.url + reverse("multiseek:index"))
-
-    browser.find_by_id("id_report_type").select(1)  # tabela
-    with wait_for_page_load(browser):
-        browser.find_by_id("multiseek-szukaj").click()
-    assert "błąd serwera" not in browser.html

@@ -88,9 +88,9 @@ def test_caching_enabled(
     assert found
 
 
-def test_live_server(live_server, browser):
-    browser.visit(live_server.url)
-    assert "Wystąpił błąd" not in browser.html
+def test_live_server(live_server, splinter_browser):
+    splinter_browser.visit(live_server.url)
+    assert "Wystąpił błąd" not in splinter_browser.html
 
 
 @pytest.mark.django_db(transaction=True)

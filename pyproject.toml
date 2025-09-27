@@ -269,6 +269,9 @@ ipdb = "^0.13.9"
 ipython = "^8.2.0"
 flake8-bugbear = "^22.8.23"
 ggshield = "^1.33.0"
+playwright = "^1.41.0"
+pytest-playwright = "^0.4.0"
+pytest-env = "^1"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

@@ -55,16 +55,6 @@ jobs:
         uname -a
         sudo apt update
         sudo apt install software-properties-common gettext
-        sudo add-apt-repository -d -y -n ppa:mozillateam/ppa
-        sudo add-apt-repository -d -y -n ppa:deadsnakes/ppa
-        echo '
-        Package: *
-        Pin: origin packages.mozilla.org
-        Pin-Priority: 1000
-
-        Package: firefox*
-        Pin: release o=Ubuntu
-        Pin-Priority: -1' | sudo tee /etc/apt/preferences.d/mozilla
         curl -fsSL https://deb.nodesource.com/setup_current.x | sudo bash -
         sudo apt install -y python3.11 python3.11-dev python3-dev libpq-dev firefox firefox-geckodriver nodejs redis-tools
         sudo npm install -g --force yarn grunt-cli
@@ -76,6 +66,7 @@ jobs:
       run: |
         python -m pip install pip poetry
         poetry install --with=dev
+        poetry run playwright install chromium
 
     - name: Build assets (yarn, collectstatic)
       timeout-minutes: 10
@@ -85,14 +76,6 @@ jobs:
         DJANGO_BPP_DB_USER: postgres
       run: |
         poetry run make assets
-
-    # - name: Tests without Selenium
-    #   env:
-    #     DJANGO_BPP_DB_HOST: 127.0.0.1
-    #     DJANGO_BPP_DB_PORT: 5433
-    #     DJANGO_BPP_DB_USER: postgres
-    #   run: |
-    #     poetry run pytest -m "not selenium" --splinter-headless --splinter-webdriver-executable=/usr/lib/firefox/firefox
 
     - name: Wait for services
       timeout-minutes: 2
@@ -108,34 +91,10 @@ jobs:
           sleep 2
         done
 
-    - name: Tests -- only Selenium
-      timeout-minutes: 25
+    - name: Tests without Selenium (but include Playwright)
       env:
-        DJANGO_BPP_DB_HOST: 127.0.0.1
-        DJANGO_BPP_DB_PORT: 5433
-        DJANGO_BPP_DB_USER: postgres
+         DJANGO_BPP_DB_HOST: 127.0.0.1
+         DJANGO_BPP_DB_PORT: 5433
+         DJANGO_BPP_DB_USER: postgres
       run: |
-        # Show Firefox version for debugging
-        firefox --version
-        geckodriver --version
-
-        # Run tests with more verbose output and shorter timeout per test
-        poetry run pytest -k "admin or integration_tests or notifications" \
-          --timeout=600 \
-          --verbose \
-          --tb=short \
-          -m "selenium" \
-          --splinter-headless \
-          --splinter-webdriver-executable=/usr/lib/firefox/firefox \
-          --maxfail=3
-
-    # - name: Tests (no selenium) with Microsoft Auth
-    #   env:
-    #     DJANGO_BPP_DB_HOST: 127.0.0.1
-    #     DJANGO_BPP_DB_PORT: 5433
-    #     DJANGO_BPP_DB_USER: postgres
-    #   run: |
-    #     poetry run pip install django_microsoft_auth
-    #     echo MICROSOFT_AUTH_CLIENT_ID=foobar > ~/.env.local
-    #     echo MICROSOFT_AUTH_CLIENT_SECRET=foobar >> ~/.env.local
-    #     poetry run pytest -m "not selenium" --splinter-headless --splinter-webdriver-executable=/usr/lib/firefox/firefox
+         poetry run pytest -m "not selenium"

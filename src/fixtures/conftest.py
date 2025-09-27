@@ -186,10 +186,15 @@ def _preauth_session_id_helper(
 
 
 @pytest.fixture
+def splinter_browser(request, browser_instance_getter):
+    return browser_instance_getter(request, splinter_browser)
+
+
+@pytest.fixture
 def preauth_browser(
     normal_django_user,
     client,
-    browser,
+    splinter_browser,
     channels_live_server,  # noqa
     django_user_model,
     django_username_field,
@@ -198,7 +203,7 @@ def preauth_browser(
         NORMAL_DJANGO_USER_LOGIN,
         NORMAL_DJANGO_USER_PASSWORD,
         client,
-        browser,
+        splinter_browser,
         channels_live_server,
         django_user_model,
         django_username_field,
@@ -222,7 +227,7 @@ def preauth_asgi_browser(
 def admin_browser(
     admin_user,
     client,
-    browser,
+    splinter_browser,
     channels_live_server,  # noqa
     django_user_model,
     django_username_field,
@@ -232,7 +237,7 @@ def admin_browser(
         "admin",
         "password",
         client,
-        browser,
+        splinter_browser,
         channels_live_server,
         django_user_model,
         django_username_field,
@@ -1030,7 +1035,7 @@ def pytest_collection_modifyitems(items):
 
     for item in items:
         fixtures = getattr(item, "fixturenames", ())
-        if "browser" in fixtures or "admin_browser" in fixtures:
+        if "splinter_browser" in fixtures or "admin_browser" in fixtures:
             item.add_marker("selenium")
             item.add_marker(flaky_test)
 
