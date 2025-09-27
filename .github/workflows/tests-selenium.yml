@@ -1,4 +1,4 @@
-name: Testy BPP -- wyłącznie Selenium
+name: Testy - Selenium
 
 on:
   push:

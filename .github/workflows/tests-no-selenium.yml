@@ -1,4 +1,4 @@
-name: Testy BPP -- bez Selenium, ale z Playwright
+name: Testy - Django, Playwright
 
 on:
   push:
