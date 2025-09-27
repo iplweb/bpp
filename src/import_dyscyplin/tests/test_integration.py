@@ -16,7 +16,9 @@ def test_integracyjny(admin_browser, channels_live_server):
     admin_browser.visit(channels_live_server.url + reverse("import_dyscyplin:index"))
 
     with wait_for_page_load(admin_browser):
-        admin_browser.find_by_id("add-new-file").click()
+        admin_browser.execute_script("Cookielaw.accept()")
+
+    admin_browser.find_by_id("add-new-file").click()
 
     admin_browser.find_by_id("id_plik").type(
         os.path.join(
