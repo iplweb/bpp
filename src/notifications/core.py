@@ -37,6 +37,25 @@ Message = namedtuple(
 Message.__new__.__defaults__ = ("info", None, False, None, "&times;")
 
 
+def force_sync(async_func, *args, **kwargs):
+    """Force an async function to run synchronously, handling existing loops"""
+    import asyncio
+
+    try:
+        # Check if we're in the main thread with a running loop
+        loop = asyncio.get_running_loop()  # noqa
+
+        # We're in a running loop - need to handle carefully
+        import nest_asyncio
+
+        nest_asyncio.apply()
+        return asyncio.run(async_func(*args, **kwargs))
+
+    except RuntimeError:
+        # No running loop, we can just use asyncio.run normally
+        return asyncio.run(async_func(*args, **kwargs))
+
+
 def _send(channel_name, data):
     channel_layer = get_channel_layer()
 
@@ -46,18 +65,10 @@ def _send(channel_name, data):
 
     data["type"] = "chat_message"
 
-    #
-    # Special case for testing to avoid
-    # RuntimeError: You cannot use AsyncToSync in the same thread as an
-    # async event loop - just await the async function directly.
-    #
-
-    from django.conf import settings
-
-    if settings.TESTING:
-        return fun(channel_name, data)
-
-    return async_to_sync(fun)(channel_name, data)
+    try:
+        return async_to_sync(fun)(channel_name, data)
+    except RuntimeError:
+        return force_sync(fun, channel_name, data)
 
 
 def send_notification(

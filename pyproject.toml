@@ -272,6 +272,7 @@ ggshield = "^1.33.0"
 playwright = "^1.41.0"
 pytest-playwright = "^0.4.0"
 pytest-env = "^1"
+nest-asyncio = "^1.6.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
