@@ -3,6 +3,6 @@ set -euo pipefail
 
 dropdb -f test_bpp || true
 
-for a in test_bpp_gw{0,1,2,3,4,5,6,7,8,9,10};
+for a in test_bpp_gw{0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20};
 do dropdb -f $a || true;
 done

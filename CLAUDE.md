@@ -8,7 +8,7 @@ BPP (Bibliografia Publikacji Pracowników) is a Polish academic bibliography man
 
 ## General rule
 
-**IMPORANT: if anything is unclear to you, feel free to ask questions before taking on any non-trivial tasks.**
+**CRITICAL: if anything seems unclear, feel free to ask questions before taking on any non-trivial tasks or creating a plan.**
 
 **CRITICAL: It is absolutely crucial to ask clarifying questions if the task description is too vague or if you have a high level of uncertainty about what needs to be done. Always confirm your understanding before proceeding with implementation.**
 

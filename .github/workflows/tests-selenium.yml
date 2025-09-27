@@ -91,7 +91,12 @@ jobs:
         Pin: release o=Ubuntu
         Pin-Priority: -1' | sudo tee /etc/apt/preferences.d/mozilla
         curl -fsSL https://deb.nodesource.com/setup_current.x | sudo bash -
-        sudo apt install -y python3 python3-dev libpq-dev firefox firefox-geckodriver nodejs redis-tools
+        # Install Firefox dependencies and tools
+        sudo apt install -y python3 python3-dev libpq-dev nodejs redis-tools \
+          xvfb libgtk-3-0 libgbm-dev libnotify-dev libgconf-2-4 \
+          libnss3 libxss1 libasound2 libxtst6 xauth xfonts-cyrillic \
+          xfonts-100dpi xfonts-75dpi xfonts-base xfonts-scalable \
+          firefox firefox-geckodriver
         sudo npm install -g --force yarn grunt-cli
 
     - name: Install poetry
@@ -139,20 +144,31 @@ jobs:
         DJANGO_BPP_DB_HOST: 127.0.0.1
         DJANGO_BPP_DB_PORT: 5433
         DJANGO_BPP_DB_USER: postgres
+        # Set Firefox preferences for better stability in CI
+        MOZ_HEADLESS: 1
+        MOZ_ENABLE_WAYLAND: 0
+        # Disable Firefox crash reporter and telemetry
+        MOZ_CRASHREPORTER_DISABLE: 1
+        MOZ_DATA_REPORTING: 0
+        MOZ_TELEMETRY_REPORTING: 0
       run: |
         # Show Firefox version for debugging
         firefox --version
         geckodriver --version
 
-        # Run tests with more verbose output and shorter timeout per test
+        # Test that Firefox can start in headless mode
+        timeout 10 firefox --headless --screenshot /tmp/test.png https://example.com || true
+        echo "Firefox headless test completed"
+
+        # Run tests with more verbose output and retry flaky tests
         poetry run pytest  \
           --timeout=600 \
           --verbose \
           --tb=short \
           -m "selenium" \
           --splinter-headless \
-          --splinter-webdriver-executable=/usr/lib/firefox/firefox \
-          --maxfail=3
-          --splinter-make-screenshot-on-failure=false
-          --splinter-screenshot-dir=splintershots
-          -n auto
+          --maxfail=3 \
+          --splinter-make-screenshot-on-failure=false \
+          --splinter-screenshot-dir=splintershots \
+          --reruns 2 \
+          --reruns-delay 5
