@@ -19,7 +19,7 @@
 
 {% block breadcrumbs %}
     {{ block.super }}
-    <li><a href="{% url 'pbn_api:export-queue-list' %}">Kolejka eksportu do PBN</a></li>
+    <li><a href="{% url 'pbn_export_queue:export-queue-list' %}">Kolejka eksportu do PBN</a></li>
     <li class="current">Szczegóły #{{ export_queue_item.pk }}</li>
 {% endblock %}
 
@@ -31,12 +31,12 @@
             </div>
             <div class="large-6 columns" style="text-align: right; padding-top: 20px;">
                 <div class="button-group">
-                    <a href="{% url 'pbn_api:export-queue-list' %}" class="button secondary">
+                    <a href="{% url 'pbn_export_queue:export-queue-list' %}" class="button secondary">
                         <span class="fi-arrow-left"></span> Powrót do listy
                     </a>
 
                     {% if export_queue_item.rekord_do_wysylki %}
-                        <form method="post" action="{% url 'pbn_api:export-queue-resend' export_queue_item.pk %}" style="display: inline;">
+                        <form method="post" action="{% url 'pbn_export_queue:export-queue-resend' export_queue_item.pk %}" style="display: inline;">
                             {% csrf_token %}
                             <button type="submit" class="button success"
                                     onclick="return confirm('Czy na pewno chcesz wysłać ten rekord do PBN?')">

@@ -379,6 +379,7 @@ INSTALLED_APPS = [
     "bpp",
     "crossref_bpp",
     "pbn_api",
+    "pbn_export_queue",
     "dal",
     "dal_select2",
     "grappelli",

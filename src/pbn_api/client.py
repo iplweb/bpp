@@ -755,7 +755,12 @@ class PBNClient(
             raise NotImplementedError("count > 1")
 
     def upload_publication(
-        self, rec, force_upload=False, export_pk_zero=None, always_affiliate_to_uid=None
+        self,
+        rec,
+        force_upload=False,
+        export_pk_zero=None,
+        always_affiliate_to_uid=None,
+        max_retries_on_validation_error=3,
     ):
         """
         Ta funkcja wysyła dane publikacji na serwer, w zależności od obecności oświadczeń
@@ -779,32 +784,56 @@ class PBNClient(
                     SentData.objects.get_for_rec(rec).last_updated_on
                 )
 
-        try:
-            if "statements" in js:
-                ret = self.post_publication(js)
-                objectId = ret.get("objectId", None)
-                bez_oswiadczen = False
+        retry_count = max_retries_on_validation_error
 
-            else:
-                ret = self.post_publication_no_statements(js)
+        while True:
+            try:
+                if "statements" in js:
+                    ret = self.post_publication(js)
+                    objectId = ret.get("objectId", None)
+                    bez_oswiadczen = False
 
-                if len(ret) == 1:
-                    try:
-                        objectId = ret[0].get("id", None)
-                    except KeyError:
-                        raise Exception(
-                            f"Serwer zwrócił nieoczekiwaną odpowiedź. {ret=}"
-                        )
-                    bez_oswiadczen = True
                 else:
-                    raise Exception(
-                        "Lista zwróconych obiektów przy wysyłce pracy bez oświadczeń różna od jednego. "
-                        "Sytuacja nieobsługiwana, proszę o kontakt z autorem programu. "
-                    )
+                    ret = self.post_publication_no_statements(js)
 
-        except Exception as e:
-            SentData.objects.updated(rec, js, uploaded_okay=False, exception=str(e))
-            raise e
+                    if len(ret) == 1:
+                        try:
+                            objectId = ret[0].get("id", None)
+                        except KeyError:
+                            raise Exception(
+                                f"Serwer zwrócił nieoczekiwaną odpowiedź. {ret=}"
+                            )
+                        bez_oswiadczen = True
+                    else:
+                        raise Exception(
+                            "Lista zwróconych obiektów przy wysyłce pracy bez oświadczeń różna od jednego. "
+                            "Sytuacja nieobsługiwana, proszę o kontakt z autorem programu. "
+                        )
+
+                break
+
+            except HttpException as e:
+                if (
+                    e.status_code == 400
+                    and e.url == "/api/v1/publications"
+                    and "Bad Request" in e.content
+                    and "Validation failed." in e.content
+                ):
+                    #
+                    # Kompensuj "Validation failed" przy wysyłce rekordu gdy jednocześnie są
+                    # kasowane oświadczenia:
+                    #
+                    retry_count -= 1
+                    if retry_count == 0:
+                        raise e
+                    time.sleep(0.5)
+                    continue
+
+                raise e
+
+            except Exception as e:
+                SentData.objects.updated(rec, js, uploaded_okay=False, exception=str(e))
+                raise e
 
         return objectId, ret, js, bez_oswiadczen
 

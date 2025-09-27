@@ -32,7 +32,7 @@ PBN_MENU = [
     # ("Publikacje instytucji", "/admin/pbn_api/publikacjainstytucji"),
     ("Oświadczenia instytucji", "/admin/pbn_api/oswiadczenieinstytucji"),
     ("Przesłane dane", "/admin/pbn_api/sentdata"),
-    ("Kolejka eksportu", "/admin/pbn_api/pbn_export_queue"),
+    ("Kolejka eksportu", "/admin/pbn_export_queue/pbn_export_queue"),
     (
         "Deduplikator autorów - nie duplikaty",
         "/admin/deduplikator_autorow/notaduplicate/",

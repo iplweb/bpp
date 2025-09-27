@@ -5,7 +5,7 @@ def pbn_token_aktualny(request):
     pbn_user = request.user.get_pbn_user()
 
     if not pbn_user.pbn_token_possibly_valid():
-        from pbn_api.models import PBN_Export_Queue
+        from pbn_export_queue.models import PBN_Export_Queue
 
         cnt = PBN_Export_Queue.objects.filter(
             zamowil=request.user, zakonczono_pomyslnie=None

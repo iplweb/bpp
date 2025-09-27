@@ -92,6 +92,16 @@ class PBN_Export_Queue(models.Model):
     def __str__(self):
         return f"Zlecenie wysyłki do PBN dla {self.rekord_do_wysylki}"
 
+    @property
+    def ostatnia_aktualizacja(self):
+        """Returns the most recent update timestamp"""
+        if self.wysylke_zakonczono:
+            return self.wysylke_zakonczono
+        elif self.wysylke_podjeto:
+            return self.wysylke_podjeto
+        else:
+            return self.zamowiono
+
     def check_if_record_still_exists(self):
         if not self.content_type_id:
             return False
@@ -129,7 +139,7 @@ class PBN_Export_Queue(models.Model):
         self.save()
 
     def sprobuj_wyslac_do_pbn(self):
-        from pbn_api.tasks import task_sprobuj_wyslac_do_pbn
+        from pbn_export_queue.tasks import task_sprobuj_wyslac_do_pbn
 
         task_sprobuj_wyslac_do_pbn.delay(self.pk)
 

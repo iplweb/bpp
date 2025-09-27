@@ -12,6 +12,8 @@ BPP (Bibliografia Publikacji Pracowników) is a Polish academic bibliography man
 
 **CRITICAL: It is absolutely crucial to ask clarifying questions if the task description is too vague or if you have a high level of uncertainty about what needs to be done. Always confirm your understanding before proceeding with implementation.**
 
+**CRITICAL: NEVER modify existing migration files in src/*/migrations/ directories. Existing migrations represent the database history and must remain unchanged. Only create new migrations when needed.**
+
 **IMPORTANT: if using icons, refrain from emojis, rather use monochrome Foundation-Icons (<span class="fi-icon"/>)**
 
 **IMPORTANT**: respect the maximum line length limit of 120 characters; if the line would be longer, please break it up to smaller pieces without losing its function.

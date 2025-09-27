@@ -102,6 +102,10 @@ urlpatterns = (
             include("pbn_api.urls"),
         ),
         path(
+            "pbn_export_queue/",
+            include("pbn_export_queue.urls"),
+        ),
+        path(
             "pbn_import/",
             include("pbn_import.urls"),
         ),

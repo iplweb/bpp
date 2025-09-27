@@ -22,7 +22,8 @@
       "Bash(nc:*)",
       "Bash(yarn add:*)",
       "Bash(flake8:*)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(django-admin startapp:*)"
     ],
     "deny": [],
     "ask": [],
