@@ -118,15 +118,15 @@ disable-microsoft-auth:
 	poetry run pip uninstall -y django_microsoft_auth
 
 tests-without-selenium:
-	poetry run pytest -n auto --splinter-headless -m "not selenium" --maxfail 50
+	poetry run pytest -n auto --splinter-headless -m "not selenium and not playwright" --maxfail 50
 
 tests-without-selenium-with-microsoft-auth:
-	poetry run pytest -n auto --splinter-headless -m "not selenium" --maxfail 50
+	poetry run pytest -n auto --splinter-headless -m "not selenium and not playwright" --maxfail 50
 
 tests-with-microsoft-auth: enable-microsoft-auth tests-without-selenium-with-microsoft-auth disable-microsoft-auth
 
 tests-with-selenium:
-	poetry run pytest -n auto --splinter-headless -m "selenium" --maxfail 50
+	poetry run pytest -n auto --splinter-headless -m "selenium or playwright" --maxfail 50
 
 tests: tests-without-selenium tests-with-selenium js-tests
 
