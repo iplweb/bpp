@@ -1,2 +1,0 @@
-
-możliwość grupowej wysyłki rekordów z kolejki eksportu PBN
