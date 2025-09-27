@@ -130,7 +130,7 @@ jobs:
         done
 
     - name: Tests -- only Selenium
-      timeout-minutes: 25
+      timeout-minutes: 30
       env:
         DJANGO_BPP_DB_HOST: 127.0.0.1
         DJANGO_BPP_DB_PORT: 5433

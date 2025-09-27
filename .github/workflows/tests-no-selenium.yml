@@ -128,6 +128,7 @@ jobs:
         done
 
     - name: Tests without Selenium (but include Playwright)
+      timeout-minutes: 30
       env:
          DJANGO_BPP_DB_HOST: 127.0.0.1
          DJANGO_BPP_DB_PORT: 5433
