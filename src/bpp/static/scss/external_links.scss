@@ -140,6 +140,11 @@
     .link-icon { color: #34495e; }
     &:hover .link-icon { color: #2c3e50; }
   }
+
+  &.link-pi {
+    .link-icon { color: #f39c12; }
+    &:hover .link-icon { color: #e67e22; }
+  }
 }
 
 // Responsive adjustments

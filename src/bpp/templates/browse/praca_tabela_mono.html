@@ -371,6 +371,28 @@
                             </div>
                         {% endif %}
 
+                        {% if not request.user.is_anonymous and praca.link_do_pi %}
+                            <div class="external-link-item link-pi">
+                                <span class="fi-home link-icon"></span>
+                                <div class="link-content">
+                                    <div class="link-label">Profil instytucji</div>
+                                    <div class="link-value">{{ praca.link_do_pi|truncatechars:40 }}</div>
+                                </div>
+                                <div class="link-actions">
+                                    <button class="button copy-button" type="button"
+                                            onclick="navigator.clipboard.writeText('{{ praca.link_do_pi }}'); this.classList.add('copied'); this.innerHTML='<i class=\'fi-check\'></i>'; setTimeout(() => { this.classList.remove('copied'); this.innerHTML='<i class=\'fi-clipboard\'></i>'; }, 2000);"
+                                            title="Kopiuj adres">
+                                        <i class="fi-clipboard"></i>
+                                    </button>
+                                    <button class="button open-button" type="button"
+                                            onclick="window.open('{{ praca.link_do_pi }}', '_blank')"
+                                            title="Otwórz w Profilu instytucji">
+                                        <i class="fi-arrow-right"></i> Otwórz
+                                    </button>
+                                </div>
+                            </div>
+                        {% endif %}
+
                         {% if praca.doi %}
                             <div class="external-link-item link-doi">
                                 <span class="fi-bookmark link-icon"></span>
