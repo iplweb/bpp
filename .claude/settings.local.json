@@ -23,7 +23,9 @@
       "Bash(yarn add:*)",
       "Bash(flake8:*)",
       "Bash(python3:*)",
-      "Bash(django-admin startapp:*)"
+      "Bash(django-admin startapp:*)",
+      "WebFetch(domain:docs.github.com)",
+      "WebFetch(domain:github.com)"
     ],
     "deny": [],
     "ask": [],
