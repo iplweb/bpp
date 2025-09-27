@@ -149,3 +149,5 @@ jobs:
           --splinter-headless \
           --splinter-webdriver-executable=/usr/lib/firefox/firefox \
           --maxfail=3
+          --splinter-make-screenshot-on-failure=false
+          --splinter-screenshot-dir=splintershots
