@@ -7,19 +7,13 @@
   :align: center
   :alt: Logo projektu
 
-.. image:: https://github.com/iplweb/bpp/actions/workflows/build.yml/badge.svg
-   :target: https://github.com/iplweb/bpp/actions/workflows/build.yml
-
-.. image:: https://circleci.com/gh/iplweb/bpp/tree/dev.svg?style=svg
-   :target: https://circleci.com/gh/iplweb/bpp
+.. image:: https://github.com/iplweb/bpp/actions/workflows/build-docker-images.yml/badge.svg?branch=master
+   :target: https://github.com/iplweb/bpp/actions/workflows/build-docker-images.yml
+   :alt: Docker - oficjalne obrazy
 
 .. image:: https://readthedocs.org/projects/bpp/badge/?version=latest
    :target: http://bpp.readthedocs.io/pl/latest/?badge=latest
    :alt: Dokumentacja
-
-.. image:: https://coveralls.io/repos/github/iplweb/bpp/badge.svg
-   :target: https://coveralls.io/github/iplweb/bpp
-   :alt: Coverage
 
 
 O projekcie

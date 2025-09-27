@@ -166,10 +166,10 @@ gh-run-watch:
 	gh run watch
 
 gh-run-watch-docker-images:
-	gh run watch $$(gh run list --workflow="build-docker-images" --limit=1 --json databaseId --jq '.[0].databaseId')
+	gh run watch $$(gh run list --workflow="Docker - oficjalne obrazy" --limit=1 --json databaseId --jq '.[0].databaseId')
 
 gh-run-watch-docker-images-alt:
-	gh run list --workflow="build-docker-images" --limit=1 --json databaseId --jq '.[0].databaseId' | xargs gh run watch
+	gh run list --workflow="Docker - oficjalne obrazy" --limit=1 --json databaseId --jq '.[0].databaseId' | xargs gh run watch
 
 sleep-3:
 	sleep 3
