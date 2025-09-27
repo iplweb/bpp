@@ -31,6 +31,7 @@
         "select2": "^4.1.0-rc.0",
         "select2-foundation_theme": "https://github.com/egemensarica/select2-foundation.git#v6",
         "sigma": "^3.0.2",
+        "tone": "^15.1.22",
         "what-input": "^5.0.5"
     }
 }
