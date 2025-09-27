@@ -197,7 +197,7 @@ loc: clean
 	pygount -N ... -F "...,staticroot,migrations,fixtures" src --format=summary
 
 
-DOCKER_VERSION="202509.1225"
+DOCKER_VERSION="202509.1226"
 
 DOCKER_BUILD=build --platform linux/amd64 --push
 
