@@ -1,4 +1,4 @@
-name: Testy BPP
+name: Testy BPP -- bez Selenium, ale z Playwright
 
 on:
   push:
