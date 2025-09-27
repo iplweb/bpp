@@ -1,6 +1,7 @@
 from django.urls import path
 
 from .views import (
+    PBNExportQueueCountsView,
     PBNExportQueueDetailView,
     PBNExportQueueListView,
     PBNExportQueueTableView,
@@ -20,6 +21,11 @@ urlpatterns = [
         "table/",
         PBNExportQueueTableView.as_view(),
         name="export-queue-table",
+    ),
+    path(
+        "counts/",
+        PBNExportQueueCountsView.as_view(),
+        name="export-queue-counts",
     ),
     path(
         "<int:pk>/",
