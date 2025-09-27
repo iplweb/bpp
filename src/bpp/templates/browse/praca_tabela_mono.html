@@ -1,5 +1,10 @@
 {% load prace user_in_group %}
 
+{% comment %} Include bibliography metadata in head section {% endcomment %}
+{% if not request.is_ajax %}
+    {% include "browse/bibliography_metadata.html" with praca=praca autorzy=autorzy %}
+{% endif %}
+
 <!-- Main publication container with modern card layout -->
 <div class="publication-detail-container" style="max-width: 1400px; margin: 0 auto; padding: 20px;">
 
@@ -15,6 +20,8 @@
             {% if praca.charakter_formalny.charakter_ogolny != 'roz' %}
                 <span style="font-weight: normal; font-size: 0.8em;">{{ praca.oznaczenie_wydania|default:""|znak_na_koncu:"." }}</span>
             {% endif %}
+            {% comment %} COinS metadata for automatic bibliography manager detection {% endcomment %}
+            {% generate_coins praca autorzy %}
         </h2>
 
         <!-- Authors Section -->
@@ -605,13 +612,25 @@
                 </div>
             </div>
 
-            <!-- BibTeX Card (Collapsible) -->
+            <!-- Citation Export Card -->
             <div class="info-card"
                  style="background: white; border: 1px solid #e1e4e8; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
                 <h3 style="font-size: 1.2rem; margin-bottom: 15px; color: #2c3e50; padding-bottom: 8px;">
-                    <span class="fi-page-copy"></span> BibTeX
+                    <span class="fi-download"></span> Eksport cytowania
                     <div class="shaded-hr-div-small"></div>
                 </h3>
+
+                <!-- Reference Manager Support Info -->
+                <div style="background: #f0f9ff; border-left: 3px solid #3498db; padding: 10px 15px; margin-bottom: 15px; border-radius: 4px;">
+                    <p style="margin: 0; font-size: 0.9em; color: #2c3e50;">
+                        <span class="fi-info" style="color: #3498db; margin-right: 5px;"></span>
+                        <strong>Wsparcie dla menedżerów bibliografii:</strong><br>
+                        Ta strona wspiera automatyczny import do <strong>Zotero</strong>, <strong>Mendeley</strong> i <strong>EndNote</strong>.
+                        Użytkownicy z zainstalowanym rozszerzeniem przeglądarki mogą zapisać tę publikację jednym kliknięciem -
+                        ikona pojawi się automatycznie w pasku narzędzi przeglądarki.
+                    </p>
+                </div>
+
                 <button id="bibtex-toggle-btn" class="button expanded secondary" type="button">
                     Pokaż BibTeX
                 </button>
