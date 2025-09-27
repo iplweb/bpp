@@ -130,7 +130,7 @@ jobs:
         done
 
     - name: Tests -- only Selenium
-      timeout-minutes: 30
+      timeout-minutes: 45
       env:
         DJANGO_BPP_DB_HOST: 127.0.0.1
         DJANGO_BPP_DB_PORT: 5433
@@ -151,3 +151,4 @@ jobs:
           --maxfail=3
           --splinter-make-screenshot-on-failure=false
           --splinter-screenshot-dir=splintershots
+          -n auto
