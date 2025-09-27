@@ -3763,14 +3763,14 @@ test = ["unittest2 (>=1.1.0)"]
 
 [[package]]
 name = "model-bakery"
-version = "1.20.1"
+version = "1.20.5"
 description = "Smart object creation facility for Django."
 optional = false
 python-versions = ">=3.8"
 groups = ["dev"]
 files = [
-    {file = "model_bakery-1.20.1-py3-none-any.whl", hash = "sha256:eb3b4301e6a5620dac9a16d5d586796869bda05b958a95239fbccf69e79c3831"},
-    {file = "model_bakery-1.20.1.tar.gz", hash = "sha256:6b9dcdcdbbc65f6c1e0c61ebea173777020ddcdce52f3e21362ba7f6000f90fe"},
+    {file = "model_bakery-1.20.5-py3-none-any.whl", hash = "sha256:796e0b7fa6bf2acc09feaadce40c6bcc13e5b55c5bdff9f76e87ceb64f736070"},
+    {file = "model_bakery-1.20.5.tar.gz", hash = "sha256:107b3efb8889baac83cae0e2d81465903b69a70eeb99ecfd0929d959a653ab90"},
 ]
 
 [package.dependencies]
@@ -7729,4 +7729,4 @@ office365 = ["django-microsoft-auth"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<3.13"
-content-hash = "ecadd36ff88cddafc221a4f53d6e1225fb62612a3aa132f8f949c1d4b58d839f"
+content-hash = "ee44ea699b29acb43e941ccf5f1e967ffee1682e783218a14bde7064b6082b1f"
