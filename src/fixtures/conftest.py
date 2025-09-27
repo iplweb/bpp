@@ -1039,6 +1039,9 @@ def pytest_collection_modifyitems(items):
             item.add_marker("selenium")
             item.add_marker(flaky_test)
 
+        if "page" in fixtures:
+            item.add_marker("playwright")
+
 
 @pytest.fixture
 def szablony():

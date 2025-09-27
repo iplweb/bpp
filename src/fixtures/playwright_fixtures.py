@@ -79,4 +79,8 @@ def preauth_asgi_page(preauth_page: Page, channels_live_server, transactional_db
     page.goto(channels_live_server.url)
     wait_for_page_load(page)
     wait_for_websocket_connection(page)
+    page.evaluate("Cookielaw.accept();")
+    import time
+
+    time.sleep(1)
     return page

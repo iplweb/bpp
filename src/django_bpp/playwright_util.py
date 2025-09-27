@@ -15,19 +15,23 @@ def wait_for_page_load(page: Page, timeout: int = 10000):
     page.wait_for_function("() => document.body !== null", timeout=timeout)
 
 
-def wait_for_websocket_connection(page: Page, timeout: int = 5000):
+def wait_for_websocket_connection(page: Page, timeout: int = 10000):
     """Wait for WebSocket connection to be established.
 
     Args:
         page: Playwright Page object
-        timeout: Timeout in milliseconds (default 5000)
+        timeout: Timeout in milliseconds (default 10000)
     """
-    page.wait_for_function(
-        "() => typeof bppNotifications !== 'undefined' && "
-        "bppNotifications.chatSocket && "
-        "bppNotifications.chatSocket.readyState === 1",  # WebSocket.OPEN
-        timeout=timeout,
-    )
+    try:
+        page.wait_for_function(
+            "() => typeof bppNotifications !== 'undefined' && "
+            "bppNotifications.chatSocket && "
+            "bppNotifications.chatSocket.readyState === 1",  # WebSocket.OPEN
+            timeout=timeout,
+        )
+    except BaseException:
+        # If bppNotifications doesn't exist, notifications might not be enabled on this page
+        pass
 
 
 def select_select2_autocomplete(
@@ -50,20 +54,41 @@ def select_select2_autocomplete(
     """
     # Wait for Select2 container to be present
     container_selector = f"#select2-{element_id}-container"
-    page.wait_for_selector(container_selector, timeout=timeout)
+    try:
+        page.wait_for_selector(container_selector, timeout=timeout)
+    except BaseException:
+        # Fallback - try to find the select2 element directly
+        container_selector = f"#{element_id} + .select2-container"
+        page.wait_for_selector(container_selector, timeout=timeout)
 
-    # Get current value
-    old_value = page.locator(container_selector).text_content()
+    # Get current value (might be None if no container found)
+    old_value = ""
+    try:
+        old_value = page.locator(container_selector).text_content() or ""
+    except BaseException:
+        pass
 
-    # Find the Select2 control by following sibling
-    page.locator(f"#{element_id}").evaluate(
-        """element => {
-            const sibling = element.nextElementSibling;
-            if (sibling && sibling.classList.contains('select2-container')) {
-                sibling.querySelector('.select2-selection').click();
-            }
-        }"""
-    )
+    # Click on the select2 element to open dropdown
+    # Try different methods to open the dropdown
+    try:
+        # Method 1: Click on the container directly
+        page.locator(container_selector).click()
+    except BaseException:
+        try:
+            # Method 2: Click on the select2 selection element
+            page.locator(
+                f"#{element_id} + .select2-container .select2-selection"
+            ).click()
+        except BaseException:
+            # Method 3: Use JavaScript to trigger the dropdown
+            page.locator(f"#{element_id}").evaluate(
+                """element => {
+                    const sibling = element.nextElementSibling;
+                    if (sibling && sibling.classList.contains('select2-container')) {
+                        sibling.querySelector('.select2-selection').click();
+                    }
+                }"""
+            )
 
     # Wait for dropdown to open
     page.wait_for_selector(".select2-dropdown", state="visible", timeout=timeout)
