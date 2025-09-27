@@ -4,6 +4,16 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202509.1226 (2025-09-27)
+============================
+
+Usprawnienie
+------------
+
+- lepsze wyświetlanie kolejki eksportu do PBN: odświeżanie on-demand, sortowanie, możliwośc filtrowania
+- możliwość grupowej wysyłki rekordów z kolejki eksportu PBN
+
+
 Bpp 202509.1225 (2025-09-26)
 ============================
 
