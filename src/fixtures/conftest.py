@@ -1097,11 +1097,10 @@ def django_db_setup(django_db_setup, django_db_blocker):  # noqa
 #  AttributeError: module 'splinter.driver.webdriver.firefox' has no attribute 'WebDriverElement'
 
 
-from pytest_splinter.webdriver_patches import patch_webdriver
-
-
 @pytest.fixture(scope="session")
 def browser_patches():
+    from pytest_splinter.webdriver_patches import patch_webdriver
+
     patch_webdriver()
 
 

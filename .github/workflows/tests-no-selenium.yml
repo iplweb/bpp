@@ -134,4 +134,5 @@ jobs:
          DJANGO_BPP_DB_PORT: 5433
          DJANGO_BPP_DB_USER: postgres
       run: |
-         poetry run pytest -m "not selenium"
+         poetry run python -mpip uninstall -y pytest-splinter
+         poetry run pytest -m "not selenium" -n auto
