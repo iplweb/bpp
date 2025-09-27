@@ -614,8 +614,8 @@
             }
 
             var words = searchTerm.trim().split(/\s+/).filter(function(word) {
-                // Only highlight words with 2 or more characters
-                return word.length >= 2;
+                // Only highlight words longer than 2 characters
+                return word.length > 2;
             });
 
             if (words.length === 0) {

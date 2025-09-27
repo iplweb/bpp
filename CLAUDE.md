@@ -92,6 +92,13 @@ nc -zv localhost 8000  # Check if port 8000 is in use
 - `make docker` - Build all Docker containers
 - `make bdist_wheel` - Build distribution wheel for production
 
+### Changelog Management
+- `towncrier create <name>.feature.rst` - Create feature changelog entry (in Polish)
+- `towncrier create <name>.bugfix.rst` - Create bugfix changelog entry (in Polish)
+- `towncrier create <name>.removal.rst` - Create removal changelog entry (in Polish)
+- Changelog fragments are stored in `src/bpp/newsfragments/`
+- Use Polish language for all changelog entries
+
 ## Architecture Overview
 
 ### Django Applications Structure

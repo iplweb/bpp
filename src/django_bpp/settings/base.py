@@ -437,6 +437,7 @@ INSTALLED_APPS = [
     "stan_systemu",
     "deduplikator_autorow",
     "importer_autorow_pbn",
+    "przemapuj_prace_autora",
     "pbn_downloader_app",
     "pbn_integrator",
     "pbn_import",

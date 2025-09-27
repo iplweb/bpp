@@ -386,11 +386,33 @@ def analiza_duplikatow(osoba_z_instytucji: OsobaZInstytucji) -> dict:
     }
 
 
+def autor_ma_publikacje_z_lat(
+    autor: Autor, lata_od: int = 2022, lata_do: int = 2025
+) -> bool:
+    """
+    Sprawdza czy autor ma publikacje z określonego zakresu lat.
+
+    Args:
+        autor: Obiekt Autor do sprawdzenia
+        lata_od: Rok początkowy (domyślnie 2022)
+        lata_do: Rok końcowy (domyślnie 2025)
+
+    Returns:
+        bool: True jeśli autor ma publikacje z tego okresu, False w przeciwnym przypadku
+    """
+    return (
+        Rekord.objects.prace_autora(autor)
+        .filter(rok__gte=lata_od, rok__lte=lata_do)
+        .exists()
+    )
+
+
 def znajdz_pierwszego_autora_z_duplikatami(
     excluded_authors: Optional[List[Scientist]] = None,
 ) -> Optional[Scientist]:
     """
     Znajduje pierwszego autora (Scientist), który ma możliwe duplikaty w systemie BPP.
+    Priorytetyzuje autorów z publikacjami z lat 2022-2025.
 
     Funkcja iteruje przez wszystkie rekordy OsobaZInstytucji i dla każdego sprawdza,
     czy istnieją potencjalne duplikaty używając funkcji szukaj_kopii().
@@ -424,6 +446,10 @@ def znajdz_pierwszego_autora_z_duplikatami(
     if all_excluded_ids:
         osoby_query = osoby_query.exclude(personId__pk__in=all_excluded_ids)
 
+    # Zbierz autorów z duplikatami, podzielonych na dwie grupy
+    autorzy_z_nowymi_publikacjami = []
+    autorzy_bez_nowych_publikacji = []
+
     for osoba_z_instytucji in osoby_query:
         # Sprawdź czy istnieje Scientist dla tej osoby
         if not osoba_z_instytucji.personId:
@@ -438,9 +464,38 @@ def znajdz_pierwszego_autora_z_duplikatami(
         # Wyszukaj duplikaty dla tego autora
         duplikaty = szukaj_kopii(osoba_z_instytucji)
 
-        # Jeśli znaleziono duplikaty, zwróć tego Scientist
+        # Jeśli znaleziono duplikaty
         if duplikaty.exists():
-            return scientist
+            # Sprawdź czy główny autor lub któryś z duplikatów ma publikacje z lat 2022-2025
+            ma_nowe_publikacje = autor_ma_publikacje_z_lat(scientist.rekord_w_bpp)
+
+            # Sprawdź również duplikaty
+            if not ma_nowe_publikacje:
+                for duplikat in duplikaty[
+                    :10
+                ]:  # Sprawdź pierwsze 10 duplikatów dla wydajności
+                    if autor_ma_publikacje_z_lat(duplikat):
+                        ma_nowe_publikacje = True
+                        break
+
+            # Dodaj do odpowiedniej listy
+            if ma_nowe_publikacje:
+                autorzy_z_nowymi_publikacjami.append(scientist)
+            else:
+                autorzy_bez_nowych_publikacji.append(scientist)
+
+            # Jeśli mamy już 50 autorów z nowymi publikacjami, możemy zwrócić pierwszego
+            # (optymalizacja dla dużych baz danych)
+            if len(autorzy_z_nowymi_publikacjami) >= 50:
+                return autorzy_z_nowymi_publikacjami[0]
+
+    # Zwróć pierwszego autora z nowymi publikacjami, jeśli taki istnieje
+    if autorzy_z_nowymi_publikacjami:
+        return autorzy_z_nowymi_publikacjami[0]
+
+    # W przeciwnym razie zwróć pierwszego autora bez nowych publikacji
+    if autorzy_bez_nowych_publikacji:
+        return autorzy_bez_nowych_publikacji[0]
 
     # Jeśli nie znaleziono żadnego autora z duplikatami
     return None
@@ -862,6 +917,7 @@ def count_authors_with_duplicates() -> int:
 def search_author_by_lastname(search_term, excluded_authors=None):
     """
     Wyszukuje pierwszego autora z duplikatami według części nazwiska.
+    Priorytetyzuje autorów z publikacjami z lat 2022-2025.
 
     Args:
         search_term: część nazwiska do wyszukania
@@ -885,17 +941,50 @@ def search_author_by_lastname(search_term, excluded_authors=None):
         .select_related("pbn_uid", "pbn_uid__osobazinstytucji")
     )
 
-    # Znajdź pierwszego z duplikatami
-    for autor in matching_authors[:100]:
+    # Zbierz autorów z duplikatami, podzielonych na dwie grupy
+    autorzy_z_nowymi_publikacjami = []
+    autorzy_bez_nowych_publikacji = []
+
+    # Znajdź autorów z duplikatami i podziel ich na grupy
+    for autor in matching_authors[:200]:  # Sprawdź więcej autorów niż poprzednio
         # Sprawdź czy autor ma odpowiednik w Scientist
         if autor.pbn_uid_id:
             try:
                 if autor.pbn_uid.osobazinstytucji:
                     duplikaty = szukaj_kopii(autor.pbn_uid.osobazinstytucji)
                     if duplikaty.exists():
-                        return autor.pbn_uid
+                        # Sprawdź czy autor lub jego duplikaty mają publikacje z lat 2022-2025
+                        ma_nowe_publikacje = autor_ma_publikacje_z_lat(autor)
+
+                        # Sprawdź również duplikaty
+                        if not ma_nowe_publikacje:
+                            for duplikat in duplikaty[
+                                :5
+                            ]:  # Sprawdź pierwsze 5 duplikatów
+                                if autor_ma_publikacje_z_lat(duplikat):
+                                    ma_nowe_publikacje = True
+                                    break
+
+                        # Dodaj do odpowiedniej listy
+                        if ma_nowe_publikacje:
+                            autorzy_z_nowymi_publikacjami.append(autor.pbn_uid)
+                        else:
+                            autorzy_bez_nowych_publikacji.append(autor.pbn_uid)
+
+                        # Jeśli mamy już 20 autorów z nowymi publikacjami, możemy zwrócić pierwszego
+                        if len(autorzy_z_nowymi_publikacjami) >= 20:
+                            return autorzy_z_nowymi_publikacjami[0]
+
             except Scientist.osobazinstytucji.RelatedObjectDoesNotExist:
                 continue
+
+    # Zwróć pierwszego autora z nowymi publikacjami, jeśli taki istnieje
+    if autorzy_z_nowymi_publikacjami:
+        return autorzy_z_nowymi_publikacjami[0]
+
+    # W przeciwnym razie zwróć pierwszego autora bez nowych publikacji
+    if autorzy_bez_nowych_publikacji:
+        return autorzy_bez_nowych_publikacji[0]
 
     return None
 

@@ -186,6 +186,66 @@
         </div>
     </div>
 
+    <!-- Browse panels -->
+    <div class="grid-x grid-margin-x" style="margin-top: 40px;">
+        <div class="small-12 cell">
+            <h2 style="color: #2c3e50; margin-bottom: 20px; font-size: 1.5rem;">
+                <i class="fi-compass"></i> Przeglądaj bazę publikacji
+            </h2>
+            <div class="grid-x grid-margin-x">
+                <div class="small-12 medium-6 large-3 cell">
+                    <a href="/bpp/autorzy/" class="browse-tile">
+                        <div style="padding: 20px; background: #f8f9fa; border-radius: 8px; border: 1px solid #dee2e6; text-align: center; transition: all 0.3s ease; height: 100%;">
+                            <i class="fi-torsos-all" style="font-size: 3rem; color: #007bff; display: block; margin-bottom: 10px;"></i>
+                            <h4 style="color: #2c3e50; margin-bottom: 5px;">Autorzy</h4>
+                            <p style="color: #6c757d; font-size: 0.9rem; margin: 0;">Przeglądaj według nazwiska autora</p>
+                        </div>
+                    </a>
+                </div>
+                <div class="small-12 medium-6 large-3 cell">
+                    <a href="/bpp/zrodla/" class="browse-tile">
+                        <div style="padding: 20px; background: #f8f9fa; border-radius: 8px; border: 1px solid #dee2e6; text-align: center; transition: all 0.3s ease; height: 100%;">
+                            <i class="fi-book" style="font-size: 3rem; color: #28a745; display: block; margin-bottom: 10px;"></i>
+                            <h4 style="color: #2c3e50; margin-bottom: 5px;">Źródła</h4>
+                            <p style="color: #6c757d; font-size: 0.9rem; margin: 0;">Przeglądaj czasopisma i wydawnictwa</p>
+                        </div>
+                    </a>
+                </div>
+                <div class="small-12 medium-6 large-3 cell">
+                    <a href="{% url 'bpp:browse_lata' %}" class="browse-tile">
+                        <div style="padding: 20px; background: #f8f9fa; border-radius: 8px; border: 1px solid #dee2e6; text-align: center; transition: all 0.3s ease; height: 100%;">
+                            <i class="fi-calendar" style="font-size: 3rem; color: #ffc107; display: block; margin-bottom: 10px;"></i>
+                            <h4 style="color: #2c3e50; margin-bottom: 5px;">Lata</h4>
+                            <p style="color: #6c757d; font-size: 0.9rem; margin: 0;">Przeglądaj według roku wydania</p>
+                        </div>
+                    </a>
+                </div>
+                <div class="small-12 medium-6 large-3 cell">
+                    <a href="/bpp/jednostki/" class="browse-tile">
+                        <div style="padding: 20px; background: #f8f9fa; border-radius: 8px; border: 1px solid #dee2e6; text-align: center; transition: all 0.3s ease; height: 100%;">
+                            <i class="fi-home" style="font-size: 3rem; color: #dc3545; display: block; margin-bottom: 10px;"></i>
+                            <h4 style="color: #2c3e50; margin-bottom: 5px;">Jednostki</h4>
+                            <p style="color: #6c757d; font-size: 0.9rem; margin: 0;">Przeglądaj wg jednostki</p>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+    .browse-tile:hover > div {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        background: #fff !important;
+    }
+    .browse-tile {
+        text-decoration: none;
+        display: block;
+        margin-bottom: 20px;
+    }
+    </style>
+
     <div class="grid-x grid-margin-x">
         {% if article %}
             <div class="small-12 large-6 cell">
@@ -706,6 +766,9 @@
                     </ul>
                     <div class="text-center" style="margin-top: 15px;">
                         <a href="/multiseek/" class="button secondary expanded">Zobacz wszystkie publikacje</a>
+                        <a href="{% url 'bpp:browse_lata' %}" class="button primary expanded" style="margin-top: 10px;">
+                            <i class="fi-calendar"></i> Przeglądaj publikacje według roku
+                        </a>
                     </div>
                 </div>
                 {% endcache %}
@@ -715,7 +778,7 @@
                 {% cache 3600 recent_abstracts uczelnia.pk %}
                 <div class="small-12 large-6 cell">
                     <h3 class="section-title" style="margin-top: 30px;">
-                        <i class="fi-page-multiple section-icon"></i>Najnowsze streszczenia
+                        <i class="fi-page-multiple section-icon"></i>Najnowsze rekordy ze streszczeniem
                     </h3>
                     <ul class="no-bullet">
                         {% for rekord in recent_abstracts %}

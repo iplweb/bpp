@@ -1,0 +1,229 @@
+{% extends "base.html" %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url 'bpp:browse_lata' %}">Przeglądaj wg roku</a></li>
+    <li class="current">Rok {{ year }}</li>
+{% endblock %}
+
+{% block extratitle %}
+    Publikacje z roku {{ year }}
+{% endblock %}
+
+{% block content %}
+    <!-- SEO-friendly structured data -->
+    <script type="application/ld+json">
+    {
+      "@context": "http://schema.org",
+      "@type": "CollectionPage",
+      "name": "Publikacje z roku {{ year }}",
+      "description": "Lista publikacji naukowych z roku {{ year }}",
+      "url": "{{ request.build_absolute_uri }}",
+      "numberOfItems": "{{ total_count }}"
+    }
+    </script>
+
+    <!-- Modern Header Section -->
+    <div class="modern-header">
+        <div class="grid-x grid-margin-x align-middle">
+            <div class="cell auto">
+                <h1>
+                    <i class="fi-calendar"></i> Publikacje z roku {{ year }}
+                </h1>
+                <p style="color: #7f8c8d; margin: 0; font-size: 0.9rem;">
+                    Znaleziono {{ total_count }}
+                    {% if total_count == 1 %}publikację
+                    {% elif total_count < 5 %}publikacje
+                    {% else %}publikacji{% endif %}
+                </p>
+            </div>
+
+            <!-- Year Navigation -->
+            <div class="cell shrink">
+                <div class="button-group">
+                    {% if prev_year %}
+                        <a href="{% url 'bpp:browse_rok' prev_year %}"
+                           class="button secondary"
+                           title="Rok {{ prev_year }}">
+                            <i class="fi-arrow-left"></i> {{ prev_year }}
+                        </a>
+                    {% endif %}
+
+                    <a href="{% url 'bpp:browse_lata' %}"
+                       class="button"
+                       title="Wszystkie lata">
+                        <i class="fi-list"></i> Wszystkie lata
+                    </a>
+
+                    {% if next_year %}
+                        <a href="{% url 'bpp:browse_rok' next_year %}"
+                           class="button secondary"
+                           title="Rok {{ next_year }}">
+                            {{ next_year }} <i class="fi-arrow-right"></i>
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Publications List -->
+    {% if publications %}
+        <div class="publications-list">
+            {% for publikacja in publications %}
+                <div class="publication-item" style="padding: 20px; background: white; border: 1px solid #e9ecef; border-radius: 8px; margin-bottom: 15px; transition: all 0.3s ease;"
+                     onmouseover="this.style.boxShadow='0 4px 8px rgba(0,0,0,0.1)'; this.style.transform='translateY(-2px)';"
+                     onmouseout="this.style.boxShadow='none'; this.style.transform='translateY(0)';">
+
+                    <div class="grid-x grid-margin-x align-middle">
+                        <div class="cell auto">
+                            <!-- Publication Type Icon -->
+                            <div style="display: flex; align-items: start; gap: 15px;">
+                                <div style="font-size: 1.5rem; color: #3498db; flex-shrink: 0;">
+                                    <i class="fi-page"></i>
+                                </div>
+
+                                <div style="flex-grow: 1;">
+                                    <!-- Title and Link -->
+                                    <h3 style="font-size: 1.1rem; margin-bottom: 10px;">
+                                        <a href="{{ publikacja.get_absolute_url }}"
+                                           style="color: #2c3e50; text-decoration: none; line-height: 1.4;"
+                                           onmouseover="this.style.color='#3498db';"
+                                           onmouseout="this.style.color='#2c3e50';">
+                                            {{ publikacja.opis_bibliograficzny_cache|safe|default:"[Brak tytułu]" }}
+                                        </a>
+                                    </h3>
+
+                                    <!-- Metadata -->
+                                    <div style="font-size: 0.85rem; color: #7f8c8d;">
+                                        <span style="margin-right: 20px;">
+                                            <i class="fi-calendar" style="margin-right: 5px;"></i>
+                                            Ostatnia aktualizacja: {{ publikacja.ostatnio_zmieniony|date:"d.m.Y" }}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="cell shrink">
+                            <a href="{{ publikacja.get_absolute_url }}"
+                               class="button small"
+                               style="margin: 0;">
+                                Szczegóły <i class="fi-arrow-right"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+
+        <!-- Pagination -->
+        {% if is_paginated %}
+            <div class="modern-pagination" style="margin-top: 40px; text-align: center;">
+                <div class="pagination-info" style="margin-bottom: 20px; color: #7f8c8d;">
+                    Strona {{ page_obj.number }} z {{ paginator.num_pages }}
+                    ({{ paginator.count }} {% if paginator.count == 1 %}publikacja{% elif paginator.count < 5 %}publikacje{% else %}publikacji{% endif %})
+                </div>
+
+                <ul class="pagination" role="navigation" aria-label="Pagination" style="display: inline-flex; gap: 5px;">
+                    {% if page_obj.has_previous %}
+                        <li>
+                            <a href="?page={{ page_obj.previous_page_number }}"
+                               class="pagination-btn">
+                                <i class="fi-arrow-left"></i> Poprzednia
+                            </a>
+                        </li>
+                    {% endif %}
+
+                    <!-- Page numbers -->
+                    {% if page_obj.number > 3 %}
+                        <li><a href="?page=1" class="pagination-btn">1</a></li>
+                        {% if page_obj.number > 4 %}
+                            <li><span style="padding: 8px;">...</span></li>
+                        {% endif %}
+                    {% endif %}
+
+                    {% for num in page_obj.paginator.page_range %}
+                        {% if num >= page_obj.number|add:"-2" and num <= page_obj.number|add:"2" %}
+                            {% if num == page_obj.number %}
+                                <li>
+                                    <span class="current-page" style="padding: 8px 12px; background: #3498db; color: white; border-radius: 6px; font-weight: 600;">
+                                        {{ num }}
+                                    </span>
+                                </li>
+                            {% else %}
+                                <li><a href="?page={{ num }}" class="pagination-btn">{{ num }}</a></li>
+                            {% endif %}
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if page_obj.number < paginator.num_pages|add:"-2" %}
+                        {% if page_obj.number < paginator.num_pages|add:"-3" %}
+                            <li><span style="padding: 8px;">...</span></li>
+                        {% endif %}
+                        <li><a href="?page={{ paginator.num_pages }}" class="pagination-btn">{{ paginator.num_pages }}</a></li>
+                    {% endif %}
+
+                    {% if page_obj.has_next %}
+                        <li>
+                            <a href="?page={{ page_obj.next_page_number }}"
+                               class="pagination-btn">
+                                Następna <i class="fi-arrow-right"></i>
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </div>
+        {% endif %}
+
+    {% else %}
+        <div class="callout warning" style="text-align: center; padding: 40px; border-radius: 8px;">
+            <h4 style="color: #856404; margin-bottom: 15px;">
+                <i class="fi-alert" style="margin-right: 10px;"></i>Brak publikacji
+            </h4>
+            <p style="margin-bottom: 20px; color: #6c5c00;">
+                Nie znaleziono publikacji z roku {{ year }}.
+            </p>
+            <a href="{% url 'bpp:browse_lata' %}" class="button" style="background: #ffc107; color: #212529;">
+                <i class="fi-calendar" style="margin-right: 5px;"></i>Zobacz inne lata
+            </a>
+        </div>
+    {% endif %}
+
+    <style>
+        .pagination-btn {
+            display: inline-block;
+            padding: 8px 12px;
+            background: #f8f9fa;
+            color: #2c3e50;
+            border-radius: 6px;
+            text-decoration: none;
+            border: 1px solid #e9ecef;
+            transition: all 0.2s ease;
+        }
+
+        .pagination-btn:hover {
+            background: #e9ecef;
+            transform: translateY(-1px);
+        }
+
+        .publication-item:focus-within {
+            outline: 3px solid #3498db;
+            outline-offset: 2px;
+        }
+
+        @media (max-width: 640px) {
+            .button-group {
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .button-group .button {
+                margin: 0 !important;
+                width: 100%;
+            }
+        }
+    </style>
+
+{% endblock %}

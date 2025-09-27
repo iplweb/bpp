@@ -111,6 +111,9 @@ def jsonify(value):
     """Convert a value to JSON string for use in JSON-LD structured data."""
     if value is None:
         return "null"
+    # Handle Django model instances by converting them to string
+    if hasattr(value, "_meta"):
+        value = str(value)
     return json.dumps(value, ensure_ascii=False)
 
 
@@ -212,7 +215,7 @@ def generate_coins(praca, autorzy):
 
     # Publisher
     if hasattr(praca, "wydawca") and praca.wydawca:
-        coins_data.append(f"rft.pub={quote(praca.wydawca)}")
+        coins_data.append(f"rft.pub={quote(str(praca.wydawca))}")
 
     # Language
     if hasattr(praca, "jezyk") and praca.jezyk:

@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}Przemapowanie prac - {{ autor }}{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url 'przemapuj_prace_autora:wybierz_autora' %}">Przemapowanie prac autora</a></li>
+    <li class="current">{{ autor }}</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="medium-12 columns">
+        <h1>Przemapowanie prac autora</h1>
+
+        <div class="callout secondary">
+            <h4>{{ autor }}</h4>
+            {% if autor.aktualna_jednostka %}
+                <p><strong>Aktualna jednostka:</strong> {{ autor.aktualna_jednostka }}</p>
+            {% endif %}
+        </div>
+
+        {% if messages %}
+            {% for message in messages %}
+                <div class="callout {% if message.tags == 'success' %}success{% elif message.tags == 'error' %}alert{% else %}primary{% endif %}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        {% if not preview %}
+            <h3>Obecny rozkład prac w jednostkach</h3>
+            {% if jednostki_stats %}
+                <table class="hover">
+                    <thead>
+                        <tr>
+                            <th>Jednostka</th>
+                            <th>Prace ciągłe</th>
+                            <th>Prace zwarte</th>
+                            <th>Razem</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for stat in jednostki_stats %}
+                        <tr>
+                            <td>{{ stat.nazwa }} ({{ stat.skrot }})</td>
+                            <td>{{ stat.prace_ciagle }}</td>
+                            <td>{{ stat.prace_zwarte }}</td>
+                            <td><strong>{{ stat.razem }}</strong></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p>Autor nie ma przypisanych prac do żadnej jednostki.</p>
+            {% endif %}
+
+            <hr>
+
+            <h3>Przemapowanie prac</h3>
+            <form method="post" action="">
+                {% csrf_token %}
+                <div class="row">
+                    <div class="medium-6 columns">
+                        {{ form.jednostka_z|as_crispy_field }}
+                    </div>
+                    <div class="medium-6 columns">
+                        {{ form.jednostka_do|as_crispy_field }}
+                    </div>
+                </div>
+
+                <div class="button-group">
+                    <button type="submit" name="preview" class="button primary">
+                        <span class="fi-eye"></span> Podgląd zmian
+                    </button>
+                    <a href="{% url 'przemapuj_prace_autora:wybierz_autora' %}" class="button secondary">
+                        <span class="fi-arrow-left"></span> Wybierz innego autora
+                    </a>
+                </div>
+            </form>
+
+            {% if historia %}
+                <hr>
+                <h3>Historia przemapowań</h3>
+                <table class="hover">
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Z jednostki</th>
+                            <th>Do jednostki</th>
+                            <th>Prace ciągłe</th>
+                            <th>Prace zwarte</th>
+                            <th>Wykonał</th>
+                            <th>Szczegóły</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in historia %}
+                        <tr>
+                            <td>{{ log.utworzono|date:"Y-m-d H:i" }}</td>
+                            <td>{{ log.jednostka_z.skrot }}</td>
+                            <td>{{ log.jednostka_do.skrot }}</td>
+                            <td>{{ log.liczba_prac_ciaglych }}</td>
+                            <td>{{ log.liczba_prac_zwartych }}</td>
+                            <td>{{ log.utworzono_przez.username }}</td>
+                            <td>
+                                {% if request.user.is_superuser or request.user.groups.filter.name == "wprowadzanie danych" %}
+                                    <a href="/admin/przemapuj_prace_autora/przemapoaniepracautora/{{ log.pk }}/change/"
+                                       target="_blank"
+                                       class="button tiny secondary"
+                                       title="Zobacz szczegółową historię przemapowanych prac">
+                                        <span class="fi-page-search"></span>
+                                    </a>
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <p class="text-muted">
+                    <small>
+                        <span class="fi-info"></span>
+                        Szczegółowa lista przemapowanych prac jest dostępna w panelu administracyjnym.
+                    </small>
+                </p>
+            {% endif %}
+
+        {% else %}
+            <!-- Widok podglądu -->
+            <div class="callout warning">
+                <h3>Podgląd zmian</h3>
+                <p>Poniżej znajduje się podgląd zmian, które zostaną wprowadzone:</p>
+            </div>
+
+            <div class="row">
+                <div class="medium-6 columns">
+                    <div class="callout secondary">
+                        <h5>Z jednostki:</h5>
+                        <p><strong>{{ jednostka_z }}</strong></p>
+                    </div>
+                </div>
+                <div class="medium-6 columns">
+                    <div class="callout primary">
+                        <h5>Do jednostki:</h5>
+                        <p><strong>{{ jednostka_do }}</strong></p>
+                    </div>
+                </div>
+            </div>
+
+            <h4>Podsumowanie</h4>
+            <ul>
+                <li>Liczba prac ciągłych do przemapowania: <strong>{{ liczba_prac_ciaglych }}</strong></li>
+                <li>Liczba prac zwartych do przemapowania: <strong>{{ liczba_prac_zwartych }}</strong></li>
+                <li>Łączna liczba prac do przemapowania: <strong>{{ total_count }}</strong></li>
+            </ul>
+
+            {% if prace_ciagle %}
+                <h5>Przykładowe prace ciągłe (pierwsze 10):</h5>
+                <ul>
+                    {% for praca in prace_ciagle %}
+                        <li>{{ praca.rekord.tytul_oryginalny|truncatewords:10 }}</li>
+                    {% endfor %}
+                </ul>
+                {% if liczba_prac_ciaglych > 10 %}
+                    <p><em>...i {{ liczba_prac_ciaglych|add:"-10" }} więcej</em></p>
+                {% endif %}
+            {% endif %}
+
+            {% if prace_zwarte %}
+                <h5>Przykładowe prace zwarte (pierwsze 10):</h5>
+                <ul>
+                    {% for praca in prace_zwarte %}
+                        <li>{{ praca.rekord.tytul_oryginalny|truncatewords:10 }}</li>
+                    {% endfor %}
+                </ul>
+                {% if liczba_prac_zwartych > 10 %}
+                    <p><em>...i {{ liczba_prac_zwartych|add:"-10" }} więcej</em></p>
+                {% endif %}
+            {% endif %}
+
+            <form method="post" action="">
+                {% csrf_token %}
+                {{ form }}
+
+                <div class="callout alert">
+                    <p><span class="fi-alert"></span> <strong>Uwaga!</strong> Ta operacja jest nieodwracalna.
+                    Upewnij się, że wybrane jednostki są poprawne.</p>
+                </div>
+
+                <div class="button-group">
+                    <button type="submit" name="confirm" class="button success">
+                        <span class="fi-check"></span> Potwierdź i wykonaj przemapowanie
+                    </button>
+                    <a href="{% url 'przemapuj_prace_autora:przemapuj_prace' autor.pk %}" class="button secondary">
+                        <span class="fi-x"></span> Anuluj
+                    </a>
+                </div>
+            </form>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

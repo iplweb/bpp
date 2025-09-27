@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}Przemapowanie prac autora - wybierz autora{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li class="current">Przemapowanie prac autora</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="medium-12 columns">
+        <h1>Przemapowanie prac autora między jednostkami</h1>
+        <hr>
+
+        <div class="callout primary">
+            <p><span class="fi-info"></span> To narzędzie umożliwia przemapowanie wszystkich prac autora z jednej jednostki do drugiej.</p>
+        </div>
+
+        <form method="get" action="">
+            <div class="row">
+                <div class="medium-8 columns">
+                    <label for="search-input">Wyszukaj autora (nazwisko lub imię):</label>
+                    <input type="text" id="search-input" name="q" value="{{ search_query }}"
+                           placeholder="np. Kowalski lub Jan" autofocus>
+                </div>
+                <div class="medium-4 columns">
+                    <label>&nbsp;</label>
+                    <button type="submit" class="button primary expanded">
+                        <span class="fi-magnifying-glass"></span> Szukaj
+                    </button>
+                </div>
+            </div>
+        </form>
+
+        {% if search_query %}
+            {% if autorzy %}
+                <h3>Wyniki wyszukiwania:</h3>
+                <table class="hover">
+                    <thead>
+                        <tr>
+                            <th>Autor</th>
+                            <th>Aktualna jednostka</th>
+                            <th>Akcje</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for autor in autorzy %}
+                        <tr>
+                            <td>
+                                {{ autor.nazwisko }} {{ autor.imiona }}
+                                {% if autor.tytul %}
+                                    , {{ autor.tytul.skrot }}
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if autor.aktualna_jednostka %}
+                                    {{ autor.aktualna_jednostka.skrot }}
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{% url 'przemapuj_prace_autora:przemapuj_prace' autor.pk %}"
+                                   class="button small">
+                                    <span class="fi-arrow-right"></span> Wybierz
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+
+                {% if autorzy|length == 50 %}
+                    <div class="callout warning">
+                        <p><span class="fi-alert"></span> Wyświetlono pierwsze 50 wyników. Sprecyzuj wyszukiwanie, aby zobaczyć więcej.</p>
+                    </div>
+                {% endif %}
+            {% else %}
+                <div class="callout alert">
+                    <p><span class="fi-x"></span> Nie znaleziono autorów dla frazy "{{ search_query }}".</p>
+                </div>
+            {% endif %}
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

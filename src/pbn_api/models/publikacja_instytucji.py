@@ -39,3 +39,19 @@ class PublikacjaInstytucji_V2(models.Model):
 
     created_on = models.DateTimeField(auto_now_add=True)
     last_updated = models.DateTimeField(auto_now=True)
+
+    def link_do_pi(self):
+        pbn_uid_id = self.objectId_id
+
+        uuid = self.json_data.get("uuid", None)
+        if not uuid:
+            return
+
+        from bpp import const
+        from bpp.models import Uczelnia
+
+        uczelnia = Uczelnia.objects.get_default()
+        if uczelnia is not None:
+            return const.LINK_PI_ADD_STATEMENTS.format(
+                pbn_api_root=uczelnia.pbn_api_root, pbn_uid_id=pbn_uid_id, uuid=uuid
+            )

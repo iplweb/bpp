@@ -189,6 +189,13 @@ urlpatterns = (
                 namespace="importer_autorow_pbn",
             ),
         ),
+        path(
+            "przemapuj_prace_autora/",
+            include(
+                ("przemapuj_prace_autora.urls", "przemapuj_prace_autora"),
+                namespace="przemapuj_prace_autora",
+            ),
+        ),
         url(
             r"^multiseek/results/$",
             csrf_exempt(

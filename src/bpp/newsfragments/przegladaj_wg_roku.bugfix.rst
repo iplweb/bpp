@@ -1,0 +1,1 @@
+Poprawiono wyświetlanie zakresów lat na stronie "Przeglądaj wg roku". Nagłówki dekad teraz poprawnie pokazują rzeczywiste zakresy lat dostępnych w bazie danych (np. "2020-2025" dla bieżącej dekady, "2010-2019" dla pełnych dekad) zamiast błędnych wartości.

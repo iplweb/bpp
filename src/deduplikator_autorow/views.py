@@ -68,8 +68,23 @@ def duplicate_authors_view(request):
 
     # Jeśli podano wyszukiwanie, szukaj konkretnego autora
     if search_lastname:
-        scientist = search_author_by_lastname(search_lastname, excluded_authors)
+        # Podczas wyszukiwania NIE wykluczamy pominiętych autorów
+        # aby umożliwić znalezienie każdego autora po nazwisku
+        scientist = search_author_by_lastname(search_lastname, excluded_authors=None)
         search_results_count = count_authors_with_lastname(search_lastname)
+
+        # Wyczyść listę pominiętych autorów przy nowym wyszukiwaniu
+        # aby rozpocząć czystą sesję dla wyników wyszukiwania
+        if "skipped_authors" in request.session:
+            del request.session["skipped_authors"]
+        if "navigation_history" in request.session:
+            del request.session["navigation_history"]
+        request.session.modified = True
+
+        # Zaktualizuj zmienne lokalne po wyczyszczeniu sesji
+        skipped_authors_ids = []
+        navigation_history = []
+        excluded_authors = []
     else:
         # Znajdź pierwszego autora z duplikatami, wykluczając pominiętych
         scientist = znajdz_pierwszego_autora_z_duplikatami(excluded_authors)
