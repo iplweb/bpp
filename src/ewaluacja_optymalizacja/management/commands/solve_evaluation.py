@@ -214,9 +214,30 @@ class Command(BaseCommand):
             default=False,
             help="Show detailed progress during solving",
         )
+        parser.add_argument(
+            "--unpin-not-selected",
+            action="store_true",
+            default=False,
+            help="Unpin disciplines for authors in publications that were not selected for reporting",
+        )
+        parser.add_argument(
+            "--rerun-after-unpin",
+            action="store_true",
+            default=False,
+            help="Re-run the optimization after unpinning (use with --unpin-not-selected)",
+        )
 
     @transaction.atomic
-    def handle(self, dyscyplina, output, verbose, *args, **options):
+    def handle(
+        self,
+        dyscyplina,
+        output,
+        verbose,
+        unpin_not_selected,
+        rerun_after_unpin,
+        *args,
+        **options,
+    ):
         self.stdout.write(f"Loading publications for discipline: {dyscyplina}")
         self.stdout.write("Year range: 2022-2025")
 
@@ -746,3 +767,124 @@ class Command(BaseCommand):
                 json.dump(results, f, indent=2, ensure_ascii=False)
 
             self.stdout.write(self.style.SUCCESS(f"\nResults saved to: {output}"))
+
+        # Handle unpinning if requested
+        if unpin_not_selected:
+            self._handle_unpinning(
+                all_selected,
+                pubs,
+                dyscyplina_obj,
+                rerun_after_unpin,
+                dyscyplina,
+                output,
+                verbose,
+            )
+
+    def _handle_unpinning(
+        self,
+        selected_pubs,
+        all_pubs,
+        dyscyplina_obj,
+        rerun_after_unpin,
+        dyscyplina_name,
+        output,
+        verbose,
+    ):
+        """Handle unpinning of disciplines for non-selected publications"""
+        from denorm import denorms
+
+        from bpp.models import Wydawnictwo_Ciagle_Autor, Wydawnictwo_Zwarte_Autor
+
+        self.stdout.write("\n" + "=" * 80)
+        self.stdout.write("UNPINNING NON-SELECTED PUBLICATIONS")
+        self.stdout.write("=" * 80)
+
+        # Get IDs of selected publications
+        selected_ids = {p.id for p in selected_pubs}
+
+        # Find all non-selected publications for this discipline
+        non_selected_pubs = [p for p in all_pubs if p.id not in selected_ids]
+
+        if not non_selected_pubs:
+            self.stdout.write(self.style.WARNING("No publications to unpin"))
+            return
+
+        self.stdout.write(
+            f"Found {len(non_selected_pubs)} non-selected publication-author pairs"
+        )
+
+        # Group by publication ID and author to unpin
+        to_unpin = {}
+        for p in non_selected_pubs:
+            key = (p.id, p.author)
+            to_unpin[key] = p
+
+        self.stdout.write(
+            f"Unpinning {len(to_unpin)} author-publication associations..."
+        )
+
+        unpinned_count = 0
+        with transaction.atomic():
+            for (rekord_id, autor_id), pub in to_unpin.items():
+                content_type_id, object_id = rekord_id
+
+                # Determine the model based on publication type
+                if pub.kind == "article":
+                    # Try Wydawnictwo_Ciagle_Autor
+                    updated = Wydawnictwo_Ciagle_Autor.objects.filter(
+                        rekord_id=object_id,
+                        autor_id=autor_id,
+                        dyscyplina_naukowa=dyscyplina_obj,
+                        przypieta=True,
+                    ).update(przypieta=False)
+                    unpinned_count += updated
+                elif pub.kind == "monography":
+                    # Try Wydawnictwo_Zwarte_Autor
+                    updated = Wydawnictwo_Zwarte_Autor.objects.filter(
+                        rekord_id=object_id,
+                        autor_id=autor_id,
+                        dyscyplina_naukowa=dyscyplina_obj,
+                        przypieta=True,
+                    ).update(przypieta=False)
+                    unpinned_count += updated
+                # Patents could also be handled here if needed
+
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"Unpinned {unpinned_count} author-discipline associations"
+            )
+        )
+
+        # Flush denorms to update cache
+        self.stdout.write("Flushing denorms...")
+        denorms.flush()
+        self.stdout.write(self.style.SUCCESS("Denorms flushed"))
+
+        # Re-run optimization if requested
+        if rerun_after_unpin:
+            self.stdout.write("\n" + "=" * 80)
+            self.stdout.write("RE-RUNNING OPTIMIZATION AFTER UNPINNING")
+            self.stdout.write("=" * 80)
+
+            # Import at the top of the method to avoid circular imports
+            from django.core.management import call_command
+
+            # Prepare arguments for re-run
+            rerun_args = [dyscyplina_name]
+            rerun_kwargs = {
+                "verbose": verbose,
+                "unpin_not_selected": False,  # Don't unpin again
+                "rerun_after_unpin": False,  # Don't recurse
+            }
+
+            if output:
+                # Modify output filename for re-run results
+                import os
+
+                base, ext = os.path.splitext(output)
+                rerun_output = f"{base}_after_unpin{ext}"
+                rerun_kwargs["output"] = rerun_output
+                self.stdout.write(f"Re-run results will be saved to: {rerun_output}")
+
+            # Call the command again
+            call_command("solve_evaluation", *rerun_args, **rerun_kwargs)
