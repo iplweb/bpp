@@ -204,7 +204,9 @@ class Zrodlo(LinkDoPBNMixin, ModelZAdnotacjami, ModelZISSN):
         max_year=const.PBN_AKTUALNA_EWALUACJA_STOP,
     ):
         return (
-            self.dyscyplina_zrodla_set.filter(rok__gte=min_year, rok__lte=max_year)
+            self.dyscyplina_zrodla_set.filter(
+                rok__gte=min_year, rok__lte=max_year, dyscyplina__widoczna=True
+            )
             .select_related()
             .order_by("rok", "dyscyplina__kod")
         )

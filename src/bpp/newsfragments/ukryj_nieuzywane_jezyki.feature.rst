@@ -1,0 +1,1 @@
+Dodano nowe polecenie zarządzania ``ukryj_nieuzywane_jezyki`` do automatycznego ukrywania nieużywanych języków w systemie. Polecenie skanuje wszystkie publikacje (wydawnictwa ciągłe, zwarte, prace doktorskie i habilitacyjne oraz źródła) i oznacza jako widoczne tylko te języki, które są faktycznie używane. Obsługuje tryb testowy ``--dry-run`` do podglądu zmian bez ich zapisywania.
