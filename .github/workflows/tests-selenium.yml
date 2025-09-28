@@ -16,6 +16,9 @@ concurrency:
 
 jobs:
   build:
+    # Skip this job if it's a "Merge tag" commit on the dev branch
+    if: |
+      !(github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, 'Merge tag'))
 
     runs-on: ubuntu-latest
     timeout-minutes: 45  # Add job-level timeout
