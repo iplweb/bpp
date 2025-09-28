@@ -614,13 +614,24 @@
             }
 
             var words = searchTerm.trim().split(/\s+/).filter(function(word) {
-                // Only highlight words with 2 or more characters
-                return word.length >= 2;
+                // Only highlight words longer than 2 characters
+                return word.length > 2;
             });
 
             if (words.length === 0) {
                 return;
             }
+
+            // Remove duplicates from words array to avoid highlighting the same word multiple times
+            var uniqueWords = [];
+            var wordSet = {};
+            words.forEach(function(word) {
+                var lowerWord = word.toLowerCase();
+                if (!wordSet[lowerWord]) {
+                    wordSet[lowerWord] = true;
+                    uniqueWords.push(word);
+                }
+            });
 
             // Get all search result items
             var resultItems = document.querySelectorAll('.search-result-item');
@@ -634,8 +645,8 @@
                     var originalHTML = item.innerHTML;
                     var highlightedHTML = originalHTML;
 
-                    // Apply highlighting for each word (only those with 2+ characters)
-                    words.forEach(function(word, wordIndex) {
+                    // Apply highlighting for each unique word (only those with 2+ characters)
+                    uniqueWords.forEach(function(word, wordIndex) {
                         var escapedWord = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
                         var colorClass = 'search-highlight-' + ((wordIndex % 5) + 1);
                         var regex = new RegExp('(' + escapedWord + ')(?![^<]*>)', 'gi');

@@ -1,7 +1,11 @@
-<meta name="citation_title"
-      content="{{ praca.tytul_oryginalny }}">
+{% comment %}
+Google Scholar / Highwire Press Metadata
+These tags are recognized by Google Scholar and most reference managers
+{% endcomment %}
+
+<meta name="citation_title" content="{{ praca.tytul_oryginalny|striptags }}">
 {% for autor in autorzy %}
-    <meta name="citation_author" content="{{ autor }}">
+    <meta name="citation_author" content="{{ autor.autor.nazwisko }}, {{ autor.autor.imiona }}">
 {% endfor %}
 <meta name="citation_publication_date" content="{{ praca.rok }}">
 {% if praca.zrodlo_id %}
@@ -10,14 +14,42 @@
 {% if praca.tom %}
     <meta name="citation_volume" content="{{ praca.tom }}">
 {% endif %}
-{# TODO: <meta name="citation_issue" content="20"> #}
+{% if praca.numer_zeszytu %}
+    <meta name="citation_issue" content="{{ praca.numer_zeszytu }}">
+{% endif %}
 {% if praca.strony %}
     <meta name="citation_firstpage" content="{{ praca.pierwsza_strona }}">
     <meta name="citation_lastpage" content="{{ praca.ostatnia_strona }}">
 {% endif %}
-{% if praca.www %}
-    <meta name="citation_pdf_url" content="{{ praca.www }}">
+{% if praca.doi %}
+    <meta name="citation_doi" content="{{ praca.doi }}">
+{% endif %}
+{% if praca.isbn %}
+    <meta name="citation_isbn" content="{{ praca.isbn }}">
+{% endif %}
+{% if praca.issn %}
+    <meta name="citation_issn" content="{{ praca.issn }}">
+{% endif %}
+{% if praca.wydawca %}
+    <meta name="citation_publisher" content="{{ praca.wydawca }}">
+{% endif %}
+{% if praca.jezyk %}
+    <meta name="citation_language" content="{% if praca.jezyk.skrot %}{{ praca.jezyk.skrot }}{% else %}pl{% endif %}">
 {% endif %}
 {% if praca.public_www %}
     <meta name="citation_pdf_url" content="{{ praca.public_www }}">
+{% elif praca.www %}
+    <meta name="citation_pdf_url" content="{{ praca.www }}">
+{% endif %}
+{% if praca.streszczenia.exists %}
+    {% for streszczenie in praca.streszczenia.all %}
+        {% if forloop.first %}
+    <meta name="citation_abstract" content="{{ streszczenie.streszczenie|striptags|truncatewords:250 }}">
+        {% endif %}
+    {% endfor %}
+{% endif %}
+{% if praca.slowa_kluczowe %}
+    {% for keyword in praca.slowa_kluczowe.all %}
+    <meta name="citation_keywords" content="{{ keyword.name }}">
+    {% endfor %}
 {% endif %}

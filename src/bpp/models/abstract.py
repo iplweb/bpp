@@ -827,22 +827,41 @@ class LinkDoPBNMixin:
         if not pbn_uid_id:
             return
 
+        from pbn_api.models import PublikacjaInstytucji_V2
+
         versionHash = None
+
         try:
-            # bpp.models.Wydawnictwo_Ciagle, bpp.models.Wydawnictwo_Zwarte
-            current_version = self.pbn_uid.current_version
-            if current_version is not None:
-                # w testach moze tak byc, ze bedzie None
-                versionHash = current_version.get("versionHash", None)
-        except AttributeError:
-            try:
-                # pbn_api.models.OswiadczenieInstytucji
-                versionHash = self.publicationId.current_version.get(
-                    "versionHash", None
+            uuid = PublikacjaInstytucji_V2.objects.get(objectId_id=self.pbn_uid_id).pk
+
+            from bpp import const
+            from bpp.models import Uczelnia
+
+            uczelnia = Uczelnia.objects.get_default()
+            if uczelnia is not None:
+                return const.LINK_PI_ADD_STATEMENTS.format(
+                    pbn_api_root=uczelnia.pbn_api_root,
+                    pbn_uid_id=pbn_uid_id,
+                    uuid=uuid,
                 )
+
+        except PublikacjaInstytucji_V2.DoesNotExist:
+
+            try:
+                # bpp.models.Wydawnictwo_Ciagle, bpp.models.Wydawnictwo_Zwarte
+                current_version = self.pbn_uid.current_version
+                if current_version is not None:
+                    # w testach moze tak byc, ze bedzie None
+                    versionHash = current_version.get("versionHash", None)
             except AttributeError:
-                # pbn_api.models.Publication
-                versionHash = self.current_version.get("versionHash", None)
+                try:
+                    # pbn_api.models.OswiadczenieInstytucji
+                    versionHash = self.publicationId.current_version.get(
+                        "versionHash", None
+                    )
+                except AttributeError:
+                    # pbn_api.models.Publication
+                    versionHash = self.current_version.get("versionHash", None)
 
         if versionHash is None:
             return

@@ -20,7 +20,19 @@
             {% endif %}
         </div>
         <div class="cell shrink">
-            {% include "browse/go_to_admin_change.html" with url="admin:bpp_autor_change" pk=autor.pk group="wprowadzanie danych" %}
+            <div class="hide-for-print" style="display: flex; gap: 0;">
+                {% if request.user.is_authenticated %}
+                    <a href="{% url 'przemapuj_prace_autora:przemapuj_prace' autor.pk %}" class="jednostka-remap-button">
+                        <span class="fi fi-shuffle"></span>Przemapuj prace
+                    </a>
+                {% endif %}
+                {% load user_in_group %}
+                {% if request.user.is_superuser or request.user|has_group:"wprowadzanie danych" %}
+                    <a target="_blank" href="{% url "admin:bpp_autor_change" autor.pk %}" class="jednostka-edit-button">
+                        <span class="fi fi-page-edit"></span>Otwórz do edycji
+                    </a>
+                {% endif %}
+            </div>
         </div>
     </div>
 </div>

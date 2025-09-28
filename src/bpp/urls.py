@@ -74,10 +74,12 @@ from bpp.views.browse import (
     BuildSearch,
     JednostkaView,
     JednostkiView,
+    LataView,
     OldPracaView,
     PracaView,
     PracaViewBySlug,
     RekordToPracaView,
+    RokView,
     UczelniaView,
     WydzialView,
     WyswietlDeklaracjeDostepnosci,
@@ -219,6 +221,8 @@ urlpatterns = [
         r"^zrodla/(?P<literka>.)/$", ZrodlaView.as_view(), name="browse_zrodla_literka"
     ),
     url(r"^zrodlo/(?P<slug>[\w-]+)/$", ZrodloView.as_view(), name="browse_zrodlo"),
+    url(r"^lata/$", LataView.as_view(), name="browse_lata"),
+    url(r"^rok/(?P<rok>\d{4})/$", RokView.as_view(), name="browse_rok"),
     url(
         r"^(?P<model>[\w_]+)/(?P<pk>[\d]+)/$",
         OldPracaView.as_view(),

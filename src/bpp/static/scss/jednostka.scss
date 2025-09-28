@@ -3,7 +3,8 @@
 
 // Shared button styles for jednostka/zrodlo pages
 .jednostka-edit-button,
-.jednostka-add-button {
+.jednostka-add-button,
+.jednostka-remap-button {
     display: inline-block;
     background: white;
     border: 1px solid #dee2e6;
@@ -16,7 +17,6 @@
     transition: all 0.2s ease;
     font-weight: 500;
     margin-right: 10px;
-    margin-bottom: 10px;
 
     .fi {
         margin-right: 6px;
@@ -58,6 +58,22 @@
 
         .fi {
             color: #007bff;
+        }
+    }
+}
+
+// Remap button - subtle purple/violet accent on hover
+.jednostka-remap-button {
+    &:hover {
+        background: #f8f0ff;
+        border-color: #6f42c1;
+        color: #5a32a3;
+        box-shadow: 0 2px 6px rgba(111, 66, 193, 0.15);
+        transform: translateY(-1px);
+        text-decoration: none;
+
+        .fi {
+            color: #6f42c1;
         }
     }
 }

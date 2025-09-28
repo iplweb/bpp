@@ -3,9 +3,10 @@ import re
 import sentry_sdk
 from django.db.models import F
 from django.db.models.functions import Coalesce
-from django.http import HttpResponseRedirect
+from django.http import HttpResponseRedirect, JsonResponse
 from django.shortcuts import get_object_or_404
 from django.urls import reverse_lazy
+from django.views import View
 from django.views.decorators.http import require_POST
 from django.views.generic import DetailView, ListView
 
@@ -57,6 +58,54 @@ class PBNExportQueueListView(
         elif success_filter == "none":
             queryset = queryset.filter(zakonczono_pomyslnie=None)
 
+        # Handle title search
+        search_query = self.request.GET.get("q")
+        if search_query:
+            # Import Q for complex queries
+            from django.db.models import Q
+
+            # Search in cached description and original title of the related record
+            # We need to get the content types for the models we're interested in
+            # Create filters for searching in related models
+            # Since we're using GenericForeignKey, we need to filter differently
+            # We'll search for the query in the komunikat field which contains publication info
+            # and also try to match against object IDs if they exist
+            queryset = queryset.filter(Q(komunikat__icontains=search_query))
+
+            # Additionally, we can filter by checking the actual related objects
+            # This requires more complex filtering through the generic relation
+            matching_ids = []
+
+            # Get all content types that might be in the queue
+            for item in queryset.select_related("content_type"):
+                if item.rekord_do_wysylki:
+                    try:
+                        record = item.rekord_do_wysylki
+                        # Check if record has title fields
+                        if (
+                            hasattr(record, "tytul_oryginalny")
+                            and record.tytul_oryginalny
+                        ):
+                            if search_query.lower() in record.tytul_oryginalny.lower():
+                                matching_ids.append(item.pk)
+                        elif (
+                            hasattr(record, "opis_bibliograficzny_cache")
+                            and record.opis_bibliograficzny_cache
+                        ):
+                            if (
+                                search_query.lower()
+                                in record.opis_bibliograficzny_cache.lower()
+                            ):
+                                matching_ids.append(item.pk)
+                    except BaseException:
+                        pass
+
+            # If we found matching IDs, filter by them
+            if matching_ids:
+                queryset = queryset.filter(
+                    Q(pk__in=matching_ids) | Q(komunikat__icontains=search_query)
+                )
+
         # Handle sorting
         sort_by = self.request.GET.get(
             "sort", "-ostatnia_aktualizacja"
@@ -81,6 +130,7 @@ class PBNExportQueueListView(
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["current_filter"] = self.request.GET.get("zakonczono_pomyslnie", "all")
+        context["search_query"] = self.request.GET.get("q", "")
         # Add count of error records for the resend button
         context["error_count"] = PBN_Export_Queue.objects.filter(
             zakonczono_pomyslnie=False
@@ -131,6 +181,54 @@ class PBNExportQueueTableView(
         elif success_filter == "none":
             queryset = queryset.filter(zakonczono_pomyslnie=None)
 
+        # Handle title search
+        search_query = self.request.GET.get("q")
+        if search_query:
+            # Import Q for complex queries
+            from django.db.models import Q
+
+            # Search in cached description and original title of the related record
+            # We need to get the content types for the models we're interested in
+            # Create filters for searching in related models
+            # Since we're using GenericForeignKey, we need to filter differently
+            # We'll search for the query in the komunikat field which contains publication info
+            # and also try to match against object IDs if they exist
+            queryset = queryset.filter(Q(komunikat__icontains=search_query))
+
+            # Additionally, we can filter by checking the actual related objects
+            # This requires more complex filtering through the generic relation
+            matching_ids = []
+
+            # Get all content types that might be in the queue
+            for item in queryset.select_related("content_type"):
+                if item.rekord_do_wysylki:
+                    try:
+                        record = item.rekord_do_wysylki
+                        # Check if record has title fields
+                        if (
+                            hasattr(record, "tytul_oryginalny")
+                            and record.tytul_oryginalny
+                        ):
+                            if search_query.lower() in record.tytul_oryginalny.lower():
+                                matching_ids.append(item.pk)
+                        elif (
+                            hasattr(record, "opis_bibliograficzny_cache")
+                            and record.opis_bibliograficzny_cache
+                        ):
+                            if (
+                                search_query.lower()
+                                in record.opis_bibliograficzny_cache.lower()
+                            ):
+                                matching_ids.append(item.pk)
+                    except BaseException:
+                        pass
+
+            # If we found matching IDs, filter by them
+            if matching_ids:
+                queryset = queryset.filter(
+                    Q(pk__in=matching_ids) | Q(komunikat__icontains=search_query)
+                )
+
         # Handle sorting
         sort_by = self.request.GET.get(
             "sort", "-ostatnia_aktualizacja"
@@ -155,6 +253,7 @@ class PBNExportQueueTableView(
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["current_filter"] = self.request.GET.get("zakonczono_pomyslnie", "all")
+        context["search_query"] = self.request.GET.get("q", "")
         # Add count of error records for the resend button
         context["error_count"] = PBN_Export_Queue.objects.filter(
             zakonczono_pomyslnie=False
@@ -417,3 +516,26 @@ def resend_all_errors(request):
         request, f"Przygotowano i zlecono ponowną wysyłkę {count} rekordów z błędami."
     )
     return HttpResponseRedirect(reverse_lazy("pbn_export_queue:export-queue-list"))
+
+
+class PBNExportQueueCountsView(LoginRequiredMixin, PBNExportQueuePermissionMixin, View):
+    """JSON view that returns current counts for filter buttons"""
+
+    def get(self, request, *args, **kwargs):
+        """Return JSON response with current counts"""
+        counts = {
+            "total_count": PBN_Export_Queue.objects.count(),
+            "success_count": PBN_Export_Queue.objects.filter(
+                zakonczono_pomyslnie=True
+            ).count(),
+            "error_count": PBN_Export_Queue.objects.filter(
+                zakonczono_pomyslnie=False
+            ).count(),
+            "pending_count": PBN_Export_Queue.objects.filter(
+                zakonczono_pomyslnie=None
+            ).count(),
+            "waiting_count": PBN_Export_Queue.objects.filter(
+                retry_after_user_authorised=True
+            ).count(),
+        }
+        return JsonResponse(counts)

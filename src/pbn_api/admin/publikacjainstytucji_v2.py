@@ -16,9 +16,17 @@ class PublikacjaInstytucjiAdmin(BasePBNAPIAdmin):
     fields = readonly_fields + ["json_data"]
 
     list_display = ["__str__", "objectId", "created_on", "last_updated"]
-    date_hierarchy = "last_updated"
 
     formfield_overrides = {models.JSONField: {"widget": PrettyJSONWidgetReadonly}}
+
+    search_fields = [
+        "objectId__pk",
+        "objectId__title",
+        "objectId__doi",
+        "objectId__publicUri",
+        "objectId__year",
+        "json_data",
+    ]
 
     def has_delete_permission(self, request, obj=...):
         return False

@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block title %}Historia optymalizacji - {{ publikacja.tytul_oryginalny|truncatewords:10 }}{% endblock %}
+
+{% block extracss %}
+<style>
+    .history-card {
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+        background: #f9f9f9;
+    }
+
+    .change-item {
+        background: white;
+        padding: 15px;
+        margin: 10px 0;
+        border-left: 4px solid #667eea;
+        border-radius: 4px;
+    }
+
+    .change-values {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        margin-top: 10px;
+    }
+
+    .value-before {
+        background: #ffe5e5;
+        padding: 10px;
+        border-radius: 4px;
+    }
+
+    .value-after {
+        background: #e5ffe5;
+        padding: 10px;
+        border-radius: 4px;
+    }
+
+    .change-arrow {
+        font-size: 1.5em;
+        color: #667eea;
+        text-align: center;
+        padding: 10px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="large-12 columns">
+        <h2>
+            <span class="fi-clock"></span> Historia optymalizacji
+        </h2>
+
+        <div class="panel">
+            <h4>{{ publikacja.tytul_oryginalny }}</h4>
+            <p>ID: {{ publikacja.pk }}</p>
+        </div>
+
+        {% if optymalizacje %}
+            {% for opt in optymalizacje %}
+            <div class="history-card">
+                <h4>Sesja z {{ opt.utworzono|date:"d.m.Y H:i" }}</h4>
+                {% if opt.uzytkownik %}
+                    <p>Użytkownik: {{ opt.uzytkownik }}</p>
+                {% endif %}
+
+                {% for zmiana in opt.historia_zmian.all %}
+                <div class="change-item">
+                    <strong>{{ zmiana.autor }}</strong> - {{ zmiana.dyscyplina }}
+                    <br>
+                    <small>Akcja: {{ zmiana.get_akcja_display }}</small>
+
+                    <div class="change-values">
+                        <div class="value-before">
+                            <strong>Przed:</strong><br>
+                            Punkty: {{ zmiana.punkty_przed|floatformat:2 }}<br>
+                            Sloty: {{ zmiana.sloty_przed|floatformat:4 }}
+                        </div>
+                        <div class="value-after">
+                            <strong>Po:</strong><br>
+                            Punkty: {{ zmiana.punkty_po|floatformat:2 }}<br>
+                            Sloty: {{ zmiana.sloty_po|floatformat:4 }}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="alert-box info">
+                Brak historii optymalizacji dla tej publikacji.
+            </div>
+        {% endif %}
+
+        <a href="{% url 'ewaluacja_optymalizuj_publikacje:optymalizuj' publikacja.slug %}" class="button">
+            <span class="fi-arrow-left"></span> Powrót do optymalizacji
+        </a>
+    </div>
+</div>
+{% endblock %}

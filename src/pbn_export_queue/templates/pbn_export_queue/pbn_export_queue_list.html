@@ -114,21 +114,47 @@
     {% if request.user.is_staff or perms.pbn_api %}
 
         <div class="filter-section" style="display: flex; justify-content: space-between; align-items: center;">
-            <div>
+            <div style="flex-grow: 1;">
                 <h4>Filtry</h4>
-                <div class="button-group">
-                    <a href="?" class="button {% if current_filter == 'all' %}primary{% else %}secondary{% endif %}">
-                        <span class="fi-list"></span> Wszystkie ({{ total_count }})
-                    </a>
-                    <a href="?zakonczono_pomyslnie=true" class="button {% if current_filter == 'true' %}success{% else %}secondary{% endif %}">
-                        <span class="fi-check"></span> Zakończone pomyślnie ({{ success_count }})
-                    </a>
-                    <a href="?zakonczono_pomyslnie=false" class="button {% if current_filter == 'false' %}alert{% else %}secondary{% endif %}">
-                        <span class="fi-x"></span> Zakończone z błędem ({{ error_count }})
-                    </a>
-                    <a href="?zakonczono_pomyslnie=none" class="button {% if current_filter == 'none' %}warning{% else %}secondary{% endif %}">
-                        <span class="fi-clock"></span> W trakcie/oczekujące ({{ pending_count }})
-                    </a>
+                <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                    <div class="button-group">
+                        <a href="?{% if search_query %}q={{ search_query|urlencode }}&{% endif %}" class="button {% if current_filter == 'all' %}primary{% else %}secondary{% endif %}">
+                            <span class="fi-list"></span> Wszystkie ({{ total_count }})
+                        </a>
+                        <a href="?zakonczono_pomyslnie=true{% if search_query %}&q={{ search_query|urlencode }}{% endif %}" class="button {% if current_filter == 'true' %}success{% else %}secondary{% endif %}">
+                            <span class="fi-check"></span> Zakończone pomyślnie ({{ success_count }})
+                        </a>
+                        <a href="?zakonczono_pomyslnie=false{% if search_query %}&q={{ search_query|urlencode }}{% endif %}" class="button {% if current_filter == 'false' %}alert{% else %}secondary{% endif %}">
+                            <span class="fi-x"></span> Zakończone z błędem ({{ error_count }})
+                        </a>
+                        <a href="?zakonczono_pomyslnie=none{% if search_query %}&q={{ search_query|urlencode }}{% endif %}" class="button {% if current_filter == 'none' %}warning{% else %}secondary{% endif %}">
+                            <span class="fi-clock"></span> W trakcie/oczekujące ({{ pending_count }})
+                        </a>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 5px;">
+                        <form method="get" action="" style="margin: 0; display: flex; align-items: center;">
+                            {% if request.GET.zakonczono_pomyslnie %}
+                                <input type="hidden" name="zakonczono_pomyslnie" value="{{ request.GET.zakonczono_pomyslnie }}">
+                            {% endif %}
+                            <input type="search"
+                                   name="q"
+                                   placeholder="Szukaj w tytule..."
+                                   value="{{ search_query }}"
+                                   style="margin: 0; height: 37px; min-width: 200px;"
+                                   autocomplete="off">
+                            <button type="submit" class="button secondary" style="margin: 0; margin-left: 5px;">
+                                <span class="fi-magnifying-glass"></span>
+                            </button>
+                            {% if search_query %}
+                            <a href="?{% if request.GET.zakonczono_pomyslnie %}zakonczono_pomyslnie={{ request.GET.zakonczono_pomyslnie }}{% endif %}"
+                               class="button secondary"
+                               style="margin: 0; margin-left: 5px;"
+                               title="Wyczyść wyszukiwanie">
+                                <span class="fi-x"></span>
+                            </a>
+                            {% endif %}
+                        </form>
+                    </div>
                 </div>
             </div>
 
@@ -143,10 +169,8 @@
             </div>
         </div>
 
-        <hr>
-
         <div id="export-queue-table"
-             hx-get="{% url 'pbn_export_queue:export-queue-table' %}?{% if request.GET.zakonczono_pomyslnie %}zakonczono_pomyslnie={{ request.GET.zakonczono_pomyslnie }}&{% endif %}sort={{ current_sort|default:'-ostatnia_aktualizacja' }}"
+             hx-get="{% url 'pbn_export_queue:export-queue-table' %}?{% if request.GET.zakonczono_pomyslnie %}zakonczono_pomyslnie={{ request.GET.zakonczono_pomyslnie }}&{% endif %}{% if search_query %}q={{ search_query|urlencode }}&{% endif %}sort={{ current_sort|default:'-ostatnia_aktualizacja' }}"
              hx-swap="innerHTML">
             {% include 'pbn_export_queue/pbn_export_queue_table.html' %}
         </div>
@@ -158,6 +182,7 @@
                 var progressContainer = document.getElementById('progress-container');
                 var progressBar = document.getElementById('progress-bar');
                 var refreshInterval = null;
+                var errorExpanded = false;
 
                 // Load saved preference from localStorage
                 var savedPreference = localStorage.getItem('pbn_export_queue_auto_refresh');
@@ -175,7 +200,25 @@
                     }
                 });
 
+                // Listen for error expansion events from the table
+                document.addEventListener('errorToggled', function(event) {
+                    errorExpanded = event.detail.expanded;
+
+                    if (errorExpanded && refreshToggle.checked) {
+                        // Temporarily stop refresh when error is expanded
+                        stopAutoRefresh(true);
+                    } else if (!errorExpanded && refreshToggle.checked) {
+                        // Resume refresh when error is collapsed
+                        startAutoRefresh();
+                    }
+                });
+
                 function startAutoRefresh() {
+                    // Don't start if error is expanded
+                    if (errorExpanded) {
+                        return;
+                    }
+
                     // Show progress bar
                     progressContainer.classList.add('active');
 
@@ -186,20 +229,26 @@
 
                     // Initial refresh
                     refreshTable();
+                    refreshCounts();
 
                     // Set up interval for continuous polling
                     refreshInterval = setInterval(function() {
-                        refreshTable();
-                        // Reset animation
-                        progressBar.style.animation = 'none';
-                        void progressBar.offsetHeight; // Trigger reflow
-                        progressBar.style.animation = 'countdown 5s linear infinite';
+                        if (!errorExpanded) {
+                            refreshTable();
+                            refreshCounts();
+                            // Reset animation
+                            progressBar.style.animation = 'none';
+                            void progressBar.offsetHeight; // Trigger reflow
+                            progressBar.style.animation = 'countdown 5s linear infinite';
+                        }
                     }, 5000);
                 }
 
-                function stopAutoRefresh() {
-                    // Hide progress bar
-                    progressContainer.classList.remove('active');
+                function stopAutoRefresh(temporary) {
+                    // Hide progress bar (unless this is temporary due to error expansion)
+                    if (!temporary) {
+                        progressContainer.classList.remove('active');
+                    }
 
                     // Clear the interval
                     if (refreshInterval) {
@@ -212,7 +261,56 @@
                 }
 
                 function refreshTable() {
-                    htmx.ajax('GET', tableDiv.getAttribute('hx-get'), {target: '#export-queue-table', swap: 'innerHTML'});
+                    // Get current URL with all parameters
+                    var url = tableDiv.getAttribute('hx-get');
+                    htmx.ajax('GET', url, {target: '#export-queue-table', swap: 'innerHTML'});
+                }
+
+                function refreshCounts() {
+                    // Fetch updated counts from the server
+                    fetch('{% url "pbn_export_queue:export-queue-counts" %}')
+                        .then(response => response.json())
+                        .then(data => {
+                            // Update all count displays
+                            updateButtonCount('all', data.total_count);
+                            updateButtonCount('true', data.success_count);
+                            updateButtonCount('false', data.error_count);
+                            updateButtonCount('none', data.pending_count);
+
+                            // Update resend buttons counts
+                            updateResendButtonCount('error', data.error_count);
+                            updateResendButtonCount('waiting', data.waiting_count);
+                        })
+                        .catch(error => {
+                            console.error('Error fetching counts:', error);
+                        });
+                }
+
+                function updateButtonCount(filter, count) {
+                    var button = document.querySelector('.button-group a[href' +
+                        (filter === 'all' ? '="?"' : '="?zakonczono_pomyslnie=' + filter + '"') + ']');
+                    if (button) {
+                        // Find the count in parentheses and update it
+                        button.innerHTML = button.innerHTML.replace(/\(\d+\)/, '(' + count + ')');
+                    }
+                }
+
+                function updateResendButtonCount(type, count) {
+                    if (type === 'error') {
+                        var button = document.querySelector('button[type="submit"][onclick*="błędami"]');
+                        if (button) {
+                            button.innerHTML = button.innerHTML.replace(/\(\d+\)/, '(' + count + ')');
+                            // Show/hide button based on count
+                            button.parentElement.style.display = count > 0 ? 'inline' : 'none';
+                        }
+                    } else if (type === 'waiting') {
+                        var button = document.querySelector('button[type="submit"][onclick*="oczekujących"]');
+                        if (button) {
+                            button.innerHTML = button.innerHTML.replace(/\(\d+\)/, '(' + count + ')');
+                            // Show/hide button based on count
+                            button.parentElement.style.display = count > 0 ? 'inline' : 'none';
+                        }
+                    }
                 }
             });
         </script>

@@ -83,6 +83,12 @@ urlpatterns = (
                 "ewaluacja_optymalizacja.urls",
             ),
         ),
+        path(
+            "ewaluacja_optymalizuj_publikacje/",
+            include(
+                "ewaluacja_optymalizuj_publikacje.urls",
+            ),
+        ),
         url(
             r"^api/v1/",
             include(("api_v1.urls", "api_v1"), namespace="api_v1"),
@@ -187,6 +193,13 @@ urlpatterns = (
             include(
                 ("importer_autorow_pbn.urls", "importer_autorow_pbn"),
                 namespace="importer_autorow_pbn",
+            ),
+        ),
+        path(
+            "przemapuj_prace_autora/",
+            include(
+                ("przemapuj_prace_autora.urls", "przemapuj_prace_autora"),
+                namespace="przemapuj_prace_autora",
             ),
         ),
         url(

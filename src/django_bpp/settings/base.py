@@ -424,6 +424,7 @@ INSTALLED_APPS = [
     "ewaluacja_liczba_n",
     "ewaluacja_metryki",
     "ewaluacja_optymalizacja",
+    "ewaluacja_optymalizuj_publikacje",
     # Zostawiamy - bezwarunkowo
     "test_bpp",
     #
@@ -437,6 +438,7 @@ INSTALLED_APPS = [
     "stan_systemu",
     "deduplikator_autorow",
     "importer_autorow_pbn",
+    "przemapuj_prace_autora",
     "pbn_downloader_app",
     "pbn_integrator",
     "pbn_import",

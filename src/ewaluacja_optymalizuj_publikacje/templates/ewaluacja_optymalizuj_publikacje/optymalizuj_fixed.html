@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Optymalizacja publikacji{% endblock %}
+
+{% block extrahead %}
+<style>
+    /* Smooth transitions for all morphing elements */
+    .author-card,
+    .summary-box,
+    .metrics-value,
+    .publication-header,
+    .discipline-badge {
+        transition: all 0.3s ease-in-out;
+    }
+
+    /* Fade in animation for new content */
+    .htmx-settling .author-card,
+    .htmx-settling .summary-box {
+        opacity: 0.5;
+    }
+
+    .htmx-added {
+        opacity: 0;
+    }
+
+    /* Smooth number transitions */
+    .animated-number {
+        transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* Loading indicator */
+    .htmx-request .htmx-indicator {
+        display: inline-block;
+        opacity: 1;
+    }
+
+    .htmx-indicator {
+        display: none;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+
+    /* Preserve scroll position during updates */
+    #content-wrapper {
+        min-height: 100vh;
+        background: white;
+    }
+
+
+    /* Link hover effects */
+    a {
+        transition: all 0.2s ease;
+    }
+
+    a:hover {
+        text-decoration: underline !important;
+        opacity: 0.8;
+    }
+
+    @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="large-12 columns">
+        <h2><span class="fi-wrench"></span> Optymalizacja publikacji</h2>
+
+        {% include "ewaluacja_optymalizuj_publikacje/partials/content_wrapper.html" %}
+    </div>
+</div>
+{% endblock %}

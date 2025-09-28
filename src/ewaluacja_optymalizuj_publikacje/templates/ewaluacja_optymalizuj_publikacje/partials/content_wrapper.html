@@ -1,0 +1,232 @@
+<div id="content-wrapper" style="background: white; position: relative;">
+    {% if not publikacja %}
+        <div class="panel">
+            <h4>Wybierz publikację do optymalizacji</h4>
+            <form method="post">
+                {% csrf_token %}
+                {{ form.as_p }}
+                <button type="submit" class="button">
+                    <span class="fi-magnifying-glass"></span> Analizuj publikację
+                </button>
+            </form>
+        </div>
+    {% else %}
+        <div class="publication-header" style="background: #f0f0f0; padding: 15px; border-left: 4px solid #667eea; margin-bottom: 20px;">
+            <h3><a href="{% url 'bpp:browse_praca_by_slug' publikacja.slug %}" style="color: inherit; text-decoration: none; hover: text-decoration: underline;">{{ publikacja.tytul_oryginalny }}</a></h3>
+            <p>ID: {{ publikacja.pk }} | Typ: {{ publikacja.typ_kbn|default:"" }}</p>
+        </div>
+
+        <div id="summary-section" class="summary-box" style="background: #f8f9fa; border: 2px solid #dee2e6; padding: 20px; border-radius: 8px; margin: 30px 0;">
+            <h4 style="text-align: center; margin-bottom: 20px; color: #495057;">Podsumowanie punktacji</h4>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; text-align: center;">
+                <div>
+                    <div class="animated-number" style="font-size: 2.5em; font-weight: bold; color: #dc3545;">{{ total_punkty|floatformat:0 }}</div>
+                    <div style="color: #6c757d;">Punkty publikacji (PK)</div>
+                </div>
+                <div>
+                    <div class="animated-number" style="font-size: 2.5em; font-weight: bold; color: #007bff;">{{ total_sloty|floatformat:4 }}</div>
+                    <div style="color: #6c757d;">Łączna liczba slotów (przypięte)</div>
+                </div>
+            </div>
+        </div>
+
+        <h3>Autorzy z przypisanymi dyscyplinami</h3>
+
+        <div id="authors-container">
+        {% for autor_data in autorzy_data %}
+            <div id="author-{{ autor_data.autor.id }}-{{ autor_data.dyscyplina.id }}" class="author-card" style="border: 1px solid #ddd; border-radius: 8px; margin-bottom: 20px; background: white; overflow: hidden;">
+                <!-- Author Header -->
+                <div style="background: #f5f6fa; padding: 15px 20px; border-bottom: 2px solid #e1e4e8;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+                        <div style="font-size: 1.3em; font-weight: 600;">
+                            <a href="{% url 'ewaluacja_metryki:szczegoly' autor_data.metryka_id %}" style="color: #2c3e50; text-decoration: none;">
+                                {{ autor_data.autor.nazwisko }} {{ autor_data.autor.imiona }}
+                            </a>
+                        </div>
+                        <div style="display: flex; gap: 10px;">
+                            {% if autor_data.przypieta %}
+                                <span class="discipline-badge" style="background: #ffd700; color: #333; padding: 4px 10px; border-radius: 20px; font-size: 0.85em;">
+                                    <span class="fi-lock"></span> Przypięta
+                                </span>
+                            {% else %}
+                                <span class="discipline-badge" style="background: #ccc; color: #666; padding: 4px 10px; border-radius: 20px; font-size: 0.85em;">
+                                    <span class="fi-unlock"></span> Odpięta
+                                </span>
+                            {% endif %}
+
+                            {% if autor_data.wybrana_do_ewaluacji %}
+                                <span style="background: #d4edda; color: #155724; padding: 4px 10px; border-radius: 20px; font-size: 0.85em;">
+                                    <span class="fi-check"></span> Udział wybrany do ewaluacji
+                                </span>
+                            {% else %}
+                                <span style="background: #f8d7da; color: #721c24; padding: 4px 10px; border-radius: 20px; font-size: 0.85em;">
+                                    <span class="fi-x"></span> Udział niewybrany
+                                </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Discipline and Data -->
+                <div style="padding: 20px;">
+                    <div style="font-size: 1.1em; color: #495057; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid #e9ecef;">
+                        <strong>Dyscyplina:</strong> {{ autor_data.dyscyplina.nazwa }}
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 25px; margin: 20px 0;">
+                        <!-- Publication Points Section -->
+                        {% if autor_data.przypieta %}
+                        <div style="padding: 15px; border-radius: 8px; background: #fff5f5; border: 1px solid #ffdddd;">
+                            <h4 style="margin: 0 0 15px 0; font-size: 1em; color: #495057;">
+                                <span class="fi-page"></span> Punkty z publikacji
+                            </h4>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                                <div style="text-align: center;">
+                                    <div style="font-size: 0.85em; color: #6c757d; margin-bottom: 5px;">Punkty (PKDAut)</div>
+                                    <div style="font-size: 1.8em; font-weight: bold; color: #dc3545;">{{ autor_data.punkty|floatformat:2 }}</div>
+                                </div>
+                                <div style="text-align: center;">
+                                    <div style="font-size: 0.85em; color: #6c757d; margin-bottom: 5px;">Sloty</div>
+                                    <div style="font-size: 1.8em; font-weight: bold; color: #007bff;">{{ autor_data.sloty|floatformat:4 }}</div>
+                                </div>
+                            </div>
+                        </div>
+                        {% else %}
+                        <div style="padding: 15px; border-radius: 8px; background: #f0f0f0; border: 1px solid #ddd;">
+                            <h4 style="margin: 0 0 15px 0; font-size: 1em; color: #6c757d;">
+                                <span class="fi-page"></span> Punkty z publikacji (potencjalne)
+                            </h4>
+                            {% if autor_data.punkty or autor_data.sloty %}
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                                <div style="text-align: center;">
+                                    <div style="font-size: 0.85em; color: #6c757d; margin-bottom: 5px;">Punkty (PKDAut)</div>
+                                    <div style="font-size: 1.8em; font-weight: bold; color: #999;">
+                                        {% if autor_data.punkty %}
+                                            {{ autor_data.punkty|floatformat:2 }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div style="text-align: center;">
+                                    <div style="font-size: 0.85em; color: #6c757d; margin-bottom: 5px;">Sloty</div>
+                                    <div style="font-size: 1.8em; font-weight: bold; color: #999;">
+                                        {% if autor_data.sloty %}
+                                            {{ autor_data.sloty|floatformat:4 }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            <div style="margin-top: 10px; text-align: center; color: #666; font-size: 0.85em; font-style: italic;">
+                                Dyscyplina odpięta - wartości orientacyjne
+                            </div>
+                            {% else %}
+                            <div style="text-align: center; color: #999; padding: 20px;">
+                                <span class="fi-unlink" style="font-size: 2em; display: block; margin-bottom: 10px;"></span>
+                                Dyscyplina odpięta - brak punktacji
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+
+                        <!-- Metrics Section -->
+                        <div style="padding: 15px; border-radius: 8px; background: #f0f8ff; border: 1px solid #cce5ff;">
+                            <h4 style="margin: 0 0 15px 0; font-size: 1em; color: #495057;">
+                                <span class="fi-graph-bar"></span> Metryki autora
+                            </h4>
+                            {% if autor_data.metryka %}
+                                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px;">
+                                    <div style="text-align: center;">
+                                        <div style="font-size: 0.85em; color: #6c757d; margin-bottom: 5px;">Punkty łącznie</div>
+                                        <div style="font-size: 1.8em; font-weight: bold; color: #17a2b8;">{{ autor_data.metryka.punkty_nazbierane|floatformat:2 }}</div>
+                                    </div>
+                                    <div style="text-align: center;">
+                                        <div style="font-size: 0.85em; color: #6c757d; margin-bottom: 5px;">Średnia za slot</div>
+                                        <div style="font-size: 1.8em; font-weight: bold; color: #28a745;">{{ autor_data.metryka.srednia_punktow|floatformat:2 }}</div>
+                                    </div>
+                                    <div style="text-align: center;">
+                                        <div style="font-size: 0.85em; color: #6c757d; margin-bottom: 5px;">Sloty nazbierane</div>
+                                        <div style="font-size: 1.8em; font-weight: bold; color: #495057;">{{ autor_data.metryka.sloty_wypelnione|floatformat:2 }}</div>
+                                    </div>
+                                </div>
+
+                                <!-- Progress Bar -->
+                                <div style="margin-top: 20px;">
+                                    <div style="font-size: 0.85em; color: #6c757d; margin-bottom: 8px;">Wykorzystanie slotów</div>
+                                    <div style="position: relative; background: #e9ecef; border-radius: 10px; height: 30px; overflow: hidden;">
+                                        {% with percent=autor_data.metryka.udzial_procentowy|default:0 %}
+                                        <div style="position: absolute; top: 0; left: 0; height: 100%; border-radius: 10px;
+                                                    background: {% if percent >= 60 %}linear-gradient(90deg, #4CAF50, #66BB6A){% elif percent >= 30 %}linear-gradient(90deg, #FF9800, #FFB74D){% else %}linear-gradient(90deg, #F44336, #EF5350){% endif %};
+                                                    width: {% if percent > 100 %}100%{% elif percent < 5 %}5%{% else %}{{ percent|floatformat:0 }}%{% endif %};
+                                                    display: flex; align-items: center; justify-content: center; min-width: 40px;">
+                                            <span style="color: white; font-weight: bold; font-size: 0.9em; text-shadow: 1px 1px 2px rgba(0,0,0,0.3);">{{ percent|floatformat:1 }}%</span>
+                                        </div>
+                                        {% endwith %}
+                                    </div>
+                                    {% if autor_data.metryka.udzial_procentowy > 100 %}
+                                    <div style="margin-top: 8px; padding: 5px 10px; background: #fff3cd; border: 1px solid #ffeeba; border-radius: 4px; color: #856404; font-size: 0.85em; display: inline-block;">
+                                        <span class="fi-alert"></span> Przekroczenie o {{ autor_data.metryka.udzial_procentowy|add:"-100"|floatformat:1 }}%
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            {% else %}
+                                <div style="text-align: center; color: #6c757d; padding: 20px; font-style: italic;">
+                                    Brak danych metryki dla tego autora
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e9ecef;">
+                        {% if autor_data.przypieta %}
+                        <form method="post"
+                              hx-post="{% url 'ewaluacja_optymalizuj_publikacje:optymalizuj' publikacja.slug %}"
+                              hx-target="#content-wrapper"
+                              hx-swap="outerHTML transition:true">
+                            {% csrf_token %}
+                            <input type="hidden" name="cache_id" value="{{ autor_data.cache_id }}">
+                            <input type="hidden" name="unpin_discipline" value="1">
+                            <button type="submit" style="background: #ff6b6b; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; position: relative;">
+                                <span class="fi-minus"></span> Odepnij dyscyplinę
+                                <span class="htmx-indicator" style="margin-left: 5px;">
+                                    <span class="fi-loop" style="animation: spin 1s linear infinite;"></span>
+                                </span>
+                            </button>
+                            <small style="display: block; color: #666; margin-top: 5px;">
+                                Odpięcie dyscypliny spowoduje przeliczenie punktacji
+                            </small>
+                        </form>
+                        {% else %}
+                        <form method="post"
+                              hx-post="{% url 'ewaluacja_optymalizuj_publikacje:optymalizuj' publikacja.slug %}"
+                              hx-target="#content-wrapper"
+                              hx-swap="outerHTML transition:true">
+                            {% csrf_token %}
+                            <input type="hidden" name="autor_id" value="{{ autor_data.autor.id }}">
+                            <input type="hidden" name="dyscyplina_id" value="{{ autor_data.dyscyplina.id }}">
+                            <input type="hidden" name="pin_discipline" value="1">
+                            <button type="submit" style="background: #4CAF50; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; position: relative;">
+                                <span class="fi-plus"></span> Przypnij dyscyplinę
+                                <span class="htmx-indicator" style="margin-left: 5px;">
+                                    <span class="fi-loop" style="animation: spin 1s linear infinite;"></span>
+                                </span>
+                            </button>
+                            <small style="display: block; color: #666; margin-top: 5px;">
+                                Przypięcie dyscypliny przywróci punktację
+                            </small>
+                        </form>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        {% empty %}
+            <div class="alert-box info">
+                Brak autorów dla tej publikacji.
+            </div>
+        {% endfor %}
+        </div>
+
+    {% endif %}
+</div>

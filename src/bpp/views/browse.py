@@ -14,6 +14,7 @@ try:
 except ImportError:
     from django.urls import reverse
 
+from django.db.models import Max, Min
 from django.db.models.query_utils import Q
 from django.http import Http404, HttpResponseForbidden, HttpResponseRedirect
 from django.shortcuts import get_object_or_404
@@ -78,7 +79,7 @@ class UczelniaView(DetailView):
             # Add 5 most recently updated records
             context["recently_updated"] = Rekord.objects.order_by(
                 "-ostatnio_zmieniony"
-            )[:5]
+            )[:12]
 
             # Add 5 recent records with abstracts
             context["recent_abstracts"] = (
@@ -183,6 +184,9 @@ class AutorzyView(Browser):
 
         # Uwzględnia wybraną literkę etc
         ret = super().get_queryset()
+
+        # Filter out hidden authors
+        ret = ret.filter(pokazuj=True)
 
         uczelnia = Uczelnia.objects.get_for_request(self.request)
         if uczelnia is not None:
@@ -308,6 +312,88 @@ class ZrodloView(DetailView):
         context["has_publications"] = Wydawnictwo_Ciagle.objects.filter(
             zrodlo=self.object
         ).exists()
+        return context
+
+
+class LataView(ListView):
+    template_name = "browse/lata.html"
+    context_object_name = "years"
+    paginate_by = None
+
+    def get_queryset(self):
+        # Get all years that have publications, with counts
+        years_data = []
+
+        # Get min and max years from Rekord
+        year_range = Rekord.objects.aggregate(min_year=Min("rok"), max_year=Max("rok"))
+
+        if year_range["min_year"] and year_range["max_year"]:
+            # Generate list of years from max to min (newest first)
+            for year in range(year_range["max_year"], year_range["min_year"] - 1, -1):
+                count = Rekord.objects.filter(rok=year).count()
+                if count > 0:  # Only include years with publications
+                    years_data.append({"year": year, "count": count})
+
+        return years_data
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["total_publications"] = Rekord.objects.count()
+
+        # Add current year for reference
+        context["current_year"] = timezone.now().year
+
+        # Group years by decade for better navigation
+        if context["years"]:
+            decades = {}
+            for year_data in context["years"]:
+                decade = (year_data["year"] // 10) * 10
+                if decade not in decades:
+                    decades[decade] = []
+                decades[decade].append(year_data)
+            context["decades"] = dict(sorted(decades.items(), reverse=True))
+
+        return context
+
+
+class RokView(ListView):
+    template_name = "browse/rok.html"
+    model = Rekord
+    context_object_name = "publications"
+    paginate_by = 50
+
+    def get_queryset(self):
+        year = self.kwargs.get("rok")
+
+        # Validate year
+        try:
+            year = int(year)
+            if year < 1900 or year > 2100:
+                raise ValueError
+        except (ValueError, TypeError):
+            raise Http404("Nieprawidłowy rok")
+
+        # Get publications for this year
+        return Rekord.objects.filter(rok=year).order_by("-ostatnio_zmieniony")
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        year = int(self.kwargs.get("rok"))
+        context["year"] = year
+
+        # Navigation to previous/next year
+        context["prev_year"] = None
+        context["next_year"] = None
+
+        if Rekord.objects.filter(rok=year - 1).exists():
+            context["prev_year"] = year - 1
+
+        if Rekord.objects.filter(rok=year + 1).exists():
+            context["next_year"] = year + 1
+
+        # Get total count for the year
+        context["total_count"] = Rekord.objects.filter(rok=year).count()
+
         return context
 
 

@@ -20,6 +20,23 @@ class PublikacjaInstytucjiAdmin(BasePBNAPIAdmin):
         "publicationId",
     ]
     list_select_related = ["insPersonId", "institutionId", "publicationId"]
+    search_fields = [
+        # Person-related searches
+        "insPersonId__name",
+        "insPersonId__lastName",
+        "insPersonId__pbnId",
+        # Publication-related searches
+        "publicationId__title",
+        "publicationId__year",
+        "publicationId__mongoId",
+        # Direct model field searches
+        "publicationVersion",
+        "publicationYear",
+        "publicationType",
+        "userType",
+        # JSON field search (less efficient but useful)
+        "snapshot",
+    ]
     list_filter = [
         "userType",
         "publicationType",

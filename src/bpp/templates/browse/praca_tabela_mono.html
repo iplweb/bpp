@@ -1,5 +1,10 @@
 {% load prace user_in_group %}
 
+{% comment %} Include bibliography metadata in head section {% endcomment %}
+{% if not request.is_ajax %}
+    {% include "browse/bibliography_metadata.html" with praca=praca autorzy=autorzy %}
+{% endif %}
+
 <!-- Main publication container with modern card layout -->
 <div class="publication-detail-container" style="max-width: 1400px; margin: 0 auto; padding: 20px;">
 
@@ -15,6 +20,8 @@
             {% if praca.charakter_formalny.charakter_ogolny != 'roz' %}
                 <span style="font-weight: normal; font-size: 0.8em;">{{ praca.oznaczenie_wydania|default:""|znak_na_koncu:"." }}</span>
             {% endif %}
+            {% comment %} COinS metadata for automatic bibliography manager detection {% endcomment %}
+            {% generate_coins praca autorzy %}
         </h2>
 
         <!-- Authors Section -->
@@ -371,6 +378,28 @@
                             </div>
                         {% endif %}
 
+                        {% if not request.user.is_anonymous and praca.link_do_pi %}
+                            <div class="external-link-item link-pi">
+                                <span class="fi-home link-icon"></span>
+                                <div class="link-content">
+                                    <div class="link-label">Profil instytucji</div>
+                                    <div class="link-value">{{ praca.link_do_pi|truncatechars:40 }}</div>
+                                </div>
+                                <div class="link-actions">
+                                    <button class="button copy-button" type="button"
+                                            onclick="navigator.clipboard.writeText('{{ praca.link_do_pi }}'); this.classList.add('copied'); this.innerHTML='<i class=\'fi-check\'></i>'; setTimeout(() => { this.classList.remove('copied'); this.innerHTML='<i class=\'fi-clipboard\'></i>'; }, 2000);"
+                                            title="Kopiuj adres">
+                                        <i class="fi-clipboard"></i>
+                                    </button>
+                                    <button class="button open-button" type="button"
+                                            onclick="window.open('{{ praca.link_do_pi }}', '_blank')"
+                                            title="Otwórz w Profilu instytucji">
+                                        <i class="fi-arrow-right"></i> Otwórz
+                                    </button>
+                                </div>
+                            </div>
+                        {% endif %}
+
                         {% if praca.doi %}
                             <div class="external-link-item link-doi">
                                 <span class="fi-bookmark link-icon"></span>
@@ -583,13 +612,25 @@
                 </div>
             </div>
 
-            <!-- BibTeX Card (Collapsible) -->
+            <!-- Citation Export Card -->
             <div class="info-card"
                  style="background: white; border: 1px solid #e1e4e8; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
                 <h3 style="font-size: 1.2rem; margin-bottom: 15px; color: #2c3e50; padding-bottom: 8px;">
-                    <span class="fi-page-copy"></span> BibTeX
+                    <span class="fi-download"></span> Eksport cytowania
                     <div class="shaded-hr-div-small"></div>
                 </h3>
+
+                <!-- Reference Manager Support Info -->
+                <div style="background: #f0f9ff; border-left: 3px solid #3498db; padding: 10px 15px; margin-bottom: 15px; border-radius: 4px;">
+                    <p style="margin: 0; font-size: 0.9em; color: #2c3e50;">
+                        <span class="fi-info" style="color: #3498db; margin-right: 5px;"></span>
+                        <strong>Wsparcie dla menedżerów bibliografii:</strong><br>
+                        Ta strona wspiera automatyczny import do <strong>Zotero</strong>, <strong>Mendeley</strong> i <strong>EndNote</strong>.
+                        Użytkownicy z zainstalowanym rozszerzeniem przeglądarki mogą zapisać tę publikację jednym kliknięciem -
+                        ikona pojawi się automatycznie w pasku narzędzi przeglądarki.
+                    </p>
+                </div>
+
                 <button id="bibtex-toggle-btn" class="button expanded secondary" type="button">
                     Pokaż BibTeX
                 </button>
@@ -616,17 +657,32 @@
                      style="background: white; border: 1px solid #e1e4e8; border-radius: 8px; padding: 20px;">
                     <h3 style="font-size: 1.2rem; margin-bottom: 15px; color: #2c3e50; padding-bottom: 8px;">
                         <span class="fi-torsos-all"></span> Punkty i sloty autorów
-                        {% if uczelnia.drukuj_oswiadczenia %}
-                            {% if request.user.is_superuser or request.user|has_group:"wprowadzanie danych" %}
-                                <a target="_blank"
-                                   href="{% url "oswiadczenia:wiele-oswiadczen" rekord.id.0 rekord.id.1 %}"
-                                   class="print-button print-button-header"
-                                   title="Wydrukuj wszystkie oświadczenia"
-                                   style="float: right;">
-                                    <span class="fi-print"></span>
-                                </a>
+
+                        <div style="float: right;">
+                            {% comment %} Check if there are multiple authors with disciplines set {% endcomment %}
+                            {% with authors_with_disciplines=rekord.punktacja_autora.select_related|length %}
+                            {% if authors_with_disciplines > 0 %}
+                                {% if request.user.is_authenticated %}
+                                    <a href="{% url "ewaluacja_optymalizuj_publikacje:optymalizuj" rekord.slug %}"
+                                       class="print-button print-button-header optimize-button"
+                                       title="Optymalizuj przypisanie dyscyplin">
+                                        <span class="fi-wrench"></span> Optymalizuj
+                                    </a>
+                                {% endif %}
                             {% endif %}
-                        {% endif %}
+                            {% endwith %}
+
+                            {% if uczelnia.drukuj_oswiadczenia %}
+                                {% if request.user.is_superuser or request.user|has_group:"wprowadzanie danych" %}
+                                    <a target="_blank"
+                                       href="{% url "oswiadczenia:wiele-oswiadczen" rekord.id.0 rekord.id.1 %}"
+                                       class="print-button print-button-header"
+                                       title="Wydrukuj wszystkie oświadczenia">
+                                        <span class="fi-print"></span>
+                                    </a>
+                                {% endif %}
+                            {% endif %}
+                        </div>
 
                         <div class="shaded-hr-div-small"></div>
                     </h3>
@@ -1045,6 +1101,15 @@
 
     .info-card:hover {
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Optimize button - smaller font size */
+    .optimize-button {
+        font-size: 0.875rem !important;
+    }
+
+    .optimize-button .fi-wrench {
+        font-size: 0.95rem;
     }
 
     /* Print styles */

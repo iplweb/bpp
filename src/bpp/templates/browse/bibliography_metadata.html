@@ -1,0 +1,168 @@
+{% load prace %}
+{% comment %}
+Bibliography Metadata Template
+Provides comprehensive metadata for automatic detection by reference managers
+like Zotero, Mendeley, EndNote, etc.
+{% endcomment %}
+
+{% comment %} Dublin Core Metadata {% endcomment %}
+<meta name="DC.title" content="{{ praca.tytul_oryginalny|striptags }}" />
+{% if praca.tytul %}
+    <meta name="DC.title.alternative" content="{{ praca.tytul|striptags }}" />
+{% endif %}
+<meta name="DC.type" content="Text" />
+{% for autor in autorzy %}
+    <meta name="DC.creator" content="{{ autor.autor.imiona }} {{ autor.autor.nazwisko }}" />
+{% endfor %}
+<meta name="DC.date" content="{{ praca.rok }}" />
+<meta name="DC.language" content="{{ praca.jezyk.skrot|default:'pl' }}" />
+{% if praca.wydawca %}
+    <meta name="DC.publisher" content="{{ praca.wydawca }}" />
+{% endif %}
+{% if praca.doi %}
+    <meta name="DC.identifier" content="doi:{{ praca.doi }}" />
+{% endif %}
+{% if praca.isbn %}
+    <meta name="DC.identifier" content="isbn:{{ praca.isbn }}" />
+{% endif %}
+{% if praca.issn %}
+    <meta name="DC.identifier" content="issn:{{ praca.issn }}" />
+{% endif %}
+{% if praca.streszczenia.exists %}
+    {% for streszczenie in praca.streszczenia.all %}
+        {% if forloop.first %}
+            <meta name="DC.description" content="{{ streszczenie.streszczenie|striptags|truncatewords:150 }}" />
+        {% endif %}
+    {% endfor %}
+{% endif %}
+{% if praca.public_www or praca.www %}
+    <meta name="DC.relation" content="{{ praca.public_www|default:praca.www }}" />
+{% endif %}
+
+{% comment %} Enhanced Highwire/Google Scholar Tags {% endcomment %}
+{% if praca.doi %}
+    <meta name="citation_doi" content="{{ praca.doi }}" />
+{% endif %}
+{% if praca.isbn %}
+    <meta name="citation_isbn" content="{{ praca.isbn }}" />
+{% endif %}
+{% if praca.issn %}
+    <meta name="citation_issn" content="{{ praca.issn }}" />
+{% endif %}
+{% if praca.wydawca %}
+    <meta name="citation_publisher" content="{{ praca.wydawca }}" />
+{% endif %}
+{% if praca.streszczenia.exists %}
+    {% for streszczenie in praca.streszczenia.all %}
+        {% if forloop.first %}
+            <meta name="citation_abstract" content="{{ streszczenie.streszczenie|striptags|truncatewords:150 }}" />
+        {% endif %}
+    {% endfor %}
+{% endif %}
+<meta name="citation_language" content="{{ praca.jezyk.skrot|default:'pl' }}" />
+{% if praca.pubmed_id %}
+    <meta name="citation_pmid" content="{{ praca.pubmed_id }}" />
+{% endif %}
+
+{% comment %} PRISM Metadata (Publishing Requirements for Industry Standard Metadata) {% endcomment %}
+{% if praca.zrodlo %}
+    <meta name="prism.publicationName" content="{{ praca.zrodlo }}" />
+{% endif %}
+{% if praca.doi %}
+    <meta name="prism.doi" content="{{ praca.doi }}" />
+{% endif %}
+{% if praca.issn %}
+    <meta name="prism.issn" content="{{ praca.issn }}" />
+{% endif %}
+{% if praca.e_issn %}
+    <meta name="prism.eIssn" content="{{ praca.e_issn }}" />
+{% endif %}
+{% if praca.tom %}
+    <meta name="prism.volume" content="{{ praca.tom }}" />
+{% endif %}
+{% if praca.strony %}
+    <meta name="prism.startingPage" content="{{ praca.pierwsza_strona }}" />
+    <meta name="prism.endingPage" content="{{ praca.ostatnia_strona }}" />
+{% endif %}
+<meta name="prism.publicationDate" content="{{ praca.rok }}" />
+
+{% comment %} Eprints Metadata {% endcomment %}
+<meta name="eprints.title" content="{{ praca.tytul_oryginalny|striptags }}" />
+{% for autor in autorzy %}
+    <meta name="eprints.creators_name" content="{{ autor.autor.nazwisko }}, {{ autor.autor.imiona }}" />
+{% endfor %}
+<meta name="eprints.date" content="{{ praca.rok }}" />
+<meta name="eprints.type" content="article" />
+
+{% comment %} Schema.org JSON-LD Structured Data {% endcomment %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": {% if praca.charakter_formalny.nazwa == "Książka" %}"Book"{% else %}"ScholarlyArticle"{% endif %},
+  "headline": {{ praca.tytul_oryginalny|striptags|jsonify }},
+  {% if praca.tytul %}
+  "alternativeHeadline": {{ praca.tytul|striptags|jsonify }},
+  {% endif %}
+  "author": [
+    {% for autor in autorzy %}
+    {
+      "@type": "Person",
+      "name": "{{ autor.autor.imiona }} {{ autor.autor.nazwisko }}",
+      "givenName": "{{ autor.autor.imiona }}",
+      "familyName": "{{ autor.autor.nazwisko }}"
+      {% if autor.autor.orcid %},"identifier": {
+        "@type": "PropertyValue",
+        "propertyID": "ORCID",
+        "value": "{{ autor.autor.orcid }}"
+      }{% endif %}
+    }{% if not forloop.last %},{% endif %}
+    {% endfor %}
+  ],
+  "datePublished": "{{ praca.rok }}",
+  "inLanguage": "{{ praca.jezyk.skrot|default:'pl' }}",
+  {% if praca.wydawca %}
+  "publisher": {
+    "@type": "Organization",
+    "name": {{ praca.wydawca|jsonify }}
+  },
+  {% endif %}
+  {% if praca.zrodlo %}
+  "isPartOf": {
+    "@type": "PublicationIssue",
+    "name": {{ praca.zrodlo.nazwa|jsonify }}
+    {% if praca.tom %},"volumeNumber": "{{ praca.tom }}"{% endif %}
+    {% if praca.issn %},"issn": "{{ praca.issn }}"{% endif %}
+  },
+  {% endif %}
+  {% if praca.strony %}
+  "pageStart": "{{ praca.pierwsza_strona }}",
+  "pageEnd": "{{ praca.ostatnia_strona }}",
+  {% endif %}
+  {% if praca.doi %}
+  "identifier": [
+    {
+      "@type": "PropertyValue",
+      "propertyID": "DOI",
+      "value": "{{ praca.doi }}"
+    }
+  ],
+  {% endif %}
+  {% if praca.streszczenia.exists %}
+    {% for streszczenie in praca.streszczenia.all %}
+      {% if forloop.first %}
+  "description": {{ streszczenie.streszczenie|striptags|truncatewords:150|jsonify }},
+      {% endif %}
+    {% endfor %}
+  {% endif %}
+  {% if praca.public_www or praca.www %}
+  "url": "{{ praca.public_www|default:praca.www }}"
+  {% else %}
+  "url": "{{ request.build_absolute_uri }}"
+  {% endif %}
+}
+</script>
+
+{% comment %}
+COinS (ContextObjects in Spans) - This will be included directly in the HTML body
+Note: This is just the template for generating the COinS data
+{% endcomment %}
