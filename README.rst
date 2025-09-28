@@ -15,6 +15,14 @@
    :target: http://bpp.readthedocs.io/pl/latest/?badge=latest
    :alt: Dokumentacja
 
+.. image:: https://github.com/iplweb/bpp/actions/workflows/tests-no-selenium.yml/badge.svg
+   :target: https://github.com/iplweb/bpp/actions/workflows/tests-no-selenium.yml
+   :alt: Testy - Django, Playwright
+
+.. image:: https://github.com/iplweb/bpp/actions/workflows/tests-selenium.yml/badge.svg
+   :target: https://github.com/iplweb/bpp/actions/workflows/tests-selenium.yml
+   :alt: Testy - Selenium
+
 
 O projekcie
 -----------
