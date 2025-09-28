@@ -349,6 +349,7 @@
                             <th class="text-right">PKDaut</th>
                             <th class="text-right">Slot</th>
                             <th class="text-right">PKDaut/Slot</th>
+                            <th>Akcje</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -372,6 +373,81 @@
                                 {% else %}
                                     -
                                 {% endif %}
+                            </td>
+                            <td>
+                                {% if praca.autor_assignment_id %}
+                                <form method="post" action="{% url 'ewaluacja_metryki:odepnij' praca.autor_assignment_id %}" style="display: inline;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="button tiny alert" title="Odepnij dyscyplinę">
+                                        <span class="fi-unlink"></span>
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Panel prac z odpiętą dyscypliną -->
+        {% if prace_odpiete %}
+        <div class="callout secondary">
+            <h4>
+                <span class="fi-page-multiple"></span> Prace z odpiętą dyscypliną w okresie
+                <button class="button small float-right" onclick="toggleUnpinnedPapers()">
+                    <span class="fi-eye"></span> Pokaż/Ukryj
+                </button>
+            </h4>
+            <div id="unpinned-papers" style="display: none;">
+                <div class="callout small">
+                    <p>
+                        <span class="fi-info"></span>
+                        <strong>Uwaga:</strong> Wartości PKDaut i slot są <em>szacunkowe</em> dla prac z odpiętą dyscypliną.
+                    </p>
+                </div>
+
+                <table class="hover">
+                    <thead>
+                        <tr>
+                            <th>Lp.</th>
+                            <th>Tytuł</th>
+                            <th>Rok</th>
+                            <th class="text-right">PKDaut</th>
+                            <th class="text-right">Slot</th>
+                            <th class="text-right">PKDaut/Slot</th>
+                            <th>Akcje</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for praca in prace_odpiete %}
+                        <tr class="unpinned-work">
+                            <td>{{ forloop.counter }}</td>
+                            <td>
+                                <a href="{% url 'bpp:browse_praca_by_slug' praca.rekord.slug %}">
+                                    {{ praca.tytul_oryginalny|safe|truncatewords:10 }}
+                                </a>
+                                <span class="label secondary">Odpięta</span>
+                            </td>
+                            <td>{{ praca.rok }}</td>
+                            <td class="text-right">{{ praca.pkdaut_est|floatformat:2 }}</td>
+                            <td class="text-right">{{ praca.slot_est|floatformat:4 }}</td>
+                            <td class="text-right">
+                                {% if praca.pkdaut_per_slot_est %}
+                                    {{ praca.pkdaut_per_slot_est|floatformat:2 }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td>
+                                <form method="post" action="{% url 'ewaluacja_metryki:przypnij' praca.autor_assignment_id %}" style="display: inline;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="button tiny success" title="Przypnij dyscyplinę">
+                                        <span class="fi-link"></span>
+                                    </button>
+                                </form>
                             </td>
                         </tr>
                         {% endfor %}
@@ -398,6 +474,15 @@ function toggleAllPapers() {
         papers.style.display = 'none';
     }
 }
+
+function toggleUnpinnedPapers() {
+    var papers = document.getElementById('unpinned-papers');
+    if (papers.style.display === 'none') {
+        papers.style.display = 'block';
+    } else {
+        papers.style.display = 'none';
+    }
+}
 </script>
 
 <style>
@@ -411,6 +496,10 @@ function toggleAllPapers() {
     }
     tr.success {
         background-color: #e1faea;
+    }
+
+    tr.unpinned-work {
+        background-color: #f0f0f0;
     }
 
     /* Discipline buttons styling */

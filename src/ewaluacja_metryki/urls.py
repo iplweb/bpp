@@ -7,6 +7,16 @@ app_name = "ewaluacja_metryki"
 urlpatterns = [
     path("", views.MetrykiListView.as_view(), name="lista"),
     path("szczegoly/<int:pk>/", views.MetrykaDetailView.as_view(), name="szczegoly"),
+    path(
+        "przypnij/<int:autor_assignment_id>/",
+        views.PrzypnijDyscyplineView.as_view(),
+        name="przypnij",
+    ),
+    path(
+        "odepnij/<int:autor_assignment_id>/",
+        views.OdepnijDyscyplineView.as_view(),
+        name="odepnij",
+    ),
     path("statystyki/", views.StatystykiView.as_view(), name="statystyki"),
     path(
         "uruchom-generowanie/",

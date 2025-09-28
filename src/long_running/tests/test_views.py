@@ -36,7 +36,7 @@ def test_RestrictToOwnerMixin(mocker):
         request = mocker.MagicMock()
 
     Foo.get_queryset(Foo)
-    assert Foo.model.objects.filter.called_with(owner=Foo.request)
+    Foo.model.objects.filter.assert_called_with(owner=Foo.request.user)
 
 
 def test_LongRunningOperationsView_get_queryset(rf, admin_user):

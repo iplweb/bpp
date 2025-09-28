@@ -284,14 +284,163 @@ class MetrykaDetailView(EwaluacjaRequiredMixin, DetailView):
                 .order_by("-pkdaut")
             )
 
-            # Calculate pkdaut/slot for each work
+            # Calculate pkdaut/slot for each work and find autor_assignment_id
             for praca in prace_wszystkie:
                 if praca.slot and praca.slot > 0:
                     praca.pkdaut_per_slot = float(praca.pkdaut) / float(praca.slot)
                 else:
                     praca.pkdaut_per_slot = None
 
+                # Find the autor_assignment_id for this work using the original publication
+                praca.autor_assignment_id = None
+                try:
+                    # Access the original publication through the cached record
+                    assignment = praca.rekord.original.autorzy_set.filter(
+                        autor_id=metryka.autor.id,
+                        dyscyplina_naukowa_id=metryka.dyscyplina_naukowa.id,
+                        przypieta=True,  # These should be pinned since they're in cache
+                    ).first()
+                    if assignment:
+                        praca.autor_assignment_id = assignment.pk
+                except (AttributeError, Exception):
+                    # Handle cases where original might not be accessible
+                    pass
+
             context["prace_wszystkie"] = prace_wszystkie
+
+        # Pobierz prace z odpiętą dyscypliną
+        from decimal import Decimal
+
+        from bpp.models import (
+            Patent_Autor,
+            Wydawnictwo_Ciagle_Autor,
+            Wydawnictwo_Zwarte_Autor,
+        )
+
+        prace_odpiete = []
+
+        # Query Wydawnictwo_Ciagle with unpinned disciplines
+        wydawnictwa_ciagle = Wydawnictwo_Ciagle_Autor.objects.filter(
+            autor=metryka.autor,
+            dyscyplina_naukowa=metryka.dyscyplina_naukowa,
+            przypieta=False,
+            rekord__rok__gte=metryka.rok_min,
+            rekord__rok__lte=metryka.rok_max,
+        ).select_related("rekord")
+
+        for wca in wydawnictwa_ciagle:
+            rekord = wca.rekord
+            # Create a pseudo-object with estimated values
+            praca = type(
+                "PracaOdpieta",
+                (),
+                {
+                    "rekord": rekord,
+                    "tytul_oryginalny": rekord.tytul_oryginalny,
+                    "rok": rekord.rok,
+                    # Estimate PKDaut - using punkty_kbn divided by author count as rough estimate
+                    "pkdaut_est": Decimal(str(rekord.punkty_kbn or 0))
+                    / Decimal(str(rekord.autorzy_set.count() or 1)),
+                    # Estimate slot - using 1/N approach where N is author count
+                    "slot_est": Decimal("1")
+                    / Decimal(str(rekord.autorzy_set.count() or 1)),
+                    "autor_assignment_id": wca.pk,
+                },
+            )()
+
+            # Calculate estimated PKDaut/slot
+            if praca.slot_est and praca.slot_est > 0:
+                praca.pkdaut_per_slot_est = float(praca.pkdaut_est) / float(
+                    praca.slot_est
+                )
+            else:
+                praca.pkdaut_per_slot_est = None
+
+            prace_odpiete.append(praca)
+
+        # Query Wydawnictwo_Zwarte with unpinned disciplines
+        wydawnictwa_zwarte = Wydawnictwo_Zwarte_Autor.objects.filter(
+            autor=metryka.autor,
+            dyscyplina_naukowa=metryka.dyscyplina_naukowa,
+            przypieta=False,
+            rekord__rok__gte=metryka.rok_min,
+            rekord__rok__lte=metryka.rok_max,
+        ).select_related("rekord")
+
+        for wza in wydawnictwa_zwarte:
+            rekord = wza.rekord
+            praca = type(
+                "PracaOdpieta",
+                (),
+                {
+                    "rekord": rekord,
+                    "tytul_oryginalny": rekord.tytul_oryginalny,
+                    "rok": rekord.rok,
+                    "pkdaut_est": Decimal(str(rekord.punkty_kbn or 0))
+                    / Decimal(str(rekord.autorzy_set.count() or 1)),
+                    "slot_est": Decimal("1")
+                    / Decimal(str(rekord.autorzy_set.count() or 1)),
+                    "autor_assignment_id": wza.pk,
+                },
+            )()
+
+            if praca.slot_est and praca.slot_est > 0:
+                praca.pkdaut_per_slot_est = float(praca.pkdaut_est) / float(
+                    praca.slot_est
+                )
+            else:
+                praca.pkdaut_per_slot_est = None
+
+            prace_odpiete.append(praca)
+
+        # Query Patent with unpinned disciplines
+        patenty = Patent_Autor.objects.filter(
+            autor=metryka.autor,
+            dyscyplina_naukowa=metryka.dyscyplina_naukowa,
+            przypieta=False,
+            rekord__rok__gte=metryka.rok_min,
+            rekord__rok__lte=metryka.rok_max,
+        ).select_related("rekord")
+
+        for pa in patenty:
+            rekord = pa.rekord
+            praca = type(
+                "PracaOdpieta",
+                (),
+                {
+                    "rekord": rekord,
+                    "tytul_oryginalny": rekord.tytul_oryginalny,
+                    "rok": rekord.rok,
+                    "pkdaut_est": Decimal(str(rekord.punkty_kbn or 0))
+                    / Decimal(str(rekord.autorzy_set.count() or 1)),
+                    "slot_est": Decimal("1")
+                    / Decimal(str(rekord.autorzy_set.count() or 1)),
+                    "autor_assignment_id": pa.pk,
+                },
+            )()
+
+            if praca.slot_est and praca.slot_est > 0:
+                praca.pkdaut_per_slot_est = float(praca.pkdaut_est) / float(
+                    praca.slot_est
+                )
+            else:
+                praca.pkdaut_per_slot_est = None
+
+            prace_odpiete.append(praca)
+
+        # Sort by estimated PKDaut descending
+        prace_odpiete.sort(key=lambda x: x.pkdaut_est, reverse=True)
+
+        # Calculate totals for unpinned works
+        if prace_odpiete:
+            context["prace_odpiete"] = prace_odpiete
+            context["prace_odpiete_suma_pkdaut"] = sum(
+                p.pkdaut_est for p in prace_odpiete
+            )
+            context["prace_odpiete_suma_slotow"] = sum(
+                p.slot_est for p in prace_odpiete
+            )
+            context["prace_odpiete_liczba"] = len(prace_odpiete)
 
         # Porównanie z innymi autorami w jednostce
         if metryka.jednostka:
@@ -310,6 +459,126 @@ class MetrykaDetailView(EwaluacjaRequiredMixin, DetailView):
             ).count()
 
         return context
+
+
+class PrzypnijDyscyplineView(EwaluacjaRequiredMixin, View):
+    """Handle pinning a discipline for an author in a publication"""
+
+    def post(self, request, autor_assignment_id):
+        from django.db import transaction
+        from django.shortcuts import redirect
+
+        from ewaluacja_metryki.utils import przelicz_metryki_dla_publikacji
+
+        from bpp.models import (
+            Patent_Autor,
+            Wydawnictwo_Ciagle_Autor,
+            Wydawnictwo_Zwarte_Autor,
+        )
+        from bpp.models.sloty.core import IPunktacjaCacher
+
+        with transaction.atomic():
+            # Find the assignment in different publication types
+            wa = None
+            for model in [
+                Wydawnictwo_Ciagle_Autor,
+                Wydawnictwo_Zwarte_Autor,
+                Patent_Autor,
+            ]:
+                try:
+                    wa = model.objects.get(pk=autor_assignment_id)
+                    break
+                except model.DoesNotExist:
+                    continue
+
+            if not wa:
+                raise Exception("Nie znaleziono przypisania autora do publikacji")
+
+            publikacja = wa.rekord
+
+            # Update przypieta status
+            wa.przypieta = True
+            wa.save()
+
+            # Rebuild cache punktacja for the publication
+            cacher = IPunktacjaCacher(publikacja)
+            cacher.removeEntries()
+            cacher.rebuildEntries()
+
+            # Recalculate evaluation metrics for all affected authors
+            przelicz_metryki_dla_publikacji(publikacja)
+
+        # Redirect back to the detail view
+        # Get MetrykaAutora for the author and discipline to redirect to the correct detail page
+        from .models import MetrykaAutora
+
+        metryka = MetrykaAutora.objects.filter(
+            autor=wa.autor, dyscyplina_naukowa=wa.dyscyplina_naukowa
+        ).first()
+
+        if metryka:
+            return redirect("ewaluacja_metryki:szczegoly", pk=metryka.pk)
+        return redirect("ewaluacja_metryki:lista")
+
+
+class OdepnijDyscyplineView(EwaluacjaRequiredMixin, View):
+    """Handle unpinning a discipline for an author in a publication"""
+
+    def post(self, request, autor_assignment_id):
+        from django.db import transaction
+        from django.shortcuts import redirect
+
+        from ewaluacja_metryki.utils import przelicz_metryki_dla_publikacji
+
+        from bpp.models import (
+            Patent_Autor,
+            Wydawnictwo_Ciagle_Autor,
+            Wydawnictwo_Zwarte_Autor,
+        )
+        from bpp.models.sloty.core import IPunktacjaCacher
+
+        with transaction.atomic():
+            # Find the assignment in different publication types
+            wa = None
+            for model in [
+                Wydawnictwo_Ciagle_Autor,
+                Wydawnictwo_Zwarte_Autor,
+                Patent_Autor,
+            ]:
+                try:
+                    wa = model.objects.get(pk=autor_assignment_id)
+                    break
+                except model.DoesNotExist:
+                    continue
+
+            if not wa:
+                raise Exception("Nie znaleziono przypisania autora do publikacji")
+
+            publikacja = wa.rekord
+
+            # Update przypieta status
+            wa.przypieta = False
+            wa.save()
+
+            # Rebuild cache punktacja for the publication
+            cacher = IPunktacjaCacher(publikacja)
+            cacher.removeEntries()
+            cacher.rebuildEntries()
+
+            # Recalculate evaluation metrics for all affected authors
+            przelicz_metryki_dla_publikacji(publikacja)
+
+        # Redirect back to the detail view
+        # Get MetrykaAutora for the author and discipline to redirect to the correct detail page
+        from .models import MetrykaAutora
+
+        metryka = MetrykaAutora.objects.filter(
+            autor=wa.autor, dyscyplina_naukowa=wa.dyscyplina_naukowa
+        ).first()
+
+        if metryka:
+            return redirect("ewaluacja_metryki:szczegoly", pk=metryka.pk)
+        return redirect("ewaluacja_metryki:lista")
 
 
 class StatystykiView(EwaluacjaRequiredMixin, ListView):
