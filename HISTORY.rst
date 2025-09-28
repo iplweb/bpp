@@ -4,6 +4,15 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202509.1228 (2025-09-28)
+============================
+
+Naprawione
+----------
+
+- Poprawiono mechanizm przypinania i odpinania dyscyplin w optymalizacji publikacji - teraz używa właściwych identyfikatorów powiązań autor-publikacja zamiast identyfikatorów cache. (optymalizacja_publikacji_id_fix)
+
+
 Bpp 202509.1227 (2025-09-28)
 ============================
 
