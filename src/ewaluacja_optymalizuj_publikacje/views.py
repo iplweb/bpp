@@ -11,7 +11,14 @@ from .models import OptymalizacjaPublikacji
 
 from django.contrib.auth.mixins import LoginRequiredMixin
 
-from bpp.models import Autor_Dyscyplina, Cache_Punktacja_Autora_Query, Rekord
+from bpp.models import (
+    Autor_Dyscyplina,
+    Cache_Punktacja_Autora_Query,
+    Patent_Autor,
+    Rekord,
+    Wydawnictwo_Ciagle_Autor,
+    Wydawnictwo_Zwarte_Autor,
+)
 from bpp.models.sloty.core import CannotAdapt, IPunktacjaCacher, ISlot
 
 
@@ -56,13 +63,24 @@ class OptymalizujPublikacjeView(LoginRequiredMixin, View):
                 cache_key = (autor.id, dyscyplina.id)
                 cpaq = cache_punktacja_lookup.get(cache_key)
 
+                # Try to get MetrykaAutora ID - it might not exist yet
+                metryka_id = None
+                try:
+                    metryka_autor = MetrykaAutora.objects.get(autor_id=autor.id)
+                    metryka_id = metryka_autor.pk
+                except MetrykaAutora.DoesNotExist:
+                    # MetrykaAutora doesn't exist - metrics may be rebuilding or never built
+                    pass
+
                 autor_info = {
                     "autor": autor,
                     "dyscyplina": dyscyplina,
                     "jednostka": autor_assignment.jednostka,
                     "przypieta": przypieta,
                     "rekord_id": publikacja.pk,
-                    "metryka_id": MetrykaAutora.objects.get(autor_id=autor.id).pk,
+                    "metryka_id": metryka_id,
+                    "autor_assignment_id": autor_assignment.pk,
+                    "metryka_missing": metryka_id is None,
                 }
 
                 # Only add points/slots data if discipline is pinned and cache exists
@@ -73,8 +91,8 @@ class OptymalizujPublikacjeView(LoginRequiredMixin, View):
                             "sloty": cpaq.slot,
                             "cache_id": cpaq.pk,
                             "jednostka_id": cpaq.jednostka_id,
-                            # Publication contribution is selected for evaluation if it has non-zero slots
-                            "wybrana_do_ewaluacji": cpaq.slot and cpaq.slot > 0,
+                            # Will be updated after we fetch MetrykaAutora
+                            "wybrana_do_ewaluacji": False,
                         }
                     )
                 else:
@@ -145,6 +163,13 @@ class OptymalizujPublikacjeView(LoginRequiredMixin, View):
                         "sloty_wypelnione": metryka.slot_nazbierany,
                         "udzial_procentowy": metryka.procent_wykorzystania_slotow,
                     }
+
+                    # Check if this publication is actually selected for evaluation
+                    # Update wybrana_do_ewaluacji based on whether this cache entry
+                    # is in the author's selected publications list
+                    if przypieta and cpaq and cpaq.pk in metryka.prace_nazbierane:
+                        autor_info["wybrana_do_ewaluacji"] = True
+
                 except MetrykaAutora.DoesNotExist:
                     autor_info["metryka"] = None
 
@@ -178,12 +203,11 @@ class OptymalizujPublikacjeView(LoginRequiredMixin, View):
 
     def post(self, request, slug=None):
         if "unpin_discipline" in request.POST:
-            cache_id = request.POST.get("cache_id")
-            return self._handle_unpin(request, cache_id)
+            autor_assignment_id = request.POST.get("autor_assignment_id")
+            return self._handle_unpin(request, autor_assignment_id)
         elif "pin_discipline" in request.POST:
-            autor_id = request.POST.get("autor_id")
-            dyscyplina_id = request.POST.get("dyscyplina_id")
-            return self._handle_pin(request, slug, autor_id, dyscyplina_id)
+            autor_assignment_id = request.POST.get("autor_assignment_id")
+            return self._handle_pin(request, autor_assignment_id)
         else:
             # Handle form submission
             form = OptymalizacjaForm(request.POST)
@@ -226,24 +250,32 @@ class OptymalizujPublikacjeView(LoginRequiredMixin, View):
 
         return autor_assignments
 
-    def _handle_unpin(self, request, cache_id):
+    def _handle_unpin(self, request, autor_assignment_id):
         """Handle unpinning a discipline"""
         with transaction.atomic():
-            cpaq = get_object_or_404(Cache_Punktacja_Autora_Query, pk=cache_id)
-            publikacja = cpaq.rekord.original
+            # Get the autor assignment directly
+            # Try to find the assignment in different publication types
+            wa = None
+            for model in [
+                Wydawnictwo_Ciagle_Autor,
+                Wydawnictwo_Zwarte_Autor,
+                Patent_Autor,
+            ]:
+                try:
+                    wa = model.objects.get(pk=autor_assignment_id)
+                    break
+                except model.DoesNotExist:
+                    continue
 
-            # Find and update the actual author assignment
-            updated = False
-            wa = publikacja.autorzy_set.filter(
-                autor=cpaq.autor, dyscyplina_naukowa=cpaq.dyscyplina
-            ).first()
-            if wa:
-                wa.przypieta = False
-                wa.save()
-                updated = True
-
-            if not updated:
+            if not wa:
                 raise Exception("Nie znaleziono przypisania autora do publikacji")
+
+            publikacja = wa.rekord
+            slug = publikacja.slug
+
+            # Update przypieta status
+            wa.przypieta = False
+            wa.save()
 
             # Rebuild cache punktacja for the publication
             cacher = IPunktacjaCacher(publikacja)
@@ -252,55 +284,47 @@ class OptymalizujPublikacjeView(LoginRequiredMixin, View):
 
             # Recalculate evaluation metrics for all affected authors
             przelicz_metryki_dla_publikacji(publikacja)
-
-            # # Refresh cache to get updated values
-            # messages.success(
-            #     request,
-            #     f"Odpięto dyscyplinę {cpaq.dyscyplina} dla autora {cpaq.autor}",
-            # )
 
         # If HTMX request, render the updated content directly
         if request.headers.get("HX-Request"):
-            return self.get(request, slug=cpaq.rekord.slug)
+            return self.get(request, slug=slug)
 
-        return redirect(
-            "ewaluacja_optymalizuj_publikacje:optymalizuj", slug=cpaq.rekord.slug
-        )
+        return redirect("ewaluacja_optymalizuj_publikacje:optymalizuj", slug=slug)
 
-    def _handle_pin(self, request, slug, autor_id, dyscyplina_id):
+    def _handle_pin(self, request, autor_assignment_id):
         """Handle pinning a discipline"""
         with transaction.atomic():
-            publikacja = get_object_or_404(Rekord, slug=slug)
+            # Get the autor assignment directly
+            # Try to find the assignment in different publication types
+            wa = None
+            for model in [
+                Wydawnictwo_Ciagle_Autor,
+                Wydawnictwo_Zwarte_Autor,
+                Patent_Autor,
+            ]:
+                try:
+                    wa = model.objects.get(pk=autor_assignment_id)
+                    break
+                except model.DoesNotExist:
+                    continue
 
-            publikacja = publikacja.original
-
-            # Find and update the actual author assignment
-            updated = False
-
-            wa = publikacja.autorzy_set.filter(
-                autor_id=autor_id, dyscyplina_naukowa_id=dyscyplina_id
-            ).first()
-            if wa:
-                wa.przypieta = True
-                wa.save()
-                updated = True
-
-            if not updated:
+            if not wa:
                 raise Exception("Nie znaleziono przypisania autora do publikacji")
 
-            # Rebuild cache punktacja for the publication
+            publikacja = wa.rekord
+            slug = publikacja.slug
 
+            # Update przypieta status
+            wa.przypieta = True
+            wa.save()
+
+            # Rebuild cache punktacja for the publication
             cacher = IPunktacjaCacher(publikacja)
             cacher.removeEntries()  # Remove old cache entries
             cacher.rebuildEntries()  # Rebuild with new przypieta status
 
             # Recalculate evaluation metrics for all affected authors
             przelicz_metryki_dla_publikacji(publikacja)
-
-            # messages.success(
-            #     request,
-            #     f"Przypięto dyscyplinę {dyscyplina} dla autora {autor}",
-            # )
 
         # If HTMX request, render the updated content directly
         if request.headers.get("HX-Request"):

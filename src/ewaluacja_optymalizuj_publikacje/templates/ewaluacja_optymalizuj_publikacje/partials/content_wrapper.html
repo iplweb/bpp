@@ -39,9 +39,23 @@
                 <div style="background: #f5f6fa; padding: 15px 20px; border-bottom: 2px solid #e1e4e8;">
                     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
                         <div style="font-size: 1.3em; font-weight: 600;">
+                            {% if autor_data.metryka_id %}
                             <a href="{% url 'ewaluacja_metryki:szczegoly' autor_data.metryka_id %}" style="color: #2c3e50; text-decoration: none;">
                                 {{ autor_data.autor.nazwisko }} {{ autor_data.autor.imiona }}
                             </a>
+                            {% else %}
+                            <span style="color: #2c3e50;">
+                                {{ autor_data.autor.nazwisko }} {{ autor_data.autor.imiona }}
+                            </span>
+                            <div style="margin-top: 5px;">
+                                <a href="{% url 'ewaluacja_metryki:lista' %}" style="color: #dc3545; font-size: 0.85em; text-decoration: none; display: inline-block; padding: 4px 8px; background: #fff5f5; border: 1px solid #ffdddd; border-radius: 4px;">
+                                    <span class="fi-alert"></span> Metryka autora nie istnieje
+                                </a>
+                                <a href="{% url 'ewaluacja_metryki:status_generowania' %}" style="margin-left: 8px; color: #17a2b8; font-size: 0.85em; text-decoration: none; display: inline-block; padding: 4px 8px; background: #e7f5ff; border: 1px solid #b3e0ff; border-radius: 4px;">
+                                    <span class="fi-refresh"></span> Sprawdź status generowania metryk
+                                </a>
+                            </div>
+                            {% endif %}
                         </div>
                         <div style="display: flex; gap: 10px;">
                             {% if autor_data.przypieta %}
@@ -186,7 +200,7 @@
                               hx-target="#content-wrapper"
                               hx-swap="outerHTML transition:true">
                             {% csrf_token %}
-                            <input type="hidden" name="cache_id" value="{{ autor_data.cache_id }}">
+                            <input type="hidden" name="autor_assignment_id" value="{{ autor_data.autor_assignment_id }}">
                             <input type="hidden" name="unpin_discipline" value="1">
                             <button type="submit" style="background: #ff6b6b; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; position: relative;">
                                 <span class="fi-minus"></span> Odepnij dyscyplinę
@@ -204,8 +218,7 @@
                               hx-target="#content-wrapper"
                               hx-swap="outerHTML transition:true">
                             {% csrf_token %}
-                            <input type="hidden" name="autor_id" value="{{ autor_data.autor.id }}">
-                            <input type="hidden" name="dyscyplina_id" value="{{ autor_data.dyscyplina.id }}">
+                            <input type="hidden" name="autor_assignment_id" value="{{ autor_data.autor_assignment_id }}">
                             <input type="hidden" name="pin_discipline" value="1">
                             <button type="submit" style="background: #4CAF50; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; position: relative;">
                                 <span class="fi-plus"></span> Przypnij dyscyplinę

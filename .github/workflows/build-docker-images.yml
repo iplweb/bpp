@@ -26,6 +26,7 @@ jobs:
           driver: cloud
           endpoint: "iplweb/bpp"
           install: true
+          cache-binary: true
 
       - name: Checkout code
         uses: actions/checkout@v4

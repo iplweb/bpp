@@ -72,6 +72,30 @@ def oblicz_metryki_dla_autora(
         akcja="wszystko",
     )
 
+    # Calculate derived fields that would normally be calculated in save()
+    # This is necessary because update_or_create doesn't trigger custom save() logic
+    slot_nazbierany_decimal = Decimal(str(slot_nazbierany))
+    slot_wszystkie_decimal = Decimal(str(slot_wszystkie))
+    punkty_nazbierane_decimal = Decimal(str(punkty_nazbierane))
+    punkty_wszystkie_decimal = Decimal(str(punkty_wszystkie))
+
+    # Calculate averages
+    if slot_nazbierany_decimal and slot_nazbierany_decimal > 0:
+        srednia_za_slot_nazbierana = punkty_nazbierane_decimal / slot_nazbierany_decimal
+    else:
+        srednia_za_slot_nazbierana = Decimal("0")
+
+    if slot_wszystkie_decimal and slot_wszystkie_decimal > 0:
+        srednia_za_slot_wszystkie = punkty_wszystkie_decimal / slot_wszystkie_decimal
+    else:
+        srednia_za_slot_wszystkie = Decimal("0")
+
+    # Calculate slot utilization percentage
+    if slot_maksymalny and slot_maksymalny > 0:
+        procent_wykorzystania_slotow = (slot_nazbierany_decimal / slot_maksymalny) * 100
+    else:
+        procent_wykorzystania_slotow = Decimal("0")
+
     # Utwórz lub zaktualizuj metrykę
     with transaction.atomic():
         metryka, created = MetrykaAutora.objects.update_or_create(
@@ -80,15 +104,19 @@ def oblicz_metryki_dla_autora(
             defaults={
                 "jednostka": jednostka,
                 "slot_maksymalny": slot_maksymalny,
-                "slot_nazbierany": Decimal(str(slot_nazbierany)),
-                "punkty_nazbierane": Decimal(str(punkty_nazbierane)),
+                "slot_nazbierany": slot_nazbierany_decimal,
+                "punkty_nazbierane": punkty_nazbierane_decimal,
                 "prace_nazbierane": prace_nazbierane_ids,
-                "slot_wszystkie": Decimal(str(slot_wszystkie)),
-                "punkty_wszystkie": Decimal(str(punkty_wszystkie)),
+                "slot_wszystkie": slot_wszystkie_decimal,
+                "punkty_wszystkie": punkty_wszystkie_decimal,
                 "prace_wszystkie": prace_wszystkie_ids,
                 "liczba_prac_wszystkie": len(prace_wszystkie_ids),
                 "rok_min": rok_min,
                 "rok_max": rok_max,
+                # Include calculated fields to ensure they're updated
+                "srednia_za_slot_nazbierana": srednia_za_slot_nazbierana,
+                "srednia_za_slot_wszystkie": srednia_za_slot_wszystkie,
+                "procent_wykorzystania_slotow": procent_wykorzystania_slotow,
             },
         )
 
@@ -98,6 +126,10 @@ def oblicz_metryki_dla_autora(
 def przelicz_metryki_dla_publikacji(publikacja, rok_min=2022, rok_max=2025):
     """
     Przelicza metryki dla wszystkich autorów danej publikacji z przypisanymi dyscyplinami.
+
+    UWAGA: Przelicza metryki dla WSZYSTKICH autorów, niezależnie od tego czy ich dyscyplina
+    jest przypięta czy nie. Jest to konieczne, ponieważ zmiana statusu przypięcia jednego
+    autora wpływa na dystrybucję slotów i punktów dla wszystkich pozostałych autorów.
 
     Args:
         publikacja: Obiekt publikacji (Wydawnictwo_Ciagle, Wydawnictwo_Zwarte)
@@ -109,11 +141,19 @@ def przelicz_metryki_dla_publikacji(publikacja, rok_min=2022, rok_max=2025):
     """
     results = []
 
-    # Pobierz wszystkich autorów z dyscyplinami dla tej publikacji
-    for autor_assignment in publikacja.autorzy_set.exclude(dyscyplina_naukowa=None):
-        autor = autor_assignment.autor
-        dyscyplina = autor_assignment.dyscyplina_naukowa
+    # Zbierz wszystkich unikalnych autorów z tej publikacji
+    autorzy_do_przeliczenia = set()
 
+    # Pobierz wszystkich autorów z dyscyplinami dla tej publikacji
+    # NIE wykluczamy autorów bez dyscyplin - pobieramy wszystkich
+    for autor_assignment in publikacja.autorzy_set.all():
+        if autor_assignment.dyscyplina_naukowa is not None:
+            autorzy_do_przeliczenia.add(
+                (autor_assignment.autor, autor_assignment.dyscyplina_naukowa)
+            )
+
+    # Przelicz metryki dla wszystkich autorów
+    for autor, dyscyplina in autorzy_do_przeliczenia:
         # Sprawdź czy autor ma rodzaj_autora='N' dla tego roku
         try:
             autor_dyscyplina = Autor_Dyscyplina.objects.get(

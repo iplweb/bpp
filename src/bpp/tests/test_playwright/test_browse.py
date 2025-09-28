@@ -25,13 +25,17 @@ def test_autorzy_search_form(autorzy_page: Page, live_server):
     # Search for "Atest"
     page.fill("input[name='search']", "Atest")
     page.press("input[name='search']", "Enter")
-    page.wait_for_function("() => document.body.textContent.includes('Atest')")
+    page.wait_for_function(
+        "() => document.body && document.body.textContent.includes('Atest')"
+    )
 
     # Reload and search for "Btest"
     page.goto(live_server.url + reverse("bpp:browse_autorzy"))
     page.fill("input[name='search']", "Btest")
     page.press("input[name='search']", "Enter")
-    page.wait_for_function("() => !document.body.textContent.includes('Atest')")
+    page.wait_for_function(
+        "() => document.body && !document.body.textContent.includes('Atest')"
+    )
 
 
 @pytest.mark.django_db
@@ -86,10 +90,14 @@ def test_zrodla_search_form(zrodla_page: Page, live_server):
     # Search for "Atest"
     page.fill("input[name='search']", "Atest")
     page.press("input[name='search']", "Enter")
-    page.wait_for_function("() => document.body.textContent.includes('Atest')")
+    page.wait_for_function(
+        "() => document.body && document.body.textContent.includes('Atest')"
+    )
 
     # Reload and search for "Btest"
     page.goto(live_server.url + reverse("bpp:browse_zrodla"))
     page.fill("input[name='search']", "Btest")
     page.press("input[name='search']", "Enter")
-    page.wait_for_function("() => !document.body.textContent.includes('Atest')")
+    page.wait_for_function(
+        "() => document.body && !document.body.textContent.includes('Atest')"
+    )
