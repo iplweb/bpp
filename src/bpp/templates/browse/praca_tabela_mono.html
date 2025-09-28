@@ -657,17 +657,32 @@
                      style="background: white; border: 1px solid #e1e4e8; border-radius: 8px; padding: 20px;">
                     <h3 style="font-size: 1.2rem; margin-bottom: 15px; color: #2c3e50; padding-bottom: 8px;">
                         <span class="fi-torsos-all"></span> Punkty i sloty autorów
-                        {% if uczelnia.drukuj_oswiadczenia %}
-                            {% if request.user.is_superuser or request.user|has_group:"wprowadzanie danych" %}
-                                <a target="_blank"
-                                   href="{% url "oswiadczenia:wiele-oswiadczen" rekord.id.0 rekord.id.1 %}"
-                                   class="print-button print-button-header"
-                                   title="Wydrukuj wszystkie oświadczenia"
-                                   style="float: right;">
-                                    <span class="fi-print"></span>
-                                </a>
+
+                        <div style="float: right;">
+                            {% comment %} Check if there are multiple authors with disciplines set {% endcomment %}
+                            {% with authors_with_disciplines=rekord.punktacja_autora.select_related|length %}
+                            {% if authors_with_disciplines > 0 %}
+                                {% if request.user.is_authenticated %}
+                                    <a href="{% url "ewaluacja_optymalizuj_publikacje:optymalizuj" rekord.slug %}"
+                                       class="print-button print-button-header optimize-button"
+                                       title="Optymalizuj przypisanie dyscyplin">
+                                        <span class="fi-wrench"></span> Optymalizuj
+                                    </a>
+                                {% endif %}
                             {% endif %}
-                        {% endif %}
+                            {% endwith %}
+
+                            {% if uczelnia.drukuj_oswiadczenia %}
+                                {% if request.user.is_superuser or request.user|has_group:"wprowadzanie danych" %}
+                                    <a target="_blank"
+                                       href="{% url "oswiadczenia:wiele-oswiadczen" rekord.id.0 rekord.id.1 %}"
+                                       class="print-button print-button-header"
+                                       title="Wydrukuj wszystkie oświadczenia">
+                                        <span class="fi-print"></span>
+                                    </a>
+                                {% endif %}
+                            {% endif %}
+                        </div>
 
                         <div class="shaded-hr-div-small"></div>
                     </h3>
@@ -1086,6 +1101,15 @@
 
     .info-card:hover {
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Optimize button - smaller font size */
+    .optimize-button {
+        font-size: 0.875rem !important;
+    }
+
+    .optimize-button .fi-wrench {
+        font-size: 0.95rem;
     }
 
     /* Print styles */

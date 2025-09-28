@@ -424,6 +424,7 @@ INSTALLED_APPS = [
     "ewaluacja_liczba_n",
     "ewaluacja_metryki",
     "ewaluacja_optymalizacja",
+    "ewaluacja_optymalizuj_publikacje",
     # Zostawiamy - bezwarunkowo
     "test_bpp",
     #

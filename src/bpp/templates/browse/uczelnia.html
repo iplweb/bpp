@@ -381,7 +381,7 @@
             {% endif %}
         {% endif %}
         {% if uczelnia.pokazuj_wydzialy_na_pierwszej_stronie %}
-            {% if not miniblog.exists and not request.user.is_superuser and not request.user|has_group:"web" %}
+            {% if not article and not miniblog.exists and not request.user.is_superuser and not request.user|has_group:"web" %}
                 <div class="small-12 large-12 cell">
                     <h3 class="section-title">
                         <i class="fi-foundation section-icon"></i>Wybierz {% rzeczownik_wydział %}
@@ -418,7 +418,7 @@
                     </div>
                 </div>
             {% else %}
-                <div class="small-12 large-6 cell">
+                <div class="small-12 {% if article or miniblog.exists %}large-6{% else %}large-12{% endif %} cell">
                     <h3 class="section-title">
                         <i class="fi-foundation section-icon"></i>Wybierz {% rzeczownik_wydział %}
                     </h3>
@@ -438,23 +438,40 @@
                             </a>
                         </div>
                     {% endif %}
-                    <div class="wydzial-list">
-                        {% for wydzial in uczelnia.wydzialy %}
-                            <div class="wydzial-card">
-                                <div class="arrow-icon">
-                                    <i class="fi-arrow-right"></i>
+                    {% if not article and not miniblog.exists %}
+                        <div class="grid-x grid-margin-x">
+                            {% for wydzial in uczelnia.wydzialy %}
+                                <div class="small-12 medium-6 large-6 cell">
+                                    <div class="wydzial-card">
+                                        <div class="arrow-icon">
+                                            <i class="fi-arrow-right"></i>
+                                        </div>
+                                        <a href="{% url "bpp:browse_wydzial" wydzial.slug %}">
+                                            {{ wydzial }}
+                                        </a>
+                                    </div>
                                 </div>
-                                <a href="{% url "bpp:browse_wydzial" wydzial.slug %}">
-                                    {{ wydzial }}
-                                </a>
-                            </div>
-                        {% endfor %}
-                    </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="wydzial-list">
+                            {% for wydzial in uczelnia.wydzialy %}
+                                <div class="wydzial-card">
+                                    <div class="arrow-icon">
+                                        <i class="fi-arrow-right"></i>
+                                    </div>
+                                    <a href="{% url "bpp:browse_wydzial" wydzial.slug %}">
+                                        {{ wydzial }}
+                                    </a>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
                 </div>
             {% endif %}
         {% endif %}
     {% if uczelnia.pokazuj_jednostki_na_pierwszej_stronie %}
-        {% if not miniblog.exists and not request.user.is_superuser and not request.user|has_group:"web" %}
+        {% if not article and not miniblog.exists and not request.user.is_superuser and not request.user|has_group:"web" %}
             <div class="small-12 large-12 cell">{% load deklinacja %}
                 <h3 class="section-title">
                     <i class="fi-home section-icon"></i>Wybierz {% rzeczownik_jednostkę %}
@@ -491,7 +508,7 @@
                 </div>
             </div>
         {% else %}
-            <div class="small-12 large-6 cell">{% load deklinacja %}
+            <div class="small-12 {% if article or miniblog.exists %}large-6{% else %}large-12{% endif %} cell">{% load deklinacja %}
                 <h3 class="section-title">
                     <i class="fi-home section-icon"></i>Wybierz {% rzeczownik_jednostkę %}
                 </h3>
@@ -511,18 +528,35 @@
                         </a>
                     </div>
                 {% endif %}
-                <div class="jednostka-list">
-                    {% for jednostka in uczelnia.jednostki %}
-                        <div class="jednostka-card-main">
-                            <div class="arrow-icon">
-                                <i class="fi-arrow-right"></i>
+                {% if not article and not miniblog.exists %}
+                    <div class="grid-x grid-margin-x">
+                        {% for jednostka in uczelnia.jednostki %}
+                            <div class="small-12 medium-6 large-6 cell">
+                                <div class="jednostka-card-main">
+                                    <div class="arrow-icon">
+                                        <i class="fi-arrow-right"></i>
+                                    </div>
+                                    <a href="{% url "bpp:browse_jednostka" jednostka.slug %}">
+                                        {{ jednostka }}
+                                    </a>
+                                </div>
                             </div>
-                            <a href="{% url "bpp:browse_jednostka" jednostka.slug %}">
-                                {{ jednostka }}
-                            </a>
-                        </div>
-                    {% endfor %}
-                </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="jednostka-list">
+                        {% for jednostka in uczelnia.jednostki %}
+                            <div class="jednostka-card-main">
+                                <div class="arrow-icon">
+                                    <i class="fi-arrow-right"></i>
+                                </div>
+                                <a href="{% url "bpp:browse_jednostka" jednostka.slug %}">
+                                    {{ jednostka }}
+                                </a>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
             </div>
         {% endif %}
     {% endif %}

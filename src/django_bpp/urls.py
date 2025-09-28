@@ -83,6 +83,12 @@ urlpatterns = (
                 "ewaluacja_optymalizacja.urls",
             ),
         ),
+        path(
+            "ewaluacja_optymalizuj_publikacje/",
+            include(
+                "ewaluacja_optymalizuj_publikacje.urls",
+            ),
+        ),
         url(
             r"^api/v1/",
             include(("api_v1.urls", "api_v1"), namespace="api_v1"),

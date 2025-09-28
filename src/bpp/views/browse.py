@@ -185,6 +185,9 @@ class AutorzyView(Browser):
         # Uwzględnia wybraną literkę etc
         ret = super().get_queryset()
 
+        # Filter out hidden authors
+        ret = ret.filter(pokazuj=True)
+
         uczelnia = Uczelnia.objects.get_for_request(self.request)
         if uczelnia is not None:
 

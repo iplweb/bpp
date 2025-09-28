@@ -266,7 +266,8 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
         return Autor.objects.filter(
             pk__in=Autorzy.objects.filter(jednostka=self)
             .exclude(autor_id__in=self.aktualni_autorzy())
-            .values_list("autor", flat=True)
+            .values_list("autor", flat=True),
+            pokazuj=True,
         )
 
     def kierownik(self):

@@ -1,0 +1,494 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Optymalizacja publikacji{% endblock %}
+
+{% block extracss %}
+<style>
+    .author-card {
+        border: 1px solid #e1e4e8;
+        border-radius: 12px;
+        margin-bottom: 25px;
+        background: white;
+        overflow: hidden;
+        transition: all 0.3s ease;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+
+    .author-card:hover {
+        box-shadow: 0 6px 12px rgba(0,0,0,0.08);
+        transform: translateY(-2px);
+    }
+
+    .author-header {
+        background: linear-gradient(135deg, #f5f6fa 0%, #ffffff 100%);
+        padding: 15px 20px;
+        border-bottom: 2px solid #e1e4e8;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .author-name {
+        font-size: 1.3em;
+        font-weight: 600;
+        color: #2c3e50;
+    }
+
+    .author-status {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+    }
+
+    .evaluation-badge {
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 0.85em;
+        font-weight: 500;
+    }
+
+    .evaluation-badge.selected {
+        background: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+    }
+
+    .evaluation-badge.not-selected {
+        background: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+    }
+
+    .discipline-info {
+        padding: 20px;
+    }
+
+    .discipline-name {
+        font-size: 1.1em;
+        color: #495057;
+        margin-bottom: 20px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #e9ecef;
+    }
+
+    .data-sections {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 25px;
+        margin: 20px 0;
+    }
+
+    .section {
+        padding: 15px;
+        border-radius: 8px;
+        background: #f8f9fa;
+    }
+
+    .section h4 {
+        margin: 0 0 15px 0;
+        font-size: 1em;
+        color: #495057;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .section h4 .fi-page,
+    .section h4 .fi-graph-bar {
+        color: #6c757d;
+    }
+
+    .publication-section {
+        background: linear-gradient(135deg, #fff5f5 0%, #ffe8e8 100%);
+        border: 1px solid #ffdddd;
+    }
+
+    .metrics-section {
+        background: linear-gradient(135deg, #f0f8ff 0%, #e6f2ff 100%);
+        border: 1px solid #cce5ff;
+    }
+
+    .data-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+    }
+
+    .data-item {
+        text-align: center;
+    }
+
+    .data-label {
+        font-size: 0.85em;
+        color: #6c757d;
+        margin-bottom: 5px;
+    }
+
+    .data-value {
+        font-size: 1.8em;
+        font-weight: bold;
+        color: #495057;
+    }
+
+    .data-value.points {
+        color: #dc3545;
+    }
+
+    .data-value.slots {
+        color: #007bff;
+    }
+
+    .data-value.average {
+        color: #28a745;
+    }
+
+    .progress-container {
+        margin-top: 20px;
+    }
+
+    .progress-label {
+        font-size: 0.85em;
+        color: #6c757d;
+        margin-bottom: 8px;
+    }
+
+    .progress-bar-wrapper {
+        position: relative;
+        background: #e9ecef;
+        border-radius: 10px;
+        height: 30px;
+        overflow: visible;
+    }
+
+    .progress-bar {
+        position: absolute;
+        top: 0;
+        left: 0;
+        height: 100%;
+        border-radius: 10px;
+        background: linear-gradient(90deg, #4CAF50, #8BC34A);
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        padding-right: 10px;
+        transition: width 0.3s ease;
+        min-width: 40px;
+    }
+
+    .progress-bar[style*="width: 100%"] {
+        background: linear-gradient(90deg, #FF9800, #FF5722);
+    }
+
+    .progress-text {
+        color: white;
+        font-weight: bold;
+        font-size: 0.9em;
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+    }
+
+    .overflow-indicator {
+        margin-top: 8px;
+        padding: 5px 10px;
+        background: #fff3cd;
+        border: 1px solid #ffeeba;
+        border-radius: 4px;
+        color: #856404;
+        font-size: 0.85em;
+        display: inline-block;
+    }
+
+    .overflow-indicator .fi-alert {
+        color: #ff9800;
+        margin-right: 5px;
+    }
+
+    .no-data {
+        text-align: center;
+        color: #6c757d;
+        padding: 20px;
+        font-style: italic;
+    }
+
+    .action-section {
+        margin-top: 20px;
+        padding-top: 20px;
+        border-top: 1px solid #e9ecef;
+    }
+
+    .pin-status {
+        display: inline-block;
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-size: 0.85em;
+        margin-left: 10px;
+    }
+
+    .pin-status.pinned {
+        background: #ffd700;
+        color: #333;
+    }
+
+    .pin-status.unpinned {
+        background: #ccc;
+        color: #666;
+    }
+
+    .totals-section {
+        background: #333;
+        color: white;
+        padding: 20px;
+        border-radius: 8px;
+        margin: 30px 0;
+    }
+
+    .totals-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        text-align: center;
+    }
+
+    .total-value {
+        font-size: 2.5em;
+        font-weight: bold;
+    }
+
+    .publication-title {
+        background: #f0f0f0;
+        padding: 15px;
+        border-left: 4px solid #667eea;
+        margin-bottom: 20px;
+    }
+
+    .btn-unpin {
+        background: #ff6b6b;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background 0.3s;
+    }
+
+    .btn-unpin:hover {
+        background: #ff5252;
+    }
+
+    .btn-unpin:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+    }
+
+    /* Responsive design */
+    @media (max-width: 768px) {
+        .data-sections {
+            grid-template-columns: 1fr;
+        }
+
+        .author-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .author-status {
+            margin-top: 10px;
+            flex-direction: column;
+            align-items: flex-start;
+            width: 100%;
+        }
+
+        .evaluation-badge {
+            width: 100%;
+            text-align: center;
+        }
+
+        .data-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="large-12 columns">
+        <h2>
+            <span class="fi-wrench"></span> Optymalizacja publikacji
+        </h2>
+
+        {% if not publikacja %}
+            <div class="panel">
+                <h4>Wybierz publikację do optymalizacji</h4>
+                <form method="post">
+                    {% csrf_token %}
+                    {{ form.as_p }}
+                    <button type="submit" class="button">
+                        <span class="fi-magnifying-glass"></span> Analizuj publikację
+                    </button>
+                </form>
+            </div>
+        {% else %}
+            <div class="publication-title">
+                <h3>{{ publikacja.tytul_oryginalny }}</h3>
+                <p>ID: {{ publikacja.pk }} | Typ: {{ publikacja.typ_kbn }}</p>
+            </div>
+
+            <div class="totals-section">
+                <h4 style="text-align: center; margin-bottom: 20px;">Podsumowanie punktacji</h4>
+                <div class="totals-grid">
+                    <div>
+                        <div class="total-value">{{ total_punkty|floatformat:2 }}</div>
+                        <div>Łączna liczba punktów</div>
+                    </div>
+                    <div>
+                        <div class="total-value">{{ total_sloty|floatformat:4 }}</div>
+                        <div>Łączna liczba slotów</div>
+                    </div>
+                </div>
+            </div>
+
+            <h3>Autorzy z przypisanymi dyscyplinami</h3>
+
+            {% if autorzy_data %}
+                {% for autor_data in autorzy_data %}
+                <div class="author-card">
+                    <div class="author-header">
+                        <div class="author-name">
+                            {{ autor_data.autor.nazwisko }} {{ autor_data.autor.imiona }}
+                        </div>
+                        <div class="author-status">
+                            <span class="pin-status {% if autor_data.przypieta %}pinned{% else %}unpinned{% endif %}">
+                                {% if autor_data.przypieta %}
+                                    <span class="fi-lock"></span> Przypięta
+                                {% else %}
+                                    <span class="fi-unlock"></span> Odpięta
+                                {% endif %}
+                            </span>
+                            {% if autor_data.wybrana_do_ewaluacji %}
+                                <span class="evaluation-badge selected">
+                                    <span class="fi-check"></span> Wybrana do ewaluacji
+                                </span>
+                            {% else %}
+                                <span class="evaluation-badge not-selected">
+                                    <span class="fi-x"></span> Niewybrana do ewaluacji
+                                </span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="discipline-info">
+                        <div class="discipline-name">
+                            <strong>Dyscyplina:</strong> {{ autor_data.dyscyplina.nazwa }}
+                        </div>
+
+                        <div class="data-sections">
+                            <!-- Publication Points Section -->
+                            <div class="section publication-section">
+                                <h4><span class="fi-page"></span> Punkty z publikacji</h4>
+                                <div class="data-grid">
+                                    <div class="data-item">
+                                        <div class="data-label">Punkty (PKDAut)</div>
+                                        <div class="data-value points">{{ autor_data.punkty|floatformat:2 }}</div>
+                                    </div>
+                                    <div class="data-item">
+                                        <div class="data-label">Sloty</div>
+                                        <div class="data-value slots">{{ autor_data.sloty|floatformat:4 }}</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Metrics Section -->
+                            <div class="section metrics-section">
+                                <h4><span class="fi-graph-bar"></span> Metryki autora</h4>
+                                {% if autor_data.metryka %}
+                                <div class="data-grid">
+                                    <div class="data-item">
+                                        <div class="data-label">Średnia za slot</div>
+                                        <div class="data-value average">{{ autor_data.metryka.srednia_punktow|floatformat:2 }}</div>
+                                    </div>
+                                    <div class="data-item">
+                                        <div class="data-label">Sloty nazbierane</div>
+                                        <div class="data-value">{{ autor_data.metryka.sloty_wypelnione|floatformat:2 }}</div>
+                                    </div>
+                                </div>
+
+                                <!-- Progress Bar for Slot Usage -->
+                                <div class="progress-container">
+                                    <div class="progress-label">Wykorzystanie slotów</div>
+                                    <div class="progress-bar-wrapper">
+                                        <div class="progress-bar"
+                                             style="width: {% if autor_data.metryka.udzial_procentowy > 100 %}100{% else %}{{ autor_data.metryka.udzial_procentowy }}{% endif %}%;">
+                                            <span class="progress-text">{{ autor_data.metryka.udzial_procentowy|floatformat:1 }}%</span>
+                                        </div>
+                                        {% if autor_data.metryka.udzial_procentowy > 100 %}
+                                        <div class="overflow-indicator">
+                                            <span class="fi-alert"></span> Przekroczenie o {{ autor_data.metryka.udzial_procentowy|add:"-100"|floatformat:1 }}%
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                {% else %}
+                                <div class="no-data">
+                                    Brak danych metryki dla tego autora
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        {% if autor_data.przypieta %}
+                        <div class="action-section">
+                            <form method="post" class="unpin-form">
+                                {% csrf_token %}
+                                <input type="hidden" name="cache_id" value="{{ autor_data.cache_id }}">
+                                <input type="hidden" name="unpin_discipline" value="1">
+                                <button type="submit" class="btn-unpin">
+                                    <span class="fi-minus"></span> Odepnij dyscyplinę
+                                </button>
+                                <small style="display: block; color: #666; margin-top: 5px;">
+                                    Odpięcie dyscypliny spowoduje przeliczenie punktacji
+                                </small>
+                            </form>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %>
+                <div class="alert-box info">
+                    Brak autorów typu N dla tej publikacji.
+                </div>
+            {% endif %}
+
+            <div style="margin-top: 30px;">
+                <a href="{% url 'ewaluacja_optymalizuj_publikacje:index' %}" class="button secondary">
+                    <span class="fi-arrow-left"></span> Wybierz inną publikację
+                </a>
+                {% if publikacja %}
+                <a href="{% url 'ewaluacja_optymalizuj_publikacje:historia' publikacja.slug %}" class="button">
+                    <span class="fi-clock"></span> Historia optymalizacji
+                </a>
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extrajs %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Add confirmation to unpin forms
+    const unpinForms = document.querySelectorAll('.unpin-form');
+    unpinForms.forEach(form => {
+        form.addEventListener('submit', function(e) {
+            if (!confirm('Czy na pewno chcesz odpiąć tę dyscyplinę? Ta operacja może wpłynąć na punktację.')) {
+                e.preventDefault();
+            }
+        });
+    });
+});
+</script>
+{% endblock %}
