@@ -1,1 +1,0 @@
-Dodano polecenie zarządzające ``ukryj_nieuzywane_dyscypliny`` umożliwiające ukrycie nieużywanych dyscyplin naukowych w systemie. Polecenie ustawia ``Dyscyplina_Naukowa.widoczna = False`` dla wszystkich dyscyplin, które nie są przypisane do żadnych autorów ani publikacji. Opcja ``--dry-run`` pozwala na podgląd zmian bez ich zapisywania.

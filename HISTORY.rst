@@ -4,6 +4,45 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202509.1227 (2025-09-28)
+============================
+
+Naprawione
+----------
+
+- Poprawiono wyświetlanie zakresów lat na stronie "Przeglądaj wg roku". Nagłówki dekad teraz poprawnie pokazują rzeczywiste zakresy lat dostępnych w bazie danych (np. "2020-2025" dla bieżącej dekady, "2010-2019" dla pełnych dekad) zamiast błędnych wartości. (przegladaj_wg_roku)
+
+
+Usprawnienie
+------------
+
+- Ulepszono funkcjonalność deduplikatora autorów PBN w zakresie wyszukiwania i priorytetyzacji.
+
+  Zmiany obejmują:
+
+  * Resetowanie licznika pominiętych autorów podczas wyszukiwania - teraz wyszukiwanie po nazwisku zawsze pokazuje wszystkie pasujące wyniki, niezależnie od wcześniej pominiętych autorów
+  * Priorytetyzacja autorów z najnowszymi publikacjami (2022-2025) - autorzy z publikacjami z ostatnich lat są teraz wyświetlani jako pierwsi, co ułatwia pracę z aktywnymi naukowcami
+  * Zachowanie funkcjonalności pomijania autorów podczas zwykłego przeglądania (bez wyszukiwania)
+
+  Aplikacja automatycznie sprawdza czy główny autor lub którykolwiek z jego duplikatów ma publikacje z lat 2022-2025 i wyświetla takich autorów w pierwszej kolejności. (deduplikator_autorow_priorytet)
+- Dodano nową aplikację "Przemapuj prace autora" umożliwiającą masowe przenoszenie prac autorów między jednostkami organizacyjnymi.
+
+  Funkcjonalność obejmuje:
+
+  * Wyszukiwanie autorów po nazwisku i imieniu z poziomu interfejsu webowego
+  * Automatyczne sugerowanie przemapowania z "Jednostki Domyślnej" do aktualnej jednostki autora
+  * Zabezpieczenie przed przypadkowym przemapowaniem do "Jednostki Domyślnej" (jednostka ta może być tylko źródłem, nie celem)
+  * Podgląd zmian przed wykonaniem przemapowania z listą przykładowych prac
+  * Pełna historia operacji z zapisem szczegółów przemapowanych prac (ID, tytuły, rok, źródło/wydawnictwo) w formacie JSON
+  * Integracja z interfejsem przeglądania autorów - przycisk "Przemapuj prace" widoczny obok "Otwórz do edycji" dla zalogowanych użytkowników
+  * Panel administracyjny z możliwością przeglądania historii przemapowań, w tym szczegółowej listy przemapowanych publikacji
+
+  Aplikacja jest dostępna pod adresem `/przemapuj_prace_autora/` i wymaga zalogowania. (przemapuj_prace_autora)
+- Dodano polecenie zarządzające ``ukryj_nieuzywane_dyscypliny`` umożliwiające ukrycie nieużywanych dyscyplin naukowych w systemie. Polecenie ustawia ``Dyscyplina_Naukowa.widoczna = False`` dla wszystkich dyscyplin, które nie są przypisane do żadnych autorów ani publikacji. Opcja ``--dry-run`` pozwala na podgląd zmian bez ich zapisywania. (ukryj_nieuzywane_dyscypliny)
+- Dodano nowe polecenie zarządzania ``ukryj_nieuzywane_jezyki`` do automatycznego ukrywania nieużywanych języków w systemie. Polecenie skanuje wszystkie publikacje (wydawnictwa ciągłe, zwarte, prace doktorskie i habilitacyjne oraz źródła) i oznacza jako widoczne tylko te języki, które są faktycznie używane. Obsługuje tryb testowy ``--dry-run`` do podglądu zmian bez ich zapisywania. (ukryj_nieuzywane_jezyki)
+- Na stronie szczegółów źródła wyświetlane są teraz tylko dyscypliny oznaczone jako widoczne (widoczna=True). (ukryj_niewidoczne_dyscypliny_na_stronie_zrodla)
+
+
 Bpp 202509.1226 (2025-09-27)
 ============================
 
