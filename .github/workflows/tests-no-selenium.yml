@@ -116,6 +116,15 @@ jobs:
       run: |
         poetry run make assets
 
+    - name: playwright install chromium
+      timeout-minutes: 10
+      env:
+        DJANGO_BPP_DB_HOST: 127.0.0.1
+        DJANGO_BPP_DB_PORT: 5433
+        DJANGO_BPP_DB_USER: postgres
+      run: |
+        poetry run playwright install chromium
+
     - name: Wait for services
       timeout-minutes: 2
       run: |
