@@ -1,0 +1,1 @@
+Dodano widget dostępności UserWay (WCAG) do stron ogólnodostępnych systemu, umożliwiający użytkownikom dostosowanie interfejsu do własnych potrzeb w zakresie dostępności. Widget automatycznie dostosowuje swoją kolorystykę do aktualnie używanego motywu kolorystycznego strony.
