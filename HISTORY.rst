@@ -4,6 +4,21 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202509.1230 (2025-09-30)
+============================
+
+Naprawione
+----------
+
+- Poprawiono wyświetlanie liczby prac nazbieranych algorytmem plecakowym na stronie szczegółów metryk ewaluacyjnych autora. Wcześniej liczba mogła być niepoprawnie wyświetlana jako 0 gdy lista prac nie była pobrana z bazy danych. (metryki-liczba-prac)
+
+
+Usprawnienie
+------------
+
+- Dodano widget dostępności UserWay (WCAG) do stron ogólnodostępnych systemu, umożliwiający użytkownikom dostosowanie interfejsu do własnych potrzeb w zakresie dostępności. Widget automatycznie dostosowuje swoją kolorystykę do aktualnie używanego motywu kolorystycznego strony. (widget_wcag)
+
+
 Bpp 202509.1228 (2025-09-28)
 ============================
 
