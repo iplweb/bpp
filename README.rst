@@ -11,9 +11,18 @@
    :target: https://github.com/iplweb/bpp/actions/workflows/build-docker-images.yml
    :alt: Docker - oficjalne obrazy
 
+.. image:: https://github.com/iplweb/bpp/actions/workflows/tests-no-selenium.yml/badge.svg?branch=master
+   :target: https://github.com/iplweb/bpp/actions/workflows/tests-no-selenium.yml
+   :alt: Testy - Django, Playwright
+
+.. image:: https://github.com/iplweb/bpp/actions/workflows/tests-selenium.yml/badge.svg?branch=master
+   :target: https://github.com/iplweb/bpp/actions/workflows/tests-selenium.yml
+   :alt: Testy - Selenium
+
 .. image:: https://readthedocs.org/projects/bpp/badge/?version=latest
    :target: http://bpp.readthedocs.io/pl/latest/?badge=latest
    :alt: Dokumentacja
+
 
 
 O projekcie

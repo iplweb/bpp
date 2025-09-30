@@ -1,0 +1,1 @@
+Poprawiono wyświetlanie liczby prac nazbieranych algorytmem plecakowym na stronie szczegółów metryk ewaluacyjnych autora. Wcześniej liczba mogła być niepoprawnie wyświetlana jako 0 gdy lista prac nie była pobrana z bazy danych.
