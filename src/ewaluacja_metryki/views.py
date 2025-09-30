@@ -272,6 +272,11 @@ class MetrykaDetailView(EwaluacjaRequiredMixin, DetailView):
 
             context["prace_nazbierane"] = prace_nazbierane
 
+        # Always provide the count of collected works
+        context["liczba_prac_nazbierane"] = (
+            len(metryka.prace_nazbierane) if metryka.prace_nazbierane else 0
+        )
+
         # Pobierz szczegóły wszystkich prac
         if metryka.prace_wszystkie:
             from bpp.models.cache import Cache_Punktacja_Autora_Query
