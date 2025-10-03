@@ -132,6 +132,16 @@
                     e.preventDefault();
                     if (typeof FreshworksWidget !== 'undefined') {
                         if (!widgetOpen) {
+
+                            FreshworksWidget('prefill', 'ticketForm', {
+                                custom_fields: {
+                                    cf_adres_url: window.location.href
+                                }
+                            });
+
+                            // Optional: make it read-only so users can’t change it
+                            FreshworksWidget('disable', 'ticketForm', ['custom_fields.cf_page_url']);
+
                             FreshworksWidget('open');
                             widgetOpen = true;
                         } else {
