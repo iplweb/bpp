@@ -26,7 +26,8 @@
       "Bash(django-admin startapp:*)",
       "WebFetch(domain:docs.github.com)",
       "WebFetch(domain:github.com)",
-      "Bash(towncrier create:*)"
+      "Bash(towncrier create:*)",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": [],

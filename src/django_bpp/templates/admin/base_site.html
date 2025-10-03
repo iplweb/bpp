@@ -93,6 +93,63 @@
 
 {% block footer %}
     {{ block.super }}
+
+    {% if user.is_authenticated %}
+        <!-- Freshworks Support Widget -->
+        <script>
+            window.fwSettings={
+                'widget_id':205000000433
+            };
+            !function(){if("function"!=typeof window.FreshworksWidget){var n=function(){n.q.push(arguments)};n.q=[],window.FreshworksWidget=n}}()
+        </script>
+        <script type='text/javascript' src='https://euc-widget.freshworks.com/widgets/205000000433.js' async defer></script>
+
+        <!-- Custom Support Button -->
+        <button class="bpp-support-button hide-on-print" id="bppSupportButton">
+            <span class="button-content">
+                <span class="support-symbols">!?!</span>
+                <span class="support-text">Support BPP</span>
+            </span>
+        </button>
+
+        <script type="text/javascript">
+            (function($){
+                $(document).ready(function() {
+                    // Hide the default Freshworks launcher
+                    FreshworksWidget('hide', 'launcher');
+
+                    setTimeout(function() {
+                        if (typeof FreshworksWidget !== 'undefined') {
+
+                            // Identify user for Freshworks
+                            FreshworksWidget('identify', 'ticketForm', {
+                                name: '{{ request.user.get_full_name|default:request.user.username|escapejs }}',
+                                email: '{{ request.user.email|escapejs }}'
+                            });
+                        }
+                    }, 1000);
+
+                    // Track widget state
+                    var widgetOpen = false;
+
+                    // Handle custom support button click - toggle widget
+                    $('#bppSupportButton').on('click', function(e) {
+                        e.preventDefault();
+                        if (typeof FreshworksWidget !== 'undefined') {
+                            if (!widgetOpen) {
+                                FreshworksWidget('open');
+                                widgetOpen = true;
+                            } else {
+                                FreshworksWidget('close');
+                                widgetOpen = false;
+                            }
+                        }
+                    });
+                });
+            })(grp.jQuery);
+        </script>
+    {% endif %}
+
     {% compress css %}
         <link rel="stylesheet" type="text/css" media="screen" href="{{ STATIC_URL }}bpp/css/admin-style.css"/>
         <link rel="stylesheet" type="text/css" media="screen" href="{{ STATIC_URL }}bpp/css/admin-menu.css"/>
@@ -100,6 +157,101 @@
         <style type="text/css">
             .keypad-key {
                 color: black !important;
+            }
+
+            /* Support Button Styles for Admin */
+            .bpp-support-button {
+                position: fixed;
+                bottom: 70px;
+                right: 25px;
+                z-index: 9999;
+                background-color: #417690;
+                {#color: white;#}
+                border: none;
+                border-radius: 5px;
+                padding: 0px 20px !important;
+                {#font-size: 18px;#}
+                font-weight: bold;
+                cursor: pointer;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+                transition: all 0.3s ease;
+                min-width: 60px;
+                text-align: center;
+            }
+
+            .bpp-support-button .button-content {
+                position: relative;
+                display: inline-block;
+            }
+
+            .bpp-support-button .support-symbols {
+                display: inline-block;
+                opacity: 1;
+                transition: opacity 0.3s ease;
+                letter-spacing: 1px;
+            }
+
+            .bpp-support-button .support-text {
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                opacity: 0;
+                transition: opacity 0.3s ease;
+                white-space: nowrap;
+                pointer-events: none;
+            }
+
+            .bpp-support-button:hover {
+                background-color: #205067;
+                color: white;
+                transform: translateY(-2px);
+                box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+                padding: 0px 0px !important;
+                width: 150px;
+                height: 40px;
+            }
+
+            .bpp-support-button:hover .support-symbols {
+                opacity: 0;
+            }
+
+            .bpp-support-button:hover .support-text {
+                opacity: 1;
+                {#font-size: 16px;#}
+            }
+
+            .bpp-support-button:active {
+                transform: translateY(0);
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            }
+
+            .bpp-support-button:focus {
+                outline: 2px solid #79aec8;
+                outline-offset: 2px;
+            }
+
+            @media screen and (max-width: 640px) {
+                .bpp-support-button {
+                    bottom: 20px;
+                    right: 20px;
+                    font-size: 16px;
+                    padding: 0px 0px;
+                }
+
+                .bpp-support-button:hover {
+                    padding: 0px 0px;
+                }
+
+                .bpp-support-button:hover .support-text {
+                    font-size: 14px;
+                }
+            }
+
+            @media print {
+                .bpp-support-button {
+                    display: none;
+                }
             }
         </style>
     {% endcompress %}
