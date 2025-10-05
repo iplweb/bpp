@@ -210,7 +210,7 @@ django-celery-email = "^3.0.0"
 django-easy-audit = "^1.3.3"
 crossrefapi = "^1.7.0"
 pandas = "^2.2.3"
-django-tinymce = "^3.6.1"
+django-tinymce = "^4.1.0"
 crispy-bootstrap5 = "^0.7"
 crispy-bootstrap3 = "^2022.1"
 twisted = {extras = ["http2", "tls"], version = "^24.3.0"}
