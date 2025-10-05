@@ -7,6 +7,7 @@ from django.views.decorators.cache import cache_page
 from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import RedirectView
 from django.views.i18n import JavaScriptCatalog
+from django.views.static import serve as static_serve
 from loginas.views import user_login
 
 from django.contrib import admin
@@ -256,7 +257,15 @@ urlpatterns = (
         ),
         url(r"session_security/", include("session_security.urls")),
         url(r"^login/user/(?P<user_id>.+)/$", user_login, name="loginas-user-login"),
-        url(r"^robots\.txt", include("robots.urls")),
+        url(
+            r"^robots\.txt$",
+            cache_page(60 * 60 * 24)(
+                lambda request: static_serve(
+                    request, "robots.txt", document_root=settings.STATIC_ROOT
+                )
+            ),
+            name="robots_txt",
+        ),
         # url(r'^sitemap\.xml$', cache_page(7*24*3600)(sitemaps_views.index), {
         #     'sitemaps': django_bpp_sitemaps,
         #     'sitemap_url_name': 'sitemaps'

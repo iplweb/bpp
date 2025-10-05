@@ -2135,17 +2135,6 @@ files = [
 django = ">=3.2"
 
 [[package]]
-name = "django-robots"
-version = "5.0"
-description = "Robots exclusion application for Django, complementing Sitemaps."
-optional = false
-python-versions = ">=3.7"
-groups = ["main"]
-files = [
-    {file = "django-robots-5.0.tar.gz", hash = "sha256:f5817975a9e3b082440a81396111d8a6671b54f6aa11349847554bd1beebd959"},
-]
-
-[[package]]
 name = "django-sendfile2"
 version = "0.7.2"
 description = "Abstraction to offload file uploads to web-server (e.g. Apache with mod_xsendfile) once Django has checked permissions etc."
@@ -7729,4 +7718,4 @@ office365 = ["django-microsoft-auth"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<3.13"
-content-hash = "e93aa974d01729683a538c9f7aaaf2bacaa033b8898244661bfe571b34549e51"
+content-hash = "54c714c263c95236bb5e688ffdfd11ba28d02ad5f993f5b086d5ff4887593d31"

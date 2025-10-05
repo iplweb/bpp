@@ -8,7 +8,6 @@ from django.db import transaction
 from favicon.models import Favicon, FaviconImg
 from flexible_reports import models as flexible_models
 from multiseek.models import SearchForm
-from robots.models import Rule, Url
 
 from dynamic_columns.models import ModelAdmin, ModelAdminColumn
 from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaRok, LiczbaNDlaUczelni
@@ -195,7 +194,7 @@ groups = {
         ModelAdminColumn,
         ModelAdmin,
     ],
-    "web": [Url, Rule, Site, Favicon, FaviconImg, Article, Template],
+    "web": [Site, Favicon, FaviconImg, Article, Template],
     "raporty": [
         flexible_models.Report,
         flexible_models.ReportElement,
@@ -215,34 +214,6 @@ groups_auto_add = {
         GR_RAPORTY_WYSWIETLANIE,
     ]
 }
-
-# Po migracji, upewnij się że robots.txt są generowane poprawnie
-
-DISALLOW_URLS = [
-    "/multiseek/",
-    "/bpp/raporty/",
-    "/eksport_pbn/",
-    "/admin/",
-    "/integrator2/",
-    "/password_change/",
-]
-
-
-def ustaw_robots_txt(**kwargs):
-    urls = set()
-    for elem in DISALLOW_URLS:
-        url, _ignore = Url.objects.get_or_create(pattern=elem)
-        urls.add(url)
-
-    cnt = Site.objects.all().count()
-    if cnt != 1:
-        raise Exception("Not supported count=%i" % cnt)
-
-    r, _ignore = Rule.objects.get_or_create(robot="*")
-    r.sites.add(Site.objects.all()[0])
-    for elem in DISALLOW_URLS:
-        r.disallowed.add(Url.objects.get(pattern=elem))
-    r.save()
 
 
 @transaction.atomic

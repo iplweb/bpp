@@ -408,7 +408,6 @@ INSTALLED_APPS = [
     "rozbieznosci_dyscyplin",
     "loginas",
     "rozbieznosci_if",
-    "robots",
     "webmaster_verification",
     "favicon",
     "miniblog",
@@ -634,8 +633,6 @@ MEDIA_ROOT = env("DJANGO_BPP_MEDIA_ROOT")
 SENDFILE_ROOT = MEDIA_ROOT
 
 GOOGLE_ANALYTICS_PROPERTY_ID = env("DJANGO_BPP_GOOGLE_ANALYTICS_PROPERTY_ID")
-
-ROBOTS_SITEMAP_VIEW_NAME = "sitemap"
 
 WEBMASTER_VERIFICATION = {"google": env("DJANGO_BPP_GOOGLE_VERIFICATION_CODE")}
 
