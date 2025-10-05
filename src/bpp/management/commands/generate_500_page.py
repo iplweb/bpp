@@ -4,6 +4,7 @@ from pathlib import Path
 from django.core.management import BaseCommand
 from django.template import loader
 from django.test import RequestFactory
+from htmlmin.minify import html_minify
 
 from django.contrib.auth.models import AnonymousUser
 
@@ -56,10 +57,14 @@ class Command(BaseCommand):
         # Add JavaScript to remove login menu from the rendered page
         cleanup_script = """
 <script type="text/javascript">
-    // Remove login menu from 500 error page (added by generate_500_page command)
+    // Remove login, raporty and ewaluacja menus from 500 error page (added by generate_500_page command)
     $(document).ready(function() {
         // Remove login menu entry that contains "zaloguj" text
         $('a:contains("zaloguj")').closest('li').remove();
+        // Remove raporty menu entry that contains "raporty" text
+        $('a:contains("raporty")').closest('li').remove();
+        // Remove ewaluacja menu entry that contains "ewaluacja" text
+        $('a:contains("ewaluacja")').closest('li').remove();
     });
 </script>
 """
@@ -77,6 +82,9 @@ To modify this page, edit src/bpp/templates/50x.html and run the generate_500_pa
 -->
 """
         final_html = warning + rendered_html
+
+        # Minify HTML to remove unnecessary whitespace
+        final_html = html_minify(final_html, ignore_comments=False)
 
         # Save to bpp app's static directory
         # Find bpp app directory by going up from this file's location
