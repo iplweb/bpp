@@ -150,7 +150,7 @@
                      alt="Logo {{ uczelnia.nazwa_dopelniacz }}"
                 />
             </div>
-        {% elif uczelnia.logo_www %}
+        {% else %}
             <div class="large-4 medium-2 cell">
                 <img src="{% static 'images/bpp-icon.png' %}"
                      alt="Logo {{ uczelnia.nazwa_dopelniacz }}"
