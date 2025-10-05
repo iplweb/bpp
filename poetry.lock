@@ -7719,4 +7719,4 @@ office365 = ["django-microsoft-auth"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<3.13"
-content-hash = "26a53d76a5677d4bd64d77bfa906ecef07865da18a033d9de84bc474c283fc8b"
+content-hash = "ebeeac24d9a8155752333a6919ebacc3faaed83b95d51a8f1dd8e28846204879"

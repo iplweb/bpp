@@ -126,7 +126,7 @@ push = false
 
 [tool.poetry.dependencies]
 python = ">=3.10,<3.13"
-Django = ">=4.2,<4.3"
+Django = ">=4.2.25,<4.3"
 arrow = "1.2.1"
 numpy = "^2.1.2"
 pygad = "^3.3.1"
