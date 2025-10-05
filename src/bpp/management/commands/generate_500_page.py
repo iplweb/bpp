@@ -13,8 +13,6 @@ from bpp.context_processors.global_nav import user as global_nav_user
 from bpp.context_processors.google_analytics import google_analytics
 from bpp.context_processors.microsoft_auth import microsoft_auth_status
 from bpp.context_processors.testing import testing
-from bpp.context_processors.uczelnia import BRAK_UCZELNI
-from bpp.models.struktura import Uczelnia
 
 
 class Command(BaseCommand):
@@ -27,12 +25,16 @@ class Command(BaseCommand):
         request.user = AnonymousUser()
         request.session = {}
 
-        # Get uczelnia or use default
-        try:
-            u = Uczelnia.objects.first()
-            uczelnia_context = {"uczelnia": u} if u else BRAK_UCZELNI
-        except Exception:
-            uczelnia_context = BRAK_UCZELNI
+        # Create fake Uczelnia object for 500 error page
+        class FakeUczelnia:
+            skrot = "Strona główna"
+            nazwa = "Błąd 500"
+
+            def sprawdz_uprawnienie(self, attr, request, ignoruj_grupe=None):
+                # For 500 error page, don't show any permission-restricted content
+                return False
+
+        uczelnia_context = {"uczelnia": FakeUczelnia()}
 
         # Build context from all context processors
         context = {}
