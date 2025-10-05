@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load user_in_group deklinacja cache %}
+{% load user_in_group deklinacja cache media_utils static %}
 
 {% block extratitle %}
     Uczelnia
@@ -144,10 +144,17 @@
 
 
     <div class="grid-x grid-padding-x align-middle align-center">
-        {% if uczelnia.logo_www %}
+        {% if uczelnia.logo_www and uczelnia.logo_www|media_exists %}
             <div class="large-4 medium-2 cell">
                 <img src="/media/{{ uczelnia.logo_www }}"
                      alt="Logo {{ uczelnia.nazwa_dopelniacz }}"
+                />
+            </div>
+        {% elif uczelnia.logo_www %}
+            <div class="large-4 medium-2 cell">
+                <img src="{% static 'images/bpp-icon.png' %}"
+                     alt="Logo {{ uczelnia.nazwa_dopelniacz }}"
+                     style="filter: grayscale(100%); opacity: 0.7;"
                 />
             </div>
         {% endif %}

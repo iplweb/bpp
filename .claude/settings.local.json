@@ -26,7 +26,11 @@
       "Bash(django-admin startapp:*)",
       "WebFetch(domain:docs.github.com)",
       "WebFetch(domain:github.com)",
-      "Bash(towncrier create:*)"
+      "Bash(towncrier create:*)",
+      "Bash(cat:*)",
+      "Bash(PYTHONPATH=/Users/mpasternak/Programowanie/bpp/src python manage.py shell:*)",
+      "WebFetch(domain:codeberg.org)",
+      "Bash(poetry update:*)"
     ],
     "deny": [],
     "ask": [],

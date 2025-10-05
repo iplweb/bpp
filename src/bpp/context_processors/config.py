@@ -9,4 +9,7 @@ def bpp_configuration(request):
         "ENABLE_NEW_REPORTS": settings.ENABLE_NEW_REPORTS,
         "MAX_NO_AUTHORS_ON_BROWSE_JEDNOSTKA_PAGE": settings.MAX_NO_AUTHORS_ON_BROWSE_JEDNOSTKA_PAGE,
         "BPP_POLA_PUNKTACJI": POLA_PUNKTACJI,
+        "DJANGO_BPP_ENABLE_TEST_CONFIGURATION": getattr(
+            settings, "DJANGO_BPP_ENABLE_TEST_CONFIGURATION", False
+        ),
     }

@@ -1,22 +1,29 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Nie znaleziono strony</title>
-</head>
-<body>
-<div style="width:40%; text-align:left; margin: 0 auto">
-    <p>&nbsp;</p>
-    <p>&nbsp;</p>
-    <h1>
-        <img src="/static/bpp/svg/paper.svg" style="max-width: 2.8em;"
-             align="absmiddle"/>
-        Nie znaleziono strony
-    </h1>
+{% extends "base.html" %}
 
-    No cóż. Najwyraźniej strona której poszukujesz już nie istnieje lub nigdy nie istniała.
-    Zalecamy powrót do strony głównej, odczekanie kilku chwil, zmianę parametrów zapytania lub
-    bezpośredni kontakt z administratorem systemu.
-</div>
-</body>
-</html>
+{% block extratitle %}
+    Nie znaleziono strony (404)
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li>Błąd 404</li>
+{% endblock %}
+
+{% block content %}
+    <div class="grid-container" style="min-height: 50vh; display: flex; align-items: center;">
+        <div class="grid-x grid-padding-x align-center" style="width: 100%;">
+            <div class="cell large-6 medium-8 small-12 text-center">
+                <div style="padding: 3rem 0;">
+                    <span class="fi-alert" style="font-size: 4em; color: #cc4b37; display: block; margin-bottom: 1rem;"></span>
+                    <h1 style="font-size: 2.5rem; margin-bottom: 1rem;">Nie znaleziono strony</h1>
+                    <p style="font-size: 1.1rem; color: #666; margin-bottom: 2rem; line-height: 1.6;">
+                        Przepraszamy, strona której szukasz nie istnieje. Mogła zostać przeniesiona lub usunięta.
+                    </p>
+                    <a href="/" class="button secondary">
+                        <span class="fi-home"></span> Wróć do strony głównej
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

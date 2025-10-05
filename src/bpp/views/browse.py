@@ -50,6 +50,32 @@ INNE = "inne"
 TYPY = [PUBLIKACJE, STRESZCZENIA, INNE]
 
 
+def get_uczelnia_context_data(uczelnia, article_slug=None):
+    """Shared function to get context data for uczelnia view."""
+    context = {"object": uczelnia, "uczelnia": uczelnia}
+
+    if article_slug:
+        context["article"] = get_object_or_404(Article, slug=article_slug)
+    else:
+        context["miniblog"] = Article.objects.filter(status=Article.STATUS.published)[
+            :5
+        ]
+        # Add 5 most recently updated records
+        context["recently_updated"] = Rekord.objects.order_by("-ostatnio_zmieniony")[
+            :12
+        ]
+        # Add 5 recent records with abstracts
+        context["recent_abstracts"] = (
+            Wydawnictwo_Ciagle_Streszczenie.objects.exclude(streszczenie__isnull=True)
+            .exclude(streszczenie__exact="")
+            .order_by("-rekord__ostatnio_zmieniony")[:5]
+        )
+        context["total_rekord_count"] = Rekord.objects.count()
+        context["current_year"] = timezone.now().date().year
+
+    return context
+
+
 def conditional(**kwargs):
     """A wrapper around :func:`django.views.decorators.http.condition` that
     works for methods (i.e. class-based views).
@@ -66,32 +92,8 @@ class UczelniaView(DetailView):
     template_name = "browse/uczelnia.html"
 
     def get_context_data(self, **kwargs):
-        context = {}
-        if "article_slug" in self.kwargs:
-            context["article"] = get_object_or_404(
-                Article, slug=self.kwargs["article_slug"]
-            )
-        else:
-            context["miniblog"] = Article.objects.filter(
-                status=Article.STATUS.published
-            )[:5]
-
-            # Add 5 most recently updated records
-            context["recently_updated"] = Rekord.objects.order_by(
-                "-ostatnio_zmieniony"
-            )[:12]
-
-            # Add 5 recent records with abstracts
-            context["recent_abstracts"] = (
-                Wydawnictwo_Ciagle_Streszczenie.objects.exclude(
-                    streszczenie__isnull=True
-                )
-                .exclude(streszczenie__exact="")
-                .order_by("-rekord__ostatnio_zmieniony")[:5]
-            )
-            context["total_rekord_count"] = Rekord.objects.count()
-            context["current_year"] = timezone.now().date().year
-
+        article_slug = self.kwargs.get("article_slug")
+        context = get_uczelnia_context_data(self.object, article_slug)
         context.update(kwargs)
         return super().get_context_data(**context)
 

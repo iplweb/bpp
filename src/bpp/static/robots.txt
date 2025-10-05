@@ -1,0 +1,13 @@
+User-agent: *
+Disallow: /multiseek/
+Disallow: /bpp/raporty/
+Disallow: /ewaluacja_liczba_n/
+Disallow: /ewaluacja_metryki/
+Disallow: /eksport_pbn/
+Disallow: /accounts/
+Disallow: /login/
+Disallow: /zglos_publikacje/
+Disallow: /logout/
+Disallow: /admin/
+Disallow: /integrator2/
+Disallow: /password_change/

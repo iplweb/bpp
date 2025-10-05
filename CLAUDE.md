@@ -6,6 +6,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 BPP (Bibliografia Publikacji Pracowników) is a Polish academic bibliography management system built with Django. It manages publication records for academic institutions and libraries in Poland.
 
+**Python Requirements:**
+- Python version: >=3.10,<3.13 (configured in pyproject.toml)
+
 ## General rule
 
 **CRITICAL: if anything seems unclear, feel free to ask questions before taking on any non-trivial tasks or creating a plan.**
@@ -77,11 +80,19 @@ nc -zv localhost 8000  # Check if port 8000 is in use
 - Always set timeout to at least 600000ms (10 minutes) when running `pytest src/`
 - Tests may appear to hang but are actually running - be patient
 
+**TEST CONFIGURATION NOTES:**
+- Tests use `--reuse-db` option by default for faster execution
+- Tests automatically rerun on TimeoutError, ElementClickInterceptedException, ElementDoesNotExist, and TimeoutException
+- Default Django settings: `django_bpp.settings.local` (configured in pytest.ini)
+- Test fixtures available in `src/conftest.py` and subdirectories
+
 ### Code Quality Commands
 - `black .` - Format Python code
 - `isort .` - Sort Python imports
 - `flake8` - Lint Python code
 - `pre-commit run --all-files` - Run pre-commit hooks
+
+**Note:** Code quality tools (black, isort, flake8, pre-commit) are installed through Poetry and available in the virtual environment.
 
 ### Maintenance Commands
 - `make clean` - Clean build artifacts and cache files
@@ -117,12 +128,24 @@ The project uses multiple Django applications in `src/`:
 - `import_polon/` - Import from POLON system
 - `pbn_api/` - Integration with Polish Bibliography Network (PBN)
 - `crossref_bpp/` - CrossRef API integration
+- `eksport_pbn/` - Export to PBN system
+- `pbn_import/` - Import from PBN system
+- `pbn_export_queue/` - PBN export queue management
+- `importer_autorow_pbn/` - PBN author import functionality
+- `import_common/` - Common import utilities
 
 **Reporting Applications:**
 - `raport_slotow/` - Slot reporting system
 - `ranking_autorow/` - Author ranking system
 - `ewaluacja2021/` - 2021 evaluation reports
 - `nowe_raporty/` - New reporting system
+- `ewaluacja_baza/` - Evaluation base system
+- `ewaluacja_common/` - Common evaluation utilities
+- `ewaluacja_liczba_n/` - Evaluation N-number calculations
+- `ewaluacja_metryki/` - Evaluation metrics
+- `ewaluacja_optymalizacja/` - Evaluation optimization
+- `ewaluacja_optymalizuj_publikacje/` - Publication optimization
+- `ewaluacja_raport/` - Evaluation reporting
 
 **Supporting Applications:**
 - `notifications/` - Real-time notifications using Django Channels
@@ -138,6 +161,21 @@ The project uses multiple Django applications in `src/`:
 - `snapshot_odpiec/` - Snapshot management
 - `stan_systemu/` - System status monitoring
 - `tee/` - Data flow utilities
+- `orcid_integration/` - ORCID integration system
+- `deduplikator_autorow/` - Author deduplication system
+- `bpp_setup_wizard/` - Setup wizard for initial configuration
+- `powiazania_autorow/` - Author relationship management
+- `przemapuj_prace_autora/` - Author work remapping
+- `pbn_integrator/` - PBN integration utilities
+- `komparator_pbn/` - PBN comparison tools
+- `komparator_aplikacji_pbn/` - PBN application comparison
+- `komparator_pbn_udzialy/` - PBN contribution comparison
+- `komparator_publikacji_pbn/` - PBN publication comparison
+- `pbn_downloader_app/` - PBN data downloader
+- `svg/` - SVG file handling
+- `test_bpp/` - BPP testing utilities
+- `maint-site/` - Site maintenance utilities
+- `create_test_db/` - Test database creation utilities
 
 ### Database
 - PostgreSQL database with custom SQL functions and triggers
@@ -182,6 +220,9 @@ The project uses multiple Django applications in `src/`:
 - Docker support with multi-architecture builds
 - Yarn for Node.js dependency management
 - Grunt for frontend asset compilation
+- Optional Microsoft Auth integration (configured via poetry extras)
+- Uses model_bakery and django-dynamic-fixture for test data generation
+- Pre-commit hooks installed and configured for automated code quality checks
 
 ## Common File Locations
 - Main models: `src/bpp/models/`

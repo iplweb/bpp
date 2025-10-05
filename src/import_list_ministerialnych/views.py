@@ -1,7 +1,14 @@
+import re
+
 from braces.views import GroupRequiredMixin
+from django.db.models import Q
+from django.views.generic import DetailView
 
 from import_list_ministerialnych.forms import NowyImportForm
-from import_list_ministerialnych.models import ImportListMinisterialnych
+from import_list_ministerialnych.models import (
+    ImportListMinisterialnych,
+    WierszImportuListyMinisterialnej,
+)
 from long_running.views import (
     CreateLongRunningOperationView,
     LongRunningDetailsView,
@@ -60,6 +67,7 @@ class ImportDyscyplinZrodelResultsView(
             self.request.GET.get("exclude_identical_dyscypliny") == "1"
         )
         only_duplicates = self.request.GET.get("only_duplicates") == "1"
+        search_query = self.request.GET.get("search_query", "").strip()
 
         # Apply filters
         if exclude_identical_punkty:
@@ -74,6 +82,31 @@ class ImportDyscyplinZrodelResultsView(
 
         if only_duplicates:
             queryset = queryset.filter(is_duplicate=True)
+
+        # Apply search query filter
+        if search_query:
+            # Extract row numbers from search query (comma-separated integers)
+            row_numbers = re.findall(r"\d+", search_query)
+            row_numbers = [int(num) for num in row_numbers] if row_numbers else []
+
+            # Build Q filter with text search
+            q_filter = (
+                Q(zrodlo__nazwa__icontains=search_query)
+                | Q(zrodlo__issn__icontains=search_query)
+                | Q(zrodlo__e_issn__icontains=search_query)
+                | Q(dane_z_xls__Tytul_1__icontains=search_query)
+                | Q(dane_z_xls__issn__icontains=search_query)
+                | Q(dane_z_xls__issn__1__icontains=search_query)
+                | Q(dane_z_xls__e_issn__icontains=search_query)
+                | Q(dane_z_xls__e_issn__1__icontains=search_query)
+                | Q(rezultat__icontains=search_query)
+            )
+
+            # Add row number filter if numbers were found
+            if row_numbers:
+                q_filter |= Q(nr_wiersza__in=row_numbers)
+
+            queryset = queryset.filter(q_filter)
 
         return queryset
 
@@ -105,5 +138,18 @@ class ImportDyscyplinZrodelResultsView(
             self.request.GET.get("exclude_identical_dyscypliny") == "1"
         )
         context["only_duplicates"] = self.request.GET.get("only_duplicates") == "1"
+        context["search_query"] = self.request.GET.get("search_query", "")
 
+        return context
+
+
+class WierszImportuListyMinisterialnejDetailView(GroupRequiredMixin, DetailView):
+    group_required = "wprowadzanie danych"
+    model = WierszImportuListyMinisterialnej
+    pk_url_kwarg = "row_pk"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # Get parent import object for breadcrumbs/back button
+        context["parent"] = self.object.parent
         return context

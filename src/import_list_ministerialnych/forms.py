@@ -21,6 +21,7 @@ class NowyImportForm(forms.ModelForm):
             "importuj_dyscypliny",
             "importuj_punktacje",
             "ignoruj_zrodla_bez_odpowiednika",
+            "nie_porownuj_po_tytulach",
         ]
 
     def clean_plik(self):
@@ -74,6 +75,9 @@ class NowyImportForm(forms.ModelForm):
                     Column(
                         "ignoruj_zrodla_bez_odpowiednika", css_class="large-12 small-12"
                     ),
+                ),
+                Row(
+                    Column("nie_porownuj_po_tytulach", css_class="large-12 small-12"),
                 ),
                 Row(
                     Column("zapisz_zmiany_do_bazy", css_class="large-12 small-12"),

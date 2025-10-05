@@ -3,14 +3,19 @@
 from playwright.sync_api import Page
 
 
-def wait_for_page_load(page: Page, timeout: int = 10000):
+def wait_for_page_load(
+    page: Page, timeout: int = 10000, load_state: str = "domcontentloaded"
+):
     """Wait for page to fully load.
 
     Args:
         page: Playwright Page object
         timeout: Timeout in milliseconds (default 10000)
+        load_state: Load state to wait for (default "domcontentloaded").
+                   Options: "load", "domcontentloaded", "networkidle".
+                   Note: "networkidle" may not work with WebSocket connections.
     """
-    page.wait_for_load_state("networkidle", timeout=timeout)
+    page.wait_for_load_state(load_state, timeout=timeout)
     page.wait_for_function("() => document.readyState === 'complete'", timeout=timeout)
     page.wait_for_function("() => document.body !== null", timeout=timeout)
 

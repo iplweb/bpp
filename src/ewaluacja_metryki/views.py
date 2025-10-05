@@ -623,7 +623,7 @@ class StatystykiView(EwaluacjaRequiredMixin, ListView):
             suma_slotow=Sum("slot_nazbierany"),
         )
 
-        # Bottom 20 autorów wg PKDaut/slot (nie-zerowych)
+        # Najniższe 20 autorów wg PKDaut/slot (nie-zerowych)
         context["bottom_autorzy_pkd"] = (
             MetrykaAutora.objects.select_related(
                 "autor", "dyscyplina_naukowa", "jednostka"
@@ -632,7 +632,7 @@ class StatystykiView(EwaluacjaRequiredMixin, ListView):
             .order_by("srednia_za_slot_nazbierana")[:20]
         )
 
-        # Bottom 20 autorów wg slotów wypełnionych (nie-zerowych)
+        # Najniższe 20 autorów wg slotów wypełnionych (nie-zerowych)
         context["bottom_autorzy_sloty"] = (
             MetrykaAutora.objects.select_related(
                 "autor", "dyscyplina_naukowa", "jednostka"
@@ -747,8 +747,8 @@ class UruchomGenerowanieView(View):
         # Pobierz zaznaczone rodzaje autorów
         rodzaje_autora = request.POST.getlist("rodzaj_autora")
         if not rodzaje_autora:
-            # Domyślnie tylko N jeśli nic nie zaznaczono
-            rodzaje_autora = ["N"]
+            # Domyślnie wszystkie rodzaje jeśli nic nie zaznaczono
+            rodzaje_autora = ["N", "D", "Z", " "]
 
         # Uruchom task (z domyślnym przeliczaniem liczby N)
         result = generuj_metryki_task.delay(
@@ -883,6 +883,9 @@ class ExportStatystykiXLSX(View):
             headers = [
                 "Lp.",
                 "Autor",
+                "ID systemu kadrowego",
+                "ORCID",
+                "PBN UID ID",
                 "Jednostka",
                 "Dyscyplina",
                 "Sloty wypełnione",
@@ -899,28 +902,33 @@ class ExportStatystykiXLSX(View):
                 ws.cell(row=row_idx, column=1, value=row_idx - 1)
                 ws.cell(row=row_idx, column=2, value=str(metryka.autor))
                 ws.cell(
+                    row=row_idx, column=3, value=metryka.autor.system_kadrowy_id or ""
+                )
+                ws.cell(row=row_idx, column=4, value=metryka.autor.orcid or "")
+                ws.cell(row=row_idx, column=5, value=metryka.autor.pbn_uid_id or "")
+                ws.cell(
                     row=row_idx,
-                    column=3,
+                    column=6,
                     value=metryka.jednostka.nazwa if metryka.jednostka else "-",
                 )
                 ws.cell(
                     row=row_idx,
-                    column=4,
+                    column=7,
                     value=(
                         metryka.dyscyplina_naukowa.nazwa
                         if metryka.dyscyplina_naukowa
                         else "-"
                     ),
                 )
-                ws.cell(row=row_idx, column=5, value=float(metryka.slot_nazbierany))
+                ws.cell(row=row_idx, column=8, value=float(metryka.slot_nazbierany))
                 ws.cell(
                     row=row_idx,
-                    column=6,
+                    column=9,
                     value=float(metryka.procent_wykorzystania_slotow),
                 )
                 ws.cell(
                     row=row_idx,
-                    column=7,
+                    column=10,
                     value=float(metryka.srednia_za_slot_nazbierana),
                 )
 
@@ -937,6 +945,9 @@ class ExportStatystykiXLSX(View):
             headers = [
                 "Lp.",
                 "Autor",
+                "ID systemu kadrowego",
+                "ORCID",
+                "PBN UID ID",
                 "Jednostka",
                 "Dyscyplina",
                 "Sloty wypełnione",
@@ -953,33 +964,38 @@ class ExportStatystykiXLSX(View):
                 ws.cell(row=row_idx, column=1, value=row_idx - 1)
                 ws.cell(row=row_idx, column=2, value=str(metryka.autor))
                 ws.cell(
+                    row=row_idx, column=3, value=metryka.autor.system_kadrowy_id or ""
+                )
+                ws.cell(row=row_idx, column=4, value=metryka.autor.orcid or "")
+                ws.cell(row=row_idx, column=5, value=metryka.autor.pbn_uid_id or "")
+                ws.cell(
                     row=row_idx,
-                    column=3,
+                    column=6,
                     value=metryka.jednostka.nazwa if metryka.jednostka else "-",
                 )
                 ws.cell(
                     row=row_idx,
-                    column=4,
+                    column=7,
                     value=(
                         metryka.dyscyplina_naukowa.nazwa
                         if metryka.dyscyplina_naukowa
                         else "-"
                     ),
                 )
-                ws.cell(row=row_idx, column=5, value=float(metryka.slot_nazbierany))
+                ws.cell(row=row_idx, column=8, value=float(metryka.slot_nazbierany))
                 ws.cell(
                     row=row_idx,
-                    column=6,
+                    column=9,
                     value=float(metryka.procent_wykorzystania_slotow),
                 )
                 ws.cell(
                     row=row_idx,
-                    column=7,
+                    column=10,
                     value=float(metryka.srednia_za_slot_nazbierana),
                 )
 
         elif table_type == "bottom-pkd":
-            ws.title = "Bottom 20 PKDaut-slot"
+            ws.title = "Najniższe 20 PKDaut-slot"
             queryset = (
                 MetrykaAutora.objects.select_related(
                     "autor", "dyscyplina_naukowa", "jednostka"
@@ -991,6 +1007,9 @@ class ExportStatystykiXLSX(View):
             headers = [
                 "Lp.",
                 "Autor",
+                "ID systemu kadrowego",
+                "ORCID",
+                "PBN UID ID",
                 "Jednostka",
                 "Dyscyplina",
                 "Sloty wypełnione",
@@ -1007,33 +1026,38 @@ class ExportStatystykiXLSX(View):
                 ws.cell(row=row_idx, column=1, value=row_idx - 1)
                 ws.cell(row=row_idx, column=2, value=str(metryka.autor))
                 ws.cell(
+                    row=row_idx, column=3, value=metryka.autor.system_kadrowy_id or ""
+                )
+                ws.cell(row=row_idx, column=4, value=metryka.autor.orcid or "")
+                ws.cell(row=row_idx, column=5, value=metryka.autor.pbn_uid_id or "")
+                ws.cell(
                     row=row_idx,
-                    column=3,
+                    column=6,
                     value=metryka.jednostka.nazwa if metryka.jednostka else "-",
                 )
                 ws.cell(
                     row=row_idx,
-                    column=4,
+                    column=7,
                     value=(
                         metryka.dyscyplina_naukowa.nazwa
                         if metryka.dyscyplina_naukowa
                         else "-"
                     ),
                 )
-                ws.cell(row=row_idx, column=5, value=float(metryka.slot_nazbierany))
+                ws.cell(row=row_idx, column=8, value=float(metryka.slot_nazbierany))
                 ws.cell(
                     row=row_idx,
-                    column=6,
+                    column=9,
                     value=float(metryka.procent_wykorzystania_slotow),
                 )
                 ws.cell(
                     row=row_idx,
-                    column=7,
+                    column=10,
                     value=float(metryka.srednia_za_slot_nazbierana),
                 )
 
         elif table_type == "bottom-sloty":
-            ws.title = "Bottom 20 sloty wypełnione"
+            ws.title = "Najniższe 20 sloty wypełnione"
             queryset = (
                 MetrykaAutora.objects.select_related(
                     "autor", "dyscyplina_naukowa", "jednostka"
@@ -1045,6 +1069,9 @@ class ExportStatystykiXLSX(View):
             headers = [
                 "Lp.",
                 "Autor",
+                "ID systemu kadrowego",
+                "ORCID",
+                "PBN UID ID",
                 "Jednostka",
                 "Dyscyplina",
                 "Sloty wypełnione",
@@ -1061,28 +1088,33 @@ class ExportStatystykiXLSX(View):
                 ws.cell(row=row_idx, column=1, value=row_idx - 1)
                 ws.cell(row=row_idx, column=2, value=str(metryka.autor))
                 ws.cell(
+                    row=row_idx, column=3, value=metryka.autor.system_kadrowy_id or ""
+                )
+                ws.cell(row=row_idx, column=4, value=metryka.autor.orcid or "")
+                ws.cell(row=row_idx, column=5, value=metryka.autor.pbn_uid_id or "")
+                ws.cell(
                     row=row_idx,
-                    column=3,
+                    column=6,
                     value=metryka.jednostka.nazwa if metryka.jednostka else "-",
                 )
                 ws.cell(
                     row=row_idx,
-                    column=4,
+                    column=7,
                     value=(
                         metryka.dyscyplina_naukowa.nazwa
                         if metryka.dyscyplina_naukowa
                         else "-"
                     ),
                 )
-                ws.cell(row=row_idx, column=5, value=float(metryka.slot_nazbierany))
+                ws.cell(row=row_idx, column=8, value=float(metryka.slot_nazbierany))
                 ws.cell(
                     row=row_idx,
-                    column=6,
+                    column=9,
                     value=float(metryka.procent_wykorzystania_slotow),
                 )
                 ws.cell(
                     row=row_idx,
-                    column=7,
+                    column=10,
                     value=float(metryka.srednia_za_slot_nazbierana),
                 )
 
@@ -1099,7 +1131,16 @@ class ExportStatystykiXLSX(View):
                 .order_by("autor__nazwisko", "autor__imiona")
             )
 
-            headers = ["Lp.", "Autor", "Jednostka", "Dyscyplina", "Lata"]
+            headers = [
+                "Lp.",
+                "Autor",
+                "ID systemu kadrowego",
+                "ORCID",
+                "PBN UID ID",
+                "Jednostka",
+                "Dyscyplina",
+                "Lata",
+            ]
             for col, header in enumerate(headers, 1):
                 cell = ws.cell(row=1, column=col, value=header)
                 cell.font = header_font
@@ -1110,13 +1151,18 @@ class ExportStatystykiXLSX(View):
                 ws.cell(row=row_idx, column=1, value=row_idx - 1)
                 ws.cell(row=row_idx, column=2, value=str(metryka.autor))
                 ws.cell(
+                    row=row_idx, column=3, value=metryka.autor.system_kadrowy_id or ""
+                )
+                ws.cell(row=row_idx, column=4, value=metryka.autor.orcid or "")
+                ws.cell(row=row_idx, column=5, value=metryka.autor.pbn_uid_id or "")
+                ws.cell(
                     row=row_idx,
-                    column=3,
+                    column=6,
                     value=metryka.jednostka.nazwa if metryka.jednostka else "-",
                 )
                 ws.cell(
                     row=row_idx,
-                    column=4,
+                    column=7,
                     value=(
                         metryka.dyscyplina_naukowa.nazwa
                         if metryka.dyscyplina_naukowa
@@ -1141,7 +1187,7 @@ class ExportStatystykiXLSX(View):
                 else:
                     lata_str = f"{metryka.rok_min}-{metryka.rok_max}"
 
-                ws.cell(row=row_idx, column=5, value=lata_str)
+                ws.cell(row=row_idx, column=8, value=lata_str)
 
         elif table_type == "jednostki":
             ws.title = "Statystyki jednostek"
@@ -1284,7 +1330,7 @@ class ExportStatystykiXLSX(View):
                 ws.cell(
                     row=row_idx,
                     column=3,
-                    value=f"{(count/total*100) if total > 0 else 0:.1f}%",
+                    value=f"{(count / total * 100) if total > 0 else 0:.1f}%",
                 )
 
         else:
@@ -1420,7 +1466,14 @@ class ExportListaXLSX(View):
         tylko_jedna_dyscyplina = wszystkie_dyscypliny.count() == 1
 
         # Create headers based on visible columns
-        headers = ["Lp.", "Autor", "Rodzaj autora"]
+        headers = [
+            "Lp.",
+            "Autor",
+            "Rodzaj autora",
+            "ID systemu kadrowego",
+            "ORCID",
+            "PBN UID ID",
+        ]
 
         if not tylko_jedna_dyscyplina:
             headers.append("Dyscyplina")
@@ -1476,6 +1529,20 @@ class ExportListaXLSX(View):
             elif metryka.rodzaj_autora == " ":
                 rodzaj_display = "Brak danych"
             ws.cell(row=row_idx, column=col, value=rodzaj_display)
+            col += 1
+
+            # ID systemu kadrowego
+            ws.cell(
+                row=row_idx, column=col, value=metryka.autor.system_kadrowy_id or ""
+            )
+            col += 1
+
+            # ORCID
+            ws.cell(row=row_idx, column=col, value=metryka.autor.orcid or "")
+            col += 1
+
+            # PBN UID ID
+            ws.cell(row=row_idx, column=col, value=metryka.autor.pbn_uid_id or "")
             col += 1
 
             # Dyscyplina (if shown)

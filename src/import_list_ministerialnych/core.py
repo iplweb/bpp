@@ -143,6 +143,7 @@ def analyze_excel_file_import_list_ministerialnych(
             mnisw_id=mnisw_id,
             disable_fuzzy=True,
             disable_skrot=True,
+            disable_title_matching=parent_model.nie_porownuj_po_tytulach,
         )
 
         # Check if this row is a duplicate

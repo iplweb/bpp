@@ -146,6 +146,10 @@ env = environ.Env(
     # Maksymalna ilość eksportowanych wierszy z Admina
     #
     DJANGO_BPP_MAX_ALLOWED_EXPORT_ITEMS=(int, 1500),
+    #
+    # Serwer testowy -- ustaw to na True
+    #
+    DJANGO_BPP_ENABLE_TEST_CONFIGURATION=(bool, False),
 )
 
 
@@ -280,6 +284,7 @@ TEMPLATES = [
                 "bpp.context_processors.google_analytics.google_analytics",
                 "bpp.context_processors.pbn_token_aktualny.pbn_token_aktualny",
                 "bpp.context_processors.microsoft_auth.microsoft_auth_status",
+                "bpp.context_processors.testing.testing",
                 "cookielaw.context_processors.cookielaw",
             ],
         },
@@ -408,7 +413,6 @@ INSTALLED_APPS = [
     "rozbieznosci_dyscyplin",
     "loginas",
     "rozbieznosci_if",
-    "robots",
     "webmaster_verification",
     "favicon",
     "miniblog",
@@ -634,8 +638,6 @@ MEDIA_ROOT = env("DJANGO_BPP_MEDIA_ROOT")
 SENDFILE_ROOT = MEDIA_ROOT
 
 GOOGLE_ANALYTICS_PROPERTY_ID = env("DJANGO_BPP_GOOGLE_ANALYTICS_PROPERTY_ID")
-
-ROBOTS_SITEMAP_VIEW_NAME = "sitemap"
 
 WEBMASTER_VERIFICATION = {"google": env("DJANGO_BPP_GOOGLE_VERIFICATION_CODE")}
 
@@ -1242,3 +1244,9 @@ BPP_MAX_ALLOWED_EXPORT_ITEMS = env("DJANGO_BPP_MAX_ALLOWED_EXPORT_ITEMS")
 # This results in maximum 8 elements in the pagination
 PAGINATION_DEFAULT_WINDOW = 2
 PAGINATION_DEFAULT_MARGIN = 1
+
+#
+#
+#
+
+DJANGO_BPP_ENABLE_TEST_CONFIGURATION = env("DJANGO_BPP_ENABLE_TEST_CONFIGURATION")

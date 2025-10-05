@@ -86,6 +86,73 @@
 
     {% if request.user.is_authenticated %}
         {{ extraChannels|json_script:"extra-channels" }}
+
+        <!-- Freshworks Support Widget -->
+        <script>
+            window.fwSettings={
+                'widget_id':205000000433
+            };
+            !function(){if("function"!=typeof window.FreshworksWidget){var n=function(){n.q.push(arguments)};n.q=[],window.FreshworksWidget=n}}()
+        </script>
+        <script type='text/javascript' src='https://euc-widget.freshworks.com/widgets/205000000433.js' async defer></script>
+
+        <!-- Identify user for Freshworks -->
+        <script type="text/javascript">
+            $(document).ready(function() {
+                FreshworksWidget('hide', 'launcher');
+
+                // Wait a bit for the widget to initialize
+                setTimeout(function() {
+                    if (typeof FreshworksWidget !== 'undefined') {
+                        FreshworksWidget('identify', 'ticketForm', {
+                            name: '{{ request.user.get_full_name|default:request.user.username|escapejs }}',
+                            email: '{{ request.user.email|escapejs }}'
+                        });
+
+                    }
+                }, 1000);
+            });
+        </script>
+
+        <!-- Custom Support Button -->
+        <button class="bpp-support-button hide-on-print" id="bppSupportButton">
+            <span class="button-content">
+                <span class="support-symbols">!?!</span>
+                <span class="support-text">Support BPP</span>
+            </span>
+        </button>
+
+        <script type="text/javascript">
+            $(document).ready(function() {
+                // Track widget state
+                var widgetOpen = false;
+
+                // Handle custom support button click - toggle widget
+                $('#bppSupportButton').on('click', function(e) {
+                    e.preventDefault();
+                    if (typeof FreshworksWidget !== 'undefined') {
+                        if (!widgetOpen) {
+
+                            FreshworksWidget('prefill', 'ticketForm', {
+                                custom_fields: {
+                                    cf_adres_url: window.location.href
+                                }
+                            });
+
+                            // Optional: make it read-only so users can’t change it
+                            FreshworksWidget('disable', 'ticketForm', ['custom_fields.cf_page_url']);
+
+                            FreshworksWidget('open');
+                            widgetOpen = true;
+                        } else {
+                            FreshworksWidget('close');
+                            widgetOpen = false;
+                        }
+                    }
+                });
+            });
+        </script>
+
         <script type="text/javascript">
             $(document).ready(function () {
                 bppNotifications.init(document.getElementById('extra-channels').textContent);
@@ -167,7 +234,7 @@
             <div class="grid-x">
                 <div class="cell"><p/>
                     <div id="messagesPlaceholder"></div>
-                    {% if "test" in request.get_host %}
+                    {% if DJANGO_BPP_ENABLE_TEST_CONFIGURATION %}
                         <div class="test-server-banner hide-on-print" style="background: linear-gradient(135deg, #ff9800 0%, #ff6600 100%); color: white; padding: 12px 20px; margin: 10px 0 20px 0; border-radius: 8px; text-align: center; font-weight: 600; font-size: 1rem; box-shadow: 0 2px 8px rgba(255, 152, 0, 0.3); display: flex; align-items: center; justify-content: center; gap: 10px;">
                             <span class="fi-alert" style="font-size: 1.3rem;"></span>
                             <span>SERWER TESTOWY - ZMIANY MOGĄ BYĆ NADPISANE BEZ OSTRZEŻENIA</span>
@@ -221,61 +288,63 @@
         {% endcache %}
     {% endif %}
 
-    <!-- Widget dostępności UserWay (WCAG) -->
-    <script>
-        (function(d){
-          var s = d.createElement("script");
+    {% if not TESTING %}
+        <!-- Widget dostępności UserWay (WCAG) -->
+        <script>
+            (function(d){
+              var s = d.createElement("script");
 
-          // Dynamiczne pobieranie koloru głównego (primary-color) ze stylów strony
-          // Tworzymy tymczasowy element aby pobrać kolor przycisku Foundation
-          var tempBtn = d.createElement('a');
-          tempBtn.className = 'button';
-          tempBtn.style.display = 'none';
-          d.body.appendChild(tempBtn);
-          var primaryColor = window.getComputedStyle(tempBtn).backgroundColor;
-          d.body.removeChild(tempBtn);
+              // Dynamiczne pobieranie koloru głównego (primary-color) ze stylów strony
+              // Tworzymy tymczasowy element aby pobrać kolor przycisku Foundation
+              var tempBtn = d.createElement('a');
+              tempBtn.className = 'button';
+              tempBtn.style.display = 'none';
+              d.body.appendChild(tempBtn);
+              var primaryColor = window.getComputedStyle(tempBtn).backgroundColor;
+              d.body.removeChild(tempBtn);
 
-          // Konwertujemy rgb() na hex jeśli potrzeba
-          if (primaryColor && primaryColor.startsWith('rgb')) {
-            var rgb = primaryColor.match(/\d+/g);
-            if (rgb) {
-              primaryColor = '#' +
-                ('0' + parseInt(rgb[0]).toString(16)).slice(-2) +
-                ('0' + parseInt(rgb[1]).toString(16)).slice(-2) +
-                ('0' + parseInt(rgb[2]).toString(16)).slice(-2);
-            }
-          }
+              // Konwertujemy rgb() na hex jeśli potrzeba
+              if (primaryColor && primaryColor.startsWith('rgb')) {
+                var rgb = primaryColor.match(/\d+/g);
+                if (rgb) {
+                  primaryColor = '#' +
+                    ('0' + parseInt(rgb[0]).toString(16)).slice(-2) +
+                    ('0' + parseInt(rgb[1]).toString(16)).slice(-2) +
+                    ('0' + parseInt(rgb[2]).toString(16)).slice(-2);
+                }
+              }
 
-          /* uncomment the following line to override default position*/
-          /* s.setAttribute("data-position", 3);*/
-          /* uncomment the following line to override default size (values: small, large)*/
-          /* s.setAttribute("data-size", "small");*/
-          /* uncomment the following line to override default language (e.g., fr, de, es, he, nl, etc.)*/
-          /* s.setAttribute("data-language", "language");*/
+              /* uncomment the following line to override default position*/
+              /* s.setAttribute("data-position", 3);*/
+              /* uncomment the following line to override default size (values: small, large)*/
+              /* s.setAttribute("data-size", "small");*/
+              /* uncomment the following line to override default language (e.g., fr, de, es, he, nl, etc.)*/
+              /* s.setAttribute("data-language", "language");*/
 
-          // Ustawienie koloru widgetu zgodnie z kolorem głównym strony
-          if (primaryColor) {
-            s.setAttribute("data-color", primaryColor);
-          }
+              // Ustawienie koloru widgetu zgodnie z kolorem głównym strony
+              if (primaryColor) {
+                s.setAttribute("data-color", primaryColor);
+              }
 
-          /* uncomment the following line to override type set via widget (1=person, 2=chair, 3=eye, 4=text)*/
-          /* s.setAttribute("data-type", "1");*/
-          /* s.setAttribute("data-statement_text:", "Our Accessibility Statement");*/
-          /* s.setAttribute("data-statement_url", "http://www.example.com/accessibility")";*/
-          /* uncomment the following line to override support on mobile devices*/
-          /* s.setAttribute("data-mobile", true);*/
-          /* uncomment the following line to set custom trigger action for accessibility menu*/
-          /* s.setAttribute("data-trigger", "triggerId")*/
-          /* uncomment the following line to override widget's z-index property*/
-          /* s.setAttribute("data-z-index", 10001);*/
-          /* uncomment the following line to enable Live site translations (e.g., fr, de, es, he, nl, etc.)*/
-          /* s.setAttribute("data-site-language", "null");*/
-          s.setAttribute("data-widget_layout", "full")
-          s.setAttribute("data-account", "u5BrWIqGkK");
-          s.setAttribute("src", "https://cdn.userway.org/widget.js");
-          (d.body || d.head).appendChild(s);
-        })(document)
-    </script>
-    <noscript>Please ensure Javascript is enabled for purposes of <a href="https://userway.org">website accessibility</a></noscript>
+              /* uncomment the following line to override type set via widget (1=person, 2=chair, 3=eye, 4=text)*/
+              /* s.setAttribute("data-type", "1");*/
+              /* s.setAttribute("data-statement_text:", "Our Accessibility Statement");*/
+              /* s.setAttribute("data-statement_url", "http://www.example.com/accessibility")";*/
+              /* uncomment the following line to override support on mobile devices*/
+              /* s.setAttribute("data-mobile", true);*/
+              /* uncomment the following line to set custom trigger action for accessibility menu*/
+              /* s.setAttribute("data-trigger", "triggerId")*/
+              /* uncomment the following line to override widget's z-index property*/
+              /* s.setAttribute("data-z-index", 10001);*/
+              /* uncomment the following line to enable Live site translations (e.g., fr, de, es, he, nl, etc.)*/
+              /* s.setAttribute("data-site-language", "null");*/
+              s.setAttribute("data-widget_layout", "full")
+              s.setAttribute("data-account", "u5BrWIqGkK");
+              s.setAttribute("src", "https://cdn.userway.org/widget.js");
+              (d.body || d.head).appendChild(s);
+            })(document)
+        </script>
+        <noscript>Please ensure Javascript is enabled for purposes of <a href="https://userway.org">website accessibility</a></noscript>
+    {% endif %}
 
 {% endblock %}

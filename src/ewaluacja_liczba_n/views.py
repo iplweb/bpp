@@ -748,6 +748,16 @@ class WeryfikujBazeView(GroupRequiredMixin, TemplateView):
             item["query_key"] = rodzaj_mapping.get(item["rodzaj_autora"], "brak_danych")
             item["nazwa"] = Autor_Dyscyplina.RODZAJE_AUTORA[item["rodzaj_autora"]]
 
+        # Count records without rodzaj_autora (empty/missing employment type)
+        context["bez_rodzaju_zatrudnienia"] = (
+            Autor_Dyscyplina.objects.filter(
+                rok__gte=2022,
+                rok__lte=2025,
+            )
+            .exclude(rodzaj_autora__in=["N", "D", "Z"])
+            .count()
+        )
+
         # 2. Records without wymiar_etatu
         context["bez_wymiaru_etatu"] = (
             Autor_Dyscyplina.objects.filter(rok__gte=2022, rok__lte=2025)

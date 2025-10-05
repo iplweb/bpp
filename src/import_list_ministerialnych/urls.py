@@ -26,4 +26,9 @@ urlpatterns = [
         views.ImportDyscyplinZrodelResultsView.as_view(),
         name="importlistministerialnych-results",
     ),
+    path(
+        "<uuid:pk>/results/<int:row_pk>/",
+        views.WierszImportuListyMinisterialnejDetailView.as_view(),
+        name="importrow-detail",
+    ),
 ]

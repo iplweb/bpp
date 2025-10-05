@@ -6,7 +6,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=10">
     {% load static %}
     {% load compress %}
-    <title>{% if "test" in request.get_host %}** SERWER TESTOWY ** {% endif %}{% block title %}{% block extratitle %}
+    <title>{% if DJANGO_BPP_ENABLE_TEST_CONFIGURATION %}** SERWER TESTOWY ** {% endif %}{% block title %}{% block extratitle %}
     {% endblock %}
         - Bibliografia Publikacji {{ uczelnia.skrot }}
     {% endblock %}</title>

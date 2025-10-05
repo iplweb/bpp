@@ -8,9 +8,8 @@ class BppConfig(AppConfig):
     def ready(self):
         from django.db.models.signals import post_migrate
 
-        from bpp.system import odtworz_grupy, ustaw_robots_txt
+        from bpp.system import odtworz_grupy
 
-        post_migrate.connect(ustaw_robots_txt, sender=self)
         post_migrate.connect(odtworz_grupy, sender=self)
 
         # Ensure BppUserAdmin takes precedence over microsoft_auth's UserAdmin

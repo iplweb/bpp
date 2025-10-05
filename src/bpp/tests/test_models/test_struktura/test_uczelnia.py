@@ -91,10 +91,10 @@ def test_uczelnia_praca_pokazuj_pozostale(
 
 
 lista_stron_raportow = [
-    ("pokazuj_ranking_autorow", 'ranking-autorow/wybierz/"><i'),
-    ("pokazuj_raport_autorow", "nowe_raporty/autor"),
-    ("pokazuj_raport_jednostek", "nowe_raporty/jednostka"),
-    ("pokazuj_raport_wydzialow", "nowe_raporty/wydzial"),
+    ("pokazuj_ranking_autorow", b'ranking-autorow/wybierz/"><i'),
+    ("pokazuj_raport_autorow", b"nowe_raporty/autor"),
+    ("pokazuj_raport_jednostek", b"nowe_raporty/jednostka"),
+    ("pokazuj_raport_wydzialow", b"nowe_raporty/wydzial"),
 ]
 
 
@@ -106,10 +106,10 @@ def test_uczelnia_pokazuj_menu_zawsze(uczelnia, attr, s, client, admin_client):
     uczelnia.save()
 
     res = client.get(url, follow=True)
-    assert s in res.rendered_content
+    assert s in res.content
 
     res = admin_client.get(url, follow=True)
-    assert s in res.rendered_content
+    assert s in res.content
 
 
 @pytest.mark.parametrize("attr,s", lista_stron_raportow)
@@ -120,10 +120,10 @@ def test_uczelnia_pokazuj_menu_zalogowani(uczelnia, attr, s, client, admin_clien
     uczelnia.save()
 
     res = client.get(url, follow=True)
-    assert s not in res.rendered_content
+    assert s not in res.content
 
     res = admin_client.get(url, follow=True)
-    assert s in res.rendered_content
+    assert s in res.content
 
 
 @pytest.mark.parametrize("attr,s", lista_stron_raportow)
@@ -134,10 +134,10 @@ def test_uczelnia_pokazuj_menu_nigdy(uczelnia, attr, s, client, admin_client):
     uczelnia.save()
 
     res = client.get(url, follow=True)
-    assert s not in res.rendered_content
+    assert s not in res.content
 
     res = admin_client.get(url, follow=True)
-    assert s not in res.rendered_content
+    assert s not in res.content
 
 
 @pytest.mark.django_db

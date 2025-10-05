@@ -2,9 +2,9 @@ import bleach
 from django import shortcuts
 
 try:
-    from django.core.urlresolvers import reverse
+    pass
 except ImportError:
-    from django.urls import reverse
+    pass
 
 from django.http import JsonResponse
 from django.http.response import HttpResponse
@@ -16,18 +16,21 @@ from bpp.models import Uczelnia
 
 
 def root(request):
-    """Zachowanie domyślne: przekieruj nas na pierwszą dostępną w bazie danych
-    uczelnię, lub wyświetl komunikat jeżeli nie ma żadnych uczelni wpisanych do
+    """Wyświetl stronę główną z pierwszą dostępną w bazie danych
+    uczelnią, lub wyświetl komunikat jeżeli nie ma żadnych uczelni wpisanych do
     bazy danych."""
     # TODO: jeżeli będzie więcej, niż jeden obiekt Uczelnia...?
-    uczelnia = Uczelnia.objects.only("slug").first()
+    uczelnia = Uczelnia.objects.first()
 
     if uczelnia is None:
         return shortcuts.render(request, "browse/brak_uczelni.html")
 
-    return shortcuts.redirect(
-        reverse("bpp:browse_uczelnia", args=(uczelnia.slug,)), permanent=True
-    )
+    # Użyj wspólnej funkcji z browse.py aby uniknąć duplikacji kodu
+    from bpp.views.browse import get_uczelnia_context_data
+
+    context = get_uczelnia_context_data(uczelnia)
+
+    return shortcuts.render(request, "browse/uczelnia.html", context)
 
 
 def favicon(request):

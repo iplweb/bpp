@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+
+{% block extratitle %}
+    Szczegóły wiersza {{ object.nr_wiersza }} - {{ parent.plik.name }}
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url "import_list_ministerialnych:index" %}">import list ministerialnych</a></li>
+    <li><a href="{% url "import_list_ministerialnych:importlistministerialnych-results" parent.pk %}">import {{ parent.plik.name }}</a></li>
+    <li class="current">wiersz {{ object.nr_wiersza }}</li>
+{% endblock %}
+
+{% block content %}
+    <h1>Szczegóły wiersza {{ object.nr_wiersza }}</h1>
+
+    <a href="{% url "import_list_ministerialnych:importlistministerialnych-results" parent.pk %}#filtry" class="button">
+        <span class="fi-arrow-left"></span> Powrót do listy
+    </a>
+
+    <div class="panel">
+        <h3>Informacje o wierszu</h3>
+        <table>
+            <tbody>
+                <tr>
+                    <th width="30%">Numer wiersza w XLSX:</th>
+                    <td>{{ object.nr_wiersza }}</td>
+                </tr>
+                <tr>
+                    <th>Dopasowane źródło BPP:</th>
+                    <td>
+                        {% if object.zrodlo %}
+                            {{ object.zrodlo.nazwa }}
+                            {% if object.zrodlo.issn %}(ISSN: {{ object.zrodlo.issn }}){% endif %}
+                            {% if object.zrodlo.e_issn %}(E-ISSN: {{ object.zrodlo.e_issn }}){% endif %}
+                        {% else %}
+                            <em>Brak dopasowania</em>
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <th>Rezultat importu:</th>
+                    <td>{{ object.rezultat|default:"—" }}</td>
+                </tr>
+                <tr>
+                    <th>Duplikat:</th>
+                    <td>
+                        {% if object.is_duplicate %}
+                            <span class="label warning">TAK</span> - duplikat wiersza {{ object.duplicate_of_row }}
+                            {% if object.duplicate_reason %}
+                                <br><small>Powód: {{ object.duplicate_reason }}</small>
+                            {% endif %}
+                        {% else %}
+                            NIE
+                        {% endif %}
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="panel">
+        <h3>Dane z pliku Excel</h3>
+        <table>
+            <tbody>
+                {% for key, value in object.dane_z_xls.items %}
+                <tr>
+                    <th width="30%">{{ key }}:</th>
+                    <td>{{ value|default:"—" }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="2"><em>Brak danych</em></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if object.zrodlo %}
+    <div class="panel">
+        <h3>Szczegóły źródła BPP</h3>
+        <table>
+            <tbody>
+                <tr>
+                    <th width="30%">ID:</th>
+                    <td>{{ object.zrodlo.id }}</td>
+                </tr>
+                <tr>
+                    <th>Nazwa:</th>
+                    <td>{{ object.zrodlo.nazwa }}</td>
+                </tr>
+                <tr>
+                    <th>Skrót:</th>
+                    <td>{{ object.zrodlo.skrot|default:"—" }}</td>
+                </tr>
+                <tr>
+                    <th>ISSN:</th>
+                    <td>{{ object.zrodlo.issn|default:"—" }}</td>
+                </tr>
+                <tr>
+                    <th>E-ISSN:</th>
+                    <td>{{ object.zrodlo.e_issn|default:"—" }}</td>
+                </tr>
+                <tr>
+                    <th>Rodzaj:</th>
+                    <td>{{ object.zrodlo.rodzaj|default:"—" }}</td>
+                </tr>
+                <tr>
+                    <th>Zasięg:</th>
+                    <td>{{ object.zrodlo.zasieg|default:"—" }}</td>
+                </tr>
+                <tr>
+                    <th>WWW:</th>
+                    <td>
+                        {% if object.zrodlo.www %}
+                            <a href="{{ object.zrodlo.www }}" target="_blank">{{ object.zrodlo.www }}</a>
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    <a href="{% url "import_list_ministerialnych:importlistministerialnych-results" parent.pk %}#filtry" class="button">
+        <span class="fi-arrow-left"></span> Powrót do listy
+    </a>
+
+{% endblock %}

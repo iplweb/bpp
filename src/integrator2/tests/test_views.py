@@ -6,18 +6,21 @@ except ImportError:
     from django.urls import reverse
 
 import pytest
+from django.test import override_settings
 from webtest.forms import Upload
 
 
 @pytest.mark.django_db
 def test_serwer_testowy(client):
-    # W przypadku, gdy domena zawiera słowo "test", to na stronie powinien
-    # pojawić się obrazek tła oraz słowo "SERWER TESTOWY" w tytule
-    response = client.get("/", SERVER_NAME="test.unexistenttld")
-    assert b"** SERWER TESTOWY **" in response.content
+    # Test when DJANGO_BPP_ENABLE_TEST_CONFIGURATION is enabled
+    with override_settings(DJANGO_BPP_ENABLE_TEST_CONFIGURATION=True):
+        response = client.get("/")
+        assert b"SERWER TESTOWY - ZMIANY MOG" in response.content
 
-    response = client.get("/", SERVER_NAME="127.0.0.1")
-    assert b"** SERWER TESTOWY **" not in response.content
+    # Test when DJANGO_BPP_ENABLE_TEST_CONFIGURATION is disabled (default)
+    with override_settings(DJANGO_BPP_ENABLE_TEST_CONFIGURATION=False):
+        response = client.get("/")
+        assert b"SERWER TESTOWY - ZMIANY MOG" not in response.content
 
 
 def test_views_main(admin_client):

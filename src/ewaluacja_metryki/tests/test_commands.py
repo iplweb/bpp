@@ -83,8 +83,8 @@ def test_oblicz_metryki_command_basic():
     assert metryka.liczba_prac_wszystkie == 5
 
     # Sprawdź output
-    assert "Testowy" in output
-    assert "utworzono" in output.lower()
+    assert "Znaleziono 1 autorów do przetworzenia" in output
+    assert "przetworzono 1" in output.lower()
 
 
 @pytest.mark.django_db
@@ -311,25 +311,26 @@ def test_oblicz_metryki_command_rodzaj_autora_filter():
     with patch.object(Autor, "zbieraj_sloty") as mock_zbieraj:
         mock_zbieraj.return_value = (Decimal("100.0"), [1], Decimal("2.5"))
 
-        # Domyślnie powinno generować tylko dla N
+        # Domyślnie powinno generować dla wszystkich rodzajów (N, D, Z, " ")
         out = StringIO()
         call_command("oblicz_metryki", "--bez-liczby-n", stdout=out)
 
         assert MetrykaAutora.objects.filter(autor=autor_n).exists()
-        assert not MetrykaAutora.objects.filter(autor=autor_d).exists()
-        assert "Pominięto Doktorant" in out.getvalue()
-        assert "rodzaj_autora = 'D'" in out.getvalue()
+        assert MetrykaAutora.objects.filter(autor=autor_d).exists()
+        # Nie powinno być komunikatu o pominiętym autorze
+        assert "Pominięto Doktorant" not in out.getvalue()
+        assert "Pominięto Pracownik" not in out.getvalue()
 
         MetrykaAutora.objects.all().delete()
 
-        # Z opcją --rodzaje-autora N D powinno generować dla obu
+        # Z opcją --rodzaje-autora N powinno generować tylko dla N
         out = StringIO()
         call_command(
-            "oblicz_metryki", "--bez-liczby-n", "--rodzaje-autora", "N", "D", stdout=out
+            "oblicz_metryki", "--bez-liczby-n", "--rodzaje-autora", "N", stdout=out
         )
 
         assert MetrykaAutora.objects.filter(autor=autor_n).exists()
-        assert MetrykaAutora.objects.filter(autor=autor_d).exists()
-        # Nie powinno być komunikatu o pominiętym autorze Doktorant
-        assert "Pominięto Doktorant" not in out.getvalue()
-        assert "rodzaj_autora = 'D'" not in out.getvalue()
+        assert not MetrykaAutora.objects.filter(autor=autor_d).exists()
+        # Powinien być komunikat o pominiętym doktorancie
+        assert "Pominięto Doktorant" in out.getvalue()
+        assert "rodzaj_autora = 'D'" in out.getvalue()
