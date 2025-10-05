@@ -146,6 +146,10 @@ env = environ.Env(
     # Maksymalna ilość eksportowanych wierszy z Admina
     #
     DJANGO_BPP_MAX_ALLOWED_EXPORT_ITEMS=(int, 1500),
+    #
+    # Serwer testowy -- ustaw to na True
+    #
+    DJANGO_BPP_ENABLE_TEST_CONFIGURATION=(bool, False),
 )
 
 
@@ -280,6 +284,7 @@ TEMPLATES = [
                 "bpp.context_processors.google_analytics.google_analytics",
                 "bpp.context_processors.pbn_token_aktualny.pbn_token_aktualny",
                 "bpp.context_processors.microsoft_auth.microsoft_auth_status",
+                "bpp.context_processors.testing.testing",
                 "cookielaw.context_processors.cookielaw",
             ],
         },
@@ -1239,3 +1244,9 @@ BPP_MAX_ALLOWED_EXPORT_ITEMS = env("DJANGO_BPP_MAX_ALLOWED_EXPORT_ITEMS")
 # This results in maximum 8 elements in the pagination
 PAGINATION_DEFAULT_WINDOW = 2
 PAGINATION_DEFAULT_MARGIN = 1
+
+#
+#
+#
+
+DJANGO_BPP_ENABLE_TEST_CONFIGURATION = env("DJANGO_BPP_ENABLE_TEST_CONFIGURATION")

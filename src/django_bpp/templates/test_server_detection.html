@@ -1,5 +1,4 @@
-{% if "test" in request.get_host %}
-    {#                         Najprostsza, naiwna identyfikacja serwera testowego - słowo 'test' w nazwie domeny.#}
+{% if DJANGO_BPP_ENABLE_TEST_CONFIGURATION %}
     <style>
         /* Subtle test server indicator */
         body::before {

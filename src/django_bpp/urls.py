@@ -27,7 +27,7 @@ from bpp.views.mymultiseek import (
     bpp_remove_by_hand,
     bpp_remove_from_removed_by_hand,
 )
-from bpp.views.sentry_tester import sentry_teset_view
+from bpp.views.sentry_tester import sentry_teset_view, test_403_view, test_500_view
 
 admin.autodiscover()
 
@@ -37,6 +37,8 @@ urlpatterns = (
         path("setup/", include("bpp_setup_wizard.urls")),  # Setup wizard URLs
         url(r"^favicon\.ico$", cache_page(60 * 60)(favicon)),
         path("sentry_test/", login_required(sentry_teset_view)),
+        path("test_403/", login_required(test_403_view)),
+        path("test_500/", login_required(test_500_view)),
         path("tinymce/", include("tinymce.urls")),
         url(
             r"^admin/bpp/wydawnictwo_ciagle/toz/(?P<pk>[\d]+)/$",

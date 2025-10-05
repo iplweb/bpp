@@ -1,7 +1,7 @@
 {% load static %}{% load i18n grp_tags %}{% load compress %}<!DOCTYPE html>
 <html lang="{{ LANGUAGE_CODE|default:"en-us" }}" {% if LANGUAGE_BIDI %}dir="rtl"{% endif %}>
 <head>
-    <title>{% if "test" in request.get_host %}** SERWER TESTOWY ** {% endif %}{% block title %}{% endblock %}</title>
+    <title>{% if DJANGO_BPP_ENABLE_TEST_CONFIGURATION %}** SERWER TESTOWY ** {% endif %}{% block title %}{% endblock %}</title>
     <meta charset="utf-8"/>
     {% block blockbots %}
         <meta name="robots" content="NONE,NOARCHIVE"/>{% endblock %}
@@ -222,7 +222,7 @@
         <header id="grp-content-title">
             {% block pretitle %}{% endblock %}
             {% block content_title %}{% if title %}<h1>
-                {% if "test" in request.get_host %}Serwer testowy - {% endif %}
+                {% if DJANGO_BPP_ENABLE_TEST_CONFIGURATION %}Serwer testowy - {% endif %}
                 {{ title }}</h1>{% endif %}{% endblock %}
             {% block object-tools %}{% endblock %}
         </header>
@@ -240,8 +240,7 @@
     <!-- FOOTER -->
     {% block footer %}{% endblock %}
 
-    {% if "test" in request.get_host %}
-        {# Najprostsza, naiwna identyfikacja serwera testowego - słowo 'test' w nazwie domeny. #}
+    {% if DJANGO_BPP_ENABLE_TEST_CONFIGURATION %}
         <style>
             body {
                 background-image: url("{% static "bpp/images/test_server_background.jpg" %}") !important;

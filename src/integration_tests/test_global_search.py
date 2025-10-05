@@ -74,8 +74,20 @@ def test_global_search_logged_in(
 ):
     rec = None
     try:
-        rec = baker.make(Wydawnictwo_Ciagle, tytul_oryginalny="Test")
+        # Create a unique title to avoid conflicts with other tests
+        import uuid
+
+        unique_title = f"Test_{uuid.uuid4().hex[:8]}"
+
+        rec = baker.make(Wydawnictwo_Ciagle, tytul_oryginalny=unique_title)
+
+        # Ensure the Rekord cache is refreshed for this specific record
         Rekord.objects.full_refresh()
+
+        # Verify the record was properly indexed
+        assert Rekord.objects.filter(
+            tytul_oryginalny__icontains=unique_title
+        ).exists(), f"Record with title '{unique_title}' not found in Rekord cache after refresh"
 
         admin_page.goto(channels_live_server.url)
         wait_for_page_load(admin_page)
@@ -96,8 +108,8 @@ def test_global_search_logged_in(
             "#globalSearchInput", state="visible", timeout=5000
         )
 
-        # Type the search term directly into the input
-        admin_page.fill("#globalSearchInput", "Test")
+        # Type the search term directly into the input - use the unique title
+        admin_page.fill("#globalSearchInput", unique_title)
 
         # Wait for "Rekord" to appear in the dropdown
         admin_page.wait_for_function(
@@ -120,6 +132,7 @@ def test_global_search_logged_in(
             raise PlaywrightTimeoutError(f"Page content dump: {html_content}")
     finally:
         if rec is not None:
+            # Delete the record and ensure it's removed from cache
             rec.delete()
 
 

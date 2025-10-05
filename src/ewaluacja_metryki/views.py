@@ -623,7 +623,7 @@ class StatystykiView(EwaluacjaRequiredMixin, ListView):
             suma_slotow=Sum("slot_nazbierany"),
         )
 
-        # Bottom 20 autorów wg PKDaut/slot (nie-zerowych)
+        # Najniższe 20 autorów wg PKDaut/slot (nie-zerowych)
         context["bottom_autorzy_pkd"] = (
             MetrykaAutora.objects.select_related(
                 "autor", "dyscyplina_naukowa", "jednostka"
@@ -632,7 +632,7 @@ class StatystykiView(EwaluacjaRequiredMixin, ListView):
             .order_by("srednia_za_slot_nazbierana")[:20]
         )
 
-        # Bottom 20 autorów wg slotów wypełnionych (nie-zerowych)
+        # Najniższe 20 autorów wg slotów wypełnionych (nie-zerowych)
         context["bottom_autorzy_sloty"] = (
             MetrykaAutora.objects.select_related(
                 "autor", "dyscyplina_naukowa", "jednostka"
@@ -995,7 +995,7 @@ class ExportStatystykiXLSX(View):
                 )
 
         elif table_type == "bottom-pkd":
-            ws.title = "Bottom 20 PKDaut-slot"
+            ws.title = "Najniższe 20 PKDaut-slot"
             queryset = (
                 MetrykaAutora.objects.select_related(
                     "autor", "dyscyplina_naukowa", "jednostka"
@@ -1057,7 +1057,7 @@ class ExportStatystykiXLSX(View):
                 )
 
         elif table_type == "bottom-sloty":
-            ws.title = "Bottom 20 sloty wypełnione"
+            ws.title = "Najniższe 20 sloty wypełnione"
             queryset = (
                 MetrykaAutora.objects.select_related(
                     "autor", "dyscyplina_naukowa", "jednostka"

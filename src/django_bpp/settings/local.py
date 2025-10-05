@@ -14,6 +14,7 @@ setenv_default("DJANGO_BPP_SECRET_KEY", "0xdeadbeef 2")
 from .base import *  # noqa
 from .base import DATABASES, INSTALLED_APPS, MIDDLEWARE
 
+# DEBUG = False
 DEBUG = True
 
 SENDFILE_BACKEND = "django_sendfile.backends.simple"
