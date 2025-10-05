@@ -1,1 +1,0 @@
-Dodano dedykowaną stronę błędu 500 (wewnętrzny błąd serwera) z przyjaznym dla użytkownika interfejsem oraz poleceniem zarządzającym umożliwiającym wygenerowanie statycznej wersji strony dla środowiska produkcyjnego.
