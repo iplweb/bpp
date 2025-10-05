@@ -83,8 +83,8 @@ def test_oblicz_metryki_command_basic():
     assert metryka.liczba_prac_wszystkie == 5
 
     # Sprawdź output
-    assert "Testowy" in output
-    assert "utworzono" in output.lower()
+    assert "Znaleziono 1 autorów do przetworzenia" in output
+    assert "przetworzono 1" in output.lower()
 
 
 @pytest.mark.django_db

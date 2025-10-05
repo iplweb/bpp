@@ -79,7 +79,7 @@ def test_uczelnia_deklaracja_dostepnosci_tekst(uczelnia, client):
     assert TEKST_Z_HTML in res.content
 
     res = client.get("/", follow=True)
-    assert url_deklaracji_bpp in res.rendered_content
+    assert bytes(url_deklaracji_bpp, "ascii") in res.content
 
 
 @pytest.mark.django_db
