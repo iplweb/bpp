@@ -111,7 +111,7 @@ def handler404(request, exception):
 
 
 def handler403(request, exception=None):
-    return permission_denied(request, "403.html")
+    return permission_denied(request, exception, "403.html")
 
 
 def handler500(request):

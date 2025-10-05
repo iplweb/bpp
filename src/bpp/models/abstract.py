@@ -510,7 +510,9 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
                 Autor_Dyscyplina.RODZAJE_AUTORA.D,
                 # Nie liczymy slotów dla autorów "Z"
                 # -- mpoasternak, 7.09.2025
-                #    Autor_Dyscyplina.RODZAJE_AUTORA.Z,
+                # Liczymy sloty dla autorów "Z"
+                # -- mpasternak, 5.10.2025
+                Autor_Dyscyplina.RODZAJE_AUTORA.Z,
             ],
         ).exists()
 
@@ -1072,7 +1074,6 @@ class Wydawnictwo_Baza(RekordBPPBaza):
 
 
 url_validator = URLValidator()
-
 
 strony_regex = re.compile(
     r"(?P<parametr>s{1,2}\.)\s*"

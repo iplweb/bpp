@@ -4,6 +4,16 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202510.1232 (2025-10-05)
+============================
+
+Usprawnienie
+------------
+
+- Dodano dedykowaną stronę błędu 500 (wewnętrzny błąd serwera) z przyjaznym dla użytkownika interfejsem oraz poleceniem zarządzającym umożliwiającym wygenerowanie statycznej wersji strony dla środowiska produkcyjnego. (custom-500-page)
+- Raport slotów: obliczanie slotów dla wszystkich typów autorów (dyscyplina, zatrudniony, doktorant, inny zatrudniony, naukowiec). (raport-slotow-wszystkie-typy-autorow)
+
+
 Bpp 202510.1231 (2025-10-05)
 ============================
 
