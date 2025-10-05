@@ -4,6 +4,7 @@ from pathlib import Path
 from django.core.management import BaseCommand
 from django.template import loader
 from django.test import RequestFactory
+from htmlmin.minify import html_minify
 
 from django.contrib.auth.models import AnonymousUser
 
@@ -12,8 +13,6 @@ from bpp.context_processors.global_nav import user as global_nav_user
 from bpp.context_processors.google_analytics import google_analytics
 from bpp.context_processors.microsoft_auth import microsoft_auth_status
 from bpp.context_processors.testing import testing
-from bpp.context_processors.uczelnia import BRAK_UCZELNI
-from bpp.models.struktura import Uczelnia
 
 
 class Command(BaseCommand):
@@ -26,12 +25,16 @@ class Command(BaseCommand):
         request.user = AnonymousUser()
         request.session = {}
 
-        # Get uczelnia or use default
-        try:
-            u = Uczelnia.objects.first()
-            uczelnia_context = {"uczelnia": u} if u else BRAK_UCZELNI
-        except Exception:
-            uczelnia_context = BRAK_UCZELNI
+        # Create fake Uczelnia object for 500 error page
+        class FakeUczelnia:
+            skrot = "Strona główna"
+            nazwa = "Błąd 500"
+
+            def sprawdz_uprawnienie(self, attr, request, ignoruj_grupe=None):
+                # For 500 error page, don't show any permission-restricted content
+                return False
+
+        uczelnia_context = {"uczelnia": FakeUczelnia()}
 
         # Build context from all context processors
         context = {}
@@ -56,10 +59,14 @@ class Command(BaseCommand):
         # Add JavaScript to remove login menu from the rendered page
         cleanup_script = """
 <script type="text/javascript">
-    // Remove login menu from 500 error page (added by generate_500_page command)
+    // Remove login, raporty and ewaluacja menus from 500 error page (added by generate_500_page command)
     $(document).ready(function() {
         // Remove login menu entry that contains "zaloguj" text
         $('a:contains("zaloguj")').closest('li').remove();
+        // Remove raporty menu entry that contains "raporty" text
+        $('a:contains("raporty")').closest('li').remove();
+        // Remove ewaluacja menu entry that contains "ewaluacja" text
+        $('a:contains("ewaluacja")').closest('li').remove();
     });
 </script>
 """
@@ -77,6 +84,9 @@ To modify this page, edit src/bpp/templates/50x.html and run the generate_500_pa
 -->
 """
         final_html = warning + rendered_html
+
+        # Minify HTML to remove unnecessary whitespace
+        final_html = html_minify(final_html, ignore_comments=False)
 
         # Save to bpp app's static directory
         # Find bpp app directory by going up from this file's location

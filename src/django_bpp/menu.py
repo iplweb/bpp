@@ -79,8 +79,6 @@ RAPORTY_MENU = [
 ]
 
 WEB_MENU = [
-    ("robots.txt - URLe", "/admin/robots/url/"),
-    ("robots.txt - reguły", "/admin/robots/rule/"),
     ("Serwisy", "/admin/sites/site/"),
     ("Miniblog", "/admin/miniblog/article/"),
     ("Favicon", "/admin/favicon/"),

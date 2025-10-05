@@ -116,3 +116,17 @@ def handler403(request, exception=None):
 
 def handler500(request):
     return server_error(request, template_name="50x.html")
+
+
+def robots_txt(request):
+    """Serve robots.txt - restricted version for test environments."""
+    from django.conf import settings
+
+    if getattr(settings, "DJANGO_BPP_ENABLE_TEST_CONFIGURATION", False):
+        content = "User-agent: *\nDisallow: /\n"
+    else:
+        from django.views.static import serve as static_serve
+
+        return static_serve(request, "robots.txt", document_root=settings.STATIC_ROOT)
+
+    return HttpResponse(content, content_type="text/plain")
