@@ -1,1 +1,0 @@
-Moduł ewaluacji liczba N: dodano czerwone ostrzeżenie w widoku weryfikacji bazy danych dla rekordów Autor_Dyscyplina (2022-2025) bez uzupełnionego rodzaju zatrudnienia (rodzaj_autora). Ostrzeżenie wyświetla się w pierwszej sekcji raportu weryfikacyjnego wraz z linkiem do przeglądania problematycznych rekordów w panelu administracyjnym.

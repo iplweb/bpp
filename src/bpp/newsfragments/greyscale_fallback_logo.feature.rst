@@ -1,1 +1,0 @@
-Dodano wsparcie dla awaryjnego wyświetlania logo w skali szarości. Gdy plik logo uczelni nie istnieje w systemie plików (nawet jeśli pole jest ustawione w bazie danych), system wyświetla domyślną ikonę bpp-icon.png w skali szarości z 70% przezroczystością, co wizualnie odróżnia ją od prawdziwego logo.

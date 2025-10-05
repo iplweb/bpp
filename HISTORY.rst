@@ -4,6 +4,38 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202510.1231 (2025-10-05)
+============================
+
+Naprawione
+----------
+
+- Zaktualizowano bibliotekę django-sendfile2 z wersji 0.7.0 do 0.7.2 w celu naprawienia błędu kompatybilności z Python 3.12. Wcześniejsza wersja powodowała błąd AttributeError podczas próby wyświetlenia ikony favicon ('module posixpath has no attribute pathmod') ze względu na zmiany w wewnętrznych interfejsach modułu pathlib wprowadzone w Python 3.12. (django_sendfile2_python312)
+- Poprawiono obliczanie metryk ewaluacyjnych dla autorów dwudyscyplinowych. (ewaluacja_metryki_dwudyscyplinowi)
+- Wyłączono widget dostępności UserWay podczas uruchamiania testów (gdy settings.TESTING = True) w celu poprawy stabilności testów. (userway_tests)
+
+
+Usprawnienie
+------------
+
+- Moduł ewaluacji liczba N: dodano czerwone ostrzeżenie w widoku weryfikacji bazy danych dla rekordów Autor_Dyscyplina (2022-2025) bez uzupełnionego rodzaju zatrudnienia (rodzaj_autora). Ostrzeżenie wyświetla się w pierwszej sekcji raportu weryfikacyjnego wraz z linkiem do przeglądania problematycznych rekordów w panelu administracyjnym. (ewaluacja_liczba_n_weryfikacja_ostrzezenie)
+- Zmieniono angielskie słowo "Bottom" na polskie "Najniższe" w statystykach metryk ewaluacyjnych dla lepszej czytelności i bardziej neutralnego brzmienia. (ewaluacja_metryki_najnizsze)
+- Moduł ewaluacji metryk: dodano rodzaje autora "Z" (inni zatrudnieni) oraz "brak danych". Domyślnie przy generowaniu metryk zaznaczone są wszystkie rodzaje autorów (N, D, Z, brak danych). Zrefaktoryzowano kod: wspólna funkcja generuj_metryki() w utils.py eliminuje duplikację kodu między zadaniem Celery a komendą zarządzającą. (ewaluacja_metryki_rodzaje_autora)
+- Dodano widget wsparcia technicznego Freshworks dla zalogowanych użytkowników, umożliwiający bezpośredni kontakt z zespołem pomocowym. Widget automatycznie identyfikuje użytkownika na podstawie jego danych w systemie. Dodano niestandardowy przycisk wsparcia "!?!" w prawym dolnym rogu strony, który po najechaniu myszką wyświetla tekst "Support BPP" z animacją fade-in, a po kliknięciu uruchamia widget Freshworks. (freshworks_widget)
+- Dodano wsparcie dla awaryjnego wyświetlania logo w skali szarości. Gdy plik logo uczelni nie istnieje w systemie plików (nawet jeśli pole jest ustawione w bazie danych), system wyświetla domyślną ikonę bpp-icon.png w skali szarości z 70% przezroczystością, co wizualnie odróżnia ją od prawdziwego logo. (greyscale_fallback_logo)
+- Dodano nową opcję "nie porównuj po tytułach" do importu list ministerialnych, która umożliwia porównywanie źródeł wyłącznie po identyfikatorach ISSN, E-ISSN i MNISWID, bez uwzględniania tytułów czasopism. Opcja jest domyślnie włączona i zapobiega problemom z dopasowywaniem periodyków o identycznych lub podobnych nazwach (np. "Electronics" oraz "Electronics (Switzerland)"), gdy w bazie występuje tylko jedno źródło o danej nazwie. Użytkownicy mogą wyłączyć tę opcję w formularzu importu, aby przywrócić dopasowywanie również po tytułach. (import_list_ministerialnych_nie_porownuj_po_tytulach)
+- Zwiększono elastyczność polecenia zarządzającego `remap_jednostka`. Teraz akceptuje zarówno slugi, jak i identyfikatory numeryczne jednostek jako parametry wejściowe. Dodano obsługę formatów mieszanych oraz zaktualizowano tekst pomocy z przykładami użycia. (remap_jednostka_slug_support)
+- Strona główna wyświetla teraz bezpośrednio szablon uczelnia.html zamiast przekierowania HTTP 301. Zmiana poprawia SEO, eliminując niepotrzebne przekierowanie z głównego URL na URL uczelni. (root_page_no_redirect)
+- Dodano testowe linki do podglądu stron błędów 403 i 500 pod adresami /test_403/ i /test_500/ (wymagane logowanie). (test_error_pages)
+- Zmieniono wykrywanie serwera testowego z analizy nazwy domeny na użycie zmiennej konfiguracyjnej DJANGO_BPP_ENABLE_TEST_CONFIGURATION dla bardziej niezawodnej identyfikacji środowiska testowego. (test_server_settings)
+
+
+Usunięto
+--------
+
+- Usunięto pakiet django-robots i zastąpiono go statycznym plikiem robots.txt blokującym roboty od dostępu do wrażliwych adresów URL (admin, raporty, logowanie, ewaluacja itp.) (robots-static)
+
+
 Bpp 202509.1230 (2025-09-30)
 ============================
 

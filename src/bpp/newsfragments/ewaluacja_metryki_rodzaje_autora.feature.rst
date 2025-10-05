@@ -1,1 +1,0 @@
-Moduł ewaluacji metryk: dodano rodzaje autora "Z" (inni zatrudnieni) oraz "brak danych". Domyślnie przy generowaniu metryk zaznaczone są wszystkie rodzaje autorów (N, D, Z, brak danych). Zrefaktoryzowano kod: wspólna funkcja generuj_metryki() w utils.py eliminuje duplikację kodu między zadaniem Celery a komendą zarządzającą.
