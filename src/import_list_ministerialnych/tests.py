@@ -551,6 +551,147 @@ def test_import_results_view_filtering(admin_client, admin_user):
 
 
 @pytest.mark.django_db
+def test_import_with_nie_porownuj_po_tytulach_enabled():
+    """Test that when nie_porownuj_po_tytulach=True, matching only uses ISSN/E-ISSN/mniswId"""
+
+    # Create sources with similar names but different IDs
+    zrodlo_electronics = baker.make(  # noqa
+        Zrodlo, nazwa="Electronics", issn="1111-1111"
+    )  # noqa
+    zrodlo_electronics_switzerland = baker.make(
+        Zrodlo, nazwa="Electronics (Switzerland)", issn="2222-2222"
+    )
+
+    # Create parent import model with nie_porownuj_po_tytulach=True
+    parent_model = baker.make(
+        ImportListMinisterialnych,
+        rok=2023,
+        zapisz_zmiany_do_bazy=False,
+        importuj_punktacje=False,
+        importuj_dyscypliny=False,
+        ignoruj_zrodla_bez_odpowiednika=False,
+        nie_porownuj_po_tytulach=True,  # Enable the new option
+    )
+    parent_model.send_progress = Mock()
+
+    # Mock Excel data with title "Electronics" but ISSN matching "Electronics (Switzerland)"
+    mock_data = [
+        {
+            "Tytul_1": "Electronics",  # This title matches zrodlo_electronics
+            "Tytul_2": None,
+            "issn": "2222-2222",  # But ISSN matches zrodlo_electronics_switzerland
+            "issn.1": None,
+            "e-issn": None,
+            "e-issn.1": None,
+            "Unikatowy Identyfikator Czasopisma": None,
+            "Punkty": 100,
+        }
+    ]
+
+    with patch(
+        "import_list_ministerialnych.core.wczytaj_plik_importu_dyscyplin_zrodel",
+        return_value=mock_data,
+    ):
+        with patch("import_list_ministerialnych.core.napraw_literowki_w_bazie"):
+            analyze_excel_file_import_list_ministerialnych("dummy.xlsx", parent_model)
+
+    # Should match by ISSN (zrodlo_electronics_switzerland), NOT by title (zrodlo_electronics)
+    wiersz = parent_model.wierszimportulistyministerialnej_set.first()
+    assert wiersz.zrodlo == zrodlo_electronics_switzerland
+
+
+@pytest.mark.django_db
+def test_import_with_nie_porownuj_po_tytulach_disabled():
+    """Test that when nie_porownuj_po_tytulach=False (default), title matching works"""
+
+    # Create a source with only a title (no ISSN)
+    zrodlo = baker.make(Zrodlo, nazwa="Test Journal")
+
+    # Create parent import model with nie_porownuj_po_tytulach=False (default)
+    parent_model = baker.make(
+        ImportListMinisterialnych,
+        rok=2023,
+        zapisz_zmiany_do_bazy=False,
+        importuj_punktacje=False,
+        importuj_dyscypliny=False,
+        ignoruj_zrodla_bez_odpowiednika=False,
+        nie_porownuj_po_tytulach=False,  # Default behavior - use title matching
+    )
+    parent_model.send_progress = Mock()
+
+    # Mock Excel data with matching title but no ISSN
+    mock_data = [
+        {
+            "Tytul_1": "Test Journal",
+            "Tytul_2": None,
+            "issn": None,
+            "issn.1": None,
+            "e-issn": None,
+            "e-issn.1": None,
+            "Unikatowy Identyfikator Czasopisma": None,
+            "Punkty": 100,
+        }
+    ]
+
+    with patch(
+        "import_list_ministerialnych.core.wczytaj_plik_importu_dyscyplin_zrodel",
+        return_value=mock_data,
+    ):
+        with patch("import_list_ministerialnych.core.napraw_literowki_w_bazie"):
+            analyze_excel_file_import_list_ministerialnych("dummy.xlsx", parent_model)
+
+    # Should match by title since nie_porownuj_po_tytulach=False
+    wiersz = parent_model.wierszimportulistyministerialnej_set.first()
+    assert wiersz.zrodlo == zrodlo
+
+
+@pytest.mark.django_db
+def test_import_title_not_matched_when_nie_porownuj_po_tytulach_enabled():
+    """Test that title matching is truly skipped when nie_porownuj_po_tytulach=True"""
+
+    # Create a source with only a title (no ISSN, E-ISSN, or mniswId)
+    baker.make(Zrodlo, nazwa="Title Only Journal")
+
+    # Create parent import model with nie_porownuj_po_tytulach=True
+    parent_model = baker.make(
+        ImportListMinisterialnych,
+        rok=2023,
+        zapisz_zmiany_do_bazy=False,
+        importuj_punktacje=False,
+        importuj_dyscypliny=False,
+        ignoruj_zrodla_bez_odpowiednika=False,
+        nie_porownuj_po_tytulach=True,  # Skip title matching
+    )
+    parent_model.send_progress = Mock()
+
+    # Mock Excel data with matching title but no identifiers
+    mock_data = [
+        {
+            "Tytul_1": "Title Only Journal",  # This matches the source by title
+            "Tytul_2": None,
+            "issn": None,  # No ISSN
+            "issn.1": None,
+            "e-issn": None,  # No E-ISSN
+            "e-issn.1": None,
+            "Unikatowy Identyfikator Czasopisma": None,  # No mniswId
+            "Punkty": 100,
+        }
+    ]
+
+    with patch(
+        "import_list_ministerialnych.core.wczytaj_plik_importu_dyscyplin_zrodel",
+        return_value=mock_data,
+    ):
+        with patch("import_list_ministerialnych.core.napraw_literowki_w_bazie"):
+            analyze_excel_file_import_list_ministerialnych("dummy.xlsx", parent_model)
+
+    # Should NOT match because title matching is disabled and no IDs are provided
+    wiersz = parent_model.wierszimportulistyministerialnej_set.first()
+    assert wiersz.zrodlo is None
+    assert "Brak takiego źródła po stronie BPP" in wiersz.rezultat
+
+
+@pytest.mark.django_db
 def test_import_results_view_statistics(admin_client, admin_user):
     """Test that statistics are calculated correctly"""
     from import_list_ministerialnych.models import WierszImportuListyMinisterialnej

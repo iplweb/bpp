@@ -288,6 +288,7 @@ def matchuj_zrodlo(
     alt_nazwa=None,
     disable_fuzzy=False,
     disable_skrot=False,
+    disable_title_matching=False,
 ) -> Union[None, Zrodlo]:
     if s is None or str(s) == "":
         return
@@ -327,28 +328,30 @@ def matchuj_zrodlo(
                     if zrodlo:
                         return zrodlo
 
-    for elem in s, alt_nazwa:
-        if elem is None:
-            continue
+    # Skip title matching if disable_title_matching is True
+    if not disable_title_matching:
+        for elem in s, alt_nazwa:
+            if elem is None:
+                continue
 
-        elem = normalize_tytul_zrodla(elem)
-        try:
-            if disable_skrot is True:
-                return Zrodlo.objects.get(nazwa__iexact=elem)
-            return Zrodlo.objects.get(Q(nazwa__iexact=elem) | Q(skrot__iexact=elem))
-        except Zrodlo.MultipleObjectsReturned:
-            pass
-        except Zrodlo.DoesNotExist:
-            if not disable_fuzzy and elem.endswith("."):
-                try:
-                    return Zrodlo.objects.get(
-                        Q(nazwa__istartswith=elem[:-1])
-                        | Q(skrot__istartswith=elem[:-1])
-                    )
-                except Zrodlo.DoesNotExist:
-                    pass
-                except Zrodlo.MultipleObjectsReturned:
-                    pass
+            elem = normalize_tytul_zrodla(elem)
+            try:
+                if disable_skrot is True:
+                    return Zrodlo.objects.get(nazwa__iexact=elem)
+                return Zrodlo.objects.get(Q(nazwa__iexact=elem) | Q(skrot__iexact=elem))
+            except Zrodlo.MultipleObjectsReturned:
+                pass
+            except Zrodlo.DoesNotExist:
+                if not disable_fuzzy and elem.endswith("."):
+                    try:
+                        return Zrodlo.objects.get(
+                            Q(nazwa__istartswith=elem[:-1])
+                            | Q(skrot__istartswith=elem[:-1])
+                        )
+                    except Zrodlo.DoesNotExist:
+                        pass
+                    except Zrodlo.MultipleObjectsReturned:
+                        pass
 
 
 def matchuj_dyscypline(kod, nazwa):

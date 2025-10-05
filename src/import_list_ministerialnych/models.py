@@ -15,6 +15,13 @@ class ImportListMinisterialnych(ASGINotificationMixin, Operation):
     importuj_dyscypliny = models.BooleanField(default=True)
     importuj_punktacje = models.BooleanField(default=True)
     ignoruj_zrodla_bez_odpowiednika = models.BooleanField(default=True)
+    nie_porownuj_po_tytulach = models.BooleanField(
+        default=True,
+        help_text="zaznaczenie tej opcji spowoduje, że import list ministerialnych będzie porównywał "
+        "wyłącznie ISSN, E-ISSN, MNISWID a nie będzie zwracał uwagi na tytuły. Dla niektórych arkuszy "
+        "jest to pożądane, np w sytuacji gdy występują w nich periodyki identycznie nazwane (np. "
+        '"Electronics (Switzerland)" oraz "Electronics", gdy w bazie jest wyłącznie źródło "Electronics").',
+    )
 
     def on_reset(self):
         self.wierszimportulistyministerialnej_set.all().delete()
