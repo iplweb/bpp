@@ -1,1 +1,0 @@
-Zwiększono elastyczność polecenia zarządzającego `remap_jednostka`. Teraz akceptuje zarówno slugi, jak i identyfikatory numeryczne jednostek jako parametry wejściowe. Dodano obsługę formatów mieszanych oraz zaktualizowano tekst pomocy z przykładami użycia.
