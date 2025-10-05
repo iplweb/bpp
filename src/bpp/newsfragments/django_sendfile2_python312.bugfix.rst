@@ -1,0 +1,1 @@
+Zaktualizowano bibliotekę django-sendfile2 z wersji 0.7.0 do 0.7.2 w celu naprawienia błędu kompatybilności z Python 3.12. Wcześniejsza wersja powodowała błąd AttributeError podczas próby wyświetlenia ikony favicon ('module posixpath has no attribute pathmod') ze względu na zmiany w wewnętrznych interfejsach modułu pathlib wprowadzone w Python 3.12.

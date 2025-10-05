@@ -152,7 +152,7 @@ xlrd = "2.0.1"
 celery = { version = "5.4.0", extras = ["redis"] }
 django-celery-results = "2.6.0"
 django-tables2 = "2.3.1"
-django-sendfile2 = "0.7.0"
+django-sendfile2 = "^0.7.2"
 Unidecode = "0.4.20"
 django-cookie-law = "2.2.0"
 django-classy-tags = "4.0.0"

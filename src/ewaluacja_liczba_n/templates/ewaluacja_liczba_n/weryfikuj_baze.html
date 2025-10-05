@@ -49,6 +49,28 @@
                     {% endfor %}
                 </tbody>
             </table>
+
+            {% if bez_rodzaju_zatrudnienia > 0 %}
+            <div class="callout alert" style="margin-top: 1rem;">
+                <h5 style="color: #cc4b37;">
+                    <span class="fi-alert"></span> Ostrzeżenie: Autor_Dyscyplina bez rodzaju zatrudnienia
+                </h5>
+                <div class="grid-x grid-margin-x">
+                    <div class="cell medium-8">
+                        <p>
+                            Liczba rekordów bez rodzaju zatrudnienia (brak danych): <strong>{{ bez_rodzaju_zatrudnienia }}</strong>
+                        </p>
+                        <p><small>Te rekordy wymagają uzupełnienia informacji o rodzaju zatrudnienia.</small></p>
+                    </div>
+                    <div class="cell medium-4 text-right">
+                        <a href="/admin/bpp/autor_dyscyplina/?q={{ djangoql_queries.brak_danych|urlencode }}"
+                           class="button alert" target="_blank">
+                            <span class="fi-alert"></span> Zobacz problematyczne rekordy
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
         </div>
 
         <!-- Section 2: Without wymiar_etatu -->

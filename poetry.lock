@@ -2147,21 +2147,21 @@ files = [
 
 [[package]]
 name = "django-sendfile2"
-version = "0.7.0"
+version = "0.7.2"
 description = "Abstraction to offload file uploads to web-server (e.g. Apache with mod_xsendfile) once Django has checked permissions etc."
 optional = false
 python-versions = "*"
 groups = ["main"]
 files = [
-    {file = "django-sendfile2-0.7.0.tar.gz", hash = "sha256:d900b1557cb1ba881798728de7ed7c82bff808868f331136b867a106e73bcd1f"},
-    {file = "django_sendfile2-0.7.0-py3-none-any.whl", hash = "sha256:0ee17b4f7ce8cc7159f75fa4e5d62e7795c1217de8f1e52ee6265d4aa46dce03"},
+    {file = "django_sendfile2-0.7.2-py3-none-any.whl", hash = "sha256:d1b364c2e0b32de996bb8df30889681c723a7cae13c837c0256dd25f87074530"},
+    {file = "django_sendfile2-0.7.2.tar.gz", hash = "sha256:d0939d52217d314b110d0b7b15ace5063d96aeb4980b7e0f94c020c2e25646f8"},
 ]
 
 [package.dependencies]
 django = "*"
 
 [package.extras]
-docs = ["sphinx", "sphinx-rtd-theme"]
+docs = ["sphinx", "sphinx_rtd_theme"]
 
 [[package]]
 name = "django-session-security"
@@ -7729,4 +7729,4 @@ office365 = ["django-microsoft-auth"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<3.13"
-content-hash = "ee44ea699b29acb43e941ccf5f1e967ffee1682e783218a14bde7064b6082b1f"
+content-hash = "e93aa974d01729683a538c9f7aaaf2bacaa033b8898244661bfe571b34549e51"
