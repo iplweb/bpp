@@ -1,0 +1,1 @@
+Dodano możliwość opcjonalnego włączenia statystyk Prometheus poprzez zmienną środowiskową DJANGO_BPP_ENABLE_PROMETHEUS
