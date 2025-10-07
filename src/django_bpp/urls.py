@@ -296,6 +296,12 @@ if "microsoft_auth" in getattr(settings, "INSTALLED_APPS", []):
     ]
 
 
+if settings.DJANGO_BPP_ENABLE_PROMETHEUS:
+    urlpatterns += [
+        path("", include("django_prometheus.urls")),
+    ]
+
+
 if settings.DEBUG and settings.DEBUG_TOOLBAR:
     from debug_toolbar.toolbar import debug_toolbar_urls
 

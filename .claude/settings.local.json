@@ -30,7 +30,8 @@
       "Bash(cat:*)",
       "Bash(PYTHONPATH=/Users/mpasternak/Programowanie/bpp/src python manage.py shell:*)",
       "WebFetch(domain:codeberg.org)",
-      "Bash(poetry update:*)"
+      "Bash(poetry update:*)",
+      "Bash(poetry add:*)"
     ],
     "deny": [],
     "ask": [],
