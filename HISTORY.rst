@@ -4,6 +4,15 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202510.1236 (2025-10-07)
+============================
+
+Usprawnienie
+------------
+
+- Dodano możliwość opcjonalnego włączenia statystyk Prometheus poprzez zmienną środowiskową DJANGO_BPP_ENABLE_PROMETHEUS (prometheus_stats)
+
+
 Bpp 202510.1235 (2025-10-07)
 ============================
 
