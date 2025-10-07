@@ -1,6 +1,8 @@
+import sys
+
+import rollbar
 from django.http import JsonResponse
 from django.views.generic.base import View
-from sentry_sdk import capture_exception
 
 from import_common.normalization import normalize_doi, normalize_isbn
 from pbn_api.exceptions import NeedsPBNAuthorisationException, PraceSerwisoweException
@@ -78,7 +80,7 @@ class GetPBNPublicationsByBase(View):
 
         except Exception as e:
             # Zgłoś nieznany typ błędu do Sentry
-            capture_exception(e)
+            rollbar.report_exc_info(sys.exc_info())
 
             # .. oraz do użytkownika:
             return JsonResponse(

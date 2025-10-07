@@ -76,3 +76,9 @@ INSTALLED_APPS.append("easyaudit")  # noqa
 MIDDLEWARE.append(  # noqa
     "easyaudit.middleware.easyaudit.EasyAuditMiddleware",
 )
+
+
+ROLLBAR["environment"] = "production"  # noqa
+
+if DJANGO_BPP_ENABLE_TEST_CONFIGURATION:  # noqa
+    ROLLBAR["environment"] = "staging"  # noqa

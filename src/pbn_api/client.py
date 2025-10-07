@@ -8,13 +8,13 @@ from pprint import pprint
 from urllib.parse import parse_qs, quote, urlparse
 
 import requests
+import rollbar
 from django.core.mail import mail_admins
 from django.db import transaction
 from django.db.models import Model
 from requests import ConnectionError
 from requests.exceptions import JSONDecodeError as RequestsJSONDecodeError
 from requests.exceptions import SSLError
-from sentry_sdk import capture_exception
 from simplejson.errors import JSONDecodeError
 
 from import_common.core import (
@@ -937,8 +937,8 @@ class PBNClient(
 
             try:
                 raise NoPBNUIDException(msg)
-            except NoPBNUIDException as e:
-                capture_exception(e)
+            except NoPBNUIDException:
+                rollbar.report_exc_info(sys.exc_info())
 
             mail_admins("Serwer PBN nie zwrocil ID publikacji", msg, fail_silently=True)
 
@@ -985,8 +985,8 @@ class PBNClient(
 
                 try:
                     raise PBNUIDChangedException(message)
-                except PBNUIDChangedException as e:
-                    capture_exception(e)
+                except PBNUIDChangedException:
+                    rollbar.report_exc_info(sys.exc_info())
 
                 mail_admins(
                     "Zmiana PBN UID publikacji przez serwer PBN",
@@ -1020,8 +1020,8 @@ class PBNClient(
 
                 try:
                     raise PBNUIDSetToExistentException(message)
-                except PBNUIDSetToExistentException as e:
-                    capture_exception(e)
+                except PBNUIDSetToExistentException:
+                    rollbar.report_exc_info(sys.exc_info())
 
                 mail_admins(
                     "Ustawienie ISTNIEJĄCEGO JUŻ W BAZIE PBN UID publikacji przez serwer PBN",

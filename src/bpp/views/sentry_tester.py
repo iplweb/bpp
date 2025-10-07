@@ -10,6 +10,10 @@ def test_403_view(request):
     raise PermissionDenied("Test 403 error page")
 
 
+def test_exception_view(request):
+    raise Exception("Celowe wywołanie błedu. ")
+
+
 def test_500_view(request):
     """Test view to serve the static 500.html page for preview."""
     from pathlib import Path

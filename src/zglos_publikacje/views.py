@@ -1,8 +1,10 @@
 # Create your views here.
 import operator
 import os
+import sys
 from functools import reduce
 
+import rollbar
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.files.storage import FileSystemStorage
@@ -12,7 +14,6 @@ from django.shortcuts import render
 from django.views.generic import TemplateView
 from formtools.wizard.views import SessionWizardView
 from messages_extends import messages
-from sentry_sdk import capture_exception
 from templated_email import send_templated_mail
 
 from import_common.normalization import normalize_tytul_publikacji
@@ -260,8 +261,8 @@ class Zgloszenie_PublikacjiWizard(UczelniaSettingRequiredMixin, SessionWizardVie
                         "site_url": self.request.get_host(),
                     },
                 )
-            except Exception as e:
-                capture_exception(e)
+            except Exception:
+                rollbar.report_exc_info(sys.exc_info())
 
                 messages.add_message(
                     self.request,

@@ -1,6 +1,7 @@
 import re
+import sys
 
-import sentry_sdk
+import rollbar
 from django.db.models import F
 from django.db.models.functions import Coalesce
 from django.http import HttpResponseRedirect, JsonResponse
@@ -466,9 +467,9 @@ def resend_all_waiting(request):
             )
             # Trigger the send
             queue_item.sprobuj_wyslac_do_pbn()
-        except Exception as e:
+        except Exception:
             # Log the error but continue processing other items
-            sentry_sdk.capture_exception(e)
+            rollbar.report_exc_info(sys.exc_info())
             continue
 
     messages.success(
@@ -507,9 +508,9 @@ def resend_all_errors(request):
             )
             # Trigger the send
             queue_item.sprobuj_wyslac_do_pbn()
-        except Exception as e:
+        except Exception:
             # Log the error but continue processing other items
-            sentry_sdk.capture_exception(e)
+            rollbar.report_exc_info(sys.exc_info())
             continue
 
     messages.success(
