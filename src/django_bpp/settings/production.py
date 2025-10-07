@@ -55,6 +55,8 @@ CACHEOPS_DEFAULTS = {"timeout": 60 * 60}
 
 ALLOWED_HOSTS = [
     "127.0.0.1",
+    "appserver",
+    "appserver:8000",
     env("DJANGO_BPP_HOSTNAME"),  # noqa
 ]
 
