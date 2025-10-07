@@ -510,6 +510,8 @@ COMPRESS_OFFLINE_CONTEXT = [
 
 ALLOWED_HOSTS = [
     "127.0.0.1",
+    "appserver",
+    "appserver:8000",
     "test.unexistenttld",
     env("DJANGO_BPP_HOSTNAME"),
 ]
