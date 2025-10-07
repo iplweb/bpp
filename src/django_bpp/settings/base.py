@@ -149,6 +149,10 @@ env = environ.Env(
     # Rollbar access settings
     #
     ROLLBAR_ACCESS_TOKEN=(str, None),
+    #
+    # Prometheus
+    #
+    DJANGO_BPP_ENABLE_PROMETHEUS=(bool, False),
 )
 
 
@@ -285,7 +289,6 @@ MIDDLEWARE = [
     # 'rollbar.contrib.django.middleware.RollbarNotifierMiddleware',
     "bpp.middleware.CustomRollbarNotifierMiddleware",
 ]
-
 
 INTERNAL_IPS = ("127.0.0.1",)
 
@@ -1241,3 +1244,24 @@ ROLLBAR = {
     "root": BASE_DIR,
     "ignorable_404_urls": (re.compile("/favicon\\.ico"),),
 }
+
+#
+# Prometheus
+#
+
+DJANGO_BPP_ENABLE_PROMETHEUS = env("DJANGO_BPP_ENABLE_PROMETHEUS")
+
+if DJANGO_BPP_ENABLE_PROMETHEUS:
+    MIDDLEWARE = (
+        [
+            "django_prometheus.middleware.PrometheusBeforeMiddleware",
+        ]
+        + MIDDLEWARE
+        + [
+            "django_prometheus.middleware.PrometheusAfterMiddleware",
+        ]
+    )
+
+    INSTALLED_APPS += [
+        "django_prometheus",
+    ]
