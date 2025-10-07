@@ -1,11 +1,12 @@
 """Celery tasks for PBN import"""
 
+import sys
 import traceback
 
+import rollbar
 from asgiref.sync import async_to_sync
 from celery import shared_task
 from channels.layers import get_channel_layer
-from sentry_sdk import capture_exception
 
 from .models import ImportLog, ImportSession
 from .utils import ImportManager
@@ -129,7 +130,7 @@ def run_pbn_import(self, session_id):
     except Exception as e:
         print(f"Błąd importu: {e}")
         traceback.print_exc()
-        capture_exception(e)
+        rollbar.report_exc_info(sys.exc_info())
 
         try:
             session = ImportSession.objects.get(pk=session_id)

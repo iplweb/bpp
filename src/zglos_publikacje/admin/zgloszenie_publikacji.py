@@ -1,11 +1,12 @@
+import sys
 import uuid
 from functools import update_wrapper
 
+import rollbar
 from django.conf import settings
 from django.db import transaction
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
-from sentry_sdk import capture_exception
 from templated_email import send_templated_mail
 
 from zglos_publikacje.models import Zgloszenie_Publikacji, Zgloszenie_Publikacji_Autor
@@ -133,8 +134,8 @@ class Zgloszenie_PublikacjiAdmin(admin.ModelAdmin):
                             },
                         )
                         sent_okay = True
-                    except Exception as e:
-                        capture_exception(e)
+                    except Exception:
+                        rollbar.report_exc_info(sys.exc_info())
 
                         messages.add_message(
                             request,

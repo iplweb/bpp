@@ -1,11 +1,12 @@
 """Main import manager that orchestrates the entire import process"""
 
 import logging
+import sys
 import traceback
 from typing import Any, Dict, List, Optional
 
+import rollbar
 from django.core.management import call_command
-from sentry_sdk import capture_exception
 
 from ..models import ImportLog, ImportSession, ImportStatistics, ImportStep
 from .author_import import AuthorImporter
@@ -331,7 +332,7 @@ class ImportManager:
                 )
 
                 logger.info(
-                    f"Uruchamianie kroku {idx+1}/{len(self.steps)}: {step_config['display']}"
+                    f"Uruchamianie kroku {idx + 1}/{len(self.steps)}: {step_config['display']}"
                 )
 
                 try:
@@ -359,7 +360,7 @@ class ImportManager:
                     # Log full traceback to console and send to Sentry
                     print(f"Błąd w kroku {step_config['name']}: {error_msg}")
                     traceback.print_exc()
-                    capture_exception(e)
+                    rollbar.report_exc_info(sys.exc_info())
 
                     # Check if it's an authorization/access error
                     # The error message from API will be more descriptive
@@ -423,7 +424,7 @@ class ImportManager:
             # Log full traceback to console and send to Sentry
             print(f"Krytyczny błąd importu: {e}")
             traceback.print_exc()
-            capture_exception(e)
+            rollbar.report_exc_info(sys.exc_info())
             self.session.mark_failed(str(e))
             return {
                 "success": False,

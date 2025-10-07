@@ -1,12 +1,13 @@
 """Base class for import utilities"""
 
 import logging
+import sys
 import time
 import traceback
 from typing import Any, Dict, Optional
 
+import rollbar
 from django.db import transaction
-from sentry_sdk import capture_exception
 
 from ..models import ImportLog, ImportSession
 
@@ -200,7 +201,7 @@ class ImportStepBase:
         # Log full traceback to console and send to Sentry
         print(f"Błąd w {self.step_name}: {error_msg}")
         traceback.print_exc()
-        capture_exception(error)
+        rollbar.report_exc_info(sys.exc_info())
 
     def handle_pbn_error(self, error: Exception, context: str = ""):
         """Handle PBN-specific errors, raising on authorization issues"""
@@ -252,6 +253,6 @@ class ImportStepBase:
             # Additional console logging for critical failures
             print(f"Krytyczny błąd w {self.step_name}: {str(e)}")
             traceback.print_exc()
-            capture_exception(e)
+            rollbar.report_exc_info(sys.exc_info())
             self.session.mark_failed(str(e), traceback.format_exc())
             raise

@@ -1,8 +1,9 @@
 import logging
+import sys
 
+import rollbar
 from braces.views import GroupRequiredMixin, JSONResponseMixin
 from django.views.generic.detail import BaseDetailView
-from sentry_sdk import capture_exception
 
 from bpp.const import GR_WPROWADZANIE_DANYCH
 from bpp.models import Uczelnia
@@ -24,7 +25,7 @@ class GetWoSAMRInformation(JSONResponseMixin, GroupRequiredMixin, BaseDetailView
         try:
             res = self.object.wosclient().query_single(pmid, doi)
         except Exception as e:
-            capture_exception(e)
+            rollbar.report_exc_info(sys.exc_info())
             logger.exception("Podczas zapytania WOS-AMR")
             return {"status": "error", "info": "%s" % e}
 

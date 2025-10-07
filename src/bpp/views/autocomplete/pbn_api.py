@@ -1,9 +1,10 @@
+import sys
 from abc import abstractmethod
 
+import rollbar
 from dal import autocomplete
 from django import http
 from django.db.models.query_utils import Q
-from sentry_sdk import capture_exception
 
 from pbn_api.client import PBNClient
 from pbn_api.exceptions import AccessDeniedException
@@ -103,7 +104,7 @@ class BasePBNAutocomplete(LoginRequiredMixin, autocomplete.Select2QuerySetView):
 
         except Exception as e:
             # Zaloguj wyjątek do Sentry
-            capture_exception(e)
+            rollbar.report_exc_info(sys.exc_info())
             return http.HttpResponseBadRequest(str(e))
 
         return http.JsonResponse(

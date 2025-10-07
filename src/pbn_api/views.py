@@ -1,5 +1,7 @@
 # Create your views here.
-import sentry_sdk
+import sys
+
+import rollbar
 from django.db import transaction
 from django.http import HttpResponseBadRequest
 from django.views.generic import RedirectView
@@ -98,15 +100,15 @@ class TokenLandingPage(LoginRequiredMixin, RedirectView):
             messages.error(
                 self.request, f"Nie można autoryzować zalogowania do PBN - {e}"
             )
-            sentry_sdk.capture_exception(e)
+            rollbar.report_exc_info(sys.exc_info())
 
-        except AuthenticationResponseError as e:
+        except AuthenticationResponseError:
             messages.error(
                 self.request,
                 "Bez możliwości autoryzacji - błąd odpowiedzi z serwera "
                 "autoryzacyjnego. Ze względów bezpieczeństwa wyświetlenie niewskazane - "
                 "błąd przekazano do administratora serwisu.  ",
             )
-            sentry_sdk.capture_exception(e)
+            rollbar.report_exc_info(sys.exc_info())
 
         return redirect_url

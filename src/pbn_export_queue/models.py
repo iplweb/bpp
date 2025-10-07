@@ -1,11 +1,12 @@
+import sys
 import traceback
 from enum import Enum
 
+import rollbar
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
 from django.db.models import PositiveIntegerField
 from django.urls import reverse
-from sentry_sdk import capture_exception
 
 from pbn_api.exceptions import (
     AccessDeniedException,
@@ -225,8 +226,8 @@ class PBN_Export_Queue(models.Model):
             self.save()
             return SendStatus.RETRY_LATER
 
-        except Exception as e:
-            capture_exception(e)
+        except Exception:
+            rollbar.report_exc_info(sys.exc_info())
             return self.error(
                 "Wystąpił nieobsługiwany błąd, załączam traceback:\n"
                 + traceback.format_exc()

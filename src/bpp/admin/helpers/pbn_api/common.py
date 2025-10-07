@@ -1,5 +1,7 @@
+import sys
+
+import rollbar
 from django.urls import reverse
-from sentry_sdk import capture_exception
 
 from import_common.normalization import normalize_isbn
 from pbn_api.exceptions import (
@@ -257,8 +259,8 @@ def sprobuj_wyslac_do_pbn(
             f"Kod błędu: {e}. {extra} {open_in_pbn_link}{open_in_pi_link}"
         )
 
-        # Zaloguj problem do Sentry, bo w sumie nie wiadomo, co to za problem na tym etapie...
-        capture_exception(e)
+        # Zaloguj problem do Rollbar, bo w sumie nie wiadomo, co to za problem na tym etapie...
+        rollbar.report_exc_info(sys.exc_info())
 
         if raise_exceptions:
             raise e

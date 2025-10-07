@@ -2,15 +2,14 @@ import logging
 import os
 import pkgutil
 import random
+import re
 import string
 import sys
 from datetime import timedelta
 from textwrap import dedent
 
 import environ
-import sentry_sdk
 from django.core.exceptions import ImproperlyConfigured
-from sentry_sdk.integrations.django import DjangoIntegration
 
 from bpp.util import slugify_function
 
@@ -70,10 +69,6 @@ env = environ.Env(
     #
     ADMINS=(str, "Michał Pasternak <michal.dtz@gmail.com>"),
     #
-    # Konfiguracja Sentry
-    #
-    SENTRYSDK_CONFIG_URL=(str, None),
-    SENTRYSDK_TRACES_SAMPLE_RATE=(float, 0.2),
     #
     # Theme
     #
@@ -150,6 +145,10 @@ env = environ.Env(
     # Serwer testowy -- ustaw to na True
     #
     DJANGO_BPP_ENABLE_TEST_CONFIGURATION=(bool, False),
+    #
+    # Rollbar access settings
+    #
+    ROLLBAR_ACCESS_TOKEN=(str, None),
 )
 
 
@@ -178,34 +177,10 @@ for fn in ENVFILE_PATHS:
         environ.Env.read_env(fn, overwrite=True)
 
 #
-# Ustaw Sentry
+# Czy proces jest interaktywny?
 #
 
-
-SENTRYSDK_CONFIG_URL = (
-    env("SENTRYSDK_CONFIG_URL")
-    or os.getenv("DJANGO_BPP_RAVEN_CONFIG_URL", None)
-    or os.getenv("DJANGO_BPP_SENTRYSDK_CONFIG_URL", None)
-)
-
-USING_SENTRYSDK = False
-
 PROCESS_INTERACTIVE = sys.stdin.isatty()
-
-if SENTRYSDK_CONFIG_URL and not PROCESS_INTERACTIVE:
-    # Ignore common errors
-    from ..sentry_support import global_stacktrace_filter
-
-    sentry_sdk.init(
-        dsn=SENTRYSDK_CONFIG_URL,
-        traces_sample_rate=env("SENTRYSDK_TRACES_SAMPLE_RATE"),
-        integrations=[DjangoIntegration()],
-        release=VERSION,
-        before_send=global_stacktrace_filter,
-        send_default_pii=True,
-    )
-
-    USING_SENTRYSDK = True
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
@@ -307,7 +282,10 @@ MIDDLEWARE = [
     "dj_pagination.middleware.PaginationMiddleware",
     "session_security.middleware.SessionSecurityMiddleware",
     "notifications.middleware.NotificationsMiddleware",
+    # 'rollbar.contrib.django.middleware.RollbarNotifierMiddleware',
+    "bpp.middleware.CustomRollbarNotifierMiddleware",
 ]
+
 
 INTERNAL_IPS = ("127.0.0.1",)
 
@@ -765,9 +743,6 @@ LOGGING = {
         "require_debug_true": {
             "()": "django.utils.log.RequireDebugTrue",
         },
-        "require_sentrysdk_false": {
-            "()": "django_bpp.sentry_support.RequireUSING_SENTRYSDKFalse"
-        },
     },
     "formatters": {
         "django.server": {
@@ -794,7 +769,9 @@ LOGGING = {
         },
         "mail_admins": {
             "level": "ERROR",
-            "filters": ["require_debug_false", "require_sentrysdk_false"],
+            "filters": [
+                "require_debug_false",
+            ],
             "class": "django.utils.log.AdminEmailHandler",
         },
     },
@@ -1251,3 +1228,16 @@ PAGINATION_DEFAULT_MARGIN = 1
 
 DJANGO_BPP_ENABLE_TEST_CONFIGURATION = env("DJANGO_BPP_ENABLE_TEST_CONFIGURATION")
 # DJANGO_BPP_ENABLE_TEST_CONFIGURATION = True
+
+
+#
+# ROLLBAR settings
+#
+
+ROLLBAR = {
+    "access_token": env("ROLLBAR_ACCESS_TOKEN"),
+    "environment": "development",
+    "code_version": VERSION,
+    "root": BASE_DIR,
+    "ignorable_404_urls": (re.compile("/favicon\\.ico"),),
+}

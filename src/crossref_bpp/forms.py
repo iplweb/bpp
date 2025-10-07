@@ -1,8 +1,9 @@
 import logging
+import sys
 
+import rollbar
 from django import forms
 from django.core.exceptions import ValidationError
-from sentry_sdk import capture_exception
 
 from crossref_bpp.models import CrossrefAPICache
 from import_common.normalization import normalize_doi
@@ -27,7 +28,7 @@ class PobierzZCrossrefAPIForm(forms.Form):
         try:
             data = CrossrefAPICache.objects.get_by_doi(doi)
         except Exception as e:
-            capture_exception(e)
+            rollbar.report_exc_info(sys.exc_info())
             logging.exception(e)
             raise ValidationError(f"Podczas pobierania danych wystąpił błąd {e}")
 
