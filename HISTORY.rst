@@ -4,6 +4,15 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202510.1235 (2025-10-07)
+============================
+
+Usprawnienie
+------------
+
+- Zastąpienie systemu śledzenia błędów Sentry SDK na Rollbar. Wszystkie wywołania ``capture_exception`` z modułu ``sentry_sdk`` zostały zamienione na ``rollbar.report_exc_info(sys.exc_info())``. (sentry-rollbar)
+
+
 Bpp 202510.1234 (2025-10-05)
 ============================
 
