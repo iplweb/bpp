@@ -39,6 +39,7 @@ def test_autorzy_search_form(autorzy_page: Page, live_server):
 
 
 @pytest.mark.django_db
+@pytest.mark.serial
 def test_autorzy_literki(autorzy_page: Page):
     page = autorzy_page
 

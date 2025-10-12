@@ -81,10 +81,12 @@ def sprobuj_utworzyc_zlecenie_eksportu_do_PBN_gui(request, obj):
     try:
         res = sprawdz_wysylke_do_pbn_w_parametrach_uczelni_gui(request, obj)
     except BrakZdefiniowanegoObiektuUczelniaWSystemieError:
-        messages.error("Brak zdefiniowanego w systemie obiektu Uczelnia.")
+        messages.error(request, "Brak zdefiniowanego w systemie obiektu Uczelnia.")
+        return
 
-    if res is False:
-        messages.error("Wysyłka do PBN nie skonfigurowana w obiektu Uczelnia.")
+    if res is False or res is None:
+        messages.error(request, "Wysyłka do PBN nie skonfigurowana w obiektu Uczelnia.")
+        return
 
     try:
         ret = PBN_Export_Queue.objects.sprobuj_utowrzyc_wpis(request.user, obj)
@@ -94,7 +96,9 @@ def sprobuj_utworzyc_zlecenie_eksportu_do_PBN_gui(request, obj):
         )
         return
 
-    link_do_kolejki = reverse("admin:pbn_api_pbn_export_queue_change", args=(ret.pk,))
+    link_do_kolejki = reverse(
+        "admin:pbn_export_queue_pbn_export_queue_change", args=(ret.pk,)
+    )
 
     messages.info(
         request,
@@ -137,7 +141,7 @@ def sprobuj_wyslac_do_pbn_gui(request, obj, force_upload=False, pbn_client=None)
     if pbn_client is None:
         pbn_client = uczelnia.pbn_client(request.user.pbn_token)
 
-    sprobuj_wyslac_do_pbn(
+    return sprobuj_wyslac_do_pbn(
         obj=obj,
         uczelnia=uczelnia,
         force_upload=force_upload,

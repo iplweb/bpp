@@ -46,6 +46,9 @@ def test_PBNClient_test_upload_publication_nie_trzeba(
             pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina
         ).pbn_get_json(),
     )
+
+    baker.make(Publication, pk="test-123")
+
     # Mark as successful to simulate previous successful upload
     SentData.objects.mark_as_successful(
         pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina, pbn_uid_id="test-123"

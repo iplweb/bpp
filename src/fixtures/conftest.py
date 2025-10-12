@@ -995,6 +995,7 @@ def autor_z_dyscyplina(autor_jan_nowak, dyscyplina1, rok) -> Autor_Dyscyplina:
 
 from django.core.management import call_command
 from django.db import connections
+from django.db.utils import OperationalError
 from django.test import TransactionTestCase
 
 
@@ -1011,16 +1012,32 @@ def _fixture_teardown(self):
                 and hasattr(connections[db_name], "_test_serialized_contents")
             )
         )
-        call_command(
-            "flush",
-            verbosity=0,
-            interactive=False,
-            database=db_name,
-            reset_sequences=False,
-            # In the real TransactionTestCase this is conditionally set to False.
-            allow_cascade=True,
-            inhibit_post_migrate=inhibit_post_migrate,
-        )
+
+        # Add retry logic for deadlock handling
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                call_command(
+                    "flush",
+                    verbosity=0,
+                    interactive=False,
+                    database=db_name,
+                    reset_sequences=False,
+                    # In the real TransactionTestCase this is conditionally set to False.
+                    allow_cascade=True,
+                    inhibit_post_migrate=inhibit_post_migrate,
+                )
+                break  # Success, exit retry loop
+            except OperationalError as e:
+                if "deadlock detected" in str(e).lower() and attempt < max_retries - 1:
+                    # Exponential backoff with jitter
+                    base_delay = 0.1 * (2**attempt)
+                    jitter = random.uniform(0, base_delay)
+                    time.sleep(base_delay + jitter)
+                    continue
+                else:
+                    # Re-raise if not a deadlock or max retries exceeded
+                    raise
 
 
 TransactionTestCase._fixture_teardown = _fixture_teardown
@@ -1041,6 +1058,7 @@ def pytest_collection_modifyitems(items):
 
         if "page" in fixtures:
             item.add_marker("playwright")
+            item.add_marker(pytest.mark.serial)
 
 
 @pytest.fixture

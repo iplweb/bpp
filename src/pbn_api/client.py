@@ -991,7 +991,23 @@ class PBNClient(
         publication = self.download_publication(objectId=objectId)
 
         if not bez_oswiadczen:
-            self.download_statements_of_publication(publication)
+
+            no_tries = 3
+            #
+            # self.download_statements_of_publication potrafi zwrócić błąd 500
+            #
+            while True:
+                try:
+                    self.download_statements_of_publication(publication)
+                    break
+                except HttpException as e:
+                    if e.status_code == 500:
+                        no_tries -= 1
+                        time.sleep(0.5)
+                        continue
+
+                    raise e
+
             try:
                 self.pobierz_publikacje_instytucji_v2(objectId=objectId)
             except PublikacjaInstytucjiV2NieZnalezionaException:

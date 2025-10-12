@@ -2,6 +2,8 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
 from django.db.models import JSONField
 
+from pbn_api.utils import compare_dicts
+
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 
@@ -37,7 +39,7 @@ class SentDataManager(models.Manager):
         try:
             sd = self.get_for_rec(rec)
             # Only skip if data matches AND was successfully submitted
-            if sd.data_sent == data and sd.submitted_successfully:
+            if (not compare_dicts(sd.data_sent, data)) and sd.submitted_successfully:
                 return False
         except SentData.DoesNotExist:
             pass
@@ -68,30 +70,22 @@ class SentDataManager(models.Manager):
 
     def mark_as_successful(self, rec, pbn_uid_id=None, api_response_status=None):
         """Mark existing record as successful after API call"""
-        try:
-            sd = self.get_for_rec(rec)
-            sd.submitted_successfully = True
-            sd.uploaded_okay = True
-            sd.pbn_uid_id = pbn_uid_id
-            sd.api_response_status = api_response_status
-            sd.exception = None
-            sd.save()
-        except SentData.DoesNotExist:
-            # This should not happen if create_before_upload was called
-            pass
+        sd = self.get_for_rec(rec)
+        sd.submitted_successfully = True
+        sd.uploaded_okay = True
+        sd.pbn_uid_id = pbn_uid_id
+        sd.api_response_status = api_response_status
+        sd.exception = None
+        sd.save()
 
     def mark_as_failed(self, rec, exception=None, api_response_status=None):
         """Mark existing record as failed after API call"""
-        try:
-            sd = self.get_for_rec(rec)
-            sd.submitted_successfully = False
-            sd.uploaded_okay = False
-            sd.exception = str(exception) if exception else None
-            sd.api_response_status = api_response_status
-            sd.save()
-        except SentData.DoesNotExist:
-            # This should not happen if create_before_upload was called
-            pass
+        sd = self.get_for_rec(rec)
+        sd.submitted_successfully = False
+        sd.uploaded_okay = False
+        sd.exception = str(exception) if exception else None
+        sd.api_response_status = api_response_status
+        sd.save()
 
     def updated(
         self, rec, data: dict, pbn_uid_id=None, uploaded_okay=True, exception=None
