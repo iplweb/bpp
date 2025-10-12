@@ -1,0 +1,1 @@
+JSONWithActionsWidget w panelu admina dynamicznie pobiera ID obiektu z formularza zamiast używać statycznego atrybutu data-object-id. Poprawia to nazewnictwo pobieranych plików JSON.
