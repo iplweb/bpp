@@ -1205,8 +1205,8 @@ if DJANGO_BPP_ENABLE_PROMETHEUS:
         "django_prometheus",
     ]
 
-
-if env("PYDANTIC_LOGFIRE_TOKEN"):
+PYDANTIC_LOGFIRE_TOKEN = env("PYDANTIC_LOGFIRE_TOKEN")
+if PYDANTIC_LOGFIRE_TOKEN:
     #
     # Logfire - musi być na końcu
     #
@@ -1227,4 +1227,4 @@ if env("PYDANTIC_LOGFIRE_TOKEN"):
     # Add the following lines at the end of the file
     logfire.configure(token=env("PYDANTIC_LOGFIRE_TOKEN"))
     logfire.instrument_django()
-    logfire.instrument_psycopg()
+    logfire.instrument_psycopg(exclude={"bpp-celery", "bpp-celery-denorm"})

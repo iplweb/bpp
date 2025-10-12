@@ -66,3 +66,13 @@ class RozbieznosciZrodelView(models.Model):
     dyscyplina_naukowa = models.ForeignKey(
         "bpp.Dyscyplina_Naukowa", on_delete=DO_NOTHING, related_name="+"
     )
+    punkty_kbn = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True
+    )
+    charakter_formalny = models.ForeignKey(
+        "bpp.Charakter_Formalny",
+        on_delete=DO_NOTHING,
+        related_name="+",
+        null=True,
+        blank=True,
+    )
