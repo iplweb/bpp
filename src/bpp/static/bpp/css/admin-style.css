@@ -46,6 +46,7 @@ fieldset.grp-module .grp-row {
     width: 16px;
     height: 16px;
 }
+
 /* -------------------------------------------------------------------------------- */
 /* Nadpisane style Grappelli */
 /* -------------------------------------------------------------------------------- */
@@ -115,12 +116,12 @@ button.charmap {
 
 
 .grp-related-widget-tools {
-  z-index: -9999 !important;
+    z-index: -9999 !important;
 }
 
 /* Select2 */
 
-.select2-container  {
+.select2-container {
     font-size: 12px;
     font-weight: bold;
     /* min-width: 350px; */
@@ -138,11 +139,11 @@ select.admin-autocomplete {
 /* TODO: tam jest <span> i nie przyjmuje :focus... */
 
 .select2-selection--single:hover {
-    box-shadow: #ccc 0 0 6px  ;
+    box-shadow: #ccc 0 0 6px;
 }
 
 #id_global_nav .select2-dropdown {
-    box-shadow: #ccc 0 0 8px  ;
+    box-shadow: #ccc 0 0 8px;
     min-height: 5vw;
     max-height: 80vw;
     overflow: scroll;
@@ -159,12 +160,14 @@ select.admin-autocomplete {
 .globalNavAdmin .select2-results > .select2-results__options {
     max-height: 40vw !important;
 }
+
 .select2-results__options {
     margin-left: 2px;
     background: white;
 
 }
-.globalNavAdmin .select2-results__group , .select2-results__group {
+
+.globalNavAdmin .select2-results__group, .select2-results__group {
     background: #eeeeee;
     font-weight: bold;
 }
@@ -182,7 +185,7 @@ select.admin-autocomplete {
 /* Responsive breakpoints for global nav select2 */
 @media (min-width: 1320px) {
     #div_id_global_nav_value .select2-container {
-        min-width: 18vw  !important;
+        min-width: 18vw !important;
     }
 }
 
@@ -273,4 +276,44 @@ nav#grp-breadcrumbs ul li {
 .grp-td.subdyscyplina_naukowa select.admin-autocomplete {
     min-width: 200px !important;
     width: 200px !important;
+}
+
+/* json widget */
+
+div.json-actions .button {
+    width: auto !important;
+    height: auto !important;
+    margin-right: 20px;
+}
+
+.json-actions {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.json-copy-btn, .json-download-btn {
+    background: #007cba;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+        font-size: inherit !important;
+
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.json-copy-btn:hover, .json-download-btn:hover {
+    background: #005a87;
+    font-size: inherit !important;
+    color: white !important;
+}
+
+.json-copy-btn.success {
+    background: #28a745;
+}
+
+.json-copy-btn.success:hover {
+    background: #218838;
 }

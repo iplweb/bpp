@@ -2,8 +2,12 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
 from django.db.models import JSONField
 
+from pbn_api.utils import compare_dicts
+
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
+
+from django.utils import timezone
 
 from bpp import const
 from bpp.models import LinkDoPBNMixin
@@ -16,6 +20,7 @@ class SentDataManager(models.Manager):
         )
 
     def check_if_needed(self, rec, data: dict):
+        """Legacy method - kept for backward compatibility"""
         try:
             sd = self.get_for_rec(rec)
         except SentData.DoesNotExist:
@@ -29,9 +34,63 @@ class SentDataManager(models.Manager):
 
         return False
 
+    def check_if_upload_needed(self, rec, data: dict):
+        """Check if upload needed based on SUCCESSFUL submissions only"""
+        try:
+            sd = self.get_for_rec(rec)
+            # Only skip if data matches AND was successfully submitted
+            if (not compare_dicts(sd.data_sent, data)) and sd.submitted_successfully:
+                return False
+        except SentData.DoesNotExist:
+            pass
+        return True
+
+    def create_or_update_before_upload(self, rec, data: dict):
+        """Create or update SentData record before API call"""
+        try:
+            sd = self.get_for_rec(rec)
+            # Reset fields for new attempt
+            sd.submitted_successfully = False
+            sd.submitted_at = timezone.now()
+            sd.uploaded_okay = False
+            sd.api_response_status = None
+            sd.exception = None
+            sd.data_sent = data  # Update data if changed
+            sd.save()
+            return sd
+        except SentData.DoesNotExist:
+            # Create new record if none exists
+            return self.create(
+                object=rec,
+                data_sent=data,
+                submitted_successfully=False,
+                submitted_at=timezone.now(),
+                uploaded_okay=False,
+            )
+
+    def mark_as_successful(self, rec, pbn_uid_id=None, api_response_status=None):
+        """Mark existing record as successful after API call"""
+        sd = self.get_for_rec(rec)
+        sd.submitted_successfully = True
+        sd.uploaded_okay = True
+        sd.pbn_uid_id = pbn_uid_id
+        sd.api_response_status = api_response_status
+        sd.exception = None
+        sd.save()
+
+    def mark_as_failed(self, rec, exception=None, api_response_status=None):
+        """Mark existing record as failed after API call"""
+        sd = self.get_for_rec(rec)
+        sd.submitted_successfully = False
+        sd.uploaded_okay = False
+        sd.exception = str(exception) if exception else None
+        sd.api_response_status = api_response_status
+        sd.save()
+
     def updated(
         self, rec, data: dict, pbn_uid_id=None, uploaded_okay=True, exception=None
     ):
+        """Legacy method - kept for backward compatibility"""
         try:
             sd = self.get_for_rec(rec)
         except SentData.DoesNotExist:
@@ -41,6 +100,8 @@ class SentDataManager(models.Manager):
                 uploaded_okay=uploaded_okay,
                 pbn_uid_id=pbn_uid_id,
                 exception=exception,
+                submitted_successfully=uploaded_okay,
+                submitted_at=timezone.now() if uploaded_okay else None,
             )
             return
 
@@ -48,6 +109,9 @@ class SentDataManager(models.Manager):
         sd.uploaded_okay = uploaded_okay
         sd.exception = exception
         sd.pbn_uid_id = pbn_uid_id
+        sd.submitted_successfully = uploaded_okay
+        if uploaded_okay and not sd.submitted_at:
+            sd.submitted_at = timezone.now()
         sd.save()
 
     def ids_for_model(self, model):
@@ -78,6 +142,23 @@ class SentData(LinkDoPBNMixin, models.Model):
         "Wysłano poprawnie", default=True, db_index=True
     )
     exception = models.TextField("Kod błędu", max_length=65535, blank=True, null=True)
+
+    # New fields for success tracking
+    submitted_successfully = models.BooleanField(
+        "Wysłano pomyślnie",
+        default=False,
+        db_index=True,
+        help_text="True gdy API call zakończył się sukcesem",
+    )
+    submitted_at = models.DateTimeField(
+        "Data wysyłki",
+        null=True,
+        blank=True,
+        help_text="Kiedy dane zostały wysłane do PBN",
+    )
+    api_response_status = models.TextField(
+        "Status odpowiedzi API", null=True, blank=True, help_text="Odpowiedź z PBN API"
+    )
 
     pbn_uid = models.ForeignKey(
         "pbn_api.Publication",

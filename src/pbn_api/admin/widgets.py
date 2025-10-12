@@ -3,6 +3,8 @@ import json
 
 from django.forms import widgets
 
+from django.utils.safestring import mark_safe
+
 
 class PrettyJSONWidget(widgets.Textarea):
     show_only_current = False
@@ -34,3 +36,124 @@ class PrettyJSONWidgetReadonly(PrettyJSONWidget):
 
 class PrettyJSONWidgetReadonlyOnlyCurrent(PrettyJSONWidgetReadonly):
     show_only_current = True
+
+
+class JSONWithActionsWidget(PrettyJSONWidgetReadonly):
+    """
+    Widget that displays formatted JSON with copy and download buttons.
+    """
+
+    def render(self, name, value, attrs=None, renderer=None):
+        if attrs is None:
+            attrs = {}
+
+        # Add a unique ID for the container
+        if "id" not in attrs:
+            attrs["id"] = "id_%s" % name
+
+        container_id = f"{attrs['id']}_container"
+
+        # Format the JSON value
+        formatted_value = self.format_value(value)
+
+        # Create the HTML with buttons and textarea
+        html = f"""
+        <div id="{container_id}" class="json-with-actions-widget">
+            <div class="json-actions" style="margin-bottom: 10px;">
+                <button type="button" class="button json-copy-btn" data-target="{attrs['id']}">
+                    📋 Kopiuj JSON
+                </button>
+                <button type="button" class="button json-download-btn" data-target="{attrs['id']}">
+                    💾 Pobierz JSON
+                </button>
+            </div>
+            {super().render(name, formatted_value, attrs, renderer)}
+        </div>
+
+        <script>
+        (function($) {{
+            $(document).ready(function() {{
+                // Copy to clipboard functionality
+                $('.json-copy-btn').on('click', function() {{
+                    var targetId = $(this).data('target');
+                    var textarea = $('#' + targetId);
+                    var text = textarea.val();
+
+                    // Try modern clipboard API first
+                    if (navigator.clipboard && navigator.clipboard.writeText) {{
+                        navigator.clipboard.writeText(text).then(function() {{
+                            // Show success feedback
+                            var btn = $('.json-copy-btn[data-target="' + targetId + '"]');
+                            var originalText = btn.text();
+                            btn.text('✓ Skopiowano!').addClass('success');
+                            setTimeout(function() {{
+                                btn.text(originalText).removeClass('success');
+                            }}, 2000);
+                        }}).catch(function(err) {{
+                            console.error('Failed to copy: ', err);
+                            fallbackCopyToClipboard(text, targetId);
+                        }});
+                    }} else {{
+                        fallbackCopyToClipboard(text, targetId);
+                    }}
+                }});
+
+                // Fallback copy method
+                function fallbackCopyToClipboard(text, targetId) {{
+                    var textarea = document.createElement('textarea');
+                    textarea.value = text;
+                    textarea.style.position = 'fixed';
+                    textarea.style.opacity = '0';
+                    document.body.appendChild(textarea);
+                    textarea.select();
+
+                    try {{
+                        document.execCommand('copy');
+                        var btn = $('.json-copy-btn[data-target="' + targetId + '"]');
+                        var originalText = btn.text();
+                        btn.text('✓ Skopiowano!').addClass('success');
+                        setTimeout(function() {{
+                            btn.text(originalText).removeClass('success');
+                        }}, 2000);
+                    }} catch (err) {{
+                        console.error('Fallback copy failed: ', err);
+                    }}
+
+                    document.body.removeChild(textarea);
+                }}
+
+                // Download functionality
+                $('.json-download-btn').on('click', function() {{
+                    var targetId = $(this).data('target');
+                    var textarea = $('#' + targetId);
+                    var text = textarea.val();
+
+                    // Find object ID dynamically from the admin form
+                    var objectId = 'unknown';
+                    $('.field-box').each(function() {{
+                        var label = $(this).find('label').text().trim();
+                        if (label === 'Object id') {{
+                            objectId = $(this).find('.grp-readonly').text().trim();
+                            return false; // break the loop
+                        }}
+                    }});
+
+                    var filename = 'sent-data-' + objectId + '.json';
+
+                    // Create blob and download link
+                    var blob = new Blob([text], {{ type: 'application/json' }});
+                    var url = window.URL.createObjectURL(blob);
+                    var a = document.createElement('a');
+                    a.href = url;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                }});
+            }});
+        }})(django.jQuery);
+        </script>
+        """
+
+        return mark_safe(html)

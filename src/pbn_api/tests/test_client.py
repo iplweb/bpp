@@ -39,11 +39,19 @@ def test_PBNClient_test_upload_publication_nie_trzeba(
 ):
     pbn_client.transport.return_values[PBN_POST_PUBLICATIONS_URL] = {"objectId": None}
 
-    SentData.objects.updated(
+    # Create SentData with submitted_successfully=True to trigger SameDataUploadedRecently
+    sent_data = SentData.objects.create_or_update_before_upload(  # noqa
         pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina,
         WydawnictwoPBNAdapter(
             pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina
         ).pbn_get_json(),
+    )
+
+    baker.make(Publication, pk="test-123")
+
+    # Mark as successful to simulate previous successful upload
+    SentData.objects.mark_as_successful(
+        pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina, pbn_uid_id="test-123"
     )
 
     with pytest.raises(SameDataUploadedRecently):

@@ -77,13 +77,25 @@ def test_sprobuj_wyslac_do_pbn_uczelnia_integracja_wylaczona(
 def test_sprobuj_wyslac_do_pbn_dane_juz_wyslane(
     pbn_wydawnictwo_zwarte_z_charakterem, pbn_uczelnia, pbn_client, rf
 ):
+    js = WydawnictwoPBNAdapter(pbn_wydawnictwo_zwarte_z_charakterem).pbn_get_json()
+    js.pop("languageData")
     SentData.objects.updated(
         pbn_wydawnictwo_zwarte_z_charakterem,
-        WydawnictwoPBNAdapter(pbn_wydawnictwo_zwarte_z_charakterem).pbn_get_json(),
+        js,
+        uploaded_okay=True,
     )
 
     req = rf.get("/")
 
+    pub = baker.make(Publication, pk=MOCK_MONGO_ID)
+
+    # Brak odpowiedzi URL zdefiniowanej dla /api/v1/repositorium/publications
+    pbn_client.transport.return_values["/api/v1/repositorium/publications"] = [
+        {"id": pub.pk}
+    ]
+    pbn_client.transport.return_values["/api/v1/publications/id/123"] = (
+        MOCK_RETURNED_MONGODB_DATA
+    )
     with middleware(req):
         sprobuj_wyslac_do_pbn_gui(
             req, pbn_wydawnictwo_zwarte_z_charakterem, pbn_client=pbn_client
@@ -309,6 +321,7 @@ def test_sprobuj_wyslac_do_pbn_przychodzi_istniejacy_pbn_uid_dla_nowego_rekordu(
 
 
 @pytest.mark.django_db
+@pytest.mark.serial
 def test_sprobuj_wyslac_do_pbn_przychodzi_inny_pbn_uid_dla_starego_rekordu(
     pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina: Wydawnictwo_Ciagle,
     pbn_client,
@@ -322,7 +335,7 @@ def test_sprobuj_wyslac_do_pbn_przychodzi_inny_pbn_uid_dla_starego_rekordu(
 
     # To jest istniejące w bazie wydawnictwo ciągłe z PBN UID = MOCK_MONGO_ID ("123")
     publikacja = baker.make(Publication, pk=MOCK_MONGO_ID)
-
+    publikacja2 = baker.make(Publication, pk="123123")  # noqa
     # To jest wydawnictwo ciągłe, które ma PBN UID
     pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.pbn_uid = publikacja
     pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.save(update_fields=["pbn_uid"])

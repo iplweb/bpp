@@ -25,3 +25,24 @@ def rename_dict_key(data, old_key, new_key):
     else:
         # Return the value unchanged if it's not a dict or list
         return data
+
+
+def compare_dicts(d1, d2, path=""):
+    diffs = []
+    keys = set(d1.keys()) | set(d2.keys())
+
+    for key in keys:
+        key_path = f"{path}.{key}" if path else key
+
+        if key not in d1:
+            diffs.append(f"Key '{key_path}' missing in first dict")
+        elif key not in d2:
+            diffs.append(f"Key '{key_path}' missing in second dict")
+        else:
+            v1, v2 = d1[key], d2[key]
+            if isinstance(v1, dict) and isinstance(v2, dict):
+                diffs.extend(compare_dicts(v1, v2, key_path))
+            elif v1 != v2:
+                diffs.append(f"Value mismatch at '{key_path}': {v1!r} != {v2!r}")
+
+    return diffs

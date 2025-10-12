@@ -706,15 +706,7 @@ class PBNClient(
     def post_publication(self, json):
         return self.transport.post(PBN_POST_PUBLICATIONS_URL, body=json)
 
-    def post_publication_no_statements(self, json):
-        """
-        Ta funkcja służy do wysyłania publikacji BEZ oświadczeń.
-
-        Bierzemy słownik JSON z publikacji-z-oświadczeniami i przetwarzamy go.
-
-        :param json:
-        :return:
-        """
+    def convert_js_with_statements_to_no_statements(self, json):
 
         # PBN zmienił givenNames na firstName
         for elem in json.get("authors", []):
@@ -734,7 +726,31 @@ class PBNClient(
         # PBN zmienił nazwę mniswId na ministryId
         json = rename_dict_key(json, "mniswId", "ministryId")
 
-        # Można próbować
+        # OpenAccess modeArticle -> mode
+        json = rename_dict_key(json, "modeArticle", "mode")
+
+        # OpenAccess releaseDateYear "2022" -> 2022
+        if json.get("openAccess", False):
+            if isinstance(json["openAccess"], dict) and json["openAccess"].get(
+                "releaseDateYear"
+            ):
+                try:
+                    i = int(json["openAccess"]["releaseDateYear"])
+                except (ValueError, TypeError, AttributeError):
+                    pass
+
+                json["openAccess"]["releaseDateYear"] = i
+        return json
+
+    def post_publication_no_statements(self, json):
+        """
+        Ta funkcja służy do wysyłania publikacji BEZ oświadczeń.
+
+        Bierzemy słownik JSON z publikacji-z-oświadczeniami i przetwarzamy go.
+
+        :param json:
+        :return:
+        """
         return self.transport.post(PBN_POST_PUBLICATION_NO_STATEMENTS_URL, body=[json])
 
     def post_publication_fee(self, publicationId, json):
@@ -765,7 +781,7 @@ class PBNClient(
         """
         Ta funkcja wysyła dane publikacji na serwer, w zależności od obecności oświadczeń
         w JSONie (klucz: "statements") używa albo api /v1/ do wysyłki publikacji "ze wszystkim",
-        albo korzysta z api /v1/ repozytoryjnego.
+        albo korzysta z api /v1/ repozytorialnego.
 
         Zwracane wyniki wyjściowe też różnią się w zależnosci od użytego API stąd też ta funkcja
         stara się w miarę rozsądnie to ogarnąć.
@@ -777,21 +793,30 @@ class PBNClient(
             always_affiliate_to_uid=always_affiliate_to_uid,
         ).pbn_get_json()
 
+        bez_oswiadczen = False
+        if "statements" not in js:
+            bez_oswiadczen = True
+            js = self.convert_js_with_statements_to_no_statements(js)
+
         if not force_upload:
-            needed = SentData.objects.check_if_needed(rec, js)
+            needed = SentData.objects.check_if_upload_needed(rec, js)
             if not needed:
                 raise SameDataUploadedRecently(
                     SentData.objects.get_for_rec(rec).last_updated_on
                 )
 
+        # Create or update SentData record BEFORE API call
+        sent_data = SentData.objects.create_or_update_before_upload(rec, js)  # noqa
+
         retry_count = max_retries_on_validation_error
+        ret = None
+        objectId = None
 
         while True:
             try:
-                if "statements" in js:
+                if not bez_oswiadczen:
                     ret = self.post_publication(js)
                     objectId = ret.get("objectId", None)
-                    bez_oswiadczen = False
 
                 else:
                     ret = self.post_publication_no_statements(js)
@@ -803,13 +828,16 @@ class PBNClient(
                             raise Exception(
                                 f"Serwer zwrócił nieoczekiwaną odpowiedź. {ret=}"
                             )
-                        bez_oswiadczen = True
                     else:
                         raise Exception(
                             "Lista zwróconych obiektów przy wysyłce pracy bez oświadczeń różna od jednego. "
                             "Sytuacja nieobsługiwana, proszę o kontakt z autorem programu. "
                         )
 
+                # Mark as successful after successful API call
+                SentData.objects.mark_as_successful(
+                    rec, pbn_uid_id=objectId, api_response_status=str(ret)
+                )
                 break
 
             except HttpException as e:
@@ -819,20 +847,35 @@ class PBNClient(
                     and "Bad Request" in e.content
                     and "Validation failed." in e.content
                 ):
-                    #
-                    # Kompensuj "Validation failed" przy wysyłce rekordu gdy jednocześnie są
-                    # kasowane oświadczenia:
-                    #
                     retry_count -= 1
-                    if retry_count == 0:
+                    if retry_count <= 0:
+                        # Mark as failed after exhausting retries
+                        SentData.objects.mark_as_failed(
+                            rec, exception=str(e), api_response_status=e.content
+                        )
                         raise e
+
                     time.sleep(0.5)
+
+                    # Spróbuj pobrać dane z PBN i zaktualizować rekord
+                    try:
+                        publication = self.download_publication(objectId=objectId)
+                        self.download_statements_of_publication(publication)
+                        self.pobierz_publikacje_instytucji_v2(objectId=objectId)
+                    except Exception:
+                        pass
+
                     continue
 
+                # Mark as failed on HTTP exception
+                SentData.objects.mark_as_failed(
+                    rec, exception=str(e), api_response_status=e.content
+                )
                 raise e
 
             except Exception as e:
-                SentData.objects.updated(rec, js, uploaded_okay=False, exception=str(e))
+                # Mark as failed on any other exception
+                SentData.objects.mark_as_failed(rec, exception=str(e))
                 raise e
 
         return objectId, ret, js, bez_oswiadczen
@@ -948,7 +991,23 @@ class PBNClient(
         publication = self.download_publication(objectId=objectId)
 
         if not bez_oswiadczen:
-            self.download_statements_of_publication(publication)
+
+            no_tries = 3
+            #
+            # self.download_statements_of_publication potrafi zwrócić błąd 500
+            #
+            while True:
+                try:
+                    self.download_statements_of_publication(publication)
+                    break
+                except HttpException as e:
+                    if e.status_code == 500:
+                        no_tries -= 1
+                        time.sleep(0.5)
+                        continue
+
+                    raise e
+
             try:
                 self.pobierz_publikacje_instytucji_v2(objectId=objectId)
             except PublikacjaInstytucjiV2NieZnalezionaException:
@@ -957,12 +1016,8 @@ class PBNClient(
                     "błędem. "
                 )
 
-        # Utwórz obiekt zapisanych danych. Dopiero w tym miejscu, bo jeżeli zostanie
-        # utworzony nowy rekord po stronie PBN, to pbn_uid_id musi wskazywać na
-        # bazę w tabeli Publication, która została chwile temu pobrana...
-        SentData.objects.updated(pub, js, pbn_uid_id=objectId)
-        if pub.pbn_uid_id is not None and pub.pbn_uid_id != objectId:
-            SentData.objects.updated(pub, js, pbn_uid_id=pub.pbn_uid_id)
+        # SentData is now created in upload_publication() before the API call
+        # and updated after successful API response
 
         if pub.pbn_uid_id != objectId:
             # Rekord dostaje nowe objectId z PBNu.
