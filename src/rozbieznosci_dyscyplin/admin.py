@@ -14,6 +14,7 @@ from rozbieznosci_dyscyplin.admin_utils import (
     DyscyplinaRekorduUstawionaFilter,
     DyscyplinaUstawionaFilter,
     PracujeNaUczelni,
+    PunktyKbnFilter,
 )
 from rozbieznosci_dyscyplin.models import RozbieznosciView, RozbieznosciZrodelView
 
@@ -212,6 +213,8 @@ class RozbieznosciZrodelViewResource(resources.ModelResource):
     autor_nazwisko = Field(attribute="autor__nazwisko")
     autor_imiona = Field(attribute="autor__imiona")
     dyscyplina_naukowa_nazwa = Field(attribute="dyscyplina_naukowa__nazwa")
+    punkty_kbn = Field(attribute="punkty_kbn")
+    charakter_formalny_nazwa = Field(attribute="charakter_formalny__nazwa")
     dyscypliny_zrodla = Field()
     zrodlo_strona_url = Field()
     bpp_strona_url = Field()
@@ -227,6 +230,8 @@ class RozbieznosciZrodelViewResource(resources.ModelResource):
             "autor_nazwisko",
             "autor_imiona",
             "dyscyplina_naukowa_nazwa",
+            "punkty_kbn",
+            "charakter_formalny_nazwa",
             "bpp_strona_url",
         )
         export_order = (
@@ -238,6 +243,8 @@ class RozbieznosciZrodelViewResource(resources.ModelResource):
             "autor_nazwisko",
             "autor_imiona",
             "dyscyplina_naukowa_nazwa",
+            "punkty_kbn",
+            "charakter_formalny_nazwa",
             "bpp_strona_url",
         )
 
@@ -362,6 +369,8 @@ class RozbieznosciZrodelViewAdmin(
         "zrodlo",
         "autor",
         "dyscyplina_naukowa",
+        "punkty_kbn",
+        "charakter_formalny",
     ]
     list_select_related = ["wydawnictwo_ciagle", "zrodlo", "autor", "autor__tytul"]
 
@@ -374,6 +383,8 @@ class RozbieznosciZrodelViewAdmin(
         PracujeNaUczelni,
         "dyscyplina_naukowa",
         "rok",
+        PunktyKbnFilter,
+        "charakter_formalny",
     ]
 
     list_per_page = 25

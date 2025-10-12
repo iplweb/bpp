@@ -107,3 +107,34 @@ class PracujeNaUczelni(SimpleListFilter):
                 queryset = queryset.filter(Q(autor__aktualna_jednostka_id=None))
 
         return queryset
+
+
+class PunktyKbnFilter(SimpleListFilter):
+    title = "punkty MNISW/MEIN"
+    parameter_name = "punkty_kbn"
+
+    def lookups(self, request, model_admin):
+        return [
+            ("wieksze_niz_5", "większe niż 5"),
+            ("wieksze_niz_10", "większe niż 10"),
+            ("wieksze_niz_20", "większe niż 20"),
+            ("wieksze_niz_30", "większe niż 30"),
+            ("wieksze_niz_50", "większe niż 50"),
+            ("wieksze_niz_100", "większe niż 100"),
+        ]
+
+    def queryset(self, request, queryset):
+        v = self.value()
+        if v == "wieksze_niz_5":
+            queryset = queryset.filter(punkty_kbn__gt=5)
+        elif v == "wieksze_niz_10":
+            queryset = queryset.filter(punkty_kbn__gt=10)
+        elif v == "wieksze_niz_20":
+            queryset = queryset.filter(punkty_kbn__gt=20)
+        elif v == "wieksze_niz_30":
+            queryset = queryset.filter(punkty_kbn__gt=30)
+        elif v == "wieksze_niz_50":
+            queryset = queryset.filter(punkty_kbn__gt=50)
+        elif v == "wieksze_niz_100":
+            queryset = queryset.filter(punkty_kbn__gt=100)
+        return queryset
