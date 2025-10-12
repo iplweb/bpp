@@ -22,6 +22,7 @@ class Zgloszenie_Publikacji_DaneOgolneForm(forms.ModelForm):
         widget=forms.Textarea(attrs={"rows": 2, "cols": 80}),
         help_text="Tytuł pracy. Prosimy o wpisanie samego tytułu. Proszę nie wpisywać źródła, miejsca publikacji, "
         "autorów itp. -- wyłacznie tytuł pracy. ",
+        max_length=300,
     )
 
     email = forms.EmailField(
