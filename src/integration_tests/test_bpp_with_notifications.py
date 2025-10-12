@@ -168,6 +168,7 @@ def test_admin_browser(admin_page: Page, channels_live_server):
     expect(page.locator("body")).to_contain_text("Redagowanie")
 
 
+@pytest.mark.uruchom_tylko_bez_microsoft_auth
 @pytest.mark.django_db
 def test_webtest(webtest_app, normal_django_user):
     form = webtest_app.get(reverse("login_form")).form
