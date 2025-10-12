@@ -15,6 +15,8 @@ BPP (Bibliografia Publikacji Pracowników) is a Polish academic bibliography man
 
 **CRITICAL:** NEVER modify existing migration files in `src/*/migrations/` directories. Existing migrations represent the database history and must remain unchanged. Only create new migrations when needed.
 
+**CRITICAL:** ALWAYS use `pytest` for running tests - NEVER use `python src/manage.py test`. The project is configured to use pytest exclusively.
+
 **IMPORTANT:** If using icons, refrain from emojis; use monochrome Foundation-Icons (`<span class="fi-icon"/>`).
 
 **IMPORTANT:** Respect the maximum line length limit of 120 characters. Break longer content into smaller pieces without losing meaning.
