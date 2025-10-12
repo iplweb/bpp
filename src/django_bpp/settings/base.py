@@ -9,6 +9,7 @@ from datetime import timedelta
 from textwrap import dedent
 
 import environ
+import logfire
 from django.core.exceptions import ImproperlyConfigured
 
 from bpp.util import slugify_function
@@ -153,6 +154,10 @@ env = environ.Env(
     # Prometheus
     #
     DJANGO_BPP_ENABLE_PROMETHEUS=(bool, False),
+    #
+    # Pydantic Logfire
+    #
+    PYDANTIC_LOGFIRE_TOKEN=(str, None),
 )
 
 
@@ -733,74 +738,6 @@ CHANNEL_LAYERS = {
     },
 }
 
-#
-# Domyślna konfiguracja logowania z Django 4.1, dodatek to logger
-# django.console
-#
-
-LOGGING = {
-    "version": 1,
-    "disable_existing_loggers": False,
-    "filters": {
-        "require_debug_false": {
-            "()": "django.utils.log.RequireDebugFalse",
-        },
-        "require_debug_true": {
-            "()": "django.utils.log.RequireDebugTrue",
-        },
-    },
-    "formatters": {
-        "django.server": {
-            "()": "django.utils.log.ServerFormatter",
-            "format": "[{server_time}] {message}",
-            "style": "{",
-        }
-    },
-    "handlers": {
-        "console": {
-            "level": "INFO",
-            "filters": ["require_debug_true"],
-            "class": "logging.StreamHandler",
-        },
-        "console.always": {
-            "level": "INFO",
-            "class": "logging.StreamHandler",
-            "stream": sys.stdout,
-        },
-        "django.server": {
-            "level": "INFO",
-            "class": "logging.StreamHandler",
-            "formatter": "django.server",
-        },
-        "mail_admins": {
-            "level": "ERROR",
-            "filters": [
-                "require_debug_false",
-            ],
-            "class": "django.utils.log.AdminEmailHandler",
-        },
-    },
-    "loggers": {
-        "django": {
-            "handlers": ["console", "mail_admins"],
-            "level": "INFO",
-        },
-        "console.always": {
-            "handlers": ["console.always"],
-            "level": "INFO",
-        },
-        "django.server": {
-            "handlers": ["django.server"],
-            "level": "INFO",
-            "propagate": False,
-        },
-        # Wypluwanie wszystkiego na konsolę, w tym tekstu z live-serverów
-        # "": {  # Root logger
-        #     "handlers": ["console"],
-        #     "level": "INFO",
-        # },
-    },
-}
 
 # django-compressor dla każdej wersji będzie miał swoją nazwę katalogu
 # wyjściowego, z tej prostej przyczyny, że nie wszystkie przeglądarki
@@ -1267,3 +1204,27 @@ if DJANGO_BPP_ENABLE_PROMETHEUS:
     INSTALLED_APPS += [
         "django_prometheus",
     ]
+
+
+if env("PYDANTIC_LOGFIRE_TOKEN"):
+    #
+    # Logfire - musi być na końcu
+    #
+
+    LOGGING = {
+        "version": 1,
+        "disable_existing_loggers": False,
+        "handlers": {
+            "logfire": {
+                "class": "logfire.LogfireLoggingHandler",
+            },
+        },
+        "root": {
+            "handlers": ["logfire"],
+        },
+    }
+
+    # Add the following lines at the end of the file
+    logfire.configure(token=env("PYDANTIC_LOGFIRE_TOKEN"))
+    logfire.instrument_django()
+    logfire.instrument_psycopg()
