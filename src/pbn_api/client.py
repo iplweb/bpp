@@ -706,15 +706,7 @@ class PBNClient(
     def post_publication(self, json):
         return self.transport.post(PBN_POST_PUBLICATIONS_URL, body=json)
 
-    def post_publication_no_statements(self, json):
-        """
-        Ta funkcja służy do wysyłania publikacji BEZ oświadczeń.
-
-        Bierzemy słownik JSON z publikacji-z-oświadczeniami i przetwarzamy go.
-
-        :param json:
-        :return:
-        """
+    def convert_js_with_statements_to_no_statements(self, json):
 
         # PBN zmienił givenNames na firstName
         for elem in json.get("authors", []):
@@ -734,7 +726,31 @@ class PBNClient(
         # PBN zmienił nazwę mniswId na ministryId
         json = rename_dict_key(json, "mniswId", "ministryId")
 
-        # Można próbować
+        # OpenAccess modeArticle -> mode
+        json = rename_dict_key(json, "modeArticle", "mode")
+
+        # OpenAccess releaseDateYear "2022" -> 2022
+        if json.get("openAccess", False):
+            if isinstance(json["openAccess"], dict) and json["openAccess"].get(
+                "releaseDateYear"
+            ):
+                try:
+                    i = int(json["openAccess"]["releaseDateYear"])
+                except (ValueError, TypeError, AttributeError):
+                    pass
+
+                json["openAccess"]["releaseDateYear"] = i
+        return json
+
+    def post_publication_no_statements(self, json):
+        """
+        Ta funkcja służy do wysyłania publikacji BEZ oświadczeń.
+
+        Bierzemy słownik JSON z publikacji-z-oświadczeniami i przetwarzamy go.
+
+        :param json:
+        :return:
+        """
         return self.transport.post(PBN_POST_PUBLICATION_NO_STATEMENTS_URL, body=[json])
 
     def post_publication_fee(self, publicationId, json):
@@ -777,6 +793,11 @@ class PBNClient(
             always_affiliate_to_uid=always_affiliate_to_uid,
         ).pbn_get_json()
 
+        bez_oswiadczen = False
+        if "statements" not in js:
+            bez_oswiadczen = True
+            js = self.convert_js_with_statements_to_no_statements(js)
+
         if not force_upload:
             needed = SentData.objects.check_if_upload_needed(rec, js)
             if not needed:
@@ -790,14 +811,12 @@ class PBNClient(
         retry_count = max_retries_on_validation_error
         ret = None
         objectId = None
-        bez_oswiadczen = None
 
         while True:
             try:
-                if "statements" in js:
+                if not bez_oswiadczen:
                     ret = self.post_publication(js)
                     objectId = ret.get("objectId", None)
-                    bez_oswiadczen = False
 
                 else:
                     ret = self.post_publication_no_statements(js)
@@ -809,7 +828,6 @@ class PBNClient(
                             raise Exception(
                                 f"Serwer zwrócił nieoczekiwaną odpowiedź. {ret=}"
                             )
-                        bez_oswiadczen = True
                     else:
                         raise Exception(
                             "Lista zwróconych obiektów przy wysyłce pracy bez oświadczeń różna od jednego. "
