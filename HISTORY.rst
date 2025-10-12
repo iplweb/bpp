@@ -4,6 +4,17 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202510.1242 (2025-10-12)
+============================
+
+Usprawnienie
+------------
+
+- Dodano pola punkty_kbn i charakter_formalny do widoku rozbieżności dyscyplin źródeł.
+  Dodano filtr "punkty MNISW/MEIN" z opcjami filtrowania: większe niż 5, 10, 20, 30, 50, 100. (rozbieznosci_punkty_charakter)
+- Przy tworzeniu rekordu "tamże" w wydawnictwach zwartych teraz kopiowane są również pola kwartylów (WoS i SCOPUS), obok już istniejących punktów i Impact Factor. Wcześniej kwartyle były kopiowane tylko w wydawnictwach ciągłych. (tamze_kwartyle_copy)
+
+
 Bpp 202510.1241 (2025-10-12)
 ============================
 
