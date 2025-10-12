@@ -3326,6 +3326,7 @@ executing = ">=2.0.1"
 opentelemetry-exporter-otlp-proto-http = ">=1.35.0,<1.38.0"
 opentelemetry-instrumentation = ">=0.41b0"
 opentelemetry-instrumentation-asgi = {version = ">=0.42b0", optional = true, markers = "extra == \"django\""}
+opentelemetry-instrumentation-celery = {version = ">=0.42b0", optional = true, markers = "extra == \"celery\""}
 opentelemetry-instrumentation-django = {version = ">=0.42b0", optional = true, markers = "extra == \"django\""}
 opentelemetry-instrumentation-psycopg2 = {version = ">=0.42b0", optional = true, markers = "extra == \"psycopg2\""}
 opentelemetry-sdk = ">=1.35.0,<1.38.0"
@@ -4287,6 +4288,26 @@ opentelemetry-util-http = "0.58b0"
 
 [package.extras]
 instruments = ["asgiref (>=3.0,<4.0)"]
+
+[[package]]
+name = "opentelemetry-instrumentation-celery"
+version = "0.58b0"
+description = "OpenTelemetry Celery Instrumentation"
+optional = false
+python-versions = ">=3.9"
+groups = ["main"]
+files = [
+    {file = "opentelemetry_instrumentation_celery-0.58b0-py3-none-any.whl", hash = "sha256:e8be21bffadef30487fb351466e3b48c3aa0d45065af2e4515ab7d6f98bfda6e"},
+    {file = "opentelemetry_instrumentation_celery-0.58b0.tar.gz", hash = "sha256:1dc35c3a8b82649659da0057df57740a8b3656492ad915da68b8f5f1b7a208e9"},
+]
+
+[package.dependencies]
+opentelemetry-api = ">=1.12,<2.0"
+opentelemetry-instrumentation = "0.58b0"
+opentelemetry-semantic-conventions = "0.58b0"
+
+[package.extras]
+instruments = ["celery (>=4.0,<6.0)"]
 
 [[package]]
 name = "opentelemetry-instrumentation-dbapi"
@@ -7938,4 +7959,4 @@ office365 = ["django-microsoft-auth"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<3.13"
-content-hash = "00fb64b85aca11fe0d8cccbbf863dc646e76fe189af1abcac91c8a91898d8db0"
+content-hash = "300e863df5fe180d5742f4c99cb84e19ad578cbf58469c850584a89176ef23d1"
