@@ -1,1 +1,0 @@
-Przy tworzeniu rekordu "tamże" w wydawnictwach zwartych teraz kopiowane są również pola kwartylów (WoS i SCOPUS), obok już istniejących punktów i Impact Factor. Wcześniej kwartyle były kopiowane tylko w wydawnictwach ciągłych.
