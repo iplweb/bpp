@@ -24,7 +24,7 @@ server {
 # Redirects all legitimate HTTP traffic to HTTPS with proper hostname
 server {
     listen 80;
-    server_name ${SERVER_NAME};
+    server_name ${DJANGO_BPP_HOSTNAME};
     return 301 https://$host$request_uri;
 }
 
@@ -217,7 +217,7 @@ server {
 
 server {
   listen        80;
-    server_name ${SERVER_NAME};
+    server_name ${DJANGO_BPP_HOSTNAME};
   return 301 	https://$host$request_uri;
 }
 
