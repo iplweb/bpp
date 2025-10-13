@@ -3,7 +3,6 @@ from decimal import Decimal
 import pytest
 from model_bakery import baker
 
-from ewaluacja_common.models import Rodzaj_Autora
 from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaCalosc
 from ewaluacja_metryki.utils import oblicz_metryki_dla_autora
 
@@ -19,13 +18,8 @@ from bpp.models import (
 from bpp.models.sloty.core import IPunktacjaCacher
 
 
-def get_rodzaj_autora(skrot):
-    """Helper function to get Rodzaj_Autora object by skrot"""
-    return Rodzaj_Autora.objects.get(skrot=skrot)
-
-
 @pytest.mark.django_db
-def test_procent_wykorzystania_slotow_updates_correctly(denorms):
+def test_procent_wykorzystania_slotow_updates_correctly(denorms, rodzaj_autora_n):
     """Test that slot utilization percentage is correctly calculated and updated"""
 
     # Create test data
@@ -39,7 +33,7 @@ def test_procent_wykorzystania_slotow_updates_correctly(denorms):
         autor=autor,
         dyscyplina_naukowa=dyscyplina,
         rok=2023,
-        rodzaj_autora=get_rodzaj_autora("N"),
+        rodzaj_autora=rodzaj_autora_n,
     )
 
     # Set maximum slots for the author
@@ -127,7 +121,7 @@ def test_procent_wykorzystania_slotow_updates_correctly(denorms):
 
 
 @pytest.mark.django_db
-def test_procent_wykorzystania_handles_zero_slot_maksymalny():
+def test_procent_wykorzystania_handles_zero_slot_maksymalny(rodzaj_autora_n):
     """Test that percentage calculation handles zero slot_maksymalny gracefully"""
 
     jednostka = baker.make(Jednostka, skupia_pracownikow=True)  # noqa
@@ -139,7 +133,7 @@ def test_procent_wykorzystania_handles_zero_slot_maksymalny():
         autor=autor,
         dyscyplina_naukowa=dyscyplina,
         rok=2023,
-        rodzaj_autora=get_rodzaj_autora("N"),
+        rodzaj_autora=rodzaj_autora_n,
     )
 
     # Don't create IloscUdzialowDlaAutoraZaCalosc - will default to 4
@@ -160,7 +154,7 @@ def test_procent_wykorzystania_handles_zero_slot_maksymalny():
 
 
 @pytest.mark.django_db
-def test_averages_calculated_correctly():
+def test_averages_calculated_correctly(rodzaj_autora_n):
     """Test that average points per slot are calculated correctly"""
 
     jednostka = baker.make(Jednostka, skupia_pracownikow=True)
@@ -172,7 +166,7 @@ def test_averages_calculated_correctly():
         autor=autor,
         dyscyplina_naukowa=dyscyplina,
         rok=2023,
-        rodzaj_autora=get_rodzaj_autora("N"),
+        rodzaj_autora=rodzaj_autora_n,
     )
 
     # Create a publication

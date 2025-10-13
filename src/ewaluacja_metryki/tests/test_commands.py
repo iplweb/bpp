@@ -6,7 +6,6 @@ import pytest
 from django.core.management import call_command
 from model_bakery import baker
 
-from ewaluacja_common.models import Rodzaj_Autora
 from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaCalosc
 from ewaluacja_metryki.models import MetrykaAutora
 
@@ -17,11 +16,6 @@ from bpp.models import (
     Dyscyplina_Naukowa,
     Jednostka,
 )
-
-
-def get_rodzaj_autora(skrot):
-    """Helper function to get Rodzaj_Autora object by skrot"""
-    return Rodzaj_Autora.objects.get(skrot=skrot)
 
 
 @pytest.mark.django_db
@@ -313,21 +307,21 @@ def test_oblicz_metryki_command_rodzaj_autora_filter(
         Autor_Dyscyplina,
         autor=autor_n,
         dyscyplina_naukowa=dyscyplina,
-        rodzaj_autora=get_rodzaj_autora("N"),
+        rodzaj_autora=rodzaj_autora_n,
         rok=2024,
     )
     baker.make(
         Autor_Dyscyplina,
         autor=autor_d,
         dyscyplina_naukowa=dyscyplina,
-        rodzaj_autora=get_rodzaj_autora("D"),
+        rodzaj_autora=rodzaj_autora_d,
         rok=2024,
     )
     baker.make(
         Autor_Dyscyplina,
         autor=autor_b,
         dyscyplina_naukowa=dyscyplina,
-        rodzaj_autora=get_rodzaj_autora("B"),
+        rodzaj_autora=rodzaj_autora_b,
         rok=2024,
     )
 
