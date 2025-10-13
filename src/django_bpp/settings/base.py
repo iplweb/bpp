@@ -1227,4 +1227,4 @@ if PYDANTIC_LOGFIRE_TOKEN:
     # Add the following lines at the end of the file
     logfire.configure(token=env("PYDANTIC_LOGFIRE_TOKEN"))
     logfire.instrument_django()
-    logfire.instrument_psycopg(exclude={"bpp-celery", "bpp-celery-denorm"})
+    # logfire.instrument_psycopg()
