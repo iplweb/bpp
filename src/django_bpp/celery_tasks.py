@@ -8,7 +8,7 @@ from django.conf import settings
 if getattr(settings, "PYDANTIC_LOGFIRE_TOKEN", None):
     import logfire
 
-    logfire.instrument_celery(exclude={"bpp-celery-denorm"})
+    logfire.instrument_celery()
 
 app = Celery("django_bpp")
 app.config_from_object("django.conf:settings")
