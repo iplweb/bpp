@@ -1,6 +1,7 @@
 import decimal
 from decimal import Decimal
 
+from ewaluacja_common.models import Rodzaj_Autora
 from import_common.core import matchuj_autora, matchuj_dyscypline, normalize_date
 from import_polon.models import ImportPlikuPolon, WierszImportuPlikuPolon
 from import_polon.utils import read_excel_or_csv_dataframe_guess_encoding
@@ -105,22 +106,31 @@ def analyze_file_import_polon(fn, parent_model: ImportPlikuPolon):
 
         bledy = []
         jest_w_n_xlsx = False
+        jest_badawczy_xlsx = False
 
         dyscyplina_naukowa = None
         subdyscyplina_naukowa = None
 
         if (row.get("OSWIADCZENIE_N", "") or "").strip().lower() == "tak":
             jest_w_n_xlsx = True
-
+            # brak_oswiadczenia_o_dyscyplinach = False
             dyscyplina_naukowa = row.get("DYSCYPLINA_N")
             subdyscyplina_naukowa = row.get("DYSCYPLINA_N_KOLEJNA")
         elif row.get("OSWIADCZENIE_O_DYSCYPLINACH", "").lower() == "tak":
+            # brak_oswiadczenia_o_dyscyplinach = False
             dyscyplina_naukowa = row.get("OSWIADCZONA_DYSCYPLINA_PIERWSZA")
             subdyscyplina_naukowa = row.get("OSWIADCZONA_DYSCYPLINA_DRUGA")
         else:
-            bledy.append(
-                "Brak oświadczenia o dyscyplinach N, brak oświadczenia o dyscyplinach. "
-            )
+            # brak_oswiadczenia_o_dyscyplinach = True
+            pass
+
+        # Określ czy autor jest typu B (badawczy) na podstawie danych zatrudnienia
+        grupa_stanowisk = (row.get("GRUPA_STANOWISK", "") or "").strip()
+        if (
+            grupa_stanowisk.lower() == "pracownik badawczo-dydaktyczny"
+            or grupa_stanowisk.lower() == "pracownik badawczo-techniczny"
+        ):
+            jest_badawczy_xlsx = True
 
         zatrudnienie_od = normalize_date(row.get("ZATRUDNIENIE_OD"))
         zatrudnienie_do = normalize_date(row.get("ZATRUDNIENIE_DO"))
@@ -138,17 +148,23 @@ def analyze_file_import_polon(fn, parent_model: ImportPlikuPolon):
 
             bledy.append("Nie udało się dopasować autora")
 
-        dyscyplina_xlsx = matchuj_dyscypline(kod=None, nazwa=dyscyplina_naukowa)
-        if dyscyplina_naukowa is not None and dyscyplina_xlsx is None:
-            bledy.append(
-                "Nie udało się dopasować dyscypliny po stronie BPP do dyscypliny z XLSX"
-            )
+        dyscyplina_xlsx = None
+        if dyscyplina_naukowa:
+            dyscyplina_xlsx = matchuj_dyscypline(kod=None, nazwa=dyscyplina_naukowa)
+            if dyscyplina_naukowa is not None and dyscyplina_xlsx is None:
+                bledy.append(
+                    "Nie udało się dopasować dyscypliny po stronie BPP do dyscypliny z XLSX"
+                )
 
-        subdyscyplina_xlsx = matchuj_dyscypline(kod=None, nazwa=subdyscyplina_naukowa)
-        if subdyscyplina_naukowa is not None and subdyscyplina_xlsx is None:
-            bledy.append(
-                "Nie udało się dopasować subdyscypliny po stronie BPP do dyscypliny z XLSX"
+        subdyscyplina_xlsx = None
+        if subdyscyplina_naukowa:
+            subdyscyplina_xlsx = matchuj_dyscypline(
+                kod=None, nazwa=subdyscyplina_naukowa
             )
+            if subdyscyplina_naukowa is not None and subdyscyplina_xlsx is None:
+                bledy.append(
+                    "Nie udało się dopasować subdyscypliny po stronie BPP do dyscypliny z XLSX"
+                )
 
         procent_dyscypliny = Decimal("0.00")
 
@@ -163,6 +179,8 @@ def analyze_file_import_polon(fn, parent_model: ImportPlikuPolon):
                     "danych (decimal.Decimal)"
                 )
         procent_subdyscypliny = Decimal("100.00") - procent_dyscypliny
+        if procent_subdyscypliny == Decimal("100.00"):
+            procent_subdyscypliny = Decimal("0.00")
 
         wymiar_etatu = row.get("WIELKOSC_ETATU_PREZENTACJA_DZIESIETNA")
         if wymiar_etatu is None and autor is not None:
@@ -197,12 +215,16 @@ def analyze_file_import_polon(fn, parent_model: ImportPlikuPolon):
                 if dyscyplina_xlsx:
                     if parent_model.zapisz_zmiany_do_bazy:
 
-                        rodzaj_autora = Autor_Dyscyplina.RODZAJE_AUTORA.Z
+                        rodzaj_autora_skrot = "Z"
                         if jest_w_n_xlsx:
-                            rodzaj_autora = Autor_Dyscyplina.RODZAJE_AUTORA.N
+                            rodzaj_autora_skrot = "N"
+                        elif jest_badawczy_xlsx:
+                            rodzaj_autora_skrot = "B"
 
                         autor.autor_dyscyplina_set.create(
-                            rodzaj_autora=rodzaj_autora,
+                            rodzaj_autora=Rodzaj_Autora.objects.get(
+                                skrot=rodzaj_autora_skrot
+                            ),
                             rok=parent_model.rok,
                             dyscyplina_naukowa=dyscyplina_xlsx,
                             subdyscyplina_naukowa=subdyscyplina_xlsx,
@@ -215,10 +237,23 @@ def analyze_file_import_polon(fn, parent_model: ImportPlikuPolon):
                     ops.append("Brak wpisu dla tego roku, utworzono zgodnie z XLSX")
                 else:
                     ops.append(
-                        "Brak wpisu o dyscyplinie dla autora za dany rok w BPP, brak dyscypliny w XLSX. Nic do roboty. "
+                        "W BPP jest identycznie jak w XLSX (brak danych o dyscyplinach)."
                     )
+
             else:
-                if ad.dyscyplina_naukowa != dyscyplina_xlsx:
+                if dyscyplina_xlsx is None and subdyscyplina_xlsx is None:
+                    # Complete deletion when XLS has no disciplines
+                    ops.append(
+                        "Usuwam wpis dyscypliny dla autora (brak dyscyplin w XLS)"
+                    )
+                    if parent_model.zapisz_zmiany_do_bazy:
+                        ad.delete()
+                        przebuduj_prace_autora_po_udanej_transakcji(
+                            autor_id=ad.autor_id, rok=ad.rok
+                        )
+                    # Skip further processing since entry is deleted
+                    continue
+                elif ad.dyscyplina_naukowa != dyscyplina_xlsx:
                     if dyscyplina_xlsx is None:
                         ops.append(
                             "POTENCJALNY PROBLEM. Autor ma w systemie przypisaną dyscyplinę {ad.dyscyplina_naukowa}, "
@@ -260,22 +295,34 @@ def analyze_file_import_polon(fn, parent_model: ImportPlikuPolon):
                     # Wg pliku XLSX autor jest w N.
                     # Jeżeli w systemie autor nie-jest-w-N, to nalezy ustawić, że jest-w-N
                     # Doktorant zostanie "promowany" do liczby N.
-                    if ad.rodzaj_autora != Autor_Dyscyplina.RODZAJE_AUTORA.N:
+                    if ad.rodzaj_autora.skrot != "N":
                         ops.append(
-                            f"Zmieniam rodzaj autora na {Autor_Dyscyplina.RODZAJE_AUTORA['N']}"
+                            f"Zmieniam rodzaj autora na {Rodzaj_Autora.objects.get(skrot="N")}"
                         )
-                        ad.rodzaj_autora = Autor_Dyscyplina.RODZAJE_AUTORA.N
+                        ad.rodzaj_autora = Rodzaj_Autora.objects.get(skrot="N")
                         rodzaj_autora_zmieniony = True
 
                 else:
                     # Wg pliku XLSX autor NIE jest w N.
                     # Ustawiamy, że nie-jest-w-N.
                     # Doktorantów NIE ruszamy.
-                    if ad.rodzaj_autora == Autor_Dyscyplina.RODZAJE_AUTORA.N:
+                    if ad.rodzaj_autora.skrot == "N":
                         ops.append(
-                            f"Zmieniam rodzaj autora na {Autor_Dyscyplina.RODZAJE_AUTORA['N']}"
+                            f"Zmieniam rodzaj autora na {Rodzaj_Autora.objects.get(skrot="Z")}"
                         )
-                        ad.rodzaj_autora = Autor_Dyscyplina.RODZAJE_AUTORA.Z
+                        ad.rodzaj_autora = Rodzaj_Autora.objects.get(skrot="Z")
+                        rodzaj_autora_zmieniony = True
+                    elif jest_badawczy_xlsx and ad.rodzaj_autora.skrot == "Z":
+                        ops.append(
+                            f"Zmieniam rodzaj autora na {Rodzaj_Autora.objects.get(skrot="B")}"
+                        )
+                        ad.rodzaj_autora = Rodzaj_Autora.objects.get(skrot="B")
+                        rodzaj_autora_zmieniony = True
+                    elif not jest_badawczy_xlsx and ad.rodzaj_autora.skrot == "B":
+                        ops.append(
+                            f"Zmieniam rodzaj autora na {Rodzaj_Autora.objects.get(skrot="Z")}"
+                        )
+                        ad.rodzaj_autora = Rodzaj_Autora.objects.get(skrot="Z")
                         rodzaj_autora_zmieniony = True
 
                 if ops:

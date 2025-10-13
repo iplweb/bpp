@@ -197,7 +197,7 @@ loc: clean
 	pygount -N ... -F "...,staticroot,migrations,fixtures" src --format=summary
 
 
-DOCKER_VERSION="202510.1244"
+DOCKER_VERSION="202510.1245"
 
 DOCKER_BUILD=build --platform linux/amd64 --push
 
@@ -223,7 +223,7 @@ build-appserver: build-appserver-base
 build-workerserver: build-appserver-base
 	docker buildx ${DOCKER_BUILD} -t iplweb/bpp_workerserver:${DOCKER_VERSION} -t iplweb/bpp_workerserver:latest -f deploy/workerserver/Dockerfile .
 
-build-webserver: deploy/webserver/Dockerfile deploy/webserver/default.conf deploy/webserver/maintenance.html deploy/webserver/key.pem deploy/webserver/cert.pem
+build-webserver: deploy/webserver/Dockerfile deploy/webserver/default.conf.template deploy/webserver/maintenance.html deploy/webserver/key.pem deploy/webserver/cert.pem
 	docker buildx ${DOCKER_BUILD} -t iplweb/bpp_webserver:${DOCKER_VERSION} -t iplweb/bpp_webserver:latest -f deploy/webserver/Dockerfile deploy/webserver/
 
 run-webserver-without-appserver-for-testing: build-webserver

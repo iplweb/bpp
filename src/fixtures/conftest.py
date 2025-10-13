@@ -906,13 +906,18 @@ def denorms():
 
 
 @pytest.fixture
-def praca_z_dyscyplina(wydawnictwo_ciagle_z_autorem, dyscyplina1, rok, db, denorms):
+def praca_z_dyscyplina(
+    wydawnictwo_ciagle_z_autorem, dyscyplina1, rok, db, denorms, rodzaj_autora_n
+):
     wydawnictwo_ciagle_z_autorem.punkty_kbn = 5
     wydawnictwo_ciagle_z_autorem.save()
 
     wca = wydawnictwo_ciagle_z_autorem.autorzy_set.first()
     Autor_Dyscyplina.objects.create(
-        autor=wca.autor, rok=wca.rekord.rok, dyscyplina_naukowa=dyscyplina1
+        autor=wca.autor,
+        rok=wca.rekord.rok,
+        dyscyplina_naukowa=dyscyplina1,
+        rodzaj_autora=rodzaj_autora_n,
     )
     wca.dyscyplina_naukowa = dyscyplina1
     wca.save()

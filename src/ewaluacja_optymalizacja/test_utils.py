@@ -26,7 +26,7 @@ def test_wersje_dyscyplin_autor_bez_dyscypliny(
 
 @pytest.mark.django_db
 def test_wersje_dyscyplin_autor_nie_ma_autor_dyscyplina(
-    wydawnictwo_zwarte, autor_jan_nowak, dyscyplina1, jednostka, rok
+    wydawnictwo_zwarte, autor_jan_nowak, dyscyplina1, jednostka, rok, rodzaj_autora_n
 ):
     """Test wersje_dyscyplin dla autora który nie ma rekordu Autor_Dyscyplina"""
     # Najpierw utwórz Autor_Dyscyplina żeby móc dodać autora z dyscypliną
@@ -34,7 +34,7 @@ def test_wersje_dyscyplin_autor_nie_ma_autor_dyscyplina(
         autor=autor_jan_nowak,
         rok=rok,
         dyscyplina_naukowa=dyscyplina1,
-        rodzaj_autora="N",
+        rodzaj_autora=rodzaj_autora_n,
     )
 
     # Dodaj autora do wydawnictwa z dyscypliną
@@ -52,7 +52,7 @@ def test_wersje_dyscyplin_autor_nie_ma_autor_dyscyplina(
 
 @pytest.mark.django_db
 def test_wersje_dyscyplin_autor_status_n_podstawowy_przypadek(
-    wydawnictwo_zwarte, autor_jan_nowak, dyscyplina1, jednostka, rok
+    wydawnictwo_zwarte, autor_jan_nowak, dyscyplina1, jednostka, rok, rodzaj_autora_n
 ):
     """Test wersje_dyscyplin dla autora ze statusem N - podstawowy przypadek"""
     # Najpierw utwórz Autor_Dyscyplina z statusem N
@@ -60,7 +60,7 @@ def test_wersje_dyscyplin_autor_status_n_podstawowy_przypadek(
         autor=autor_jan_nowak,
         rok=rok,
         dyscyplina_naukowa=dyscyplina1,
-        rodzaj_autora="N",
+        rodzaj_autora=rodzaj_autora_n,
     )
 
     # Teraz dodaj autora do wydawnictwa z dyscypliną
@@ -93,6 +93,7 @@ def test_wersje_dyscyplin_autor_status_d_z_innymi_dyscyplinami_zwarte(
     dyscyplina3,
     jednostka,
     rok,
+    rodzaj_autora_d,
 ):
     """Test wersje_dyscyplin dla wydawnictwa zwartego z dodatkowymi dyscyplinami"""
     # Najpierw utwórz Autor_Dyscyplina z statusem D i dodatkowymi dyscyplinami
@@ -102,7 +103,7 @@ def test_wersje_dyscyplin_autor_status_d_z_innymi_dyscyplinami_zwarte(
         rok=rok,
         dyscyplina_naukowa=dyscyplina1,  # Główna dyscyplina - ta sama co w wydawnictwie
         subdyscyplina_naukowa=dyscyplina2,  # Subdyscyplina - różna
-        rodzaj_autora="D",
+        rodzaj_autora=rodzaj_autora_d,
     )
 
     # Teraz dodaj autora do wydawnictwa z dyscypliną
@@ -134,6 +135,7 @@ def test_wersje_dyscyplin_wydawnictwo_ciagle_z_ograniczeniami_zrodla(
     dyscyplina2,
     dyscyplina3,
     jednostka,
+    rodzaj_autora_n,
     rok,
 ):
     """Test wersje_dyscyplin dla wydawnictwa ciągłego z ograniczeniami źródła"""
@@ -143,7 +145,7 @@ def test_wersje_dyscyplin_wydawnictwo_ciagle_z_ograniczeniami_zrodla(
         rok=rok,
         dyscyplina_naukowa=dyscyplina1,  # Główna dyscyplina - ta sama co w wydawnictwie
         subdyscyplina_naukowa=dyscyplina2,  # Subdyscyplina - różna
-        rodzaj_autora="N",
+        rodzaj_autora=rodzaj_autora_n,
     )
 
     # Teraz dodaj autora do wydawnictwa ciągłego z dyscypliną
@@ -182,6 +184,7 @@ def test_wersje_dyscyplin_wydawnictwo_ciagle_bez_zrodla(
     jednostka,
     rok,
     typ_odpowiedzialnosci_autor,
+    rodzaj_autora_n,
 ):
     """Test wersje_dyscyplin dla wydawnictwa ciągłego bez źródła"""
     # Najpierw utwórz Autor_Dyscyplina z dodatkowymi dyscyplinami
@@ -190,7 +193,7 @@ def test_wersje_dyscyplin_wydawnictwo_ciagle_bez_zrodla(
         rok=rok,
         dyscyplina_naukowa=dyscyplina1,  # Ta sama co będzie użyta w publikacji
         subdyscyplina_naukowa=dyscyplina2,  # Dodatkowa dyscyplina
-        rodzaj_autora="N",
+        rodzaj_autora=rodzaj_autora_n,
     )
 
     # Utwórz wydawnictwo ciągłe bez źródła
@@ -217,7 +220,13 @@ def test_wersje_dyscyplin_wydawnictwo_ciagle_bez_zrodla(
 
 @pytest.mark.django_db
 def test_kombinacje_autorow_dyscyplin_wydawnictwo_zwarte_jeden_autor(
-    wydawnictwo_zwarte, autor_jan_nowak, dyscyplina1, dyscyplina2, jednostka, rok
+    wydawnictwo_zwarte,
+    autor_jan_nowak,
+    dyscyplina1,
+    dyscyplina2,
+    jednostka,
+    rok,
+    rodzaj_autora_n,
 ):
     """Test kombinacje_autorow_dyscyplin dla wydawnictwa zwartego z jednym autorem"""
     # Najpierw utwórz Autor_Dyscyplina
@@ -226,7 +235,7 @@ def test_kombinacje_autorow_dyscyplin_wydawnictwo_zwarte_jeden_autor(
         rok=rok,
         dyscyplina_naukowa=dyscyplina1,
         subdyscyplina_naukowa=dyscyplina2,
-        rodzaj_autora="N",
+        rodzaj_autora=rodzaj_autora_n,
     )
 
     # Dodaj autora z dyscypliną
@@ -260,6 +269,8 @@ def test_kombinacje_autorow_dyscyplin_wydawnictwo_zwarte_dwoch_autorow(
     dyscyplina2,
     jednostka,
     rok,
+    rodzaj_autora_n,
+    rodzaj_autora_d,
 ):
     """Test kombinacje_autorow_dyscyplin dla wydawnictwa zwartego z dwoma autorami"""
     # Utwórz Autor_Dyscyplina dla pierwszego autora (2 wersje)
@@ -267,7 +278,7 @@ def test_kombinacje_autorow_dyscyplin_wydawnictwo_zwarte_dwoch_autorow(
         autor=autor_jan_nowak,
         rok=rok,
         dyscyplina_naukowa=dyscyplina1,
-        rodzaj_autora="N",  # Będzie miał 2 wersje: z dyscypliną i bez
+        rodzaj_autora=rodzaj_autora_n,  # Będzie miał 2 wersje: z dyscypliną i bez
     )
 
     # Utwórz Autor_Dyscyplina dla drugiego autora (2 wersje)
@@ -275,7 +286,7 @@ def test_kombinacje_autorow_dyscyplin_wydawnictwo_zwarte_dwoch_autorow(
         autor=autor_jan_kowalski,
         rok=rok,
         dyscyplina_naukowa=dyscyplina2,
-        rodzaj_autora="D",  # Będzie miał 2 wersje: z dyscypliną i bez
+        rodzaj_autora=rodzaj_autora_d,  # Będzie miał 2 wersje: z dyscypliną i bez
     )
 
     # Dodaj pierwszego autora z dyscypliną
@@ -316,7 +327,13 @@ def test_kombinacje_autorow_dyscyplin_wydawnictwo_zwarte_dwoch_autorow(
 
 @pytest.mark.django_db
 def test_kombinacje_autorow_dyscyplin_wydawnictwo_ciagle(
-    wydawnictwo_ciagle, autor_jan_nowak, dyscyplina1, dyscyplina2, jednostka, rok
+    wydawnictwo_ciagle,
+    autor_jan_nowak,
+    dyscyplina1,
+    dyscyplina2,
+    jednostka,
+    rok,
+    rodzaj_autora_n,
 ):
     """Test kombinacje_autorow_dyscyplin dla wydawnictwa ciągłego"""
     # Utwórz Autor_Dyscyplina z dodatkową dyscypliną
@@ -325,7 +342,7 @@ def test_kombinacje_autorow_dyscyplin_wydawnictwo_ciagle(
         rok=rok,
         dyscyplina_naukowa=dyscyplina1,
         subdyscyplina_naukowa=dyscyplina2,
-        rodzaj_autora="N",
+        rodzaj_autora=rodzaj_autora_n,
     )
 
     # Dodaj autora z dyscypliną
@@ -361,7 +378,7 @@ def test_kombinacje_autorow_dyscyplin_brak_autorow(db):
 
 @pytest.mark.django_db
 def test_kombinacje_autorow_dyscyplin_autor_bez_wersji(
-    wydawnictwo_zwarte, autor_jan_nowak, dyscyplina1, jednostka, rok
+    wydawnictwo_zwarte, autor_jan_nowak, dyscyplina1, jednostka, rok, rodzaj_autora_n
 ):
     """Test kombinacje_autorow_dyscyplin gdy autor nie ma wersji dyscyplin"""
     # Utwórz Autor_Dyscyplina żeby móc dodać autora
@@ -369,7 +386,7 @@ def test_kombinacje_autorow_dyscyplin_autor_bez_wersji(
         autor=autor_jan_nowak,
         rok=rok,
         dyscyplina_naukowa=dyscyplina1,
-        rodzaj_autora="N",
+        rodzaj_autora=rodzaj_autora_n,
     )
 
     # Dodaj autora z dyscypliną
@@ -398,7 +415,7 @@ def test_kombinacje_autorow_dyscyplin_nieobslugiwany_typ_rekordu():
 
 @pytest.mark.django_db
 def test_wersje_dyscyplin_kopiowanie_obiektow_jest_glebkie(
-    wydawnictwo_zwarte, autor_jan_nowak, dyscyplina1, jednostka, rok
+    wydawnictwo_zwarte, autor_jan_nowak, dyscyplina1, jednostka, rok, rodzaj_autora_n
 ):
     """Test że wersje_dyscyplin zwraca głębokie kopie obiektów"""
     # Utwórz Autor_Dyscyplina
@@ -406,7 +423,7 @@ def test_wersje_dyscyplin_kopiowanie_obiektow_jest_glebkie(
         autor=autor_jan_nowak,
         rok=rok,
         dyscyplina_naukowa=dyscyplina1,
-        rodzaj_autora="N",
+        rodzaj_autora=rodzaj_autora_n,
     )
 
     # Dodaj autora z dyscypliną

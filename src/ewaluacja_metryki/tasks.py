@@ -35,7 +35,7 @@ def generuj_metryki_task(
         rodzaje_autora: Lista rodzajów autorów do przetworzenia (domyślnie ['N', 'D', 'Z', ' '])
     """
     if rodzaje_autora is None:
-        rodzaje_autora = ["N", "D", "Z", " "]
+        rodzaje_autora = ["N", "D", "B", "Z", " "]
     status = StatusGenerowania.get_or_create()
 
     # Sprawdź czy inne generowanie nie jest w trakcie

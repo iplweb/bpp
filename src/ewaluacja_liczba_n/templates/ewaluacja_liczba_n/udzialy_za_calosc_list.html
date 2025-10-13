@@ -39,6 +39,20 @@
                         </select>
                     </div>
 
+                    <div class="input-group">
+                        <span class="input-group-label">Rodzaj autora:</span>
+                        <select name="rodzaj_autora" class="input-group-field auto-submit">
+                            <option value="">-- Wszystkie --</option>
+                            {% for rodzaj in rodzaje_autorow %}
+                                <option value="{{ rodzaj.pk }}" {% if selected_rodzaj_autora == rodzaj.pk|stringformat:"s" %}selected{% endif %}>
+                                    {{ rodzaj.nazwa }}
+                                </option>
+                            {% empty %}
+                                <option disabled>Brak rodzajów autorów z danymi</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
                     <button type="submit" class="button primary">
                         <i class="fi-magnifying-glass"></i> Filtruj
                     </button>

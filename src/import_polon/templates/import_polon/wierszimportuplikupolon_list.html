@@ -12,6 +12,140 @@
 
 
 {% block content %}
+    <style>
+        .compact-table {
+            font-size: 0.85rem;
+            margin-bottom: 1rem;
+        }
+        .compact-table th,
+        .compact-table td {
+            padding: 0.4rem 0.5rem !important;
+            line-height: 1.3;
+            vertical-align: top;
+        }
+        .compact-table th {
+            font-weight: 600;
+            font-size: 0.8rem;
+        }
+        .compact-table .table-border-right {
+            border-right: 1px solid #ddd !important;
+        }
+        .compact-table a {
+            font-size: 0.85rem;
+        }
+        .compact-table .help-text {
+            font-size: 0.75rem;
+            margin-top: 0.1rem;
+        }
+
+        /* Anchor padding to prevent hiding behind top bar */
+        a[name="filtry"] {
+            display: block;
+            padding-top: 150px;
+            margin-top: -150px;
+            visibility: hidden;
+        }
+
+        a[name="pager"] {
+            display: block;
+            padding-top: 100px;
+            margin-top: -100px;
+            visibility: hidden;
+        }
+
+        /* Highlight styling for section headers */
+        .highlighted-header {
+            font-weight: 600;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 0.25rem;
+            margin-bottom: 1rem;
+            display: inline-block;
+        }
+
+        /* Modern pagination styling */
+        .pagination {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            margin: 1.5rem 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex !important;
+            justify-content: center;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .pagination li {
+            margin: 0;
+        }
+
+        .pagination li a,
+        .pagination li span {
+            background: #fff;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            padding: 0.5rem 0.75rem;
+            margin: 0 0.25rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            color: #007bff;
+        }
+
+        .pagination li a:hover {
+            background: #007bff;
+            color: #fff;
+            border-color: #007bff;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0,123,255,0.3);
+        }
+
+        .pagination li.current a,
+        .pagination li.current span {
+            background: #007bff;
+            color: #fff;
+            border-color: #007bff;
+            font-weight: 600;
+        }
+
+        .pagination li.disabled a,
+        .pagination li.disabled span {
+            background: #e9ecef;
+            color: #6c757d;
+            border-color: #dee2e6;
+            cursor: not-allowed;
+        }
+
+        .pagination li.ellipsis span {
+            background: transparent;
+            border: none;
+            color: #6c757d;
+            padding: 0 0.5rem;
+        }
+
+        .pagination .pagination-previous a,
+        .pagination .pagination-next a {
+            background: #28a745;
+            color: #fff;
+            border-color: #28a745;
+            font-weight: 600;
+        }
+
+        .pagination .pagination-previous a:hover,
+        .pagination .pagination-next a:hover {
+            background: #218838;
+            border-color: #218838;
+        }
+
+        .pagination .pagination-previous.disabled a,
+        .pagination .pagination-next.disabled a {
+            background: #e9ecef;
+            color: #6c757d;
+            border-color: #dee2e6;
+        }
+    </style>
+
     <h1>Import danych {{ object.plik.name }}</h1>
     {% if object.zapisz_zmiany_do_bazy %}
         <div class="panel callout success">
@@ -27,21 +161,147 @@
 
     {% include "long_running/operation_details.html" %}
 
+    {% if object.finished_successfully and unmatched_count > 0 %}
+        <div class="panel">
+            <h5 class="highlighted-header"><strong>Autorzy z przypisaniami dyscyplin w BPP, którzy nie byli w pliku Excel ({{ unmatched_count }})</strong></h5>
+            <p>Poniższa tabela pokazuje autorów, którzy mają przypisania dyscyplin dla roku {{ object.rok }} w systemie BPP, ale nie znaleźli się w importowanym pliku Excel.</p>
+
+            <button id="toggle-unmatched" class="button small">
+                <span id="toggle-text">Pokaż</span> niezmatchowane autorów ({{ unmatched_count }})
+            </button>
+
+            <div id="unmatched-table-container" style="display: none; margin-top: 1rem;">
+                <table class="compact-table">
+                    <thead>
+                        <tr>
+                            <th>Autor</th>
+                            <th>Liczba prac</th>
+                            <th>Dyscyplina</th>
+                            <th>Subdyscyplina</th>
+                            <th>Rodzaj autora</th>
+                            <th>Wymiar etatu</th>
+                            <th>Procent dyscypliny</th>
+                            <th>Procent subdyscypliny</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for ad in unmatched_autor_dyscyplina %}
+                            <tr>
+                                <td>
+                                    <a href="{% url "bpp:browse_autor" ad.autor.pk %}">{{ ad.autor }}</a>
+                                </td>
+                                <td>{{ ad.liczba_prac }}</td>
+                                <td>{{ ad.dyscyplina_naukowa|default:"" }}</td>
+                                <td>{{ ad.subdyscyplina_naukowa|default:"" }}</td>
+                                <td>{{ ad.rodzaj_autora|default:"" }}</td>
+                                <td>{{ ad.wymiar_etatu|default:"" }}</td>
+                                <td>{{ ad.procent_dyscypliny|default:"" }}</td>
+                                <td>{{ ad.procent_subdyscypliny|default:"" }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                const toggleBtn = document.getElementById('toggle-unmatched');
+                const toggleText = document.getElementById('toggle-text');
+                const container = document.getElementById('unmatched-table-container');
+
+                toggleBtn.addEventListener('click', function() {
+                    if (container.style.display === 'none') {
+                        container.style.display = 'block';
+                        toggleText.textContent = 'Ukryj';
+                    } else {
+                        container.style.display = 'none';
+                        toggleText.textContent = 'Pokaż';
+                    }
+                });
+            });
+        </script>
+    {% endif %}
+
     {% if object.finished_successfully %}
 
-        {% include "pagination.html" %}
-        <table>
+        {% if filter_form %}
+            <div class="panel">
+                <a name="filtry"></a>
+                <h5 class="highlighted-header"><strong>Filtry</strong></h5>
+                <form method="get" action="#filtry" class="filter-form" id="filter-form">
+                    <div class="row">
+                        <div class="medium-4 columns">
+                            {{ filter_form.autor_wiersz.label_tag }}
+                            {{ filter_form.autor_wiersz }}
+                            {% if filter_form.autor_wiersz.help_text %}
+                                <small class="help-text">{{ filter_form.autor_wiersz.help_text }}</small>
+                            {% endif %}
+                        </div>
+                        <div class="medium-4 columns">
+                            {{ filter_form.dyscyplina.label_tag }}
+                            {{ filter_form.dyscyplina }}
+                            {% if filter_form.dyscyplina.help_text %}
+                                <small class="help-text">{{ filter_form.dyscyplina.help_text }}</small>
+                            {% endif %}
+                        </div>
+                        <div class="medium-4 columns">
+                            {{ filter_form.grupa_stanowisk.label_tag }}
+                            {{ filter_form.grupa_stanowisk }}
+                            {% if filter_form.grupa_stanowisk.help_text %}
+                                <small class="help-text">{{ filter_form.grupa_stanowisk.help_text }}</small>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="medium-12 columns">
+                            <button type="submit" class="button small">Filtruj</button>
+                            <a href="?page=1#filtry" class="button secondary small">Wyczyść filtry</a>
+                            {% if is_filtered %}
+                                <span class="label secondary">Filtry aktywne</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    const dyscyplinaSelect = document.querySelector('select[name="dyscyplina"]');
+                    if (dyscyplinaSelect) {
+                        dyscyplinaSelect.addEventListener('change', function() {
+                            this.form.submit();
+                        });
+                    }
+
+                    const grupaStanowiskSelect = document.querySelector('select[name="grupa_stanowisk"]');
+                    if (grupaStanowiskSelect) {
+                        grupaStanowiskSelect.addEventListener('change', function() {
+                            this.form.submit();
+                        });
+                    }
+                });
+            </script>
+        {% endif %}
+
+        <a name="pager"></a>
+        {% include "import_polon/pagination_with_anchor.html" %}
+        <table class="compact-table">
             <thead>
             <tr>
                 <th>Wiersz</th>
                 <th>Autor</th>
                 <th>Dyscyplina</th>
                 <th>Subdyscyplina</th>
+                <th>Oświadczona dyscyplina pierwsza</th>
+                <th>Oświadczona dyscyplina druga</th>
                 <th>Procent dyscypliny</th>
-                <th class="table-border-right">Wielkość etatu (dziesiętna)</th>
+                <th>Wielkość etatu (dziesiętna)</th>
+                <th class="table-border-right">Grupa stanowiska</th>
                 <th>Match autora w BPP</th>
                 <th>Match dyscypliny w BPP</th>
-                <th class="table-border-right">Match subdyscypliny w BPP</th>
+                <th>Match subdyscypliny w BPP</th>
+                <th class="table-border-right">Rodzaj autora</th>
                 <th>Rezultat importu</th>
             </tr>
 
@@ -53,20 +313,34 @@
                     <td>{{ row.dane_z_xls.NAZWISKO }} {{ row.dane_z_xls.IMIE }} {{ row.dane_z_xls.STOPIEN_TYTUL_AKTUALNY_NA_DZIEN_WYGENEROWANIA_RAPORTU }}</td>
                     <td>{{ row.dane_z_xls.DYSCYPLINA_N|default:"" }}</td>
                     <td>{{ row.dane_z_xls.DYSCYPLINA_N_KOLEJNA|default:"" }}</td>
+                    <td>{{ row.dane_z_xls.OSWIADCZONA_DYSCYPLINA_PIERWSZA|default:"" }}</td>
+                    <td>{{ row.dane_z_xls.OSWIADCZONA_DYSCYPLINA_DRUGA|default:"" }}</td>
                     <td>{{ row.dane_z_xls.PROCENTOWY_UDZIAL_PIERWSZA_DYSCYPLINA|default:"" }}</td>
-                    <td class="table-border-right">{{ row.dane_z_xls.WIELKOSC_ETATU_PREZENTACJA_DZIESIETNA }}</td>
+                    <td>{{ row.dane_z_xls.WIELKOSC_ETATU_PREZENTACJA_DZIESIETNA }}</td>
+                    <td class="table-border-right">{{ row.dane_z_xls.GRUPA_STANOWISK|default:"" }}</td>
                     <td>
                         {% if row.autor %}
                             <a href="{% url "bpp:browse_autor" row.autor.pk %}">{{ row.autor }}</a>
                         {% endif %}
                     </td>
                     <td>{{ row.dyscyplina_naukowa|default:"" }}</td>
-                    <td class="table-border-right">{{ row.subdyscyplina_naukowa|default:"" }}</td>
+                    <td>{{ row.subdyscyplina_naukowa|default:"" }}</td>
+                    <td class="table-border-right">
+                        {% if row.autor %}
+                            {% for autor_dyscyplina in row.autor.autor_dyscyplina_set.all %}
+                                {% if autor_dyscyplina.rok == object.rok %}
+                                    {{ autor_dyscyplina.rodzaj_autora.nazwa }}
+                                {% endif %}
+                            {% endfor %}
+                        {% endif %}
+                    </td>
                     <td>{{ row.rezultat|default:"" }}</td>
                 </tr>
             {% endfor %}
             </tbody>
         </table>
+
+        {% include "import_polon/pagination_with_anchor.html" %}
 
     {% endif %}
 

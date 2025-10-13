@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load humanize %}
+{% load rodzaj_autora_tags %}
 
 {% block title %}Metryki - {{ metryka.autor }}{% endblock %}
 
@@ -166,15 +167,7 @@
                                     {% endif %}
                                 </td>
                                 <td class="text-center">
-                                    {% if rok_data.rodzaj_autora == 'N' %}
-                                        <span class="label success" title="Pracownik zaliczany do liczby N">N</span>
-                                    {% elif rok_data.rodzaj_autora == 'D' %}
-                                        <span class="label warning" title="Doktorant">D</span>
-                                    {% elif rok_data.rodzaj_autora == 'Z' %}
-                                        <span class="label secondary" title="Inny zatrudniony">Z</span>
-                                    {% else %}
-                                        <span class="label secondary" title="Brak danych">-</span>
-                                    {% endif %}
+                                    {{ rok_data.rodzaj_autora|rodzaj_autora_label|safe }}
                                 </td>
                             </tr>
                             {% empty %}

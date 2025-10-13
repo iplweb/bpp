@@ -49,6 +49,22 @@ def oblicz_metryki_dla_autora(
     # Pobierz główną jednostkę autora
     jednostka = autor.aktualna_jednostka
 
+    # Pobierz rodzaj autora dla najnowszego roku
+    from bpp.models import Autor_Dyscyplina
+
+    autor_dyscyplina = (
+        Autor_Dyscyplina.objects.filter(
+            Q(autor=autor)
+            & (Q(dyscyplina_naukowa=dyscyplina) | Q(subdyscyplina_naukowa=dyscyplina))
+        )
+        .order_by("-rok")
+        .first()
+    )
+
+    rodzaj_autora_skrot = " "
+    if autor_dyscyplina and autor_dyscyplina.rodzaj_autora:
+        rodzaj_autora_skrot = autor_dyscyplina.rodzaj_autora.skrot
+
     # Oblicz metryki algorytmem plecakowym
     (
         punkty_nazbierane,
@@ -117,6 +133,7 @@ def oblicz_metryki_dla_autora(
                 "liczba_prac_wszystkie": len(prace_wszystkie_ids),
                 "rok_min": rok_min,
                 "rok_max": rok_max,
+                "rodzaj_autora": rodzaj_autora_skrot,
                 # Include calculated fields to ensure they're updated
                 "srednia_za_slot_nazbierana": srednia_za_slot_nazbierana,
                 "srednia_za_slot_wszystkie": srednia_za_slot_wszystkie,
@@ -164,7 +181,10 @@ def przelicz_metryki_dla_publikacji(publikacja, rok_min=2022, rok_max=2025):
                 autor=autor, rok=publikacja.rok, dyscyplina_naukowa=dyscyplina
             )
 
-            if autor_dyscyplina.rodzaj_autora == "N":
+            if (
+                autor_dyscyplina.rodzaj_autora
+                and autor_dyscyplina.rodzaj_autora.skrot == "N"
+            ):
                 metryka, _ = oblicz_metryki_dla_autora(
                     autor=autor, dyscyplina=dyscyplina, rok_min=rok_min, rok_max=rok_max
                 )
@@ -210,7 +230,7 @@ def generuj_metryki(
             - total: całkowita liczba autorów do przetworzenia
     """
     if rodzaje_autora is None:
-        rodzaje_autora = ["N", "D", "Z", " "]
+        rodzaje_autora = ["N", "D", "B", "Z", " "]
 
     # Obsługa "brak danych" - dodaj możliwe reprezentacje
     if " " in rodzaje_autora:
@@ -278,12 +298,18 @@ def generuj_metryki(
                 # Sprawdź czy rodzaj autora jest na liście do przetworzenia
                 if (
                     not autor_dyscyplina
-                    or autor_dyscyplina.rodzaj_autora not in rodzaje_autora
+                    or not autor_dyscyplina.rodzaj_autora
+                    or autor_dyscyplina.rodzaj_autora.skrot not in rodzaje_autora
                 ):
                     skipped += 1
+                    rodzaj_skrot = (
+                        autor_dyscyplina.rodzaj_autora.skrot
+                        if autor_dyscyplina and autor_dyscyplina.rodzaj_autora
+                        else "None"
+                    )
                     msg = (
                         f"Pominięto {autor} - {dyscyplina.nazwa}: rodzaj_autora = "
-                        f"'{autor_dyscyplina.rodzaj_autora if autor_dyscyplina else 'autor_dyscyplina=None'}'"
+                        f"'{rodzaj_skrot}'"
                     )
                     logger.info(msg)
                     if logger_output:
@@ -320,6 +346,11 @@ def generuj_metryki(
                     akcja="wszystko",
                 )
 
+                # Pobierz rodzaj autora
+                rodzaj_autora_skrot = " "
+                if autor_dyscyplina and autor_dyscyplina.rodzaj_autora:
+                    rodzaj_autora_skrot = autor_dyscyplina.rodzaj_autora.skrot
+
                 # Utwórz lub zaktualizuj metrykę
                 metryka, created = MetrykaAutora.objects.update_or_create(
                     autor=autor,
@@ -336,6 +367,7 @@ def generuj_metryki(
                         "liczba_prac_wszystkie": len(prace_wszystkie_ids),
                         "rok_min": rok_min,
                         "rok_max": rok_max,
+                        "rodzaj_autora": rodzaj_autora_skrot,
                     },
                 )
 

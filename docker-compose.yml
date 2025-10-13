@@ -39,7 +39,7 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     logging: *default-logging
-    labels:
+    #labels:
       # Email notification configuration (uncomment and configure for production):
       # ofelia.smtp-host: "smtp.example.com"
       # ofelia.smtp-port: "587"
@@ -196,13 +196,13 @@ services:
     image: iplweb/bpp_webserver:latest
     restart: always
     logging: *default-logging
+    env_file: .env.docker
     depends_on:
       appserver:
         condition: service_healthy
-
     ports:
-      - 80:80
-      - 443:443
+      - 1080:80
+      - 10443:443
     volumes:
       - staticfiles:/var/www/html/staticroot
       - media:/mediaroot

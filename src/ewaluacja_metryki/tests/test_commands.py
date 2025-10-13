@@ -19,7 +19,7 @@ from bpp.models import (
 
 
 @pytest.mark.django_db
-def test_oblicz_metryki_command_basic():
+def test_oblicz_metryki_command_basic(rodzaj_autora_n):
     """Test podstawowego działania komendy oblicz_metryki"""
 
     # Stwórz dane testowe
@@ -48,7 +48,7 @@ def test_oblicz_metryki_command_basic():
         Autor_Dyscyplina,
         autor=autor,
         dyscyplina_naukowa=dyscyplina,
-        rodzaj_autora="N",
+        rodzaj_autora=rodzaj_autora_n,
         rok=2024,
     )
 
@@ -88,7 +88,7 @@ def test_oblicz_metryki_command_basic():
 
 
 @pytest.mark.django_db
-def test_oblicz_metryki_command_filters():
+def test_oblicz_metryki_command_filters(rodzaj_autora_n):
     """Test filtrowania po autorze, dyscyplinie i jednostce"""
 
     # Stwórz jednostki najpierw
@@ -137,14 +137,14 @@ def test_oblicz_metryki_command_filters():
         Autor_Dyscyplina,
         autor=autor1,
         dyscyplina_naukowa=dyscyplina1,
-        rodzaj_autora="N",
+        rodzaj_autora=rodzaj_autora_n,
         rok=2024,
     )
     baker.make(
         Autor_Dyscyplina,
         autor=autor2,
         dyscyplina_naukowa=dyscyplina2,
-        rodzaj_autora="N",
+        rodzaj_autora=rodzaj_autora_n,
         rok=2024,
     )
 
@@ -172,7 +172,7 @@ def test_oblicz_metryki_command_filters():
 
 
 @pytest.mark.django_db
-def test_oblicz_metryki_command_error_handling():
+def test_oblicz_metryki_command_error_handling(rodzaj_autora_n):
     """Test obsługi błędów w komendzie"""
 
     autor = baker.make(Autor, nazwisko="Błędny")
@@ -191,7 +191,7 @@ def test_oblicz_metryki_command_error_handling():
         Autor_Dyscyplina,
         autor=autor,
         dyscyplina_naukowa=dyscyplina,
-        rodzaj_autora="N",
+        rodzaj_autora=rodzaj_autora_n,
         rok=2024,
     )
 
@@ -214,7 +214,7 @@ def test_oblicz_metryki_command_error_handling():
 
 
 @pytest.mark.django_db
-def test_oblicz_metryki_command_parameters():
+def test_oblicz_metryki_command_parameters(rodzaj_autora_n):
     """Test parametrów rok_min, rok_max i minimalny_pk"""
 
     autor = baker.make(Autor)
@@ -233,7 +233,7 @@ def test_oblicz_metryki_command_parameters():
         Autor_Dyscyplina,
         autor=autor,
         dyscyplina_naukowa=dyscyplina,
-        rodzaj_autora="N",
+        rodzaj_autora=rodzaj_autora_n,
         rok=2024,
     )
 
@@ -267,16 +267,19 @@ def test_oblicz_metryki_command_parameters():
 
 
 @pytest.mark.django_db
-def test_oblicz_metryki_command_rodzaj_autora_filter():
+def test_oblicz_metryki_command_rodzaj_autora_filter(
+    rodzaj_autora_n, rodzaj_autora_b, rodzaj_autora_d, rodzaj_autora_z
+):
     """Test filtrowania po rodzaju autora"""
 
-    # Stwórz dwóch autorów z różnymi rodzajami
+    # Stwórz trzech autorów z różnymi rodzajami
     autor_n = baker.make(Autor, nazwisko="Pracownik")
     autor_d = baker.make(Autor, nazwisko="Doktorant")
+    autor_b = baker.make(Autor, nazwisko="Badawczy")
 
     dyscyplina = baker.make(Dyscyplina_Naukowa, nazwa="Testowa")
 
-    # Ilości udziałów dla obu
+    # Ilości udziałów dla wszystkich trzech
     baker.make(
         IloscUdzialowDlaAutoraZaCalosc,
         autor=autor_n,
@@ -291,35 +294,51 @@ def test_oblicz_metryki_command_rodzaj_autora_filter():
         ilosc_udzialow=Decimal("4.0"),
         ilosc_udzialow_monografie=Decimal("1.0"),
     )
+    baker.make(
+        IloscUdzialowDlaAutoraZaCalosc,
+        autor=autor_b,
+        dyscyplina_naukowa=dyscyplina,
+        ilosc_udzialow=Decimal("4.0"),
+        ilosc_udzialow_monografie=Decimal("1.0"),
+    )
 
-    # Autor_Dyscyplina - jeden N, drugi D
+    # Autor_Dyscyplina - N, D, B
     baker.make(
         Autor_Dyscyplina,
         autor=autor_n,
         dyscyplina_naukowa=dyscyplina,
-        rodzaj_autora="N",
+        rodzaj_autora=rodzaj_autora_n,
         rok=2024,
     )
     baker.make(
         Autor_Dyscyplina,
         autor=autor_d,
         dyscyplina_naukowa=dyscyplina,
-        rodzaj_autora="D",
+        rodzaj_autora=rodzaj_autora_d,
+        rok=2024,
+    )
+    baker.make(
+        Autor_Dyscyplina,
+        autor=autor_b,
+        dyscyplina_naukowa=dyscyplina,
+        rodzaj_autora=rodzaj_autora_b,
         rok=2024,
     )
 
     with patch.object(Autor, "zbieraj_sloty") as mock_zbieraj:
         mock_zbieraj.return_value = (Decimal("100.0"), [1], Decimal("2.5"))
 
-        # Domyślnie powinno generować dla wszystkich rodzajów (N, D, Z, " ")
+        # Domyślnie powinno generować dla wszystkich rodzajów (N, D, B, Z, " ")
         out = StringIO()
         call_command("oblicz_metryki", "--bez-liczby-n", stdout=out)
 
         assert MetrykaAutora.objects.filter(autor=autor_n).exists()
         assert MetrykaAutora.objects.filter(autor=autor_d).exists()
+        assert MetrykaAutora.objects.filter(autor=autor_b).exists()
         # Nie powinno być komunikatu o pominiętym autorze
         assert "Pominięto Doktorant" not in out.getvalue()
         assert "Pominięto Pracownik" not in out.getvalue()
+        assert "Pominięto Badawczy" not in out.getvalue()
 
         MetrykaAutora.objects.all().delete()
 
@@ -331,6 +350,26 @@ def test_oblicz_metryki_command_rodzaj_autora_filter():
 
         assert MetrykaAutora.objects.filter(autor=autor_n).exists()
         assert not MetrykaAutora.objects.filter(autor=autor_d).exists()
-        # Powinien być komunikat o pominiętym doktorancie
+        assert not MetrykaAutora.objects.filter(autor=autor_b).exists()
+        # Powinny być komunikaty o pominiętych autorach
+        assert "Pominięto Doktorant" in out.getvalue()
+        assert "rodzaj_autora = 'D'" in out.getvalue()
+        assert "Pominięto Badawczy" in out.getvalue()
+        assert "rodzaj_autora = 'B'" in out.getvalue()
+
+        MetrykaAutora.objects.all().delete()
+
+        # Z opcją --rodzaje-autora B powinno generować tylko dla B
+        out = StringIO()
+        call_command(
+            "oblicz_metryki", "--bez-liczby-n", "--rodzaje-autora", "B", stdout=out
+        )
+
+        assert not MetrykaAutora.objects.filter(autor=autor_n).exists()
+        assert not MetrykaAutora.objects.filter(autor=autor_d).exists()
+        assert MetrykaAutora.objects.filter(autor=autor_b).exists()
+        # Powinny być komunikaty o pominiętych autorach
+        assert "Pominięto Pracownik" in out.getvalue()
+        assert "rodzaj_autora = 'N'" in out.getvalue()
         assert "Pominięto Doktorant" in out.getvalue()
         assert "rodzaj_autora = 'D'" in out.getvalue()

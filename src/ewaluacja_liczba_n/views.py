@@ -1,5 +1,8 @@
+import sys
+import traceback
 from io import BytesIO
 
+import rollbar
 from braces.views import GroupRequiredMixin
 from django.db.models import Count, Q, Sum
 from django.http import HttpResponse, HttpResponseRedirect
@@ -9,6 +12,7 @@ from django.views.generic import ListView, TemplateView
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
 from openpyxl.utils import get_column_letter
+from openpyxl.worksheet.table import Table, TableStyleInfo
 
 from .models import (
     DyscyplinaNieRaportowana,
@@ -71,6 +75,8 @@ class ObliczLiczbeNView(GroupRequiredMixin, View):
                 request, "Pomyślnie obliczono liczbę N dla ewaluacji 2022-2025"
             )
         except Exception as e:
+            traceback.print_exc()
+            rollbar.report_exc_info(sys.exc_info())
             messages.error(request, f"Błąd podczas obliczania liczby N: {str(e)}")
 
         return HttpResponseRedirect(reverse("ewaluacja_liczba_n:index"))
@@ -81,7 +87,7 @@ class AutorzyLiczbaNListView(GroupRequiredMixin, ListView):
 
     template_name = "ewaluacja_liczba_n/autorzy_list.html"
     context_object_name = "autorzy_data"
-    paginate_by = 500
+    paginate_by = 250
     group_required = GR_WPROWADZANIE_DANYCH
 
     def get_queryset(self):
@@ -107,6 +113,19 @@ class AutorzyLiczbaNListView(GroupRequiredMixin, ListView):
         rok = self.request.GET.get("rok")
         if rok:
             queryset = queryset.filter(rok=rok)
+
+        # Filtrowanie po rodzaju autora
+        rodzaj_autora_id = self.request.GET.get("rodzaj_autora")
+        if rodzaj_autora_id:
+            # Pobierz autorów z danym rodzajem autora w danym roku
+            autorzy_z_rodzajem = (
+                Autor_Dyscyplina.objects.filter(
+                    rodzaj_autora_id=rodzaj_autora_id, rok__gte=2022, rok__lte=2025
+                )
+                .values_list("autor_id", flat=True)
+                .distinct()
+            )
+            queryset = queryset.filter(autor_id__in=autorzy_z_rodzajem)
 
         # Sortowanie
         sort = self.request.GET.get("sort", "autor")
@@ -149,6 +168,16 @@ class AutorzyLiczbaNListView(GroupRequiredMixin, ListView):
                 "autor__nazwisko",
                 "autor__imiona",
             ],
+            "rodzaj_autora": [
+                "autor__nazwisko",
+                "autor__imiona",
+                "rok",
+            ],
+            "-rodzaj_autora": [
+                "-autor__nazwisko",
+                "-autor__imiona",
+                "-rok",
+            ],
         }
 
         # Zastosuj sortowanie
@@ -157,6 +186,32 @@ class AutorzyLiczbaNListView(GroupRequiredMixin, ListView):
         )
         queryset = queryset.order_by(*sort_fields)
 
+        # Sortowanie w pamięci dla rodzaj_autora
+        if sort in ["rodzaj_autora", "-rodzaj_autora"]:
+            # Pobierz wszystkie dane i sortuj w pamięci
+            items = list(queryset)
+
+            # Pobierz dane Autor_Dyscyplina dla wszystkich elementów
+            autorzy_dyscypliny = {
+                (ad.autor_id, ad.rok): ad
+                for ad in Autor_Dyscyplina.objects.filter(
+                    autor__in=[item.autor_id for item in items],
+                    rok__in=[item.rok for item in items],
+                ).select_related("rodzaj_autora")
+            }
+
+            def get_rodzaj_autora_key(item):
+                ad = autorzy_dyscypliny.get((item.autor_id, item.rok))
+                if ad and ad.rodzaj_autora:
+                    return ad.rodzaj_autora.skrot
+                return ""
+
+            items.sort(key=get_rodzaj_autora_key, reverse=(sort == "-rodzaj_autora"))
+
+            # Store the sorted list for later use in get_context_data
+            self._sorted_items = items
+            return items  # Return list, but handle it in get_context_data
+
         return queryset
 
     def get_context_data(self, **kwargs):
@@ -164,6 +219,8 @@ class AutorzyLiczbaNListView(GroupRequiredMixin, ListView):
 
         # Dane do filtrowania - tylko dyscypliny które mają dane w bazie
         from decimal import Decimal
+
+        from ewaluacja_common.models import Rodzaj_Autora
 
         from bpp.models import Autor_Dyscyplina, Dyscyplina_Naukowa
 
@@ -189,21 +246,54 @@ class AutorzyLiczbaNListView(GroupRequiredMixin, ListView):
 
         context["lata"] = list(lata_z_danymi)
 
+        # Pobierz rodzaje autorów które mają dane w bazie
+        rodzaje_z_danymi_ids = (
+            Autor_Dyscyplina.objects.filter(
+                rok__gte=2022,
+                rok__lte=2025,
+                autor__in=IloscUdzialowDlaAutoraZaRok.objects.filter(
+                    rok__gte=2022, rok__lte=2025
+                )
+                .values_list("autor_id", flat=True)
+                .distinct(),
+            )
+            .values_list("rodzaj_autora_id", flat=True)
+            .distinct()
+        )
+
+        context["rodzaje_autorow"] = Rodzaj_Autora.objects.filter(
+            pk__in=rodzaje_z_danymi_ids
+        ).order_by("nazwa")
+
         # Aktualne filtry i sortowanie
         context["selected_dyscyplina"] = self.request.GET.get("dyscyplina", "")
         context["selected_rok"] = self.request.GET.get("rok", "")
+        context["selected_rodzaj_autora"] = self.request.GET.get("rodzaj_autora", "")
         context["search"] = self.request.GET.get("search", "")
         context["current_sort"] = self.request.GET.get("sort", "autor")
 
         # Oblicz sumy dla przefiltrowanych danych (przed paginacją)
         queryset_for_sum = self.get_queryset()
-        sums = queryset_for_sum.aggregate(
-            suma_udzialow=Sum("ilosc_udzialow"),
-            suma_monografie=Sum("ilosc_udzialow_monografie"),
-        )
-        context["suma_udzialow"] = sums["suma_udzialow"] or 0
-        context["suma_monografie"] = sums["suma_monografie"] or 0
-        context["total_count"] = queryset_for_sum.count()
+
+        # Handle both queryset and list cases
+        if hasattr(self, "_sorted_items") and isinstance(queryset_for_sum, list):
+            # We have a sorted list from memory sorting
+            context["suma_udzialow"] = sum(
+                float(item.ilosc_udzialow) for item in queryset_for_sum
+            )
+            context["suma_monografie"] = sum(
+                float(item.ilosc_udzialow_monografie) for item in queryset_for_sum
+            )
+            context["total_count"] = len(queryset_for_sum)
+        else:
+            # Normal queryset case
+            sums = queryset_for_sum.aggregate(
+                suma_udzialow=Sum("ilosc_udzialow"),
+                suma_monografie=Sum("ilosc_udzialow_monografie"),
+            )
+            context["suma_udzialow"] = sums["suma_udzialow"] or 0
+            context["suma_monografie"] = sums["suma_monografie"] or 0
+            context["total_count"] = queryset_for_sum.count()
 
         # Add Autor_Dyscyplina data for each item
         for item in context["object_list"]:
@@ -237,9 +327,13 @@ class AutorzyLiczbaNListView(GroupRequiredMixin, ListView):
                         item.wymiar_etatu_dla_dyscypliny = None
                 else:
                     item.wymiar_etatu_dla_dyscypliny = None
+
+                # Dodaj rodzaj autora
+                item.rodzaj_autora = autor_dyscyplina.rodzaj_autora
             except Autor_Dyscyplina.DoesNotExist:
                 item.wymiar_etatu = None
                 item.wymiar_etatu_dla_dyscypliny = None
+                item.rodzaj_autora = None
 
         # Oblicz sumy dla bieżącej strony
         page_suma_udzialow = 0
@@ -281,6 +375,19 @@ class UdzialyZaCaloscListView(GroupRequiredMixin, ListView):
         if dyscyplina_id:
             queryset = queryset.filter(dyscyplina_naukowa_id=dyscyplina_id)
 
+        # Filtrowanie po rodzaju autora
+        rodzaj_autora_id = self.request.GET.get("rodzaj_autora")
+        if rodzaj_autora_id:
+            # Pobierz autorów którzy mieli dany rodzaj autora w dowolnym roku 2022-2025
+            autorzy_z_rodzajem = (
+                Autor_Dyscyplina.objects.filter(
+                    rodzaj_autora_id=rodzaj_autora_id, rok__gte=2022, rok__lte=2025
+                )
+                .values_list("autor_id", flat=True)
+                .distinct()
+            )
+            queryset = queryset.filter(autor_id__in=autorzy_z_rodzajem)
+
         # Sortowanie
         sort = self.request.GET.get("sort", "autor")
 
@@ -306,6 +413,8 @@ class UdzialyZaCaloscListView(GroupRequiredMixin, ListView):
         context = super().get_context_data(**kwargs)
 
         # Dane do filtrowania - tylko dyscypliny które mają dane w bazie
+        from ewaluacja_common.models import Rodzaj_Autora
+
         from bpp.models import Dyscyplina_Naukowa
 
         # Pobierz ID dyscyplin które mają faktyczne dane
@@ -318,8 +427,26 @@ class UdzialyZaCaloscListView(GroupRequiredMixin, ListView):
             pk__in=dyscypliny_z_danymi, widoczna=True
         ).order_by("nazwa")
 
+        # Pobierz rodzaje autorów które mają dane w bazie
+        rodzaje_z_danymi_ids = (
+            Autor_Dyscyplina.objects.filter(
+                rok__gte=2022,
+                rok__lte=2025,
+                autor__in=IloscUdzialowDlaAutoraZaCalosc.objects.values_list(
+                    "autor_id", flat=True
+                ).distinct(),
+            )
+            .values_list("rodzaj_autora_id", flat=True)
+            .distinct()
+        )
+
+        context["rodzaje_autorow"] = Rodzaj_Autora.objects.filter(
+            pk__in=rodzaje_z_danymi_ids
+        ).order_by("nazwa")
+
         # Aktualne filtry i sortowanie
         context["selected_dyscyplina"] = self.request.GET.get("dyscyplina", "")
+        context["selected_rodzaj_autora"] = self.request.GET.get("rodzaj_autora", "")
         context["search"] = self.request.GET.get("search", "")
         context["current_sort"] = self.request.GET.get("sort", "autor")
 
@@ -501,7 +628,11 @@ class ExportAutorzyLiczbaNView(GroupRequiredMixin, View):
                 ws_detail.cell(
                     row=row_num,
                     column=9,
-                    value=autor_dyscyplina.get_rodzaj_autora_display(),
+                    value=(
+                        autor_dyscyplina.rodzaj_autora.nazwa
+                        if autor_dyscyplina.rodzaj_autora
+                        else ""
+                    ),
                 )
 
             # Ilość udziałów
@@ -511,6 +642,60 @@ class ExportAutorzyLiczbaNView(GroupRequiredMixin, View):
             )
 
             row_num += 1
+
+        # Create Excel Table for the data
+        if row_num > 2:  # Only create table if there is data
+            # Define the table range
+            table_range = f"A1:I{row_num - 1}"
+
+            # Create table style
+            style = TableStyleInfo(
+                name="TableStyleMedium9",
+                showFirstColumn=False,
+                showLastColumn=False,
+                showRowStripes=True,
+                showColumnStripes=False,
+            )
+
+            # Create the table
+            table = Table(
+                displayName="AutorzyLiczbaN", ref=table_range, tableStyleInfo=style
+            )
+
+            # Add table to worksheet
+            ws_detail.add_table(table)
+
+            # Freeze panes to keep headers visible
+            ws_detail.freeze_panes = "A2"
+
+            # Apply number formatting for decimal columns
+            for row in range(2, row_num):
+                # Column 5: Wymiar Etatu (decimal with 2 places)
+                if ws_detail.cell(row=row, column=5).value is not None:
+                    ws_detail.cell(row=row, column=5).number_format = "0.00"
+
+                # Column 6: Wymiar Etatu dla Dyscypliny (decimal with 4 places)
+                if ws_detail.cell(row=row, column=6).value is not None:
+                    ws_detail.cell(row=row, column=6).number_format = "0.0000"
+
+                # Column 7: Ilość Udziałów (decimal with 2 places)
+                ws_detail.cell(row=row, column=7).number_format = "0.00"
+
+                # Column 8: Ilość Udziałów - Monografie (decimal with 2 places)
+                ws_detail.cell(row=row, column=8).number_format = "0.00"
+                # Column 5: Wymiar Etatu (decimal with 2 places)
+                if ws_detail.cell(row=row, column=5).value is not None:
+                    ws_detail.cell(row=row, column=5).number_format = "0.00"
+
+                # Column 6: Wymiar Etatu dla Dyscypliny (decimal with 4 places)
+                if ws_detail.cell(row=row, column=6).value is not None:
+                    ws_detail.cell(row=row, column=6).number_format = "0.0000"
+
+                # Column 7: Ilość Udziałów (decimal with 2 places)
+                ws_detail.cell(row=row, column=7).number_format = "0.00"
+
+                # Column 8: Ilość Udziałów - Monografie (decimal with 2 places)
+                ws_detail.cell(row=row, column=8).number_format = "0.00"
 
         # Arkusz 3: Dyscypliny nieraportowane
         ws_nieraportowane = wb.create_sheet("Dyscypliny Nieraportowane")
@@ -649,6 +834,19 @@ class ExportUdzialyZaCaloscView(GroupRequiredMixin, View):
         if dyscyplina_id:
             udzialy = udzialy.filter(dyscyplina_naukowa_id=dyscyplina_id)
 
+        # Filtrowanie po rodzaju autora
+        rodzaj_autora_id = request.GET.get("rodzaj_autora")
+        if rodzaj_autora_id:
+            # Pobierz autorów którzy mieli dany rodzaj autora w dowolnym roku 2022-2025
+            autorzy_z_rodzajem = (
+                Autor_Dyscyplina.objects.filter(
+                    rodzaj_autora_id=rodzaj_autora_id, rok__gte=2022, rok__lte=2025
+                )
+                .values_list("autor_id", flat=True)
+                .distinct()
+            )
+            udzialy = udzialy.filter(autor_id__in=autorzy_z_rodzajem)
+
         udzialy = udzialy.select_related("autor", "dyscyplina_naukowa").order_by(
             "autor__nazwisko", "autor__imiona", "dyscyplina_naukowa__nazwa"
         )
@@ -665,6 +863,41 @@ class ExportUdzialyZaCaloscView(GroupRequiredMixin, View):
             ws_detail.cell(row=row_num, column=6, value=udzial.komentarz or "")
 
             row_num += 1
+
+        # Create Excel Table for the data
+        if row_num > 2:  # Only create table if there is data
+            # Define the table range
+            table_range = f"A1:F{row_num - 1}"
+
+            # Create table style
+            style = TableStyleInfo(
+                name="TableStyleMedium9",
+                showFirstColumn=False,
+                showLastColumn=False,
+                showRowStripes=True,
+                showColumnStripes=False,
+            )
+
+            # Create the table
+            table = Table(
+                displayName="UdzialyZaCalosc", ref=table_range, tableStyleInfo=style
+            )
+
+            # Add table to worksheet
+            ws_detail.add_table(table)
+
+            # Freeze panes to keep headers visible
+            ws_detail.freeze_panes = "A2"
+
+            # Apply number formatting for decimal columns
+            for row in range(2, row_num):
+                # Column 4: Ilość Udziałów (decimal with 2 places)
+                if ws_detail.cell(row=row, column=4).value is not None:
+                    ws_detail.cell(row=row, column=4).number_format = "0.00"
+
+                # Column 5: Ilość Udziałów - Monografie (decimal with 2 places)
+                if ws_detail.cell(row=row, column=5).value is not None:
+                    ws_detail.cell(row=row, column=5).number_format = "0.00"
 
         # Arkusz 3: Dyscypliny nieraportowane (tak samo jak w eksporcie rocznym)
         ws_nieraportowane = wb.create_sheet("Dyscypliny Nieraportowane")
@@ -729,6 +962,8 @@ class WeryfikujBazeView(GroupRequiredMixin, TemplateView):
         context = super().get_context_data(**kwargs)
 
         # 1. Total by rodzaj_pracownika for 2022-2025
+        from ewaluacja_common.models import Rodzaj_Autora
+
         context["rodzaje_pracownika"] = (
             Autor_Dyscyplina.objects.filter(rok__gte=2022, rok__lte=2025)
             .values("rodzaj_autora")
@@ -736,25 +971,43 @@ class WeryfikujBazeView(GroupRequiredMixin, TemplateView):
             .order_by("rodzaj_autora")
         )
 
-        # Mapowanie kodów na nazwy dla rodzaju autora
-        rodzaj_mapping = {
-            " ": "brak_danych",
-            "N": "rodzaj_n",
-            "D": "rodzaj_d",
-            "Z": "rodzaj_z",
-        }
+        # Pobierz obiekty Rodzaj_Autora dla mapowania
+        rodzaje_dict = {r.id: r for r in Rodzaj_Autora.objects.all()}
 
         for item in context["rodzaje_pracownika"]:
-            item["query_key"] = rodzaj_mapping.get(item["rodzaj_autora"], "brak_danych")
-            item["nazwa"] = Autor_Dyscyplina.RODZAJE_AUTORA[item["rodzaj_autora"]]
+            if item["rodzaj_autora"] is not None:
+                rodzaj_obj = rodzaje_dict.get(item["rodzaj_autora"])
+                if rodzaj_obj:
+                    item["nazwa"] = rodzaj_obj.nazwa
+                    # Mapowanie na query_key dla kompatybilności
+                    skrot_mapping = {
+                        "N": "rodzaj_n",
+                        "D": "rodzaj_d",
+                        "B": "rodzaj_b",
+                        "Z": "rodzaj_z",
+                    }
+                    item["query_key"] = skrot_mapping.get(
+                        rodzaj_obj.skrot, "brak_danych"
+                    )
+                else:
+                    item["nazwa"] = "brak danych"
+                    item["query_key"] = "brak_danych"
+            else:
+                item["nazwa"] = "brak danych"
+                item["query_key"] = "brak_danych"
 
         # Count records without rodzaj_autora (empty/missing employment type)
+        # Get IDs of known rodzaj_autora types
+        known_rodzaje_ids = [
+            r.id for r in rodzaje_dict.values() if r.skrot in ["N", "D", "B", "Z"]
+        ]
+
         context["bez_rodzaju_zatrudnienia"] = (
             Autor_Dyscyplina.objects.filter(
                 rok__gte=2022,
                 rok__lte=2025,
             )
-            .exclude(rodzaj_autora__in=["N", "D", "Z"])
+            .exclude(rodzaj_autora__in=known_rodzaje_ids)
             .count()
         )
 
@@ -825,15 +1078,17 @@ class WeryfikujBazeView(GroupRequiredMixin, TemplateView):
         )
 
         # Generate DjangoQL queries
+        # DjangoQL needs to reference the related object now
         context["djangoql_queries"] = {
             "bez_wymiaru": "rok >= 2022 and rok <= 2025 and (wymiar_etatu = None or wymiar_etatu = 0)",
             "bez_procent": "rok >= 2022 and rok <= 2025 and (procent_dyscypliny = None or (subdyscyplina_naukowa != "
             "None and procent_subdyscypliny = None))",
             "zla_suma": "rok >= 2022 and rok <= 2025 and procent_dyscypliny != None",  # Can't check sum with DjangoQL
-            "rodzaj_n": 'rok >= 2022 and rok <= 2025 and rodzaj_autora = "N"',
-            "rodzaj_d": 'rok >= 2022 and rok <= 2025 and rodzaj_autora = "D"',
-            "rodzaj_z": 'rok >= 2022 and rok <= 2025 and rodzaj_autora = "Z"',
-            "brak_danych": 'rok >= 2022 and rok <= 2025 and rodzaj_autora = " "',
+            "rodzaj_n": 'rok >= 2022 and rok <= 2025 and rodzaj_autora.skrot = "N"',
+            "rodzaj_d": 'rok >= 2022 and rok <= 2025 and rodzaj_autora.skrot = "D"',
+            "rodzaj_b": 'rok >= 2022 and rok <= 2025 and rodzaj_autora.skrot = "B"',
+            "rodzaj_z": 'rok >= 2022 and rok <= 2025 and rodzaj_autora.skrot = "Z"',
+            "brak_danych": "rok >= 2022 and rok <= 2025 and rodzaj_autora = None",
         }
 
         return context

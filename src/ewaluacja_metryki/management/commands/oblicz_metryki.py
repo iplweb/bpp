@@ -51,10 +51,11 @@ class Command(BaseCommand):
         parser.add_argument(
             "--rodzaje-autora",
             nargs="+",
-            choices=["N", "D", "Z", " "],
-            default=["N", "D", "Z", " "],
+            choices=["N", "D", "B", "Z", " "],
+            default=["N", "D", "B", "Z", " "],
             help=(
-                "Rodzaje autorów do przetworzenia (N=pracownik, D=doktorant, Z=inny zatrudniony, ' '=brak danych). "
+                "Rodzaje autorów do przetworzenia (N=pracownik, B=pracownik badawczy, D=doktorant, "
+                "Z=inny zatrudniony, ' '=brak danych). "
                 "Domyślnie: wszystkie"
             ),
         )
@@ -65,7 +66,7 @@ class Command(BaseCommand):
         minimalny_pk = Decimal(str(options["minimalny_pk"]))
         nadpisz = options["nadpisz"]
         bez_liczby_n = options["bez_liczby_n"]
-        rodzaje_autora = options.get("rodzaje_autora", ["N", "D", "Z", " "])
+        rodzaje_autora = options.get("rodzaje_autora", ["N", "D", "B", "Z", " "])
 
         # Krok 1: Przelicz liczby N, chyba że pominięto
         if not bez_liczby_n:
@@ -105,6 +106,7 @@ class Command(BaseCommand):
         # Wyświetl informację o rodzajach autorów
         rodzaje_nazwy = {
             "N": "Pracownicy (N)",
+            "B": "Pracownicy badawczy (B)",
             "D": "Doktoranci (D)",
             "Z": "Inni zatrudnieni (Z)",
             " ": "Brak danych",

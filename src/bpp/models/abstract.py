@@ -503,17 +503,13 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
         return str(self.autor) + " - " + str(self.jednostka.skrot)
 
     def rodzaj_autora_uwzgledniany_w_kalkulacjach_slotow(self):
+        from ewaluacja_common.models import Rodzaj_Autora
+
         return self.autor.autor_dyscyplina_set.filter(
             rok=self.rekord.rok,
-            rodzaj_autora__in=[
-                Autor_Dyscyplina.RODZAJE_AUTORA.N,
-                Autor_Dyscyplina.RODZAJE_AUTORA.D,
-                # Nie liczymy slotów dla autorów "Z"
-                # -- mpoasternak, 7.09.2025
-                # Liczymy sloty dla autorów "Z"
-                # -- mpasternak, 5.10.2025
-                Autor_Dyscyplina.RODZAJE_AUTORA.Z,
-            ],
+            rodzaj_autora__pk__in=Rodzaj_Autora.objects.filter(
+                licz_sloty=True
+            ).values_list("pk", flat=True),
         ).exists()
 
     def okresl_dyscypline(self):

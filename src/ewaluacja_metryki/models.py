@@ -103,6 +103,13 @@ class MetrykaAutora(models.Model):
         default=2025, help_text="Końcowy rok okresu ewaluacji"
     )
 
+    rodzaj_autora = models.CharField(
+        max_length=1,
+        blank=True,
+        null=True,
+        help_text="Skrót rodzaju autora (N, D, B, Z)",
+    )
+
     class Meta:
         verbose_name = "Metryka autora"
         verbose_name_plural = "Metryki autorów"
