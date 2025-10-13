@@ -53,6 +53,15 @@
             visibility: hidden;
         }
 
+        /* Highlight styling for section headers */
+        .highlighted-header {
+            font-weight: 600;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 0.25rem;
+            margin-bottom: 1rem;
+            display: inline-block;
+        }
+
         /* Modern pagination styling */
         .pagination {
             background: #f8f9fa;
@@ -152,12 +161,74 @@
 
     {% include "long_running/operation_details.html" %}
 
+    {% if object.finished_successfully and unmatched_count > 0 %}
+        <div class="panel">
+            <h5 class="highlighted-header"><strong>Autorzy z przypisaniami dyscyplin w BPP, którzy nie byli w pliku Excel ({{ unmatched_count }})</strong></h5>
+            <p>Poniższa tabela pokazuje autorów, którzy mają przypisania dyscyplin dla roku {{ object.rok }} w systemie BPP, ale nie znaleźli się w importowanym pliku Excel.</p>
+
+            <button id="toggle-unmatched" class="button small">
+                <span id="toggle-text">Pokaż</span> niezmatchowane autorów ({{ unmatched_count }})
+            </button>
+
+            <div id="unmatched-table-container" style="display: none; margin-top: 1rem;">
+                <table class="compact-table">
+                    <thead>
+                        <tr>
+                            <th>Autor</th>
+                            <th>Liczba prac</th>
+                            <th>Dyscyplina</th>
+                            <th>Subdyscyplina</th>
+                            <th>Rodzaj autora</th>
+                            <th>Wymiar etatu</th>
+                            <th>Procent dyscypliny</th>
+                            <th>Procent subdyscypliny</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for ad in unmatched_autor_dyscyplina %}
+                            <tr>
+                                <td>
+                                    <a href="{% url "bpp:browse_autor" ad.autor.pk %}">{{ ad.autor }}</a>
+                                </td>
+                                <td>{{ ad.liczba_prac }}</td>
+                                <td>{{ ad.dyscyplina_naukowa|default:"" }}</td>
+                                <td>{{ ad.subdyscyplina_naukowa|default:"" }}</td>
+                                <td>{{ ad.rodzaj_autora|default:"" }}</td>
+                                <td>{{ ad.wymiar_etatu|default:"" }}</td>
+                                <td>{{ ad.procent_dyscypliny|default:"" }}</td>
+                                <td>{{ ad.procent_subdyscypliny|default:"" }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                const toggleBtn = document.getElementById('toggle-unmatched');
+                const toggleText = document.getElementById('toggle-text');
+                const container = document.getElementById('unmatched-table-container');
+
+                toggleBtn.addEventListener('click', function() {
+                    if (container.style.display === 'none') {
+                        container.style.display = 'block';
+                        toggleText.textContent = 'Ukryj';
+                    } else {
+                        container.style.display = 'none';
+                        toggleText.textContent = 'Pokaż';
+                    }
+                });
+            });
+        </script>
+    {% endif %}
+
     {% if object.finished_successfully %}
 
         {% if filter_form %}
             <div class="panel">
                 <a name="filtry"></a>
-                <h5>Filtry</h5>
+                <h5 class="highlighted-header"><strong>Filtry</strong></h5>
                 <form method="get" action="#filtry" class="filter-form" id="filter-form">
                     <div class="row">
                         <div class="medium-4 columns">

@@ -87,6 +87,9 @@
         <hr>
 
         {% if autorzy_data %}
+            <!-- Pager above table -->
+            {% include "import_polon/pagination_with_anchor.html" %}
+
             <!-- Podsumowanie dla przefiltrowanych danych -->
             <div class="callout primary">
                 <div class="row">
@@ -106,7 +109,7 @@
                     </div>
                 </div>
             </div>
-            <table class="hover stack">
+            <table class="hover stack" id="pager">
                 <thead>
                     <tr>
                         <th>
@@ -244,39 +247,8 @@
                 </tfoot>
             </table>
 
-            {% if is_paginated %}
-            <nav aria-label="Pagination">
-                <ul class="pagination text-center" role="navigation">
-                    {% if page_obj.has_previous %}
-                        <li class="pagination-previous">
-                            <a href="?{% url_replace page=page_obj.previous_page_number %}" aria-label="Previous page">
-                                Poprzednia
-                            </a>
-                        </li>
-                    {% else %}
-                        <li class="pagination-previous disabled">Poprzednia</li>
-                    {% endif %}
-
-                    {% for num in page_obj.paginator.page_range %}
-                        {% if page_obj.number == num %}
-                            <li class="current"><span class="show-for-sr">Jesteś na stronie</span> {{ num }}</li>
-                        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
-                            <li><a href="?{% url_replace page=num %}" aria-label="Page {{ num }}">{{ num }}</a></li>
-                        {% endif %}
-                    {% endfor %}
-
-                    {% if page_obj.has_next %}
-                        <li class="pagination-next">
-                            <a href="?{% url_replace page=page_obj.next_page_number %}" aria-label="Next page">
-                                Następna
-                            </a>
-                        </li>
-                    {% else %}
-                        <li class="pagination-next disabled">Następna</li>
-                    {% endif %}
-                </ul>
-            </nav>
-            {% endif %}
+            <!-- Pager below table -->
+            {% include "import_polon/pagination_with_anchor.html" %}
 
         {% else %}
             <div class="callout warning">

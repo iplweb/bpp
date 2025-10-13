@@ -87,7 +87,7 @@ class AutorzyLiczbaNListView(GroupRequiredMixin, ListView):
 
     template_name = "ewaluacja_liczba_n/autorzy_list.html"
     context_object_name = "autorzy_data"
-    paginate_by = 500
+    paginate_by = 250
     group_required = GR_WPROWADZANIE_DANYCH
 
     def get_queryset(self):
@@ -863,6 +863,41 @@ class ExportUdzialyZaCaloscView(GroupRequiredMixin, View):
             ws_detail.cell(row=row_num, column=6, value=udzial.komentarz or "")
 
             row_num += 1
+
+        # Create Excel Table for the data
+        if row_num > 2:  # Only create table if there is data
+            # Define the table range
+            table_range = f"A1:F{row_num - 1}"
+
+            # Create table style
+            style = TableStyleInfo(
+                name="TableStyleMedium9",
+                showFirstColumn=False,
+                showLastColumn=False,
+                showRowStripes=True,
+                showColumnStripes=False,
+            )
+
+            # Create the table
+            table = Table(
+                displayName="UdzialyZaCalosc", ref=table_range, tableStyleInfo=style
+            )
+
+            # Add table to worksheet
+            ws_detail.add_table(table)
+
+            # Freeze panes to keep headers visible
+            ws_detail.freeze_panes = "A2"
+
+            # Apply number formatting for decimal columns
+            for row in range(2, row_num):
+                # Column 4: Ilość Udziałów (decimal with 2 places)
+                if ws_detail.cell(row=row, column=4).value is not None:
+                    ws_detail.cell(row=row, column=4).number_format = "0.00"
+
+                # Column 5: Ilość Udziałów - Monografie (decimal with 2 places)
+                if ws_detail.cell(row=row, column=5).value is not None:
+                    ws_detail.cell(row=row, column=5).number_format = "0.00"
 
         # Arkusz 3: Dyscypliny nieraportowane (tak samo jak w eksporcie rocznym)
         ws_nieraportowane = wb.create_sheet("Dyscypliny Nieraportowane")

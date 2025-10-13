@@ -1,5 +1,5 @@
 from braces.views import GroupRequiredMixin
-from django.db.models import Q
+from django.db.models import Count, Q
 
 from import_polon.forms import NowyImportForm, WierszImportuPlikuPolonFilterForm
 from import_polon.models import ImportPlikuPolon
@@ -11,6 +11,8 @@ from long_running.views import (
     LongRunningRouterView,
     RestartLongRunningOperationView,
 )
+
+from bpp.models import Autor_Dyscyplina
 
 
 class BaseImportPlikuPolonMixin(GroupRequiredMixin):
@@ -97,5 +99,32 @@ class ImportPolonResultsView(BaseImportPlikuPolonMixin, LongRunningResultsView):
             or self.request.GET.get("dyscyplina")
             or self.request.GET.get("grupa_stanowisk")
         )
+
+        # Get unmatched Autor_Dyscyplina records for this import year
+        import_object = ImportPlikuPolon.objects.get(pk=self.kwargs["pk"])
+
+        # Get all authors that were matched in the import
+        matched_authors = base_queryset.filter(autor__isnull=False).values_list(
+            "autor_id", flat=True
+        )
+
+        # Get all Autor_Dyscyplina records for the import year that are NOT in the matched authors
+        unmatched_autor_dyscyplina = (
+            Autor_Dyscyplina.objects.filter(rok=import_object.rok)
+            .exclude(autor_id__in=matched_authors)
+            .select_related(
+                "autor", "dyscyplina_naukowa", "subdyscyplina_naukowa", "rodzaj_autora"
+            )
+            .annotate(
+                liczba_prac=Count(
+                    "autor__autorzy",
+                    filter=Q(autor__autorzy__rekord__rok=import_object.rok),
+                )
+            )
+            .order_by("autor__nazwisko", "autor__imiona")
+        )
+
+        context["unmatched_autor_dyscyplina"] = unmatched_autor_dyscyplina
+        context["unmatched_count"] = unmatched_autor_dyscyplina.count()
 
         return context
