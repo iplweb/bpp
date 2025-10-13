@@ -10,6 +10,7 @@ from flexible_reports import models as flexible_models
 from multiseek.models import SearchForm
 
 from dynamic_columns.models import ModelAdmin, ModelAdminColumn
+from ewaluacja_common.models import Rodzaj_Autora
 from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaRok, LiczbaNDlaUczelni
 from formdefaults.models import FormFieldRepresentation, FormRepresentation
 from miniblog.models import Article
@@ -144,6 +145,7 @@ groups = {
         OswiadczenieInstytucji,
         DisciplineGroup,
         BppMultiseekVisibility,
+        Rodzaj_Autora,
     ],
     "struktura": [
         Uczelnia,

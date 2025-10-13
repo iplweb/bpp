@@ -56,6 +56,7 @@ SYSTEM_MENU = [
     ("OpenAccess: licencja", "/admin/bpp/licencja_openaccess"),
     ("OpenAccess: wersja tekstu", "/admin/bpp/wersja_tekstu_openaccess"),
     ("Organy przyznające nagrody", "/admin/bpp/organprzyznajacynagrody/"),
+    ("Rodzaje autorów - ewaluacja", "/admin/ewaluacja_common/rodzaj_autora/"),
 ]
 
 SYSTEM_MENU_2 = [

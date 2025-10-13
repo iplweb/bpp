@@ -12,6 +12,33 @@
 
 
 {% block content %}
+    <style>
+        .compact-table {
+            font-size: 0.85rem;
+            margin-bottom: 1rem;
+        }
+        .compact-table th,
+        .compact-table td {
+            padding: 0.4rem 0.5rem !important;
+            line-height: 1.3;
+            vertical-align: top;
+        }
+        .compact-table th {
+            font-weight: 600;
+            font-size: 0.8rem;
+        }
+        .compact-table .table-border-right {
+            border-right: 1px solid #ddd !important;
+        }
+        .compact-table a {
+            font-size: 0.85rem;
+        }
+        .compact-table .help-text {
+            font-size: 0.75rem;
+            margin-top: 0.1rem;
+        }
+    </style>
+
     <h1>Import danych {{ object.plik.name }}</h1>
     {% if object.zapisz_zmiany_do_bazy %}
         <div class="panel callout success">
@@ -29,19 +56,81 @@
 
     {% if object.finished_successfully %}
 
+        {% if filter_form %}
+            <div class="panel">
+                <h5>Filtry</h5>
+                <form method="get" action="" class="filter-form" id="filter-form">
+                    <div class="row">
+                        <div class="medium-4 columns">
+                            {{ filter_form.autor_wiersz.label_tag }}
+                            {{ filter_form.autor_wiersz }}
+                            {% if filter_form.autor_wiersz.help_text %}
+                                <small class="help-text">{{ filter_form.autor_wiersz.help_text }}</small>
+                            {% endif %}
+                        </div>
+                        <div class="medium-4 columns">
+                            {{ filter_form.dyscyplina.label_tag }}
+                            {{ filter_form.dyscyplina }}
+                            {% if filter_form.dyscyplina.help_text %}
+                                <small class="help-text">{{ filter_form.dyscyplina.help_text }}</small>
+                            {% endif %}
+                        </div>
+                        <div class="medium-4 columns">
+                            {{ filter_form.grupa_stanowisk.label_tag }}
+                            {{ filter_form.grupa_stanowisk }}
+                            {% if filter_form.grupa_stanowisk.help_text %}
+                                <small class="help-text">{{ filter_form.grupa_stanowisk.help_text }}</small>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="medium-12 columns">
+                            <button type="submit" class="button small">Filtruj</button>
+                            <a href="?page=1" class="button secondary small">Wyczyść filtry</a>
+                            {% if is_filtered %}
+                                <span class="label secondary">Filtry aktywne</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    const dyscyplinaSelect = document.querySelector('select[name="dyscyplina"]');
+                    if (dyscyplinaSelect) {
+                        dyscyplinaSelect.addEventListener('change', function() {
+                            this.form.submit();
+                        });
+                    }
+
+                    const grupaStanowiskSelect = document.querySelector('select[name="grupa_stanowisk"]');
+                    if (grupaStanowiskSelect) {
+                        grupaStanowiskSelect.addEventListener('change', function() {
+                            this.form.submit();
+                        });
+                    }
+                });
+            </script>
+        {% endif %}
+
         {% include "pagination.html" %}
-        <table>
+        <table class="compact-table">
             <thead>
             <tr>
                 <th>Wiersz</th>
                 <th>Autor</th>
                 <th>Dyscyplina</th>
                 <th>Subdyscyplina</th>
+                <th>Oświadczona dyscyplina pierwsza</th>
+                <th>Oświadczona dyscyplina druga</th>
                 <th>Procent dyscypliny</th>
-                <th class="table-border-right">Wielkość etatu (dziesiętna)</th>
+                <th>Wielkość etatu (dziesiętna)</th>
+                <th class="table-border-right">Grupa stanowiska</th>
                 <th>Match autora w BPP</th>
                 <th>Match dyscypliny w BPP</th>
-                <th class="table-border-right">Match subdyscypliny w BPP</th>
+                <th>Match subdyscypliny w BPP</th>
+                <th class="table-border-right">Rodzaj autora</th>
                 <th>Rezultat importu</th>
             </tr>
 
@@ -53,15 +142,27 @@
                     <td>{{ row.dane_z_xls.NAZWISKO }} {{ row.dane_z_xls.IMIE }} {{ row.dane_z_xls.STOPIEN_TYTUL_AKTUALNY_NA_DZIEN_WYGENEROWANIA_RAPORTU }}</td>
                     <td>{{ row.dane_z_xls.DYSCYPLINA_N|default:"" }}</td>
                     <td>{{ row.dane_z_xls.DYSCYPLINA_N_KOLEJNA|default:"" }}</td>
+                    <td>{{ row.dane_z_xls.OSWIADCZONA_DYSCYPLINA_PIERWSZA|default:"" }}</td>
+                    <td>{{ row.dane_z_xls.OSWIADCZONA_DYSCYPLINA_DRUGA|default:"" }}</td>
                     <td>{{ row.dane_z_xls.PROCENTOWY_UDZIAL_PIERWSZA_DYSCYPLINA|default:"" }}</td>
-                    <td class="table-border-right">{{ row.dane_z_xls.WIELKOSC_ETATU_PREZENTACJA_DZIESIETNA }}</td>
+                    <td>{{ row.dane_z_xls.WIELKOSC_ETATU_PREZENTACJA_DZIESIETNA }}</td>
+                    <td class="table-border-right">{{ row.dane_z_xls.GRUPA_STANOWISK|default:"" }}</td>
                     <td>
                         {% if row.autor %}
                             <a href="{% url "bpp:browse_autor" row.autor.pk %}">{{ row.autor }}</a>
                         {% endif %}
                     </td>
                     <td>{{ row.dyscyplina_naukowa|default:"" }}</td>
-                    <td class="table-border-right">{{ row.subdyscyplina_naukowa|default:"" }}</td>
+                    <td>{{ row.subdyscyplina_naukowa|default:"" }}</td>
+                    <td class="table-border-right">
+                        {% if row.autor %}
+                            {% for autor_dyscyplina in row.autor.autor_dyscyplina_set.all %}
+                                {% if autor_dyscyplina.rok == object.rok %}
+                                    {{ autor_dyscyplina.rodzaj_autora.nazwa }}
+                                {% endif %}
+                            {% endfor %}
+                        {% endif %}
+                    </td>
                     <td>{{ row.rezultat|default:"" }}</td>
                 </tr>
             {% endfor %}

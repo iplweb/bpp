@@ -3,7 +3,6 @@ from decimal import Decimal
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
 from django.db.models import CASCADE, PositiveSmallIntegerField
-from model_utils import Choices
 
 from import_common.normalization import normalize_kod_dyscypliny
 
@@ -96,17 +95,13 @@ class Autor_Dyscyplina(models.Model):
     rok = PositiveSmallIntegerField()
     autor = models.ForeignKey("bpp.Autor", CASCADE)
 
-    RODZAJE_AUTORA = Choices(
-        (" ", "brak danych"),
-        ("N", "pracownik zaliczany do liczby N"),
-        ("D", "doktorant"),
-        ("Z", "inny zatrudniony"),
-    )
-
-    rodzaj_autora = models.CharField(
-        max_length=1,
-        choices=RODZAJE_AUTORA,
-        default="N",
+    rodzaj_autora = models.ForeignKey(
+        "ewaluacja_common.Rodzaj_Autora",
+        models.PROTECT,
+        related_name="autor_dyscyplina",
+        verbose_name="Rodzaj autora",
+        null=True,
+        blank=True,
     )
 
     wymiar_etatu = models.DecimalField(

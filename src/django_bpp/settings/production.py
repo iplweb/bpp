@@ -49,7 +49,10 @@ CACHEOPS = {
     "bpp.szablondlaopisubibliograficznego": {"ops": ("fetch", "get")},
     "miniblog.article": {"ops": ("get", "fetch")},
     "contenttypes.contenttype": {"ops": ("get", "fetch")},
+    "ewaluacja_common.rodzaj_autora": {"ops": ("fetch", "get")},
+    "bpp.rzeczownik": {"ops": ("fetch", "get")},
 }
+
 CACHEOPS_REDIS = BROKER_URL  # noqa
 CACHEOPS_DEFAULTS = {"timeout": 60 * 60}
 

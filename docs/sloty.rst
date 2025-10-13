@@ -17,6 +17,110 @@ Uwagi ogólne
 #. W chwili tworzenia niniejszej dokumentacji system powinien liczyć punkty dla prac
    z lat 2017-2021 (dla roku 2021 używany jest identyczny algorytm jak dla 2020)
 
+Rodzaje autorów
+---------------
+
+System rozróżnia cztery rodzaje autorów w powiązaniach autor-dyscyplina:
+
+**N - naukowiec w N**
+   - Wliczany do liczby N (parametr ewaluacyjny)
+   - Liczone są dla niego sloty
+   - Standardowy pracownik naukowy zaliczany do ewaluacji
+
+**D - doktorant**
+   - Nie jest wliczany do liczby N
+   - Liczone są dla niego sloty
+   - Osoba na studiach doktoranckich
+
+**B - badawczy**
+   - Nie jest wliczany do liczby N
+   - Liczone są dla niego sloty
+   - Pracownik o charakterze badawczym (np. post-doc, badacz bez etatu naukowego)
+
+**Z - inny lub techniczny**
+   - Nie jest wliczany do liczby N
+   - Nie liczą się dla niego sloty
+   - Pracownik techniczny, administracyjny lub inny niebędący pracownikiem badawczym
+
+Jak system decyduje o rodzaju autora podczas importu z POLON?
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+System automatycznie przypisuje każdyemu pracownikowi odpowiedni rodzaj autora podczas importu danych z pliku POLON.
+Decyzja opiera się na dwóch kluczowych informacjach: oświadczeniu pracownika o dyscyplinach oraz charakterze jego zatrudnienia.
+
+**Krok 1: Sprawdzenie oświadczenia o dyscyplinach**
+
+System najpierw patrzy na kolumnę **"OSWIADCZENIE_N"** w pliku POLON:
+
+* **Jeżeli pracownik złożył oświadczenie N** (w kolumnie "OSWIADCZENIE_N" wpisano "tak"):
+  - System odnotowuje, że pracownik jest zaliczany do liczby N
+  - Pobiera dyscypliny z kolumn "DYSCYPLINA_N" i "DYSCYPLINA_N_KOLEJNA"
+  - **Pracownik otrzymuje rodzaj: N (naukowiec w N)**
+
+* **Jeżeli pracownik nie złożył oświadczenia N** (kolumna pusta lub inna wartość):
+  - System odnotowuje, że pracownik nie jest zaliczany do liczby N
+  - Przechodzi do analizy charakteru zatrudnienia
+
+**Krok 2: Analiza charakteru zatrudnienia**
+
+Następnie system sprawdza kolumnę **"GRUPA_STANOWISK"**:
+
+* **Jeżeli pracownik jest zatrudniony na stanowisku badawczym**:
+  - "pracownik badawczo-dydaktyczny"
+  - "pracownik badawczo-techniczny"
+
+  System odnotowuje charakter badawczy zatrudnienia.
+
+* **W pozostałych przypadkach** (np. pracownik techniczny, administracyjny):
+  - System odnotowuje charakter niebadawczy zatrudnienia.
+
+**Krok 3: Przypisanie rodzaju autora - nowe wpisy**
+
+Gdy system tworzy nowy wpis dla pracownika, stosuje następującą kolejność:
+
+1. **Jeżeli pracownik złożył oświadczenie N** → rodzaj autora = **N**
+2. **Jeżeli nie złożył oświadczenia N, ale pracuje na stanowisku badawczym** → rodzaj autora = **B**
+3. **W pozostałych przypadkach** → rodzaj autora = **Z**
+
+**Krok 4: Aktualizacja istniejących wpisów**
+
+Gdy system aktualizuje już istniejącego pracownika:
+
+* **Jeżeli pracownik złożył oświadczenie N**:
+  - Zawsze ustawia rodzaj autora na **N** (nawet jeżeli wcześniej był D, B lub Z)
+  - Nawet doktorant staje się naukowcem w N
+
+* **Jeżeli pracownik nie złożył oświadczenia N**:
+  - **Gdy wcześniej był N** → zmienia na **Z**
+  - **Gdy wcześniej był Z i pracuje badawczo** → zmienia na **B**
+  - **Gdy wcześniej był B i nie pracuje badawczo** → zmienia na **Z**
+  - **Doktorantów (D) pozostawia bez zmian**
+
+**Przykłady w praktyce**
+
+* **Pracownik badawczo-dydaktyczny z oświadczeniem N**:
+  - Oświadczenie N: "tak"
+  - Stanowisko: "pracownik badawczo-dydaktyczny"
+  - **Wynik**: Rodzaj autora = **N** (oświadczenie N ma pierwszeństwo)
+
+* **Pracownik techniczny bez oświadczenia N**:
+  - Oświadczenie N: puste
+  - Stanowisko: "pracownik techniczny"
+  - **Wynik**: Rodzaj autora = **Z**
+
+* **Post-doc bez oświadczenia N**:
+  - Oświadczenie N: puste
+  - Stanowisko: "pracownik badawczo-techniczny"
+  - **Wynik**: Rodzaj autora = **B**
+
+**Co warto wiedzieć?**
+
+* Oświadczenie N ma **najwyższy priorytet** - ważniejsze niż rodzaj zatrudnienia
+* System **ignoruje wielkość liter** przy sprawdzaniu pól
+* Wszystkie zmiany rodzaju autora są **zapisywane w logu**
+* Po zmianie rodzaju autora system **aktualizuje powiązania** z publikacjami
+* **Doktoranci są chronieni** - ich rodzaj autora nigdy nie jest zmieniany
+
 Progi algorytmu
 ---------------
 

@@ -182,11 +182,67 @@ def test_oblicz_srednia_liczbe_n_tylko_pracownicy_n(uczelnia, dyscyplina1):
         dyscyplina_naukowa=dyscyplina1,
         ilosc_udzialow=Decimal("2.0"),
         ilosc_udzialow_monografie=Decimal("1.0"),
+        rodzaj_autora=Autor_Dyscyplina.RODZAJE_AUTORA.N,
     )
 
     IloscUdzialowDlaAutoraZaRok.objects.create(
         rok=2022,
         autor=autor_d,
+        dyscyplina_naukowa=dyscyplina1,
+        ilosc_udzialow=Decimal("2.0"),
+        ilosc_udzialow_monografie=Decimal("1.0"),
+        rodzaj_autora=Autor_Dyscyplina.RODZAJE_AUTORA.D,
+    )
+
+    # Oblicz średnią
+    oblicz_srednia_liczbe_n_dla_dyscyplin(uczelnia, 2022, 2022)
+
+    # Sprawdź wynik - tylko autor N powinien być uwzględniony
+    wynik = LiczbaNDlaUczelni.objects.get(
+        uczelnia=uczelnia, dyscyplina_naukowa=dyscyplina1
+    )
+    # Tylko autor N: 2.0 / 1.0 * 1 = 2.0
+    assert wynik.liczba_n == Decimal("2.0")
+
+
+@pytest.mark.django_db
+def test_oblicz_srednia_liczbe_n_autor_b_nie_liczony(uczelnia, dyscyplina1):
+    """Test że autorzy typu B (badawczy) nie są wliczani do liczby N."""
+    autor_n = baker.make(Autor)
+    autor_b = baker.make(Autor)
+
+    # Autor N (naukowiec) - powinien być uwzględniony
+    Autor_Dyscyplina.objects.create(
+        autor=autor_n,
+        rok=2022,
+        dyscyplina_naukowa=dyscyplina1,
+        wymiar_etatu=Decimal("1.0"),
+        procent_dyscypliny=100,
+        rodzaj_autora=Autor_Dyscyplina.RODZAJE_AUTORA.N,
+    )
+
+    # Autor B (badawczy) - nie powinien być uwzględniony
+    Autor_Dyscyplina.objects.create(
+        autor=autor_b,
+        rok=2022,
+        dyscyplina_naukowa=dyscyplina1,
+        wymiar_etatu=Decimal("1.0"),
+        procent_dyscypliny=100,
+        rodzaj_autora=Autor_Dyscyplina.RODZAJE_AUTORA.B,
+    )
+
+    # Utwórz udziały dla obu
+    IloscUdzialowDlaAutoraZaRok.objects.create(
+        rok=2022,
+        autor=autor_n,
+        dyscyplina_naukowa=dyscyplina1,
+        ilosc_udzialow=Decimal("2.0"),
+        ilosc_udzialow_monografie=Decimal("1.0"),
+    )
+
+    IloscUdzialowDlaAutoraZaRok.objects.create(
+        rok=2022,
+        autor=autor_b,
         dyscyplina_naukowa=dyscyplina1,
         ilosc_udzialow=Decimal("2.0"),
         ilosc_udzialow_monografie=Decimal("1.0"),

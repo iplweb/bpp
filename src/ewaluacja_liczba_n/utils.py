@@ -212,6 +212,7 @@ def oblicz_liczby_n_dla_ewaluacji_2022_2025(uczelnia, rok_min=2022, rok_max=2025
                 ilosc_udzialow=ilosc_udzialow,
                 ilosc_udzialow_monografie=ilosc_udzialow
                 / Decimal("2.0"),  # Domyślnie połowa udziałów
+                rodzaj_autora=ad.rodzaj_autora,
             )
 
     # Oblicz sumę udziałów dla całego okresu ewaluacji
