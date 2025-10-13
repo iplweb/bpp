@@ -61,7 +61,10 @@ def wersje_dyscyplin(
         return
 
     # Jeśli autor ma status "N" lub "D"
-    if autor_dyscyplina.rodzaj_autora in ["N", "D"]:
+    if autor_dyscyplina.rodzaj_autora and autor_dyscyplina.rodzaj_autora.skrot in [
+        "N",
+        "D",
+    ]:
         # 1. Zwróć rekord z oryginalną dyscypliną (przypieta=True)
         rekord_z_dyscyplina = deepcopy(wzca)
         rekord_z_dyscyplina.przypieta = True
@@ -189,9 +192,13 @@ def wszystkie_wersje_pracy(rekord: Wydawnictwo_Zwarte | Wydawnictwo_Ciagle):
                     pkdaut=cpa.pkdaut,
                     slot=cpa.slot,
                     avg_pkdaut_per_slot=cpa.pkdaut / cpa.slot,
-                    rodzaj_autora=Autor_Dyscyplina.objects.get(
-                        autor_id=cpa.autor_id, rok=rekord.rok
-                    ).rodzaj_autora,
+                    rodzaj_autora=(
+                        lambda ad: ad.rodzaj_autora.skrot if ad.rodzaj_autora else None
+                    )(
+                        Autor_Dyscyplina.objects.get(
+                            autor_id=cpa.autor_id, rok=rekord.rok
+                        )
+                    ),
                 )
                 res.append(s)
             transaction.set_rollback(True)

@@ -25,7 +25,7 @@ def get_rodzaj_autora(skrot):
 
 
 @pytest.mark.django_db
-def test_oblicz_metryki_command_basic():
+def test_oblicz_metryki_command_basic(rodzaj_autora_n):
     """Test podstawowego działania komendy oblicz_metryki"""
 
     # Stwórz dane testowe
@@ -50,14 +50,11 @@ def test_oblicz_metryki_command_basic():
     )
 
     # Stwórz Autor_Dyscyplina z rodzajem 'N'
-    from ewaluacja_common.models import Rodzaj_Autora
-
-    rodzaj_n = Rodzaj_Autora.objects.get(skrot="N")
     baker.make(
         Autor_Dyscyplina,
         autor=autor,
         dyscyplina_naukowa=dyscyplina,
-        rodzaj_autora=rodzaj_n,
+        rodzaj_autora=rodzaj_autora_n,
         rok=2024,
     )
 
@@ -97,7 +94,7 @@ def test_oblicz_metryki_command_basic():
 
 
 @pytest.mark.django_db
-def test_oblicz_metryki_command_filters():
+def test_oblicz_metryki_command_filters(rodzaj_autora_n):
     """Test filtrowania po autorze, dyscyplinie i jednostce"""
 
     # Stwórz jednostki najpierw
@@ -146,14 +143,14 @@ def test_oblicz_metryki_command_filters():
         Autor_Dyscyplina,
         autor=autor1,
         dyscyplina_naukowa=dyscyplina1,
-        rodzaj_autora=get_rodzaj_autora("N"),
+        rodzaj_autora=rodzaj_autora_n,
         rok=2024,
     )
     baker.make(
         Autor_Dyscyplina,
         autor=autor2,
         dyscyplina_naukowa=dyscyplina2,
-        rodzaj_autora=get_rodzaj_autora("N"),
+        rodzaj_autora=rodzaj_autora_n,
         rok=2024,
     )
 
@@ -181,7 +178,7 @@ def test_oblicz_metryki_command_filters():
 
 
 @pytest.mark.django_db
-def test_oblicz_metryki_command_error_handling():
+def test_oblicz_metryki_command_error_handling(rodzaj_autora_n):
     """Test obsługi błędów w komendzie"""
 
     autor = baker.make(Autor, nazwisko="Błędny")
@@ -200,7 +197,7 @@ def test_oblicz_metryki_command_error_handling():
         Autor_Dyscyplina,
         autor=autor,
         dyscyplina_naukowa=dyscyplina,
-        rodzaj_autora=get_rodzaj_autora("N"),
+        rodzaj_autora=rodzaj_autora_n,
         rok=2024,
     )
 
@@ -223,7 +220,7 @@ def test_oblicz_metryki_command_error_handling():
 
 
 @pytest.mark.django_db
-def test_oblicz_metryki_command_parameters():
+def test_oblicz_metryki_command_parameters(rodzaj_autora_n):
     """Test parametrów rok_min, rok_max i minimalny_pk"""
 
     autor = baker.make(Autor)
@@ -242,7 +239,7 @@ def test_oblicz_metryki_command_parameters():
         Autor_Dyscyplina,
         autor=autor,
         dyscyplina_naukowa=dyscyplina,
-        rodzaj_autora=get_rodzaj_autora("N"),
+        rodzaj_autora=rodzaj_autora_n,
         rok=2024,
     )
 
@@ -276,7 +273,9 @@ def test_oblicz_metryki_command_parameters():
 
 
 @pytest.mark.django_db
-def test_oblicz_metryki_command_rodzaj_autora_filter():
+def test_oblicz_metryki_command_rodzaj_autora_filter(
+    rodzaj_autora_n, rodzaj_autora_b, rodzaj_autora_d, rodzaj_autora_z
+):
     """Test filtrowania po rodzaju autora"""
 
     # Stwórz trzech autorów z różnymi rodzajami

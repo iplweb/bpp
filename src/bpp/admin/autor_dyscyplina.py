@@ -25,7 +25,9 @@ class Autor_DyscyplinaResource(resources.ModelResource):
     rodzaj_autora = Field()
 
     def dehydrate_rodzaj_autora(self, ad):
-        return ad.rodzaj_autora.skrot
+        if ad.rodzaj_autora_id is not None:
+            return ad.rodzaj_autora.skrot
+        return ""
 
     def dehydrate_autor__pbn_uid_id(self, ad):
         if ad.autor.pbn_uid_id:

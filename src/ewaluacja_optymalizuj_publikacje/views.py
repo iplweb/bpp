@@ -53,7 +53,7 @@ class OptymalizujPublikacjeView(LoginRequiredMixin, View):
                 autor_dyscyplina = Autor_Dyscyplina.objects.get(
                     autor=autor, rok=publikacja.original.rok
                 )
-                if autor_dyscyplina.rodzaj_autora != "N":
+                if not autor_dyscyplina.rodzaj_autora.licz_sloty:
                     continue
 
                 dyscyplina = autor_assignment.dyscyplina_naukowa

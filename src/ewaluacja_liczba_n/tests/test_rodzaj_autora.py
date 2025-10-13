@@ -110,7 +110,7 @@ def test_oblicz_sumy_udzialow_za_calosc_wiele_rodzajow_autora(
     # Sprawdź czy komentarz zawiera informacje o różnych rodzajach autora
     assert "Lata z danymi: 2022, 2023, 2024" in wynik.komentarz
     assert (
-        "rodzaj autora: 2022 - pracownik naukowy, 2023 - doktorant, 2024 - pracownik naukowy"
+        "rodzaj autora: 2022 - pracownik naukowy w liczbie N, 2023 - doktorant, 2024 - pracownik naukowy w liczbie N"
         in wynik.komentarz
     )
 

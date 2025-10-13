@@ -835,7 +835,7 @@ class ExportStatystykiXLSX(View):
 
         from django.http import HttpResponse
         from openpyxl import Workbook
-        from openpyxl.styles import Alignment, Font, PatternFill
+        from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
         from openpyxl.utils import get_column_letter
 
         # Create workbook
@@ -848,6 +848,14 @@ class ExportStatystykiXLSX(View):
             start_color="366092", end_color="366092", fill_type="solid"
         )
         header_alignment = Alignment(horizontal="center", vertical="center")
+
+        # Define border styles
+        thin_border = Border(
+            left=Side(style="thin"),
+            right=Side(style="thin"),
+            top=Side(style="thin"),
+            bottom=Side(style="thin"),
+        )
 
         if table_type == "globalne":
             ws.title = "Statystyki globalne"
@@ -910,8 +918,11 @@ class ExportStatystykiXLSX(View):
                 cell.font = header_font
                 cell.fill = header_fill
                 cell.alignment = header_alignment
+                cell.border = thin_border
 
+            last_data_row = 1
             for row_idx, metryka in enumerate(queryset, 2):
+                last_data_row = row_idx
                 ws.cell(row=row_idx, column=1, value=row_idx - 1)
                 ws.cell(row=row_idx, column=2, value=str(metryka.autor))
                 ws.cell(
@@ -944,6 +955,13 @@ class ExportStatystykiXLSX(View):
                     column=10,
                     value=float(metryka.srednia_za_slot_nazbierana),
                 )
+
+            # Add AutoFilter and freeze panes for this table
+            if last_data_row > 1:
+                last_col_letter = get_column_letter(len(headers))
+                filter_range = f"A1:{last_col_letter}{last_data_row}"
+                ws.auto_filter.ref = filter_range
+            ws.freeze_panes = ws["A2"]
 
         elif table_type == "top-sloty":
             ws.title = "Top 20 autorów sloty wypełnione"
@@ -1383,22 +1401,61 @@ class ExportListaXLSX(View):
         from django.db.models import Count, OuterRef, Subquery
         from django.http import HttpResponse
         from openpyxl import Workbook
-        from openpyxl.styles import Alignment, Font, PatternFill
+        from openpyxl.styles import (
+            Alignment,
+            Border,
+            Font,
+            NamedStyle,
+            PatternFill,
+            Side,
+        )
         from openpyxl.utils import get_column_letter
-
-        from bpp.models import Autor_Dyscyplina
 
         # Create workbook
         wb = Workbook()
         ws = wb.active
         ws.title = "Metryki ewaluacyjne"
 
-        # Define header style
+        # Define styles
         header_font = Font(bold=True, color="FFFFFF")
         header_fill = PatternFill(
             start_color="366092", end_color="366092", fill_type="solid"
         )
-        header_alignment = Alignment(horizontal="center", vertical="center")
+        header_alignment = Alignment(
+            horizontal="center", vertical="center", wrap_text=True
+        )
+
+        # Define border styles
+        thin_border = Border(
+            left=Side(style="thin"),
+            right=Side(style="thin"),
+            top=Side(style="thin"),
+            bottom=Side(style="thin"),
+        )
+
+        # Define alternating row colors
+        even_row_fill = PatternFill(
+            start_color="F2F2F2", end_color="F2F2F2", fill_type="solid"
+        )
+
+        # Create named styles for different number formats
+        try:
+            percent_style = NamedStyle(name="percent_style")
+            percent_style.number_format = "0.00%"
+            percent_style.alignment = Alignment(horizontal="right")
+            wb.add_named_style(percent_style)
+        except ValueError:
+            # Style already exists
+            percent_style = "percent_style"
+
+        try:
+            decimal_style = NamedStyle(name="decimal_style")
+            decimal_style.number_format = "0.00"
+            decimal_style.alignment = Alignment(horizontal="right")
+            wb.add_named_style(decimal_style)
+        except ValueError:
+            # Style already exists
+            decimal_style = "decimal_style"
 
         # Apply the same filters as in the list view
         # Subquery to count disciplines for each author
@@ -1409,21 +1466,10 @@ class ExportListaXLSX(View):
             .values("count")
         )
 
-        # Subquery to get rodzaj_autora from Autor_Dyscyplina for the latest year
-        rodzaj_autora_subquery = (
-            Autor_Dyscyplina.objects.filter(
-                autor=OuterRef("autor"),
-                dyscyplina_naukowa=OuterRef("dyscyplina_naukowa"),
-            )
-            .order_by("-rok")
-            .values("rodzaj_autora")[:1]
-        )
-
         queryset = MetrykaAutora.objects.select_related(
             "autor", "dyscyplina_naukowa", "jednostka", "jednostka__wydzial"
         ).annotate(
             autor_discipline_count=Subquery(discipline_count),
-            rodzaj_autora=Subquery(rodzaj_autora_subquery),
         )
 
         # Apply filters from request
@@ -1518,17 +1564,30 @@ class ExportListaXLSX(View):
             cell.font = header_font
             cell.fill = header_fill
             cell.alignment = header_alignment
+            cell.border = thin_border
 
         # Write data
+        data_start_row = 2  # noqa
+        last_data_row = 1
         for row_idx, metryka in enumerate(queryset, 2):
+            last_data_row = row_idx
             col = 1
 
+            # Apply alternating row colors
+            row_fill = even_row_fill if row_idx % 2 == 0 else None
+
             # Lp.
-            ws.cell(row=row_idx, column=col, value=row_idx - 1)
+            cell = ws.cell(row=row_idx, column=col, value=row_idx - 1)
+            cell.border = thin_border
+            if row_fill:
+                cell.fill = row_fill
             col += 1
 
             # Autor
-            ws.cell(row=row_idx, column=col, value=str(metryka.autor))
+            cell = ws.cell(row=row_idx, column=col, value=str(metryka.autor))
+            cell.border = thin_border
+            if row_fill:
+                cell.fill = row_fill
             col += 1
 
             # Rodzaj autora
@@ -1541,26 +1600,40 @@ class ExportListaXLSX(View):
                     rodzaj_display = rodzaj.nazwa
                 except Rodzaj_Autora.DoesNotExist:
                     rodzaj_display = metryka.rodzaj_autora
-            ws.cell(row=row_idx, column=col, value=rodzaj_display)
+            cell = ws.cell(row=row_idx, column=col, value=rodzaj_display)
+            cell.border = thin_border
+            if row_fill:
+                cell.fill = row_fill
             col += 1
 
             # ID systemu kadrowego
-            ws.cell(
+            cell = ws.cell(
                 row=row_idx, column=col, value=metryka.autor.system_kadrowy_id or ""
             )
+            cell.border = thin_border
+            if row_fill:
+                cell.fill = row_fill
             col += 1
 
             # ORCID
-            ws.cell(row=row_idx, column=col, value=metryka.autor.orcid or "")
+            cell = ws.cell(row=row_idx, column=col, value=metryka.autor.orcid or "")
+            cell.border = thin_border
+            if row_fill:
+                cell.fill = row_fill
             col += 1
 
             # PBN UID ID
-            ws.cell(row=row_idx, column=col, value=metryka.autor.pbn_uid_id or "")
+            cell = ws.cell(
+                row=row_idx, column=col, value=metryka.autor.pbn_uid_id or ""
+            )
+            cell.border = thin_border
+            if row_fill:
+                cell.fill = row_fill
             col += 1
 
             # Dyscyplina (if shown)
             if not tylko_jedna_dyscyplina:
-                ws.cell(
+                cell = ws.cell(
                     row=row_idx,
                     column=col,
                     value=(
@@ -1569,6 +1642,9 @@ class ExportListaXLSX(View):
                         else "-"
                     ),
                 )
+                cell.border = thin_border
+                if row_fill:
+                    cell.fill = row_fill
                 col += 1
 
             # Wydział (if shown)
@@ -1576,60 +1652,143 @@ class ExportListaXLSX(View):
                 wydzial_nazwa = "-"
                 if metryka.jednostka and metryka.jednostka.wydzial:
                     wydzial_nazwa = metryka.jednostka.wydzial.nazwa
-                ws.cell(row=row_idx, column=col, value=wydzial_nazwa)
+                cell = ws.cell(row=row_idx, column=col, value=wydzial_nazwa)
+                cell.border = thin_border
+                if row_fill:
+                    cell.fill = row_fill
                 col += 1
 
             # Jednostka
-            ws.cell(
+            cell = ws.cell(
                 row=row_idx,
                 column=col,
                 value=metryka.jednostka.nazwa if metryka.jednostka else "-",
             )
+            cell.border = thin_border
+            if row_fill:
+                cell.fill = row_fill
             col += 1
 
-            # Numeric values
-            ws.cell(row=row_idx, column=col, value=float(metryka.slot_maksymalny))
+            # Numeric values with proper formatting
+            # Slot maksymalny
+            cell = ws.cell(
+                row=row_idx, column=col, value=float(metryka.slot_maksymalny)
+            )
+            cell.border = thin_border
+            cell.style = decimal_style
+            if row_fill:
+                cell.fill = row_fill
             col += 1
 
-            ws.cell(row=row_idx, column=col, value=float(metryka.slot_nazbierany))
+            # Slot nazbierany
+            cell = ws.cell(
+                row=row_idx, column=col, value=float(metryka.slot_nazbierany)
+            )
+            cell.border = thin_border
+            cell.style = decimal_style
+            if row_fill:
+                cell.fill = row_fill
             col += 1
 
-            ws.cell(row=row_idx, column=col, value=float(metryka.slot_niewykorzystany))
+            # Slot niewykorzystany
+            cell = ws.cell(
+                row=row_idx, column=col, value=float(metryka.slot_niewykorzystany)
+            )
+            cell.border = thin_border
+            cell.style = decimal_style
+            if row_fill:
+                cell.fill = row_fill
             col += 1
 
-            ws.cell(
+            # % wykorzystania (as percentage)
+            cell = ws.cell(
                 row=row_idx,
                 column=col,
-                value=float(metryka.procent_wykorzystania_slotow),
+                value=float(metryka.procent_wykorzystania_slotow)
+                / 100,  # Convert to decimal for percentage format
             )
+            cell.border = thin_border
+            cell.style = percent_style
+            if row_fill:
+                cell.fill = row_fill
             col += 1
 
-            ws.cell(row=row_idx, column=col, value=float(metryka.punkty_nazbierane))
+            # PKDaut nazbierane
+            cell = ws.cell(
+                row=row_idx, column=col, value=float(metryka.punkty_nazbierane)
+            )
+            cell.border = thin_border
+            cell.style = decimal_style
+            if row_fill:
+                cell.fill = row_fill
             col += 1
 
-            ws.cell(row=row_idx, column=col, value=float(metryka.punkty_wszystkie))
+            # PKDaut wszystkie
+            cell = ws.cell(
+                row=row_idx, column=col, value=float(metryka.punkty_wszystkie)
+            )
+            cell.border = thin_border
+            cell.style = decimal_style
+            if row_fill:
+                cell.fill = row_fill
             col += 1
 
-            ws.cell(
+            # Średnia PKDaut/slot (nazbierane)
+            cell = ws.cell(
                 row=row_idx, column=col, value=float(metryka.srednia_za_slot_nazbierana)
             )
+            cell.border = thin_border
+            cell.style = decimal_style
+            if row_fill:
+                cell.fill = row_fill
             col += 1
 
-            ws.cell(
+            # Średnia PKDaut/slot (wszystkie)
+            cell = ws.cell(
                 row=row_idx, column=col, value=float(metryka.srednia_za_slot_wszystkie)
             )
+            cell.border = thin_border
+            cell.style = decimal_style
+            if row_fill:
+                cell.fill = row_fill
             col += 1
 
-            ws.cell(row=row_idx, column=col, value=len(metryka.prace_nazbierane))
+            # Liczba prac (nazbierane)
+            cell = ws.cell(row=row_idx, column=col, value=len(metryka.prace_nazbierane))
+            cell.border = thin_border
+            if row_fill:
+                cell.fill = row_fill
             col += 1
 
-            ws.cell(row=row_idx, column=col, value=metryka.liczba_prac_wszystkie)
+            # Liczba prac (wszystkie)
+            cell = ws.cell(row=row_idx, column=col, value=metryka.liczba_prac_wszystkie)
+            cell.border = thin_border
+            if row_fill:
+                cell.fill = row_fill
             col += 1
 
-            ws.cell(row=row_idx, column=col, value=metryka.rok_min)
+            # Rok min
+            cell = ws.cell(row=row_idx, column=col, value=metryka.rok_min)
+            cell.border = thin_border
+            if row_fill:
+                cell.fill = row_fill
             col += 1
 
-            ws.cell(row=row_idx, column=col, value=metryka.rok_max)
+            # Rok max
+            cell = ws.cell(row=row_idx, column=col, value=metryka.rok_max)
+            cell.border = thin_border
+            if row_fill:
+                cell.fill = row_fill
+
+        # Add AutoFilter for sorting and filtering
+        if last_data_row > 1:
+            # Calculate the last column letter based on number of headers
+            last_col_letter = get_column_letter(len(headers))
+            filter_range = f"A1:{last_col_letter}{last_data_row}"
+            ws.auto_filter.ref = filter_range
+
+        # Freeze the header row (freeze panes at A2 to keep row 1 visible)
+        ws.freeze_panes = ws["A2"]
 
         # Auto-adjust column widths
         for column in ws.columns:
@@ -1645,7 +1804,7 @@ class ExportListaXLSX(View):
             ws.column_dimensions[column_letter].width = adjusted_width
 
         # Add summary at the bottom
-        summary_row = row_idx + 2 if "row_idx" in locals() else 3
+        summary_row = last_data_row + 2 if last_data_row > 1 else 3
         ws.cell(row=summary_row, column=1, value="Podsumowanie:")
         ws.cell(row=summary_row + 1, column=1, value="Liczba wierszy:")
         ws.cell(row=summary_row + 1, column=2, value=queryset.count())

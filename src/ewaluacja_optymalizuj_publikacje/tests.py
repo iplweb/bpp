@@ -18,7 +18,9 @@ from bpp.models import (
 
 
 @pytest.mark.django_db
-def test_optymalizuj_publikacje_view_without_metryka_autora(admin_client, denorms):
+def test_optymalizuj_publikacje_view_without_metryka_autora(
+    admin_client, denorms, rodzaj_autora_n
+):
     """Test that the view handles missing MetrykaAutora gracefully"""
     # Create necessary objects
     jednostka = baker.make(Jednostka, skupia_pracownikow=True)
@@ -31,7 +33,7 @@ def test_optymalizuj_publikacje_view_without_metryka_autora(admin_client, denorm
         autor=autor,
         dyscyplina_naukowa=dyscyplina,
         rok=2023,
-        rodzaj_autora="N",  # Normal author, not external
+        rodzaj_autora=rodzaj_autora_n,
     )
 
     # Create publication
@@ -104,7 +106,9 @@ def test_optymalizuj_publikacje_view_without_metryka_autora(admin_client, denorm
 
 
 @pytest.mark.django_db
-def test_optymalizuj_publikacje_view_with_metryka_autora(admin_client, denorms):
+def test_optymalizuj_publikacje_view_with_metryka_autora(
+    admin_client, denorms, rodzaj_autora_n
+):
     """Test that the view works correctly when MetrykaAutora exists"""
     # Create necessary objects
     jednostka = baker.make(Jednostka, skupia_pracownikow=True)
@@ -117,7 +121,7 @@ def test_optymalizuj_publikacje_view_with_metryka_autora(admin_client, denorms):
         autor=autor,
         dyscyplina_naukowa=dyscyplina,
         rok=2023,
-        rodzaj_autora="N",
+        rodzaj_autora=rodzaj_autora_n,
     )
 
     # Create MetrykaAutora
@@ -196,7 +200,9 @@ def test_optymalizuj_publikacje_view_with_metryka_autora(admin_client, denorms):
 
 
 @pytest.mark.django_db
-def test_optymalizuj_publikacje_htmx_request_without_metryka(admin_client, denorms):
+def test_optymalizuj_publikacje_htmx_request_without_metryka(
+    admin_client, denorms, rodzaj_autora_n
+):
     """Test HTMX request handling when MetrykaAutora doesn't exist"""
     # Create minimal test data
     jednostka = baker.make(Jednostka, skupia_pracownikow=True)
@@ -208,7 +214,7 @@ def test_optymalizuj_publikacje_htmx_request_without_metryka(admin_client, denor
         autor=autor,
         dyscyplina_naukowa=dyscyplina,
         rok=2023,
-        rodzaj_autora="N",
+        rodzaj_autora=rodzaj_autora_n,
     )
 
     wydawnictwo = baker.make(Wydawnictwo_Ciagle, rok=2023)
@@ -252,7 +258,9 @@ def test_optymalizuj_publikacje_htmx_request_without_metryka(admin_client, denor
 
 
 @pytest.mark.django_db
-def test_optymalizuj_publikacje_multiple_authors_mixed_metryka(admin_client, denorms):
+def test_optymalizuj_publikacje_multiple_authors_mixed_metryka(
+    admin_client, denorms, rodzaj_autora_n
+):
     """Test view with multiple authors where some have MetrykaAutora and some don't"""
     jednostka = baker.make(Jednostka, skupia_pracownikow=True)
     autor1 = baker.make(Autor, nazwisko="Autor", imiona="Pierwszy")
@@ -266,7 +274,7 @@ def test_optymalizuj_publikacje_multiple_authors_mixed_metryka(admin_client, den
             autor=autor,
             dyscyplina_naukowa=dyscyplina,
             rok=2023,
-            rodzaj_autora="N",
+            rodzaj_autora=rodzaj_autora_n,
         )
 
     # Create MetrykaAutora only for autor1
@@ -338,7 +346,9 @@ def test_optymalizuj_publikacje_multiple_authors_mixed_metryka(admin_client, den
 
 
 @pytest.mark.django_db
-def test_unpin_discipline_updates_all_authors_metrics(admin_client, denorms):
+def test_unpin_discipline_updates_all_authors_metrics(
+    admin_client, denorms, rodzaj_autora_n
+):
     """Test that unpinning a discipline recalculates metrics for ALL authors of the publication"""
     jednostka = baker.make(Jednostka, skupia_pracownikow=True)
     autor1 = baker.make(Autor, nazwisko="Pierwszy", imiona="Autor")
@@ -353,7 +363,7 @@ def test_unpin_discipline_updates_all_authors_metrics(admin_client, denorms):
             autor=autor,
             dyscyplina_naukowa=dyscyplina,
             rok=2023,
-            rodzaj_autora="N",
+            rodzaj_autora=rodzaj_autora_n,
         )
 
     # Create publication with 100 points
@@ -465,7 +475,9 @@ def test_unpin_discipline_updates_all_authors_metrics(admin_client, denorms):
 
 
 @pytest.mark.django_db
-def test_pin_discipline_updates_all_authors_metrics(admin_client, denorms):
+def test_pin_discipline_updates_all_authors_metrics(
+    admin_client, denorms, rodzaj_autora_n
+):
     """Test that pinning a discipline recalculates metrics for ALL authors of the publication"""
     jednostka = baker.make(Jednostka, skupia_pracownikow=True)
     autor1 = baker.make(Autor, nazwisko="Pierwszy", imiona="Autor")
@@ -479,7 +491,7 @@ def test_pin_discipline_updates_all_authors_metrics(admin_client, denorms):
             autor=autor,
             dyscyplina_naukowa=dyscyplina,
             rok=2023,
-            rodzaj_autora="N",
+            rodzaj_autora=rodzaj_autora_n,
         )
 
     # Create publication with 100 points
@@ -590,7 +602,9 @@ def test_pin_discipline_updates_all_authors_metrics(admin_client, denorms):
 
 
 @pytest.mark.django_db
-def test_wybrana_do_ewaluacji_badge_shows_correctly(admin_client, denorms):
+def test_wybrana_do_ewaluacji_badge_shows_correctly(
+    admin_client, denorms, rodzaj_autora_n
+):
     """Test that 'wybrana do ewaluacji' badge only shows for publications actually selected by knapsack algorithm"""
     jednostka = baker.make(Jednostka, skupia_pracownikow=True)
     autor = baker.make(Autor, nazwisko="TestAutor", imiona="Jan")
@@ -602,7 +616,7 @@ def test_wybrana_do_ewaluacji_badge_shows_correctly(admin_client, denorms):
         autor=autor,
         dyscyplina_naukowa=dyscyplina,
         rok=2023,
-        rodzaj_autora="N",
+        rodzaj_autora=rodzaj_autora_n,
     )
 
     # Create multiple publications with different point values
@@ -709,7 +723,7 @@ def test_wybrana_do_ewaluacji_badge_shows_correctly(admin_client, denorms):
 
 
 @pytest.mark.django_db
-def test_wybrana_do_ewaluacji_no_metryka(admin_client, denorms):
+def test_wybrana_do_ewaluacji_no_metryka(admin_client, denorms, rodzaj_autora_n):
     """Test that publications show as not selected when no MetrykaAutora exists"""
     jednostka = baker.make(Jednostka, skupia_pracownikow=True)
     autor = baker.make(Autor, nazwisko="NoMetryka", imiona="Test")
@@ -720,7 +734,7 @@ def test_wybrana_do_ewaluacji_no_metryka(admin_client, denorms):
         autor=autor,
         dyscyplina_naukowa=dyscyplina,
         rok=2023,
-        rodzaj_autora="N",
+        rodzaj_autora=rodzaj_autora_n,
     )
 
     pub = baker.make(

@@ -22,12 +22,16 @@ def fikstura_raportu_slotow(
     jednostka,
     dyscyplina1,
     wydawnictwo_zwarte: Wydawnictwo_Zwarte,
+    rodzaj_autora_n,
     charaktery_formalne,
     typy_odpowiedzialnosci,
 ):
     # Nowak ma przypisanie na dany rok i ma prace
     Autor_Dyscyplina.objects.create(
-        autor=autor_jan_nowak, rok=2020, dyscyplina_naukowa=dyscyplina1
+        autor=autor_jan_nowak,
+        rok=2020,
+        dyscyplina_naukowa=dyscyplina1,
+        rodzaj_autora=rodzaj_autora_n,
     )
 
     wydawca = Wydawca.objects.create(nazwa="Wydawca")
@@ -67,9 +71,9 @@ def test_raport_slotow_zerowy_get_querylist_zerowy(fikstura_raportu_slotow):
     rszw.form.cleaned_data["od_roku"] = 2020
     rszw.form.cleaned_data["do_roku"] = 2021
     rszw.form.cleaned_data["min_pk"] = 0
-    rszw.form.cleaned_data[
-        "rodzaj_raportu"
-    ] = RaportSlotowZerowyParametryFormularz.RodzajeRaportu.SUMA_LAT
+    rszw.form.cleaned_data["rodzaj_raportu"] = (
+        RaportSlotowZerowyParametryFormularz.RodzajeRaportu.SUMA_LAT
+    )
 
     res = rszw.get_queryset()
     res = res.values_list("autor_id", flat=True)

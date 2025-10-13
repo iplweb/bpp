@@ -1,5 +1,7 @@
 import pytest
 
+from ewaluacja_common.models import Rodzaj_Autora
+
 from bpp import const
 from bpp.models import (
     Autor_Dyscyplina,
@@ -18,16 +20,23 @@ def zwarte_z_dyscyplinami(
     jednostka,
     dyscyplina1,
     dyscyplina2,
+    rodzaj_autora_n,
     charaktery_formalne,
     wydawca,
     typy_odpowiedzialnosci,
     rok,
 ) -> Wydawnictwo_Zwarte:
     Autor_Dyscyplina.objects.create(
-        autor=autor_jan_nowak, dyscyplina_naukowa=dyscyplina1, rok=rok
+        autor=autor_jan_nowak,
+        dyscyplina_naukowa=dyscyplina1,
+        rok=rok,
+        rodzaj_autora=rodzaj_autora_n,
     )
     Autor_Dyscyplina.objects.create(
-        autor=autor_jan_kowalski, dyscyplina_naukowa=dyscyplina2, rok=rok
+        autor=autor_jan_kowalski,
+        dyscyplina_naukowa=dyscyplina2,
+        rok=rok,
+        rodzaj_autora=rodzaj_autora_n,
     )
     wydawnictwo_zwarte.dodaj_autora(
         autor_jan_nowak, jednostka, dyscyplina_naukowa=dyscyplina1
@@ -93,15 +102,22 @@ def zwarte_z_dyscyplinami_hst_oraz_nie_hst(
     dyscyplina1_hst,
     dyscyplina2,
     charaktery_formalne,
+    rodzaj_autora_n,
     wydawca,
     typy_odpowiedzialnosci,
     rok,
 ) -> Wydawnictwo_Zwarte:
     Autor_Dyscyplina.objects.create(
-        autor=autor_jan_nowak, dyscyplina_naukowa=dyscyplina1_hst, rok=rok
+        autor=autor_jan_nowak,
+        dyscyplina_naukowa=dyscyplina1_hst,
+        rok=rok,
+        rodzaj_autora=rodzaj_autora_n,
     )
     Autor_Dyscyplina.objects.create(
-        autor=autor_jan_kowalski, dyscyplina_naukowa=dyscyplina2, rok=rok
+        autor=autor_jan_kowalski,
+        dyscyplina_naukowa=dyscyplina2,
+        rok=rok,
+        rodzaj_autora=rodzaj_autora_n,
     )
     wydawnictwo_zwarte.dodaj_autora(
         autor_jan_nowak, jednostka, dyscyplina_naukowa=dyscyplina1_hst
@@ -122,6 +138,14 @@ def zwarte_z_dyscyplinami_hst_oraz_nie_hst(
 
 @pytest.fixture
 @pytest.mark.django_db
+def rodzaj_autora_n():
+    return Rodzaj_Autora.objects.get_or_create(
+        skrot="N", defaults={"licz_sloty": True, "sort": 1}
+    )[0]
+
+
+@pytest.fixture
+@pytest.mark.django_db
 def ciagle_z_dyscyplinami(
     wydawnictwo_ciagle,
     autor_jan_nowak,
@@ -129,15 +153,22 @@ def ciagle_z_dyscyplinami(
     jednostka,
     dyscyplina1,
     dyscyplina2,
+    rodzaj_autora_n,
     typy_odpowiedzialnosci,
     rok,
 ) -> Wydawnictwo_Ciagle:
     # Przypisz autorów do dyscyplin na ten rok albo będzie awaria:
     Autor_Dyscyplina.objects.create(
-        autor=autor_jan_nowak, dyscyplina_naukowa=dyscyplina1, rok=rok
+        autor=autor_jan_nowak,
+        dyscyplina_naukowa=dyscyplina1,
+        rok=rok,
+        rodzaj_autora=rodzaj_autora_n,
     )
     Autor_Dyscyplina.objects.create(
-        autor=autor_jan_kowalski, dyscyplina_naukowa=dyscyplina2, rok=rok
+        autor=autor_jan_kowalski,
+        dyscyplina_naukowa=dyscyplina2,
+        rok=rok,
+        rodzaj_autora=rodzaj_autora_n,
     )
 
     wydawnictwo_ciagle.dodaj_autora(

@@ -65,7 +65,10 @@ def rodzaj_autora_n(db):
     obj, _ = Rodzaj_Autora.objects.get_or_create(
         skrot="N",
         defaults=dict(
-            nazwa="pracownik naukowy w liczbie N", jest_w_n=True, licz_sloty=True
+            nazwa="pracownik naukowy w liczbie N",
+            jest_w_n=True,
+            licz_sloty=True,
+            sort=1,
         ),
     )
     return obj
@@ -77,7 +80,8 @@ def rodzaj_autora_d(db):
     from ewaluacja_common.models import Rodzaj_Autora
 
     obj, _ = Rodzaj_Autora.objects.get_or_create(
-        skrot="D", defaults=dict(nazwa="doktorant", jest_w_n=False, licz_sloty=True)
+        skrot="D",
+        defaults=dict(nazwa="doktorant", jest_w_n=False, licz_sloty=True, sort=3),
     )
     return obj
 
@@ -90,7 +94,7 @@ def rodzaj_autora_b(db):
     obj, _ = Rodzaj_Autora.objects.get_or_create(
         skrot="B",
         defaults=dict(
-            nazwa="pracownik badawczy spoza N", jest_w_n=False, licz_sloty=True
+            nazwa="pracownik badawczy spoza N", jest_w_n=False, licz_sloty=True, sort=2
         ),
     )
     return obj
@@ -104,7 +108,10 @@ def rodzaj_autora_z(db):
     obj, _ = Rodzaj_Autora.objects.get_or_create(
         skrot="Z",
         defaults=dict(
-            nazwa="inny zatrudniony, nie naukowy", jest_w_n=False, licz_sloty=False
+            nazwa="inny zatrudniony, nie naukowy",
+            jest_w_n=False,
+            licz_sloty=False,
+            sort=4,
         ),
     )
     return obj
