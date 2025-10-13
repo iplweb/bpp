@@ -18,12 +18,13 @@ def test_oblicz_liczby_n_dla_ewaluacji_2022_2025_prosty(
     autor_jan_nowak,
     dyscyplina1,
     zaokraglaj,
+    rodzaj_autora_n,
 ):
     ad_kwargs = dict(
         dyscyplina_naukowa=dyscyplina1,
         wymiar_etatu=1,
         procent_dyscypliny=100,
-        rodzaj_autora=Autor_Dyscyplina.RODZAJE_AUTORA.N,
+        rodzaj_autora=rodzaj_autora_n,
         rok=2022,
     )
     # Musimy utworzyc tu 12 autorow * 5 aby sprawic, ze dyscyplina1 bedzie
@@ -52,7 +53,9 @@ def test_oblicz_liczby_n_dla_ewaluacji_2022_2025_prosty(
 
 
 @pytest.mark.django_db
-def test_oblicz_srednia_liczbe_n_dla_dyscyplin_podstawowy(uczelnia, dyscyplina1):
+def test_oblicz_srednia_liczbe_n_dla_dyscyplin_podstawowy(
+    uczelnia, dyscyplina1, rodzaj_autora_n
+):
     """Test podstawowej funkcjonalności obliczania średniej liczby N."""
     # Utwórz autorów z różnymi wymiarami etatu
     autor1 = baker.make(Autor)
@@ -65,7 +68,7 @@ def test_oblicz_srednia_liczbe_n_dla_dyscyplin_podstawowy(uczelnia, dyscyplina1)
         dyscyplina_naukowa=dyscyplina1,
         wymiar_etatu=Decimal("1.0"),
         procent_dyscypliny=100,
-        rodzaj_autora=Autor_Dyscyplina.RODZAJE_AUTORA.N,
+        rodzaj_autora=rodzaj_autora_n,
     )
 
     # Autor 2: pół etatu
@@ -75,7 +78,7 @@ def test_oblicz_srednia_liczbe_n_dla_dyscyplin_podstawowy(uczelnia, dyscyplina1)
         dyscyplina_naukowa=dyscyplina1,
         wymiar_etatu=Decimal("0.5"),
         procent_dyscypliny=100,
-        rodzaj_autora=Autor_Dyscyplina.RODZAJE_AUTORA.N,
+        rodzaj_autora=rodzaj_autora_n,
     )
 
     # Utwórz udziały
@@ -111,7 +114,9 @@ def test_oblicz_srednia_liczbe_n_dla_dyscyplin_podstawowy(uczelnia, dyscyplina1)
 
 
 @pytest.mark.django_db
-def test_oblicz_srednia_liczbe_n_dla_dyscyplin_wieloletni(uczelnia, dyscyplina1):
+def test_oblicz_srednia_liczbe_n_dla_dyscyplin_wieloletni(
+    uczelnia, dyscyplina1, rodzaj_autora_n
+):
     """Test obliczania średniej dla wielu lat."""
     autor = baker.make(Autor)
 
@@ -123,7 +128,7 @@ def test_oblicz_srednia_liczbe_n_dla_dyscyplin_wieloletni(uczelnia, dyscyplina1)
             dyscyplina_naukowa=dyscyplina1,
             wymiar_etatu=Decimal("1.0"),
             procent_dyscypliny=100,
-            rodzaj_autora=Autor_Dyscyplina.RODZAJE_AUTORA.N,
+            rodzaj_autora=rodzaj_autora_n,
         )
 
         IloscUdzialowDlaAutoraZaRok.objects.create(
@@ -150,7 +155,9 @@ def test_oblicz_srednia_liczbe_n_dla_dyscyplin_wieloletni(uczelnia, dyscyplina1)
 
 
 @pytest.mark.django_db
-def test_oblicz_srednia_liczbe_n_tylko_pracownicy_n(uczelnia, dyscyplina1):
+def test_oblicz_srednia_liczbe_n_tylko_pracownicy_n(
+    uczelnia, dyscyplina1, rodzaj_autora_n, rodzaj_autora_d
+):
     """Test że tylko pracownicy typu N są uwzględniani."""
     autor_n = baker.make(Autor)
     autor_d = baker.make(Autor)
@@ -162,7 +169,7 @@ def test_oblicz_srednia_liczbe_n_tylko_pracownicy_n(uczelnia, dyscyplina1):
         dyscyplina_naukowa=dyscyplina1,
         wymiar_etatu=Decimal("1.0"),
         procent_dyscypliny=100,
-        rodzaj_autora=Autor_Dyscyplina.RODZAJE_AUTORA.N,
+        rodzaj_autora=rodzaj_autora_n,
     )
 
     # Autor D (doktorant) - nie powinien być uwzględniony
@@ -172,7 +179,7 @@ def test_oblicz_srednia_liczbe_n_tylko_pracownicy_n(uczelnia, dyscyplina1):
         dyscyplina_naukowa=dyscyplina1,
         wymiar_etatu=Decimal("1.0"),
         procent_dyscypliny=100,
-        rodzaj_autora=Autor_Dyscyplina.RODZAJE_AUTORA.D,
+        rodzaj_autora=rodzaj_autora_d,
     )
 
     # Utwórz udziały dla obu
@@ -182,7 +189,6 @@ def test_oblicz_srednia_liczbe_n_tylko_pracownicy_n(uczelnia, dyscyplina1):
         dyscyplina_naukowa=dyscyplina1,
         ilosc_udzialow=Decimal("2.0"),
         ilosc_udzialow_monografie=Decimal("1.0"),
-        rodzaj_autora=Autor_Dyscyplina.RODZAJE_AUTORA.N,
     )
 
     IloscUdzialowDlaAutoraZaRok.objects.create(
@@ -191,7 +197,6 @@ def test_oblicz_srednia_liczbe_n_tylko_pracownicy_n(uczelnia, dyscyplina1):
         dyscyplina_naukowa=dyscyplina1,
         ilosc_udzialow=Decimal("2.0"),
         ilosc_udzialow_monografie=Decimal("1.0"),
-        rodzaj_autora=Autor_Dyscyplina.RODZAJE_AUTORA.D,
     )
 
     # Oblicz średnią
@@ -206,7 +211,9 @@ def test_oblicz_srednia_liczbe_n_tylko_pracownicy_n(uczelnia, dyscyplina1):
 
 
 @pytest.mark.django_db
-def test_oblicz_srednia_liczbe_n_autor_b_nie_liczony(uczelnia, dyscyplina1):
+def test_oblicz_srednia_liczbe_n_autor_b_nie_liczony(
+    uczelnia, dyscyplina1, rodzaj_autora_n, rodzaj_autora_b
+):
     """Test że autorzy typu B (badawczy) nie są wliczani do liczby N."""
     autor_n = baker.make(Autor)
     autor_b = baker.make(Autor)
@@ -218,7 +225,7 @@ def test_oblicz_srednia_liczbe_n_autor_b_nie_liczony(uczelnia, dyscyplina1):
         dyscyplina_naukowa=dyscyplina1,
         wymiar_etatu=Decimal("1.0"),
         procent_dyscypliny=100,
-        rodzaj_autora=Autor_Dyscyplina.RODZAJE_AUTORA.N,
+        rodzaj_autora=rodzaj_autora_n,
     )
 
     # Autor B (badawczy) - nie powinien być uwzględniony
@@ -228,7 +235,7 @@ def test_oblicz_srednia_liczbe_n_autor_b_nie_liczony(uczelnia, dyscyplina1):
         dyscyplina_naukowa=dyscyplina1,
         wymiar_etatu=Decimal("1.0"),
         procent_dyscypliny=100,
-        rodzaj_autora=Autor_Dyscyplina.RODZAJE_AUTORA.B,
+        rodzaj_autora=rodzaj_autora_b,
     )
 
     # Utwórz udziały dla obu
@@ -260,7 +267,9 @@ def test_oblicz_srednia_liczbe_n_autor_b_nie_liczony(uczelnia, dyscyplina1):
 
 
 @pytest.mark.django_db
-def test_oblicz_srednia_liczbe_n_brak_wymiaru_etatu(uczelnia, dyscyplina1):
+def test_oblicz_srednia_liczbe_n_brak_wymiaru_etatu(
+    uczelnia, dyscyplina1, rodzaj_autora_n
+):
     """Test że autorzy bez wymiaru etatu są pomijani."""
     autor = baker.make(Autor)
 
@@ -271,7 +280,7 @@ def test_oblicz_srednia_liczbe_n_brak_wymiaru_etatu(uczelnia, dyscyplina1):
         dyscyplina_naukowa=dyscyplina1,
         wymiar_etatu=None,  # Brak wymiaru etatu
         procent_dyscypliny=100,
-        rodzaj_autora=Autor_Dyscyplina.RODZAJE_AUTORA.N,
+        rodzaj_autora=rodzaj_autora_n,
     )
 
     # Utwórz udział

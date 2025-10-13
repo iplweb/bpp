@@ -27,14 +27,13 @@ def test_waliduj_format_kodu_numer():
 
 
 @pytest.mark.parametrize(
-    "rodzaj_autora",
-    [
-        Autor_Dyscyplina.RODZAJE_AUTORA.N,
-        Autor_Dyscyplina.RODZAJE_AUTORA.D,
-        Autor_Dyscyplina.RODZAJE_AUTORA.Z,
-    ],
+    "rodzaj_autora_fixture",
+    ["rodzaj_autora_n", "rodzaj_autora_d", "rodzaj_autora_z"],
 )
-def test_policz_udzialy_rodzaj_ndz(autor_jan_nowak, dyscyplina1, rodzaj_autora):
+def test_policz_udzialy_rodzaj_ndz(
+    autor_jan_nowak, dyscyplina1, rodzaj_autora_fixture, request
+):
+    rodzaj_autora = request.getfixturevalue(rodzaj_autora_fixture)
     ad = Autor_Dyscyplina.objects.create(
         autor=autor_jan_nowak,
         dyscyplina_naukowa=dyscyplina1,

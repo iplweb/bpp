@@ -51,6 +51,20 @@
                         </select>
                     </div>
 
+                    <div class="input-group">
+                        <span class="input-group-label">Rodzaj autora:</span>
+                        <select name="rodzaj_autora" class="input-group-field auto-submit">
+                            <option value="">-- Wszyscy --</option>
+                            {% for rodzaj in rodzaje_autorow %}
+                                <option value="{{ rodzaj.pk }}" {% if selected_rodzaj_autora == rodzaj.pk|stringformat:"s" %}selected{% endif %}>
+                                    {{ rodzaj.nazwa }}
+                                </option>
+                            {% empty %}
+                                <option disabled>Brak rodzajów autorów z danymi</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
                     <button type="submit" class="button primary">
                         <i class="fi-magnifying-glass"></i> Filtruj
                     </button>
@@ -162,6 +176,19 @@
                                 {% endif %}
                             </a>
                         </th>
+                        <th>
+                            <a href="{% get_sort_url 'rodzaj_autora' %}"
+                               class="sort-link">
+                                Rodzaj autora
+                                {% if current_sort == 'rodzaj_autora' %}
+                                    <i class="fi-arrow-down"></i>
+                                {% elif current_sort == '-rodzaj_autora' %}
+                                    <i class="fi-arrow-up"></i>
+                                {% else %}
+                                    <i class="fi-arrows-expand" style="opacity: 0.3;"></i>
+                                {% endif %}
+                            </a>
+                        </th>
                     </tr>
                 </thead>
                 <tbody>
@@ -193,6 +220,13 @@
                         </td>
                         <td class="text-center">{{ udzial.ilosc_udzialow|floatformat:2 }}</td>
                         <td class="text-center">{{ udzial.ilosc_udzialow_monografie|floatformat:2 }}</td>
+                        <td>
+                            {% if udzial.rodzaj_autora %}
+                                {{ udzial.rodzaj_autora.nazwa }}
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -205,6 +239,7 @@
                         <td class="text-center">
                             <strong>{{ page_suma_monografie|floatformat:2 }}</strong>
                         </td>
+                        <td></td>
                     </tr>
                 </tfoot>
             </table>

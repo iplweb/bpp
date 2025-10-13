@@ -37,6 +37,104 @@
             font-size: 0.75rem;
             margin-top: 0.1rem;
         }
+
+        /* Anchor padding to prevent hiding behind top bar */
+        a[name="filtry"] {
+            display: block;
+            padding-top: 150px;
+            margin-top: -150px;
+            visibility: hidden;
+        }
+
+        a[name="pager"] {
+            display: block;
+            padding-top: 100px;
+            margin-top: -100px;
+            visibility: hidden;
+        }
+
+        /* Modern pagination styling */
+        .pagination {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            margin: 1.5rem 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex !important;
+            justify-content: center;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .pagination li {
+            margin: 0;
+        }
+
+        .pagination li a,
+        .pagination li span {
+            background: #fff;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            padding: 0.5rem 0.75rem;
+            margin: 0 0.25rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            color: #007bff;
+        }
+
+        .pagination li a:hover {
+            background: #007bff;
+            color: #fff;
+            border-color: #007bff;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0,123,255,0.3);
+        }
+
+        .pagination li.current a,
+        .pagination li.current span {
+            background: #007bff;
+            color: #fff;
+            border-color: #007bff;
+            font-weight: 600;
+        }
+
+        .pagination li.disabled a,
+        .pagination li.disabled span {
+            background: #e9ecef;
+            color: #6c757d;
+            border-color: #dee2e6;
+            cursor: not-allowed;
+        }
+
+        .pagination li.ellipsis span {
+            background: transparent;
+            border: none;
+            color: #6c757d;
+            padding: 0 0.5rem;
+        }
+
+        .pagination .pagination-previous a,
+        .pagination .pagination-next a {
+            background: #28a745;
+            color: #fff;
+            border-color: #28a745;
+            font-weight: 600;
+        }
+
+        .pagination .pagination-previous a:hover,
+        .pagination .pagination-next a:hover {
+            background: #218838;
+            border-color: #218838;
+        }
+
+        .pagination .pagination-previous.disabled a,
+        .pagination .pagination-next.disabled a {
+            background: #e9ecef;
+            color: #6c757d;
+            border-color: #dee2e6;
+        }
     </style>
 
     <h1>Import danych {{ object.plik.name }}</h1>
@@ -58,8 +156,9 @@
 
         {% if filter_form %}
             <div class="panel">
+                <a name="filtry"></a>
                 <h5>Filtry</h5>
-                <form method="get" action="" class="filter-form" id="filter-form">
+                <form method="get" action="#filtry" class="filter-form" id="filter-form">
                     <div class="row">
                         <div class="medium-4 columns">
                             {{ filter_form.autor_wiersz.label_tag }}
@@ -86,7 +185,7 @@
                     <div class="row">
                         <div class="medium-12 columns">
                             <button type="submit" class="button small">Filtruj</button>
-                            <a href="?page=1" class="button secondary small">Wyczyść filtry</a>
+                            <a href="?page=1#filtry" class="button secondary small">Wyczyść filtry</a>
                             {% if is_filtered %}
                                 <span class="label secondary">Filtry aktywne</span>
                             {% endif %}
@@ -114,7 +213,8 @@
             </script>
         {% endif %}
 
-        {% include "pagination.html" %}
+        <a name="pager"></a>
+        {% include "import_polon/pagination_with_anchor.html" %}
         <table class="compact-table">
             <thead>
             <tr>
@@ -168,6 +268,8 @@
             {% endfor %}
             </tbody>
         </table>
+
+        {% include "import_polon/pagination_with_anchor.html" %}
 
     {% endif %}
 

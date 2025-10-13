@@ -3,6 +3,7 @@ from decimal import Decimal
 import pytest
 from model_bakery import baker
 
+from ewaluacja_common.models import Rodzaj_Autora
 from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaCalosc
 from ewaluacja_metryki.utils import oblicz_metryki_dla_autora
 
@@ -16,6 +17,11 @@ from bpp.models import (
     Wydawnictwo_Ciagle_Autor,
 )
 from bpp.models.sloty.core import IPunktacjaCacher
+
+
+def get_rodzaj_autora(skrot):
+    """Helper function to get Rodzaj_Autora object by skrot"""
+    return Rodzaj_Autora.objects.get(skrot=skrot)
 
 
 @pytest.mark.django_db
@@ -33,7 +39,7 @@ def test_procent_wykorzystania_slotow_updates_correctly(denorms):
         autor=autor,
         dyscyplina_naukowa=dyscyplina,
         rok=2023,
-        rodzaj_autora="N",
+        rodzaj_autora=get_rodzaj_autora("N"),
     )
 
     # Set maximum slots for the author
@@ -133,7 +139,7 @@ def test_procent_wykorzystania_handles_zero_slot_maksymalny():
         autor=autor,
         dyscyplina_naukowa=dyscyplina,
         rok=2023,
-        rodzaj_autora="N",
+        rodzaj_autora=get_rodzaj_autora("N"),
     )
 
     # Don't create IloscUdzialowDlaAutoraZaCalosc - will default to 4
@@ -166,7 +172,7 @@ def test_averages_calculated_correctly():
         autor=autor,
         dyscyplina_naukowa=dyscyplina,
         rok=2023,
-        rodzaj_autora="N",
+        rodzaj_autora=get_rodzaj_autora("N"),
     )
 
     # Create a publication

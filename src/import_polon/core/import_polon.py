@@ -113,16 +113,16 @@ def analyze_file_import_polon(fn, parent_model: ImportPlikuPolon):
 
         if (row.get("OSWIADCZENIE_N", "") or "").strip().lower() == "tak":
             jest_w_n_xlsx = True
-
+            # brak_oswiadczenia_o_dyscyplinach = False
             dyscyplina_naukowa = row.get("DYSCYPLINA_N")
             subdyscyplina_naukowa = row.get("DYSCYPLINA_N_KOLEJNA")
         elif row.get("OSWIADCZENIE_O_DYSCYPLINACH", "").lower() == "tak":
+            # brak_oswiadczenia_o_dyscyplinach = False
             dyscyplina_naukowa = row.get("OSWIADCZONA_DYSCYPLINA_PIERWSZA")
             subdyscyplina_naukowa = row.get("OSWIADCZONA_DYSCYPLINA_DRUGA")
         else:
-            bledy.append(
-                "Brak oświadczenia o dyscyplinach N, brak oświadczenia o dyscyplinach. "
-            )
+            # brak_oswiadczenia_o_dyscyplinach = True
+            pass
 
         # Określ czy autor jest typu B (badawczy) na podstawie danych zatrudnienia
         grupa_stanowisk = (row.get("GRUPA_STANOWISK", "") or "").strip()
@@ -148,17 +148,23 @@ def analyze_file_import_polon(fn, parent_model: ImportPlikuPolon):
 
             bledy.append("Nie udało się dopasować autora")
 
-        dyscyplina_xlsx = matchuj_dyscypline(kod=None, nazwa=dyscyplina_naukowa)
-        if dyscyplina_naukowa is not None and dyscyplina_xlsx is None:
-            bledy.append(
-                "Nie udało się dopasować dyscypliny po stronie BPP do dyscypliny z XLSX"
-            )
+        dyscyplina_xlsx = None
+        if dyscyplina_naukowa:
+            dyscyplina_xlsx = matchuj_dyscypline(kod=None, nazwa=dyscyplina_naukowa)
+            if dyscyplina_naukowa is not None and dyscyplina_xlsx is None:
+                bledy.append(
+                    "Nie udało się dopasować dyscypliny po stronie BPP do dyscypliny z XLSX"
+                )
 
-        subdyscyplina_xlsx = matchuj_dyscypline(kod=None, nazwa=subdyscyplina_naukowa)
-        if subdyscyplina_naukowa is not None and subdyscyplina_xlsx is None:
-            bledy.append(
-                "Nie udało się dopasować subdyscypliny po stronie BPP do dyscypliny z XLSX"
+        subdyscyplina_xlsx = None
+        if subdyscyplina_naukowa:
+            subdyscyplina_xlsx = matchuj_dyscypline(
+                kod=None, nazwa=subdyscyplina_naukowa
             )
+            if subdyscyplina_naukowa is not None and subdyscyplina_xlsx is None:
+                bledy.append(
+                    "Nie udało się dopasować subdyscypliny po stronie BPP do dyscypliny z XLSX"
+                )
 
         procent_dyscypliny = Decimal("0.00")
 
@@ -173,6 +179,8 @@ def analyze_file_import_polon(fn, parent_model: ImportPlikuPolon):
                     "danych (decimal.Decimal)"
                 )
         procent_subdyscypliny = Decimal("100.00") - procent_dyscypliny
+        if procent_subdyscypliny == Decimal("100.00"):
+            procent_subdyscypliny = Decimal("0.00")
 
         wymiar_etatu = row.get("WIELKOSC_ETATU_PREZENTACJA_DZIESIETNA")
         if wymiar_etatu is None and autor is not None:
@@ -229,8 +237,9 @@ def analyze_file_import_polon(fn, parent_model: ImportPlikuPolon):
                     ops.append("Brak wpisu dla tego roku, utworzono zgodnie z XLSX")
                 else:
                     ops.append(
-                        "Brak wpisu o dyscyplinie dla autora za dany rok w BPP, brak dyscypliny w XLSX. Nic do roboty. "
+                        "W BPP jest identycznie jak w XLSX (brak danych o dyscyplinach)."
                     )
+
             else:
                 if dyscyplina_xlsx is None and subdyscyplina_xlsx is None:
                     # Complete deletion when XLS has no disciplines

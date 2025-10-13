@@ -4,6 +4,7 @@ from django.shortcuts import redirect
 from django.views import View
 from django.views.generic import DetailView, ListView
 
+from ewaluacja_common.models import Rodzaj_Autora
 from .models import MetrykaAutora, StatusGenerowania
 from .tasks import generuj_metryki_task
 
@@ -174,6 +175,11 @@ class MetrykiListView(EwaluacjaRequiredMixin, ListView):
         status = StatusGenerowania.get_or_create()
         context["status_generowania"] = status
 
+        # Dodaj dostępne rodzaje autorów (tylko te z licz_sloty=True)
+        context["dostepne_rodzaje_autorow"] = Rodzaj_Autora.objects.filter(
+            licz_sloty=True
+        ).order_by("skrot")
+
         # Oblicz procent postępu
         if status.w_trakcie and status.liczba_do_przetworzenia > 0:
             context["progress_procent"] = round(
@@ -216,6 +222,9 @@ class MetrykaDetailView(EwaluacjaRequiredMixin, DetailView):
             .order_by("rok")
         )
         context["dyscyplina_lata"] = dyscyplina_lata
+
+        # Dodaj dostępne rodzaje autorów dla szablonu
+        context["rodzaje_autorow"] = Rodzaj_Autora.objects.all().order_by("skrot")
 
         # Oblicz średnie dla wymiaru etatu i procentu dyscypliny
         if dyscyplina_lata:
@@ -747,8 +756,12 @@ class UruchomGenerowanieView(View):
         # Pobierz zaznaczone rodzaje autorów
         rodzaje_autora = request.POST.getlist("rodzaj_autora")
         if not rodzaje_autora:
-            # Domyślnie wszystkie rodzaje jeśli nic nie zaznaczono
-            rodzaje_autora = ["N", "D", "Z", " "]
+            # Domyślnie wszystkie rodzaje z licz_sloty=True jeśli nic nie zaznaczono
+            rodzaje_autora = list(
+                Rodzaj_Autora.objects.filter(licz_sloty=True).values_list(
+                    "skrot", flat=True
+                )
+            )
 
         # Uruchom task (z domyślnym przeliczaniem liczby N)
         result = generuj_metryki_task.delay(
@@ -1520,14 +1533,14 @@ class ExportListaXLSX(View):
 
             # Rodzaj autora
             rodzaj_display = ""
-            if metryka.rodzaj_autora == "N":
-                rodzaj_display = "Pracownik N"
-            elif metryka.rodzaj_autora == "D":
-                rodzaj_display = "Doktorant"
-            elif metryka.rodzaj_autora == "Z":
-                rodzaj_display = "Inny zatrudniony"
-            elif metryka.rodzaj_autora == " ":
+            if metryka.rodzaj_autora == " ":
                 rodzaj_display = "Brak danych"
+            else:
+                try:
+                    rodzaj = Rodzaj_Autora.objects.get(skrot=metryka.rodzaj_autora)
+                    rodzaj_display = rodzaj.nazwa
+                except Rodzaj_Autora.DoesNotExist:
+                    rodzaj_display = metryka.rodzaj_autora
             ws.cell(row=row_idx, column=col, value=rodzaj_display)
             col += 1
 
@@ -1666,15 +1679,11 @@ class ExportListaXLSX(View):
             except BaseException:
                 pass
         if rodzaj_autora:
-            rodzaj_nazwa = ""
-            if rodzaj_autora == "N":
-                rodzaj_nazwa = "Pracownik zaliczany do liczby N"
-            elif rodzaj_autora == "D":
-                rodzaj_nazwa = "Doktorant"
-            elif rodzaj_autora == "Z":
-                rodzaj_nazwa = "Inny zatrudniony"
-            if rodzaj_nazwa:
-                filter_info.append(f"Rodzaj autora: {rodzaj_nazwa}")
+            try:
+                rodzaj = Rodzaj_Autora.objects.get(skrot=rodzaj_autora)
+                filter_info.append(f"Rodzaj autora: {rodzaj.nazwa}")
+            except Rodzaj_Autora.DoesNotExist:
+                filter_info.append(f"Rodzaj autora: {rodzaj_autora}")
 
         if filter_info:
             ws.cell(row=filters_row + 1, column=1, value="; ".join(filter_info))

@@ -44,6 +44,8 @@ def test_analyze_excel_file_import_polon(
     zwarte_z_dyscyplinami: Wydawnictwo_Zwarte,
     jednostka,
     uczelnia,  # potrzebna do liczenia slotow, ISlot() uzywa
+    rodzaj_autora_n,
+    rodzaj_autora_z,
 ):
     with transaction.atomic():
         # Create test university matching the ZATRUDNIENIE field in test data
@@ -68,7 +70,7 @@ def test_analyze_excel_file_import_polon(
         dariusz_dyscyplinabezn.autor_dyscyplina_set.create(
             rok=ROK,
             dyscyplina_naukowa=dyscyplina1,
-            rodzaj_autora=Autor_Dyscyplina.RODZAJE_AUTORA.N,
+            rodzaj_autora=rodzaj_autora_n,
         )
 
         zwarte_z_dyscyplinami.rok = ROK
@@ -98,14 +100,14 @@ def test_analyze_excel_file_import_polon(
         stanislaw_dyscyplinazn.autor_dyscyplina_set.create(
             rok=ROK,
             dyscyplina_naukowa=dyscyplina1,
-            rodzaj_autora=Autor_Dyscyplina.RODZAJE_AUTORA.Z,
+            rodzaj_autora=rodzaj_autora_z,
         )
 
         analyze_file_import_polon(fn_test_import_polon, ipp)
 
         assert (
             artur_dyscyplinazn.autor_dyscyplina_set.get(rok=ROK).rodzaj_autora
-            == Autor_Dyscyplina.RODZAJE_AUTORA.N
+            == rodzaj_autora_n
         )
         assert (
             artur_dyscyplinazn.autor_dyscyplina_set.get(rok=ROK).dyscyplina_naukowa
@@ -114,12 +116,12 @@ def test_analyze_excel_file_import_polon(
 
         assert (
             dariusz_dyscyplinabezn.autor_dyscyplina_set.get(rok=ROK).rodzaj_autora
-            == Autor_Dyscyplina.RODZAJE_AUTORA.Z
+            == rodzaj_autora_z
         )
 
         assert (
             stanislaw_dyscyplinazn.autor_dyscyplina_set.get(rok=ROK).rodzaj_autora
-            == Autor_Dyscyplina.RODZAJE_AUTORA.N
+            == rodzaj_autora_n
         )
     denorms.flush()
 
@@ -301,6 +303,9 @@ def test_analyze_excel_file_import_polon_badawczy_type(
     fn_test_import_polon,
     dyscyplina1,
     uczelnia,
+    rodzaj_autora_n,
+    rodzaj_autora_b,
+    rodzaj_autora_z,
 ):
     """Test that authors with 'Pracownik badawczo-dydaktyczny' are classified as type 'B'"""
     with transaction.atomic():
@@ -325,9 +330,9 @@ def test_analyze_excel_file_import_polon_badawczy_type(
             # The test data contains "Pracownik badawczo-dydaktyczny" so should be type 'B'
             # if not in N and not doctoral student
             assert ad.rodzaj_autora in [
-                Autor_Dyscyplina.RODZAJE_AUTORA.B,
-                Autor_Dyscyplina.RODZAJE_AUTORA.Z,
-                Autor_Dyscyplina.RODZAJE_AUTORA.N,
+                rodzaj_autora_b,
+                rodzaj_autora_z,
+                rodzaj_autora_n,
             ]
         except Autor_Dyscyplina.DoesNotExist:
             # Author might not be in test data, that's OK for this test
@@ -350,6 +355,10 @@ def test_validate_polon_headers_valid_file(tmp_path):
         "ZATRUDNIENIE_DO": ["2023-12-31"],
         "WIELKOSC_ETATU_PREZENTACJA_DZIESIETNA": ["1.0"],
         "PROCENTOWY_UDZIAL_PIERWSZA_DYSCYPLINA": ["100.0"],
+        "DYSCYPLINA_N": [""],
+        "DYSCYPLINA_N_KOLEJNA": [""],
+        "OSWIADCZONA_DYSCYPLINA_PIERWSZA": [""],
+        "OSWIADCZONA_DYSCYPLINA_DRUGA": [""],
     }
 
     df = pd.DataFrame(test_data)
@@ -400,6 +409,10 @@ def test_validate_polon_headers_case_insensitive(tmp_path):
         "zatrudnienie_do": ["2023-12-31"],
         "wielkosc_etatu_prezentacja_dziesietna": ["1.0"],
         "procentowy_udzial_pierwsza_dyscyplina": ["100.0"],
+        "dyscyplina_n": [""],
+        "dyscyplina_n_kolejna": [""],
+        "oswiadczona_dyscyplina_pierwsza": [""],
+        "oswiadczona_dyscyplina_druga": [""],
     }
 
     df = pd.DataFrame(test_data)

@@ -45,7 +45,7 @@ def oblicz_srednia_liczbe_n_dla_dyscyplin(uczelnia, rok_min=2022, rok_max=2025):
         )
 
         # Tylko dla pracowników zaliczanych do liczby N
-        if autor_dyscyplina.rodzaj_autora == Autor_Dyscyplina.RODZAJE_AUTORA.N:
+        if autor_dyscyplina.rodzaj_autora and autor_dyscyplina.rodzaj_autora.jest_w_n:
 
             if udzial.dyscyplina_naukowa_id == autor_dyscyplina.dyscyplina_naukowa_id:
                 # Udział dotyczy DYSCYPLLINYE
@@ -131,7 +131,34 @@ def oblicz_sumy_udzialow_za_calosc(rok_min=2022, rok_max=2025):
             .order_by("rok")
         )
 
+        # Pobierz dane o rodzaju autora dla każdego roku
+        from bpp.models.dyscyplina_naukowa import Autor_Dyscyplina
+
+        rodzaje_autora_rocznie = {}
+        for rok in lata_z_danymi:
+            try:
+                autor_dyscyplina = Autor_Dyscyplina.objects.get(
+                    autor_id=suma["autor"], rok=rok
+                )
+                if autor_dyscyplina.rodzaj_autora:
+                    rodzaje_autora_rocznie[rok] = autor_dyscyplina.rodzaj_autora.nazwa
+            except Autor_Dyscyplina.DoesNotExist:
+                pass
+
+        # Zbuduj komentarz z informacjami o rodzaju autora
         komentarz = f"Lata z danymi: {', '.join(map(str, lata_z_danymi))}"
+
+        if rodzaje_autora_rocznie:
+            unikalne_rodzaje = set(rodzaje_autora_rocznie.values())
+            if len(unikalne_rodzaje) == 1:
+                # Tylko jeden rodzaj autora przez wszystkie lata
+                komentarz += f" | rodzaj autora: {list(unikalne_rodzaje)[0]}"
+            else:
+                # Wiele rodzajów autora w różnych latach
+                rodzaje_parts = []
+                for rok in sorted(rodzaje_autora_rocznie.keys()):
+                    rodzaje_parts.append(f"{rok} - {rodzaje_autora_rocznie[rok]}")
+                komentarz += f" | rodzaj autora: {', '.join(rodzaje_parts)}"
 
         # Zastosuj minimalną wartość 1 jeśli suma jest mniejsza niż 1
         suma_udzialow_final = suma["suma_udzialow"]
@@ -212,7 +239,6 @@ def oblicz_liczby_n_dla_ewaluacji_2022_2025(uczelnia, rok_min=2022, rok_max=2025
                 ilosc_udzialow=ilosc_udzialow,
                 ilosc_udzialow_monografie=ilosc_udzialow
                 / Decimal("2.0"),  # Domyślnie połowa udziałów
-                rodzaj_autora=ad.rodzaj_autora,
             )
 
     # Oblicz sumę udziałów dla całego okresu ewaluacji
