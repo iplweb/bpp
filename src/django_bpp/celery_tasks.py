@@ -5,11 +5,6 @@ from celery_singleton import clear_locks
 from django.apps import apps
 from django.conf import settings
 
-if getattr(settings, "PYDANTIC_LOGFIRE_TOKEN", None):
-    import logfire
-
-    logfire.instrument_celery()
-
 app = Celery("django_bpp")
 app.config_from_object("django.conf:settings")
 app.autodiscover_tasks(lambda: settings.INSTALLED_APPS)
