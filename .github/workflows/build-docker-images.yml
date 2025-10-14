@@ -50,19 +50,19 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-yarn-
 
-      - name: apt update
+      - name: Base Linux image apt update
         run: sudo apt update
 
-      - name: apt install
+      - name: Base Linux image apt install
         run: sudo apt install -y gettext libldap2-dev libsasl2-dev
 
-      - name: Install project dependencies
+      - name: Install BPP Python dependencies via uv.
         run: uv sync
 
-      - name: build assets
+      - name: Build BPP assets.
         run: uv run make assets
         env:
           DJANGO_SETTINGS_MODULE: django_bpp.settings.local
 
-      - name: build docker images
+      - name: Build Docker images in the Docker Build Cloud!
         run: uv run make docker
