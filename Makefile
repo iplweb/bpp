@@ -158,7 +158,7 @@ upgrade-version:
 	$(eval CUR_VERSION=v$(shell ./bin/bpp-version.py))
 	$(eval NEW_VERSION=$(shell bumpver test $(CUR_VERSION) 'vYYYY0M.BUILD[-TAGNUM]' |head -1|cut -d: -f2))
 	git flow release start $(NEW_VERSION)
-	bumpver update
+	uv run bumpver update --commit
 	-uv run towncrier build --draft > /tmp/towncrier.txt
 	-uv run towncrier build --yes
 	-git commit -F /tmp/towncrier.txt
@@ -205,7 +205,7 @@ loc: clean
 	pygount -N ... -F "...,staticroot,migrations,fixtures" src --format=summary
 
 
-DOCKER_VERSION="202510.1249"
+DOCKER_VERSION="202510.1250"
 
 DOCKER_BUILD=build --platform linux/amd64 --push
 
