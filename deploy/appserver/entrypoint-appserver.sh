@@ -9,30 +9,13 @@ echo "SELECT 'CREATE DATABASE ${DJANGO_BPP_DB_NAME}' WHERE NOT EXISTS (SELECT FR
 echo "done."
 
 echo -n "Database migrations, if any... "
-./src/manage.py migrate
+uv run src/manage.py migrate
 echo "done."
-
-echo "==============================================================="
-echo "List of changed dbtemplates"
-echo "---------------------------------------------------------------"
-./src/manage.py compare_dbtemplates --only-display-changed --no-color
-echo "END OF LIST"
-echo "==============================================================="
 
 echo -n "Running collectstatic and compress"
-./src/manage.py collectstatic --noinput -v0 --traceback
-./src/manage.py compress -v0 --force --traceback
-./src/manage.py compilemessages -v0 --traceback
+uv run src/manage.py collectstatic --noinput -v0 --traceback
+uv run src/manage.py compress -v0 --force --traceback
 echo "done."
-
-echo -n "Flushing all pending denorms via queue in the background..."
-./src/manage.py denorm_flush_via_queue &
-echo "done. "
-
-echo -n "Recalculating n-count for evaluation in the background... "
-./src/manage.py przelicz_liczbe_n_dla_uczelni &
-echo "done."
-
 
 echo "Starting uvicorn... "
 uvicorn --host 0 --port 8000 django_bpp.asgi:application

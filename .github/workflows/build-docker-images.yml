@@ -31,38 +31,5 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@v6
-        with:
-          enable-cache: true
-          cache-dependency-glob: "uv.lock"
-
-      - name: Set up Python
-        run: uv python install 3.12
-
-      - name: Cache Yarn dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/yarn
-            node_modules
-          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock', '**/package.json') }}
-          restore-keys: |
-            ${{ runner.os }}-yarn-
-
-      - name: Base Linux image apt update
-        run: sudo apt update
-
-      - name: Base Linux image apt install
-        run: sudo apt install -y gettext libldap2-dev libsasl2-dev
-
-      - name: Install BPP Python dependencies via uv.
-        run: uv sync
-
-      - name: Build BPP assets.
-        run: uv run make assets
-        env:
-          DJANGO_SETTINGS_MODULE: django_bpp.settings.local
-
       - name: Build Docker images in the Docker Build Cloud!
-        run: uv run make docker
+        run: make docker

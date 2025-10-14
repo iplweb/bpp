@@ -101,10 +101,10 @@ compilemessages: $(MO_FILES)
 #upload:
 #	twine upload dist/*whl
 
-puppeteer-install-chrome:
-	npx puppeteer browsers install chrome
 
-js-tests: assets puppeteer-install-chrome
+js-tests: assets
+	yarn install --optional
+	npx puppeteer browsers install chrome
 	grunt qunit
 
 # cel: live-docs
@@ -205,7 +205,7 @@ loc: clean
 	pygount -N ... -F "...,staticroot,migrations,fixtures" src --format=summary
 
 
-DOCKER_VERSION="202510.1248"
+DOCKER_VERSION="202510.1249"
 
 DOCKER_BUILD=build --platform linux/amd64 --push
 
@@ -219,10 +219,7 @@ endif
 build-dbserver: deploy/dbserver/Dockerfile deploy/dbserver/autotune.py deploy/dbserver/docker-entrypoint-autotune.sh
 	docker buildx ${DOCKER_BUILD} -t iplweb/bpp_dbserver:${DOCKER_VERSION} -t iplweb/bpp_dbserver:latest -f deploy/dbserver/Dockerfile deploy/dbserver/
 
-# Source files for appserver base (excluding tests)
-APPSERVER_BASE_SOURCES := $(shell find src -type f \( -name "*.html" -o -name "*.py" -o -name "*.css" -o -name "*.js" -o -name "*.svg" \) ! -path "*/tests/*" ! -name "test_*")
-
-build-appserver-base: $(APPSERVER_BASE_SOURCES)
+build-appserver-base:
 	docker buildx ${DOCKER_BUILD} -t iplweb/bpp_base:${DOCKER_VERSION} -t iplweb/bpp_base:latest -f deploy/bpp_base/Dockerfile .
 
 build-appserver: build-appserver-base
