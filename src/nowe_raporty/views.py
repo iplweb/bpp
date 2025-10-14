@@ -7,16 +7,8 @@ from django.template.context import RequestContext
 from django.views.generic import FormView, TemplateView
 from django.views.generic.detail import DetailView
 from django_tables2.export.export import TableExport
-from flexible_reports.adapters.django_tables2 import as_docx, as_tablib_databook
+from flexible_reports.adapters.django_tables2 import as_tablib_databook
 from flexible_reports.models.report import Report
-
-from formdefaults.helpers import FormDefaultsMixin
-from .forms import (
-    AutorRaportForm,
-    JednostkaRaportForm,
-    UczelniaRaportForm,
-    WydzialRaportForm,
-)
 
 from bpp.const import GR_RAPORTY_WYSWIETLANIE
 from bpp.models import Uczelnia
@@ -24,6 +16,15 @@ from bpp.models.autor import Autor
 from bpp.models.cache import Rekord
 from bpp.models.struktura import Jednostka, Wydzial
 from bpp.views.mixins import UczelniaSettingRequiredMixin
+from formdefaults.helpers import FormDefaultsMixin
+
+from .docx_export import as_docx
+from .forms import (
+    AutorRaportForm,
+    JednostkaRaportForm,
+    UczelniaRaportForm,
+    WydzialRaportForm,
+)
 
 
 class BaseFormView(FormDefaultsMixin, FormView):
@@ -214,7 +215,7 @@ class GenerujRaportBase(DetailView):
         if _export in ("docx", "xlsx"):
             context["request"] = self.request
             parent_context = RequestContext(self.request, context)
-            fun = getattr(self, "as_%s_response" % _export)
+            fun = getattr(self, f"as_{_export}_response")
             return fun(
                 context["report"], parent_context, filename=self.title + "." + _export
             )

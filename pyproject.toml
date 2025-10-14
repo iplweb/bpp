@@ -257,22 +257,25 @@ pytest-xdist = ">=2.3.0"
 pytest-lazy-fixture = "^0.6.3"
 pytest-timeout = "^2.1.0"
 pyparsing = ">=2.4.1.1"
-black = "^24.3.0"
-autoflake = "^1.4"
-autopep8 = "^1.6.0"
-flake8 = "^4.0.1"
+ruff = "^0.6.9"
 typing = ">=3.6,<3.7"
-isort = ">=5.7.0"
 pre-commit = "^3.5.0"
 twine = "^5.1.0"
 PyPDF2 = "^1.27.7"
 ipdb = "^0.13.9"
 ipython = "^8.2.0"
-flake8-bugbear = "^22.8.23"
 playwright = "^1.41.0"
 pytest-playwright = "^0.4.0"
 pytest-env = "^1"
 nest-asyncio = "^1.6.0"
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+extend-exclude = ["src/*/migrations/*"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
