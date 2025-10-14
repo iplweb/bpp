@@ -20,7 +20,10 @@ class NonHtmlDebugToolbarMiddleware(MiddlewareMixin):
 
         if debug != "UNSET":
             if response["Content-Type"] == "application/octet-stream":
-                new_content = "<html><body>Binary Data, " f"Length: {len(response.content)}</body></html>"
+                new_content = (
+                    "<html><body>Binary Data, "
+                    f"Length: {len(response.content)}</body></html>"
+                )
                 response = HttpResponse(new_content)
             elif response["Content-Type"] != "text/html":
                 content = response.content
@@ -29,7 +32,9 @@ class NonHtmlDebugToolbarMiddleware(MiddlewareMixin):
                     content = json.dumps(json_, sort_keys=True, indent=2)
                 except ValueError:
                     pass
-                response = HttpResponse(f"<html><body><pre>{content}" "</pre></body></html>")
+                response = HttpResponse(
+                    f"<html><body><pre>{content}" "</pre></body></html>"
+                )
 
         return response
 
