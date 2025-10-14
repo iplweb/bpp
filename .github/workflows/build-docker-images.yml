@@ -36,6 +36,7 @@ jobs:
         with:
           path: |
             ~/.cache/uv
+            ~/.local/share/uv
             .venv
           key: ${{ runner.os }}-uv-build-${{ hashFiles('**/uv.lock') }}
           restore-keys: |
@@ -65,7 +66,7 @@ jobs:
         run: sudo apt update
 
       - name: apt install
-        run: sudo apt install -y python3 python3-pip python3-venv gettext
+        run: sudo apt install -y python3 python3-pip python3-venv gettext libldap2-dev libsasl2-dev
 
       - name: create venv
         run: python3 -m venv .venv

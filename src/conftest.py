@@ -3,15 +3,14 @@ from uuid import uuid4
 
 import pytest
 from django.apps import apps
-from model_bakery import baker
-
 from django.utils import timezone
+from model_bakery import baker
 
 # Fix for VCR.py compatibility with urllib3
 # This resolves the AttributeError: 'VCRHTTPConnection' has no attribute 'debuglevel'
 
 
-def pytest_configure(config):
+def pytest_configure(config):  # noqa
     try:
         import http.client
 
@@ -19,12 +18,16 @@ def pytest_configure(config):
 
         # Patch VCR's HTTP connection classes to include required attributes
         original_vcr_stubs_init = (
-            vcr.stubs.VCRHTTPConnection.__init__ if hasattr(vcr, "stubs") else None
+            vcr.stubs.VCRHTTPConnection.__init__
+            if hasattr(vcr, "stubs")
+            else None
         )
 
         def patched_init(self, *args, **kwargs):
             # Set default debuglevel before calling original init
-            self.debuglevel = getattr(http.client.HTTPConnection, "debuglevel", 0)
+            self.debuglevel = getattr(
+                http.client.HTTPConnection, "debuglevel", 0
+            )
             if original_vcr_stubs_init:
                 original_vcr_stubs_init(self, *args, **kwargs)
 
@@ -47,6 +50,19 @@ def pytest_configure(config):
                 vcr.stubs.VCRHTTPSConnection._http_vsn = 11
             if not hasattr(vcr.stubs.VCRHTTPSConnection, "_http_vsn_str"):
                 vcr.stubs.VCRHTTPSConnection._http_vsn_str = "HTTP/1.1"
+
+            # Add version_string property to VCRHTTPResponse for urllib3 2.5.0+ compatibility
+            if hasattr(vcr.stubs, "VCRHTTPResponse"):
+                if not hasattr(vcr.stubs.VCRHTTPResponse, "version_string"):
+                    # Create a property that returns HTTP/1.1 as the version string
+                    def _get_version_string(self):
+                        # Return HTTP/1.1 as a sensible default
+                        # This matches the _http_vsn_str we set above
+                        return "HTTP/1.1"
+
+                    vcr.stubs.VCRHTTPResponse.version_string = property(
+                        _get_version_string
+                    )
 
     except ImportError:
         # VCR not installed, skip configuration
@@ -147,7 +163,9 @@ def zwarte_z_dyscyplinami(
     # domyslnie: ksiazka/autorstwo/wydawca spoza wykazu
     wydawnictwo_zwarte.punkty_kbn = 20
     wydawnictwo_zwarte.wydawca = wydawca
-    wydawnictwo_zwarte.charakter_formalny = Charakter_Formalny.objects.get(skrot="KSP")
+    wydawnictwo_zwarte.charakter_formalny = Charakter_Formalny.objects.get(
+        skrot="KSP"
+    )
     wydawnictwo_zwarte.save()
 
     return wydawnictwo_zwarte
@@ -156,9 +174,8 @@ def zwarte_z_dyscyplinami(
 def _dyscyplina_maker(nazwa, kod, dyscyplina_pbn):
     """Produkuje dyscypliny naukowe WRAZ z odpowiednim wpisem tłumacza
     dyscyplin"""
-    from pbn_api.models import TlumaczDyscyplin
-
     from bpp.models import Dyscyplina_Naukowa
+    from pbn_api.models import TlumaczDyscyplin
 
     d = Dyscyplina_Naukowa.objects.get_or_create(nazwa=nazwa, kod=kod)[0]
     TlumaczDyscyplin.objects.get_or_create(
@@ -223,7 +240,9 @@ def rodzaj_autora_d(db):
 
     obj, _ = Rodzaj_Autora.objects.get_or_create(
         skrot="D",
-        defaults=dict(nazwa="doktorant", jest_w_n=False, licz_sloty=True, sort=3),
+        defaults=dict(
+            nazwa="doktorant", jest_w_n=False, licz_sloty=True, sort=3
+        ),
     )
     return obj
 
@@ -236,7 +255,10 @@ def rodzaj_autora_b(db):
     obj, _ = Rodzaj_Autora.objects.get_or_create(
         skrot="B",
         defaults=dict(
-            nazwa="pracownik badawczy spoza N", jest_w_n=False, licz_sloty=True, sort=2
+            nazwa="pracownik badawczy spoza N",
+            jest_w_n=False,
+            licz_sloty=True,
+            sort=2,
         ),
     )
     return obj

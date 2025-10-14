@@ -49,6 +49,7 @@ jobs:
         with:
           path: |
             ~/.cache/uv
+            ~/.local/share/uv
             .venv
           key: ${{ runner.os }}-uv-assets-${{ hashFiles('**/uv.lock') }}
           restore-keys: |
@@ -73,7 +74,7 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y gettext
+          sudo apt-get install -y gettext libldap2-dev libsasl2-dev
 
       - name: Install UV
         run: |

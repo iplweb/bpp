@@ -76,6 +76,18 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-yarn-
 
+    - name: Cache UV dependencies
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/uv
+          ~/.local/share/uv
+          .venv
+        key: ${{ runner.os }}-uv-selenium-${{ hashFiles('**/uv.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-uv-selenium-
+          ${{ runner.os }}-uv-
+
     - name: System setup and dependencies
       timeout-minutes: 10
       run: |
@@ -97,6 +109,7 @@ jobs:
         # Install Firefox dependencies and tools
         sudo apt update
         sudo apt install -y python3 python3-dev libpq-dev nodejs redis-tools \
+          libldap2-dev libsasl2-dev \
           xvfb  xauth xfonts-100dpi xfonts-75dpi xfonts-base xfonts-scalable \
           firefox firefox-geckodriver
         sudo npm install -g --force yarn grunt-cli
