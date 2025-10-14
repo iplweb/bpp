@@ -2,9 +2,12 @@ version = 1
 revision = 3
 requires-python = ">=3.10, <3.13"
 resolution-markers = [
-    "python_full_version >= '3.12'",
-    "python_full_version == '3.11.*'",
-    "python_full_version < '3.11'",
+    "python_full_version >= '3.12' and platform_python_implementation != 'PyPy'",
+    "python_full_version == '3.11.*' and platform_python_implementation != 'PyPy'",
+    "python_full_version < '3.11' and platform_python_implementation != 'PyPy'",
+]
+supported-markers = [
+    "platform_python_implementation != 'PyPy'",
 ]
 
 [[package]]
@@ -21,7 +24,7 @@ name = "amqp"
 version = "5.3.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "vine" },
+    { name = "vine", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/79/fc/ec94a357dfc6683d8c86f8b4cfa5416a4c36b28052ec8260c77aca96a443/amqp-5.3.1.tar.gz", hash = "sha256:cddc00c725449522023bad949f70fff7b48f0b1ade74d170a6f10ab044739432", size = 129013, upload-time = "2024-11-12T19:55:44.051Z" }
 wheels = [
@@ -33,10 +36,10 @@ name = "anyio"
 version = "4.11.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "exceptiongroup", marker = "python_full_version < '3.11'" },
-    { name = "idna" },
-    { name = "sniffio" },
-    { name = "typing-extensions" },
+    { name = "exceptiongroup", marker = "python_full_version < '3.11' and platform_python_implementation != 'PyPy'" },
+    { name = "idna", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "sniffio", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "typing-extensions", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/c6/78/7d432127c41b50bccba979505f272c16cbcadcc33645d5fa3a738110ae75/anyio-4.11.0.tar.gz", hash = "sha256:82a8d0b81e318cc5ce71a5f1f8b5c4e63619620b63141ef8c995fa0db95a57c4", size = 219094, upload-time = "2025-09-23T09:19:12.58Z" }
 wheels = [
@@ -48,7 +51,7 @@ name = "arrow"
 version = "1.2.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "python-dateutil" },
+    { name = "python-dateutil", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/25/e2/85d4a709a3ea58f8e36b4db9eb7927560a2fa4b6f8f362fb6475962fec51/arrow-1.2.1.tar.gz", hash = "sha256:c2dde3c382d9f7e6922ce636bf0b318a7a853df40ecb383b29192e6c5cc82840", size = 118941, upload-time = "2021-10-24T22:16:44.667Z" }
 wheels = [
@@ -60,7 +63,7 @@ name = "asgiref"
 version = "3.10.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "typing-extensions", marker = "python_full_version < '3.11'" },
+    { name = "typing-extensions", marker = "python_full_version < '3.11' and platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/46/08/4dfec9b90758a59acc6be32ac82e98d1fbfc321cb5cfa410436dbacf821c/asgiref-3.10.0.tar.gz", hash = "sha256:d89f2d8cd8b56dada7d52fa7dc8075baa08fb836560710d38c292a7a3f78c04e", size = 37483, upload-time = "2025-10-05T09:15:06.557Z" }
 wheels = [
@@ -99,10 +102,10 @@ name = "autobahn"
 version = "24.4.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "cryptography" },
-    { name = "hyperlink" },
-    { name = "setuptools" },
-    { name = "txaio" },
+    { name = "cryptography", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "hyperlink", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "setuptools", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "txaio", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/38/f2/8dffb3b709383ba5b47628b0cc4e43e8d12d59eecbddb62cfccac2e7cf6a/autobahn-24.4.2.tar.gz", hash = "sha256:a2d71ef1b0cf780b6d11f8b205fd2c7749765e65795f2ea7d823796642ee92c9", size = 482700, upload-time = "2024-08-02T09:26:48.241Z" }
 wheels = [
@@ -141,8 +144,8 @@ name = "beautifulsoup4"
 version = "4.14.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "soupsieve" },
-    { name = "typing-extensions" },
+    { name = "soupsieve", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "typing-extensions", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/77/e9/df2358efd7659577435e2177bfa69cba6c33216681af51a707193dec162a/beautifulsoup4-4.14.2.tar.gz", hash = "sha256:2a98ab9f944a11acee9cc848508ec28d9228abfd522ef0fad6a02a72e0ded69e", size = 625822, upload-time = "2025-09-29T10:05:42.613Z" }
 wheels = [
@@ -163,7 +166,7 @@ name = "bleach"
 version = "6.2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "webencodings" },
+    { name = "webencodings", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/76/9a/0e33f5054c54d349ea62c277191c020c2d6ef1d65ab2cb1993f91ec846d1/bleach-6.2.0.tar.gz", hash = "sha256:123e894118b8a599fd80d3ec1a6d4cc7ce4e5882b1317a7e1ba69b56e95f991f", size = 203083, upload-time = "2024-10-29T18:30:40.477Z" }
 wheels = [
@@ -175,153 +178,154 @@ name = "bpp-iplweb"
 version = "202510.1245"
 source = { editable = "." }
 dependencies = [
-    { name = "arrow" },
-    { name = "bleach" },
-    { name = "celery" },
-    { name = "celery-singleton" },
-    { name = "channels", extra = ["daphne"] },
-    { name = "channels-redis" },
-    { name = "chardet" },
-    { name = "crispy-bootstrap3" },
-    { name = "crispy-bootstrap5" },
-    { name = "crispy-forms-foundation" },
-    { name = "crossrefapi" },
-    { name = "cssmin" },
-    { name = "dbfread" },
-    { name = "dj-pagination" },
-    { name = "django" },
-    { name = "django-admin-sortable2" },
-    { name = "django-admin-tools" },
-    { name = "django-autocomplete-light" },
-    { name = "django-autoslug" },
-    { name = "django-braces" },
-    { name = "django-cacheops" },
-    { name = "django-celery-email" },
-    { name = "django-celery-results" },
-    { name = "django-classy-tags" },
-    { name = "django-columns" },
-    { name = "django-compressor" },
-    { name = "django-cookie-law" },
-    { name = "django-crispy-forms" },
-    { name = "django-dbtemplates" },
-    { name = "django-denorm-iplweb" },
-    { name = "django-dirtyfields" },
-    { name = "django-easy-audit" },
-    { name = "django-environ" },
-    { name = "django-extensions" },
-    { name = "django-favicon-plus-reloaded" },
-    { name = "django-filter" },
-    { name = "django-flexible-reports" },
-    { name = "django-formtools" },
-    { name = "django-fsm" },
-    { name = "django-grappelli" },
-    { name = "django-group-by" },
-    { name = "django-htmlmin" },
-    { name = "django-import-export" },
-    { name = "django-loginas" },
-    { name = "django-messages-extends" },
-    { name = "django-model-utils" },
-    { name = "django-mptt" },
-    { name = "django-multiseek" },
-    { name = "django-password-policies-iplweb" },
-    { name = "django-prometheus" },
-    { name = "django-querysetsequence" },
-    { name = "django-redis" },
-    { name = "django-reversion" },
-    { name = "django-sendfile2" },
-    { name = "django-session-security" },
-    { name = "django-soft-delete" },
-    { name = "django-static-sitemaps" },
-    { name = "django-tables2" },
-    { name = "django-tabular-permissions" },
-    { name = "django-taggit" },
-    { name = "django-templated-email" },
-    { name = "django-tinymce" },
-    { name = "django-weasyprint" },
-    { name = "django-webmaster-verification" },
-    { name = "djangoql" },
-    { name = "djangorestframework" },
-    { name = "isbnlib" },
-    { name = "logfire", extra = ["celery", "django", "psycopg2"] },
-    { name = "markdown" },
-    { name = "moai-iplweb" },
-    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
-    { name = "numpy", version = "2.3.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
-    { name = "olefile" },
-    { name = "openpyxl" },
-    { name = "pandas" },
-    { name = "pathspec" },
-    { name = "pillow" },
-    { name = "psycopg2" },
-    { name = "pygad" },
-    { name = "pymed-iplweb" },
-    { name = "pyoai" },
-    { name = "pypandoc" },
-    { name = "python-dateutil" },
-    { name = "requests" },
-    { name = "requests-oauthlib" },
-    { name = "rjsmin" },
-    { name = "rollbar" },
-    { name = "simplejson" },
-    { name = "tablib" },
-    { name = "thefuzz" },
-    { name = "tqdm" },
-    { name = "twisted", extra = ["http2", "tls"] },
-    { name = "unidecode" },
-    { name = "uvicorn", extra = ["standard"] },
-    { name = "weasyprint" },
-    { name = "wosclient" },
-    { name = "xlrd" },
+    { name = "arrow", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "bleach", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "celery", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "celery-singleton", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "channels", extra = ["daphne"], marker = "platform_python_implementation != 'PyPy'" },
+    { name = "channels-redis", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "chardet", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "crispy-bootstrap3", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "crispy-bootstrap5", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "crispy-forms-foundation", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "crossrefapi", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "cssmin", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "dbfread", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "dj-pagination", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-admin-sortable2", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-admin-tools", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-autocomplete-light", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-autoslug", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-braces", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-cacheops", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-celery-email", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-celery-results", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-classy-tags", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-columns", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-compressor", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-cookie-law", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-crispy-forms", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-dbtemplates", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-denorm-iplweb", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-dirtyfields", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-easy-audit", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-environ", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-extensions", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-favicon-plus-reloaded", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-filter", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-flexible-reports", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-formtools", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-fsm", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-grappelli", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-group-by", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-htmlmin", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-import-export", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-loginas", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-messages-extends", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-model-utils", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-mptt", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-multiseek", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-password-policies-iplweb", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-prometheus", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-querysetsequence", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-redis", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-reversion", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-sendfile2", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-session-security", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-soft-delete", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-static-sitemaps", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-tables2", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-tabular-permissions", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-taggit", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-templated-email", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-tinymce", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-weasyprint", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-webmaster-verification", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "djangoql", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "djangorestframework", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "isbnlib", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "logfire", extra = ["celery", "django", "psycopg2"], marker = "platform_python_implementation != 'PyPy'" },
+    { name = "markdown", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "moai-iplweb", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11' and platform_python_implementation != 'PyPy'" },
+    { name = "numpy", version = "2.3.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11' and platform_python_implementation != 'PyPy'" },
+    { name = "olefile", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "openpyxl", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "pandas", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "pathspec", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "pillow", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "psycopg2", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "pygad", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "pymed-iplweb", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "pyoai", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "pypandoc", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "python-dateutil", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "requests", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "requests-oauthlib", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "rjsmin", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "rollbar", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "simplejson", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "tablib", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "thefuzz", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "tqdm", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "twisted", extra = ["http2", "tls"], marker = "platform_python_implementation != 'PyPy'" },
+    { name = "unidecode", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "urllib3", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "uvicorn", extra = ["standard"], marker = "platform_python_implementation != 'PyPy'" },
+    { name = "weasyprint", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "wosclient", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "xlrd", marker = "platform_python_implementation != 'PyPy'" },
 ]
 
 [package.optional-dependencies]
 dev = [
-    { name = "beautifulsoup4" },
-    { name = "bumpver" },
-    { name = "coveralls" },
-    { name = "django-debug-toolbar" },
-    { name = "django-dynamic-fixture" },
-    { name = "django-webtest" },
-    { name = "ipdb" },
-    { name = "ipython" },
-    { name = "mock" },
-    { name = "model-bakery" },
-    { name = "nest-asyncio" },
-    { name = "playwright" },
-    { name = "pre-commit" },
-    { name = "psutil" },
-    { name = "pyparsing" },
-    { name = "pypdf2" },
-    { name = "pytest" },
-    { name = "pytest-cov" },
-    { name = "pytest-django" },
-    { name = "pytest-env" },
-    { name = "pytest-httpserver" },
-    { name = "pytest-lazy-fixture" },
-    { name = "pytest-mock" },
-    { name = "pytest-playwright" },
-    { name = "pytest-recording" },
-    { name = "pytest-rerunfailures" },
-    { name = "pytest-splinter" },
-    { name = "pytest-sugar" },
-    { name = "pytest-timeout" },
-    { name = "pytest-xdist" },
-    { name = "ruff" },
-    { name = "selenium" },
-    { name = "sphinx" },
-    { name = "splinter" },
-    { name = "towncrier" },
-    { name = "twine" },
-    { name = "typing" },
-    { name = "vcrpy" },
-    { name = "watchdog" },
-    { name = "webtest" },
+    { name = "beautifulsoup4", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "bumpver", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "coveralls", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-debug-toolbar", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-dynamic-fixture", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-webtest", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "ipdb", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "ipython", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "mock", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "model-bakery", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "nest-asyncio", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "playwright", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "pre-commit", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "psutil", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "pyparsing", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "pypdf2", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "pytest", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "pytest-cov", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "pytest-django", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "pytest-env", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "pytest-httpserver", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "pytest-lazy-fixture", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "pytest-mock", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "pytest-playwright", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "pytest-recording", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "pytest-rerunfailures", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "pytest-splinter", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "pytest-sugar", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "pytest-timeout", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "pytest-xdist", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "ruff", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "selenium", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "sphinx", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "splinter", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "towncrier", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "twine", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "typing", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "vcrpy", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "watchdog", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "webtest", marker = "platform_python_implementation != 'PyPy'" },
 ]
 ldap = [
-    { name = "django-auth-ldap" },
+    { name = "django-auth-ldap", marker = "platform_python_implementation != 'PyPy'" },
 ]
 office365 = [
-    { name = "django-microsoft-auth" },
+    { name = "django-microsoft-auth", marker = "platform_python_implementation != 'PyPy'" },
 ]
 
 [package.metadata]
@@ -457,8 +461,9 @@ requires-dist = [
     { name = "twisted", extras = ["http2", "tls"], specifier = ">=24.3.0" },
     { name = "typing", marker = "extra == 'dev'", specifier = ">=3.6,<3.7" },
     { name = "unidecode", specifier = "==0.4.20" },
+    { name = "urllib3", specifier = ">=2.2.3,<3.0.0" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.31.0" },
-    { name = "vcrpy", marker = "extra == 'dev'", specifier = "==4.4.0" },
+    { name = "vcrpy", marker = "extra == 'dev'", specifier = ">=6.0.2,<7" },
     { name = "watchdog", marker = "extra == 'dev'", specifier = ">=5.0.3" },
     { name = "weasyprint", specifier = "==55.0" },
     { name = "webtest", marker = "extra == 'dev'", specifier = "==3.0.0" },
@@ -530,7 +535,7 @@ name = "brotlicffi"
 version = "1.1.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "cffi" },
+    { name = "cffi", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/95/9d/70caa61192f570fcf0352766331b735afa931b4c6bc9a348a0925cc13288/brotlicffi-1.1.0.0.tar.gz", hash = "sha256:b77827a689905143f87915310b93b273ab17888fd43ef350d4832c4a71083c13", size = 465192, upload-time = "2023-09-14T14:22:40.707Z" }
 wheels = [
@@ -552,10 +557,10 @@ name = "bumpver"
 version = "2025.1131"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "click" },
-    { name = "colorama" },
-    { name = "lexid" },
-    { name = "toml" },
+    { name = "click", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "colorama", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "lexid", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "toml", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/8f/8a/cc13e816e9f0849dce423b904b06fd91b5444cba6df3200d512a702f2e95/bumpver-2025.1131.tar.gz", hash = "sha256:a35fd2d43a5f65f014035c094866bd3bd6c739606f29fd41246d6ec6e839d3f9", size = 115372, upload-time = "2025-07-02T20:36:11.982Z" }
 wheels = [
@@ -567,14 +572,14 @@ name = "celery"
 version = "5.5.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "billiard" },
-    { name = "click" },
-    { name = "click-didyoumean" },
-    { name = "click-plugins" },
-    { name = "click-repl" },
-    { name = "kombu" },
-    { name = "python-dateutil" },
-    { name = "vine" },
+    { name = "billiard", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "click", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "click-didyoumean", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "click-plugins", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "click-repl", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "kombu", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "python-dateutil", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "vine", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/bb/7d/6c289f407d219ba36d8b384b42489ebdd0c84ce9c413875a8aae0c85f35b/celery-5.5.3.tar.gz", hash = "sha256:6c972ae7968c2b5281227f01c3a3f984037d21c5129d07bf3550cc2afc6b10a5", size = 1667144, upload-time = "2025-06-01T11:08:12.563Z" }
 wheels = [
@@ -586,8 +591,8 @@ name = "celery-singleton"
 version = "0.3.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "celery" },
-    { name = "redis" },
+    { name = "celery", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "redis", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/23/f0/ef4c769215086812a9e968bf9309fbd90bfe663d5175742e9386e1e1e052/celery-singleton-0.3.1.tar.gz", hash = "sha256:260ce4978e631f8682ea0ccb03d7f3b87d42bc20e04e9bd46ddb78a2f8035d1e", size = 4659, upload-time = "2021-01-14T16:23:40.801Z" }
 wheels = [
@@ -608,7 +613,7 @@ name = "cffi"
 version = "2.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "pycparser", marker = "implementation_name != 'PyPy'" },
+    { name = "pycparser", marker = "implementation_name != 'PyPy' and platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/eb/56/b1ba7935a17738ae8453301356628e8147c79dbb825bcbc73dc7401f9846/cffi-2.0.0.tar.gz", hash = "sha256:44d1b5909021139fe36001ae048dbdde8214afa20200eda0f64c068cac5d5529", size = 523588, upload-time = "2025-09-08T23:24:04.541Z" }
 wheels = [
@@ -665,8 +670,8 @@ name = "channels"
 version = "4.3.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "asgiref" },
-    { name = "django" },
+    { name = "asgiref", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/12/a0/46450fcf9e56af18a6b0440ba49db6635419bb7bc84142c35f4143b1a66c/channels-4.3.1.tar.gz", hash = "sha256:97413ffd674542db08e16a9ef09cd86ec0113e5f8125fbd33cf0854adcf27cdb", size = 26896, upload-time = "2025-08-01T13:25:19.952Z" }
 wheels = [
@@ -675,7 +680,7 @@ wheels = [
 
 [package.optional-dependencies]
 daphne = [
-    { name = "daphne" },
+    { name = "daphne", marker = "platform_python_implementation != 'PyPy'" },
 ]
 
 [[package]]
@@ -683,10 +688,10 @@ name = "channels-redis"
 version = "4.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "asgiref" },
-    { name = "channels" },
-    { name = "msgpack" },
-    { name = "redis" },
+    { name = "asgiref", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "channels", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "msgpack", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "redis", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/ab/69/fd3407ad407a80e72ca53850eb7a4c306273e67d5bbb71a86d0e6d088439/channels_redis-4.3.0.tar.gz", hash = "sha256:740ee7b54f0e28cf2264a940a24453d3f00526a96931f911fcb69228ef245dd2", size = 31440, upload-time = "2025-07-22T13:48:46.087Z" }
 wheels = [
@@ -764,7 +769,7 @@ name = "click"
 version = "8.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "colorama", marker = "sys_platform == 'win32'" },
+    { name = "colorama", marker = "platform_python_implementation != 'PyPy' and sys_platform == 'win32'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/46/61/de6cd827efad202d7057d93e0fed9294b96952e188f7384832791c7b2254/click-8.3.0.tar.gz", hash = "sha256:e7b8232224eba16f4ebe410c25ced9f7875cb5f3263ffc93cc3e8da705e229c4", size = 276943, upload-time = "2025-09-18T17:32:23.696Z" }
 wheels = [
@@ -776,7 +781,7 @@ name = "click-didyoumean"
 version = "0.3.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "click" },
+    { name = "click", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/30/ce/217289b77c590ea1e7c24242d9ddd6e249e52c795ff10fac2c50062c48cb/click_didyoumean-0.3.1.tar.gz", hash = "sha256:4f82fdff0dbe64ef8ab2279bd6aa3f6a99c3b28c05aa09cbfc07c9d7fbb5a463", size = 3089, upload-time = "2024-03-24T08:22:07.499Z" }
 wheels = [
@@ -788,7 +793,7 @@ name = "click-plugins"
 version = "1.1.1.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "click" },
+    { name = "click", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/c3/a4/34847b59150da33690a36da3681d6bbc2ec14ee9a846bc30a6746e5984e4/click_plugins-1.1.1.2.tar.gz", hash = "sha256:d7af3984a99d243c131aa1a828331e7630f4a88a9741fd05c927b204bcf92261", size = 8343, upload-time = "2025-06-25T00:47:37.555Z" }
 wheels = [
@@ -800,8 +805,8 @@ name = "click-repl"
 version = "0.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "click" },
-    { name = "prompt-toolkit" },
+    { name = "click", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "prompt-toolkit", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/cb/a2/57f4ac79838cfae6912f997b4d1a64a858fb0c86d7fcaae6f7b58d267fca/click-repl-0.3.0.tar.gz", hash = "sha256:17849c23dba3d667247dc4defe1757fff98694e90fe37474f3feebb69ced26a9", size = 10449, upload-time = "2023-06-15T12:43:51.141Z" }
 wheels = [
@@ -840,10 +845,10 @@ name = "contourpy"
 version = "1.3.2"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "python_full_version < '3.11'",
+    "python_full_version < '3.11' and platform_python_implementation != 'PyPy'",
 ]
 dependencies = [
-    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11' and platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/66/54/eb9bfc647b19f2009dd5c7f5ec51c4e6ca831725f1aea7a993034f483147/contourpy-1.3.2.tar.gz", hash = "sha256:b6945942715a034c671b7fc54f9588126b0b8bf23db2696e3ca8328f3ff0ab54", size = 13466130, upload-time = "2025-04-15T17:47:53.79Z" }
 wheels = [
@@ -890,11 +895,11 @@ name = "contourpy"
 version = "1.3.3"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "python_full_version >= '3.12'",
-    "python_full_version == '3.11.*'",
+    "python_full_version >= '3.12' and platform_python_implementation != 'PyPy'",
+    "python_full_version == '3.11.*' and platform_python_implementation != 'PyPy'",
 ]
 dependencies = [
-    { name = "numpy", version = "2.3.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "numpy", version = "2.3.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11' and platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/58/01/1253e6698a07380cd31a736d248a3f2a50a7c88779a1813da27503cadc2a/contourpy-1.3.3.tar.gz", hash = "sha256:083e12155b210502d0bca491432bb04d56dc3432f95a979b429f2848c3dbe880", size = 13466174, upload-time = "2025-07-26T12:03:12.549Z" }
 wheels = [
@@ -976,7 +981,7 @@ wheels = [
 
 [package.optional-dependencies]
 toml = [
-    { name = "tomli", marker = "python_full_version <= '3.11'" },
+    { name = "tomli", marker = "python_full_version <= '3.11' and platform_python_implementation != 'PyPy'" },
 ]
 
 [[package]]
@@ -984,9 +989,9 @@ name = "coveralls"
 version = "4.0.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "coverage", extra = ["toml"] },
-    { name = "docopt" },
-    { name = "requests" },
+    { name = "coverage", extra = ["toml"], marker = "platform_python_implementation != 'PyPy'" },
+    { name = "docopt", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "requests", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/61/75/a454fb443eb6a053833f61603a432ffbd7dd6ae53a11159bacfadb9d6219/coveralls-4.0.1.tar.gz", hash = "sha256:7b2a0a2bcef94f295e3cf28dcc55ca40b71c77d1c2446b538e85f0f7bc21aa69", size = 12419, upload-time = "2024-05-15T12:56:14.297Z" }
 wheels = [
@@ -998,8 +1003,8 @@ name = "crispy-bootstrap3"
 version = "2024.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "django" },
-    { name = "django-crispy-forms" },
+    { name = "django", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-crispy-forms", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/d1/80/ca6242629ea7405b4d6deb206f94dc3e2bff355ba139e94827f3be944eff/crispy-bootstrap3-2024.1.tar.gz", hash = "sha256:343c696ae1a854ac0ccad25e9e7d782400783034220a11aa179d1d799acf6161", size = 29205, upload-time = "2024-01-13T09:04:54.782Z" }
 wheels = [
@@ -1011,8 +1016,8 @@ name = "crispy-bootstrap5"
 version = "2024.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "django" },
-    { name = "django-crispy-forms" },
+    { name = "django", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-crispy-forms", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/75/45/af5c7a13742650b1187a1a6db5197577b57f2b1ca3a042c3b386ddfbebfc/crispy-bootstrap5-2024.2.tar.gz", hash = "sha256:7d1fa40c6faf472e30e85c72551a3d2c9eedbf0abfff920683315e4e6f670f2b", size = 23411, upload-time = "2024-02-25T08:46:04.075Z" }
 wheels = [
@@ -1024,8 +1029,8 @@ name = "crispy-forms-foundation"
 version = "1.0.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "django" },
-    { name = "django-crispy-forms" },
+    { name = "django", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-crispy-forms", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/c6/8e/60c382ea25c84782849041c82c488d03f12b178d2d3f743a58f298c7cd36/crispy-forms-foundation-1.0.1.tar.gz", hash = "sha256:ef61cbc832b136f9788db5b5d0f8473d7370a84eb54d77a444575dc1b17b446d", size = 20845, upload-time = "2023-08-18T20:10:55.452Z" }
 
@@ -1034,9 +1039,9 @@ name = "crossrefapi"
 version = "1.7.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "ipython" },
-    { name = "requests" },
-    { name = "urllib3" },
+    { name = "ipython", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "requests", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "urllib3", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/f7/c7/bd020af76301bfede41869b3c18f3efb6fac7dd064371d2a9956bc3306c4/crossrefapi-1.7.0.tar.gz", hash = "sha256:598f27a3cc1bd8d29770de284b0b1315c820de1d70894084945d5265e6fe2dae", size = 13444, upload-time = "2025-07-03T20:39:49.223Z" }
 wheels = [
@@ -1049,7 +1054,7 @@ version = "46.0.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cffi", marker = "platform_python_implementation != 'PyPy'" },
-    { name = "typing-extensions", marker = "python_full_version < '3.11'" },
+    { name = "typing-extensions", marker = "python_full_version < '3.11' and platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/4a/9b/e301418629f7bfdf72db9e80ad6ed9d1b83c487c471803eaa6464c511a01/cryptography-46.0.2.tar.gz", hash = "sha256:21b6fc8c71a3f9a604f028a329e5560009cc4a3a828bfea5fcba8eb7647d88fe", size = 749293, upload-time = "2025-10-01T00:29:11.856Z" }
 wheels = [
@@ -1104,8 +1109,8 @@ name = "cssselect2"
 version = "0.8.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "tinycss2" },
-    { name = "webencodings" },
+    { name = "tinycss2", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "webencodings", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/9f/86/fd7f58fc498b3166f3a7e8e0cddb6e620fe1da35b02248b1bd59e95dbaaa/cssselect2-0.8.0.tar.gz", hash = "sha256:7674ffb954a3b46162392aee2a3a0aedb2e14ecf99fcc28644900f4e6e3e9d3a", size = 35716, upload-time = "2025-03-05T14:46:07.988Z" }
 wheels = [
@@ -1126,9 +1131,9 @@ name = "daphne"
 version = "4.2.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "asgiref" },
-    { name = "autobahn" },
-    { name = "twisted", extra = ["tls"] },
+    { name = "asgiref", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "autobahn", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "twisted", extra = ["tls"], marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/cd/9d/322b605fdc03b963cf2d33943321c8f4405e8d82e698bf49d1eed1ca40c4/daphne-4.2.1.tar.gz", hash = "sha256:5f898e700a1fda7addf1541d7c328606415e96a7bd768405f0463c312fcb31b3", size = 45600, upload-time = "2025-07-02T12:57:04.935Z" }
 wheels = [
@@ -1194,9 +1199,9 @@ name = "django"
 version = "4.2.25"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "asgiref" },
-    { name = "sqlparse" },
-    { name = "tzdata", marker = "sys_platform == 'win32'" },
+    { name = "asgiref", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "sqlparse", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "tzdata", marker = "platform_python_implementation != 'PyPy' and sys_platform == 'win32'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/de/f1/230c6c20a77f8f1812c01dfd0166416e7c000a43e05f701b0b83301ebfc1/django-4.2.25.tar.gz", hash = "sha256:2391ab3d78191caaae2c963c19fd70b99e9751008da22a0adcc667c5a4f8d311", size = 10456257, upload-time = "2025-10-01T15:05:55.963Z" }
 wheels = [
@@ -1208,7 +1213,7 @@ name = "django-admin-sortable2"
 version = "2.2.8"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "django" },
+    { name = "django", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/d4/76/8af26a825442fb33688c820cf79e4b769d8c4b976a2ddaa7434b96706e05/django_admin_sortable2-2.2.8.tar.gz", hash = "sha256:59dfd7ced63e66adfb471b2a4d89ba3faae49c0148827047c8cf65759fc54c9e", size = 64599, upload-time = "2025-05-15T06:44:31.684Z" }
 wheels = [
@@ -1229,7 +1234,7 @@ name = "django-appconf"
 version = "1.1.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "django" },
+    { name = "django", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/61/a9/dcf95ff3fa0620b6818fc02276fbbb8926e7f286039b6d015e56e8b7af39/django-appconf-1.1.0.tar.gz", hash = "sha256:9fcead372f82a0f21ee189434e7ae9c007cbb29af1118c18251720f3d06243e4", size = 15986, upload-time = "2025-02-13T16:09:40.258Z" }
 wheels = [
@@ -1241,8 +1246,8 @@ name = "django-auth-ldap"
 version = "5.2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "django" },
-    { name = "python-ldap" },
+    { name = "django", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "python-ldap", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/88/70/6f6a89474667376080f8362f7c17c744d1c52720f0eb085cf74182149efe/django_auth_ldap-5.2.0.tar.gz", hash = "sha256:08ba6efc0340d9874725a962311b14991e29a33593eb150a8fb640709dbfa80f", size = 55287, upload-time = "2025-05-07T12:15:56.774Z" }
 wheels = [
@@ -1254,7 +1259,7 @@ name = "django-autocomplete-light"
 version = "3.9.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "six" },
+    { name = "six", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/ae/72/6a6c2d4b05296c9248a1e95430fa4f4605c210c2fac1d7d80d9e7bdf90f0/django-autocomplete-light-3.9.4.tar.gz", hash = "sha256:0f6da75c1c7186698b867a467a8cdb359f0513fdd8e09288a0c2fb018ae3d94e", size = 168936, upload-time = "2022-03-15T08:44:50.603Z" }
 
@@ -1272,7 +1277,7 @@ name = "django-braces"
 version = "1.17.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "django" },
+    { name = "django", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/8a/c0/eb3e27e817eb4ba39d9c66fbd53139cb4db7073f5e6e71c28ce4d8b706da/django_braces-1.17.0.tar.gz", hash = "sha256:3a6fe630d3d91fef0711bfe1088d14af00c245559f79f6298040ed2b2f757337", size = 54227, upload-time = "2025-03-18T02:03:02.354Z" }
 wheels = [
@@ -1284,9 +1289,9 @@ name = "django-cacheops"
 version = "7.0.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "django" },
-    { name = "funcy" },
-    { name = "redis" },
+    { name = "django", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "funcy", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "redis", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/de/e8/5959e58c23d90c57a5853d0f397002c39fcc0a2f4e032c68bf6852da85a5/django-cacheops-7.0.2.tar.gz", hash = "sha256:77a37c73d7facfc7299365ed66a12be7a487dd745dd86c1d33ca2ebfd3b32878", size = 71747, upload-time = "2023-10-24T10:23:43.225Z" }
 
@@ -1295,9 +1300,9 @@ name = "django-celery-email"
 version = "3.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "celery" },
-    { name = "django" },
-    { name = "django-appconf" },
+    { name = "celery", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-appconf", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/48/78/95c9959978c1b8abd587735cf084065b0ac8196580f6f30b2c9e9636401a/django-celery-email-3.0.0.tar.gz", hash = "sha256:5546cbba80952cc3b8a0ffa4206ce90a4a996a7ffd1c385a2bdb65903ca18ece", size = 12644, upload-time = "2019-12-11T15:32:11.6Z" }
 wheels = [
@@ -1309,8 +1314,8 @@ name = "django-celery-results"
 version = "2.6.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "celery" },
-    { name = "django" },
+    { name = "celery", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/a6/b5/9966c28e31014c228305e09d48b19b35522a8f941fe5af5f81f40dc8fa80/django_celery_results-2.6.0.tar.gz", hash = "sha256:9abcd836ae6b61063779244d8887a88fe80bbfaba143df36d3cb07034671277c", size = 83985, upload-time = "2025-04-10T08:23:52.677Z" }
 wheels = [
@@ -1322,7 +1327,7 @@ name = "django-classy-tags"
 version = "4.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "django" },
+    { name = "django", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/71/9f/b17edfaf693657490bb32d49d4b02533b65d0e216082be16f44f947c4dec/django-classy-tags-4.0.0.tar.gz", hash = "sha256:db9fc7c5ed08dc2619cc4c19b19514cdac13ddb618278ab07094c626d28eef0d", size = 24686, upload-time = "2022-12-01T00:51:27.03Z" }
 wheels = [
@@ -1334,7 +1339,7 @@ name = "django-columns"
 version = "0.1.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "django" },
+    { name = "django", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/ac/5a/5178d6f6d070e91877b163a21f9990b57d62c9f146a41c8e3fcf0493e5b5/django-columns-0.1.0.tar.gz", hash = "sha256:cd5ffb9b1e31908dba058344fc0e7def2367f13b6fa4c9a6b801e29fc864fdf9", size = 5621, upload-time = "2014-05-12T20:50:19.316Z" }
 
@@ -1343,9 +1348,9 @@ name = "django-compressor"
 version = "4.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "django-appconf" },
-    { name = "rcssmin" },
-    { name = "rjsmin" },
+    { name = "django-appconf", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "rcssmin", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "rjsmin", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/1c/7d/8b878b082d7aca3f3d76da1743754d2a812571d0ee2cccbb6ee543f05843/django_compressor-4.4.tar.gz", hash = "sha256:1b0acc9cfba9f69bc38e7c41da9b0d70a20bc95587b643ffef9609cf46064f67", size = 422254, upload-time = "2023-06-27T22:13:19.961Z" }
 wheels = [
@@ -1357,8 +1362,8 @@ name = "django-cookie-law"
 version = "2.2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "django" },
-    { name = "django-classy-tags" },
+    { name = "django", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-classy-tags", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/f8/9b/ff89a562a6662a3cb58e73cdcc4cd110701eb0d77611487e8250b0d2a77e/django-cookie-law-2.2.0.tar.gz", hash = "sha256:c3c6c10a01b257886077dd170ead11a49448b5bdfd06e81acc5c7c4e2292d4c8", size = 16605, upload-time = "2022-03-11T10:13:38.693Z" }
 wheels = [
@@ -1370,7 +1375,7 @@ name = "django-crispy-forms"
 version = "2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "django" },
+    { name = "django", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/c7/63/a6be73ce8997d02acc6890b5698a4ee95a30404fbf30b998652b30b7dec7/django-crispy-forms-2.0.tar.gz", hash = "sha256:90193b068bf948d9c68449bc8260afed1a8e2afe11ee0bac8c4ebfaeb175b322", size = 277697, upload-time = "2023-02-13T19:14:53.852Z" }
 wheels = [
@@ -1382,7 +1387,7 @@ name = "django-dbtemplates"
 version = "4.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "django-appconf" },
+    { name = "django-appconf", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/25/11/a74dca71cc528e09fdb6655c4590f9c7963701aab80b8468050975d0f1d9/django-dbtemplates-4.0.tar.gz", hash = "sha256:e6fa3d47824183731071339a589ec1e8910ee6eef5ddad89239008a36e3c5d43", size = 76329, upload-time = "2023-04-24T17:32:57.969Z" }
 wheels = [
@@ -1394,8 +1399,8 @@ name = "django-debug-toolbar"
 version = "6.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "django" },
-    { name = "sqlparse" },
+    { name = "django", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "sqlparse", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/c5/d5/5fc90234532088aeec5faa48d5b09951cc7eab6626030ed427d3bd8cd9bc/django_debug_toolbar-6.0.0.tar.gz", hash = "sha256:6eb9fa6f4a5884bf04004700ffb5a44043f1fff38784447fc52c1633448c8c14", size = 305331, upload-time = "2025-07-25T13:11:48.68Z" }
 wheels = [
@@ -1416,8 +1421,8 @@ name = "django-dirtyfields"
 version = "1.3.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "django" },
-    { name = "pytz" },
+    { name = "django", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "pytz", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/9a/74/a4ecf8e4e168f4883f32a279294b0e3d36832b32ce76630b78a18b61b450/django-dirtyfields-1.3.1.tar.gz", hash = "sha256:c3aafe524fc26c6ac573bbaf3ea852607e7b0f8622a2ec23dcdf65e1a9dcb7bb", size = 6014, upload-time = "2018-02-28T20:53:30.494Z" }
 
@@ -1426,8 +1431,8 @@ name = "django-dsl"
 version = "0.1.12"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "django" },
-    { name = "ply" },
+    { name = "django", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "ply", marker = "platform_python_implementation != 'PyPy'" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/72/96/56f1338dda1bf1822687c5a10d378c4a765753c39e76cf7c72fd9eb03a4a/django_dsl-0.1.12-py3-none-any.whl", hash = "sha256:30ef18f41124f4a72435cc634b4369ebaa7b566e84eba357f8d77b81c5d5054f", size = 8807, upload-time = "2022-07-07T20:29:21.69Z" },
@@ -1447,7 +1452,7 @@ name = "django-easy-audit"
 version = "1.3.7"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "django" },
+    { name = "django", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/3a/41/293b8c1e8517a64251823c71f29d1075dbeb96017a48e77576be6feeb5eb/django_easy_audit-1.3.7.tar.gz", hash = "sha256:0ecee3f43631d6294697ca741708442fc59a6e2230b7a8e78c69f71e09a30742", size = 42877, upload-time = "2024-10-09T11:33:28.375Z" }
 wheels = [
@@ -1468,7 +1473,7 @@ name = "django-extensions"
 version = "3.1.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "django" },
+    { name = "django", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/fc/40/22ff745aea0468dcefba8b165d010e5260d3058862ea280c2ce5212c8560/django-extensions-3.1.3.tar.gz", hash = "sha256:5f0fea7bf131ca303090352577a9e7f8bfbf5489bd9d9c8aea9401db28db34a0", size = 614094, upload-time = "2021-04-19T17:44:19.918Z" }
 wheels = [
@@ -1480,8 +1485,8 @@ name = "django-favicon-plus-reloaded"
 version = "1.1.6"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "django" },
-    { name = "pillow" },
+    { name = "django", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "pillow", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/b6/18/af3866ee7474c0b16b4b87c4b0bdbb08fbf1f2ed717028733d49fa771383/django-favicon-plus-reloaded-1.1.6.tar.gz", hash = "sha256:2b6b6ece0e36afb56529dce4c47530e65138d18cf506fb6febf5936ad5c95cd6", size = 8211, upload-time = "2023-07-01T23:18:53.261Z" }
 wheels = [
@@ -1493,7 +1498,7 @@ name = "django-filter"
 version = "21.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "django" },
+    { name = "django", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/e3/90/819a74f0c9650a7ceda158d85a6010b4ce3d4e215e0c69ec9f3a733ce72f/django-filter-21.1.tar.gz", hash = "sha256:632a251fa8f1aadb4b8cceff932bb52fe2f826dd7dfe7f3eac40e5c463d6836e", size = 154188, upload-time = "2021-09-24T14:08:38.813Z" }
 wheels = [
@@ -1505,13 +1510,13 @@ name = "django-flexible-reports"
 version = "0.2.10"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "bleach" },
-    { name = "django" },
-    { name = "django-dsl" },
-    { name = "django-tables2" },
-    { name = "lxml" },
-    { name = "pypandoc" },
-    { name = "tablib" },
+    { name = "bleach", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-dsl", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-tables2", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "lxml", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "pypandoc", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "tablib", marker = "platform_python_implementation != 'PyPy'" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/36/15/80a7d3d006fbeed7d4ab197fbb91116d96d2925853e65b48a49e241949b7/django_flexible_reports-0.2.10-py3-none-any.whl", hash = "sha256:a55e03c9407cae0c5101420cd4cd7086fca45148163d60b0fb4247016edb1117", size = 39279, upload-time = "2022-07-07T21:18:23.558Z" },
@@ -1522,7 +1527,7 @@ name = "django-formtools"
 version = "2.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "django" },
+    { name = "django", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/6e/b0/41ca0a8b7f2ce073f4cfca6adcc7b502a4a894fad9b80505b2ad13dc7aac/django-formtools-2.3.tar.gz", hash = "sha256:9663b6eca64777b68d6d4142efad8597fe9a685924673b25aa8a1dcff4db00c3", size = 83706, upload-time = "2021-04-19T03:58:47.452Z" }
 wheels = [
@@ -1561,8 +1566,8 @@ name = "django-htmlmin"
 version = "0.11.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "beautifulsoup4" },
-    { name = "html5lib" },
+    { name = "beautifulsoup4", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "html5lib", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/52/37/df97e6f60662e2545fa4349c48fbf2166eb8a4902c9bf1f179b7ee5aa0f0/django-htmlmin-0.11.0.tar.gz", hash = "sha256:e41b2a2157570846645cc636a9bddde8aa3e03f6834a9211e61a17f2ed42b87e", size = 8017, upload-time = "2019-03-18T01:25:14.71Z" }
 
@@ -1571,9 +1576,9 @@ name = "django-import-export"
 version = "3.2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "diff-match-patch" },
-    { name = "django" },
-    { name = "tablib", extra = ["html", "ods", "xls", "xlsx", "yaml"] },
+    { name = "diff-match-patch", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "tablib", extra = ["html", "ods", "xls", "xlsx", "yaml"], marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/f3/5d/ac971fb19d2b88af46e712e600c7d625f762fb6498d7b69a3e7501ebc029/django-import-export-3.2.0.tar.gz", hash = "sha256:38fd7b9439b9e3aa1a4747421c1087a5bc194e915a28d795fb8429a5f8028f2d", size = 60282, upload-time = "2023-04-12T18:04:37.93Z" }
 wheels = [
@@ -1585,7 +1590,7 @@ name = "django-js-asset"
 version = "3.1.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "django" },
+    { name = "django", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/e6/91/c63f136f553ec24fc46ccf20ac7292a8df04815b383975b6f3f7f0060217/django_js_asset-3.1.2.tar.gz", hash = "sha256:1fc7584199ed1941ed7c8e7b87ca5524bb0f2ba941561d2a104e88ee9f07bedd", size = 9471, upload-time = "2025-03-04T15:22:49.789Z" }
 wheels = [
@@ -1615,10 +1620,10 @@ name = "django-microsoft-auth"
 version = "3.0.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "django" },
-    { name = "pyjwt", extra = ["crypto"] },
-    { name = "requests" },
-    { name = "requests-oauthlib" },
+    { name = "django", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "pyjwt", extra = ["crypto"], marker = "platform_python_implementation != 'PyPy'" },
+    { name = "requests", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "requests-oauthlib", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/12/de/549f316f6a463a7f93e1f72cd8f1b186b821ced4aa4b89bf6421c243529b/django_microsoft_auth-3.0.1.tar.gz", hash = "sha256:e149b35e8061e12f060b4fc31a6bea1e0cb32047801a076aeb972d68f1f97655", size = 52289, upload-time = "2022-10-28T16:59:07.573Z" }
 wheels = [
@@ -1630,7 +1635,7 @@ name = "django-model-utils"
 version = "4.3.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "django" },
+    { name = "django", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/f1/42/969e79648ac83a552629323d9d6fde172dbf420c14e7dc7c800a9293f4cd/django-model-utils-4.3.1.tar.gz", hash = "sha256:2e2e4f13e4f14613134a9777db7ad4265f59a1d8f1384107bcaa3028fe3c87c1", size = 73913, upload-time = "2022-11-16T00:14:21.17Z" }
 wheels = [
@@ -1642,7 +1647,7 @@ name = "django-mptt"
 version = "0.13.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "django-js-asset" },
+    { name = "django-js-asset", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/41/b2/095730e978551e25f538122a05de9232eef849244159ee639865215c743f/django-mptt-0.13.4.tar.gz", hash = "sha256:80c9fb34df7796a4e5af0cb6b8ade3697555b1aa438bd07a01f32b3ab5202b63", size = 102901, upload-time = "2021-09-27T12:56:02.003Z" }
 wheels = [
@@ -1654,9 +1659,9 @@ name = "django-multiseek"
 version = "0.9.47"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "django" },
-    { name = "django-autocomplete-light" },
-    { name = "python-dateutil" },
+    { name = "django", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-autocomplete-light", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "python-dateutil", marker = "platform_python_implementation != 'PyPy'" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/3d/89/e945c9fbe497a81fc99e9cbdc6f0cf3741f47da9e01c792fbd84ebee3cf8/django_multiseek-0.9.47-py3-none-any.whl", hash = "sha256:d9c1de0f1fb1e3f39edfe719fa3aaad522165c843ed4e7c6ce9e6ab40d999ce1", size = 45677, upload-time = "2022-09-28T17:54:56.855Z" },
@@ -1667,7 +1672,7 @@ name = "django-password-policies-iplweb"
 version = "0.8.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "django" },
+    { name = "django", marker = "platform_python_implementation != 'PyPy'" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/37/aa/45d8007d5c7cc2cec7888950985884273ab81f8a19869f0dc577fd40cb73/django_password_policies_iplweb-0.8.5-py3-none-any.whl", hash = "sha256:a77466719708d3dd5325b7a13c1f60bc998adfc3ea8be21f77a7862ca01d8618", size = 181934, upload-time = "2023-07-09T23:06:34.92Z" },
@@ -1678,8 +1683,8 @@ name = "django-prometheus"
 version = "2.4.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "django" },
-    { name = "prometheus-client" },
+    { name = "django", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "prometheus-client", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/98/f4/cb39ddd2a41e07a274c4e162c076e906ae232d63b66bbabdea0300878877/django_prometheus-2.4.1.tar.gz", hash = "sha256:073628243d2a6de6a8a8c20e5b512872dfb85d66e1b60b28bcf1eca0155dad95", size = 24464, upload-time = "2025-06-25T15:45:37.149Z" }
 wheels = [
@@ -1691,7 +1696,7 @@ name = "django-querysetsequence"
 version = "0.12"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "django" },
+    { name = "django", marker = "platform_python_implementation != 'PyPy'" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/25/bd/3ef580dc7a65a99ee04d12918db2075f0e49fb1399fb64b4cc4b93afab1b/django_querysetsequence-0.12-py2.py3-none-any.whl", hash = "sha256:c04128b29df46d3ca20c6d0ee6a5ad0f6046ca02ad8dde44e0b77f500984dbce", size = 29250, upload-time = "2019-12-20T13:54:02.199Z" },
@@ -1702,8 +1707,8 @@ name = "django-redis"
 version = "5.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "django" },
-    { name = "redis" },
+    { name = "django", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "redis", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/44/39/43805eb50cbc32130840e7da28b487a4e2b6edbcad4b7163aa16c11b64d7/django-redis-5.3.0.tar.gz", hash = "sha256:8bc5793ec06b28ea802aad85ec437e7646511d4e571e07ccad19cfed8b9ddd44", size = 44800, upload-time = "2023-06-16T12:26:19.339Z" }
 wheels = [
@@ -1715,7 +1720,7 @@ name = "django-render-block"
 version = "0.11"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "django" },
+    { name = "django", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/6b/2f/588cf58f7b37ab3b7994727d590381aed747173ef5670457c798518621dc/django_render_block-0.11.tar.gz", hash = "sha256:17886dd3bff222fe8a2f019509c6c53e0e4a38fe684e80d48e8697a879e1301b", size = 12432, upload-time = "2025-05-13T11:48:51.333Z" }
 wheels = [
@@ -1727,7 +1732,7 @@ name = "django-reversion"
 version = "5.0.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "django" },
+    { name = "django", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/16/13/1e351dc0c83ae2ee4faf55efd6f2244e97c35518b728a99830ca726e930e/django-reversion-5.0.4.tar.gz", hash = "sha256:c12bab452d31dd3c244456cf1df383acf14ba147cf99404c5e44412596de42fc", size = 72336, upload-time = "2022-11-12T14:45:37.557Z" }
 wheels = [
@@ -1739,7 +1744,7 @@ name = "django-sendfile2"
 version = "0.7.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "django" },
+    { name = "django", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/6b/8d/18b884f5316329c914b6851f21fd1d88752627ab8da7dd0f0970cf2b58db/django_sendfile2-0.7.2.tar.gz", hash = "sha256:d0939d52217d314b110d0b7b15ace5063d96aeb4980b7e0f94c020c2e25646f8", size = 27488, upload-time = "2025-04-06T14:09:42.806Z" }
 wheels = [
@@ -1751,7 +1756,7 @@ name = "django-session-security"
 version = "2.6.7"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "django" },
+    { name = "django", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/5c/62/a97276014bf73c915ff9c1524236de0d87de4b71382f1c597fec15517a55/django-session-security-2.6.7.tar.gz", hash = "sha256:752b70865706afca39a62650eacd5d1e03a2baba31d46b2e1b96ad60c30553f3", size = 100509, upload-time = "2022-07-03T22:47:47.804Z" }
 wheels = [
@@ -1763,7 +1768,7 @@ name = "django-soft-delete"
 version = "1.0.21"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "django" },
+    { name = "django", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/da/bf/13996c18bffee3bbcf294830c1737bfb5564164b8319c51e6714b6bdf783/django_soft_delete-1.0.21.tar.gz", hash = "sha256:542bd4650d2769105a4363ea7bb7fbdb3c28429dbaa66417160f8f4b5dc689d5", size = 21153, upload-time = "2025-09-17T08:46:30.476Z" }
 wheels = [
@@ -1775,9 +1780,9 @@ name = "django-static-sitemaps"
 version = "5.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "django" },
-    { name = "setuptools" },
-    { name = "six" },
+    { name = "django", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "setuptools", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "six", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/37/86/7d902fe13a60abc8601c6450a940973e2e4f9d4a409b34d6adb4f5ceaa66/django-static-sitemaps-5.0.0.tar.gz", hash = "sha256:4580bda5bbaa4dbf40bc8bbde5936e1675eac1c7b76f65286705befeeefbaa85", size = 8660, upload-time = "2024-02-18T09:04:01.556Z" }
 
@@ -1786,7 +1791,7 @@ name = "django-tables2"
 version = "2.3.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "django" },
+    { name = "django", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/5a/74/73696299d5eca510306c3dbfb1ada05e6fefe0eeb9537761b65bd1a8daee/django-tables2-2.3.1.tar.gz", hash = "sha256:28da782f81f046c7d921246f43e7ba2df430cafe5a0e00a0f9dadef25a0e487d", size = 72954, upload-time = "2020-04-02T10:29:28.379Z" }
 wheels = [
@@ -1804,7 +1809,7 @@ name = "django-taggit"
 version = "4.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "django" },
+    { name = "django", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/83/54/241541a011c1e146c2708f0cf148f9255b7c04abecdf28e0f589d54c1851/django-taggit-4.0.0.tar.gz", hash = "sha256:4d52de9d37245a9b9f98c0ec71fdccf1d2283e38e8866d40a7ae6a3b6787a161", size = 58638, upload-time = "2023-05-04T02:15:57.57Z" }
 wheels = [
@@ -1816,7 +1821,7 @@ name = "django-templated-email"
 version = "3.1.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "django-render-block" },
+    { name = "django-render-block", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/be/d3/689aee2477dcef5b1fca187897373882fb5aae9f58d1d0a207b8ee7acb94/django_templated_email-3.1.1.tar.gz", hash = "sha256:9c48863d96b89096fa84c6b48523920e90d55397d2895c752fdde5c228aee70f", size = 17026, upload-time = "2025-08-21T17:40:35.162Z" }
 wheels = [
@@ -1828,7 +1833,7 @@ name = "django-tinymce"
 version = "4.1.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "django" },
+    { name = "django", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/b3/36/56faa2cb1bde28c66ffe38d67ddbacab9c416baecbb7dd911bfabc5fa409/django_tinymce-4.1.0.tar.gz", hash = "sha256:02e3b70e940fd299f0fbef4315aee5c185664e1eb8cd396b176963954e4357c9", size = 1087250, upload-time = "2024-06-21T07:07:03.915Z" }
 wheels = [
@@ -1840,8 +1845,8 @@ name = "django-weasyprint"
 version = "2.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "django" },
-    { name = "weasyprint" },
+    { name = "django", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "weasyprint", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/2f/5c/27aad07b07fb85a4273c4a49b64a10571a0e47e3029a3f1c5f67a28d7e66/django-weasyprint-2.3.0.tar.gz", hash = "sha256:2f849e15bfd6c1b2a58512097b9042eddf3533651d37d2e096cd6f7d8be6442b", size = 13244, upload-time = "2024-02-23T13:58:50.899Z" }
 wheels = [
@@ -1853,7 +1858,7 @@ name = "django-webmaster-verification"
 version = "0.4.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "django" },
+    { name = "django", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/44/3d/f5ddb42ceeedda3098fa691920d77e44b33813834bc44fce40f0ce3fcdeb/django-webmaster-verification-0.4.3.tar.gz", hash = "sha256:1cc6958ee4142da63c1b3e03e537cce6051c740cb1adf6afb68ddb1cc85f4e8f", size = 7125, upload-time = "2022-02-09T09:01:54.524Z" }
 wheels = [
@@ -1865,7 +1870,7 @@ name = "django-webtest"
 version = "1.9.10"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "webtest" },
+    { name = "webtest", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/54/a8/b25f806465c5c4c9185f28b67ceeaba9caf50bb74836c6cacf5f97576677/django-webtest-1.9.10.tar.gz", hash = "sha256:c8c32041791cdae468e443097c432c67cf17cad339e1ab88b01a6c4841ee4c74", size = 28493, upload-time = "2022-03-02T13:29:45.469Z" }
 wheels = [
@@ -1877,7 +1882,7 @@ name = "djangoql"
 version = "0.18.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "ply" },
+    { name = "ply", marker = "platform_python_implementation != 'PyPy'" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/9e/0a/83cdb7b9d3b854b98941363153945f6c051b3bc50cd61108a85677c98c3a/djangoql-0.18.1-py2.py3-none-any.whl", hash = "sha256:51b3085a805627ebb43cfd0aa861137cdf8f69cc3c9244699718fe04a6c8e26d", size = 218209, upload-time = "2024-01-08T14:10:47.915Z" },
@@ -1888,7 +1893,7 @@ name = "djangorestframework"
 version = "3.15.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "django" },
+    { name = "django", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/2c/ce/31482eb688bdb4e271027076199e1aa8d02507e530b6d272ab8b4481557c/djangorestframework-3.15.2.tar.gz", hash = "sha256:36fe88cd2d6c6bec23dca9804bab2ba5517a8bb9d8f47ebc68981b56840107ad", size = 1067420, upload-time = "2024-06-19T07:59:32.891Z" }
 wheels = [
@@ -1924,7 +1929,7 @@ name = "exceptiongroup"
 version = "1.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "typing-extensions", marker = "python_full_version < '3.11'" },
+    { name = "typing-extensions", marker = "python_full_version < '3.11' and platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/0b/9f/a65090624ecf468cdca03533906e7c69ed7588582240cfe7cc9e770b50eb/exceptiongroup-1.3.0.tar.gz", hash = "sha256:b241f5885f560bc56a59ee63ca4c6a8bfa46ae4ad651af316d4e81817bb9fd88", size = 29749, upload-time = "2025-05-10T17:42:51.123Z" }
 wheels = [
@@ -1994,8 +1999,8 @@ wheels = [
 [package.optional-dependencies]
 woff = [
     { name = "brotli", marker = "platform_python_implementation == 'CPython'" },
-    { name = "brotlicffi", marker = "platform_python_implementation != 'CPython'" },
-    { name = "zopfli" },
+    { name = "brotlicffi", marker = "platform_python_implementation != 'CPython' and platform_python_implementation != 'PyPy'" },
+    { name = "zopfli", marker = "platform_python_implementation != 'PyPy'" },
 ]
 
 [[package]]
@@ -2021,7 +2026,7 @@ name = "googleapis-common-protos"
 version = "1.70.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "protobuf" },
+    { name = "protobuf", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/39/24/33db22342cf4a2ea27c9955e6713140fedd51e8b141b5ce5260897020f1a/googleapis_common_protos-1.70.0.tar.gz", hash = "sha256:0e1b44e0ea153e6594f9f394fef15193a68aaaea2d843f83e2742717ca753257", size = 145903, upload-time = "2025-04-14T10:17:02.924Z" }
 wheels = [
@@ -2077,8 +2082,8 @@ name = "h2"
 version = "4.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "hpack" },
-    { name = "hyperframe" },
+    { name = "hpack", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "hyperframe", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/1d/17/afa56379f94ad0fe8defd37d6eb3f89a25404ffc71d4d848893d270325fc/h2-4.3.0.tar.gz", hash = "sha256:6c59efe4323fa18b47a632221a1888bd7fde6249819beda254aeca909f221bf1", size = 2152026, upload-time = "2025-08-23T18:12:19.778Z" }
 wheels = [
@@ -2099,8 +2104,8 @@ name = "html5lib"
 version = "1.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "six" },
-    { name = "webencodings" },
+    { name = "six", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "webencodings", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/ac/b6/b55c3f49042f1df3dcd422b7f224f939892ee94f22abcf503a9b7339eaf2/html5lib-1.1.tar.gz", hash = "sha256:b2e5b40261e20f354d198eae92afc10d750afb487ed5e50f9c4eaf07c184146f", size = 272215, upload-time = "2020-06-22T23:32:38.834Z" }
 wheels = [
@@ -2150,7 +2155,7 @@ name = "hyperlink"
 version = "21.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "idna" },
+    { name = "idna", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/3a/51/1947bd81d75af87e3bb9e34593a4cf118115a8feb451ce7a69044ef1412e/hyperlink-21.0.0.tar.gz", hash = "sha256:427af957daa58bc909471c6c40f74c5450fa123dd093fc53efd2e91d2705a56b", size = 140743, upload-time = "2021-01-08T05:51:20.972Z" }
 wheels = [
@@ -2162,7 +2167,7 @@ name = "id"
 version = "1.5.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "requests" },
+    { name = "requests", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/22/11/102da08f88412d875fa2f1a9a469ff7ad4c874b0ca6fed0048fe385bdb3d/id-1.5.0.tar.gz", hash = "sha256:292cb8a49eacbbdbce97244f47a97b4c62540169c976552e497fd57df0734c1d", size = 15237, upload-time = "2024-12-04T19:53:05.575Z" }
 wheels = [
@@ -2201,7 +2206,7 @@ name = "importlib-metadata"
 version = "8.7.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "zipp" },
+    { name = "zipp", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/76/66/650a33bd90f786193e4de4b3ad86ea60b53c89b669a5c7be931fac31cdb0/importlib_metadata-8.7.0.tar.gz", hash = "sha256:d13b81ad223b890aa16c5471f2ac3056cf76c5f10f82d6f9292f0b415f389000", size = 56641, upload-time = "2025-04-27T15:29:01.736Z" }
 wheels = [
@@ -2213,8 +2218,8 @@ name = "incremental"
 version = "24.7.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "setuptools" },
-    { name = "tomli", marker = "python_full_version < '3.11'" },
+    { name = "setuptools", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "tomli", marker = "python_full_version < '3.11' and platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/27/87/156b374ff6578062965afe30cc57627d35234369b3336cf244b240c8d8e6/incremental-24.7.2.tar.gz", hash = "sha256:fb4f1d47ee60efe87d4f6f0ebb5f70b9760db2b2574c59c8e8912be4ebd464c9", size = 28157, upload-time = "2024-07-29T20:03:55.441Z" }
 wheels = [
@@ -2235,9 +2240,9 @@ name = "ipdb"
 version = "0.13.13"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "decorator" },
-    { name = "ipython" },
-    { name = "tomli", marker = "python_full_version < '3.11'" },
+    { name = "decorator", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "ipython", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "tomli", marker = "python_full_version < '3.11' and platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/3d/1b/7e07e7b752017f7693a0f4d41c13e5ca29ce8cbcfdcc1fd6c4ad8c0a27a0/ipdb-0.13.13.tar.gz", hash = "sha256:e3ac6018ef05126d442af680aad863006ec19d02290561ac88b8b1c0b0cfc726", size = 17042, upload-time = "2023-03-09T15:40:57.487Z" }
 wheels = [
@@ -2249,17 +2254,17 @@ name = "ipython"
 version = "8.37.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "colorama", marker = "sys_platform == 'win32'" },
-    { name = "decorator" },
-    { name = "exceptiongroup", marker = "python_full_version < '3.11'" },
-    { name = "jedi" },
-    { name = "matplotlib-inline" },
-    { name = "pexpect", marker = "sys_platform != 'emscripten' and sys_platform != 'win32'" },
-    { name = "prompt-toolkit" },
-    { name = "pygments" },
-    { name = "stack-data" },
-    { name = "traitlets" },
-    { name = "typing-extensions", marker = "python_full_version < '3.12'" },
+    { name = "colorama", marker = "platform_python_implementation != 'PyPy' and sys_platform == 'win32'" },
+    { name = "decorator", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "exceptiongroup", marker = "python_full_version < '3.11' and platform_python_implementation != 'PyPy'" },
+    { name = "jedi", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "matplotlib-inline", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "pexpect", marker = "platform_python_implementation != 'PyPy' and sys_platform != 'emscripten' and sys_platform != 'win32'" },
+    { name = "prompt-toolkit", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "pygments", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "stack-data", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "traitlets", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "typing-extensions", marker = "python_full_version < '3.12' and platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/85/31/10ac88f3357fc276dc8a64e8880c82e80e7459326ae1d0a211b40abf6665/ipython-8.37.0.tar.gz", hash = "sha256:ca815841e1a41a1e6b73a0b08f3038af9b2252564d01fc405356d34033012216", size = 5606088, upload-time = "2025-05-31T16:39:09.613Z" }
 wheels = [
@@ -2280,7 +2285,7 @@ name = "jaraco-classes"
 version = "3.4.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "more-itertools" },
+    { name = "more-itertools", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/06/c0/ed4a27bc5571b99e3cff68f8a9fa5b56ff7df1c2251cc715a652ddd26402/jaraco.classes-3.4.0.tar.gz", hash = "sha256:47a024b51d0239c0dd8c8540c6c7f484be3b8fcf0b2d85c13825780d3b3f3acd", size = 11780, upload-time = "2024-03-31T07:27:36.643Z" }
 wheels = [
@@ -2292,7 +2297,7 @@ name = "jaraco-context"
 version = "6.0.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "backports-tarfile", marker = "python_full_version < '3.12'" },
+    { name = "backports-tarfile", marker = "python_full_version < '3.12' and platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/df/ad/f3777b81bf0b6e7bc7514a1656d3e637b2e8e15fab2ce3235730b3e7a4e6/jaraco_context-6.0.1.tar.gz", hash = "sha256:9bae4ea555cf0b14938dc0aee7c9f32ed303aa20a3b73e7dc80111628792d1b3", size = 13912, upload-time = "2024-08-20T03:39:27.358Z" }
 wheels = [
@@ -2304,7 +2309,7 @@ name = "jaraco-functools"
 version = "4.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "more-itertools" },
+    { name = "more-itertools", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/f7/ed/1aa2d585304ec07262e1a83a9889880701079dde796ac7b1d1826f40c63d/jaraco_functools-4.3.0.tar.gz", hash = "sha256:cfd13ad0dd2c47a3600b439ef72d8615d482cedcff1632930d6f28924d92f294", size = 19755, upload-time = "2025-08-18T20:05:09.91Z" }
 wheels = [
@@ -2316,7 +2321,7 @@ name = "jedi"
 version = "0.19.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "parso" },
+    { name = "parso", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/72/3a/79a912fbd4d8dd6fbb02bf69afd3bb72cf0c729bb3063c6f4498603db17a/jedi-0.19.2.tar.gz", hash = "sha256:4770dc3de41bde3966b02eb84fbcf557fb33cce26ad23da12c742fb50ecb11f0", size = 1231287, upload-time = "2024-11-11T01:41:42.873Z" }
 wheels = [
@@ -2337,7 +2342,7 @@ name = "jinja2"
 version = "3.1.6"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "markupsafe" },
+    { name = "markupsafe", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/df/bf/f7da0350254c0ed7c72f3e33cef02e048281fec7ecec5f032d4aac52226b/jinja2-3.1.6.tar.gz", hash = "sha256:0137fb05990d35f1275a587e9aee6d56da821fc83491a0fb838183be43f66d6d", size = 245115, upload-time = "2025-03-05T20:05:02.478Z" }
 wheels = [
@@ -2349,13 +2354,13 @@ name = "keyring"
 version = "25.6.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "importlib-metadata", marker = "python_full_version < '3.12'" },
-    { name = "jaraco-classes" },
-    { name = "jaraco-context" },
-    { name = "jaraco-functools" },
-    { name = "jeepney", marker = "sys_platform == 'linux'" },
-    { name = "pywin32-ctypes", marker = "sys_platform == 'win32'" },
-    { name = "secretstorage", marker = "sys_platform == 'linux'" },
+    { name = "importlib-metadata", marker = "python_full_version < '3.12' and platform_python_implementation != 'PyPy'" },
+    { name = "jaraco-classes", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "jaraco-context", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "jaraco-functools", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "jeepney", marker = "platform_python_implementation != 'PyPy' and sys_platform == 'linux'" },
+    { name = "pywin32-ctypes", marker = "platform_python_implementation != 'PyPy' and sys_platform == 'win32'" },
+    { name = "secretstorage", marker = "platform_python_implementation != 'PyPy' and sys_platform == 'linux'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/70/09/d904a6e96f76ff214be59e7aa6ef7190008f52a0ab6689760a98de0bf37d/keyring-25.6.0.tar.gz", hash = "sha256:0b39998aa941431eb3d9b0d4b2460bc773b9df6fed7621c2dfb291a7e0187a66", size = 62750, upload-time = "2024-12-25T15:26:45.782Z" }
 wheels = [
@@ -2424,10 +2429,10 @@ name = "kombu"
 version = "5.5.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "amqp" },
-    { name = "packaging" },
-    { name = "tzdata" },
-    { name = "vine" },
+    { name = "amqp", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "packaging", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "tzdata", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "vine", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/0f/d3/5ff936d8319ac86b9c409f1501b07c426e6ad41966fedace9ef1b966e23f/kombu-5.5.4.tar.gz", hash = "sha256:886600168275ebeada93b888e831352fe578168342f0d1d5833d88ba0d847363", size = 461992, upload-time = "2025-06-01T10:19:22.281Z" }
 wheels = [
@@ -2448,14 +2453,14 @@ name = "logfire"
 version = "4.13.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "executing" },
-    { name = "opentelemetry-exporter-otlp-proto-http" },
-    { name = "opentelemetry-instrumentation" },
-    { name = "opentelemetry-sdk" },
-    { name = "protobuf" },
-    { name = "rich" },
-    { name = "tomli", marker = "python_full_version < '3.11'" },
-    { name = "typing-extensions" },
+    { name = "executing", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "opentelemetry-exporter-otlp-proto-http", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "opentelemetry-instrumentation", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "opentelemetry-sdk", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "protobuf", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "rich", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "tomli", marker = "python_full_version < '3.11' and platform_python_implementation != 'PyPy'" },
+    { name = "typing-extensions", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/11/51/004bbe0276fcecfea8d4a4c76ad33426c9b34428e0723f22c6bb801dbc22/logfire-4.13.2.tar.gz", hash = "sha256:4e756e140c3b8fd25653d20437ebcb75734975f5382de6ae28be775c75575d95", size = 547796, upload-time = "2025-10-13T16:17:53.392Z" }
 wheels = [
@@ -2464,15 +2469,15 @@ wheels = [
 
 [package.optional-dependencies]
 celery = [
-    { name = "opentelemetry-instrumentation-celery" },
+    { name = "opentelemetry-instrumentation-celery", marker = "platform_python_implementation != 'PyPy'" },
 ]
 django = [
-    { name = "opentelemetry-instrumentation-asgi" },
-    { name = "opentelemetry-instrumentation-django" },
+    { name = "opentelemetry-instrumentation-asgi", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "opentelemetry-instrumentation-django", marker = "platform_python_implementation != 'PyPy'" },
 ]
 psycopg2 = [
-    { name = "opentelemetry-instrumentation-psycopg2" },
-    { name = "packaging" },
+    { name = "opentelemetry-instrumentation-psycopg2", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "packaging", marker = "platform_python_implementation != 'PyPy'" },
 ]
 
 [[package]]
@@ -2550,7 +2555,7 @@ name = "markdown"
 version = "3.2.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "setuptools" },
+    { name = "setuptools", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/98/79/ce6984767cb9478e6818bd0994283db55c423d733cc62a88a3ffb8581e11/Markdown-3.2.1.tar.gz", hash = "sha256:90fee683eeabe1a92e149f7ba74e5ccdc81cd397bd6c516d93a8da0ef90b6902", size = 297048, upload-time = "2020-02-12T20:43:59.863Z" }
 wheels = [
@@ -2562,7 +2567,7 @@ name = "markdown-it-py"
 version = "4.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "mdurl" },
+    { name = "mdurl", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/5b/f5/4ec618ed16cc4f8fb3b701563655a69816155e79e24a17b651541804721d/markdown_it_py-4.0.0.tar.gz", hash = "sha256:cb0a2b4aa34f932c007117b194e945bd74e0ec24133ceb5bac59009cda1cb9f3", size = 73070, upload-time = "2025-08-11T12:57:52.854Z" }
 wheels = [
@@ -2624,17 +2629,17 @@ name = "matplotlib"
 version = "3.10.7"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "contourpy", version = "1.3.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
-    { name = "contourpy", version = "1.3.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
-    { name = "cycler" },
-    { name = "fonttools" },
-    { name = "kiwisolver" },
-    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
-    { name = "numpy", version = "2.3.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
-    { name = "packaging" },
-    { name = "pillow" },
-    { name = "pyparsing" },
-    { name = "python-dateutil" },
+    { name = "contourpy", version = "1.3.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11' and platform_python_implementation != 'PyPy'" },
+    { name = "contourpy", version = "1.3.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11' and platform_python_implementation != 'PyPy'" },
+    { name = "cycler", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "fonttools", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "kiwisolver", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11' and platform_python_implementation != 'PyPy'" },
+    { name = "numpy", version = "2.3.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11' and platform_python_implementation != 'PyPy'" },
+    { name = "packaging", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "pillow", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "pyparsing", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "python-dateutil", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/ae/e2/d2d5295be2f44c678ebaf3544ba32d20c1f9ef08c49fe47f496180e1db15/matplotlib-3.10.7.tar.gz", hash = "sha256:a06ba7e2a2ef9131c79c49e63dad355d2d878413a0376c1727c8b9335ff731c7", size = 34804865, upload-time = "2025-10-09T00:28:00.669Z" }
 wheels = [
@@ -2671,7 +2676,7 @@ name = "matplotlib-inline"
 version = "0.1.7"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "traitlets" },
+    { name = "traitlets", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/99/5b/a36a337438a14116b16480db471ad061c36c3694df7c2084a0da7ba538b7/matplotlib_inline-0.1.7.tar.gz", hash = "sha256:8423b23ec666be3d16e16b60bdd8ac4e86e840ebd1dd11a30b9f117f2fa0ab90", size = 8159, upload-time = "2024-04-15T13:44:44.803Z" }
 wheels = [
@@ -2692,16 +2697,16 @@ name = "moai-iplweb"
 version = "2.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "future" },
-    { name = "paste" },
-    { name = "pastedeploy" },
-    { name = "pastescript" },
-    { name = "pyoai" },
-    { name = "six" },
-    { name = "sqlalchemy" },
-    { name = "webob" },
-    { name = "wsgi-intercept" },
-    { name = "wsgiutils" },
+    { name = "future", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "paste", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "pastedeploy", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "pastescript", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "pyoai", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "six", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "sqlalchemy", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "webob", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "wsgi-intercept", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "wsgiutils", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/e6/e7/40126fe3a8edfc840ec7e2cf9ad65b2b595a470bbec2be1216feba8b181b/MOAI-iplweb-2.0.0.tar.gz", hash = "sha256:1c969cae673272bad6f0ac70f547e52a65343e8978780885d255ae56e3ab2c66", size = 47327, upload-time = "2018-07-14T16:18:17.407Z" }
 wheels = [
@@ -2713,8 +2718,8 @@ name = "mock"
 version = "2.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "pbr" },
-    { name = "six" },
+    { name = "pbr", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "six", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/0c/53/014354fc93c591ccc4abff12c473ad565a2eb24dcd82490fae33dbf2539f/mock-2.0.0.tar.gz", hash = "sha256:b158b6df76edd239b8208d481dc46b6afd45a846b7812ff0ce58971cf5bc8bba", size = 73684, upload-time = "2016-04-06T01:38:35.726Z" }
 wheels = [
@@ -2726,7 +2731,7 @@ name = "model-bakery"
 version = "1.20.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "django" },
+    { name = "django", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/bf/73/24854c5053c852201b4799e7837060496d1418a28488a90a299e8d9c618b/model_bakery-1.20.5.tar.gz", hash = "sha256:107b3efb8889baac83cae0e2d81465903b69a70eeb99ecfd0929d959a653ab90", size = 21332, upload-time = "2025-06-07T10:21:47.727Z" }
 wheels = [
@@ -2781,7 +2786,7 @@ name = "multidict"
 version = "6.7.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "typing-extensions", marker = "python_full_version < '3.11'" },
+    { name = "typing-extensions", marker = "python_full_version < '3.11' and platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/80/1e/5492c365f222f907de1039b91f922b93fa4f764c713ee858d235495d8f50/multidict-6.7.0.tar.gz", hash = "sha256:c6e99d9a65ca282e578dfea819cfa9c0a62b2499d8677392e09feaf305e9e6f5", size = 101834, upload-time = "2025-10-06T14:52:30.657Z" }
 wheels = [
@@ -2888,7 +2893,7 @@ name = "numpy"
 version = "2.2.6"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "python_full_version < '3.11'",
+    "python_full_version < '3.11' and platform_python_implementation != 'PyPy'",
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/76/21/7d2a95e4bba9dc13d043ee156a356c0a8f0c6309dff6b21b4d71a073b8a8/numpy-2.2.6.tar.gz", hash = "sha256:e29554e2bef54a90aa5cc07da6ce955accb83f21ab5de01a62c8478897b264fd", size = 20276440, upload-time = "2025-05-17T22:38:04.611Z" }
 wheels = [
@@ -2933,8 +2938,8 @@ name = "numpy"
 version = "2.3.3"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "python_full_version >= '3.12'",
-    "python_full_version == '3.11.*'",
+    "python_full_version >= '3.12' and platform_python_implementation != 'PyPy'",
+    "python_full_version == '3.11.*' and platform_python_implementation != 'PyPy'",
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/d0/19/95b3d357407220ed24c139018d2518fab0a61a948e68286a25f1a4d049ff/numpy-2.3.3.tar.gz", hash = "sha256:ddc7c39727ba62b80dfdbedf400d1c10ddfa8eefbd7ec8dcb118be8b56d31029", size = 20576648, upload-time = "2025-09-09T16:54:12.543Z" }
 wheels = [
@@ -2983,7 +2988,7 @@ name = "odfpy"
 version = "1.4.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "defusedxml" },
+    { name = "defusedxml", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/97/73/8ade73f6749177003f7ce3304f524774adda96e6aaab30ea79fd8fda7934/odfpy-1.4.1.tar.gz", hash = "sha256:db766a6e59c5103212f3cc92ec8dd50a0f3a02790233ed0b52148b70d3c438ec", size = 717045, upload-time = "2020-01-18T16:55:48.852Z" }
 
@@ -2998,7 +3003,7 @@ name = "openpyxl"
 version = "3.1.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "et-xmlfile" },
+    { name = "et-xmlfile", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/3d/f9/88d94a75de065ea32619465d2f77b29a0469500e99012523b91cc4141cd1/openpyxl-3.1.5.tar.gz", hash = "sha256:cf0e3cf56142039133628b5acffe8ef0c12bc902d2aadd3e0fe5878dc08d1050", size = 186464, upload-time = "2024-06-28T14:03:44.161Z" }
 wheels = [
@@ -3010,8 +3015,8 @@ name = "opentelemetry-api"
 version = "1.37.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "importlib-metadata" },
-    { name = "typing-extensions" },
+    { name = "importlib-metadata", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "typing-extensions", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/63/04/05040d7ce33a907a2a02257e601992f0cdf11c73b33f13c4492bf6c3d6d5/opentelemetry_api-1.37.0.tar.gz", hash = "sha256:540735b120355bd5112738ea53621f8d5edb35ebcd6fe21ada3ab1c61d1cd9a7", size = 64923, upload-time = "2025-09-11T10:29:01.662Z" }
 wheels = [
@@ -3023,7 +3028,7 @@ name = "opentelemetry-exporter-otlp-proto-common"
 version = "1.37.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "opentelemetry-proto" },
+    { name = "opentelemetry-proto", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/dc/6c/10018cbcc1e6fff23aac67d7fd977c3d692dbe5f9ef9bb4db5c1268726cc/opentelemetry_exporter_otlp_proto_common-1.37.0.tar.gz", hash = "sha256:c87a1bdd9f41fdc408d9cc9367bb53f8d2602829659f2b90be9f9d79d0bfe62c", size = 20430, upload-time = "2025-09-11T10:29:03.605Z" }
 wheels = [
@@ -3035,13 +3040,13 @@ name = "opentelemetry-exporter-otlp-proto-http"
 version = "1.37.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "googleapis-common-protos" },
-    { name = "opentelemetry-api" },
-    { name = "opentelemetry-exporter-otlp-proto-common" },
-    { name = "opentelemetry-proto" },
-    { name = "opentelemetry-sdk" },
-    { name = "requests" },
-    { name = "typing-extensions" },
+    { name = "googleapis-common-protos", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "opentelemetry-api", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "opentelemetry-exporter-otlp-proto-common", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "opentelemetry-proto", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "opentelemetry-sdk", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "requests", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "typing-extensions", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/5d/e3/6e320aeb24f951449e73867e53c55542bebbaf24faeee7623ef677d66736/opentelemetry_exporter_otlp_proto_http-1.37.0.tar.gz", hash = "sha256:e52e8600f1720d6de298419a802108a8f5afa63c96809ff83becb03f874e44ac", size = 17281, upload-time = "2025-09-11T10:29:04.844Z" }
 wheels = [
@@ -3053,10 +3058,10 @@ name = "opentelemetry-instrumentation"
 version = "0.58b0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "opentelemetry-api" },
-    { name = "opentelemetry-semantic-conventions" },
-    { name = "packaging" },
-    { name = "wrapt" },
+    { name = "opentelemetry-api", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "opentelemetry-semantic-conventions", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "packaging", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "wrapt", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/f6/36/7c307d9be8ce4ee7beb86d7f1d31027f2a6a89228240405a858d6e4d64f9/opentelemetry_instrumentation-0.58b0.tar.gz", hash = "sha256:df640f3ac715a3e05af145c18f527f4422c6ab6c467e40bd24d2ad75a00cb705", size = 31549, upload-time = "2025-09-11T11:42:14.084Z" }
 wheels = [
@@ -3068,11 +3073,11 @@ name = "opentelemetry-instrumentation-asgi"
 version = "0.58b0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "asgiref" },
-    { name = "opentelemetry-api" },
-    { name = "opentelemetry-instrumentation" },
-    { name = "opentelemetry-semantic-conventions" },
-    { name = "opentelemetry-util-http" },
+    { name = "asgiref", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "opentelemetry-api", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "opentelemetry-instrumentation", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "opentelemetry-semantic-conventions", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "opentelemetry-util-http", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/7b/e2/03ff707d881d590c7adaed5e9d1979aed7e5e53fc1ed89035e5ed9f304af/opentelemetry_instrumentation_asgi-0.58b0.tar.gz", hash = "sha256:3ccc0c9c1c8c71e8d9da5945c6dcd9c0c8d147839f208536b7042c6dd98e65c9", size = 25116, upload-time = "2025-09-11T11:42:18.437Z" }
 wheels = [
@@ -3084,9 +3089,9 @@ name = "opentelemetry-instrumentation-celery"
 version = "0.58b0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "opentelemetry-api" },
-    { name = "opentelemetry-instrumentation" },
-    { name = "opentelemetry-semantic-conventions" },
+    { name = "opentelemetry-api", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "opentelemetry-instrumentation", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "opentelemetry-semantic-conventions", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/3b/57/eded8d4059e9a9e15c607fba4619df12b55693023d7ba41e39a451951e7c/opentelemetry_instrumentation_celery-0.58b0.tar.gz", hash = "sha256:1dc35c3a8b82649659da0057df57740a8b3656492ad915da68b8f5f1b7a208e9", size = 14768, upload-time = "2025-09-11T11:42:27.96Z" }
 wheels = [
@@ -3098,10 +3103,10 @@ name = "opentelemetry-instrumentation-dbapi"
 version = "0.58b0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "opentelemetry-api" },
-    { name = "opentelemetry-instrumentation" },
-    { name = "opentelemetry-semantic-conventions" },
-    { name = "wrapt" },
+    { name = "opentelemetry-api", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "opentelemetry-instrumentation", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "opentelemetry-semantic-conventions", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "wrapt", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/e5/8b/bf6c72d54f77eb0e4445e3b0415e69b3ea5fa40b9372c586db91ffc59b17/opentelemetry_instrumentation_dbapi-0.58b0.tar.gz", hash = "sha256:34ca7e7bf942d5ebf1ea3838e34154b3900bd00d17115a99b83c4ee280e658ac", size = 14223, upload-time = "2025-09-11T11:42:30.771Z" }
 wheels = [
@@ -3113,11 +3118,11 @@ name = "opentelemetry-instrumentation-django"
 version = "0.58b0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "opentelemetry-api" },
-    { name = "opentelemetry-instrumentation" },
-    { name = "opentelemetry-instrumentation-wsgi" },
-    { name = "opentelemetry-semantic-conventions" },
-    { name = "opentelemetry-util-http" },
+    { name = "opentelemetry-api", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "opentelemetry-instrumentation", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "opentelemetry-instrumentation-wsgi", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "opentelemetry-semantic-conventions", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "opentelemetry-util-http", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/69/e8/6055cb9129a5a80b8814b770b79ce559977ff3b3b11dfd4067566ff25c1d/opentelemetry_instrumentation_django-0.58b0.tar.gz", hash = "sha256:24f45706a9dc3c47b9214ed5422fd0d35a850f3f40b04112a91fc10561cfd3f5", size = 25009, upload-time = "2025-09-11T11:42:31.853Z" }
 wheels = [
@@ -3129,9 +3134,9 @@ name = "opentelemetry-instrumentation-psycopg2"
 version = "0.58b0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "opentelemetry-api" },
-    { name = "opentelemetry-instrumentation" },
-    { name = "opentelemetry-instrumentation-dbapi" },
+    { name = "opentelemetry-api", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "opentelemetry-instrumentation", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "opentelemetry-instrumentation-dbapi", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/36/3e/eee2fafdd5c7f141cffc588859659e3e0808872c7f8f28d321921d6cc08d/opentelemetry_instrumentation_psycopg2-0.58b0.tar.gz", hash = "sha256:e08e2336926a920bc01788d7ff08315c7d995bd62bc9588c316ebb46f05ae95c", size = 10735, upload-time = "2025-09-11T11:42:44.424Z" }
 wheels = [
@@ -3143,10 +3148,10 @@ name = "opentelemetry-instrumentation-wsgi"
 version = "0.58b0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "opentelemetry-api" },
-    { name = "opentelemetry-instrumentation" },
-    { name = "opentelemetry-semantic-conventions" },
-    { name = "opentelemetry-util-http" },
+    { name = "opentelemetry-api", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "opentelemetry-instrumentation", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "opentelemetry-semantic-conventions", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "opentelemetry-util-http", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/3e/76/c33bb3f219dc2266f98b8f927e913e93b31e94af7aa6430a9a9f167f9ab2/opentelemetry_instrumentation_wsgi-0.58b0.tar.gz", hash = "sha256:0ea27d44c83b48e6b182a904c801ca62b2999642647f32ef33c8a9c8bbf6a245", size = 18377, upload-time = "2025-09-11T11:43:02.589Z" }
 wheels = [
@@ -3158,7 +3163,7 @@ name = "opentelemetry-proto"
 version = "1.37.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "protobuf" },
+    { name = "protobuf", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/dd/ea/a75f36b463a36f3c5a10c0b5292c58b31dbdde74f6f905d3d0ab2313987b/opentelemetry_proto-1.37.0.tar.gz", hash = "sha256:30f5c494faf66f77faeaefa35ed4443c5edb3b0aa46dad073ed7210e1a789538", size = 46151, upload-time = "2025-09-11T10:29:11.04Z" }
 wheels = [
@@ -3170,9 +3175,9 @@ name = "opentelemetry-sdk"
 version = "1.37.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "opentelemetry-api" },
-    { name = "opentelemetry-semantic-conventions" },
-    { name = "typing-extensions" },
+    { name = "opentelemetry-api", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "opentelemetry-semantic-conventions", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "typing-extensions", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/f4/62/2e0ca80d7fe94f0b193135375da92c640d15fe81f636658d2acf373086bc/opentelemetry_sdk-1.37.0.tar.gz", hash = "sha256:cc8e089c10953ded765b5ab5669b198bbe0af1b3f89f1007d19acd32dc46dda5", size = 170404, upload-time = "2025-09-11T10:29:11.779Z" }
 wheels = [
@@ -3184,8 +3189,8 @@ name = "opentelemetry-semantic-conventions"
 version = "0.58b0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "opentelemetry-api" },
-    { name = "typing-extensions" },
+    { name = "opentelemetry-api", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "typing-extensions", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/aa/1b/90701d91e6300d9f2fb352153fb1721ed99ed1f6ea14fa992c756016e63a/opentelemetry_semantic_conventions-0.58b0.tar.gz", hash = "sha256:6bd46f51264279c433755767bb44ad00f1c9e2367e1b42af563372c5a6fa0c25", size = 129867, upload-time = "2025-09-11T10:29:12.597Z" }
 wheels = [
@@ -3206,7 +3211,7 @@ name = "outcome"
 version = "1.3.0.post0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "attrs" },
+    { name = "attrs", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/98/df/77698abfac98571e65ffeb0c1fba8ffd692ab8458d617a0eed7d9a8d38f2/outcome-1.3.0.post0.tar.gz", hash = "sha256:9dcf02e65f2971b80047b377468e72a268e15c0af3cf1238e6ff14f7f91143b8", size = 21060, upload-time = "2023-10-26T04:26:04.361Z" }
 wheels = [
@@ -3227,11 +3232,11 @@ name = "pandas"
 version = "2.3.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
-    { name = "numpy", version = "2.3.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
-    { name = "python-dateutil" },
-    { name = "pytz" },
-    { name = "tzdata" },
+    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11' and platform_python_implementation != 'PyPy'" },
+    { name = "numpy", version = "2.3.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11' and platform_python_implementation != 'PyPy'" },
+    { name = "python-dateutil", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "pytz", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "tzdata", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/33/01/d40b85317f86cf08d853a4f495195c73815fdf205eef3993821720274518/pandas-2.3.3.tar.gz", hash = "sha256:e05e1af93b977f7eafa636d043f9f94c7ee3ac81af99c13508215942e64c993b", size = 4495223, upload-time = "2025-09-29T23:34:51.853Z" }
 wheels = [
@@ -3272,7 +3277,7 @@ name = "paste"
 version = "3.10.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "setuptools" },
+    { name = "setuptools", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/d7/1c/6bc9040bf9b4cfc9334f66d2738f952384c106c48882adf6097fed3da966/paste-3.10.1.tar.gz", hash = "sha256:1c3d12065a5e8a7a18c0c7be1653a97cf38cc3e9a5a0c8334a9dd992d3a05e4a", size = 652629, upload-time = "2024-05-01T11:41:08.536Z" }
 wheels = [
@@ -3293,9 +3298,9 @@ name = "pastescript"
 version = "3.7.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "paste" },
-    { name = "pastedeploy" },
-    { name = "setuptools" },
+    { name = "paste", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "pastedeploy", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "setuptools", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/25/c3/a12bc48375d6408eeef371a5c386ef4f62dac56ae35ae2eab042e00689e6/pastescript-3.7.0.tar.gz", hash = "sha256:536f028dfb6e5329c67b32299e1c9303f91264e49793cc6916eb0a73eb4a2521", size = 98747, upload-time = "2025-01-22T16:15:28.827Z" }
 wheels = [
@@ -3316,7 +3321,7 @@ name = "pbr"
 version = "7.0.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "setuptools" },
+    { name = "setuptools", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/ad/8d/23253ab92d4731eb34383a69b39568ca63a1685bec1e9946e91a32fc87ad/pbr-7.0.1.tar.gz", hash = "sha256:3ecbcb11d2b8551588ec816b3756b1eb4394186c3b689b17e04850dfc20f7e57", size = 130086, upload-time = "2025-08-21T09:40:56.015Z" }
 wheels = [
@@ -3328,7 +3333,7 @@ name = "pexpect"
 version = "4.9.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "ptyprocess" },
+    { name = "ptyprocess", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/42/92/cc564bf6381ff43ce1f4d06852fc19a2f11d180f23dc32d9588bee2f149d/pexpect-4.9.0.tar.gz", hash = "sha256:ee7d41123f3c9911050ea2c2dac107568dc43b2d3b0c7557a33212c398ead30f", size = 166450, upload-time = "2023-11-25T09:07:26.339Z" }
 wheels = [
@@ -3406,8 +3411,8 @@ name = "playwright"
 version = "1.55.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "greenlet" },
-    { name = "pyee" },
+    { name = "greenlet", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "pyee", marker = "platform_python_implementation != 'PyPy'" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/80/3a/c81ff76df266c62e24f19718df9c168f49af93cabdbc4608ae29656a9986/playwright-1.55.0-py3-none-macosx_10_13_x86_64.whl", hash = "sha256:d7da108a95001e412effca4f7610de79da1637ccdf670b1ae3fdc08b9694c034", size = 40428109, upload-time = "2025-08-28T15:46:20.357Z" },
@@ -3443,11 +3448,11 @@ name = "pre-commit"
 version = "4.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "cfgv" },
-    { name = "identify" },
-    { name = "nodeenv" },
-    { name = "pyyaml" },
-    { name = "virtualenv" },
+    { name = "cfgv", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "identify", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "nodeenv", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "pyyaml", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "virtualenv", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/ff/29/7cf5bbc236333876e4b41f56e06857a87937ce4bf91e117a6991a2dbb02a/pre_commit-4.3.0.tar.gz", hash = "sha256:499fe450cc9d42e9d58e606262795ecb64dd05438943c62b66f6a8673da30b16", size = 193792, upload-time = "2025-08-09T18:56:14.651Z" }
 wheels = [
@@ -3477,7 +3482,7 @@ name = "prompt-toolkit"
 version = "3.0.52"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "wcwidth" },
+    { name = "wcwidth", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/a1/96/06e01a7b38dce6fe1db213e061a4602dd6032a8a97ef6c1a862537732421/prompt_toolkit-3.0.52.tar.gz", hash = "sha256:28cde192929c8e7321de85de1ddbe736f1375148b02f2e17edd840042b1be855", size = 434198, upload-time = "2025-08-27T15:24:02.057Z" }
 wheels = [
@@ -3611,7 +3616,7 @@ name = "pyasn1-modules"
 version = "0.4.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "pyasn1" },
+    { name = "pyasn1", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/e9/e6/78ebbb10a8c8e4b61a59249394a4a594c1a7af95593dc933a349c8d00964/pyasn1_modules-0.4.2.tar.gz", hash = "sha256:677091de870a80aae844b1ca6134f54652fa2c8c5a52aa396440ac3106e941e6", size = 307892, upload-time = "2025-03-28T02:41:22.17Z" }
 wheels = [
@@ -3641,7 +3646,7 @@ name = "pyee"
 version = "13.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "typing-extensions" },
+    { name = "typing-extensions", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/95/03/1fd98d5841cd7964a27d729ccf2199602fe05eb7a405c1462eb7277945ed/pyee-13.0.0.tar.gz", hash = "sha256:b391e3c5a434d1f5118a25615001dbc8f669cf410ab67d04c4d4e07c55481c37", size = 31250, upload-time = "2025-03-17T18:53:15.955Z" }
 wheels = [
@@ -3653,10 +3658,10 @@ name = "pygad"
 version = "3.5.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "cloudpickle" },
-    { name = "matplotlib" },
-    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
-    { name = "numpy", version = "2.3.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "cloudpickle", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "matplotlib", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11' and platform_python_implementation != 'PyPy'" },
+    { name = "numpy", version = "2.3.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11' and platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/e8/d0/931c42ef763c9b2f5d6dc66d082df4a977f8deb415cf802c031551fb39b2/pygad-3.5.0.tar.gz", hash = "sha256:18c5b7ad274375206d7b78adc63fc9725a2d655b90c8296e14cc03c0f535797e", size = 109839, upload-time = "2025-07-09T02:21:48.756Z" }
 wheels = [
@@ -3683,7 +3688,7 @@ wheels = [
 
 [package.optional-dependencies]
 crypto = [
-    { name = "cryptography" },
+    { name = "cryptography", marker = "platform_python_implementation != 'PyPy'" },
 ]
 
 [[package]]
@@ -3691,7 +3696,7 @@ name = "pymed-iplweb"
 version = "0.8.10"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "requests" },
+    { name = "requests", marker = "platform_python_implementation != 'PyPy'" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/e8/36/174ee8615421dd4d0d712917deea30b8327f2ec6be594e76e599c9c71ba0/pymed_iplweb-0.8.10-py3-none-any.whl", hash = "sha256:3d86daf6e94327c4ce1c927bebbe7733a1c9845356087a3310ce5cfb310ee21c", size = 10231, upload-time = "2021-01-13T01:50:40.367Z" },
@@ -3702,8 +3707,8 @@ name = "pyoai"
 version = "2.5.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "lxml" },
-    { name = "six" },
+    { name = "lxml", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "six", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/21/3c/0ad6e6d50fc355be718fe667541797a27d0252641983b7925df685ef2163/pyoai-2.5.0.tar.gz", hash = "sha256:029521e1f6a819511feb4299a6181b5c312e8a71f7cddc4547e27001e7552be0", size = 106528, upload-time = "2017-07-03T15:06:47.99Z" }
 
@@ -3712,8 +3717,8 @@ name = "pyopenssl"
 version = "25.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "cryptography" },
-    { name = "typing-extensions" },
+    { name = "cryptography", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "typing-extensions", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/80/be/97b83a464498a79103036bc74d1038df4a7ef0e402cfaf4d5e113fb14759/pyopenssl-25.3.0.tar.gz", hash = "sha256:c981cb0a3fd84e8602d7afc209522773b94c1c2446a3c710a75b06fe1beae329", size = 184073, upload-time = "2025-09-17T00:32:21.037Z" }
 wheels = [
@@ -3725,9 +3730,9 @@ name = "pypandoc"
 version = "1.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "pip" },
-    { name = "setuptools" },
-    { name = "wheel" },
+    { name = "pip", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "setuptools", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "wheel", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/d6/b7/5050dc1769c8a93d3ec7c4bd55be161991c94b8b235f88bf7c764449e708/pypandoc-1.5.tar.gz", hash = "sha256:14a49977ab1fbc9b14ef3087dcb101f336851837fca55ca79cf33846cc4976ff", size = 26494, upload-time = "2020-04-13T00:41:51.291Z" }
 wheels = [
@@ -3775,12 +3780,12 @@ name = "pytest"
 version = "7.4.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "colorama", marker = "sys_platform == 'win32'" },
-    { name = "exceptiongroup", marker = "python_full_version < '3.11'" },
-    { name = "iniconfig" },
-    { name = "packaging" },
-    { name = "pluggy" },
-    { name = "tomli", marker = "python_full_version < '3.11'" },
+    { name = "colorama", marker = "platform_python_implementation != 'PyPy' and sys_platform == 'win32'" },
+    { name = "exceptiongroup", marker = "python_full_version < '3.11' and platform_python_implementation != 'PyPy'" },
+    { name = "iniconfig", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "packaging", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "pluggy", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "tomli", marker = "python_full_version < '3.11' and platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/80/1f/9d8e98e4133ffb16c90f3b405c43e38d3abb715bb5d7a63a5a684f7e46a3/pytest-7.4.4.tar.gz", hash = "sha256:2cf0005922c6ace4a3e2ec8b4080eb0d9753fdc93107415332f50ce9e7994280", size = 1357116, upload-time = "2023-12-31T12:00:18.035Z" }
 wheels = [
@@ -3792,8 +3797,8 @@ name = "pytest-base-url"
 version = "2.1.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "pytest" },
-    { name = "requests" },
+    { name = "pytest", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "requests", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/ae/1a/b64ac368de6b993135cb70ca4e5d958a5c268094a3a2a4cac6f0021b6c4f/pytest_base_url-2.1.0.tar.gz", hash = "sha256:02748589a54f9e63fcbe62301d6b0496da0d10231b753e950c63e03aee745d45", size = 6702, upload-time = "2024-01-31T22:43:00.81Z" }
 wheels = [
@@ -3805,9 +3810,9 @@ name = "pytest-cov"
 version = "7.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "coverage", extra = ["toml"] },
-    { name = "pluggy" },
-    { name = "pytest" },
+    { name = "coverage", extra = ["toml"], marker = "platform_python_implementation != 'PyPy'" },
+    { name = "pluggy", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "pytest", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/5e/f7/c933acc76f5208b3b00089573cf6a2bc26dc80a8aece8f52bb7d6b1855ca/pytest_cov-7.0.0.tar.gz", hash = "sha256:33c97eda2e049a0c5298e91f519302a1334c26ac65c1a483d6206fd458361af1", size = 54328, upload-time = "2025-09-09T10:57:02.113Z" }
 wheels = [
@@ -3819,7 +3824,7 @@ name = "pytest-django"
 version = "4.11.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "pytest" },
+    { name = "pytest", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/b1/fb/55d580352db26eb3d59ad50c64321ddfe228d3d8ac107db05387a2fadf3a/pytest_django-4.11.1.tar.gz", hash = "sha256:a949141a1ee103cb0e7a20f1451d355f83f5e4a5d07bdd4dcfdd1fd0ff227991", size = 86202, upload-time = "2025-04-03T18:56:09.338Z" }
 wheels = [
@@ -3831,8 +3836,8 @@ name = "pytest-env"
 version = "1.1.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "pytest" },
-    { name = "tomli", marker = "python_full_version < '3.11'" },
+    { name = "pytest", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "tomli", marker = "python_full_version < '3.11' and platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/02/cc/df6940b2527bfa634c00940dfb6e3ec873bdfb7507b55894c93283fa3178/pytest_env-1.1.3.tar.gz", hash = "sha256:fcd7dc23bb71efd3d35632bde1bbe5ee8c8dc4489d6617fb010674880d96216b", size = 8627, upload-time = "2023-11-28T04:11:27.607Z" }
 wheels = [
@@ -3844,7 +3849,7 @@ name = "pytest-httpserver"
 version = "1.1.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "werkzeug" },
+    { name = "werkzeug", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/f1/d8/def15ba33bd696dd72dd4562a5287c0cba4d18a591eeb82e0b08ab385afc/pytest_httpserver-1.1.3.tar.gz", hash = "sha256:af819d6b533f84b4680b9416a5b3f67f1df3701f1da54924afd4d6e4ba5917ec", size = 68870, upload-time = "2025-04-10T08:17:15.6Z" }
 wheels = [
@@ -3856,7 +3861,7 @@ name = "pytest-lazy-fixture"
 version = "0.6.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "pytest" },
+    { name = "pytest", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/b2/82/ae6d2f6903719c4ec410dcd31ee24e3bce74b2cef3c5b9150ad36e8594b6/pytest-lazy-fixture-0.6.3.tar.gz", hash = "sha256:0e7d0c7f74ba33e6e80905e9bfd81f9d15ef9a790de97993e34213deb5ad10ac", size = 7878, upload-time = "2020-02-01T18:04:02.321Z" }
 wheels = [
@@ -3868,7 +3873,7 @@ name = "pytest-mock"
 version = "3.15.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "pytest" },
+    { name = "pytest", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/68/14/eb014d26be205d38ad5ad20d9a80f7d201472e08167f0bb4361e251084a9/pytest_mock-3.15.1.tar.gz", hash = "sha256:1849a238f6f396da19762269de72cb1814ab44416fa73a8686deac10b0d87a0f", size = 34036, upload-time = "2025-09-16T16:37:27.081Z" }
 wheels = [
@@ -3880,10 +3885,10 @@ name = "pytest-playwright"
 version = "0.7.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "playwright" },
-    { name = "pytest" },
-    { name = "pytest-base-url" },
-    { name = "python-slugify" },
+    { name = "playwright", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "pytest", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "pytest-base-url", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "python-slugify", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/a0/1e/9771990bad2b59d37728c4b6f28c234b3badbb2494bd72d54a6e2a988e23/pytest_playwright-0.7.1.tar.gz", hash = "sha256:94b551b2677ecdc16284fcd6a4f0045eafda47a60e74410f3fe4d8260e12cabf", size = 16769, upload-time = "2025-09-08T08:10:53.765Z" }
 wheels = [
@@ -3895,8 +3900,8 @@ name = "pytest-recording"
 version = "0.13.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "pytest" },
-    { name = "vcrpy" },
+    { name = "pytest", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "vcrpy", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/32/9c/f4027c5f1693847b06d11caf4b4f6bb09f22c1581ada4663877ec166b8c6/pytest_recording-0.13.4.tar.gz", hash = "sha256:568d64b2a85992eec4ae0a419c855d5fd96782c5fb016784d86f18053792768c", size = 26576, upload-time = "2025-05-08T10:41:11.231Z" }
 wheels = [
@@ -3908,8 +3913,8 @@ name = "pytest-rerunfailures"
 version = "16.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "packaging" },
-    { name = "pytest" },
+    { name = "packaging", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "pytest", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/de/04/71e9520551fc8fe2cf5c1a1842e4e600265b0815f2016b7c27ec85688682/pytest_rerunfailures-16.1.tar.gz", hash = "sha256:c38b266db8a808953ebd71ac25c381cb1981a78ff9340a14bcb9f1b9bff1899e", size = 30889, upload-time = "2025-10-10T07:06:01.238Z" }
 wheels = [
@@ -3921,11 +3926,11 @@ name = "pytest-splinter"
 version = "3.3.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "pytest" },
-    { name = "selenium" },
-    { name = "setuptools" },
-    { name = "splinter" },
-    { name = "urllib3" },
+    { name = "pytest", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "selenium", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "setuptools", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "splinter", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "urllib3", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/76/34/ae72995e7daf734cfcab777108c8ef0c5a83f07314acfd7754f59033c7af/pytest-splinter-3.3.2.tar.gz", hash = "sha256:8a2aadab4be040a763865ac33e37a118194ddba746c6a91183d728ff65f63308", size = 24124, upload-time = "2022-09-09T19:46:54.963Z" }
 wheels = [
@@ -3937,8 +3942,8 @@ name = "pytest-sugar"
 version = "1.1.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "pytest" },
-    { name = "termcolor" },
+    { name = "pytest", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "termcolor", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/0b/4e/60fed105549297ba1a700e1ea7b828044842ea27d72c898990510b79b0e2/pytest-sugar-1.1.1.tar.gz", hash = "sha256:73b8b65163ebf10f9f671efab9eed3d56f20d2ca68bda83fa64740a92c08f65d", size = 16533, upload-time = "2025-08-23T12:19:35.737Z" }
 wheels = [
@@ -3950,7 +3955,7 @@ name = "pytest-timeout"
 version = "2.4.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "pytest" },
+    { name = "pytest", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/ac/82/4c9ecabab13363e72d880f2fb504c5f750433b2b6f16e99f4ec21ada284c/pytest_timeout-2.4.0.tar.gz", hash = "sha256:7e68e90b01f9eff71332b25001f85c75495fc4e3a836701876183c4bcfd0540a", size = 17973, upload-time = "2025-05-05T19:44:34.99Z" }
 wheels = [
@@ -3962,8 +3967,8 @@ name = "pytest-xdist"
 version = "3.8.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "execnet" },
-    { name = "pytest" },
+    { name = "execnet", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "pytest", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/78/b4/439b179d1ff526791eb921115fca8e44e596a13efeda518b9d845a619450/pytest_xdist-3.8.0.tar.gz", hash = "sha256:7e578125ec9bc6050861aa93f2d59f1d8d085595d6551c2c90b6f4fad8d3a9f1", size = 88069, upload-time = "2025-07-01T13:30:59.346Z" }
 wheels = [
@@ -3975,7 +3980,7 @@ name = "python-dateutil"
 version = "2.9.0.post0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "six" },
+    { name = "six", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/66/c0/0c8b6ad9f17a802ee498c46e004a0eb49bc148f2fd230864601a86dcf6db/python-dateutil-2.9.0.post0.tar.gz", hash = "sha256:37dd54208da7e1cd875388217d5e00ebd4179249f90fb72437e91a35459a0ad3", size = 342432, upload-time = "2024-03-01T18:36:20.211Z" }
 wheels = [
@@ -3996,8 +4001,8 @@ name = "python-ldap"
 version = "3.4.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "pyasn1" },
-    { name = "pyasn1-modules" },
+    { name = "pyasn1", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "pyasn1-modules", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/0c/88/8d2797decc42e1c1cdd926df4f005e938b0643d0d1219c08c2b5ee8ae0c0/python_ldap-3.4.5.tar.gz", hash = "sha256:b2f6ef1c37fe2c6a5a85212efe71311ee21847766a7d45fcb711f3b270a5f79a", size = 388482, upload-time = "2025-10-10T20:00:39.06Z" }
 
@@ -4006,7 +4011,7 @@ name = "python-slugify"
 version = "8.0.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "text-unidecode" },
+    { name = "text-unidecode", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/87/c7/5e1547c44e31da50a460df93af11a535ace568ef89d7a811069ead340c4a/python-slugify-8.0.4.tar.gz", hash = "sha256:59202371d1d05b54a9e7720c5e038f928f45daaffe41dd10822f3907b937c856", size = 10921, upload-time = "2024-02-08T18:32:45.488Z" }
 wheels = [
@@ -4145,9 +4150,9 @@ name = "readme-renderer"
 version = "43.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "docutils" },
-    { name = "nh3" },
-    { name = "pygments" },
+    { name = "docutils", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "nh3", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "pygments", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/fe/b5/536c775084d239df6345dccf9b043419c7e3308bc31be4c7882196abc62e/readme_renderer-43.0.tar.gz", hash = "sha256:1818dd28140813509eeed8d62687f7cd4f7bad90d4db586001c5dc09d4fde311", size = 31768, upload-time = "2024-02-26T16:10:59.415Z" }
 wheels = [
@@ -4159,7 +4164,7 @@ name = "redis"
 version = "6.4.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "async-timeout", marker = "python_full_version < '3.11.3'" },
+    { name = "async-timeout", marker = "python_full_version < '3.11.3' and platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/0d/d6/e8b92798a5bd67d659d51a18170e91c16ac3b59738d91894651ee255ed49/redis-6.4.0.tar.gz", hash = "sha256:b01bc7282b8444e28ec36b261df5375183bb47a07eb9c603f284e89cbc5ef010", size = 4647399, upload-time = "2025-08-07T08:10:11.441Z" }
 wheels = [
@@ -4171,10 +4176,10 @@ name = "requests"
 version = "2.32.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "certifi" },
-    { name = "charset-normalizer" },
-    { name = "idna" },
-    { name = "urllib3" },
+    { name = "certifi", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "charset-normalizer", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "idna", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "urllib3", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/c9/74/b3ff8e6c8446842c3f5c837e9c3dfcfe2018ea6ecef224c710c85ef728f4/requests-2.32.5.tar.gz", hash = "sha256:dbba0bac56e100853db0ea71b82b4dfd5fe2bf6d3754a8893c3af500cec7d7cf", size = 134517, upload-time = "2025-08-18T20:46:02.573Z" }
 wheels = [
@@ -4186,8 +4191,8 @@ name = "requests-oauthlib"
 version = "1.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "oauthlib" },
-    { name = "requests" },
+    { name = "oauthlib", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "requests", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/23/eb/68fc8fa86e0f5789832f275c8289257d8dc44dbe93fce7ff819112b9df8f/requests-oauthlib-1.3.0.tar.gz", hash = "sha256:b4261601a71fd721a8bd6d7aa1cc1d6a8a93b4a9f5e96626f8e4d91e8beeaa6a", size = 88157, upload-time = "2019-11-06T14:41:43.158Z" }
 wheels = [
@@ -4199,7 +4204,7 @@ name = "requests-toolbelt"
 version = "1.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "requests" },
+    { name = "requests", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/f3/61/d7545dafb7ac2230c70d38d31cbfe4cc64f7144dc41f6e4e4b78ecd9f5bb/requests-toolbelt-1.0.0.tar.gz", hash = "sha256:7681a0a3d047012b5bdc0ee37d7f8f07ebe76ab08caeccfc3921ce23c88d5bc6", size = 206888, upload-time = "2023-05-01T04:11:33.229Z" }
 wheels = [
@@ -4220,8 +4225,8 @@ name = "rich"
 version = "14.2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "markdown-it-py" },
-    { name = "pygments" },
+    { name = "markdown-it-py", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "pygments", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/fb/d2/8920e102050a0de7bfabeb4c4614a49248cf8d5d7a8d01885fbb24dc767a/rich-14.2.0.tar.gz", hash = "sha256:73ff50c7c0c1c77c8243079283f4edb376f0f6442433aecb8ce7e6d0b92d1fe4", size = 219990, upload-time = "2025-10-09T14:16:53.064Z" }
 wheels = [
@@ -4247,7 +4252,7 @@ name = "rollbar"
 version = "1.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "requests" },
+    { name = "requests", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/d2/43/966a7d64ff2c0901451aa2fcbe205a68528b6c6fbac6760b5ad5a705a944/rollbar-1.3.0.tar.gz", hash = "sha256:519402eac39bcc4fa484821872f6bb18497fb7b6c81167047867d17714d3b379", size = 85300, upload-time = "2025-03-26T15:12:19.274Z" }
 wheels = [
@@ -4285,8 +4290,8 @@ name = "secretstorage"
 version = "3.4.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "cryptography" },
-    { name = "jeepney" },
+    { name = "cryptography", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "jeepney", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/31/9f/11ef35cf1027c1339552ea7bfe6aaa74a8516d8b5caf6e7d338daf54fd80/secretstorage-3.4.0.tar.gz", hash = "sha256:c46e216d6815aff8a8a18706a2fbfd8d53fcbb0dce99301881687a1b0289ef7c", size = 19748, upload-time = "2025-09-09T16:42:13.859Z" }
 wheels = [
@@ -4298,12 +4303,12 @@ name = "selenium"
 version = "4.36.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "certifi" },
-    { name = "trio" },
-    { name = "trio-websocket" },
-    { name = "typing-extensions" },
-    { name = "urllib3", extra = ["socks"] },
-    { name = "websocket-client" },
+    { name = "certifi", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "trio", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "trio-websocket", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "typing-extensions", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "urllib3", extra = ["socks"], marker = "platform_python_implementation != 'PyPy'" },
+    { name = "websocket-client", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/10/35/33d3d84e3399c9d00b489aeccfdc78115e149e45816fb8fe84274329e8a2/selenium-4.36.0.tar.gz", hash = "sha256:0eced83038736c3a013b824116df0b6dbb83e93721545f51b680451013416723", size = 913613, upload-time = "2025-10-02T15:24:37.483Z" }
 wheels = [
@@ -4315,10 +4320,10 @@ name = "service-identity"
 version = "24.2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "attrs" },
-    { name = "cryptography" },
-    { name = "pyasn1" },
-    { name = "pyasn1-modules" },
+    { name = "attrs", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "cryptography", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "pyasn1", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "pyasn1-modules", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/07/a5/dfc752b979067947261dbbf2543470c58efe735c3c1301dd870ef27830ee/service_identity-24.2.0.tar.gz", hash = "sha256:b8683ba13f0d39c6cd5d625d2c5f65421d6d707b013b375c355751557cbe8e09", size = 39245, upload-time = "2024-10-26T07:21:57.736Z" }
 wheels = [
@@ -4400,22 +4405,22 @@ name = "sphinx"
 version = "5.0.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "alabaster" },
-    { name = "babel" },
-    { name = "colorama", marker = "sys_platform == 'win32'" },
-    { name = "docutils" },
-    { name = "imagesize" },
-    { name = "jinja2" },
-    { name = "packaging" },
-    { name = "pygments" },
-    { name = "requests" },
-    { name = "snowballstemmer" },
-    { name = "sphinxcontrib-applehelp" },
-    { name = "sphinxcontrib-devhelp" },
-    { name = "sphinxcontrib-htmlhelp" },
-    { name = "sphinxcontrib-jsmath" },
-    { name = "sphinxcontrib-qthelp" },
-    { name = "sphinxcontrib-serializinghtml" },
+    { name = "alabaster", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "babel", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "colorama", marker = "platform_python_implementation != 'PyPy' and sys_platform == 'win32'" },
+    { name = "docutils", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "imagesize", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "jinja2", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "packaging", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "pygments", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "requests", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "snowballstemmer", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "sphinxcontrib-applehelp", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "sphinxcontrib-devhelp", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "sphinxcontrib-htmlhelp", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "sphinxcontrib-jsmath", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "sphinxcontrib-qthelp", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "sphinxcontrib-serializinghtml", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/83/5f/0ebf0c94dffd7a848ebfeafc0d3147a784afffb44e2c6fcaeab7eadd67ad/Sphinx-5.0.2.tar.gz", hash = "sha256:b18e978ea7565720f26019c702cd85c84376e948370f1cd43d60265010e1c7b0", size = 6729086, upload-time = "2022-06-16T17:17:44.446Z" }
 wheels = [
@@ -4481,7 +4486,7 @@ name = "splinter"
 version = "0.21.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "urllib3" },
+    { name = "urllib3", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/fd/7f/afb1788635b3532dfb9e2f21698ce8825e99714750ae4bf30bbc3ecaa9d5/splinter-0.21.0.tar.gz", hash = "sha256:60cbbec9209acefccf39608d677eecdb248bbd700023663ce406595322c38fe5", size = 30896, upload-time = "2024-01-16T00:59:04.874Z" }
 wheels = [
@@ -4493,8 +4498,8 @@ name = "sqlalchemy"
 version = "2.0.44"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "greenlet", marker = "platform_machine == 'AMD64' or platform_machine == 'WIN32' or platform_machine == 'aarch64' or platform_machine == 'amd64' or platform_machine == 'ppc64le' or platform_machine == 'win32' or platform_machine == 'x86_64'" },
-    { name = "typing-extensions" },
+    { name = "greenlet", marker = "(platform_machine == 'AMD64' and platform_python_implementation != 'PyPy') or (platform_machine == 'WIN32' and platform_python_implementation != 'PyPy') or (platform_machine == 'aarch64' and platform_python_implementation != 'PyPy') or (platform_machine == 'amd64' and platform_python_implementation != 'PyPy') or (platform_machine == 'ppc64le' and platform_python_implementation != 'PyPy') or (platform_machine == 'win32' and platform_python_implementation != 'PyPy') or (platform_machine == 'x86_64' and platform_python_implementation != 'PyPy')" },
+    { name = "typing-extensions", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/f0/f2/840d7b9496825333f532d2e3976b8eadbf52034178aac53630d09fe6e1ef/sqlalchemy-2.0.44.tar.gz", hash = "sha256:0ae7454e1ab1d780aee69fd2aae7d6b8670a581d8847f2d1e0f7ddfbf47e5a22", size = 9819830, upload-time = "2025-10-10T14:39:12.935Z" }
 wheels = [
@@ -4539,9 +4544,9 @@ name = "stack-data"
 version = "0.6.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "asttokens" },
-    { name = "executing" },
-    { name = "pure-eval" },
+    { name = "asttokens", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "executing", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "pure-eval", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/28/e3/55dcc2cfbc3ca9c29519eb6884dd1415ecb53b0e934862d3559ddcb7e20b/stack_data-0.6.3.tar.gz", hash = "sha256:836a778de4fec4dcd1dcd89ed8abff8a221f58308462e1c4aa2a3cf30148f0b9", size = 44707, upload-time = "2023-09-30T13:58:05.479Z" }
 wheels = [
@@ -4559,20 +4564,20 @@ wheels = [
 
 [package.optional-dependencies]
 html = [
-    { name = "markuppy" },
+    { name = "markuppy", marker = "platform_python_implementation != 'PyPy'" },
 ]
 ods = [
-    { name = "odfpy" },
+    { name = "odfpy", marker = "platform_python_implementation != 'PyPy'" },
 ]
 xls = [
-    { name = "xlrd" },
-    { name = "xlwt" },
+    { name = "xlrd", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "xlwt", marker = "platform_python_implementation != 'PyPy'" },
 ]
 xlsx = [
-    { name = "openpyxl" },
+    { name = "openpyxl", marker = "platform_python_implementation != 'PyPy'" },
 ]
 yaml = [
-    { name = "pyyaml" },
+    { name = "pyyaml", marker = "platform_python_implementation != 'PyPy'" },
 ]
 
 [[package]]
@@ -4598,7 +4603,7 @@ name = "thefuzz"
 version = "0.22.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "rapidfuzz" },
+    { name = "rapidfuzz", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/81/4b/d3eb25831590d6d7d38c2f2e3561d3ba41d490dc89cd91d9e65e7c812508/thefuzz-0.22.1.tar.gz", hash = "sha256:7138039a7ecf540da323792d8592ef9902b1d79eb78c147d4f20664de79f3680", size = 19993, upload-time = "2024-01-19T19:18:23.135Z" }
 wheels = [
@@ -4610,7 +4615,7 @@ name = "tinycss2"
 version = "1.4.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "webencodings" },
+    { name = "webencodings", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/7a/fd/7a5ee21fd08ff70d3d33a5781c255cbe779659bd03278feb98b19ee550f4/tinycss2-1.4.0.tar.gz", hash = "sha256:10c0972f6fc0fbee87c3edb76549357415e94548c1ae10ebccdea16fb404a9b7", size = 87085, upload-time = "2024-10-24T14:58:29.895Z" }
 wheels = [
@@ -4656,9 +4661,9 @@ name = "towncrier"
 version = "25.8.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "click" },
-    { name = "jinja2" },
-    { name = "tomli", marker = "python_full_version < '3.11'" },
+    { name = "click", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "jinja2", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "tomli", marker = "python_full_version < '3.11' and platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/c2/eb/5bf25a34123698d3bbab39c5bc5375f8f8bcbcc5a136964ade66935b8b9d/towncrier-25.8.0.tar.gz", hash = "sha256:eef16d29f831ad57abb3ae32a0565739866219f1ebfbdd297d32894eb9940eb1", size = 76322, upload-time = "2025-08-30T11:41:55.393Z" }
 wheels = [
@@ -4670,7 +4675,7 @@ name = "tqdm"
 version = "4.67.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "colorama", marker = "sys_platform == 'win32'" },
+    { name = "colorama", marker = "platform_python_implementation != 'PyPy' and sys_platform == 'win32'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/a8/4b/29b4ef32e036bb34e4ab51796dd745cdba7ed47ad142a9f4a1eb8e0c744d/tqdm-4.67.1.tar.gz", hash = "sha256:f8aef9c52c08c13a65f30ea34f4e5aac3fd1a34959879d7e59e63027286627f2", size = 169737, upload-time = "2024-11-24T20:12:22.481Z" }
 wheels = [
@@ -4691,13 +4696,13 @@ name = "trio"
 version = "0.31.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "attrs" },
-    { name = "cffi", marker = "implementation_name != 'pypy' and os_name == 'nt'" },
-    { name = "exceptiongroup", marker = "python_full_version < '3.11'" },
-    { name = "idna" },
-    { name = "outcome" },
-    { name = "sniffio" },
-    { name = "sortedcontainers" },
+    { name = "attrs", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "cffi", marker = "implementation_name != 'pypy' and os_name == 'nt' and platform_python_implementation != 'PyPy'" },
+    { name = "exceptiongroup", marker = "python_full_version < '3.11' and platform_python_implementation != 'PyPy'" },
+    { name = "idna", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "outcome", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "sniffio", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "sortedcontainers", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/76/8f/c6e36dd11201e2a565977d8b13f0b027ba4593c1a80bed5185489178e257/trio-0.31.0.tar.gz", hash = "sha256:f71d551ccaa79d0cb73017a33ef3264fde8335728eb4c6391451fe5d253a9d5b", size = 605825, upload-time = "2025-09-09T15:17:15.242Z" }
 wheels = [
@@ -4709,10 +4714,10 @@ name = "trio-websocket"
 version = "0.12.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "exceptiongroup", marker = "python_full_version < '3.11'" },
-    { name = "outcome" },
-    { name = "trio" },
-    { name = "wsproto" },
+    { name = "exceptiongroup", marker = "python_full_version < '3.11' and platform_python_implementation != 'PyPy'" },
+    { name = "outcome", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "trio", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "wsproto", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/d1/3c/8b4358e81f2f2cfe71b66a267f023a91db20a817b9425dd964873796980a/trio_websocket-0.12.2.tar.gz", hash = "sha256:22c72c436f3d1e264d0910a3951934798dcc5b00ae56fc4ee079d46c7cf20fae", size = 33549, upload-time = "2025-02-25T05:16:58.947Z" }
 wheels = [
@@ -4724,15 +4729,15 @@ name = "twine"
 version = "6.2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "id" },
-    { name = "keyring", marker = "platform_machine != 'ppc64le' and platform_machine != 's390x'" },
-    { name = "packaging" },
-    { name = "readme-renderer" },
-    { name = "requests" },
-    { name = "requests-toolbelt" },
-    { name = "rfc3986" },
-    { name = "rich" },
-    { name = "urllib3" },
+    { name = "id", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "keyring", marker = "platform_machine != 'ppc64le' and platform_machine != 's390x' and platform_python_implementation != 'PyPy'" },
+    { name = "packaging", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "readme-renderer", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "requests", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "requests-toolbelt", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "rfc3986", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "rich", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "urllib3", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/e0/a8/949edebe3a82774c1ec34f637f5dd82d1cf22c25e963b7d63771083bbee5/twine-6.2.0.tar.gz", hash = "sha256:e5ed0d2fd70c9959770dce51c8f39c8945c574e18173a7b81802dab51b4b75cf", size = 172262, upload-time = "2025-09-04T15:43:17.255Z" }
 wheels = [
@@ -4744,13 +4749,13 @@ name = "twisted"
 version = "25.5.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "attrs" },
-    { name = "automat" },
-    { name = "constantly" },
-    { name = "hyperlink" },
-    { name = "incremental" },
-    { name = "typing-extensions" },
-    { name = "zope-interface" },
+    { name = "attrs", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "automat", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "constantly", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "hyperlink", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "incremental", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "typing-extensions", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "zope-interface", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/13/0f/82716ed849bf7ea4984c21385597c949944f0f9b428b5710f79d0afc084d/twisted-25.5.0.tar.gz", hash = "sha256:1deb272358cb6be1e3e8fc6f9c8b36f78eb0fa7c2233d2dbe11ec6fee04ea316", size = 3545725, upload-time = "2025-06-07T09:52:24.858Z" }
 wheels = [
@@ -4759,13 +4764,13 @@ wheels = [
 
 [package.optional-dependencies]
 http2 = [
-    { name = "h2" },
-    { name = "priority" },
+    { name = "h2", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "priority", marker = "platform_python_implementation != 'PyPy'" },
 ]
 tls = [
-    { name = "idna" },
-    { name = "pyopenssl" },
-    { name = "service-identity" },
+    { name = "idna", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "pyopenssl", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "service-identity", marker = "platform_python_implementation != 'PyPy'" },
 ]
 
 [[package]]
@@ -4824,7 +4829,7 @@ wheels = [
 
 [package.optional-dependencies]
 socks = [
-    { name = "pysocks" },
+    { name = "pysocks", marker = "platform_python_implementation != 'PyPy'" },
 ]
 
 [[package]]
@@ -4832,9 +4837,9 @@ name = "uvicorn"
 version = "0.37.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "click" },
-    { name = "h11" },
-    { name = "typing-extensions", marker = "python_full_version < '3.11'" },
+    { name = "click", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "h11", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "typing-extensions", marker = "python_full_version < '3.11' and platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/71/57/1616c8274c3442d802621abf5deb230771c7a0fec9414cb6763900eb3868/uvicorn-0.37.0.tar.gz", hash = "sha256:4115c8add6d3fd536c8ee77f0e14a7fd2ebba939fed9b02583a97f80648f9e13", size = 80367, upload-time = "2025-09-23T13:33:47.486Z" }
 wheels = [
@@ -4843,13 +4848,13 @@ wheels = [
 
 [package.optional-dependencies]
 standard = [
-    { name = "colorama", marker = "sys_platform == 'win32'" },
-    { name = "httptools" },
-    { name = "python-dotenv" },
-    { name = "pyyaml" },
+    { name = "colorama", marker = "platform_python_implementation != 'PyPy' and sys_platform == 'win32'" },
+    { name = "httptools", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "python-dotenv", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "pyyaml", marker = "platform_python_implementation != 'PyPy'" },
     { name = "uvloop", marker = "platform_python_implementation != 'PyPy' and sys_platform != 'cygwin' and sys_platform != 'win32'" },
-    { name = "watchfiles" },
-    { name = "websockets" },
+    { name = "watchfiles", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "websockets", marker = "platform_python_implementation != 'PyPy'" },
 ]
 
 [[package]]
@@ -4880,17 +4885,17 @@ wheels = [
 
 [[package]]
 name = "vcrpy"
-version = "4.4.0"
+version = "6.0.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "pyyaml" },
-    { name = "six" },
-    { name = "wrapt" },
-    { name = "yarl" },
+    { name = "pyyaml", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "urllib3", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "wrapt", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "yarl", marker = "platform_python_implementation != 'PyPy'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/5f/03/d22af9c60b8e7e48cefb491b74b1eec46a3df071f4d024c159393a34690e/vcrpy-4.4.0.tar.gz", hash = "sha256:d1109ae93dbc2e7fcbc485849a7600d5dea510d3bef070eec4419c9a72ca2639", size = 83676, upload-time = "2023-06-26T14:21:01.408Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/16/4e/fff59599826793f9e3460c22c0af0377abb27dc9781a7d5daca8cb03da25/vcrpy-6.0.2.tar.gz", hash = "sha256:88e13d9111846745898411dbc74a75ce85870af96dd320d75f1ee33158addc09", size = 85472, upload-time = "2024-10-07T13:07:31.617Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e9/eb/4a375b1cea2a3012487bc86b9eda667adb3d541e38419968a5d97c0497ae/vcrpy-4.4.0-py2.py3-none-any.whl", hash = "sha256:560c9d0d8436ced29223ceefb513c3ac3f2e2a60d51a9830f236a1e63167905a", size = 41657, upload-time = "2023-06-26T14:20:59.025Z" },
+    { url = "https://files.pythonhosted.org/packages/da/ed/25d19705791d3fccc84423d564695421a75b4e08e8ab15a004a49068742d/vcrpy-6.0.2-py2.py3-none-any.whl", hash = "sha256:40370223861181bc76a5e5d4b743a95058bb1ad516c3c08570316ab592f56cad", size = 42431, upload-time = "2024-10-07T13:07:30.475Z" },
 ]
 
 [[package]]
@@ -4907,10 +4912,10 @@ name = "virtualenv"
 version = "20.35.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "distlib" },
-    { name = "filelock" },
-    { name = "platformdirs" },
-    { name = "typing-extensions", marker = "python_full_version < '3.11'" },
+    { name = "distlib", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "filelock", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "platformdirs", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "typing-extensions", marker = "python_full_version < '3.11' and platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/a4/d5/b0ccd381d55c8f45d46f77df6ae59fbc23d19e901e2d523395598e5f4c93/virtualenv-20.35.3.tar.gz", hash = "sha256:4f1a845d131133bdff10590489610c98c168ff99dc75d6c96853801f7f67af44", size = 6002907, upload-time = "2025-10-10T21:23:33.178Z" }
 wheels = [
@@ -4960,7 +4965,7 @@ name = "watchfiles"
 version = "1.1.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "anyio" },
+    { name = "anyio", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/c2/c9/8869df9b2a2d6c59d79220a4db37679e74f807c559ffe5265e08b227a210/watchfiles-1.1.1.tar.gz", hash = "sha256:a173cb5c16c4f40ab19cecf48a534c409f7ea983ab8fed0741304a1c0a31b3f2", size = 94440, upload-time = "2025-10-14T15:06:21.08Z" }
 wheels = [
@@ -5026,14 +5031,14 @@ name = "weasyprint"
 version = "55.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "cffi" },
-    { name = "cssselect2" },
-    { name = "fonttools", extra = ["woff"] },
-    { name = "html5lib" },
-    { name = "pillow" },
-    { name = "pydyf" },
-    { name = "pyphen" },
-    { name = "tinycss2" },
+    { name = "cffi", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "cssselect2", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "fonttools", extra = ["woff"], marker = "platform_python_implementation != 'PyPy'" },
+    { name = "html5lib", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "pillow", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "pydyf", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "pyphen", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "tinycss2", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/8c/a5/1a0f1f60a0dabd475d3c36739eeb43bec2da2d9d57f4a6cd95964f8b34b7/weasyprint-55.0.tar.gz", hash = "sha256:ea5d5f2f159262e38b6e85939d8510e9735a47751a9647c9eaa93c22ced86230", size = 410970, upload-time = "2022-05-12T16:54:55.898Z" }
 wheels = [
@@ -5120,9 +5125,9 @@ name = "webtest"
 version = "3.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "beautifulsoup4" },
-    { name = "waitress" },
-    { name = "webob" },
+    { name = "beautifulsoup4", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "waitress", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "webob", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/26/c8/8ffba1782700eb06e9b9169156698c6ba95c05b66cda3fc9e025b6b3b649/WebTest-3.0.0.tar.gz", hash = "sha256:54bd969725838d9861a9fa27f8d971f79d275d94ae255f5c501f53bb6d9929eb", size = 75871, upload-time = "2021-08-19T12:40:07.234Z" }
 wheels = [
@@ -5134,7 +5139,7 @@ name = "werkzeug"
 version = "3.1.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "markupsafe" },
+    { name = "markupsafe", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/9f/69/83029f1f6300c5fb2471d621ab06f6ec6b3324685a2ce0f9777fd4a8b71e/werkzeug-3.1.3.tar.gz", hash = "sha256:60723ce945c19328679790e3282cc758aa4a6040e4bb330f53d30fa546d44746", size = 806925, upload-time = "2024-11-08T15:52:18.093Z" }
 wheels = [
@@ -5155,8 +5160,8 @@ name = "wosclient"
 version = "0.1.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "click" },
-    { name = "requests" },
+    { name = "click", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "requests", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/37/a1/5d170a12144cf75f06ec01f6ddd991b38f79ca8f018ae9831723207cc62d/wosclient-0.1.5.tar.gz", hash = "sha256:ca8e3c40cac64fdb22c3b0627ef8b9d115a38ffea237fc23c4197d34f0a4f384", size = 12655, upload-time = "2018-04-22T14:37:34.041Z" }
 wheels = [
@@ -5207,7 +5212,7 @@ name = "wsgi-intercept"
 version = "1.13.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "six" },
+    { name = "six", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/4a/ed/28202fddeff86871b8a8d1fbb32878fe9df5592d5fd0fbac4ab81764202a/wsgi_intercept-1.13.1.tar.gz", hash = "sha256:79bd6c639ab11f7eabe5d18ad9a20f62ee82a1c435124a876cffd8038f6c24c1", size = 29288, upload-time = "2024-08-08T08:16:35.519Z" }
 wheels = [
@@ -5225,7 +5230,7 @@ name = "wsproto"
 version = "1.2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "h11" },
+    { name = "h11", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/c9/4a/44d3c295350d776427904d73c189e10aeae66d7f555bb2feee16d1e4ba5a/wsproto-1.2.0.tar.gz", hash = "sha256:ad565f26ecb92588a3e43bc3d96164de84cd9902482b130d0ddbaa9664a85065", size = 53425, upload-time = "2022-08-23T19:58:21.447Z" }
 wheels = [
@@ -5255,9 +5260,9 @@ name = "yarl"
 version = "1.22.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "idna" },
-    { name = "multidict" },
-    { name = "propcache" },
+    { name = "idna", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "multidict", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "propcache", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/57/63/0c6ebca57330cd313f6102b16dd57ffaf3ec4c83403dcb45dbd15c6f3ea1/yarl-1.22.0.tar.gz", hash = "sha256:bebf8557577d4401ba8bd9ff33906f1376c877aa78d1fe216ad01b4d6745af71", size = 187169, upload-time = "2025-10-06T14:12:55.963Z" }
 wheels = [

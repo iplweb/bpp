@@ -4,6 +4,9 @@ BRANCH=`git branch | sed -n '/\* /s///p'`
 
 PYTHON=python3
 
+prepare-developer-machine:
+	uv sync --extra dev
+
 cleanup-pycs:
 	find . -name __pycache__ -type d -print0 | xargs -0 rm -rf
 	find . -name \*~ -print0 | xargs -0 rm -f
