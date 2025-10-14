@@ -101,21 +101,21 @@ jobs:
           firefox firefox-geckodriver
         sudo npm install -g --force yarn grunt-cli
 
-    - name: Install poetry via pip
+    - name: Install uv via pip
       timeout-minutes: 10
       run: |
-        python -m pip install pip poetry
+        python -m pip install pip uv
 
-    - name: Set up Python with Poetry caching
+    - name: Set up Python with UV caching
       uses: actions/setup-python@v5
       with:
         python-version: '3.12'
-        cache: 'poetry'
+        cache: 'pip'
 
-    - name: Install Python deps via poetry
+    - name: Install Python deps via uv
       timeout-minutes: 10
       run: |
-        poetry install --with=dev
+        uv sync --all-extras
 
     - name: Build assets (yarn, collectstatic)
       timeout-minutes: 10
@@ -124,7 +124,7 @@ jobs:
         DJANGO_BPP_DB_PORT: 5433
         DJANGO_BPP_DB_USER: postgres
       run: |
-        poetry run make assets
+        uv run make assets
 
     - name: Wait for services
       timeout-minutes: 2
@@ -163,7 +163,7 @@ jobs:
         echo "Firefox headless test completed"
 
         # Run tests with more verbose output and retry flaky tests
-        poetry run pytest  \
+        uv run pytest  \
           --timeout=600 \
           --verbose \
           --tb=short \
