@@ -20,6 +20,11 @@ def set_database_connection():
     #     f.write(test_db_name)
     settings.DATABASES["default"]["NAME"] = test_db_name
 
+    # Pomoże?
+    settings.CELERY_ALWAYS_EAGER = True
+
+    settings.TESTING = True
+
 
 @pytest.fixture
 def channels_live_server(transactional_db):
