@@ -10,7 +10,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  docker:
+  # Parallel job 1: Setup Docker environment
+  setup-docker:
     runs-on: ubuntu-latest
     steps:
       - name: Log in to Docker Hub
@@ -28,41 +29,68 @@ jobs:
           install: true
           cache-binary: true
 
+  # Parallel job 2: Build frontend assets
+  build-assets:
+    runs-on: ubuntu-latest
+    steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@v6
-        with:
-          enable-cache: true
-          cache-dependency-glob: "uv.lock"
+      - name: Setup system dependencies
+        uses: ./.github/actions/setup-system-deps
 
-      - name: Set up Python
-        run: uv python install 3.12
+      - name: Setup Python environment
+        uses: ./.github/actions/setup-python-env
 
-      - name: Cache Yarn dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/yarn
-            node_modules
-          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock', '**/package.json') }}
-          restore-keys: |
-            ${{ runner.os }}-yarn-
-
-      - name: Base Linux image apt update
-        run: sudo apt update
-
-      - name: Base Linux image apt install
-        run: sudo apt install -y gettext libldap2-dev libsasl2-dev
-
-      - name: Install BPP Python dependencies via uv.
-        run: uv sync
-
-      - name: Build BPP assets.
-        run: uv run make assets
+      - name: Setup and build frontend
+        uses: ./.github/actions/setup-frontend
         env:
           DJANGO_SETTINGS_MODULE: django_bpp.settings.local
+
+      - name: Upload built assets as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-assets
+          path: |
+            src/bpp/static/bpp/js/bpp.js
+            src/bpp/static/bpp/css/
+            staticroot/
+          retention-days: 1
+
+  # Main job that depends on both parallel jobs
+  docker:
+    needs: [setup-docker, build-assets]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKER_USER }}
+          password: ${{ secrets.DOCKER_PAT }}
+
+      - name: Set up Docker Buildx Action
+        uses: docker/setup-buildx-action@v3
+        with:
+          version: "lab:latest"
+          driver: cloud
+          endpoint: "iplweb/bpp"
+          install: true
+          cache-binary: true
+
+      - name: Setup system dependencies
+        uses: ./.github/actions/setup-system-deps
+
+      - name: Setup Python environment
+        uses: ./.github/actions/setup-python-env
+
+      - name: Download built assets
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-assets
+          path: .
 
       - name: Build Docker images in the Docker Build Cloud!
         run: uv run make docker

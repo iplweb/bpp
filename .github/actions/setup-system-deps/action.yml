@@ -1,0 +1,70 @@
+name: 'Setup System Dependencies'
+description: 'Install system-level dependencies for BPP'
+inputs:
+  install-firefox:
+    description: 'Install Firefox and geckodriver for Selenium tests'
+    required: false
+    default: 'false'
+  install-playwright:
+    description: 'Install Playwright browsers'
+    required: false
+    default: 'false'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Cache APT packages
+      uses: actions/cache@v4
+      with:
+        path: /var/cache/apt/archives
+        key: ${{ runner.os }}-apt-${{ hashFiles('.github/workflows/*.yml') }}
+        restore-keys: |
+          ${{ runner.os }}-apt-
+
+    - name: Install base system dependencies
+      shell: bash
+      run: |
+        set -e
+        sudo apt update
+        sudo apt install -y \
+          software-properties-common \
+          gettext \
+          libldap2-dev \
+          libsasl2-dev \
+          python3 \
+          python3-dev \
+          libpq-dev \
+          redis-tools
+
+    - name: Install Firefox for Selenium
+      if: inputs.install-firefox == 'true'
+      shell: bash
+      run: |
+        sudo add-apt-repository -y ppa:mozillateam/ppa
+        echo '
+        Package: *
+        Pin: origin packages.mozilla.org
+        Pin-Priority: 1000
+
+        Package: firefox*
+        Pin: release o=Ubuntu
+        Pin-Priority: -1' | sudo tee /etc/apt/preferences.d/mozilla
+        sudo apt update
+        sudo apt install -y \
+          xvfb xauth xfonts-100dpi xfonts-75dpi xfonts-base xfonts-scalable \
+          firefox firefox-geckodriver
+
+    - name: Cache Playwright browsers
+      if: inputs.install-playwright == 'true'
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/ms-playwright
+        key: ${{ runner.os }}-playwright-${{ hashFiles('**/uv.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-playwright-
+
+    - name: Install Playwright browsers
+      if: inputs.install-playwright == 'true'
+      shell: bash
+      run: |
+        uv run playwright install chromium

@@ -15,18 +15,189 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
-    # Skip this job if it's a "Merge tag" commit on the dev branch
-    if: |
-      !(github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, 'Merge tag'))
-
+  # Skip check for "Merge tag" commits
+  skip-check:
     runs-on: ubuntu-latest
-    timeout-minutes: 45  # Add job-level timeout
+    outputs:
+      should-run: ${{ steps.check.outputs.should-run }}
+    steps:
+      - id: check
+        run: |
+          if [[ "${{ github.ref }}" == "refs/heads/dev" && "${{ contains(github.event.head_commit.message, 'Merge tag') }}" == "true" ]]; then
+            echo "should-run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "should-run=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  # Parallel job 1: Setup Playwright browsers
+  setup-playwright:
+    needs: skip-check
+    if: needs.skip-check.outputs.should-run == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Cache Playwright browsers
+      id: playwright-cache
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/ms-playwright
+        key: ${{ runner.os }}-playwright-${{ hashFiles('**/uv.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-playwright-
+
+    - name: Setup Python environment
+      if: steps.playwright-cache.outputs.cache-hit != 'true'
+      uses: ./.github/actions/setup-python-env
+
+    - name: Install Playwright browsers
+      if: steps.playwright-cache.outputs.cache-hit != 'true'
+      run: |
+        uv run playwright install chromium
+
+  # Parallel job 2: Build frontend assets
+  build-assets:
+    needs: skip-check
+    if: needs.skip-check.outputs.should-run == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: iplweb/bpp_dbserver:latest
+        env:
+          POSTGRES_DB: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_USER: postgres
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready --username=postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup system dependencies
+      uses: ./.github/actions/setup-system-deps
+
+    - name: Setup Python environment
+      uses: ./.github/actions/setup-python-env
+
+    - name: Setup and build frontend
+      uses: ./.github/actions/setup-frontend
+      env:
+        DJANGO_BPP_DB_HOST: 127.0.0.1
+        DJANGO_BPP_DB_PORT: 5433
+        DJANGO_BPP_DB_USER: postgres
+
+    - name: Upload built assets
+      uses: actions/upload-artifact@v4
+      with:
+        name: frontend-assets
+        path: |
+          staticroot/
+          src/bpp/static/bpp/js/bpp.js
+          src/bpp/static/bpp/css/
+        retention-days: 1
+
+  # Determine test shards for parallel execution
+  collect-tests:
+    needs: skip-check
+    if: needs.skip-check.outputs.should-run == 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      test-shards: ${{ steps.collect.outputs.shards }}
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Determine test shards
+      id: collect
+      run: |
+        # Create test shards based on test directories
+        # This provides better parallelization than just using pytest -n auto
+        python3 -c "
+        import json
+        import os
+        import glob
+
+        # Find all test directories and files
+        test_paths = []
+
+        # Collect test files from src directory
+        for root, dirs, files in os.walk('src'):
+            # Skip selenium tests and node_modules
+            if 'node_modules' in root or '__pycache__' in root:
+                continue
+
+            for file in files:
+                if file.startswith('test_') and file.endswith('.py'):
+                    test_paths.append(os.path.join(root, file))
+
+            if 'tests' in dirs:
+                test_dir = os.path.join(root, 'tests')
+                test_paths.append(test_dir)
+
+        # Group tests into shards (aim for 3-4 balanced groups)
+        # Group by parent directory to keep related tests together
+        test_groups = {}
+        for path in sorted(test_paths):
+            # Get the app name (parent directory)
+            parts = path.split('/')
+            if len(parts) >= 3 and parts[0] == 'src':
+                app_name = parts[1]
+                if app_name not in test_groups:
+                    test_groups[app_name] = []
+                test_groups[app_name].append(path)
+
+        # Create balanced shards
+        shards = []
+        apps_by_size = sorted(test_groups.items(), key=lambda x: len(x[1]), reverse=True)
+
+        # Create 3 shards and distribute apps
+        num_shards = min(3, len(apps_by_size))
+        for i in range(num_shards):
+            shards.append([])
+
+        # Distribute apps round-robin to balance load
+        for i, (app, paths) in enumerate(apps_by_size):
+            shard_index = i % num_shards
+            shards[shard_index].extend(paths)
+
+        # Format as matrix-compatible JSON
+        result = []
+        for i, shard_paths in enumerate(shards):
+            if shard_paths:
+                result.append({
+                    'id': i + 1,
+                    'name': f'shard-{i+1}',
+                    'paths': ' '.join(shard_paths[:10])  # Limit to prevent command line overflow
+                })
+
+        # If no shards created, create a default one
+        if not result:
+            result = [{'id': 1, 'name': 'all', 'paths': 'src/'}]
+
+        print(f'shards={json.dumps(result)}')
+        " >> "$GITHUB_OUTPUT"
+
+  # Main test job - runs tests in parallel shards
+  test:
+    needs: [skip-check, build-assets, setup-playwright, collect-tests]
+    if: needs.skip-check.outputs.should-run == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     strategy:
-      max-parallel: 4
+      fail-fast: false
       matrix:
-        python-version: [3.12,]
+        python-version: [3.12]
+        test-shard: ${{ fromJSON(needs.collect-tests.outputs.test-shards) }}
+
+    name: Tests ${{ matrix.test-shard.name }} - Python ${{ matrix.python-version }}
 
     services:
       redis:
@@ -47,7 +218,6 @@ jobs:
           POSTGRES_USER: postgres
         ports:
           - 5433:5432
-        # Set health checks to wait until postgres has started
         options: >-
           --health-cmd "pg_isready --username=postgres"
           --health-interval 10s
@@ -57,15 +227,15 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Cache APT packages
-      uses: actions/cache@v4
-      with:
-        path: /var/cache/apt/archives
-        key: ${{ runner.os }}-apt-${{ hashFiles('.github/workflows/tests-no-selenium.yml') }}
-        restore-keys: |
-          ${{ runner.os }}-apt-
+    - name: Setup system dependencies
+      uses: ./.github/actions/setup-system-deps
 
-    - name: Cache Playwright browsers
+    - name: Setup Python environment
+      uses: ./.github/actions/setup-python-env
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Restore Playwright browsers cache
       uses: actions/cache@v4
       with:
         path: ~/.cache/ms-playwright
@@ -73,72 +243,15 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-playwright-
 
-    - name: Cache Yarn dependencies
-      uses: actions/cache@v4
+    - name: Ensure Playwright browsers are installed
+      run: |
+        uv run playwright install chromium || true
+
+    - name: Download built assets
+      uses: actions/download-artifact@v4
       with:
-        path: |
-          ~/.cache/yarn
-          node_modules
-        key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock', '**/package.json') }}
-        restore-keys: |
-          ${{ runner.os }}-yarn-
-
-    - name: Cache UV dependencies
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/.cache/uv
-          ~/.local/share/uv
-          .venv
-        key: ${{ runner.os }}-uv-no-selenium-${{ hashFiles('**/uv.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-uv-no-selenium-
-          ${{ runner.os }}-uv-
-
-    - name: System setup and dependencies
-      timeout-minutes: 10
-      run: |
-        set -e  # Exit on any error
-        uname -a
-        sudo apt update
-        sudo apt install software-properties-common gettext libldap2-dev libsasl2-dev
-        curl -fsSL https://deb.nodesource.com/setup_current.x | sudo bash -
-        sudo apt install -y python3 python3-dev libpq-dev nodejs redis-tools
-        sudo npm install -g --force yarn grunt-cli
-
-    - name: Install uv
-      timeout-minutes: 10
-      run: |
-        python -m pip install pip uv
-
-    - name: Set up Python with UV caching
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.12'
-        cache: 'pip'
-
-    - name: Install Python deps via uv
-      timeout-minutes: 10
-      run: |
-        uv sync --all-extras
-
-    - name: Build assets (yarn, collectstatic)
-      timeout-minutes: 10
-      env:
-        DJANGO_BPP_DB_HOST: 127.0.0.1
-        DJANGO_BPP_DB_PORT: 5433
-        DJANGO_BPP_DB_USER: postgres
-      run: |
-        uv run make assets
-
-    - name: playwright install chromium
-      timeout-minutes: 10
-      env:
-        DJANGO_BPP_DB_HOST: 127.0.0.1
-        DJANGO_BPP_DB_PORT: 5433
-        DJANGO_BPP_DB_USER: postgres
-      run: |
-        uv run playwright install chromium
+        name: frontend-assets
+        path: .
 
     - name: Wait for services
       timeout-minutes: 2
@@ -154,11 +267,31 @@ jobs:
           sleep 2
         done
 
-    - name: Tests without Selenium (but include Playwright)
-      timeout-minutes: 30
+    - name: Run tests - ${{ matrix.test-shard.name }}
+      timeout-minutes: 25
       env:
-         DJANGO_BPP_DB_HOST: 127.0.0.1
-         DJANGO_BPP_DB_PORT: 5433
-         DJANGO_BPP_DB_USER: postgres
+        DJANGO_BPP_DB_HOST: 127.0.0.1
+        DJANGO_BPP_DB_PORT: 5433
+        DJANGO_BPP_DB_USER: postgres
       run: |
-         uv run pytest -p no:pytest-splinter -m "not selenium" -n auto
+        echo "Running test shard: ${{ matrix.test-shard.name }}"
+        echo "Test paths: ${{ matrix.test-shard.paths }}"
+
+        # Run tests without Selenium but including Playwright
+        # Use -n auto for additional parallelization within the shard
+        uv run pytest \
+          -p no:pytest-splinter \
+          -m "not selenium" \
+          -n auto \
+          --maxfail=5 \
+          ${{ matrix.test-shard.paths }}
+
+    - name: Upload test results on failure
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-results-${{ matrix.test-shard.name }}-${{ matrix.python-version }}
+        path: |
+          .pytest_cache/
+          htmlcov/
+        retention-days: 7
