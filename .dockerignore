@@ -1,6 +1,10 @@
+docs/
 node_modules/
+src/media/
+src/django_bpp/staticroot/
 .git/
 .idea/
 .vscode/
 .circleci/
-docs/
+.venv/
+.dockerignore
