@@ -159,8 +159,8 @@ upgrade-version:
 	$(eval NEW_VERSION=$(shell bumpver test $(CUR_VERSION) 'vYYYY0M.BUILD[-TAGNUM]' |head -1|cut -d: -f2))
 	git flow release start $(NEW_VERSION)
 	bumpver update
-	-towncrier build --draft > /tmp/towncrier.txt
-	-towncrier build --yes
+	-uv run towncrier build --draft > /tmp/towncrier.txt
+	-uv run towncrier build --yes
 	-git commit -F /tmp/towncrier.txt
 	@afplay /System/Library/Sounds/Funk.aiff
 	GIT_MERGE_AUTOEDIT=no git flow release finish "$(NEW_VERSION)" -p -m "Release $(NEW_VERSION)"
@@ -205,7 +205,7 @@ loc: clean
 	pygount -N ... -F "...,staticroot,migrations,fixtures" src --format=summary
 
 
-DOCKER_VERSION="202510.1247"
+DOCKER_VERSION="202510.1248"
 
 DOCKER_BUILD=build --platform linux/amd64 --push
 
