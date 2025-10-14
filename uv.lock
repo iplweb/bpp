@@ -465,7 +465,7 @@ requires-dist = [
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.31.0" },
     { name = "vcrpy", marker = "extra == 'dev'", specifier = ">=6.0.2,<7" },
     { name = "watchdog", marker = "extra == 'dev'", specifier = ">=5.0.3" },
-    { name = "weasyprint", specifier = "==55.0" },
+    { name = "weasyprint", specifier = ">=66.0" },
     { name = "webtest", marker = "extra == 'dev'", specifier = "==3.0.0" },
     { name = "wosclient", specifier = "==0.1.5" },
     { name = "xlrd", specifier = "==2.0.1" },
@@ -4623,6 +4623,18 @@ wheels = [
 ]
 
 [[package]]
+name = "tinyhtml5"
+version = "2.0.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "webencodings", marker = "platform_python_implementation != 'PyPy'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/fd/03/6111ed99e9bf7dfa1c30baeef0e0fb7e0bd387bd07f8e5b270776fe1de3f/tinyhtml5-2.0.0.tar.gz", hash = "sha256:086f998833da24c300c414d9fe81d9b368fd04cb9d2596a008421cbc705fcfcc", size = 179507, upload-time = "2024-10-29T15:37:14.078Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/5c/de/27c57899297163a4a84104d5cec0af3b1ac5faf62f44667e506373c6b8ce/tinyhtml5-2.0.0-py3-none-any.whl", hash = "sha256:13683277c5b176d070f82d099d977194b7a1e26815b016114f581a74bbfbf47e", size = 39793, upload-time = "2024-10-29T15:37:11.743Z" },
+]
+
+[[package]]
 name = "toml"
 version = "0.10.2"
 source = { registry = "https://pypi.org/simple" }
@@ -5028,21 +5040,21 @@ wheels = [
 
 [[package]]
 name = "weasyprint"
-version = "55.0"
+version = "66.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cffi", marker = "platform_python_implementation != 'PyPy'" },
     { name = "cssselect2", marker = "platform_python_implementation != 'PyPy'" },
     { name = "fonttools", extra = ["woff"], marker = "platform_python_implementation != 'PyPy'" },
-    { name = "html5lib", marker = "platform_python_implementation != 'PyPy'" },
     { name = "pillow", marker = "platform_python_implementation != 'PyPy'" },
     { name = "pydyf", marker = "platform_python_implementation != 'PyPy'" },
     { name = "pyphen", marker = "platform_python_implementation != 'PyPy'" },
     { name = "tinycss2", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "tinyhtml5", marker = "platform_python_implementation != 'PyPy'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/8c/a5/1a0f1f60a0dabd475d3c36739eeb43bec2da2d9d57f4a6cd95964f8b34b7/weasyprint-55.0.tar.gz", hash = "sha256:ea5d5f2f159262e38b6e85939d8510e9735a47751a9647c9eaa93c22ced86230", size = 410970, upload-time = "2022-05-12T16:54:55.898Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/32/99/480b5430b7eb0916e7d5df1bee7d9508b28b48fee28da894d0a050e0e930/weasyprint-66.0.tar.gz", hash = "sha256:da71dc87dc129ac9cffdc65e5477e90365ab9dbae45c744014ec1d06303dde40", size = 504224, upload-time = "2025-07-24T11:44:42.771Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/48/a7/ae524a86811012ee4ff72106f209403c7c2e6aa17d05813761b5e8403ab4/weasyprint-55.0-py3-none-any.whl", hash = "sha256:6a5008b3e1152498f206b2d0791b3e161f507607e31ca42b307cb31b49795462", size = 249467, upload-time = "2022-05-12T16:54:52.818Z" },
+    { url = "https://files.pythonhosted.org/packages/0f/d1/c5d9b341bf3d556c1e4c6566b3efdda0b1bb175510aa7b09dd3eee246923/weasyprint-66.0-py3-none-any.whl", hash = "sha256:82b0783b726fcd318e2c977dcdddca76515b30044bc7a830cc4fbe717582a6d0", size = 301965, upload-time = "2025-07-24T11:44:40.968Z" },
 ]
 
 [[package]]

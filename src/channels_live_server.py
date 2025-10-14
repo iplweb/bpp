@@ -1,5 +1,3 @@
-from functools import partial
-
 import pytest
 from channels.testing import ChannelsLiveServerTestCase
 from daphne.testing import DaphneProcess
@@ -23,19 +21,14 @@ class PatchedDaphneProcess(DaphneProcess):
 
 
 class PatchedLiveServerTestCase(ChannelsLiveServerTestCase):
-    # ProtocolServerProcess = PatchedDaphneProcess
-
-    def __init__(self, *args, **kw):
-        self.test_db_name = kw.pop("test_db_name")
-        super().__init__(*args, **kw)
-
-    @property
-    def ProtocolServerProcess(self):
-        return partial(PatchedDaphneProcess, test_db_name=self.test_db_name)
-
     @property
     def url(self):
         return self.live_server_url
+
+    @classmethod
+    def setUpClass(cls, test_db_name):
+        cls.test_db_name = test_db_name
+        ChannelsLiveServerTestCase.setUpClass()
 
 
 @pytest.fixture(scope="function")
@@ -46,14 +39,19 @@ def channels_live_server(request, transactional_db):
         n = settings.DATABASES["default"].get("TEST", {}).get("NAME", None)
         if n:
             return n
-        if settings.DATABASES["default"]["NAME"].startswith(TEST_DATABASE_PREFIX):
+        if settings.DATABASES["default"]["NAME"].startswith(
+            TEST_DATABASE_PREFIX
+        ):
             return settings.DATABASES["default"]["NAME"]
 
         return TEST_DATABASE_PREFIX + settings.DATABASES["default"]["NAME"]
 
-    server = PatchedLiveServerTestCase(test_db_name=test_db_name())
-    server._pre_setup()
+    PatchedLiveServerTestCase.setUpClass(test_db_name=test_db_name())
+    server = PatchedLiveServerTestCase()
+    # server._pre_setup()
+    # print("SERVER PORT", server._port)
 
     yield server
 
-    server._post_teardown()
+    # server._post_teardown()
+    PatchedLiveServerTestCase.tearDownClass()
