@@ -133,7 +133,8 @@ tests-without-selenium-with-microsoft-auth:
 tests-with-microsoft-auth: enable-microsoft-auth tests-without-selenium-with-microsoft-auth disable-microsoft-auth
 
 tests-with-selenium:
-	uv run pytest -n auto --splinter-headless -m "selenium or playwright" --maxfail 50
+#	uv run pytest -n 0 --headed --pdb --splinter-headless -m "selenium or playwright" --maxfail 50
+	uv run pytest -n auto --splinter-headless -m "selenium or playwright"
 
 tests: tests-without-selenium tests-with-selenium js-tests
 
