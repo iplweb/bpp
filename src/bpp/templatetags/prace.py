@@ -1,9 +1,6 @@
 import json
 
-import lxml.etree
-import lxml.html
 from django.template import Library
-
 from django.utils.safestring import mark_safe
 
 register = Library()
@@ -129,23 +126,8 @@ def opis_bibliograficzny_cache(pk):
     return "(brak danych)"
 
 
-CLOSE_TAGS_OPENING = "<html><body><foo>"
-CLOSE_TAGS_CLOSING = "</foo></body></html>"
-
-
-@register.filter(name="close_tags")
-def close_tags(s):
-    if s is None or not s:
-        return s
-    s = f"{CLOSE_TAGS_OPENING}{s}{CLOSE_TAGS_CLOSING}"
-    s = lxml.html.fromstring(s)
-    s = lxml.etree.tostring(s, encoding="unicode")
-    s = s[len(CLOSE_TAGS_OPENING) : -len(CLOSE_TAGS_CLOSING)]
-    return s
-
-
 @register.simple_tag
-def generate_coins(praca, autorzy):
+def generate_coins(praca, autorzy):  # noqa
     """Generate COinS (ContextObjects in Spans) metadata for bibliography managers.
     This allows Zotero, Mendeley and other tools to automatically detect and import citations.
     """

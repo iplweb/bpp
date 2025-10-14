@@ -87,6 +87,7 @@
     {% if request.user.is_authenticated %}
         {{ extraChannels|json_script:"extra-channels" }}
 
+        {% if not TESTING %}
         <!-- Freshworks Support Widget -->
         <script>
             window.fwSettings={
@@ -152,6 +153,7 @@
                 });
             });
         </script>
+        {% endif %}
 
         <script type="text/javascript">
             $(document).ready(function () {

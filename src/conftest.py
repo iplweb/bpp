@@ -3,15 +3,15 @@ from uuid import uuid4
 
 import pytest
 from django.apps import apps
-from model_bakery import baker
-
 from django.utils import timezone
+
+from channels_live_server import *  # noqa
 
 # Fix for VCR.py compatibility with urllib3
 # This resolves the AttributeError: 'VCRHTTPConnection' has no attribute 'debuglevel'
 
 
-def pytest_configure(config):
+def pytest_configure(config):  # noqa
     try:
         import http.client
 
@@ -47,6 +47,19 @@ def pytest_configure(config):
                 vcr.stubs.VCRHTTPSConnection._http_vsn = 11
             if not hasattr(vcr.stubs.VCRHTTPSConnection, "_http_vsn_str"):
                 vcr.stubs.VCRHTTPSConnection._http_vsn_str = "HTTP/1.1"
+
+            # Add version_string property to VCRHTTPResponse for urllib3 2.5.0+ compatibility
+            if hasattr(vcr.stubs, "VCRHTTPResponse"):
+                if not hasattr(vcr.stubs.VCRHTTPResponse, "version_string"):
+                    # Create a property that returns HTTP/1.1 as the version string
+                    def _get_version_string(self):
+                        # Return HTTP/1.1 as a sensible default
+                        # This matches the _http_vsn_str we set above
+                        return "HTTP/1.1"
+
+                    vcr.stubs.VCRHTTPResponse.version_string = property(
+                        _get_version_string
+                    )
 
     except ImportError:
         # VCR not installed, skip configuration
@@ -120,6 +133,8 @@ def zwarte_z_dyscyplinami(
     typy_odpowiedzialnosci,
     rok,
 ):
+    from model_bakery import baker
+
     from bpp.models import Autor_Dyscyplina, Charakter_Formalny
 
     # Żeby eksportować oświadczenia, autor musi mieć swój odpowiednik w PBNie:
@@ -156,9 +171,8 @@ def zwarte_z_dyscyplinami(
 def _dyscyplina_maker(nazwa, kod, dyscyplina_pbn):
     """Produkuje dyscypliny naukowe WRAZ z odpowiednim wpisem tłumacza
     dyscyplin"""
-    from pbn_api.models import TlumaczDyscyplin
-
     from bpp.models import Dyscyplina_Naukowa
+    from pbn_api.models import TlumaczDyscyplin
 
     d = Dyscyplina_Naukowa.objects.get_or_create(nazwa=nazwa, kod=kod)[0]
     TlumaczDyscyplin.objects.get_or_create(
@@ -236,7 +250,10 @@ def rodzaj_autora_b(db):
     obj, _ = Rodzaj_Autora.objects.get_or_create(
         skrot="B",
         defaults=dict(
-            nazwa="pracownik badawczy spoza N", jest_w_n=False, licz_sloty=True, sort=2
+            nazwa="pracownik badawczy spoza N",
+            jest_w_n=False,
+            licz_sloty=True,
+            sort=2,
         ),
     )
     return obj

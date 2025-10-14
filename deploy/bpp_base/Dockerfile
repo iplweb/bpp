@@ -2,16 +2,14 @@
 
 FROM python:3.11.13-trixie AS builder
 
-RUN pip install poetry
+RUN pip install uv
 
-ENV POETRY_NO_INTERACTION=1 \
-    POETRY_VIRTUALENVS_IN_PROJECT=1 \
-    POETRY_VIRTUALENVS_CREATE=1 \
-    POETRY_CACHE_DIR=/tmp/poetry_cache
+ENV UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy
 
 WORKDIR /app
 
-COPY pyproject.toml poetry.lock ./
+COPY pyproject.toml uv.lock ./
 
 RUN touch README.md
 
@@ -21,11 +19,15 @@ RUN sed -i s/http/https/g /etc/apt/sources.list.d/debian.sources
 # RUN --mount=type=cache,sharing=locked,target=/var/cache/apt  \
 RUN apt update && apt install -y libsasl2-dev python-dev-is-python3 libldap2-dev libssl-dev
 
-# RUN --mount=type=cache,target=/root/.cache/pip  \
-RUN pip install django-auth-ldap django-microsoft-auth
+# Create virtual environment
+RUN python -m venv .venv
 
-# RUN --mount=type=cache,target=$POETRY_CACHE_DIR  \
-RUN poetry install --without dev --all-extras --no-root
+# Install packages with UV
+# RUN --mount=type=cache,target=/root/.cache/uv  \
+RUN uv pip install --python .venv django-auth-ldap django-microsoft-auth
+
+# RUN --mount=type=cache,target=/root/.cache/uv  \
+RUN uv sync --frozen --all-extras
 
 ##########################################################################################
 

@@ -4,6 +4,15 @@ BRANCH=`git branch | sed -n '/\* /s///p'`
 
 PYTHON=python3
 
+prepare-developer-machine-macos:
+	uv sync --all-extras
+	brew install cairo pango gdk-pixbuf libffi gobject-introspection gtk+3
+	sudo ln -s /opt/homebrew/opt/glib/lib/libgobject-2.0.0.dylib /usr/local/lib/gobject-2.0
+	sudo ln -s /opt/homebrew/opt/pango/lib/libpango-1.0.dylib /usr/local/lib/pango-1.0
+	sudo ln -s /opt/homebrew/opt/harfbuzz/lib/libharfbuzz.dylib /usr/local/lib/harfbuzz
+	sudo ln -s /opt/homebrew/opt/fontconfig/lib/libfontconfig.1.dylib /usr/local/lib/fontconfig-1
+	sudo ln -s /opt/homebrew/opt/pango/lib/libpangoft2-1.0.dylib /usr/local/lib/pangoft2-1.0
+
 cleanup-pycs:
 	find . -name __pycache__ -type d -print0 | xargs -0 rm -rf
 	find . -name \*~ -print0 | xargs -0 rm -f
@@ -87,9 +96,7 @@ production-assets: distclean assets
 
 compilemessages: $(MO_FILES)
 
-bdist_wheel: distclean production-assets compilemessages
-	poetry build
-	ls -lash dist
+# bdist_wheel target removed - no longer using wheel distribution
 
 #upload:
 #	twine upload dist/*whl
@@ -105,28 +112,28 @@ js-tests: assets puppeteer-install-chrome
 live-docs:
 	# Nie wrzucam instalacji sphinx-autobuild do requirements_dev.in
 	# celowo i z premedytacją:
-	poetry run pip install --upgrade sphinx-autobuild
-	poetry run sphinx-autobuild --port 8080 -D language=pl docs/ docs/_build
+	uv pip install --upgrade sphinx-autobuild
+	uv run sphinx-autobuild --port 8080 -D language=pl docs/ docs/_build
 
 enable-microsoft-auth:
 	echo MICROSOFT_AUTH_CLIENT_ID=foobar > ~/.env.local
 	echo MICROSOFT_AUTH_CLIENT_SECRET=foobar >> ~/.env.local
-	poetry run pip install django_microsoft_auth
+	uv pip install django_microsoft_auth
 
 disable-microsoft-auth:
 	rm -f ~/.env.local
-	poetry run pip uninstall -y django_microsoft_auth
+	uv pip uninstall -y django_microsoft_auth
 
 tests-without-selenium:
-	poetry run pytest -n auto --splinter-headless -m "not selenium and not playwright" --maxfail 50
+	uv run pytest -n auto --splinter-headless -m "not selenium and not playwright" --maxfail 50
 
 tests-without-selenium-with-microsoft-auth:
-	poetry run pytest -n auto --splinter-headless -m "not selenium and not playwright" --maxfail 50
+	uv run pytest -n auto --splinter-headless -m "not selenium and not playwright" --maxfail 50
 
 tests-with-microsoft-auth: enable-microsoft-auth tests-without-selenium-with-microsoft-auth disable-microsoft-auth
 
 tests-with-selenium:
-	poetry run pytest -n auto --splinter-headless -m "selenium or playwright" --maxfail 50
+	uv run pytest -n auto  --splinter-headless -m "selenium or playwright"
 
 tests: tests-without-selenium tests-with-selenium js-tests
 
@@ -158,9 +165,9 @@ upgrade-version:
 	@afplay /System/Library/Sounds/Funk.aiff
 	GIT_MERGE_AUTOEDIT=no git flow release finish "$(NEW_VERSION)" -p -m "Release $(NEW_VERSION)"
 
-poetry-lock:
-	poetry lock
-	-git commit -m "Update lockfile" poetry.lock
+uv-lock:
+	uv lock
+	-git commit -m "Update lockfile" uv.lock
 
 gh-run-watch:
 	gh run watch
@@ -174,7 +181,7 @@ gh-run-watch-docker-images-alt:
 sleep-3:
 	sleep 3
 
-new-release: poetry-lock upgrade-version sleep-3 gh-run-watch-docker-images
+new-release: uv-lock upgrade-version sleep-3 gh-run-watch-docker-images
 
 release: full-tests new-release
 
@@ -186,10 +193,11 @@ set-version-from-vcs:
 check-git-clean:
 	git diff --quiet
 
-poetry-sync:
-	poetry install --no-root --remove-untracked
+uv-sync:
+	uv sync
 
-test-package-from-vcs: check-git-clean poetry-sync set-version-from-vcs bdist_wheel
+test-package-from-vcs: check-git-clean uv-sync set-version-from-vcs
+	uv build
 	ls -lash dist
 	git reset --hard
 
@@ -197,7 +205,7 @@ loc: clean
 	pygount -N ... -F "...,staticroot,migrations,fixtures" src --format=summary
 
 
-DOCKER_VERSION="202510.1245"
+DOCKER_VERSION="202510.1246"
 
 DOCKER_BUILD=build --platform linux/amd64 --push
 

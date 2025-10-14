@@ -31,16 +31,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Cache Poetry dependencies
+      - name: Cache UV dependencies
         uses: actions/cache@v4
         with:
           path: |
-            ~/.cache/pypoetry
+            ~/.cache/uv
+            ~/.local/share/uv
             .venv
-          key: ${{ runner.os }}-poetry-build-${{ hashFiles('**/poetry.lock') }}
+          key: ${{ runner.os }}-uv-build-${{ hashFiles('**/uv.lock') }}
           restore-keys: |
-            ${{ runner.os }}-poetry-build-
-            ${{ runner.os }}-poetry-
+            ${{ runner.os }}-uv-build-
+            ${{ runner.os }}-uv-
 
       - name: Cache APT packages
         uses: actions/cache@v4
@@ -65,18 +66,18 @@ jobs:
         run: sudo apt update
 
       - name: apt install
-        run: sudo apt install -y python3 python3-pip python3-venv gettext
+        run: sudo apt install -y python3 python3-pip python3-venv gettext libldap2-dev libsasl2-dev
 
       - name: create venv
         run: python3 -m venv .venv
 
-      - name: install poetry
-        run: .venv/bin/python -m pip install poetry
+      - name: install uv
+        run: .venv/bin/python -m pip install uv
 
-      - name: setup poetry packages (poetry install)
-        run: .venv/bin/poetry install
+      - name: setup packages with uv
+        run: .venv/bin/uv sync
 
       - name: build assets and docker images
-        run: .venv/bin/poetry run make assets docker
+        run: .venv/bin/uv run make assets docker
         env:
           DJANGO_SETTINGS_MODULE: django_bpp.settings.local

@@ -56,7 +56,8 @@ from django_bpp.selenium_util import wait_for_page_load, wait_for_websocket_conn
 NORMAL_DJANGO_USER_LOGIN = "test_login_bpp"
 NORMAL_DJANGO_USER_PASSWORD = "test_password"
 
-from channels_live_server import channels_live_server  # noqa
+# from channels_live_server import channels_live_server  # noqa
+# This fixture is now defined in src/conftest.py
 
 from bpp.tests.util import setup_model_bakery
 

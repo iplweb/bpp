@@ -92,7 +92,7 @@ nc -zv localhost 8000  # Check if port 8000 is in use
 - `flake8` - Lint Python code
 - `pre-commit run --all-files` - Run pre-commit hooks
 
-**Note:** Code quality tools (black, isort, flake8, pre-commit) are installed through Poetry and available in the virtual environment.
+**Note:** Code quality tools (black, isort, flake8, pre-commit) are installed through UV and available in the virtual environment.
 
 ### Maintenance Commands
 - `make clean` - Clean build artifacts and cache files
@@ -211,7 +211,7 @@ The project uses multiple Django applications in `src/`:
 - Open Access classification and tracking
 
 ### Development Notes
-- Uses Poetry for Python dependency management (pyproject.toml)
+- Uses UV for Python dependency management (pyproject.toml and uv.lock)
 - Extensive test suite with pytest and Selenium integration
 - Pre-commit hooks for code quality
 - Celery for background task processing
@@ -220,7 +220,7 @@ The project uses multiple Django applications in `src/`:
 - Docker support with multi-architecture builds
 - Yarn for Node.js dependency management
 - Grunt for frontend asset compilation
-- Optional Microsoft Auth integration (configured via poetry extras)
+- Optional Microsoft Auth integration (configured via project extras)
 - Uses model_bakery and django-dynamic-fixture for test data generation
 - Pre-commit hooks installed and configured for automated code quality checks
 

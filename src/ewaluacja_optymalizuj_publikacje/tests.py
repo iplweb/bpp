@@ -4,8 +4,6 @@ import pytest
 from django.urls import reverse
 from model_bakery import baker
 
-from ewaluacja_metryki.models import MetrykaAutora
-
 from bpp.models import (
     Autor,
     Autor_Dyscyplina,
@@ -15,6 +13,7 @@ from bpp.models import (
     Wydawnictwo_Ciagle,
     Wydawnictwo_Ciagle_Autor,
 )
+from ewaluacja_metryki.models import MetrykaAutora
 
 
 @pytest.mark.django_db
@@ -99,7 +98,9 @@ def test_optymalizuj_publikacje_view_without_metryka_autora(
     assert "Sprawdź status generowania metryk" in content
     # Check for the actual rendered URLs
     assert "/ewaluacja_metryki/" in content  # Link to lista
-    assert "/ewaluacja_metryki/status-generowania/" in content  # Link to status page
+    assert (
+        "/ewaluacja_metryki/status-generowania/" in content
+    )  # Link to status page
 
     # Check that the metrics section shows appropriate message
     assert "Brak danych metryki dla tego autora" in content
@@ -133,6 +134,9 @@ def test_optymalizuj_publikacje_view_with_metryka_autora(
         punkty_nazbierane=250.50,
         slot_nazbierany=2.5,
         slot_maksymalny=4,
+        slot_wszystkie=3,  # Provide explicit value
+        punkty_wszystkie=300,  # Provide explicit value
+        _fill_optional=False,  # Don't fill optional fields with random data
     )
 
     # Create publication
@@ -278,11 +282,18 @@ def test_optymalizuj_publikacje_multiple_authors_mixed_metryka(
         )
 
     # Create MetrykaAutora only for autor1
+    # Provide explicit values to prevent overflow in procent_wykorzystania_slotow field
     metryka1 = baker.make(
         MetrykaAutora,
         autor=autor1,
         dyscyplina_naukowa=dyscyplina,
         jednostka=jednostka,
+        slot_maksymalny=4,  # Maximum slots
+        slot_nazbierany=2,  # Used slots (less than max)
+        punkty_nazbierane=100,  # Points collected
+        slot_wszystkie=3,  # All slots
+        punkty_wszystkie=120,  # All points
+        _fill_optional=False,  # Don't fill optional fields with random data
     )
     # Explicitly ensure autor2 has no MetrykaAutora
     MetrykaAutora.objects.filter(autor=autor2).delete()
@@ -398,10 +409,9 @@ def test_unpin_discipline_updates_all_authors_metrics(
     wydawnictwo.refresh_from_db()
 
     # Create initial metrics for all authors (simulating they were calculated)
-    from ewaluacja_metryki.utils import przelicz_metryki_dla_publikacji
-
     from bpp.models.cache import Cache_Punktacja_Autora_Query
     from bpp.models.sloty.core import IPunktacjaCacher
+    from ewaluacja_metryki.utils import przelicz_metryki_dla_publikacji
 
     # Build cache and calculate initial metrics
     cacher = IPunktacjaCacher(wydawnictwo)
@@ -421,7 +431,9 @@ def test_unpin_discipline_updates_all_authors_metrics(
     assert cache_entries.count() == 3
 
     for entry in cache_entries:
-        assert entry.pkdaut.quantize(Decimal("0.01")) == Decimal("33.33")  # 100/3
+        assert entry.pkdaut.quantize(Decimal("0.01")) == Decimal(
+            "33.33"
+        )  # 100/3
         assert entry.slot.quantize(Decimal("0.001")) == Decimal("0.333")  # 1/3
 
     # Now unpin autor2's discipline
@@ -452,8 +464,13 @@ def test_unpin_discipline_updates_all_authors_metrics(
     # Verify the remaining authors now have updated points and slots
     # With 2 authors, each should get 50 points and 0.5 slot
     for entry in cache_entries:
-        assert entry.autor_id in [autor1.pk, autor3.pk]  # Only autor1 and autor3
-        assert entry.pkdaut.quantize(Decimal("0.01")) == Decimal("50.00")  # 100/2
+        assert entry.autor_id in [
+            autor1.pk,
+            autor3.pk,
+        ]  # Only autor1 and autor3
+        assert entry.pkdaut.quantize(Decimal("0.01")) == Decimal(
+            "50.00"
+        )  # 100/2
         assert entry.slot.quantize(Decimal("0.01")) == Decimal("0.50")  # 1/2
 
     # IMPORTANT: Verify that metrics were recalculated for ALL authors, not just autor2
@@ -535,10 +552,9 @@ def test_pin_discipline_updates_all_authors_metrics(
     wydawnictwo.refresh_from_db()
 
     # Build cache and calculate initial metrics
-    from ewaluacja_metryki.utils import przelicz_metryki_dla_publikacji
-
     from bpp.models.cache import Cache_Punktacja_Autora_Query
     from bpp.models.sloty.core import IPunktacjaCacher
+    from ewaluacja_metryki.utils import przelicz_metryki_dla_publikacji
 
     cacher = IPunktacjaCacher(wydawnictwo)
     cacher.removeEntries()
@@ -583,7 +599,9 @@ def test_pin_discipline_updates_all_authors_metrics(
 
     # Both authors should now have 50 points and 0.5 slot each
     for entry in cache_entries:
-        assert entry.pkdaut.quantize(Decimal("0.01")) == Decimal("50.00")  # 100/2
+        assert entry.pkdaut.quantize(Decimal("0.01")) == Decimal(
+            "50.00"
+        )  # 100/2
         assert entry.slot.quantize(Decimal("0.01")) == Decimal("0.50")  # 1/2
 
     # Verify metrics were recalculated for BOTH authors
@@ -697,10 +715,13 @@ def test_wybrana_do_ewaluacji_badge_shows_correctly(
         slot_wszystkie=2,  # Total slots if all were counted
         punkty_wszystkie=120,  # Total points if all were counted
         prace_wszystkie=[cache1.pk, cache2.pk],  # All publications
+        _fill_optional=False,  # Don't fill optional fields with random data
     )
 
     # Test publication 1 (selected)
-    url = reverse("ewaluacja_optymalizuj_publikacje:optymalizuj", args=(pub1.slug,))
+    url = reverse(
+        "ewaluacja_optymalizuj_publikacje:optymalizuj", args=(pub1.slug,)
+    )
     response = admin_client.get(url)
 
     assert response.status_code == 200
@@ -711,7 +732,9 @@ def test_wybrana_do_ewaluacji_badge_shows_correctly(
     assert "Udział niewybrany" not in content
 
     # Test publication 2 (NOT selected)
-    url = reverse("ewaluacja_optymalizuj_publikacje:optymalizuj", args=(pub2.slug,))
+    url = reverse(
+        "ewaluacja_optymalizuj_publikacje:optymalizuj", args=(pub2.slug,)
+    )
     response = admin_client.get(url)
 
     assert response.status_code == 200
@@ -723,7 +746,9 @@ def test_wybrana_do_ewaluacji_badge_shows_correctly(
 
 
 @pytest.mark.django_db
-def test_wybrana_do_ewaluacji_no_metryka(admin_client, denorms, rodzaj_autora_n):
+def test_wybrana_do_ewaluacji_no_metryka(
+    admin_client, denorms, rodzaj_autora_n
+):
     """Test that publications show as not selected when no MetrykaAutora exists"""
     jednostka = baker.make(Jednostka, skupia_pracownikow=True)
     autor = baker.make(Autor, nazwisko="NoMetryka", imiona="Test")
@@ -775,7 +800,9 @@ def test_wybrana_do_ewaluacji_no_metryka(admin_client, denorms, rodzaj_autora_n)
     MetrykaAutora.objects.filter(autor=autor).delete()
 
     # Test the view
-    url = reverse("ewaluacja_optymalizuj_publikacje:optymalizuj", args=(pub.slug,))
+    url = reverse(
+        "ewaluacja_optymalizuj_publikacje:optymalizuj", args=(pub.slug,)
+    )
     response = admin_client.get(url)
 
     assert response.status_code == 200
