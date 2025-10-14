@@ -1,8 +1,8 @@
 import json
 
 from django.http import HttpResponse
-
 from django.utils.deprecation import MiddlewareMixin
+from rollbar.contrib.django.middleware import RollbarNotifierMiddleware
 
 
 class NonHtmlDebugToolbarMiddleware(MiddlewareMixin):
@@ -20,10 +20,7 @@ class NonHtmlDebugToolbarMiddleware(MiddlewareMixin):
 
         if debug != "UNSET":
             if response["Content-Type"] == "application/octet-stream":
-                new_content = (
-                    "<html><body>Binary Data, "
-                    "Length: {}</body></html>".format(len(response.content))
-                )
+                new_content = "<html><body>Binary Data, " f"Length: {len(response.content)}</body></html>"
                 response = HttpResponse(new_content)
             elif response["Content-Type"] != "text/html":
                 content = response.content
@@ -32,17 +29,18 @@ class NonHtmlDebugToolbarMiddleware(MiddlewareMixin):
                     content = json.dumps(json_, sort_keys=True, indent=2)
                 except ValueError:
                     pass
-                response = HttpResponse(
-                    "<html><body><pre>{}" "</pre></body></html>".format(content)
-                )
+                response = HttpResponse(f"<html><body><pre>{content}" "</pre></body></html>")
 
         return response
 
 
-from rollbar.contrib.django.middleware import RollbarNotifierMiddleware
-
-
 class CustomRollbarNotifierMiddleware(RollbarNotifierMiddleware):
+    def get_extra_data(self, request, exc):
+        from django.conf import settings
+
+        return {
+            "DJANGO_BPP_HOSTNAME": settings.DJANGO_BPP_HOSTNAME,
+        }
 
     def get_payload_data(self, request, exc):
         payload_data = dict()
