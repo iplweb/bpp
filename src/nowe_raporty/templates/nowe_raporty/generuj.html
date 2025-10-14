@@ -15,28 +15,30 @@
         Nie znaleziono definicji wybranego raportu w bazie danych.
         Skontaktuj się z administratorem systemu.
     {% else %}
-        {% if request.user.is_staff %}
-            <div class="hide-for-print" style="margin-bottom: 15px;">
+        {% load flexible_reports_tags url_helpers %}
+        <div class="hide-for-print" style="margin-bottom: 15px; text-align: right;">
+            <a href="?{% url_replace _export='docx' %}"
+               class="button primary"
+               style="margin-left: 8px;">
+                <i class="fi-download" aria-hidden="true"></i>
+                pobierz jako MS Word
+            </a>
+            <a href="?{% url_replace _export='xlsx' %}"
+               class="button success"
+               style="margin-left: 8px;">
+                <i class="fi-page-csv" aria-hidden="true"></i>
+                pobierz jako XLSX
+            </a>
+            {% if request.user.is_staff %}
                 <a target="_blank"
                    href="{% url "admin:flexible_reports_report_change" report.pk %}"
-                   style="display: inline-block;
-                          background: #f8f9fa;
-                          color: #6c757d;
-                          padding: 6px 12px;
-                          border-radius: 4px;
-                          text-decoration: none;
-                          font-size: 0.85rem;
-                          border: 1px solid #e9ecef;
-                          box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-                          transition: all 0.2s ease;"
-                   onmouseover="this.style.backgroundColor='#e9ecef'; this.style.color='#495057'; this.style.boxShadow='0 2px 6px rgba(0,0,0,0.15)'"
-                   onmouseout="this.style.backgroundColor='#f8f9fa'; this.style.color='#6c757d'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.1)'">
+                   class="button hollow secondary"
+                   style="margin-left: 8px;">
                     <i class="fi-page-edit" style="margin-right: 4px; font-size: 0.8rem;"></i>otwórz do edycji
                 </a>
-            </div>
-        {% endif %}
+            {% endif %}
+        </div>
 
-        {% load flexible_reports_tags %}
         {% flexible report %}
     {% endif %}
 
