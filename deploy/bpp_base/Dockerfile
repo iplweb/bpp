@@ -27,7 +27,7 @@ RUN python -m venv .venv
 RUN uv pip install --python .venv django-auth-ldap django-microsoft-auth
 
 # RUN --mount=type=cache,target=/root/.cache/uv  \
-RUN uv sync --frozen --all-extras
+RUN uv sync --frozen --all-extras --no-install-project
 
 ##########################################################################################
 
