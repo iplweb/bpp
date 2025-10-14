@@ -14,7 +14,10 @@ upstream appserver_bpp {
 # Drops connections with 444 (no response) to prevent access to invalid hostnames
 server {
     listen 80 default_server;
+    listen [::]:80 default_server;
+
     server_name _;
+
     access_log off;
     error_log /dev/null;
     return 444;
@@ -24,6 +27,8 @@ server {
 # Redirects all legitimate HTTP traffic to HTTPS with proper hostname
 server {
     listen 80;
+    listen [::]:80;
+
     server_name ${DJANGO_BPP_HOSTNAME};
     return 301 https://$host$request_uri;
 }
@@ -48,7 +53,7 @@ server {
     client_max_body_size 100M;
 
     listen 443 ssl;
-    listen [::]:80;
+    server_name ${DJANGO_BPP_HOSTNAME};
 
     # ============================================================================
     # ERROR PAGES CONFIGURATION
@@ -145,7 +150,6 @@ server {
     # ============================================================================
     root /var/www/html;
     index index.html index.htm index.nginx-debian.html;
-    server_name _;
 
     # ============================================================================
     # STATIC FILES CONFIGURATION
