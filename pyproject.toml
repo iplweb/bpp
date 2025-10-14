@@ -215,7 +215,6 @@ environments = ["python_version >= '3.10' and python_version < '3.13' and platfo
 [tool.bumpver.file_patterns]
 "pyproject.toml" = ['current_version = "{version}"',
     'version = "{pep440_version}"']
-"setup.py" = ['version="{pep440_version}",']
 "src/django_bpp/version.py" = ['VERSION = "{pep440_version}"']
 "package.json" = ['"version": "{version}",']
 "Makefile" = [ 'DOCKER_VERSION="{pep440_version}"' ]
