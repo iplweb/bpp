@@ -95,6 +95,7 @@
     {{ block.super }}
 
     {% if user.is_authenticated %}
+        {% if not TESTING %}
         <!-- Freshworks Support Widget -->
         <script>
             window.fwSettings={
@@ -155,6 +156,7 @@
                 });
             })(grp.jQuery);
         </script>
+        {% endif %}
     {% endif %}
 
     {% compress css %}
