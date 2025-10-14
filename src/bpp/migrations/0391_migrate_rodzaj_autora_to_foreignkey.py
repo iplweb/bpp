@@ -12,8 +12,7 @@ def migrate_rodzaj_autora_to_foreignkey(apps, schema_editor):
     skrot_to_rodzaj = {
         "N": Rodzaj_Autora.objects.get(skrot="N"),
         "D": Rodzaj_Autora.objects.get(skrot="D"),
-        "B": Rodzaj_Autora.objects.get(skrot="B"),
-        "Z": Rodzaj_Autora.objects.get(skrot="Z"),
+        "Z": Rodzaj_Autora.objects.get(skrot="B"),
         " ": None,  # brak danych
     }
 
