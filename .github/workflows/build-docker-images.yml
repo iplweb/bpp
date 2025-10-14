@@ -59,7 +59,10 @@ jobs:
       - name: Install project dependencies
         run: uv sync
 
-      - name: build assets and docker images
-        run: uv run make assets docker
+      - name: build assets
+        run: uv run make assets
         env:
           DJANGO_SETTINGS_MODULE: django_bpp.settings.local
+
+      - name: build docker images
+        run: uv run make docker

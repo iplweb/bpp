@@ -1,6 +1,6 @@
 ##########################################################################################
 
-FROM python:3.11.13-trixie AS builder
+FROM python:3.12-trixie AS builder
 
 RUN pip install uv
 
@@ -41,7 +41,7 @@ RUN --mount=type=cache,target=/root/.yarn YARN_CACHE_FOLDER=/root/.yarn yarn --p
 
 ##########################################################################################
 
-FROM python:3.11.13-slim-trixie AS runtime
+FROM python:3.12-slim-trixie AS runtime
 
 # RUN --mount=type=cache,sharing=locked,target=/etc/apt/sources.list.d/  \
 RUN sed -i s/http/https/g /etc/apt/sources.list.d/debian.sources
