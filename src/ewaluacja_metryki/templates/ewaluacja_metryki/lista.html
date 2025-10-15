@@ -52,14 +52,14 @@
                 <input type="hidden" name="autor_id" value="{{ request.GET.autor_id }}">
                 {% endif %}
                 <div class="medium-3 columns">
-                    <label>Nazwisko/Imię
+                    <label><span class="fi-torso"></span> Nazwisko/Imię
                         <input type="text" name="nazwisko" value="{{ request.GET.nazwisko }}" placeholder="Wpisz nazwisko lub imię" class="auto-submit-field">
                     </label>
                 </div>
 
                 {% if uzywa_wydzialow and not tylko_jeden_wydzial %}
                 <div class="medium-3 columns">
-                    <label>Wydział
+                    <label><span class="fi-building"></span> Wydział
                         <select name="wydzial" class="auto-submit-field">
                             <option value="">-- Wszystkie --</option>
                             {% for wydzial in wydzialy %}
@@ -73,7 +73,7 @@
                 {% endif %}
 
                 <div class="medium-3 columns">
-                    <label>Jednostka
+                    <label><span class="fi-home"></span> Jednostka
                         <select name="jednostka" class="auto-submit-field">
                             <option value="">-- Wszystkie --</option>
                             {% for jednostka in jednostki %}
@@ -86,7 +86,7 @@
                 </div>
 
                 <div class="medium-3 columns">
-                    <label>Rodzaj autora
+                    <label><span class="fi-clipboard-pencil"></span> Rodzaj autora
                         <select name="rodzaj_autora" class="auto-submit-field">
                             <option value="">-- Wszystkie --</option>
                             {% for rodzaj in dostepne_rodzaje_autorow %}
@@ -103,7 +103,7 @@
 
                 <div class="medium-3 columns">
                 {% if not tylko_jedna_dyscyplina %}
-                    <label>Dyscyplina
+                    <label><span class="fi-book"></span> Dyscyplina
                         <select name="dyscyplina" class="auto-submit-field">
                             <option value="">-- Wszystkie --</option>
                             {% for dyscyplina in dyscypliny %}
@@ -117,17 +117,7 @@
                 {% endif %}
                 </div>
                 <div class="medium-3 columns">
-                    <div class="button-container" style="display: flex; align-items: center; justify-content: flex-start; height: 100%; min-height: 60px;">
-                        <button type="submit" class="button" style="margin-right: 0.5rem;">
-                            <span class="fi-magnifying-glass"></span> Filtruj
-                        </button>
-                        <a href="{% url 'ewaluacja_metryki:lista' %}{% clear_filters_url request %}" class="button secondary">
-                            <span class="fi-x"></span> Wyczyść filtry
-                        </a>
-                    </div>
-                </div>
-                <div class="medium-3 columns">
-                    <label>Widok
+                    <label><span class="fi-eye"></span> Widok
                         <select name="widok" class="auto-submit-field" id="widok-select">
                             <option value="tabela" {% if widok == "tabela" %}selected{% endif %}>Tabela</option>
                             <option value="kola" {% if widok == "kola" %}selected{% endif %}>Całokształt slotów</option>
@@ -143,8 +133,14 @@
                     </label>
                 </div>
 
-                <div class="medium-3 columns">
-                    <div class="button-container" style="display: flex; align-items: center; justify-content: flex-end; height: 100%; min-height: 60px;">
+                <div class="medium-6 columns">
+                    <div class="button-container" style="display: flex; align-items: flex-end; justify-content: flex-end; height: 100%; min-height: 60px;">
+                        <button type="submit" class="button" style="margin-right: 0.5rem;">
+                            <span class="fi-magnifying-glass"></span> Filtruj
+                        </button>
+                        <a href="{% url 'ewaluacja_metryki:lista' %}{% clear_filters_url request %}" class="button secondary" style="margin-right: 0.5rem;">
+                            <span class="fi-x"></span> Wyczyść filtry
+                        </a>
                         <a href="{% url 'ewaluacja_metryki:export_lista_xlsx' %}?{{ request.GET.urlencode }}" class="button warning" style="margin-right: 0.5rem;">
                             <span class="fi-download"></span> Pobierz XLSX
                         </a>
