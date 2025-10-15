@@ -10,7 +10,6 @@ from email.utils import getaddresses
 from textwrap import dedent
 
 import environ
-import logfire
 from django.core.exceptions import ImproperlyConfigured
 
 from bpp.util import slugify_function
@@ -1210,6 +1209,8 @@ if DJANGO_BPP_ENABLE_PROMETHEUS:
 
 PYDANTIC_LOGFIRE_TOKEN = env("PYDANTIC_LOGFIRE_TOKEN")
 if PYDANTIC_LOGFIRE_TOKEN:
+    import logfire
+
     #
     # Logfire - musi być na końcu
     #
