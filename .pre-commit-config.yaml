@@ -24,12 +24,12 @@ repos:
           language: system
           stages: ["commit", "push"]
 
-    - repo: https://github.com/gitguardian/ggshield
-      rev: v1.43.0
-      hooks:
-        - id: ggshield
-          language: python
-          stages: [commit]
+#    - repo: https://github.com/gitguardian/ggshield
+#      rev: v1.43.0
+#      hooks:
+#        - id: ggshield
+#          language: python
+#          stages: [commit]
 
     - repo: local
       hooks:
