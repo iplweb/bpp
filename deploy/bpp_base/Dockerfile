@@ -125,12 +125,6 @@ RUN set -ex && \
     # Remove test files and directories from .venv \
     find /app/.venv -type d \( -name "tests" -o -name "test" \) -exec rm -rf {} + 2>/dev/null || true && \
     find /app/.venv -type f -name "test_*.py" -delete 2>/dev/null || true && \
-    # Remove test files and directories from src (production doesn't need tests) \
-    find /app/src -type d -name "tests" -exec rm -rf {} + 2>/dev/null || true && \
-    find /app/src -type f -name "test_*.py" -delete 2>/dev/null || true && \
-    find /app/src -type d -name "test_*" -exec rm -rf {} + 2>/dev/null || true && \
-    find /app/src -type f -name "conftest.py" -delete 2>/dev/null || true && \
-    find /app/src -type d -name "fixtures" -exec rm -rf {} + 2>/dev/null || true && \
     # Remove documentation from .venv \
     find /app/.venv -type d \( -name "docs" -o -name "doc" \) -exec rm -rf {} + 2>/dev/null || true && \
     find /app/.venv -type f \( -name "*.md" -o -name "*.rst" \) -delete && \
