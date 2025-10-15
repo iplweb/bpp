@@ -335,36 +335,61 @@
 
         <!-- Lista prac nazbieranych -->
         {% if prace_nazbierane %}
-        <div class="callout">
+        <div class="callout" id="prace-nazbierane">
             <h4><span class="fi-page-multiple"></span> Szczegóły prac nazbieranych</h4>
             <table class="hover">
                 <thead>
                     <tr>
                         <th>Lp.</th>
+                        <th class="text-center">Akcje</th>
                         <th>Tytuł</th>
                         <th>Rok</th>
                         <th class="text-right">PKDaut</th>
                         <th class="text-right">Slot</th>
                         <th class="text-right">PKDaut/Slot</th>
+                        <th class="text-center">Odepnij</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for praca in prace_nazbierane %}
                     <tr>
                         <td>{{ forloop.counter }}</td>
+                        <td class="text-center" style="white-space: nowrap;">
+                            <a href="{% url 'ewaluacja_optymalizuj_publikacje:optymalizuj' praca.rekord.slug %}"
+                               class="button small warning"
+                               title="Optymalizuj publikację"
+                               style="margin-right: 0.25rem;">
+                                <span class="fi-widget"></span>
+                            </a>
+                            <a href="{% url 'bpp:browse_praca_by_slug' praca.rekord.slug %}"
+                               class="button small primary"
+                               title="Zobacz publikację">
+                                <span class="fi-magnifying-glass"></span>
+                            </a>
+                        </td>
                         <td>
-                            <a href="{% url 'bpp:browse_praca_by_slug' praca.rekord.slug %}">
+                            <a href="{% url 'ewaluacja_optymalizuj_publikacje:optymalizuj' praca.rekord.slug %}">
                                 {{ praca.rekord.tytul_oryginalny|safe|truncatewords:10 }}
                             </a>
                         </td>
                         <td>{{ praca.rekord.rok }}</td>
                         <td class="text-right">{{ praca.pkdaut|floatformat:2 }}</td>
-                        <td class="text-right">{{ praca.slot|floatformat:4 }}</td>
+                        <td class="text-right">{{ praca.slot|floatformat:2 }}</td>
                         <td class="text-right">
                             {% if praca.pkdaut_per_slot %}
                                 {{ praca.pkdaut_per_slot|floatformat:2 }}
                             {% else %}
                                 -
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            {% if praca.autor_assignment_id %}
+                            <form method="post" action="{% url 'ewaluacja_metryki:odepnij' praca.autor_assignment_id %}" style="display: inline;">
+                                {% csrf_token %}
+                                <button type="submit" class="button small alert" title="Odepnij dyscyplinę">
+                                    <span class="fi-unlink"></span>
+                                </button>
+                            </form>
                             {% endif %}
                         </td>
                     </tr>
@@ -374,20 +399,18 @@
         </div>
         {% endif %}
 
-        <!-- Przycisk pokazywania wszystkich prac -->
+        <!-- Wszystkie prace -->
         {% if prace_wszystkie %}
         <div class="callout secondary">
             <h4>
                 <span class="fi-page-multiple"></span> Wszystkie prace w okresie
-                <button class="button small float-right" onclick="toggleAllPapers()">
-                    <span class="fi-eye"></span> Pokaż/Ukryj
-                </button>
             </h4>
-            <div id="all-papers" style="display: none;">
+            <div id="all-papers">
                 <table class="hover">
                     <thead>
                         <tr>
                             <th>Lp.</th>
+                            <th class="text-center">Podgląd</th>
                             <th>Tytuł</th>
                             <th>Rok</th>
                             <th class="text-right">PKDaut</th>
@@ -400,8 +423,21 @@
                         {% for praca in prace_wszystkie %}
                         <tr {% if praca.pk in metryka.prace_nazbierane %}class="success"{% endif %}>
                             <td>{{ forloop.counter }}</td>
+                            <td class="text-center" style="white-space: nowrap;">
+                                <a href="{% url 'ewaluacja_optymalizuj_publikacje:optymalizuj' praca.rekord.slug %}"
+                                   class="button small warning"
+                                   title="Optymalizuj publikację"
+                                   style="margin-right: 0.25rem;">
+                                    <span class="fi-widget"></span>
+                                </a>
+                                <a href="{% url 'bpp:browse_praca_by_slug' praca.rekord.slug %}"
+                                   class="button small primary"
+                                   title="Zobacz publikację">
+                                    <span class="fi-magnifying-glass"></span>
+                                </a>
+                            </td>
                             <td>
-                            <a href="{% url 'bpp:browse_praca_by_slug' praca.rekord.slug %}">
+                                <a href="{% url 'ewaluacja_optymalizuj_publikacje:optymalizuj' praca.rekord.slug %}">
                                     {{ praca.rekord.tytul_oryginalny|safe|truncatewords:10 }}
                                 </a>
                                 {% if praca.pk in metryka.prace_nazbierane %}
@@ -410,7 +446,7 @@
                             </td>
                             <td>{{ praca.rekord.rok }}</td>
                             <td class="text-right">{{ praca.pkdaut|floatformat:2 }}</td>
-                            <td class="text-right">{{ praca.slot|floatformat:4 }}</td>
+                            <td class="text-right">{{ praca.slot|floatformat:2 }}</td>
                             <td class="text-right">
                                 {% if praca.pkdaut_per_slot %}
                                     {{ praca.pkdaut_per_slot|floatformat:2 }}
@@ -441,11 +477,8 @@
         <div class="callout secondary">
             <h4>
                 <span class="fi-page-multiple"></span> Prace z odpiętą dyscypliną w okresie
-                <button class="button small float-right" onclick="toggleUnpinnedPapers()">
-                    <span class="fi-eye"></span> Pokaż/Ukryj
-                </button>
             </h4>
-            <div id="unpinned-papers" style="display: none;">
+            <div id="unpinned-papers">
                 <div class="callout small">
                     <p>
                         <span class="fi-info"></span>
@@ -477,7 +510,7 @@
                             </td>
                             <td>{{ praca.rok }}</td>
                             <td class="text-right">{{ praca.pkdaut_est|floatformat:2 }}</td>
-                            <td class="text-right">{{ praca.slot_est|floatformat:4 }}</td>
+                            <td class="text-right">{{ praca.slot_est|floatformat:2 }}</td>
                             <td class="text-right">
                                 {% if praca.pkdaut_per_slot_est %}
                                     {{ praca.pkdaut_per_slot_est|floatformat:2 }}
@@ -509,25 +542,6 @@
     </div>
 </div>
 
-<script>
-function toggleAllPapers() {
-    var papers = document.getElementById('all-papers');
-    if (papers.style.display === 'none') {
-        papers.style.display = 'block';
-    } else {
-        papers.style.display = 'none';
-    }
-}
-
-function toggleUnpinnedPapers() {
-    var papers = document.getElementById('unpinned-papers');
-    if (papers.style.display === 'none') {
-        papers.style.display = 'block';
-    } else {
-        papers.style.display = 'none';
-    }
-}
-</script>
 
 
 
@@ -565,6 +579,19 @@ $(document).ready(function() {
     });
 
     console.log('Circular progress gauge initialized with ' + percentage + '%');
+
+    // Handle scroll to anchor with offset
+    if (window.location.hash) {
+        var hash = window.location.hash;
+        if ($(hash).length > 0) {
+            setTimeout(function() {
+                var targetOffset = $(hash).offset().top - 200;
+                $('html, body').animate({
+                    scrollTop: targetOffset
+                }, 800);
+            }, 100);
+        }
+    }
 });
 </script>
 
@@ -599,7 +626,7 @@ $(document).ready(function() {
             text: chartData.map(d =>
                 `<b>Rok:</b> ${d.rok}<br>` +
                 `<b>PKDaut:</b> ${d.pkdaut.toFixed(2)}<br>` +
-                `<b>Slot:</b> ${d.slot.toFixed(4)}<br>` +
+                `<b>Slot:</b> ${d.slot.toFixed(2)}<br>` +
                 `<b>Status:</b> ${d.is_nazbierana ? 'Nazbierana' : 'Nie nazbierana'}<br>` +
                 `<b>Tytuł:</b> ${d.tytul.substring(0, 60)}...`
             ),
@@ -727,7 +754,7 @@ $(document).ready(function() {
             text: chartData.map(d =>
                 `<b>Rok:</b> ${d.rok}<br>` +
                 `<b>PKDaut:</b> ${d.pkdaut.toFixed(2)}<br>` +
-                `<b>Slot:</b> ${d.slot.toFixed(4)}<br>` +
+                `<b>Slot:</b> ${d.slot.toFixed(2)}<br>` +
                 `<b>Status:</b> ${d.is_nazbierana ? 'Nazbierana' : 'Nie nazbierana'}`
             ),
             hovertemplate: '%{text}<extra></extra>'
@@ -792,7 +819,7 @@ $(document).ready(function() {
                         `<b>Rok:</b> ${year}<br>` +
                         `<b>Ranking:</b> #${i + 1}<br>` +
                         `<b>PKDaut:</b> ${pubs[i].pkdaut.toFixed(2)}<br>` +
-                        `<b>Slot:</b> ${pubs[i].slot.toFixed(4)}`
+                        `<b>Slot:</b> ${pubs[i].slot.toFixed(2)}`
                     );
                 } else {
                     row.push(null);

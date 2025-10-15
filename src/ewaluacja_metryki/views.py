@@ -419,12 +419,25 @@ class MetrykaDetailView(EwaluacjaRequiredMixin, DetailView):
                 .order_by("-pkdaut")
             )
 
-            # Calculate pkdaut/slot for each work
+            # Calculate pkdaut/slot for each work and find autor_assignment_id
             for praca in prace_nazbierane:
                 if praca.slot and praca.slot > 0:
                     praca.pkdaut_per_slot = float(praca.pkdaut) / float(praca.slot)
                 else:
                     praca.pkdaut_per_slot = None
+
+                # Find the autor_assignment_id for this work using the original publication
+                praca.autor_assignment_id = None
+                try:
+                    assignment = praca.rekord.original.autorzy_set.filter(
+                        autor_id=metryka.autor.id,
+                        dyscyplina_naukowa_id=metryka.dyscyplina_naukowa.id,
+                        przypieta=True,
+                    ).first()
+                    if assignment:
+                        praca.autor_assignment_id = assignment.pk
+                except (AttributeError, Exception):
+                    pass
 
             context["prace_nazbierane"] = prace_nazbierane
 
@@ -700,6 +713,8 @@ class PrzypnijDyscyplineView(EwaluacjaRequiredMixin, View):
 
         # Redirect back to the detail view
         # Get MetrykaAutora for the author and discipline to redirect to the correct detail page
+        from django.urls import reverse
+
         from .models import MetrykaAutora
 
         metryka = MetrykaAutora.objects.filter(
@@ -707,11 +722,14 @@ class PrzypnijDyscyplineView(EwaluacjaRequiredMixin, View):
         ).first()
 
         if metryka:
-            return redirect(
+            url = reverse(
                 "ewaluacja_metryki:szczegoly",
-                autor_slug=metryka.autor.slug,
-                dyscyplina_kod=metryka.dyscyplina_naukowa.kod,
+                kwargs={
+                    "autor_slug": metryka.autor.slug,
+                    "dyscyplina_kod": metryka.dyscyplina_naukowa.kod,
+                },
             )
+            return redirect(url + "#prace-nazbierane")
         return redirect("ewaluacja_metryki:lista")
 
 
@@ -763,6 +781,8 @@ class OdepnijDyscyplineView(EwaluacjaRequiredMixin, View):
 
         # Redirect back to the detail view
         # Get MetrykaAutora for the author and discipline to redirect to the correct detail page
+        from django.urls import reverse
+
         from .models import MetrykaAutora
 
         metryka = MetrykaAutora.objects.filter(
@@ -770,11 +790,14 @@ class OdepnijDyscyplineView(EwaluacjaRequiredMixin, View):
         ).first()
 
         if metryka:
-            return redirect(
+            url = reverse(
                 "ewaluacja_metryki:szczegoly",
-                autor_slug=metryka.autor.slug,
-                dyscyplina_kod=metryka.dyscyplina_naukowa.kod,
+                kwargs={
+                    "autor_slug": metryka.autor.slug,
+                    "dyscyplina_kod": metryka.dyscyplina_naukowa.kod,
+                },
             )
+            return redirect(url + "#prace-nazbierane")
         return redirect("ewaluacja_metryki:lista")
 
 
