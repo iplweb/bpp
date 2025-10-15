@@ -1,14 +1,15 @@
 import logging
+import sys
 
+import rollbar
 from celery import shared_task
-
-from ewaluacja_liczba_n.utils import oblicz_liczby_n_dla_ewaluacji_2022_2025
-from .models import StatusGenerowania
-from .utils import generuj_metryki
-
 from django.utils import timezone
 
 from bpp.models import Uczelnia
+from ewaluacja_liczba_n.utils import oblicz_liczby_n_dla_ewaluacji_2022_2025
+
+from .models import StatusGenerowania
+from .utils import generuj_metryki
 
 logger = logging.getLogger(__name__)
 
@@ -38,14 +39,8 @@ def generuj_metryki_task(
         rodzaje_autora = ["N", "D", "B", "Z", " "]
     status = StatusGenerowania.get_or_create()
 
-    # Sprawdź czy inne generowanie nie jest w trakcie
-    if status.w_trakcie:
-        logger.warning("Generowanie metryk jest już w trakcie")
-        return {
-            "success": False,
-            "message": "Generowanie jest już w trakcie",
-            "task_id": status.task_id,
-        }
+    # NOTE: Sprawdzanie w_trakcie przeniesione do widoku UruchomGenerowanie
+    # Status jest ustawiany w widoku przed uruchomieniem taska, więc tutaj nie sprawdzamy
 
     try:
         # Krok 1: Przelicz liczby N jeśli włączone
@@ -65,10 +60,11 @@ def generuj_metryki_task(
 
         total_count = IloscUdzialowDlaAutoraZaCalosc.objects.all().count()
 
-        # Oznacz rozpoczęcie
-        status.rozpocznij_generowanie(
-            task_id=self.request.id, liczba_do_przetworzenia=total_count
-        )
+        # Status już jest ustawiony przez widok, tylko zaktualizuj liczbę jeśli się zmieniła
+        if status.liczba_do_przetworzenia != total_count:
+            status.liczba_do_przetworzenia = total_count
+            status.save()
+
         logger.info(
             f"Rozpoczęto generowanie metryk dla {total_count} autorów (task_id: {self.request.id})"
         )
@@ -125,6 +121,7 @@ def generuj_metryki_task(
 
     except Exception as e:
         logger.error(f"Błąd podczas generowania metryk: {str(e)}")
+        rollbar.report_exc_info(sys.exc_info())
 
         # Oznacz błąd
         status.w_trakcie = False

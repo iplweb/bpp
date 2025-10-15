@@ -138,7 +138,7 @@
                 <div class="grid-x grid-margin-x" style="gap: 10px;">
                     {% for metryka in autor.metryki.all %}
                         <div class="cell shrink">
-                            <a href="{% url 'ewaluacja_metryki:szczegoly' metryka.pk %}"
+                            <a href="{{ metryka.get_absolute_url }}"
                                class="button primary"
                                style="background: #3498db; border: none; padding: 10px 16px; font-size: 0.9rem; border-radius: 6px; transition: all 0.2s ease;"
                                onmouseover="this.style.backgroundColor='#2980b9'; this.style.transform='translateY(-2px)'"

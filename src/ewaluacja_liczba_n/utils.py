@@ -46,7 +46,6 @@ def oblicz_srednia_liczbe_n_dla_dyscyplin(uczelnia, rok_min=2022, rok_max=2025):
 
         # Tylko dla pracowników zaliczanych do liczby N
         if autor_dyscyplina.rodzaj_autora and autor_dyscyplina.rodzaj_autora.jest_w_n:
-
             if udzial.dyscyplina_naukowa_id == autor_dyscyplina.dyscyplina_naukowa_id:
                 # Udział dotyczy DYSCYPLLINYE
 
@@ -64,7 +63,6 @@ def oblicz_srednia_liczbe_n_dla_dyscyplin(uczelnia, rok_min=2022, rok_max=2025):
                 udzial.dyscyplina_naukowa_id
                 == autor_dyscyplina.subdyscyplina_naukowa_id
             ):
-
                 dyscyplina_stats[udzial.dyscyplina_naukowa]["suma_etatow"] += (
                     udzial.ilosc_udzialow
                     * autor_dyscyplina.wymiar_etatu
@@ -97,86 +95,104 @@ def oblicz_srednia_liczbe_n_dla_dyscyplin(uczelnia, rok_min=2022, rok_max=2025):
 @transaction.atomic
 def oblicz_sumy_udzialow_za_calosc(rok_min=2022, rok_max=2025):
     """
-    Oblicza sumę udziałów dla każdego autora i dyscypliny za cały okres ewaluacji.
+    Oblicza sumę udziałów dla każdego autora, dyscypliny i rodzaju autora za cały okres ewaluacji.
+
+    Tworzy osobny wpis dla każdego rodzaju autora (N, D, B, Z).
+    Pomija rekordy gdzie rodzaj autora jest None.
 
     Args:
         rok_min: Pierwszy rok okresu ewaluacji
         rok_max: Ostatni rok okresu ewaluacji
     """
-    from django.db.models import Sum
+    from collections import defaultdict
+
+    from bpp.models.dyscyplina_naukowa import Autor_Dyscyplina
 
     # Wyczyść istniejące dane
     IloscUdzialowDlaAutoraZaCalosc.objects.all().delete()
 
-    # Agreguj dane z tabeli rocznej
-    sumy = (
-        IloscUdzialowDlaAutoraZaRok.objects.filter(rok__gte=rok_min, rok__lte=rok_max)
-        .values("autor", "dyscyplina_naukowa")
-        .annotate(
-            suma_udzialow=Sum("ilosc_udzialow"),
-            suma_monografie=Sum("ilosc_udzialow_monografie"),
-        )
+    # Słownik do grupowania: klucz = (autor_id, dyscyplina_id, rodzaj_autora_id)
+    # wartość = {'suma_udzialow': ..., 'suma_monografie': ..., 'lata': set()}
+    grupy = defaultdict(
+        lambda: {
+            "suma_udzialow": Decimal("0"),
+            "suma_monografie": Decimal("0"),
+            "lata": set(),
+        }
     )
 
-    # Zapisz zagregowane dane
-    for suma in sumy:
-        lata_z_danymi = (
-            IloscUdzialowDlaAutoraZaRok.objects.filter(
-                autor_id=suma["autor"],
-                dyscyplina_naukowa_id=suma["dyscyplina_naukowa"],
-                rok__gte=rok_min,
-                rok__lte=rok_max,
+    # Pobierz wszystkie udziały za okres ewaluacji
+    udzialy = IloscUdzialowDlaAutoraZaRok.objects.filter(
+        rok__gte=rok_min, rok__lte=rok_max
+    ).select_related("autor", "dyscyplina_naukowa")
+
+    # Dla każdego udziału znajdź rodzaj autora i zgrupuj
+    for udzial in udzialy:
+        try:
+            autor_dyscyplina = Autor_Dyscyplina.objects.get(
+                autor=udzial.autor, rok=udzial.rok
             )
-            .values_list("rok", flat=True)
-            .order_by("rok")
-        )
 
-        # Pobierz dane o rodzaju autora dla każdego roku
-        from bpp.models.dyscyplina_naukowa import Autor_Dyscyplina
+            # POMIŃ rekordy gdzie rodzaj_autora jest None
+            if autor_dyscyplina.rodzaj_autora is None:
+                continue
 
-        rodzaje_autora_rocznie = {}
-        for rok in lata_z_danymi:
-            try:
-                autor_dyscyplina = Autor_Dyscyplina.objects.get(
-                    autor_id=suma["autor"], rok=rok
-                )
-                if autor_dyscyplina.rodzaj_autora:
-                    rodzaje_autora_rocznie[rok] = autor_dyscyplina.rodzaj_autora.nazwa
-            except Autor_Dyscyplina.DoesNotExist:
-                pass
+            # Klucz grupowania
+            klucz = (
+                udzial.autor_id,
+                udzial.dyscyplina_naukowa_id,
+                autor_dyscyplina.rodzaj_autora_id,
+            )
 
-        # Zbuduj komentarz z informacjami o rodzaju autora
-        komentarz = f"Lata z danymi: {', '.join(map(str, lata_z_danymi))}"
+            # Dodaj do grupy
+            grupy[klucz]["suma_udzialow"] += udzial.ilosc_udzialow
+            grupy[klucz]["suma_monografie"] += udzial.ilosc_udzialow_monografie
+            grupy[klucz]["lata"].add(udzial.rok)
 
-        if rodzaje_autora_rocznie:
-            unikalne_rodzaje = set(rodzaje_autora_rocznie.values())
-            if len(unikalne_rodzaje) == 1:
-                # Tylko jeden rodzaj autora przez wszystkie lata
-                komentarz += f" | rodzaj autora: {list(unikalne_rodzaje)[0]}"
-            else:
-                # Wiele rodzajów autora w różnych latach
-                rodzaje_parts = []
-                for rok in sorted(rodzaje_autora_rocznie.keys()):
-                    rodzaje_parts.append(f"{rok} - {rodzaje_autora_rocznie[rok]}")
-                komentarz += f" | rodzaj autora: {', '.join(rodzaje_parts)}"
+        except Autor_Dyscyplina.DoesNotExist:
+            # Brak danych Autor_Dyscyplina - pomijamy
+            continue
+
+    # Zapisz zagregowane dane
+    for klucz, dane in grupy.items():
+        autor_id, dyscyplina_id, rodzaj_autora_id = klucz
+
+        # Zbuduj komentarz z latami
+        lata_posortowane = sorted(dane["lata"])
+        komentarz = f"Lata z danymi: {', '.join(map(str, lata_posortowane))}"
 
         # Zastosuj minimalną wartość 1 jeśli suma jest mniejsza niż 1
-        suma_udzialow_final = suma["suma_udzialow"]
-        suma_monografie_final = suma["suma_monografie"]
+        suma_udzialow_final = dane["suma_udzialow"]
+        suma_monografie_final = dane["suma_monografie"]
 
         if suma_udzialow_final > 0 and suma_udzialow_final < 1:
             komentarz += (
-                f" | Ilość udziałów zaokrąglona: {suma_udzialow_final:.4f} → 1.00"
+                f"<br>Ilość udziałów zaokrąglona: {suma_udzialow_final:.4f} → 1.00"
             )
             suma_udzialow_final = Decimal("1")
 
         if suma_monografie_final > 0 and suma_monografie_final < 1:
-            komentarz += f" | Ilość udziałów za monografie zaokrąglona: {suma_monografie_final:.4f} → 1.00"
+            komentarz += f"<br>Ilość udziałów za monografie zaokrąglona: {suma_monografie_final:.4f} → 1.00"
             suma_monografie_final = Decimal("1")
 
+        if suma_udzialow_final > 4:
+            komentarz += (
+                f"<br>Ilość udziałów zredukowana: {suma_udzialow_final:.4f} → 4.00"
+            )
+            suma_udzialow_final = Decimal("4")
+
+            suma_monografie_final_new = suma_udzialow_final / Decimal("2")
+            komentarz += (
+                f"<br>Ilość udziałów za monografie zredukowana: {suma_monografie_final:.4f} → "
+                f"{suma_monografie_final_new:.2f}"
+            )
+            suma_monografie_final = suma_monografie_final_new
+
+        # Utwórz wpis
         IloscUdzialowDlaAutoraZaCalosc.objects.create(
-            autor_id=suma["autor"],
-            dyscyplina_naukowa_id=suma["dyscyplina_naukowa"],
+            autor_id=autor_id,
+            dyscyplina_naukowa_id=dyscyplina_id,
+            rodzaj_autora_id=rodzaj_autora_id,
             ilosc_udzialow=suma_udzialow_final,
             ilosc_udzialow_monografie=suma_monografie_final,
             komentarz=komentarz,
@@ -239,6 +255,7 @@ def oblicz_liczby_n_dla_ewaluacji_2022_2025(uczelnia, rok_min=2022, rok_max=2025
                 ilosc_udzialow=ilosc_udzialow,
                 ilosc_udzialow_monografie=ilosc_udzialow
                 / Decimal("2.0"),  # Domyślnie połowa udziałów
+                autor_dyscyplina=ad,
             )
 
     # Oblicz sumę udziałów dla całego okresu ewaluacji

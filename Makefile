@@ -261,3 +261,7 @@ compose-restart:
 
 compose-dbshell:
 	docker compose exec db /bin/bash
+
+
+celery-worker-run:
+	uv run celery -A django_bpp.celery_tasks worker --pool=threads --concurrency=0

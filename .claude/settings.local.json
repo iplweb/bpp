@@ -36,7 +36,10 @@
       "Bash(brew:*)",
       "Read(//opt/homebrew/**)",
       "Bash(chmod:*)",
-      "Bash(awk:*)"
+      "Bash(awk:*)",
+      "Bash(ruff check src/ewaluacja_liczba_n/views.py)",
+      "Bash(ruff check:*)",
+      "Bash(ruff format:*)"
     ],
     "deny": [],
     "ask": [],

@@ -88,7 +88,7 @@
 
         {% if autorzy_data %}
             <!-- Pager above table -->
-            {% include "import_polon/pagination_with_anchor.html" %}
+            {% include "pagination/pagination_with_anchor.html" %}
 
             <!-- Podsumowanie dla przefiltrowanych danych -->
             <div class="callout primary">
@@ -225,7 +225,17 @@
                         <td class="text-center">{{ udzial.ilosc_udzialow_monografie|floatformat:2 }}</td>
                         <td>
                             {% if udzial.rodzaj_autora %}
-                                {{ udzial.rodzaj_autora.nazwa }}
+                                {% if udzial.rodzaj_autora.skrot == 'N' %}
+                                    <span class="rodzaj-autora-badge type-n" title="{{ udzial.rodzaj_autora.nazwa }}">liczba N</span>
+                                {% elif udzial.rodzaj_autora.skrot == 'D' %}
+                                    <span class="rodzaj-autora-badge type-d" title="{{ udzial.rodzaj_autora.nazwa }}">doktorant</span>
+                                {% elif udzial.rodzaj_autora.skrot == 'B' %}
+                                    <span class="rodzaj-autora-badge type-b" title="{{ udzial.rodzaj_autora.nazwa }}">badawczy</span>
+                                {% elif udzial.rodzaj_autora.skrot == 'Z' %}
+                                    <span class="rodzaj-autora-badge type-z" title="{{ udzial.rodzaj_autora.nazwa }}">inny</span>
+                                {% else %}
+                                    {{ udzial.rodzaj_autora.nazwa }}
+                                {% endif %}
                             {% else %}
                                 <span class="text-muted">-</span>
                             {% endif %}
@@ -248,7 +258,7 @@
             </table>
 
             <!-- Pager below table -->
-            {% include "import_polon/pagination_with_anchor.html" %}
+            {% include "pagination/pagination_with_anchor.html" %}
 
         {% else %}
             <div class="callout warning">
@@ -296,6 +306,38 @@
     .sort-link i {
         font-size: 0.9em;
         margin-left: 5px;
+    }
+    .rodzaj-autora-badge {
+        display: inline-block;
+        padding: 0.3rem 0.6rem;
+        border-radius: 12px;
+        font-size: 0.75em;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        white-space: nowrap;
+        cursor: help;
+    }
+    .rodzaj-autora-badge.type-n {
+        background: #5cb85c;
+        color: white;
+    }
+    .rodzaj-autora-badge.type-d {
+        background: #5bc0de;
+        color: white;
+    }
+    .rodzaj-autora-badge.type-b {
+        background: #f0ad4e;
+        color: white;
+    }
+    .rodzaj-autora-badge.type-z {
+        background: #777;
+        color: white;
+    }
+    .rodzaj-autora-badge:hover {
+        opacity: 0.9;
+        transform: scale(1.05);
+        transition: all 0.2s ease;
     }
 </style>
 

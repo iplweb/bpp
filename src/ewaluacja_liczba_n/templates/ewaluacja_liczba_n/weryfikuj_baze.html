@@ -34,8 +34,8 @@
                         <td class="text-center">
                             {% if item.liczba > 0 %}
                             <a href="/admin/bpp/autor_dyscyplina/?q={% if item.query_key == 'rodzaj_n' %}{{ djangoql_queries.rodzaj_n|urlencode }}{% elif item.query_key == 'rodzaj_d' %}{{ djangoql_queries.rodzaj_d|urlencode }}{% elif item.query_key == 'rodzaj_z' %}{{ djangoql_queries.rodzaj_z|urlencode }}{% else %}{{ djangoql_queries.brak_danych|urlencode }}{% endif %}"
-                               class="button tiny primary" target="_blank">
-                                <i class="fi-link"></i> Zobacz w admin
+                               class="button small primary" target="_blank">
+                                <i class="fi-link"></i> Zobacz w module redagowania
                             </a>
                             {% else %}
                             <span class="label secondary">Brak rekordów</span>

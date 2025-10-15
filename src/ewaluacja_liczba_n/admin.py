@@ -1,16 +1,16 @@
+from django.contrib import admin
 from import_export import resources
 from import_export.admin import ImportExportMixin
 
+from bpp.admin.xlsx_export.mixins import EksportDanychMixin
 from rozbieznosci_dyscyplin.admin import ReadonlyAdminMixin
+
 from .models import (
     DyscyplinaNieRaportowana,
+    IloscUdzialowDlaAutoraZaCalosc,
     IloscUdzialowDlaAutoraZaRok,
     LiczbaNDlaUczelni,
 )
-
-from django.contrib import admin
-
-from bpp.admin.xlsx_export.mixins import EksportDanychMixin
 
 
 class IloscUdzialowDlaAutoraZaRokResource(resources.ModelResource):
@@ -18,8 +18,12 @@ class IloscUdzialowDlaAutoraZaRokResource(resources.ModelResource):
         return (
             super()
             .get_queryset()
-            .select_related("autor")
-            .prefetch_related("dyscyplina_naukowa")
+            .select_related(
+                "autor",
+                "dyscyplina_naukowa",
+                "autor_dyscyplina",
+                "autor_dyscyplina__rodzaj_autora",
+            )
         )
 
     def dehydrate_autor__pbn_uid_id(self, ad):
@@ -40,6 +44,38 @@ class IloscUdzialowDlaAutoraZaRokResource(resources.ModelResource):
             "rok",
             "ilosc_udzialow",
             "ilosc_udzialow_monografie",
+        )
+        export_order = fields
+
+
+class IloscUdzialowDlaAutoraZaCaloscResource(resources.ModelResource):
+    def get_queryset(self):
+        return (
+            super()
+            .get_queryset()
+            .select_related("autor", "dyscyplina_naukowa", "rodzaj_autora")
+        )
+
+    def dehydrate_autor__pbn_uid_id(self, ad):
+        if ad.autor.pbn_uid_id:
+            return str(ad.autor.pbn_uid_id)
+        return None
+
+    class Meta:
+        model = IloscUdzialowDlaAutoraZaCalosc
+        fields = (
+            "autor__nazwisko",
+            "autor__imiona",
+            "autor__pbn_uid_id",
+            "autor__orcid",
+            "autor__system_kadrowy_id",
+            "dyscyplina_naukowa__nazwa",
+            "dyscyplina_naukowa__kod",
+            "rodzaj_autora__nazwa",
+            "rodzaj_autora__skrot",
+            "ilosc_udzialow",
+            "ilosc_udzialow_monografie",
+            "komentarz",
         )
         export_order = fields
 
@@ -74,6 +110,33 @@ class IloscUdzialowDlaAutoraZaRokAdmin(
         "dyscyplina_naukowa__nazwa",
     ]
     list_filter = ["dyscyplina_naukowa", "ilosc_udzialow"]
+    ordering = ("autor__nazwisko", "autor__imiona", "dyscyplina_naukowa__nazwa")
+
+
+@admin.register(IloscUdzialowDlaAutoraZaCalosc)
+class IloscUdzialowDlaAutoraZaCaloscAdmin(
+    EksportDanychMixin, ReadonlyAdminMixin, admin.ModelAdmin
+):
+    resource_class = IloscUdzialowDlaAutoraZaCaloscResource
+    list_display = [
+        "autor",
+        "dyscyplina_naukowa",
+        "rodzaj_autora",
+        "ilosc_udzialow",
+        "ilosc_udzialow_monografie",
+    ]
+    list_select_related = [
+        "autor",
+        "autor__tytul",
+        "dyscyplina_naukowa",
+        "rodzaj_autora",
+    ]
+    search_fields = [
+        "autor__nazwisko",
+        "dyscyplina_naukowa__kod",
+        "dyscyplina_naukowa__nazwa",
+    ]
+    list_filter = ["dyscyplina_naukowa", "rodzaj_autora", "ilosc_udzialow"]
     ordering = ("autor__nazwisko", "autor__imiona", "dyscyplina_naukowa__nazwa")
 
 

@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% load humanize %}
 {% load temperature_filters %}
+{% load l10n %}
 
 {% block title %}Statystyki metryk ewaluacyjnych{% endblock %}
 
@@ -133,9 +134,10 @@
                             <tr>
                                 <th width="50">Lp.</th>
                                 <th>Autor</th>
+                                <th>Rodzaj autora</th>
                                 <th>Jednostka</th>
-                                <th class="text-center">Sloty wypełnione</th>
-                                <th class="text-center">PKDaut/slot</th>
+                                <th class="text-center">Średnia PKDaut/slot</th>
+                                <th class="text-center">Wykorzystanie slotów</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -146,9 +148,20 @@
                                     <a href="{% url 'bpp:browse_autor' metryka.autor.pk %}" target="_blank" title="Szczegóły autora w BPP">
                                         {{ metryka.autor }}
                                     </a>
-                                    <a href="{% url 'ewaluacja_metryki:szczegoly' metryka.pk %}" title="Szczegóły metryki">
+                                    <a href="{% url 'ewaluacja_metryki:szczegoly' autor_slug=metryka.autor.slug dyscyplina_kod=metryka.dyscyplina_naukowa.kod %}" title="Szczegóły metryki">
                                         <span class="fi-graph-bar"></span>
                                     </a>
+                                </td>
+                                <td>
+                                    <small class="text-muted">
+                                        {% if metryka.rodzaj_autora == " " %}
+                                            Brak danych
+                                        {% elif metryka.rodzaj_autora %}
+                                            {{ metryka.rodzaj_autora }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </small>
                                 </td>
                                 <td>
                                     <small class="text-muted">
@@ -160,15 +173,16 @@
                                     </small>
                                 </td>
                                 <td class="text-center">
-                                    <div class="progress" style="width: 120px; margin: 0 auto;">
-                                        <div class="progress-meter success"
-                                             style="width: {{ metryka.procent_wykorzystania_slotow|floatformat:0 }}%">
-                                            <p class="progress-meter-text">{{ metryka.slot_nazbierany|floatformat:2 }}</p>
+                                    {% temperature_display metryka.srednia_za_slot_nazbierana %}
+                                </td>
+                                <td>
+                                    <div class="slot-progress-container">
+                                        <div class="circular-progress-wrapper">
+                                            <div class="circle-progress-{{ metryka.pk }}" data-value="{{ metryka.procent_wykorzystania_slotow|unlocalize }}" data-size="70" data-thickness="6"></div>
+                                            <strong class="progress-percentage">0%</strong>
+                                            <small class="progress-label">{{ metryka.slot_nazbierany|floatformat:2 }} / {{ metryka.slot_maksymalny|floatformat:2 }}</small>
                                         </div>
                                     </div>
-                                </td>
-                                <td class="text-center">
-                                    {% temperature_display metryka.srednia_za_slot_nazbierana %}
                                 </td>
                             </tr>
                             {% endfor %}
@@ -193,9 +207,10 @@
                             <tr>
                                 <th width="50">Lp.</th>
                                 <th>Autor</th>
+                                <th>Rodzaj autora</th>
                                 <th>Jednostka</th>
-                                <th class="text-center">Sloty wypełnione</th>
-                                <th class="text-center">PKDaut/slot</th>
+                                <th class="text-center">Średnia PKDaut/slot</th>
+                                <th class="text-center">Wykorzystanie slotów</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -206,9 +221,20 @@
                                     <a href="{% url 'bpp:browse_autor' metryka.autor.pk %}" target="_blank" title="Szczegóły autora w BPP">
                                         {{ metryka.autor }}
                                     </a>
-                                    <a href="{% url 'ewaluacja_metryki:szczegoly' metryka.pk %}" title="Szczegóły metryki">
+                                    <a href="{% url 'ewaluacja_metryki:szczegoly' autor_slug=metryka.autor.slug dyscyplina_kod=metryka.dyscyplina_naukowa.kod %}" title="Szczegóły metryki">
                                         <span class="fi-graph-bar"></span>
                                     </a>
+                                </td>
+                                <td>
+                                    <small class="text-muted">
+                                        {% if metryka.rodzaj_autora == " " %}
+                                            Brak danych
+                                        {% elif metryka.rodzaj_autora %}
+                                            {{ metryka.rodzaj_autora }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </small>
                                 </td>
                                 <td>
                                     <small class="text-muted">
@@ -220,15 +246,16 @@
                                     </small>
                                 </td>
                                 <td class="text-center">
-                                    <div class="progress" style="width: 120px; margin: 0 auto;">
-                                        <div class="progress-meter success"
-                                             style="width: {{ metryka.procent_wykorzystania_slotow|floatformat:0 }}%">
-                                            <p class="progress-meter-text">{{ metryka.slot_nazbierany|floatformat:2 }}</p>
+                                    {% temperature_display metryka.srednia_za_slot_nazbierana %}
+                                </td>
+                                <td>
+                                    <div class="slot-progress-container">
+                                        <div class="circular-progress-wrapper">
+                                            <div class="circle-progress-{{ metryka.pk }}" data-value="{{ metryka.procent_wykorzystania_slotow|unlocalize }}" data-size="70" data-thickness="6"></div>
+                                            <strong class="progress-percentage">0%</strong>
+                                            <small class="progress-label">{{ metryka.slot_nazbierany|floatformat:2 }} / {{ metryka.slot_maksymalny|floatformat:2 }}</small>
                                         </div>
                                     </div>
-                                </td>
-                                <td class="text-center">
-                                    {% temperature_display metryka.srednia_za_slot_nazbierana %}
                                 </td>
                             </tr>
                             {% endfor %}
@@ -321,9 +348,10 @@
                             <tr>
                                 <th width="50">Lp.</th>
                                 <th>Autor</th>
+                                <th>Rodzaj autora</th>
                                 <th>Jednostka</th>
-                                <th class="text-center">Sloty wypełnione</th>
-                                <th class="text-center">PKDaut/slot</th>
+                                <th class="text-center">Średnia PKDaut/slot</th>
+                                <th class="text-center">Wykorzystanie slotów</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -334,9 +362,20 @@
                                     <a href="{% url 'bpp:browse_autor' metryka.autor.pk %}" target="_blank" title="Szczegóły autora w BPP">
                                         {{ metryka.autor }}
                                     </a>
-                                    <a href="{% url 'ewaluacja_metryki:szczegoly' metryka.pk %}" title="Szczegóły metryki">
+                                    <a href="{% url 'ewaluacja_metryki:szczegoly' autor_slug=metryka.autor.slug dyscyplina_kod=metryka.dyscyplina_naukowa.kod %}" title="Szczegóły metryki">
                                         <span class="fi-graph-bar"></span>
                                     </a>
+                                </td>
+                                <td>
+                                    <small class="text-muted">
+                                        {% if metryka.rodzaj_autora == " " %}
+                                            Brak danych
+                                        {% elif metryka.rodzaj_autora %}
+                                            {{ metryka.rodzaj_autora }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </small>
                                 </td>
                                 <td>
                                     <small class="text-muted">
@@ -348,15 +387,16 @@
                                     </small>
                                 </td>
                                 <td class="text-center">
-                                    <div class="progress" style="width: 120px; margin: 0 auto;">
-                                        <div class="progress-meter warning"
-                                             style="width: {{ metryka.procent_wykorzystania_slotow|floatformat:0 }}%">
-                                            <p class="progress-meter-text">{{ metryka.slot_nazbierany|floatformat:2 }}</p>
+                                    {% temperature_display metryka.srednia_za_slot_nazbierana %}
+                                </td>
+                                <td>
+                                    <div class="slot-progress-container">
+                                        <div class="circular-progress-wrapper">
+                                            <div class="circle-progress-{{ metryka.pk }}" data-value="{{ metryka.procent_wykorzystania_slotow|unlocalize }}" data-size="70" data-thickness="6"></div>
+                                            <strong class="progress-percentage">0%</strong>
+                                            <small class="progress-label">{{ metryka.slot_nazbierany|floatformat:2 }} / {{ metryka.slot_maksymalny|floatformat:2 }}</small>
                                         </div>
                                     </div>
-                                </td>
-                                <td class="text-center">
-                                    {% temperature_display metryka.srednia_za_slot_nazbierana %}
                                 </td>
                             </tr>
                             {% endfor %}
@@ -381,9 +421,10 @@
                             <tr>
                                 <th width="50">Lp.</th>
                                 <th>Autor</th>
+                                <th>Rodzaj autora</th>
                                 <th>Jednostka</th>
-                                <th class="text-center">Sloty wypełnione</th>
-                                <th class="text-center">PKDaut/slot</th>
+                                <th class="text-center">Średnia PKDaut/slot</th>
+                                <th class="text-center">Wykorzystanie slotów</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -394,9 +435,20 @@
                                     <a href="{% url 'bpp:browse_autor' metryka.autor.pk %}" target="_blank" title="Szczegóły autora w BPP">
                                         {{ metryka.autor }}
                                     </a>
-                                    <a href="{% url 'ewaluacja_metryki:szczegoly' metryka.pk %}" title="Szczegóły metryki">
+                                    <a href="{% url 'ewaluacja_metryki:szczegoly' autor_slug=metryka.autor.slug dyscyplina_kod=metryka.dyscyplina_naukowa.kod %}" title="Szczegóły metryki">
                                         <span class="fi-graph-bar"></span>
                                     </a>
+                                </td>
+                                <td>
+                                    <small class="text-muted">
+                                        {% if metryka.rodzaj_autora == " " %}
+                                            Brak danych
+                                        {% elif metryka.rodzaj_autora %}
+                                            {{ metryka.rodzaj_autora }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </small>
                                 </td>
                                 <td>
                                     <small class="text-muted">
@@ -408,15 +460,16 @@
                                     </small>
                                 </td>
                                 <td class="text-center">
-                                    <div class="progress" style="width: 120px; margin: 0 auto;">
-                                        <div class="progress-meter alert"
-                                             style="width: {{ metryka.procent_wykorzystania_slotow|floatformat:0 }}%">
-                                            <p class="progress-meter-text">{{ metryka.slot_nazbierany|floatformat:2 }}</p>
+                                    {% temperature_display metryka.srednia_za_slot_nazbierana %}
+                                </td>
+                                <td>
+                                    <div class="slot-progress-container">
+                                        <div class="circular-progress-wrapper">
+                                            <div class="circle-progress-{{ metryka.pk }}" data-value="{{ metryka.procent_wykorzystania_slotow|unlocalize }}" data-size="70" data-thickness="6"></div>
+                                            <strong class="progress-percentage">0%</strong>
+                                            <small class="progress-label">{{ metryka.slot_nazbierany|floatformat:2 }} / {{ metryka.slot_maksymalny|floatformat:2 }}</small>
                                         </div>
                                     </div>
-                                </td>
-                                <td class="text-center">
-                                    {% temperature_display metryka.srednia_za_slot_nazbierana %}
                                 </td>
                             </tr>
                             {% endfor %}
@@ -485,7 +538,7 @@
                                     <a href="{% url 'bpp:browse_autor' metryka.autor.pk %}" target="_blank" title="Szczegóły autora w BPP">
                                         {{ metryka.autor }}
                                     </a>
-                                    <a href="{% url 'ewaluacja_metryki:szczegoly' metryka.pk %}" title="Szczegóły metryki">
+                                    <a href="{% url 'ewaluacja_metryki:szczegoly' autor_slug=metryka.autor.slug dyscyplina_kod=metryka.dyscyplina_naukowa.kod %}" title="Szczegóły metryki">
                                         <span class="fi-graph-bar"></span>
                                     </a>
                                 </td>
@@ -686,6 +739,222 @@
         color: #8a8a8a;
     }
 
+    /* Circular Progress Bar Styles */
+    .slot-progress-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+    }
+
+    .circular-progress-wrapper {
+        position: relative;
+        display: inline-block;
+    }
+
+    .circular-progress-wrapper canvas {
+        display: block;
+    }
+
+    .circular-progress-wrapper .progress-percentage {
+        position: absolute;
+        top: 35px;  /* Centered in 70px circle */
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 14px;
+        font-weight: 600;
+        color: #333;
+        z-index: 1;
+    }
+
+    .circular-progress-wrapper .progress-label {
+        display: block;
+        margin-top: 5px;
+        color: #666;
+        font-size: 0.85rem;
+        white-space: nowrap;
+    }
+
+    /* PKDaut/slot Metric Display */
+    .pkd-metric-container {
+        display: inline-block;
+        min-width: 200px;
+        padding: 10px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .pkd-value-label {
+        text-align: center;
+        margin-bottom: 8px;
+    }
+
+    .pkd-value-label strong {
+        font-size: 1.25rem;
+        color: #2c3e50;
+        display: block;
+    }
+
+    .pkd-value-label small {
+        color: #7f8c8d;
+        font-size: 0.75rem;
+    }
+
+    .pkd-progress-bar {
+        margin: 10px 0;
+    }
+
+    .pkd-progress-track {
+        height: 20px;
+        background: #e0e0e0;
+        border-radius: 10px;
+        overflow: hidden;
+        position: relative;
+        box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .pkd-progress-fill {
+        height: 100%;
+        border-radius: 10px;
+        position: relative;
+        transition: all 0.5s ease;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+
+    .pkd-marker {
+        position: absolute;
+        right: -2px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 4px;
+        height: 140%;
+        background: rgba(255, 255, 255, 0.8);
+        border-radius: 2px;
+        box-shadow: 0 0 4px rgba(0,0,0,0.3);
+    }
+
+    .pkd-scale-labels {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 4px;
+        font-size: 0.7rem;
+        color: #95a5a6;
+    }
+
+    .pkd-quality-label {
+        text-align: center;
+        font-size: 0.85rem;
+        font-weight: 600;
+        padding: 4px 8px;
+        border-radius: 4px;
+        margin-top: 8px;
+        transition: all 0.3s ease;
+    }
+
+    /* Temperature gradient colors for PKD progress bars */
+    .pkd-progress-fill.temp-0 {
+        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+    }
+    .pkd-quality-label.temp-0 {
+        background: #667eea;
+        color: white;
+    }
+
+    .pkd-progress-fill.temp-20 {
+        background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
+    }
+    .pkd-quality-label.temp-20 {
+        background: #4facfe;
+        color: white;
+    }
+
+    .pkd-progress-fill.temp-40 {
+        background: linear-gradient(90deg, #43e97b 0%, #38f9d7 100%);
+    }
+    .pkd-quality-label.temp-40 {
+        background: #43e97b;
+        color: white;
+    }
+
+    .pkd-progress-fill.temp-60 {
+        background: linear-gradient(90deg, #30cfd0 0%, #330867 100%);
+    }
+    .pkd-quality-label.temp-60 {
+        background: #30cfd0;
+        color: white;
+    }
+
+    .pkd-progress-fill.temp-80 {
+        background: linear-gradient(90deg, #a8edea 0%, #fed6e3 100%);
+    }
+    .pkd-quality-label.temp-80 {
+        background: #a8edea;
+        color: #333;
+    }
+
+    .pkd-progress-fill.temp-100 {
+        background: linear-gradient(90deg, #ffecd2 0%, #fcb69f 100%);
+    }
+    .pkd-quality-label.temp-100 {
+        background: #fcb69f;
+        color: #333;
+    }
+
+    .pkd-progress-fill.temp-120 {
+        background: linear-gradient(90deg, #ff9a56 0%, #ff6a88 100%);
+    }
+    .pkd-quality-label.temp-120 {
+        background: #ff9a56;
+        color: white;
+    }
+
+    .pkd-progress-fill.temp-140 {
+        background: linear-gradient(90deg, #ff6a88 0%, #ff3838 100%);
+    }
+    .pkd-quality-label.temp-140 {
+        background: #ff6a88;
+        color: white;
+    }
+
+    .pkd-progress-fill.temp-160 {
+        background: linear-gradient(90deg, #ff3838 0%, #ff0844 100%);
+    }
+    .pkd-quality-label.temp-160 {
+        background: #ff3838;
+        color: white;
+    }
+
+    .pkd-progress-fill.temp-180 {
+        background: linear-gradient(90deg, #ff0844 0%, #ffb199 100%);
+    }
+    .pkd-quality-label.temp-180 {
+        background: #ff0844;
+        color: white;
+    }
+
+    .pkd-progress-fill.temp-200 {
+        background: linear-gradient(90deg, #ff0844 0%, #ffd700 50%, #ffffff 100%);
+        animation: pulse-light 2s infinite;
+    }
+    .pkd-quality-label.temp-200 {
+        background: linear-gradient(90deg, #ff0844, #ffd700);
+        color: white;
+        animation: pulse-light 2s infinite;
+    }
+
+    @keyframes pulse-light {
+        0% {
+            box-shadow: 0 0 5px rgba(255, 215, 0, 0.5);
+        }
+        50% {
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+        }
+        100% {
+            box-shadow: 0 0 5px rgba(255, 215, 0, 0.5);
+        }
+    }
+
     /* Temperature gradient classes */
     .temperature-display {
         display: inline-block;
@@ -815,4 +1084,50 @@
         font-weight: bold;
     }
 </style>
+
+
+
+<script>
+// Inicjalizacja Foundation
+$(document).foundation();
+
+// Inicjalizacja okrągłych pasków postępu
+$(document).ready(function() {
+    console.log('Initializing circular progress bars for statistics page...');
+
+    // Funkcja pomocnicza do wyboru gradientu na podstawie procentu wykorzystania
+    function getGradientForPercentage(percentage) {
+        if (percentage >= 90) {
+            return ["#4CAF50", "#8BC34A"];  // Zielony gradient dla wysokich wartości
+        } else if (percentage >= 70) {
+            return ["#FFC107", "#FF9800"];  // Żółty/pomarańczowy gradient dla średnich wartości
+        } else if (percentage >= 50) {
+            return ["#FF9800", "#FF5722"];  // Pomarańczowy gradient
+        } else {
+            return ["#f44336", "#e91e63"];  // Czerwony gradient dla niskich wartości
+        }
+    }
+
+    // Inicjalizuj wszystkie paski postępu
+    $('[class^="circle-progress-"]').each(function() {
+        var $this = $(this);
+        var percentage = parseFloat($this.data('value')) || 0;
+        var gradient = getGradientForPercentage(percentage);
+
+        $this.circleProgress({
+            value: percentage / 100,
+            size: 70,
+            thickness: 6,
+            animation: { duration: 1000, easing: "circleProgressEasing" },
+            fill: {
+                gradient: gradient
+            }
+        }).on('circle-animation-progress', function(event, progress, stepValue) {
+            $(this).siblings('.progress-percentage').text(Math.round(stepValue * 100) + '%');
+        });
+    });
+
+    console.log('Circular progress bars initialized.');
+});
+</script>
 {% endblock %}

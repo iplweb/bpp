@@ -99,3 +99,68 @@ def test_build_query_string_with_multiple_updates():
     assert "nazwisko=test" in result
     # Should remove page (explicitly set to None)
     assert "page=" not in result
+
+
+@pytest.mark.django_db
+def test_clear_filters_url_preserves_only_widok():
+    """Test that clear_filters_url removes all filters but preserves widok parameter"""
+    request = HttpRequest()
+    request.GET = QueryDict(
+        "nazwisko=test&jednostka=5&dyscyplina=3&widok=kola&sort=-autor__nazwisko&page=2"
+    )
+
+    template_str = """
+    {% load url_utils %}
+    {% clear_filters_url request %}
+    """
+
+    template = Template(template_str)
+    context = Context({"request": request})
+    result = template.render(context).strip()
+
+    # Should preserve widok
+    assert "widok=kola" in result
+    # Should remove all other parameters
+    assert "nazwisko=" not in result
+    assert "jednostka=" not in result
+    assert "dyscyplina=" not in result
+    assert "sort=" not in result
+    assert "page=" not in result
+
+
+@pytest.mark.django_db
+def test_clear_filters_url_without_widok():
+    """Test that clear_filters_url returns empty query string when no widok is present"""
+    request = HttpRequest()
+    request.GET = QueryDict("nazwisko=test&jednostka=5&dyscyplina=3")
+
+    template_str = """
+    {% load url_utils %}
+    {% clear_filters_url request %}
+    """
+
+    template = Template(template_str)
+    context = Context({"request": request})
+    result = template.render(context).strip()
+
+    # Should return empty string when no widok parameter
+    assert result == ""
+
+
+@pytest.mark.django_db
+def test_clear_filters_url_with_only_widok():
+    """Test that clear_filters_url preserves widok when it's the only parameter"""
+    request = HttpRequest()
+    request.GET = QueryDict("widok=mapa_ciepla")
+
+    template_str = """
+    {% load url_utils %}
+    {% clear_filters_url request %}
+    """
+
+    template = Template(template_str)
+    context = Context({"request": request})
+    result = template.render(context).strip()
+
+    # Should preserve widok
+    assert result == "?widok=mapa_ciepla"

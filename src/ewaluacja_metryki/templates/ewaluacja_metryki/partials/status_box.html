@@ -1,0 +1,76 @@
+<!-- Status generowania - partial template for HTMX updates -->
+{% if status_generowania %}
+<div class="callout {% if status_generowania.w_trakcie %}warning{% elif status_generowania.data_zakonczenia %}success{% else %}secondary{% endif %}"
+     id="status-box"
+     {% if status_generowania.w_trakcie %}
+     hx-get="{% url 'ewaluacja_metryki:status_partial' %}"
+     hx-trigger="every 2s"
+     hx-swap="outerHTML"
+     {% endif %}>
+    <div class="row">
+        <div class="medium-9 columns">
+            {% if status_generowania.w_trakcie %}
+                <p>
+                    <span class="fi-clock"></span>
+                    {% if status_generowania.liczba_przetworzonych == 0 %}
+                        <strong>Oczekiwanie na rozpoczęcie przetwarzania...</strong>
+                        <br><small>Przeliczanie liczby N i przygotowanie danych...</small>
+                    {% else %}
+                        <strong>Generowanie metryk w trakcie...</strong>
+                        Przetworzono: <span id="liczba-przetworzonych">{{ status_generowania.liczba_przetworzonych }}</span> autorów
+                    {% endif %}
+                </p>
+                <div class="progress" role="progressbar" tabindex="0" aria-valuenow="{{ progress_procent|floatformat:0 }}" aria-valuemin="0" aria-valuemax="100">
+                    <div class="progress-meter" style="width: {{ progress_procent|floatformat:0 }}%" id="progress-bar">
+                        <p class="progress-meter-text">{{ progress_procent|floatformat:0 }}%</p>
+                    </div>
+                </div>
+                <p><small>{{ status_generowania.liczba_przetworzonych }} z {{ status_generowania.liczba_do_przetworzenia }} autorów</small></p>
+            {% elif status_generowania.data_zakonczenia %}
+                <p>
+                    <span class="fi-check"></span>
+                    <strong>Wizualizacja wygenerowana w dniu {{ status_generowania.data_zakonczenia|date:"Y-m-d" }} o godzinie {{ status_generowania.data_zakonczenia|date:"H:i:s" }}</strong><br>
+                    Przetworzono: {{ status_generowania.liczba_przetworzonych }} autorów
+                    {% if status_generowania.liczba_bledow > 0 %}
+                        | Błędy: {{ status_generowania.liczba_bledow }}
+                    {% endif %}
+                    {% if status_generowania.czas_trwania %}
+                        | Czas trwania: {{ status_generowania.czas_trwania }}
+                    {% endif %}
+                </p>
+            {% else %}
+                <p>
+                    <span class="fi-info"></span>
+                    <strong>Brak danych o generowaniu.</strong>
+                    Uruchom generowanie metryk aby wyświetlić dane.
+                </p>
+            {% endif %}
+        </div>
+        <div class="medium-3 columns text-right">
+            {% if user.is_staff %}
+                {% if not status_generowania.w_trakcie %}
+                    <button class="button primary" data-open="generowanie-modal">
+                        <span class="fi-play"></span> Uruchom generowanie
+                    </button>
+                {% else %}
+                    <button class="button secondary" disabled>
+                        <span class="fi-clock"></span> Generowanie w trakcie
+                    </button>
+                {% endif %}
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Jeśli generowanie zakończyło się, odśwież całą stronę aby pokazać nowe dane -->
+{% if not status_generowania.w_trakcie and request.META.HTTP_HX_REQUEST %}
+    {% if previous_status_was_running %}
+    <script>
+        // Odśwież całą stronę po zakończeniu generowania
+        setTimeout(function() {
+            window.location.reload();
+        }, 1000);
+    </script>
+    {% endif %}
+{% endif %}
+{% endif %}

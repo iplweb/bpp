@@ -87,12 +87,12 @@ nc -zv localhost 8000  # Check if port 8000 is in use
 - Test fixtures available in `src/conftest.py` and subdirectories
 
 ### Code Quality Commands
-- `black .` - Format Python code
-- `isort .` - Sort Python imports
-- `flake8` - Lint Python code
+- `ruff format .` - Format Python code
+- `ruff check .` - Lint Python code and check import sorting
+- `ruff check --fix .` - Auto-fix linting issues where possible
 - `pre-commit run --all-files` - Run pre-commit hooks
 
-**Note:** Code quality tools (black, isort, flake8, pre-commit) are installed through UV and available in the virtual environment.
+**Note:** Code quality tools (ruff, pre-commit) are installed through UV and available in the virtual environment.
 
 ### Maintenance Commands
 - `make clean` - Clean build artifacts and cache files

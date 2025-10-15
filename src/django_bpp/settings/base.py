@@ -6,6 +6,7 @@ import re
 import string
 import sys
 from datetime import timedelta
+from email.utils import getaddresses
 from textwrap import dedent
 
 import environ
@@ -13,7 +14,6 @@ import logfire
 from django.core.exceptions import ImproperlyConfigured
 
 from bpp.util import slugify_function
-
 from django_bpp.version import VERSION
 
 logger = logging.getLogger(__name__)
@@ -698,8 +698,10 @@ YARN_FILE_PATTERNS = {
         "dist/js/i18n/pl.js",
     ],
     "jinplace": ["js/jinplace.js"],
+    "jquery-circle-progress": ["dist/circle-progress.min.js"],
     "select2-foundation_theme": ["dist/select2-foundation-theme.css"],
     "kbw-keypad": ["dist/*"],
+    "plotly.js": ["dist/plotly.min.js"],
     # Zostana pozniej usuniete przez MANIFEST.in
     "qunit": ["qunit/qunit.js", "qunit/qunit.css"],
     "sinon": ["pkg/sinon.js"],
@@ -843,7 +845,7 @@ if AUTH_LDAP_SERVER_URI:
         Python nie jest możliwa do zaimportowania. Upewnij się, ze zainstalowano pakiet `bpp-iplweb[ldap]`.
         Wyjątek przy imporcie: {e}
         """
-        )
+        ) from e
     from django_auth_ldap.config import GroupOfNamesType, LDAPSearch
 
     AUTH_LDAP_USER_SEARCH = LDAPSearch(
@@ -902,7 +904,7 @@ if MICROSOFT_AUTH_CLIENT_ID:
                 możliwa do zaimportowania. Upewnij się, ze zainstalowano pakiet
                 `django_microsoft_auth`. Wyjątek przy próbie importu: {e}"""
             )
-        )
+        ) from e
     MICROSOFT_AUTH_CLIENT_SECRET = env("MICROSOFT_AUTH_CLIENT_SECRET")
     MICROSOFT_AUTH_TENANT_ID = env("MICROSOFT_AUTH_TENANT_ID")
     MICROSOFT_AUTH_LOGIN_TYPE = "ma"
@@ -989,8 +991,6 @@ DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL")
 #
 # Konta administratorów i managerów
 #
-
-from email.utils import getaddresses
 
 ADMINS = getaddresses([env("ADMINS")])
 MANAGERS = ADMINS

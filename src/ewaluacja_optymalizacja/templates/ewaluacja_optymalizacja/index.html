@@ -29,6 +29,15 @@
                     Wkrótce udostępnimy narzędzia do optymalizacji doboru publikacji
                     oraz analizy różnych scenariuszy ewaluacyjnych.
                 </p>
+
+                <div style="margin-top: 30px; padding: 20px; background-color: rgba(0, 0, 0, 0.05);
+                            border-radius: 5px;">
+                    <div id="countdown" style="font-size: 1.5rem; font-weight: bold;
+                                              color: #2c3e50;"></div>
+                    <p style="font-size: 0.9rem; margin-top: 10px; color: #666;">
+                        ... lub nawet wcześniej
+                    </p>
+                </div>
             </div>
 
             <div style="margin-top: 40px;">
@@ -39,4 +48,28 @@
         </div>
     </div>
 </div>
+
+<script>
+function updateCountdown() {
+    const targetDate = new Date('2025-10-30T23:59:59').getTime();
+    const now = new Date().getTime();
+    const distance = targetDate - now;
+
+    if (distance < 0) {
+        document.getElementById('countdown').innerHTML = 'Moduł już dostępny!';
+        return;
+    }
+
+    const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+    document.getElementById('countdown').innerHTML =
+        days + ' dni ' + hours + ' godz. ' + minutes + ' min. ' + seconds + ' sek.';
+}
+
+updateCountdown();
+setInterval(updateCountdown, 1000);
+</script>
 {% endblock %}

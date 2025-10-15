@@ -1,5 +1,4 @@
 from django.db import models
-
 from django.utils import timezone
 
 from bpp.models.autor import Autor
@@ -106,7 +105,7 @@ class MetrykaAutora(models.Model):
     rodzaj_autora = models.CharField(
         max_length=1,
         blank=True,
-        null=True,
+        default="",
         help_text="Skrót rodzaju autora (N, D, B, Z)",
     )
 
@@ -147,6 +146,18 @@ class MetrykaAutora(models.Model):
             self.procent_wykorzystania_slotow = 0
 
         super().save(*args, **kwargs)
+
+    def get_absolute_url(self):
+        """Zwraca URL do widoku szczegółów metryki używając stabilnych identyfikatorów"""
+        from django.urls import reverse
+
+        return reverse(
+            "ewaluacja_metryki:szczegoly",
+            kwargs={
+                "autor_slug": self.autor.slug,
+                "dyscyplina_kod": self.dyscyplina_naukowa.kod,
+            },
+        )
 
     @property
     def slot_niewykorzystany(self):
@@ -193,16 +204,29 @@ class StatusGenerowania(models.Model):
     )
 
     ostatni_komunikat = models.TextField(
-        blank=True, help_text="Ostatni komunikat z procesu generowania"
+        blank=True,
+        default="",
+        help_text="Ostatni komunikat z procesu generowania",
     )
 
     task_id = models.CharField(
-        max_length=255, blank=True, help_text="ID zadania Celery"
+        max_length=255,
+        blank=True,
+        default="",
+        help_text="ID zadania Celery",
     )
 
     class Meta:
         verbose_name = "Status generowania metryk"
         verbose_name_plural = "Status generowania metryk"
+
+    def __str__(self):
+        if self.w_trakcie:
+            return f"Generowanie w trakcie (przetworzono: {self.liczba_przetworzonych})"
+        elif self.data_zakonczenia:
+            return f"Ostatnie generowanie: {self.data_zakonczenia.strftime('%Y-%m-%d %H:%M:%S')}"
+        else:
+            return "Brak informacji o generowaniu"
 
     def save(self, *args, **kwargs):
         # Singleton - zawsze nadpisuj rekord o id=1
@@ -252,11 +276,3 @@ class StatusGenerowania(models.Model):
         if self.data_rozpoczecia and self.data_zakonczenia:
             return self.data_zakonczenia - self.data_rozpoczecia
         return None
-
-    def __str__(self):
-        if self.w_trakcie:
-            return f"Generowanie w trakcie (przetworzono: {self.liczba_przetworzonych})"
-        elif self.data_zakonczenia:
-            return f"Ostatnie generowanie: {self.data_zakonczenia.strftime('%Y-%m-%d %H:%M:%S')}"
-        else:
-            return "Brak informacji o generowaniu"

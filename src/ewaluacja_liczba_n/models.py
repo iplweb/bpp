@@ -2,12 +2,12 @@ from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator
 from django.db import models
 
-from .fields import LiczbaNField
-
 from bpp.fields import YearField
 from bpp.models.autor import Autor
 from bpp.models.dyscyplina_naukowa import Dyscyplina_Naukowa
 from bpp.models.uczelnia import Uczelnia
+
+from .fields import LiczbaNField
 
 
 class LiczbaNDlaUczelni(models.Model):
@@ -15,15 +15,15 @@ class LiczbaNDlaUczelni(models.Model):
     dyscyplina_naukowa = models.ForeignKey(Dyscyplina_Naukowa, on_delete=models.CASCADE)
     liczba_n = LiczbaNField()
 
-    def __str__(self):
-        return f"{self.dyscyplina_naukowa.nazwa} -> {self.liczba_n}"
-
     class Meta:
         verbose_name = "Liczba N dla uczelni"
         verbose_name_plural = "Liczby N dla uczelni"
         unique_together = [
             ("uczelnia", "dyscyplina_naukowa"),
         ]
+
+    def __str__(self):
+        return f"{self.dyscyplina_naukowa.nazwa} -> {self.liczba_n}"
 
 
 class IloscUdzialowDlaAutoraBase(models.Model):
@@ -33,6 +33,9 @@ class IloscUdzialowDlaAutoraBase(models.Model):
     dyscyplina_naukowa = models.ForeignKey(Dyscyplina_Naukowa, on_delete=models.CASCADE)
     ilosc_udzialow = LiczbaNField()
     ilosc_udzialow_monografie = LiczbaNField()
+
+    class Meta:
+        abstract = True
 
     def clean(self):
         if (
@@ -44,14 +47,18 @@ class IloscUdzialowDlaAutoraBase(models.Model):
                 "Ilość udziałów za monografie nie może przekraczać ilości udziałów"
             )
 
-    class Meta:
-        abstract = True
-
 
 class IloscUdzialowDlaAutoraZaRok(IloscUdzialowDlaAutoraBase):
     """Shares for an author in a specific year"""
 
     rok = YearField()
+    autor_dyscyplina = models.ForeignKey(
+        "bpp.Autor_Dyscyplina",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        help_text="Link do oryginalnego rekordu Autor_Dyscyplina za dany rok",
+    )
 
     # Override ilosc_udzialow to add validator for yearly limit
     ilosc_udzialow = LiczbaNField(validators=[MaxValueValidator(4)])
@@ -67,8 +74,18 @@ class IloscUdzialowDlaAutoraZaRok(IloscUdzialowDlaAutoraBase):
 class IloscUdzialowDlaAutoraZaCalosc(IloscUdzialowDlaAutoraBase):
     """Total shares for an author across the entire evaluation period"""
 
+    rodzaj_autora = models.ForeignKey(
+        "ewaluacja_common.Rodzaj_Autora",
+        on_delete=models.CASCADE,
+        verbose_name="Rodzaj autora",
+        null=True,
+        blank=True,
+    )
+
     komentarz = models.TextField(
-        blank=True, null=True, help_text="Dodatkowe informacje o wyliczeniach"
+        blank=True,
+        default="",
+        help_text="Dodatkowe informacje o wyliczeniach",
     )
 
     # Override ilosc_udzialow to add validator for total period limit (4 years * 4 = 16)
@@ -78,7 +95,7 @@ class IloscUdzialowDlaAutoraZaCalosc(IloscUdzialowDlaAutoraBase):
         verbose_name = "Ilość udziałów dla autora za cały okres"
         verbose_name_plural = "Ilości udziałów dla autorów za cały okres"
         unique_together = [
-            ("autor", "dyscyplina_naukowa"),
+            ("autor", "dyscyplina_naukowa", "rodzaj_autora"),
         ]
 
 

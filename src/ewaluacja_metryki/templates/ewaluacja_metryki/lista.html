@@ -2,6 +2,8 @@
 {% load humanize %}
 {% load temperature_filters %}
 {% load url_utils %}
+{% load static %}
+{% load l10n %}
 
 {% block title %}Metryki ewaluacyjne autorów{% endblock %}
 
@@ -23,58 +25,9 @@
 
 
         <!-- Status generowania -->
-        {% if status_generowania %}
-        <div class="callout {% if status_generowania.w_trakcie %}warning{% elif status_generowania.data_zakonczenia %}success{% else %}secondary{% endif %}" id="status-box">
-            <div class="row">
-                <div class="medium-9 columns">
-                    {% if status_generowania.w_trakcie %}
-                        <p>
-                            <span class="fi-clock"></span>
-                            <strong>Generowanie metryk w trakcie...</strong>
-                            Przetworzono: <span id="liczba-przetworzonych">{{ status_generowania.liczba_przetworzonych }}</span> autorów
-                        </p>
-                        <div class="progress" role="progressbar" tabindex="0" aria-valuenow="{{ progress_procent|floatformat:0 }}" aria-valuemin="0" aria-valuemax="100">
-                            <div class="progress-meter" style="width: {{ progress_procent|floatformat:0 }}%" id="progress-bar">
-                                <p class="progress-meter-text">{{ progress_procent|floatformat:0 }}%</p>
-                            </div>
-                        </div>
-                        <p><small>{{ status_generowania.liczba_przetworzonych }} z {{ status_generowania.liczba_do_przetworzenia }} autorów</small></p>
-                    {% elif status_generowania.data_zakonczenia %}
-                        <p>
-                            <span class="fi-check"></span>
-                            <strong>Wizualizacja wygenerowana w dniu {{ status_generowania.data_zakonczenia|date:"Y-m-d" }} o godzinie {{ status_generowania.data_zakonczenia|date:"H:i:s" }}</strong><br>
-                            Przetworzono: {{ status_generowania.liczba_przetworzonych }} autorów
-                            {% if status_generowania.liczba_bledow > 0 %}
-                                | Błędy: {{ status_generowania.liczba_bledow }}
-                            {% endif %}
-                            {% if status_generowania.czas_trwania %}
-                                | Czas trwania: {{ status_generowania.czas_trwania }}
-                            {% endif %}
-                        </p>
-                    {% else %}
-                        <p>
-                            <span class="fi-info"></span>
-                            <strong>Brak danych o generowaniu.</strong>
-                            Uruchom generowanie metryk aby wyświetlić dane.
-                        </p>
-                    {% endif %}
-                </div>
-                <div class="medium-3 columns text-right">
-                    {% if user.is_staff %}
-                        {% if not status_generowania.w_trakcie %}
-                            <button class="button primary" data-open="generowanie-modal">
-                                <span class="fi-play"></span> Uruchom generowanie
-                            </button>
-                        {% else %}
-                            <button class="button secondary" disabled>
-                                <span class="fi-clock"></span> Generowanie w trakcie
-                            </button>
-                        {% endif %}
-                    {% endif %}
-                </div>
-            </div>
+        <div id="status-container">
+            {% include "ewaluacja_metryki/partials/status_box.html" %}
         </div>
-        {% endif %}
 
         <!-- Panel filtrów -->
         <div class="callout">
@@ -132,34 +85,73 @@
                     </label>
                 </div>
 
-                {% if not tylko_jedna_dyscyplina %}
                 <div class="medium-3 columns">
+                    <label>Rodzaj autora
+                        <select name="rodzaj_autora" class="auto-submit-field">
+                            <option value="">-- Wszystkie --</option>
+                            {% for rodzaj in dostepne_rodzaje_autorow %}
+                                <option value="{{ rodzaj.skrot }}" {% if request.GET.rodzaj_autora == rodzaj.skrot %}selected{% endif %}>
+                                    {{ rodzaj.skrot }} - {{ rodzaj.nazwa }}
+                                </option>
+                            {% endfor %}
+                            <option value=" " {% if request.GET.rodzaj_autora == " " %}selected{% endif %}>
+                                Brak danych
+                            </option>
+                        </select>
+                    </label>
+                </div>
+
+                <div class="medium-3 columns">
+                {% if not tylko_jedna_dyscyplina %}
                     <label>Dyscyplina
                         <select name="dyscyplina" class="auto-submit-field">
                             <option value="">-- Wszystkie --</option>
                             {% for dyscyplina in dyscypliny %}
-                                <option value="{{ dyscyplina.id }}" {% if request.GET.dyscyplina == dyscyplina.id|stringformat:"s" %}selected{% endif %}>
+                                <option value="{{ dyscyplina.id }}"
+                                        {% if request.GET.dyscyplina == dyscyplina.id|stringformat:"s" %}selected{% endif %}>
                                     {{ dyscyplina.nazwa }}
                                 </option>
                             {% endfor %}
                         </select>
                     </label>
-                </div>
                 {% endif %}
+                </div>
+                <div class="medium-3 columns">
+                    <div class="button-container" style="display: flex; align-items: center; justify-content: flex-start; height: 100%; min-height: 60px;">
+                        <button type="submit" class="button" style="margin-right: 0.5rem;">
+                            <span class="fi-magnifying-glass"></span> Filtruj
+                        </button>
+                        <a href="{% url 'ewaluacja_metryki:lista' %}{% clear_filters_url request %}" class="button secondary">
+                            <span class="fi-x"></span> Wyczyść filtry
+                        </a>
+                    </div>
+                </div>
+                <div class="medium-3 columns">
+                    <label>Widok
+                        <select name="widok" class="auto-submit-field" id="widok-select">
+                            <option value="tabela" {% if widok == "tabela" %}selected{% endif %}>Tabela</option>
+                            <option value="kola" {% if widok == "kola" %}selected{% endif %}>Całokształt slotów</option>
+                            <option value="pkdaut" {% if widok == "pkdaut" %}selected{% endif %}>Całokształt PKDaut/slot</option>
+                            <option value="mapa_ciepla" {% if widok == "mapa_ciepla" %}selected{% endif %}>Mapa ciepła (punkty)</option>
+                            <option value="mapa_ciepla_bloki" {% if widok == "mapa_ciepla_bloki" %}selected{% endif %}>Mapa ciepła (bloki)</option>
+                            <option value="mapa_konturowa" {% if widok == "mapa_konturowa" %}selected{% endif %}>Mapa konturowa</option>
+                            <option value="wykres_babelkowy" {% if widok == "wykres_babelkowy" %}selected{% endif %}>Wykres bąbelkowy</option>
+                            <option value="kontury_z_punktami" {% if widok == "kontury_z_punktami" %}selected{% endif %}>Kontury z punktami</option>
+                            <option value="efektywnosc_babelki" {% if widok == "efektywnosc_babelki" %}selected{% endif %}>Efektywność bąbelki</option>
+                            <option value="efektywnosc_mapa_ciepla" {% if widok == "efektywnosc_mapa_ciepla" %}selected{% endif %}>Efektywność mapa ciepła</option>
+                        </select>
+                    </label>
+                </div>
 
-                <div class="medium-12 columns">
-                    <button type="submit" class="button">
-                        <span class="fi-magnifying-glass"></span> Filtruj
-                    </button>
-                    <a href="{% url 'ewaluacja_metryki:lista' %}" class="button secondary">
-                        <span class="fi-x"></span> Wyczyść filtry
-                    </a>
-                    <a href="{% url 'ewaluacja_metryki:statystyki' %}" class="button success float-right">
-                        <span class="fi-graph-bar"></span> Statystyki
-                    </a>
-                    <a href="{% url 'ewaluacja_metryki:export_lista_xlsx' %}?{{ request.GET.urlencode }}" class="button warning float-right" style="margin-right: 0.5rem;">
-                        <span class="fi-download"></span> Pobierz XLSX
-                    </a>
+                <div class="medium-3 columns">
+                    <div class="button-container" style="display: flex; align-items: center; justify-content: flex-end; height: 100%; min-height: 60px;">
+                        <a href="{% url 'ewaluacja_metryki:export_lista_xlsx' %}?{{ request.GET.urlencode }}" class="button warning" style="margin-right: 0.5rem;">
+                            <span class="fi-download"></span> Pobierz XLSX
+                        </a>
+                        <a href="{% url 'ewaluacja_metryki:statystyki' %}" class="button success">
+                            <span class="fi-graph-bar"></span> Statystyki
+                        </a>
+                    </div>
                 </div>
             </form>
         </div>
@@ -188,7 +180,11 @@
         </div>
         {% endif %}
 
+        <!-- Paginacja nad tabelą -->
+        {% include "pagination/pagination_with_anchor.html" %}
+
         <!-- Tabela wyników -->
+        {% if widok == "tabela" %}
         <table class="hover stack">
             <thead>
                 <tr>
@@ -197,6 +193,7 @@
                             Autor <span class="fi-arrow-{% if request.GET.sort == 'autor__nazwisko' %}up{% elif request.GET.sort == '-autor__nazwisko' %}down{% else %}down{% endif %}"></span>
                         </a>
                     </th>
+                    <th>Rodzaj autora</th>
                     {% if not tylko_jedna_dyscyplina %}
                     <th>Dyscyplina</th>
                     {% endif %}
@@ -219,10 +216,19 @@
                 <tr>
                     <td>
                         <strong>
-                            <a href="{% url 'ewaluacja_metryki:szczegoly' metryka.pk %}" title="Szczegóły metryki ewaluacyjnej">
+                            <a href="{% url 'ewaluacja_metryki:szczegoly' autor_slug=metryka.autor.slug dyscyplina_kod=metryka.dyscyplina_naukowa.kod %}" title="Szczegóły metryki ewaluacyjnej">
                                 {{ metryka.autor }}
                             </a>
                         </strong>
+                    </td>
+                    <td>
+                        {% if metryka.rodzaj_autora == " " %}
+                            <span class="label secondary">Brak danych</span>
+                        {% elif metryka.rodzaj_autora %}
+                            <span class="label">{{ metryka.rodzaj_autora }}</span>
+                        {% else %}
+                            <span class="label secondary">Brak danych</span>
+                        {% endif %}
                     </td>
                     {% if not tylko_jedna_dyscyplina %}
                     <td>{{ metryka.dyscyplina_naukowa.nazwa }}</td>
@@ -238,16 +244,16 @@
                         {% temperature_display metryka.srednia_za_slot_nazbierana %}
                     </td>
                     <td>
-                        <div class="progress" role="progressbar" tabindex="0" aria-valuenow="{{ metryka.procent_wykorzystania_slotow|floatformat:0 }}" aria-valuemin="0" aria-valuemax="100">
-                            <div class="progress-meter {% if metryka.procent_wykorzystania_slotow >= 90 %}success{% elif metryka.procent_wykorzystania_slotow >= 70 %}warning{% else %}alert{% endif %}"
-                                 style="width: {{ metryka.procent_wykorzystania_slotow|floatformat:0 }}%">
-                                <p class="progress-meter-text">{{ metryka.procent_wykorzystania_slotow|floatformat:1 }}%</p>
+                        <div class="slot-progress-container">
+                            <div class="circular-progress-wrapper">
+                                <div class="circle-progress-{{ metryka.pk }}" data-value="{{ metryka.procent_wykorzystania_slotow|unlocalize }}" data-size="70" data-thickness="6"></div>
+                                <strong class="progress-percentage">0%</strong>
+                                <small class="progress-label">{{ metryka.slot_nazbierany|floatformat:2 }} / {{ metryka.slot_maksymalny|floatformat:2 }}</small>
                             </div>
                         </div>
-                        <small>{{ metryka.slot_nazbierany|floatformat:2 }} / {{ metryka.slot_maksymalny|floatformat:2 }}</small>
                     </td>
                     <td class="text-center" style="break-inside: avoid;">
-                        <a href="{% url 'ewaluacja_metryki:szczegoly' metryka.pk %}" class="button" title="Szczegóły metryki">
+                        <a href="{% url 'ewaluacja_metryki:szczegoly' autor_slug=metryka.autor.slug dyscyplina_kod=metryka.dyscyplina_naukowa.kod %}" class="button" title="Szczegóły metryki">
                             <span class="fi-eye"></span>
                         </a>
                         <a href="{% url 'bpp:browse_autor' metryka.autor.pk %}" class="button success" target="_blank" title="Profil autora w BPP">
@@ -262,182 +268,575 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="{% if tylko_jedna_dyscyplina %}5{% else %}6{% endif %}" class="text-center">
+                    <td colspan="{% if tylko_jedna_dyscyplina %}6{% else %}7{% endif %}" class="text-center">
                         <em>Brak danych do wyświetlenia. Uruchom komendę 'python manage.py oblicz_metryki' aby wygenerować dane.</em>
                     </td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
-
-        <!-- Paginacja -->
-        {% if is_paginated %}
-        <nav aria-label="Pagination">
-            <ul class="pagination text-center" role="navigation">
-                {% if page_obj.has_previous %}
-                    <li class="pagination-previous">
-                        <a href="{% preserve_filters request page=page_obj.previous_page_number %}">Poprzednia</a>
-                    </li>
-                {% endif %}
-
-                {% for num in page_obj.paginator.page_range %}
-                    {% if page_obj.number == num %}
-                        <li class="current"><span class="show-for-sr">Jesteś na stronie</span> {{ num }}</li>
-                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
-                        <li><a href="{% preserve_filters request page=num %}">{{ num }}</a></li>
-                    {% endif %}
-                {% endfor %}
-
-                {% if page_obj.has_next %}
-                    <li class="pagination-next">
-                        <a href="{% preserve_filters request page=page_obj.next_page_number %}">Następna</a>
-                    </li>
-                {% endif %}
-            </ul>
-        </nav>
         {% endif %}
+
+        <!-- Widok kółek (Całokształt slotów) -->
+        {% if widok == "kola" %}
+        <div class="circle-grid-container">
+            <div class="row">
+                {% for metryka in metryki %}
+                <div class="medium-1 columns text-center circle-grid-item">
+                    <a href="{% url 'ewaluacja_metryki:szczegoly' autor_slug=metryka.autor.slug dyscyplina_kod=metryka.dyscyplina_naukowa.kod %}" class="circle-link" title="{{ metryka.autor }}">
+                        <div class="circular-progress-wrapper-grid">
+                            <div class="circle-progress-grid-{{ metryka.pk }}"
+                                 data-value="{{ metryka.procent_wykorzystania_slotow|unlocalize }}"
+                                 data-size="80"
+                                 data-thickness="8"></div>
+                        </div>
+                        <div class="circle-slot-label">
+                            {{ metryka.slot_nazbierany|floatformat:1 }} / {{ metryka.slot_maksymalny|floatformat:1 }}
+                        </div>
+                    </a>
+                </div>
+                {% empty %}
+                <div class="medium-12 columns text-center">
+                    <em>Brak danych do wyświetlenia. Uruchom komendę 'python manage.py oblicz_metryki' aby wygenerować dane.</em>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Widok metryki PKDaut/slot (Całokształt PKDaut/slot) -->
+        {% if widok == "pkdaut" %}
+        <div class="badge-grid-container">
+            <div class="row">
+                {% for metryka in metryki %}
+                <div class="medium-1 columns text-center badge-grid-item">
+                    <a href="{% url 'ewaluacja_metryki:szczegoly' autor_slug=metryka.autor.slug dyscyplina_kod=metryka.dyscyplina_naukowa.kod %}"
+                       class="badge-link"
+                       title="{{ metryka.autor }}">
+                        <div class="pkdaut-badge {{ metryka.srednia_za_slot_nazbierana|temperature_class }}"
+                             data-pkdaut="{{ metryka.srednia_za_slot_nazbierana|floatformat:2 }}">
+                            {{ metryka.srednia_za_slot_nazbierana|floatformat:2 }}
+                        </div>
+                    </a>
+                </div>
+                {% empty %}
+                <div class="medium-12 columns text-center">
+                    <em>Brak danych do wyświetlenia. Uruchom komendę 'python manage.py oblicz_metryki' aby wygenerować dane.</em>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Widok mapy ciepła (Heatmap) -->
+        {% if widok == "mapa_ciepla" %}
+        <div class="callout">
+            <h4><span class="fi-graph-bar"></span> Mapa ciepła - rozkład slotów i punktów</h4>
+            <p class="text-muted">
+                Wizualizacja pokazuje rozkład autorów według liczby zebranych slotów (oś X) i łącznej liczby punktów (oś Y).
+                Kolor reprezentuje wartość PKDaut/slot.
+                <strong>Kliknij w punkt, aby przejść do szczegółów metryki autora.</strong>
+            </p>
+            <div id="heatmap-container" style="width:100%; height:700px;"></div>
+            {% if not metryki %}
+            <div class="text-center">
+                <em>Brak danych do wyświetlenia. Uruchom komendę 'python manage.py oblicz_metryki' aby wygenerować dane.</em>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- Widok mapy ciepła blokowej (Blocky Heatmap) -->
+        {% if widok == "mapa_ciepla_bloki" %}
+        <div class="callout">
+            <h4><span class="fi-graph-bar"></span> Mapa ciepła (bloki) - gęstość rozkładu autorów</h4>
+            <p class="text-muted">
+                Wizualizacja pokazuje gęstość rozkładu autorów w formie bloków.
+                Intensywność koloru reprezentuje liczbę autorów w danym obszarze (binned histogram 2D).
+            </p>
+            <div id="heatmap-blocky-container" style="width:100%; height:700px;"></div>
+            {% if not metryki %}
+            <div class="text-center">
+                <em>Brak danych do wyświetlenia. Uruchom komendę 'python manage.py oblicz_metryki' aby wygenerować dane.</em>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- Widok mapy konturowej (Contour Plot) -->
+        {% if widok == "mapa_konturowa" %}
+        <div class="callout">
+            <h4><span class="fi-graph-bar"></span> Mapa konturowa - rozkład gęstości autorów</h4>
+            <p class="text-muted">
+                Wizualizacja pokazuje gęstość rozkładu autorów w formie linii konturowych (jak mapa topograficzna).
+                Linie konturu reprezentują obszary o podobnej gęstości autorów.
+            </p>
+            <div id="contour-container" style="width:100%; height:700px;"></div>
+            {% if not metryki %}
+            <div class="text-center">
+                <em>Brak danych do wyświetlenia. Uruchom komendę 'python manage.py oblicz_metryki' aby wygenerować dane.</em>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- Widok wykresu bąbelkowego (Bubble Chart) -->
+        {% if widok == "wykres_babelkowy" %}
+        <div class="callout">
+            <h4><span class="fi-graph-bar"></span> Wykres bąbelkowy - wielowymiarowa wizualizacja</h4>
+            <p class="text-muted">
+                Wykres pokazuje autorów jako bąbelki, gdzie wielkość reprezentuje liczbę prac,
+                a kolor reprezentuje wartość PKDaut/slot. Pozwala zobaczyć 4 wymiary danych jednocześnie.
+                <strong>Kliknij w bąbelek, aby przejść do szczegółów metryki autora.</strong>
+            </p>
+            <div id="bubble-container" style="width:100%; height:700px;"></div>
+            {% if not metryki %}
+            <div class="text-center">
+                <em>Brak danych do wyświetlenia. Uruchom komendę 'python manage.py oblicz_metryki' aby wygenerować dane.</em>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- Widok konturów z punktami (Contour + Scatter Overlay) -->
+        {% if widok == "kontury_z_punktami" %}
+        <div class="callout">
+            <h4><span class="fi-graph-bar"></span> Kontury z punktami - połączenie gęstości i szczegółów</h4>
+            <p class="text-muted">
+                Wizualizacja łączy linie konturowe pokazujące gęstość rozkładu z indywidualnymi punktami autorów.
+                Najlepsza z obu światów - widać zarówno ogólne trendy jak i poszczególnych autorów.
+                <strong>Kliknij w punkt, aby przejść do szczegółów metryki autora.</strong>
+            </p>
+            <div id="contour-scatter-container" style="width:100%; height:700px;"></div>
+            {% if not metryki %}
+            <div class="text-center">
+                <em>Brak danych do wyświetlenia. Uruchom komendę 'python manage.py oblicz_metryki' aby wygenerować dane.</em>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- Widok efektywności bąbelkowej -->
+        {% if widok == "efektywnosc_babelki" %}
+        <div class="callout">
+            <h4><span class="fi-graph-bar"></span> Efektywność bąbelki - wykorzystanie slotów vs PKDaut/slot</h4>
+            <p class="text-muted">
+                Wykres pokazuje autorów jako bąbelki, gdzie oś X to procent wypełnienia slotów,
+                oś Y to średnia PKDaut/slot, a wielkość bąbelka reprezentuje liczbę prac.
+                Kolor reprezentuje wartość PKDaut/slot.
+                <strong>Kliknij w bąbelek, aby przejść do szczegółów metryki autora.</strong>
+            </p>
+            <div id="efektywnosc-babelki-container" style="width:100%; height:700px;"></div>
+            {% if not metryki %}
+            <div class="text-center">
+                <em>Brak danych do wyświetlenia. Uruchom komendę 'python manage.py oblicz_metryki' aby wygenerować dane.</em>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- Widok efektywności mapa ciepła -->
+        {% if widok == "efektywnosc_mapa_ciepla" %}
+        <div class="callout">
+            <h4><span class="fi-graph-bar"></span> Efektywność mapa ciepła - gęstość rozkładu efektywności</h4>
+            <p class="text-muted">
+                Wizualizacja pokazuje gęstość rozkładu autorów według procentu wypełnienia slotów (oś X)
+                i średniej PKDaut/slot (oś Y). Intensywność koloru reprezentuje liczbę autorów w danym obszarze.
+                Pozwala zidentyfikować obszary optymalnej efektywności.
+            </p>
+            <div id="efektywnosc-mapa-ciepla-container" style="width:100%; height:700px;"></div>
+            {% if not metryki %}
+            <div class="text-center">
+                <em>Brak danych do wyświetlenia. Uruchom komendę 'python manage.py oblicz_metryki' aby wygenerować dane.</em>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- Paginacja pod tabelą -->
+        {% include "pagination/pagination_with_anchor.html" %}
     </div>
 </div>
 
 <style>
-    .progress {
-        margin-bottom: 0.5rem;
-    }
     .stat {
         font-size: 2rem;
         font-weight: bold;
         color: #1779ba;
     }
 
-    /* Temperature gradient classes */
-    .temperature-display {
-        display: inline-block;
-        padding: 6px 12px;
-        border-radius: 20px;
-        font-weight: bold;
-        color: white;
-        text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
-        transition: all 0.3s ease;
+    /* Circular Progress Bar Styles */
+    .slot-progress-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+    }
+
+    .circular-progress-wrapper {
         position: relative;
-        min-width: 80px;
+        display: inline-block;
     }
 
-    .temperature-display:hover {
-        transform: scale(1.05);
-        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    .circular-progress-wrapper canvas {
+        display: block;
     }
 
-    .temperature-icon {
-        font-size: 0.9em;
-        margin-left: 4px;
-        opacity: 0.9;
-    }
-
-    /* Temperature gradient colors - from freezing cold to blazing hot */
-    .temp-0 {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        /* Freezing purple */
-    }
-
-    .temp-20 {
-        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-        /* Very cold blue */
-    }
-
-    .temp-40 {
-        background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
-        /* Cold cyan */
-    }
-
-    .temp-60 {
-        background: linear-gradient(135deg, #30cfd0 0%, #330867 100%);
-        /* Cool teal */
-    }
-
-    .temp-80 {
-        background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
-        /* Moderate pastel */
+    .circular-progress-wrapper .progress-percentage {
+        position: absolute;
+        top: 35px;  /* Centered in 70px circle */
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 14px;
+        font-weight: 600;
         color: #333;
-        text-shadow: 1px 1px 2px rgba(255,255,255,0.5);
+        z-index: 1;
     }
 
-    .temp-100 {
-        background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
-        /* Moderate warm */
+    .circular-progress-wrapper .progress-label {
+        display: block;
+        margin-top: 5px;
+        color: #666;
+        font-size: 0.85rem;
+        white-space: nowrap;
+    }
+
+    /* PKDaut/slot Metric Display */
+    .pkd-metric-container {
+        display: inline-block;
+        min-width: 200px;
+        padding: 10px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .pkd-value-label {
+        text-align: center;
+        margin-bottom: 8px;
+    }
+
+    .pkd-value-label strong {
+        font-size: 1.25rem;
+        color: #2c3e50;
+        display: block;
+    }
+
+    .pkd-value-label small {
+        color: #7f8c8d;
+        font-size: 0.75rem;
+    }
+
+    .pkd-progress-bar {
+        margin: 10px 0;
+    }
+
+    .pkd-progress-track {
+        height: 20px;
+        background: #e0e0e0;
+        border-radius: 10px;
+        overflow: hidden;
+        position: relative;
+        box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .pkd-progress-fill {
+        height: 100%;
+        border-radius: 10px;
+        position: relative;
+        transition: all 0.5s ease;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+
+    .pkd-marker {
+        position: absolute;
+        right: -2px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 4px;
+        height: 140%;
+        background: rgba(255, 255, 255, 0.8);
+        border-radius: 2px;
+        box-shadow: 0 0 4px rgba(0,0,0,0.3);
+    }
+
+    .pkd-scale-labels {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 4px;
+        font-size: 0.7rem;
+        color: #95a5a6;
+    }
+
+    .pkd-quality-label {
+        text-align: center;
+        font-size: 0.85rem;
+        font-weight: 600;
+        padding: 4px 8px;
+        border-radius: 4px;
+        margin-top: 8px;
+        transition: all 0.3s ease;
+    }
+
+    /* Temperature gradient colors for PKD progress bars */
+    .pkd-progress-fill.temp-0 {
+        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+    }
+    .pkd-quality-label.temp-0 {
+        background: #667eea;
+        color: white;
+    }
+
+    .pkd-progress-fill.temp-20 {
+        background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
+    }
+    .pkd-quality-label.temp-20 {
+        background: #4facfe;
+        color: white;
+    }
+
+    .pkd-progress-fill.temp-40 {
+        background: linear-gradient(90deg, #43e97b 0%, #38f9d7 100%);
+    }
+    .pkd-quality-label.temp-40 {
+        background: #43e97b;
+        color: white;
+    }
+
+    .pkd-progress-fill.temp-60 {
+        background: linear-gradient(90deg, #30cfd0 0%, #330867 100%);
+    }
+    .pkd-quality-label.temp-60 {
+        background: #30cfd0;
+        color: white;
+    }
+
+    .pkd-progress-fill.temp-80 {
+        background: linear-gradient(90deg, #a8edea 0%, #fed6e3 100%);
+    }
+    .pkd-quality-label.temp-80 {
+        background: #a8edea;
         color: #333;
-        text-shadow: 1px 1px 2px rgba(255,255,255,0.5);
     }
 
-    .temp-120 {
-        background: linear-gradient(135deg, #ff9a56 0%, #ff6a88 100%);
-        /* Warm */
+    .pkd-progress-fill.temp-100 {
+        background: linear-gradient(90deg, #ffecd2 0%, #fcb69f 100%);
+    }
+    .pkd-quality-label.temp-100 {
+        background: #fcb69f;
+        color: #333;
     }
 
-    .temp-140 {
-        background: linear-gradient(135deg, #ff6a88 0%, #ff3838 100%);
-        /* Warm-hot */
+    .pkd-progress-fill.temp-120 {
+        background: linear-gradient(90deg, #ff9a56 0%, #ff6a88 100%);
+    }
+    .pkd-quality-label.temp-120 {
+        background: #ff9a56;
+        color: white;
     }
 
-    .temp-160 {
-        background: linear-gradient(135deg, #ff3838 0%, #ff0844 100%);
-        /* Hot red */
+    .pkd-progress-fill.temp-140 {
+        background: linear-gradient(90deg, #ff6a88 0%, #ff3838 100%);
+    }
+    .pkd-quality-label.temp-140 {
+        background: #ff6a88;
+        color: white;
     }
 
-    .temp-180 {
-        background: linear-gradient(135deg, #ff0844 0%, #ffb199 100%);
-        /* Very hot */
+    .pkd-progress-fill.temp-160 {
+        background: linear-gradient(90deg, #ff3838 0%, #ff0844 100%);
+    }
+    .pkd-quality-label.temp-160 {
+        background: #ff3838;
+        color: white;
     }
 
-    .temp-200 {
-        background: linear-gradient(135deg, #ff0844 0%, #ffd700 50%, #ffffff 100%);
-        /* Blazing hot - red to gold to white */
-        animation: pulse 2s infinite;
+    .pkd-progress-fill.temp-180 {
+        background: linear-gradient(90deg, #ff0844 0%, #ffb199 100%);
+    }
+    .pkd-quality-label.temp-180 {
+        background: #ff0844;
+        color: white;
     }
 
-    @keyframes pulse {
+    .pkd-progress-fill.temp-200 {
+        background: linear-gradient(90deg, #ff0844 0%, #ffd700 50%, #ffffff 100%);
+        animation: pulse-light 2s infinite;
+    }
+    .pkd-quality-label.temp-200 {
+        background: linear-gradient(90deg, #ff0844, #ffd700);
+        color: white;
+        animation: pulse-light 2s infinite;
+    }
+
+    @keyframes pulse-light {
         0% {
-            box-shadow: 0 0 0 0 rgba(255, 8, 68, 0.7);
+            box-shadow: 0 0 5px rgba(255, 215, 0, 0.5);
         }
-        70% {
-            box-shadow: 0 0 0 10px rgba(255, 8, 68, 0);
+        50% {
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
         }
         100% {
-            box-shadow: 0 0 0 0 rgba(255, 8, 68, 0);
+            box-shadow: 0 0 5px rgba(255, 215, 0, 0.5);
         }
     }
 
-    /* Additional visual indicator */
-    .temperature-display::after {
-        content: '';
-        position: absolute;
-        top: -2px;
-        right: -2px;
-        bottom: -2px;
-        left: -2px;
-        border-radius: 20px;
-        opacity: 0;
-        transition: opacity 0.3s ease;
-        z-index: -1;
+    /* Circle Grid Styles */
+    .circle-grid-container {
+        margin-top: 20px;
     }
 
-    .temp-200::after {
-        background: linear-gradient(45deg, #ff0844, #ffd700, #ff0844);
-        animation: rotate 3s linear infinite;
-        opacity: 0.5;
+    .circle-grid-item {
+        margin-bottom: 30px;
+        padding: 10px;
     }
 
-    @keyframes rotate {
-        to {
-            transform: rotate(360deg);
+    .circle-link {
+        display: block;
+        text-decoration: none;
+        transition: transform 0.2s ease;
+    }
+
+    .circle-link:hover {
+        transform: scale(1.1);
+    }
+
+    .circular-progress-wrapper-grid {
+        position: relative;
+        display: inline-block;
+        margin: 0 auto;
+    }
+
+    .circular-progress-wrapper-grid canvas {
+        display: block;
+    }
+
+    .circle-slot-label {
+        display: block;
+        margin-top: 8px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: #333;
+        white-space: nowrap;
+    }
+
+    /* Badge Grid Styles for PKDaut/slot view */
+    .badge-grid-container {
+        margin-top: 20px;
+    }
+
+    .badge-grid-item {
+        margin-bottom: 20px;
+        padding: 5px;
+    }
+
+    .badge-link {
+        display: block;
+        text-decoration: none;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .badge-link:hover {
+        transform: translateY(-3px);
+    }
+
+    .pkdaut-badge {
+        display: inline-block;
+        padding: 12px 16px;
+        border-radius: 8px;
+        font-size: 1rem;
+        font-weight: 700;
+        color: white;
+        text-align: center;
+        min-width: 60px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        transition: all 0.2s ease;
+        white-space: nowrap;
+    }
+
+    .badge-link:hover .pkdaut-badge {
+        box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+    }
+
+    /* Temperature-based colors for badges */
+    .pkdaut-badge.temp-0 {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .pkdaut-badge.temp-20 {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    }
+
+    .pkdaut-badge.temp-40 {
+        background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+    }
+
+    .pkdaut-badge.temp-60 {
+        background: linear-gradient(135deg, #30cfd0 0%, #330867 100%);
+    }
+
+    .pkdaut-badge.temp-80 {
+        background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+        color: #333;
+    }
+
+    .pkdaut-badge.temp-100 {
+        background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+        color: #333;
+    }
+
+    .pkdaut-badge.temp-120 {
+        background: linear-gradient(135deg, #ff9a56 0%, #ff6a88 100%);
+    }
+
+    .pkdaut-badge.temp-140 {
+        background: linear-gradient(135deg, #ff6a88 0%, #ff3838 100%);
+    }
+
+    .pkdaut-badge.temp-160 {
+        background: linear-gradient(135deg, #ff3838 0%, #ff0844 100%);
+    }
+
+    .pkdaut-badge.temp-180 {
+        background: linear-gradient(135deg, #ff0844 0%, #ffb199 100%);
+    }
+
+    .pkdaut-badge.temp-200 {
+        background: linear-gradient(135deg, #ff0844 0%, #ffd700 50%, #ffffff 100%);
+        animation: pulse-glow 2s infinite;
+        box-shadow: 0 0 10px rgba(255, 215, 0, 0.6);
+    }
+
+    @keyframes pulse-glow {
+        0% {
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.6);
+        }
+        50% {
+            box-shadow: 0 0 20px rgba(255, 215, 0, 1);
+        }
+        100% {
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.6);
         }
     }
+
+    /* Clickable charts - cursor pointer */
+    #heatmap-container .scatterlayer,
+    #bubble-container .scatterlayer,
+    #contour-scatter-container .scatterlayer {
+        cursor: pointer !important;
+    }
+
 </style>
 
 <!-- Modal generowania -->
 <div class="reveal" id="generowanie-modal" data-reveal>
     <h3><span class="fi-play"></span> Uruchom generowanie metryk</h3>
 
-    <form method="post" action="{% url 'ewaluacja_metryki:uruchom_generowanie' %}">
+    <form id="generowanie-form"
+          hx-post="{% url 'ewaluacja_metryki:uruchom_generowanie' %}"
+          hx-target="#status-container"
+          hx-swap="innerHTML"
+          hx-trigger="submit">
         {% csrf_token %}
 
         <div class="row">
@@ -496,7 +895,7 @@
             <p>
                 <span class="fi-alert"></span>
                 <strong>Uwaga:</strong> Generowanie może potrwać kilka minut w zależności od liczby autorów.
-                Po uruchomieniu strona będzie automatycznie odświeżana co 5 sekund.
+                Pasek postępu będzie automatycznie odświeżany co 2 sekundy.
             </p>
         </div>
 
@@ -515,58 +914,69 @@
     </button>
 </div>
 
+<!-- Plotly.js for data visualization (only on this page) -->
+<script src="{% static 'plotly.js/dist/plotly.min.js' %}"></script>
+
 <script>
-// Automatyczne odświeżanie statusu gdy generowanie jest w trakcie
-{% if status_generowania.w_trakcie %}
-    var statusInterval = setInterval(function() {
-        fetch("{% url 'ewaluacja_metryki:status_generowania' %}")
-            .then(response => response.json())
-            .then(data => {
-                if (!data.w_trakcie) {
-                    // Generowanie zakończone - odśwież całą stronę
-                    window.location.reload();
-                } else {
-                    // Aktualizuj licznik
-                    document.getElementById('liczba-przetworzonych').textContent = data.liczba_przetworzonych;
-
-                    // Aktualizuj progress bar
-                    var procent = data.procent !== undefined ? data.procent : 0;
-                    procent = Math.min(Math.max(procent, 0), 100); // Clamp between 0 and 100
-
-                    var progressBar = document.getElementById('progress-bar');
-                    progressBar.style.width = procent + '%';
-
-                    // Aktualizuj tekst w progress bar
-                    var progressText = progressBar.querySelector('.progress-meter-text');
-                    if (progressText) {
-                        progressText.textContent = Math.round(procent) + '%';
-                    }
-
-                    // Aktualizuj aria-valuenow
-                    progressBar.parentElement.setAttribute('aria-valuenow', Math.round(procent));
-
-                    // Aktualizuj dodatkowe informacje
-                    console.log('Progress update:', data.liczba_przetworzonych + ' / ' + data.liczba_do_przetworzenia + ' (' + procent + '%)');
-                }
-            })
-            .catch(error => {
-                console.error('Błąd pobierania statusu:', error);
-            });
-    }, 2000); // Co 2 sekundy dla bardziej płynnej aktualizacji
-
-    // Zatrzymaj odświeżanie po 15 minutach (na wypadek bardzo długiego przetwarzania)
-    setTimeout(function() {
-        clearInterval(statusInterval);
-        console.log('Stopped automatic progress updates after 15 minutes');
-    }, 900000);
-{% endif %}
-
 // Inicjalizacja Foundation
 $(document).foundation();
 
 // Auto-submit form na zmianę pól
 $(document).ready(function() {
-    var submitTimer;
+    let submitTimer;
+
+    // Inicjalizacja okrągłych pasków postępu - zdefiniuj globalnie dla HTMX
+    window.initializeCircularProgressBars = function() {
+        console.log('Initializing circular progress bars...');
+        {% for metryka in metryki %}
+        // Table circles
+        $('.circle-progress-{{ metryka.pk }}').circleProgress({
+            value: {{ metryka.procent_wykorzystania_slotow|default:0|unlocalize }} / 100,
+            size: 70,
+            thickness: 6,
+            animation: { duration: 1000, easing: "circleProgressEasing" },
+            fill: {
+                gradient: [
+                    {% if metryka.procent_wykorzystania_slotow >= 90 %}
+                        "#4CAF50", "#8BC34A"  // Zielony gradient dla wysokich wartości
+                    {% elif metryka.procent_wykorzystania_slotow >= 70 %}
+                        "#FFC107", "#FF9800"  // Żółty/pomarańczowy gradient dla średnich wartości
+                    {% elif metryka.procent_wykorzystania_slotow >= 50 %}
+                        "#FF9800", "#FF5722"  // Pomarańczowy gradient
+                    {% else %}
+                        "#f44336", "#e91e63"  // Czerwony gradient dla niskich wartości
+                    {% endif %}
+                ]
+            }
+        }).on('circle-animation-progress', function(event, progress, stepValue) {
+            $(this).siblings('.progress-percentage').text(Math.round(stepValue * 100) + '%');
+        });
+
+        // Grid circles (larger, for "kola" view)
+        $('.circle-progress-grid-{{ metryka.pk }}').circleProgress({
+            value: {{ metryka.procent_wykorzystania_slotow|default:0|unlocalize }} / 100,
+            size: 80,
+            thickness: 8,
+            animation: { duration: 1000, easing: "circleProgressEasing" },
+            fill: {
+                gradient: [
+                    {% if metryka.procent_wykorzystania_slotow >= 90 %}
+                        "#4CAF50", "#8BC34A"  // Zielony gradient dla wysokich wartości
+                    {% elif metryka.procent_wykorzystania_slotow >= 70 %}
+                        "#FFC107", "#FF9800"  // Żółty/pomarańczowy gradient dla średnich wartości
+                    {% elif metryka.procent_wykorzystania_slotow >= 50 %}
+                        "#FF9800", "#FF5722"  // Pomarańczowy gradient
+                    {% else %}
+                        "#f44336", "#e91e63"  // Czerwony gradient dla niskich wartości
+                    {% endif %}
+                ]
+            }
+        });
+        {% endfor %}
+    };
+
+    // Wywołaj inicjalizację po załadowaniu strony
+    window.initializeCircularProgressBars();
 
     // Dla pól tekstowych - submit po zatrzymaniu pisania
     $('.auto-submit-field[type="text"]').on('input', function() {
@@ -580,6 +990,956 @@ $(document).ready(function() {
     $('select.auto-submit-field').on('change', function() {
         $('#filter-form').submit();
     });
+
+    // Debug HTMX
+    console.log('HTMX version:', htmx.version);
+
+    // Konfiguracja HTMX dla Django CSRF - jeden globalny listener
+    document.body.addEventListener('htmx:configRequest', function(evt) {
+        console.log('HTMX configRequest:', evt.detail);
+        // Dodaj CSRF token do wszystkich zapytań HTMX
+        const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]');
+        if (csrftoken) {
+            evt.detail.headers['X-CSRFToken'] = csrftoken.value;
+        }
+    });
+
+    // Obsługa zdarzeń HTMX
+    document.body.addEventListener('htmx:afterSwap', function(evt) {
+        console.log('HTMX afterSwap event:', evt.detail);
+
+        // Re-inicjalizuj Foundation dla nowych elementów (np. przyciski w status box)
+        $(evt.detail.target).foundation();
+
+        // Re-inicjalizuj okrągłe paski postępu po aktualizacji HTMX
+        if (evt.detail.target.id === 'status-container' || $(evt.detail.target).find('[class^="circle-progress-"]').length > 0) {
+            // Czekaj chwilę na renderowanie DOM
+            setTimeout(function() {
+                initializeCircularProgressBars();
+            }, 100);
+        }
+    });
+
+    // Obsługa odpowiedzi HTMX z triggerami (dla komunikatów z serwera)
+    document.body.addEventListener('htmx:afterSettle', function(evt) {
+        console.log('HTMX afterSettle event');
+
+        // Sprawdź czy są triggery w odpowiedzi
+        const xhr = evt.detail.xhr;
+        if (xhr) {
+            const triggerHeader = xhr.getResponseHeader('HX-Trigger');
+            console.log('HX-Trigger header:', triggerHeader);
+
+            if (triggerHeader) {
+                try {
+                    const triggers = JSON.parse(triggerHeader);
+                    console.log('Parsed triggers:', triggers);
+
+                    // Obsługa komunikatu sukcesu gdy generowanie zostało uruchomione
+                    if (triggers.metricsStarted) {
+                        const taskId = triggers.taskId || '';
+                        const message = taskId
+                            ? `Generowanie metryk zostało pomyślnie uruchomione (ID zadania: ${taskId}).`
+                            : 'Generowanie metryk zostało pomyślnie uruchomione.';
+
+                        if (typeof bppNotifications !== 'undefined') {
+                            bppNotifications.addMessage({
+                                cssClass: 'success',
+                                message: message
+                            });
+                        } else {
+                            console.log('Success:', message);
+                        }
+
+                        // Status jest już ustawiony w widoku przed zwróceniem odpowiedzi,
+                        // więc HTMX automatycznie rozpocznie polling dzięki hx-trigger="every 2s"
+                    }
+
+                    // Obsługa komunikatu błędu z serwera
+                    if (triggers.showError) {
+                        let errorMessage = triggers.showError;
+                        // Tłumaczenie angielskich komunikatów na polski
+                        if (errorMessage === 'No permissions') {
+                            errorMessage = 'Nie masz uprawnień do uruchomienia generowania.';
+                        }
+
+                        if (typeof bppNotifications !== 'undefined') {
+                            bppNotifications.addMessage({
+                                cssClass: 'alert',
+                                message: errorMessage
+                            });
+                        } else {
+                            alert('Błąd: ' + errorMessage);
+                        }
+                    }
+                } catch (e) {
+                    console.error('Error parsing triggers:', e);
+                }
+            }
+        }
+    });
+
+    // Zdarzenia HTMX form submission
+    document.body.addEventListener('htmx:beforeRequest', function(evt) {
+        console.log('HTMX beforeRequest:', evt.detail);
+    });
+
+    document.body.addEventListener('htmx:afterRequest', function(evt) {
+        console.log('HTMX afterRequest:', evt.detail);
+    });
+
+    // Upewnij się że formularz jest uruchamiany przez HTMX
+    const genForm = document.getElementById('generowanie-form');
+    if (genForm) {
+        // Po wysłaniu formularza HTMX, pokaż animację ładowania w przycisku i zamknij modal
+        genForm.addEventListener('htmx:beforeRequest', function(evt) {
+            console.log('Form beforeRequest - closing modal immediately');
+            const submitButton = this.querySelector('button[type="submit"]');
+            if (submitButton) {
+                submitButton.disabled = true;
+                submitButton.innerHTML = '<span class="fi-loop"></span> Uruchamianie...';
+            }
+
+            // NATYCHMIASTOWE ZAMKNIĘCIE MODALU po kliknięciu przycisku
+            $('#generowanie-modal').foundation('close');
+
+            // Opcjonalnie pokaż powiadomienie o uruchomieniu
+            if (typeof bppNotifications !== 'undefined') {
+                bppNotifications.addMessage({
+                    cssClass: 'info',
+                    message: 'Uruchamianie generowania metryk...'
+                });
+            }
+        });
+
+        // Po otrzymaniu odpowiedzi przywróć przycisk (dla przypadku ponownego otwarcia modalu)
+        genForm.addEventListener('htmx:afterRequest', function(evt) {
+            console.log('Form afterRequest');
+            const submitButton = this.querySelector('button[type="submit"]');
+            if (submitButton) {
+                // Przywróć przycisk do stanu początkowego
+                submitButton.disabled = false;
+                submitButton.innerHTML = '<span class="fi-play"></span> Uruchom generowanie';
+            }
+
+            // Jeśli odpowiedź zawiera sukces, pokaż powiadomienie
+            if (evt.detail.successful) {
+                console.log('Generation started successfully');
+                if (typeof bppNotifications !== 'undefined') {
+                    bppNotifications.addMessage({
+                        cssClass: 'success',
+                        message: 'Generowanie metryk zostało pomyślnie uruchomione!'
+                    });
+                }
+            }
+        });
+    }
+
+    // Initialize heatmap visualization
+    {% if widok == "mapa_ciepla" and metryki %}
+    (function initHeatmap() {
+        // Collect data from all metryki
+        var heatmapData = [];
+        var textData = [];
+
+        {% for metryka in metryki %}
+        heatmapData.push({
+            x: {{ metryka.slot_nazbierany|unlocalize }},
+            y: {{ metryka.punkty_nazbierane|unlocalize }},
+            autor: "{{ metryka.autor|escapejs }}",
+            autor_slug: "{{ metryka.autor.slug|escapejs }}",
+            dyscyplina_kod: "{{ metryka.dyscyplina_naukowa.kod|escapejs }}",
+            jednostka: "{% if metryka.jednostka %}{{ metryka.jednostka.skrot|default:metryka.jednostka.nazwa|escapejs }}{% else %}-{% endif %}",
+            pkdaut_slot: {{ metryka.srednia_za_slot_nazbierana|unlocalize }},
+            wykorzystanie: {{ metryka.procent_wykorzystania_slotow|unlocalize }},
+            slot_max: {{ metryka.slot_maksymalny|unlocalize }}
+        });
+        {% endfor %}
+
+        // Prepare data for Plotly scatter plot with hover info
+        var trace = {
+            x: heatmapData.map(d => d.x),
+            y: heatmapData.map(d => d.y),
+            mode: 'markers',
+            type: 'scatter',
+            marker: {
+                size: 8,
+                color: heatmapData.map(d => d.pkdaut_slot),
+                colorscale: [
+                    [0.0, '#667eea'],    // Cold purple
+                    [0.2, '#4facfe'],    // Cold blue
+                    [0.4, '#43e97b'],    // Cool cyan
+                    [0.6, '#ffecd2'],    // Moderate warm
+                    [0.8, '#ff9a56'],    // Warm orange
+                    [1.0, '#ff0844']     // Hot red
+                ],
+                showscale: true,
+                colorbar: {
+                    title: 'PKDaut/slot',
+                    titleside: 'right',
+                    thickness: 20,
+                    len: 0.7
+                },
+                line: {
+                    color: 'rgba(255, 255, 255, 0.5)',
+                    width: 1
+                }
+            },
+            text: heatmapData.map(d =>
+                `<b>${d.autor}</b><br>` +
+                `Jednostka: ${d.jednostka}<br>` +
+                `Sloty: ${d.x.toFixed(2)} / ${d.slot_max.toFixed(2)}<br>` +
+                `Punkty: ${d.y.toFixed(2)}<br>` +
+                `PKDaut/slot: ${d.pkdaut_slot.toFixed(2)}<br>` +
+                `Wykorzystanie: ${d.wykorzystanie.toFixed(1)}%`
+            ),
+            hovertemplate: '%{text}<extra></extra>'
+        };
+
+        var layout = {
+            title: {
+                text: 'Rozkład autorów: sloty vs punkty (N=' + heatmapData.length + ')',
+                font: {
+                    size: 18
+                }
+            },
+            xaxis: {
+                title: 'Slot nazbierany',
+                range: [0, 4.2],
+                dtick: 0.5,
+                gridcolor: '#e0e0e0'
+            },
+            yaxis: {
+                title: 'Punkty nazbierane (PKDaut)',
+                range: [0, 820],
+                dtick: 100,
+                gridcolor: '#e0e0e0'
+            },
+            hovermode: 'closest',
+            plot_bgcolor: '#fafafa',
+            paper_bgcolor: '#ffffff',
+            margin: {
+                l: 60,
+                r: 100,
+                t: 60,
+                b: 60
+            }
+        };
+
+        var config = {
+            responsive: true,
+            displayModeBar: true,
+            modeBarButtonsToRemove: ['lasso2d', 'select2d'],
+            displaylogo: false
+        };
+
+        Plotly.newPlot('heatmap-container', [trace], layout, config);
+
+        // Add click handler to navigate to author details
+        document.getElementById('heatmap-container').on('plotly_click', function(data) {
+            if (data.points && data.points.length > 0) {
+                const pointIndex = data.points[0].pointIndex;
+                const clickedData = heatmapData[pointIndex];
+                if (clickedData && clickedData.autor_slug && clickedData.dyscyplina_kod) {
+                    const url = '{% url "ewaluacja_metryki:szczegoly" autor_slug="AUTOR_SLUG" dyscyplina_kod="DYSC_KOD" %}'
+                        .replace('AUTOR_SLUG', clickedData.autor_slug)
+                        .replace('DYSC_KOD', clickedData.dyscyplina_kod);
+                    window.location.href = url;
+                }
+            }
+        });
+
+        // Make responsive on window resize
+        window.addEventListener('resize', function() {
+            Plotly.Plots.resize('heatmap-container');
+        });
+    })();
+    {% endif %}
+
+    // Initialize blocky heatmap visualization (2D histogram)
+    {% if widok == "mapa_ciepla_bloki" and metryki %}
+    (function initBlockyHeatmap() {
+        // Collect data from all metryki
+        var xData = [];
+        var yData = [];
+
+        {% for metryka in metryki %}
+        xData.push({{ metryka.slot_nazbierany|unlocalize }});
+        yData.push({{ metryka.punkty_nazbierane|unlocalize }});
+        {% endfor %}
+
+        // Create 2D histogram (blocky heatmap)
+        var trace = {
+            x: xData,
+            y: yData,
+            type: 'histogram2d',
+            colorscale: [
+                [0.0, '#f0f0f0'],    // Very light gray for empty/low density
+                [0.1, '#667eea'],    // Cold purple
+                [0.25, '#4facfe'],   // Cold blue
+                [0.4, '#43e97b'],    // Cool cyan
+                [0.55, '#ffecd2'],   // Moderate warm
+                [0.7, '#ff9a56'],    // Warm orange
+                [0.85, '#ff6a88'],   // Hot pink
+                [1.0, '#ff0844']     // Hot red
+            ],
+            colorbar: {
+                title: 'Liczba<br>autorów',
+                titleside: 'right',
+                thickness: 20,
+                len: 0.7
+            },
+            xbins: {
+                start: 0,
+                end: 4,
+                size: 0.2  // Width of each bin in x-axis (smaller = more granular)
+            },
+            ybins: {
+                start: 0,
+                end: 800,
+                size: 40   // Height of each bin in y-axis
+            },
+            hovertemplate: 'Sloty: %{x}<br>Punkty: %{y}<br>Liczba autorów: %{z}<extra></extra>'
+        };
+
+        var layout = {
+            title: {
+                text: 'Mapa ciepła (histogram 2D): rozkład gęstości autorów (N=' + xData.length + ')',
+                font: {
+                    size: 18
+                }
+            },
+            xaxis: {
+                title: 'Slot nazbierany',
+                range: [0, 4.2],
+                dtick: 0.5,
+                gridcolor: '#e0e0e0'
+            },
+            yaxis: {
+                title: 'Punkty nazbierane (PKDaut)',
+                range: [0, 820],
+                dtick: 100,
+                gridcolor: '#e0e0e0'
+            },
+            plot_bgcolor: '#fafafa',
+            paper_bgcolor: '#ffffff',
+            margin: {
+                l: 60,
+                r: 100,
+                t: 60,
+                b: 60
+            }
+        };
+
+        var config = {
+            responsive: true,
+            displayModeBar: true,
+            modeBarButtonsToRemove: ['lasso2d', 'select2d'],
+            displaylogo: false
+        };
+
+        Plotly.newPlot('heatmap-blocky-container', [trace], layout, config);
+
+        // Make responsive on window resize
+        window.addEventListener('resize', function() {
+            Plotly.Plots.resize('heatmap-blocky-container');
+        });
+    })();
+    {% endif %}
+
+    // Initialize contour plot visualization
+    {% if widok == "mapa_konturowa" and metryki %}
+    (function initContourPlot() {
+        // Collect data from all metryki
+        var xData = [];
+        var yData = [];
+
+        {% for metryka in metryki %}
+        xData.push({{ metryka.slot_nazbierany|unlocalize }});
+        yData.push({{ metryka.punkty_nazbierane|unlocalize }});
+        {% endfor %}
+
+        // Create contour plot using histogram2dcontour
+        var trace = {
+            x: xData,
+            y: yData,
+            type: 'histogram2dcontour',
+            colorscale: [
+                [0.0, '#667eea'],    // Cold purple
+                [0.2, '#4facfe'],    // Cold blue
+                [0.4, '#43e97b'],    // Cool cyan
+                [0.6, '#ffecd2'],    // Moderate warm
+                [0.8, '#ff9a56'],    // Warm orange
+                [1.0, '#ff0844']     // Hot red
+            ],
+            colorbar: {
+                title: 'Gęstość',
+                titleside: 'right',
+                thickness: 20,
+                len: 0.7
+            },
+            contours: {
+                coloring: 'heatmap',
+                showlabels: true,
+                labelfont: {
+                    size: 10,
+                    color: 'white'
+                }
+            },
+            xbins: {
+                start: 0,
+                end: 4,
+                size: 0.2
+            },
+            ybins: {
+                start: 0,
+                end: 800,
+                size: 40
+            },
+            hovertemplate: 'Sloty: %{x}<br>Punkty: %{y}<br>Gęstość: %{z}<extra></extra>'
+        };
+
+        var layout = {
+            title: {
+                text: 'Mapa konturowa: rozkład gęstości autorów (N=' + xData.length + ')',
+                font: {
+                    size: 18
+                }
+            },
+            xaxis: {
+                title: 'Slot nazbierany',
+                range: [0, 4.2],
+                dtick: 0.5,
+                gridcolor: '#e0e0e0'
+            },
+            yaxis: {
+                title: 'Punkty nazbierane (PKDaut)',
+                range: [0, 820],
+                dtick: 100,
+                gridcolor: '#e0e0e0'
+            },
+            plot_bgcolor: '#fafafa',
+            paper_bgcolor: '#ffffff',
+            margin: {
+                l: 60,
+                r: 100,
+                t: 60,
+                b: 60
+            }
+        };
+
+        var config = {
+            responsive: true,
+            displayModeBar: true,
+            modeBarButtonsToRemove: ['lasso2d', 'select2d'],
+            displaylogo: false
+        };
+
+        Plotly.newPlot('contour-container', [trace], layout, config);
+
+        // Make responsive on window resize
+        window.addEventListener('resize', function() {
+            Plotly.Plots.resize('contour-container');
+        });
+    })();
+    {% endif %}
+
+    // Initialize bubble chart visualization
+    {% if widok == "wykres_babelkowy" and metryki %}
+    (function initBubbleChart() {
+        // Collect data from all metryki
+        var bubbleData = [];
+
+        {% for metryka in metryki %}
+        bubbleData.push({
+            x: {{ metryka.slot_nazbierany|unlocalize }},
+            y: {{ metryka.punkty_nazbierane|unlocalize }},
+            autor: "{{ metryka.autor|escapejs }}",
+            autor_slug: "{{ metryka.autor.slug|escapejs }}",
+            dyscyplina_kod: "{{ metryka.dyscyplina_naukowa.kod|escapejs }}",
+            jednostka: "{% if metryka.jednostka %}{{ metryka.jednostka.skrot|default:metryka.jednostka.nazwa|escapejs }}{% else %}-{% endif %}",
+            pkdaut_slot: {{ metryka.srednia_za_slot_nazbierana|unlocalize }},
+            wykorzystanie: {{ metryka.procent_wykorzystania_slotow|unlocalize }},
+            slot_max: {{ metryka.slot_maksymalny|unlocalize }},
+            liczba_prac: {{ metryka.prace_nazbierane|length }}
+        });
+        {% endfor %}
+
+        // Create bubble chart (scatter with variable size)
+        var trace = {
+            x: bubbleData.map(d => d.x),
+            y: bubbleData.map(d => d.y),
+            mode: 'markers',
+            type: 'scatter',
+            marker: {
+                size: bubbleData.map(d => Math.max(10, Math.min(50, d.liczba_prac * 3))),  // Size based on number of works
+                color: bubbleData.map(d => d.pkdaut_slot),
+                colorscale: [
+                    [0.0, '#667eea'],    // Cold purple
+                    [0.2, '#4facfe'],    // Cold blue
+                    [0.4, '#43e97b'],    // Cool cyan
+                    [0.6, '#ffecd2'],    // Moderate warm
+                    [0.8, '#ff9a56'],    // Warm orange
+                    [1.0, '#ff0844']     // Hot red
+                ],
+                showscale: true,
+                colorbar: {
+                    title: 'PKDaut/slot',
+                    titleside: 'right',
+                    thickness: 20,
+                    len: 0.7
+                },
+                line: {
+                    color: 'rgba(255, 255, 255, 0.6)',
+                    width: 2
+                },
+                opacity: 0.7
+            },
+            text: bubbleData.map(d =>
+                `<b>${d.autor}</b><br>` +
+                `Jednostka: ${d.jednostka}<br>` +
+                `Sloty: ${d.x.toFixed(2)} / ${d.slot_max.toFixed(2)}<br>` +
+                `Punkty: ${d.y.toFixed(2)}<br>` +
+                `PKDaut/slot: ${d.pkdaut_slot.toFixed(2)}<br>` +
+                `Liczba prac: ${d.liczba_prac}<br>` +
+                `Wykorzystanie: ${d.wykorzystanie.toFixed(1)}%`
+            ),
+            hovertemplate: '%{text}<extra></extra>'
+        };
+
+        var layout = {
+            title: {
+                text: 'Wykres bąbelkowy: wielkość = liczba prac, kolor = PKDaut/slot (N=' + bubbleData.length + ')',
+                font: {
+                    size: 18
+                }
+            },
+            xaxis: {
+                title: 'Slot nazbierany',
+                range: [0, 4.2],
+                dtick: 0.5,
+                gridcolor: '#e0e0e0'
+            },
+            yaxis: {
+                title: 'Punkty nazbierane (PKDaut)',
+                range: [0, 820],
+                dtick: 100,
+                gridcolor: '#e0e0e0'
+            },
+            hovermode: 'closest',
+            plot_bgcolor: '#fafafa',
+            paper_bgcolor: '#ffffff',
+            margin: {
+                l: 60,
+                r: 100,
+                t: 60,
+                b: 60
+            }
+        };
+
+        var config = {
+            responsive: true,
+            displayModeBar: true,
+            modeBarButtonsToRemove: ['lasso2d', 'select2d'],
+            displaylogo: false
+        };
+
+        Plotly.newPlot('bubble-container', [trace], layout, config);
+
+        // Add click handler to navigate to author details
+        document.getElementById('bubble-container').on('plotly_click', function(data) {
+            if (data.points && data.points.length > 0) {
+                const pointIndex = data.points[0].pointIndex;
+                const clickedData = bubbleData[pointIndex];
+                if (clickedData && clickedData.autor_slug && clickedData.dyscyplina_kod) {
+                    const url = '{% url "ewaluacja_metryki:szczegoly" autor_slug="AUTOR_SLUG" dyscyplina_kod="DYSC_KOD" %}'
+                        .replace('AUTOR_SLUG', clickedData.autor_slug)
+                        .replace('DYSC_KOD', clickedData.dyscyplina_kod);
+                    window.location.href = url;
+                }
+            }
+        });
+
+        // Make responsive on window resize
+        window.addEventListener('resize', function() {
+            Plotly.Plots.resize('bubble-container');
+        });
+    })();
+    {% endif %}
+
+    // Initialize contour + scatter overlay visualization
+    {% if widok == "kontury_z_punktami" and metryki %}
+    (function initContourScatter() {
+        // Collect data from all metryki
+        var xData = [];
+        var yData = [];
+        var scatterData = [];
+
+        {% for metryka in metryki %}
+        xData.push({{ metryka.slot_nazbierany|unlocalize }});
+        yData.push({{ metryka.punkty_nazbierane|unlocalize }});
+        scatterData.push({
+            x: {{ metryka.slot_nazbierany|unlocalize }},
+            y: {{ metryka.punkty_nazbierane|unlocalize }},
+            autor: "{{ metryka.autor|escapejs }}",
+            autor_slug: "{{ metryka.autor.slug|escapejs }}",
+            dyscyplina_kod: "{{ metryka.dyscyplina_naukowa.kod|escapejs }}",
+            jednostka: "{% if metryka.jednostka %}{{ metryka.jednostka.skrot|default:metryka.jednostka.nazwa|escapejs }}{% else %}-{% endif %}",
+            pkdaut_slot: {{ metryka.srednia_za_slot_nazbierana|unlocalize }},
+            wykorzystanie: {{ metryka.procent_wykorzystania_slotow|unlocalize }},
+            slot_max: {{ metryka.slot_maksymalny|unlocalize }}
+        });
+        {% endfor %}
+
+        // Contour layer
+        var contourTrace = {
+            x: xData,
+            y: yData,
+            type: 'histogram2dcontour',
+            colorscale: [
+                [0.0, 'rgba(102, 126, 234, 0.3)'],    // Cold purple (transparent)
+                [0.2, 'rgba(79, 172, 254, 0.4)'],     // Cold blue
+                [0.4, 'rgba(67, 233, 123, 0.5)'],     // Cool cyan
+                [0.6, 'rgba(255, 236, 210, 0.6)'],    // Moderate warm
+                [0.8, 'rgba(255, 154, 86, 0.7)'],     // Warm orange
+                [1.0, 'rgba(255, 8, 68, 0.8)']        // Hot red
+            ],
+            showscale: false,
+            contours: {
+                coloring: 'heatmap',
+                showlines: true,
+                linewidth: 1
+            },
+            xbins: {
+                start: 0,
+                end: 4,
+                size: 0.2
+            },
+            ybins: {
+                start: 0,
+                end: 800,
+                size: 40
+            },
+            name: 'Gęstość',
+            hoverinfo: 'skip'
+        };
+
+        // Scatter layer on top
+        var scatterTrace = {
+            x: scatterData.map(d => d.x),
+            y: scatterData.map(d => d.y),
+            mode: 'markers',
+            type: 'scatter',
+            marker: {
+                size: 6,
+                color: scatterData.map(d => d.pkdaut_slot),
+                colorscale: [
+                    [0.0, '#667eea'],    // Cold purple
+                    [0.2, '#4facfe'],    // Cold blue
+                    [0.4, '#43e97b'],    // Cool cyan
+                    [0.6, '#ffecd2'],    // Moderate warm
+                    [0.8, '#ff9a56'],    // Warm orange
+                    [1.0, '#ff0844']     // Hot red
+                ],
+                showscale: true,
+                colorbar: {
+                    title: 'PKDaut/slot',
+                    titleside: 'right',
+                    thickness: 20,
+                    len: 0.7
+                },
+                line: {
+                    color: 'rgba(0, 0, 0, 0.3)',
+                    width: 1
+                }
+            },
+            text: scatterData.map(d =>
+                `<b>${d.autor}</b><br>` +
+                `Jednostka: ${d.jednostka}<br>` +
+                `Sloty: ${d.x.toFixed(2)} / ${d.slot_max.toFixed(2)}<br>` +
+                `Punkty: ${d.y.toFixed(2)}<br>` +
+                `PKDaut/slot: ${d.pkdaut_slot.toFixed(2)}<br>` +
+                `Wykorzystanie: ${d.wykorzystanie.toFixed(1)}%`
+            ),
+            hovertemplate: '%{text}<extra></extra>',
+            name: 'Autorzy'
+        };
+
+        var layout = {
+            title: {
+                text: 'Kontury z punktami: gęstość + indywidualni autorzy (N=' + xData.length + ')',
+                font: {
+                    size: 18
+                }
+            },
+            xaxis: {
+                title: 'Slot nazbierany',
+                range: [0, 4.2],
+                dtick: 0.5,
+                gridcolor: '#e0e0e0'
+            },
+            yaxis: {
+                title: 'Punkty nazbierane (PKDaut)',
+                range: [0, 820],
+                dtick: 100,
+                gridcolor: '#e0e0e0'
+            },
+            hovermode: 'closest',
+            plot_bgcolor: '#fafafa',
+            paper_bgcolor: '#ffffff',
+            margin: {
+                l: 60,
+                r: 100,
+                t: 60,
+                b: 60
+            }
+        };
+
+        var config = {
+            responsive: true,
+            displayModeBar: true,
+            modeBarButtonsToRemove: ['lasso2d', 'select2d'],
+            displaylogo: false
+        };
+
+        Plotly.newPlot('contour-scatter-container', [contourTrace, scatterTrace], layout, config);
+
+        // Add click handler to navigate to author details (only for scatter points, not contour)
+        document.getElementById('contour-scatter-container').on('plotly_click', function(data) {
+            if (data.points && data.points.length > 0) {
+                // Only handle clicks on scatter layer (curveNumber 1), not contour layer (curveNumber 0)
+                if (data.points[0].curveNumber === 1) {
+                    const pointIndex = data.points[0].pointIndex;
+                    const clickedData = scatterData[pointIndex];
+                    if (clickedData && clickedData.autor_slug && clickedData.dyscyplina_kod) {
+                        const url = '{% url "ewaluacja_metryki:szczegoly" autor_slug="AUTOR_SLUG" dyscyplina_kod="DYSC_KOD" %}'
+                            .replace('AUTOR_SLUG', clickedData.autor_slug)
+                            .replace('DYSC_KOD', clickedData.dyscyplina_kod);
+                        window.location.href = url;
+                    }
+                }
+            }
+        });
+
+        // Make responsive on window resize
+        window.addEventListener('resize', function() {
+            Plotly.Plots.resize('contour-scatter-container');
+        });
+    })();
+    {% endif %}
+
+    // Initialize efektywność bąbelki visualization
+    {% if widok == "efektywnosc_babelki" and metryki %}
+    (function initEfektywnoscBabelki() {
+        // Collect data from all metryki
+        var efektywnoscData = [];
+
+        {% for metryka in metryki %}
+        efektywnoscData.push({
+            x: {{ metryka.procent_wykorzystania_slotow|unlocalize }},
+            y: {{ metryka.srednia_za_slot_nazbierana|unlocalize }},
+            autor: "{{ metryka.autor|escapejs }}",
+            autor_slug: "{{ metryka.autor.slug|escapejs }}",
+            dyscyplina_kod: "{{ metryka.dyscyplina_naukowa.kod|escapejs }}",
+            jednostka: "{% if metryka.jednostka %}{{ metryka.jednostka.skrot|default:metryka.jednostka.nazwa|escapejs }}{% else %}-{% endif %}",
+            pkdaut_slot: {{ metryka.srednia_za_slot_nazbierana|unlocalize }},
+            wykorzystanie: {{ metryka.procent_wykorzystania_slotow|unlocalize }},
+            slot_max: {{ metryka.slot_maksymalny|unlocalize }},
+            liczba_prac: {{ metryka.prace_nazbierane|length }}
+        });
+        {% endfor %}
+
+        // Create bubble chart for effectiveness
+        var trace = {
+            x: efektywnoscData.map(d => d.x),
+            y: efektywnoscData.map(d => d.y),
+            mode: 'markers',
+            type: 'scatter',
+            marker: {
+                size: efektywnoscData.map(d => Math.max(8, Math.min(40, d.liczba_prac * 2))),  // Size based on number of works
+                color: efektywnoscData.map(d => d.pkdaut_slot),
+                colorscale: [
+                    [0.0, '#667eea'],    // Cold purple
+                    [0.2, '#4facfe'],    // Cold blue
+                    [0.4, '#43e97b'],    // Cool cyan
+                    [0.6, '#ffecd2'],    // Moderate warm
+                    [0.8, '#ff9a56'],    // Warm orange
+                    [1.0, '#ff0844']     // Hot red
+                ],
+                showscale: true,
+                colorbar: {
+                    title: 'PKDaut/slot',
+                    titleside: 'right',
+                    thickness: 20,
+                    len: 0.7
+                },
+                line: {
+                    color: 'rgba(255, 255, 255, 0.6)',
+                    width: 2
+                },
+                opacity: 0.7
+            },
+            text: efektywnoscData.map(d =>
+                `<b>${d.autor}</b><br>` +
+                `Jednostka: ${d.jednostka}<br>` +
+                `Wykorzystanie slotów: ${d.wykorzystanie.toFixed(1)}%<br>` +
+                `PKDaut/slot: ${d.pkdaut_slot.toFixed(2)}<br>` +
+                `Liczba prac: ${d.liczba_prac}<br>` +
+                `Sloty: ${d.x.toFixed(1)}% / 100%`
+            ),
+            hovertemplate: '%{text}<extra></extra>'
+        };
+
+        var layout = {
+            title: {
+                text: 'Efektywność bąbelki: wykorzystanie slotów vs PKDaut/slot (N=' + efektywnoscData.length + ')',
+                font: {
+                    size: 18
+                }
+            },
+            xaxis: {
+                title: 'Procent wypełnienia slotów (%)',
+                range: [0, 105],
+                dtick: 10,
+                gridcolor: '#e0e0e0'
+            },
+            yaxis: {
+                title: 'Średnia PKDaut/slot',
+                range: [0, 250],
+                dtick: 25,
+                gridcolor: '#e0e0e0'
+            },
+            hovermode: 'closest',
+            plot_bgcolor: '#fafafa',
+            paper_bgcolor: '#ffffff',
+            margin: {
+                l: 60,
+                r: 100,
+                t: 60,
+                b: 60
+            }
+        };
+
+        var config = {
+            responsive: true,
+            displayModeBar: true,
+            modeBarButtonsToRemove: ['lasso2d', 'select2d'],
+            displaylogo: false
+        };
+
+        Plotly.newPlot('efektywnosc-babelki-container', [trace], layout, config);
+
+        // Add click handler to navigate to author details
+        document.getElementById('efektywnosc-babelki-container').on('plotly_click', function(data) {
+            if (data.points && data.points.length > 0) {
+                const pointIndex = data.points[0].pointIndex;
+                const clickedData = efektywnoscData[pointIndex];
+                if (clickedData && clickedData.autor_slug && clickedData.dyscyplina_kod) {
+                    const url = '{% url "ewaluacja_metryki:szczegoly" autor_slug="AUTOR_SLUG" dyscyplina_kod="DYSC_KOD" %}'
+                        .replace('AUTOR_SLUG', clickedData.autor_slug)
+                        .replace('DYSC_KOD', clickedData.dyscyplina_kod);
+                    window.location.href = url;
+                }
+            }
+        });
+
+        // Make responsive on window resize
+        window.addEventListener('resize', function() {
+            Plotly.Plots.resize('efektywnosc-babelki-container');
+        });
+    })();
+    {% endif %}
+
+    // Initialize efektywność mapa ciepła visualization
+    {% if widok == "efektywnosc_mapa_ciepla" and metryki %}
+    (function initEfektywnoscMapaCiepla() {
+        // Collect data from all metryki
+        var xData = [];
+        var yData = [];
+
+        {% for metryka in metryki %}
+        xData.push({{ metryka.procent_wykorzystania_slotow|unlocalize }});
+        yData.push({{ metryka.srednia_za_slot_nazbierana|unlocalize }});
+        {% endfor %}
+
+        // Create 2D histogram for effectiveness heatmap
+        var trace = {
+            x: xData,
+            y: yData,
+            type: 'histogram2d',
+            colorscale: [
+                [0.0, '#f0f0f0'],    // Very light gray for empty/low density
+                [0.1, '#667eea'],    // Cold purple
+                [0.25, '#4facfe'],   // Cold blue
+                [0.4, '#43e97b'],    // Cool cyan
+                [0.55, '#ffecd2'],   // Moderate warm
+                [0.7, '#ff9a56'],    // Warm orange
+                [0.85, '#ff6a88'],   // Hot pink
+                [1.0, '#ff0844']     // Hot red
+            ],
+            colorbar: {
+                title: 'Liczba<br>autorów',
+                titleside: 'right',
+                thickness: 20,
+                len: 0.7
+            },
+            xbins: {
+                start: 0,
+                end: 100,
+                size: 5   // Width of each bin in x-axis (5% bins)
+            },
+            ybins: {
+                start: 0,
+                end: 250,
+                size: 10   // Height of each bin in y-axis
+            },
+            hovertemplate: 'Wykorzystanie: %{x}%<br>PKDaut/slot: %{y}<br>Liczba autorów: %{z}<extra></extra>'
+        };
+
+        var layout = {
+            title: {
+                text: 'Efektywność mapa ciepła: gęstość rozkładu efektywności (N=' + xData.length + ')',
+                font: {
+                    size: 18
+                }
+            },
+            xaxis: {
+                title: 'Procent wypełnienia slotów (%)',
+                range: [0, 105],
+                dtick: 10,
+                gridcolor: '#e0e0e0'
+            },
+            yaxis: {
+                title: 'Średnia PKDaut/slot',
+                range: [0, 250],
+                dtick: 25,
+                gridcolor: '#e0e0e0'
+            },
+            plot_bgcolor: '#fafafa',
+            paper_bgcolor: '#ffffff',
+            margin: {
+                l: 60,
+                r: 100,
+                t: 60,
+                b: 60
+            }
+        };
+
+        var config = {
+            responsive: true,
+            displayModeBar: true,
+            modeBarButtonsToRemove: ['lasso2d', 'select2d'],
+            displaylogo: false
+        };
+
+        Plotly.newPlot('efektywnosc-mapa-ciepla-container', [trace], layout, config);
+
+        // Make responsive on window resize
+        window.addEventListener('resize', function() {
+            Plotly.Plots.resize('efektywnosc-mapa-ciepla-container');
+        });
+    })();
+    {% endif %}
 });
 </script>
 {% endblock %}

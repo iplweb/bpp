@@ -4,9 +4,8 @@ import pytest
 from django.urls import reverse
 from model_bakery import baker
 
-from ewaluacja_metryki.models import MetrykaAutora, StatusGenerowania
-
 from bpp.models import Autor, Dyscyplina_Naukowa, Jednostka
+from ewaluacja_metryki.models import MetrykaAutora, StatusGenerowania
 
 
 @pytest.mark.django_db
@@ -155,7 +154,13 @@ def test_metryka_detail_view(admin_user, client):
         prace_wszystkie=[],
     )
 
-    url = reverse("ewaluacja_metryki:szczegoly", kwargs={"pk": metryka.pk})
+    url = reverse(
+        "ewaluacja_metryki:szczegoly",
+        kwargs={
+            "autor_slug": metryka.autor.slug,
+            "dyscyplina_kod": metryka.dyscyplina_naukowa.kod,
+        },
+    )
     response = client.get(url)
 
     assert response.status_code == 200
@@ -198,6 +203,137 @@ def test_statystyki_view(admin_user, client):
     assert stats["liczba_autorow"] == 5
     assert stats["srednia_wykorzystania"] is not None
     assert stats["srednia_pkd_slot"] is not None
+
+
+@pytest.mark.django_db
+def test_statystyki_autorzy_zerowi_tylko_z_jest_w_n(admin_user, client):
+    """Test że autorzy zerowi zawierają tylko autorów i lata z jest_w_n=True"""
+    from bpp.models import Autor_Dyscyplina
+    from ewaluacja_common.models import Rodzaj_Autora
+
+    client.force_login(admin_user)
+
+    # Stwórz rodzaje autorów
+    rodzaj_n = baker.make(
+        Rodzaj_Autora, skrot="N", nazwa="N", jest_w_n=True, licz_sloty=True
+    )
+    rodzaj_d = baker.make(
+        Rodzaj_Autora, skrot="D", nazwa="D", jest_w_n=False, licz_sloty=True
+    )
+
+    # Stwórz autora z zerową metryką
+    autor = baker.make(Autor, nazwisko="Kowalski", imiona="Jan")
+    dyscyplina = baker.make(Dyscyplina_Naukowa, nazwa="Informatyka", kod="1.232")
+
+    baker.make(
+        MetrykaAutora,
+        autor=autor,
+        dyscyplina_naukowa=dyscyplina,
+        slot_maksymalny=Decimal("4.0"),
+        slot_nazbierany=Decimal("0.0"),
+        punkty_nazbierane=Decimal("0.0"),
+        srednia_za_slot_nazbierana=Decimal("0.0"),
+        rok_min=2022,
+        rok_max=2025,
+    )
+
+    # Stwórz przypisania autor-dyscyplina z różnymi rodzajami
+    # Rok 2022 - jest w N (jest_w_n=True)
+    baker.make(
+        Autor_Dyscyplina,
+        autor=autor,
+        rok=2022,
+        dyscyplina_naukowa=dyscyplina,
+        rodzaj_autora=rodzaj_n,
+    )
+    # Rok 2023 - jest w D (jest_w_n=False)
+    baker.make(
+        Autor_Dyscyplina,
+        autor=autor,
+        rok=2023,
+        dyscyplina_naukowa=dyscyplina,
+        rodzaj_autora=rodzaj_d,
+    )
+    # Rok 2024 - jest w N (jest_w_n=True)
+    baker.make(
+        Autor_Dyscyplina,
+        autor=autor,
+        rok=2024,
+        dyscyplina_naukowa=dyscyplina,
+        rodzaj_autora=rodzaj_n,
+    )
+
+    url = reverse("ewaluacja_metryki:statystyki")
+    response = client.get(url)
+
+    assert response.status_code == 200
+    autorzy_zerowi = response.context["autorzy_zerowi"]
+
+    # Sprawdź że autor jest na liście
+    assert len(autorzy_zerowi) == 1
+    autor_zerowy = autorzy_zerowi[0]
+    assert autor_zerowy.autor == autor
+
+    # Sprawdź że są tylko lata z jest_w_n=True (2022, 2024)
+    assert hasattr(autor_zerowy, "lata_zerowe")
+    assert set(autor_zerowy.lata_zerowe) == {2022, 2024}
+    # Rok 2023 NIE powinien być na liście, bo miał jest_w_n=False
+    assert 2023 not in autor_zerowy.lata_zerowe
+
+
+@pytest.mark.django_db
+def test_statystyki_autorzy_zerowi_pomiń_bez_jest_w_n(admin_user, client):
+    """Test że autorzy bez lat z jest_w_n=True są pomijani"""
+    from bpp.models import Autor_Dyscyplina
+    from ewaluacja_common.models import Rodzaj_Autora
+
+    client.force_login(admin_user)
+
+    # Stwórz rodzaj autora z jest_w_n=False
+    rodzaj_d = baker.make(
+        Rodzaj_Autora, skrot="D", nazwa="D", jest_w_n=False, licz_sloty=True
+    )
+
+    # Stwórz autora z zerową metryką
+    autor = baker.make(Autor, nazwisko="Nowak", imiona="Anna")
+    dyscyplina = baker.make(Dyscyplina_Naukowa, nazwa="Matematyka", kod="1.110")
+
+    baker.make(
+        MetrykaAutora,
+        autor=autor,
+        dyscyplina_naukowa=dyscyplina,
+        slot_maksymalny=Decimal("4.0"),
+        slot_nazbierany=Decimal("0.0"),
+        punkty_nazbierane=Decimal("0.0"),
+        srednia_za_slot_nazbierana=Decimal("0.0"),
+        rok_min=2022,
+        rok_max=2025,
+    )
+
+    # Stwórz przypisania autor-dyscyplina TYLKO z jest_w_n=False
+    baker.make(
+        Autor_Dyscyplina,
+        autor=autor,
+        rok=2022,
+        dyscyplina_naukowa=dyscyplina,
+        rodzaj_autora=rodzaj_d,
+    )
+    baker.make(
+        Autor_Dyscyplina,
+        autor=autor,
+        rok=2023,
+        dyscyplina_naukowa=dyscyplina,
+        rodzaj_autora=rodzaj_d,
+    )
+
+    url = reverse("ewaluacja_metryki:statystyki")
+    response = client.get(url)
+
+    assert response.status_code == 200
+    autorzy_zerowi = response.context["autorzy_zerowi"]
+
+    # Sprawdź że autor NIE jest na liście, bo nie ma lat z jest_w_n=True
+    assert len(autorzy_zerowi) == 0
 
 
 @pytest.mark.django_db

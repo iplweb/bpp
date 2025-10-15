@@ -48,15 +48,13 @@ python src/manage.py  # OK - debugging manage.py startup issues
 
 ### Development Commands
 
-**CRITICAL:** ALWAYS check if the development server is already running before starting it:
+**CRITICAL:** The server usually runs in the background, you can test by checking if port 8000 is open with nc. RUN daphne asgi SERVER ONLY IF THE PORT is NOT open:
 ```bash
 nc -zv localhost 8000  # Check if port 8000 is in use
 # If connection succeeded, server is already running - no need to start it again
 ```
 
-- `python src/manage.py runserver` - Start development server (default settings: `django_bpp.settings.local`)
-  - **NOTE:** If you see "Listen failure: Couldn't listen on 127.0.0.1:8000: [Errno 48] Address already in use." it means the server is ALREADY RUNNING in the background as another process. This is expected behavior - no action needed.
-  - **IMPORTANT:** During development sessions, the server often runs in the background. ALWAYS check with `nc -zv localhost 8000` before attempting to start the server.
+**CRITICAL:** NEVER run daphne or runserver for testing purposes in this repository, as it typically runs in the background. Instead, first check if port 8000 is available (nc) and only start the server if it's not. This is EXTREMELY important.
 - `python src/manage.py migrate` - Apply database migrations
 - `python src/manage.py shell` - Django shell
 - `bpp-manage.py` - Alternative management command entry point
@@ -87,12 +85,11 @@ nc -zv localhost 8000  # Check if port 8000 is in use
 - Test fixtures available in `src/conftest.py` and subdirectories
 
 ### Code Quality Commands
-- `black .` - Format Python code
-- `isort .` - Sort Python imports
-- `flake8` - Lint Python code
+- `ruff format .` - Format Python code
+- `ruff check .` - Lint Python code
 - `pre-commit run --all-files` - Run pre-commit hooks
 
-**Note:** Code quality tools (`black`, `isort`, `flake8`, `pre-commit`) are installed through Poetry and available in the virtual environment.
+**Note:** Code quality tools (`ruff`, `pre-commit`) are installed through Poetry and available in the virtual environment.
 
 ### Maintenance Commands
 - `make clean` - Clean build artifacts and cache files
