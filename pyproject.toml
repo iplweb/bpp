@@ -1,6 +1,6 @@
 [project]
 name = "bpp_iplweb"
-version = "202510.1251"
+version = "202510.1252"
 description = ""
 authors = [
     { name = "Michał Pasternak", email = "michal.dtz@gmail.com" }
@@ -146,7 +146,7 @@ dev = [
     "PyPDF2>=1.27.7",
     "ipdb>=0.13.9",
     "ipython>=8.2.0",
-    "playwright>=1.41.0",
+    "playwright>=1.55.0,<2",
     "pytest-playwright>=0.4.0",
     "pytest-env>=1",
     "nest-asyncio>=1.6.0"
@@ -201,7 +201,7 @@ include = [
 ]
 
 [tool.bumpver]
-current_version = "v202510.1251"
+current_version = "v202510.1252"
 version_pattern = "vYYYY0M.BUILD[-TAGNUM][GITHASH]"
 commit_message = "bump version {old_version} -> {new_version}"
 commit = true
@@ -268,7 +268,7 @@ build-backend = "setuptools.build_meta"
 
 [tool.towncrier]
 package = "bpp"
-version = "202510.1251"
+version = "202510.1252"
 package_dir = "src"
 filename = "HISTORY.rst"
 

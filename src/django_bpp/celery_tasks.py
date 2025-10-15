@@ -23,6 +23,7 @@ def handle_task_failure(**kw):
 
 def celery_base_data_hook(request, data):
     data["framework"] = "celery"
+    data["DJANGO_BPP_HOSTNAME"] = getattr(settings, "DJANGO_BPP_HOSTNAME", "None")
 
 
 rollbar.init(**settings.ROLLBAR)

@@ -1,16 +1,3 @@
-docs/
-node_modules/
-src/media/
-src/django_bpp/staticroot/
-.git/
-.idea/
-.vscode/
-.circleci/
-.venv/
-.dockerignore
-
-
-
 # Git files
 .git/
 .gitignore
