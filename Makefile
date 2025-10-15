@@ -159,9 +159,9 @@ upgrade-version:
 	$(eval NEW_VERSION=$(shell bumpver test $(CUR_VERSION) 'vYYYY0M.BUILD[-TAGNUM]' |head -1|cut -d: -f2))
 	git flow release start $(NEW_VERSION)
 	uv run bumpver update --commit
-	-git commit -m "Update version in uv.lock" uv.lock
 	-uv run towncrier build --draft > /tmp/towncrier.txt
 	-uv run towncrier build --yes
+	-git add uv.lock
 	-git commit -F /tmp/towncrier.txt
 	@afplay /System/Library/Sounds/Funk.aiff
 	GIT_MERGE_AUTOEDIT=no git flow release finish "$(NEW_VERSION)" -p -m "Release $(NEW_VERSION)"
