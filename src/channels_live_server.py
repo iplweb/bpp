@@ -11,13 +11,15 @@ def set_database_connection():
     from django.conf import settings
     from django.db import connections
 
-    test_db_name = "test_" + connections[DEFAULT_DB_ALIAS].settings_dict["NAME"]
+    test_db_name = connections[DEFAULT_DB_ALIAS].settings_dict["NAME"]
+
+    if not test_db_name.startswith("test_"):
+        test_db_name = f"test_{test_db_name}"
 
     if os.environ.get("PYTEST_XDIST_WORKER", "master").startswith("gw"):
-        test_db_name += "_" + os.environ.get("PYTEST_XDIST_WORKER")
+        if not test_db_name.endswith("_" + os.environ["PYTEST_XDIST_WORKER"]):
+            test_db_name += "_" + os.environ.get("PYTEST_XDIST_WORKER")
 
-    # with open("test.txt", "w") as f:
-    #     f.write(test_db_name)
     settings.DATABASES["default"]["NAME"] = test_db_name
 
     # Pomoże?
