@@ -134,7 +134,6 @@ RUN set -ex && \
     # Remove documentation from .venv \
     find /app/.venv -type d \( -name "docs" -o -name "doc" \) -exec rm -rf {} + 2>/dev/null || true && \
     find /app/.venv -type f \( -name "*.md" -o -name "*.rst" \) -delete && \
-    find /app/.venv -type f -name "*.txt" ! -name "requirements*.txt" -delete 2>/dev/null || true && \
     # Remove type stubs \
     find /app/.venv -type f -name "*.pyi" -delete && \
     # Clean dist-info directories \
