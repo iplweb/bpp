@@ -34,7 +34,9 @@
       "Bash(poetry add:*)",
       "Bash(uv:*)",
       "Bash(brew:*)",
-      "Read(//opt/homebrew/**)"
+      "Read(//opt/homebrew/**)",
+      "Bash(chmod:*)",
+      "Bash(awk:*)"
     ],
     "deny": [],
     "ask": [],
