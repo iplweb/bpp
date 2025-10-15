@@ -4,6 +4,8 @@ export PGUSER="${DJANGO_BPP_DB_USER}"
 export PGHOST="${DJANGO_BPP_DB_HOST}"
 export PGPASSWORD="${DJANGO_BPP_DB_PASSWORD}"
 
+cd /app
+
 echo -n "Creating database ${DJANGO_BPP_DB_NAME}, if not exists... "
 echo "SELECT 'CREATE DATABASE ${DJANGO_BPP_DB_NAME}' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = '${DJANGO_BPP_DB_NAME}')\gexec" | psql
 echo "done."

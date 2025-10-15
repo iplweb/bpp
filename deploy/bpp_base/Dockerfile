@@ -55,10 +55,13 @@ RUN pip install uv && \
     rm -rf /var/lib/apt/lists/*
 
 ENV PATH="/.venv/bin:$PATH" \
-    PYTHONPATH=/src
+    PYTHONPATH=/src \
+    DJANGO_SETTINGS_MODULE=django_bpp.settings.production
+
+WORKDIR /app
 
 COPY --from=builder /app/node_modules ./node_modules
 
-COPY --from=builder /app/.venv /.venv
+COPY --from=builder /app/.venv ./.venv
 
-COPY --from=builder /app/src /src
+COPY --from=builder /app/src ./src

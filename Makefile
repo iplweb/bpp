@@ -161,6 +161,7 @@ upgrade-version:
 	uv run bumpver update --commit
 	-uv run towncrier build --draft > /tmp/towncrier.txt
 	-uv run towncrier build --yes
+	-git add uv.lock
 	-git commit -F /tmp/towncrier.txt
 	@afplay /System/Library/Sounds/Funk.aiff
 	GIT_MERGE_AUTOEDIT=no git flow release finish "$(NEW_VERSION)" -p -m "Release $(NEW_VERSION)"
@@ -205,7 +206,7 @@ loc: clean
 	pygount -N ... -F "...,staticroot,migrations,fixtures" src --format=summary
 
 
-DOCKER_VERSION="202510.1250"
+DOCKER_VERSION="202510.1251"
 
 DOCKER_BUILD=build --platform linux/amd64 --push
 
