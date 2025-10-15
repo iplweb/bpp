@@ -702,11 +702,11 @@ YARN_FILE_PATTERNS = {
     "select2-foundation_theme": ["dist/select2-foundation-theme.css"],
     "kbw-keypad": ["dist/*"],
     "plotly.js": ["dist/plotly.min.js"],
-    # Zostana pozniej usuniete przez MANIFEST.in
-    "qunit": ["qunit/qunit.js", "qunit/qunit.css"],
-    "sinon": ["pkg/sinon.js"],
     "htmx.org": ["dist/htmx.js"],
     "tone": ["build/Tone.js", "build/Tone.js.map"],
+    # Do developerki:
+    "qunit": ["qunit/qunit.js", "qunit/qunit.css"],
+    "sinon": ["pkg/sinon.js"],
 }
 
 REST_FRAMEWORK = {

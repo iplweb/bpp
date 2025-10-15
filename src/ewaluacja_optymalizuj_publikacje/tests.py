@@ -78,10 +78,16 @@ def test_optymalizuj_publikacje_view_without_metryka_autora(
 
     # Check that the context contains the expected data
     assert "publikacja" in response.context
-    assert "autorzy_data" in response.context
+    assert "autorzy_po_dyscyplinach" in response.context
 
     # Check author data
-    autorzy_data = response.context["autorzy_data"]
+    autorzy_po_dyscyplinach = response.context["autorzy_po_dyscyplinach"]
+    assert len(autorzy_po_dyscyplinach) == 1
+
+    dyscyplina_group = autorzy_po_dyscyplinach[0]
+    assert dyscyplina_group["dyscyplina"]["nazwa"] == dyscyplina.nazwa
+
+    autorzy_data = dyscyplina_group["autorzy"]
     assert len(autorzy_data) == 1
 
     autor_data = autorzy_data[0]
@@ -98,9 +104,7 @@ def test_optymalizuj_publikacje_view_without_metryka_autora(
     assert "Sprawdź status generowania metryk" in content
     # Check for the actual rendered URLs
     assert "/ewaluacja_metryki/" in content  # Link to lista
-    assert (
-        "/ewaluacja_metryki/status-generowania/" in content
-    )  # Link to status page
+    assert "/ewaluacja_metryki/status-generowania/" in content  # Link to status page
 
     # Check that the metrics section shows appropriate message
     assert "Brak danych metryki dla tego autora" in content
@@ -178,7 +182,13 @@ def test_optymalizuj_publikacje_view_with_metryka_autora(
     assert response.status_code == 200
 
     # Check author data
-    autorzy_data = response.context["autorzy_data"]
+    autorzy_po_dyscyplinach = response.context["autorzy_po_dyscyplinach"]
+    assert len(autorzy_po_dyscyplinach) == 1
+
+    dyscyplina_group = autorzy_po_dyscyplinach[0]
+    assert dyscyplina_group["dyscyplina"]["nazwa"] == dyscyplina.nazwa
+
+    autorzy_data = dyscyplina_group["autorzy"]
     assert len(autorzy_data) == 1
 
     autor_data = autorzy_data[0]
@@ -193,7 +203,7 @@ def test_optymalizuj_publikacje_view_with_metryka_autora(
     assert "Nowak Anna" in content
 
     # Check that there IS a link to metryka details
-    assert f"/ewaluacja_metryki/szczegoly/{metryka.pk}/" in content
+    assert f"/ewaluacja_metryki/szczegoly/{autor.slug}/{dyscyplina.kod}/" in content
 
     # Ensure the warning messages are NOT present
     assert "Metryka autora nie istnieje" not in content
@@ -329,7 +339,13 @@ def test_optymalizuj_publikacje_multiple_authors_mixed_metryka(
     assert response.status_code == 200
 
     # Check that both authors are in the context
-    autorzy_data = response.context["autorzy_data"]
+    autorzy_po_dyscyplinach = response.context["autorzy_po_dyscyplinach"]
+    assert len(autorzy_po_dyscyplinach) == 1  # Both authors have same discipline
+
+    dyscyplina_group = autorzy_po_dyscyplinach[0]
+    assert dyscyplina_group["dyscyplina"]["nazwa"] == dyscyplina.nazwa
+
+    autorzy_data = dyscyplina_group["autorzy"]
     assert len(autorzy_data) == 2
 
     # Find which is which
@@ -350,7 +366,7 @@ def test_optymalizuj_publikacje_multiple_authors_mixed_metryka(
     content = response.content.decode("utf-8")
 
     # autor1 should have a link to metryka details
-    assert f"/ewaluacja_metryki/szczegoly/{metryka1.pk}/" in content
+    assert f"/ewaluacja_metryki/szczegoly/{autor1.slug}/{dyscyplina.kod}/" in content
 
     # At least one warning should be present (for autor2)
     assert "Metryka autora nie istnieje" in content
@@ -431,9 +447,7 @@ def test_unpin_discipline_updates_all_authors_metrics(
     assert cache_entries.count() == 3
 
     for entry in cache_entries:
-        assert entry.pkdaut.quantize(Decimal("0.01")) == Decimal(
-            "33.33"
-        )  # 100/3
+        assert entry.pkdaut.quantize(Decimal("0.01")) == Decimal("33.33")  # 100/3
         assert entry.slot.quantize(Decimal("0.001")) == Decimal("0.333")  # 1/3
 
     # Now unpin autor2's discipline
@@ -468,9 +482,7 @@ def test_unpin_discipline_updates_all_authors_metrics(
             autor1.pk,
             autor3.pk,
         ]  # Only autor1 and autor3
-        assert entry.pkdaut.quantize(Decimal("0.01")) == Decimal(
-            "50.00"
-        )  # 100/2
+        assert entry.pkdaut.quantize(Decimal("0.01")) == Decimal("50.00")  # 100/2
         assert entry.slot.quantize(Decimal("0.01")) == Decimal("0.50")  # 1/2
 
     # IMPORTANT: Verify that metrics were recalculated for ALL authors, not just autor2
@@ -599,9 +611,7 @@ def test_pin_discipline_updates_all_authors_metrics(
 
     # Both authors should now have 50 points and 0.5 slot each
     for entry in cache_entries:
-        assert entry.pkdaut.quantize(Decimal("0.01")) == Decimal(
-            "50.00"
-        )  # 100/2
+        assert entry.pkdaut.quantize(Decimal("0.01")) == Decimal("50.00")  # 100/2
         assert entry.slot.quantize(Decimal("0.01")) == Decimal("0.50")  # 1/2
 
     # Verify metrics were recalculated for BOTH authors
@@ -719,9 +729,7 @@ def test_wybrana_do_ewaluacji_badge_shows_correctly(
     )
 
     # Test publication 1 (selected)
-    url = reverse(
-        "ewaluacja_optymalizuj_publikacje:optymalizuj", args=(pub1.slug,)
-    )
+    url = reverse("ewaluacja_optymalizuj_publikacje:optymalizuj", args=(pub1.slug,))
     response = admin_client.get(url)
 
     assert response.status_code == 200
@@ -732,9 +740,7 @@ def test_wybrana_do_ewaluacji_badge_shows_correctly(
     assert "Udział niewybrany" not in content
 
     # Test publication 2 (NOT selected)
-    url = reverse(
-        "ewaluacja_optymalizuj_publikacje:optymalizuj", args=(pub2.slug,)
-    )
+    url = reverse("ewaluacja_optymalizuj_publikacje:optymalizuj", args=(pub2.slug,))
     response = admin_client.get(url)
 
     assert response.status_code == 200
@@ -746,9 +752,7 @@ def test_wybrana_do_ewaluacji_badge_shows_correctly(
 
 
 @pytest.mark.django_db
-def test_wybrana_do_ewaluacji_no_metryka(
-    admin_client, denorms, rodzaj_autora_n
-):
+def test_wybrana_do_ewaluacji_no_metryka(admin_client, denorms, rodzaj_autora_n):
     """Test that publications show as not selected when no MetrykaAutora exists"""
     jednostka = baker.make(Jednostka, skupia_pracownikow=True)
     autor = baker.make(Autor, nazwisko="NoMetryka", imiona="Test")
@@ -800,9 +804,7 @@ def test_wybrana_do_ewaluacji_no_metryka(
     MetrykaAutora.objects.filter(autor=autor).delete()
 
     # Test the view
-    url = reverse(
-        "ewaluacja_optymalizuj_publikacje:optymalizuj", args=(pub.slug,)
-    )
+    url = reverse("ewaluacja_optymalizuj_publikacje:optymalizuj", args=(pub.slug,))
     response = admin_client.get(url)
 
     assert response.status_code == 200

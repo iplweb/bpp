@@ -123,9 +123,13 @@ def test_oblicz_sumy_udzialow_za_calosc_wiele_rodzajow_autora(
         autor=autor, dyscyplina_naukowa=dyscyplina1, rodzaj_autora=rodzaj_autora_d
     )
     assert wynik_d.ilosc_udzialow == Decimal("1.0")  # tylko 2023
-    assert wynik_d.ilosc_udzialow_monografie == Decimal("0.5")
+    assert wynik_d.ilosc_udzialow_monografie == Decimal(
+        "1.00"
+    )  # 0.5 zaokrąglone do 1.0
     assert "Lata z danymi: 2023" in wynik_d.komentarz
     assert "rodzaj autora:" not in wynik_d.komentarz
+    # Sprawdź czy komentarz zawiera informację o zaokrągleniu
+    assert "zaokrąglona: 0.5000 → 1.00" in wynik_d.komentarz
 
 
 @pytest.mark.django_db
