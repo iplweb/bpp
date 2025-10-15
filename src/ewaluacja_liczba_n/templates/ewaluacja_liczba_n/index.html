@@ -16,9 +16,9 @@
         <div class="callout primary">
             <h4>Obliczanie liczby N</h4>
             <p>Kliknij poniższy przycisk, aby obliczyć liczbę N dla ewaluacji 2022-2025.</p>
-            <form method="post" action="{% url 'ewaluacja_liczba_n:oblicz' %}">
+            <form method="post" action="{% url 'ewaluacja_liczba_n:oblicz' %}" id="obliczLiczbeNForm">
                 {% csrf_token %}
-                <button type="submit" class="button large success">
+                <button type="submit" class="button large success" id="obliczLiczbeNButton">
                     <i class="fi-refresh"></i> Oblicz liczbę N
                 </button>
             </form>
@@ -128,4 +128,30 @@
         {% endif %}
     </div>
 </div>
+
+<script type="text/javascript">
+    $(document).ready(function() {
+        $('#obliczLiczbeNForm').on('submit', function(e) {
+            var $button = $('#obliczLiczbeNButton');
+            var $icon = $button.find('i');
+
+            // Sprawdź czy przycisk jest już zablokowany
+            if ($button.prop('disabled')) {
+                e.preventDefault();
+                return false;
+            }
+
+            // Zablokuj przycisk
+            $button.prop('disabled', true);
+
+            // Dodaj klasę disabled (wizualne wyszarzenie)
+            $button.addClass('disabled');
+
+            // Zmień ikonę i tekst na wskaźnik ładowania
+            $icon.removeClass('fi-refresh');
+            $icon.addClass('fi-clock');
+            $button.html('<i class="fi-clock"></i> Obliczanie liczby N...');
+        });
+    });
+</script>
 {% endblock %}

@@ -1,12 +1,20 @@
+import sys
 from functools import wraps
 
+import rollbar
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_http_methods
 
+from bpp.const import GR_WPROWADZANIE_DANYCH
+from bpp.models import Autor
+from bpp.models.cache import Rekord
 from pbn_api.models import Scientist
 from pbn_downloader_app.models import PbnDownloadTask
+
 from .models import IgnoredAuthor, LogScalania, NotADuplicate
 from .utils import (
     analiza_duplikatow,
@@ -17,13 +25,6 @@ from .utils import (
     search_author_by_lastname,
     znajdz_pierwszego_autora_z_duplikatami,
 )
-
-from django.contrib import messages
-from django.contrib.auth.decorators import login_required
-
-from bpp.const import GR_WPROWADZANIE_DANYCH
-from bpp.models import Autor
-from bpp.models.cache import Rekord
 
 
 def group_required(group_name):
@@ -47,6 +48,108 @@ def group_required(group_name):
     return decorator
 
 
+def _get_excluded_authors_from_session(request):
+    """Get excluded authors from session as Scientist objects."""
+    skipped_authors_ids = request.session.get("skipped_authors", [])
+    if skipped_authors_ids:
+        return list(Scientist.objects.filter(pk__in=skipped_authors_ids))
+    return []
+
+
+def _handle_search_request(search_lastname):
+    """Handle search request and return scientist and count."""
+    scientist = search_author_by_lastname(search_lastname, excluded_authors=None)
+    search_results_count = count_authors_with_lastname(search_lastname)
+    return scientist, search_results_count
+
+
+def _clear_navigation_session(request):
+    """Clear skipped authors and navigation history from session."""
+    if "skipped_authors" in request.session:
+        del request.session["skipped_authors"]
+    if "navigation_history" in request.session:
+        del request.session["navigation_history"]
+    request.session.modified = True
+
+
+def _handle_go_previous(request, navigation_history, excluded_authors):
+    """Handle 'go previous' navigation action."""
+    if not navigation_history:
+        return znajdz_pierwszego_autora_z_duplikatami(excluded_authors)
+
+    previous_scientist_id = navigation_history.pop()
+    request.session["navigation_history"] = navigation_history
+    request.session.modified = True
+
+    try:
+        return Scientist.objects.get(pk=previous_scientist_id)
+    except Scientist.DoesNotExist:
+        return znajdz_pierwszego_autora_z_duplikatami(excluded_authors)
+
+
+def _handle_skip_current(request, scientist, excluded_authors):
+    """Handle 'skip current' navigation action."""
+    if not scientist:
+        return scientist
+
+    # Save to navigation history
+    if "navigation_history" not in request.session:
+        request.session["navigation_history"] = []
+    request.session["navigation_history"].append(scientist.pk)
+
+    # Add to skipped
+    if "skipped_authors" not in request.session:
+        request.session["skipped_authors"] = []
+    if scientist.pk not in request.session["skipped_authors"]:
+        request.session["skipped_authors"].append(scientist.pk)
+    request.session.modified = True
+
+    # Find next author
+    excluded_authors.append(scientist)
+    return znajdz_pierwszego_autora_z_duplikatami(excluded_authors)
+
+
+def _calculate_year_range(queryset):
+    """Calculate year range from a queryset with 'rok' field."""
+    lata = queryset.filter(rok__isnull=False).values_list("rok", flat=True)
+    if not lata:
+        return None
+
+    min_rok = min(lata)
+    max_rok = max(lata)
+    if min_rok == max_rok:
+        return str(min_rok)
+    return f"{min_rok}-{max_rok}"
+
+
+def _build_duplicate_publication_data(autor, metryka):
+    """Build publication data for a duplicate author."""
+    publikacje = Rekord.objects.prace_autora(autor)[:500]
+    publikacje_count = Rekord.objects.prace_autora(autor).count()
+    year_range = _calculate_year_range(Rekord.objects.prace_autora(autor))
+
+    return {
+        "autor": autor,
+        "publikacje": publikacje,
+        "publikacje_count": publikacje_count,
+        "publikacje_year_range": year_range,
+    }
+
+
+def _add_dyscypliny_to_duplicates(duplikaty_z_publikacjami):
+    """Add discipline information to duplicate authors."""
+    from bpp.models import Autor_Dyscyplina
+
+    for duplikat_data in duplikaty_z_publikacjami:
+        duplikat_data["dyscypliny"] = (
+            Autor_Dyscyplina.objects.filter(
+                autor=duplikat_data["autor"], rok__gte=2022, rok__lte=2025
+            )
+            .select_related("dyscyplina_naukowa", "subdyscyplina_naukowa")
+            .order_by("rok")
+        )
+
+
 @group_required(GR_WPROWADZANIE_DANYCH)
 def duplicate_authors_view(request):
     """
@@ -56,68 +159,27 @@ def duplicate_authors_view(request):
     # Pobierz parametr wyszukiwania
     search_lastname = request.GET.get("search_lastname", "").strip()
 
-    # Pobierz pominiętych autorów z sesji
-    skipped_authors_ids = request.session.get("skipped_authors", [])
-    # Pobierz historię nawigacji
+    # Pobierz historię nawigacji i pominiętych autorów
     navigation_history = request.session.get("navigation_history", [])
-
-    # Konwertuj ID na obiekty Scientist dla wykluczenia
-    excluded_authors = []
-    if skipped_authors_ids:
-        excluded_authors = list(Scientist.objects.filter(pk__in=skipped_authors_ids))
+    excluded_authors = _get_excluded_authors_from_session(request)
 
     # Jeśli podano wyszukiwanie, szukaj konkretnego autora
     if search_lastname:
-        # Podczas wyszukiwania NIE wykluczamy pominiętych autorów
-        # aby umożliwić znalezienie każdego autora po nazwisku
-        scientist = search_author_by_lastname(search_lastname, excluded_authors=None)
-        search_results_count = count_authors_with_lastname(search_lastname)
-
-        # Wyczyść listę pominiętych autorów przy nowym wyszukiwaniu
-        # aby rozpocząć czystą sesję dla wyników wyszukiwania
-        if "skipped_authors" in request.session:
-            del request.session["skipped_authors"]
-        if "navigation_history" in request.session:
-            del request.session["navigation_history"]
-        request.session.modified = True
-
-        # Zaktualizuj zmienne lokalne po wyczyszczeniu sesji
-        skipped_authors_ids = []
+        scientist, search_results_count = _handle_search_request(search_lastname)
+        _clear_navigation_session(request)
         navigation_history = []
         excluded_authors = []
     else:
-        # Znajdź pierwszego autora z duplikatami, wykluczając pominiętych
         scientist = znajdz_pierwszego_autora_z_duplikatami(excluded_authors)
         search_results_count = None
 
     # Obsługa nawigacji wstecz
-    if request.GET.get("go_previous") and navigation_history:
-        # Usuń ostatni element z historii i wróć do niego
-        previous_scientist_id = navigation_history.pop()
-        request.session["navigation_history"] = navigation_history
-        request.session.modified = True
-        try:
-            scientist = Scientist.objects.get(pk=previous_scientist_id)
-        except Scientist.DoesNotExist:
-            # Jeśli autor nie istnieje, znajdź następnego
-            scientist = znajdz_pierwszego_autora_z_duplikatami(excluded_authors)
+    if request.GET.get("go_previous"):
+        scientist = _handle_go_previous(request, navigation_history, excluded_authors)
 
     # Jeśli pominięto poprzedniego autora, zapisz go w sesji
-    elif request.GET.get("skip_current") and scientist:
-        # Zapisz obecnego autora w historii nawigacji
-        if "navigation_history" not in request.session:
-            request.session["navigation_history"] = []
-        request.session["navigation_history"].append(scientist.pk)
-
-        # Dodaj do pominiętych
-        if "skipped_authors" not in request.session:
-            request.session["skipped_authors"] = []
-        if scientist.pk not in request.session["skipped_authors"]:
-            request.session["skipped_authors"].append(scientist.pk)
-        request.session.modified = True
-        # Znajdź następnego autora
-        excluded_authors.append(scientist)
-        scientist = znajdz_pierwszego_autora_z_duplikatami(excluded_authors)
+    elif request.GET.get("skip_current"):
+        scientist = _handle_skip_current(request, scientist, excluded_authors)
 
     # Policz całkowitą liczbę autorów z duplikatami
     total_authors_with_duplicates = count_authors_with_duplicates()
@@ -162,60 +224,23 @@ def duplicate_authors_view(request):
             context["glowny_autor"] = analiza_result["glowny_autor"]
             context["analiza"] = analiza_result["analiza"]
 
-            # Dla każdego duplikatu pobierz publikacje (do 50)
+            # Dla każdego duplikatu pobierz publikacje (do 500)
             duplikaty_z_publikacjami = []
             for duplikat_info in analiza_result["analiza"]:
                 autor_duplikat = duplikat_info["autor"]
-
-                # # Sprawdź czy autor nie jest oznaczony jako nie-duplikat
-                # # Znajdź odpowiadający Scientist przez rekord BPP
-                # scientist_for_author = None
-                # try:
-                #     # Znajdź Scientist który ma ten autor jako rekord_w_bpp
-                #     scientist_for_author = Scientist.objects.filter(
-                #         rekord_w_bpp=autor_duplikat
-                #     ).first()
-                # except:
-                #     pass
-                #
-                # Pobierz publikacje tego autora (ograniczenie do 500)
-                publikacje = Rekord.objects.prace_autora(autor_duplikat)[:500]
-
-                # Oblicz zakres lat publikacji duplikatu
-                duplikat_lata = (
-                    Rekord.objects.prace_autora(autor_duplikat)
-                    .filter(rok__isnull=False)
-                    .values_list("rok", flat=True)
+                pub_data = _build_duplicate_publication_data(
+                    autor_duplikat, duplikat_info
                 )
-
-                duplikat_year_range = None
-                if duplikat_lata:
-                    min_rok = min(duplikat_lata)
-                    max_rok = max(duplikat_lata)
-                    if min_rok == max_rok:
-                        duplikat_year_range = str(min_rok)
-                    else:
-                        duplikat_year_range = f"{min_rok}-{max_rok}"
-
-                duplikaty_z_publikacjami.append(
-                    {
-                        "autor": autor_duplikat,
-                        "analiza": duplikat_info,
-                        "publikacje": publikacje,
-                        "publikacje_count": Rekord.objects.prace_autora(
-                            autor_duplikat
-                        ).count(),
-                        "publikacje_year_range": duplikat_year_range,
-                    }
-                )
+                pub_data["analiza"] = duplikat_info
+                duplikaty_z_publikacjami.append(pub_data)
 
             context["duplikaty_z_publikacjami"] = duplikaty_z_publikacjami
 
             # Pobierz publikacje głównego autora (do 500)
             if context["glowny_autor"]:
-                # Pobierz dyscypliny głównego autora dla lat 2022-2025
                 from bpp.models import Autor_Dyscyplina
 
+                # Pobierz dyscypliny głównego autora dla lat 2022-2025
                 context["glowny_autor_dyscypliny"] = (
                     Autor_Dyscyplina.objects.filter(
                         autor=context["glowny_autor"], rok__gte=2022, rok__lte=2025
@@ -225,39 +250,15 @@ def duplicate_authors_view(request):
                 )
 
                 # Pobierz dyscypliny dla każdego duplikatu
-                for duplikat_data in duplikaty_z_publikacjami:
-                    duplikat_data["dyscypliny"] = (
-                        Autor_Dyscyplina.objects.filter(
-                            autor=duplikat_data["autor"], rok__gte=2022, rok__lte=2025
-                        )
-                        .select_related("dyscyplina_naukowa", "subdyscyplina_naukowa")
-                        .order_by("rok")
-                    )
+                _add_dyscypliny_to_duplicates(duplikaty_z_publikacjami)
 
-                glowne_publikacje = Rekord.objects.prace_autora(
-                    context["glowny_autor"]
-                )[:500]
-                context["glowne_publikacje"] = glowne_publikacje
-                context["glowne_publikacje_count"] = Rekord.objects.prace_autora(
-                    context["glowny_autor"]
-                ).count()
-
-                # Oblicz zakres lat publikacji głównego autora
-                glowne_lata = (
-                    Rekord.objects.prace_autora(context["glowny_autor"])
-                    .filter(rok__isnull=False)
-                    .values_list("rok", flat=True)
+                # Pobierz publikacje głównego autora
+                glowny_autor_qs = Rekord.objects.prace_autora(context["glowny_autor"])
+                context["glowne_publikacje"] = glowny_autor_qs[:500]
+                context["glowne_publikacje_count"] = glowny_autor_qs.count()
+                context["glowne_publikacje_year_range"] = _calculate_year_range(
+                    glowny_autor_qs
                 )
-
-                if glowne_lata:
-                    min_rok = min(glowne_lata)
-                    max_rok = max(glowne_lata)
-                    if min_rok == max_rok:
-                        context["glowne_publikacje_year_range"] = str(min_rok)
-                    else:
-                        context["glowne_publikacje_year_range"] = f"{min_rok}-{max_rok}"
-                else:
-                    context["glowne_publikacje_year_range"] = None
 
     return render(request, "deduplikator_autorow/duplicate_authors.html", context)
 
@@ -519,5 +520,6 @@ def download_duplicates_xlsx(request):
         return response
 
     except Exception as e:
+        rollbar.report_exc_info(sys.exc_info())
         messages.error(request, f"Błąd podczas generowania pliku XLSX: {str(e)}")
         return redirect("deduplikator_autorow:duplicate_authors")

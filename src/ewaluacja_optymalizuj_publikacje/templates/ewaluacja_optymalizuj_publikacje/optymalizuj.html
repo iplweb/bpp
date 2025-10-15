@@ -332,7 +332,7 @@
             </div>
         {% else %}
             <div class="publication-title">
-                <h3>{{ publikacja.tytul_oryginalny }}</h3>
+                <h3>{{ publikacja.tytul_oryginalny|safe }}</h3>
                 <p>ID: {{ publikacja.pk }} | Typ: {{ publikacja.typ_kbn }}</p>
             </div>
 

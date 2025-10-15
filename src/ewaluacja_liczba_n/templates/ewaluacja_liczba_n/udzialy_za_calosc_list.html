@@ -75,6 +75,9 @@
         <hr>
 
         {% if udzialy_data %}
+            <!-- Pager above table -->
+            {% include "pagination/pagination_with_anchor.html" %}
+
             <!-- Podsumowanie dla przefiltrowanych danych -->
             <div class="callout primary">
                 <div class="row">
@@ -94,7 +97,7 @@
                     </div>
                 </div>
             </div>
-            <table class="hover stack">
+            <table class="hover stack" id="pager">
                 <thead>
                     <tr>
                         <th>
@@ -123,6 +126,7 @@
                                 {% endif %}
                             </a>
                         </th>
+                        <th>Rodzaj autora</th>
                         <th class="text-center">
                             <a href="{% get_sort_url 'udzialy' %}"
                                class="sort-link">
@@ -164,17 +168,34 @@
                             {{ udzial.dyscyplina_naukowa.nazwa }}
                             <small class="text-muted">({{ udzial.dyscyplina_naukowa.kod }})</small>
                         </td>
+                        <td>
+                            {% if udzial.rodzaj_autora %}
+                                {% if udzial.rodzaj_autora.skrot == 'N' %}
+                                    <span class="rodzaj-autora-badge type-n" title="{{ udzial.rodzaj_autora.nazwa }}">liczba N</span>
+                                {% elif udzial.rodzaj_autora.skrot == 'D' %}
+                                    <span class="rodzaj-autora-badge type-d" title="{{ udzial.rodzaj_autora.nazwa }}">doktorant</span>
+                                {% elif udzial.rodzaj_autora.skrot == 'B' %}
+                                    <span class="rodzaj-autora-badge type-b" title="{{ udzial.rodzaj_autora.nazwa }}">badawczy</span>
+                                {% elif udzial.rodzaj_autora.skrot == 'Z' %}
+                                    <span class="rodzaj-autora-badge type-z" title="{{ udzial.rodzaj_autora.nazwa }}">inny</span>
+                                {% else %}
+                                    {{ udzial.rodzaj_autora.nazwa }}
+                                {% endif %}
+                            {% else %}
+                                <span class="text-muted">Brak danych</span>
+                            {% endif %}
+                        </td>
                         <td class="text-center">{{ udzial.ilosc_udzialow|floatformat:2 }}</td>
                         <td class="text-center">{{ udzial.ilosc_udzialow_monografie|floatformat:2 }}</td>
-                        <td>
-                            <small class="text-muted">{{ udzial.komentarz|default:"" }}</small>
+                        <td class="komentarz-cell">
+                            <small class="komentarz-content">{{ udzial.komentarz|default:"" }}</small>
                         </td>
                     </tr>
                     {% endfor %}
                 </tbody>
                 <tfoot>
                     <tr class="text-bold">
-                        <td colspan="2" class="text-right"><strong>Sumy dla bieżącej strony:</strong></td>
+                        <td colspan="3" class="text-right"><strong>Sumy dla bieżącej strony:</strong></td>
                         <td class="text-center">
                             <strong>{{ page_suma_udzialow|floatformat:2 }}</strong>
                         </td>
@@ -186,39 +207,8 @@
                 </tfoot>
             </table>
 
-            {% if is_paginated %}
-            <nav aria-label="Pagination">
-                <ul class="pagination text-center" role="navigation">
-                    {% if page_obj.has_previous %}
-                        <li class="pagination-previous">
-                            <a href="?{% url_replace page=page_obj.previous_page_number %}" aria-label="Previous page">
-                                Poprzednia
-                            </a>
-                        </li>
-                    {% else %}
-                        <li class="pagination-previous disabled">Poprzednia</li>
-                    {% endif %}
-
-                    {% for num in page_obj.paginator.page_range %}
-                        {% if page_obj.number == num %}
-                            <li class="current"><span class="show-for-sr">Jesteś na stronie</span> {{ num }}</li>
-                        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
-                            <li><a href="?{% url_replace page=num %}" aria-label="Page {{ num }}">{{ num }}</a></li>
-                        {% endif %}
-                    {% endfor %}
-
-                    {% if page_obj.has_next %}
-                        <li class="pagination-next">
-                            <a href="?{% url_replace page=page_obj.next_page_number %}" aria-label="Next page">
-                                Następna
-                            </a>
-                        </li>
-                    {% else %}
-                        <li class="pagination-next disabled">Następna</li>
-                    {% endif %}
-                </ul>
-            </nav>
-            {% endif %}
+            <!-- Pager below table -->
+            {% include "pagination/pagination_with_anchor.html" %}
 
         {% else %}
             <div class="callout warning">
@@ -267,10 +257,177 @@
         font-size: 0.9em;
         margin-left: 5px;
     }
+    .year-label {
+        display: inline-block;
+        background: #6c757d;
+        color: white;
+        padding: 0.25rem 0.5rem;
+        margin: 0.1rem 0.2rem;
+        border-radius: 4px;
+        font-size: 0.85em;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+    .komentarz-cell {
+        line-height: 1.8;
+    }
+    .rounded-label {
+        display: inline-block;
+        padding: 0.25rem 0.5rem;
+        margin: 0.1rem 0.2rem;
+        border-radius: 4px;
+        font-size: 0.8em;
+        font-weight: 600;
+        white-space: nowrap;
+        cursor: help;
+        position: relative;
+    }
+    .rounded-label.mono {
+        background: #5cb85c;
+        color: white;
+    }
+    .rounded-label.total {
+        background: #f0ad4e;
+        color: white;
+    }
+    .rounded-label.reduced {
+        background: #d9534f;
+        color: white;
+    }
+    .rounded-label.mono-reduced {
+        background: #c9302c;
+        color: white;
+    }
+    .rodzaj-autora-badge {
+        display: inline-block;
+        padding: 0.3rem 0.6rem;
+        border-radius: 12px;
+        font-size: 0.75em;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        white-space: nowrap;
+        cursor: help;
+    }
+    .rodzaj-autora-badge.type-n {
+        background: #5cb85c;
+        color: white;
+    }
+    .rodzaj-autora-badge.type-d {
+        background: #5bc0de;
+        color: white;
+    }
+    .rodzaj-autora-badge.type-b {
+        background: #f0ad4e;
+        color: white;
+    }
+    .rodzaj-autora-badge.type-z {
+        background: #777;
+        color: white;
+    }
+    .rodzaj-autora-badge:hover {
+        opacity: 0.9;
+        transform: scale(1.05);
+        transition: all 0.2s ease;
+    }
+    .rounded-label:hover::after {
+        content: attr(title);
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #333;
+        color: white;
+        padding: 0.5rem 0.75rem;
+        border-radius: 4px;
+        white-space: normal;
+        width: max-content;
+        max-width: 300px;
+        z-index: 1000;
+        font-size: 0.9em;
+        font-weight: normal;
+        margin-bottom: 0.5rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
 </style>
 
 <script type="text/javascript">
 document.addEventListener('DOMContentLoaded', function() {
+    // Format komentarze - zamień tekst lat na labele
+    document.querySelectorAll('.komentarz-content').forEach(function(element) {
+        var komentarz = element.textContent;
+        if (!komentarz) return;
+
+        // Sprawdź czy komentarz zaczyna się od "Lata z danymi: "
+        if (komentarz.startsWith('Lata z danymi: ')) {
+            // Podziel komentarz na części (przed i po <br>)
+            var parts = komentarz.split('<br>');
+            var lataPart = parts[0].replace('Lata z danymi: ', '');
+
+            // Wyciągnij lata (oddzielone przecinkami i spacjami)
+            var lata = lataPart.split(',').map(function(rok) {
+                return rok.trim();
+            });
+
+            // Utwórz HTML z labelami dla lat
+            var html = '';
+            lata.forEach(function(rok) {
+                html += '<span class="year-label">' + rok + '</span>';
+            });
+
+            // Przetwórz resztę komentarza jeśli istnieje
+            if (parts.length > 1) {
+                for (var i = 1; i < parts.length; i++) {
+                    var part = parts[i].trim();
+                    if (!part) continue;
+
+                    // Sprawdź czy to info o zaokrągleniu monografii
+                    if (part.includes('Ilość udziałów za monografie zaokrąglona:')) {
+                        var match = part.match(/(\d+\.\d+)\s*→\s*(\d+\.\d+)/);
+                        if (match) {
+                            var oldVal = parseFloat(match[1]).toFixed(2);
+                            var newVal = parseFloat(match[2]).toFixed(2);
+                            html += '<span class="rounded-label mono" title="Ilość udziałów za monografie zaokrąglona: ' +
+                                    match[1] + ' → ' + match[2] + '">MONO ' + oldVal + ' → ' + newVal + '</span>';
+                        }
+                    }
+                    // Sprawdź czy to info o zaokrągleniu ogólnym
+                    else if (part.includes('Ilość udziałów zaokrąglona:')) {
+                        var match = part.match(/(\d+\.\d+)\s*→\s*(\d+\.\d+)/);
+                        if (match) {
+                            var oldVal = parseFloat(match[1]).toFixed(2);
+                            var newVal = parseFloat(match[2]).toFixed(2);
+                            html += '<span class="rounded-label total" title="Ilość udziałów zaokrąglona: ' +
+                                    match[1] + ' → ' + match[2] + '">UDZIAŁY ' + oldVal + ' → ' + newVal + '</span>';
+                        }
+                    }
+                    // Sprawdź czy to info o redukcji udziałów
+                    else if (part.includes('Ilość udziałów zredukowana:')) {
+                        var match = part.match(/(\d+\.\d+)\s*→\s*(\d+\.\d+)/);
+                        if (match) {
+                            var oldVal = parseFloat(match[1]).toFixed(2);
+                            var newVal = parseFloat(match[2]).toFixed(2);
+                            html += '<span class="rounded-label reduced" title="Ilość udziałów zredukowana: ' +
+                                    match[1] + ' → ' + match[2] + '">REDUKCJA ' + oldVal + ' → ' + newVal + '</span>';
+                        }
+                    }
+                    // Sprawdź czy to info o redukcji udziałów za monografie
+                    else if (part.includes('Ilość udziałów za monografie zredukowana:')) {
+                        var match = part.match(/(\d+\.\d+)\s*→\s*(\d+\.\d+)/);
+                        if (match) {
+                            var oldVal = parseFloat(match[1]).toFixed(2);
+                            var newVal = parseFloat(match[2]).toFixed(2);
+                            html += '<span class="rounded-label mono-reduced" title="Ilość udziałów za monografie zredukowana: ' +
+                                    match[1] + ' → ' + match[2] + '">MONO RED. ' + oldVal + ' → ' + newVal + '</span>';
+                        }
+                    }
+                }
+            }
+
+            element.innerHTML = html;
+        }
+    });
+
     // Auto-focus on search input
     var searchInput = document.getElementById('search-input');
     if (searchInput) {

@@ -6,7 +6,11 @@ app_name = "ewaluacja_metryki"
 
 urlpatterns = [
     path("", views.MetrykiListView.as_view(), name="lista"),
-    path("szczegoly/<int:pk>/", views.MetrykaDetailView.as_view(), name="szczegoly"),
+    path(
+        "szczegoly/<slug:autor_slug>/<str:dyscyplina_kod>/",
+        views.MetrykaDetailView.as_view(),
+        name="szczegoly",
+    ),
     path(
         "przypnij/<int:autor_assignment_id>/",
         views.PrzypnijDyscyplineView.as_view(),
@@ -27,6 +31,11 @@ urlpatterns = [
         "status-generowania/",
         views.StatusGenerowaniaView.as_view(),
         name="status_generowania",
+    ),
+    path(
+        "status-partial/",
+        views.StatusGenerowaniaPartialView.as_view(),
+        name="status_partial",
     ),
     path(
         "export-xlsx/<str:table_type>/",

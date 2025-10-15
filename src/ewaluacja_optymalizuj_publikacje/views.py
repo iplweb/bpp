@@ -1,15 +1,9 @@
 from decimal import Decimal
 
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.generic import View
-
-from ewaluacja_metryki.models import MetrykaAutora
-from ewaluacja_metryki.utils import przelicz_metryki_dla_publikacji
-from .forms import OptymalizacjaForm
-from .models import OptymalizacjaPublikacji
-
-from django.contrib.auth.mixins import LoginRequiredMixin
 
 from bpp.models import (
     Autor_Dyscyplina,
@@ -20,6 +14,11 @@ from bpp.models import (
     Wydawnictwo_Zwarte_Autor,
 )
 from bpp.models.sloty.core import CannotAdapt, IPunktacjaCacher, ISlot
+from ewaluacja_metryki.models import MetrykaAutora
+from ewaluacja_metryki.utils import przelicz_metryki_dla_publikacji
+
+from .forms import OptymalizacjaForm
+from .models import OptymalizacjaPublikacji
 
 
 class OptymalizujPublikacjeView(LoginRequiredMixin, View):
@@ -34,156 +33,46 @@ class OptymalizujPublikacjeView(LoginRequiredMixin, View):
             publikacja = get_object_or_404(Rekord, slug=slug)
             context["publikacja"] = publikacja
 
-            # Get all authors from the publication's autorzy_set (includes unpinned disciplines)
-            autorzy_data = []
+            # Build cache punktacja lookup
+            cache_punktacja_lookup = self._build_cache_punktacja_lookup(publikacja)
 
-            # Build cache punktacja lookup for efficiency
-            cache_punktacja_lookup = {}
-            for cpaq in Cache_Punktacja_Autora_Query.objects.filter(
-                rekord=publikacja
-            ).select_related("autor", "dyscyplina"):
-                key = (cpaq.autor_id, cpaq.dyscyplina_id)
-                cache_punktacja_lookup[key] = cpaq
-
-            # Get all author assignments with disciplines (pinned and unpinned)
+            # Process all author assignments
+            autorzy_data_dict = {}
             for autor_assignment in publikacja.original.autorzy_set.exclude(
                 dyscyplina_naukowa=None
             ):
-                autor = autor_assignment.autor
-                autor_dyscyplina = Autor_Dyscyplina.objects.get(
-                    autor=autor, rok=publikacja.original.rok
+                autor_info = self._process_autor_assignment(
+                    autor_assignment, publikacja, cache_punktacja_lookup
                 )
-                if not autor_dyscyplina.rodzaj_autora.licz_sloty:
+
+                if autor_info is None:
                     continue
 
+                # Group authors by discipline
                 dyscyplina = autor_assignment.dyscyplina_naukowa
-                przypieta = autor_assignment.przypieta
+                dyscyplina_key = (dyscyplina.id, dyscyplina.nazwa, dyscyplina.kod)
+                if dyscyplina_key not in autorzy_data_dict:
+                    autorzy_data_dict[dyscyplina_key] = []
+                autorzy_data_dict[dyscyplina_key].append(autor_info)
 
-                # Look up cache data if discipline is pinned
-                cache_key = (autor.id, dyscyplina.id)
-                cpaq = cache_punktacja_lookup.get(cache_key)
+            # Group and sort by discipline
+            autorzy_po_dyscyplinach = self._group_autorzy_by_discipline(
+                autorzy_data_dict
+            )
+            context["autorzy_po_dyscyplinach"] = autorzy_po_dyscyplinach
 
-                # Try to get MetrykaAutora ID - it might not exist yet
-                metryka_id = None
-                try:
-                    metryka_autor = MetrykaAutora.objects.get(autor_id=autor.id)
-                    metryka_id = metryka_autor.pk
-                except MetrykaAutora.DoesNotExist:
-                    # MetrykaAutora doesn't exist - metrics may be rebuilding or never built
-                    pass
-
-                autor_info = {
-                    "autor": autor,
-                    "dyscyplina": dyscyplina,
-                    "jednostka": autor_assignment.jednostka,
-                    "przypieta": przypieta,
-                    "rekord_id": publikacja.pk,
-                    "metryka_id": metryka_id,
-                    "autor_assignment_id": autor_assignment.pk,
-                    "metryka_missing": metryka_id is None,
-                }
-
-                # Only add points/slots data if discipline is pinned and cache exists
-                if przypieta and cpaq:
-                    autor_info.update(
-                        {
-                            "punkty": cpaq.pkdaut,
-                            "sloty": cpaq.slot,
-                            "cache_id": cpaq.pk,
-                            "jednostka_id": cpaq.jednostka_id,
-                            # Will be updated after we fetch MetrykaAutora
-                            "wybrana_do_ewaluacji": False,
-                        }
-                    )
-                else:
-                    # Calculate potential points for unpinned discipline
-                    potential_punkty = None
-                    potential_sloty = None
-
-                    if not przypieta:
-                        try:
-                            # Get the slot calculator for this publication
-                            slot_kalkulator = ISlot(publikacja.original)
-
-                            # Count authors with this discipline (as if it were pinned)
-                            authors_with_discipline = 0
-                            for wa in publikacja.original.autorzy_set.all():
-                                if (
-                                    wa.afiliuje
-                                    and wa.jednostka.skupia_pracownikow
-                                    and wa.dyscyplina_naukowa == dyscyplina
-                                    and wa.rodzaj_autora_uwzgledniany_w_kalkulacjach_slotow()
-                                ):
-                                    authors_with_discipline += 1
-
-                            if authors_with_discipline > 0:
-                                # Get PKD (points) for this discipline
-                                pkd = slot_kalkulator.punkty_pkd(dyscyplina)
-                                if pkd is not None:
-                                    # Calculate points per author (PKD / number of authors)
-                                    potential_punkty = Decimal(pkd) / Decimal(
-                                        authors_with_discipline
-                                    )
-                                    # Calculate slot per author (1 / number of authors)
-                                    potential_sloty = 1 / Decimal(
-                                        1
-                                        + len(
-                                            slot_kalkulator.autorzy_z_dyscypliny(
-                                                dyscyplina
-                                            )
-                                        )
-                                    )
-
-                                    if potential_sloty is None:
-                                        potential_sloty = Decimal("1") / Decimal(
-                                            authors_with_discipline + 1
-                                        )
-                        except CannotAdapt:
-                            # If we can't calculate, leave as None
-                            pass
-
-                    autor_info.update(
-                        {
-                            "punkty": potential_punkty,
-                            "sloty": potential_sloty,
-                            "cache_id": None,
-                            "jednostka_id": autor_assignment.jednostka_id,
-                            "wybrana_do_ewaluacji": False,
-                        }
-                    )
-
-                # Get MetrykaAutora data
-                try:
-                    metryka = MetrykaAutora.objects.get(
-                        autor=autor, dyscyplina_naukowa=dyscyplina
-                    )
-                    autor_info["metryka"] = {
-                        "punkty_nazbierane": metryka.punkty_nazbierane,
-                        "srednia_punktow": metryka.srednia_za_slot_nazbierana,
-                        "sloty_wypelnione": metryka.slot_nazbierany,
-                        "udzial_procentowy": metryka.procent_wykorzystania_slotow,
-                    }
-
-                    # Check if this publication is actually selected for evaluation
-                    # Update wybrana_do_ewaluacji based on whether this cache entry
-                    # is in the author's selected publications list
-                    if przypieta and cpaq and cpaq.pk in metryka.prace_nazbierane:
-                        autor_info["wybrana_do_ewaluacji"] = True
-
-                except MetrykaAutora.DoesNotExist:
-                    autor_info["metryka"] = None
-
-                autorzy_data.append(autor_info)
-
-            context["autorzy_data"] = autorzy_data
-
-            # Get publication points (punkty_pk)
+            # Get publication points
             context["total_punkty"] = publikacja.original.punkty_kbn or 0
 
-            # Calculate total slots only from actual cache entries (not potential)
+            # Calculate total slots from pinned assignments
+            all_autorzy = [
+                autor
+                for dyscyplina_group in autorzy_po_dyscyplinach
+                for autor in dyscyplina_group["autorzy"]
+            ]
             total_sloty = sum(
                 a["sloty"] or 0
-                for a in autorzy_data
+                for a in all_autorzy
                 if a["przypieta"] and a["sloty"] is not None
             )
             context["total_sloty"] = total_sloty
@@ -331,6 +220,165 @@ class OptymalizujPublikacjeView(LoginRequiredMixin, View):
             return self.get(request, slug=slug)
 
         return redirect("ewaluacja_optymalizuj_publikacje:optymalizuj", slug=slug)
+
+    def _build_cache_punktacja_lookup(self, publikacja):
+        """Build cache punktacja lookup dictionary for efficiency"""
+        cache_punktacja_lookup = {}
+        for cpaq in Cache_Punktacja_Autora_Query.objects.filter(
+            rekord=publikacja
+        ).select_related("autor", "dyscyplina"):
+            key = (cpaq.autor_id, cpaq.dyscyplina_id)
+            cache_punktacja_lookup[key] = cpaq
+        return cache_punktacja_lookup
+
+    def _calculate_potential_points_and_slots(self, publikacja, dyscyplina):
+        """Calculate potential points and slots for unpinned discipline"""
+        potential_punkty = None
+        potential_sloty = None
+
+        try:
+            slot_kalkulator = ISlot(publikacja.original)
+            authors_with_discipline = sum(
+                1
+                for wa in publikacja.original.autorzy_set.all()
+                if (
+                    wa.afiliuje
+                    and wa.jednostka.skupia_pracownikow
+                    and wa.dyscyplina_naukowa == dyscyplina
+                    and wa.rodzaj_autora_uwzgledniany_w_kalkulacjach_slotow()
+                )
+            )
+
+            if authors_with_discipline > 0:
+                pkd = slot_kalkulator.punkty_pkd(dyscyplina)
+                if pkd is not None:
+                    potential_punkty = Decimal(pkd) / Decimal(authors_with_discipline)
+                    autorzy_z_dyscypliny = slot_kalkulator.autorzy_z_dyscypliny(
+                        dyscyplina
+                    )
+                    potential_sloty = 1 / Decimal(1 + len(autorzy_z_dyscypliny))
+
+                    if potential_sloty is None:
+                        potential_sloty = Decimal("1") / Decimal(
+                            authors_with_discipline + 1
+                        )
+        except CannotAdapt:
+            pass
+
+        return potential_punkty, potential_sloty
+
+    def _get_metryka_data(self, autor, dyscyplina, przypieta, cpaq):
+        """Get MetrykaAutora data and check if publication is selected for evaluation"""
+        metryka_data = None
+        wybrana_do_ewaluacji = False
+
+        try:
+            metryka = MetrykaAutora.objects.get(
+                autor=autor, dyscyplina_naukowa=dyscyplina
+            )
+            metryka_data = {
+                "punkty_nazbierane": metryka.punkty_nazbierane,
+                "srednia_punktow": metryka.srednia_za_slot_nazbierana,
+                "sloty_wypelnione": metryka.slot_nazbierany,
+                "udzial_procentowy": metryka.procent_wykorzystania_slotow,
+            }
+
+            if przypieta and cpaq and cpaq.pk in metryka.prace_nazbierane:
+                wybrana_do_ewaluacji = True
+
+        except MetrykaAutora.DoesNotExist:
+            pass
+
+        return metryka_data, wybrana_do_ewaluacji
+
+    def _process_autor_assignment(
+        self, autor_assignment, publikacja, cache_punktacja_lookup
+    ):
+        """Process a single autor assignment and return autor info dict"""
+        autor = autor_assignment.autor
+        dyscyplina = autor_assignment.dyscyplina_naukowa
+        przypieta = autor_assignment.przypieta
+
+        # Get autor dyscyplina info
+        autor_dyscyplina = Autor_Dyscyplina.objects.select_related("rodzaj_autora").get(
+            autor=autor, rok=publikacja.original.rok
+        )
+
+        if not autor_dyscyplina.rodzaj_autora.licz_sloty:
+            return None
+
+        # Look up cache data if discipline is pinned
+        cache_key = (autor.id, dyscyplina.id)
+        cpaq = cache_punktacja_lookup.get(cache_key)
+
+        # Try to get MetrykaAutora ID
+        metryka_id = None
+        try:
+            metryka_autor = MetrykaAutora.objects.get(autor_id=autor.id)
+            metryka_id = metryka_autor.pk
+        except MetrykaAutora.DoesNotExist:
+            pass
+
+        autor_info = {
+            "autor": autor,
+            "dyscyplina": dyscyplina,
+            "jednostka": autor_assignment.jednostka,
+            "przypieta": przypieta,
+            "rekord_id": publikacja.pk,
+            "metryka_id": metryka_id,
+            "autor_assignment_id": autor_assignment.pk,
+            "metryka_missing": metryka_id is None,
+            "rodzaj_autora": autor_dyscyplina.rodzaj_autora,
+        }
+
+        # Add points/slots data based on whether discipline is pinned
+        if przypieta and cpaq:
+            autor_info.update(
+                {
+                    "punkty": cpaq.pkdaut,
+                    "sloty": cpaq.slot,
+                    "cache_id": cpaq.pk,
+                    "jednostka_id": cpaq.jednostka_id,
+                    "wybrana_do_ewaluacji": False,
+                }
+            )
+        else:
+            potential_punkty, potential_sloty = (
+                self._calculate_potential_points_and_slots(publikacja, dyscyplina)
+                if not przypieta
+                else (None, None)
+            )
+            autor_info.update(
+                {
+                    "punkty": potential_punkty,
+                    "sloty": potential_sloty,
+                    "cache_id": None,
+                    "jednostka_id": autor_assignment.jednostka_id,
+                    "wybrana_do_ewaluacji": False,
+                }
+            )
+
+        # Get MetrykaAutora data
+        metryka_data, wybrana_do_ewaluacji = self._get_metryka_data(
+            autor, dyscyplina, przypieta, cpaq
+        )
+        autor_info["metryka"] = metryka_data
+        if wybrana_do_ewaluacji:
+            autor_info["wybrana_do_ewaluacji"] = True
+
+        return autor_info
+
+    def _group_autorzy_by_discipline(self, autorzy_data_dict):
+        """Convert dict to list sorted by discipline name"""
+        return [
+            {
+                "dyscyplina": {"id": dyscyplina_id, "nazwa": nazwa, "kod": kod},
+                "autorzy": autorzy,
+            }
+            for (dyscyplina_id, nazwa, kod), autorzy in sorted(
+                autorzy_data_dict.items(), key=lambda x: x[0][1]
+            )
+        ]
 
 
 class HistoriaOptymalizacjiView(LoginRequiredMixin, View):

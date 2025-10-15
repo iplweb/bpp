@@ -35,25 +35,6 @@ class MetrykiListView(EwaluacjaRequiredMixin, ListView):
     context_object_name = "metryki"
     paginate_by = 50
 
-    def get_paginate_by(self, queryset):
-        """Wyłącz paginację dla widoków kółek, metryki i wykresów"""
-        widok = self.request.GET.get("widok", "tabela")
-        if widok in [
-            "kola",
-            "pkdaut",
-            "mapa_ciepla",
-            "mapa_ciepla_bloki",
-            "mapa_konturowa",
-            "wykres_babelkowy",
-            "kontury_z_punktami",
-            "efektywnosc_babelki",
-            "efektywnosc_mapa_ciepla",
-            "przestrzen_pasternaka",  # Wykres 3D: X=sloty, Y=punkty, Z=średni IF
-            "kosmos_bpp_3d",  # Wykres 3D: X=sloty, Y=punkty, Z=średni rok prac
-        ]:
-            return None  # Disable pagination for visualization views
-        return self.paginate_by
-
     def _apply_filters(self, queryset):
         """Apply all filter parameters from GET request to queryset."""
         # Filtrowanie po ID autora (dla przycisku "Kadruj")
@@ -155,42 +136,36 @@ class MetrykiListView(EwaluacjaRequiredMixin, ListView):
 
         return queryset
 
-    def _get_filtered_autor_context(self):
-        """Get filtered autor information if autor_id is in request."""
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        # Jeśli filtrujemy po ID autora, pobierz dane autora
         autor_id = self.request.GET.get("autor_id")
-        if not autor_id:
-            return {}
+        if autor_id:
+            from bpp.models import Autor
 
-        from bpp.models import Autor
-
-        try:
-            autor = Autor.objects.get(pk=autor_id)
-            return {"filtered_autor": autor}
-        except Autor.DoesNotExist:
-            return {}
-
-    def _get_jednostki_wydzialy_context(self):
-        """Get jednostki and wydzialy lists for filters."""
-        from bpp.models import Autor
-
-        context = {}
+            try:
+                autor = Autor.objects.get(pk=autor_id)
+                context["filtered_autor"] = autor
+            except Autor.DoesNotExist:
+                pass
 
         # Sprawdź czy uczelnia używa wydziałów
         uczelnia = Uczelnia.objects.get_default()
         context["uzywa_wydzialow"] = uczelnia.uzywaj_wydzialow if uczelnia else False
 
-        # Jeśli wydzial jest wybrany, filtruj jednostki tylko z tego wydziału
-        wydzial_id = self.request.GET.get("wydzial")
-        jednostki_queryset = Jednostka.objects.filter(
-            pk__in=Autor.objects.filter(metryki__isnull=False)
-            .values_list("aktualna_jednostka", flat=True)
+        # Listy do filtrów - jednostki na podstawie aktualnych jednostek autorów z metrykami
+        from bpp.models import Autor
+
+        context["jednostki"] = (
+            Jednostka.objects.filter(
+                pk__in=Autor.objects.filter(metryki__isnull=False)
+                .values_list("aktualna_jednostka", flat=True)
+                .distinct()
+            )
             .distinct()
-        ).distinct()
-
-        if wydzial_id:
-            jednostki_queryset = jednostki_queryset.filter(wydzial_id=wydzial_id)
-
-        context["jednostki"] = jednostki_queryset.order_by("nazwa")
+            .order_by("nazwa")
+        )
 
         if context["uzywa_wydzialow"]:
             # Buduj listę wydziałów na podstawie aktualnych jednostek autorów z metrykami
@@ -208,42 +183,37 @@ class MetrykiListView(EwaluacjaRequiredMixin, ListView):
         else:
             context["tylko_jeden_wydzial"] = False
 
-        return context
-
-    def _get_dyscypliny_context(self):
-        """Get dyscypliny list for filters."""
         from bpp.models import Dyscyplina_Naukowa
 
-        dyscypliny = (
+        context["dyscypliny"] = (
             Dyscyplina_Naukowa.objects.filter(metrykaautora__isnull=False)
             .distinct()
             .order_by("nazwa")
         )
 
-        return {
-            "dyscypliny": dyscypliny,
-            "tylko_jedna_dyscyplina": dyscypliny.count() == 1,
-        }
+        # Sprawdź czy jest tylko jedna dyscyplina
+        context["tylko_jedna_dyscyplina"] = context["dyscypliny"].count() == 1
 
-    def _get_statistics_context(self):
-        """Get statistics for current queryset."""
+        # Statystyki
         stats = self.get_queryset().aggregate(
             srednia_wykorzystania=Avg("procent_wykorzystania_slotow"),
             srednia_pkd_slot=Avg("srednia_za_slot_nazbierana"),
             liczba_wierszy=Count("id"),
             liczba_autorow=Count("autor", distinct=True),
         )
-        return {"statystyki": stats}
+        context["statystyki"] = stats
 
-    def _get_status_context(self):
-        """Get generation status and progress information."""
+        # Zachowaj parametry filtru
+        context["request"] = self.request
+
+        # Dodaj informację o ostatnim generowaniu
         status = StatusGenerowania.get_or_create()
-        context = {
-            "status_generowania": status,
-            "dostepne_rodzaje_autorow": Rodzaj_Autora.objects.filter(
-                licz_sloty=True
-            ).order_by("sort"),
-        }
+        context["status_generowania"] = status
+
+        # Dodaj dostępne rodzaje autorów (tylko te z licz_sloty=True)
+        context["dostepne_rodzaje_autorow"] = Rodzaj_Autora.objects.filter(
+            licz_sloty=True
+        ).order_by("sort")
 
         # Oblicz procent postępu
         if status.w_trakcie and status.liczba_do_przetworzenia > 0:
@@ -255,102 +225,11 @@ class MetrykiListView(EwaluacjaRequiredMixin, ListView):
 
         return context
 
-    def _calculate_3d_metrics(self, metryki, widok):
-        """Calculate average IF and average year for 3D visualizations."""
-        if widok not in ["przestrzen_pasternaka", "kosmos_bpp_3d"]:
-            return
-
-        from bpp.models.cache import Cache_Punktacja_Autora_Query
-
-        # Iterate through all metryki and calculate average IF and average year
-        for metryka in metryki:
-            # Get all works for this author/discipline
-            if metryka.prace_nazbierane:
-                prace = Cache_Punktacja_Autora_Query.objects.filter(
-                    pk__in=metryka.prace_nazbierane
-                ).select_related("rekord")
-
-                # Calculate average Impact Factor
-                impact_factors = []
-                years = []
-                for praca in prace:
-                    years.append(praca.rekord.rok)
-                    try:
-                        if hasattr(praca.rekord, "original") and hasattr(
-                            praca.rekord.original, "impact_factor"
-                        ):
-                            if praca.rekord.original.impact_factor:
-                                impact_factors.append(
-                                    float(praca.rekord.original.impact_factor)
-                                )
-                    except (AttributeError, ValueError, TypeError):
-                        pass
-
-                # Set average IF (or 0 if no IF data)
-                metryka.sredni_if = (
-                    sum(impact_factors) / len(impact_factors) if impact_factors else 0.0
-                )
-
-                # Set average year
-                metryka.sredni_rok = (
-                    sum(years) / len(years) if years else metryka.rok_min
-                )
-            else:
-                metryka.sredni_if = 0.0
-                metryka.sredni_rok = metryka.rok_min
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-
-        # Set default widok to "tabela" if not provided
-        context["widok"] = self.request.GET.get("widok", "tabela")
-
-        # Zachowaj parametry filtru
-        context["request"] = self.request
-
-        # Update context with data from helper methods
-        context.update(self._get_filtered_autor_context())
-        context.update(self._get_jednostki_wydzialy_context())
-        context.update(self._get_dyscypliny_context())
-        context.update(self._get_statistics_context())
-        context.update(self._get_status_context())
-
-        # Calculate 3D metrics if needed
-        self._calculate_3d_metrics(context.get("metryki", []), context["widok"])
-
-        return context
-
 
 class MetrykaDetailView(EwaluacjaRequiredMixin, DetailView):
     model = MetrykaAutora
     template_name = "ewaluacja_metryki/szczegoly.html"
     context_object_name = "metryka"
-
-    def get_object(self, queryset=None):
-        """Override get_object to lookup by autor slug and dyscyplina kod"""
-        if queryset is None:
-            queryset = self.get_queryset()
-
-        autor_slug = self.kwargs.get("autor_slug")
-        dyscyplina_kod = self.kwargs.get("dyscyplina_kod")
-
-        if not autor_slug or not dyscyplina_kod:
-            from django.http import Http404
-
-            raise Http404("Autor slug and dyscyplina kod are required")
-
-        try:
-            obj = queryset.get(
-                autor__slug=autor_slug, dyscyplina_naukowa__kod=dyscyplina_kod
-            )
-        except self.model.DoesNotExist as err:
-            from django.http import Http404
-
-            raise Http404(
-                f"MetrykaAutora for autor '{autor_slug}' and dyscyplina '{dyscyplina_kod}' not found"
-            ) from err
-
-        return obj
 
     def _get_discipline_years_context(self, metryka):
         """Get discipline years and calculate averages."""
@@ -431,70 +310,6 @@ class MetrykaDetailView(EwaluacjaRequiredMixin, DetailView):
         context["liczba_prac_nazbierane"] = (
             len(metryka.prace_nazbierane) if metryka.prace_nazbierane else 0
         )
-
-        return context
-
-    def _get_chart_data_context(self, metryka):
-        """Prepare data for visualization charts."""
-        import json
-        from collections import defaultdict
-
-        from bpp.models.cache import Cache_Punktacja_Autora_Query
-
-        context = {}
-
-        # Pobierz wszystkie prace (nazbierane i nie nazbierane) z latami
-        if metryka.prace_wszystkie:
-            prace_wszystkie = (
-                Cache_Punktacja_Autora_Query.objects.filter(
-                    pk__in=metryka.prace_wszystkie
-                )
-                .select_related("rekord")
-                .order_by("rekord__rok", "-pkdaut")
-            )
-
-            # Przygotuj dane dla wykresów
-            chart_data = []
-            year_aggregates = defaultdict(
-                lambda: {"punkty": 0, "sloty": 0, "liczba": 0}
-            )
-
-            for praca in prace_wszystkie:
-                rok = praca.rekord.rok
-                pkdaut = float(praca.pkdaut or 0)
-                slot = float(praca.slot or 0)
-                is_nazbierana = praca.pk in (metryka.prace_nazbierane or [])
-
-                # Get Impact Factor from original publication if available
-                impact_factor = 0.0
-                try:
-                    if hasattr(praca.rekord, "original") and hasattr(
-                        praca.rekord.original, "impact_factor"
-                    ):
-                        if praca.rekord.original.impact_factor:
-                            impact_factor = float(praca.rekord.original.impact_factor)
-                except (AttributeError, ValueError, TypeError):
-                    pass
-
-                chart_data.append(
-                    {
-                        "rok": rok,
-                        "pkdaut": pkdaut,
-                        "slot": slot,
-                        "tytul": str(praca.rekord.tytul_oryginalny or ""),
-                        "is_nazbierana": is_nazbierana,
-                        "impact_factor": impact_factor,
-                    }
-                )
-
-                year_aggregates[rok]["punkty"] += pkdaut
-                year_aggregates[rok]["sloty"] += slot
-                year_aggregates[rok]["liczba"] += 1
-
-            # Serializuj do JSON
-            context["chart_data_json"] = json.dumps(chart_data)
-            context["year_aggregates_json"] = json.dumps(dict(year_aggregates))
-            context["chart_data"] = chart_data  # Keep for template conditional
 
         return context
 
@@ -647,7 +462,6 @@ class MetrykaDetailView(EwaluacjaRequiredMixin, DetailView):
         context.update(self._get_all_works_context(metryka))
         context.update(self._get_unpinned_works_context(metryka))
         context.update(self._get_position_context(metryka))
-        context.update(self._get_chart_data_context(metryka))
 
         return context
 
@@ -707,11 +521,7 @@ class PrzypnijDyscyplineView(EwaluacjaRequiredMixin, View):
         ).first()
 
         if metryka:
-            return redirect(
-                "ewaluacja_metryki:szczegoly",
-                autor_slug=metryka.autor.slug,
-                dyscyplina_kod=metryka.dyscyplina_naukowa.kod,
-            )
+            return redirect("ewaluacja_metryki:szczegoly", pk=metryka.pk)
         return redirect("ewaluacja_metryki:lista")
 
 
@@ -770,11 +580,7 @@ class OdepnijDyscyplineView(EwaluacjaRequiredMixin, View):
         ).first()
 
         if metryka:
-            return redirect(
-                "ewaluacja_metryki:szczegoly",
-                autor_slug=metryka.autor.slug,
-                dyscyplina_kod=metryka.dyscyplina_naukowa.kod,
-            )
+            return redirect("ewaluacja_metryki:szczegoly", pk=metryka.pk)
         return redirect("ewaluacja_metryki:lista")
 
 
@@ -836,7 +642,7 @@ class StatystykiView(EwaluacjaRequiredMixin, ListView):
         # Autorzy zerowi z latami
         from bpp.models import Autor_Dyscyplina
 
-        autorzy_zerowi_raw = (
+        autorzy_zerowi = (
             MetrykaAutora.objects.select_related(
                 "autor", "dyscyplina_naukowa", "jednostka"
             )
@@ -845,28 +651,20 @@ class StatystykiView(EwaluacjaRequiredMixin, ListView):
         )
 
         # Dodaj informację o latach dla każdego autora zerowego
-        # TYLKO dla lat gdzie rodzaj_autora.jest_w_n = True
-        autorzy_zerowi = []
-        for metryka in autorzy_zerowi_raw:
+        for metryka in autorzy_zerowi:
             # Pobierz lata, w których autor był przypisany do dyscypliny
-            # TYLKO dla rodzajów autorów z jest_w_n = True
             lata_dyscypliny = (
                 Autor_Dyscyplina.objects.filter(
                     autor=metryka.autor,
                     dyscyplina_naukowa=metryka.dyscyplina_naukowa,
                     rok__gte=metryka.rok_min,
                     rok__lte=metryka.rok_max,
-                    rodzaj_autora__jest_w_n=True,
                 )
                 .values_list("rok", flat=True)
                 .order_by("rok")
             )
 
-            lata_list = list(lata_dyscypliny)
-            # Dodaj do listy tylko jeśli autor ma przynajmniej jeden rok z jest_w_n=True
-            if lata_list:
-                metryka.lata_zerowe = lata_list
-                autorzy_zerowi.append(metryka)
+            metryka.lata_zerowe = list(lata_dyscypliny)
 
         context["autorzy_zerowi"] = autorzy_zerowi
 
@@ -1114,9 +912,7 @@ class ExportStatystykiXLSX(View):
         ws = wb.active
 
         header_font = Font(bold=True, color="FFFFFF")
-        header_fill = PatternFill(
-            start_color="366092", end_color="366092", fill_type="solid"
-        )
+        header_fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
         header_alignment = Alignment(horizontal="center", vertical="center")
         thin_border = Border(
             left=Side(style="thin"),
@@ -1187,14 +983,575 @@ class ExportStatystykiXLSX(View):
         auto_adjust_column_widths(ws)
 
         return self._create_response(wb, table_type)
+#        import datetime
+#
+#        from django.http import HttpResponse
+#        from openpyxl import Workbook
+#        from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+#        from openpyxl.utils import get_column_letter
+#
+#        # Create workbook
+#        wb = Workbook()
+#        ws = wb.active
+#
+#        # Define header style
+#        header_font = Font(bold=True, color="FFFFFF")
+#        header_fill = PatternFill(
+#            start_color="366092", end_color="366092", fill_type="solid"
+#        )
+#        header_alignment = Alignment(horizontal="center", vertical="center")
+#
+#        # Define border styles
+#        thin_border = Border(
+#            left=Side(style="thin"),
+#            right=Side(style="thin"),
+#            top=Side(style="thin"),
+#            bottom=Side(style="thin"),
+#        )
+#
+#        if table_type == "globalne":
+            ws.title = "Statystyki globalne"
+            # Get statistics
+            wszystkie = MetrykaAutora.objects.all()
+            stats = wszystkie.aggregate(
+                liczba_wierszy=Count("id"),
+                liczba_autorow=Count("autor", distinct=True),
+                srednia_wykorzystania=Avg("procent_wykorzystania_slotow"),
+                srednia_pkd_slot=Avg("srednia_za_slot_nazbierana"),
+                suma_punktow=Sum("punkty_nazbierane"),
+                suma_slotow=Sum("slot_nazbierany"),
+            )
+
+            # Headers
+            headers = ["Metryka", "Wartość"]
+            for col, header in enumerate(headers, 1):
+                cell = ws.cell(row=1, column=col, value=header)
+                cell.font = header_font
+                cell.fill = header_fill
+                cell.alignment = header_alignment
+
+            # Data
+            data = [
+                ("Liczba wierszy", stats["liczba_wierszy"] or 0),
+                ("Liczba autorów", stats["liczba_autorow"] or 0),
+                (
+                    "Średnie wykorzystanie slotów (%)",
+                    f"{stats['srednia_wykorzystania'] or 0:.1f}",
+                ),
+                ("Średnia PKDaut/slot", f"{stats['srednia_pkd_slot'] or 0:.2f}"),
+                ("Suma punktów", f"{stats['suma_punktow'] or 0:.0f}"),
+                ("Suma slotów", f"{stats['suma_slotow'] or 0:.0f}"),
+            ]
+
+            for row_idx, (label, value) in enumerate(data, 2):
+                ws.cell(row=row_idx, column=1, value=label)
+                ws.cell(row=row_idx, column=2, value=value)
+
+        elif table_type == "top-autorzy":
+            ws.title = "Top 20 autorów PKDaut-slot"
+            queryset = MetrykaAutora.objects.select_related(
+                "autor", "dyscyplina_naukowa", "jednostka"
+            ).order_by("-srednia_za_slot_nazbierana")[:20]
+
+            headers = [
+                "Lp.",
+                "Autor",
+                "ID systemu kadrowego",
+                "ORCID",
+                "PBN UID ID",
+                "Jednostka",
+                "Dyscyplina",
+                "Sloty wypełnione",
+                "% wykorzystania",
+                "PKDaut/slot",
+            ]
+            for col, header in enumerate(headers, 1):
+                cell = ws.cell(row=1, column=col, value=header)
+                cell.font = header_font
+                cell.fill = header_fill
+                cell.alignment = header_alignment
+                cell.border = thin_border
+
+            last_data_row = 1
+            for row_idx, metryka in enumerate(queryset, 2):
+                last_data_row = row_idx
+                ws.cell(row=row_idx, column=1, value=row_idx - 1)
+                ws.cell(row=row_idx, column=2, value=str(metryka.autor))
+                ws.cell(
+                    row=row_idx, column=3, value=metryka.autor.system_kadrowy_id or ""
+                )
+                ws.cell(row=row_idx, column=4, value=metryka.autor.orcid or "")
+                ws.cell(row=row_idx, column=5, value=metryka.autor.pbn_uid_id or "")
+                ws.cell(
+                    row=row_idx,
+                    column=6,
+                    value=metryka.jednostka.nazwa if metryka.jednostka else "-",
+                )
+                ws.cell(
+                    row=row_idx,
+                    column=7,
+                    value=(
+                        metryka.dyscyplina_naukowa.nazwa
+                        if metryka.dyscyplina_naukowa
+                        else "-"
+                    ),
+                )
+                ws.cell(row=row_idx, column=8, value=float(metryka.slot_nazbierany))
+                ws.cell(
+                    row=row_idx,
+                    column=9,
+                    value=float(metryka.procent_wykorzystania_slotow),
+                )
+                ws.cell(
+                    row=row_idx,
+                    column=10,
+                    value=float(metryka.srednia_za_slot_nazbierana),
+                )
+
+            # Add AutoFilter and freeze panes for this table
+            if last_data_row > 1:
+                last_col_letter = get_column_letter(len(headers))
+                filter_range = f"A1:{last_col_letter}{last_data_row}"
+                ws.auto_filter.ref = filter_range
+            ws.freeze_panes = ws["A2"]
+
+        elif table_type == "top-sloty":
+            ws.title = "Top 20 autorów sloty wypełnione"
+            queryset = (
+                MetrykaAutora.objects.select_related(
+                    "autor", "dyscyplina_naukowa", "jednostka"
+                )
+                .filter(slot_nazbierany__gt=0)
+                .order_by("-slot_nazbierany", "-srednia_za_slot_nazbierana")[:20]
+            )
+
+            headers = [
+                "Lp.",
+                "Autor",
+                "ID systemu kadrowego",
+                "ORCID",
+                "PBN UID ID",
+                "Jednostka",
+                "Dyscyplina",
+                "Sloty wypełnione",
+                "% wykorzystania",
+                "PKDaut/slot",
+            ]
+            for col, header in enumerate(headers, 1):
+                cell = ws.cell(row=1, column=col, value=header)
+                cell.font = header_font
+                cell.fill = header_fill
+                cell.alignment = header_alignment
+
+            for row_idx, metryka in enumerate(queryset, 2):
+                ws.cell(row=row_idx, column=1, value=row_idx - 1)
+                ws.cell(row=row_idx, column=2, value=str(metryka.autor))
+                ws.cell(
+                    row=row_idx, column=3, value=metryka.autor.system_kadrowy_id or ""
+                )
+                ws.cell(row=row_idx, column=4, value=metryka.autor.orcid or "")
+                ws.cell(row=row_idx, column=5, value=metryka.autor.pbn_uid_id or "")
+                ws.cell(
+                    row=row_idx,
+                    column=6,
+                    value=metryka.jednostka.nazwa if metryka.jednostka else "-",
+                )
+                ws.cell(
+                    row=row_idx,
+                    column=7,
+                    value=(
+                        metryka.dyscyplina_naukowa.nazwa
+                        if metryka.dyscyplina_naukowa
+                        else "-"
+                    ),
+                )
+                ws.cell(row=row_idx, column=8, value=float(metryka.slot_nazbierany))
+                ws.cell(
+                    row=row_idx,
+                    column=9,
+                    value=float(metryka.procent_wykorzystania_slotow),
+                )
+                ws.cell(
+                    row=row_idx,
+                    column=10,
+                    value=float(metryka.srednia_za_slot_nazbierana),
+                )
+
+        elif table_type == "bottom-pkd":
+            ws.title = "Najniższe 20 PKDaut-slot"
+            queryset = (
+                MetrykaAutora.objects.select_related(
+                    "autor", "dyscyplina_naukowa", "jednostka"
+                )
+                .filter(srednia_za_slot_nazbierana__gt=0)
+                .order_by("srednia_za_slot_nazbierana")[:20]
+            )
+
+            headers = [
+                "Lp.",
+                "Autor",
+                "ID systemu kadrowego",
+                "ORCID",
+                "PBN UID ID",
+                "Jednostka",
+                "Dyscyplina",
+                "Sloty wypełnione",
+                "% wykorzystania",
+                "PKDaut/slot",
+            ]
+            for col, header in enumerate(headers, 1):
+                cell = ws.cell(row=1, column=col, value=header)
+                cell.font = header_font
+                cell.fill = header_fill
+                cell.alignment = header_alignment
+
+            for row_idx, metryka in enumerate(queryset, 2):
+                ws.cell(row=row_idx, column=1, value=row_idx - 1)
+                ws.cell(row=row_idx, column=2, value=str(metryka.autor))
+                ws.cell(
+                    row=row_idx, column=3, value=metryka.autor.system_kadrowy_id or ""
+                )
+                ws.cell(row=row_idx, column=4, value=metryka.autor.orcid or "")
+                ws.cell(row=row_idx, column=5, value=metryka.autor.pbn_uid_id or "")
+                ws.cell(
+                    row=row_idx,
+                    column=6,
+                    value=metryka.jednostka.nazwa if metryka.jednostka else "-",
+                )
+                ws.cell(
+                    row=row_idx,
+                    column=7,
+                    value=(
+                        metryka.dyscyplina_naukowa.nazwa
+                        if metryka.dyscyplina_naukowa
+                        else "-"
+                    ),
+                )
+                ws.cell(row=row_idx, column=8, value=float(metryka.slot_nazbierany))
+                ws.cell(
+                    row=row_idx,
+                    column=9,
+                    value=float(metryka.procent_wykorzystania_slotow),
+                )
+                ws.cell(
+                    row=row_idx,
+                    column=10,
+                    value=float(metryka.srednia_za_slot_nazbierana),
+                )
+
+        elif table_type == "bottom-sloty":
+            ws.title = "Najniższe 20 sloty wypełnione"
+            queryset = (
+                MetrykaAutora.objects.select_related(
+                    "autor", "dyscyplina_naukowa", "jednostka"
+                )
+                .filter(slot_nazbierany__gt=0)
+                .order_by("slot_nazbierany")[:20]
+            )
+
+            headers = [
+                "Lp.",
+                "Autor",
+                "ID systemu kadrowego",
+                "ORCID",
+                "PBN UID ID",
+                "Jednostka",
+                "Dyscyplina",
+                "Sloty wypełnione",
+                "% wykorzystania",
+                "PKDaut/slot",
+            ]
+            for col, header in enumerate(headers, 1):
+                cell = ws.cell(row=1, column=col, value=header)
+                cell.font = header_font
+                cell.fill = header_fill
+                cell.alignment = header_alignment
+
+            for row_idx, metryka in enumerate(queryset, 2):
+                ws.cell(row=row_idx, column=1, value=row_idx - 1)
+                ws.cell(row=row_idx, column=2, value=str(metryka.autor))
+                ws.cell(
+                    row=row_idx, column=3, value=metryka.autor.system_kadrowy_id or ""
+                )
+                ws.cell(row=row_idx, column=4, value=metryka.autor.orcid or "")
+                ws.cell(row=row_idx, column=5, value=metryka.autor.pbn_uid_id or "")
+                ws.cell(
+                    row=row_idx,
+                    column=6,
+                    value=metryka.jednostka.nazwa if metryka.jednostka else "-",
+                )
+                ws.cell(
+                    row=row_idx,
+                    column=7,
+                    value=(
+                        metryka.dyscyplina_naukowa.nazwa
+                        if metryka.dyscyplina_naukowa
+                        else "-"
+                    ),
+                )
+                ws.cell(row=row_idx, column=8, value=float(metryka.slot_nazbierany))
+                ws.cell(
+                    row=row_idx,
+                    column=9,
+                    value=float(metryka.procent_wykorzystania_slotow),
+                )
+                ws.cell(
+                    row=row_idx,
+                    column=10,
+                    value=float(metryka.srednia_za_slot_nazbierana),
+                )
+
+        elif table_type == "zerowi":
+            ws.title = "Autorzy zerowi"
+
+            from bpp.models import Autor_Dyscyplina
+
+            queryset = (
+                MetrykaAutora.objects.select_related(
+                    "autor", "dyscyplina_naukowa", "jednostka"
+                )
+                .filter(srednia_za_slot_nazbierana=0)
+                .order_by("autor__nazwisko", "autor__imiona")
+            )
+
+            headers = [
+                "Lp.",
+                "Autor",
+                "ID systemu kadrowego",
+                "ORCID",
+                "PBN UID ID",
+                "Jednostka",
+                "Dyscyplina",
+                "Lata",
+            ]
+            for col, header in enumerate(headers, 1):
+                cell = ws.cell(row=1, column=col, value=header)
+                cell.font = header_font
+                cell.fill = header_fill
+                cell.alignment = header_alignment
+
+            for row_idx, metryka in enumerate(queryset, 2):
+                ws.cell(row=row_idx, column=1, value=row_idx - 1)
+                ws.cell(row=row_idx, column=2, value=str(metryka.autor))
+                ws.cell(
+                    row=row_idx, column=3, value=metryka.autor.system_kadrowy_id or ""
+                )
+                ws.cell(row=row_idx, column=4, value=metryka.autor.orcid or "")
+                ws.cell(row=row_idx, column=5, value=metryka.autor.pbn_uid_id or "")
+                ws.cell(
+                    row=row_idx,
+                    column=6,
+                    value=metryka.jednostka.nazwa if metryka.jednostka else "-",
+                )
+                ws.cell(
+                    row=row_idx,
+                    column=7,
+                    value=(
+                        metryka.dyscyplina_naukowa.nazwa
+                        if metryka.dyscyplina_naukowa
+                        else "-"
+                    ),
+                )
+
+                # Pobierz lata, w których autor był przypisany do dyscypliny
+                lata_dyscypliny = (
+                    Autor_Dyscyplina.objects.filter(
+                        autor=metryka.autor,
+                        dyscyplina_naukowa=metryka.dyscyplina_naukowa,
+                        rok__gte=metryka.rok_min,
+                        rok__lte=metryka.rok_max,
+                    )
+                    .values_list("rok", flat=True)
+                    .order_by("rok")
+                )
+
+                if lata_dyscypliny:
+                    lata_str = ", ".join(str(rok) for rok in lata_dyscypliny)
+                else:
+                    lata_str = f"{metryka.rok_min}-{metryka.rok_max}"
+
+                ws.cell(row=row_idx, column=8, value=lata_str)
+
+        elif table_type == "jednostki":
+            ws.title = "Statystyki jednostek"
+            stats = (
+                MetrykaAutora.objects.values("jednostka__nazwa", "jednostka__skrot")
+                .annotate(
+                    liczba_autorow=Count("id"),
+                    srednia_wykorzystania=Avg("procent_wykorzystania_slotow"),
+                    srednia_pkd_slot=Avg("srednia_za_slot_nazbierana"),
+                    suma_punktow=Sum("punkty_nazbierane"),
+                )
+                .order_by("-srednia_pkd_slot")[:10]
+            )
+
+            headers = [
+                "Jednostka",
+                "Liczba autorów",
+                "Śr. wykorzystanie (%)",
+                "Śr. PKDaut/slot",
+                "Suma punktów",
+            ]
+            for col, header in enumerate(headers, 1):
+                cell = ws.cell(row=1, column=col, value=header)
+                cell.font = header_font
+                cell.fill = header_fill
+                cell.alignment = header_alignment
+
+            for row_idx, stat in enumerate(stats, 2):
+                nazwa = stat["jednostka__nazwa"] or "-"
+                if stat["jednostka__skrot"]:
+                    nazwa = f"{nazwa} ({stat['jednostka__skrot']})"
+                ws.cell(row=row_idx, column=1, value=nazwa)
+                ws.cell(row=row_idx, column=2, value=stat["liczba_autorow"])
+                ws.cell(
+                    row=row_idx,
+                    column=3,
+                    value=f"{stat['srednia_wykorzystania'] or 0:.1f}",
+                )
+                ws.cell(
+                    row=row_idx, column=4, value=f"{stat['srednia_pkd_slot'] or 0:.2f}"
+                )
+                ws.cell(row=row_idx, column=5, value=f"{stat['suma_punktow'] or 0:.0f}")
+
+        elif table_type == "dyscypliny":
+            ws.title = "Statystyki dyscyplin"
+            stats = (
+                MetrykaAutora.objects.values(
+                    "dyscyplina_naukowa__nazwa", "dyscyplina_naukowa__kod"
+                )
+                .annotate(
+                    liczba_autorow=Count("id"),
+                    srednia_wykorzystania=Avg("procent_wykorzystania_slotow"),
+                    srednia_pkd_slot=Avg("srednia_za_slot_nazbierana"),
+                    suma_punktow=Sum("punkty_nazbierane"),
+                )
+                .order_by("-srednia_pkd_slot")
+            )
+
+            headers = [
+                "Dyscyplina",
+                "Kod",
+                "Liczba autorów",
+                "Śr. wykorzystanie (%)",
+                "Śr. PKDaut/slot",
+                "Suma punktów",
+            ]
+            for col, header in enumerate(headers, 1):
+                cell = ws.cell(row=1, column=col, value=header)
+                cell.font = header_font
+                cell.fill = header_fill
+                cell.alignment = header_alignment
+
+            for row_idx, stat in enumerate(stats, 2):
+                ws.cell(
+                    row=row_idx,
+                    column=1,
+                    value=stat["dyscyplina_naukowa__nazwa"] or "-",
+                )
+                ws.cell(
+                    row=row_idx, column=2, value=stat["dyscyplina_naukowa__kod"] or "-"
+                )
+                ws.cell(row=row_idx, column=3, value=stat["liczba_autorow"])
+                ws.cell(
+                    row=row_idx,
+                    column=4,
+                    value=f"{stat['srednia_wykorzystania'] or 0:.1f}",
+                )
+                ws.cell(
+                    row=row_idx, column=5, value=f"{stat['srednia_pkd_slot'] or 0:.2f}"
+                )
+                ws.cell(row=row_idx, column=6, value=f"{stat['suma_punktow'] or 0:.0f}")
+
+        elif table_type == "wykorzystanie":
+            ws.title = "Rozkład wykorzystania slotów"
+            wszystkie = MetrykaAutora.objects.all()
+
+            headers = ["Przedział", "Liczba wierszy", "Procent"]
+            for col, header in enumerate(headers, 1):
+                cell = ws.cell(row=1, column=col, value=header)
+                cell.font = header_font
+                cell.fill = header_fill
+                cell.alignment = header_alignment
+
+            total = wszystkie.count()
+            ranges = [
+                (
+                    "0-25%",
+                    wszystkie.filter(procent_wykorzystania_slotow__lt=25).count(),
+                ),
+                (
+                    "25-50%",
+                    wszystkie.filter(
+                        procent_wykorzystania_slotow__gte=25,
+                        procent_wykorzystania_slotow__lt=50,
+                    ).count(),
+                ),
+                (
+                    "50-75%",
+                    wszystkie.filter(
+                        procent_wykorzystania_slotow__gte=50,
+                        procent_wykorzystania_slotow__lt=75,
+                    ).count(),
+                ),
+                (
+                    "75-99%",
+                    wszystkie.filter(
+                        procent_wykorzystania_slotow__gte=75,
+                        procent_wykorzystania_slotow__lt=99,
+                    ).count(),
+                ),
+                (
+                    "99-100%",
+                    wszystkie.filter(procent_wykorzystania_slotow__gte=99).count(),
+                ),
+            ]
+
+            for row_idx, (range_name, count) in enumerate(ranges, 2):
+                ws.cell(row=row_idx, column=1, value=range_name)
+                ws.cell(row=row_idx, column=2, value=count)
+                ws.cell(
+                    row=row_idx,
+                    column=3,
+                    value=f"{(count / total * 100) if total > 0 else 0:.1f}%",
+                )
+
+        else:
+            return HttpResponse("Nieznany typ tabeli", status=400)
+
+        # Auto-adjust column widths
+        for column in ws.columns:
+            max_length = 0
+            column_letter = get_column_letter(column[0].column)
+            for cell in column:
+                try:
+                    if len(str(cell.value)) > max_length:
+                        max_length = len(str(cell.value))
+                except BaseException:
+                    pass
+            adjusted_width = min(max_length + 2, 50)
+            ws.column_dimensions[column_letter].width = adjusted_width
+
+        # Prepare response
+        response = HttpResponse(
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+        filename = f"metryki_statystyki_{table_type}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+
+        wb.save(response)
+        return response
 
 
 @method_decorator(user_passes_test(ma_uprawnienia_ewaluacji), name="dispatch")
 class ExportListaXLSX(View):
     """Export the main metrics list to XLSX format with filters applied"""
 
-    def _setup_workbook_styles(self):
-        """Setup workbook, worksheet and define all styles."""
+    def get(self, request):
+        import datetime
+
+        from django.db.models import Count, OuterRef, Subquery
+        from django.http import HttpResponse
         from openpyxl import Workbook
         from openpyxl.styles import (
             Alignment,
@@ -1204,7 +1561,9 @@ class ExportListaXLSX(View):
             PatternFill,
             Side,
         )
+        from openpyxl.utils import get_column_letter
 
+        # Create workbook
         wb = Workbook()
         ws = wb.active
         ws.title = "Metryki ewaluacyjne"
@@ -1218,6 +1577,7 @@ class ExportListaXLSX(View):
             horizontal="center", vertical="center", wrap_text=True
         )
 
+        # Define border styles
         thin_border = Border(
             left=Side(style="thin"),
             right=Side(style="thin"),
@@ -1225,17 +1585,19 @@ class ExportListaXLSX(View):
             bottom=Side(style="thin"),
         )
 
+        # Define alternating row colors
         even_row_fill = PatternFill(
             start_color="F2F2F2", end_color="F2F2F2", fill_type="solid"
         )
 
-        # Create named styles for numbers
+        # Create named styles for different number formats
         try:
             percent_style = NamedStyle(name="percent_style")
             percent_style.number_format = "0.00%"
             percent_style.alignment = Alignment(horizontal="right")
             wb.add_named_style(percent_style)
         except ValueError:
+            # Style already exists
             percent_style = "percent_style"
 
         try:
@@ -1244,22 +1606,25 @@ class ExportListaXLSX(View):
             decimal_style.alignment = Alignment(horizontal="right")
             wb.add_named_style(decimal_style)
         except ValueError:
+            # Style already exists
             decimal_style = "decimal_style"
 
-        return {
-            "wb": wb,
-            "ws": ws,
-            "header_font": header_font,
-            "header_fill": header_fill,
-            "header_alignment": header_alignment,
-            "thin_border": thin_border,
-            "even_row_fill": even_row_fill,
-            "percent_style": percent_style,
-            "decimal_style": decimal_style,
-        }
+        # Apply the same filters as in the list view
+        # Subquery to count disciplines for each author
+        discipline_count = (
+            MetrykaAutora.objects.filter(autor=OuterRef("autor"))
+            .values("autor")
+            .annotate(count=Count("dyscyplina_naukowa"))
+            .values("count")
+        )
 
-    def _apply_filters_to_queryset(self, queryset, request):
-        """Apply all filters from request to queryset."""
+        queryset = MetrykaAutora.objects.select_related(
+            "autor", "dyscyplina_naukowa", "jednostka", "jednostka__wydzial"
+        ).annotate(
+            autor_discipline_count=Subquery(discipline_count),
+        )
+
+        # Apply filters from request
         autor_id = request.GET.get("autor_id")
         if autor_id:
             queryset = queryset.filter(autor_id=autor_id)
@@ -1283,65 +1648,54 @@ class ExportListaXLSX(View):
         if dyscyplina_id:
             queryset = queryset.filter(dyscyplina_naukowa_id=dyscyplina_id)
 
+        # Filtrowanie po rodzaju autora
         rodzaj_autora = request.GET.get("rodzaj_autora")
         if rodzaj_autora and rodzaj_autora != "":
             queryset = queryset.filter(rodzaj_autora=rodzaj_autora)
 
-        return queryset
-
-    def _apply_sorting_to_queryset(self, queryset, request):
-        """Apply sorting to queryset based on request parameter."""
+        # Apply sorting
         sort = request.GET.get("sort", "-srednia_za_slot_nazbierana")
-        sort_mapping = {
-            "procent_wykorzystania_slotow": (
-                "procent_wykorzystania_slotow",
-                "srednia_za_slot_nazbierana",
-            ),
-            "-procent_wykorzystania_slotow": (
-                "-procent_wykorzystania_slotow",
-                "-srednia_za_slot_nazbierana",
-            ),
-            "srednia_za_slot_nazbierana": (
-                "srednia_za_slot_nazbierana",
-                "procent_wykorzystania_slotow",
-            ),
-            "-srednia_za_slot_nazbierana": (
-                "-srednia_za_slot_nazbierana",
-                "-procent_wykorzystania_slotow",
-            ),
-        }
-
-        allowed_sorts = list(sort_mapping.keys()) + [
+        if sort in [
+            "srednia_za_slot_nazbierana",
+            "-srednia_za_slot_nazbierana",
+            "procent_wykorzystania_slotow",
+            "-procent_wykorzystania_slotow",
             "autor__nazwisko",
             "-autor__nazwisko",
-        ]
+        ]:
+            # Gdy sortujemy po wykorzystaniu slotów, jako drugi parametr sortuj po PKDaut/slot
+            if sort == "procent_wykorzystania_slotow":
+                queryset = queryset.order_by(
+                    "procent_wykorzystania_slotow", "srednia_za_slot_nazbierana"
+                )
+            elif sort == "-procent_wykorzystania_slotow":
+                queryset = queryset.order_by(
+                    "-procent_wykorzystania_slotow", "-srednia_za_slot_nazbierana"
+                )
+            # Gdy sortujemy po PKDaut/slot, jako drugi parametr sortuj po wykorzystaniu slotów
+            elif sort == "srednia_za_slot_nazbierana":
+                queryset = queryset.order_by(
+                    "srednia_za_slot_nazbierana", "procent_wykorzystania_slotow"
+                )
+            elif sort == "-srednia_za_slot_nazbierana":
+                queryset = queryset.order_by(
+                    "-srednia_za_slot_nazbierana", "-procent_wykorzystania_slotow"
+                )
+            else:
+                queryset = queryset.order_by(sort)
 
-        if sort not in allowed_sorts:
-            return queryset
-
-        if sort in sort_mapping:
-            return queryset.order_by(*sort_mapping[sort])
-        return queryset.order_by(sort)
-
-    def _determine_visible_columns(self):
-        """Determine which columns should be visible in export."""
-        from bpp.models import Dyscyplina_Naukowa
-
+        # Check if we should hide discipline column
         uczelnia = Uczelnia.objects.get_default()
         uzywa_wydzialow = uczelnia.uzywaj_wydzialow if uczelnia else False
+
+        from bpp.models import Dyscyplina_Naukowa
 
         wszystkie_dyscypliny = Dyscyplina_Naukowa.objects.filter(
             metrykaautora__isnull=False
         ).distinct()
         tylko_jedna_dyscyplina = wszystkie_dyscypliny.count() == 1
 
-        return {
-            "uzywa_wydzialow": uzywa_wydzialow,
-            "tylko_jedna_dyscyplina": tylko_jedna_dyscyplina,
-        }
-
-    def _create_headers(self, visible_columns):
-        """Create header list based on visible columns."""
+        # Create headers based on visible columns
         headers = [
             "Lp.",
             "Autor",
@@ -1351,10 +1705,10 @@ class ExportListaXLSX(View):
             "PBN UID ID",
         ]
 
-        if not visible_columns["tylko_jedna_dyscyplina"]:
+        if not tylko_jedna_dyscyplina:
             headers.append("Dyscyplina")
 
-        if visible_columns["uzywa_wydzialow"]:
+        if uzywa_wydzialow:
             headers.append("Wydział")
 
         headers.extend(
@@ -1375,214 +1729,236 @@ class ExportListaXLSX(View):
             ]
         )
 
-        return headers
-
-    def _write_headers(self, ws, headers, styles):
-        """Write headers to worksheet with styling."""
+        # Write headers
         for col, header in enumerate(headers, 1):
             cell = ws.cell(row=1, column=col, value=header)
-            cell.font = styles["header_font"]
-            cell.fill = styles["header_fill"]
-            cell.alignment = styles["header_alignment"]
-            cell.border = styles["thin_border"]
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = header_alignment
+            cell.border = thin_border
 
-    def _format_rodzaj_autora(self, metryka):
-        """Format rodzaj autora display value."""
-        if metryka.rodzaj_autora == " ":
-            return "Brak danych"
-
-        try:
-            rodzaj = Rodzaj_Autora.objects.get(skrot=metryka.rodzaj_autora)
-            return rodzaj.nazwa
-        except Rodzaj_Autora.DoesNotExist:
-            return metryka.rodzaj_autora
-
-    def _write_cell(self, ws, row, col, value, styles, style_type=None, row_fill=None):
-        """Write a single cell with consistent styling."""
-        cell = ws.cell(row=row, column=col, value=value)
-        cell.border = styles["thin_border"]
-
-        if style_type:
-            cell.style = styles[style_type]
-
-        if row_fill:
-            cell.fill = row_fill
-
-        return col + 1
-
-    def _write_data_row(self, ws, row_idx, metryka, visible_columns, styles, row_fill):
-        """Write a single data row to worksheet."""
-        col = 1
-
-        # Lp.
-        col = self._write_cell(ws, row_idx, col, row_idx - 1, styles, row_fill=row_fill)
-
-        # Autor
-        col = self._write_cell(
-            ws, row_idx, col, str(metryka.autor), styles, row_fill=row_fill
-        )
-
-        # Rodzaj autora
-        col = self._write_cell(
-            ws,
-            row_idx,
-            col,
-            self._format_rodzaj_autora(metryka),
-            styles,
-            row_fill=row_fill,
-        )
-
-        # ID systemu kadrowego
-        col = self._write_cell(
-            ws,
-            row_idx,
-            col,
-            metryka.autor.system_kadrowy_id or "",
-            styles,
-            row_fill=row_fill,
-        )
-
-        # ORCID
-        col = self._write_cell(
-            ws, row_idx, col, metryka.autor.orcid or "", styles, row_fill=row_fill
-        )
-
-        # PBN UID ID
-        col = self._write_cell(
-            ws, row_idx, col, metryka.autor.pbn_uid_id or "", styles, row_fill=row_fill
-        )
-
-        # Dyscyplina (if shown)
-        if not visible_columns["tylko_jedna_dyscyplina"]:
-            dyscyplina_value = (
-                metryka.dyscyplina_naukowa.nazwa if metryka.dyscyplina_naukowa else "-"
-            )
-            col = self._write_cell(
-                ws, row_idx, col, dyscyplina_value, styles, row_fill=row_fill
-            )
-
-        # Wydział (if shown)
-        if visible_columns["uzywa_wydzialow"]:
-            wydzial_nazwa = "-"
-            if metryka.jednostka and metryka.jednostka.wydzial:
-                wydzial_nazwa = metryka.jednostka.wydzial.nazwa
-            col = self._write_cell(
-                ws, row_idx, col, wydzial_nazwa, styles, row_fill=row_fill
-            )
-
-        # Jednostka
-        jednostka_value = metryka.jednostka.nazwa if metryka.jednostka else "-"
-        col = self._write_cell(
-            ws, row_idx, col, jednostka_value, styles, row_fill=row_fill
-        )
-
-        # Numeric values with proper formatting
-        col = self._write_cell(
-            ws,
-            row_idx,
-            col,
-            float(metryka.slot_maksymalny),
-            styles,
-            "decimal_style",
-            row_fill,
-        )
-        col = self._write_cell(
-            ws,
-            row_idx,
-            col,
-            float(metryka.slot_nazbierany),
-            styles,
-            "decimal_style",
-            row_fill,
-        )
-        col = self._write_cell(
-            ws,
-            row_idx,
-            col,
-            float(metryka.slot_niewykorzystany),
-            styles,
-            "decimal_style",
-            row_fill,
-        )
-        col = self._write_cell(
-            ws,
-            row_idx,
-            col,
-            float(metryka.procent_wykorzystania_slotow) / 100,
-            styles,
-            "percent_style",
-            row_fill,
-        )
-        col = self._write_cell(
-            ws,
-            row_idx,
-            col,
-            float(metryka.punkty_nazbierane),
-            styles,
-            "decimal_style",
-            row_fill,
-        )
-        col = self._write_cell(
-            ws,
-            row_idx,
-            col,
-            float(metryka.punkty_wszystkie),
-            styles,
-            "decimal_style",
-            row_fill,
-        )
-        col = self._write_cell(
-            ws,
-            row_idx,
-            col,
-            float(metryka.srednia_za_slot_nazbierana),
-            styles,
-            "decimal_style",
-            row_fill,
-        )
-        col = self._write_cell(
-            ws,
-            row_idx,
-            col,
-            float(metryka.srednia_za_slot_wszystkie),
-            styles,
-            "decimal_style",
-            row_fill,
-        )
-        col = self._write_cell(
-            ws, row_idx, col, len(metryka.prace_nazbierane), styles, row_fill=row_fill
-        )
-        col = self._write_cell(
-            ws, row_idx, col, metryka.liczba_prac_wszystkie, styles, row_fill=row_fill
-        )
-        col = self._write_cell(
-            ws, row_idx, col, metryka.rok_min, styles, row_fill=row_fill
-        )
-        col = self._write_cell(
-            ws, row_idx, col, metryka.rok_max, styles, row_fill=row_fill
-        )
-
-    def _write_all_data_rows(self, ws, queryset, visible_columns, styles):
-        """Write all data rows to worksheet."""
+        # Write data
+        data_start_row = 2  # noqa
         last_data_row = 1
         for row_idx, metryka in enumerate(queryset, 2):
             last_data_row = row_idx
-            row_fill = styles["even_row_fill"] if row_idx % 2 == 0 else None
-            self._write_data_row(
-                ws, row_idx, metryka, visible_columns, styles, row_fill
+            col = 1
+
+            # Apply alternating row colors
+            row_fill = even_row_fill if row_idx % 2 == 0 else None
+
+            # Lp.
+            cell = ws.cell(row=row_idx, column=col, value=row_idx - 1)
+            cell.border = thin_border
+            if row_fill:
+                cell.fill = row_fill
+            col += 1
+
+            # Autor
+            cell = ws.cell(row=row_idx, column=col, value=str(metryka.autor))
+            cell.border = thin_border
+            if row_fill:
+                cell.fill = row_fill
+            col += 1
+
+            # Rodzaj autora
+            rodzaj_display = ""
+            if metryka.rodzaj_autora == " ":
+                rodzaj_display = "Brak danych"
+            else:
+                try:
+                    rodzaj = Rodzaj_Autora.objects.get(skrot=metryka.rodzaj_autora)
+                    rodzaj_display = rodzaj.nazwa
+                except Rodzaj_Autora.DoesNotExist:
+                    rodzaj_display = metryka.rodzaj_autora
+            cell = ws.cell(row=row_idx, column=col, value=rodzaj_display)
+            cell.border = thin_border
+            if row_fill:
+                cell.fill = row_fill
+            col += 1
+
+            # ID systemu kadrowego
+            cell = ws.cell(
+                row=row_idx, column=col, value=metryka.autor.system_kadrowy_id or ""
             )
+            cell.border = thin_border
+            if row_fill:
+                cell.fill = row_fill
+            col += 1
 
-        return last_data_row
+            # ORCID
+            cell = ws.cell(row=row_idx, column=col, value=metryka.autor.orcid or "")
+            cell.border = thin_border
+            if row_fill:
+                cell.fill = row_fill
+            col += 1
 
-    def _setup_worksheet_formatting(self, ws, headers, last_data_row):
-        """Setup auto-filter, freeze panes and column widths."""
-        from openpyxl.utils import get_column_letter
+            # PBN UID ID
+            cell = ws.cell(
+                row=row_idx, column=col, value=metryka.autor.pbn_uid_id or ""
+            )
+            cell.border = thin_border
+            if row_fill:
+                cell.fill = row_fill
+            col += 1
 
+            # Dyscyplina (if shown)
+            if not tylko_jedna_dyscyplina:
+                cell = ws.cell(
+                    row=row_idx,
+                    column=col,
+                    value=(
+                        metryka.dyscyplina_naukowa.nazwa
+                        if metryka.dyscyplina_naukowa
+                        else "-"
+                    ),
+                )
+                cell.border = thin_border
+                if row_fill:
+                    cell.fill = row_fill
+                col += 1
+
+            # Wydział (if shown)
+            if uzywa_wydzialow:
+                wydzial_nazwa = "-"
+                if metryka.jednostka and metryka.jednostka.wydzial:
+                    wydzial_nazwa = metryka.jednostka.wydzial.nazwa
+                cell = ws.cell(row=row_idx, column=col, value=wydzial_nazwa)
+                cell.border = thin_border
+                if row_fill:
+                    cell.fill = row_fill
+                col += 1
+
+            # Jednostka
+            cell = ws.cell(
+                row=row_idx,
+                column=col,
+                value=metryka.jednostka.nazwa if metryka.jednostka else "-",
+            )
+            cell.border = thin_border
+            if row_fill:
+                cell.fill = row_fill
+            col += 1
+
+            # Numeric values with proper formatting
+            # Slot maksymalny
+            cell = ws.cell(
+                row=row_idx, column=col, value=float(metryka.slot_maksymalny)
+            )
+            cell.border = thin_border
+            cell.style = decimal_style
+            if row_fill:
+                cell.fill = row_fill
+            col += 1
+
+            # Slot nazbierany
+            cell = ws.cell(
+                row=row_idx, column=col, value=float(metryka.slot_nazbierany)
+            )
+            cell.border = thin_border
+            cell.style = decimal_style
+            if row_fill:
+                cell.fill = row_fill
+            col += 1
+
+            # Slot niewykorzystany
+            cell = ws.cell(
+                row=row_idx, column=col, value=float(metryka.slot_niewykorzystany)
+            )
+            cell.border = thin_border
+            cell.style = decimal_style
+            if row_fill:
+                cell.fill = row_fill
+            col += 1
+
+            # % wykorzystania (as percentage)
+            cell = ws.cell(
+                row=row_idx,
+                column=col,
+                value=float(metryka.procent_wykorzystania_slotow)
+                / 100,  # Convert to decimal for percentage format
+            )
+            cell.border = thin_border
+            cell.style = percent_style
+            if row_fill:
+                cell.fill = row_fill
+            col += 1
+
+            # PKDaut nazbierane
+            cell = ws.cell(
+                row=row_idx, column=col, value=float(metryka.punkty_nazbierane)
+            )
+            cell.border = thin_border
+            cell.style = decimal_style
+            if row_fill:
+                cell.fill = row_fill
+            col += 1
+
+            # PKDaut wszystkie
+            cell = ws.cell(
+                row=row_idx, column=col, value=float(metryka.punkty_wszystkie)
+            )
+            cell.border = thin_border
+            cell.style = decimal_style
+            if row_fill:
+                cell.fill = row_fill
+            col += 1
+
+            # Średnia PKDaut/slot (nazbierane)
+            cell = ws.cell(
+                row=row_idx, column=col, value=float(metryka.srednia_za_slot_nazbierana)
+            )
+            cell.border = thin_border
+            cell.style = decimal_style
+            if row_fill:
+                cell.fill = row_fill
+            col += 1
+
+            # Średnia PKDaut/slot (wszystkie)
+            cell = ws.cell(
+                row=row_idx, column=col, value=float(metryka.srednia_za_slot_wszystkie)
+            )
+            cell.border = thin_border
+            cell.style = decimal_style
+            if row_fill:
+                cell.fill = row_fill
+            col += 1
+
+            # Liczba prac (nazbierane)
+            cell = ws.cell(row=row_idx, column=col, value=len(metryka.prace_nazbierane))
+            cell.border = thin_border
+            if row_fill:
+                cell.fill = row_fill
+            col += 1
+
+            # Liczba prac (wszystkie)
+            cell = ws.cell(row=row_idx, column=col, value=metryka.liczba_prac_wszystkie)
+            cell.border = thin_border
+            if row_fill:
+                cell.fill = row_fill
+            col += 1
+
+            # Rok min
+            cell = ws.cell(row=row_idx, column=col, value=metryka.rok_min)
+            cell.border = thin_border
+            if row_fill:
+                cell.fill = row_fill
+            col += 1
+
+            # Rok max
+            cell = ws.cell(row=row_idx, column=col, value=metryka.rok_max)
+            cell.border = thin_border
+            if row_fill:
+                cell.fill = row_fill
+
+        # Add AutoFilter for sorting and filtering
         if last_data_row > 1:
+            # Calculate the last column letter based on number of headers
             last_col_letter = get_column_letter(len(headers))
             filter_range = f"A1:{last_col_letter}{last_data_row}"
             ws.auto_filter.ref = filter_range
 
+        # Freeze the header row (freeze panes at A2 to keep row 1 visible)
         ws.freeze_panes = ws["A2"]
 
         # Auto-adjust column widths
@@ -1598,50 +1974,40 @@ class ExportListaXLSX(View):
             adjusted_width = min(max_length + 2, 50)
             ws.column_dimensions[column_letter].width = adjusted_width
 
-    def _add_summary(self, ws, queryset, last_data_row):
-        """Add summary section to worksheet."""
+        # Add summary at the bottom
         summary_row = last_data_row + 2 if last_data_row > 1 else 3
         ws.cell(row=summary_row, column=1, value="Podsumowanie:")
         ws.cell(row=summary_row + 1, column=1, value="Liczba wierszy:")
         ws.cell(row=summary_row + 1, column=2, value=queryset.count())
 
-        return summary_row
-
-    def _collect_filter_info(self, request, visible_columns):
-        """Collect applied filter information for display."""
-        from bpp.models import Dyscyplina_Naukowa
-
+        # Apply filters info
+        filters_row = summary_row + 3
+        ws.cell(row=filters_row, column=1, value="Zastosowane filtry:")
         filter_info = []
-
-        nazwisko = request.GET.get("nazwisko")
         if nazwisko:
             filter_info.append(f"Nazwisko/Imię: {nazwisko}")
-
-        jednostka_id = request.GET.get("jednostka")
         if jednostka_id:
             try:
+                from bpp.models import Jednostka
+
                 jednostka = Jednostka.objects.get(pk=jednostka_id)
                 filter_info.append(f"Jednostka: {jednostka.nazwa}")
-            except Jednostka.DoesNotExist:
+            except BaseException:
                 pass
-
-        wydzial_id = request.GET.get("wydzial")
-        if wydzial_id and visible_columns["uzywa_wydzialow"]:
+        if wydzial_id and uzywa_wydzialow:
             try:
+                from bpp.models import Wydzial
+
                 wydzial = Wydzial.objects.get(pk=wydzial_id)
                 filter_info.append(f"Wydział: {wydzial.nazwa}")
-            except Wydzial.DoesNotExist:
+            except BaseException:
                 pass
-
-        dyscyplina_id = request.GET.get("dyscyplina")
-        if dyscyplina_id and not visible_columns["tylko_jedna_dyscyplina"]:
+        if dyscyplina_id and not tylko_jedna_dyscyplina:
             try:
                 dyscyplina = Dyscyplina_Naukowa.objects.get(pk=dyscyplina_id)
                 filter_info.append(f"Dyscyplina: {dyscyplina.nazwa}")
-            except Dyscyplina_Naukowa.DoesNotExist:
+            except BaseException:
                 pass
-
-        rodzaj_autora = request.GET.get("rodzaj_autora")
         if rodzaj_autora:
             try:
                 rodzaj = Rodzaj_Autora.objects.get(skrot=rodzaj_autora)
@@ -1649,24 +2015,12 @@ class ExportListaXLSX(View):
             except Rodzaj_Autora.DoesNotExist:
                 filter_info.append(f"Rodzaj autora: {rodzaj_autora}")
 
-        return filter_info
-
-    def _add_filter_info(self, ws, summary_row, filter_info):
-        """Add filter information to worksheet."""
-        filters_row = summary_row + 3
-        ws.cell(row=filters_row, column=1, value="Zastosowane filtry:")
-
         if filter_info:
             ws.cell(row=filters_row + 1, column=1, value="; ".join(filter_info))
         else:
             ws.cell(row=filters_row + 1, column=1, value="Brak filtrów")
 
-    def _create_response(self, wb):
-        """Create HTTP response with workbook."""
-        import datetime
-
-        from django.http import HttpResponse
-
+        # Prepare response
         response = HttpResponse(
             content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
@@ -1675,48 +2029,3 @@ class ExportListaXLSX(View):
 
         wb.save(response)
         return response
-
-    def get(self, request):
-        from django.db.models import Count, OuterRef, Subquery
-
-        # Setup workbook and styles
-        styles = self._setup_workbook_styles()
-        ws = styles["ws"]
-        wb = styles["wb"]
-
-        # Build queryset with discipline count annotation
-        discipline_count = (
-            MetrykaAutora.objects.filter(autor=OuterRef("autor"))
-            .values("autor")
-            .annotate(count=Count("dyscyplina_naukowa"))
-            .values("count")
-        )
-
-        queryset = MetrykaAutora.objects.select_related(
-            "autor", "dyscyplina_naukowa", "jednostka", "jednostka__wydzial"
-        ).annotate(autor_discipline_count=Subquery(discipline_count))
-
-        # Apply filters and sorting
-        queryset = self._apply_filters_to_queryset(queryset, request)
-        queryset = self._apply_sorting_to_queryset(queryset, request)
-
-        # Determine visible columns
-        visible_columns = self._determine_visible_columns()
-
-        # Create and write headers
-        headers = self._create_headers(visible_columns)
-        self._write_headers(ws, headers, styles)
-
-        # Write all data rows
-        last_data_row = self._write_all_data_rows(ws, queryset, visible_columns, styles)
-
-        # Setup worksheet formatting
-        self._setup_worksheet_formatting(ws, headers, last_data_row)
-
-        # Add summary and filter information
-        summary_row = self._add_summary(ws, queryset, last_data_row)
-        filter_info = self._collect_filter_info(request, visible_columns)
-        self._add_filter_info(ws, summary_row, filter_info)
-
-        # Return response
-        return self._create_response(wb)

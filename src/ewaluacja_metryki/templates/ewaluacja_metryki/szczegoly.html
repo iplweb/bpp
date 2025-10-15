@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% load humanize %}
 {% load rodzaj_autora_tags %}
+{% load l10n %}
 
 {% block title %}Metryki - {{ metryka.autor }}{% endblock %}
 
@@ -34,7 +35,7 @@
             <strong>Inne dyscypliny tego autora:</strong>
             <div class="button-group stacked-for-small" style="margin-top: 0.5rem;">
                 {% for inna in inne_dyscypliny %}
-                    <a href="{% url 'ewaluacja_metryki:szczegoly' inna.pk %}"
+                    <a href="{% url 'ewaluacja_metryki:szczegoly' autor_slug=inna.autor.slug dyscyplina_kod=inna.dyscyplina_naukowa.kod %}"
                        class="button hollow"
                        style="background-color: #ffffff; border: 1px solid #cbd5e0; color: #2c3e50; margin-bottom: 0.5rem; text-align: left; padding: 0.75rem;">
                         <span style="display: inline-block; margin-right: 1rem;">
@@ -87,34 +88,84 @@
                 <div class="callout secondary">
                     <h4><span class="fi-graph-bar"></span> Wykorzystanie slotów</h4>
 
-                    <div class="progress large" role="progressbar" tabindex="0"
-                         aria-valuenow="{{ metryka.procent_wykorzystania_slotow|floatformat:0 }}"
-                         aria-valuemin="0" aria-valuemax="100">
-                        <div class="progress-meter {% if metryka.procent_wykorzystania_slotow >= 90 %}success{% elif metryka.procent_wykorzystania_slotow >= 70 %}warning{% else %}alert{% endif %}"
-                             style="width: {{ metryka.procent_wykorzystania_slotow|floatformat:0 }}%">
-                            <p class="progress-meter-text">{{ metryka.procent_wykorzystania_slotow|floatformat:1 }}%</p>
+                    <div class="row">
+                        <div class="medium-6 columns">
+                            <div class="slot-progress-container" style="margin: 1rem 0;">
+                                <div class="circular-progress-wrapper">
+                                    <div class="circle-progress-detail" data-value="{{ metryka.procent_wykorzystania_slotow|unlocalize }}" data-size="150" data-thickness="15"></div>
+                                    <strong class="progress-percentage-detail">0%</strong>
+                                    <small class="progress-label-detail">{{ metryka.slot_nazbierany|floatformat:2 }} / {{ metryka.slot_maksymalny|floatformat:2 }}</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="medium-6 columns">
+                            <table>
+                                <tbody>
+                                    <tr>
+                                        <th>Slot maksymalny:</th>
+                                        <td class="text-right">{{ metryka.slot_maksymalny|floatformat:2 }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Slot wykorzystany:</th>
+                                        <td class="text-right">{{ metryka.slot_nazbierany|floatformat:2 }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Slot niewykorzystany:</th>
+                                        <td class="text-right">{{ metryka.slot_niewykorzystany|floatformat:2 }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
-
-                    <table>
-                        <tbody>
-                            <tr>
-                                <th>Slot maksymalny:</th>
-                                <td class="text-right">{{ metryka.slot_maksymalny|floatformat:2 }}</td>
-                            </tr>
-                            <tr>
-                                <th>Slot wykorzystany:</th>
-                                <td class="text-right">{{ metryka.slot_nazbierany|floatformat:2 }}</td>
-                            </tr>
-                            <tr>
-                                <th>Slot niewykorzystany:</th>
-                                <td class="text-right">{{ metryka.slot_niewykorzystany|floatformat:2 }}</td>
-                            </tr>
-                        </tbody>
-                    </table>
                 </div>
             </div>
         </div>
+
+        <!-- Wykresy wizualizacji prac -->
+        {% if chart_data %}
+        <div class="row">
+            <div class="medium-12 columns">
+                <h3><span class="fi-graph-trend"></span> Wizualizacja prac w czasie</h3>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Wykres 1: Bąbelkowy czasowy -->
+            <div class="medium-6 columns">
+                <div class="callout">
+                    <h5>Rozkład prac w czasie</h5>
+                    <div id="bubble-time-chart" style="width:100%; height:350px;"></div>
+                </div>
+            </div>
+
+            <!-- Wykres 2: Słupki po latach -->
+            <div class="medium-6 columns">
+                <div class="callout">
+                    <h5>Produktywność po latach</h5>
+                    <div id="year-bars-chart" style="width:100%; height:350px;"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Wykres 3: Scatter z kolorem -->
+            <div class="medium-6 columns">
+                <div class="callout">
+                    <h5>Punkty vs Sloty (kolor = rok)</h5>
+                    <div id="scatter-time-chart" style="width:100%; height:350px;"></div>
+                </div>
+            </div>
+
+            <!-- Wykres 4: Heatmap -->
+            <div class="medium-6 columns">
+                <div class="callout">
+                    <h5>Mapa publikacji</h5>
+                    <div id="heatmap-chart" style="width:100%; height:350px;"></div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
 
         <!-- Wymiar etatu i procent dyscypliny -->
         {% if dyscyplina_lata %}
@@ -478,6 +529,338 @@ function toggleUnpinnedPapers() {
 }
 </script>
 
+
+
+<script>
+$(document).ready(function() {
+    console.log('Initializing circular progress gauge for detail page...');
+
+    var percentage = parseFloat($('.circle-progress-detail').data('value')) || 0;
+
+    // Function to choose gradient based on utilization percentage
+    function getGradientForPercentage(percentage) {
+        if (percentage >= 90) {
+            return ["#4CAF50", "#8BC34A"];  // Green gradient for high values
+        } else if (percentage >= 70) {
+            return ["#FFC107", "#FF9800"];  // Yellow/orange gradient for medium values
+        } else if (percentage >= 50) {
+            return ["#FF9800", "#FF5722"];  // Orange gradient
+        } else {
+            return ["#f44336", "#e91e63"];  // Red gradient for low values
+        }
+    }
+
+    var gradient = getGradientForPercentage(percentage);
+
+    $('.circle-progress-detail').circleProgress({
+        value: percentage / 100,
+        size: 150,
+        thickness: 15,
+        animation: { duration: 1200, easing: "circleProgressEasing" },
+        fill: {
+            gradient: gradient
+        }
+    }).on('circle-animation-progress', function(event, progress, stepValue) {
+        $('.progress-percentage-detail').text(Math.round(stepValue * 100) + '%');
+    });
+
+    console.log('Circular progress gauge initialized with ' + percentage + '%');
+});
+</script>
+
+<!-- Chart visualizations -->
+{% if chart_data %}
+
+<!-- Plotly.js for data visualization (only on this page) -->{% load static %}
+<script src="{% static 'plotly.js/dist/plotly.min.js' %}"></script>
+
+<script>
+$(document).ready(function() {
+    // Prepare data from Django context
+    var chartData = {{ chart_data_json|safe }};
+    var yearAggregates = {{ year_aggregates_json|safe }};
+
+    // === Wykres 1: Bąbelkowy czasowy ===
+    (function initBubbleTimeChart() {
+        var bubbleTrace = {
+            x: chartData.map(d => d.rok),
+            y: chartData.map(d => d.pkdaut),
+            mode: 'markers',
+            type: 'scatter',
+            marker: {
+                size: chartData.map(d => Math.max(8, Math.min(40, d.slot * 30))),
+                color: chartData.map(d => d.is_nazbierana ? '#4CAF50' : '#9E9E9E'),
+                opacity: 0.7,
+                line: {
+                    color: 'white',
+                    width: 2
+                }
+            },
+            text: chartData.map(d =>
+                `<b>Rok:</b> ${d.rok}<br>` +
+                `<b>PKDaut:</b> ${d.pkdaut.toFixed(2)}<br>` +
+                `<b>Slot:</b> ${d.slot.toFixed(4)}<br>` +
+                `<b>Status:</b> ${d.is_nazbierana ? 'Nazbierana' : 'Nie nazbierana'}<br>` +
+                `<b>Tytuł:</b> ${d.tytul.substring(0, 60)}...`
+            ),
+            hovertemplate: '%{text}<extra></extra>',
+            name: 'Publikacje'
+        };
+
+        var layout = {
+            title: {
+                text: 'Rozkład punktów i slotów w czasie',
+                font: { size: 14 }
+            },
+            xaxis: {
+                title: 'Rok',
+                dtick: 1
+            },
+            yaxis: {
+                title: 'Punkty PKDaut'
+            },
+            hovermode: 'closest',
+            showlegend: false,
+            margin: { l: 50, r: 30, t: 40, b: 50 }
+        };
+
+        var config = {
+            responsive: true,
+            displayModeBar: false
+        };
+
+        Plotly.newPlot('bubble-time-chart', [bubbleTrace], layout, config);
+    })();
+
+    // === Wykres 2: Słupki po latach ===
+    (function initYearBarsChart() {
+        var years = Object.keys(yearAggregates).sort();
+
+        var barTrace = {
+            x: years,
+            y: years.map(year => yearAggregates[year].punkty),
+            type: 'bar',
+            name: 'Punkty PKDaut',
+            marker: {
+                color: '#2196F3'
+            },
+            yaxis: 'y'
+        };
+
+        var lineTrace = {
+            x: years,
+            y: years.map(year => yearAggregates[year].sloty),
+            type: 'scatter',
+            mode: 'lines+markers',
+            name: 'Sloty',
+            line: {
+                color: '#FF9800',
+                width: 3
+            },
+            marker: {
+                size: 8
+            },
+            yaxis: 'y2'
+        };
+
+        var layout = {
+            title: {
+                text: 'Suma punktów i slotów po latach',
+                font: { size: 14 }
+            },
+            xaxis: {
+                title: 'Rok',
+                dtick: 1
+            },
+            yaxis: {
+                title: 'Punkty PKDaut',
+                titlefont: { color: '#2196F3' },
+                tickfont: { color: '#2196F3' }
+            },
+            yaxis2: {
+                title: 'Sloty',
+                titlefont: { color: '#FF9800' },
+                tickfont: { color: '#FF9800' },
+                overlaying: 'y',
+                side: 'right'
+            },
+            hovermode: 'x unified',
+            margin: { l: 50, r: 50, t: 40, b: 50 }
+        };
+
+        var config = {
+            responsive: true,
+            displayModeBar: false
+        };
+
+        Plotly.newPlot('year-bars-chart', [barTrace, lineTrace], layout, config);
+    })();
+
+    // === Wykres 3: Scatter z kolorem według roku ===
+    (function initScatterTimeChart() {
+        var scatterTrace = {
+            x: chartData.map(d => d.slot),
+            y: chartData.map(d => d.pkdaut),
+            mode: 'markers',
+            type: 'scatter',
+            marker: {
+                size: 10,
+                color: chartData.map(d => d.rok),
+                colorscale: [
+                    [0, '#667eea'],
+                    [0.25, '#4facfe'],
+                    [0.5, '#43e97b'],
+                    [0.75, '#ff9a56'],
+                    [1, '#ff0844']
+                ],
+                showscale: true,
+                colorbar: {
+                    title: 'Rok',
+                    thickness: 15,
+                    len: 0.7
+                },
+                line: {
+                    color: 'white',
+                    width: 1
+                }
+            },
+            text: chartData.map(d =>
+                `<b>Rok:</b> ${d.rok}<br>` +
+                `<b>PKDaut:</b> ${d.pkdaut.toFixed(2)}<br>` +
+                `<b>Slot:</b> ${d.slot.toFixed(4)}<br>` +
+                `<b>Status:</b> ${d.is_nazbierana ? 'Nazbierana' : 'Nie nazbierana'}`
+            ),
+            hovertemplate: '%{text}<extra></extra>'
+        };
+
+        var layout = {
+            title: {
+                text: 'Punkty vs Sloty (gradient czasu)',
+                font: { size: 14 }
+            },
+            xaxis: {
+                title: 'Slot'
+            },
+            yaxis: {
+                title: 'Punkty PKDaut'
+            },
+            hovermode: 'closest',
+            margin: { l: 50, r: 80, t: 40, b: 50 }
+        };
+
+        var config = {
+            responsive: true,
+            displayModeBar: false
+        };
+
+        Plotly.newPlot('scatter-time-chart', [scatterTrace], layout, config);
+    })();
+
+    // === Wykres 4: Heatmap rok × ranking ===
+    (function initHeatmapChart() {
+        // Pogrupuj prace według roku i posortuj według PKDaut/slot
+        var years = Object.keys(yearAggregates).sort();
+        var heatmapData = {};
+
+        years.forEach(year => {
+            heatmapData[year] = chartData
+                .filter(d => d.rok == year)
+                .sort((a, b) => {
+                    var ratioA = a.slot > 0 ? a.pkdaut / a.slot : 0;
+                    var ratioB = b.slot > 0 ? b.pkdaut / b.slot : 0;
+                    return ratioB - ratioA;
+                });
+        });
+
+        // Znajdź maksymalną liczbę publikacji w dowolnym roku
+        var maxPubs = Math.max(...years.map(y => heatmapData[y].length));
+
+        // Przygotuj dane dla heatmapy
+        var z = [];
+        var hoverText = [];
+        var yLabels = [];
+
+        for (var i = 0; i < maxPubs; i++) {
+            var row = [];
+            var textRow = [];
+            for (var j = 0; j < years.length; j++) {
+                var year = years[j];
+                var pubs = heatmapData[year];
+                if (i < pubs.length) {
+                    row.push(pubs[i].pkdaut);
+                    textRow.push(
+                        `<b>Rok:</b> ${year}<br>` +
+                        `<b>Ranking:</b> #${i + 1}<br>` +
+                        `<b>PKDaut:</b> ${pubs[i].pkdaut.toFixed(2)}<br>` +
+                        `<b>Slot:</b> ${pubs[i].slot.toFixed(4)}`
+                    );
+                } else {
+                    row.push(null);
+                    textRow.push('');
+                }
+            }
+            z.push(row);
+            hoverText.push(textRow);
+            yLabels.push(`#${i + 1}`);
+        }
+
+        var heatmapTrace = {
+            z: z,
+            x: years,
+            y: yLabels,
+            type: 'heatmap',
+            colorscale: [
+                [0, '#f0f0f0'],
+                [0.2, '#667eea'],
+                [0.4, '#4facfe'],
+                [0.6, '#43e97b'],
+                [0.8, '#ff9a56'],
+                [1, '#ff0844']
+            ],
+            hovertext: hoverText,
+            hovertemplate: '%{hovertext}<extra></extra>',
+            colorbar: {
+                title: 'PKDaut',
+                thickness: 15,
+                len: 0.7
+            }
+        };
+
+        var layout = {
+            title: {
+                text: 'Ranking publikacji w latach',
+                font: { size: 14 }
+            },
+            xaxis: {
+                title: 'Rok',
+                side: 'bottom'
+            },
+            yaxis: {
+                title: 'Ranking (wg PKDaut/slot)',
+                autorange: 'reversed'
+            },
+            margin: { l: 50, r: 80, t: 40, b: 50 }
+        };
+
+        var config = {
+            responsive: true,
+            displayModeBar: false
+        };
+
+        Plotly.newPlot('heatmap-chart', [heatmapTrace], layout, config);
+    })();
+
+    // Make all charts responsive on window resize
+    window.addEventListener('resize', function() {
+        Plotly.Plots.resize('bubble-time-chart');
+        Plotly.Plots.resize('year-bars-chart');
+        Plotly.Plots.resize('scatter-time-chart');
+        Plotly.Plots.resize('heatmap-chart');
+    });
+});
+</script>
+{% endif %}
+
 <style>
     .progress.large {
         height: 2rem;
@@ -493,6 +876,43 @@ function toggleUnpinnedPapers() {
 
     tr.unpinned-work {
         background-color: #f0f0f0;
+    }
+
+    /* Circular Progress Gauge Styles for Detail Page */
+    .slot-progress-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+    }
+
+    .circular-progress-wrapper {
+        position: relative;
+        display: inline-block;
+    }
+
+    .circular-progress-wrapper canvas {
+        display: block;
+    }
+
+    .circular-progress-wrapper .progress-percentage-detail {
+        position: absolute;
+        top: 75px;  /* Centered in 150px circle */
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 28px;
+        font-weight: 600;
+        color: #333;
+        z-index: 1;
+    }
+
+    .circular-progress-wrapper .progress-label-detail {
+        display: block;
+        margin-top: 10px;
+        color: #666;
+        font-size: 1rem;
+        white-space: nowrap;
+        font-weight: 500;
     }
 
     /* Discipline buttons styling */

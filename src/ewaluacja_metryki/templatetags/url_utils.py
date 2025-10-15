@@ -82,3 +82,20 @@ def preserve_filters(request, **kwargs):
 
     query_string = params.urlencode()
     return f"?{query_string}" if query_string else ""
+
+
+@register.simple_tag
+def clear_filters_url(request):
+    """
+    Generate URL that clears all filter parameters but preserves the 'widok' parameter.
+    Used for "Clear filters" button.
+    """
+    # Create a new QueryDict
+    params = QueryDict("", mutable=True)
+
+    # Preserve only the 'widok' parameter if it exists
+    if hasattr(request, "GET") and "widok" in request.GET:
+        params["widok"] = request.GET["widok"]
+
+    query_string = params.urlencode()
+    return f"?{query_string}" if query_string else ""

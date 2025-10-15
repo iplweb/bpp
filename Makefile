@@ -206,7 +206,7 @@ loc: clean
 	pygount -N ... -F "...,staticroot,migrations,fixtures" src --format=summary
 
 
-DOCKER_VERSION="202510.1252"
+DOCKER_VERSION="202510.1253"
 
 DOCKER_BUILD=build --platform linux/amd64 --push
 
@@ -261,3 +261,7 @@ compose-restart:
 
 compose-dbshell:
 	docker compose exec db /bin/bash
+
+
+celery-worker-run:
+	uv run celery -A django_bpp.celery_tasks worker --pool=threads --concurrency=0

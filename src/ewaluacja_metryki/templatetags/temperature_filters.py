@@ -1,5 +1,4 @@
 from django import template
-
 from django.utils.safestring import mark_safe
 
 register = template.Library()
@@ -28,28 +27,25 @@ def temperature_class(value):
     except (TypeError, ValueError):
         val = 0
 
-    if val >= 200:
-        return "temp-200"
-    elif val >= 180:
-        return "temp-180"
-    elif val >= 160:
-        return "temp-160"
-    elif val >= 140:
-        return "temp-140"
-    elif val >= 120:
-        return "temp-120"
-    elif val >= 100:
-        return "temp-100"
-    elif val >= 80:
-        return "temp-80"
-    elif val >= 60:
-        return "temp-60"
-    elif val >= 40:
-        return "temp-40"
-    elif val >= 20:
-        return "temp-20"
-    else:
-        return "temp-0"
+    # Temperature thresholds in descending order (threshold, class_name)
+    thresholds = [
+        (200, "temp-200"),
+        (180, "temp-180"),
+        (160, "temp-160"),
+        (140, "temp-140"),
+        (120, "temp-120"),
+        (100, "temp-100"),
+        (80, "temp-80"),
+        (60, "temp-60"),
+        (40, "temp-40"),
+        (20, "temp-20"),
+    ]
+
+    for threshold, class_name in thresholds:
+        if val >= threshold:
+            return class_name
+
+    return "temp-0"
 
 
 @register.filter
@@ -81,12 +77,15 @@ def temperature_label(value):
 @register.simple_tag
 def temperature_display(value):
     """
-    Return a complete temperature display with gradient background.
+    Return a complete temperature display with gradient progress bar.
     """
     try:
         val = float(value)
     except (TypeError, ValueError):
         val = 0
+
+    # Calculate percentage (0-200 scale)
+    percentage = min((val / 200) * 100, 100)
 
     temp_class = temperature_class(val)
     label = temperature_label(val)
@@ -95,9 +94,25 @@ def temperature_display(value):
     formatted_value = f"{val:.2f}"
 
     html = f"""
-    <div class="temperature-display {temp_class}" title="{label}: {formatted_value} PKDaut/slot">
-        <span class="temperature-value">{formatted_value}</span>
-        <span class="temperature-icon">🌡️</span>
+    <div class="pkd-metric-container" title="{label}: {formatted_value} PKDaut/slot">
+        <div class="pkd-value-label">
+            <strong>{formatted_value}</strong>
+            <small>PKDaut/slot</small>
+        </div>
+        <div class="pkd-progress-bar">
+            <div class="pkd-progress-track">
+                <div class="pkd-progress-fill {temp_class}" style="width: {percentage}%">
+                    <span class="pkd-marker"></span>
+                </div>
+            </div>
+            <div class="pkd-scale-labels">
+                <span>0</span>
+                <span>50</span>
+                <span>100</span>
+                <span>150</span>
+                <span>200</span>
+            </div>
+        </div>
     </div>
     """
 

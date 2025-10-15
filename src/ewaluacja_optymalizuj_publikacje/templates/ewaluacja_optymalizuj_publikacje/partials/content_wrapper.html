@@ -12,7 +12,7 @@
         </div>
     {% else %}
         <div class="publication-header" style="background: #f0f0f0; padding: 15px; border-left: 4px solid #667eea; margin-bottom: 20px;">
-            <h3><a href="{% url 'bpp:browse_praca_by_slug' publikacja.slug %}" style="color: inherit; text-decoration: none; hover: text-decoration: underline;">{{ publikacja.tytul_oryginalny }}</a></h3>
+            <h3><a href="{% url 'bpp:browse_praca_by_slug' publikacja.slug %}" style="color: inherit; text-decoration: none; hover: text-decoration: underline;">{{ publikacja.tytul_oryginalny|safe }}</a></h3>
             <p>ID: {{ publikacja.pk }} | Typ: {{ publikacja.typ_kbn|default:"" }}</p>
         </div>
 
@@ -33,14 +33,27 @@
         <h3>Autorzy z przypisanymi dyscyplinami</h3>
 
         <div id="authors-container">
-        {% for autor_data in autorzy_data %}
-            <div id="author-{{ autor_data.autor.id }}-{{ autor_data.dyscyplina.id }}" class="author-card" style="border: 1px solid #ddd; border-radius: 8px; margin-bottom: 20px; background: white; overflow: hidden;">
+        {% for dyscyplina_group in autorzy_po_dyscyplinach %}
+            <!-- Discipline Header -->
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 25px; border-radius: 8px 8px 0 0; margin-top: 30px; margin-bottom: 0;">
+                <h4 style="margin: 0; font-size: 1.4em;">
+                    <span class="fi-book"></span> {{ dyscyplina_group.dyscyplina.nazwa }}
+                </h4>
+                <div style="font-size: 0.9em; opacity: 0.9; margin-top: 5px;">
+                    Kod: {{ dyscyplina_group.dyscyplina.kod }}
+                </div>
+            </div>
+
+            <!-- Authors in this discipline -->
+            {% for autor_data in dyscyplina_group.autorzy %}
+            <div id="author-{{ autor_data.autor.id }}-{{ autor_data.dyscyplina.id }}" class="author-card" style="border: 1px solid #ddd; border-left: 4px solid #667eea; margin-bottom: 0; background: white; overflow: hidden; {% if not forloop.last %}border-bottom: 1px dashed #e0e0e0;{% else %}border-radius: 0 0 8px 8px; margin-bottom: 20px;{% endif %}">
                 <!-- Author Header -->
                 <div style="background: #f5f6fa; padding: 15px 20px; border-bottom: 2px solid #e1e4e8;">
                     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
                         <div style="font-size: 1.3em; font-weight: 600;">
                             {% if autor_data.metryka_id %}
-                            <a href="{% url 'ewaluacja_metryki:szczegoly' autor_data.metryka_id %}" style="color: #2c3e50; text-decoration: none;">
+                            <a href="{% url 'ewaluacja_metryki:szczegoly' autor_data.autor.slug autor_data.dyscyplina.kod %}"
+                               style="color: #2c3e50; text-decoration: none;">
                                 {{ autor_data.autor.nazwisko }} {{ autor_data.autor.imiona }}
                             </a>
                             {% else %}
@@ -57,35 +70,38 @@
                             </div>
                             {% endif %}
                         </div>
-                        <div style="display: flex; gap: 10px;">
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                            {% if autor_data.rodzaj_autora %}
+                                <span style="background: #e3f2fd; color: #1565c0; padding: 4px 10px; border-radius: 20px; font-size: 0.85em; border: 1px solid #90caf9;">
+                                    <span class="fi-torso"></span> {{ autor_data.rodzaj_autora.nazwa }}
+                                </span>
+                            {% endif %}
+
                             {% if autor_data.przypieta %}
                                 <span class="discipline-badge" style="background: #ffd700; color: #333; padding: 4px 10px; border-radius: 20px; font-size: 0.85em;">
                                     <span class="fi-lock"></span> Przypięta
                                 </span>
+
+                                {% if autor_data.wybrana_do_ewaluacji %}
+                                    <span style="background: #d4edda; color: #155724; padding: 4px 10px; border-radius: 20px; font-size: 0.85em;">
+                                        <span class="fi-check"></span> Udział wybrany do ewaluacji
+                                    </span>
+                                {% else %}
+                                    <span style="background: #f8d7da; color: #721c24; padding: 4px 10px; border-radius: 20px; font-size: 0.85em;">
+                                        <span class="fi-x"></span> Udział niewybrany
+                                    </span>
+                                {% endif %}
                             {% else %}
                                 <span class="discipline-badge" style="background: #ccc; color: #666; padding: 4px 10px; border-radius: 20px; font-size: 0.85em;">
                                     <span class="fi-unlock"></span> Odpięta
-                                </span>
-                            {% endif %}
-
-                            {% if autor_data.wybrana_do_ewaluacji %}
-                                <span style="background: #d4edda; color: #155724; padding: 4px 10px; border-radius: 20px; font-size: 0.85em;">
-                                    <span class="fi-check"></span> Udział wybrany do ewaluacji
-                                </span>
-                            {% else %}
-                                <span style="background: #f8d7da; color: #721c24; padding: 4px 10px; border-radius: 20px; font-size: 0.85em;">
-                                    <span class="fi-x"></span> Udział niewybrany
                                 </span>
                             {% endif %}
                         </div>
                     </div>
                 </div>
 
-                <!-- Discipline and Data -->
+                <!-- Author Data -->
                 <div style="padding: 20px;">
-                    <div style="font-size: 1.1em; color: #495057; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid #e9ecef;">
-                        <strong>Dyscyplina:</strong> {{ autor_data.dyscyplina.nazwa }}
-                    </div>
 
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 25px; margin: 20px 0;">
                         <!-- Publication Points Section -->
@@ -234,9 +250,10 @@
                     </div>
                 </div>
             </div>
+            {% endfor %}
         {% empty %}
-            <div class="alert-box info">
-                Brak autorów dla tej publikacji.
+            <div class="alert-box info" style="padding: 20px; background: #f0f0f0; border-radius: 8px; margin-top: 20px;">
+                Brak autorów dla tej dyscypliny.
             </div>
         {% endfor %}
         </div>
