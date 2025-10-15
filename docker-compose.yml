@@ -101,6 +101,8 @@ services:
         condition: service_healthy
       db:
         condition: service_healthy
+    ports:
+      - 8000:8000
     volumes:
       - staticfiles:/staticroot
       - media:/mediaroot
@@ -183,7 +185,7 @@ services:
     # PostgreSQL LISTEN to Celery queue
     image: iplweb/bpp_base:latest
     env_file: .env.docker
-    entrypoint: ["python", "src/manage.py", "denorm_queue"]
+    entrypoint: ["uv", "run", "python", "src/manage.py", "denorm_queue"]
     logging: *default-logging
     healthcheck:
       test: ['CMD','true'] # disable the healthcheck
