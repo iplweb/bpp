@@ -82,7 +82,13 @@ def test_convert_using_docker_image_success(monkeypatch, tmp_path):
 
     def mock_subprocess_run(cmd, input, check, capture_output, text):  # noqa: ARG001
         assert cmd[0] == "docker"
-        assert cmd[1:] == ["run", "--rm", "-i", "iplweb/html2docx:latest", "-", "-"]
+        assert cmd[1:] == [
+            "run",
+            "--rm",
+            "-i",
+            "iplweb/html2docx:latest",
+            "-",
+        ]
         assert input == html_input.encode("utf-8")
         assert check is True
         assert capture_output is True

@@ -76,7 +76,7 @@ dependencies = [
     "django-taggit==4.0.0",
     "weasyprint>=66.0",
     "requests-oauthlib==1.3.0",
-    "django-cacheops==7.0.2",
+    "django-cacheops>=7.2,<8",
     "djangoql==0.18.1",
     "django-weasyprint>=2.1.0",
     "django-templated-email>=3.0.0",
