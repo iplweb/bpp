@@ -813,3 +813,229 @@ def test_wybrana_do_ewaluacji_no_metryka(admin_client, denorms, rodzaj_autora_n)
     # Should show as not selected when no metryka exists
     assert "Udział niewybrany" in content
     assert "Udział wybrany do ewaluacji" not in content
+
+
+@pytest.mark.django_db
+def test_author_with_multiple_disciplines_shows_correct_metric(
+    admin_client, denorms, rodzaj_autora_n
+):
+    """Test that view shows correct MetrykaAutora when author has metrics for multiple disciplines"""
+    jednostka = baker.make(Jednostka, skupia_pracownikow=True)
+    autor = baker.make(Autor, nazwisko="MultiDiscipline", imiona="Test")
+
+    # Create TWO different disciplines
+    dyscyplina_informatyka = baker.make(
+        Dyscyplina_Naukowa, nazwa="Informatyka", kod="1.6"
+    )
+    dyscyplina_matematyka = baker.make(
+        Dyscyplina_Naukowa, nazwa="Matematyka", kod="1.1"
+    )
+
+    # Create Autor_Dyscyplina for ONLY Informatyka in 2023
+    # (Author can only have one primary discipline per year)
+    baker.make(
+        Autor_Dyscyplina,
+        autor=autor,
+        dyscyplina_naukowa=dyscyplina_informatyka,
+        rok=2023,
+        rodzaj_autora=rodzaj_autora_n,
+    )
+
+    # Create MetrykaAutora for BOTH disciplines with different values
+    metryka_informatyka = baker.make(
+        MetrykaAutora,
+        autor=autor,
+        dyscyplina_naukowa=dyscyplina_informatyka,
+        jednostka=jednostka,
+        punkty_nazbierane=Decimal("200.00"),  # Different values to distinguish
+        slot_nazbierany=Decimal("2.0"),
+        slot_maksymalny=Decimal("4.0"),
+        slot_wszystkie=Decimal("3.0"),
+        punkty_wszystkie=Decimal("250.00"),
+        _fill_optional=False,
+    )
+
+    metryka_matematyka = baker.make(
+        MetrykaAutora,
+        autor=autor,
+        dyscyplina_naukowa=dyscyplina_matematyka,
+        jednostka=jednostka,
+        punkty_nazbierane=Decimal("150.00"),  # Different values to distinguish
+        slot_nazbierany=Decimal("1.5"),
+        slot_maksymalny=Decimal("4.0"),
+        slot_wszystkie=Decimal("2.5"),
+        punkty_wszystkie=Decimal("180.00"),
+        _fill_optional=False,
+    )
+
+    # Create publication with author assigned to INFORMATYKA discipline ONLY
+    wydawnictwo = baker.make(
+        Wydawnictwo_Ciagle,
+        tytul_oryginalny="Test publication for Informatyka",
+        rok=2023,
+        punkty_kbn=100,
+    )
+
+    typ_odp, _ = Typ_Odpowiedzialnosci.objects.get_or_create(
+        nazwa="autor", defaults={"skrot": "aut."}
+    )
+
+    baker.make(
+        Wydawnictwo_Ciagle_Autor,
+        rekord=wydawnictwo,
+        autor=autor,
+        jednostka=jednostka,
+        dyscyplina_naukowa=dyscyplina_informatyka,  # INFORMATYKA discipline
+        przypieta=True,
+        afiliuje=True,
+        typ_odpowiedzialnosci=typ_odp,
+    )
+
+    denorms.flush()
+    wydawnictwo.refresh_from_db()
+
+    # Test the view
+    url = reverse(
+        "ewaluacja_optymalizuj_publikacje:optymalizuj", args=(wydawnictwo.slug,)
+    )
+    response = admin_client.get(url)
+
+    assert response.status_code == 200
+
+    # Verify the context contains the CORRECT metric for Informatyka
+    autorzy_po_dyscyplinach = response.context["autorzy_po_dyscyplinach"]
+    assert len(autorzy_po_dyscyplinach) == 1
+
+    dyscyplina_group = autorzy_po_dyscyplinach[0]
+    assert dyscyplina_group["dyscyplina"]["nazwa"] == "Informatyka"
+    assert dyscyplina_group["dyscyplina"]["kod"] == "1.6"
+
+    autorzy_data = dyscyplina_group["autorzy"]
+    assert len(autorzy_data) == 1
+
+    autor_data = autorzy_data[0]
+    assert autor_data["autor"] == autor
+    assert autor_data["dyscyplina"] == dyscyplina_informatyka
+
+    # CRITICAL: Verify the metryka_id matches the Informatyka metric, NOT Matematyka
+    assert (
+        autor_data["metryka_id"] == metryka_informatyka.pk
+    ), "Should use Informatyka metric"
+    assert (
+        autor_data["metryka_id"] != metryka_matematyka.pk
+    ), "Should NOT use Matematyka metric"
+    assert autor_data["metryka_missing"] is False
+
+    # Verify the metryka data matches Informatyka values
+    assert autor_data["metryka"] is not None
+    assert autor_data["metryka"]["punkty_nazbierane"] == Decimal("200.00")
+    assert autor_data["metryka"]["sloty_wypelnione"] == Decimal("2.0")
+
+    # Verify the template shows correct data
+    content = response.content.decode("utf-8")
+    assert "MultiDiscipline Test" in content
+    assert "Informatyka" in content
+
+    # Verify the correct link to metryka details (using Informatyka kod)
+    assert f"/ewaluacja_metryki/szczegoly/{autor.slug}/1.6/" in content
+    # Should NOT have link to Matematyka
+    assert f"/ewaluacja_metryki/szczegoly/{autor.slug}/1.1/" not in content
+
+
+@pytest.mark.django_db
+def test_author_without_wymiar_etatu_no_default_4_slots(
+    admin_client, denorms, rodzaj_autora_n
+):
+    """Test that authors without wymiar_etatu don't get default 4 slots assigned"""
+    jednostka = baker.make(Jednostka, skupia_pracownikow=True)
+    autor = baker.make(Autor, nazwisko="BezWymiaru", imiona="Test")
+    dyscyplina = baker.make(Dyscyplina_Naukowa, nazwa="Informatyka", kod="1.6")
+
+    # Create Autor_Dyscyplina WITHOUT wymiar_etatu
+    baker.make(
+        Autor_Dyscyplina,
+        autor=autor,
+        dyscyplina_naukowa=dyscyplina,
+        rok=2023,
+        rodzaj_autora=rodzaj_autora_n,
+        wymiar_etatu=None,  # Explicitly no wymiar_etatu
+        procent_dyscypliny=None,  # No percentage either
+    )
+
+    # Create publication
+    wydawnictwo = baker.make(
+        Wydawnictwo_Ciagle,
+        tytul_oryginalny="Test publication for author without wymiar_etatu",
+        rok=2023,
+        punkty_kbn=100,
+    )
+
+    typ_odp, _ = Typ_Odpowiedzialnosci.objects.get_or_create(
+        nazwa="autor", defaults={"skrot": "aut."}
+    )
+
+    baker.make(
+        Wydawnictwo_Ciagle_Autor,
+        rekord=wydawnictwo,
+        autor=autor,
+        jednostka=jednostka,
+        dyscyplina_naukowa=dyscyplina,
+        przypieta=True,
+        afiliuje=True,
+        typ_odpowiedzialnosci=typ_odp,
+    )
+
+    denorms.flush()
+    wydawnictwo.refresh_from_db()
+
+    # Build cache
+    from bpp.models.sloty.core import IPunktacjaCacher
+
+    cacher = IPunktacjaCacher(wydawnictwo)
+    cacher.removeEntries()
+    cacher.rebuildEntries()
+
+    # Try to recalculate metrics - should NOT create MetrykaAutora with default 4 slots
+    from ewaluacja_metryki.utils import przelicz_metryki_dla_publikacji
+
+    przelicz_metryki_dla_publikacji(wydawnictwo)
+
+    # Verify that MetrykaAutora was NOT created with default 4 slots
+    from ewaluacja_metryki.models import MetrykaAutora
+
+    metryka_exists = MetrykaAutora.objects.filter(
+        autor=autor, dyscyplina_naukowa=dyscyplina
+    ).exists()
+
+    # Should NOT exist because author has no wymiar_etatu and no IloscUdzialowDlaAutoraZaCalosc entry
+    assert (
+        not metryka_exists
+    ), "MetrykaAutora should NOT be created for authors without wymiar_etatu"
+
+    # Test the view to ensure it marks this as missing data
+    url = reverse(
+        "ewaluacja_optymalizuj_publikacje:optymalizuj", args=(wydawnictwo.slug,)
+    )
+    response = admin_client.get(url)
+
+    assert response.status_code == 200
+
+    # Check that the view correctly identifies missing data
+    autorzy_po_dyscyplinach = response.context["autorzy_po_dyscyplinach"]
+    assert len(autorzy_po_dyscyplinach) == 1
+
+    dyscyplina_group = autorzy_po_dyscyplinach[0]
+    autorzy_data = dyscyplina_group["autorzy"]
+    assert len(autorzy_data) == 1
+
+    autor_data = autorzy_data[0]
+    assert autor_data["autor"] == autor
+    assert autor_data["metryka_missing"] is True
+    assert (
+        autor_data["autor_dyscyplina_missing_data"] is True
+    ), "Should flag missing wymiar_etatu and IloscUdzialowDlaAutoraZaCalosc"
+
+    # Verify the template shows appropriate warnings
+    content = response.content.decode("utf-8")
+    assert "BezWymiaru Test" in content
+    assert "Metryka autora nie istnieje" in content

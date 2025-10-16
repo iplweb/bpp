@@ -4,9 +4,9 @@ from decimal import Decimal
 from django.db import transaction
 from django.db.models import Q
 
-from .models import MetrykaAutora
-
 from bpp.models import Autor_Dyscyplina
+
+from .models import MetrykaAutora
 
 logger = logging.getLogger(__name__)
 
@@ -43,8 +43,9 @@ def oblicz_metryki_dla_autora(
             )
             slot_maksymalny = ilosc_udzialow.ilosc_udzialow
         except IloscUdzialowDlaAutoraZaCalosc.DoesNotExist:
-            # Jeśli nie ma wpisu, użyj domyślnej wartości 4
-            slot_maksymalny = 4
+            # Brak wpisu oznacza brak wymiaru etatu - nie można obliczyć metryki
+            # Propagujemy wyjątek dalej aby wywołująca funkcja mogła go obsłużyć
+            raise
 
     # Pobierz główną jednostkę autora
     jednostka = autor.aktualna_jednostka
@@ -185,16 +186,242 @@ def przelicz_metryki_dla_publikacji(publikacja, rok_min=2022, rok_max=2025):
                 autor_dyscyplina.rodzaj_autora
                 and autor_dyscyplina.rodzaj_autora.skrot == "N"
             ):
-                metryka, _ = oblicz_metryki_dla_autora(
-                    autor=autor, dyscyplina=dyscyplina, rok_min=rok_min, rok_max=rok_max
-                )
-                results.append((autor, dyscyplina, metryka))
+                try:
+                    metryka, _ = oblicz_metryki_dla_autora(
+                        autor=autor,
+                        dyscyplina=dyscyplina,
+                        rok_min=rok_min,
+                        rok_max=rok_max,
+                    )
+                    results.append((autor, dyscyplina, metryka))
+                except Exception:
+                    # Pomiń autorów bez wpisu w IloscUdzialowDlaAutoraZaCalosc
+                    # (brak wymiaru etatu)
+                    logger.info(
+                        f"Pominięto przeliczanie metryki dla {autor} - {dyscyplina.nazwa}: "
+                        f"brak wpisu w IloscUdzialowDlaAutoraZaCalosc (prawdopodobnie brak "
+                        f"wymiaru etatu)"
+                    )
+                    continue
         except Autor_Dyscyplina.DoesNotExist:
-            print(autor, "nie ma")
+            logger.info(
+                f"Pominięto {autor} - brak wpisu Autor_Dyscyplina dla roku {publikacja.rok}"
+            )
             # Jeśli nie ma wpisu Autor_Dyscyplina dla tego roku, pomiń
             continue
 
     return results
+
+
+def _prepare_rodzaje_autora(rodzaje_autora):
+    """Przygotowuje listę rodzajów autorów do przetworzenia."""
+    if rodzaje_autora is None:
+        rodzaje_autora = ["N", "D", "B", "Z", " "]
+
+    # Obsługa "brak danych" - dodaj możliwe reprezentacje
+    if " " in rodzaje_autora:
+        rodzaje_autora = list(rodzaje_autora)  # Skopiuj listę
+        rodzaje_autora.append(None)
+        rodzaje_autora.append("")
+
+    return rodzaje_autora
+
+
+def _get_ilosc_udzialow_queryset(ilosc_udzialow_queryset):
+    """Pobiera queryset IloscUdzialowDlaAutoraZaCalosc."""
+    from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaCalosc
+
+    if ilosc_udzialow_queryset is None:
+        return IloscUdzialowDlaAutoraZaCalosc.objects.all()
+    else:
+        return ilosc_udzialow_queryset
+
+
+def _should_skip_author(autor, dyscyplina, rodzaje_autora):
+    """Sprawdza czy autor powinien być pominięty na podstawie rodzaju_autora."""
+    autor_dyscyplina = (
+        Autor_Dyscyplina.objects.filter(
+            Q(autor=autor)
+            & (Q(dyscyplina_naukowa=dyscyplina) | Q(subdyscyplina_naukowa=dyscyplina))
+        )
+        .order_by("-rok")
+        .first()
+    )
+
+    if (
+        not autor_dyscyplina
+        or not autor_dyscyplina.rodzaj_autora
+        or autor_dyscyplina.rodzaj_autora.skrot not in rodzaje_autora
+    ):
+        return True, autor_dyscyplina
+
+    return False, autor_dyscyplina
+
+
+def _calculate_metrics_data(
+    autor, dyscyplina, slot_maksymalny, rok_min, rok_max, minimalny_pk
+):
+    """Oblicza dane metryk dla autora."""
+    # Oblicz metryki algorytmem plecakowym
+    (
+        punkty_nazbierane,
+        prace_nazbierane_ids,
+        slot_nazbierany,
+    ) = autor.zbieraj_sloty(
+        zadany_slot=slot_maksymalny,
+        rok_min=rok_min,
+        rok_max=rok_max,
+        minimalny_pk=minimalny_pk,
+        dyscyplina_id=dyscyplina.pk,
+    )
+
+    # Oblicz metryki dla wszystkich prac
+    (
+        punkty_wszystkie,
+        prace_wszystkie_ids,
+        slot_wszystkie,
+    ) = autor.zbieraj_sloty(
+        zadany_slot=slot_maksymalny,
+        rok_min=rok_min,
+        rok_max=rok_max,
+        minimalny_pk=minimalny_pk,
+        dyscyplina_id=dyscyplina.pk,
+        akcja="wszystko",
+    )
+
+    return {
+        "punkty_nazbierane": punkty_nazbierane,
+        "prace_nazbierane_ids": prace_nazbierane_ids,
+        "slot_nazbierany": slot_nazbierany,
+        "punkty_wszystkie": punkty_wszystkie,
+        "prace_wszystkie_ids": prace_wszystkie_ids,
+        "slot_wszystkie": slot_wszystkie,
+    }
+
+
+def _create_or_update_metryka(
+    autor,
+    dyscyplina,
+    jednostka,
+    slot_maksymalny,
+    metrics_data,
+    rok_min,
+    rok_max,
+    rodzaj_autora_skrot,
+):
+    """Tworzy lub aktualizuje metrykę autora."""
+    return MetrykaAutora.objects.update_or_create(
+        autor=autor,
+        dyscyplina_naukowa=dyscyplina,
+        defaults={
+            "jednostka": jednostka,
+            "slot_maksymalny": slot_maksymalny,
+            "slot_nazbierany": Decimal(str(metrics_data["slot_nazbierany"])),
+            "punkty_nazbierane": Decimal(str(metrics_data["punkty_nazbierane"])),
+            "prace_nazbierane": metrics_data["prace_nazbierane_ids"],
+            "slot_wszystkie": Decimal(str(metrics_data["slot_wszystkie"])),
+            "punkty_wszystkie": Decimal(str(metrics_data["punkty_wszystkie"])),
+            "prace_wszystkie": metrics_data["prace_wszystkie_ids"],
+            "liczba_prac_wszystkie": len(metrics_data["prace_wszystkie_ids"]),
+            "rok_min": rok_min,
+            "rok_max": rok_max,
+            "rodzaj_autora": rodzaj_autora_skrot,
+        },
+    )
+
+
+def _process_single_author(
+    ilosc_udzialow,
+    idx,
+    total,
+    processed,
+    rodzaje_autora,
+    rok_min,
+    rok_max,
+    minimalny_pk,
+    progress_callback,
+    logger_output,
+):
+    """Przetwarza pojedynczego autora i zwraca wynik."""
+    autor = ilosc_udzialow.autor
+    dyscyplina = ilosc_udzialow.dyscyplina_naukowa
+    slot_maksymalny = ilosc_udzialow.ilosc_udzialow
+
+    # Wywołaj progress callback jeśli jest dostępny
+    if progress_callback:
+        try:
+            progress_callback(
+                current=idx,
+                total=total,
+                autor=autor,
+                dyscyplina=dyscyplina,
+                processed=processed,
+            )
+        except Exception:
+            pass  # Ignore errors in progress reporting
+
+    try:
+        with transaction.atomic():
+            # Sprawdź czy autor powinien być pominięty
+            should_skip, autor_dyscyplina = _should_skip_author(
+                autor, dyscyplina, rodzaje_autora
+            )
+
+            if should_skip:
+                rodzaj_skrot = (
+                    autor_dyscyplina.rodzaj_autora.skrot
+                    if autor_dyscyplina and autor_dyscyplina.rodzaj_autora
+                    else "None"
+                )
+                msg = (
+                    f"Pominięto {autor} - {dyscyplina.nazwa}: rodzaj_autora = "
+                    f"'{rodzaj_skrot}'"
+                )
+                logger.info(msg)
+                if logger_output:
+                    logger_output.write(msg)
+                return "skipped", msg
+
+            # Pobierz główną jednostkę autora
+            jednostka = autor.aktualna_jednostka
+
+            # Oblicz dane metryk
+            metrics_data = _calculate_metrics_data(
+                autor, dyscyplina, slot_maksymalny, rok_min, rok_max, minimalny_pk
+            )
+
+            # Pobierz rodzaj autora
+            rodzaj_autora_skrot = " "
+            if autor_dyscyplina and autor_dyscyplina.rodzaj_autora:
+                rodzaj_autora_skrot = autor_dyscyplina.rodzaj_autora.skrot
+
+            # Utwórz lub zaktualizuj metrykę
+            metryka, created = _create_or_update_metryka(
+                autor,
+                dyscyplina,
+                jednostka,
+                slot_maksymalny,
+                metrics_data,
+                rok_min,
+                rok_max,
+                rodzaj_autora_skrot,
+            )
+
+            action = "utworzono" if created else "zaktualizowano"
+            msg = (
+                f"[{processed + 1}/{total}] {action} metrykę dla {autor} - {dyscyplina.nazwa}: "
+                f"nazbierane {metrics_data['punkty_nazbierane']:.2f} pkt / {metrics_data['slot_nazbierany']:.2f} slotów, "
+                f"średnia {metryka.srednia_za_slot_nazbierana:.2f} pkt/slot"
+            )
+            logger.debug(msg)
+            return "processed", msg
+
+    except Exception as e:
+        msg = f"Błąd przy przetwarzaniu {autor} - {dyscyplina.nazwa}: {str(e)}"
+        logger.error(msg)
+        if logger_output:
+            logger_output.write(msg)
+        return "error", msg
 
 
 def generuj_metryki(
@@ -229,22 +456,8 @@ def generuj_metryki(
             - errors: liczba błędów
             - total: całkowita liczba autorów do przetworzenia
     """
-    if rodzaje_autora is None:
-        rodzaje_autora = ["N", "D", "B", "Z", " "]
-
-    # Obsługa "brak danych" - dodaj możliwe reprezentacje
-    if " " in rodzaje_autora:
-        rodzaje_autora = list(rodzaje_autora)  # Skopiuj listę
-        rodzaje_autora.append(None)
-        rodzaje_autora.append("")
-
-    from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaCalosc
-
-    # Pobierz autorów do przetworzenia
-    if ilosc_udzialow_queryset is None:
-        ilosc_udzialow_qs = IloscUdzialowDlaAutoraZaCalosc.objects.all()
-    else:
-        ilosc_udzialow_qs = ilosc_udzialow_queryset
+    rodzaje_autora = _prepare_rodzaje_autora(rodzaje_autora)
+    ilosc_udzialow_qs = _get_ilosc_udzialow_queryset(ilosc_udzialow_queryset)
 
     total = ilosc_udzialow_qs.count()
 
@@ -263,129 +476,25 @@ def generuj_metryki(
     for idx, ilosc_udzialow in enumerate(
         ilosc_udzialow_qs.select_related("autor", "dyscyplina_naukowa"), 1
     ):
-        autor = ilosc_udzialow.autor
-        dyscyplina = ilosc_udzialow.dyscyplina_naukowa
-        slot_maksymalny = ilosc_udzialow.ilosc_udzialow
+        result, msg = _process_single_author(
+            ilosc_udzialow,
+            idx,
+            total,
+            processed,
+            rodzaje_autora,
+            rok_min,
+            rok_max,
+            minimalny_pk,
+            progress_callback,
+            logger_output,
+        )
 
-        # Wywołaj progress callback jeśli jest dostępny
-        if progress_callback:
-            try:
-                progress_callback(
-                    current=idx,
-                    total=total,
-                    autor=autor,
-                    dyscyplina=dyscyplina,
-                    processed=processed,
-                )
-            except Exception:
-                pass  # Ignore errors in progress reporting
-
-        try:
-            with transaction.atomic():
-                # Sprawdź rodzaj_autora
-                autor_dyscyplina = (
-                    Autor_Dyscyplina.objects.filter(
-                        Q(autor=autor)
-                        & (
-                            Q(dyscyplina_naukowa=dyscyplina)
-                            | Q(subdyscyplina_naukowa=dyscyplina)
-                        )
-                    )
-                    .order_by("-rok")
-                    .first()
-                )
-
-                # Sprawdź czy rodzaj autora jest na liście do przetworzenia
-                if (
-                    not autor_dyscyplina
-                    or not autor_dyscyplina.rodzaj_autora
-                    or autor_dyscyplina.rodzaj_autora.skrot not in rodzaje_autora
-                ):
-                    skipped += 1
-                    rodzaj_skrot = (
-                        autor_dyscyplina.rodzaj_autora.skrot
-                        if autor_dyscyplina and autor_dyscyplina.rodzaj_autora
-                        else "None"
-                    )
-                    msg = (
-                        f"Pominięto {autor} - {dyscyplina.nazwa}: rodzaj_autora = "
-                        f"'{rodzaj_skrot}'"
-                    )
-                    logger.info(msg)
-                    if logger_output:
-                        logger_output.write(msg)
-                    continue
-
-                # Pobierz główną jednostkę autora
-                jednostka = autor.aktualna_jednostka
-
-                # Oblicz metryki algorytmem plecakowym
-                (
-                    punkty_nazbierane,
-                    prace_nazbierane_ids,
-                    slot_nazbierany,
-                ) = autor.zbieraj_sloty(
-                    zadany_slot=slot_maksymalny,
-                    rok_min=rok_min,
-                    rok_max=rok_max,
-                    minimalny_pk=minimalny_pk,
-                    dyscyplina_id=dyscyplina.pk,
-                )
-
-                # Oblicz metryki dla wszystkich prac
-                (
-                    punkty_wszystkie,
-                    prace_wszystkie_ids,
-                    slot_wszystkie,
-                ) = autor.zbieraj_sloty(
-                    zadany_slot=slot_maksymalny,
-                    rok_min=rok_min,
-                    rok_max=rok_max,
-                    minimalny_pk=minimalny_pk,
-                    dyscyplina_id=dyscyplina.pk,
-                    akcja="wszystko",
-                )
-
-                # Pobierz rodzaj autora
-                rodzaj_autora_skrot = " "
-                if autor_dyscyplina and autor_dyscyplina.rodzaj_autora:
-                    rodzaj_autora_skrot = autor_dyscyplina.rodzaj_autora.skrot
-
-                # Utwórz lub zaktualizuj metrykę
-                metryka, created = MetrykaAutora.objects.update_or_create(
-                    autor=autor,
-                    dyscyplina_naukowa=dyscyplina,
-                    defaults={
-                        "jednostka": jednostka,
-                        "slot_maksymalny": slot_maksymalny,
-                        "slot_nazbierany": Decimal(str(slot_nazbierany)),
-                        "punkty_nazbierane": Decimal(str(punkty_nazbierane)),
-                        "prace_nazbierane": prace_nazbierane_ids,
-                        "slot_wszystkie": Decimal(str(slot_wszystkie)),
-                        "punkty_wszystkie": Decimal(str(punkty_wszystkie)),
-                        "prace_wszystkie": prace_wszystkie_ids,
-                        "liczba_prac_wszystkie": len(prace_wszystkie_ids),
-                        "rok_min": rok_min,
-                        "rok_max": rok_max,
-                        "rodzaj_autora": rodzaj_autora_skrot,
-                    },
-                )
-
-                processed += 1
-                action = "utworzono" if created else "zaktualizowano"
-                msg = (
-                    f"[{processed}/{total}] {action} metrykę dla {autor} - {dyscyplina.nazwa}: "
-                    f"nazbierane {punkty_nazbierane:.2f} pkt / {slot_nazbierany:.2f} slotów, "
-                    f"średnia {metryka.srednia_za_slot_nazbierana:.2f} pkt/slot"
-                )
-                logger.debug(msg)
-
-        except Exception as e:
+        if result == "processed":
+            processed += 1
+        elif result == "skipped":
+            skipped += 1
+        elif result == "error":
             errors += 1
-            msg = f"Błąd przy przetwarzaniu {autor} - {dyscyplina.nazwa}: {str(e)}"
-            logger.error(msg)
-            if logger_output:
-                logger_output.write(msg)
 
     return {
         "processed": processed,
