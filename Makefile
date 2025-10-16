@@ -208,7 +208,8 @@ loc: clean
 
 DOCKER_VERSION="202510.1259"
 
-DOCKER_BUILD=build --platform linux/amd64 --push --no-cache
+DOCKER_BUILD=build --platform linux/amd64 --push
+#--no-cache
 
 
 # Na lokalnej maszynie nie uzywaj --push + buduj tylko ARM
