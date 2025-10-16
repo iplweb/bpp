@@ -62,7 +62,7 @@ def as_docx(  # noqa: PLR0913
 
     output_file = NamedTemporaryFile(delete=False)
 
-    try:
+    if not getattr(settings, "PANDOC_FAILS_ON_THIS_HOST", False):
         pypandoc.convert_text(
             cleaned_html,
             "docx",
@@ -71,10 +71,7 @@ def as_docx(  # noqa: PLR0913
         )
         output_file.seek(0)
         return output_file
-    except (OSError, RuntimeError) as exc:
-        LOGGER.warning(
-            "Pandoc conversion failed, retrying with html2docx", exc_info=exc
-        )
+    else:
         try:
             _convert_using_docker_image(cleaned_html, output_file.name)
         except Exception as docker_exc:  # noqa: BLE001
