@@ -3,6 +3,14 @@
 
 // Import Foundation settings to access $primary-color
 
+// Prevent horizontal overflow on mobile devices when dropdown menus are open
+@media screen and (max-width: 639px) {
+    html, body {
+        overflow-x: hidden;
+        width: 100%;
+    }
+}
+
 .top-bar {
     &.sticky-header {
         position: sticky;
@@ -161,6 +169,18 @@
             display: flex !important;
         }
 
+        // Responsive: single column on mobile
+        @media screen and (max-width: 639px) {
+            display: block !important;  // Stack columns vertically
+            width: 95vw;  // Full width with small margin
+            min-width: unset;  // Remove fixed min-width
+            left: 2.5vw;  // Center horizontally
+
+            &[data-submenu] {
+                display: block !important;
+            }
+        }
+
         ul.menu.vertical {
             flex: 1;
             min-width: 280px;
@@ -178,6 +198,14 @@
                 border-bottom-left-radius: 12px;
                 border-top-right-radius: 0;  // Explicitly remove inner right corners
                 border-bottom-right-radius: 0;
+
+                // Remove border on mobile (single column layout)
+                @media screen and (max-width: 639px) {
+                    border-right: none;
+                    border-radius: 0;
+                    min-width: unset;
+                    width: 100%;
+                }
             }
 
             &.column-2 {
@@ -186,6 +214,13 @@
                 border-bottom-right-radius: 12px;
                 border-top-left-radius: 0;  // Explicitly remove inner left corners
                 border-bottom-left-radius: 0;
+
+                // Full width on mobile
+                @media screen and (max-width: 639px) {
+                    border-radius: 0;
+                    min-width: unset;
+                    width: 100%;
+                }
             }
 
             li {
@@ -246,7 +281,10 @@
             pointer-events: none;  // Prevent ghost hovering
         }
 
-        &:hover {
+        // Enable pointer events on hover (desktop) and when active (mobile touch)
+        &:hover,
+        &.is-active,
+        &.is-dropdown-submenu-parent.is-active {
             > .menu-columns-wrapper,
             > .menu.vertical,
             > ul.menu {
@@ -597,7 +635,7 @@
     right: 60px;
     color: #999;
     font-size: 0.8rem;
-    background: rgba(255, 255, 255, 0.9);
+    background: #ffffff;
     padding: 4px 8px;
     border-radius: 4px;
     border: 1px solid #e0e0e0;

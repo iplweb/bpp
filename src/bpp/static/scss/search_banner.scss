@@ -96,17 +96,9 @@
     }
 }
 
-// Mobile adjustments
+// Mobile adjustments - hide banner on mobile devices (no physical keyboard)
 @media (max-width: 640px) {
     .search-shortcut-banner {
-        padding: 10px 0;
-    }
-
-    .banner-content {
-        font-size: 0.85rem;
-    }
-
-    .banner-icon {
         display: none;
     }
 }
