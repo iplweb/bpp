@@ -37,7 +37,7 @@ RUN rm -rf node_modules
 RUN npx yarn install --prod
 
 
-RUN uv run src/manage.py compilemessages -v0 --traceback
+RUN uv run src/manage.py compilemessages -v0 -l pl --traceback
 
 RUN uv cache clean
 
