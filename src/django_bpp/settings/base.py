@@ -157,10 +157,6 @@ env = environ.Env(
     # Pydantic Logfire
     #
     PYDANTIC_LOGFIRE_TOKEN=(str, None),
-    #
-    #
-    #
-    PANDOC_FAILS_ON_THIS_HOST=(bool, False),
 )
 
 
@@ -1236,5 +1232,3 @@ if PYDANTIC_LOGFIRE_TOKEN:
     logfire.configure(token=env("PYDANTIC_LOGFIRE_TOKEN"))
     logfire.instrument_django()
     # logfire.instrument_psycopg()
-
-PANDOC_FAILS_ON_THIS_HOST = env("PANDOC_FAILS_ON_THIS_HOST")
