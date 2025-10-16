@@ -1,11 +1,10 @@
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models
 
-from long_running.models import Operation
-from long_running.notification_mixins import ASGINotificationMixin
-
 from bpp.fields import YearField
 from bpp.models import Autor, Dyscyplina_Naukowa
+from long_running.models import Operation
+from long_running.notification_mixins import ASGINotificationMixin
 
 
 class ImportPlikuAbsencji(ASGINotificationMixin, Operation):
@@ -34,7 +33,7 @@ class WierszImportuPlikuAbsencji(models.Model):
     ile_dni = models.PositiveSmallIntegerField(null=True, blank=True)
 
     wymaga_zmiany = models.BooleanField(default=None, null=True, blank=True)
-    rezultat = models.TextField(blank=True, null=True)
+    rezultat = models.TextField(blank=True, default="")
 
     class Meta:
         ordering = ("nr_wiersza",)
@@ -79,7 +78,33 @@ class WierszImportuPlikuPolon(models.Model):
         related_name="+",
     )
 
-    rezultat = models.TextField(blank=True, null=True)
+    rezultat = models.TextField(blank=True, default="")
 
     class Meta:
         ordering = ("nr_wiersza",)
+
+
+class ImportPolonOverride(models.Model):
+    """
+    Model umożliwiający wymuszenie domyślnej logiki określania czy autor jest badawczy
+    na podstawie grupy stanowisk.
+    """
+
+    grupa_stanowisk = models.CharField(
+        max_length=200,
+        unique=True,
+        verbose_name="Grupa stanowisk",
+        help_text="Nazwa grupy stanowisk z pliku POLON (np. 'Pracownik badawczo-dydaktyczny')",
+    )
+    jest_badawczy = models.BooleanField(
+        verbose_name="Czy jest badawczy",
+        help_text="Określa czy pracownik tej grupy stanowisk ma być oznaczony jako badawczy (typ B)",
+    )
+
+    class Meta:
+        verbose_name = "Wymuszenie grupy stanowisk"
+        verbose_name_plural = "Wymuszenia grup stanowisk"
+        ordering = ("grupa_stanowisk",)
+
+    def __str__(self):
+        return f"{self.grupa_stanowisk} → {'TAK' if self.jest_badawczy else 'NIE'}"

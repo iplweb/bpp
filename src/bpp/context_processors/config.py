@@ -6,6 +6,7 @@ def bpp_configuration(request):
 
     return {
         "THEME_NAME": "scss/" + settings.THEME_NAME + ".css",
+        "THEME_NAME_RAW": settings.THEME_NAME,
         "ENABLE_NEW_REPORTS": settings.ENABLE_NEW_REPORTS,
         "MAX_NO_AUTHORS_ON_BROWSE_JEDNOSTKA_PAGE": settings.MAX_NO_AUTHORS_ON_BROWSE_JEDNOSTKA_PAGE,
         "BPP_POLA_PUNKTACJI": POLA_PUNKTACJI,

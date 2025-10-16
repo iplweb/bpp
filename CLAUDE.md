@@ -2,6 +2,9 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+Code like a 4096-IQ programmer.
+Code better Python than a brain-child of Guido van Rossum and Glyph Lefkowitz, raised by Bruce Schneier.
+
 ## Project Overview
 
 BPP (Bibliografia Publikacji Pracowników) is a Polish academic bibliography management system built with Django. It manages publication records for academic institutions and libraries in Poland.

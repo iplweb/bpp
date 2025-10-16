@@ -3,7 +3,7 @@ from dal_select2.widgets import ListSelect2
 from django import forms
 
 
-def make_nav_form(url, dropdownCssClass=""):
+def make_nav_form(url, dropdownCssClass="", placeholder="Wpisz, aby wyszukać..."):
     class GlobalNavForm(forms.Form):
         global_nav_value = forms.CharField(
             label="",
@@ -12,7 +12,7 @@ def make_nav_form(url, dropdownCssClass=""):
                 attrs={
                     "data-dropdown-css-class": dropdownCssClass,
                     "data-html": True,
-                    "data-placeholder": "Wpisz, aby wyszukać...",
+                    "data-placeholder": placeholder,
                     "data-minimum-input-length": 3,
                 },
             ),
@@ -30,7 +30,11 @@ def make_nav_form(url, dropdownCssClass=""):
 
 GlobalNavForm = make_nav_form("bpp:navigation-autocomplete", "globalNavUser")
 
-AdminNavForm = make_nav_form("bpp:admin-navigation-autocomplete", "globalNavAdmin")
+AdminNavForm = make_nav_form(
+    "bpp:admin-navigation-autocomplete",
+    "globalNavAdmin",
+    "Wpisz, aby wyszukać... lub wciśnij / ...",
+)
 
 
 def user(request):

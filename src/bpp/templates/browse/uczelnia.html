@@ -168,9 +168,11 @@
             <div class="shaded-hr-div"></div>
         </div>
         <div class="large-12 cell uczelnia-main-content">
-            <a href="/zglos_publikacje/nowe_zgloszenie/" class=" main-page-button-primary">
-                <i class="fi-page-add"></i> Masz nową publikację? Dodaj ją do bazy
-            </a>
+            {% if uczelnia.pokazuj_formularz_zglaszania_publikacji == 'always' or uczelnia.pokazuj_formularz_zglaszania_publikacji == 'logged-in' and request.user.is_authenticated or uczelnia.pokazuj_formularz_zglaszania_publikacji == 'staff' and request.user.is_staff %}
+                <a href="/zglos_publikacje/nowe_zgloszenie/" class=" main-page-button-primary">
+                    <i class="fi-page-add"></i> Masz nową publikację? Dodaj ją do bazy
+                </a>
+            {% endif %}
             {% if total_rekord_count > 25000 %}
                 <form method="post" action="{% url 'bpp:browse_build_search' %}" style="display: inline;">
                     {% csrf_token %}

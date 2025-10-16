@@ -10,6 +10,29 @@
 
 {% block extrahead %}
     {{ global_nav_form.media }}
+
+    <!-- Anti-FOUC: Hide page until fully loaded -->
+    <style>
+        html {
+            visibility: hidden !important;
+            opacity: 0 !important;
+        }
+    </style>
+    <script>
+        // Show page after select2 and all scripts are loaded
+        (function() {
+            function showPage() {
+                document.documentElement.style.setProperty('visibility', 'visible', 'important');
+                document.documentElement.style.setProperty('opacity', '1', 'important');
+            }
+
+            // Wait for window.load (all resources including scripts loaded)
+            window.addEventListener('load', function() {
+                // Give select2 extra 100ms to initialize
+                setTimeout(showPage, 100);
+            });
+        })();
+    </script>
 {% endblock %}
 
 {% block nav-global %}
@@ -21,6 +44,22 @@
                     (function($){
                         // Handle select2 change event
                         $(':input[name$=global_nav_value]').on('change', function () {
+                            var $select = $(this);
+                            var $container = $select.next('.select2-container');
+
+                            // Close dropdown immediately
+                            $select.select2('close');
+
+                            // Disable select to prevent further interaction
+                            $select.prop('disabled', true);
+
+                            // Add loading state to container
+                            $container.addClass('select2-loading');
+
+                            // Change cursor to waiting
+                            $('body').css('cursor', 'wait');
+
+                            // Perform redirect
                             location.href = "/global-nav-redir/" + $(this).val() +
                                 "?source=admin";
                         });
@@ -82,7 +121,7 @@
                     })(django.jQuery || $);
                 </script>
             </div>
-            <div style="display: none;" id="show-after-load">
+            <div>
                 {% if request.user.is_staff %}
                     {% admin_tools_render_menu %}
                 {% endif %}
@@ -168,6 +207,54 @@
                 color: black !important;
             }
 
+            /* Admin table row hover effect with theme color */
+            {% if THEME_NAME_RAW == 'app-blue' %}
+                #result_list tbody tr:hover td,
+                #result_list tbody tr:hover th {
+                    background-color: #f0f7fa !important;
+                    transition: background-color 0.15s ease;
+                }
+                .form-row.grp-row:hover {
+                    background-color: #f5f5f5;
+                    transition: background-color 0.15s ease;
+                    border-radius: 3px;
+                }
+            {% elif THEME_NAME_RAW == 'app-green' %}
+                #result_list tbody tr:hover td,
+                #result_list tbody tr:hover th {
+                    background-color: #f0f8f2 !important;
+                    transition: background-color 0.15s ease;
+                }
+                .form-row.grp-row:hover {
+                    background-color: #f5f5f5;
+                    transition: background-color 0.15s ease;
+                    border-radius: 3px;
+                }
+            {% elif THEME_NAME_RAW == 'app-orange' %}
+                #result_list tbody tr:hover td,
+                #result_list tbody tr:hover th {
+                    background-color: #fef5f0 !important;
+                    transition: background-color 0.15s ease;
+                }
+                .form-row.grp-row:hover {
+                    background-color: #f5f5f5;
+                    transition: background-color 0.15s ease;
+                    border-radius: 3px;
+                }
+            {% else %}
+                /* Fallback for unknown theme */
+                #result_list tbody tr:hover td,
+                #result_list tbody tr:hover th {
+                    background-color: #f5f5f5 !important;
+                    transition: background-color 0.15s ease;
+                }
+                .form-row.grp-row:hover {
+                    background-color: #f5f5f5;
+                    transition: background-color 0.15s ease;
+                    border-radius: 3px;
+                }
+            {% endif %}
+
             /* Support Button Styles for Admin */
             .bpp-support-button {
                 position: fixed;
@@ -186,6 +273,11 @@
                 transition: all 0.3s ease;
                 min-width: 60px;
                 text-align: center;
+            }
+
+            /* Move button 50px lower when there's no fixed footer */
+            body:not(:has(footer.grp-module.grp-submit-row.grp-fixed-footer)) .bpp-support-button {
+                bottom: 20px;
             }
 
             .bpp-support-button .button-content {
@@ -264,12 +356,16 @@
             }
         </style>
     {% endcompress %}
+
+    {% compress js %}
+        <script type="text/javascript" src="{{ STATIC_URL }}bpp/js/admin-table-enhancements.js"></script>
+    {% endcompress %}
+
     <script type="text/javascript">
         (function ($) {
 
             $(document).ready(function () {
 
-                $("#show-after-load").css("display", "block");
                 txt = $("#grp-admin-title").text();
                 $("#grp-admin-title").html(
                     '<a href="/">' + txt + '</a>');

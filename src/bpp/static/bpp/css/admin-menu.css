@@ -1,5 +1,11 @@
 #grp-navigation {
     padding: 0px 0px !important;
+    min-width: 640px !important;
+}
+
+#grp-admin-title a {
+    margin-left: 5px;
+    margin-right: -15px;
 }
 
 #grp-navigation ul li {
@@ -56,10 +62,8 @@
 }
 
 #grp-navigation ul#navigation-menu li.first a {
-    margin: 5px 0 0 24px;
+    margin: 5px 0 0 0;
     padding-top: 4px;
-    text-indent: 14px;
-    background: transparent url(/static/admin_tools/images/admin-tools.png) no-repeat 0 -385px;
     height: 12px;
 }
 
@@ -77,13 +81,19 @@
 }
 
 #grp-navigation ul#navigation-menu li ul {
-    display: none;
+    visibility: hidden;
+    opacity: 0;
     position: absolute;
     top: auto;
     left: auto;
     margin: 0;
     border-color: black !important;
     padding: 0px;
+    transition: opacity 0.5s ease, visibility 0.5s ease;
+    border-radius: 8px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+    z-index: 99999;
 }
 
 #grp-navigation ul#navigation-menu li ul li {
@@ -96,7 +106,7 @@
     border-top: 1px solid #090909;
     display: block;
     margin: -1px 0 0 -1px;
-    z-index: 1010;
+    z-index: 99999;
 }
 
 #grp-navigation ul#navigation-menu li ul li a {
@@ -104,6 +114,15 @@
     border-width: 0 1px 1px 1px;
     text-transform: none;
     min-width: 180px;
+    transition: background-color 0.25s ease, padding-left 0.2s ease, border-left 0.2s ease;
+    background-color: #222222;
+    border-left: 3px solid transparent;
+}
+
+#grp-navigation ul#navigation-menu li ul li a:hover {
+    background-color: #3a3a3a;
+    padding-left: 18px;
+    border-left: 3px solid #5a9fd4;
 }
 
 #grp-navigation ul#navigation-menu li ul li span {
@@ -122,14 +141,16 @@
 
 #grp-navigation ul#navigation-menu li:hover ul li ul,
 #grp-navigation ul#navigation-menu li.over ul li ul {
-    display: none;
+    visibility: hidden;
+    opacity: 0;
 }
 
 #grp-navigation ul#navigation-menu li:hover ul,
 #grp-navigation ul#navigation-menu li.over ul,
 #grp-navigation ul#navigation-menu li ul li:hover ul,
 #grp-navigation ul#navigation-menu li ul li.over ul {
-    display: block;
+    visibility: visible;
+    opacity: 1;
 }
 
 #grp-navigation ul#navigation-menu li:hover ul li,
@@ -150,9 +171,149 @@
     background: none;
 }
 
-@media (max-width: 1100px) {
+/* Menu icons using ::before with emoji + desaturation filter */
+#grp-navigation ul#navigation-menu li.menu-icon-home > a::before,
+#grp-navigation ul#navigation-menu li.menu-icon-bookmarks > a::before,
+#grp-navigation ul#navigation-menu li.menu-icon-web > a::before,
+#grp-navigation ul#navigation-menu li.menu-icon-api > a::before,
+#grp-navigation ul#navigation-menu li.menu-icon-settings > a::before,
+#grp-navigation ul#navigation-menu li.menu-icon-structure > a::before,
+#grp-navigation ul#navigation-menu li.menu-icon-edit > a::before,
+#grp-navigation ul#navigation-menu li.menu-icon-reports > a::before,
+#grp-navigation ul#navigation-menu li.menu-icon-admin > a::before {
+    margin-right: 6px;
+    font-weight: normal;
+    filter: saturate(0.5) brightness(0.9);
+}
+
+#grp-navigation ul#navigation-menu li.menu-icon-home > a::before {
+    content: "🏠";
+}
+
+#grp-navigation ul#navigation-menu li.menu-icon-bookmarks > a::before {
+    content: "🔖";
+}
+
+#grp-navigation ul#navigation-menu li.menu-icon-web > a::before {
+    content: "🌐";
+}
+
+#grp-navigation ul#navigation-menu li.menu-icon-api > a::before {
+    content: "🔗";
+}
+
+#grp-navigation ul#navigation-menu li.menu-icon-settings > a::before {
+    content: "⚙️";
+}
+
+#grp-navigation ul#navigation-menu li.menu-icon-structure > a::before {
+    content: "🏛️";
+}
+
+#grp-navigation ul#navigation-menu li.menu-icon-edit > a::before {
+    content: "✏️";
+}
+
+#grp-navigation ul#navigation-menu li.menu-icon-reports > a::before {
+    content: "📊";
+}
+
+#grp-navigation ul#navigation-menu li.menu-icon-admin > a::before {
+    content: "👤";
+}
+
+/* -------------------------------------------------------------------------------- */
+/* Responsive font sizing strategy for menu */
+/* -------------------------------------------------------------------------------- */
+/*
+   Breakpoints:
+   - >1490px: Full size (11px base)
+   - 1400-1490px: Slightly reduced (10px)
+   - 1364-1400px: More reduced (9.5px)
+   - 1200-1364px: Even more reduced (9.2px)
+   - 1050-1200px: Further reduced (9px)
+   - ≤1050px: Icons only (text hidden)
+*/
+
+/* First reduction at 1490px */
+@media (max-width: 1490px) {
     #grp-navigation ul#navigation-menu li a {
-        font-size: 7pt !important;
+        font-size: 10px !important;
+    }
+}
+
+/* Second reduction at 1400px */
+@media (max-width: 1400px) {
+    #grp-navigation ul#navigation-menu li a {
+        font-size: 9.5px !important;
+    }
+}
+
+/* Third reduction at 1364px */
+@media (max-width: 1364px) {
+    #grp-navigation ul#navigation-menu li a {
+        font-size: 9px !important;
+    }
+}
+
+/* Disable padding shift on hover below 1400px */
+@media (max-width: 1400px) {
+    /* Disable padding shift on hover for dropdown items */
+    #grp-navigation ul#navigation-menu li ul li a:hover {
+        padding-left: 15px !important;
+    }
+
+    /* Disable padding shift on hover for two-column menu */
+    #grp-navigation ul#navigation-menu li.has-columns ul li a:hover {
+        padding-left: 15px !important;
+    }
+}
+
+/* More reduced font size for smaller screens */
+@media (max-width: 1200px) {
+    #grp-navigation ul#navigation-menu li a {
+        font-size: 9px !important;
+        padding: 9px 12px;
+    }
+}
+
+/* Hide text on small screens, keep only icons */
+@media (max-width: 1050px) {
+    #grp-navigation ul#navigation-menu li.menu-icon-home > a::before,
+    #grp-navigation ul#navigation-menu li.menu-icon-bookmarks > a::before,
+    #grp-navigation ul#navigation-menu li.menu-icon-web > a::before,
+    #grp-navigation ul#navigation-menu li.menu-icon-api > a::before,
+    #grp-navigation ul#navigation-menu li.menu-icon-settings > a::before,
+    #grp-navigation ul#navigation-menu li.menu-icon-structure > a::before,
+    #grp-navigation ul#navigation-menu li.menu-icon-edit > a::before,
+    #grp-navigation ul#navigation-menu li.menu-icon-reports > a::before,
+    #grp-navigation ul#navigation-menu li.menu-icon-admin > a::before {
+        margin-right: 0;
+    }
+
+    #grp-navigation ul#navigation-menu li.menu-icon-home > a,
+    #grp-navigation ul#navigation-menu li.menu-icon-bookmarks > a,
+    #grp-navigation ul#navigation-menu li.menu-icon-web > a,
+    #grp-navigation ul#navigation-menu li.menu-icon-api > a,
+    #grp-navigation ul#navigation-menu li.menu-icon-settings > a,
+    #grp-navigation ul#navigation-menu li.menu-icon-structure > a,
+    #grp-navigation ul#navigation-menu li.menu-icon-edit > a,
+    #grp-navigation ul#navigation-menu li.menu-icon-reports > a,
+    #grp-navigation ul#navigation-menu li.menu-icon-admin > a {
+        font-size: 0 !important;
+        padding: 9px 10px;
+    }
+
+    #grp-navigation ul#navigation-menu li.menu-icon-home > a::before,
+    #grp-navigation ul#navigation-menu li.menu-icon-bookmarks > a::before,
+    #grp-navigation ul#navigation-menu li.menu-icon-web > a::before,
+    #grp-navigation ul#navigation-menu li.menu-icon-api > a::before,
+    #grp-navigation ul#navigation-menu li.menu-icon-settings > a::before,
+    #grp-navigation ul#navigation-menu li.menu-icon-structure > a::before,
+    #grp-navigation ul#navigation-menu li.menu-icon-edit > a::before,
+    #grp-navigation ul#navigation-menu li.menu-icon-reports > a::before,
+    #grp-navigation ul#navigation-menu li.menu-icon-admin > a::before {
+        font-size: 13px !important;
     }
 }
 
@@ -162,7 +323,6 @@
         text-decoration: none;
         font-weight: bold;
         padding: 9px 3px;
-        font-size: 8pt;
         /*border-right: 1px solid #ededed;*/
         border-right: 1px solid #090909;
         border-left: 1px solid #343434;
@@ -204,26 +364,35 @@ header#grp-header #grp-navigation ul#grp-user-tools > li.grp-user-options-contai
 
 /* Hide the dropdown by default */
 #grp-navigation ul#navigation-menu li.has-columns ul {
-    display: none;
+    visibility: hidden;
+    opacity: 0;
     width: 500px !important;
     position: absolute;
     top: auto;
     left: auto;
     margin: 0;
     padding: 0;
-    z-index: 1010;
+    z-index: 99999;
     background: #222222;
     border: 1px solid #090909;
-    border-radius: 0 !important; /* No rounded corners */
+    border-radius: 8px !important;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+    /* Delay opacity transition to allow flexbox to calculate layout first */
+    transition: opacity 0.5s ease 0.05s, visibility 0s ease 0s;
+    overflow: hidden;
 }
 
 /* Show dropdown on hover */
 #grp-navigation ul#navigation-menu li.has-columns:hover ul,
 #grp-navigation ul#navigation-menu li.has-columns.over ul {
+    /* First, instantly show with display: flex but invisible */
     display: flex !important;
     flex-direction: column;
     flex-wrap: wrap;
     max-height: 525px; /* 15 items * ~35px per item */
+    /* Then fade in after layout is calculated */
+    visibility: visible;
+    opacity: 1;
 }
 
 #grp-navigation ul#navigation-menu li.has-columns ul li {
@@ -257,6 +426,15 @@ header#grp-header #grp-navigation ul#grp-user-tools > li.grp-user-options-contai
     height: 35px; /* Fixed height for consistent layout */
     line-height: 17px; /* Center text vertically */
     box-sizing: border-box;
+    transition: background-color 0.25s ease, padding-left 0.2s ease, border-left 0.2s ease;
+    background-color: #222222;
+    border-left: 3px solid transparent;
+}
+
+#grp-navigation ul#navigation-menu li.has-columns ul li a:hover {
+    background-color: #3a3a3a;
+    padding-left: 18px;
+    border-left: 3px solid #5a9fd4;
 }
 
 /* Remove border from last row items */

@@ -35,6 +35,9 @@ yourlabs.SessionSecurity = function(options) {
     // Last recorded activity datetime.
     this.lastActivity = new Date();
 
+    // Flag to track if page is fully initialized (prevent false positives during widget initialization)
+    this.trackingEnabled = false;
+
     // Events that would trigger an activity
     this.events = ['mousemove', 'scroll', 'keyup', 'click', 'touchstart', 'touchend', 'touchmove'];
 
@@ -57,6 +60,16 @@ yourlabs.SessionSecurity = function(options) {
         $document.on('change', ':input', $.proxy(this.formChange, this));
         $document.on('submit', 'form', $.proxy(this.formClean, this));
         $document.on('reset', 'form', $.proxy(this.formClean, this));
+
+        // Enable form change tracking after page is fully loaded and widgets initialized
+        // This prevents false positives from Select2, autocomplete, and other widget initializations
+        var self = this;
+        $(window).on('load', function() {
+            // Wait additional 1 second after window load to ensure all widgets are initialized
+            setTimeout(function() {
+                self.trackingEnabled = true;
+            }, 1000);
+        });
     }
 }
 
@@ -175,6 +188,17 @@ yourlabs.SessionSecurity.prototype = {
     // When an input change, set data-dirty attribute on its form.
     formChange: function(e) {
         var $ = this.$;
+
+        // Don't track changes until page is fully initialized (prevents false positives from widget initialization)
+        if (!this.trackingEnabled) {
+            return;
+        }
+
+        // Only track user-initiated changes (isTrusted === true means real user interaction)
+        if (e.isTrusted === false) {
+            return;
+        }
+
         $(e.target).closest('form').attr('data-dirty', true);
     },
 

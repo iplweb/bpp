@@ -111,3 +111,45 @@
   0%, 49% { opacity: 1; }
   50%, 100% { opacity: 0; }
 }
+
+// Mobile responsive styles - add vertical spacing between buttons
+@media screen and (max-width: 639px) {
+  // Target elements directly in uczelnia-main-content
+  .uczelnia-main-content {
+    // Direct children should stack vertically
+    > a.main-page-button-primary,
+    > a.main-page-button-secondary,
+    > a.main-page-button-search-field,
+    > form {
+      display: block !important;
+      width: 100% !important;
+      margin-right: 0 !important;
+      margin-bottom: 10px !important;
+    }
+  }
+
+  // Style the buttons themselves
+  .main-page-button-primary,
+  .main-page-button-secondary,
+  .main-page-button-search-field {
+    display: block !important;
+    width: 100% !important;
+    margin-right: 0 !important;
+    text-align: center;
+  }
+
+  // Specific fix for button element with inline styles inside form
+  form button.main-page-button-secondary {
+    display: block !important;
+    width: 100% !important;
+    border: none !important;
+    background: none !important;
+    padding: 0 !important;
+
+    // Target the span inside button
+    span.main-page-button-secondary {
+      display: block !important;
+      width: 100% !important;
+    }
+  }
+}
