@@ -33,7 +33,7 @@ class MetrykiListView(EwaluacjaRequiredMixin, ListView):
     model = MetrykaAutora
     template_name = "ewaluacja_metryki/lista.html"
     context_object_name = "metryki"
-    paginate_by = 50
+    paginate_by = 20
 
     def get_paginate_by(self, queryset):
         """Wyłącz paginację dla widoków kółek, metryki i wykresów"""
