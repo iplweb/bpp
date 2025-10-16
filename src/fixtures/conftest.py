@@ -234,6 +234,8 @@ def admin_browser(
     django_username_field,
     transactional_db,
 ) -> DriverAPI:
+    from selenium.webdriver.support.ui import WebDriverWait
+
     browser = _preauth_session_id_helper(
         "admin",
         "password",
@@ -244,6 +246,36 @@ def admin_browser(
         django_username_field,
     )
     browser.driver.set_window_size(1920, 1600)
+
+    # Wrap the visit method to wait for full page load
+    original_visit = browser.visit
+
+    def visit_with_wait(url):
+        original_visit(url)
+        # Wait for page to be fully loaded (not just DOMContentLoaded)
+        WebDriverWait(browser.driver, 10).until(
+            lambda driver: driver.execute_script("return document.readyState") == "complete"
+        )
+        # Wait for jQuery to be ready and no active AJAX requests if jQuery is present
+        WebDriverWait(browser.driver, 10).until(
+            lambda driver: driver.execute_script(
+                "return typeof jQuery === 'undefined' || (jQuery.active === 0 && jQuery(':animated').length === 0)"
+            )
+        )
+
+    browser.visit = visit_with_wait
+
+    # Add helper method to wait for element to be interactable
+    def wait_for_interactable(css_selector, timeout=10):
+        from selenium.webdriver.common.by import By
+        from selenium.webdriver.support import expected_conditions as EC
+
+        element = WebDriverWait(browser.driver, timeout).until(
+            EC.element_to_be_clickable((By.CSS_SELECTOR, css_selector))
+        )
+        return element
+
+    browser.wait_for_interactable = wait_for_interactable
 
     yield browser
     browser.execute_script("window.onbeforeunload = function(e) {};")
