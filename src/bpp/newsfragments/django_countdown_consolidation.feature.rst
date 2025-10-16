@@ -1,0 +1,1 @@
+Skonsolidowano kod licznika odliczającego do przerwy technicznej w jednym miejscu - całość logiki (HTML i JavaScript) znajduje się teraz w szablonie django_countdown/countdown_banner.html, co ułatwia utrzymanie i rozwój tej funkcjonalności.

@@ -203,6 +203,11 @@
 
     <!-- CONTENT -->
     <article id="grp-content" class="{% block content-class %}{% endblock %}">
+
+        <!-- COUNTDOWN BANNER (Admin) -->
+    {% include "django_countdown/countdown_banner.html" %}
+
+
         <!-- MESSAGES -->
         {% block messages %}
             {% if messages %}

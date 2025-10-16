@@ -269,6 +269,7 @@ TEMPLATES = [
                 "bpp.context_processors.microsoft_auth.microsoft_auth_status",
                 "bpp.context_processors.testing.testing",
                 "cookielaw.context_processors.cookielaw",
+                "django_countdown.context_processors.countdown_context",
             ],
         },
     },
@@ -283,6 +284,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django_countdown.middleware.CountdownBlockingMiddleware",  # After auth - needs request.user
     "bpp_setup_wizard.middleware.SetupWizardMiddleware",  # After auth middleware to have request.user
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
@@ -345,6 +347,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "django.contrib.sessions",
     "django.contrib.sites",
+    "django_countdown",  # System odliczania do zamknięcia serwisu
     "django.contrib.sitemaps",
     "django.contrib.postgres",
     "long_running",

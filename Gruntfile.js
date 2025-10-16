@@ -43,7 +43,7 @@ module.exports = function (grunt) {
             }
         },
 
-        watch: {
+        "_watch": {
             grunt: {files: ['Gruntfile.js']},
 
             sass: {
@@ -72,5 +72,9 @@ module.exports = function (grunt) {
     grunt.registerTask('shell-test', ['shell:collectstatic']);
     grunt.registerTask('build', ['concurrent:themes', 'shell:collectstatic']);
     grunt.registerTask('build-non-interactive', ['concurrent:themes',]);
-    grunt.registerTask('default', ['build', 'watch']);
+
+    // Rename the original watch task and create an alias that builds first
+    grunt.renameTask('watch', '_watch');
+    grunt.registerTask('watch', ['build', '_watch']);
+    grunt.registerTask('default', ['watch']);
 }

@@ -58,3 +58,56 @@
     }
   }
 }
+
+// Search field button - looks like a text input
+.main-page-button-search-field {
+  background: white;
+  color: #495057;
+  border-radius: 6px;
+  padding: 5px 16px;
+  font-size: 14px;
+  font-weight: 400;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  border: 2px solid #d1d5db;
+  display: inline-flex;
+  align-items: center;
+  cursor: text;
+  position: relative;
+
+  .fi-text-color {
+    font-size: 16px;
+    margin-right: 6px;
+    color: #495057;
+  }
+
+  .search-placeholder {
+    color: #495057;
+    user-select: none;
+  }
+
+  .search-cursor {
+    display: inline-block;
+    width: 2px;
+    height: 16px;
+    background: $primary-color;
+    margin-left: 4px;
+    animation: blink 1s step-end infinite;
+  }
+
+  &:hover {
+    border-color: #9ca3af;
+    background: #fafafa;
+    cursor: pointer;
+  }
+
+  &:active {
+    border-color: $primary-color;
+    background: #f0f7ff;
+  }
+}
+
+@keyframes blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
