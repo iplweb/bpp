@@ -108,7 +108,7 @@ class AutorzyLiczbaNListView(GroupRequiredMixin, ListView):
 
     template_name = "ewaluacja_liczba_n/autorzy_list.html"
     context_object_name = "autorzy_data"
-    paginate_by = 250
+    paginate_by = 50
     group_required = GR_WPROWADZANIE_DANYCH
 
     def _filter_by_rodzaj_autora(self, queryset, rodzaj_autora_id, rok):
@@ -405,7 +405,7 @@ class UdzialyZaCaloscListView(GroupRequiredMixin, ListView):
 
     template_name = "ewaluacja_liczba_n/udzialy_za_calosc_list.html"
     context_object_name = "udzialy_data"
-    paginate_by = 500
+    paginate_by = 50
     group_required = GR_WPROWADZANIE_DANYCH
 
     def get_queryset(self):
@@ -428,18 +428,10 @@ class UdzialyZaCaloscListView(GroupRequiredMixin, ListView):
             queryset = queryset.filter(dyscyplina_naukowa_id=dyscyplina_id)
 
         # Filtrowanie po rodzaju autora
-        # W tym widoku nie ma filtra roku, więc pobieramy autorów
-        # którzy mieli dany rodzaj autora w DOWOLNYM roku 2022-2025
+        # Model IloscUdzialowDlaAutoraZaCalosc ma już pole rodzaj_autora
         rodzaj_autora_id = self.request.GET.get("rodzaj_autora")
         if rodzaj_autora_id:
-            autorzy_z_rodzajem = (
-                Autor_Dyscyplina.objects.filter(
-                    rodzaj_autora_id=rodzaj_autora_id, rok__gte=2022, rok__lte=2025
-                )
-                .values_list("autor_id", flat=True)
-                .distinct()
-            )
-            queryset = queryset.filter(autor_id__in=autorzy_z_rodzajem)
+            queryset = queryset.filter(rodzaj_autora_id=rodzaj_autora_id)
 
         # Sortowanie
         sort = self.request.GET.get("sort", "autor")
@@ -859,14 +851,7 @@ class ExportUdzialyZaCaloscView(GroupRequiredMixin, View):
 
         rodzaj_autora_id = request.GET.get("rodzaj_autora")
         if rodzaj_autora_id:
-            autorzy_z_rodzajem = (
-                Autor_Dyscyplina.objects.filter(
-                    rodzaj_autora_id=rodzaj_autora_id, rok__gte=2022, rok__lte=2025
-                )
-                .values_list("autor_id", flat=True)
-                .distinct()
-            )
-            udzialy = udzialy.filter(autor_id__in=autorzy_z_rodzajem)
+            udzialy = udzialy.filter(rodzaj_autora_id=rodzaj_autora_id)
 
         return udzialy.select_related(
             "autor", "dyscyplina_naukowa", "rodzaj_autora"

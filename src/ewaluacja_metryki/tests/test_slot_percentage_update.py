@@ -3,9 +3,6 @@ from decimal import Decimal
 import pytest
 from model_bakery import baker
 
-from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaCalosc
-from ewaluacja_metryki.utils import oblicz_metryki_dla_autora
-
 from bpp.models import (
     Autor,
     Autor_Dyscyplina,
@@ -16,6 +13,8 @@ from bpp.models import (
     Wydawnictwo_Ciagle_Autor,
 )
 from bpp.models.sloty.core import IPunktacjaCacher
+from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaCalosc
+from ewaluacja_metryki.utils import oblicz_metryki_dla_autora
 
 
 @pytest.mark.django_db
@@ -167,6 +166,15 @@ def test_averages_calculated_correctly(rodzaj_autora_n):
         dyscyplina_naukowa=dyscyplina,
         rok=2023,
         rodzaj_autora=rodzaj_autora_n,
+    )
+
+    # Create IloscUdzialowDlaAutoraZaCalosc entry (required after fix)
+    baker.make(
+        IloscUdzialowDlaAutoraZaCalosc,
+        autor=autor,
+        dyscyplina_naukowa=dyscyplina,
+        ilosc_udzialow=Decimal("4"),
+        ilosc_udzialow_monografie=Decimal("2"),
     )
 
     # Create a publication

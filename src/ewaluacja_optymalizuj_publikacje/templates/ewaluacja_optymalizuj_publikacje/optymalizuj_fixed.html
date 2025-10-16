@@ -73,4 +73,132 @@
         {% include "ewaluacja_optymalizuj_publikacje/partials/content_wrapper.html" %}
     </div>
 </div>
+
+<!-- Modal dla statusu generowania -->
+<div class="reveal" id="status-modal" data-reveal>
+    <h3><span class="fi-graph-bar"></span> Status generowania metryk</h3>
+    <div id="status-content" style="margin-top: 20px;">
+        <p style="text-align: center; color: #999;">
+            <span class="fi-refresh" style="font-size: 2em;"></span><br>
+            Ładowanie...
+        </p>
+    </div>
+    <button class="close-button" data-close aria-label="Zamknij modal" type="button">
+        <span aria-hidden="true">&times;</span>
+    </button>
+</div>
+
+<script>
+function pokazStatusGenerowania() {
+    const modal = new Foundation.Reveal($('#status-modal'));
+
+    // Pokaż modal z komunikatem ładowania
+    $('#status-content').html('<p style="text-align: center; color: #999;"><span class="fi-refresh" style="font-size: 2em;"></span><br>Ładowanie...</p>');
+    modal.open();
+
+    // Pobierz JSON ze statusem
+    fetch("{% url 'ewaluacja_metryki:status_generowania' %}")
+        .then(response => response.json())
+        .then(data => {
+            // Formatuj datę
+            const formatujDate = (isoString) => {
+                if (!isoString) return 'Brak danych';
+                const date = new Date(isoString);
+                return date.toLocaleString('pl-PL', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit'
+                });
+            };
+
+            // Określ status
+            let statusHtml = '';
+            if (data.w_trakcie) {
+                statusHtml = '<span style="color: #f39c12; font-weight: bold;"><span class="fi-clock"></span> W trakcie</span>';
+            } else if (data.data_zakonczenia) {
+                statusHtml = '<span style="color: #27ae60; font-weight: bold;"><span class="fi-check"></span> Zakończone</span>';
+            } else {
+                statusHtml = '<span style="color: #95a5a6;"><span class="fi-info"></span> Brak danych</span>';
+            }
+
+            // Buduj HTML
+            let html = '<table style="width: 100%; border-collapse: collapse;">';
+            html += '<tbody>';
+
+            // Status
+            html += '<tr style="border-bottom: 1px solid #ddd;">';
+            html += '<td style="padding: 12px; font-weight: bold; width: 40%;">Status</td>';
+            html += '<td style="padding: 12px;">' + statusHtml + '</td>';
+            html += '</tr>';
+
+            // Data rozpoczęcia
+            if (data.data_rozpoczecia) {
+                html += '<tr style="border-bottom: 1px solid #ddd;">';
+                html += '<td style="padding: 12px; font-weight: bold;">Data rozpoczęcia</td>';
+                html += '<td style="padding: 12px;">' + formatujDate(data.data_rozpoczecia) + '</td>';
+                html += '</tr>';
+            }
+
+            // Data zakończenia
+            if (data.data_zakonczenia) {
+                html += '<tr style="border-bottom: 1px solid #ddd;">';
+                html += '<td style="padding: 12px; font-weight: bold;">Data zakończenia</td>';
+                html += '<td style="padding: 12px;">' + formatujDate(data.data_zakonczenia) + '</td>';
+                html += '</tr>';
+            }
+
+            // Liczba do przetworzenia
+            html += '<tr style="border-bottom: 1px solid #ddd;">';
+            html += '<td style="padding: 12px; font-weight: bold;">Liczba do przetworzenia</td>';
+            html += '<td style="padding: 12px;">' + data.liczba_do_przetworzenia + '</td>';
+            html += '</tr>';
+
+            // Liczba przetworzonych
+            html += '<tr style="border-bottom: 1px solid #ddd;">';
+            html += '<td style="padding: 12px; font-weight: bold;">Liczba przetworzonych</td>';
+            html += '<td style="padding: 12px;"><strong style="color: #3498db;">' + data.liczba_przetworzonych + '</strong></td>';
+            html += '</tr>';
+
+            // Postęp (jeśli w trakcie)
+            if (data.w_trakcie && data.procent) {
+                html += '<tr style="border-bottom: 1px solid #ddd;">';
+                html += '<td style="padding: 12px; font-weight: bold;">Postęp</td>';
+                html += '<td style="padding: 12px;"><strong style="color: #f39c12;">' + data.procent + '%</strong></td>';
+                html += '</tr>';
+            }
+
+            // Liczba błędów
+            html += '<tr style="border-bottom: 1px solid #ddd;">';
+            html += '<td style="padding: 12px; font-weight: bold;">Liczba błędów</td>';
+            let bledyColor = data.liczba_bledow > 0 ? '#e74c3c' : '#27ae60';
+            html += '<td style="padding: 12px;"><strong style="color: ' + bledyColor + ';">' + data.liczba_bledow + '</strong></td>';
+            html += '</tr>';
+
+            // Ostatni komunikat
+            if (data.ostatni_komunikat) {
+                html += '<tr style="border-bottom: 1px solid #ddd;">';
+                html += '<td style="padding: 12px; font-weight: bold;">Ostatni komunikat</td>';
+                html += '<td style="padding: 12px;"><code style="background: #ecf0f1; padding: 8px; border-radius: 4px; display: block; font-size: 0.9em;">' + data.ostatni_komunikat + '</code></td>';
+                html += '</tr>';
+            }
+
+            html += '</tbody>';
+            html += '</table>';
+
+            // Dodaj przycisk do listy metryk
+            html += '<div style="margin-top: 20px; text-align: center;">';
+            html += '<a href="{% url 'ewaluacja_metryki:lista' %}" class="button"><span class="fi-list"></span> Przejdź do listy metryk</a>';
+            html += '</div>';
+
+            $('#status-content').html(html);
+        })
+        .catch(error => {
+            console.error('Błąd pobierania statusu:', error);
+            $('#status-content').html('<div class="alert-box alert">Błąd podczas pobierania statusu generowania.</div>');
+        });
+}
+</script>
 {% endblock %}

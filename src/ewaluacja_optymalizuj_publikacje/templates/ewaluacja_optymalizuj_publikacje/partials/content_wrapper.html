@@ -57,16 +57,25 @@
                                 {{ autor_data.autor.nazwisko }} {{ autor_data.autor.imiona }}
                             </a>
                             {% else %}
-                            <span style="color: #2c3e50;">
+                            <a href="{% url 'bpp:browse_autor' autor_data.autor.slug %}"
+                               style="color: #2c3e50; text-decoration: none;">
                                 {{ autor_data.autor.nazwisko }} {{ autor_data.autor.imiona }}
-                            </span>
+                            </a>
                             <div style="margin-top: 5px;">
                                 <a href="{% url 'ewaluacja_metryki:lista' %}" style="color: #dc3545; font-size: 0.85em; text-decoration: none; display: inline-block; padding: 4px 8px; background: #fff5f5; border: 1px solid #ffdddd; border-radius: 4px;">
                                     <span class="fi-alert"></span> Metryka autora nie istnieje
                                 </a>
-                                <a href="{% url 'ewaluacja_metryki:status_generowania' %}" style="margin-left: 8px; color: #17a2b8; font-size: 0.85em; text-decoration: none; display: inline-block; padding: 4px 8px; background: #e7f5ff; border: 1px solid #b3e0ff; border-radius: 4px;">
-                                    <span class="fi-refresh"></span> Sprawdź status generowania metryk
+                                {% if autor_data.autor_dyscyplina_missing_data %}
+                                <a href="{% url 'admin:bpp_autor_dyscyplina_change' autor_data.autor_dyscyplina_id %}" target="_blank" style="margin-left: 8px; color: #e67e22; font-size: 0.85em; text-decoration: none; display: inline-block; padding: 4px 8px; background: #fff9e6; border: 1px solid #ffe0b3; border-radius: 4px;">
+                                    <span class="fi-page-edit"></span> Uzupełnij procent dyscypliny i wymiar etatu
                                 </a>
+                                {% endif %}
+                                <a href="{% url 'ewaluacja_liczba_n:index' %}" target="_blank" style="margin-left: 8px; color: #28a745; font-size: 0.85em; text-decoration: none; display: inline-block; padding: 4px 8px; background: #e8f5e9; border: 1px solid #c8e6c9; border-radius: 4px;">
+                                    <span class="fi-graph-bar"></span> Przelicz liczby N
+                                </a>
+                                <button type="button" onclick="pokazStatusGenerowania()" style="margin-left: 8px; color: #17a2b8; font-size: 0.85em; cursor: pointer; display: inline-block; padding: 4px 8px; background: #e7f5ff; border: 1px solid #b3e0ff; border-radius: 4px;">
+                                    <span class="fi-refresh"></span> Sprawdź status generowania metryk
+                                </button>
                             </div>
                             {% endif %}
                         </div>

@@ -314,10 +314,33 @@ class OptymalizujPublikacjeView(LoginRequiredMixin, View):
         # Try to get MetrykaAutora ID
         metryka_id = None
         try:
-            metryka_autor = MetrykaAutora.objects.get(autor_id=autor.id)
+            metryka_autor = MetrykaAutora.objects.get(
+                autor_id=autor.id, dyscyplina_naukowa=dyscyplina
+            )
             metryka_id = metryka_autor.pk
         except MetrykaAutora.DoesNotExist:
             pass
+
+        # Check if autor_dyscyplina has required fields filled
+        autor_dyscyplina_missing_data = False
+        # Sprawdź czy autor ma wpis w IloscUdzialowDlaAutoraZaCalosc
+        has_ilosc_udzialow = False
+        if metryka_id is None:
+            from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaCalosc
+
+            try:
+                IloscUdzialowDlaAutoraZaCalosc.objects.get(
+                    autor=autor, dyscyplina_naukowa=dyscyplina
+                )
+                has_ilosc_udzialow = True
+            except IloscUdzialowDlaAutoraZaCalosc.DoesNotExist:
+                pass
+
+            autor_dyscyplina_missing_data = (
+                autor_dyscyplina.procent_dyscypliny is None
+                or autor_dyscyplina.wymiar_etatu is None
+                or not has_ilosc_udzialow
+            )
 
         autor_info = {
             "autor": autor,
@@ -329,6 +352,8 @@ class OptymalizujPublikacjeView(LoginRequiredMixin, View):
             "autor_assignment_id": autor_assignment.pk,
             "metryka_missing": metryka_id is None,
             "rodzaj_autora": autor_dyscyplina.rodzaj_autora,
+            "autor_dyscyplina_id": autor_dyscyplina.pk,
+            "autor_dyscyplina_missing_data": autor_dyscyplina_missing_data,
         }
 
         # Add points/slots data based on whether discipline is pinned
