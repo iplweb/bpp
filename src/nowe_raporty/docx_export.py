@@ -94,7 +94,6 @@ def _convert_using_docker_image(html: str, output_path: str) -> None:
         "-i",
         _DOCKER_IMAGE,
         "-",  # Read from stdin
-        "-",  # Write to stdout
     ]
 
     try:
@@ -119,9 +118,11 @@ def _convert_using_docker_image(html: str, output_path: str) -> None:
     except subprocess.CalledProcessError as exc:
         LOGGER.error(
             "html2docx docker conversion failed: %s",
-            exc.stderr.decode("utf-8", errors="replace")
-            if exc.stderr
-            else "No error output",
+            (
+                exc.stderr.decode("utf-8", errors="replace")
+                if exc.stderr
+                else "No error output"
+            ),
         )
         raise
     except FileNotFoundError:

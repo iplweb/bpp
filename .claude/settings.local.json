@@ -39,7 +39,10 @@
       "Bash(awk:*)",
       "Bash(ruff check src/ewaluacja_liczba_n/views.py)",
       "Bash(ruff check:*)",
-      "Bash(ruff format:*)"
+      "Bash(ruff format:*)",
+      "Bash(echo:*)",
+      "Bash(docker run:*)",
+      "Bash(xxd:*)"
     ],
     "deny": [],
     "ask": [],
