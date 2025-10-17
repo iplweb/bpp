@@ -247,19 +247,24 @@ def admin_browser(
     )
     browser.driver.set_window_size(1920, 1600)
 
-    # Wrap the visit method to wait for full page load
+    # Wrap the visit method to wait for full page load including FOUC prevention
     original_visit = browser.visit
 
     def visit_with_wait(url):
         original_visit(url)
-        # Wait for page to be fully loaded (not just DOMContentLoaded)
+        # Wait for page to be fully loaded
         WebDriverWait(browser.driver, 10).until(
             lambda driver: driver.execute_script("return document.readyState") == "complete"
         )
-        # Wait for jQuery to be ready and no active AJAX requests if jQuery is present
+        # Wait for FOUC prevention to complete (html element becomes visible)
+        # base_site.html sets html visibility:hidden and opacity:0, then shows it after load
         WebDriverWait(browser.driver, 10).until(
             lambda driver: driver.execute_script(
-                "return typeof jQuery === 'undefined' || (jQuery.active === 0 && jQuery(':animated').length === 0)"
+                """
+                var html = document.documentElement;
+                var style = window.getComputedStyle(html);
+                return style.visibility === 'visible' && parseFloat(style.opacity) > 0;
+                """
             )
         )
 

@@ -34,7 +34,6 @@ def test_podpowiedzi_dyscyplin_autor_ma_dwie(
     )
     url = reverse("admin:bpp_%s_add" % url)
     admin_browser.visit(channels_live_server.url + url)
-    admin_browser.wait_for_interactable("#id_rok")
     admin_browser.type("rok", "2018")
 
     scroll_until_handler_clicked_successfully(admin_browser)
