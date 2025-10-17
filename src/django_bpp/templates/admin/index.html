@@ -1,28 +1,257 @@
-{% extends "admin/index.html" %}
-{% load i18n admin_urls static %}
+{% extends "admin/base_site.html" %}
+{% load i18n grp_tags log static humanize bpp_version %}
+
+{% block bodyclass %}dashboard{% endblock %}
+{% block content-class %}content-grid{% endblock %}
 
 {% block breadcrumbs %}
-<ul>
-    <li id="welcome-message">Witamy w panelu Redagowania systemu Bibliografia Publikacji Pracowników.</li>
+<ul class="grp-horizontal-list">
+    <li id="welcome-message">{% trans "Home" %} - Panel Sterowania</li>
 </ul>
+{% endblock %}
+
+{% block content_title %}
+    <header><h1>Panel Sterowania</h1></header>
 {% endblock %}
 
 {% block extrahead %}
     {{ block.super }}
+    <script src="{% static 'plotly.js/dist/plotly.min.js' %}"></script>
+    <script src="{% static 'htmx.org/dist/htmx.js' %}"></script>
     <style>
-        #welcome-message {
-            transition: opacity 1.5s ease-in-out;
-            min-height: 1.2em;
+        /* Custom 3-column grid system */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin: 0;
+            padding: 0;
+        }
+
+        .dashboard-column {
             display: flex;
-            align-items: center;
+            flex-direction: column;
+            gap: 20px;
         }
-        .fade-out {
-            opacity: 0;
+
+        /* Tablet - 2 columns at 50% */
+        @media (max-width: 1024px) {
+            .dashboard-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .dashboard-column:last-child {
+                grid-column: 1 / -1;
+            }
         }
-        .fade-in {
-            opacity: 1;
+
+        /* Mobile - 1 column */
+        @media (max-width: 768px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .dashboard-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 0;
+        }
+        .stat-box {
+            padding: 20px;
+            text-align: center;
+            border-radius: 4px;
+            background-color: #f9f9f9;
+            border: 1px solid #e0e0e0;
+        }
+        .stat-box h3 {
+            font-size: 2.5em;
+            margin: 10px 0;
+            font-weight: bold;
+            color: #333;
+        }
+        .stat-box p {
+            margin: 0;
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        #app-list-search {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .app-hidden {
+            display: none !important;
+        }
+        #recent-logins table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        #recent-logins table th,
+        #recent-logins table td {
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        #recent-logins table th {
+            background-color: #f5f5f5;
+            font-weight: bold;
+        }
+        .chart-container {
+            min-height: 400px;
+            margin: 0;
+        }
+        .chart-module {
+            width: 100%;
         }
     </style>
+{% endblock %}
+
+{% block content %}
+    <div class="dashboard-grid">
+        {# LEWA KOLUMNA - Statystyki #}
+        <div class="dashboard-column">
+            <div class="grp-module">
+                <h2>Statystyki</h2>
+                <div class="dashboard-stats-grid" id="dashboard-stats">
+                    <div class="stat-box">
+                        <h3>{{ stats.total_publications }}</h3>
+                        <p>Publikacje</p>
+                    </div>
+                    <div class="stat-box">
+                        <h3>{{ stats.total_authors }}</h3>
+                        <p>Autorzy</p>
+                    </div>
+                    <div class="stat-box">
+                        <h3>{{ stats.total_units }}</h3>
+                        <p>Jednostki</p>
+                    </div>
+                    <div class="stat-box">
+                        <h3>{{ stats.total_users }}</h3>
+                        <p>Użytkownicy</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grp-module">
+                <h2>Ostatnie logowania</h2>
+                <div
+                    id="recent-logins"
+                    hx-get="{% url 'admin_dashboard:recent_logins' %}"
+                    hx-trigger="load, every 30s"
+                    hx-swap="innerHTML">
+                    <p>Ładowanie...</p>
+                </div>
+            </div>
+
+            <div class="grp-module">
+                <h2>Informacje</h2>
+                <div style="padding: 15px;">
+                    <p style="margin-bottom: 15px;">Używasz oprogramowania BPP wersja <strong>{% bpp_version %}</strong></p>
+                    <ul style="list-style: none; padding: 0; margin: 0;">
+                        <li style="margin-bottom: 8px;">
+                            <a href="https://support.iplweb.pl" target="_blank" style="text-decoration: none;">
+                                <span class="fi-link"></span> support.iplweb.pl
+                            </a>
+                        </li>
+                        <li style="margin-bottom: 8px;">
+                            <a href="https://bpp.readthedocs.io" target="_blank" style="text-decoration: none;">
+                                <span class="fi-book"></span> bpp.readthedocs.io
+                            </a>
+                        </li>
+                        <li style="margin-bottom: 8px;">
+                            <a href="https://bpp.iplweb.pl" target="_blank" style="text-decoration: none;">
+                                <span class="fi-home"></span> bpp.iplweb.pl
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        {# ŚRODKOWA KOLUMNA - Wykresy #}
+        <div class="dashboard-column">
+            <div class="grp-module chart-module">
+                <h2>Edycje w dni tygodnia</h2>
+                <div id="weekday-chart" class="chart-container"></div>
+            </div>
+
+            <div class="grp-module chart-module">
+                <h2>Aktywność w dniach miesiąca</h2>
+                <div id="day-of-month-chart" class="chart-container"></div>
+            </div>
+
+            <div class="grp-module chart-module">
+                <h2>Nowo dodane prace</h2>
+                <div id="new-publications-chart" class="chart-container"></div>
+            </div>
+        </div>
+
+        {# PRAWA KOLUMNA - Ostatnio edytowane i Aplikacje #}
+        <div class="dashboard-column">
+            <div class="grp-module">
+                <h2>Ostatnio edytowane</h2>
+                {% get_admin_log 10 as admin_log for_user user %}
+                {% if not admin_log %}
+                <p style="padding: 10px; color: #666;">Brak dostępnych akcji</p>
+                {% else %}
+                <ul class="actionlist" style="list-style: none; padding: 0; margin: 0;">
+                {% for entry in admin_log %}
+                <li class="{% if entry.is_addition %}addlink{% endif %}{% if entry.is_change %}changelink{% endif %}{% if entry.is_deletion %}deletelink{% endif %}" style="padding: 8px 10px; border-bottom: 1px solid #e0e0e0;">
+                    {% if entry.is_deletion or not entry.get_admin_url %}
+                        <strong>{{ entry.object_repr }}</strong>
+                    {% else %}
+                        <a href="{{ entry.get_admin_url }}" style="font-weight: 500;">{{ entry.object_repr }}</a>
+                    {% endif %}
+                    <br>
+                    {% if entry.content_type %}
+                        <span class="mini quiet" style="font-size: 0.85em; color: #666;">{{ entry.content_type.name|capfirst }}</span>
+                    {% else %}
+                        <span class="mini quiet" style="font-size: 0.85em; color: #666;">{% trans 'Unknown content' %}</span>
+                    {% endif %}
+                    <span class="mini quiet" style="font-size: 0.85em; color: #999; float: right;">{{ entry.action_time|naturaltime }}</span>
+                </li>
+                {% endfor %}
+                </ul>
+                {% endif %}
+            </div>
+
+            <div class="grp-module">
+                <h2>Aplikacje i modele</h2>
+                <input type="text" id="app-list-search" placeholder="Szukaj aplikacji lub modelu...">
+                <div id="app-list-container">
+                    {% for app in app_list %}
+                        <div class="grp-module app-item" data-app-name="{{ app.name|lower }}" id="app_{{ app.name|lower }}">
+                            <h3><a href="{{ app.app_url }}" class="grp-section">{% trans app.name %}</a></h3>
+                            {% for model in app.models %}
+                                <div class="grp-row model-item" data-model-name="{{ model.name|lower }}"
+                                     id="model-{{ model.object_name|lower }}">
+                                    {% if model.admin_url %}
+                                        <a href="{{ model.admin_url }}"><strong>{{ model.name }}</strong></a>
+                                    {% else %}
+                                        <strong>{{ model.name }}</strong>
+                                    {% endif %}
+                                    {% if model.add_url %}
+                                        <ul class="grp-actions">
+                                            <li class="grp-icon grp-add-link">
+                                                <a href="{{ model.add_url }}" title="{% trans "Add" %}">&nbsp;</a>
+                                            </li>
+                                        </ul>
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% empty %}
+                        <p>{% trans "You don´t have permission to edit anything." %}</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
 {% endblock %}
 
 {% block javascripts %}
@@ -30,65 +259,76 @@
     <script type="text/javascript">
         (function($) {
             $(document).ready(function() {
-                const tips = [
-                    "💡 Rób 5-minutową przerwę co godzinę - Twoje oczy i mózg będą wdzięczne!",
-                    "🤲 Rozciągnij dłonie i nadgarstki - połóż dłonie płasko i delikatnie naciśnij.",
-                    "👀 Zastosuj zasadę 20-20-20: co 20 minut patrz na obiekt oddalony o 20 stóp przez 20 sekund.",
-                    "☕ Ogranicz kawę do 2-3 filiżanek dziennie - nadmiar kofeiny może powodować drżenie rąk.",
-                    "🏃 Wstań i przejdź się kilka kroków - aktywizuj krążenie!",
-                    "🔐 Zawsze blokuj komputer wychodząc z miejsca pracy - bezpieczeństwo to podstawa.",
-                    "💧 Pamiętaj o piciu wody - odwodnienie wpływa na koncentrację.",
-                    "🖥️ Górna krawędź monitora powinna być na poziomie oczu lub nieco niżej.",
-                    "⌨️ Trzymaj nadgarstki w neutralnej pozycji podczas pisania.",
-                    "🪑 Stopy powinny płasko stać na podłodze - użyj podnóżka jeśli potrzeba.",
-                    "🔄 Co 30 minut zmień pozycję ciała - ruch to życie!",
-                    "😌 Rób głębokie oddechy - tlen poprawia pracę mózgu.",
-                    "🔆 Ustaw jasność monitora odpowiednio do oświetlenia pomieszczenia.",
-                    "📱 Nie trzymaj telefonu między uchem a ramieniem - użyj słuchawek.",
-                    "🧘 Rozluźnij ramiona - nie napinaj ich podczas pracy.",
-                    "🔑 Używaj silnych, unikalnych haseł.",
-                    "💾 Regularnie zapisuj swoją pracę!",
-                    "🌿 Postaw roślinę przy biurku - oczyszcza powietrze i uspokaja.",
-                    "🔊 Zrób sobie ciszę lub użyj białego szumu do lepszej koncentracji.",
-                    "🤸 Wykonaj proste ćwiczenia rozciągające szyję - lekko pochyl głowę w każdą stronę.",
-                    "🍎 Jedz zdrowe przekąski - orzechy, owoce - zamiast słodyczy.",
-                    "💻 Czyść regularnie klawiaturę i mysz - higiena to zdrowie!",
-                    "📧 Nie klikaj w podejrzane linki w e-mailach - sprawdź nadawcę!",
-                    "🕒 Ustal stałe godziny pracy i je przestrzegaj - work-life balance jest ważny.",
-                    "👁️ Mrugaj często - podczas pracy przy komputerze mrugamy 3x rzadziej!",
-                    "🖱️ Użyj całej dłoni do poruszania myszą, nie tylko nadgarstka.",
-                    "📊 Rób backup ważnych danych - lepiej dmuchać na zimne!",
-                    "🌙 Włącz tryb nocny po zmroku - chroni oczy przed niebieskim światłem.",
-                    "🎧 Używaj słuchawek z mikrofoneami na długich rozmowach.",
-                    "⚡ Regularnie aktualizuj oprogramowanie - bezpieczeństwo przede wszystkim!",
-                    "🧠 Zaplanuj najtrudsze zadania na poranne godziny - wtedy mózg pracuje najlepiej.",
-                    "🔄 Zmień sposób pracy co jakiś czas - monotonia zabija kreatywność."
-                ];
-
-                let currentTipIndex = 0;
-                const messageElement = $('#welcome-message');
-
-                function showNextTip() {
-                    // Fade out
-                    messageElement.addClass('fade-out');
-
-                    setTimeout(function() {
-                        // Change text
-                        messageElement.text(tips[currentTipIndex]);
-                        currentTipIndex = (currentTipIndex + 1) % tips.length;
-
-                        // Fade in
-                        messageElement.removeClass('fade-out').addClass('fade-in');
-                    }, 1500);
+                // Load weekday chart
+                function loadWeekdayChart() {
+                    fetch('{% url "admin_dashboard:weekday_stats" %}')
+                        .then(response => response.json())
+                        .then(data => {
+                            Plotly.newPlot('weekday-chart', data.data, data.layout, {responsive: true});
+                        })
+                        .catch(error => console.error('Error loading weekday chart:', error));
                 }
 
-                // Start cycling after 15 seconds
-                setTimeout(function() {
-                    showNextTip();
-                    // Then show a new tip every 15 seconds
-                    setInterval(showNextTip, 15000);
-                }, 15000);
+                // Load day of month activity chart
+                function loadDayOfMonthChart() {
+                    fetch('{% url "admin_dashboard:day_of_month_activity_stats" %}')
+                        .then(response => response.json())
+                        .then(data => {
+                            Plotly.newPlot('day-of-month-chart', data.data, data.layout, {responsive: true});
+                        })
+                        .catch(error => console.error('Error loading day of month chart:', error));
+                }
+
+                // Load new publications chart
+                function loadNewPublicationsChart() {
+                    fetch('{% url "admin_dashboard:new_publications_stats" %}')
+                        .then(response => response.json())
+                        .then(data => {
+                            Plotly.newPlot('new-publications-chart', data.data, data.layout, {responsive: true});
+                        })
+                        .catch(error => console.error('Error loading new publications chart:', error));
+                }
+
+                // Initial load
+                loadWeekdayChart();
+                loadDayOfMonthChart();
+                loadNewPublicationsChart();
+
+                // Search functionality for apps/models
+                $('#app-list-search').on('input', function() {
+                    const searchTerm = $(this).val().toLowerCase();
+
+                    if (searchTerm === '') {
+                        $('.app-item').removeClass('app-hidden');
+                        $('.model-item').show();
+                        return;
+                    }
+
+                    $('.app-item').each(function() {
+                        const $app = $(this);
+                        const appName = $app.data('app-name');
+                        let hasVisibleModels = false;
+
+                        $app.find('.model-item').each(function() {
+                            const $model = $(this);
+                            const modelName = $model.data('model-name');
+
+                            if (appName.includes(searchTerm) || modelName.includes(searchTerm)) {
+                                $model.show();
+                                hasVisibleModels = true;
+                            } else {
+                                $model.hide();
+                            }
+                        });
+
+                        if (hasVisibleModels || appName.includes(searchTerm)) {
+                            $app.removeClass('app-hidden');
+                        } else {
+                            $app.addClass('app-hidden');
+                        }
+                    });
+                });
             });
-        })(django.jQuery);
+        })(django.jQuery || grp.jQuery);
     </script>
 {% endblock %}

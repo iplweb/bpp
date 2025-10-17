@@ -38,93 +38,95 @@
 {% block nav-global %}
     {% if user.is_active and user.is_staff %}
         {% if not is_popup %}
-            <div style="float: right; ">
-                {% crispy global_nav_form %}
-                <script type="text/javascript">
-                    (function($){
-                        // Handle select2 change event
-                        $(':input[name$=global_nav_value]').on('change', function () {
-                            var $select = $(this);
-                            var $container = $select.next('.select2-container');
+            <div id="nav-global-container" style="display: flex; flex-wrap: wrap; align-items: center;">
+                <div id="menu-container">
+                    {% if request.user.is_staff %}
+                        {% admin_tools_render_menu %}
+                    {% endif %}
+                </div>
+                <div id="search-container">
+                    {% crispy global_nav_form %}
+                    <script type="text/javascript">
+                        (function($){
+                            // Handle select2 change event
+                            $(':input[name$=global_nav_value]').on('change', function () {
+                                var $select = $(this);
+                                var $container = $select.next('.select2-container');
 
-                            // Close dropdown immediately
-                            $select.select2('close');
+                                // Close dropdown immediately
+                                $select.select2('close');
 
-                            // Disable select to prevent further interaction
-                            $select.prop('disabled', true);
+                                // Disable select to prevent further interaction
+                                $select.prop('disabled', true);
 
-                            // Add loading state to container
-                            $container.addClass('select2-loading');
+                                // Add loading state to container
+                                $container.addClass('select2-loading');
 
-                            // Change cursor to waiting
-                            $('body').css('cursor', 'wait');
+                                // Change cursor to waiting
+                                $('body').css('cursor', 'wait');
 
-                            // Perform redirect
-                            location.href = "/global-nav-redir/" + $(this).val() +
-                                "?source=admin";
-                        });
+                                // Perform redirect
+                                location.href = "/global-nav-redir/" + $(this).val() +
+                                    "?source=admin";
+                            });
 
-                        // Add "/" hotkey to open global search
-                        $(document).on('keydown', function(e) {
-                            // Don't trigger if user is typing in an input/textarea
-                            if ($(e.target).is('input, textarea, select')) {
-                                return;
-                            }
-
-                            // Check for "/" key
-                            if (e.key === '/') {
-                                e.preventDefault();
-
-                                // Find the select2 container and open it
-                                var $select = $('#id_global_nav_value');
-
-                                if ($select.length > 0) {
-                                    // Use select2:open event to ensure dropdown is fully rendered
-                                    $select.one('select2:open', function() {
-                                        // Try multiple strategies with increasing delays
-                                        var attempts = [50, 150, 300];
-                                        var attemptIndex = 0;
-
-                                        function tryFocus() {
-                                            setTimeout(function() {
-                                                // Try different selectors
-                                                var $search1 = $('.select2-container--open .select2-search__field');
-                                                var $search2 = $('.select2-search--dropdown .select2-search__field');
-                                                var $search3 = $('input.select2-search__field:visible');
-
-                                                // Try to find the search field
-                                                var $search = $search1.length ? $search1 : ($search2.length ? $search2 : $search3);
-
-                                                if ($search.length > 0) {
-                                                    // Force focus
-                                                    $search[0].focus();
-                                                    $search.trigger('focus');
-                                                    $search.select();
-                                                } else {
-                                                    // If not found and more attempts available, try again
-                                                    if (attemptIndex < attempts.length - 1) {
-                                                        attemptIndex++;
-                                                        tryFocus();
-                                                    }
-                                                }
-                                            }, attempts[attemptIndex]);
-                                        }
-
-                                        tryFocus();
-                                    });
-
-                                    // Open the dropdown
-                                    $select.select2('open');
+                            // Add "/" hotkey to open global search
+                            $(document).on('keydown', function(e) {
+                                // Don't trigger if user is typing in an input/textarea
+                                if ($(e.target).is('input, textarea, select')) {
+                                    return;
                                 }
-                            }
-                        });
-                    })(django.jQuery || $);
-                </script>
-            </div>
-            <div>
-                {% if request.user.is_staff %}
-                    {% admin_tools_render_menu %}
-                {% endif %}
+
+                                // Check for "/" key
+                                if (e.key === '/') {
+                                    e.preventDefault();
+
+                                    // Find the select2 container and open it
+                                    var $select = $('#id_global_nav_value');
+
+                                    if ($select.length > 0) {
+                                        // Use select2:open event to ensure dropdown is fully rendered
+                                        $select.one('select2:open', function() {
+                                            // Try multiple strategies with increasing delays
+                                            var attempts = [50, 150, 300];
+                                            var attemptIndex = 0;
+
+                                            function tryFocus() {
+                                                setTimeout(function() {
+                                                    // Try different selectors
+                                                    var $search1 = $('.select2-container--open .select2-search__field');
+                                                    var $search2 = $('.select2-search--dropdown .select2-search__field');
+                                                    var $search3 = $('input.select2-search__field:visible');
+
+                                                    // Try to find the search field
+                                                    var $search = $search1.length ? $search1 : ($search2.length ? $search2 : $search3);
+
+                                                    if ($search.length > 0) {
+                                                        // Force focus
+                                                        $search[0].focus();
+                                                        $search.trigger('focus');
+                                                        $search.select();
+                                                    } else {
+                                                        // If not found and more attempts available, try again
+                                                        if (attemptIndex < attempts.length - 1) {
+                                                            attemptIndex++;
+                                                            tryFocus();
+                                                        }
+                                                    }
+                                                }, attempts[attemptIndex]);
+                                            }
+
+                                            tryFocus();
+                                        });
+
+                                        // Open the dropdown
+                                        $select.select2('open');
+                                    }
+                                }
+                            });
+                        })(django.jQuery || $);
+                    </script>
+                </div>
             </div>
         {% endif %}
     {% endif %}
@@ -201,6 +203,7 @@
     {% compress css %}
         <link rel="stylesheet" type="text/css" media="screen" href="{{ STATIC_URL }}bpp/css/admin-style.css"/>
         <link rel="stylesheet" type="text/css" media="screen" href="{{ STATIC_URL }}bpp/css/admin-menu.css"/>
+        <link rel="stylesheet" type="text/css" media="screen" href="{{ STATIC_URL }}bpp/css/admin-themes.css"/>
 
         <style type="text/css">
             .keypad-key {
@@ -359,16 +362,13 @@
 
     {% compress js %}
         <script type="text/javascript" src="{{ STATIC_URL }}bpp/js/admin-table-enhancements.js"></script>
+        <script type="text/javascript" src="{{ STATIC_URL }}bpp/js/admin-theme-switcher.js"></script>
     {% endcompress %}
 
     <script type="text/javascript">
         (function ($) {
 
             $(document).ready(function () {
-
-                txt = $("#grp-admin-title").text();
-                $("#grp-admin-title").html(
-                    '<a href="/">' + txt + '</a>');
 
                 grp.jQuery('.charmap').keypad({
                     keypadOnly: false,

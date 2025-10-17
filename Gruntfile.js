@@ -31,12 +31,30 @@ module.exports = function (grunt) {
                     'src/bpp/static/scss/app-orange.css':
                         'src/bpp/static/scss/app-orange.scss'
                 }
+            },
+            adminthemes: {
+                files: {
+                    'src/bpp/static/bpp/css/admin-themes.css':
+                        'src/bpp/static/bpp/scss/admin-themes.scss'
+                }
+            },
+            przemapuj_zrodla: {
+                files: {
+                    'src/przemapuj_zrodla_pbn/static/przemapuj_zrodla_pbn/css/przemapuj-zrodla.css':
+                        'src/przemapuj_zrodla_pbn/static/przemapuj_zrodla_pbn/scss/przemapuj-zrodla.scss'
+                }
             }
         },
 
         concurrent: {
             themes: {
-                tasks: ['sass:blue', 'sass:green', 'sass:orange'],
+                tasks: [
+                    'sass:blue',
+                    'sass:green',
+                    'sass:orange',
+                    'sass:adminthemes',
+                    'sass:przemapuj_zrodla'
+                ],
                 options: {
                     logConcurrentOutput: true
                 }

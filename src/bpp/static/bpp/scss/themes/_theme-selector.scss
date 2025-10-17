@@ -1,0 +1,71 @@
+/* -------------------------------------------------------------------------------- */
+/* Theme Selector Styles in User Menu */
+/* -------------------------------------------------------------------------------- */
+
+.theme-selector-item {
+    position: relative;
+}
+
+.theme-selector-item a::before {
+    content: "";
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    margin-right: 8px;
+    border-radius: 2px;
+    vertical-align: middle;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+/* Color indicators for each theme in dropdown */
+.theme-selector-default a::before {
+    background: linear-gradient(135deg, #222222 50%, #5a9fd4 50%);
+}
+
+.theme-selector-classic-light a::before {
+    background: linear-gradient(135deg, #f8f9fa 50%, #0066cc 50%);
+    border: 1px solid #ccc;
+}
+
+.theme-selector-navy-academic a::before {
+    background: linear-gradient(135deg, #1a2332 50%, #d4af37 50%);
+}
+
+.theme-selector-gray-professional a::before {
+    background: linear-gradient(135deg, #404040 50%, #ff6939 50%);
+}
+
+.theme-selector-cream-green a::before {
+    background: linear-gradient(135deg, #f4f1e8 50%, #2e7d32 50%);
+    border: 1px solid #ccc;
+}
+
+.theme-selector-minimal-light a::before {
+    background: linear-gradient(135deg, #fafafa 50%, #1a1a1a 50%);
+    border: 1px solid #ccc;
+}
+
+/* Active theme indicator */
+.theme-selector-item.active a::after {
+    content: "✓";
+    position: absolute;
+    right: 15px;
+    font-weight: bold;
+    color: #5a9fd4;
+}
+
+/* Separator line above theme options */
+.theme-separator {
+    border-top: 1px solid #343434;
+    margin: 0;
+    padding: 0;
+}
+
+.theme-separator a {
+    pointer-events: none;
+    height: 1px !important;
+    min-height: 1px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    opacity: 0;
+}

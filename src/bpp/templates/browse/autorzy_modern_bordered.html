@@ -83,10 +83,16 @@
 
                     <!-- Letter Buttons -->
                     {% for literka in literki %}
-                        <a href="{{ browse_autorzy }}{{ literka }}/"
-                           class="autorzy-letter-pill autorzy-letter-single {% if literka == wybrana %}active{% endif %}">
-                            {{ literka }}
-                        </a>
+                        {% if literka in available_letters %}
+                            <a href="{{ browse_autorzy }}{{ literka }}/"
+                               class="autorzy-letter-pill autorzy-letter-single {% if literka == wybrana %}active{% endif %}">
+                                {{ literka }}
+                            </a>
+                        {% else %}
+                            <span class="autorzy-letter-pill autorzy-letter-single disabled">
+                                {{ literka }}
+                            </span>
+                        {% endif %}
                     {% endfor %}
                 </div>
             </div>

@@ -1,11 +1,17 @@
+/* Modern UI font stack for better readability */
 #grp-navigation {
     padding: 0px 0px !important;
     min-width: 640px !important;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0;
 }
 
-#grp-admin-title a {
-    margin-left: 5px;
-    margin-right: -15px;
+/* Hide grp-admin-title completely */
+#grp-admin-title {
+    display: none !important;
 }
 
 #grp-navigation ul li {
@@ -49,7 +55,7 @@
     display: block;
     text-decoration: none;
     font-weight: bold;
-    padding: 9px 15px;
+    padding: 9px 8px;
     /*border-right: 1px solid #ededed;*/
     border-right: 1px solid #090909;
     border-left: 1px solid #343434;
@@ -171,7 +177,7 @@
     background: none;
 }
 
-/* Menu icons using ::before with emoji + desaturation filter */
+/* Menu icons using ::before with emoji - improved visibility */
 #grp-navigation ul#navigation-menu li.menu-icon-home > a::before,
 #grp-navigation ul#navigation-menu li.menu-icon-bookmarks > a::before,
 #grp-navigation ul#navigation-menu li.menu-icon-web > a::before,
@@ -180,14 +186,24 @@
 #grp-navigation ul#navigation-menu li.menu-icon-structure > a::before,
 #grp-navigation ul#navigation-menu li.menu-icon-edit > a::before,
 #grp-navigation ul#navigation-menu li.menu-icon-reports > a::before,
-#grp-navigation ul#navigation-menu li.menu-icon-admin > a::before {
+#grp-navigation ul#navigation-menu li.menu-icon-dashboard > a::before,
+#grp-navigation ul#navigation-menu li.menu-icon-admin > a::before,
+#grp-navigation ul#navigation-menu li.menu-icon-user > a::before {
     margin-right: 6px;
     font-weight: normal;
-    filter: saturate(0.5) brightness(0.9);
+    filter: saturate(0.8) brightness(1);
 }
 
 #grp-navigation ul#navigation-menu li.menu-icon-home > a::before {
-    content: "🏠";
+    content: "";
+    background-image: url('/static/images/bpp-icon.png');
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    vertical-align: middle;
 }
 
 #grp-navigation ul#navigation-menu li.menu-icon-bookmarks > a::before {
@@ -218,7 +234,15 @@
     content: "📊";
 }
 
+#grp-navigation ul#navigation-menu li.menu-icon-dashboard > a::before {
+    content: "🏠";
+}
+
 #grp-navigation ul#navigation-menu li.menu-icon-admin > a::before {
+    content: "🔧";
+}
+
+#grp-navigation ul#navigation-menu li.menu-icon-user > a::before {
     content: "👤";
 }
 
@@ -238,21 +262,21 @@
 /* First reduction at 1490px */
 @media (max-width: 1490px) {
     #grp-navigation ul#navigation-menu li a {
-        font-size: 10px !important;
+        font-size: 12px !important;
     }
 }
 
 /* Second reduction at 1400px */
 @media (max-width: 1400px) {
     #grp-navigation ul#navigation-menu li a {
-        font-size: 9.5px !important;
+        font-size: 11px !important;
     }
 }
 
 /* Third reduction at 1364px */
 @media (max-width: 1364px) {
     #grp-navigation ul#navigation-menu li a {
-        font-size: 9px !important;
+        font-size: 11px !important;
     }
 }
 
@@ -272,14 +296,20 @@
 /* More reduced font size for smaller screens */
 @media (max-width: 1200px) {
     #grp-navigation ul#navigation-menu li a {
-        font-size: 9px !important;
-        padding: 9px 12px;
+        font-size: 11px !important;
+        padding: 10px 12px;
     }
 }
 
 /* Hide text on small screens, keep only icons */
 @media (max-width: 1050px) {
-    #grp-navigation ul#navigation-menu li.menu-icon-home > a::before,
+    /* Enlarge BPP icon when showing icons only */
+    #grp-navigation ul#navigation-menu li.menu-icon-home > a::before {
+        height: 28px;
+        width: 28px;
+        margin-right: 0;
+    }
+
     #grp-navigation ul#navigation-menu li.menu-icon-bookmarks > a::before,
     #grp-navigation ul#navigation-menu li.menu-icon-web > a::before,
     #grp-navigation ul#navigation-menu li.menu-icon-api > a::before,
@@ -287,11 +317,12 @@
     #grp-navigation ul#navigation-menu li.menu-icon-structure > a::before,
     #grp-navigation ul#navigation-menu li.menu-icon-edit > a::before,
     #grp-navigation ul#navigation-menu li.menu-icon-reports > a::before,
-    #grp-navigation ul#navigation-menu li.menu-icon-admin > a::before {
+    #grp-navigation ul#navigation-menu li.menu-icon-dashboard > a::before,
+    #grp-navigation ul#navigation-menu li.menu-icon-admin > a::before,
+    #grp-navigation ul#navigation-menu li.menu-icon-user > a::before {
         margin-right: 0;
     }
 
-    #grp-navigation ul#navigation-menu li.menu-icon-home > a,
     #grp-navigation ul#navigation-menu li.menu-icon-bookmarks > a,
     #grp-navigation ul#navigation-menu li.menu-icon-web > a,
     #grp-navigation ul#navigation-menu li.menu-icon-api > a,
@@ -299,9 +330,17 @@
     #grp-navigation ul#navigation-menu li.menu-icon-structure > a,
     #grp-navigation ul#navigation-menu li.menu-icon-edit > a,
     #grp-navigation ul#navigation-menu li.menu-icon-reports > a,
-    #grp-navigation ul#navigation-menu li.menu-icon-admin > a {
+    #grp-navigation ul#navigation-menu li.menu-icon-dashboard > a,
+    #grp-navigation ul#navigation-menu li.menu-icon-admin > a,
+    #grp-navigation ul#navigation-menu li.menu-icon-user > a {
         font-size: 0 !important;
-        padding: 9px 10px;
+        padding: 12px 10px 9px 10px;
+    }
+
+    /* Logo BPP needs different padding */
+    #grp-navigation ul#navigation-menu li.menu-icon-home > a {
+        font-size: 0 !important;
+        padding: 4px 5px;
     }
 
     #grp-navigation ul#navigation-menu li.menu-icon-home > a::before,
@@ -312,8 +351,10 @@
     #grp-navigation ul#navigation-menu li.menu-icon-structure > a::before,
     #grp-navigation ul#navigation-menu li.menu-icon-edit > a::before,
     #grp-navigation ul#navigation-menu li.menu-icon-reports > a::before,
-    #grp-navigation ul#navigation-menu li.menu-icon-admin > a::before {
-        font-size: 13px !important;
+    #grp-navigation ul#navigation-menu li.menu-icon-dashboard > a::before,
+    #grp-navigation ul#navigation-menu li.menu-icon-admin > a::before,
+    #grp-navigation ul#navigation-menu li.menu-icon-user > a::before {
+        font-size: 26px !important;
     }
 }
 
@@ -322,7 +363,7 @@
         display: block;
         text-decoration: none;
         font-weight: bold;
-        padding: 9px 3px;
+        padding: 9px 8px;
         /*border-right: 1px solid #ededed;*/
         border-right: 1px solid #090909;
         border-left: 1px solid #343434;
@@ -330,32 +371,80 @@
     }
 
     #navigation_autocomplete {
-        font-size: 6pt;
+        font-size: 9pt;
 
-    }
-
-    body {
-        font-size: 0.8em;
     }
 
     header#grp-header #grp-navigation ul#grp-user-tools > li a {
-        font-size: 9px;
-        width: 50px;
+        font-size: 11px;
+        width: 60px;
     }
 
     yourlabs-autocomplete inner-container  id-navigation_autocomplete a {
-        font-size: 6px;
+        font-size: 10px;
     }
 }
 
 
-header#grp-header #grp-navigation ul#grp-user-tools > li a {
-    float: right;
-    margin-right: 5px;
+/* Navigation layout containers */
+#nav-global-container {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
 }
 
-header#grp-header #grp-navigation ul#grp-user-tools > li.grp-user-options-container:last-child {
-    width: 100px;
+#menu-container {
+    display: inline-flex;
+    align-items: center;
+}
+
+#search-container {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 15px;
+    flex: 1;
+    /* Allow search container to grow and fill available space */
+}
+
+/* Ensure crispy form wrapper takes full width */
+#search-container #div_id_global_nav_value {
+    width: 100% !important;
+    flex: 1 !important;
+}
+
+/* Add horizontal margin to global nav select2 */
+#search-container .select2-container {
+    margin-left: 3px;
+    margin-right: 5px;
+    /* Allow select2 to expand to fill container and grow to right */
+    min-width: 200px;
+    max-width: 100%;
+    width: 100% !important;
+}
+
+/* Hide old grp-user-tools since user menu is now in navigation menu */
+header#grp-header #grp-navigation ul#grp-user-tools {
+    display: none !important;
+}
+
+/* Hide bookmark button */
+#grp-navigation #bookmark-button {
+    display: none !important;
+}
+
+/* Style username item in user menu dropdown - make it non-clickable and highlighted */
+#grp-navigation ul#navigation-menu li.menu-icon-user ul li:first-child a {
+    pointer-events: none;
+    cursor: default;
+    font-weight: bold;
+    background-color: #2a2a2a !important;
+    border-left: 3px solid transparent !important;
+}
+
+#grp-navigation ul#navigation-menu li.menu-icon-user ul li:first-child a:hover {
+    padding-left: 15px !important;
 }
 
 /* -------------------------------------------------------------------------------- */
@@ -441,4 +530,53 @@ header#grp-header #grp-navigation ul#grp-user-tools > li.grp-user-options-contai
 #grp-navigation ul#navigation-menu li.has-columns ul li:last-child a,
 #grp-navigation ul#navigation-menu li.has-columns ul li:nth-last-child(2) a {
     border-bottom: none;
+}
+
+/* -------------------------------------------------------------------------------- */
+/* Responsive search wrapping for narrow screens */
+/* -------------------------------------------------------------------------------- */
+
+/* At 1200px: Allow search to wrap to next line */
+@media (max-width: 1200px) {
+    #nav-global-container {
+        flex-wrap: wrap;
+    }
+
+    #search-container {
+        flex-basis: 100%;
+        margin-left: 0;
+        margin-top: 2px;
+        justify-content: flex-start;
+    }
+
+    #div_id_global_nav_value {
+        width: 100%;
+    }
+
+    #div_id_global_nav_value .select2-container {
+        width: 100% !important;
+        max-width: none;
+    }
+}
+
+/* At 900px and below: Adjust grp-navigation to allow more wrapping */
+@media (max-width: 900px) {
+    #grp-navigation {
+        min-width: 100% !important;
+    }
+
+    #search-container {
+        padding-left: 10px;
+    }
+}
+
+/* -------------------------------------------------------------------------------- */
+/* Adjust content padding when menu wraps to two lines */
+/* -------------------------------------------------------------------------------- */
+
+/* When search wraps to new line (< 1200px), increase padding to accommodate two-line menu */
+@media (max-width: 1200px) {
+    #grp-content {
+        padding-top: 120px !important;
+    }
 }

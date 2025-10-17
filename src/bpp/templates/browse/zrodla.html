@@ -79,10 +79,16 @@
 
                     <!-- Letter Buttons -->
                     {% for literka in literki %}
-                        <a href="{{ browse_zrodla }}{{ literka }}/"
-                           class="letter-pill letter-single {% if literka == wybrana %}active{% endif %}">
-                            {{ literka }}
-                        </a>
+                        {% if literka in available_letters %}
+                            <a href="{{ browse_zrodla }}{{ literka }}/"
+                               class="letter-pill letter-single {% if literka == wybrana %}active{% endif %}">
+                                {{ literka }}
+                            </a>
+                        {% else %}
+                            <span class="letter-pill letter-single disabled">
+                                {{ literka }}
+                            </span>
+                        {% endif %}
                     {% endfor %}
                 </div>
             </div>

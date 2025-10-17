@@ -1,0 +1,1 @@
+Dodano płynne przejścia kolorów (animacje CSS) przy przełączaniu pomiędzy schematami kolorystycznymi w panelu administracyjnym oraz dla efektów hover w menu. Przejścia trwają 0,2 sekundy i obejmują kolory tła, tekstu, ramek, padding oraz szerokość ramek. Eliminuje to efekt "skakania" elementów menu przy najechaniu myszką.

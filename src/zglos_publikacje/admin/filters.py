@@ -1,12 +1,10 @@
 # Register your models here.
-from django.db.models import Window
-from django.db.models.functions import FirstValue
-
-from zglos_publikacje.models import Zgloszenie_Publikacji_Autor
-
 from django.contrib.admin import SimpleListFilter
+from django.db.models import Window
+from django.db.models.functions import ExtractWeekDay, FirstValue
 
 from bpp.models import Wydzial
+from zglos_publikacje.models import Zgloszenie_Publikacji_Autor
 
 
 class WydzialJednostkiPierwszegoAutora(SimpleListFilter):
@@ -62,3 +60,29 @@ class WydzialJednostkiPierwszegoAutora(SimpleListFilter):
         ]
 
         return queryset.filter(pk__in=rekordy)
+
+
+class DzienTygodniaFilter(SimpleListFilter):
+    """Filtr dla dnia tygodnia utworzenia zgłoszenia"""
+
+    title = "dzień tygodnia utworzenia"
+    parameter_name = "weekday"
+
+    def lookups(self, request, model_admin):
+        return [
+            ("2", "Poniedziałek"),
+            ("3", "Wtorek"),
+            ("4", "Środa"),
+            ("5", "Czwartek"),
+            ("6", "Piątek"),
+            ("7", "Sobota"),
+            ("1", "Niedziela"),
+        ]
+
+    def queryset(self, request, queryset):
+        if self.value():
+            # PostgreSQL: 1=Niedziela, 2=Poniedziałek, ..., 7=Sobota
+            return queryset.annotate(weekday=ExtractWeekDay("utworzono")).filter(
+                weekday=int(self.value())
+            )
+        return queryset

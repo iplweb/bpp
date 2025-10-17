@@ -402,7 +402,7 @@
 
             // Calculate modal position (centered on screen)
             var containerWidth = Math.min(window.innerWidth * 0.85, 1200);
-            var containerHeight = 700;
+            var containerHeight = Math.min(window.innerHeight * 0.85, 700);
             var left = (window.innerWidth - containerWidth) / 2;
             var top = (window.innerHeight - containerHeight) / 2;
 

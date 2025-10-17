@@ -1,0 +1,177 @@
+/* -------------------------------------------------------------------------------- */
+/* Theme 3: Gray Professional (Bloomberg Style) */
+/* -------------------------------------------------------------------------------- */
+
+body.theme-gray-professional {
+    background: #f0f0f0 !important;
+
+    #grp-navigation {
+        background: #404040 !important;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+
+        ul#navigation-menu li a {
+            color: #e8e8e8 !important;
+            border-right: 1px solid #333333;
+            border-left: 1px solid #4a4a4a;
+        }
+
+        ul#navigation-menu li a:hover,
+        ul#navigation-menu li.over > a {
+            background-color: #4a4a4a !important;
+            color: #ff6939 !important;
+        }
+
+        ul#navigation-menu li ul {
+            background: #4a4a4a !important;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+
+            li {
+                background: #4a4a4a !important;
+                border-top: 1px solid #5a5a5a;
+
+                a {
+                    background-color: #4a4a4a !important;
+                    color: #e8e8e8 !important;
+                    border-left: 3px solid transparent;
+
+                    &:hover {
+                        background-color: #555555 !important;
+                        padding-left: 18px;
+                        border-left: 3px solid #ff6939 !important;
+                        color: #ff6939 !important;
+                    }
+                }
+            }
+        }
+
+        ul#navigation-menu li.has-columns ul {
+            background: #4a4a4a !important;
+            border: 1px solid #5a5a5a;
+
+            li {
+                background: #4a4a4a !important;
+
+                a {
+                    background-color: #4a4a4a !important;
+                    border-bottom: 1px solid #5a5a5a;
+
+                    &:hover {
+                        background-color: #555555 !important;
+                        border-left: 3px solid #ff6939 !important;
+                    }
+                }
+            }
+        }
+
+        ul#navigation-menu li.menu-icon-user ul li:first-child a {
+            background-color: #555555 !important;
+        }
+    }
+
+    /* Context navigation for Gray Professional theme */
+    #grp-context-navigation {
+        background: #f5f5f5 !important;
+        border-bottom: 1px solid #e0e0e0 !important;
+
+        ul li {
+            color: #757575 !important;
+
+            a {
+                color: #424242 !important;
+
+                &:hover {
+                    color: #ff6939 !important;
+                }
+            }
+        }
+    }
+
+    /* Buttons for Gray Professional theme */
+    .grp-button {
+        background-image: none !important;
+        background: #ff6939 !important;
+        border: 1px solid #e5502a !important;
+        color: #ffffff !important;
+
+        &:hover {
+            background: #e5502a !important;
+            border: 1px solid #cc3d1a !important;
+        }
+
+        &.grp-default {
+            background: #5a5a5a !important;
+            border: 1px solid #4a4a4a !important;
+            color: #e8e8e8 !important;
+
+            &:hover {
+                background: #4a4a4a !important;
+                border: 1px solid #404040 !important;
+            }
+        }
+    }
+
+    /* Fixed footer for Gray Professional theme */
+    .grp-fixed-footer {
+        background-image: none !important;
+        background: #404040 !important;
+        border-top: 1px solid rgba(255, 255, 255, 0.12) !important;
+
+        .grp-button {
+            background: #ff6939 !important;
+            border: 1px solid #e5502a !important;
+
+            &:hover {
+                background: #e5502a !important;
+            }
+        }
+    }
+
+    /* Body and general styles for Gray Professional */
+    .grp-collapse {
+        border: 1px solid #5a5a5a !important;
+        background: #4a4a4a !important;
+
+        &.grp-open {
+            background: #555555 !important;
+        }
+    }
+
+    .fieldset.grp-module .grp-row label {
+        color: #2a2a2a !important;
+    }
+
+    .grp-module .grp-row:not(tr) {
+        border-bottom: 1px solid #e0e0e0 !important;
+        background: #ffffff !important;
+
+        &:hover {
+            background: #f5f5f5 !important;
+        }
+    }
+
+    /* Select2 styles for Gray Professional */
+    .select2-container--default .select2-selection--single {
+        background: #ffffff !important;
+        border: 1px solid #5a5a5a !important;
+
+        .select2-selection__rendered {
+            color: #2a2a2a !important;
+        }
+    }
+
+    .select2-container--default .select2-results__option--highlighted[aria-selected] {
+        background: #ff6939 !important;
+        color: #ffffff !important;
+    }
+
+    .select2-dropdown {
+        background: #ffffff !important;
+        border: 1px solid #5a5a5a !important;
+    }
+
+    .select2-container--default .select2-search--dropdown .select2-search__field {
+        background: #ffffff !important;
+        border: 1px solid #5a5a5a !important;
+        color: #2a2a2a !important;
+    }
+}

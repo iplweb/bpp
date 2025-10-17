@@ -91,7 +91,7 @@
         color: #2c3e50;
         border: 1px solid #e9ecef;
 
-        &:hover {
+        &:hover:not(.active):not(.disabled) {
           background: rgba($primary-color, 0.08);
           border-color: rgba($primary-color, 0.3);
           color: rgba($primary-color, 0.9);
@@ -102,6 +102,15 @@
           color: white;
           box-shadow: 0 2px 4px rgba($primary-color, 0.3);
           border: 1px solid $primary-color;
+        }
+
+        &.disabled {
+          color: #bdc3c7;
+          background: #f8f9fa;
+          border-color: #e9ecef;
+          opacity: 0.5;
+          cursor: not-allowed;
+          pointer-events: none;
         }
 
         &.autorzy-letter-single {

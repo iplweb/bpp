@@ -1,0 +1,179 @@
+/* -------------------------------------------------------------------------------- */
+/* Theme 1: Classic Light (Newspaper Style - The Guardian/NYT) */
+/* -------------------------------------------------------------------------------- */
+
+// IMPORTANT: Klasa motywu jest dodawana do elementu <body>
+// Więc wszystkie selektory muszą być w formie: body.theme-classic-light element
+
+body.theme-classic-light {
+    background: #ffffff !important;
+
+    #grp-navigation {
+        background: #f8f9fa !important;
+        border-bottom: 1px solid #dee2e6;
+
+        ul#navigation-menu li a {
+            color: #2c3e50 !important;
+            border-right: 1px solid #e0e0e0;
+            border-left: 1px solid #ffffff;
+        }
+
+        ul#navigation-menu li a:hover,
+        ul#navigation-menu li.over > a {
+            background-color: #e8f0fe !important;
+            color: #0066cc !important;
+        }
+
+        ul#navigation-menu li ul {
+            background: #ffffff !important;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+
+            li {
+                background: #ffffff !important;
+                border-top: 1px solid #f0f0f0;
+
+                a {
+                    background-color: #ffffff !important;
+                    color: #2c3e50 !important;
+                    border-left: 3px solid transparent;
+
+                    &:hover {
+                        background-color: #e8f0fe !important;
+                        padding-left: 18px;
+                        border-left: 3px solid #0066cc !important;
+                        color: #0066cc !important;
+                    }
+                }
+            }
+        }
+
+        ul#navigation-menu li.has-columns ul {
+            background: #ffffff !important;
+            border: 1px solid #e0e0e0;
+
+            li {
+                background: #ffffff !important;
+
+                a {
+                    background-color: #ffffff !important;
+                    border-bottom: 1px solid #f0f0f0;
+
+                    &:hover {
+                        background-color: #e8f0fe !important;
+                        border-left: 3px solid #0066cc !important;
+                    }
+                }
+            }
+        }
+
+        ul#navigation-menu li.menu-icon-user ul li:first-child a {
+            background-color: #f8f9fa !important;
+        }
+    }
+
+    /* Context navigation for Classic Light theme */
+    #grp-context-navigation {
+        background: #ffffff !important;
+        border-bottom: 1px solid #e9ecef !important;
+
+        ul li {
+            color: #6c757d !important;
+
+            a {
+                color: #495057 !important;
+
+                &:hover {
+                    color: #0066cc !important;
+                }
+            }
+        }
+    }
+
+    /* Buttons for Classic Light theme */
+    .grp-button {
+        background-image: none !important;
+        background: #0066cc !important;
+        border: 1px solid #0056b3 !important;
+        color: #ffffff !important;
+
+        &:hover {
+            background: #0056b3 !important;
+            border: 1px solid #004494 !important;
+        }
+
+        &.grp-default {
+            background: #6c757d !important;
+            border: 1px solid #5a6268 !important;
+
+            &:hover {
+                background: #5a6268 !important;
+                border: 1px solid #545b62 !important;
+            }
+        }
+    }
+
+    /* Fixed footer for Classic Light theme */
+    .grp-fixed-footer {
+        background-image: none !important;
+        background: #f8f9fa !important;
+        border-top: 1px solid #dee2e6 !important;
+
+        .grp-button {
+            background: #0066cc !important;
+            border: 1px solid #0056b3 !important;
+
+            &:hover {
+                background: #0056b3 !important;
+            }
+        }
+    }
+
+    /* General styles for Classic Light */
+    .grp-collapse {
+        border: 1px solid #dee2e6 !important;
+        background: #f8f9fa !important;
+
+        &.grp-open {
+            background: #ffffff !important;
+        }
+    }
+
+    .fieldset.grp-module .grp-row label {
+        color: #495057 !important;
+    }
+
+    .grp-module .grp-row:not(tr) {
+        border-bottom: 1px solid #e9ecef !important;
+        background: #ffffff !important;
+
+        &:hover {
+            background: #f8f9fa !important;
+        }
+    }
+
+    /* Select2 styles for Classic Light */
+    .select2-container--default .select2-selection--single {
+        background: #ffffff !important;
+        border: 1px solid #ced4da !important;
+
+        .select2-selection__rendered {
+            color: #495057 !important;
+        }
+    }
+
+    .select2-container--default .select2-results__option--highlighted[aria-selected] {
+        background: #0066cc !important;
+        color: #ffffff !important;
+    }
+
+    .select2-dropdown {
+        background: #ffffff !important;
+        border: 1px solid #ced4da !important;
+    }
+
+    .select2-container--default .select2-search--dropdown .select2-search__field {
+        background: #ffffff !important;
+        border: 1px solid #ced4da !important;
+        color: #495057 !important;
+    }
+}

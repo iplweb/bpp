@@ -177,12 +177,17 @@ class CustomMenu(Menu):
     def __init__(self, **kwargs):
         Menu.__init__(self, **kwargs)
 
+        # Add BPP logo/home link as first item
+        bpp_home = items.MenuItem("BPP", url="/")
+        bpp_home.css_classes = ["menu-icon-home"]
+
         self.children += [
+            bpp_home,
             items.MenuItem(str(_("Dashboard")), reverse("admin:index")),
-            items.Bookmarks(),
+            # items.Bookmarks(),  # Hidden - user requested to hide bookmarks menu
         ]
 
-    def init_with_context(self, context):
+    def init_with_context(self, context):  # noqa: C901
         user = context["request"].user
         if not hasattr(user, "__admin_menu_groups"):
             user.__admin_menu_groups = [x.name for x in user.cached_groups]
@@ -194,12 +199,9 @@ class CustomMenu(Menu):
                     submenu(n2, v, icon_class),
                 ]
 
-        # Add icon classes to Dashboard and Bookmarks menu items
+        # Dashboard is now second item (index 1), add icon
         if len(self.children) >= 2:
-            self.children[0].css_classes = ["menu-icon-home"]  # Dashboard (Panel)
-            self.children[1].css_classes = [
-                "menu-icon-bookmarks"
-            ]  # Bookmarks (Zakładki)
+            self.children[1].css_classes = ["menu-icon-dashboard"]  # Dashboard (Panel)
 
         flt("web", "WWW", WEB_MENU, "menu-icon-web")
 
@@ -241,5 +243,59 @@ class CustomMenu(Menu):
 
         flt("raporty", "Raporty", RAPORTY_MENU, "menu-icon-reports")
         flt("administracja", "Administracja", ADMIN_MENU, "menu-icon-admin")
+
+        # Create user menu with "Mój profil" label and dropdown - add at the end
+        username = (
+            user.first_name
+            or user.username
+            or user.get_short_name()
+            or user.get_username()
+        )
+        user_children = []
+
+        # Add username as first item (not clickable - no URL)
+        user_children.append(items.MenuItem(username, url="#"))
+
+        # Add "Change password" if user has usable password
+        if user.has_usable_password():
+            user_children.append(
+                items.MenuItem(
+                    str(_("Change password")), reverse("admin:password_change")
+                )
+            )
+
+        # Add "Log out"
+        user_children.append(items.MenuItem(str(_("Log out")), reverse("admin:logout")))
+
+        # Add separator for theme options
+        separator = items.MenuItem("---", url="#")
+        separator.css_classes = ["theme-separator"]
+        user_children.append(separator)
+
+        # Add theme options
+        theme_items = [
+            ("Domyślny (ciemny)", "default", "theme-selector-default"),
+            ("Klasyczny jasny", "classic-light", "theme-selector-classic-light"),
+            ("Granatowy akademicki", "navy-academic", "theme-selector-navy-academic"),
+            (
+                "Szary profesjonalny",
+                "gray-professional",
+                "theme-selector-gray-professional",
+            ),
+            ("Kremowo-zielony", "cream-green", "theme-selector-cream-green"),
+            ("Minimalistyczny jasny", "minimal-light", "theme-selector-minimal-light"),
+        ]
+
+        for theme_name, theme_key, css_class in theme_items:
+            theme_item = items.MenuItem(theme_name, url=f"#theme-{theme_key}")
+            theme_item.css_classes = ["theme-selector-item", css_class]
+            user_children.append(theme_item)
+
+        # Create user menu item with icon class - label is "Mój profil"
+        user_menu = items.MenuItem("Mój profil", children=user_children)
+        user_menu.css_classes = ["menu-icon-user"]
+
+        # Add user menu to children
+        self.children.append(user_menu)
 
         return super().init_with_context(context)

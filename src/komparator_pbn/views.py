@@ -1,16 +1,13 @@
-from django.db.models import Q
+from django.contrib.admin.views.decorators import staff_member_required
+from django.db.models import Count, Q
+from django.utils.decorators import method_decorator
 from django.views.generic import ListView
 from django.views.generic.base import TemplateView
-
-from pbn_api.models import OswiadczenieInstytucji, Publication, Scientist
-
-from django.contrib.admin.views.decorators import staff_member_required
-
-from django.utils.decorators import method_decorator
 
 from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle_Autor
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte_Autor
+from pbn_api.models import OswiadczenieInstytucji, Publication, Scientist
 
 # Evaluation period constants
 EVALUATION_START_YEAR = 2022
@@ -167,6 +164,17 @@ class KomparatorMainView(TemplateView):
             .count()
         )
 
+        # Count deleted PBN journals (sources) that still have publications in BPP
+        # Get all sources in BPP that have pbn_uid pointing to DELETED Journals
+        from bpp.models import Zrodlo
+
+        deleted_pbn_journals_in_bpp = (
+            Zrodlo.objects.filter(pbn_uid__status="DELETED")
+            .annotate(liczba_publikacji=Count("wydawnictwo_ciagle"))
+            .filter(liczba_publikacji__gt=0)
+            .count()
+        )
+
         # Add discipline discrepancy statistics for 2022-2025
         from komparator_pbn_udzialy.models import RozbieznoscDyscyplinPBN
 
@@ -210,6 +218,7 @@ class KomparatorMainView(TemplateView):
                 "duplicate_authors_count": duplicate_authors_count,
                 "deleted_pbn_in_bpp": deleted_pbn_in_bpp,
                 "deleted_pbn_scientists_in_bpp": deleted_pbn_scientists_in_bpp,
+                "deleted_pbn_journals_in_bpp": deleted_pbn_journals_in_bpp,
                 "evaluation_start_year": EVALUATION_START_YEAR,
                 "evaluation_end_year": EVALUATION_END_YEAR,
                 "uczelnia": uczelnia,

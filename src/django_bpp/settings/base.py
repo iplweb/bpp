@@ -431,11 +431,13 @@ INSTALLED_APPS = [
     "deduplikator_autorow",
     "importer_autorow_pbn",
     "przemapuj_prace_autora",
+    "przemapuj_zrodla_pbn",
     "pbn_downloader_app",
     "pbn_integrator",
     "pbn_import",
     "komparator_pbn_udzialy",
     "komparator_publikacji_pbn",
+    "admin_dashboard",
 ]
 
 # Profile użytkowników
@@ -1009,11 +1011,11 @@ MANAGERS = ADMINS
 # Uwaga: domyślnie easy-audit NIE jest włączony. Włącza go dopiero
 # konfiguracja produkcyjna za pomocą poniższego kodu:
 #
-# INSTALLED_APPS.append("easyaudit")  # noqa
-# MIDDLEWARE.append(  # noqa
-#     "easyaudit.middleware.easyaudit.EasyAuditMiddleware",
-# )
-# DJANGO_EASY_AUDIT_PROPAGATE_EXCEPTIONS = True
+INSTALLED_APPS.append("easyaudit")  # noqa
+MIDDLEWARE.append(  # noqa
+    "easyaudit.middleware.easyaudit.EasyAuditMiddleware",
+)
+DJANGO_EASY_AUDIT_PROPAGATE_EXCEPTIONS = True
 
 DJANGO_EASY_AUDIT_WATCH_REQUEST_EVENTS = False
 DJANGO_EASY_AUDIT_ADMIN_SHOW_REQUEST_EVENTS = False

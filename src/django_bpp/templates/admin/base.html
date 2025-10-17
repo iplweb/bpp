@@ -71,17 +71,22 @@
                         }
                     });
 
-                    $("a.close[close-href]").click(function (e) {
+                    $("a.close").click(function (e) {
                         e.preventDefault();
                         var orig_elem = $(this);
 
-                        $.post(
-                            orig_elem.attr("close-href"),
-                            "",
-                            function () {
-                                orig_elem.parent().hide();
-                            }
-                        );
+                        if (orig_elem.attr("close-href")) {
+                            $.post(
+                                orig_elem.attr("close-href"),
+                                "",
+                                function () {
+                                    orig_elem.parent().hide();
+                                }
+                            );
+                        } else {
+                            // Brak close-href, po prostu ukryj element
+                            orig_elem.parent().hide();
+                        }
                     });
                 });
             })(django.jQuery);

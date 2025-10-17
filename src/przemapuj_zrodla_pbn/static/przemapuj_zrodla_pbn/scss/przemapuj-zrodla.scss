@@ -1,0 +1,299 @@
+// Przemapuj Źródła PBN - Styling
+// Highlighting and pulsating animation for MNISW ID
+
+// Keyframe animation for pulsating effect
+@keyframes mnisw-pulse {
+    0% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.7;
+        transform: scale(1.1);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+// Main container styling
+.source-table {
+    margin-bottom: 30px;
+}
+
+.source-table-header {
+    background-color: #f5f5f5;
+    color: #333;
+    padding: 15px;
+    margin-bottom: 20px;
+    border-radius: 3px;
+    border: 1px solid #e0e0e0;
+
+    h4 {
+        margin-bottom: 5px;
+    }
+
+    p {
+        margin: 0;
+        font-size: 0.9em;
+    }
+}
+
+// Category sections
+.source-category {
+    margin-bottom: 25px;
+
+    h5 {
+        margin-bottom: 15px;
+        padding: 10px 15px;
+        background-color: #f5f5f5;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+}
+
+// Source list
+.source-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+// Individual source item
+.source-item {
+    cursor: pointer;
+    padding: 15px;
+    margin-bottom: 10px;
+    border: 2px solid #e0e0e0;
+    border-radius: 4px;
+    background-color: #fff;
+    transition: all 0.2s ease;
+
+    &:hover {
+        border-color: #bdbdbd;
+        background-color: #fafafa;
+    }
+
+    &.selected {
+        background-color: #e3f2fd;
+        border-color: #1976d2;
+        border-width: 2px;
+        box-shadow: 0 2px 4px rgba(25, 118, 210, 0.2);
+    }
+
+    // Special styling for items WITH MNISW ID
+    &.has-mnisw-id {
+        border-left: 4px solid #2e7d32;
+        background-color: #f1f8e9;
+        box-shadow: 0 1px 3px rgba(46, 125, 50, 0.15);
+
+        &:hover {
+            background-color: #e8f5e9;
+            box-shadow: 0 2px 6px rgba(46, 125, 50, 0.25);
+        }
+
+        &.selected {
+            background-color: #c8e6c9;
+            border-color: #2e7d32;
+            border-left-width: 4px;
+            box-shadow: 0 3px 8px rgba(46, 125, 50, 0.3);
+        }
+    }
+}
+
+// Source item title
+.source-item-title {
+    font-size: 1.05em;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #333;
+}
+
+// Metadata section
+.source-item-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    font-size: 0.9em;
+    color: #666;
+}
+
+.source-item-meta-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.source-item-meta-label {
+    font-weight: 500;
+    color: #888;
+}
+
+// MNISW ID styling with pulsating animation
+.mnisw-id {
+    font-weight: 700;
+    font-size: 1.15em;
+    color: #1b5e20;
+    background-color: #c8e6c9;
+    padding: 4px 10px;
+    border-radius: 4px;
+    display: inline-block;
+    animation: mnisw-pulse 2s ease-in-out infinite;
+    box-shadow: 0 0 8px rgba(46, 125, 50, 0.3);
+
+    &.none {
+        // No MNISW ID - subtle gray styling
+        color: #999;
+        font-style: italic;
+        font-weight: 400;
+        font-size: 0.9em;
+        background-color: transparent;
+        padding: 0;
+        animation: none;
+        box-shadow: none;
+    }
+}
+
+// Similarity badge
+.similarity-badge {
+    display: inline-block;
+    background-color: #e3f2fd;
+    color: #1976d2;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 0.85em;
+    font-weight: 500;
+}
+
+// Match type badges
+.match-type-badge {
+    display: inline-block;
+    font-size: 0.75em;
+    font-weight: 600;
+    padding: 4px 8px;
+    border-radius: 3px;
+    white-space: nowrap;
+}
+
+.match-type-best {
+    background-color: #c8e6c9;
+    color: #1b5e20;
+}
+
+.match-type-good {
+    background-color: #bbdefb;
+    color: #0d47a1;
+}
+
+.match-type-acceptable {
+    background-color: #ffe0b2;
+    color: #e65100;
+}
+
+// New source indicator
+.new-source-indicator {
+    display: inline-block;
+    background-color: #ff9800;
+    color: white;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 0.75em;
+    font-weight: 600;
+    margin-left: 8px;
+}
+
+// Button styling override - make "Zobacz w PBN" button normal size
+.source-item-meta-item .button {
+    font-size: 0.9rem;
+    padding: 0.5rem 1rem;
+}
+
+// Preview page source comparison boxes
+.preview-source-box {
+    h5 {
+        margin-bottom: 10px;
+        font-size: 1.1em;
+        font-weight: 600;
+    }
+
+    h6 {
+        margin-bottom: 15px;
+        font-size: 1.2em;
+        color: #333;
+    }
+
+    .source-details {
+        dt {
+            font-weight: 600;
+            color: #666;
+            margin-top: 10px;
+            font-size: 0.9em;
+        }
+
+        dd {
+            margin-left: 0;
+            margin-bottom: 8px;
+            font-size: 1em;
+            color: #333;
+
+            .text-muted {
+                color: #999;
+                font-style: italic;
+            }
+
+            // Override MNISW ID styling in preview to not animate
+            .mnisw-id {
+                animation: none;
+                font-size: 1.1em;
+                padding: 3px 8px;
+            }
+        }
+    }
+
+    // Specific styling for "new source" indicator in preview
+    .new-source-indicator {
+        display: block;
+        background-color: #ff9800;
+        color: white;
+        padding: 5px 10px;
+        border-radius: 3px;
+        font-size: 0.9em;
+        font-weight: 600;
+        margin-bottom: 15px;
+        text-align: center;
+    }
+}
+
+// Collapsible sections
+.collapsible-header {
+    cursor: pointer;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    &:hover {
+        background-color: #eeeeee;
+    }
+}
+
+.collapsible-icon {
+    transition: transform 0.2s ease;
+
+    &.expanded {
+        transform: rotate(90deg);
+    }
+}
+
+.collapsible-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+
+    &.expanded {
+        max-height: 5000px;
+    }
+}

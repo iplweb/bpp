@@ -260,6 +260,37 @@
 
     <div class="row">
         <div class="large-12 columns">
+            <div class="panel callout alert">
+                <h3>Źródła</h3>
+                <div class="row">
+                    <div class="large-12 columns">
+                        <div class="stat-box stat-box-deleted-journals">
+                            <h4><span class="fi-trash"></span> Źródła skasowane w PBN z publikacjami w BPP</h4>
+                            <p><strong>Liczba źródeł: {{ deleted_pbn_journals_in_bpp|default:0 }}</strong></p>
+                            <small>Źródła w BPP, które mają przypisany PBN UID wskazujący na czasopismo ze statusem DELETED w bazie PBN, a nadal posiadają powiązane publikacje.
+                                <br/>Te źródła zostały usunięte po stronie PBN, ale nadal istnieją w BPP z publikacjami.
+                                <br/>Wymaga to przeglądu i przemapowania publikacji na aktualne źródła:
+                                <ul style="margin-top: 0.5rem; margin-bottom: 0;">
+                                    <li>znalezienia aktywnego odpowiednika źródła w PBN,</li>
+                                    <li>przemapowania wszystkich publikacji do nowego źródła,</li>
+                                    <li>automatycznego dodania publikacji do kolejki eksportu PBN.</li>
+                                </ul>
+                            </small>
+                            <div style="margin-top: 1rem;">
+                                <a href="{% url 'przemapuj_zrodla_pbn:lista_skasowanych_zrodel' %}"
+                                   class="button expanded alert">
+                                    <span class="fi-refresh"></span> Przejdź do przemapowania źródeł
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="large-12 columns">
             <div class="panel callout info">
                 <h3>Różnice w udziałach PBN a BPP ({{ evaluation_start_year }}-{{ evaluation_end_year }})</h3>
                 <div class="stat-box">

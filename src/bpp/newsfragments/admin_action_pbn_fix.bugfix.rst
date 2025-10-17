@@ -1,0 +1,1 @@
+Naprawiono błąd Internal Server Error przy próbie użycia akcji adminowej "Wyślij do PBN w tle". Problem był spowodowany brakiem funkcji top_contributors_view w module admin_dashboard oraz błędnym formatowaniem HTML w linku do kolejki eksportu.

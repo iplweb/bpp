@@ -1,14 +1,16 @@
+import sys
+
+import rollbar
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404, redirect, render
 
+from bpp.models import Autor, Wydawnictwo_Ciagle_Autor, Wydawnictwo_Zwarte_Autor
+
 from .forms import PrzemapoaniePracAutoraForm
 from .models import PrzemapoaniePracAutora
-
-from django.contrib import messages
-from django.contrib.auth.decorators import login_required
-
-from bpp.models import Autor, Wydawnictwo_Ciagle_Autor, Wydawnictwo_Zwarte_Autor
 
 
 @login_required
@@ -21,9 +23,7 @@ def wybierz_autora(request):
         # Wyszukaj autorów po nazwisku lub imieniu
         autorzy = Autor.objects.filter(
             Q(nazwisko__icontains=search_query) | Q(imiona__icontains=search_query)
-        ).order_by("nazwisko", "imiona")[
-            :50
-        ]  # Ogranicz do 50 wyników
+        ).order_by("nazwisko", "imiona")[:50]  # Ogranicz do 50 wyników
 
     context = {
         "search_query": search_query,
@@ -33,7 +33,7 @@ def wybierz_autora(request):
 
 
 @login_required
-def przemapuj_prace(request, autor_id):
+def przemapuj_prace(request, autor_id):  # noqa: C901
     """Główny widok do przemapowania prac autora między jednostkami"""
     autor = get_object_or_404(Autor, pk=autor_id)
 
@@ -177,6 +177,7 @@ def przemapuj_prace(request, autor_id):
                         )
 
                 except Exception as e:
+                    rollbar.report_exc_info(sys.exc_info())
                     messages.error(
                         request, f"Wystąpił błąd podczas przemapowania prac: {str(e)}"
                     )
@@ -190,15 +191,11 @@ def przemapuj_prace(request, autor_id):
                 # Pobierz prace do przemapowania
                 prace_ciagle = Wydawnictwo_Ciagle_Autor.objects.filter(
                     autor=autor, jednostka=jednostka_z
-                ).select_related("rekord")[
-                    :10
-                ]  # Pokaż pierwsze 10 jako przykład
+                ).select_related("rekord")[:10]  # Pokaż pierwsze 10 jako przykład
 
                 prace_zwarte = Wydawnictwo_Zwarte_Autor.objects.filter(
                     autor=autor, jednostka=jednostka_z
-                ).select_related("rekord")[
-                    :10
-                ]  # Pokaż pierwsze 10 jako przykład
+                ).select_related("rekord")[:10]  # Pokaż pierwsze 10 jako przykład
 
                 liczba_prac_ciaglych = Wydawnictwo_Ciagle_Autor.objects.filter(
                     autor=autor, jednostka=jednostka_z
