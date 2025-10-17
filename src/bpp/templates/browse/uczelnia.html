@@ -168,9 +168,11 @@
             <div class="shaded-hr-div"></div>
         </div>
         <div class="large-12 cell uczelnia-main-content">
-            <a href="/zglos_publikacje/nowe_zgloszenie/" class=" main-page-button-primary">
-                <i class="fi-page-add"></i> Masz nową publikację? Dodaj ją do bazy
-            </a>
+            {% if uczelnia.pokazuj_formularz_zglaszania_publikacji == 'always' or uczelnia.pokazuj_formularz_zglaszania_publikacji == 'logged-in' and request.user.is_authenticated or uczelnia.pokazuj_formularz_zglaszania_publikacji == 'staff' and request.user.is_staff %}
+                <a href="/zglos_publikacje/nowe_zgloszenie/" class=" main-page-button-primary">
+                    <i class="fi-page-add"></i> Masz nową publikację? Dodaj ją do bazy
+                </a>
+            {% endif %}
             {% if total_rekord_count > 25000 %}
                 <form method="post" action="{% url 'bpp:browse_build_search' %}" style="display: inline;">
                     {% csrf_token %}
@@ -178,15 +180,20 @@
                     <input type="hidden" name="suggested-title" value="Cała baza to {{ total_rekord_count }} rekordów. Oglądasz wycinek - rekordy od 2022r"/>
                     <button type="submit" class="main-page-button-secondary" style="border: none; background: none; padding: 0;">
                         <span class="main-page-button-secondary" style="display: inline-block;">
-                            <i class="fi-magnifying-glass"></i> Przeglądaj najnowsze prace
+                            <i class="fi-page-search"></i> Przeglądaj najnowsze prace
                         </span>
                     </button>
                 </form>
             {% else %}
                 <a href="{% url 'multiseek:index' %}" class="main-page-button-secondary">
-                    <i class="fi-magnifying-glass"></i> Przeglądaj wszystkie prace
+                    <i class="fi-page-search"></i> Przeglądaj wszystkie prace
                 </a>
             {% endif %}
+            <a href="#" onclick="openGlobalSearch(event); return false;" class="main-page-button-search-field">
+                <i class="fi-text-color"></i>
+                <span class="search-placeholder">Wyszukaj tekstem</span>
+                <span class="search-cursor"></span>
+            </a>
         </div>
         <div class="large-12 cell">
             <div class="shaded-hr-div"></div>

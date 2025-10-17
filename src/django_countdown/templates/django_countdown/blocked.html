@@ -1,0 +1,228 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pl" dir="ltr">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>System w konserwacji - {{ site.name }}</title>
+
+    <link rel="stylesheet" type="text/css" href="{% static 'foundation-sites/dist/css/foundation.min.css' %}"/>
+    <link rel="stylesheet" type="text/css"
+          href="{% static 'foundation-datepicker/foundation/fonts/foundation-icons.css' %}"/>
+
+    <style>
+        body {
+            background-color: #f8f8f8;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+
+        .maintenance-container {
+            text-align: center;
+            padding: 1.5rem;
+            background: white;
+            border-radius: 1rem;
+            border: 1px solid #e6e6e6;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            max-width: 600px;
+            margin: 1rem;
+        }
+
+        .maintenance-header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .maintenance-icon {
+            font-size: 3rem;
+            color: #ff6b6b;
+        }
+
+        .icon-key {
+            animation: wrench-turn 1.5s ease-in-out infinite;
+            transform-origin: top right;
+        }
+
+        .icon-cog {
+            animation: rotate-left 3s linear infinite;
+        }
+
+        @keyframes wrench-turn {
+            0% {
+                transform: rotate(-15deg);
+            }
+            50% {
+                transform: rotate(15deg);
+            }
+            100% {
+                transform: rotate(-15deg);
+            }
+        }
+
+        @keyframes rotate-right {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        @keyframes rotate-left {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(-360deg);
+            }
+        }
+
+        .maintenance-title {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #2c3e50;
+            margin: 0;
+        }
+
+        .maintenance-message {
+            font-size: 1.1rem;
+            color: #e74c3c;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            padding: 0.75rem;
+            background: #ffe5e5;
+            border-radius: 0.5rem;
+        }
+
+        .maintenance-description {
+            font-size: 1rem;
+            color: #555;
+            line-height: 1.6;
+            margin-bottom: 1rem;
+        }
+
+        .countdown-timer {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #667eea;
+            margin: 1rem 0;
+            padding: 1rem;
+            background: #f0f4ff;
+            border-radius: 0.5rem;
+            border: 2px solid #667eea;
+        }
+
+        .countdown-label {
+            font-size: 0.9rem;
+            color: #888;
+            font-weight: 400;
+            margin-bottom: 0.5rem;
+        }
+
+        .maintenance-footer {
+            font-size: 0.85rem;
+            color: #888;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid #e0e0e0;
+        }
+    </style>
+</head>
+<body>
+    <div class="maintenance-container">
+        <div class="maintenance-header">
+            <div class="maintenance-icon icon-key">
+                <span class="fi-wrench"></span>
+            </div>
+            <h1 class="maintenance-title">System w konserwacji</h1>
+            <div class="maintenance-icon icon-cog">
+                <span class="fi-widget"></span>
+            </div>
+        </div>
+
+        <div class="maintenance-message">
+            {{ countdown.message }}
+        </div>
+
+        {% if countdown.long_description %}
+            <div class="maintenance-description">
+                {{ countdown.long_description|linebreaks }}
+            </div>
+        {% endif %}
+
+        {% if countdown.maintenance_until %}
+            <div class="countdown-timer" id="countdown-display">
+                <div class="countdown-label">Orientacyjny koniec prac konserwacyjnych za:</div>
+                <div id="countdown-value">Ładowanie...</div>
+            </div>
+        {% endif %}
+
+        <div class="maintenance-footer">
+            <p>Przepraszamy za chwilową niedogodność. Wdrażamy kluczową aktualizację systemu, która nie mogła bądź nie
+                powinna zostać odłożona. Naszym priorytetem jest dostarczanie Państwu najwyższej jakości narzędzi do zarządzania bibliografią naukową. Dziękujemy za wyrozumiałość.</p>
+            <p><strong>{{ site.name }}</strong></p>
+        </div>
+    </div>
+
+    <script>
+        {% if countdown.maintenance_until %}
+        // Countdown timer dla maintenance_until
+        (function() {
+            var maintenanceUntil = new Date("{{ countdown.maintenance_until.isoformat }}").getTime();
+            var countdownElement = document.getElementById('countdown-value');
+            var hasRefreshed = false;
+            var countdownInterval = null;
+
+            function updateCountdown() {
+                var now = new Date().getTime();
+                var distance = maintenanceUntil - now;
+
+                if (distance < 0 && !hasRefreshed) {
+                    countdownElement.innerHTML = "Prace konserwacyjne zakończone!";
+                    hasRefreshed = true;
+
+                    // Zatrzymaj timer
+                    if (countdownInterval) {
+                        clearInterval(countdownInterval);
+                    }
+
+                    // Czekaj 3 sekundy i odśwież stronę
+                    setTimeout(function() {
+                        window.location.reload();
+                    }, 3000);
+                    return;
+                }
+
+                var days = Math.floor(distance / (1000 * 60 * 60 * 24));
+                var hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                var minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                var seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+                var parts = [];
+                if (days > 0) parts.push(days + " dni");
+                if (hours > 0) parts.push(hours + " godz");
+                if (minutes > 0) parts.push(minutes + " min");
+                if (seconds >= 0) parts.push(seconds + " sek");
+
+                countdownElement.innerHTML = parts.join(" ");
+            }
+
+            // Aktualizuj co sekundę
+            updateCountdown();
+            countdownInterval = setInterval(updateCountdown, 1000);
+        })();
+        {% else %}
+        // Auto-refresh co 30 sekund, aby sprawdzić, czy serwis został odblokowany
+        setTimeout(function() {
+            window.location.reload();
+        }, 30000);
+        {% endif %}
+    </script>
+</body>
+</html>

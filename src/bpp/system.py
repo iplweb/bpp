@@ -4,39 +4,14 @@ groups - lista grup wraz z uprawnieniami do edycji poszczególnych obiektów.
 """
 
 from dbtemplates.models import Template
-from django.db import transaction
-from favicon.models import Favicon, FaviconImg
-from flexible_reports import models as flexible_models
-from multiseek.models import SearchForm
-
-from dynamic_columns.models import ModelAdmin, ModelAdminColumn
-from ewaluacja_common.models import Rodzaj_Autora
-from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaRok, LiczbaNDlaUczelni
-from formdefaults.models import FormFieldRepresentation, FormRepresentation
-from miniblog.models import Article
-from pbn_api.models import (
-    Conference,
-    Discipline,
-    Institution,
-    Journal,
-    OswiadczenieInstytucji,
-    Publication,
-    Publisher,
-    Scientist,
-    SentData,
-)
-from pbn_api.models.discipline import DisciplineGroup
-from rozbieznosci_dyscyplin.models import RozbieznosciView, RozbieznosciZrodelView
-from zglos_publikacje.models import (
-    Obslugujacy_Zgloszenia_Wydzialow,
-    Zgloszenie_Publikacji,
-    Zgloszenie_Publikacji_Autor,
-)
-
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group, Permission
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.sites.models import Site
+from django.db import transaction
+from favicon.models import Favicon, FaviconImg
+from flexible_reports import models as flexible_models
+from multiseek.models import SearchForm
 
 from bpp.const import (
     GR_RAPORTY_WYSWIETLANIE,
@@ -103,6 +78,30 @@ from bpp.models.seria_wydawnicza import Seria_Wydawnicza
 from bpp.models.struktura import Jednostka_Wydzial
 from bpp.models.system import Charakter_PBN
 from bpp.models.wydawca import Poziom_Wydawcy, Wydawca
+from dynamic_columns.models import ModelAdmin, ModelAdminColumn
+from ewaluacja_common.models import Rodzaj_Autora
+from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaRok, LiczbaNDlaUczelni
+from formdefaults.models import FormFieldRepresentation, FormRepresentation
+from import_polon.models import ImportPolonOverride
+from miniblog.models import Article
+from pbn_api.models import (
+    Conference,
+    Discipline,
+    Institution,
+    Journal,
+    OswiadczenieInstytucji,
+    Publication,
+    Publisher,
+    Scientist,
+    SentData,
+)
+from pbn_api.models.discipline import DisciplineGroup
+from rozbieznosci_dyscyplin.models import RozbieznosciView, RozbieznosciZrodelView
+from zglos_publikacje.models import (
+    Obslugujacy_Zgloszenia_Wydzialow,
+    Zgloszenie_Publikacji,
+    Zgloszenie_Publikacji_Autor,
+)
 
 User = get_user_model()
 
@@ -146,6 +145,7 @@ groups = {
         DisciplineGroup,
         BppMultiseekVisibility,
         Rodzaj_Autora,
+        ImportPolonOverride,
     ],
     "struktura": [
         Uczelnia,

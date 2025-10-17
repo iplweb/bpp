@@ -2,10 +2,9 @@ import pytest
 from django.urls import reverse
 from model_bakery import baker
 
-from ewaluacja_metryki.models import MetrykaAutora
-
 from bpp.const import GR_WPROWADZANIE_DANYCH
 from bpp.models import Dyscyplina_Naukowa
+from ewaluacja_metryki.models import MetrykaAutora
 
 
 @pytest.mark.django_db
@@ -45,7 +44,10 @@ def test_discipline_filter_hidden_when_only_one(admin_user, db):
     assert response.status_code == 200
     assert response.context["tylko_jedna_dyscyplina"] is True
     # The select for discipline should not be in the HTML
-    assert "<label>Dyscyplina" not in response.content.decode()
+    assert (
+        '<label><span class="fi-book"></span> Dyscyplina'
+        not in response.content.decode()
+    )
 
 
 @pytest.mark.django_db
@@ -97,7 +99,9 @@ def test_discipline_filter_shown_when_multiple(admin_user, db):
     assert response.status_code == 200
     assert response.context["tylko_jedna_dyscyplina"] is False
     # The select for discipline should be in the HTML
-    assert "<label>Dyscyplina" in response.content.decode()
+    assert (
+        '<label><span class="fi-book"></span> Dyscyplina' in response.content.decode()
+    )
     assert "Discipline 1" in response.content.decode()
     assert "Discipline 2" in response.content.decode()
 

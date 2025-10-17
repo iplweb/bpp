@@ -393,3 +393,63 @@ def test_browse_doktorat(client, doktorat):
         follow=True,
     )
     assert res.status_code == 200
+
+
+@pytest.mark.django_db
+def test_zglos_publikacje_button_pokazuj_zawsze(client, uczelnia):
+    """Test: przycisk widoczny dla anonima gdy pokazuj_formularz_zglaszania_publikacji = POKAZUJ_ZAWSZE"""
+    from bpp.models import OpcjaWyswietlaniaField
+
+    uczelnia.pokazuj_formularz_zglaszania_publikacji = (
+        OpcjaWyswietlaniaField.POKAZUJ_ZAWSZE
+    )
+    uczelnia.save()
+
+    res = client.get(reverse("bpp:browse_uczelnia", args=(uczelnia.slug,)))
+    assert res.status_code == 200
+    assert "Masz nową publikację? Dodaj ją do bazy".encode("utf-8") in res.content
+
+
+@pytest.mark.django_db
+def test_zglos_publikacje_button_pokazuj_nigdy(client, uczelnia):
+    """Test: przycisk ukryty dla wszystkich gdy pokazuj_formularz_zglaszania_publikacji = POKAZUJ_NIGDY"""
+    from bpp.models import OpcjaWyswietlaniaField
+
+    uczelnia.pokazuj_formularz_zglaszania_publikacji = (
+        OpcjaWyswietlaniaField.POKAZUJ_NIGDY
+    )
+    uczelnia.save()
+
+    res = client.get(reverse("bpp:browse_uczelnia", args=(uczelnia.slug,)))
+    assert res.status_code == 200
+    assert "Masz nową publikację? Dodaj ją do bazy".encode("utf-8") not in res.content
+
+
+@pytest.mark.django_db
+def test_zglos_publikacje_button_pokazuj_zalogowanym_anon(client, uczelnia):
+    """Test: przycisk ukryty dla anonima gdy pokazuj_formularz_zglaszania_publikacji = POKAZUJ_ZALOGOWANYM"""
+    from bpp.models import OpcjaWyswietlaniaField
+
+    uczelnia.pokazuj_formularz_zglaszania_publikacji = (
+        OpcjaWyswietlaniaField.POKAZUJ_ZALOGOWANYM
+    )
+    uczelnia.save()
+
+    res = client.get(reverse("bpp:browse_uczelnia", args=(uczelnia.slug,)))
+    assert res.status_code == 200
+    assert "Masz nową publikację? Dodaj ją do bazy".encode("utf-8") not in res.content
+
+
+@pytest.mark.django_db
+def test_zglos_publikacje_button_pokazuj_zalogowanym_logged(admin_client, uczelnia):
+    """Test: przycisk widoczny dla zalogowanego gdy pokazuj_formularz_zglaszania_publikacji = POKAZUJ_ZALOGOWANYM"""
+    from bpp.models import OpcjaWyswietlaniaField
+
+    uczelnia.pokazuj_formularz_zglaszania_publikacji = (
+        OpcjaWyswietlaniaField.POKAZUJ_ZALOGOWANYM
+    )
+    uczelnia.save()
+
+    res = admin_client.get(reverse("bpp:browse_uczelnia", args=(uczelnia.slug,)))
+    assert res.status_code == 200
+    assert "Masz nową publikację? Dodaj ją do bazy".encode("utf-8") in res.content

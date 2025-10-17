@@ -37,6 +37,35 @@
         transition: opacity 0.3s ease, width 0.15s ease;
         cursor: not-allowed !important;
     }
+
+    /* Safari-specific spinner animation using CSS on a real DOM element */
+    .safari-spinner {
+        position: absolute;
+        left: 8px;
+        top: 50%;
+        margin-top: -7px;
+        width: 11px;
+        height: 11px;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        border-top-color: rgba(255, 255, 255, 0.9);
+        border-radius: 50%;
+        animation: safari-spinner-rotate 0.6s linear infinite;
+        z-index: 10;
+    }
+
+    @keyframes safari-spinner-rotate {
+        from {
+            transform: rotate(0deg);
+        }
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    /* Adjust button styling for Safari when spinner is active */
+    .submit-button-safari-active {
+        padding-left: 28px !important;
+    }
 </style>
 
 <script>
@@ -77,49 +106,72 @@
                             btn.style.opacity = '0.6';
                         });
 
-                        // Store original button text and prepare spinner characters
-                        const originalValue = button.value;
-                        const spinnerChars = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
-                        let spinnerIndex = 0;
+                        // Detect Safari browser
+                        const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
 
-                        // Measure current button width using native methods
-                        const originalWidth = button.offsetWidth;
+                        // Safari: Use CSS animation on a real DOM element instead of JS to avoid script suspension
+                        if (isSafari) {
+                            // Create wrapper for positioning context
+                            const wrapper = document.createElement('span');
+                            wrapper.style.position = 'relative';
+                            wrapper.style.display = 'inline-block';
 
-                        // Set initial width explicitly to enable smooth transition
-                        button.style.width = originalWidth + 'px';
+                            // Create spinner element
+                            const spinner = document.createElement('span');
+                            spinner.className = 'safari-spinner';
 
-                        // Temporarily add spinner text to measure required width
-                        const tempValue = button.value;
-                        button.value = spinnerChars[0] + ' ' + originalValue;
-                        const newWidth = button.scrollWidth + 13; // Add some padding
-                        button.value = tempValue; // Restore original text temporarily
+                            // Wrap button: insert wrapper before button, then move button into wrapper
+                            button.parentNode.insertBefore(wrapper, button);
+                            wrapper.appendChild(button);
+                            wrapper.appendChild(spinner);
 
-                        // Right-align text when button starts expanding
-                        button.style.textAlign = 'right';
+                            // Add class to button for padding
+                            button.classList.add('submit-button-safari-active');
+                        } else {
+                            // Non-Safari: Use original Braille character animation
+                            const originalValue = button.value;
+                            const spinnerChars = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+                            let spinnerIndex = 0;
 
-                        // Force a reflow to ensure the initial width is applied before transition
-                        button.offsetHeight;
+                            // Measure current button width using native methods
+                            const originalWidth = button.offsetWidth;
 
-                        // Smoothly animate button width using CSS transition
-                        button.style.width = newWidth + 'px';
+                            // Set initial width explicitly to enable smooth transition
+                            button.style.width = originalWidth + 'px';
 
-                        // Start rotating spinner animation after width transition completes
-                        setTimeout(function () {
-                            const rotateInterval = setInterval(function () {
-                                button.value = spinnerChars[spinnerIndex] + ' ' + originalValue;
-                                spinnerIndex = (spinnerIndex + 1) % spinnerChars.length;
-                            }, 75);
+                            // Temporarily add spinner text to measure required width
+                            const tempValue = button.value;
+                            button.value = spinnerChars[0] + ' ' + originalValue;
+                            const newWidth = button.scrollWidth + 13; // Add some padding
+                            button.value = tempValue; // Restore original text temporarily
 
-                            // Cleanup function to stop spinner animation
-                            const cleanup = function () {
-                                clearInterval(rotateInterval);
-                            };
+                            // Right-align text when button starts expanding
+                            button.style.textAlign = 'right';
 
-                            // Stop spinner when form actually submits
-                            form.addEventListener('submit', cleanup, {once: true});
-                            // Failsafe: stop spinner after 30 seconds in case form doesn't submit
-                            setTimeout(cleanup, 30000);
-                        }, 150); // Wait for width transition to complete (matches CSS transition duration)
+                            // Force a reflow to ensure the initial width is applied before transition
+                            button.offsetHeight;
+
+                            // Smoothly animate button width using CSS transition
+                            button.style.width = newWidth + 'px';
+
+                            // Start rotating spinner animation after width transition completes
+                            setTimeout(function () {
+                                const rotateInterval = setInterval(function () {
+                                    button.value = spinnerChars[spinnerIndex] + ' ' + originalValue;
+                                    spinnerIndex = (spinnerIndex + 1) % spinnerChars.length;
+                                }, 75);
+
+                                // Cleanup function to stop spinner animation
+                                const cleanup = function () {
+                                    clearInterval(rotateInterval);
+                                };
+
+                                // Stop spinner when form actually submits
+                                form.addEventListener('submit', cleanup, {once: true});
+                                // Failsafe: stop spinner after 30 seconds in case form doesn't submit
+                                setTimeout(cleanup, 30000);
+                            }, 150); // Wait for width transition to complete (matches CSS transition duration)
+                        }
                     }, 10); // Small delay to ensure form submission isn't blocked
                 });
             });

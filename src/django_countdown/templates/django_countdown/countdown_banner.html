@@ -1,0 +1,147 @@
+{% comment %}Shared countdown banner - handles both active_countdown and maintenance_countdown{% endcomment %}
+{% if active_countdown or maintenance_countdown %}
+    {% load static compress %}
+    {% compress css %}
+        <link rel="stylesheet" type="text/css" href="{% static "django_countdown/scss/countdown.css" %}"/>
+    {% endcompress %}
+
+    {% if active_countdown %}
+        {# Regular countdown banner - shown to all users before maintenance starts #}
+        <div class="countdown-banner hide-on-print">
+            <div class="countdown-content">
+                <span class="countdown-icon fi-alert"></span>
+                <div style="flex: 1; text-align: center;">
+                    <div class="countdown-message">{{ active_countdown.message }}</div>
+                    <div style="margin-top: 0.5rem; font-size: 1rem;">
+                        Planowana jest przerwa techniczna. System przestanie działać za:
+                        <span class="countdown-timer" id="countdown-timer"
+                              data-target-time="{{ active_countdown.countdown_time.isoformat }}">
+                            Odliczanie...
+                        </span>
+                    </div>
+                    <div style="margin-top: 0.3rem; font-size: 0.95rem; font-weight: 600;">
+                        Możesz dalej pracować, ale pamiętaj o regularnym zapisywaniu swoich danych.
+                        {% if active_countdown.maintenance_until %}
+                            <br>
+                            <span class="maintenance-duration">
+                                Orientacyjny czas przerwy technicznej:
+                                {{ active_countdown.maintenance_duration_minutes }} minut
+                                (w rzeczywistości może być dłużej, może być krócej).
+                            </span>
+                        {% endif %}
+                    </div>
+                </div>
+                <span class="countdown-icon fi-alert"></span>
+            </div>
+        </div>
+    {% endif %}
+
+    {% if maintenance_countdown %}
+        {# Maintenance countdown banner - shown only to superusers during maintenance #}
+        <div class="maintenance-banner hide-on-print">
+            <div class="countdown-content">
+                <span class="countdown-icon fi-wrench"></span>
+                <span class="countdown-message">
+                    System w konserwacji - {{ maintenance_countdown.message }}
+                </span>
+                <span class="countdown-timer" id="maintenance-timer"
+                      data-target-time="{{ maintenance_countdown.maintenance_until.isoformat }}">
+                    Odliczanie...
+                </span>
+            </div>
+        </div>
+    {% endif %}
+
+    <script>
+        (function() {
+            // Add class to body when banner is present in admin interface
+            if (document.getElementById('grp-header')) {
+                document.body.classList.add('has-countdown-banner');
+            }
+
+            {% if active_countdown %}
+            // Regular countdown timer
+            var countdownTime = new Date("{{ active_countdown.countdown_time.isoformat }}").getTime();
+            var timerElement = document.getElementById('countdown-timer');
+            var regularCountdownInterval = null;
+
+            function updateCountdown() {
+                var now = new Date().getTime();
+                var distance = countdownTime - now;
+
+                if (distance < 0) {
+                    timerElement.innerHTML = "Konserwacja trwa - strona zostanie wkrótce odświeżona";
+
+                    // Zatrzymaj timer
+                    if (regularCountdownInterval) {
+                        clearInterval(regularCountdownInterval);
+                    }
+
+                    setTimeout(function() {
+                        window.location.reload();
+                    }, 3000);
+                    return;
+                }
+
+                var days = Math.floor(distance / (1000 * 60 * 60 * 24));
+                var hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                var minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                var seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+                var parts = [];
+                if (days > 0) parts.push(days + " dni");
+                if (hours > 0) parts.push(hours + " godz");
+                if (minutes > 0) parts.push(minutes + " min");
+                if (seconds >= 0) parts.push(seconds + " sek");
+
+                timerElement.innerHTML = parts.join(" ");
+            }
+
+            updateCountdown();
+            regularCountdownInterval = setInterval(updateCountdown, 1000);
+            {% endif %}
+
+            {% if maintenance_countdown %}
+            // Maintenance countdown timer
+            var maintenanceUntil = new Date("{{ maintenance_countdown.maintenance_until.isoformat }}").getTime();
+            var maintenanceTimerElement = document.getElementById('maintenance-timer');
+            var maintenanceCountdownInterval = null;
+
+            function updateMaintenanceCountdown() {
+                var now = new Date().getTime();
+                var distance = maintenanceUntil - now;
+
+                if (distance < 0) {
+                    maintenanceTimerElement.innerHTML = "Konserwacja zakończona - odśwież stronę";
+
+                    // Zatrzymaj timer
+                    if (maintenanceCountdownInterval) {
+                        clearInterval(maintenanceCountdownInterval);
+                    }
+
+                    setTimeout(function() {
+                        window.location.reload();
+                    }, 3000);
+                    return;
+                }
+
+                var days = Math.floor(distance / (1000 * 60 * 60 * 24));
+                var hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                var minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                var seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+                var parts = [];
+                if (days > 0) parts.push(days + " dni");
+                if (hours > 0) parts.push(hours + " godz");
+                if (minutes > 0) parts.push(minutes + " min");
+                if (seconds >= 0) parts.push(seconds + " sek");
+
+                maintenanceTimerElement.innerHTML = "Koniec za: " + parts.join(" ");
+            }
+
+            updateMaintenanceCountdown();
+            maintenanceCountdownInterval = setInterval(updateMaintenanceCountdown, 1000);
+            {% endif %}
+        })();
+    </script>
+{% endif %}

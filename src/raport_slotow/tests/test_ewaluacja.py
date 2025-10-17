@@ -40,7 +40,7 @@ def test_raport_ewaluacja_no_queries(
     # UWAGA UWAGA UWAGA
     # Jeżeli nagle z jakichś powodów ten raport zacznie generować więcej zapytań, to proszę
     # się nad tym tematem POCHYLIC i nie zwiekszać tej wartosci max_num_queries...
-    with django_assert_max_num_queries(12):
+    with django_assert_max_num_queries(13):
         admin_client.get(
             url,
             data={

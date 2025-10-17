@@ -1,0 +1,197 @@
+// Admin Countdown Banner Styles
+// Two phases: Urgent (red) and Warning (orange)
+
+.admin-countdown-banner {
+  color: white;
+  padding: 0.8rem 1.2rem;
+  padding-top: 3rem;
+  text-align: center;
+  z-index: 9999;
+  margin-bottom: 1rem;
+  border-radius: 0.5rem;
+
+  @media screen and (max-width: 639px) {
+    padding: 0.7rem 1rem;
+    padding-top: 2rem;
+  }
+
+  .admin-countdown-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+
+    @media screen and (max-width: 639px) {
+      flex-direction: column;
+      gap: 1rem;
+    }
+  }
+
+  .admin-countdown-icon {
+    font-size: 1.6rem;
+    filter: drop-shadow(0 0 10px rgba(255, 255, 255, 1));
+
+    @media screen and (max-width: 639px) {
+      font-size: 1.4rem;
+    }
+  }
+
+  .countdown-separator {
+    margin: 0 0.4rem;
+    opacity: 0.9;
+    font-weight: bold;
+  }
+}
+
+// PHASE 1: URGENT - ULTRA AGGRESSIVE Red banner (before countdown_time)
+.admin-countdown-urgent {
+  background: linear-gradient(135deg, #ff0000 0%, #cc0000 100%);
+  animation: admin-countdown-pulse 1.2s ease-in-out infinite;
+  border: 5px solid #ff3333;
+
+  .admin-countdown-icon {
+    animation: admin-countdown-rotate 1.5s ease-in-out infinite;
+    filter: drop-shadow(0 0 12px rgba(255, 255, 255, 1)) drop-shadow(0 0 20px rgba(255, 255, 0, 0.6));
+  }
+
+  .admin-countdown-message {
+    font-weight: 900;
+    font-size: 1.2rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.7), 0 0 20px rgba(255, 255, 255, 0.5);
+
+    @media screen and (max-width: 639px) {
+      font-size: 1.1rem;
+    }
+  }
+
+  .admin-countdown-timer {
+    font-family: 'Courier New', Courier, monospace;
+    font-weight: 900;
+    font-size: 1.1rem;
+    background: rgba(0, 0, 0, 0.5);
+    padding: 0.7rem 1.2rem;
+    border-radius: 0.7rem;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6), inset 0 0 30px rgba(255, 255, 255, 0.15);
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9), 0 0 10px rgba(255, 255, 255, 0.5);
+
+    @media screen and (max-width: 639px) {
+      font-size: 1rem;
+      padding: 0.6rem 1rem;
+    }
+  }
+}
+
+// PHASE 2: WARNING - Orange warning banner (during maintenance)
+.admin-countdown-warning {
+  background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+  border: 3px solid #ff6f00;
+
+  .admin-countdown-icon {
+    animation: admin-countdown-wobble 3s ease-in-out infinite;
+  }
+
+  .admin-countdown-warning-text {
+    flex: 1;
+    max-width: 600px;
+
+    .admin-countdown-title {
+      font-weight: 800;
+      font-size: 1.5rem;
+      letter-spacing: 0.5px;
+      margin-bottom: 0.5rem;
+      text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.3);
+
+      @media screen and (max-width: 639px) {
+        font-size: 1.2rem;
+      }
+    }
+
+    .admin-countdown-subtitle {
+      font-weight: 600;
+      font-size: 1rem;
+      opacity: 0.95;
+      text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+
+      @media screen and (max-width: 639px) {
+        font-size: 0.9rem;
+      }
+    }
+  }
+
+  .admin-maintenance-timer-box {
+    background: rgba(0, 0, 0, 0.25);
+    padding: 0.8rem 1.2rem;
+    border-radius: 0.7rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+
+    .admin-maintenance-label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      opacity: 0.9;
+      margin-bottom: 0.4rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .admin-maintenance-timer {
+      font-family: 'Courier New', Courier, monospace;
+      font-weight: 800;
+      font-size: 1.3rem;
+      text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+
+      @media screen and (max-width: 639px) {
+        font-size: 1.1rem;
+      }
+    }
+  }
+}
+
+// ANIMATIONS
+
+// ULTRA AGGRESSIVE pulsating for Phase 1 (urgent)
+@keyframes admin-countdown-pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.98;
+    transform: scale(1.015);
+  }
+}
+
+// Icon rotation for Phase 1
+@keyframes admin-countdown-rotate {
+  0%, 100% {
+    transform: rotate(0deg) scale(1);
+  }
+  25% {
+    transform: rotate(-12deg) scale(1.08);
+  }
+  75% {
+    transform: rotate(12deg) scale(1.08);
+  }
+}
+
+// Gentle wobble for Phase 2 (warning)
+@keyframes admin-countdown-wobble {
+  0%, 100% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(-5deg);
+  }
+  75% {
+    transform: rotate(5deg);
+  }
+}
+
+// Print styles
+@media print {
+  .admin-countdown-banner {
+    display: none !important;
+  }
+}

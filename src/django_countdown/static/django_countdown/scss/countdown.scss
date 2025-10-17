@@ -1,0 +1,192 @@
+// Countdown Banner Styles
+// ULTRA AGRESYWNY czerwony pulsujący banner - NIEMOŻLIWY DO POMINIĘCIA
+
+.countdown-banner {
+  background: rgba(255, 0, 0, 0.85);
+  color: white;
+  padding: 1rem 2rem;
+  text-align: center;
+  position: relative; // Ensure proper positioning
+  animation: countdown-pulse 1.2s ease-in-out infinite;
+
+  @media screen and (max-width: 639px) {
+    padding: 0.8rem 1.2rem;
+  }
+
+  .countdown-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+
+    @media screen and (max-width: 639px) {
+      flex-direction: column;
+      gap: 1rem;
+    }
+  }
+
+  .countdown-icon {
+    font-size: 1.8rem;
+    filter: drop-shadow(0 0 12px rgba(255, 255, 255, 1)) drop-shadow(0 0 20px rgba(255, 255, 0, 0.6));
+
+    @media screen and (max-width: 639px) {
+      font-size: 1.5rem;
+    }
+  }
+
+  .countdown-message {
+    font-weight: 900;
+    font-size: 1.2rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.7), 0 0 20px rgba(255, 255, 255, 0.5);
+
+    @media screen and (max-width: 639px) {
+      font-size: 1.1rem;
+    }
+  }
+
+  .countdown-timer {
+    font-family: 'Courier New', Courier, monospace;
+    font-weight: 900;
+    font-size: 1.1rem;
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.5);
+    padding: 0.7rem 1.2rem;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9), 0 0 10px rgba(255, 255, 255, 0.5);
+
+    @media screen and (max-width: 639px) {
+      font-size: 1rem;
+      padding: 0.6rem 1rem;
+    }
+  }
+
+  .countdown-separator {
+    margin: 0 0.4rem;
+    opacity: 0.9;
+    font-weight: bold;
+  }
+
+  .maintenance-duration {
+    font-size: 0.9rem;
+    font-weight: 600;
+    opacity: 0.95;
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.5);
+  }
+}
+
+// ULTRA AGRESYWNA pulsating animation - NIEMOŻLIWA DO ZIGNOROWANIA
+@keyframes countdown-pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.98;
+    transform: scale(1.015);
+  }
+}
+
+
+
+// Maintenance Banner Styles (dla superuserów podczas konserwacji)
+.maintenance-banner {
+  background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+  color: white;
+  padding: 1rem 2rem;
+  text-align: center;
+  position: relative; // Ensure proper positioning
+  animation: maintenance-pulse 2s ease-in-out infinite;
+
+  @media screen and (max-width: 639px) {
+    padding: 0.8rem 1.2rem;
+  }
+
+  .countdown-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+
+    @media screen and (max-width: 639px) {
+      flex-direction: column;
+      gap: 1rem;
+    }
+  }
+
+  .countdown-icon {
+    font-size: 1.8rem;
+    animation: maintenance-wrench-spin 3s ease-in-out infinite;
+    filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.8));
+
+    @media screen and (max-width: 639px) {
+      font-size: 1.5rem;
+    }
+  }
+
+  .countdown-message {
+    font-weight: 700;
+    font-size: 1.2rem;
+    letter-spacing: 1px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.4);
+
+    @media screen and (max-width: 639px) {
+      font-size: 1.1rem;
+    }
+  }
+
+  .countdown-timer {
+    font-family: 'Courier New', Courier, monospace;
+    font-weight: 700;
+    font-size: 1.1rem;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 0.7rem 1.2rem;
+    border-radius: 10px;
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), inset 0 0 20px rgba(255, 255, 255, 0.1);
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.5);
+
+    @media screen and (max-width: 639px) {
+      font-size: 1rem;
+      padding: 0.6rem 1rem;
+    }
+  }
+}
+
+// Maintenance banner pulse animation - subtelniejsza niż countdown
+@keyframes maintenance-pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.97;
+    transform: scale(1.005);
+  }
+}
+
+// Wrench icon spin animation
+@keyframes maintenance-wrench-spin {
+  0%, 100% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(-20deg);
+  }
+  50% {
+    transform: rotate(0deg);
+  }
+  75% {
+    transform: rotate(20deg);
+  }
+}
+
+// Print styles - hide countdown banner when printing
+@media print {
+  .countdown-banner,
+  .maintenance-banner {
+    display: none !important;
+  }
+}

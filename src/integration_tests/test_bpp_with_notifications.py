@@ -27,11 +27,9 @@ except ImportError:
 import pytest
 from playwright.sync_api import Page, expect
 
-from fixtures import NORMAL_DJANGO_USER_PASSWORD
-
 from bpp.models.system import Charakter_Formalny, Jezyk, Status_Korekty, Typ_KBN
-
 from django_bpp.playwright_util import wait_for_page_load
+from fixtures import NORMAL_DJANGO_USER_PASSWORD
 
 pytestmark = [pytest.mark.slow]
 
@@ -88,6 +86,7 @@ def test_caching_enabled(
     assert found
 
 
+@pytest.mark.serial
 def test_live_server(live_server, page: Page):
     page.goto(live_server.url)
     expect(page.locator("body")).not_to_contain_text("Wystąpił błąd")
@@ -95,7 +94,6 @@ def test_live_server(live_server, page: Page):
 
 @pytest.mark.django_db(transaction=True)
 def test_channels_live_server(preauth_asgi_page: Page):
-
     s = "test notyfikacji 123 456"
     call_command(
         "send_notification",

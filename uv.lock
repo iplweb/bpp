@@ -175,7 +175,7 @@ wheels = [
 
 [[package]]
 name = "bpp-iplweb"
-version = "202510.1264"
+version = "202510.1265"
 source = { editable = "." }
 dependencies = [
     { name = "arrow", marker = "platform_python_implementation != 'PyPy'" },
@@ -354,7 +354,7 @@ requires-dist = [
     { name = "django-autocomplete-light", specifier = "==3.9.4" },
     { name = "django-autoslug", specifier = "==1.9.8" },
     { name = "django-braces", specifier = ">=1.15.0" },
-    { name = "django-cacheops", specifier = "==7.0.2" },
+    { name = "django-cacheops", specifier = ">=7.2,<8" },
     { name = "django-celery-email", specifier = ">=3.0.0" },
     { name = "django-celery-results", specifier = "==2.6.0" },
     { name = "django-classy-tags", specifier = "==4.0.0" },
@@ -1286,14 +1286,17 @@ wheels = [
 
 [[package]]
 name = "django-cacheops"
-version = "7.0.2"
+version = "7.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "django", marker = "platform_python_implementation != 'PyPy'" },
     { name = "funcy", marker = "platform_python_implementation != 'PyPy'" },
     { name = "redis", marker = "platform_python_implementation != 'PyPy'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/de/e8/5959e58c23d90c57a5853d0f397002c39fcc0a2f4e032c68bf6852da85a5/django-cacheops-7.0.2.tar.gz", hash = "sha256:77a37c73d7facfc7299365ed66a12be7a487dd745dd86c1d33ca2ebfd3b32878", size = 71747, upload-time = "2023-10-24T10:23:43.225Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/1b/92/9df8a60ee959c214705ec3d3ccf80820097672a0260b149cf2751e818086/django_cacheops-7.2.tar.gz", hash = "sha256:cbc11cc0321295a3644e27bcb26940f08cb9c2e71d3ee506cbcff0bdda1a9f33", size = 72751, upload-time = "2025-04-20T04:36:19.068Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/89/e0/cad1eca0d388ac9f0a75f785599a10acf62ecb6bbb7947da72c04461539c/django_cacheops-7.2-py2.py3-none-any.whl", hash = "sha256:c3b4399474919e62aa91bbd97e7b68cfc50e8cb4384d743bde686c37fe8c010b", size = 45116, upload-time = "2025-04-20T04:36:16.697Z" },
+]
 
 [[package]]
 name = "django-celery-email"

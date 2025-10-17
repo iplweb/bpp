@@ -42,7 +42,8 @@
       "Bash(ruff format:*)",
       "Bash(echo:*)",
       "Bash(docker run:*)",
-      "Bash(xxd:*)"
+      "Bash(xxd:*)",
+      "Bash(sass:*)"
     ],
     "deny": [],
     "ask": [],

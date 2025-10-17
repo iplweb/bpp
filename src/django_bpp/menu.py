@@ -8,7 +8,6 @@ To activate your custom menu add the following to your settings.py::
 
 from admin_tools.menu import Menu, items
 from django.urls import reverse
-
 from django.utils.translation import gettext_lazy as _
 
 from bpp import jezyk_polski
@@ -49,6 +48,10 @@ SYSTEM_MENU = [
     ("Funkcje w jednostce", "/admin/bpp/funkcja_autora/"),
     ("Granty", "/admin/bpp/grant/"),
     ("Grupy pracownicze", "/admin/bpp/grupa_pracownicza/"),
+    (
+        "Import POLON - wymuszenia grup stanowisk",
+        "/admin/import_polon/importpolonoverride/",
+    ),
     ("Języki", "/admin/bpp/jezyk/"),
     ("OpenAccess: wydawnictwa ciągłe", "/admin/bpp/tryb_openaccess_wydawnictwo_ciagle"),
     ("OpenAccess: wydawnictwa zwarte", "/admin/bpp/tryb_openaccess_wydawnictwo_zwarte"),
@@ -136,13 +139,16 @@ ADMIN_MENU = [
 ]
 
 
-def submenu(label, tuples):
-    return items.MenuItem(
+def submenu(label, tuples, icon_class=None):
+    menu_item = items.MenuItem(
         label, children=[items.MenuItem(label, link) for label, link in tuples]
     )
+    if icon_class:
+        menu_item.css_classes = [icon_class]
+    return menu_item
 
 
-def submenu_multicolumn(label, column1_tuples, column2_tuples):
+def submenu_multicolumn(label, column1_tuples, column2_tuples, icon_class=None):
     """Create a two-column submenu"""
     children = []
 
@@ -160,7 +166,10 @@ def submenu_multicolumn(label, column1_tuples, column2_tuples):
 
     # Create parent menu item with children
     parent = items.MenuItem(label, children=children)
-    parent.css_classes = ["has-columns"]
+    css_classes = ["has-columns"]
+    if icon_class:
+        css_classes.append(icon_class)
+    parent.css_classes = css_classes
     return parent
 
 
@@ -169,7 +178,7 @@ class CustomMenu(Menu):
         Menu.__init__(self, **kwargs)
 
         self.children += [
-            items.MenuItem(_("Dashboard"), reverse("admin:index")),
+            items.MenuItem(str(_("Dashboard")), reverse("admin:index")),
             items.Bookmarks(),
         ]
 
@@ -179,20 +188,29 @@ class CustomMenu(Menu):
             user.__admin_menu_groups = [x.name for x in user.cached_groups]
         groups = user.__admin_menu_groups
 
-        def flt(n1, n2, v):
+        def flt(n1, n2, v, icon_class=None):
             if user.is_superuser or n1 in groups:
                 self.children += [
-                    submenu(n2, v),
+                    submenu(n2, v, icon_class),
                 ]
 
-        flt("web", "WWW", WEB_MENU)
+        # Add icon classes to Dashboard and Bookmarks menu items
+        if len(self.children) >= 2:
+            self.children[0].css_classes = ["menu-icon-home"]  # Dashboard (Panel)
+            self.children[1].css_classes = [
+                "menu-icon-bookmarks"
+            ]  # Bookmarks (Zakładki)
 
-        flt("dane systemowe", "PBN API", PBN_MENU)
+        flt("web", "WWW", WEB_MENU, "menu-icon-web")
+
+        flt("dane systemowe", "PBN API", PBN_MENU, "menu-icon-api")
 
         # Combine "Dane" and "systemowe" into single 2-column menu
         if user.is_superuser or "dane systemowe" in groups:
             self.children += [
-                submenu_multicolumn("Dane systemowe", SYSTEM_MENU, SYSTEM_MENU_2),
+                submenu_multicolumn(
+                    "Dane systemowe", SYSTEM_MENU, SYSTEM_MENU_2, "menu-icon-settings"
+                ),
             ]
 
         from django.conf import settings
@@ -210,13 +228,18 @@ class CustomMenu(Menu):
         ) and STRUKTURA_MENU[1][1].find("wydzial") >= 0:
             STRUKTURA_MENU.pop(1)
 
-        flt("struktura", "Struktura", STRUKTURA_MENU)
-        flt(GR_WPROWADZANIE_DANYCH, "Wprowadzanie danych", REDAKTOR_MENU)
+        flt("struktura", "Struktura", STRUKTURA_MENU, "menu-icon-structure")
+        flt(
+            GR_WPROWADZANIE_DANYCH,
+            "Wprowadzanie danych",
+            REDAKTOR_MENU,
+            "menu-icon-edit",
+        )
         if GR_ZGLOSZENIA_PUBLIKACJI not in groups and not user.is_superuser:
             # Wyrzuć "zgłoszenia publikacji" z REDAKTOR_MENU
             del self.children[-1].children[-1]
 
-        flt("raporty", "Raporty", RAPORTY_MENU)
-        flt("administracja", "Administracja", ADMIN_MENU)
+        flt("raporty", "Raporty", RAPORTY_MENU, "menu-icon-reports")
+        flt("administracja", "Administracja", ADMIN_MENU, "menu-icon-admin")
 
         return super().init_with_context(context)

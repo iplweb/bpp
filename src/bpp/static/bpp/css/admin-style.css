@@ -175,37 +175,88 @@ select.admin-autocomplete {
 /* -------------------------------------------------------------------------------- */
 /* Responsive global navigation select2 widget */
 /* -------------------------------------------------------------------------------- */
+/*
+   Aggressive shrinking strategy to prevent menu wrapping:
+   - >1590px: Comfortable width (350-550px)
+   - 1490-1590px: Reduced width (300-450px)
+   - 1400-1490px: Further reduced (250-400px)
+   - 1320-1400px: Even smaller (220-350px)
+   - 1200-1320px: More reduced (200-300px)
+   - 1100-1200px: Narrow (180-250px)
+   - 1050-1100px: Narrower (150-220px)
+   - 900-1050px: Very narrow (120-180px)
+   - ≤900px: Minimal (no min-width, max 150px)
+*/
 
+/* Base styling for large screens */
 #div_id_global_nav_value .select2-container {
     width: 100% !important;
-    min-width: 200px;
-    max-width: 600px;
+    min-width: 350px;
+    max-width: 550px;
 }
 
-/* Responsive breakpoints for global nav select2 */
-@media (min-width: 1320px) {
+/* First reduction at 1590px */
+@media (max-width: 1590px) {
     #div_id_global_nav_value .select2-container {
-        min-width: 18vw !important;
+        min-width: 300px;
+        max-width: 450px;
     }
 }
 
-@media (min-width: 1200px) {
+/* Second reduction at 1490px - align with menu font reduction */
+@media (max-width: 1490px) {
     #div_id_global_nav_value .select2-container {
-        min-width: 35vw;
-        max-width: 40vw;
+        min-width: 250px;
+        max-width: 400px;
     }
 }
 
-@media (max-width: 768px) {
+/* Third reduction at 1400px - align with menu font reduction */
+@media (max-width: 1400px) {
     #div_id_global_nav_value .select2-container {
-        min-width: 20vw;
-        max-width: 50vw;
+        min-width: 220px;
+        max-width: 350px;
     }
 }
 
-@media (max-width: 915px) {
-    #div_id_global_nav_value {
-        display: none !important;
+/* Fourth reduction at 1320px - align with menu padding reduction */
+@media (max-width: 1320px) {
+    #div_id_global_nav_value .select2-container {
+        min-width: 200px;
+        max-width: 300px;
+    }
+}
+
+/* Further reduction at 1200px - align with menu font reduction */
+@media (max-width: 1200px) {
+    #div_id_global_nav_value .select2-container {
+        min-width: 180px;
+        max-width: 250px;
+    }
+}
+
+/* More reduction at 1100px */
+@media (max-width: 1100px) {
+    #div_id_global_nav_value .select2-container {
+        min-width: 150px;
+        max-width: 220px;
+    }
+}
+
+/* Before text disappears - align with menu icons-only at 1050px */
+@media (max-width: 1050px) {
+    #div_id_global_nav_value .select2-container {
+        min-width: 120px;
+        max-width: 180px;
+    }
+}
+
+/* Very small screens - no min-width, allow maximum shrinking */
+@media (max-width: 900px) {
+    #div_id_global_nav_value .select2-container {
+        min-width: unset;
+        max-width: 150px;
+        font-size: 11px;
     }
 
     button#bookmark-button {
@@ -317,3 +368,54 @@ div.json-actions .button {
 .json-copy-btn.success:hover {
     background: #218838;
 }
+
+/* -------------------------------------------------------------------------------- */
+/* Admin table row hover effect */
+/* -------------------------------------------------------------------------------- */
+
+/* Hover effect colors are defined dynamically in base_site.html based on THEME_NAME */
+
+/* Make clickable rows have pointer cursor - added via JavaScript */
+#result_list tbody tr.clickable-row {
+    cursor: pointer;
+}
+
+/* -------------------------------------------------------------------------------- */
+/* Global nav select2 loading state */
+/* -------------------------------------------------------------------------------- */
+
+.select2-container.select2-loading {
+    position: relative;
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+/* CSS Spinner */
+.select2-container.select2-loading::after {
+    content: "";
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+    border: 2px solid #ccc;
+    border-top-color: #417690;
+    border-radius: 50%;
+    animation: select2-spinner-rotate 0.6s linear infinite;
+}
+
+@keyframes select2-spinner-rotate {
+    from {
+        transform: translateY(-50%) rotate(0deg);
+    }
+    to {
+        transform: translateY(-50%) rotate(360deg);
+    }
+}
+
+/* -------------------------------------------------------------------------------- */
+/* Change form row hover effect */
+/* -------------------------------------------------------------------------------- */
+
+/* Hover effect colors are defined dynamically in base_site.html based on THEME_NAME */

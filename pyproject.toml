@@ -1,6 +1,6 @@
 [project]
 name = "bpp_iplweb"
-version = "202510.1264"
+version = "202510.1265"
 description = ""
 authors = [
     { name = "Michał Pasternak", email = "michal.dtz@gmail.com" }
@@ -76,7 +76,7 @@ dependencies = [
     "django-taggit==4.0.0",
     "weasyprint>=66.0",
     "requests-oauthlib==1.3.0",
-    "django-cacheops==7.0.2",
+    "django-cacheops>=7.2,<8",
     "djangoql==0.18.1",
     "django-weasyprint>=2.1.0",
     "django-templated-email>=3.0.0",
@@ -201,7 +201,7 @@ include = [
 ]
 
 [tool.bumpver]
-current_version = "v202510.1264"
+current_version = "v202510.1265"
 version_pattern = "vYYYY0M.BUILD[-TAGNUM][GITHASH]"
 commit_message = "bump version {old_version} -> {new_version}"
 commit = true
@@ -268,7 +268,7 @@ build-backend = "setuptools.build_meta"
 
 [tool.towncrier]
 package = "bpp"
-version = "202510.1264"
+version = "202510.1265"
 package_dir = "src"
 filename = "HISTORY.rst"
 
