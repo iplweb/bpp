@@ -4,6 +4,24 @@ Historia zmian
 
 .. towncrier release notes start
 
+bpp 202510.1265 (2025-10-17)
+============================
+
+Naprawione
+----------
+
+- Naprawiono fałszywe pytania o opuszczenie strony w admincie - teraz pytanie pojawia się tylko gdy użytkownik faktycznie zmieni dane w formularzu. (naprawiono_falszywe_alerty_opuszczenia_strony)
+- Naprawiono brak animacji "throbbera" na przyciskach "Zapisz" w panelu administracyjnym w przeglądarce Safari. Safari zatrzymywała wykonywanie JavaScriptu podczas submitu formularza, więc animacja oparta na zmianie wartości przycisku nie była widoczna. Rozwiązanie: dla Safari używana jest animacja CSS (obracające się kółko ładowania) wyświetlana wewnątrz przycisku, która działa niezależnie od JavaScriptu. Inne przeglądarki zachowują oryginalną animację ze znakami Braille'a (safari-submit-spinner)
+
+
+Usprawnienie
+------------
+
+- Dodano aplikację **django_countdown** umożliwiającą planowane wyłączanie serwisu. Administrator może ustawić czas odliczania do zamknięcia serwisu - na stronie pojawi się czerwony, pulsujący baner z komunikatem i odliczaniem czasu. Po osiągnięciu wyznaczonego czasu serwis zostaje automatycznie zablokowany dla wszystkich użytkowników (z wyjątkiem superużytkowników, którzy mogą zalogować się do panelu administracyjnego i usunąć odliczanie, aby odblokować serwis). Dodatkowo, administrator może określić planowany czas zakończenia prac konserwacyjnych (pole **maintenance_until**) - na zablokowanej stronie wyświetlane jest wówczas odliczanie do końca przerwy, a po jego zakończeniu strona automatycznie odświeża się po 5 sekundach. Superużytkownicy w trakcie konserwacji widzą zamiast zablokowanej strony normalną stronę z pomarańczowym bannerem informującym o trwającej konserwacji i pozostałym czasie do jej zakończenia. Funkcjonalność przydatna przy planowanych pracach konserwacyjnych (django_countdown)
+- Skonsolidowano kod licznika odliczającego do przerwy technicznej w jednym miejscu - całość logiki (HTML i JavaScript) znajduje się teraz w szablonie django_countdown/countdown_banner.html, co ułatwia utrzymanie i rozwój tej funkcjonalności. (django_countdown_consolidation)
+- Dodano kompletne testy dla aplikacji ``django_countdown`` obejmujące walidację modelu, middleware blokujący dostęp oraz context processor. (django_countdown_tests)
+
+
 bpp 202510.1264 (2025-10-16)
 ============================
 
