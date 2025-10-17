@@ -18,6 +18,7 @@ from bpp.tests import (
 from django_bpp.selenium_util import VERY_SHORT_WAIT_TIME, wait_for_page_load
 
 
+@pytest.mark.serial
 @pytest.mark.parametrize("field_name", ["isbn", "e_isbn"])
 def test_change_form_get_pbn_by_isbn_or_eisbn_via_api_pub_jest_w_api(
     admin_browser,
