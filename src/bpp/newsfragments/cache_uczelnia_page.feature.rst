@@ -1,1 +1,0 @@
-Dodano cache dla strony głównej uczelni (uczelnia.html) - funkcja get_uczelnia_context_data() jest teraz cachowana przez 1 godzinę. Dodatkowo rozszerzono konfigurację CACHEOPS o modele: Uczelnia, Wydzial, Jednostka oraz Wydawnictwo_Ciagle_Streszczenie, co zapewnia automatyczną invalidację cache przy zmianach w panelu administracyjnym.

@@ -1,1 +1,0 @@
-Dodano wykres poziomy z ilością zgłoszeń publikacji według dni tygodnia w pierwszej kolumnie panelu zarządzania (dane z ostatniego miesiąca). Kliknięcie w słupek wykresu przekierowuje do listy zgłoszeń z wybranego dnia tygodnia.
