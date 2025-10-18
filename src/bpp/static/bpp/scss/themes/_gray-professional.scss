@@ -250,7 +250,8 @@ body.theme-gray-professional {
         }
     }
 
-    .grp-state-focus {
+    .grp-state-focus,
+    ul.grp-object-tools li a {
         background: #555555 !important;
         color: #ff6939 !important;
         border: 2px solid #ff6939 !important;

@@ -5,15 +5,25 @@
 /* -------------------------------------------------------------------------------- */
 /* Admin Menu Theme System - Base Styles */
 /* -------------------------------------------------------------------------------- */
-/* Fix for grp-object-tools buttons - ensure text is always readable */
-/* This prevents theme color inheritance issues on object-tools buttons */
+/* Base styles for grp-object-tools buttons */
+/* Make all links in object-tools look like buttons */
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;500;600;700&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@300;400;600;700&display=swap");
-ul.grp-object-tools a {
-  color: inherit !important;
+ul.grp-object-tools li a {
+  display: inline-block !important;
+  padding: 5px 12px !important;
+  padding-left: 35px !important;
+  text-decoration: none !important;
+  font-weight: normal !important;
+  font-size: 12px !important;
+  line-height: 16px !important;
+  border-radius: 3px !important;
+  -moz-border-radius: 3px !important;
+  -webkit-border-radius: 3px !important;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease !important;
 }
 
 /* Smooth color transitions for theme switching */
@@ -284,12 +294,14 @@ body.theme-classic-light .grp-add-link:hover {
   border: 1px solid #004494 !important;
   color: #ffffff !important;
 }
-body.theme-classic-light .grp-state-focus {
+body.theme-classic-light .grp-state-focus,
+body.theme-classic-light ul.grp-object-tools li a {
   background: #e8f0fe !important;
   color: #0066cc !important;
   border: 2px solid #0066cc !important;
 }
-body.theme-classic-light .grp-state-focus:hover {
+body.theme-classic-light .grp-state-focus:hover,
+body.theme-classic-light ul.grp-object-tools li a:hover {
   background: #0066cc !important;
   color: #ffffff !important;
 }
@@ -522,12 +534,14 @@ body.theme-navy-academic .grp-add-link:hover {
   border: 1px solid #d4af37 !important;
   color: #1a2332 !important;
 }
-body.theme-navy-academic .grp-state-focus {
+body.theme-navy-academic .grp-state-focus,
+body.theme-navy-academic ul.grp-object-tools li a {
   background: #2e3f54 !important;
   color: #d4af37 !important;
   border: 2px solid #d4af37 !important;
 }
-body.theme-navy-academic .grp-state-focus:hover {
+body.theme-navy-academic .grp-state-focus:hover,
+body.theme-navy-academic ul.grp-object-tools li a:hover {
   background: #d4af37 !important;
   color: #1a2332 !important;
 }
@@ -759,12 +773,14 @@ body.theme-gray-professional .grp-add-link:hover {
   border: 1px solid #cc3d1a !important;
   color: #ffffff !important;
 }
-body.theme-gray-professional .grp-state-focus {
+body.theme-gray-professional .grp-state-focus,
+body.theme-gray-professional ul.grp-object-tools li a {
   background: #555555 !important;
   color: #ff6939 !important;
   border: 2px solid #ff6939 !important;
 }
-body.theme-gray-professional .grp-state-focus:hover {
+body.theme-gray-professional .grp-state-focus:hover,
+body.theme-gray-professional ul.grp-object-tools li a:hover {
   background: #ff6939 !important;
   color: #ffffff !important;
 }
@@ -997,12 +1013,14 @@ body.theme-cream-green .grp-add-link:hover {
   border: 1px solid #1e4d2b !important;
   color: #ffffff !important;
 }
-body.theme-cream-green .grp-state-focus {
+body.theme-cream-green .grp-state-focus,
+body.theme-cream-green ul.grp-object-tools li a {
   background: #e8f5e9 !important;
   color: #2e7d32 !important;
   border: 2px solid #2e7d32 !important;
 }
-body.theme-cream-green .grp-state-focus:hover {
+body.theme-cream-green .grp-state-focus:hover,
+body.theme-cream-green ul.grp-object-tools li a:hover {
   background: #2e7d32 !important;
   color: #ffffff !important;
 }
@@ -1240,12 +1258,14 @@ body.theme-minimal-light .grp-add-link:hover {
   border: 1px solid #000000 !important;
   color: #ffffff !important;
 }
-body.theme-minimal-light .grp-state-focus {
+body.theme-minimal-light .grp-state-focus,
+body.theme-minimal-light ul.grp-object-tools li a {
   background: #ede7f6 !important;
   color: #5050d0 !important;
   border: 2px solid #5050d0 !important;
 }
-body.theme-minimal-light .grp-state-focus:hover {
+body.theme-minimal-light .grp-state-focus:hover,
+body.theme-minimal-light ul.grp-object-tools li a:hover {
   background: #5050d0 !important;
   color: #ffffff !important;
 }
@@ -1481,12 +1501,14 @@ body.theme-golden .grp-add-link:hover {
   border: 1px solid #c19b2d !important;
   color: #2c2416 !important;
 }
-body.theme-golden .grp-state-focus {
+body.theme-golden .grp-state-focus,
+body.theme-golden ul.grp-object-tools li a {
   background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%) !important;
   color: #f57c00 !important;
   border: 2px solid #f57c00 !important;
 }
-body.theme-golden .grp-state-focus:hover {
+body.theme-golden .grp-state-focus:hover,
+body.theme-golden ul.grp-object-tools li a:hover {
   background: linear-gradient(135deg, #f57c00 0%, #e65100 100%) !important;
   color: #ffffff !important;
 }
@@ -1722,12 +1744,14 @@ body.theme-srebrny .grp-add-link:hover {
   border: 1px solid #a8a8a8 !important;
   color: #2d2d2d !important;
 }
-body.theme-srebrny .grp-state-focus {
+body.theme-srebrny .grp-state-focus,
+body.theme-srebrny ul.grp-object-tools li a {
   background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%) !important;
   color: #6c9bd2 !important;
   border: 2px solid #6c9bd2 !important;
 }
-body.theme-srebrny .grp-state-focus:hover {
+body.theme-srebrny .grp-state-focus:hover,
+body.theme-srebrny ul.grp-object-tools li a:hover {
   background: linear-gradient(135deg, #6c9bd2 0%, #5a86b8 100%) !important;
   color: #ffffff !important;
 }
@@ -1988,14 +2012,16 @@ body.theme-mario-bros .grp-add-link:hover {
   color: #ffffff !important;
   transform: translateY(-1px);
 }
-body.theme-mario-bros .grp-state-focus {
+body.theme-mario-bros .grp-state-focus,
+body.theme-mario-bros ul.grp-object-tools li a {
   background: linear-gradient(135deg, #fff5d6 0%, #ffe89d 100%) !important;
   color: #e52521 !important;
   border: 2px solid #fff200 !important;
   border-radius: 4px !important;
   font-weight: bold !important;
 }
-body.theme-mario-bros .grp-state-focus:hover {
+body.theme-mario-bros .grp-state-focus:hover,
+body.theme-mario-bros ul.grp-object-tools li a:hover {
   background: linear-gradient(135deg, #fff200 0%, #ffd54f 100%) !important;
   color: #c91e1a !important;
 }
@@ -2256,14 +2282,16 @@ body.theme-luigi .grp-add-link:hover {
   color: #ffffff !important;
   transform: translateY(-1px);
 }
-body.theme-luigi .grp-state-focus {
+body.theme-luigi .grp-state-focus,
+body.theme-luigi ul.grp-object-tools li a {
   background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%) !important;
   color: #00a651 !important;
   border: 2px solid #43a047 !important;
   border-radius: 4px !important;
   font-weight: bold !important;
 }
-body.theme-luigi .grp-state-focus:hover {
+body.theme-luigi .grp-state-focus:hover,
+body.theme-luigi ul.grp-object-tools li a:hover {
   background: linear-gradient(135deg, #43a047 0%, #388e3c 100%) !important;
   color: #ffffff !important;
 }

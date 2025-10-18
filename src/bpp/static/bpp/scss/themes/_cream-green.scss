@@ -251,7 +251,8 @@ body.theme-cream-green {
         }
     }
 
-    .grp-state-focus {
+    .grp-state-focus,
+    ul.grp-object-tools li a {
         background: #e8f5e9 !important;
         color: #2e7d32 !important;
         border: 2px solid #2e7d32 !important;

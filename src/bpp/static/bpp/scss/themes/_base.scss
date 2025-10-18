@@ -2,10 +2,20 @@
 /* Admin Menu Theme System - Base Styles */
 /* -------------------------------------------------------------------------------- */
 
-/* Fix for grp-object-tools buttons - ensure text is always readable */
-/* This prevents theme color inheritance issues on object-tools buttons */
-ul.grp-object-tools a {
-    color: inherit !important;
+/* Base styles for grp-object-tools buttons */
+/* Make all links in object-tools look like buttons */
+ul.grp-object-tools li a {
+    display: inline-block !important;
+    padding: 5px 12px !important;
+    padding-left: 35px !important;
+    text-decoration: none !important;
+    font-weight: normal !important;
+    font-size: 12px !important;
+    line-height: 16px !important;
+    border-radius: 3px !important;
+    -moz-border-radius: 3px !important;
+    -webkit-border-radius: 3px !important;
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease !important;
 }
 
 /* Smooth color transitions for theme switching */
