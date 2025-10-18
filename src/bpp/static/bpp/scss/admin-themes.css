@@ -2387,6 +2387,7 @@ body.font-inter-small td, body.font-inter-small th {
   font-size: 13px !important;
 }
 body.font-inter-small #grp-navigation a {
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
   font-size: 13px !important;
 }
 
@@ -2421,6 +2422,7 @@ body.font-opensans-small td, body.font-opensans-small th {
   font-size: 13px !important;
 }
 body.font-opensans-small #grp-navigation a {
+  font-family: "Open Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
   font-size: 13px !important;
 }
 

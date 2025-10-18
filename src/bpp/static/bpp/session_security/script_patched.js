@@ -199,6 +199,16 @@ yourlabs.SessionSecurity.prototype = {
             return;
         }
 
+        // Ignore changes in the changelist search field
+        if ($(e.target).attr('id') === 'grp-changelist-search') {
+            return;
+        }
+
+        // Ignore changes in the changelist search form
+        if ($(e.target).closest('form').attr('id') === 'grp-changelist-search-form') {
+            return;
+        }
+
         $(e.target).closest('form').attr('data-dirty', true);
     },
 

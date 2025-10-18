@@ -48,6 +48,7 @@ body.font-inter-small {
 
     // Navigation
     #grp-navigation a {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
         font-size: 13px !important;
     }
 }
@@ -81,6 +82,7 @@ body.font-opensans-small {
     }
 
     #grp-navigation a {
+        font-family: 'Open Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
         font-size: 13px !important;
     }
 }
