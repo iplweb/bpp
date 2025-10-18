@@ -11,7 +11,6 @@ And to activate the app index dashboard::
 """
 
 from admin_tools.dashboard import AppIndexDashboard, Dashboard, modules
-
 from django.utils.translation import gettext_lazy as _
 
 from bpp.const import GR_WPROWADZANIE_DANYCH

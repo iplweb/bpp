@@ -1,18 +1,16 @@
 import pytest
+from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
 from django.core.exceptions import PermissionDenied
 from django.test import RequestFactory
 
+from bpp.const import GR_WPROWADZANIE_DANYCH
 from deduplikator_autorow.views import (
     duplicate_authors_view,
     mark_non_duplicate,
     reset_skipped_authors,
     scal_autorow_view,
 )
-
-from django.contrib.auth import get_user_model
-from django.contrib.auth.models import Group
-
-from bpp.const import GR_WPROWADZANIE_DANYCH
 
 User = get_user_model()
 

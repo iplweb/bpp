@@ -4,11 +4,10 @@ from dal import autocomplete
 from dal_select2.fields import Select2ListChoiceField, Select2ListCreateChoiceField
 from django import forms
 from django.conf import settings
+from django.contrib import admin
 from django.db.models.fields import BLANK_CHOICE_DASH
 from django.forms import NullBooleanField
 from django.forms.widgets import HiddenInput
-
-from django.contrib import admin
 
 from bpp.admin.crossref_api_helpers import KorzystaZCrossRefAPIAutorInlineMixin
 from bpp.admin.zglos_publikacje_helpers import KorzystaZNumeruZgloszeniaInlineMixin
@@ -41,6 +40,54 @@ class BaseBppAdminMixin:
 
     # ograniczenie wielkosci listy
     list_per_page = 50
+
+    def get_urls(self):
+        """
+        Dodaje custom URL pattern dla endpointu licznika filtrów.
+        """
+        from django.urls import re_path
+
+        urls = super().get_urls()
+
+        custom_urls = [
+            re_path(
+                r"^filter-count/$",
+                self.admin_site.admin_view(self.filter_count_view),
+                name=f"{self.model._meta.app_label}_{self.model._meta.model_name}_filter_count",
+            ),
+        ]
+
+        return custom_urls + urls
+
+    def filter_count_view(self, request):
+        """
+        Zwraca liczbę obiektów dla danego query stringa filtru jako plain text.
+
+        Wynik jest automatycznie cache'owany przez cacheops (jeśli model jest w CACHEOPS config).
+        Cache jest invalidowany automatycznie gdy obiekt modelu zostanie dodany/zmieniony/usunięty.
+
+        Używane przez HTMX do lazy loadingu liczników w filtrach admin changelist.
+        """
+        from django.http import HttpResponse
+
+        try:
+            # Pobierz ChangeList instance z obecnym requestem (zawiera query string z filtrami)
+            cl = self.get_changelist_instance(request)
+
+            # Pobierz queryset z zastosowanymi filtrami z query stringa
+            # ChangeList automatycznie parsuje query string i aplikuje filtry
+            queryset = cl.get_queryset(request)
+
+            # Policz obiekty - cacheops automatycznie cache'uje count() dla modeli w CACHEOPS config
+            # Cache key bazuje na query SQL, więc różne filtry mają różne cache keys
+            # Timeout: domyślnie 3600s (1h) z CACHEOPS_DEFAULTS
+            count = queryset.count()
+
+            # Zwróć cyfrę z nawiasami jako HTML dla HTMX innerHTML
+            return HttpResponse(f"{count}", content_type="text/html; charset=utf-8")
+        except Exception:
+            # W przypadku błędu zwróć 0 w nawiasach
+            return HttpResponse("-", content_type="text/html; charset=utf-8")
 
 
 def get_first_typ_odpowiedzialnosci():

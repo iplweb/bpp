@@ -1,15 +1,13 @@
 from builtins import callable
 
 from adminsortable2.admin import SortableAdminMixin
-from django.core.exceptions import FieldDoesNotExist
-
-from dynamic_columns.models import ModelAdminColumn
-
 from django.contrib import admin
 from django.contrib.admin import ModelAdmin as DjangoModelAdmin
 from django.contrib.admin.utils import NotRelationField, get_model_from_relation
-
+from django.core.exceptions import FieldDoesNotExist
 from django.utils.translation import gettext_lazy as _
+
+from dynamic_columns.models import ModelAdminColumn
 
 
 @admin.action(description=_("Enable selected columns"))
@@ -24,7 +22,6 @@ def make_disabled(modeladmin, request, queryset):
 
 @admin.register(ModelAdminColumn)
 class ModelAdminColumnAdmin(SortableAdminMixin, DjangoModelAdmin):
-
     ordering = ["ordering"]
     list_filter = ["parent", "enabled"]
     list_display = ["col_parent_name", "col_verbose_name", "enabled", "ordering"]

@@ -1,5 +1,4 @@
 from adminsortable2.admin import SortableAdminMixin
-
 from django.contrib import admin
 
 from bpp.models import BppMultiseekVisibility

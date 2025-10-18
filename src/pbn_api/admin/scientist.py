@@ -1,16 +1,13 @@
 from datetime import datetime
 
-from django.urls import reverse
-
-from pbn_api.admin.base import BaseMongoDBAdmin
-from pbn_api.admin.filters import OdpowiednikAutoraWBPPFilter
-from pbn_api.models import Scientist
-
 from django.contrib import admin
-
+from django.urls import reverse
 from django.utils.http import urlencode
 
 from bpp.admin.filters import OrcidObecnyFilter
+from pbn_api.admin.base import BaseMongoDBAdmin
+from pbn_api.admin.filters import OdpowiednikAutoraWBPPFilter
+from pbn_api.models import Scientist
 
 
 @admin.register(Scientist)

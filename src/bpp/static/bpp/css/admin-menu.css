@@ -24,7 +24,6 @@
 }
 
 #grp-navigation #navigation-menu {
-    height: 35px;
     z-index: 9999;
 }
 
@@ -435,8 +434,39 @@ header#grp-header #grp-navigation ul#grp-user-tools {
     border-left: 3px solid transparent !important;
 }
 
+/* Menu spacer entries - empty space above fonts */
+#grp-navigation ul#navigation-menu li.menu-spacer a {
+    pointer-events: none;
+    cursor: default;
+    background-color: transparent !important;
+    border: none !important;
+    height: 35px;
+    min-height: 35px;
+    padding: 0 !important;
+    visibility: hidden;
+}
+
 #grp-navigation ul#navigation-menu li.menu-icon-user ul li:first-child a:hover {
     /* No padding shift on hover */
+}
+
+/* User profile menu positioning */
+
+/* On wide screens (> 1200px): menu opens to the right from the button */
+@media (min-width: 1201px) {
+    #grp-navigation ul#navigation-menu li.menu-icon-user.has-columns ul {
+        left: 0 !important;
+        right: auto !important;
+    }
+}
+
+/* On narrower screens (<= 1200px): center the menu */
+@media (max-width: 1200px) {
+    #grp-navigation ul#navigation-menu li.menu-icon-user.has-columns ul {
+        left: 50% !important;
+        right: auto !important;
+        transform: translateX(-50%) !important;
+    }
 }
 
 /* -------------------------------------------------------------------------------- */

@@ -1,12 +1,10 @@
 from django import forms
+from django.contrib import admin, messages
 from django.http import HttpResponseRedirect
 from django.urls import reverse
+from django.utils.safestring import mark_safe
 
 from .models import PBN_Export_Queue
-
-from django.contrib import admin, messages
-
-from django.utils.safestring import mark_safe
 
 
 class RenderHTMLWidget(forms.Textarea):
@@ -46,12 +44,11 @@ class PBN_Export_QueueAdmin(admin.ModelAdmin):
         "retry_after_user_authorised",
     ]
 
-    def has_delete_permission(self, request, *args, **kw):
+    def has_delete_permission(self, request, obj=None):
         if request.user.is_superuser:
             return True
-        if "obj" in kw:
-            if kw["obj"].zamowil == request.user:
-                return True
+        if obj is not None and obj.zamowil == request.user:
+            return True
         return False
 
     from django.db import models
@@ -84,9 +81,7 @@ class PBN_Export_QueueAdmin(admin.ModelAdmin):
             self.message_user(request, f"Ponowiono wysyłkę do PBN: {obj}")
             return HttpResponseRedirect(
                 reverse(
-                    "admin:{}_{}_change".format(
-                        obj._meta.app_label, obj._meta.model_name
-                    ),
+                    f"admin:{obj._meta.app_label}_{obj._meta.model_name}_change",
                     args=[obj.pk],
                 )
             )

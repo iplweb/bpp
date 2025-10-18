@@ -549,4 +549,3 @@ CREATE OR REPLACE RULE django_get_off_bpp_rekord_view_1 AS ON DELETE TO bpp_reko
 CREATE OR REPLACE RULE django_get_off_bpp_rekord_view_2 AS ON UPDATE TO bpp_rekord DO INSTEAD NOTHING;
 
 COMMIT;
-

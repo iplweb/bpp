@@ -364,7 +364,7 @@ requires-dist = [
     { name = "django-crispy-forms", specifier = "==2.0.0" },
     { name = "django-dbtemplates", specifier = ">=4.0" },
     { name = "django-debug-toolbar", marker = "extra == 'dev'", specifier = ">=4.4.6" },
-    { name = "django-denorm-iplweb", specifier = ">=1.5.0" },
+    { name = "django-denorm-iplweb", specifier = ">=1.6.0" },
     { name = "django-dirtyfields", specifier = "==1.3.1" },
     { name = "django-dynamic-fixture", marker = "extra == 'dev'", specifier = ">=1.8.0" },
     { name = "django-easy-audit", specifier = ">=1.3.3" },
@@ -1412,11 +1412,11 @@ wheels = [
 
 [[package]]
 name = "django-denorm-iplweb"
-version = "1.5.0"
+version = "1.6.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/47/e1/ac6096218a21241980eeab545dd8bc70e895aabfe3a3d0c9e8634fbec304/django_denorm_iplweb-1.5.0.tar.gz", hash = "sha256:2713bab7e8869fdbc30828eab015bd41f1b849cabdb304ac497fb2cd65fde4df", size = 49832, upload-time = "2025-08-23T21:20:40.865Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/0d/f0/39b3e82e0960ff9f47d65e98e221cd4036e8b21f60541ca65824447163ba/django_denorm_iplweb-1.6.0.tar.gz", hash = "sha256:f81ac615dcb919e7dc6a5aec365941310f3e5b5c6875798aeb07001a950dc993", size = 49861, upload-time = "2025-10-18T09:55:27.869Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/72/97/1190eb8287c0ef380bde1ae94fc6cbab881494815095c60a0b255c3d6e2b/django_denorm_iplweb-1.5.0-py3-none-any.whl", hash = "sha256:d0934de2bbe270e70c50124d4e9811533e7dfd625a2115ab5fe1cb2638b8b1f8", size = 41110, upload-time = "2025-08-23T21:20:37.24Z" },
+    { url = "https://files.pythonhosted.org/packages/49/84/814c4363d0496587bcb048e580679ebb78d1c545152ce8519337f0d631ab/django_denorm_iplweb-1.6.0-py3-none-any.whl", hash = "sha256:fd6c5e3329af6aa7634df534e278ace0a9aad346bb56f80cb5c14ba8f59d8415", size = 41138, upload-time = "2025-10-18T09:55:22.972Z" },
 ]
 
 [[package]]

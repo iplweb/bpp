@@ -4,9 +4,8 @@ import logging
 from django.db import transaction
 from django.db.transaction import TransactionManagementError
 
-from pbn_api.management.commands.util import PBNBaseCommand
-
 from bpp.models import Dyscyplina_Naukowa, Punktacja_Zrodla, Zrodlo
+from pbn_api.management.commands.util import PBNBaseCommand
 
 logger = logging.getLogger("console.always")
 

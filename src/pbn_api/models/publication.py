@@ -1,13 +1,12 @@
 from django.db import models
-
-from import_common.core import matchuj_publikacje
-from import_common.normalization import normalize_isbn
-from .base import BasePBNMongoDBModel
-
 from django.utils.functional import cached_property
 
 from bpp import const
 from bpp.models.abstract import LinkDoPBNMixin
+from import_common.core import matchuj_publikacje
+from import_common.normalization import normalize_isbn
+
+from .base import BasePBNMongoDBModel
 
 STATUS_ACTIVE = "ACTIVE"
 

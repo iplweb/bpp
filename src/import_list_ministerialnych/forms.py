@@ -6,9 +6,8 @@ from crispy_forms_foundation.layout import Column, Fieldset, Layout, Row
 from django import forms
 from django.core.exceptions import ValidationError
 
-from import_list_ministerialnych.models import ImportListMinisterialnych
-
 from bpp.util import formdefaults_html_after, formdefaults_html_before
+from import_list_ministerialnych.models import ImportListMinisterialnych
 
 
 class NowyImportForm(forms.ModelForm):

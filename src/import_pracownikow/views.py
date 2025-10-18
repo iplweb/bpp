@@ -1,8 +1,10 @@
 # Create your views here.
 
 from braces.views import GroupRequiredMixin
+from django.contrib import messages
 from django.http import HttpResponseRedirect
 
+from bpp.models import Uczelnia
 from import_pracownikow.forms import NowyImportForm
 from import_pracownikow.models import ImportPracownikow
 from long_running.views import (
@@ -13,10 +15,6 @@ from long_running.views import (
     LongRunningRouterView,
     RestartLongRunningOperationView,
 )
-
-from django.contrib import messages
-
-from bpp.models import Uczelnia
 
 
 class BaseImportPracownikowMixin(GroupRequiredMixin):

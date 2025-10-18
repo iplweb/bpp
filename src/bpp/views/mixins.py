@@ -17,7 +17,6 @@ class UczelniaSettingRequiredMixin(AccessMixin):
     group_required = None
 
     def dispatch(self, request, *args, **kwargs):
-
         res = OpcjaWyswietlaniaField.POKAZUJ_ZAWSZE
 
         uczelnia = Uczelnia.objects.get_for_request(request)
@@ -35,7 +34,7 @@ class UczelniaSettingRequiredMixin(AccessMixin):
             if not request.user.is_authenticated:
                 return self.handle_no_permission(request)
 
-            if getattr(self, "group_required") and self.group_required:
+            if self.group_required and self.group_required:
                 # Jeżeli wymagana jest jakas grupa to wymagaj jej od zalogowanych
                 if (
                     not request.user.is_superuser

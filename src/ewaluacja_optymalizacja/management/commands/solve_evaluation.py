@@ -1,17 +1,15 @@
 import json
 import sys
 from dataclasses import dataclass
-from typing import Dict, List
 
 from django.core.management import BaseCommand
 from django.db import transaction
 from ortools.sat.python import cp_model
 from tqdm import tqdm
 
-from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaCalosc
-
 from bpp import const
 from bpp.models import Cache_Punktacja_Autora_Query, Dyscyplina_Naukowa, Rekord
+from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaCalosc
 
 # We'll scale slot numbers by 1000 for better precision (integers for CP-SAT)
 SCALE = 1000
@@ -44,8 +42,8 @@ def is_low_mono(p: Pub) -> bool:
 
 
 def solve_author_knapsack(
-    author_pubs: List[Pub], max_slots: float, max_mono_slots: float
-) -> List[Pub]:
+    author_pubs: list[Pub], max_slots: float, max_mono_slots: float
+) -> list[Pub]:
     """
     Solve knapsack problem for a single author using dynamic programming.
     Returns list of selected publications that maximize points within slot constraints.
@@ -99,7 +97,7 @@ def solve_author_knapsack(
     return result
 
 
-def generate_pub_data(dyscyplina_nazwa: str) -> List[Pub]:
+def generate_pub_data(dyscyplina_nazwa: str) -> list[Pub]:
     """
     Generate publication data from cache_punktacja_autora table.
 
@@ -425,7 +423,7 @@ class Command(BaseCommand):
             self.stdout.write(self.style.SUCCESS("Institution constraints satisfied"))
 
         # Organize final results by author
-        by_author: Dict[int, List[Pub]] = {a: [] for a in authors}
+        by_author: dict[int, list[Pub]] = {a: [] for a in authors}
         for p in all_selected:
             by_author[p.author].append(p)
 

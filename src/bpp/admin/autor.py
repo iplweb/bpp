@@ -1,10 +1,12 @@
 from dal import autocomplete
 from django import forms
+from django.contrib import admin
 from djangoql.admin import DjangoQLSearchMixin
 
 from dynamic_columns.mixins import DynamicColumnsMixin
 from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaRok
 from pbn_api.models import Scientist
+
 from ..models import (  # Publikacja_Habilitacyjna
     Autor,
     Autor_Absencja,
@@ -24,8 +26,6 @@ from .helpers.fieldsets import ADNOTACJE_FIELDSET, ZapiszZAdnotacjaMixin
 from .helpers.widgets import CHARMAP_SINGLE_LINE
 from .xlsx_export import resources
 from .xlsx_export.mixins import EksportDanychMixin
-
-from django.contrib import admin
 
 # Proste tabele
 

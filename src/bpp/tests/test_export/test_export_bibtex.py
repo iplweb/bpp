@@ -2,6 +2,7 @@
 Tests for BibTeX export functionality.
 """
 
+import datetime
 from unittest.mock import Mock
 
 import pytest
@@ -255,8 +256,8 @@ class TestBibTeXExport:
             rok=2023,
             numer_zgloszenia="P.123456",
             numer_prawa_wylacznego="123456",
-            data_zgloszenia="2023-01-01",
-            data_decyzji="2023-06-01",
+            data_zgloszenia=datetime.date(2023, 1, 1),
+            data_decyzji=datetime.date(2023, 6, 1),
             www="https://patent.example.com",
             wydzial=wydzial,
         )

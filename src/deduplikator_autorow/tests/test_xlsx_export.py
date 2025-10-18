@@ -1,14 +1,12 @@
 import pytest
+from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
 from django.test import RequestFactory
 from django.urls import reverse
 
+from bpp.const import GR_WPROWADZANIE_DANYCH
 from deduplikator_autorow.utils import export_duplicates_to_xlsx
 from deduplikator_autorow.views import download_duplicates_xlsx
-
-from django.contrib.auth import get_user_model
-from django.contrib.auth.models import Group
-
-from bpp.const import GR_WPROWADZANIE_DANYCH
 
 User = get_user_model()
 

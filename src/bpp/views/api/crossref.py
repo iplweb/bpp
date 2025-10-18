@@ -1,5 +1,4 @@
-"""Funkcje API pomagające stronom synchronizacji danych z CrossRef API
-"""
+"""Funkcje API pomagające stronom synchronizacji danych z CrossRef API"""
 
 from braces.views import GroupRequiredMixin, JSONResponseMixin
 from django.views.generic.edit import BaseFormView

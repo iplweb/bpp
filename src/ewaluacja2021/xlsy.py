@@ -4,10 +4,9 @@ from decimal import Decimal
 import openpyxl
 from django.db.models import Sum, Value
 
+from bpp.models import Autor
 from ewaluacja2021.reports import get_data_for_report, write_data_to_report
 from ewaluacja2021.util import autor2fn, output_table_to_xlsx
-
-from bpp.models import Autor
 
 
 class WyjsciowyXLSX:
@@ -77,7 +76,6 @@ class WypelnienieXLSX(CalosciowyXLSX):
     def get_data_for_report(self):
         id_autorow = self.rekordy.values_list("autor_id", flat=True).distinct()
         for autor in Autor.objects.filter(pk__in=id_autorow):
-
             maks_pkt_aut_calosc = self.dane["maks_pkt_aut_calosc"].get(str(autor.pk))
             if maks_pkt_aut_calosc is None or maks_pkt_aut_calosc <= 0:
                 continue

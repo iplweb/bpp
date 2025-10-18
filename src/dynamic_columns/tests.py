@@ -1,10 +1,9 @@
 import pytest
+from django.contrib.admin import site
+from django.contrib.contenttypes.models import ContentType
 from django.urls import reverse
 
 from dynamic_columns.models import ModelAdmin, ModelAdminColumn
-
-from django.contrib.admin import site
-from django.contrib.contenttypes.models import ContentType
 
 
 def test_autor_admin_hide_column(admin_app, autor_jan_kowalski):
@@ -42,7 +41,6 @@ def test_autor_admin_hide_column(admin_app, autor_jan_kowalski):
 
 @pytest.mark.django_db
 def test_ModelAdminColumn___str__():
-
     b = ModelAdminColumn(col_name="bar")
     assert str(b) == 'Column "bar"'
 

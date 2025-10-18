@@ -8,15 +8,13 @@ from django.core.files import File
 from django.core.management import call_command
 from django.db.models import Sum
 
+from bpp.models import Patent_Autor, Wydawnictwo_Ciagle_Autor, Wydawnictwo_Zwarte_Autor
+from django_bpp import celery_tasks
 from ewaluacja2021.models import ZamowienieNaRaport
 from ewaluacja2021.reports import load_data, rekordy
 from ewaluacja2021.util import create_zip_archive, string2fn
 from snapshot_odpiec.models import SnapshotOdpiec
 from snapshot_odpiec.tasks import suma_odpietych_dyscyplin
-
-from bpp.models import Patent_Autor, Wydawnictwo_Ciagle_Autor, Wydawnictwo_Zwarte_Autor
-
-from django_bpp import celery_tasks
 
 
 def suma_pkdaut_json(fn):
@@ -101,7 +99,6 @@ def generuj_algorytm(pk, *args, **kw):
         return json_file, suma_pkdaut, outdir
 
     while True:
-
         json_file, suma_pkdaut, outdir = odpal_raport(
             rodzaj_zamowienia=rodzaj_zamowienia,
             nazwa_dyscypliny=zamowienie.dyscyplina_naukowa.nazwa,

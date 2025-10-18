@@ -1,5 +1,3 @@
-# -*- encoding: utf-8 -*-
-
 import logging
 
 import xlrd
@@ -49,7 +47,7 @@ class Command(BaseCommand):
 
         for row_idx in range(1, sheet.nrows):
             cells = sheet.row_slice(rowx=row_idx, start_colx=0, end_colx=2)
-            wydawca, poziom = [cell.value for cell in cells]
+            wydawca, poziom = (cell.value for cell in cells)
 
             poziom = int(poziom)
             w = Wydawca.objects.get_or_create(nazwa=wydawca.strip())[0]

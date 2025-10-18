@@ -5,21 +5,6 @@ from django.conf import settings
 from django.core.management import BaseCommand
 from django.db import transaction
 
-from pbn_api.models import (
-    Conference,
-    Discipline,
-    DisciplineGroup,
-    Institution,
-    Journal,
-    Language,
-    OswiadczenieInstytucji,
-    Publication,
-    PublikacjaInstytucji,
-    Publisher,
-    Scientist,
-    SentData,
-)
-
 from bpp.models import (
     Autor,
     Konferencja,
@@ -36,6 +21,20 @@ from bpp.models import (
     Zrodlo,
 )
 from bpp.util import pbar
+from pbn_api.models import (
+    Conference,
+    Discipline,
+    DisciplineGroup,
+    Institution,
+    Journal,
+    Language,
+    OswiadczenieInstytucji,
+    Publication,
+    PublikacjaInstytucji,
+    Publisher,
+    Scientist,
+    SentData,
+)
 
 
 class Command(BaseCommand):
@@ -46,7 +45,7 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         super().add_arguments(parser)
 
-        parser.add_argument("--tylko-publikacje", action="store_true", default=False),
+        (parser.add_argument("--tylko-publikacje", action="store_true", default=False),)
 
     @transaction.atomic
     def handle(self, tylko_publikacje, *args, **options):

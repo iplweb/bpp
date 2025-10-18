@@ -121,7 +121,7 @@ WHERE
   django_content_type.app_label = 'bpp' AND
   django_content_type.model = 'wydawnictwo_zwarte';
 
-  
+
 DROP VIEW IF EXISTS bpp_patent_view  CASCADE;
 
 CREATE VIEW bpp_patent_view AS SELECT
@@ -330,6 +330,5 @@ CREATE VIEW bpp_rekord AS
 
 
 
-  
-COMMIT;
 
+COMMIT;

@@ -2,7 +2,6 @@ import warnings
 
 from django.db import models
 from django.db.models import JSONField
-
 from django.utils.functional import cached_property
 
 

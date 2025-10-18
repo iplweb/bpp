@@ -14,7 +14,6 @@ wersje = defaultdict(list)
 
 
 def get_data_from_json(json_file):
-
     for line in tqdm(open(json_file).readlines()):
         line = line.strip()
         if not line:
@@ -52,7 +51,6 @@ najlepsza_suma = 0
 wersje = get_data_from_json(sys.argv[1])
 
 for elem in tqdm(product(*wersje.values())):
-
     ta_suma = defaultdict(Decimal)
     ten_przebieg = []
 

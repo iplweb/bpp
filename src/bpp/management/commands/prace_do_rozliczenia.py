@@ -11,10 +11,9 @@ from django.db.models import Q
 from flexible_reports.models import Datasource
 from openpyxl.styles import Alignment
 
-from import_common.normalization import normalize_filename
-
 from bpp.models import Jednostka, Rekord, Wydzial
 from bpp.util import pbar, worksheet_columns_autosize, worksheet_create_table
+from import_common.normalization import normalize_filename
 
 logger = logging.getLogger("django")
 

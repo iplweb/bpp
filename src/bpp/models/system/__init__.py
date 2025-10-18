@@ -5,11 +5,11 @@ Małe klasy pomocnicze dla całego systemu
 from django.db import models
 from django.db.models import CASCADE
 
-from .charakter_formalny import *  # noqa
-from .crossref_mapper import *  # noqa
-
 from bpp import const
 from bpp.models.abstract import ModelZNazwa, NazwaISkrot
+
+from .charakter_formalny import *  # noqa
+from .crossref_mapper import *  # noqa
 
 
 class Status_Korekty(ModelZNazwa):

@@ -1,6 +1,7 @@
 from django.utils.deprecation import MiddlewareMixin
 from messages_extends.models import Message
 
+
 class NotificationsMiddleware(MiddlewareMixin):
     def process_request(self, request):
         """After entering a web page, we may want to mark some messages as read
@@ -17,4 +18,6 @@ class NotificationsMiddleware(MiddlewareMixin):
             return
 
         url = request.get_full_path()
-        Message.objects.filter(user_id=user_id, read=False, message__icontains=url).update(read=True)
+        Message.objects.filter(
+            user_id=user_id, read=False, message__icontains=url
+        ).update(read=True)

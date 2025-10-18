@@ -26,7 +26,6 @@ class RokHabilitacjiView(View):
 
 class PunktacjaZrodlaView(View):
     def post(self, request, zrodlo_id, rok, *args, **kw):
-
         try:
             z = Zrodlo.objects.get(pk=zrodlo_id)
         except Zrodlo.DoesNotExist:

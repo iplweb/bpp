@@ -6,28 +6,26 @@ from datetime import date, timedelta
 
 from autoslug import AutoSlugField
 from django.conf import settings
+from django.contrib.postgres.search import SearchVectorField as VectorField
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import CASCADE
 from django.db.models.functions import Coalesce
 from django.db.models.query_utils import Q
 from django.urls.base import reverse
+from django.utils import timezone
 from mptt.fields import TreeForeignKey
 from mptt.managers import TreeManager
 from mptt.models import MPTTModel
 from tinymce.models import HTMLField
 
-from .uczelnia import Uczelnia
-from .wydzial import Wydzial
-
-from django.contrib.postgres.search import SearchVectorField as VectorField
-
-from django.utils import timezone
-
 from bpp.models import ModelZAdnotacjami, ModelZPBN_UID
 from bpp.models.abstract import ModelZPBN_ID
 from bpp.models.autor import Autor, Autor_Jednostka
 from bpp.util import FulltextSearchMixin
+
+from .uczelnia import Uczelnia
+from .wydzial import Wydzial
 
 SORTUJ_RECZNIE = ("kolejnosc", "nazwa")
 SORTUJ_ALFABETYCZNIE = ("nazwa",)
@@ -170,8 +168,8 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
         ret = self.nazwa
 
         if (
-            getattr(settings, "DJANGO_BPP_SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI") is False
-            or getattr(settings, "DJANGO_BPP_UCZELNIA_UZYWA_WYDZIALOW") is False
+            settings.DJANGO_BPP_SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI is False
+            or settings.DJANGO_BPP_UCZELNIA_UZYWA_WYDZIALOW is False
         ):
             return ret
 

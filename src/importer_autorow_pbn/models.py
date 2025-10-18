@@ -1,8 +1,7 @@
+from django.contrib.auth import get_user_model
 from django.db import models
 
 from pbn_api.models import Scientist
-
-from django.contrib.auth import get_user_model
 
 User = get_user_model()
 

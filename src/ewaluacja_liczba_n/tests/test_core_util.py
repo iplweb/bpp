@@ -1,9 +1,8 @@
 from model_bakery import baker
 
+from bpp.models import Autor_Dyscyplina, Wydawnictwo_Ciagle
 from ewaluacja_common.utils import get_lista_prac
 from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaRok, LiczbaNDlaUczelni
-
-from bpp.models import Autor_Dyscyplina, Wydawnictwo_Ciagle
 
 
 def test_get_lista_prac_zakres_lat(

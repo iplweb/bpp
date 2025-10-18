@@ -23,7 +23,7 @@ from admin_dashboard.views import (
     _get_charakter_counts,
 )
 from bpp.models import (
-    Charakter_Formalny,
+    Patent,
     Wydawnictwo_Ciagle,
     Wydawnictwo_Zwarte,
 )
@@ -190,16 +190,11 @@ def publications_with_points(db, charaktery_formalne):
 
 
 @pytest.fixture
-def publications_with_charakter(db):
+def publications_with_charakter(db, charaktery_formalne):
     """Tworzy publikacje z różnymi charakterami formalnymi."""
-
-    # Utwórz charaktery formalne jeśli nie istnieją
-    ac = Charakter_Formalny.objects.get_or_create(
-        nazwa="Artykuł w czasopiśmie", skrot="AC"
-    )[0]
-    ksp = Charakter_Formalny.objects.get_or_create(nazwa="Książka", skrot="KSP")[0]
-    pat = Charakter_Formalny.objects.get_or_create(nazwa="Patent", skrot="PAT")[0]
-
+    ac = charaktery_formalne["AC"]
+    ksp = charaktery_formalne["KSP"]
+    pat = charaktery_formalne["PAT"]
     publications = []
 
     # 10 artykułów
@@ -214,7 +209,7 @@ def publications_with_charakter(db):
 
     # 2 patenty
     for _ in range(2):
-        pub = baker.make(Wydawnictwo_Ciagle, charakter_formalny=pat)
+        pub = baker.make(Patent)
         publications.append(pub)
 
     return publications
@@ -807,3 +802,199 @@ def test_get_charakter_counts_with_data(publications_with_charakter):
     # Sprawdź, że lista jest posortowana malejąco według count
     counts = [char[1] for char in result]
     assert counts == sorted(counts, reverse=True)
+
+
+# ============================================================================
+# Testy dla menu clicks tracking
+# ============================================================================
+
+
+@pytest.fixture
+def menu_clicks_for_user(db, staff_user):
+    """Tworzy przykładowe kliknięcia w menu dla użytkownika."""
+    from admin_dashboard.models import MenuClick
+
+    clicks = []
+    # BPP - 5 kliknięć
+    for _ in range(5):
+        click = baker.make(MenuClick, user=staff_user, menu_label="BPP", menu_url="/")
+        clicks.append(click)
+
+    # Panel - 3 kliknięcia
+    for _ in range(3):
+        click = baker.make(
+            MenuClick, user=staff_user, menu_label="Panel", menu_url="/admin/"
+        )
+        clicks.append(click)
+
+    # WWW - 2 kliknięcia
+    for _ in range(2):
+        click = baker.make(
+            MenuClick, user=staff_user, menu_label="WWW", menu_url="/admin/web/"
+        )
+        clicks.append(click)
+
+    return clicks
+
+
+@pytest.mark.django_db
+def test_log_menu_click_requires_staff(client, regular_user):
+    """Test weryfikujący, że endpoint wymaga uprawnień staff."""
+    client.force_login(regular_user)
+    url = reverse("admin_dashboard:log_menu_click")
+    response = client.post(url, {"menu_label": "BPP", "menu_url": "/"})
+    assert response.status_code == 302  # Redirect do logowania
+
+
+@pytest.mark.django_db
+def test_log_menu_click_authenticated_success(client, staff_user):
+    """Test weryfikujący, że zalogowany staff może zapisać kliknięcie."""
+    from admin_dashboard.models import MenuClick
+
+    client.force_login(staff_user)
+    url = reverse("admin_dashboard:log_menu_click")
+
+    initial_count = MenuClick.objects.filter(user=staff_user).count()
+
+    response = client.post(url, {"menu_label": "BPP", "menu_url": "/"})
+
+    assert response.status_code == 200
+    data = json.loads(response.content)
+    assert data["status"] == "ok"
+
+    # Sprawdź, że kliknięcie zostało zapisane
+    assert MenuClick.objects.filter(user=staff_user).count() == initial_count + 1
+
+    # Sprawdź poprawność danych
+    click = MenuClick.objects.filter(user=staff_user).latest("clicked_at")
+    assert click.menu_label == "BPP"
+    assert click.menu_url == "/"
+
+
+@pytest.mark.django_db
+def test_log_menu_click_requires_post(client, staff_user):
+    """Test weryfikujący, że endpoint wymaga metody POST."""
+    client.force_login(staff_user)
+    url = reverse("admin_dashboard:log_menu_click")
+    response = client.get(url)
+    assert response.status_code == 405  # Method not allowed
+
+
+@pytest.mark.django_db
+def test_log_menu_click_requires_menu_label(client, staff_user):
+    """Test weryfikujący, że endpoint wymaga menu_label."""
+    client.force_login(staff_user)
+    url = reverse("admin_dashboard:log_menu_click")
+    response = client.post(url, {"menu_url": "/"})
+    assert response.status_code == 400
+    data = json.loads(response.content)
+    assert "error" in data
+
+
+@pytest.mark.django_db
+def test_log_menu_click_requires_menu_url(client, staff_user):
+    """Test weryfikujący, że endpoint wymaga menu_url."""
+    client.force_login(staff_user)
+    url = reverse("admin_dashboard:log_menu_click")
+    response = client.post(url, {"menu_label": "BPP"})
+    assert response.status_code == 400
+    data = json.loads(response.content)
+    assert "error" in data
+
+
+@pytest.mark.django_db
+def test_log_menu_click_max_1000_per_user(client, staff_user):
+    """Test weryfikujący, że użytkownik ma maksymalnie 1000 wpisów."""
+    from admin_dashboard.models import MenuClick
+
+    client.force_login(staff_user)
+
+    # Utwórz 1001 kliknięć (signal powinien usunąć najstarsze)
+    for i in range(1001):
+        MenuClick.objects.create(
+            user=staff_user, menu_label=f"Menu{i}", menu_url=f"/url{i}/"
+        )
+
+    # Sprawdź, że jest dokładnie 1000 wpisów
+    count = MenuClick.objects.filter(user=staff_user).count()
+    assert count == 1000
+
+
+@pytest.mark.django_db
+def test_menu_clicks_stats_requires_staff(client, regular_user):
+    """Test weryfikujący, że widok wymaga uprawnień staff."""
+    client.force_login(regular_user)
+    url = reverse("admin_dashboard:menu_clicks_stats")
+    response = client.get(url)
+    assert response.status_code == 302
+
+
+@pytest.mark.django_db
+def test_menu_clicks_stats_returns_top_10(client, staff_user, menu_clicks_for_user):
+    """Test weryfikujący, że widok zwraca top 10 pozycji."""
+    client.force_login(staff_user)
+    url = reverse("admin_dashboard:menu_clicks_stats")
+    response = client.get(url)
+
+    assert response.status_code == 200
+    assert "top_clicks" in response.context
+
+    top_clicks = response.context["top_clicks"]
+    assert len(top_clicks) <= 10
+
+    # Sprawdź sortowanie według count (malejąco)
+    counts = [click["count"] for click in top_clicks]
+    assert counts == sorted(counts, reverse=True)
+
+    # Sprawdź pierwsze 3 pozycje
+    assert top_clicks[0]["menu_label"] == "BPP"
+    assert top_clicks[0]["count"] == 5
+    assert top_clicks[1]["menu_label"] == "Panel"
+    assert top_clicks[1]["count"] == 3
+    assert top_clicks[2]["menu_label"] == "WWW"
+    assert top_clicks[2]["count"] == 2
+
+
+@pytest.mark.django_db
+def test_menu_clicks_stats_per_user(client, staff_user, superuser):
+    """Test weryfikujący, że statystyki są per użytkownik."""
+    from admin_dashboard.models import MenuClick
+
+    # Kliknięcia staff_user
+    for _ in range(5):
+        MenuClick.objects.create(user=staff_user, menu_label="BPP", menu_url="/")
+
+    # Kliknięcia superuser
+    for _ in range(10):
+        MenuClick.objects.create(user=superuser, menu_label="Admin", menu_url="/admin/")
+
+    # Sprawdź staff_user
+    client.force_login(staff_user)
+    url = reverse("admin_dashboard:menu_clicks_stats")
+    response = client.get(url)
+
+    top_clicks = response.context["top_clicks"]
+    assert len(top_clicks) == 1
+    assert top_clicks[0]["menu_label"] == "BPP"
+    assert top_clicks[0]["count"] == 5
+
+    # Sprawdź superuser
+    client.force_login(superuser)
+    response = client.get(url)
+
+    top_clicks = response.context["top_clicks"]
+    assert len(top_clicks) == 1
+    assert top_clicks[0]["menu_label"] == "Admin"
+    assert top_clicks[0]["count"] == 10
+
+
+@pytest.mark.django_db
+def test_menu_clicks_stats_empty_for_new_user(client, staff_user):
+    """Test weryfikujący, że nowy użytkownik ma puste statystyki."""
+    client.force_login(staff_user)
+    url = reverse("admin_dashboard:menu_clicks_stats")
+    response = client.get(url)
+
+    assert response.status_code == 200
+    top_clicks = response.context["top_clicks"]
+    assert len(top_clicks) == 0

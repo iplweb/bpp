@@ -1,10 +1,8 @@
-# -*- encoding: utf-8 -*-
-
 import logging
 
 import xlrd
-from django.core.management import BaseCommand
 from django.core.exceptions import ValidationError
+from django.core.management import BaseCommand
 
 from bpp.models import Wydawca
 
@@ -18,7 +16,11 @@ class Command(BaseCommand):
         parser.add_argument("plik")
 
     def handle(
-        self, plik, verbosity, *args, **options,
+        self,
+        plik,
+        verbosity,
+        *args,
+        **options,
     ):
         logger.setLevel(logging.WARNING)
         if verbosity > 1:
@@ -29,7 +31,7 @@ class Command(BaseCommand):
 
         for row_idx in range(1, sheet.nrows):
             cells = sheet.row_slice(rowx=row_idx, start_colx=0, end_colx=2)
-            alias, wydawca = [cell.value for cell in cells]
+            alias, wydawca = (cell.value for cell in cells)
 
             try:
                 w = Wydawca.objects.get(nazwa=wydawca.strip())

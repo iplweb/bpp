@@ -1,11 +1,10 @@
-# -*- encoding: utf-8 -*-
-
-
-import importlib
 import os
-from django.core.management import BaseCommand
 import sys
+
+from django.core.management import BaseCommand
+
 from bpp import models
+
 
 class Command(BaseCommand):
     help = """Instaluje plik w danym obiekcie o danym PK
@@ -17,8 +16,9 @@ class Command(BaseCommand):
     """
 
     def handle(self, filename, model, pk, field_name, *args, **options):
-        assert(os.path.exists(filename) and os.path.isfile(filename)), \
+        assert os.path.exists(filename) and os.path.isfile(filename), (
             "sciezka '%s' nie istnieje lub nie jest plikiem" % filename
+        )
         try:
             m = getattr(models, model)
         except AttributeError:
@@ -32,5 +32,6 @@ class Command(BaseCommand):
             sys.exit(-1)
 
         from django.core.files import File
+
         fld = getattr(obj, field_name)
-        fld.save(os.path.basename(filename), File(open(filename, 'rb')))
+        fld.save(os.path.basename(filename), File(open(filename, "rb")))

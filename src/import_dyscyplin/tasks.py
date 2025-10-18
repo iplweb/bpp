@@ -4,7 +4,6 @@ from celery.utils.log import get_task_logger
 from django.db import transaction
 from django.urls import reverse
 
-import notifications
 from django_bpp.celery_tasks import app
 from import_dyscyplin.models import Import_Dyscyplin
 from notifications.models import Notification
@@ -34,7 +33,8 @@ def stworz_kolumny(self, pk):
         i.save()
 
         Notification.objects.send_redirect(
-            i, "%s?notification=1" % reverse("import_dyscyplin:detail", args=(i.pk,)),
+            i,
+            "%s?notification=1" % reverse("import_dyscyplin:detail", args=(i.pk,)),
         )
 
 
@@ -67,7 +67,8 @@ def przeanalizuj_import_dyscyplin(self, pk):
         i.save()
 
         Notification.objects.send_redirect(
-            i, "%s?notification=1" % reverse("import_dyscyplin:detail", args=(i.pk,)),
+            i,
+            "%s?notification=1" % reverse("import_dyscyplin:detail", args=(i.pk,)),
         )
 
 
@@ -94,5 +95,6 @@ def integruj_import_dyscyplin(self, pk):
         i.save()
 
         Notification.objects.send_redirect(
-            i, "%s?notification=1" % reverse("import_dyscyplin:detail", args=(i.pk,)),
+            i,
+            "%s?notification=1" % reverse("import_dyscyplin:detail", args=(i.pk,)),
         )

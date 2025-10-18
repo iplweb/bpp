@@ -179,4 +179,91 @@ body.theme-minimal-light {
         border: 1px solid #d0d0d0 !important;
         color: #1a1a1a !important;
     }
+
+    /* Filter panel styles for Minimal Light theme */
+    .filter-panel .filter-panel-content .filter-group .filter-title.filter-collapsible.has-selection {
+        border-left-color: #1a1a1a !important;
+        background: linear-gradient(135deg, #f0f0f0 0%, #e8e8e8 100%) !important;
+
+        &:hover {
+            background: linear-gradient(135deg, #e8e8e8 0%, #e0e0e0 100%) !important;
+        }
+
+        .selected-filter-value {
+            color: #000000 !important;
+        }
+    }
+
+    /* Support button for Minimal Light theme */
+    .bpp-support-button {
+        background-color: #1a1a1a !important;
+        color: #ffffff !important;
+
+        &:hover {
+            background-color: #000000 !important;
+        }
+
+        &:focus {
+            outline: 2px solid #666666 !important;
+        }
+    }
+
+    /* Link colors for Minimal Light theme */
+    a {
+        color: #5050d0 !important; /* Indigo */
+
+        &:hover {
+            color: #3f3fbf !important; /* Deeper indigo */
+        }
+    }
+
+    /* Info message colors for Minimal Light theme */
+    .grp-info,
+    ul.grp-messagelist li.info {
+        background: linear-gradient(135deg, #ede7f6 0%, #d1c4e9 100%) !important;
+        border-left: 3px solid #5050d0 !important;
+        color: #311b92 !important;
+
+        a {
+            color: #3f3fbf !important;
+            font-weight: bold !important;
+
+            &:hover {
+                color: #311b92 !important;
+            }
+        }
+    }
+
+    /* Menu icon styles for Minimal Light theme */
+    .menu-icon {
+        background-color: #1a1a1a !important;
+    }
+
+    .menu-click-item:hover .menu-icon {
+        background-color: #000000 !important;
+    }
+
+    /* Add link and focus state buttons for Minimal Light theme */
+    .grp-add-link {
+        background: #1a1a1a !important;
+        color: #ffffff !important;
+        border: 1px solid #000000 !important;
+
+        &:hover {
+            background: #000000 !important;
+            border: 1px solid #000000 !important;
+            color: #ffffff !important;
+        }
+    }
+
+    .grp-state-focus {
+        background: #ede7f6 !important;
+        color: #5050d0 !important;
+        border: 2px solid #5050d0 !important;
+
+        &:hover {
+            background: #5050d0 !important;
+            color: #ffffff !important;
+        }
+    }
 }

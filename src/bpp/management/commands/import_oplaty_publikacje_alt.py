@@ -6,13 +6,12 @@ from django.core.exceptions import ValidationError
 from django.core.management import BaseCommand
 from django.db import transaction
 
+from bpp.models import ModelZOplataZaPublikacje, Rekord
+from bpp.util import pbar
 from import_common.normalization import (
     normalize_oplaty_za_publikacje,
     normalize_rekord_id,
 )
-
-from bpp.models import ModelZOplataZaPublikacje, Rekord
-from bpp.util import pbar
 
 
 class Command(BaseCommand):
@@ -24,7 +23,6 @@ class Command(BaseCommand):
 
     @transaction.atomic
     def handle(self, pliki, *args, **options):
-
         for plik in pliki:
             xlsx = pandas.read_excel(plik)
             for wiersz, row in enumerate(pbar(xlsx.iloc, count=xlsx.count()[0])):

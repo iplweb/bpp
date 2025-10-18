@@ -1,0 +1,293 @@
+/* -------------------------------------------------------------------------------- */
+/* Theme 8: Luigi (Brat Ludwika - Green Gaming Style) */
+/* -------------------------------------------------------------------------------- */
+
+body.theme-luigi {
+    background: #e8f5e9 !important;
+
+    #grp-navigation {
+        background: linear-gradient(180deg, #00a651 0%, #008c45 100%) !important;
+        border-bottom: 3px solid #006d35;
+
+        ul#navigation-menu li a {
+            color: #ffffff !important;
+            border-right: 1px solid #008c45;
+            border-left: 1px solid #0bc268;
+            font-weight: 500 !important;
+        }
+
+        ul#navigation-menu li a:hover,
+        ul#navigation-menu li.over > a {
+            background-color: #0bc268 !important;
+            color: #fff200 !important;
+        }
+
+        ul#navigation-menu li ul {
+            background: #ffffff !important;
+            box-shadow: 0 8px 24px rgba(0, 166, 81, 0.4);
+            border: 3px solid #00a651;
+
+            li {
+                background: #ffffff !important;
+                border-top: 2px solid #e8f5e9;
+
+                a {
+                    background-color: #ffffff !important;
+                    color: #1a1a1a !important;
+                    border-left: 4px solid transparent;
+
+                    &:hover {
+                        background-color: #e8f5e9 !important;
+                        border-left: 4px solid #00a651 !important;
+                        color: #00a651 !important;
+                    }
+                }
+            }
+        }
+
+        ul#navigation-menu li.has-columns ul {
+            background: #ffffff !important;
+            border: 3px solid #00a651;
+
+            li {
+                background: #ffffff !important;
+
+                a {
+                    background-color: #ffffff !important;
+                    border-bottom: 2px solid #e8f5e9;
+
+                    &:hover {
+                        background-color: #e8f5e9 !important;
+                        border-left: 4px solid #00a651 !important;
+                    }
+                }
+            }
+        }
+
+        ul#navigation-menu li.menu-icon-user ul li:first-child a {
+            background-color: #f1f8f4 !important;
+            font-weight: bold !important;
+        }
+    }
+
+    /* Context navigation for Luigi theme */
+    #grp-context-navigation {
+        background: #ffffff !important;
+        border-bottom: 3px solid #00a651 !important;
+
+        ul li {
+            color: #666666 !important;
+
+            a {
+                color: #1a1a1a !important;
+                font-weight: 500 !important;
+
+                &:hover {
+                    color: #00a651 !important;
+                }
+            }
+        }
+    }
+
+    /* Buttons for Luigi theme */
+    .grp-button {
+        background-image: none !important;
+        background: linear-gradient(180deg, #0066cc 0%, #0052a3 100%) !important;
+        border: 2px solid #003d7a !important;
+        color: #ffffff !important;
+        font-weight: bold !important;
+        border-radius: 4px !important;
+
+        &:hover {
+            background: linear-gradient(180deg, #0077ee 0%, #0066cc 100%) !important;
+            border: 2px solid #0052a3 !important;
+            transform: translateY(-1px);
+        }
+
+        &.grp-default {
+            background: linear-gradient(180deg, #00a651 0%, #008c45 100%) !important;
+            border: 2px solid #006d35 !important;
+            color: #ffffff !important;
+
+            &:hover {
+                background: linear-gradient(180deg, #0bc268 0%, #00a651 100%) !important;
+                border: 2px solid #008c45 !important;
+            }
+        }
+    }
+
+    /* Fixed footer for Luigi theme */
+    .grp-fixed-footer {
+        background-image: none !important;
+        background: linear-gradient(180deg, #f1f8f4 0%, #d4edda 100%) !important;
+        border-top: 3px solid #a8dabc !important;
+
+        .grp-button {
+            background: linear-gradient(180deg, #0066cc 0%, #0052a3 100%) !important;
+            border: 2px solid #003d7a !important;
+
+            &:hover {
+                background: linear-gradient(180deg, #0077ee 0%, #0066cc 100%) !important;
+            }
+        }
+    }
+
+    /* Body and general styles for Luigi */
+    .grp-collapse {
+        border: 2px solid #00a651 !important;
+        background: #e8f5e9 !important;
+        border-radius: 4px !important;
+
+        &.grp-open {
+            background: #f1f8f4 !important;
+        }
+    }
+
+    .fieldset.grp-module .grp-row label {
+        color: #1a1a1a !important;
+        font-weight: 600 !important;
+    }
+
+    .grp-module .grp-row:not(tr) {
+        border-bottom: 2px solid #e8f5e9 !important;
+        background: #ffffff !important;
+
+        &:hover {
+            background: #f1f8f4 !important;
+        }
+    }
+
+    /* Select2 styles for Luigi */
+    .select2-container--default .select2-selection--single {
+        background: #ffffff !important;
+        border: 2px solid #00a651 !important;
+        border-radius: 4px !important;
+
+        .select2-selection__rendered {
+            color: #1a1a1a !important;
+            font-weight: 500 !important;
+        }
+    }
+
+    .select2-container--default .select2-results__option--highlighted[aria-selected] {
+        background: linear-gradient(180deg, #00a651 0%, #008c45 100%) !important;
+        color: #ffffff !important;
+        font-weight: bold !important;
+    }
+
+    .select2-dropdown {
+        background: #ffffff !important;
+        border: 2px solid #00a651 !important;
+        border-radius: 4px !important;
+    }
+
+    .select2-container--default .select2-search--dropdown .select2-search__field {
+        background: #f1f8f4 !important;
+        border: 2px solid #00a651 !important;
+        border-radius: 4px !important;
+        color: #1a1a1a !important;
+    }
+
+    /* Filter panel styles for Luigi theme */
+    .filter-panel .filter-panel-content .filter-group .filter-title.filter-collapsible.has-selection {
+        border-left-color: #00a651 !important;
+        background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%) !important;
+        border-radius: 4px !important;
+
+        &:hover {
+            background: linear-gradient(135deg, #c3e6cb 0%, #b2dbbf 100%) !important;
+        }
+
+        .selected-filter-value {
+            color: #008c45 !important;
+            font-weight: bold !important;
+        }
+    }
+
+    /* Add some fun green elements to headers */
+    h1, h2 {
+        color: #1a1a1a !important;
+        text-shadow: 2px 2px 0px #d4edda !important;
+    }
+
+    /* Support button for Luigi theme */
+    .bpp-support-button {
+        background: linear-gradient(180deg, #00a651 0%, #008c45 100%) !important;
+        color: #ffffff !important;
+        border-radius: 50px !important;
+        font-weight: bold !important;
+
+        &:hover {
+            background: linear-gradient(180deg, #0bc268 0%, #00a651 100%) !important;
+            transform: translateY(-2px);
+        }
+
+        &:focus {
+            outline: 2px solid #fff200 !important;
+        }
+    }
+
+    /* Link colors for Luigi theme */
+    a {
+        color: #43a047 !important; /* Luigi green */
+
+        &:hover {
+            color: #2e7d32 !important; /* Darker green on hover */
+        }
+    }
+
+    /* Info message colors for Luigi theme */
+    .grp-info,
+    ul.grp-messagelist li.info {
+        background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%) !important;
+        border-left: 3px solid #43a047 !important;
+        color: #1b5e20 !important;
+
+        a {
+            color: #388e3c !important;
+            font-weight: bold !important;
+
+            &:hover {
+                color: #2e7d32 !important;
+            }
+        }
+    }
+
+    /* Menu icon styles for Luigi theme */
+    .menu-icon {
+        background: linear-gradient(180deg, #0066cc 0%, #0052a3 100%) !important;
+    }
+
+    .menu-click-item:hover .menu-icon {
+        background: linear-gradient(180deg, #0077ee 0%, #0066cc 100%) !important;
+    }
+
+    /* Add link and focus state buttons for Luigi theme */
+    .grp-add-link {
+        background: linear-gradient(180deg, #00a651 0%, #008c45 100%) !important;
+        color: #ffffff !important;
+        border: 2px solid #006d35 !important;
+        border-radius: 4px !important;
+        font-weight: bold !important;
+
+        &:hover {
+            background: linear-gradient(180deg, #0bc268 0%, #00a651 100%) !important;
+            border: 2px solid #008c45 !important;
+            color: #ffffff !important;
+            transform: translateY(-1px);
+        }
+    }
+
+    .grp-state-focus {
+        background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%) !important;
+        color: #00a651 !important;
+        border: 2px solid #43a047 !important;
+        border-radius: 4px !important;
+        font-weight: bold !important;
+
+        &:hover {
+            background: linear-gradient(135deg, #43a047 0%, #388e3c 100%) !important;
+            color: #ffffff !important;
+        }
+    }
+}

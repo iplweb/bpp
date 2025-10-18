@@ -1,12 +1,11 @@
-from django.urls import reverse
-
-from pbn_api.models import Scientist
-from .models import IgnoredAuthor, LogScalania, NotADuplicate
-
 from django.contrib import admin
-
+from django.urls import reverse
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
+
+from pbn_api.models import Scientist
+
+from .models import IgnoredAuthor, LogScalania, NotADuplicate
 
 
 @admin.register(NotADuplicate)

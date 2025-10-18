@@ -1,15 +1,13 @@
+from django.contrib import admin
+
+from bpp.admin.helpers.pbn_api.gui import sprobuj_wyslac_do_pbn_gui
 from pbn_api.admin.base import BasePBNAPIAdminNoReadonly
 from pbn_api.admin.widgets import JSONWithActionsWidget
 from pbn_api.models import SentData
 
-from django.contrib import admin
-
-from bpp.admin.helpers.pbn_api.gui import sprobuj_wyslac_do_pbn_gui
-
 
 @admin.register(SentData)
 class SentDataAdmin(BasePBNAPIAdminNoReadonly):
-
     list_display = [
         "object",
         "last_updated_on",

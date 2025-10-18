@@ -1,8 +1,6 @@
+from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.db.models.deletion import DO_NOTHING
-
-from django.contrib.contenttypes.models import ContentType
-
 from django.utils.functional import cached_property
 
 from bpp.models.fields import TupleField

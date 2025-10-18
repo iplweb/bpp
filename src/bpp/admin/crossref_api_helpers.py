@@ -1,12 +1,13 @@
 """Klasy pomocnicze dla klas ModelAdmin które chcą korzystać z parametru
 GET ``numer_zgloszenia`` czyli wypełniać dane wstępne wg zawartości zgłoszenia
-o danym numerze ID. """
+o danym numerze ID."""
+
+from bpp import const
 from crossref_bpp.admin.helpers import convert_crossref_to_changeform_initial_data
 from crossref_bpp.core import Komparator
 from crossref_bpp.models import CrossrefAPICache
-from ..views.api import ostatnia_dyscyplina, ostatnia_jednostka
 
-from bpp import const
+from ..views.api import ostatnia_dyscyplina, ostatnia_jednostka
 
 
 class KorzystaZCrossRefAPIMixin:

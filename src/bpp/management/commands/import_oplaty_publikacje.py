@@ -6,12 +6,11 @@ from django.core.exceptions import ValidationError
 from django.core.management import BaseCommand
 from django.db import transaction
 
+from bpp.models import ModelZOplataZaPublikacje, Rekord
 from import_common.normalization import (
     normalize_oplaty_za_publikacje,
     normalize_rekord_id,
 )
-
-from bpp.models import ModelZOplataZaPublikacje, Rekord
 
 
 class Command(BaseCommand):

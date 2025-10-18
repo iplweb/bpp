@@ -4,6 +4,7 @@ from pbn_integrator.utils import (
     integruj_oswiadczenia_z_instytucji,
     pobierz_oswiadczenia_z_instytucji,
 )
+
 from .base import ImportStepBase
 from .publication_import import PublicationImporter
 

@@ -1,6 +1,5 @@
 # pip install ortools
 from dataclasses import dataclass
-from typing import Dict, List
 
 from ortools.sat.python import cp_model
 
@@ -26,7 +25,7 @@ def is_low_mono(p: Pub) -> bool:
 
 
 # -------- sample data (edit freely) ------------------------------------------
-pubs: List[Pub] = [
+pubs: list[Pub] = [
     Pub("A1", "Alice", "article", 200, 1.0),
     Pub("A2", "Alice", "article", 140, 1.0),
     Pub("A3", "Alice", "article", 75, 0.5),
@@ -80,7 +79,7 @@ print("Status:", solver.StatusName(status))
 print("Total points:", int(solver.ObjectiveValue()))
 
 # Report
-by_author: Dict[str, List[Pub]] = {a: [] for a in authors}
+by_author: dict[str, list[Pub]] = {a: [] for a in authors}
 for p in pubs:
     if solver.Value(y[p.id]) == 1:
         by_author[p.author].append(p)

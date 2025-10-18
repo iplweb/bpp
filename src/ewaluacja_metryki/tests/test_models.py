@@ -1,13 +1,11 @@
 from decimal import Decimal
 
 import pytest
+from django.utils import timezone
 from model_bakery import baker
 
-from ewaluacja_metryki.models import MetrykaAutora, StatusGenerowania
-
-from django.utils import timezone
-
 from bpp.models import Autor, Dyscyplina_Naukowa, Jednostka
+from ewaluacja_metryki.models import MetrykaAutora, StatusGenerowania
 
 
 @pytest.mark.django_db

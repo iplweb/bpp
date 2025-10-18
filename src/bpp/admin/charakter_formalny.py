@@ -1,9 +1,8 @@
+from django.contrib import admin
 from mptt.admin import DraggableMPTTAdmin
 
 from ..models import Charakter_Formalny  # Publikacja_Habilitacyjna
 from .core import BaseBppAdminMixin, RestrictDeletionToAdministracjaGroupMixin
-
-from django.contrib import admin
 
 
 # Proste tabele

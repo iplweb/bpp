@@ -1,3 +1,6 @@
+from django.contrib import admin
+
+from bpp.models import Rekord
 from pbn_api.admin.base import BasePBNAPIAdmin
 from pbn_api.admin.filters import (
     OdpowiednikOswiadczeniaInstytucjiAutorWBPPFilter,
@@ -5,10 +8,6 @@ from pbn_api.admin.filters import (
 )
 from pbn_api.exceptions import StatementDeletionError
 from pbn_api.models import OswiadczenieInstytucji
-
-from django.contrib import admin
-
-from bpp.models import Rekord
 
 
 @admin.register(OswiadczenieInstytucji)

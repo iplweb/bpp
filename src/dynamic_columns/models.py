@@ -1,20 +1,18 @@
-"""Models for in-database representation of dynamic admin columns configuration.
-"""
+"""Models for in-database representation of dynamic admin columns configuration."""
+
 import re
 
 from django.conf import settings
-from django.db import models
-from django.db.models import Max
-
-from dynamic_columns.exceptions import CodeAccessNotAllowed
-from dynamic_columns.util import qual, str_to_class
-
 from django.contrib.admin import ModelAdmin as DjangoModelAdmin
 from django.contrib.contenttypes.models import ContentType
-
+from django.db import models
+from django.db.models import Max
 from django.utils.datastructures import OrderedSet
 from django.utils.functional import cached_property
 from django.utils.translation import gettext_lazy as _
+
+from dynamic_columns.exceptions import CodeAccessNotAllowed
+from dynamic_columns.util import qual, str_to_class
 
 
 class ModelAdminManager(models.Manager):

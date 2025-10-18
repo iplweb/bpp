@@ -1,8 +1,7 @@
 from django.db import models
+from django.utils.functional import cached_property
 
 from .base import BasePBNMongoDBModel
-
-from django.utils.functional import cached_property
 
 
 class Institution(BasePBNMongoDBModel):

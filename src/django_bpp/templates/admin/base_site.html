@@ -11,6 +11,10 @@
 {% block extrahead %}
     {{ global_nav_form.media }}
 
+    <!-- HTMX for AJAX functionality -->
+    {% load static %}
+    <script src="{% static 'htmx.org/dist/htmx.js' %}"></script>
+
     <!-- Anti-FOUC: Hide page until fully loaded -->
     <style>
         html {
@@ -70,6 +74,46 @@
                                     "?source=admin";
                             });
 
+                            // Function to focus on Select2 search field
+                            function focusSelect2SearchField() {
+                                // Try multiple strategies with increasing delays
+                                var attempts = [0, 50, 150];
+                                var attemptIndex = 0;
+
+                                function tryFocus() {
+                                    setTimeout(function() {
+                                        // Try different selectors
+                                        var $search1 = $('.select2-container--open .select2-search__field');
+                                        var $search2 = $('.select2-search--dropdown .select2-search__field');
+                                        var $search3 = $('input.select2-search__field:visible');
+
+                                        // Try to find the search field
+                                        var $search = $search1.length ? $search1 : ($search2.length ? $search2 : $search3);
+
+                                        if ($search.length > 0) {
+                                            // Force focus
+                                            $search[0].focus();
+                                            $search.trigger('focus');
+                                            $search.select();
+                                        } else {
+                                            // If not found and more attempts available, try again
+                                            if (attemptIndex < attempts.length - 1) {
+                                                attemptIndex++;
+                                                tryFocus();
+                                            }
+                                        }
+                                    }, attempts[attemptIndex]);
+                                }
+
+                                tryFocus();
+                            }
+
+                            // Focus search field on any open (click or hotkey)
+                            var $select = $('#id_global_nav_value');
+                            $select.on('select2:open', function() {
+                                focusSelect2SearchField();
+                            });
+
                             // Add "/" hotkey to open global search
                             $(document).on('keydown', function(e) {
                                 // Don't trigger if user is typing in an input/textarea
@@ -82,44 +126,8 @@
                                     e.preventDefault();
 
                                     // Find the select2 container and open it
-                                    var $select = $('#id_global_nav_value');
-
                                     if ($select.length > 0) {
-                                        // Use select2:open event to ensure dropdown is fully rendered
-                                        $select.one('select2:open', function() {
-                                            // Try multiple strategies with increasing delays
-                                            var attempts = [50, 150, 300];
-                                            var attemptIndex = 0;
-
-                                            function tryFocus() {
-                                                setTimeout(function() {
-                                                    // Try different selectors
-                                                    var $search1 = $('.select2-container--open .select2-search__field');
-                                                    var $search2 = $('.select2-search--dropdown .select2-search__field');
-                                                    var $search3 = $('input.select2-search__field:visible');
-
-                                                    // Try to find the search field
-                                                    var $search = $search1.length ? $search1 : ($search2.length ? $search2 : $search3);
-
-                                                    if ($search.length > 0) {
-                                                        // Force focus
-                                                        $search[0].focus();
-                                                        $search.trigger('focus');
-                                                        $search.select();
-                                                    } else {
-                                                        // If not found and more attempts available, try again
-                                                        if (attemptIndex < attempts.length - 1) {
-                                                            attemptIndex++;
-                                                            tryFocus();
-                                                        }
-                                                    }
-                                                }, attempts[attemptIndex]);
-                                            }
-
-                                            tryFocus();
-                                        });
-
-                                        // Open the dropdown
+                                        // Open the dropdown (focus will be handled by select2:open event)
                                         $select.select2('open');
                                     }
                                 }
@@ -418,6 +426,40 @@
                     });
             });
 
+        })(grp.jQuery);
+    </script>
+
+    <script type="text/javascript">
+        (function($){
+            $(document).ready(function() {
+                // Przechwytywanie kliknięć w menu admin - WSZYSTKIE linki w menu-container
+                $('#menu-container a').on('click', function(e) {
+                    var $link = $(this);
+                    var menuLabel = $link.text().trim();
+                    var menuUrl = $link.attr('href');
+
+                    // Nie loguj kliknięć w # (placeholder links)
+                    if (!menuUrl || menuUrl === '#' || menuUrl === 'javascript://') {
+                        return;
+                    }
+
+                    // Wyślij dane do backendu (asynchronicznie, nie blokuj nawigacji)
+                    $.ajax({
+                        url: '{% url "admin_dashboard:log_menu_click" %}',
+                        type: 'POST',
+                        data: {
+                            menu_label: menuLabel,
+                            menu_url: menuUrl,
+                            csrfmiddlewaretoken: '{{ csrf_token }}'
+                        },
+                        async: true,
+                        // Ignoruj błędy - nie chcemy przerywać nawigacji
+                        error: function() {
+                            // Silent fail
+                        }
+                    });
+                });
+            });
         })(grp.jQuery);
     </script>
 {% endblock %}

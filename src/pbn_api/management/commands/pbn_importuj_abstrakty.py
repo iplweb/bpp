@@ -1,10 +1,9 @@
 import arrow
 from django.db import transaction
 
-from pbn_api.management.commands.util import PBNBaseCommand
-
 from bpp.models import Jezyk, Rekord
 from bpp.util import pbar
+from pbn_api.management.commands.util import PBNBaseCommand
 
 
 class Command(PBNBaseCommand):

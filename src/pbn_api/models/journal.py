@@ -1,9 +1,9 @@
 from django.db import models
 
-from .base import BasePBNMongoDBModel
-
 from bpp import const
 from bpp.models import LinkDoPBNMixin
+
+from .base import BasePBNMongoDBModel
 
 
 class Journal(LinkDoPBNMixin, BasePBNMongoDBModel):

@@ -1,14 +1,14 @@
 """Initial setup for PBN import - languages, countries, disciplines"""
 
+from bpp.models import Uczelnia
 from import_common.core import matchuj_uczelnie
 from pbn_integrator.utils import (
     integruj_jezyki,
     integruj_kraje,
     pobierz_instytucje_polon,
 )
-from .base import ImportStepBase
 
-from bpp.models import Uczelnia
+from .base import ImportStepBase
 
 
 class InitialSetup(ImportStepBase):

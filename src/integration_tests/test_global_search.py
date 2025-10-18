@@ -4,7 +4,6 @@ from playwright.sync_api import Page
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
 from bpp.models import Rekord, Wydawnictwo_Ciagle
-
 from django_bpp.playwright_util import select_select2_autocomplete, wait_for_page_load
 
 pytestmark = pytest.mark.uruchom_tylko_bez_microsoft_auth
@@ -85,9 +84,9 @@ def test_global_search_logged_in(
         Rekord.objects.full_refresh()
 
         # Verify the record was properly indexed
-        assert Rekord.objects.filter(
-            tytul_oryginalny__icontains=unique_title
-        ).exists(), f"Record with title '{unique_title}' not found in Rekord cache after refresh"
+        assert (
+            Rekord.objects.filter(tytul_oryginalny__icontains=unique_title).exists()
+        ), f"Record with title '{unique_title}' not found in Rekord cache after refresh"
 
         admin_page.goto(channels_live_server.url)
         wait_for_page_load(admin_page)

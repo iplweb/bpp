@@ -5,22 +5,15 @@ from braces.views import GroupRequiredMixin, LoginRequiredMixin
 from dal import autocomplete
 from dal_select2_queryset_sequence.views import Select2QuerySetSequenceView
 from django import http
+from django.contrib.auth.mixins import UserPassesTestMixin
+from django.contrib.postgres.search import TrigramSimilarity
 from django.core.exceptions import ImproperlyConfigured
 from django.db.models.aggregates import Count
 from django.db.models.query_utils import Q
-from queryset_sequence import QuerySetSequence
-from taggit.models import Tag
-
-from import_common.core import normalized_db_isbn
-from import_common.normalization import normalize_isbn
-from pbn_api.models import Publisher
-from .wydawnictwo_nadrzedne_w_pbn import Wydawnictwo_Nadrzedne_W_PBNAutocomplete  # noqa
-
-from django.contrib.auth.mixins import UserPassesTestMixin
-from django.contrib.postgres.search import TrigramSimilarity
-
 from django.utils.safestring import mark_safe
 from django.utils.text import capfirst
+from queryset_sequence import QuerySetSequence
+from taggit.models import Tag
 
 from bpp import const
 from bpp.const import CHARAKTER_OGOLNY_KSIAZKA, GR_WPROWADZANIE_DANYCH, PBN_UID_LEN
@@ -48,6 +41,11 @@ from bpp.models.struktura import Wydzial
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle, Wydawnictwo_Ciagle_Autor
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte, Wydawnictwo_Zwarte_Autor
 from bpp.models.zrodlo import Rodzaj_Zrodla, Zrodlo
+from import_common.core import normalized_db_isbn
+from import_common.normalization import normalize_isbn
+from pbn_api.models import Publisher
+
+from .wydawnictwo_nadrzedne_w_pbn import Wydawnictwo_Nadrzedne_W_PBNAutocomplete  # noqa
 
 
 class PublicTaggitTagAutocomplete(autocomplete.Select2QuerySetView):
@@ -577,8 +575,238 @@ class GlobalNavigationAutocomplete(Select2QuerySetSequenceView):
         return self.mixup_querysets(ret)
 
 
+class DjangoApp:
+    """Pseudo-model representing a Django app in search results"""
+
+    def __init__(self, app_label, verbose_name, app_url):
+        self.pk = f"app:{app_label}"
+        self.app_label = app_label
+        self.verbose_name = verbose_name
+        self.app_url = app_url
+
+    def __str__(self):
+        return self.verbose_name
+
+
+class DjangoModel:
+    """Pseudo-model representing a Django model in search results"""
+
+    def __init__(
+        self,
+        app_label,
+        model_name,
+        verbose_name,
+        changelist_url,
+        add_url=None,
+        can_add=False,
+        is_add_action=False,
+    ):
+        # Distinguish between list and add actions in the pk
+        action_suffix = ":add" if is_add_action else ""
+        self.pk = f"model:{app_label}:{model_name}{action_suffix}"
+        self.app_label = app_label
+        self.model_name = model_name
+        self.verbose_name = verbose_name
+        self.changelist_url = changelist_url
+        self.add_url = add_url
+        self.can_add = can_add
+        self.is_add_action = is_add_action
+
+    def __str__(self):
+        if self.is_add_action:
+            return f"Dodaj {self.verbose_name.lower()}"
+        return self.verbose_name
+
+
 class AdminNavigationAutocomplete(StaffRequired, Select2QuerySetSequenceView):
     paginate_by = 60
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.django_items = []
+
+    def get_result_value(self, result):
+        """Get the value to use for the result's ID"""
+        if isinstance(result, (DjangoApp, DjangoModel)):
+            return result.pk
+        return super().get_result_value(result)
+
+    def get_result_label(self, result):
+        """Format the display of results in the dropdown"""
+        if isinstance(result, DjangoApp):
+            return f"📁 {result.verbose_name}"
+        elif isinstance(result, DjangoModel):
+            if result.is_add_action:
+                return f"➕ Dodaj {result.verbose_name.lower()}"
+            return f"📄 {result.verbose_name}"
+
+        # Default handling for other types
+        return super().get_result_label(result)
+
+    def get_model_name(self, model):
+        """Return the display name for grouping results"""
+        if model == DjangoApp:
+            return "Aplikacje modułu redagowania"
+        elif model == DjangoModel:
+            return "Modele modułu redagowania"
+
+        # Default handling for other types
+        return super().get_model_name(model)
+
+    def get_results(self, context):
+        """Override to include Django items in the results"""
+        # Get regular results from parent class
+        results = super().get_results(context)
+
+        # If we have Django items, add them to the results
+        if self.django_items:
+            # Group Django items by type
+            apps = [item for item in self.django_items if isinstance(item, DjangoApp)]
+            models = [
+                item for item in self.django_items if isinstance(item, DjangoModel)
+            ]
+
+            # Add Django apps group
+            if apps:
+                results.append(
+                    {
+                        "id": None,
+                        "text": "Aplikacje Django",
+                        "children": [
+                            {
+                                "id": self.get_result_value(app),
+                                "text": self.get_result_label(app),
+                            }
+                            for app in apps
+                        ],
+                    }
+                )
+
+            # Add Django models group
+            if models:
+                results.append(
+                    {
+                        "id": None,
+                        "text": "Modele Django",
+                        "children": [
+                            {
+                                "id": self.get_result_value(model),
+                                "text": self.get_result_label(model),
+                            }
+                            for model in models
+                        ],
+                    }
+                )
+
+        return results
+
+    def get_django_apps_and_models(self):
+        """Get Django apps and models accessible to the current user"""
+        from django.apps import apps
+        from django.contrib import admin
+        from django.urls import reverse
+        from django.utils.text import capfirst
+
+        results = []
+
+        if not hasattr(self, "request"):
+            return results
+
+        user = self.request.user
+
+        # Get the admin site
+        admin_site = admin.site
+
+        # Build app list similar to admin index
+        app_dict = {}
+
+        for model, _model_admin in admin_site._registry.items():
+            app_label = model._meta.app_label
+
+            # Check if user has any permission for this model
+            has_module_perms = user.has_module_perms(app_label)
+            if not has_module_perms:
+                continue
+
+            # Check specific permissions
+            perms = {
+                "view": user.has_perm(f"{app_label}.view_{model._meta.model_name}"),
+                "add": user.has_perm(f"{app_label}.add_{model._meta.model_name}"),
+                "change": user.has_perm(f"{app_label}.change_{model._meta.model_name}"),
+                "delete": user.has_perm(f"{app_label}.delete_{model._meta.model_name}"),
+            }
+
+            # Skip if no view permission
+            if not perms["view"] and not perms["change"]:
+                continue
+
+            # Get URLs
+            changelist_url = reverse(
+                f"admin:{app_label}_{model._meta.model_name}_changelist"
+            )
+            add_url = None
+            if perms["add"]:
+                add_url = reverse(f"admin:{app_label}_{model._meta.model_name}_add")
+
+            # Add model to results if it matches the search query
+            model_verbose_name = model._meta.verbose_name_plural
+            model_verbose_name_singular = model._meta.verbose_name
+            if (
+                self.q.lower() in model_verbose_name.lower()
+                or self.q.lower() in model._meta.model_name.lower()
+                or (self.q.lower() in model_verbose_name_singular.lower())
+            ):
+                # Add entry for model list (changelist)
+                django_model = DjangoModel(
+                    app_label=app_label,
+                    model_name=model._meta.model_name,
+                    verbose_name=capfirst(model_verbose_name),
+                    changelist_url=changelist_url,
+                    add_url=add_url,
+                    can_add=perms["add"],
+                    is_add_action=False,
+                )
+                results.append(django_model)
+
+                # Add separate entry for adding new instance if user has permission
+                if perms["add"]:
+                    django_model_add = DjangoModel(
+                        app_label=app_label,
+                        model_name=model._meta.model_name,
+                        verbose_name=capfirst(model_verbose_name_singular),
+                        changelist_url=changelist_url,
+                        add_url=add_url,
+                        can_add=True,
+                        is_add_action=True,
+                    )
+                    results.append(django_model_add)
+
+            # Build app dict for app-level search
+            if app_label not in app_dict:
+                app_config = apps.get_app_config(app_label)
+                app_dict[app_label] = {
+                    "name": capfirst(app_config.verbose_name),
+                    "app_label": app_label,
+                    "app_url": reverse(
+                        "admin:app_list", kwargs={"app_label": app_label}
+                    ),
+                    "has_models": True,
+                }
+
+        # Add matching apps to results
+        for app_label, app_info in app_dict.items():
+            if (
+                self.q.lower() in app_info["name"].lower()
+                or self.q.lower() in app_label.lower()
+            ):
+                django_app = DjangoApp(
+                    app_label=app_label,
+                    verbose_name=app_info["name"],
+                    app_url=app_info["app_url"],
+                )
+                results.append(django_app)
+
+        return results
 
     def get_queryset(self):
         if not self.q:
@@ -642,6 +870,9 @@ class AdminNavigationAutocomplete(StaffRequired, Select2QuerySetSequenceView):
                 qset = klass.objects.filter(filter)
 
             querysets.append(qset.only("tytul_oryginalny"))
+
+        # Store Django apps and models separately (don't add to QuerySetSequence)
+        self.django_items = self.get_django_apps_and_models()
 
         ret = QuerySetSequence(*querysets)
         return self.mixup_querysets(ret)

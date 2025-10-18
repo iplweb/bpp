@@ -633,7 +633,7 @@ class PracaViewMixin:
         return self.render_to_response(context)
 
 
-END_NUMBER_REGEX = re.compile("(?P<content_type_id>\\d+)-(?P<object_id>\\d+)$")
+END_NUMBER_REGEX = re.compile(r"(?P<content_type_id>\d+)-(?P<object_id>\d+)$")
 
 
 class PracaViewBySlug(PracaViewMixin, DetailView):

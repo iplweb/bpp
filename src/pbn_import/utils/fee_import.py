@@ -1,8 +1,8 @@
 """Publication fee import utilities"""
 
-from .base import ImportStepBase
-
 from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
+
+from .base import ImportStepBase
 
 
 class FeeImporter(ImportStepBase):

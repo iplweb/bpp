@@ -13,10 +13,8 @@ def pbn_token_aktualny(request):
 
         # Jest zalogowany, ma rekordy, nie ma tokena z PBN
         if cnt:
-
-            from django.urls import reverse
-
             from django.contrib import messages
+            from django.urls import reverse
 
             # Check if similar message already exists (ignoring the count value)
             existing_messages = messages.get_messages(request)
@@ -47,7 +45,6 @@ def pbn_token_aktualny(request):
                         f"autoryzować się w PBN</a>. ",
                     )
                 else:
-
                     messages.info(
                         request,
                         f"W kolejce na wysłanie do PBN czeka {cnt} wyedytowanych przez Ciebie rekord(y/ów), ale "

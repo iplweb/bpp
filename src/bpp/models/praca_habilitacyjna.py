@@ -1,9 +1,7 @@
-from django.db import models
-from django.db.models import CASCADE
-
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
-
+from django.db import models
+from django.db.models import CASCADE
 from django.utils.functional import cached_property
 
 from bpp.models import Autor, Charakter_Formalny, DwaTytuly, ModelZOplataZaPublikacje

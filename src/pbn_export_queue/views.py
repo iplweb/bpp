@@ -2,24 +2,22 @@ import re
 import sys
 
 import rollbar
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.db.models import F
 from django.db.models.functions import Coalesce
 from django.http import HttpResponseRedirect, JsonResponse
 from django.shortcuts import get_object_or_404
 from django.urls import reverse_lazy
+from django.utils.safestring import mark_safe
 from django.views import View
 from django.views.decorators.http import require_POST
 from django.views.generic import DetailView, ListView
 
-from .models import PBN_Export_Queue
-
-from django.contrib import messages
-from django.contrib.auth.decorators import login_required
-from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
-
-from django.utils.safestring import mark_safe
-
 from bpp.const import GR_WPROWADZANIE_DANYCH
+
+from .models import PBN_Export_Queue
 
 
 class PBNExportQueuePermissionMixin(UserPassesTestMixin):
@@ -139,6 +137,11 @@ class PBNExportQueueListView(
         # Add count of waiting records for the resend button
         context["waiting_count"] = PBN_Export_Queue.objects.filter(
             retry_after_user_authorised=True
+        ).count()
+        # Add count of never sent records for the wake up button
+        context["never_sent_count"] = PBN_Export_Queue.objects.filter(
+            wysylke_podjeto=None,
+            wysylke_zakonczono=None,
         ).count()
         # Add counts for filter buttons
         context["total_count"] = PBN_Export_Queue.objects.count()
@@ -262,6 +265,11 @@ class PBNExportQueueTableView(
         # Add count of waiting records for the resend button
         context["waiting_count"] = PBN_Export_Queue.objects.filter(
             retry_after_user_authorised=True
+        ).count()
+        # Add count of never sent records for the wake up button
+        context["never_sent_count"] = PBN_Export_Queue.objects.filter(
+            wysylke_podjeto=None,
+            wysylke_zakonczono=None,
         ).count()
         # Add counts for filter buttons
         context["total_count"] = PBN_Export_Queue.objects.count()
@@ -515,6 +523,48 @@ def resend_all_errors(request):
 
     messages.success(
         request, f"Przygotowano i zlecono ponowną wysyłkę {count} rekordów z błędami."
+    )
+    return HttpResponseRedirect(reverse_lazy("pbn_export_queue:export-queue-list"))
+
+
+@login_required
+@require_POST
+def wake_up_queue(request):
+    """View to wake up and start sending all export queue items that were never attempted"""
+    if not (
+        request.user.is_staff
+        or request.user.groups.filter(name=GR_WPROWADZANIE_DANYCH).exists()
+    ):
+        messages.error(request, "Brak uprawnień do wykonania tej operacji.")
+        return HttpResponseRedirect(reverse_lazy("pbn_export_queue:export-queue-list"))
+
+    # Get all items that were never attempted to send
+    # (wysylke_podjeto=None means sending was never started)
+    never_sent_items = PBN_Export_Queue.objects.filter(
+        wysylke_podjeto=None,
+        wysylke_zakonczono=None,
+    )
+    count = never_sent_items.count()
+
+    if count == 0:
+        messages.warning(request, "Brak rekordów oczekujących na pierwszą wysyłkę.")
+        return HttpResponseRedirect(reverse_lazy("pbn_export_queue:export-queue-list"))
+
+    # Process each never-sent item
+    from pbn_export_queue.tasks import task_sprobuj_wyslac_do_pbn
+
+    for queue_item in never_sent_items:
+        try:
+            # Trigger the send directly with Celery task
+            task_sprobuj_wyslac_do_pbn.delay(queue_item.pk)
+        except Exception:
+            # Log the error but continue processing other items
+            rollbar.report_exc_info(sys.exc_info())
+            continue
+
+    messages.success(
+        request,
+        f"Obudzono wysyłkę dla {count} rekordów które nigdy nie były wysyłane.",
     )
     return HttpResponseRedirect(reverse_lazy("pbn_export_queue:export-queue-list"))
 

@@ -19,28 +19,28 @@ class Migration(migrations.Migration):
     operations = [
         migrations.RunSQL(
             """
-            UPDATE bpp_wydawnictwo_zwarte SET 
+            UPDATE bpp_wydawnictwo_zwarte SET
             informacje = TRIM(SUBSTR(informacje, 3))
             WHERE informacje ILIKE 'W:%';
             """,
             migrations.RunSQL.noop),
         migrations.RunSQL(
             """
-            UPDATE bpp_patent SET 
+            UPDATE bpp_patent SET
             informacje = TRIM(SUBSTR(informacje, 3))
             WHERE informacje ILIKE 'W:%';
             """,
             migrations.RunSQL.noop),
         migrations.RunSQL(
             """
-            UPDATE bpp_praca_doktorska SET 
+            UPDATE bpp_praca_doktorska SET
             informacje = TRIM(SUBSTR(informacje, 3))
             WHERE informacje ILIKE 'W:%';
             """,
             migrations.RunSQL.noop),
         migrations.RunSQL(
             """
-            UPDATE bpp_praca_habilitacyjna SET 
+            UPDATE bpp_praca_habilitacyjna SET
             informacje = TRIM(SUBSTR(informacje, 3))
             WHERE informacje ILIKE 'W:%';
             """,
@@ -50,28 +50,28 @@ class Migration(migrations.Migration):
 
         migrations.RunSQL(
             """
-            UPDATE bpp_wydawnictwo_zwarte SET 
+            UPDATE bpp_wydawnictwo_zwarte SET
             informacje = TRIM(SUBSTR(informacje, 4))
             WHERE informacje ILIKE 'W :%';
             """,
             migrations.RunSQL.noop),
         migrations.RunSQL(
             """
-            UPDATE bpp_patent SET 
+            UPDATE bpp_patent SET
             informacje = TRIM(SUBSTR(informacje, 4))
             WHERE informacje ILIKE 'W :%';
             """,
             migrations.RunSQL.noop),
         migrations.RunSQL(
             """
-            UPDATE bpp_praca_doktorska SET 
+            UPDATE bpp_praca_doktorska SET
             informacje = TRIM(SUBSTR(informacje, 4))
             WHERE informacje ILIKE 'W :%';
             """,
             migrations.RunSQL.noop),
         migrations.RunSQL(
             """
-            UPDATE bpp_praca_habilitacyjna SET 
+            UPDATE bpp_praca_habilitacyjna SET
             informacje = TRIM(SUBSTR(informacje, 4))
             WHERE informacje ILIKE 'W :%';
             """,

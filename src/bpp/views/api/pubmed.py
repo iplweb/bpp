@@ -1,5 +1,3 @@
-# -*- encoding: utf-8 -*-
-
 import pymed
 from django.conf import settings
 from django.http import JsonResponse
@@ -12,7 +10,6 @@ from bpp.views.api.const import (
     PUBMED_TITLE_MULTIPLE,
     PUBMED_TITLE_NONEXISTENT,
 )
-
 from django_bpp.version import VERSION
 
 

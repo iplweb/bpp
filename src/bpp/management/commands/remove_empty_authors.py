@@ -1,15 +1,11 @@
-# -*- encoding: utf-8 -*-
-from optparse import make_option
-import sys
-
 from django.core.management import BaseCommand
 from django.db import transaction
 
-from bpp.models.cache import Rekord
 from bpp.models import Autor, Autorzy
 
+
 class Command(BaseCommand):
-    help = 'Kasuje autorow bez prac'
+    help = "Kasuje autorow bez prac"
 
     @transaction.atomic
     def handle(self, *args, **options):

@@ -1,13 +1,11 @@
 import logging
-from typing import Optional
 
+from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
 from tqdm import tqdm
 
 from komparator_pbn_udzialy.models import RozbieznoscDyscyplinPBN
 from pbn_api.models import OswiadczenieInstytucji
-
-from django.contrib.contenttypes.models import ContentType
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +42,7 @@ class KomparatorDyscyplinPBN:
 
     def get_wydawnictwo_autor_for_oswiadczenie(
         self, oswiadczenie: OswiadczenieInstytucji
-    ) -> Optional[object]:
+    ) -> object | None:
         """
         Znajduje odpowiedni rekord Wydawnictwo_*_Autor dla danego oświadczenia PBN.
 

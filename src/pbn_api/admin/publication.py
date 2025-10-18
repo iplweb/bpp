@@ -1,21 +1,18 @@
 from django import forms
+from django.contrib import admin, messages
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
 from django.shortcuts import redirect
 from django.urls import reverse
+from django.utils.html import format_html
 from djangoql.admin import DjangoQLSearchMixin
 
+from bpp.models import Jednostka, Uczelnia
 from pbn_api.admin.base import BaseMongoDBAdmin
 from pbn_api.admin.filters import OdpowiednikWBPPFilter
 from pbn_api.admin.widgets import PrettyJSONWidgetReadonly
 from pbn_api.models import OswiadczenieInstytucji, Publication
 from pbn_integrator.utils import zapisz_oswiadczenie_instytucji
-
-from django.contrib import admin, messages
-
-from django.utils.html import format_html
-
-from bpp.models import Jednostka, Uczelnia
 
 
 class PublicationFromMongoIdForm(forms.ModelForm):
@@ -270,7 +267,9 @@ class PublicationAdmin(
         try:
             # Step 1: Import publication from PBN to BPP
             created_record = importuj_publikacje_po_pbn_uid_id(
-                publication.pk, client, default_jednostka  # mongoId
+                publication.pk,
+                client,
+                default_jednostka,  # mongoId
             )
 
             if created_record:

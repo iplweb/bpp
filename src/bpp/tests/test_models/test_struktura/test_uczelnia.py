@@ -1,6 +1,8 @@
 from urllib.parse import urlencode
 
 import pytest
+from cacheops import invalidate_obj
+from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.urls.base import reverse
 
@@ -13,6 +15,46 @@ from bpp.const import DO_STYCZNIA_POPRZEDNI_POTEM_OBECNY, NAJWIEKSZY_REKORD
 from bpp.models import Uczelnia
 from bpp.models.fields import OpcjaWyswietlaniaField
 from bpp.tests import browse_praca_url, normalize_html
+
+# Disable cache for all tests in this file
+pytestmark = pytest.mark.django_db
+
+
+@pytest.fixture(autouse=True)
+def disable_cache_for_tests(settings):
+    """
+    Disable caching for all tests in this module.
+    This ensures that changes to Uczelnia object are immediately visible.
+    """
+    # Disable Django cache
+    settings.CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.dummy.DummyCache",
+        }
+    }
+    # Disable cacheops
+    settings.CACHEOPS_ENABLED = False
+
+
+def clear_uczelnia_cache(uczelnia):
+    """
+    Helper function to clear all caches related to Uczelnia object.
+    This is needed in tests where we modify Uczelnia attributes and expect
+    immediate visibility of changes.
+
+    Clears:
+    1. Cacheops cache for get_uczelnia_context_data function
+    2. Django cache for uczelnia context processor
+    3. All cacheops caches for Uczelnia model
+    """
+    # Invalidate cacheops cache for the uczelnia object
+    invalidate_obj(uczelnia)
+
+    # Clear Django cache used by context processor
+    cache.delete(b"bpp_uczelnia")
+
+    # Clear all caches (including @cached decorated functions)
+    cache.clear()
 
 
 @pytest.mark.parametrize(
@@ -33,12 +75,14 @@ def test_uczelnia_praca_pokazuj(uczelnia, wydawnictwo_ciagle, attr, s, client):
 
     setattr(uczelnia, attr, True)
     uczelnia.save()
+    clear_uczelnia_cache(uczelnia)
     res = client.get(url, follow=True)
     assert res.status_code == 200
     assert s in res.rendered_content
 
     setattr(uczelnia, attr, False)
     uczelnia.save()
+    clear_uczelnia_cache(uczelnia)
     res = client.get(url, follow=True)
     assert res.status_code == 200
     assert s not in res.rendered_content
@@ -64,6 +108,7 @@ def test_uczelnia_praca_pokazuj_pozostale(
 
     setattr(uczelnia, attr, OpcjaWyswietlaniaField.POKAZUJ_ZAWSZE)
     uczelnia.save()
+    clear_uczelnia_cache(uczelnia)
 
     res = client.get(url, follow=True)
     assert s in res.rendered_content
@@ -73,6 +118,7 @@ def test_uczelnia_praca_pokazuj_pozostale(
 
     setattr(uczelnia, attr, OpcjaWyswietlaniaField.POKAZUJ_ZALOGOWANYM)
     uczelnia.save()
+    clear_uczelnia_cache(uczelnia)
 
     res = client.get(url, follow=True)
     assert s not in res.rendered_content
@@ -82,6 +128,7 @@ def test_uczelnia_praca_pokazuj_pozostale(
 
     setattr(uczelnia, attr, OpcjaWyswietlaniaField.POKAZUJ_NIGDY)
     uczelnia.save()
+    clear_uczelnia_cache(uczelnia)
 
     res = client.get(url, follow=True)
     assert s not in res.rendered_content
@@ -104,6 +151,7 @@ def test_uczelnia_pokazuj_menu_zawsze(uczelnia, attr, s, client, admin_client):
 
     setattr(uczelnia, attr, OpcjaWyswietlaniaField.POKAZUJ_ZAWSZE)
     uczelnia.save()
+    clear_uczelnia_cache(uczelnia)
 
     res = client.get(url, follow=True)
     assert s in res.content
@@ -118,6 +166,7 @@ def test_uczelnia_pokazuj_menu_zalogowani(uczelnia, attr, s, client, admin_clien
 
     setattr(uczelnia, attr, OpcjaWyswietlaniaField.POKAZUJ_ZALOGOWANYM)
     uczelnia.save()
+    clear_uczelnia_cache(uczelnia)
 
     res = client.get(url, follow=True)
     assert s not in res.content
@@ -132,6 +181,7 @@ def test_uczelnia_pokazuj_menu_nigdy(uczelnia, attr, s, client, admin_client):
 
     setattr(uczelnia, attr, OpcjaWyswietlaniaField.POKAZUJ_NIGDY)
     uczelnia.save()
+    clear_uczelnia_cache(uczelnia)
 
     res = client.get(url, follow=True)
     assert s not in res.content
@@ -155,6 +205,7 @@ def test_pokazuj_tabele_slotow_na_stronie_rekordu(
         OpcjaWyswietlaniaField.POKAZUJ_ZAWSZE
     )
     uczelnia.save()
+    clear_uczelnia_cache(uczelnia)
 
     res = client.get(url)
     assert S in res.rendered_content
@@ -165,6 +216,7 @@ def test_pokazuj_tabele_slotow_na_stronie_rekordu(
         OpcjaWyswietlaniaField.POKAZUJ_ZALOGOWANYM
     )
     uczelnia.save()
+    clear_uczelnia_cache(uczelnia)
 
     res = client.get(url)
     assert S not in res.rendered_content
@@ -175,6 +227,7 @@ def test_pokazuj_tabele_slotow_na_stronie_rekordu(
         OpcjaWyswietlaniaField.POKAZUJ_NIGDY
     )
     uczelnia.save()
+    clear_uczelnia_cache(uczelnia)
 
     res = client.get(url)
     assert S not in res.rendered_content
@@ -199,6 +252,7 @@ def test_pokazuj_raport_slotow_menu_na_glownej(
 
     setattr(uczelnia, atrybut_uczelni, OpcjaWyswietlaniaField.POKAZUJ_ZALOGOWANYM)
     uczelnia.save()
+    clear_uczelnia_cache(uczelnia)
 
     res = client.get(url)
     assert S not in normalize_html(res.rendered_content)
@@ -207,6 +261,7 @@ def test_pokazuj_raport_slotow_menu_na_glownej(
 
     setattr(uczelnia, atrybut_uczelni, OpcjaWyswietlaniaField.POKAZUJ_NIGDY)
     uczelnia.save()
+    clear_uczelnia_cache(uczelnia)
 
     res = client.get(url)
     assert S not in normalize_html(res.rendered_content)
@@ -215,6 +270,7 @@ def test_pokazuj_raport_slotow_menu_na_glownej(
 
     setattr(uczelnia, atrybut_uczelni, OpcjaWyswietlaniaField.POKAZUJ_ZAWSZE)
     uczelnia.save()
+    clear_uczelnia_cache(uczelnia)
 
     res = client.get(url)
     assert S in normalize_html(res.rendered_content)
@@ -223,6 +279,7 @@ def test_pokazuj_raport_slotow_menu_na_glownej(
 
     setattr(uczelnia, atrybut_uczelni, OpcjaWyswietlaniaField.POKAZUJ_GDY_W_ZESPOLE)
     uczelnia.save()
+    clear_uczelnia_cache(uczelnia)
 
     res = client.get(url)
     assert S not in normalize_html(res.rendered_content)
@@ -293,6 +350,7 @@ def test_pokazuj_raport_slotow_czy_mozna_kliknac(
 
     setattr(uczelnia, atrybut_uczelni, OpcjaWyswietlaniaField.POKAZUJ_ZALOGOWANYM)
     uczelnia.save()
+    clear_uczelnia_cache(uczelnia)
 
     res = client.get(url)
     assert res.status_code == 302
@@ -301,6 +359,7 @@ def test_pokazuj_raport_slotow_czy_mozna_kliknac(
 
     setattr(uczelnia, atrybut_uczelni, OpcjaWyswietlaniaField.POKAZUJ_NIGDY)
     uczelnia.save()
+    clear_uczelnia_cache(uczelnia)
 
     res = client.get(url)
     assert res.status_code == 404
@@ -309,6 +368,7 @@ def test_pokazuj_raport_slotow_czy_mozna_kliknac(
 
     setattr(uczelnia, atrybut_uczelni, OpcjaWyswietlaniaField.POKAZUJ_GDY_W_ZESPOLE)
     uczelnia.save()
+    clear_uczelnia_cache(uczelnia)
 
     res = client.get(url)
     assert res.status_code == 302
@@ -317,6 +377,7 @@ def test_pokazuj_raport_slotow_czy_mozna_kliknac(
 
     setattr(uczelnia, atrybut_uczelni, OpcjaWyswietlaniaField.POKAZUJ_ZAWSZE)
     uczelnia.save()
+    clear_uczelnia_cache(uczelnia)
 
     if atrybut_uczelni == "pokazuj_raport_slotow_uczelnia":
         # dla opcji "pokazuj raport slotów uczelnia" login jest zawsze wymagany

@@ -1,5 +1,4 @@
 from decimal import Decimal
-from typing import Union
 
 from django.core.exceptions import ValidationError
 from numpy import isnan
@@ -39,7 +38,7 @@ normalize_last_name = normalize_first_name
 normalize_publisher = normalize_first_name
 
 
-def normalize_boolean(s: Union[str, None, bool]) -> Union[bool, None]:
+def normalize_boolean(s: str | None | bool) -> bool | None:
     if isinstance(s, bool):
         return s
 
@@ -55,7 +54,7 @@ def normalize_boolean(s: Union[str, None, bool]) -> Union[bool, None]:
         return False
 
 
-def normalize_nullboleanfield(s: Union[str, None, bool]) -> Union[bool, None]:
+def normalize_nullboleanfield(s: str | None | bool) -> bool | None:
     return normalize_boolean(s)
 
 

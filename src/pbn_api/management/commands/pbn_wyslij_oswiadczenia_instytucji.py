@@ -16,15 +16,18 @@ Examples:
     python manage.py pbn_send_statements --year 2023
     python manage.py pbn_send_statements --year 2022 --dry-run
 """
+
 import json
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from threading import Lock
 
+from django.contrib.contenttypes.models import ContentType
 from django.core.management.base import CommandError
 from queryset_sequence import QuerySetSequence
 from tqdm import tqdm
 
+from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
 from pbn_api.adapters.wydawnictwo import WydawnictwoPBNAdapter
 from pbn_api.exceptions import (
     CannotDeleteStatementsException,
@@ -33,10 +36,6 @@ from pbn_api.exceptions import (
 )
 from pbn_api.management.commands.util import PBNBaseCommand
 from pbn_api.models import PublikacjaInstytucji_V2, Scientist
-
-from django.contrib.contenttypes.models import ContentType
-
-from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
 
 
 def post_discipline_statements_error_handler(json_response):
@@ -219,7 +218,8 @@ def process_single_publication(
                     if (
                         e.status_code == 423
                         and "Oświadczenie zostało zablokowane z uwagi na równoległą operację. "
-                        "Prosimy spróbować ponownie." in e.content
+                        "Prosimy spróbować ponownie."
+                        in e.content
                     ):
                         time.sleep(1)
                         continue

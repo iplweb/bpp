@@ -25,9 +25,7 @@ class OptymalizacjaForm(forms.Form):
         publikacje = Rekord.objects.filter(
             Q(tytul_oryginalny__icontains=publikacja_input)
             | Q(tytul__icontains=publikacja_input)
-        )[
-            :20
-        ]  # Limit results to 20
+        )[:20]  # Limit results to 20
 
         if publikacje.count() == 0:
             raise forms.ValidationError(

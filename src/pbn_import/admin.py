@@ -1,10 +1,9 @@
 """Admin interface for PBN import models"""
 
-from .models import ImportLog, ImportSession, ImportStatistics, ImportStep
-
 from django.contrib import admin
-
 from django.utils.html import format_html
+
+from .models import ImportLog, ImportSession, ImportStatistics, ImportStep
 
 
 @admin.register(ImportSession)

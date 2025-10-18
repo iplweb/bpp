@@ -1,12 +1,11 @@
 from collections import namedtuple
 from datetime import datetime
 
-from ewaluacja_common.utils import get_lista_prac
-
 from django.contrib.postgres.aggregates import ArrayAgg
 
 from bpp.models import Cache_Punktacja_Autora_Query
 from bpp.util import intsack
+from ewaluacja_common.utils import get_lista_prac
 
 
 def get_lista_autorow_na_rekord(nazwa_dyscypliny):
@@ -45,7 +44,6 @@ def get_lista_prac_as_tuples(nazwa_dyscypliny):
 
 
 def policz_knapsack(lista_prac, maks_slot=4.0):
-
     res = intsack(
         maks_slot,
         [x.slot for x in lista_prac],

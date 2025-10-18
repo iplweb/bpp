@@ -27,4 +27,4 @@ def test_integracyjny_strona_admina(
 
     page = admin_app.get(url)
 
-    assert page.forms[1][nazwa_pola].value == wartosc
+    assert page.forms["wydawnictwo_ciagle_form"][nazwa_pola].value == wartosc

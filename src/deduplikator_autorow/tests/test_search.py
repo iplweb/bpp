@@ -1,7 +1,10 @@
 import pytest
+from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
 from django.test import RequestFactory
 from model_bakery import baker
 
+from bpp.const import GR_WPROWADZANIE_DANYCH
 from deduplikator_autorow.utils import (
     autor_ma_publikacje_z_lat,
     count_authors_with_lastname,
@@ -9,11 +12,6 @@ from deduplikator_autorow.utils import (
     znajdz_pierwszego_autora_z_duplikatami,
 )
 from deduplikator_autorow.views import duplicate_authors_view
-
-from django.contrib.auth import get_user_model
-from django.contrib.auth.models import Group
-
-from bpp.const import GR_WPROWADZANIE_DANYCH
 
 User = get_user_model()
 

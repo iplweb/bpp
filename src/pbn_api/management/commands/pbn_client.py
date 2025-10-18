@@ -1,6 +1,3 @@
-# -*- encoding: utf-8 -*-
-
-
 from pbn_api.management.commands.util import PBNBaseCommand
 
 

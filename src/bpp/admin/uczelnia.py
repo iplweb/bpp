@@ -1,16 +1,16 @@
 from django import forms
+from django.contrib import admin, messages
 from reversion.admin import VersionAdmin
 
 from ewaluacja_liczba_n.models import LiczbaNDlaUczelni
 from pbn_api.exceptions import PraceSerwisoweException
+
 from ..models import Uczelnia, Ukryj_Status_Korekty, Wydzial
 
 # Uczelnia
 from .core import BaseBppAdminMixin, RestrictDeletionToAdministracjaGroupMixin
 from .helpers.fieldsets import ADNOTACJE_FIELDSET
 from .helpers.mixins import ZapiszZAdnotacjaMixin
-
-from django.contrib import admin, messages
 
 
 class WydzialInlineForm(forms.ModelForm):

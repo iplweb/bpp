@@ -1,20 +1,17 @@
 import io
 
+from django.contrib.admin.views.decorators import staff_member_required
 from django.core.paginator import Paginator
 from django.db.models import Q
 from django.http import HttpResponse
+from django.utils.decorators import method_decorator
+from django.utils.html import strip_tags
 from django.views.generic import ListView
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 
-from import_common.normalization import normalize_isbn, normalize_issn
-
-from django.contrib.admin.views.decorators import staff_member_required
-
-from django.utils.decorators import method_decorator
-from django.utils.html import strip_tags
-
 from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
+from import_common.normalization import normalize_isbn, normalize_issn
 
 # Default year range for evaluation period
 DEFAULT_YEAR_MIN = 2022

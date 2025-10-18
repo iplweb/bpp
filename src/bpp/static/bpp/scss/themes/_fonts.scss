@@ -1,0 +1,447 @@
+/* -------------------------------------------------------------------------------- */
+/* Font System for Admin Interface */
+/* -------------------------------------------------------------------------------- */
+
+/* Import Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@300;400;600;700&display=swap');
+
+/* Base font settings */
+:root {
+    --font-scale-small: 0.875;  /* 14px/16px */
+    --font-scale-normal: 1;      /* 16px */
+    --font-scale-large: 1.125;   /* 18px/16px */
+}
+
+/* -------------------------------------------------------------------------------- */
+/* Inter Font Family */
+/* -------------------------------------------------------------------------------- */
+
+/* Inter Small (14px) */
+body.font-inter-small {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+    font-size: 14px !important;
+    line-height: 1.5 !important;
+
+    // Scale all text elements
+    h1 { font-size: 1.75em !important; }
+    h2 { font-size: 1.5em !important; }
+    h3 { font-size: 1.25em !important; }
+    h4 { font-size: 1.1em !important; }
+
+    // Forms and inputs
+    input, textarea, select {
+        font-size: 13px !important;
+    }
+
+    .grp-button {
+        font-size: 13px !important;
+    }
+
+    // Tables
+    td, th {
+        font-size: 13px !important;
+    }
+
+    // Navigation
+    #grp-navigation a {
+        font-size: 13px !important;
+    }
+}
+
+
+/* -------------------------------------------------------------------------------- */
+/* Open Sans Font Family */
+/* -------------------------------------------------------------------------------- */
+
+/* Open Sans Small (14px) */
+body.font-opensans-small {
+    font-family: 'Open Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+    font-size: 14px !important;
+    line-height: 1.5 !important;
+
+    h1 { font-size: 1.75em !important; }
+    h2 { font-size: 1.5em !important; }
+    h3 { font-size: 1.25em !important; }
+    h4 { font-size: 1.1em !important; }
+
+    input, textarea, select {
+        font-size: 13px !important;
+    }
+
+    .grp-button {
+        font-size: 13px !important;
+    }
+
+    td, th {
+        font-size: 13px !important;
+    }
+
+    #grp-navigation a {
+        font-size: 13px !important;
+    }
+}
+
+
+/* -------------------------------------------------------------------------------- */
+/* Roboto Font Family */
+/* -------------------------------------------------------------------------------- */
+
+/* Roboto Small (14px) */
+body.font-roboto-small {
+    font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+    font-size: 14px !important;
+    line-height: 1.5 !important;
+    letter-spacing: 0.01em !important;
+
+    h1 { font-size: 1.75em !important; }
+    h2 { font-size: 1.5em !important; }
+    h3 { font-size: 1.25em !important; }
+    h4 { font-size: 1.1em !important; }
+
+    input, textarea, select {
+        font-size: 13px !important;
+    }
+
+    .grp-button {
+        font-size: 13px !important;
+    }
+
+    td, th {
+        font-size: 13px !important;
+    }
+
+    #grp-navigation a {
+        font-size: 13px !important;
+    }
+}
+
+/* -------------------------------------------------------------------------------- */
+/* Lato Font Family */
+/* -------------------------------------------------------------------------------- */
+
+/* Lato Small (14px) */
+body.font-lato-small {
+    font-family: 'Lato', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+    font-size: 14px !important;
+    line-height: 1.5 !important;
+
+    h1 { font-size: 1.75em !important; }
+    h2 { font-size: 1.5em !important; }
+    h3 { font-size: 1.25em !important; }
+    h4 { font-size: 1.1em !important; }
+
+    input, textarea, select {
+        font-size: 13px !important;
+    }
+
+    .grp-button {
+        font-size: 13px !important;
+    }
+
+    td, th {
+        font-size: 13px !important;
+    }
+
+    #grp-navigation a {
+        font-size: 13px !important;
+    }
+}
+
+/* -------------------------------------------------------------------------------- */
+/* Source Sans Pro Font Family */
+/* -------------------------------------------------------------------------------- */
+
+/* Source Sans Pro Small (14px) */
+body.font-sourcesans-small {
+    font-family: 'Source Sans Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+    font-size: 14px !important;
+    line-height: 1.5 !important;
+
+    h1 { font-size: 1.75em !important; }
+    h2 { font-size: 1.5em !important; }
+    h3 { font-size: 1.25em !important; }
+    h4 { font-size: 1.1em !important; }
+
+    input, textarea, select {
+        font-size: 13px !important;
+    }
+
+    .grp-button {
+        font-size: 13px !important;
+    }
+
+    td, th {
+        font-size: 13px !important;
+    }
+
+    #grp-navigation a {
+        font-size: 13px !important;
+    }
+}
+
+/* -------------------------------------------------------------------------------- */
+/* Font Selector Menu Styles */
+/* -------------------------------------------------------------------------------- */
+
+/* Font separator line */
+.font-separator {
+    border-top: 1px solid #343434;
+    margin: 0;
+    padding: 0;
+}
+
+.font-separator a {
+    pointer-events: none;
+    height: 1px !important;
+    min-height: 1px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    opacity: 0;
+}
+
+/* Font selector items */
+.font-selector-item {
+    position: relative;
+}
+
+/* Font preview indicators */
+.font-selector-item a::before {
+    content: "Aa";
+    display: inline-block;
+    width: 24px;
+    margin-right: 8px;
+    text-align: center;
+    vertical-align: middle;
+    font-weight: 500;
+}
+
+/* Default font preview */
+.font-selector-default a::before {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+    font-size: 13px !important;
+    opacity: 0.7;
+}
+
+/* Inter font preview */
+.font-selector-inter-small a::before {
+    font-family: 'Inter', sans-serif !important;
+    font-size: 11px !important;
+}
+
+/* Open Sans font preview */
+.font-selector-opensans-small a::before {
+    font-family: 'Open Sans', sans-serif !important;
+    font-size: 11px !important;
+}
+
+/* Roboto font preview */
+.font-selector-roboto-small a::before {
+    font-family: 'Roboto', sans-serif !important;
+    font-size: 11px !important;
+}
+
+/* Lato font preview */
+.font-selector-lato-small a::before {
+    font-family: 'Lato', sans-serif !important;
+    font-size: 11px !important;
+}
+
+/* Source Sans Pro font preview */
+.font-selector-sourcesans-small a::before {
+    font-family: 'Source Sans Pro', sans-serif !important;
+    font-size: 11px !important;
+}
+
+/* Segoe UI font preview */
+.font-selector-segoeui-small a::before {
+    font-family: 'Segoe UI', sans-serif !important;
+    font-size: 11px !important;
+}
+
+/* Arial font preview */
+.font-selector-arial-small a::before {
+    font-family: Arial, sans-serif !important;
+    font-size: 11px !important;
+}
+
+/* Verdana font preview */
+.font-selector-verdana-small a::before {
+    font-family: Verdana, sans-serif !important;
+    font-size: 11px !important;
+}
+
+/* Calibri font preview */
+.font-selector-calibri-small a::before {
+    font-family: Calibri, sans-serif !important;
+    font-size: 11px !important;
+}
+
+/* Active font indicator */
+.font-selector-item.active a::after {
+    content: "✓";
+    position: absolute;
+    right: 15px;
+    font-weight: bold;
+    color: #5a9fd4;
+}
+
+/* Font adjustment for specific elements */
+body[class*="font-"] {
+    // Adjust select2 dropdown text
+    .select2-results__option {
+        font-size: inherit !important;
+    }
+
+    // Adjust grappelli specific elements
+    .grp-module h2 {
+        font-size: 1.1em !important;
+    }
+
+    // Adjust change list results
+    #changelist #result_list td {
+        font-size: inherit !important;
+    }
+
+    // Adjust breadcrumbs
+    #grp-breadcrumbs {
+        font-size: 0.9em !important;
+    }
+
+    // Adjust help text
+    .grp-help {
+        font-size: 0.85em !important;
+    }
+}
+
+/* -------------------------------------------------------------------------------- */
+/* Segoe UI Font Family (Windows System Font) */
+/* -------------------------------------------------------------------------------- */
+
+/* Segoe UI Small (14px) */
+body.font-segoeui-small {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
+    font-size: 14px !important;
+    line-height: 1.5 !important;
+
+    h1 { font-size: 1.75em !important; }
+    h2 { font-size: 1.5em !important; }
+    h3 { font-size: 1.25em !important; }
+    h4 { font-size: 1.1em !important; }
+
+    input, textarea, select {
+        font-size: 13px !important;
+    }
+
+    .grp-button {
+        font-size: 13px !important;
+    }
+
+    td, th {
+        font-size: 13px !important;
+    }
+
+    #grp-navigation a {
+        font-size: 13px !important;
+    }
+}
+
+/* -------------------------------------------------------------------------------- */
+/* Arial Font Family (Universal System Font) */
+/* -------------------------------------------------------------------------------- */
+
+/* Arial Small (14px) */
+body.font-arial-small {
+    font-family: Arial, Helvetica, sans-serif !important;
+    font-size: 14px !important;
+    line-height: 1.5 !important;
+
+    h1 { font-size: 1.75em !important; }
+    h2 { font-size: 1.5em !important; }
+    h3 { font-size: 1.25em !important; }
+    h4 { font-size: 1.1em !important; }
+
+    input, textarea, select {
+        font-size: 13px !important;
+    }
+
+    .grp-button {
+        font-size: 13px !important;
+    }
+
+    td, th {
+        font-size: 13px !important;
+    }
+
+    #grp-navigation a {
+        font-size: 13px !important;
+    }
+}
+
+/* -------------------------------------------------------------------------------- */
+/* Verdana Font Family (Screen-Optimized Font) */
+/* -------------------------------------------------------------------------------- */
+
+/* Verdana Small (14px) */
+body.font-verdana-small {
+    font-family: Verdana, Geneva, Tahoma, sans-serif !important;
+    font-size: 14px !important;
+    line-height: 1.5 !important;
+    letter-spacing: 0.01em !important;
+
+    h1 { font-size: 1.75em !important; }
+    h2 { font-size: 1.5em !important; }
+    h3 { font-size: 1.25em !important; }
+    h4 { font-size: 1.1em !important; }
+
+    input, textarea, select {
+        font-size: 13px !important;
+    }
+
+    .grp-button {
+        font-size: 13px !important;
+    }
+
+    td, th {
+        font-size: 13px !important;
+    }
+
+    #grp-navigation a {
+        font-size: 13px !important;
+    }
+}
+
+/* -------------------------------------------------------------------------------- */
+/* Calibri Font Family (Microsoft Office Font) */
+/* -------------------------------------------------------------------------------- */
+
+/* Calibri Small (14px) */
+body.font-calibri-small {
+    font-family: Calibri, Candara, 'Segoe UI', Optima, Arial, sans-serif !important;
+    font-size: 14px !important;
+    line-height: 1.5 !important;
+
+    h1 { font-size: 1.75em !important; }
+    h2 { font-size: 1.5em !important; }
+    h3 { font-size: 1.25em !important; }
+    h4 { font-size: 1.1em !important; }
+
+    input, textarea, select {
+        font-size: 13px !important;
+    }
+
+    .grp-button {
+        font-size: 13px !important;
+    }
+
+    td, th {
+        font-size: 13px !important;
+    }
+
+    #grp-navigation a {
+        font-size: 13px !important;
+    }
+}

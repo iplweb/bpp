@@ -1,8 +1,7 @@
 from tqdm import tqdm
 
-from pbn_api.management.commands.util import PBNBaseCommand
-
 from bpp.models import Wydawnictwo_Zwarte
+from pbn_api.management.commands.util import PBNBaseCommand
 
 
 class Command(PBNBaseCommand):

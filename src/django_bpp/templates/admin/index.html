@@ -247,6 +247,17 @@
         {# PRAWA KOLUMNA - Statystyki i Aplikacje #}
         <div class="dashboard-column">
             <div class="grp-module">
+                <h2>Najczęściej używane</h2>
+                <div
+                    id="menu-clicks-stats"
+                    hx-get="{% url 'admin_dashboard:menu_clicks_stats' %}"
+                    hx-trigger="load"
+                    hx-swap="innerHTML">
+                    <p style="padding: 10px; color: #666;">Ładowanie...</p>
+                </div>
+            </div>
+
+            <div class="grp-module">
                 <h2>Statystyki</h2>
                 <div class="dashboard-stats-grid" id="dashboard-stats">
                     <div class="stat-box">

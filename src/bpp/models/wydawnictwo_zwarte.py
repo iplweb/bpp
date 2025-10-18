@@ -3,13 +3,12 @@ import warnings
 
 from denorm import denormalized, depend_on_related
 from dirtyfields.dirtyfields import DirtyFieldsMixin
+from django.contrib.contenttypes.fields import GenericRelation
+from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import CASCADE, PROTECT, JSONField
 from django.db.models.expressions import RawSQL
-
-from django.contrib.contenttypes.fields import GenericRelation
-from django.contrib.postgres.fields import ArrayField
 
 from bpp import const
 from bpp.models import (

@@ -1,11 +1,10 @@
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models
 
-from long_running.models import Operation
-from long_running.notification_mixins import ASGINotificationMixin
-
 from bpp.fields import YearField
 from bpp.models import Zrodlo
+from long_running.models import Operation
+from long_running.notification_mixins import ASGINotificationMixin
 
 
 class ImportListMinisterialnych(ASGINotificationMixin, Operation):

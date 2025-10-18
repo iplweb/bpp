@@ -5,7 +5,9 @@ from operator import attrgetter
 
 import simplejson
 
+from bpp.models import Dyscyplina_Naukowa
 from ewaluacja_liczba_n.models import LiczbaNDlaUczelni
+
 from .sumator_base import SumatorBase
 from .util import (
     encode_datetime,
@@ -15,8 +17,6 @@ from .util import (
     maks_pkt_aut_calosc_get_from_db,
     maks_pkt_aut_monografie_get_from_db,
 )
-
-from bpp.models import Dyscyplina_Naukowa
 
 logger = logging.getLogger(__name__)
 

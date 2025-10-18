@@ -1,6 +1,6 @@
-from pbn_api.models import TlumaczDyscyplin
-
 from django.contrib import admin
+
+from pbn_api.models import TlumaczDyscyplin
 
 
 @admin.register(TlumaczDyscyplin)

@@ -3,10 +3,19 @@ from datetime import timedelta
 
 from braces.views import GroupRequiredMixin
 from denorm.models import DirtyInstance
+from django.contrib import messages
 from django.db import transaction
 from django.http import HttpResponseRedirect
+from django.utils import timezone
 from django.views import generic
 
+from bpp.const import GR_WPROWADZANIE_DANYCH
+from bpp.models import (
+    Patent_Autor,
+    Uczelnia,
+    Wydawnictwo_Ciagle_Autor,
+    Wydawnictwo_Zwarte_Autor,
+)
 from ewaluacja2021.forms import ImportMaksymalnychSlotowForm, ZamowienieNaRaportForm
 from ewaluacja2021.models import (
     ImportMaksymalnychSlotow,
@@ -17,18 +26,6 @@ from ewaluacja2021.tasks import generuj_algorytm, suma_odpietych_dyscyplin
 from ewaluacja_liczba_n.models import DyscyplinaNieRaportowana
 from ewaluacja_liczba_n.utils import oblicz_liczby_n_dla_ewaluacji_2022_2025
 from long_running.tasks import perform_generic_long_running_task
-
-from django.contrib import messages
-
-from django.utils import timezone
-
-from bpp.const import GR_WPROWADZANIE_DANYCH
-from bpp.models import (
-    Patent_Autor,
-    Uczelnia,
-    Wydawnictwo_Ciagle_Autor,
-    Wydawnictwo_Zwarte_Autor,
-)
 
 
 class NowyImport(GroupRequiredMixin, generic.CreateView):

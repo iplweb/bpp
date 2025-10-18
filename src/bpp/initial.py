@@ -3,5 +3,5 @@ rodzaj_prawa_patentowego = [
     "wzór użytkowy",
     "wzór przemysłowy",
     "znak towarowy",
-    "odmiana rośliny"
+    "odmiana rośliny",
 ]

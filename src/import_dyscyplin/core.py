@@ -1,7 +1,9 @@
-import openpyxl
 from _decimal import Decimal, InvalidOperation
+
+import openpyxl
 from openpyxl.utils.exceptions import InvalidFileException
 
+from bpp.models import Jednostka
 from import_common.core import matchuj_autora, matchuj_jednostke, matchuj_wydzial
 from import_common.exceptions import (
     BadNoOfSheetsException,
@@ -9,8 +11,6 @@ from import_common.exceptions import (
     ImproperFileException,
 )
 from import_dyscyplin.models import Import_Dyscyplin_Row
-
-from bpp.models import Jednostka
 
 
 def przeanalizuj_plik_xls(sciezka, parent):
@@ -45,7 +45,7 @@ def przeanalizuj_plik_xls(sciezka, parent):
         ),
         parent.wiersz_naglowka + 1,
     ):
-        original = dict(zip(naglowek, [elem for elem in row]))
+        original = dict(zip(naglowek, [elem for elem in row], strict=False))
 
         if original["nazwisko"] is None or (not original["nazwisko"].strip()):
             continue
@@ -76,9 +76,9 @@ def przeanalizuj_plik_xls(sciezka, parent):
 
         if not jednostka:
             try:
-                jednostka = jednostka_cache[
-                    original["nazwa jednostki"]
-                ] = matchuj_jednostke(original["nazwa jednostki"])
+                jednostka = jednostka_cache[original["nazwa jednostki"]] = (
+                    matchuj_jednostke(original["nazwa jednostki"])
+                )
             except (
                 KeyError,
                 Jednostka.DoesNotExist,

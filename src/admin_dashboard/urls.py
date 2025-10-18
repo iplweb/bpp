@@ -48,4 +48,6 @@ urlpatterns = [
         name="charakter_formalny_stats_remaining1",
     ),
     path("database-stats/", views.database_stats, name="database_stats"),
+    path("log-menu-click/", views.log_menu_click, name="log_menu_click"),
+    path("menu-clicks-stats/", views.menu_clicks_stats, name="menu_clicks_stats"),
 ]

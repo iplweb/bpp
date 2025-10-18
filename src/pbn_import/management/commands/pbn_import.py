@@ -1,14 +1,12 @@
 """Modern PBN import command using ImportManager"""
 
+from django.contrib.auth import get_user_model
 from django.core.management import BaseCommand
 
+from bpp.models import Uczelnia
 from pbn_api.client import PBNClient
 from pbn_import.models import ImportSession
 from pbn_import.utils import ImportManager
-
-from django.contrib.auth import get_user_model
-
-from bpp.models import Uczelnia
 
 User = get_user_model()
 

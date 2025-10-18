@@ -60,13 +60,13 @@ def test_WstepneDanePoNumerzeZgloszeniaMixin_get_formset_kwargs(
 
 @pytest.mark.parametrize(["url"], [("wydawnictwo_ciagle",), ("wydawnictwo_zwarte",)])
 def test_integracyjny_strona_admina(admin_app, zgloszenie_publikacji, url):
-    url = (
+    django_url = (
         reverse(f"admin:bpp_{url}_add")
         + f"?{NUMER_ZGLOSZENIA_PARAM}={zgloszenie_publikacji.pk}"
     )
-    page = admin_app.get(url)
+    page = admin_app.get(django_url)
 
-    assert page.forms[1]["autorzy_set-0-autor"].value == str(
+    assert page.forms[f"{url}_form"]["autorzy_set-0-autor"].value == str(
         zgloszenie_publikacji.zgloszenie_publikacji_autor_set.first().autor.pk
     )
 
@@ -75,25 +75,25 @@ def test_integracyjny_strona_admina(admin_app, zgloszenie_publikacji, url):
 def test_integracyjny_admin_czy_oplaty_przechodza(
     admin_app, zgloszenie_publikacji_z_oplata, url
 ):
-    url = (
+    django_url = (
         reverse(f"admin:bpp_{url}_add")
         + f"?{NUMER_ZGLOSZENIA_PARAM}={zgloszenie_publikacji_z_oplata.pk}"
     )
-    page = admin_app.get(url)
+    page = admin_app.get(django_url)
     assert (
-        page.forms[1]["opl_pub_amount"].value
+        page.forms[url + "_form"]["opl_pub_amount"].value
         == str(zgloszenie_publikacji_z_oplata.opl_pub_amount) + ".00"
     )
-    assert page.forms[1]["opl_pub_cost_free"].value == "false"
+    assert page.forms[url + "_form"]["opl_pub_cost_free"].value == "false"
 
 
 @pytest.mark.parametrize(["url"], [("wydawnictwo_ciagle",), ("wydawnictwo_zwarte",)])
 def test_integracyjny_admin_czy_public_dostep_dnia_ustawiony(
     admin_app, zgloszenie_publikacji, url
 ):
-    url = (
+    django_url = (
         reverse(f"admin:bpp_{url}_add")
         + f"?{NUMER_ZGLOSZENIA_PARAM}={zgloszenie_publikacji.pk}"
     )
-    page = admin_app.get(url)
-    assert page.forms[1]["public_dostep_dnia"].value != ""
+    page = admin_app.get(django_url)
+    assert page.forms[url + "_form"]["public_dostep_dnia"].value != ""

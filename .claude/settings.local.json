@@ -43,7 +43,10 @@
       "Bash(echo:*)",
       "Bash(docker run:*)",
       "Bash(xxd:*)",
-      "Bash(sass:*)"
+      "Bash(sass:*)",
+      "Bash(git checkout src/django_bpp/templates/admin/bpp/wydawnictwo_ciagle/change_list.html)",
+      "Bash(grunt sass:adminthemes)",
+      "Bash(pre-commit run --all-files)"
     ],
     "deny": [],
     "ask": [],

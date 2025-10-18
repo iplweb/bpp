@@ -1,25 +1,23 @@
-# -*- encoding: utf-8 -*-
-
-
 from django.core.exceptions import MultipleObjectsReturned
-from django.db import models
-from django.db import transaction
-from django.db.models import Transform, CASCADE, SET_NULL
+from django.db import models, transaction
+from django.db.models import CASCADE, SET_NULL, Transform
 
 from bpp import fields
-from bpp.models.zrodlo import Zrodlo, Punktacja_Zrodla
+from bpp.models.zrodlo import Punktacja_Zrodla, Zrodlo
 from integrator2.models.base import BaseIntegrationElement
 from integrator2.util import read_xls_data
+
 from .base import BaseIntegration
 
 
 class UpperCase(Transform):
-    lookup_name = 'upper'
+    lookup_name = "upper"
     # bilateral = True # <- chyba w 1.8?
     # function = 'UPPER' <- j/w
 
     def as_sql(self, qn, connection):
         return "upper(" + self.lhs.as_sql(qn, connection)[0] + ")", []
+
 
 from django.db.models import CharField, TextField
 
@@ -37,7 +35,9 @@ class ListaMinisterialnaElement(BaseIntegrationElement):
     zrodlo = models.ForeignKey(Zrodlo, SET_NULL, blank=True, null=True)
 
     class Meta:
-        ordering = ['nazwa',]
+        ordering = [
+            "nazwa",
+        ]
 
     def __iter__(self):
         """Zwraca kolejne elementy do wyświetlenia na stronie w widoku tabeli.
@@ -47,8 +47,10 @@ class ListaMinisterialnaElement(BaseIntegrationElement):
         """
         return iter([self.nazwa, self.issn, self.e_issn, self.punkty_kbn])
 
+
 def last_year():
     from datetime import datetime
+
     return datetime.now().date().year - 1
 
 
@@ -57,25 +59,31 @@ class ListaMinisterialnaIntegration(BaseIntegration):
     Wartości wejściowe w plikach to nazwa czasopisma, ISSN i opcjonalnie e-ISSN.
     """
 
-    year = fields.YearField("Rok", default=last_year, help_text="Rok dla którego została wydana ta lista ministerialna")
+    year = fields.YearField(
+        "Rok",
+        default=last_year,
+        help_text="Rok dla którego została wydana ta lista ministerialna",
+    )
 
     klass = ListaMinisterialnaElement
 
     class Meta:
         verbose_name = "integracja list ministerialnych"
-        ordering = ['-uploaded_on']
+        ordering = ["-uploaded_on"]
 
     def input_file_to_dict_stream(self, limit=None, limit_sheets=None):
         gen = read_xls_data(
-                self.file.path,
-                {
-                    "TYTUŁ CZASOPISMA": "nazwa",
-                    "NR ISSN": "issn",
-                    "NR E-ISSN": "e_issn",
-                    "LICZBA PUNKTÓW ZA PUBLIKACJĘ W CZASOPIŚMIE NAUKOWYM ": "punkty_kbn"
-                },
-                "Lp.",
-                limit=limit, limit_sheets=limit_sheets)
+            self.file.path,
+            {
+                "TYTUŁ CZASOPISMA": "nazwa",
+                "NR ISSN": "issn",
+                "NR E-ISSN": "e_issn",
+                "LICZBA PUNKTÓW ZA PUBLIKACJĘ W CZASOPIŚMIE NAUKOWYM ": "punkty_kbn",
+            },
+            "Lp.",
+            limit=limit,
+            limit_sheets=limit_sheets,
+        )
         next(gen)  # wiersz z cyferkami
         return gen
 
@@ -89,13 +97,26 @@ class ListaMinisterialnaIntegration(BaseIntegration):
 
         for elem in dict_stream:
             ListaMinisterialnaElement.objects.create(
-                    parent=self,
-                    **dict([(str(x), y) for x, y in list(elem.items()) if x is not None and x != "__sheet__"]))
+                parent=self,
+                **dict(
+                    [
+                        (str(x), y)
+                        for x, y in list(elem.items())
+                        if x is not None and x != "__sheet__"
+                    ]
+                ),
+            )
         pass
 
-    strategie = [lambda obj: Zrodlo.objects.get(issn=obj.issn) if obj.issn is not None else None,
-                 lambda obj: Zrodlo.objects.get(e_issn=obj.e_issn) if obj.e_issn is not None else None,
-                 lambda obj: Zrodlo.objects.get(nazwa__upper=obj.nazwa.upper()) if obj.nazwa is not None else None]
+    strategie = [
+        lambda obj: Zrodlo.objects.get(issn=obj.issn) if obj.issn is not None else None,
+        lambda obj: Zrodlo.objects.get(e_issn=obj.e_issn)
+        if obj.e_issn is not None
+        else None,
+        lambda obj: Zrodlo.objects.get(nazwa__upper=obj.nazwa.upper())
+        if obj.nazwa is not None
+        else None,
+    ]
 
     @transaction.atomic
     def match_single_record(self, elem):

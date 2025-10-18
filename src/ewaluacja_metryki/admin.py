@@ -1,8 +1,7 @@
-from .models import MetrykaAutora, StatusGenerowania
-
 from django.contrib import admin
-
 from django.utils.html import format_html
+
+from .models import MetrykaAutora, StatusGenerowania
 
 
 @admin.register(MetrykaAutora)

@@ -10,7 +10,6 @@ class Command(BaseCommand):
     help = 'Mapuje kierunki studiów z zadanego "wydziału" i wyświetla zmienione rekordy'
 
     def add_arguments(self, parser: CommandParser):
-
         parser.add_argument(
             "--jednostka",
             default="Uniwersytet Medyczny w Lublinie",

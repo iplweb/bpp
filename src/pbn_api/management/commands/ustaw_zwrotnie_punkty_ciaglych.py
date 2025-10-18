@@ -1,8 +1,7 @@
 from tqdm import tqdm
 
-from pbn_api.management.commands.util import PBNBaseCommand
-
 from bpp.models import Punktacja_Zrodla, Wydawnictwo_Ciagle
+from pbn_api.management.commands.util import PBNBaseCommand
 
 
 class Command(PBNBaseCommand):

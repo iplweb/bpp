@@ -1,12 +1,38 @@
 from dal import autocomplete
 from django import forms
+from django.contrib import admin, messages
 from djangoql.admin import DjangoQLSearchMixin
 from mptt.forms import TreeNodeChoiceField
 from taggit.forms import TextareaTagWidget
 
+from bpp.admin import helpers
+from bpp.admin.filters import (
+    BezJakichkolwiekDyscyplinFilter,
+    CalkowitaLiczbaAutorowFilter,
+    DOIUstawioneFilter,
+    JestWydawnictwemNadrzednymDlaFilter,
+    LiczbaZnakowFilter,
+    MaWydawnictwoNadrzedneFilter,
+    OstatnioZmienionePrzezFilter,
+    PBN_UID_IDObecnyFilter,
+    UtworzonePrzezFilter,
+)
+from bpp.admin.helpers import fieldsets
+from bpp.admin.helpers.widgets import COMMA_DECIMAL_FIELD_OVERRIDE
+from bpp.models import (
+    Charakter_Formalny,
+    Wydawca,
+    Wydawnictwo_Zwarte,
+    Wydawnictwo_Zwarte_Autor,
+    Wydawnictwo_Zwarte_Streszczenie,
+    Wydawnictwo_Zwarte_Zewnetrzna_Baza_Danych,
+)
+from bpp.models.konferencja import Konferencja
+from bpp.models.seria_wydawnicza import Seria_Wydawnicza
 from crossref_bpp.mixins import AdminCrossrefAPIMixin, AdminCrossrefPBNAPIMixin
 from dynamic_columns.mixins import DynamicColumnsMixin
 from pbn_api.models import Publication
+
 from .actions import (
     ustaw_po_korekcie,
     ustaw_przed_korekta,
@@ -33,33 +59,6 @@ from .wydawnictwo_ciagle import CleanDOIWWWPublicWWWMixin
 from .xlsx_export import resources
 from .xlsx_export.mixins import EksportDanychZFormatowanieMixin, ExportActionsMixin
 from .zglos_publikacje_helpers import UzupelniajWstepneDanePoNumerzeZgloszeniaMixin
-
-from django.contrib import admin, messages
-
-from bpp.admin import helpers
-from bpp.admin.filters import (
-    BezJakichkolwiekDyscyplinFilter,
-    CalkowitaLiczbaAutorowFilter,
-    DOIUstawioneFilter,
-    JestWydawnictwemNadrzednymDlaFilter,
-    LiczbaZnakowFilter,
-    MaWydawnictwoNadrzedneFilter,
-    OstatnioZmienionePrzezFilter,
-    PBN_UID_IDObecnyFilter,
-    UtworzonePrzezFilter,
-)
-from bpp.admin.helpers import fieldsets
-from bpp.admin.helpers.widgets import COMMA_DECIMAL_FIELD_OVERRIDE
-from bpp.models import (
-    Charakter_Formalny,
-    Wydawca,
-    Wydawnictwo_Zwarte,
-    Wydawnictwo_Zwarte_Autor,
-    Wydawnictwo_Zwarte_Streszczenie,
-    Wydawnictwo_Zwarte_Zewnetrzna_Baza_Danych,
-)
-from bpp.models.konferencja import Konferencja
-from bpp.models.seria_wydawnicza import Seria_Wydawnicza
 
 
 class Wydawnictwo_Zwarte_StreszczenieInline(

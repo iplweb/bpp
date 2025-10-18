@@ -13,12 +13,10 @@ def download_institution_publications(user_id):
         user_id: ID of the user initiating the download (must have valid PBN token)
     """
     from django.db import transaction
-
-    from pbn_downloader_app.models import PbnDownloadTask
-
     from django.utils import timezone
 
     from bpp.models.profile import BppUser
+    from pbn_downloader_app.models import PbnDownloadTask
 
     # Check if there's already a running task
     running_task = PbnDownloadTask.objects.filter(status="running").first()
@@ -212,13 +210,11 @@ def download_institution_people(user_id):
         user_id: ID of the user initiating the download (must have valid PBN token)
     """
     from django.db import transaction
-
-    from pbn_downloader_app.models import PbnInstitutionPeopleTask
-
     from django.utils import timezone
 
     from bpp.models import Uczelnia
     from bpp.models.profile import BppUser
+    from pbn_downloader_app.models import PbnInstitutionPeopleTask
 
     # Check if there's already a running task
     running_task = PbnInstitutionPeopleTask.objects.filter(status="running").first()

@@ -8,15 +8,14 @@ from autoslug import AutoSlugField
 from django.db import models
 from django.db.models import CASCADE, Q
 from django.urls.base import reverse
-from tinymce.models import HTMLField
-
-from .uczelnia import Uczelnia
-
 from django.utils import timezone
+from tinymce.models import HTMLField
 
 from bpp.models import ModelZAdnotacjami
 from bpp.models.abstract import ModelZPBN_ID
 from bpp.util import FulltextSearchMixin
+
+from .uczelnia import Uczelnia
 
 
 class Wydzial(ModelZAdnotacjami, ModelZPBN_ID):

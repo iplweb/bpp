@@ -1,11 +1,10 @@
 import pytest
 from model_bakery import baker
 
+from bpp.models import Autor
 from import_polon.core import analyze_file_import_absencji
 from import_polon.forms import validate_absencje_headers
 from import_polon.models import ImportPlikuAbsencji
-
-from bpp.models import Autor
 
 
 @pytest.mark.django_db

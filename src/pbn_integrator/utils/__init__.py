@@ -17,9 +17,8 @@ from django.db.models import F, Func, IntegerField, Q
 from django.db.models.functions import Length
 from tqdm import tqdm
 
-from pbn_integrator.utils import istarmap  # noqa
-
 from bpp.const import PBN_MIN_ROK
+from pbn_integrator.utils import istarmap  # noqa
 
 if TYPE_CHECKING:
     from pbn_api.client import PBNClient
@@ -50,60 +49,6 @@ except:  # noqa
     normalize_isbn = None
     normalize_tytul_publikacji = None
 
-from pbn_api.const import ACTIVE, DELETED
-from pbn_api.exceptions import (
-    BrakIDPracyPoStroniePBN,
-    HttpException,
-    NoFeeDataException,
-    NoPBNUIDException,
-    SameDataUploadedRecently,
-    StatementDeletionError,
-    WillNotExportError,
-)
-from pbn_integrator.utils.threaded_page_getter import (
-    ThreadedMongoDBSaver,
-    ThreadedPageGetter,
-    threaded_page_getter,
-)
-
-
-def _ensure_django_imports():
-    """Ensure Django-dependent imports are available"""
-    global matchuj_autora, matchuj_wydawce, normalize_doi, normalize_isbn, normalize_tytul_publikacji
-
-    if matchuj_autora is None:
-        from import_common.core import matchuj_autora as _matchuj_autora
-        from import_common.core import matchuj_wydawce as _matchuj_wydawce
-        from import_common.normalization import normalize_doi as _normalize_doi
-        from import_common.normalization import normalize_isbn as _normalize_isbn
-        from import_common.normalization import (
-            normalize_tytul_publikacji as _normalize_tytul_publikacji,
-        )
-
-        matchuj_autora = _matchuj_autora
-        matchuj_wydawce = _matchuj_wydawce
-        normalize_doi = _normalize_doi
-        normalize_isbn = _normalize_isbn
-        normalize_tytul_publikacji = _normalize_tytul_publikacji
-
-
-from pbn_api.models import (
-    Conference,
-    Country,
-    Discipline,
-    DisciplineGroup,
-    Institution,
-    Journal,
-    Language,
-    OswiadczenieInstytucji,
-    Publication,
-    PublikacjaInstytucji,
-    PublikacjaInstytucji_V2,
-    Publisher,
-    Scientist,
-    SentData,
-)
-
 from django.contrib.postgres.search import TrigramSimilarity
 
 from bpp.models import (
@@ -125,6 +70,62 @@ from bpp.models import (
     Zrodlo,
 )
 from bpp.util import pbar
+from pbn_api.const import ACTIVE, DELETED
+from pbn_api.exceptions import (
+    BrakIDPracyPoStroniePBN,
+    HttpException,
+    NoFeeDataException,
+    NoPBNUIDException,
+    SameDataUploadedRecently,
+    StatementDeletionError,
+    WillNotExportError,
+)
+from pbn_api.models import (
+    Conference,
+    Country,
+    Discipline,
+    DisciplineGroup,
+    Institution,
+    Journal,
+    Language,
+    OswiadczenieInstytucji,
+    Publication,
+    PublikacjaInstytucji,
+    PublikacjaInstytucji_V2,
+    Publisher,
+    Scientist,
+    SentData,
+)
+from pbn_integrator.utils.threaded_page_getter import (
+    ThreadedMongoDBSaver,
+    ThreadedPageGetter,
+    threaded_page_getter,
+)
+
+
+def _ensure_django_imports():
+    """Ensure Django-dependent imports are available"""
+    global \
+        matchuj_autora, \
+        matchuj_wydawce, \
+        normalize_doi, \
+        normalize_isbn, \
+        normalize_tytul_publikacji
+
+    if matchuj_autora is None:
+        from import_common.core import matchuj_autora as _matchuj_autora
+        from import_common.core import matchuj_wydawce as _matchuj_wydawce
+        from import_common.normalization import normalize_doi as _normalize_doi
+        from import_common.normalization import normalize_isbn as _normalize_isbn
+        from import_common.normalization import (
+            normalize_tytul_publikacji as _normalize_tytul_publikacji,
+        )
+
+        matchuj_autora = _matchuj_autora
+        matchuj_wydawce = _matchuj_wydawce
+        normalize_doi = _normalize_doi
+        normalize_isbn = _normalize_isbn
+        normalize_tytul_publikacji = _normalize_tytul_publikacji
 
 
 def integruj_jezyki(client, create_if_not_exists=False):
@@ -162,7 +163,9 @@ def integruj_jezyki(client, create_if_not_exists=False):
                             pbn_uid=elem,
                         )
                     else:
-                        warnings.warn(f"Brak jezyka po stronie BPP: {elem}")
+                        warnings.warn(
+                            f"Brak jezyka po stronie BPP: {elem}", stacklevel=2
+                        )
                     continue
             else:
                 if create_if_not_exists:
@@ -172,7 +175,7 @@ def integruj_jezyki(client, create_if_not_exists=False):
                         pbn_uid=elem,
                     )
                 else:
-                    warnings.warn(f"Brak jezyka po stronie BPP: {elem}")
+                    warnings.warn(f"Brak jezyka po stronie BPP: {elem}", stacklevel=2)
                 continue
 
         if jezyk.pbn_uid_id is None:
@@ -193,6 +196,75 @@ def integruj_kraje(client):
         if remote_country["description"] != c.description:
             c.description = remote_country["description"]
             c.save()
+
+
+def integruj_dyscypliny(client):
+    """Import discipline groups and disciplines from PBN"""
+    # First, ensure all discipline groups exist
+    for remote_group in client.get_discipline_groups():
+        # Handle both dict and DisciplineGroup model object
+        group_id = (
+            remote_group.get("id")
+            if isinstance(remote_group, dict)
+            else remote_group.pk
+        )
+        try:
+            DisciplineGroup.objects.get(pk=group_id)
+        except DisciplineGroup.DoesNotExist:
+            if isinstance(remote_group, dict):
+                DisciplineGroup.objects.create(
+                    pk=group_id, **{k: v for k, v in remote_group.items() if k != "id"}
+                )
+            # else: remote_group is already a DisciplineGroup model object, skip
+
+    # Now create/update disciplines
+    for remote_discipline in client.get_disciplines():
+        # Handle both dict and Discipline model object
+        if isinstance(remote_discipline, dict):
+            code = remote_discipline.get("code")
+            disc_id = remote_discipline.get("id")
+            name = remote_discipline.get("name")
+            uuid = remote_discipline.get("uuid")
+            # Handle parent_group which could be dict or model object
+            parent_group = remote_discipline.get("parent_group")
+            if isinstance(parent_group, dict):
+                parent_group_id = parent_group.get("id")
+            elif hasattr(parent_group, "pk"):
+                parent_group_id = parent_group.pk
+            else:
+                parent_group_id = remote_discipline.get("parent_group_id")
+        else:
+            code = remote_discipline.code
+            disc_id = remote_discipline.pk
+            name = remote_discipline.name
+            uuid = (
+                remote_discipline.uuid if hasattr(remote_discipline, "uuid") else None
+            )
+            parent_group_id = (
+                remote_discipline.parent_group.pk
+                if hasattr(remote_discipline, "parent_group")
+                and remote_discipline.parent_group
+                else None
+            )
+
+        try:
+            d = Discipline.objects.get(code=code)
+        except Discipline.DoesNotExist:
+            create_kwargs = {
+                "code": code,
+                "name": name,
+                "parent_group_id": parent_group_id,
+                "uuid": uuid,
+            }
+            if disc_id:
+                create_kwargs["pk"] = disc_id
+            Discipline.objects.create(**create_kwargs)
+            continue
+
+        # Update existing discipline if needed
+        if name != d.name:
+            d.name = name
+            d.save()
 
 
 @transaction.atomic
@@ -410,8 +482,10 @@ def integruj_uczelnie():
         u = Institution.objects.get(
             versions__contains=[{"current": True, "object": {"name": uczelnia.nazwa}}]
         )
-    except Institution.DoesNotExist:
-        raise Exception(f"Nie umiem dopasowac uczelni po nazwie: {uczelnia.nazwa}")
+    except Institution.DoesNotExist as e:
+        raise Exception(
+            f"Nie umiem dopasowac uczelni po nazwie: {uczelnia.nazwa}"
+        ) from e
 
     if uczelnia.pbn_uid_id != u.mongoId:
         uczelnia.pbn_uid = u
@@ -936,7 +1010,6 @@ def integruj_autorow_z_uczelni(
     total = scientists.count()
 
     for person in pbar(scientists, total, "Integrowanie autorów", callback=callback):
-
         autor = matchuj_autora(
             imiona=person.value("object", "name", return_none=True),
             nazwisko=person.value("object", "lastName", return_none=True),
@@ -1656,7 +1729,8 @@ def _synchronizuj_pojedyncza_publikacje(
             ):
                 warnings.warn(
                     f"UWAGA: rekord z BPP {rec} mimo posiadania PBN UID {rec.pbn_uid_id} dostał"
-                    f"przy synchronizacji komunkat: {e.content} !! Sprawa DO SPRAWDZENIA RECZNIE"
+                    f"przy synchronizacji komunkat: {e.content} !! Sprawa DO SPRAWDZENIA RECZNIE",
+                    stacklevel=2,
                 )
                 return
 
@@ -1687,7 +1761,8 @@ def _synchronizuj_pojedyncza_publikacje(
 
             else:
                 warnings.warn(
-                    f"{rec.pk},{rec.tytul_oryginalny},{rec.rok},PBN Server Error: {e.content}"
+                    f"{rec.pk},{rec.tytul_oryginalny},{rec.rok},PBN Server Error: {e.content}",
+                    stacklevel=2,
                 )
                 return
 
@@ -1705,7 +1780,8 @@ def _synchronizuj_pojedyncza_publikacje(
 
         if e.status_code == 500:
             warnings.warn(
-                f"{rec.pk},{rec.tytul_oryginalny},{rec.rok},PBN Server Error: {e.content}"
+                f"{rec.pk},{rec.tytul_oryginalny},{rec.rok},PBN Server Error: {e.content}",
+                stacklevel=2,
             )
 
         if e.status_code == 403:
@@ -1721,7 +1797,8 @@ def _synchronizuj_pojedyncza_publikacje(
 
     except WillNotExportError as e:
         warnings.warn(
-            f"{rec.pk},{rec.tytul_oryginalny},{rec.rok},nie wyeksportuje, bo: {e}"
+            f"{rec.pk},{rec.tytul_oryginalny},{rec.rok},nie wyeksportuje, bo: {e}",
+            stacklevel=2,
         )
 
 
@@ -1957,7 +2034,6 @@ def integruj_oswiadczenia_z_instytucji_pojedyncza_praca(
                 return
 
         if elem.disciplines:
-
             print(
                 f"XXX NADPISZE w tej pracy autora {rec.autor} autorem {aut}, wyslij ta prace do PBNu "
                 f"ponownie! (dyscyplina: {elem.get_bpp_discipline()})\n"
@@ -2207,7 +2283,7 @@ def _pobierz_pojedyncza_prace(client, publicationId):
             and f"Publication with ID {publicationId} was not exists!" in e.content
             # "was not exists" to oryginalna pisownia błędu z PBNu.
         ):
-            raise BrakIDPracyPoStroniePBN(e)
+            raise BrakIDPracyPoStroniePBN(e) from e
 
         if e.status_code == 500 and "Internal server error" in e.content:
             print(

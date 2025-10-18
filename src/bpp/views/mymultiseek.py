@@ -27,7 +27,6 @@ class MyMultiseekResults(MultiseekResults):
     registry = "bpp.multiseek.registry"
 
     def get_queryset(self, only_those_ids=None):
-
         if only_those_ids:
             qset = (
                 get_registry(self.registry)

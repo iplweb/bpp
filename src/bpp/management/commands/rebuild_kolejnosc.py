@@ -1,5 +1,3 @@
-# -*- encoding: utf-8 -*-
-
 from django.conf import settings
 from django.core.management import BaseCommand
 
@@ -34,7 +32,7 @@ class Command(BaseCommand):
         _orig_value = getattr(settings, "BPP_WALIDUJ_AFILIACJE_AUTOROW", True)
 
         try:
-            setattr(settings, "BPP_WALIDUJ_AFILIACJE_AUTOROW", False)
+            settings.BPP_WALIDUJ_AFILIACJE_AUTOROW = False
 
             for klass in [
                 Wydawnictwo_Ciagle_Autor,
@@ -50,7 +48,6 @@ class Command(BaseCommand):
                 q = klass.objects.all().order_by("rekord_id", "kolejnosc", "id")
 
                 for elem in q:
-
                     if old_id != elem.rekord_id:
                         old_id = elem.rekord_id
                         next_kolejnosc = 0
@@ -74,4 +71,4 @@ class Command(BaseCommand):
 
                     next_kolejnosc += 1
         finally:
-            setattr(settings, "BPP_WALIDUJ_AFILIACJE_AUTOROW", _orig_value)
+            settings.BPP_WALIDUJ_AFILIACJE_AUTOROW = _orig_value

@@ -2,14 +2,12 @@ import random
 from urllib.parse import parse_qs
 from urllib.parse import quote as urlquote
 
-from django.db.models import Q
-from django.forms import BaseInlineFormSet
-from django.urls import reverse
-
 from django.contrib import messages
 from django.contrib.admin.utils import quote
 from django.contrib.contenttypes.models import ContentType
-
+from django.db.models import Q
+from django.forms import BaseInlineFormSet
+from django.urls import reverse
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 

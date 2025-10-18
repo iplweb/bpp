@@ -40,22 +40,27 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = 2621440 * 3  # 7.5 MB
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 50000
 
 CACHEOPS = {
-    "bpp.bppmultiseekvisibility": {"ops": ("get", "fetch")},
-    "pbn_api.scientist": {"ops": ("get", "fetch")},
-    "pbn_api.journal": {"ops": ("get", "fetch")},
-    "pbn_api.publisher": {"ops": ("get", "fetch")},
-    "pbn_api.publication": {"ops": ("get", "fetch")},
-    "dbtemplates.template": {"ops": ("fetch", "get")},
-    "bpp.szablondlaopisubibliograficznego": {"ops": ("fetch", "get")},
-    "miniblog.article": {"ops": ("get", "fetch")},
-    "contenttypes.contenttype": {"ops": ("get", "fetch")},
-    "ewaluacja_common.rodzaj_autora": {"ops": ("fetch", "get")},
-    "bpp.rzeczownik": {"ops": ("fetch", "get")},
-    "django_countdown.SiteCountdown": {"ops": ("fetch", "get")},
-    "bpp.uczelnia": {"ops": ("get", "fetch")},
-    "bpp.wydzial": {"ops": ("get", "fetch")},
-    "bpp.jednostka": {"ops": ("get", "fetch")},
-    "bpp.wydawnictwo_ciagle_streszczenie": {"ops": ("get", "fetch")},
+    "bpp.bppmultiseekvisibility": {"ops": ("get", "fetch", "count", "exists")},
+    "pbn_api.scientist": {"ops": ("get", "fetch", "count", "exists")},
+    "pbn_api.journal": {"ops": ("get", "fetch", "count", "exists")},
+    "pbn_api.publisher": {"ops": ("get", "fetch", "count", "exists")},
+    "pbn_api.publication": {"ops": ("get", "fetch", "count", "exists")},
+    "dbtemplates.template": {"ops": ("fetch", "get", "count", "exists")},
+    "bpp.szablondlaopisubibliograficznego": {
+        "ops": ("fetch", "get", "count", "exists")
+    },
+    "miniblog.article": {"ops": ("get", "fetch", "count", "exists")},
+    "contenttypes.contenttype": {"ops": ("get", "fetch", "count", "exists")},
+    "ewaluacja_common.rodzaj_autora": {"ops": ("fetch", "get", "count", "exists")},
+    "bpp.rzeczownik": {"ops": ("fetch", "get", "count", "exists")},
+    "django_countdown.SiteCountdown": {"ops": ("fetch", "get", "count", "exists")},
+    "bpp.uczelnia": {"ops": ("get", "fetch", "count", "exists")},
+    "bpp.wydzial": {"ops": ("get", "fetch", "count", "exists")},
+    "bpp.jednostka": {"ops": ("get", "fetch", "count", "exists")},
+    "bpp.wydawnictwo_ciagle_streszczenie": {"ops": ("get", "fetch", "count", "exists")},
+    # Wildcard dla wszystkich pozostałych modeli - cache tylko count() dla admin filter counts
+    # Timeout: 3600s (1h), automatyczna invalidacja gdy model się zmieni
+    "*.*": {"ops": ("count",), "timeout": 3600},
 }
 
 CACHEOPS_REDIS = BROKER_URL  # noqa

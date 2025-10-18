@@ -2,7 +2,6 @@
 import json
 
 from django.forms import widgets
-
 from django.utils.safestring import mark_safe
 
 

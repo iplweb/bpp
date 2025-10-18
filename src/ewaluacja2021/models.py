@@ -6,16 +6,16 @@ from django.db import models
 from django.db.models import JSONField
 from django.urls import reverse
 
-from import_common.core import matchuj_autora, matchuj_dyscypline
-from . import const
-from .fields import LiczbaNField
-from .util import InputXLSX, float_or_string_or_int_or_none_to_decimal
-from .validators import xlsx_header_validator
-
 from bpp.models import Cache_Punktacja_Autora_Query
 from bpp.models.autor import Autor
 from bpp.models.dyscyplina_naukowa import Dyscyplina_Naukowa
 from bpp.models.uczelnia import Uczelnia
+from import_common.core import matchuj_autora, matchuj_dyscypline
+
+from . import const
+from .fields import LiczbaNField
+from .util import InputXLSX, float_or_string_or_int_or_none_to_decimal
+from .validators import xlsx_header_validator
 
 
 def dyscypliny_naukowe_w_bazie():
@@ -160,7 +160,6 @@ class ImportMaksymalnychSlotow(models.Model):
         self.wierszimportumaksymalnychslotow_set.all().delete()
         i = InputXLSX(self.plik.path, self.header_columns)
         for elem in i.rows_as_dict():
-
             wiersz = WierszImportuMaksymalnychSlotow(
                 parent=self,
                 orig_data=elem,

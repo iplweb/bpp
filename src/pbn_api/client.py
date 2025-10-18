@@ -9,9 +9,11 @@ from urllib.parse import parse_qs, quote, urlparse
 
 import requests
 import rollbar
+from django.contrib.contenttypes.models import ContentType
 from django.core.mail import mail_admins
 from django.db import transaction
 from django.db.models import Model
+from django.utils.itercompat import is_iterable
 from requests import ConnectionError
 from requests.exceptions import JSONDecodeError as RequestsJSONDecodeError
 from requests.exceptions import SSLError
@@ -63,10 +65,6 @@ from pbn_api.models import TlumaczDyscyplin
 from pbn_api.models.discipline import Discipline, DisciplineGroup
 from pbn_api.models.sentdata import SentData
 from pbn_api.utils import rename_dict_key
-
-from django.contrib.contenttypes.models import ContentType
-
-from django.utils.itercompat import is_iterable
 
 
 def smart_content(content):
@@ -707,7 +705,6 @@ class PBNClient(
         return self.transport.post(PBN_POST_PUBLICATIONS_URL, body=json)
 
     def convert_js_with_statements_to_no_statements(self, json):
-
         # PBN zmienił givenNames na firstName
         for elem in json.get("authors", []):
             elem["firstName"] = elem.pop("givenNames")
@@ -882,6 +879,7 @@ class PBNClient(
 
     def download_publication(self, doi=None, objectId=None):
         from pbn_integrator.utils import zapisz_mongodb
+
         from .models import Publication
 
         assert doi or objectId
@@ -991,7 +989,6 @@ class PBNClient(
         publication = self.download_publication(objectId=objectId)
 
         if not bez_oswiadczen:
-
             no_tries = 3
             #
             # self.download_statements_of_publication potrafi zwrócić błąd 500

@@ -45,6 +45,22 @@
     border: 1px solid #ccc;
 }
 
+.theme-selector-golden a::before {
+    background: linear-gradient(135deg, #d4af37 50%, #2c2416 50%);
+}
+
+.theme-selector-srebrny a::before {
+    background: linear-gradient(135deg, #c0c0c0 50%, #2d2d2d 50%);
+}
+
+.theme-selector-mario-bros a::before {
+    background: linear-gradient(135deg, #e52521 50%, #0066cc 50%);
+}
+
+.theme-selector-luigi a::before {
+    background: linear-gradient(135deg, #00a651 50%, #0066cc 50%);
+}
+
 /* Active theme indicator */
 .theme-selector-item.active a::after {
     content: "✓";

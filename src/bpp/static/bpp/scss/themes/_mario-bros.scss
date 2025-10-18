@@ -1,0 +1,293 @@
+/* -------------------------------------------------------------------------------- */
+/* Theme 7: Mario Bros (Brat Marysi - Fun Retro Gaming Style) */
+/* -------------------------------------------------------------------------------- */
+
+body.theme-mario-bros {
+    background: #e0f0ff !important;
+
+    #grp-navigation {
+        background: linear-gradient(180deg, #e52521 0%, #c91e1a 100%) !important;
+        border-bottom: 3px solid #961614;
+
+        ul#navigation-menu li a {
+            color: #ffffff !important;
+            border-right: 1px solid #c91e1a;
+            border-left: 1px solid #ff4d4a;
+            font-weight: 500 !important;
+        }
+
+        ul#navigation-menu li a:hover,
+        ul#navigation-menu li.over > a {
+            background-color: #ff4d4a !important;
+            color: #fff200 !important;
+        }
+
+        ul#navigation-menu li ul {
+            background: #ffffff !important;
+            box-shadow: 0 8px 24px rgba(229, 37, 33, 0.4);
+            border: 3px solid #0066cc;
+
+            li {
+                background: #ffffff !important;
+                border-top: 2px solid #e0f0ff;
+
+                a {
+                    background-color: #ffffff !important;
+                    color: #1a1a1a !important;
+                    border-left: 4px solid transparent;
+
+                    &:hover {
+                        background-color: #e0f0ff !important;
+                        border-left: 4px solid #e52521 !important;
+                        color: #e52521 !important;
+                    }
+                }
+            }
+        }
+
+        ul#navigation-menu li.has-columns ul {
+            background: #ffffff !important;
+            border: 3px solid #0066cc;
+
+            li {
+                background: #ffffff !important;
+
+                a {
+                    background-color: #ffffff !important;
+                    border-bottom: 2px solid #e0f0ff;
+
+                    &:hover {
+                        background-color: #e0f0ff !important;
+                        border-left: 4px solid #e52521 !important;
+                    }
+                }
+            }
+        }
+
+        ul#navigation-menu li.menu-icon-user ul li:first-child a {
+            background-color: #fff5d6 !important;
+            font-weight: bold !important;
+        }
+    }
+
+    /* Context navigation for Mario Bros theme */
+    #grp-context-navigation {
+        background: #ffffff !important;
+        border-bottom: 3px solid #0066cc !important;
+
+        ul li {
+            color: #666666 !important;
+
+            a {
+                color: #1a1a1a !important;
+                font-weight: 500 !important;
+
+                &:hover {
+                    color: #e52521 !important;
+                }
+            }
+        }
+    }
+
+    /* Buttons for Mario Bros theme */
+    .grp-button {
+        background-image: none !important;
+        background: linear-gradient(180deg, #0066cc 0%, #0052a3 100%) !important;
+        border: 2px solid #003d7a !important;
+        color: #ffffff !important;
+        font-weight: bold !important;
+        border-radius: 4px !important;
+
+        &:hover {
+            background: linear-gradient(180deg, #0077ee 0%, #0066cc 100%) !important;
+            border: 2px solid #0052a3 !important;
+            transform: translateY(-1px);
+        }
+
+        &.grp-default {
+            background: linear-gradient(180deg, #e52521 0%, #c91e1a 100%) !important;
+            border: 2px solid #961614 !important;
+            color: #ffffff !important;
+
+            &:hover {
+                background: linear-gradient(180deg, #ff4d4a 0%, #e52521 100%) !important;
+                border: 2px solid #c91e1a !important;
+            }
+        }
+    }
+
+    /* Fixed footer for Mario Bros theme */
+    .grp-fixed-footer {
+        background-image: none !important;
+        background: linear-gradient(180deg, #fff5d6 0%, #ffe89d 100%) !important;
+        border-top: 3px solid #ffd54f !important;
+
+        .grp-button {
+            background: linear-gradient(180deg, #0066cc 0%, #0052a3 100%) !important;
+            border: 2px solid #003d7a !important;
+
+            &:hover {
+                background: linear-gradient(180deg, #0077ee 0%, #0066cc 100%) !important;
+            }
+        }
+    }
+
+    /* Body and general styles for Mario Bros */
+    .grp-collapse {
+        border: 2px solid #0066cc !important;
+        background: #e0f0ff !important;
+        border-radius: 4px !important;
+
+        &.grp-open {
+            background: #f0f7ff !important;
+        }
+    }
+
+    .fieldset.grp-module .grp-row label {
+        color: #1a1a1a !important;
+        font-weight: 600 !important;
+    }
+
+    .grp-module .grp-row:not(tr) {
+        border-bottom: 2px solid #e0f0ff !important;
+        background: #ffffff !important;
+
+        &:hover {
+            background: #fff5d6 !important;
+        }
+    }
+
+    /* Select2 styles for Mario Bros */
+    .select2-container--default .select2-selection--single {
+        background: #ffffff !important;
+        border: 2px solid #0066cc !important;
+        border-radius: 4px !important;
+
+        .select2-selection__rendered {
+            color: #1a1a1a !important;
+            font-weight: 500 !important;
+        }
+    }
+
+    .select2-container--default .select2-results__option--highlighted[aria-selected] {
+        background: linear-gradient(180deg, #e52521 0%, #c91e1a 100%) !important;
+        color: #ffffff !important;
+        font-weight: bold !important;
+    }
+
+    .select2-dropdown {
+        background: #ffffff !important;
+        border: 2px solid #0066cc !important;
+        border-radius: 4px !important;
+    }
+
+    .select2-container--default .select2-search--dropdown .select2-search__field {
+        background: #f0f7ff !important;
+        border: 2px solid #0066cc !important;
+        border-radius: 4px !important;
+        color: #1a1a1a !important;
+    }
+
+    /* Filter panel styles for Mario Bros theme */
+    .filter-panel .filter-panel-content .filter-group .filter-title.filter-collapsible.has-selection {
+        border-left-color: #e52521 !important;
+        background: linear-gradient(135deg, #ffe0df 0%, #ffc9c8 100%) !important;
+        border-radius: 4px !important;
+
+        &:hover {
+            background: linear-gradient(135deg, #ffc9c8 0%, #ffb2b0 100%) !important;
+        }
+
+        .selected-filter-value {
+            color: #c91e1a !important;
+            font-weight: bold !important;
+        }
+    }
+
+    /* Add some fun coin-like elements to headers */
+    h1, h2 {
+        color: #1a1a1a !important;
+        text-shadow: 2px 2px 0px #fff5d6 !important;
+    }
+
+    /* Support button for Mario Bros theme */
+    .bpp-support-button {
+        background: linear-gradient(180deg, #e52521 0%, #c91e1a 100%) !important;
+        color: #ffffff !important;
+        border-radius: 50px !important;
+        font-weight: bold !important;
+
+        &:hover {
+            background: linear-gradient(180deg, #ff4d4a 0%, #e52521 100%) !important;
+            transform: translateY(-2px);
+        }
+
+        &:focus {
+            outline: 2px solid #fff200 !important;
+        }
+    }
+
+    /* Link colors for Mario Bros theme */
+    a {
+        color: #0066cc !important; /* Nintendo blue */
+
+        &:hover {
+            color: #e52521 !important; /* Mario red on hover */
+        }
+    }
+
+    /* Info message colors for Mario Bros theme */
+    .grp-info,
+    ul.grp-messagelist li.info {
+        background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%) !important;
+        border-left: 3px solid #0066cc !important;
+        color: #01579b !important;
+
+        a {
+            color: #0052a3 !important;
+            font-weight: bold !important;
+
+            &:hover {
+                color: #e52521 !important;
+            }
+        }
+    }
+
+    /* Menu icon styles for Mario Bros theme */
+    .menu-icon {
+        background: linear-gradient(180deg, #0066cc 0%, #0052a3 100%) !important;
+    }
+
+    .menu-click-item:hover .menu-icon {
+        background: linear-gradient(180deg, #0077ee 0%, #0066cc 100%) !important;
+    }
+
+    /* Add link and focus state buttons for Mario Bros theme */
+    .grp-add-link {
+        background: linear-gradient(180deg, #e52521 0%, #c91e1a 100%) !important;
+        color: #ffffff !important;
+        border: 2px solid #961614 !important;
+        border-radius: 4px !important;
+        font-weight: bold !important;
+
+        &:hover {
+            background: linear-gradient(180deg, #ff4d4a 0%, #e52521 100%) !important;
+            border: 2px solid #c91e1a !important;
+            color: #ffffff !important;
+            transform: translateY(-1px);
+        }
+    }
+
+    .grp-state-focus {
+        background: linear-gradient(135deg, #fff5d6 0%, #ffe89d 100%) !important;
+        color: #e52521 !important;
+        border: 2px solid #fff200 !important;
+        border-radius: 4px !important;
+        font-weight: bold !important;
+
+        &:hover {
+            background: linear-gradient(135deg, #fff200 0%, #ffd54f 100%) !important;
+            color: #c91e1a !important;
+        }
+    }
+}

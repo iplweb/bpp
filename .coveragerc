@@ -1,0 +1,36 @@
+[run]
+source = src
+branch = True
+omit =
+    */migrations/*
+    */tests/*
+    */test_*.py
+    */__pycache__/*
+    */site-packages/*
+    */distutils/*
+    */venv/*
+
+[report]
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    raise AssertionError
+    raise NotImplementedError
+    if __name__ == .__main__.:
+    if TYPE_CHECKING:
+    @abstractmethod
+    @abstractproperty
+    @abc.abstractmethod
+    @abc.abstractproperty
+    if 0:
+    if False:
+    class .*\bProtocol\):
+    @(abc\.)?abstractmethod
+
+ignore_errors = True
+precision = 2
+show_missing = True
+skip_covered = True
+
+[html]
+directory = cov_html

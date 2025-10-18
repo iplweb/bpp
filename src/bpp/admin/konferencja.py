@@ -1,14 +1,13 @@
 from django import forms
-
-from miniblog.admin import SmallerTextarea
-from ..models.konferencja import Konferencja
-from .core import BaseBppAdminMixin
-from .helpers.fieldsets import ADNOTACJE_FIELDSET
-
 from django.contrib import admin
 
 from bpp.admin.helpers import LimitingFormset
 from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
+from miniblog.admin import SmallerTextarea
+
+from ..models.konferencja import Konferencja
+from .core import BaseBppAdminMixin
+from .helpers.fieldsets import ADNOTACJE_FIELDSET
 
 
 class Wydawnictwo_Zwarte_Konferencja_Form(forms.ModelForm):

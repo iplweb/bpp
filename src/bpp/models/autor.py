@@ -7,16 +7,14 @@ from __future__ import annotations
 from datetime import date, datetime, timedelta
 
 from autoslug import AutoSlugField
+from django.contrib.postgres.search import SearchVectorField as VectorField
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
 from django.db import IntegrityError, models, transaction
 from django.db.models import CASCADE, SET_NULL, Count, Q, Sum, UniqueConstraint
 from django.urls.base import reverse
-from tinymce.models import HTMLField
-
-from django.contrib.postgres.search import SearchVectorField as VectorField
-
 from django.utils import timezone
+from tinymce.models import HTMLField
 
 from bpp import const
 from bpp.core import zbieraj_sloty

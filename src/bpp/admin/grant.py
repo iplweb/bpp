@@ -1,6 +1,7 @@
-from django.contrib.contenttypes.admin import GenericStackedInline, GenericTabularInline
 from django import forms
 from django.contrib import admin
+from django.contrib.contenttypes.admin import GenericTabularInline
+
 from bpp.models import Grant, Grant_Rekordu
 
 

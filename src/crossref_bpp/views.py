@@ -1,13 +1,12 @@
+from django.contrib import messages
 from django.http import HttpResponseRedirect
 from django.template.response import TemplateResponse
+
+from bpp.models import Uczelnia
 
 from .admin.helpers import merge_crossref_and_pbn_data
 from .core import Komparator, StatusPorownania
 from .forms import PobierzZCrossrefAPIForm
-
-from django.contrib import messages
-
-from bpp.models import Uczelnia
 
 
 def pobierz_z_crossref(request, context=None, crossref_templates=None):

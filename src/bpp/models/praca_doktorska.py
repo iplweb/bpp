@@ -1,14 +1,7 @@
 from denorm import denormalized, depend_on_related
+from django.contrib.postgres.fields import ArrayField
 from django.db import models
 from django.db.models import CASCADE, SET_NULL
-
-from .autor import Autor
-from .struktura import Jednostka
-from .system import Typ_Odpowiedzialnosci
-from .wydawnictwo_zwarte import Wydawnictwo_Zwarte_Baza
-
-from django.contrib.postgres.fields import ArrayField
-
 from django.utils.functional import cached_property
 
 from bpp.models import (
@@ -19,6 +12,11 @@ from bpp.models import (
 )
 from bpp.models.abstract import DwaTytuly
 
+from .autor import Autor
+from .struktura import Jednostka
+from .system import Typ_Odpowiedzialnosci
+from .wydawnictwo_zwarte import Wydawnictwo_Zwarte_Baza
+
 
 class Praca_Doktorska_Baza(
     NieMaProcentowMixin,
@@ -26,7 +24,6 @@ class Praca_Doktorska_Baza(
     ModelZOplataZaPublikacje,
     Wydawnictwo_Zwarte_Baza,
 ):
-
     jednostka = models.ForeignKey(Jednostka, CASCADE)
 
     @property

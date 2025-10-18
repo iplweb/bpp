@@ -1186,7 +1186,7 @@ ROLLBAR = {
     "code_version": VERSION,
     "root": BASE_DIR,
     "ignorable_404_urls": (
-        re.compile("/favicon\\.ico"),
+        re.compile(r"/favicon\.ico"),
         re.compile(r".*\{\{\s*clickURL\s*\}\}$"),
     ),
 }

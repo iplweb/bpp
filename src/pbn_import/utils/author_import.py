@@ -1,9 +1,9 @@
 """Author import utilities"""
 
-from pbn_integrator.utils import integruj_autorow_z_uczelni, pobierz_ludzi_z_uczelni
-from .base import ImportStepBase
-
 from bpp.models import Uczelnia
+from pbn_integrator.utils import integruj_autorow_z_uczelni, pobierz_ludzi_z_uczelni
+
+from .base import ImportStepBase
 
 
 class AuthorImporter(ImportStepBase):

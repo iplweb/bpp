@@ -1,5 +1,4 @@
-""" Tablib - XLSX Support.
-"""
+"""Tablib - XLSX Support."""
 
 from io import BytesIO
 

@@ -2,17 +2,13 @@
 Moduł do wyszukiwania zdublowanych autorów w systemie BPP.
 """
 
-from typing import List, Optional
-
-from django.db.models import Q, QuerySet
-
-from deduplikator_autorow.models import IgnoredAuthor, NotADuplicate
-from pbn_api.models import OsobaZInstytucji, Scientist
-
 from django.contrib.contenttypes.models import ContentType
+from django.db.models import Q, QuerySet
 
 from bpp.models import Autor
 from bpp.models.cache import Rekord
+from deduplikator_autorow.models import IgnoredAuthor, NotADuplicate
+from pbn_api.models import OsobaZInstytucji, Scientist
 
 # Stałe reprezentujące maksymalną i minimalną możliwą pewność duplikatu
 # Obliczone na podstawie wszystkich kryteriów oceny w analiza_duplikatow()
@@ -211,9 +207,9 @@ def analiza_duplikatow(osoba_z_instytucji: OsobaZInstytucji) -> dict:
             analiza["powody_podobienstwa"].append(
                 f"mało publikacji ({publikacje_duplikat}) - prawdopodobny duplikat"
             )
-            analiza[
-                "pewnosc"
-            ] += 10  # zwiększ pewność dla autorów z małą liczbą publikacji
+            analiza["pewnosc"] += (
+                10  # zwiększ pewność dla autorów z małą liczbą publikacji
+            )
 
         # Analiza tytułu naukowego
         if not duplikat.tytul and glowny_autor.tytul:
@@ -408,8 +404,8 @@ def autor_ma_publikacje_z_lat(
 
 
 def znajdz_pierwszego_autora_z_duplikatami(
-    excluded_authors: Optional[List[Scientist]] = None,
-) -> Optional[Scientist]:
+    excluded_authors: list[Scientist] | None = None,
+) -> Scientist | None:
     """
     Znajduje pierwszego autora (Scientist), który ma możliwe duplikaty w systemie BPP.
     Priorytetyzuje autorów z publikacjami z lat 2022-2025.
@@ -515,8 +511,6 @@ def scal_autora(glowny_autor, autor_duplikat, user, skip_pbn=False):
     """
     from django.db import transaction
 
-    from pbn_export_queue.models import PBN_Export_Queue
-
     from bpp.models import (
         Autor_Dyscyplina,
         Patent_Autor,
@@ -525,6 +519,7 @@ def scal_autora(glowny_autor, autor_duplikat, user, skip_pbn=False):
         Wydawnictwo_Ciagle_Autor,
         Wydawnictwo_Zwarte_Autor,
     )
+    from pbn_export_queue.models import PBN_Export_Queue
 
     results = {
         "success": True,
@@ -1049,10 +1044,9 @@ def export_duplicates_to_xlsx():
     """
     from io import BytesIO
 
+    from django.contrib.sites.models import Site
     from openpyxl.styles import Font
     from openpyxl.workbook import Workbook
-
-    from django.contrib.sites.models import Site
 
     from bpp.util import worksheet_columns_autosize, worksheet_create_table
 

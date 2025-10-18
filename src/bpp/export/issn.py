@@ -1,9 +1,8 @@
 import random
 
 from django.db.models import Exists, OuterRef, Q
-from openpyxl import Workbook
-
 from django.utils import timezone
+from openpyxl import Workbook
 
 from bpp.models import Wydawnictwo_Ciagle, Zrodlo
 

@@ -1,15 +1,5 @@
-from django.db import transaction
-
-from ... import const
-from ...const import PBN_MAX_ROK, PBN_MIN_ROK
-from .exceptions import CannotAdapt
-from .wydawnictwo_ciagle import (
-    SlotKalkulator_Wydawnictwo_Ciagle_Prog1,
-    SlotKalkulator_Wydawnictwo_Ciagle_Prog2,
-)
-
 from django.contrib.contenttypes.models import ContentType
-
+from django.db import transaction
 from django.utils.functional import cached_property
 
 from bpp.models import Dyscyplina_Naukowa, Uczelnia, Wydawca
@@ -23,6 +13,14 @@ from bpp.models.sloty.wydawnictwo_zwarte import (
 )
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
+
+from ... import const
+from ...const import PBN_MAX_ROK, PBN_MIN_ROK
+from .exceptions import CannotAdapt
+from .wydawnictwo_ciagle import (
+    SlotKalkulator_Wydawnictwo_Ciagle_Prog1,
+    SlotKalkulator_Wydawnictwo_Ciagle_Prog2,
+)
 
 
 def ISlot(original, uczelnia=None):

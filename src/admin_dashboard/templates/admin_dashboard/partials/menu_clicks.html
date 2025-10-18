@@ -1,0 +1,35 @@
+{% if top_clicks %}
+<div class="menu-clicks-grid" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 15px; padding: 15px; justify-items: center;">
+    {% for click in top_clicks %}
+    <a href="{{ click.menu_url }}" class="menu-click-item" style="text-decoration: none; text-align: center; display: flex; flex-direction: column;
+    align-items: center; max-width: 80px;">
+        <div class="menu-icon" style="width: 50px; height: 50px; border-radius: 50%; background-color: #417690; color: white;
+        display: flex; align-items: center; justify-content: center; font-size: 28px; margin-bottom: 8px;
+        transition: all 0.2s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            {{ click.emoji }}
+        </div>
+        <span class="menu-label" style="font-size: 11px; color: #333; line-height: 1.2; word-wrap: break-word; max-width: 100%;">
+            {{ click.menu_label }}
+        </span>
+    </a>
+    {% endfor %}
+</div>
+<style>
+    .menu-click-item:hover .menu-icon {
+        background-color: #205067;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    }
+    .menu-click-item:hover .menu-label {
+        color: #417690;
+    }
+    @media (max-width: 768px) {
+        .menu-clicks-grid {
+            grid-template-columns: repeat(3, 1fr) !important;
+            gap: 10px !important;
+        }
+    }
+</style>
+{% else %}
+<p style="padding: 10px; color: #666;">Brak kliknięć w menu. Zacznij korzystać z menu, a tutaj pojawią się Twoje najczęściej wybierane pozycje.</p>
+{% endif %}

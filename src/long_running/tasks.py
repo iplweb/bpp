@@ -11,7 +11,6 @@ from long_running.exceptions import (
 def perform_generic_long_running_task(
     app_label, model, pk, no_tries=0, max_tries=10, delay_between_tries=5
 ):
-
     if no_tries >= max_tries:
         raise ObjectDoesNotExistException(app_label, model, pk, no_tries, max_tries)
 

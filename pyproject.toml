@@ -11,7 +11,7 @@ dependencies = [
     "arrow==1.2.1",
     "numpy>=2.1.2",
     "pygad>=3.3.1",
-    "django-denorm-iplweb>=1.5.0",
+    "django-denorm-iplweb>=1.6.0",
     "django-tabular-permissions==2.9.1",
     "simplejson==3.17.5",
     "django-reversion==5.0.4",
@@ -261,6 +261,40 @@ line-ending = "auto"
 [tool.ruff.lint.isort]
 known-first-party = ["bpp", "django_bpp"]
 split-on-trailing-comma = true
+
+[tool.coverage.run]
+# Support for parallel test runners
+parallel = true
+concurrency = ["multiprocessing"]
+# Measure branch coverage
+branch = true
+# Omit test files and migrations from coverage
+omit = [
+    "*/migrations/*",
+    "*/tests/*",
+    "*/test_*.py",
+    "*/__pycache__/*",
+    "*/site-packages/*"
+]
+
+[tool.coverage.report]
+# Exclude test code and migrations from report
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "if typing.TYPE_CHECKING:",
+]
+precision = 2
+
+[tool.coverage.html]
+directory = "cov_html"
+
+[tool.coverage.xml]
+output = "cov.xml"
 
 [build-system]
 requires = ["setuptools>=61.0", "wheel"]

@@ -81,7 +81,6 @@ def generate_config(ram_kb):
     nproc = get_nproc()
     max_parallel = 1
     if nproc >= 4:
-
         max_parallel = 2
 
         if nproc in [5, 6]:
@@ -192,16 +191,12 @@ def test():
         real_keys = sorted(real_config.keys())
         expected_keys = sorted(expected_config.keys())
 
-        m = "{}: keys differ\n  Got: {}\n  Expected: {}".format(
-            prefix, real_keys, expected_keys
-        )
+        m = f"{prefix}: keys differ\n  Got: {real_keys}\n  Expected: {expected_keys}"
         assert real_keys == expected_keys, m
 
         for key, expected in expected_config.items():
             real = real_config[key]
-            m = "{}: {} differs:\n  Got: {}\n  Expected: {}".format(
-                prefix, key, real, expected
-            )
+            m = f"{prefix}: {key} differs:\n  Got: {real}\n  Expected: {expected}"
             assert real == expected, m
 
     sys.stderr.write("OK\n")

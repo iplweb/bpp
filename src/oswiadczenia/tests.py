@@ -7,7 +7,9 @@ from bpp.tests.test_models.test_sloty.conftest import zwarte_z_dyscyplinami  # n
 
 @pytest.mark.django_db
 def test_praca_tabela_oswiadczenia_drukuj(
-    zwarte_z_dyscyplinami, admin_client, uczelnia  # noqa
+    zwarte_z_dyscyplinami,
+    admin_client,
+    uczelnia,  # noqa
 ):  # noqa
     uczelnia.drukuj_oswiadczenia = True
     uczelnia.save()
@@ -27,7 +29,9 @@ def test_praca_tabela_oswiadczenia_drukuj(
 
 @pytest.mark.django_db
 def test_praca_tabela_oswiadczenia_NIE_drukuj(
-    zwarte_z_dyscyplinami, admin_client, uczelnia  # noqa
+    zwarte_z_dyscyplinami,
+    admin_client,
+    uczelnia,  # noqa
 ):  # noqa
     uczelnia.drukuj_oswiadczenia = False
     uczelnia.save()
@@ -47,7 +51,9 @@ def test_praca_tabela_oswiadczenia_NIE_drukuj(
 
 @pytest.mark.django_db
 def test_praca_tabela_oswiadczenia_nie_drukuj(
-    zwarte_z_dyscyplinami, admin_client, uczelnia  # noqa
+    zwarte_z_dyscyplinami,
+    admin_client,
+    uczelnia,  # noqa
 ):  # noqa
     uczelnia.drukuj_oswiadczenia = False
     uczelnia.save()

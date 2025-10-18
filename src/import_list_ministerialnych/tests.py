@@ -3,14 +3,13 @@ from unittest.mock import Mock, patch
 import pytest
 from model_bakery import baker
 
+from bpp.models import Zrodlo
 from import_list_ministerialnych.core import (
     analyze_excel_file_import_list_ministerialnych,
     detect_duplicates,
 )
 from import_list_ministerialnych.models import ImportListMinisterialnych
 from pbn_api.models import Journal
-
-from bpp.models import Zrodlo
 
 
 @pytest.mark.django_db

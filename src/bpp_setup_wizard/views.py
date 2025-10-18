@@ -1,16 +1,14 @@
-from django.shortcuts import redirect, render
-from django.views import View
-from django.views.generic import FormView
-
-from .forms import SetupAdminForm, UczelniaSetupForm
-
 from django.contrib import messages
 from django.contrib.auth import get_user_model, login
 from django.contrib.auth.decorators import login_required
-
+from django.shortcuts import redirect, render
 from django.utils.decorators import method_decorator
+from django.views import View
+from django.views.generic import FormView
 
 from bpp.models import Uczelnia
+
+from .forms import SetupAdminForm, UczelniaSetupForm
 
 BppUser = get_user_model()
 

@@ -16,7 +16,6 @@ wersje = defaultdict(list)
 
 
 def get_data_from_json(json_file):
-
     for line in tqdm(open(json_file).readlines()):
         line = line.strip()
         if not line:

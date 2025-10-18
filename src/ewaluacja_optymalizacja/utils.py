@@ -1,8 +1,8 @@
 import os
+from collections.abc import Iterator
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from itertools import product
 from multiprocessing import Manager
-from typing import Iterator, List, Union
 
 from django.db import connections, transaction
 from tqdm import tqdm
@@ -20,8 +20,8 @@ from bpp.models.sloty.core import IPunktacjaCacher
 
 
 def wersje_dyscyplin(
-    wzca: Union[Wydawnictwo_Zwarte_Autor, Wydawnictwo_Ciagle_Autor],
-) -> Iterator[Union[Wydawnictwo_Zwarte_Autor, Wydawnictwo_Ciagle_Autor]]:
+    wzca: Wydawnictwo_Zwarte_Autor | Wydawnictwo_Ciagle_Autor,
+) -> Iterator[Wydawnictwo_Zwarte_Autor | Wydawnictwo_Ciagle_Autor]:
     """
     Generuje iteracje rekordu autora z różnymi wariantami przypisania dyscyplin.
 
@@ -118,8 +118,8 @@ def wersje_dyscyplin(
 
 
 def kombinacje_autorow_dyscyplin(
-    rekord: Union[Wydawnictwo_Zwarte, Wydawnictwo_Ciagle],
-) -> Iterator[List[Union[Wydawnictwo_Zwarte_Autor, Wydawnictwo_Ciagle_Autor]]]:
+    rekord: Wydawnictwo_Zwarte | Wydawnictwo_Ciagle,
+) -> Iterator[list[Wydawnictwo_Zwarte_Autor | Wydawnictwo_Ciagle_Autor]]:
     """
     Generuje wszystkie możliwe kombinacje autorów z dyscyplinami dla danego rekordu.
 

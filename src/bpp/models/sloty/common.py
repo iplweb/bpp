@@ -31,7 +31,7 @@ class SlotMixin:
             # mpasternak 18.03.2025
             # upowaznienie_pbn=True,
             dyscyplina_naukowa=dyscyplina_naukowa,
-            **elem_kw
+            **elem_kw,
         ):
             # Upewnij się, ze za ten rok ten konkretny autor ma rodzaj "jest w N"
             # lub jest doktorantem:

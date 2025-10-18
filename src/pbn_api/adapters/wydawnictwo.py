@@ -1,6 +1,15 @@
 from __future__ import annotations
 
+from django.utils.functional import cached_property
+
+from bpp import const
+from bpp.const import TO_REDAKTOR, TO_REDAKTOR_TLUMACZENIA, TO_TLUMACZ
+from bpp.models import BazaModeluOdpowiedzialnosciAutorow, Uczelnia
+from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle
+from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
+from bpp.util import strip_html
 from import_common.normalization import normalize_isbn, normalize_issn
+
 from ..exceptions import (
     CharakterFormalnyMissingPBNUID,
     DaneLokalneWymagajaAktualizacjiException,
@@ -14,15 +23,6 @@ from .wydawca import WydawcaPBNAdapter
 from .wydawnictwo_autor import WydawnictwoAutorToStatementPBNAdapter
 from .wydawnictwo_nadrzedne import WydawnictwoNadrzednePBNAdapter
 from .zrodlo import ZrodloPBNAdapter
-
-from django.utils.functional import cached_property
-
-from bpp import const
-from bpp.const import TO_REDAKTOR, TO_REDAKTOR_TLUMACZENIA, TO_TLUMACZ
-from bpp.models import BazaModeluOdpowiedzialnosciAutorow, Uczelnia
-from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle
-from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
-from bpp.util import strip_html
 
 
 class OplataZaWydawnictwoPBNAdapter:

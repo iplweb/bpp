@@ -13,7 +13,6 @@ class Command(BaseCommand):
 
     @transaction.atomic
     def handle(self, dyscyplina, generations, output_path, saturate, *args, **options):
-
         algorytm = GAD(
             nazwa_dyscypliny=dyscyplina,
             max_gen=generations,

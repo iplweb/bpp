@@ -1,14 +1,14 @@
 import pytest
 from model_bakery import baker
 
-from .utils import kombinacje_autorow_dyscyplin, wersje_dyscyplin
-
 from bpp.models import (
     Autor_Dyscyplina,
     Dyscyplina_Zrodla,
     Wydawnictwo_Ciagle,
     Wydawnictwo_Zwarte,
 )
+
+from .utils import kombinacje_autorow_dyscyplin, wersje_dyscyplin
 
 
 @pytest.mark.django_db

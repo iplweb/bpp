@@ -3,12 +3,11 @@ from argparse import FileType
 
 from django.core.management import BaseCommand
 
+from bpp.models import Autor
+from bpp.util import pbar
 from ewaluacja2021.reports import load_data, rekordy
 from ewaluacja2021.util import autor2fn
 from ewaluacja2021.xlsy import AutorskiXLSX, CalosciowyXLSX, WypelnienieXLSX
-
-from bpp.models import Autor
-from bpp.util import pbar
 
 
 class Command(BaseCommand):
@@ -17,7 +16,6 @@ class Command(BaseCommand):
         parser.add_argument("--katalog-wyjsciowy", type=str, default=None)
 
     def handle(self, wejscie, katalog_wyjsciowy, liczba_n=None, *args, **options):
-
         dane = load_data(wejscie)
 
         if katalog_wyjsciowy is None:

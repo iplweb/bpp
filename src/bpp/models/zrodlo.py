@@ -3,11 +3,10 @@
 """
 
 from autoslug import AutoSlugField
+from django.contrib.postgres.search import SearchVectorField as VectorField
 from django.db import models
 from django.db.models import CASCADE, SET_NULL
 from django.urls.base import reverse
-
-from django.contrib.postgres.search import SearchVectorField as VectorField
 
 from bpp import const
 from bpp.fields import DOIField, YearField

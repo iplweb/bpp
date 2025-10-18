@@ -1,9 +1,8 @@
 import messages_extends as messages
+from django.contrib.auth import get_user_model
 from django.core.management import BaseCommand
 
 from notifications.core import get_channel_name_for_user, send_notification
-
-from django.contrib.auth import get_user_model
 
 
 class Command(BaseCommand):

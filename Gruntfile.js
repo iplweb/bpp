@@ -38,6 +38,12 @@ module.exports = function (grunt) {
                         'src/bpp/static/bpp/scss/admin-themes.scss'
                 }
             },
+            adminfilterpanel: {
+                files: {
+                    'src/bpp/static/bpp/css/admin-filter-panel.css':
+                        'src/bpp/static/bpp/scss/admin-filter-panel.scss'
+                }
+            },
             przemapuj_zrodla: {
                 files: {
                     'src/przemapuj_zrodla_pbn/static/przemapuj_zrodla_pbn/css/przemapuj-zrodla.css':
@@ -53,6 +59,7 @@ module.exports = function (grunt) {
                     'sass:green',
                     'sass:orange',
                     'sass:adminthemes',
+                    'sass:adminfilterpanel',
                     'sass:przemapuj_zrodla'
                 ],
                 options: {
@@ -65,9 +72,10 @@ module.exports = function (grunt) {
             grunt: {files: ['Gruntfile.js']},
 
             sass: {
-                files: 'src/bpp/static/scss/*.scss',
+                files: ['src/bpp/static/scss/*.scss','src/bpp/static/bpp/scss/*.scss'],
                 tasks: ['concurrent:themes']
             }
+
         },
 
         qunit: {

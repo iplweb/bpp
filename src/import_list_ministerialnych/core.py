@@ -1,11 +1,10 @@
+from bpp.models import Dyscyplina_Naukowa
 from import_common.core import matchuj_zrodlo
 from import_list_ministerialnych.models import ImportListMinisterialnych
 from import_list_ministerialnych.util import (
     napraw_literowki_w_bazie,
     wczytaj_plik_importu_dyscyplin_zrodel,
 )
-
-from bpp.models import Dyscyplina_Naukowa
 
 
 def detect_duplicates(data):
@@ -181,7 +180,6 @@ def analyze_excel_file_import_list_ministerialnych(
         operacje = []
 
         if parent_model.importuj_punktacje:
-
             # Jest źródło. Sprawdźmy, czy ma punkty za dany rok:
             if zrodlo.punktacja_zrodla_set.filter(rok=rok).exists():
                 # Istnieje, sprawdźmy, czy różna:

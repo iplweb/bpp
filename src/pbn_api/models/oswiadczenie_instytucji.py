@@ -1,9 +1,9 @@
 from django.core.exceptions import MultipleObjectsReturned
 from django.db import models, transaction
 
-from ..exceptions import HttpException, StatementDeletionError
-
 from bpp.models import LinkDoPBNMixin, Typ_Odpowiedzialnosci
+
+from ..exceptions import HttpException, StatementDeletionError
 
 
 class OswiadczenieInstytucji(LinkDoPBNMixin, models.Model):

@@ -173,4 +173,91 @@ body.theme-gray-professional {
         border: 1px solid #5a5a5a !important;
         color: #2a2a2a !important;
     }
+
+    /* Filter panel styles for Gray Professional theme */
+    .filter-panel .filter-panel-content .filter-group .filter-title.filter-collapsible.has-selection {
+        border-left-color: #ff6939 !important;
+        background: linear-gradient(135deg, #ffe8e0 0%, #ffd9cc 100%) !important;
+
+        &:hover {
+            background: linear-gradient(135deg, #ffd9cc 0%, #ffcab8 100%) !important;
+        }
+
+        .selected-filter-value {
+            color: #e5502a !important;
+        }
+    }
+
+    /* Support button for Gray Professional theme */
+    .bpp-support-button {
+        background-color: #ff6939 !important;
+        color: #ffffff !important;
+
+        &:hover {
+            background-color: #e5502a !important;
+        }
+
+        &:focus {
+            outline: 2px solid #ffc4b0 !important;
+        }
+    }
+
+    /* Link colors for Gray Professional theme */
+    a {
+        color: #17a2b8 !important; /* Teal for professional look */
+
+        &:hover {
+            color: #138496 !important;
+        }
+    }
+
+    /* Info message colors for Gray Professional theme */
+    .grp-info,
+    ul.grp-messagelist li.info {
+        background: linear-gradient(135deg, #e0f7fa 0%, #b2ebf2 100%) !important;
+        border-left: 3px solid #17a2b8 !important;
+        color: #006064 !important;
+
+        a {
+            color: #138496 !important;
+            font-weight: bold !important;
+
+            &:hover {
+                color: #0c5460 !important;
+            }
+        }
+    }
+
+    /* Menu icon styles for Gray Professional theme */
+    .menu-icon {
+        background-color: #ff6939 !important;
+    }
+
+    .menu-click-item:hover .menu-icon {
+        background-color: #e5502a !important;
+    }
+
+    /* Add link and focus state buttons for Gray Professional theme */
+    .grp-add-link {
+        background: #ff6939 !important;
+        color: #ffffff !important;
+        border: 1px solid #e5502a !important;
+
+        &:hover {
+            background: #e5502a !important;
+            border: 1px solid #cc3d1a !important;
+            color: #ffffff !important;
+        }
+    }
+
+    .grp-state-focus {
+        background: #555555 !important;
+        color: #ff6939 !important;
+        border: 2px solid #ff6939 !important;
+
+        &:hover {
+            background: #ff6939 !important;
+            color: #ffffff !important;
+        }
+    }
 }

@@ -1,12 +1,11 @@
-# -*- encoding: utf-8 -*-
-
 from django.core.management import BaseCommand
 from django.db import transaction
-from bpp.models import Autor, Jednostka, Wydzial, Uczelnia, Zrodlo
+
+from bpp.models import Autor, Jednostka, Uczelnia, Wydzial, Zrodlo
 
 
 class Command(BaseCommand):
-    help = 'Odbudowuje pola slug'
+    help = "Odbudowuje pola slug"
 
     @transaction.atomic
     def handle(self, *args, **options):

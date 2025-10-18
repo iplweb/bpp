@@ -1,12 +1,10 @@
 import pytest
-from django.test import RequestFactory
-
-from deduplikator_autorow.views import duplicate_authors_view
-
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
+from django.test import RequestFactory
 
 from bpp.const import GR_WPROWADZANIE_DANYCH
+from deduplikator_autorow.views import duplicate_authors_view
 
 User = get_user_model()
 

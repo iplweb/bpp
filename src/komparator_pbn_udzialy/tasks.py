@@ -34,7 +34,8 @@ def porownaj_dyscypliny_pbn_task(self, clear_existing=False):
 
         # Uruchom komparator
         komparator = KomparatorDyscyplinPBN(
-            clear_existing=clear_existing, show_progress=False  # Nie pokazuj tqdm w tle
+            clear_existing=clear_existing,
+            show_progress=False,  # Nie pokazuj tqdm w tle
         )
 
         # Monkeypatching process_oswiadczenie aby raportować postęp

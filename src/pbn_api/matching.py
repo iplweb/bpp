@@ -10,7 +10,6 @@ from pbn_api.models import Publication
 
 
 def matchuj_pbn_api_publication(title, year, doi, public_uri, isbn, zrodlo):
-
     title = normalize_tytul_publikacji(title)
     query = Q(title__istartswith=title, year=year)
 

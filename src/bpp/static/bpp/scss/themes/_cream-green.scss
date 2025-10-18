@@ -173,4 +173,91 @@ body.theme-cream-green {
         border: 1px solid #c4bea8 !important;
         color: #1e4d2b !important;
     }
+
+    /* Filter panel styles for Cream Green theme */
+    .filter-panel .filter-panel-content .filter-group .filter-title.filter-collapsible.has-selection {
+        border-left-color: #2e7d32 !important;
+        background: linear-gradient(135deg, #e8f5e9 0%, #d4ead5 100%) !important;
+
+        &:hover {
+            background: linear-gradient(135deg, #d4ead5 0%, #c0dfc1 100%) !important;
+        }
+
+        .selected-filter-value {
+            color: #276829 !important;
+        }
+    }
+
+    /* Support button for Cream Green theme */
+    .bpp-support-button {
+        background-color: #2e7d32 !important;
+        color: #ffffff !important;
+
+        &:hover {
+            background-color: #276829 !important;
+        }
+
+        &:focus {
+            outline: 2px solid #81c784 !important;
+        }
+    }
+
+    /* Link colors for Cream Green theme */
+    a {
+        color: #2e7d32 !important; /* Forest green */
+
+        &:hover {
+            color: #1e4d2b !important; /* Darker green on hover */
+        }
+    }
+
+    /* Info message colors for Cream Green theme */
+    .grp-info,
+    ul.grp-messagelist li.info {
+        background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%) !important;
+        border-left: 3px solid #2e7d32 !important;
+        color: #1b5e20 !important;
+
+        a {
+            color: #276829 !important;
+            font-weight: bold !important;
+
+            &:hover {
+                color: #1e4d2b !important;
+            }
+        }
+    }
+
+    /* Menu icon styles for Cream Green theme */
+    .menu-icon {
+        background-color: #2e7d32 !important;
+    }
+
+    .menu-click-item:hover .menu-icon {
+        background-color: #276829 !important;
+    }
+
+    /* Add link and focus state buttons for Cream Green theme */
+    .grp-add-link {
+        background: #2e7d32 !important;
+        color: #ffffff !important;
+        border: 1px solid #276829 !important;
+
+        &:hover {
+            background: #276829 !important;
+            border: 1px solid #1e4d2b !important;
+            color: #ffffff !important;
+        }
+    }
+
+    .grp-state-focus {
+        background: #e8f5e9 !important;
+        color: #2e7d32 !important;
+        border: 2px solid #2e7d32 !important;
+
+        &:hover {
+            background: #2e7d32 !important;
+            color: #ffffff !important;
+        }
+    }
 }

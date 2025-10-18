@@ -1,9 +1,8 @@
+from django.contrib import admin
 from django.db import models
 
 from pbn_api.admin import BasePBNAPIAdmin, PrettyJSONWidgetReadonly
 from pbn_api.models import PublikacjaInstytucji_V2
-
-from django.contrib import admin
 
 
 @admin.register(PublikacjaInstytucji_V2)

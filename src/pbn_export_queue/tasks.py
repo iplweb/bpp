@@ -1,7 +1,9 @@
-from long_running.util import wait_for_object
-from .models import PBN_Export_Queue, SendStatus
+from django.apps import apps
 
 from django_bpp.celery_tasks import app
+from long_running.util import wait_for_object
+
+from .models import PBN_Export_Queue, SendStatus
 
 
 @app.task
@@ -21,17 +23,38 @@ def task_sprobuj_wyslac_do_pbn(pk):
             # PraceSerwisoweException
             task_sprobuj_wyslac_do_pbn.apply_async(args=[pk], countdown=60 * 60 * 3)
 
-        case (
-            SendStatus.FINISHED_ERROR
-            | SendStatus.FINISHED_OKAY
-            | SendStatus.RETRY_AFTER_USER_AUTHORISED
-        ):
+        case SendStatus.FINISHED_OKAY:
+            # After successful send, check for more items in queue
+            check_and_send_next_in_queue()
+            return
+
+        case SendStatus.FINISHED_ERROR | SendStatus.RETRY_AFTER_USER_AUTHORISED:
             return
 
         case _:
             raise NotImplementedError(
                 f"Return status for background send to PBN not supported {res=}"
             )
+
+
+def check_and_send_next_in_queue():
+    """Check if there are more items waiting to be sent and start sending them."""
+    # Find the next item that hasn't been processed yet
+    # Priority order:
+    # 1. Items that were never attempted (wysylke_podjeto=None)
+    # 2. Items that are waiting but not finished
+    next_items = PBN_Export_Queue.objects.filter(
+        wysylke_podjeto=None,
+        wysylke_zakonczono=None,
+    ).order_by("zamowiono")[:5]  # Process up to 5 items at once
+
+    for item in next_items:
+        # Start sending each item in background
+        task_sprobuj_wyslac_do_pbn.delay(item.pk)
+
+    if next_items:
+        return len(next_items)
+    return 0
 
 
 @app.task
@@ -58,3 +81,49 @@ def kolejka_ponow_wysylke_prac_po_zalogowaniu(pk):
         wysylke_zakonczono=None,
     ):
         task_sprobuj_wyslac_do_pbn.delay(elem.pk)
+
+
+@app.task
+def queue_pbn_export_batch(app_label, model_name, record_ids, user_id):
+    """
+    Queue multiple records for PBN export in batch.
+
+    Args:
+        app_label: Django app label (e.g. 'bpp')
+        model_name: Model name (e.g. 'wydawnictwo_ciagle')
+        record_ids: List of record IDs to queue
+        user_id: User ID who initiated the export
+    """
+    from django.contrib.auth import get_user_model
+
+    from pbn_api.exceptions import AlreadyEnqueuedError
+
+    User = get_user_model()
+
+    try:
+        user = User.objects.get(pk=user_id)
+    except User.DoesNotExist:
+        return
+
+    model = apps.get_model(app_label, model_name)
+
+    for record_id in record_ids:
+        try:
+            record = model.objects.get(pk=record_id)
+            try:
+                PBN_Export_Queue.objects.sprobuj_utowrzyc_wpis(user, record)
+                # Send to PBN in background
+                queue_entry = PBN_Export_Queue.objects.filter_rekord_do_wysylki(
+                    record
+                ).first()
+                if queue_entry:
+                    task_sprobuj_wyslac_do_pbn.delay(queue_entry.pk)
+            except AlreadyEnqueuedError:
+                # Record already in queue, skip
+                pass
+        except model.DoesNotExist:
+            # Skip records that don't exist
+            pass
+        except Exception:
+            # Skip records with other errors
+            pass

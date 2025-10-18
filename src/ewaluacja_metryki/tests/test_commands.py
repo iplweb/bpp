@@ -6,9 +6,6 @@ import pytest
 from django.core.management import call_command
 from model_bakery import baker
 
-from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaCalosc
-from ewaluacja_metryki.models import MetrykaAutora
-
 from bpp.models import (
     Autor,
     Autor_Dyscyplina,
@@ -16,6 +13,8 @@ from bpp.models import (
     Dyscyplina_Naukowa,
     Jednostka,
 )
+from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaCalosc
+from ewaluacja_metryki.models import MetrykaAutora
 
 
 @pytest.mark.django_db

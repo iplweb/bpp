@@ -2,10 +2,9 @@ import logging
 
 from django.db import transaction
 
+from bpp.models import Zrodlo
 from pbn_api.management.commands.util import PBNBaseCommand
 from pbn_api.models import Journal
-
-from bpp.models import Zrodlo
 
 logger = logging.getLogger("console.always")
 

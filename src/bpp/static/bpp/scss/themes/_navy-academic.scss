@@ -174,4 +174,91 @@ body.theme-navy-academic {
         border: 1px solid #354458 !important;
         color: #1a2332 !important;
     }
+
+    /* Filter panel styles for Navy Academic theme */
+    .filter-panel .filter-panel-content .filter-group .filter-title.filter-collapsible.has-selection {
+        border-left-color: #d4af37 !important;
+        background: linear-gradient(135deg, #f5efd5 0%, #ede4c0 100%) !important;
+
+        &:hover {
+            background: linear-gradient(135deg, #ede4c0 0%, #e5d9ab 100%) !important;
+        }
+
+        .selected-filter-value {
+            color: #b8962e !important;
+        }
+    }
+
+    /* Support button for Navy Academic theme */
+    .bpp-support-button {
+        background-color: #d4af37 !important;
+        color: #1a2332 !important;
+
+        &:hover {
+            background-color: #e5c654 !important;
+        }
+
+        &:focus {
+            outline: 2px solid #f5efd5 !important;
+        }
+    }
+
+    /* Link colors for Navy Academic theme */
+    a {
+        color: #4a9fd8 !important;
+
+        &:hover {
+            color: #d4af37 !important; /* Gold accent on hover */
+        }
+    }
+
+    /* Info message colors for Navy Academic theme */
+    .grp-info,
+    ul.grp-messagelist li.info {
+        background: linear-gradient(135deg, #e1f5fe 0%, #b3e5fc 100%) !important;
+        border-left: 3px solid #4a9fd8 !important;
+        color: #0277bd !important;
+
+        a {
+            color: #1a2332 !important;
+            font-weight: bold !important;
+
+            &:hover {
+                color: #d4af37 !important;
+            }
+        }
+    }
+
+    /* Menu icon styles for Navy Academic theme */
+    .menu-icon {
+        background-color: #d4af37 !important;
+    }
+
+    .menu-click-item:hover .menu-icon {
+        background-color: #e5c654 !important;
+    }
+
+    /* Add link and focus state buttons for Navy Academic theme */
+    .grp-add-link {
+        background: #d4af37 !important;
+        color: #1a2332 !important;
+        border: 1px solid #b8962e !important;
+
+        &:hover {
+            background: #e5c654 !important;
+            border: 1px solid #d4af37 !important;
+            color: #1a2332 !important;
+        }
+    }
+
+    .grp-state-focus {
+        background: #2e3f54 !important;
+        color: #d4af37 !important;
+        border: 2px solid #d4af37 !important;
+
+        &:hover {
+            background: #d4af37 !important;
+            color: #1a2332 !important;
+        }
+    }
 }

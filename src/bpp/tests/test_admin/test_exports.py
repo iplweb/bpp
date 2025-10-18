@@ -67,7 +67,7 @@ def test_xlsx_export_data(urlname, klass, cname, admin_app: DjangoTestApp):
     )
 
     if urlname != "autor":
-        xlsx_binary_data = page.click(NAZWA_LINKU_EKSPORTU).forms[1].submit()
+        xlsx_binary_data = page.click(NAZWA_LINKU_EKSPORTU).forms["export_form"].submit()
     else:
         xlsx_binary_data = page.click(NAZWA_LINKU_EKSPORTU)
 
@@ -85,7 +85,7 @@ def test_xlsx_export_nazwy_zamiast_numerkow(
         reverse("admin:bpp_wydawnictwo_ciagle_changelist")
     )
 
-    xlsx_binary_data = page.click(NAZWA_LINKU_EKSPORTU).forms[1].submit().maybe_follow()
+    xlsx_binary_data = page.click(NAZWA_LINKU_EKSPORTU).forms["export_form"].submit().maybe_follow()
     wb = openpyxl.load_workbook(BytesIO(xlsx_binary_data.content))
     ws = wb.active
 

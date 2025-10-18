@@ -1,8 +1,10 @@
 BRANCH=`git branch | sed -n '/\* /s///p'`
 
-.PHONY: clean distclean tests release tests-without-selenium tests-with-selenium docker destroy-test-databases
+.PHONY: clean distclean tests release tests-without-selenium tests-with-selenium docker destroy-test-databases coveralls-upload
 
 PYTHON=python3
+
+all:	prepare-developer-machine-macos release
 
 prepare-developer-machine-macos:
 	uv sync --all-extras
@@ -135,12 +137,15 @@ tests-with-microsoft-auth: enable-microsoft-auth tests-without-selenium-with-mic
 tests-with-selenium:
 	uv run pytest -n auto  --splinter-headless -m "selenium or playwright"
 
-tests: tests-without-selenium tests-with-selenium js-tests
+coveralls-upload:
+	uv run coveralls
+
+tests: tests-without-selenium tests-with-selenium js-tests coveralls-upload
 
 destroy-test-databases:
 	-./bin/drop-test-databases.sh
 
-full-tests: destroy-test-databases tests-with-microsoft-auth destroy-test-databases tests js-tests
+full-tests: destroy-test-databases tests-with-microsoft-auth destroy-test-databases tests js-tests coveralls-upload
 
 
 integration-start-from-match:

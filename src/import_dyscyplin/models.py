@@ -7,17 +7,15 @@ from django.urls import reverse
 from django_fsm import GET_STATE, FSMField, transition
 from model_utils.models import TimeStampedModel
 
+from bpp.fields import YearField
+from bpp.models import Autor, Autor_Dyscyplina, Dyscyplina_Naukowa, Jednostka, Wydzial
+from django_bpp.settings.base import AUTH_USER_MODEL
 from import_common.exceptions import (
     BadNoOfSheetsException,
     HeaderNotFoundException,
     ImproperFileException,
 )
 from import_common.util import znajdz_naglowek
-
-from bpp.fields import YearField
-from bpp.models import Autor, Autor_Dyscyplina, Dyscyplina_Naukowa, Jednostka, Wydzial
-
-from django_bpp.settings.base import AUTH_USER_MODEL
 
 
 def obecny_rok():
@@ -66,7 +64,9 @@ class Kolumna(models.Model):
 
     kolejnosc = models.PositiveSmallIntegerField()
     nazwa_w_pliku = models.CharField(max_length=250)
-    rodzaj_pola = models.CharField(max_length=50, choices=zip(RODZAJE, RODZAJE))
+    rodzaj_pola = models.CharField(
+        max_length=50, choices=zip(RODZAJE, RODZAJE, strict=False)
+    )
 
     class Meta:
         ordering = [
@@ -191,7 +191,9 @@ class Import_Dyscyplin(TimeStampedModel):
 
     plik = models.FileField()
     rok = YearField(default=obecny_rok)
-    stan = FSMField(default=STAN.NOWY, choices=zip(STANY, STANY), protected=True)
+    stan = FSMField(
+        default=STAN.NOWY, choices=zip(STANY, STANY, strict=False), protected=True
+    )
 
     bledny = models.BooleanField(default=False)
     info = models.TextField(blank=True, null=True)
@@ -212,7 +214,6 @@ class Import_Dyscyplin(TimeStampedModel):
         on_error=STAN.BLEDNY,
     )
     def stworz_kolumny(self):
-
         try:
             kolumny, wiersz = znajdz_naglowek(self.plik.path)
         except ImproperFileException as e:
@@ -304,7 +305,6 @@ class Import_Dyscyplin(TimeStampedModel):
             )
             .distinct()
         ):
-
             if not elem["dyscyplina"] or not elem["kod_dyscypliny"]:
                 continue
 
@@ -381,7 +381,6 @@ class Import_Dyscyplin(TimeStampedModel):
                 elem.save()
                 continue
             except Autor_Dyscyplina.DoesNotExist:
-
                 try:
                     Autor_Dyscyplina.objects.get(autor=elem.autor, rok=self.rok)
 
@@ -431,7 +430,6 @@ class Import_Dyscyplin(TimeStampedModel):
 
     def _integruj_wiersze(self):
         for elem in self.poprawne_wiersze_do_integracji().select_related():
-
             if elem.dyscyplina_naukowa is None:
                 # Kasowanie
                 # elem["subdyscyplina_naukowa"] został już wcześniej sprawdzony.
@@ -515,7 +513,10 @@ class Import_Dyscyplin_Row(models.Model):
     parent = models.ForeignKey(Import_Dyscyplin, CASCADE)
 
     stan = models.CharField(
-        max_length=50, choices=zip(STANY, STANY), default=STAN.NOWY, db_index=True
+        max_length=50,
+        choices=zip(STANY, STANY, strict=False),
+        default=STAN.NOWY,
+        db_index=True,
     )
     info = models.TextField(blank=True, null=True)
 

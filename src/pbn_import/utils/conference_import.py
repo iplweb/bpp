@@ -1,6 +1,7 @@
 """Conference import utilities"""
 
 from pbn_integrator.utils import pobierz_konferencje
+
 from .base import ImportStepBase
 
 

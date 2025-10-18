@@ -1,8 +1,7 @@
+from django.contrib.postgres.fields.array import ArrayField
 from django.db import models
 from django.db.models.deletion import DO_NOTHING
 from taggit.models import Tag
-
-from django.contrib.postgres.fields.array import ArrayField
 
 
 class SlowaKluczoweView(models.Model):

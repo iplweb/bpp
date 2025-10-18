@@ -1,7 +1,8 @@
-from pbn_api.admin.base import BasePBNAPIAdmin
-from ..models.discipline import Discipline, DisciplineGroup
-
 from django.contrib import admin
+
+from pbn_api.admin.base import BasePBNAPIAdmin
+
+from ..models.discipline import Discipline, DisciplineGroup
 
 
 @admin.register(DisciplineGroup)

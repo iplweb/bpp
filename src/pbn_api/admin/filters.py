@@ -25,8 +25,7 @@ class OdpowiednikWBPPFilter(SimpleListFilter):
             field = self.parameter_name
 
         query = {
-            field
-            + "__in": self.klass.objects.exclude(**{self.fld: None})
+            field + "__in": self.klass.objects.exclude(**{self.fld: None})
             .exclude(**{self.fld: ""})
             .values_list(self.fld, flat=True)
             .distinct()

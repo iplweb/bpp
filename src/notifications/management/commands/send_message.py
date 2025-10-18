@@ -1,23 +1,16 @@
-# -*- encoding: utf-8 -*
-from optparse import make_option
-
 from notifications.core import send_notification
 
 try:
     from django.core.urlresolvers import reverse
 except ImportError:
     from django.urls import reverse
-from django.db import transaction
-
 import messages_extends as messages
 from django.contrib.auth import get_user_model
-
 from django.core.management import BaseCommand
+from django.db import transaction
 from django.test import RequestFactory
-from messages_extends.storages import PersistentStorage
-
-import notifications
 from messages_extends.models import Message
+from messages_extends.storages import PersistentStorage
 
 
 class Command(BaseCommand):
@@ -40,11 +33,11 @@ class Command(BaseCommand):
         request = request_factory.get("/")
 
         request.user = get_user_model().objects.get(username=username)
-        setattr(request, "session", "session")
+        request.session = "session"
 
         storage = PersistentStorage(request)
 
-        setattr(request, "_messages", storage)
+        request._messages = storage
 
         level = messages.INFO_PERSISTENT
 
@@ -52,7 +45,9 @@ class Command(BaseCommand):
 
         if dont_persist:
             send_notification(
-                request, level, text,
+                request,
+                level,
+                text,
             )
             return
 
@@ -66,5 +61,8 @@ class Command(BaseCommand):
             msg = msg[0]
             closeURL = reverse("messages_extends:message_mark_read", args=(msg.pk,))
             send_notification(
-                request, level, text, closeURL=closeURL,
+                request,
+                level,
+                text,
+                closeURL=closeURL,
             )

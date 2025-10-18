@@ -4,7 +4,7 @@ import logging
 import sys
 import time
 import traceback
-from typing import Any, Dict, Optional
+from typing import Any
 
 import rollbar
 from django.db import transaction
@@ -96,7 +96,7 @@ class ImportStepBase:
         self.total_count = 0
         self.errors = []
 
-    def log(self, level: str, message: str, details: Optional[Dict[Any, Any]] = None):
+    def log(self, level: str, message: str, details: dict[Any, Any] | None = None):
         """Create a log entry for this session"""
         ImportLog.objects.create(
             session=self.session,

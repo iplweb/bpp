@@ -1,7 +1,7 @@
+from django.contrib import admin
+
 from ..models.seria_wydawnicza import Seria_Wydawnicza
 from .core import BaseBppAdminMixin
-
-from django.contrib import admin
 
 
 class Seria_WydawniczaAdmin(BaseBppAdminMixin, admin.ModelAdmin):

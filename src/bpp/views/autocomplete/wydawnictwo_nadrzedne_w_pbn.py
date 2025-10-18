@@ -2,13 +2,12 @@ import isbnlib
 from dal import autocomplete
 from django import http
 
+from bpp.models import Uczelnia
 from import_common.util import check_if_doi, strip_doi_urls
 from pbn_api.client import PBNClient
 from pbn_api.exceptions import WillNotExportError
 from pbn_api.models import Publication
 from pbn_api.validators import check_mongoId
-
-from bpp.models import Uczelnia
 
 
 class Wydawnictwo_Nadrzedne_W_PBNAutocomplete(autocomplete.Select2QuerySetView):

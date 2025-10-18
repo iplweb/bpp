@@ -19,7 +19,7 @@ def test_przemapowanie_zrodla_form_initialization():
     )
 
     assert "zrodlo_docelowe" in form.fields
-    assert form.fields["zrodlo_docelowe"].required is True
+    # Pole nie jest wymagane na poziomie pola, walidacja jest w clean()
 
 
 @pytest.mark.django_db
@@ -56,7 +56,7 @@ def test_przemapowanie_zrodla_form_valid_data():
     sugerowane_queryset = Zrodlo.objects.filter(pk=zrodlo_docelowe.pk)
 
     form = PrzeMapowanieZrodlaForm(
-        data={"zrodlo_docelowe": zrodlo_docelowe.pk},
+        data={"typ_wyboru": "zrodlo", "zrodlo_docelowe": zrodlo_docelowe.pk},
         zrodlo_skasowane=zrodlo_skasowane,
         sugerowane_zrodla=sugerowane_queryset,
     )
@@ -67,7 +67,7 @@ def test_przemapowanie_zrodla_form_valid_data():
 
 @pytest.mark.django_db
 def test_przemapowanie_zrodla_form_invalid_empty_data():
-    """Test czy formularz odrzuca puste dane"""
+    """Test czy formularz odrzuca puste dane - brak wybranego źródła"""
     journal_deleted = baker.make("pbn_api.Journal", status="DELETED")
     zrodlo_skasowane = baker.make("bpp.Zrodlo", pbn_uid=journal_deleted)
 
@@ -75,10 +75,12 @@ def test_przemapowanie_zrodla_form_invalid_empty_data():
     sugerowane_queryset = Zrodlo.objects.none()
 
     form = PrzeMapowanieZrodlaForm(
-        data={},
+        data={"typ_wyboru": "zrodlo"},  # Typ wybrany, ale brak zrodlo_docelowe
         zrodlo_skasowane=zrodlo_skasowane,
         sugerowane_zrodla=sugerowane_queryset,
     )
 
     assert not form.is_valid()
-    assert "zrodlo_docelowe" in form.errors
+    # Błąd powinien być w __all__ bo walidacja jest w clean()
+    assert "__all__" in form.errors
+    assert "Wybierz źródło docelowe z BPP" in form.errors["__all__"]

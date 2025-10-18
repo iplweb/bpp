@@ -1,8 +1,10 @@
 import sys
 
 import rollbar
+from django.contrib.contenttypes.models import ContentType
 from django.urls import reverse
 
+from bpp.admin.helpers import link_do_obiektu
 from import_common.normalization import normalize_isbn
 from pbn_api.exceptions import (
     AccessDeniedException,
@@ -15,10 +17,6 @@ from pbn_api.exceptions import (
     SameDataUploadedRecently,
 )
 from pbn_api.models import SentData
-
-from django.contrib.contenttypes.models import ContentType
-
-from bpp.admin.helpers import link_do_obiektu
 
 
 def sprawdz_czy_ustawiono_wysylke_tego_charakteru_formalnego(charakter_formalny):
@@ -48,7 +46,6 @@ def sprawdz_wysylke_do_pbn_w_parametrach_uczelni(uczelnia):
 def sprobuj_wyslac_do_pbn(
     obj, pbn_client, uczelnia, notificator, force_upload=False, raise_exceptions=False
 ):
-
     # Sprawdź, czy wydawnictwo nadrzędne ma odpowoednik PBN:
     if (
         hasattr(obj, "wydawnictwo_nadrzedne_id")
