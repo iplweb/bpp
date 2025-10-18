@@ -5,12 +5,18 @@
 /* -------------------------------------------------------------------------------- */
 /* Admin Menu Theme System - Base Styles */
 /* -------------------------------------------------------------------------------- */
-/* Smooth color transitions for theme switching */
+/* Fix for grp-object-tools buttons - ensure text is always readable */
+/* This prevents theme color inheritance issues on object-tools buttons */
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;500;600;700&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@300;400;600;700&display=swap");
+ul.grp-object-tools a {
+  color: inherit !important;
+}
+
+/* Smooth color transitions for theme switching */
 body,
 #grp-navigation,
 #grp-navigation ul#navigation-menu li a,
@@ -73,7 +79,8 @@ body.theme-classic-light #grp-navigation ul#navigation-menu li.over > a {
 }
 body.theme-classic-light #grp-navigation ul#navigation-menu li ul {
   background: #ffffff !important;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.4), 0 4px 16px rgba(0, 0, 0, 0.2);
+  border: 1px solid #e0e0e0;
 }
 body.theme-classic-light #grp-navigation ul#navigation-menu li ul li {
   background: #ffffff !important;
@@ -309,7 +316,7 @@ body.theme-navy-academic #grp-navigation ul#navigation-menu li.over > a {
 }
 body.theme-navy-academic #grp-navigation ul#navigation-menu li ul {
   background: #243142 !important;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.6), 0 4px 16px rgba(0, 0, 0, 0.4);
 }
 body.theme-navy-academic #grp-navigation ul#navigation-menu li ul li {
   background: #243142 !important;
@@ -547,7 +554,7 @@ body.theme-gray-professional #grp-navigation ul#navigation-menu li.over > a {
 }
 body.theme-gray-professional #grp-navigation ul#navigation-menu li ul {
   background: #4a4a4a !important;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.5), 0 4px 16px rgba(0, 0, 0, 0.3);
 }
 body.theme-gray-professional #grp-navigation ul#navigation-menu li ul li {
   background: #4a4a4a !important;
@@ -784,7 +791,8 @@ body.theme-cream-green #grp-navigation ul#navigation-menu li.over > a {
 }
 body.theme-cream-green #grp-navigation ul#navigation-menu li ul {
   background: #ffffff !important;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.35), 0 4px 16px rgba(0, 0, 0, 0.18);
+  border: 1px solid #e6dcc8;
 }
 body.theme-cream-green #grp-navigation ul#navigation-menu li ul li {
   background: #ffffff !important;
@@ -1022,7 +1030,7 @@ body.theme-minimal-light #grp-navigation ul#navigation-menu li.over > a {
 }
 body.theme-minimal-light #grp-navigation ul#navigation-menu li ul {
   background: #ffffff !important;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.3), 0 4px 16px rgba(0, 0, 0, 0.15);
   border: 1px solid #f0f0f0;
 }
 body.theme-minimal-light #grp-navigation ul#navigation-menu li ul li {
@@ -1264,7 +1272,8 @@ body.theme-golden #grp-navigation ul#navigation-menu li.over > a {
 }
 body.theme-golden #grp-navigation ul#navigation-menu li ul {
   background: #fffef8 !important;
-  box-shadow: 0 6px 20px rgba(193, 155, 45, 0.3);
+  box-shadow: 0 12px 48px rgba(193, 155, 45, 0.5), 0 4px 16px rgba(193, 155, 45, 0.3);
+  border: 1px solid #e0c554;
 }
 body.theme-golden #grp-navigation ul#navigation-menu li ul li {
   background: #fffef8 !important;
@@ -1504,7 +1513,8 @@ body.theme-srebrny #grp-navigation ul#navigation-menu li.over > a {
 }
 body.theme-srebrny #grp-navigation ul#navigation-menu li ul {
   background: #f9f9f9 !important;
-  box-shadow: 0 6px 20px rgba(128, 128, 128, 0.3);
+  box-shadow: 0 12px 48px rgba(128, 128, 128, 0.5), 0 4px 16px rgba(128, 128, 128, 0.3);
+  border: 1px solid #d3d3d3;
 }
 body.theme-srebrny #grp-navigation ul#navigation-menu li ul li {
   background: #f9f9f9 !important;
@@ -1745,7 +1755,7 @@ body.theme-mario-bros #grp-navigation ul#navigation-menu li.over > a {
 }
 body.theme-mario-bros #grp-navigation ul#navigation-menu li ul {
   background: #ffffff !important;
-  box-shadow: 0 8px 24px rgba(229, 37, 33, 0.4);
+  box-shadow: 0 8px 24px rgba(229, 37, 33, 0.35);
   border: 3px solid #0066cc;
 }
 body.theme-mario-bros #grp-navigation ul#navigation-menu li ul li {
@@ -2013,7 +2023,7 @@ body.theme-luigi #grp-navigation ul#navigation-menu li.over > a {
 }
 body.theme-luigi #grp-navigation ul#navigation-menu li ul {
   background: #ffffff !important;
-  box-shadow: 0 8px 24px rgba(0, 166, 81, 0.4);
+  box-shadow: 0 8px 24px rgba(0, 166, 81, 0.35);
   border: 3px solid #00a651;
 }
 body.theme-luigi #grp-navigation ul#navigation-menu li ul li {
@@ -2390,6 +2400,9 @@ body.font-inter-small #grp-navigation a {
   font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
   font-size: 13px !important;
 }
+body.font-inter-small fieldset.grp-module .grp-row label {
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+}
 
 /* -------------------------------------------------------------------------------- */
 /* Open Sans Font Family */
@@ -2425,6 +2438,9 @@ body.font-opensans-small #grp-navigation a {
   font-family: "Open Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
   font-size: 13px !important;
 }
+body.font-opensans-small fieldset.grp-module .grp-row label {
+  font-family: "Open Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+}
 
 /* -------------------------------------------------------------------------------- */
 /* Roboto Font Family */
@@ -2458,7 +2474,11 @@ body.font-roboto-small td, body.font-roboto-small th {
   font-size: 13px !important;
 }
 body.font-roboto-small #grp-navigation a {
+  font-family: "Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
   font-size: 13px !important;
+}
+body.font-roboto-small fieldset.grp-module .grp-row label {
+  font-family: "Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
 }
 
 /* -------------------------------------------------------------------------------- */
@@ -2492,7 +2512,11 @@ body.font-lato-small td, body.font-lato-small th {
   font-size: 13px !important;
 }
 body.font-lato-small #grp-navigation a {
+  font-family: "Lato", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
   font-size: 13px !important;
+}
+body.font-lato-small fieldset.grp-module .grp-row label {
+  font-family: "Lato", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
 }
 
 /* -------------------------------------------------------------------------------- */
@@ -2526,7 +2550,11 @@ body.font-sourcesans-small td, body.font-sourcesans-small th {
   font-size: 13px !important;
 }
 body.font-sourcesans-small #grp-navigation a {
+  font-family: "Source Sans Pro", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
   font-size: 13px !important;
+}
+body.font-sourcesans-small fieldset.grp-module .grp-row label {
+  font-family: "Source Sans Pro", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
 }
 
 /* -------------------------------------------------------------------------------- */
@@ -2682,7 +2710,11 @@ body.font-segoeui-small td, body.font-segoeui-small th {
   font-size: 13px !important;
 }
 body.font-segoeui-small #grp-navigation a {
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif !important;
   font-size: 13px !important;
+}
+body.font-segoeui-small fieldset.grp-module .grp-row label {
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif !important;
 }
 
 /* -------------------------------------------------------------------------------- */
@@ -2716,7 +2748,11 @@ body.font-arial-small td, body.font-arial-small th {
   font-size: 13px !important;
 }
 body.font-arial-small #grp-navigation a {
+  font-family: Arial, Helvetica, sans-serif !important;
   font-size: 13px !important;
+}
+body.font-arial-small fieldset.grp-module .grp-row label {
+  font-family: Arial, Helvetica, sans-serif !important;
 }
 
 /* -------------------------------------------------------------------------------- */
@@ -2751,7 +2787,11 @@ body.font-verdana-small td, body.font-verdana-small th {
   font-size: 13px !important;
 }
 body.font-verdana-small #grp-navigation a {
+  font-family: Verdana, Geneva, Tahoma, sans-serif !important;
   font-size: 13px !important;
+}
+body.font-verdana-small fieldset.grp-module .grp-row label {
+  font-family: Verdana, Geneva, Tahoma, sans-serif !important;
 }
 
 /* -------------------------------------------------------------------------------- */
@@ -2785,7 +2825,11 @@ body.font-calibri-small td, body.font-calibri-small th {
   font-size: 13px !important;
 }
 body.font-calibri-small #grp-navigation a {
+  font-family: Calibri, Candara, "Segoe UI", Optima, Arial, sans-serif !important;
   font-size: 13px !important;
+}
+body.font-calibri-small fieldset.grp-module .grp-row label {
+  font-family: Calibri, Candara, "Segoe UI", Optima, Arial, sans-serif !important;
 }
 
 /*# sourceMappingURL=admin-themes.css.map */

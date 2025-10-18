@@ -26,7 +26,8 @@ body.theme-classic-light {
 
         ul#navigation-menu li ul {
             background: #ffffff !important;
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+            box-shadow: 0 12px 48px rgba(0, 0, 0, 0.4), 0 4px 16px rgba(0, 0, 0, 0.2);
+            border: 1px solid #e0e0e0;
 
             li {
                 background: #ffffff !important;

@@ -2,6 +2,12 @@
 /* Admin Menu Theme System - Base Styles */
 /* -------------------------------------------------------------------------------- */
 
+/* Fix for grp-object-tools buttons - ensure text is always readable */
+/* This prevents theme color inheritance issues on object-tools buttons */
+ul.grp-object-tools a {
+    color: inherit !important;
+}
+
 /* Smooth color transitions for theme switching */
 body,
 #grp-navigation,
