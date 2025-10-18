@@ -4,10 +4,9 @@ import pytest
 from django.urls import reverse
 from model_bakery import baker
 
+from bpp.models import Autor
 from importer_autorow_pbn.models import DoNotRemind
 from pbn_api.models import Scientist
-
-from bpp.models import Autor
 
 
 @pytest.mark.django_db

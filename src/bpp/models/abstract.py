@@ -6,15 +6,14 @@ import re
 from decimal import Decimal
 
 from django.conf import settings
+from django.contrib.postgres.fields import ArrayField, HStoreField
+from django.contrib.postgres.search import SearchVectorField as VectorField
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator, URLValidator
 from django.db import models
 from django.db.models import CASCADE, SET_NULL, Q, Sum
 from django.urls.base import reverse
 from taggit.managers import TaggableManager
-
-from django.contrib.postgres.fields import ArrayField, HStoreField
-from django.contrib.postgres.search import SearchVectorField as VectorField
 
 from bpp import const
 from bpp.fields import DOIField, YearField
@@ -844,7 +843,6 @@ class LinkDoPBNMixin:
                 )
 
         except PublikacjaInstytucji_V2.DoesNotExist:
-
             try:
                 # bpp.models.Wydawnictwo_Ciagle, bpp.models.Wydawnictwo_Zwarte
                 current_version = self.pbn_uid.current_version

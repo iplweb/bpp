@@ -2,11 +2,10 @@ from decimal import Decimal
 
 from django.core.management.base import BaseCommand
 
+from bpp.models import Uczelnia
 from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaCalosc
 from ewaluacja_liczba_n.utils import oblicz_liczby_n_dla_ewaluacji_2022_2025
 from ewaluacja_metryki.utils import generuj_metryki
-
-from bpp.models import Uczelnia
 
 
 class Command(BaseCommand):

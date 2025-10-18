@@ -1,8 +1,12 @@
 import sys
 
 from django import forms
+from django.contrib import admin
+from django.utils.html import format_html
 from djangoql.admin import DjangoQLSearchMixin
 from mptt.admin import DraggableMPTTAdmin
+
+from bpp.models import Autor_Jednostka, Uczelnia
 
 from ..models.struktura import Jednostka, Jednostka_Wydzial
 from .core import BaseBppAdminMixin, RestrictDeletionToAdministracjaGroupMixin
@@ -10,12 +14,6 @@ from .filters import PBN_UID_IDObecnyFilter
 from .helpers import LimitingFormset
 from .helpers.fieldsets import ADNOTACJE_FIELDSET
 from .helpers.mixins import ZapiszZAdnotacjaMixin
-
-from django.contrib import admin
-
-from django.utils.html import format_html
-
-from bpp.models import Autor_Jednostka, Uczelnia
 
 
 class Jednostka_WydzialInline(admin.TabularInline):

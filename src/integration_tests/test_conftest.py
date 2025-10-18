@@ -58,7 +58,7 @@ def test_preauth_webtest_app(app):
 def test_admin_app(admin_app):
     assert admin_app is not None
     res = admin_app.get("/admin/")
-    assert "Redagowanie" in res.text
+    assert "Panel Sterowania" in res.text
 
 
 def test_praca_doktorska_view(doktorat):

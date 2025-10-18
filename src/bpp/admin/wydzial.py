@@ -1,11 +1,10 @@
 from adminsortable2.admin import SortableAdminMixin
+from django.contrib import admin
 
 from ..models import Wydzial  # Publikacja_Habilitacyjna
 from .core import BaseBppAdminMixin, RestrictDeletionToAdministracjaGroupMixin
 from .helpers.fieldsets import ADNOTACJE_FIELDSET
 from .helpers.mixins import ZapiszZAdnotacjaMixin
-
-from django.contrib import admin
 
 
 class WydzialAdmin(

@@ -1,4 +1,5 @@
 """Funkcje pomocnicze dla klas w bpp.models"""
+
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 
 from bpp.models.szablondlaopisubibliograficznego import SzablonDlaOpisuBibliograficznego
@@ -11,7 +12,6 @@ except ImportError:
 from django.db import models
 from django.db.models import Max
 from django.template.loader import get_template
-
 from django.utils import safestring
 
 

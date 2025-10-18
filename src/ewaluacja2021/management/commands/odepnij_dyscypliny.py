@@ -15,7 +15,6 @@ class Command(BaseCommand):
         parser.add_argument("--ostatecznie", action="store_true", default=False)
 
     def handle(self, wejscie, ostatecznie, *args, **options):
-
         dane = load_data(wejscie)
 
         rekordy_danych = rekordy(dane)

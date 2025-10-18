@@ -1,16 +1,14 @@
 from django.http import JsonResponse
+from django.utils.decorators import method_decorator
 from django.views import View
 from django.views.generic.base import TemplateView
 
+from bpp.const import GR_WPROWADZANIE_DANYCH
 from pbn_downloader_app.models import PbnDownloadTask, PbnInstitutionPeopleTask
 from pbn_downloader_app.tasks import (
     download_institution_people,
     download_institution_publications,
 )
-
-from django.utils.decorators import method_decorator
-
-from bpp.const import GR_WPROWADZANIE_DANYCH
 
 # Custom group required decorator
 

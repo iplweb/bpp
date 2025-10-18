@@ -1,0 +1,279 @@
+#grp-content-container {
+  transform: translateZ(0);
+  will-change: opacity, transform;
+  transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.htmx-swapping #grp-content-container {
+  opacity: 0.4;
+  transform: scale(0.98);
+  transition: opacity 0.15s cubic-bezier(0, 0, 0.2, 1), transform 0.15s cubic-bezier(0, 0, 0.2, 1);
+}
+.htmx-swapping .filter-panel {
+  pointer-events: all;
+}
+
+.htmx-settling #grp-content-container {
+  opacity: 1;
+  transform: scale(1);
+  transition: opacity 0.3s cubic-bezier(0.4, 0, 1, 1), transform 0.3s cubic-bezier(0.4, 0, 1, 1);
+}
+
+@keyframes morphIn {
+  0% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+    filter: blur(2px);
+  }
+  50% {
+    opacity: 0.7;
+    filter: blur(1px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+@keyframes morphOut {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+  50% {
+    opacity: 0.7;
+    filter: blur(1px);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.98);
+    filter: blur(2px);
+  }
+}
+.htmx-morph-in {
+  animation: morphIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.htmx-morph-out {
+  animation: morphOut 0.15s cubic-bezier(0, 0, 0.2, 1) forwards;
+}
+
+.filter-loading-indicator {
+  opacity: 0;
+  transition: opacity 200ms ease-in-out;
+}
+.filter-loading-indicator.htmx-request {
+  opacity: 1;
+  animation: fadeInScale 300ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+.filter-loading-indicator.htmx-request.min-display-time {
+  animation: fadeInScale 300ms cubic-bezier(0.4, 0, 0.2, 1) forwards, stayVisible 500ms linear;
+}
+.filter-loading-indicator .filter-loading-spinner {
+  animation: spin 0.8s linear infinite, pulse 2s ease-in-out infinite;
+}
+
+@keyframes fadeInScale {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.8);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+@keyframes stayVisible {
+  0%, 100% {
+    opacity: 1;
+  }
+}
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+.htmx-request .grp-changelist-results {
+  position: relative;
+}
+.htmx-request .grp-changelist-results::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  animation: skeleton-wave 1.5s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 1;
+}
+
+@keyframes skeleton-wave {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+.filter-panel.active {
+  z-index: 10001;
+}
+.htmx-swapping .filter-panel, .htmx-settling .filter-panel {
+  pointer-events: all;
+}
+.htmx-swapping .filter-panel.active, .htmx-settling .filter-panel.active {
+  right: 0 !important;
+  opacity: 1 !important;
+}
+
+.htmx-swapping .filter-panel-overlay.active, .htmx-settling .filter-panel-overlay.active {
+  opacity: 1 !important;
+}
+
+.grp-changelist-results tbody tr {
+  transition: opacity 200ms ease-in-out, transform 200ms ease-in-out;
+  transform: translateX(0);
+}
+.grp-changelist-results tbody tr:nth-child(1) {
+  transition-delay: 20ms;
+}
+.grp-changelist-results tbody tr:nth-child(2) {
+  transition-delay: 40ms;
+}
+.grp-changelist-results tbody tr:nth-child(3) {
+  transition-delay: 60ms;
+}
+.grp-changelist-results tbody tr:nth-child(4) {
+  transition-delay: 80ms;
+}
+.grp-changelist-results tbody tr:nth-child(5) {
+  transition-delay: 100ms;
+}
+.grp-changelist-results tbody tr:nth-child(6) {
+  transition-delay: 120ms;
+}
+.grp-changelist-results tbody tr:nth-child(7) {
+  transition-delay: 140ms;
+}
+.grp-changelist-results tbody tr:nth-child(8) {
+  transition-delay: 160ms;
+}
+.grp-changelist-results tbody tr:nth-child(9) {
+  transition-delay: 180ms;
+}
+.grp-changelist-results tbody tr:nth-child(10) {
+  transition-delay: 200ms;
+}
+.grp-changelist-results tbody tr:nth-child(11) {
+  transition-delay: 220ms;
+}
+.grp-changelist-results tbody tr:nth-child(12) {
+  transition-delay: 240ms;
+}
+.grp-changelist-results tbody tr:nth-child(13) {
+  transition-delay: 260ms;
+}
+.grp-changelist-results tbody tr:nth-child(14) {
+  transition-delay: 280ms;
+}
+.grp-changelist-results tbody tr:nth-child(15) {
+  transition-delay: 300ms;
+}
+.grp-changelist-results tbody tr:nth-child(16) {
+  transition-delay: 320ms;
+}
+.grp-changelist-results tbody tr:nth-child(17) {
+  transition-delay: 340ms;
+}
+.grp-changelist-results tbody tr:nth-child(18) {
+  transition-delay: 360ms;
+}
+.grp-changelist-results tbody tr:nth-child(19) {
+  transition-delay: 380ms;
+}
+.grp-changelist-results tbody tr:nth-child(20) {
+  transition-delay: 400ms;
+}
+.htmx-swapping .grp-changelist-results tbody tr {
+  opacity: 0.6;
+  transform: translateX(-5px);
+}
+.htmx-settling .grp-changelist-results tbody tr {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.grp-pagination {
+  transition: opacity 200ms ease-in-out;
+}
+.htmx-swapping .grp-pagination {
+  opacity: 0.4;
+}
+.htmx-settling .grp-pagination {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Target only HTMX-related transitions, not menu animations */
+  .htmx-swapping,
+  .htmx-settling,
+  .htmx-request,
+  .htmx-morph-in,
+  .htmx-morph-out,
+  #grp-content-container,
+  .grp-changelist-results tbody tr,
+  .grp-pagination {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .filter-loading-indicator {
+    transition: none;
+  }
+  .filter-loading-indicator.htmx-request {
+    opacity: 1;
+  }
+}
+.transitions-fast #grp-content-container,
+.transitions-fast .grp-changelist-results tbody tr,
+.transitions-fast .grp-pagination {
+  transition-duration: 150ms !important;
+}
+.transitions-fast .htmx-morph-in,
+.transitions-fast .htmx-morph-out {
+  animation-duration: 150ms !important;
+}
+
+.transitions-instant #grp-content-container,
+.transitions-instant .grp-changelist-results tbody tr,
+.transitions-instant .grp-pagination {
+  transition: none !important;
+}
+.transitions-instant .htmx-morph-in,
+.transitions-instant .htmx-morph-out {
+  animation: none !important;
+}
+.transitions-instant .filter-loading-indicator.htmx-request {
+  animation: none !important;
+  opacity: 1 !important;
+}
+
+body.htmx-swapping {
+  overflow-anchor: auto;
+}
+
+.grp-changelist-results .grp-module {
+  min-height: 100px;
+}
+.htmx-swapping .grp-changelist-results .grp-module {
+  height: auto !important;
+  min-height: inherit;
+}
+
+/*# sourceMappingURL=admin-htmx-transitions.css.map */

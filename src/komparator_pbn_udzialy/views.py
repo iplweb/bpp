@@ -1,20 +1,18 @@
 import logging
 
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required, permission_required
 from django.core.management import call_command
 from django.db import models
 from django.db.models import Q
 from django.http import HttpResponseRedirect, JsonResponse
 from django.shortcuts import render
 from django.urls import reverse
+from django.utils.decorators import method_decorator
 from django.views import View
 from django.views.generic import DetailView, ListView
 
 from komparator_pbn_udzialy.models import RozbieznoscDyscyplinPBN
-
-from django.contrib import messages
-from django.contrib.auth.decorators import login_required, permission_required
-
-from django.utils.decorators import method_decorator
 
 logger = logging.getLogger(__name__)
 

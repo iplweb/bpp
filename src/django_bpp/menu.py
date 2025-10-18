@@ -177,12 +177,17 @@ class CustomMenu(Menu):
     def __init__(self, **kwargs):
         Menu.__init__(self, **kwargs)
 
+        # Add BPP logo/home link as first item
+        bpp_home = items.MenuItem("BPP", url="/")
+        bpp_home.css_classes = ["menu-icon-home"]
+
         self.children += [
+            bpp_home,
             items.MenuItem(str(_("Dashboard")), reverse("admin:index")),
-            items.Bookmarks(),
+            # items.Bookmarks(),  # Hidden - user requested to hide bookmarks menu
         ]
 
-    def init_with_context(self, context):
+    def init_with_context(self, context):  # noqa: C901
         user = context["request"].user
         if not hasattr(user, "__admin_menu_groups"):
             user.__admin_menu_groups = [x.name for x in user.cached_groups]
@@ -194,12 +199,9 @@ class CustomMenu(Menu):
                     submenu(n2, v, icon_class),
                 ]
 
-        # Add icon classes to Dashboard and Bookmarks menu items
+        # Dashboard is now second item (index 1), add icon
         if len(self.children) >= 2:
-            self.children[0].css_classes = ["menu-icon-home"]  # Dashboard (Panel)
-            self.children[1].css_classes = [
-                "menu-icon-bookmarks"
-            ]  # Bookmarks (Zakładki)
+            self.children[1].css_classes = ["menu-icon-dashboard"]  # Dashboard (Panel)
 
         flt("web", "WWW", WEB_MENU, "menu-icon-web")
 
@@ -241,5 +243,114 @@ class CustomMenu(Menu):
 
         flt("raporty", "Raporty", RAPORTY_MENU, "menu-icon-reports")
         flt("administracja", "Administracja", ADMIN_MENU, "menu-icon-admin")
+
+        # Create user menu with "Mój profil" label and dropdown - add at the end
+        username = (
+            user.first_name
+            or user.username
+            or user.get_short_name()
+            or user.get_username()
+        )
+
+        # Prepare column 1 items (user actions and themes)
+        column1_children = []
+
+        # Add username as first item (not clickable - no URL)
+        username_item = items.MenuItem(username, url="#")
+        username_item.css_classes = ["column-1"]
+        column1_children.append(username_item)
+
+        # Add "Change password" if user has usable password
+        if user.has_usable_password():
+            change_pwd_item = items.MenuItem(
+                str(_("Change password")), reverse("admin:password_change")
+            )
+            change_pwd_item.css_classes = ["column-1"]
+            column1_children.append(change_pwd_item)
+
+        # Add "Log out"
+        logout_item = items.MenuItem(str(_("Log out")), reverse("admin:logout"))
+        logout_item.css_classes = ["column-1"]
+        column1_children.append(logout_item)
+
+        # Add separator for theme options
+        separator = items.MenuItem("---", url="#")
+        separator.css_classes = ["theme-separator", "column-1"]
+        column1_children.append(separator)
+
+        # First 5 theme options for column 1
+        theme_items_col1 = [
+            ("Domyślny (ciemny)", "default", "theme-selector-default"),
+            ("Klasyczny jasny", "classic-light", "theme-selector-classic-light"),
+            ("Granatowy akademicki", "navy-academic", "theme-selector-navy-academic"),
+            (
+                "Szary profesjonalny",
+                "gray-professional",
+                "theme-selector-gray-professional",
+            ),
+            ("Kremowo-zielony", "cream-green", "theme-selector-cream-green"),
+        ]
+
+        for theme_name, theme_key, css_class in theme_items_col1:
+            theme_item = items.MenuItem(theme_name, url=f"#theme-{theme_key}")
+            theme_item.css_classes = ["theme-selector-item", css_class, "column-1"]
+            column1_children.append(theme_item)
+
+        # Prepare column 2 items (remaining themes and fonts)
+        column2_children = []
+
+        # Remaining theme options for column 2
+        theme_items_col2 = [
+            ("Minimalistyczny jasny", "minimal-light", "theme-selector-minimal-light"),
+            ("Złoty", "golden", "theme-selector-golden"),
+            ("Srebrny", "srebrny", "theme-selector-srebrny"),
+            ("Brat Ludwika", "mario-bros", "theme-selector-mario-bros"),
+            ("Brat Mariana", "luigi", "theme-selector-luigi"),
+        ]
+
+        for theme_name, theme_key, css_class in theme_items_col2:
+            theme_item = items.MenuItem(theme_name, url=f"#theme-{theme_key}")
+            theme_item.css_classes = ["theme-selector-item", css_class, "column-2"]
+            column2_children.append(theme_item)
+
+        # Add 4 empty spacer entries above fonts in column 2
+        for i in range(4):
+            spacer_item = items.MenuItem("", url="#")
+            spacer_item.css_classes = ["menu-spacer", "column-2"]
+            column2_children.append(spacer_item)
+
+        # Add separator for font options
+        font_separator = items.MenuItem("---", url="#")
+        font_separator.css_classes = ["font-separator", "column-2"]
+        column2_children.append(font_separator)
+
+        # Font options for column 2
+        font_items = [
+            ("Domyślna czcionka", "default", "font-selector-default"),
+            ("Inter", "inter-small", "font-selector-inter-small"),
+            ("Open Sans", "opensans-small", "font-selector-opensans-small"),
+            ("Roboto", "roboto-small", "font-selector-roboto-small"),
+            ("Lato", "lato-small", "font-selector-lato-small"),
+            ("Source Sans Pro", "sourcesans-small", "font-selector-sourcesans-small"),
+            ("Segoe UI", "segoeui-small", "font-selector-segoeui-small"),
+            ("Arial", "arial-small", "font-selector-arial-small"),
+            ("Verdana", "verdana-small", "font-selector-verdana-small"),
+            ("Calibri", "calibri-small", "font-selector-calibri-small"),
+        ]
+
+        for font_name, font_key, css_class in font_items:
+            font_item = items.MenuItem(font_name, url=f"#font-{font_key}")
+            font_item.css_classes = ["font-selector-item", css_class, "column-2"]
+            column2_children.append(font_item)
+
+        # Combine all children in order (column1 first, then column2)
+        user_children = column1_children + column2_children
+
+        # Create user menu item with icon class and columns support - label is "Mój profil"
+        user_menu = items.MenuItem("Mój profil", children=user_children)
+        user_menu.css_classes = ["menu-icon-user", "has-columns"]
+
+        # Add user menu to children
+        self.children.append(user_menu)
 
         return super().init_with_context(context)

@@ -2,20 +2,18 @@
 import sys
 
 import rollbar
+from django.contrib import messages
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import transaction
 from django.http import HttpResponseBadRequest
+from django.utils import timezone
 from django.views.generic import RedirectView
+
+from bpp.models import Uczelnia
 
 from .client import OAuthMixin
 from .exceptions import AuthenticationConfigurationError, AuthenticationResponseError
 from .signals import token_set_successfully
-
-from django.contrib import messages
-from django.contrib.auth.mixins import LoginRequiredMixin
-
-from django.utils import timezone
-
-from bpp.models import Uczelnia
 
 
 class TokenRedirectPage(LoginRequiredMixin, RedirectView):

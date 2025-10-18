@@ -13,11 +13,9 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         for wydawca in Wydawca.objects.all():
             for klass in Wydawnictwo_Zwarte, Praca_Doktorska, Praca_Habilitacyjna:
-
                 for model in klass.objects.filter(
                     wydawca=None, rok__gte=PBN_MIN_ROK
                 ).filter(wydawca_opis__istartswith=wydawca.nazwa):
-
                     stare_wydawnictwo = model.wydawnictwo
                     model.wydawca = wydawca
                     model.wydawca_opis = model.wydawca_opis[

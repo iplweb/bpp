@@ -11,6 +11,10 @@
 {% block extrahead %}
     {{ global_nav_form.media }}
 
+    <!-- HTMX for AJAX functionality -->
+    {% load static %}
+    <script src="{% static 'htmx.org/dist/htmx.js' %}"></script>
+
     <!-- Anti-FOUC: Hide page until fully loaded -->
     <style>
         html {
@@ -38,93 +42,99 @@
 {% block nav-global %}
     {% if user.is_active and user.is_staff %}
         {% if not is_popup %}
-            <div style="float: right; ">
-                {% crispy global_nav_form %}
-                <script type="text/javascript">
-                    (function($){
-                        // Handle select2 change event
-                        $(':input[name$=global_nav_value]').on('change', function () {
-                            var $select = $(this);
-                            var $container = $select.next('.select2-container');
+            <div id="nav-global-container" style="display: flex; flex-wrap: wrap; align-items: center;">
+                <div id="menu-container">
+                    {% if request.user.is_staff %}
+                        {% admin_tools_render_menu %}
+                    {% endif %}
+                </div>
+                <div id="search-container">
+                    {% crispy global_nav_form %}
+                    <script type="text/javascript">
+                        (function($){
+                            // Handle select2 change event
+                            $(':input[name$=global_nav_value]').on('change', function () {
+                                var $select = $(this);
+                                var $container = $select.next('.select2-container');
 
-                            // Close dropdown immediately
-                            $select.select2('close');
+                                // Close dropdown immediately
+                                $select.select2('close');
 
-                            // Disable select to prevent further interaction
-                            $select.prop('disabled', true);
+                                // Disable select to prevent further interaction
+                                $select.prop('disabled', true);
 
-                            // Add loading state to container
-                            $container.addClass('select2-loading');
+                                // Add loading state to container
+                                $container.addClass('select2-loading');
 
-                            // Change cursor to waiting
-                            $('body').css('cursor', 'wait');
+                                // Change cursor to waiting
+                                $('body').css('cursor', 'wait');
 
-                            // Perform redirect
-                            location.href = "/global-nav-redir/" + $(this).val() +
-                                "?source=admin";
-                        });
+                                // Perform redirect
+                                location.href = "/global-nav-redir/" + $(this).val() +
+                                    "?source=admin";
+                            });
 
-                        // Add "/" hotkey to open global search
-                        $(document).on('keydown', function(e) {
-                            // Don't trigger if user is typing in an input/textarea
-                            if ($(e.target).is('input, textarea, select')) {
-                                return;
-                            }
+                            // Function to focus on Select2 search field
+                            function focusSelect2SearchField() {
+                                // Try multiple strategies with increasing delays
+                                var attempts = [0, 50, 150];
+                                var attemptIndex = 0;
 
-                            // Check for "/" key
-                            if (e.key === '/') {
-                                e.preventDefault();
+                                function tryFocus() {
+                                    setTimeout(function() {
+                                        // Try different selectors
+                                        var $search1 = $('.select2-container--open .select2-search__field');
+                                        var $search2 = $('.select2-search--dropdown .select2-search__field');
+                                        var $search3 = $('input.select2-search__field:visible');
 
-                                // Find the select2 container and open it
-                                var $select = $('#id_global_nav_value');
+                                        // Try to find the search field
+                                        var $search = $search1.length ? $search1 : ($search2.length ? $search2 : $search3);
 
-                                if ($select.length > 0) {
-                                    // Use select2:open event to ensure dropdown is fully rendered
-                                    $select.one('select2:open', function() {
-                                        // Try multiple strategies with increasing delays
-                                        var attempts = [50, 150, 300];
-                                        var attemptIndex = 0;
-
-                                        function tryFocus() {
-                                            setTimeout(function() {
-                                                // Try different selectors
-                                                var $search1 = $('.select2-container--open .select2-search__field');
-                                                var $search2 = $('.select2-search--dropdown .select2-search__field');
-                                                var $search3 = $('input.select2-search__field:visible');
-
-                                                // Try to find the search field
-                                                var $search = $search1.length ? $search1 : ($search2.length ? $search2 : $search3);
-
-                                                if ($search.length > 0) {
-                                                    // Force focus
-                                                    $search[0].focus();
-                                                    $search.trigger('focus');
-                                                    $search.select();
-                                                } else {
-                                                    // If not found and more attempts available, try again
-                                                    if (attemptIndex < attempts.length - 1) {
-                                                        attemptIndex++;
-                                                        tryFocus();
-                                                    }
-                                                }
-                                            }, attempts[attemptIndex]);
+                                        if ($search.length > 0) {
+                                            // Force focus
+                                            $search[0].focus();
+                                            $search.trigger('focus');
+                                            $search.select();
+                                        } else {
+                                            // If not found and more attempts available, try again
+                                            if (attemptIndex < attempts.length - 1) {
+                                                attemptIndex++;
+                                                tryFocus();
+                                            }
                                         }
-
-                                        tryFocus();
-                                    });
-
-                                    // Open the dropdown
-                                    $select.select2('open');
+                                    }, attempts[attemptIndex]);
                                 }
+
+                                tryFocus();
                             }
-                        });
-                    })(django.jQuery || $);
-                </script>
-            </div>
-            <div>
-                {% if request.user.is_staff %}
-                    {% admin_tools_render_menu %}
-                {% endif %}
+
+                            // Focus search field on any open (click or hotkey)
+                            var $select = $('#id_global_nav_value');
+                            $select.on('select2:open', function() {
+                                focusSelect2SearchField();
+                            });
+
+                            // Add "/" hotkey to open global search
+                            $(document).on('keydown', function(e) {
+                                // Don't trigger if user is typing in an input/textarea
+                                if ($(e.target).is('input, textarea, select')) {
+                                    return;
+                                }
+
+                                // Check for "/" key
+                                if (e.key === '/') {
+                                    e.preventDefault();
+
+                                    // Find the select2 container and open it
+                                    if ($select.length > 0) {
+                                        // Open the dropdown (focus will be handled by select2:open event)
+                                        $select.select2('open');
+                                    }
+                                }
+                            });
+                        })(django.jQuery || $);
+                    </script>
+                </div>
             </div>
         {% endif %}
     {% endif %}
@@ -201,6 +211,7 @@
     {% compress css %}
         <link rel="stylesheet" type="text/css" media="screen" href="{{ STATIC_URL }}bpp/css/admin-style.css"/>
         <link rel="stylesheet" type="text/css" media="screen" href="{{ STATIC_URL }}bpp/css/admin-menu.css"/>
+        <link rel="stylesheet" type="text/css" media="screen" href="{{ STATIC_URL }}bpp/css/admin-themes.css"/>
 
         <style type="text/css">
             .keypad-key {
@@ -354,21 +365,37 @@
                     display: none;
                 }
             }
+
+            /* Przycisk mapy znaków diakrytycznych */
+            button.keypad-trigger {
+                border: none !important;
+                background-color: #f5f5f5 !important;
+                border-radius: 2px !important;
+                padding: 0px !important;
+                cursor: pointer !important;
+                line-height: 1 !important;
+                display: inline-flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                width: 24px !important;
+                height: 24px !important;
+            }
+
+            button.keypad-trigger:hover {
+                background-color: #e0e0e0 !important;
+            }
         </style>
     {% endcompress %}
 
     {% compress js %}
         <script type="text/javascript" src="{{ STATIC_URL }}bpp/js/admin-table-enhancements.js"></script>
+        <script type="text/javascript" src="{{ STATIC_URL }}bpp/js/admin-theme-switcher.js"></script>
     {% endcompress %}
 
     <script type="text/javascript">
         (function ($) {
 
             $(document).ready(function () {
-
-                txt = $("#grp-admin-title").text();
-                $("#grp-admin-title").html(
-                    '<a href="/">' + txt + '</a>');
 
                 grp.jQuery('.charmap').keypad({
                     keypadOnly: false,
@@ -381,7 +408,8 @@
                     ],
                     showAnim: 'fadeIn',
                     duration: 'fast',
-                    showOn: 'button'
+                    showOn: 'button',
+                    buttonText: '🌐'
                 });
 
                 // Przyciski jquery.keypad
@@ -398,6 +426,40 @@
                     });
             });
 
+        })(grp.jQuery);
+    </script>
+
+    <script type="text/javascript">
+        (function($){
+            $(document).ready(function() {
+                // Przechwytywanie kliknięć w menu admin - WSZYSTKIE linki w menu-container
+                $('#menu-container a').on('click', function(e) {
+                    var $link = $(this);
+                    var menuLabel = $link.text().trim();
+                    var menuUrl = $link.attr('href');
+
+                    // Nie loguj kliknięć w # (placeholder links)
+                    if (!menuUrl || menuUrl === '#' || menuUrl === 'javascript://') {
+                        return;
+                    }
+
+                    // Wyślij dane do backendu (asynchronicznie, nie blokuj nawigacji)
+                    $.ajax({
+                        url: '{% url "admin_dashboard:log_menu_click" %}',
+                        type: 'POST',
+                        data: {
+                            menu_label: menuLabel,
+                            menu_url: menuUrl,
+                            csrfmiddlewaretoken: '{{ csrf_token }}'
+                        },
+                        async: true,
+                        // Ignoruj błędy - nie chcemy przerywać nawigacji
+                        error: function() {
+                            // Silent fail
+                        }
+                    });
+                });
+            });
         })(grp.jQuery);
     </script>
 {% endblock %}

@@ -1,4 +1,3 @@
-# -*- encoding: utf-8 -*-
 from collections import defaultdict
 
 from django.db import models

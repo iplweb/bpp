@@ -1,4 +1,4 @@
-# -*- encoding: utf-8 -*-
+import logging
 
 from django.core.management import BaseCommand
 from django.db import transaction
@@ -7,9 +7,8 @@ from bpp.models import (
     Autor_Dyscyplina,
     Wydawnictwo_Ciagle_Autor,
     Wydawnictwo_Zwarte_Autor,
+    cache,
 )
-from bpp.models import cache
-import logging
 
 logger = logging.getLogger("django")
 

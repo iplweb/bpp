@@ -1,6 +1,5 @@
-from django.db.models import BLANK_CHOICE_DASH
-
 from django.contrib import messages
+from django.db.models import BLANK_CHOICE_DASH
 
 
 class ReadOnlyListChangeFormAdminMixin:

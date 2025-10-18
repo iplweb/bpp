@@ -1,14 +1,5 @@
 """Publication import utilities"""
 
-from pbn_api.models import Publication
-from pbn_integrator.importer import importuj_publikacje_po_pbn_uid_id
-from pbn_integrator.utils import (
-    integruj_publikacje_instytucji,
-    pobierz_publikacje_z_instytucji,
-    zapisz_publikacje_instytucji_v2,
-)
-from .base import CancelledException, ImportStepBase
-
 from bpp.models import (
     Jednostka,
     Rekord,
@@ -16,6 +7,15 @@ from bpp.models import (
     Wydawnictwo_Ciagle,
     Wydawnictwo_Zwarte,
 )
+from pbn_api.models import Publication
+from pbn_integrator.importer import importuj_publikacje_po_pbn_uid_id
+from pbn_integrator.utils import (
+    integruj_publikacje_instytucji,
+    pobierz_publikacje_z_instytucji,
+    zapisz_publikacje_instytucji_v2,
+)
+
+from .base import CancelledException, ImportStepBase
 
 
 class PublicationImporter(ImportStepBase):

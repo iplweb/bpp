@@ -419,3 +419,15 @@ div.json-actions .button {
 /* -------------------------------------------------------------------------------- */
 
 /* Hover effect colors are defined dynamically in base_site.html based on THEME_NAME */
+
+/* -------------------------------------------------------------------------------- */
+/* Reduced spacing for messages and content title */
+/* -------------------------------------------------------------------------------- */
+
+.grp-messagelist {
+    padding-bottom: 5px !important;
+}
+
+#grp-content-title h1 {
+    margin-top: 5px !important;
+}

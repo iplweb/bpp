@@ -2,10 +2,9 @@ import logging
 from urllib.parse import urlencode
 
 from django.conf import settings
+from django.contrib.auth import logout
 from django.http import HttpResponseRedirect
 from django.views import View
-
-from django.contrib.auth import logout
 
 logger = logging.getLogger(__name__)
 

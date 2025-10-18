@@ -3,13 +3,12 @@ from decimal import Decimal
 import pytest
 from model_bakery import baker
 
+from bpp.models import Autor, Autor_Dyscyplina
 from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaRok, LiczbaNDlaUczelni
 from ewaluacja_liczba_n.utils import (
     oblicz_liczby_n_dla_ewaluacji_2022_2025,
     oblicz_srednia_liczbe_n_dla_dyscyplin,
 )
-
-from bpp.models import Autor, Autor_Dyscyplina
 
 
 @pytest.mark.parametrize("zaokraglaj", [True, False])

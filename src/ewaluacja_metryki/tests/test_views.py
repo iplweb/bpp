@@ -206,20 +206,13 @@ def test_statystyki_view(admin_user, client):
 
 
 @pytest.mark.django_db
-def test_statystyki_autorzy_zerowi_tylko_z_jest_w_n(admin_user, client):
+def test_statystyki_autorzy_zerowi_tylko_z_jest_w_n(
+    admin_user, client, rodzaj_autora_n, rodzaj_autora_d
+):
     """Test że autorzy zerowi zawierają tylko autorów i lata z jest_w_n=True"""
     from bpp.models import Autor_Dyscyplina
-    from ewaluacja_common.models import Rodzaj_Autora
 
     client.force_login(admin_user)
-
-    # Stwórz rodzaje autorów
-    rodzaj_n = baker.make(
-        Rodzaj_Autora, skrot="N", nazwa="N", jest_w_n=True, licz_sloty=True
-    )
-    rodzaj_d = baker.make(
-        Rodzaj_Autora, skrot="D", nazwa="D", jest_w_n=False, licz_sloty=True
-    )
 
     # Stwórz autora z zerową metryką
     autor = baker.make(Autor, nazwisko="Kowalski", imiona="Jan")
@@ -244,7 +237,7 @@ def test_statystyki_autorzy_zerowi_tylko_z_jest_w_n(admin_user, client):
         autor=autor,
         rok=2022,
         dyscyplina_naukowa=dyscyplina,
-        rodzaj_autora=rodzaj_n,
+        rodzaj_autora=rodzaj_autora_n,
     )
     # Rok 2023 - jest w D (jest_w_n=False)
     baker.make(
@@ -252,7 +245,7 @@ def test_statystyki_autorzy_zerowi_tylko_z_jest_w_n(admin_user, client):
         autor=autor,
         rok=2023,
         dyscyplina_naukowa=dyscyplina,
-        rodzaj_autora=rodzaj_d,
+        rodzaj_autora=rodzaj_autora_d,
     )
     # Rok 2024 - jest w N (jest_w_n=True)
     baker.make(
@@ -260,7 +253,7 @@ def test_statystyki_autorzy_zerowi_tylko_z_jest_w_n(admin_user, client):
         autor=autor,
         rok=2024,
         dyscyplina_naukowa=dyscyplina,
-        rodzaj_autora=rodzaj_n,
+        rodzaj_autora=rodzaj_autora_n,
     )
 
     url = reverse("ewaluacja_metryki:statystyki")
@@ -282,17 +275,14 @@ def test_statystyki_autorzy_zerowi_tylko_z_jest_w_n(admin_user, client):
 
 
 @pytest.mark.django_db
-def test_statystyki_autorzy_zerowi_pomiń_bez_jest_w_n(admin_user, client):
+def test_statystyki_autorzy_zerowi_pomiń_bez_jest_w_n(
+    admin_user, client, rodzaj_autora_d, rodzaj_autora_n
+):
     """Test że autorzy bez lat z jest_w_n=True są pomijani"""
+
     from bpp.models import Autor_Dyscyplina
-    from ewaluacja_common.models import Rodzaj_Autora
 
     client.force_login(admin_user)
-
-    # Stwórz rodzaj autora z jest_w_n=False
-    rodzaj_d = baker.make(
-        Rodzaj_Autora, skrot="D", nazwa="D", jest_w_n=False, licz_sloty=True
-    )
 
     # Stwórz autora z zerową metryką
     autor = baker.make(Autor, nazwisko="Nowak", imiona="Anna")
@@ -316,14 +306,14 @@ def test_statystyki_autorzy_zerowi_pomiń_bez_jest_w_n(admin_user, client):
         autor=autor,
         rok=2022,
         dyscyplina_naukowa=dyscyplina,
-        rodzaj_autora=rodzaj_d,
+        rodzaj_autora=rodzaj_autora_d,
     )
     baker.make(
         Autor_Dyscyplina,
         autor=autor,
         rok=2023,
         dyscyplina_naukowa=dyscyplina,
-        rodzaj_autora=rodzaj_d,
+        rodzaj_autora=rodzaj_autora_d,
     )
 
     url = reverse("ewaluacja_metryki:statystyki")

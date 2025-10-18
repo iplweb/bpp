@@ -8,7 +8,7 @@ def monkeypatched_results(cl):
     )
 
     if cl.formset:
-        for res, form in zip(cl.result_list, cl.formset.forms):
+        for res, form in zip(cl.result_list, cl.formset.forms, strict=False):
             yield ResultList(form, items_for_result(cl, res, form))
     else:
         for res in cl.result_list:

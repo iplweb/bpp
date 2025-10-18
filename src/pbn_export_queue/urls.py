@@ -10,6 +10,7 @@ from .views import (
     resend_all_waiting,
     resend_to_pbn,
     try_send_to_pbn,
+    wake_up_queue,
 )
 
 app_name = "pbn_export_queue"
@@ -48,5 +49,10 @@ urlpatterns = [
         "resend-all-waiting/",
         resend_all_waiting,
         name="export-queue-resend-all-waiting",
+    ),
+    path(
+        "wake-up/",
+        wake_up_queue,
+        name="export-queue-wake-up",
     ),
 ]

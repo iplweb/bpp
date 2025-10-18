@@ -1,9 +1,8 @@
 from dal import autocomplete
+from django.contrib import admin
 from djangoql.admin import DjangoQLSearchMixin
 from import_export import resources
 from import_export.fields import Field
-
-from django.contrib import admin
 
 from bpp.admin.filters import (
     OrcidAutoraDyscyplinyObecnyFilter,
@@ -35,7 +34,6 @@ class Autor_DyscyplinaResource(resources.ModelResource):
         return None
 
     class Meta:
-
         model = Autor_Dyscyplina
 
         fields = (

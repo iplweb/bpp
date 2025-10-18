@@ -4,6 +4,8 @@ import re
 import pytest
 
 from django.contrib.contenttypes.models import ContentType
+from django.core.cache import cache
+from cacheops import invalidate_all
 
 try:
     from django.core.urlresolvers import reverse
@@ -161,6 +163,7 @@ def test_darmowy_platny_dostep_www_wyswietlanie(client, wydawnictwo_ciagle, deno
 
 @pytest.mark.django_db
 def test_artykuly(uczelnia, client):
+
     res = client.get(reverse("bpp:browse_uczelnia", args=(uczelnia.slug,)))
     assert res.status_code == 200
 
@@ -175,6 +178,8 @@ def test_artykuly(uczelnia, client):
 
     a.status = Article.STATUS.published
     a.save()
+    # Invalidate cacheops cache for get_uczelnia_context_data
+    invalidate_all()
 
     res = client.get(reverse("bpp:browse_uczelnia", args=(uczelnia.slug,)))
     assert TYTUL.encode("utf-8") in res.content

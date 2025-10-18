@@ -1,8 +1,7 @@
 import pytest
+from django.contrib.auth.models import Group
 from django.urls import reverse
 from model_bakery import baker
-
-from django.contrib.auth.models import Group
 
 from bpp.const import GR_WPROWADZANIE_DANYCH
 from bpp.models.profile import BppUser

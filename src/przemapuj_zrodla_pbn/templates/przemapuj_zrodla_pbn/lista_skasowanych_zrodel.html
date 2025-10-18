@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block title %}Źródła skasowane w PBN{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li class="current">Źródła skasowane w PBN</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="medium-12 columns">
+        <h1>Źródła skasowane w PBN</h1>
+
+        <div class="callout secondary">
+            <h4>Statystyki</h4>
+            <ul>
+                <li><strong>Liczba źródeł skasowanych:</strong> {{ total_zrodla }}</li>
+                <li><strong>Łączna liczba rekordów:</strong> {{ total_rekordy }}</li>
+            </ul>
+        </div>
+
+        {% if zrodla_skasowane %}
+            <table class="hover">
+                <thead>
+                    <tr>
+                        <th>Nazwa źródła</th>
+                        <th>ISSN</th>
+                        <th>E-ISSN</th>
+                        <th>Status PBN</th>
+                        <th>Liczba rekordów</th>
+                        <th>Akcje</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for zrodlo in zrodla_skasowane %}
+                    <tr>
+                        <td>{{ zrodlo.nazwa }}</td>
+                        <td>{{ zrodlo.issn|default:"-" }}</td>
+                        <td>{{ zrodlo.e_issn|default:"-" }}</td>
+                        <td>
+                            <span class="label alert">
+                                <span class="fi-alert"></span> {{ zrodlo.pbn_uid.status }}
+                            </span>
+                        </td>
+                        <td>{{ zrodlo.liczba_rekordow }}</td>
+                        <td>
+                            {% if zrodlo.liczba_rekordow == 0 %}
+                                <a href="{% url 'przemapuj_zrodla_pbn:usun_zrodlo' zrodlo.pk %}"
+                                   class="button small alert"
+                                   onclick="return confirm('Czy na pewno chcesz usunąć źródło \'{{ zrodlo.nazwa }}\'? Ta operacja jest nieodwracalna!');">
+                                    <span class="fi-trash"></span> Usuń
+                                </a>
+                            {% else %}
+                                <a href="{% url 'przemapuj_zrodla_pbn:przemapuj_zrodlo' zrodlo.pk %}"
+                                   class="button small primary">
+                                    <span class="fi-refresh"></span> Przemapuj
+                                </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <div class="callout success">
+                <h4><span class="fi-check"></span> Brak skasowanych źródeł</h4>
+                <p>Wszystkie źródła w systemie są aktywne w PBN. Nie ma nic do przemapowania!</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

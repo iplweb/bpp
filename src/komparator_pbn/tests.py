@@ -1,12 +1,8 @@
 import pytest
+from django.contrib.auth import get_user_model
 from django.test import Client
 from django.urls import reverse
 from model_bakery import baker
-
-from komparator_pbn.views import EVALUATION_END_YEAR, EVALUATION_START_YEAR
-from pbn_api.models import Publication
-
-from django.contrib.auth import get_user_model
 
 from bpp import const
 from bpp.models import (
@@ -15,6 +11,8 @@ from bpp.models import (
     Wydawnictwo_Ciagle,
     Wydawnictwo_Zwarte,
 )
+from komparator_pbn.views import EVALUATION_END_YEAR, EVALUATION_START_YEAR
+from pbn_api.models import Publication
 
 User = get_user_model()
 

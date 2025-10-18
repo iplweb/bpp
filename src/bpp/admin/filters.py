@@ -1,9 +1,8 @@
-from django.db.models import Count, F, IntegerField, Max, Q
-from django.db.models.functions import Cast
-
 from django.contrib.admin.filters import SimpleListFilter
 from django.contrib.admin.models import ADDITION, CHANGE, LogEntry
 from django.contrib.contenttypes.models import ContentType
+from django.db.models import Count, F, IntegerField, Max, Q
+from django.db.models.functions import Cast
 
 from bpp.models import BppUser, Wydawnictwo_Zwarte
 from bpp.models.struktura import Jednostka
@@ -212,7 +211,7 @@ class LogEntryFilterBase(SimpleListFilter):
 
     def lookups(self, request, model_admin):
         return (
-            (x.pk, x.username)
+            (x.pk, str(x))
             for x in BppUser.objects.filter(
                 pk__in=self.logentries().values_list("user_id")
             ).only("pk", "username")

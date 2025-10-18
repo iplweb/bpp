@@ -3,11 +3,15 @@ import traceback
 from enum import Enum
 
 import rollbar
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
 from django.db.models import PositiveIntegerField
 from django.urls import reverse
+from django.utils import timezone
 
+from django_bpp.settings.base import AUTH_USER_MODEL
 from pbn_api.exceptions import (
     AccessDeniedException,
     AlreadyEnqueuedError,
@@ -17,13 +21,6 @@ from pbn_api.exceptions import (
     PraceSerwisoweException,
     ResourceLockedException,
 )
-
-from django.contrib.contenttypes.fields import GenericForeignKey
-from django.contrib.contenttypes.models import ContentType
-
-from django.utils import timezone
-
-from django_bpp.settings.base import AUTH_USER_MODEL
 
 
 class PBN_Export_QueueManager(models.Manager):

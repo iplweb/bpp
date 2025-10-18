@@ -24,7 +24,7 @@ class XLSParseError(Exception):
         self.reason = reason
 
     def __str__(self):
-        errors = getattr(self.form, "errors")
+        errors = self.form.errors
         if errors:
             errors = errors.as_json()
 

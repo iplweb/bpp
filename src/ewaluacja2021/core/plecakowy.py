@@ -1,10 +1,10 @@
 from django.db.models import Sum
 
-from .ewaluacja3n_base import Ewaluacja3NBase
-from .util import policz_knapsack
-
 from bpp.models import Cache_Punktacja_Autora_Query
 from bpp.util import pbar
+
+from .ewaluacja3n_base import Ewaluacja3NBase
+from .util import policz_knapsack
 
 
 class Plecakowy(Ewaluacja3NBase):
@@ -25,7 +25,6 @@ class Plecakowy(Ewaluacja3NBase):
         return self.lista_prac_tuples
 
     def get_lista_autorow_w_kolejnosci(self):
-
         punkty_na_id_autora = {
             i["autor_id"]: i["pkdaut__sum"]
             for i in Cache_Punktacja_Autora_Query.objects.values("autor_id").annotate(
@@ -42,9 +41,7 @@ class Plecakowy(Ewaluacja3NBase):
         return id_autorow
 
     def sumuj(self):
-
         for autor_id in pbar(self.get_lista_autorow_w_kolejnosci()):
-
             if self.bez_limitu_uczelni:
                 wszystkie = list(
                     praca for praca in self.lista_prac_db.filter(autor_id=autor_id)

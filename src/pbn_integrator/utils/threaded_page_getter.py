@@ -7,6 +7,19 @@
 
 
 class ThreadedPageGetter:
+    def __init__(self, max_workers=None, model_class=None):
+        """Initialize ThreadedPageGetter with optional max_workers and model_class parameters
+
+        Args:
+            max_workers: Maximum number of worker threads (optional)
+            model_class: Model class for subclasses like ThreadedMongoDBSaver (optional)
+        """
+        self.max_workers = max_workers
+        self.model_class = model_class
+        self.pbn_api_klass = model_class  # Alias for backward compatibility
+        self.client = None
+        self.data = None
+
     def pool_init(self, _client, _data):
         import django
 
@@ -43,7 +56,15 @@ def threaded_page_getter(
 ):
     """Odświeża wszystkie publikacje, które są w lokalnej tabeli."""
 
-    getter = klass()
+    # Create getter instance - pass no_threads as max_workers if supported
+    try:
+        getter = klass(max_workers=no_threads)
+    except TypeError:
+        # Fallback for klass that don't support max_workers
+        getter = klass()
+
+    # Use getter's max_workers if available, otherwise use no_threads parameter
+    effective_threads = getattr(getter, "max_workers", None) or no_threads
 
     if method == "processes":
         import multiprocessing
@@ -55,14 +76,18 @@ def threaded_page_getter(
         _bede_uzywal_bazy_danych_z_multiprocessing_z_django()
 
         pool = multiprocessing.get_context("fork").Pool(
-            processes=no_threads, initializer=getter.pool_init, initargs=(client, data)
+            processes=effective_threads,
+            initializer=getter.pool_init,
+            initargs=(client, data),
         )
 
     elif method == "threads":
         from multiprocessing.dummy import Pool
 
         pool = Pool(
-            processes=no_threads, initializer=getter.pool_init, initargs=(client, data)
+            processes=effective_threads,
+            initializer=getter.pool_init,
+            initargs=(client, data),
         )
 
     from bpp.util import pbar

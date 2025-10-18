@@ -1,8 +1,6 @@
+from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.template.loader import get_template
-
-from django.contrib.contenttypes.models import ContentType
-
 from django.utils.functional import cached_property
 
 

@@ -1,6 +1,12 @@
 from dal import autocomplete
 from django import forms
+from django.contrib import admin
 from taggit.forms import TextareaTagWidget
+
+from bpp.admin.helpers.widgets import (
+    COMMA_DECIMAL_FIELD_OVERRIDE,
+    NIZSZE_TEXTFIELD_Z_MAPA_ZNAKOW,
+)
 
 from ..models import Autor, Jednostka, Praca_Doktorska
 from .actions import ustaw_po_korekcie, ustaw_przed_korekta, ustaw_w_trakcie_korekty
@@ -26,13 +32,6 @@ from .helpers.mixins import DomyslnyStatusKorektyMixin, Wycinaj_W_z_InformacjiMi
 from .wydawnictwo_ciagle import CleanDOIWWWPublicWWWMixin
 from .xlsx_export import resources
 from .xlsx_export.mixins import EksportDanychZFormatowanieMixin, ExportActionsMixin
-
-from django.contrib import admin
-
-from bpp.admin.helpers.widgets import (
-    COMMA_DECIMAL_FIELD_OVERRIDE,
-    NIZSZE_TEXTFIELD_Z_MAPA_ZNAKOW,
-)
 
 # Proste tabele
 

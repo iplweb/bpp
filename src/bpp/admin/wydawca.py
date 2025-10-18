@@ -1,16 +1,14 @@
 from dal import autocomplete
 from django import forms
+from django.contrib import admin
 from django.core.exceptions import ValidationError
 from djangoql.admin import DjangoQLSearchMixin
-
-from pbn_api.models import Publisher
-
-from django.contrib import admin
 
 from bpp.admin.filters import PBN_UID_IDObecnyFilter
 from bpp.const import PBN_UID_LEN
 from bpp.models import Wydawca
 from bpp.models.wydawca import Poziom_Wydawcy
+from pbn_api.models import Publisher
 
 
 class Poziom_WydawcyInlineForm(forms.ModelForm):

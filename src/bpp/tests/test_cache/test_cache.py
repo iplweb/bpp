@@ -1,7 +1,7 @@
 import pytest
 from model_bakery import baker
 
-from bpp.models import Praca_Doktorska
+from bpp.models import Praca_Doktorska, Wydawnictwo_Zwarte
 from bpp.models.autor import Autor
 from bpp.models.cache import Autorzy, Rekord
 from bpp.models.openaccess import (
@@ -436,7 +436,8 @@ def test_prace_autora_z_afiliowanych_jednostek(typy_odpowiedzialnosci):
 def test_rebuild_ciagle(
     django_assert_max_num_queries, wydawnictwo_ciagle_z_dwoma_autorami, denorms
 ):
-    with django_assert_max_num_queries(79):
+    Wydawnictwo_Ciagle.objects.all().delete()
+    with django_assert_max_num_queries(10):
         denorms.rebuildall("Wydawnictwo_Ciagle")
 
 
@@ -444,7 +445,8 @@ def test_rebuild_ciagle(
 def test_rebuild_zwarte(
     django_assert_max_num_queries, wydawnictwo_zwarte_z_autorem, denorms
 ):
-    with django_assert_max_num_queries(58):
+    Wydawnictwo_Zwarte.objects.all().delete()
+    with django_assert_max_num_queries(10):
         denorms.rebuildall("Wydawnictwo_Zwarte")
 
 

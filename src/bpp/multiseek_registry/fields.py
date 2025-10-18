@@ -1,13 +1,9 @@
 from django.conf import settings
+from django.contrib.postgres.search import SearchQuery
+from django.utils.itercompat import is_iterable
 from mptt.forms import TreeNodeChoiceFieldMixin
 from mptt.settings import DEFAULT_LEVEL_INDICATOR
 from taggit.models import Tag
-
-from .mixins import BppMultiseekVisibilityMixin
-
-from django.contrib.postgres.search import SearchQuery
-
-from django.utils.itercompat import is_iterable
 
 from bpp.models.konferencja import Konferencja
 from bpp.models.openaccess import (
@@ -16,6 +12,8 @@ from bpp.models.openaccess import (
     Wersja_Tekstu_OpenAccess,
 )
 from bpp.models.struktura import Wydzial
+
+from .mixins import BppMultiseekVisibilityMixin
 
 NULL_VALUE = "(brak wpisanej wartości)"
 
@@ -49,8 +47,6 @@ from multiseek.logic import (
     ValueListQueryObject,
 )
 
-from .. import const
-
 from bpp.models import (
     Autor,
     Autorzy,
@@ -69,6 +65,8 @@ from bpp.models import (
     Zrodlo,
 )
 from bpp.models.system import Typ_KBN
+
+from .. import const
 
 UNION = "równy+wspólny"
 UNION_FEMALE = "równa+wspólna"

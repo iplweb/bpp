@@ -1,4 +1,6 @@
 from django.conf import settings
+from django.contrib import messages
+from django.contrib.admin.options import IncorrectLookupParameters
 from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse
 from import_export.admin import ExportMixin
@@ -7,9 +9,6 @@ from import_export.signals import post_export
 
 from .formats import PrettyXLSX
 from .resources import BibTeXFormat
-
-from django.contrib import messages
-from django.contrib.admin.options import IncorrectLookupParameters
 
 
 class PrettyXLSXDefaultExportForm(ExportForm):
@@ -70,8 +69,8 @@ class EksportDanychMixin(ExportMixin):
         content_type = file_format.get_content_type()
 
         response = HttpResponse(export_data, content_type=content_type)
-        response["Content-Disposition"] = 'attachment; filename="{}"'.format(
-            self.get_export_filename(request, queryset, file_format),
+        response["Content-Disposition"] = (
+            f'attachment; filename="{self.get_export_filename(request, queryset, file_format)}"'
         )
 
         post_export.send(sender=None, model=self.model)

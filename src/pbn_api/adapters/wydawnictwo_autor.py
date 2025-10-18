@@ -1,7 +1,6 @@
-from pbn_api.models import TlumaczDyscyplin
-
 from bpp import const
 from bpp.models.abstract import BazaModeluOdpowiedzialnosciAutorow
+from pbn_api.models import TlumaczDyscyplin
 
 
 class WydawnictwoAutorToStatementPBNAdapter:

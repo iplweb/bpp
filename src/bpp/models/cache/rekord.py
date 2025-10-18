@@ -1,17 +1,12 @@
 import denorm
-from django.db import connections, models, router
-from django.db.models.deletion import DO_NOTHING
-from django.urls import reverse
-from taggit.managers import TaggableManager, _TaggableManager
-
-from .punktacja import Cache_Punktacja_Autora, Cache_Punktacja_Dyscypliny
-from .views import SlowaKluczoweView
-
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.postgres.fields.array import ArrayField
 from django.contrib.postgres.search import SearchVectorField as VectorField
-
+from django.db import connections, models, router
+from django.db.models.deletion import DO_NOTHING
+from django.urls import reverse
 from django.utils.functional import cached_property
+from taggit.managers import TaggableManager, _TaggableManager
 
 from bpp.models.abstract import (
     ModelPunktowanyBaza,
@@ -34,6 +29,9 @@ from bpp.models.abstract import (
 from bpp.models.fields import TupleField
 from bpp.models.util import ModelZOpisemBibliograficznym
 from bpp.util import FulltextSearchMixin
+
+from .punktacja import Cache_Punktacja_Autora, Cache_Punktacja_Dyscypliny
+from .views import SlowaKluczoweView
 
 
 class RekordManager(FulltextSearchMixin, models.Manager):
@@ -135,8 +133,7 @@ class _MyTaggableManager(_TaggableManager):
         fieldname = "rekord_id"
         fk = self.through._meta.get_field(fieldname)
         query = {
-            "%s__%s__in"
-            % (self.through.tag_relname(), fk.name): {
+            "%s__%s__in" % (self.through.tag_relname(), fk.name): {
                 obj._get_pk_val() for obj in instances
             }
         }
@@ -148,11 +145,7 @@ class _MyTaggableManager(_TaggableManager):
             self.get_queryset(query)
             .using(db)
             .extra(
-                select={
-                    "_prefetch_related_val": "{}.{}".format(
-                        qn(join_table), qn(source_col)
-                    )
-                }
+                select={"_prefetch_related_val": f"{qn(join_table)}.{qn(source_col)}"}
             )
         )
         from operator import attrgetter

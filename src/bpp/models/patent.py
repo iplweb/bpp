@@ -1,9 +1,7 @@
 from denorm import denormalized, depend_on_related
+from django.contrib.postgres.fields import ArrayField
 from django.db import models
 from django.db.models import CASCADE, SET_NULL, JSONField
-
-from django.contrib.postgres.fields import ArrayField
-
 from django.utils.functional import cached_property
 
 from bpp.models import (

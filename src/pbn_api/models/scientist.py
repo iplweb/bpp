@@ -1,11 +1,10 @@
 from django.db import models
-
-from .base import BasePBNMongoDBModel
-
 from django.utils.functional import cached_property
 
 from bpp import const
 from bpp.models import LinkDoPBNMixin
+
+from .base import BasePBNMongoDBModel
 
 
 class Scientist(LinkDoPBNMixin, BasePBNMongoDBModel):

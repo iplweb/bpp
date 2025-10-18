@@ -1,5 +1,3 @@
-# -*- encoding: utf-8 -*-
-
 from django.core.management import BaseCommand
 from django.db import transaction
 
@@ -12,7 +10,6 @@ class Command(BaseCommand):
 
     @transaction.atomic
     def handle(self, *args, **options):
-
         for praca in Wydawnictwo_Ciagle.objects.exclude(zrodlo=None).order_by("-rok"):
             try:
                 punktacja = praca.zrodlo.punktacja_zrodla_set.get(rok=praca.rok)

@@ -1,5 +1,19 @@
 from django import forms
+from django.contrib import admin
+from django.contrib.admin.sites import AlreadyRegistered
+from django.contrib.auth.forms import UserCreationForm
 from multiseek.models import SearchForm
+
+from bpp.models import Rodzaj_Prawa_Patentowego, Zewnetrzna_Baza_Danych
+
+# Proste tabele
+from bpp.models.openaccess import (
+    Czas_Udostepnienia_OpenAccess,
+    Licencja_OpenAccess,
+    Tryb_OpenAccess_Wydawnictwo_Ciagle,
+    Tryb_OpenAccess_Wydawnictwo_Zwarte,
+    Wersja_Tekstu_OpenAccess,
+)
 
 from ..models import (
     BppUser,
@@ -19,6 +33,7 @@ from ..models.nagroda import OrganPrzyznajacyNagrody
 from ..models.system import Charakter_PBN
 from .autor import AutorAdmin  # noqa
 from .autor_dyscyplina import Autor_DyscyplinaAdmin  # noqa
+from .bppmultiseekvisibility import BppMulitiseekVisibilityAdmin  # noqa
 from .charakter_formalny import Charakter_FormalnyAdmin  # noqa
 from .core import (
     BaseBppAdminMixin,
@@ -45,22 +60,6 @@ from .wydawnictwo_zwarte import (  # noqa
 )
 from .wydawnictwo_zwarte_autor import Wydawnictwo_Zwarte_Autor_Admin  # noqa
 from .wydzial import WydzialAdmin  # noqa
-
-from django.contrib import admin
-from django.contrib.admin.sites import AlreadyRegistered
-from django.contrib.auth.forms import UserCreationForm
-
-from .bppmultiseekvisibility import BppMulitiseekVisibilityAdmin  # noqa
-from bpp.models import Rodzaj_Prawa_Patentowego, Zewnetrzna_Baza_Danych
-
-# Proste tabele
-from bpp.models.openaccess import (
-    Czas_Udostepnienia_OpenAccess,
-    Licencja_OpenAccess,
-    Tryb_OpenAccess_Wydawnictwo_Ciagle,
-    Tryb_OpenAccess_Wydawnictwo_Zwarte,
-    Wersja_Tekstu_OpenAccess,
-)
 
 
 class JezykAdmin(RestrictDeletionToAdministracjaGroupAdmin):

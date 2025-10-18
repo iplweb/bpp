@@ -1,12 +1,11 @@
 import json
 import re
 
+from cacheops import cached
 from django.conf import settings
+from django.contrib.contenttypes.models import ContentType
 from django.db.models import Count
 from django.http import JsonResponse
-
-from django.contrib.contenttypes.models import ContentType
-
 from django.utils import timezone
 
 try:
@@ -22,8 +21,6 @@ from django.views.generic import DetailView, ListView, RedirectView, TemplateVie
 from multiseek.logic import AND, OR
 from multiseek.util import make_field
 from multiseek.views import MULTISEEK_SESSION_KEY, MULTISEEK_SESSION_KEY_REMOVED
-
-from miniblog.models import Article
 
 from bpp.models import (
     Autor,
@@ -43,6 +40,7 @@ from bpp.multiseek_registry import (
     ZakresLatQueryObject,
     ZrodloQueryObject,
 )
+from miniblog.models import Article
 
 PUBLIKACJE = "publikacje"
 STRESZCZENIA = "streszczenia"
@@ -50,6 +48,7 @@ INNE = "inne"
 TYPY = [PUBLIKACJE, STRESZCZENIA, INNE]
 
 
+@cached(timeout=60 * 60)  # Cache for 1 hour
 def get_uczelnia_context_data(uczelnia, article_slug=None):
     """Shared function to get context data for uczelnia view."""
     context = {"object": uczelnia, "uczelnia": uczelnia}
@@ -80,9 +79,8 @@ def conditional(**kwargs):
     """A wrapper around :func:`django.views.decorators.http.condition` that
     works for methods (i.e. class-based views).
     """
-    from django.views.decorators.http import condition
-
     from django.utils.decorators import method_decorator
+    from django.views.decorators.http import condition
 
     return method_decorator(condition(**kwargs))
 
@@ -165,13 +163,12 @@ class Browser(ListView):
 
         return qry.distinct()
 
-    def get_context_data(self, *args, **kw):
+    def get_context_data(self, **kw):
         return super().get_context_data(
             flt=self.request.GET.get(self.param),
             literki=LITERKI,
             wybrana=self.kwargs.pop("literka", None),
-            *args,
-            **kw
+            **kw,
         )
 
 
@@ -183,7 +180,6 @@ class AutorzyView(Browser):
     paginate_by = 50
 
     def get_queryset(self):
-
         # Uwzględnia wybraną literkę etc
         ret = super().get_queryset()
 
@@ -192,7 +188,6 @@ class AutorzyView(Browser):
 
         uczelnia = Uczelnia.objects.get_for_request(self.request)
         if uczelnia is not None:
-
             if not uczelnia.pokazuj_autorow_obcych_w_przegladaniu_danych:
                 ret = ret.annotate(
                     Count("autor_jednostka")
@@ -230,6 +225,50 @@ class AutorzyView(Browser):
             .order_by("nazwisko", "imiona")
         )
 
+    def get_context_data(self, *args, **kw):
+        context = super().get_context_data(*args, **kw)
+
+        # Calculate which letters have authors
+        # Get base queryset (all visible authors, respecting uczelnia settings)
+        base_qry = Autor.objects.filter(pokazuj=True)
+
+        uczelnia = Uczelnia.objects.get_for_request(self.request)
+        if uczelnia is not None:
+            if not uczelnia.pokazuj_autorow_obcych_w_przegladaniu_danych:
+                base_qry = base_qry.annotate(Count("autor_jednostka"))
+                base_qry = base_qry.exclude(
+                    Q(autor_jednostka__jednostka__pk=-1)
+                    & Q(autor_jednostka__jednostka__pk=uczelnia.obca_jednostka_id)
+                    & Q(autor_jednostka__count__lte=2)
+                )
+                base_qry = base_qry.exclude(
+                    aktualna_jednostka=None, autor_jednostka__count=1
+                )
+                base_qry = base_qry.exclude(
+                    aktualna_jednostka_id=uczelnia.obca_jednostka_id,
+                    autor_jednostka__count=1,
+                )
+
+            if not uczelnia.pokazuj_autorow_bez_prac_w_przegladaniu_danych:
+                base_qry = base_qry.exclude(autorzyview=None)
+
+        # Check each letter for available authors
+        available_letters = set()
+        for literka in LITERKI:
+            args = [literka]
+            if literka in PODWOJNE:
+                args = PODWOJNE[literka]
+
+            qobj = Q(**{self.literka_field + "__istartswith": literka})
+            for x in args[1:]:
+                qobj |= Q(**{self.literka_field + "__istartswith": x})
+
+            if base_qry.filter(qobj).exists():
+                available_letters.add(literka)
+
+        context["available_letters"] = available_letters
+        return context
+
 
 class ZrodlaView(Browser):
     template_name = "browse/zrodla.html"
@@ -239,7 +278,6 @@ class ZrodlaView(Browser):
     paginate_by = 70
 
     def get_queryset(self):
-
         qry = (
             super()
             .get_queryset()
@@ -258,6 +296,41 @@ class ZrodlaView(Browser):
                     ).distinct()
                 )
         return qry
+
+    def get_context_data(self, *args, **kw):
+        context = super().get_context_data(*args, **kw)
+
+        # Calculate which letters have sources
+        # Get base queryset (all sources, respecting uczelnia settings)
+        base_qry = Zrodlo.objects.all()
+
+        uczelnia = Uczelnia.objects.get_for_request(self.request)
+        if uczelnia is not None:
+            if not uczelnia.pokazuj_zrodla_bez_prac_w_przegladaniu_danych:
+                from bpp.models import Wydawnictwo_Ciagle
+
+                base_qry = base_qry.filter(
+                    pk__in=Wydawnictwo_Ciagle.objects.values_list(
+                        "zrodlo_id", flat=True
+                    ).distinct()
+                )
+
+        # Check each letter for available sources
+        available_letters = set()
+        for literka in LITERKI:
+            args = [literka]
+            if literka in PODWOJNE:
+                args = PODWOJNE[literka]
+
+            qobj = Q(**{self.literka_field + "__istartswith": literka})
+            for x in args[1:]:
+                qobj |= Q(**{self.literka_field + "__istartswith": x})
+
+            if base_qry.filter(qobj).exists():
+                available_letters.add(literka)
+
+        context["available_letters"] = available_letters
+        return context
 
 
 class JednostkiView(Browser):
@@ -300,6 +373,34 @@ class JednostkiView(Browser):
             ret = ret.order_by(*ordering)
 
         return ret
+
+    def get_context_data(self, *args, **kw):
+        context = super().get_context_data(*args, **kw)
+
+        # Calculate which letters have units
+        # Get base queryset (all visible units, respecting uczelnia settings)
+        base_qry = Jednostka.objects.filter(widoczna=True)
+
+        uczelnia = Uczelnia.objects.get_for_request(self.request)
+        if uczelnia and uczelnia.pokazuj_tylko_jednostki_nadrzedne:
+            base_qry = base_qry.filter(parent=None)
+
+        # Check each letter for available units
+        available_letters = set()
+        for literka in LITERKI:
+            args = [literka]
+            if literka in PODWOJNE:
+                args = PODWOJNE[literka]
+
+            qobj = Q(**{self.literka_field + "__istartswith": literka})
+            for x in args[1:]:
+                qobj |= Q(**{self.literka_field + "__istartswith": x})
+
+            if base_qry.filter(qobj).exists():
+                available_letters.add(literka)
+
+        context["available_letters"] = available_letters
+        return context
 
 
 class ZrodloView(DetailView):
@@ -372,8 +473,8 @@ class RokView(ListView):
             year = int(year)
             if year < 1900 or year > 2100:
                 raise ValueError
-        except (ValueError, TypeError):
-            raise Http404("Nieprawidłowy rok")
+        except (ValueError, TypeError) as e:
+            raise Http404("Nieprawidłowy rok") from e
 
         # Get publications for this year
         return Rekord.objects.filter(rok=year).order_by("-ostatnio_zmieniony")
@@ -474,7 +575,6 @@ class BuildSearch(RedirectView):
                 zakres_lat_box,
             )
         else:
-
             self.request.session[MULTISEEK_SESSION_KEY] = zrob_formularz(
                 zrodla_box,
                 autorzy_box,
@@ -533,7 +633,7 @@ class PracaViewMixin:
         return self.render_to_response(context)
 
 
-END_NUMBER_REGEX = re.compile("(?P<content_type_id>\\d+)-(?P<object_id>\\d+)$")
+END_NUMBER_REGEX = re.compile(r"(?P<content_type_id>\d+)-(?P<object_id>\d+)$")
 
 
 class PracaViewBySlug(PracaViewMixin, DetailView):
@@ -556,10 +656,10 @@ class PracaViewBySlug(PracaViewMixin, DetailView):
                 if content_type_id is not None and object_id is not None:
                     try:
                         obj = Rekord.objects.get(pk=[content_type_id, object_id])
-                    except Rekord.DoesNotExist:
-                        raise Http404
-                    except Rekord.MultipleObjectsReturned:
-                        raise NotImplementedError("This should never happen")
+                    except Rekord.DoesNotExist as e:
+                        raise Http404 from e
+                    except Rekord.MultipleObjectsReturned as e:
+                        raise NotImplementedError("This should never happen") from e
 
                     return obj
 
@@ -578,13 +678,13 @@ class PracaView(PracaViewMixin, DetailView):
         except ValueError:
             try:
                 model = ContentType.objects.get_by_natural_key("bpp", model).pk
-            except ContentType.DoesNotExist:
-                raise Http404
+            except ContentType.DoesNotExist as e:
+                raise Http404 from e
 
         try:
             obj = Rekord.objects.get(pk=[model, self.kwargs["pk"]])
-        except Rekord.DoesNotExist:
-            raise Http404
+        except Rekord.DoesNotExist as e:
+            raise Http404 from e
 
         return obj
 

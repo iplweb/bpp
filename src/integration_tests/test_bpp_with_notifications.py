@@ -54,7 +54,7 @@ def test_caching_enabled(
 
     #  char = Charakter_Formalny.objects.get_or_create(nazwa="charakter", skrot="chr")[0]
 
-    form = page.forms[1]
+    form = page.forms["wydawnictwo_ciagle_form"]
     form["tytul_oryginalny"].value = "Takie tam"
     form["rok"].value = "2000"
 
@@ -163,7 +163,7 @@ def test_admin_browser(admin_page: Page, channels_live_server):
     """Sprawdz, czy pre-autoryzowany browser admina funkcjonuje poprawnie"""
     page = admin_page
     page.goto(channels_live_server.url + "/admin/")
-    expect(page.locator("body")).to_contain_text("Redagowanie")
+    expect(page.locator("body")).to_contain_text("Panel Sterowania")
 
 
 @pytest.mark.uruchom_tylko_bez_microsoft_auth

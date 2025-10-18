@@ -1,8 +1,8 @@
-from .core import RestrictDeletionToAdministracjaGroupMixin
-
 from django.contrib import admin
 
 from bpp.models import Dyscyplina_Naukowa
+
+from .core import RestrictDeletionToAdministracjaGroupMixin
 
 
 class Dyscyplina_NaukowaAdmin(

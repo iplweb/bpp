@@ -4,13 +4,12 @@ import rollbar
 from django.http import JsonResponse
 from django.views.generic.base import View
 
+from bpp.models import Uczelnia
+from bpp.views.api.const import API_BRAK_PARAMETRU
 from import_common.normalization import normalize_doi, normalize_isbn
 from pbn_api.exceptions import NeedsPBNAuthorisationException, PraceSerwisoweException
 from pbn_api.models import Publication
 from pbn_integrator.utils import _pobierz_prace_po_elemencie
-
-from bpp.models import Uczelnia
-from bpp.views.api.const import API_BRAK_PARAMETRU
 
 
 class GetPBNPublicationsByBase(View):

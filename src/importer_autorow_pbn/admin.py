@@ -1,6 +1,6 @@
-from .models import DoNotRemind
-
 from django.contrib import admin
+
+from .models import DoNotRemind
 
 
 @admin.register(DoNotRemind)

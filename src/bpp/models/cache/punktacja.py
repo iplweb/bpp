@@ -5,11 +5,10 @@
 # - Praca_Doktorska
 # - Praca_Habilitacyjna
 
+from django.contrib.postgres.fields.array import ArrayField
 from django.db import models
 from django.db.models import ForeignKey
 from django.db.models.deletion import DO_NOTHING
-
-from django.contrib.postgres.fields.array import ArrayField
 
 from bpp.models.autor import Autor
 from bpp.models.dyscyplina_naukowa import Autor_Dyscyplina, Dyscyplina_Naukowa

@@ -7,7 +7,6 @@ from templated_email import send_templated_mail
 
 class Command(SendTestEmailCommand):
     def handle(self, *args, **kwargs):
-
         kw = dict(
             template_name="test_email",
             context={"message": "If you're reading this, it was successful."},

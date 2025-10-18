@@ -1,8 +1,9 @@
 import re
 from collections import defaultdict
-from typing import Generator, List
+from collections.abc import Generator
 
 import openpyxl
+from django.utils.functional import cached_property
 from openpyxl.utils.exceptions import InvalidFileException
 from openpyxl.worksheet.worksheet import Worksheet
 
@@ -11,8 +12,6 @@ from .exceptions import (
     HeaderNotFoundException,
     ImproperFileException,
 )
-
-from django.utils.functional import cached_property
 
 DEFAULT_COL_NAMES = [
     "imię",
@@ -73,7 +72,7 @@ def znajdz_naglowek(
     try:
         f: openpyxl.workbook.workbook.Workbook = openpyxl.load_workbook(sciezka)
     except InvalidFileException as e:
-        raise ImproperFileException(e)
+        raise ImproperFileException(e) from e
 
     # Sprawdź, ile jest skoroszytów
     if len(f.worksheets) != 1:
@@ -133,7 +132,7 @@ class XLSImportFile:
     def sheet_row_cache(self):
         _cache = {}
 
-        for n_sheet, sheet in enumerate(
+        for _n_sheet, sheet in enumerate(
             self.xl_workbook.worksheets[: self.sheet_limit_range_end]
         ):
             res = find_similar_row(
@@ -149,7 +148,7 @@ class XLSImportFile:
         Zwraca całkowitą liczbę wierszy do analizy
         """
         total = 0
-        for n_sheet, sheet in enumerate(self.xl_workbook.worksheets):
+        for _n_sheet, sheet in enumerate(self.xl_workbook.worksheets):
             res = self.sheet_row_cache.get(sheet)
             if res is None:
                 continue
@@ -168,7 +167,6 @@ class XLSImportFile:
         """
 
         for n_sheet, sheet in enumerate(self.xl_workbook.worksheets):
-
             res = self.sheet_row_cache.get(sheet)
             if res is None:
                 continue
@@ -187,7 +185,7 @@ class XLSImportFile:
                 data.append(n_sheet)
                 data.append(n_row)
 
-                yld = dict(zip(colnames, data))
+                yld = dict(zip(colnames, data, strict=False))
 
                 for banned_name in self.banned_names:
                     if banned_name in yld:
@@ -196,7 +194,7 @@ class XLSImportFile:
                 yield yld
 
 
-def rename_duplicate_columns(s: List[str], marker: str = "_") -> List[str]:
+def rename_duplicate_columns(s: list[str], marker: str = "_") -> list[str]:
     seen = defaultdict(lambda: 1)
     ret = []
     for elem in s:
@@ -209,7 +207,7 @@ def rename_duplicate_columns(s: List[str], marker: str = "_") -> List[str]:
     return ret
 
 
-doi_regexp = re.compile("10.\\d{4,9}/[-._;()/:A-Za-z0-9]+")
+doi_regexp = re.compile(r"10.\d{4,9}/[-._;()/:A-Za-z0-9]+")
 
 
 def strip_doi_urls(s: str) -> str:

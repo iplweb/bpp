@@ -1,6 +1,6 @@
-from pbn_downloader_app.models import PbnDownloadTask, PbnInstitutionPeopleTask
-
 from django.contrib import admin
+
+from pbn_downloader_app.models import PbnDownloadTask, PbnInstitutionPeopleTask
 
 
 @admin.register(PbnDownloadTask)

@@ -1,14 +1,13 @@
-from pbn_api.exceptions import (
-    BrakZdefiniowanegoObiektuUczelniaWSystemieError,
-    NeedsPBNAuthorisationException,
-)
-
 from bpp.admin.helpers.pbn_api.common import (
     sprawdz_czy_ustawiono_wysylke_tego_charakteru_formalnego,
     sprawdz_wysylke_do_pbn_w_parametrach_uczelni,
     sprobuj_wyslac_do_pbn,
 )
 from bpp.models import Uczelnia
+from pbn_api.exceptions import (
+    BrakZdefiniowanegoObiektuUczelniaWSystemieError,
+    NeedsPBNAuthorisationException,
+)
 
 
 class TextNotificator:

@@ -1,11 +1,10 @@
 import openpyxl.worksheet.worksheet
 from django.db.models import BooleanField, Case, F, Value, When
 
-from ewaluacja2021.util import output_table_to_xlsx
-from ewaluacja_common.utils import NieArtykul
-
 from bpp.models import Cache_Punktacja_Autora_Query
 from bpp.util import strip_html
+from ewaluacja2021.util import output_table_to_xlsx
+from ewaluacja_common.utils import NieArtykul
 
 
 def get_data_for_report(qset):

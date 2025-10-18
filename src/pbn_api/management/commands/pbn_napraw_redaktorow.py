@@ -1,16 +1,14 @@
 from django.db import transaction
 from tqdm import tqdm
 
+from bpp.models import Jednostka, Rekord
 from pbn_api.management.commands.util import PBNBaseCommand
 from pbn_integrator.importer import utworz_autorow
-
-from bpp.models import Jednostka, Rekord
 
 
 class Command(PBNBaseCommand):
     @transaction.atomic
     def handle(self, verbosity=1, *args, **options):
-
         client = self.get_client(
             options["app_id"],
             options["app_token"],

@@ -2,16 +2,14 @@ import itertools
 from collections import OrderedDict
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 import openpyxl.worksheet.worksheet
+from django.contrib.sites.models import Site
+from django.utils.functional import cached_property
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.table import TableColumn
 from unidecode import unidecode
-
-from django.contrib.sites.models import Site
-
-from django.utils.functional import cached_property
 
 from bpp.util import worksheet_columns_autosize, worksheet_create_table
 
@@ -62,14 +60,14 @@ def shuffle_array(
 def output_table_to_xlsx(
     ws: openpyxl.worksheet.worksheet.Worksheet,
     title: str,
-    headers: List[str],
-    dataset: List[List[Any]],
-    totals: List[str] = None,
+    headers: list[str],
+    dataset: list[list[Any]],
+    totals: list[str] = None,
     first_column_url: str = "https://{site_name}/bpp/rekord/",
-    autor_column_url: Optional[int] = 4,
-    autor_column_link: Optional[int] = 1,
-    autosize_columns: List[str] = None,
-    column_widths: Dict[int, int] = None,
+    autor_column_url: int | None = 4,
+    autor_column_link: int | None = 1,
+    autosize_columns: list[str] = None,
+    column_widths: dict[int, int] = None,
 ):
     ws.append(headers)
 
@@ -117,9 +115,7 @@ def output_table_to_xlsx(
             # Druga kolumna z ID autora -> bpp
             ws.cell(
                 row=ws.max_row, column=autor_column_link + 1
-            ).value = '=HYPERLINK("{}", "{}")'.format(
-                autor_url + str(row[autor_column_link]), row[autor_column_link]
-            )
+            ).value = f'=HYPERLINK("{autor_url + str(row[autor_column_link])}", "{row[autor_column_link]}")'
 
         if autor_column_url is not None:
             # URL dla czwartej kolumny -- odnośnik do pliku autora
@@ -182,9 +178,9 @@ def normalize_xlsx_header_column_name(s):
 
 def find_header_row(
     worksheet: openpyxl.worksheet.worksheet.Worksheet,
-    header_row: List[str],
+    header_row: list[str],
     max_header_row=100,
-) -> Union[None, int]:
+) -> None | int:
     """
     Poszukuje wierwsza nagłówka w skoroszycie ``worksheet``.
 
@@ -239,7 +235,7 @@ class InputXLSX:
         keys.append("__nrow__")
 
         for nrow, row in enumerate(self.rows_as_list(), start=self.header_row + 1):
-            row = OrderedDict(zip(keys, row))
+            row = OrderedDict(zip(keys, row, strict=False))
             row["__nrow__"] = nrow
             yield row
 

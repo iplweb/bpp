@@ -4,9 +4,8 @@ from django.core.exceptions import ValidationError
 from django.db import models, transaction
 from django.db.models import CASCADE, PositiveSmallIntegerField
 
-from import_common.normalization import normalize_kod_dyscypliny
-
 from bpp import const
+from import_common.normalization import normalize_kod_dyscypliny
 
 
 def waliduj_format_kodu_numer(value):

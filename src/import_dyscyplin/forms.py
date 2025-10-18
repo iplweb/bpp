@@ -54,6 +54,8 @@ class Import_DyscyplinForm(ModelForm):
         super().__init__(*args, **kw)
         helper = FormHelper(self)
         helper.form_class = "custom"
+        helper.form_id = "import_dyscyplin_form"
+        helper.attrs = {"name": "import_dyscyplin_form"}
         helper.layout = Layout(
             Fieldset(
                 "Zaimportuj plik",

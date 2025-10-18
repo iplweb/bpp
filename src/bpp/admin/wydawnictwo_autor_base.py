@@ -1,10 +1,8 @@
 from adminsortable2.admin import SortableAdminMixin
-from django.http import HttpResponseRedirect
-from django.urls import reverse
-
 from django.contrib import admin
 from django.contrib.admin.templatetags.admin_urls import add_preserved_filters
-
+from django.http import HttpResponseRedirect
+from django.urls import reverse
 from django.utils.safestring import mark_safe
 from django.utils.text import Truncator
 
@@ -13,7 +11,6 @@ from bpp.admin.helpers import get_rekord_id_from_GET_qs
 
 
 class Wydawnictwo_Autor_Base(SortableAdminMixin, admin.ModelAdmin):
-
     # Wartosci do ustawienia dla developera:
 
     klasa_autora = None  # Wydawnictwo_Ciagle_Autor

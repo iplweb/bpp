@@ -2,16 +2,13 @@ from datetime import timedelta
 
 from django.db import models
 from django.db.models import JSONField
-
-from crossref_bpp.monkey_patches import PatchedWorks
-
 from django.utils import timezone
 
 from bpp.fields import DOIField
+from crossref_bpp.monkey_patches import PatchedWorks
 
 
 class CrossrefAPICacheManager(models.Manager):
-
     CACHE_DURATION_DAYS = 14
     cache_last_run = None
 

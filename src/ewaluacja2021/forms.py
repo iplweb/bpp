@@ -4,13 +4,12 @@ from crispy_forms_foundation.layout import ButtonHolder, Fieldset, Submit
 from django import forms
 from django.forms import RadioSelect
 
+from bpp.models import Dyscyplina_Naukowa
 from ewaluacja2021.models import (
     ImportMaksymalnychSlotow,
     ZamowienieNaRaport,
     dyscypliny_naukowe_w_bazie,
 )
-
-from bpp.models import Dyscyplina_Naukowa
 
 
 class ImportMaksymalnychSlotowForm(forms.ModelForm):

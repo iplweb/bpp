@@ -7,6 +7,7 @@ from nowe_raporty.views import (
     GenerujRaportDlaWydzialu,
     UczelniaRaportFormView,
 )
+
 from .views import (
     AutorRaportFormView,
     GenerujRaportDlaAutora,

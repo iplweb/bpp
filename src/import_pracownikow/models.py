@@ -7,7 +7,17 @@ from django.core.serializers.json import DjangoJSONEncoder
 from django.db import DataError, IntegrityError, models, transaction
 from django.db.models import JSONField, Q
 from django.db.models.expressions import RawSQL
+from django.utils import timezone
 
+from bpp.models import (
+    Autor,
+    Autor_Jednostka,
+    Funkcja_Autora,
+    Grupa_Pracownicza,
+    Jednostka,
+    Tytul,
+    Wymiar_Etatu,
+)
 from import_common.core import (
     matchuj_autora,
     matchuj_funkcja_autora,
@@ -32,18 +42,6 @@ from import_common.normalization import (
 from import_common.util import XLSImportFile
 from long_running.models import Operation
 from long_running.notification_mixins import ASGINotificationMixin
-
-from django.utils import timezone
-
-from bpp.models import (
-    Autor,
-    Autor_Jednostka,
-    Funkcja_Autora,
-    Grupa_Pracownicza,
-    Jednostka,
-    Tytul,
-    Wymiar_Etatu,
-)
 
 
 class JednostkaForm(forms.Form):
@@ -86,7 +84,6 @@ class ImportPracownikow(ASGINotificationMixin, Operation):
         total = xif.count()
 
         for no, elem in enumerate(xif.data()):
-
             jednostka_form = JednostkaForm(data=elem)
             jednostka_form.full_clean()
             if not jednostka_form.is_valid():
@@ -492,7 +489,6 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
             )
 
         if self.podstawowe_miejsce_pracy != aj.podstawowe_miejsce_pracy:
-
             if not self.podstawowe_miejsce_pracy:
                 aj.podstawowe_miejsce_pracy = False
                 self.log_zmian["autor_jednostka"].append(

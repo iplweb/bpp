@@ -1,10 +1,9 @@
 """Test command to run PBN import directly"""
 
+from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
 
 from pbn_import.models import ImportSession, ImportStatistics
-
-from django.contrib.auth import get_user_model
 
 User = get_user_model()
 

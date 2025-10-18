@@ -1,16 +1,13 @@
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
 from django.db.models import JSONField
-
-from pbn_api.utils import compare_dicts
-
-from django.contrib.contenttypes.fields import GenericForeignKey
-from django.contrib.contenttypes.models import ContentType
-
 from django.utils import timezone
 
 from bpp import const
 from bpp.models import LinkDoPBNMixin
+from pbn_api.utils import compare_dicts
 
 
 class SentDataManager(models.Manager):
@@ -196,7 +193,6 @@ class SentData(LinkDoPBNMixin, models.Model):
     def save(
         self, force_insert=False, force_update=False, using=None, update_fields=None
     ):
-
         if update_fields and "data_sent" in update_fields:
             if self.typ_rekordu != self.data_sent.get("type"):
                 update_fields.append("typ_rekordu")

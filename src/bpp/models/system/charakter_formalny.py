@@ -31,7 +31,7 @@ NAZWY_PRIMO = [
     "Inny",
 ]
 
-NAZWY_PRIMO = list(zip(NAZWY_PRIMO, NAZWY_PRIMO))
+NAZWY_PRIMO = list(zip(NAZWY_PRIMO, NAZWY_PRIMO, strict=False))
 
 RODZAJE_DOKUMENTOW_PBN = [
     ("article", "Artykuł"),
@@ -80,7 +80,6 @@ CHARAKTER_OGOLNY_CHOICES = Choices(
 
 
 class Charakter_Formalny(NazwaISkrot, MPTTModel):
-
     denorm_always_skip = (
         "tree_id",
         "lft",

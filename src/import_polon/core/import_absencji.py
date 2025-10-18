@@ -1,8 +1,7 @@
+from bpp.models import Autor_Absencja
 from import_common.core import matchuj_autora
 from import_polon.models import ImportPlikuAbsencji, WierszImportuPlikuAbsencji
 from import_polon.utils import read_excel_or_csv_dataframe_guess_encoding
-
-from bpp.models import Autor_Absencja
 
 
 def analyze_file_import_absencji(fn, parent_model: ImportPlikuAbsencji):

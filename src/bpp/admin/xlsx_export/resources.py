@@ -3,12 +3,11 @@
 Klasy określające w jaki sposób dane są eksportowane z systemu.
 """
 
+from django.contrib.sites.models import Site
 from django.urls import reverse
 from import_export import resources
 from import_export.fields import Field
 from import_export.formats import base_formats
-
-from django.contrib.sites.models import Site
 
 from bpp.export.bibtex import export_to_bibtex
 from bpp.models import (
@@ -109,7 +108,7 @@ class Wydawnictwo_ResourceBase(resources.ModelResource):
 
     def dehydrate_bpp_admin_url(self, obj):
         return self.get_site_url() + reverse(
-            "admin:{m.app_label}_{m.model_name}_change".format(m=obj._meta),
+            f"admin:{obj._meta.app_label}_{obj._meta.model_name}_change",
             args=[obj.pk],
         )
 

@@ -1,17 +1,14 @@
 from braces.views import GroupRequiredMixin
+from django.contrib import messages
 from django.db import transaction
+from django.utils.functional import cached_property
 from django.views.generic.edit import FormView
 from django.views.generic.list import ListView
 
+from bpp.const import GR_WPROWADZANIE_DANYCH
 from integrator2.forms import FormListaMinisterialna
 from integrator2.models.lista_ministerialna import ListaMinisterialnaIntegration
 from integrator2.tasks import analyze_file
-
-from django.contrib import messages
-
-from django.utils.functional import cached_property
-
-from bpp.const import GR_WPROWADZANIE_DANYCH
 
 
 class Main(GroupRequiredMixin, ListView):

@@ -2,7 +2,7 @@
 Struktura uczelni.
 """
 
-from typing import TYPE_CHECKING, List, Union
+from typing import TYPE_CHECKING, Union
 
 from autoslug import AutoSlugField
 from django.core.exceptions import ImproperlyConfigured, ValidationError
@@ -10,19 +10,18 @@ from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import ProgrammingError, models
 from django.db.models import SET_NULL, Max, URLField
 from django.urls.base import reverse
+from django.utils.functional import cached_property
 from model_utils import Choices
 from tinymce.models import HTMLField
 
+from bpp.models import ModelZAdnotacjami, NazwaISkrot
+from bpp.models.abstract import ModelZPBN_ID, NazwaWDopelniaczu
 from pbn_api.exceptions import WillNotExportError
+
 from .. import const
 from ..const import GR_RAPORTY_WYSWIETLANIE
 from ..util import year_last_month
 from .fields import OpcjaWyswietlaniaField
-
-from django.utils.functional import cached_property
-
-from bpp.models import ModelZAdnotacjami, NazwaISkrot
-from bpp.models.abstract import ModelZPBN_ID, NazwaWDopelniaczu
 
 if TYPE_CHECKING:
     import pbn_api  # noqa
@@ -513,7 +512,7 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         )
         return client.PBNClient(transport)
 
-    def ukryte_statusy(self, dla_funkcji: str) -> List[int]:
+    def ukryte_statusy(self, dla_funkcji: str) -> list[int]:
         """
         :param dla_funkcji: "sloty", "raporty", "multiwyszukiwarka", "rankingi"
         :return: lista numerów PK obiektów :class:`bpp.models.system.Status_Korekty`

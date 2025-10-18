@@ -3,10 +3,11 @@
 import logging
 import sys
 import traceback
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import rollbar
 from django.core.management import call_command
+from django.utils import timezone
 
 from ..models import ImportLog, ImportSession, ImportStatistics, ImportStep
 from .author_import import AuthorImporter
@@ -21,8 +22,6 @@ from .publisher_import import PublisherImporter
 from .source_import import SourceImporter
 from .statement_import import StatementImporter
 
-from django.utils import timezone
-
 logger = logging.getLogger(__name__)
 
 
@@ -30,7 +29,7 @@ class ImportManager:
     """Orchestrates the entire PBN import process"""
 
     def __init__(
-        self, session: ImportSession, client, config: Optional[Dict[str, Any]] = None
+        self, session: ImportSession, client, config: dict[str, Any] | None = None
     ):
         self.session = session
         self.client = client
@@ -52,7 +51,7 @@ class ImportManager:
         # Check PBN authorization status
         self._check_pbn_authorization()
 
-    def _initialize_steps(self) -> List[Dict[str, Any]]:
+    def _initialize_steps(self) -> list[dict[str, Any]]:
         """Initialize and return list of import steps"""
         steps = []
 

@@ -1,13 +1,11 @@
-# -*- encoding: utf-8 -*-
+import logging
 import sys
 from decimal import Decimal
 
 from django.core.management import BaseCommand
 from django.db import transaction
 
-import logging
-
-from bpp.models import Autor, Rekord, Cache_Punktacja_Autora
+from bpp.models import Autor, Cache_Punktacja_Autora, Rekord
 
 logger = logging.getLogger("django")
 
@@ -21,10 +19,14 @@ class Command(BaseCommand):
         parser.add_argument("--xls", default=None)
 
         parser.add_argument(
-            "--rok_min", type=int, default=2017,
+            "--rok_min",
+            type=int,
+            default=2017,
         )
         parser.add_argument(
-            "--rok_max", type=int, default=2020,
+            "--rok_max",
+            type=int,
+            default=2020,
         )
 
     @transaction.atomic

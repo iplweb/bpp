@@ -1,7 +1,7 @@
+from django.contrib import admin
+
 from ..models import Crossref_Mapper
 from .core import BaseBppAdminMixin
-
-from django.contrib import admin
 
 
 @admin.register(Crossref_Mapper)

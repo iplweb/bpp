@@ -328,10 +328,10 @@ CREATE VIEW bpp_praca_habilitacyjna_view AS SELECT
   '0'::integer AS liczba_znakow_wydawniczych,
 
   www,
-  
-  NULL::integer AS openaccess_czas_publikacji_id, 
-  NULL::integer AS openaccess_licencja_id, 
-  NULL::integer AS openaccess_tryb_dostepu_id, 
+
+  NULL::integer AS openaccess_czas_publikacji_id,
+  NULL::integer AS openaccess_licencja_id,
+  NULL::integer AS openaccess_tryb_dostepu_id,
   NULL::integer AS openaccess_wersja_tekstu_id,
   NULL::integer AS openaccess_ilosc_miesiecy
 
@@ -408,31 +408,30 @@ ON UPDATE CASCADE
 DEFERRABLE INITIALLY DEFERRED;
 
 ALTER TABLE bpp_rekord_mat
-  ADD CONSTRAINT openaccess_wersja_tekstu_fk 
-FOREIGN KEY (openaccess_wersja_tekstu_id) 
+  ADD CONSTRAINT openaccess_wersja_tekstu_fk
+FOREIGN KEY (openaccess_wersja_tekstu_id)
 REFERENCES bpp_wersja_tekstu_openaccess (id)
-ON DELETE CASCADE 
-ON UPDATE CASCADE 
+ON DELETE CASCADE
+ON UPDATE CASCADE
 DEFERRABLE INITIALLY DEFERRED;
 
 ALTER TABLE bpp_rekord_mat
-  ADD CONSTRAINT openaccess_licencja_fk 
+  ADD CONSTRAINT openaccess_licencja_fk
 FOREIGN KEY (openaccess_licencja_id)
 REFERENCES bpp_licencja_openaccess (id)
-ON DELETE CASCADE 
-ON UPDATE CASCADE 
+ON DELETE CASCADE
+ON UPDATE CASCADE
 DEFERRABLE INITIALLY DEFERRED;
 
 ALTER TABLE bpp_rekord_mat
-  ADD CONSTRAINT openaccess_czas_publikacji_fk 
-FOREIGN KEY (openaccess_czas_publikacji_id) 
+  ADD CONSTRAINT openaccess_czas_publikacji_fk
+FOREIGN KEY (openaccess_czas_publikacji_id)
 REFERENCES bpp_czas_udostepnienia_openaccess (id)
-ON DELETE CASCADE 
-ON UPDATE CASCADE 
+ON DELETE CASCADE
+ON UPDATE CASCADE
 DEFERRABLE INITIALLY DEFERRED;
 
 
 
 
 COMMIT;
-

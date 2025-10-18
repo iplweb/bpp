@@ -1,9 +1,9 @@
 import json
 
+from django.contrib.contenttypes.models import ContentType
+
 from pbn_api.adapters.wydawnictwo import WydawnictwoPBNAdapter
 from pbn_api.management.commands.util import PBNBaseCommand
-
-from django.contrib.contenttypes.models import ContentType
 
 
 class Command(PBNBaseCommand):

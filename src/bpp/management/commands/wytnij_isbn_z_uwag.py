@@ -1,18 +1,11 @@
-# -*- encoding: utf-8 -*-
-
 from django.core.management import BaseCommand
 from django.db import transaction
 
 from bpp.models import (
-    Wydawca,
-    Wydawnictwo_Zwarte,
-    Praca_Doktorska,
-    Praca_Habilitacyjna,
     Wydawnictwo_Ciagle,
+    Wydawnictwo_Zwarte,
     cache,
 )
-import re
-
 from bpp.util import wytnij_isbn_z_uwag
 
 
@@ -25,7 +18,6 @@ class Command(BaseCommand):
 
     @transaction.atomic
     def handle(self, przenies_do_uwag, skasuj, *args, **options):
-
         if przenies_do_uwag and skasuj:
             raise Exception("albo --skasuj, albo --przenies-do-uwag")
 
@@ -34,7 +26,6 @@ class Command(BaseCommand):
 
         for klass in Wydawnictwo_Zwarte, Wydawnictwo_Ciagle:
             for rec in klass.objects.filter(uwagi__istartswith="isbn"):
-
                 res = wytnij_isbn_z_uwag(rec.uwagi)
 
                 if res is None:

@@ -1,11 +1,10 @@
 from tqdm import tqdm
 
+from bpp.models import Rekord
 from pbn_api.client import PageableResource
 from pbn_api.management.commands.util import PBNBaseCommand
 from pbn_api.models import Publication
 from pbn_integrator.utils.simple_page_getter import simple_page_getter
-
-from bpp.models import Rekord
 
 
 class Command(PBNBaseCommand):
@@ -27,7 +26,6 @@ class Command(PBNBaseCommand):
             "   Tytuł;Status PBN;PBN UID;DOI;Rok;BPP ID 1;BPP PBN ID 1;BPP ID 2;BPP PBN ID 2"
         )
         for data in tqdm(pages, desc="Przetwarzam...", total=page_data.total_pages):
-
             for elem in data:
                 publicationId = elem["publicationId"]
 

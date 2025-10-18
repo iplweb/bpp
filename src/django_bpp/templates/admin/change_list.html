@@ -2,7 +2,7 @@
 {% load compress cache %}
 
 <!-- LOADING -->
-{% load i18n grp_tags admin_urls static admin_list %}
+{% load i18n grp_tags admin_urls static admin_list admin_filter_helpers %}
 
 <!-- STYLESHEETS -->
 {% block stylesheets %}
@@ -10,6 +10,8 @@
     {% compress css %}
         {{ media.css }}
         <link href="{% static "bpp/css/fix-djangoql-css-for-grappelli.css" %}" rel="stylesheet" type="text/css"
+              media="screen"/>
+        <link href="{% static "bpp/css/admin-filter-panel.css" %}" rel="stylesheet" type="text/css"
               media="screen"/>
     {% endcompress %}
 {% endblock %}
@@ -24,15 +26,22 @@
         {% url 'admin:jsi18n' as jsi18nurl %}
         <script type="text/javascript" src="{{ jsi18nurl|default:'../../jsi18n/'}}"></script>
     {% endif %}
-    {% if action_form %}
-        <script type="text/javascript" charset="utf-8">
-            (function ($) {
-                $(document).ready(function () {
-                    $("tr input.action-select").actions();
-                });
-            })(grp.jQuery);
-        </script>
-    {% endif %}
+    {% comment %}
+        COMMENTED OUT 2025-10-18: Removing custom .actions() initialization that was causing
+        "?e=1" error flags in URLs. This code was not present in original Grappelli template
+        and was causing JavaScript errors. Django/Grappelli handles actions natively.
+        If action checkboxes stop working, uncomment this block and investigate.
+
+        {% if action_form %}
+            <script type="text/javascript" charset="utf-8">
+                (function ($) {
+                    $(document).ready(function () {
+                        $("tr input.action-select").actions();
+                    });
+                })(grp.jQuery);
+            </script>
+        {% endif %}
+    {% endcomment %}
     {% if cl.formset %}
         <script type="text/javascript" charset="utf-8">
             (function ($) {
@@ -134,10 +143,339 @@
         </script>
     {% endif %}
     <script type="text/javascript" charset="utf-8">
-        (function ($) {
+        // Use proper jQuery reference - check for grp.jQuery first, then fallbacks
+        (function () {
+            // Find available jQuery - prioritize grp.jQuery for Grappelli compatibility
+            var $ = window.grp && window.grp.jQuery ? window.grp.jQuery :
+                   (window.django && window.django.jQuery ? window.django.jQuery : window.jQuery);
+
+            if (!$) {
+                console.error('jQuery not found - filter panel cannot be initialized');
+                return;
+            }
+
+            // Storage key for pin state
+            var STORAGE_KEY = 'bpp_filter_panel_pinned';
+
+            // Function to initialize filter panel
+            function initFilterPanel() {
+                var $filterPanel = $('#filter-panel');
+                var $filterOverlay = $('#filter-panel-overlay');
+                var $filterPinBtn = $('#filter-panel-pin');
+                var $body = $('body');
+
+                // Check if panel should be pinned on load
+                var isPinned = localStorage.getItem(STORAGE_KEY) === 'true';
+
+                // Open filter panel
+                function openFilterPanel(skipAnimation) {
+                    if (skipAnimation) {
+                        $filterPanel.addClass('pinned-no-animation');
+                    }
+                    $filterPanel.addClass('active');
+                    $filterOverlay.addClass('active');
+                    $body.addClass('filter-panel-open');
+
+                    // Remove no-animation class after a brief moment
+                    if (skipAnimation) {
+                        setTimeout(function () {
+                            $filterPanel.removeClass('pinned-no-animation');
+                        }, 50);
+                    }
+                }
+
+                // Close filter panel
+                function closeFilterPanel() {
+                    if (!isPinned) {
+                        $filterPanel.removeClass('active');
+                        $filterOverlay.removeClass('active');
+                        $body.removeClass('filter-panel-open');
+                    }
+                }
+
+                // Toggle pin state
+                function togglePin() {
+                    isPinned = !isPinned;
+                    localStorage.setItem(STORAGE_KEY, isPinned.toString());
+                    $filterPinBtn.toggleClass('pinned', isPinned);
+
+                    if (isPinned) {
+                        $filterPinBtn.attr('title', 'Odepnij panel (panel pozostanie otwarty)');
+                    } else {
+                        $filterPinBtn.attr('title', 'Przypnij panel (panel pozostanie otwarty po przeładowaniu)');
+                    }
+                }
+
+                // Initialize pin button state and open if pinned (without animation)
+                if (isPinned) {
+                    $filterPinBtn.addClass('pinned');
+                    $filterPinBtn.attr('title', 'Odepnij panel (panel pozostanie otwarty)');
+                    openFilterPanel(true);  // Skip animation on page load
+                } else {
+                    $filterPinBtn.attr('title', 'Przypnij panel (panel pozostanie otwarty po przeładowaniu)');
+                }
+
+                // Open filter panel on button click
+                $('#filter-panel-toggle').click(function (e) {
+                    e.preventDefault();
+                    openFilterPanel();
+                });
+
+                // Pin button click
+                $filterPinBtn.click(function (e) {
+                    e.preventDefault();
+                    togglePin();
+                });
+
+                // Close button - unpin if needed and close
+                $('#filter-panel-close').click(function (e) {
+                    e.preventDefault();
+                    // Unpin if currently pinned
+                    if (isPinned) {
+                        isPinned = false;
+                        localStorage.setItem(STORAGE_KEY, 'false');
+                        $filterPinBtn.removeClass('pinned');
+                        $filterPinBtn.attr('title', 'Przypnij panel (panel pozostanie otwarty po przeładowaniu)');
+                    }
+                    // Always close the panel (force close, bypassing isPinned check)
+                    $filterPanel.removeClass('active');
+                    $filterOverlay.removeClass('active');
+                    $body.removeClass('filter-panel-open');
+                });
+
+                // Overlay click - unpin and close
+                $filterOverlay.click(function (e) {
+                    e.preventDefault();
+                    // Unpin if currently pinned
+                    if (isPinned) {
+                        isPinned = false;
+                        localStorage.setItem(STORAGE_KEY, 'false');
+                        $filterPinBtn.removeClass('pinned');
+                        $filterPinBtn.attr('title', 'Przypnij panel (panel pozostanie otwarty po przeładowaniu)');
+                    }
+                    // Close the panel
+                    closeFilterPanel();
+                });
+
+                // Close on Escape key - unpin if needed and close
+                $(document).keyup(function (e) {
+                    if (e.key === "Escape" && $filterPanel.hasClass('active')) {
+                        // Unpin if currently pinned
+                        if (isPinned) {
+                            isPinned = false;
+                            localStorage.setItem(STORAGE_KEY, 'false');
+                            $filterPinBtn.removeClass('pinned');
+                            $filterPinBtn.attr('title', 'Przypnij panel (panel pozostanie otwarty po przeładowaniu)');
+                        }
+                        closeFilterPanel();
+                    }
+                });
+
+                // Reset button - clears all filters using HTMX
+                $('#filter-panel-reset').attr('hx-get', window.location.pathname);
+                $('#filter-panel-reset').attr('hx-target', '#grp-content-container');
+                $('#filter-panel-reset').attr('hx-select', '#grp-content-container');
+                $('#filter-panel-reset').attr('hx-swap', 'innerHTML swap:0.3s');
+                $('#filter-panel-reset').attr('hx-indicator', '#filter-loading-indicator');
+
+                // Initialize HTMX for the reset button
+                if (typeof htmx !== 'undefined') {
+                    htmx.process($('#filter-panel-reset')[0]);
+                }
+
+                // Handle collapsible filter titles
+                $('.filter-collapsible').on('click', function () {
+                    var $title = $(this);
+                    var filterId = $title.data('filter-id');
+                    var $options = $('#' + filterId);
+                    var $icon = $title.find('.filter-toggle-icon');
+
+                    // Toggle collapsed state
+                    $title.toggleClass('collapsed');
+                    $options.toggleClass('collapsed');
+
+                    // Toggle icon between down and right arrows
+                    if ($title.hasClass('collapsed')) {
+                        $icon.text('▶');  // Right arrow for collapsed
+                    } else {
+                        $icon.text('▼');  // Down arrow for expanded
+
+                    }
+                });
+
+                // Polish loading messages for scientific bibliography
+                const loadingMessages = [
+                    // Academic Life & Publishing
+                    "Szukam igły w stogu publikacji...",
+                    "Wertuję punkty ministerialne...",
+                    "Szukam humoru recenzenta...",
+                    "Teleportuję elektrony...",
+                    "Przesyłki błąd - natychmiast...",
+                    "Poszukiwany... aktor? Imp-akt-f... aktor...",
+
+                    // Humorous & Relatable
+                    "Budzę uśpione cytowania...",
+                    "Negocjuję z serwerem...",
+                    "Przekonuję bazę do współpracy...",
+
+                    // Self-Deprecating & Silly
+                    "Szukam sensu w algorytmach punktacji...",
+                    "Rozmawiam z duchami dawnych publikacji...",
+
+                    // Academic Frustrations
+                    "Walczę z formularzami...",
+                    "Odszyfrowuję ministerialne wytyczne...",
+                    "Szukam sensu w algorytmach ewaluacji...",
+                    "Poszukiwanie plagiatów...",
+                    "Odkopuję publikacje spod biurokracji...",
+
+                    // Philosophical & Witty
+                    "Kontempluję istotę h-indexu...",
+                    "Medytuję nad sensem współautorstwa...",
+                    "Filozofuję nad paradoksem open access...",
+                    "Rozważam dylemat publikuj albo giń...",
+                    "Analizuję chaos teorii cytowań...",
+
+                    // Pop Culture References
+                    "Hakuję matrycę bibliograficzną...",
+                    "Teleportuję dane z PBN...",
+                    "Wywołuję zaklęcie przyspieszenia bazy...",
+                    "Łączę się z bibliograficzną mocą...",
+                    "Przekraczam próg cytowań...",
+
+
+                    "Zwalczam drapieżnych wydawców..."
+
+                ];
+
+                // Function to get random loading message
+                function getRandomLoadingMessage() {
+                    return loadingMessages[Math.floor(Math.random() * loadingMessages.length)];
+                }
+
+                // Track loading indicator timing
+                var loadingStartTime = null;
+                var minLoadingTime = 500; // Minimum display time in milliseconds
+
+                // Handle HTMX events for filter panel
+                document.body.addEventListener('htmx:beforeRequest', function (evt) {
+                    // Track when loading started
+                    loadingStartTime = Date.now();
+
+                    // Update loading message with random text
+                    var loadingIndicator = document.getElementById('filter-loading-indicator');
+                    if (loadingIndicator) {
+                        // Add class for minimum display time
+                        loadingIndicator.classList.add('min-display-time');
+
+                        var textSpan = loadingIndicator.querySelector('span');
+                        if (textSpan) {
+                            // Add ellipsis if the message doesn't already have it
+                            var message = getRandomLoadingMessage();
+                            if (!message.endsWith('...')) {
+                                message += '...';
+                            }
+                            textSpan.textContent = message;
+                        }
+                    }
+
+                    // Check if the request is from a filter link
+                    if (evt.detail.elt.classList.contains('filter-option-link')) {
+                        var $link = $(evt.detail.elt);
+                        var selectedText = $link.text().replace('✓', '').trim();
+
+                        // Find the parent filter group and its elements
+                        var $filterOption = $link.closest('.filter-option');
+                        var $filterOptions = $filterOption.closest('.filter-options');
+                        var filterId = $filterOptions.attr('id');
+                        var $filterTitle = $('.filter-collapsible[data-filter-id="' + filterId + '"]');
+                        var $filterTitleText = $filterTitle.find('.filter-title-text');
+                        var $icon = $filterTitle.find('.filter-toggle-icon');
+
+                        // Get the original filter name (before the colon if it exists)
+                        var originalTitle = $filterTitleText.text().split(':')[0].trim();
+
+                        // Check if this is a default value (first option or typical "All" values)
+                        var isDefaultValue = false;
+                        var isFirstOption = $filterOption.index() === 0;
+                        var lowerText = selectedText.toLowerCase();
+
+                        // Check if it's a default value
+                        if (isFirstOption ||
+                            lowerText === 'wszystkie' ||
+                            lowerText === 'wszyscy' ||
+                            lowerText === 'wszystko' ||
+                            lowerText === 'all' ||
+                            lowerText === '-' ||
+                            lowerText === '---' ||
+                            lowerText === 'dowolny' ||
+                            lowerText === 'dowolna' ||
+                            lowerText === 'dowolne' ||
+                            selectedText === '') {
+                            isDefaultValue = true;
+                        }
+
+                        if (isDefaultValue) {
+                            // For default value, remove the selection display and class
+                            $filterTitleText.html(originalTitle);
+                            $filterTitle.removeClass('has-selection');
+                        } else {
+                            // Update the title with selected value
+                            $filterTitleText.html(originalTitle + ': <strong class="selected-filter-value">' + selectedText + '</strong>');
+                            // Add has-selection class for styling non-default selections
+                            $filterTitle.addClass('has-selection');
+                        }
+
+                        // Collapse the filter
+                        $filterTitle.addClass('collapsed');
+                        $filterOptions.addClass('collapsed');
+                        $icon.text('▶');
+
+                        // Close panel if not pinned
+                        if (!isPinned) {
+                            closeFilterPanel();
+                        }
+                    }
+                });
+
+                // Handle HTMX after request - ensure minimum display time for loading indicator
+                document.body.addEventListener('htmx:afterRequest', function (evt) {
+                    var loadingIndicator = document.getElementById('filter-loading-indicator');
+                    if (loadingIndicator && loadingStartTime) {
+                        var elapsedTime = Date.now() - loadingStartTime;
+                        var remainingTime = Math.max(0, minLoadingTime - elapsedTime);
+
+                        // If request was too fast, keep loading indicator visible for remaining time
+                        if (remainingTime > 0) {
+                            setTimeout(function() {
+                                loadingIndicator.classList.remove('min-display-time');
+                                loadingIndicator.classList.add('htmx-request-complete');
+                                // Remove the indicator classes after fade out animation
+                                setTimeout(function() {
+                                    loadingIndicator.classList.remove('htmx-request');
+                                    loadingIndicator.classList.remove('htmx-request-complete');
+                                }, 200);
+                            }, remainingTime);
+                        } else {
+                            // Request took long enough, hide immediately with fade out
+                            loadingIndicator.classList.remove('min-display-time');
+                            loadingIndicator.classList.add('htmx-request-complete');
+                            setTimeout(function() {
+                                loadingIndicator.classList.remove('htmx-request');
+                                loadingIndicator.classList.remove('htmx-request-complete');
+                            }, 200);
+                        }
+
+                        loadingStartTime = null;
+                    }
+                });
+
+            }
+
+            // Initialize on document ready
             $(document).ready(function () {
                 grappelli.initSearchbar();
-                grappelli.initFilter();
+                // Removed grappelli.initFilter() as we're using custom filter panel
                 $('.add-another').click(function (e) {
                     e.preventDefault();
                     showAddAnotherPopup(this);
@@ -146,16 +484,93 @@
                     e.preventDefault();
                     showRelatedObjectLookupPopup(this);
                 });
+
+                // Initialize filter panel
+                initFilterPanel();
+
+                // Handle HTMX completion - re-initialize filter panel (ONLY ONCE)
+                document.body.addEventListener('htmx:afterSwap', function (evt) {
+                    // Check if the swap was for the content container
+                    if (evt.detail.target && evt.detail.target.id === 'grp-content-container') {
+                        // Re-initialize the filter panel after content swap
+                        setTimeout(function () {
+                            initFilterPanel();
+                        }, 50);
+                    }
+
+                    // Handle filter count updates - whoosh out zero-count items immediately
+                    if (evt.detail.target && evt.detail.target.classList.contains('filter-count')) {
+                        var $countElement = $(evt.detail.target);
+                        var countText = $countElement.text().trim();
+                        var count = parseInt(countText, 10);
+
+                        // If count is 0, immediately start whoosh animation
+                        if (count === 0) {
+                            var $filterOption = $countElement.closest('.filter-option');
+
+                            // Immediately add whoosh-out class
+                            $filterOption.addClass('whoosh-out');
+
+                            // After animation completes (300ms), hide the element
+                            setTimeout(function() {
+                                $filterOption.addClass('hidden');
+
+                                // Check if all options in this group are hidden
+                                var $filterOptions = $filterOption.closest('.filter-options');
+                                var $visibleOptions = $filterOptions.find('.filter-option:not(.hidden)');
+
+                                // If no visible options remain, whoosh out the entire filter group
+                                if ($visibleOptions.length === 0) {
+                                    var $filterGroup = $filterOption.closest('.filter-group');
+
+                                    // Whoosh out the filter group
+                                    $filterGroup.addClass('whoosh-out');
+
+                                    // After animation, hide it completely
+                                    setTimeout(function() {
+                                        $filterGroup.addClass('hidden');
+                                    }, 400); // Match the group animation duration
+                                }
+                            }, 300); // Match the whoosh animation duration
+                        }
+                    }
+                });
+
+                // Handle when filter options are expanded - check for empty groups
+                document.body.addEventListener('htmx:afterSettle', function (evt) {
+                    // Check if we're settling after loading filter counts
+                    if (evt.detail.elt && evt.detail.elt.classList.contains('filter-count')) {
+                        // Small delay to ensure all counts in the group are loaded
+                        setTimeout(function() {
+                            var $filterGroup = $(evt.detail.elt).closest('.filter-group');
+                            var $filterOptions = $filterGroup.find('.filter-options');
+
+                            // Check if this filter group's options are expanded
+                            if (!$filterOptions.hasClass('collapsed')) {
+                                var $visibleOptions = $filterOptions.find('.filter-option:not(.hidden)');
+
+                                // If all options are hidden, immediately whoosh out the group
+                                if ($visibleOptions.length === 0 && !$filterGroup.hasClass('whoosh-out')) {
+                                    $filterGroup.addClass('whoosh-out');
+
+                                    setTimeout(function() {
+                                        $filterGroup.addClass('hidden');
+                                    }, 400); // Match animation duration
+                                }
+                            }
+                        }, 50); // Very short delay just to ensure counts are loaded
+                    }
+                });
             });
-        })(grp.jQuery);
+        })(); // Self-executing function without jQuery parameter
     </script>
 {% endblock %}
 
-<!-- COLTYPE/BODYCLASS-- >
+<!-- COLTYPE/BODYCLASS -->
 {% block bodyclass %}grp-change-list{% endblock %}
 {% block content-class %}{% endblock %}
 
-<!-- BREADCRUMBS -- >
+<!-- BREADCRUMBS -->
 {% block breadcrumbs %}
     {% if not is_popup %}
         <ul class="grp-horizontal-list">
@@ -201,6 +616,7 @@
                             {% if cl.search_fields %}
                                 {% block search %}
                                     <div id="search" class="{% if cl.has_filters and cl.search_fields %}g-d-12
+
                                         {% else %}{% if cl.has_filters or cl.search_fields %}g-d-6{% endif %}{% endif %} g-d-f">
                                         {% search_form cl %}
                                     </div>
@@ -212,14 +628,9 @@
                                     {% cache 300 admin_filters request.GET.items request.path request.user.username %}
                                         <div id="grp-filters" class="g-d-6 g-d-l">
                                             <div class="grp-filter">
-                                                <div class="grp-pulldown-container">
-                                                    <a href="javascript://"
-                                                       class="grp-button grp-pulldown-handler">{% trans "Filter" %}</a>
-                                                    <div class="grp-pulldown-content" style="display: none;">
-                                                        {% for spec in cl.filter_specs %}
-                                                            {% admin_list_filter cl spec %}{% endfor %}
-                                                    </div>
-                                                </div>
+                                                <a href="javascript://"
+                                                   id="filter-panel-toggle"
+                                                   class="grp-button">{% trans "Filter" %}</a>
                                             </div>
                                         </div>
                                     {% endcache %}
@@ -288,5 +699,87 @@
         {% endif %}
     </form>
 
+    <!-- SLIDING FILTER PANEL -->
+    {% if cl.has_filters %}
+        <!-- Loading Indicator -->
+        <div id="filter-loading-indicator" class="filter-loading-indicator htmx-indicator">
+            <div class="filter-loading-spinner"></div>
+            <span id="loading-message">Wczytywanie...</span>
+        </div>
+
+        <div id="filter-panel-overlay" class="filter-panel-overlay"></div>
+        <div id="filter-panel" class="filter-panel{% if cl.filter_specs|length <= 6 %} filter-panel-narrow{% endif %}">
+            <div class="filter-panel-header">
+                <h2>{% trans "Filters" %}</h2>
+                <div class="filter-panel-actions">
+                    <button id="filter-panel-reset"
+                            class="filter-panel-reset"
+                            aria-label="Reset"
+                            title="Wyczyść wszystkie filtry">
+                        🔄
+                    </button>
+                    <button id="filter-panel-pin"
+                            class="filter-panel-pin"
+                            aria-label="Pin"
+                            title="Przypnij panel (panel pozostanie otwarty po przeładowaniu)">
+                        📌
+                    </button>
+                    <button id="filter-panel-close"
+                            class="filter-panel-close"
+                            aria-label="Close">×
+                    </button>
+                </div>
+            </div>
+            <div class="filter-panel-content">
+                {% for spec in cl.filter_specs %}
+                    {% get_filter_choices_without_selected spec cl as filter_choices %}
+                    {% get_selected_filter_value spec cl as selected_value %}
+                    {% get_selected_filter_count_url spec cl as selected_count_url %}
+                    <div class="filter-group">
+                        <h3 class="filter-title filter-collapsible collapsed{% if selected_value %} has-selection{% endif %}"
+                            data-filter-id="filter-{{ forloop.counter }}">
+                            <span class="filter-title-text">
+                                {{ spec.title }}{% if selected_value %}:
+                                    <strong class="selected-filter-value">{{ selected_value }}
+                                        {% if selected_count_url %}
+                                            <span class="filter-header-count"
+                                                  hx-get="{{ selected_count_url }}"
+                                                  hx-trigger="intersect once"
+                                                  hx-target="this"
+                                                  hx-swap="innerHTML">(…)</span>
+                                        {% endif %}
+                                    </strong>{% endif %}
+                            </span>
+                            <span class="filter-toggle-icon">▶</span>
+                        </h3>
+                        <ul class="filter-options collapsed" id="filter-{{ forloop.counter }}">
+                            {% for choice in filter_choices %}
+                                <li class="filter-option{% if choice.selected %} selected{% endif %}">
+                                        {% if choice.selected %}
+                                            <span class="filter-check-icon">✓</span>
+                                        {% endif %}
+                                    <a href="{{ choice.query_string|iriencode }}"
+                                       title="{{ choice.display }}"
+                                       hx-get="{{ choice.query_string|iriencode }}"
+                                       hx-target="#grp-content-container"
+                                       hx-select="#grp-content-container"
+                                       hx-swap="innerHTML swap:0.3s"
+                                       hx-indicator="#filter-loading-indicator"
+                                       class="filter-option-link">
+                                        {{ choice.display }}
+                                    </a>
+                                    <span class="filter-count"
+                                          hx-get="{% get_filter_count_url choice cl %}"
+                                          hx-trigger="intersect once"
+                                          hx-target="this"
+                                          hx-swap="innerHTML"></span>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
 
 {% endblock %}

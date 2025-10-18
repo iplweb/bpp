@@ -7,37 +7,34 @@ from datetime import datetime, timedelta
 from functools import reduce
 from math import ceil, floor
 from pathlib import Path
-from typing import Dict, List
 
 import bleach
 import lxml.html
 import openpyxl.worksheet.worksheet
 from django.apps import apps
 from django.conf import settings
+from django.contrib.postgres.search import SearchQuery, SearchRank
 from django.db.models import Max, Min, Value
+from django.utils import timezone
+from django.utils.html import strip_tags
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.filters import AutoFilter
 from openpyxl.worksheet.table import Table, TableColumn, TableStyleInfo
 from tqdm import tqdm
 from unidecode import unidecode
 
-from django.contrib.postgres.search import SearchQuery, SearchRank
-
-from django.utils import timezone
-from django.utils.html import strip_tags
-
 non_url = re.compile(r"[^\w-]+")
 
 
 def get_fixture(name):
-    p = Path(__file__).parent / "fixtures" / ("%s.json" % name)
+    p = Path(__file__).parent / "fixtures" / f"{name}.json"
     ret = json.load(open(p, "rb"))
-    ret = [x["fields"] for x in ret if x["model"] == ("bpp.%s" % name)]
+    ret = [x["fields"] for x in ret if x["model"] == f"bpp.{name}"]
     return {x["skrot"].lower().strip(): x for x in ret}
 
 
-strip_nonalpha_regex = re.compile("\\W+")
-strip_extra_spaces_regex = re.compile("\\s\\s+")
+strip_nonalpha_regex = re.compile(r"\W+")
+strip_extra_spaces_regex = re.compile(r"\s\s+")
 
 
 def strip_nonalphanumeric(s):
@@ -78,8 +75,7 @@ class FulltextSearchMixin:
 
     def fulltext_annotate(self, search_query, normalization):
         return {
-            self.fts_field
-            + "__rank": SearchRank(
+            self.fts_field + "__rank": SearchRank(
                 self.fts_field, search_query, normalization=normalization
             )
         }
@@ -210,7 +206,7 @@ class NewGetter(Getter):
         try:
             return self.klass.objects.get(**kw)
         except self.klass.DoesNotExist as e:
-            raise KeyError(e)
+            raise KeyError(e) from e
 
     __getattr__ = __getitem__
 
@@ -245,7 +241,7 @@ def remove_old_objects(klass, file_field="file", field_name="created_on", days=7
     since = datetime.now() - timedelta(days=days)
 
     kwargs = {}
-    kwargs["%s__lt" % field_name] = since
+    kwargs[f"{field_name}__lt"] = since
 
     for rec in klass.objects.filter(**kwargs):
         try:
@@ -453,7 +449,6 @@ def wytnij_isbn_z_uwag(uwagi):
 
 def crispy_form_html(self, key):
     from crispy_forms_foundation.layout import HTML, Column, Row
-
     from django.utils.functional import lazy
 
     def _():
@@ -468,6 +463,40 @@ def formdefaults_html_before(form):
 
 def formdefaults_html_after(form):
     return crispy_form_html(form, "formdefaults_post_html")
+
+
+def _build_knapsack_table(n, W, wt, val):
+    """Build the dynamic programming table for knapsack problem."""
+    K = [[0 for x in range(W + 1)] for x in range(n + 1)]
+
+    for i in range(n + 1):
+        for w in range(W + 1):
+            if i == 0 or w == 0:
+                K[i][w] = 0
+            elif wt[i - 1] <= w:
+                K[i][w] = max(val[i - 1] + K[i - 1][w - wt[i - 1]], K[i - 1][w])
+            else:
+                K[i][w] = K[i - 1][w]
+
+    return K
+
+
+def _reconstruct_knapsack_items(K, n, W, wt, val, ids):
+    """Reconstruct which items were selected in the optimal solution."""
+    res = K[n][W]
+    lista = []
+    w = W
+
+    for i in range(n, 0, -1):
+        if res <= 0:
+            break
+
+        if res != K[i - 1][w]:
+            lista.append(ids[i - 1])
+            res = res - val[i - 1]
+            w = w - wt[i - 1]
+
+    return lista
 
 
 def knapsack(W, wt, val, ids, zwracaj_liste_przedmiotow=True):
@@ -493,34 +522,13 @@ def knapsack(W, wt, val, ids, zwracaj_liste_przedmiotow=True):
         return sum(val), []
 
     n = len(wt)
+    K = _build_knapsack_table(n, W, wt, val)
 
-    K = [[0 for x in range(W + 1)] for x in range(n + 1)]
-
-    for i in range(n + 1):
-        for w in range(W + 1):
-            if i == 0 or w == 0:
-                K[i][w] = 0
-            elif wt[i - 1] <= w:
-                K[i][w] = max(val[i - 1] + K[i - 1][w - wt[i - 1]], K[i - 1][w])
-            else:
-                K[i][w] = K[i - 1][w]
-
-    res = maks_punkty = K[n][W]
+    maks_punkty = K[n][W]
     lista = []
 
     if zwracaj_liste_przedmiotow:
-        w = W
-        for i in range(n, 0, -1):
-            if res <= 0:
-                break
-
-            if res == K[i - 1][w]:
-                continue
-            else:
-                lista.append(ids[i - 1])
-
-                res = res - val[i - 1]
-                w = w - wt[i - 1]
+        lista = _reconstruct_knapsack_items(K, n, W, wt, val, ids)
 
     return maks_punkty, lista
 
@@ -588,11 +596,44 @@ def rebuild_instances_of_models(modele, *args, **kw):
             denorms.rebuild_instances_of(model, *args, **kw)
 
 
+def _extract_hyperlink_text(text):
+    """Extract display text from hyperlink formula."""
+    if text.startswith("=HYPERLINK"):
+        try:
+            # Wyciągnij z hiperlinku jego faktyczny opis tekstowy na cele
+            # liczenia szerokości kolumny
+            return text.split('"')[3]
+        except IndexError:
+            pass
+    return text
+
+
+def _calculate_column_width(col, right_margin, multiplier, max_width):
+    """Calculate optimal width for a column based on its content."""
+    max_length = 0
+
+    for cell in col:
+        if cell.value is None or not str(cell.value):
+            continue
+
+        text = str(cell.value)
+        text = _extract_hyperlink_text(text)
+
+        max_line_len = max(len(line) for line in text.split("\n"))
+        max_length = max(max_length, max_line_len)
+
+    adjusted_width = (max_length + right_margin) * multiplier
+    if adjusted_width > max_width:
+        adjusted_width = max_width
+
+    return adjusted_width
+
+
 def worksheet_columns_autosize(
     ws: openpyxl.worksheet.worksheet.Worksheet,
     max_width: int = 55,
-    column_widths: Dict[str, int] | None = None,
-    dont_resize_those_columns: List[int] | None = None,
+    column_widths: dict[str, int] | None = None,
+    dont_resize_those_columns: list[int] | None = None,
     right_margin=2,
     multiplier=1.1,
 ):
@@ -603,7 +644,6 @@ def worksheet_columns_autosize(
         dont_resize_those_columns = []
 
     for ncol, col in enumerate(ws.columns):
-        max_length = 0
         column = col[0].column_letter  # Get the column name
 
         # Nie ustawiaj szerokosci tym kolumnom, one będą jako auto-size
@@ -613,26 +653,9 @@ def worksheet_columns_autosize(
         if column in column_widths:
             adjusted_width = column_widths[column]
         else:
-            for cell in col:
-                if cell.value is None or not str(cell.value):
-                    continue
-
-                text = str(cell.value)
-
-                if text.startswith("=HYPERLINK"):
-                    try:
-                        # Wyciągnij z hiperlinku jego faktyczny opis tekstowy na cele
-                        # liczenia szerokości kolumny
-                        text = text.split('"')[3]
-                    except IndexError:
-                        pass
-
-                max_line_len = max(len(line) for line in text.split("\n"))
-                max_length = max(max_length, max_line_len)
-
-            adjusted_width = (max_length + right_margin) * multiplier
-            if adjusted_width > max_width:
-                adjusted_width = max_width
+            adjusted_width = _calculate_column_width(
+                col, right_margin, multiplier, max_width
+            )
 
         ws.column_dimensions[column].width = adjusted_width
 
@@ -696,9 +719,7 @@ def worksheet_create_urls(
         ):
             for data in column_cell[1:]:
                 if data.value:
-                    data.value = '=HYPERLINK("{}", "{}")'.format(
-                        data.value, default_link_name
-                    )
+                    data.value = f'=HYPERLINK("{data.value}", "{default_link_name}")'
 
 
 def dont_log_anonymous_crud_events(

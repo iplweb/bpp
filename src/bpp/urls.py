@@ -2,8 +2,6 @@ from django.urls import path
 from django.urls import re_path as url
 from django.views.decorators.csrf import csrf_exempt
 
-from ranking_autorow.views import RankingAutorow, RankingAutorowFormularz
-
 import bpp
 from bpp.views.api import (
     OstatniaJednostkaIDyscyplinaView,
@@ -90,6 +88,7 @@ from bpp.views.browse import (
 from bpp.views.microsoft_auth_redirect import MicrosoftAuthRedirectView
 from bpp.views.oai import OAIView
 from bpp.views.xlsx_issn_chunks import xlsx_issn_chunks
+from ranking_autorow.views import RankingAutorow, RankingAutorowFormularz
 
 urlpatterns = [
     url(

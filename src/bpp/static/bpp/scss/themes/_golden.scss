@@ -1,0 +1,266 @@
+/* -------------------------------------------------------------------------------- */
+/* Theme 6: Golden (Luxurious Academic Style) */
+/* -------------------------------------------------------------------------------- */
+
+body.theme-golden {
+    background: #fffef8 !important;
+
+    #grp-navigation {
+        background: linear-gradient(180deg, #d4af37 0%, #c19b2d 100%) !important;
+        border-bottom: 1px solid #b08c25;
+
+        ul#navigation-menu li a {
+            color: #2c2416 !important;
+            border-right: 1px solid #c19b2d;
+            border-left: 1px solid #e0c554;
+        }
+
+        ul#navigation-menu li a:hover,
+        ul#navigation-menu li.over > a {
+            background-color: #e0c554 !important;
+            color: #1a1508 !important;
+        }
+
+        ul#navigation-menu li ul {
+            background: #fffef8 !important;
+            box-shadow: 0 6px 20px rgba(193, 155, 45, 0.3);
+
+            li {
+                background: #fffef8 !important;
+                border-top: 1px solid #f5f0dc;
+
+                a {
+                    background-color: #fffef8 !important;
+                    color: #2c2416 !important;
+                    border-left: 3px solid transparent;
+
+                    &:hover {
+                        background-color: #fef9e8 !important;
+                        border-left: 3px solid #d4af37 !important;
+                        color: #c19b2d !important;
+                    }
+                }
+            }
+        }
+
+        ul#navigation-menu li.has-columns ul {
+            background: #fffef8 !important;
+            border: 1px solid #e0c554;
+
+            li {
+                background: #fffef8 !important;
+
+                a {
+                    background-color: #fffef8 !important;
+                    border-bottom: 1px solid #f5f0dc;
+
+                    &:hover {
+                        background-color: #fef9e8 !important;
+                        border-left: 3px solid #d4af37 !important;
+                    }
+                }
+            }
+        }
+
+        ul#navigation-menu li.menu-icon-user ul li:first-child a {
+            background-color: #fef9e8 !important;
+        }
+    }
+
+    /* Context navigation for Golden theme */
+    #grp-context-navigation {
+        background: #fffef8 !important;
+        border-bottom: 1px solid #f5f0dc !important;
+
+        ul li {
+            color: #8a7a4f !important;
+
+            a {
+                color: #5c4f2d !important;
+
+                &:hover {
+                    color: #c19b2d !important;
+                }
+            }
+        }
+    }
+
+    /* Buttons for Golden theme */
+    .grp-button {
+        background-image: none !important;
+        background: linear-gradient(180deg, #d4af37 0%, #c19b2d 100%) !important;
+        border: 1px solid #b08c25 !important;
+        color: #2c2416 !important;
+        font-weight: 500 !important;
+
+        &:hover {
+            background: linear-gradient(180deg, #e0c554 0%, #d4af37 100%) !important;
+            border: 1px solid #c19b2d !important;
+        }
+
+        &.grp-default {
+            background: linear-gradient(180deg, #6b5d38 0%, #5c4f2d 100%) !important;
+            border: 1px solid #4d4224 !important;
+            color: #f5f0dc !important;
+
+            &:hover {
+                background: linear-gradient(180deg, #7a6b41 0%, #6b5d38 100%) !important;
+                border: 1px solid #5c4f2d !important;
+            }
+        }
+    }
+
+    /* Fixed footer for Golden theme */
+    .grp-fixed-footer {
+        background-image: none !important;
+        background: linear-gradient(180deg, #f5f0dc 0%, #ebe3c8 100%) !important;
+        border-top: 1px solid #d4c9a5 !important;
+
+        .grp-button {
+            background: linear-gradient(180deg, #d4af37 0%, #c19b2d 100%) !important;
+            border: 1px solid #b08c25 !important;
+
+            &:hover {
+                background: linear-gradient(180deg, #e0c554 0%, #d4af37 100%) !important;
+            }
+        }
+    }
+
+    /* Body and general styles for Golden */
+    .grp-collapse {
+        border: 1px solid #e0c554 !important;
+        background: #fef9e8 !important;
+
+        &.grp-open {
+            background: #fffef8 !important;
+        }
+    }
+
+    .fieldset.grp-module .grp-row label {
+        color: #2c2416 !important;
+        font-weight: 500 !important;
+    }
+
+    .grp-module .grp-row:not(tr) {
+        border-bottom: 1px solid #f5f0dc !important;
+        background: #ffffff !important;
+
+        &:hover {
+            background: #fffef8 !important;
+        }
+    }
+
+    /* Select2 styles for Golden */
+    .select2-container--default .select2-selection--single {
+        background: #ffffff !important;
+        border: 1px solid #d4c9a5 !important;
+
+        .select2-selection__rendered {
+            color: #2c2416 !important;
+        }
+    }
+
+    .select2-container--default .select2-results__option--highlighted[aria-selected] {
+        background: linear-gradient(180deg, #d4af37 0%, #c19b2d 100%) !important;
+        color: #2c2416 !important;
+    }
+
+    .select2-dropdown {
+        background: #ffffff !important;
+        border: 1px solid #d4c9a5 !important;
+    }
+
+    .select2-container--default .select2-search--dropdown .select2-search__field {
+        background: #ffffff !important;
+        border: 1px solid #d4c9a5 !important;
+        color: #2c2416 !important;
+    }
+
+    /* Filter panel styles for Golden theme */
+    .filter-panel .filter-panel-content .filter-group .filter-title.filter-collapsible.has-selection {
+        border-left-color: #d4af37 !important;
+        background: linear-gradient(135deg, #fef9e8 0%, #f5f0dc 100%) !important;
+
+        &:hover {
+            background: linear-gradient(135deg, #f5f0dc 0%, #ebe3c8 100%) !important;
+        }
+
+        .selected-filter-value {
+            color: #b08c25 !important;
+            font-weight: 500 !important;
+        }
+    }
+
+    /* Support button for Golden theme */
+    .bpp-support-button {
+        background: linear-gradient(180deg, #d4af37 0%, #c19b2d 100%) !important;
+        color: #2c2416 !important;
+
+        &:hover {
+            background: linear-gradient(180deg, #e0c554 0%, #d4af37 100%) !important;
+        }
+
+        &:focus {
+            outline: 2px solid #f5efd5 !important;
+        }
+    }
+
+    /* Link colors for Golden theme */
+    a {
+        color: #f57c00 !important; /* Warm amber */
+
+        &:hover {
+            color: #795548 !important; /* Brown on hover */
+        }
+    }
+
+    /* Info message colors for Golden theme */
+    .grp-info,
+    ul.grp-messagelist li.info {
+        background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%) !important;
+        border-left: 3px solid #f57c00 !important;
+        color: #e65100 !important;
+
+        a {
+            color: #bf6516 !important;
+            font-weight: bold !important;
+
+            &:hover {
+                color: #795548 !important;
+            }
+        }
+    }
+
+    /* Menu icon styles for Golden theme */
+    .menu-icon {
+        background: linear-gradient(180deg, #d4af37 0%, #c19b2d 100%) !important;
+    }
+
+    .menu-click-item:hover .menu-icon {
+        background: linear-gradient(180deg, #e0c554 0%, #d4af37 100%) !important;
+    }
+
+    /* Add link and focus state buttons for Golden theme */
+    .grp-add-link {
+        background: linear-gradient(180deg, #d4af37 0%, #c19b2d 100%) !important;
+        color: #2c2416 !important;
+        border: 1px solid #b08c25 !important;
+
+        &:hover {
+            background: linear-gradient(180deg, #e0c554 0%, #d4af37 100%) !important;
+            border: 1px solid #c19b2d !important;
+            color: #2c2416 !important;
+        }
+    }
+
+    .grp-state-focus {
+        background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%) !important;
+        color: #f57c00 !important;
+        border: 2px solid #f57c00 !important;
+
+        &:hover {
+            background: linear-gradient(135deg, #f57c00 0%, #e65100 100%) !important;
+            color: #ffffff !important;
+        }
+    }
+}

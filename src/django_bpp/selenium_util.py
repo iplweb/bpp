@@ -26,7 +26,6 @@ class wait_for_page_load:
         self.max_seconds = max_seconds
 
     def __enter__(self):
-
         self.old_page = self.browser.find_by_tag("html").first._element
 
     def __exit__(self, *_):

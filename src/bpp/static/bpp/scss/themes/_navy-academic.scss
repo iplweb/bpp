@@ -1,0 +1,264 @@
+/* -------------------------------------------------------------------------------- */
+/* Theme 2: Navy Academic (The Economist Style) */
+/* -------------------------------------------------------------------------------- */
+
+body.theme-navy-academic {
+    background: #f5f2ed !important;
+
+    #grp-navigation {
+        background: #1a2332 !important;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+
+        ul#navigation-menu li a {
+            color: #f5f2ed !important;
+            border-right: 1px solid #243142;
+            border-left: 1px solid #2a3544;
+        }
+
+        ul#navigation-menu li a:hover,
+        ul#navigation-menu li.over > a {
+            background-color: #243142 !important;
+            color: #d4af37 !important;
+        }
+
+        ul#navigation-menu li ul {
+            background: #243142 !important;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+
+            li {
+                background: #243142 !important;
+                border-top: 1px solid #354458;
+
+                a {
+                    background-color: #243142 !important;
+                    color: #f5f2ed !important;
+                    border-left: 3px solid transparent;
+
+                    &:hover {
+                        background-color: #2e3f54 !important;
+                        border-left: 3px solid #d4af37 !important;
+                        color: #d4af37 !important;
+                    }
+                }
+            }
+        }
+
+        ul#navigation-menu li.has-columns ul {
+            background: #243142 !important;
+            border: 1px solid #354458;
+
+            li {
+                background: #243142 !important;
+
+                a {
+                    background-color: #243142 !important;
+                    border-bottom: 1px solid #354458;
+
+                    &:hover {
+                        background-color: #2e3f54 !important;
+                        border-left: 3px solid #d4af37 !important;
+                    }
+                }
+            }
+        }
+
+        ul#navigation-menu li.menu-icon-user ul li:first-child a {
+            background-color: #2e3f54 !important;
+        }
+    }
+
+    /* Context navigation for Navy Academic theme */
+    #grp-context-navigation {
+        background: #f8f7f4 !important;
+        border-bottom: 1px solid #e5e2da !important;
+
+        ul li {
+            color: #7a7265 !important;
+
+            a {
+                color: #4a453d !important;
+
+                &:hover {
+                    color: #1a2332 !important;
+                }
+            }
+        }
+    }
+
+    /* Buttons for Navy Academic theme */
+    .grp-button {
+        background-image: none !important;
+        background: #d4af37 !important;
+        border: 1px solid #b8962e !important;
+        color: #1a2332 !important;
+
+        &:hover {
+            background: #e5c654 !important;
+            border: 1px solid #d4af37 !important;
+        }
+
+        &.grp-default {
+            background: #354458 !important;
+            border: 1px solid #2a3544 !important;
+            color: #f5f2ed !important;
+
+            &:hover {
+                background: #2e3f54 !important;
+                border: 1px solid #243142 !important;
+            }
+        }
+    }
+
+    /* Fixed footer for Navy Academic theme */
+    .grp-fixed-footer {
+        background-image: none !important;
+        background: #1a2332 !important;
+        border-top: 1px solid rgba(255, 255, 255, 0.15) !important;
+
+        .grp-button {
+            background: #d4af37 !important;
+            border: 1px solid #b8962e !important;
+            color: #1a2332 !important;
+
+            &:hover {
+                background: #e5c654 !important;
+            }
+        }
+    }
+
+    /* Body and general styles for Navy Academic */
+    .grp-collapse {
+        border: 1px solid #354458 !important;
+        background: #243142 !important;
+
+        &.grp-open {
+            background: #2e3f54 !important;
+        }
+    }
+
+    .fieldset.grp-module .grp-row label {
+        color: #1a2332 !important;
+    }
+
+    .grp-module .grp-row:not(tr) {
+        border-bottom: 1px solid #e5e2da !important;
+        background: #ffffff !important;
+
+        &:hover {
+            background: #f8f7f4 !important;
+        }
+    }
+
+    /* Select2 styles for Navy Academic */
+    .select2-container--default .select2-selection--single {
+        background: #ffffff !important;
+        border: 1px solid #354458 !important;
+
+        .select2-selection__rendered {
+            color: #1a2332 !important;
+        }
+    }
+
+    .select2-container--default .select2-results__option--highlighted[aria-selected] {
+        background: #d4af37 !important;
+        color: #1a2332 !important;
+    }
+
+    .select2-dropdown {
+        background: #ffffff !important;
+        border: 1px solid #354458 !important;
+    }
+
+    .select2-container--default .select2-search--dropdown .select2-search__field {
+        background: #ffffff !important;
+        border: 1px solid #354458 !important;
+        color: #1a2332 !important;
+    }
+
+    /* Filter panel styles for Navy Academic theme */
+    .filter-panel .filter-panel-content .filter-group .filter-title.filter-collapsible.has-selection {
+        border-left-color: #d4af37 !important;
+        background: linear-gradient(135deg, #f5efd5 0%, #ede4c0 100%) !important;
+
+        &:hover {
+            background: linear-gradient(135deg, #ede4c0 0%, #e5d9ab 100%) !important;
+        }
+
+        .selected-filter-value {
+            color: #b8962e !important;
+        }
+    }
+
+    /* Support button for Navy Academic theme */
+    .bpp-support-button {
+        background-color: #d4af37 !important;
+        color: #1a2332 !important;
+
+        &:hover {
+            background-color: #e5c654 !important;
+        }
+
+        &:focus {
+            outline: 2px solid #f5efd5 !important;
+        }
+    }
+
+    /* Link colors for Navy Academic theme */
+    a {
+        color: #4a9fd8 !important;
+
+        &:hover {
+            color: #d4af37 !important; /* Gold accent on hover */
+        }
+    }
+
+    /* Info message colors for Navy Academic theme */
+    .grp-info,
+    ul.grp-messagelist li.info {
+        background: linear-gradient(135deg, #e1f5fe 0%, #b3e5fc 100%) !important;
+        border-left: 3px solid #4a9fd8 !important;
+        color: #0277bd !important;
+
+        a {
+            color: #1a2332 !important;
+            font-weight: bold !important;
+
+            &:hover {
+                color: #d4af37 !important;
+            }
+        }
+    }
+
+    /* Menu icon styles for Navy Academic theme */
+    .menu-icon {
+        background-color: #d4af37 !important;
+    }
+
+    .menu-click-item:hover .menu-icon {
+        background-color: #e5c654 !important;
+    }
+
+    /* Add link and focus state buttons for Navy Academic theme */
+    .grp-add-link {
+        background: #d4af37 !important;
+        color: #1a2332 !important;
+        border: 1px solid #b8962e !important;
+
+        &:hover {
+            background: #e5c654 !important;
+            border: 1px solid #d4af37 !important;
+            color: #1a2332 !important;
+        }
+    }
+
+    .grp-state-focus {
+        background: #2e3f54 !important;
+        color: #d4af37 !important;
+        border: 2px solid #d4af37 !important;
+
+        &:hover {
+            background: #d4af37 !important;
+            color: #1a2332 !important;
+        }
+    }
+}

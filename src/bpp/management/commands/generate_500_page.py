@@ -1,12 +1,11 @@
 from datetime import datetime
 from pathlib import Path
 
+from django.contrib.auth.models import AnonymousUser
 from django.core.management import BaseCommand
 from django.template import loader
 from django.test import RequestFactory
 from htmlmin.minify import html_minify
-
-from django.contrib.auth.models import AnonymousUser
 
 from bpp.context_processors.config import bpp_configuration
 from bpp.context_processors.global_nav import user as global_nav_user

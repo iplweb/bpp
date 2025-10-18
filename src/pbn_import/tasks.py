@@ -7,13 +7,12 @@ import rollbar
 from asgiref.sync import async_to_sync
 from celery import shared_task
 from channels.layers import get_channel_layer
-
-from .models import ImportLog, ImportSession
-from .utils import ImportManager
-
 from django.utils import timezone
 
 from bpp.models import Uczelnia
+
+from .models import ImportLog, ImportSession
+from .utils import ImportManager
 
 
 def send_websocket_update(session, data):

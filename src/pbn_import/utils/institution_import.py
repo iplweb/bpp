@@ -1,8 +1,8 @@
 """Institution import utilities"""
 
-from .base import ImportStepBase
-
 from bpp.models import Jednostka, Uczelnia, Wydzial
+
+from .base import ImportStepBase
 
 
 def zrob_skrot(s: str) -> str:

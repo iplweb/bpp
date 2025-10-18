@@ -1,6 +1,9 @@
 from django.apps import apps
 from django.conf import settings
 from django.conf.urls.static import static
+from django.contrib import admin
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.views import LoginView, LogoutView
 from django.urls import include, path
 from django.urls import re_path as url
 from django.views.decorators.cache import cache_page
@@ -8,10 +11,6 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import RedirectView
 from django.views.i18n import JavaScriptCatalog
 from loginas.views import user_login
-
-from django.contrib import admin
-from django.contrib.auth.decorators import login_required
-from django.contrib.auth.views import LoginView, LogoutView
 
 from bpp.forms import MyAuthenticationForm
 from bpp.views import favicon, robots_txt, root
@@ -62,6 +61,10 @@ urlpatterns = (
         ),
         # url(r'^admin/', include(admin.site.urls)),
         path("admin/", admin.site.urls),
+        path(
+            "admin-dashboard/",
+            include("admin_dashboard.urls", namespace="admin_dashboard"),
+        ),
         url(
             r"^integrator2/",
             include(("integrator2.urls", "integrator2"), namespace="integrator2"),
@@ -208,6 +211,13 @@ urlpatterns = (
             include(
                 ("przemapuj_prace_autora.urls", "przemapuj_prace_autora"),
                 namespace="przemapuj_prace_autora",
+            ),
+        ),
+        path(
+            "przemapuj-zrodla-pbn/",
+            include(
+                ("przemapuj_zrodla_pbn.urls", "przemapuj_zrodla_pbn"),
+                namespace="przemapuj_zrodla_pbn",
             ),
         ),
         url(

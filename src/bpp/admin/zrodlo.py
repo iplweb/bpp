@@ -1,10 +1,13 @@
 # Proste tabele
 from dal import autocomplete
 from django import forms
+from django.contrib import admin
 from djangoql.admin import DjangoQLSearchMixin
 
+from bpp.models.zrodlo import Redakcja_Zrodla
 from pbn_api.const import ACTIVE
 from pbn_api.models import Journal
+
 from ..models import (  # Publikacja_Habilitacyjna
     Autor,
     Dyscyplina_Zrodla,
@@ -16,10 +19,6 @@ from .filters import PBN_UID_IDObecnyFilter
 from .helpers.fieldsets import ADNOTACJE_FIELDSET, MODEL_PUNKTOWANY_Z_KWARTYLAMI_BAZA
 from .helpers.mixins import ZapiszZAdnotacjaMixin
 from .helpers.widgets import CHARMAP_SINGLE_LINE, COMMA_DECIMAL_FIELD_OVERRIDE
-
-from django.contrib import admin
-
-from bpp.models.zrodlo import Redakcja_Zrodla
 
 # Źródła indeksowane
 
@@ -70,7 +69,6 @@ class Dyscyplina_ZrodlaInline(admin.TabularInline):
 
 
 class ZrodloForm(forms.ModelForm):
-
     pbn_uid = forms.ModelChoiceField(
         label="Odpowiednik w PBN",
         required=False,

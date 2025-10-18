@@ -1,46 +1,36 @@
-# -*- encoding: utf-8 -*-
-
 from django.core.management import BaseCommand
 from django.db import transaction
 
-from bpp.models.cache import Rekord
 from bpp.models import cache
-
+from bpp.models.cache import Rekord
 
 FIXME = [
-    ('<alpha>', 'α'),
-    ('<alfa>', 'α'),
-    ('<afa>', 'α'),
-
-    ('<beta>', 'β'),
-    ('<gamma>', 'γ'),
-    ('<delta>', 'δ'),
-    ('<d>', 'δ'),
-    ('<epsilon>', 'ε'),
-    ('<pi>', 'π'),
-
-    ('<mi>', 'μ'),
-    ('<omega>', 'ω'),
-
-    ('<zeta>', 'ζ'),
-    ('<tau>', 'τ'),
-    ('<kappa>', 'κ'),
-
-    ('<sub)', '<sub>'),
-
-    ('<dn>', '<sub>'),
-    ('</dn>', '</sub>'),
-
-    ('<up>', '<sup>'),
-    ('</up>', '</sup>'),
-
-    ('<Heraclem sibiricum', '<i>Heraclem sibiricum</i>'),
-    ('<foramen jugulare>', '<i>foramen jugulare</i>'),
-
+    ("<alpha>", "α"),
+    ("<alfa>", "α"),
+    ("<afa>", "α"),
+    ("<beta>", "β"),
+    ("<gamma>", "γ"),
+    ("<delta>", "δ"),
+    ("<d>", "δ"),
+    ("<epsilon>", "ε"),
+    ("<pi>", "π"),
+    ("<mi>", "μ"),
+    ("<omega>", "ω"),
+    ("<zeta>", "ζ"),
+    ("<tau>", "τ"),
+    ("<kappa>", "κ"),
+    ("<sub)", "<sub>"),
+    ("<dn>", "<sub>"),
+    ("</dn>", "</sub>"),
+    ("<up>", "<sup>"),
+    ("</up>", "</sup>"),
+    ("<Heraclem sibiricum", "<i>Heraclem sibiricum</i>"),
+    ("<foramen jugulare>", "<i>foramen jugulare</i>"),
 ]
 
+
 class Command(BaseCommand):
-    help = 'Naprawia tytuły prac po imporcie'
+    help = "Naprawia tytuły prac po imporcie"
 
     @transaction.atomic
     def handle(self, *args, **options):
@@ -49,8 +39,10 @@ class Command(BaseCommand):
         for string, replacement in FIXME:
             for rekord in Rekord.objects.filter(tytul_oryginalny__contains=string):
                 pre = (rekord.tytul_oryginalny, rekord.tytul)
-                for pole in ['tytul', 'tytul_oryginalny']:
-                    setattr(rekord, pole, getattr(rekord, pole).replace(string, replacement))
+                for pole in ["tytul", "tytul_oryginalny"]:
+                    setattr(
+                        rekord, pole, getattr(rekord, pole).replace(string, replacement)
+                    )
                 post = (rekord.tytul_oryginalny, rekord.tytul)
 
                 if pre != post:

@@ -1,10 +1,10 @@
 from django.db.models import Case, Q, TextField, When
 from multiseek.logic import Ordering, create_registry
 
+from bpp.models import Rekord
+
 from .fields import *  # noqa
 from .reports import multiseek_report_types
-
-from bpp.models import Rekord
 
 registry = create_registry(
     Rekord,
@@ -24,7 +24,7 @@ registry = create_registry(
         Ordering("ostatnio_zmieniony", "ostatnio zmieniony"),
     ],
     default_ordering=["-rok", "", ""],
-    report_types=multiseek_report_types
+    report_types=multiseek_report_types,
 )
 
 

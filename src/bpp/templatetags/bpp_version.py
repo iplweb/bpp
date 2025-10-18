@@ -1,5 +1,3 @@
-# -*- encoding: utf-8 -*-
-
 import time
 
 from django import template
@@ -12,6 +10,7 @@ register = template.Library()
 @register.simple_tag
 def bpp_version():
     return VERSION
+
 
 @register.simple_tag
 def bpp_localtime():

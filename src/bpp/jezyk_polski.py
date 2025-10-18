@@ -94,7 +94,7 @@ def warianty_zapisanego_nazwiska(p_imiona, p_nazwisko, poprzednie_nazwiska):
             buf.append(imie)
         return buf
 
-    for i in zip(*tuple(wersje_imienia(imie) for imie in imiona)):
+    for i in zip(*tuple(wersje_imienia(imie) for imie in imiona), strict=False):
         for n in nazwiska:
             yield " ".join(list(i)) + " " + n
             yield n + " " + " ".join(list(i))

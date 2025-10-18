@@ -1,13 +1,12 @@
+from django.contrib import admin
+
+from bpp.models import Rekord
 from pbn_api.admin.base import BasePBNAPIAdmin
 from pbn_api.admin.filters import (
     OdpowiednikPublikacjiInstytucjiAutorWBPPFilter,
     OdpowiednikPublikacjiInstytucjiPublikacjaWBPPFilter,
 )
 from pbn_api.models import PublikacjaInstytucji
-
-from django.contrib import admin
-
-from bpp.models import Rekord
 
 
 @admin.register(PublikacjaInstytucji)

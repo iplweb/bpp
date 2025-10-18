@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block title %}Usuń źródło{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url 'przemapuj_zrodla_pbn:lista_skasowanych_zrodel' %}">Źródła skasowane w PBN</a></li>
+    <li class="current">Usuń źródło</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="medium-12 columns">
+        <h1>Usuń źródło</h1>
+
+        <div class="callout alert">
+            <h4><span class="fi-alert"></span> Uwaga!</h4>
+            <p>Zamierzasz <strong>trwale usunąć</strong> następujące źródło z systemu BPP:</p>
+        </div>
+
+        <div class="callout secondary">
+            <h4>Informacje o źródle</h4>
+            <dl>
+                <dt><strong>Nazwa:</strong></dt>
+                <dd>{{ zrodlo.nazwa }}</dd>
+
+                <dt><strong>ISSN:</strong></dt>
+                <dd>{{ zrodlo.issn|default:"-" }}</dd>
+
+                <dt><strong>E-ISSN:</strong></dt>
+                <dd>{{ zrodlo.e_issn|default:"-" }}</dd>
+
+                <dt><strong>Status PBN:</strong></dt>
+                <dd>
+                    <span class="label alert">
+                        <span class="fi-alert"></span> {{ zrodlo.pbn_uid.status }}
+                    </span>
+                </dd>
+
+                <dt><strong>Liczba rekordów:</strong></dt>
+                <dd>{{ liczba_rekordow }}</dd>
+            </dl>
+        </div>
+
+        <div class="callout warning">
+            <h5><span class="fi-info"></span> Co się stanie po usunięciu?</h5>
+            <ul>
+                <li>Źródło zostanie <strong>trwale usunięte</strong> z bazy danych BPP</li>
+                <li>Operacja zostanie zapisana w historii przemapowań</li>
+                <li>Źródło w PBN pozostanie niezmienione (tylko status "deleted")</li>
+                <li><strong>Tej operacji nie można cofnąć!</strong></li>
+            </ul>
+        </div>
+
+        <form method="post" onsubmit="return confirm('Czy NA PEWNO chcesz usunąć źródło \'{{ zrodlo.nazwa }}\'?\n\nTa operacja jest NIEODWRACALNA!');">
+            {% csrf_token %}
+
+            <div class="button-group">
+                <button type="submit" class="button alert">
+                    <span class="fi-trash"></span> Tak, usuń źródło
+                </button>
+                <a href="{% url 'przemapuj_zrodla_pbn:lista_skasowanych_zrodel' %}" class="button secondary">
+                    <span class="fi-x"></span> Anuluj
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

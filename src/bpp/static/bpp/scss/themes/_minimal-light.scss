@@ -1,0 +1,269 @@
+/* -------------------------------------------------------------------------------- */
+/* Theme 5: Minimal Light (Medium/Substack Style) */
+/* -------------------------------------------------------------------------------- */
+
+body.theme-minimal-light {
+    background: #fafafa !important;
+
+    #grp-navigation {
+        background: #fafafa !important;
+        border-bottom: 1px solid #e8e8e8;
+
+        ul#navigation-menu li a {
+            color: #1a1a1a !important;
+            border-right: 1px solid #f0f0f0;
+            border-left: 1px solid #ffffff;
+            font-weight: 500 !important;
+        }
+
+        ul#navigation-menu li a:hover,
+        ul#navigation-menu li.over > a {
+            background-color: #f5f5f5 !important;
+            color: #1a1a1a !important;
+        }
+
+        ul#navigation-menu li ul {
+            background: #ffffff !important;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+            border: 1px solid #f0f0f0;
+
+            li {
+                background: #ffffff !important;
+                border-top: none;
+
+                a {
+                    background-color: #ffffff !important;
+                    color: #1a1a1a !important;
+                    border-left: none;
+                    border-bottom: 1px solid #fafafa;
+
+                    &:hover {
+                        background-color: #fafafa !important;
+                        border-left: none !important;
+                        color: #1a1a1a !important;
+                        font-weight: 600 !important;
+                    }
+                }
+            }
+        }
+
+        ul#navigation-menu li.has-columns ul {
+            background: #ffffff !important;
+            border: 1px solid #f0f0f0;
+
+            li {
+                background: #ffffff !important;
+
+                a {
+                    background-color: #ffffff !important;
+                    border-bottom: 1px solid #fafafa;
+
+                    &:hover {
+                        background-color: #fafafa !important;
+                        border-left: none !important;
+                        font-weight: 600 !important;
+                    }
+                }
+            }
+        }
+
+        ul#navigation-menu li.menu-icon-user ul li:first-child a {
+            background-color: #fafafa !important;
+        }
+    }
+
+    /* Context navigation for Minimal Light theme */
+    #grp-context-navigation {
+        background: #ffffff !important;
+        border-bottom: 1px solid #f0f0f0 !important;
+
+        ul li {
+            color: #999999 !important;
+
+            a {
+                color: #666666 !important;
+
+                &:hover {
+                    color: #1a1a1a !important;
+                    text-decoration: underline;
+                }
+            }
+        }
+    }
+
+    /* Buttons for Minimal Light theme */
+    .grp-button {
+        background-image: none !important;
+        background: #1a1a1a !important;
+        border: 1px solid #000000 !important;
+        color: #ffffff !important;
+
+        &:hover {
+            background: #000000 !important;
+            border: 1px solid #000000 !important;
+        }
+
+        &.grp-default {
+            background: #ffffff !important;
+            border: 1px solid #1a1a1a !important;
+            color: #1a1a1a !important;
+
+            &:hover {
+                background: #f5f5f5 !important;
+                border: 1px solid #1a1a1a !important;
+            }
+        }
+    }
+
+    /* Fixed footer for Minimal Light theme */
+    .grp-fixed-footer {
+        background-image: none !important;
+        background: #fafafa !important;
+        border-top: 1px solid #e8e8e8 !important;
+
+        .grp-button {
+            background: #1a1a1a !important;
+            border: 1px solid #000000 !important;
+
+            &:hover {
+                background: #000000 !important;
+            }
+        }
+    }
+
+    /* Body and general styles for Minimal Light */
+    .grp-collapse {
+        border: 1px solid #e8e8e8 !important;
+        background: #ffffff !important;
+
+        &.grp-open {
+            background: #fafafa !important;
+        }
+    }
+
+    .fieldset.grp-module .grp-row label {
+        color: #333333 !important;
+    }
+
+    .grp-module .grp-row:not(tr) {
+        border-bottom: 1px solid #f0f0f0 !important;
+        background: #ffffff !important;
+
+        &:hover {
+            background: #fafafa !important;
+        }
+    }
+
+    /* Select2 styles for Minimal Light */
+    .select2-container--default .select2-selection--single {
+        background: #ffffff !important;
+        border: 1px solid #d0d0d0 !important;
+
+        .select2-selection__rendered {
+            color: #1a1a1a !important;
+        }
+    }
+
+    .select2-container--default .select2-results__option--highlighted[aria-selected] {
+        background: #1a1a1a !important;
+        color: #ffffff !important;
+    }
+
+    .select2-dropdown {
+        background: #ffffff !important;
+        border: 1px solid #d0d0d0 !important;
+    }
+
+    .select2-container--default .select2-search--dropdown .select2-search__field {
+        background: #ffffff !important;
+        border: 1px solid #d0d0d0 !important;
+        color: #1a1a1a !important;
+    }
+
+    /* Filter panel styles for Minimal Light theme */
+    .filter-panel .filter-panel-content .filter-group .filter-title.filter-collapsible.has-selection {
+        border-left-color: #1a1a1a !important;
+        background: linear-gradient(135deg, #f0f0f0 0%, #e8e8e8 100%) !important;
+
+        &:hover {
+            background: linear-gradient(135deg, #e8e8e8 0%, #e0e0e0 100%) !important;
+        }
+
+        .selected-filter-value {
+            color: #000000 !important;
+        }
+    }
+
+    /* Support button for Minimal Light theme */
+    .bpp-support-button {
+        background-color: #1a1a1a !important;
+        color: #ffffff !important;
+
+        &:hover {
+            background-color: #000000 !important;
+        }
+
+        &:focus {
+            outline: 2px solid #666666 !important;
+        }
+    }
+
+    /* Link colors for Minimal Light theme */
+    a {
+        color: #5050d0 !important; /* Indigo */
+
+        &:hover {
+            color: #3f3fbf !important; /* Deeper indigo */
+        }
+    }
+
+    /* Info message colors for Minimal Light theme */
+    .grp-info,
+    ul.grp-messagelist li.info {
+        background: linear-gradient(135deg, #ede7f6 0%, #d1c4e9 100%) !important;
+        border-left: 3px solid #5050d0 !important;
+        color: #311b92 !important;
+
+        a {
+            color: #3f3fbf !important;
+            font-weight: bold !important;
+
+            &:hover {
+                color: #311b92 !important;
+            }
+        }
+    }
+
+    /* Menu icon styles for Minimal Light theme */
+    .menu-icon {
+        background-color: #1a1a1a !important;
+    }
+
+    .menu-click-item:hover .menu-icon {
+        background-color: #000000 !important;
+    }
+
+    /* Add link and focus state buttons for Minimal Light theme */
+    .grp-add-link {
+        background: #1a1a1a !important;
+        color: #ffffff !important;
+        border: 1px solid #000000 !important;
+
+        &:hover {
+            background: #000000 !important;
+            border: 1px solid #000000 !important;
+            color: #ffffff !important;
+        }
+    }
+
+    .grp-state-focus {
+        background: #ede7f6 !important;
+        color: #5050d0 !important;
+        border: 2px solid #5050d0 !important;
+
+        &:hover {
+            background: #5050d0 !important;
+            color: #ffffff !important;
+        }
+    }
+}

@@ -1,0 +1,22 @@
+{% load humanize %}
+
+{% if logins %}
+<table class="hover">
+    <thead>
+        <tr>
+            <th>Użytkownik</th>
+            <th>Czas logowania</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for login in logins %}
+        <tr>
+            <td>{{ login.user.get_full_name|default:login.username }}</td>
+            <td>{{ login.datetime|naturaltime }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p>Brak zapisanych logowań.</p>
+{% endif %}

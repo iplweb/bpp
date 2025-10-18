@@ -2,10 +2,9 @@ from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Hidden
 from crispy_forms.utils import TEMPLATE_PACK
 from crispy_forms_foundation.layout import ButtonHolder, Fieldset, Layout, Submit
-from django.template.loader import render_to_string
-
 from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.contrib.auth.forms import AuthenticationForm
+from django.template.loader import render_to_string
 
 
 class SecureNextLink(Hidden):

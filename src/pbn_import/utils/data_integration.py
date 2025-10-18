@@ -3,14 +3,14 @@
 import io
 import sys
 
+from bpp.models import Jednostka
 from pbn_integrator.importer import importuj_publikacje_po_pbn_uid_id
 from pbn_integrator.utils import (
     integruj_oswiadczenia_z_instytucji,
     integruj_publikacje_instytucji,
 )
-from .base import ImportStepBase
 
-from bpp.models import Jednostka
+from .base import ImportStepBase
 
 
 class TeeWriter:

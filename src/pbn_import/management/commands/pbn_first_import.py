@@ -1,16 +1,23 @@
 import django
 from django.core.management import call_command
 
+from bpp.util import pbar
 from import_common.core import matchuj_uczelnie
 from pbn_integrator.importer import (
     importuj_publikacje_instytucji,
     importuj_publikacje_po_pbn_uid_id,
 )
 
-from bpp.util import pbar
-
 django.setup()
 
+from bpp.models import (
+    Jednostka,
+    Uczelnia,
+    Wersja_Tekstu_OpenAccess,
+    Wydawnictwo_Ciagle,
+    Wydawnictwo_Zwarte,
+    Wydzial,
+)
 from pbn_api.management.commands.util import PBNBaseCommand
 from pbn_integrator import importer
 from pbn_integrator.utils import (
@@ -26,15 +33,6 @@ from pbn_integrator.utils import (
     pobierz_publikacje_z_instytucji,
     pobierz_wydawcow_mnisw,
     pobierz_zrodla_mnisw,
-)
-
-from bpp.models import (
-    Jednostka,
-    Uczelnia,
-    Wersja_Tekstu_OpenAccess,
-    Wydawnictwo_Ciagle,
-    Wydawnictwo_Zwarte,
-    Wydzial,
 )
 
 
@@ -61,25 +59,35 @@ class Command(PBNBaseCommand):
     def add_arguments(self, parser):
         super().add_arguments(parser)
 
-        parser.add_argument("--disable-initial", action="store_true", default=False),
-        parser.add_argument("--disable-zrodla", action="store_true", default=False),
-        parser.add_argument(
-            "--disable-konferencje", action="store_true", default=False
-        ),
-        parser.add_argument("--disable-wydawcy", action="store_true", default=False),
-        parser.add_argument("--disable-autorzy", action="store_true", default=False),
-        parser.add_argument("--disable-publikacje", action="store_true", default=False),
-        parser.add_argument("--disable-reimport", action="store_true", default=False),
+        (parser.add_argument("--disable-initial", action="store_true", default=False),)
+        (parser.add_argument("--disable-zrodla", action="store_true", default=False),)
+        (
+            parser.add_argument(
+                "--disable-konferencje", action="store_true", default=False
+            ),
+        )
+        (parser.add_argument("--disable-wydawcy", action="store_true", default=False),)
+        (parser.add_argument("--disable-autorzy", action="store_true", default=False),)
+        (
+            parser.add_argument(
+                "--disable-publikacje", action="store_true", default=False
+            ),
+        )
+        (parser.add_argument("--disable-reimport", action="store_true", default=False),)
 
-        parser.add_argument(
-            "--disable-publikacje-download", action="store_true", default=False
-        ),
-        parser.add_argument("--disable-oplaty", action="store_true", default=False),
-        parser.add_argument("--wydzial-domyslny", default="Wydział Domyślny"),
-        parser.add_argument("--wydzial-domyslny-skrot", default=None),
-        parser.add_argument(
-            "--disable-oswiadczenia", action="store_true", default=False
-        ),
+        (
+            parser.add_argument(
+                "--disable-publikacje-download", action="store_true", default=False
+            ),
+        )
+        (parser.add_argument("--disable-oplaty", action="store_true", default=False),)
+        (parser.add_argument("--wydzial-domyslny", default="Wydział Domyślny"),)
+        (parser.add_argument("--wydzial-domyslny-skrot", default=None),)
+        (
+            parser.add_argument(
+                "--disable-oswiadczenia", action="store_true", default=False
+            ),
+        )
 
     def handle(
         self,

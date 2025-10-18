@@ -1,6 +1,5 @@
-from django.db import models
-
 from django.contrib.postgres.fields import ArrayField
+from django.db import models
 
 
 class TupleField(ArrayField):
@@ -28,7 +27,7 @@ class OpcjaWyswietlaniaField(models.CharField):
         max_length=50,
         choices=POKAZUJ_CHOICES,
         *args,
-        **kw
+        **kw,
     ):
         super().__init__(
             verbose_name=verbose_name,
@@ -36,5 +35,5 @@ class OpcjaWyswietlaniaField(models.CharField):
             choices=choices,
             default=default,
             *args,
-            **kw
+            **kw,
         )

@@ -5,7 +5,9 @@ from ..exceptions import TlumaczDyscyplinException
 
 class TlumaczDyscyplinManager(models.Manager):
     def przetlumacz_dyscypline(
-        self, dyscyplina_bpp: "bpp.models.Dyscyplina_Naukowa", rok: int  # noqa: F821
+        self,
+        dyscyplina_bpp: "bpp.models.Dyscyplina_Naukowa",
+        rok: int,  # noqa: F821
     ):
         try:
             td: TlumaczDyscyplin = self.get(dyscyplina_w_bpp=dyscyplina_bpp)

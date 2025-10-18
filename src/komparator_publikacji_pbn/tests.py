@@ -3,9 +3,8 @@ from django.test import Client
 from django.urls import reverse
 from model_bakery import baker
 
-from pbn_api.models import Publication
-
 from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
+from pbn_api.models import Publication
 
 
 @pytest.mark.django_db

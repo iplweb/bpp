@@ -23,7 +23,6 @@ class Command(BaseCommand):
 
     @transaction.atomic
     def handle(self, dry_run, *args, **options):
-
         self.stdout.write("Przetwarzanie języków...")
 
         # Najpierw ukryj wszystkie języki

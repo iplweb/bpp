@@ -1,24 +1,22 @@
 from datetime import datetime
 
+from django.contrib import messages
+from django.contrib.admin.views.decorators import staff_member_required
+from django.contrib.auth.decorators import login_required
 from django.db import models, transaction
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
+from django.utils.decorators import method_decorator
+from django.utils.http import urlencode
 from django.views.decorators.http import require_POST
 from django.views.generic import ListView
 
+from bpp.models import Autor, Tytul
 from import_common.core import matchuj_autora
 from pbn_api.models import Scientist
+
 from .models import DoNotRemind
-
-from django.contrib import messages
-from django.contrib.admin.views.decorators import staff_member_required
-from django.contrib.auth.decorators import login_required
-
-from django.utils.decorators import method_decorator
-from django.utils.http import urlencode
-
-from bpp.models import Autor, Tytul
 
 
 @method_decorator(staff_member_required, name="dispatch")
@@ -197,9 +195,8 @@ class ImporterAutorowPBNView(ListView):
 
     def _get_employment_data(self, scientist):
         """Extract employment data from scientist"""
-        from pbn_api.models import Institution
-
         from bpp.models import Jednostka
+        from pbn_api.models import Institution
 
         current_employments = scientist.value(
             "object", "currentEmployments", return_none=True

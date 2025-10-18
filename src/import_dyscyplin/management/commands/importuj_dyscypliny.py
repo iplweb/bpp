@@ -1,5 +1,3 @@
-# -*- encoding: utf-8 -*-
-
 import logging
 from argparse import FileType
 from pathlib import Path

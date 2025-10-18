@@ -1,7 +1,7 @@
+from django.contrib import admin
+
 from ..models import Kierunek_Studiow
 from .core import BaseBppAdminMixin, RestrictDeletionToAdministracjaGroupMixin
-
-from django.contrib import admin
 
 
 @admin.register(Kierunek_Studiow)

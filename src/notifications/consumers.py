@@ -4,10 +4,9 @@ from urllib.parse import parse_qs
 
 from asgiref.sync import async_to_sync
 from channels.generic.websocket import WebsocketConsumer
+from django.utils.functional import cached_property
 
 from notifications.core import get_channel_name_for_user
-
-from django.utils.functional import cached_property
 
 
 class NotificationsConsumer(WebsocketConsumer):
@@ -17,7 +16,6 @@ class NotificationsConsumer(WebsocketConsumer):
 
         # Kanał wyłącznie dla konkretnego użytkownika
         if self.scope["user"].is_authenticated:
-
             yield get_channel_name_for_user(self.scope["user"])
 
             qstr = parse_qs(self.scope["query_string"])

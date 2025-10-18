@@ -1,6 +1,7 @@
 from braces.views import GroupRequiredMixin
 from django.db.models import Count, Q
 
+from bpp.models import Autor_Dyscyplina
 from import_polon.forms import NowyImportForm, WierszImportuPlikuPolonFilterForm
 from import_polon.models import ImportPlikuPolon
 from long_running.views import (
@@ -11,8 +12,6 @@ from long_running.views import (
     LongRunningRouterView,
     RestartLongRunningOperationView,
 )
-
-from bpp.models import Autor_Dyscyplina
 
 
 class BaseImportPlikuPolonMixin(GroupRequiredMixin):

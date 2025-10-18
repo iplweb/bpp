@@ -1,8 +1,21 @@
-from typing import Any, List, Union
+from typing import Any
 
 from django.db import models
+from django.utils.datastructures import CaseInsensitiveMapping
+from django.utils.functional import cached_property
 from queryset_sequence import QuerySetSequence
 
+from bpp.models import (
+    Autor,
+    Crossref_Mapper,
+    Jezyk,
+    Licencja_OpenAccess,
+    Rekord,
+    Wydawca,
+    Wydawnictwo_Ciagle,
+    Wydawnictwo_Zwarte,
+    Zrodlo,
+)
 from crossref_bpp.utils import json_format_with_wrap, perform_trigram_search
 from import_common.core import (
     matchuj_autora,
@@ -23,21 +36,6 @@ from import_common.normalization import (
     normalize_publisher,
 )
 
-from django.utils.datastructures import CaseInsensitiveMapping
-from django.utils.functional import cached_property
-
-from bpp.models import (
-    Autor,
-    Crossref_Mapper,
-    Jezyk,
-    Licencja_OpenAccess,
-    Rekord,
-    Wydawca,
-    Wydawnictwo_Ciagle,
-    Wydawnictwo_Zwarte,
-    Zrodlo,
-)
-
 
 class StatusPorownania(models.TextChoices):
     DOKLADNE = "ok", "dokładne (identyczne dane po obu stronach)"
@@ -55,12 +53,7 @@ class WynikPorownania:
         self,
         status: StatusPorownania,
         opis: str = "",
-        rekordy: [
-            Union[
-                List[models.Model,],
-                None,
-            ]
-        ] = None,
+        rekordy: [list[models.Model,] | None] = None,
     ):
         self.status = status
         self.opis = opis

@@ -88,8 +88,16 @@
         <h2 style="margin: 0;">Kolejka eksportu do PBN</h2>
 
         {% if request.user.is_staff or perms.pbn_api %}
-            {% if error_count > 0 or waiting_count > 0 %}
+            {% if error_count > 0 or waiting_count > 0 or never_sent_count > 0 %}
             <div style="text-align: right;">
+                {% if never_sent_count > 0 %}
+                <form method="post" action="{% url 'pbn_export_queue:export-queue-wake-up' %}" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="button info" onclick="return confirm('Czy na pewno chcesz obudzić wysyłkę dla {{ never_sent_count }} rekordów które nigdy nie były wysyłane?');">
+                        <span class="fi-play"></span> Obudź wysyłkę ({{ never_sent_count }})
+                    </button>
+                </form>
+                {% endif %}
                 {% if error_count > 0 %}
                 <form method="post" action="{% url 'pbn_export_queue:export-queue-resend-all-errors' %}" style="display: inline;">
                     {% csrf_token %}

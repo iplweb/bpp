@@ -1,9 +1,8 @@
 from django.core.management import BaseCommand
 from django.db import transaction
 
-from import_common.core import wytnij_skrot
-
 from bpp.models import Jednostka, Jednostka_Wydzial, Uczelnia, Wydzial
+from import_common.core import wytnij_skrot
 
 
 def zrob_skrot(jednostka):
@@ -17,7 +16,6 @@ class Command(BaseCommand):
 
     @transaction.atomic
     def handle(self, *args, **options):
-
         uczelnia = Uczelnia.objects.get_default()
         wydzial = Wydzial.objects.get(skrot="WD")  # wydział domyslny
         for elem in open(

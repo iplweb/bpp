@@ -1,6 +1,3 @@
-# -*- encoding: utf-8 -*-
-
-# -*- encoding: utf-8 -*-
 import datetime
 
 from django.contrib.contenttypes.models import ContentType
@@ -59,7 +56,7 @@ class CacheMetadata:
 
         if item == "subject":
             if hasattr(item, "slowa_kluczowe"):
-                return u", ".join(o.name for o in item.slowa_kluczowe.all())
+                return ", ".join(o.name for o in item.slowa_kluczowe.all())
 
         if item == "source":
             src = []
@@ -93,7 +90,7 @@ def get_dc_ident(model, obj_pk):
     return "oai:bpp.umlub.pl:%s/%s" % (model, str(obj_pk))
 
 
-class BPPOAIDatabase(object):
+class BPPOAIDatabase:
     def __init__(self, original):
         self.original = original
 
@@ -161,7 +158,6 @@ class BPPOAIDatabase(object):
         until_date=None,
         identifier=None,
     ):
-
         needed_sets = needed_sets or []
         disallowed_sets = disallowed_sets or []
         allowed_sets = allowed_sets or []
@@ -228,7 +224,6 @@ class BPPOAIDatabase(object):
 
 class OAIView(View):
     def get(self, request, *args, **kwargs):
-
         base_url = request.build_absolute_uri(reverse("bpp:oai"))
 
         url = request.get_full_path()[len(base_url) :]

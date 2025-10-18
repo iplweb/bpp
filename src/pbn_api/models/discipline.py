@@ -1,10 +1,9 @@
 from django.db import models
 from django.db.models import Q
-
-from .base import BasePBNModel
-
 from django.utils import timezone
 from django.utils.functional import cached_property
+
+from .base import BasePBNModel
 
 
 class DisciplineGroupManager(models.Manager):

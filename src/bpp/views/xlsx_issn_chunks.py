@@ -1,8 +1,7 @@
 from braces.views import GroupRequiredMixin
 from django.http import HttpResponse
-from django.views import View
-
 from django.utils import timezone
+from django.views import View
 
 from bpp.const import GR_WPROWADZANIE_DANYCH
 from bpp.export.issn import generate_issn_xlsx

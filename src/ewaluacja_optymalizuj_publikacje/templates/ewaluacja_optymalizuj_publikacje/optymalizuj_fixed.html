@@ -3,6 +3,17 @@
 
 {% block title %}Optymalizacja publikacji{% endblock %}
 
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url "multiseek:index" %}">Wyszukiwanie</a></li>
+    {% if publikacja %}
+        <li><a href="{% url "bpp:browse_praca_by_slug" publikacja.slug %}">{{ publikacja.tytul_oryginalny|truncatewords_html:15|safe }}</a></li>
+        <li class="current">Optymalizuj</li>
+    {% else %}
+        <li class="current">Optymalizuj</li>
+    {% endif %}
+{% endblock %}
+
 {% block extrahead %}
 <style>
     /* Smooth transitions for all morphing elements */

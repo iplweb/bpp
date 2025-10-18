@@ -24,8 +24,8 @@ def test_crossref_api_autor_wo_selenium(admin_app, autor_m):
 
     url = "/admin/bpp/wydawnictwo_ciagle/pobierz-z-crossref/"
     page = admin_app.get(url)
-    page.forms[1]["identyfikator_doi"] = "10.12775/jehs.2022.12.07.045"
-    page = page.forms[1].submit().maybe_follow()
+    page.forms["crossref_form"]["identyfikator_doi"] = "10.12775/jehs.2022.12.07.045"
+    page = page.forms["crossref_form"].submit().maybe_follow()
     if b"id_ustaw_orcid_button_author.0" not in page.content:
         page.showbrowser()
         raise Exception

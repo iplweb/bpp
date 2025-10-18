@@ -3,9 +3,20 @@ from dal.forms import FutureModelForm
 from dal_queryset_sequence.fields import QuerySetSequenceModelField
 from dal_select2_queryset_sequence.widgets import QuerySetSequenceSelect2
 from django import forms
+from django.contrib import admin
 from django.forms.widgets import HiddenInput
 from queryset_sequence import QuerySetSequence
 from taggit.forms import TextareaTagWidget
+
+from bpp.models import (  # Publikacja_Habilitacyjna
+    Autor,
+    Jednostka,
+    Patent,
+    Praca_Habilitacyjna,
+    Wydawnictwo_Ciagle,
+    Wydawnictwo_Zwarte,
+)
+from bpp.models.praca_habilitacyjna import Publikacja_Habilitacyjna
 
 from .element_repozytorium import Element_RepozytoriumInline
 from .grant import Grant_RekorduInline
@@ -32,18 +43,6 @@ from .praca_doktorska import Praca_Doktorska_Habilitacyjna_Admin_Base
 from .wydawnictwo_ciagle import CleanDOIWWWPublicWWWMixin
 from .xlsx_export import resources
 from .xlsx_export.mixins import EksportDanychZFormatowanieMixin, ExportActionsMixin
-
-from django.contrib import admin
-
-from bpp.models import (  # Publikacja_Habilitacyjna
-    Autor,
-    Jednostka,
-    Patent,
-    Praca_Habilitacyjna,
-    Wydawnictwo_Ciagle,
-    Wydawnictwo_Zwarte,
-)
-from bpp.models.praca_habilitacyjna import Publikacja_Habilitacyjna
 
 HABILITACYJNA_FIELDS = (
     DWA_TYTULY

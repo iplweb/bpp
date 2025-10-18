@@ -1,0 +1,263 @@
+/* -------------------------------------------------------------------------------- */
+/* Theme 4: Cream Green (Academic Publisher Style) */
+/* -------------------------------------------------------------------------------- */
+
+body.theme-cream-green {
+    background: #fefefe !important;
+
+    #grp-navigation {
+        background: #f4f1e8 !important;
+        border-bottom: 1px solid #e0dcc8;
+
+        ul#navigation-menu li a {
+            color: #1e4d2b !important;
+            border-right: 1px solid #e6dcc8;
+            border-left: 1px solid #faf8f3;
+        }
+
+        ul#navigation-menu li a:hover,
+        ul#navigation-menu li.over > a {
+            background-color: #e8e5dc !important;
+            color: #2e7d32 !important;
+        }
+
+        ul#navigation-menu li ul {
+            background: #ffffff !important;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+
+            li {
+                background: #ffffff !important;
+                border-top: 1px solid #f0ede4;
+
+                a {
+                    background-color: #ffffff !important;
+                    color: #1e4d2b !important;
+                    border-left: 3px solid transparent;
+
+                    &:hover {
+                        background-color: #f0f8f0 !important;
+                        border-left: 3px solid #2e7d32 !important;
+                        color: #2e7d32 !important;
+                    }
+                }
+            }
+        }
+
+        ul#navigation-menu li.has-columns ul {
+            background: #ffffff !important;
+            border: 1px solid #e6dcc8;
+
+            li {
+                background: #ffffff !important;
+
+                a {
+                    background-color: #ffffff !important;
+                    border-bottom: 1px solid #f0ede4;
+
+                    &:hover {
+                        background-color: #f0f8f0 !important;
+                        border-left: 3px solid #2e7d32 !important;
+                    }
+                }
+            }
+        }
+
+        ul#navigation-menu li.menu-icon-user ul li:first-child a {
+            background-color: #f4f1e8 !important;
+        }
+    }
+
+    /* Context navigation for Cream Green theme */
+    #grp-context-navigation {
+        background: #fefefe !important;
+        border-bottom: 1px solid #ebe8df !important;
+
+        ul li {
+            color: #7a7564 !important;
+
+            a {
+                color: #3d5e3a !important;
+
+                &:hover {
+                    color: #2e7d32 !important;
+                }
+            }
+        }
+    }
+
+    /* Buttons for Cream Green theme */
+    .grp-button {
+        background-image: none !important;
+        background: #2e7d32 !important;
+        border: 1px solid #276829 !important;
+        color: #ffffff !important;
+
+        &:hover {
+            background: #276829 !important;
+            border: 1px solid #1e4d2b !important;
+        }
+
+        &.grp-default {
+            background: #8d8975 !important;
+            border: 1px solid #7a7564 !important;
+            color: #ffffff !important;
+
+            &:hover {
+                background: #7a7564 !important;
+                border: 1px solid #6a6556 !important;
+            }
+        }
+    }
+
+    /* Fixed footer for Cream Green theme */
+    .grp-fixed-footer {
+        background-image: none !important;
+        background: #f4f1e8 !important;
+        border-top: 1px solid #e0dcc8 !important;
+
+        .grp-button {
+            background: #2e7d32 !important;
+            border: 1px solid #276829 !important;
+
+            &:hover {
+                background: #276829 !important;
+            }
+        }
+    }
+
+    /* Body and general styles for Cream Green */
+    .grp-collapse {
+        border: 1px solid #e6dcc8 !important;
+        background: #f4f1e8 !important;
+
+        &.grp-open {
+            background: #f8f6f0 !important;
+        }
+    }
+
+    .fieldset.grp-module .grp-row label {
+        color: #1e4d2b !important;
+    }
+
+    .grp-module .grp-row:not(tr) {
+        border-bottom: 1px solid #ebe8df !important;
+        background: #ffffff !important;
+
+        &:hover {
+            background: #f8f6f0 !important;
+        }
+    }
+
+    /* Select2 styles for Cream Green */
+    .select2-container--default .select2-selection--single {
+        background: #ffffff !important;
+        border: 1px solid #c4bea8 !important;
+
+        .select2-selection__rendered {
+            color: #1e4d2b !important;
+        }
+    }
+
+    .select2-container--default .select2-results__option--highlighted[aria-selected] {
+        background: #2e7d32 !important;
+        color: #ffffff !important;
+    }
+
+    .select2-dropdown {
+        background: #ffffff !important;
+        border: 1px solid #c4bea8 !important;
+    }
+
+    .select2-container--default .select2-search--dropdown .select2-search__field {
+        background: #ffffff !important;
+        border: 1px solid #c4bea8 !important;
+        color: #1e4d2b !important;
+    }
+
+    /* Filter panel styles for Cream Green theme */
+    .filter-panel .filter-panel-content .filter-group .filter-title.filter-collapsible.has-selection {
+        border-left-color: #2e7d32 !important;
+        background: linear-gradient(135deg, #e8f5e9 0%, #d4ead5 100%) !important;
+
+        &:hover {
+            background: linear-gradient(135deg, #d4ead5 0%, #c0dfc1 100%) !important;
+        }
+
+        .selected-filter-value {
+            color: #276829 !important;
+        }
+    }
+
+    /* Support button for Cream Green theme */
+    .bpp-support-button {
+        background-color: #2e7d32 !important;
+        color: #ffffff !important;
+
+        &:hover {
+            background-color: #276829 !important;
+        }
+
+        &:focus {
+            outline: 2px solid #81c784 !important;
+        }
+    }
+
+    /* Link colors for Cream Green theme */
+    a {
+        color: #2e7d32 !important; /* Forest green */
+
+        &:hover {
+            color: #1e4d2b !important; /* Darker green on hover */
+        }
+    }
+
+    /* Info message colors for Cream Green theme */
+    .grp-info,
+    ul.grp-messagelist li.info {
+        background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%) !important;
+        border-left: 3px solid #2e7d32 !important;
+        color: #1b5e20 !important;
+
+        a {
+            color: #276829 !important;
+            font-weight: bold !important;
+
+            &:hover {
+                color: #1e4d2b !important;
+            }
+        }
+    }
+
+    /* Menu icon styles for Cream Green theme */
+    .menu-icon {
+        background-color: #2e7d32 !important;
+    }
+
+    .menu-click-item:hover .menu-icon {
+        background-color: #276829 !important;
+    }
+
+    /* Add link and focus state buttons for Cream Green theme */
+    .grp-add-link {
+        background: #2e7d32 !important;
+        color: #ffffff !important;
+        border: 1px solid #276829 !important;
+
+        &:hover {
+            background: #276829 !important;
+            border: 1px solid #1e4d2b !important;
+            color: #ffffff !important;
+        }
+    }
+
+    .grp-state-focus {
+        background: #e8f5e9 !important;
+        color: #2e7d32 !important;
+        border: 2px solid #2e7d32 !important;
+
+        &:hover {
+            background: #2e7d32 !important;
+            color: #ffffff !important;
+        }
+    }
+}

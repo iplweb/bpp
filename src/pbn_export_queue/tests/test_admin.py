@@ -2,6 +2,7 @@ from unittest.mock import patch
 
 import pytest
 from django import forms
+from django.contrib.auth import get_user_model
 from django.urls import reverse
 from model_bakery import baker
 
@@ -211,3 +212,104 @@ def test_pbn_export_queue_admin_save_form(admin_user, rf):
 
     result = admin_instance.save_form(request, form, change=True)
     assert result == "saved_with_commit_False"
+
+
+@pytest.mark.django_db
+def test_pbn_export_queue_admin_has_delete_permission_superuser(admin_user, rf):
+    """Test that superuser can delete queue items"""
+    admin_user.is_superuser = True
+    admin_user.save()
+
+    request = rf.get("/")
+    request.user = admin_user
+
+    admin_instance = PBN_Export_QueueAdmin(PBN_Export_Queue, AdminSite())
+    assert admin_instance.has_delete_permission(request) is True
+
+
+@pytest.mark.django_db
+def test_pbn_export_queue_admin_has_delete_permission_owner(
+    wydawnictwo_ciagle, admin_user, rf
+):
+    """Test that user can delete their own queue items"""
+    queue_item = baker.make(
+        PBN_Export_Queue,
+        rekord_do_wysylki=wydawnictwo_ciagle,
+        zamowil=admin_user,
+    )
+
+    request = rf.get("/")
+    request.user = admin_user
+
+    admin_instance = PBN_Export_QueueAdmin(PBN_Export_Queue, AdminSite())
+    assert admin_instance.has_delete_permission(request, obj=queue_item) is True
+
+
+@pytest.mark.django_db
+def test_pbn_export_queue_admin_has_delete_permission_other_user(
+    wydawnictwo_ciagle, normal_django_user, rf
+):
+    """Test that user cannot delete other user's queue items"""
+    User = get_user_model()
+    other_user = baker.make(User)
+    queue_item = baker.make(
+        PBN_Export_Queue,
+        rekord_do_wysylki=wydawnictwo_ciagle,
+        zamowil=other_user,
+    )
+
+    request = rf.get("/")
+    request.user = normal_django_user
+
+    admin_instance = PBN_Export_QueueAdmin(PBN_Export_Queue, AdminSite())
+    assert admin_instance.has_delete_permission(request, obj=queue_item) is False
+
+
+@pytest.mark.django_db
+def test_pbn_export_queue_admin_save_model(admin_user, rf):
+    """Test that save_model shows error message"""
+    queue_item = baker.make(
+        PBN_Export_Queue,
+        zamowil=admin_user,
+    )
+
+    class MockForm(forms.ModelForm):
+        class Meta:
+            model = PBN_Export_Queue
+            fields = []
+
+    request = rf.post("/")
+    request.user = admin_user
+
+    admin_instance = PBN_Export_QueueAdmin(PBN_Export_Queue, AdminSite())
+    form = MockForm()
+
+    with middleware(request):
+        admin_instance.save_model(request, queue_item, form, change=True)
+        # Check that error message was added
+        messages_list = list(request._messages)
+        assert len(messages_list) > 0
+
+
+@pytest.mark.django_db
+def test_pbn_export_queue_admin_has_add_permission(admin_user, rf):
+    """Test that add permission is denied"""
+    request = rf.get("/")
+    request.user = admin_user
+
+    admin_instance = PBN_Export_QueueAdmin(PBN_Export_Queue, AdminSite())
+    assert admin_instance.has_add_permission(request) is False
+
+
+@pytest.mark.django_db
+def test_render_html_widget_render():
+    """Test RenderHTMLWidget render method"""
+    from pbn_export_queue.admin import RenderHTMLWidget
+
+    widget = RenderHTMLWidget()
+    result = widget.render("test", "line1\nline2\nline3", None)
+
+    assert "line1" in result
+    assert "line2" in result
+    assert "line3" in result
+    assert "<br>" in result

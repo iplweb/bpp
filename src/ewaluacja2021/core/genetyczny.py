@@ -65,7 +65,6 @@ class GAD(FitnessFuncMixin, Ewaluacja3NBase):
         # )
 
     def pracuj(self):
-
         self.lista_prac_by_index = {
             idx: praca for idx, praca in enumerate(self.lista_prac_tuples)
         }
@@ -106,7 +105,6 @@ class GAD(FitnessFuncMixin, Ewaluacja3NBase):
         )
 
         def cykl_genetyczny(najlepszy_osobnik, nr_cyklu):
-
             osbn_czesciowo_losowe = []
 
             baza_dla_randomizera = najlepszy_osobnik
@@ -254,9 +252,7 @@ class GAD(FitnessFuncMixin, Ewaluacja3NBase):
 
     def pozegnanie(self):
         print(
-            "Number of generations passed is {generations_completed}".format(
-                generations_completed=self.ga_instance.generations_completed
-            )
+            f"Number of generations passed is {self.ga_instance.generations_completed}"
         )
 
         print("Najlepsza punktacja:", self.ga_instance.best_solution()[1])

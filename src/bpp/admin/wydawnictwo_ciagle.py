@@ -1,46 +1,11 @@
 from dal import autocomplete
 from django import forms
+from django.contrib import admin
 from django.forms.utils import flatatt
+from django.utils.safestring import mark_safe
 from djangoql.admin import DjangoQLSearchMixin
 from mptt.forms import TreeNodeChoiceField
 from taggit.forms import TextareaTagWidget
-
-from crossref_bpp.mixins import AdminCrossrefAPIMixin, AdminCrossrefPBNAPIMixin
-from dynamic_columns.mixins import DynamicColumnsMixin
-from pbn_api.models import Publication
-from . import BaseBppAdminMixin
-from .actions import (
-    ustaw_po_korekcie,
-    ustaw_przed_korekta,
-    ustaw_w_trakcie_korekty,
-    wyslij_do_pbn,
-    wyslij_do_pbn_w_tle,
-)
-from .core import KolumnyZeSkrotamiMixin, generuj_inline_dla_autorow
-from .crossref_api_helpers import (
-    KorzystaZCrossRefAPIStreszczenieInlineMixin,
-    UzupelniajWstepneDanePoCrossRefAPIMixin,
-)
-
-# Widget do automatycznego uzupełniania punktacji wydawnictwa ciągłego
-from .element_repozytorium import Element_RepozytoriumInline
-from .grant import Grant_RekorduInline
-from .helpers import (
-    poszukaj_duplikatu_pola_www_i_ewentualnie_zmien,
-    sprawdz_duplikaty_www_doi,
-)
-from .helpers.fieldsets import (
-    MODEL_OPCJONALNIE_NIE_EKSPORTOWANY_DO_API_FIELDSET,
-    MODEL_Z_OPLATA_ZA_PUBLIKACJE_FIELDSET,
-)
-from .helpers.mixins import OptionalPBNSaveMixin, RestrictDeletionWhenPBNUIDSetMixin
-from .xlsx_export import resources
-from .xlsx_export.mixins import EksportDanychZFormatowanieMixin, ExportActionsMixin
-from .zglos_publikacje_helpers import UzupelniajWstepneDanePoNumerzeZgloszeniaMixin
-
-from django.contrib import admin
-
-from django.utils.safestring import mark_safe
 
 from bpp.admin.filters import (
     BezJakichkolwiekDyscyplinFilter,
@@ -84,6 +49,39 @@ from bpp.models import (  # Publikacja_Habilitacyjna
 # Proste tabele
 from bpp.models.konferencja import Konferencja
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle_Autor
+from crossref_bpp.mixins import AdminCrossrefAPIMixin, AdminCrossrefPBNAPIMixin
+from dynamic_columns.mixins import DynamicColumnsMixin
+from pbn_api.models import Publication
+
+from . import BaseBppAdminMixin
+from .actions import (
+    ustaw_po_korekcie,
+    ustaw_przed_korekta,
+    ustaw_w_trakcie_korekty,
+    wyslij_do_pbn,
+    wyslij_do_pbn_w_tle,
+)
+from .core import KolumnyZeSkrotamiMixin, generuj_inline_dla_autorow
+from .crossref_api_helpers import (
+    KorzystaZCrossRefAPIStreszczenieInlineMixin,
+    UzupelniajWstepneDanePoCrossRefAPIMixin,
+)
+
+# Widget do automatycznego uzupełniania punktacji wydawnictwa ciągłego
+from .element_repozytorium import Element_RepozytoriumInline
+from .grant import Grant_RekorduInline
+from .helpers import (
+    poszukaj_duplikatu_pola_www_i_ewentualnie_zmien,
+    sprawdz_duplikaty_www_doi,
+)
+from .helpers.fieldsets import (
+    MODEL_OPCJONALNIE_NIE_EKSPORTOWANY_DO_API_FIELDSET,
+    MODEL_Z_OPLATA_ZA_PUBLIKACJE_FIELDSET,
+)
+from .helpers.mixins import OptionalPBNSaveMixin, RestrictDeletionWhenPBNUIDSetMixin
+from .xlsx_export import resources
+from .xlsx_export.mixins import EksportDanychZFormatowanieMixin, ExportActionsMixin
+from .zglos_publikacje_helpers import UzupelniajWstepneDanePoNumerzeZgloszeniaMixin
 
 #
 # Wydaniwcto Ciągłe

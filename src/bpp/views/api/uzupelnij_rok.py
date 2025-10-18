@@ -1,4 +1,3 @@
-# -*- encoding: utf-8 -*-
 import logging
 import re
 
@@ -7,8 +6,8 @@ from django import forms
 from django.utils.decorators import method_decorator
 from django.views.generic.base import View
 
-from bpp.models.wydawnictwo_zwarte import MIEJSCE_I_ROK_MAX_LENGTH, Wydawnictwo_Zwarte
 from bpp.decorators import json_view
+from bpp.models.wydawnictwo_zwarte import MIEJSCE_I_ROK_MAX_LENGTH, Wydawnictwo_Zwarte
 
 logger = logging.getLogger(__name__)
 

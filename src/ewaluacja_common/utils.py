@@ -1,12 +1,10 @@
 from django.db.models import F, Transform
 
-from ewaluacja2021 import const
-
 from bpp.const import RODZAJ_PBN_ARTYKUL
+from ewaluacja2021 import const
 
 
 class NieArtykul(Transform):
-
     template = f"(%(expressions)s != {RODZAJ_PBN_ARTYKUL})"
 
 

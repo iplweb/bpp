@@ -12,7 +12,6 @@ class Command(BaseCommand):
 
     @transaction.atomic
     def handle(self, dyscyplina, output_path, bez_limitu_uczelni, *args, **options):
-
         algorytm = Plecakowy(
             nazwa_dyscypliny=dyscyplina,
             bez_limitu_uczelni=bez_limitu_uczelni,

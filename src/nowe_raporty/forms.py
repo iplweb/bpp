@@ -1,5 +1,3 @@
-# -*- encoding: utf-8 -*-
-
 from crispy_forms.helper import FormHelper
 from crispy_forms_foundation.layout import (
     ButtonHolder,
@@ -26,7 +24,7 @@ def wez_lata():
     lata = (
         Rekord.objects.all().values_list("rok", flat=True).distinct().order_by("-rok")
     )
-    return zip(lata, lata)
+    return zip(lata, lata, strict=False)
 
 
 wybory = ["wydzial", "jednostka", "autor"]

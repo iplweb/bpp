@@ -1,8 +1,7 @@
-from django.db import models
-from model_utils import Choices
-
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
+from django.db import models
+from model_utils import Choices
 
 from bpp.const import TRYB_DOSTEPU
 

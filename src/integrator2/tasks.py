@@ -1,5 +1,3 @@
-# -*- encoding: utf-8 -*-
-
 from celery.utils.log import get_task_logger
 from django.core.management import call_command
 

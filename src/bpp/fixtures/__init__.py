@@ -1,6 +1,3 @@
-# -*- encoding: utf-8 -*-
-
-
 DANE_OPEN_ACCESS = """Wersja_Tekstu_OpenAccess	ORIGINAL_AUTHOR	Oryginalna wersja autorska
 Wersja_Tekstu_OpenAccess	FINAL_AUTHOR	Ostateczna wersja autorska
 Wersja_Tekstu_OpenAccess	FINAL_PUBLISHED	Ostateczna wersja opublikowana
@@ -21,6 +18,9 @@ Tryb_OpenAccess_Wydawnictwo_Zwarte	PUBLISHER_WEBSITE	Witryna wydawcy
 Tryb_OpenAccess_Wydawnictwo_Zwarte	OPEN_REPOSITORY	Otwarte repositorium
 Tryb_OpenAccess_Wydawnictwo_Zwarte	OTHER	Inne"""
 
+
 def get_openaccess_data():
-    for model_name, skrot, nazwa in [x.split('\t') for x in DANE_OPEN_ACCESS.split("\n")]:
+    for model_name, skrot, nazwa in [
+        x.split("\t") for x in DANE_OPEN_ACCESS.split("\n")
+    ]:
         yield model_name.lower(), skrot, nazwa

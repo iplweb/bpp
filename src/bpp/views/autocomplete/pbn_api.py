@@ -4,20 +4,17 @@ from abc import abstractmethod
 import rollbar
 from dal import autocomplete
 from django import http
-from django.db.models.query_utils import Q
-
-from pbn_api.client import PBNClient
-from pbn_api.exceptions import AccessDeniedException
-from pbn_api.models import Journal, Publication, Scientist
-from pbn_integrator.utils import ACTIVE, zapisz_mongodb
-
 from django.contrib.auth.mixins import LoginRequiredMixin
-
+from django.db.models.query_utils import Q
 from django.utils.translation import gettext_lazy as _
 
 from bpp import const
 from bpp.const import PBN_UID_LEN
 from bpp.models import Uczelnia
+from pbn_api.client import PBNClient
+from pbn_api.exceptions import AccessDeniedException
+from pbn_api.models import Journal, Publication, Scientist
+from pbn_integrator.utils import ACTIVE, zapisz_mongodb
 
 
 class BasePBNAutocomplete(LoginRequiredMixin, autocomplete.Select2QuerySetView):

@@ -42,11 +42,13 @@ def test_safe_html_dwa_tytuly_DwaTytuly(
 
     page = admin_app.get(url)
 
-    page.forms[1]["tytul_oryginalny"].value = "<script>hi</script>"
-    if hasattr(i, "tytul"):
-        page.forms[1]["tytul"].value = "<script>hi</script>"
+    form = klass._meta.model_name + "_form"
 
-    page.forms[1].submit()
+    page.forms[form]["tytul_oryginalny"].value = "<script>hi</script>"
+    if hasattr(i, "tytul"):
+        page.forms[form]["tytul"].value = "<script>hi</script>"
+
+    page.forms[form].submit()
 
     i.refresh_from_db()
 

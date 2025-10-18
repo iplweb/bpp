@@ -2,6 +2,14 @@
 
 {% block title %}Historia optymalizacji - {{ publikacja.tytul_oryginalny|truncatewords:10 }}{% endblock %}
 
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url "multiseek:index" %}">Wyszukiwanie</a></li>
+    <li><a href="{% url "bpp:browse_praca_by_slug" publikacja.slug %}">{{ publikacja.tytul_oryginalny|truncatewords_html:15|safe }}</a></li>
+    <li><a href="{% url "ewaluacja_optymalizuj_publikacje:optymalizuj" publikacja.slug %}">Optymalizuj</a></li>
+    <li class="current">Historia</li>
+{% endblock %}
+
 {% block extracss %}
 <style>
     .history-card {

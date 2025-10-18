@@ -2,9 +2,6 @@ from django import forms
 from django.db import models
 from django.db.models import JSONField
 
-from import_common.core import matchuj_zrodlo
-from import_common.models import ImportOperation, ImportRowMixin
-
 from bpp.models import (
     IF_DECIMAL_PLACES,
     IF_MAX_DIGITS,
@@ -12,6 +9,8 @@ from bpp.models import (
     Punktacja_Zrodla,
     Zrodlo,
 )
+from import_common.core import matchuj_zrodlo
+from import_common.models import ImportOperation, ImportRowMixin
 
 
 class ImportListRowValidationForm(forms.Form):

@@ -1,6 +1,6 @@
-from .models import Rodzaj_Autora
-
 from django.contrib import admin
+
+from .models import Rodzaj_Autora
 
 
 @admin.register(Rodzaj_Autora)

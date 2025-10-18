@@ -431,11 +431,13 @@ INSTALLED_APPS = [
     "deduplikator_autorow",
     "importer_autorow_pbn",
     "przemapuj_prace_autora",
+    "przemapuj_zrodla_pbn",
     "pbn_downloader_app",
     "pbn_integrator",
     "pbn_import",
     "komparator_pbn_udzialy",
     "komparator_publikacji_pbn",
+    "admin_dashboard",
 ]
 
 # Profile użytkowników
@@ -703,7 +705,7 @@ YARN_FILE_PATTERNS = {
     "jquery-circle-progress": ["dist/circle-progress.min.js"],
     "select2-foundation_theme": ["dist/select2-foundation-theme.css"],
     "kbw-keypad": ["dist/*"],
-    "plotly.js": ["dist/plotly.min.js"],
+    "plotly.js": ["dist/plotly.min.js", "dist/plotly-locale-pl.js"],
     "htmx.org": ["dist/htmx.js"],
     "tone": ["build/Tone.js", "build/Tone.js.map"],
     # Do developerki:
@@ -1009,11 +1011,11 @@ MANAGERS = ADMINS
 # Uwaga: domyślnie easy-audit NIE jest włączony. Włącza go dopiero
 # konfiguracja produkcyjna za pomocą poniższego kodu:
 #
-# INSTALLED_APPS.append("easyaudit")  # noqa
-# MIDDLEWARE.append(  # noqa
-#     "easyaudit.middleware.easyaudit.EasyAuditMiddleware",
-# )
-# DJANGO_EASY_AUDIT_PROPAGATE_EXCEPTIONS = True
+INSTALLED_APPS.append("easyaudit")  # noqa
+MIDDLEWARE.append(  # noqa
+    "easyaudit.middleware.easyaudit.EasyAuditMiddleware",
+)
+DJANGO_EASY_AUDIT_PROPAGATE_EXCEPTIONS = True
 
 DJANGO_EASY_AUDIT_WATCH_REQUEST_EVENTS = False
 DJANGO_EASY_AUDIT_ADMIN_SHOW_REQUEST_EVENTS = False
@@ -1184,7 +1186,7 @@ ROLLBAR = {
     "code_version": VERSION,
     "root": BASE_DIR,
     "ignorable_404_urls": (
-        re.compile("/favicon\\.ico"),
+        re.compile(r"/favicon\.ico"),
         re.compile(r".*\{\{\s*clickURL\s*\}\}$"),
     ),
 }

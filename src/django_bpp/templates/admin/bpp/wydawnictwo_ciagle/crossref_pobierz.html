@@ -21,7 +21,7 @@
 
 <!-- CONTENT -->
 {% block content %}
-    <form method="post">{% csrf_token %}
+    <form method="post" name="crossref_form" id="crossref_form">{% csrf_token %}
         <table>
     {{ crossref_form.as_table }}
             </table>

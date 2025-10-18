@@ -4,9 +4,8 @@ from thefuzz import fuzz
 from tqdm import tqdm
 from unidecode import unidecode
 
-from pbn_api.models import OswiadczenieInstytucji
-
 from bpp.models import Jednostka
+from pbn_api.models import OswiadczenieInstytucji
 
 
 class Command(BaseCommand):
@@ -17,7 +16,6 @@ class Command(BaseCommand):
 
     @transaction.atomic
     def handle(self, *args, **options):
-
         seen = set()
 
         for oi in tqdm(OswiadczenieInstytucji.objects.all()):
@@ -37,7 +35,6 @@ class Command(BaseCommand):
             au = oi.get_bpp_autor()
 
             if au.pk in rec.autorzy_set.values_list("autor_id", flat=True):
-
                 # Sprawdź datę oświadczenia
                 wa = oi.get_bpp_wa()
                 if oi.statedTimestamp != wa.data_oswiadczenia:
@@ -48,10 +45,10 @@ class Command(BaseCommand):
 
             found = False
             for rec_au in rec.autorzy_set.all():
-
                 au_data = unidecode(au.nazwisko), unidecode(au.imiona)
-                rec_au_data = unidecode(rec_au.autor.nazwisko), unidecode(
-                    rec_au.autor.imiona
+                rec_au_data = (
+                    unidecode(rec_au.autor.nazwisko),
+                    unidecode(rec_au.autor.imiona),
                 )
 
                 podobienstwo_nazwisko = fuzz.ratio(au_data[0], rec_au_data[0])
@@ -72,7 +69,6 @@ class Command(BaseCommand):
                     old_jednostka = rec_au.jednostka
 
                     if not rec_au.jednostka.skupia_pracownikow:
-
                         if au.aktualna_jednostka.skupia_pracownikow:
                             rec_au.jednostka = au.aktualna_jednostka
                         else:

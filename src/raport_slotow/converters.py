@@ -2,7 +2,7 @@ from decimal import Decimal
 
 
 class DecimalPathConverter:
-    regex = "^(\d+(?:\.\d+)?)$"
+    regex = r"^(\d+(?:\.\d+)?)$"
 
     def to_python(self, value):
         # convert value to its corresponding python datatype

@@ -1,26 +1,7 @@
-from typing import Union
-
 import dateutil
+from django.contrib.postgres.search import TrigramSimilarity
 from django.db.models import Q, Value
 from django.db.models.functions import Lower, Replace, Trim
-
-from .normalization import (
-    normalize_doi,
-    normalize_funkcja_autora,
-    normalize_grupa_pracownicza,
-    normalize_isbn,
-    normalize_kod_dyscypliny,
-    normalize_nazwa_dyscypliny,
-    normalize_nazwa_jednostki,
-    normalize_nazwa_wydawcy,
-    normalize_public_uri,
-    normalize_tytul_naukowy,
-    normalize_tytul_publikacji,
-    normalize_tytul_zrodla,
-    normalize_wymiar_etatu,
-)
-
-from django.contrib.postgres.search import TrigramSimilarity
 
 from bpp.models import (
     Autor,
@@ -39,6 +20,22 @@ from bpp.models import (
     Zrodlo,
 )
 from bpp.util import fail_if_seq_scan
+
+from .normalization import (
+    normalize_doi,
+    normalize_funkcja_autora,
+    normalize_grupa_pracownicza,
+    normalize_isbn,
+    normalize_kod_dyscypliny,
+    normalize_nazwa_dyscypliny,
+    normalize_nazwa_jednostki,
+    normalize_nazwa_wydawcy,
+    normalize_public_uri,
+    normalize_tytul_naukowy,
+    normalize_tytul_publikacji,
+    normalize_tytul_zrodla,
+    normalize_wymiar_etatu,
+)
 
 
 def matchuj_wydzial(nazwa: str | None):
@@ -133,15 +130,15 @@ def matchuj_jednostke(nazwa, wydzial=None):
 
 
 def matchuj_autora(
-    imiona: Union[str, None],
-    nazwisko: Union[str, None],
-    jednostka: Union[Jednostka, None] = None,
-    bpp_id: Union[int, None] = None,
-    pbn_uid_id: Union[str, None] = None,
-    system_kadrowy_id: Union[int, None] = None,
-    pbn_id: Union[int, None] = None,
-    orcid: Union[str, None] = None,
-    tytul_str: Union[Tytul, None] = None,
+    imiona: str | None,
+    nazwisko: str | None,
+    jednostka: Jednostka | None = None,
+    bpp_id: int | None = None,
+    pbn_uid_id: str | None = None,
+    system_kadrowy_id: int | None = None,
+    pbn_id: int | None = None,
+    orcid: str | None = None,
+    tytul_str: Tytul | None = None,
 ):
     if bpp_id is not None:
         try:
@@ -281,15 +278,15 @@ def matchuj_autora(
 
 
 def matchuj_zrodlo(
-    s: Union[str, None],
-    issn: Union[str, None] = None,
-    e_issn: Union[str, None] = None,
-    mnisw_id: Union[int, str, None] = None,
+    s: str | None,
+    issn: str | None = None,
+    e_issn: str | None = None,
+    mnisw_id: int | str | None = None,
     alt_nazwa=None,
     disable_fuzzy=False,
     disable_skrot=False,
     disable_title_matching=False,
-) -> Union[None, Zrodlo]:
+) -> None | Zrodlo:
     if s is None or str(s) == "":
         return
 
@@ -634,14 +631,15 @@ def normalize_kod_dyscypliny_pbn(kod):
 def matchuj_aktualna_dyscypline_pbn(kod, nazwa):
     kod = normalize_kod_dyscypliny_pbn(kod)
 
-    from pbn_api.models import Discipline
-
     from django.utils import timezone
 
+    from pbn_api.models import Discipline
+
     d = timezone.now().date()
-    parent_group_args = Q(parent_group__validityDateFrom__lte=d), Q(
-        parent_group__validityDateTo=None
-    ) | Q(parent_group__validityDateTo__gt=d)
+    parent_group_args = (
+        Q(parent_group__validityDateFrom__lte=d),
+        Q(parent_group__validityDateTo=None) | Q(parent_group__validityDateTo__gt=d),
+    )
 
     try:
         return Discipline.objects.get(*parent_group_args, code=kod)
@@ -659,8 +657,9 @@ def matchuj_nieaktualna_dyscypline_pbn(kod, nazwa, rok_min=2018, rok_max=2022):
 
     from pbn_api.models import Discipline
 
-    nieaktualna_parent_group_args = Q(parent_group__validityDateFrom__year=rok_min), Q(
-        parent_group__validityDateTo__year=rok_max
+    nieaktualna_parent_group_args = (
+        Q(parent_group__validityDateFrom__year=rok_min),
+        Q(parent_group__validityDateTo__year=rok_max),
     )
     try:
         return Discipline.objects.get(*nieaktualna_parent_group_args, code=kod)

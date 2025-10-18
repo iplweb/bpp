@@ -4,7 +4,6 @@ from django_bpp.sentry_support import global_stacktrace_filter
 
 
 def test_global_stacktrace_filter():
-
     assert (
         global_stacktrace_filter(1, {"exc_info": [DisallowedHost, None, None]}) is None
     )

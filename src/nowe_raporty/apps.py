@@ -4,7 +4,6 @@ from django.db.models.signals import post_migrate
 
 
 def create_entries(sender, **kw):
-
     from nowe_raporty.views import (
         AutorRaportFormView,
         JednostkaRaportFormView,
@@ -24,6 +23,6 @@ class NoweRaportyConfig(AppConfig):
     name = "nowe_raporty"
 
     def ready(self):
-        if getattr(settings, "TESTING"):
+        if settings.TESTING:
             return
         post_migrate.connect(create_entries, sender=self)

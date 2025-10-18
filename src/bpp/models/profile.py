@@ -5,11 +5,9 @@ Profile użytkowników serwisu BPP
 from datetime import timedelta
 
 from django.conf import settings
+from django.contrib.auth.models import AbstractUser, UserManager
 from django.db import models
 from django.dispatch import receiver
-
-from django.contrib.auth.models import AbstractUser, UserManager
-
 from django.utils import timezone
 from django.utils.functional import cached_property
 from django.utils.itercompat import is_iterable
@@ -54,6 +52,20 @@ class BppUser(AbstractUser, ModelZAdnotacjami):
         help_text="Jeżeli wybrany użytkownik nie ma konta w PBNie, może nadal wysyłać prace jako inny użytkiownik "
         "systemu BPP; wybierz konto z którego ma być wysyłane w tym polu. ",
     )
+
+    def __str__(self):
+        ret = ""
+        if self.last_name:
+            ret += self.last_name + " "
+        if self.first_name:
+            ret += self.first_name + " "
+
+        ret = ret.strip()
+
+        if ret:
+            return ret + f" ({self.username})"
+
+        return self.username
 
     def pbn_token_possibly_valid(self):
         if (

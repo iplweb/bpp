@@ -1,17 +1,15 @@
 from django.core.management import BaseCommand
 
+from bpp.models import Uczelnia
 from pbn_api.client import PBNClient, RequestsTransport
 from pbn_api.conf import settings
-
-from bpp.models import Uczelnia
 
 
 class PBNBaseCommand(BaseCommand):
     def add_arguments(self, parser):
-
-        app_id = getattr(settings, "PBN_CLIENT_APP_ID")
-        app_token = getattr(settings, "PBN_CLIENT_APP_TOKEN")
-        base_url = getattr(settings, "PBN_CLIENT_BASE_URL")
+        app_id = settings.PBN_CLIENT_APP_ID
+        app_token = settings.PBN_CLIENT_APP_TOKEN
+        base_url = settings.PBN_CLIENT_BASE_URL
         user_token = None
 
         uczelnia = Uczelnia.objects.get_default()

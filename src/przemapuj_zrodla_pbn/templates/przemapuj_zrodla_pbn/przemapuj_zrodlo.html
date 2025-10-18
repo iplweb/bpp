@@ -1,0 +1,654 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}Przemapowanie źródła - {{ zrodlo }}{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url 'przemapuj_zrodla_pbn:lista_skasowanych_zrodel' %}">Źródła skasowane w PBN</a></li>
+    <li class="current">{{ zrodlo }}</li>
+{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+{% load static %}
+<link rel="stylesheet" href="{% static 'przemapuj_zrodla_pbn/css/przemapuj-zrodla.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="medium-12 columns">
+        <h1>Przemapowanie źródła</h1>
+
+        <div class="callout secondary">
+            <h4>{{ zrodlo }}</h4>
+            <ul>
+                <li><strong>ISSN:</strong> {{ zrodlo.issn|default:"-" }}</li>
+                <li><strong>E-ISSN:</strong> {{ zrodlo.e_issn|default:"-" }}</li>
+                <li><strong>Status PBN:</strong> <span class="label alert">{{ zrodlo.pbn_uid.status }}</span></li>
+                <li><strong>Liczba rekordów:</strong> {{ liczba_rekordow }}</li>
+            </ul>
+        </div>
+
+        {% if not preview %}
+            <form method="post" action="" id="mappingForm">
+                {% csrf_token %}
+                {{ form.typ_wyboru }}
+                {{ form.journal_docelowy }}
+                <div style="display: none;">
+                    {{ form.zrodlo_docelowe }}
+                </div>
+
+                <h3>Wybierz źródło docelowe</h3>
+
+                <!-- SEKCJA 1: Źródła w BPP -->
+                <div class="source-table">
+                    <div class="source-table-header">
+                        <h4><span class="fi-database"></span> Źródła w BPP</h4>
+                        <p>Źródła które już istnieją w bazie danych</p>
+                    </div>
+
+                    {% if sugerowane.zrodla_bpp.najlepsze or sugerowane.zrodla_bpp.dobre or sugerowane.zrodla_bpp.akceptowalne %}
+                        <!-- NAJLEPSZE DOPASOWANIA -->
+                        {% if sugerowane.zrodla_bpp.najlepsze %}
+                            <div class="source-category">
+                                <h5><span class="fi-star"></span> Najlepsze dopasowania</h5>
+                                <ul class="source-list">
+                                    {% for zrodlo_item, typ, podobienstwo in sugerowane.zrodla_bpp.najlepsze %}
+                                        <li class="source-item {% if zrodlo_item.pbn_uid.mniswId %}has-mnisw-id{% endif %}"
+                                            data-type="zrodlo" data-id="{{ zrodlo_item.pk }}">
+                                            <div class="source-item-title">
+                                                {{ zrodlo_item.nazwa }}
+                                            </div>
+                                            <div class="source-item-meta">
+                                                <div class="source-item-meta-item">
+                                                    <span class="source-item-meta-label">MNISW ID:</span>
+                                                    {% if zrodlo_item.pbn_uid.mniswId %}
+                                                        <span class="mnisw-id">{{ zrodlo_item.pbn_uid.mniswId }}</span>
+                                                    {% else %}
+                                                        <span class="mnisw-id none">brak</span>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="source-item-meta-item">
+                                                    <span class="source-item-meta-label">ISSN:</span>
+                                                    <span>{{ zrodlo_item.issn|default:"-" }}</span>
+                                                </div>
+                                                <div class="source-item-meta-item">
+                                                    <span class="source-item-meta-label">E-ISSN:</span>
+                                                    <span>{{ zrodlo_item.e_issn|default:"-" }}</span>
+                                                </div>
+                                                <div class="source-item-meta-item">
+                                                    <span class="match-type-badge match-type-best">{{ typ }}</span>
+                                                    {% if typ != "ISSN+NAZWA" %}
+                                                        <span class="similarity-badge">{{ podobienstwo|floatformat:2 }}</span>
+                                                    {% endif %}
+                                                </div>
+                                                {% if zrodlo_item.pbn_uid_id %}
+                                                <div class="source-item-meta-item">
+                                                    <a href="{{ zrodlo_item.link_do_pbn }}"
+                                                       target="_blank"
+                                                       class="button"
+                                                       onclick="event.stopPropagation();">
+                                                        <span class="fi-eye"></span> Zobacz w PBN
+                                                    </a>
+                                                </div>
+                                                {% endif %}
+                                            </div>
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        {% endif %}
+
+                        <!-- DOBRE DOPASOWANIA -->
+                        {% if sugerowane.zrodla_bpp.dobre %}
+                            <div class="source-category">
+                                <h5><span class="fi-check"></span> Dobre dopasowania</h5>
+                                <ul class="source-list">
+                                    {% for zrodlo_item, typ, podobienstwo in sugerowane.zrodla_bpp.dobre %}
+                                        <li class="source-item {% if zrodlo_item.pbn_uid.mniswId %}has-mnisw-id{% endif %}"
+                                            data-type="zrodlo" data-id="{{ zrodlo_item.pk }}">
+                                            <div class="source-item-title">
+                                                {{ zrodlo_item.nazwa }}
+                                            </div>
+                                            <div class="source-item-meta">
+                                                <div class="source-item-meta-item">
+                                                    <span class="source-item-meta-label">MNISW ID:</span>
+                                                    {% if zrodlo_item.pbn_uid.mniswId %}
+                                                        <span class="mnisw-id">{{ zrodlo_item.pbn_uid.mniswId }}</span>
+                                                    {% else %}
+                                                        <span class="mnisw-id none">brak</span>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="source-item-meta-item">
+                                                    <span class="source-item-meta-label">ISSN:</span>
+                                                    <span>{{ zrodlo_item.issn|default:"-" }}</span>
+                                                </div>
+                                                <div class="source-item-meta-item">
+                                                    <span class="source-item-meta-label">E-ISSN:</span>
+                                                    <span>{{ zrodlo_item.e_issn|default:"-" }}</span>
+                                                </div>
+                                                <div class="source-item-meta-item">
+                                                    <span class="match-type-badge match-type-good">{{ typ }}</span>
+                                                    {% if typ != "ISSN+NAZWA" %}
+                                                        <span class="similarity-badge">{{ podobienstwo|floatformat:2 }}</span>
+                                                    {% endif %}
+                                                </div>
+                                                {% if zrodlo_item.pbn_uid_id %}
+                                                <div class="source-item-meta-item">
+                                                    <a href="{{ zrodlo_item.link_do_pbn }}"
+                                                       target="_blank"
+                                                       class="button"
+                                                       onclick="event.stopPropagation();">
+                                                        <span class="fi-eye"></span> Zobacz w PBN
+                                                    </a>
+                                                </div>
+                                                {% endif %}
+                                            </div>
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        {% endif %}
+
+                        <!-- AKCEPTOWALNE DOPASOWANIA (collapsible) -->
+                        {% if sugerowane.zrodla_bpp.akceptowalne %}
+                            <div class="source-category">
+                                <h5 class="collapsible-header" data-target="bpp-akceptowalne">
+                                    <span class="fi-arrow-right collapsible-icon"></span>
+                                    <span class="fi-info"></span>
+                                    <span>Akceptowalne dopasowania</span>
+                                </h5>
+                                <div class="collapsible-content" id="bpp-akceptowalne">
+                                    <ul class="source-list">
+                                        {% for zrodlo_item, typ, podobienstwo in sugerowane.zrodla_bpp.akceptowalne %}
+                                            <li class="source-item {% if zrodlo_item.pbn_uid.mniswId %}has-mnisw-id{% endif %}"
+                                                data-type="zrodlo" data-id="{{ zrodlo_item.pk }}">
+                                                <div class="source-item-title">
+                                                    {{ zrodlo_item.nazwa }}
+                                                </div>
+                                                <div class="source-item-meta">
+                                                    <div class="source-item-meta-item">
+                                                        <span class="source-item-meta-label">MNISW ID:</span>
+                                                        {% if zrodlo_item.pbn_uid.mniswId %}
+                                                            <span class="mnisw-id">{{ zrodlo_item.pbn_uid.mniswId }}</span>
+                                                        {% else %}
+                                                            <span class="mnisw-id none">brak</span>
+                                                        {% endif %}
+                                                    </div>
+                                                    <div class="source-item-meta-item">
+                                                        <span class="source-item-meta-label">ISSN:</span>
+                                                        <span>{{ zrodlo_item.issn|default:"-" }}</span>
+                                                    </div>
+                                                    <div class="source-item-meta-item">
+                                                        <span class="source-item-meta-label">E-ISSN:</span>
+                                                        <span>{{ zrodlo_item.e_issn|default:"-" }}</span>
+                                                    </div>
+                                                    <div class="source-item-meta-item">
+                                                        <span class="match-type-badge match-type-acceptable">{{ typ }}</span>
+                                                        {% if typ != "ISSN+NAZWA" %}
+                                                            <span class="similarity-badge">{{ podobienstwo|floatformat:2 }}</span>
+                                                        {% endif %}
+                                                    </div>
+                                                    {% if zrodlo_item.pbn_uid_id %}
+                                                    <div class="source-item-meta-item">
+                                                        <a href="{{ zrodlo_item.link_do_pbn }}"
+                                                           target="_blank"
+                                                           class="button"
+                                                           onclick="event.stopPropagation();">
+                                                            <span class="fi-eye"></span> Zobacz w PBN
+                                                        </a>
+                                                    </div>
+                                                    {% endif %}
+                                                </div>
+                                            </li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                            </div>
+                        {% endif %}
+                    {% else %}
+                        <div class="callout">
+                            <p>Brak sugerowanych źródeł w BPP</p>
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- SEKCJA 2: Źródła z PBN -->
+                <div class="source-table">
+                    <div class="source-table-header">
+                        <h4><span class="fi-cloud"></span> Źródła z PBN</h4>
+                        <p>Źródła których nie ma w BPP - zostaną utworzone jako nowe</p>
+                    </div>
+
+                    {% if sugerowane.journale_pbn.najlepsze or sugerowane.journale_pbn.dobre or sugerowane.journale_pbn.akceptowalne %}
+                        <!-- NAJLEPSZE DOPASOWANIA -->
+                        {% if sugerowane.journale_pbn.najlepsze %}
+                            <div class="source-category">
+                                <h5><span class="fi-star"></span> Najlepsze dopasowania</h5>
+                                <ul class="source-list">
+                                    {% for journal, typ, podobienstwo in sugerowane.journale_pbn.najlepsze %}
+                                        <li class="source-item {% if journal.mniswId %}has-mnisw-id{% endif %}"
+                                            data-type="journal" data-id="{{ journal.pk }}">
+                                            <div class="source-item-title">
+                                                {{ journal.title }}
+                                                <span class="new-source-indicator">Nowe w BPP</span>
+                                            </div>
+                                            <div class="source-item-meta">
+                                                <div class="source-item-meta-item">
+                                                    <span class="source-item-meta-label">MNISW ID:</span>
+                                                    {% if journal.mniswId %}
+                                                        <span class="mnisw-id">{{ journal.mniswId }}</span>
+                                                    {% else %}
+                                                        <span class="mnisw-id none">brak</span>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="source-item-meta-item">
+                                                    <span class="source-item-meta-label">ISSN:</span>
+                                                    <span>{{ journal.issn|default:"-" }}</span>
+                                                </div>
+                                                <div class="source-item-meta-item">
+                                                    <span class="source-item-meta-label">E-ISSN:</span>
+                                                    <span>{{ journal.eissn|default:"-" }}</span>
+                                                </div>
+                                                <div class="source-item-meta-item">
+                                                    <span class="match-type-badge match-type-best">{{ typ }}</span>
+                                                    {% if typ != "ISSN+NAZWA" %}
+                                                        <span class="similarity-badge">{{ podobienstwo|floatformat:2 }}</span>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="source-item-meta-item">
+                                                    <a href="{{ journal.link_do_pbn }}"
+                                                       target="_blank"
+                                                       class="button"
+                                                       onclick="event.stopPropagation();">
+                                                        <span class="fi-eye"></span> Zobacz w PBN
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        {% endif %}
+
+                        <!-- DOBRE DOPASOWANIA -->
+                        {% if sugerowane.journale_pbn.dobre %}
+                            <div class="source-category">
+                                <h5><span class="fi-check"></span> Dobre dopasowania</h5>
+                                <ul class="source-list">
+                                    {% for journal, typ, podobienstwo in sugerowane.journale_pbn.dobre %}
+                                        <li class="source-item {% if journal.mniswId %}has-mnisw-id{% endif %}"
+                                            data-type="journal" data-id="{{ journal.pk }}">
+                                            <div class="source-item-title">
+                                                {{ journal.title }}
+                                                <span class="new-source-indicator">Nowe w BPP</span>
+                                            </div>
+                                            <div class="source-item-meta">
+                                                <div class="source-item-meta-item">
+                                                    <span class="source-item-meta-label">MNISW ID:</span>
+                                                    {% if journal.mniswId %}
+                                                        <span class="mnisw-id">{{ journal.mniswId }}</span>
+                                                    {% else %}
+                                                        <span class="mnisw-id none">brak</span>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="source-item-meta-item">
+                                                    <span class="source-item-meta-label">ISSN:</span>
+                                                    <span>{{ journal.issn|default:"-" }}</span>
+                                                </div>
+                                                <div class="source-item-meta-item">
+                                                    <span class="source-item-meta-label">E-ISSN:</span>
+                                                    <span>{{ journal.eissn|default:"-" }}</span>
+                                                </div>
+                                                <div class="source-item-meta-item">
+                                                    <span class="match-type-badge match-type-good">{{ typ }}</span>
+                                                    {% if typ != "ISSN+NAZWA" %}
+                                                        <span class="similarity-badge">{{ podobienstwo|floatformat:2 }}</span>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="source-item-meta-item">
+                                                    <a href="{{ journal.link_do_pbn }}"
+                                                       target="_blank"
+                                                       class="button"
+                                                       onclick="event.stopPropagation();">
+                                                        <span class="fi-eye"></span> Zobacz w PBN
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        {% endif %}
+
+                        <!-- AKCEPTOWALNE DOPASOWANIA (collapsible) -->
+                        {% if sugerowane.journale_pbn.akceptowalne %}
+                            <div class="source-category">
+                                <h5 class="collapsible-header" data-target="pbn-akceptowalne">
+                                    <span class="fi-arrow-right collapsible-icon"></span>
+                                    <span class="fi-info"></span>
+                                    <span>Akceptowalne dopasowania</span>
+                                </h5>
+                                <div class="collapsible-content" id="pbn-akceptowalne">
+                                    <ul class="source-list">
+                                        {% for journal, typ, podobienstwo in sugerowane.journale_pbn.akceptowalne %}
+                                            <li class="source-item {% if journal.mniswId %}has-mnisw-id{% endif %}"
+                                                data-type="journal" data-id="{{ journal.pk }}">
+                                                <div class="source-item-title">
+                                                    {{ journal.title }}
+                                                    <span class="new-source-indicator">Nowe w BPP</span>
+                                                </div>
+                                                <div class="source-item-meta">
+                                                    <div class="source-item-meta-item">
+                                                        <span class="source-item-meta-label">MNISW ID:</span>
+                                                        {% if journal.mniswId %}
+                                                            <span class="mnisw-id">{{ journal.mniswId }}</span>
+                                                        {% else %}
+                                                            <span class="mnisw-id none">brak</span>
+                                                        {% endif %}
+                                                    </div>
+                                                    <div class="source-item-meta-item">
+                                                        <span class="source-item-meta-label">ISSN:</span>
+                                                        <span>{{ journal.issn|default:"-" }}</span>
+                                                    </div>
+                                                    <div class="source-item-meta-item">
+                                                        <span class="source-item-meta-label">E-ISSN:</span>
+                                                        <span>{{ journal.eissn|default:"-" }}</span>
+                                                    </div>
+                                                    <div class="source-item-meta-item">
+                                                        <span class="match-type-badge match-type-acceptable">{{ typ }}</span>
+                                                        {% if typ != "ISSN+NAZWA" %}
+                                                            <span class="similarity-badge">{{ podobienstwo|floatformat:2 }}</span>
+                                                        {% endif %}
+                                                    </div>
+                                                    <div class="source-item-meta-item">
+                                                        <a href="{{ journal.link_do_pbn }}"
+                                                           target="_blank"
+                                                           class="button"
+                                                           onclick="event.stopPropagation();">
+                                                            <span class="fi-eye"></span> Zobacz w PBN
+                                                        </a>
+                                                    </div>
+                                                </div>
+                                            </li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                            </div>
+                        {% endif %}
+                    {% else %}
+                        <div class="callout">
+                            <p>Brak sugerowanych źródeł z PBN (wszystkie są już w BPP)</p>
+                        </div>
+                    {% endif %}
+                </div>
+
+                <hr>
+
+                <div class="button-group">
+                    <a href="{% url 'przemapuj_zrodla_pbn:lista_skasowanych_zrodel' %}" class="button secondary">
+                        <span class="fi-arrow-left"></span> Powrót do listy
+                    </a>
+                </div>
+            </form>
+
+            {% if historia %}
+                <hr>
+                <h3>Historia przemapowań</h3>
+                <table class="hover">
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Źródło nowe</th>
+                            <th>Liczba rekordów</th>
+                            <th>Wykonał</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in historia %}
+                        <tr>
+                            <td>{{ log.utworzono|date:"Y-m-d H:i" }}</td>
+                            <td>{{ log.zrodlo_nowe }}</td>
+                            <td>{{ log.liczba_rekordow }}</td>
+                            <td>{{ log.utworzono_przez.username }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% endif %}
+
+        {% else %}
+            <!-- Widok podglądu -->
+            <div class="callout warning">
+                <h3>Podgląd zmian</h3>
+                <p>Poniżej znajduje się podgląd zmian, które zostaną wprowadzone:</p>
+            </div>
+
+            <div class="row">
+                <div class="medium-6 columns">
+                    <div class="callout secondary preview-source-box">
+                        <h5><span class="fi-x-circle"></span> Ze źródła (SKASOWANE):</h5>
+                        <h6><strong>{{ zrodlo.nazwa }}</strong></h6>
+
+                        <dl class="source-details">
+                            <dt>ISSN:</dt>
+                            <dd>{{ zrodlo.issn|default:"-" }}</dd>
+
+                            <dt>E-ISSN:</dt>
+                            <dd>{{ zrodlo.e_issn|default:"-" }}</dd>
+
+                            {% if zrodlo.pbn_uid %}
+                                <dt>MNISW ID:</dt>
+                                <dd>
+                                    {% if zrodlo.pbn_uid.mniswId %}
+                                        <span class="mnisw-id">{{ zrodlo.pbn_uid.mniswId }}</span>
+                                    {% else %}
+                                        <span class="text-muted">brak</span>
+                                    {% endif %}
+                                </dd>
+
+                                <dt>Status PBN:</dt>
+                                <dd><span class="label alert">{{ zrodlo.pbn_uid.status }}</span></dd>
+
+                                {% if zrodlo.pbn_uid_id %}
+                                    <dt>Link PBN:</dt>
+                                    <dd>
+                                        <a href="{{ zrodlo.link_do_pbn }}" target="_blank" class="button tiny">
+                                            <span class="fi-eye"></span> Zobacz w PBN
+                                        </a>
+                                    </dd>
+                                {% endif %}
+                            {% endif %}
+                        </dl>
+                    </div>
+                </div>
+                <div class="medium-6 columns">
+                    <div class="callout success preview-source-box">
+                        <h5><span class="fi-check"></span> Do źródła (AKTYWNE):</h5>
+                        {% if zrodlo_nowe %}
+                            <h6><strong>{{ zrodlo_nowe.nazwa }}</strong></h6>
+
+                            <dl class="source-details">
+                                <dt>ISSN:</dt>
+                                <dd>{{ zrodlo_nowe.issn|default:"-" }}</dd>
+
+                                <dt>E-ISSN:</dt>
+                                <dd>{{ zrodlo_nowe.e_issn|default:"-" }}</dd>
+
+                                {% if zrodlo_nowe.pbn_uid %}
+                                    <dt>MNISW ID:</dt>
+                                    <dd>
+                                        {% if zrodlo_nowe.pbn_uid.mniswId %}
+                                            <span class="mnisw-id">{{ zrodlo_nowe.pbn_uid.mniswId }}</span>
+                                        {% else %}
+                                            <span class="text-muted">brak</span>
+                                        {% endif %}
+                                    </dd>
+
+                                    <dt>Status PBN:</dt>
+                                    <dd><span class="label success">{{ zrodlo_nowe.pbn_uid.status }}</span></dd>
+
+                                    {% if zrodlo_nowe.pbn_uid_id %}
+                                        <dt>Link PBN:</dt>
+                                        <dd>
+                                            <a href="{{ zrodlo_nowe.link_do_pbn }}" target="_blank" class="button tiny">
+                                                <span class="fi-eye"></span> Zobacz w PBN
+                                            </a>
+                                        </dd>
+                                    {% endif %}
+                                {% endif %}
+                            </dl>
+                        {% elif journal_docelowy %}
+                            <h6><strong>{{ journal_docelowy.title }}</strong></h6>
+                            <p class="new-source-indicator">Nowe źródło zostanie utworzone w BPP</p>
+
+                            <dl class="source-details">
+                                <dt>ISSN:</dt>
+                                <dd>{{ journal_docelowy.issn|default:"-" }}</dd>
+
+                                <dt>E-ISSN:</dt>
+                                <dd>{{ journal_docelowy.eissn|default:"-" }}</dd>
+
+                                <dt>MNISW ID:</dt>
+                                <dd>
+                                    {% if journal_docelowy.mniswId %}
+                                        <span class="mnisw-id">{{ journal_docelowy.mniswId }}</span>
+                                    {% else %}
+                                        <span class="text-muted">brak</span>
+                                    {% endif %}
+                                </dd>
+
+                                <dt>Status PBN:</dt>
+                                <dd><span class="label success">{{ journal_docelowy.status }}</span></dd>
+
+                                <dt>Link PBN:</dt>
+                                <dd>
+                                    <a href="{{ journal_docelowy.link_do_pbn }}" target="_blank" class="button tiny">
+                                        <span class="fi-eye"></span> Zobacz w PBN
+                                    </a>
+                                </dd>
+                            </dl>
+                        {% else %}
+                            <p><strong>{{ zrodlo_nowe_nazwa }}</strong></p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <h4>Podsumowanie</h4>
+            <ul>
+                <li>Liczba rekordów do przemapowania: <strong>{{ liczba_rekordow }}</strong></li>
+                <li>Wszystkie rekordy zostaną dodane do kolejki eksportu PBN</li>
+            </ul>
+
+            {% if rekordy_przyklad %}
+                <h5>Przykładowe rekordy (pierwsze 10):</h5>
+                <ul>
+                    {% for rekord in rekordy_przyklad %}
+                        <li>{{ rekord.tytul_oryginalny|truncatewords:15 }} ({{ rekord.rok }})</li>
+                    {% endfor %}
+                </ul>
+                {% if liczba_rekordow > 10 %}
+                    <p><em>...i {{ liczba_rekordow|add:"-10" }} więcej</em></p>
+                {% endif %}
+            {% endif %}
+
+            <form method="post" action="">
+                {% csrf_token %}
+                {{ form.typ_wyboru }}
+                {{ form.journal_docelowy }}
+                <div style="display: none;">
+                    {{ form.zrodlo_docelowe }}
+                </div>
+
+                <div class="callout alert">
+                    <p><span class="fi-alert"></span> <strong>Uwaga!</strong> Ta operacja jest nieodwracalna.
+                    Upewnij się, że wybrane źródło docelowe jest poprawne.</p>
+                </div>
+
+                <div class="button-group">
+                    <button type="submit" name="confirm" class="button success">
+                        <span class="fi-check"></span> Potwierdź i wykonaj przemapowanie
+                    </button>
+                    <a href="{% url 'przemapuj_zrodla_pbn:przemapuj_zrodlo' zrodlo.pk %}" class="button secondary">
+                        <span class="fi-x"></span> Anuluj
+                    </a>
+                </div>
+            </form>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const typWyboruField = document.getElementById('id_typ_wyboru');
+    const journalDocelowyField = document.getElementById('id_journal_docelowy');
+    const zrodloDoceloweField = document.getElementById('id_zrodlo_docelowe');
+
+    // Obsługa kliknięć na list items
+    const sourceItems = document.querySelectorAll('.source-item[data-type][data-id]');
+
+    sourceItems.forEach(function(item) {
+        item.addEventListener('click', function(e) {
+            // Usuń zaznaczenie z wszystkich items
+            sourceItems.forEach(i => i.classList.remove('selected'));
+
+            // Zaznacz bieżący item
+            this.classList.add('selected');
+
+            // Pobierz typ i id
+            const type = this.dataset.type;
+            const id = this.dataset.id;
+
+            // Ustaw wartości w formularzu
+            if (type === 'journal') {
+                typWyboruField.value = 'journal';
+                journalDocelowyField.value = id;
+                // Wyczyść pole zrodlo_docelowe
+                if (zrodloDoceloweField) {
+                    const radios = zrodloDoceloweField.querySelectorAll('input[type="radio"]');
+                    radios.forEach(opt => opt.checked = false);
+                }
+            } else {
+                typWyboruField.value = 'zrodlo';
+                journalDocelowyField.value = '';
+                // Zaznacz odpowiednie zrodlo_docelowe
+                if (zrodloDoceloweField) {
+                    const radios = zrodloDoceloweField.querySelectorAll('input[type="radio"]');
+                    radios.forEach(opt => {
+                        opt.checked = opt.value == id;
+                    });
+                }
+            }
+
+            // Dodaj hidden input dla preview i wyślij formularz
+            const previewInput = document.createElement('input');
+            previewInput.type = 'hidden';
+            previewInput.name = 'preview';
+            previewInput.value = '1';
+            document.getElementById('mappingForm').appendChild(previewInput);
+            document.getElementById('mappingForm').submit();
+        });
+    });
+
+    // Obsługa collapsible sections
+    const collapsibleHeaders = document.querySelectorAll('.collapsible-header');
+
+    collapsibleHeaders.forEach(function(header) {
+        header.addEventListener('click', function(e) {
+            e.stopPropagation(); // Prevent item selection
+
+            const targetId = this.dataset.target;
+            const content = document.getElementById(targetId);
+            const icon = this.querySelector('.collapsible-icon');
+
+            if (content && icon) {
+                content.classList.toggle('expanded');
+                icon.classList.toggle('expanded');
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

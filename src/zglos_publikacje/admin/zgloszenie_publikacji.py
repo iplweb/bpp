@@ -4,20 +4,19 @@ from functools import update_wrapper
 
 import rollbar
 from django.conf import settings
+from django.contrib import admin, messages
+from django.contrib.admin import helpers
+from django.contrib.admin.templatetags.admin_urls import add_preserved_filters
 from django.db import transaction
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
 from templated_email import send_templated_mail
 
-from zglos_publikacje.models import Zgloszenie_Publikacji, Zgloszenie_Publikacji_Autor
-from .filters import WydzialJednostkiPierwszegoAutora
-from .forms import ZwrocEmailForm
-
-from django.contrib import admin, messages
-from django.contrib.admin import helpers
-from django.contrib.admin.templatetags.admin_urls import add_preserved_filters
-
 from bpp.admin.helpers.fieldsets import MODEL_Z_OPLATA_ZA_PUBLIKACJE
+from zglos_publikacje.models import Zgloszenie_Publikacji, Zgloszenie_Publikacji_Autor
+
+from .filters import DzienTygodniaFilter, WydzialJednostkiPierwszegoAutora
+from .forms import ZwrocEmailForm
 
 
 class Zgloszenie_Publikacji_AutorInline(admin.StackedInline):
@@ -43,6 +42,7 @@ class Zgloszenie_PublikacjiAdmin(admin.ModelAdmin):
         "status",
         "email",
         WydzialJednostkiPierwszegoAutora,
+        DzienTygodniaFilter,
         "rodzaj_zglaszanej_publikacji",
         "rok",
         "zgoda_na_publikacje_pelnego_tekstu",
@@ -88,7 +88,11 @@ class Zgloszenie_PublikacjiAdmin(admin.ModelAdmin):
         info = self.model._meta.app_label, self.model._meta.model_name
 
         urls = [
-            url(r"^(.+)/zwroc/$", wrap(self.zwroc_view), name="%s_%s_zwroc" % info),
+            url(
+                r"^(.+)/zwroc/$",
+                wrap(self.zwroc_view),
+                name=f"{info[0]}_{info[1]}_zwroc",
+            ),
         ]
 
         super_urls = super().get_urls()
@@ -164,7 +168,7 @@ class Zgloszenie_PublikacjiAdmin(admin.ModelAdmin):
         adminForm = helpers.AdminForm(form_class(), fieldsets, {}, model_admin=self)
 
         context = {
-            "title": "Zwróć zgłoszenie %s" % obj,
+            "title": f"Zwróć zgłoszenie {obj}",
             "has_change_permission": True,
             "has_view_permission": True,
             "has_editable_inline_admin_formsets": False,
