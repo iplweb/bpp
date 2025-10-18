@@ -136,3 +136,4 @@ src/bpp/static/scss/*.css
 src/bpp/static/scss/*.map
 src/bpp/static/scss/*.css.map
 wersje-publikacji-*txt
+.autostash.zsh
