@@ -1011,10 +1011,10 @@ MANAGERS = ADMINS
 # Uwaga: domyślnie easy-audit NIE jest włączony. Włącza go dopiero
 # konfiguracja produkcyjna za pomocą poniższego kodu:
 #
-INSTALLED_APPS.append("easyaudit")  # noqa
-MIDDLEWARE.append(  # noqa
-    "easyaudit.middleware.easyaudit.EasyAuditMiddleware",
-)
+# INSTALLED_APPS.append("easyaudit")  # noqa
+# MIDDLEWARE.append(  # noqa
+#     "easyaudit.middleware.easyaudit.EasyAuditMiddleware",
+# )
 DJANGO_EASY_AUDIT_PROPAGATE_EXCEPTIONS = True
 
 DJANGO_EASY_AUDIT_WATCH_REQUEST_EVENTS = False

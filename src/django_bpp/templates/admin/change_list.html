@@ -26,22 +26,8 @@
         {% url 'admin:jsi18n' as jsi18nurl %}
         <script type="text/javascript" src="{{ jsi18nurl|default:'../../jsi18n/'}}"></script>
     {% endif %}
-    {% comment %}
-        COMMENTED OUT 2025-10-18: Removing custom .actions() initialization that was causing
-        "?e=1" error flags in URLs. This code was not present in original Grappelli template
-        and was causing JavaScript errors. Django/Grappelli handles actions natively.
-        If action checkboxes stop working, uncomment this block and investigate.
 
-        {% if action_form %}
-            <script type="text/javascript" charset="utf-8">
-                (function ($) {
-                    $(document).ready(function () {
-                        $("tr input.action-select").actions();
-                    });
-                })(grp.jQuery);
-            </script>
-        {% endif %}
-    {% endcomment %}
+
     {% if cl.formset %}
         <script type="text/javascript" charset="utf-8">
             (function ($) {
@@ -495,6 +481,14 @@
                         // Re-initialize the filter panel after content swap
                         setTimeout(function () {
                             initFilterPanel();
+
+                            // Re-initialize Django admin actions for the new content
+                            if (typeof window.Actions !== 'undefined') {
+                                const actionsEls = document.querySelectorAll('tr input.action-select');
+                                if (actionsEls.length > 0) {
+                                    window.Actions(actionsEls);
+                                }
+                            }
                         }, 50);
                     }
 
