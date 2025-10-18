@@ -1,6 +1,7 @@
 import json
 import re
 
+from cacheops import cached
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Count
@@ -47,6 +48,7 @@ INNE = "inne"
 TYPY = [PUBLIKACJE, STRESZCZENIA, INNE]
 
 
+@cached(timeout=60 * 60)  # Cache for 1 hour
 def get_uczelnia_context_data(uczelnia, article_slug=None):
     """Shared function to get context data for uczelnia view."""
     context = {"object": uczelnia, "uczelnia": uczelnia}

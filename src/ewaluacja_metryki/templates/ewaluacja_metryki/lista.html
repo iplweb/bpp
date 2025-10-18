@@ -912,8 +912,12 @@
 
 <!-- Plotly.js for data visualization (only on this page) -->
 <script src="{% static 'plotly.js/dist/plotly.min.js' %}"></script>
+<script src="{% static 'plotly.js/dist/plotly-locale-pl.js' %}"></script>
 
 <script>
+// Set Polish locale as default for Plotly
+Plotly.setPlotConfig({locale: 'pl'});
+
 // Inicjalizacja Foundation
 $(document).foundation();
 
@@ -1226,7 +1230,8 @@ $(document).ready(function() {
             responsive: true,
             displayModeBar: true,
             modeBarButtonsToRemove: ['lasso2d', 'select2d'],
-            displaylogo: false
+            displaylogo: false,
+            locale: 'pl'
         };
 
         Plotly.newPlot('heatmap-container', [trace], layout, config);
@@ -1331,7 +1336,8 @@ $(document).ready(function() {
             responsive: true,
             displayModeBar: true,
             modeBarButtonsToRemove: ['lasso2d', 'select2d'],
-            displaylogo: false
+            displaylogo: false,
+            locale: 'pl'
         };
 
         Plotly.newPlot('heatmap-blocky-container', [trace], layout, config);
@@ -1428,7 +1434,8 @@ $(document).ready(function() {
             responsive: true,
             displayModeBar: true,
             modeBarButtonsToRemove: ['lasso2d', 'select2d'],
-            displaylogo: false
+            displaylogo: false,
+            locale: 'pl'
         };
 
         Plotly.newPlot('contour-container', [trace], layout, config);
@@ -1537,7 +1544,8 @@ $(document).ready(function() {
             responsive: true,
             displayModeBar: true,
             modeBarButtonsToRemove: ['lasso2d', 'select2d'],
-            displaylogo: false
+            displaylogo: false,
+            locale: 'pl'
         };
 
         Plotly.newPlot('bubble-container', [trace], layout, config);
@@ -1695,7 +1703,8 @@ $(document).ready(function() {
             responsive: true,
             displayModeBar: true,
             modeBarButtonsToRemove: ['lasso2d', 'select2d'],
-            displaylogo: false
+            displaylogo: false,
+            locale: 'pl'
         };
 
         Plotly.newPlot('contour-scatter-container', [contourTrace, scatterTrace], layout, config);
@@ -1820,7 +1829,8 @@ $(document).ready(function() {
             responsive: true,
             displayModeBar: true,
             modeBarButtonsToRemove: ['lasso2d', 'select2d'],
-            displaylogo: false
+            displaylogo: false,
+            locale: 'pl'
         };
 
         Plotly.newPlot('efektywnosc-babelki-container', [trace], layout, config);
@@ -1925,7 +1935,8 @@ $(document).ready(function() {
             responsive: true,
             displayModeBar: true,
             modeBarButtonsToRemove: ['lasso2d', 'select2d'],
-            displaylogo: false
+            displaylogo: false,
+            locale: 'pl'
         };
 
         Plotly.newPlot('efektywnosc-mapa-ciepla-container', [trace], layout, config);

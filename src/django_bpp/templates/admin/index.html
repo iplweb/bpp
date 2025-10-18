@@ -17,8 +17,22 @@
 {% block extrahead %}
     {{ block.super }}
     <script src="{% static 'plotly.js/dist/plotly.min.js' %}"></script>
+    <script src="{% static 'plotly.js/dist/plotly-locale-pl.js' %}"></script>
     <script src="{% static 'htmx.org/dist/htmx.js' %}"></script>
     <style>
+        #welcome-message {
+            transition: opacity 1.5s ease-in-out;
+            min-height: 1.2em;
+            display: flex;
+            align-items: center;
+        }
+        .fade-out {
+            opacity: 0;
+        }
+        .fade-in {
+            opacity: 1;
+        }
+
         /* Custom 3-column grid system */
         .dashboard-grid {
             display: grid;
@@ -108,33 +122,42 @@
         .chart-module {
             width: 100%;
         }
+        /* Kursor pointer dla klikalnych wykresów */
+        .js-plotly-plot .plotly .hoverlayer .hovertext {
+            pointer-events: none;
+        }
     </style>
 {% endblock %}
 
 {% block content %}
     <div class="dashboard-grid">
-        {# LEWA KOLUMNA - Statystyki #}
+        {# LEWA KOLUMNA - Ostatnio edytowane #}
         <div class="dashboard-column">
             <div class="grp-module">
-                <h2>Statystyki</h2>
-                <div class="dashboard-stats-grid" id="dashboard-stats">
-                    <div class="stat-box">
-                        <h3>{{ stats.total_publications }}</h3>
-                        <p>Publikacje</p>
-                    </div>
-                    <div class="stat-box">
-                        <h3>{{ stats.total_authors }}</h3>
-                        <p>Autorzy</p>
-                    </div>
-                    <div class="stat-box">
-                        <h3>{{ stats.total_units }}</h3>
-                        <p>Jednostki</p>
-                    </div>
-                    <div class="stat-box">
-                        <h3>{{ stats.total_users }}</h3>
-                        <p>Użytkownicy</p>
-                    </div>
-                </div>
+                <h2>Ostatnio edytowane</h2>
+                {% get_admin_log 10 as admin_log for_user user %}
+                {% if not admin_log %}
+                <p style="padding: 10px; color: #666;">Brak dostępnych akcji</p>
+                {% else %}
+                <ul class="actionlist" style="list-style: none; padding: 0; margin: 0;">
+                {% for entry in admin_log %}
+                <li class="{% if entry.is_addition %}addlink{% endif %}{% if entry.is_change %}changelink{% endif %}{% if entry.is_deletion %}deletelink{% endif %}" style="padding: 8px 10px; border-bottom: 1px solid #e0e0e0;">
+                    {% if entry.is_deletion or not entry.get_admin_url %}
+                        <strong>{{ entry.object_repr }}</strong>
+                    {% else %}
+                        <a href="{{ entry.get_admin_url }}" style="font-weight: 500;">{{ entry.object_repr }}</a>
+                    {% endif %}
+                    <br>
+                    {% if entry.content_type %}
+                        <span class="mini quiet" style="font-size: 0.85em; color: #666;">{{ entry.content_type.name|capfirst }}</span>
+                    {% else %}
+                        <span class="mini quiet" style="font-size: 0.85em; color: #666;">{% trans 'Unknown content' %}</span>
+                    {% endif %}
+                    <span class="mini quiet" style="font-size: 0.85em; color: #999; float: right;">{{ entry.action_time|naturaltime }}</span>
+                </li>
+                {% endfor %}
+                </ul>
+                {% endif %}
             </div>
 
             <div class="grp-module">
@@ -171,6 +194,16 @@
                     </ul>
                 </div>
             </div>
+
+            <div class="grp-module chart-module">
+                <h2>Prace w bazie</h2>
+                <div id="cumulative-publications-chart" class="chart-container"></div>
+            </div>
+
+            <div class="grp-module chart-module">
+                <h2>Łączne punkty MNiSW</h2>
+                <div id="cumulative-points-chart" class="chart-container"></div>
+            </div>
         </div>
 
         {# ŚRODKOWA KOLUMNA - Wykresy #}
@@ -186,38 +219,53 @@
             </div>
 
             <div class="grp-module chart-module">
+                <h2>Łączny Impact Factor</h2>
+                <div id="cumulative-if-chart" class="chart-container"></div>
+            </div>
+
+            <div class="grp-module chart-module">
                 <h2>Nowo dodane prace</h2>
                 <div id="new-publications-chart" class="chart-container"></div>
             </div>
+
+            <div class="grp-module chart-module">
+                <h2>Charaktery formalne - Top 90%</h2>
+                <div id="charakter-formalny-chart-top90" class="chart-container"></div>
+            </div>
+
+            <div class="grp-module chart-module">
+                <h2>Charaktery formalne - Pozostałe 10%</h2>
+                <div id="charakter-formalny-chart-remaining10" class="chart-container"></div>
+            </div>
+
+            <div class="grp-module chart-module">
+                <h2>Charaktery formalne - Ostatni 1%</h2>
+                <div id="charakter-formalny-chart-remaining1" class="chart-container"></div>
+            </div>
         </div>
 
-        {# PRAWA KOLUMNA - Ostatnio edytowane i Aplikacje #}
+        {# PRAWA KOLUMNA - Statystyki i Aplikacje #}
         <div class="dashboard-column">
             <div class="grp-module">
-                <h2>Ostatnio edytowane</h2>
-                {% get_admin_log 10 as admin_log for_user user %}
-                {% if not admin_log %}
-                <p style="padding: 10px; color: #666;">Brak dostępnych akcji</p>
-                {% else %}
-                <ul class="actionlist" style="list-style: none; padding: 0; margin: 0;">
-                {% for entry in admin_log %}
-                <li class="{% if entry.is_addition %}addlink{% endif %}{% if entry.is_change %}changelink{% endif %}{% if entry.is_deletion %}deletelink{% endif %}" style="padding: 8px 10px; border-bottom: 1px solid #e0e0e0;">
-                    {% if entry.is_deletion or not entry.get_admin_url %}
-                        <strong>{{ entry.object_repr }}</strong>
-                    {% else %}
-                        <a href="{{ entry.get_admin_url }}" style="font-weight: 500;">{{ entry.object_repr }}</a>
-                    {% endif %}
-                    <br>
-                    {% if entry.content_type %}
-                        <span class="mini quiet" style="font-size: 0.85em; color: #666;">{{ entry.content_type.name|capfirst }}</span>
-                    {% else %}
-                        <span class="mini quiet" style="font-size: 0.85em; color: #666;">{% trans 'Unknown content' %}</span>
-                    {% endif %}
-                    <span class="mini quiet" style="font-size: 0.85em; color: #999; float: right;">{{ entry.action_time|naturaltime }}</span>
-                </li>
-                {% endfor %}
-                </ul>
-                {% endif %}
+                <h2>Statystyki</h2>
+                <div class="dashboard-stats-grid" id="dashboard-stats">
+                    <div class="stat-box">
+                        <h3>{{ stats.total_publications }}</h3>
+                        <p>Publikacje</p>
+                    </div>
+                    <div class="stat-box">
+                        <h3>{{ stats.total_authors }}</h3>
+                        <p>Autorzy</p>
+                    </div>
+                    <div class="stat-box">
+                        <h3>{{ stats.total_units }}</h3>
+                        <p>Jednostki</p>
+                    </div>
+                    <div class="stat-box">
+                        <h3>{{ stats.total_users }}</h3>
+                        <p>Użytkownicy</p>
+                    </div>
+                </div>
             </div>
 
             <div class="grp-module">
@@ -259,12 +307,15 @@
     <script type="text/javascript">
         (function($) {
             $(document).ready(function() {
+                // Set Polish locale as default for Plotly
+                Plotly.setPlotConfig({locale: 'pl'});
+
                 // Load weekday chart
                 function loadWeekdayChart() {
                     fetch('{% url "admin_dashboard:weekday_stats" %}')
                         .then(response => response.json())
                         .then(data => {
-                            Plotly.newPlot('weekday-chart', data.data, data.layout, {responsive: true});
+                            Plotly.newPlot('weekday-chart', data.data, data.layout, {responsive: true, locale: 'pl'});
                         })
                         .catch(error => console.error('Error loading weekday chart:', error));
                 }
@@ -274,7 +325,7 @@
                     fetch('{% url "admin_dashboard:day_of_month_activity_stats" %}')
                         .then(response => response.json())
                         .then(data => {
-                            Plotly.newPlot('day-of-month-chart', data.data, data.layout, {responsive: true});
+                            Plotly.newPlot('day-of-month-chart', data.data, data.layout, {responsive: true, locale: 'pl'});
                         })
                         .catch(error => console.error('Error loading day of month chart:', error));
                 }
@@ -284,15 +335,190 @@
                     fetch('{% url "admin_dashboard:new_publications_stats" %}')
                         .then(response => response.json())
                         .then(data => {
-                            Plotly.newPlot('new-publications-chart', data.data, data.layout, {responsive: true});
+                            Plotly.newPlot('new-publications-chart', data.data, data.layout, {responsive: true, locale: 'pl'});
                         })
                         .catch(error => console.error('Error loading new publications chart:', error));
+                }
+
+                // Load cumulative publications chart
+                function loadCumulativePublicationsChart() {
+                    fetch('{% url "admin_dashboard:cumulative_publications_stats" %}')
+                        .then(response => response.json())
+                        .then(data => {
+                            Plotly.newPlot('cumulative-publications-chart', data.data, data.layout, {responsive: true, locale: 'pl'});
+                        })
+                        .catch(error => console.error('Error loading cumulative publications chart:', error));
+                }
+
+                // Load cumulative IF chart
+                function loadCumulativeIFChart() {
+                    fetch('{% url "admin_dashboard:cumulative_impact_factor_stats" %}')
+                        .then(response => response.json())
+                        .then(data => {
+                            Plotly.newPlot('cumulative-if-chart', data.data, data.layout, {responsive: true, locale: 'pl'});
+                        })
+                        .catch(error => console.error('Error loading cumulative IF chart:', error));
+                }
+
+                // Load cumulative points chart
+                function loadCumulativePointsChart() {
+                    fetch('{% url "admin_dashboard:cumulative_points_kbn_stats" %}')
+                        .then(response => response.json())
+                        .then(data => {
+                            Plotly.newPlot('cumulative-points-chart', data.data, data.layout, {responsive: true, locale: 'pl'});
+                        })
+                        .catch(error => console.error('Error loading cumulative points chart:', error));
+                }
+
+                // Load charakter formalny charts
+                function loadCharakterFormalnyChartTop90() {
+                    fetch('{% url "admin_dashboard:charakter_formalny_stats_top90" %}')
+                        .then(response => response.json())
+                        .then(data => {
+                            Plotly.newPlot('charakter-formalny-chart-top90', data.data, data.layout, {responsive: true, locale: 'pl'});
+
+                            var chartElement = document.getElementById('charakter-formalny-chart-top90');
+
+                            // Zmiana kursora na pointer przy najechaniu
+                            chartElement.on('plotly_hover', function(eventData) {
+                                var url = eventData.points[0].customdata;
+                                if (url) {
+                                    chartElement.style.cursor = 'pointer';
+                                } else {
+                                    chartElement.style.cursor = 'default';
+                                }
+                            });
+
+                            // Przywróć domyślny kursor po opuszczeniu
+                            chartElement.on('plotly_unhover', function() {
+                                chartElement.style.cursor = 'default';
+                            });
+
+                            // Obsługa kliknięcia
+                            chartElement.on('plotly_click', function(eventData) {
+                                var point = eventData.points[0];
+                                var url = point.customdata;
+                                var label = point.label;
+
+                                console.log('Kliknięto wykres Top 90%:', label, 'URL:', url);
+
+                                // Najpierw sprawdź czy to "Inne"
+                                if (label === 'Inne') {
+                                    alert('Te charaktery formalne pokazane są na innym wykresie');
+                                    return;
+                                }
+
+                                // Potem przekieruj jeśli jest URL
+                                if (url) {
+                                    window.location.href = url;
+                                }
+                            });
+                        })
+                        .catch(error => console.error('Error loading charakter formalny top90 chart:', error));
+                }
+
+                function loadCharakterFormalnyChartRemaining10() {
+                    fetch('{% url "admin_dashboard:charakter_formalny_stats_remaining10" %}')
+                        .then(response => response.json())
+                        .then(data => {
+                            Plotly.newPlot('charakter-formalny-chart-remaining10', data.data, data.layout, {responsive: true, locale: 'pl'});
+
+                            var chartElement = document.getElementById('charakter-formalny-chart-remaining10');
+
+                            // Zmiana kursora na pointer przy najechaniu
+                            chartElement.on('plotly_hover', function(eventData) {
+                                var url = eventData.points[0].customdata;
+                                if (url) {
+                                    chartElement.style.cursor = 'pointer';
+                                } else {
+                                    chartElement.style.cursor = 'default';
+                                }
+                            });
+
+                            // Przywróć domyślny kursor po opuszczeniu
+                            chartElement.on('plotly_unhover', function() {
+                                chartElement.style.cursor = 'default';
+                            });
+
+                            // Obsługa kliknięcia
+                            chartElement.on('plotly_click', function(eventData) {
+                                var point = eventData.points[0];
+                                var url = point.customdata;
+                                var label = point.label;
+
+                                console.log('Kliknięto wykres Pozostałe 10%:', label, 'URL:', url);
+
+                                // Najpierw sprawdź czy to "Inne"
+                                if (label === 'Inne') {
+                                    alert('Te charaktery formalne pokazane są na innym wykresie');
+                                    return;
+                                }
+
+                                // Potem przekieruj jeśli jest URL
+                                if (url) {
+                                    window.location.href = url;
+                                }
+                            });
+                        })
+                        .catch(error => console.error('Error loading charakter formalny remaining10 chart:', error));
+                }
+
+                function loadCharakterFormalnyChartRemaining1() {
+                    fetch('{% url "admin_dashboard:charakter_formalny_stats_remaining1" %}')
+                        .then(response => response.json())
+                        .then(data => {
+                            Plotly.newPlot('charakter-formalny-chart-remaining1', data.data, data.layout, {responsive: true, locale: 'pl'});
+
+                            var chartElement = document.getElementById('charakter-formalny-chart-remaining1');
+
+                            // Zmiana kursora na pointer przy najechaniu
+                            chartElement.on('plotly_hover', function(eventData) {
+                                var url = eventData.points[0].customdata;
+                                if (url) {
+                                    chartElement.style.cursor = 'pointer';
+                                } else {
+                                    chartElement.style.cursor = 'default';
+                                }
+                            });
+
+                            // Przywróć domyślny kursor po opuszczeniu
+                            chartElement.on('plotly_unhover', function() {
+                                chartElement.style.cursor = 'default';
+                            });
+
+                            // Obsługa kliknięcia
+                            chartElement.on('plotly_click', function(eventData) {
+                                var point = eventData.points[0];
+                                var url = point.customdata;
+                                var label = point.label;
+
+                                console.log('Kliknięto wykres Ostatni 1%:', label, 'URL:', url);
+
+                                // Najpierw sprawdź czy to "Inne"
+                                if (label === 'Inne') {
+                                    alert('Te charaktery formalne pokazane są na innym wykresie');
+                                    return;
+                                }
+
+                                // Potem przekieruj jeśli jest URL
+                                if (url) {
+                                    window.location.href = url;
+                                }
+                            });
+                        })
+                        .catch(error => console.error('Error loading charakter formalny remaining1 chart:', error));
                 }
 
                 // Initial load
                 loadWeekdayChart();
                 loadDayOfMonthChart();
                 loadNewPublicationsChart();
+                loadCumulativePublicationsChart();
+                loadCumulativeIFChart();
+                loadCumulativePointsChart();
+                loadCharakterFormalnyChartTop90();
+                loadCharakterFormalnyChartRemaining10();
+                loadCharakterFormalnyChartRemaining1();
 
                 // Search functionality for apps/models
                 $('#app-list-search').on('input', function() {
@@ -328,6 +554,66 @@
                         }
                     });
                 });
+
+                // BHP tips rotation
+                const tips = [
+                    "💡 Rób 5-minutową przerwę co godzinę - Twoje oczy i mózg będą wdzięczne!",
+                    "🤲 Rozciągnij dłonie i nadgarstki - połóż dłonie płasko i delikatnie naciśnij.",
+                    "👀 Zastosuj zasadę 20-20-20: co 20 minut patrz na obiekt oddalony o 20 stóp przez 20 sekund.",
+                    "☕ Ogranicz kawę do 2-3 filiżanek dziennie - nadmiar kofeiny może powodować drżenie rąk.",
+                    "🏃 Wstań i przejdź się kilka kroków - aktywizuj krążenie!",
+                    "🔐 Zawsze blokuj komputer wychodząc z miejsca pracy - bezpieczeństwo to podstawa.",
+                    "💧 Pamiętaj o piciu wody - odwodnienie wpływa na koncentrację.",
+                    "🖥️ Górna krawędź monitora powinna być na poziomie oczu lub nieco niżej.",
+                    "⌨️ Trzymaj nadgarstki w neutralnej pozycji podczas pisania.",
+                    "🪑 Stopy powinny płasko stać na podłodze - użyj podnóżka jeśli potrzeba.",
+                    "🔄 Co 30 minut zmień pozycję ciała - ruch to życie!",
+                    "😌 Rób głębokie oddechy - tlen poprawia pracę mózgu.",
+                    "🔆 Ustaw jasność monitora odpowiednio do oświetlenia pomieszczenia.",
+                    "📱 Nie trzymaj telefonu między uchem a ramieniem - użyj słuchawek.",
+                    "🧘 Rozluźnij ramiona - nie napinaj ich podczas pracy.",
+                    "🔑 Używaj silnych, unikalnych haseł.",
+                    "💾 Regularnie zapisuj swoją pracę!",
+                    "🌿 Postaw roślinę przy biurku - oczyszcza powietrze i uspokaja.",
+                    "🔊 Zrób sobie ciszę lub użyj białego szumu do lepszej koncentracji.",
+                    "🤸 Wykonaj proste ćwiczenia rozciągające szyję - lekko pochyl głowę w każdą stronę.",
+                    "🍎 Jedz zdrowe przekąski - orzechy, owoce - zamiast słodyczy.",
+                    "💻 Czyść regularnie klawiaturę i mysz - higiena to zdrowie!",
+                    "📧 Nie klikaj w podejrzane linki w e-mailach - sprawdź nadawcę!",
+                    "🕒 Ustal stałe godziny pracy i je przestrzegaj - work-life balance jest ważny.",
+                    "👁️ Mrugaj często - podczas pracy przy komputerze mrugamy 3x rzadziej!",
+                    "🖱️ Użyj całej dłoni do poruszania myszą, nie tylko nadgarstka.",
+                    "📊 Rób backup ważnych danych - lepiej dmuchać na zimne!",
+                    "🌙 Włącz tryb nocny po zmroku - chroni oczy przed niebieskim światłem.",
+                    "🎧 Używaj słuchawek z mikrofoneami na długich rozmowach.",
+                    "⚡ Regularnie aktualizuj oprogramowanie - bezpieczeństwo przede wszystkim!",
+                    "🧠 Zaplanuj najtrudniejsze zadania na poranne godziny - wtedy mózg pracuje najlepiej.",
+                    "🔄 Zmień sposób pracy co jakiś czas - monotonia zabija kreatywność."
+                ];
+
+                let currentTipIndex = 0;
+                const messageElement = $('#welcome-message');
+
+                function showNextTip() {
+                    // Fade out
+                    messageElement.addClass('fade-out');
+
+                    setTimeout(function() {
+                        // Change text
+                        messageElement.text(tips[currentTipIndex]);
+                        currentTipIndex = (currentTipIndex + 1) % tips.length;
+
+                        // Fade in
+                        messageElement.removeClass('fade-out').addClass('fade-in');
+                    }, 1500);
+                }
+
+                // Start cycling after 15 seconds
+                setTimeout(function() {
+                    showNextTip();
+                    // Then show a new tip every 15 seconds
+                    setInterval(showNextTip, 15000);
+                }, 15000);
             });
         })(django.jQuery || grp.jQuery);
     </script>

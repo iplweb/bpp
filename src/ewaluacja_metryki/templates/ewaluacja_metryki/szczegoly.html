@@ -600,8 +600,12 @@ $(document).ready(function() {
 
 <!-- Plotly.js for data visualization (only on this page) -->{% load static %}
 <script src="{% static 'plotly.js/dist/plotly.min.js' %}"></script>
+<script src="{% static 'plotly.js/dist/plotly-locale-pl.js' %}"></script>
 
 <script>
+// Set Polish locale as default for Plotly
+Plotly.setPlotConfig({locale: 'pl'});
+
 $(document).ready(function() {
     // Prepare data from Django context
     var chartData = {{ chart_data_json|safe }};
@@ -653,7 +657,8 @@ $(document).ready(function() {
 
         var config = {
             responsive: true,
-            displayModeBar: false
+            displayModeBar: false,
+            locale: 'pl'
         };
 
         Plotly.newPlot('bubble-time-chart', [bubbleTrace], layout, config);
@@ -717,7 +722,8 @@ $(document).ready(function() {
 
         var config = {
             responsive: true,
-            displayModeBar: false
+            displayModeBar: false,
+            locale: 'pl'
         };
 
         Plotly.newPlot('year-bars-chart', [barTrace, lineTrace], layout, config);
@@ -777,7 +783,8 @@ $(document).ready(function() {
 
         var config = {
             responsive: true,
-            displayModeBar: false
+            displayModeBar: false,
+            locale: 'pl'
         };
 
         Plotly.newPlot('scatter-time-chart', [scatterTrace], layout, config);
@@ -871,7 +878,8 @@ $(document).ready(function() {
 
         var config = {
             responsive: true,
-            displayModeBar: false
+            displayModeBar: false,
+            locale: 'pl'
         };
 
         Plotly.newPlot('heatmap-chart', [heatmapTrace], layout, config);

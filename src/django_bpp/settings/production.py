@@ -52,6 +52,10 @@ CACHEOPS = {
     "ewaluacja_common.rodzaj_autora": {"ops": ("fetch", "get")},
     "bpp.rzeczownik": {"ops": ("fetch", "get")},
     "django_countdown.SiteCountdown": {"ops": ("fetch", "get")},
+    "bpp.uczelnia": {"ops": ("get", "fetch")},
+    "bpp.wydzial": {"ops": ("get", "fetch")},
+    "bpp.jednostka": {"ops": ("get", "fetch")},
+    "bpp.wydawnictwo_ciagle_streszczenie": {"ops": ("get", "fetch")},
 }
 
 CACHEOPS_REDIS = BROKER_URL  # noqa

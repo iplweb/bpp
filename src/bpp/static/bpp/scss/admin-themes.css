@@ -22,7 +22,7 @@ body,
 .select2-container--default .select2-selection--single,
 .select2-dropdown,
 .select2-container--default .select2-search--dropdown .select2-search__field {
-  transition: background-color 0.2s ease-in-out, background 0.2s ease-in-out, color 0.2s ease-in-out, border-color 0.2s ease-in-out, padding 0.2s ease-in-out, border-left 0.2s ease-in-out, border-width 0.2s ease-in-out !important;
+  transition: background-color 0.2s ease-in-out, background 0.2s ease-in-out, color 0.2s ease-in-out, border-color 0.2s ease-in-out, border-left 0.2s ease-in-out, border-width 0.2s ease-in-out !important;
 }
 
 /* Default Theme (Original Dark) - No class needed */
@@ -66,7 +66,6 @@ body.theme-classic-light #grp-navigation ul#navigation-menu li ul li a {
 }
 body.theme-classic-light #grp-navigation ul#navigation-menu li ul li a:hover {
   background-color: #e8f0fe !important;
-  padding-left: 18px;
   border-left: 3px solid #0066cc !important;
   color: #0066cc !important;
 }
@@ -219,7 +218,6 @@ body.theme-navy-academic #grp-navigation ul#navigation-menu li ul li a {
 }
 body.theme-navy-academic #grp-navigation ul#navigation-menu li ul li a:hover {
   background-color: #2e3f54 !important;
-  padding-left: 18px;
   border-left: 3px solid #d4af37 !important;
   color: #d4af37 !important;
 }
@@ -374,7 +372,6 @@ body.theme-gray-professional #grp-navigation ul#navigation-menu li ul li a {
 }
 body.theme-gray-professional #grp-navigation ul#navigation-menu li ul li a:hover {
   background-color: #555555 !important;
-  padding-left: 18px;
   border-left: 3px solid #ff6939 !important;
   color: #ff6939 !important;
 }
@@ -528,7 +525,6 @@ body.theme-cream-green #grp-navigation ul#navigation-menu li ul li a {
 }
 body.theme-cream-green #grp-navigation ul#navigation-menu li ul li a:hover {
   background-color: #f0f8f0 !important;
-  padding-left: 18px;
   border-left: 3px solid #2e7d32 !important;
   color: #2e7d32 !important;
 }
@@ -685,7 +681,6 @@ body.theme-minimal-light #grp-navigation ul#navigation-menu li ul li a {
 }
 body.theme-minimal-light #grp-navigation ul#navigation-menu li ul li a:hover {
   background-color: #fafafa !important;
-  padding-left: 15px;
   border-left: none !important;
   color: #1a1a1a !important;
   font-weight: 600 !important;

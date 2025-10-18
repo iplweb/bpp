@@ -127,7 +127,6 @@
 
 #grp-navigation ul#navigation-menu li ul li a:hover {
     background-color: #3a3a3a;
-    padding-left: 18px;
     border-left: 3px solid #5a9fd4;
 }
 
@@ -282,15 +281,7 @@
 
 /* Disable padding shift on hover below 1400px */
 @media (max-width: 1400px) {
-    /* Disable padding shift on hover for dropdown items */
-    #grp-navigation ul#navigation-menu li ul li a:hover {
-        padding-left: 15px !important;
-    }
-
-    /* Disable padding shift on hover for two-column menu */
-    #grp-navigation ul#navigation-menu li.has-columns ul li a:hover {
-        padding-left: 15px !important;
-    }
+    /* Padding shift disabled - no change on hover */
 }
 
 /* More reduced font size for smaller screens */
@@ -403,8 +394,9 @@
 #search-container {
     display: inline-flex;
     align-items: center;
-    margin-left: 15px;
     flex: 1;
+    padding-top: 0px;
+    margin-top: 0px;
     /* Allow search container to grow and fill available space */
 }
 
@@ -417,7 +409,7 @@
 /* Add horizontal margin to global nav select2 */
 #search-container .select2-container {
     margin-left: 3px;
-    margin-right: 5px;
+    margin-right: 10px !important;
     /* Allow select2 to expand to fill container and grow to right */
     min-width: 200px;
     max-width: 100%;
@@ -444,7 +436,7 @@ header#grp-header #grp-navigation ul#grp-user-tools {
 }
 
 #grp-navigation ul#navigation-menu li.menu-icon-user ul li:first-child a:hover {
-    padding-left: 15px !important;
+    /* No padding shift on hover */
 }
 
 /* -------------------------------------------------------------------------------- */
@@ -501,7 +493,6 @@ header#grp-header #grp-navigation ul#grp-user-tools {
 
 #grp-navigation ul#navigation-menu li.has-columns ul li.column-2 {
     order: 2;
-    border-left: 1px solid #343434;
 }
 
 #grp-navigation ul#navigation-menu li.has-columns ul li a {
@@ -522,7 +513,6 @@ header#grp-header #grp-navigation ul#grp-user-tools {
 
 #grp-navigation ul#navigation-menu li.has-columns ul li a:hover {
     background-color: #3a3a3a;
-    padding-left: 18px;
     border-left: 3px solid #5a9fd4;
 }
 
@@ -540,6 +530,7 @@ header#grp-header #grp-navigation ul#grp-user-tools {
 @media (max-width: 1200px) {
     #nav-global-container {
         flex-wrap: wrap;
+        gap: 12px;
     }
 
     #search-container {
@@ -549,13 +540,12 @@ header#grp-header #grp-navigation ul#grp-user-tools {
         justify-content: flex-start;
     }
 
-    #div_id_global_nav_value {
-        width: 100%;
-    }
+    /*#div_id_global_nav_value {*/
+    /*    width: 100%;*/
+    /*}*/
 
     #div_id_global_nav_value .select2-container {
-        width: 100% !important;
-        max-width: none;
+        margin-left: 0px;
     }
 }
 
@@ -566,7 +556,7 @@ header#grp-header #grp-navigation ul#grp-user-tools {
     }
 
     #search-container {
-        padding-left: 10px;
+        padding-left: 0px;
     }
 }
 
