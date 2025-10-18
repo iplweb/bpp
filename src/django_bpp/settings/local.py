@@ -88,3 +88,11 @@ if "pytest" in sys.modules:
         for m in MIDDLEWARE
         if m != "bpp_setup_wizard.middleware.SetupWizardMiddleware"
     ]
+
+
+# django-easy-audit
+
+INSTALLED_APPS.append("easyaudit")  # noqa
+MIDDLEWARE.append(  # noqa
+    "easyaudit.middleware.easyaudit.EasyAuditMiddleware",
+)

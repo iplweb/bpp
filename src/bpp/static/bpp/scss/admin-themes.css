@@ -5,12 +5,60 @@
 /* -------------------------------------------------------------------------------- */
 /* Admin Menu Theme System - Base Styles */
 /* -------------------------------------------------------------------------------- */
-/* Smooth color transitions for theme switching */
+/* Base styles for grp-object-tools buttons */
+/* Make all links in object-tools look like buttons */
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;500;600;700&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@300;400;600;700&display=swap");
+ul.grp-object-tools li a {
+  display: inline-block !important;
+  padding: 5px 12px !important;
+  padding-left: 35px !important;
+  text-decoration: none !important;
+  font-weight: normal !important;
+  font-size: 12px !important;
+  line-height: 16px !important;
+  border-radius: 3px !important;
+  -moz-border-radius: 3px !important;
+  -webkit-border-radius: 3px !important;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease !important;
+  position: relative !important;
+}
+
+/* Icons for different link types in grp-object-tools */
+/* Add icon - używamy ➕ dla jasnych motywów */
+ul.grp-object-tools li a[href*="/add/"]::before {
+  content: "➕";
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 14px;
+}
+
+/* Export icon - używamy 📊 dla arkusza/Excel */
+ul.grp-object-tools li a[href*="/export/"]::before {
+  content: "📊";
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 16px;
+}
+
+/* Crossref/document icon - używamy 📄 dla dokumentu */
+ul.grp-object-tools li a[href*="/pobierz-z-crossref/"]::before {
+  content: "📄";
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 16px;
+}
+
+/* Smooth color transitions for theme switching */
 body,
 #grp-navigation,
 #grp-navigation ul#navigation-menu li a,
@@ -73,7 +121,8 @@ body.theme-classic-light #grp-navigation ul#navigation-menu li.over > a {
 }
 body.theme-classic-light #grp-navigation ul#navigation-menu li ul {
   background: #ffffff !important;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.4), 0 4px 16px rgba(0, 0, 0, 0.2);
+  border: 1px solid #e0e0e0;
 }
 body.theme-classic-light #grp-navigation ul#navigation-menu li ul li {
   background: #ffffff !important;
@@ -277,12 +326,14 @@ body.theme-classic-light .grp-add-link:hover {
   border: 1px solid #004494 !important;
   color: #ffffff !important;
 }
-body.theme-classic-light .grp-state-focus {
+body.theme-classic-light .grp-state-focus,
+body.theme-classic-light ul.grp-object-tools li a {
   background: #e8f0fe !important;
   color: #0066cc !important;
   border: 2px solid #0066cc !important;
 }
-body.theme-classic-light .grp-state-focus:hover {
+body.theme-classic-light .grp-state-focus:hover,
+body.theme-classic-light ul.grp-object-tools li a:hover {
   background: #0066cc !important;
   color: #ffffff !important;
 }
@@ -309,7 +360,7 @@ body.theme-navy-academic #grp-navigation ul#navigation-menu li.over > a {
 }
 body.theme-navy-academic #grp-navigation ul#navigation-menu li ul {
   background: #243142 !important;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.6), 0 4px 16px rgba(0, 0, 0, 0.4);
 }
 body.theme-navy-academic #grp-navigation ul#navigation-menu li ul li {
   background: #243142 !important;
@@ -515,12 +566,14 @@ body.theme-navy-academic .grp-add-link:hover {
   border: 1px solid #d4af37 !important;
   color: #1a2332 !important;
 }
-body.theme-navy-academic .grp-state-focus {
+body.theme-navy-academic .grp-state-focus,
+body.theme-navy-academic ul.grp-object-tools li a {
   background: #2e3f54 !important;
   color: #d4af37 !important;
   border: 2px solid #d4af37 !important;
 }
-body.theme-navy-academic .grp-state-focus:hover {
+body.theme-navy-academic .grp-state-focus:hover,
+body.theme-navy-academic ul.grp-object-tools li a:hover {
   background: #d4af37 !important;
   color: #1a2332 !important;
 }
@@ -547,7 +600,7 @@ body.theme-gray-professional #grp-navigation ul#navigation-menu li.over > a {
 }
 body.theme-gray-professional #grp-navigation ul#navigation-menu li ul {
   background: #4a4a4a !important;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.5), 0 4px 16px rgba(0, 0, 0, 0.3);
 }
 body.theme-gray-professional #grp-navigation ul#navigation-menu li ul li {
   background: #4a4a4a !important;
@@ -752,12 +805,14 @@ body.theme-gray-professional .grp-add-link:hover {
   border: 1px solid #cc3d1a !important;
   color: #ffffff !important;
 }
-body.theme-gray-professional .grp-state-focus {
+body.theme-gray-professional .grp-state-focus,
+body.theme-gray-professional ul.grp-object-tools li a {
   background: #555555 !important;
   color: #ff6939 !important;
   border: 2px solid #ff6939 !important;
 }
-body.theme-gray-professional .grp-state-focus:hover {
+body.theme-gray-professional .grp-state-focus:hover,
+body.theme-gray-professional ul.grp-object-tools li a:hover {
   background: #ff6939 !important;
   color: #ffffff !important;
 }
@@ -784,7 +839,8 @@ body.theme-cream-green #grp-navigation ul#navigation-menu li.over > a {
 }
 body.theme-cream-green #grp-navigation ul#navigation-menu li ul {
   background: #ffffff !important;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.35), 0 4px 16px rgba(0, 0, 0, 0.18);
+  border: 1px solid #e6dcc8;
 }
 body.theme-cream-green #grp-navigation ul#navigation-menu li ul li {
   background: #ffffff !important;
@@ -989,12 +1045,14 @@ body.theme-cream-green .grp-add-link:hover {
   border: 1px solid #1e4d2b !important;
   color: #ffffff !important;
 }
-body.theme-cream-green .grp-state-focus {
+body.theme-cream-green .grp-state-focus,
+body.theme-cream-green ul.grp-object-tools li a {
   background: #e8f5e9 !important;
   color: #2e7d32 !important;
   border: 2px solid #2e7d32 !important;
 }
-body.theme-cream-green .grp-state-focus:hover {
+body.theme-cream-green .grp-state-focus:hover,
+body.theme-cream-green ul.grp-object-tools li a:hover {
   background: #2e7d32 !important;
   color: #ffffff !important;
 }
@@ -1022,7 +1080,7 @@ body.theme-minimal-light #grp-navigation ul#navigation-menu li.over > a {
 }
 body.theme-minimal-light #grp-navigation ul#navigation-menu li ul {
   background: #ffffff !important;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.3), 0 4px 16px rgba(0, 0, 0, 0.15);
   border: 1px solid #f0f0f0;
 }
 body.theme-minimal-light #grp-navigation ul#navigation-menu li ul li {
@@ -1232,12 +1290,14 @@ body.theme-minimal-light .grp-add-link:hover {
   border: 1px solid #000000 !important;
   color: #ffffff !important;
 }
-body.theme-minimal-light .grp-state-focus {
+body.theme-minimal-light .grp-state-focus,
+body.theme-minimal-light ul.grp-object-tools li a {
   background: #ede7f6 !important;
   color: #5050d0 !important;
   border: 2px solid #5050d0 !important;
 }
-body.theme-minimal-light .grp-state-focus:hover {
+body.theme-minimal-light .grp-state-focus:hover,
+body.theme-minimal-light ul.grp-object-tools li a:hover {
   background: #5050d0 !important;
   color: #ffffff !important;
 }
@@ -1264,7 +1324,8 @@ body.theme-golden #grp-navigation ul#navigation-menu li.over > a {
 }
 body.theme-golden #grp-navigation ul#navigation-menu li ul {
   background: #fffef8 !important;
-  box-shadow: 0 6px 20px rgba(193, 155, 45, 0.3);
+  box-shadow: 0 12px 48px rgba(193, 155, 45, 0.5), 0 4px 16px rgba(193, 155, 45, 0.3);
+  border: 1px solid #e0c554;
 }
 body.theme-golden #grp-navigation ul#navigation-menu li ul li {
   background: #fffef8 !important;
@@ -1472,12 +1533,14 @@ body.theme-golden .grp-add-link:hover {
   border: 1px solid #c19b2d !important;
   color: #2c2416 !important;
 }
-body.theme-golden .grp-state-focus {
+body.theme-golden .grp-state-focus,
+body.theme-golden ul.grp-object-tools li a {
   background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%) !important;
   color: #f57c00 !important;
   border: 2px solid #f57c00 !important;
 }
-body.theme-golden .grp-state-focus:hover {
+body.theme-golden .grp-state-focus:hover,
+body.theme-golden ul.grp-object-tools li a:hover {
   background: linear-gradient(135deg, #f57c00 0%, #e65100 100%) !important;
   color: #ffffff !important;
 }
@@ -1504,7 +1567,8 @@ body.theme-srebrny #grp-navigation ul#navigation-menu li.over > a {
 }
 body.theme-srebrny #grp-navigation ul#navigation-menu li ul {
   background: #f9f9f9 !important;
-  box-shadow: 0 6px 20px rgba(128, 128, 128, 0.3);
+  box-shadow: 0 12px 48px rgba(128, 128, 128, 0.5), 0 4px 16px rgba(128, 128, 128, 0.3);
+  border: 1px solid #d3d3d3;
 }
 body.theme-srebrny #grp-navigation ul#navigation-menu li ul li {
   background: #f9f9f9 !important;
@@ -1712,12 +1776,14 @@ body.theme-srebrny .grp-add-link:hover {
   border: 1px solid #a8a8a8 !important;
   color: #2d2d2d !important;
 }
-body.theme-srebrny .grp-state-focus {
+body.theme-srebrny .grp-state-focus,
+body.theme-srebrny ul.grp-object-tools li a {
   background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%) !important;
   color: #6c9bd2 !important;
   border: 2px solid #6c9bd2 !important;
 }
-body.theme-srebrny .grp-state-focus:hover {
+body.theme-srebrny .grp-state-focus:hover,
+body.theme-srebrny ul.grp-object-tools li a:hover {
   background: linear-gradient(135deg, #6c9bd2 0%, #5a86b8 100%) !important;
   color: #ffffff !important;
 }
@@ -1745,7 +1811,7 @@ body.theme-mario-bros #grp-navigation ul#navigation-menu li.over > a {
 }
 body.theme-mario-bros #grp-navigation ul#navigation-menu li ul {
   background: #ffffff !important;
-  box-shadow: 0 8px 24px rgba(229, 37, 33, 0.4);
+  box-shadow: 0 8px 24px rgba(229, 37, 33, 0.35);
   border: 3px solid #0066cc;
 }
 body.theme-mario-bros #grp-navigation ul#navigation-menu li ul li {
@@ -1978,14 +2044,16 @@ body.theme-mario-bros .grp-add-link:hover {
   color: #ffffff !important;
   transform: translateY(-1px);
 }
-body.theme-mario-bros .grp-state-focus {
+body.theme-mario-bros .grp-state-focus,
+body.theme-mario-bros ul.grp-object-tools li a {
   background: linear-gradient(135deg, #fff5d6 0%, #ffe89d 100%) !important;
   color: #e52521 !important;
   border: 2px solid #fff200 !important;
   border-radius: 4px !important;
   font-weight: bold !important;
 }
-body.theme-mario-bros .grp-state-focus:hover {
+body.theme-mario-bros .grp-state-focus:hover,
+body.theme-mario-bros ul.grp-object-tools li a:hover {
   background: linear-gradient(135deg, #fff200 0%, #ffd54f 100%) !important;
   color: #c91e1a !important;
 }
@@ -2013,7 +2081,7 @@ body.theme-luigi #grp-navigation ul#navigation-menu li.over > a {
 }
 body.theme-luigi #grp-navigation ul#navigation-menu li ul {
   background: #ffffff !important;
-  box-shadow: 0 8px 24px rgba(0, 166, 81, 0.4);
+  box-shadow: 0 8px 24px rgba(0, 166, 81, 0.35);
   border: 3px solid #00a651;
 }
 body.theme-luigi #grp-navigation ul#navigation-menu li ul li {
@@ -2246,14 +2314,16 @@ body.theme-luigi .grp-add-link:hover {
   color: #ffffff !important;
   transform: translateY(-1px);
 }
-body.theme-luigi .grp-state-focus {
+body.theme-luigi .grp-state-focus,
+body.theme-luigi ul.grp-object-tools li a {
   background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%) !important;
   color: #00a651 !important;
   border: 2px solid #43a047 !important;
   border-radius: 4px !important;
   font-weight: bold !important;
 }
-body.theme-luigi .grp-state-focus:hover {
+body.theme-luigi .grp-state-focus:hover,
+body.theme-luigi ul.grp-object-tools li a:hover {
   background: linear-gradient(135deg, #43a047 0%, #388e3c 100%) !important;
   color: #ffffff !important;
 }
@@ -2390,6 +2460,9 @@ body.font-inter-small #grp-navigation a {
   font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
   font-size: 13px !important;
 }
+body.font-inter-small fieldset.grp-module .grp-row label {
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+}
 
 /* -------------------------------------------------------------------------------- */
 /* Open Sans Font Family */
@@ -2425,6 +2498,9 @@ body.font-opensans-small #grp-navigation a {
   font-family: "Open Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
   font-size: 13px !important;
 }
+body.font-opensans-small fieldset.grp-module .grp-row label {
+  font-family: "Open Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+}
 
 /* -------------------------------------------------------------------------------- */
 /* Roboto Font Family */
@@ -2458,7 +2534,11 @@ body.font-roboto-small td, body.font-roboto-small th {
   font-size: 13px !important;
 }
 body.font-roboto-small #grp-navigation a {
+  font-family: "Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
   font-size: 13px !important;
+}
+body.font-roboto-small fieldset.grp-module .grp-row label {
+  font-family: "Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
 }
 
 /* -------------------------------------------------------------------------------- */
@@ -2492,7 +2572,11 @@ body.font-lato-small td, body.font-lato-small th {
   font-size: 13px !important;
 }
 body.font-lato-small #grp-navigation a {
+  font-family: "Lato", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
   font-size: 13px !important;
+}
+body.font-lato-small fieldset.grp-module .grp-row label {
+  font-family: "Lato", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
 }
 
 /* -------------------------------------------------------------------------------- */
@@ -2526,7 +2610,11 @@ body.font-sourcesans-small td, body.font-sourcesans-small th {
   font-size: 13px !important;
 }
 body.font-sourcesans-small #grp-navigation a {
+  font-family: "Source Sans Pro", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
   font-size: 13px !important;
+}
+body.font-sourcesans-small fieldset.grp-module .grp-row label {
+  font-family: "Source Sans Pro", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
 }
 
 /* -------------------------------------------------------------------------------- */
@@ -2682,7 +2770,11 @@ body.font-segoeui-small td, body.font-segoeui-small th {
   font-size: 13px !important;
 }
 body.font-segoeui-small #grp-navigation a {
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif !important;
   font-size: 13px !important;
+}
+body.font-segoeui-small fieldset.grp-module .grp-row label {
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif !important;
 }
 
 /* -------------------------------------------------------------------------------- */
@@ -2716,7 +2808,11 @@ body.font-arial-small td, body.font-arial-small th {
   font-size: 13px !important;
 }
 body.font-arial-small #grp-navigation a {
+  font-family: Arial, Helvetica, sans-serif !important;
   font-size: 13px !important;
+}
+body.font-arial-small fieldset.grp-module .grp-row label {
+  font-family: Arial, Helvetica, sans-serif !important;
 }
 
 /* -------------------------------------------------------------------------------- */
@@ -2751,7 +2847,11 @@ body.font-verdana-small td, body.font-verdana-small th {
   font-size: 13px !important;
 }
 body.font-verdana-small #grp-navigation a {
+  font-family: Verdana, Geneva, Tahoma, sans-serif !important;
   font-size: 13px !important;
+}
+body.font-verdana-small fieldset.grp-module .grp-row label {
+  font-family: Verdana, Geneva, Tahoma, sans-serif !important;
 }
 
 /* -------------------------------------------------------------------------------- */
@@ -2785,7 +2885,11 @@ body.font-calibri-small td, body.font-calibri-small th {
   font-size: 13px !important;
 }
 body.font-calibri-small #grp-navigation a {
+  font-family: Calibri, Candara, "Segoe UI", Optima, Arial, sans-serif !important;
   font-size: 13px !important;
+}
+body.font-calibri-small fieldset.grp-module .grp-row label {
+  font-family: Calibri, Candara, "Segoe UI", Optima, Arial, sans-serif !important;
 }
 
 /*# sourceMappingURL=admin-themes.css.map */

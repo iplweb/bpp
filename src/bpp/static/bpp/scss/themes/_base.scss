@@ -2,6 +2,54 @@
 /* Admin Menu Theme System - Base Styles */
 /* -------------------------------------------------------------------------------- */
 
+/* Base styles for grp-object-tools buttons */
+/* Make all links in object-tools look like buttons */
+ul.grp-object-tools li a {
+    display: inline-block !important;
+    padding: 5px 12px !important;
+    padding-left: 35px !important;
+    text-decoration: none !important;
+    font-weight: normal !important;
+    font-size: 12px !important;
+    line-height: 16px !important;
+    border-radius: 3px !important;
+    -moz-border-radius: 3px !important;
+    -webkit-border-radius: 3px !important;
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease !important;
+    position: relative !important;
+}
+
+/* Icons for different link types in grp-object-tools */
+/* Add icon - używamy ➕ dla jasnych motywów */
+ul.grp-object-tools li a[href*="/add/"]::before {
+    content: "➕";
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 14px;
+}
+
+/* Export icon - używamy 📊 dla arkusza/Excel */
+ul.grp-object-tools li a[href*="/export/"]::before {
+    content: "📊";
+    position: absolute;
+    left: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 16px;
+}
+
+/* Crossref/document icon - używamy 📄 dla dokumentu */
+ul.grp-object-tools li a[href*="/pobierz-z-crossref/"]::before {
+    content: "📄";
+    position: absolute;
+    left: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 16px;
+}
+
 /* Smooth color transitions for theme switching */
 body,
 #grp-navigation,

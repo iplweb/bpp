@@ -23,7 +23,7 @@ body.theme-navy-academic {
 
         ul#navigation-menu li ul {
             background: #243142 !important;
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+            box-shadow: 0 12px 48px rgba(0, 0, 0, 0.6), 0 4px 16px rgba(0, 0, 0, 0.4);
 
             li {
                 background: #243142 !important;
@@ -251,7 +251,8 @@ body.theme-navy-academic {
         }
     }
 
-    .grp-state-focus {
+    .grp-state-focus,
+    ul.grp-object-tools li a {
         background: #2e3f54 !important;
         color: #d4af37 !important;
         border: 2px solid #d4af37 !important;

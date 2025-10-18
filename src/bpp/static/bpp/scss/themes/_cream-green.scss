@@ -23,7 +23,8 @@ body.theme-cream-green {
 
         ul#navigation-menu li ul {
             background: #ffffff !important;
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+            box-shadow: 0 12px 48px rgba(0, 0, 0, 0.35), 0 4px 16px rgba(0, 0, 0, 0.18);
+            border: 1px solid #e6dcc8;
 
             li {
                 background: #ffffff !important;
@@ -250,7 +251,8 @@ body.theme-cream-green {
         }
     }
 
-    .grp-state-focus {
+    .grp-state-focus,
+    ul.grp-object-tools li a {
         background: #e8f5e9 !important;
         color: #2e7d32 !important;
         border: 2px solid #2e7d32 !important;
