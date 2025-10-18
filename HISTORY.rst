@@ -4,6 +4,34 @@ Historia zmian
 
 .. towncrier release notes start
 
+bpp 202510.1266 (2025-10-19)
+============================
+
+Naprawione
+----------
+
+- Naprawiono błąd Internal Server Error przy próbie użycia akcji adminowej "Wyślij do PBN w tle". Problem był spowodowany brakiem funkcji top_contributors_view w module admin_dashboard oraz błędnym formatowaniem HTML w linku do kolejki eksportu. (admin_action_pbn_fix)
+
+
+Usprawnienie
+------------
+
+- Dodano trzy wykresy donut (pierścieniowe) pokazujące hierarchiczny rozkład charakterów formalnych w bazie danych w środkowej kolumnie panelu administracyjnego. Pierwszy wykres przedstawia charaktery stanowiące kumulatywnie 90% wszystkich publikacji plus kategoria "Inne" (10%). Drugi wykres dzieli te 10% na kolejne 90% (9% całości) plus "Inne" (1% całości). Trzeci wykres szczegółowo pokazuje rozbicie ostatniego 1% najmniej popularnych charakterów. (admin_dashboard_charakter_formalny_pie_charts)
+- Po kliknięciu w wykres typu donut dla charakteru formalnego użytkownik zostaje przekierowany do admina z przefiltrowaną listą publikacji dla danego charakteru formalnego. (admin_dashboard_charakter_formalny_pie_charts_clickable)
+- Dodano płynne przejścia kolorów (animacje CSS) przy przełączaniu pomiędzy schematami kolorystycznymi w panelu administracyjnym oraz dla efektów hover w menu. Przejścia trwają 0,2 sekundy i obejmują kolory tła, tekstu oraz ramek. (admin_theme_smooth_transitions)
+- Dodano cache dla strony głównej uczelni (uczelnia.html) - funkcja get_uczelnia_context_data() jest teraz cachowana przez 1 godzinę. Dodatkowo rozszerzono konfigurację CACHEOPS o modele: Uczelnia, Wydzial, Jednostka oraz Wydawnictwo_Ciagle_Streszczenie, co zapewnia automatyczną invalidację cache przy zmianach w panelu administracyjnym. (cache_uczelnia_page)
+- Dodano interaktywny dashboard administracyjny jako główną stronę Django Admin. Dashboard zawiera:
+  * Statystyki podstawowe (publikacje, autorzy, jednostki, użytkownicy)
+  * Tabelę ostatnich logowań z automatycznym odświeżaniem (HTMX)
+  * Wykresy aktywności użytkowników z podziałem na dzień/tydzień/miesiąc (Plotly)
+  * Wykres nowych publikacji w różnych okresach czasowych (Plotly)
+  * Wyszukiwarkę aplikacji i modeli z dynamicznym filtrowaniem (JavaScript)
+  * Integrację z systemem easyaudit do śledzenia logowań (dashboard_admin)
+- Dodano polską lokalizację dla wszystkich wykresów Plotly.js - wykresy wyświetlają teraz polskie nazwy dni tygodnia, miesięcy i formaty daty. (plotly_lokalizacja_pl)
+- Ukryto logo Plotly na wszystkich wykresach w panelu administracyjnym (admin_dashboard) oraz w widokach metryk ewaluacyjnych (ewaluacja_metryki). (plotly_ukryj_logo)
+- Dodano wykres poziomy z ilością zgłoszeń publikacji według dni tygodnia w pierwszej kolumnie panelu zarządzania (dane z ostatniego miesiąca). Kliknięcie w słupek wykresu przekierowuje do listy zgłoszeń z wybranego dnia tygodnia. (zglos_publikacje_weekday_chart)
+
+
 bpp 202510.1265 (2025-10-17)
 ============================
 
