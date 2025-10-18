@@ -315,7 +315,7 @@
                     fetch('{% url "admin_dashboard:weekday_stats" %}')
                         .then(response => response.json())
                         .then(data => {
-                            Plotly.newPlot('weekday-chart', data.data, data.layout, {responsive: true, locale: 'pl'});
+                            Plotly.newPlot('weekday-chart', data.data, data.layout, {responsive: true, displaylogo: false, locale: 'pl'});
                         })
                         .catch(error => console.error('Error loading weekday chart:', error));
                 }
@@ -325,7 +325,7 @@
                     fetch('{% url "admin_dashboard:day_of_month_activity_stats" %}')
                         .then(response => response.json())
                         .then(data => {
-                            Plotly.newPlot('day-of-month-chart', data.data, data.layout, {responsive: true, locale: 'pl'});
+                            Plotly.newPlot('day-of-month-chart', data.data, data.layout, {responsive: true, displaylogo: false, locale: 'pl'});
                         })
                         .catch(error => console.error('Error loading day of month chart:', error));
                 }
@@ -335,7 +335,7 @@
                     fetch('{% url "admin_dashboard:new_publications_stats" %}')
                         .then(response => response.json())
                         .then(data => {
-                            Plotly.newPlot('new-publications-chart', data.data, data.layout, {responsive: true, locale: 'pl'});
+                            Plotly.newPlot('new-publications-chart', data.data, data.layout, {responsive: true, displaylogo: false, locale: 'pl'});
                         })
                         .catch(error => console.error('Error loading new publications chart:', error));
                 }
@@ -345,7 +345,7 @@
                     fetch('{% url "admin_dashboard:cumulative_publications_stats" %}')
                         .then(response => response.json())
                         .then(data => {
-                            Plotly.newPlot('cumulative-publications-chart', data.data, data.layout, {responsive: true, locale: 'pl'});
+                            Plotly.newPlot('cumulative-publications-chart', data.data, data.layout, {responsive: true, displaylogo: false, locale: 'pl'});
                         })
                         .catch(error => console.error('Error loading cumulative publications chart:', error));
                 }
@@ -355,7 +355,7 @@
                     fetch('{% url "admin_dashboard:cumulative_impact_factor_stats" %}')
                         .then(response => response.json())
                         .then(data => {
-                            Plotly.newPlot('cumulative-if-chart', data.data, data.layout, {responsive: true, locale: 'pl'});
+                            Plotly.newPlot('cumulative-if-chart', data.data, data.layout, {responsive: true, displaylogo: false, locale: 'pl'});
                         })
                         .catch(error => console.error('Error loading cumulative IF chart:', error));
                 }
@@ -365,7 +365,7 @@
                     fetch('{% url "admin_dashboard:cumulative_points_kbn_stats" %}')
                         .then(response => response.json())
                         .then(data => {
-                            Plotly.newPlot('cumulative-points-chart', data.data, data.layout, {responsive: true, locale: 'pl'});
+                            Plotly.newPlot('cumulative-points-chart', data.data, data.layout, {responsive: true, displaylogo: false, locale: 'pl'});
                         })
                         .catch(error => console.error('Error loading cumulative points chart:', error));
                 }
@@ -375,7 +375,7 @@
                     fetch('{% url "admin_dashboard:charakter_formalny_stats_top90" %}')
                         .then(response => response.json())
                         .then(data => {
-                            Plotly.newPlot('charakter-formalny-chart-top90', data.data, data.layout, {responsive: true, locale: 'pl'});
+                            Plotly.newPlot('charakter-formalny-chart-top90', data.data, data.layout, {responsive: true, displaylogo: false, locale: 'pl'});
 
                             var chartElement = document.getElementById('charakter-formalny-chart-top90');
 
@@ -421,7 +421,7 @@
                     fetch('{% url "admin_dashboard:charakter_formalny_stats_remaining10" %}')
                         .then(response => response.json())
                         .then(data => {
-                            Plotly.newPlot('charakter-formalny-chart-remaining10', data.data, data.layout, {responsive: true, locale: 'pl'});
+                            Plotly.newPlot('charakter-formalny-chart-remaining10', data.data, data.layout, {responsive: true, displaylogo: false, locale: 'pl'});
 
                             var chartElement = document.getElementById('charakter-formalny-chart-remaining10');
 
@@ -467,7 +467,7 @@
                     fetch('{% url "admin_dashboard:charakter_formalny_stats_remaining1" %}')
                         .then(response => response.json())
                         .then(data => {
-                            Plotly.newPlot('charakter-formalny-chart-remaining1', data.data, data.layout, {responsive: true, locale: 'pl'});
+                            Plotly.newPlot('charakter-formalny-chart-remaining1', data.data, data.layout, {responsive: true, displaylogo: false, locale: 'pl'});
 
                             var chartElement = document.getElementById('charakter-formalny-chart-remaining1');
 

@@ -209,7 +209,11 @@
             </thead>
             <tbody>
                 {% for metryka in metryki %}
-                <tr>
+                <tr class="clickable-row"
+                    data-autor-slug="{{ metryka.autor.slug }}"
+                    data-dyscyplina-kod="{{ metryka.dyscyplina_naukowa.kod }}"
+                    style="cursor: pointer;"
+                    title="Kliknij aby zobaczyć szczegóły">
                     <td>
                         <strong>
                             <a href="{% url 'ewaluacja_metryki:szczegoly' autor_slug=metryka.autor.slug dyscyplina_kod=metryka.dyscyplina_naukowa.kod %}" title="Szczegóły metryki ewaluacyjnej">
@@ -1855,6 +1859,36 @@ $(document).ready(function() {
         });
     })();
     {% endif %}
+
+    // Obsługa kliknięcia na wiersz tabeli
+    $('.clickable-row').on('click', function(e) {
+        // Nie przekierowuj jeśli kliknięto na link, przycisk lub element w kolumnie akcji
+        if ($(e.target).closest('a, button, .button').length > 0) {
+            return;
+        }
+
+        // Pobierz dane z atrybutów wiersza
+        var autorSlug = $(this).data('autor-slug');
+        var dyscyplinaKod = $(this).data('dyscyplina-kod');
+
+        // Zbuduj URL i przekieruj
+        if (autorSlug && dyscyplinaKod) {
+            var url = '{% url "ewaluacja_metryki:szczegoly" autor_slug="AUTOR_SLUG" dyscyplina_kod="DYSC_KOD" %}'
+                .replace('AUTOR_SLUG', autorSlug)
+                .replace('DYSC_KOD', dyscyplinaKod);
+            window.location.href = url;
+        }
+    });
+
+    // Dodaj efekt hover dla klikalnych wierszy
+    $('.clickable-row').hover(
+        function() {
+            $(this).css('background-color', '#f0f8ff');
+        },
+        function() {
+            $(this).css('background-color', '');
+        }
+    );
 
     // Initialize efektywność mapa ciepła visualization
     {% if widok == "efektywnosc_mapa_ciepla" and metryki %}
