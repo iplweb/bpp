@@ -1,0 +1,1 @@
+Poprawiono generowanie linków w wykresach na panelu administracyjnym - kliknięcie na wykres charakteru formalnego teraz poprawnie przekierowuje do listy rekordów z filtrem ``?charakter_formalny__id__exact=ID`` zamiast nieprawidłowego ``?charakter_formalny=ID``

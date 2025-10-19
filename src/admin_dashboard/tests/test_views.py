@@ -736,7 +736,7 @@ def test_get_admin_url_for_charakter_patent():
     """Test weryfikujący URL dla patentu."""
     url = _get_admin_url_for_charakter("PAT", 1, 10, 5)
     assert "/admin/bpp/patent/" in url
-    assert "charakter_formalny=1" in url
+    assert "charakter_formalny__id__exact=1" in url
 
 
 @pytest.mark.django_db
@@ -744,7 +744,7 @@ def test_get_admin_url_for_charakter_praca_doktorska():
     """Test weryfikujący URL dla pracy doktorskiej."""
     url = _get_admin_url_for_charakter("D", 2, 10, 5)
     assert "/admin/bpp/praca_doktorska/" in url
-    assert "charakter_formalny=2" in url
+    assert "charakter_formalny__id__exact=2" in url
 
 
 @pytest.mark.django_db
@@ -752,7 +752,7 @@ def test_get_admin_url_for_charakter_praca_habilitacyjna():
     """Test weryfikujący URL dla pracy habilitacyjnej."""
     url = _get_admin_url_for_charakter("H", 3, 10, 5)
     assert "/admin/bpp/praca_habilitacyjna/" in url
-    assert "charakter_formalny=3" in url
+    assert "charakter_formalny__id__exact=3" in url
 
 
 @pytest.mark.django_db
@@ -760,7 +760,7 @@ def test_get_admin_url_for_charakter_ciagle_more():
     """Test weryfikujący URL dla wydawnictw ciągłych (gdy więcej niż zwartych)."""
     url = _get_admin_url_for_charakter("AC", 4, 100, 50)
     assert "/admin/bpp/wydawnictwo_ciagle/" in url
-    assert "charakter_formalny=4" in url
+    assert "charakter_formalny__id__exact=4" in url
 
 
 @pytest.mark.django_db
@@ -768,7 +768,7 @@ def test_get_admin_url_for_charakter_zwarte_more():
     """Test weryfikujący URL dla wydawnictw zwartych (gdy więcej niż ciągłych)."""
     url = _get_admin_url_for_charakter("KSP", 5, 30, 70)
     assert "/admin/bpp/wydawnictwo_zwarte/" in url
-    assert "charakter_formalny=5" in url
+    assert "charakter_formalny__id__exact=5" in url
 
 
 @pytest.mark.django_db
