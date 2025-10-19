@@ -521,17 +521,17 @@ COMPRESS_OFFLINE_CONTEXT = [
     },
 ]
 
+DJANGO_BPP_HOSTNAME = env("DJANGO_BPP_HOSTNAME")
+
 ALLOWED_HOSTS = [
     "127.0.0.1",
     "appserver",
     "appserver:8000",
     "test.unexistenttld",
-    env("DJANGO_BPP_HOSTNAME"),
+    DJANGO_BPP_HOSTNAME,
 ]
 
-CSRF_TRUSTED_ORIGINS = [
-    "https://" + env("DJANGO_BPP_HOSTNAME"),
-]
+CSRF_TRUSTED_ORIGINS = ["https://" + DJANGO_BPP_HOSTNAME]
 
 REDIS_HOST = env("DJANGO_BPP_REDIS_HOST")
 REDIS_PORT = env("DJANGO_BPP_REDIS_PORT")

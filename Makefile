@@ -1,6 +1,6 @@
 BRANCH=`git branch | sed -n '/\* /s///p'`
 
-.PHONY: clean distclean tests release tests-without-selenium tests-with-selenium docker destroy-test-databases coveralls-upload
+.PHONY: clean distclean tests release tests-without-selenium tests-with-selenium docker destroy-test-databases coveralls-upload clean-coverage combine-coverage
 
 PYTHON=python3
 
@@ -126,6 +126,10 @@ disable-microsoft-auth:
 	rm -f ~/.env.local
 	uv pip uninstall -y django_microsoft_auth
 
+clean-coverage:
+	rm -f .coverage .coverage.* cov.xml
+	rm -rf cov_html
+
 tests-without-selenium:
 	uv run pytest -n auto --splinter-headless -m "not selenium and not playwright" --maxfail 50
 
@@ -137,15 +141,20 @@ tests-with-microsoft-auth: enable-microsoft-auth tests-without-selenium-with-mic
 tests-with-selenium:
 	uv run pytest -n auto  --splinter-headless -m "selenium or playwright"
 
+combine-coverage:
+	uv run coverage combine
+	uv run coverage xml
+	uv run coverage html
+
 coveralls-upload:
 	uv run coveralls
 
-tests: tests-without-selenium tests-with-selenium js-tests coveralls-upload
+tests: clean-coverage tests-without-selenium tests-with-selenium combine-coverage js-tests coveralls-upload
 
 destroy-test-databases:
 	-./bin/drop-test-databases.sh
 
-full-tests: destroy-test-databases tests-with-microsoft-auth destroy-test-databases tests js-tests coveralls-upload
+full-tests: destroy-test-databases clean-coverage tests-with-microsoft-auth destroy-test-databases tests-without-selenium tests-with-selenium combine-coverage js-tests coveralls-upload
 
 
 integration-start-from-match:
