@@ -2,12 +2,18 @@
 import json
 from json import JSONDecodeError
 
+from django.contrib import admin, messages
+from django.contrib.sites.models import Site
 from django.http import HttpResponseRedirect
 from django.urls import path, reverse
+from django.utils.itercompat import is_iterable
 from djangoql.admin import DjangoQLSearchMixin
 from import_export import resources
 from import_export.fields import Field
 
+from bpp.admin.core import DynamicAdminFilterMixin
+from bpp.admin.helpers import link_do_obiektu
+from bpp.admin.xlsx_export.mixins import EksportDanychMixin
 from rozbieznosci_dyscyplin.admin_utils import (
     CachingPaginator,
     DyscyplinaAutoraUstawionaFilter,
@@ -17,14 +23,6 @@ from rozbieznosci_dyscyplin.admin_utils import (
     PunktyKbnFilter,
 )
 from rozbieznosci_dyscyplin.models import RozbieznosciView, RozbieznosciZrodelView
-
-from django.contrib import admin, messages
-from django.contrib.sites.models import Site
-
-from django.utils.itercompat import is_iterable
-
-from bpp.admin.helpers import link_do_obiektu
-from bpp.admin.xlsx_export.mixins import EksportDanychMixin
 
 
 def parse_object_id(object_id, max_len=3):
@@ -274,7 +272,11 @@ class RozbieznosciZrodelViewResource(resources.ModelResource):
 
 @admin.register(RozbieznosciView)
 class RozbieznosciViewAdmin(
-    DjangoQLSearchMixin, ReadonlyAdminMixin, EksportDanychMixin, admin.ModelAdmin
+    DynamicAdminFilterMixin,
+    DjangoQLSearchMixin,
+    ReadonlyAdminMixin,
+    EksportDanychMixin,
+    admin.ModelAdmin,
 ):
     resource_class = RozbieznosciViewResource
     djangoql_completion_enabled_by_default = False
@@ -357,7 +359,11 @@ class RozbieznosciViewAdmin(
 
 @admin.register(RozbieznosciZrodelView)
 class RozbieznosciZrodelViewAdmin(
-    DjangoQLSearchMixin, ReadonlyAdminMixin, EksportDanychMixin, admin.ModelAdmin
+    DynamicAdminFilterMixin,
+    DjangoQLSearchMixin,
+    ReadonlyAdminMixin,
+    EksportDanychMixin,
+    admin.ModelAdmin,
 ):
     resource_class = RozbieznosciZrodelViewResource
     paginator = CachingPaginator

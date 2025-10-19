@@ -157,6 +157,10 @@ env = environ.Env(
     # Pydantic Logfire
     #
     PYDANTIC_LOGFIRE_TOKEN=(str, None),
+    #
+    # Liczniki w filtrac
+    #
+    DYNAMIC_FILTER_COUNTS_ENABLE=(bool, True),
 )
 
 
@@ -1237,3 +1241,5 @@ if PYDANTIC_LOGFIRE_TOKEN:
     logfire.configure(token=env("PYDANTIC_LOGFIRE_TOKEN"))
     logfire.instrument_django()
     # logfire.instrument_psycopg()
+
+DYNAMIC_FILTER_COUNTS_ENABLE = env("DYNAMIC_FILTER_COUNTS_ENABLE")

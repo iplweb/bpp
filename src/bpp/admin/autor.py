@@ -17,7 +17,11 @@ from ..models import (  # Publikacja_Habilitacyjna
 )
 from .core import BaseBppAdminMixin
 from .filters import (
+    AutorZmarlFilter,
     JednostkaFilter,
+    MaEmailFilter,
+    MaSystemKadrowyIDFilter,
+    MaWWWFilter,
     OrcidObecnyFilter,
     PBN_UID_IDObecnyFilter,
     PBNIDObecnyFilter,
@@ -66,7 +70,19 @@ class Autor_DyscyplinaInlineForm(forms.ModelForm):
     )
 
     class Meta:
-        fields = "__all__"
+        model = Autor_Dyscyplina
+        fields = [
+            "rok",
+            "autor",
+            "rodzaj_autora",
+            "wymiar_etatu",
+            "dyscyplina_naukowa",
+            "procent_dyscypliny",
+            "subdyscyplina_naukowa",
+            "procent_subdyscypliny",
+            "zatrudnienie_od",
+            "zatrudnienie_do",
+        ]
 
     def __init__(self, *args, **kw):
         super().__init__(*args, **kw)
@@ -110,7 +126,17 @@ class Autor_JednostkaInlineForm(forms.ModelForm):
     )
 
     class Meta:
-        fields = "__all__"
+        model = Autor_Jednostka
+        fields = [
+            "autor",
+            "jednostka",
+            "rozpoczal_prace",
+            "zakonczyl_prace",
+            "funkcja",
+            "podstawowe_miejsce_pracy",
+            "grupa_pracownicza",
+            "wymiar_etatu",
+        ]
 
 
 class Autor_JednostkaInline(admin.TabularInline):
@@ -133,8 +159,31 @@ class AutorForm(forms.ModelForm):
     )
 
     class Meta:
-        fields = "__all__"
         model = Autor
+        fields = [
+            "pbn_id",
+            "imiona",
+            "nazwisko",
+            "tytul",
+            "pseudonim",
+            "aktualna_funkcja",
+            "pokazuj",
+            "email",
+            "www",
+            "plec",
+            "urodzony",
+            "zmarl",
+            "opis",
+            "pokazuj_opis",
+            "poprzednie_nazwiska",
+            "pokazuj_poprzednie_nazwiska",
+            "orcid",
+            "orcid_w_pbn",
+            "expertus_id",
+            "system_kadrowy_id",
+            "pbn_uid",
+            "adnotacje",
+        ]
         widgets = {"imiona": CHARMAP_SINGLE_LINE, "nazwisko": CHARMAP_SINGLE_LINE}
 
 
@@ -205,6 +254,12 @@ class AutorAdmin(
         PBNIDObecnyFilter,
         OrcidObecnyFilter,
         PBN_UID_IDObecnyFilter,
+        "plec",
+        AutorZmarlFilter,
+        "pokazuj",
+        MaEmailFilter,
+        MaWWWFilter,
+        MaSystemKadrowyIDFilter,
     ]
     search_fields = [
         "imiona",

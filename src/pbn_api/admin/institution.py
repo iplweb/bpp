@@ -1,7 +1,7 @@
 from django.contrib import admin
 
 from pbn_api.admin.base import BaseMongoDBAdmin
-from pbn_api.admin.filters import OdpowiednikJednostkiWBPPFilter
+from pbn_api.admin.filters import OdpowiednikJednostkiWBPPFilter, PolonUidObecnyFilter
 from pbn_api.models import Institution
 
 
@@ -25,4 +25,11 @@ class InstitutionAdmin(BaseMongoDBAdmin):
         "addressPostalCode",
         "polonUid",
     ]
-    list_filter = [OdpowiednikJednostkiWBPPFilter] + BaseMongoDBAdmin.list_filter
+    list_filter = [
+        OdpowiednikJednostkiWBPPFilter,
+        PolonUidObecnyFilter,
+        "status",
+        "verificationLevel",
+        "verified",
+        "addressCity",
+    ] + BaseMongoDBAdmin.list_filter

@@ -239,109 +239,6 @@
                     </div>
                 </div>
             {% endif %}
-
-            <!-- Additional Information Card - Show here if no abstracts -->
-            {% if not praca.streszczenia.exists %}
-                <div class="info-card"
-                     style="background: white; border: 1px solid #e1e4e8; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
-                    <h3 style="font-size: 1.2rem; margin-bottom: 15px; color: #2c3e50; padding-bottom: 8px;">
-                        <span class="fi-widget"></span> Informacje dodatkowe
-                        <div class="shaded-hr-div-small"></div>
-                    </h3>
-                    <div style="margin-top: 15px;">
-                        <table style="width: 100%;">
-                            {% if praca.charakter_formalny.skrot == "PAT" %}
-                                <tr>
-                                    <td colspan="2"
-                                        style="padding: 10px; background: #f8f9fa; border-radius: 6px; margin-bottom: 10px;">
-                                        <strong>Patent:</strong><br/>
-                                        <div style="margin-left: 20px; margin-top: 10px;">
-                                            <b>Numer zgłoszenia:</b> {{ praca.numer_zgloszenia|default:"brak" }}<br/>
-                                            <b>Wydział:</b> {{ praca.wydzial|default:"brak" }}<br/>
-                                            <b>Rodzaj prawa:</b> {{ praca.rodzaj_prawa|default:"brak" }}<br/>
-                                            <b>Data zgłoszenia:</b> {{ praca.data_zgloszenia|default:"brak" }}<br/>
-                                            <b>Data decyzji:</b> {{ praca.data_decyzji|default:"brak" }}<br/>
-                                            <b>Numer prawa wyłącznego:</b>
-                                            {{ praca.numer_prawa_wylacznego|default:"brak" }}<br/>
-                                            <b>Wdrożenie:</b> {% if praca.wdrozenie %}tak{% else %}nie{% endif %}
-                                        </div>
-                                    </td>
-                                </tr>
-                            {% endif %}
-
-                            {% if praca.liczba_znakow_wydawniczych %}
-                                <tr>
-                                    <th style="padding: 10px;">Liczba arkuszy wydawniczych:</th>
-                                    <td style="padding: 10px;">{{ praca.wymiar_wydawniczy_w_arkuszach }}</td>
-                                </tr>
-                            {% endif %}
-
-                            {% if uczelnia.pokazuj_status_korekty == "always" or uczelnia.pokazuj_status_korekty == "logged-in" and not request.user.is_anonymous %}
-                                <tr>
-                                    <th style="padding: 10px;">Status:</th>
-                                    <td style="padding: 10px;">{{ praca.status_korekty }}</td>
-                                </tr>
-                            {% endif %}
-
-                            {% if uczelnia.pokazuj_praca_recenzowana == "always" or uczelnia.pokazuj_praca_recenzowana == "logged-in" and not request.user.is_anonymous %}
-                                <tr>
-                                    <th style="padding: 10px;">Praca recenzowana:</th>
-                                    <td style="padding: 10px;">{{ praca.recenzowana|yesno }}</td>
-                                </tr>
-                            {% endif %}
-
-                            {% if praca.ma_procenty %}
-                                <tr>
-                                    <th style="padding: 10px; vertical-align: top;">Odpowiedzialność za powstanie
-                                        pracy:
-                                    </th>
-                                    <td style="padding: 10px;">
-                                        {% for autor in praca.autorzy_set.all %}
-                                            {% if autor.procent %}
-                                                {{ autor.procent }}% {{ autor.zapisany_jako }}<br/>
-                                            {% endif %}
-                                        {% endfor %}
-                                    </td>
-                                </tr>
-                            {% endif %}
-
-                            {% if praca.zewnetrzna_baza_danych.exists %}
-                                <tr>
-                                    <th style="padding: 10px; vertical-align: top;">Zewnętrzna baza danych:</th>
-                                    <td style="padding: 10px;">
-                                        {% for db in praca.zewnetrzna_baza_danych.all %}
-                                            • {{ db.baza.nazwa }}<br/>
-                                        {% endfor %}
-                                    </td>
-                                </tr>
-                            {% endif %}
-
-                            {% if praca.wydawnictwa_powiazane_set.exists %}
-                                <tr>
-                                    <th style="padding: 10px; vertical-align: top;">Rekordy powiązane:</th>
-                                    <td style="padding: 10px;">
-                                        {% for elem in praca.wydawnictwa_powiazane_posortowane.all %}
-                                            • <a href="{% url "bpp:browse_praca" "wydawnictwo_zwarte" elem.pk %}">
-                                            {{ elem.opis_bibliograficzny_cache|safe }}
-                                        </a><br/>
-                                        {% endfor %}
-                                    </td>
-                                </tr>
-                            {% endif %}
-
-                            <tr>
-                                <th style="padding: 10px;">Rekord utworzony:</th>
-                                <td style="padding: 10px;">{{ praca.utworzono }}</td>
-                            </tr>
-
-                            <tr>
-                                <th style="padding: 10px;">Ostatnia aktualizacja:</th>
-                                <td style="padding: 10px;">{{ praca.ostatnio_zmieniony }}</td>
-                            </tr>
-                        </table>
-                    </div>
-                </div>
-            {% endif %}
         </div>
 
         <!-- Right Column - Identifiers and Metadata -->
@@ -649,6 +546,125 @@
         </div>
     </div>
 
+    <!-- Additional Information Card - Show here if no abstracts, taking full width -->
+    {% if not praca.streszczenia.exists %}
+        <div class="additional-info" style="margin-top: 30px;">
+            <div class="info-card"
+                 style="background: white; border: 1px solid #e1e4e8; border-radius: 8px; padding: 20px;">
+                <h3 style="font-size: 1.2rem; margin-bottom: 15px; color: #2c3e50; padding-bottom: 8px;">
+                    <span class="fi-widget"></span> Informacje dodatkowe
+                    <div class="shaded-hr-div-small"></div>
+                </h3>
+                <div style="margin-top: 15px;">
+                    <table style="width: 100%;">
+                        {% if praca.charakter_formalny.skrot == "PAT" %}
+                            <tr>
+                                <td colspan="2"
+                                    style="padding: 10px; background: #f8f9fa; border-radius: 6px; margin-bottom: 10px;">
+                                    <strong>Patent:</strong><br/>
+                                    <div style="margin-left: 20px; margin-top: 10px;">
+                                        <b>Numer zgłoszenia:</b> {{ praca.numer_zgloszenia|default:"brak" }}<br/>
+                                        <b>Wydział:</b> {{ praca.wydzial|default:"brak" }}<br/>
+                                        <b>Rodzaj prawa:</b> {{ praca.rodzaj_prawa|default:"brak" }}<br/>
+                                        <b>Data zgłoszenia:</b> {{ praca.data_zgloszenia|default:"brak" }}<br/>
+                                        <b>Data decyzji:</b> {{ praca.data_decyzji|default:"brak" }}<br/>
+                                        <b>Numer prawa wyłącznego:</b> {{ praca.numer_prawa_wylacznego|default:"brak" }}<br/>
+                                        <b>Wdrożenie:</b> {% if praca.wdrozenie %}tak{% else %}nie{% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endif %}
+
+                        {% if praca.liczba_znakow_wydawniczych %}
+                            <tr>
+                                <th style="padding: 10px;">Liczba arkuszy wydawniczych:</th>
+                                <td style="padding: 10px;">{{ praca.wymiar_wydawniczy_w_arkuszach }}</td>
+                            </tr>
+                        {% endif %}
+
+                        {% if uczelnia.pokazuj_status_korekty == "always" or uczelnia.pokazuj_status_korekty == "logged-in" and not request.user.is_anonymous %}
+                            <tr>
+                                <th style="padding: 10px;">Status:</th>
+                                <td style="padding: 10px;">{{ praca.status_korekty }}</td>
+                            </tr>
+                        {% endif %}
+
+                        {% if uczelnia.pokazuj_praca_recenzowana == "always" or uczelnia.pokazuj_praca_recenzowana == "logged-in" and not request.user.is_anonymous %}
+                            <tr>
+                                <th style="padding: 10px;">Praca recenzowana:</th>
+                                <td style="padding: 10px;">{{ praca.recenzowana|yesno }}</td>
+                            </tr>
+                        {% endif %}
+
+                        {% if praca.ma_procenty %}
+                            <tr>
+                                <th style="padding: 10px; vertical-align: top;">Odpowiedzialność za powstanie pracy:
+                                </th>
+                                <td style="padding: 10px;">
+                                    {% for autor in praca.autorzy_set.all %}
+                                        {% if autor.procent %}
+                                            {{ autor.procent }}% {{ autor.zapisany_jako }}<br/>
+                                        {% endif %}
+                                    {% endfor %}
+                                </td>
+                            </tr>
+                        {% endif %}
+
+                        {% if praca.zewnetrzna_baza_danych.exists %}
+                            <tr>
+                                <th style="padding: 10px; vertical-align: top;">Zewnętrzna baza danych:</th>
+                                <td style="padding: 10px;">
+                                    {% for db in praca.zewnetrzna_baza_danych.all %}
+                                        • {{ db.baza.nazwa }}<br/>
+                                    {% endfor %}
+                                </td>
+                            </tr>
+                        {% endif %}
+
+                        {% if praca.wydawnictwa_powiazane_set.exists %}
+                            <tr>
+                                <th style="padding: 10px; vertical-align: top;">
+                                    Rekordy powiązane ({{ praca.wydawnictwa_powiazane_posortowane.all.count }}):
+                                </th>
+                                <td style="padding: 10px;">
+                                    {% if praca.wydawnictwa_powiazane_posortowane.all.count > 2 %}
+                                        <input type="text"
+                                               class="related-records-search"
+                                               placeholder="Szukaj w rekordach powiązanych..."
+                                               style="margin-bottom: 10px; width: 100%; padding: 8px; border: 1px solid #ddd;
+                                                      border-radius: 4px;">
+                                        <div class="related-records-count"
+                                             style="margin-bottom: 5px; font-size: 0.9em; color: #7f8c8d;"></div>
+                                    {% endif %}
+                                    <ol class="related-records-list" style="margin-left: 0; padding-left: 30px;"
+                                        data-records='[{% for elem in praca.wydawnictwa_powiazane_posortowane.all %}{"url":"{% url "bpp:browse_praca" "wydawnictwo_zwarte" elem.pk %}","text":"{{ elem.opis_bibliograficzny_cache|safe|escapejs }}"}{% if not forloop.last %},{% endif %}{% endfor %}]'>
+                                        {% for elem in praca.wydawnictwa_powiazane_posortowane.all %}
+                                            <li style="margin-bottom: 8px;">
+                                                <a href="{% url "bpp:browse_praca" "wydawnictwo_zwarte" elem.pk %}">
+                                                    {{ elem.opis_bibliograficzny_cache|safe }}
+                                                </a>
+                                            </li>
+                                        {% endfor %}
+                                    </ol>
+                                </td>
+                            </tr>
+                        {% endif %}
+
+                        <tr>
+                            <th style="padding: 10px;">Rekord utworzony:</th>
+                            <td style="padding: 10px;">{{ praca.utworzono }}</td>
+                        </tr>
+
+                        <tr>
+                            <th style="padding: 10px;">Ostatnia aktualizacja:</th>
+                            <td style="padding: 10px;">{{ praca.ostatnio_zmieniony }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
     <!-- Points and Slots Tables -->
     {% if rekord.ma_punktacje_sloty %}
         {% if uczelnia.pokazuj_tabele_slotow_na_stronie_rekordu == "always" or uczelnia.pokazuj_tabele_slotow_na_stronie_rekordu == "logged-in" and not request.user.is_anonymous %}
@@ -864,13 +880,29 @@
 
                         {% if praca.wydawnictwa_powiazane_set.exists %}
                             <tr>
-                                <th style="padding: 10px; vertical-align: top;">Rekordy powiązane:</th>
+                                <th style="padding: 10px; vertical-align: top;">
+                                    Rekordy powiązane ({{ praca.wydawnictwa_powiazane_posortowane.all.count }}):
+                                </th>
                                 <td style="padding: 10px;">
-                                    {% for elem in praca.wydawnictwa_powiazane_posortowane.all %}
-                                        • <a href="{% url "bpp:browse_praca" "wydawnictwo_zwarte" elem.pk %}">
-                                        {{ elem.opis_bibliograficzny_cache|safe }}
-                                    </a><br/>
-                                    {% endfor %}
+                                    {% if praca.wydawnictwa_powiazane_posortowane.all.count > 2 %}
+                                        <input type="text"
+                                               class="related-records-search"
+                                               placeholder="Szukaj w rekordach powiązanych..."
+                                               style="margin-bottom: 10px; width: 100%; padding: 8px; border: 1px solid #ddd;
+                                                      border-radius: 4px;">
+                                        <div class="related-records-count"
+                                             style="margin-bottom: 5px; font-size: 0.9em; color: #7f8c8d;"></div>
+                                    {% endif %}
+                                    <ol class="related-records-list" style="margin-left: 0; padding-left: 30px;"
+                                        data-records='[{% for elem in praca.wydawnictwa_powiazane_posortowane.all %}{"url":"{% url "bpp:browse_praca" "wydawnictwo_zwarte" elem.pk %}","text":"{{ elem.opis_bibliograficzny_cache|safe|escapejs }}"}{% if not forloop.last %},{% endif %}{% endfor %}]'>
+                                        {% for elem in praca.wydawnictwa_powiazane_posortowane.all %}
+                                            <li style="margin-bottom: 8px;">
+                                                <a href="{% url "bpp:browse_praca" "wydawnictwo_zwarte" elem.pk %}">
+                                                    {{ elem.opis_bibliograficzny_cache|safe }}
+                                                </a>
+                                            </li>
+                                        {% endfor %}
+                                    </ol>
                                 </td>
                             </tr>
                         {% endif %}
@@ -1021,6 +1053,76 @@
             if (authorsList.length > 10) {
                 // Implementation for show more authors would go here
             }
+
+            // Related records search functionality
+            $('.related-records-search').each(function() {
+                var searchInput = $(this);
+                var list = searchInput.siblings('.related-records-list');
+                var countDisplay = searchInput.siblings('.related-records-count');
+
+                // Parse records data from data attribute
+                var allRecords = [];
+                try {
+                    allRecords = JSON.parse(list.attr('data-records') || '[]');
+                } catch(e) {
+                    console.error('Failed to parse records data:', e);
+                    return;
+                }
+
+                var totalCount = allRecords.length;
+
+                // Initial count display
+                updateCount(totalCount, totalCount);
+
+                searchInput.on('input', function() {
+                    var searchTerm = $(this).val().toLowerCase().trim();
+
+                    if (searchTerm === '') {
+                        // Show all records
+                        rebuildList(allRecords);
+                        updateCount(totalCount, totalCount);
+                    } else {
+                        // Filter records
+                        var filtered = allRecords.filter(function(record) {
+                            return record.text.toLowerCase().indexOf(searchTerm) !== -1;
+                        });
+
+                        // Rebuild list with filtered records and highlighting
+                        rebuildList(filtered, searchTerm);
+                        updateCount(filtered.length, totalCount);
+                    }
+                });
+
+                function rebuildList(records, searchTerm) {
+                    // Clear list
+                    list.empty();
+
+                    // Add each record
+                    records.forEach(function(record) {
+                        var text = record.text;
+
+                        // Add simple highlighting if search term provided
+                        if (searchTerm) {
+                            var escapedTerm = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                            var regex = new RegExp('(' + escapedTerm + ')', 'gi');
+                            text = text.replace(regex, '<mark style="background-color: #fff59d; padding: 2px;">$1</mark>');
+                        }
+
+                        var li = $('<li style="margin-bottom: 8px;"></li>');
+                        var a = $('<a></a>').attr('href', record.url).html(text);
+                        li.append(a);
+                        list.append(li);
+                    });
+                }
+
+                function updateCount(visible, total) {
+                    if (visible === total) {
+                        countDisplay.text('Wszystkie rekordy (' + total + ')');
+                    } else {
+                        countDisplay.text('Znaleziono ' + visible + ' z ' + total + ' rekordów');
+                    }
+                }
+            });
         });
     })(jQuery || django.jQuery || $);
 
@@ -1110,6 +1212,26 @@
 
     .optimize-button .fi-wrench {
         font-size: 0.95rem;
+    }
+
+    /* Related records search styles */
+    .related-records-search {
+        font-size: 0.9rem;
+        transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .related-records-search:focus {
+        outline: none;
+        border-color: #3498db !important;
+        box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+    }
+
+    .related-records-count {
+        font-style: italic;
+    }
+
+    .related-records-list li {
+        transition: opacity 0.2s ease;
     }
 
     /* Print styles */

@@ -12,10 +12,16 @@ from django.http import HttpResponseRedirect
 from django.shortcuts import render
 from templated_email import send_templated_mail
 
+from bpp.admin.core import DynamicAdminFilterMixin
 from bpp.admin.helpers.fieldsets import MODEL_Z_OPLATA_ZA_PUBLIKACJE
 from zglos_publikacje.models import Zgloszenie_Publikacji, Zgloszenie_Publikacji_Autor
 
-from .filters import DzienTygodniaFilter, WydzialJednostkiPierwszegoAutora
+from .filters import (
+    DzienTygodniaFilter,
+    MaPlikFilter,
+    MaPrzyczyneZwrotuFilter,
+    WydzialJednostkiPierwszegoAutora,
+)
 from .forms import ZwrocEmailForm
 
 
@@ -28,7 +34,7 @@ class Zgloszenie_Publikacji_AutorInline(admin.StackedInline):
 
 
 @admin.register(Zgloszenie_Publikacji)
-class Zgloszenie_PublikacjiAdmin(admin.ModelAdmin):
+class Zgloszenie_PublikacjiAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
     list_display = [
         "tytul_oryginalny",
         "utworzono",
@@ -46,6 +52,10 @@ class Zgloszenie_PublikacjiAdmin(admin.ModelAdmin):
         "rodzaj_zglaszanej_publikacji",
         "rok",
         "zgoda_na_publikacje_pelnego_tekstu",
+        MaPlikFilter,
+        MaPrzyczyneZwrotuFilter,
+        "utworzono",
+        "ostatnio_zmieniony",
     ]
 
     fields = (

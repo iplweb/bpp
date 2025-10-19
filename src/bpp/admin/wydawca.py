@@ -4,6 +4,7 @@ from django.contrib import admin
 from django.core.exceptions import ValidationError
 from djangoql.admin import DjangoQLSearchMixin
 
+from bpp.admin.core import DynamicAdminFilterMixin
 from bpp.admin.filters import PBN_UID_IDObecnyFilter
 from bpp.const import PBN_UID_LEN
 from bpp.models import Wydawca
@@ -13,7 +14,8 @@ from pbn_api.models import Publisher
 
 class Poziom_WydawcyInlineForm(forms.ModelForm):
     class Meta:
-        fields = "__all__"
+        model = Poziom_Wydawcy
+        fields = ["rok", "wydawca", "poziom"]
 
     def __init__(self, *args, **kw):
         super().__init__(*args, **kw)
@@ -52,6 +54,23 @@ class MaAliasListFilter(admin.SimpleListFilter):
             return queryset.exclude(alias_dla=None)
 
 
+class MaPoziomyWydawcyFilter(admin.SimpleListFilter):
+    title = "ma poziomy wydawcy"
+    parameter_name = "ma_poziomy"
+
+    def lookups(self, request, model_admin):
+        return [
+            ("0", "nie ma"),
+            ("1", "ma poziomy"),
+        ]
+
+    def queryset(self, request, queryset):
+        if self.value() == "0":
+            return queryset.filter(lista_poziomow__isnull=True)
+        elif self.value() == "1":
+            return queryset.exclude(lista_poziomow__isnull=True)
+
+
 class WydawcaForm(forms.ModelForm):
     pbn_uid = forms.ModelChoiceField(
         required=False,
@@ -71,7 +90,7 @@ class WydawcaForm(forms.ModelForm):
 
 
 @admin.register(Wydawca)
-class WydawcaAdmin(DjangoQLSearchMixin, admin.ModelAdmin):
+class WydawcaAdmin(DynamicAdminFilterMixin, DjangoQLSearchMixin, admin.ModelAdmin):
     djangoql_completion_enabled_by_default = False
     djangoql_completion = True
 
@@ -94,7 +113,7 @@ class WydawcaAdmin(DjangoQLSearchMixin, admin.ModelAdmin):
         "poziomy_wydawcy",
         "pbn_uid_id",
     ]
-    list_filter = [MaAliasListFilter, PBN_UID_IDObecnyFilter]
+    list_filter = [MaAliasListFilter, MaPoziomyWydawcyFilter, PBN_UID_IDObecnyFilter]
     inlines = [
         Poziom_WydawcyInline,
     ]

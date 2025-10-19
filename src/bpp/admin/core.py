@@ -1,10 +1,12 @@
 from decimal import Decimal
+from hashlib import md5
 
 from dal import autocomplete
 from dal_select2.fields import Select2ListChoiceField, Select2ListCreateChoiceField
 from django import forms
 from django.conf import settings
 from django.contrib import admin
+from django.core.cache import cache
 from django.db.models.fields import BLANK_CHOICE_DASH
 from django.forms import NullBooleanField
 from django.forms.widgets import HiddenInput
@@ -27,19 +29,8 @@ UPOWAZNIENIE_PBN = "upowaznienie_pbn"
 # Proste tabele
 
 
-class BaseBppAdminMixin:
-    """Ta klasa jest potrzebna, (XXXżeby działały sygnały post_commit.XXX)
-
-    Ta klasa KIEDYŚ była potrzebna, obecnie niespecjalnie. Aczkolwiek,
-    zostawiam ją z przyczyn historycznych, w ten sposób można łatwo
-    wyłowić klasy edycyjne, które grzebią COKOLWIEK w cache.
-    """
-
-    # Mój dynks do grappelli
-    auto_open_collapsibles = True
-
-    # ograniczenie wielkosci listy
-    list_per_page = 50
+class DynamicAdminFilterMixin:
+    dynamic_filter_counts_enable = True
 
     def get_urls(self):
         """
@@ -63,38 +54,64 @@ class BaseBppAdminMixin:
         """
         Zwraca liczbę obiektów dla danego query stringa filtru jako plain text.
 
-        Wynik jest automatycznie cache'owany przez cacheops (jeśli model jest w CACHEOPS config).
-        Cache jest invalidowany automatycznie gdy obiekt modelu zostanie dodany/zmieniony/usunięty.
+        Wynik jest cache'owany na 1 godzinę (3600s) z uwzględnieniem pełnego query stringa.
+        Różne kombinacje filtrów mają różne cache keys.
 
         Używane przez HTMX do lazy loadingu liczników w filtrach admin changelist.
         """
         from django.http import HttpResponse
 
         try:
-            # Pobierz ChangeList instance z obecnym requestem (zawiera query string z filtrami)
-            cl = self.get_changelist_instance(request)
+            # Wygeneruj unikalny cache key bazując na modelu i query stringu
+            query_string = request.GET.urlencode()
+            query_hash = md5(query_string.encode()).hexdigest()
+            model_label = self.model._meta.label
+            cache_key = f"filter_count_{model_label}_{query_hash}"
 
-            # Pobierz queryset z zastosowanymi filtrami z query stringa
-            # ChangeList automatycznie parsuje query string i aplikuje filtry
-            queryset = cl.get_queryset(request)
+            # Sprawdź czy wynik jest już w cache
+            count = cache.get(cache_key)
 
-            # Policz obiekty - cacheops automatycznie cache'uje count() dla modeli w CACHEOPS config
-            # Cache key bazuje na query SQL, więc różne filtry mają różne cache keys
-            # Timeout: domyślnie 3600s (1h) z CACHEOPS_DEFAULTS
-            count = queryset.count()
+            if count is None:
+                # Pobierz ChangeList instance z obecnym requestem (zawiera query string z filtrami)
+                cl = self.get_changelist_instance(request)
 
-            # Zwróć cyfrę z nawiasami jako HTML dla HTMX innerHTML
+                # Pobierz queryset z zastosowanymi filtrami z query stringa
+                # ChangeList automatycznie parsuje query string i aplikuje filtry
+                queryset = cl.get_queryset(request)
+
+                # Policz obiekty
+                count = queryset.count()
+
+                # Zapisz w cache na 1 godzinę (3600 sekund)
+                cache.set(cache_key, count, 3600)
+
+            # Zwróć cyfrę jako HTML dla HTMX innerHTML
             return HttpResponse(f"{count}", content_type="text/html; charset=utf-8")
         except Exception:
-            # W przypadku błędu zwróć 0 w nawiasach
+            # W przypadku błędu zwróć myślnik
             return HttpResponse("-", content_type="text/html; charset=utf-8")
+
+
+class BaseBppAdminMixin(DynamicAdminFilterMixin):
+    """Ta klasa jest potrzebna, (XXXżeby działały sygnały post_commit.XXX)
+
+    Ta klasa KIEDYŚ była potrzebna, obecnie niespecjalnie. Aczkolwiek,
+    zostawiam ją z przyczyn historycznych, w ten sposób można łatwo
+    wyłowić klasy edycyjne, które grzebią COKOLWIEK w cache.
+    """
+
+    # Mój dynks do grappelli
+    auto_open_collapsibles = True
+
+    # ograniczenie wielkosci listy
+    list_per_page = 50
 
 
 def get_first_typ_odpowiedzialnosci():
     return Typ_Odpowiedzialnosci.objects.filter(skrot="aut.").first()
 
 
-def generuj_formularz_dla_autorow(
+def generuj_formularz_dla_autorow(  # noqa
     baseModel,
     include_rekord=False,
     include_dyscyplina=True,
@@ -150,7 +167,7 @@ def generuj_formularz_dla_autorow(
             "Wyklucza Upoważnienie PBN. ",
         )
 
-        def __init__(self, *args, **kwargs):
+        def __init__(self, *args, **kwargs):  # noqa
             super().__init__(*args, **kwargs)
 
             # Ustaw inicjalną wartość dla pola 'afiliuje'

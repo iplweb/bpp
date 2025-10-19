@@ -6,11 +6,13 @@ from django.urls import reverse
 from django.utils.safestring import mark_safe
 from django.utils.text import Truncator
 
-from bpp.admin.core import generuj_formularz_dla_autorow
+from bpp.admin.core import DynamicAdminFilterMixin, generuj_formularz_dla_autorow
 from bpp.admin.helpers import get_rekord_id_from_GET_qs
 
 
-class Wydawnictwo_Autor_Base(SortableAdminMixin, admin.ModelAdmin):
+class Wydawnictwo_Autor_Base(
+    DynamicAdminFilterMixin, SortableAdminMixin, admin.ModelAdmin
+):
     # Wartosci do ustawienia dla developera:
 
     klasa_autora = None  # Wydawnictwo_Ciagle_Autor
@@ -92,9 +94,7 @@ class Wydawnictwo_Autor_Base(SortableAdminMixin, admin.ModelAdmin):
             except (ValueError, TypeError):
                 pass
 
-        return super(Wydawnictwo_Autor_Base, self).changelist_view(
-            request=request, extra_context=extra_context
-        )
+        return super().changelist_view(request=request, extra_context=extra_context)
 
     @staticmethod
     def get_extra_model_filters(request):
@@ -112,7 +112,7 @@ class Wydawnictwo_Autor_Base(SortableAdminMixin, admin.ModelAdmin):
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
     def get_changeform_initial_data(self, request):
-        ret = super(Wydawnictwo_Autor_Base, self).get_changeform_initial_data(request)
+        ret = super().get_changeform_initial_data(request)
         rekord_id = get_rekord_id_from_GET_qs(request)
         # ret["rekord_pk"] = rekord_id
         ret["rekord"] = rekord_id
@@ -122,7 +122,7 @@ class Wydawnictwo_Autor_Base(SortableAdminMixin, admin.ModelAdmin):
         opts = self.model._meta
         if self.has_view_or_change_permission(request):
             post_url = reverse(
-                "admin:%s_%s_changelist" % (opts.app_label, opts.model_name),
+                f"admin:{opts.app_label}_{opts.model_name}_changelist",
                 current_app=self.admin_site.name,
             )
             preserved_filters = self.get_preserved_filters(request)

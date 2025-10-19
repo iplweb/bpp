@@ -7,6 +7,7 @@ from django.contrib.admin.utils import NotRelationField, get_model_from_relation
 from django.core.exceptions import FieldDoesNotExist
 from django.utils.translation import gettext_lazy as _
 
+from bpp.admin.core import DynamicAdminFilterMixin
 from dynamic_columns.models import ModelAdminColumn
 
 
@@ -21,7 +22,9 @@ def make_disabled(modeladmin, request, queryset):
 
 
 @admin.register(ModelAdminColumn)
-class ModelAdminColumnAdmin(SortableAdminMixin, DjangoModelAdmin):
+class ModelAdminColumnAdmin(
+    DynamicAdminFilterMixin, SortableAdminMixin, DjangoModelAdmin
+):
     ordering = ["ordering"]
     list_filter = ["parent", "enabled"]
     list_display = ["col_parent_name", "col_verbose_name", "enabled", "ordering"]

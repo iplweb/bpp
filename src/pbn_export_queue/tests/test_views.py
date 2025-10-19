@@ -73,279 +73,347 @@ class TestPBNExportQueuePermissionMixin:
 
 
 @pytest.mark.django_db
-class TestPBNExportQueueListView:
-    """Tests for PBNExportQueueListView"""
+def test_pbnexportqueuelistview_requires_login(client):
+    """Test that unauthenticated users are redirected"""
+    url = reverse("pbn_export_queue:export-queue-list")
+    response = client.get(url)
 
-    def test_list_view_requires_login(self, client):
-        """Test that unauthenticated users are redirected"""
-        url = reverse("pbn_export_queue:export-queue-list")
-        response = client.get(url)
-
-        assert response.status_code == 302
-        assert "/login/" in response.url
-
-    def test_list_view_requires_permission(self, client):
-        """Test that users without permission get 403"""
-        user = baker.make(User)
-        client.force_login(user)
-
-        url = reverse("pbn_export_queue:export-queue-list")
-        response = client.get(url)
-
-        assert response.status_code == 403
-
-    def test_list_view_accessible_to_staff(self, client, admin_user):
-        """Test that staff users can access the list view"""
-        client.force_login(admin_user)
-        url = reverse("pbn_export_queue:export-queue-list")
-        response = client.get(url)
-
-        assert response.status_code == 200
-
-    def test_list_view_filter_by_success_true(self, client, admin_user):
-        """Test filtering by zakonczono_pomyslnie=true"""
-        queue_item = baker.make(
-            PBN_Export_Queue,
-            zamowil=admin_user,
-            zakonczono_pomyslnie=True,
-        )
-        baker.make(
-            PBN_Export_Queue,
-            zamowil=admin_user,
-            zakonczono_pomyslnie=False,
-        )
-
-        client.force_login(admin_user)
-        url = reverse("pbn_export_queue:export-queue-list")
-        response = client.get(url + "?zakonczono_pomyslnie=true")
-
-        assert response.status_code == 200
-        assert queue_item in response.context["export_queue_items"]
-
-    def test_list_view_filter_by_success_false(self, client, admin_user):
-        """Test filtering by zakonczono_pomyslnie=false"""
-        queue_item = baker.make(
-            PBN_Export_Queue,
-            zamowil=admin_user,
-            zakonczono_pomyslnie=False,
-        )
-        baker.make(
-            PBN_Export_Queue,
-            zamowil=admin_user,
-            zakonczono_pomyslnie=True,
-        )
-
-        client.force_login(admin_user)
-        url = reverse("pbn_export_queue:export-queue-list")
-        response = client.get(url + "?zakonczono_pomyslnie=false")
-
-        assert response.status_code == 200
-        assert queue_item in response.context["export_queue_items"]
-
-    def test_list_view_filter_by_success_none(self, client, admin_user):
-        """Test filtering by zakonczono_pomyslnie=none"""
-        queue_item = baker.make(
-            PBN_Export_Queue,
-            zamowil=admin_user,
-            zakonczono_pomyslnie=None,
-        )
-        baker.make(
-            PBN_Export_Queue,
-            zamowil=admin_user,
-            zakonczono_pomyslnie=True,
-        )
-
-        client.force_login(admin_user)
-        url = reverse("pbn_export_queue:export-queue-list")
-        response = client.get(url + "?zakonczono_pomyslnie=none")
-
-        assert response.status_code == 200
-        assert queue_item in response.context["export_queue_items"]
-
-    def test_list_view_search_by_komunikat(
-        self, client, admin_user, wydawnictwo_ciagle
-    ):
-        """Test searching by komunikat"""
-        queue_item = baker.make(
-            PBN_Export_Queue,
-            zamowil=admin_user,
-            rekord_do_wysylki=wydawnictwo_ciagle,
-            komunikat="Test search query",
-        )
-
-        client.force_login(admin_user)
-        url = reverse("pbn_export_queue:export-queue-list")
-        response = client.get(url + "?q=Test")
-
-        assert response.status_code == 200
-        assert queue_item in response.context["export_queue_items"]
-
-    @pytest.mark.serial
-    def test_list_view_sort_by_pk(self, client, admin_user):
-        """Test sorting by pk"""
-        item1 = baker.make(PBN_Export_Queue, zamowil=admin_user)
-        item2 = baker.make(PBN_Export_Queue, zamowil=admin_user)
-
-        client.force_login(admin_user)
-        url = reverse("pbn_export_queue:export-queue-list")
-        response = client.get(url + "?sort=pk")
-
-        assert response.status_code == 200
-        items = list(response.context["export_queue_items"])
-        assert items[0].pk <= items[1].pk
-
-    def test_list_view_sort_by_reverse_pk(self, client, admin_user):
-        """Test sorting by reverse pk"""
-        item1 = baker.make(PBN_Export_Queue, zamowil=admin_user)
-        item2 = baker.make(PBN_Export_Queue, zamowil=admin_user)
-
-        client.force_login(admin_user)
-        url = reverse("pbn_export_queue:export-queue-list")
-        response = client.get(url + "?sort=-pk")
-
-        assert response.status_code == 200
-        items = list(response.context["export_queue_items"])
-        assert items[0].pk >= items[1].pk
-
-    def test_list_view_invalid_sort_parameter_ignored(self, client, admin_user):
-        """Test that invalid sort parameter is ignored"""
-        baker.make(PBN_Export_Queue, zamowil=admin_user)
-
-        client.force_login(admin_user)
-        url = reverse("pbn_export_queue:export-queue-list")
-        response = client.get(url + "?sort=invalid_sort")
-
-        assert response.status_code == 200
-
-    def test_list_view_context_has_counts(self, client, admin_user):
-        """Test that context has count variables"""
-        baker.make(
-            PBN_Export_Queue,
-            zamowil=admin_user,
-            zakonczono_pomyslnie=True,
-        )
-        baker.make(
-            PBN_Export_Queue,
-            zamowil=admin_user,
-            zakonczono_pomyslnie=False,
-        )
-        baker.make(
-            PBN_Export_Queue,
-            zamowil=admin_user,
-            zakonczono_pomyslnie=None,
-        )
-
-        client.force_login(admin_user)
-        url = reverse("pbn_export_queue:export-queue-list")
-        response = client.get(url)
-
-        assert response.status_code == 200
-        assert response.context["total_count"] == 3
-        assert response.context["success_count"] == 1
-        assert response.context["error_count"] == 1
-        assert response.context["pending_count"] == 1
-        assert response.context["error_count"] == 1
-        assert response.context["waiting_count"] == 0
+    assert response.status_code == 302
+    assert "/login/" in response.url
 
 
 @pytest.mark.django_db
-class TestPBNExportQueueTableView:
-    """Tests for PBNExportQueueTableView"""
+def test_pbnexportqueuelistview_requires_permission(client):
+    """Test that users without permission get 403"""
+    user = baker.make(User)
+    client.force_login(user)
 
-    def test_table_view_requires_login(self, client):
-        """Test that unauthenticated users are redirected"""
-        url = reverse("pbn_export_queue:export-queue-table")
-        response = client.get(url)
+    url = reverse("pbn_export_queue:export-queue-list")
+    response = client.get(url)
 
-        assert response.status_code == 302
-
-    def test_table_view_requires_permission(self, client):
-        """Test that users without permission get 403"""
-        user = baker.make(User)
-        client.force_login(user)
-
-        url = reverse("pbn_export_queue:export-queue-table")
-        response = client.get(url)
-
-        assert response.status_code == 403
-
-    def test_table_view_accessible_to_staff(self, client, admin_user):
-        """Test that staff users can access the table view"""
-        baker.make(PBN_Export_Queue, zamowil=admin_user)
-
-        client.force_login(admin_user)
-        url = reverse("pbn_export_queue:export-queue-table")
-        response = client.get(url)
-
-        assert response.status_code == 200
+    assert response.status_code == 403
 
 
 @pytest.mark.django_db
-class TestPBNExportQueueDetailView:
-    """Tests for PBNExportQueueDetailView"""
+def test_pbnexportqueuelistview_accessible_to_staff(client, admin_user):
+    """Test that staff users can access the list view"""
+    client.force_login(admin_user)
+    url = reverse("pbn_export_queue:export-queue-list")
+    response = client.get(url)
 
-    def test_detail_view_requires_login(self, client):
-        """Test that unauthenticated users are redirected"""
-        queue_item = baker.make(PBN_Export_Queue)
-        url = reverse("pbn_export_queue:export-queue-detail", args=[queue_item.pk])
-        response = client.get(url)
+    assert response.status_code == 200
 
-        assert response.status_code == 302
 
-    def test_detail_view_requires_permission(self, client):
-        """Test that users without permission get 403"""
-        user = baker.make(User)
-        queue_item = baker.make(PBN_Export_Queue)
+@pytest.mark.django_db
+def test_pbnexportqueuelistview_filter_by_success_true(
+    client, admin_user, wydawnictwo_ciagle
+):
+    """Test filtering by zakonczono_pomyslnie=true"""
+    queue_item = baker.make(
+        PBN_Export_Queue,
+        rekord_do_wysylki=wydawnictwo_ciagle,
+        zamowil=admin_user,
+        zakonczono_pomyslnie=True,
+    )
+    baker.make(
+        PBN_Export_Queue,
+        rekord_do_wysylki=wydawnictwo_ciagle,
+        zamowil=admin_user,
+        zakonczono_pomyslnie=False,
+    )
 
-        client.force_login(user)
-        url = reverse("pbn_export_queue:export-queue-detail", args=[queue_item.pk])
-        response = client.get(url)
+    client.force_login(admin_user)
+    url = reverse("pbn_export_queue:export-queue-list")
+    response = client.get(url + "?zakonczono_pomyslnie=true")
 
-        assert response.status_code == 403
+    assert response.status_code == 200
+    assert queue_item in response.context["export_queue_items"]
 
-    def test_detail_view_accessible_to_staff(self, client, admin_user):
-        """Test that staff users can access the detail view"""
-        queue_item = baker.make(PBN_Export_Queue, zamowil=admin_user)
 
-        client.force_login(admin_user)
-        url = reverse("pbn_export_queue:export-queue-detail", args=[queue_item.pk])
-        response = client.get(url)
+@pytest.mark.django_db
+def test_pbnexportqueuelistview_filter_by_success_false(
+    client, admin_user, wydawnictwo_ciagle
+):
+    """Test filtering by zakonczono_pomyslnie=false"""
+    queue_item = baker.make(
+        PBN_Export_Queue,
+        rekord_do_wysylki=wydawnictwo_ciagle,
+        zamowil=admin_user,
+        zakonczono_pomyslnie=False,
+    )
+    baker.make(
+        PBN_Export_Queue,
+        rekord_do_wysylki=wydawnictwo_ciagle,
+        zamowil=admin_user,
+        zakonczono_pomyslnie=True,
+    )
 
-        assert response.status_code == 200
+    client.force_login(admin_user)
+    url = reverse("pbn_export_queue:export-queue-list")
+    response = client.get(url + "?zakonczono_pomyslnie=false")
 
-    def test_detail_view_parses_komunikat_links(self, client, admin_user):
-        """Test that detail view parses SentData links"""
-        komunikat = (
-            'href="/admin/pbn_api/sentdata/123/change/"' " and publication/abc-123-def"
-        )
-        queue_item = baker.make(
-            PBN_Export_Queue,
-            zamowil=admin_user,
-            komunikat=komunikat,
-        )
+    assert response.status_code == 200
+    assert queue_item in response.context["export_queue_items"]
 
-        client.force_login(admin_user)
-        url = reverse("pbn_export_queue:export-queue-detail", args=[queue_item.pk])
-        response = client.get(url)
 
-        assert response.status_code == 200
-        if "parsed_links" in response.context:
-            links = response.context["parsed_links"]
-            assert links.get("sentdata_url") == "/admin/pbn_api/sentdata/123/change/"
+@pytest.mark.django_db
+def test_pbnexportqueuelistview_filter_by_success_none(
+    client, admin_user, wydawnictwo_ciagle
+):
+    """Test filtering by zakonczono_pomyslnie=none"""
+    queue_item = baker.make(
+        PBN_Export_Queue,
+        rekord_do_wysylki=wydawnictwo_ciagle,
+        zamowil=admin_user,
+        zakonczono_pomyslnie=None,
+    )
+    baker.make(
+        PBN_Export_Queue,
+        rekord_do_wysylki=wydawnictwo_ciagle,
+        zamowil=admin_user,
+        zakonczono_pomyslnie=True,
+    )
 
-    def test_detail_view_no_links_in_komunikat(self, client, admin_user):
-        """Test detail view when komunikat has no links"""
-        queue_item = baker.make(
-            PBN_Export_Queue,
-            zamowil=admin_user,
-            komunikat="Simple message without links",
-        )
+    client.force_login(admin_user)
+    url = reverse("pbn_export_queue:export-queue-list")
+    response = client.get(url + "?zakonczono_pomyslnie=none")
 
-        client.force_login(admin_user)
-        url = reverse("pbn_export_queue:export-queue-detail", args=[queue_item.pk])
-        response = client.get(url)
+    assert response.status_code == 200
+    assert queue_item in response.context["export_queue_items"]
 
-        assert response.status_code == 200
+
+@pytest.mark.django_db
+def test_pbnexportqueuelistview_search_by_komunikat(client, admin_user, wydawnictwo_ciagle):
+    """Test searching by komunikat"""
+    queue_item = baker.make(
+        PBN_Export_Queue,
+        zamowil=admin_user,
+        rekord_do_wysylki=wydawnictwo_ciagle,
+        komunikat="Test search query",
+    )
+
+    client.force_login(admin_user)
+    url = reverse("pbn_export_queue:export-queue-list")
+    response = client.get(url + "?q=Test")
+
+    assert response.status_code == 200
+    assert queue_item in response.context["export_queue_items"]
+
+
+@pytest.mark.django_db
+@pytest.mark.serial
+def test_pbnexportqueuelistview_sort_by_pk(client, admin_user, wydawnictwo_ciagle):
+    """Test sorting by pk"""
+    item1 = baker.make(
+        PBN_Export_Queue, rekord_do_wysylki=wydawnictwo_ciagle, zamowil=admin_user
+    )
+    item2 = baker.make(
+        PBN_Export_Queue, rekord_do_wysylki=wydawnictwo_ciagle, zamowil=admin_user
+    )
+
+    client.force_login(admin_user)
+    url = reverse("pbn_export_queue:export-queue-list")
+    response = client.get(url + "?sort=pk")
+
+    assert response.status_code == 200
+    items = list(response.context["export_queue_items"])
+    assert items[0].pk <= items[1].pk
+
+
+@pytest.mark.django_db
+def test_pbnexportqueuelistview_sort_by_reverse_pk(
+    client, admin_user, wydawnictwo_ciagle
+):
+    """Test sorting by reverse pk"""
+    item1 = baker.make(
+        PBN_Export_Queue, rekord_do_wysylki=wydawnictwo_ciagle, zamowil=admin_user
+    )
+    item2 = baker.make(
+        PBN_Export_Queue, rekord_do_wysylki=wydawnictwo_ciagle, zamowil=admin_user
+    )
+
+    client.force_login(admin_user)
+    url = reverse("pbn_export_queue:export-queue-list")
+    response = client.get(url + "?sort=-pk")
+
+    assert response.status_code == 200
+    items = list(response.context["export_queue_items"])
+    assert items[0].pk >= items[1].pk
+
+
+@pytest.mark.django_db
+def test_pbnexportqueuelistview_invalid_sort_parameter_ignored(
+    client, admin_user, wydawnictwo_ciagle
+):
+    """Test that invalid sort parameter is ignored"""
+    baker.make(
+        PBN_Export_Queue, rekord_do_wysylki=wydawnictwo_ciagle, zamowil=admin_user
+    )
+
+    client.force_login(admin_user)
+    url = reverse("pbn_export_queue:export-queue-list")
+    response = client.get(url + "?sort=invalid_sort")
+
+    assert response.status_code == 200
+
+
+@pytest.mark.django_db
+@pytest.mark.serial
+def test_pbnexportqueuelistview_context_has_counts(
+    client, admin_user, wydawnictwo_ciagle
+):
+    """Test that context has count variables"""
+    baker.make(
+        PBN_Export_Queue,
+        rekord_do_wysylki=wydawnictwo_ciagle,
+        zamowil=admin_user,
+        zakonczono_pomyslnie=True,
+    )
+    baker.make(
+        PBN_Export_Queue,
+        rekord_do_wysylki=wydawnictwo_ciagle,
+        zamowil=admin_user,
+        zakonczono_pomyslnie=False,
+    )
+    baker.make(
+        PBN_Export_Queue,
+        rekord_do_wysylki=wydawnictwo_ciagle,
+        zamowil=admin_user,
+        zakonczono_pomyslnie=None,
+    )
+
+    client.force_login(admin_user)
+    url = reverse("pbn_export_queue:export-queue-list")
+    response = client.get(url)
+
+    assert response.status_code == 200
+    assert response.context["total_count"] == 3
+    assert response.context["success_count"] == 1
+    assert response.context["error_count"] == 1
+    assert response.context["pending_count"] == 1
+    assert response.context["error_count"] == 1
+    assert response.context["waiting_count"] == 0
+
+
+@pytest.mark.django_db
+def test_pbnexportqueuetableview_requires_login(client):
+    """Test that unauthenticated users are redirected"""
+    url = reverse("pbn_export_queue:export-queue-table")
+    response = client.get(url)
+
+    assert response.status_code == 302
+
+
+@pytest.mark.django_db
+def test_pbnexportqueuetableview_requires_permission(client):
+    """Test that users without permission get 403"""
+    user = baker.make(User)
+    client.force_login(user)
+
+    url = reverse("pbn_export_queue:export-queue-table")
+    response = client.get(url)
+
+    assert response.status_code == 403
+
+
+@pytest.mark.django_db
+def test_pbnexportqueuetableview_accessible_to_staff(
+    client, admin_user, wydawnictwo_ciagle
+):
+    """Test that staff users can access the table view"""
+    baker.make(
+        PBN_Export_Queue, rekord_do_wysylki=wydawnictwo_ciagle, zamowil=admin_user
+    )
+
+    client.force_login(admin_user)
+    url = reverse("pbn_export_queue:export-queue-table")
+    response = client.get(url)
+
+    assert response.status_code == 200
+
+
+@pytest.mark.django_db
+def test_pbnexportqueuedetailview_requires_login(client):
+    """Test that unauthenticated users are redirected"""
+    queue_item = baker.make(PBN_Export_Queue)
+    url = reverse("pbn_export_queue:export-queue-detail", args=[queue_item.pk])
+    response = client.get(url)
+
+    assert response.status_code == 302
+
+
+@pytest.mark.django_db
+def test_pbnexportqueuedetailview_requires_permission(client):
+    """Test that users without permission get 403"""
+    user = baker.make(User)
+    queue_item = baker.make(PBN_Export_Queue)
+
+    client.force_login(user)
+    url = reverse("pbn_export_queue:export-queue-detail", args=[queue_item.pk])
+    response = client.get(url)
+
+    assert response.status_code == 403
+
+
+@pytest.mark.django_db
+def test_pbnexportqueuedetailview_accessible_to_staff(
+    client, admin_user, wydawnictwo_ciagle
+):
+    """Test that staff users can access the detail view"""
+    queue_item = baker.make(
+        PBN_Export_Queue, rekord_do_wysylki=wydawnictwo_ciagle, zamowil=admin_user
+    )
+
+    client.force_login(admin_user)
+    url = reverse("pbn_export_queue:export-queue-detail", args=[queue_item.pk])
+    response = client.get(url)
+
+    assert response.status_code == 200
+
+
+@pytest.mark.django_db
+def test_pbnexportqueuedetailview_parses_komunikat_links(
+    client, admin_user, wydawnictwo_ciagle
+):
+    """Test that detail view parses SentData links"""
+    komunikat = (
+        'href="/admin/pbn_api/sentdata/123/change/"' " and publication/abc-123-def"
+    )
+    queue_item = baker.make(
+        PBN_Export_Queue,
+        rekord_do_wysylki=wydawnictwo_ciagle,
+        zamowil=admin_user,
+        komunikat=komunikat,
+    )
+
+    client.force_login(admin_user)
+    url = reverse("pbn_export_queue:export-queue-detail", args=[queue_item.pk])
+    response = client.get(url)
+
+    assert response.status_code == 200
+    if "parsed_links" in response.context:
+        links = response.context["parsed_links"]
+        assert links.get("sentdata_url") == "/admin/pbn_api/sentdata/123/change/"
+
+
+@pytest.mark.django_db
+@pytest.mark.serial
+def test_pbnexportqueuedetailview_no_links_in_komunikat(
+    client, admin_user, wydawnictwo_ciagle
+):
+    """Test detail view when komunikat has no links"""
+    queue_item = baker.make(
+        PBN_Export_Queue,
+        rekord_do_wysylki=wydawnictwo_ciagle,
+        zamowil=admin_user,
+        komunikat="Simple message without links",
+    )
+
+    client.force_login(admin_user)
+    url = reverse("pbn_export_queue:export-queue-detail", args=[queue_item.pk])
+    response = client.get(url)
+
+    assert response.status_code == 200
 
 
 @pytest.mark.django_db

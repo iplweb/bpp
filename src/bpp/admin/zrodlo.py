@@ -80,6 +80,25 @@ class ZrodloForm(forms.ModelForm):
 
     class Meta:
         model = Zrodlo
+        fields = [
+            "adnotacje",
+            "issn",
+            "e_issn",
+            "nazwa",
+            "skrot",
+            "rodzaj",
+            "nazwa_alternatywna",
+            "skrot_nazwy_alternatywnej",
+            "zasieg",
+            "www",
+            "doi",
+            "poprzednia_nazwa",
+            "openaccess_tryb_dostepu",
+            "openaccess_licencja",
+            "jezyk",
+            "wydawca",
+            "pbn_uid",
+        ]
         widgets = {
             "nazwa": CHARMAP_SINGLE_LINE,
             "skrot": CHARMAP_SINGLE_LINE,
@@ -87,7 +106,6 @@ class ZrodloForm(forms.ModelForm):
             "skrot_nazwy_alternatywnej": CHARMAP_SINGLE_LINE,
             "poprzednia_nazwa": CHARMAP_SINGLE_LINE,
         }
-        fields = "__all__"
 
 
 class ZrodloAdmin(
@@ -118,6 +136,7 @@ class ZrodloAdmin(
     list_filter = [
         "rodzaj",
         "zasieg",
+        "jezyk",
         "openaccess_tryb_dostepu",
         "openaccess_licencja",
         PBN_UID_IDObecnyFilter,

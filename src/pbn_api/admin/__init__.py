@@ -5,6 +5,7 @@ from .journal import *  # noqa
 from .monkeypatch_nowrap_foreignkey_admin import *  # noqa
 from .osoba_z_instytycji import *  # noqa
 from .oswiadczenieinstytucji import *  # noqa
+from .pbn_odpowiedzi_niepozadane import *  # noqa
 from .publication import *  # noqa
 from .publikacjainstytucji_v1 import *  # noqa
 from .publikacjainstytucji_v2 import *  # noqa

@@ -85,9 +85,147 @@
     }
 }
 
+// Loading Overlay - blocks all clicks during HTMX requests
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.05);  // Very subtle background
+    z-index: 99999;  // Higher than filter panel overlay, lower than loading indicator
+    cursor: wait;  // Show waiting cursor
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 300ms ease-in-out, visibility 300ms;
+
+    &.htmx-request {
+        visibility: visible;
+        opacity: 1;
+    }
+
+    &.htmx-request-complete {
+        opacity: 0;
+        // Keep visible during fade-out, then hide after transition
+        transition: opacity 300ms ease-in-out, visibility 0s 300ms;
+    }
+}
+
+// HTMX Error Toast Notification
+.htmx-error-toast {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    max-width: 400px;
+    z-index: 100001;  // Above everything else
+    background: #fff;
+    border-left: 4px solid #d32f2f;  // Red accent
+    border-radius: 4px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15), 0 2px 4px rgba(0, 0, 0, 0.1);
+    transform: translateY(0);
+    opacity: 1;
+    transition: transform 300ms cubic-bezier(0.4, 0, 0.2, 1),
+                opacity 300ms cubic-bezier(0.4, 0, 0.2, 1);
+
+    &.hidden {
+        transform: translateY(-20px);
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    .error-toast-content {
+        display: flex;
+        align-items: flex-start;
+        padding: 16px;
+        gap: 12px;
+    }
+
+    .error-icon {
+        font-size: 24px;
+        flex-shrink: 0;
+        line-height: 1;
+    }
+
+    .error-message {
+        flex: 1;
+        min-width: 0;
+
+        strong {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            color: #d32f2f;
+            margin-bottom: 4px;
+        }
+
+        p {
+            margin: 0;
+            font-size: 13px;
+            color: #666;
+            line-height: 1.4;
+        }
+    }
+
+    .error-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        flex-shrink: 0;
+    }
+
+    .error-btn {
+        padding: 6px 12px;
+        border: 1px solid #ddd;
+        background: #fff;
+        border-radius: 3px;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 500;
+        transition: all 150ms ease-in-out;
+
+        &:hover {
+            background: #f5f5f5;
+        }
+
+        &.error-retry {
+            color: #1976d2;
+            border-color: #1976d2;
+            white-space: nowrap;
+
+            &:hover {
+                background: #e3f2fd;
+            }
+        }
+
+        &.error-close {
+            color: #666;
+            font-size: 20px;
+            line-height: 1;
+            padding: 4px 8px;
+            border: none;
+
+            &:hover {
+                color: #d32f2f;
+                background: #ffebee;
+            }
+        }
+    }
+
+    // Animation for entrance
+    @keyframes slideInFromTop {
+        from {
+            transform: translateY(-20px);
+            opacity: 0;
+        }
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
+}
+
 // Overlay background - lighter shade
 .filter-panel-overlay {
-    display: none;
     position: fixed;
     top: 0;
     left: 0;
@@ -96,10 +234,11 @@
     background-color: rgba(0, 0, 0, 0.2);  // Lighter overlay
     z-index: 9999;  // Increased to cover support button (z-index: 9999)
     opacity: 0;
-    transition: opacity 0.3s ease-in-out;
+    visibility: hidden;
+    transition: opacity 0.3s ease-in-out, visibility 0.3s;
 
     &.active {
-        display: block;
+        visibility: visible;
         opacity: 1;
     }
 }
@@ -605,6 +744,20 @@
                 }
             }
         }
+    }
+}
+
+// Transitioning panel (old panel during crossfade to prevent flickering)
+.filter-panel-transitioning {
+    // Force fixed positioning and high z-index to stay on top during transition
+    position: fixed !important;
+    z-index: 10001 !important;
+
+    // Fade-out animation class applied after swap
+    &.fade-out {
+        opacity: 0;
+        transition: opacity 300ms ease-out;
+        pointer-events: none; // Prevent interaction during fade
     }
 }
 

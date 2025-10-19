@@ -57,15 +57,16 @@ def test_global_search_user(
                 "() => document.body.textContent.includes('Charakter formalny')",
                 timeout=10000,
             )
-        except PlaywrightTimeoutError:
+        except PlaywrightTimeoutError as e:
             html_content = page.content()
-            raise PlaywrightTimeoutError(f"Page content dump: {html_content}")
+            raise PlaywrightTimeoutError(f"Page content dump: {html_content}") from e
 
     finally:
         if rec is not None:
             rec.delete()
 
 
+@pytest.mark.serial
 def test_global_search_logged_in(
     channels_live_server,
     admin_page: Page,
@@ -126,9 +127,9 @@ def test_global_search_logged_in(
                 "() => document.body.textContent.includes('Charakter formalny')",
                 timeout=10000,
             )
-        except PlaywrightTimeoutError:
+        except PlaywrightTimeoutError as e:
             html_content = admin_page.content()
-            raise PlaywrightTimeoutError(f"Page content dump: {html_content}")
+            raise PlaywrightTimeoutError(f"Page content dump: {html_content}") from e
     finally:
         if rec is not None:
             # Delete the record and ensure it's removed from cache

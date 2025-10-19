@@ -104,8 +104,8 @@ class TestIntegrujJezyki:
         """Should create mapping between BPP languages and PBN languages"""
         from pbn_integrator.utils import integruj_jezyki
 
-        bpp_lang = Jezyk.objects.get_or_create(
-            skrot="pol", defaults=dict(nazwa="polski")
+        bpp_lang = Jezyk.objects.update_or_create(
+            nazwa="polski", defaults={"skrot": "pol"}
         )[0]
         baker.make(
             Language,

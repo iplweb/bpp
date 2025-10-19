@@ -52,6 +52,8 @@ class OswiadczeniaInstytucjiAdmin(BasePBNAPIAdmin):
         OdpowiednikOswiadczeniaInstytucjiAutorWBPPFilter,
         "type",
         "inOrcid",
+        "area",
+        "addedTimestamp",
     ]
 
     def odpowiednik_publikacji_w_bpp(self, obj: OswiadczenieInstytucji):

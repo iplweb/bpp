@@ -58,9 +58,6 @@ CACHEOPS = {
     "bpp.wydzial": {"ops": ("get", "fetch", "count", "exists")},
     "bpp.jednostka": {"ops": ("get", "fetch", "count", "exists")},
     "bpp.wydawnictwo_ciagle_streszczenie": {"ops": ("get", "fetch", "count", "exists")},
-    # Wildcard dla wszystkich pozostałych modeli - cache tylko count() dla admin filter counts
-    # Timeout: 3600s (1h), automatyczna invalidacja gdy model się zmieni
-    "*.*": {"ops": ("count",), "timeout": 3600},
 }
 
 CACHEOPS_REDIS = BROKER_URL  # noqa

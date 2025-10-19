@@ -86,3 +86,45 @@ class DzienTygodniaFilter(SimpleListFilter):
                 weekday=int(self.value())
             )
         return queryset
+
+
+class MaPlikFilter(SimpleListFilter):
+    """Filtr czy zgłoszenie ma załączony plik"""
+
+    title = "ma załączony plik"
+    parameter_name = "ma_plik"
+
+    def lookups(self, request, model_admin):
+        return [("brak", "brak pliku"), ("jest", "ma plik")]
+
+    def queryset(self, request, queryset):
+        v = self.value()
+
+        if v == "brak":
+            return queryset.filter(plik="")
+        elif v == "jest":
+            return queryset.exclude(plik="")
+
+        return queryset
+
+
+class MaPrzyczyneZwrotuFilter(SimpleListFilter):
+    """Filtr czy zgłoszenie ma wypełnioną przyczynę zwrotu"""
+
+    title = "ma przyczynę zwrotu"
+    parameter_name = "ma_przyczyne_zwrotu"
+
+    def lookups(self, request, model_admin):
+        return [("brak", "brak przyczyny"), ("jest", "ma przyczynę")]
+
+    def queryset(self, request, queryset):
+        v = self.value()
+
+        if v == "brak":
+            return queryset.filter(przyczyna_zwrotu="") | queryset.filter(
+                przyczyna_zwrotu=None
+            )
+        elif v == "jest":
+            return queryset.exclude(przyczyna_zwrotu="").exclude(przyczyna_zwrotu=None)
+
+        return queryset

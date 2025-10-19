@@ -6,6 +6,7 @@ from .journal import Journal  # noqa
 from .language import Language  # noqa
 from .osoba_z_instytucji import OsobaZInstytucji  # noqa
 from .oswiadczenie_instytucji import OswiadczenieInstytucji  # noqa
+from .pbn_odpowiedzi_niepozadane import PBNOdpowiedziNiepozadane  # noqa
 from .publication import Publication  # noqa
 from .publikacja_instytucji import PublikacjaInstytucji, PublikacjaInstytucji_V2  # noqa
 from .publisher import Publisher  # noqa

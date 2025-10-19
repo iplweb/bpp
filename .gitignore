@@ -132,9 +132,18 @@ cov.xml
 src/ewaluacja2021/tests/test_core/genetyczny_memetyka_stosowana_output
 genetyczny_memetyka_stosowana_output
 .aider*
+# Generated CSS and MAP files from SCSS compilation
+src/bpp/static/bpp/scss/*.css
+src/bpp/static/bpp/scss/*.css.map
+src/bpp/static/bpp/css/admin-themes.css
+src/bpp/static/bpp/css/admin-filter-panel.css
 src/bpp/static/scss/*.css
-src/bpp/static/scss/*.map
 src/bpp/static/scss/*.css.map
+src/przemapuj_zrodla_pbn/static/przemapuj_zrodla_pbn/css/przemapuj-zrodla.css
 wersje-publikacji-*txt
 .autostash.zsh
 .autoenv.zsh
+src/bpp/static/scss/*.css
+src/bpp/static/scss/*.map
+src/bpp/static/scss/app-blue.css
+src/bpp/static/scss/*.css

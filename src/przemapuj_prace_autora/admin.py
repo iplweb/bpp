@@ -1,12 +1,13 @@
-from .models import PrzemapoaniePracAutora
-
 from django.contrib import admin
-
 from django.utils.html import format_html
+
+from bpp.admin.core import DynamicAdminFilterMixin
+
+from .models import PrzemapoaniePracAutora
 
 
 @admin.register(PrzemapoaniePracAutora)
-class PrzemapoaniePracAutoraAdmin(admin.ModelAdmin):
+class PrzemapoaniePracAutoraAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
     list_display = (
         "autor",
         "jednostka_z",

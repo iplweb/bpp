@@ -1,0 +1,289 @@
+.stat-box {
+  background: #f8f8f8;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  transition: all 0.2s ease;
+}
+.stat-box h4 {
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.stat-box h4 i {
+  font-size: 1.2em;
+}
+.stat-box p {
+  margin: 0.5rem 0;
+}
+.stat-box p strong {
+  font-weight: 600;
+}
+.stat-box small {
+  display: block;
+  color: #666;
+  line-height: 1.4;
+}
+.stat-box small ul {
+  margin-top: 0.5rem;
+  margin-bottom: 0;
+  padding-left: 1.2rem;
+}
+.stat-box small ul li {
+  margin-bottom: 0.3rem;
+  list-style-type: disc;
+}
+
+.stat-box-deleted-pbn {
+  border-color: #f0ad4e;
+  background: linear-gradient(135deg, #fffbf5 0%, #fff9f0 100%);
+  border-left: 4px solid #f0ad4e;
+}
+.stat-box-deleted-pbn h4 {
+  color: #d58512;
+}
+.stat-box-deleted-pbn h4 i {
+  color: #ec971f;
+}
+.stat-box-deleted-pbn p strong {
+  color: #d58512;
+}
+.stat-box-deleted-pbn small {
+  color: #856404;
+}
+
+.stat-box-deleted-scientists {
+  border-color: #f0ad4e;
+  background: linear-gradient(135deg, #fef9f3 0%, #fef6ea 100%);
+  border-left: 4px solid #f0ad4e;
+  border-radius: 5px;
+}
+.stat-box-deleted-scientists h4 {
+  color: #d58512;
+}
+.stat-box-deleted-scientists h4 i {
+  color: #ec971f;
+}
+.stat-box-deleted-scientists p strong {
+  color: #d58512;
+}
+.stat-box-deleted-scientists small {
+  color: #856404;
+}
+.stat-box-deleted-scientists small ul {
+  margin-top: 0.5rem;
+  margin-bottom: 0;
+}
+.stat-box-deleted-scientists small ul li {
+  margin-bottom: 0.3rem;
+}
+
+.stat-box .button {
+  margin-top: 1rem;
+  font-weight: 500;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+}
+.stat-box .button i {
+  margin-right: 0.5rem;
+}
+.stat-box .button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
+}
+.stat-box .button.alert {
+  background-color: #dc3545;
+  color: white;
+  border: 1px solid #dc3545;
+}
+.stat-box .button.alert:hover {
+  background-color: #c82333;
+  border-color: #bd2130;
+  color: white;
+}
+.stat-box .button.warning {
+  background-color: #ffc107;
+  color: #212529;
+  border: 1px solid #ffc107;
+}
+.stat-box .button.warning:hover {
+  background-color: #e0a800;
+  border-color: #d39e00;
+  color: #212529;
+}
+.stat-box .button.success {
+  background-color: #28a745;
+  color: white;
+  border: 1px solid #28a745;
+}
+.stat-box .button.success:hover {
+  background-color: #218838;
+  border-color: #1e7e34;
+  color: white;
+}
+.stat-box .button.info {
+  background-color: #17a2b8;
+  color: white;
+  border: 1px solid #17a2b8;
+}
+.stat-box .button.info:hover {
+  background-color: #138496;
+  border-color: #117a8b;
+  color: white;
+}
+.stat-box .button.secondary {
+  background-color: #6c757d;
+  color: white;
+  border: 1px solid #6c757d;
+}
+.stat-box .button.secondary:hover {
+  background-color: #5a6268;
+  border-color: #545b62;
+  color: white;
+}
+.stat-box .button:not(.alert):not(.warning):not(.success):not(.info):not(.secondary) {
+  background-color: #0066cc;
+  color: white;
+  border: 1px solid #0066cc;
+}
+.stat-box .button:not(.alert):not(.warning):not(.success):not(.info):not(.secondary):hover {
+  background-color: #0056b3;
+  border-color: #004a99;
+  color: white;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+.progress {
+  background-color: #e6e6e6 !important;
+  border-radius: 3px !important;
+  height: 20px !important;
+  overflow: hidden !important;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+.progress .meter {
+  background-color: #28a745 !important;
+  height: 100% !important;
+  transition: width 0.3s ease !important;
+  border-radius: 3px !important;
+  display: block !important;
+}
+
+.panel.callout.info {
+  background-color: #f0f8ff;
+  border-left: 4px solid #17a2b8;
+}
+.panel.callout.info h3 {
+  color: #004a99;
+}
+
+.panel.callout.warning {
+  background-color: #fffbf0;
+  border-left: 4px solid #f0ad4e;
+}
+.panel.callout.warning h3 {
+  color: #d58512;
+}
+
+.panel.callout.secondary {
+  background-color: #f8f9fa;
+  border-left: 4px solid #6c757d;
+}
+.panel.callout.secondary h3, .panel.callout.secondary h4 {
+  color: #495057;
+}
+
+.komparator-main-stats .stat-box {
+  min-height: 200px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.discipline-discrepancy-card {
+  padding: 1rem;
+  border: 1px solid #dee2e6;
+  border-radius: 3px;
+  transition: all 0.2s ease;
+}
+.discipline-discrepancy-card:hover {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+.discipline-discrepancy-card h5 {
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.discipline-discrepancy-card h5 i {
+  font-size: 1.2em;
+}
+.discipline-discrepancy-card .lead {
+  font-size: 2rem;
+  margin: 0.5rem 0;
+  font-weight: 600;
+}
+.discipline-discrepancy-card small {
+  display: block;
+  line-height: 1.4;
+}
+.discipline-discrepancy-card.empty-bpp {
+  background: #f8f9fa;
+}
+.discipline-discrepancy-card.empty-bpp h5 {
+  color: #6c757d;
+}
+.discipline-discrepancy-card.empty-bpp h5 i {
+  color: #6c757d;
+}
+.discipline-discrepancy-card.empty-bpp .lead {
+  color: #495057;
+}
+.discipline-discrepancy-card.empty-bpp small {
+  color: #6c757d;
+}
+.discipline-discrepancy-card.empty-pbn {
+  background: #f8f9fa;
+}
+.discipline-discrepancy-card.empty-pbn h5 {
+  color: #6c757d;
+}
+.discipline-discrepancy-card.empty-pbn h5 i {
+  color: #6c757d;
+}
+.discipline-discrepancy-card.empty-pbn .lead {
+  color: #495057;
+}
+.discipline-discrepancy-card.empty-pbn small {
+  color: #6c757d;
+}
+.discipline-discrepancy-card.different-disciplines {
+  background: #f8d7da;
+  border-color: #f5c6cb;
+}
+.discipline-discrepancy-card.different-disciplines h5 {
+  color: #dc3545;
+}
+.discipline-discrepancy-card.different-disciplines h5 i {
+  color: #dc3545;
+}
+.discipline-discrepancy-card.different-disciplines .lead {
+  color: #721c24;
+}
+.discipline-discrepancy-card.different-disciplines small {
+  color: #721c24;
+}
+
+/*# sourceMappingURL=komparator_pbn.css.map */

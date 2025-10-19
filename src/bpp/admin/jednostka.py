@@ -73,6 +73,8 @@ class JednostkaAdmin(
         "wchodzi_do_raportow",
         "skupia_pracownikow",
         "zarzadzaj_automatycznie",
+        "rodzaj_jednostki",
+        "aktualna",
         PBN_UID_IDObecnyFilter,
     )
     search_fields = ["nazwa", "skrot", "wydzial__nazwa"]

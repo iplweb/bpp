@@ -31,6 +31,7 @@ PBN_MENU = [
     # ("Publikacje instytucji", "/admin/pbn_api/publikacjainstytucji"),
     ("Oświadczenia instytucji", "/admin/pbn_api/oswiadczenieinstytucji"),
     ("Przesłane dane", "/admin/pbn_api/sentdata"),
+    ("Niepożądane odpowiedzi PBN", "/admin/pbn_api/pbnodpowiedziniepozadane"),
     ("Kolejka eksportu", "/admin/pbn_export_queue/pbn_export_queue"),
     (
         "Deduplikator autorów - nie duplikaty",
@@ -314,7 +315,7 @@ class CustomMenu(Menu):
             column2_children.append(theme_item)
 
         # Add 4 empty spacer entries above fonts in column 2
-        for i in range(4):
+        for _i in range(4):
             spacer_item = items.MenuItem("", url="#")
             spacer_item.css_classes = ["menu-spacer", "column-2"]
             column2_children.append(spacer_item)

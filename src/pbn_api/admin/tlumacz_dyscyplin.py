@@ -1,10 +1,11 @@
 from django.contrib import admin
 
+from bpp.admin.core import DynamicAdminFilterMixin
 from pbn_api.models import TlumaczDyscyplin
 
 
 @admin.register(TlumaczDyscyplin)
-class TlumaczDyscyplinAdmin(admin.ModelAdmin):
+class TlumaczDyscyplinAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
     list_display = [
         "dyscyplina_w_bpp",
         "pbn_2017_2021",

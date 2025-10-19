@@ -3,11 +3,13 @@
 from django.contrib import admin
 from django.utils.html import format_html
 
+from bpp.admin.core import DynamicAdminFilterMixin
+
 from .models import ImportLog, ImportSession, ImportStatistics, ImportStep
 
 
 @admin.register(ImportSession)
-class ImportSessionAdmin(admin.ModelAdmin):
+class ImportSessionAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
     list_display = [
         "id",
         "user",
@@ -152,7 +154,7 @@ class ImportSessionAdmin(admin.ModelAdmin):
 
 
 @admin.register(ImportLog)
-class ImportLogAdmin(admin.ModelAdmin):
+class ImportLogAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
     list_display = [
         "timestamp",
         "session_link",

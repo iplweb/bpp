@@ -62,6 +62,7 @@ def test_change_form_get_pbn_by_isbn_or_eisbn_via_api_pub_jest_w_api(
     assert admin_browser.find_by_id("id_pbn_uid").value == UID_REKORDU
 
 
+@pytest.mark.serial
 @pytest.mark.parametrize("field_name", ["isbn", "e_isbn"])
 def test_change_form_get_pbn_by_isbn_or_eisbn_via_api_pub_jest_w_lokalnej_bazie(
     admin_browser, channels_live_server, field_name, pbn_serwer, transactional_db

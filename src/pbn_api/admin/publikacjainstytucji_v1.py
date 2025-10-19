@@ -39,6 +39,7 @@ class PublikacjaInstytucjiAdmin(BasePBNAPIAdmin):
     list_filter = [
         "userType",
         "publicationType",
+        "publicationYear",
         OdpowiednikPublikacjiInstytucjiPublikacjaWBPPFilter,
         OdpowiednikPublikacjiInstytucjiAutorWBPPFilter,
     ]
