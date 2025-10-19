@@ -143,6 +143,122 @@
             // Storage key for pin state
             var STORAGE_KEY = 'bpp_filter_panel_pinned';
 
+            // Global function to initialize or re-initialize DjangoQL search
+            // This function can be called after HTMX content swaps
+            window.initDjangoQLSearch = function() {
+                // Check if DjangoQL is available
+                if (typeof window.DjangoQL === 'undefined') {
+                    return;
+                }
+
+                // Check if search input exists and hasn't been converted to textarea yet
+                var searchInput = document.querySelector('input[name=q]');
+                if (!searchInput) {
+                    // Already converted to textarea or doesn't exist
+                    return;
+                }
+
+                // Check if already initialized (input should be converted to textarea)
+                var searchTextarea = document.querySelector('textarea[name=q]');
+                if (searchTextarea) {
+                    // Already initialized
+                    return;
+                }
+
+                // DjangoQL initialization logic (based on completion_admin.js)
+                var QLParamName = 'q-l';
+                var QLEnabled;
+                var QLEnabledInURL;
+                var originalPlaceholder = searchInput.placeholder;
+                var QLPlaceholder = 'Advanced search with Query Language';
+
+                // Check URL params for QL state
+                function parseQueryString() {
+                    var qs = window.location.search.substring(1);
+                    var result = {};
+                    var vars = qs.split('&');
+                    for (var i = 0; i < vars.length; i++) {
+                        var pair = vars[i].split('=');
+                        var key = decodeURIComponent(pair[0]);
+                        if (key) {
+                            result[key] = decodeURIComponent(pair[1] || '');
+                        }
+                    }
+                    return result;
+                }
+
+                QLEnabledInURL = parseQueryString()[QLParamName];
+                if (QLEnabledInURL === 'on') {
+                    QLEnabled = true;
+                } else if (QLEnabledInURL === 'off') {
+                    QLEnabled = false;
+                } else {
+                    QLEnabled = Boolean(window.DjangoQL._toggleOnByDefault);
+                }
+
+                // Create textarea to replace input
+                var textarea = document.createElement('textarea');
+                textarea.value = searchInput.value;
+                textarea.id = searchInput.id;
+                textarea.name = searchInput.name;
+                textarea.rows = 1;
+                textarea.placeholder = QLEnabled ? QLPlaceholder : originalPlaceholder;
+                textarea.setAttribute('maxlength', 2000);
+
+                // Insert textarea before input
+                searchInput.parentNode.insertBefore(textarea, searchInput);
+
+                // Remove original input
+                searchInput.parentNode.removeChild(searchInput);
+                // Don't auto-focus during re-initialization to avoid disrupting user workflow
+
+                // Initialize DjangoQL instance
+                var djangoQL = new window.DjangoQL({
+                    completionEnabled: QLEnabled,
+                    introspections: 'introspect/',
+                    syntaxHelp: 'djangoql-syntax/',
+                    selector: 'textarea[name=q]',
+                    autoResize: true
+                });
+
+                // If toggle is enabled, set up toggle functionality
+                if (window.DjangoQL._enableToggle) {
+                    var QLInput = document.querySelector('input[name=' + QLParamName + ']');
+                    if (!QLInput) {
+                        QLInput = document.createElement('input');
+                        QLInput.type = 'hidden';
+                        QLInput.name = QLParamName;
+                        textarea.parentNode.insertBefore(QLInput, textarea);
+                    }
+                    QLInput.value = QLEnabled ? 'on' : 'off';
+
+                    var QLToggle = document.createElement('input');
+                    QLToggle.type = 'checkbox';
+                    QLToggle.checked = QLEnabled;
+                    QLToggle.className = 'djangoql-toggle';
+                    QLToggle.title = QLPlaceholder;
+                    QLToggle.onchange = function(e) {
+                        if (e.target.checked) {
+                            djangoQL.enableCompletion();
+                            QLInput.value = 'on';
+                            textarea.placeholder = QLPlaceholder;
+                            textarea.focus();
+                            djangoQL.popupCompletion();
+                        } else {
+                            djangoQL.disableCompletion();
+                            QLInput.value = 'off';
+                            textarea.placeholder = originalPlaceholder;
+                            textarea.focus();
+                        }
+                    };
+                    textarea.parentNode.insertBefore(QLToggle, textarea);
+                }
+            };
+
+            // Track loading indicator timing (shared across event listeners)
+            var loadingStartTime = null;
+            var minLoadingTime = 500; // Minimum display time in milliseconds
+
             // Function to initialize filter panel
             function initFilterPanel() {
                 var $filterPanel = $('#filter-panel');
@@ -159,7 +275,13 @@
                         $filterPanel.addClass('pinned-no-animation');
                     }
                     $filterPanel.addClass('active');
-                    $filterOverlay.addClass('active');
+
+                    // Only add active class to overlay if it's not already active
+                    // This prevents flash during HTMX re-initialization
+                    if (!$filterOverlay.hasClass('active')) {
+                        $filterOverlay.addClass('active');
+                    }
+
                     $body.addClass('filter-panel-open');
 
                     // Remove no-animation class after a brief moment
@@ -196,7 +318,11 @@
                 if (isPinned) {
                     $filterPinBtn.addClass('pinned');
                     $filterPinBtn.attr('title', 'Odepnij panel (panel pozostanie otwarty)');
-                    openFilterPanel(true);  // Skip animation on page load
+
+                    // Only open panel if it's not already open (prevents shake during HTMX re-init)
+                    if (!$filterPanel.hasClass('active')) {
+                        openFilterPanel(true);  // Skip animation on page load
+                    }
                 } else {
                     $filterPinBtn.attr('title', 'Przypnij panel (panel pozostanie otwarty po przeładowaniu)');
                 }
@@ -339,34 +465,44 @@
                     return loadingMessages[Math.floor(Math.random() * loadingMessages.length)];
                 }
 
-                // Track loading indicator timing
-                var loadingStartTime = null;
-                var minLoadingTime = 500; // Minimum display time in milliseconds
-
                 // Handle HTMX events for filter panel
                 document.body.addEventListener('htmx:beforeRequest', function (evt) {
-                    // Track when loading started
-                    loadingStartTime = Date.now();
+                    // Check if this is a filter selection or reset that should show loading indicator
+                    var isFilterSelection = evt.detail.elt.classList.contains('filter-option-link');
+                    var isFilterReset = evt.detail.elt.classList.contains('filter-panel-reset') ||
+                                       evt.detail.elt.id === 'filter-panel-reset';
 
-                    // Update loading message with random text
-                    var loadingIndicator = document.getElementById('filter-loading-indicator');
-                    if (loadingIndicator) {
-                        // Add class for minimum display time
-                        loadingIndicator.classList.add('min-display-time');
+                    // Only show loading overlay and indicator for filter selections and reset
+                    if (isFilterSelection || isFilterReset) {
+                        // Track when loading started
+                        loadingStartTime = Date.now();
 
-                        var textSpan = loadingIndicator.querySelector('span');
-                        if (textSpan) {
-                            // Add ellipsis if the message doesn't already have it
-                            var message = getRandomLoadingMessage();
-                            if (!message.endsWith('...')) {
-                                message += '...';
+                        // Show loading overlay to block clicks
+                        var loadingOverlay = document.getElementById('loading-overlay');
+                        if (loadingOverlay) {
+                            loadingOverlay.classList.add('htmx-request');
+                        }
+
+                        // Update loading message with random text
+                        var loadingIndicator = document.getElementById('filter-loading-indicator');
+                        if (loadingIndicator) {
+                            // Add class for minimum display time
+                            loadingIndicator.classList.add('min-display-time');
+
+                            var textSpan = loadingIndicator.querySelector('span');
+                            if (textSpan) {
+                                // Add ellipsis if the message doesn't already have it
+                                var message = getRandomLoadingMessage();
+                                if (!message.endsWith('...')) {
+                                    message += '...';
+                                }
+                                textSpan.textContent = message;
                             }
-                            textSpan.textContent = message;
                         }
                     }
 
                     // Check if the request is from a filter link
-                    if (evt.detail.elt.classList.contains('filter-option-link')) {
+                    if (isFilterSelection) {
                         var $link = $(evt.detail.elt);
                         var selectedText = $link.text().replace('✓', '').trim();
 
@@ -422,39 +558,18 @@
                             closeFilterPanel();
                         }
                     }
-                });
 
-                // Handle HTMX after request - ensure minimum display time for loading indicator
-                document.body.addEventListener('htmx:afterRequest', function (evt) {
-                    var loadingIndicator = document.getElementById('filter-loading-indicator');
-                    if (loadingIndicator && loadingStartTime) {
-                        var elapsedTime = Date.now() - loadingStartTime;
-                        var remainingTime = Math.max(0, minLoadingTime - elapsedTime);
-
-                        // If request was too fast, keep loading indicator visible for remaining time
-                        if (remainingTime > 0) {
-                            setTimeout(function() {
-                                loadingIndicator.classList.remove('min-display-time');
-                                loadingIndicator.classList.add('htmx-request-complete');
-                                // Remove the indicator classes after fade out animation
-                                setTimeout(function() {
-                                    loadingIndicator.classList.remove('htmx-request');
-                                    loadingIndicator.classList.remove('htmx-request-complete');
-                                }, 200);
-                            }, remainingTime);
-                        } else {
-                            // Request took long enough, hide immediately with fade out
-                            loadingIndicator.classList.remove('min-display-time');
-                            loadingIndicator.classList.add('htmx-request-complete');
-                            setTimeout(function() {
-                                loadingIndicator.classList.remove('htmx-request');
-                                loadingIndicator.classList.remove('htmx-request-complete');
-                            }, 200);
+                    // Check if the request is from reset button
+                    if (isFilterReset) {
+                        // Close panel if not pinned (after reset)
+                        if (!isPinned) {
+                            closeFilterPanel();
                         }
-
-                        loadingStartTime = null;
                     }
                 });
+
+                // Note: Loading indicator hiding moved to htmx:afterSwap to ensure it stays visible
+                // until content is actually displayed (fixes issue with slow network connections)
 
             }
 
@@ -474,10 +589,46 @@
                 // Initialize filter panel
                 initFilterPanel();
 
-                // Handle HTMX completion - re-initialize filter panel (ONLY ONCE)
+                // Before HTMX swap - clone the current panel to prevent flickering
+                document.body.addEventListener('htmx:beforeSwap', function (evt) {
+                    if (evt.detail.target && evt.detail.target.id === 'grp-content-container') {
+                        var $panel = $('#filter-panel');
+                        // If panel is currently active, clone it and keep it visible during swap
+                        if ($panel.length && $panel.hasClass('active')) {
+                            // Clone the current panel (deep clone)
+                            var $oldPanel = $panel.clone(true);
+
+                            // Add transitioning class for styling
+                            $oldPanel.addClass('filter-panel-transitioning');
+
+                            // Higher z-index to stay on top during transition
+                            $oldPanel.css('z-index', '10001');
+
+                            // Change id to avoid duplicates
+                            $oldPanel.attr('id', 'filter-panel-old');
+
+                            // Append to body (outside swap target to prevent removal)
+                            $('body').append($oldPanel);
+                        }
+                    }
+                });
+
+                // Handle HTMX completion - re-initialize filter panel and fade out old panel
                 document.body.addEventListener('htmx:afterSwap', function (evt) {
                     // Check if the swap was for the content container
                     if (evt.detail.target && evt.detail.target.id === 'grp-content-container') {
+                        // Fade out and remove the old panel if it exists
+                        var $oldPanel = $('#filter-panel-old');
+                        if ($oldPanel.length) {
+                            // Trigger fade out animation
+                            $oldPanel.addClass('fade-out');
+
+                            // Remove old panel after animation completes (300ms)
+                            setTimeout(function() {
+                                $oldPanel.remove();
+                            }, 300);
+                        }
+
                         // Re-initialize the filter panel after content swap
                         setTimeout(function () {
                             initFilterPanel();
@@ -489,49 +640,122 @@
                                     window.Actions(actionsEls);
                                 }
                             }
+
+                            // Re-initialize DjangoQL if needed
+                            if (typeof window.initDjangoQLSearch === 'function') {
+                                window.initDjangoQLSearch();
+                            }
                         }, 50);
                     }
 
-                    // Handle filter count updates - whoosh out zero-count items immediately
+                    // Handle filter count updates - whoosh out zero-count items with conditional animation
                     if (evt.detail.target && evt.detail.target.classList.contains('filter-count')) {
                         var $countElement = $(evt.detail.target);
                         var countText = $countElement.text().trim();
                         var count = parseInt(countText, 10);
 
-                        // If count is 0, immediately start whoosh animation
+                        // If count is 0, remove the item (with or without animation based on group size)
                         if (count === 0) {
                             var $filterOption = $countElement.closest('.filter-option');
+                            var $filterOptions = $filterOption.closest('.filter-options');
 
-                            // Immediately add whoosh-out class
-                            $filterOption.addClass('whoosh-out');
+                            // Count total filter options in this group
+                            var totalOptions = $filterOptions.find('.filter-option').length;
+                            var useAnimation = totalOptions <= 15;
 
-                            // After animation completes (300ms), hide the element
-                            setTimeout(function() {
+                            if (useAnimation) {
+                                // Small group (≤15 items): use whoosh animation
+                                $filterOption.addClass('whoosh-out');
+
+                                // After animation completes (300ms), hide the element
+                                setTimeout(function() {
+                                    $filterOption.addClass('hidden');
+
+                                    // Check if all options in this group are hidden
+                                    var $visibleOptions = $filterOptions.find('.filter-option:not(.hidden)');
+
+                                    // If no visible options remain, whoosh out the entire filter group
+                                    if ($visibleOptions.length === 0) {
+                                        var $filterGroup = $filterOption.closest('.filter-group');
+
+                                        // Whoosh out the filter group
+                                        $filterGroup.addClass('whoosh-out');
+
+                                        // After animation, hide it completely
+                                        setTimeout(function() {
+                                            $filterGroup.addClass('hidden');
+                                        }, 400); // Match the group animation duration
+                                    }
+                                }, 300); // Match the whoosh animation duration
+                            } else {
+                                // Large group (>15 items): hide immediately without animation
                                 $filterOption.addClass('hidden');
 
                                 // Check if all options in this group are hidden
-                                var $filterOptions = $filterOption.closest('.filter-options');
                                 var $visibleOptions = $filterOptions.find('.filter-option:not(.hidden)');
 
-                                // If no visible options remain, whoosh out the entire filter group
+                                // If no visible options remain, hide the entire filter group immediately
                                 if ($visibleOptions.length === 0) {
                                     var $filterGroup = $filterOption.closest('.filter-group');
-
-                                    // Whoosh out the filter group
-                                    $filterGroup.addClass('whoosh-out');
-
-                                    // After animation, hide it completely
-                                    setTimeout(function() {
-                                        $filterGroup.addClass('hidden');
-                                    }, 400); // Match the group animation duration
+                                    $filterGroup.addClass('hidden');
                                 }
-                            }, 300); // Match the whoosh animation duration
+                            }
                         }
                     }
                 });
 
                 // Handle when filter options are expanded - check for empty groups
                 document.body.addEventListener('htmx:afterSettle', function (evt) {
+                    // Hide loading indicator after settle (after swap animation completes)
+                    if (evt.detail.target && evt.detail.target.id === 'grp-content-container') {
+                        var loadingIndicator = document.getElementById('filter-loading-indicator');
+                        var loadingOverlay = document.getElementById('loading-overlay');
+
+                        if (loadingIndicator && loadingStartTime) {
+                            var elapsedTime = Date.now() - loadingStartTime;
+                            var remainingTime = Math.max(0, minLoadingTime - elapsedTime);
+
+                            // If request was too fast, keep loading indicator visible for remaining time
+                            if (remainingTime > 0) {
+                                setTimeout(function() {
+                                    loadingIndicator.classList.remove('min-display-time');
+                                    loadingIndicator.classList.add('htmx-request-complete');
+                                    // Also hide the overlay
+                                    if (loadingOverlay) {
+                                        loadingOverlay.classList.remove('htmx-request');
+                                        loadingOverlay.classList.add('htmx-request-complete');
+                                    }
+                                    // Remove the indicator classes after fade out animation (300ms)
+                                    setTimeout(function() {
+                                        loadingIndicator.classList.remove('htmx-request');
+                                        loadingIndicator.classList.remove('htmx-request-complete');
+                                        if (loadingOverlay) {
+                                            loadingOverlay.classList.remove('htmx-request-complete');
+                                        }
+                                    }, 300);
+                                }, remainingTime);
+                            } else {
+                                // Request took long enough, hide immediately with fade out
+                                loadingIndicator.classList.remove('min-display-time');
+                                loadingIndicator.classList.add('htmx-request-complete');
+                                // Also hide the overlay
+                                if (loadingOverlay) {
+                                    loadingOverlay.classList.remove('htmx-request');
+                                    loadingOverlay.classList.add('htmx-request-complete');
+                                }
+                                setTimeout(function() {
+                                    loadingIndicator.classList.remove('htmx-request');
+                                    loadingIndicator.classList.remove('htmx-request-complete');
+                                    if (loadingOverlay) {
+                                        loadingOverlay.classList.remove('htmx-request-complete');
+                                    }
+                                }, 300);
+                            }
+
+                            loadingStartTime = null;
+                        }
+                    }
+
                     // Check if we're settling after loading filter counts
                     if (evt.detail.elt && evt.detail.elt.classList.contains('filter-count')) {
                         // Small delay to ensure all counts in the group are loaded
@@ -555,6 +779,132 @@
                         }, 50); // Very short delay just to ensure counts are loaded
                     }
                 });
+
+                // HTMX Error Handling
+                // Track last failed request for retry functionality
+                var lastFailedRequest = null;
+                var errorToastTimeout = null;
+
+                // Helper functions for error toast
+                function showErrorToast(title, message) {
+                    var toast = document.getElementById('htmx-error-toast');
+                    if (!toast) return;
+
+                    document.getElementById('error-title').textContent = title;
+                    document.getElementById('error-details').textContent = message;
+                    toast.classList.remove('hidden');
+
+                    // Clear existing timeout
+                    if (errorToastTimeout) {
+                        clearTimeout(errorToastTimeout);
+                    }
+
+                    // Auto-hide after 8 seconds
+                    errorToastTimeout = setTimeout(function() {
+                        hideErrorToast();
+                    }, 8000);
+                }
+
+                function hideErrorToast() {
+                    var toast = document.getElementById('htmx-error-toast');
+                    if (toast) {
+                        toast.classList.add('hidden');
+                    }
+                    if (errorToastTimeout) {
+                        clearTimeout(errorToastTimeout);
+                        errorToastTimeout = null;
+                    }
+                }
+
+                function hideLoadingIndicators() {
+                    var loadingIndicator = document.getElementById('filter-loading-indicator');
+                    var loadingOverlay = document.getElementById('loading-overlay');
+
+                    if (loadingIndicator) {
+                        loadingIndicator.classList.remove('htmx-request');
+                        loadingIndicator.classList.remove('min-display-time');
+                        loadingIndicator.classList.remove('htmx-request-complete');
+                    }
+                    if (loadingOverlay) {
+                        loadingOverlay.classList.remove('htmx-request');
+                        loadingOverlay.classList.remove('htmx-request-complete');
+                    }
+                    loadingStartTime = null;
+                }
+
+                // Listen for HTTP response errors (404, 500, etc.)
+                document.body.addEventListener('htmx:responseError', function(evt) {
+                    lastFailedRequest = evt.detail;
+                    var status = evt.detail.xhr ? evt.detail.xhr.status : 0;
+                    var title = 'Błąd serwera';
+                    var message = 'Wystąpił błąd podczas ładowania danych.';
+
+                    switch (status) {
+                        case 403:
+                            title = 'Brak uprawnień';
+                            message = 'Nie masz uprawnień do wykonania tej operacji.';
+                            break;
+                        case 404:
+                            title = 'Nie znaleziono';
+                            message = 'Żądany zasób nie został znaleziony.';
+                            break;
+                        case 500:
+                        case 502:
+                        case 503:
+                            title = 'Błąd serwera';
+                            message = 'Serwer napotkał problem. Spróbuj ponownie za chwilę.';
+                            break;
+                        default:
+                            title = 'Błąd ładowania';
+                            message = `Serwer zwrócił błąd (kod ${status}). Spróbuj odświeżyć stronę.`;
+                    }
+
+                    showErrorToast(title, message);
+                    hideLoadingIndicators();
+                });
+
+                // Listen for network errors (no connection, timeout, etc.)
+                document.body.addEventListener('htmx:sendError', function(evt) {
+                    lastFailedRequest = evt.detail;
+                    showErrorToast(
+                        'Błąd połączenia',
+                        'Nie można połączyć się z serwerem. Sprawdź połączenie internetowe.'
+                    );
+                    hideLoadingIndicators();
+                });
+
+                // Listen for request timeouts
+                document.body.addEventListener('htmx:timeout', function(evt) {
+                    lastFailedRequest = evt.detail;
+                    showErrorToast(
+                        'Przekroczono czas oczekiwania',
+                        'Serwer nie odpowiedział w wyznaczonym czasie. Spróbuj ponownie.'
+                    );
+                    hideLoadingIndicators();
+                });
+
+                // Retry button click handler
+                var retryBtn = document.getElementById('error-retry-btn');
+                if (retryBtn) {
+                    retryBtn.addEventListener('click', function() {
+                        hideErrorToast();
+                        if (lastFailedRequest && lastFailedRequest.elt) {
+                            // Retry the last failed request by triggering HTMX again
+                            htmx.trigger(lastFailedRequest.elt, 'click');
+                        } else {
+                            // Fallback: reload the entire page
+                            window.location.reload();
+                        }
+                    });
+                }
+
+                // Close button click handler
+                var closeBtn = document.getElementById('error-close-btn');
+                if (closeBtn) {
+                    closeBtn.addEventListener('click', function() {
+                        hideErrorToast();
+                    });
+                }
             });
         })(); // Self-executing function without jQuery parameter
     </script>
@@ -695,13 +1045,31 @@
 
     <!-- SLIDING FILTER PANEL -->
     {% if cl.has_filters %}
+        <!-- HTMX Error Toast -->
+        <div id="htmx-error-toast" class="htmx-error-toast hidden" hx-preserve="true">
+            <div class="error-toast-content">
+                <span class="error-icon">⚠️</span>
+                <div class="error-message">
+                    <strong id="error-title">Błąd ładowania danych</strong>
+                    <p id="error-details">Nie udało się załadować zawartości. Sprawdź połączenie z internetem.</p>
+                </div>
+                <div class="error-actions">
+                    <button id="error-retry-btn" class="error-btn error-retry" title="Ponów próbę ładowania">Spróbuj ponownie</button>
+                    <button id="error-close-btn" class="error-btn error-close" title="Zamknij powiadomienie">×</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading Overlay - blocks all clicks during HTMX requests -->
+        <div id="loading-overlay" class="loading-overlay htmx-indicator" hx-preserve="true"></div>
+
         <!-- Loading Indicator -->
-        <div id="filter-loading-indicator" class="filter-loading-indicator htmx-indicator">
+        <div id="filter-loading-indicator" class="filter-loading-indicator htmx-indicator" hx-preserve="true">
             <div class="filter-loading-spinner"></div>
             <span id="loading-message">Wczytywanie...</span>
         </div>
 
-        <div id="filter-panel-overlay" class="filter-panel-overlay"></div>
+        <div id="filter-panel-overlay" class="filter-panel-overlay" hx-preserve="true"></div>
         <div id="filter-panel" class="filter-panel{% if cl.filter_specs|length <= 6 %} filter-panel-narrow{% endif %}">
             <div class="filter-panel-header">
                 <h2>{% trans "Filters" %}</h2>
@@ -725,6 +1093,7 @@
                 </div>
             </div>
             <div class="filter-panel-content">
+                {% should_show_filter_counts cl as show_counts %}
                 {% for spec in cl.filter_specs %}
                     {% get_filter_choices_without_selected spec cl as filter_choices %}
                     {% get_selected_filter_value spec cl as selected_value %}
@@ -735,7 +1104,7 @@
                             <span class="filter-title-text">
                                 {{ spec.title }}{% if selected_value %}:
                                     <strong class="selected-filter-value">{{ selected_value }}
-                                        {% if selected_count_url %}
+                                        {% if selected_count_url and show_counts %}
                                             <span class="filter-header-count"
                                                   hx-get="{{ selected_count_url }}"
                                                   hx-trigger="intersect once"
@@ -762,11 +1131,13 @@
                                        class="filter-option-link">
                                         {{ choice.display }}
                                     </a>
-                                    <span class="filter-count"
-                                          hx-get="{% get_filter_count_url choice cl %}"
-                                          hx-trigger="intersect once"
-                                          hx-target="this"
-                                          hx-swap="innerHTML"></span>
+                                    {% if show_counts %}
+                                        <span class="filter-count"
+                                              hx-get="{% get_filter_count_url choice cl %}"
+                                              hx-trigger="intersect once"
+                                              hx-target="this"
+                                              hx-swap="innerHTML"></span>
+                                    {% endif %}
                                 </li>
                             {% endfor %}
                         </ul>

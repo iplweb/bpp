@@ -2,7 +2,6 @@ from unittest.mock import patch
 
 import pytest
 from django import forms
-from django.contrib.auth import get_user_model
 from django.urls import reverse
 from model_bakery import baker
 
@@ -11,6 +10,7 @@ from pbn_export_queue.admin import PBN_Export_QueueAdmin
 from pbn_export_queue.models import PBN_Export_Queue
 
 from django.contrib.admin.sites import AdminSite
+from django.contrib.auth import get_user_model
 
 
 @pytest.mark.django_db
@@ -178,7 +178,7 @@ def test_pbn_export_queue_admin_response_change_normal(
             "pbn_export_queue.tasks.task_sprobuj_wyslac_do_pbn.delay"
         ) as mock_task:
             with patch.object(
-                admin_instance.__class__.__bases__[0], "response_change"
+                admin_instance.__class__.__bases__[1], "response_change"
             ) as mock_super:
                 mock_super.return_value = "super_response"
 

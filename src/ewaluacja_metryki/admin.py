@@ -1,11 +1,13 @@
 from django.contrib import admin
 from django.utils.html import format_html
 
+from bpp.admin.core import DynamicAdminFilterMixin
+
 from .models import MetrykaAutora, StatusGenerowania
 
 
 @admin.register(MetrykaAutora)
-class MetrykaAutoraAdmin(admin.ModelAdmin):
+class MetrykaAutoraAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
     list_display = [
         "autor",
         "dyscyplina_naukowa",

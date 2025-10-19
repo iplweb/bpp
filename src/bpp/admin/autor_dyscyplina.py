@@ -1,9 +1,11 @@
 from dal import autocomplete
+from django import forms
 from django.contrib import admin
 from djangoql.admin import DjangoQLSearchMixin
 from import_export import resources
 from import_export.fields import Field
 
+from bpp.admin.core import DynamicAdminFilterMixin
 from bpp.admin.filters import (
     OrcidAutoraDyscyplinyObecnyFilter,
     PBN_UID_IDAutoraObecnyFilter,
@@ -55,9 +57,6 @@ class Autor_DyscyplinaResource(resources.ModelResource):
         export_order = fields
 
 
-from django import forms
-
-
 class Autor_DyscyplinaForm(forms.ModelForm):
     autor = forms.ModelChoiceField(
         queryset=Autor.objects.all(),
@@ -66,10 +65,23 @@ class Autor_DyscyplinaForm(forms.ModelForm):
 
     class Meta:
         model = Autor_Dyscyplina
-        fields = "__all__"
+        fields = [
+            "rok",
+            "autor",
+            "rodzaj_autora",
+            "wymiar_etatu",
+            "dyscyplina_naukowa",
+            "procent_dyscypliny",
+            "subdyscyplina_naukowa",
+            "procent_subdyscypliny",
+            "zatrudnienie_od",
+            "zatrudnienie_do",
+        ]
 
 
-class Autor_DyscyplinaAdmin(DjangoQLSearchMixin, EksportDanychMixin, admin.ModelAdmin):
+class Autor_DyscyplinaAdmin(
+    DynamicAdminFilterMixin, DjangoQLSearchMixin, EksportDanychMixin, admin.ModelAdmin
+):
     djangoql_completion_enabled_by_default = True
     djangoql_completion = True
 

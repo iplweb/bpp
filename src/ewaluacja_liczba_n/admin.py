@@ -2,6 +2,7 @@ from django.contrib import admin
 from import_export import resources
 from import_export.admin import ImportExportMixin
 
+from bpp.admin.core import DynamicAdminFilterMixin
 from bpp.admin.xlsx_export.mixins import EksportDanychMixin
 from rozbieznosci_dyscyplin.admin import ReadonlyAdminMixin
 
@@ -94,7 +95,7 @@ class LiczbaNDlaUczelniResource(resources.ModelResource):
 
 @admin.register(IloscUdzialowDlaAutoraZaRok)
 class IloscUdzialowDlaAutoraZaRokAdmin(
-    EksportDanychMixin, ReadonlyAdminMixin, admin.ModelAdmin
+    DynamicAdminFilterMixin, EksportDanychMixin, ReadonlyAdminMixin, admin.ModelAdmin
 ):
     resource_class = IloscUdzialowDlaAutoraZaRokResource
     list_display = [
@@ -115,7 +116,7 @@ class IloscUdzialowDlaAutoraZaRokAdmin(
 
 @admin.register(IloscUdzialowDlaAutoraZaCalosc)
 class IloscUdzialowDlaAutoraZaCaloscAdmin(
-    EksportDanychMixin, ReadonlyAdminMixin, admin.ModelAdmin
+    DynamicAdminFilterMixin, EksportDanychMixin, ReadonlyAdminMixin, admin.ModelAdmin
 ):
     resource_class = IloscUdzialowDlaAutoraZaCaloscResource
     list_display = [

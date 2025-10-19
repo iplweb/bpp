@@ -262,4 +262,10 @@ body.theme-navy-academic {
             color: #1a2332 !important;
         }
     }
+
+    // Usuń tło dla przycisku dodawania (ma własne tło z Grappelli)
+    ul.grp-object-tools li a.grp-add-link {
+        background: none !important;
+        border: none !important;
+    }
 }

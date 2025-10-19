@@ -63,6 +63,7 @@ from pbn_api.exceptions import (
 )
 from pbn_api.models import TlumaczDyscyplin
 from pbn_api.models.discipline import Discipline, DisciplineGroup
+from pbn_api.models.pbn_odpowiedzi_niepozadane import PBNOdpowiedziNiepozadane
 from pbn_api.models.sentdata import SentData
 from pbn_api.utils import rename_dict_key
 
@@ -150,15 +151,15 @@ class OAuthMixin:
         response = requests.post(url=url, json=body, headers=headers)
         try:
             response.json()
-        except ValueError:
+        except ValueError as e:
             if response.content.startswith(b"Mismatched X-APP-TOKEN: "):
                 raise AuthenticationConfigurationError(
                     "Token aplikacji PBN nieprawidłowy. Poproś administratora "
                     "o skonfigurowanie prawidłowego tokena aplikacji PBN w "
                     "ustawieniach obiektu Uczelnia. "
-                )
+                ) from e
 
-            raise AuthenticationResponseError(response.content)
+            raise AuthenticationResponseError(response.content) from e
 
         return response.json().get("X-User-Token")
 
@@ -194,151 +195,140 @@ class OAuthMixin:
 
 
 class RequestsTransport(OAuthMixin, PBNClientTransport):
-    def get(self, url, headers=None, fail_on_auth_missing=False):
+    def _build_headers(self, headers=None):
+        """Build headers for API request."""
         sent_headers = {"X-App-Id": self.app_id, "X-App-Token": self.app_token}
         if self.access_token:
             sent_headers["X-User-Token"] = self.access_token
-
-        # Jeżeli ustawimy taki nagłówek dla "niewinnych" zapytań GET, to PBN
-        # API odrzuca takie połączenie z kodem 403, stąd nie:
-        # if hasattr(self, "access_token"):
-        #     sent_headers["X-User-Token"] = self.access_token
-
         if headers is not None:
             sent_headers.update(headers)
+        return sent_headers
 
+    def _make_get_request_with_retry(self, url, headers, max_retries=15):
+        """Make GET request with retry on SSL/Connection errors."""
         retries = 0
-        MAX_RETRIES = 15
-
-        while retries < MAX_RETRIES:
+        while retries < max_retries:
             try:
-                ret = requests.get(self.base_url + url, headers=sent_headers)
-                break
+                return requests.get(self.base_url + url, headers=headers)
             except (SSLError, ConnectionError) as e:
                 retries += 1
                 time.sleep(random.randint(1, 5))
-                if retries >= MAX_RETRIES:
+                if retries >= max_retries:
                     raise e
 
-        if ret.status_code == 403:
-            if fail_on_auth_missing:
-                raise AccessDeniedException(url, smart_content(ret.content))
-            # Needs auth
-            if ret.json()["message"] in ["Access Denied", "Forbidden"]:
-                # Autoryzacja użytkownika jest poprawna, jednakże nie ma on po stronie PBN
-                # takiego uprawnienia...
-                raise AccessDeniedException(url, smart_content(ret.content))
+    def _handle_403_response(self, ret, url, headers, fail_on_auth_missing):
+        """Handle 403 response, attempting reauthorization if needed."""
+        if fail_on_auth_missing:
+            raise AccessDeniedException(url, smart_content(ret.content))
 
-            # elif ret.json['message'] == "Forbidden":  # <== to dostaniemy, gdy token zły lub brak
+        if ret.json()["message"] in ["Access Denied", "Forbidden"]:
+            raise AccessDeniedException(url, smart_content(ret.content))
 
-            if hasattr(self, "authorize"):
-                ret = self.authorize(self.base_url, self.app_id, self.app_token)
-                if not ret:
-                    return
+        if hasattr(self, "authorize"):
+            auth_result = self.authorize(self.base_url, self.app_id, self.app_token)
+            if not auth_result:
+                return None
+            return self.get(url, headers, fail_on_auth_missing=True)
 
-                # Podejmuj ponowną próbę tylko w przypadku udanej autoryzacji
-                return self.get(url, headers, fail_on_auth_missing=True)
+        return ret
 
-        if ret.status_code >= 400:
-            raise HttpException(ret.status_code, url, smart_content(ret.content))
-
+    def _parse_json_response(self, ret, url):
+        """Parse JSON response with special handling for service maintenance."""
         try:
             return ret.json()
         except (RequestsJSONDecodeError, JSONDecodeError) as e:
             if ret.status_code == 200 and b"prace serwisowe" in ret.content:
-                # open("pbn_client_dump.html", "wb").write(ret.content)
-                raise PraceSerwisoweException()
+                raise PraceSerwisoweException() from e
             raise e
 
-    def post(self, url, headers=None, body=None, delete=False):
-        if not hasattr(self, "access_token"):
-            ret = self.authorize(self.base_url, self.app_id, self.app_token)
-            if not ret:
-                return
-            return self.post(url, headers=headers, body=body, delete=delete)
+    def get(self, url, headers=None, fail_on_auth_missing=False):
+        sent_headers = self._build_headers(headers)
+        ret = self._make_get_request_with_retry(url, sent_headers)
 
+        if ret.status_code == 403:
+            result = self._handle_403_response(ret, url, headers, fail_on_auth_missing)
+            if result is None:
+                return
+            if result != ret:
+                return result
+
+        if ret.status_code >= 400:
+            raise HttpException(ret.status_code, url, smart_content(ret.content))
+
+        return self._parse_json_response(ret, url)
+
+    def _ensure_access_token(self):
+        """Ensure access token is available."""
+        if not hasattr(self, "access_token"):
+            return self.authorize(self.base_url, self.app_id, self.app_token)
+        return True
+
+    def _build_post_headers(self, headers=None):
+        """Build headers for POST request."""
         sent_headers = {
             "X-App-Id": self.app_id,
             "X-App-Token": self.app_token,
             "X-User-Token": self.access_token,
         }
-
         if headers is not None:
             sent_headers.update(headers)
+        return sent_headers
 
-        method = requests.post
-        if delete:
-            method = requests.delete
+    def _get_request_method(self, delete):
+        """Get appropriate HTTP method."""
+        return requests.delete if delete else requests.post
 
-        ret = method(self.base_url + url, headers=sent_headers, json=body)
+    def _parse_403_response(self, ret, url):
+        """Parse 403 response JSON."""
+        try:
+            return ret.json()
+        except BaseException as e:
+            raise HttpException(
+                ret.status_code,
+                url,
+                "Blad podczas odkodowywania JSON podczas odpowiedzi 403: "
+                + smart_content(ret.content),
+            ) from e
 
-        # if ret.status_code != 200:
-        #     pprint(sent_headers)
-        #     pprint(body)
+    def _handle_403_access_denied(self, ret_json, ret, url):
+        """Handle 403 Access Denied responses."""
+        if ret_json.get("message") == "Access Denied":
+            raise AccessDeniedException(url, smart_content(ret.content))
 
-        if ret.status_code == 403:
-            try:
-                ret_json = ret.json()
-            except BaseException:
-                raise HttpException(
-                    ret.status_code,
-                    url,
-                    "Blad podczas odkodowywania JSON podczas odpowiedzi 403: "
-                    + smart_content(ret.content),
-                )
+        if ret_json.get("message") == "Forbidden" and ret_json.get(
+            "description", ""
+        ).startswith(NEEDS_PBN_AUTH_MSG):
+            raise NeedsPBNAuthorisationException(
+                ret.status_code, url, smart_content(ret.content)
+            )
 
-            # Needs auth
-            if ret_json.get("message") == "Access Denied":
-                # Autoryzacja użytkownika jest poprawna, jednakże nie ma on po stronie PBN
-                # takiego uprawnienia...
-                raise AccessDeniedException(url, smart_content(ret.content))
+        if hasattr(self, "authorize"):
+            self.authorize(self.base_url, self.app_id, self.app_token)
 
-            if ret_json.get("message") == "Forbidden" and ret_json.get(
-                "description"
-            ).startswith(NEEDS_PBN_AUTH_MSG):
-                # (403, '/api/v1/search/publications?size=10', '{"code":403,"message":"Forbidden",
-                # "description":"W celu poprawnej autentykacji należy podać poprawny token użytkownika aplikacji. Podany
-                # token użytkownika ... w ramach aplikacji ... nie istnieje lub został
-                # unieważniony!"}')
-                raise NeedsPBNAuthorisationException(
-                    ret.status_code, url, smart_content(ret.content)
-                )
-
-            # mpasternak, 5.09.2021: nie do końca jestem pewny, czy kod wywołujący self.authorize (nast. 2 linijki)
-            # zostawić w tej sytuacji. Tak było 'historycznie', ale widzę też, że po wywołaniu self.authorize
-            # ta funkcja zawsze wykonywała "if ret.status_code >= 403" i zwracała Exception. Teoretycznie
-            # to chyba zostało tutaj z powodu klienta command-line, który to na ten moment priorytetem
-            # przecież nie jest.
-            if hasattr(self, "authorize"):
-                self.authorize(self.base_url, self.app_id, self.app_token)
-                # self.authorize()
-
-        # mpasternak 7.09.2021, poniżej "przymiarki" do analizowania zwróconych błędów z PBN
-        #
-        # if ret.status_code == 400:
-        #     try:
-        #         ret_json = ret.json()
-        #     except BaseException:
-        #         raise HttpException(
-        #             ret.status_code,
-        #             url,
-        #             "Blad podczas odkodowywania JSON podczas odpowiedzi 400: "
-        #             + smart_content(ret.content),
-        #         )
-        #     if ret_json.get("message") == "Bad Request" and ret_json.get("description") == "Validation failed."
-        #     and ret_json.get("details")
-        #
-        #     HttpException(400, '/api/v1/publications',
-        #                   '{"code":400,"message":"Bad Request","description":"Validation failed.",
-        #                   "details":{"doi":"DOI jest błędny lub nie udało się pobrać informacji z serwisu DOI!"}}')
-
+    def _check_error_response(self, ret, url):
+        """Check and handle error responses."""
         if ret.status_code >= 400:
             if ret.status_code == 423 and smart_content(ret.content) == "Locked":
                 raise ResourceLockedException(
                     ret.status_code, url, smart_content(ret.content)
                 )
-
             raise HttpException(ret.status_code, url, smart_content(ret.content))
+
+    def post(self, url, headers=None, body=None, delete=False):
+        if not self._ensure_access_token():
+            return
+        if not hasattr(self, "access_token"):
+            return self.post(url, headers=headers, body=body, delete=delete)
+
+        sent_headers = self._build_post_headers(headers)
+        method = self._get_request_method(delete)
+        ret = method(self.base_url + url, headers=sent_headers, json=body)
+
+        if ret.status_code == 403:
+            ret_json = self._parse_403_response(ret, url)
+            self._handle_403_access_denied(ret_json, ret, url)
+
+        self._check_error_response(ret, url)
 
         try:
             return ret.json()
@@ -349,7 +339,7 @@ class RequestsTransport(OAuthMixin, PBNClientTransport):
 
                 if b"prace serwisowe" in ret.content:
                     # open("pbn_client_dump.html", "wb").write(ret.content)
-                    raise PraceSerwisoweException()
+                    raise PraceSerwisoweException() from e
 
             raise e
 
@@ -406,6 +396,7 @@ class RequestsTransport(OAuthMixin, PBNClientTransport):
                 f"PBNClient.{method}_page request for {url} with headers {headers} did not return a paged resource, "
                 f"maybe use PBNClient.{method} (without 'page') instead",
                 RuntimeWarning,
+                stacklevel=2,
             )
             return res
         return PageableResource(
@@ -414,7 +405,7 @@ class RequestsTransport(OAuthMixin, PBNClientTransport):
 
     def get_pages(self, url, headers=None, page_size=10, *args, **kw):
         return self._pages(
-            "get", url=url, headers=headers, page_size=page_size, *args, **kw
+            "get", *args, url=url, headers=headers, page_size=page_size, **kw
         )
 
     def post_pages(self, url, headers=None, body=None, page_size=10, *args, **kw):
@@ -424,11 +415,11 @@ class RequestsTransport(OAuthMixin, PBNClientTransport):
 
         return self._pages(
             "post",
+            *args,
             url=url,
             headers=headers,
             body=body,
             page_size=page_size,
-            *args,
             **kw,
         )
 
@@ -465,7 +456,7 @@ class DictionariesMixin:
 class InstitutionsMixin:
     def get_institutions(self, status="ACTIVE", *args, **kw):
         return self.transport.get_pages(
-            "/api/v1/institutions/page", status=status, *args, **kw
+            "/api/v1/institutions/page", *args, status=status, **kw
         )
 
     def get_institution_by_id(self, id):
@@ -480,8 +471,8 @@ class InstitutionsMixin:
     def get_institutions_polon(self, includeAllVersions="true", *args, **kw):
         return self.transport.get_pages(
             "/api/v1/institutions/polon/page",
-            includeAllVersions=includeAllVersions,
             *args,
+            includeAllVersions=includeAllVersions,
             **kw,
         )
 
@@ -538,14 +529,17 @@ class InstitutionsProfileMixin:
 
             try:
                 ret_json = json.loads(e.content)
-            except BaseException:
-                raise e
-
+            except BaseException as parse_err:
+                raise e from parse_err
+            ZABLOKOWANE = "zostało tymczasowo zablokowane z uwagi na równoległą operację. Prosimy spróbować ponownie."
             NIE_MOZNA_USUNAC = "Nie można usunąć oświadczeń."
             NIE_ISTNIEJA = "Nie istnieją oświadczenia dla publikacji"
             NIE_ISTNIEJE = "Nie istnieje oświadczenie dla publikacji"
 
             if ret_json:
+                if e.json.get("message") == "Locked" and ZABLOKOWANE in e.content:
+                    raise ResourceLockedException(e.content) from e
+
                 try:
                     try:
                         msg = e.json["details"]["publicationId"]
@@ -558,11 +552,11 @@ class InstitutionsProfileMixin:
                         # Opis odpowiada sytuacji "Nie można usunąć oświadczeń, nie istnieją"
                         raise CannotDeleteStatementsException(e.content)
 
-                except (TypeError, KeyError):
+                except (TypeError, KeyError) as key_err:
                     if (
                         NIE_ISTNIEJA in e.content or NIE_ISTNIEJE in e.content
                     ) and NIE_MOZNA_USUNAC in e.content:
-                        raise CannotDeleteStatementsException(e.content)
+                        raise CannotDeleteStatementsException(e.content) from key_err
 
             raise e
 
@@ -767,6 +761,68 @@ class PBNClient(
         else:
             raise NotImplementedError("count > 1")
 
+    def _prepare_publication_json(self, rec, export_pk_zero, always_affiliate_to_uid):
+        """Prepare publication JSON data."""
+        js = WydawnictwoPBNAdapter(
+            rec,
+            export_pk_zero=export_pk_zero,
+            always_affiliate_to_uid=always_affiliate_to_uid,
+        ).pbn_get_json()
+
+        bez_oswiadczen = "statements" not in js
+        if bez_oswiadczen:
+            js = self.convert_js_with_statements_to_no_statements(js)
+
+        return js, bez_oswiadczen
+
+    def _check_upload_needed(self, rec, js, force_upload):
+        """Check if upload is needed."""
+        if not force_upload:
+            needed = SentData.objects.check_if_upload_needed(rec, js)
+            if not needed:
+                raise SameDataUploadedRecently(
+                    SentData.objects.get_for_rec(rec).last_updated_on
+                )
+
+    def _post_publication_data(self, js, bez_oswiadczen):
+        """Post publication data and extract objectId."""
+        if not bez_oswiadczen:
+            ret = self.post_publication(js)
+            objectId = ret.get("objectId", None)
+        else:
+            ret = self.post_publication_no_statements(js)
+            if len(ret) != 1:
+                raise Exception(
+                    "Lista zwróconych obiektów przy wysyłce pracy bez oświadczeń różna od jednego. "
+                    "Sytuacja nieobsługiwana, proszę o kontakt z autorem programu. "
+                )
+            try:
+                objectId = ret[0].get("id", None)
+            except KeyError as e:
+                raise Exception(
+                    f"Serwer zwrócił nieoczekiwaną odpowiedź. {ret=}"
+                ) from e
+
+        return ret, objectId
+
+    def _should_retry_validation_error(self, e):
+        """Check if HTTP exception is a retryable validation error."""
+        return (
+            e.status_code == 400
+            and e.url == "/api/v1/publications"
+            and "Bad Request" in e.content
+            and "Validation failed." in e.content
+        )
+
+    def _retry_download_publication(self, objectId):
+        """Attempt to download publication data after validation error."""
+        try:
+            publication = self.download_publication(objectId=objectId)
+            self.download_statements_of_publication(publication)
+            self.pobierz_publikacje_instytucji_v2(objectId=objectId)
+        except Exception:
+            pass
+
     def upload_publication(
         self,
         rec,
@@ -783,24 +839,10 @@ class PBNClient(
         Zwracane wyniki wyjściowe też różnią się w zależnosci od użytego API stąd też ta funkcja
         stara się w miarę rozsądnie to ogarnąć.
         """
-
-        js = WydawnictwoPBNAdapter(
-            rec,
-            export_pk_zero=export_pk_zero,
-            always_affiliate_to_uid=always_affiliate_to_uid,
-        ).pbn_get_json()
-
-        bez_oswiadczen = False
-        if "statements" not in js:
-            bez_oswiadczen = True
-            js = self.convert_js_with_statements_to_no_statements(js)
-
-        if not force_upload:
-            needed = SentData.objects.check_if_upload_needed(rec, js)
-            if not needed:
-                raise SameDataUploadedRecently(
-                    SentData.objects.get_for_rec(rec).last_updated_on
-                )
+        js, bez_oswiadczen = self._prepare_publication_json(
+            rec, export_pk_zero, always_affiliate_to_uid
+        )
+        self._check_upload_needed(rec, js, force_upload)
 
         # Create or update SentData record BEFORE API call
         sent_data = SentData.objects.create_or_update_before_upload(rec, js)  # noqa
@@ -811,67 +853,31 @@ class PBNClient(
 
         while True:
             try:
-                if not bez_oswiadczen:
-                    ret = self.post_publication(js)
-                    objectId = ret.get("objectId", None)
-
-                else:
-                    ret = self.post_publication_no_statements(js)
-
-                    if len(ret) == 1:
-                        try:
-                            objectId = ret[0].get("id", None)
-                        except KeyError:
-                            raise Exception(
-                                f"Serwer zwrócił nieoczekiwaną odpowiedź. {ret=}"
-                            )
-                    else:
-                        raise Exception(
-                            "Lista zwróconych obiektów przy wysyłce pracy bez oświadczeń różna od jednego. "
-                            "Sytuacja nieobsługiwana, proszę o kontakt z autorem programu. "
-                        )
-
-                # Mark as successful after successful API call
+                ret, objectId = self._post_publication_data(js, bez_oswiadczen)
                 SentData.objects.mark_as_successful(
                     rec, pbn_uid_id=objectId, api_response_status=str(ret)
                 )
                 break
 
             except HttpException as e:
-                if (
-                    e.status_code == 400
-                    and e.url == "/api/v1/publications"
-                    and "Bad Request" in e.content
-                    and "Validation failed." in e.content
-                ):
+                if self._should_retry_validation_error(e):
                     retry_count -= 1
                     if retry_count <= 0:
-                        # Mark as failed after exhausting retries
                         SentData.objects.mark_as_failed(
                             rec, exception=str(e), api_response_status=e.content
                         )
                         raise e
 
                     time.sleep(0.5)
-
-                    # Spróbuj pobrać dane z PBN i zaktualizować rekord
-                    try:
-                        publication = self.download_publication(objectId=objectId)
-                        self.download_statements_of_publication(publication)
-                        self.pobierz_publikacje_instytucji_v2(objectId=objectId)
-                    except Exception:
-                        pass
-
+                    self._retry_download_publication(objectId)
                     continue
 
-                # Mark as failed on HTTP exception
                 SentData.objects.mark_as_failed(
                     rec, exception=str(e), api_response_status=e.content
                 )
                 raise e
 
             except Exception as e:
-                # Mark as failed on any other exception
                 SentData.objects.mark_as_failed(rec, exception=str(e))
                 raise e
 
@@ -918,6 +924,147 @@ class PBNClient(
 
         return zapisz_publikacje_instytucji_v2(self, elem[0])
 
+    def _delete_statements_with_retry(self, pbn_uid_id, max_tries=5):
+        """Delete publication statements with retry on failure."""
+        no_tries = max_tries
+        while True:
+            try:
+                self.delete_all_publication_statements(pbn_uid_id)
+                return True
+            except CannotDeleteStatementsException as e:
+                if no_tries < 0:
+                    raise e
+                no_tries -= 1
+                time.sleep(0.5)
+
+    def _handle_no_objectid(self, notificator, ret, js, pub):
+        """Handle case when server doesn't return object ID."""
+        msg = (
+            f"UWAGA. Serwer PBN nie odpowiedział prawidłowym PBN UID dla"
+            f" wysyłanego rekordu. Zgłoś sytuację do administratora serwisu. "
+            f"{ret=}, {js=}, {pub=}"
+        )
+        if notificator is not None:
+            notificator.error(msg)
+
+        try:
+            raise NoPBNUIDException(msg)
+        except NoPBNUIDException:
+            rollbar.report_exc_info(sys.exc_info())
+
+        mail_admins("Serwer PBN nie zwrocil ID publikacji", msg, fail_silently=True)
+
+    def _download_statements_with_retry(
+        self, publication, objectId, notificator, max_tries=3
+    ):
+        """Download publication statements with retry on 500 errors."""
+        no_tries = max_tries
+        while True:
+            try:
+                self.download_statements_of_publication(publication)
+                break
+            except HttpException as e:
+                if no_tries < 0 or e.status_code != 500:
+                    raise e
+                no_tries -= 1
+                time.sleep(0.5)
+
+        try:
+            self.pobierz_publikacje_instytucji_v2(objectId=objectId)
+        except PublikacjaInstytucjiV2NieZnalezionaException:
+            notificator.warning(
+                "Nie znaleziono oświadczeń dla publikacji po stronie PBN w wersji V2 API. Ten komunikat nie jest "
+                "błędem. "
+            )
+
+    def _get_username_from_notificator(self, notificator):
+        """Extract username from notificator if available."""
+        if (
+            notificator is not None
+            and hasattr(notificator, "request")
+            and hasattr(notificator.request, "user")
+        ):
+            return notificator.request.user.username
+        return None
+
+    def _handle_uid_change(self, pub, objectId, notificator, js, ret):
+        """Handle case when publication UID changes."""
+        if notificator is not None:
+            notificator.error(
+                f"UWAGA UWAGA UWAGA. Wg danych z PBN zmodyfikowano PBN UID tego rekordu "
+                f"z wartości {pub.pbn_uid_id} na {objectId}. Technicznie nie jest to błąd, "
+                f"ale w praktyce dobrze by było zweryfikować co się zadziało, zarówno po stronie"
+                f"PBNu jak i BPP. Być może operujesz na rekordzie ze zdublowanym DOI/stronie WWW."
+            )
+
+        message = (
+            f"Zarejestrowano zmianę ZAPISANEGO WCZEŚNIEJ PBN UID publikacji przez PBN, \n"
+            f"Publikacja:\n{pub}\n\n"
+            f"z UIDu {pub.pbn_uid_id} na {objectId}"
+        )
+
+        try:
+            raise PBNUIDChangedException(message)
+        except PBNUIDChangedException:
+            rollbar.report_exc_info(sys.exc_info())
+
+        mail_admins(
+            "Zmiana PBN UID publikacji przez serwer PBN", message, fail_silently=True
+        )
+
+        PBNOdpowiedziNiepozadane.objects.create(
+            rekord=pub,
+            dane_wyslane=js,
+            odpowiedz_serwera=ret,
+            rodzaj_zdarzenia=PBNOdpowiedziNiepozadane.ZMIANA_UID,
+            uzytkownik=self._get_username_from_notificator(notificator),
+            stary_uid=pub.pbn_uid_id,
+            nowy_uid=objectId,
+        )
+
+    def _handle_uid_conflict(self, pub, objectId, notificator, js, ret):
+        """Handle case when new publication gets an existing UID."""
+        from bpp.models import Rekord
+
+        istniejace_rekordy = Rekord.objects.filter(pbn_uid_id=objectId)
+        if notificator is not None:
+            notificator.error(
+                f'UWAGA UWAGA UWAGA. Wysłany rekord "{pub}" dostał w odpowiedzi z serwera PBN numer UID '
+                f"rekordu JUŻ ISTNIEJĄCEGO W BAZIE DANYCH BPP, a konkretnie {istniejace_rekordy.all()}. "
+                f"Z przyczyn oczywistych NIE MOGĘ ustawić takiego PBN UID gdyż wówczas unikalność numerów PBN "
+                f"UID byłaby naruszona. Zapewne też doszło do "
+                f"NADPISANIA danych w/wym rekordu po stronie PBNu. Powinieneś/aś wycofać zmiany w PBNie "
+                f"za pomocą GUI, zgłosić tą sytuację do administratora oraz zaprzestać prób wysyłki "
+                f"tego rekordu do wyjaśnienia. "
+            )
+
+        message = (
+            f"Zarejestrowano ustawienie nowo wysłanej pracy ISTNIEJĄCEGO JUŻ W BAZIE PBN UID\n"
+            f"Publikacja:\n{pub}\n\n"
+            f"UIDu {objectId}\n"
+            f"Istniejąca praca/e: {istniejace_rekordy.all()}"
+        )
+
+        try:
+            raise PBNUIDSetToExistentException(message)
+        except PBNUIDSetToExistentException:
+            rollbar.report_exc_info(sys.exc_info())
+
+        mail_admins(
+            "Ustawienie ISTNIEJĄCEGO JUŻ W BAZIE PBN UID publikacji przez serwer PBN",
+            message,
+            fail_silently=True,
+        )
+
+        PBNOdpowiedziNiepozadane.objects.create(
+            rekord=pub,
+            dane_wyslane=js,
+            odpowiedz_serwera=ret,
+            rodzaj_zdarzenia=PBNOdpowiedziNiepozadane.UID_JUZ_ISTNIEJE,
+            uzytkownik=self._get_username_from_notificator(notificator),
+            nowy_uid=objectId,
+        )
+
     def sync_publication(
         self,
         pub,
@@ -931,29 +1078,19 @@ class PBNClient(
         @param delete_statements_before_upload: gdy True, kasuj oświadczenia publikacji przed wysłaniem (jeżeli posiada
         PBN UID)
         """
-
-        # if not pub.doi:
-        #     raise WillNotExportError("Ustaw DOI dla publikacji")
-
         pub = self.eventually_coerce_to_publication(pub)
 
-        #
         if (
             delete_statements_before_upload
             and hasattr(pub, "pbn_uid_id")
             and pub.pbn_uid_id is not None
         ):
             try:
-                self.delete_all_publication_statements(pub.pbn_uid_id)
-
-                # Jeżeli zostały skasowane dane, to wymuś wysłanie rekordu, niezależnie
-                # od stanu tabeli SentData
+                self._delete_statements_with_retry(pub.pbn_uid_id)
                 force_upload = True
             except CannotDeleteStatementsException:
-                # Ignoruj, jeżeli nie można skasowac oświadczeń publikacji. Mogą nie istnieć
                 pass
 
-        # Wgraj dane do PBN
         objectId, ret, js, bez_oswiadczen = self.upload_publication(
             pub,
             force_upload=force_upload,
@@ -961,127 +1098,29 @@ class PBNClient(
             always_affiliate_to_uid=always_affiliate_to_uid,
         )
 
-        if bez_oswiadczen:
-            if notificator is not None:
-                notificator.info(
-                    "Rekord nie posiada oświadczeń - wysłano wyłącznie do repozytorium PBN. "
-                )
+        if bez_oswiadczen and notificator is not None:
+            notificator.info(
+                "Rekord nie posiada oświadczeń - wysłano wyłącznie do repozytorium PBN. "
+            )
 
         if not objectId:
-            msg = (
-                f"UWAGA. Serwer PBN nie odpowiedział prawidłowym PBN UID dla"
-                f" wysyłanego rekordu. Zgłoś sytuację do administratora serwisu. "
-                f"{ret=}, {js=}, {pub=}"
-            )
-            if notificator is not None:
-                notificator.error(msg)
-
-            try:
-                raise NoPBNUIDException(msg)
-            except NoPBNUIDException:
-                rollbar.report_exc_info(sys.exc_info())
-
-            mail_admins("Serwer PBN nie zwrocil ID publikacji", msg, fail_silently=True)
-
+            self._handle_no_objectid(notificator, ret, js, pub)
             return
 
-        # Pobierz zwrotnie dane z PBN
         publication = self.download_publication(objectId=objectId)
 
         if not bez_oswiadczen:
-            no_tries = 3
-            #
-            # self.download_statements_of_publication potrafi zwrócić błąd 500
-            #
-            while True:
-                try:
-                    self.download_statements_of_publication(publication)
-                    break
-                except HttpException as e:
-                    if e.status_code == 500:
-                        no_tries -= 1
-                        time.sleep(0.5)
-                        continue
-
-                    raise e
-
-            try:
-                self.pobierz_publikacje_instytucji_v2(objectId=objectId)
-            except PublikacjaInstytucjiV2NieZnalezionaException:
-                notificator.warning(
-                    "Nie znaleziono oświadczeń dla publikacji po stronie PBN w wersji V2 API. Ten komunikat nie jest "
-                    "błędem. "
-                )
-
-        # SentData is now created in upload_publication() before the API call
-        # and updated after successful API response
+            self._download_statements_with_retry(publication, objectId, notificator)
 
         if pub.pbn_uid_id != objectId:
-            # Rekord dostaje nowe objectId z PBNu.
-
-            # Czy rekord JUŻ Z PBN UID dostaje nowe PBN UID z PBNu? Powiadom użytkownika.
             if pub.pbn_uid_id is not None:
-                if notificator is not None:
-                    notificator.error(
-                        f"UWAGA UWAGA UWAGA. Wg danych z PBN zmodyfikowano PBN UID tego rekordu "
-                        f"z wartości {pub.pbn_uid_id} na {objectId}. Technicznie nie jest to błąd, "
-                        f"ale w praktyce dobrze by było zweryfikować co się zadziało, zarówno po stronie"
-                        f"PBNu jak i BPP. Być może operujesz na rekordzie ze zdublowanym DOI/stronie WWW."
-                    )
+                self._handle_uid_change(pub, objectId, notificator, js, ret)
 
-                message = (
-                    f"Zarejestrowano zmianę ZAPISANEGO WCZEŚNIEJ PBN UID publikacji przez PBN, \n"
-                    f"Publikacja:\n{pub}\n\n"
-                    f"z UIDu {pub.pbn_uid_id} na {objectId}"
-                )
-
-                try:
-                    raise PBNUIDChangedException(message)
-                except PBNUIDChangedException:
-                    rollbar.report_exc_info(sys.exc_info())
-
-                mail_admins(
-                    "Zmiana PBN UID publikacji przez serwer PBN",
-                    message,
-                    fail_silently=True,
-                )
-
-            # Z kolei poniższy kod odpowiada na sytuację dość niepożądana. Zakładamy, że do PBN został wysłany nowy,
-            # czysty rekord czyli bez PBN UID, zas PBN odpowiedział PBN UIDem istniejącego już w bazie rekordu.
             from bpp.models import Rekord
 
             istniejace_rekordy = Rekord.objects.filter(pbn_uid_id=objectId)
             if pub.pbn_uid_id is None and istniejace_rekordy.exists():
-                if notificator is not None:
-                    notificator.error(
-                        f'UWAGA UWAGA UWAGA. Wysłany rekord "{pub}" dostał w odpowiedzi z serwera PBN numer UID '
-                        f"rekordu JUŻ ISTNIEJĄCEGO W BAZIE DANYCH BPP, a konkretnie {istniejace_rekordy.all()}. "
-                        f"Z przyczyn oczywistych NIE MOGĘ ustawić takiego PBN UID gdyż wówczas unikalność numerów PBN "
-                        f"UID byłaby naruszona. Zapewne też doszło do "
-                        f"NADPISANIA danych w/wym rekordu po stronie PBNu. Powinieneś/aś wycofać zmiany w PBNie "
-                        f"za pomocą GUI, zgłosić tą sytuację do administratora oraz zaprzestać prób wysyłki "
-                        f"tego rekordu do wyjaśnienia. "
-                    )
-
-                message = (
-                    f"Zarejestrowano ustawienie nowo wysłanej pracy ISTNIEJĄCEGO JUŻ W BAZIE PBN UID\n"
-                    f"Publikacja:\n{pub}\n\n"
-                    f"UIDu {objectId}\n"
-                    f"Istniejąca praca/e: {istniejace_rekordy.all()}"
-                )
-
-                try:
-                    raise PBNUIDSetToExistentException(message)
-                except PBNUIDSetToExistentException:
-                    rollbar.report_exc_info(sys.exc_info())
-
-                mail_admins(
-                    "Ustawienie ISTNIEJĄCEGO JUŻ W BAZIE PBN UID publikacji przez serwer PBN",
-                    message,
-                    fail_silently=True,
-                )
-
-                # NIE zapisuj takiego numeru PBN
+                self._handle_uid_conflict(pub, objectId, notificator, js, ret)
                 return
 
             pub.pbn_uid = publication
@@ -1114,50 +1153,62 @@ class PBNClient(
 
         return self.post_publication_fee(pub.pbn_uid_id, fee)
 
-    def exec(self, cmd):
+    def _get_command_function(self, cmd):
+        """Get function to execute from command name."""
         try:
-            fun = getattr(self, cmd[0])
+            return getattr(self, cmd[0])
         except AttributeError as e:
             if self._interactive:
-                print("No such command: %s" % cmd)
-                return
+                print(f"No such command: {cmd}")
+                return None
+            raise e
+
+    def _extract_arguments(self, lst):
+        """Extract positional and keyword arguments from command list."""
+        args = ()
+        kw = {}
+        for elem in lst:
+            if elem.find(":") >= 1:
+                k, n = elem.split(":", 1)
+                kw[k] = n
             else:
-                raise e
+                args += (elem,)
+        return args, kw
 
-        def extract_arguments(lst):
-            args = ()
-            kw = {}
-            for elem in lst:
-                if elem.find(":") >= 1:
-                    k, n = elem.split(":", 1)
-                    kw[k] = n
-                else:
-                    args += (elem,)
+    def _print_non_interactive_result(self, res):
+        """Print result in non-interactive mode."""
+        import json
 
-            return args, kw
+        print(json.dumps(res))
 
-        args, kw = extract_arguments(cmd[1:])
+    def _print_interactive_result(self, res):
+        """Print result in interactive mode."""
+        if type(res) is dict:
+            pprint(res)
+        elif is_iterable(res):
+            if self._interactive and hasattr(res, "total_elements"):
+                print(
+                    "Incoming data: no_elements=",
+                    res.total_elements,
+                    "no_pages=",
+                    res.total_pages,
+                )
+                input("Press ENTER to continue> ")
+            for elem in res:
+                pprint(elem)
+
+    def exec(self, cmd):
+        fun = self._get_command_function(cmd)
+        if fun is None:
+            return
+
+        args, kw = self._extract_arguments(cmd[1:])
         res = fun(*args, **kw)
 
         if not sys.stdout.isatty():
-            # Non-interactive mode, just output the json
-            import json
-
-            print(json.dumps(res))
+            self._print_non_interactive_result(res)
         else:
-            if type(res) is dict:
-                pprint(res)
-            elif is_iterable(res):
-                if self._interactive and hasattr(res, "total_elements"):
-                    print(
-                        "Incoming data: no_elements=",
-                        res.total_elements,
-                        "no_pages=",
-                        res.total_pages,
-                    )
-                    input("Press ENTER to continue> ")
-                for elem in res:
-                    pprint(elem)
+            self._print_interactive_result(res)
 
     @transaction.atomic
     def download_disciplines(self):
@@ -1194,11 +1245,11 @@ class PBNClient(
         self.download_disciplines()
         try:
             cur_dg = DisciplineGroup.objects.get_current()
-        except DisciplineGroup.DoesNotExist:
+        except DisciplineGroup.DoesNotExist as e:
             raise ValueError(
                 "Brak aktualnego słownika dyscyplin na serwerze. Pobierz aktualny słownik "
                 "dyscyplin z PBN."
-            )
+            ) from e
 
         from bpp.models import Dyscyplina_Naukowa
 

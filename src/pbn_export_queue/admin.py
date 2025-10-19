@@ -1,10 +1,39 @@
 from django import forms
 from django.contrib import admin, messages
+from django.contrib.auth import get_user_model
 from django.http import HttpResponseRedirect
 from django.urls import reverse
 from django.utils.safestring import mark_safe
 
+from bpp.admin.core import DynamicAdminFilterMixin
+
 from .models import PBN_Export_Queue
+
+User = get_user_model()
+
+
+class ZamowilUniqueFilter(admin.SimpleListFilter):
+    """Custom filter that shows only users who have ordered PBN exports"""
+
+    title = "zamówił"
+    parameter_name = "zamowil"
+
+    def lookups(self, request, model_admin):
+        # Get unique user IDs from PBN_Export_Queue
+        user_ids = (
+            PBN_Export_Queue.objects.values_list("zamowil", flat=True)
+            .distinct()
+            .order_by("zamowil")
+        )
+
+        # Fetch only those users and return as choices
+        users = User.objects.filter(id__in=user_ids).order_by("username")
+        return [(user.id, str(user)) for user in users]
+
+    def queryset(self, request, queryset):
+        if self.value():
+            return queryset.filter(zamowil=self.value())
+        return queryset
 
 
 class RenderHTMLWidget(forms.Textarea):
@@ -13,7 +42,7 @@ class RenderHTMLWidget(forms.Textarea):
 
 
 @admin.register(PBN_Export_Queue)
-class PBN_Export_QueueAdmin(admin.ModelAdmin):
+class PBN_Export_QueueAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
     list_per_page = 10
     list_display = [
         "rekord_do_wysylki",
@@ -28,7 +57,11 @@ class PBN_Export_QueueAdmin(admin.ModelAdmin):
 
     search_fields = ["zamowil__username", "zamowil__email"]
 
-    list_filter = ["zamowil", "zakonczono_pomyslnie", "retry_after_user_authorised"]
+    list_filter = [
+        ZamowilUniqueFilter,
+        "zakonczono_pomyslnie",
+        "retry_after_user_authorised",
+    ]
 
     date_hierarchy = "zamowiono"
 

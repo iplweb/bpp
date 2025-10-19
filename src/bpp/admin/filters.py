@@ -258,3 +258,41 @@ class UtworzonePrzezFilter(LogEntryFilterBase):
 
             return queryset.filter(pk__in=res)
         return queryset
+
+
+class AutorZmarlFilter(SimpleNotNullFilter):
+    title = "Autor zmarł"
+    parameter_name = "zmarl"
+
+    def lookups(self, request, model_admin):
+        return [("nie", "autor żyje"), ("tak", "autor zmarł")]
+
+    def queryset(self, request, queryset):
+        v = self.value()
+
+        if v == "nie":
+            return queryset.filter(zmarl=None)
+        elif v == "tak":
+            return queryset.exclude(zmarl=None)
+
+        return queryset
+
+
+class MaEmailFilter(SimpleNotNullFilter):
+    title = "Autor ma e-mail"
+    parameter_name = "email"
+
+
+class MaWWWFilter(SimpleNotNullFilter):
+    title = "Autor ma WWW"
+    parameter_name = "www"
+
+
+class MaSystemKadrowyIDFilter(SimpleNotNullFilter):
+    title = "Autor ma System Kadrowy ID"
+    parameter_name = "system_kadrowy_id"
+
+
+class MaKonferencjeFilter(SimpleNotNullFilter):
+    title = "Ma konferencję"
+    parameter_name = "konferencja"

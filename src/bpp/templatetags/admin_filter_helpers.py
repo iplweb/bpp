@@ -3,6 +3,7 @@ Template tags for admin filter panel helpers.
 """
 
 from django import template
+from django.conf import settings
 from django.urls import reverse
 
 register = template.Library()
@@ -162,3 +163,25 @@ def get_selected_filter_count_url(spec, cl):
             # Found the selected choice, return its count URL
             return get_filter_count_url(choice, cl)
     return ""
+
+
+@register.simple_tag
+def should_show_filter_counts(cl):
+    """
+    Determine if filter counts should be displayed.
+
+    Checks both the global settings.DYNAMIC_FILTER_COUNTS_ENABLE (which has precedence)
+    and the admin class's dynamic_filter_counts_enable attribute.
+
+    Args:
+        cl: The ChangeList object
+
+    Returns:
+        Boolean indicating if filter counts should be displayed
+    """
+    # Settings has precedence - if disabled globally, always return False
+    if not getattr(settings, "DYNAMIC_FILTER_COUNTS_ENABLE", True):
+        return False
+
+    # Check admin-specific setting
+    return getattr(cl.model_admin, "dynamic_filter_counts_enable", False)

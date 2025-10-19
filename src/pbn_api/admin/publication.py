@@ -9,7 +9,7 @@ from djangoql.admin import DjangoQLSearchMixin
 
 from bpp.models import Jednostka, Uczelnia
 from pbn_api.admin.base import BaseMongoDBAdmin
-from pbn_api.admin.filters import OdpowiednikWBPPFilter
+from pbn_api.admin.filters import MaDOIFilter, OdpowiednikWBPPFilter
 from pbn_api.admin.widgets import PrettyJSONWidgetReadonly
 from pbn_api.models import OswiadczenieInstytucji, Publication
 from pbn_integrator.utils import zapisz_oswiadczenie_instytucji
@@ -36,7 +36,7 @@ class PublicationFromMongoIdForm(forms.ModelForm):
         except Exception as e:
             raise ValidationError(
                 f"Wystąpił błąd po stronie PBN podczas pobierania danych: {e}"
-            )
+            ) from e
 
         return self.cleaned_data["mongoId"]
 
@@ -76,7 +76,12 @@ class PublicationAdmin(
         "versions",
     ]
 
-    list_filter = [OdpowiednikWBPPFilter] + BaseMongoDBAdmin.list_filter
+    list_filter = [
+        OdpowiednikWBPPFilter,
+        "year",
+        "status",
+        MaDOIFilter,
+    ] + BaseMongoDBAdmin.list_filter
 
     def has_add_permission(self, request):
         return False

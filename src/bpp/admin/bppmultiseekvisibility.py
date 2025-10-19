@@ -1,11 +1,14 @@
 from adminsortable2.admin import SortableAdminMixin
 from django.contrib import admin
 
+from bpp.admin.core import DynamicAdminFilterMixin
 from bpp.models import BppMultiseekVisibility
 
 
 @admin.register(BppMultiseekVisibility)
-class BppMulitiseekVisibilityAdmin(SortableAdminMixin, admin.ModelAdmin):
+class BppMulitiseekVisibilityAdmin(
+    DynamicAdminFilterMixin, SortableAdminMixin, admin.ModelAdmin
+):
     list_display = ["label", "public", "authenticated", "staff", "sort_order"]
     list_filter = ["public", "authenticated", "staff"]
     readonly_fields = ["label", "field_name", "sort_order"]

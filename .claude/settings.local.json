@@ -46,7 +46,8 @@
       "Bash(sass:*)",
       "Bash(git checkout src/django_bpp/templates/admin/bpp/wydawnictwo_ciagle/change_list.html)",
       "Bash(grunt sass:adminthemes)",
-      "Bash(pre-commit run --all-files)"
+      "Bash(pre-commit run --all-files)",
+      "Bash(git rm --cached src/przemapuj_zrodla_pbn/static/przemapuj_zrodla_pbn/css/przemapuj-zrodla.css)"
     ],
     "deny": [],
     "ask": [],

@@ -264,4 +264,10 @@ body.theme-classic-light {
             color: #ffffff !important;
         }
     }
+
+    // Usuń tło dla przycisku dodawania (ma własne tło z Grappelli)
+    ul.grp-object-tools li a.grp-add-link {
+        background: none !important;
+        border: none !important;
+    }
 }

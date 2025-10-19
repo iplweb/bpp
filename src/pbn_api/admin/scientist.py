@@ -6,7 +6,11 @@ from django.utils.http import urlencode
 
 from bpp.admin.filters import OrcidObecnyFilter
 from pbn_api.admin.base import BaseMongoDBAdmin
-from pbn_api.admin.filters import OdpowiednikAutoraWBPPFilter
+from pbn_api.admin.filters import (
+    OdpowiednikAutoraWBPPFilter,
+    PbnIdObecnyFilter,
+    PolonUidObecnyFilter,
+)
 from pbn_api.models import Scientist
 
 
@@ -39,6 +43,8 @@ class ScientistAdmin(BaseMongoDBAdmin):
     list_filter = [
         OdpowiednikAutoraWBPPFilter,
         OrcidObecnyFilter,
+        PolonUidObecnyFilter,
+        PbnIdObecnyFilter,
         "from_institution_api",
         "qualifications",
     ] + BaseMongoDBAdmin.list_filter
@@ -56,74 +62,83 @@ class ScientistAdmin(BaseMongoDBAdmin):
 
         return super().change_view(request, object_id, form_url, extra_context)
 
-    def _prepare_autor_params(self, obj):
-        """Przygotowuje parametry do utworzenia autora w BPP."""
-        params = {}
-
-        # Podstawowe dane
+    def _add_basic_autor_params(self, params, obj):
+        """Add basic autor parameters (name, lastName, orcid, pbn_uid)."""
         if obj.name:
             params["imiona"] = obj.name
         if obj.lastName:
             params["nazwisko"] = obj.lastName
         if obj.orcid:
             params["orcid"] = obj.orcid
-
-        # PBN UID
         params["pbn_uid"] = obj.pk
 
-        # Tytuł naukowy
+    def _add_tytul_param(self, params, obj):
+        """Add tytul parameter if available."""
         tytul_id = self._get_tytul_id(obj.qualifications)
         if tytul_id:
             params["tytul"] = tytul_id
 
-        # Daty zatrudnienia i jednostka
-        employment_data = self._get_employment_data(obj)
-        if employment_data:
-            if employment_data.get("jednostka_id"):
-                # Przygotuj inline dla Autor_Jednostka
-                params["autor_jednostka_set-0-jednostka"] = employment_data[
-                    "jednostka_id"
-                ]
-                if employment_data.get("od"):
-                    # Konwertuj datę do formatu YYYY-MM-DD
-                    try:
-                        date_obj = datetime.strptime(employment_data["od"], "%Y-%m-%d")
-                        params["autor_jednostka_set-0-rozpoczal_prace"] = (
-                            date_obj.strftime("%Y-%m-%d")
-                        )
-                    except BaseException:
-                        pass
-                if employment_data.get("do"):
-                    try:
-                        date_obj = datetime.strptime(employment_data["do"], "%Y-%m-%d")
-                        params["autor_jednostka_set-0-zakonczyl_prace"] = (
-                            date_obj.strftime("%Y-%m-%d")
-                        )
-                    except BaseException:
-                        pass
-                params["autor_jednostka_set-TOTAL_FORMS"] = "1"
-                params["autor_jednostka_set-INITIAL_FORMS"] = "0"
-                params["autor_jednostka_set-MIN_NUM_FORMS"] = "0"
-                params["autor_jednostka_set-MAX_NUM_FORMS"] = "1000"
+    def _add_employment_date_param(self, params, prefix, date_str):
+        """Add employment date parameter with format conversion."""
+        if not date_str:
+            return
+        try:
+            date_obj = datetime.strptime(date_str, "%Y-%m-%d")
+            params[prefix] = date_obj.strftime("%Y-%m-%d")
+        except BaseException:
+            pass
 
-        # Dyscypliny - jeśli są dostępne
+    def _add_employment_params(self, params, employment_data):
+        """Add employment data parameters."""
+        if not employment_data or not employment_data.get("jednostka_id"):
+            return
+
+        params["autor_jednostka_set-0-jednostka"] = employment_data["jednostka_id"]
+        self._add_employment_date_param(
+            params, "autor_jednostka_set-0-rozpoczal_prace", employment_data.get("od")
+        )
+        self._add_employment_date_param(
+            params, "autor_jednostka_set-0-zakonczyl_prace", employment_data.get("do")
+        )
+        params["autor_jednostka_set-TOTAL_FORMS"] = "1"
+        params["autor_jednostka_set-INITIAL_FORMS"] = "0"
+        params["autor_jednostka_set-MIN_NUM_FORMS"] = "0"
+        params["autor_jednostka_set-MAX_NUM_FORMS"] = "1000"
+
+    def _add_disciplines_params(self, params, disciplines):
+        """Add disciplines parameters."""
+        if not disciplines:
+            return
+
+        for i, disc_data in enumerate(disciplines[:2]):  # Maksymalnie 2 dyscypliny
+            year = disc_data.get("year", datetime.now().year)
+            params[f"autor_dyscyplina_set-{i}-rok"] = year
+            if disc_data.get("dyscyplina_id"):
+                params[f"autor_dyscyplina_set-{i}-dyscyplina_naukowa"] = disc_data[
+                    "dyscyplina_id"
+                ]
+            if disc_data.get("procent"):
+                params[f"autor_dyscyplina_set-{i}-procent_dyscypliny"] = disc_data[
+                    "procent"
+                ]
+
+        params["autor_dyscyplina_set-TOTAL_FORMS"] = str(len(disciplines))
+        params["autor_dyscyplina_set-INITIAL_FORMS"] = "0"
+        params["autor_dyscyplina_set-MIN_NUM_FORMS"] = "0"
+        params["autor_dyscyplina_set-MAX_NUM_FORMS"] = "1000"
+
+    def _prepare_autor_params(self, obj):
+        """Przygotowuje parametry do utworzenia autora w BPP."""
+        params = {}
+
+        self._add_basic_autor_params(params, obj)
+        self._add_tytul_param(params, obj)
+
+        employment_data = self._get_employment_data(obj)
+        self._add_employment_params(params, employment_data)
+
         disciplines = self._get_disciplines(obj)
-        if disciplines:
-            for i, disc_data in enumerate(disciplines[:2]):  # Maksymalnie 2 dyscypliny
-                year = disc_data.get("year", datetime.now().year)
-                params[f"autor_dyscyplina_set-{i}-rok"] = year
-                if disc_data.get("dyscyplina_id"):
-                    params[f"autor_dyscyplina_set-{i}-dyscyplina_naukowa"] = disc_data[
-                        "dyscyplina_id"
-                    ]
-                if disc_data.get("procent"):
-                    params[f"autor_dyscyplina_set-{i}-procent_dyscypliny"] = disc_data[
-                        "procent"
-                    ]
-            params["autor_dyscyplina_set-TOTAL_FORMS"] = str(len(disciplines))
-            params["autor_dyscyplina_set-INITIAL_FORMS"] = "0"
-            params["autor_dyscyplina_set-MIN_NUM_FORMS"] = "0"
-            params["autor_dyscyplina_set-MAX_NUM_FORMS"] = "1000"
+        self._add_disciplines_params(params, disciplines)
 
         return params
 
@@ -157,51 +172,59 @@ class ScientistAdmin(BaseMongoDBAdmin):
 
         return None
 
-    def _get_employment_data(self, obj):
-        """Pobierz dane o zatrudnieniu z current_version."""
+    def _get_jednostka_by_institution_id(self, institution_id):
+        """Get Jednostka by PBN institution ID."""
         from bpp.models import Jednostka
 
+        if not institution_id:
+            return None
+        try:
+            jednostka = Jednostka.objects.get(pbn_uid_id=institution_id)
+            return jednostka.pk
+        except Jednostka.DoesNotExist:
+            return None
+
+    def _process_current_employment(self, data, employment):
+        """Process current employment data."""
+        if "from" in employment:
+            data["od"] = employment["from"]
+
+        jednostka_id = self._get_jednostka_by_institution_id(
+            employment.get("institutionId")
+        )
+        if jednostka_id:
+            data["jednostka_id"] = jednostka_id
+
+    def _process_archival_employment(self, data, latest_employment):
+        """Process archival employment data."""
+        if "from" in latest_employment and "od" not in data:
+            data["od"] = latest_employment["from"]
+        if "to" in latest_employment:
+            data["do"] = latest_employment["to"]
+
+        if "jednostka_id" not in data:
+            jednostka_id = self._get_jednostka_by_institution_id(
+                latest_employment.get("institutionId")
+            )
+            if jednostka_id:
+                data["jednostka_id"] = jednostka_id
+
+    def _get_employment_data(self, obj):
+        """Pobierz dane o zatrudnieniu z current_version."""
         data = {}
 
         # Sprawdź currentEmployments
         current_employments = obj.value_or_none("object", "currentEmployments")
         if current_employments and len(current_employments) > 0:
-            employment = current_employments[0]
-
-            # Data rozpoczęcia
-            if "from" in employment:
-                data["od"] = employment["from"]
-
-            # Jednostka
-            institution_id = employment.get("institutionId")
-            if institution_id:
-                try:
-                    jednostka = Jednostka.objects.get(pbn_uid_id=institution_id)
-                    data["jednostka_id"] = jednostka.pk
-                except Jednostka.DoesNotExist:
-                    pass
+            self._process_current_employment(data, current_employments[0])
 
         # Sprawdź archivalEmployments dla daty zakończenia
         archival_employments = obj.value_or_none("object", "archivalEmployments")
         if archival_employments and len(archival_employments) > 0:
-            # Znajdź najnowsze zatrudnienie
             latest = sorted(
                 archival_employments, key=lambda x: x.get("to", ""), reverse=True
             )[0]
-            if "from" in latest and "od" not in data:
-                data["od"] = latest["from"]
-            if "to" in latest:
-                data["do"] = latest["to"]
-
-            # Jeśli nie ma jednostki z currentEmployments, spróbuj z archival
-            if "jednostka_id" not in data:
-                institution_id = latest.get("institutionId")
-                if institution_id:
-                    try:
-                        jednostka = Jednostka.objects.get(pbn_uid_id=institution_id)
-                        data["jednostka_id"] = jednostka.pk
-                    except Jednostka.DoesNotExist:
-                        pass
+            self._process_archival_employment(data, latest)
 
         return data
 

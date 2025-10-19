@@ -1,10 +1,12 @@
 from django.contrib import admin
 
+from bpp.admin.core import DynamicAdminFilterMixin
+
 from .models import MenuClick
 
 
 @admin.register(MenuClick)
-class MenuClickAdmin(admin.ModelAdmin):
+class MenuClickAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
     list_display = ["user", "menu_label", "clicked_at"]
     list_filter = ["user", "menu_label", "clicked_at"]
     search_fields = ["user__username", "menu_label", "menu_url"]

@@ -11,6 +11,7 @@ from bpp.admin.filters import (
     BezJakichkolwiekDyscyplinFilter,
     DOIUstawioneFilter,
     LiczbaZnakowFilter,
+    MaKonferencjeFilter,
     OstatnioZmienionePrzezFilter,
     PBN_UID_IDObecnyFilter,
     UtworzonePrzezFilter,
@@ -97,11 +98,7 @@ class Button(forms.Widget):
         final_attrs = self.build_attrs(self.attrs, dict(type="button", name=name))
 
         return mark_safe(
-            '<input type="button"%s value="%s" />'
-            % (
-                flatatt(final_attrs),
-                final_attrs["label"],
-            )
+            f'<input type="button"{flatatt(final_attrs)} value="{final_attrs["label"]}" />'
         )
 
 
@@ -165,7 +162,71 @@ class Wydawnictwo_CiagleForm(CleanDOIWWWPublicWWWMixin, forms.ModelForm):
     status_korekty = DomyslnyStatusKorektyMixin.status_korekty
 
     class Meta:
-        fields = "__all__"
+        model = Wydawnictwo_Ciagle
+        fields = [
+            "tekst_przed_pierwszym_autorem",
+            "tekst_po_ostatnim_autorze",
+            "liczba_znakow_wydawniczych",
+            "adnotacje",
+            "pbn_id",
+            "issn",
+            "e_issn",
+            "informacja_z",
+            "tytul_oryginalny",
+            "tytul",
+            "status_korekty",
+            "rok",
+            "www",
+            "dostep_dnia",
+            "public_www",
+            "public_dostep_dnia",
+            "pubmed_id",
+            "pmc_id",
+            "doi",
+            "recenzowana",
+            "impact_factor",
+            "punkty_kbn",
+            "index_copernicus",
+            "punktacja_wewnetrzna",
+            "punktacja_snip",
+            "weryfikacja_punktacji",
+            "typ_kbn",
+            "jezyk",
+            "jezyk_alt",
+            "jezyk_orig",
+            "kwartyl_w_scopus",
+            "kwartyl_w_wos",
+            "slowa_kluczowe_eng",
+            "informacje",
+            "szczegoly",
+            "uwagi",
+            "strony",
+            "tom",
+            "nr_zeszytu",
+            "charakter_formalny",
+            "legacy_data",
+            "praca_wybitna",
+            "uzasadnienie_wybitnosci",
+            "pbn_uid",
+            "opl_pub_cost_free",
+            "opl_pub_research_potential",
+            "opl_pub_research_or_development_projects",
+            "opl_pub_other",
+            "opl_pub_amount",
+            "konferencja",
+            "openaccess_wersja_tekstu",
+            "openaccess_licencja",
+            "openaccess_czas_publikacji",
+            "openaccess_ilosc_miesiecy",
+            "openaccess_data_opublikowania",
+            "liczba_cytowan",
+            "numer_odbitki",
+            "nie_eksportuj_przez_api",
+            "openaccess_tryb_dostepu",
+            "zrodlo",
+            "uzupelnij_punktacje",
+            "slowa_kluczowe",
+        ]
 
         widgets = {
             "strony": forms.TextInput(attrs=dict(style="width: 150px")),
@@ -292,7 +353,10 @@ class Wydawnictwo_CiagleAdmin(
         "jezyk",
         LiczbaZnakowFilter,
         "rok",
+        MaKonferencjeFilter,
         DOIUstawioneFilter,
+        "weryfikacja_punktacji",
+        "nie_eksportuj_przez_api",
         "openaccess_tryb_dostepu",
         "openaccess_wersja_tekstu",
         "openaccess_licencja",

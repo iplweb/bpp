@@ -28,7 +28,44 @@ class Patent_Form(Wycinaj_W_z_InformacjiMixin, forms.ModelForm):
     status_korekty = DomyslnyStatusKorektyMixin.status_korekty
 
     class Meta:
-        fields = "__all__"
+        model = Patent
+        fields = [
+            "tekst_przed_pierwszym_autorem",
+            "tekst_po_ostatnim_autorze",
+            "adnotacje",
+            "pbn_id",
+            "informacja_z",
+            "status_korekty",
+            "rok",
+            "www",
+            "dostep_dnia",
+            "public_www",
+            "public_dostep_dnia",
+            "recenzowana",
+            "impact_factor",
+            "punkty_kbn",
+            "index_copernicus",
+            "punktacja_wewnetrzna",
+            "punktacja_snip",
+            "weryfikacja_punktacji",
+            "slowa_kluczowe_eng",
+            "informacje",
+            "szczegoly",
+            "uwagi",
+            "strony",
+            "tom",
+            "legacy_data",
+            "nie_eksportuj_przez_api",
+            "tytul_oryginalny",
+            "data_zgloszenia",
+            "numer_zgloszenia",
+            "data_decyzji",
+            "numer_prawa_wylacznego",
+            "rodzaj_prawa",
+            "wdrozenie",
+            "wydzial",
+            "slowa_kluczowe",
+        ]
 
         widgets = {
             "slowa_kluczowe": TextareaTagWidget(attrs={"rows": 2}),
@@ -73,6 +110,12 @@ class Patent_Admin(
     list_filter = [
         "status_korekty",
         "recenzowana",
+        "rok",
+        "wydzial",
+        "rodzaj_prawa",
+        "wdrozenie",
+        "weryfikacja_punktacji",
+        "nie_eksportuj_przez_api",
         OstatnioZmienionePrzezFilter,
         UtworzonePrzezFilter,
     ]

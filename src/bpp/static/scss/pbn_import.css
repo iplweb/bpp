@@ -1,0 +1,401 @@
+@keyframes gradientShift {
+  0%, 100% {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  }
+  25% {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  }
+  50% {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  }
+  75% {
+    background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+  }
+}
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0) rotate(-5deg);
+  }
+  50% {
+    transform: translateY(-20px) rotate(5deg);
+  }
+}
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+}
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes slideIn {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+@keyframes slideOut {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+}
+@keyframes bounce {
+  0%, 20%, 50%, 80%, 100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-30px);
+  }
+  60% {
+    transform: translateY(-15px);
+  }
+}
+@keyframes confetti {
+  0% {
+    transform: translateY(-100vh) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh) rotate(720deg);
+    opacity: 0;
+  }
+}
+.pbn-import-dashboard {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+}
+.pbn-import-dashboard .dashboard-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 40px 20px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+.pbn-import-dashboard .dashboard-header::before {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+  animation: pulse 4s infinite;
+}
+.pbn-import-dashboard .dashboard-header h1 {
+  font-size: 3rem;
+  margin: 0;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+  animation: slideIn 0.8s ease-out;
+}
+.pbn-import-dashboard .dashboard-header .subtitle {
+  font-size: 1.2rem;
+  opacity: 0.9;
+  margin-top: 10px;
+  animation: slideIn 1s ease-out;
+}
+.pbn-import-dashboard .import-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+  padding: 20px;
+}
+.pbn-import-dashboard .import-cards .import-card {
+  background: white;
+  border-radius: 15px;
+  padding: 25px;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  position: relative;
+  overflow: hidden;
+}
+.pbn-import-dashboard .import-cards .import-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.5s ease;
+}
+.pbn-import-dashboard .import-cards .import-card:hover {
+  transform: translateY(-10px) scale(1.02);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+}
+.pbn-import-dashboard .import-cards .import-card:hover::before {
+  transform: scaleX(1);
+}
+.pbn-import-dashboard .import-cards .import-card:hover .card-icon {
+  transform: rotate(360deg) scale(1.2);
+}
+.pbn-import-dashboard .import-cards .import-card .card-icon {
+  font-size: 3rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  transition: transform 0.5s ease;
+  display: inline-block;
+  margin-bottom: 15px;
+}
+.pbn-import-dashboard .import-cards .import-card .card-title {
+  font-size: 1.4rem;
+  font-weight: bold;
+  margin-bottom: 10px;
+  color: #333;
+}
+.pbn-import-dashboard .import-cards .import-card .card-description {
+  color: #666;
+  line-height: 1.6;
+  margin-bottom: 20px;
+}
+.pbn-import-dashboard .import-cards .import-card .card-button {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 25px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: inline-block;
+  text-decoration: none;
+}
+.pbn-import-dashboard .import-cards .import-card .card-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+}
+.pbn-import-dashboard .import-cards .import-card .card-button:active {
+  transform: translateY(0);
+}
+.pbn-import-dashboard .progress-visualization {
+  margin: 30px 20px;
+}
+.pbn-import-dashboard .progress-visualization .step-timeline {
+  display: flex;
+  justify-content: space-between;
+  position: relative;
+  padding: 40px 0;
+}
+.pbn-import-dashboard .progress-visualization .step-timeline::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: #e0e0e0;
+  z-index: 0;
+}
+.pbn-import-dashboard .progress-visualization .step-timeline .step-node {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  flex: 1;
+}
+.pbn-import-dashboard .progress-visualization .step-timeline .step-node .node-circle {
+  width: 60px;
+  height: 60px;
+  background: white;
+  border: 4px solid #e0e0e0;
+  border-radius: 50%;
+  margin: 0 auto 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s;
+  font-size: 1.5rem;
+  color: #999;
+}
+.pbn-import-dashboard .progress-visualization .step-timeline .step-node .node-circle.active {
+  border-color: #667eea;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  animation: pulse 1.5s infinite;
+  box-shadow: 0 0 0 10px rgba(102, 126, 234, 0.1);
+}
+.pbn-import-dashboard .progress-visualization .step-timeline .step-node .node-circle.completed {
+  border-color: #43e97b;
+  background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+  color: white;
+}
+.pbn-import-dashboard .progress-visualization .step-timeline .step-node .node-circle.completed .fi-check {
+  animation: bounce 0.5s;
+}
+.pbn-import-dashboard .progress-visualization .step-timeline .step-node .node-label {
+  font-size: 0.9rem;
+  color: #666;
+  font-weight: 600;
+}
+
+.confetti-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 9999;
+}
+.confetti-container .confetti {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  animation: confetti 3s ease-out forwards;
+}
+.confetti-container .confetti:nth-child(odd) {
+  background: #f093fb;
+  animation-delay: 0.1s;
+}
+.confetti-container .confetti:nth-child(even) {
+  background: #667eea;
+  animation-delay: 0.2s;
+}
+.confetti-container .confetti:nth-child(3n) {
+  background: #43e97b;
+  animation-delay: 0.3s;
+}
+.confetti-container .confetti:nth-child(4n) {
+  background: #ffd700;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+}
+.confetti-container .confetti:nth-child(5n) {
+  background: #ff6b6b;
+  transform: rotate(45deg);
+}
+
+.import-toast {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  background: white;
+  padding: 20px 25px;
+  border-radius: 10px;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  animation: slideIn 0.5s ease-out;
+  z-index: 1000;
+}
+.import-toast.success {
+  border-left: 4px solid #43e97b;
+}
+.import-toast.success .toast-icon {
+  color: #43e97b;
+}
+.import-toast.warning {
+  border-left: 4px solid #ffc107;
+}
+.import-toast.warning .toast-icon {
+  color: #ffc107;
+}
+.import-toast.error {
+  border-left: 4px solid #ff6b6b;
+}
+.import-toast.error .toast-icon {
+  color: #ff6b6b;
+}
+.import-toast .toast-icon {
+  font-size: 1.5rem;
+}
+.import-toast .toast-content {
+  flex: 1;
+}
+.import-toast .toast-content .toast-title {
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+.import-toast .toast-content .toast-message {
+  color: #666;
+  font-size: 0.9rem;
+}
+.import-toast .toast-close {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  color: #999;
+}
+.import-toast .toast-close:hover {
+  color: #333;
+}
+
+.spinner-pulse {
+  display: inline-block;
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 50%;
+  animation: pulse 1.5s infinite;
+}
+
+.spinner-dots {
+  display: inline-flex;
+  gap: 5px;
+}
+.spinner-dots span {
+  width: 10px;
+  height: 10px;
+  background: #667eea;
+  border-radius: 50%;
+  animation: bounce 1.4s infinite ease-in-out both;
+}
+.spinner-dots span:nth-child(1) {
+  animation-delay: -0.32s;
+}
+.spinner-dots span:nth-child(2) {
+  animation-delay: -0.16s;
+}
+
+@media (max-width: 768px) {
+  .pbn-import-dashboard .dashboard-header h1 {
+    font-size: 2rem;
+  }
+  .pbn-import-dashboard .import-cards {
+    grid-template-columns: 1fr;
+  }
+  .pbn-import-dashboard .progress-visualization .step-timeline {
+    flex-direction: column;
+  }
+  .pbn-import-dashboard .progress-visualization .step-timeline::before {
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    width: 4px;
+    height: auto;
+  }
+}
+
+/*# sourceMappingURL=pbn_import.css.map */

@@ -1,0 +1,37 @@
+.stats-navigation {
+  padding-top: 50px;
+  background-color: #f7f7f7;
+  border: 1px solid #e0e0e0;
+  margin-bottom: 2rem;
+    border: 2px solid red;
+}
+.stats-navigation .button-group {
+  margin: 0;
+}
+@media screen and (max-width: 639px) {
+  .stats-navigation .button-group {
+    flex-wrap: wrap;
+  }
+  .stats-navigation .button-group .button {
+    width: 100%;
+    margin-bottom: 0.5rem;
+  }
+}
+
+.statistics-table {
+  margin-top: 2rem;
+}
+.statistics-table h4 {
+  margin-bottom: 1.5rem;
+}
+
+.callout.statistics-section {
+  position: relative;
+}
+.callout.statistics-section .export-button {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+}
+
+/*# sourceMappingURL=ewaluacja_metryki.css.map */

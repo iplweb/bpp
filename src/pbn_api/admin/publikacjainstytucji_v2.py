@@ -16,6 +16,13 @@ class PublikacjaInstytucjiAdmin(BasePBNAPIAdmin):
 
     list_display = ["__str__", "objectId", "created_on", "last_updated"]
 
+    list_filter = [
+        "created_on",
+        "last_updated",
+        "objectId__year",
+        "objectId__status",
+    ]
+
     formfield_overrides = {models.JSONField: {"widget": PrettyJSONWidgetReadonly}}
 
     search_fields = [

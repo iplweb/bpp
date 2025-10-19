@@ -1,0 +1,40 @@
+.news-admin-buttons {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 15px;
+}
+.news-admin-buttons .button {
+  margin-bottom: 0;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+.news-admin-buttons .button .fi {
+  margin-right: 6px;
+  vertical-align: middle;
+}
+.news-admin-buttons .button.btn-manage {
+  background: linear-gradient(135deg, #ff9800 0%, #ffc107 100%);
+  border: 1px solid #ff9800;
+  color: white;
+}
+.news-admin-buttons .button.btn-manage:hover {
+  background: linear-gradient(135deg, #e68900 0%, #dda000 100%);
+  border-color: #e68900;
+  box-shadow: 0 3px 8px rgba(255, 152, 0, 0.3);
+  transform: translateY(-1px);
+}
+.news-admin-buttons .button.btn-add {
+  background: linear-gradient(135deg, #007bff 0%, #0099ff 100%);
+  border: 1px solid #007bff;
+  color: white;
+}
+.news-admin-buttons .button.btn-add:hover {
+  background: linear-gradient(135deg, #0056b3 0%, #0077cc 100%);
+  border-color: #0056b3;
+  box-shadow: 0 3px 8px rgba(0, 123, 255, 0.3);
+  transform: translateY(-1px);
+}
+
+/*# sourceMappingURL=uczelnia.css.map */

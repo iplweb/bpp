@@ -82,3 +82,28 @@ class OdpowiednikZrodlaWBPPFilter(OdpowiednikWBPPFilter):
 class MaMNISWIDFilter(SimpleNotNullFilter):
     title = "Rekord ma MNISW ID"
     parameter_name = "mniswId"
+
+
+class PolonUidObecnyFilter(SimpleNotNullFilter):
+    title = "Rekord ma POLON UID"
+    parameter_name = "polonUid"
+
+
+class PbnIdObecnyFilter(SimpleNotNullFilter):
+    title = "Rekord ma PBN ID"
+    parameter_name = "pbnId"
+
+
+class MaISSNFilter(SimpleNotNullFilter):
+    title = "Rekord ma ISSN"
+    parameter_name = "issn"
+
+
+class MaEISSNFilter(SimpleNotNullFilter):
+    title = "Rekord ma e-ISSN"
+    parameter_name = "eissn"
+
+
+class MaDOIFilter(SimpleNotNullFilter):
+    title = "Rekord ma DOI"
+    parameter_name = "doi"

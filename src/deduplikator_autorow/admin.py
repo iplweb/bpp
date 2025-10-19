@@ -3,13 +3,14 @@ from django.urls import reverse
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 
+from bpp.admin.core import DynamicAdminFilterMixin
 from pbn_api.models import Scientist
 
 from .models import IgnoredAuthor, LogScalania, NotADuplicate
 
 
 @admin.register(NotADuplicate)
-class NotADuplicateAdmin(admin.ModelAdmin):
+class NotADuplicateAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
     list_display = [
         "autor",
         "created_by",
@@ -70,7 +71,7 @@ class NotADuplicateAdmin(admin.ModelAdmin):
 
 
 @admin.register(IgnoredAuthor)
-class IgnoredAuthorAdmin(admin.ModelAdmin):
+class IgnoredAuthorAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
     list_display = [
         "get_scientist_display",
         "get_autor_display",
@@ -127,7 +128,7 @@ class IgnoredAuthorAdmin(admin.ModelAdmin):
 
 
 @admin.register(LogScalania)
-class LogScalaniaAdmin(admin.ModelAdmin):
+class LogScalaniaAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
     list_display = [
         "get_operation_icon",
         "get_merge_description",

@@ -1,10 +1,12 @@
 from django.contrib import admin
 
+from bpp.admin.core import DynamicAdminFilterMixin
+
 from .models import DoNotRemind
 
 
 @admin.register(DoNotRemind)
-class DoNotRemindAdmin(admin.ModelAdmin):
+class DoNotRemindAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
     list_display = ["scientist", "ignored_at", "ignored_by", "reason"]
     list_filter = ["ignored_at", "ignored_by"]
     search_fields = [

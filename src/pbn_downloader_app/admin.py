@@ -1,10 +1,11 @@
 from django.contrib import admin
 
+from bpp.admin.core import DynamicAdminFilterMixin
 from pbn_downloader_app.models import PbnDownloadTask, PbnInstitutionPeopleTask
 
 
 @admin.register(PbnDownloadTask)
-class PbnDownloadTaskAdmin(admin.ModelAdmin):
+class PbnDownloadTaskAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
     list_display = [
         "id",
         "user",
@@ -53,7 +54,7 @@ class PbnDownloadTaskAdmin(admin.ModelAdmin):
 
 
 @admin.register(PbnInstitutionPeopleTask)
-class PbnInstitutionPeopleTaskAdmin(admin.ModelAdmin):
+class PbnInstitutionPeopleTaskAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
     list_display = [
         "id",
         "user",

@@ -13,4 +13,7 @@ class PublisherAdmin(BaseMongoDBAdmin):
     list_filter = [
         OdpowiednikWydawcyWBPPFilter,
         MaMNISWIDFilter,
+        "status",
+        "verificationLevel",
+        "verified",
     ] + BaseMongoDBAdmin.list_filter
