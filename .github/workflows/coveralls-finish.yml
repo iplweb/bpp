@@ -1,0 +1,17 @@
+name: Coveralls - Finish Parallel Build
+
+on:
+  workflow_run:
+    workflows: ["Testy - Django, Playwright", "Testy - Selenium"]
+    types:
+      - completed
+
+jobs:
+  finish:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Coveralls Finished
+      uses: coverallsapp/github-action@v2
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        parallel-finished: true
