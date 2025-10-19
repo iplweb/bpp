@@ -495,17 +495,19 @@ def _get_admin_url_for_charakter(skrot, charakter_id, ciagle_count, zwarte_count
     """
     # Specjalne przypadki - modele dedykowane
     if skrot == "PAT":
-        return f"/admin/bpp/patent/?charakter_formalny={charakter_id}"
+        return f"/admin/bpp/patent/?charakter_formalny__id__exact={charakter_id}"
     elif skrot == "D":
-        return f"/admin/bpp/praca_doktorska/?charakter_formalny={charakter_id}"
+        return (
+            f"/admin/bpp/praca_doktorska/?charakter_formalny__id__exact={charakter_id}"
+        )
     elif skrot == "H":
-        return f"/admin/bpp/praca_habilitacyjna/?charakter_formalny={charakter_id}"
+        return f"/admin/bpp/praca_habilitacyjna/?charakter_formalny__id__exact={charakter_id}"
 
     # Dla pozostałych - wybierz model z większą liczbą rekordów
     if ciagle_count >= zwarte_count:
-        return f"/admin/bpp/wydawnictwo_ciagle/?charakter_formalny={charakter_id}"
+        return f"/admin/bpp/wydawnictwo_ciagle/?charakter_formalny__id__exact={charakter_id}"
     else:
-        return f"/admin/bpp/wydawnictwo_zwarte/?charakter_formalny={charakter_id}"
+        return f"/admin/bpp/wydawnictwo_zwarte/?charakter_formalny__id__exact={charakter_id}"
 
 
 def _get_charakter_counts():
