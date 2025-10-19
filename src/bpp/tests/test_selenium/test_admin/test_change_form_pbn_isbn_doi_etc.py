@@ -115,6 +115,7 @@ def test_change_form_get_pbn_by_isbn_or_eisbn_via_api_pub_jest_w_lokalnej_bazie(
 
 
 @pytest.mark.serial
+@pytest.mark.xdist_group("db_sensitive_admin_forms")
 @pytest.mark.parametrize("wydawnictwo", ["wydawnictwo_ciagle", "wydawnictwo_zwarte"])
 def test_change_form_get_pbn_by_doi_via_api_jest_w_api(
     admin_browser, channels_live_server, wydawnictwo, pbn_serwer

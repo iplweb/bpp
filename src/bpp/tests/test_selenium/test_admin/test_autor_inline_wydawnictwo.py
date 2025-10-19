@@ -13,6 +13,7 @@ from django_bpp.selenium_util import wait_for_page_load
 
 
 @pytest.mark.serial
+@pytest.mark.xdist_group("db_sensitive_admin_forms")
 @pytest.mark.parametrize("wyd", ["ciagle", "zwarte"])
 def test_autor_inline_wydawnictwo_dyscyplina(
     autor_z_dyscyplina,
