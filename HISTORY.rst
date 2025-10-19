@@ -4,6 +4,24 @@ Historia zmian
 
 .. towncrier release notes start
 
+bpp 202510.1270 (2025-10-19)
+============================
+
+Naprawione
+----------
+
+- Poprawiono generowanie linków w wykresach na panelu administracyjnym - kliknięcie na wykres charakteru formalnego teraz poprawnie przekierowuje do listy rekordów z filtrem ``?charakter_formalny__id__exact=ID`` zamiast nieprawidłowego ``?charakter_formalny=ID`` (admin-dashboard-charakter-filter-fix)
+
+
+Usprawnienie
+------------
+
+- Dodano DynamicAdminFilterMixin do 24 klas administracyjnych posiadających 2 lub więcej filtrów w list_filter, co znacząco poprawia wydajność i użyteczność filtrowania w panelu administracyjnym Django dla dużych zbiorów danych. Zmiany dotyczą następujących modułów: deduplikator_autorow, rozbieznosci_dyscyplin, bpp (Autor_Dyscyplina, Wydawnictwo_Autor_Base, BppMultiseekVisibility, Wydawca), zglos_publikacje, ewaluacja_metryki, przemapuj_prace_autora, ewaluacja_liczba_n, dynamic_columns, admin_dashboard, django_countdown, importer_autorow_pbn, pbn_import, pbn_downloader_app oraz pbn_api. (dynamic-admin-filter-mixin)
+- Dodano możliwość warunkowego włączania liczników w filtrach panelu administracyjnego. Liczniki wyświetlają się tylko gdy zarówno ustawienie ``settings.DYNAMIC_FILTER_COUNTS_ENABLE`` jak i atrybut ``dynamic_filter_counts_enable`` klasy admina są ustawione na ``True``. Ustawienie globalne ma priorytet. Gdy liczniki są wyłączone, nie wyświetlają się placeholdery ``(…)`` ani nie są wykonywane żądania HTMx do pobierania liczników. (dynamic-filter-counts-conditional)
+- PBN API: dodano automatyczne logowanie niepożądanych odpowiedzi z serwera PBN. System zapisuje w bazie danych sytuacje, gdy serwer PBN zmienia UID publikacji która już posiadała PBN UID, lub gdy odpowiada numerem UID który już istnieje w bazie danych. Wszystkie zarejestrowane zdarzenia są dostępne w panelu administracyjnym w menu "PBN API" -> "Niepożądane odpowiedzi PBN", gdzie można przeglądać szczegóły każdego zdarzenia (wysłane dane JSON, odpowiedź serwera, użytkownik, czas wystąpienia) (pbn-niepozadane-odpowiedzi)
+- Ulepszone wyszukiwanie w rekordach powiązanych na stronie szczegółów publikacji: pole wyszukiwania pojawia się tylko gdy jest więcej niż 2 rekordy powiązane, przepisano funkcjonalność JavaScript na prostszy i bardziej niezawodny mechanizm wykorzystujący zapisane dane w atrybucie data-records zamiast manipulacji DOM, dodano podświetlanie znalezionych fraz. Przeniesiono sekcję "Informacje dodatkowe" poza układ dwukolumnowy, dzięki czemu zajmuje ona teraz pełną szerokość ekranu dla lepszej czytelności. (wyszukiwanie-rekordow-powiazanych)
+
+
 bpp 202510.1269 (2025-10-19)
 ============================
 
