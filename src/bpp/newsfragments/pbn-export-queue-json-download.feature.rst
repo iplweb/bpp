@@ -1,1 +1,0 @@
-Kolejka eksportu PBN: dodano możliwość pobierania i kopiowania wysłanych danych JSON bezpośrednio z widoku szczegółów kolejki. Dla błędnych eksportów dostępne są narzędzia diagnostyczne: automatyczne generowanie e-maila do helpdesku PBN oraz tworzenie promptu dla AI zgodnego z dokumentacją API PBN (https://pbn.nauka.gov.pl/api/)
