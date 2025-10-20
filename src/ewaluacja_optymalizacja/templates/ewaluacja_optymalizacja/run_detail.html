@@ -1,0 +1,280 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}Wyniki optymalizacji - {{ run.dyscyplina_naukowa.nazwa }}{% endblock %}
+
+{% block extrahead %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url 'ewaluacja_optymalizacja:index' %}">Optymalizacja ewaluacji</a></li>
+    <li class="current">Wyniki optymalizacji</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="large-12 columns">
+        <h1>
+            <span class="fi-graph-bar"></span> Wyniki optymalizacji
+        </h1>
+
+        <div class="callout {% if run.validation_passed %}success{% else %}alert{% endif %}">
+            <h3>{{ run.dyscyplina_naukowa.nazwa }}</h3>
+            <p>
+                Data: {{ run.started_at|date:"Y-m-d H:i" }}
+                {% if run.uczelnia %} | Uczelnia: {{ run.uczelnia }}{% endif %}
+            </p>
+            {% if not run.validation_passed %}
+            <p class="lead"><strong>Uwaga: Walidacja nie powiodła się!</strong></p>
+            {% endif %}
+        </div>
+
+        <div class="row">
+            <div class="large-3 medium-6 columns">
+                <div class="callout">
+                    <h4>Suma punktów</h4>
+                    <p class="lead">{{ run.total_points|floatformat:1 }}</p>
+                </div>
+            </div>
+            <div class="large-3 medium-6 columns">
+                <div class="callout">
+                    <h4>Suma slotów</h4>
+                    <p class="lead">{{ run.total_slots|floatformat:2 }}</p>
+                </div>
+            </div>
+            <div class="large-3 medium-6 columns">
+                <div class="callout">
+                    <h4>Liczba publikacji</h4>
+                    <p class="lead">{{ run.total_publications }}</p>
+                </div>
+            </div>
+            <div class="large-3 medium-6 columns">
+                <div class="callout">
+                    <h4>LOW-MONO %</h4>
+                    <p class="lead">{{ run.low_mono_percentage|floatformat:1 }}%</p>
+                </div>
+            </div>
+        </div>
+
+        <h2><span class="fi-graph-pie"></span> Analiza liczby N</h2>
+        <p>Poniższe wykresy pokazują rozkład punktów i slotów między autorami w liczbie N a autorami spoza liczby N.</p>
+
+        <div class="row">
+            <div class="large-6 columns">
+                <div class="callout secondary">
+                    <h4>Rozkład punktów</h4>
+                    <canvas id="pointsChart"></canvas>
+                    <table class="unstriped" style="margin-top: 20px;">
+                        <tbody>
+                            <tr>
+                                <td>Autorzy w liczbie N:</td>
+                                <td class="text-right"><strong>{{ stats.n_points|floatformat:1 }} pkt ({{ stats.n_points_pct|floatformat:1 }}%)</strong></td>
+                            </tr>
+                            <tr>
+                                <td>Autorzy poza liczbą N:</td>
+                                <td class="text-right"><strong>{{ stats.non_n_points|floatformat:1 }} pkt ({{ stats.non_n_points_pct|floatformat:1 }}%)</strong></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="large-6 columns">
+                <div class="callout secondary">
+                    <h4>Rozkład slotów</h4>
+                    <canvas id="slotsChart"></canvas>
+                    <table class="unstriped" style="margin-top: 20px;">
+                        <tbody>
+                            <tr>
+                                <td>Autorzy w liczbie N:</td>
+                                <td class="text-right"><strong>{{ stats.n_slots|floatformat:2 }} slotów ({{ stats.n_slots_pct|floatformat:1 }}%)</strong></td>
+                            </tr>
+                            <tr>
+                                <td>Autorzy poza liczbą N:</td>
+                                <td class="text-right"><strong>{{ stats.non_n_slots|floatformat:2 }} slotów ({{ stats.non_n_slots_pct|floatformat:1 }}%)</strong></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="large-6 columns">
+                <div class="callout secondary">
+                    <h4>Rozkład LOW-MONO</h4>
+                    <canvas id="lowMonoChart"></canvas>
+                    <table class="unstriped" style="margin-top: 20px;">
+                        <tbody>
+                            <tr>
+                                <td>LOW-MONO:</td>
+                                <td class="text-right"><strong>{{ run.low_mono_count }} ({{ run.low_mono_percentage|floatformat:1 }}%)</strong></td>
+                            </tr>
+                            <tr>
+                                <td>Inne publikacje:</td>
+                                <td class="text-right"><strong>{{ run.total_publications|add:"-"|add:run.low_mono_count }}</strong></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="large-6 columns">
+                <div class="callout {% if stats.non_n_and_low_mono_pct > 50 %}alert{% else %}success{% endif %}">
+                    <h4>Łączny udział: LOW-MONO + autorzy poza liczbą N</h4>
+                    <p class="lead" style="font-size: 3rem; margin: 20px 0;">
+                        {{ stats.non_n_and_low_mono_pct|floatformat:1 }}%
+                    </p>
+                    <p>
+                        Punkty z autorów poza liczbą N: {{ stats.non_n_points_pct|floatformat:1 }}%<br>
+                        Udział LOW-MONO: {{ stats.low_mono_pct|floatformat:1 }}%
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <h2><span class="fi-torsos-all"></span> Wyniki autorów</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Autor</th>
+                    <th>Rodzaj</th>
+                    <th>Punkty</th>
+                    <th>Sloty (ogółem)</th>
+                    <th>Sloty (mono)</th>
+                    <th>Limit</th>
+                    <th>Publikacje</th>
+                    <th>LOW-MONO</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for author_result in author_results %}
+                <tr>
+                    <td>
+                        {% if author_result.ma_metryke %}
+                            <a href="{% url 'ewaluacja_metryki:szczegoly' autor_slug=author_result.autor.slug dyscyplina_kod=run.dyscyplina_naukowa.kod %}">
+                                {{ author_result.autor }}
+                            </a>
+                        {% else %}
+                            {{ author_result.autor }}
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if author_result.rodzaj_autora %}
+                            <span class="label {% if author_result.rodzaj_autora.jest_w_n %}success{% else %}secondary{% endif %}">
+                                {{ author_result.rodzaj_autora.skrot }}
+                            </span>
+                        {% else %}
+                            <span class="label secondary">-</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ author_result.total_points|floatformat:1 }}</td>
+                    <td>{{ author_result.total_slots|floatformat:2 }} / {{ author_result.slot_limit_total|floatformat:1 }}</td>
+                    <td>{{ author_result.mono_slots|floatformat:2 }} / {{ author_result.slot_limit_mono|floatformat:1 }}</td>
+                    <td>
+                        {% widthratio author_result.total_slots author_result.slot_limit_total 100 as usage_pct %}
+                        <div class="progress" role="progressbar" tabindex="0" aria-valuenow="{{ usage_pct }}"
+                             aria-valuemin="0" aria-valuemax="100" style="height: 20px;">
+                            <div class="progress-meter {% if usage_pct > 95 %}alert{% elif usage_pct > 80 %}warning{% else %}success{% endif %}"
+                                 style="width: {{ usage_pct }}%">
+                                <p class="progress-meter-text" style="font-size: 0.7rem;">{{ usage_pct }}%</p>
+                            </div>
+                        </div>
+                    </td>
+                    <td>{{ author_result.pub_count }}</td>
+                    <td>{{ author_result.low_mono_count }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div style="margin-top: 30px;">
+            <a href="{% url 'ewaluacja_optymalizacja:run-list' %}" class="button secondary">
+                <span class="fi-arrow-left"></span> Powrót do listy
+            </a>
+            <a href="{% url 'ewaluacja_optymalizacja:discipline-comparison' %}" class="button">
+                <span class="fi-graph-bar"></span> Porównanie dyscyplin
+            </a>
+        </div>
+    </div>
+</div>
+
+<script>
+// Chart.js configuration
+const chartConfig = {
+    responsive: true,
+    maintainAspectRatio: true,
+    plugins: {
+        legend: {
+            position: 'bottom',
+        }
+    }
+};
+
+// Points distribution chart
+const pointsCtx = document.getElementById('pointsChart').getContext('2d');
+new Chart(pointsCtx, {
+    type: 'doughnut',
+    data: {
+        labels: {{ chart_data.labels|safe }},
+        datasets: [{
+            data: {{ chart_data.points|safe }},
+            backgroundColor: [
+                'rgba(46, 204, 113, 0.8)',
+                'rgba(155, 89, 182, 0.8)',
+            ],
+            borderColor: [
+                'rgba(46, 204, 113, 1)',
+                'rgba(155, 89, 182, 1)',
+            ],
+            borderWidth: 2
+        }]
+    },
+    options: chartConfig
+});
+
+// Slots distribution chart
+const slotsCtx = document.getElementById('slotsChart').getContext('2d');
+new Chart(slotsCtx, {
+    type: 'doughnut',
+    data: {
+        labels: {{ chart_data.labels|safe }},
+        datasets: [{
+            data: {{ chart_data.slots|safe }},
+            backgroundColor: [
+                'rgba(52, 152, 219, 0.8)',
+                'rgba(231, 76, 60, 0.8)',
+            ],
+            borderColor: [
+                'rgba(52, 152, 219, 1)',
+                'rgba(231, 76, 60, 1)',
+            ],
+            borderWidth: 2
+        }]
+    },
+    options: chartConfig
+});
+
+// LOW-MONO chart
+const lowMonoCtx = document.getElementById('lowMonoChart').getContext('2d');
+new Chart(lowMonoCtx, {
+    type: 'pie',
+    data: {
+        labels: {{ chart_data.low_mono_data.labels|safe }},
+        datasets: [{
+            data: {{ chart_data.low_mono_data.values|safe }},
+            backgroundColor: [
+                'rgba(241, 196, 15, 0.8)',
+                'rgba(149, 165, 166, 0.8)',
+            ],
+            borderColor: [
+                'rgba(241, 196, 15, 1)',
+                'rgba(149, 165, 166, 1)',
+            ],
+            borderWidth: 2
+        }]
+    },
+    options: chartConfig
+});
+</script>
+{% endblock %}

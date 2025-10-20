@@ -71,6 +71,10 @@ def test_kolejka_ponow_wysylke_prac_po_zalogowaniu(wydawnictwo_ciagle, mocker):
     [SendStatus.RETRY_MUCH_LATER, SendStatus.RETRY_SOON, SendStatus.RETRY_LATER],
 )
 def test_task_sprobuj_wyslac_do_pbn_retry_later(mocker, send_status):
+    # Mock cache operations
+    mock_cache_add = mocker.patch("pbn_export_queue.tasks.cache.add", return_value=True)
+    mock_cache_delete = mocker.patch("pbn_export_queue.tasks.cache.delete")
+
     task_sprobuj_wyslac_do_pbn_apply_async = mocker.patch(
         "pbn_export_queue.tasks.task_sprobuj_wyslac_do_pbn.apply_async"
     )
@@ -79,10 +83,15 @@ def test_task_sprobuj_wyslac_do_pbn_retry_later(mocker, send_status):
 
     mock_peq = MagicMock()
     mock_peq.send_to_pbn.return_value = send_status
+    mock_peq.wysylke_zakonczono = None
 
     wait_for_object.return_value = mock_peq
 
     task_sprobuj_wyslac_do_pbn(5)
+
+    # Check that lock was acquired and released
+    mock_cache_add.assert_called_once()
+    mock_cache_delete.assert_called_once()
 
     # Upewnij się, ze zadanie jest uruchamiane ponownie, ale ciut później
     task_sprobuj_wyslac_do_pbn_apply_async.assert_called_once()
@@ -98,28 +107,82 @@ def test_task_sprobuj_wyslac_do_pbn_retry_later(mocker, send_status):
 )
 @pytest.mark.django_db
 def test_task_sprobuj_wyslac_do_pbn_finished(mocker, send_status):
+    # Mock cache operations
+    mock_cache_add = mocker.patch("pbn_export_queue.tasks.cache.add", return_value=True)
+    mock_cache_delete = mocker.patch("pbn_export_queue.tasks.cache.delete")
+
     mocker.patch("pbn_export_queue.tasks.task_sprobuj_wyslac_do_pbn.apply_async")
 
     wait_for_object = mocker.patch("pbn_export_queue.tasks.wait_for_object")
 
     mock_peq = MagicMock()
     mock_peq.send_to_pbn.return_value = send_status
+    mock_peq.wysylke_zakonczono = None
 
     wait_for_object.return_value = mock_peq
 
     task_sprobuj_wyslac_do_pbn(5)
 
+    # Check that lock was acquired and released
+    mock_cache_add.assert_called_once()
+    mock_cache_delete.assert_called_once()
+
 
 def test_task_sprobuj_wyslac_do_pbn_raises(mocker):
+    # Mock cache operations
+    mock_cache_add = mocker.patch("pbn_export_queue.tasks.cache.add", return_value=True)
+    mock_cache_delete = mocker.patch("pbn_export_queue.tasks.cache.delete")
+
     wait_for_object = mocker.patch("pbn_export_queue.tasks.wait_for_object")
 
     mock_peq = MagicMock()
-    mock_peq.send_to_pbn.side_return_value = 0xBEEF
+    mock_peq.send_to_pbn.return_value = 0xBEEF  # Invalid status
+    mock_peq.wysylke_zakonczono = None
 
     wait_for_object.return_value = mock_peq
 
     with pytest.raises(NotImplementedError):
         task_sprobuj_wyslac_do_pbn(5)
+
+    # Lock should still be cleaned up even on error
+    mock_cache_delete.assert_called_once()
+
+
+def test_task_sprobuj_wyslac_do_pbn_lock_already_acquired(mocker):
+    """Test that task skips processing when lock is already acquired"""
+    # Mock cache.add to return False (lock already exists)
+    mock_cache_add = mocker.patch("pbn_export_queue.tasks.cache.add", return_value=False)
+    mock_cache_delete = mocker.patch("pbn_export_queue.tasks.cache.delete")
+
+    wait_for_object = mocker.patch("pbn_export_queue.tasks.wait_for_object")
+
+    result = task_sprobuj_wyslac_do_pbn(5)
+
+    # Should return immediately without processing
+    assert result == "ALREADY_PROCESSING"
+    wait_for_object.assert_not_called()
+    mock_cache_delete.assert_not_called()
+
+
+def test_task_sprobuj_wyslac_do_pbn_already_completed(mocker):
+    """Test that task skips processing when record is already completed"""
+    # Mock cache operations
+    mock_cache_add = mocker.patch("pbn_export_queue.tasks.cache.add", return_value=True)
+    mock_cache_delete = mocker.patch("pbn_export_queue.tasks.cache.delete")
+
+    wait_for_object = mocker.patch("pbn_export_queue.tasks.wait_for_object")
+
+    mock_peq = MagicMock()
+    mock_peq.wysylke_zakonczono = "2024-01-01"  # Already completed
+
+    wait_for_object.return_value = mock_peq
+
+    result = task_sprobuj_wyslac_do_pbn(5)
+
+    # Should return without calling send_to_pbn
+    assert result == "ALREADY_COMPLETED"
+    mock_peq.send_to_pbn.assert_not_called()
+    mock_cache_delete.assert_called_once()
 
 
 @pytest.mark.django_db
@@ -295,3 +358,40 @@ def test_queue_pbn_export_batch_invalid_records(mocker):
     # Nothing should be added to queue
     assert PBN_Export_Queue.objects.count() == 0
     mock_task_delay.assert_not_called()
+
+
+@pytest.mark.django_db
+def test_check_and_send_next_in_queue_with_locks(mocker):
+    """Test that check_and_send_next_in_queue respects locks"""
+    from pbn_export_queue.tasks import check_and_send_next_in_queue
+
+    # Create test queue items
+    items = []
+    for i in range(3):
+        items.append(
+            baker.make(
+                PBN_Export_Queue,
+                wysylke_podjeto=None,
+                wysylke_zakonczono=None,
+            )
+        )
+
+    # Mock cache.get to return True for first item (locked), False for others
+    def mock_cache_get(key):
+        if f"{items[0].pk}" in key:
+            return "locked"
+        return None
+
+    mock_cache = mocker.patch("pbn_export_queue.tasks.cache.get", side_effect=mock_cache_get)
+    mock_task_delay = mocker.patch("pbn_export_queue.tasks.task_sprobuj_wyslac_do_pbn.delay")
+
+    result = check_and_send_next_in_queue()
+
+    # Should send only 2 items (not the locked one)
+    assert result == 2
+    assert mock_task_delay.call_count == 2
+    # Check that tasks were called for items 2 and 3, not item 1
+    called_pks = [call[0][0] for call in mock_task_delay.call_args_list]
+    assert items[0].pk not in called_pks
+    assert items[1].pk in called_pks
+    assert items[2].pk in called_pks

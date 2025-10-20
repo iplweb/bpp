@@ -1,45 +1,73 @@
 from django.apps import apps
+from django.core.cache import cache
 
 from django_bpp.celery_tasks import app
 from long_running.util import wait_for_object
 
 from .models import PBN_Export_Queue, SendStatus
 
+# Konfiguracja locków
+LOCK_TIMEOUT = 300  # 5 minut timeout dla locka
+LOCK_PREFIX = "pbn_export_lock:"
+
 
 @app.task
 def task_sprobuj_wyslac_do_pbn(pk):
-    p = wait_for_object(PBN_Export_Queue, pk)
-    res = p.send_to_pbn()
+    # Spróbuj uzyskać lock dla tego rekordu
+    lock_key = f"{LOCK_PREFIX}{pk}"
 
-    match res:
-        case SendStatus.RETRY_LATER:
-            task_sprobuj_wyslac_do_pbn.apply_async(args=[pk], countdown=5 * 60)
+    # cache.add zwraca True jeśli klucz został dodany (lock uzyskany)
+    # False jeśli klucz już istnieje (ktoś już przetwarza ten rekord)
+    acquired = cache.add(lock_key, "locked", LOCK_TIMEOUT)
 
-        case SendStatus.RETRY_SOON:
-            # np. 423 Locked
-            task_sprobuj_wyslac_do_pbn.apply_async(args=[pk], countdown=60)
+    if not acquired:
+        # Ktoś już przetwarza ten rekord - pomiń
+        return "ALREADY_PROCESSING"
 
-        case SendStatus.RETRY_MUCH_LATER:
-            # PraceSerwisoweException
-            task_sprobuj_wyslac_do_pbn.apply_async(args=[pk], countdown=60 * 60 * 3)
+    try:
+        p = wait_for_object(PBN_Export_Queue, pk)
 
-        case SendStatus.FINISHED_OKAY:
-            # After successful send, check for more items in queue
-            check_and_send_next_in_queue()
-            return
+        # Dodatkowe sprawdzenie - może rekord został już wysłany
+        # podczas oczekiwania na lock
+        p.refresh_from_db()
+        if p.wysylke_zakonczono is not None:
+            return "ALREADY_COMPLETED"
 
-        case SendStatus.FINISHED_ERROR | SendStatus.RETRY_AFTER_USER_AUTHORISED:
-            return
+        res = p.send_to_pbn()
 
-        case _:
-            raise NotImplementedError(
-                f"Return status for background send to PBN not supported {res=}"
-            )
+        match res:
+            case SendStatus.RETRY_LATER:
+                task_sprobuj_wyslac_do_pbn.apply_async(args=[pk], countdown=5 * 60)
+
+            case SendStatus.RETRY_SOON:
+                # np. 423 Locked
+                task_sprobuj_wyslac_do_pbn.apply_async(args=[pk], countdown=60)
+
+            case SendStatus.RETRY_MUCH_LATER:
+                # PraceSerwisoweException
+                task_sprobuj_wyslac_do_pbn.apply_async(args=[pk], countdown=60 * 60 * 3)
+
+            case SendStatus.FINISHED_OKAY:
+                # After successful send, check for more items in queue
+                check_and_send_next_in_queue()
+                return
+
+            case SendStatus.FINISHED_ERROR | SendStatus.RETRY_AFTER_USER_AUTHORISED:
+                return
+
+            case _:
+                raise NotImplementedError(
+                    f"Return status for background send to PBN not supported {res=}"
+                )
+
+    finally:
+        # Zawsze zwolnij lock po zakończeniu przetwarzania
+        cache.delete(lock_key)
 
 
 def check_and_send_next_in_queue():
     """Check if there are more items waiting to be sent and start sending them."""
-    # Find the next item that hasn't been processed yet
+    # Find the next items that haven't been processed yet
     # Priority order:
     # 1. Items that were never attempted (wysylke_podjeto=None)
     # 2. Items that are waiting but not finished
@@ -48,13 +76,16 @@ def check_and_send_next_in_queue():
         wysylke_zakonczono=None,
     ).order_by("zamowiono")[:5]  # Process up to 5 items at once
 
+    sent_count = 0
     for item in next_items:
-        # Start sending each item in background
-        task_sprobuj_wyslac_do_pbn.delay(item.pk)
+        # Sprawdź czy nie ma już locka dla tego elementu
+        lock_key = f"{LOCK_PREFIX}{item.pk}"
+        if not cache.get(lock_key):
+            # Brak locka - można wysyłać
+            task_sprobuj_wyslac_do_pbn.delay(item.pk)
+            sent_count += 1
 
-    if next_items:
-        return len(next_items)
-    return 0
+    return sent_count
 
 
 @app.task

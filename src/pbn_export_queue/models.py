@@ -161,13 +161,16 @@ class PBN_Export_Queue(models.Model):
         """
         :return: (int : SendStatus,)
         """
+        # Odśwież stan z bazy na wypadek równoległych zmian
+        self.refresh_from_db()
+
+        # Zabezpieczenie: jeśli rekord został już zakończony, nie wysyłaj ponownie
+        # (może się zdarzyć w przypadku race condition między workerami)
+        if self.wysylke_zakonczono is not None:
+            # Rekord został już wysłany przez inny proces
+            return SendStatus.FINISHED_OKAY
 
         if not self.check_if_record_still_exists():
-            if self.wysylke_zakonczono is not None:
-                raise Exception(
-                    "System próbuje ponownie wysyłać rekordy, których wysyłać nie powinien"
-                )
-
             return self.error("Rekord został usunięty nim wysyłka była możliwa.")
 
         self.wysylke_podjeto = timezone.now()

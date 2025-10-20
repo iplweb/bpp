@@ -26,6 +26,14 @@ class MicrosoftLogoutView(View):
 
     def _logout(self, request):
         """Perform the logout process"""
+        # If user is not authenticated, redirect to post-logout URI without calling logout
+        if not request.user.is_authenticated:
+            post_logout_redirect_uri = self._get_post_logout_redirect_uri(request)
+            logger.info(
+                "User not authenticated, redirecting directly to post-logout URI"
+            )
+            return HttpResponseRedirect(post_logout_redirect_uri)
+
         # Clear Django session first
         logout(request)
         logger.info("User session cleared from Django")

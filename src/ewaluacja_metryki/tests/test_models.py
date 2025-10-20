@@ -130,7 +130,13 @@ def test_status_generowania_zakoncz():
     """Test kończenia generowania"""
     status = StatusGenerowania.get_or_create()
     status.rozpocznij_generowanie()
-    status.zakoncz_generowanie(liczba_przetworzonych=10, liczba_bledow=2)
+
+    # Symuluj atomowe aktualizacje licznika (jak robią taski)
+    status.liczba_przetworzonych = 10
+    status.save()
+
+    # Zakończ generowanie - używa już zaktualizowanej liczba_przetworzonych
+    status.zakoncz_generowanie(liczba_bledow=2)
 
     assert status.w_trakcie is False
     assert status.data_zakonczenia is not None

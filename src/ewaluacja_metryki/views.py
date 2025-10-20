@@ -14,7 +14,7 @@ from bpp.models.uczelnia import Uczelnia
 from ewaluacja_common.models import Rodzaj_Autora
 
 from .models import MetrykaAutora, StatusGenerowania
-from .tasks import generuj_metryki_task
+from .tasks import generuj_metryki_task_parallel
 
 
 def ma_uprawnienia_ewaluacji(user):
@@ -351,6 +351,21 @@ class MetrykaDetailView(EwaluacjaRequiredMixin, DetailView):
             ) from err
 
         return obj
+
+    def get(self, request, *args, **kwargs):
+        """Override get to handle missing metrics gracefully"""
+        from django.http import Http404
+
+        try:
+            return super().get(request, *args, **kwargs)
+        except Http404:
+            # Redirect to main list with error message instead of showing 404 page
+            messages.error(
+                request,
+                "Nie znaleziono metryki ewaluacyjnej dla tego autora i dyscypliny. "
+                "Proszę o wygenerowanie metryk ponownie.",
+            )
+            return redirect("ewaluacja_metryki:lista")
 
     def _get_discipline_years_context(self, metryka):
         """Get discipline years and calculate averages."""
@@ -999,8 +1014,8 @@ class UruchomGenerowanieView(View):
 
         total_count = IloscUdzialowDlaAutoraZaCalosc.objects.all().count()
 
-        # Uruchom task (z domyślnym przeliczaniem liczby N)
-        result = generuj_metryki_task.delay(
+        # Uruchom równoległy task (z domyślnym przeliczaniem liczby N)
+        result = generuj_metryki_task_parallel.delay(
             rok_min=rok_min,
             rok_max=rok_max,
             minimalny_pk=minimalny_pk,

@@ -1,0 +1,1 @@
+Panel przypięć dyscyplin w module optymalizacji ewaluacji - możliwość podglądu statystyk przypięć/odpięć dla lat 2022-2025 oraz resetowania przypięć dla każdej dyscypliny osobno (z automatycznym tworzeniem snapshotu).

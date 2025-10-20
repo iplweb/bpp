@@ -280,3 +280,15 @@ compose-dbshell:
 
 celery-worker-run:
 	uv run celery -A django_bpp.celery_tasks worker --pool=threads --concurrency=0
+
+celery-purge:
+	DJANGO_SETTINGS_MODULE=django_bpp.settings.local uv run celery -A django_bpp.celery_tasks purge -Q denorm,celery -f
+
+celery-worker-normal:
+	uv run celery --app=django_bpp.celery_tasks worker --concurrency=1 --loglevel=INFO  -P solo --without-gossip --without-mingle --without-heartbeat
+
+celery-worker-denorm:
+	uv run celery --app=django_bpp.celery_tasks worker -Q denorm --concurrency=1 --loglevel=INFO  -P solo --without-gossip --without-mingle --without-heartbeat
+
+denorm-queue:
+	uv run python src/manage.py denorm_queue

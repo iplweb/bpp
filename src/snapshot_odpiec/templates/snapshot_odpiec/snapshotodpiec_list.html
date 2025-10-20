@@ -1,4 +1,4 @@
-{% extends "base.html" %}{% load humanize %}
+{% extends "base.html" %}{% load humanize url_helpers %}
 
 
 {% block title %}
@@ -11,6 +11,99 @@
 {% endblock %}
 
 {% block content %}
+    <style>
+        /* Anchor padding to prevent hiding behind top bar */
+        a[name="pager"] {
+            display: block;
+            padding-top: 200px;
+            margin-top: -200px;
+            visibility: hidden;
+        }
+
+        /* Modern pagination styling */
+        .pagination {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            margin: 1.5rem 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex !important;
+            justify-content: center;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .pagination li {
+            margin: 0;
+        }
+
+        .pagination li a,
+        .pagination li span {
+            background: #fff;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            padding: 0.5rem 0.75rem;
+            margin: 0 0.25rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            color: #007bff;
+        }
+
+        .pagination li a:hover {
+            background: #007bff;
+            color: #fff;
+            border-color: #007bff;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0,123,255,0.3);
+        }
+
+        .pagination li.current a,
+        .pagination li.current span {
+            background: #007bff;
+            color: #fff;
+            border-color: #007bff;
+            font-weight: 600;
+        }
+
+        .pagination li.disabled a,
+        .pagination li.disabled span {
+            background: #e9ecef;
+            color: #6c757d;
+            border-color: #dee2e6;
+            cursor: not-allowed;
+        }
+
+        .pagination li.ellipsis span {
+            background: transparent;
+            border: none;
+            color: #6c757d;
+            padding: 0 0.5rem;
+        }
+
+        .pagination .pagination-previous a,
+        .pagination .pagination-next a {
+            background: #28a745;
+            color: #fff;
+            border-color: #28a745;
+            font-weight: 600;
+        }
+
+        .pagination .pagination-previous a:hover,
+        .pagination .pagination-next a:hover {
+            background: #218838;
+            border-color: #218838;
+        }
+
+        .pagination .pagination-previous.disabled a,
+        .pagination .pagination-next.disabled a {
+            background: #e9ecef;
+            color: #6c757d;
+            border-color: #dee2e6;
+        }
+    </style>
+
     <h1>Snapshoty odpiętych dyscyplin</h1>
     <a class="button warning" href="./nowy/">Utwórz nowy</a><br/>
     Kliknij wybrany snapshot, aby zaaplikować go na bazę danych. <span hx-get="{% url "stan_systemu:ilosc_obiektow_w_denorm_queue" %}" hx-trigger="every 2s">...
@@ -18,6 +111,50 @@
     <strong>Stan przypięć w bazie: </strong>
     przypiętych: {{ przypiete }},
     odpiętych: {{ odpiete }}<p></p>
+
+    <a name="pager"></a>
+    {% if is_paginated %}
+        <ul class="pagination hide-for-print" role="navigation" aria-label="Pagination">
+            {% if page_obj.has_previous %}
+                <li class="pagination-previous"><a href="?{% url_replace page=page_obj.previous_page_number %}#pager">poprzednia</a></li>
+            {% else %}
+                <li class="pagination-previous disabled"><span>poprzednia</span></li>
+            {% endif %}
+
+            {% if page_obj.number >= 5 %}
+                <li><a href="?{% url_replace page=1 %}#pager">1</a></li>
+                <li class="disabled"><span>...</span></li>
+            {% elif page_obj.number == 4 %}
+                <li><a href="?{% url_replace page=1 %}#pager">1</a></li>
+            {% endif %}
+            {% if page_obj.number|add:"-2" >= 1 %}
+                <li><a href="?{% url_replace page=page_obj.number|add:"-2" %}#pager">{{ page_obj.number|add:"-2" }}</a></li>
+            {% endif %}
+            {% if page_obj.number|add:"-1" >= 1 %}
+                <li><a href="?{% url_replace page=page_obj.number|add:"-1" %}#pager">{{ page_obj.number|add:"-1" }}</a></li>
+            {% endif %}
+            <li class="current">{{ page_obj.number }}</li>
+            {% if page_obj.number|add:"1" <= paginator.num_pages %}
+                <li><a href="?{% url_replace page=page_obj.number|add:"1" %}#pager">{{ page_obj.number|add:"1" }}</a></li>
+            {% endif %}
+            {% if page_obj.number|add:"2" <= paginator.num_pages %}
+                <li><a href="?{% url_replace page=page_obj.number|add:"2" %}#pager">{{ page_obj.number|add:"2" }}</a></li>
+            {% endif %}
+            {% if page_obj.number|add:"2" <= paginator.num_pages|add:"-2" %}
+                <li class="ellipsis" aria-hidden="true"></li>
+                <li><a href="?{% url_replace page=paginator.num_pages %}#pager">{{ paginator.num_pages }}</a></li>
+            {% elif page_obj.number|add:"1" <= paginator.num_pages|add:"-2" %}
+                <li><a href="?{% url_replace page=paginator.num_pages %}#pager">{{ paginator.num_pages }}</a></li>
+            {% endif %}
+
+            {% if page_obj.has_next %}
+                <li class="pagination-next"><a href="?{% url_replace page=page_obj.next_page_number %}#pager">następna</a></li>
+            {% else %}
+                <li class="pagination-next disabled"><span>następna</span></li>
+            {% endif %}
+        </ul>
+    {% endif %}
+
     <table>
         <tr>
             <th>Snapshot</th>
@@ -44,4 +181,46 @@
         {% endfor %}
 
     </table>
+
+    {% if is_paginated %}
+        <ul class="pagination hide-for-print" role="navigation" aria-label="Pagination">
+            {% if page_obj.has_previous %}
+                <li class="pagination-previous"><a href="?{% url_replace page=page_obj.previous_page_number %}#pager">poprzednia</a></li>
+            {% else %}
+                <li class="pagination-previous disabled"><span>poprzednia</span></li>
+            {% endif %}
+
+            {% if page_obj.number >= 5 %}
+                <li><a href="?{% url_replace page=1 %}#pager">1</a></li>
+                <li class="disabled"><span>...</span></li>
+            {% elif page_obj.number == 4 %}
+                <li><a href="?{% url_replace page=1 %}#pager">1</a></li>
+            {% endif %}
+            {% if page_obj.number|add:"-2" >= 1 %}
+                <li><a href="?{% url_replace page=page_obj.number|add:"-2" %}#pager">{{ page_obj.number|add:"-2" }}</a></li>
+            {% endif %}
+            {% if page_obj.number|add:"-1" >= 1 %}
+                <li><a href="?{% url_replace page=page_obj.number|add:"-1" %}#pager">{{ page_obj.number|add:"-1" }}</a></li>
+            {% endif %}
+            <li class="current">{{ page_obj.number }}</li>
+            {% if page_obj.number|add:"1" <= paginator.num_pages %}
+                <li><a href="?{% url_replace page=page_obj.number|add:"1" %}#pager">{{ page_obj.number|add:"1" }}</a></li>
+            {% endif %}
+            {% if page_obj.number|add:"2" <= paginator.num_pages %}
+                <li><a href="?{% url_replace page=page_obj.number|add:"2" %}#pager">{{ page_obj.number|add:"2" }}</a></li>
+            {% endif %}
+            {% if page_obj.number|add:"2" <= paginator.num_pages|add:"-2" %}
+                <li class="ellipsis" aria-hidden="true"></li>
+                <li><a href="?{% url_replace page=paginator.num_pages %}#pager">{{ paginator.num_pages }}</a></li>
+            {% elif page_obj.number|add:"1" <= paginator.num_pages|add:"-2" %}
+                <li><a href="?{% url_replace page=paginator.num_pages %}#pager">{{ paginator.num_pages }}</a></li>
+            {% endif %}
+
+            {% if page_obj.has_next %}
+                <li class="pagination-next"><a href="?{% url_replace page=page_obj.next_page_number %}#pager">następna</a></li>
+            {% else %}
+                <li class="pagination-next disabled"><span>następna</span></li>
+            {% endif %}
+        </ul>
+    {% endif %}
 {% endblock %}

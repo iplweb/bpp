@@ -1,4 +1,4 @@
-{% load humanize %}
+{% load humanize pbn_queue_extras %}
 <table>
     <thead>
         <tr>
@@ -82,7 +82,10 @@
                         {% if item.zakonczono_pomyslnie == True %}
                             <span class="label success">Pomyślnie</span>
                         {% elif item.zakonczono_pomyslnie == False %}
-                            <span class="label alert" style="cursor: crosshair;" onclick="toggleError({{ item.pk }}); event.stopPropagation(); event.preventDefault();">Błąd ▼</span>
+                            <span class="label alert" style="cursor: pointer; padding: 8px 12px; font-size: 0.9rem;"
+                                  onclick="event.stopPropagation(); event.preventDefault(); toggleError({{ item.pk }}, event);">
+                                Błąd ▼
+                            </span>
                         {% elif item.retry_after_user_authorised %}
                             <span class="label warning">Oczekuje na autoryzację</span>
                         {% else %}
@@ -91,17 +94,21 @@
                     </a>
                 </td>
                 <td>
-                    <a href="{% url 'pbn_export_queue:export-queue-detail' item.pk %}" class="button tiny">
+                    <a href="{% url 'pbn_export_queue:export-queue-detail' item.pk %}"
+                       class="button tiny"
+                       onclick="event.stopPropagation();">
                         <span class="fi-magnifying-glass"></span> Szczegóły
                     </a>
                 </td>
             </tr>
             {% if item.zakonczono_pomyslnie == False and item.komunikat %}
             <tr id="error-{{ item.pk }}" style="display: none;">
-                <td colspan="8" style="background-color: #ffeeee; padding: 10px;">
+                <td colspan="8" style="background-color: #ffeeee; padding: 15px;">
                     <div style="max-height: 400px; overflow-y: auto;">
-                        <strong>Komunikat błędu:</strong>
-                        <pre style="white-space: pre-wrap; word-wrap: break-word; font-family: monospace; font-size: 0.9em;">{{ item.komunikat|linebreaksbr }}</pre>
+                        <strong style="font-size: 1.2em;">Komunikat błędu:</strong>
+                        <div style="font-family: monospace; font-size: 1em; margin-top: 10px; line-height: 1.6; white-space: pre-wrap;">
+                            {{ item.komunikat|format_pbn_error }}
+                        </div>
                     </div>
                 </td>
             </tr>
@@ -157,9 +164,9 @@
 // Track which errors are expanded
 var expandedErrors = window.expandedErrors || new Set();
 
-function toggleError(itemId) {
+function toggleError(itemId, evt) {
     var errorRow = document.getElementById('error-' + itemId);
-    var labelSpan = event.target;
+    var labelSpan = evt ? evt.target : null;
     var isExpanded = false;
 
     if (errorRow) {
@@ -183,13 +190,13 @@ function toggleError(itemId) {
         window.expandedErrors = expandedErrors;
 
         // Dispatch custom event to notify the main page
-        var event = new CustomEvent('errorToggled', {
+        var customEvent = new CustomEvent('errorToggled', {
             detail: {
                 itemId: itemId,
                 expanded: expandedErrors.size > 0
             }
         });
-        document.dispatchEvent(event);
+        document.dispatchEvent(customEvent);
     }
     return false;
 }
@@ -199,7 +206,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (window.expandedErrors && window.expandedErrors.size > 0) {
         window.expandedErrors.forEach(function(itemId) {
             var errorRow = document.getElementById('error-' + itemId);
-            var labelSpan = document.querySelector('span[onclick="toggleError(' + itemId + '); event.stopPropagation(); event.preventDefault();"]');
+            var labelSpan = document.querySelector('span[onclick*="toggleError(' + itemId + ', event)"]');
             if (errorRow) {
                 errorRow.style.display = 'table-row';
                 if (labelSpan) {
@@ -215,7 +222,7 @@ document.body.addEventListener('htmx:afterSwap', function(event) {
     if (event.detail.target.id === 'export-queue-table' && window.expandedErrors && window.expandedErrors.size > 0) {
         window.expandedErrors.forEach(function(itemId) {
             var errorRow = document.getElementById('error-' + itemId);
-            var labelSpan = document.querySelector('span[onclick="toggleError(' + itemId + '); event.stopPropagation(); event.preventDefault();"]');
+            var labelSpan = document.querySelector('span[onclick*="toggleError(' + itemId + ', event)"]');
             if (errorRow) {
                 errorRow.style.display = 'table-row';
                 if (labelSpan) {

@@ -70,12 +70,15 @@ nc -zv localhost 8000  # Check if port 8000 is in use
 - `make assets` - Run both yarn install and grunt build and Django collectstatic
 
 ### Testing Commands
-- `pytest` - Run tests (configured in pytest.ini)
-- `pytest --ds=django_bpp.settings.local` - Run tests with specific settings
+- `uv run pytest` - Run tests (configured in pytest.ini)
+- `uv run pytest --ds=django_bpp.settings.local` - Run tests with specific settings
 - `make tests-without-selenium` - Run tests excluding Selenium tests with parallelization (fast)
 - `make tests-with-selenium` - Run only Selenium tests with parallelization (slow)
 - `make tests` - **PRIMARY COMMAND** - Run full test suite
 - `make full-tests` - Run complete test suite
+
+### Celery commands
+- `uv run celery -A django_bpp.tasks` always, for example `uv run celery -A django_bpp.tasks inspect registered`
 
 **CRITICAL TEST EXECUTION TIME:**
 - Full test suite (`pytest src/` or `make tests`) takes **UP TO 10 MINUTES** to complete

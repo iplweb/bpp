@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}Status resetowania przypięć{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url 'ewaluacja_optymalizacja:index' %}">Optymalizacja ewaluacji</a></li>
+    <li class="current">Status resetowania przypięć</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="large-12 columns">
+        <h1>
+            <span class="fi-refresh"></span> Reset przypięć dla wszystkich dyscyplin
+        </h1>
+
+        {% if not task_ready and not error %}
+        <div class="callout primary">
+            <h4><span class="fi-info"></span> Zadanie resetowania przypięć zostało uruchomione</h4>
+            <p>
+                Proces składa się z kilku etapów: zbieranie autorów, tworzenie snapshotu, resetowanie przypięć
+                i przeliczanie punktacji. Może to potrwać od kilku do kilkunastu minut.
+                Strona odświeża się automatycznie co 5 sekund.
+            </p>
+            <p>
+                <strong>Uwaga:</strong> Zadanie resetuje przypięcia dla wszystkich rekordów z lat 2022-2025,
+                gdzie autor ma dyscyplinę, jest zatrudniony i afiliuje.
+            </p>
+        </div>
+        {% endif %}
+
+        <div class="callout info">
+            <p><strong>ID zadania:</strong> {{ task_id }}</p>
+            <p><strong>Status:</strong>
+                {% if task_state == "PROGRESS" %}
+                    <span class="label warning">W trakcie</span>
+                {% elif task_state == "SUCCESS" %}
+                    <span class="label success">Zakończono</span>
+                {% elif task_state == "FAILURE" %}
+                    <span class="label alert">Błąd</span>
+                {% elif task_state == "PENDING" %}
+                    <span class="label secondary">Oczekuje</span>
+                {% else %}
+                    <span class="label">{{ task_state }}</span>
+                {% endif %}
+            </p>
+        </div>
+
+        <!-- Progress section with HTMX polling -->
+        <div id="progress-container"
+             hx-get="{% url 'ewaluacja_optymalizacja:reset-all-pins-status' task_id %}"
+             hx-trigger="every 5s"
+             hx-swap="innerHTML">
+            {% include "ewaluacja_optymalizacja/_reset_all_pins_progress.html" %}
+        </div>
+
+        <div class="button-group">
+            <a href="{% url 'ewaluacja_optymalizacja:index' %}" class="button secondary">
+                <span class="fi-arrow-left"></span> Powrót do optymalizacji
+            </a>
+            {% if success %}
+                <a href="/snapshot_odpiec/" class="button warning">
+                    <span class="fi-camera"></span> Snapshoty odpięć
+                </a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

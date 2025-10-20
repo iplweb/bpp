@@ -1,3 +1,4 @@
+import json
 import re
 import sys
 
@@ -11,6 +12,7 @@ from django.http import HttpResponseRedirect, JsonResponse
 from django.shortcuts import get_object_or_404
 from django.urls import reverse_lazy
 from django.utils.safestring import mark_safe
+from django.utils.text import slugify
 from django.views import View
 from django.views.decorators.http import require_POST
 from django.views.generic import DetailView, ListView
@@ -18,6 +20,170 @@ from django.views.generic import DetailView, ListView
 from bpp.const import GR_WPROWADZANIE_DANYCH
 
 from .models import PBN_Export_Queue
+
+
+def sanitize_filename(text, max_length=100):
+    """
+    Sanitize text to create safe filename.
+    Removes unsafe characters and limits length.
+    """
+    if not text:
+        return "export"
+
+    # Use slugify to create safe filename
+    safe_name = slugify(text, allow_unicode=False)
+
+    # Limit length
+    if len(safe_name) > max_length:
+        safe_name = safe_name[:max_length]
+
+    return safe_name or "export"
+
+
+def get_filename_from_record(rekord):
+    """Generate filename from publication record."""
+    if hasattr(rekord, "slug") and rekord.slug:
+        return sanitize_filename(rekord.slug)
+    elif hasattr(rekord, "tytul_oryginalny") and rekord.tytul_oryginalny:
+        return sanitize_filename(rekord.tytul_oryginalny)
+    else:
+        return "export"
+
+
+def parse_pbn_api_error(exception_text):
+    """
+    Parse PBN API exception to extract error details.
+
+    Returns dict with:
+    - is_pbn_api_error: bool
+    - error_code: int (if parsed)
+    - error_endpoint: str (if parsed)
+    - error_message: str (if parsed)
+    - error_description: str (if parsed)
+    - error_details_json: str (formatted JSON if parsed)
+    - exception_type: str (exception class name)
+    - raw_error: str (fallback)
+    """
+    result = {
+        "is_pbn_api_error": False,
+        "raw_error": exception_text or "Brak szczegółów błędu",
+    }
+
+    if not exception_text:
+        return result
+
+    # Check if this looks like a PBN error (either with prefix or just a tuple)
+    has_pbn_prefix = "pbn_api.exceptions" in exception_text
+    looks_like_tuple = exception_text.strip().startswith("(") and "," in exception_text
+
+    if not has_pbn_prefix and not looks_like_tuple:
+        return result
+
+    try:
+        exception_type = "HttpException"  # Default for tuple format
+        message_part = exception_text.strip()
+
+        # If there's a pbn_api.exceptions prefix, extract it
+        if has_pbn_prefix and ":" in exception_text:
+            parts = exception_text.split(":", 1)
+            exception_class = parts[0].strip()
+            message_part = parts[1].strip()
+
+            # Extract exception type (e.g., "HttpException", "StatementsMissing")
+            if "." in exception_class:
+                exception_type = exception_class.split(".")[-1]
+            else:
+                exception_type = exception_class
+        # Otherwise, message_part is the whole text (tuple format)
+
+        # Try to parse as tuple (HttpException format)
+        # Format: (400, '/api/v1/publications', '{"code":400,...}')
+        # Use ast.literal_eval to handle both single and double quotes
+        # Security: limit string length to prevent DoS
+        if len(message_part.strip()) > 512:
+            # String too long, skip parsing and fall back to simple error handling
+            if has_pbn_prefix:
+                result["is_pbn_api_error"] = True
+                result["exception_type"] = exception_type
+                result["error_message"] = "Error message too long (>512 chars)"
+            return result
+
+        try:
+            import ast
+
+            exception_tuple = ast.literal_eval(message_part.strip())
+            if isinstance(exception_tuple, tuple) and len(exception_tuple) >= 3:
+                error_code = int(exception_tuple[0])
+                error_endpoint = exception_tuple[1]
+                error_json_str = exception_tuple[2]
+
+                # Try to parse the JSON error response
+                try:
+                    error_json = json.loads(error_json_str)
+
+                    result["is_pbn_api_error"] = True
+                    result["exception_type"] = exception_type
+                    result["error_code"] = error_code
+                    result["error_endpoint"] = error_endpoint
+                    result["error_message"] = error_json.get("message", "")
+                    result["error_description"] = error_json.get("description", "")
+
+                    # Format details as pretty JSON
+                    if "details" in error_json:
+                        result["error_details_json"] = json.dumps(
+                            error_json["details"], indent=2, ensure_ascii=False
+                        )
+                    else:
+                        # If no details, show the whole error JSON
+                        result["error_details_json"] = json.dumps(
+                            error_json, indent=2, ensure_ascii=False
+                        )
+
+                except (json.JSONDecodeError, TypeError, KeyError):
+                    # JSON parsing failed, but we still have the code and endpoint
+                    result["is_pbn_api_error"] = True
+                    result["exception_type"] = exception_type
+                    result["error_code"] = error_code
+                    result["error_endpoint"] = error_endpoint
+                    result["error_details_json"] = error_json_str
+
+                return result
+
+        except (ValueError, SyntaxError):
+            # Not a valid tuple, continue to other parsing methods
+            pass
+
+        # If not a tuple, it's a simple exception like StatementsMissing (only if has pbn_prefix)
+        if has_pbn_prefix:
+            result["is_pbn_api_error"] = True
+            result["exception_type"] = exception_type
+            result["error_message"] = message_part.strip()
+
+    except (ValueError, SyntaxError, IndexError):
+        # Parsing failed, keep is_pbn_api_error=False
+        pass
+
+    return result
+
+
+def extract_pbn_error_from_komunikat(komunikat):
+    """
+    Extract PBN API error from komunikat field (traceback).
+    Looks for the last line containing 'pbn_api.exceptions'.
+
+    Returns the exception line or None if not found.
+    """
+    if not komunikat:
+        return None
+
+    lines = komunikat.strip().split("\n")
+
+    # Search from the end for a line with pbn_api.exceptions
+    for line in reversed(lines):
+        if "pbn_api.exceptions" in line:
+            return line.strip()
+
+    return None
 
 
 class PBNExportQueuePermissionMixin(UserPassesTestMixin):
@@ -337,23 +503,40 @@ class PBNExportQueueDetailView(
         if self.object.komunikat:
             context["parsed_links"] = self.parse_komunikat_links(self.object.komunikat)
 
-        # Try to get the related SentData if it exists
-        if self.object.zakonczono_pomyslnie:
-            try:
-                from pbn_api.models.sentdata import SentData
+        # Try to get the related SentData if it exists (regardless of success status)
+        sentdata_exists = False
+        try:
+            from pbn_api.models.sentdata import SentData
 
-                sent_data = SentData.objects.get(
-                    content_type=self.object.content_type,
-                    object_id=self.object.object_id,
+            sent_data = SentData.objects.get(
+                content_type=self.object.content_type,
+                object_id=self.object.object_id,
+            )
+            context["sent_data"] = sent_data
+            sentdata_exists = True
+
+            if sent_data.pbn_uid_id:
+                # pbn_uid is a ForeignKey to Publication, so we need to use pbn_uid_id or pbn_uid.pbn_uid
+                context["pbn_publication_url"] = (
+                    f"https://pbn.nauka.gov.pl/works/publication/{sent_data.pbn_uid_id}"
                 )
-                context["sent_data"] = sent_data
-                if sent_data.pbn_uid_id:
-                    # pbn_uid is a ForeignKey to Publication, so we need to use pbn_uid_id or pbn_uid.pbn_uid
-                    context["pbn_publication_url"] = (
-                        f"https://pbn.nauka.gov.pl/works/publication/{sent_data.pbn_uid_id}"
-                    )
-            except SentData.DoesNotExist:
-                pass
+
+            # Parse PBN API error if this was a failed submission
+            if self.object.zakonczono_pomyslnie is False and sent_data.exception:
+                context["pbn_error_info"] = parse_pbn_api_error(sent_data.exception)
+
+        except SentData.DoesNotExist:
+            pass
+
+        # If no SentData or no exception in SentData, try to extract error from komunikat
+        if (
+            self.object.zakonczono_pomyslnie is False
+            and "pbn_error_info" not in context
+            and self.object.komunikat
+        ):
+            error_line = extract_pbn_error_from_komunikat(self.object.komunikat)
+            if error_line:
+                context["pbn_error_info"] = parse_pbn_api_error(error_line)
 
         # Generate admin URL for the record if it exists
         if self.object.rekord_do_wysylki:
@@ -457,33 +640,47 @@ def resend_all_waiting(request):
         messages.error(request, "Brak uprawnień do wykonania tej operacji.")
         return HttpResponseRedirect(reverse_lazy("pbn_export_queue:export-queue-list"))
 
-    # Get all items waiting for authorization (retry_after_user_authorised=True)
-    waiting_items = PBN_Export_Queue.objects.filter(retry_after_user_authorised=True)
-    count = waiting_items.count()
+    # Get items waiting for authorization (retry_after_user_authorised=True) with limit
+    waiting_items = PBN_Export_Queue.objects.filter(retry_after_user_authorised=True)[
+        :100
+    ]  # Limit do 100
 
-    if count == 0:
+    if not waiting_items:
         messages.warning(request, "Brak rekordów oczekujących na autoryzację.")
         return HttpResponseRedirect(reverse_lazy("pbn_export_queue:export-queue-list"))
 
     # Process each waiting item
+    from django.core.cache import cache
+
+    from pbn_export_queue.tasks import LOCK_PREFIX
+
+    count = 0
+    skipped = 0
     for queue_item in waiting_items:
         try:
-            # Prepare for resend
-            queue_item.prepare_for_resend(
-                user=request.user,
-                message_suffix=f" przez {request.user} (masowa wysyłka oczekujących)",
-            )
-            # Trigger the send
-            queue_item.sprobuj_wyslac_do_pbn()
+            # Sprawdź czy nie ma już locka dla tego elementu
+            lock_key = f"{LOCK_PREFIX}{queue_item.pk}"
+            if not cache.get(lock_key):
+                # Prepare for resend
+                queue_item.prepare_for_resend(
+                    user=request.user,
+                    message_suffix=f" przez {request.user} (masowa wysyłka oczekujących)",
+                )
+                # Trigger the send
+                queue_item.sprobuj_wyslac_do_pbn()
+                count += 1
+            else:
+                skipped += 1
         except Exception:
             # Log the error but continue processing other items
             rollbar.report_exc_info(sys.exc_info())
             continue
 
-    messages.success(
-        request,
-        f"Przygotowano i zlecono ponowną wysyłkę {count} rekordów oczekujących na autoryzację.",
-    )
+    msg = f"Przygotowano i zlecono ponowną wysyłkę {count} rekordów oczekujących na autoryzację."
+    if skipped > 0:
+        msg += f" ({skipped} pominięto - już w trakcie przetwarzania)"
+
+    messages.success(request, msg)
     return HttpResponseRedirect(reverse_lazy("pbn_export_queue:export-queue-list"))
 
 
@@ -498,32 +695,47 @@ def resend_all_errors(request):
         messages.error(request, "Brak uprawnień do wykonania tej operacji.")
         return HttpResponseRedirect(reverse_lazy("pbn_export_queue:export-queue-list"))
 
-    # Get all items with errors (zakonczono_pomyslnie=False)
-    error_items = PBN_Export_Queue.objects.filter(zakonczono_pomyslnie=False)
-    count = error_items.count()
+    # Get items with errors (zakonczono_pomyslnie=False) with limit
+    error_items = PBN_Export_Queue.objects.filter(zakonczono_pomyslnie=False)[
+        :100
+    ]  # Limit do 100
 
-    if count == 0:
+    if not error_items:
         messages.warning(request, "Brak rekordów z błędami do ponownej wysyłki.")
         return HttpResponseRedirect(reverse_lazy("pbn_export_queue:export-queue-list"))
 
     # Process each error item
+    from django.core.cache import cache
+
+    from pbn_export_queue.tasks import LOCK_PREFIX
+
+    count = 0
+    skipped = 0
     for queue_item in error_items:
         try:
-            # Prepare for resend
-            queue_item.prepare_for_resend(
-                user=request.user,
-                message_suffix=f" przez {request.user} (masowa wysyłka błędów)",
-            )
-            # Trigger the send
-            queue_item.sprobuj_wyslac_do_pbn()
+            # Sprawdź czy nie ma już locka dla tego elementu
+            lock_key = f"{LOCK_PREFIX}{queue_item.pk}"
+            if not cache.get(lock_key):
+                # Prepare for resend
+                queue_item.prepare_for_resend(
+                    user=request.user,
+                    message_suffix=f" przez {request.user} (masowa wysyłka błędów)",
+                )
+                # Trigger the send
+                queue_item.sprobuj_wyslac_do_pbn()
+                count += 1
+            else:
+                skipped += 1
         except Exception:
             # Log the error but continue processing other items
             rollbar.report_exc_info(sys.exc_info())
             continue
 
-    messages.success(
-        request, f"Przygotowano i zlecono ponowną wysyłkę {count} rekordów z błędami."
-    )
+    msg = f"Przygotowano i zlecono ponowną wysyłkę {count} rekordów z błędami."
+    if skipped > 0:
+        msg += f" ({skipped} pominięto - już w trakcie przetwarzania)"
+
+    messages.success(request, msg)
     return HttpResponseRedirect(reverse_lazy("pbn_export_queue:export-queue-list"))
 
 
@@ -538,34 +750,44 @@ def wake_up_queue(request):
         messages.error(request, "Brak uprawnień do wykonania tej operacji.")
         return HttpResponseRedirect(reverse_lazy("pbn_export_queue:export-queue-list"))
 
-    # Get all items that were never attempted to send
+    # Get items that were never attempted to send (with limit)
     # (wysylke_podjeto=None means sending was never started)
     never_sent_items = PBN_Export_Queue.objects.filter(
         wysylke_podjeto=None,
         wysylke_zakonczono=None,
-    )
-    count = never_sent_items.count()
+    )[:100]  # Limit do 100 rekordów na raz
 
-    if count == 0:
+    if not never_sent_items:
         messages.warning(request, "Brak rekordów oczekujących na pierwszą wysyłkę.")
         return HttpResponseRedirect(reverse_lazy("pbn_export_queue:export-queue-list"))
 
     # Process each never-sent item
-    from pbn_export_queue.tasks import task_sprobuj_wyslac_do_pbn
+    from django.core.cache import cache
 
+    from pbn_export_queue.tasks import LOCK_PREFIX, task_sprobuj_wyslac_do_pbn
+
+    count = 0
+    skipped = 0
     for queue_item in never_sent_items:
         try:
-            # Trigger the send directly with Celery task
-            task_sprobuj_wyslac_do_pbn.delay(queue_item.pk)
+            # Sprawdź czy nie ma już locka dla tego elementu
+            lock_key = f"{LOCK_PREFIX}{queue_item.pk}"
+            if not cache.get(lock_key):
+                # Brak locka - można wysyłać
+                task_sprobuj_wyslac_do_pbn.delay(queue_item.pk)
+                count += 1
+            else:
+                skipped += 1
         except Exception:
             # Log the error but continue processing other items
             rollbar.report_exc_info(sys.exc_info())
             continue
 
-    messages.success(
-        request,
-        f"Obudzono wysyłkę dla {count} rekordów które nigdy nie były wysyłane.",
-    )
+    msg = f"Obudzono wysyłkę dla {count} rekordów które nigdy nie były wysyłane."
+    if skipped > 0:
+        msg += f" ({skipped} pominięto - już w trakcie przetwarzania)"
+
+    messages.success(request, msg)
     return HttpResponseRedirect(reverse_lazy("pbn_export_queue:export-queue-list"))
 
 
@@ -590,3 +812,256 @@ class PBNExportQueueCountsView(LoginRequiredMixin, PBNExportQueuePermissionMixin
             ).count(),
         }
         return JsonResponse(counts)
+
+
+@login_required
+def download_sent_json(request, pk):
+    """Get JSON data sent to PBN for clipboard or download"""
+    if not (
+        request.user.is_staff
+        or request.user.groups.filter(name=GR_WPROWADZANIE_DANYCH).exists()
+    ):
+        return JsonResponse({"error": "Brak uprawnień"}, status=403)
+
+    queue_item = get_object_or_404(PBN_Export_Queue, pk=pk)
+
+    # Try to get the related SentData
+    try:
+        from pbn_api.models.sentdata import SentData
+
+        sent_data = SentData.objects.get(
+            content_type=queue_item.content_type,
+            object_id=queue_item.object_id,
+        )
+    except SentData.DoesNotExist:
+        return JsonResponse(
+            {"error": "Brak wysłanych danych dla tego rekordu."}, status=404
+        )
+
+    # Format JSON nicely
+    json_content = json.dumps(sent_data.data_sent, indent=2, ensure_ascii=False)
+
+    # Return as JSON with text content
+    return JsonResponse({"content": json_content})
+
+
+@login_required
+def generate_helpdesk_email(request, pk):
+    """Generate email content file for PBN helpdesk about export error"""
+    if not (
+        request.user.is_staff
+        or request.user.groups.filter(name=GR_WPROWADZANIE_DANYCH).exists()
+    ):
+        messages.error(request, "Brak uprawnień do wykonania tej operacji.")
+        return HttpResponseRedirect(
+            reverse_lazy("pbn_export_queue:export-queue-detail", args=[pk])
+        )
+
+    queue_item = get_object_or_404(PBN_Export_Queue, pk=pk)
+
+    # Try to get the related SentData
+    try:
+        from pbn_api.models.sentdata import SentData
+
+        sent_data = SentData.objects.get(
+            content_type=queue_item.content_type,
+            object_id=queue_item.object_id,
+        )
+    except SentData.DoesNotExist:
+        messages.error(request, "Brak wysłanych danych dla tego rekordu.")
+        return HttpResponseRedirect(
+            reverse_lazy("pbn_export_queue:export-queue-detail", args=[pk])
+        )
+
+    # Get record title for subject
+    record_title = "Nieznany rekord"
+    if queue_item.rekord_do_wysylki:
+        if hasattr(queue_item.rekord_do_wysylki, "tytul_oryginalny"):
+            record_title = queue_item.rekord_do_wysylki.tytul_oryginalny or record_title
+        elif hasattr(queue_item.rekord_do_wysylki, "opis_bibliograficzny_cache"):
+            record_title = (
+                queue_item.rekord_do_wysylki.opis_bibliograficzny_cache or record_title
+            )
+
+    # Parse error information from exception
+    # Exception format: (400, '/api/v1/publications', '{"code":400,"message":"Bad Request",...}')
+    error_code = "Brak kodu błędu"
+    error_endpoint = "Nieznany endpoint"
+    error_details = "Brak szczegółów błędu"
+
+    if sent_data.exception:
+        try:
+            # Try to parse tuple format
+            import ast
+
+            exception_tuple = ast.literal_eval(sent_data.exception)
+            if isinstance(exception_tuple, tuple) and len(exception_tuple) >= 3:
+                error_code = exception_tuple[0]
+                error_endpoint = exception_tuple[1]
+                error_json_str = exception_tuple[2]
+                try:
+                    error_json = json.loads(error_json_str)
+                    error_details = json.dumps(error_json, indent=2, ensure_ascii=False)
+                except (json.JSONDecodeError, TypeError):
+                    error_details = error_json_str
+            else:
+                error_details = sent_data.exception
+        except (ValueError, SyntaxError):
+            # If parsing fails, use the raw exception
+            error_details = sent_data.exception
+
+    # Use api_response_status as fallback for error code
+    if error_code == "Brak kodu błędu" and sent_data.api_response_status:
+        error_code = sent_data.api_response_status
+
+    # Format dates - use submitted_at for failed submissions
+    submitted_date = (
+        sent_data.submitted_at.strftime("%Y-%m-%d %H:%M:%S")
+        if sent_data.submitted_at
+        else (
+            sent_data.last_updated_on.strftime("%Y-%m-%d %H:%M:%S")
+            if sent_data.last_updated_on
+            else "Nieznana data"
+        )
+    )
+
+    # Format JSON nicely
+    json_data = json.dumps(sent_data.data_sent, indent=2, ensure_ascii=False)
+
+    # Create email content file
+    email_content = f"""Temat: Błąd eksportu do PBN - {record_title[:100]}
+Do: pomoc@pbn.nauka.gov.pl
+Od: {request.user.email if request.user.email else request.user.username}
+
+Dzień dobry,
+
+Zwracam się z prośbą o pomoc w rozwiązaniu problemu z eksportem publikacji do systemu PBN.
+
+SZCZEGÓŁY BŁĘDU:
+- Data i godzina wysyłki: {submitted_date}
+- Kod błędu HTTP: {error_code}
+- Endpoint API: {error_endpoint}
+- Tytuł publikacji: {record_title}
+
+ODPOWIEDŹ Z API PBN:
+{error_details}
+
+KONTEKST:
+Próbowaliśmy wysłać publikację do systemu PBN, jednak otrzymaliśmy błąd. Nie mamy pewności, co jest przyczyną problemu i prosimy o pomoc Helpdesku PBN w zidentyfikowaniu przyczyny oraz wskazówki, jak poprawić dane.
+
+DANE TECHNICZNE:
+- ID kolejki eksportu: {queue_item.pk}
+- Typ rekordu: {queue_item.content_type}
+- Ilość prób wysyłki: {queue_item.ilosc_prob}
+
+KOD JSON WYSŁANY DO PBN API:
+{json_data}
+
+Będę wdzięczny za pomoc w rozwiązaniu tego problemu.
+
+Pozdrawiam,
+{request.user.get_full_name() or request.user.username}
+"""
+
+    # Return as JSON with text content for clipboard
+    return JsonResponse({"content": email_content})
+
+
+@login_required
+def generate_ai_prompt(request, pk):
+    """Generate AI prompt for fixing export error based on PBN API documentation"""
+    if not (
+        request.user.is_staff
+        or request.user.groups.filter(name=GR_WPROWADZANIE_DANYCH).exists()
+    ):
+        return JsonResponse({"error": "Brak uprawnień"}, status=403)
+
+    queue_item = get_object_or_404(PBN_Export_Queue, pk=pk)
+
+    # Try to get the related SentData
+    try:
+        from pbn_api.models.sentdata import SentData
+
+        sent_data = SentData.objects.get(
+            content_type=queue_item.content_type,
+            object_id=queue_item.object_id,
+        )
+    except SentData.DoesNotExist:
+        return JsonResponse(
+            {"error": "Brak wysłanych danych dla tego rekordu."}, status=404
+        )
+
+    # Get record information
+    record_title = "Nieznany rekord"
+    if queue_item.rekord_do_wysylki:
+        if hasattr(queue_item.rekord_do_wysylki, "tytul_oryginalny"):
+            record_title = queue_item.rekord_do_wysylki.tytul_oryginalny or record_title
+
+    # Parse error information from exception
+    error_code = "Brak kodu błędu"
+    error_details = "Brak szczegółów błędu"
+
+    # First try to get error from sent_data.exception
+    if sent_data.exception:
+        pbn_error = parse_pbn_api_error(sent_data.exception)
+        if pbn_error.get("is_pbn_api_error"):
+            if pbn_error.get("error_code"):
+                error_code = pbn_error["error_code"]
+            if pbn_error.get("error_details_json"):
+                error_details = pbn_error["error_details_json"]
+            elif pbn_error.get("error_message"):
+                error_details = pbn_error["error_message"]
+
+    # If still no error details, try to extract from komunikat
+    if error_details == "Brak szczegółów błędu" and queue_item.komunikat:
+        error_line = extract_pbn_error_from_komunikat(queue_item.komunikat)
+        if error_line:
+            pbn_error = parse_pbn_api_error(error_line)
+            if pbn_error.get("is_pbn_api_error"):
+                if pbn_error.get("error_code"):
+                    error_code = pbn_error["error_code"]
+                if pbn_error.get("error_details_json"):
+                    error_details = pbn_error["error_details_json"]
+                elif pbn_error.get("error_message"):
+                    error_details = pbn_error["error_message"]
+                elif pbn_error.get("raw_error"):
+                    error_details = pbn_error["raw_error"]
+
+    # Fallback to api_response_status for error code
+    if error_code == "Brak kodu błędu" and sent_data.api_response_status:
+        error_code = sent_data.api_response_status
+
+    # Format JSON nicely
+    json_data = json.dumps(sent_data.data_sent, indent=2, ensure_ascii=False)
+
+    # Create AI prompt
+    prompt = f"""Proszę o pomoc w naprawieniu błędu eksportu publikacji do systemu PBN (Polski Narodowy Bibliografii).
+
+# KONTEKST
+Próbuję wysłać publikację do PBN API, ale otrzymuję błąd. Potrzebuję wskazówek, co jest nie tak z wysyłanymi danymi.
+
+# DANE WYSŁANE DO PBN API
+```json
+{json_data}
+```
+
+# OTRZYMANY BŁĄD
+- Kod HTTP: {error_code}
+- Szczegóły błędu:
+{error_details}
+- Tytuł publikacji: {record_title}
+
+# ZADANIE
+Przeanalizuj wysłane dane JSON oraz otrzymany błąd i wskaż:
+1. Co jest nie tak z danymi JSON zgodnie z dokumentacją API PBN?
+2. Jakie pola są błędne lub brakujące?
+3. Jak poprawić dane, aby eksport się powiódł?
+
+# DOKUMENTACJA
+Dokumentacja API PBN jest dostępna pod adresem: https://pbn.nauka.gov.pl/api/
+
+Proszę o szczegółową analizę i konkretne wskazówki naprawcze.
+"""
+
+    # Return as JSON with text content for clipboard
+    return JsonResponse({"content": prompt})

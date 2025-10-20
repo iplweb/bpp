@@ -1,0 +1,1 @@
+Poprawiono błąd w module optymalizacji ewaluacji, gdzie komunikat o zakończeniu zadania wyświetlał się przedwcześnie, zanim wszystkie dane zostały zapisane do bazy danych. Teraz system czeka na rzeczywiste zakończenie wszystkich procesów i zapisanie wszystkich wyników przed wyświetleniem komunikatu o sukcesie.

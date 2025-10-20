@@ -167,8 +167,8 @@ class TestSendToPbn:
     def test_send_to_pbn_record_deleted_but_already_finished(
         self, wydawnictwo_ciagle, admin_user
     ):
-        """Test that exception is raised when record is deleted
-        but send was already attempted"""
+        """Test that FINISHED_OKAY is returned when record is deleted
+        but send was already completed (protection against race conditions)"""
         queue_item = baker.make(
             PBN_Export_Queue,
             rekord_do_wysylki=wydawnictwo_ciagle,
@@ -177,8 +177,10 @@ class TestSendToPbn:
         )
         wydawnictwo_ciagle.delete()
 
-        with pytest.raises(Exception):
-            queue_item.send_to_pbn()
+        # After the change, it should return FINISHED_OKAY instead of raising exception
+        # This is a protection against race conditions
+        result = queue_item.send_to_pbn()
+        assert result == SendStatus.FINISHED_OKAY
 
     def test_send_to_pbn_prace_serwisowe_exception(
         self, wydawnictwo_ciagle, admin_user

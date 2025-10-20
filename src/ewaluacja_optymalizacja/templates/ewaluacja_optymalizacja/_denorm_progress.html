@@ -1,0 +1,31 @@
+{% load humanize %}
+
+<div data-dirty-count="{{ dirty_count }}">
+{% if dirty_count > 0 %}
+    <div class="callout warning" style="margin-top: 1rem;">
+        <h5><span class="fi-refresh"></span> Trwa przeliczanie punktacji</h5>
+
+        {% if initial_count %}
+            <div class="progress large" role="progressbar" aria-valuenow="{{ completed_pct }}"
+                 aria-valuemin="0" aria-valuemax="100">
+                <div class="progress-meter" style="width: {{ completed_pct }}%">
+                    <p class="progress-meter-text">{{ completed_pct|floatformat:0 }}%</p>
+                </div>
+            </div>
+
+            <p>
+                <strong>Do przeliczenia:</strong> {{ dirty_count|intcomma }} / {{ initial_count|intcomma }} rekordów
+                (pozostało {{ remaining_pct|floatformat:1 }}%)
+            </p>
+        {% else %}
+            <p><strong>Do przeliczenia:</strong> {{ dirty_count|intcomma }} rekordów</p>
+        {% endif %}
+
+        <p><em>Odświeża się automatycznie co 5 sekund.</em></p>
+    </div>
+{% elif show_completed %}
+    <div class="callout success" style="margin-top: 1rem;">
+        <p><span class="fi-check"></span> <strong>Przeliczanie zakończone</strong> - wszystkie rekordy są aktualne.</p>
+    </div>
+{% endif %}
+</div>

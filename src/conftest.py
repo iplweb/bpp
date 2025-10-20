@@ -82,6 +82,11 @@ pytest.mark.uruchom_tylko_bez_microsoft_auth = pytest.mark.skipif(
     "Możesz ją spokojnie przetestować z wyłączonym modułem microsoft_auth",
 )
 
+pytest.mark.uruchom_tylko_z_microsoft_auth = pytest.mark.skipif(
+    not apps.is_installed("microsoft_auth"),
+    reason="działa wyłącznie z zainstalowanym django_microsoft_auth",
+)
+
 
 @pytest.fixture
 def pbn_dyscyplina2(db, pbn_discipline_group):
