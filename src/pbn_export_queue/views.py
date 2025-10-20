@@ -125,16 +125,31 @@ def parse_pbn_api_error(exception_text):
                     result["exception_type"] = exception_type
                     result["error_code"] = error_code
                     result["error_endpoint"] = error_endpoint
-                    result["error_message"] = error_json.get("message", "")
-                    result["error_description"] = error_json.get("description", "")
 
-                    # Format details as pretty JSON
-                    if "details" in error_json:
+                    # Handle both dict and list responses from PBN API
+                    if isinstance(error_json, dict):
+                        result["error_message"] = error_json.get("message", "")
+                        result["error_description"] = error_json.get("description", "")
+
+                        # Format details as pretty JSON
+                        if "details" in error_json:
+                            result["error_details_json"] = json.dumps(
+                                error_json["details"], indent=2, ensure_ascii=False
+                            )
+                        else:
+                            # If no details, show the whole error JSON
+                            result["error_details_json"] = json.dumps(
+                                error_json, indent=2, ensure_ascii=False
+                            )
+                    elif isinstance(error_json, list):
+                        # PBN API returned a list instead of dict
+                        result["error_message"] = "PBN API zwróciło listę błędów"
                         result["error_details_json"] = json.dumps(
-                            error_json["details"], indent=2, ensure_ascii=False
+                            error_json, indent=2, ensure_ascii=False
                         )
                     else:
-                        # If no details, show the whole error JSON
+                        # Unexpected JSON type
+                        result["error_message"] = "Nieoczekiwany typ odpowiedzi PBN API"
                         result["error_details_json"] = json.dumps(
                             error_json, indent=2, ensure_ascii=False
                         )
