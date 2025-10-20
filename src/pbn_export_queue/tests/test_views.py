@@ -15,6 +15,7 @@ User = get_user_model()
 from pbn_export_queue.models import PBN_Export_Queue
 from pbn_export_queue.views import (
     PBNExportQueuePermissionMixin,
+    parse_pbn_api_error,
 )
 
 from bpp.const import GR_WPROWADZANIE_DANYCH
@@ -666,3 +667,108 @@ class TestPBNExportQueueCountsView:
         assert data["error_count"] == 1
         assert data["pending_count"] == 1
         assert data["waiting_count"] == 0
+
+
+# Tests for parse_pbn_api_error function
+
+
+def test_parse_pbn_api_error_with_dict_response():
+    """Test parsing PBN API error when JSON response is a dictionary"""
+    exception_text = (
+        'pbn_api.exceptions.HttpException: (400, \'/api/v1/publications\', '
+        '\'{"message": "Validation failed", "description": "Invalid data", "details": {"field": "value"}}\')'
+    )
+
+    result = parse_pbn_api_error(exception_text)
+
+    assert result["is_pbn_api_error"] is True
+    assert result["exception_type"] == "HttpException"
+    assert result["error_code"] == 400
+    assert result["error_endpoint"] == "/api/v1/publications"
+    assert result["error_message"] == "Validation failed"
+    assert result["error_description"] == "Invalid data"
+    assert "field" in result["error_details_json"]
+
+
+def test_parse_pbn_api_error_with_list_response():
+    """Test parsing PBN API error when JSON response is a list"""
+    exception_text = (
+        'pbn_api.exceptions.HttpException: (400, \'/api/v1/publications\', '
+        '\'[{"error": "First error"}, {"error": "Second error"}]\')'
+    )
+
+    result = parse_pbn_api_error(exception_text)
+
+    assert result["is_pbn_api_error"] is True
+    assert result["exception_type"] == "HttpException"
+    assert result["error_code"] == 400
+    assert result["error_endpoint"] == "/api/v1/publications"
+    assert result["error_message"] == "PBN API zwróciło listę błędów"
+    assert "First error" in result["error_details_json"]
+    assert "Second error" in result["error_details_json"]
+
+
+def test_parse_pbn_api_error_with_empty_list_response():
+    """Test parsing PBN API error when JSON response is an empty list"""
+    exception_text = (
+        'pbn_api.exceptions.HttpException: (400, \'/api/v1/publications\', \'[]\')'
+    )
+
+    result = parse_pbn_api_error(exception_text)
+
+    assert result["is_pbn_api_error"] is True
+    assert result["exception_type"] == "HttpException"
+    assert result["error_code"] == 400
+    assert result["error_endpoint"] == "/api/v1/publications"
+    assert result["error_message"] == "PBN API zwróciło listę błędów"
+    assert result["error_details_json"] == "[]"
+
+
+def test_parse_pbn_api_error_with_string_response():
+    """Test parsing PBN API error when JSON response is a string (unexpected type)"""
+    exception_text = (
+        'pbn_api.exceptions.HttpException: (400, \'/api/v1/publications\', \'"Just a string"\')'
+    )
+
+    result = parse_pbn_api_error(exception_text)
+
+    assert result["is_pbn_api_error"] is True
+    assert result["exception_type"] == "HttpException"
+    assert result["error_code"] == 400
+    assert result["error_endpoint"] == "/api/v1/publications"
+    assert result["error_message"] == "Nieoczekiwany typ odpowiedzi PBN API"
+    assert "Just a string" in result["error_details_json"]
+
+
+def test_parse_pbn_api_error_with_number_response():
+    """Test parsing PBN API error when JSON response is a number (unexpected type)"""
+    exception_text = (
+        'pbn_api.exceptions.HttpException: (400, \'/api/v1/publications\', \'42\')'
+    )
+
+    result = parse_pbn_api_error(exception_text)
+
+    assert result["is_pbn_api_error"] is True
+    assert result["exception_type"] == "HttpException"
+    assert result["error_code"] == 400
+    assert result["error_endpoint"] == "/api/v1/publications"
+    assert result["error_message"] == "Nieoczekiwany typ odpowiedzi PBN API"
+    assert "42" in result["error_details_json"]
+
+
+def test_parse_pbn_api_error_with_non_pbn_error():
+    """Test parsing non-PBN error returns correct result"""
+    exception_text = "Some random error message"
+
+    result = parse_pbn_api_error(exception_text)
+
+    assert result["is_pbn_api_error"] is False
+    assert result["raw_error"] == "Some random error message"
+
+
+def test_parse_pbn_api_error_with_none():
+    """Test parsing None exception text"""
+    result = parse_pbn_api_error(None)
+
+    assert result["is_pbn_api_error"] is False
+    assert result["raw_error"] == "Brak szczegółów błędu"
