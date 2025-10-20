@@ -66,12 +66,25 @@ def pytest_configure(config):  # noqa
         pass
 
 
+def pytest_collection_modifyitems(items):
+    """Ensure tests marked with 'serial' run sequentially on the same worker in pytest-xdist."""
+    for item in items:
+        if "serial" in item.keywords:
+            # Assign all serial tests to the same xdist_group so they run on the same worker
+            item.add_marker(pytest.mark.xdist_group("serial"))
+
+
 pytest.mark.uruchom_tylko_bez_microsoft_auth = pytest.mark.skipif(
     apps.is_installed("microsoft_auth"),
     reason="działa wyłącznie bez django_microsoft_auth. Ta "
     "funkcja prawdopodobnie potrzebuje zalogowac do systemu zwykłego "
     "użytkownika i nie potrzebuje autoryzacji do niczego więcej. "
     "Możesz ją spokojnie przetestować z wyłączonym modułem microsoft_auth",
+)
+
+pytest.mark.uruchom_tylko_z_microsoft_auth = pytest.mark.skipif(
+    not apps.is_installed("microsoft_auth"),
+    reason="działa wyłącznie z zainstalowanym django_microsoft_auth",
 )
 
 

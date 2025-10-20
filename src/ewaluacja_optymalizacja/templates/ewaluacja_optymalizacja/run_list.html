@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}Lista optymalizacji{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url 'ewaluacja_optymalizacja:index' %}">Optymalizacja ewaluacji</a></li>
+    <li class="current">Lista optymalizacji</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="large-12 columns">
+        <h1>
+            <span class="fi-list"></span> Lista wszystkich kalkulacji
+        </h1>
+
+        <div class="button-group">
+            <a href="{% url 'ewaluacja_optymalizacja:index' %}" class="button secondary">
+                <span class="fi-arrow-left"></span> Powrót
+            </a>
+            <a href="{% url 'ewaluacja_optymalizacja:discipline-comparison' %}" class="button">
+                <span class="fi-graph-bar"></span> Porównanie dyscyplin
+            </a>
+        </div>
+
+        {% if runs %}
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Dyscyplina</th>
+                    <th>Uczelnia</th>
+                    <th>Data rozpoczęcia</th>
+                    <th>Data zakończenia</th>
+                    <th>Status</th>
+                    <th>Punkty</th>
+                    <th>Sloty</th>
+                    <th>Publikacje</th>
+                    <th>LOW-MONO %</th>
+                    <th>Sloty poza N %</th>
+                    <th>Przypięte</th>
+                    <th>Odpięte</th>
+                    <th>Walidacja</th>
+                    <th>Akcje</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for run in runs %}
+                <tr>
+                    <td>{{ run.id }}</td>
+                    <td>{{ run.dyscyplina_naukowa.nazwa }}</td>
+                    <td>{{ run.uczelnia|default:"-" }}</td>
+                    <td>{{ run.started_at|date:"Y-m-d H:i" }}</td>
+                    <td>{{ run.finished_at|date:"Y-m-d H:i"|default:"-" }}</td>
+                    <td>
+                        {% if run.status == "completed" %}
+                            <span class="label success">Zakończono</span>
+                        {% elif run.status == "running" %}
+                            <span class="label warning">W trakcie</span>
+                        {% else %}
+                            <span class="label alert">Błąd</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ run.total_points|floatformat:1 }}</td>
+                    <td>{{ run.total_slots|floatformat:2 }}</td>
+                    <td>{{ run.total_publications }}</td>
+                    <td>{{ run.low_mono_percentage|floatformat:1 }}%</td>
+                    <td>{{ run.outside_n_slots_pct|floatformat:1 }}%</td>
+                    <td>
+                        {{ run.pin_stats.pinned }} ({{ run.pin_stats.pinned_pct|floatformat:1 }}%)
+                    </td>
+                    <td>
+                        {{ run.pin_stats.unpinned }} ({{ run.pin_stats.unpinned_pct|floatformat:1 }}%)
+                    </td>
+                    <td>
+                        {% if run.validation_passed %}
+                            <span class="label success"><span class="fi-check"></span></span>
+                        {% else %}
+                            <span class="label alert"><span class="fi-x"></span></span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{% url 'ewaluacja_optymalizacja:run-detail' run.pk %}" class="button tiny">
+                            Szczegóły
+                        </a>
+                        {% if run.pin_stats.unpinned > 0 %}
+                        <a href="{% url 'ewaluacja_optymalizacja:reset-discipline-pins' run.dyscyplina_naukowa.pk %}"
+                           class="button tiny warning"
+                           onclick="return confirm('Czy na pewno chcesz zresetować przypięcia dla dyscypliny \'{{ run.dyscyplina_naukowa.nazwa }}\'?\n\nTa operacja:\n1. Utworzy snapshot obecnego stanu\n2. Ustawi przypieta=True dla wszystkich {{ run.pin_stats.total }} rekordów z lat 2022-2025\n3. Automatycznie przeliczy punktację\n\nProces może potrwać kilka minut.');">
+                            <span class="fi-refresh"></span> Resetuj
+                        </a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="callout warning">
+            <p>Brak wykonanych optymalizacji.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

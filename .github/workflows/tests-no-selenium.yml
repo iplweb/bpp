@@ -164,12 +164,11 @@ jobs:
       run: |
          uv run pytest -p no:pytest-splinter -m "not selenium" -n auto
 
-    - name: Upload coverage to Coveralls
+    - name: Upload coverage to Coveralls (parallel)
       if: always()
-      env:
-        COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
-        COVERALLS_SERVICE_NAME: github
-        COVERALLS_SERVICE_JOB_ID: ${{ github.run_id }}
-        COVERALLS_SERVICE_BUILD_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-      run: |
-        uv run coveralls --service=github --rcfile=.coveragerc 2>/dev/null || true
+      uses: coverallsapp/github-action@v2
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        flag-name: no-selenium
+        parallel: true
+        file: cov.xml

@@ -251,14 +251,17 @@ class StatusGenerowania(models.Model):
         self.task_id = task_id
         self.save()
 
-    def zakoncz_generowanie(self, liczba_przetworzonych=0, liczba_bledow=0):
-        """Oznacz zakończenie generowania"""
+    def zakoncz_generowanie(self, liczba_bledow=0):
+        """
+        Oznacz zakończenie generowania.
+
+        WAŻNE: NIE nadpisuje liczba_przetworzonych - używa wartości już zaktualizowanej atomowo przez taski.
+        """
         self.data_zakonczenia = timezone.now()
         self.w_trakcie = False
-        self.liczba_przetworzonych = liczba_przetworzonych
         self.liczba_bledow = liczba_bledow
         self.ostatni_komunikat = (
-            f"Zakończono generowanie. Przetworzono: {liczba_przetworzonych}, "
+            f"Zakończono generowanie. Przetworzono: {self.liczba_przetworzonych}, "
             f"błędy: {liczba_bledow}"
         )
         self.save()

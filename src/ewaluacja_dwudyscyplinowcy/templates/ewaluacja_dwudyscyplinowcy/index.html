@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}Dwudyscyplinowcy{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="/">Strona główna</a></li>
+    <li><a href="{% url 'ewaluacja_optymalizacja:index' %}">Optymalizacja ewaluacji</a></li>
+    <li class="current">Dwudyscyplinowcy</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="large-12 columns">
+        <h1>
+            <span class="fi-torsos-all"></span> Dwudyscyplinowcy ({{ lata }})
+        </h1>
+
+        <div class="callout secondary">
+            <h4><span class="fi-info"></span> O module</h4>
+            <p>
+                Ten moduł pokazuje autorów, którzy mają przypisane <strong>dokładnie dwie dyscypliny</strong>
+                (dyscyplina główna + subdyscyplina) w latach {{ lata }}.
+            </p>
+            <p>
+                Dla każdego autora wyświetlane są publikacje ciągłe z oznaczeniem, czy subdyscyplina autora
+                jest zgodna z dyscyplinami źródła publikacji:
+            </p>
+            <ul style="margin-left: 2rem;">
+                <li><span class="fi-check" style="color: green;"></span> <strong>Zielony znacznik</strong>
+                    - subdyscyplina jest zgodna z dyscyplinami źródła</li>
+                <li><span class="fi-x" style="color: #999;"></span> <strong>Szary znacznik</strong>
+                    - subdyscyplina NIE jest zgodna z dyscyplinami źródła</li>
+            </ul>
+        </div>
+
+        {% if liczba_autorow == 0 %}
+        <div class="callout warning">
+            <p>Brak autorów z dwiema dyscyplinami w latach {{ lata }}.</p>
+        </div>
+        {% else %}
+        <div class="callout success">
+            <h4><span class="fi-check"></span> Znaleziono {{ liczba_autorow }} autorów z dwiema dyscyplinami</h4>
+        </div>
+
+        {% for autor_data in autorzy_dane %}
+        <div class="callout" style="margin-bottom: 2rem; border-left: 4px solid #1779ba;">
+            <h3 style="margin-bottom: 1rem;">
+                <span class="fi-torso"></span>
+                {{ autor_data.autor }}
+            </h3>
+
+            <div style="margin-bottom: 1rem; padding: 0.5rem; background-color: #f4f4f4; border-radius: 4px;">
+                <h5 style="margin-bottom: 0.5rem;">Dyscypliny:</h5>
+                {% for disc_info in autor_data.dyscypliny_info %}
+                <div style="margin-left: 1rem; margin-bottom: 0.5rem;">
+                    <strong>Rok {{ disc_info.rok }}:</strong>
+                    <ul style="margin: 0.25rem 0 0 2rem;">
+                        <li>Dyscyplina główna: {{ disc_info.dyscyplina_glowna.nazwa }}
+                            <code>({{ disc_info.dyscyplina_glowna.kod }})</code></li>
+                        <li>Subdyscyplina: {{ disc_info.subdyscyplina.nazwa }}
+                            <code>({{ disc_info.subdyscyplina.kod }})</code></li>
+                    </ul>
+                </div>
+                {% endfor %}
+            </div>
+
+            <div style="margin-bottom: 1rem;">
+                <strong>Publikacje:</strong> {{ autor_data.liczba_publikacji }}
+                (<span style="color: green;">{{ autor_data.liczba_zgodnych }} zgodnych</span>,
+                <span style="color: #999;">{{ autor_data.liczba_niezgodnych }} niezgodnych</span>)
+            </div>
+
+            {% if autor_data.publikacje %}
+            <table style="margin-bottom: 0;">
+                <thead>
+                    <tr>
+                        <th width="50">Status</th>
+                        <th width="60">Rok</th>
+                        <th>Tytuł publikacji</th>
+                        <th width="80">Sloty</th>
+                        <th width="150">Akcje</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for pub in autor_data.publikacje %}
+                    <tr>
+                        <td style="text-align: center;">
+                            {% if pub.zgodna %}
+                            <span class="fi-check" style="color: green; font-size: 1.2em;"
+                                  title="Subdyscyplina zgodna z dyscyplinami źródła"></span>
+                            {% else %}
+                            <span class="fi-x" style="color: #999; font-size: 1.2em;"
+                                  title="Subdyscyplina NIE jest zgodna z dyscyplinami źródła"></span>
+                            {% endif %}
+                        </td>
+                        <td>{{ pub.rok }}</td>
+                        <td>
+                            <a href="{% url 'bpp:browse_praca_by_slug' pub.rekord.slug %}"
+                               target="_blank">
+                                {{ pub.rekord.tytul_oryginalny }}
+                            </a>
+                        </td>
+                        <td style="text-align: center;">
+                            {% if pub.sloty %}
+                                {{ pub.sloty|floatformat:4 }}
+                            {% else %}
+                                <span style="color: #999;">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{% url 'ewaluacja_optymalizuj_publikacje:optymalizuj' pub.rekord.slug %}"
+                               class="button tiny">
+                                <span class="fi-wrench"></span> Optymalizuj
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p style="color: #999; font-style: italic; margin-left: 1rem;">
+                Brak publikacji ciągłych.
+            </p>
+            {% endif %}
+        </div>
+        {% endfor %}
+
+        {% endif %}
+
+        <div style="margin-top: 2rem;">
+            <a href="{% url 'ewaluacja_optymalizacja:index' %}" class="button secondary">
+                <span class="fi-arrow-left"></span> Powrót do optymalizacji ewaluacji
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

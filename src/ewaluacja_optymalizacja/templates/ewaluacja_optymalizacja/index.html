@@ -11,65 +11,231 @@
 
 {% block content %}
 <div class="row">
-    <div class="columns">
-        <div class="text-center" style="padding: 60px 0;">
-            <h1 style="font-size: 3rem; margin-bottom: 30px;">
-                <span class="fi-target-two" style="font-size: 4rem; display: block; margin-bottom: 20px;"></span>
-                Optymalizacja ewaluacji
-            </h1>
+    <div class="large-12 columns">
+        <h1>
+            <span class="fi-target-two"></span> Optymalizacja ewaluacji
+        </h1>
 
-            <div class="callout secondary" style="max-width: 600px; margin: 40px auto;">
-                <h2 style="font-size: 2rem; margin-bottom: 20px;">
-                    <span class="fi-clock"></span> Już wkrótce
-                </h2>
-                <p style="font-size: 1.2rem; line-height: 1.6;">
-                    Moduł optymalizacji ewaluacji jest obecnie w przygotowaniu.
-                </p>
-                <p style="font-size: 1.1rem; line-height: 1.6; margin-top: 20px;">
-                    Wkrótce udostępnimy narzędzia do optymalizacji doboru publikacji
-                    oraz analizy różnych scenariuszy ewaluacyjnych.
-                </p>
-
-                <div style="margin-top: 30px; padding: 20px; background-color: rgba(0, 0, 0, 0.05);
-                            border-radius: 5px;">
-                    <div id="countdown" style="font-size: 1.5rem; font-weight: bold;
-                                              color: #2c3e50;"></div>
-                    <p style="font-size: 0.9rem; margin-top: 10px; color: #666;">
-                        ... lub nawet wcześniej
-                    </p>
-                </div>
-            </div>
-
-            <div style="margin-top: 40px;">
-                <a href="/" class="button">
-                    <span class="fi-arrow-left"></span> Powrót do strony głównej
-                </a>
-            </div>
+        <div class="callout warning" style="border-left: 4px solid #ffae00;">
+            <h4><span class="fi-alert"></span> BETA - PODGLĄD TECHNICZNY - MOŻE ZAWIERAĆ BŁĘDY</h4>
+            <p style="margin-bottom: 0;">
+                Ta funkcjonalność jest udostępniona jako <strong>wczesny podgląd techniczny</strong>.
+                Wyniki optymalizacji są wstępne i mogą zawierać błędy lub niedokładności.
+            </p>
         </div>
+
+        {% if liczba_n_count == 0 %}
+        <div class="callout alert">
+            <h4><span class="fi-alert"></span> Brak danych liczby N!</h4>
+            <p>Przed uruchomieniem optymalizacji musisz najpierw policzyć liczbę N dla uczelni.</p>
+            <p>
+                <a href="/ewaluacja_liczba_n/" class="button warning">
+                    <span class="fi-graph-bar"></span> Przejdź do modułu Liczba N
+                </a>
+                lub uruchom polecenie: <code>python src/manage.py przelicz_n</code>
+            </p>
+        </div>
+        {% elif liczba_n_raportowane == 0 %}
+        <div class="callout warning">
+            <h4><span class="fi-info"></span> Brak dyscyplin raportowanych</h4>
+            <p>Znaleziono {{ liczba_n_count }} dyscyplin z danymi liczby N, ale żadna nie ma liczby N >= 12.</p>
+            <p>Optymalizacja działa tylko dla dyscyplin raportowanych (liczba N >= 12).</p>
+        </div>
+        {% else %}
+        <div class="callout success">
+            <h4><span class="fi-check"></span> Gotowe do optymalizacji</h4>
+            <p>Znaleziono <strong>{{ liczba_n_raportowane }}</strong> dyscyplin raportowanych (liczba N >= 12) z {{ liczba_n_count }} łącznie.</p>
+        </div>
+        {% endif %}
+
+        <div class="button-group">
+            <a href="{% url 'ewaluacja_optymalizacja:run-list' %}" class="button">
+                <span class="fi-list"></span> Wszystkie kalkulacje
+            </a>
+            <a href="{% url 'ewaluacja_optymalizacja:discipline-comparison' %}" class="button secondary">
+                <span class="fi-graph-bar"></span> Porównanie dyscyplin
+            </a>
+            <a href="{% url 'ewaluacja_dwudyscyplinowcy:index' %}" class="button secondary">
+                <span class="fi-torsos-all"></span> Dwudyscyplinowcy
+            </a>
+        </div>
+
+        <div class="button-group" style="margin-top: 0.5rem;">
+            <a href="/snapshot_odpiec/" class="button secondary">
+                <span class="fi-camera"></span> Snapshoty odpięć
+            </a>
+            <form method="POST" action="{% url 'ewaluacja_optymalizacja:bulk-start' %}" style="display: inline;">
+                {% csrf_token %}
+                <button type="submit" class="button warning{% if dirty_count > 0 %} disabled{% endif %}"
+                        {% if dirty_count > 0 %}disabled{% endif %}
+                        onclick="{% if dirty_count > 0 %}event.preventDefault(); alert('Czekamy na przeliczenie punktów. Obecnie jest {{ dirty_count }} rekordów do przeliczenia.'); return false;{% else %}return confirm('Czy na pewno chcesz uruchomić optymalizację dla WSZYSTKICH dyscyplin raportowanych (>= 12 slotów)? Proces może potrwać kilka do kilkunastu minut.');{% endif %}">
+                    <span class="fi-play"></span> Policz całą ewaluację
+                </button>
+            </form>
+            <a href="{% url 'ewaluacja_optymalizacja:optimize-unpin' %}"
+               class="button success{% if dirty_count > 0 %} disabled{% endif %}"
+               {% if dirty_count > 0 %}onclick="event.preventDefault(); alert('Czekamy na przeliczenie punktów. Obecnie jest {{ dirty_count }} rekordów do przeliczenia.'); return false;"{% else %}onclick="return confirm('Czy na pewno chcesz zastosować optymalizację i odpiąć niepotrzebne sloty? Ta operacja:\n\n1. Sprawdzi czy wszystkie dyscypliny są przeliczone\n2. Utworzy snapshot obecnego stanu\n3. Odpnie dyscypliny w pracach niewykazanych do ewaluacji\n4. Automatycznie przeliczy punktację\n5. Przeliczy optymalizację dla wszystkich dyscyplin\n\nProces może potrwać 20-30 minut w zależności od liczby dyscyplin.');"{% endif %}>
+                <span class="fi-unlock"></span> Optymalizuj, odpinając sloty
+            </a>
+        </div>
+
+        <!-- Progress bar dla denormalizacji -->
+        <div id="denorm-progress-container"
+             hx-get="{% url 'ewaluacja_optymalizacja:denorm-progress' %}"
+             hx-trigger="load, every 5s"
+             hx-swap="innerHTML"
+             data-initial-count="">
+            <p><em>Sprawdzanie stanu przeliczania...</em></p>
+        </div>
+
+        <script>
+        (function() {
+            const container = document.getElementById('denorm-progress-container');
+            const baseUrl = "{% url 'ewaluacja_optymalizacja:denorm-progress' %}";
+
+            // Funkcja aktywująca przyciski
+            function enableButtons() {
+                // Przyciski "Policz całą ewaluację"
+                const bulkOptButton = document.querySelector('button[type="submit"][class*="warning"]');
+                if (bulkOptButton) {
+                    bulkOptButton.classList.remove('disabled');
+                    bulkOptButton.removeAttribute('disabled');
+                    bulkOptButton.setAttribute('onclick',
+                        "return confirm('Czy na pewno chcesz uruchomić optymalizację dla WSZYSTKICH dyscyplin raportowanych (>= 12 slotów)? Proces może potrwać kilka do kilkunastu minut.');");
+                }
+
+                // Przycisk "Optymalizuj, odpinając sloty"
+                const unpinButton = document.querySelector('a[href*="optimize-unpin"]');
+                if (unpinButton) {
+                    unpinButton.classList.remove('disabled');
+                    unpinButton.removeAttribute('onclick');
+                    unpinButton.setAttribute('onclick',
+                        "return confirm('Czy na pewno chcesz zastosować optymalizację i odpiąć niepotrzebne sloty? Ta operacja:\\n\\n1. Sprawdzi czy wszystkie dyscypliny są przeliczone\\n2. Utworzy snapshot obecnego stanu\\n3. Odpnie dyscypliny w pracach niewykazanych do ewaluacji\\n4. Automatycznie przeliczy punktację\\n5. Przeliczy optymalizację dla wszystkich dyscyplin\\n\\nProces może potrwać 20-30 minut w zależności od liczby dyscyplin.');");
+                }
+            }
+
+            // Po każdym załadowaniu, zachowaj initial_count i sprawdź czy aktywować przyciski
+            document.addEventListener('htmx:afterSwap', function(evt) {
+                if (evt.detail.target.id !== 'denorm-progress-container') return;
+
+                // Sprawdź czy mamy data-dirty-count w odpowiedzi
+                // Atrybut jest w pierwszym divie wewnątrz containera (innerHTML swap)
+                const innerDiv = container.querySelector('div[data-dirty-count]');
+                const dirtyAttr = innerDiv ? innerDiv.getAttribute('data-dirty-count') : null;
+                const initialAttr = container.getAttribute('data-initial-count');
+
+                // Jeśli nie mamy jeszcze initial i mamy dirty > 0, ustaw initial
+                if ((!initialAttr || initialAttr === '') && dirtyAttr && parseInt(dirtyAttr) > 0) {
+                    container.setAttribute('data-initial-count', dirtyAttr);
+                }
+
+                // Zaktualizuj URL dla następnych requestów
+                const initial = container.getAttribute('data-initial-count');
+                if (initial && initial !== '') {
+                    container.setAttribute('hx-get', baseUrl + '?initial=' + initial);
+                }
+
+                // Jeśli dirty_count spadł do 0, aktywuj przyciski
+                if (dirtyAttr && parseInt(dirtyAttr) === 0) {
+                    enableButtons();
+                }
+            });
+        })();
+        </script>
+
+        {% if optimization_runs %}
+        <h2>Ostatnie kalkulacje</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Dyscyplina</th>
+                    <th>Data</th>
+                    <th>Status</th>
+                    <th>Punkty</th>
+                    <th>Publikacje</th>
+                    <th>LOW-MONO %</th>
+                    <th>Sloty poza N %</th>
+                    <th>Przypięte</th>
+                    <th>Odpięte</th>
+                    <th>Akcje</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for run in optimization_runs|slice:":10" %}
+                <tr>
+                    <td>{{ run.dyscyplina_naukowa.nazwa }}</td>
+                    <td>{{ run.started_at|date:"Y-m-d H:i" }}</td>
+                    <td>
+                        {% if run.status == "completed" %}
+                            <span class="label success">Zakończono</span>
+                        {% elif run.status == "running" %}
+                            <span class="label warning">W trakcie</span>
+                        {% else %}
+                            <span class="label alert">Błąd</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ run.total_points|floatformat:1 }}</td>
+                    <td>{{ run.total_publications }}</td>
+                    <td>{{ run.low_mono_percentage|floatformat:1 }}%</td>
+                    <td>{{ run.outside_n_slots_pct|floatformat:1 }}%</td>
+                    <td>
+                        {{ run.pin_stats.pinned }} ({{ run.pin_stats.pinned_pct|floatformat:1 }}%)
+                    </td>
+                    <td>
+                        {{ run.pin_stats.unpinned }} ({{ run.pin_stats.unpinned_pct|floatformat:1 }}%)
+                    </td>
+                    <td>
+                        <a href="{% url 'ewaluacja_optymalizacja:run-detail' run.pk %}" class="button tiny">
+                            Zobacz szczegóły
+                        </a>
+                        {% if run.pin_stats.unpinned > 0 %}
+                        <a href="{% url 'ewaluacja_optymalizacja:reset-discipline-pins' run.dyscyplina_naukowa.pk %}"
+                           class="button tiny warning"
+                           onclick="return confirm('Czy na pewno chcesz zresetować przypięcia dla dyscypliny \'{{ run.dyscyplina_naukowa.nazwa }}\'?\n\nTa operacja:\n1. Utworzy snapshot obecnego stanu\n2. Ustawi przypieta=True dla wszystkich {{ run.pin_stats.total }} rekordów z lat 2022-2025\n3. Automatycznie przeliczy punktację\n\nProces może potrwać kilka minut.');">
+                            <span class="fi-refresh"></span> Resetuj przypięcia
+                        </a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            {% if optimization_runs|slice:":10"|length > 1 %}
+            <tfoot>
+                <tr style="font-weight: bold; background-color: #f4f4f4; border-top: 2px solid #333;">
+                    <td><strong>RAZEM</strong></td>
+                    <td>-</td>
+                    <td>-</td>
+                    <td>{{ summary.total_points|floatformat:1 }}</td>
+                    <td>{{ summary.total_publications }}</td>
+                    <td>{{ summary.avg_low_mono_pct|floatformat:1 }}%</td>
+                    <td>{{ summary.avg_outside_n_pct|floatformat:1 }}%</td>
+                    <td>
+                        {{ summary.total_pinned }} ({{ summary.pinned_pct|floatformat:1 }}%)
+                    </td>
+                    <td>
+                        {{ summary.total_unpinned }} ({{ summary.unpinned_pct|floatformat:1 }}%)
+                    </td>
+                    <td>
+                        {% if summary.total_unpinned > 0 %}
+                        <a href="{% url 'ewaluacja_optymalizacja:reset-all-pins' %}"
+                           class="button tiny warning"
+                           onclick="return confirm('Czy na pewno chcesz zresetować przypięcia dla WSZYSTKICH dyscyplin?\n\nTa operacja:\n1. Utworzy snapshot obecnego stanu\n2. Ustawi przypieta=True dla wszystkich rekordów z lat 2022-2025\n3. Dotyczy autorów którzy mają dyscyplinę, są zatrudnieni i afiliują\n4. Automatycznie przeliczy punktację\n\nProces może potrwać kilkanaście minut.');">
+                            <span class="fi-refresh"></span> Resetuj przypięcia
+                        </a>
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
+                </tr>
+            </tfoot>
+            {% endif %}
+        </table>
+        {% else %}
+        <div class="callout warning">
+            <p>Brak wykonanych optymalizacji. Uruchom polecenie <code>python src/manage.py solve_evaluation &lt;dyscyplina&gt;</code>
+            aby utworzyć pierwszą optymalizację.</p>
+        </div>
+        {% endif %}
     </div>
 </div>
-
-<script>
-function updateCountdown() {
-    const targetDate = new Date('2025-10-30T23:59:59').getTime();
-    const now = new Date().getTime();
-    const distance = targetDate - now;
-
-    if (distance < 0) {
-        document.getElementById('countdown').innerHTML = 'Moduł już dostępny!';
-        return;
-    }
-
-    const days = Math.floor(distance / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-    const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-
-    document.getElementById('countdown').innerHTML =
-        days + ' dni ' + hours + ' godz. ' + minutes + ' min. ' + seconds + ' sek.';
-}
-
-updateCountdown();
-setInterval(updateCountdown, 1000);
-</script>
 {% endblock %}

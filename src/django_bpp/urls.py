@@ -100,6 +100,12 @@ urlpatterns = (
                 "ewaluacja_optymalizuj_publikacje.urls",
             ),
         ),
+        path(
+            "ewaluacja_dwudyscyplinowcy/",
+            include(
+                "ewaluacja_dwudyscyplinowcy.urls",
+            ),
+        ),
         url(
             r"^api/v1/",
             include(("api_v1.urls", "api_v1"), namespace="api_v1"),
@@ -329,7 +335,7 @@ if not apps.is_installed("microsoft_auth"):
             LoginView.as_view(authentication_form=MyAuthenticationForm),
             name="login_form",
         ),
-        url(r"^logout/$", LogoutView.as_view(), name="logout"),
+        url(r"^logout/$", login_required(LogoutView.as_view()), name="logout"),
     ]
 else:
     from django_bpp.views import MicrosoftLogoutView

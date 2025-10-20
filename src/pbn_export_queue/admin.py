@@ -94,12 +94,33 @@ class PBN_Export_QueueAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
         obj.sprobuj_wyslac_do_pbn()
 
     def resend_to_pbn_action(self, request, queryset):
-        count = 0
-        for obj in queryset:
-            self._resend_single_item(obj, request.user, " (akcja masowa)")
-            count += 1
+        from django.core.cache import cache
 
-        self.message_user(request, f"Ponowiono wysyłkę do PBN dla {count} elementów")
+        from pbn_export_queue.tasks import LOCK_PREFIX
+
+        # Limit do 50 rekordów na raz
+        limited_queryset = list(queryset[:50])
+        count = 0
+        skipped = 0
+
+        for obj in limited_queryset:
+            # Sprawdź czy nie ma już locka dla tego elementu
+            lock_key = f"{LOCK_PREFIX}{obj.pk}"
+            if not cache.get(lock_key):
+                self._resend_single_item(obj, request.user, " (akcja masowa)")
+                count += 1
+            else:
+                skipped += 1
+
+        msg = f"Ponowiono wysyłkę do PBN dla {count} elementów"
+        if skipped > 0:
+            msg += f" ({skipped} pominięto - w trakcie przetwarzania)"
+        if queryset.count() > 50:
+            msg += (
+                f". Uwaga: wybrano {queryset.count()} rekordów, przetworzono tylko 50."
+            )
+
+        self.message_user(request, msg)
 
     resend_to_pbn_action.short_description = "Wyślij ponownie"
 

@@ -1,0 +1,410 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% load l10n %}
+
+{% block title %}Porównanie dyscyplin{% endblock %}
+
+{% block extrahead %}
+{% load static %}
+<script src="{% static 'plotly.js/dist/plotly.min.js' %}"></script>
+<script src="{% static 'plotly.js/dist/plotly-locale-pl.js' %}"></script>
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url 'ewaluacja_optymalizacja:index' %}">Optymalizacja ewaluacji</a></li>
+    <li class="current">Porównanie dyscyplin</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="large-12 columns">
+        <h1>
+            <span class="fi-graph-bar"></span> Porównanie dyscyplin
+        </h1>
+
+        <div class="button-group">
+            <a href="{% url 'ewaluacja_optymalizacja:index' %}" class="button secondary">
+                <span class="fi-arrow-left"></span> Powrót
+            </a>
+            <a href="{% url 'ewaluacja_optymalizacja:run-list' %}" class="button">
+                <span class="fi-list"></span> Wszystkie kalkulacje
+            </a>
+        </div>
+
+        {% if discipline_stats %}
+        <div class="callout info">
+            <p><strong><span class="fi-info"></span> Informacja:</strong> Poniższa tabela przedstawia porównanie <strong>najnowszych kalkulacji</strong> dla danej dziedziny.</p>
+            <p>Dane są pobierane automatycznie z bazy danych. Jeśli właśnie wykonałeś nową kalkulację, odśwież stronę aby zobaczyć zaktualizowane dane.</p>
+        </div>
+
+        <div class="callout secondary">
+            <h4>Wykres 1: Rozkład procentowy slotów (w liczbie N vs poza liczbą N)</h4>
+            <div id="comparisonChart" style="height: 500px;"></div>
+        </div>
+
+        <div class="callout secondary">
+            <h4>Wykres 2: Punkty według autorów (w liczbie N vs poza liczbą N)</h4>
+            <div id="pointsChart" style="height: 500px;"></div>
+        </div>
+
+        <div class="callout secondary">
+            <h4>Wykres 3: Procent publikacji LOW-MONO</h4>
+            <div id="lowMonoChart" style="height: 500px;"></div>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Dyscyplina</th>
+                    <th>Data optymalizacji</th>
+                    <th>Punkty (ogółem)</th>
+                    <th>Sloty w liczbie N</th>
+                    <th>Sloty poza liczbą N</th>
+                    <th>% slotów poza N</th>
+                    <th>% LOW-MONO</th>
+                    <th>Akcje</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for stats in discipline_stats %}
+                <tr>
+                    <td><strong>{{ stats.discipline }}</strong></td>
+                    <td><small>{{ stats.started_at|date:"Y-m-d H:i" }}</small></td>
+                    <td>{{ stats.total_points|floatformat:1 }}</td>
+                    <td>{{ stats.n_slots|floatformat:2 }}</td>
+                    <td>{{ stats.non_n_slots|floatformat:2 }}</td>
+                    <td>
+                        <span class="label {% if stats.non_n_slots_pct > 30 %}alert{% elif stats.non_n_slots_pct > 20 %}warning{% else %}success{% endif %}">
+                            {{ stats.non_n_slots_pct|floatformat:1 }}%
+                        </span>
+                    </td>
+                    <td>
+                        <span class="label {% if stats.low_mono_pct > 15 %}alert{% elif stats.low_mono_pct > 10 %}warning{% else %}success{% endif %}">
+                            {{ stats.low_mono_pct|floatformat:1 }}%
+                        </span>
+                    </td>
+                    <td>
+                        <a href="{% url 'ewaluacja_optymalizacja:run-detail' stats.run_id %}" class="button tiny">
+                            Szczegóły
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="callout">
+            <h4>Legenda:</h4>
+            <ul>
+                <li><strong>% slotów w liczbie N</strong> - procent <strong>SLOTÓW</strong> pochodzący od autorów w liczbie N</li>
+                <li><strong>% slotów poza N</strong> - procent <strong>SLOTÓW</strong> pochodzący od autorów spoza liczby N</li>
+                <li><strong>% LOW-MONO</strong> - procent <strong>PUBLIKACJI</strong> będących nisko punktowanymi monografiami (&lt; 200 pkt)</li>
+            </ul>
+            <p><strong>Uwaga:</strong> Na wykresie 1 słupki slotów (w N + poza N) sumują się do ~100%. Wykres 3 pokazuje procent publikacji LOW-MONO osobno.</p>
+            <p>Kolory oznaczają:</p>
+            <ul>
+                <li><span class="label success">Zielony</span> - wartości w normie</li>
+                <li><span class="label warning">Pomarańczowy</span> - wartości podwyższone</li>
+                <li><span class="label alert">Czerwony</span> - wartości wysokie, wymagające uwagi</li>
+            </ul>
+        </div>
+        {% else %}
+        <div class="callout warning">
+            <p>Brak danych do porównania. Wykonaj optymalizacje dla co najmniej jednej dyscypliny.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% if discipline_stats %}
+<script>
+// Set Polish locale as default for Plotly
+Plotly.setPlotConfig({locale: 'pl'});
+
+// Prepare data for charts
+const disciplines = [
+    {% for stats in discipline_stats %}
+        "{{ stats.discipline|truncatechars:30 }}"{% if not forloop.last %},{% endif %}
+    {% endfor %}
+];
+
+const nSlotsPercentages = [
+    {% for stats in discipline_stats %}
+        {{ stats.n_slots_pct_js }}{% if not forloop.last %},{% endif %}
+    {% endfor %}
+];
+
+const nonNPercentages = [
+    {% for stats in discipline_stats %}
+        {{ stats.non_n_slots_pct_js }}{% if not forloop.last %},{% endif %}
+    {% endfor %}
+];
+
+const lowMonoPercentages = [
+    {% for stats in discipline_stats %}
+        {{ stats.low_mono_pct_js }}{% if not forloop.last %},{% endif %}
+    {% endfor %}
+];
+
+const nPoints = [
+    {% for stats in discipline_stats %}
+        {{ stats.n_points_js }}{% if not forloop.last %},{% endif %}
+    {% endfor %}
+];
+
+const nonNPoints = [
+    {% for stats in discipline_stats %}
+        {{ stats.non_n_points_js }}{% if not forloop.last %},{% endif %}
+    {% endfor %}
+];
+
+// === Wykres 1: Rozkład procentowy slotów i LOW-MONO (stackowany) ===
+(function() {
+    var trace1 = {
+        x: disciplines,
+        y: nSlotsPercentages,
+        name: '% slotów w liczbie N',
+        type: 'bar',
+        marker: {
+            color: 'rgba(46, 204, 113, 0.7)',
+            line: {
+                color: 'rgba(46, 204, 113, 1)',
+                width: 1
+            }
+        },
+        text: nSlotsPercentages.map(v => v.toFixed(1) + '%'),
+        textposition: 'auto',
+        hovertemplate: '%{y:.1f}%<extra></extra>'
+    };
+
+    var trace2 = {
+        x: disciplines,
+        y: nonNPercentages,
+        name: '% slotów poza liczbą N',
+        type: 'bar',
+        marker: {
+            color: 'rgba(155, 89, 182, 0.7)',
+            line: {
+                color: 'rgba(155, 89, 182, 1)',
+                width: 1
+            }
+        },
+        text: nonNPercentages.map(v => v.toFixed(1) + '%'),
+        textposition: 'auto',
+        hovertemplate: '%{y:.1f}%<extra></extra>'
+    };
+
+
+    var layout = {
+        barmode: 'stack',
+        yaxis: {
+            title: 'Procent',
+            ticksuffix: '%',
+            range: [0, 100]
+        },
+        xaxis: {
+            title: 'Dyscypliny'
+        },
+        showlegend: true,
+        legend: {
+            orientation: 'h',
+            y: -0.2
+        },
+        margin: {
+            t: 30,
+            b: 100
+        },
+        shapes: [
+            // Czerwona linia na 80%
+            {
+                type: 'line',
+                x0: -0.5,
+                x1: disciplines.length - 0.5,
+                y0: 80,
+                y1: 80,
+                line: {
+                    color: 'rgb(255, 0, 0)',
+                    width: 4
+                }
+            }
+        ],
+        annotations: [
+            {
+                x: disciplines.length - 0.5,
+                y: 80,
+                xref: 'x',
+                yref: 'y',
+                text: '20%',
+                showarrow: false,
+                xanchor: 'right',
+                yanchor: 'bottom',
+                bgcolor: 'rgba(255, 0, 0, 0.9)',
+                bordercolor: 'rgb(255, 0, 0)',
+                font: {
+                    color: 'white',
+                    size: 12
+                },
+                borderpad: 4
+            }
+        ]
+    };
+
+    var config = {
+        responsive: true,
+        displayModeBar: false
+    };
+
+    Plotly.newPlot('comparisonChart', [trace1, trace2], layout, config);
+})();
+
+// === Wykres 2: Punkty według autorów (stackowany) ===
+(function() {
+    var trace1 = {
+        x: disciplines,
+        y: nPoints,
+        name: 'Punkty od autorów w liczbie N',
+        type: 'bar',
+        marker: {
+            color: 'rgba(46, 204, 113, 0.7)',
+            line: {
+                color: 'rgba(46, 204, 113, 1)',
+                width: 1
+            }
+        },
+        text: nPoints.map(v => v.toFixed(1)),
+        textposition: 'auto',
+        hovertemplate: '%{y:.1f} pkt<extra></extra>'
+    };
+
+    var trace2 = {
+        x: disciplines,
+        y: nonNPoints,
+        name: 'Punkty od autorów poza liczbą N',
+        type: 'bar',
+        marker: {
+            color: 'rgba(231, 76, 60, 0.7)',
+            line: {
+                color: 'rgba(231, 76, 60, 1)',
+                width: 1
+            }
+        },
+        text: nonNPoints.map(v => v.toFixed(1)),
+        textposition: 'auto',
+        hovertemplate: '%{y:.1f} pkt<extra></extra>'
+    };
+
+    var layout = {
+        barmode: 'stack',
+        yaxis: {
+            title: 'Punkty',
+            tickformat: ',.0f'
+        },
+        xaxis: {
+            title: 'Dyscypliny'
+        },
+        showlegend: true,
+        legend: {
+            orientation: 'h',
+            y: -0.2
+        },
+        margin: {
+            t: 30,
+            b: 100
+        },
+        hovermode: 'x unified'
+    };
+
+    var config = {
+        responsive: true,
+        displayModeBar: false
+    };
+
+    Plotly.newPlot('pointsChart', [trace1, trace2], layout, config);
+})();
+
+// === Wykres 3: Procent LOW-MONO ===
+(function() {
+    var trace = {
+        x: disciplines,
+        y: lowMonoPercentages,
+        name: '% LOW-MONO',
+        type: 'bar',
+        marker: {
+            color: 'rgba(241, 196, 15, 0.7)',
+            line: {
+                color: 'rgba(241, 196, 15, 1)',
+                width: 1
+            }
+        },
+        text: lowMonoPercentages.map(v => v.toFixed(1) + '%'),
+        textposition: 'auto',
+        hovertemplate: '%{y:.1f}%<extra></extra>'
+    };
+
+    var layout = {
+        yaxis: {
+            title: 'Procent publikacji LOW-MONO',
+            ticksuffix: '%',
+            range: [0, 50]
+        },
+        xaxis: {
+            title: 'Dyscypliny'
+        },
+        showlegend: false,
+        margin: {
+            t: 30,
+            b: 100
+        },
+        shapes: [
+            // Czerwona linia na 20%
+            {
+                type: 'line',
+                x0: -0.5,
+                x1: disciplines.length - 0.5,
+                y0: 20,
+                y1: 20,
+                line: {
+                    color: 'rgb(255, 0, 0)',
+                    width: 4
+                }
+            }
+        ],
+        annotations: [
+            {
+                x: disciplines.length - 0.5,
+                y: 20,
+                xref: 'x',
+                yref: 'y',
+                text: '20%',
+                showarrow: false,
+                xanchor: 'right',
+                yanchor: 'bottom',
+                bgcolor: 'rgba(255, 0, 0, 0.9)',
+                bordercolor: 'rgb(255, 0, 0)',
+                font: {
+                    color: 'white',
+                    size: 12
+                },
+                borderpad: 4
+            }
+        ]
+    };
+
+    var config = {
+        responsive: true,
+        displayModeBar: false
+    };
+
+    Plotly.newPlot('lowMonoChart', [trace], layout, config);
+})();
+
+// Make charts responsive on window resize
+window.addEventListener('resize', function() {
+    Plotly.Plots.resize('comparisonChart');
+    Plotly.Plots.resize('pointsChart');
+    Plotly.Plots.resize('lowMonoChart');
+});
+</script>
+{% endif %}
+{% endblock %}

@@ -333,7 +333,9 @@ def test_status_generowania_in_context(admin_user, client):
 
     # Stwórz status
     status = StatusGenerowania.get_or_create()
-    status.zakoncz_generowanie(liczba_przetworzonych=10, liczba_bledow=0)
+    status.liczba_przetworzonych = 10
+    status.save()
+    status.zakoncz_generowanie(liczba_bledow=0)
 
     url = reverse("ewaluacja_metryki:lista")
     response = client.get(url)

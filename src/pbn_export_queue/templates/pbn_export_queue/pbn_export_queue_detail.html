@@ -14,7 +14,61 @@
     .pbn-export-detail .button-group a.button:visited {
         text-decoration: none !important;
     }
+
+    /* JSON syntax highlighting */
+    .json-highlight {
+        font-family: 'Consolas', 'Monaco', 'Menlo', 'DejaVu Sans Mono', monospace;
+        font-size: 1.1em;
+        font-weight: 600;
+        line-height: 1.5;
+    }
 </style>
+
+<script>
+    // Simple JSON syntax highlighting
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.json-highlight').forEach(function(element) {
+            var json = element.textContent;
+            try {
+                // Re-parse and format to ensure it's valid JSON
+                var parsed = JSON.parse(json);
+                var formatted = JSON.stringify(parsed, null, 2);
+
+                // Apply syntax highlighting with better visibility
+                var highlighted = formatted
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+                        var cls = 'number';
+                        if (/^"/.test(match)) {
+                            if (/:$/.test(match)) {
+                                cls = 'key';
+                                // Remove the trailing colon for the key
+                                match = match.slice(0, -1);
+                                return '<span style="color: #d63031; font-weight: 700;">' + match + '</span>:';
+                            } else {
+                                cls = 'string';
+                                return '<span style="color: #00b894; font-weight: 600;">' + match + '</span>';
+                            }
+                        } else if (/true|false/.test(match)) {
+                            cls = 'boolean';
+                            return '<span style="color: #0984e3; font-weight: 600;">' + match + '</span>';
+                        } else if (/null/.test(match)) {
+                            cls = 'null';
+                            return '<span style="color: #636e72; font-weight: 600;">' + match + '</span>';
+                        }
+                        return '<span style="color: #6c5ce7; font-weight: 600;">' + match + '</span>';
+                    });
+
+                element.innerHTML = highlighted;
+            } catch (e) {
+                // If parsing fails, leave as is
+                console.error('Failed to parse JSON for highlighting:', e);
+            }
+        });
+    });
+</script>
 {% endblock %}
 
 {% block breadcrumbs %}
@@ -145,6 +199,33 @@
                                         <span class="label success">Zakończono pomyślnie</span>
                                     {% elif export_queue_item.zakonczono_pomyslnie == False %}
                                         <span class="label alert">Zakończono z błędem</span>
+
+                                        {% if pbn_error_info.is_pbn_api_error %}
+                                            <div style="margin-top: 10px;">
+                                                <strong style="color: #c60f13;">
+                                                    {% if pbn_error_info.error_code %}
+                                                        Błąd po stronie PBN -- kod {{ pbn_error_info.error_code }}
+                                                    {% else %}
+                                                        Błąd PBN: {{ pbn_error_info.exception_type }}
+                                                    {% endif %}
+                                                </strong>
+                                                {% if pbn_error_info.error_message %}
+                                                    <div style="margin-top: 5px; font-size: 0.9em;">
+                                                        {{ pbn_error_info.error_message }}
+                                                        {% if pbn_error_info.error_description %}
+                                                            - {{ pbn_error_info.error_description }}
+                                                        {% endif %}
+                                                    </div>
+                                                {% endif %}
+                                                {% if pbn_error_info.error_details_json %}
+                                                    <div style="margin-top: 10px;">
+                                                        <strong>Szczegóły błędu:</strong>
+                                                        <pre style="background: #fff5f5; padding: 12px 15px; border-radius: 5px; border: 2px solid #ffc9c9; border-left: 4px solid #c60f13; overflow-x: auto; margin-top: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);"><code class="json-highlight">{{ pbn_error_info.error_details_json }}</code></pre>
+                                                    </div>
+                                                {% endif %}
+                                            </div>
+                                        {% endif %}
+
                                     {% elif export_queue_item.retry_after_user_authorised %}
                                         <span class="label warning">Oczekuje na autoryzację użytkownika</span>
                                     {% else %}
@@ -156,8 +237,8 @@
                     </table>
                 </div>
 
-                {% if export_queue_item.zakonczono_pomyslnie == True and parsed_links %}
-                    <div class="callout success">
+                {% if sent_data %}
+                    <div class="callout {% if export_queue_item.zakonczono_pomyslnie == True %}success{% elif export_queue_item.zakonczono_pomyslnie == False %}alert{% else %}secondary{% endif %}">
                         <h4>Linki do wysłanego rekordu</h4>
                         <div class="button-group">
                             {% if pbn_publication_url %}
@@ -166,17 +247,197 @@
                                 </a>
                             {% endif %}
 
-                            {% if sent_data %}
-                                <a href="{% url 'admin:pbn_api_sentdata_change' sent_data.pk %}" target="_blank" class="button secondary">
-                                    <span class="fi-page-filled"></span> JSON wysłanych danych
-                                </a>
-                            {% elif parsed_links.sentdata_url %}
-                                <a href="{{ parsed_links.sentdata_url }}" target="_blank" class="button secondary">
-                                    <span class="fi-page-filled"></span> JSON wysłanych danych
-                                </a>
-                            {% endif %}
+                            <a href="{% url 'admin:pbn_api_sentdata_change' sent_data.pk %}" target="_blank" class="button secondary">
+                                <span class="fi-page-filled"></span> Otwórz w admin
+                            </a>
                         </div>
                     </div>
+
+                    <div class="callout secondary">
+                        <h4>Błąd z wysyłką rekordu do PBN? Skopiuj do schowka lub pobierz plik:</h4>
+                        <div class="button-group">
+                            <button type="button" class="button secondary copy-to-clipboard-btn"
+                                    data-url="{% url 'pbn_export_queue:export-queue-download-json' export_queue_item.pk %}">
+                                <span class="fi-page-copy"></span> JSON wysłanych danych
+                            </button>
+                            <button type="button" class="button secondary download-file-btn"
+                                    data-url="{% url 'pbn_export_queue:export-queue-download-json' export_queue_item.pk %}"
+                                    data-filename="pbn_export_{{ export_queue_item.pk }}.json">
+                                <span class="fi-download"></span> Pobierz plik JSON
+                            </button>
+
+                            {% if export_queue_item.zakonczono_pomyslnie == False %}
+                                <button type="button" class="button warning copy-to-clipboard-btn"
+                                        data-url="{% url 'pbn_export_queue:export-queue-helpdesk-email' export_queue_item.pk %}">
+                                    <span class="fi-mail"></span> Zgłoszenie do helpdesku PBN
+                                </button>
+                                <button type="button" class="button info copy-to-clipboard-btn"
+                                        data-url="{% url 'pbn_export_queue:export-queue-ai-prompt' export_queue_item.pk %}">
+                                    <span class="fi-lightbulb"></span> Prompt dla AI
+                                </button>
+                            {% endif %}
+                        </div>
+
+                        {% if export_queue_item.zakonczono_pomyslnie == False %}
+                            <p style="margin-top: 15px; font-size: 0.9em; color: #666;">
+                                <strong>Wskazówka:</strong> Kliknij przycisk "E-mail do helpdesku", aby skopiować gotową treść wiadomości
+                                z opisem problemu. Możesz też skopiować prompt dla AI (np. Claude, ChatGPT),
+                                który pomoże zidentyfikować problem zgodnie z dokumentacją API PBN.
+                            </p>
+                        {% endif %}
+                    </div>
+
+                    <script>
+                        (function() {
+                            // Universal copy to clipboard function for all buttons
+                            document.querySelectorAll('.copy-to-clipboard-btn').forEach(function(btn) {
+                                btn.addEventListener('click', function() {
+                                    var url = this.getAttribute('data-url');
+                                    var button = this;
+
+                                    // Show loading state
+                                    var originalHTML = button.innerHTML;
+                                    button.innerHTML = '<span class="fi-loop"></span> Ładowanie...';
+                                    button.disabled = true;
+
+                                    // Fetch content from server
+                                    fetch(url)
+                                        .then(response => response.json())
+                                        .then(data => {
+                                            if (data.error) {
+                                                alert('Błąd: ' + data.error);
+                                                button.innerHTML = originalHTML;
+                                                button.disabled = false;
+                                                return;
+                                            }
+
+                                            var text = data.content;
+
+                                            // Try modern clipboard API first
+                                            if (navigator.clipboard && navigator.clipboard.writeText) {
+                                                navigator.clipboard.writeText(text).then(function() {
+                                                    showCopySuccess(button, originalHTML);
+                                                }).catch(function(err) {
+                                                    console.error('Failed to copy: ', err);
+                                                    fallbackCopyToClipboard(text, button, originalHTML);
+                                                });
+                                            } else {
+                                                fallbackCopyToClipboard(text, button, originalHTML);
+                                            }
+                                        })
+                                        .catch(error => {
+                                            console.error('Error fetching content:', error);
+                                            alert('Wystąpił błąd podczas pobierania treści.');
+                                            button.innerHTML = originalHTML;
+                                            button.disabled = false;
+                                        });
+                                });
+                            });
+
+                            function fallbackCopyToClipboard(text, button, originalHTML) {
+                                var tempTextarea = document.createElement('textarea');
+                                tempTextarea.value = text;
+                                tempTextarea.style.position = 'fixed';
+                                tempTextarea.style.opacity = '0';
+                                document.body.appendChild(tempTextarea);
+                                tempTextarea.select();
+
+                                try {
+                                    document.execCommand('copy');
+                                    showCopySuccess(button, originalHTML);
+                                } catch (err) {
+                                    console.error('Fallback copy failed: ', err);
+                                    alert('Nie udało się skopiować do schowka. Spróbuj ręcznie zaznaczyć i skopiować tekst.');
+                                    button.innerHTML = originalHTML;
+                                    button.disabled = false;
+                                }
+
+                                document.body.removeChild(tempTextarea);
+                            }
+
+                            function showCopySuccess(button, originalHTML) {
+                                button.innerHTML = '<span class="fi-check"></span> Skopiowano do schowka!';
+                                button.classList.add('success');
+                                button.classList.remove('secondary', 'warning', 'info');
+                                button.disabled = false;
+
+                                setTimeout(function() {
+                                    button.innerHTML = originalHTML;
+                                    button.classList.remove('success');
+
+                                    // Restore original color class
+                                    if (originalHTML.includes('fi-mail')) {
+                                        button.classList.add('warning');
+                                    } else if (originalHTML.includes('fi-lightbulb')) {
+                                        button.classList.add('info');
+                                    } else {
+                                        button.classList.add('secondary');
+                                    }
+                                }, 2000);
+                            }
+
+                            // Download file button handler
+                            document.querySelectorAll('.download-file-btn').forEach(function(btn) {
+                                btn.addEventListener('click', function() {
+                                    var url = this.getAttribute('data-url');
+                                    var filename = this.getAttribute('data-filename');
+                                    var button = this;
+
+                                    // Show loading state
+                                    var originalHTML = button.innerHTML;
+                                    button.innerHTML = '<span class="fi-loop"></span> Pobieranie...';
+                                    button.disabled = true;
+
+                                    // Fetch content from server
+                                    fetch(url)
+                                        .then(response => response.json())
+                                        .then(data => {
+                                            if (data.error) {
+                                                alert('Błąd: ' + data.error);
+                                                button.innerHTML = originalHTML;
+                                                button.disabled = false;
+                                                return;
+                                            }
+
+                                            var text = data.content;
+
+                                            // Create a Blob from the text
+                                            var blob = new Blob([text], { type: 'application/json' });
+                                            var downloadUrl = window.URL.createObjectURL(blob);
+
+                                            // Create a temporary anchor element and trigger download
+                                            var tempLink = document.createElement('a');
+                                            tempLink.href = downloadUrl;
+                                            tempLink.setAttribute('download', filename);
+                                            document.body.appendChild(tempLink);
+                                            tempLink.click();
+                                            document.body.removeChild(tempLink);
+
+                                            // Clean up the object URL
+                                            window.URL.revokeObjectURL(downloadUrl);
+
+                                            // Show success
+                                            button.innerHTML = '<span class="fi-check"></span> Pobrano!';
+                                            button.classList.add('success');
+                                            button.classList.remove('secondary');
+                                            button.disabled = false;
+
+                                            setTimeout(function() {
+                                                button.innerHTML = originalHTML;
+                                                button.classList.remove('success');
+                                                button.classList.add('secondary');
+                                            }, 2000);
+                                        })
+                                        .catch(error => {
+                                            console.error('Error fetching content:', error);
+                                            alert('Wystąpił błąd podczas pobierania pliku.');
+                                            button.innerHTML = originalHTML;
+                                            button.disabled = false;
+                                        });
+                                });
+                            });
+                        })();
+                    </script>
                 {% endif %}
 
                 {% if export_queue_item.komunikat %}

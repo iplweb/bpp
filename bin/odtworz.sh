@@ -3,7 +3,7 @@ set -euo pipefail
 
 # Ten skrypt:
 # 1) ubija proces runserver
-# 2) usuwa baze dancyh bpp
+# 2) archiwizuje istniejącą bazę danych bpp (używając stash_db.sh)
 # 3) instaluje baze danych z bpp z backupu (pierwszy parametr)
 # 4) tworzy konto superuzytkownika 'admin' z haslem 'foobar123'
 #
@@ -30,7 +30,10 @@ LOCAL_DATABASE_NAME=bpp
 # pkill -TERM -f "src/manage.py runserver" || true
 # sleep 1
 
-dropdb -f --if-exists $LOCAL_DATABASE_NAME
+# Stash the existing database if it exists (instead of dropping it)
+if psql -lqt | cut -d \| -f 1 | grep -qw "$LOCAL_DATABASE_NAME"; then
+    "$BASEDIR/stash_db.sh"
+fi
 
 createdb $LOCAL_DATABASE_NAME
 createuser -s mimooh || true

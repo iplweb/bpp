@@ -1,0 +1,26 @@
+// Ewaluacja optymalizacja styles
+
+// Spinning animation for throbber
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+// Animated throbber icon - applies to fi-loop when used in progress/loading contexts
+.callout.warning .fi-loop,
+.callout.secondary .fi-clock {
+  display: inline-block;
+  animation: spin 2s linear infinite;
+  transform-origin: center center;
+}
+
+// Additional styling for "in progress" indicators
+.status-in-progress-icon {
+  display: inline-block;
+  animation: spin 2s linear infinite;
+  transform-origin: center center;
+}

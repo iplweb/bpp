@@ -79,11 +79,30 @@
                             </div>
                             {% endif %}
                         </div>
-                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
                             {% if autor_data.rodzaj_autora %}
                                 <span style="background: #e3f2fd; color: #1565c0; padding: 4px 10px; border-radius: 20px; font-size: 0.85em; border: 1px solid #90caf9;">
                                     <span class="fi-torso"></span> {{ autor_data.rodzaj_autora.nazwa }}
                                 </span>
+                            {% endif %}
+
+                            <!-- Alternative discipline if exists -->
+                            {% if autor_data.alternative_discipline %}
+                                <form method="post"
+                                      style="display: inline; margin: 0;"
+                                      hx-post="{% url 'ewaluacja_optymalizuj_publikacje:optymalizuj' publikacja.slug %}"
+                                      hx-target="#content-wrapper"
+                                      hx-swap="outerHTML transition:true">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="autor_assignment_id" value="{{ autor_data.autor_assignment_id }}">
+                                    <input type="hidden" name="new_discipline_id" value="{{ autor_data.alternative_discipline.id }}">
+                                    <input type="hidden" name="change_discipline" value="1">
+                                    <button type="submit"
+                                            style="background: #e8f5e9; color: #2e7d32; padding: 4px 10px; border-radius: 20px; font-size: 0.85em; border: 1px solid #a5d6a7; cursor: pointer; {% if not autor_data.alternative_discipline_compatible %}text-decoration: line-through;{% endif %}"
+                                            title="Kliknij aby zmienić dyscyplinę">
+                                        <span class="fi-refresh"></span> Zmień dyscyplinę na: {{ autor_data.alternative_discipline.nazwa }} ({{ autor_data.alternative_discipline.kod }})
+                                    </button>
+                                </form>
                             {% endif %}
 
                             {% if autor_data.przypieta %}

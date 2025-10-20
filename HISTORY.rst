@@ -4,6 +4,40 @@ Historia zmian
 
 .. towncrier release notes start
 
+bpp 202510.1271 (2025-10-21)
+============================
+
+Naprawione
+----------
+
+- Poprawiono błąd w module optymalizacji ewaluacji, gdzie komunikat o zakończeniu zadania wyświetlał się przedwcześnie, zanim wszystkie dane zostały zapisane do bazy danych. Teraz system czeka na rzeczywiste zakończenie wszystkich procesów i zapisanie wszystkich wyników przed wyświetleniem komunikatu o sukcesie. (optymalizacja-completion-fix)
+- Poprawiono błąd w module optymalizacji ewaluacji dla funkcji "Optymalizuj, odpinając sloty", gdzie komunikat o zakończeniu zadania wyświetlał się przedwcześnie, zanim wszystkie procesy optymalizacji poszczególnych dyscyplin zakończyły się i zapisały dane do bazy. System teraz prawidłowo czeka na zakończenie wszystkich procesów Celery, weryfikuje zapisanie danych do bazy i wyświetla stan "finalizowania" przed pokazaniem komunikatu o sukcesie. (optymalizacja-unpin-completion-fix)
+- Zmieniono sposób monitorowania postępu przeliczania optymalizacji w funkcji "Optymalizuj, odpinając sloty". System teraz nie używa zadań Celery do śledzenia postępu, tylko bezpośrednio monitoruje bazę danych. Przed rozpoczęciem przeliczania usuwa wszystkie istniejące OptimizationRun dla uczelni, następnie uruchamia zadania optymalizacji i wyświetla postęp jako procent ukończonych dyscyplin względem wszystkich raportowanych dyscyplin uczelni. (optymalizacja-unpin-no-celery-tracking)
+- Naprawiono przedwczesne pokazywanie komunikatu "zadanie zakończone" w funkcji "Optymalizuj, odpinając sloty":
+
+  - Naprawiono status "Zakończono" pokazujący się od razu po wejściu na stronę statusu zadania. Status teraz zawsze pokazuje "W trakcie" dopóki `task.ready() == False`, bez względu na stan bazy danych (która może zawierać stare rekordy z poprzedniego uruchomienia przed ich skasowaniem przez zadanie Celery).
+  - System teraz czeka aż zadanie Celery faktycznie zakończy się (`task.ready() == True`) zanim pokaże komunikat o sukcesie w sekcji postępu, zamiast wyświetlać sukces gdy `completed_count == discipline_count == 0` na samym początku procesu. (optymalizacja-unpin-premature-success)
+- Poprawiono wyświetlanie postępu w funkcji "Optymalizuj, odpinając sloty":
+
+  - Faza denormalizacji teraz pokazuje liczbę rekordów do przeliczenia zamiast ogólnego komunikatu "Sprawdzanie kolejki przeliczania"
+  - Procent postępu w pasku jest teraz zaokrąglony do liczby całkowitej (zamiast wielu miejsc po przecinku)
+  - Po zakończeniu zadania system teraz poprawnie przekierowuje do strony głównej z komunikatem o sukcesie zamiast wyświetlać stronę z "zadaniem w trakcie wykonywania"
+  - Monitorowanie postępu odbywa się przez bazę danych (dla fazy optymalizacji) i task.info (dla fazy denormalizacji) (optymalizacja-unpin-progress-fix)
+
+
+Usprawnienie
+------------
+
+- Zrównoleglono obliczanie metryk ewaluacyjnych - teraz każdy autor-dyscyplina jest przetwarzany jako osobny task Celery, co pozwala wykorzystać wiele workerów jednocześnie i znacznie przyspieszyć generowanie metryk (3-7x szybciej przy 4-8 workerach). Postęp jest aktualizowany w czasie rzeczywistym - każdy zakończony task atomowo zwiększa licznik przetworzonych pozycji w bazie danych (metryki-parallel)
+- W module optymalizacji publikacji dodano możliwość szybkiej zmiany dyscypliny autora bezpośrednio z interfejsu optymalizacji. Dla autorów posiadających dwie dyscypliny (dyscyplina_naukowa i subdyscyplina_naukowa) wyświetlany jest przycisk "Zmień dyscyplinę na: [nazwa dyscypliny] ([kod])" umożliwiający natychmiastową zmianę. Alternatywne dyscypliny niezgodne z dyscyplinami źródła publikacji są oznaczone przekreśleniem dla łatwiejszej identyfikacji potencjalnych problemów. Po zmianie dyscypliny następuje automatyczne przeliczenie punktacji, slotów oraz metryk ewaluacyjnych dla wszystkich autorów publikacji (optymalizuj-publikacje-zmiana-dyscypliny)
+- Kolejka eksportu PBN: dodano możliwość pobierania i kopiowania wysłanych danych JSON bezpośrednio z widoku szczegółów kolejki. Dla błędnych eksportów dostępne są narzędzia diagnostyczne: automatyczne generowanie e-maila do helpdesku PBN oraz tworzenie promptu dla AI zgodnego z dokumentacją API PBN (https://pbn.nauka.gov.pl/api/) (pbn-export-queue-json-download)
+- W module optymalizacji ewaluacji zmieniono nazwę tabeli "Ostatnie optymalizacje" na "Ostatnie kalkulacje".
+  Dodano przycisk "Resetuj przypięcia" w wierszu RAZEM, który resetuje przypięcia dla wszystkich rekordów
+  z lat 2022-2025, gdzie autor ma dyscyplinę, jest zatrudniony i afiliuje. Operacja działa asynchronicznie
+  przez zadanie Celery, tworzy snapshot przed zmianami i automatycznie przelicza punktację. (reset-all-pins)
+- Panel przypięć dyscyplin w module optymalizacji ewaluacji - możliwość podglądu statystyk przypięć/odpięć dla lat 2022-2025 oraz resetowania przypięć dla każdej dyscypliny osobno (z automatycznym tworzeniem snapshotu). (reset-discipline-pins)
+
+
 bpp 202510.1270 (2025-10-19)
 ============================
 

@@ -105,10 +105,10 @@ def test_generation_requires_staff(client):
     status.w_trakcie = False
     status.save()
 
-    # Mockuj task
+    # Mockuj task - widok używa generuj_metryki_task_parallel
     from unittest.mock import MagicMock, patch
 
-    with patch("ewaluacja_metryki.views.generuj_metryki_task") as mock_task:
+    with patch("ewaluacja_metryki.views.generuj_metryki_task_parallel") as mock_task:
         mock_task.delay.return_value = MagicMock(id="test-task-id")
 
         response = client.post(

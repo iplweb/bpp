@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}Status przeliczania ewaluacji{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="/">Strona główna</a></li>
+    <li><a href="{% url 'ewaluacja_optymalizacja:index' %}">Optymalizacja ewaluacji</a></li>
+    <li class="current">Status przeliczania ewaluacji</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="large-12 columns">
+        <h1>
+            <span class="fi-clock"></span> Status przeliczania ewaluacji
+        </h1>
+
+        {% if not task_ready and not error %}
+        <div class="callout primary">
+            <h4><span class="fi-info"></span> Zadanie przeliczenia ewaluacji zostało uruchomione</h4>
+            <p>
+                Proces może potrwać od kilku do kilkunastu minut w zależności od liczby dyscyplin
+                i wielkości bazy danych. Strona odświeża się automatycznie co 3 sekundy.
+            </p>
+            <p>
+                <strong>Uwaga:</strong> Zadanie nie zostanie zakończone dopóki wszystkie dane nie zostaną
+                w pełni zapisane do bazy danych.
+            </p>
+        </div>
+        {% endif %}
+
+        <div class="callout info">
+            <p><strong>ID zadania:</strong> {{ task_id }}</p>
+            <p><strong>Status:</strong>
+                {% if task_state == "PROGRESS" %}
+                    <span class="label warning">W trakcie</span>
+                {% elif task_state == "SUCCESS" %}
+                    <span class="label success">Zakończono</span>
+                {% elif task_state == "FAILURE" %}
+                    <span class="label alert">Błąd</span>
+                {% elif task_state == "PENDING" %}
+                    <span class="label secondary">Oczekuje</span>
+                {% else %}
+                    <span class="label">{{ task_state }}</span>
+                {% endif %}
+            </p>
+        </div>
+
+        <!-- Progress section with HTMX polling -->
+        <div id="progress-container"
+             hx-get="{% url 'ewaluacja_optymalizacja:bulk-status' uczelnia_id task_id %}"
+             hx-trigger="every 3s"
+             hx-swap="innerHTML">
+            {% include "ewaluacja_optymalizacja/_bulk_optimization_progress.html" %}
+        </div>
+
+        <div class="button-group">
+            {% if success %}
+                <a href="{% url 'ewaluacja_optymalizacja:discipline-comparison' %}" class="button success large">
+                    <span class="fi-graph-bar"></span> Zobacz porównanie dyscyplin
+                </a>
+                <a href="{% url 'ewaluacja_optymalizacja:run-list' %}" class="button secondary">
+                    <span class="fi-list"></span> Wszystkie kalkulacje
+                </a>
+            {% endif %}
+            <a href="{% url 'ewaluacja_optymalizacja:index' %}" class="button secondary">
+                <span class="fi-home"></span> Powrót do strony głównej
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

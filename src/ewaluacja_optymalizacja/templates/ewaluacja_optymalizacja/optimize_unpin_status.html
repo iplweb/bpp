@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}Status optymalizacji z odpinaniem{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url 'ewaluacja_optymalizacja:index' %}">Optymalizacja ewaluacji</a></li>
+    <li class="current">Status optymalizacji z odpinaniem</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="large-12 columns">
+        <h1>
+            <span class="fi-unlock"></span> Optymalizacja z odpinaniem slotów
+        </h1>
+
+        {% if not task_ready and not error %}
+        <div class="callout primary">
+            <h4><span class="fi-info"></span> Zadanie optymalizacji zostało uruchomione</h4>
+            <p>
+                Proces składa się z kilku etapów: walidacja, tworzenie snapshotu, odpinanie slotów,
+                przeliczanie punktacji, optymalizacja wszystkich dyscyplin i finalizowanie zapisów.
+                Może to potrwać od kilku do kilkunastu minut. Strona odświeża się automatycznie co 5 sekund.
+            </p>
+            <p>
+                <strong>Uwaga:</strong> Zadanie nie zostanie zakończone dopóki wszystkie procesy optymalizacji
+                nie zostaną w pełni zakończone i wszystkie dane nie zostaną zapisane do bazy danych.
+            </p>
+        </div>
+        {% endif %}
+
+        <!-- Progress section with HTMX polling -->
+        <!-- Polling zatrzymuje się automatycznie gdy task_ready=True (przez JavaScript w partial) -->
+        <div id="progress-container"
+             hx-get="{% url 'ewaluacja_optymalizacja:optimize-unpin-status' task_id %}"
+             hx-trigger="every 5s"
+             hx-swap="innerHTML">
+            {% include "ewaluacja_optymalizacja/_optimize_unpin_progress.html" %}
+        </div>
+
+        <div class="button-group">
+            <a href="{% url 'ewaluacja_optymalizacja:index' %}" class="button secondary">
+                <span class="fi-arrow-left"></span> Powrót do optymalizacji
+            </a>
+            {% if success %}
+                <a href="{% url 'ewaluacja_optymalizacja:discipline-comparison' %}" class="button">
+                    <span class="fi-graph-bar"></span> Porównanie dyscyplin
+                </a>
+                <a href="/snapshot_odpiec/" class="button warning">
+                    <span class="fi-camera"></span> Snapshoty odpięć
+                </a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

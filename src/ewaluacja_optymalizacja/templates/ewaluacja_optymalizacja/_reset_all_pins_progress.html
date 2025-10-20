@@ -1,0 +1,153 @@
+{% load humanize %}
+
+<!-- Partial template for HTMX polling -->
+{% if not task_ready %}
+    <!-- Zadanie w trakcie -->
+    <div class="callout warning">
+        <h4><span class="fi-loop"></span> Zadanie w trakcie wykonywania</h4>
+
+        {% if info %}
+            <div class="progress large" role="progressbar"
+                 aria-valuenow="{{ info.progress|default:0|floatformat:0 }}"
+                 aria-valuemin="0" aria-valuemax="100">
+                <div class="progress-meter"
+                     style="width: {{ info.progress|default:0|floatformat:0 }}%">
+                    <p class="progress-meter-text">{{ info.progress|default:0|floatformat:0 }}%</p>
+                </div>
+            </div>
+
+            <p><strong>Aktualny krok:</strong>
+                {% if info.step == "collecting" %}
+                    <span class="fi-magnifying-glass"></span> Zbieranie autorów z dyscyplinami
+                {% elif info.step == "snapshot" %}
+                    <span class="fi-camera"></span> Tworzenie snapshotu
+                {% elif info.step == "resetting" %}
+                    <span class="fi-refresh"></span> Resetowanie przypięć
+                {% elif info.step == "waiting_denorm" %}
+                    <span class="fi-clock"></span> Przeliczanie punktacji
+                {% else %}
+                    {{ info.step }}
+                {% endif %}
+            </p>
+
+            {% if info.total_authors %}
+                <p><strong>Liczba autorów z dyscyplinami:</strong> {{ info.total_authors|intcomma }}</p>
+            {% endif %}
+
+            {% if info.snapshot_id %}
+                <p><strong>Snapshot ID:</strong> {{ info.snapshot_id }}</p>
+            {% endif %}
+
+            {% if info.reset_ciagle or info.reset_zwarte or info.reset_patent %}
+                <h5>Status resetowania przypięć:</h5>
+                <table style="width: 100%; margin-bottom: 1rem;">
+                    <thead>
+                        <tr>
+                            <th>Typ</th>
+                            <th>Zresetowanych przypięć</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if info.reset_ciagle %}
+                        <tr>
+                            <td>Wydawnictwa ciągłe</td>
+                            <td><span class="label success">{{ info.reset_ciagle|intcomma }}</span></td>
+                        </tr>
+                        {% endif %}
+                        {% if info.reset_zwarte %}
+                        <tr>
+                            <td>Wydawnictwa zwarte</td>
+                            <td><span class="label success">{{ info.reset_zwarte|intcomma }}</span></td>
+                        </tr>
+                        {% endif %}
+                        {% if info.reset_patent %}
+                        <tr>
+                            <td>Patenty</td>
+                            <td><span class="label success">{{ info.reset_patent|intcomma }}</span></td>
+                        </tr>
+                        {% endif %}
+                        {% if info.total_reset %}
+                        <tr style="font-weight: bold; border-top: 2px solid #333;">
+                            <td><strong>RAZEM</strong></td>
+                            <td><strong><span class="label success">{{ info.total_reset|intcomma }}</span></strong></td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            {% endif %}
+
+            {% if info.dirty_count %}
+                <p><strong>Rekordów do przeliczenia:</strong> {{ info.dirty_count|intcomma }}</p>
+            {% endif %}
+        {% endif %}
+
+        <!-- Stan kolejki denormalizacji -->
+        <p id="denorm-status" hx-get="{% url 'stan_systemu:ilosc_obiektow_w_denorm_queue' %}"
+           hx-trigger="every 5s">
+            Sprawdzanie kolejki przeliczania...
+        </p>
+
+        <p><em>Status odświeża się automatycznie co 5 sekund.</em></p>
+    </div>
+
+{% elif success %}
+    <!-- Zadanie zakończone pomyślnie -->
+    <div class="callout success">
+        <h4><span class="fi-check"></span> Reset przypięć zakończony pomyślnie!</h4>
+
+        {% if result %}
+            <h5>Podsumowanie:</h5>
+            <ul>
+                <li><strong>Uczelnia:</strong> {{ result.uczelnia_nazwa }}</li>
+                <li><strong>Snapshot ID:</strong> {{ result.snapshot_id }}</li>
+                <li><strong>Liczba autorów:</strong> {{ result.total_authors|intcomma }}</li>
+            </ul>
+
+            <h5>Zresetowane przypięcia:</h5>
+            <table style="width: 100%; margin-bottom: 1rem;">
+                <thead>
+                    <tr>
+                        <th>Typ</th>
+                        <th>Liczba</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Wydawnictwa ciągłe</td>
+                        <td>{{ result.reset_ciagle|intcomma }}</td>
+                    </tr>
+                    <tr>
+                        <td>Wydawnictwa zwarte</td>
+                        <td>{{ result.reset_zwarte|intcomma }}</td>
+                    </tr>
+                    <tr>
+                        <td>Patenty</td>
+                        <td>{{ result.reset_patent|intcomma }}</td>
+                    </tr>
+                    <tr style="font-weight: bold; background-color: #f4f4f4; border-top: 2px solid #333;">
+                        <td><strong>RAZEM</strong></td>
+                        <td><strong>{{ result.total_reset|intcomma }}</strong></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="callout warning">
+                <p><span class="fi-info"></span> <strong>Ważne:</strong>
+                Utworzono snapshot nr {{ result.snapshot_id }} przed zmianami.
+                W razie potrzeby możesz go przywrócić w module
+                <a href="/snapshot_odpiec/">Snapshoty odpięć</a>.</p>
+            </div>
+        {% endif %}
+    </div>
+
+{% else %}
+    <!-- Zadanie zakończone z błędem -->
+    <div class="callout alert">
+        <h4><span class="fi-x"></span> Wystąpił błąd</h4>
+        {% if error %}
+            <pre>{{ error }}</pre>
+        {% else %}
+            <p>Nieznany błąd. Sprawdź logi systemowe.</p>
+        {% endif %}
+    </div>
+{% endif %}

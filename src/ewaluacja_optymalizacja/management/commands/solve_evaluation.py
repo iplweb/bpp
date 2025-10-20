@@ -1,190 +1,24 @@
 import json
-import sys
-from dataclasses import dataclass
+from datetime import datetime
+from decimal import Decimal
 
 from django.core.management import BaseCommand
 from django.db import transaction
-from ortools.sat.python import cp_model
-from tqdm import tqdm
 
-from bpp import const
-from bpp.models import Cache_Punktacja_Autora_Query, Dyscyplina_Naukowa, Rekord
+from bpp.models import (
+    Autor,
+    Dyscyplina_Naukowa,
+    Rekord,
+    Wydawnictwo_Ciagle_Autor,
+    Wydawnictwo_Zwarte_Autor,
+)
 from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaCalosc
-
-# We'll scale slot numbers by 1000 for better precision (integers for CP-SAT)
-SCALE = 1000
-
-
-@dataclass(frozen=True)
-class Pub:
-    id: tuple  # (content_type_id, object_id) from rekord_id
-    author: int  # autor_id
-    kind: str  # "article" | "monography"
-    points: float  # pkdaut from cache
-    base_slots: float  # slot value from cache
-    author_count: int  # number of authors with pinned disciplines
-
-    @property
-    def efficiency(self) -> float:
-        """Points per slot ratio for optimization"""
-        return self.points / self.base_slots if self.base_slots > 0 else 0
-
-
-def slot_units(p: Pub) -> int:
-    """Convert float slots to scaled integer units for CP-SAT solver"""
-    # Use floor (int()) instead of round() to never exceed limits
-    return int(p.base_slots * SCALE)
-
-
-def is_low_mono(p: Pub) -> bool:
-    """Check if publication is a low-point monography (< 200 points)"""
-    return p.kind == "monography" and p.points < 200
-
-
-def solve_author_knapsack(
-    author_pubs: list[Pub], max_slots: float, max_mono_slots: float
-) -> list[Pub]:
-    """
-    Solve knapsack problem for a single author using dynamic programming.
-    Returns list of selected publications that maximize points within slot constraints.
-    """
-    if not author_pubs:
-        return []
-
-    # Sort by efficiency (points/slot ratio) descending, then by author count ascending
-    # This ensures that when efficiency is equal, works with fewer authors are prioritized
-    sorted_pubs = sorted(author_pubs, key=lambda p: (-p.efficiency, p.author_count))
-
-    # Use CP-SAT for single-author optimization with both constraints
-    m = cp_model.CpModel()
-
-    # Decision variables
-    selected = {}
-    for p in sorted_pubs:
-        selected[p.id] = m.NewBoolVar(f"select_{p.id[0]}_{p.id[1]}")
-
-    # Objective: maximize points
-    m.Maximize(sum(p.points * selected[p.id] for p in sorted_pubs))
-
-    # Constraint 1: Total slots
-    m.Add(
-        sum(int(p.base_slots * SCALE) * selected[p.id] for p in sorted_pubs)
-        <= int(max_slots * SCALE)
-    )
-
-    # Constraint 2: Monography slots
-    mono_pubs = [p for p in sorted_pubs if p.kind == "monography"]
-    if mono_pubs:
-        m.Add(
-            sum(int(p.base_slots * SCALE) * selected[p.id] for p in mono_pubs)
-            <= int(max_mono_slots * SCALE)
-        )
-
-    # Solve
-    solver = cp_model.CpSolver()
-    solver.parameters.num_search_workers = 1  # Single thread for deterministic results
-    status = solver.Solve(m)
-
-    if status not in [cp_model.OPTIMAL, cp_model.FEASIBLE]:
-        return []
-
-    # Return selected publications
-    result = []
-    for p in sorted_pubs:
-        if solver.Value(selected[p.id]) == 1:
-            result.append(p)
-
-    return result
-
-
-def generate_pub_data(dyscyplina_nazwa: str) -> list[Pub]:
-    """
-    Generate publication data from cache_punktacja_autora table.
-
-    Args:
-        dyscyplina_nazwa: Name of the scientific discipline to filter by
-
-    Returns:
-        List of Pub objects with data from database
-    """
-    # Get discipline object
-    try:
-        dyscyplina = Dyscyplina_Naukowa.objects.get(nazwa=dyscyplina_nazwa)
-    except Dyscyplina_Naukowa.DoesNotExist:
-        raise ValueError(f"Discipline '{dyscyplina_nazwa}' not found in database")
-
-    # Query cache data for years 2022-2025 and given discipline
-    cache_entries = (
-        Cache_Punktacja_Autora_Query.objects.filter(
-            dyscyplina=dyscyplina,
-            rekord__rok__gte=2022,
-            rekord__rok__lte=2025,
-        )
-        .select_related(
-            "autor",
-            "rekord",
-        )
-        .exclude(pkdaut=0)  # Exclude publications with 0 points
-        .exclude(slot=0)  # Exclude publications with 0 slots
-    )
-
-    pubs = []
-    for entry in tqdm(cache_entries):
-        rekord = entry.rekord
-
-        # Determine publication kind based on charakter_ogolny
-        charakter_ogolny = rekord.charakter_formalny.charakter_ogolny
-        if charakter_ogolny == const.CHARAKTER_OGOLNY_ARTYKUL:
-            kind = "article"
-        elif charakter_ogolny == const.CHARAKTER_OGOLNY_KSIAZKA:
-            kind = "monography"
-        else:
-            # Skip other types (chapters, etc.)
-            continue
-
-        # Count authors with pinned disciplines
-        author_count = rekord.original.autorzy_set.filter(
-            dyscyplina_naukowa__isnull=False, przypieta=True
-        ).count()
-
-        pub = Pub(
-            id=entry.rekord_id,  # This is already a tuple
-            author=entry.autor_id,
-            kind=kind,
-            points=float(entry.pkdaut),
-            base_slots=float(entry.slot),
-            author_count=author_count,
-        )
-        pubs.append(pub)
-
-    return pubs
-
-
-class SolutionCallback(cp_model.CpSolverSolutionCallback):
-    """Callback to report solver progress"""
-
-    def __init__(self, variables, pubs, verbose=False):
-        cp_model.CpSolverSolutionCallback.__init__(self)
-        self.variables = variables
-        self.pubs = pubs
-        self.solution_count = 0
-        self.verbose = verbose
-        self.best_objective = 0
-
-    def on_solution_callback(self):
-        self.solution_count += 1
-        current_objective = self.ObjectiveValue()
-
-        if current_objective > self.best_objective:
-            self.best_objective = current_objective
-            if self.verbose:
-                sys.stdout.write(
-                    f"\rFound solution #{self.solution_count}: {int(current_objective)} points"
-                )
-                sys.stdout.flush()
-            else:
-                sys.stdout.write(".")
-                sys.stdout.flush()
+from ewaluacja_optymalizacja.core import is_low_mono, solve_discipline
+from ewaluacja_optymalizacja.models import (
+    OptimizationAuthorResult,
+    OptimizationPublication,
+    OptimizationRun,
+)
 
 
 class Command(BaseCommand):
@@ -236,242 +70,119 @@ class Command(BaseCommand):
         *args,
         **options,
     ):
-        self.stdout.write(f"Loading publications for discipline: {dyscyplina}")
-        self.stdout.write("Year range: 2022-2025")
+        # Create log callback for core.solve_discipline
+        def log_callback(msg, style=None):
+            if style == "ERROR":
+                self.stdout.write(self.style.ERROR(msg))
+            elif style == "WARNING":
+                self.stdout.write(self.style.WARNING(msg))
+            elif style == "SUCCESS":
+                self.stdout.write(self.style.SUCCESS(msg))
+            else:
+                self.stdout.write(msg)
 
-        # Generate publication data from database
+        # Run optimization using core logic
         try:
-            pubs = generate_pub_data(dyscyplina)
-        except ValueError as e:
-            self.stdout.write(self.style.ERROR(str(e)))
+            results = solve_discipline(
+                dyscyplina_nazwa=dyscyplina, verbose=verbose, log_callback=log_callback
+            )
+        except Exception as e:
+            self.stdout.write(self.style.ERROR(f"Optimization failed: {e}"))
             return
 
-        if not pubs:
+        if not results.all_pubs:
             self.stdout.write(
                 self.style.WARNING(
-                    f"No publications found for discipline '{dyscyplina}' in years 2022-2025"
+                    f"No publications found for discipline '{dyscyplina}'"
                 )
             )
             return
 
-        self.stdout.write(f"Found {len(pubs)} publications")
-
-        # Get unique authors
-        authors = sorted({p.author for p in pubs})
-        self.stdout.write(f"Found {len(authors)} unique authors")
-
-        # Get discipline object for loading slot limits
-        try:
-            dyscyplina_obj = Dyscyplina_Naukowa.objects.get(nazwa=dyscyplina)
-        except Dyscyplina_Naukowa.DoesNotExist:
-            self.stdout.write(self.style.ERROR(f"Discipline '{dyscyplina}' not found"))
-            return
-
-        # Load per-author slot limits from database
-        self.stdout.write("Loading author slot limits from database...")
-        author_slot_limits = {}
-        custom_limit_count = 0
-
-        for author_id in authors:
-            try:
-                limits = IloscUdzialowDlaAutoraZaCalosc.objects.get(
-                    autor_id=author_id, dyscyplina_naukowa=dyscyplina_obj
-                )
-                author_slot_limits[author_id] = {
-                    "total": float(limits.ilosc_udzialow),
-                    "mono": float(limits.ilosc_udzialow_monografie),
-                }
-                custom_limit_count += 1
-            except IloscUdzialowDlaAutoraZaCalosc.DoesNotExist:
-                # Use default limits if not specified
-                author_slot_limits[author_id] = {"total": 4.0, "mono": 2.0}
-
-        self.stdout.write(f"Found custom slot limits for {custom_limit_count} authors")
-
-        # PHASE 1: Solve per-author knapsack problems
+        # Save results to database
         self.stdout.write("\n" + "=" * 80)
-        self.stdout.write("PHASE 1: Per-author optimization")
+        self.stdout.write("Saving results to database...")
         self.stdout.write("=" * 80)
 
-        # Group publications by author
-        pubs_by_author = {}
-        for p in pubs:
-            if p.author not in pubs_by_author:
-                pubs_by_author[p.author] = []
-            pubs_by_author[p.author].append(p)
+        dyscyplina_obj = Dyscyplina_Naukowa.objects.get(nazwa=dyscyplina)
 
-        # Solve knapsack for each author
-        author_selections = {}
-        total_phase1_points = 0
+        # Usuń stare optymalizacje dla tej dyscypliny
+        OptimizationRun.objects.filter(dyscyplina_naukowa=dyscyplina_obj).delete()
 
-        for author_id in authors:
-            author_pubs = pubs_by_author.get(author_id, [])
-            if not author_pubs:
-                continue
-
-            limits = author_slot_limits[author_id]
-            if verbose:
-                self.stdout.write(
-                    f"\nOptimizing for author {author_id}: {len(author_pubs)} publications"
-                )
-                self.stdout.write(
-                    f"  Limits: {limits['total']} total slots, {limits['mono']} mono slots"
-                )
-
-            # Solve knapsack for this author
-            selected = solve_author_knapsack(
-                author_pubs, limits["total"], limits["mono"]
-            )
-
-            author_selections[author_id] = selected
-            author_points = sum(p.points for p in selected)
-            author_slots = sum(p.base_slots for p in selected)
-            total_phase1_points += author_points
-
-            if verbose:
-                self.stdout.write(
-                    f"  Selected: {len(selected)} pubs, {author_points:.1f} points, {author_slots:.2f} slots"
-                )
-
-        self.stdout.write(f"\nPhase 1 complete: {total_phase1_points:.1f} total points")
-
-        # Collect all selected publications
-        all_selected = []
-        for selections in author_selections.values():
-            all_selected.extend(selections)
-
-        # PHASE 2: Check institution-level constraints
-        self.stdout.write("\n" + "=" * 80)
-        self.stdout.write("PHASE 2: Institution-level constraints")
-        self.stdout.write("=" * 80)
-
-        # Count low-point monographies
-        low_mono_selected = [p for p in all_selected if is_low_mono(p)]
-        low_mono_percentage = (
-            (100.0 * len(low_mono_selected) / len(all_selected)) if all_selected else 0
+        # Create OptimizationRun
+        opt_run = OptimizationRun.objects.create(
+            dyscyplina_naukowa=dyscyplina_obj,
+            status="completed",
+            total_points=Decimal(str(results.total_points)),
+            total_slots=Decimal(str(results.total_slots)),
+            total_publications=results.total_publications,
+            low_mono_count=results.low_mono_count,
+            low_mono_percentage=Decimal(str(results.low_mono_percentage)),
+            validation_passed=results.validation_passed,
+            finished_at=datetime.now(),
         )
+
+        # Save author results
+        for author_id, author_data in results.authors.items():
+            selected_pubs = author_data["selected_pubs"]
+            limits = author_data["limits"]
+
+            # Get rodzaj_autora for this author
+            try:
+                rodzaj_autora = IloscUdzialowDlaAutoraZaCalosc.objects.get(
+                    autor_id=author_id, dyscyplina_naukowa=dyscyplina_obj
+                ).rodzaj_autora
+            except IloscUdzialowDlaAutoraZaCalosc.DoesNotExist:
+                rodzaj_autora = None
+
+            total_points = sum(p.points for p in selected_pubs)
+            total_slots = sum(p.base_slots for p in selected_pubs)
+            mono_slots = sum(
+                p.base_slots for p in selected_pubs if p.kind == "monography"
+            )
+
+            author_result = OptimizationAuthorResult.objects.create(
+                optimization_run=opt_run,
+                autor_id=author_id,
+                rodzaj_autora=rodzaj_autora,
+                total_points=Decimal(str(total_points)),
+                total_slots=Decimal(str(total_slots)),
+                mono_slots=Decimal(str(mono_slots)),
+                slot_limit_total=Decimal(str(limits["total"])),
+                slot_limit_mono=Decimal(str(limits["mono"])),
+            )
+
+            # Save publications for this author
+            for pub in selected_pubs:
+                OptimizationPublication.objects.create(
+                    author_result=author_result,
+                    rekord_id=pub.id,
+                    kind=pub.kind,
+                    points=Decimal(str(pub.points)),
+                    slots=Decimal(str(pub.base_slots)),
+                    is_low_mono=is_low_mono(pub),
+                    author_count=pub.author_count,
+                )
 
         self.stdout.write(
-            f"Low-point monographies: {len(low_mono_selected)}/{len(all_selected)} ({low_mono_percentage:.1f}%)"
+            self.style.SUCCESS(f"Saved optimization run #{opt_run.pk} to database")
         )
 
-        # If we exceed 20% low-point monographies, we need to adjust
-        if low_mono_percentage > 20.0 and len(low_mono_selected) > 0:
-            self.stdout.write(
-                self.style.WARNING("Exceeds 20% limit - adjusting selection...")
-            )
-
-            # Use CP-SAT to globally optimize while respecting all constraints
-            m = cp_model.CpModel()
-
-            # Decision variables for all pre-selected publications
-            y = {p.id: m.NewBoolVar(f"y_{p.id[0]}_{p.id[1]}") for p in all_selected}
-
-            # Objective: maximize points from pre-selected items
-            m.Maximize(sum(p.points * y[p.id] for p in all_selected))
-
-            # Per-author constraints (ensure we don't exceed limits)
-            for author_id in authors:
-                author_pubs = [p for p in all_selected if p.author == author_id]
-                if not author_pubs:
-                    continue
-
-                limits = author_slot_limits[author_id]
-
-                # Total slots
-                m.Add(
-                    sum(slot_units(p) * y[p.id] for p in author_pubs)
-                    <= int(limits["total"] * SCALE)
-                )
-
-                # Monography slots
-                mono_pubs = [p for p in author_pubs if p.kind == "monography"]
-                if mono_pubs:
-                    m.Add(
-                        sum(slot_units(p) * y[p.id] for p in mono_pubs)
-                        <= int(limits["mono"] * SCALE)
-                    )
-
-            # Institution quota constraint
-            low_mono_count = sum(y[p.id] for p in all_selected if is_low_mono(p))
-            total_count = sum(y[p.id] for p in all_selected)
-            m.Add(5 * low_mono_count <= total_count)  # 20% limit
-
-            # Solve
-            solver = cp_model.CpSolver()
-            status = solver.Solve(m)
-
-            if status not in [cp_model.OPTIMAL, cp_model.FEASIBLE]:
-                self.stdout.write(
-                    self.style.ERROR("Could not satisfy institution constraints!")
-                )
-                return
-
-            # Update selections based on global optimization
-            final_selected = []
-            for p in all_selected:
-                if solver.Value(y[p.id]) == 1:
-                    final_selected.append(p)
-
-            all_selected = final_selected
-            total_points = sum(p.points for p in all_selected)
-            self.stdout.write(
-                f"Adjusted selection: {len(all_selected)} publications, {total_points:.1f} points"
-            )
-        else:
-            total_points = total_phase1_points
-            self.stdout.write(self.style.SUCCESS("Institution constraints satisfied"))
-
-        # Organize final results by author
-        by_author: dict[int, list[Pub]] = {a: [] for a in authors}
-        for p in all_selected:
-            by_author[p.author].append(p)
-
-        # Validation: Check that no author exceeds their limits
-        self.stdout.write("\n" + "=" * 80)
-        self.stdout.write("VALIDATION: Checking slot limits")
-        self.stdout.write("=" * 80)
-
-        validation_passed = True
-        for author_id in authors:
-            chosen = by_author[author_id]
-            if not chosen:
-                continue
-
-            total_slots = sum(p.base_slots for p in chosen)
-            mono_slots = sum(p.base_slots for p in chosen if p.kind == "monography")
-            limits = author_slot_limits[author_id]
-
-            if (
-                total_slots > limits["total"] + 0.001
-            ):  # Small epsilon for floating point
-                self.stdout.write(
-                    self.style.ERROR(
-                        f"Author {author_id}: {total_slots:.2f} slots > {limits['total']} limit!"
-                    )
-                )
-                validation_passed = False
-
-            if mono_slots > limits["mono"] + 0.001:
-                self.stdout.write(
-                    self.style.ERROR(
-                        f"Author {author_id}: {mono_slots:.2f} mono slots > {limits['mono']} limit!"
-                    )
-                )
-                validation_passed = False
-
-        if validation_passed:
-            self.stdout.write(self.style.SUCCESS("✓ All slot limits satisfied"))
-        else:
-            self.stdout.write(
-                self.style.ERROR("✗ Validation failed - slot limits exceeded!")
-            )
-
-        self.stdout.write(self.style.SUCCESS(f"\nTotal points: {int(total_points)}"))
+        # Get all pubs and organize by author
+        pubs = results.all_pubs
+        by_author = {
+            author_id: data["selected_pubs"]
+            for author_id, data in results.authors.items()
+        }
+        authors = sorted(results.authors.keys())
+        author_slot_limits = {
+            author_id: data["limits"] for author_id, data in results.authors.items()
+        }
+        all_selected = []
+        for selections in by_author.values():
+            all_selected.extend(selections)
+        total_points = results.total_points
 
         # Load author names for better display
-        from bpp.models import Autor
-
         author_names = {}
         for autor in Autor.objects.filter(pk__in=authors):
             author_names[autor.pk] = str(autor)
@@ -790,8 +501,6 @@ class Command(BaseCommand):
     ):
         """Handle unpinning of disciplines for non-selected publications"""
         from denorm import denorms
-
-        from bpp.models import Wydawnictwo_Ciagle_Autor, Wydawnictwo_Zwarte_Autor
 
         self.stdout.write("\n" + "=" * 80)
         self.stdout.write("UNPINNING NON-SELECTED PUBLICATIONS")

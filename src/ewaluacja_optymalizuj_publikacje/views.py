@@ -97,6 +97,12 @@ class OptymalizujPublikacjeView(LoginRequiredMixin, View):
         elif "pin_discipline" in request.POST:
             autor_assignment_id = request.POST.get("autor_assignment_id")
             return self._handle_pin(request, autor_assignment_id)
+        elif "change_discipline" in request.POST:
+            autor_assignment_id = request.POST.get("autor_assignment_id")
+            new_discipline_id = request.POST.get("new_discipline_id")
+            return self._handle_change_discipline(
+                request, autor_assignment_id, new_discipline_id
+            )
         else:
             # Handle form submission
             form = OptymalizacjaForm(request.POST)
@@ -221,6 +227,58 @@ class OptymalizujPublikacjeView(LoginRequiredMixin, View):
 
         return redirect("ewaluacja_optymalizuj_publikacje:optymalizuj", slug=slug)
 
+    def _handle_change_discipline(
+        self, request, autor_assignment_id, new_discipline_id
+    ):
+        """Handle changing discipline for an author assignment"""
+        with transaction.atomic():
+            # Get the autor assignment directly
+            # Try to find the assignment in different publication types
+            wa = None
+            for model in [
+                Wydawnictwo_Ciagle_Autor,
+                Wydawnictwo_Zwarte_Autor,
+                Patent_Autor,
+            ]:
+                try:
+                    wa = model.objects.get(pk=autor_assignment_id)
+                    break
+                except model.DoesNotExist:
+                    continue
+
+            if not wa:
+                raise Exception("Nie znaleziono przypisania autora do publikacji")
+
+            publikacja = wa.rekord
+            slug = publikacja.slug
+
+            # Import Dyscyplina_Naukowa model
+            from bpp.models import Dyscyplina_Naukowa
+
+            # Get the new discipline
+            try:
+                new_discipline = Dyscyplina_Naukowa.objects.get(pk=new_discipline_id)
+            except Dyscyplina_Naukowa.DoesNotExist as e:
+                raise Exception("Nie znaleziono nowej dyscypliny") from e
+
+            # Update discipline
+            wa.dyscyplina_naukowa = new_discipline
+            wa.save()
+
+            # Rebuild cache punktacja for the publication
+            cacher = IPunktacjaCacher(publikacja)
+            cacher.removeEntries()  # Remove old cache entries
+            cacher.rebuildEntries()  # Rebuild with new discipline
+
+            # Recalculate evaluation metrics for all affected authors
+            przelicz_metryki_dla_publikacji(publikacja)
+
+        # If HTMX request, render the updated content directly
+        if request.headers.get("HX-Request"):
+            return self.get(request, slug=slug)
+
+        return redirect("ewaluacja_optymalizuj_publikacje:optymalizuj", slug=slug)
+
     def _build_cache_punktacja_lookup(self, publikacja):
         """Build cache punktacja lookup dictionary for efficiency"""
         cache_punktacja_lookup = {}
@@ -266,6 +324,50 @@ class OptymalizujPublikacjeView(LoginRequiredMixin, View):
             pass
 
         return potential_punkty, potential_sloty
+
+    def _get_alternative_discipline(self, autor, rok, current_discipline):
+        """Get alternative discipline for autor if they have subdyscyplina_naukowa"""
+        try:
+            autor_dyscyplina = Autor_Dyscyplina.objects.get(autor=autor, rok=rok)
+
+            # Jeśli autor ma subdyscyplinę i jest różna od obecnej, zwróć ją
+            if (
+                autor_dyscyplina.subdyscyplina_naukowa_id
+                and autor_dyscyplina.subdyscyplina_naukowa_id != current_discipline.id
+            ):
+                return autor_dyscyplina.subdyscyplina_naukowa
+
+            # Jeśli obecna dyscyplina to subdyscyplina, zwróć główną
+            if (
+                autor_dyscyplina.subdyscyplina_naukowa_id == current_discipline.id
+                and autor_dyscyplina.dyscyplina_naukowa_id != current_discipline.id
+            ):
+                return autor_dyscyplina.dyscyplina_naukowa
+
+        except Autor_Dyscyplina.DoesNotExist:
+            pass
+
+        return None
+
+    def _check_discipline_compatible_with_source(self, publikacja, dyscyplina):
+        """Check if discipline is compatible with publication source"""
+        # Tylko dla Wydawnictwo_Ciagle sprawdzamy zgodność ze źródłem
+        if not hasattr(publikacja.original, "zrodlo") or not publikacja.original.zrodlo:
+            return True
+
+        # Pobierz dyscypliny źródła dla roku publikacji
+        from bpp.models.zrodlo import Dyscyplina_Zrodla
+
+        dyscypliny_zrodla = Dyscyplina_Zrodla.objects.filter(
+            zrodlo=publikacja.original.zrodlo, rok=publikacja.original.rok
+        ).values_list("dyscyplina_id", flat=True)
+
+        # Jeśli źródło nie ma przypisanych dyscyplin, uznajemy że wszystko jest OK
+        if not dyscypliny_zrodla:
+            return True
+
+        # Sprawdź czy dyscyplina autora jest w dyscyplinach źródła
+        return dyscyplina.id in list(dyscypliny_zrodla)
 
     def _get_metryka_data(self, autor, dyscyplina, przypieta, cpaq):
         """Get MetrykaAutora data and check if publication is selected for evaluation"""
@@ -390,6 +492,28 @@ class OptymalizujPublikacjeView(LoginRequiredMixin, View):
         autor_info["metryka"] = metryka_data
         if wybrana_do_ewaluacji:
             autor_info["wybrana_do_ewaluacji"] = True
+
+        # Get alternative discipline (subdyscyplina)
+        alternative_discipline = self._get_alternative_discipline(
+            autor, publikacja.original.rok, dyscyplina
+        )
+        if alternative_discipline:
+            autor_info["alternative_discipline"] = {
+                "id": alternative_discipline.id,
+                "nazwa": alternative_discipline.nazwa,
+                "kod": alternative_discipline.kod,
+            }
+            # Check if alternative discipline is compatible with source
+            autor_info["alternative_discipline_compatible"] = (
+                self._check_discipline_compatible_with_source(
+                    publikacja, alternative_discipline
+                )
+            )
+
+        # Check if current discipline is compatible with source
+        autor_info["discipline_compatible"] = (
+            self._check_discipline_compatible_with_source(publikacja, dyscyplina)
+        )
 
         return autor_info
 

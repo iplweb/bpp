@@ -1,12 +1,12 @@
 from braces.views import GroupRequiredMixin
+from django.contrib import messages
 from django.http import HttpResponseRedirect
 from django.views import View
 from django.views.generic import DetailView, ListView
 
 from snapshot_odpiec.tasks import suma_odpietych_dyscyplin, suma_przypietych_dyscyplin
-from .models import SnapshotOdpiec
 
-from django.contrib import messages
+from .models import SnapshotOdpiec
 
 
 # Create your views here.
@@ -14,6 +14,7 @@ class ListaSnapshotow(GroupRequiredMixin, ListView):
     group_required = "raporty"
     model = SnapshotOdpiec
     ordering = "-created_on"
+    paginate_by = 20
 
     def get_context_data(self, **kwargs):
         return super().get_context_data(
