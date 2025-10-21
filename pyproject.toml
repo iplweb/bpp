@@ -105,6 +105,7 @@ dependencies = [
     "logfire[django,psycopg2,celery]>=4.13.0",
     "ortools>=9.14.6206",
     "psycopg2>=2.9.11",  # ZOSTAW psycopg2 dla django-denorm
+    "amqp>=5.2.0",  # RabbitMQ support for Celery
 ]
 
 [project.optional-dependencies]
