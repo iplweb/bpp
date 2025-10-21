@@ -78,6 +78,7 @@ class UczelniaAdmin(
                     "pbn_uid",
                     "pbn_id",
                     "favicon_ico",
+                    "tytul_strony_glownej",
                     "obca_jednostka",
                 )
             },
