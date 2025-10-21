@@ -3,22 +3,20 @@
 from unittest.mock import patch
 
 import pytest
+from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
 from django.test import RequestFactory
 from django.urls import reverse
 from model_bakery import baker
 
-from django.contrib.auth import get_user_model
-from django.contrib.auth.models import Group
-
 User = get_user_model()
 
+from bpp.const import GR_WPROWADZANIE_DANYCH
 from pbn_export_queue.models import PBN_Export_Queue
 from pbn_export_queue.views import (
     PBNExportQueuePermissionMixin,
     parse_pbn_api_error,
 )
-
-from bpp.const import GR_WPROWADZANIE_DANYCH
 
 
 @pytest.mark.django_db

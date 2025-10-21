@@ -16,8 +16,12 @@ from pbn_api.exceptions import AccessDeniedException
 from pbn_api.models import Journal, Publication, Scientist
 from pbn_integrator.utils import ACTIVE, zapisz_mongodb
 
+from .mixins import SanitizedAutocompleteMixin
 
-class BasePBNAutocomplete(LoginRequiredMixin, autocomplete.Select2QuerySetView):
+
+class BasePBNAutocomplete(
+    SanitizedAutocompleteMixin, LoginRequiredMixin, autocomplete.Select2QuerySetView
+):
     """
     Ta klasa robi wyszukiwanie zadeklarowanego modelu z PBN, jednocześnie pozwala
     też utworzyć w bazie danych taki model - na podstawie mongoID.

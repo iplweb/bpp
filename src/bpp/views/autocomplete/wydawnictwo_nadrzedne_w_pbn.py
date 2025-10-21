@@ -9,8 +9,12 @@ from pbn_api.exceptions import WillNotExportError
 from pbn_api.models import Publication
 from pbn_api.validators import check_mongoId
 
+from .mixins import SanitizedAutocompleteMixin
 
-class Wydawnictwo_Nadrzedne_W_PBNAutocomplete(autocomplete.Select2QuerySetView):
+
+class Wydawnictwo_Nadrzedne_W_PBNAutocomplete(
+    SanitizedAutocompleteMixin, autocomplete.Select2QuerySetView
+):
     # Ile rekordów maksymalnie ściągać z PBN?
     MAX_RECORDS_DOWNLOADED = 5
 
@@ -102,56 +106,35 @@ class Wydawnictwo_Nadrzedne_W_PBNAutocomplete(autocomplete.Select2QuerySetView):
             case _:
                 raise NotImplementedError(self.q)
 
-    def post(self, request, *args, **kwargs):
-        """Create an object given a text after checking permissions."""
-
-        # Nie ruszamy tego importu -- ma pozostać tutaj, bo inaczej testy nie mogą zostać spatchowane
-        from pbn_integrator.utils import zapisz_mongodb
-
-        uczelnia: Uczelnia = Uczelnia.objects.get_for_request(self.request)
-        try:
-            client: PBNClient = uczelnia.pbn_client()
-        except WillNotExportError:
-            return http.JsonResponse(
-                {"id": "error", "text": "Wykonaj autoryzację w PBN!"}
-            )
-
-        text = request.POST.get("text", None)
-
-        if text is None:
-            return http.HttpResponseBadRequest()
-
-        text = text.strip()
-
-        match self.qualify_query(text):
+    def _get_pbn_search_results(self, client, query_type, text):
+        """Get search results from PBN based on query type"""
+        match query_type:
             case self.MONGO_ID:
-                lst = client.search_publications(objectId=text)
+                return client.search_publications(objectId=text)
             case self.ISBN:
                 text = isbnlib.canonical(text)
-                lst = client.search_publications(isbn=text, type="BOOK")
+                return client.search_publications(isbn=text, type="BOOK")
             case self.TITLE:
-                lst = client.search_publications(title=text, type="BOOK")
+                return client.search_publications(title=text, type="BOOK")
             case self.DOI:
                 text = strip_doi_urls(text)
-                lst = client.search_publications(doi=text, type="BOOK")
+                return client.search_publications(doi=text, type="BOOK")
             case _:
-                return http.JsonResponse(
-                    {
-                        "id": "error",
-                        "text": f"Niezaimplementowany rodzaj wyszukiwania dla {text}",
-                    }
-                )
+                return None
+
+    def _process_search_results(self, client, lst):
+        """Process search results and download new publications"""
+        from pbn_integrator.utils import zapisz_mongodb
 
         no_records_found = 0
+        pub = None
 
         for elem in lst:
-            # z PBNu mogą przychodzić rekordy, które już sa w bazie danych i realnie nie ma żadnej możliwości
-            # odsortować ich, więc po prostu je zignorujemy...
-
+            # Skip records that already exist in the database
             if Publication.objects.filter(pk=elem["mongoId"]).exists():
                 continue
 
-            # Jest rekord z PBN ID spoza tych w bazie
+            # Found a record with PBN ID not in the database
             no_records_found += 1
             if no_records_found > self.MAX_RECORDS_DOWNLOADED:
                 break
@@ -160,13 +143,17 @@ class Wydawnictwo_Nadrzedne_W_PBNAutocomplete(autocomplete.Select2QuerySetView):
                 client.get_publication_by_id(elem["mongoId"]), Publication
             )
 
+        return no_records_found, pub
+
+    def _create_response_message(self, no_records_found, pub):
+        """Create appropriate response message based on results"""
         if no_records_found == 0:
             return http.JsonResponse(
                 {"id": "test", "text": "Nic (nowego) nie znaleziono w PBN."}
             )
 
         if no_records_found == 1:
-            # Znaleziono tylko 1 rekord w PBN, więc można go zwrócić i ustawić jako wybrany...
+            # Only one record found, return it as selected
             return http.JsonResponse({"id": pub.pk, "text": pub.title})
 
         byloby_wiecej = ""
@@ -179,3 +166,36 @@ class Wydawnictwo_Nadrzedne_W_PBNAutocomplete(autocomplete.Select2QuerySetView):
                 "text": f"Pobrano {no_records_found} rekord/y/ów. {byloby_wiecej}Wpisz szukany tekst jeszcze raz",
             }
         )
+
+    def post(self, request, *args, **kwargs):
+        """Create an object given a text after checking permissions."""
+        uczelnia: Uczelnia = Uczelnia.objects.get_for_request(self.request)
+        try:
+            client: PBNClient = uczelnia.pbn_client()
+        except WillNotExportError:
+            return http.JsonResponse(
+                {"id": "error", "text": "Wykonaj autoryzację w PBN!"}
+            )
+
+        text = request.POST.get("text", None)
+        if text is None:
+            return http.HttpResponseBadRequest()
+
+        text = text.strip()
+        query_type = self.qualify_query(text)
+
+        # Get search results from PBN
+        lst = self._get_pbn_search_results(client, query_type, text)
+        if lst is None:
+            return http.JsonResponse(
+                {
+                    "id": "error",
+                    "text": f"Niezaimplementowany rodzaj wyszukiwania dla {text}",
+                }
+            )
+
+        # Process search results
+        no_records_found, pub = self._process_search_results(client, lst)
+
+        # Create and return response message
+        return self._create_response_message(no_records_found, pub)

@@ -70,20 +70,30 @@ nc -zv localhost 8000  # Check if port 8000 is in use
 - `make assets` - Run both yarn install and grunt build and Django collectstatic
 
 ### Testing Commands
-- `uv run pytest` - Run tests (configured in pytest.ini)
-- `uv run pytest --ds=django_bpp.settings.local` - Run tests with specific settings
+
+**CRITICAL: ALWAYS use `uv run pytest` - NEVER run pytest directly without `uv run`**
+
+- `uv run pytest` - **PRIMARY COMMAND** - Run all tests (configured in pytest.ini)
+- `uv run pytest src/app_name/` - Run tests for specific app
+- `uv run pytest src/app_name/tests/test_file.py` - Run specific test file
+- `uv run pytest src/app_name/tests/test_file.py::test_function_name` - Run specific test function
+- `uv run pytest -k "test_pattern"` - Run tests matching pattern
+- `uv run pytest -v` - Run tests with verbose output
+- `uv run pytest --ds=django_bpp.settings.local` - Run tests with specific Django settings (rarely needed)
+
+**Alternative make commands (these internally use `uv run pytest`):**
 - `make tests-without-selenium` - Run tests excluding Selenium tests with parallelization (fast)
 - `make tests-with-selenium` - Run only Selenium tests with parallelization (slow)
-- `make tests` - **PRIMARY COMMAND** - Run full test suite
+- `make tests` - Run full test suite
 - `make full-tests` - Run complete test suite
 
 ### Celery commands
 - `uv run celery -A django_bpp.tasks` always, for example `uv run celery -A django_bpp.tasks inspect registered`
 
 **CRITICAL TEST EXECUTION TIME:**
-- Full test suite (`pytest src/` or `make tests`) takes **UP TO 10 MINUTES** to complete
+- Full test suite (`uv run pytest` or `make tests`) takes **UP TO 10 MINUTES** to complete
 - **NEVER use timeout restrictions** when running tests
-- Always set timeout to at least 600000ms (10 minutes) when running `pytest src/`
+- Always set timeout to at least 600000ms (10 minutes) when running the full test suite
 - Tests may appear to hang but are actually running - be patient
 
 **TEST CONFIGURATION NOTES:**
