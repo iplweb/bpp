@@ -1,6 +1,6 @@
 [project]
 name = "bpp_iplweb"
-version = "202510.1272"
+version = "202510.1273"
 description = ""
 authors = [
     { name = "Michał Pasternak", email = "michal.dtz@gmail.com" }
@@ -105,6 +105,7 @@ dependencies = [
     "logfire[django,psycopg2,celery]>=4.13.0",
     "ortools>=9.14.6206",
     "psycopg2>=2.9.11",  # ZOSTAW psycopg2 dla django-denorm
+    "amqp>=5.2.0",  # RabbitMQ support for Celery
 ]
 
 [project.optional-dependencies]
@@ -202,7 +203,7 @@ include = [
 ]
 
 [tool.bumpver]
-current_version = "v202510.1272"
+current_version = "v202510.1273"
 version_pattern = "vYYYY0M.BUILD[-TAGNUM][GITHASH]"
 commit_message = "bump version {old_version} -> {new_version}"
 commit = true
@@ -303,7 +304,7 @@ build-backend = "setuptools.build_meta"
 
 [tool.towncrier]
 package = "bpp"
-version = "202510.1272"
+version = "202510.1273"
 package_dir = "src"
 filename = "HISTORY.rst"
 

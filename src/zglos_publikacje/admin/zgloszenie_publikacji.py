@@ -10,6 +10,7 @@ from django.contrib.admin.templatetags.admin_urls import add_preserved_filters
 from django.db import transaction
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
+from djangoql.admin import DjangoQLSearchMixin
 from templated_email import send_templated_mail
 
 from bpp.admin.core import DynamicAdminFilterMixin
@@ -34,7 +35,15 @@ class Zgloszenie_Publikacji_AutorInline(admin.StackedInline):
 
 
 @admin.register(Zgloszenie_Publikacji)
-class Zgloszenie_PublikacjiAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
+class Zgloszenie_PublikacjiAdmin(
+    DjangoQLSearchMixin, DynamicAdminFilterMixin, admin.ModelAdmin
+):
+    djangoql_completion_enabled_by_default = False
+    djangoql_completion = True
+
+    search_fields = ["email", "tytul_oryginalny", "przyczyna_zwrotu"]
+    date_hierarchy = "utworzono"
+
     list_display = [
         "tytul_oryginalny",
         "utworzono",
@@ -46,7 +55,6 @@ class Zgloszenie_PublikacjiAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
     ]
     list_filter = [
         "status",
-        "email",
         WydzialJednostkiPierwszegoAutora,
         DzienTygodniaFilter,
         "rodzaj_zglaszanej_publikacji",

@@ -45,10 +45,13 @@ from import_common.core import normalized_db_isbn
 from import_common.normalization import normalize_isbn
 from pbn_api.models import Publisher
 
+from .mixins import SanitizedAutocompleteMixin  # noqa
 from .wydawnictwo_nadrzedne_w_pbn import Wydawnictwo_Nadrzedne_W_PBNAutocomplete  # noqa
 
 
-class PublicTaggitTagAutocomplete(autocomplete.Select2QuerySetView):
+class PublicTaggitTagAutocomplete(
+    SanitizedAutocompleteMixin, autocomplete.Select2QuerySetView
+):
     create_field = None
 
     def get_queryset(self):
@@ -58,7 +61,9 @@ class PublicTaggitTagAutocomplete(autocomplete.Select2QuerySetView):
         return qs
 
 
-class Wydawnictwo_NadrzedneAutocomplete(autocomplete.Select2QuerySetView):
+class Wydawnictwo_NadrzedneAutocomplete(
+    SanitizedAutocompleteMixin, autocomplete.Select2QuerySetView
+):
     def get_queryset(self):
         qs = Wydawnictwo_Zwarte.objects.filter(
             charakter_formalny__charakter_ogolny=CHARAKTER_OGOLNY_KSIAZKA
@@ -70,7 +75,7 @@ class Wydawnictwo_NadrzedneAutocomplete(autocomplete.Select2QuerySetView):
 
 
 class Wydawnictwo_CiagleAdminAutocomplete(
-    LoginRequiredMixin, autocomplete.Select2QuerySetView
+    SanitizedAutocompleteMixin, LoginRequiredMixin, autocomplete.Select2QuerySetView
 ):
     def get_queryset(self):
         qs = Wydawnictwo_Ciagle.objects.all()
@@ -80,7 +85,7 @@ class Wydawnictwo_CiagleAdminAutocomplete(
 
 
 class Wydawnictwo_ZwarteAdminAutocomplete(
-    LoginRequiredMixin, autocomplete.Select2QuerySetView
+    SanitizedAutocompleteMixin, LoginRequiredMixin, autocomplete.Select2QuerySetView
 ):
     def get_queryset(self):
         qs = Wydawnictwo_Zwarte.objects.all()
@@ -117,7 +122,9 @@ class JednostkaMixin:
             return str(result)
 
 
-class JednostkaAutocomplete(JednostkaMixin, autocomplete.Select2QuerySetView):
+class JednostkaAutocomplete(
+    SanitizedAutocompleteMixin, JednostkaMixin, autocomplete.Select2QuerySetView
+):
     qset = Jednostka.objects.all().select_related("wydzial")
 
     def get_queryset(self):
@@ -127,7 +134,9 @@ class JednostkaAutocomplete(JednostkaMixin, autocomplete.Select2QuerySetView):
         return qs.order_by(*Jednostka.objects.get_default_ordering())
 
 
-class KierunekStudiowAutocomplete(autocomplete.Select2QuerySetView):
+class KierunekStudiowAutocomplete(
+    SanitizedAutocompleteMixin, autocomplete.Select2QuerySetView
+):
     qset = Kierunek_Studiow.objects.all().select_related("wydzial")
 
     def get_queryset(self):
@@ -137,7 +146,7 @@ class KierunekStudiowAutocomplete(autocomplete.Select2QuerySetView):
         return qs.order_by("nazwa")
 
 
-class LataAutocomplete(autocomplete.Select2QuerySetView):
+class LataAutocomplete(SanitizedAutocompleteMixin, autocomplete.Select2QuerySetView):
     qset = (
         Rekord.objects.all().values_list("rok", flat=True).distinct().order_by("-rok")
     )
@@ -188,7 +197,10 @@ class NazwaLubSkrotMixin:
 
 
 class KonferencjaAutocomplete(
-    NazwaMixin, LoginRequiredMixin, autocomplete.Select2QuerySetView
+    SanitizedAutocompleteMixin,
+    NazwaMixin,
+    LoginRequiredMixin,
+    autocomplete.Select2QuerySetView,
 ):
     create_field = "nazwa"
     qset = Konferencja.objects.all()
@@ -201,7 +213,10 @@ class KonferencjaAutocomplete(
 
 
 class WydawcaAutocomplete(
-    NazwaTrigramMixin, LoginRequiredMixin, autocomplete.Select2QuerySetView
+    SanitizedAutocompleteMixin,
+    NazwaTrigramMixin,
+    LoginRequiredMixin,
+    autocomplete.Select2QuerySetView,
 ):
     create_field = "nazwa"
     qset = Wydawca.objects.all()
@@ -211,7 +226,10 @@ class WydawcaAutocomplete(
 
 
 class PublisherAutocomplete(
-    NazwaTrigramMixin, LoginRequiredMixin, autocomplete.Select2QuerySetView
+    SanitizedAutocompleteMixin,
+    NazwaTrigramMixin,
+    LoginRequiredMixin,
+    autocomplete.Select2QuerySetView,
 ):
     def get_queryset(self):
         qset = Publisher.objects.all()
@@ -234,26 +252,37 @@ class PublisherAutocomplete(
         return str(result)
 
 
-class PublicKonferencjaAutocomplete(NazwaMixin, autocomplete.Select2QuerySetView):
+class PublicKonferencjaAutocomplete(
+    SanitizedAutocompleteMixin, NazwaMixin, autocomplete.Select2QuerySetView
+):
     qset = Konferencja.objects.all()
 
 
 class Seria_WydawniczaAutocomplete(
-    NazwaMixin, LoginRequiredMixin, autocomplete.Select2QuerySetView
+    SanitizedAutocompleteMixin,
+    NazwaMixin,
+    LoginRequiredMixin,
+    autocomplete.Select2QuerySetView,
 ):
     create_field = "nazwa"
     qset = Seria_Wydawnicza.objects.all()
 
 
-class WydzialAutocomplete(NazwaLubSkrotMixin, autocomplete.Select2QuerySetView):
+class WydzialAutocomplete(
+    SanitizedAutocompleteMixin, NazwaLubSkrotMixin, autocomplete.Select2QuerySetView
+):
     qset = Wydzial.objects.all()
 
 
-class PublicWydzialAutocomplete(NazwaLubSkrotMixin, autocomplete.Select2QuerySetView):
+class PublicWydzialAutocomplete(
+    SanitizedAutocompleteMixin, NazwaLubSkrotMixin, autocomplete.Select2QuerySetView
+):
     qset = Wydzial.objects.filter(widoczny=True)
 
 
-class OrganPrzyznajacyNagrodyAutocomplete(NazwaMixin, autocomplete.Select2QuerySetView):
+class OrganPrzyznajacyNagrodyAutocomplete(
+    SanitizedAutocompleteMixin, NazwaMixin, autocomplete.Select2QuerySetView
+):
     qset = OrganPrzyznajacyNagrody.objects.all()
 
 
@@ -275,7 +304,9 @@ def autocomplete_create_error(msg):
     return Error()
 
 
-class PublicZrodloAutocomplete(autocomplete.Select2QuerySetView):
+class PublicZrodloAutocomplete(
+    SanitizedAutocompleteMixin, autocomplete.Select2QuerySetView
+):
     def get_queryset(self):
         qs = Zrodlo.objects.all()
         if self.q:
@@ -360,14 +391,18 @@ class ZrodloAutocomplete(GroupRequiredMixin, PublicZrodloAutocomplete):
         return self.get_queryset().create(nazwa=text.strip(), rodzaj=rz)
 
 
-class AutorAutocompleteBase(autocomplete.Select2QuerySetView):
+class AutorAutocompleteBase(
+    SanitizedAutocompleteMixin, autocomplete.Select2QuerySetView
+):
     def get_queryset(self):
         if self.q:
             return Autor.objects.fulltext_filter(self.q).select_related("tytul")
         return Autor.objects.all()
 
 
-class PublicStatusKorektyAutocomplete(autocomplete.Select2QuerySetView):
+class PublicStatusKorektyAutocomplete(
+    SanitizedAutocompleteMixin, autocomplete.Select2QuerySetView
+):
     def get_queryset(self):
         if self.q:
             return Status_Korekty.objects.filter(nazwa__icontains=self.q)
@@ -475,7 +510,9 @@ def globalne_wyszukiwanie_zrodla(querysets, s):
         querysets.append(_fun(Zrodlo.objects.filter(pbn_uid_id=s)))
 
 
-class GlobalNavigationAutocomplete(Select2QuerySetSequenceView):
+class GlobalNavigationAutocomplete(
+    SanitizedAutocompleteMixin, Select2QuerySetSequenceView
+):
     paginate_by = 40
 
     def get_result_label(self, result):
@@ -566,7 +603,7 @@ class GlobalNavigationAutocomplete(Select2QuerySetSequenceView):
 
         if this_is_an_id:
             querysets.append(
-                Rekord.objects.extra(where=["id[2]=%s" % this_is_an_id]).only(
+                Rekord.objects.extra(where=[f"id[2]={this_is_an_id}"]).only(
                     "tytul_oryginalny"
                 )
             )
@@ -618,7 +655,9 @@ class DjangoModel:
         return self.verbose_name
 
 
-class AdminNavigationAutocomplete(StaffRequired, Select2QuerySetSequenceView):
+class AdminNavigationAutocomplete(
+    SanitizedAutocompleteMixin, StaffRequired, Select2QuerySetSequenceView
+):
     paginate_by = 60
 
     def __init__(self, *args, **kwargs):
@@ -627,7 +666,7 @@ class AdminNavigationAutocomplete(StaffRequired, Select2QuerySetSequenceView):
 
     def get_result_value(self, result):
         """Get the value to use for the result's ID"""
-        if isinstance(result, (DjangoApp, DjangoModel)):
+        if isinstance(result, DjangoApp | DjangoModel):
             return result.pk
         return super().get_result_value(result)
 
@@ -700,6 +739,62 @@ class AdminNavigationAutocomplete(StaffRequired, Select2QuerySetSequenceView):
 
         return results
 
+    def _check_model_permissions(self, user, app_label, model_name):
+        """Check permissions for a model and return permission dict"""
+        return {
+            "view": user.has_perm(f"{app_label}.view_{model_name}"),
+            "add": user.has_perm(f"{app_label}.add_{model_name}"),
+            "change": user.has_perm(f"{app_label}.change_{model_name}"),
+            "delete": user.has_perm(f"{app_label}.delete_{model_name}"),
+        }
+
+    def _model_matches_query(self, model):
+        """Check if model matches the search query"""
+        model_verbose_name = model._meta.verbose_name_plural
+        model_verbose_name_singular = model._meta.verbose_name
+        q_lower = self.q.lower()
+        return (
+            q_lower in model_verbose_name.lower()
+            or q_lower in model._meta.model_name.lower()
+            or q_lower in model_verbose_name_singular.lower()
+        )
+
+    def _add_model_entries(self, results, model, perms, changelist_url, add_url):
+        """Add model entries to results if they match the search query"""
+        from django.utils.text import capfirst
+
+        if not self._model_matches_query(model):
+            return
+
+        app_label = model._meta.app_label
+        model_verbose_name = model._meta.verbose_name_plural
+        model_verbose_name_singular = model._meta.verbose_name
+
+        # Add entry for model list (changelist)
+        django_model = DjangoModel(
+            app_label=app_label,
+            model_name=model._meta.model_name,
+            verbose_name=capfirst(model_verbose_name),
+            changelist_url=changelist_url,
+            add_url=add_url,
+            can_add=perms["add"],
+            is_add_action=False,
+        )
+        results.append(django_model)
+
+        # Add separate entry for adding new instance if user has permission
+        if perms["add"]:
+            django_model_add = DjangoModel(
+                app_label=app_label,
+                model_name=model._meta.model_name,
+                verbose_name=capfirst(model_verbose_name_singular),
+                changelist_url=changelist_url,
+                add_url=add_url,
+                can_add=True,
+                is_add_action=True,
+            )
+            results.append(django_model_add)
+
     def get_django_apps_and_models(self):
         """Get Django apps and models accessible to the current user"""
         from django.apps import apps
@@ -713,28 +808,20 @@ class AdminNavigationAutocomplete(StaffRequired, Select2QuerySetSequenceView):
             return results
 
         user = self.request.user
-
-        # Get the admin site
         admin_site = admin.site
-
-        # Build app list similar to admin index
         app_dict = {}
 
         for model, _model_admin in admin_site._registry.items():
             app_label = model._meta.app_label
 
             # Check if user has any permission for this model
-            has_module_perms = user.has_module_perms(app_label)
-            if not has_module_perms:
+            if not user.has_module_perms(app_label):
                 continue
 
             # Check specific permissions
-            perms = {
-                "view": user.has_perm(f"{app_label}.view_{model._meta.model_name}"),
-                "add": user.has_perm(f"{app_label}.add_{model._meta.model_name}"),
-                "change": user.has_perm(f"{app_label}.change_{model._meta.model_name}"),
-                "delete": user.has_perm(f"{app_label}.delete_{model._meta.model_name}"),
-            }
+            perms = self._check_model_permissions(
+                user, app_label, model._meta.model_name
+            )
 
             # Skip if no view permission
             if not perms["view"] and not perms["change"]:
@@ -748,38 +835,8 @@ class AdminNavigationAutocomplete(StaffRequired, Select2QuerySetSequenceView):
             if perms["add"]:
                 add_url = reverse(f"admin:{app_label}_{model._meta.model_name}_add")
 
-            # Add model to results if it matches the search query
-            model_verbose_name = model._meta.verbose_name_plural
-            model_verbose_name_singular = model._meta.verbose_name
-            if (
-                self.q.lower() in model_verbose_name.lower()
-                or self.q.lower() in model._meta.model_name.lower()
-                or (self.q.lower() in model_verbose_name_singular.lower())
-            ):
-                # Add entry for model list (changelist)
-                django_model = DjangoModel(
-                    app_label=app_label,
-                    model_name=model._meta.model_name,
-                    verbose_name=capfirst(model_verbose_name),
-                    changelist_url=changelist_url,
-                    add_url=add_url,
-                    can_add=perms["add"],
-                    is_add_action=False,
-                )
-                results.append(django_model)
-
-                # Add separate entry for adding new instance if user has permission
-                if perms["add"]:
-                    django_model_add = DjangoModel(
-                        app_label=app_label,
-                        model_name=model._meta.model_name,
-                        verbose_name=capfirst(model_verbose_name_singular),
-                        changelist_url=changelist_url,
-                        add_url=add_url,
-                        can_add=True,
-                        is_add_action=True,
-                    )
-                    results.append(django_model_add)
+            # Add model entries to results if they match the search query
+            self._add_model_entries(results, model, perms, changelist_url, add_url)
 
             # Build app dict for app-level search
             if app_label not in app_dict:
@@ -808,19 +865,68 @@ class AdminNavigationAutocomplete(StaffRequired, Select2QuerySetSequenceView):
 
         return results
 
-    def get_queryset(self):
-        if not self.q:
-            return []
+    def _build_publication_filter(self, klass):
+        """Build filter for publication models"""
+        query_filter = Q(tytul_oryginalny__icontains=self.q)
 
-        if len(self.q) < 1:
+        # Try to add primary key filter if q is an integer
+        try:
+            int(self.q)
+            query_filter |= Q(pk=self.q)
+        except (TypeError, ValueError):
+            pass
+
+        # Add DOI filter for non-Patent models
+        if klass != Patent:
+            query_filter |= Q(doi__iexact=self.q)
+
+        # Add PBN UID filter if applicable
+        if len(self.q) == 24 and self.q.find(" ") == -1:
+            if "pbn_uid" in [fld.name for fld in klass._meta.fields]:
+                query_filter |= Q(pbn_uid__pk=self.q)
+
+        return query_filter
+
+    def _add_publication_querysets(self, querysets):
+        """Add querysets for publication models"""
+        for klass in [
+            Wydawnictwo_Zwarte,
+            Wydawnictwo_Ciagle,
+            Patent,
+            Praca_Doktorska,
+            Praca_Habilitacyjna,
+        ]:
+            query_filter = self._build_publication_filter(klass)
+
+            # Handle ISBN normalization if applicable
+            annotate_isbn = False
+            if hasattr(klass, "isbn"):
+                ni = normalize_isbn(self.q)
+                if len(ni) < 20:
+                    query_filter |= Q(normalized_isbn=ni)
+                    annotate_isbn = True
+
+            if annotate_isbn:
+                qset = klass.objects.annotate(
+                    normalized_isbn=normalized_db_isbn
+                ).filter(query_filter)
+            else:
+                qset = klass.objects.filter(query_filter)
+
+            querysets.append(qset.only("tytul_oryginalny"))
+
+    def get_queryset(self):
+        if not self.q or len(self.q) < 1:
             return []
 
         querysets = []
 
+        # Add user queryset
         querysets.append(
             BppUser.objects.filter(username__icontains=self.q).only("pk", "username")
         )
 
+        # Add organizational units and other querysets
         globalne_wyszukiwanie_jednostki(querysets, self.q)
 
         querysets.append(
@@ -830,46 +936,10 @@ class AdminNavigationAutocomplete(StaffRequired, Select2QuerySetSequenceView):
         )
 
         globalne_wyszukiwanie_autora(querysets, self.q)
-
         globalne_wyszukiwanie_zrodla(querysets, self.q)
 
-        for klass in [
-            Wydawnictwo_Zwarte,
-            Wydawnictwo_Ciagle,
-            Patent,
-            Praca_Doktorska,
-            Praca_Habilitacyjna,
-        ]:
-            filter = Q(tytul_oryginalny__icontains=self.q)
-
-            try:
-                int(self.q)
-                filter |= Q(pk=self.q)
-            except (TypeError, ValueError):
-                pass
-
-            if klass != Patent:
-                filter |= Q(doi__iexact=self.q)
-
-            if len(self.q) == 24 and self.q.find(" ") == -1:
-                if "pbn_uid" in [fld.name for fld in klass._meta.fields]:
-                    filter |= Q(pbn_uid__pk=self.q)
-
-            annotate_isbn = False
-            if hasattr(klass, "isbn"):
-                ni = normalize_isbn(self.q)
-                if len(ni) < 20:
-                    filter |= Q(normalized_isbn=ni)
-                    annotate_isbn = True
-
-            if annotate_isbn:
-                qset = klass.objects.annotate(
-                    normalized_isbn=normalized_db_isbn
-                ).filter(filter)
-            else:
-                qset = klass.objects.filter(filter)
-
-            querysets.append(qset.only("tytul_oryginalny"))
+        # Add publication querysets
+        self._add_publication_querysets(querysets)
 
         # Store Django apps and models separately (don't add to QuerySetSequence)
         self.django_items = self.get_django_apps_and_models()
@@ -878,7 +948,9 @@ class AdminNavigationAutocomplete(StaffRequired, Select2QuerySetSequenceView):
         return self.mixup_querysets(ret)
 
 
-class ZapisanyJakoAutocomplete(autocomplete.Select2ListView):
+class ZapisanyJakoAutocomplete(
+    SanitizedAutocompleteMixin, autocomplete.Select2ListView
+):
     def get(self, request, *args, **kwargs):
         # Celem spatchowania tej funkcji jest zmiana tekstu 'Create "%s"'
         # na po prostu '%s'. Poza tym jest to kalka z autocomplete.Select2ListView
@@ -950,7 +1022,9 @@ class ZapisanyJakoAutocomplete(autocomplete.Select2ListView):
         )
 
 
-class PodrzednaPublikacjaHabilitacyjnaAutocomplete(Select2QuerySetSequenceView):
+class PodrzednaPublikacjaHabilitacyjnaAutocomplete(
+    SanitizedAutocompleteMixin, Select2QuerySetSequenceView
+):
     def get_queryset(self):
         wydawnictwa_zwarte = Wydawnictwo_Zwarte.objects.all()
         wydawnictwa_ciagle = Wydawnictwo_Ciagle.objects.all()
@@ -988,7 +1062,9 @@ class PodrzednaPublikacjaHabilitacyjnaAutocomplete(Select2QuerySetSequenceView):
         return qs
 
 
-class Dyscyplina_NaukowaAutocomplete(autocomplete.Select2QuerySetView):
+class Dyscyplina_NaukowaAutocomplete(
+    SanitizedAutocompleteMixin, autocomplete.Select2QuerySetView
+):
     def get_queryset(self):
         qs = Dyscyplina_Naukowa.objects.filter(widoczna=True)
         if self.q:
@@ -996,7 +1072,9 @@ class Dyscyplina_NaukowaAutocomplete(autocomplete.Select2QuerySetView):
         return qs
 
 
-class Zewnetrzna_Baza_DanychAutocomplete(autocomplete.Select2QuerySetView):
+class Zewnetrzna_Baza_DanychAutocomplete(
+    SanitizedAutocompleteMixin, autocomplete.Select2QuerySetView
+):
     def get_queryset(self):
         qs = Zewnetrzna_Baza_Danych.objects.all()
         if self.q:
@@ -1004,7 +1082,9 @@ class Zewnetrzna_Baza_DanychAutocomplete(autocomplete.Select2QuerySetView):
         return qs
 
 
-class Dyscyplina_Naukowa_PrzypisanieAutocomplete(autocomplete.Select2ListView):
+class Dyscyplina_Naukowa_PrzypisanieAutocomplete(
+    SanitizedAutocompleteMixin, autocomplete.Select2ListView
+):
     def results(self, results):
         """Return data for the 'results' key of the response."""
         return [{"id": _id, "text": value} for _id, value in results]
@@ -1012,44 +1092,62 @@ class Dyscyplina_Naukowa_PrzypisanieAutocomplete(autocomplete.Select2ListView):
     def autocomplete_results(self, results):
         return [(x, y) for x, y in results if self.q.lower() in y.lower()]
 
-    def get_list(self):
-        autor = self.forwarded.get("autor", None)
-        if autor is None:
-            return [(None, "Podaj autora")]
-
-        if not isinstance(autor, str):
-            return [(None, "Podaj autora")]
-
-        if not autor.strip():
-            return [(None, "Podaj autora")]
+    def _validate_autor(self, autor):
+        """Validate and convert autor parameter"""
+        if autor is None or not isinstance(autor, str) or not autor.strip():
+            return None, "Podaj autora"
 
         try:
-            autor = int(autor)
+            return int(autor), None
         except (TypeError, ValueError):
-            return [(None, "Nieprawidłowe ID autora")]
+            return None, "Nieprawidłowe ID autora"
 
-        rok = self.forwarded.get("rok", None)
+    def _validate_rok(self, rok):
+        """Validate and convert rok parameter"""
         if rok is None:
-            return [(None, "Podaj rok")]
-        try:
-            rok = int(rok)
-        except (TypeError, ValueError):
-            return [(None, "Nieprawidłowy rok")]
-        if rok < 0 or rok > 9999:
-            return [(None, "Nieprawidłowy rok")]
+            return None, "Podaj rok"
 
+        try:
+            rok_int = int(rok)
+        except (TypeError, ValueError):
+            return None, "Nieprawidłowy rok"
+
+        if rok_int < 0 or rok_int > 9999:
+            return None, "Nieprawidłowy rok"
+
+        return rok_int, None
+
+    def _get_disciplines_for_autor(self, autor, rok):
+        """Get disciplines for the given autor and rok"""
         try:
             ad = Autor_Dyscyplina.objects.get(rok=rok, autor=autor)
         except Autor_Dyscyplina.DoesNotExist:
-            return [(None, "Brak przypisania dla roku %s" % rok)]
+            return None, f"Brak przypisania dla roku {rok}"
 
         res = set()
         for elem in ["dyscyplina_naukowa", "subdyscyplina_naukowa"]:
-            id = getattr(ad, "%s_id" % elem)
-            if id is not None:
-                res.add((id, getattr(ad, elem).nazwa))
+            disc_id = getattr(ad, f"{elem}_id")
+            if disc_id is not None:
+                res.add((disc_id, getattr(ad, elem).nazwa))
 
         res = list(res)
         res.sort(key=lambda obj: obj[1])
+        return res, None
 
-        return res
+    def get_list(self):
+        # Validate autor
+        autor, error = self._validate_autor(self.forwarded.get("autor", None))
+        if error:
+            return [(None, error)]
+
+        # Validate rok
+        rok, error = self._validate_rok(self.forwarded.get("rok", None))
+        if error:
+            return [(None, error)]
+
+        # Get disciplines
+        disciplines, error = self._get_disciplines_for_autor(autor, rok)
+        if error:
+            return [(None, error)]
+
+        return disciplines

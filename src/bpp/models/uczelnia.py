@@ -82,6 +82,12 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         "Ikona ulubionych (favicon)", upload_to="favicon", blank=True, null=True
     )
 
+    tytul_strony_glownej = models.TextField(
+        "Tytuł strony głównej",
+        default="Bibliografia Publikacji Pracowników",
+        help_text="HTML z tytułem strony głównej. Możesz użyć tagów HTML do formatowania.",
+    )
+
     pbn_uid = models.ForeignKey(
         "pbn_api.Institution",
         verbose_name="Odpowiednik w PBN",
@@ -253,11 +259,11 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
     )
 
     clarivate_username = models.CharField(
-        verbose_name="Nazwa użytkownika", null=True, blank=True, max_length=50
+        verbose_name="Nazwa użytkownika", blank=True, default="", max_length=50
     )
 
     clarivate_password = models.CharField(
-        verbose_name="Hasło", null=True, blank=True, max_length=50
+        verbose_name="Hasło", blank=True, default="", max_length=50
     )
 
     DO_ROKU = Choices(
@@ -301,10 +307,10 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         "Adres API w PBN", default="https://pbn-micro-alpha.opi.org.pl"
     )
     pbn_app_name = models.CharField(
-        "Nazwa aplikacji w PBN", blank=True, null=True, max_length=128
+        "Nazwa aplikacji w PBN", blank=True, default="", max_length=128
     )
     pbn_app_token = models.CharField(
-        "Token aplikacji w PBN", blank=True, null=True, max_length=128
+        "Token aplikacji w PBN", blank=True, default="", max_length=128
     )
     pbn_api_kasuj_przed_wysylka = models.BooleanField(
         "Kasuj oświadczenia rekordu przed wysłaniem do PBN", default=False
@@ -386,7 +392,7 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         blank=True,
         null=True,
     )
-    deklaracja_dostepnosci_url = URLField(blank=True, null=True)
+    deklaracja_dostepnosci_url = URLField(blank=True, default="")
 
     drukuj_oswiadczenia = models.BooleanField(
         verbose_name="Drukuj oświadczenia dla autorów",
@@ -521,34 +527,30 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
             "status_korekty", flat=True
         )
 
+    def _sprawdz_uprawnienie_zalogowany(self, request, ignoruj_grupe):
+        """Helper method to check permissions for logged-in users."""
+        if request.user.is_anonymous:
+            return False
+
+        if request.user.is_superuser:
+            return True
+
+        if str(ignoruj_grupe) != "ignoruj_grupe":
+            return request.user.groups.filter(name=GR_RAPORTY_WYSWIETLANIE).exists()
+
+        return True
+
     def sprawdz_uprawnienie(self, attr, request, ignoruj_grupe=None):
         res = getattr(self, f"pokazuj_{attr}")
+
         if res == OpcjaWyswietlaniaField.POKAZUJ_ZAWSZE:
             return True
 
         if res == OpcjaWyswietlaniaField.POKAZUJ_ZALOGOWANYM:
-            if request.user.is_anonymous:
-                return False
-
-            if request.user.is_superuser:
-                return True
-
-            if str(ignoruj_grupe) != "ignoruj_grupe":
-                if request.user.groups.filter(name=GR_RAPORTY_WYSWIETLANIE).exists():
-                    # Pokazuj zalogowanym ale wyłącznie gdy są w grupei GR_RAPORTY_WYSWIETLANIE
-                    # chyba, ze jest podany parametr ignoruj_grupe
-                    return True
-                else:
-                    return False
-
-            return True
+            return self._sprawdz_uprawnienie_zalogowany(request, ignoruj_grupe)
 
         if res == OpcjaWyswietlaniaField.POKAZUJ_GDY_W_ZESPOLE:
-            if request.user.is_anonymous:
-                return False
-            if not request.user.is_staff:
-                return False
-            return True
+            return not request.user.is_anonymous and request.user.is_staff
 
         if res == OpcjaWyswietlaniaField.POKAZUJ_NIGDY:
             return False
@@ -600,6 +602,11 @@ class Ukryj_Status_Korekty(models.Model):
         help_text="Dotyczy ukrywania prac w API JSON-REST oraz OAI-PMH",
     )
 
+    class Meta:
+        unique_together = [("uczelnia", "status_korekty")]
+        verbose_name = "ustawienie ukrywania statusu korekty"
+        verbose_name_plural = "ustawienia ukrywania statusów korekt"
+
     def __str__(self):
         res = (
             f'ukryj "{self.status_korekty}" dla '
@@ -612,8 +619,3 @@ class Ukryj_Status_Korekty(models.Model):
         if res.endswith(", "):
             res = res[:-2] + ". "
         return res
-
-    class Meta:
-        unique_together = [("uczelnia", "status_korekty")]
-        verbose_name = "ustawienie ukrywania statusu korekty"
-        verbose_name_plural = "ustawienia ukrywania statusów korekt"

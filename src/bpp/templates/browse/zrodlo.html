@@ -54,7 +54,7 @@
     <!-- Main Content Layout -->
     <div class="grid-x grid-margin-x">
         <!-- Left Column - Search Form -->
-        <div class="cell {% if zrodlo.pbn_uid_id or zrodlo.dyscypliny_aktualna_ewaluacja.exists %}large-8{% else %}large-12{% endif %} medium-12">
+        <div class="cell {% if zrodlo.pbn_uid_id or zrodlo.issn or zrodlo.e_issn or zrodlo.dyscypliny_aktualna_ewaluacja.exists %}large-8{% else %}large-12{% endif %} medium-12">
             <!-- Modern Search Form -->
             <div class="search-container">
         <div class="search-header">
@@ -119,15 +119,16 @@
         </div>
 
         <!-- Right Column - PBN Info and Disciplines -->
-        {% if zrodlo.pbn_uid_id or zrodlo.dyscypliny_aktualna_ewaluacja.exists %}
+        {% if zrodlo.pbn_uid_id or zrodlo.issn or zrodlo.e_issn or zrodlo.dyscypliny_aktualna_ewaluacja.exists %}
         <div class="cell large-4 medium-12 source-sidebar">
-            <!-- PBN Information Panel -->
-            {% if zrodlo.pbn_uid_id %}
+            <!-- External Identifiers Panel -->
+            {% if zrodlo.pbn_uid_id or zrodlo.issn or zrodlo.e_issn %}
                 <div class="callout external-ids-panel">
                     <h6>
                         <i class="fi-link"></i>Identyfikatory zewnętrzne
                     </h6>
                     <div class="grid-x grid-margin-x">
+                        {% if zrodlo.pbn_uid_id %}
                         <div class="cell">
                             <div class="callout id-badge">
                                 <div class="id-label">PBN UID</div>
@@ -143,6 +144,23 @@
                                 {% endif %}
                             </div>
                         </div>
+                        {% endif %}
+                        {% if zrodlo.issn %}
+                        <div class="cell">
+                            <div class="callout id-badge">
+                                <div class="id-label">ISSN</div>
+                                <div>{{ zrodlo.issn }}</div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if zrodlo.e_issn %}
+                        <div class="cell">
+                            <div class="callout id-badge">
+                                <div class="id-label">e-ISSN</div>
+                                <div>{{ zrodlo.e_issn }}</div>
+                            </div>
+                        </div>
+                        {% endif %}
                     </div>
                 </div>
             {% endif %}

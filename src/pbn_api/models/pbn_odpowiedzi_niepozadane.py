@@ -49,7 +49,8 @@ class PBNOdpowiedziNiepozadane(models.Model):
         "Użytkownik",
         max_length=150,
         blank=True,
-        default="",
+        null=True,
+        default=None,
         help_text="Login użytkownika który wykonał operację",
     )
 

@@ -94,7 +94,7 @@ if psql -lqt | cut -d \| -f 1 | grep -qw "$TARGET_DB"; then
     psql -d postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '${TARGET_DB}' AND pid <> pg_backend_pid();" > /dev/null
 
     # Rename existing bpp database
-    psql -d postgres -c "ALTER DATABASE ${TARGET_DB} RENAME TO ${BACKUP_DB};"
+    psql -d postgres -c "ALTER DATABASE \"${TARGET_DB}\" RENAME TO \"${BACKUP_DB}\";"
     echo -e "${GREEN}Existing database saved as: ${BACKUP_DB}${NC}"
     echo ""
 fi
@@ -105,7 +105,7 @@ psql -d postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHER
 
 # Rename the source database to bpp
 echo "Restoring database..."
-psql -d postgres -c "ALTER DATABASE ${SOURCE_DB} RENAME TO ${TARGET_DB};"
+psql -d postgres -c "ALTER DATABASE \"${SOURCE_DB}\" RENAME TO \"${TARGET_DB}\";"
 
 if [ $? -eq 0 ]; then
     echo -e "${GREEN}Success!${NC} Database restored: ${SOURCE_DB} -> ${TARGET_DB}"
