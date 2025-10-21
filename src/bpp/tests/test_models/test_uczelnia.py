@@ -28,11 +28,8 @@ def test_Uczelnia_pbn_client():
         Uczelnia,
         nazwa="Testowa uczelnia",
         skrot="TU",
-        pbn_app_name=None,
-        pbn_app_token=None,
     )
 
-    uczelnia.pbn_app_name = None
     uczelnia.save()
 
     uczelnia.refresh_from_db()
@@ -48,7 +45,7 @@ def test_Uczelnia_pbn_client():
     uczelnia.pbn_app_name = "foo"
     uczelnia.save()
 
-    uczelnia.pbn_app_token = None
+    uczelnia.pbn_app_token = ""
     uczelnia.save()
 
     try:
