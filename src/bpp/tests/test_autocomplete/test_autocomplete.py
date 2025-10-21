@@ -466,13 +466,15 @@ def test_autocomplete_truncation_unit_test():
         method = "GET"
         GET = {"q": "A" * 200, "forward": "{}"}
 
+    ac.setup(request=MockRequest())
+
     # Test that dispatch truncates the query
     ac.dispatch(MockRequest())
 
     assert hasattr(ac, "q")
-    assert len(ac.q) == 120, (
-        f"Query should be truncated to 120 characters, got {len(ac.q)}"
-    )
+    assert (
+        len(ac.q) == 120
+    ), f"Query should be truncated to 120 characters, got {len(ac.q)}"
     assert ac.q == "A" * 120
 
 
@@ -486,6 +488,8 @@ def test_autocomplete_normal_queries_unchanged():
     class MockRequest:
         method = "GET"
         GET = {"q": "Jan Kowalski", "forward": "{}"}
+
+    ac.setup(request=MockRequest())
 
     ac.dispatch(MockRequest())
 
