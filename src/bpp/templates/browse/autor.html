@@ -81,9 +81,8 @@
         {% endif %}
 
         <!-- External identifiers -->
-        {% if autor.orcid or autor.pbn_uid_id or autor.pbn_id or autor.system_kadrowy_id %}
-            <div class="author-info-section">
-                <h3><i class="fi-link"></i> Identyfikatory</h3>
+        <div class="author-info-section">
+            <h3><i class="fi-link"></i> Identyfikatory</h3>
                 <div class="grid-x grid-margin-x" style="gap: 10px;">
                     {% if autor.orcid %}
                         <div class="cell shrink">
@@ -129,7 +128,6 @@
                     </div>
                 </div>
             </div>
-        {% endif %}
 
         <!-- Evaluation metrics -->
         {% if autor.metryki.exists %}
