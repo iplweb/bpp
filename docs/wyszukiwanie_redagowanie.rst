@@ -187,6 +187,47 @@ Po wejściu w Redagowanie -> Wydawnictwa ciągłe/zwarte,
 
   pbn_uid != None and opl_pub_cost_free != None and rok >= 2020 and rok <= 2021
 
+Autorzy z kół naukowych (SKN) z ukrytymi profilami
+"""""""""""""""""""""""""""""""""""""""""""""""""""
+
+Wyszukiwanie autorów z ukrytymi profilami, którzy mają w swoich publikacjach jednostkę zawierającą "SKN"
+w nazwie. Przydatne do znalezienia studentów z kół naukowych, którzy mają ukryte profile.
+
+Po wejściu w Redagowanie -> Autorzy, można użyć następujących zapytań:
+
+Wyszukiwanie po ciągu znaków "SKN" w nazwie jednostki:
+
+.. code-block:: python
+
+  autorzy.autor_jednostka.jednostka.nazwa ~ "SKN" and autorzy.pokazuj = False
+
+.. note :: Operator ``~`` oznacza, że w nazwie jednostki ma być ciąg znaków "SKN"
+
+Wyszukiwanie po rodzaju jednostki - koło naukowe (dowolna jednostka wśród jednostek autora):
+
+.. code-block:: python
+
+  autorzy.autor_jednostka.jednostka.rodzaj_jednostki = "kolo_naukowe" and autorzy.pokazuj = False
+
+Wyszukiwanie po aktualnej jednostce autora:
+
+.. code-block:: python
+
+  autorzy.aktualna_jednostka.rodzaj_jednostki = "kolo_naukowe" and autorzy.pokazuj = False
+
+.. note :: Ostatnie zapytanie może nie dać rezultatów, jeżeli autorzy z kół naukowych nie mają obecnie
+  przypisanej aktualnej jednostki jako koło naukowe.
+
+Przykład zapytania w kontekście publikacji - znajdowanie publikacji ciągłych z autorami z kół naukowych
+z ukrytymi profilami. Po wejściu w Redagowanie -> Wydawnictwa ciągłe:
+
+.. code-block:: python
+
+  autorzy.autor_jednostka.jednostka.nazwa ~ "SKN" and autorzy.pokazuj = False
+
+.. note :: W przypadku wydawnictw ciągłych to zapytanie może znaleźć nawet 1618 prac. Dodatkowo można
+  filtrować wyniki przy pomocy filtrów z boku ekranu.
+
 Operatory logiczne a ich kolejność
 """"""""""""""""""""""""""""""""""
 

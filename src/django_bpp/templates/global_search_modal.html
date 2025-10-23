@@ -230,6 +230,71 @@
         color: #999;
     }
 
+    .global-search-help {
+        padding: 20px;
+        color: #555;
+        line-height: 1.8;
+    }
+
+    .global-search-help h3 {
+        color: #2c3e50;
+        font-size: 1.1rem;
+        margin-bottom: 15px;
+        font-weight: 600;
+    }
+
+    .global-search-help ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .global-search-help li {
+        padding: 10px 0;
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+    .global-search-help li:last-child {
+        border-bottom: none;
+    }
+
+    .global-search-help .help-icon {
+        display: inline-block;
+        width: 24px;
+        height: 24px;
+        line-height: 24px;
+        text-align: center;
+        background: #007bff;
+        color: white;
+        border-radius: 50%;
+        margin-right: 10px;
+        font-size: 0.9rem;
+        font-weight: bold;
+        vertical-align: middle;
+    }
+
+    .global-search-help strong {
+        color: #2c3e50;
+        font-weight: 600;
+    }
+
+    .global-search-help code {
+        background: #f5f5f5;
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-family: monospace;
+        color: #d63384;
+        font-size: 0.9em;
+    }
+
+    .global-search-help .example {
+        color: #666;
+        font-style: italic;
+        display: block;
+        margin-top: 5px;
+        padding-left: 34px;
+    }
+
     .search-hint {
         position: absolute;
         top: 15px;
@@ -337,7 +402,38 @@
                class="global-search-input"
                placeholder="Wpisz, aby wyszukać... (minimum 3 znaki)"
                autocomplete="off">
-        <div id="globalSearchResults" class="global-search-results"></div>
+        <div id="globalSearchResults" class="global-search-results">
+            <div id="globalSearchHelp" class="global-search-help">
+                <h3>Jak wyszukiwać?</h3>
+                <ul>
+                    <li>
+                        <span class="help-icon">1</span>
+                        <strong>Wyszukiwanie od początku wyrazu:</strong>
+                        <span class="example">
+                            Wyraz <code>preane</code> znajdzie "preanestetyczny", ale <code>anestetyczny</code> nie znajdzie
+                            tego słowa (wyszukiwanie patrzy tylko na początek wyrazów)
+                        </span>
+                    </li>
+                    <li>
+                        <span class="help-icon">-</span>
+                        <strong>Wykluczanie słów (znak minus):</strong>
+                        <span class="example">
+                            Poprzedzenie wyrazu znakiem <code>-</code> znajdzie wszystkie tytuły NIE zawierające danego słowa,
+                            np. <code>-onkologia</code> znajdzie prace bez słowa "onkologia"
+                        </span>
+                    </li>
+                    <li>
+                        <span class="help-icon">"</span>
+                        <strong>Wyszukiwanie całych fraz (cudzysłów):</strong>
+                        <span class="example">
+                            Cudzysłów powoduje szukanie całych ciągów znaków w tej samej kolejności.
+                            Np. <code>"Uniwersytet Medyczny"</code> wyszuka tylko prace z dokładnie tą nazwą,
+                            podczas gdy wpisanie bez cudzysłowu może znaleźć "Medyczny Uniwersytet"
+                        </span>
+                    </li>
+                </ul>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -446,8 +542,38 @@
             // Show modal with animation
             modal.classList.add('show');
 
-            // Clear results immediately
-            document.getElementById('globalSearchResults').innerHTML = '';
+            // Show help text initially
+            var helpHtml = '<div id="globalSearchHelp" class="global-search-help">' +
+                '<h3>Jak wyszukiwać?</h3>' +
+                '<ul>' +
+                '<li>' +
+                '<span class="help-icon">1</span>' +
+                '<strong>Wyszukiwanie od początku wyrazu:</strong>' +
+                '<span class="example">' +
+                'Wyraz <code>preane</code> znajdzie "preanestetyczny", ale <code>anestetyczny</code> nie znajdzie ' +
+                'tego słowa (wyszukiwanie patrzy tylko na początek wyrazów)' +
+                '</span>' +
+                '</li>' +
+                '<li>' +
+                '<span class="help-icon">-</span>' +
+                '<strong>Wykluczanie słów (znak minus):</strong>' +
+                '<span class="example">' +
+                'Poprzedzenie wyrazu znakiem <code>-</code> znajdzie wszystkie tytuły NIE zawierające danego słowa, ' +
+                'np. <code>-onkologia</code> znajdzie prace bez słowa "onkologia"' +
+                '</span>' +
+                '</li>' +
+                '<li>' +
+                '<span class="help-icon">"</span>' +
+                '<strong>Wyszukiwanie całych fraz (cudzysłów):</strong>' +
+                '<span class="example">' +
+                'Cudzysłów powoduje szukanie całych ciągów znaków w tej samej kolejności. ' +
+                'Np. <code>"Uniwersytet Medyczny"</code> wyszuka tylko prace z dokładnie tą nazwą, ' +
+                'podczas gdy wpisanie bez cudzysłowu może znaleźć "Medyczny Uniwersytet"' +
+                '</span>' +
+                '</li>' +
+                '</ul>' +
+                '</div>';
+            document.getElementById('globalSearchResults').innerHTML = helpHtml;
             selectedIndex = -1;
             searchResults = [];
 
@@ -502,8 +628,44 @@
         // Perform search
         function performSearch(query) {
             if (query.length < 3) {
-                document.getElementById('globalSearchResults').innerHTML =
-                    '<div class="global-search-no-results">Wpisz minimum 3 znaki</div>';
+                // Show help text when query is empty or too short
+                var helpHtml = '<div id="globalSearchHelp" class="global-search-help">' +
+                    '<h3>Jak wyszukiwać?</h3>' +
+                    '<ul>' +
+                    '<li>' +
+                    '<span class="help-icon">1</span>' +
+                    '<strong>Wyszukiwanie od początku wyrazu:</strong>' +
+                    '<span class="example">' +
+                    'Wyraz <code>preane</code> znajdzie "preanestetyczny", ale <code>anestetyczny</code> nie znajdzie ' +
+                    'tego słowa (wyszukiwanie patrzy tylko na początek wyrazów)' +
+                    '</span>' +
+                    '</li>' +
+                    '<li>' +
+                    '<span class="help-icon">-</span>' +
+                    '<strong>Wykluczanie słów (znak minus):</strong>' +
+                    '<span class="example">' +
+                    'Poprzedzenie wyrazu znakiem <code>-</code> znajdzie wszystkie tytuły NIE zawierające danego słowa, ' +
+                    'np. <code>-onkologia</code> znajdzie prace bez słowa "onkologia"' +
+                    '</span>' +
+                    '</li>' +
+                    '<li>' +
+                    '<span class="help-icon">"</span>' +
+                    '<strong>Wyszukiwanie całych fraz (cudzysłów):</strong>' +
+                    '<span class="example">' +
+                    'Cudzysłów powoduje szukanie całych ciągów znaków w tej samej kolejności. ' +
+                    'Np. <code>"Uniwersytet Medyczny"</code> wyszuka tylko prace z dokładnie tą nazwą, ' +
+                    'podczas gdy wpisanie bez cudzysłowu może znaleźć "Medyczny Uniwersytet"' +
+                    '</span>' +
+                    '</li>' +
+                    '</ul>' +
+                    '</div>';
+
+                if (query.length === 0) {
+                    document.getElementById('globalSearchResults').innerHTML = helpHtml;
+                } else {
+                    document.getElementById('globalSearchResults').innerHTML =
+                        '<div class="global-search-no-results">Wpisz minimum 3 znaki</div>';
+                }
                 lastSearchTerm = '';
                 return;
             }
