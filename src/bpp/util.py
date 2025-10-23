@@ -87,6 +87,9 @@ class FulltextSearchMixin:
         if isinstance(qstr, bytes):
             qstr = qstr.decode("utf-8")
 
+        # Remove " - " (space-dash-space) from the query string
+        qstr = qstr.replace(" - ", " ")
+
         words = fulltext_tokenize(qstr)
         if not words:
             return self.fulltext_empty()
