@@ -1,6 +1,6 @@
 BRANCH=`git branch | sed -n '/\* /s///p'`
 
-.PHONY: clean distclean tests release tests-without-selenium tests-with-selenium docker destroy-test-databases coveralls-upload clean-coverage combine-coverage cache-delete
+.PHONY: clean distclean tests release tests-without-selenium tests-with-selenium docker destroy-test-databases coveralls-upload clean-coverage combine-coverage cache-delete buildx-cache-stats buildx-cache-prune buildx-cache-prune-aggressive
 
 PYTHON=python3
 
@@ -262,12 +262,21 @@ run-webserver-without-appserver-for-testing: build-webserver
 build-beatserver: build-appserver-base
 	docker buildx ${DOCKER_BUILD} -t iplweb/bpp_beatserver:${DOCKER_VERSION} -t iplweb/bpp_beatserver:latest -f deploy/beatserver/Dockerfile deploy/beatserver/
 
-build-flower:
-	docker buildx ${DOCKER_BUILD} -t iplweb/flower:${DOCKER_VERSION} -t iplweb/flower:latest -f deploy/flower/Dockerfile deploy/flower/
+#build-flower:
+#	docker buildx ${DOCKER_BUILD} -t iplweb/flower:${DOCKER_VERSION} -t iplweb/flower:latest -f deploy/flower/Dockerfile deploy/flower/
 
-build-servers: build-appserver-base build-appserver build-workerserver build-beatserver build-flower
+build-servers: build-appserver-base build-appserver build-workerserver build-beatserver # build-flower
 
 docker: build-dbserver build-webserver build-servers
+
+buildx-cache-stats:
+	docker buildx du
+
+buildx-cache-prune:
+	docker buildx prune
+
+buildx-cache-prune-aggressive:
+	docker buildx prune --keep-storage 5GB
 
 compose-restart:
 	docker compose stop
