@@ -1,6 +1,6 @@
 BRANCH=`git branch | sed -n '/\* /s///p'`
 
-.PHONY: clean distclean tests release tests-without-selenium tests-with-selenium docker destroy-test-databases coveralls-upload clean-coverage combine-coverage
+.PHONY: clean distclean tests release tests-without-selenium tests-with-selenium docker destroy-test-databases coveralls-upload clean-coverage combine-coverage cache-delete
 
 PYTHON=python3
 
@@ -292,3 +292,6 @@ celery-worker-denorm:
 
 denorm-queue:
 	uv run python src/manage.py denorm_queue
+
+cache-delete:
+	python src/manage.py clear_cache
