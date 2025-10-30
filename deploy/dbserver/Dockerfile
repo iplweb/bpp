@@ -10,7 +10,9 @@ ENV POSTGRES_HOST_AUTH_METHOD=trust
 HEALTHCHECK --interval=5s --timeout=3s --retries=5 \
   CMD pg_isready -U postgres
 
-RUN apt update && apt install -y postgresql-plpython3-16 python-is-python3
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
+    apt update && apt install -y postgresql-plpython3-16 python-is-python3
 
 COPY --chmod=755 autotune.py /
 COPY --chmod=755 docker-entrypoint-autotune.sh /usr/local/bin/

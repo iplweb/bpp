@@ -1,6 +1,7 @@
 # Lokalny development (na moim Maku)
 
 import os
+import sys
 
 
 def setenv_default(varname, default_value):
@@ -12,7 +13,7 @@ setenv_default("DJANGO_SETTINGS_MODULE", "django_bpp.settings.local")
 setenv_default("DJANGO_BPP_SECRET_KEY", "0xdeadbeef 2")
 
 from .base import *  # noqa
-from .base import DATABASES, INSTALLED_APPS, MIDDLEWARE
+from .base import DATABASES, INSTALLED_APPS, MIDDLEWARE  # noqa
 
 # DEBUG = False
 DEBUG = True
@@ -52,6 +53,7 @@ CELERY_EAGER_PROPAGATES_EXCEPTIONS = True
 PUNKTUJ_MONOGRAFIE = False
 
 DEBUG_TOOLBAR = False
+# DEBUG_TOOLBAR = True
 
 if DEBUG_TOOLBAR and DEBUG:
     MIDDLEWARE = [
@@ -80,7 +82,6 @@ TEMPLATES[0]["OPTIONS"]["loaders"] = [  # noqa
 ]
 
 # Disable setup wizard middleware during tests
-import sys
 
 if "pytest" in sys.modules:
     MIDDLEWARE = [
