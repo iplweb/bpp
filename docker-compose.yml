@@ -88,8 +88,12 @@ services:
       - staticfiles:/staticroot
       - media:/mediaroot
     depends_on:
-      - redis
-      - appserver
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      appserver:
+        condition: service_started
 
   appserver:
     image: iplweb/bpp_appserver:latest
@@ -136,6 +140,8 @@ services:
     depends_on:
       # Musi czekać na appserver, gdyż appserver aktualizuje ewentualnie baze danych.
       # Czy nawet w ogóle ją buduje...
+      rabbitmq:
+        condition: service_healthy
       appserver:
         condition: service_healthy
 
@@ -151,6 +157,8 @@ services:
     depends_on:
       # Musi czekać na appserver, gdyż appserver aktualizuje ewentualnie baze danych.
       # Czy nawet w ogóle ją buduje...
+      rabbitmq:
+        condition: service_healthy
       appserver:
         condition: service_healthy
 
@@ -191,6 +199,8 @@ services:
       test: ['CMD','true'] # disable the healthcheck
     restart: always
     depends_on:
+      rabbitmq:
+        condition: service_healthy
       workerserver-denorm:
         condition: service_healthy
 
@@ -223,11 +233,32 @@ services:
     volumes:
       - redis_data:/data
 
+  rabbitmq:
+    image: rabbitmq:management-alpine
+    restart: always
+    logging: *default-logging
+    env_file: .env.docker
+    ports:
+      - 5672:5672   # AMQP protocol port
+      - 15672:15672 # Management UI port
+    environment:
+      RABBITMQ_DEFAULT_USER: ${DJANGO_BPP_RABBITMQ_USER:-bpp}
+      RABBITMQ_DEFAULT_PASS: ${DJANGO_BPP_RABBITMQ_PASS:-bpp}
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      start_period: 30s
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+
 volumes:
   staticfiles:
   media:
   postgresql_data:
   redis_data:
+  rabbitmq_data: # RabbitMQ data persistence
   ssl_certs:     # SSL certificates for production
   backup:        # Backup storage (used by rclone)
   rclone_config: # Rclone configuration

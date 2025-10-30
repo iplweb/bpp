@@ -81,11 +81,21 @@ env = environ.Env(
     #
     # Konfiguracja baz Redisa (numerki)
     #
-    DJANGO_BPP_REDIS_DB_BROKER=(int, 1),
+    DJANGO_BPP_REDIS_DB_BROKER=(
+        int,
+        1,
+    ),  # No longer used - kept for backward compatibility
     DJANGO_BPP_REDIS_DB_CELERY=(int, 2),
     DJANGO_BPP_REDIS_DB_SESSION=(int, 4),
     DJANGO_BPP_REDIS_DB_CACHE=(int, 5),
     DJANGO_BPP_REDIS_DB_LOCKS=(int, 6),
+    #
+    # Konfiguracja RabbitMQ (Celery broker)
+    #
+    DJANGO_BPP_RABBITMQ_HOST=(str, "localhost"),
+    DJANGO_BPP_RABBITMQ_PORT=(int, 5672),
+    DJANGO_BPP_RABBITMQ_USER=(str, "guest"),
+    DJANGO_BPP_RABBITMQ_PASS=(str, "guest"),
     #
     # Konfiguracja Django
     #
@@ -537,7 +547,13 @@ CSRF_TRUSTED_ORIGINS = ["https://" + DJANGO_BPP_HOSTNAME]
 REDIS_HOST = env("DJANGO_BPP_REDIS_HOST")
 REDIS_PORT = env("DJANGO_BPP_REDIS_PORT")
 
-BROKER_URL = f"redis://{REDIS_HOST}:{REDIS_PORT}/{env('DJANGO_BPP_REDIS_DB_BROKER')}"
+# RabbitMQ configuration for Celery broker
+RABBITMQ_HOST = env("DJANGO_BPP_RABBITMQ_HOST")
+RABBITMQ_PORT = env("DJANGO_BPP_RABBITMQ_PORT")
+RABBITMQ_USER = env("DJANGO_BPP_RABBITMQ_USER")
+RABBITMQ_PASS = env("DJANGO_BPP_RABBITMQ_PASS")
+
+BROKER_URL = f"amqp://{RABBITMQ_USER}:{RABBITMQ_PASS}@{RABBITMQ_HOST}:{RABBITMQ_PORT}//"
 # CELERY_RESULT_BACKEND = BROKER_URL
 CELERY_RESULT_BACKEND = "django-db"
 CELERY_BROKER_URL = BROKER_URL
