@@ -5,16 +5,46 @@
 
 services:
   db:
-    image: iplweb/bpp_dbserver:latest
+    image: iplweb/bpp_dbserver:${DOCKER_VERSION:-latest}
+    build:
+      context: ./deploy/dbserver
+      dockerfile: Dockerfile
+      tags:
+        - iplweb/bpp_dbserver:${DOCKER_VERSION:-latest}
+        - iplweb/bpp_dbserver:latest
     restart: always
     volumes:
       - postgresql_data:/var/lib/postgresql/data
 
   celerybeat:
-    image: iplweb/bpp_beatserver:latest
+    image: iplweb/bpp_beatserver:${DOCKER_VERSION:-latest}
+    build:
+      context: ./deploy/beatserver
+      dockerfile: Dockerfile
+      tags:
+        - iplweb/bpp_beatserver:${DOCKER_VERSION:-latest}
+        - iplweb/bpp_beatserver:latest
     env_file: .env.docker
     environment:
       - DJANGO_SETTINGS_MODULE=django_bpp.settings.local
+    entrypoint:
+      [
+        "uv",
+        "run",
+        "watchmedo",
+        "auto-restart",
+        "--directory=/app/src",
+        "--pattern=*.py",
+        "--recursive",
+        "--",
+        "celery",
+        "-A",
+        "django_bpp.celery_tasks",
+        "beat",
+        "--pidfile=/celerybeat.pid",
+        "-s",
+        "/celerybeat-schedule",
+      ]
     restart: always
     volumes:
       - ./src:/app/src
@@ -29,11 +59,18 @@ services:
         condition: service_started
 
   appserver:
-    image: iplweb/bpp_appserver:latest
+    image: iplweb/bpp_appserver:${DOCKER_VERSION:-latest}
+    build:
+      context: .
+      dockerfile: deploy/appserver/Dockerfile
+      tags:
+        - iplweb/bpp_appserver:${DOCKER_VERSION:-latest}
+        - iplweb/bpp_appserver:latest
     restart: always
     env_file: .env.docker
     environment:
       - DJANGO_SETTINGS_MODULE=django_bpp.settings.local
+    command: ["uv", "run", "uvicorn", "--host", "0", "--port", "8000", "--reload", "--reload-dir", "/app/src", "django_bpp.asgi:application"]
     depends_on:
       redis:
         condition: service_healthy
@@ -47,11 +84,31 @@ services:
       - media:/mediaroot
 
   workerserver-general:
-    image: iplweb/bpp_workerserver:latest
+    image: iplweb/bpp_workerserver:${DOCKER_VERSION:-latest}
+    build:
+      context: .
+      dockerfile: deploy/workerserver/Dockerfile
+      tags:
+        - iplweb/bpp_workerserver:${DOCKER_VERSION:-latest}
+        - iplweb/bpp_workerserver:latest
     env_file: .env.docker
     environment:
       - DJANGO_SETTINGS_MODULE=django_bpp.settings.local
-    command: worker -Q celery
+    command:
+      [
+        "watchmedo",
+        "auto-restart",
+        "--directory=/app/src",
+        "--pattern=*.py",
+        "--recursive",
+        "--",
+        "celery",
+        "-A",
+        "django_bpp.celery_tasks",
+        "worker",
+        "-Q",
+        "celery",
+      ]
     restart: always
     volumes:
       - ./src:/app/src
@@ -66,11 +123,31 @@ services:
         condition: service_healthy
 
   workerserver-denorm:
-    image: iplweb/bpp_workerserver:latest
+    image: iplweb/bpp_workerserver:${DOCKER_VERSION:-latest}
+    build:
+      context: .
+      dockerfile: deploy/workerserver/Dockerfile
+      tags:
+        - iplweb/bpp_workerserver:${DOCKER_VERSION:-latest}
+        - iplweb/bpp_workerserver:latest
     env_file: .env.docker
     environment:
       - DJANGO_SETTINGS_MODULE=django_bpp.settings.local
-    command: worker -Q denorm
+    command:
+      [
+        "watchmedo",
+        "auto-restart",
+        "--directory=/app/src",
+        "--pattern=*.py",
+        "--recursive",
+        "--",
+        "celery",
+        "-A",
+        "django_bpp.celery_tasks",
+        "worker",
+        "-Q",
+        "denorm",
+      ]
     restart: always
     volumes:
       - ./src:/app/src
@@ -85,7 +162,13 @@ services:
         condition: service_healthy
 
   workerserver-status:
-    image: iplweb/bpp_workerserver:latest
+    image: iplweb/bpp_workerserver:${DOCKER_VERSION:-latest}
+    build:
+      context: .
+      dockerfile: deploy/workerserver/Dockerfile
+      tags:
+        - iplweb/bpp_workerserver:${DOCKER_VERSION:-latest}
+        - iplweb/bpp_workerserver:latest
     env_file: .env.docker
     command: status
     depends_on:
@@ -98,11 +181,30 @@ services:
   denorm-queue:
     # run only SINGLE service, this is only a mechanism to pass
     # PostgreSQL LISTEN to Celery queue
-    image: iplweb/bpp_base:latest
+    image: iplweb/bpp_base:${DOCKER_VERSION:-latest}
+    build:
+      context: .
+      dockerfile: deploy/bpp_base/Dockerfile
+      tags:
+        - iplweb/bpp_base:${DOCKER_VERSION:-latest}
+        - iplweb/bpp_base:latest
     env_file: .env.docker
     environment:
       - DJANGO_SETTINGS_MODULE=django_bpp.settings.local
-    entrypoint: ["uv", "run", "python", "src/manage.py", "denorm_queue"]
+    entrypoint:
+      [
+        "uv",
+        "run",
+        "watchmedo",
+        "auto-restart",
+        "--directory=/app/src",
+        "--pattern=*.py",
+        "--recursive",
+        "--",
+        "python",
+        "src/manage.py",
+        "denorm_queue",
+      ]
     healthcheck:
       test: ['CMD','true'] # disable the healthcheck
     restart: always
@@ -115,7 +217,13 @@ services:
         condition: service_healthy
 
   webserver:
-    image: iplweb/bpp_webserver:latest
+    image: iplweb/bpp_webserver:${DOCKER_VERSION:-latest}
+    build:
+      context: ./deploy/webserver
+      dockerfile: Dockerfile
+      tags:
+        - iplweb/bpp_webserver:${DOCKER_VERSION:-latest}
+        - iplweb/bpp_webserver:latest
     restart: always
     env_file: .env.docker
     depends_on:
