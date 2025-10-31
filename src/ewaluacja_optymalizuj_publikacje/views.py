@@ -430,13 +430,9 @@ class OptymalizujPublikacjeView(LoginRequiredMixin, View):
         if metryka_id is None:
             from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaCalosc
 
-            try:
-                IloscUdzialowDlaAutoraZaCalosc.objects.get(
-                    autor=autor, dyscyplina_naukowa=dyscyplina
-                )
-                has_ilosc_udzialow = True
-            except IloscUdzialowDlaAutoraZaCalosc.DoesNotExist:
-                pass
+            has_ilosc_udzialow = IloscUdzialowDlaAutoraZaCalosc.objects.filter(
+                autor=autor, dyscyplina_naukowa=dyscyplina
+            ).exists()
 
             autor_dyscyplina_missing_data = (
                 autor_dyscyplina.procent_dyscypliny is None

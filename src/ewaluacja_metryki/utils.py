@@ -2,7 +2,7 @@ import logging
 from decimal import Decimal
 
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Q, Sum
 
 from bpp.models import Autor_Dyscyplina
 
@@ -37,15 +37,19 @@ def oblicz_metryki_dla_autora(
     if slot_maksymalny is None:
         from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaCalosc
 
-        try:
-            ilosc_udzialow = IloscUdzialowDlaAutoraZaCalosc.objects.get(
-                autor=autor, dyscyplina_naukowa=dyscyplina
-            )
-            slot_maksymalny = ilosc_udzialow.ilosc_udzialow
-        except IloscUdzialowDlaAutoraZaCalosc.DoesNotExist:
+        # Agreguj slot limits across all rodzaj_autora types
+        aggregated = IloscUdzialowDlaAutoraZaCalosc.objects.filter(
+            autor=autor, dyscyplina_naukowa=dyscyplina
+        ).aggregate(total_slots=Sum("ilosc_udzialow"))
+
+        if aggregated["total_slots"] is not None:
+            slot_maksymalny = aggregated["total_slots"]
+        else:
             # Brak wpisu oznacza brak wymiaru etatu - nie można obliczyć metryki
             # Propagujemy wyjątek dalej aby wywołująca funkcja mogła go obsłużyć
-            raise
+            raise IloscUdzialowDlaAutoraZaCalosc.DoesNotExist(
+                f"No IloscUdzialowDlaAutoraZaCalosc found for autor={autor.id}, dyscyplina={dyscyplina.id}"
+            )
 
     # Pobierz główną jednostkę autora
     jednostka = autor.aktualna_jednostka

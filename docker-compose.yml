@@ -1,90 +1,23 @@
 #
-# Uwaga uwaga: ten docker-compose.yml to przykładowa konfiguracja uruchamiania BPP.
+# Uwaga uwaga: ten docker-compose.yml to deweloperska konfiguracja uruchamiania BPP.
+# Odsłania wszystkie porty. NIE uzywać w produkcji. Zostaliście ostrzeżeni.
 #
-# Proszę NIE używać w produkcji -- prawdziwy serwer wymaga odpowiedniej konfiguracji,
-# na bazie pliku .env.docker... ustawienia tego pliku NIE są produkcyjne (serwer w trybie
-# DEBUG), zatem postawienie takiej instalacji w intra- czy ekstranecie mija się z celem.
-#
-# Podobnie, certyfikaty SSL nginxa.
-#
-#       -- mpasternak 12.06.2024
-#
-# Podobnie, "odbezpieczony" port 5555 na celery flower.
-#
-#        -- mpasternak, 20.08.2025
-#
-
-# Logging configuration for production use
-x-logging:
-  &default-logging
-  driver: json-file
-  options:
-    max-size: "10m"
-    max-file: "3"
-    tag: "{{.Name}}/{{.ID}}"
-  # For production, consider using syslog driver:
-  # driver: syslog
-  # options:
-  #   tag: "{{.Name}}/{{.ID}}"
 
 services:
-  # Ofelia to taki cron...
-  ofelia:
-    image: mcuadros/ofelia:latest
-    restart: always
-    env_file: .env.docker
-    depends_on:
-      - appserver
-    command: daemon --docker
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    logging: *default-logging
-    #labels:
-      # Email notification configuration (uncomment and configure for production):
-      # ofelia.smtp-host: "smtp.example.com"
-      # ofelia.smtp-port: "587"
-      # ofelia.smtp-user: "user@example.com"
-      # ofelia.smtp-password: "password"
-      # ofelia.email-to: "admin@example.com"
-      # ofelia.email-from: "Ofelia @ BPP <ofelia@bpp>"
-
-      # Slack webhook for notifications (uncomment and configure for production):
-      # ofelia.slack-webhook: "https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
-
-  # Rclone - backup and cloud synchronization container (COMMENTED OUT - example configuration)
-  # Uncomment and configure for backup functionality
-  # rclone:
-  #   image: rclone/rclone:latest
-  #   restart: always
-  #   entrypoint: sleep infinity
-  #   logging: *default-logging
-  #   volumes:
-  #     - backup:/backup
-  #     - media:/mediaroot
-  #     - rclone_config:/config/rclone
-  #   # Labels for Ofelia scheduled tasks (uncomment for production backups):
-  #   # labels:
-  #     # ofelia.enabled: "true"
-  #     # Create tar archive of mediaroot at 5am on weekdays:
-  #     # ofelia.job-exec.tar_media.schedule: "0 0 5 * * 1,2,3,4,5"
-  #     # ofelia.job-exec.tar_media.command: "tar czf /backup/mediaroot.tgz /mediaroot"
-  #     # Sync files to cloud storage at 6am on weekdays:
-  #     # ofelia.job-exec.rclone.schedule: "0 0 6 * * 1,2,3,4,5"
-  #     # ofelia.job-exec.rclone.command: "rclone sync /backup/ backup_enc:`date +%Y-%m`/`date +%d`/"
-
   db:
     image: iplweb/bpp_dbserver:latest
     restart: always
-    logging: *default-logging
     volumes:
       - postgresql_data:/var/lib/postgresql/data
 
   celerybeat:
     image: iplweb/bpp_beatserver:latest
     env_file: .env.docker
+    environment:
+      - DJANGO_SETTINGS_MODULE=django_bpp.settings.local
     restart: always
-    logging: *default-logging
     volumes:
+      - ./src:/app/src
       - staticfiles:/staticroot
       - media:/mediaroot
     depends_on:
@@ -99,7 +32,8 @@ services:
     image: iplweb/bpp_appserver:latest
     restart: always
     env_file: .env.docker
-    logging: *default-logging
+    environment:
+      - DJANGO_SETTINGS_MODULE=django_bpp.settings.local
     depends_on:
       redis:
         condition: service_healthy
@@ -108,33 +42,19 @@ services:
     ports:
       - 8000:8000
     volumes:
+      - ./src:/app/src
       - staticfiles:/staticroot
       - media:/mediaroot
-    labels:
-      ofelia.enabled: "true"
-
-      ofelia.job-exec.denorm_rebuild.schedule: "0 0 22 * * *"
-      ofelia.job-exec.denorm_rebuild.command: "python src/manage.py denorm_rebuild --no-flush"
-
-      ofelia.job-exec.refresh_sitemap.schedule: "0 30 1 * * *"
-      ofelia.job-exec.refresh_sitemap.command: "python src/manage.py refresh_sitemap -v0"
-
-      ofelia.job-exec.rebuild_kolejnosc.schedule: "0 30 3 * * *"
-      ofelia.job-exec.rebuild_kolejnosc.command: "python src/manage.py rebuild_kolejnosc"
-
-      ofelia.job-exec.rebuild_autor_jednostka.schedule: "0 30 4 * * *"
-      ofelia.job-exec.rebuild_autor_jednostka.command: "python src/manage.py rebuild_autor_jednostka"
-
-      ofelia.job-exec.pbn_integrator.schedule: "0 30 21 * * 6"
-      ofelia.job-exec.pbn_integrator.command: "python src/manage.py tee pbn_integrator --enable-all --disable-multiprocessing"
 
   workerserver-general:
     image: iplweb/bpp_workerserver:latest
     env_file: .env.docker
+    environment:
+      - DJANGO_SETTINGS_MODULE=django_bpp.settings.local
     command: worker -Q celery
-    logging: *default-logging
     restart: always
     volumes:
+      - ./src:/app/src
       - staticfiles:/staticroot
       - media:/mediaroot
     depends_on:
@@ -148,10 +68,12 @@ services:
   workerserver-denorm:
     image: iplweb/bpp_workerserver:latest
     env_file: .env.docker
+    environment:
+      - DJANGO_SETTINGS_MODULE=django_bpp.settings.local
     command: worker -Q denorm
-    logging: *default-logging
     restart: always
     volumes:
+      - ./src:/app/src
       - staticfiles:/staticroot
       - media:/mediaroot
     depends_on:
@@ -166,21 +88,6 @@ services:
     image: iplweb/bpp_workerserver:latest
     env_file: .env.docker
     command: status
-    logging: *default-logging
-    depends_on:
-      workerserver-general:
-        condition: service_healthy
-      workerserver-denorm:
-        condition: service_healthy
-    profiles: ['manual']
-
-  flower:
-    image: iplweb/flower:latest
-    env_file: .env.docker
-    command: status
-    logging: *default-logging
-    ports:
-      - 5555:5555
     depends_on:
       workerserver-general:
         condition: service_healthy
@@ -193,11 +100,14 @@ services:
     # PostgreSQL LISTEN to Celery queue
     image: iplweb/bpp_base:latest
     env_file: .env.docker
+    environment:
+      - DJANGO_SETTINGS_MODULE=django_bpp.settings.local
     entrypoint: ["uv", "run", "python", "src/manage.py", "denorm_queue"]
-    logging: *default-logging
     healthcheck:
       test: ['CMD','true'] # disable the healthcheck
     restart: always
+    volumes:
+      - ./src:/app/src
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -207,7 +117,6 @@ services:
   webserver:
     image: iplweb/bpp_webserver:latest
     restart: always
-    logging: *default-logging
     env_file: .env.docker
     depends_on:
       appserver:
@@ -223,20 +132,20 @@ services:
   redis:
     image: redis:latest
     restart: always
-    logging: *default-logging
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       start_period: 5s
       interval: 5s
       timeout: 5s
       retries: 3
+    ports:
+      - 6379:6379
     volumes:
       - redis_data:/data
 
   rabbitmq:
     image: rabbitmq:management-alpine
     restart: always
-    logging: *default-logging
     env_file: .env.docker
     ports:
       - 5672:5672   # AMQP protocol port

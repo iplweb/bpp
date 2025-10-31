@@ -126,13 +126,15 @@ class Command(BaseCommand):
             selected_pubs = author_data["selected_pubs"]
             limits = author_data["limits"]
 
-            # Get rodzaj_autora for this author
-            try:
-                rodzaj_autora = IloscUdzialowDlaAutoraZaCalosc.objects.get(
+            # Get rodzaj_autora for this author (może być wiele rekordów - bierzemy pierwszy)
+            record = (
+                IloscUdzialowDlaAutoraZaCalosc.objects.filter(
                     autor_id=author_id, dyscyplina_naukowa=dyscyplina_obj
-                ).rodzaj_autora
-            except IloscUdzialowDlaAutoraZaCalosc.DoesNotExist:
-                rodzaj_autora = None
+                )
+                .order_by("-ilosc_udzialow")
+                .first()
+            )
+            rodzaj_autora = record.rodzaj_autora if record else None
 
             total_points = sum(p.points for p in selected_pubs)
             total_slots = sum(p.base_slots for p in selected_pubs)
