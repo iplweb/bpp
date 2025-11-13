@@ -1,6 +1,6 @@
 {
     "name": "bpp-iplweb",
-    "version": "v202510.1274",
+    "version": "v202511.1275-dev0",
     "license": "MIT",
     "devDependencies": {
         "grunt": "^1.6.1",
