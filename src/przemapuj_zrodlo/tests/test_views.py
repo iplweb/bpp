@@ -2,6 +2,7 @@ import pytest
 from django.urls import reverse
 from model_bakery import baker
 
+from pbn_export_queue.models import PBN_Export_Queue
 from przemapuj_zrodlo.models import PrzemapowaZrodla
 
 
@@ -255,3 +256,95 @@ def test_przemapuj_zrodlo_allowed_for_deleted_mnisw_source(client_with_group):
     # Powinien wyświetlić formularz (200 OK)
     assert response.status_code == 200
     assert "form" in response.context
+
+
+@pytest.mark.django_db
+def test_przemapuj_zrodlo_with_pbn_queue_enabled(client_with_group, user_with_group):
+    """Test wykonania przemapowania z wysyłką do kolejki PBN (checkbox zaznaczony)."""
+    zrodlo = baker.make("bpp.Zrodlo", nazwa="Źródło A")
+    zrodlo_docelowe = baker.make("bpp.Zrodlo", nazwa="Źródło B")
+
+    # Dodaj publikacje do źródła źródłowego
+    pub1 = baker.make(
+        "bpp.Wydawnictwo_Ciagle", zrodlo=zrodlo, tytul_oryginalny="Test 1", rok=2020
+    )
+    pub2 = baker.make(
+        "bpp.Wydawnictwo_Ciagle", zrodlo=zrodlo, tytul_oryginalny="Test 2", rok=2021
+    )
+
+    # Sprawdź że kolejka PBN jest pusta
+    assert PBN_Export_Queue.objects.count() == 0
+
+    url = reverse("przemapuj_zrodlo:przemapuj", args=[zrodlo.slug])
+    response = client_with_group.post(
+        url,
+        {
+            "zrodlo_docelowe": zrodlo_docelowe.pk,
+            "potwierdzenie": True,
+            "wyslac_do_pbn": True,  # Checkbox zaznaczony
+        },
+    )
+
+    # Sprawdź przekierowanie
+    assert response.status_code == 302
+
+    # Sprawdź czy publikacje zostały przemapowane
+    pub1.refresh_from_db()
+    pub2.refresh_from_db()
+    assert pub1.zrodlo == zrodlo_docelowe
+    assert pub2.zrodlo == zrodlo_docelowe
+
+    # Sprawdź czy publikacje zostały dodane do kolejki PBN
+    assert PBN_Export_Queue.objects.count() == 2
+
+    # Sprawdź czy obie publikacje są w kolejce
+    queue_rekords = list(
+        PBN_Export_Queue.objects.values_list("object_id", flat=True).order_by(
+            "object_id"
+        )
+    )
+    assert queue_rekords == sorted([pub1.pk, pub2.pk])
+
+    # Sprawdź czy zamówił właściwy użytkownik
+    for queue_entry in PBN_Export_Queue.objects.all():
+        assert queue_entry.zamowil == user_with_group
+
+
+@pytest.mark.django_db
+def test_przemapuj_zrodlo_with_pbn_queue_disabled(client_with_group, user_with_group):
+    """Test wykonania przemapowania BEZ wysyłki do kolejki PBN (checkbox odznaczony)."""
+    zrodlo = baker.make("bpp.Zrodlo", nazwa="Źródło A")
+    zrodlo_docelowe = baker.make("bpp.Zrodlo", nazwa="Źródło B")
+
+    # Dodaj publikacje do źródła źródłowego
+    pub1 = baker.make(
+        "bpp.Wydawnictwo_Ciagle", zrodlo=zrodlo, tytul_oryginalny="Test 1", rok=2020
+    )
+    pub2 = baker.make(
+        "bpp.Wydawnictwo_Ciagle", zrodlo=zrodlo, tytul_oryginalny="Test 2", rok=2021
+    )
+
+    # Sprawdź że kolejka PBN jest pusta
+    assert PBN_Export_Queue.objects.count() == 0
+
+    url = reverse("przemapuj_zrodlo:przemapuj", args=[zrodlo.slug])
+    response = client_with_group.post(
+        url,
+        {
+            "zrodlo_docelowe": zrodlo_docelowe.pk,
+            "potwierdzenie": True,
+            "wyslac_do_pbn": False,  # Checkbox ODZNACZONY
+        },
+    )
+
+    # Sprawdź przekierowanie
+    assert response.status_code == 302
+
+    # Sprawdź czy publikacje zostały przemapowane
+    pub1.refresh_from_db()
+    pub2.refresh_from_db()
+    assert pub1.zrodlo == zrodlo_docelowe
+    assert pub2.zrodlo == zrodlo_docelowe
+
+    # Sprawdź czy publikacje NIE zostały dodane do kolejki PBN
+    assert PBN_Export_Queue.objects.count() == 0

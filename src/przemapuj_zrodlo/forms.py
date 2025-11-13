@@ -15,6 +15,16 @@ class PrzemapowaZrodloForm(forms.Form):
         required=True,
     )
 
+    wyslac_do_pbn = forms.BooleanField(
+        label="Wyślij publikacje do kolejki PBN",
+        help_text=(
+            "Zaznacz to pole aby automatycznie dodać wszystkie przemapowane publikacje "
+            "do kolejki eksportu PBN. Publikacje zostaną wysłane do PBN w tle."
+        ),
+        initial=True,
+        required=False,
+    )
+
     potwierdzenie = forms.BooleanField(
         label="Potwierdzam przemapowanie",
         help_text="Zaznacz to pole aby potwierdzić, że chcesz przemapować wszystkie publikacje",

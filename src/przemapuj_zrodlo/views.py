@@ -9,6 +9,8 @@ from django.views.generic import FormView, View
 
 from bpp.const import GR_WPROWADZANIE_DANYCH
 from bpp.models import Wydawnictwo_Ciagle, Zrodlo
+from pbn_api.exceptions import AlreadyEnqueuedError
+from pbn_export_queue.models import PBN_Export_Queue
 
 from .forms import PrzemapowaZrodloForm
 from .models import PrzemapowaZrodla
@@ -103,8 +105,67 @@ class PrzemapujZrodloView(WprowadzanieDanychRequiredMixin, FormView):
 
         return context
 
+    def _prepare_publikacje_historia_and_list(self, publikacje, wyslac_do_pbn):
+        """Prepare publication history and list of publications to send to PBN."""
+        publikacje_historia = []
+        publikacje_do_wyslania = []
+
+        for pub in publikacje:
+            publikacje_historia.append(
+                {
+                    "id": pub.pk,
+                    "tytul": pub.tytul_oryginalny,
+                    "rok": pub.rok,
+                }
+            )
+            if wyslac_do_pbn:
+                publikacje_do_wyslania.append(pub)
+
+        return publikacje_historia, publikacje_do_wyslania
+
+    def _enqueue_publikacje_to_pbn(self, publikacje_do_wyslania):
+        """Add publications to PBN export queue."""
+        sukces_pbn = 0
+        bledy_pbn = []
+
+        for pub in publikacje_do_wyslania:
+            try:
+                PBN_Export_Queue.objects.sprobuj_utowrzyc_wpis(
+                    user=self.request.user, rekord=pub
+                )
+                sukces_pbn += 1
+            except AlreadyEnqueuedError:
+                bledy_pbn.append(f"Publikacja {pub.pk} jest już w kolejce")
+            except Exception as e:
+                bledy_pbn.append(f"Publikacja {pub.pk}: {str(e)}")
+
+        return sukces_pbn, bledy_pbn
+
+    def _prepare_success_message(
+        self,
+        liczba_przemapowanych,
+        zrodlo_docelowe,
+        wyslac_do_pbn,
+        sukces_pbn,
+        bledy_pbn,
+    ):
+        """Prepare success message for the user."""
+        msg = (
+            f"Pomyślnie przemapowano {liczba_przemapowanych} publikacji "
+            f'ze źródła "{self.zrodlo_zrodlowe.nazwa}" '
+            f'do źródła "{zrodlo_docelowe.nazwa}".'
+        )
+
+        if wyslac_do_pbn:
+            msg += f" Dodano {sukces_pbn} publikacji do kolejki eksportu PBN."
+            if bledy_pbn:
+                msg += f" Wystąpiły błędy dla {len(bledy_pbn)} publikacji."
+
+        return msg
+
     def form_valid(self, form):
         zrodlo_docelowe = form.cleaned_data["zrodlo_docelowe"]
+        wyslac_do_pbn = form.cleaned_data.get("wyslac_do_pbn", False)
 
         try:
             with transaction.atomic():
@@ -113,16 +174,12 @@ class PrzemapujZrodloView(WprowadzanieDanychRequiredMixin, FormView):
                     zrodlo=self.zrodlo_zrodlowe
                 )
 
-                # Zbierz historię publikacji (do JSONa)
-                publikacje_historia = []
-                for pub in publikacje:
-                    publikacje_historia.append(
-                        {
-                            "id": pub.pk,
-                            "tytul": pub.tytul_oryginalny,
-                            "rok": pub.rok,
-                        }
+                # Zbierz historię publikacji (do JSONa) i publikacje do wysłania do PBN
+                publikacje_historia, publikacje_do_wyslania = (
+                    self._prepare_publikacje_historia_and_list(
+                        publikacje, wyslac_do_pbn
                     )
+                )
 
                 # Wykonaj przemapowanie
                 liczba_przemapowanych = publikacje.update(zrodlo=zrodlo_docelowe)
@@ -136,12 +193,34 @@ class PrzemapujZrodloView(WprowadzanieDanychRequiredMixin, FormView):
                     utworzono_przez=self.request.user,
                 )
 
-                messages.success(
-                    self.request,
-                    f"Pomyślnie przemapowano {liczba_przemapowanych} publikacji "
-                    f'ze źródła "{self.zrodlo_zrodlowe.nazwa}" '
-                    f'do źródła "{zrodlo_docelowe.nazwa}".',
+                # Dodaj publikacje do kolejki PBN jeśli checkbox zaznaczony
+                sukces_pbn, bledy_pbn = 0, []
+                if wyslac_do_pbn:
+                    sukces_pbn, bledy_pbn = self._enqueue_publikacje_to_pbn(
+                        publikacje_do_wyslania
+                    )
+
+                # Przygotuj komunikat sukcesu
+                msg = self._prepare_success_message(
+                    liczba_przemapowanych,
+                    zrodlo_docelowe,
+                    wyslac_do_pbn,
+                    sukces_pbn,
+                    bledy_pbn,
                 )
+                messages.success(self.request, msg)
+
+                # Jeśli były błędy PBN, dodaj komunikat ostrzegawczy
+                if bledy_pbn:
+                    messages.warning(
+                        self.request,
+                        f"Błędy podczas dodawania do kolejki PBN: {', '.join(bledy_pbn[:5])}"
+                        + (
+                            f" oraz {len(bledy_pbn) - 5} innych"
+                            if len(bledy_pbn) > 5
+                            else ""
+                        ),
+                    )
 
         except Exception as e:
             messages.error(
