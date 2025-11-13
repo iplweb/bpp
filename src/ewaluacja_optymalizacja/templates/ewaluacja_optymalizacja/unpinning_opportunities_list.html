@@ -41,6 +41,9 @@
             <a href="{% url 'ewaluacja_optymalizacja:analyze-unpinning' %}" class="button">
                 <span class="fi-refresh"></span> Przelicz ponownie
             </a>
+            <a href="{% url 'ewaluacja_optymalizacja:unpinning-export-xlsx' %}?{% if selected_dyscyplina %}dyscyplina={{ selected_dyscyplina }}&{% endif %}{% if only_sensible %}only_sensible=1{% endif %}" class="button success">
+                <span class="fi-page-export-csv"></span> Eksport do Excel
+            </a>
             {% if sensible_count > 0 %}
             <a href="{% url 'ewaluacja_optymalizacja:unpin-all-sensible' %}"
                class="button warning"

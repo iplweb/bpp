@@ -60,6 +60,11 @@ urlpatterns = [
         name="unpinning-list",
     ),
     path(
+        "unpinning-opportunities/export-xlsx/",
+        views.export_unpinning_opportunities_xlsx,
+        name="unpinning-export-xlsx",
+    ),
+    path(
         "database-verification/",
         views.database_verification_view,
         name="database-verification",
