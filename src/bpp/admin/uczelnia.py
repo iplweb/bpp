@@ -87,7 +87,10 @@ class UczelniaAdmin(
             "Opcje edycji",
             {
                 "classes": ("grp-collapse grp-closed",),
-                "fields": ("domyslnie_afiliuje",),
+                "fields": (
+                    "domyslnie_afiliuje",
+                    "nowy_autor_z_formularza_pokazuj",
+                ),
             },
         ),
         (
@@ -174,7 +177,10 @@ class UczelniaAdmin(
             "Zgłaszanie publikacji",
             {
                 "classes": ("grp-collapse grp-opened",),
-                "fields": ("wymagaj_informacji_o_oplatach",),
+                "fields": (
+                    "wymagaj_informacji_o_oplatach",
+                    "wymagaj_logowania_zglos_publikacje",
+                ),
             },
         ),
         (

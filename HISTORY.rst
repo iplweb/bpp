@@ -4,6 +4,24 @@ Historia zmian
 
 .. towncrier release notes start
 
+bpp 202511.1275 (2025-11-13)
+============================
+
+Naprawione
+----------
+
+- Uszczelnienie warunków uczelni w module optymalizacji ewaluacji (ewaluacja-optymalizacja-warunki)
+- Poprawiono liczenie liczby N dla uczelni - usunięto błąd prowadzący do niedokładności w przypadku wielu autorów z mniej niż całym etatem (liczba-n-czesc-etatu)
+
+
+Usprawnienie
+------------
+
+- Dodano funkcję przemapowania publikacji z jednego źródła do drugiego. Funkcja dostępna dla administratorów na stronie źródła, umożliwia przeniesienie wszystkich publikacji do innego źródła z zachowaniem historii i możliwością cofnięcia operacji. (przemapuj-zrodlo)
+- Zmieniono tekst przycisku na stronie głównej: "Dodaj ją do bazy" → "Zgłoś ją do bazy!" dla lepszej komunikacji procesu zgłaszania publikacji (przycisk-zglos-publikacje)
+- Przejście na RabbitMQ jako broker komunikatów dla zadań Celery (rabbitmq-broker)
+
+
 bpp 202510.1274 (2025-10-22)
 ============================
 

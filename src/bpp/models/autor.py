@@ -64,8 +64,14 @@ class AutorManager(FulltextSearchMixin, models.Manager):
 
         text = autor_split_string(text)
 
+        # Sprawdź ustawienie w modelu Uczelnia, czy nowy autor ma być widoczny
+        from bpp.models.uczelnia import Uczelnia
+
+        uczelnia = Uczelnia.objects.first()
+        pokazuj = uczelnia.nowy_autor_z_formularza_pokazuj if uczelnia else False
+
         return self.create(
-            **dict(nazwisko=text[0].title(), imiona=text[1].title(), pokazuj=False)
+            **dict(nazwisko=text[0].title(), imiona=text[1].title(), pokazuj=pokazuj)
         )
 
     def fulltext_annotate(self, search_query, normalization):
@@ -81,7 +87,7 @@ class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID):
     pseudonim = models.CharField(
         max_length=300,
         blank=True,
-        null=True,
+        default="",
         help_text="""
     Jeżeli w bazie danych znajdują się autorzy o zbliżonych imionach, nazwiskach i tytułach naukowych,
     skorzystaj z tego pola aby ułatwić ich rozróżnienie. Pseudonim pokaże się w polach wyszukiwania
@@ -103,8 +109,8 @@ class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID):
         default=True, help_text="Pokazuj autora na stronach jednostek oraz w rankingu. "
     )
 
-    email = models.EmailField("E-mail", max_length=128, blank=True, null=True)
-    www = models.URLField("WWW", max_length=1024, blank=True, null=True)
+    email = models.EmailField("E-mail", max_length=128, blank=True, default="")
+    www = models.URLField("WWW", max_length=1024, blank=True, default="")
 
     plec = models.ForeignKey(Plec, CASCADE, null=True, blank=True)
 
@@ -118,7 +124,7 @@ class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID):
     poprzednie_nazwiska = models.CharField(
         max_length=1024,
         blank=True,
-        null=True,
+        default="",
         help_text="""Jeżeli ten
         autor(-ka) posiada nazwisko panieńskie, pod którym ukazywały
         się publikacje lub zmieniał nazwisko z innych powodów, wpisz tutaj
@@ -137,7 +143,7 @@ class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID):
         blank=True,
         null=True,
         unique=True,
-        help_text="Open Researcher and Contributor ID, " "vide http://www.orcid.org",
+        help_text="Open Researcher and Contributor ID, vide http://www.orcid.org",
         validators=[
             RegexValidator(
                 regex=r"^\d\d\d\d-\d\d\d\d-\d\d\d\d-\d\d\d(\d|X)$",
@@ -219,12 +225,12 @@ class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID):
         buf = f"{self.nazwisko} {self.imiona}"
 
         if self.poprzednie_nazwiska and self.pokazuj_poprzednie_nazwiska:
-            buf += " (%s)" % self.poprzednie_nazwiska
+            buf += f" ({self.poprzednie_nazwiska})"
 
         if self.tytul is not None:
             buf += ", " + self.tytul.skrot
 
-        if self.pseudonim is not None:
+        if self.pseudonim:
             buf += " (" + self.pseudonim + ")"
 
         return buf
@@ -323,14 +329,14 @@ class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID):
     def get_full_name(self):
         buf = f"{self.imiona} {self.nazwisko}"
         if self.poprzednie_nazwiska:
-            buf += " (%s)" % self.poprzednie_nazwiska
+            buf += f" ({self.poprzednie_nazwiska})"
         return buf
 
     def get_full_name_surname_first(self):
-        buf = "%s" % self.nazwisko
+        buf = f"{self.nazwisko}"
         if self.poprzednie_nazwiska:
-            buf += " (%s)" % self.poprzednie_nazwiska
-        buf += " %s" % self.imiona
+            buf += f" ({self.poprzednie_nazwiska})"
+        buf += f" {self.imiona}"
         return buf
 
     def prace_w_latach(self):
@@ -431,9 +437,42 @@ class Wymiar_Etatu(ModelZNazwa):
 
 
 class Autor_Jednostka_Manager(models.Manager):
+    def _is_empty_record(self, record):
+        """Sprawdza czy rekord jest pusty (obie daty None)"""
+        return record.rozpoczal_prace is None and record.zakonczyl_prace is None
+
+    def _can_merge_consecutive(self, previous, current):
+        """Sprawdza czy rekordy są kolejnymi dniami i można je połączyć"""
+        if previous.zakonczyl_prace is None:
+            return False
+        return current.rozpoczal_prace == previous.zakonczyl_prace + timedelta(days=1)
+
+    def _merge_with_open_end(self, previous, current, to_remove):
+        """Obsługuje łączenie rekordów gdy poprzedni ma otwarty koniec (zakonczyl_prace is None)"""
+        if previous.zakonczyl_prace is not None:
+            return False
+
+        # Sprawdź specjalny przypadek z importu
+        if current.rozpoczal_prace is None and previous.rozpoczal_prace is not None:
+            if current.zakonczyl_prace == previous.rozpoczal_prace:
+                to_remove.append(current)
+                previous.rozpoczal_prace = current.rozpoczal_prace
+                previous.save()
+            return True
+
+        # Sprawdź czy obecny rekord można włączyć do poprzedniego
+        if current.rozpoczal_prace >= previous.rozpoczal_prace:
+            to_remove.append(current)
+            previous.zakonczyl_prace = current.zakonczyl_prace
+            previous.save()
+            return True
+
+        return False
+
     def defragmentuj(self, autor, jednostka):
         poprzedni_rekord = None
         usun = []
+
         for rec in Autor_Jednostka.objects.filter(
             autor=autor, jednostka=jednostka
         ).order_by("rozpoczal_prace"):
@@ -441,44 +480,23 @@ class Autor_Jednostka_Manager(models.Manager):
                 poprzedni_rekord = rec
                 continue
 
-            if rec.rozpoczal_prace is None and rec.zakonczyl_prace is None:
-                # Nic nie wnosi tutaj taki rekord ORAZ nie jest to 'poprzedni'
-                # rekord, więc:
+            # Usuń puste rekordy (nie pierwszy)
+            if self._is_empty_record(rec):
                 usun.append(rec)
                 continue
 
-            # Przy imporcie danych z XLS na dane ze starego systemu - obydwa pola są None
-            if (
-                poprzedni_rekord.zakonczyl_prace is None
-                and poprzedni_rekord.rozpoczal_prace is None
-            ):
+            # Przy imporcie danych z XLS - zamień pusty poprzedni rekord na obecny
+            if self._is_empty_record(poprzedni_rekord):
                 usun.append(poprzedni_rekord)
                 poprzedni_rekord = rec
                 continue
 
-            # Nowy system - przy imporcie danych z XLS do nowego systemu jest sytuacja, gdy autor
-            # zaczął kiedyśtam prace ALE jej nie zakończył:
-            if poprzedni_rekord.zakonczyl_prace is None:
-                if (
-                    rec.rozpoczal_prace is None
-                    and poprzedni_rekord.rozpoczal_prace is not None
-                ):
-                    if rec.zakonczyl_prace == poprzedni_rekord.rozpoczal_prace:
-                        usun.append(rec)
-                        poprzedni_rekord.rozpoczal_prace = rec.rozpoczal_prace
-                        poprzedni_rekord.save()
+            # Obsłuż rekordy z otwartym końcem
+            if self._merge_with_open_end(poprzedni_rekord, rec, usun):
+                continue
 
-                    continue
-
-                if rec.rozpoczal_prace >= poprzedni_rekord.rozpoczal_prace:
-                    usun.append(rec)
-                    poprzedni_rekord.zakonczyl_prace = rec.zakonczyl_prace
-                    poprzedni_rekord.save()
-                    continue
-
-            if rec.rozpoczal_prace == poprzedni_rekord.zakonczyl_prace + timedelta(
-                days=1
-            ):
+            # Połącz kolejne dni
+            if self._can_merge_consecutive(poprzedni_rekord, rec):
                 usun.append(rec)
                 poprzedni_rekord.zakonczyl_prace = rec.zakonczyl_prace
                 poprzedni_rekord.save()
@@ -513,6 +531,26 @@ class Autor_Jednostka(models.Model):
 
     objects = Autor_Jednostka_Manager()
 
+    class Meta:
+        verbose_name = "powiązanie autor-jednostka"
+        verbose_name_plural = "powiązania autor-jednostka"
+        ordering = ["autor__nazwisko", "rozpoczal_prace", "jednostka__nazwa"]
+        unique_together = [("autor", "jednostka", "rozpoczal_prace")]
+        app_label = "bpp"
+        constraints = [
+            UniqueConstraint(
+                fields=["autor_id"],
+                condition=Q(podstawowe_miejsce_pracy=True),
+                name="jedno_podstawowe_miejsce_pracy_na_autora",
+            )
+        ]
+
+    def __str__(self):
+        buf = f"{self.autor} ↔ {self.jednostka.skrot}"
+        if self.funkcja:
+            buf = f"{self.autor} ↔ {self.funkcja.nazwa}, {self.jednostka.skrot}"
+        return buf
+
     def clean(self, exclude=None):
         if self.rozpoczal_prace is not None and self.zakonczyl_prace is not None:
             if self.rozpoczal_prace >= self.zakonczyl_prace:
@@ -542,12 +580,6 @@ class Autor_Jednostka(models.Model):
                     f"(ustaw wartość na 'Tak') i zapisz po raz kolejny. "
                 )
 
-    def __str__(self):
-        buf = f"{self.autor} ↔ {self.jednostka.skrot}"
-        if self.funkcja:
-            buf = f"{self.autor} ↔ {self.funkcja.nazwa}, {self.jednostka.skrot}"
-        return buf
-
     @transaction.atomic
     def ustaw_podstawowe_miejsce_pracy(self):
         """Ustawia to miejsce pracy jako podstawowe i wszystkie pozostałe jako nie-podstawowe"""
@@ -556,17 +588,3 @@ class Autor_Jednostka(models.Model):
         ).exclude(pk=self.pk).update(podstawowe_miejsce_pracy=False)
         self.podstawowe_miejsce_pracy = True
         self.save()
-
-    class Meta:
-        verbose_name = "powiązanie autor-jednostka"
-        verbose_name_plural = "powiązania autor-jednostka"
-        ordering = ["autor__nazwisko", "rozpoczal_prace", "jednostka__nazwa"]
-        unique_together = [("autor", "jednostka", "rozpoczal_prace")]
-        app_label = "bpp"
-        constraints = [
-            UniqueConstraint(
-                fields=["autor_id"],
-                condition=Q(podstawowe_miejsce_pracy=True),
-                name="jedno_podstawowe_miejsce_pracy_na_autora",
-            )
-        ]

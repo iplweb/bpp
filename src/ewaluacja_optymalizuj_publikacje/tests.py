@@ -721,10 +721,10 @@ def test_wybrana_do_ewaluacji_badge_shows_correctly(
         slot_maksymalny=4,
         slot_nazbierany=1,  # Only one publication selected
         punkty_nazbierane=100,  # Points from pub1
-        prace_nazbierane=[cache1.pk],  # ONLY pub1's cache ID is selected
+        prace_nazbierane=[cache1.rekord_id],  # ONLY pub1's rekord_id is selected
         slot_wszystkie=2,  # Total slots if all were counted
         punkty_wszystkie=120,  # Total points if all were counted
-        prace_wszystkie=[cache1.pk, cache2.pk],  # All publications
+        prace_wszystkie=[cache1.rekord_id, cache2.rekord_id],  # All publications
         _fill_optional=False,  # Don't fill optional fields with random data
     )
 
@@ -918,12 +918,12 @@ def test_author_with_multiple_disciplines_shows_correct_metric(
     assert autor_data["dyscyplina"] == dyscyplina_informatyka
 
     # CRITICAL: Verify the metryka_id matches the Informatyka metric, NOT Matematyka
-    assert (
-        autor_data["metryka_id"] == metryka_informatyka.pk
-    ), "Should use Informatyka metric"
-    assert (
-        autor_data["metryka_id"] != metryka_matematyka.pk
-    ), "Should NOT use Matematyka metric"
+    assert autor_data["metryka_id"] == metryka_informatyka.pk, (
+        "Should use Informatyka metric"
+    )
+    assert autor_data["metryka_id"] != metryka_matematyka.pk, (
+        "Should NOT use Matematyka metric"
+    )
     assert autor_data["metryka_missing"] is False
 
     # Verify the metryka data matches Informatyka values
@@ -1008,9 +1008,9 @@ def test_author_without_wymiar_etatu_no_default_4_slots(
     ).exists()
 
     # Should NOT exist because author has no wymiar_etatu and no IloscUdzialowDlaAutoraZaCalosc entry
-    assert (
-        not metryka_exists
-    ), "MetrykaAutora should NOT be created for authors without wymiar_etatu"
+    assert not metryka_exists, (
+        "MetrykaAutora should NOT be created for authors without wymiar_etatu"
+    )
 
     # Test the view to ensure it marks this as missing data
     url = reverse(
@@ -1031,9 +1031,9 @@ def test_author_without_wymiar_etatu_no_default_4_slots(
     autor_data = autorzy_data[0]
     assert autor_data["autor"] == autor
     assert autor_data["metryka_missing"] is True
-    assert (
-        autor_data["autor_dyscyplina_missing_data"] is True
-    ), "Should flag missing wymiar_etatu and IloscUdzialowDlaAutoraZaCalosc"
+    assert autor_data["autor_dyscyplina_missing_data"] is True, (
+        "Should flag missing wymiar_etatu and IloscUdzialowDlaAutoraZaCalosc"
+    )
 
     # Verify the template shows appropriate warnings
     content = response.content.decode("utf-8")

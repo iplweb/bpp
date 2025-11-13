@@ -12,12 +12,12 @@ urlpatterns = [
         name="szczegoly",
     ),
     path(
-        "przypnij/<int:autor_assignment_id>/",
+        "przypnij/<int:content_type_id>/<int:object_id>/<int:autor_id>/<int:dyscyplina_id>/",
         views.PrzypnijDyscyplineView.as_view(),
         name="przypnij",
     ),
     path(
-        "odepnij/<int:autor_assignment_id>/",
+        "odepnij/<int:content_type_id>/<int:object_id>/<int:autor_id>/<int:dyscyplina_id>/",
         views.OdepnijDyscyplineView.as_view(),
         name="odepnij",
     ),

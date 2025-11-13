@@ -72,7 +72,8 @@
                         <th>Lp.</th>
                         <th>Dyscyplina</th>
                         <th>Kod</th>
-                        <th class="text-right">Liczba N</th>
+                        <th class="text-right">Liczba N - średnia</th>
+                        <th class="text-right">Liczba N - koniec 2025</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -82,6 +83,7 @@
                         <td>{{ liczba.dyscyplina_naukowa.nazwa }}</td>
                         <td>{{ liczba.dyscyplina_naukowa.kod }}</td>
                         <td class="text-right">{{ liczba.liczba_n|floatformat:2 }}</td>
+                        <td class="text-right">{{ liczba.liczba_n_2025|floatformat:2 }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -89,6 +91,7 @@
                     <tr>
                         <th colspan="3" class="text-right">SUMA:</th>
                         <th class="text-right">{{ suma_liczby_n|floatformat:2 }}</th>
+                        <th class="text-right">{{ suma_liczby_n_2025|floatformat:2 }}</th>
                     </tr>
                 </tfoot>
             </table>
@@ -101,14 +104,15 @@
         {% if dyscypliny_nieraportowane %}
         <h3>Dyscypliny nieraportowane</h3>
         <div class="callout alert">
-            <p>Poniższe dyscypliny nie są raportowane w ewaluacji ze względu na liczbę N poniżej progu 12:</p>
+            <p>Poniższe dyscypliny nie są raportowane w ewaluacji ze względu na liczbę N na koniec 2025 roku poniżej progu 12:</p>
             <table class="hover stack">
                 <thead>
                     <tr>
                         <th>Lp.</th>
                         <th>Dyscyplina</th>
                         <th>Kod</th>
-                        <th class="text-right">Liczba N</th>
+                        <th class="text-right">Liczba N - średnia</th>
+                        <th class="text-right">Liczba N - koniec 2025</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -119,6 +123,9 @@
                         <td>{{ dn.dyscyplina_naukowa.kod }}</td>
                         <td class="text-right">
                             {{ dn.liczba_n|floatformat:2 }}
+                        </td>
+                        <td class="text-right">
+                            {{ dn.liczba_n_2025|floatformat:2 }}
                         </td>
                     </tr>
                     {% endfor %}

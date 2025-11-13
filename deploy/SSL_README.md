@@ -2,6 +2,10 @@
 
 Ta konfiguracja zapewnia automatyczne zarządzanie certyfikatami SSL przy użyciu Let's Encrypt dla aplikacji BPP.
 
+## Alternatywa deweloperska
+
+Dla celów deweloperskich dostępna jest również konfiguracja z automatycznie generowanymi certyfikatami self-signed. Szczegóły znajdziesz w `deploy/webserver/README.md`.
+
 ## Przegląd
 
 Konfiguracja wykorzystuje podejście wieloetapowe:

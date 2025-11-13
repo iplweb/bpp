@@ -2,13 +2,31 @@ import logging
 from decimal import Decimal
 
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Q, Sum
 
 from bpp.models import Autor_Dyscyplina
 
 from .models import MetrykaAutora
 
 logger = logging.getLogger(__name__)
+
+
+def get_default_rodzaje_autora():
+    """
+    Pobiera domyślną listę rodzajów autorów dla generowania metryk.
+
+    Zwraca listę skrótów rodzajów autorów, którzy mają ustawioną flagę licz_sloty=True.
+    Ta funkcja zapewnia spójność parametrów między różnymi przepływami generowania metryk
+    (formularz w ewaluacja_metryki oraz funkcja 'optymalizuj przed').
+
+    Returns:
+        list: Lista skrótów rodzajów autorów (np. ['N', 'D', 'B'])
+    """
+    from ewaluacja_common.models import Rodzaj_Autora
+
+    return list(
+        Rodzaj_Autora.objects.filter(licz_sloty=True).values_list("skrot", flat=True)
+    )
 
 
 def oblicz_metryki_dla_autora(
@@ -37,15 +55,19 @@ def oblicz_metryki_dla_autora(
     if slot_maksymalny is None:
         from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaCalosc
 
-        try:
-            ilosc_udzialow = IloscUdzialowDlaAutoraZaCalosc.objects.get(
-                autor=autor, dyscyplina_naukowa=dyscyplina
-            )
-            slot_maksymalny = ilosc_udzialow.ilosc_udzialow
-        except IloscUdzialowDlaAutoraZaCalosc.DoesNotExist:
+        # Agreguj slot limits across all rodzaj_autora types
+        aggregated = IloscUdzialowDlaAutoraZaCalosc.objects.filter(
+            autor=autor, dyscyplina_naukowa=dyscyplina
+        ).aggregate(total_slots=Sum("ilosc_udzialow"))
+
+        if aggregated["total_slots"] is not None:
+            slot_maksymalny = aggregated["total_slots"]
+        else:
             # Brak wpisu oznacza brak wymiaru etatu - nie można obliczyć metryki
             # Propagujemy wyjątek dalej aby wywołująca funkcja mogła go obsłużyć
-            raise
+            raise IloscUdzialowDlaAutoraZaCalosc.DoesNotExist(
+                f"No IloscUdzialowDlaAutoraZaCalosc found for autor={autor.id}, dyscyplina={dyscyplina.id}"
+            )
 
     # Pobierz główną jednostkę autora
     jednostka = autor.aktualna_jednostka
@@ -79,6 +101,18 @@ def oblicz_metryki_dla_autora(
         dyscyplina_id=dyscyplina.pk,
     )
 
+    # Convert cache PKs to stable rekord_ids (survives cache rebuilds from pin/unpin)
+    from bpp.models.cache import Cache_Punktacja_Autora_Query
+
+    if prace_nazbierane_ids:
+        prace_nazbierane_rekord_ids = list(
+            Cache_Punktacja_Autora_Query.objects.filter(
+                pk__in=prace_nazbierane_ids
+            ).values_list("rekord_id", flat=True)
+        )
+    else:
+        prace_nazbierane_rekord_ids = []
+
     # Oblicz metryki dla wszystkich prac
     (
         punkty_wszystkie,
@@ -93,8 +127,17 @@ def oblicz_metryki_dla_autora(
         akcja="wszystko",
     )
 
-    # Calculate derived fields that would normally be calculated in save()
-    # This is necessary because update_or_create doesn't trigger custom save() logic
+    # Convert cache PKs to stable rekord_ids
+    if prace_wszystkie_ids:
+        prace_wszystkie_rekord_ids = list(
+            Cache_Punktacja_Autora_Query.objects.filter(
+                pk__in=prace_wszystkie_ids
+            ).values_list("rekord_id", flat=True)
+        )
+    else:
+        prace_wszystkie_rekord_ids = []
+
+    # Calculate derived fields manually to ensure correct values
     slot_nazbierany_decimal = Decimal(str(slot_nazbierany))
     slot_wszystkie_decimal = Decimal(str(slot_wszystkie))
     punkty_nazbierane_decimal = Decimal(str(punkty_nazbierane))
@@ -117,30 +160,33 @@ def oblicz_metryki_dla_autora(
     else:
         procent_wykorzystania_slotow = Decimal("0")
 
-    # Utwórz lub zaktualizuj metrykę
+    # Delete existing metric and create fresh one to properly update JSONField values
+    # update_or_create() doesn't reliably detect changes in JSONField (prace_nazbierane)
     with transaction.atomic():
-        metryka, created = MetrykaAutora.objects.update_or_create(
+        MetrykaAutora.objects.filter(
+            autor=autor, dyscyplina_naukowa=dyscyplina
+        ).delete()
+
+        metryka = MetrykaAutora.objects.create(
             autor=autor,
             dyscyplina_naukowa=dyscyplina,
-            defaults={
-                "jednostka": jednostka,
-                "slot_maksymalny": slot_maksymalny,
-                "slot_nazbierany": slot_nazbierany_decimal,
-                "punkty_nazbierane": punkty_nazbierane_decimal,
-                "prace_nazbierane": prace_nazbierane_ids,
-                "slot_wszystkie": slot_wszystkie_decimal,
-                "punkty_wszystkie": punkty_wszystkie_decimal,
-                "prace_wszystkie": prace_wszystkie_ids,
-                "liczba_prac_wszystkie": len(prace_wszystkie_ids),
-                "rok_min": rok_min,
-                "rok_max": rok_max,
-                "rodzaj_autora": rodzaj_autora_skrot,
-                # Include calculated fields to ensure they're updated
-                "srednia_za_slot_nazbierana": srednia_za_slot_nazbierana,
-                "srednia_za_slot_wszystkie": srednia_za_slot_wszystkie,
-                "procent_wykorzystania_slotow": procent_wykorzystania_slotow,
-            },
+            jednostka=jednostka,
+            slot_maksymalny=slot_maksymalny,
+            slot_nazbierany=slot_nazbierany_decimal,
+            punkty_nazbierane=punkty_nazbierane_decimal,
+            prace_nazbierane=prace_nazbierane_rekord_ids,
+            slot_wszystkie=slot_wszystkie_decimal,
+            punkty_wszystkie=punkty_wszystkie_decimal,
+            prace_wszystkie=prace_wszystkie_rekord_ids,
+            liczba_prac_wszystkie=len(prace_wszystkie_rekord_ids),
+            rok_min=rok_min,
+            rok_max=rok_max,
+            rodzaj_autora=rodzaj_autora_skrot,
+            srednia_za_slot_nazbierana=srednia_za_slot_nazbierana,
+            srednia_za_slot_wszystkie=srednia_za_slot_wszystkie,
+            procent_wykorzystania_slotow=procent_wykorzystania_slotow,
         )
+        created = True  # Always created since we deleted first
 
     return metryka, created
 
@@ -163,51 +209,43 @@ def przelicz_metryki_dla_publikacji(publikacja, rok_min=2022, rok_max=2025):
     """
     results = []
 
-    # Zbierz wszystkich unikalnych autorów z tej publikacji
-    autorzy_do_przeliczenia = set()
-
-    # Pobierz wszystkich autorów z dyscyplinami dla tej publikacji
-    # NIE wykluczamy autorów bez dyscyplin - pobieramy wszystkich
+    # Zbierz wszystkich unikalnych AUTORÓW z tej publikacji (bez dyscyplin na razie)
+    autorzy = set()
     for autor_assignment in publikacja.autorzy_set.all():
         if autor_assignment.dyscyplina_naukowa is not None:
-            autorzy_do_przeliczenia.add(
-                (autor_assignment.autor, autor_assignment.dyscyplina_naukowa)
-            )
+            autorzy.add(autor_assignment.autor)
 
-    # Przelicz metryki dla wszystkich autorów
+    # Dla każdego autora znajdź WSZYSTKIE jego dyscypliny za okres rok_min - rok_max
+    autorzy_do_przeliczenia = set()
+    for autor in autorzy:
+        # Znajdź wszystkie wpisy Autor_Dyscyplina dla tego autora za okres ewaluacji
+        autor_dyscypliny = Autor_Dyscyplina.objects.filter(
+            autor=autor, rok__gte=rok_min, rok__lte=rok_max
+        )
+
+        for ad in autor_dyscypliny:
+            # Dodaj główną dyscyplinę
+            if ad.dyscyplina_naukowa is not None:
+                autorzy_do_przeliczenia.add((autor, ad.dyscyplina_naukowa))
+            # Dodaj subdyscyplinę jeśli jest
+            if ad.subdyscyplina_naukowa is not None:
+                autorzy_do_przeliczenia.add((autor, ad.subdyscyplina_naukowa))
+
+    # Przelicz metryki dla wszystkich par (autor, dyscyplina)
     for autor, dyscyplina in autorzy_do_przeliczenia:
-        # Sprawdź czy autor ma rodzaj_autora='N' dla tego roku
         try:
-            autor_dyscyplina = Autor_Dyscyplina.objects.get(
-                autor=autor, rok=publikacja.rok, dyscyplina_naukowa=dyscyplina
+            metryka, _ = oblicz_metryki_dla_autora(
+                autor=autor,
+                dyscyplina=dyscyplina,
+                rok_min=rok_min,
+                rok_max=rok_max,
             )
-
-            if (
-                autor_dyscyplina.rodzaj_autora
-                and autor_dyscyplina.rodzaj_autora.skrot == "N"
-            ):
-                try:
-                    metryka, _ = oblicz_metryki_dla_autora(
-                        autor=autor,
-                        dyscyplina=dyscyplina,
-                        rok_min=rok_min,
-                        rok_max=rok_max,
-                    )
-                    results.append((autor, dyscyplina, metryka))
-                except Exception:
-                    # Pomiń autorów bez wpisu w IloscUdzialowDlaAutoraZaCalosc
-                    # (brak wymiaru etatu)
-                    logger.info(
-                        f"Pominięto przeliczanie metryki dla {autor} - {dyscyplina.nazwa}: "
-                        f"brak wpisu w IloscUdzialowDlaAutoraZaCalosc (prawdopodobnie brak "
-                        f"wymiaru etatu)"
-                    )
-                    continue
-        except Autor_Dyscyplina.DoesNotExist:
+            results.append((autor, dyscyplina, metryka))
+        except Exception as e:
+            # oblicz_metryki_dla_autora() sama sprawdza warunki
             logger.info(
-                f"Pominięto {autor} - brak wpisu Autor_Dyscyplina dla roku {publikacja.rok}"
+                f"Pominięto przeliczanie metryki dla {autor} - {dyscyplina.nazwa}: {e}"
             )
-            # Jeśli nie ma wpisu Autor_Dyscyplina dla tego roku, pomiń
             continue
 
     return results
@@ -237,31 +275,52 @@ def _get_ilosc_udzialow_queryset(ilosc_udzialow_queryset):
         return ilosc_udzialow_queryset
 
 
-def _should_skip_author(autor, dyscyplina, rodzaje_autora):
-    """Sprawdza czy autor powinien być pominięty na podstawie rodzaju_autora."""
-    autor_dyscyplina = (
-        Autor_Dyscyplina.objects.filter(
-            Q(autor=autor)
-            & (Q(dyscyplina_naukowa=dyscyplina) | Q(subdyscyplina_naukowa=dyscyplina))
-        )
-        .order_by("-rok")
-        .first()
-    )
+def _should_skip_author(autor, dyscyplina, rodzaje_autora, rok_min=2022, rok_max=2025):
+    """
+    Sprawdza czy autor powinien być pominięty na podstawie rodzaju_autora.
 
-    if (
-        not autor_dyscyplina
-        or not autor_dyscyplina.rodzaj_autora
-        or autor_dyscyplina.rodzaj_autora.skrot not in rodzaje_autora
-    ):
-        return True, autor_dyscyplina
+    Sprawdza czy autor miał JAKIKOLWIEK odpowiedni rodzaj_autora w okresie
+    ewaluacji (rok_min do rok_max), nie tylko w najnowszym roku.
 
-    return False, autor_dyscyplina
+    Args:
+        autor: Obiekt Autor
+        dyscyplina: Obiekt Dyscyplina_Naukowa
+        rodzaje_autora: Lista akceptowalnych skrótów rodzajów autorów
+        rok_min: Początkowy rok okresu ewaluacji (domyślnie 2022)
+        rok_max: Końcowy rok okresu ewaluacji (domyślnie 2025)
+
+    Returns:
+        Tuple (bool, Autor_Dyscyplina): (czy_pominąć, najnowszy_rekord_w_okresie)
+    """
+    # Pobierz wszystkie rekordy w okresie ewaluacji
+    autor_dyscyplina_w_okresie = Autor_Dyscyplina.objects.filter(
+        Q(autor=autor)
+        & (Q(dyscyplina_naukowa=dyscyplina) | Q(subdyscyplina_naukowa=dyscyplina))
+        & Q(rok__gte=rok_min)
+        & Q(rok__lte=rok_max)
+    ).order_by("-rok")
+
+    if not autor_dyscyplina_w_okresie.exists():
+        # Brak jakichkolwiek rekordów w okresie ewaluacji
+        return True, None
+
+    # Sprawdź czy JAKIKOLWIEK rekord w okresie ma odpowiedni rodzaj_autora
+    for ad in autor_dyscyplina_w_okresie:
+        if ad.rodzaj_autora and ad.rodzaj_autora.skrot in rodzaje_autora:
+            # Znaleziono rekord z odpowiednim rodzajem - NIE pomijaj autora
+            # Zwróć najnowszy rekord jako referencję
+            return False, autor_dyscyplina_w_okresie.first()
+
+    # Żaden rekord w okresie nie ma odpowiedniego rodzaju_autora
+    return True, autor_dyscyplina_w_okresie.first()
 
 
 def _calculate_metrics_data(
     autor, dyscyplina, slot_maksymalny, rok_min, rok_max, minimalny_pk
 ):
     """Oblicza dane metryk dla autora."""
+    from bpp.models.cache import Cache_Punktacja_Autora_Query
+
     # Oblicz metryki algorytmem plecakowym
     (
         punkty_nazbierane,
@@ -274,6 +333,16 @@ def _calculate_metrics_data(
         minimalny_pk=minimalny_pk,
         dyscyplina_id=dyscyplina.pk,
     )
+
+    # Convert cache PKs to stable rekord_ids
+    if prace_nazbierane_ids:
+        prace_nazbierane_rekord_ids = list(
+            Cache_Punktacja_Autora_Query.objects.filter(
+                pk__in=prace_nazbierane_ids
+            ).values_list("rekord_id", flat=True)
+        )
+    else:
+        prace_nazbierane_rekord_ids = []
 
     # Oblicz metryki dla wszystkich prac
     (
@@ -289,12 +358,22 @@ def _calculate_metrics_data(
         akcja="wszystko",
     )
 
+    # Convert cache PKs to stable rekord_ids
+    if prace_wszystkie_ids:
+        prace_wszystkie_rekord_ids = list(
+            Cache_Punktacja_Autora_Query.objects.filter(
+                pk__in=prace_wszystkie_ids
+            ).values_list("rekord_id", flat=True)
+        )
+    else:
+        prace_wszystkie_rekord_ids = []
+
     return {
         "punkty_nazbierane": punkty_nazbierane,
-        "prace_nazbierane_ids": prace_nazbierane_ids,
+        "prace_nazbierane_ids": prace_nazbierane_rekord_ids,
         "slot_nazbierany": slot_nazbierany,
         "punkty_wszystkie": punkty_wszystkie,
-        "prace_wszystkie_ids": prace_wszystkie_ids,
+        "prace_wszystkie_ids": prace_wszystkie_rekord_ids,
         "slot_wszystkie": slot_wszystkie,
     }
 
@@ -364,7 +443,7 @@ def _process_single_author(
         with transaction.atomic():
             # Sprawdź czy autor powinien być pominięty
             should_skip, autor_dyscyplina = _should_skip_author(
-                autor, dyscyplina, rodzaje_autora
+                autor, dyscyplina, rodzaje_autora, rok_min, rok_max
             )
 
             if should_skip:

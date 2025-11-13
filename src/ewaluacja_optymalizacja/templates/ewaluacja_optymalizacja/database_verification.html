@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}Weryfikacja poprawności bazy danych{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url 'ewaluacja_optymalizacja:index' %}">Optymalizacja ewaluacji</a></li>
+    <li class="current">Weryfikacja bazy danych</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="large-12 columns">
+        <h1>
+            <span class="fi-magnifying-glass"></span> Weryfikacja poprawności bazy danych
+        </h1>
+
+        {% if total_count > 0 %}
+        <div class="callout warning" style="border-left: 4px solid #ffae00;">
+            <h4><span class="fi-alert"></span> Znaleziono prace z problemowymi slotami</h4>
+            <p>
+                Poniższe prace mają autorów ze slotami poniżej 0.1.
+                <strong>Należy się ich pozbyć przed przejściem do dalszych kroków optymalizacji.</strong>
+            </p>
+            <p style="margin-bottom: 0;">
+                Aby usunąć problematyczne sloty, możesz:
+            </p>
+            <ul style="margin-top: 0.5rem;">
+                <li>Odpiąć dyscyplinę od autora w danej pracy (jeśli slot jest bardzo mały)</li>
+                <li>Użyć funkcji "Optymalizuj ręcznie" dla danej pracy aby zmienić przypisania</li>
+                <li>Sprawdzić czy dane punktowe w pracy są poprawne</li>
+            </ul>
+        </div>
+
+        <div class="button-group">
+            <a href="{% url 'ewaluacja_optymalizacja:index' %}" class="button secondary">
+                <span class="fi-arrow-left"></span> Powrót
+            </a>
+        </div>
+
+        <!-- Statystyki -->
+        <div class="callout info" style="margin-top: 1rem;">
+            <h5><span class="fi-graph-bar"></span> Statystyki</h5>
+            <p style="margin-bottom: 0;">
+                Znaleziono <strong>{{ total_count }}</strong> przypisań autor-praca-dyscyplina ze slotem poniżej 0.1,
+                dotyczących <strong>{{ unique_works }}</strong> prac i <strong>{{ unique_authors }}</strong> autorów.
+            </p>
+        </div>
+
+        <!-- Tabela z problemowymi rekordami -->
+        <h3>Problematyczne przypisania (lata 2022-2025)</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Tytuł pracy</th>
+                    <th>Autor</th>
+                    <th>Dyscyplina</th>
+                    <th style="text-align: right;">Slot</th>
+                    <th style="text-align: center;">Rok</th>
+                    <th>Akcje</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for record in problematic_records %}
+                <tr>
+                    <td>
+                        <a href="{{ record.rekord.get_absolute_url }}" target="_blank">
+                            {{ record.rekord.tytul_oryginalny|truncatewords:10 }}
+                        </a>
+                    </td>
+                    <td>{{ record.autor.nazwisko }} {{ record.autor.imiona }}</td>
+                    <td>{{ record.dyscyplina.nazwa }}</td>
+                    <td style="text-align: right; color: #c60f13; font-weight: bold;">
+                        {{ record.slot|floatformat:4 }}
+                    </td>
+                    <td style="text-align: center;">{{ record.rekord.rok }}</td>
+                    <td>
+                        <div class="button-group">
+                            <a href="{{ record.rekord.get_absolute_url }}"
+                               class="button tiny"
+                               target="_blank"
+                               title="Otwórz stronę pracy w nowej karcie">
+                                <span class="fi-page"></span> Zobacz pracę
+                            </a>
+                            <a href="{% url 'ewaluacja_optymalizuj_publikacje:optymalizuj' record.rekord.slug %}"
+                               class="button tiny warning"
+                               title="Optymalizuj przypisania autorów dla tej pracy">
+                                <span class="fi-wrench"></span> Optymalizuj ręcznie
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        {% else %}
+        <!-- Brak problemów -->
+        <div class="callout success">
+            <h4><span class="fi-check"></span> Brak problemów</h4>
+            <p style="margin-bottom: 0;">
+                Nie znaleziono prac ze slotami poniżej 0.1 w latach 2022-2025.
+                Baza danych jest poprawna i gotowa do dalszych kroków optymalizacji.
+            </p>
+        </div>
+
+        <div class="button-group">
+            <a href="{% url 'ewaluacja_optymalizacja:index' %}" class="button secondary">
+                <span class="fi-arrow-left"></span> Powrót
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

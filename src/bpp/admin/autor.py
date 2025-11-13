@@ -15,6 +15,7 @@ from ..models import (  # Publikacja_Habilitacyjna
     Dyscyplina_Naukowa,
     Jednostka,
 )
+from .actions import ustaw_pokazuj_false, ustaw_pokazuj_true
 from .core import BaseBppAdminMixin
 from .filters import (
     AutorZmarlFilter,
@@ -203,6 +204,7 @@ class AutorAdmin(
     form = AutorForm
     autocomplete_fields = ["pbn_uid"]
     resource_class = resources.AutorResource
+    actions = [ustaw_pokazuj_true, ustaw_pokazuj_false]
 
     list_display_always = ["nazwisko", "imiona"]
 
@@ -467,6 +469,13 @@ class AutorAdmin(
                 kwargs["initial"] = inline_initial_data
 
         return kwargs
+
+    def get_actions(self, request):
+        """Override to customize action descriptions."""
+        actions = super().get_actions(request)
+        if "delete_selected" in actions:
+            actions["delete_selected"][0].short_description = "Usuń wybranych autorów"
+        return actions
 
 
 admin.site.register(Autor, AutorAdmin)

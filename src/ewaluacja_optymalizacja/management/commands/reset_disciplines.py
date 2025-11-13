@@ -121,6 +121,13 @@ class Command(BaseCommand):
             if not no_wait:
                 # Monitor denorm dirty items
                 self.stdout.write("\nMonitoring denorm dirty items...")
+
+                # Trigger denorm processing via Celery queue
+                from denorm.tasks import flush_via_queue
+
+                flush_via_queue.delay()
+                self.stdout.write("Triggered denorm flush via queue")
+
                 self.stdout.write(
                     "You can manually flush denorms by running: python src/manage.py denorm_flush"
                 )

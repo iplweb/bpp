@@ -1,6 +1,35 @@
+# BPP Makefile
+#
+# Version Management Workflow:
+# ---------------------------
+# This project uses CalVer (Calendar Versioning) with the pattern: YYYYMM.BUILD[-TAG[TAGNUM]]
+# Example versions: 202510.1274, 202510.1275-dev1, 202510.1275-dev2, 202510.1275
+#
+# Development Workflow:
+#   1. After releasing v202510.1274, start development on next version:
+#      make bump-dev
+#      This creates: v202510.1275-dev1
+#
+#   2. During development, build and tag Docker images:
+#      docker compose build
+#      This tags images as: 202510.1275.dev1 and latest
+#
+#   3. Ready for release? Remove -dev tag:
+#      make bump-release
+#      This creates: v202510.1275 (final release version)
+#
+#   4. Or combine steps 3 and 1 in a single command:
+#      make bump-and-start-dev
+#      This releases current version and immediately starts next dev cycle
+#
+# Docker Version:
+#   DOCKER_VERSION variable is automatically updated by bumpver
+#   Used by both Makefile docker builds and docker-compose.yml
+#   Set DOCKER_VERSION environment variable to override for docker-compose
+
 BRANCH=`git branch | sed -n '/\* /s///p'`
 
-.PHONY: clean distclean tests release tests-without-selenium tests-with-selenium docker destroy-test-databases coveralls-upload clean-coverage combine-coverage
+.PHONY: clean distclean tests release tests-without-selenium tests-with-selenium docker destroy-test-databases coveralls-upload clean-coverage combine-coverage cache-delete buildx-cache-stats buildx-cache-prune buildx-cache-prune-aggressive bump-dev bump-release bump-and-start-dev
 
 PYTHON=python3
 
@@ -204,6 +233,24 @@ set-version-from-vcs:
 	$(eval CUR_VERSION_VCS=$(shell git describe | sed s/\-/\./ | sed s/\-/\+/))
 	bumpver update --no-commit --set-version=$(CUR_VERSION_VCS)
 
+# Version management targets for development workflow
+bump-dev:
+	@echo "Bumping to next development version..."
+	uv run bumpver update --tag dev --tag-num
+	@echo "New development version created. Build with: docker compose build"
+
+bump-release:
+	@echo "Creating release version (removing -dev tag)..."
+	uv run bumpver update --tag final
+	@echo "Release version created. You may want to run: make bump-dev"
+
+bump-and-start-dev:
+	@echo "Releasing current version and starting next development cycle..."
+	uv run bumpver update --tag final
+	@echo "Released. Now bumping to next dev version..."
+	uv run bumpver update --tag dev --tag-num
+	@echo "Ready for development. Build with: docker compose build"
+
 .PHONY: check-git-clean
 check-git-clean:
 	git diff --quiet
@@ -220,7 +267,7 @@ loc: clean
 	pygount -N ... -F "...,staticroot,migrations,fixtures" src --format=summary
 
 
-DOCKER_VERSION="202510.1274"
+DOCKER_VERSION="202511.1275"
 
 DOCKER_BUILD=build --platform linux/amd64 --push
 #--no-cache
@@ -262,12 +309,21 @@ run-webserver-without-appserver-for-testing: build-webserver
 build-beatserver: build-appserver-base
 	docker buildx ${DOCKER_BUILD} -t iplweb/bpp_beatserver:${DOCKER_VERSION} -t iplweb/bpp_beatserver:latest -f deploy/beatserver/Dockerfile deploy/beatserver/
 
-build-flower:
-	docker buildx ${DOCKER_BUILD} -t iplweb/flower:${DOCKER_VERSION} -t iplweb/flower:latest -f deploy/flower/Dockerfile deploy/flower/
+#build-flower:
+#	docker buildx ${DOCKER_BUILD} -t iplweb/flower:${DOCKER_VERSION} -t iplweb/flower:latest -f deploy/flower/Dockerfile deploy/flower/
 
-build-servers: build-appserver-base build-appserver build-workerserver build-beatserver build-flower
+build-servers: build-appserver-base build-appserver build-workerserver build-beatserver # build-flower
 
 docker: build-dbserver build-webserver build-servers
+
+buildx-cache-stats:
+	docker buildx du
+
+buildx-cache-prune:
+	docker buildx prune
+
+buildx-cache-prune-aggressive:
+	docker buildx prune --keep-storage 5GB
 
 compose-restart:
 	docker compose stop
@@ -292,3 +348,6 @@ celery-worker-denorm:
 
 denorm-queue:
 	uv run python src/manage.py denorm_queue
+
+cache-delete:
+	python src/manage.py clear_cache

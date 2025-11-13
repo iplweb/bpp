@@ -151,7 +151,7 @@
                 </div>
                 <div class="cell medium-4 text-right">
                     {% if zla_suma_procent > 0 %}
-                        <a href="/admin/bpp/autor_dyscyplina/?q={{ djangoql_queries.zla_suma|urlencode }}"
+                        <a href="/admin/bpp/autor_dyscyplina/?{{ zla_suma_url }}"
                            class="button alert" target="_blank">
                             <i class="fi-alert"></i> Zobacz w admin
                         </a>

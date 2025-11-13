@@ -52,7 +52,10 @@ def rodzaj_autora_z(db):
     obj, _ = Rodzaj_Autora.objects.get_or_create(
         skrot="Z",
         defaults=dict(
-            nazwa="inny zatrudniony, nie naukowy", jest_w_n=False, licz_sloty=False
+            nazwa="inny zatrudniony, nie naukowy",
+            jest_w_n=False,
+            licz_sloty=False,
+            sort=4,
         ),
     )
     return obj

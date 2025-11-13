@@ -60,6 +60,7 @@ from bpp.views.autocomplete import (
     ZapisanyJakoAutocomplete,
     Zewnetrzna_Baza_DanychAutocomplete,
     ZrodloAutocomplete,
+    ZrodloAutocompleteNoCreate,
 )
 from bpp.views.autocomplete.pbn_api import (
     JournalAutocomplete,
@@ -358,6 +359,11 @@ urlpatterns = [
         r"^admin-zrodlo-autocomplete/$",
         ZrodloAutocomplete.as_view(),
         name="admin-zrodlo-autocomplete",
+    ),
+    url(
+        r"^przemapuj-zrodlo-autocomplete/$",
+        ZrodloAutocompleteNoCreate.as_view(),
+        name="przemapuj-zrodlo-autocomplete",
     ),
     url(
         r"^autor-z-uczelni-autocomplete/$",

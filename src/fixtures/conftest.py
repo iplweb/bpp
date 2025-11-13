@@ -10,14 +10,18 @@ import pytest
 import webtest
 from dbtemplates.models import Template
 from django.core.exceptions import ImproperlyConfigured
+from django.core.management import call_command
+from django.core.management.base import CommandError
+from django.db import connections
+from django.db.utils import OperationalError
+from django.test import TransactionTestCase
 from django_webtest import DjangoTestApp
 from rest_framework.test import APIClient
 from splinter.driver import DriverAPI
 
-from pbn_api.models import Discipline, Language
-
 from bpp.models.szablondlaopisubibliograficznego import SzablonDlaOpisuBibliograficznego
 from bpp.util import get_fixture
+from pbn_api.models import Discipline, Language
 
 try:
     from django.core.urlresolvers import reverse
@@ -50,7 +54,7 @@ from bpp.models.system import (
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
 from bpp.models.zrodlo import Zrodlo
-
+from bpp.tests.util import setup_model_bakery
 from django_bpp.selenium_util import wait_for_page_load, wait_for_websocket_connection
 
 NORMAL_DJANGO_USER_LOGIN = "test_login_bpp"
@@ -59,7 +63,6 @@ NORMAL_DJANGO_USER_PASSWORD = "test_password"
 # from channels_live_server import channels_live_server  # noqa
 # This fixture is now defined in src/conftest.py
 
-from bpp.tests.util import setup_model_bakery
 
 setup_model_bakery()
 
@@ -98,9 +101,8 @@ def pbn_dyscyplina2_hst(db, pbn_discipline_group):
 def _dyscyplina_maker(nazwa, kod, dyscyplina_pbn):
     """Produkuje dyscypliny naukowe WRAZ z odpowiednim wpisem tłumacza
     dyscyplin"""
-    from pbn_api.models import TlumaczDyscyplin
-
     from bpp.models import Dyscyplina_Naukowa
+    from pbn_api.models import TlumaczDyscyplin
 
     d = Dyscyplina_Naukowa.objects.get_or_create(nazwa=nazwa, kod=kod)[0]
     TlumaczDyscyplin.objects.get_or_create(
@@ -216,7 +218,9 @@ def preauth_browser(
 
 @pytest.fixture
 def preauth_asgi_browser(
-    preauth_browser, transactional_db, channels_live_server  # noqa
+    preauth_browser,
+    transactional_db,
+    channels_live_server,  # noqa
 ):
     with wait_for_page_load(preauth_browser):
         preauth_browser.visit(channels_live_server.url)
@@ -254,7 +258,8 @@ def admin_browser(
         original_visit(url)
         # Wait for page to be fully loaded
         WebDriverWait(browser.driver, 10).until(
-            lambda driver: driver.execute_script("return document.readyState") == "complete"
+            lambda driver: driver.execute_script("return document.readyState")
+            == "complete"
         )
         # Wait for FOUC prevention to complete (html element becomes visible)
         # base_site.html sets html visibility:hidden and opacity:0, then shows it after load
@@ -541,7 +546,7 @@ def _zwarte_base_maker(klass, **kwargs):
     set_default("informacje", "zrodlo-informacje dla zwarte", kwargs)
 
     if klass not in [Patent]:
-        set_default("miejsce_i_rok", "Lublin %s" % current_rok(), kwargs)
+        set_default("miejsce_i_rok", f"Lublin {current_rok()}", kwargs)
         set_default("wydawnictwo", "Wydawnictwo FOLIUM", kwargs)
         set_default("isbn", "123-IS-BN-34", kwargs)
         set_default("redakcja", "Redakcja", kwargs)
@@ -931,10 +936,6 @@ def pytest_configure():
 
 collect_ignore = [os.path.join(os.path.dirname(__file__), "media")]
 
-import os
-
-import pytest
-
 
 @pytest.fixture
 def denorms():
@@ -1036,12 +1037,6 @@ def autor_z_dyscyplina(autor_jan_nowak, dyscyplina1, rok) -> Autor_Dyscyplina:
 #
 
 
-from django.core.management import call_command
-from django.db import connections
-from django.db.utils import OperationalError
-from django.test import TransactionTestCase
-
-
 def _fixture_teardown(self):
     # Allow TRUNCATE ... CASCADE and don't emit the post_migrate signal
     # when flushing only a subset of the apps
@@ -1057,7 +1052,7 @@ def _fixture_teardown(self):
         )
 
         # Add retry logic for deadlock handling
-        max_retries = 3
+        max_retries = 5
         for attempt in range(max_retries):
             try:
                 call_command(
@@ -1071,10 +1066,19 @@ def _fixture_teardown(self):
                     inhibit_post_migrate=inhibit_post_migrate,
                 )
                 break  # Success, exit retry loop
-            except OperationalError as e:
-                if "deadlock detected" in str(e).lower() and attempt < max_retries - 1:
-                    # Exponential backoff with jitter
-                    base_delay = 0.1 * (2**attempt)
+            except (OperationalError, CommandError) as e:
+                # Check for deadlock in both the exception and its cause
+                error_msg = str(e).lower()
+                is_deadlock = "deadlock detected" in error_msg or "zakleszczenie" in error_msg
+
+                # Also check the chained exception (CommandError wraps OperationalError)
+                if not is_deadlock and hasattr(e, "__cause__") and e.__cause__:
+                    cause_msg = str(e.__cause__).lower()
+                    is_deadlock = "deadlock detected" in cause_msg or "zakleszczenie" in cause_msg
+
+                if is_deadlock and attempt < max_retries - 1:
+                    # Exponential backoff with jitter - start with longer delays for parallel tests
+                    base_delay = 0.5 * (2**attempt)
                     jitter = random.uniform(0, base_delay)
                     time.sleep(base_delay + jitter)
                     continue
@@ -1128,9 +1132,6 @@ def szablony():
 
     instaluj_szablony()
     return Template.objects
-
-
-import pytest
 
 
 @pytest.fixture(scope="session")

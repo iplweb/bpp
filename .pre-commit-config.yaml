@@ -1,6 +1,6 @@
 repos:
     - repo: https://github.com/astral-sh/ruff-pre-commit
-      rev: v0.6.9
+      rev: v0.14.3
       hooks:
         - id: ruff
           args: ["--fix", "--exit-non-zero-on-fix"]
@@ -22,7 +22,7 @@ repos:
           description: Detect secrets in your data.
           entry: bash -c 'trufflehog git file://. --since-commit HEAD --only-verified --fail --no-update'
           language: system
-          stages: ["commit", "push"]
+          stages: ["pre-commit", "pre-push"]
 
 #    - repo: https://github.com/gitguardian/ggshield
 #      rev: v1.43.0

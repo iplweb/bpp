@@ -15,59 +15,52 @@ from .tasks import solve_all_reported_disciplines
 logger = logging.getLogger(__name__)
 
 
-@login_required
-def index(request):
-    """
-    Główny widok aplikacji ewaluacja_optymalizacja - lista wszystkich kalkulacji
-    """
-
-    from denorm.models import DirtyInstance
-
+def _add_run_statistics(run, uczelnia):
+    """Add statistics to an optimization run object."""
     from ewaluacja_liczba_n.models import LiczbaNDlaUczelni
 
-    # Sprawdź czy są rekordy do przeliczenia
-    dirty_count = DirtyInstance.objects.count()
+    # Użyj _calculate_liczba_n_stats żeby dostać procent slotów poza N
+    author_results = run.author_results.select_related("rodzaj_autora").all()
+    stats = _calculate_liczba_n_stats(run, author_results)
 
-    runs = OptimizationRun.objects.select_related(
-        "dyscyplina_naukowa", "uczelnia"
-    ).all()
+    # Dodaj procent slotów poza N do obiektu run
+    run.outside_n_slots_pct = stats["non_n_slots_pct"]
 
-    # Dla każdego run oblicz procent slotów poza N oraz statystyki przypięć
-    runs_with_stats = []
-    for run in runs:
-        # Użyj _calculate_liczba_n_stats żeby dostać procent slotów poza N
-        author_results = run.author_results.select_related("rodzaj_autora").all()
-        stats = _calculate_liczba_n_stats(run, author_results)
+    # Dodaj statystyki przypięć dla dyscypliny
+    run.pin_stats = _get_discipline_pin_stats(run.dyscyplina_naukowa)
 
-        # Dodaj procent slotów poza N do obiektu run
-        run.outside_n_slots_pct = stats["non_n_slots_pct"]
+    # Pobierz liczbę N dla dyscypliny i oblicz 3*N oraz procent wypełnienia slotów
+    try:
+        liczba_n_obj = LiczbaNDlaUczelni.objects.get(
+            uczelnia=uczelnia, dyscyplina_naukowa=run.dyscyplina_naukowa
+        )
+        run.liczba_3n = liczba_n_obj.liczba_n * 3
+        if run.liczba_3n > 0:
+            run.slots_fill_pct = (run.total_slots / run.liczba_3n) * 100
+        else:
+            run.slots_fill_pct = None
+    except LiczbaNDlaUczelni.DoesNotExist:
+        run.liczba_3n = None
+        run.slots_fill_pct = None
 
-        # Dodaj statystyki przypięć dla dyscypliny
-        run.pin_stats = _get_discipline_pin_stats(run.dyscyplina_naukowa)
+    return run
 
-        runs_with_stats.append(run)
 
-    # Sprawdź czy są dane liczby N
-    uczelnia = Uczelnia.objects.first()
-    liczba_n_count = 0
-    liczba_n_raportowane = 0
-
-    if uczelnia:
-        liczba_n_count = LiczbaNDlaUczelni.objects.filter(uczelnia=uczelnia).count()
-        liczba_n_raportowane = LiczbaNDlaUczelni.objects.filter(
-            uczelnia=uczelnia, liczba_n__gte=12
-        ).count()
-
-    # Oblicz agregacje dla ostatnich 10 wierszy (dla podsumowania w tabeli)
-    recent_runs = runs_with_stats[:10]
-
+def _calculate_summary_statistics(recent_runs):
+    """Calculate summary statistics from a list of runs."""
     summary = {
         "total_points": Decimal("0"),
         "total_publications": 0,
+        "total_slots": Decimal("0"),
+        "total_3n": Decimal("0"),
         "total_low_mono_weighted": Decimal("0"),  # suma LOW-MONO % * liczba publikacji
         "total_outside_n_weighted": Decimal("0"),  # suma sloty poza N % * liczba slotów
+        "total_slots_fill_weighted": Decimal("0"),  # suma Sloty % * liczba slotów
         "total_publications_for_low_mono": 0,  # suma publikacji (dla średniej ważonej)
         "total_slots_for_outside_n": Decimal("0"),  # suma slotów (dla średniej ważonej)
+        "total_slots_for_fill_pct": Decimal(
+            "0"
+        ),  # suma slotów z danymi 3*N (dla średniej ważonej)
         "total_pinned": 0,
         "total_unpinned": 0,
     }
@@ -75,8 +68,13 @@ def index(request):
     for run in recent_runs:
         summary["total_points"] += run.total_points
         summary["total_publications"] += run.total_publications
+        summary["total_slots"] += run.total_slots
         summary["total_pinned"] += run.pin_stats["pinned"]
         summary["total_unpinned"] += run.pin_stats["unpinned"]
+
+        # Dodaj 3*N do sumy jeśli dostępne
+        if run.liczba_3n is not None:
+            summary["total_3n"] += run.liczba_3n
 
         # Dla średniej ważonej LOW-MONO % (ważona liczbą publikacji)
         if run.total_publications > 0:
@@ -91,6 +89,13 @@ def index(request):
                 Decimal(str(run.outside_n_slots_pct)) * run.total_slots
             )
             summary["total_slots_for_outside_n"] += run.total_slots
+
+        # Dla średniej ważonej Sloty % (ważona liczbą slotów)
+        if run.total_slots > 0 and run.slots_fill_pct is not None:
+            summary["total_slots_fill_weighted"] += (
+                Decimal(str(run.slots_fill_pct)) * run.total_slots
+            )
+            summary["total_slots_for_fill_pct"] += run.total_slots
 
     # Oblicz średnie ważone
     if summary["total_publications_for_low_mono"] > 0:
@@ -108,6 +113,13 @@ def index(request):
     else:
         summary["avg_outside_n_pct"] = Decimal("0")
 
+    if summary["total_slots_for_fill_pct"] > 0:
+        summary["avg_slots_fill_pct"] = (
+            summary["total_slots_fill_weighted"] / summary["total_slots_for_fill_pct"]
+        )
+    else:
+        summary["avg_slots_fill_pct"] = Decimal("0")
+
     # Oblicz procenty przypięte/odpięte
     total_pins = summary["total_pinned"] + summary["total_unpinned"]
     if total_pins > 0:
@@ -117,12 +129,74 @@ def index(request):
         summary["pinned_pct"] = Decimal("0")
         summary["unpinned_pct"] = Decimal("0")
 
+    return summary
+
+
+def _check_for_problematic_slots():
+    """Check if there are problematic slots < 0.1 for authors with disciplines."""
+    from bpp.models import Autor_Dyscyplina, Cache_Punktacja_Autora_Query
+
+    autorzy_z_dyscyplinami = set(
+        Autor_Dyscyplina.objects.filter(rok__gte=2022, rok__lte=2025)
+        .values_list("autor_id", flat=True)
+        .distinct()
+    )
+
+    return Cache_Punktacja_Autora_Query.objects.filter(
+        slot__lt=Decimal("0.1"),
+        rekord__rok__gte=2022,
+        rekord__rok__lte=2025,
+        autor_id__in=autorzy_z_dyscyplinami,
+    ).exists()
+
+
+@login_required
+def index(request):
+    """
+    Główny widok aplikacji ewaluacja_optymalizacja - lista wszystkich kalkulacji
+    """
+
+    from denorm.models import DirtyInstance
+
+    from ewaluacja_liczba_n.models import LiczbaNDlaUczelni
+
+    # Sprawdź czy są rekordy do przeliczenia
+    dirty_count = DirtyInstance.objects.count()
+
+    runs = OptimizationRun.objects.select_related(
+        "dyscyplina_naukowa", "uczelnia"
+    ).all()
+
+    # Pobierz uczelnię dla dalszych obliczeń
+    uczelnia = Uczelnia.objects.first()
+
+    # Dla każdego run oblicz procent slotów poza N oraz statystyki przypięć
+    runs_with_stats = [_add_run_statistics(run, uczelnia) for run in runs]
+
+    # Sprawdź czy są dane liczby N
+    liczba_n_count = 0
+    liczba_n_raportowane = 0
+
+    if uczelnia:
+        liczba_n_count = LiczbaNDlaUczelni.objects.filter(uczelnia=uczelnia).count()
+        liczba_n_raportowane = LiczbaNDlaUczelni.objects.filter(
+            uczelnia=uczelnia, liczba_n__gte=12
+        ).count()
+
+    # Oblicz agregacje dla ostatnich 10 wierszy (dla podsumowania w tabeli)
+    recent_runs = runs_with_stats[:10]
+    summary = _calculate_summary_statistics(recent_runs)
+
+    # Sprawdź czy są problematyczne sloty < 0.1 dla przycisku weryfikacji
+    has_problematic_slots = _check_for_problematic_slots()
+
     context = {
         "optimization_runs": runs_with_stats,
         "liczba_n_count": liczba_n_count,
         "liczba_n_raportowane": liczba_n_raportowane,
         "summary": summary,
         "dirty_count": dirty_count,
+        "has_problematic_slots": has_problematic_slots,
     }
 
     return render(request, "ewaluacja_optymalizacja/index.html", context)
@@ -404,13 +478,19 @@ def start_bulk_optimization(request):
         f"Cleared {deleted_count} old OptimizationRun records for uczelnia {uczelnia.pk}"
     )
 
+    # Pobierz wybrany tryb algorytmu z formularza (domyślnie two-phase)
+    algorithm_mode = request.POST.get("algorithm_mode", "two-phase")
+    if algorithm_mode not in ["two-phase", "single-phase"]:
+        algorithm_mode = "two-phase"  # fallback to default
+
     logger.info(
         f"Starting bulk optimization for {uczelnia}: "
-        f"{liczba_n_raportowane} disciplines with liczba_n >= 12"
+        f"{liczba_n_raportowane} disciplines with liczba_n >= 12, "
+        f"algorithm mode: {algorithm_mode}"
     )
 
     # Uruchom zadanie Celery
-    task = solve_all_reported_disciplines.delay(uczelnia.pk)
+    task = solve_all_reported_disciplines.delay(uczelnia.pk, algorithm_mode)
 
     # Nie pokazuj natychmiastowego komunikatu sukcesu - zadanie dopiero się rozpoczęło
     # Komunikat pojawi się na stronie statusu po faktycznym zakończeniu wszystkich operacji
@@ -419,6 +499,141 @@ def start_bulk_optimization(request):
     return redirect(
         "ewaluacja_optymalizacja:bulk-status", uczelnia_id=uczelnia.pk, task_id=task.id
     )
+
+
+def _process_discipline_optimization_status(liczba_n_obj, uczelnia):
+    """Process optimization status for a single discipline.
+
+    Returns dict with discipline info including status, points, publications, etc.
+    """
+    from ewaluacja_optymalizacja.models import OptimizationAuthorResult, OptimizationRun
+
+    dyscyplina = liczba_n_obj.dyscyplina_naukowa
+
+    disc_info = {
+        "dyscyplina_id": dyscyplina.pk,
+        "dyscyplina_nazwa": dyscyplina.nazwa,
+        "liczba_n": float(liczba_n_obj.liczba_n),
+    }
+
+    # Znajdź najnowszy OptimizationRun dla tej dyscypliny
+    opt_run = (
+        OptimizationRun.objects.filter(uczelnia=uczelnia, dyscyplina_naukowa=dyscyplina)
+        .order_by("-started_at")
+        .first()
+    )
+
+    if opt_run:
+        if opt_run.status == "completed":
+            # Sprawdź czy są zapisane dane autorów
+            has_authors = OptimizationAuthorResult.objects.filter(
+                optimization_run=opt_run
+            ).exists()
+
+            if has_authors:
+                disc_info["status"] = "completed"
+                disc_info["optimization_run_id"] = opt_run.pk
+                disc_info["total_points"] = float(opt_run.total_points)
+                disc_info["total_publications"] = opt_run.total_publications
+                return disc_info, "completed"
+
+            # OptimizationRun completed ale brak danych - wciąż się zapisuje
+            disc_info["status"] = "running"
+            return disc_info, "running"
+
+        if opt_run.status == "failed":
+            disc_info["status"] = "failed"
+            disc_info["error"] = opt_run.notes
+            return disc_info, "failed"
+
+        # status == "running"
+        disc_info["status"] = "running"
+        return disc_info, "running"
+
+    # Brak OptimizationRun - zadanie jeszcze nie utworzyło rekordu
+    disc_info["status"] = "pending"
+    return disc_info, "pending"
+
+
+def _build_bulk_progress_context(
+    task_id, uczelnia_id, uczelnia, total_disciplines, disciplines_info, status_counts
+):
+    """Build context dict based on optimization progress status."""
+    completed_count = status_counts["completed"]
+    failed_count = status_counts["failed"]
+    running_count = status_counts["running"]
+    pending_count = status_counts["pending"]
+
+    finished_count = completed_count + failed_count
+    progress = (
+        int((finished_count / total_disciplines) * 100) if total_disciplines > 0 else 0
+    )
+
+    all_done = finished_count == total_disciplines
+
+    context = {
+        "task_id": task_id,
+        "uczelnia_id": uczelnia_id,
+    }
+
+    if all_done and completed_count > 0:
+        # Zadania NAPRAWDĘ zakończone
+        logger.info(
+            f"Bulk optimization for {uczelnia} completed: "
+            f"{completed_count} successful, {failed_count} failed"
+        )
+        context["redirect_to_index"] = True
+        context["success_message"] = (
+            f"Przeliczanie ewaluacji zakończone pomyślnie! "
+            f"Przeliczono {completed_count} dyscyplin."
+        )
+    elif all_done and total_disciplines == 0:
+        # Brak dyscyplin do przetworzenia
+        context["task_ready"] = True
+        context["success"] = False
+        context["task_state"] = "FAILURE"
+        context["error"] = (
+            "Brak dyscyplin do przetworzenia. "
+            "Upewnij się, że istnieją dane LiczbaNDlaUczelni z liczbą N >= 12."
+        )
+        logger.warning(f"Bulk optimization for {uczelnia}: no disciplines to process")
+    elif all_done and completed_count == 0 and failed_count == 0:
+        # Wszystkie skończone ale nic nie wykonano - zadania nie wystartowały
+        context["task_ready"] = False
+        context["task_state"] = "PENDING"
+        context["info"] = {
+            "step": "optimizing",
+            "progress": 0,
+            "message": "Oczekiwanie na rozpoczęcie przetwarzania...",
+            "total_disciplines": total_disciplines,
+            "completed": 0,
+            "failed": 0,
+            "running": 0,
+            "pending": total_disciplines,
+            "disciplines": disciplines_info,
+        }
+        logger.info(f"Bulk optimization for {uczelnia}: waiting for tasks to start")
+    else:
+        # Zadania w trakcie
+        context["task_ready"] = False
+        context["task_state"] = "PROGRESS"
+        context["info"] = {
+            "step": "optimizing",
+            "progress": progress,
+            "message": f"Przetwarzanie dyscyplin: {finished_count}/{total_disciplines}",
+            "total_disciplines": total_disciplines,
+            "completed": completed_count,
+            "failed": failed_count,
+            "running": running_count,
+            "pending": pending_count,
+            "disciplines": disciplines_info,
+        }
+        logger.debug(
+            f"Bulk optimization progress for {uczelnia}: "
+            f"{finished_count}/{total_disciplines} ({progress}%)"
+        )
+
+    return context
 
 
 @login_required
@@ -430,7 +645,6 @@ def bulk_optimization_status(request, uczelnia_id, task_id):
     """
     from bpp.models import Uczelnia
     from ewaluacja_liczba_n.models import LiczbaNDlaUczelni
-    from ewaluacja_optymalizacja.models import OptimizationAuthorResult, OptimizationRun
 
     try:
         uczelnia = Uczelnia.objects.get(pk=uczelnia_id)
@@ -482,91 +696,30 @@ def bulk_optimization_status(request, uczelnia_id, task_id):
         )
 
     # Sprawdź status każdej dyscypliny w bazie danych
-    completed_count = 0
-    failed_count = 0
-    running_count = 0
-    pending_count = 0
+    status_counts = {"completed": 0, "failed": 0, "running": 0, "pending": 0}
     disciplines_info = []
 
     for liczba_n_obj in raportowane_dyscypliny:
-        dyscyplina = liczba_n_obj.dyscyplina_naukowa
-
-        # Znajdź najnowszy OptimizationRun dla tej dyscypliny
-        opt_run = (
-            OptimizationRun.objects.filter(
-                uczelnia=uczelnia, dyscyplina_naukowa=dyscyplina
-            )
-            .order_by("-started_at")
-            .first()
+        disc_info, status = _process_discipline_optimization_status(
+            liczba_n_obj, uczelnia
         )
-
-        disc_info = {
-            "dyscyplina_id": dyscyplina.pk,
-            "dyscyplina_nazwa": dyscyplina.nazwa,
-            "liczba_n": float(liczba_n_obj.liczba_n),
-        }
-
-        if opt_run:
-            if opt_run.status == "completed":
-                # Sprawdź czy są zapisane dane autorów
-                has_authors = OptimizationAuthorResult.objects.filter(
-                    optimization_run=opt_run
-                ).exists()
-
-                if has_authors:
-                    disc_info["status"] = "completed"
-                    disc_info["optimization_run_id"] = opt_run.pk
-                    disc_info["total_points"] = float(opt_run.total_points)
-                    disc_info["total_publications"] = opt_run.total_publications
-                    completed_count += 1
-                else:
-                    # OptimizationRun completed ale brak danych - wciąż się zapisuje
-                    disc_info["status"] = "running"
-                    running_count += 1
-
-            elif opt_run.status == "failed":
-                disc_info["status"] = "failed"
-                disc_info["error"] = opt_run.notes
-                failed_count += 1
-
-            else:  # status == "running"
-                disc_info["status"] = "running"
-                running_count += 1
-        else:
-            # Brak OptimizationRun - zadanie jeszcze nie utworzyło rekordu
-            disc_info["status"] = "queued"
-            pending_count += 1
-
+        status_counts[status] += 1
         disciplines_info.append(disc_info)
 
-    # Oblicz postęp
-    finished_count = completed_count + failed_count
-    progress = (
-        int((finished_count / total_disciplines) * 100) if total_disciplines > 0 else 0
+    # Build context based on progress
+    context = _build_bulk_progress_context(
+        task_id,
+        uczelnia_id,
+        uczelnia,
+        total_disciplines,
+        disciplines_info,
+        status_counts,
     )
 
-    # Określ czy wszystkie zadania są zakończone
-    all_done = finished_count == total_disciplines
+    # Handle redirect for completed tasks
+    if context.get("redirect_to_index"):
+        messages.success(request, context["success_message"])
 
-    context = {
-        "task_id": task_id,
-        "uczelnia_id": uczelnia_id,
-    }
-
-    if all_done and completed_count > 0:
-        # Zadania NAPRAWDĘ zakończone - przekieruj do strony głównej
-        logger.info(
-            f"Bulk optimization for {uczelnia} completed: "
-            f"{completed_count} successful, {failed_count} failed"
-        )
-
-        messages.success(
-            request,
-            f"Przeliczanie ewaluacji zakończone pomyślnie! "
-            f"Przeliczono {completed_count} dyscyplin.",
-        )
-
-        # Dla HTMX requests używamy nagłówka HX-Redirect aby wykonać full-page redirect
         if request.headers.get("HX-Request"):
             from django.http import HttpResponse
             from django.urls import reverse
@@ -575,55 +728,7 @@ def bulk_optimization_status(request, uczelnia_id, task_id):
             response["HX-Redirect"] = reverse("ewaluacja_optymalizacja:index")
             return response
 
-        # Dla zwykłych requestów normalny redirect
         return redirect("ewaluacja_optymalizacja:index")
-    elif all_done and total_disciplines == 0:
-        # Brak dyscyplin do przetworzenia
-        context["task_ready"] = True
-        context["success"] = False
-        context["task_state"] = "FAILURE"
-        context["error"] = (
-            "Brak dyscyplin do przetworzenia. "
-            "Upewnij się, że istnieją dane LiczbaNDlaUczelni z liczbą N >= 12."
-        )
-        logger.warning(f"Bulk optimization for {uczelnia}: no disciplines to process")
-    elif all_done and completed_count == 0 and failed_count == 0:
-        # Wszystkie skończone ale nic nie wykonano - zadania nie wystartowały
-        # To NIE jest błąd - to oznacza że jesteśmy na POCZĄTKU po skasowaniu OptimizationRun
-        # Ustaw task_ready=False aby pokazać ekran oczekiwania
-        context["task_ready"] = False
-        context["task_state"] = "PENDING"
-        context["info"] = {
-            "step": "optimizing",
-            "progress": 0,
-            "message": "Oczekiwanie na rozpoczęcie przetwarzania...",
-            "total_disciplines": total_disciplines,
-            "completed": 0,
-            "failed": 0,
-            "running": 0,
-            "pending": total_disciplines,
-            "disciplines": disciplines_info,
-        }
-        logger.info(f"Bulk optimization for {uczelnia}: waiting for tasks to start")
-    else:
-        # Zadania w trakcie
-        context["task_ready"] = False
-        context["task_state"] = "PROGRESS"
-        context["info"] = {
-            "step": "optimizing",
-            "progress": progress,
-            "message": f"Przetwarzanie dyscyplin: {finished_count}/{total_disciplines}",
-            "total_disciplines": total_disciplines,
-            "completed": completed_count,
-            "failed": failed_count,
-            "running": running_count,
-            "pending": pending_count,
-            "disciplines": disciplines_info,
-        }
-        logger.debug(
-            f"Bulk optimization progress for {uczelnia}: "
-            f"{finished_count}/{total_disciplines} ({progress}%)"
-        )
 
     # If HTMX request, return only the progress partial
     if request.headers.get("HX-Request"):
@@ -712,6 +817,126 @@ def optimize_with_unpinning(request):
     return redirect("ewaluacja_optymalizacja:optimize-unpin-status", task_id=task.id)
 
 
+def _verify_optimization_data_complete(raportowane_dyscypliny, uczelnia):
+    """Verify that all optimization data is fully saved to database."""
+    from ewaluacja_optymalizacja.models import (
+        OptimizationAuthorResult,
+        OptimizationPublication,
+        OptimizationRun,
+    )
+
+    for liczba_n_obj in raportowane_dyscypliny:
+        opt_run = (
+            OptimizationRun.objects.filter(
+                uczelnia=uczelnia,
+                dyscyplina_naukowa=liczba_n_obj.dyscyplina_naukowa,
+                status="completed",
+            )
+            .order_by("-started_at")
+            .first()
+        )
+
+        if opt_run:
+            has_authors = OptimizationAuthorResult.objects.filter(
+                optimization_run=opt_run
+            ).exists()
+            has_publications = OptimizationPublication.objects.filter(
+                author_result__optimization_run=opt_run
+            ).exists()
+
+            if not (has_authors and has_publications):
+                logger.info(
+                    f"Data not fully saved for {liczba_n_obj.dyscyplina_naukowa.nazwa}: "
+                    f"authors={has_authors}, publications={has_publications}"
+                )
+                return False
+        else:
+            logger.warning(
+                f"No optimization run found for {liczba_n_obj.dyscyplina_naukowa.nazwa}"
+            )
+            return False
+
+    return True
+
+
+def _determine_unpin_task_context(
+    task,
+    all_data_complete,
+    completed_count,
+    discipline_count,
+    running_count,
+    percent_complete,
+):
+    """Determine the context based on task status and data completion."""
+    context_update = {}
+
+    if task.ready():
+        if task.failed():
+            error_info = str(task.info)
+            logger.error(f"Task {task.id} failed: {error_info}")
+            context_update.update(
+                {
+                    "error": error_info,
+                    "success": False,
+                    "task_ready": True,
+                    "task_state": "FAILURE",
+                }
+            )
+        elif task.successful() and all_data_complete:
+            result = task.result
+            logger.info(f"Task {task.id} successful, all data verified")
+            context_update.update(
+                {
+                    "result": result,
+                    "success": True,
+                    "task_ready": True,
+                    "task_state": "SUCCESS",
+                }
+            )
+        else:
+            context_update.update(
+                {
+                    "task_ready": False,
+                    "task_state": "PROGRESS",
+                    "info": {
+                        "step": "finalizing",
+                        "progress": 99,
+                        "message": "Finalizowanie zapisów do bazy danych...",
+                        "completed_optimizations": completed_count,
+                        "total_optimizations": discipline_count,
+                    },
+                }
+            )
+    else:
+        context_update["task_ready"] = False
+        context_update["task_state"] = "PROGRESS"
+
+        if completed_count >= discipline_count and discipline_count > 0:
+            context_update["info"] = {
+                "step": "finalizing",
+                "progress": 99,
+                "message": "Finalizowanie zadania...",
+                "completed_optimizations": completed_count,
+                "total_optimizations": discipline_count,
+            }
+        else:
+            progress = (
+                min(65 + int((completed_count / discipline_count) * 30), 95)
+                if discipline_count > 0
+                else 65
+            )
+            context_update["info"] = {
+                "step": "optimization",
+                "progress": progress,
+                "message": f"Przeliczono {completed_count} z {discipline_count} dyscyplin ({percent_complete}%)",
+                "running_optimizations": running_count,
+                "completed_optimizations": completed_count,
+                "total_optimizations": discipline_count,
+            }
+
+    return context_update
+
+
 @login_required
 def optimize_unpin_status(request, task_id):
     """
@@ -723,11 +948,7 @@ def optimize_unpin_status(request, task_id):
     from denorm.models import DirtyInstance
 
     from ewaluacja_liczba_n.models import LiczbaNDlaUczelni
-    from ewaluacja_optymalizacja.models import (
-        OptimizationAuthorResult,
-        OptimizationPublication,
-        OptimizationRun,
-    )
+    from ewaluacja_optymalizacja.models import OptimizationRun
 
     task = AsyncResult(task_id)
     uczelnia = Uczelnia.objects.first()
@@ -818,107 +1039,20 @@ def optimize_unpin_status(request, task_id):
         logger.info(
             "All OptimizationRun records completed, verifying data integrity..."
         )
-
-        all_data_complete = True
-        for liczba_n_obj in raportowane_dyscypliny:
-            opt_run = (
-                OptimizationRun.objects.filter(
-                    uczelnia=uczelnia,
-                    dyscyplina_naukowa=liczba_n_obj.dyscyplina_naukowa,
-                    status="completed",
-                )
-                .order_by("-started_at")
-                .first()
-            )
-
-            if opt_run:
-                # Sprawdź czy są wyniki autorów
-                has_authors = OptimizationAuthorResult.objects.filter(
-                    optimization_run=opt_run
-                ).exists()
-
-                # Sprawdź czy są publikacje
-                has_publications = OptimizationPublication.objects.filter(
-                    author_result__optimization_run=opt_run
-                ).exists()
-
-                if not (has_authors and has_publications):
-                    logger.info(
-                        f"Data not fully saved for "
-                        f"{liczba_n_obj.dyscyplina_naukowa.nazwa}: "
-                        f"authors={has_authors}, publications={has_publications}"
-                    )
-                    all_data_complete = False
-                    break
-            else:
-                logger.warning(
-                    f"No optimization run found for "
-                    f"{liczba_n_obj.dyscyplina_naukowa.nazwa}"
-                )
-                all_data_complete = False
-                break
+        all_data_complete = _verify_optimization_data_complete(
+            raportowane_dyscypliny, uczelnia
+        )
 
     # KROK 5: Określ stan na podstawie task.ready() i all_data_complete
-    if task.ready():
-        # Task Celery się zakończył
-        if task.failed():
-            # Task się nie powiódł
-            error_info = str(task.info)
-            logger.error(f"Task {task_id} failed: {error_info}")
-            context["error"] = error_info
-            context["success"] = False
-            context["task_ready"] = True
-            context["task_state"] = "FAILURE"
-        elif task.successful() and all_data_complete:
-            # Task się powiódł i wszystkie dane są w bazie
-            result = task.result
-            logger.info(f"Task {task_id} successful, all data verified")
-            context["result"] = result
-            context["success"] = True
-            context["task_ready"] = True
-            context["task_state"] = "SUCCESS"
-        else:
-            # Task się powiódł ale dane jeszcze się zapisują
-            context["task_ready"] = False
-            context["task_state"] = "PROGRESS"
-            context["info"] = {
-                "step": "finalizing",
-                "progress": 99,
-                "message": "Finalizowanie zapisów do bazy danych...",
-                "completed_optimizations": completed_count,
-                "total_optimizations": discipline_count,
-            }
-    else:
-        # Task wciąż trwa - monitoruj postęp
-        context["task_ready"] = False
-        context["task_state"] = "PROGRESS"
-
-        if completed_count >= discipline_count and discipline_count > 0:
-            # Wszystkie dane są zapisane ale task jeszcze trwa
-            context["info"] = {
-                "step": "finalizing",
-                "progress": 99,
-                "message": "Finalizowanie zadania...",
-                "completed_optimizations": completed_count,
-                "total_optimizations": discipline_count,
-            }
-        else:
-            # Zadanie wciąż trwa - pokaż postęp z bazy danych
-            progress = (
-                min(65 + int((completed_count / discipline_count) * 30), 95)
-                if discipline_count > 0
-                else 65
-            )
-
-            context["info"] = {
-                "step": "optimization",
-                "progress": progress,
-                "message": f"Przeliczono {completed_count} z {discipline_count} "
-                f"dyscyplin ({percent_complete}%)",
-                "running_optimizations": running_count,
-                "completed_optimizations": completed_count,
-                "total_optimizations": discipline_count,
-            }
+    context_update = _determine_unpin_task_context(
+        task,
+        all_data_complete,
+        completed_count,
+        discipline_count,
+        running_count,
+        percent_complete,
+    )
+    context.update(context_update)
 
     # KROK 6: Jeśli zadanie się zakończyło pomyślnie i mamy success=True w kontekście
     # to znaczy że wszystko jest OK - przekieruj z flash message
@@ -1110,6 +1244,11 @@ def reset_discipline_pins(request, pk):
     from time import sleep
 
     from denorm.models import DirtyInstance
+    from denorm.tasks import flush_via_queue
+
+    # Trigger denorm processing via Celery queue
+    flush_via_queue.delay()
+    logger.info("Triggered denorm flush via queue")
 
     max_wait = 600  # Max 10 minut
     waited = 0
@@ -1247,8 +1386,7 @@ def reset_all_pins_status(request, task_id):
 
         messages.success(
             request,
-            f"Reset przypięć zakończony pomyślnie! "
-            f"Zresetowano {total_reset} przypięć.",
+            f"Reset przypięć zakończony pomyślnie! Zresetowano {total_reset} przypięć.",
         )
 
         # Dla HTMX requests używamy nagłówka HX-Redirect aby wykonać full-page redirect
@@ -1319,3 +1457,360 @@ def denorm_progress(request):
     }
 
     return render(request, "ewaluacja_optymalizacja/_denorm_progress.html", context)
+
+
+@login_required
+def analyze_unpinning_opportunities(request):
+    """
+    Uruchamia zadanie analizy możliwości odpinania prac wieloautorskich.
+
+    ZAWSZE najpierw przelicza metryki (usuwa stare i generuje nowe),
+    a następnie automatycznie uruchamia analizę prac wieloautorskich.
+
+    Używa Celery chain do sekwencyjnego wykonania: metryki -> unpinning.
+    """
+    from celery import chain
+
+    from ewaluacja_metryki.models import MetrykaAutora, StatusGenerowania
+    from ewaluacja_metryki.tasks import generuj_metryki_task_parallel
+    from ewaluacja_metryki.utils import get_default_rodzaje_autora
+    from ewaluacja_optymalizacja.tasks import run_unpinning_after_metrics_wrapper
+
+    # Pobierz pierwszą uczelnię (zakładamy, że jest tylko jedna)
+    uczelnia = Uczelnia.objects.first()
+
+    if not uczelnia:
+        messages.error(request, "Nie znaleziono uczelni w systemie.")
+        return redirect("ewaluacja_optymalizacja:index")
+
+    # Sprawdź czy przeliczanie metryk już trwa
+    status = StatusGenerowania.get_or_create()
+
+    if status.w_trakcie:
+        messages.info(
+            request,
+            "Przeliczanie metryk jest już w trakcie. Poczekaj na zakończenie.",
+        )
+        return redirect("ewaluacja_optymalizacja:index")
+
+    # Usuń stare metryki
+    metryki_count = MetrykaAutora.objects.count()
+    if metryki_count > 0:
+        logger.info(f"Deleting {metryki_count} old metrics before recalculation...")
+        MetrykaAutora.objects.all().delete()
+        logger.info("Deleted old metrics")
+
+    # Stwórz Celery chain: metryki -> unpinning
+    # Pierwszy task (metryki) zwraca wynik, który jest przekazywany do drugiego (unpinning wrapper)
+    workflow = chain(
+        generuj_metryki_task_parallel.s(
+            rodzaje_autora=get_default_rodzaje_autora(),
+            nadpisz=True,
+            przelicz_liczbe_n=True,
+        ),  # Przelicz metryki z jawnymi parametrami
+        run_unpinning_after_metrics_wrapper.s(  # Potem uruchom unpinning
+            uczelnia_id=uczelnia.pk, dyscyplina_id=None, min_slot_filled=0.8
+        ),
+    )
+
+    # Uruchom chain
+    result = workflow.apply_async()
+
+    logger.info(
+        f"Started metrics->unpinning chain. Chain ID: {result.id}, "
+        f"Parent task (metrics): {result.parent.id if result.parent else 'None'}"
+    )
+
+    messages.info(
+        request,
+        "Rozpoczęto przeliczanie metryk i analizę możliwości odpinania. "
+        "Zostaniesz przekierowany do strony postępu.",
+    )
+
+    # Przekieruj do strony statusu - result.id to ID ostatniego zadania w chain (unpinning)
+    return redirect(
+        "ewaluacja_optymalizacja:unpinning-combined-status", task_id=result.id
+    )
+
+
+@login_required
+def unpinning_combined_status(request, task_id):
+    """
+    Wyświetla status łączonego zadania: przeliczanie metryk + analiza unpinning.
+    Supports HTMX partial updates.
+    """
+    task = AsyncResult(task_id)
+
+    context = {
+        "task_id": task_id,
+    }
+
+    # Pobierz informacje o zadaniu
+    task_info = task.info if task.info and isinstance(task.info, dict) else {}
+    current_stage = task_info.get("stage", "unknown")
+    current_step = task_info.get("step", "unknown")
+
+    logger.info(
+        f"Checking combined task {task_id}: stage={current_stage}, step={current_step}, "
+        f"task.info={task_info}"
+    )
+
+    # Jeśli zadanie się nie zakończyło
+    if not task.ready():
+        context["task_state"] = "PROGRESS"
+        context["task_ready"] = False
+        context["info"] = task_info
+        context["info"]["stage"] = current_stage
+        context["info"]["step"] = current_step
+
+    # Sprawdź czy zadanie zakończyło się błędem
+    elif task.failed():
+        error_info = str(task.info)
+        logger.error(f"Task {task_id} failed: {error_info}")
+        context["error"] = error_info
+        context["success"] = False
+        context["task_ready"] = True
+
+    # Zadanie zakończone pomyślnie
+    elif task.successful():
+        result = task.result
+        logger.info(f"Task {task_id} successful: {result}")
+
+        messages.success(
+            request,
+            f"Analiza zakończona pomyślnie! "
+            f"Przeliczono {result.get('metrics_count', 0)} metryk. "
+            f"Znaleziono {result.get('total_opportunities', 0)} możliwości odpinania, "
+            f"w tym {result.get('sensible_opportunities', 0)} sensownych.",
+        )
+
+        # Dla HTMX requests używamy nagłówka HX-Redirect aby wykonać full-page redirect
+        if request.headers.get("HX-Request"):
+            from django.http import HttpResponse
+            from django.urls import reverse
+
+            response = HttpResponse(status=200)
+            response["HX-Redirect"] = reverse("ewaluacja_optymalizacja:unpinning-list")
+            return response
+
+        # Dla zwykłych requestów normalny redirect
+        return redirect("ewaluacja_optymalizacja:unpinning-list")
+
+    # If HTMX request, return only the progress partial
+    if request.headers.get("HX-Request"):
+        return render(
+            request,
+            "ewaluacja_optymalizacja/_unpinning_combined_progress.html",
+            context,
+        )
+
+    return render(
+        request, "ewaluacja_optymalizacja/unpinning_combined_status.html", context
+    )
+
+
+@login_required
+def unpinning_analysis_status(request, task_id):
+    """
+    Wyświetla status zadania analizy możliwości odpinania.
+    Supports HTMX partial updates.
+    """
+    task = AsyncResult(task_id)
+
+    context = {
+        "task_id": task_id,
+    }
+
+    # Pobierz informacje o zadaniu
+    task_info = task.info if task.info and isinstance(task.info, dict) else {}
+    current_step = task_info.get("step", "unknown")
+
+    logger.info(
+        f"Checking unpinning analysis task {task_id}: current step={current_step}, "
+        f"task.info={task_info}"
+    )
+
+    # Jeśli zadanie się nie zakończyło
+    if not task.ready():
+        context["task_state"] = "PROGRESS"
+        context["task_ready"] = False
+        context["info"] = task_info
+        context["info"]["step"] = current_step
+
+    # Sprawdź czy zadanie zakończyło się błędem
+    elif task.failed():
+        error_info = str(task.info)
+        logger.error(f"Task {task_id} failed: {error_info}")
+        context["error"] = error_info
+        context["success"] = False
+        context["task_ready"] = True
+
+    # Zadanie zakończone pomyślnie
+    elif task.successful():
+        result = task.result
+        logger.info(f"Task {task_id} successful: {result}")
+
+        messages.success(
+            request,
+            f"Analiza zakończona pomyślnie! "
+            f"Znaleziono {result.get('total_opportunities', 0)} możliwości odpinania, "
+            f"w tym {result.get('sensible_opportunities', 0)} sensownych.",
+        )
+
+        # Dla HTMX requests używamy nagłówka HX-Redirect aby wykonać full-page redirect
+        if request.headers.get("HX-Request"):
+            from django.http import HttpResponse
+            from django.urls import reverse
+
+            response = HttpResponse(status=200)
+            response["HX-Redirect"] = reverse("ewaluacja_optymalizacja:unpinning-list")
+            return response
+
+        # Dla zwykłych requestów normalny redirect
+        return redirect("ewaluacja_optymalizacja:unpinning-list")
+
+    # If HTMX request, return only the progress partial
+    if request.headers.get("HX-Request"):
+        return render(
+            request,
+            "ewaluacja_optymalizacja/_unpinning_analysis_progress.html",
+            context,
+        )
+
+    return render(
+        request, "ewaluacja_optymalizacja/unpinning_analysis_status.html", context
+    )
+
+
+@login_required
+def unpinning_opportunities_list(request):
+    """
+    Wyświetla listę możliwości odpinania prac wieloautorskich.
+    """
+    from .models import UnpinningOpportunity
+
+    # Pobierz pierwszą uczelnię (zakładamy, że jest tylko jedna)
+    uczelnia = Uczelnia.objects.first()
+
+    if not uczelnia:
+        messages.error(request, "Nie znaleziono uczelni w systemie.")
+        return redirect("ewaluacja_optymalizacja:index")
+
+    # Filtrowanie
+    opportunities_qs = UnpinningOpportunity.objects.filter(uczelnia=uczelnia)
+
+    # Filtr po dyscyplinie (opcjonalnie)
+    dyscyplina_id = request.GET.get("dyscyplina")
+    if dyscyplina_id:
+        try:
+            dyscyplina_id = int(dyscyplina_id)
+            opportunities_qs = opportunities_qs.filter(
+                dyscyplina_naukowa_id=dyscyplina_id
+            )
+        except (ValueError, TypeError):
+            pass
+
+    # Filtr "tylko sensowne"
+    only_sensible = request.GET.get("only_sensible")
+    if only_sensible == "1":
+        opportunities_qs = opportunities_qs.filter(makes_sense=True)
+
+    # Select related dla optymalizacji
+    opportunities_qs = opportunities_qs.select_related(
+        "autor_could_benefit",
+        "autor_currently_using",
+        "dyscyplina_naukowa",
+        "metryka_could_benefit",
+        "metryka_currently_using",
+        "metryka_could_benefit__autor",
+        "metryka_currently_using__autor",
+    )
+
+    # Paginacja
+    from django.core.paginator import Paginator
+
+    paginator = Paginator(opportunities_qs, 50)  # 50 wyników na stronę
+    page_number = request.GET.get("page")
+    opportunities = paginator.get_page(page_number)
+
+    # Preload Rekord objects to avoid N+1 queries
+    from bpp.models import Rekord
+
+    rekord_ids = [opp.rekord_id for opp in opportunities]
+    rekordy = {r.pk: r for r in Rekord.objects.filter(pk__in=rekord_ids)}
+
+    # Attach rekord objects to opportunities
+    for opp in opportunities:
+        opp._cached_rekord = rekordy.get(opp.rekord_id)
+
+    # Statystyki
+    total_count = UnpinningOpportunity.objects.filter(uczelnia=uczelnia).count()
+    sensible_count = UnpinningOpportunity.objects.filter(
+        uczelnia=uczelnia, makes_sense=True
+    ).count()
+
+    # Lista dyscyplin dla filtra
+    from bpp.models import Dyscyplina_Naukowa
+
+    dyscypliny = Dyscyplina_Naukowa.objects.filter(
+        pk__in=UnpinningOpportunity.objects.filter(uczelnia=uczelnia).values_list(
+            "dyscyplina_naukowa_id", flat=True
+        )
+    ).order_by("nazwa")
+
+    context = {
+        "opportunities": opportunities,
+        "total_count": total_count,
+        "sensible_count": sensible_count,
+        "dyscypliny": dyscypliny,
+        "selected_dyscyplina": dyscyplina_id,
+        "only_sensible": only_sensible == "1",
+    }
+
+    return render(
+        request, "ewaluacja_optymalizacja/unpinning_opportunities_list.html", context
+    )
+
+
+@login_required
+def database_verification_view(request):
+    """
+    Wyświetla listę prac z autorami mającymi sloty poniżej 0.1 w latach 2022-2025.
+    Takie sloty należy usunąć przed dalszymi krokami optymalizacji.
+    """
+    from bpp.models import Autor_Dyscyplina, Cache_Punktacja_Autora_Query
+
+    # Pobierz autorów którzy mają przypisane dyscypliny w latach 2022-2025
+    autorzy_z_dyscyplinami = set(
+        Autor_Dyscyplina.objects.filter(rok__gte=2022, rok__lte=2025)
+        .values_list("autor_id", flat=True)
+        .distinct()
+    )
+
+    # Zapytanie o prace z problemowymi slotami
+    problematic_records = (
+        Cache_Punktacja_Autora_Query.objects.filter(
+            slot__lt=Decimal("0.1"),
+            rekord__rok__gte=2022,
+            rekord__rok__lte=2025,
+            autor_id__in=autorzy_z_dyscyplinami,
+        )
+        .select_related("rekord", "autor", "dyscyplina")
+        .order_by("slot", "rekord__rok", "autor__nazwisko")
+    )
+
+    # Statystyki
+    total_count = problematic_records.count()
+    unique_works = problematic_records.values("rekord_id").distinct().count()
+    unique_authors = problematic_records.values("autor_id").distinct().count()
+
+    context = {
+        "problematic_records": problematic_records,
+        "total_count": total_count,
+        "unique_works": unique_works,
+        "unique_authors": unique_authors,
+    }
+
+    return render(
+        request, "ewaluacja_optymalizacja/database_verification.html", context
+    )

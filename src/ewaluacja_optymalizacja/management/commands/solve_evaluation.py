@@ -9,10 +9,14 @@ from bpp.models import (
     Autor,
     Dyscyplina_Naukowa,
     Rekord,
+    Uczelnia,
     Wydawnictwo_Ciagle_Autor,
     Wydawnictwo_Zwarte_Autor,
 )
-from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaCalosc
+from ewaluacja_liczba_n.models import (
+    IloscUdzialowDlaAutoraZaCalosc,
+    LiczbaNDlaUczelni,
+)
 from ewaluacja_optymalizacja.core import is_low_mono, solve_discipline
 from ewaluacja_optymalizacja.models import (
     OptimizationAuthorResult,
@@ -58,15 +62,23 @@ class Command(BaseCommand):
             default=False,
             help="Re-run the optimization after unpinning (use with --unpin-not-selected)",
         )
+        parser.add_argument(
+            "--algorithm-mode",
+            type=str,
+            default="two-phase",
+            choices=["two-phase", "single-phase"],
+            help='Algorithm mode: "two-phase" (default) or "single-phase"',
+        )
 
     @transaction.atomic
-    def handle(
+    def handle(  # noqa: C901
         self,
         dyscyplina,
         output,
         verbose,
         unpin_not_selected,
         rerun_after_unpin,
+        algorithm_mode,
         *args,
         **options,
     ):
@@ -81,10 +93,38 @@ class Command(BaseCommand):
             else:
                 self.stdout.write(msg)
 
+        # Retrieve liczba_n for this discipline
+        liczba_n = None
+        try:
+            uczelnia = Uczelnia.objects.first()
+            dyscyplina_obj = Dyscyplina_Naukowa.objects.get(nazwa=dyscyplina)
+            if uczelnia and dyscyplina_obj:
+                liczba_n_obj = LiczbaNDlaUczelni.objects.get(
+                    uczelnia=uczelnia, dyscyplina_naukowa=dyscyplina_obj
+                )
+                liczba_n = float(liczba_n_obj.liczba_n)
+                self.stdout.write(
+                    self.style.SUCCESS(
+                        f"Found liczba_n={liczba_n} for {dyscyplina} (3×N limit: {3 * liczba_n})"
+                    )
+                )
+        except (Dyscyplina_Naukowa.DoesNotExist, LiczbaNDlaUczelni.DoesNotExist):
+            self.stdout.write(
+                self.style.WARNING(
+                    f"No liczba_n found for discipline '{dyscyplina}'. "
+                    "Institution constraint will not be applied."
+                )
+            )
+
         # Run optimization using core logic
+        self.stdout.write(f"Using algorithm mode: {algorithm_mode}")
         try:
             results = solve_discipline(
-                dyscyplina_nazwa=dyscyplina, verbose=verbose, log_callback=log_callback
+                dyscyplina_nazwa=dyscyplina,
+                verbose=verbose,
+                log_callback=log_callback,
+                liczba_n=liczba_n,
+                algorithm_mode=algorithm_mode,
             )
         except Exception as e:
             self.stdout.write(self.style.ERROR(f"Optimization failed: {e}"))
@@ -103,6 +143,62 @@ class Command(BaseCommand):
         self.stdout.write("Saving results to database...")
         self.stdout.write("=" * 80)
 
+        self._save_optimization_to_database(results, dyscyplina)
+
+        # Load author names and publication records
+        (
+            authors,
+            by_author,
+            all_selected,
+            author_names,
+            rekords,
+        ) = self._load_author_names_and_records(results)
+
+        author_slot_limits = {
+            author_id: data["limits"] for author_id, data in results.authors.items()
+        }
+        total_points = results.total_points
+
+        # Display results
+        self._display_author_results(authors, by_author, author_names, rekords, results)
+        self._display_institution_statistics(all_selected, total_points)
+
+        # Find and display unselected multi-author publications
+        sorted_unselected = self._find_unselected_multi_author_pubs(
+            results, all_selected, by_author, author_names, author_slot_limits, rekords
+        )
+
+        # Save results to file if requested
+        if output:
+            self._save_results_to_json_file(
+                output,
+                dyscyplina,
+                total_points,
+                all_selected,
+                authors,
+                by_author,
+                author_names,
+                rekords,
+                sorted_unselected,
+                author_slot_limits,
+            )
+
+        # Handle unpinning if requested
+        if unpin_not_selected:
+            dyscyplina_obj = Dyscyplina_Naukowa.objects.get(nazwa=dyscyplina)
+            self._handle_unpinning(
+                all_selected,
+                results.all_pubs,
+                dyscyplina_obj,
+                rerun_after_unpin,
+                dyscyplina,
+                output,
+                verbose,
+                algorithm_mode,
+            )
+
+    def _save_optimization_to_database(self, results, dyscyplina):
+        """Save optimization results to database."""
         dyscyplina_obj = Dyscyplina_Naukowa.objects.get(nazwa=dyscyplina)
 
         # Usuń stare optymalizacje dla tej dyscypliny
@@ -127,12 +223,14 @@ class Command(BaseCommand):
             limits = author_data["limits"]
 
             # Get rodzaj_autora for this author
-            try:
-                rodzaj_autora = IloscUdzialowDlaAutoraZaCalosc.objects.get(
+            record = (
+                IloscUdzialowDlaAutoraZaCalosc.objects.filter(
                     autor_id=author_id, dyscyplina_naukowa=dyscyplina_obj
-                ).rodzaj_autora
-            except IloscUdzialowDlaAutoraZaCalosc.DoesNotExist:
-                rodzaj_autora = None
+                )
+                .order_by("-ilosc_udzialow")
+                .first()
+            )
+            rodzaj_autora = record.rodzaj_autora if record else None
 
             total_points = sum(p.points for p in selected_pubs)
             total_slots = sum(p.base_slots for p in selected_pubs)
@@ -166,44 +264,52 @@ class Command(BaseCommand):
         self.stdout.write(
             self.style.SUCCESS(f"Saved optimization run #{opt_run.pk} to database")
         )
+        return opt_run
 
-        # Get all pubs and organize by author
-        pubs = results.all_pubs
+    def _load_author_names_and_records(self, results):
+        """Load author names and publication records."""
+        authors = sorted(results.authors.keys())
         by_author = {
             author_id: data["selected_pubs"]
             for author_id, data in results.authors.items()
         }
-        authors = sorted(results.authors.keys())
-        author_slot_limits = {
-            author_id: data["limits"] for author_id, data in results.authors.items()
-        }
         all_selected = []
         for selections in by_author.values():
             all_selected.extend(selections)
-        total_points = results.total_points
 
-        # Load author names for better display
+        # Load author names
         author_names = {}
         for autor in Autor.objects.filter(pk__in=authors):
             author_names[autor.pk] = str(autor)
 
-        # Display per-author results
-        self.stdout.write("\n" + "=" * 80)
-        self.stdout.write("RESULTS BY AUTHOR:")
-        self.stdout.write("=" * 80)
-
-        # Load all publication titles for selected and unselected multi-author items
+        # Load all publication titles
         all_rekord_ids = [p.id for p in all_selected]
-        # Also add unselected multi-author publication IDs
         all_rekord_ids.extend(
-            [p.id for p in pubs if p.id not in {pub.id for pub in all_selected}]
+            [
+                p.id
+                for p in results.all_pubs
+                if p.id not in {pub.id for pub in all_selected}
+            ]
         )
-        # Remove duplicates
         all_rekord_ids = list(set(all_rekord_ids))
 
         rekords = {}
         for rekord in Rekord.objects.filter(pk__in=all_rekord_ids):
             rekords[rekord.pk] = rekord
+
+        return authors, by_author, all_selected, author_names, rekords
+
+    def _display_author_results(
+        self, authors, by_author, author_names, rekords, results
+    ):
+        """Display per-author results."""
+        self.stdout.write("\n" + "=" * 80)
+        self.stdout.write("RESULTS BY AUTHOR:")
+        self.stdout.write("=" * 80)
+
+        author_slot_limits = {
+            author_id: data["limits"] for author_id, data in results.authors.items()
+        }
 
         for author_id in authors:
             chosen = by_author[author_id]
@@ -231,12 +337,12 @@ class Command(BaseCommand):
                     f"title: {title}..."
                 )
 
-        # Institution-level statistics
+    def _display_institution_statistics(self, all_selected, total_points):
+        """Display institution-level statistics."""
         sel_total = len(all_selected)
         sel_low = len([p for p in all_selected if is_low_mono(p)])
         share = (100.0 * sel_low / sel_total) if sel_total > 0 else 0.0
 
-        # Calculate total slots used and points per slot
         total_slots_used = sum(p.base_slots for p in all_selected)
         points_per_slot = total_points / total_slots_used if total_slots_used > 0 else 0
 
@@ -251,15 +357,25 @@ class Command(BaseCommand):
             f"Average points per slot: {points_per_slot:.2f}"
         )
 
-        # Find unselected multi-author publications
-        # Count how many times each publication ID appears in the original dataset
+    def _find_unselected_multi_author_pubs(
+        self,
+        results,
+        all_selected,
+        by_author,
+        author_names,
+        author_slot_limits,
+        rekords,
+    ):
+        """Find and organize unselected multi-author publications."""
+        pubs = results.all_pubs
+
+        # Count how many times each publication ID appears
         pub_id_counts = {}
         for p in pubs:
             if p.id not in pub_id_counts:
                 pub_id_counts[p.id] = 0
             pub_id_counts[p.id] += 1
 
-        # Get IDs of selected publications
         selected_ids = {p.id for p in all_selected}
 
         # Find multi-author publications that were not selected
@@ -269,13 +385,12 @@ class Command(BaseCommand):
                 if p.id not in unselected_multi_author:
                     unselected_multi_author[p.id] = {
                         "publication": p,
-                        "authors_detail": {},  # Store detailed info per author
+                        "authors_detail": {},
                         "total_points": 0,
                         "total_slots": 0,
                         "efficiency": p.efficiency,
                         "author_count": p.author_count,
                     }
-                # Store detailed info for each author
                 unselected_multi_author[p.id]["authors_detail"][p.author] = {
                     "points": p.points,
                     "slots": p.base_slots,
@@ -283,211 +398,216 @@ class Command(BaseCommand):
                 unselected_multi_author[p.id]["total_points"] += p.points
                 unselected_multi_author[p.id]["total_slots"] += p.base_slots
 
-        # Sort by efficiency (descending) for better readability
         sorted_unselected = sorted(
             unselected_multi_author.values(),
             key=lambda x: x["efficiency"],
             reverse=True,
         )
 
-        # Report unselected multi-author publications
+        # Display results
         if unselected_multi_author:
-            self.stdout.write("\n" + "=" * 80)
-            self.stdout.write("UNSELECTED MULTI-AUTHOR PUBLICATIONS:")
-            self.stdout.write("=" * 80)
-            self.stdout.write(
-                f"Found {len(unselected_multi_author)} publications with multiple authors that were not selected:"
-            )
-            self.stdout.write(
-                f"\nShowing ALL {len(sorted_unselected)} unselected multi-author publications\n"
+            self._display_unselected_multi_author_pubs(
+                sorted_unselected,
+                rekords,
+                author_names,
+                by_author,
+                author_slot_limits,
             )
 
-            for idx, item in enumerate(sorted_unselected, 1):  # Show ALL publications
-                p = item["publication"]
-                rekord = rekords.get(p.id)
-                title = rekord.tytul_oryginalny[:60] if rekord else f"ID: {p.id}"
+        return sorted_unselected
 
-                self.stdout.write(
-                    f"\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-                    f"\n[{idx}/{len(sorted_unselected)}] 📄 {title}..."
-                    f"\n  Type: {p.kind}, Authors with discipline: {p.author_count}"
-                    f"\n  Efficiency: {item['efficiency']:.2f} pts/slot"
+    def _display_unselected_multi_author_pubs(
+        self, sorted_unselected, rekords, author_names, by_author, author_slot_limits
+    ):
+        """Display unselected multi-author publications."""
+        self.stdout.write("\n" + "=" * 80)
+        self.stdout.write("UNSELECTED MULTI-AUTHOR PUBLICATIONS:")
+        self.stdout.write("=" * 80)
+        self.stdout.write(
+            f"Found {len(sorted_unselected)} publications with multiple authors that were not selected:"
+        )
+        self.stdout.write(
+            f"\nShowing ALL {len(sorted_unselected)} unselected multi-author publications\n"
+        )
+
+        for idx, item in enumerate(sorted_unselected, 1):
+            p = item["publication"]
+            rekord = rekords.get(p.id)
+            title = rekord.tytul_oryginalny[:60] if rekord else f"ID: {p.id}"
+
+            self.stdout.write(
+                f"\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+                f"\n[{idx}/{len(sorted_unselected)}] 📄 {title}..."
+                f"\n  Type: {p.kind}, Authors with discipline: {p.author_count}"
+                f"\n  Efficiency: {item['efficiency']:.2f} pts/slot"
+            )
+
+            self.stdout.write("\n  Authors who could have selected this work:")
+            for author_id, details in item["authors_detail"].items():
+                author_name = author_names.get(author_id, f"Author #{author_id}")
+                selected_for_author = by_author.get(author_id, [])
+                selected_points = sum(pub.points for pub in selected_for_author)
+                selected_slots = sum(pub.base_slots for pub in selected_for_author)
+                avg_pts_per_slot = (
+                    (selected_points / selected_slots) if selected_slots > 0 else 0
+                )
+                limits = author_slot_limits.get(author_id, {"total": 4.0, "mono": 2.0})
+                slot_percentage = (
+                    (selected_slots / limits["total"] * 100)
+                    if limits["total"] > 0
+                    else 0
                 )
 
-                # Show per-author details
-                self.stdout.write("\n  Authors who could have selected this work:")
-                for author_id, details in item["authors_detail"].items():
-                    author_name = author_names.get(author_id, f"Author #{author_id}")
+                self.stdout.write(
+                    f"\n    • {author_name}:"
+                    f"\n      - This work: {details['points']:.1f} pts, {details['slots']:.2f} slots "
+                    f"(NOT SELECTED, efficiency: {details['points'] / details['slots']:.2f} pts/slot)"
+                    f"\n      - Actually selected: {selected_points:.1f} pts, "
+                    f"{selected_slots:.2f}/{limits['total']:.1f} slots ({slot_percentage:.1f}% filled)"
+                    f"\n      - Average efficiency of selected: {avg_pts_per_slot:.2f} pts/slot"
+                    f"\n      - Selected {len(selected_for_author)} publication(s) instead"
+                )
 
-                    # Get what was actually selected for this author
-                    selected_for_author = by_author.get(author_id, [])
-                    selected_points = sum(pub.points for pub in selected_for_author)
-                    selected_slots = sum(pub.base_slots for pub in selected_for_author)
+        # Summary
+        total_unselected_potential_points = sum(
+            item["total_points"] for item in sorted_unselected
+        )
+        total_unselected_potential_slots = sum(
+            item["total_slots"] for item in sorted_unselected
+        )
 
-                    # Calculate average points/slot for selected publications
-                    avg_pts_per_slot = (
-                        (selected_points / selected_slots) if selected_slots > 0 else 0
-                    )
+        self.stdout.write("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        self.stdout.write("\nSUMMARY OF UNSELECTED MULTI-AUTHOR PUBLICATIONS:")
+        self.stdout.write(
+            f"  - Total unselected publications: {len(sorted_unselected)}"
+        )
+        self.stdout.write(
+            f"  - Total potential points not utilized: {total_unselected_potential_points:.1f}"
+        )
+        self.stdout.write(
+            f"  - Total potential slots not utilized: {total_unselected_potential_slots:.2f}"
+        )
 
-                    # Get author's slot limits
-                    limits = author_slot_limits.get(
-                        author_id, {"total": 4.0, "mono": 2.0}
-                    )
-                    slot_percentage = (
-                        (selected_slots / limits["total"] * 100)
-                        if limits["total"] > 0
-                        else 0
-                    )
+    def _save_results_to_json_file(
+        self,
+        output,
+        dyscyplina,
+        total_points,
+        all_selected,
+        authors,
+        by_author,
+        author_names,
+        rekords,
+        sorted_unselected,
+        author_slot_limits,
+    ):
+        """Save results to JSON file."""
+        sel_total = len(all_selected)
+        sel_low = len([p for p in all_selected if is_low_mono(p)])
+        share = (100.0 * sel_low / sel_total) if sel_total > 0 else 0.0
+        total_slots_used = sum(p.base_slots for p in all_selected)
+        points_per_slot = total_points / total_slots_used if total_slots_used > 0 else 0
 
-                    self.stdout.write(
-                        f"\n    • {author_name}:"
-                        f"\n      - This work: {details['points']:.1f} pts, {details['slots']:.2f} slots "
-                        f"(NOT SELECTED, efficiency: {details['points']/details['slots']:.2f} pts/slot)"
-                        f"\n      - Actually selected: {selected_points:.1f} pts, "
-                        f"{selected_slots:.2f}/{limits['total']:.1f} slots ({slot_percentage:.1f}% filled)"
-                        f"\n      - Average efficiency of selected: {avg_pts_per_slot:.2f} pts/slot"
-                        f"\n      - Selected {len(selected_for_author)} publication(s) instead"
-                    )
+        results_dict = {
+            "discipline": dyscyplina,
+            "year_range": "2022-2025",
+            "total_points": round(total_points, 2),
+            "total_publications": sel_total,
+            "total_slots_used": round(total_slots_used, 2),
+            "average_points_per_slot": round(points_per_slot, 2),
+            "low_point_monographies": sel_low,
+            "low_point_percentage": round(share, 2),
+            "authors": [],
+            "unselected_multi_author_publications": [],
+        }
 
-            # Summary of unselected publications
-            total_unselected_potential_points = sum(
-                item["total_points"] for item in sorted_unselected
-            )
-            total_unselected_potential_slots = sum(
-                item["total_slots"] for item in sorted_unselected
-            )
+        for author_id in authors:
+            chosen = by_author[author_id]
+            if not chosen:
+                continue
 
-            self.stdout.write("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-            self.stdout.write("\nSUMMARY OF UNSELECTED MULTI-AUTHOR PUBLICATIONS:")
-            self.stdout.write(
-                f"  - Total unselected publications: {len(sorted_unselected)}"
-            )
-            self.stdout.write(
-                f"  - Total potential points not utilized: {total_unselected_potential_points:.1f}"
-            )
-            self.stdout.write(
-                f"  - Total potential slots not utilized: {total_unselected_potential_slots:.2f}"
-            )
-
-        # Save results to file if requested
-        if output:
-            results = {
-                "discipline": dyscyplina,
-                "year_range": "2022-2025",
-                "total_points": round(total_points, 2),
-                "total_publications": sel_total,
-                "total_slots_used": round(total_slots_used, 2),
-                "average_points_per_slot": round(points_per_slot, 2),
-                "low_point_monographies": sel_low,
-                "low_point_percentage": round(share, 2),
-                "authors": [],
-                "unselected_multi_author_publications": [],
+            author_data = {
+                "author_id": author_id,
+                "author_name": author_names.get(author_id, f"Author #{author_id}"),
+                "total_points": sum(p.points for p in chosen),
+                "total_slots": sum(p.base_slots for p in chosen),
+                "monography_slots": sum(
+                    p.base_slots for p in chosen if p.kind == "monography"
+                ),
+                "publications": [],
             }
 
-            for author_id in authors:
-                chosen = by_author[author_id]
-                if not chosen:
-                    continue
-
-                author_data = {
-                    "author_id": author_id,
-                    "author_name": author_names.get(author_id, f"Author #{author_id}"),
-                    "total_points": sum(p.points for p in chosen),
-                    "total_slots": sum(p.base_slots for p in chosen),
-                    "monography_slots": sum(
-                        p.base_slots for p in chosen if p.kind == "monography"
-                    ),
-                    "publications": [],
-                }
-
-                for p in chosen:
-                    rekord = rekords.get(p.id)
-                    pub_data = {
-                        "rekord_id": list(p.id),  # Convert tuple to list for JSON
-                        "type": p.kind,
-                        "points": p.points,
-                        "slots": p.base_slots,
-                        "low_point_mono": is_low_mono(p),
-                        "title": rekord.tytul_oryginalny if rekord else None,
-                    }
-                    author_data["publications"].append(pub_data)
-
-                results["authors"].append(author_data)
-
-            # Add unselected multi-author publications to results
-            for item in sorted_unselected:
-                p = item["publication"]
+            for p in chosen:
                 rekord = rekords.get(p.id)
-
-                # Build author details for JSON
-                authors_json = []
-                for author_id, details in item["authors_detail"].items():
-                    selected_for_author = by_author.get(author_id, [])
-                    selected_points = sum(pub.points for pub in selected_for_author)
-                    selected_slots = sum(pub.base_slots for pub in selected_for_author)
-                    avg_pts_per_slot = (
-                        (selected_points / selected_slots) if selected_slots > 0 else 0
-                    )
-                    unselected_efficiency = (
-                        details["points"] / details["slots"]
-                        if details["slots"] > 0
-                        else 0
-                    )
-                    limits = author_slot_limits.get(
-                        author_id, {"total": 4.0, "mono": 2.0}
-                    )
-                    slot_percentage = (
-                        (selected_slots / limits["total"] * 100)
-                        if limits["total"] > 0
-                        else 0
-                    )
-
-                    authors_json.append(
-                        {
-                            "author_id": author_id,
-                            "author_name": author_names.get(
-                                author_id, f"Author #{author_id}"
-                            ),
-                            "unselected_points": round(details["points"], 2),
-                            "unselected_slots": round(details["slots"], 2),
-                            "unselected_efficiency": round(unselected_efficiency, 2),
-                            "selected_points": round(selected_points, 2),
-                            "selected_slots": round(selected_slots, 2),
-                            "selected_avg_efficiency": round(avg_pts_per_slot, 2),
-                            "slot_limit": round(limits["total"], 2),
-                            "slot_usage_percentage": round(slot_percentage, 1),
-                            "selected_publication_count": len(selected_for_author),
-                        }
-                    )
-
-                unselected_data = {
+                pub_data = {
                     "rekord_id": list(p.id),
                     "type": p.kind,
-                    "efficiency": round(item["efficiency"], 2),
-                    "total_points": round(item["total_points"], 2),
-                    "total_slots": round(item["total_slots"], 2),
-                    "author_count": p.author_count,
-                    "authors_detail": authors_json,
+                    "points": p.points,
+                    "slots": p.base_slots,
+                    "low_point_mono": is_low_mono(p),
                     "title": rekord.tytul_oryginalny if rekord else None,
                 }
-                results["unselected_multi_author_publications"].append(unselected_data)
+                author_data["publications"].append(pub_data)
 
-            with open(output, "w", encoding="utf-8") as f:
-                json.dump(results, f, indent=2, ensure_ascii=False)
+            results_dict["authors"].append(author_data)
 
-            self.stdout.write(self.style.SUCCESS(f"\nResults saved to: {output}"))
+        # Add unselected multi-author publications
+        for item in sorted_unselected:
+            p = item["publication"]
+            rekord = rekords.get(p.id)
 
-        # Handle unpinning if requested
-        if unpin_not_selected:
-            self._handle_unpinning(
-                all_selected,
-                pubs,
-                dyscyplina_obj,
-                rerun_after_unpin,
-                dyscyplina,
-                output,
-                verbose,
-            )
+            authors_json = []
+            for author_id, details in item["authors_detail"].items():
+                selected_for_author = by_author.get(author_id, [])
+                selected_points = sum(pub.points for pub in selected_for_author)
+                selected_slots = sum(pub.base_slots for pub in selected_for_author)
+                avg_pts_per_slot = (
+                    (selected_points / selected_slots) if selected_slots > 0 else 0
+                )
+                unselected_efficiency = (
+                    details["points"] / details["slots"] if details["slots"] > 0 else 0
+                )
+                limits = author_slot_limits.get(author_id, {"total": 4.0, "mono": 2.0})
+                slot_percentage = (
+                    (selected_slots / limits["total"] * 100)
+                    if limits["total"] > 0
+                    else 0
+                )
+
+                authors_json.append(
+                    {
+                        "author_id": author_id,
+                        "author_name": author_names.get(
+                            author_id, f"Author #{author_id}"
+                        ),
+                        "unselected_points": round(details["points"], 2),
+                        "unselected_slots": round(details["slots"], 2),
+                        "unselected_efficiency": round(unselected_efficiency, 2),
+                        "selected_points": round(selected_points, 2),
+                        "selected_slots": round(selected_slots, 2),
+                        "selected_avg_efficiency": round(avg_pts_per_slot, 2),
+                        "slot_limit": round(limits["total"], 2),
+                        "slot_usage_percentage": round(slot_percentage, 1),
+                        "selected_publication_count": len(selected_for_author),
+                    }
+                )
+
+            unselected_data = {
+                "rekord_id": list(p.id),
+                "type": p.kind,
+                "efficiency": round(item["efficiency"], 2),
+                "total_points": round(item["total_points"], 2),
+                "total_slots": round(item["total_slots"], 2),
+                "author_count": p.author_count,
+                "authors_detail": authors_json,
+                "title": rekord.tytul_oryginalny if rekord else None,
+            }
+            results_dict["unselected_multi_author_publications"].append(unselected_data)
+
+        with open(output, "w", encoding="utf-8") as f:
+            json.dump(results_dict, f, indent=2, ensure_ascii=False)
+
+        self.stdout.write(self.style.SUCCESS(f"\nResults saved to: {output}"))
 
     def _handle_unpinning(
         self,
@@ -498,6 +618,7 @@ class Command(BaseCommand):
         dyscyplina_name,
         output,
         verbose,
+        algorithm_mode="two-phase",
     ):
         """Handle unpinning of disciplines for non-selected publications"""
         from denorm import denorms
@@ -582,6 +703,7 @@ class Command(BaseCommand):
                 "verbose": verbose,
                 "unpin_not_selected": False,  # Don't unpin again
                 "rerun_after_unpin": False,  # Don't recurse
+                "algorithm_mode": algorithm_mode,  # Use same algorithm mode
             }
 
             if output:

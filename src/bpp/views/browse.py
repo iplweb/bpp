@@ -92,6 +92,9 @@ class UczelniaView(DetailView):
     def get_context_data(self, **kwargs):
         article_slug = self.kwargs.get("article_slug")
         context = get_uczelnia_context_data(self.object, article_slug)
+        context["show_zglos_button"] = self.object.sprawdz_uprawnienie(
+            "formularz_zglaszania_publikacji", self.request
+        )
         context.update(kwargs)
         return super().get_context_data(**context)
 

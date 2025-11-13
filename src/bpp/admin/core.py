@@ -106,6 +106,25 @@ class BaseBppAdminMixin(DynamicAdminFilterMixin):
     # ograniczenie wielkosci listy
     list_per_page = 50
 
+    def save_related(self, request, form, formsets, change):
+        """
+        Przebuduj cache punktacji PO zapisaniu wszystkich inlines (autorzy/dyscypliny).
+        Django wywołuje tę metodę OSTATNIĄ, po zapisaniu głównego obiektu i wszystkich related objects.
+        """
+        # Najpierw zapisz wszystkie related objects (autorzy, dyscypliny etc.)
+        super().save_related(request, form, formsets, change)
+
+        # Przebuduj cache TYLKO dla obiektów które mają punktację/sloty
+        from bpp.models.sloty.core import IPunktacjaCacher
+
+        obj = form.instance
+        cacher = IPunktacjaCacher(obj)
+
+        # canAdapt() zwraca True dla publikacji, False dla autorów/jednostek/etc.
+        if cacher.canAdapt():
+            cacher.removeEntries()
+            cacher.rebuildEntries()
+
 
 def get_first_typ_odpowiedzialnosci():
     return Typ_Odpowiedzialnosci.objects.filter(skrot="aut.").first()

@@ -1,6 +1,10 @@
+from decimal import Decimal
+
 from dal import autocomplete
 from django import forms
 from django.contrib import admin
+from django.db.models import DecimalField, ExpressionWrapper, F, Value
+from django.db.models.functions import Coalesce
 from djangoql.admin import DjangoQLSearchMixin
 from import_export import resources
 from import_export.fields import Field
@@ -57,6 +61,57 @@ class Autor_DyscyplinaResource(resources.ModelResource):
         export_order = fields
 
 
+class SumaProcentowFilter(admin.SimpleListFilter):
+    """Custom filtr dla weryfikacji sumy procentów dyscypliny i subdyscypliny."""
+
+    title = "suma procentów"
+    parameter_name = "suma_procent"
+
+    def lookups(self, request, model_admin):
+        return (
+            ("nieprawidlowa", "Suma != 100%"),
+            ("prawidlowa", "Suma = 100%"),
+            ("zero", "Suma = 0%"),
+        )
+
+    def queryset(self, request, queryset):
+        from django.db.models import Q
+
+        # Jeśli filtr nie jest aktywny, zwróć oryginalny queryset
+        if self.value() is None:
+            return queryset
+
+        # Filtruj tylko autorów z jest_w_n=True LUB licz_sloty=True
+        queryset = queryset.filter(
+            Q(rodzaj_autora__jest_w_n=True) | Q(rodzaj_autora__licz_sloty=True)
+        )
+
+        # Annotate queryset z sumą procentów używając COALESCE dla NULL wartości
+        qs = queryset.annotate(
+            suma_procent=ExpressionWrapper(
+                Coalesce(F("procent_dyscypliny"), Value(Decimal("0")))
+                + Coalesce(F("procent_subdyscypliny"), Value(Decimal("0"))),
+                output_field=DecimalField(),
+            )
+        )
+
+        if self.value() == "nieprawidlowa":
+            # Suma != 100 (z tolerancją 0.01 dla zaokrągleń)
+            return qs.exclude(
+                suma_procent__gte=Decimal("99.99"), suma_procent__lte=Decimal("100.01")
+            )
+        elif self.value() == "prawidlowa":
+            # Suma = 100 (z tolerancją 0.01)
+            return qs.filter(
+                suma_procent__gte=Decimal("99.99"), suma_procent__lte=Decimal("100.01")
+            )
+        elif self.value() == "zero":
+            # Suma = 0
+            return qs.filter(suma_procent=Decimal("0"))
+
+        return queryset
+
+
 class Autor_DyscyplinaForm(forms.ModelForm):
     autor = forms.ModelChoiceField(
         queryset=Autor.objects.all(),
@@ -96,6 +151,7 @@ class Autor_DyscyplinaAdmin(
         "subdyscyplina_naukowa",
         "rodzaj_autora",
         "wymiar_etatu",
+        SumaProcentowFilter,
         OrcidAutoraDyscyplinyObecnyFilter,
         PBN_UID_IDAutoraObecnyFilter,
     ]

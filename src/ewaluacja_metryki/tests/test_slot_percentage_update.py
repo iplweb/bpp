@@ -102,6 +102,8 @@ def test_procent_wykorzystania_slotow_updates_correctly(denorms, rodzaj_autora_n
     assert metryka.procent_wykorzystania_slotow == expected_percentage
 
     # Update metrics again (simulating pin/unpin scenario)
+    # Note: oblicz_metryki_dla_autora deliberately deletes and recreates records
+    # to properly handle JSONField updates, so created will always be True
     metryka2, created = oblicz_metryki_dla_autora(
         autor=autor,
         dyscyplina=dyscyplina,
@@ -109,9 +111,13 @@ def test_procent_wykorzystania_slotow_updates_correctly(denorms, rodzaj_autora_n
         rok_max=2025,
     )
 
-    # Verify it's an update, not create
-    assert not created
-    assert metryka2.pk == metryka.pk
+    # Verify only one record exists for this autor-dyscyplina pair
+    from ewaluacja_metryki.models import MetrykaAutora
+
+    assert (
+        MetrykaAutora.objects.filter(autor=autor, dyscyplina_naukowa=dyscyplina).count()
+        == 1
+    )
 
     # Verify percentage is still correctly calculated
     assert metryka2.procent_wykorzystania_slotow is not None

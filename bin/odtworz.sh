@@ -11,12 +11,37 @@ set -euo pipefail
 
 BASEDIR=$(dirname "$0")
 
+# Parse arguments
+NO_STASH=0
+DUMP_FILE=""
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --no-stash)
+            NO_STASH=1
+            shift
+            ;;
+        *)
+            if [ -z "$DUMP_FILE" ]; then
+                DUMP_FILE="$1"
+            else
+                echo "Błąd: Nieoczekiwany argument: $1"
+                exit 1
+            fi
+            shift
+            ;;
+    esac
+done
+
 # Sprawdź czy podano parametr z plikiem pg_dump
-if [ $# -eq 0 ]; then
+if [ -z "$DUMP_FILE" ]; then
     echo "Błąd: Wymagana jest ścieżka do pliku pg_dump"
-    echo "Użycie: $0 <ścieżka_do_pliku_pg_dump>"
+    echo "Użycie: $0 [--no-stash] <ścieżka_do_pliku_pg_dump>"
     echo ""
     echo "Ten skrypt odtwarza bazę danych BPP z backupu."
+    echo ""
+    echo "Opcje:"
+    echo "  --no-stash    Pomiń archiwizację istniejącej bazy danych"
     exit 1
 fi
 
@@ -31,15 +56,21 @@ LOCAL_DATABASE_NAME=bpp
 # sleep 1
 
 # Stash the existing database if it exists (instead of dropping it)
-if psql -lqt | cut -d \| -f 1 | grep -qw "$LOCAL_DATABASE_NAME"; then
-    "$BASEDIR/stash_db.sh"
+if [ $NO_STASH -eq 0 ]; then
+    if psql -lqt | cut -d \| -f 1 | grep -qw "$LOCAL_DATABASE_NAME"; then
+        "$BASEDIR/stash_db.sh"
+    fi
+else
+    echo "Pomijam archiwizację bazy danych (--no-stash)"
+    # Drop the database if it exists
+    dropdb -f "$LOCAL_DATABASE_NAME" 2>/dev/null || true
 fi
 
 createdb $LOCAL_DATABASE_NAME
 createuser -s mimooh || true
 createuser -s bpp || true
 
-pg_restore -j 6 -d $LOCAL_DATABASE_NAME  "$1" || true
+pg_restore -j 6 -d $LOCAL_DATABASE_NAME  "$DUMP_FILE" || true
 
 for tbl in `psql -qAt -c "select tablename from pg_tables where schemaname = 'public';" $LOCAL_DATABASE_NAME` ; do  psql -c "alter table \"$tbl\" owner to postgres" $LOCAL_DATABASE_NAME ; done
 

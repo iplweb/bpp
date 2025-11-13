@@ -26,25 +26,38 @@ BPP (Bibliografia Publikacji Pracowników) is a Polish academic bibliography man
 
 ## Python and Django Execution
 
-**CRITICAL: Always execute Python commands that require Django models, views, or any Django functionality through `python src/manage.py shell`**
+**🔴 CRITICAL: ALWAYS USE `uv run` PREFIX FOR ALL PYTHON COMMANDS 🔴**
 
-- Use `python src/manage.py shell` for any Python code that needs Django initialization
-- This ensures Django settings are properly loaded and database connections are established
-- Only use plain `python` command when debugging issues with manage.py itself
-- For quick Django model queries or data manipulation, always use the Django shell
+**NEVER EVER run `python` directly - ALWAYS use `uv run python`**
 
-Example:
+**This project uses UV for dependency management. ALL Python commands MUST be prefixed with `uv run`:**
+
+- `uv run python src/manage.py shell` - Django shell (NEVER just `python src/manage.py shell`)
+- `uv run python src/manage.py migrate` - Apply migrations
+- `uv run python src/manage.py runserver` - Start dev server
+- `uv run python src/manage.py <any-command>` - Any Django management command
+
+**Why `uv run` is required:**
+- Ensures correct virtual environment activation
+- Loads proper dependencies from uv.lock
+- Prevents import errors and dependency conflicts
+
+**Examples:**
 ```bash
-# CORRECT - for Django-related Python code:
+# ✅ CORRECT - ALWAYS use uv run:
+uv run python src/manage.py shell
+
+# ❌ WRONG - NEVER run python directly:
 python src/manage.py shell
 
-# Then in the shell:
+# ✅ CORRECT - Django shell with inline command:
+uv run python src/manage.py shell <<'EOF'
 from bpp.models import Autor
-Autor.objects.count()
+print(Autor.objects.count())
+EOF
 
-# ONLY use plain python when debugging manage.py issues:
-python --version  # OK - checking Python version
-python src/manage.py  # OK - debugging manage.py startup issues
+# ❌ WRONG - Missing uv run:
+python src/manage.py shell -c "from bpp.models import Autor"
 ```
 
 ## Key Commands
@@ -57,12 +70,12 @@ nc -zv localhost 8000  # Check if port 8000 is in use
 # If connection succeeded, server is already running - no need to start it again
 ```
 
-- `python src/manage.py runserver` - Start development server (default settings: django_bpp.settings.local)
+- `uv run python src/manage.py runserver` - Start development server (default settings: django_bpp.settings.local)
   - **NOTE:** If you see "Listen failure: Couldn't listen on 127.0.0.1:8000: [Errno 48] Address already in use." it means the server is ALREADY RUNNING in the background as another process. This is expected behavior - no action needed.
   - **IMPORTANT:** During Claude development sessions, the server often runs in the background. ALWAYS check with `nc -zv localhost 8000` before attempting to start the server.
-- `python src/manage.py migrate` - Apply database migrations
-- `python src/manage.py shell` - Django shell
-- `bpp-manage.py` - Alternative management command entry point
+- `uv run python src/manage.py migrate` - Apply database migrations
+- `uv run python src/manage.py shell` - Django shell
+- `uv run bpp-manage.py` - Alternative management command entry point
 
 ### Frontend Build Commands
 - `yarn install` - Install Node.js dependencies

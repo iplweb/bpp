@@ -226,6 +226,13 @@ urlpatterns = (
                 namespace="przemapuj_zrodla_pbn",
             ),
         ),
+        path(
+            "przemapuj-zrodlo/",
+            include(
+                ("przemapuj_zrodlo.urls", "przemapuj_zrodlo"),
+                namespace="przemapuj_zrodlo",
+            ),
+        ),
         url(
             r"^multiseek/results/$",
             csrf_exempt(

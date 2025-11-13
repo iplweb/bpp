@@ -1,13 +1,7 @@
 import pytest
+from django.db import IntegrityError
 from django.db.models import Q
 from model_bakery import baker
-
-from .core import calculate_author_connections
-from .models import AuthorConnection
-from .tasks import (
-    calculate_author_connections_task,
-    update_single_author_connections_task,
-)
 
 from bpp.models import (
     Autor,
@@ -17,6 +11,13 @@ from bpp.models import (
     Wydawnictwo_Ciagle_Autor,
     Wydawnictwo_Zwarte,
     Wydawnictwo_Zwarte_Autor,
+)
+
+from .core import calculate_author_connections
+from .models import AuthorConnection
+from .tasks import (
+    calculate_author_connections_task,
+    update_single_author_connections_task,
 )
 
 
@@ -61,7 +62,7 @@ def test_author_connection_unique_constraint():
     )
 
     # Attempting to create duplicate should raise an error
-    with pytest.raises(Exception):
+    with pytest.raises(IntegrityError):
         AuthorConnection.objects.create(
             primary_author=author1,
             secondary_author=author2,
@@ -362,7 +363,7 @@ def test_author_connection_indexes():
     # Test query by last_updated (indexed)
     from django.utils import timezone
 
-    recent = AuthorConnection.objects.filter(
-        last_updated__gte=timezone.now().replace(hour=0)
-    )
+    # Get the start of today (midnight) by resetting all time components
+    today_start = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    recent = AuthorConnection.objects.filter(last_updated__gte=today_start)
     assert recent.count() == 1

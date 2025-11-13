@@ -23,7 +23,7 @@ from .wydawnictwo_ciagle import (
 )
 
 
-def ISlot(original, uczelnia=None):
+def ISlot(original, uczelnia=None):  # noqa
     if isinstance(original, Patent):
         raise CannotAdapt("Sloty dla patentów nie są liczone")
 
@@ -33,8 +33,10 @@ def ISlot(original, uczelnia=None):
     if uczelnia is None:
         uczelnia = Uczelnia.objects.get_default()
 
-    if uczelnia is not None and original.status_korekty_id in uczelnia.ukryte_statusy(
-        "sloty"
+    if (
+        uczelnia is not None
+        and hasattr(original, "status_korekty_id")
+        and original.status_korekty_id in uczelnia.ukryte_statusy("sloty")
     ):
         raise CannotAdapt(
             "Sloty nie będą liczone, zgodnie z ustawieniami obiektu Uczelnia dla ukrywanych "
@@ -59,14 +61,14 @@ def ISlot(original, uczelnia=None):
                 return SlotKalkulator_Wydawnictwo_Ciagle_Prog3(original)
 
         raise CannotAdapt(
-            "punkty MNiSW/MEiN rekordu (%s) i rok (%s) nie pozwalają na dopasowanie tego rekordu do jakiejkolwiek grupy"
-            % (original.punkty_kbn, original.rok)
+            f"punkty MNiSW/MEiN rekordu ({original.punkty_kbn}) i rok ({original.rok}) nie pozwalają na dopasowanie "
+            f"tego rekordu do jakiejkolwiek grupy"
         )
 
     elif isinstance(original, Wydawnictwo_Zwarte):
         if original.rok < PBN_MIN_ROK or original.rok > PBN_MAX_ROK:
             raise CannotAdapt(
-                "Rok poza zakresem procedur liczacych (%s). " % original.rok
+                f"Rok poza zakresem procedur liczacych ({original.rok}). "
             )
 
         poziom_wydawcy = -1
@@ -277,11 +279,10 @@ def ISlot(original, uczelnia=None):
 
     if hasattr(original, "rok") and hasattr(original, "punkty_kbn"):
         raise CannotAdapt(
-            "Nie umiem policzyc dla %s rok %s punkty_kbn %s"
-            % (original, original.rok, original.punkty_kbn)
+            f"Nie umiem policzyc dla {original} rok {original.rok} punkty_kbn {original.punkty_kbn}"
         )
 
-    raise CannotAdapt("Nie umiem policzyć dla obiektu: %r" % original)
+    raise CannotAdapt(f"Nie umiem policzyć dla obiektu: {original!r}")
 
 
 class IPunktacjaCacher:

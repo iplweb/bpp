@@ -388,6 +388,7 @@
                 $('#filter-panel-reset').attr('hx-target', '#grp-content-container');
                 $('#filter-panel-reset').attr('hx-select', '#grp-content-container');
                 $('#filter-panel-reset').attr('hx-swap', 'innerHTML swap:0.3s');
+                $('#filter-panel-reset').attr('hx-push-url', 'true');
                 $('#filter-panel-reset').attr('hx-indicator', '#filter-loading-indicator');
 
                 // Initialize HTMX for the reset button
@@ -1127,6 +1128,7 @@
                                        hx-target="#grp-content-container"
                                        hx-select="#grp-content-container"
                                        hx-swap="innerHTML swap:0.3s"
+                                       hx-push-url="true"
                                        hx-indicator="#filter-loading-indicator"
                                        class="filter-option-link">
                                         {{ choice.display }}

@@ -51,13 +51,17 @@ def test_oblicz_metryki_command_basic(rodzaj_autora_n):
         rok=2024,
     )
 
-    # Mockuj metodę zbieraj_sloty
-    with patch.object(Autor, "zbieraj_sloty") as mock_zbieraj:
-        # Zwróć różne wartości dla różnych wywołań
-        mock_zbieraj.side_effect = [
-            (Decimal("140.0"), [1, 2, 3], Decimal("3.5")),  # algorytm plecakowy
-            (Decimal("150.0"), [1, 2, 3, 4, 5], Decimal("4.0")),  # wszystkie prace
-        ]
+    # Mockuj funkcję _calculate_metrics_data aby zwracała oczekiwane dane
+    # (omijamy problem konwersji cache PKs -> rekord_ids)
+    with patch("ewaluacja_metryki.utils._calculate_metrics_data") as mock_calculate:
+        mock_calculate.return_value = {
+            "punkty_nazbierane": Decimal("140.0"),
+            "prace_nazbierane_ids": [1, 2, 3],
+            "slot_nazbierany": Decimal("3.5"),
+            "punkty_wszystkie": Decimal("150.0"),
+            "prace_wszystkie_ids": [1, 2, 3, 4, 5],
+            "slot_wszystkie": Decimal("4.0"),
+        }
 
         # Wywołaj komendę
         out = StringIO()
@@ -147,8 +151,15 @@ def test_oblicz_metryki_command_filters(rodzaj_autora_n):
         rok=2024,
     )
 
-    with patch.object(Autor, "zbieraj_sloty") as mock_zbieraj:
-        mock_zbieraj.return_value = (Decimal("100.0"), [1], Decimal("2.5"))
+    with patch("ewaluacja_metryki.utils._calculate_metrics_data") as mock_calculate:
+        mock_calculate.return_value = {
+            "punkty_nazbierane": Decimal("100.0"),
+            "prace_nazbierane_ids": [1],
+            "slot_nazbierany": Decimal("2.5"),
+            "punkty_wszystkie": Decimal("120.0"),
+            "prace_wszystkie_ids": [1, 2],
+            "slot_wszystkie": Decimal("3.0"),
+        }
 
         # Test filtra po autorze
         call_command("oblicz_metryki", "--bez-liczby-n", autor_id=autor1.pk)
@@ -194,9 +205,9 @@ def test_oblicz_metryki_command_error_handling(rodzaj_autora_n):
         rok=2024,
     )
 
-    # Mockuj zbieraj_sloty aby rzucił wyjątek
-    with patch.object(Autor, "zbieraj_sloty") as mock_zbieraj:
-        mock_zbieraj.side_effect = Exception("Test error")
+    # Mockuj _calculate_metrics_data aby rzucił wyjątek
+    with patch("ewaluacja_metryki.utils._calculate_metrics_data") as mock_calculate:
+        mock_calculate.side_effect = Exception("Test error")
 
         out = StringIO()
         call_command("oblicz_metryki", "--bez-liczby-n", stdout=out)
@@ -227,17 +238,28 @@ def test_oblicz_metryki_command_parameters(rodzaj_autora_n):
         ilosc_udzialow_monografie=Decimal("1.0"),
     )
 
-    # Stwórz Autor_Dyscyplina z rodzajem 'N'
+    # Stwórz Autor_Dyscyplina z rodzajem 'N' w zakresie lat testowanych (2020-2023)
     baker.make(
         Autor_Dyscyplina,
         autor=autor,
         dyscyplina_naukowa=dyscyplina,
         rodzaj_autora=rodzaj_autora_n,
-        rok=2024,
+        rok=2022,
     )
 
-    with patch.object(Autor, "zbieraj_sloty") as mock_zbieraj:
+    # For this test we need to mock zbieraj_sloty to verify parameters
+    # but also handle the conversion from cache PKs to rekord_ids
+    from bpp.models.cache import Cache_Punktacja_Autora_Query
+
+    with (
+        patch.object(Autor, "zbieraj_sloty") as mock_zbieraj,
+        patch.object(Cache_Punktacja_Autora_Query.objects, "filter") as mock_filter,
+    ):
         mock_zbieraj.return_value = (Decimal("100.0"), [1], Decimal("2.5"))
+
+        # Mock the conversion chain: filter().values_list()
+        mock_queryset = mock_filter.return_value
+        mock_queryset.values_list.return_value = [1]  # rekord_ids
 
         call_command(
             "oblicz_metryki",
@@ -324,8 +346,15 @@ def test_oblicz_metryki_command_rodzaj_autora_filter(
         rok=2024,
     )
 
-    with patch.object(Autor, "zbieraj_sloty") as mock_zbieraj:
-        mock_zbieraj.return_value = (Decimal("100.0"), [1], Decimal("2.5"))
+    with patch("ewaluacja_metryki.utils._calculate_metrics_data") as mock_calculate:
+        mock_calculate.return_value = {
+            "punkty_nazbierane": Decimal("100.0"),
+            "prace_nazbierane_ids": [1],
+            "slot_nazbierany": Decimal("2.5"),
+            "punkty_wszystkie": Decimal("120.0"),
+            "prace_wszystkie_ids": [1, 2],
+            "slot_wszystkie": Decimal("3.0"),
+        }
 
         # Domyślnie powinno generować dla wszystkich rodzajów (N, D, B, Z, " ")
         out = StringIO()

@@ -19,12 +19,14 @@ from bpp.const import GR_WPROWADZANIE_DANYCH
 from bpp.models import Autor_Dyscyplina, Uczelnia
 
 from .models import (
-    DyscyplinaNieRaportowana,
     IloscUdzialowDlaAutoraZaCalosc,
     IloscUdzialowDlaAutoraZaRok,
     LiczbaNDlaUczelni,
 )
-from .utils import oblicz_liczby_n_dla_ewaluacji_2022_2025
+from .utils import (
+    oblicz_liczbe_n_na_koniec_2025,
+    oblicz_liczby_n_dla_ewaluacji_2022_2025,
+)
 
 
 class LiczbaNIndexView(GroupRequiredMixin, TemplateView):
@@ -37,23 +39,40 @@ class LiczbaNIndexView(GroupRequiredMixin, TemplateView):
         context = super().get_context_data(**kwargs)
         uczelnia = Uczelnia.objects.get_default()
 
-        # Pobierz dane liczby N dla uczelni
-        context["liczby_n"] = (
+        # Pobierz wszystkie dane liczby N dla uczelni (średnia z 2022-2025)
+        wszystkie_liczby_n = (
             LiczbaNDlaUczelni.objects.filter(uczelnia=uczelnia)
             .select_related("dyscyplina_naukowa")
             .order_by("-liczba_n")
         )
 
-        # Pobierz dyscypliny nieraportowane
-        context["dyscypliny_nieraportowane"] = (
-            DyscyplinaNieRaportowana.objects.filter(uczelnia=uczelnia)
-            .select_related("dyscyplina_naukowa")
-            .order_by("dyscyplina_naukowa__nazwa")
+        # Oblicz liczby N na koniec 2025 dla każdej dyscypliny
+        liczby_n_2025 = oblicz_liczbe_n_na_koniec_2025(uczelnia)
+
+        # Dodaj liczby N na koniec 2025 do każdego obiektu i podziel na raportowane/nieraportowane
+        liczby_n_raportowane = []
+        liczby_n_nieraportowane = []
+
+        for liczba in wszystkie_liczby_n:
+            liczba.liczba_n_2025 = liczby_n_2025.get(liczba.dyscyplina_naukowa_id, 0)
+
+            # Dyscyplina jest nieraportowana jeśli liczba N na koniec 2025 < 12
+            if liczba.liczba_n_2025 < 12:
+                liczby_n_nieraportowane.append(liczba)
+            else:
+                liczby_n_raportowane.append(liczba)
+
+        context["liczby_n"] = liczby_n_raportowane
+        context["dyscypliny_nieraportowane"] = liczby_n_nieraportowane
+
+        # Oblicz sumę liczby N (średnia) - tylko dla dyscyplin raportowanych
+        context["suma_liczby_n"] = sum(
+            float(liczba.liczba_n) for liczba in liczby_n_raportowane
         )
 
-        # Oblicz sumę liczby N
-        context["suma_liczby_n"] = (
-            context["liczby_n"].aggregate(suma=Sum("liczba_n"))["suma"] or 0
+        # Oblicz sumę liczby N na koniec 2025 - tylko dla dyscyplin raportowanych
+        context["suma_liczby_n_2025"] = sum(
+            float(liczba.liczba_n_2025) for liczba in liczby_n_raportowane
         )
 
         context["uczelnia"] = uczelnia
@@ -721,7 +740,7 @@ class ExportAutorzyLiczbaNView(GroupRequiredMixin, View):
         """Create non-reported disciplines worksheet"""
         ws_nieraportowane = wb.create_sheet("Dyscypliny Nieraportowane")
 
-        headers = ["Dyscyplina", "Kod"]
+        headers = ["Dyscyplina", "Kod", "Liczba N - średnia", "Liczba N - koniec 2025"]
         for col_num, header in enumerate(headers, 1):
             cell = ws_nieraportowane.cell(row=1, column=col_num, value=header)
             cell.font = Font(bold=True)
@@ -729,21 +748,32 @@ class ExportAutorzyLiczbaNView(GroupRequiredMixin, View):
                 start_color="CCCCCC", end_color="CCCCCC", fill_type="solid"
             )
 
-        dyscypliny_nieraportowane = (
-            DyscyplinaNieRaportowana.objects.filter(uczelnia=uczelnia)
+        # Pobierz wszystkie dyscypliny i oblicz liczby N na koniec 2025
+        wszystkie_liczby_n = (
+            LiczbaNDlaUczelni.objects.filter(uczelnia=uczelnia)
             .select_related("dyscyplina_naukowa")
             .order_by("dyscyplina_naukowa__nazwa")
         )
+        liczby_n_2025 = oblicz_liczbe_n_na_koniec_2025(uczelnia)
 
+        # Filtruj tylko nieraportowane (N < 12 na koniec 2025)
         row_num = 2
-        for dn in dyscypliny_nieraportowane:
-            ws_nieraportowane.cell(
-                row=row_num, column=1, value=dn.dyscyplina_naukowa.nazwa
-            )
-            ws_nieraportowane.cell(
-                row=row_num, column=2, value=dn.dyscyplina_naukowa.kod
-            )
-            row_num += 1
+        for liczba in wszystkie_liczby_n:
+            liczba_n_2025 = liczby_n_2025.get(liczba.dyscyplina_naukowa_id, 0)
+            if liczba_n_2025 < 12:
+                ws_nieraportowane.cell(
+                    row=row_num, column=1, value=liczba.dyscyplina_naukowa.nazwa
+                )
+                ws_nieraportowane.cell(
+                    row=row_num, column=2, value=liczba.dyscyplina_naukowa.kod
+                )
+                ws_nieraportowane.cell(
+                    row=row_num, column=3, value=float(liczba.liczba_n)
+                )
+                ws_nieraportowane.cell(
+                    row=row_num, column=4, value=float(liczba_n_2025)
+                )
+                row_num += 1
 
     def _apply_column_widths(self, wb):
         """Adjust column widths for all worksheets"""
@@ -936,7 +966,7 @@ class ExportUdzialyZaCaloscView(GroupRequiredMixin, View):
         """Create non-reported disciplines worksheet"""
         ws_nieraportowane = wb.create_sheet("Dyscypliny Nieraportowane")
 
-        headers = ["Dyscyplina", "Kod", "Liczba N"]
+        headers = ["Dyscyplina", "Kod", "Liczba N - średnia", "Liczba N - koniec 2025"]
         for col_num, header in enumerate(headers, 1):
             cell = ws_nieraportowane.cell(row=1, column=col_num, value=header)
             cell.font = Font(bold=True)
@@ -944,22 +974,32 @@ class ExportUdzialyZaCaloscView(GroupRequiredMixin, View):
                 start_color="CCCCCC", end_color="CCCCCC", fill_type="solid"
             )
 
-        dyscypliny_nieraportowane = (
-            DyscyplinaNieRaportowana.objects.filter(uczelnia=uczelnia)
+        # Pobierz wszystkie dyscypliny i oblicz liczby N na koniec 2025
+        wszystkie_liczby_n = (
+            LiczbaNDlaUczelni.objects.filter(uczelnia=uczelnia)
             .select_related("dyscyplina_naukowa")
             .order_by("dyscyplina_naukowa__nazwa")
         )
+        liczby_n_2025 = oblicz_liczbe_n_na_koniec_2025(uczelnia)
 
+        # Filtruj tylko nieraportowane (N < 12 na koniec 2025)
         row_num = 2
-        for dn in dyscypliny_nieraportowane:
-            ws_nieraportowane.cell(
-                row=row_num, column=1, value=dn.dyscyplina_naukowa.nazwa
-            )
-            ws_nieraportowane.cell(
-                row=row_num, column=2, value=dn.dyscyplina_naukowa.kod
-            )
-            ws_nieraportowane.cell(row=row_num, column=3, value=float(dn.liczba_n))
-            row_num += 1
+        for liczba in wszystkie_liczby_n:
+            liczba_n_2025 = liczby_n_2025.get(liczba.dyscyplina_naukowa_id, 0)
+            if liczba_n_2025 < 12:
+                ws_nieraportowane.cell(
+                    row=row_num, column=1, value=liczba.dyscyplina_naukowa.nazwa
+                )
+                ws_nieraportowane.cell(
+                    row=row_num, column=2, value=liczba.dyscyplina_naukowa.kod
+                )
+                ws_nieraportowane.cell(
+                    row=row_num, column=3, value=float(liczba.liczba_n)
+                )
+                ws_nieraportowane.cell(
+                    row=row_num, column=4, value=float(liczba_n_2025)
+                )
+                row_num += 1
 
     def _apply_column_widths(self, wb):
         """Adjust column widths for all worksheets"""
@@ -1066,15 +1106,25 @@ class WeryfikujBazeView(GroupRequiredMixin, TemplateView):
         )
 
         # 3. Records with missing percentage information
-        # Missing procent_dyscypliny OR (has subdyscyplina but missing procent_subdyscypliny)
+        # Validation rules:
+        # - procent_dyscypliny must not be NULL or 0
+        # - if subdyscyplina_naukowa exists, procent_subdyscypliny must not be NULL or 0
+        # - only for authors with jest_w_n=True OR licz_sloty=True
+        from decimal import Decimal
+
         context["bez_procent"] = (
             Autor_Dyscyplina.objects.filter(rok__gte=2022, rok__lte=2025)
+            .filter(Q(rodzaj_autora__jest_w_n=True) | Q(rodzaj_autora__licz_sloty=True))
             .filter(
                 Q(procent_dyscypliny__isnull=True)  # Missing main discipline percentage
-                # Has subdiscipline but no percentage
+                | Q(procent_dyscypliny=Decimal("0"))  # Or percentage is 0.0
                 | (
+                    # Has subdiscipline but missing or 0% percentage
                     Q(subdyscyplina_naukowa__isnull=False)
-                    & Q(procent_subdyscypliny__isnull=True)
+                    & (
+                        Q(procent_subdyscypliny__isnull=True)
+                        | Q(procent_subdyscypliny=Decimal("0"))
+                    )
                 )
             )
             .count()
@@ -1082,12 +1132,13 @@ class WeryfikujBazeView(GroupRequiredMixin, TemplateView):
 
         # 4. Check if sum of percentages equals 100
         # We need to check each record individually
-        from decimal import Decimal
-
+        # Only for authors with jest_w_n=True OR licz_sloty=True
         problematic_suma = []
-        all_records = Autor_Dyscyplina.objects.filter(
-            rok__gte=2022, rok__lte=2025
-        ).select_related("autor")
+        all_records = (
+            Autor_Dyscyplina.objects.filter(rok__gte=2022, rok__lte=2025)
+            .filter(Q(rodzaj_autora__jest_w_n=True) | Q(rodzaj_autora__licz_sloty=True))
+            .select_related("autor", "rodzaj_autora")
+        )
 
         for record in all_records:
             procent_d = record.procent_dyscypliny or Decimal("0")
@@ -1095,7 +1146,8 @@ class WeryfikujBazeView(GroupRequiredMixin, TemplateView):
             suma = procent_d + procent_s
 
             # Check if sum is not 100 (allowing small rounding differences)
-            if suma > Decimal("0") and abs(suma - Decimal("100")) > Decimal("0.01"):
+            # Now includes records with suma = 0% as errors
+            if abs(suma - Decimal("100")) > Decimal("0.01"):
                 problematic_suma.append(
                     {
                         "id": record.id,
@@ -1123,18 +1175,23 @@ class WeryfikujBazeView(GroupRequiredMixin, TemplateView):
             .count()
         )
 
-        # Generate DjangoQL queries
+        # Generate DjangoQL queries and admin filter URLs
         # DjangoQL needs to reference the related object now
         context["djangoql_queries"] = {
             "bez_wymiaru": "rok >= 2022 and rok <= 2025 and (wymiar_etatu = None or wymiar_etatu = 0)",
-            "bez_procent": "rok >= 2022 and rok <= 2025 and (procent_dyscypliny = None or (subdyscyplina_naukowa != "
-            "None and procent_subdyscypliny = None))",
-            "zla_suma": "rok >= 2022 and rok <= 2025 and procent_dyscypliny != None",  # Can't check sum with DjangoQL
+            "bez_procent": "rok >= 2022 and rok <= 2025 and (rodzaj_autora.jest_w_n = True or rodzaj_autora.licz_sloty = True) and "
+            "(procent_dyscypliny = None or procent_dyscypliny = 0 or "
+            "(subdyscyplina_naukowa != None and (procent_subdyscypliny = None or procent_subdyscypliny = 0)))",
             "rodzaj_n": 'rok >= 2022 and rok <= 2025 and rodzaj_autora.skrot = "N"',
             "rodzaj_d": 'rok >= 2022 and rok <= 2025 and rodzaj_autora.skrot = "D"',
             "rodzaj_b": 'rok >= 2022 and rok <= 2025 and rodzaj_autora.skrot = "B"',
             "rodzaj_z": 'rok >= 2022 and rok <= 2025 and rodzaj_autora.skrot = "Z"',
             "brak_danych": "rok >= 2022 and rok <= 2025 and rodzaj_autora = None",
         }
+
+        # URL for custom filter (suma != 100%) - uses custom admin filter instead of DjangoQL
+        context["zla_suma_url"] = (
+            "suma_procent=nieprawidlowa&rok__gte=2022&rok__lte=2025"
+        )
 
         return context

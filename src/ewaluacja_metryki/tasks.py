@@ -47,10 +47,10 @@ def oblicz_metryki_dla_autora_task(
 
     from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaCalosc
 
-    from .utils import _process_single_author
+    from .utils import _process_single_author, get_default_rodzaje_autora
 
     if rodzaje_autora is None:
-        rodzaje_autora = ["N", "D", "B", "Z", " "]
+        rodzaje_autora = get_default_rodzaje_autora()
 
     try:
         # Pobierz obiekt IloscUdzialowDlaAutoraZaCalosc
@@ -196,10 +196,12 @@ def generuj_metryki_task_parallel(
         minimalny_pk: Minimalny próg punktów
         nadpisz: Czy nadpisywać istniejące metryki
         przelicz_liczbe_n: Czy przeliczać liczbę N przed generowaniem metryk (domyślnie True)
-        rodzaje_autora: Lista rodzajów autorów do przetworzenia (domyślnie ['N', 'D', 'B', 'Z', ' '])
+        rodzaje_autora: Lista rodzajów autorów do przetworzenia (domyślnie pobierana z Rodzaj_Autora.filter(licz_sloty=True))
     """
     if rodzaje_autora is None:
-        rodzaje_autora = ["N", "D", "B", "Z", " "]
+        from .utils import get_default_rodzaje_autora
+
+        rodzaje_autora = get_default_rodzaje_autora()
 
     status = StatusGenerowania.get_or_create()
 
@@ -219,9 +221,13 @@ def generuj_metryki_task_parallel(
 
         from .models import MetrykaAutora
 
-        ids_list = list(
-            IloscUdzialowDlaAutoraZaCalosc.objects.values_list("id", flat=True)
-        )
+        # Filtruj tylko wpisy z odpowiednimi rodzajami autorów
+        # aby uniknąć duplikatów dla tego samego autora+dyscypliny
+        queryset = IloscUdzialowDlaAutoraZaCalosc.objects.all()
+        if rodzaje_autora:
+            queryset = queryset.filter(rodzaj_autora__skrot__in=rodzaje_autora)
+
+        ids_list = list(queryset.values_list("id", flat=True))
         total_count = len(ids_list)
 
         logger.info(
@@ -310,10 +316,12 @@ def generuj_metryki_task(
         minimalny_pk: Minimalny próg punktów
         nadpisz: Czy nadpisywać istniejące metryki
         przelicz_liczbe_n: Czy przeliczać liczbę N przed generowaniem metryk (domyślnie True)
-        rodzaje_autora: Lista rodzajów autorów do przetworzenia (domyślnie ['N', 'D', 'Z', ' '])
+        rodzaje_autora: Lista rodzajów autorów do przetworzenia (domyślnie pobierana z Rodzaj_Autora.filter(licz_sloty=True))
     """
     if rodzaje_autora is None:
-        rodzaje_autora = ["N", "D", "B", "Z", " "]
+        from .utils import get_default_rodzaje_autora
+
+        rodzaje_autora = get_default_rodzaje_autora()
     status = StatusGenerowania.get_or_create()
 
     # NOTE: Sprawdzanie w_trakcie przeniesione do widoku UruchomGenerowanie
@@ -335,7 +343,11 @@ def generuj_metryki_task(
 
         from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaCalosc
 
-        total_count = IloscUdzialowDlaAutoraZaCalosc.objects.all().count()
+        # Policz tylko wpisy z odpowiednimi rodzajami autorów
+        queryset = IloscUdzialowDlaAutoraZaCalosc.objects.all()
+        if rodzaje_autora:
+            queryset = queryset.filter(rodzaj_autora__skrot__in=rodzaje_autora)
+        total_count = queryset.count()
 
         # Status już jest ustawiony przez widok, tylko zaktualizuj liczbę jeśli się zmieniła
         if status.liczba_do_przetworzenia != total_count:
@@ -374,7 +386,7 @@ def generuj_metryki_task(
             progress_callback=update_progress,
         )
 
-        liczba_przetworzonych = wynik["processed"]
+        _liczba_przetworzonych = wynik["processed"]
         liczba_bledow = wynik["errors"]
 
         # Odśwież status z bazy (może być zaktualizowany przez progress_callback)

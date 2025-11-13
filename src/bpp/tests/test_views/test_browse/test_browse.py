@@ -412,7 +412,7 @@ def test_zglos_publikacje_button_pokazuj_zawsze(client, uczelnia):
 
     res = client.get(reverse("bpp:browse_uczelnia", args=(uczelnia.slug,)))
     assert res.status_code == 200
-    assert "Masz nową publikację? Dodaj ją do bazy".encode("utf-8") in res.content
+    assert "Masz nową publikację? Zgłoś ją do bazy!".encode("utf-8") in res.content
 
 
 @pytest.mark.django_db
@@ -427,7 +427,7 @@ def test_zglos_publikacje_button_pokazuj_nigdy(client, uczelnia):
 
     res = client.get(reverse("bpp:browse_uczelnia", args=(uczelnia.slug,)))
     assert res.status_code == 200
-    assert "Masz nową publikację? Dodaj ją do bazy".encode("utf-8") not in res.content
+    assert "Masz nową publikację? Zgłoś ją do bazy!".encode("utf-8") not in res.content
 
 
 @pytest.mark.django_db
@@ -442,7 +442,7 @@ def test_zglos_publikacje_button_pokazuj_zalogowanym_anon(client, uczelnia):
 
     res = client.get(reverse("bpp:browse_uczelnia", args=(uczelnia.slug,)))
     assert res.status_code == 200
-    assert "Masz nową publikację? Dodaj ją do bazy".encode("utf-8") not in res.content
+    assert "Masz nową publikację? Zgłoś ją do bazy!".encode("utf-8") not in res.content
 
 
 @pytest.mark.django_db
@@ -457,4 +457,4 @@ def test_zglos_publikacje_button_pokazuj_zalogowanym_logged(admin_client, uczeln
 
     res = admin_client.get(reverse("bpp:browse_uczelnia", args=(uczelnia.slug,)))
     assert res.status_code == 200
-    assert "Masz nową publikację? Dodaj ją do bazy".encode("utf-8") in res.content
+    assert "Masz nową publikację? Zgłoś ją do bazy!".encode("utf-8") in res.content

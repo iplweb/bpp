@@ -20,4 +20,12 @@ uv run src/manage.py compress -v0 --force --traceback
 echo "done."
 
 echo "Starting uvicorn... "
-uv run uvicorn --host 0 --port 8000 django_bpp.asgi:application
+if [ "$ENABLE_AUTORELOAD_ON_CODE_CHANGE" = "1" ] || [ "$ENABLE_AUTORELOAD_ON_CODE_CHANGE" = "true" ]; then
+    echo "Auto-reload ENABLED"
+    echo "Installing watchdog for auto-reload functionality..."
+    uv pip install watchdog --quiet
+    uv run uvicorn --host 0 --port 8000 --reload --reload-dir /app/src django_bpp.asgi:application
+else
+    echo "Auto-reload DISABLED"
+    uv run uvicorn --host 0 --port 8000 django_bpp.asgi:application
+fi

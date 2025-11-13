@@ -168,9 +168,9 @@
             <div class="shaded-hr-div"></div>
         </div>
         <div class="large-12 cell uczelnia-main-content">
-            {% if uczelnia.pokazuj_formularz_zglaszania_publikacji == 'always' or uczelnia.pokazuj_formularz_zglaszania_publikacji == 'logged-in' and request.user.is_authenticated or uczelnia.pokazuj_formularz_zglaszania_publikacji == 'staff' and request.user.is_staff %}
+            {% if show_zglos_button %}
                 <a href="/zglos_publikacje/nowe_zgloszenie/" class=" main-page-button-primary">
-                    <i class="fi-page-add"></i> Masz nową publikację? Dodaj ją do bazy
+                    <i class="fi-page-add"></i> Masz nową publikację? Zgłoś ją do bazy!
                 </a>
             {% endif %}
             {% if total_rekord_count > 25000 %}
@@ -190,9 +190,7 @@
                 </a>
             {% endif %}
             <a href="#" onclick="openGlobalSearch(event); return false;" class="main-page-button-search-field">
-                <i class="fi-text-color"></i>
-                <span class="search-placeholder">Wyszukaj tekstem</span>
-                <span class="search-cursor"></span>
+                <i class="fi-text-color"></i> Wyszukaj tekstem
             </a>
         </div>
         <div class="large-12 cell">

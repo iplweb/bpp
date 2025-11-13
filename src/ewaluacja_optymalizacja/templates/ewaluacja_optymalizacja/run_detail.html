@@ -35,7 +35,7 @@
             <div class="large-3 medium-6 columns">
                 <div class="callout">
                     <h4>Suma punktów</h4>
-                    <p class="lead">{{ run.total_points|floatformat:1 }}</p>
+                    <p class="lead">{{ run.total_points|floatformat:2 }}</p>
                 </div>
             </div>
             <div class="large-3 medium-6 columns">
@@ -70,11 +70,11 @@
                         <tbody>
                             <tr>
                                 <td>Autorzy w liczbie N:</td>
-                                <td class="text-right"><strong>{{ stats.n_points|floatformat:1 }} pkt ({{ stats.n_points_pct|floatformat:1 }}%)</strong></td>
+                                <td class="text-right"><strong>{{ stats.n_points|floatformat:2 }} pkt ({{ stats.n_points_pct|floatformat:1 }}%)</strong></td>
                             </tr>
                             <tr>
                                 <td>Autorzy poza liczbą N:</td>
-                                <td class="text-right"><strong>{{ stats.non_n_points|floatformat:1 }} pkt ({{ stats.non_n_points_pct|floatformat:1 }}%)</strong></td>
+                                <td class="text-right"><strong>{{ stats.non_n_points|floatformat:2 }} pkt ({{ stats.non_n_points_pct|floatformat:1 }}%)</strong></td>
                             </tr>
                         </tbody>
                     </table>
@@ -168,9 +168,9 @@
                             <span class="label secondary">-</span>
                         {% endif %}
                     </td>
-                    <td>{{ author_result.total_points|floatformat:1 }}</td>
-                    <td>{{ author_result.total_slots|floatformat:2 }} / {{ author_result.slot_limit_total|floatformat:1 }}</td>
-                    <td>{{ author_result.mono_slots|floatformat:2 }} / {{ author_result.slot_limit_mono|floatformat:1 }}</td>
+                    <td>{{ author_result.total_points|floatformat:2 }}</td>
+                    <td>{{ author_result.total_slots|floatformat:2 }} / {{ author_result.slot_limit_total|floatformat:2 }}</td>
+                    <td>{{ author_result.mono_slots|floatformat:2 }} / {{ author_result.slot_limit_mono|floatformat:2 }}</td>
                     <td>
                         {% widthratio author_result.total_slots author_result.slot_limit_total 100 as usage_pct %}
                         <div class="progress" role="progressbar" tabindex="0" aria-valuenow="{{ usage_pct }}"
