@@ -55,6 +55,5 @@ else
     fi
 fi
 
-# Start nginx
-echo "Starting nginx..."
-exec nginx -g 'daemon off;'
+# Script complete - nginx's entrypoint will handle starting nginx
+echo "SSL and template setup complete. Proceeding with nginx startup..."
