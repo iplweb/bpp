@@ -60,7 +60,6 @@ CACHEOPS = {
     "bpp.wydawnictwo_ciagle_streszczenie": {"ops": ("get", "fetch", "count", "exists")},
 }
 
-CACHEOPS_REDIS = BROKER_URL  # noqa
 CACHEOPS_DEFAULTS = {"timeout": 60 * 60}
 
 ALLOWED_HOSTS = [
