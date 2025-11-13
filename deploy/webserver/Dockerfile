@@ -10,9 +10,7 @@ RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 COPY default.conf.template /etc/nginx/templates/default.conf.template
 COPY default.conf.dev.template /etc/nginx/templates/default.conf.dev.template
 COPY maintenance.html /usr/share/nginx/html/maintenance.html
-COPY entrypoint-webserver.sh /entrypoint-webserver.sh
+COPY 05-ssl-and-template-setup.sh /docker-entrypoint.d/05-ssl-and-template-setup.sh
 
-# Make entrypoint executable
-RUN chmod +x /entrypoint-webserver.sh
-
-ENTRYPOINT ["/entrypoint-webserver.sh"]
+# Make entrypoint script executable
+RUN chmod +x /docker-entrypoint.d/05-ssl-and-template-setup.sh
