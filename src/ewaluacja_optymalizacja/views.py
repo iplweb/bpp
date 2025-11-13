@@ -551,8 +551,8 @@ def _process_discipline_optimization_status(liczba_n_obj, uczelnia):
         return disc_info, "running"
 
     # Brak OptimizationRun - zadanie jeszcze nie utworzyło rekordu
-    disc_info["status"] = "queued"
-    return disc_info, "queued"
+    disc_info["status"] = "pending"
+    return disc_info, "pending"
 
 
 def _build_bulk_progress_context(

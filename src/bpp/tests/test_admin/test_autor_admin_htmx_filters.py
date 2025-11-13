@@ -31,12 +31,14 @@ def test_action_with_filters_in_get_params_select_across(admin_client):
 
     # Symuluj POST request z akcją + parametry GET z filtrami
     # To jest kluczowe: parametry filtrowania są w GET (dzięki hx-push-url="true")
+    # W prawdziwym scenariuszu użytkownik zaznacza najpierw kilka elementów na bieżącej stronie,
+    # a potem klika "Select all X records". Django wymaga przynajmniej jednego ID w _selected_action.
     response = admin_client.post(
         "/admin/bpp/autor/?pokazuj__exact=0",  # <-- Filtr w GET params!
         data={
             "action": "ustaw_pokazuj_true",
             "select_across": "1",  # <-- "Select all" clicked
-            "_selected_action": [],  # Pusta lista bo select_across=1
+            "_selected_action": [str(autorzy_niewidoczni[0].pk)],  # Pierwszy zaznaczony autor
         },
         follow=False,
     )
@@ -57,12 +59,13 @@ def test_action_without_filters_select_across(admin_client):
     assert Autor.objects.filter(pokazuj=False).count() == 20
 
     # Request bez filtrów w GET
+    # Django wymaga przynajmniej jednego ID w _selected_action przy użyciu select_across
     response = admin_client.post(
         "/admin/bpp/autor/",  # <-- Brak filtrów w GET!
         data={
             "action": "ustaw_pokazuj_true",
             "select_across": "1",
-            "_selected_action": [],
+            "_selected_action": [str(autorzy[0].pk)],  # Pierwszy zaznaczony autor
         },
         follow=False,
     )
@@ -96,12 +99,13 @@ def test_action_with_multiple_filters(admin_client):
     assert Autor.objects.count() == 15
 
     # Request z dwoma filtrami: pokazuj=False AND jednostka=A
+    # Django wymaga przynajmniej jednego ID w _selected_action przy użyciu select_across
     response = admin_client.post(
         f"/admin/bpp/autor/?pokazuj__exact=0&aktualna_jednostka__id__exact={jednostka_a.pk}",
         data={
             "action": "ustaw_pokazuj_true",
             "select_across": "1",
-            "_selected_action": [],
+            "_selected_action": [str(autorzy_a_niewidoczni[0].pk)],  # Pierwszy zaznaczony autor
         },
         follow=False,
     )
