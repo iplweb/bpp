@@ -59,10 +59,13 @@ def pokazuj_formularz_platnosci(wizard):
     # Jeżeli w pierwszym kroku podano rodzaj publikacji jako artykuł naukowy lub monografia
     # to zapytaj o koszta. Jeżeli rodzaj jest inny -- to nie pytaj
     cleaned_data = wizard.get_cleaned_data_for_step("0") or {}
-    return (
-        cleaned_data.get("rodzaj_zglaszanej_publikacji", None)
-        == Zgloszenie_Publikacji.Rodzaje.ARTYKUL_LUB_MONOGRAFIA
-    )
+    rodzaj = cleaned_data.get("rodzaj_zglaszanej_publikacji", None)
+
+    # Dla rozdziałów w monografii NIE pytamy o płatności
+    if rodzaj == Zgloszenie_Publikacji.Rodzaje.ROZDZIAL_W_MONOGRAFII:
+        return False
+
+    return rodzaj == Zgloszenie_Publikacji.Rodzaje.ARTYKUL_LUB_MONOGRAFIA
 
 
 def _aggregate_form_data(dane_rekordu, form_list):

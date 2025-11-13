@@ -12,6 +12,8 @@ from django.db import models
 from django.db.models import CASCADE
 from django.db.models.functions import Coalesce
 from django.db.models.query_utils import Q
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 from django.urls.base import reverse
 from django.utils import timezone
 from mptt.fields import TreeForeignKey
@@ -109,8 +111,8 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
         db_index=True,
         help_text="Jeżeli odznaczone, prace z jednostki nie sumują się w rankingu autorów.",
     )
-    email = models.EmailField("E-mail", max_length=128, blank=True, null=True)
-    www = models.URLField("WWW", max_length=1024, blank=True, null=True)
+    email = models.EmailField("E-mail", max_length=128, blank=True, default="")
+    www = models.URLField("WWW", max_length=1024, blank=True, default="")
 
     pbn_uid = models.ForeignKey(
         "pbn_api.Institution",
@@ -179,7 +181,7 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
             wydzial = None
 
         if wydzial is not None:
-            ret += " (%s)" % self.wydzial.skrot
+            ret += f" ({self.wydzial.skrot})"
 
         return ret
 
@@ -332,17 +334,17 @@ class Jednostka_Wydzial_Manager(models.Manager):
             # być takiej sytuacji, bo funkcja przypisania_dla_czasokresu
             # ma nie zwracać takich zakresów. Ma prawo kończyć się w dniu parent.do
             # ale nie ma się kończyć przed
-            assert (
-                do >= parent_od
-            ), "To nie powinno się zdarzyć. Funkcja przypisania_dla_czasokresu działa niepoprawnie"
+            assert do >= parent_od, (
+                "To nie powinno się zdarzyć. Funkcja przypisania_dla_czasokresu działa niepoprawnie"
+            )
 
             # Jeżeli zakres zaczyna się za parent.do, to nie ma prawa
             # być takiej sytuacji, bo funkcja przypisania_dla_czasokresu
             # ma nie zwracać takich zakresów. Ma prawo zaczynać się w dniu parent.od
             # ale nie ma prawa zaczynać się za:
-            assert (
-                od <= parent_do_not_null
-            ), "To nie powinno się zdarzyć. Funkcja przypisania_dla_czasokresu działa niepoprawnie"
+            assert od <= parent_do_not_null, (
+                "To nie powinno się zdarzyć. Funkcja przypisania_dla_czasokresu działa niepoprawnie"
+            )
 
             # Jeżeli zakres zaczyna się przed parent.od i kończy wewnątrz parent
             #
@@ -423,9 +425,9 @@ class Jednostka_Wydzial(models.Model):
 
     def clean(self):
         try:
-            self.wydzial
+            _ = self.wydzial
         except (ValueError, TypeError, Wydzial.DoesNotExist):
-            raise ValidationError({"wydzial": "Określ wydział"})
+            raise ValidationError({"wydzial": "Określ wydział"}) from None
 
         if self.wydzial.uczelnia_id != self.jednostka.uczelnia_id:
             raise ValidationError(
@@ -476,3 +478,14 @@ class Jednostka_Wydzial(models.Model):
                     "do": 'Data w polu "Do" nie może być większa lub równa, niż data aktualna (dzisiejsza).'
                 }
             )
+
+
+@receiver(post_save, sender=Jednostka)
+def invalidate_uczelnia_cache_on_jednostka_change(sender, instance, **kwargs):
+    """
+    Invalidate main page cache when jednostka is saved.
+    This ensures the homepage is updated immediately.
+    """
+    from bpp.views.browse import get_uczelnia_context_data
+
+    get_uczelnia_context_data.invalidate()

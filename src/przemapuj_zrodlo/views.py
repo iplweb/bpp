@@ -93,6 +93,23 @@ class PrzemapujZrodloView(WprowadzanieDanychRequiredMixin, FormView):
         kwargs["zrodlo_zrodlowe"] = self.zrodlo_zrodlowe
         return kwargs
 
+    def get_initial(self):
+        """Ustaw wartość początkową źródła docelowego z parametru GET."""
+        initial = super().get_initial()
+
+        # Sprawdź parametr GET zrodlo_docelowe
+        zrodlo_docelowe_id = self.request.GET.get("zrodlo_docelowe")
+        if zrodlo_docelowe_id:
+            try:
+                # Spróbuj znaleźć źródło po ID (primary key)
+                zrodlo = Zrodlo.objects.get(pk=int(zrodlo_docelowe_id))
+                initial["zrodlo_docelowe"] = zrodlo
+            except (ValueError, TypeError, Zrodlo.DoesNotExist):
+                # Zignoruj nieprawidłowy parametr
+                pass
+
+        return initial
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["zrodlo_zrodlowe"] = self.zrodlo_zrodlowe

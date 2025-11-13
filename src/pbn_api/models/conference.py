@@ -22,4 +22,7 @@ class Conference(BasePBNMongoDBModel):
         return self.value("object", "country")
 
     def __str__(self):
-        return f"{self.fullName()}, {self.startDate()}, {self.city()}"
+        ret = f"{self.fullName()}, {self.startDate()}, {self.city()}"
+        if self.status == "DELETED":
+            ret = f"[❌ USUNIĘTY] {ret}"
+        return ret

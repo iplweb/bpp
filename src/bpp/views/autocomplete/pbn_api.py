@@ -14,7 +14,7 @@ from bpp.models import Uczelnia
 from pbn_api.client import PBNClient
 from pbn_api.exceptions import AccessDeniedException
 from pbn_api.models import Journal, Publication, Scientist
-from pbn_integrator.utils import ACTIVE, zapisz_mongodb
+from pbn_integrator.utils import zapisz_mongodb
 
 from .mixins import SanitizedAutocompleteMixin
 
@@ -116,7 +116,7 @@ class BasePBNAutocomplete(
         )
 
     def get_base_queryset(self):
-        return self.pbn_api_model.objects.filter(status=ACTIVE)
+        return self.pbn_api_model.objects.all()
 
     def separate_words(self, q):
         return [word.strip() for word in q.strip().split(" ") if word.strip()]

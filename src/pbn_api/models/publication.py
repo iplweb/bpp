@@ -20,10 +20,10 @@ class Publication(LinkDoPBNMixin, BasePBNMongoDBModel):
         verbose_name_plural = "Publikacje z PBN API"
         unique_together = ["mongoId", "title", "isbn", "doi", "publicUri"]
 
-    title = models.TextField(db_index=True, null=True, blank=True)
-    doi = models.TextField(db_index=True, null=True, blank=True)
-    publicUri = models.TextField(db_index=True, null=True, blank=True)
-    isbn = models.TextField(db_index=True, null=True, blank=True)
+    title = models.TextField(db_index=True, blank=True, default="")
+    doi = models.TextField(db_index=True, blank=True, default="")
+    publicUri = models.TextField(db_index=True, blank=True, default="")
+    isbn = models.TextField(db_index=True, blank=True, default="")
     year = models.IntegerField(db_index=True, null=True, blank=True)
 
     # Nazwy pól wyciaganych "na wierzch" do pól obiektu
@@ -139,4 +139,6 @@ class Publication(LinkDoPBNMixin, BasePBNMongoDBModel):
             ret += f", {self.year}"
         if self.doi:
             ret += f", {self.doi}"
+        if self.status == "DELETED":
+            ret = f"[❌ USUNIĘTY] {ret}"
         return ret

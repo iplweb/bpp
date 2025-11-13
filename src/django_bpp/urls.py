@@ -233,6 +233,13 @@ urlpatterns = (
                 namespace="przemapuj_zrodlo",
             ),
         ),
+        path(
+            "deduplikator-zrodel/",
+            include(
+                ("deduplikator_zrodel.urls", "deduplikator_zrodel"),
+                namespace="deduplikator_zrodel",
+            ),
+        ),
         url(
             r"^multiseek/results/$",
             csrf_exempt(

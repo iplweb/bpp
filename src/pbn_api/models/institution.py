@@ -9,12 +9,12 @@ class Institution(BasePBNMongoDBModel):
         verbose_name = "Instytucja w PBN API"
         verbose_name_plural = "Instytucje w PBN API"
 
-    name = models.TextField(null=True, blank=True, db_index=True)
-    addressCity = models.TextField(null=True, blank=True, db_index=True)
-    addressStreet = models.TextField(null=True, blank=True, db_index=True)
-    addressStreetNumber = models.TextField(null=True, blank=True, db_index=True)
-    addressPostalCode = models.TextField(null=True, blank=True, db_index=True)
-    polonUid = models.TextField(null=True, blank=True, db_index=True)
+    name = models.TextField(blank=True, default="", db_index=True)
+    addressCity = models.TextField(blank=True, default="", db_index=True)
+    addressStreet = models.TextField(blank=True, default="", db_index=True)
+    addressStreetNumber = models.TextField(blank=True, default="", db_index=True)
+    addressPostalCode = models.TextField(blank=True, default="", db_index=True)
+    polonUid = models.TextField(blank=True, default="", db_index=True)
 
     pull_up_on_save = [
         "name",
@@ -53,6 +53,8 @@ class Institution(BasePBNMongoDBModel):
         while ret.find(",,") != -1:
             ret = ret.replace(",,", ",")
         ret = ret.replace(", (", " (")
+        if self.status == "DELETED":
+            ret = f"[❌ USUNIĘTY] {ret}"
         return ret
 
     @cached_property

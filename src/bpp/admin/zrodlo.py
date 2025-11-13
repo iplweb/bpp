@@ -5,7 +5,6 @@ from django.contrib import admin
 from djangoql.admin import DjangoQLSearchMixin
 
 from bpp.models.zrodlo import Redakcja_Zrodla
-from pbn_api.const import ACTIVE
 from pbn_api.models import Journal
 
 from ..models import (  # Publikacja_Habilitacyjna
@@ -72,7 +71,7 @@ class ZrodloForm(forms.ModelForm):
     pbn_uid = forms.ModelChoiceField(
         label="Odpowiednik w PBN",
         required=False,
-        queryset=Journal.objects.filter(status=ACTIVE),
+        queryset=Journal.objects.all(),
         widget=autocomplete.ModelSelect2(
             url="bpp:journal-autocomplete", attrs=dict(style="width: 746px;")
         ),

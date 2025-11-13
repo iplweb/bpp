@@ -15,12 +15,12 @@ class Scientist(LinkDoPBNMixin, BasePBNMongoDBModel):
         "Rekord z API instytucji", db_index=True, null=True
     )
 
-    lastName = models.TextField(db_index=True, null=True, blank=True)
-    name = models.TextField(db_index=True, null=True, blank=True)
-    pbnId = models.TextField(db_index=True, null=True, blank=True)
-    qualifications = models.TextField("Tytuł", db_index=True, null=True, blank=True)
-    orcid = models.TextField(db_index=True, null=True, blank=True)
-    polonUid = models.TextField(db_index=True, null=True, blank=True)
+    lastName = models.TextField(db_index=True, blank=True, default="")
+    name = models.TextField(db_index=True, blank=True, default="")
+    pbnId = models.TextField(db_index=True, blank=True, default="")
+    qualifications = models.TextField("Tytuł", db_index=True, blank=True, default="")
+    orcid = models.TextField(db_index=True, blank=True, default="")
+    polonUid = models.TextField(db_index=True, blank=True, default="")
 
     pull_up_on_save = ["lastName", "name", "qualifications", "orcid", "polonUid"]
 
@@ -48,6 +48,8 @@ class Scientist(LinkDoPBNMixin, BasePBNMongoDBModel):
         ret = ret.replace(" ,", ",")
         ret = ret.replace("-, ", "")
         ret = ret.replace(", (", " (")
+        if self.status == "DELETED":
+            ret = f"[❌ USUNIĘTY] {ret}"
         return ret
 
     @cached_property

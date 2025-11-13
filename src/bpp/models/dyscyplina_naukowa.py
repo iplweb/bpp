@@ -11,8 +11,8 @@ from import_common.normalization import normalize_kod_dyscypliny
 def waliduj_format_kodu_numer(value):
     try:
         val1, val2 = (int(x) for x in value.split("."))
-    except (TypeError, ValueError):
-        raise ValidationError("Poprawny kod ma format LICZBA[kropka]LICZBA")
+    except (TypeError, ValueError) as e:
+        raise ValidationError("Poprawny kod ma format LICZBA[kropka]LICZBA") from e
 
     msg = (
         "Pierwsza cyfra dziedziny nie ma odwzorowania w słowniku dziedzin w systemie BPP. "
@@ -21,8 +21,8 @@ def waliduj_format_kodu_numer(value):
     )
     try:
         dziedzina = const.DZIEDZINA(val1)
-    except ValueError:
-        raise ValidationError(msg)
+    except ValueError as e:
+        raise ValidationError(msg) from e
 
     if dziedzina not in const.DZIEDZINY:
         raise ValidationError(msg)
@@ -42,16 +42,16 @@ class Dyscyplina_Naukowa(models.Model):
     nazwa = models.CharField(max_length=200, unique=True)
     widoczna = models.BooleanField(default=True)
 
-    def kod_dla_pbn(self):
-        a, b = (int(x) for x in self.kod.split(".", 1))
-        return int("%i%.2i" % (a, b))
+    class Meta:
+        verbose_name_plural = "dyscypliny naukowe"
+        verbose_name = "dyscyplina naukowa"
 
     def __str__(self):
         return f"{self.nazwa} ({self.kod})"
 
-    class Meta:
-        verbose_name_plural = "dyscypliny naukowe"
-        verbose_name = "dyscyplina naukowa"
+    def kod_dla_pbn(self):
+        a, b = (int(x) for x in self.kod.split(".", 1))
+        return int(f"{a:d}{b:02d}")
 
     def kod_dziedziny(self):
         try:
@@ -134,18 +134,27 @@ class Autor_Dyscyplina(models.Model):
 
     objects = Autor_DyscyplinaManager()
 
-    def __str__(self):
-        ret = f"przypisanie {self.autor} na rok {self.rok} do dyscypliny {self.dyscyplina_naukowa}"
-        if self.subdyscyplina_naukowa_id is not None:
-            ret += f" oraz {self.subdyscyplina_naukowa}"
-        return ret
-
     class Meta:
         unique_together = [("rok", "autor")]
         verbose_name = "powiązanie autor-dyscyplina"
         verbose_name_plural = "powiązania autor-dyscyplina"
 
         ordering = ("rok",)
+
+    def __str__(self):
+        try:
+            autor_str = str(self.autor) if self.autor_id else "???"
+            dyscyplina_str = (
+                str(self.dyscyplina_naukowa) if self.dyscyplina_naukowa_id else "???"
+            )
+
+            ret = f"przypisanie {autor_str} na rok {self.rok} do dyscypliny {dyscyplina_str}"
+            if self.subdyscyplina_naukowa_id is not None:
+                ret += f" oraz {self.subdyscyplina_naukowa}"
+            return ret
+        except Exception:
+            # Fallback w przypadku jakichkolwiek błędów podczas usuwania
+            return f"Autor_Dyscyplina #{self.pk if self.pk else 'nowy'}"
 
     def clean(self):
         p1 = self.procent_dyscypliny or Decimal("0.00")

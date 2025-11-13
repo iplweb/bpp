@@ -119,7 +119,19 @@ nc -zv localhost 8000  # Check if port 8000 is in use
 - `ruff format .` - Format Python code
 - `ruff check .` - Lint Python code and check import sorting
 - `ruff check --fix .` - Auto-fix linting issues where possible
-- `pre-commit run --all-files` - Run pre-commit hooks
+
+**🔴 CRITICAL: PRE-COMMIT COMMAND 🔴**
+**ABSOLUTE PROHIBITION: NEVER run `pre-commit run --all-files` or any pre-commit command with arguments!**
+**ONLY ALLOWED COMMAND: `pre-commit` (with NO arguments whatsoever)**
+
+- `pre-commit` - Run pre-commit hooks (NEVER add any arguments like --all-files)
+
+**🔴 CRITICAL: HOW TO HANDLE PRE-COMMIT OUTPUT 🔴**
+**When `pre-commit` is run and produces output with issues:**
+1. **ANALYZE the output ISSUE-BY-ISSUE** - read each error/warning carefully
+2. **DO NOT run `ruff check --fix` or any automated fixes**
+3. **FIX each issue ONE BY ONE MANUALLY** using the Edit tool
+4. **NEVER batch-fix** - address each problem individually and deliberately
 
 **Note:** Code quality tools (ruff, pre-commit) are installed through UV and available in the virtual environment.
 

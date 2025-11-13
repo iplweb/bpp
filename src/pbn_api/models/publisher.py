@@ -25,11 +25,14 @@ class Publisher(LinkDoPBNMixin, BasePBNMongoDBModel):
 
     pull_up_on_save = ["publisherName", "mniswId"]
 
-    publisherName = models.TextField(null=True, blank=True, db_index=True)
+    publisherName = models.TextField(blank=True, default="", db_index=True)
     mniswId = models.IntegerField(null=True, blank=True, db_index=True)
 
     def __str__(self):
-        return f"{self.publisherName}, MNISW ID: {self.mniswId or '-'}"
+        ret = f"{self.publisherName}, MNISW ID: {self.mniswId or '-'}"
+        if self.status == "DELETED":
+            ret = f"[❌ USUNIĘTY] {ret}"
+        return ret
 
     @property
     def points(self):

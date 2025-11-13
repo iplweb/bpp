@@ -401,6 +401,17 @@ class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID):
             akcja=akcja,
         )
 
+    @property
+    def jest_w_polon(self):
+        """Sprawdza czy autor jest w systemie POL-on poprzez sprawdzenie
+        czy istnieje rekord OsobaZInstytucji z personId_id równym pbn_uid_id autora."""
+        if not self.pbn_uid_id:
+            return False
+
+        from pbn_api.models import OsobaZInstytucji
+
+        return OsobaZInstytucji.objects.filter(personId_id=self.pbn_uid_id).exists()
+
 
 class Funkcja_Autora(NazwaISkrot):
     """Funkcja autora w jednostce"""
@@ -546,10 +557,17 @@ class Autor_Jednostka(models.Model):
         ]
 
     def __str__(self):
-        buf = f"{self.autor} ↔ {self.jednostka.skrot}"
-        if self.funkcja:
-            buf = f"{self.autor} ↔ {self.funkcja.nazwa}, {self.jednostka.skrot}"
-        return buf
+        try:
+            autor_str = str(self.autor) if self.autor_id else "???"
+            jednostka_str = self.jednostka.skrot if self.jednostka_id else "???"
+
+            buf = f"{autor_str} ↔ {jednostka_str}"
+            if self.funkcja_id and self.funkcja:
+                buf = f"{autor_str} ↔ {self.funkcja.nazwa}, {jednostka_str}"
+            return buf
+        except Exception:
+            # Fallback w przypadku jakichkolwiek błędów podczas usuwania
+            return f"Autor_Jednostka #{self.pk if self.pk else 'nowy'}"
 
     def clean(self, exclude=None):
         if self.rozpoczal_prace is not None and self.zakonczyl_prace is not None:

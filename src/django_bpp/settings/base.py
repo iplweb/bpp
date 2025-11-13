@@ -295,6 +295,7 @@ MIDDLEWARE = [
     "htmlmin.middleware.MarkRequestMiddleware",
     "django.middleware.locale.LocaleMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    "bpp.middleware.MaliciousRequestBlockingMiddleware",  # Block malicious requests (pagination, PHP, .git, etc.) early
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -445,6 +446,7 @@ INSTALLED_APPS = [
     "snapshot_odpiec",
     "stan_systemu",
     "deduplikator_autorow",
+    "deduplikator_zrodel",
     "importer_autorow_pbn",
     "przemapuj_prace_autora",
     "przemapuj_zrodla_pbn",

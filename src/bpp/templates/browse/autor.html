@@ -100,6 +100,18 @@
                             </div>
                         </div>
                     {% endif %}
+                    {% if autor.jest_w_polon %}
+                        <div class="cell shrink">
+                            <div class="callout" style="background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px; padding: 12px; margin: 0; text-align: center; min-width: 160px;">
+                                <div style="color: #2c3e50; font-weight: 600; font-size: 0.85rem; margin-bottom: 4px;">
+                                    <span class="fi-shield"></span> Naukowiec z POL-on
+                                </div>
+                                <a href="{{ autor.link_do_pbn }}" target="_blank" rel="noopener" style="color: #3498db; text-decoration: none; font-size: 0.9rem;">
+                                    Zobacz w PBN <span class="fi-arrow-right"></span>
+                                </a>
+                            </div>
+                        </div>
+                    {% endif %}
                     {% if autor.pbn_id %}
                         <div class="cell shrink">
                             <div class="callout" style="background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px; padding: 12px; margin: 0; text-align: center; min-width: 120px;">
