@@ -9,7 +9,7 @@ class OsobaZInstytucji(models.Model):
     lastName = models.TextField()
     institutionId = models.ForeignKey("pbn_api.Institution", on_delete=models.PROTECT)
     institutionName = models.TextField()
-    title = models.TextField(blank=True, null=True)
+    title = models.TextField(blank=True, default="")
     polonUuid = models.UUIDField(unique=True)
     phdStudent = models.BooleanField()
     _from = models.DateField(null=True, blank=True)

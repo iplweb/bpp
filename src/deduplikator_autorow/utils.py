@@ -2,6 +2,11 @@
 Moduł do wyszukiwania zdublowanych autorów w systemie BPP.
 """
 
+import sys
+import traceback
+
+import rollbar
+from cacheops import cached
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Q, QuerySet
 
@@ -15,10 +20,11 @@ from pbn_api.models import OsobaZInstytucji, Scientist
 
 # Maksymalna teoretyczna pewność (optymalne warunki):
 # +10 (≤5 publikacji) +15 (brak tytułu) +50 (identyczny ORCID) +40 (identyczne nazwisko)
+# +50 (pełna zamiana imienia z nazwiskiem)
 # +90 (3 identyczne imiona: 30*3) +45 (3 podobne imiona: 15*3) +15 (3 inicjały: 5*3)
 # +10 (brak imion) +20 (wspólne lata publikacji)
-# = +295 (w praktyce rzadko przekracza 200 ze względu na wzajemne wykluczanie się warunków)
-MAX_PEWNOSC = 200
+# = +345 (w praktyce rzadko przekracza 250 ze względu na wzajemne wykluczanie się warunków)
+MAX_PEWNOSC = 250
 
 # Minimalna teoretyczna pewność (najgorsze warunki):
 # -30 (więcej publikacji niż główny) -15 (różny tytuł) -50 (różny ORCID)
@@ -27,7 +33,7 @@ MAX_PEWNOSC = 200
 MIN_PEWNOSC = -115
 
 
-def szukaj_kopii(osoba_z_instytucji: OsobaZInstytucji) -> QuerySet[Autor]:
+def szukaj_kopii(osoba_z_instytucji: OsobaZInstytucji) -> QuerySet[Autor]:  # noqa: C901
     """
     Funkcja wyszukuje potencjalnie zdublowanych autorów w systemie BPP
     na podstawie głównego autora z OsobaZInstytucji.
@@ -88,12 +94,25 @@ def szukaj_kopii(osoba_z_instytucji: OsobaZInstytucji) -> QuerySet[Autor]:
             if len(czesc) > 2:  # Tylko części dłuższe niż 2 znaki
                 q |= Q(nazwisko__iexact=czesc)
 
-    # 4. Nazwiska zawierające szukane jako część
-    if len(nazwisko) > 3:
+    # 4. Substring matching tylko dla nazwisk BEZ myślnika i długich (>6 znaków)
+    # Dla nazwisk z myślnikiem używamy TYLKO dokładnego dopasowania części
+    if "-" not in nazwisko and len(nazwisko) > 6:
         q |= Q(nazwisko__icontains=nazwisko)
 
-    # 5. Szukane nazwisko jako część innych nazwisk
-    q |= Q(nazwisko__icontains=nazwisko)
+    # 6. Zamiana imienia z nazwiskiem (swap detection) - tylko dokładne dopasowania
+    # Sprawdzamy czy nazwisko głównego autora może być dokładnie imieniem duplikatu i odwrotnie
+    if imiona:
+        # Pobierz wszystkie imiona głównego autora
+        lista_imion_glownego = imiona.split()
+
+        for imie_glownego in lista_imion_glownego:
+            # Sprawdź czy nazwisko duplikatu dokładnie pasuje do imienia głównego autora
+            q |= Q(nazwisko__iexact=imie_glownego)
+
+        # Sprawdź czy nazwisko głównego może być imieniem duplikatu
+        # Szukaj PEŁNEGO nazwiska w imionach (dla swap detection)
+        # Ale NIE szukamy CZĘŚCI nazwiska złożonego - to zostało usunięte poniżej
+        q |= Q(imiona__icontains=nazwisko)
 
     # Wyszukaj kandydatów na duplikaty
     kandydaci = Autor.objects.filter(q).exclude(pk=glowny_autor.pk)
@@ -121,6 +140,11 @@ def szukaj_kopii(osoba_z_instytucji: OsobaZInstytucji) -> QuerySet[Autor]:
                     # Szukaj inicjału na początku stringa, po spacji lub z kropką
                     filtr_imion |= Q(imiona__iregex=r"(^|[ ])" + inicjal + r"(\.| |$)")
 
+            # Dodaj warunki dla zamiany imienia z nazwiskiem
+            # Szukaj PEŁNEGO nazwiska w imionach (dla swap detection)
+            # Ale NIE szukamy CZĘŚCI nazwiska złożonego - to zostało usunięte wyżej
+            filtr_imion |= Q(imiona__icontains=nazwisko)
+
             # Zastosuj filtr imion jako dodatkowy warunek OR z pustymi imionami
             kandydaci = kandydaci.filter(
                 filtr_imion | Q(imiona__isnull=True) | Q(imiona__exact="")
@@ -147,11 +171,16 @@ def szukaj_kopii(osoba_z_instytucji: OsobaZInstytucji) -> QuerySet[Autor]:
     kandydaci = kandydaci.exclude(
         pk__in=NotADuplicate.objects.values_list("autor_id", flat=True)
     )
+
+    # Wyklucz autorów, którzy mają własny rekord w POL-on/PBN
+    # (posiadają powiązanie Autor -> Scientist -> OsobaZInstytucji)
+    # Tacy autorzy są pełnoprawnymi pracownikami i nie powinni być traktowani jako duplikaty
+    kandydaci = kandydaci.exclude(pbn_uid__osobazinstytucji__isnull=False)
     #
     return kandydaci.distinct()
 
 
-def analiza_duplikatow(osoba_z_instytucji: OsobaZInstytucji) -> dict:
+def analiza_duplikatow(osoba_z_instytucji: OsobaZInstytucji) -> dict:  # noqa: C901
     """
     Przeprowadza szczegółową analizę znalezionych duplikatów.
 
@@ -252,6 +281,44 @@ def analiza_duplikatow(osoba_z_instytucji: OsobaZInstytucji) -> dict:
             ):
                 analiza["powody_podobienstwa"].append("podobne nazwisko")
                 analiza["pewnosc"] += 30
+
+        # Analiza zamiany imienia z nazwiskiem (name-surname swap detection)
+        # Wykrywamy tylko dokładne zamiany, bez podobieństwa opartego na pierwszych znakach
+        if (
+            duplikat.nazwisko
+            and duplikat.imiona
+            and glowny_autor.nazwisko
+            and glowny_autor.imiona
+        ):
+            imiona_glowny = glowny_autor.imiona.split()
+            imiona_duplikat = duplikat.imiona.split()
+
+            # Sprawdź czy nazwisko duplikatu = imię głównego (dokładnie)
+            dokladna_zamiana_nazwisko_duplikat = any(
+                duplikat.nazwisko.lower() == imie_g.lower() for imie_g in imiona_glowny
+            )
+
+            # Sprawdź czy nazwisko głównego = imię duplikatu (dokładnie)
+            dokladna_zamiana_nazwisko_glowny = any(
+                glowny_autor.nazwisko.lower() == imie_d.lower()
+                for imie_d in imiona_duplikat
+            )
+
+            # Punktacja za zamianę - tylko dokładne dopasowania
+            if dokladna_zamiana_nazwisko_duplikat and dokladna_zamiana_nazwisko_glowny:
+                analiza["powody_podobienstwa"].append(
+                    f"wykryto pełną zamianę imienia z nazwiskiem "
+                    f"('{glowny_autor.nazwisko} {glowny_autor.imiona}' ↔ "
+                    f"'{duplikat.nazwisko} {duplikat.imiona}')"
+                )
+                analiza["pewnosc"] += 50
+            elif dokladna_zamiana_nazwisko_duplikat or dokladna_zamiana_nazwisko_glowny:
+                analiza["powody_podobienstwa"].append(
+                    f"wykryto częściową zamianę imienia z nazwiskiem "
+                    f"('{glowny_autor.nazwisko} {glowny_autor.imiona}' ~ "
+                    f"'{duplikat.nazwisko} {duplikat.imiona}')"
+                )
+                analiza["pewnosc"] += 5
 
         # Analiza imion
         if duplikat.imiona and glowny_autor.imiona:
@@ -403,7 +470,7 @@ def autor_ma_publikacje_z_lat(
     )
 
 
-def znajdz_pierwszego_autora_z_duplikatami(
+def znajdz_pierwszego_autora_z_duplikatami(  # noqa: C901
     excluded_authors: list[Scientist] | None = None,
 ) -> Scientist | None:
     """
@@ -497,7 +564,7 @@ def znajdz_pierwszego_autora_z_duplikatami(
     return None
 
 
-def scal_autora(glowny_autor, autor_duplikat, user, skip_pbn=False):
+def scal_autora(glowny_autor, autor_duplikat, user, skip_pbn=False):  # noqa: C901
     """
     Scala duplikat autora na głównego autora.
 
@@ -602,6 +669,23 @@ def scal_autora(glowny_autor, autor_duplikat, user, skip_pbn=False):
                 # Store old discipline before any changes
                 old_discipline = wc_autor.dyscyplina_naukowa
 
+                # CHECK IF MAIN AUTHOR ALREADY HAS THIS PUBLICATION
+                existing = Wydawnictwo_Ciagle_Autor.objects.filter(
+                    rekord=wc_autor.rekord,
+                    autor=glowny_autor,
+                    typ_odpowiedzialnosci=wc_autor.typ_odpowiedzialnosci,
+                ).exists()
+
+                if existing:
+                    # Main author already has this publication - delete duplicate's record
+                    results["warnings"].append(
+                        f"Autor główny już ma publikację {wc_autor.rekord} "
+                        f"z typem odpowiedzialności {wc_autor.typ_odpowiedzialnosci}. "
+                        f"Usunięto duplikat."
+                    )
+                    wc_autor.delete()
+                    continue
+
                 # Sprawdź dyscypliny
                 if wc_autor.dyscyplina_naukowa:
                     rok = wc_autor.rekord.rok if wc_autor.rekord else None
@@ -664,6 +748,26 @@ def scal_autora(glowny_autor, autor_duplikat, user, skip_pbn=False):
             # 2. Wydawnictwo_Zwarte_Autor
             wz_autorzy = Wydawnictwo_Zwarte_Autor.objects.filter(autor=autor_duplikat)
             for wz_autor in wz_autorzy:
+                # Store old discipline before any changes
+                old_discipline = wz_autor.dyscyplina_naukowa
+
+                # CHECK IF MAIN AUTHOR ALREADY HAS THIS PUBLICATION
+                existing = Wydawnictwo_Zwarte_Autor.objects.filter(
+                    rekord=wz_autor.rekord,
+                    autor=glowny_autor,
+                    typ_odpowiedzialnosci=wz_autor.typ_odpowiedzialnosci,
+                ).exists()
+
+                if existing:
+                    # Main author already has this publication - delete duplicate's record
+                    results["warnings"].append(
+                        f"Autor główny już ma publikację {wz_autor.rekord} "
+                        f"z typem odpowiedzialności {wz_autor.typ_odpowiedzialnosci}. "
+                        f"Usunięto duplikat."
+                    )
+                    wz_autor.delete()
+                    continue
+
                 # Sprawdź dyscypliny
                 if wz_autor.dyscyplina_naukowa:
                     rok = wz_autor.rekord.rok if wz_autor.rekord else None
@@ -687,8 +791,11 @@ def scal_autora(glowny_autor, autor_duplikat, user, skip_pbn=False):
 
                 # Dodaj do kolejki PBN
                 if not skip_pbn and wz_autor.rekord:
-                    PBN_Export_Queue.objects.get_or_create(
-                        rekord=wz_autor.rekord, defaults={"created_by": None}
+                    content_type = ContentType.objects.get_for_model(wz_autor.rekord)
+                    PBN_Export_Queue.objects.create(
+                        content_type=content_type,
+                        object_id=wz_autor.rekord.pk,
+                        zamowil=user,
                     )
                     results["publications_queued_for_pbn"].append(str(wz_autor.rekord))
 
@@ -700,6 +807,26 @@ def scal_autora(glowny_autor, autor_duplikat, user, skip_pbn=False):
             # 3. Patent_Autor
             patent_autorzy = Patent_Autor.objects.filter(autor=autor_duplikat)
             for patent_autor in patent_autorzy:
+                # Store old discipline before any changes
+                old_discipline = patent_autor.dyscyplina_naukowa
+
+                # CHECK IF MAIN AUTHOR ALREADY HAS THIS PUBLICATION
+                existing = Patent_Autor.objects.filter(
+                    rekord=patent_autor.rekord,
+                    autor=glowny_autor,
+                    typ_odpowiedzialnosci=patent_autor.typ_odpowiedzialnosci,
+                ).exists()
+
+                if existing:
+                    # Main author already has this publication - delete duplicate's record
+                    results["warnings"].append(
+                        f"Autor główny już ma publikację {patent_autor.rekord} "
+                        f"z typem odpowiedzialności {patent_autor.typ_odpowiedzialnosci}. "
+                        f"Usunięto duplikat."
+                    )
+                    patent_autor.delete()
+                    continue
+
                 # Sprawdź dyscypliny
                 if patent_autor.dyscyplina_naukowa:
                     rok = patent_autor.rekord.rok if patent_autor.rekord else None
@@ -723,8 +850,13 @@ def scal_autora(glowny_autor, autor_duplikat, user, skip_pbn=False):
 
                 # Dodaj do kolejki PBN
                 if not skip_pbn and patent_autor.rekord:
-                    PBN_Export_Queue.objects.get_or_create(
-                        rekord=patent_autor.rekord, defaults={"created_by": None}
+                    content_type = ContentType.objects.get_for_model(
+                        patent_autor.rekord
+                    )
+                    PBN_Export_Queue.objects.create(
+                        content_type=content_type,
+                        object_id=patent_autor.rekord.pk,
+                        zamowil=user,
                     )
                     results["publications_queued_for_pbn"].append(
                         str(patent_autor.rekord)
@@ -744,8 +876,11 @@ def scal_autora(glowny_autor, autor_duplikat, user, skip_pbn=False):
 
                 # Dodaj do kolejki PBN
                 if not skip_pbn:
-                    PBN_Export_Queue.objects.get_or_create(
-                        rekord=praca_hab, defaults={"created_by": None}
+                    content_type = ContentType.objects.get_for_model(praca_hab)
+                    PBN_Export_Queue.objects.create(
+                        content_type=content_type,
+                        object_id=praca_hab.pk,
+                        zamowil=user,
                     )
                     results["publications_queued_for_pbn"].append(str(praca_hab))
 
@@ -761,8 +896,11 @@ def scal_autora(glowny_autor, autor_duplikat, user, skip_pbn=False):
 
                 # Dodaj do kolejki PBN
                 if not skip_pbn:
-                    PBN_Export_Queue.objects.get_or_create(
-                        rekord=praca_dokt, defaults={"created_by": None}
+                    content_type = ContentType.objects.get_for_model(praca_dokt)
+                    PBN_Export_Queue.objects.create(
+                        content_type=content_type,
+                        object_id=praca_dokt.pk,
+                        zamowil=user,
                     )
                     results["publications_queued_for_pbn"].append(str(praca_dokt))
 
@@ -774,6 +912,8 @@ def scal_autora(glowny_autor, autor_duplikat, user, skip_pbn=False):
             return results
 
     except Exception as e:
+        traceback.print_exc()
+        rollbar.report_exc_info(sys.exc_info())
         results["success"] = False
         results["error"] = str(e)
         return results
@@ -822,7 +962,7 @@ def scal_autorow(
         if "error" in analiza_result:
             return {
                 "success": False,
-                "error": f'Błąd analizy duplikatów: {analiza_result["error"]}',
+                "error": f"Błąd analizy duplikatów: {analiza_result['error']}",
             }
 
         # Sprawdź czy autor_duplikat jest w liście duplikatów
@@ -868,13 +1008,10 @@ def scal_autorow(
 
         return result
 
-    except Scientist.DoesNotExist as e:
-        return {"success": False, "error": f"Nie znaleziono Scientist o ID: {str(e)}"}
+    except Autor.DoesNotExist as e:
+        return {"success": False, "error": f"Nie znaleziono autora o ID: {str(e)}"}
     except Exception as e:
         return {"success": False, "error": f"Nieoczekiwany błąd: {str(e)}"}
-
-
-from cacheops import cached
 
 
 @cached(timeout=5 * 60)
@@ -909,7 +1046,7 @@ def count_authors_with_duplicates() -> int:
     return count
 
 
-def search_author_by_lastname(search_term, excluded_authors=None):
+def search_author_by_lastname(search_term, excluded_authors=None):  # noqa: C901
     """
     Wyszukuje pierwszego autora z duplikatami według części nazwiska.
     Priorytetyzuje autorów z publikacjami z lat 2022-2025.
@@ -1021,7 +1158,7 @@ def count_authors_with_lastname(search_term):
     return count
 
 
-def export_duplicates_to_xlsx():
+def export_duplicates_to_xlsx():  # noqa: C901
     """
     Eksportuje wszystkich autorów z duplikatami do formatu XLSX.
 

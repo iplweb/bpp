@@ -1,11 +1,10 @@
 from django.conf import settings
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q
 from django_softdelete.models import SoftDeleteModel
-
-from django.contrib.contenttypes.fields import GenericForeignKey
-from django.contrib.contenttypes.models import ContentType
 
 from bpp.models import Autor_Dyscyplina, Uczelnia
 from bpp.models.abstract import (
@@ -42,7 +41,7 @@ class Zgloszenie_Publikacji(
     odpowiednik_w_bpp = GenericForeignKey()
 
     kod_do_edycji = models.UUIDField(editable=False, unique=True, null=True, blank=True)
-    przyczyna_zwrotu = models.TextField(blank=True, null=True)
+    przyczyna_zwrotu = models.TextField(blank=True, default="")
 
     zgoda_na_publikacje_pelnego_tekstu = models.BooleanField(
         "Zgoda na publikację pełnego tekstu", default=False
@@ -62,6 +61,7 @@ class Zgloszenie_Publikacji(
 
     class Rodzaje(models.IntegerChoices):
         ARTYKUL_LUB_MONOGRAFIA = 1, "artykuł naukowy lub monografia"
+        ROZDZIAL_W_MONOGRAFII = 3, "rozdział w monografii"
         POZOSTALE = 2, "pozostałe rodzaje"
 
     rodzaj_zglaszanej_publikacji = models.PositiveSmallIntegerField(
@@ -80,7 +80,7 @@ class Zgloszenie_Publikacji(
         "znaków http:// lub https:// ",
         max_length=1024,
         blank=True,
-        null=True,
+        default="",
     )
 
     plik = models.FileField(
@@ -108,6 +108,13 @@ class Zgloszenie_Publikacji(
         # -- czyli, że zmienna zupelny_brak_informacji_o_oplatach jest False.
 
         uczelnia = Uczelnia.objects.get_default()
+
+        # Dla rozdziałów w monografii NIE zbieramy informacji o opłatach
+        if (
+            self.rodzaj_zglaszanej_publikacji
+            == Zgloszenie_Publikacji.Rodzaje.ROZDZIAL_W_MONOGRAFII
+        ):
+            return
 
         if uczelnia is not None and (
             uczelnia.wymagaj_informacji_o_oplatach is True
@@ -150,7 +157,6 @@ class Zgloszenie_Publikacji_Autor(BazaModeluOdpowiedzialnosciAutorow):
         return f"autor {self.autor} dla zgłoszenia publikacji {self.rekord.tytul_oryginalny}"
 
     def clean(self):
-
         if self.autor_id is None:
             raise ValidationError({"autor": "Wybierz jakiegoś autora"})
 
@@ -175,18 +181,17 @@ class Zgloszenie_Publikacji_Autor(BazaModeluOdpowiedzialnosciAutorow):
                     autor=self.autor,
                     rok=self.rok,
                 )
-            except Autor_Dyscyplina.DoesNotExist:
+            except Autor_Dyscyplina.DoesNotExist as e:
                 raise ValidationError(
                     {
                         "dyscyplina_naukowa": f"Autor {self.autor} nie ma przypisania na "
                         f"rok {self.rok} do dyscypliny {self.dyscyplina_naukowa}."
                     }
-                )
+                ) from e
 
 
 class Obslugujacy_Zgloszenia_WydzialowManager(models.Manager):
     def emaile_dla_wydzialu(self, wydzial):
-
         # Jeżeli jest ktokolwiek przypisany do danego wydziału, to zwróć go:
         if self.filter(wydzial=wydzial).exists():
             ret = []

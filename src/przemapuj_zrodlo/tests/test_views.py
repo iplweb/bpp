@@ -348,3 +348,74 @@ def test_przemapuj_zrodlo_with_pbn_queue_disabled(client_with_group, user_with_g
 
     # Sprawdź czy publikacje NIE zostały dodane do kolejki PBN
     assert PBN_Export_Queue.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_przemapuj_zrodlo_with_get_parameter_valid_id(client_with_group):
+    """Test ustawienia wartości początkowej źródła docelowego z parametru GET (poprawne ID)."""
+    zrodlo = baker.make("bpp.Zrodlo", nazwa="Źródło A")
+    zrodlo_docelowe = baker.make("bpp.Zrodlo", nazwa="Źródło B")
+    baker.make("bpp.Wydawnictwo_Ciagle", zrodlo=zrodlo)
+
+    url = reverse("przemapuj_zrodlo:przemapuj", args=[zrodlo.slug])
+    response = client_with_group.get(url, {"zrodlo_docelowe": zrodlo_docelowe.pk})
+
+    assert response.status_code == 200
+    assert "form" in response.context
+
+    # Sprawdź czy pole zrodlo_docelowe ma wartość początkową
+    form = response.context["form"]
+    assert form.initial.get("zrodlo_docelowe") == zrodlo_docelowe
+
+
+@pytest.mark.django_db
+def test_przemapuj_zrodlo_with_get_parameter_invalid_id(client_with_group):
+    """Test ignorowania nieprawidłowego ID źródła docelowego z parametru GET."""
+    zrodlo = baker.make("bpp.Zrodlo", nazwa="Źródło A")
+    baker.make("bpp.Wydawnictwo_Ciagle", zrodlo=zrodlo)
+
+    url = reverse("przemapuj_zrodlo:przemapuj", args=[zrodlo.slug])
+    # Użyj ID które nie istnieje (np. 999999)
+    response = client_with_group.get(url, {"zrodlo_docelowe": 999999})
+
+    assert response.status_code == 200
+    assert "form" in response.context
+
+    # Sprawdź czy pole zrodlo_docelowe NIE ma wartości początkowej (parametr zignorowany)
+    form = response.context["form"]
+    assert form.initial.get("zrodlo_docelowe") is None
+
+
+@pytest.mark.django_db
+def test_przemapuj_zrodlo_with_get_parameter_non_numeric(client_with_group):
+    """Test ignorowania nie-numerycznego parametru GET dla źródła docelowego."""
+    zrodlo = baker.make("bpp.Zrodlo", nazwa="Źródło A")
+    baker.make("bpp.Wydawnictwo_Ciagle", zrodlo=zrodlo)
+
+    url = reverse("przemapuj_zrodlo:przemapuj", args=[zrodlo.slug])
+    # Użyj wartości nie-numerycznej
+    response = client_with_group.get(url, {"zrodlo_docelowe": "invalid_value"})
+
+    assert response.status_code == 200
+    assert "form" in response.context
+
+    # Sprawdź czy pole zrodlo_docelowe NIE ma wartości początkowej (parametr zignorowany)
+    form = response.context["form"]
+    assert form.initial.get("zrodlo_docelowe") is None
+
+
+@pytest.mark.django_db
+def test_przemapuj_zrodlo_without_get_parameter(client_with_group):
+    """Test normalnego działania bez parametru GET (istniejące zachowanie)."""
+    zrodlo = baker.make("bpp.Zrodlo", nazwa="Źródło A")
+    baker.make("bpp.Wydawnictwo_Ciagle", zrodlo=zrodlo)
+
+    url = reverse("przemapuj_zrodlo:przemapuj", args=[zrodlo.slug])
+    response = client_with_group.get(url)
+
+    assert response.status_code == 200
+    assert "form" in response.context
+
+    # Sprawdź czy pole zrodlo_docelowe NIE ma wartości początkowej
+    form = response.context["form"]
+    assert form.initial.get("zrodlo_docelowe") is None

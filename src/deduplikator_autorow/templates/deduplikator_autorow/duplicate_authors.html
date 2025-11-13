@@ -401,7 +401,37 @@
                         {% endif %}
                     </div>
 
-                    <h3>Możliwe duplikaty ({{ duplikaty_z_publikacjami|length }})</h3>
+                    <div class="grid-x grid-padding-x align-middle" style="margin-bottom: 15px;">
+                        <div class="cell auto">
+                            <h3 style="margin: 0;">Możliwe duplikaty ({{ duplikaty_z_publikacjami|length }})</h3>
+                        </div>
+                        {% if duplikaty_z_publikacjami|length > 0 %}
+                        <div class="cell shrink">
+                            <div id="merge-all-progress" style="display: none; margin-right: 15px;">
+                                <span class="label warning">
+                                    <span class="fi-loop" style="animation: spin 1s linear infinite;"></span>
+                                    Scalanie... <span id="merge-progress-text">0/0</span> duplikatów
+                                </span>
+                            </div>
+                        </div>
+                        <div class="cell shrink">
+                            <div class="button-group">
+                                <button type="button"
+                                        id="merge-all-btn"
+                                        class="button small success"
+                                        onclick="return confirmMergeAll(false);">
+                                    Scal wszystkie automatycznie
+                                </button>
+                                <button type="button"
+                                        id="merge-all-no-pbn-btn"
+                                        class="button small warning"
+                                        onclick="return confirmMergeAll(true);">
+                                    Scal wszystkie, nie wysyłaj do PBN
+                                </button>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
 
                     {% for duplikat_data in duplikaty_z_publikacjami %}
                         <div id="duplicate-card-{{ duplikat_data.autor.pk }}" class="callout {% if duplikat_data.analiza.pewnosc > 50 %}success{% elif duplikat_data.analiza.pewnosc > 0 %}warning{% else %}alert{% endif %}"
@@ -1028,6 +1058,156 @@
                 form.submit();
                 return true;
             }
+            return false;
+        }
+
+        function confirmMergeAll(skipPbn) {
+            // Collect all duplicate IDs
+            var duplicateCards = document.querySelectorAll('[id^="duplicate-card-"]');
+            var duplicateIds = [];
+            var mainAuthorId = {{ glowny_autor.pk }};
+
+            duplicateCards.forEach(function(card) {
+                var id = card.id.replace('duplicate-card-', '');
+                duplicateIds.push(id);
+            });
+
+            if (duplicateIds.length === 0) {
+                alert('Brak duplikatów do scalenia.');
+                return false;
+            }
+
+            // Confirmation
+            var message = skipPbn
+                ? 'Czy na pewno chcesz scalić wszystkie ' + duplicateIds.length + ' duplikatów?\n\n' +
+                  'Publikacje NIE zostaną wysłane do PBN.\n\n' +
+                  'Operacja zostanie zatrzymana na pierwszym błędzie.\n\n' +
+                  'Tej operacji nie można cofnąć.'
+                : 'Czy na pewno chcesz scalić wszystkie ' + duplicateIds.length + ' duplikatów?\n\n' +
+                  'Publikacje zostaną wysłane do PBN.\n\n' +
+                  'Operacja zostanie zatrzymana na pierwszym błędzie.\n\n' +
+                  'Tej operacji nie można cofnąć.';
+
+            if (!confirm(message)) {
+                return false;
+            }
+
+            // Show progress, disable buttons
+            document.getElementById('merge-all-progress').style.display = 'block';
+            document.getElementById('merge-all-btn').disabled = true;
+            document.getElementById('merge-all-no-pbn-btn').disabled = true;
+
+            // Disable all individual merge buttons too
+            duplicateIds.forEach(function(id) {
+                var btn1 = document.getElementById('merge-btn-' + id);
+                var btn2 = document.getElementById('merge-no-pbn-btn-' + id);
+                if (btn1) btn1.disabled = true;
+                if (btn2) btn2.disabled = true;
+            });
+
+            // Process duplicates sequentially
+            var current = 0;
+            var total = duplicateIds.length;
+
+            function mergeNext() {
+                if (current >= total) {
+                    // All done - reload page
+                    window.location.reload();
+                    return;
+                }
+
+                var duplicateId = duplicateIds[current];
+                current++;
+
+                // Update progress
+                document.getElementById('merge-progress-text').textContent = current + '/' + total;
+
+                // Merge this duplicate
+                $.ajax({
+                    url: '{% url "deduplikator_autorow:scal_autorow" %}',
+                    type: 'GET',
+                    dataType: 'json',
+                    data: {
+                        'main_scientist_id': mainAuthorId,
+                        'duplicate_scientist_id': duplicateId,
+                        'skip_pbn': skipPbn
+                    },
+                    complete: function(xhr, status) {
+                        var response = null;
+                        try {
+                            response = xhr.responseJSON || JSON.parse(xhr.responseText);
+                        } catch(e) {
+                            console.log('Failed to parse response:', e);
+                        }
+
+                        if (response && response.success === true) {
+                            // Success - fade out card
+                            var card = document.getElementById('duplicate-card-' + duplicateId);
+                            if (card) {
+                                $(card).fadeOut(400);
+                            }
+                            // Continue to next after short delay
+                            setTimeout(mergeNext, 500);
+                        } else {
+                            // Error - stop and show message
+                            handleMergeAllError(response, duplicateId);
+                        }
+                    }
+                });
+            }
+
+            function handleMergeAllError(response, duplicateId) {
+                // Hide progress
+                document.getElementById('merge-all-progress').style.display = 'none';
+
+                // Re-enable main buttons
+                document.getElementById('merge-all-btn').disabled = false;
+                document.getElementById('merge-all-no-pbn-btn').disabled = false;
+
+                // Re-enable individual buttons for remaining duplicates
+                for (var i = current; i < total; i++) {
+                    var id = duplicateIds[i];
+                    var btn1 = document.getElementById('merge-btn-' + id);
+                    var btn2 = document.getElementById('merge-no-pbn-btn-' + id);
+                    if (btn1) btn1.disabled = false;
+                    if (btn2) btn2.disabled = false;
+                }
+
+                // Build error message
+                var errorMessage = 'Błąd podczas scalania duplikatu (ID: ' + duplicateId + '):\n\n';
+                if (response && response.error) {
+                    errorMessage += response.error;
+                } else if (response && response.result && response.result.error) {
+                    errorMessage += response.result.error;
+                } else {
+                    errorMessage += 'Nieznany błąd. Sprawdź logi serwera.';
+                }
+
+                errorMessage += '\n\nPomyślnie scalono: ' + (current - 1) + ' z ' + total + ' duplikatów.';
+
+                alert(errorMessage);
+
+                // Highlight the problematic card
+                var card = document.getElementById('duplicate-card-' + duplicateId);
+                if (card) {
+                    card.style.border = '3px solid red';
+                    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+
+                // Show error in notification system if available
+                if (bppNotifications && bppNotifications.addMessage) {
+                    bppNotifications.addMessage({
+                        cssClass: 'alert',
+                        text: 'Scalanie automatyczne zatrzymane na błędzie. Scalono ' + (current - 1) + ' z ' +
+                              total + ' duplikatów.',
+                        sound: true
+                    });
+                }
+            }
+
+            // Start merging
+            mergeNext();
+
             return false;
         }
     </script>

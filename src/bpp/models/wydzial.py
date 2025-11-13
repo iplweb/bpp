@@ -7,6 +7,8 @@ from collections import defaultdict
 from autoslug import AutoSlugField
 from django.db import models
 from django.db.models import CASCADE, Q
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 from django.urls.base import reverse
 from django.utils import timezone
 from tinymce.models import HTMLField
@@ -42,9 +44,7 @@ class Wydzial(ModelZAdnotacjami, ModelZPBN_ID):
     opis = HTMLField(null=True, blank=True)
     pokazuj_opis = models.BooleanField(default=False)
     slug = AutoSlugField(populate_from="nazwa", max_length=512, unique=True)
-    poprzednie_nazwy = models.CharField(
-        max_length=4096, blank=True, null=True, default=""
-    )
+    poprzednie_nazwy = models.CharField(max_length=4096, blank=True, default="")
     kolejnosc = models.IntegerField("Kolejność", default=0)
     widoczny = models.BooleanField(
         default=True,
@@ -156,3 +156,14 @@ class JednostkaManager(FulltextSearchMixin, models.Manager):
             # dla obecności jednostki w wydziałach
             kw["uczelnia"] = kw["wydzial"].uczelnia
         return super().create(*args, **kw)
+
+
+@receiver(post_save, sender=Wydzial)
+def invalidate_uczelnia_cache_on_wydzial_change(sender, instance, **kwargs):
+    """
+    Invalidate main page cache when wydzial is saved.
+    This ensures the homepage is updated immediately.
+    """
+    from bpp.views.browse import get_uczelnia_context_data
+
+    get_uczelnia_context_data.invalidate()

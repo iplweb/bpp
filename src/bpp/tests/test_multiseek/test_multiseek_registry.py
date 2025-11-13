@@ -61,6 +61,8 @@ from bpp.multiseek_registry import (
     ZewnetrznaBazaDanychQueryObject,
 )
 
+pytestmark = pytest.mark.serial
+
 
 @pytest.mark.django_db
 @pytest.mark.parametrize("value", ["foo", "bar", "łódź", "jeszcze test"])
@@ -156,9 +158,14 @@ def test_DataUtworzeniaQueryObject():
 @pytest.mark.django_db
 def test_DyscyplinaQueryObject(autor_jan_kowalski, wydawnictwo_zwarte, rok, jednostka):
     dn = baker.make(Dyscyplina_Naukowa)
-    Autor_Dyscyplina.objects.create(
-        autor=autor_jan_kowalski, dyscyplina_naukowa=dn, rok=rok
+    ad, created = Autor_Dyscyplina.objects.get_or_create(
+        autor=autor_jan_kowalski,
+        rok=rok,
+        defaults={'dyscyplina_naukowa': dn}
     )
+    if not created:
+        ad.dyscyplina_naukowa = dn
+        ad.save()
     wydawnictwo_zwarte.dodaj_autora(
         autor_jan_kowalski, jednostka, dyscyplina_naukowa=dn
     )

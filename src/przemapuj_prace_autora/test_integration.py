@@ -1,9 +1,10 @@
 import pytest
+from cacheops import invalidate_all
+from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from django.test import Client
 from django.urls import reverse
 from model_bakery import baker
-
-from django.contrib.auth import get_user_model
 
 from bpp.models import Autor, Jednostka, Uczelnia
 
@@ -29,7 +30,13 @@ def logged_in_admin_client(admin_user):
 @pytest.fixture
 def uczelnia(db):
     """Create a test university"""
-    return baker.make(Uczelnia, nazwa="Test University", skrot="TU")
+    # Clear any existing universities to ensure get_default() returns our test university
+    Uczelnia.objects.all().delete()
+    u = baker.make(Uczelnia, nazwa="Test University", skrot="TU")
+    # Invalidate all caches so context processor returns the new uczelnia
+    cache.delete(b"bpp_uczelnia")
+    invalidate_all()
+    return u
 
 
 @pytest.fixture

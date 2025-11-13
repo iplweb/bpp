@@ -1,4 +1,5 @@
 import sys
+import traceback
 from functools import wraps
 
 import rollbar
@@ -25,6 +26,10 @@ from .utils import (
     search_author_by_lastname,
     znajdz_pierwszego_autora_z_duplikatami,
 )
+
+# Minimalny próg pewności do wyświetlania duplikatów
+# Duplikaty z pewnością poniżej tego progu nie będą pokazywane
+MIN_PEWNOSC_DO_WYSWIETLENIA = 50
 
 
 def group_required(group_name):
@@ -151,7 +156,7 @@ def _add_dyscypliny_to_duplicates(duplikaty_z_publikacjami):
 
 
 @group_required(GR_WPROWADZANIE_DANYCH)
-def duplicate_authors_view(request):
+def duplicate_authors_view(request):  # noqa: C901
     """
     Widok pokazujący główny rekord autora wraz z możliwymi duplikatami
     i ich publikacjami (do 50 na duplikat).
@@ -225,8 +230,13 @@ def duplicate_authors_view(request):
             context["analiza"] = analiza_result["analiza"]
 
             # Dla każdego duplikatu pobierz publikacje (do 500)
+            # Filtruj tylko duplikaty z pewnością >= MIN_PEWNOSC_DO_WYSWIETLENIA
             duplikaty_z_publikacjami = []
             for duplikat_info in analiza_result["analiza"]:
+                # Pomiń duplikaty z niską pewnością
+                if duplikat_info["pewnosc"] < MIN_PEWNOSC_DO_WYSWIETLENIA:
+                    continue
+
                 autor_duplikat = duplikat_info["autor"]
                 pub_data = _build_duplicate_publication_data(
                     autor_duplikat, duplikat_info
@@ -235,6 +245,25 @@ def duplicate_authors_view(request):
                 duplikaty_z_publikacjami.append(pub_data)
 
             context["duplikaty_z_publikacjami"] = duplikaty_z_publikacjami
+
+            # Jeśli lista duplikatów jest pusta, przejdź automatycznie do następnego autora
+            if not duplikaty_z_publikacjami:
+                # Dodaj do pominiętych
+                if "skipped_authors" not in request.session:
+                    request.session["skipped_authors"] = []
+                if scientist.pk not in request.session["skipped_authors"]:
+                    request.session["skipped_authors"].append(scientist.pk)
+                request.session.modified = True
+
+                # Komunikat
+                messages.info(
+                    request,
+                    f"Autor {context['glowny_autor']} nie ma już duplikatów do scalenia. "
+                    f"Przechodzę do następnego autora.",
+                )
+
+                # Redirect do siebie - znajdzie kolejnego autora
+                return redirect("deduplikator_autorow:duplicate_authors")
 
             # Pobierz publikacje głównego autora (do 500)
             if context["glowny_autor"]:
@@ -302,6 +331,8 @@ def scal_autorow_view(request):
     except NotImplementedError as e:
         return JsonResponse({"success": False, "error": str(e)}, status=501)
     except Exception as e:
+        traceback.print_exc()
+        rollbar.report_exc_info(sys.exc_info())
         return JsonResponse(
             {"success": False, "error": f"Błąd podczas scalania autorów: {str(e)}"},
             status=500,
@@ -341,7 +372,7 @@ def mark_non_duplicate(request):
                 request, f"Autor {autor} był już oznaczony jako nie-duplikat."
             )
 
-    except Scientist.DoesNotExist:
+    except Autor.DoesNotExist:
         messages.error(request, "Nie znaleziono autora o podanym ID.")
     except Exception as e:
         messages.error(request, f"Błąd podczas oznaczania autora: {str(e)}")

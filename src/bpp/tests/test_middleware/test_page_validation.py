@@ -3,14 +3,14 @@ import logging
 import pytest
 from django.test import RequestFactory
 
-from bpp.middleware import PageParameterValidationMiddleware
+from bpp.middleware import MaliciousRequestBlockingMiddleware
 
 
 @pytest.mark.django_db
-class TestPageParameterValidationMiddleware:
+class TestMaliciousRequestBlockingMiddleware:
     def setup_method(self):
         self.factory = RequestFactory()
-        self.middleware = PageParameterValidationMiddleware(lambda r: None)
+        self.middleware = MaliciousRequestBlockingMiddleware(lambda r: None)
 
     def test_no_page_parameter_allowed(self):
         """Test: No page parameter should pass through"""
@@ -119,7 +119,7 @@ class TestPageParameterValidationMiddleware:
         request = self.factory.get("/bpp/autorzy/?page=malicious_string_here")
         self.middleware.process_request(request)
 
-        assert "Blocked suspicious page parameter" in caplog.text
+        assert "Blocked malicious request" in caplog.text
         assert "malicious_string_here" in caplog.text
 
     def test_logging_includes_remote_addr(self, caplog):
@@ -154,3 +154,324 @@ class TestPageParameterValidationMiddleware:
         response = self.middleware.process_request(request)
         assert response is not None
         assert response.status_code == 444
+
+    # ====================
+    # Path Blocking Tests
+    # ====================
+
+    # PHP Files
+    def test_php_file_blocked(self):
+        """Test: PHP files should be blocked"""
+        request = self.factory.get("/index.php")
+        response = self.middleware.process_request(request)
+        assert response is not None
+        assert response.status_code == 444
+
+    def test_php_file_uppercase_blocked(self):
+        """Test: Uppercase PHP files should be blocked (case-insensitive)"""
+        request = self.factory.get("/ADMIN.PHP")
+        response = self.middleware.process_request(request)
+        assert response is not None
+        assert response.status_code == 444
+
+    def test_php5_file_blocked(self):
+        """Test: PHP5 files should be blocked"""
+        request = self.factory.get("/config.php5")
+        response = self.middleware.process_request(request)
+        assert response is not None
+        assert response.status_code == 444
+
+    def test_phtml_file_blocked(self):
+        """Test: PHTML files should be blocked"""
+        request = self.factory.get("/shell.phtml")
+        response = self.middleware.process_request(request)
+        assert response is not None
+        assert response.status_code == 444
+
+    # ASP/JSP Files
+    def test_asp_file_blocked(self):
+        """Test: ASP files should be blocked"""
+        request = self.factory.get("/default.asp")
+        response = self.middleware.process_request(request)
+        assert response is not None
+        assert response.status_code == 444
+
+    def test_aspx_file_blocked(self):
+        """Test: ASPX files should be blocked"""
+        request = self.factory.get("/admin.aspx")
+        response = self.middleware.process_request(request)
+        assert response is not None
+        assert response.status_code == 444
+
+    def test_jsp_file_blocked(self):
+        """Test: JSP files should be blocked"""
+        request = self.factory.get("/login.jsp")
+        response = self.middleware.process_request(request)
+        assert response is not None
+        assert response.status_code == 444
+
+    # Version Control
+    def test_git_directory_blocked(self):
+        """Test: .git directory should be blocked"""
+        request = self.factory.get("/.git/config")
+        response = self.middleware.process_request(request)
+        assert response is not None
+        assert response.status_code == 444
+
+    def test_git_head_blocked(self):
+        """Test: .git/HEAD should be blocked"""
+        request = self.factory.get("/.git/HEAD")
+        response = self.middleware.process_request(request)
+        assert response is not None
+        assert response.status_code == 444
+
+    def test_svn_directory_blocked(self):
+        """Test: .svn directory should be blocked"""
+        request = self.factory.get("/.svn/entries")
+        response = self.middleware.process_request(request)
+        assert response is not None
+        assert response.status_code == 444
+
+    def test_hg_directory_blocked(self):
+        """Test: .hg directory should be blocked"""
+        request = self.factory.get("/.hg/store")
+        response = self.middleware.process_request(request)
+        assert response is not None
+        assert response.status_code == 444
+
+    # WordPress Probes
+    def test_wp_admin_blocked(self):
+        """Test: WordPress wp-admin should be blocked"""
+        request = self.factory.get("/wp-admin/")
+        response = self.middleware.process_request(request)
+        assert response is not None
+        assert response.status_code == 444
+
+    def test_wp_login_blocked(self):
+        """Test: WordPress wp-login.php should be blocked"""
+        request = self.factory.get("/wp-login.php")
+        response = self.middleware.process_request(request)
+        assert response is not None
+        assert response.status_code == 444
+
+    def test_xmlrpc_blocked(self):
+        """Test: xmlrpc.php should be blocked"""
+        request = self.factory.get("/xmlrpc.php")
+        response = self.middleware.process_request(request)
+        assert response is not None
+        assert response.status_code == 444
+
+    # phpMyAdmin Probes
+    def test_phpmyadmin_blocked(self):
+        """Test: phpMyAdmin paths should be blocked"""
+        request = self.factory.get("/phpmyadmin/index.php")
+        response = self.middleware.process_request(request)
+        assert response is not None
+        assert response.status_code == 444
+
+    def test_phpmyadmin_uppercase_blocked(self):
+        """Test: phpMyAdmin uppercase should be blocked"""
+        request = self.factory.get("/phpMyAdmin/")
+        response = self.middleware.process_request(request)
+        assert response is not None
+        assert response.status_code == 444
+
+    def test_adminer_blocked(self):
+        """Test: Adminer should be blocked"""
+        request = self.factory.get("/adminer.php")
+        response = self.middleware.process_request(request)
+        assert response is not None
+        assert response.status_code == 444
+
+    # Backup Files
+    def test_bak_file_blocked(self):
+        """Test: .bak files should be blocked"""
+        request = self.factory.get("/settings.py.bak")
+        response = self.middleware.process_request(request)
+        assert response is not None
+        assert response.status_code == 444
+
+    def test_old_file_blocked(self):
+        """Test: .old files should be blocked"""
+        request = self.factory.get("/web.config.old")
+        response = self.middleware.process_request(request)
+        assert response is not None
+        assert response.status_code == 444
+
+    def test_vim_backup_blocked(self):
+        """Test: Vim backup files (~) should be blocked"""
+        request = self.factory.get("/config.php~")
+        response = self.middleware.process_request(request)
+        assert response is not None
+        assert response.status_code == 444
+
+    def test_swp_file_blocked(self):
+        """Test: Vim swap files should be blocked"""
+        request = self.factory.get("/.settings.py.swp")
+        response = self.middleware.process_request(request)
+        assert response is not None
+        assert response.status_code == 444
+
+    # Database Files
+    def test_sql_file_blocked(self):
+        """Test: SQL dump files should be blocked"""
+        request = self.factory.get("/database.sql")
+        response = self.middleware.process_request(request)
+        assert response is not None
+        assert response.status_code == 444
+
+    def test_sqlite_file_blocked(self):
+        """Test: SQLite database files should be blocked"""
+        request = self.factory.get("/db.sqlite3")
+        response = self.middleware.process_request(request)
+        assert response is not None
+        assert response.status_code == 444
+
+    # Configuration Files
+    def test_env_file_blocked(self):
+        """Test: .env files should be blocked"""
+        request = self.factory.get("/.env")
+        response = self.middleware.process_request(request)
+        assert response is not None
+        assert response.status_code == 444
+
+    def test_htpasswd_blocked(self):
+        """Test: .htpasswd should be blocked"""
+        request = self.factory.get("/.htpasswd")
+        response = self.middleware.process_request(request)
+        assert response is not None
+        assert response.status_code == 444
+
+    def test_web_config_blocked(self):
+        """Test: web.config should be blocked"""
+        request = self.factory.get("/web.config")
+        response = self.middleware.process_request(request)
+        assert response is not None
+        assert response.status_code == 444
+
+    # Archive Files
+    def test_zip_file_blocked(self):
+        """Test: ZIP files should be blocked"""
+        request = self.factory.get("/backup.zip")
+        response = self.middleware.process_request(request)
+        assert response is not None
+        assert response.status_code == 444
+
+    def test_tar_gz_blocked(self):
+        """Test: TAR.GZ files should be blocked"""
+        request = self.factory.get("/site-backup.tar.gz")
+        response = self.middleware.process_request(request)
+        assert response is not None
+        assert response.status_code == 444
+
+    # Log Files
+    def test_log_file_blocked(self):
+        """Test: Log files should be blocked"""
+        request = self.factory.get("/debug.log")
+        response = self.middleware.process_request(request)
+        assert response is not None
+        assert response.status_code == 444
+
+    # Webshells
+    def test_c99_webshell_blocked(self):
+        """Test: c99.php webshell should be blocked"""
+        request = self.factory.get("/c99.php")
+        response = self.middleware.process_request(request)
+        assert response is not None
+        assert response.status_code == 444
+
+    def test_shell_php_blocked(self):
+        """Test: shell.php should be blocked"""
+        request = self.factory.get("/shell.php")
+        response = self.middleware.process_request(request)
+        assert response is not None
+        assert response.status_code == 444
+
+    # IDE Directories
+    def test_vscode_directory_blocked(self):
+        """Test: .vscode directory should be blocked"""
+        request = self.factory.get("/.vscode/settings.json")
+        response = self.middleware.process_request(request)
+        assert response is not None
+        assert response.status_code == 444
+
+    def test_idea_directory_blocked(self):
+        """Test: .idea directory should be blocked"""
+        request = self.factory.get("/.idea/workspace.xml")
+        response = self.middleware.process_request(request)
+        assert response is not None
+        assert response.status_code == 444
+
+    # Package Directories
+    def test_node_modules_blocked(self):
+        """Test: node_modules directory should be blocked"""
+        request = self.factory.get("/node_modules/package/index.js")
+        response = self.middleware.process_request(request)
+        assert response is not None
+        assert response.status_code == 444
+
+    def test_pycache_blocked(self):
+        """Test: __pycache__ directory should be blocked"""
+        request = self.factory.get("/__pycache__/module.cpython-312.pyc")
+        response = self.middleware.process_request(request)
+        assert response is not None
+        assert response.status_code == 444
+
+    # Path Length
+    def test_excessively_long_path_blocked(self):
+        """Test: Paths exceeding 1024 characters should be blocked"""
+        long_path = "/bpp/" + "a" * 1020
+        request = self.factory.get(long_path)
+        response = self.middleware.process_request(request)
+        assert response is not None
+        assert response.status_code == 444
+
+    def test_normal_length_path_allowed(self):
+        """Test: Normal length paths should be allowed"""
+        normal_path = "/bpp/browse/" + "a" * 100
+        request = self.factory.get(normal_path)
+        response = self.middleware.process_request(request)
+        assert response is None
+
+    # Legitimate Paths (Should NOT Be Blocked)
+    def test_django_admin_allowed(self):
+        """Test: Django admin should be allowed"""
+        request = self.factory.get("/admin/bpp/autor/")
+        response = self.middleware.process_request(request)
+        assert response is None
+
+    def test_api_path_allowed(self):
+        """Test: API paths should be allowed"""
+        request = self.factory.get("/api/v1/authors/")
+        response = self.middleware.process_request(request)
+        assert response is None
+
+    def test_static_path_allowed(self):
+        """Test: Static paths should be allowed"""
+        request = self.factory.get("/static/css/app.css")
+        response = self.middleware.process_request(request)
+        assert response is None
+
+    def test_media_path_allowed(self):
+        """Test: Media paths should be allowed"""
+        request = self.factory.get("/media/uploads/document.pdf")
+        response = self.middleware.process_request(request)
+        assert response is None
+
+    def test_normal_browse_path_allowed(self):
+        """Test: Normal browse paths should be allowed"""
+        request = self.factory.get("/bpp/browse/autor/jan-kowalski/")
+        response = self.middleware.process_request(request)
+        assert response is None
+
+    # Logging Tests for Path Blocking
+    def test_path_blocking_logs_reason(self, caplog):
+        """Test: Path blocking should log the block reason"""
+        caplog.set_level(logging.WARNING)
+
+        request = self.factory.get("/index.php")
+        self.middleware.process_request(request)
+
+        assert "Blocked malicious request" in caplog.text
+        assert "blocked_extension" in caplog.text
+        assert "/index.php" in caplog.text

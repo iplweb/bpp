@@ -28,14 +28,10 @@
                 <!-- wizard.form.management form -->
                 {{ wizard.form.management_form }}
                 <div class="form-template" style="display:none;">
-                    <fieldset class="fieldset">
-                        {{ wizard.form.empty_form|crispy }}
-                    </fieldset>
+                    {{ wizard.form.empty_form|crispy }}
                 </div>
                 {% for form in wizard.form.forms %}
-                    <fieldset class="fieldset">
-                        {{ form|crispy }}
-                    </fieldset>
+                    {{ form|crispy }}
                 {% endfor %}
 
                 <input type="hidden" name="rok" id="id_rok" value="{{ rok }}"/>

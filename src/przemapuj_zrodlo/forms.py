@@ -10,7 +10,11 @@ class PrzemapowaZrodloForm(forms.Form):
     zrodlo_docelowe = forms.ModelChoiceField(
         queryset=Zrodlo.objects.all(),
         label="Źródło docelowe",
-        help_text="Wybierz źródło, do którego chcesz przemapować wszystkie publikacje",
+        help_text=(
+            '<span style="display: block; margin-top: 0.75rem;">'
+            "Wybierz źródło, do którego chcesz przemapować wszystkie publikacje"
+            "</span>"
+        ),
         widget=autocomplete.ModelSelect2(url="bpp:przemapuj-zrodlo-autocomplete"),
         required=True,
     )

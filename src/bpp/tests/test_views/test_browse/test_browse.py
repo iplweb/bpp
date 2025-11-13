@@ -193,6 +193,8 @@ def test_artykul_ze_skrotem(uczelnia, client):
         status=Article.STATUS.published,
         slug="1",
     )
+    # Invalidate cacheops cache for get_uczelnia_context_data
+    invalidate_all()
 
     res = client.get(reverse("bpp:browse_uczelnia", args=(uczelnia.slug,)))
     assert b"Tego ma nie byc" not in res.content
