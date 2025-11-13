@@ -13,6 +13,8 @@ services:
         - iplweb/bpp_dbserver:${DOCKER_VERSION:-latest}
         - iplweb/bpp_dbserver:latest
     restart: always
+    ports:
+      - 5432:5432
     volumes:
       - postgresql_data:/var/lib/postgresql/data
 
@@ -27,24 +29,7 @@ services:
     env_file: .env.docker
     environment:
       - DJANGO_SETTINGS_MODULE=django_bpp.settings.local
-    entrypoint:
-      [
-        "uv",
-        "run",
-        "watchmedo",
-        "auto-restart",
-        "--directory=/app/src",
-        "--pattern=*.py",
-        "--recursive",
-        "--",
-        "celery",
-        "-A",
-        "django_bpp.celery_tasks",
-        "beat",
-        "--pidfile=/celerybeat.pid",
-        "-s",
-        "/celerybeat-schedule",
-      ]
+      - ENABLE_AUTORELOAD_ON_CODE_CHANGE=${ENABLE_AUTORELOAD_ON_CODE_CHANGE:-1}
     restart: always
     volumes:
       - ./src:/app/src
@@ -70,9 +55,11 @@ services:
     env_file: .env.docker
     environment:
       - DJANGO_SETTINGS_MODULE=django_bpp.settings.local
-    command: ["uv", "run", "uvicorn", "--host", "0", "--port", "8000", "--reload", "--reload-dir", "/app/src", "django_bpp.asgi:application"]
+      - ENABLE_AUTORELOAD_ON_CODE_CHANGE=${ENABLE_AUTORELOAD_ON_CODE_CHANGE:-1}
     depends_on:
       redis:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
       db:
         condition: service_healthy
@@ -93,22 +80,9 @@ services:
         - iplweb/bpp_workerserver:latest
     env_file: .env.docker
     environment:
+      - WEB_CONCURRENCY=4
       - DJANGO_SETTINGS_MODULE=django_bpp.settings.local
-    command:
-      [
-        "watchmedo",
-        "auto-restart",
-        "--directory=/app/src",
-        "--pattern=*.py",
-        "--recursive",
-        "--",
-        "celery",
-        "-A",
-        "django_bpp.celery_tasks",
-        "worker",
-        "-Q",
-        "celery",
-      ]
+      - ENABLE_AUTORELOAD_ON_CODE_CHANGE=${ENABLE_AUTORELOAD_ON_CODE_CHANGE:-1}
     restart: always
     volumes:
       - ./src:/app/src
@@ -132,22 +106,10 @@ services:
         - iplweb/bpp_workerserver:latest
     env_file: .env.docker
     environment:
+      - WEB_CONCURRENCY=4
       - DJANGO_SETTINGS_MODULE=django_bpp.settings.local
-    command:
-      [
-        "watchmedo",
-        "auto-restart",
-        "--directory=/app/src",
-        "--pattern=*.py",
-        "--recursive",
-        "--",
-        "celery",
-        "-A",
-        "django_bpp.celery_tasks",
-        "worker",
-        "-Q",
-        "denorm",
-      ]
+      - ENABLE_AUTORELOAD_ON_CODE_CHANGE=${ENABLE_AUTORELOAD_ON_CODE_CHANGE:-1}
+      - CELERY_QUEUE=denorm
     restart: always
     volumes:
       - ./src:/app/src
@@ -181,32 +143,17 @@ services:
   denorm-queue:
     # run only SINGLE service, this is only a mechanism to pass
     # PostgreSQL LISTEN to Celery queue
-    image: iplweb/bpp_base:${DOCKER_VERSION:-latest}
+    image: iplweb/bpp_denorm_queue:${DOCKER_VERSION:-latest}
     build:
       context: .
-      dockerfile: deploy/bpp_base/Dockerfile
+      dockerfile: deploy/denorm-queue/Dockerfile
       tags:
-        - iplweb/bpp_base:${DOCKER_VERSION:-latest}
-        - iplweb/bpp_base:latest
+        - iplweb/bpp_denorm_queue:${DOCKER_VERSION:-latest}
+        - iplweb/bpp_denorm_queue:latest
     env_file: .env.docker
     environment:
       - DJANGO_SETTINGS_MODULE=django_bpp.settings.local
-    entrypoint:
-      [
-        "uv",
-        "run",
-        "watchmedo",
-        "auto-restart",
-        "--directory=/app/src",
-        "--pattern=*.py",
-        "--recursive",
-        "--",
-        "python",
-        "src/manage.py",
-        "denorm_queue",
-      ]
-    healthcheck:
-      test: ['CMD','true'] # disable the healthcheck
+      - ENABLE_AUTORELOAD_ON_CODE_CHANGE=${ENABLE_AUTORELOAD_ON_CODE_CHANGE:-1}
     restart: always
     volumes:
       - ./src:/app/src
@@ -226,6 +173,8 @@ services:
         - iplweb/bpp_webserver:latest
     restart: always
     env_file: .env.docker
+    environment:
+      - USE_DEV_TEMPLATE=${USE_DEV_TEMPLATE:-true}
     depends_on:
       appserver:
         condition: service_healthy
@@ -240,6 +189,7 @@ services:
   redis:
     image: redis:latest
     restart: always
+    command: redis-server --loglevel warning
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       start_period: 5s
@@ -261,6 +211,9 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: ${DJANGO_BPP_RABBITMQ_USER:-bpp}
       RABBITMQ_DEFAULT_PASS: ${DJANGO_BPP_RABBITMQ_PASS:-bpp}
+      RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: >-
+        -rabbit log_levels [{connection,error},{channel,error},{mirroring,error},{federation,error},{upgrade,error}]
+        log [{console,[{level,error}]}]
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "ping"]
       start_period: 30s

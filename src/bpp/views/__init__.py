@@ -1,3 +1,5 @@
+import datetime
+
 import bleach
 from django import shortcuts
 
@@ -29,6 +31,9 @@ def root(request):
     from bpp.views.browse import get_uczelnia_context_data
 
     context = get_uczelnia_context_data(uczelnia)
+    context["show_zglos_button"] = uczelnia.sprawdz_uprawnienie(
+        "formularz_zglaszania_publikacji", request
+    )
 
     return shortcuts.render(request, "browse/uczelnia.html", context)
 
@@ -81,8 +86,6 @@ def update_multiseek_title(request):
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-import datetime
 
 TEN_YEARS = datetime.timedelta(days=3650)
 

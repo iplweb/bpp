@@ -16,6 +16,10 @@ from formtools.wizard.views import SessionWizardView
 from messages_extends import messages
 from templated_email import send_templated_mail
 
+from bpp.const import PUSTY_ADRES_EMAIL, TO_AUTOR
+from bpp.core import zgloszenia_publikacji_emails
+from bpp.models import Typ_Odpowiedzialnosci, Uczelnia
+from bpp.views.mixins import UczelniaSettingRequiredMixin
 from import_common.normalization import normalize_tytul_publikacji
 from zglos_publikacje import const
 from zglos_publikacje.forms import (
@@ -28,11 +32,6 @@ from zglos_publikacje.models import (
     Obslugujacy_Zgloszenia_Wydzialow,
     Zgloszenie_Publikacji,
 )
-
-from bpp.const import PUSTY_ADRES_EMAIL, TO_AUTOR
-from bpp.core import zgloszenia_publikacji_emails
-from bpp.models import Typ_Odpowiedzialnosci, Uczelnia
-from bpp.views.mixins import UczelniaSettingRequiredMixin
 
 
 class Sukces(TemplateView):
@@ -66,6 +65,116 @@ def pokazuj_formularz_platnosci(wizard):
     )
 
 
+def _aggregate_form_data(dane_rekordu, form_list):
+    """Aggregate form data from multiple steps into a single kwargs dict.
+
+    Returns tuple of (kwargs, autorset_form_list_index)
+    """
+    rest_of_data = {}
+
+    if dane_rekordu.get("strona_www"):
+        # Dodający podał stronę WWW --  wiec nie było pytania o plik -- wiec formularz [1] to
+        # lista autorów, a pozostałe formularze zaczną się od [2]
+        autorset_form_list = 1
+
+        pozostale_formularze = [form.cleaned_data for form in form_list[2:]]
+        if pozostale_formularze:
+            rest_of_data = reduce(operator.or_, pozostale_formularze)
+    else:
+        # Dodający NIE podał strony WWW, czyli formularz [1] zawiera dane o pliku,
+        # [2] to lista autorów a formularz [3] i kolejne...
+        autorset_form_list = 2
+
+        rest_of_data = reduce(
+            operator.or_,
+            [
+                form_list[1].cleaned_data,
+            ]
+            + [form.cleaned_data for form in form_list[3:]],
+        )
+
+    kwargs = dane_rekordu | rest_of_data
+    return kwargs, autorset_form_list
+
+
+def _process_autorzy_formset(
+    autorzy_formset, publication_object, typ_odpowiedzialnosci
+):
+    """Process the authors formset and save author records."""
+    if not autorzy_formset.is_valid():
+        return
+
+    for no, form in enumerate(autorzy_formset):
+        if not form.is_valid():
+            continue
+
+        if form.cleaned_data.get("DELETE"):
+            if form.instance.pk:
+                form.instance.delete()
+            continue
+
+        if not form.cleaned_data:
+            # Formularz może być zupełnie pusty
+            continue
+
+        instance = form.save(commit=False)
+        instance.rekord = publication_object
+        instance.kolejnosc = no
+        instance.typ_odpowiedzialnosci = typ_odpowiedzialnosci
+        instance.save()
+
+
+def _send_notification_email(publication_object, request):
+    """Send notification email about new publication submission."""
+    recipient_list = None
+
+    # Wybór autora i jednostki.
+    #
+    # Szukamy pierwszej, nie-obcej jednostki, skupiającej pracowników.
+    # Jeżeli nie znajdziemy takiej, używamy obcej.
+
+    jednostka_do_powiadomienia = None
+
+    for zpa in publication_object.zgloszenie_publikacji_autor_set.all().select_related(
+        "jednostka"
+    ):
+        if zpa.jednostka_id is not None:
+            jednostka_do_powiadomienia = zpa.jednostka
+
+        if jednostka_do_powiadomienia.skupia_pracownikow:
+            break
+
+    if jednostka_do_powiadomienia is not None:
+        recipient_list = Obslugujacy_Zgloszenia_Wydzialow.objects.emaile_dla_wydzialu(
+            jednostka_do_powiadomienia.wydzial
+        )
+
+    if not recipient_list:
+        recipient_list = zgloszenia_publikacji_emails()
+
+    try:
+        send_templated_mail(
+            template_name="nowe_zgloszenie",
+            from_email=getattr(settings, "DEFAULT_FROM_EMAIL", "webmaster@localhost"),
+            headers={"reply-to": publication_object.email},
+            recipient_list=recipient_list,
+            context={
+                "object": publication_object,
+                "site_url": request.get_host(),
+            },
+        )
+    except Exception:
+        rollbar.report_exc_info(sys.exc_info())
+
+        messages.add_message(
+            request,
+            messages.WARNING,
+            "Z uwagi na błąd wysyłania komunikatu z powiadomieniem, zespół Biblioteki nie "
+            "został powiadomiony o dodaniu zgłoszenia. Prosimy wysłać e-mail bądź skontaktować się drogą "
+            "telefoniczną.",
+        )
+
+
 class Zgloszenie_PublikacjiWizard(UczelniaSettingRequiredMixin, SessionWizardView):
     uczelnia_attr = "pokazuj_formularz_zglaszania_publikacji"
 
@@ -83,6 +192,18 @@ class Zgloszenie_PublikacjiWizard(UczelniaSettingRequiredMixin, SessionWizardVie
 
     object = None
 
+    def dispatch(self, request, *args, **kwargs):
+        # Sprawdź czy wymagane jest logowanie dla formularza zgłaszania publikacji
+        uczelnia = Uczelnia.objects.get_for_request(request)
+        if uczelnia and uczelnia.wymagaj_logowania_zglos_publikacje:
+            if not request.user.is_authenticated:
+                from django.contrib.auth.views import redirect_to_login
+
+                return redirect_to_login(request.get_full_path())
+
+        # Wywołaj standardową logikę UczelniaSettingRequiredMixin
+        return super().dispatch(request, *args, **kwargs)
+
     def get_form_instance(self, step):
         kod_do_edycji = self.kwargs.get("kod_do_edycji")
         if kod_do_edycji:
@@ -91,7 +212,7 @@ class Zgloszenie_PublikacjiWizard(UczelniaSettingRequiredMixin, SessionWizardVie
                     kod_do_edycji=kod_do_edycji
                 )
             except Zgloszenie_Publikacji.DoesNotExist:
-                raise Http404
+                raise Http404 from None
 
             return {
                 "0": self.object,
@@ -128,31 +249,10 @@ class Zgloszenie_PublikacjiWizard(UczelniaSettingRequiredMixin, SessionWizardVie
     def done(self, form_list, **kwargs):
         dane_rekordu = form_list[0].cleaned_data
 
-        rest_of_data = {}
+        # Aggregate form data from all steps
+        form_kwargs, autorset_form_list = _aggregate_form_data(dane_rekordu, form_list)
 
-        if dane_rekordu.get("strona_www"):
-            # Dodający podał stronę WWW --  wiec nie było pytania o plik -- wiec formularz [1] to
-            # lista autorów, a pozostałe formularze zaczną się od [2]
-            autorset_form_list = 1
-
-            pozostale_formularze = [form.cleaned_data for form in form_list[2:]]
-            if pozostale_formularze:
-                rest_of_data = reduce(operator.or_, pozostale_formularze)
-        else:
-            # Dodający NIE podał strony WWW, czyli formularz [1] zawiera dane o pliku,
-            # [2] to lista autorów a formularz [3] i kolejne...
-            autorset_form_list = 2
-
-            rest_of_data = reduce(
-                operator.or_,
-                [
-                    form_list[1].cleaned_data,
-                ]
-                + [form.cleaned_data for form in form_list[3:]],
-            )
-
-        kwargs = dane_rekordu | rest_of_data
-
+        # Create or update publication object
         if self.object is None:
             self.object = Zgloszenie_Publikacji(
                 status=Zgloszenie_Publikacji.Statusy.NOWY
@@ -169,7 +269,8 @@ class Zgloszenie_PublikacjiWizard(UczelniaSettingRequiredMixin, SessionWizardVie
             # Zresetuj przyczynę zwrotu -- rekord został zmodyfikowany
             self.object.przyczyna_zwrotu = None
 
-        for attr_name, value in kwargs.items():
+        # Set all attributes from aggregated form data
+        for attr_name, value in form_kwargs.items():
             setattr(self.object, attr_name, value)
 
         if self.request.user.is_authenticated and self.object.utworzyl_id is None:
@@ -189,6 +290,7 @@ class Zgloszenie_PublikacjiWizard(UczelniaSettingRequiredMixin, SessionWizardVie
 
         self.object.save()
 
+        # Get or validate typ_odpowiedzialnosci
         typ_odpowiedzialnosci = Typ_Odpowiedzialnosci.objects.filter(
             typ_ogolny=TO_AUTOR
         ).first()
@@ -199,80 +301,14 @@ class Zgloszenie_PublikacjiWizard(UczelniaSettingRequiredMixin, SessionWizardVie
                 "żaden typ odpowiedzialnosci z typem ogólnym = autor."
             )
 
+        # Process authors formset
         autorzy_formset = form_list[autorset_form_list]
+        _process_autorzy_formset(autorzy_formset, self.object, typ_odpowiedzialnosci)
 
-        if autorzy_formset.is_valid():
-            for no, form in enumerate(autorzy_formset):
-                if form.is_valid():
-                    if form.cleaned_data.get("DELETE"):
-                        if form.instance.pk:
-                            form.instance.delete()
-                        continue
-                    else:
-                        if not form.cleaned_data:
-                            # Formularz może być zupełnie pusty
-                            continue
-
-                        instance = form.save(commit=False)
-                        instance.rekord = self.object
-                        instance.kolejnosc = no
-                        instance.typ_odpowiedzialnosci = typ_odpowiedzialnosci
-                        instance.save()
-
-        def _():
-            recipient_list = None
-
-            # Wybór autora i jednostki.
-            #
-            # Szukamy pierwszej, nie-obcej jednostki, skupiającej pracowników.
-            # Jeżeli nie znajdziemy takiej, używamy obcej.
-
-            jednostka_do_powiadomienia = None
-
-            for zpa in self.object.zgloszenie_publikacji_autor_set.all().select_related(
-                "jednostka"
-            ):
-                if zpa.jednostka_id is not None:
-                    jednostka_do_powiadomienia = zpa.jednostka
-
-                if jednostka_do_powiadomienia.skupia_pracownikow:
-                    break
-
-            if jednostka_do_powiadomienia is not None:
-                recipient_list = (
-                    Obslugujacy_Zgloszenia_Wydzialow.objects.emaile_dla_wydzialu(
-                        jednostka_do_powiadomienia.wydzial
-                    )
-                )
-
-            if not recipient_list:
-                recipient_list = zgloszenia_publikacji_emails()
-
-            try:
-                send_templated_mail(
-                    template_name="nowe_zgloszenie",
-                    from_email=getattr(
-                        settings, "DEFAULT_FROM_EMAIL", "webmaster@localhost"
-                    ),
-                    headers={"reply-to": self.object.email},
-                    recipient_list=recipient_list,
-                    context={
-                        "object": self.object,
-                        "site_url": self.request.get_host(),
-                    },
-                )
-            except Exception:
-                rollbar.report_exc_info(sys.exc_info())
-
-                messages.add_message(
-                    self.request,
-                    messages.WARNING,
-                    "Z uwagi na błąd wysyłania komunikatu z powiadomieniem, zespół Biblioteki nie "
-                    "został powiadomiony o dodaniu zgłoszenia. Prosimy wysłać e-mail bądź skontaktować się drogą "
-                    "telefoniczną.",
-                )
-
-        transaction.on_commit(_)
+        # Schedule email notification after transaction commit
+        transaction.on_commit(
+            lambda: _send_notification_email(self.object, self.request)
+        )
 
         return render(
             self.request,

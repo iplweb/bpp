@@ -376,7 +376,7 @@ def _add_per_author_constraints(m, y, all_selected, authors, author_slot_limits)
             )
 
 
-def _apply_institution_constraints(
+def _apply_institution_constraints(  # noqa: C901
     author_selections: dict,
     authors: list[int],
     author_slot_limits: dict,
@@ -415,9 +415,52 @@ def _apply_institution_constraints(
         f"Low-point monographies: {len(low_mono_selected)}/{len(all_selected)} ({low_mono_percentage:.1f}%)"
     )
 
-    # If we exceed 20% low-point monographies, we need to adjust
-    if low_mono_percentage > 20.0 and len(low_mono_selected) > 0:
-        log_func("Exceeds 20% limit - adjusting selection...", "WARNING")
+    # Calculate total slots for Phase 1 result
+    total_slots = sum(p.base_slots for p in all_selected)
+
+    # Calculate outside-N slots percentage
+    outside_n_slots = sum(p.base_slots for p in all_selected if not p.jest_w_n)
+    outside_n_percentage = (
+        (100.0 * outside_n_slots / total_slots) if total_slots > 0 else 0
+    )
+
+    log_func(
+        f"Outside-N slots: {outside_n_slots:.2f}/{total_slots:.2f} ({outside_n_percentage:.1f}%)"
+    )
+
+    # Check if 3×N constraint is violated
+    exceeds_3n = False
+    if liczba_n is not None:
+        max_slots = 3 * liczba_n
+        log_func(f"Total slots vs 3×N limit: {total_slots:.2f} / {max_slots:.2f}")
+        if total_slots > max_slots:
+            exceeds_3n = True
+            log_func(
+                f"Exceeds 3×N limit by {total_slots - max_slots:.2f} slots", "WARNING"
+            )
+
+    # Check if any institution constraint is violated
+    needs_adjustment = (
+        (low_mono_percentage > 20.0 and len(low_mono_selected) > 0)
+        or exceeds_3n
+        or outside_n_percentage > 20.0
+    )
+
+    # If any institution constraint is violated, we need to adjust
+    if needs_adjustment:
+        log_func("Institution constraints violated - adjusting selection...", "WARNING")
+        if low_mono_percentage > 20.0 and len(low_mono_selected) > 0:
+            log_func(f"  → LOW-MONO exceeds 20%: {low_mono_percentage:.1f}%", "WARNING")
+        if exceeds_3n:
+            log_func(
+                f"  → Total slots exceed 3×N: {total_slots:.2f} > {3 * liczba_n:.2f}",
+                "WARNING",
+            )
+        if outside_n_percentage > 20.0:
+            log_func(
+                f"  → Outside-N slots exceed 20%: {outside_n_percentage:.1f}%",
+                "WARNING",
+            )
 
         # Use CP-SAT to globally optimize while respecting all constraints
         m = cp_model.CpModel()
@@ -439,8 +482,10 @@ def _apply_institution_constraints(
         # Institution-level total slots constraint
         if liczba_n is not None:
             institution_total_slots = sum(slot_units(p) * y[p.id] for p in all_selected)
-            m.Add(institution_total_slots <= int(liczba_n * SCALE))
-            log_func(f"Institution constraint: total slots <= {liczba_n:.2f}")
+            m.Add(institution_total_slots <= int(3 * liczba_n * SCALE))
+            log_func(
+                f"Institution constraint: total slots <= {3 * liczba_n:.2f} (3×N where N={liczba_n:.2f})"
+            )
 
         # Institution constraint: slots from outside-N authors <= 20%
         pubs_outside_n = [p for p in all_selected if not p.jest_w_n]
@@ -593,11 +638,142 @@ def _build_optimization_results(
     )
 
 
+def _run_single_phase_optimization(  # noqa: C901
+    pubs: list[Pub],
+    authors: list[int],
+    author_slot_limits: dict,
+    liczba_n: float | None,
+    verbose: bool,
+    log_func,
+) -> tuple[list[Pub], float]:
+    """
+    Run single-phase optimization using global CP-SAT with all constraints.
+
+    Args:
+        pubs: List of all publications
+        authors: List of author IDs
+        author_slot_limits: Dictionary of slot limits per author
+        liczba_n: Institution-level slot limit
+        verbose: Show detailed progress
+        log_func: Function to call for logging
+
+    Returns:
+        Tuple of (selected publications, total_points)
+    """
+    log_func("=" * 80)
+    log_func("SINGLE-PHASE: Global CP-SAT optimization with all constraints")
+    log_func("=" * 80)
+
+    if not pubs:
+        return [], 0.0
+
+    # Create global CP-SAT model
+    m = cp_model.CpModel()
+
+    # Decision variables for ALL publications
+    x = {p.id: m.NewBoolVar(f"x_{p.id[0]}_{p.id[1]}") for p in pubs}
+
+    # Objective: maximize total points
+    m.Maximize(sum(p.points * x[p.id] for p in pubs))
+
+    # Per-author constraints
+    log_func(f"Adding per-author constraints for {len(authors)} authors...")
+    for author_id in authors:
+        author_pubs = [p for p in pubs if p.author == author_id]
+        if not author_pubs:
+            continue
+
+        limits = author_slot_limits[author_id]
+
+        # Total slots constraint
+        m.Add(
+            sum(slot_units(p) * x[p.id] for p in author_pubs)
+            <= int(limits["total"] * SCALE)
+        )
+
+        # Monography slots constraint
+        mono_pubs = [p for p in author_pubs if p.kind == "monography"]
+        if mono_pubs:
+            m.Add(
+                sum(slot_units(p) * x[p.id] for p in mono_pubs)
+                <= int(limits["mono"] * SCALE)
+            )
+
+    # Institution constraint 1: LOW-MONO <= 20% of publications
+    log_func("Adding institution constraint: LOW-MONO <= 20%...")
+    low_mono_pubs = [p for p in pubs if is_low_mono(p)]
+    if low_mono_pubs:
+        low_mono_count = sum(x[p.id] for p in low_mono_pubs)
+        total_count = sum(x[p.id] for p in pubs)
+        m.Add(5 * low_mono_count <= total_count)  # 20% limit
+
+    # Institution constraint 2: Total slots <= 3×N
+    if liczba_n is not None:
+        log_func(
+            f"Adding institution constraint: total slots <= 3×N (3×{liczba_n:.2f})..."
+        )
+        institution_total_slots = sum(slot_units(p) * x[p.id] for p in pubs)
+        m.Add(institution_total_slots <= int(3 * liczba_n * SCALE))
+
+    # Institution constraint 3: Outside-N slots <= 20% of total slots
+    log_func("Adding institution constraint: outside-N slots <= 20%...")
+    pubs_outside_n = [p for p in pubs if not p.jest_w_n]
+    if pubs_outside_n:
+        outside_n_slots = sum(slot_units(p) * x[p.id] for p in pubs_outside_n)
+        total_slots_expr = sum(slot_units(p) * x[p.id] for p in pubs)
+        # outside_n / total <= 0.2  =>  5 * outside_n <= total
+        m.Add(5 * outside_n_slots <= total_slots_expr)
+
+    # Solve with progress callback
+    log_func("Solving global CP-SAT problem...")
+    solver = cp_model.CpSolver()
+    solver.parameters.num_search_workers = (
+        8  # Use multiple threads for better performance
+    )
+
+    if verbose:
+        callback = SolutionCallback(x, pubs, verbose=True)
+        status = solver.Solve(m, callback)
+        print()  # New line after progress dots
+    else:
+        status = solver.Solve(m)
+
+    if status not in [cp_model.OPTIMAL, cp_model.FEASIBLE]:
+        log_func("Could not find feasible solution!", "ERROR")
+        raise RuntimeError("Could not find feasible solution with all constraints!")
+
+    # Extract selected publications
+    selected = []
+    for p in pubs:
+        if solver.Value(x[p.id]) == 1:
+            selected.append(p)
+
+    total_points = sum(p.points for p in selected)
+    total_slots = sum(p.base_slots for p in selected)
+    low_mono_count = len([p for p in selected if is_low_mono(p)])
+    low_mono_pct = (100.0 * low_mono_count / len(selected)) if selected else 0.0
+    outside_n_slots = sum(p.base_slots for p in selected if not p.jest_w_n)
+    outside_n_pct = (100.0 * outside_n_slots / total_slots) if total_slots > 0 else 0.0
+
+    log_func(
+        f"Solution found: {len(selected)} publications, {total_points:.1f} points, {total_slots:.2f} slots"
+    )
+    log_func(f"  LOW-MONO: {low_mono_count}/{len(selected)} ({low_mono_pct:.1f}%)")
+    if liczba_n is not None:
+        log_func(f"  Total slots: {total_slots:.2f} / {3 * liczba_n:.2f} (3×N)")
+    log_func(
+        f"  Outside-N: {outside_n_slots:.2f}/{total_slots:.2f} ({outside_n_pct:.1f}%)"
+    )
+
+    return selected, total_points
+
+
 def solve_discipline(
     dyscyplina_nazwa: str,
     verbose: bool = False,
     log_callback=None,
     liczba_n: float | None = None,
+    algorithm_mode: str = "two-phase",
 ) -> OptimizationResults:
     """
     Solve optimization for a single discipline.
@@ -607,6 +783,9 @@ def solve_discipline(
         verbose: Show detailed progress
         log_callback: Optional function to call for logging (receives message string)
         liczba_n: Institution-level slot limit for this discipline (from LiczbaNDlaUczelni)
+        algorithm_mode: "two-phase" (default) or "single-phase"
+            - "two-phase": Phase 1 per-author optimization, Phase 2 institution constraints
+            - "single-phase": Global CP-SAT with all constraints from start
 
     Returns:
         OptimizationResults object with complete results
@@ -619,6 +798,13 @@ def solve_discipline(
         elif verbose:
             print(msg)
 
+    # Validate algorithm_mode parameter
+    if algorithm_mode not in ["two-phase", "single-phase"]:
+        raise ValueError(
+            f"Invalid algorithm_mode: '{algorithm_mode}'. Must be 'two-phase' or 'single-phase'."
+        )
+
+    log(f"Algorithm mode: {algorithm_mode}")
     log(f"Loading publications for discipline: {dyscyplina_nazwa}")
 
     # Generate publication data from database
@@ -657,15 +843,23 @@ def solve_discipline(
     # Load per-author slot limits
     author_slot_limits = _load_author_slot_limits(authors, dyscyplina_obj, log)
 
-    # PHASE 1: Solve per-author knapsack problems
-    author_selections, _ = _run_phase1_per_author_optimization(
-        pubs, authors, author_slot_limits, verbose, log
-    )
+    # Run optimization based on selected algorithm mode
+    if algorithm_mode == "single-phase":
+        # Single-phase: Global CP-SAT with all constraints from start
+        all_selected, total_points = _run_single_phase_optimization(
+            pubs, authors, author_slot_limits, liczba_n, verbose, log
+        )
+    else:
+        # Two-phase: Per-author optimization, then institution constraints
+        # PHASE 1: Solve per-author knapsack problems
+        author_selections, _ = _run_phase1_per_author_optimization(
+            pubs, authors, author_slot_limits, verbose, log
+        )
 
-    # PHASE 2: Apply institution-level constraints
-    all_selected, total_points = _apply_institution_constraints(
-        author_selections, authors, author_slot_limits, liczba_n, log
-    )
+        # PHASE 2: Apply institution-level constraints
+        all_selected, total_points = _apply_institution_constraints(
+            author_selections, authors, author_slot_limits, liczba_n, log
+        )
 
     # Validation: Check that no author exceeds their limits
     validation_passed = _validate_author_limits(

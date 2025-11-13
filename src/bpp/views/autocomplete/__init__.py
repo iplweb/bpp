@@ -391,6 +391,15 @@ class ZrodloAutocomplete(GroupRequiredMixin, PublicZrodloAutocomplete):
         return self.get_queryset().create(nazwa=text.strip(), rodzaj=rz)
 
 
+class ZrodloAutocompleteNoCreate(ZrodloAutocomplete):
+    """
+    Autocomplete dla źródeł bez możliwości tworzenia nowych rekordów.
+    Używany w funkcjach gdzie nie chcemy aby użytkownik przypadkowo tworzył nowe źródła.
+    """
+
+    create_field = None  # Wyłącza opcję "Stwórz"
+
+
 class AutorAutocompleteBase(
     SanitizedAutocompleteMixin, autocomplete.Select2QuerySetView
 ):

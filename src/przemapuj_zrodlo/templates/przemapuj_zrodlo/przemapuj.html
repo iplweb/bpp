@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block extratitle %}
+    Przemapuj źródło: {{ zrodlo_zrodlowe.nazwa }}
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url "bpp:browse_zrodla" %}">Źródła</a></li>
+    <li><a href="{% url "bpp:browse_zrodlo" zrodlo_zrodlowe.slug %}">{{ zrodlo_zrodlowe.nazwa }}</a></li>
+    <li class="current">Przemapuj źródło</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="large-12 columns">
+        <h1>
+            <span class="fi-arrow-right"></span> Przemapuj źródło
+        </h1>
+
+        <!-- Warning banner -->
+        <div class="callout warning">
+            <h5><span class="fi-alert"></span> Uwaga!</h5>
+            <p>
+                Ta operacja przemapuje <strong>wszystkie {{ liczba_publikacji }} publikacji</strong>
+                ze źródła <strong>{{ zrodlo_zrodlowe.nazwa }}</strong> do wybranego źródła docelowego.
+            </p>
+            <p style="margin-bottom: 0;">
+                <strong>Operacja jest odwracalna</strong> - administrator może cofnąć przemapowanie
+                z poziomu Django admin.
+            </p>
+        </div>
+
+        <!-- Source info box -->
+        <div class="callout primary">
+            <h5><span class="fi-info"></span> Źródło źródłowe</h5>
+            <p><strong>Nazwa:</strong> {{ zrodlo_zrodlowe.nazwa }}</p>
+            {% if zrodlo_zrodlowe.skrot %}
+            <p><strong>Skrót:</strong> {{ zrodlo_zrodlowe.skrot }}</p>
+            {% endif %}
+            {% if zrodlo_zrodlowe.issn %}
+            <p><strong>ISSN:</strong> {{ zrodlo_zrodlowe.issn }}</p>
+            {% endif %}
+            {% if zrodlo_zrodlowe.e_issn %}
+            <p><strong>e-ISSN:</strong> {{ zrodlo_zrodlowe.e_issn }}</p>
+            {% endif %}
+            {% if zrodlo_zrodlowe.pbn_uid_id %}
+            <p>
+                <strong>PBN UID:</strong>
+                <a href="{{ uczelnia.pbn_api_root }}/core/#/journal/view/{{ zrodlo_zrodlowe.pbn_uid_id }}/current"
+                   target="_blank"
+                   title="PBN UID: {{ zrodlo_zrodlowe.pbn_uid_id }}">
+                    {{ zrodlo_zrodlowe.pbn_uid_id }}
+                </a>
+            </p>
+            {% endif %}
+            {% if zrodlo_zrodlowe.pbn_uid.mniswId %}
+            <p>
+                <strong>MNiSW ID:</strong> {{ zrodlo_zrodlowe.pbn_uid.mniswId }}<br>
+                <small style="font-size: 0.875rem; color: #666;">
+                    Czasopismo z oficjalnej listy Ministerstwa
+                </small>
+            </p>
+            {% endif %}
+            <p style="margin-bottom: 0;">
+                <strong>Liczba publikacji:</strong> {{ liczba_publikacji }}
+            </p>
+        </div>
+
+        <!-- Warning for deleted sources -->
+        {% if zrodlo_zrodlowe.pbn_uid_id and zrodlo_zrodlowe.pbn_uid.status == "DELETED" %}
+        <div class="callout alert">
+            <h5><span class="fi-alert"></span> Uwaga - źródło usunięte z PBN!</h5>
+            <p>
+                To źródło zostało usunięte z bazy PBN. Przemapowanie jest możliwe,
+                ale upewnij się że wybierasz właściwe źródło docelowe.
+            </p>
+        </div>
+        {% endif %}
+
+        <!-- Form -->
+        <form method="post" id="przemapuj-form">
+            {% csrf_token %}
+
+            <fieldset class="fieldset">
+                <legend>Wybierz źródło docelowe</legend>
+
+                {{ form.media }}
+
+                <div class="grid-x grid-margin-x">
+                    <div class="large-12 cell">
+                        {{ form.zrodlo_docelowe|as_crispy_field }}
+                    </div>
+                </div>
+
+                <div class="grid-x grid-margin-x">
+                    <div class="large-12 cell">
+                        {{ form.potwierdzenie|as_crispy_field }}
+                    </div>
+                </div>
+
+                {% if form.non_field_errors %}
+                <div class="callout alert">
+                    {{ form.non_field_errors }}
+                </div>
+                {% endif %}
+            </fieldset>
+
+            <!-- Action buttons -->
+            <div class="button-group">
+                <button type="submit" class="button warning"
+                        onclick="return confirm('Czy na pewno chcesz przemapować {{ liczba_publikacji }} publikacji ze źródła \'{{ zrodlo_zrodlowe.nazwa }}\'?\n\nTa operacja:\n1. Zmieni źródło dla wszystkich {{ liczba_publikacji }} publikacji\n2. Zapisze historię przemapowania\n3. Będzie odwracalna z poziomu Django admin\n\nKontynuować?');">
+                    <span class="fi-arrow-right"></span> Przemapuj publikacje
+                </button>
+                <a href="{% url 'bpp:browse_zrodlo' zrodlo_zrodlowe.slug %}" class="button secondary">
+                    <span class="fi-x"></span> Anuluj
+                </a>
+            </div>
+        </form>
+
+        <!-- Preview publications -->
+        {% if przykladowe_publikacje %}
+        <div style="margin-top: 2rem;">
+            <h3>Przykładowe publikacje do przemapowania (pierwsze 10)</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Rok</th>
+                        <th>Tytuł</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for pub in przykladowe_publikacje %}
+                    <tr>
+                        <td>{{ pub.rok }}</td>
+                        <td>
+                            {% if pub.slug %}
+                            <a href="{% url 'bpp:browse_praca_by_slug' pub.slug %}" target="_blank">
+                                {{ pub.tytul_oryginalny|truncatewords:15 }}
+                            </a>
+                            {% else %}
+                                {{ pub.tytul_oryginalny|truncatewords:15 }}
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% if liczba_publikacji > 10 %}
+            <p style="font-style: italic;">
+                ... oraz {{ liczba_publikacji|add:"-10" }} pozostałych publikacji
+            </p>
+            {% endif %}
+        </div>
+        {% endif %}
+
+    </div>
+</div>
+{% endblock %}

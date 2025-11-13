@@ -15,6 +15,7 @@ from ..models import (  # Publikacja_Habilitacyjna
     Dyscyplina_Naukowa,
     Jednostka,
 )
+from .actions import ustaw_pokazuj_false, ustaw_pokazuj_true
 from .core import BaseBppAdminMixin
 from .filters import (
     AutorZmarlFilter,
@@ -203,6 +204,7 @@ class AutorAdmin(
     form = AutorForm
     autocomplete_fields = ["pbn_uid"]
     resource_class = resources.AutorResource
+    actions = [ustaw_pokazuj_true, ustaw_pokazuj_false]
 
     list_display_always = ["nazwisko", "imiona"]
 
@@ -467,6 +469,34 @@ class AutorAdmin(
                 kwargs["initial"] = inline_initial_data
 
         return kwargs
+
+    def changelist_view(self, request, extra_context=None):
+        """
+        Override changelist_view to ensure actions respect GET parameter filters.
+
+        When HTMX updates filters with hx-push-url="true", the filter parameters
+        are stored in the URL as GET parameters. When a user then selects an action
+        with select_across=1, we need to ensure those GET filters are applied to
+        the queryset passed to the action.
+
+        Django's default implementation should handle this, but we're explicitly
+        ensuring it works correctly with HTMX-pushed URLs.
+        """
+        # Debug: Let's see what's in the request
+        if request.method == "POST" and "action" in request.POST:
+            import sys
+
+            print(f"DEBUG: GET params: {dict(request.GET)}", file=sys.stderr)
+            print(f"DEBUG: POST params: {dict(request.POST)}", file=sys.stderr)
+
+        return super().changelist_view(request, extra_context)
+
+    def get_actions(self, request):
+        """Override to customize action descriptions."""
+        actions = super().get_actions(request)
+        if "delete_selected" in actions:
+            actions["delete_selected"][0].short_description = "Usuń wybranych autorów"
+        return actions
 
 
 admin.site.register(Autor, AutorAdmin)

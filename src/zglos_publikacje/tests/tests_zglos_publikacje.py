@@ -349,3 +349,83 @@ def test_zglos_publikacje_czy_pliki_trafiaja_do_bazy(
         page4.forms[0].submit().maybe_follow()
 
     assert Zgloszenie_Publikacji.objects.first().plik.read() == example_content
+
+
+@pytest.mark.django_db
+def test_wymagaj_logowania_zglos_publikacje_niezalogowany_przekierowanie(
+    webtest_app, uczelnia
+):
+    """Test: niezalogowany użytkownik z wymagaj_logowania_zglos_publikacje=True
+    → przekierowanie na stronę logowania"""
+    uczelnia.wymagaj_logowania_zglos_publikacje = True
+    uczelnia.save()
+
+    url = reverse("zglos_publikacje:nowe_zgloszenie")
+    page = webtest_app.get(url, expect_errors=True)
+
+    # Powinniśmy dostać przekierowanie 302
+    assert page.status_code == 302
+    # Przekierowanie na stronę logowania
+    assert "/accounts/login/" in page.location
+    # Sprawdź czy jest parametr next w URL
+    assert "next=" in page.location
+
+
+@pytest.mark.django_db
+def test_wymagaj_logowania_zglos_publikacje_zalogowany_dostep(
+    webtest_app, uczelnia, normal_django_user
+):
+    """Test: zalogowany użytkownik z wymagaj_logowania_zglos_publikacje=True
+    → dostęp do formularza"""
+    uczelnia.wymagaj_logowania_zglos_publikacje = True
+    uczelnia.save()
+
+    # Zaloguj użytkownika
+    webtest_app.set_user(normal_django_user)
+
+    url = reverse("zglos_publikacje:nowe_zgloszenie")
+    page = webtest_app.get(url)
+
+    # Powinniśmy dostać stronę formularza
+    assert page.status_code == 200
+    assert b"Formularz" in page.content or b"formularz" in page.content
+
+
+@pytest.mark.django_db
+def test_wymagaj_logowania_zglos_publikacje_false_niezalogowany_dostep(
+    webtest_app, uczelnia
+):
+    """Test: niezalogowany użytkownik z wymagaj_logowania_zglos_publikacje=False
+    → dostęp do formularza (zachowanie wsteczne)"""
+    uczelnia.wymagaj_logowania_zglos_publikacje = False
+    uczelnia.save()
+
+    url = reverse("zglos_publikacje:nowe_zgloszenie")
+    page = webtest_app.get(url)
+
+    # Powinniśmy dostać stronę formularza
+    assert page.status_code == 200
+    assert b"tytul_oryginalny" in page.content
+
+
+@pytest.mark.django_db
+def test_wymagaj_logowania_nadpisuje_pokazuj_formularz_ustawienie(
+    webtest_app, uczelnia
+):
+    """Test: pole wymagaj_logowania_zglos_publikacje nadpisuje logikę pokazuj_formularz_zglaszania_publikacji.
+    Nawet gdy pokazuj_formularz_zglaszania_publikacji='always', niezalogowany użytkownik
+    powinien być przekierowany na logowanie gdy wymagaj_logowania_zglos_publikacje=True"""
+    from bpp.models.fields import OpcjaWyswietlaniaField
+
+    uczelnia.pokazuj_formularz_zglaszania_publikacji = (
+        OpcjaWyswietlaniaField.POKAZUJ_ZAWSZE
+    )
+    uczelnia.wymagaj_logowania_zglos_publikacje = True
+    uczelnia.save()
+
+    url = reverse("zglos_publikacje:nowe_zgloszenie")
+    page = webtest_app.get(url, expect_errors=True)
+
+    # Mimo że pokazuj_formularz='always', użytkownik powinien być przekierowany
+    assert page.status_code == 302
+    assert "/accounts/login/" in page.location

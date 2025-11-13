@@ -8,10 +8,7 @@ from django.views.generic import View
 from bpp.models import (
     Autor_Dyscyplina,
     Cache_Punktacja_Autora_Query,
-    Patent_Autor,
     Rekord,
-    Wydawnictwo_Ciagle_Autor,
-    Wydawnictwo_Zwarte_Autor,
 )
 from bpp.models.sloty.core import CannotAdapt, IPunktacjaCacher, ISlot
 from ewaluacja_metryki.models import MetrykaAutora
@@ -93,15 +90,15 @@ class OptymalizujPublikacjeView(LoginRequiredMixin, View):
     def post(self, request, slug=None):
         if "unpin_discipline" in request.POST:
             autor_assignment_id = request.POST.get("autor_assignment_id")
-            return self._handle_unpin(request, autor_assignment_id)
+            return self._handle_unpin(request, autor_assignment_id, slug)
         elif "pin_discipline" in request.POST:
             autor_assignment_id = request.POST.get("autor_assignment_id")
-            return self._handle_pin(request, autor_assignment_id)
+            return self._handle_pin(request, autor_assignment_id, slug)
         elif "change_discipline" in request.POST:
             autor_assignment_id = request.POST.get("autor_assignment_id")
             new_discipline_id = request.POST.get("new_discipline_id")
             return self._handle_change_discipline(
-                request, autor_assignment_id, new_discipline_id
+                request, autor_assignment_id, new_discipline_id, slug
             )
         else:
             # Handle form submission
@@ -119,161 +116,96 @@ class OptymalizujPublikacjeView(LoginRequiredMixin, View):
                 context = {"form": form}
                 return render(request, self.template_name, context)
 
-    def _get_autor_assignments(self, publikacja):
-        """Get przypieta status from actual author assignments"""
-        autor_assignments = {}
-
-        # Check different publication types
-        if hasattr(publikacja, "wydawnictwo_ciagle_autor_set"):
-            for wa in publikacja.wydawnictwo_ciagle_autor_set.all():
-                if wa.dyscyplina_naukowa_id:
-                    autor_assignments[(wa.autor_id, wa.dyscyplina_naukowa_id)] = (
-                        wa.przypieta
-                    )
-        elif hasattr(publikacja, "wydawnictwo_zwarte_autor_set"):
-            for wa in publikacja.wydawnictwo_zwarte_autor_set.all():
-                if wa.dyscyplina_naukowa_id:
-                    autor_assignments[(wa.autor_id, wa.dyscyplina_naukowa_id)] = (
-                        wa.przypieta
-                    )
-        elif hasattr(publikacja, "patent_autor_set"):
-            for wa in publikacja.patent_autor_set.all():
-                if wa.dyscyplina_naukowa_id:
-                    autor_assignments[(wa.autor_id, wa.dyscyplina_naukowa_id)] = (
-                        wa.przypieta
-                    )
-
-        return autor_assignments
-
-    def _handle_unpin(self, request, autor_assignment_id):
+    def _handle_unpin(self, request, autor_assignment_id, slug):
         """Handle unpinning a discipline"""
+        # Get the publikacja from the slug
+        publikacja = get_object_or_404(Rekord, slug=slug)
+
         with transaction.atomic():
-            # Get the autor assignment directly
-            # Try to find the assignment in different publication types
-            wa = None
-            for model in [
-                Wydawnictwo_Ciagle_Autor,
-                Wydawnictwo_Zwarte_Autor,
-                Patent_Autor,
-            ]:
-                try:
-                    wa = model.objects.get(pk=autor_assignment_id)
-                    break
-                except model.DoesNotExist:
-                    continue
-
-            if not wa:
-                raise Exception("Nie znaleziono przypisania autora do publikacji")
-
-            publikacja = wa.rekord
-            slug = publikacja.slug
+            # Get the autor assignment directly from THIS publication
+            # This automatically validates that the assignment belongs to this publication
+            wa = publikacja.original.autorzy_set.get(pk=autor_assignment_id)
 
             # Update przypieta status
             wa.przypieta = False
             wa.save()
 
             # Rebuild cache punktacja for the publication
-            cacher = IPunktacjaCacher(publikacja)
+            cacher = IPunktacjaCacher(publikacja.original)
             cacher.removeEntries()  # Remove old cache entries
             cacher.rebuildEntries()  # Rebuild with new przypieta status
 
             # Recalculate evaluation metrics for all affected authors
-            przelicz_metryki_dla_publikacji(publikacja)
+            przelicz_metryki_dla_publikacji(publikacja.original)
 
         # If HTMX request, render the updated content directly
+        # Use the slug from the URL
         if request.headers.get("HX-Request"):
             return self.get(request, slug=slug)
 
         return redirect("ewaluacja_optymalizuj_publikacje:optymalizuj", slug=slug)
 
-    def _handle_pin(self, request, autor_assignment_id):
+    def _handle_pin(self, request, autor_assignment_id, slug):
         """Handle pinning a discipline"""
+        # Get the publikacja from the slug
+        publikacja = get_object_or_404(Rekord, slug=slug)
+
         with transaction.atomic():
-            # Get the autor assignment directly
-            # Try to find the assignment in different publication types
-            wa = None
-            for model in [
-                Wydawnictwo_Ciagle_Autor,
-                Wydawnictwo_Zwarte_Autor,
-                Patent_Autor,
-            ]:
-                try:
-                    wa = model.objects.get(pk=autor_assignment_id)
-                    break
-                except model.DoesNotExist:
-                    continue
-
-            if not wa:
-                raise Exception("Nie znaleziono przypisania autora do publikacji")
-
-            publikacja = wa.rekord
-            slug = publikacja.slug
+            # Get the autor assignment directly from THIS publication
+            # This automatically validates that the assignment belongs to this publication
+            wa = publikacja.original.autorzy_set.get(pk=autor_assignment_id)
 
             # Update przypieta status
             wa.przypieta = True
             wa.save()
 
             # Rebuild cache punktacja for the publication
-            cacher = IPunktacjaCacher(publikacja)
+            cacher = IPunktacjaCacher(publikacja.original)
             cacher.removeEntries()  # Remove old cache entries
             cacher.rebuildEntries()  # Rebuild with new przypieta status
 
             # Recalculate evaluation metrics for all affected authors
-            przelicz_metryki_dla_publikacji(publikacja)
+            przelicz_metryki_dla_publikacji(publikacja.original)
 
         # If HTMX request, render the updated content directly
+        # Use the slug from the URL
         if request.headers.get("HX-Request"):
             return self.get(request, slug=slug)
 
         return redirect("ewaluacja_optymalizuj_publikacje:optymalizuj", slug=slug)
 
     def _handle_change_discipline(
-        self, request, autor_assignment_id, new_discipline_id
+        self, request, autor_assignment_id, new_discipline_id, slug
     ):
         """Handle changing discipline for an author assignment"""
+        # Get the publikacja from the slug
+        publikacja = get_object_or_404(Rekord, slug=slug)
+
         with transaction.atomic():
-            # Get the autor assignment directly
-            # Try to find the assignment in different publication types
-            wa = None
-            for model in [
-                Wydawnictwo_Ciagle_Autor,
-                Wydawnictwo_Zwarte_Autor,
-                Patent_Autor,
-            ]:
-                try:
-                    wa = model.objects.get(pk=autor_assignment_id)
-                    break
-                except model.DoesNotExist:
-                    continue
-
-            if not wa:
-                raise Exception("Nie znaleziono przypisania autora do publikacji")
-
-            publikacja = wa.rekord
-            slug = publikacja.slug
+            # Get the autor assignment directly from THIS publication
+            # This automatically validates that the assignment belongs to this publication
+            wa = publikacja.original.autorzy_set.get(pk=autor_assignment_id)
 
             # Import Dyscyplina_Naukowa model
             from bpp.models import Dyscyplina_Naukowa
 
             # Get the new discipline
-            try:
-                new_discipline = Dyscyplina_Naukowa.objects.get(pk=new_discipline_id)
-            except Dyscyplina_Naukowa.DoesNotExist as e:
-                raise Exception("Nie znaleziono nowej dyscypliny") from e
+            new_discipline = get_object_or_404(Dyscyplina_Naukowa, pk=new_discipline_id)
 
             # Update discipline
             wa.dyscyplina_naukowa = new_discipline
             wa.save()
 
             # Rebuild cache punktacja for the publication
-            cacher = IPunktacjaCacher(publikacja)
+            cacher = IPunktacjaCacher(publikacja.original)
             cacher.removeEntries()  # Remove old cache entries
             cacher.rebuildEntries()  # Rebuild with new discipline
 
             # Recalculate evaluation metrics for all affected authors
-            przelicz_metryki_dla_publikacji(publikacja)
+            przelicz_metryki_dla_publikacji(publikacja.original)
 
         # If HTMX request, render the updated content directly
+        # Use the slug from the URL
         if request.headers.get("HX-Request"):
             return self.get(request, slug=slug)
 
@@ -385,7 +317,12 @@ class OptymalizujPublikacjeView(LoginRequiredMixin, View):
                 "udzial_procentowy": metryka.procent_wykorzystania_slotow,
             }
 
-            if przypieta and cpaq and cpaq.pk in metryka.prace_nazbierane:
+            # JSON stores arrays, but rekord_id is a tuple - need to convert for comparison
+            if (
+                przypieta
+                and cpaq
+                and cpaq.rekord_id in [tuple(x) for x in metryka.prace_nazbierane]
+            ):
                 wybrana_do_ewaluacji = True
 
         except MetrykaAutora.DoesNotExist:

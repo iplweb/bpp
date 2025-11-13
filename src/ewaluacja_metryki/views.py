@@ -266,8 +266,11 @@ class MetrykiListView(EwaluacjaRequiredMixin, ListView):
         for metryka in metryki:
             # Get all works for this author/discipline
             if metryka.prace_nazbierane:
+                # Query by stable rekord_id
                 prace = Cache_Punktacja_Autora_Query.objects.filter(
-                    pk__in=metryka.prace_nazbierane
+                    rekord_id__in=metryka.prace_nazbierane,
+                    autor_id=metryka.autor_id,
+                    dyscyplina_id=metryka.dyscyplina_naukowa_id,
                 ).select_related("rekord")
 
                 # Calculate average Impact Factor
@@ -426,33 +429,32 @@ class MetrykaDetailView(EwaluacjaRequiredMixin, DetailView):
         context = {}
 
         if metryka.prace_nazbierane:
+            # Convert JSON lists to tuples for PostgreSQL tuple matching
+            # JSONField stores tuples as lists: (51, 123) -> [51, 123]
+
+            # Query by stable rekord_id (survives cache rebuilds from pin/unpin)
             prace_nazbierane = (
                 Cache_Punktacja_Autora_Query.objects.filter(
-                    pk__in=metryka.prace_nazbierane
+                    rekord_id__in=metryka.prace_nazbierane,
+                    autor_id=metryka.autor_id,
+                    dyscyplina_id=metryka.dyscyplina_naukowa_id,
                 )
                 .select_related("rekord")
                 .order_by("-pkdaut")
             )
 
-            # Calculate pkdaut/slot for each work and find autor_assignment_id
+            # Calculate pkdaut/slot for each work and set URL parameters
             for praca in prace_nazbierane:
                 if praca.slot and praca.slot > 0:
                     praca.pkdaut_per_slot = float(praca.pkdaut) / float(praca.slot)
                 else:
                     praca.pkdaut_per_slot = None
 
-                # Find the autor_assignment_id for this work using the original publication
-                praca.autor_assignment_id = None
-                try:
-                    assignment = praca.rekord.original.autorzy_set.filter(
-                        autor_id=metryka.autor.id,
-                        dyscyplina_naukowa_id=metryka.dyscyplina_naukowa.id,
-                        przypieta=True,
-                    ).first()
-                    if assignment:
-                        praca.autor_assignment_id = assignment.pk
-                except (AttributeError, Exception):
-                    pass
+                # Set URL parameters for pin/unpin actions
+                praca.rekord_content_type_id = praca.rekord.id[0]
+                praca.rekord_object_id = praca.rekord.id[1]
+                praca.autor_id = metryka.autor.id
+                praca.dyscyplina_id = metryka.dyscyplina_naukowa.id
 
             context["prace_nazbierane"] = prace_nazbierane
 
@@ -473,12 +475,25 @@ class MetrykaDetailView(EwaluacjaRequiredMixin, DetailView):
 
         # Pobierz wszystkie prace (nazbierane i nie nazbierane) z latami
         if metryka.prace_wszystkie:
+            # Convert JSON lists to tuples for PostgreSQL tuple matching
+
+            # Query by stable rekord_id
             prace_wszystkie = (
                 Cache_Punktacja_Autora_Query.objects.filter(
-                    pk__in=metryka.prace_wszystkie
+                    rekord_id__in=metryka.prace_wszystkie,
+                    autor_id=metryka.autor_id,
+                    dyscyplina_id=metryka.dyscyplina_naukowa_id,
                 )
                 .select_related("rekord")
                 .order_by("rekord__rok", "-pkdaut")
+            )
+
+            # Build set of rekord_ids from nazbierane works
+            # JSONField stores tuples as lists: (51, 123) -> [51, 123] - convert back to tuples for hashing
+            nazbierane_set = (
+                {tuple(x) for x in metryka.prace_nazbierane}
+                if metryka.prace_nazbierane
+                else set()
             )
 
             # Przygotuj dane dla wykresów
@@ -491,7 +506,8 @@ class MetrykaDetailView(EwaluacjaRequiredMixin, DetailView):
                 rok = praca.rekord.rok
                 pkdaut = float(praca.pkdaut or 0)
                 slot = float(praca.slot or 0)
-                is_nazbierana = praca.pk in (metryka.prace_nazbierane or [])
+                # Check if work is in nazbierane set using stable rekord_id tuple
+                is_nazbierana = tuple(praca.rekord_id) in nazbierane_set
 
                 # Get Impact Factor from original publication if available
                 impact_factor = 0.0
@@ -533,33 +549,35 @@ class MetrykaDetailView(EwaluacjaRequiredMixin, DetailView):
         context = {}
 
         if metryka.prace_wszystkie:
+            # Convert JSON lists to tuples for PostgreSQL tuple matching
+            # Query by stable rekord_id (survives cache rebuilds)
             prace_wszystkie = (
                 Cache_Punktacja_Autora_Query.objects.filter(
-                    pk__in=metryka.prace_wszystkie
+                    rekord_id__in=metryka.prace_wszystkie,
+                    autor_id=metryka.autor_id,
+                    dyscyplina_id=metryka.dyscyplina_naukowa_id,
                 )
                 .select_related("rekord")
                 .order_by("-pkdaut")
             )
 
-            # Calculate pkdaut/slot for each work and find autor_assignment_id
+            # Calculate pkdaut/slot for each work and set URL parameters
             for praca in prace_wszystkie:
                 if praca.slot and praca.slot > 0:
                     praca.pkdaut_per_slot = float(praca.pkdaut) / float(praca.slot)
                 else:
                     praca.pkdaut_per_slot = None
 
-                # Find the autor_assignment_id for this work using the original publication
-                praca.autor_assignment_id = None
-                try:
-                    assignment = praca.rekord.original.autorzy_set.filter(
-                        autor_id=metryka.autor.id,
-                        dyscyplina_naukowa_id=metryka.dyscyplina_naukowa.id,
-                        przypieta=True,
-                    ).first()
-                    if assignment:
-                        praca.autor_assignment_id = assignment.pk
-                except (AttributeError, Exception):
-                    pass
+                # Mark if this work is in nazbierane set (for template highlighting)
+                praca.is_nazbierana = praca.rekord_id in [
+                    tuple(x) for x in metryka.prace_nazbierane
+                ]
+
+                # Set URL parameters for pin/unpin actions
+                praca.rekord_content_type_id = praca.rekord.id[0]
+                praca.rekord_object_id = praca.rekord.id[1]
+                praca.autor_id = metryka.autor.id
+                praca.dyscyplina_id = metryka.dyscyplina_naukowa.id
 
             context["prace_wszystkie"] = prace_wszystkie
 
@@ -568,6 +586,8 @@ class MetrykaDetailView(EwaluacjaRequiredMixin, DetailView):
     def _get_unpinned_works_context(self, metryka):
         """Get unpinned works (odpiete) from all publication models."""
         from decimal import Decimal
+
+        from django.contrib.contenttypes.models import ContentType
 
         from bpp.models import (
             Patent_Autor,
@@ -592,6 +612,9 @@ class MetrykaDetailView(EwaluacjaRequiredMixin, DetailView):
                 rekord = assignment.rekord
                 author_count = Decimal(str(rekord.autorzy_set.count() or 1))
 
+                # Get content type and object id for URL parameters
+                content_type = ContentType.objects.get_for_model(rekord)
+
                 praca = type(
                     "PracaOdpieta",
                     (),
@@ -602,7 +625,10 @@ class MetrykaDetailView(EwaluacjaRequiredMixin, DetailView):
                         "pkdaut_est": Decimal(str(rekord.punkty_kbn or 0))
                         / author_count,
                         "slot_est": Decimal("1") / author_count,
-                        "autor_assignment_id": assignment.pk,
+                        "rekord_content_type_id": content_type.pk,
+                        "rekord_object_id": rekord.pk,
+                        "autor_id": metryka.autor.id,
+                        "dyscyplina_id": metryka.dyscyplina_naukowa.id,
                     },
                 )()
 
@@ -683,43 +709,46 @@ class MetrykaDetailView(EwaluacjaRequiredMixin, DetailView):
 class PrzypnijDyscyplineView(EwaluacjaRequiredMixin, View):
     """Handle pinning a discipline for an author in a publication"""
 
-    def post(self, request, autor_assignment_id):
+    def post(self, request, content_type_id, object_id, autor_id, dyscyplina_id):
         from django.db import transaction
         from django.shortcuts import redirect
 
-        from bpp.models import (
-            Patent_Autor,
-            Wydawnictwo_Ciagle_Autor,
-            Wydawnictwo_Zwarte_Autor,
-        )
+        from bpp.models.cache import Rekord
         from bpp.models.sloty.core import IPunktacjaCacher
         from ewaluacja_metryki.utils import przelicz_metryki_dla_publikacji
 
         with transaction.atomic():
-            # Find the assignment in different publication types
-            wa = None
-            for model in [
-                Wydawnictwo_Ciagle_Autor,
-                Wydawnictwo_Zwarte_Autor,
-                Patent_Autor,
-            ]:
-                try:
-                    wa = model.objects.get(pk=autor_assignment_id)
-                    break
-                except model.DoesNotExist:
-                    continue
+            # Get the Rekord using tuple primary key
+            try:
+                rekord = Rekord.objects.get(pk=[content_type_id, object_id])
+            except Rekord.DoesNotExist:
+                raise Exception("Nie znaleziono rekordu publikacji") from None
 
-            if not wa:
-                raise Exception("Nie znaleziono przypisania autora do publikacji")
-
-            publikacja = wa.rekord
+            # Get the original publication and find the author assignment
+            publikacja = rekord.original
+            try:
+                wa = publikacja.autorzy_set.get(
+                    autor_id=autor_id, dyscyplina_naukowa_id=dyscyplina_id
+                )
+            except publikacja.autorzy_set.model.DoesNotExist:
+                raise Exception(
+                    "Nie znaleziono przypisania autora do publikacji"
+                ) from None
 
             # Update przypieta status
             wa.przypieta = True
             wa.save()
 
-            # Rebuild cache punktacja for the publication
-            cacher = IPunktacjaCacher(publikacja)
+            # Get FRESH publication instance without cached properties or related managers
+            # rekord.original is @cached_property, and refresh_from_db() doesn't clear it
+            # We need a completely fresh instance for rebuildEntries() to see new przypieta values
+            fresh_rekord = Rekord.objects.get(pk=[content_type_id, object_id])
+            fresh_publikacja = fresh_rekord.content_type.get_object_for_this_type(
+                pk=fresh_rekord.object_id
+            )
+
+            # Rebuild cache punktacja with fresh publication instance
+            cacher = IPunktacjaCacher(fresh_publikacja)
             cacher.removeEntries()
             cacher.rebuildEntries()
 
@@ -733,7 +762,7 @@ class PrzypnijDyscyplineView(EwaluacjaRequiredMixin, View):
         from .models import MetrykaAutora
 
         metryka = MetrykaAutora.objects.filter(
-            autor=wa.autor, dyscyplina_naukowa=wa.dyscyplina_naukowa
+            autor_id=autor_id, dyscyplina_naukowa_id=dyscyplina_id
         ).first()
 
         if metryka:
@@ -751,43 +780,46 @@ class PrzypnijDyscyplineView(EwaluacjaRequiredMixin, View):
 class OdepnijDyscyplineView(EwaluacjaRequiredMixin, View):
     """Handle unpinning a discipline for an author in a publication"""
 
-    def post(self, request, autor_assignment_id):
+    def post(self, request, content_type_id, object_id, autor_id, dyscyplina_id):
         from django.db import transaction
         from django.shortcuts import redirect
 
-        from bpp.models import (
-            Patent_Autor,
-            Wydawnictwo_Ciagle_Autor,
-            Wydawnictwo_Zwarte_Autor,
-        )
+        from bpp.models.cache import Rekord
         from bpp.models.sloty.core import IPunktacjaCacher
         from ewaluacja_metryki.utils import przelicz_metryki_dla_publikacji
 
         with transaction.atomic():
-            # Find the assignment in different publication types
-            wa = None
-            for model in [
-                Wydawnictwo_Ciagle_Autor,
-                Wydawnictwo_Zwarte_Autor,
-                Patent_Autor,
-            ]:
-                try:
-                    wa = model.objects.get(pk=autor_assignment_id)
-                    break
-                except model.DoesNotExist:
-                    continue
+            # Get the Rekord using tuple primary key
+            try:
+                rekord = Rekord.objects.get(pk=[content_type_id, object_id])
+            except Rekord.DoesNotExist:
+                raise Exception("Nie znaleziono rekordu publikacji") from None
 
-            if not wa:
-                raise Exception("Nie znaleziono przypisania autora do publikacji")
-
-            publikacja = wa.rekord
+            # Get the original publication and find the author assignment
+            publikacja = rekord.original
+            try:
+                wa = publikacja.autorzy_set.get(
+                    autor_id=autor_id, dyscyplina_naukowa_id=dyscyplina_id
+                )
+            except publikacja.autorzy_set.model.DoesNotExist:
+                raise Exception(
+                    "Nie znaleziono przypisania autora do publikacji"
+                ) from None
 
             # Update przypieta status
             wa.przypieta = False
             wa.save()
 
-            # Rebuild cache punktacja for the publication
-            cacher = IPunktacjaCacher(publikacja)
+            # Get FRESH publication instance without cached properties or related managers
+            # rekord.original is @cached_property, and refresh_from_db() doesn't clear it
+            # We need a completely fresh instance for rebuildEntries() to see new przypieta values
+            fresh_rekord = Rekord.objects.get(pk=[content_type_id, object_id])
+            fresh_publikacja = fresh_rekord.content_type.get_object_for_this_type(
+                pk=fresh_rekord.object_id
+            )
+
+            # Rebuild cache punktacja with fresh publication instance
+            cacher = IPunktacjaCacher(fresh_publikacja)
             cacher.removeEntries()
             cacher.rebuildEntries()
 
@@ -801,7 +833,7 @@ class OdepnijDyscyplineView(EwaluacjaRequiredMixin, View):
         from .models import MetrykaAutora
 
         metryka = MetrykaAutora.objects.filter(
-            autor=wa.autor, dyscyplina_naukowa=wa.dyscyplina_naukowa
+            autor_id=autor_id, dyscyplina_naukowa_id=dyscyplina_id
         ).first()
 
         if metryka:

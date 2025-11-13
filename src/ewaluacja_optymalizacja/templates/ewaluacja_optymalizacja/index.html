@@ -58,26 +58,49 @@
             <a href="{% url 'ewaluacja_dwudyscyplinowcy:index' %}" class="button secondary">
                 <span class="fi-torsos-all"></span> Dwudyscyplinowcy
             </a>
+            <a href="{% url 'ewaluacja_optymalizacja:database-verification' %}"
+               class="button {% if has_problematic_slots %}alert{% else %}success{% endif %}">
+                <span class="fi-magnifying-glass"></span> Weryfikacja bazy danych
+            </a>
         </div>
 
         <div class="button-group" style="margin-top: 0.5rem;">
             <a href="/snapshot_odpiec/" class="button secondary">
                 <span class="fi-camera"></span> Snapshoty odpięć
             </a>
-            <form method="POST" action="{% url 'ewaluacja_optymalizacja:bulk-start' %}" style="display: inline;">
-                {% csrf_token %}
-                <button type="submit" class="button warning{% if dirty_count > 0 %} disabled{% endif %}"
-                        {% if dirty_count > 0 %}disabled{% endif %}
-                        onclick="{% if dirty_count > 0 %}event.preventDefault(); alert('Czekamy na przeliczenie punktów. Obecnie jest {{ dirty_count }} rekordów do przeliczenia.'); return false;{% else %}return confirm('Czy na pewno chcesz uruchomić optymalizację dla WSZYSTKICH dyscyplin raportowanych (>= 12 slotów)? Proces może potrwać kilka do kilkunastu minut.');{% endif %}">
-                    <span class="fi-play"></span> Policz całą ewaluację
-                </button>
-            </form>
+            <a href="{% url 'ewaluacja_optymalizacja:analyze-unpinning' %}" class="button info">
+                <span class="fi-zoom-in"></span> Optymalizuj przed
+            </a>
+            <button form="bulk-optimization-form" type="submit" class="button warning{% if dirty_count > 0 %} disabled{% endif %}"
+                    {% if dirty_count > 0 %}disabled{% endif %}
+                    onclick="{% if dirty_count > 0 %}event.preventDefault(); alert('Czekamy na przeliczenie punktów. Obecnie jest {{ dirty_count }} rekordów do przeliczenia.'); return false;{% else %}return confirm('Czy na pewno chcesz uruchomić optymalizację dla WSZYSTKICH dyscyplin raportowanych (>= 12 slotów)? Proces może potrwać kilka do kilkunastu minut.');{% endif %}">
+                <span class="fi-play"></span> Policz całą ewaluację
+            </button>
             <a href="{% url 'ewaluacja_optymalizacja:optimize-unpin' %}"
                class="button success{% if dirty_count > 0 %} disabled{% endif %}"
                {% if dirty_count > 0 %}onclick="event.preventDefault(); alert('Czekamy na przeliczenie punktów. Obecnie jest {{ dirty_count }} rekordów do przeliczenia.'); return false;"{% else %}onclick="return confirm('Czy na pewno chcesz zastosować optymalizację i odpiąć niepotrzebne sloty? Ta operacja:\n\n1. Sprawdzi czy wszystkie dyscypliny są przeliczone\n2. Utworzy snapshot obecnego stanu\n3. Odpnie dyscypliny w pracach niewykazanych do ewaluacji\n4. Automatycznie przeliczy punktację\n5. Przeliczy optymalizację dla wszystkich dyscyplin\n\nProces może potrwać 20-30 minut w zależności od liczby dyscyplin.');"{% endif %}>
                 <span class="fi-unlock"></span> Optymalizuj, odpinając sloty
             </a>
         </div>
+
+        <form id="bulk-optimization-form" method="POST" action="{% url 'ewaluacja_optymalizacja:bulk-start' %}">
+            {% csrf_token %}
+            <fieldset style="border: 1px solid #ccc; padding: 1rem; margin-bottom: 1rem; border-radius: 3px; margin-top: 1rem;">
+                <legend style="font-weight: bold; padding: 0 0.5rem;">Konfiguracja solvera:</legend>
+                <div style="margin-bottom: 0.5rem;">
+                    <input type="radio" id="algo-two-phase" name="algorithm_mode" value="two-phase" checked>
+                    <label for="algo-two-phase" style="display: inline; margin-right: 1rem;">
+                        <strong>Dwufazowy</strong> - najpierw per-autor, potem instytucja
+                    </label>
+                </div>
+                <div>
+                    <input type="radio" id="algo-single-phase" name="algorithm_mode" value="single-phase">
+                    <label for="algo-single-phase" style="display: inline;">
+                        <strong>Jednofazowy</strong> - wszystkie ograniczenia od razu
+                    </label>
+                </div>
+            </fieldset>
+        </form>
 
         <!-- Progress bar dla denormalizacji -->
         <div id="denorm-progress-container"
@@ -149,10 +172,13 @@
             <thead>
                 <tr>
                     <th>Dyscyplina</th>
-                    <th>Data</th>
+                    <th>3*N</th>
+                    <th>Obliczono</th>
                     <th>Status</th>
                     <th>Punkty</th>
                     <th>Publikacje</th>
+                    <th>Sloty</th>
+                    <th>Sloty %</th>
                     <th>LOW-MONO %</th>
                     <th>Sloty poza N %</th>
                     <th>Przypięte</th>
@@ -164,6 +190,7 @@
                 {% for run in optimization_runs|slice:":10" %}
                 <tr>
                     <td>{{ run.dyscyplina_naukowa.nazwa }}</td>
+                    <td>{% if run.liczba_3n is not None %}{{ run.liczba_3n|floatformat:0 }}{% else %}-{% endif %}</td>
                     <td>{{ run.started_at|date:"Y-m-d H:i" }}</td>
                     <td>
                         {% if run.status == "completed" %}
@@ -174,8 +201,10 @@
                             <span class="label alert">Błąd</span>
                         {% endif %}
                     </td>
-                    <td>{{ run.total_points|floatformat:1 }}</td>
+                    <td>{{ run.total_points|floatformat:2 }}</td>
                     <td>{{ run.total_publications }}</td>
+                    <td>{{ run.total_slots|floatformat:2 }}</td>
+                    <td>{% if run.slots_fill_pct is not None %}{{ run.slots_fill_pct|floatformat:1 }}%{% else %}-{% endif %}</td>
                     <td>{{ run.low_mono_percentage|floatformat:1 }}%</td>
                     <td>{{ run.outside_n_slots_pct|floatformat:1 }}%</td>
                     <td>
@@ -203,10 +232,13 @@
             <tfoot>
                 <tr style="font-weight: bold; background-color: #f4f4f4; border-top: 2px solid #333;">
                     <td><strong>RAZEM</strong></td>
+                    <td>{% if summary.total_3n > 0 %}{{ summary.total_3n|floatformat:0 }}{% else %}-{% endif %}</td>
                     <td>-</td>
                     <td>-</td>
-                    <td>{{ summary.total_points|floatformat:1 }}</td>
+                    <td>{{ summary.total_points|floatformat:2 }}</td>
                     <td>{{ summary.total_publications }}</td>
+                    <td>{{ summary.total_slots|floatformat:2 }}</td>
+                    <td>{% if summary.avg_slots_fill_pct > 0 %}{{ summary.avg_slots_fill_pct|floatformat:1 }}%{% else %}-{% endif %}</td>
                     <td>{{ summary.avg_low_mono_pct|floatformat:1 }}%</td>
                     <td>{{ summary.avg_outside_n_pct|floatformat:1 }}%</td>
                     <td>

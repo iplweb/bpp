@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load user_in_group %}
 
 {% block extratitle %}
     {{ zrodlo.nazwa }}
@@ -20,6 +21,20 @@
             <div class="cell shrink">
                 {% include "browse/go_to_admin_change.html" with url="admin:bpp_zrodlo_change" pk=zrodlo.pk group="wprowadzanie danych" %}
                 {% include "browse/go_to_admin_list.html" with url="admin:bpp_zrodlo_add" group="wprowadzanie danych" text="Dodaj nowy rekord" %}
+                {% if has_publications and user.is_authenticated %}
+                    {% if user|has_group:"wprowadzanie danych" or user.is_superuser %}
+                        {# Nie pokazuj przycisku dla źródeł z MNISW ID (chyba że usunięte z PBN) #}
+                        {% if not zrodlo.pbn_uid.mniswId or zrodlo.pbn_uid.status == "DELETED" %}
+                            <div class="hide-for-print">
+                                <a href="{% url 'przemapuj_zrodlo:przemapuj' zrodlo.slug %}"
+                                   class="jednostka-edit-button"
+                                   title="Przemapuj publikacje z tego źródła do innego źródła">
+                                    <span class="fi fi-arrow-right"></span>Przemapuj prace
+                                </a>
+                            </div>
+                        {% endif %}
+                    {% endif %}
+                {% endif %}
             </div>
         </div>
     </div>
@@ -142,6 +157,17 @@
                                         <i class="fi-alert"></i>Usunięty z PBN
                                     </div>
                                 {% endif %}
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if zrodlo.pbn_uid.mniswId %}
+                        <div class="cell">
+                            <div class="callout id-badge">
+                                <div class="id-label">MNiSW ID</div>
+                                <div>{{ zrodlo.pbn_uid.mniswId }}</div>
+                                <small style="font-size: 0.875rem; color: #666; margin-top: 0.25rem; display: block;">
+                                    Czasopismo z oficjalnej listy Ministerstwa
+                                </small>
                             </div>
                         </div>
                         {% endif %}

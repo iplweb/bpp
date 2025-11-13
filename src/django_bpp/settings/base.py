@@ -89,6 +89,7 @@ env = environ.Env(
     DJANGO_BPP_REDIS_DB_SESSION=(int, 4),
     DJANGO_BPP_REDIS_DB_CACHE=(int, 5),
     DJANGO_BPP_REDIS_DB_LOCKS=(int, 6),
+    DJANGO_BPP_REDIS_DB_CACHEOPS=(int, 7),
     #
     # Konfiguracja RabbitMQ (Celery broker)
     #
@@ -447,6 +448,7 @@ INSTALLED_APPS = [
     "importer_autorow_pbn",
     "przemapuj_prace_autora",
     "przemapuj_zrodla_pbn",
+    "przemapuj_zrodlo",
     "pbn_downloader_app",
     "pbn_integrator",
     "pbn_import",
@@ -1261,3 +1263,17 @@ if PYDANTIC_LOGFIRE_TOKEN:
     # logfire.instrument_psycopg()
 
 DYNAMIC_FILTER_COUNTS_ENABLE = env("DYNAMIC_FILTER_COUNTS_ENABLE")
+
+#
+# Cacheops nawet na staging serwerze wymaga tych ustawień, bo potrafi łączyć
+# się z redisem nawet, gdy generalna konfiguracja jest nie ustawiona
+#
+
+CACHEOPS_REDIS = {
+    "host": REDIS_HOST,  # redis-server is on same machine
+    "port": REDIS_PORT,  # default redis port
+    "db": env("DJANGO_BPP_REDIS_DB_CACHEOPS"),
+    # 'socket_timeout': 3,   # connection timeout in seconds, optional
+    # 'password': '...',     # optional
+    # 'unix_socket_path': '' # replaces host and port
+}

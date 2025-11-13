@@ -170,11 +170,27 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         help_text="Czy pokazywać formularz zgłaszania publikacji?",
     )
 
+    wymagaj_logowania_zglos_publikacje = models.BooleanField(
+        "Wymagaj zalogowania użytkownika dla formularza zgłaszania publikacji",
+        default=False,
+        help_text="Jeśli zaznaczone, użytkownik musi się zalogować przed zgłoszeniem publikacji, "
+        "niezależnie od ustawienia widoczności przycisku 'Zgłoś nową publikację'. "
+        "Niezalogowani użytkownicy zostaną przekierowani na stronę logowania.",
+    )
+
     domyslnie_afiliuje = models.BooleanField(
         "Domyślnie zaznaczaj, że autor afiliuje",
         help_text="""Przy powiązaniach autor + wydawnictwo, zaznaczaj domyślnie,
         że autor afiliuje do jednostki, która jest wpisywana.""",
         default=True,
+    )
+
+    nowy_autor_z_formularza_pokazuj = models.BooleanField(
+        "Nowy autor tworzony przez autocomplete jest widoczny",
+        help_text="""Gdy zaznaczone, autorzy tworzeni automatycznie przez formularze z rozwijaną listą wyboru
+        (autocomplete) będą mieli ustawione pole 'pokazuj' na PRAWDA, co oznacza że będą widoczni na stronach
+        jednostek oraz w rankingach. Gdy odznaczone (domyślnie), nowi autorzy będą ukryci.""",
+        default=False,
     )
 
     pokazuj_liczbe_cytowan_w_rankingu = OpcjaWyswietlaniaField(
@@ -586,7 +602,7 @@ class Ukryj_Status_Korekty(models.Model):
     raporty = models.BooleanField(
         "Raporty",
         default=True,
-        help_text="Ukrywa prace w raporcie autora, " "jednostki, uczelni",
+        help_text="Ukrywa prace w raporcie autora, jednostki, uczelni",
     )
     rankingi = models.BooleanField("Rankingi", default=True)
     sloty = models.BooleanField(

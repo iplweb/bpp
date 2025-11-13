@@ -33,4 +33,24 @@ urlpatterns = [
         name="reset-all-pins-status",
     ),
     path("denorm-progress/", views.denorm_progress, name="denorm-progress"),
+    path(
+        "analyze-unpinning/",
+        views.analyze_unpinning_opportunities,
+        name="analyze-unpinning",
+    ),
+    path(
+        "unpinning-status/<str:task_id>/",
+        views.unpinning_analysis_status,
+        name="unpinning-status",
+    ),
+    path(
+        "unpinning-opportunities/",
+        views.unpinning_opportunities_list,
+        name="unpinning-list",
+    ),
+    path(
+        "database-verification/",
+        views.database_verification_view,
+        name="database-verification",
+    ),
 ]

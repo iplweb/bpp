@@ -332,7 +332,6 @@
                 </div>
             </div>
         </div>
-
         <!-- Lista prac nazbieranych -->
         {% if prace_nazbierane %}
         <div class="callout" id="prace-nazbierane">
@@ -383,14 +382,12 @@
                             {% endif %}
                         </td>
                         <td class="text-center">
-                            {% if praca.autor_assignment_id %}
-                            <form method="post" action="{% url 'ewaluacja_metryki:odepnij' praca.autor_assignment_id %}" style="display: inline;">
+                            <form method="post" action="{% url 'ewaluacja_metryki:odepnij' praca.rekord_content_type_id praca.rekord_object_id praca.autor_id praca.dyscyplina_id %}" style="display: inline;">
                                 {% csrf_token %}
                                 <button type="submit" class="button small alert" title="Odepnij dyscyplinę">
                                     <span class="fi-unlink"></span>
                                 </button>
                             </form>
-                            {% endif %}
                         </td>
                     </tr>
                     {% endfor %}
@@ -421,7 +418,7 @@
                     </thead>
                     <tbody>
                         {% for praca in prace_wszystkie %}
-                        <tr {% if praca.pk in metryka.prace_nazbierane %}class="success"{% endif %}>
+                        <tr {% if praca.is_nazbierana %}class="success"{% endif %}>
                             <td>{{ forloop.counter }}</td>
                             <td class="text-center" style="white-space: nowrap;">
                                 <a href="{% url 'ewaluacja_optymalizuj_publikacje:optymalizuj' praca.rekord.slug %}"
@@ -440,7 +437,7 @@
                                 <a href="{% url 'ewaluacja_optymalizuj_publikacje:optymalizuj' praca.rekord.slug %}">
                                     {{ praca.rekord.tytul_oryginalny|safe|truncatewords:10 }}
                                 </a>
-                                {% if praca.pk in metryka.prace_nazbierane %}
+                                {% if praca.is_nazbierana %}
                                     <span class="label success">Wybrana</span>
                                 {% endif %}
                             </td>
@@ -455,14 +452,12 @@
                                 {% endif %}
                             </td>
                             <td>
-                                {% if praca.autor_assignment_id %}
-                                <form method="post" action="{% url 'ewaluacja_metryki:odepnij' praca.autor_assignment_id %}" style="display: inline;">
+                                <form method="post" action="{% url 'ewaluacja_metryki:odepnij' praca.rekord_content_type_id praca.rekord_object_id praca.autor_id praca.dyscyplina_id %}" style="display: inline;">
                                     {% csrf_token %}
                                     <button type="submit" class="button tiny alert" title="Odepnij dyscyplinę">
                                         <span class="fi-unlink"></span>
                                     </button>
                                 </form>
-                                {% endif %}
                             </td>
                         </tr>
                         {% endfor %}
@@ -519,7 +514,7 @@
                                 {% endif %}
                             </td>
                             <td>
-                                <form method="post" action="{% url 'ewaluacja_metryki:przypnij' praca.autor_assignment_id %}" style="display: inline;">
+                                <form method="post" action="{% url 'ewaluacja_metryki:przypnij' praca.rekord_content_type_id praca.rekord_object_id praca.autor_id praca.dyscyplina_id %}" style="display: inline;">
                                     {% csrf_token %}
                                     <button type="submit" class="button tiny success" title="Przypnij dyscyplinę">
                                         <span class="fi-link"></span>

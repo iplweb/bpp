@@ -100,3 +100,25 @@ def wyslij_do_pbn_w_tle(modeladmin, request, queryset):
 
 
 wyslij_do_pbn_w_tle.short_description = "Wyślij do PBN w tle"
+
+
+def ustaw_pokazuj_true(modeladmin, request, queryset):
+    updated = queryset.filter(pokazuj=False).update(pokazuj=True)
+    modeladmin.message_user(
+        request,
+        f"Ustawiono {updated} {ngettext('autora', 'autorów', updated)} jako widocznych",
+    )
+
+
+ustaw_pokazuj_true.short_description = "Pokaż wybranych autorów"
+
+
+def ustaw_pokazuj_false(modeladmin, request, queryset):
+    updated = queryset.filter(pokazuj=True).update(pokazuj=False)
+    modeladmin.message_user(
+        request,
+        f"Ustawiono {updated} {ngettext('autora', 'autorów', updated)} jako ukrytych",
+    )
+
+
+ustaw_pokazuj_false.short_description = "Ukryj wybranych autorów"

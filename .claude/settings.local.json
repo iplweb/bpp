@@ -50,7 +50,10 @@
       "Bash(git rm --cached src/przemapuj_zrodla_pbn/static/przemapuj_zrodla_pbn/css/przemapuj-zrodla.css)",
       "Bash(.venv/bin/pytest src/bpp/tests/test_views/test_auth.py -v)",
       "Bash(DJANGO_SETTINGS_MODULE=django_bpp.settings.local uv run celery -A django_bpp.celery_tasks purge -Q denorm,celery -f)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(docker inspect:*)",
+      "Bash(docker logs:*)",
+      "Bash(docker exec:*)"
     ],
     "deny": [],
     "ask": [],

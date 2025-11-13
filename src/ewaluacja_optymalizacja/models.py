@@ -199,3 +199,187 @@ class OptimizationPublication(models.Model):
     def efficiency(self):
         """Points per slot ratio"""
         return float(self.points) / float(self.slots) if self.slots > 0 else 0
+
+
+class UnpinningOpportunity(models.Model):
+    """
+    Stores analysis results for potential unpinning opportunities.
+
+    Identifies multi-author works where:
+    - Autor A: work did NOT enter their collected works (not in prace_nazbierane)
+              AND has FULL slots (slot_nazbierany >= 80-90% of slot_maksymalny)
+    - Autor B: work DID enter their collected works (in prace_nazbierane)
+              AND has unfilled slots (can take more)
+    - Unpinning from Autor A allows Autor B to claim higher share
+    """
+
+    # Metadata
+    created_at = models.DateTimeField(
+        auto_now_add=True, verbose_name="Data utworzenia analizy"
+    )
+
+    uczelnia = models.ForeignKey(
+        "bpp.Uczelnia",
+        on_delete=models.CASCADE,
+        verbose_name="Uczelnia",
+    )
+
+    dyscyplina_naukowa = models.ForeignKey(
+        "bpp.Dyscyplina_Naukowa",
+        on_delete=models.CASCADE,
+        verbose_name="Dyscyplina naukowa",
+    )
+
+    # Work information
+    rekord_id = TupleField(
+        models.IntegerField(),
+        size=2,
+        db_index=True,
+        verbose_name="ID rekordu (content_type_id, object_id)",
+    )
+
+    rekord_tytul = models.TextField(
+        verbose_name="Tytuł pracy", help_text="Cached title for display"
+    )
+
+    # Author to unpin (work did NOT enter, has FULL slots)
+    autor_could_benefit = models.ForeignKey(
+        Autor,
+        on_delete=models.CASCADE,
+        related_name="unpinning_could_benefit",
+        verbose_name="Autor któremu należy odpiąć (ma pełne sloty)",
+    )
+
+    metryka_could_benefit = models.ForeignKey(
+        "ewaluacja_metryki.MetrykaAutora",
+        on_delete=models.CASCADE,
+        related_name="unpinning_could_benefit",
+        verbose_name="Metryka autora (któremu należy odpiąć)",
+    )
+
+    slot_in_work = models.DecimalField(
+        max_digits=10,
+        decimal_places=4,
+        verbose_name="Slot autora A w tej pracy",
+        help_text="Slot value for autor_could_benefit (to unpin) in this work",
+    )
+
+    slots_missing = models.DecimalField(
+        max_digits=10,
+        decimal_places=4,
+        verbose_name="Ile autor B może jeszcze wziąć",
+        help_text="slot_maksymalny - slot_nazbierany for autor_currently_using (who benefits)",
+    )
+
+    # Author who will benefit (work DID enter, has unfilled slots)
+    autor_currently_using = models.ForeignKey(
+        Autor,
+        on_delete=models.CASCADE,
+        related_name="unpinning_currently_using",
+        verbose_name="Autor który skorzysta (ma miejsce na więcej)",
+    )
+
+    metryka_currently_using = models.ForeignKey(
+        "ewaluacja_metryki.MetrykaAutora",
+        on_delete=models.CASCADE,
+        related_name="unpinning_currently_using",
+        verbose_name="Metryka autora (który skorzysta)",
+    )
+
+    # Analysis result
+    makes_sense = models.BooleanField(
+        default=False,
+        verbose_name="Czy odpięcie ma sens",
+        help_text="True if unpinning increases points for autor B",
+    )
+
+    # Różnice po odpięciu - Autor A (któremu odpinamy)
+    punkty_roznica_a = models.DecimalField(
+        max_digits=10,
+        decimal_places=4,
+        default=0,
+        verbose_name="Różnica punktów A (surowa)",
+        help_text="Surowa różnica punktów A: punkty_after - punkty_before (zazwyczaj 0 lub ujemne)",
+    )
+
+    sloty_roznica_a = models.DecimalField(
+        max_digits=10,
+        decimal_places=4,
+        default=0,
+        verbose_name="Różnica slotów A",
+        help_text="O ile zmienią się sloty autora A po odpięciu (zazwyczaj 0 lub ujemne)",
+    )
+
+    # Różnice po odpięciu - Autor B (który skorzysta)
+    punkty_roznica_b = models.DecimalField(
+        max_digits=10,
+        decimal_places=4,
+        default=0,
+        verbose_name="Różnica punktów B (surowa)",
+        help_text="Surowa różnica punktów B: punkty_after - punkty_before (zazwyczaj dodatnie)",
+    )
+
+    sloty_roznica_b = models.DecimalField(
+        max_digits=10,
+        decimal_places=4,
+        default=0,
+        verbose_name="Różnica slotów B",
+        help_text="O ile wzrosną sloty autora B po odpięciu (może być ujemna)",
+    )
+
+    # Rzeczywiste wartości używane do obliczenia makes_sense
+    punkty_strata_a = models.DecimalField(
+        max_digits=10,
+        decimal_places=4,
+        default=0,
+        verbose_name="Rzeczywista strata punktów A",
+        help_text=(
+            "Rzeczywista strata punktów A (zawsze >= 0). "
+            "Jeśli praca nie była w prace_nazbierane, strata = 0 (A nie wykazywał tej pracy). "
+            "Jeśli praca była wykazana, strata = abs(punkty_roznica_a)."
+        ),
+    )
+
+    punkty_zysk_b = models.DecimalField(
+        max_digits=10,
+        decimal_places=4,
+        default=0,
+        verbose_name="Rzeczywisty zysk punktów B",
+        help_text="Rzeczywisty zysk punktów B (zawsze >= 0). Równe punkty_roznica_b jeśli dodatnie, inaczej 0.",
+    )
+
+    praca_byla_wykazana_dla_a = models.BooleanField(
+        default=False,
+        verbose_name="Czy praca była wykazana dla A",
+        help_text="True jeśli praca była w prace_nazbierane autora A (wtedy odpięcie spowoduje rzeczywistą stratę punktów)",
+    )
+
+    class Meta:
+        verbose_name = "Możliwość odpięcia"
+        verbose_name_plural = "Możliwości odpięcia"
+        ordering = ["-makes_sense", "-slots_missing", "rekord_tytul"]
+        indexes = [
+            models.Index(fields=["created_at"]),
+            models.Index(fields=["uczelnia", "dyscyplina_naukowa"]),
+            models.Index(fields=["makes_sense"]),
+            models.Index(fields=["-slots_missing"]),
+        ]
+
+    def __str__(self):
+        return (
+            f"{self.rekord_tytul[:50]}... - "
+            f"{self.autor_could_benefit} (brakuje {self.slots_missing}) <- "
+            f"{self.autor_currently_using}"
+        )
+
+    @property
+    def rekord(self):
+        """Get the Rekord object for this publication"""
+        # Check if we have a cached rekord from the view
+        if hasattr(self, "_cached_rekord") and self._cached_rekord is not None:
+            return self._cached_rekord
+
+        # Otherwise fetch from database
+        from bpp.models import Rekord
+
+        return Rekord.objects.get(pk=self.rekord_id)

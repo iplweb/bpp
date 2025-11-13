@@ -9,10 +9,14 @@ from bpp.models import (
     Autor,
     Dyscyplina_Naukowa,
     Rekord,
+    Uczelnia,
     Wydawnictwo_Ciagle_Autor,
     Wydawnictwo_Zwarte_Autor,
 )
-from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaCalosc
+from ewaluacja_liczba_n.models import (
+    IloscUdzialowDlaAutoraZaCalosc,
+    LiczbaNDlaUczelni,
+)
 from ewaluacja_optymalizacja.core import is_low_mono, solve_discipline
 from ewaluacja_optymalizacja.models import (
     OptimizationAuthorResult,
@@ -58,15 +62,23 @@ class Command(BaseCommand):
             default=False,
             help="Re-run the optimization after unpinning (use with --unpin-not-selected)",
         )
+        parser.add_argument(
+            "--algorithm-mode",
+            type=str,
+            default="two-phase",
+            choices=["two-phase", "single-phase"],
+            help='Algorithm mode: "two-phase" (default) or "single-phase"',
+        )
 
     @transaction.atomic
-    def handle(
+    def handle(  # noqa: C901
         self,
         dyscyplina,
         output,
         verbose,
         unpin_not_selected,
         rerun_after_unpin,
+        algorithm_mode,
         *args,
         **options,
     ):
@@ -81,10 +93,38 @@ class Command(BaseCommand):
             else:
                 self.stdout.write(msg)
 
+        # Retrieve liczba_n for this discipline
+        liczba_n = None
+        try:
+            uczelnia = Uczelnia.objects.first()
+            dyscyplina_obj = Dyscyplina_Naukowa.objects.get(nazwa=dyscyplina)
+            if uczelnia and dyscyplina_obj:
+                liczba_n_obj = LiczbaNDlaUczelni.objects.get(
+                    uczelnia=uczelnia, dyscyplina_naukowa=dyscyplina_obj
+                )
+                liczba_n = float(liczba_n_obj.liczba_n)
+                self.stdout.write(
+                    self.style.SUCCESS(
+                        f"Found liczba_n={liczba_n} for {dyscyplina} (3×N limit: {3 * liczba_n})"
+                    )
+                )
+        except (Dyscyplina_Naukowa.DoesNotExist, LiczbaNDlaUczelni.DoesNotExist):
+            self.stdout.write(
+                self.style.WARNING(
+                    f"No liczba_n found for discipline '{dyscyplina}'. "
+                    "Institution constraint will not be applied."
+                )
+            )
+
         # Run optimization using core logic
+        self.stdout.write(f"Using algorithm mode: {algorithm_mode}")
         try:
             results = solve_discipline(
-                dyscyplina_nazwa=dyscyplina, verbose=verbose, log_callback=log_callback
+                dyscyplina_nazwa=dyscyplina,
+                verbose=verbose,
+                log_callback=log_callback,
+                liczba_n=liczba_n,
+                algorithm_mode=algorithm_mode,
             )
         except Exception as e:
             self.stdout.write(self.style.ERROR(f"Optimization failed: {e}"))
@@ -154,6 +194,7 @@ class Command(BaseCommand):
                 dyscyplina,
                 output,
                 verbose,
+                algorithm_mode,
             )
 
     def _save_optimization_to_database(self, results, dyscyplina):
@@ -577,6 +618,7 @@ class Command(BaseCommand):
         dyscyplina_name,
         output,
         verbose,
+        algorithm_mode="two-phase",
     ):
         """Handle unpinning of disciplines for non-selected publications"""
         from denorm import denorms
@@ -661,6 +703,7 @@ class Command(BaseCommand):
                 "verbose": verbose,
                 "unpin_not_selected": False,  # Don't unpin again
                 "rerun_after_unpin": False,  # Don't recurse
+                "algorithm_mode": algorithm_mode,  # Use same algorithm mode
             }
 
             if output:

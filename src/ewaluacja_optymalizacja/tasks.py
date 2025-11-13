@@ -5,6 +5,7 @@ from decimal import Decimal
 
 from celery import group, shared_task
 from celery_singleton import Singleton
+from django.db.models import F
 
 from ewaluacja_liczba_n.models import LiczbaNDlaUczelni
 from ewaluacja_optymalizacja.core import solve_discipline
@@ -13,7 +14,9 @@ logger = logging.getLogger(__name__)
 
 
 @shared_task
-def solve_single_discipline_task(uczelnia_id, dyscyplina_id, liczba_n):
+def solve_single_discipline_task(
+    uczelnia_id, dyscyplina_id, liczba_n, algorithm_mode="two-phase"
+):
     """
     Uruchamia optymalizację dla pojedynczej dyscypliny.
 
@@ -23,6 +26,7 @@ def solve_single_discipline_task(uczelnia_id, dyscyplina_id, liczba_n):
         uczelnia_id: ID uczelni
         dyscyplina_id: ID dyscypliny naukowej
         liczba_n: wartość liczby N dla tej dyscypliny
+        algorithm_mode: "two-phase" (default) or "single-phase"
 
     Returns:
         Dictionary z wynikami optymalizacji dla tej dyscypliny
@@ -61,7 +65,11 @@ def solve_single_discipline_task(uczelnia_id, dyscyplina_id, liczba_n):
 
         # Uruchom optymalizację dla tej dyscypliny
         optimization_results = solve_discipline(
-            dyscyplina_nazwa=dyscyplina_nazwa, verbose=False, log_callback=None
+            dyscyplina_nazwa=dyscyplina_nazwa,
+            verbose=False,
+            log_callback=None,
+            liczba_n=float(liczba_n),
+            algorithm_mode=algorithm_mode,
         )
 
         logger.info(
@@ -165,7 +173,7 @@ def solve_single_discipline_task(uczelnia_id, dyscyplina_id, liczba_n):
 
 
 @shared_task(base=Singleton, unique_on=["uczelnia_id"], lock_expiry=3600, bind=True)
-def solve_all_reported_disciplines(self, uczelnia_id):
+def solve_all_reported_disciplines(self, uczelnia_id, algorithm_mode="two-phase"):
     """
     Uruchamia optymalizację dla wszystkich dyscyplin raportowanych (>= 12 slotów).
 
@@ -181,6 +189,7 @@ def solve_all_reported_disciplines(self, uczelnia_id):
 
     Args:
         uczelnia_id: ID uczelni dla której wykonać optymalizację
+        algorithm_mode: "two-phase" (default) or "single-phase"
 
     Returns:
         Dictionary z podstawowymi informacjami o uruchomionych zadaniach
@@ -218,7 +227,7 @@ def solve_all_reported_disciplines(self, uczelnia_id):
     for liczba_n_obj in raportowane_dyscypliny:
         dyscyplina = liczba_n_obj.dyscyplina_naukowa
         task = solve_single_discipline_task.s(
-            uczelnia_id, dyscyplina.pk, float(liczba_n_obj.liczba_n)
+            uczelnia_id, dyscyplina.pk, float(liczba_n_obj.liczba_n), algorithm_mode
         )
         tasks.append(task)
 
@@ -434,6 +443,11 @@ def _wait_for_denorm(task, progress_start, progress_range, meta_extra, logger_fu
     from time import sleep
 
     from denorm.models import DirtyInstance
+    from denorm.tasks import flush_via_queue
+
+    # Trigger denorm processing via Celery queue
+    flush_via_queue.delay()
+    logger_func("Triggered denorm flush via queue")
 
     max_wait = 600  # Max 10 minutes
     waited = 0
@@ -460,7 +474,13 @@ def _wait_for_denorm(task, progress_start, progress_range, meta_extra, logger_fu
 
 
 def _run_bulk_optimization(
-    task, uczelnia, dyscypliny_ids, discipline_count, meta_extra, logger_func
+    task,
+    uczelnia,
+    dyscypliny_ids,
+    discipline_count,
+    meta_extra,
+    logger_func,
+    algorithm_mode="two-phase",
 ):
     """Run bulk optimization for all disciplines."""
     from time import sleep
@@ -489,7 +509,7 @@ def _run_bulk_optimization(
     for liczba_n_obj in raportowane_dyscypliny:
         dyscyplina = liczba_n_obj.dyscyplina_naukowa
         task_obj = solve_single_discipline_task.s(
-            uczelnia.pk, dyscyplina.pk, float(liczba_n_obj.liczba_n)
+            uczelnia.pk, dyscyplina.pk, float(liczba_n_obj.liczba_n), algorithm_mode
         )
         tasks.append(task_obj)
 
@@ -597,7 +617,7 @@ def _run_bulk_optimization(
     bind=True,
     time_limit=3600,
 )
-def optimize_and_unpin_task(self, uczelnia_id):
+def optimize_and_unpin_task(self, uczelnia_id, algorithm_mode="two-phase"):
     """
     Zadanie które:
     1. Sprawdza czy wszystkie dyscypliny raportowane są przeliczone
@@ -607,6 +627,7 @@ def optimize_and_unpin_task(self, uczelnia_id):
 
     Args:
         uczelnia_id: ID uczelni dla której wykonać optymalizację
+        algorithm_mode: "two-phase" (default) or "single-phase"
 
     Returns:
         Dictionary z informacją o wykonanych operacjach
@@ -748,6 +769,7 @@ def optimize_and_unpin_task(self, uczelnia_id):
             "current_pinned_zwarte": current_pinned_zwarte,
         },
         logger_func=logger.info,
+        algorithm_mode=algorithm_mode,
     )
 
     # 7. Calculate final results (after optimization)
@@ -881,13 +903,14 @@ def _reset_pins_for_authors(autorzy_ids, task, snapshot_pk, logger_func):
     bind=True,
     time_limit=1800,
 )
-def reset_all_pins_task(self, uczelnia_id):
+def reset_all_pins_task(self, uczelnia_id, algorithm_mode="two-phase"):
     """
     Resetuje przypięcia dla wszystkich rekordów 2022-2025 gdzie autor ma dyscyplinę,
     jest zatrudniony i afiliuje.
 
     Args:
         uczelnia_id: ID uczelni dla której resetować przypięcia
+        algorithm_mode: "two-phase" (default) or "single-phase"
 
     Returns:
         Dictionary z informacją o wykonanych operacjach
@@ -1007,6 +1030,7 @@ def reset_all_pins_task(self, uczelnia_id):
                 "total_reset": updated_count,
             },
             logger_func=logger.info,
+            algorithm_mode=algorithm_mode,
         )
 
     result = {
@@ -1019,6 +1043,597 @@ def reset_all_pins_task(self, uczelnia_id):
         "reset_patent": count_patent,
         "total_reset": updated_count,
         "optimizations_recalculated": discipline_count if discipline_count > 0 else 0,
+        "completed_at": datetime.now().isoformat(),
+    }
+
+    return result
+
+
+def simulate_unpinning_benefit(  # noqa: C901
+    autor_assignment,
+    autor_currently_using,
+    dyscyplina_naukowa,
+    metrics_before_cache=None,
+):
+    """
+    Symuluje odpięcie pracy dla jednego autora i sprawdza czy instytucja zyskuje punkty.
+
+    Args:
+        autor_assignment: Obiekt *_Autor (Wydawnictwo_Ciagle_Autor, Wydawnictwo_Zwarte_Autor, Patent_Autor)
+                         reprezentujący przypięcie do odpinania
+        autor_currently_using: Obiekt Autor który obecnie ma pracę w zebranych
+        dyscyplina_naukowa: Obiekt Dyscyplina_Naukowa
+        metrics_before_cache: dict (optional) - cache dla metryk "przed odpięciem" {publikacja.pk: results_before}
+                             używany do optymalizacji - unika wielokrotnego przeliczania tych samych metryk
+
+    Returns:
+        dict: {
+            'makes_sense': bool - True jeśli odpięcie ma sens (instytucja zyskuje więcej punktów niż traci),
+            'punkty_roznica_a': Decimal - różnica punktów dla autora A (ujemna=strata, dodatnia=zysk),
+            'sloty_roznica_a': Decimal - różnica slotów dla autora A (ujemna=strata, dodatnia=zysk),
+            'punkty_roznica_b': Decimal - różnica punktów dla autora B (ujemna=strata, dodatnia=zysk),
+            'sloty_roznica_b': Decimal - różnica slotów dla autora B (ujemna=strata, dodatnia=zysk),
+        }
+        lub None jeśli nie udało się przeprowadzić symulacji
+    """
+    from decimal import Decimal
+
+    from django.db import transaction
+
+    from bpp.models.sloty.core import IPunktacjaCacher
+    from ewaluacja_metryki.utils import przelicz_metryki_dla_publikacji
+
+    try:
+        # Cała symulacja w jednej transakcji
+        with transaction.atomic():
+            # KLUCZOWE: Oblicz ŚWIEŻE metryki PRZED odpięciem (z obecnym stanem przypięć)
+            # Porównamy to z metrykami PO odpięciu - obie będą świeżo obliczone
+            autor_a = autor_assignment.autor
+            publikacja = autor_assignment.rekord
+
+            # Symulacja w transakcji z savepoint
+            sid = transaction.savepoint()
+
+            try:
+                # 1. Oblicz metryki PRZED odpięciem (świeża kalkulacja, z cache jeśli dostępny)
+                publikacja_pk = publikacja.pk
+
+                if (
+                    metrics_before_cache is not None
+                    and publikacja_pk in metrics_before_cache
+                ):
+                    # Cache hit - użyj zapisanych wyników
+                    results_before = metrics_before_cache[publikacja_pk]
+                    logger.debug(
+                        f"Cache HIT dla publikacji {publikacja.tytul_oryginalny[:50]} (pk={publikacja_pk})"
+                    )
+                else:
+                    # Cache miss - oblicz i zapisz
+                    results_before = przelicz_metryki_dla_publikacji(publikacja)
+                    if metrics_before_cache is not None:
+                        metrics_before_cache[publikacja_pk] = results_before
+                        logger.debug(
+                            f"Cache MISS dla publikacji {publikacja.tytul_oryginalny[:50]} (pk={publikacja_pk}), zapisano"
+                        )
+
+                # Znajdź metryki dla autorów A i B w naszej dyscyplinie
+                metryka_a_before = None
+                metryka_b_before = None
+
+                for autor, dyscyplina, metryka in results_before:
+                    if (
+                        autor.id == autor_a.id
+                        and dyscyplina.id == dyscyplina_naukowa.id
+                    ):
+                        metryka_a_before = metryka
+                    if (
+                        autor.id == autor_currently_using.id
+                        and dyscyplina.id == dyscyplina_naukowa.id
+                    ):
+                        metryka_b_before = metryka
+
+                # Sprawdź czy znaleziono metryki dla B
+                if metryka_b_before is None:
+                    logger.warning(
+                        f"Brak metryk PRZED dla autora B {autor_currently_using} w dyscyplinie {dyscyplina_naukowa}"
+                    )
+                    return None
+
+                # Pobierz wartości (jeśli metryka_a_before == None, użyj 0)
+                punkty_a_before = (
+                    metryka_a_before.punkty_nazbierane
+                    if metryka_a_before
+                    else Decimal("0")
+                )
+                slot_a_before = (
+                    metryka_a_before.slot_nazbierany
+                    if metryka_a_before
+                    else Decimal("0")
+                )
+
+                punkty_b_before = metryka_b_before.punkty_nazbierane
+                slot_b_before = metryka_b_before.slot_nazbierany
+
+                # 2. Odpnij dla Autora A
+                autor_assignment.przypieta = False
+                autor_assignment.save()
+
+                # 3. Przebuduj cache punktacji
+                cacher = IPunktacjaCacher(publikacja)
+                cacher.removeEntries()
+                cacher.rebuildEntries()
+
+                # CRITICAL: Wymuś odświeżenie cache w Django ORM
+                # W ramach savepoint PostgreSQL może mieć niezaktualizowane querysets
+                from django.db import connection
+
+                connection.cursor().execute("SELECT 1")  # Flush pending queries
+
+                # 4. Przelicz metryki PO odpięciu (świeża kalkulacja)
+                # Porównamy to z metrykami PRZED odpięciem - obie są świeżo obliczone
+                results = przelicz_metryki_dla_publikacji(publikacja)
+
+                # Znajdź metryki dla autorów A i B w naszej dyscyplinie
+                metryka_a_after = None
+                metryka_b_after = None
+
+                for autor, dyscyplina, metryka in results:
+                    if (
+                        autor.id == autor_a.id
+                        and dyscyplina.id == dyscyplina_naukowa.id
+                    ):
+                        metryka_a_after = metryka
+                    if (
+                        autor.id == autor_currently_using.id
+                        and dyscyplina.id == dyscyplina_naukowa.id
+                    ):
+                        metryka_b_after = metryka
+
+                # Sprawdź czy znaleziono metryki
+                if metryka_b_after is None:
+                    logger.warning(
+                        f"Brak metryk PO dla autora B {autor_currently_using} w dyscyplinie {dyscyplina_naukowa}"
+                    )
+                    return None
+
+                # Pobierz wartości (jeśli metryka_a_after == None, użyj 0)
+                punkty_a_after = (
+                    metryka_a_after.punkty_nazbierane
+                    if metryka_a_after
+                    else Decimal("0")
+                )
+                slot_a_after = (
+                    metryka_a_after.slot_nazbierany if metryka_a_after else Decimal("0")
+                )
+
+                punkty_b_after = metryka_b_after.punkty_nazbierane
+                slot_b_after = metryka_b_after.slot_nazbierany
+
+                # Oblicz różnice (ujemne = strata, dodatnie = zysk)
+                punkty_roznica_a = (
+                    punkty_a_after - punkty_a_before
+                )  # ujemne jeśli stracił
+                sloty_roznica_a = slot_a_after - slot_a_before
+
+                punkty_roznica_b = (
+                    punkty_b_after - punkty_b_before
+                )  # dodatnie jeśli zyskał
+                sloty_roznica_b = slot_b_after - slot_b_before
+
+                # KLUCZOWE: Jeśli praca NIE weszła dla A (praca_weszla==False),
+                # to A nie straci punktów (bo i tak jej nie wykazywał)
+                # Sprawdzamy to przez porównanie prac nazbieranych
+                if metryka_a_before is not None:
+                    rekord_id = publikacja.pk  # tuple (content_type_id, object_id)
+                    prace_nazbierane_a = metryka_a_before.prace_nazbierane or []
+                    # Konwertuj listy na tuple (JSONField zwraca listy)
+                    prace_nazbierane_a_tuples = [
+                        tuple(p) if isinstance(p, list) else p
+                        for p in prace_nazbierane_a
+                    ]
+                    praca_byla_wykazana_dla_a = rekord_id in prace_nazbierane_a_tuples
+                else:
+                    praca_byla_wykazana_dla_a = False
+
+                # Oblicz stratę A i zysk B
+                if not praca_byla_wykazana_dla_a:
+                    # Praca nie była wykazana - A nie straci nic
+                    punkty_strata_a = Decimal("0")
+                else:
+                    # Praca była wykazana - A straci
+                    punkty_strata_a = abs(punkty_roznica_a)
+
+                punkty_zysk_b = (
+                    punkty_roznica_b if punkty_roznica_b > 0 else Decimal("0")
+                )
+
+                # NOWE KRYTERIUM: Odpięcie ma sens gdy instytucja zyskuje więcej niż traci
+                # (w granicach udziałów)
+                makes_sense = punkty_zysk_b > punkty_strata_a
+
+                logger.debug(
+                    f"Symulacja odpięcia dla {autor_a} -> {autor_currently_using} (publikacja: {publikacja.tytul_oryginalny[:50]}): "
+                    f"praca_byla_wykazana_dla_a={praca_byla_wykazana_dla_a}, "
+                    f"A punkty ŚWIEŻE PRZED: {punkty_a_before} -> ŚWIEŻE PO: {punkty_a_after} (różnica: {punkty_roznica_a}), "
+                    f"A strata punktów: {punkty_strata_a}, "
+                    f"A sloty {slot_a_before} -> {slot_a_after} (różnica: {sloty_roznica_a}), "
+                    f"B punkty ŚWIEŻE PRZED: {punkty_b_before} -> ŚWIEŻE PO: {punkty_b_after} (różnica: {punkty_roznica_b}), "
+                    f"B zysk punktów: {punkty_zysk_b}, "
+                    f"B sloty {slot_b_before} -> {slot_b_after} (różnica: {sloty_roznica_b}), "
+                    f"makes_sense={makes_sense} (B zysk {punkty_zysk_b} > A strata {punkty_strata_a})"
+                )
+
+                return {
+                    "makes_sense": makes_sense,
+                    "punkty_roznica_a": punkty_roznica_a,
+                    "sloty_roznica_a": sloty_roznica_a,
+                    "punkty_roznica_b": punkty_roznica_b,
+                    "sloty_roznica_b": sloty_roznica_b,
+                }
+
+            finally:
+                # ZAWSZE rollback - przywróć stan przed symulacją
+                transaction.savepoint_rollback(sid)
+
+    except Exception as e:
+        logger.error(f"Błąd podczas symulacji odpięcia: {e}", exc_info=True)
+        # W przypadku błędu, zwracamy None
+        return None
+
+
+@shared_task(
+    base=Singleton,
+    unique_on=["uczelnia_id", "dyscyplina_id"],
+    lock_expiry=3600,
+    bind=True,
+    time_limit=1800,
+)
+def analyze_multi_author_works_task(  # noqa: C901
+    self, uczelnia_id, dyscyplina_id=None, min_slot_filled=0.8
+):
+    """
+    Analizuje prace wieloautorskie szukając możliwości odpinania.
+
+    Znajdź prace gdzie:
+    - Autor A: praca NIE weszła do zebranych (nie ma w prace_nazbierane)
+              AND ma PEŁNE sloty (slot_nazbierany >= min_slot_filled * slot_maksymalny)
+    - Autor B: praca WESZŁA do zebranych (jest w prace_nazbierane)
+              AND ma niepełne sloty (może wziąć więcej)
+    - Odpięcie dla Autora A umożliwi Autorowi B większy udział
+
+    Args:
+        uczelnia_id: ID uczelni
+        dyscyplina_id: ID dyscypliny (opcjonalnie, jeśli None to wszystkie)
+        min_slot_filled: Minimalny próg wypełnienia slotów (domyślnie 0.8 = 80%)
+
+    Returns:
+        Dictionary z wynikami analizy
+    """
+    from decimal import Decimal
+
+    from bpp.models import Uczelnia
+    from bpp.models.cache.punktacja import Cache_Punktacja_Autora_Query
+    from ewaluacja_metryki.models import MetrykaAutora
+
+    from .models import UnpinningOpportunity
+
+    uczelnia = Uczelnia.objects.get(pk=uczelnia_id)
+
+    logger.info(
+        f"Starting unpinning analysis for {uczelnia}, dyscyplina_id={dyscyplina_id}"
+    )
+
+    # Update task state
+    self.update_state(
+        state="PROGRESS", meta={"step": "loading_metrics", "progress": 10}
+    )
+
+    # Filtruj metryki - szukamy autorów z PEŁNYMI slotami (>=80% wypełnienia)
+    metryki_qs = MetrykaAutora.objects.select_related(
+        "autor", "dyscyplina_naukowa"
+    ).filter(slot_nazbierany__gte=F("slot_maksymalny") * Decimal(str(min_slot_filled)))
+
+    if dyscyplina_id:
+        metryki_qs = metryki_qs.filter(dyscyplina_naukowa_id=dyscyplina_id)
+
+    # Stwórz słownik metryk: (autor_id, dyscyplina_id) -> MetrykaAutora
+    metryki_dict = {}
+    for metryka in metryki_qs:
+        key = (metryka.autor_id, metryka.dyscyplina_naukowa_id)
+        metryki_dict[key] = metryka
+
+    logger.info(f"Loaded {len(metryki_dict)} metrics with unfilled slots")
+
+    # Update progress
+    self.update_state(
+        state="PROGRESS",
+        meta={
+            "step": "analyzing_works",
+            "progress": 30,
+            "metrics_loaded": len(metryki_dict),
+        },
+    )
+
+    # Usuń stare wyniki dla tej uczelni
+    if dyscyplina_id:
+        UnpinningOpportunity.objects.filter(
+            uczelnia=uczelnia, dyscyplina_naukowa_id=dyscyplina_id
+        ).delete()
+    else:
+        UnpinningOpportunity.objects.filter(uczelnia=uczelnia).delete()
+
+    # Przygotuj słownik: rekord_id -> [(autor_id, dyscyplina_id, slot, metryka)]
+    works_by_rekord = {}
+
+    for (autor_id, dyscyplina_id_key), metryka in metryki_dict.items():
+        # Konwertuj listy z JSONField na tuple dla porównania
+        # (JSONField serializuje tuple jako JSON array i zwraca je jako listy)
+        prace_nazbierane_tuples = [
+            tuple(p) if isinstance(p, list) else p
+            for p in (metryka.prace_nazbierane or [])
+        ]
+
+        # Debug dla Rogula
+        from bpp.models import Autor
+
+        try:
+            autor = Autor.objects.get(pk=autor_id)
+            if autor.nazwisko.startswith("Rogula"):
+                logger.info(
+                    f"DEBUG Rogula: autor_id={autor_id}, dyscyplina={dyscyplina_id_key}"
+                )
+                logger.info(
+                    f"  prace_nazbierane raw (first 2): {metryka.prace_nazbierane[:2] if metryka.prace_nazbierane else []}"
+                )
+                logger.info(
+                    f"  prace_nazbierane tuples (first 2): {prace_nazbierane_tuples[:2]}"
+                )
+                logger.info(
+                    f"  total works in nazbierane: {len(prace_nazbierane_tuples)}"
+                )
+        except Autor.DoesNotExist:
+            pass
+
+        # Pobierz wszystkie prace dla tego autora i dyscypliny
+        for cache_entry in Cache_Punktacja_Autora_Query.objects.filter(
+            autor_id=autor_id, dyscyplina_id=dyscyplina_id_key
+        ).select_related("rekord"):
+            # Rekord.pk to tuple (content_type_id, object_id)
+            rekord_tuple = cache_entry.rekord_id
+
+            if rekord_tuple not in works_by_rekord:
+                works_by_rekord[rekord_tuple] = {
+                    "rekord": cache_entry.rekord,
+                    "authors": [],
+                }
+
+            # Sprawdź czy ta praca weszła do zebranych tego autora
+            praca_weszla = cache_entry.rekord_id in prace_nazbierane_tuples
+
+            # Debug dla Rogula
+            if autor.nazwisko.startswith("Rogula"):
+                logger.info(
+                    f"  Checking work {rekord_tuple}: praca_weszla={praca_weszla}, slot={cache_entry.slot}"
+                )
+
+            works_by_rekord[rekord_tuple]["authors"].append(
+                {
+                    "autor_id": autor_id,
+                    "dyscyplina_id": dyscyplina_id_key,
+                    "slot": cache_entry.slot,
+                    "metryka": metryka,
+                    "praca_weszla": praca_weszla,
+                }
+            )
+
+    logger.info(f"Analyzing {len(works_by_rekord)} works with multiple authors")
+
+    # Update progress
+    self.update_state(
+        state="PROGRESS",
+        meta={
+            "step": "finding_opportunities",
+            "progress": 50,
+            "works_to_analyze": len(works_by_rekord),
+        },
+    )
+
+    # Szukaj możliwości odpinania
+    opportunities = []
+    analyzed_count = 0
+
+    # Cache dla metryk "przed odpięciem" - optymalizacja wydajności
+    # Dla tej samej publikacji z wieloma kombinacjami A→B, metryki "przed" są identyczne
+    # Klucz: publikacja.pk, wartość: results_before z przelicz_metryki_dla_publikacji()
+    metrics_before_cache = {}
+
+    for rekord_tuple, work_data in works_by_rekord.items():
+        authors = work_data["authors"]
+
+        # Pomiń prace z tylko jednym autorem
+        if len(authors) < 2:
+            continue
+
+        rekord = work_data["rekord"]
+
+        # Sprawdź pary autorów
+        for autor_a in authors:
+            # Autor A: praca NIE weszła
+            if autor_a["praca_weszla"]:
+                continue
+
+            for autor_b in authors:
+                # Autor B: praca WESZŁA
+                if not autor_b["praca_weszla"]:
+                    continue
+
+                # Różni autorzy, ta sama dyscyplina
+                if (
+                    autor_a["autor_id"] == autor_b["autor_id"]
+                    or autor_a["dyscyplina_id"] != autor_b["dyscyplina_id"]
+                ):
+                    continue
+
+                # Sprawdź czy Autor B ma niepełne sloty (może wziąć więcej)
+                slots_b_can_take = autor_b["metryka"].slot_niewykorzystany
+                if slots_b_can_take <= 0:
+                    # Autor B ma pełne sloty, nie ma sensu
+                    continue
+
+                # Sprawdź czy odpięcie ma sens przez symulację
+                # slots_missing = ile Autor B może jeszcze wziąć
+                # slot_in_work = slot Autora A w tej pracy
+                slots_missing = slots_b_can_take
+                slot_in_work = autor_a["slot"]
+
+                # Symulacja odpięcia: sprawdź czy Autor B rzeczywiście zyskuje
+                from bpp.models import (
+                    Autor,
+                    Dyscyplina_Naukowa,
+                )
+
+                try:
+                    # Pobierz obiekty dla symulacji
+                    autor_b_obj = Autor.objects.get(pk=autor_b["autor_id"])
+                    dyscyplina_obj = Dyscyplina_Naukowa.objects.get(
+                        pk=autor_a["dyscyplina_id"]
+                    )
+
+                    # Pobierz autor_assignment dla Autora A
+                    publikacja_original = rekord.original
+
+                    autor_assignment = publikacja_original.autorzy_set.filter(
+                        autor_id=autor_a["autor_id"],
+                        dyscyplina_naukowa=dyscyplina_obj,
+                    ).first()
+
+                    if autor_assignment is not None:
+                        # Symuluj odpięcie (z cache dla optymalizacji)
+                        simulation_result = simulate_unpinning_benefit(
+                            autor_assignment,
+                            autor_b_obj,
+                            dyscyplina_obj,
+                            metrics_before_cache=metrics_before_cache,
+                        )
+
+                        if simulation_result:
+                            makes_sense = simulation_result["makes_sense"]
+                            punkty_roznica_a = simulation_result["punkty_roznica_a"]
+                            sloty_roznica_a = simulation_result["sloty_roznica_a"]
+                            punkty_roznica_b = simulation_result["punkty_roznica_b"]
+                            sloty_roznica_b = simulation_result["sloty_roznica_b"]
+                        else:
+                            # Symulacja się nie powiodła - fallback
+                            makes_sense = False
+                            punkty_roznica_a = Decimal("0")
+                            sloty_roznica_a = Decimal("0")
+                            punkty_roznica_b = Decimal("0")
+                            sloty_roznica_b = Decimal("0")
+                    else:
+                        # Nie znaleziono autor_assignment - fallback do starej logiki
+                        logger.warning(
+                            f"Nie znaleziono autor_assignment dla autora {autor_a['autor_id']}, "
+                            f"rekord {rekord_tuple}, dyscyplina {dyscyplina_obj}"
+                        )
+                        makes_sense = False
+                        punkty_roznica_a = Decimal("0")
+                        sloty_roznica_a = Decimal("0")
+                        punkty_roznica_b = Decimal("0")
+                        sloty_roznica_b = Decimal("0")
+
+                except Exception as e:
+                    # W przypadku błędu, fallback
+                    logger.error(
+                        f"Błąd podczas symulacji dla rekord {rekord_tuple}: {e}",
+                        exc_info=True,
+                    )
+                    makes_sense = False
+                    punkty_roznica_a = Decimal("0")
+                    sloty_roznica_a = Decimal("0")
+                    punkty_roznica_b = Decimal("0")
+                    sloty_roznica_b = Decimal("0")
+
+                opportunities.append(
+                    {
+                        "rekord_id": rekord_tuple,
+                        "rekord_tytul": rekord.original.tytul_oryginalny[:500],
+                        "autor_a": autor_a,
+                        "autor_b": autor_b,
+                        "slots_missing": slots_missing,
+                        "slot_in_work": slot_in_work,
+                        "makes_sense": makes_sense,
+                        "punkty_roznica_a": punkty_roznica_a,
+                        "sloty_roznica_a": sloty_roznica_a,
+                        "punkty_roznica_b": punkty_roznica_b,
+                        "sloty_roznica_b": sloty_roznica_b,
+                    }
+                )
+
+        analyzed_count += 1
+        if analyzed_count % 20 == 0:
+            progress = 50 + int((analyzed_count / len(works_by_rekord)) * 40)
+            self.update_state(
+                state="PROGRESS",
+                meta={
+                    "step": "finding_opportunities",
+                    "progress": progress,
+                    "analyzed": analyzed_count,
+                    "total": len(works_by_rekord),
+                    "found": len(opportunities),
+                },
+            )
+
+    logger.info(f"Found {len(opportunities)} unpinning opportunities")
+
+    # Update progress
+    self.update_state(
+        state="PROGRESS",
+        meta={
+            "step": "saving_results",
+            "progress": 90,
+            "opportunities_found": len(opportunities),
+        },
+    )
+
+    # Zapisz wyniki do bazy
+    unpinning_objs = []
+    for opp in opportunities:
+        unpinning_objs.append(
+            UnpinningOpportunity(
+                uczelnia=uczelnia,
+                dyscyplina_naukowa_id=opp["autor_a"]["dyscyplina_id"],
+                rekord_id=opp["rekord_id"],
+                rekord_tytul=opp["rekord_tytul"],
+                autor_could_benefit_id=opp["autor_a"]["autor_id"],
+                metryka_could_benefit=opp["autor_a"]["metryka"],
+                slot_in_work=opp["slot_in_work"],
+                slots_missing=opp["slots_missing"],
+                autor_currently_using_id=opp["autor_b"]["autor_id"],
+                metryka_currently_using=opp["autor_b"]["metryka"],
+                makes_sense=opp["makes_sense"],
+                punkty_roznica_a=opp["punkty_roznica_a"],
+                sloty_roznica_a=opp["sloty_roznica_a"],
+                punkty_roznica_b=opp["punkty_roznica_b"],
+                sloty_roznica_b=opp["sloty_roznica_b"],
+            )
+        )
+
+    # Bulk create w batch'ach
+    batch_size = 500
+    for i in range(0, len(unpinning_objs), batch_size):
+        UnpinningOpportunity.objects.bulk_create(unpinning_objs[i : i + batch_size])
+
+    logger.info(f"Saved {len(unpinning_objs)} unpinning opportunities to database")
+
+    # Count by makes_sense
+    sensible_count = sum(1 for opp in opportunities if opp["makes_sense"])
+
+    result = {
+        "uczelnia_id": uczelnia_id,
+        "uczelnia_nazwa": str(uczelnia),
+        "dyscyplina_id": dyscyplina_id,
+        "total_opportunities": len(opportunities),
+        "sensible_opportunities": sensible_count,
         "completed_at": datetime.now().isoformat(),
     }
 
