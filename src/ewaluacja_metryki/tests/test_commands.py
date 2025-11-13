@@ -238,13 +238,13 @@ def test_oblicz_metryki_command_parameters(rodzaj_autora_n):
         ilosc_udzialow_monografie=Decimal("1.0"),
     )
 
-    # Stwórz Autor_Dyscyplina z rodzajem 'N'
+    # Stwórz Autor_Dyscyplina z rodzajem 'N' w zakresie lat testowanych (2020-2023)
     baker.make(
         Autor_Dyscyplina,
         autor=autor,
         dyscyplina_naukowa=dyscyplina,
         rodzaj_autora=rodzaj_autora_n,
-        rok=2024,
+        rok=2022,
     )
 
     # For this test we need to mock zbieraj_sloty to verify parameters

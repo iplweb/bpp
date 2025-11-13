@@ -228,8 +228,11 @@ def test_generuj_metryki_task_parallel_uruchamia_chord():
         with patch(
             "ewaluacja_liczba_n.models.IloscUdzialowDlaAutoraZaCalosc"
         ) as mock_ilosc:
-            # Mock values_list żeby zwrócić 3 testowe IDs jako prawdziwą listę
-            mock_ilosc.objects.values_list.return_value = [1, 2, 3]
+            # Mock queryset chain: all() -> filter() -> values_list()
+            mock_queryset = MagicMock()
+            mock_queryset.filter.return_value = mock_queryset
+            mock_queryset.values_list.return_value = [1, 2, 3]
+            mock_ilosc.objects.all.return_value = mock_queryset
 
             # Mock MetrykaAutora
             with patch(
