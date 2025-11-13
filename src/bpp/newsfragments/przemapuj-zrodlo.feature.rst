@@ -1,1 +1,0 @@
-Dodano funkcję przemapowania publikacji z jednego źródła do drugiego. Funkcja dostępna dla administratorów na stronie źródła, umożliwia przeniesienie wszystkich publikacji do innego źródła z zachowaniem historii i możliwością cofnięcia operacji.
