@@ -458,3 +458,39 @@ def test_zglos_publikacje_button_pokazuj_zalogowanym_logged(admin_client, uczeln
     res = admin_client.get(reverse("bpp:browse_uczelnia", args=(uczelnia.slug,)))
     assert res.status_code == 200
     assert "Masz nową publikację? Zgłoś ją do bazy!".encode("utf-8") in res.content
+
+
+@pytest.mark.django_db
+def test_autorzy_view_blocks_sql_injection(client, autor):
+    """Test: AutorzyView should block SQL injection in page parameter"""
+    response = client.get(
+        "/bpp/autorzy/?page=++++++++++++++++++++++++++++++94%22+AND+1=1--"
+    )
+    assert response.status_code == 444
+
+
+@pytest.mark.django_db
+def test_autorzy_view_normal_pagination(client, autor):
+    """Test: AutorzyView should allow normal pagination"""
+    response = client.get("/bpp/autorzy/?page=1")
+    assert response.status_code == 200
+
+
+@pytest.mark.django_db
+def test_autorzy_view_last_page(client, autor):
+    """Test: AutorzyView should allow 'last' keyword"""
+    response = client.get("/bpp/autorzy/?page=last")
+    assert response.status_code == 200
+
+
+@pytest.mark.django_db
+def test_autorzy_view_original_malicious_string(client, autor):
+    """Test: AutorzyView should block the original malicious string from traceback"""
+    # This is the actual malicious string from the user's production logs
+    malicious_page = (
+        "                                94\" AND ANd/**/1373=(seLEcT/**/uPPeR(XMlTYpE(chr(60)||CHr(58)||"
+        "%27~%27||(SELECt/**/(cASe/**/when/**/(1373=1373)/**/TheN/**/1/**/eLse/**/0/**/End)/**/fROM/**/"
+        "DuaL)||%27~%27||Chr(62)))/**/FROM/**/DUal)-- -"
+    )
+    response = client.get(f"/bpp/autorzy/?page={malicious_page}")
+    assert response.status_code == 444

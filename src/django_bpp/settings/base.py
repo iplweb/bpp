@@ -295,6 +295,7 @@ MIDDLEWARE = [
     "htmlmin.middleware.MarkRequestMiddleware",
     "django.middleware.locale.LocaleMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    "bpp.middleware.PageParameterValidationMiddleware",  # Block malicious pagination params early
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",

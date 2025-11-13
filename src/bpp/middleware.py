@@ -1,8 +1,50 @@
 import json
+import logging
 
 from django.http import HttpResponse
 from django.utils.deprecation import MiddlewareMixin
 from rollbar.contrib.django.middleware import RollbarNotifierMiddleware
+
+logger = logging.getLogger("django.request")
+
+
+class PageParameterValidationMiddleware(MiddlewareMixin):
+    """
+    Middleware to block SQL injection attempts in pagination parameters.
+
+    Blocks requests where the 'page' parameter is:
+    - Longer than 5 characters AND
+    - Contains non-numeric characters (except the word "last")
+
+    Returns HTTP 444 (No Response) for blocked requests.
+    """
+
+    def process_request(self, request):
+        page_param = request.GET.get("page", "")
+
+        if not page_param:
+            return None
+
+        # Allow "last" keyword (Django pagination feature)
+        if page_param.lower() == "last":
+            return None
+
+        # Block if > 5 chars AND contains non-numeric characters
+        if len(page_param) > 5 and not page_param.isdigit():
+            logger.warning(
+                "Blocked suspicious page parameter: %s",
+                page_param[:100],  # Limit log length
+                extra={
+                    "status_code": 444,
+                    "request": request,
+                    "remote_addr": request.META.get("REMOTE_ADDR"),
+                    "user_agent": request.META.get("HTTP_USER_AGENT", "")[:200],
+                },
+            )
+            # HTTP 444 - No Response (nginx convention for blocking malicious requests)
+            return HttpResponse("", status=444)
+
+        return None
 
 
 class NonHtmlDebugToolbarMiddleware(MiddlewareMixin):
@@ -33,7 +75,7 @@ class NonHtmlDebugToolbarMiddleware(MiddlewareMixin):
                 except ValueError:
                     pass
                 response = HttpResponse(
-                    f"<html><body><pre>{content}" "</pre></body></html>"
+                    f"<html><body><pre>{content}</pre></body></html>"
                 )
 
         return response
