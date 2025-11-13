@@ -563,3 +563,64 @@ def test_sync_disciplines(pbn_client):
     assert TlumaczDyscyplin.objects.przetlumacz_dyscypline(d1, 2024) is not None
 
     assert TlumaczDyscyplin.objects.przetlumacz_dyscypline(d2, 2024) is not None
+
+
+@pytest.mark.django_db
+def test_upload_and_sync_publication_without_existing_publication(
+    pbn_client, pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina
+):
+    """
+    Regression test for foreign key violation issue.
+
+    Tests that upload_publication() doesn't fail when the Publication record
+    doesn't exist yet in the local database, and that sync_publication()
+    properly updates SentData with the publication link after downloading it.
+    """
+    # Use the same objectId as in MOCK_RETURNED_MONGODB_DATA
+    from fixtures.pbn_api import MOCK_MONGO_ID
+
+    new_object_id = MOCK_MONGO_ID
+
+    # Ensure Publication doesn't exist
+    assert not Publication.objects.filter(pk=new_object_id).exists()
+
+    # Mock API response for upload (called internally by sync_publication)
+    pbn_client.transport.return_values[PBN_POST_PUBLICATIONS_URL] = {
+        "objectId": new_object_id
+    }
+
+    # Mock API response for download_publication
+    pbn_client.transport.return_values[
+        PBN_GET_PUBLICATION_BY_ID_URL.format(id=new_object_id)
+    ] = MOCK_RETURNED_MONGODB_DATA
+
+    # Mock for objectId 456 from MOCK_RETURNED_INSTITUTION_PUBLICATION_V2_DATA
+    pbn_client.transport.return_values[PBN_GET_PUBLICATION_BY_ID_URL.format(id=456)] = (
+        MOCK_RETURNED_MONGODB_DATA
+    )
+
+    # Mock empty statements response
+    pbn_client.transport.return_values[
+        PBN_GET_INSTITUTION_STATEMENTS + f"?publicationId={new_object_id}&size=5120"
+    ] = []
+
+    # Mock institution publications v2 response
+    pbn_client.transport.return_values[
+        PBN_GET_INSTITUTION_PUBLICATIONS_V2 + f"?publicationId={new_object_id}&size=10"
+    ] = MOCK_RETURNED_INSTITUTION_PUBLICATION_V2_DATA
+
+    # Call sync_publication() - this internally calls upload_publication()
+    # which should succeed without FK error, then download_publication()
+    # which should create the Publication and update SentData
+    publication = pbn_client.sync_publication(
+        pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina
+    )
+
+    # Verify Publication now exists in database
+    assert Publication.objects.filter(pk=new_object_id).exists()
+
+    # Verify SentData was created and updated with the publication link
+    sent_data = SentData.objects.get_for_rec(pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina)
+    assert sent_data.pbn_uid_id == new_object_id
+    assert sent_data.pbn_uid == publication
+    assert sent_data.submitted_successfully is True

@@ -313,17 +313,9 @@
 
                                             var text = data.content;
 
-                                            // Try modern clipboard API first
-                                            if (navigator.clipboard && navigator.clipboard.writeText) {
-                                                navigator.clipboard.writeText(text).then(function() {
-                                                    showCopySuccess(button, originalHTML);
-                                                }).catch(function(err) {
-                                                    console.error('Failed to copy: ', err);
-                                                    fallbackCopyToClipboard(text, button, originalHTML);
-                                                });
-                                            } else {
-                                                fallbackCopyToClipboard(text, button, originalHTML);
-                                            }
+                                            // Safari requires clipboard operations to be synchronous within user gesture
+                                            // Since we're in a fetch callback, use the reliable fallback method
+                                            fallbackCopyToClipboard(text, button, originalHTML);
                                         })
                                         .catch(error => {
                                             console.error('Error fetching content:', error);

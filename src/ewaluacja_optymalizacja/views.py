@@ -1928,3 +1928,453 @@ def database_verification_view(request):
     return render(
         request, "ewaluacja_optymalizacja/database_verification.html", context
     )
+
+
+@login_required
+def export_unpinning_opportunities_xlsx(request):  # noqa: C901
+    """Export unpinning opportunities list to XLSX format with filters applied"""
+    import datetime
+
+    from django.http import HttpResponse
+    from openpyxl import Workbook
+    from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+    from openpyxl.utils import get_column_letter
+
+    from bpp.models import Dyscyplina_Naukowa, Rekord
+    from ewaluacja_common.models import Rodzaj_Autora
+
+    from .models import UnpinningOpportunity
+
+    # Pobierz pierwszą uczelnię (zakładamy, że jest tylko jedna)
+    uczelnia = Uczelnia.objects.first()
+
+    if not uczelnia:
+        messages.error(request, "Nie znaleziono uczelni w systemie.")
+        return redirect("ewaluacja_optymalizacja:index")
+
+    # Filtrowanie (identyczne jak w unpinning_opportunities_list)
+    opportunities_qs = UnpinningOpportunity.objects.filter(uczelnia=uczelnia)
+
+    # Filtr po dyscyplinie (opcjonalnie)
+    dyscyplina_id = request.GET.get("dyscyplina")
+    if dyscyplina_id:
+        try:
+            dyscyplina_id = int(dyscyplina_id)
+            opportunities_qs = opportunities_qs.filter(
+                dyscyplina_naukowa_id=dyscyplina_id
+            )
+        except (ValueError, TypeError):
+            pass
+
+    # Filtr "tylko sensowne"
+    only_sensible = request.GET.get("only_sensible")
+    if only_sensible == "1":
+        opportunities_qs = opportunities_qs.filter(makes_sense=True)
+
+    # Select related dla optymalizacji
+    opportunities_qs = opportunities_qs.select_related(
+        "autor_could_benefit",
+        "autor_currently_using",
+        "dyscyplina_naukowa",
+        "metryka_could_benefit",
+        "metryka_currently_using",
+        "metryka_could_benefit__autor",
+        "metryka_currently_using__autor",
+        "metryka_could_benefit__jednostka",
+        "metryka_currently_using__jednostka",
+    )
+
+    # Preload Rekord objects to avoid N+1 queries
+    rekord_ids = [opp.rekord_id for opp in opportunities_qs]
+    rekordy = {r.pk: r for r in Rekord.objects.filter(pk__in=rekord_ids)}
+
+    # Attach rekord objects to opportunities
+    for opp in opportunities_qs:
+        opp._cached_rekord = rekordy.get(opp.rekord_id)
+
+    # Setup workbook
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Możliwości odpinania"
+
+    # Define styles
+    header_font = Font(bold=True, color="FFFFFF")
+    header_fill = PatternFill(
+        start_color="366092", end_color="366092", fill_type="solid"
+    )
+    header_alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+
+    thin_border = Border(
+        left=Side(style="thin"),
+        right=Side(style="thin"),
+        top=Side(style="thin"),
+        bottom=Side(style="thin"),
+    )
+
+    even_row_fill = PatternFill(
+        start_color="F2F2F2", end_color="F2F2F2", fill_type="solid"
+    )
+
+    sensible_row_fill = PatternFill(
+        start_color="E7F7E7", end_color="E7F7E7", fill_type="solid"
+    )
+
+    # Define headers
+    headers = [
+        "Lp.",
+        "Tytuł pracy",
+        "Dyscyplina",
+        "Autor A (do odpięcia)",
+        "Rodzaj autora A",
+        "ID systemu kadrowego A",
+        "Jednostka A",
+        "% wykorzystania slotów A",
+        "Sloty nazbierane A",
+        "Sloty maksymalne A",
+        "B może wziąć (slotów)",
+        "Slot w pracy",
+        "Różnica punktów A",
+        "Różnica slotów A",
+        "Różnica punktów B",
+        "Różnica slotów B",
+        "Autor B (skorzysta)",
+        "Rodzaj autora B",
+        "ID systemu kadrowego B",
+        "Jednostka B",
+        "% wykorzystania slotów B",
+        "Sloty nazbierane B",
+        "Sloty maksymalne B",
+        "Sensowne?",
+    ]
+
+    # Write headers
+    for col, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col, value=header)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = header_alignment
+        cell.border = thin_border
+
+    # Helper function to format rodzaj_autora
+    def format_rodzaj_autora(metryka):
+        if metryka.rodzaj_autora == " ":
+            return "Brak danych"
+        try:
+            rodzaj = Rodzaj_Autora.objects.get(skrot=metryka.rodzaj_autora)
+            return rodzaj.nazwa
+        except Rodzaj_Autora.DoesNotExist:
+            return metryka.rodzaj_autora
+
+    # Write data rows
+    last_data_row = 1
+    for row_idx, opp in enumerate(opportunities_qs, 2):
+        last_data_row = row_idx
+
+        # Determine row fill (sensible = green, otherwise alternating)
+        if opp.makes_sense:
+            row_fill = sensible_row_fill
+        else:
+            row_fill = even_row_fill if row_idx % 2 == 0 else None
+
+        col = 1
+
+        # Lp.
+        cell = ws.cell(row=row_idx, column=col, value=row_idx - 1)
+        cell.border = thin_border
+        if row_fill:
+            cell.fill = row_fill
+        col += 1
+
+        # Tytuł pracy
+        cell = ws.cell(row=row_idx, column=col, value=opp.rekord_tytul)
+        cell.border = thin_border
+        if row_fill:
+            cell.fill = row_fill
+        col += 1
+
+        # Dyscyplina
+        cell = ws.cell(row=row_idx, column=col, value=opp.dyscyplina_naukowa.nazwa)
+        cell.border = thin_border
+        if row_fill:
+            cell.fill = row_fill
+        col += 1
+
+        # Autor A (do odpięcia)
+        cell = ws.cell(row=row_idx, column=col, value=str(opp.autor_could_benefit))
+        cell.border = thin_border
+        if row_fill:
+            cell.fill = row_fill
+        col += 1
+
+        # Rodzaj autora A
+        cell = ws.cell(
+            row=row_idx,
+            column=col,
+            value=format_rodzaj_autora(opp.metryka_could_benefit),
+        )
+        cell.border = thin_border
+        if row_fill:
+            cell.fill = row_fill
+        col += 1
+
+        # ID systemu kadrowego A
+        cell = ws.cell(
+            row=row_idx,
+            column=col,
+            value=opp.autor_could_benefit.system_kadrowy_id or "",
+        )
+        cell.border = thin_border
+        if row_fill:
+            cell.fill = row_fill
+        col += 1
+
+        # Jednostka A
+        jednostka_a = (
+            opp.metryka_could_benefit.jednostka.nazwa
+            if opp.metryka_could_benefit.jednostka
+            else "-"
+        )
+        cell = ws.cell(row=row_idx, column=col, value=jednostka_a)
+        cell.border = thin_border
+        if row_fill:
+            cell.fill = row_fill
+        col += 1
+
+        # % wykorzystania slotów A
+        cell = ws.cell(
+            row=row_idx,
+            column=col,
+            value=float(opp.metryka_could_benefit.procent_wykorzystania_slotow) / 100,
+        )
+        cell.number_format = "0.00%"
+        cell.alignment = Alignment(horizontal="right")
+        cell.border = thin_border
+        if row_fill:
+            cell.fill = row_fill
+        col += 1
+
+        # Sloty nazbierane A
+        cell = ws.cell(
+            row=row_idx,
+            column=col,
+            value=float(opp.metryka_could_benefit.slot_nazbierany),
+        )
+        cell.number_format = "0.00"
+        cell.alignment = Alignment(horizontal="right")
+        cell.border = thin_border
+        if row_fill:
+            cell.fill = row_fill
+        col += 1
+
+        # Sloty maksymalne A
+        cell = ws.cell(
+            row=row_idx,
+            column=col,
+            value=float(opp.metryka_could_benefit.slot_maksymalny),
+        )
+        cell.number_format = "0.00"
+        cell.alignment = Alignment(horizontal="right")
+        cell.border = thin_border
+        if row_fill:
+            cell.fill = row_fill
+        col += 1
+
+        # B może wziąć (slotów)
+        cell = ws.cell(row=row_idx, column=col, value=float(opp.slots_missing))
+        cell.number_format = "0.00"
+        cell.alignment = Alignment(horizontal="right")
+        cell.border = thin_border
+        if row_fill:
+            cell.fill = row_fill
+        col += 1
+
+        # Slot w pracy
+        cell = ws.cell(row=row_idx, column=col, value=float(opp.slot_in_work))
+        cell.number_format = "0.00"
+        cell.alignment = Alignment(horizontal="right")
+        cell.border = thin_border
+        if row_fill:
+            cell.fill = row_fill
+        col += 1
+
+        # Różnica punktów A
+        cell = ws.cell(row=row_idx, column=col, value=float(opp.punkty_roznica_a))
+        cell.number_format = "0.00"
+        cell.alignment = Alignment(horizontal="right")
+        cell.border = thin_border
+        if row_fill:
+            cell.fill = row_fill
+        col += 1
+
+        # Różnica slotów A
+        cell = ws.cell(row=row_idx, column=col, value=float(opp.sloty_roznica_a))
+        cell.number_format = "0.00"
+        cell.alignment = Alignment(horizontal="right")
+        cell.border = thin_border
+        if row_fill:
+            cell.fill = row_fill
+        col += 1
+
+        # Różnica punktów B
+        cell = ws.cell(row=row_idx, column=col, value=float(opp.punkty_roznica_b))
+        cell.number_format = "0.00"
+        cell.alignment = Alignment(horizontal="right")
+        cell.border = thin_border
+        if row_fill:
+            cell.fill = row_fill
+        col += 1
+
+        # Różnica slotów B
+        cell = ws.cell(row=row_idx, column=col, value=float(opp.sloty_roznica_b))
+        cell.number_format = "0.00"
+        cell.alignment = Alignment(horizontal="right")
+        cell.border = thin_border
+        if row_fill:
+            cell.fill = row_fill
+        col += 1
+
+        # Autor B (skorzysta)
+        cell = ws.cell(row=row_idx, column=col, value=str(opp.autor_currently_using))
+        cell.border = thin_border
+        if row_fill:
+            cell.fill = row_fill
+        col += 1
+
+        # Rodzaj autora B
+        cell = ws.cell(
+            row=row_idx,
+            column=col,
+            value=format_rodzaj_autora(opp.metryka_currently_using),
+        )
+        cell.border = thin_border
+        if row_fill:
+            cell.fill = row_fill
+        col += 1
+
+        # ID systemu kadrowego B
+        cell = ws.cell(
+            row=row_idx,
+            column=col,
+            value=opp.autor_currently_using.system_kadrowy_id or "",
+        )
+        cell.border = thin_border
+        if row_fill:
+            cell.fill = row_fill
+        col += 1
+
+        # Jednostka B
+        jednostka_b = (
+            opp.metryka_currently_using.jednostka.nazwa
+            if opp.metryka_currently_using.jednostka
+            else "-"
+        )
+        cell = ws.cell(row=row_idx, column=col, value=jednostka_b)
+        cell.border = thin_border
+        if row_fill:
+            cell.fill = row_fill
+        col += 1
+
+        # % wykorzystania slotów B
+        cell = ws.cell(
+            row=row_idx,
+            column=col,
+            value=float(opp.metryka_currently_using.procent_wykorzystania_slotow) / 100,
+        )
+        cell.number_format = "0.00%"
+        cell.alignment = Alignment(horizontal="right")
+        cell.border = thin_border
+        if row_fill:
+            cell.fill = row_fill
+        col += 1
+
+        # Sloty nazbierane B
+        cell = ws.cell(
+            row=row_idx,
+            column=col,
+            value=float(opp.metryka_currently_using.slot_nazbierany),
+        )
+        cell.number_format = "0.00"
+        cell.alignment = Alignment(horizontal="right")
+        cell.border = thin_border
+        if row_fill:
+            cell.fill = row_fill
+        col += 1
+
+        # Sloty maksymalne B
+        cell = ws.cell(
+            row=row_idx,
+            column=col,
+            value=float(opp.metryka_currently_using.slot_maksymalny),
+        )
+        cell.number_format = "0.00"
+        cell.alignment = Alignment(horizontal="right")
+        cell.border = thin_border
+        if row_fill:
+            cell.fill = row_fill
+        col += 1
+
+        # Sensowne?
+        cell = ws.cell(
+            row=row_idx, column=col, value="TAK" if opp.makes_sense else "NIE"
+        )
+        cell.border = thin_border
+        if row_fill:
+            cell.fill = row_fill
+        col += 1
+
+    # Setup auto-filter, freeze panes
+    if last_data_row > 1:
+        last_col_letter = get_column_letter(len(headers))
+        filter_range = f"A1:{last_col_letter}{last_data_row}"
+        ws.auto_filter.ref = filter_range
+
+    ws.freeze_panes = ws["A2"]
+
+    # Auto-adjust column widths
+    for column in ws.columns:
+        max_length = 0
+        column_letter = get_column_letter(column[0].column)
+        for cell in column:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(str(cell.value))
+            except BaseException:
+                pass
+        adjusted_width = min(max_length + 2, 50)
+        ws.column_dimensions[column_letter].width = adjusted_width
+
+    # Add summary
+    summary_row = last_data_row + 2 if last_data_row > 1 else 3
+    ws.cell(row=summary_row, column=1, value="Podsumowanie:")
+    ws.cell(row=summary_row + 1, column=1, value="Liczba wierszy:")
+    ws.cell(row=summary_row + 1, column=2, value=opportunities_qs.count())
+
+    # Add filter information
+    filter_info = []
+    if dyscyplina_id:
+        try:
+            dyscyplina = Dyscyplina_Naukowa.objects.get(pk=dyscyplina_id)
+            filter_info.append(f"Dyscyplina: {dyscyplina.nazwa}")
+        except Dyscyplina_Naukowa.DoesNotExist:
+            pass
+
+    if only_sensible == "1":
+        filter_info.append("Tylko sensowne: TAK")
+
+    filters_row = summary_row + 3
+    ws.cell(row=filters_row, column=1, value="Zastosowane filtry:")
+
+    if filter_info:
+        ws.cell(row=filters_row + 1, column=1, value="; ".join(filter_info))
+    else:
+        ws.cell(row=filters_row + 1, column=1, value="Brak filtrów")
+
+    # Create response
+    response = HttpResponse(
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    filename = f"unpinning_opportunities_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+
+    wb.save(response)
+    return response

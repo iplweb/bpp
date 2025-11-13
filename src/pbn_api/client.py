@@ -854,9 +854,7 @@ class PBNClient(
         while True:
             try:
                 ret, objectId = self._post_publication_data(js, bez_oswiadczen)
-                SentData.objects.mark_as_successful(
-                    rec, pbn_uid_id=objectId, api_response_status=str(ret)
-                )
+                SentData.objects.mark_as_successful(rec, api_response_status=str(ret))
                 break
 
             except HttpException as e:
@@ -1065,7 +1063,7 @@ class PBNClient(
             nowy_uid=objectId,
         )
 
-    def sync_publication(
+    def sync_publication(  # noqa: C901
         self,
         pub,
         notificator=None,
@@ -1108,6 +1106,16 @@ class PBNClient(
             return
 
         publication = self.download_publication(objectId=objectId)
+
+        # Update SentData with the publication link now that it exists in the database
+        try:
+            sent_data = SentData.objects.get_for_rec(pub)
+            if sent_data.pbn_uid_id is None:
+                sent_data.pbn_uid_id = publication.pk
+                sent_data.save()
+        except SentData.DoesNotExist:
+            # This shouldn't happen if upload_publication was called, but handle gracefully
+            pass
 
         if not bez_oswiadczen:
             self._download_statements_with_retry(publication, objectId, notificator)

@@ -10,17 +10,18 @@ from pbn_integrator.importer import (
 
 django.setup()
 
-from bpp.models import (
+from bpp.models import (  # noqa: E402
     Jednostka,
+    Jednostka_Wydzial,
     Uczelnia,
     Wersja_Tekstu_OpenAccess,
     Wydawnictwo_Ciagle,
     Wydawnictwo_Zwarte,
     Wydzial,
 )
-from pbn_api.management.commands.util import PBNBaseCommand
-from pbn_integrator import importer
-from pbn_integrator.utils import (
+from pbn_api.management.commands.util import PBNBaseCommand  # noqa: E402
+from pbn_integrator import importer  # noqa: E402
+from pbn_integrator.utils import (  # noqa: E402
     integruj_autorow_z_uczelni,
     integruj_jezyki,
     integruj_kraje,
@@ -89,7 +90,7 @@ class Command(PBNBaseCommand):
             ),
         )
 
-    def handle(
+    def handle(  # noqa: C901
         self,
         app_id,
         app_token,
@@ -170,8 +171,7 @@ class Command(PBNBaseCommand):
             uczelnia=Uczelnia.objects.default,
         )[0]
 
-        if not jednostka.jednostka_wydzial_set.filter(wydzial=wydzial).exists():
-            jednostka.jednostka_wydzial_set.create(wydzial=wydzial)
+        Jednostka_Wydzial.objects.get_or_create(jednostka=jednostka, wydzial=wydzial)
 
         obca_jednostka = Jednostka.objects.get_or_create(
             nazwa="Obca jednostka",
@@ -180,8 +180,9 @@ class Command(PBNBaseCommand):
             skupia_pracownikow=False,
         )[0]
 
-        if not obca_jednostka.jednostka_wydzial_set.filter(wydzial=wydzial).exists():
-            obca_jednostka.jednostka_wydzial_set.create(wydzial=wydzial)
+        Jednostka_Wydzial.objects.get_or_create(
+            jednostka=obca_jednostka, wydzial=wydzial
+        )
 
         u = Uczelnia.objects.default
         u.obca_jednostka = obca_jednostka
