@@ -11,6 +11,24 @@ from .models import MetrykaAutora
 logger = logging.getLogger(__name__)
 
 
+def get_default_rodzaje_autora():
+    """
+    Pobiera domyślną listę rodzajów autorów dla generowania metryk.
+
+    Zwraca listę skrótów rodzajów autorów, którzy mają ustawioną flagę licz_sloty=True.
+    Ta funkcja zapewnia spójność parametrów między różnymi przepływami generowania metryk
+    (formularz w ewaluacja_metryki oraz funkcja 'optymalizuj przed').
+
+    Returns:
+        list: Lista skrótów rodzajów autorów (np. ['N', 'D', 'B'])
+    """
+    from ewaluacja_common.models import Rodzaj_Autora
+
+    return list(
+        Rodzaj_Autora.objects.filter(licz_sloty=True).values_list("skrot", flat=True)
+    )
+
+
 def oblicz_metryki_dla_autora(
     autor,
     dyscyplina,
@@ -257,25 +275,44 @@ def _get_ilosc_udzialow_queryset(ilosc_udzialow_queryset):
         return ilosc_udzialow_queryset
 
 
-def _should_skip_author(autor, dyscyplina, rodzaje_autora):
-    """Sprawdza czy autor powinien być pominięty na podstawie rodzaju_autora."""
-    autor_dyscyplina = (
-        Autor_Dyscyplina.objects.filter(
-            Q(autor=autor)
-            & (Q(dyscyplina_naukowa=dyscyplina) | Q(subdyscyplina_naukowa=dyscyplina))
-        )
-        .order_by("-rok")
-        .first()
-    )
+def _should_skip_author(autor, dyscyplina, rodzaje_autora, rok_min=2022, rok_max=2025):
+    """
+    Sprawdza czy autor powinien być pominięty na podstawie rodzaju_autora.
 
-    if (
-        not autor_dyscyplina
-        or not autor_dyscyplina.rodzaj_autora
-        or autor_dyscyplina.rodzaj_autora.skrot not in rodzaje_autora
-    ):
-        return True, autor_dyscyplina
+    Sprawdza czy autor miał JAKIKOLWIEK odpowiedni rodzaj_autora w okresie
+    ewaluacji (rok_min do rok_max), nie tylko w najnowszym roku.
 
-    return False, autor_dyscyplina
+    Args:
+        autor: Obiekt Autor
+        dyscyplina: Obiekt Dyscyplina_Naukowa
+        rodzaje_autora: Lista akceptowalnych skrótów rodzajów autorów
+        rok_min: Początkowy rok okresu ewaluacji (domyślnie 2022)
+        rok_max: Końcowy rok okresu ewaluacji (domyślnie 2025)
+
+    Returns:
+        Tuple (bool, Autor_Dyscyplina): (czy_pominąć, najnowszy_rekord_w_okresie)
+    """
+    # Pobierz wszystkie rekordy w okresie ewaluacji
+    autor_dyscyplina_w_okresie = Autor_Dyscyplina.objects.filter(
+        Q(autor=autor)
+        & (Q(dyscyplina_naukowa=dyscyplina) | Q(subdyscyplina_naukowa=dyscyplina))
+        & Q(rok__gte=rok_min)
+        & Q(rok__lte=rok_max)
+    ).order_by("-rok")
+
+    if not autor_dyscyplina_w_okresie.exists():
+        # Brak jakichkolwiek rekordów w okresie ewaluacji
+        return True, None
+
+    # Sprawdź czy JAKIKOLWIEK rekord w okresie ma odpowiedni rodzaj_autora
+    for ad in autor_dyscyplina_w_okresie:
+        if ad.rodzaj_autora and ad.rodzaj_autora.skrot in rodzaje_autora:
+            # Znaleziono rekord z odpowiednim rodzajem - NIE pomijaj autora
+            # Zwróć najnowszy rekord jako referencję
+            return False, autor_dyscyplina_w_okresie.first()
+
+    # Żaden rekord w okresie nie ma odpowiedniego rodzaju_autora
+    return True, autor_dyscyplina_w_okresie.first()
 
 
 def _calculate_metrics_data(
@@ -406,7 +443,7 @@ def _process_single_author(
         with transaction.atomic():
             # Sprawdź czy autor powinien być pominięty
             should_skip, autor_dyscyplina = _should_skip_author(
-                autor, dyscyplina, rodzaje_autora
+                autor, dyscyplina, rodzaje_autora, rok_min, rok_max
             )
 
             if should_skip:

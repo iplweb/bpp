@@ -1631,154 +1631,50 @@ def _analyze_multi_author_works_impl(  # noqa: C901
     return result
 
 
-@shared_task(
-    base=Singleton,
-    unique_on=["uczelnia_id"],
-    lock_expiry=3600,
-    bind=True,
-    time_limit=3600,
-)
-def analyze_unpinning_with_metrics_recalculation(
-    self, uczelnia_id, dyscyplina_id=None, min_slot_filled=0.8
+@shared_task(bind=True)
+def run_unpinning_after_metrics_wrapper(
+    self, metrics_result, uczelnia_id, dyscyplina_id=None, min_slot_filled=0.8
 ):
     """
-    Zadanie łączące dwa etapy:
-    1. Przeliczanie metryk ewaluacyjnych od nowa
-    2. Analiza możliwości odpinania prac wieloautorskich
+    Wrapper wywołujący analizę unpinning po zakończeniu metryk.
+    Używany w Celery chain: metryki -> unpinning.
 
     Args:
+        metrics_result: Wynik zadania generuj_metryki_task_parallel (ignorowany)
         uczelnia_id: ID uczelni
         dyscyplina_id: ID dyscypliny (opcjonalnie, jeśli None to wszystkie)
         min_slot_filled: Minimalny próg wypełnienia slotów (domyślnie 0.8 = 80%)
 
     Returns:
-        Dictionary z wynikami analizy
+        Dictionary z wynikami analizy unpinning
     """
-    from time import sleep
-
-    from bpp.models import Uczelnia
-    from ewaluacja_metryki.models import MetrykaAutora, StatusGenerowania
-    from ewaluacja_metryki.tasks import generuj_metryki_task_parallel
-
-    uczelnia = Uczelnia.objects.get(pk=uczelnia_id)
+    from ewaluacja_metryki.models import MetrykaAutora
 
     logger.info(
-        f"Starting combined metrics recalculation and unpinning analysis for {uczelnia}"
+        f"Metrics task completed with result: {metrics_result}. "
+        f"Starting unpinning analysis for uczelnia_id={uczelnia_id}, "
+        f"dyscyplina_id={dyscyplina_id}"
     )
 
-    # ETAP 1: Przeliczanie metryk (0-50%)
-    self.update_state(
-        state="PROGRESS",
-        meta={
-            "stage": "metrics",
-            "step": "deleting_old",
-            "progress": 0,
-            "message": "Usuwanie starych metryk...",
-        },
-    )
+    # Sprawdź ile metryk zostało utworzonych
+    metrics_count = MetrykaAutora.objects.count()
+    logger.info(f"Found {metrics_count} metrics in database")
 
-    # Usuń stare metryki
-    metryki_count = MetrykaAutora.objects.count()
-    if metryki_count > 0:
-        logger.info(f"Deleting {metryki_count} old metrics before recalculation...")
-        MetrykaAutora.objects.all().delete()
-        logger.info("Deleted old metrics")
-
-    # Uruchom przeliczanie metryk
-    self.update_state(
-        state="PROGRESS",
-        meta={
-            "stage": "metrics",
-            "step": "calculating",
-            "progress": 5,
-            "message": "Uruchamianie przeliczania metryk...",
-        },
-    )
-
-    metrics_task = generuj_metryki_task_parallel.delay()
-    logger.info(f"Started metrics recalculation task: {metrics_task.id}")
-
-    # Czekaj na zakończenie przez monitorowanie StatusGenerowania
-    max_wait = 1800  # 30 minut
-    waited = 0
-    check_interval = 5
-
-    while waited < max_wait:
-        status = StatusGenerowania.get_or_create()
-        if not status.w_trakcie:
-            # Metryki przeliczone
-            logger.info("Metrics recalculation completed")
-            break
-
-        sleep(check_interval)
-        waited += check_interval
-
-        # Aktualizuj progress (5-50%)
-        progress = min(5 + int((waited / max_wait) * 45), 50)
-        self.update_state(
-            state="PROGRESS",
-            meta={
-                "stage": "metrics",
-                "step": "calculating",
-                "progress": progress,
-                "message": f"Przeliczanie metryk w toku... ({waited}s / {max_wait}s)",
-            },
+    if metrics_count == 0:
+        logger.warning(
+            "No metrics found in database! Unpinning analysis will likely find nothing."
         )
 
-    # Odśwież status z bazy przed finalną walidacją
-    logger.info(
-        f"Exited wait loop after {waited}s. Refreshing status before validation..."
+    # Wywołaj analizę unpinning
+    result = _analyze_multi_author_works_impl(
+        self, uczelnia_id, dyscyplina_id, min_slot_filled, progress_offset=0
     )
-    status.refresh_from_db()
-    logger.info(f"Status after refresh: w_trakcie={status.w_trakcie}")
-
-    if status.w_trakcie:
-        error_msg = f"Timeout waiting for metrics recalculation after {waited}s"
-        logger.error(error_msg)
-        raise Exception(error_msg)
-
-    # Sprawdź czy metryki zostały utworzone
-    final_metryki_count = MetrykaAutora.objects.count()
-    logger.info(
-        f"Metrics recalculation completed. Created {final_metryki_count} metrics"
-    )
-
-    if final_metryki_count == 0:
-        logger.warning("No metrics created after recalculation!")
-
-    # ETAP 2: Analiza unpinning (50-100%)
-    self.update_state(
-        state="PROGRESS",
-        meta={
-            "stage": "unpinning",
-            "step": "starting",
-            "progress": 50,
-            "message": "Rozpoczynanie analizy możliwości odpięć...",
-            "metrics_created": final_metryki_count,
-        },
-    )
-
-    logger.info(
-        f"Starting unpinning analysis after metrics recalculation. "
-        f"Calling _analyze_multi_author_works_impl with uczelnia_id={uczelnia_id}, "
-        f"dyscyplina_id={dyscyplina_id}, min_slot_filled={min_slot_filled}"
-    )
-
-    # Wywołaj implementację analizy unpinning z offsetem 50%
-    try:
-        result = _analyze_multi_author_works_impl(
-            self, uczelnia_id, dyscyplina_id, min_slot_filled, progress_offset=50
-        )
-        logger.info(f"Unpinning analysis completed successfully: {result}")
-    except Exception as e:
-        logger.error(f"ERROR in unpinning analysis: {e}", exc_info=True)
-        raise
 
     # Dodaj informacje o metrykach do wyniku
-    result["metrics_recalculated"] = True
-    result["metrics_count"] = final_metryki_count
+    result["metrics_count"] = metrics_count
+    result["metrics_result"] = metrics_result
 
-    logger.info(f"Combined task completed successfully: {result}")
+    logger.info(f"Unpinning analysis completed: {result}")
 
     return result
 

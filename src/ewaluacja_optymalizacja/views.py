@@ -1466,11 +1466,15 @@ def analyze_unpinning_opportunities(request):
 
     ZAWSZE najpierw przelicza metryki (usuwa stare i generuje nowe),
     a następnie automatycznie uruchamia analizę prac wieloautorskich.
+
+    Używa Celery chain do sekwencyjnego wykonania: metryki -> unpinning.
     """
-    from ewaluacja_metryki.models import StatusGenerowania
-    from ewaluacja_optymalizacja.tasks import (
-        analyze_unpinning_with_metrics_recalculation,
-    )
+    from celery import chain
+
+    from ewaluacja_metryki.models import MetrykaAutora, StatusGenerowania
+    from ewaluacja_metryki.tasks import generuj_metryki_task_parallel
+    from ewaluacja_metryki.utils import get_default_rodzaje_autora
+    from ewaluacja_optymalizacja.tasks import run_unpinning_after_metrics_wrapper
 
     # Pobierz pierwszą uczelnię (zakładamy, że jest tylko jedna)
     uczelnia = Uczelnia.objects.first()
@@ -1489,13 +1493,32 @@ def analyze_unpinning_opportunities(request):
         )
         return redirect("ewaluacja_optymalizacja:index")
 
-    # Uruchom nowe zadanie łączące oba etapy
-    task = analyze_unpinning_with_metrics_recalculation.delay(
-        uczelnia_id=uczelnia.pk, dyscyplina_id=None, min_slot_filled=0.8
+    # Usuń stare metryki
+    metryki_count = MetrykaAutora.objects.count()
+    if metryki_count > 0:
+        logger.info(f"Deleting {metryki_count} old metrics before recalculation...")
+        MetrykaAutora.objects.all().delete()
+        logger.info("Deleted old metrics")
+
+    # Stwórz Celery chain: metryki -> unpinning
+    # Pierwszy task (metryki) zwraca wynik, który jest przekazywany do drugiego (unpinning wrapper)
+    workflow = chain(
+        generuj_metryki_task_parallel.s(
+            rodzaje_autora=get_default_rodzaje_autora(),
+            nadpisz=True,
+            przelicz_liczbe_n=True,
+        ),  # Przelicz metryki z jawnymi parametrami
+        run_unpinning_after_metrics_wrapper.s(  # Potem uruchom unpinning
+            uczelnia_id=uczelnia.pk, dyscyplina_id=None, min_slot_filled=0.8
+        ),
     )
 
+    # Uruchom chain
+    result = workflow.apply_async()
+
     logger.info(
-        f"Started combined metrics recalculation and unpinning analysis task: {task.id}"
+        f"Started metrics->unpinning chain. Chain ID: {result.id}, "
+        f"Parent task (metrics): {result.parent.id if result.parent else 'None'}"
     )
 
     messages.info(
@@ -1504,9 +1527,9 @@ def analyze_unpinning_opportunities(request):
         "Zostaniesz przekierowany do strony postępu.",
     )
 
-    # Przekieruj do strony statusu łączonego zadania
+    # Przekieruj do strony statusu - result.id to ID ostatniego zadania w chain (unpinning)
     return redirect(
-        "ewaluacja_optymalizacja:unpinning-combined-status", task_id=task.id
+        "ewaluacja_optymalizacja:unpinning-combined-status", task_id=result.id
     )
 
 
