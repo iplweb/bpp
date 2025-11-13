@@ -126,8 +126,6 @@ def finalizuj_generowanie_metryk(results):
     Returns:
         Dict z podsumowaniem: processed, skipped, errors, total
     """
-    from django.core.cache import cache
-
     status = StatusGenerowania.get_or_create()
 
     # Odśwież status z bazy danych aby pobrać aktualną wartość liczba_przetworzonych
@@ -165,36 +163,6 @@ def finalizuj_generowanie_metryk(results):
         f"Przetworzono: {actual_processed}, pominięto: {skipped}, błędy: {errors}, "
         f"łącznie: {total}"
     )
-
-    # Sprawdź czy należy uruchomić analizę unpinning po przeliczeniu metryk
-    cache_key = "run_unpinning_after_metrics"
-    unpinning_params = cache.get(cache_key)
-
-    if unpinning_params:
-        logger.info(
-            f"Znaleziono flagę uruchomienia analizy unpinning w cache. Parametry: {unpinning_params}"
-        )
-
-        # Wyczyść cache
-        cache.delete(cache_key)
-
-        # Uruchom analizę unpinning
-        try:
-            from ewaluacja_optymalizacja.tasks import analyze_multi_author_works_task
-
-            uczelnia_pk = unpinning_params.get("uczelnia_pk")
-            dyscyplina_id = unpinning_params.get("dyscyplina_id")
-
-            logger.info(
-                f"Uruchamianie analizy unpinning dla uczelni {uczelnia_pk}, "
-                f"dyscyplina: {dyscyplina_id}"
-            )
-
-            task = analyze_multi_author_works_task.delay(uczelnia_pk, dyscyplina_id)
-
-            logger.info(f"Uruchomiono analizę unpinning. Task ID: {task.id}")
-        except Exception as e:
-            logger.error(f"Błąd podczas uruchamiania analizy unpinning: {str(e)}")
 
     return {
         "success": True,

@@ -39,6 +39,11 @@ urlpatterns = [
         name="analyze-unpinning",
     ),
     path(
+        "unpinning-combined-status/<str:task_id>/",
+        views.unpinning_combined_status,
+        name="unpinning-combined-status",
+    ),
+    path(
         "unpinning-status/<str:task_id>/",
         views.unpinning_analysis_status,
         name="unpinning-status",

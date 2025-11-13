@@ -1281,30 +1281,18 @@ def simulate_unpinning_benefit(  # noqa: C901
         return None
 
 
-@shared_task(
-    base=Singleton,
-    unique_on=["uczelnia_id", "dyscyplina_id"],
-    lock_expiry=3600,
-    bind=True,
-    time_limit=1800,
-)
-def analyze_multi_author_works_task(  # noqa: C901
-    self, uczelnia_id, dyscyplina_id=None, min_slot_filled=0.8
+def _analyze_multi_author_works_impl(  # noqa: C901
+    task, uczelnia_id, dyscyplina_id=None, min_slot_filled=0.8, progress_offset=0
 ):
     """
-    Analizuje prace wieloautorskie szukając możliwości odpinania.
-
-    Znajdź prace gdzie:
-    - Autor A: praca NIE weszła do zebranych (nie ma w prace_nazbierane)
-              AND ma PEŁNE sloty (slot_nazbierany >= min_slot_filled * slot_maksymalny)
-    - Autor B: praca WESZŁA do zebranych (jest w prace_nazbierane)
-              AND ma niepełne sloty (może wziąć więcej)
-    - Odpięcie dla Autora A umożliwi Autorowi B większy udział
+    Implementacja analizy prac wieloautorskich - wydzielona do wielokrotnego użycia.
 
     Args:
+        task: Celery task object (self) do aktualizacji statusu
         uczelnia_id: ID uczelni
         dyscyplina_id: ID dyscypliny (opcjonalnie, jeśli None to wszystkie)
         min_slot_filled: Minimalny próg wypełnienia slotów (domyślnie 0.8 = 80%)
+        progress_offset: Bazowy offset dla progressu (0-100)
 
     Returns:
         Dictionary z wynikami analizy
@@ -1324,8 +1312,9 @@ def analyze_multi_author_works_task(  # noqa: C901
     )
 
     # Update task state
-    self.update_state(
-        state="PROGRESS", meta={"step": "loading_metrics", "progress": 10}
+    task.update_state(
+        state="PROGRESS",
+        meta={"step": "loading_metrics", "progress": progress_offset + 10},
     )
 
     # Filtruj metryki - szukamy autorów z PEŁNYMI slotami (>=80% wypełnienia)
@@ -1345,11 +1334,11 @@ def analyze_multi_author_works_task(  # noqa: C901
     logger.info(f"Loaded {len(metryki_dict)} metrics with unfilled slots")
 
     # Update progress
-    self.update_state(
+    task.update_state(
         state="PROGRESS",
         meta={
             "step": "analyzing_works",
-            "progress": 30,
+            "progress": progress_offset + 30,
             "metrics_loaded": len(metryki_dict),
         },
     )
@@ -1429,11 +1418,11 @@ def analyze_multi_author_works_task(  # noqa: C901
     logger.info(f"Analyzing {len(works_by_rekord)} works with multiple authors")
 
     # Update progress
-    self.update_state(
+    task.update_state(
         state="PROGRESS",
         meta={
             "step": "finding_opportunities",
-            "progress": 50,
+            "progress": progress_offset + 50,
             "works_to_analyze": len(works_by_rekord),
         },
     )
@@ -1571,8 +1560,10 @@ def analyze_multi_author_works_task(  # noqa: C901
 
         analyzed_count += 1
         if analyzed_count % 20 == 0:
-            progress = 50 + int((analyzed_count / len(works_by_rekord)) * 40)
-            self.update_state(
+            progress = (
+                progress_offset + 50 + int((analyzed_count / len(works_by_rekord)) * 40)
+            )
+            task.update_state(
                 state="PROGRESS",
                 meta={
                     "step": "finding_opportunities",
@@ -1586,11 +1577,11 @@ def analyze_multi_author_works_task(  # noqa: C901
     logger.info(f"Found {len(opportunities)} unpinning opportunities")
 
     # Update progress
-    self.update_state(
+    task.update_state(
         state="PROGRESS",
         meta={
             "step": "saving_results",
-            "progress": 90,
+            "progress": progress_offset + 90,
             "opportunities_found": len(opportunities),
         },
     )
@@ -1638,3 +1629,188 @@ def analyze_multi_author_works_task(  # noqa: C901
     }
 
     return result
+
+
+@shared_task(
+    base=Singleton,
+    unique_on=["uczelnia_id"],
+    lock_expiry=3600,
+    bind=True,
+    time_limit=3600,
+)
+def analyze_unpinning_with_metrics_recalculation(
+    self, uczelnia_id, dyscyplina_id=None, min_slot_filled=0.8
+):
+    """
+    Zadanie łączące dwa etapy:
+    1. Przeliczanie metryk ewaluacyjnych od nowa
+    2. Analiza możliwości odpinania prac wieloautorskich
+
+    Args:
+        uczelnia_id: ID uczelni
+        dyscyplina_id: ID dyscypliny (opcjonalnie, jeśli None to wszystkie)
+        min_slot_filled: Minimalny próg wypełnienia slotów (domyślnie 0.8 = 80%)
+
+    Returns:
+        Dictionary z wynikami analizy
+    """
+    from time import sleep
+
+    from bpp.models import Uczelnia
+    from ewaluacja_metryki.models import MetrykaAutora, StatusGenerowania
+    from ewaluacja_metryki.tasks import generuj_metryki_task_parallel
+
+    uczelnia = Uczelnia.objects.get(pk=uczelnia_id)
+
+    logger.info(
+        f"Starting combined metrics recalculation and unpinning analysis for {uczelnia}"
+    )
+
+    # ETAP 1: Przeliczanie metryk (0-50%)
+    self.update_state(
+        state="PROGRESS",
+        meta={
+            "stage": "metrics",
+            "step": "deleting_old",
+            "progress": 0,
+            "message": "Usuwanie starych metryk...",
+        },
+    )
+
+    # Usuń stare metryki
+    metryki_count = MetrykaAutora.objects.count()
+    if metryki_count > 0:
+        logger.info(f"Deleting {metryki_count} old metrics before recalculation...")
+        MetrykaAutora.objects.all().delete()
+        logger.info("Deleted old metrics")
+
+    # Uruchom przeliczanie metryk
+    self.update_state(
+        state="PROGRESS",
+        meta={
+            "stage": "metrics",
+            "step": "calculating",
+            "progress": 5,
+            "message": "Uruchamianie przeliczania metryk...",
+        },
+    )
+
+    metrics_task = generuj_metryki_task_parallel.delay()
+    logger.info(f"Started metrics recalculation task: {metrics_task.id}")
+
+    # Czekaj na zakończenie przez monitorowanie StatusGenerowania
+    max_wait = 1800  # 30 minut
+    waited = 0
+    check_interval = 5
+
+    while waited < max_wait:
+        status = StatusGenerowania.get_or_create()
+        if not status.w_trakcie:
+            # Metryki przeliczone
+            logger.info("Metrics recalculation completed")
+            break
+
+        sleep(check_interval)
+        waited += check_interval
+
+        # Aktualizuj progress (5-50%)
+        progress = min(5 + int((waited / max_wait) * 45), 50)
+        self.update_state(
+            state="PROGRESS",
+            meta={
+                "stage": "metrics",
+                "step": "calculating",
+                "progress": progress,
+                "message": f"Przeliczanie metryk w toku... ({waited}s / {max_wait}s)",
+            },
+        )
+
+    # Odśwież status z bazy przed finalną walidacją
+    logger.info(
+        f"Exited wait loop after {waited}s. Refreshing status before validation..."
+    )
+    status.refresh_from_db()
+    logger.info(f"Status after refresh: w_trakcie={status.w_trakcie}")
+
+    if status.w_trakcie:
+        error_msg = f"Timeout waiting for metrics recalculation after {waited}s"
+        logger.error(error_msg)
+        raise Exception(error_msg)
+
+    # Sprawdź czy metryki zostały utworzone
+    final_metryki_count = MetrykaAutora.objects.count()
+    logger.info(
+        f"Metrics recalculation completed. Created {final_metryki_count} metrics"
+    )
+
+    if final_metryki_count == 0:
+        logger.warning("No metrics created after recalculation!")
+
+    # ETAP 2: Analiza unpinning (50-100%)
+    self.update_state(
+        state="PROGRESS",
+        meta={
+            "stage": "unpinning",
+            "step": "starting",
+            "progress": 50,
+            "message": "Rozpoczynanie analizy możliwości odpięć...",
+            "metrics_created": final_metryki_count,
+        },
+    )
+
+    logger.info(
+        f"Starting unpinning analysis after metrics recalculation. "
+        f"Calling _analyze_multi_author_works_impl with uczelnia_id={uczelnia_id}, "
+        f"dyscyplina_id={dyscyplina_id}, min_slot_filled={min_slot_filled}"
+    )
+
+    # Wywołaj implementację analizy unpinning z offsetem 50%
+    try:
+        result = _analyze_multi_author_works_impl(
+            self, uczelnia_id, dyscyplina_id, min_slot_filled, progress_offset=50
+        )
+        logger.info(f"Unpinning analysis completed successfully: {result}")
+    except Exception as e:
+        logger.error(f"ERROR in unpinning analysis: {e}", exc_info=True)
+        raise
+
+    # Dodaj informacje o metrykach do wyniku
+    result["metrics_recalculated"] = True
+    result["metrics_count"] = final_metryki_count
+
+    logger.info(f"Combined task completed successfully: {result}")
+
+    return result
+
+
+@shared_task(
+    base=Singleton,
+    unique_on=["uczelnia_id", "dyscyplina_id"],
+    lock_expiry=3600,
+    bind=True,
+    time_limit=1800,
+)
+def analyze_multi_author_works_task(
+    self, uczelnia_id, dyscyplina_id=None, min_slot_filled=0.8
+):
+    """
+    Analizuje prace wieloautorskie szukając możliwości odpinania.
+
+    Znajdź prace gdzie:
+    - Autor A: praca NIE weszła do zebranych (nie ma w prace_nazbierane)
+              AND ma PEŁNE sloty (slot_nazbierany >= min_slot_filled * slot_maksymalny)
+    - Autor B: praca WESZŁA do zebranych (jest w prace_nazbierane)
+              AND ma niepełne sloty (może wziąć więcej)
+    - Odpięcie dla Autora A umożliwi Autorowi B większy udział
+
+    Args:
+        uczelnia_id: ID uczelni
+        dyscyplina_id: ID dyscypliny (opcjonalnie, jeśli None to wszystkie)
+        min_slot_filled: Minimalny próg wypełnienia slotów (domyślnie 0.8 = 80%)
+
+    Returns:
+        Dictionary z wynikami analizy
+    """
+    return _analyze_multi_author_works_impl(
+        self, uczelnia_id, dyscyplina_id, min_slot_filled, progress_offset=0
+    )

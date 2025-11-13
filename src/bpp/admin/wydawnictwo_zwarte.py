@@ -1,6 +1,7 @@
 from dal import autocomplete
 from django import forms
 from django.contrib import admin, messages
+from django.core.exceptions import ValidationError
 from djangoql.admin import DjangoQLSearchMixin
 from mptt.forms import TreeNodeChoiceField
 from taggit.forms import TextareaTagWidget
@@ -32,6 +33,7 @@ from bpp.models.konferencja import Konferencja
 from bpp.models.seria_wydawnicza import Seria_Wydawnicza
 from crossref_bpp.mixins import AdminCrossrefAPIMixin, AdminCrossrefPBNAPIMixin
 from dynamic_columns.mixins import DynamicColumnsMixin
+from import_common.normalization import normalize_isbn
 from pbn_api.models import Publication
 
 from .actions import (
@@ -179,6 +181,65 @@ class Wydawnictwo_ZwarteForm(
     CleanDOIWWWPublicWWWMixin,
     forms.ModelForm,
 ):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._warnings = []
+
+    def _sprawdz_isbn_z_nadrzednym(
+        self, rekord_isbn, rekord_e_isbn, nadrzedne_isbn_list, nazwa_nadrzednego
+    ):
+        """
+        Sprawdza zgodność ISBN rekordu z ISBN wydawnictwa nadrzędnego.
+
+        Args:
+            rekord_isbn: ISBN rekordu
+            rekord_e_isbn: E-ISBN rekordu
+            nadrzedne_isbn_list: lista ISBN-ów nadrzędnych do sprawdzenia
+            nazwa_nadrzednego: nazwa wydawnictwa nadrzędnego (dla komunikatów)
+
+        Returns:
+            tuple: (is_valid: bool, warning_message: str|None)
+                - is_valid: True jeśli walidacja przeszła, False jeśli błąd
+                - warning_message: None lub komunikat ostrzeżenia
+        """
+        # Normalizuj ISBN rekordu
+        norm_isbn = normalize_isbn(rekord_isbn)
+        norm_e_isbn = normalize_isbn(rekord_e_isbn)
+
+        # Normalizuj ISBN nadrzędnych
+        norm_nadrzedne = [normalize_isbn(isbn) for isbn in nadrzedne_isbn_list if isbn]
+
+        # Przypadek 1: rekord nie ma żadnego ISBN - pozwól bez ostrzeżenia
+        if not norm_isbn and not norm_e_isbn:
+            return (True, None)
+
+        # Przypadek 2: nadrzędne nie ma żadnego ISBN - pozwól z ostrzeżeniem
+        if not any(norm_nadrzedne):
+            return (
+                True,
+                f"Wydawnictwo nadrzędne '{nazwa_nadrzednego}' nie ma uzupełnionego pola ISBN",
+            )
+
+        # Przypadek 3: sprawdź zgodność - jeśli którykolwiek ISBN rekordu pasuje do któregokolwiek ISBN nadrzędnego
+        rekord_isbns = [i for i in [norm_isbn, norm_e_isbn] if i]
+        if any(
+            r_isbn == n_isbn
+            for r_isbn in rekord_isbns
+            for n_isbn in norm_nadrzedne
+            if n_isbn
+        ):
+            return (True, None)
+
+        # Przypadek 4: niezgodność - nie pozwól na zapis
+        isbn_display = rekord_isbn or rekord_e_isbn
+        nadrzedne_isbn_display = ", ".join(
+            [isbn for isbn in nadrzedne_isbn_list if isbn]
+        )
+        return (
+            False,
+            f"ISBN rekordu ({isbn_display}) nie zgadza się z ISBN wydawnictwa nadrzędnego ({nadrzedne_isbn_display})",
+        )
+
     wydawnictwo_nadrzedne = forms.ModelChoiceField(
         required=False,
         queryset=Wydawnictwo_Zwarte.objects.all(),
@@ -244,6 +305,42 @@ class Wydawnictwo_ZwarteForm(
     )
 
     status_korekty = helpers.mixins.DomyslnyStatusKorektyMixin.status_korekty
+
+    def clean(self):
+        cleaned_data = super().clean()
+
+        isbn = cleaned_data.get("isbn")
+        e_isbn = cleaned_data.get("e_isbn")
+        wydawnictwo_nadrzedne = cleaned_data.get("wydawnictwo_nadrzedne")
+        wydawnictwo_nadrzedne_w_pbn = cleaned_data.get("wydawnictwo_nadrzedne_w_pbn")
+
+        # Walidacja ISBN dla wydawnictwo_nadrzedne
+        if wydawnictwo_nadrzedne:
+            nadrzedne_isbns = [wydawnictwo_nadrzedne.isbn, wydawnictwo_nadrzedne.e_isbn]
+            is_valid, message = self._sprawdz_isbn_z_nadrzednym(
+                isbn, e_isbn, nadrzedne_isbns, wydawnictwo_nadrzedne.tytul_oryginalny
+            )
+
+            if not is_valid:
+                raise ValidationError({"isbn": message, "e_isbn": message})
+
+            if message:
+                self._warnings.append(message)
+
+        # Walidacja ISBN dla wydawnictwo_nadrzedne_w_pbn
+        if wydawnictwo_nadrzedne_w_pbn:
+            nadrzedne_isbns = [wydawnictwo_nadrzedne_w_pbn.isbn]
+            is_valid, message = self._sprawdz_isbn_z_nadrzednym(
+                isbn, e_isbn, nadrzedne_isbns, str(wydawnictwo_nadrzedne_w_pbn)
+            )
+
+            if not is_valid:
+                raise ValidationError({"isbn": message, "e_isbn": message})
+
+            if message:
+                self._warnings.append(message)
+
+        return cleaned_data
 
     class Meta:
         model = Wydawnictwo_Zwarte
@@ -436,6 +533,12 @@ class Wydawnictwo_ZwarteAdmin(
 
     def save_model(self, request, obj, form, change):
         poszukaj_duplikatu_pola_www_i_ewentualnie_zmien(request, obj)
+
+        # Wyświetl ostrzeżenia z walidacji ISBN
+        if hasattr(form, "_warnings") and form._warnings:
+            for warning in form._warnings:
+                messages.warning(request, warning)
+
         super().save_model(request, obj, form, change)
         if (
             obj.rok >= 2017

@@ -1467,9 +1467,10 @@ def analyze_unpinning_opportunities(request):
     ZAWSZE najpierw przelicza metryki (usuwa stare i generuje nowe),
     a następnie automatycznie uruchamia analizę prac wieloautorskich.
     """
-    from django.core.cache import cache
-
-    from ewaluacja_metryki.models import MetrykaAutora, StatusGenerowania
+    from ewaluacja_metryki.models import StatusGenerowania
+    from ewaluacja_optymalizacja.tasks import (
+        analyze_unpinning_with_metrics_recalculation,
+    )
 
     # Pobierz pierwszą uczelnię (zakładamy, że jest tylko jedna)
     uczelnia = Uczelnia.objects.first()
@@ -1488,42 +1489,101 @@ def analyze_unpinning_opportunities(request):
         )
         return redirect("ewaluacja_optymalizacja:index")
 
-    # Krok 1: Usuń wszystkie stare metryki
-    metryki_count = MetrykaAutora.objects.count()
-    if metryki_count > 0:
-        logger.info(f"Usuwanie {metryki_count} starych metryk przed przeliczeniem...")
-        MetrykaAutora.objects.all().delete()
-        logger.info("Usunięto stare metryki")
-
-    # Krok 2: Zapisz w cache informację, że po przeliczeniu metryk
-    # należy uruchomić analizę unpinning
-    cache_key = "run_unpinning_after_metrics"
-    cache.set(
-        cache_key,
-        {
-            "uczelnia_pk": uczelnia.pk,
-            "dyscyplina_id": None,
-            "requested_by_user_id": request.user.id,
-        },
-        timeout=3600,  # 1 godzina
+    # Uruchom nowe zadanie łączące oba etapy
+    task = analyze_unpinning_with_metrics_recalculation.delay(
+        uczelnia_id=uczelnia.pk, dyscyplina_id=None, min_slot_filled=0.8
     )
+
     logger.info(
-        f"Zapisano w cache flagę uruchomienia analizy unpinning po przeliczeniu metryk (key: {cache_key})"
+        f"Started combined metrics recalculation and unpinning analysis task: {task.id}"
     )
-
-    # Krok 3: Uruchom przeliczanie metryk
-    from ewaluacja_metryki.tasks import generuj_metryki_task_parallel
-
-    generuj_metryki_task_parallel.delay()
 
     messages.info(
         request,
-        "Rozpoczęto przeliczanie metryk ewaluacyjnych. "
-        "Po zakończeniu automatycznie rozpocznie się analiza możliwości odpinania.",
+        "Rozpoczęto przeliczanie metryk i analizę możliwości odpinania. "
+        "Zostaniesz przekierowany do strony postępu.",
     )
 
-    # Przekieruj do strony listy metryk, która pokaże progress
-    return redirect("ewaluacja_metryki:lista")
+    # Przekieruj do strony statusu łączonego zadania
+    return redirect(
+        "ewaluacja_optymalizacja:unpinning-combined-status", task_id=task.id
+    )
+
+
+@login_required
+def unpinning_combined_status(request, task_id):
+    """
+    Wyświetla status łączonego zadania: przeliczanie metryk + analiza unpinning.
+    Supports HTMX partial updates.
+    """
+    task = AsyncResult(task_id)
+
+    context = {
+        "task_id": task_id,
+    }
+
+    # Pobierz informacje o zadaniu
+    task_info = task.info if task.info and isinstance(task.info, dict) else {}
+    current_stage = task_info.get("stage", "unknown")
+    current_step = task_info.get("step", "unknown")
+
+    logger.info(
+        f"Checking combined task {task_id}: stage={current_stage}, step={current_step}, "
+        f"task.info={task_info}"
+    )
+
+    # Jeśli zadanie się nie zakończyło
+    if not task.ready():
+        context["task_state"] = "PROGRESS"
+        context["task_ready"] = False
+        context["info"] = task_info
+        context["info"]["stage"] = current_stage
+        context["info"]["step"] = current_step
+
+    # Sprawdź czy zadanie zakończyło się błędem
+    elif task.failed():
+        error_info = str(task.info)
+        logger.error(f"Task {task_id} failed: {error_info}")
+        context["error"] = error_info
+        context["success"] = False
+        context["task_ready"] = True
+
+    # Zadanie zakończone pomyślnie
+    elif task.successful():
+        result = task.result
+        logger.info(f"Task {task_id} successful: {result}")
+
+        messages.success(
+            request,
+            f"Analiza zakończona pomyślnie! "
+            f"Przeliczono {result.get('metrics_count', 0)} metryk. "
+            f"Znaleziono {result.get('total_opportunities', 0)} możliwości odpinania, "
+            f"w tym {result.get('sensible_opportunities', 0)} sensownych.",
+        )
+
+        # Dla HTMX requests używamy nagłówka HX-Redirect aby wykonać full-page redirect
+        if request.headers.get("HX-Request"):
+            from django.http import HttpResponse
+            from django.urls import reverse
+
+            response = HttpResponse(status=200)
+            response["HX-Redirect"] = reverse("ewaluacja_optymalizacja:unpinning-list")
+            return response
+
+        # Dla zwykłych requestów normalny redirect
+        return redirect("ewaluacja_optymalizacja:unpinning-list")
+
+    # If HTMX request, return only the progress partial
+    if request.headers.get("HX-Request"):
+        return render(
+            request,
+            "ewaluacja_optymalizacja/_unpinning_combined_progress.html",
+            context,
+        )
+
+    return render(
+        request, "ewaluacja_optymalizacja/unpinning_combined_status.html", context
+    )
 
 
 @login_required
