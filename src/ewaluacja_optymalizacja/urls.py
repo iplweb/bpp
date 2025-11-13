@@ -32,6 +32,12 @@ urlpatterns = [
         views.reset_all_pins_status,
         name="reset-all-pins-status",
     ),
+    path("unpin-all-sensible/", views.unpin_all_sensible, name="unpin-all-sensible"),
+    path(
+        "unpin-all-sensible-status/<str:task_id>/",
+        views.unpin_all_sensible_status,
+        name="unpin-all-sensible-status",
+    ),
     path("denorm-progress/", views.denorm_progress, name="denorm-progress"),
     path(
         "analyze-unpinning/",

@@ -68,7 +68,7 @@
             <a href="/snapshot_odpiec/" class="button secondary">
                 <span class="fi-camera"></span> Snapshoty odpięć
             </a>
-            <a href="{% url 'ewaluacja_optymalizacja:analyze-unpinning' %}" class="button info">
+            <a href="{% url 'ewaluacja_optymalizacja:unpinning-list' %}" class="button info">
                 <span class="fi-zoom-in"></span> Optymalizuj przed
             </a>
             <button form="bulk-optimization-form" type="submit" class="button warning{% if dirty_count > 0 %} disabled{% endif %}"

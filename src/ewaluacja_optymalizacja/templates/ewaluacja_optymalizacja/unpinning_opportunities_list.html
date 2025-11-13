@@ -41,6 +41,20 @@
             <a href="{% url 'ewaluacja_optymalizacja:analyze-unpinning' %}" class="button">
                 <span class="fi-refresh"></span> Przelicz ponownie
             </a>
+            {% if sensible_count > 0 %}
+            <a href="{% url 'ewaluacja_optymalizacja:unpin-all-sensible' %}"
+               class="button warning"
+               onclick="return confirm('Czy na pewno chcesz odpiąć wszystkie sensowne możliwości odpinania?\n\n' +
+                   'Ta operacja:\n' +
+                   '1. Utworzy snapshot obecnego stanu\n' +
+                   '2. Odpnie {{ sensible_count }} rekordów (makes_sense=True)\n' +
+                   '3. Poczeka na zakończenie denormalizacji\n' +
+                   '4. Przeliczy metryki dla wszystkich autorów\n' +
+                   '5. Ponownie uruchomi analizę unpinning\n\n' +
+                   'Proces może potrwać 20-30 minut w zależności od liczby dyscyplin.');">
+                <span class="fi-unlock"></span> Odepnij wszystkie sensowne ({{ sensible_count }})
+            </a>
+            {% endif %}
         </div>
 
         <!-- Statystyki -->
