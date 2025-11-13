@@ -1,6 +1,6 @@
 """Institution import utilities"""
 
-from bpp.models import Jednostka, Uczelnia, Wydzial
+from bpp.models import Jednostka, Jednostka_Wydzial, Uczelnia, Wydzial
 
 from .base import ImportStepBase
 
@@ -72,8 +72,10 @@ class InstitutionImporter(ImportStepBase):
             self.log("info", "Created default unit: Jednostka Domyślna")
 
         # Link unit to department
-        if not jednostka.jednostka_wydzial_set.filter(wydzial=wydzial).exists():
-            jednostka.jednostka_wydzial_set.create(wydzial=wydzial)
+        jw, created = Jednostka_Wydzial.objects.get_or_create(
+            jednostka=jednostka, wydzial=wydzial
+        )
+        if created:
             self.log(
                 "info", f"Linked unit {jednostka.nazwa} to department {wydzial.nazwa}"
             )
@@ -91,8 +93,10 @@ class InstitutionImporter(ImportStepBase):
             self.log("info", "Created foreign unit: Obca jednostka")
 
         # Link foreign unit to department
-        if not obca_jednostka.jednostka_wydzial_set.filter(wydzial=wydzial).exists():
-            obca_jednostka.jednostka_wydzial_set.create(wydzial=wydzial)
+        jw, created = Jednostka_Wydzial.objects.get_or_create(
+            jednostka=obca_jednostka, wydzial=wydzial
+        )
+        if created:
             self.log("info", f"Linked foreign unit to department {wydzial.nazwa}")
 
         # Set foreign unit on Uczelnia

@@ -128,7 +128,7 @@ def _ensure_django_imports():
         normalize_tytul_publikacji = _normalize_tytul_publikacji
 
 
-def integruj_jezyki(client, create_if_not_exists=False):
+def integruj_jezyki(client, create_if_not_exists=False):  # noqa: C901
     for remote_lang in client.get_languages():
         try:
             lang = Language.objects.get(code=remote_lang["code"])
@@ -198,7 +198,7 @@ def integruj_kraje(client):
             c.save()
 
 
-def integruj_dyscypliny(client):
+def integruj_dyscypliny(client):  # noqa: C901
     """Import discipline groups and disciplines from PBN"""
     # First, ensure all discipline groups exist
     for remote_group in client.get_discipline_groups():
@@ -975,7 +975,9 @@ def pobierz_ludzi_z_uczelni(client_or_token: PBNClient, instutition_id, callback
 
     for person in elementy:
         if not Institution.objects.filter(pk=person["institutionId"]).exists():
-            print(f"Pobieram extra instytucję {person['institutionName']}")
+            print(
+                f"Pobieram extra instytucję {person.get('institutionName', '[brak nazwy]')}"
+            )
             zapisz_mongodb(
                 client_or_token.get_institution_by_id(person["institutionId"]),
                 Institution,
@@ -985,13 +987,13 @@ def pobierz_ludzi_z_uczelni(client_or_token: PBNClient, instutition_id, callback
         OsobaZInstytucji.objects.update_or_create(
             personId=Scientist.objects.get(pk=person["personId"]),
             defaults={
-                "firstName": person["firstName"],
-                "lastName": person["lastName"],
+                "firstName": person.get("firstName", ""),
+                "lastName": person.get("lastName", ""),
                 "institutionId": Institution.objects.get(pk=person["institutionId"]),
-                "institutionName": person["institutionName"],
+                "institutionName": person.get("institutionName", ""),
                 "title": person.get("title"),
-                "polonUuid": person["polonUuid"],
-                "phdStudent": person["phdStudent"],
+                "polonUuid": person.get("polonUuid"),
+                "phdStudent": person.get("phdStudent", False),
                 "_from": person.get("from"),
                 "_to": person.get("to"),
             },
@@ -1113,7 +1115,7 @@ def weryfikuj_orcidy(client: PBNClient, instutition_id):
         )
 
 
-def matchuj_autora_po_stronie_pbn(imiona, nazwisko, orcid):
+def matchuj_autora_po_stronie_pbn(imiona, nazwisko, orcid):  # noqa: C901
     if orcid is not None:
         # Szukamy w rekordach zaimportowanych przez API instytucji
 
@@ -1239,7 +1241,7 @@ def integruj_wszystkich_niezintegrowanych_autorow():
             autor.save()
 
 
-def integruj_zrodla(disable_progress_bar=False):
+def integruj_zrodla(disable_progress_bar=False):  # noqa: C901
     def fun(qry):
         found = False
         try:
@@ -1428,7 +1430,7 @@ def _integruj_publikacje(
     wait_for_results(pool, results, label=label)
 
 
-def _integruj_publikacje_threaded(
+def _integruj_publikacje_threaded(  # noqa: C901
     pubs,
     disable_threading=False,
     skip_pages=0,
@@ -1705,7 +1707,7 @@ PBN_KOMUNIKAT_ISBN_ISTNIEJE = "Publikacja o identycznym ISBN lub ISMN już istni
 PBN_KOMUNIKAT_DOI_ISTNIEJE = "Publikacja o identycznym DOI i typie już istnieje"
 
 
-def _synchronizuj_pojedyncza_publikacje(
+def _synchronizuj_pojedyncza_publikacje(  # noqa: C901
     client,
     rec,
     force_upload=False,
@@ -1967,7 +1969,7 @@ def clear_all():
         model.objects.all()._raw_delete(model.objects.db)
 
 
-def integruj_oswiadczenia_z_instytucji_pojedyncza_praca(
+def integruj_oswiadczenia_z_instytucji_pojedyncza_praca(  # noqa: C901
     elem, noted_pub, noted_aut, missing_publication_callback=None
 ):
     pub = elem.get_bpp_publication()
@@ -2083,7 +2085,7 @@ def integruj_oswiadczenia_z_instytucji(
         )
 
 
-def integruj_oswiadczenia_pbn_first_import(
+def integruj_oswiadczenia_pbn_first_import(  # noqa: C901
     client=None,
     default_jednostka=None,
     dopisuj_zwrotnie_dyscypliny_autorom=True,
