@@ -204,7 +204,7 @@ include = [
 
 [tool.bumpver]
 current_version = "v202510.1274"
-version_pattern = "vYYYY0M.BUILD[-TAG[TAGNUM]]"
+version_pattern = "vYYYY0M.BUILD[-TAGNUM]"
 commit_message = "bump version {old_version} -> {new_version}"
 commit = true
 tag = false
