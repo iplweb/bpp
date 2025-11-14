@@ -218,7 +218,7 @@ PRZED_PO_LISCIE_AUTOROW_FIELDSET = (
 EKSTRA_INFORMACJE_WYDAWNICTWO_CIAGLE_FIELDSET = (
     "Ekstra informacje",
     {
-        "classes": ("grp-collapse grp-closed",),
+        "classes": ("grp-collapse",),
         "fields": MODEL_Z_PBN_UID
         + MODEL_Z_ISSN
         + MODEL_Z_WWW
@@ -232,7 +232,7 @@ EKSTRA_INFORMACJE_WYDAWNICTWO_CIAGLE_FIELDSET = (
 EKSTRA_INFORMACJE_WYDAWNICTWO_ZWARTE_FIELDSET = (
     "Ekstra informacje",
     {
-        "classes": ("grp-collapse grp-closed",),
+        "classes": ("grp-collapse",),
         "fields": MODEL_Z_PBN_UID
         + MODEL_Z_ISSN
         + MODEL_Z_WWW
@@ -246,7 +246,7 @@ EKSTRA_INFORMACJE_WYDAWNICTWO_ZWARTE_FIELDSET = (
 EKSTRA_INFORMACJE_DOKTORSKA_HABILITACYJNA_FIELDSET = (
     "Ekstra informacje",
     {
-        "classes": ("grp-collapse grp-closed",),
+        "classes": ("grp-collapse",),
         "fields": MODEL_Z_WWW
         + MODEL_Z_PUBMEDID
         + MODEL_Z_DOI
