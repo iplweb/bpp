@@ -5,9 +5,6 @@ from .views import (
     PBNExportQueueDetailView,
     PBNExportQueueListView,
     PBNExportQueueTableView,
-    download_sent_json,
-    generate_ai_prompt,
-    generate_helpdesk_email,
     prepare_for_resend,
     resend_all_errors,
     resend_all_waiting,
@@ -57,21 +54,5 @@ urlpatterns = [
         "wake-up/",
         wake_up_queue,
         name="export-queue-wake-up",
-    ),
-    # JSON download and helper views
-    path(
-        "<int:pk>/download-json/",
-        download_sent_json,
-        name="export-queue-download-json",
-    ),
-    path(
-        "<int:pk>/helpdesk-email/",
-        generate_helpdesk_email,
-        name="export-queue-helpdesk-email",
-    ),
-    path(
-        "<int:pk>/ai-prompt/",
-        generate_ai_prompt,
-        name="export-queue-ai-prompt",
     ),
 ]

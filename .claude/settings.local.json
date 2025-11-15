@@ -53,7 +53,9 @@
       "Bash(git checkout:*)",
       "Bash(docker inspect:*)",
       "Bash(docker logs:*)",
-      "Bash(docker exec:*)"
+      "Bash(docker exec:*)",
+      "Bash(git add:*)",
+      "Bash(pre-commit)"
     ],
     "deny": [],
     "ask": [],
