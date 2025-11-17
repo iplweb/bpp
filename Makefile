@@ -351,3 +351,8 @@ denorm-queue:
 
 cache-delete:
 	python src/manage.py clear_cache
+
+docker-celery-inspect:
+	docker compose exec workerserver-general uv run celery -A django_bpp.celery_tasks inspect active
+	docker compose exec workerserver-general uv run celery -A django_bpp.celery_tasks inspect active_queues
+	docker compose exec workerserver-general uv run celery -A django_bpp.celery_tasks inspect stats | grep max-concurrency

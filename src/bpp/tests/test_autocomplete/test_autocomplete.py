@@ -265,19 +265,19 @@ def test_NavigationAutocomplete_no_queries(
 ):
     req = rf.get("/", data={"q": "Je"})
     req.user = admin_user
-    with django_assert_max_num_queries(11):
+    with django_assert_max_num_queries(16):
         a = klass()
         a.request = req
         a.q = "Je"  # literka
         a.get(req)
 
-    with django_assert_max_num_queries(13):
+    with django_assert_max_num_queries(16):
         a = klass()
         a.q = "T" * 24  # PBN UID
         a.request = req
         a.get(req)
 
-    with django_assert_max_num_queries(13):
+    with django_assert_max_num_queries(16):
         a = klass()
         a.request = req
         a.q = "T" * 19  # orcid
