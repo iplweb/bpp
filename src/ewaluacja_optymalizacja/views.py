@@ -1635,6 +1635,9 @@ def analyze_unpinning_opportunities(request):
         f"Parent task (metrics): {result.parent.id if result.parent else 'None'}"
     )
 
+    # Store task_id in session for progress tracking
+    request.session["unpinning_task_id"] = result.id
+
     messages.info(
         request,
         "Rozpoczęto przeliczanie metryk i analizę możliwości odpinania. "
@@ -1653,6 +1656,8 @@ def unpinning_combined_status(request, task_id):
     Wyświetla status łączonego zadania: przeliczanie metryk + analiza unpinning.
     Supports HTMX partial updates.
     """
+    from ewaluacja_metryki.models import StatusGenerowania
+
     task = AsyncResult(task_id)
 
     context = {
@@ -1677,10 +1682,32 @@ def unpinning_combined_status(request, task_id):
         context["info"]["stage"] = current_stage
         context["info"]["step"] = current_step
 
+        # Check if metrics generation is running and add real progress
+        status = StatusGenerowania.get_or_create()
+        if status.w_trakcie and current_stage == "unknown":
+            # Metrics are still running, update stage info
+            context["info"]["stage"] = "metrics"
+            context["info"]["step"] = "calculating"
+            # Calculate real progress based on StatusGenerowania
+            if status.liczba_do_przetworzenia > 0:
+                metrics_progress = int(
+                    (status.przetworzono_count / status.liczba_do_przetworzenia) * 50
+                )
+                context["info"]["progress"] = metrics_progress
+                context["info"]["analyzed"] = status.przetworzono_count
+                context["info"]["total"] = status.liczba_do_przetworzenia
+            else:
+                context["info"]["progress"] = 0
+
     # Sprawdź czy zadanie zakończyło się błędem
     elif task.failed():
         error_info = str(task.info)
         logger.error(f"Task {task_id} failed: {error_info}")
+
+        # Clear task_id from session since analysis failed
+        if "unpinning_task_id" in request.session:
+            del request.session["unpinning_task_id"]
+
         context["error"] = error_info
         context["success"] = False
         context["task_ready"] = True
@@ -1689,6 +1716,10 @@ def unpinning_combined_status(request, task_id):
     elif task.successful():
         result = task.result
         logger.info(f"Task {task_id} successful: {result}")
+
+        # Clear task_id from session since analysis is complete
+        if "unpinning_task_id" in request.session:
+            del request.session["unpinning_task_id"]
 
         messages.success(
             request,
@@ -1883,7 +1914,10 @@ def unpinning_opportunities_list(request):
     """
     Wyświetla listę możliwości odpinania prac wieloautorskich.
     """
+    from celery.result import AsyncResult
+
     from bpp.models import Dyscyplina_Naukowa
+    from ewaluacja_metryki.models import StatusGenerowania
 
     from .models import UnpinningOpportunity
 
@@ -1893,6 +1927,37 @@ def unpinning_opportunities_list(request):
     if not uczelnia:
         messages.error(request, "Nie znaleziono uczelni w systemie.")
         return redirect("ewaluacja_optymalizacja:index")
+
+    # Check if unpinning analysis is already running
+    task_id = request.session.get("unpinning_task_id")
+    if task_id:
+        task = AsyncResult(task_id)
+        # Check if task is still running (PENDING, STARTED, or PROGRESS)
+        if task.state in ["PENDING", "STARTED", "PROGRESS"]:
+            messages.info(
+                request,
+                "Analiza możliwości odpinania jest w trakcie. "
+                "Przekierowuję do strony postępu...",
+            )
+            return redirect(
+                "ewaluacja_optymalizacja:unpinning-combined-status", task_id=task_id
+            )
+        # Task finished or failed - clear from session
+        if task.state in ["SUCCESS", "FAILURE"]:
+            del request.session["unpinning_task_id"]
+
+    # Also check if metrics generation is running
+    status = StatusGenerowania.get_or_create()
+    if status.w_trakcie and task_id:
+        # Metrics are running as part of unpinning chain
+        messages.info(
+            request,
+            "Przeliczanie metryk dla analizy odpinania jest w trakcie. "
+            "Przekierowuję do strony postępu...",
+        )
+        return redirect(
+            "ewaluacja_optymalizacja:unpinning-combined-status", task_id=task_id
+        )
 
     # Podstawowe filtrowanie
     opportunities_qs = UnpinningOpportunity.objects.filter(uczelnia=uczelnia)

@@ -1311,13 +1311,13 @@ def _analyze_multi_author_works_impl(  # noqa: C901
         f"Starting unpinning analysis for {uczelnia}, dyscyplina_id={dyscyplina_id}"
     )
 
-    # Update task state
+    # Update task state - Stage 2 progress: 50-100% (offset + 0 to offset + 50)
     task.update_state(
         state="PROGRESS",
         meta={
             "stage": "unpinning",
             "step": "loading_metrics",
-            "progress": progress_offset + 10,
+            "progress": progress_offset + 5,  # 55% of total (10% of stage 2)
         },
     )
 
@@ -1343,7 +1343,7 @@ def _analyze_multi_author_works_impl(  # noqa: C901
         meta={
             "stage": "unpinning",
             "step": "analyzing_works",
-            "progress": progress_offset + 30,
+            "progress": progress_offset + 10,  # 60% of total (20% of stage 2)
             "metrics_loaded": len(metryki_dict),
         },
     )
@@ -1566,8 +1566,9 @@ def _analyze_multi_author_works_impl(  # noqa: C901
 
         analyzed_count += 1
         if analyzed_count % 5 == 0:
+            # Progress range: 60%-95% (offset+10 to offset+45)
             progress = (
-                progress_offset + 50 + int((analyzed_count / len(works_by_rekord)) * 40)
+                progress_offset + 10 + int((analyzed_count / len(works_by_rekord)) * 35)
             )
             task.update_state(
                 state="PROGRESS",
@@ -1589,7 +1590,7 @@ def _analyze_multi_author_works_impl(  # noqa: C901
         meta={
             "stage": "unpinning",
             "step": "saving_results",
-            "progress": progress_offset + 90,
+            "progress": progress_offset + 45,  # 95% of total (90% of stage 2)
             "opportunities_found": len(opportunities),
         },
     )
