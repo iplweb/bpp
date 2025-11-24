@@ -267,7 +267,7 @@ loc: clean
 	pygount -N ... -F "...,staticroot,migrations,fixtures" src --format=summary
 
 
-DOCKER_VERSION="202511.1281"
+DOCKER_VERSION="202511.1282"
 
 DOCKER_BUILD=build --platform linux/amd64 --push
 #--no-cache
@@ -351,3 +351,8 @@ denorm-queue:
 
 cache-delete:
 	python src/manage.py clear_cache
+
+docker-celery-inspect:
+	docker compose exec workerserver-general uv run celery -A django_bpp.celery_tasks inspect active
+	docker compose exec workerserver-general uv run celery -A django_bpp.celery_tasks inspect active_queues
+	docker compose exec workerserver-general uv run celery -A django_bpp.celery_tasks inspect stats | grep max-concurrency

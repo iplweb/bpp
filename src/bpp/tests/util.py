@@ -532,6 +532,42 @@ def normalize_response_content(res: HttpResponse):
 
 
 def rozwin_ekstra_informacje_na_stronie_edycji_wydawnictwa(admin_browser):
-    for elem in admin_browser.find_by_tag("h2")[:3]:
-        show_element(admin_browser, elem)  # ._element)
-        elem.click()
+    """
+    Expand "Ekstra informacje" section if it's collapsed.
+
+    Finds the <h2 class="grp-collapse-handler">Ekstra informacje</h2> header
+    and clicks it to expand, but only if the parent fieldset doesn't have
+    the "grp-open" class (meaning it's currently collapsed).
+    """
+    # Find all h2 headers with grp-collapse-handler class
+    headers = admin_browser.find_by_tag("h2")
+    ekstra_info_header = None
+
+    for header in headers:
+        if (
+            "grp-collapse-handler" in header["class"]
+            and "Ekstra informacje" in header.text
+        ):
+            ekstra_info_header = header
+            break
+
+    if ekstra_info_header is None:
+        # Header not found, nothing to do
+        return
+
+    # Find the parent fieldset
+    # Using XPath to navigate up to the fieldset ancestor
+    try:
+        fieldset = ekstra_info_header.find_by_xpath("ancestor::fieldset").first
+    except (IndexError, AttributeError):
+        # No fieldset parent found, just click the header
+        show_element(admin_browser, ekstra_info_header)
+        ekstra_info_header.click()
+        return
+
+    # Check if fieldset has "grp-open" class
+    if "grp-closed" in fieldset["class"]:
+        # Section is collapsed, expand it
+        show_element(admin_browser, ekstra_info_header)
+        ekstra_info_header.click()
+    # If it already has grp-open, do nothing (it's already expanded)

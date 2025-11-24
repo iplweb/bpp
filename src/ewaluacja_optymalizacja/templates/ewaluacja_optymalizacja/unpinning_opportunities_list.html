@@ -41,9 +41,18 @@
             <a href="{% url 'ewaluacja_optymalizacja:analyze-unpinning' %}" class="button">
                 <span class="fi-refresh"></span> Przelicz ponownie
             </a>
-            <a href="{% url 'ewaluacja_optymalizacja:unpinning-export-xlsx' %}?{% if selected_dyscyplina %}dyscyplina={{ selected_dyscyplina }}&{% endif %}{% if only_sensible %}only_sensible=1{% endif %}" class="button success">
+            <a href="{% url 'ewaluacja_optymalizacja:unpinning-export-xlsx' %}?{% if selected_dyscyplina %}dyscyplina={{ selected_dyscyplina }}&{% endif %}{% if selected_punktacja_zrodla %}punktacja_zrodla={{ selected_punktacja_zrodla }}&{% endif %}{% if only_sensible %}only_sensible=1{% endif %}" class="button success">
                 <span class="fi-page-export-csv"></span> Eksport do Excel
             </a>
+            {% if request.GET.fullwidth %}
+            <a href="?{% if selected_dyscyplina %}dyscyplina={{ selected_dyscyplina }}&{% endif %}{% if selected_punktacja_zrodla %}punktacja_zrodla={{ selected_punktacja_zrodla }}&{% endif %}{% if only_sensible %}only_sensible=1&{% endif %}sort_by={{ sort_by }}&sort_dir={{ sort_dir }}" class="button secondary">
+                <span class="fi-arrows-compress"></span> Normalna szerokość
+            </a>
+            {% else %}
+            <a href="?{% if selected_dyscyplina %}dyscyplina={{ selected_dyscyplina }}&{% endif %}{% if selected_punktacja_zrodla %}punktacja_zrodla={{ selected_punktacja_zrodla }}&{% endif %}{% if only_sensible %}only_sensible=1&{% endif %}sort_by={{ sort_by }}&sort_dir={{ sort_dir }}&fullwidth=1" class="button secondary">
+                <span class="fi-arrows-expand"></span> Pełna szerokość
+            </a>
+            {% endif %}
             {% if sensible_count > 0 %}
             <a href="{% url 'ewaluacja_optymalizacja:unpin-all-sensible' %}"
                class="button warning"
@@ -71,14 +80,21 @@
         </div>
 
         <!-- Filtry -->
-        <form method="GET" action="{% url 'ewaluacja_optymalizacja:unpinning-list' %}">
+        <form method="GET" action="{% url 'ewaluacja_optymalizacja:unpinning-list' %}" id="filterForm">
+            <!-- Hidden inputs to preserve sorting when filtering -->
+            <input type="hidden" name="sort_by" value="{{ sort_by }}">
+            <input type="hidden" name="sort_dir" value="{{ sort_dir }}">
+            {% if request.GET.fullwidth %}
+            <input type="hidden" name="fullwidth" value="1">
+            {% endif %}
+
             <fieldset style="border: 1px solid #ccc; padding: 1rem; margin-bottom: 1rem; border-radius: 3px;">
                 <legend style="font-weight: bold; padding: 0 0.5rem;">Filtry:</legend>
 
                 <div class="row">
-                    <div class="medium-4 columns">
+                    <div class="medium-3 columns">
                         <label>Dyscyplina:
-                            <select name="dyscyplina">
+                            <select name="dyscyplina" class="auto-submit-filter">
                                 <option value="">Wszystkie</option>
                                 {% for d in dyscypliny %}
                                 <option value="{{ d.pk }}" {% if selected_dyscyplina == d.pk|stringformat:"s" %}selected{% endif %}>
@@ -89,18 +105,30 @@
                         </label>
                     </div>
 
-                    <div class="medium-4 columns">
+                    <div class="medium-3 columns">
+                        <label>Punktacja źródła:
+                            <select name="punktacja_zrodla" class="auto-submit-filter">
+                                <option value="">Wszystkie</option>
+                                <option value="0-100" {% if selected_punktacja_zrodla == "0-100" %}selected{% endif %}>0-100 punktów</option>
+                                <option value="100-140" {% if selected_punktacja_zrodla == "100-140" %}selected{% endif %}>100-140 punktów</option>
+                                <option value="140-200" {% if selected_punktacja_zrodla == "140-200" %}selected{% endif %}>140-200 punktów</option>
+                                <option value="200+" {% if selected_punktacja_zrodla == "200+" %}selected{% endif %}>200+ punktów</option>
+                            </select>
+                        </label>
+                    </div>
+
+                    <div class="medium-3 columns">
                         <label>
-                            <input type="checkbox" name="only_sensible" value="1" {% if only_sensible %}checked{% endif %}>
+                            <input type="checkbox" name="only_sensible" value="1" {% if only_sensible %}checked{% endif %} class="auto-submit-filter">
                             Tylko sensowne
                         </label>
                     </div>
 
-                    <div class="medium-4 columns">
+                    <div class="medium-3 columns">
                         <button type="submit" class="button small">
                             <span class="fi-filter"></span> Filtruj
                         </button>
-                        <a href="{% url 'ewaluacja_optymalizacja:unpinning-list' %}" class="button small secondary">
+                        <a href="{% url 'ewaluacja_optymalizacja:unpinning-list' %}{% if request.GET.fullwidth %}?fullwidth=1{% endif %}" class="button small secondary">
                             <span class="fi-x"></span> Wyczyść
                         </a>
                     </div>
@@ -108,140 +136,40 @@
             </fieldset>
         </form>
 
-        {% if opportunities %}
-        <table>
-            <thead>
-                <tr>
-                    <th style="width: 20%;">Tytuł pracy</th>
-                    <th>Dyscyplina</th>
-                    <th>Autor A<br><small>(do odpięcia)</small></th>
-                    <th>B może wziąć<br><small>(slotów)</small></th>
-                    <th>Slot w<br>pracy</th>
-                    <th>Różnica<br>pkt A</th>
-                    <th>Różnica<br>slotów A</th>
-                    <th>Różnica<br>pkt B</th>
-                    <th>Różnica<br>slotów B</th>
-                    <th>Autor B<br><small>(skorzysta)</small></th>
-                    <th style="text-align: center;">Sensowne?</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for opp in opportunities %}
-                <tr {% if opp.makes_sense %}style="background-color: #e7f7e7;"{% endif %}>
-                    <td>
-                        <a href="{% url 'ewaluacja_optymalizuj_publikacje:optymalizuj' opp.rekord.slug %}">
-                            <strong>{{ opp.rekord_tytul|truncatewords:10 }}</strong>
-                        </a>
-                    </td>
-                    <td>{{ opp.dyscyplina_naukowa.nazwa|truncatewords:3 }}</td>
-                    <td>
-                        <a href="{% url 'ewaluacja_metryki:szczegoly' opp.metryka_could_benefit.autor.slug opp.dyscyplina_naukowa.kod %}">
-                            <strong>{{ opp.autor_could_benefit }}</strong>
-                        </a><br>
-                        <small>
-                            Wykorzystanie: {{ opp.metryka_could_benefit.procent_wykorzystania_slotow|floatformat:1 }}%
-                            ({{ opp.metryka_could_benefit.slot_nazbierany|floatformat:2 }} / {{ opp.metryka_could_benefit.slot_maksymalny|floatformat:2 }})
-                        </small>
-                    </td>
-                    <td style="text-align: center;">
-                        <strong style="font-size: 1.2em; color: #c60;">{{ opp.slots_missing|floatformat:2 }}</strong>
-                    </td>
-                    <td style="text-align: center;">
-                        <strong>{{ opp.slot_in_work|floatformat:2 }}</strong>
-                    </td>
-                    <td style="text-align: center;">
-                        {% if opp.punkty_roznica_a > 0 %}
-                            <strong style="color: green;">+{{ opp.punkty_roznica_a|floatformat:2 }}</strong>
-                        {% elif opp.punkty_roznica_a < 0 %}
-                            <strong style="color: red;">{{ opp.punkty_roznica_a|floatformat:2 }}</strong>
-                        {% else %}
-                            <strong>0.00</strong>
-                        {% endif %}
-                    </td>
-                    <td style="text-align: center;">
-                        {% if opp.sloty_roznica_a > 0 %}
-                            <strong style="color: green;">+{{ opp.sloty_roznica_a|floatformat:2 }}</strong>
-                        {% elif opp.sloty_roznica_a < 0 %}
-                            <strong style="color: red;">{{ opp.sloty_roznica_a|floatformat:2 }}</strong>
-                        {% else %}
-                            <strong>0.00</strong>
-                        {% endif %}
-                    </td>
-                    <td style="text-align: center;">
-                        {% if opp.punkty_roznica_b > 0 %}
-                            <strong style="color: green;">+{{ opp.punkty_roznica_b|floatformat:2 }}</strong>
-                        {% elif opp.punkty_roznica_b < 0 %}
-                            <strong style="color: red;">{{ opp.punkty_roznica_b|floatformat:2 }}</strong>
-                        {% else %}
-                            <strong>0.00</strong>
-                        {% endif %}
-                    </td>
-                    <td style="text-align: center;">
-                        {% if opp.sloty_roznica_b > 0 %}
-                            <strong style="color: green;">+{{ opp.sloty_roznica_b|floatformat:2 }}</strong>
-                        {% elif opp.sloty_roznica_b < 0 %}
-                            <strong style="color: red;">{{ opp.sloty_roznica_b|floatformat:2 }}</strong>
-                        {% else %}
-                            <strong>0.00</strong>
-                        {% endif %}
-                    </td>
-                    <td>
-                        <a href="{% url 'ewaluacja_metryki:szczegoly' opp.metryka_currently_using.autor.slug opp.dyscyplina_naukowa.kod %}">
-                            <strong>{{ opp.autor_currently_using }}</strong>
-                        </a><br>
-                        <small>
-                            Wykorzystanie: {{ opp.metryka_currently_using.procent_wykorzystania_slotow|floatformat:1 }}%
-                            ({{ opp.metryka_currently_using.slot_nazbierany|floatformat:2 }} / {{ opp.metryka_currently_using.slot_maksymalny|floatformat:2 }})
-                        </small>
-                    </td>
-                    <td style="text-align: center;">
-                        {% if opp.makes_sense %}
-                            <span class="label success"><span class="fi-check"></span> TAK</span>
-                        {% else %}
-                            <span class="label secondary">-</span>
-                        {% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+        <script type="text/javascript">
+            // Auto-submit filter form when filters change
+            document.addEventListener('DOMContentLoaded', function() {
+                var filterForm = document.getElementById('filterForm');
+                var autoSubmitElements = document.querySelectorAll('.auto-submit-filter');
 
-        <!-- Paginacja -->
-        {% if opportunities.has_other_pages %}
-        <div class="pagination-centered">
-            <ul class="pagination">
-                {% if opportunities.has_previous %}
-                    <li class="arrow"><a href="?page={{ opportunities.previous_page_number }}{% if selected_dyscyplina %}&dyscyplina={{ selected_dyscyplina }}{% endif %}{% if only_sensible %}&only_sensible=1{% endif %}">«</a></li>
-                {% else %}
-                    <li class="arrow unavailable"><a href="">«</a></li>
-                {% endif %}
+                autoSubmitElements.forEach(function(element) {
+                    element.addEventListener('change', function() {
+                        filterForm.submit();
+                    });
+                });
+            });
+        </script>
 
-                {% for num in opportunities.paginator.page_range %}
-                    {% if opportunities.number == num %}
-                        <li class="current"><a href="">{{ num }}</a></li>
-                    {% elif num > opportunities.number|add:'-3' and num < opportunities.number|add:'3' %}
-                        <li><a href="?page={{ num }}{% if selected_dyscyplina %}&dyscyplina={{ selected_dyscyplina }}{% endif %}{% if only_sensible %}&only_sensible=1{% endif %}">{{ num }}</a></li>
-                    {% endif %}
-                {% endfor %}
-
-                {% if opportunities.has_next %}
-                    <li class="arrow"><a href="?page={{ opportunities.next_page_number }}{% if selected_dyscyplina %}&dyscyplina={{ selected_dyscyplina }}{% endif %}{% if only_sensible %}&only_sensible=1{% endif %}">»</a></li>
-                {% else %}
-                    <li class="arrow unavailable"><a href="">»</a></li>
-                {% endif %}
-            </ul>
+        {% if request.GET.fullwidth %}
+            {# Full-width mode: close .large-12.columns and .row divs, then break out of base.html containers #}
+            </div>
         </div>
-        {% endif %}
+        {# Close #content, .cell, .grid-x, .grid-container from base.html to reach grid-container-fluid level #}
+        </div></div></div></div>
 
+        {# Render table at full-width grid-container-fluid level #}
+        <div class="grid-container-fluid" style="padding: 1rem 2rem;">
+            {% include 'ewaluacja_optymalizacja/_unpinning_opportunities_table.html' %}
+        </div>
+
+        {# Reopen base.html containers for any remaining content #}
+        <div class="grid-container">
+            <div class="grid-x">
+                <div class="cell">
+                    <div id="content">
         {% else %}
-        <div class="callout warning">
-            <p>Nie znaleziono możliwości odpinania dla wybranych filtrów.</p>
-            <p>
-                <a href="{% url 'ewaluacja_optymalizacja:analyze-unpinning' %}" class="button">
-                    <span class="fi-refresh"></span> Uruchom analizę
-                </a>
-            </p>
-        </div>
+            {# Normal mode: table stays within .large-12.columns #}
+            {% include 'ewaluacja_optymalizacja/_unpinning_opportunities_table.html' %}
         {% endif %}
     </div>
 </div>

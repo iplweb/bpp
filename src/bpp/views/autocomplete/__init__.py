@@ -43,7 +43,7 @@ from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte, Wydawnictwo_Zwarte
 from bpp.models.zrodlo import Rodzaj_Zrodla, Zrodlo
 from import_common.core import normalized_db_isbn
 from import_common.normalization import normalize_isbn
-from pbn_api.models import Publisher
+from pbn_api.models import Journal, OsobaZInstytucji, Publication, Publisher, Scientist
 
 from .mixins import SanitizedAutocompleteMixin  # noqa
 from .wydawnictwo_nadrzedne_w_pbn import Wydawnictwo_Nadrzedne_W_PBNAutocomplete  # noqa
@@ -404,9 +404,57 @@ class AutorAutocompleteBase(
     SanitizedAutocompleteMixin, autocomplete.Select2QuerySetView
 ):
     def get_queryset(self):
+        from django.db.models import Exists, OuterRef
+
+        qs = Autor.objects.select_related("tytul", "pbn_uid")
+
+        # Annotate with information if person is from institution (OsobaZInstytucji)
+        qs = qs.annotate(
+            ma_osobe_z_instytucji=Exists(
+                OsobaZInstytucji.objects.filter(personId_id=OuterRef("pbn_uid_id"))
+            )
+        )
+
         if self.q:
-            return Autor.objects.fulltext_filter(self.q).select_related("tytul")
-        return Autor.objects.all()
+            return (
+                Autor.objects.fulltext_filter(self.q)
+                .select_related("tytul", "pbn_uid")
+                .annotate(
+                    ma_osobe_z_instytucji=Exists(
+                        OsobaZInstytucji.objects.filter(
+                            personId_id=OuterRef("pbn_uid_id")
+                        )
+                    )
+                )
+            )
+        return qs
+
+    def get_result_label(self, result):
+        # Handle error objects or non-Autor instances
+        if not isinstance(result, Autor):
+            return str(result)
+
+        parts = []
+
+        # Add deletion status prefix if author is deleted in PBN
+        if result.pbn_uid_id and hasattr(result, "pbn_uid") and result.pbn_uid:
+            if result.pbn_uid.status == "DELETED":
+                parts.append("[❌ USUNIĘTY]")
+
+        # Add base author name
+        parts.append(str(result))
+
+        # Add PBN indicator if author has pbn_uid
+        if result.pbn_uid_id:
+            parts.append("📚 PBN")
+            # Add MNISW indicator if person exists in OsobaZInstytucji
+            if (
+                hasattr(result, "ma_osobe_z_instytucji")
+                and result.ma_osobe_z_instytucji
+            ):
+                parts.append("🏛️ MNISW")
+
+        return mark_safe(" ".join(parts))
 
 
 class PublicStatusKorektyAutocomplete(
@@ -517,6 +565,32 @@ def globalne_wyszukiwanie_zrodla(querysets, s):
 
     if jest_pbn_uid(s):
         querysets.append(_fun(Zrodlo.objects.filter(pbn_uid_id=s)))
+
+
+def globalne_wyszukiwanie_scientist(querysets, s):
+    """Search for Scientists (people in PBN API) by PBN UID only"""
+    if jest_pbn_uid(s):
+        querysets.append(
+            Scientist.objects.filter(pk=s).only(
+                "pk", "lastName", "name", "qualifications"
+            )
+        )
+
+
+def globalne_wyszukiwanie_journal(querysets, s):
+    """Search for Journals (sources in PBN API) by PBN UID only"""
+    if jest_pbn_uid(s):
+        querysets.append(
+            Journal.objects.filter(pk=s).only("pk", "title", "issn", "eissn")
+        )
+
+
+def globalne_wyszukiwanie_publication(querysets, s):
+    """Search for Publications (publications in PBN API) by PBN UID only"""
+    if jest_pbn_uid(s):
+        querysets.append(
+            Publication.objects.filter(pk=s).only("pk", "title", "doi", "isbn", "year")
+        )
 
 
 class GlobalNavigationAutocomplete(
@@ -946,6 +1020,9 @@ class AdminNavigationAutocomplete(
 
         globalne_wyszukiwanie_autora(querysets, self.q)
         globalne_wyszukiwanie_zrodla(querysets, self.q)
+        globalne_wyszukiwanie_scientist(querysets, self.q)
+        globalne_wyszukiwanie_journal(querysets, self.q)
+        globalne_wyszukiwanie_publication(querysets, self.q)
 
         # Add publication querysets
         self._add_publication_querysets(querysets)

@@ -20,12 +20,13 @@
                 </h5>
 
                 {% if info.stage == "metrics" %}
+                    {% widthratio info.progress|default:0 50 100 as stage1_progress %}
                     <div class="progress large" role="progressbar"
-                         aria-valuenow="{{ info.progress|default:0|floatformat:0 }}"
-                         aria-valuemin="0" aria-valuemax="50">
+                         aria-valuenow="{{ stage1_progress }}"
+                         aria-valuemin="0" aria-valuemax="100">
                         <div class="progress-meter"
-                             style="width: {{ info.progress|default:0|floatformat:0 }}%">
-                            <p class="progress-meter-text">{{ info.progress|default:0|floatformat:0 }}%</p>
+                             style="width: {{ stage1_progress }}%">
+                            <p class="progress-meter-text">{{ stage1_progress }}%</p>
                         </div>
                     </div>
 
@@ -38,6 +39,10 @@
                             {{ info.step }}
                         {% endif %}
                     </p>
+
+                    {% if info.analyzed and info.total %}
+                        <p><strong>Przeanalizowano:</strong> {{ info.analyzed|intcomma }} / {{ info.total|intcomma }}</p>
+                    {% endif %}
 
                     {% if info.message %}
                         <p><em>{{ info.message }}</em></p>
@@ -74,12 +79,13 @@
 
                 {% if info.stage == "unpinning" %}
                     {% with unpinning_progress=info.progress|add:"-50" %}
+                    {% widthratio unpinning_progress|default:0 45 100 as stage2_progress %}
                     <div class="progress large" role="progressbar"
-                         aria-valuenow="{{ unpinning_progress|default:0|floatformat:0 }}"
-                         aria-valuemin="0" aria-valuemax="50">
+                         aria-valuenow="{{ stage2_progress }}"
+                         aria-valuemin="0" aria-valuemax="100">
                         <div class="progress-meter"
-                             style="width: {{ unpinning_progress|default:0|floatformat:0 }}%">
-                            <p class="progress-meter-text">{{ unpinning_progress|default:0|floatformat:0 }}%</p>
+                             style="width: {{ stage2_progress }}%">
+                            <p class="progress-meter-text">{{ stage2_progress }}%</p>
                         </div>
                     </div>
                     {% endwith %}
@@ -133,19 +139,6 @@
                     </div>
                     <p><em>Analiza rozpocznie się po zakończeniu przeliczania metryk...</em></p>
                 {% endif %}
-            </div>
-
-            <!-- Ogólny progress całego zadania -->
-            <div style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #ccc;">
-                <p><strong>Postęp całkowity:</strong></p>
-                <div class="progress large" role="progressbar"
-                     aria-valuenow="{{ info.progress|default:0|floatformat:0 }}"
-                     aria-valuemin="0" aria-valuemax="100">
-                    <div class="progress-meter"
-                         style="width: {{ info.progress|default:0|floatformat:0 }}%">
-                        <p class="progress-meter-text">{{ info.progress|default:0|floatformat:0 }}%</p>
-                    </div>
-                </div>
             </div>
         {% endif %}
 

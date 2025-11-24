@@ -12,12 +12,12 @@ from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 
 from bpp import const
+from bpp.models.cache import Rekord
 
 
 def js_openwin(url, handle, options):
     options = ",".join([f"{a}={b}" for a, b in list(options.items())])
-    d = dict(url=url, handle=handle, options=options)
-    return "window.open('%(url)s','\\%(handle)s','%(options)s')" % d
+    return f"window.open('{url}','\\{handle}','{options}')"
 
 
 class LimitingFormset(BaseInlineFormSet):
@@ -29,6 +29,21 @@ class LimitingFormset(BaseInlineFormSet):
 
 
 def link_do_obiektu(obj, friendly_name=None):
+    """Tworzy link HTML do strony edycji obiektu w Django admin.
+
+    Args:
+        obj: Obiekt modelu Django
+        friendly_name: Opcjonalna nazwa wyświetlana w linku
+
+    Returns:
+        HTML link do strony edycji obiektu w admin
+    """
+    # Jeśli obj jest Rekordem (materialized view), użyj .original
+    # aby uzyskać prawdziwy obiekt (Wydawnictwo_Ciagle, Wydawnictwo_Zwarte, etc.)
+    # ponieważ Rekord nie jest zarejestrowany w Django admin
+    if isinstance(obj, Rekord):
+        obj = obj.original
+
     opts = obj._meta
     obj_url = reverse(
         f"admin:{opts.app_label}_{opts.model_name}_change",

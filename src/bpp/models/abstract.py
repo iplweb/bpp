@@ -33,14 +33,14 @@ class ModelZeZnakamiWydawniczymi(models.Model):
         "Liczba znaków wydawniczych", blank=True, null=True, db_index=True
     )
 
+    class Meta:
+        abstract = True
+
     def ma_wymiar_wydawniczy(self):
         return self.liczba_znakow_wydawniczych is not None
 
     def wymiar_wydawniczy_w_arkuszach(self):
-        return "%.2f" % get_liczba_arkuszy_wydawniczych(self.liczba_znakow_wydawniczych)
-
-    class Meta:
-        abstract = True
+        return f"{get_liczba_arkuszy_wydawniczych(self.liczba_znakow_wydawniczych):.2f}"
 
 
 class ModelZAdnotacjami(models.Model):
@@ -85,12 +85,12 @@ class ModelZNazwa(models.Model):
 
     nazwa = models.CharField(max_length=512, unique=True)
 
-    def __str__(self):
-        return self.nazwa
-
     class Meta:
         abstract = True
         ordering = ["nazwa"]
+
+    def __str__(self):
+        return self.nazwa
 
 
 class NazwaISkrot(ModelZNazwa):
@@ -104,7 +104,7 @@ class NazwaISkrot(ModelZNazwa):
 
 class NazwaWDopelniaczu(models.Model):
     nazwa_dopelniacz_field = models.CharField(
-        "Nazwa w dopełniaczu", max_length=512, null=True, blank=True
+        "Nazwa w dopełniaczu", max_length=512, blank=True, default=""
     )
 
     class Meta:
@@ -121,8 +121,8 @@ class NazwaWDopelniaczu(models.Model):
 class ModelZISSN(models.Model):
     """Model z numerem ISSN oraz E-ISSN"""
 
-    issn = models.CharField("ISSN", max_length=32, blank=True, null=True)
-    e_issn = models.CharField("e-ISSN", max_length=32, blank=True, null=True)
+    issn = models.CharField("ISSN", max_length=32, blank=True, default="")
+    e_issn = models.CharField("e-ISSN", max_length=32, blank=True, default="")
 
     class Meta:
         abstract = True
@@ -131,9 +131,11 @@ class ModelZISSN(models.Model):
 class ModelZISBN(models.Model):
     """Model z numerem ISBN oraz E-ISBN"""
 
-    isbn = models.CharField("ISBN", max_length=64, blank=True, null=True, db_index=True)
+    isbn = models.CharField(
+        "ISBN", max_length=64, blank=True, default="", db_index=True
+    )
     e_isbn = models.CharField(
-        "E-ISBN", max_length=64, blank=True, null=True, db_index=True
+        "E-ISBN", max_length=64, blank=True, default="", db_index=True
     )
 
     class Meta:
@@ -157,14 +159,14 @@ class DwaTytuly(models.Model):
     przetłumaczony."""
 
     tytul_oryginalny = models.TextField("Tytuł oryginalny", db_index=True)
-    tytul = models.TextField("Tytuł", null=True, blank=True, db_index=True)
+    tytul = models.TextField("Tytuł", blank=True, default="", db_index=True)
+
+    class Meta:
+        abstract = True
 
     def clean(self):
         self.tytul_oryginalny = safe_html(self.tytul_oryginalny)
         self.tytul = safe_html(self.tytul)
-
-    class Meta:
-        abstract = True
 
 
 class ModelZeStatusem(models.Model):
@@ -223,7 +225,7 @@ class ModelZWWW(models.Model):
         const.WWW_FIELD_LABEL,
         max_length=1024,
         blank=True,
-        null=True,
+        default="",
     )
     dostep_dnia = models.DateField(
         "Dostęp dnia (płatny dostęp)",
@@ -236,7 +238,7 @@ class ModelZWWW(models.Model):
         const.PUBLIC_WWW_FIELD_LABEL,
         max_length=2048,
         blank=True,
-        null=True,
+        default="",
     )
     public_dostep_dnia = models.DateField(
         "Dostęp dnia (wolny dostęp)",
@@ -253,7 +255,9 @@ class ModelZPubmedID(models.Model):
     pubmed_id = models.BigIntegerField(
         "PubMed ID", blank=True, null=True, help_text="Identyfikator PubMed (PMID)"
     )
-    pmc_id = models.CharField("PubMed Central ID", max_length=32, blank=True, null=True)
+    pmc_id = models.CharField(
+        "PubMed Central ID", max_length=32, blank=True, default=""
+    )
 
     class Meta:
         abstract = True
@@ -294,10 +298,10 @@ IF_DECIMAL_PLACES = 3
 
 def ImpactFactorField(*args, **kw):
     return models.DecimalField(
+        *args,
         max_digits=IF_MAX_DIGITS,
         decimal_places=IF_DECIMAL_PLACES,
         default=Decimal("0.000"),
-        *args,
         **kw,
     )
 
@@ -501,6 +505,27 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
     def __str__(self):
         return str(self.autor) + " - " + str(self.jednostka.skrot)
 
+    def save(self, *args, **kw):
+        if "__disable_bmoa_clean_method" in kw:
+            del kw["__disable_bmoa_clean_method"]
+        else:
+            self.clean()
+        from bpp.models import Autor_Jednostka
+
+        if (
+            getattr(settings, "BPP_DODAWAJ_JEDNOSTKE_PRZY_ZAPISIE_PRACY", True)
+            and not Autor_Jednostka.objects.filter(
+                autor_id=self.autor_id, jednostka_id=self.jednostka_id
+            ).exists()
+        ):
+            Autor_Jednostka.objects.create(
+                autor_id=self.autor_id,
+                jednostka_id=self.jednostka_id,
+            )
+            # olewamy refresh_from_db i autor.aktualna_jednostka
+
+        return super().save(*args, **kw)
+
     def rodzaj_autora_uwzgledniany_w_kalkulacjach_slotow(self):
         from ewaluacja_common.models import Rodzaj_Autora
 
@@ -537,45 +562,39 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
 
     # XXX TODO sprawdzanie, żęby nie było dwóch autorów o tej samej kolejności
 
-    def clean(self):
-        # --- Walidacja dyscypliny ---
-        # Czy jest określona dyscyplina? Jeżeli tak, to:
-        # - rekord nadrzędny musi być określony i mieć jakąś wartość w polu 'Rok'
-        # - musi istnieć takie przypisanie autora do dyscypliny dla danego roku
-        if self.dyscyplina_naukowa is not None:
-            if self.rekord_id is None:
-                # Może nie ustalono rekordu nadrzędnego... a moze dodajemy nowy
-                # rekord do bazy?
+    def _waliduj_dyscypline(self):
+        """Validate discipline assignment."""
+        if self.dyscyplina_naukowa is None:
+            return
 
-                if self.rekord is None:
-                    raise ValidationError(
-                        {
-                            "dyscyplina_naukowa": "Określono dyscyplinę naukową, ale brak publikacji nadrzędnej. "
-                        }
-                    )
+        if self.rekord_id is None and self.rekord is None:
+            raise ValidationError(
+                {
+                    "dyscyplina_naukowa": "Określono dyscyplinę naukową, ale brak publikacji nadrzędnej. "
+                }
+            )
 
-            if self.rekord is not None and self.rekord.rok is None:
-                raise ValidationError(
-                    {
-                        "dyscyplina_naukowa": "Publikacja nadrzędna nie ma określonego roku."
-                    }
-                )
+        if self.rekord is not None and self.rekord.rok is None:
+            raise ValidationError(
+                {"dyscyplina_naukowa": "Publikacja nadrzędna nie ma określonego roku."}
+            )
 
-            try:
-                Autor_Dyscyplina.objects.get(
-                    Q(dyscyplina_naukowa=self.dyscyplina_naukowa)
-                    | Q(subdyscyplina_naukowa=self.dyscyplina_naukowa),
-                    autor=self.autor,
-                    rok=self.rekord.rok,
-                )
-            except Autor_Dyscyplina.DoesNotExist:
-                raise ValidationError(
-                    {
-                        "dyscyplina_naukowa": "Autor nie ma przypisania na dany rok do takiej dyscypliny."
-                    }
-                )
+        try:
+            Autor_Dyscyplina.objects.get(
+                Q(dyscyplina_naukowa=self.dyscyplina_naukowa)
+                | Q(subdyscyplina_naukowa=self.dyscyplina_naukowa),
+                autor=self.autor,
+                rok=self.rekord.rok,
+            )
+        except Autor_Dyscyplina.DoesNotExist:
+            raise ValidationError(
+                {
+                    "dyscyplina_naukowa": "Autor nie ma przypisania na dany rok do takiej dyscypliny."
+                }
+            ) from None
 
-        # Na tym etapie rekord musi być ustalony:
+    def _waliduj_rekord(self):
+        """Validate parent record."""
         ValErrRek = ValidationError(
             "Rekord nadrzędny (pole: rekord) musi być ustalone. "
         )
@@ -586,10 +605,8 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
             if self.rekord_id is None:
                 raise ValErrRek
 
-        # --- Walidacja procentów ---
-        # Znajdź inne obiekty z tego rekordu, które są już w bazie danych, ewentualnie
-        # utrudniając ich zapisanie w sytuacji, gdyby ilość procent
-        # przekroczyła 100:
+    def _waliduj_procent(self):
+        """Validate percentage doesn't exceed 100."""
         inne = self.__class__.objects.filter(rekord=self.rekord)
         if self.pk:
             inne = inne.exclude(pk=self.pk)
@@ -606,10 +623,8 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
                 }
             )
 
-        # --- Walidacja afiliacji ---
-        # Jeżeli autor afiliuje na jednostkę która jest obca (skupia_pracownikow=False),
-        # to zgłoś błąd
-
+    def _waliduj_afiliacje(self):
+        """Validate affiliation - author can't affiliate to foreign unit."""
         if (
             self.afiliuje
             and self.jednostka_id is not None
@@ -623,8 +638,8 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
                 }
             )
 
-        # --- Walidacja oświadczeń KEN (Uniwersytet Medyczny w Lublinie) ---
-        # Jeżeli jednocześnie włączone upowaznienie_pbn oraz oświadczenie_ken to zgłoś błąd
+    def _waliduj_oswiadczenia_ken(self):
+        """Validate KEN declarations - can't have both PBN authorization and KEN declaration."""
         if self.upowaznienie_pbn and self.oswiadczenie_ken:
             msg = (
                 "Pola 'Upoważnienie PBN' oraz 'Oświadczenie KEN' nie mogą być jednocześnie wybrane. "
@@ -637,26 +652,12 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
                 }
             )
 
-    def save(self, *args, **kw):
-        if "__disable_bmoa_clean_method" in kw:
-            del kw["__disable_bmoa_clean_method"]
-        else:
-            self.clean()
-        from bpp.models import Autor_Jednostka
-
-        if (
-            getattr(settings, "BPP_DODAWAJ_JEDNOSTKE_PRZY_ZAPISIE_PRACY", True)
-            and not Autor_Jednostka.objects.filter(
-                autor_id=self.autor_id, jednostka_id=self.jednostka_id
-            ).exists()
-        ):
-            Autor_Jednostka.objects.create(
-                autor_id=self.autor_id,
-                jednostka_id=self.jednostka_id,
-            )
-            # olewamy refresh_from_db i autor.aktualna_jednostka
-
-        return super().save(*args, **kw)
+    def clean(self):
+        self._waliduj_dyscypline()
+        self._waliduj_rekord()
+        self._waliduj_procent()
+        self._waliduj_afiliacje()
+        self._waliduj_oswiadczenia_ken()
 
 
 class ModelZeSlowamiKluczowymi(models.Model):
@@ -681,13 +682,13 @@ class ModelZeSlowamiKluczowymi(models.Model):
 class ModelZeSzczegolami(models.Model):
     """Model zawierający pola: informacje, szczegóły, uwagi, słowa kluczowe."""
 
-    informacje = models.TextField("Informacje", null=True, blank=True, db_index=True)
+    informacje = models.TextField("Informacje", blank=True, default="", db_index=True)
 
     szczegoly = models.CharField(
-        "Szczegóły", max_length=512, null=True, blank=True, help_text="Np. str. 23-45"
+        "Szczegóły", max_length=512, blank=True, default="", help_text="Np. str. 23-45"
     )
 
-    uwagi = models.TextField(null=True, blank=True, db_index=True)
+    uwagi = models.TextField(blank=True, default="", db_index=True)
 
     utworzono = models.DateTimeField(
         "Utworzono", auto_now_add=True, blank=True, null=True
@@ -695,8 +696,8 @@ class ModelZeSzczegolami(models.Model):
 
     strony = models.CharField(
         max_length=250,
-        null=True,
         blank=True,
+        default="",
         help_text="""Jeżeli uzupełnione, to pole będzie eksportowane do
         danych PBN. Jeżeli puste, informacja ta będzie ekstrahowana z
         pola "Szczegóły" w chwili generowania eksportu PBN. Aby uniknąć
@@ -709,8 +710,8 @@ class ModelZeSzczegolami(models.Model):
 
     tom = models.CharField(
         max_length=50,
-        null=True,
         blank=True,
+        default="",
         help_text="""Jeżeli uzupełnione, to pole będzie eksportowane do
         danych PBN. Jeżeli puste, informacja ta będzie ekstrahowana z
         pola 'Informacje'. Kliknięcie przycisku "Uzupełnij" powoduje
@@ -734,8 +735,8 @@ class ModelZeSzczegolami(models.Model):
 class ModelZNumeremZeszytu(models.Model):
     nr_zeszytu = models.CharField(
         max_length=50,
-        null=True,
         blank=True,
+        default="",
         help_text="""Jeżeli uzupełnione, to pole będzie eksportowane do
         danych PBN. Jeżeli puste, informacja ta będzie ekstrahowana z
         pola 'Informacje'. Kliknięcie przycisku "Uzupełnij" powoduje
@@ -829,7 +830,14 @@ class LinkDoPBNMixin:
         versionHash = None
 
         try:
-            uuid = PublikacjaInstytucji_V2.objects.get(objectId_id=self.pbn_uid_id).pk
+            # For BPP models (Wydawnictwo_Ciagle, Wydawnictwo_Zwarte) use pbn_uid_id
+            # For Publication models use pk directly
+            if hasattr(self, "pbn_uid"):
+                lookup_id = self.pbn_uid_id
+            else:
+                lookup_id = self.pk
+
+            uuid = PublikacjaInstytucji_V2.objects.get(objectId_id=lookup_id).pk
 
             from bpp import const
             from bpp.models import Uczelnia
@@ -886,6 +894,9 @@ class ModelZPBN_UID(LinkDoPBNMixin, models.Model):
 
     url_do_pbn = const.LINK_PBN_DO_PUBLIKACJI
 
+    class Meta:
+        abstract = True
+
     def get_pbn_uuid(self):
         """Nazwa tej funkcji to NIE literówka; alias to PBN UID V2
 
@@ -906,9 +917,6 @@ class ModelZPBN_UID(LinkDoPBNMixin, models.Model):
 
         if publicationUuid:
             return publicationUuid[0]
-
-    class Meta:
-        abstract = True
 
 
 class ManagerModeliZOplataZaPublikacjeMixin:
@@ -947,124 +955,127 @@ class ModelZOplataZaPublikacje(models.Model):
     class Meta:
         abstract = True
 
-    def clean(self):
-        if self.opl_pub_cost_free:
-            # Publikacja bezkosztowa...
+    def _waliduj_publikacje_bezkosztowa(self):
+        """Validate cost-free publication."""
+        if self.opl_pub_amount is not None and self.opl_pub_amount > 0:
+            # ... musi mieć kwotę za publikację równą zero
+            raise ValidationError(
+                {
+                    "opl_pub_amount": "Publikacja bezkosztowa, ale kwota opłaty za publikację większa od zera."
+                    "Proszę o skorygowanie"
+                }
+            )
 
-            if self.opl_pub_amount is not None and self.opl_pub_amount > 0:
-                # ... musi mieć kwotę za publikację równą zero
+        if (
+            self.opl_pub_research_potential
+            or self.opl_pub_research_or_development_projects
+            or self.opl_pub_other
+        ):
+            # ... oraz odznaczone pozostałe pola
+            errmsg = """Jeżeli zaznaczono publikację jako bezkosztową, to pozostałe pola dotyczące
+            środków finansowych nie mogą być zaznaczone na 'TAK', a koszt powinien być równy 0.00 zł. Przejrzyj
+            te pola i odznacz je. """
+
+            errmsg2 = """Pole nie może być zaznaczone na 'TAK' dla publikacji bezkosztowej. """
+
+            errdct = {
+                "opl_pub_cost_free": errmsg,
+            }
+
+            if self.opl_pub_research_potential:
+                errdct["opl_pub_research_potential"] = errmsg2
+
+            if self.opl_pub_research_or_development_projects:
+                errdct["opl_pub_research_or_development_projects"] = errmsg2
+
+            if self.opl_pub_other:
+                errdct["opl_pub_other"] = errmsg2
+
+            raise ValidationError(errdct)
+
+    def _waliduj_publikacje_kosztowa(self):
+        """Validate paid publication."""
+        if self.opl_pub_amount is not None and self.opl_pub_amount > 0:
+            # ...jeżeli ma wpisany koszt, musi miec zaznaczony któreś z pól:
+            if (
+                not self.opl_pub_research_or_development_projects
+                and not self.opl_pub_research_potential
+                and not self.opl_pub_other
+            ):
+                errmsg = (
+                    "Jeżeli wpisano opłatę za publikację, należy dodatkowo zaznaczyć, z jakich środków"
+                    " została ta opłata zrealizowana. Przejrzyj pola dotyczące środków finansowych "
+                    "i ustaw wartość na 'TAK' przynajmniej w jednym z nich - np w tym ... "
+                )
+
+                errmsg2 = "... lub w tym ..."
+                errmsg3 = "... lub tutaj. "
+
                 raise ValidationError(
                     {
-                        "opl_pub_amount": "Publikacja bezkosztowa, ale kwota opłaty za publikację większa od zera."
-                        "Proszę o skorygowanie"
+                        "opl_pub_research_potential": errmsg,
+                        "opl_pub_research_or_development_projects": errmsg2,
+                        "opl_pub_other": errmsg3,
                     }
                 )
 
+        else:
+            # ... jeżeli nie ma wpisanego kosztu a ma zaznaczone któreś z pól to też źle
             if (
-                self.opl_pub_research_potential
-                or self.opl_pub_research_or_development_projects
+                self.opl_pub_research_or_development_projects
+                or self.opl_pub_research_potential
                 or self.opl_pub_other
             ):
-                # ... oraz odznaczone pozostałe pola
+                errdct = {"opl_pub_amount": "Tu należy uzupełnić kwotę. "}
 
-                errmsg = """Jeżeli zaznaczono publikację jako bezkosztową, to pozostałe pola dotyczące
-                środków finansowych nie mogą być zaznaczone na 'TAK', a koszt powinien być równy 0.00 zł. Przejrzyj
-                te pola i odznacz je. """
-
-                errmsg2 = """Pole nie może być zaznaczone na 'TAK' dla publikacji bezkosztowej. """
-
-                errdct = {
-                    "opl_pub_cost_free": errmsg,
-                }
+                errmsg = (
+                    "Jeżeli wybrano pola dotyczące opłaty za publikację, należy dodatkowo wpisać kwotę... "
+                    "lub od-znaczyć te pola. "
+                )
 
                 if self.opl_pub_research_potential:
-                    errdct["opl_pub_research_potential"] = errmsg2
+                    errdct["opl_pub_research_potential"] = errmsg
 
                 if self.opl_pub_research_or_development_projects:
-                    errdct["opl_pub_research_or_development_projects"] = errmsg2
+                    errdct["opl_pub_research_or_development_projects"] = errmsg
 
                 if self.opl_pub_other:
-                    errdct["opl_pub_other"] = errmsg2
+                    errdct["opl_pub_other"] = errmsg
 
                 raise ValidationError(errdct)
-        else:
-            # Publikacja kosztowa z kolei (self.opl_pub_cost_free jest None
-            # albo False) ...
-            if self.opl_pub_amount is not None and self.opl_pub_amount > 0:
-                # ...jeżeli ma wpisany koszt, musi miec zaznaczony któreś z pól:
-                if (
-                    not self.opl_pub_research_or_development_projects
-                    and not self.opl_pub_research_potential
-                    and not self.opl_pub_other
-                ):
-                    errmsg = (
-                        "Jeżeli wpisano opłatę za publikację, należy dodatkowo zaznaczyć, z jakich środków"
-                        " została ta opłata zrealizowana. Przejrzyj pola dotyczące środków finansowych "
-                        "i ustaw wartość na 'TAK' przynajmniej w jednym z nich - np w tym ... "
-                    )
-
-                    errmsg2 = "... lub w tym ..."
-                    errmsg3 = "... lub tutaj. "
-
-                    raise ValidationError(
-                        {
-                            "opl_pub_research_potential": errmsg,
-                            "opl_pub_research_or_development_projects": errmsg2,
-                            "opl_pub_other": errmsg3,
-                        }
-                    )
-
             else:
-                # ... jeżeli nie ma wpisanego kosztu a ma zaznaczone któreś z pól to też źle
-                if (
-                    self.opl_pub_research_or_development_projects
-                    or self.opl_pub_research_potential
-                    or self.opl_pub_other
-                ):
+                if self.opl_pub_cost_free is not None:
+                    # jeżeli nie ma wpisanego kosztu i nie ma zaznaczonego
+                    # zadnego z pól to tym bardziej źle
                     errdct = {"opl_pub_amount": "Tu należy uzupełnić kwotę. "}
 
                     errmsg = (
-                        "Jeżeli wybrano pola dotyczące opłaty za publikację, należy dodatkowo wpisać kwotę... "
-                        "lub od-znaczyć te pola. "
+                        "Jeżeli publikacja nie była bezkosztowa, należy zaznaczyć "
+                        "przynajmniej jedno z tych pól"
                     )
 
-                    if self.opl_pub_research_potential:
-                        errdct["opl_pub_research_potential"] = errmsg
-
-                    if self.opl_pub_research_or_development_projects:
-                        errdct["opl_pub_research_or_development_projects"] = errmsg
-
-                    if self.opl_pub_other:
-                        errdct["opl_pub_other"] = errmsg
+                    errdct["opl_pub_research_potential"] = errmsg
+                    errdct["opl_pub_research_or_development_projects"] = errmsg
+                    errdct["opl_pub_other"] = errmsg
 
                     raise ValidationError(errdct)
-                else:
-                    if self.opl_pub_cost_free is not None:
-                        # jeżeli nie ma wpisanego kosztu i nie ma zaznaczonego
-                        # zadnego z pól to tym bardziej źle
-                        errdct = {"opl_pub_amount": "Tu należy uzupełnić kwotę. "}
 
-                        errmsg = (
-                            "Jeżeli publikacja nie była bezkosztowa, należy zaznaczyć "
-                            "przynajmniej jedno z tych pól"
-                        )
-
-                        errdct["opl_pub_research_potential"] = errmsg
-                        errdct["opl_pub_research_or_development_projects"] = errmsg
-                        errdct["opl_pub_other"] = errmsg
-
-                        raise ValidationError(errdct)
+    def clean(self):
+        if self.opl_pub_cost_free:
+            self._waliduj_publikacje_bezkosztowa()
+        else:
+            self._waliduj_publikacje_kosztowa()
 
 
 class Wydawnictwo_Baza(RekordBPPBaza):
     """Klasa bazowa wydawnictw (prace doktorskie, habilitacyjne, wydawnictwa
     ciągłe, zwarte -- bez patentów)."""
 
-    def __str__(self):
-        return self.tytul_oryginalny
-
     class Meta:
         abstract = True
+
+    def __str__(self):
+        return self.tytul_oryginalny
 
 
 url_validator = URLValidator()
@@ -1097,7 +1108,7 @@ def wez_zakres_stron(szczegoly):
         if "poczatek" in d and "koniec" in d and d["koniec"] is not None:
             return "{}-{}".format(d["poczatek"], d["koniec"])
 
-        return "%s" % d["poczatek"]
+        return f"{d['poczatek']}"
 
     res = strony_regex.search(szczegoly)
     if res is not None:
@@ -1147,7 +1158,7 @@ class ModelZSeria_Wydawnicza(models.Model):
         "bpp.Seria_Wydawnicza", CASCADE, blank=True, null=True
     )
 
-    numer_w_serii = models.CharField(max_length=512, blank=True, null=True)
+    numer_w_serii = models.CharField(max_length=512, blank=True, default="")
 
     class Meta:
         abstract = True
@@ -1217,7 +1228,7 @@ class ModelZLiczbaCytowan(models.Model):
 
 
 class ModelZMiejscemPrzechowywania(models.Model):
-    numer_odbitki = models.CharField(max_length=50, null=True, blank=True)
+    numer_odbitki = models.CharField(max_length=50, blank=True, default="")
 
     class Meta:
         abstract = True
@@ -1283,6 +1294,9 @@ class ModelOpcjonalnieNieEksportowanyDoAPI(models.Model):
 
 
 class ModelZPrzeliczaniemDyscyplin(models.Model):
+    class Meta:
+        abstract = True
+
     def przelicz_punkty_dyscyplin(self):
         from bpp.models.sloty.core import IPunktacjaCacher
         from bpp.models.uczelnia import Uczelnia
@@ -1308,15 +1322,12 @@ class ModelZPrzeliczaniemDyscyplin(models.Model):
             .distinct()
         )
 
-    class Meta:
-        abstract = True
-
 
 class BazaModeluStreszczen(models.Model):
     jezyk_streszczenia = models.ForeignKey(
         "bpp.Jezyk", null=True, blank=True, on_delete=models.SET_NULL
     )
-    streszczenie = models.TextField(blank=True, null=True)
+    streszczenie = models.TextField(blank=True, default="")
 
     class Meta:
         abstract = True

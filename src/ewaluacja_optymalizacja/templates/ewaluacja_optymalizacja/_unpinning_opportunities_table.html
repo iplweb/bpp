@@ -1,0 +1,201 @@
+{% load humanize %}
+
+{% if opportunities %}
+<table>
+    <thead>
+        <tr>
+            <th style="width: 20%;" class="sortable">
+                <a href="?sort_by=tytul&sort_dir={% if sort_by == 'tytul' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}{% if selected_dyscyplina %}&dyscyplina={{ selected_dyscyplina }}{% endif %}{% if selected_punktacja_zrodla %}&punktacja_zrodla={{ selected_punktacja_zrodla }}{% endif %}{% if only_sensible %}&only_sensible=1{% endif %}{% if request.GET.fullwidth %}&fullwidth=1{% endif %}">
+                    Tytuł pracy
+                    {% if sort_by == 'tytul' %}{% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}{% endif %}
+                </a>
+            </th>
+            <th style="text-align: center;" class="sortable">
+                <a href="?sort_by=punktacja&sort_dir={% if sort_by == 'punktacja' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}{% if selected_dyscyplina %}&dyscyplina={{ selected_dyscyplina }}{% endif %}{% if selected_punktacja_zrodla %}&punktacja_zrodla={{ selected_punktacja_zrodla }}{% endif %}{% if only_sensible %}&only_sensible=1{% endif %}{% if request.GET.fullwidth %}&fullwidth=1{% endif %}">
+                    Punktacja<br>źródła
+                    {% if sort_by == 'punktacja' %}{% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}{% endif %}
+                </a>
+            </th>
+            <th class="sortable">
+                <a href="?sort_by=dyscyplina&sort_dir={% if sort_by == 'dyscyplina' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}{% if selected_dyscyplina %}&dyscyplina={{ selected_dyscyplina }}{% endif %}{% if selected_punktacja_zrodla %}&punktacja_zrodla={{ selected_punktacja_zrodla }}{% endif %}{% if only_sensible %}&only_sensible=1{% endif %}{% if request.GET.fullwidth %}&fullwidth=1{% endif %}">
+                    Dyscyplina
+                    {% if sort_by == 'dyscyplina' %}{% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}{% endif %}
+                </a>
+            </th>
+            <th class="sortable">
+                <a href="?sort_by=autor_a&sort_dir={% if sort_by == 'autor_a' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}{% if selected_dyscyplina %}&dyscyplina={{ selected_dyscyplina }}{% endif %}{% if selected_punktacja_zrodla %}&punktacja_zrodla={{ selected_punktacja_zrodla }}{% endif %}{% if only_sensible %}&only_sensible=1{% endif %}{% if request.GET.fullwidth %}&fullwidth=1{% endif %}">
+                    Autor A<br><small>(do odpięcia)</small>
+                    {% if sort_by == 'autor_a' %}{% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}{% endif %}
+                </a>
+            </th>
+            <th class="sortable">
+                <a href="?sort_by=slots_missing&sort_dir={% if sort_by == 'slots_missing' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}{% if selected_dyscyplina %}&dyscyplina={{ selected_dyscyplina }}{% endif %}{% if selected_punktacja_zrodla %}&punktacja_zrodla={{ selected_punktacja_zrodla }}{% endif %}{% if only_sensible %}&only_sensible=1{% endif %}{% if request.GET.fullwidth %}&fullwidth=1{% endif %}">
+                    B może wziąć<br><small>(slotów)</small>
+                    {% if sort_by == 'slots_missing' %}{% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}{% endif %}
+                </a>
+            </th>
+            <th class="sortable">
+                <a href="?sort_by=slot_in_work&sort_dir={% if sort_by == 'slot_in_work' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}{% if selected_dyscyplina %}&dyscyplina={{ selected_dyscyplina }}{% endif %}{% if selected_punktacja_zrodla %}&punktacja_zrodla={{ selected_punktacja_zrodla }}{% endif %}{% if only_sensible %}&only_sensible=1{% endif %}{% if request.GET.fullwidth %}&fullwidth=1{% endif %}">
+                    Slot w<br>pracy
+                    {% if sort_by == 'slot_in_work' %}{% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}{% endif %}
+                </a>
+            </th>
+            <th class="sortable">
+                <a href="?sort_by=punkty_a&sort_dir={% if sort_by == 'punkty_a' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}{% if selected_dyscyplina %}&dyscyplina={{ selected_dyscyplina }}{% endif %}{% if selected_punktacja_zrodla %}&punktacja_zrodla={{ selected_punktacja_zrodla }}{% endif %}{% if only_sensible %}&only_sensible=1{% endif %}{% if request.GET.fullwidth %}&fullwidth=1{% endif %}">
+                    Różnica<br>pkt A
+                    {% if sort_by == 'punkty_a' %}{% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}{% endif %}
+                </a>
+            </th>
+            <th class="sortable">
+                <a href="?sort_by=sloty_a&sort_dir={% if sort_by == 'sloty_a' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}{% if selected_dyscyplina %}&dyscyplina={{ selected_dyscyplina }}{% endif %}{% if selected_punktacja_zrodla %}&punktacja_zrodla={{ selected_punktacja_zrodla }}{% endif %}{% if only_sensible %}&only_sensible=1{% endif %}{% if request.GET.fullwidth %}&fullwidth=1{% endif %}">
+                    Różnica<br>slotów A
+                    {% if sort_by == 'sloty_a' %}{% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}{% endif %}
+                </a>
+            </th>
+            <th class="sortable">
+                <a href="?sort_by=punkty_b&sort_dir={% if sort_by == 'punkty_b' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}{% if selected_dyscyplina %}&dyscyplina={{ selected_dyscyplina }}{% endif %}{% if selected_punktacja_zrodla %}&punktacja_zrodla={{ selected_punktacja_zrodla }}{% endif %}{% if only_sensible %}&only_sensible=1{% endif %}{% if request.GET.fullwidth %}&fullwidth=1{% endif %}">
+                    Różnica<br>pkt B
+                    {% if sort_by == 'punkty_b' %}{% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}{% endif %}
+                </a>
+            </th>
+            <th class="sortable">
+                <a href="?sort_by=sloty_b&sort_dir={% if sort_by == 'sloty_b' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}{% if selected_dyscyplina %}&dyscyplina={{ selected_dyscyplina }}{% endif %}{% if selected_punktacja_zrodla %}&punktacja_zrodla={{ selected_punktacja_zrodla }}{% endif %}{% if only_sensible %}&only_sensible=1{% endif %}{% if request.GET.fullwidth %}&fullwidth=1{% endif %}">
+                    Różnica<br>slotów B
+                    {% if sort_by == 'sloty_b' %}{% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}{% endif %}
+                </a>
+            </th>
+            <th class="sortable">
+                <a href="?sort_by=autor_b&sort_dir={% if sort_by == 'autor_b' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}{% if selected_dyscyplina %}&dyscyplina={{ selected_dyscyplina }}{% endif %}{% if selected_punktacja_zrodla %}&punktacja_zrodla={{ selected_punktacja_zrodla }}{% endif %}{% if only_sensible %}&only_sensible=1{% endif %}{% if request.GET.fullwidth %}&fullwidth=1{% endif %}">
+                    Autor B<br><small>(skorzysta)</small>
+                    {% if sort_by == 'autor_b' %}{% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}{% endif %}
+                </a>
+            </th>
+            <th style="text-align: center;" class="sortable">
+                <a href="?sort_by=makes_sense&sort_dir={% if sort_by == 'makes_sense' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}{% if selected_dyscyplina %}&dyscyplina={{ selected_dyscyplina }}{% endif %}{% if selected_punktacja_zrodla %}&punktacja_zrodla={{ selected_punktacja_zrodla }}{% endif %}{% if only_sensible %}&only_sensible=1{% endif %}{% if request.GET.fullwidth %}&fullwidth=1{% endif %}">
+                    Sensowne?
+                    {% if sort_by == 'makes_sense' %}{% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}{% endif %}
+                </a>
+            </th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for opp in opportunities %}
+        <tr {% if opp.makes_sense %}style="background-color: #e7f7e7;"{% endif %}>
+            <td>
+                <a href="{% url 'ewaluacja_optymalizuj_publikacje:optymalizuj' opp.rekord.slug %}">
+                    <strong>{{ opp.rekord_tytul|truncatewords:10 }}</strong>
+                </a>
+            </td>
+            <td style="text-align: center;">
+                <strong>{{ opp.rekord.original.punkty_kbn|default:"0"|floatformat:0 }}</strong>
+            </td>
+            <td>{{ opp.dyscyplina_naukowa.nazwa|truncatewords:3 }}</td>
+            <td>
+                <a href="{% url 'ewaluacja_metryki:szczegoly' opp.metryka_could_benefit.autor.slug opp.dyscyplina_naukowa.kod %}">
+                    <strong>{{ opp.autor_could_benefit }}</strong>
+                </a><br>
+                <small>
+                    Wykorzystanie: {{ opp.metryka_could_benefit.procent_wykorzystania_slotow|floatformat:1 }}%
+                    ({{ opp.metryka_could_benefit.slot_nazbierany|floatformat:2 }} / {{ opp.metryka_could_benefit.slot_maksymalny|floatformat:2 }})
+                </small>
+            </td>
+            <td style="text-align: center;">
+                <strong style="font-size: 1.2em; color: #c60;">{{ opp.slots_missing|floatformat:2 }}</strong>
+            </td>
+            <td style="text-align: center;">
+                <strong>{{ opp.slot_in_work|floatformat:2 }}</strong>
+            </td>
+            <td style="text-align: center;">
+                {% if opp.punkty_roznica_a > 0 %}
+                    <strong style="color: green;">+{{ opp.punkty_roznica_a|floatformat:2 }}</strong>
+                {% elif opp.punkty_roznica_a < 0 %}
+                    <strong style="color: red;">{{ opp.punkty_roznica_a|floatformat:2 }}</strong>
+                {% else %}
+                    <strong>0.00</strong>
+                {% endif %}
+            </td>
+            <td style="text-align: center;">
+                {% if opp.sloty_roznica_a > 0 %}
+                    <strong style="color: green;">+{{ opp.sloty_roznica_a|floatformat:2 }}</strong>
+                {% elif opp.sloty_roznica_a < 0 %}
+                    <strong style="color: red;">{{ opp.sloty_roznica_a|floatformat:2 }}</strong>
+                {% else %}
+                    <strong>0.00</strong>
+                {% endif %}
+            </td>
+            <td style="text-align: center;">
+                {% if opp.punkty_roznica_b > 0 %}
+                    <strong style="color: green;">+{{ opp.punkty_roznica_b|floatformat:2 }}</strong>
+                {% elif opp.punkty_roznica_b < 0 %}
+                    <strong style="color: red;">{{ opp.punkty_roznica_b|floatformat:2 }}</strong>
+                {% else %}
+                    <strong>0.00</strong>
+                {% endif %}
+            </td>
+            <td style="text-align: center;">
+                {% if opp.sloty_roznica_b > 0 %}
+                    <strong style="color: green;">+{{ opp.sloty_roznica_b|floatformat:2 }}</strong>
+                {% elif opp.sloty_roznica_b < 0 %}
+                    <strong style="color: red;">{{ opp.sloty_roznica_b|floatformat:2 }}</strong>
+                {% else %}
+                    <strong>0.00</strong>
+                {% endif %}
+            </td>
+            <td>
+                <a href="{% url 'ewaluacja_metryki:szczegoly' opp.metryka_currently_using.autor.slug opp.dyscyplina_naukowa.kod %}">
+                    <strong>{{ opp.autor_currently_using }}</strong>
+                </a><br>
+                <small>
+                    Wykorzystanie: {{ opp.metryka_currently_using.procent_wykorzystania_slotow|floatformat:1 }}%
+                    ({{ opp.metryka_currently_using.slot_nazbierany|floatformat:2 }} / {{ opp.metryka_currently_using.slot_maksymalny|floatformat:2 }})
+                </small>
+            </td>
+            <td style="text-align: center;">
+                {% if opp.makes_sense %}
+                    <span class="label success"><span class="fi-check"></span> TAK</span>
+                {% else %}
+                    <span class="label secondary">-</span>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<!-- Paginacja -->
+{% if opportunities.has_other_pages %}
+<div class="pagination-centered">
+    <ul class="pagination">
+        {% if opportunities.has_previous %}
+            <li class="arrow"><a href="?page={{ opportunities.previous_page_number }}{% if selected_dyscyplina %}&dyscyplina={{ selected_dyscyplina }}{% endif %}{% if selected_punktacja_zrodla %}&punktacja_zrodla={{ selected_punktacja_zrodla }}{% endif %}{% if only_sensible %}&only_sensible=1{% endif %}&sort_by={{ sort_by }}&sort_dir={{ sort_dir }}{% if request.GET.fullwidth %}&fullwidth=1{% endif %}">«</a></li>
+        {% else %}
+            <li class="arrow unavailable"><a href="">«</a></li>
+        {% endif %}
+
+        {% for num in opportunities.paginator.page_range %}
+            {% if opportunities.number == num %}
+                <li class="current"><a href="">{{ num }}</a></li>
+            {% elif num > opportunities.number|add:'-3' and num < opportunities.number|add:'3' %}
+                <li><a href="?page={{ num }}{% if selected_dyscyplina %}&dyscyplina={{ selected_dyscyplina }}{% endif %}{% if selected_punktacja_zrodla %}&punktacja_zrodla={{ selected_punktacja_zrodla }}{% endif %}{% if only_sensible %}&only_sensible=1{% endif %}&sort_by={{ sort_by }}&sort_dir={{ sort_dir }}{% if request.GET.fullwidth %}&fullwidth=1{% endif %}">{{ num }}</a></li>
+            {% endif %}
+        {% endfor %}
+
+        {% if opportunities.has_next %}
+            <li class="arrow"><a href="?page={{ opportunities.next_page_number }}{% if selected_dyscyplina %}&dyscyplina={{ selected_dyscyplina }}{% endif %}{% if selected_punktacja_zrodla %}&punktacja_zrodla={{ selected_punktacja_zrodla }}{% endif %}{% if only_sensible %}&only_sensible=1{% endif %}&sort_by={{ sort_by }}&sort_dir={{ sort_dir }}{% if request.GET.fullwidth %}&fullwidth=1{% endif %}">»</a></li>
+        {% else %}
+            <li class="arrow unavailable"><a href="">»</a></li>
+        {% endif %}
+    </ul>
+    </div>
+    {% endif %}
+
+{% else %}
+<div class="callout warning">
+    <p>Nie znaleziono możliwości odpinania dla wybranych filtrów.</p>
+    <p>
+        <a href="{% url 'ewaluacja_optymalizacja:analyze-unpinning' %}" class="button">
+            <span class="fi-refresh"></span> Uruchom analizę
+        </a>
+    </p>
+</div>
+{% endif %}

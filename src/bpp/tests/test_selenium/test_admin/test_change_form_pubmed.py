@@ -31,9 +31,9 @@ def test_change_form_pubmed_brak_takiej_pracy(
     with wait_for_page_load(admin_browser):
         admin_browser.visit(channels_live_server.url + url)
     admin_browser.find_by_id("id_tytul_oryginalny").fill(tytul)
-    for elem in admin_browser.find_by_tag("h2")[:3]:
-        show_element(admin_browser, elem)  # ._element)
-        elem.click()
+    # for elem in admin_browser.find_by_tag("h2")[:3]:
+    #     show_element(admin_browser, elem)  # ._element)
+    #     elem.click()
     if not admin_browser.find_by_id("id_pubmed_id_get"):
         raise Exception("Nie mozna znalexc elementu")
 

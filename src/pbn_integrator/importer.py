@@ -5,15 +5,6 @@ from django.core.management import call_command
 from django.db import DataError, transaction
 from tqdm import tqdm
 
-from pbn_api.client import PBNClient
-from pbn_api.models import Journal, Publication, Publisher
-from pbn_integrator.utils import (
-    integruj_zrodla,
-    pobierz_i_zapisz_dane_jednej_osoby,
-    utworz_wpis_dla_jednego_autora,
-    zapisz_mongodb,
-)
-
 from bpp import const
 from bpp.models import (
     Autor,
@@ -42,6 +33,14 @@ from bpp.models import (
     Zrodlo,
 )
 from bpp.util import pbar
+from pbn_api.client import PBNClient
+from pbn_api.models import Journal, Publication, Publisher
+from pbn_integrator.utils import (
+    integruj_zrodla,
+    pobierz_i_zapisz_dane_jednej_osoby,
+    utworz_wpis_dla_jednego_autora,
+    zapisz_mongodb,
+)
 
 
 def dopisz_jedno_zrodlo(pbn_journal):
@@ -66,8 +65,8 @@ def dopisz_jedno_zrodlo(pbn_journal):
         nazwa_dyscypliny = discipline.get("name")
         try:
             dyscyplina_naukowa = Dyscyplina_Naukowa.objects.get(nazwa=nazwa_dyscypliny)
-        except Dyscyplina_Naukowa.DoesNotExist:
-            raise DataError(f"Brak dyscypliny o nazwie {nazwa_dyscypliny}")
+        except Dyscyplina_Naukowa.DoesNotExist as err:
+            raise DataError(f"Brak dyscypliny o nazwie {nazwa_dyscypliny}") from err
 
         for rok in range(const.PBN_MIN_ROK, const.PBN_MAX_ROK):
             zrodlo.dyscyplina_zrodla_set.get_or_create(
@@ -90,10 +89,88 @@ def importuj_zrodla():
         dopisz_jedno_zrodlo(pbn_journal)
 
 
+def _utworz_nowego_wydawce(publisher, points_to_poziom_map, verbosity):
+    """Create a new publisher in BPP from PBN data."""
+    nowy_wydawca = Wydawca.objects.create(
+        nazwa=publisher.publisherName, pbn_uid=publisher
+    )
+    if verbosity > 1:
+        print(f"1 Tworze nowego wydawce z MNISWID, {publisher.publisherName}")
+
+    for rok in const.PBN_LATA:
+        points = publisher.points.get(str(rok))
+
+        if not points:
+            # Brak punktów w PBNie za dany rok
+            continue
+
+        if not points["accepted"]:
+            raise NotImplementedError(
+                f"Accepted = False dla {publisher} {rok}, co dalej?"
+            )
+
+        poziom = points_to_poziom_map.get(points["points"])
+        assert poziom, f"Brak odpowiednika dla {points['points']}"
+
+        nowy_wydawca.poziom_wydawcy_set.create(rok=rok, poziom=poziom)
+
+
+def _aktualizuj_poziomy_wydawcy(
+    wydawca,
+    publisher,
+    rok,
+    pbn_side,
+    wydawca_side,
+    get_poziom_bpp,
+    poziom_to_points_map,
+    verbosity,
+):
+    """Update publisher levels for a given year."""
+    needs_recalc = set()
+
+    if pbn_side is not None:
+        if not pbn_side["accepted"]:
+            raise NotImplementedError(
+                f"Accepted = False dla {publisher} {rok}, co dalej?"
+            )
+
+        if wydawca_side is None:
+            # Nie ma poziomu po naszej stronie dla tego rkou ,dodamy go:
+            poziom_bpp = get_poziom_bpp(pbn_side)
+
+            if verbosity > 1:
+                print(f"2 Wydawca {wydawca}: dodaje poziom {poziom_bpp} za {rok} ")
+
+            wydawca.poziom_wydawcy_set.create(rok=rok, poziom=poziom_bpp)
+            needs_recalc.add((wydawca, rok))
+        else:
+            # Są obydwa poziomy: Publisher (PBN) i Wydawca (BPP)
+            # porównaj, czy są ok:
+
+            wydawca_side_poziom_translated = poziom_to_points_map.get(
+                wydawca_side.poziom
+            )
+
+            if pbn_side["points"] != wydawca_side_poziom_translated:
+                if verbosity > 1:
+                    print(
+                        f"5 Poziomy sie roznia dla {publisher} {rok}, ustawiam poziom z PBNu?"
+                    )
+                    wydawca_side.poziom = get_poziom_bpp(pbn_side)
+                    needs_recalc.add((wydawca, rok))
+                    wydawca_side.save()
+
+    else:
+        # pbn_side is None
+        if wydawca_side is not None:
+            print(f"4 PBN nie ma poziomu a wydawca ma, co robic? {publisher} {rok}")
+
+    return needs_recalc
+
+
 def importuj_jednego_wydawce(publisher, verbosity=1):
     poziom_to_points_map = {2: 200, 1: 80}
     points_to_poziom_map = {200: 2, 80: 1}
-    needs_recalc = set()
 
     def get_poziom_bpp(pbn_side):
         poziom_bpp = points_to_poziom_map.get(pbn_side["points"])
@@ -105,7 +182,6 @@ def importuj_jednego_wydawce(publisher, verbosity=1):
 
     if not publisher.wydawca_set.exists():
         # Nie ma takiego wydawcy w bazie BPP, spróbuj go zmatchować:
-
         nw = publisher.matchuj_wydawce()
         if nw is not None:
             if publisher.publisherName != nw.nazwa:
@@ -117,30 +193,7 @@ def importuj_jednego_wydawce(publisher, verbosity=1):
 
     if not publisher.wydawca_set.exists():
         # Nie ma takiego wydawcy w bazie, utwórz go:
-
-        nowy_wydawca = Wydawca.objects.create(
-            nazwa=publisher.publisherName, pbn_uid=publisher
-        )
-        if verbosity > 1:
-            print(f"1 Tworze nowego wydawce z MNISWID, {publisher.publisherName}")
-
-        for rok in const.PBN_LATA:
-            points = publisher.points.get(str(rok))
-
-            if not points:
-                # Brak punktów w PBNie za dany rok
-                continue
-
-            if not points["accepted"]:
-                raise NotImplementedError(
-                    f"Accepted = False dla {publisher} {rok}, co dalej?"
-                )
-
-            poziom = points_to_poziom_map.get(points["points"])
-            assert poziom, f"Brak odpowiednika dla {points['points']}"
-
-            nowy_wydawca.poziom_wydawcy_set.create(rok=rok, poziom=poziom)
-
+        _utworz_nowego_wydawce(publisher, points_to_poziom_map, verbosity)
         return True
 
     # Jest już taki wydawca i ma ustawiony match z PBN. Sprawdzimy mu jego poziomy:
@@ -150,54 +203,20 @@ def importuj_jednego_wydawce(publisher, verbosity=1):
 
         for rok in const.PBN_LATA:
             pbn_side = publisher.points.get(str(rok))
-
             wydawca_side = wydawca.poziom_wydawcy_set.filter(rok=rok).first()
 
-            if pbn_side is not None:
-                if not pbn_side["accepted"]:
-                    raise NotImplementedError(
-                        f"Accepted = False dla {publisher} {rok}, co dalej?"
-                    )
+            _aktualizuj_poziomy_wydawcy(
+                wydawca,
+                publisher,
+                rok,
+                pbn_side,
+                wydawca_side,
+                get_poziom_bpp,
+                poziom_to_points_map,
+                verbosity,
+            )
 
-                if wydawca_side is None:
-                    # Nie ma poziomu po naszej stronie dla tego rkou ,dodamy go:
-                    poziom_bpp = get_poziom_bpp(pbn_side)
-
-                    if verbosity > 1:
-                        print(
-                            f"2 Wydawca {wydawca}: dodaje poziom {poziom_bpp} za {rok} "
-                        )
-
-                    wydawca.poziom_wydawcy_set.create(rok=rok, poziom=poziom_bpp)
-                    needs_recalc.add((wydawca, rok))
-                    continue
-
-                # Są obydwa poziomy: Publisher (PBN) i Wydawca (BPP)
-                # porównaj, czy są ok:
-
-                wydawca_side_poziom_translated = poziom_to_points_map.get(
-                    wydawca_side.poziom
-                )
-
-                if pbn_side["points"] != wydawca_side_poziom_translated:
-                    if verbosity > 1:
-                        print(
-                            f"5 Poziomy sie roznia dla {publisher} {rok}, ustawiam poziom z PBNu?"
-                        )
-                        wydawca_side.poziom = get_poziom_bpp(pbn_side)
-                        needs_recalc.add((wydawca, rok))
-
-                        wydawca_side.save()
-                        continue
-
-            else:
-                # pbn_side is None
-                if wydawca_side is not None:
-                    print(
-                        f"4 PBN nie ma poziomu a wydawca ma, co robic? {publisher} {rok}"
-                    )
-
-                # wydawca_side is None, są równe zatem, nic nie robimy
+            # wydawca_side is None, są równe zatem, nic nie robimy
 
 
 def importuj_wydawcow(verbosity=1):
@@ -267,49 +286,157 @@ def pbn_keywords_to_slowa_kluczowe(keywords, lang="pol"):
     return set(slowa_kluczowe.split(separator))
 
 
+def _przetworz_slowa_kluczowe(pbn_keywords_pl, pbn_keywords_en, ret):
+    """Process and add keywords (Polish and English) to the record."""
+    if pbn_keywords_pl:
+        if len(pbn_keywords_pl) == 1:
+            # hotfix...
+            if (
+                "pasze pasze lecznicze substancje przeciwbakteryjne antybiotyki antybiotykooporność zdrowie publiczne "
+                "urzędowa kontrola" in pbn_keywords_pl
+            ):
+                pbn_keywords_pl = {
+                    "pasze",
+                    "pasze lecznicze",
+                    "substancje przeciwbakteryjne",
+                    "antybiotyki",
+                    "antybiotykooporność",
+                    "zdrowie publiczne",
+                    "urzędowa kontrola",
+                }
+        ret.slowa_kluczowe.add(*(pbn_keywords_pl))
+
+    if pbn_keywords_en:
+        if len(pbn_keywords_en) == 1:
+            if (
+                "animal feed medicated feed antibacterial substances antibiotics antimicrobial resistance public "
+                "health official controll" in pbn_keywords_en
+            ):
+                pbn_keywords_en = {
+                    "animal feed",
+                    "medicated feed",
+                    "antibacterial substances",
+                    "antibiotics",
+                    "antimicrobial resistance",
+                    "public health",
+                    "official control",
+                }
+
+        ret.slowa_kluczowe_eng = pbn_keywords_en
+
+
+def _przetworz_metadane_konferencji(pbn_json, ret):
+    """Process conference, evaluation data, and related metadata."""
+    conference = pbn_json.pop("conference", None)
+    if conference:
+        ret.adnotacje += "Conference: " + str(conference) + "\n"
+        ret.save(update_fields=["adnotacje"])
+
+    evaluationData = pbn_json.pop("evaluationData", None)
+    if evaluationData:
+        ret.adnotacje += "EvaluationData: " + str(evaluationData) + "\n"
+        ret.save(update_fields=["adnotacje"])
+
+    conferenceSeries = pbn_json.pop("conferenceSeries", None)
+    if conferenceSeries:
+        ret.adnotacje += "ConferenceSeries: " + str(conferenceSeries) + "\n"
+        ret.save(update_fields=["adnotacje"])
+
+    proceedings = pbn_json.pop("proceedings", None)
+    if proceedings:
+        ret.adnotacje += "Proceedings: " + str(proceedings) + "\n"
+        ret.save(update_fields=["adnotacje"])
+
+
+def _pobierz_lub_utworz_zrodlo(pbn_zrodlo_id, client):
+    """Get or create journal source (zrodlo)."""
+    if pbn_zrodlo_id is None:
+        return Zrodlo.objects.get_or_create(
+            nazwa="Brak źródła po stronie PBN",
+            skrot="BPBN",
+            rodzaj=Rodzaj_Zrodla.objects.get(nazwa="źródło nieindeksowane"),
+        )[0]
+
+    try:
+        return Zrodlo.objects.get(pbn_uid_id=pbn_zrodlo_id)
+    except Zrodlo.DoesNotExist:
+        res = client.get_journal_by_id(pbn_zrodlo_id)
+        pbn_journal = zapisz_mongodb(res, Journal, client)
+        dopisz_jedno_zrodlo(pbn_journal)
+        return Zrodlo.objects.get(pbn_uid_id=pbn_zrodlo_id)
+
+
+def _pobierz_jezyk(mainLanguage, pbn_json_title):
+    """Get language object from PBN language code."""
+    try:
+        return Jezyk.objects.get(pbn_uid_id=mainLanguage)
+    except Jezyk.DoesNotExist:
+        try:
+            return Jezyk.objects.get(skrot__startswith=mainLanguage)
+        except Jezyk.DoesNotExist:
+            print(f" &&& JEZYK NIE ISTNIEJE {mainLanguage=}")
+            print(
+                f" *** PRACA {pbn_json_title} zostanie utworzona z jezykiem PIERWSZYM NA LISCIE"
+            )
+            return Jezyk.objects.all().first()
+
+
+def _przetworz_journal_issue(pbn_json, ret, zrodlo):
+    """Process journalIssue data and add to annotations if needed."""
+    journalIssue = pbn_json.pop("journalIssue", {})
+    if not journalIssue:
+        return
+
+    orig_journalIssue = copy.deepcopy(journalIssue)
+    if str(journalIssue.pop("year", str(ret.rok))) != str(ret.rok):
+        print(
+            f"CZY TO PROBLEM? year rozny od ret.rok {ret.rok=}, {orig_journalIssue=} "
+            f"{ret.tytul_oryginalny} {zrodlo.nazwa}"
+        )
+    if str(journalIssue.pop("publishedYear", str(ret.rok))) != str(ret.rok):
+        print(
+            f"CZY TO PROBLEM? publishedYear rozny od ret.rok {ret.rok=}, {orig_journalIssue=} "
+            f"{ret.tytul_oryginalny} {zrodlo.nazwa}"
+        )
+    if "number" in journalIssue or "volume" in journalIssue:
+        ret.adnotacje += "JournalIssue: " + str(journalIssue) + "\n"
+        ret.save(update_fields=["adnotacje"])
+        journalIssue.pop("number", "")
+        journalIssue.pop("volume", "")
+    journalIssue.pop("doi", None)
+    assert_dictionary_empty(journalIssue)
+
+
 @transaction.atomic
-def importuj_artykul(mongoId, default_jednostka: Jednostka, client: PBNClient):
+def importuj_artykul(
+    mongoId, default_jednostka: Jednostka, client: PBNClient, force=False
+):
+    """Importuje artykuł z PBN do BPP jako Wydawnictwo_Ciagle.
+
+    Args:
+        mongoId: Identyfikator publikacji w MongoDB
+        default_jednostka: Domyślna jednostka dla autorów
+        client: Klient PBN API
+        force: Jeśli True, tworzy nowy rekord nawet jeśli publikacja z tym pbn_uid_id już istnieje w BPP
+    """
     # print(f"importing artykul {mongoId}")
     try:
         pbn_publication = Publication.objects.get(pk=mongoId)
-    except Publication.DoesNotExist:
-        raise NotImplementedError(f"Publikacja {mongoId=} nie istnieje")
+    except Publication.DoesNotExist as err:
+        raise NotImplementedError(f"Publikacja {mongoId=} nie istnieje") from err
 
     ret = pbn_publication.rekord_w_bpp
-    if ret is not None:
+    if ret is not None and not force:
         return ret
 
     pbn_json = pbn_publication.current_version["object"]
     orig_pbn_json = copy.deepcopy(pbn_json)  # noqa
 
     pbn_zrodlo_id = pbn_json.pop("journal", {}).get("id", None)
-
-    if pbn_zrodlo_id is None:
-        zrodlo = Zrodlo.objects.get_or_create(
-            nazwa="Brak źródła po stronie PBN",
-            skrot="BPBN",
-            rodzaj=Rodzaj_Zrodla.objects.get(nazwa="źródło nieindeksowane"),
-        )[0]
-    try:
-        zrodlo = Zrodlo.objects.get(pbn_uid_id=pbn_zrodlo_id)
-    except Zrodlo.DoesNotExist:
-        res = client.get_journal_by_id(pbn_zrodlo_id)
-        pbn_journal = zapisz_mongodb(res, Journal, client)
-        dopisz_jedno_zrodlo(pbn_journal)
-        zrodlo = Zrodlo.objects.get(pbn_uid_id=pbn_zrodlo_id)
+    zrodlo = _pobierz_lub_utworz_zrodlo(pbn_zrodlo_id, client)
 
     mainLanguage = pbn_json.pop("mainLanguage")
-    try:
-        jezyk = Jezyk.objects.get(pbn_uid_id=mainLanguage)
-    except Jezyk.DoesNotExist:
-        try:
-            jezyk = Jezyk.objects.get(skrot__startswith=mainLanguage)
-        except Jezyk.DoesNotExist:
-            print(f" &&& JEZYK NIE ISTNIEJE {mainLanguage=}")
-            print(
-                f" *** PRACA {pbn_json.get('title')} zostanie utworzona z jezykiem PIERWSZYM NA LISCIE"
-            )
-            jezyk = Jezyk.objects.all().first()
+    jezyk = _pobierz_jezyk(mainLanguage, pbn_json.get("title"))
 
     ret = Wydawnictwo_Ciagle(
         tytul_oryginalny=pbn_json.pop("title"),
@@ -344,89 +471,16 @@ def importuj_artykul(mongoId, default_jednostka: Jednostka, client: PBNClient):
     utworz_autorow(ret, pbn_json, client, default_jednostka)
     pbn_json.pop("type")
 
-    journalIssue = pbn_json.pop("journalIssue", {})
-    if journalIssue:
-        orig_journalIssue = copy.deepcopy(journalIssue)
-        if str(journalIssue.pop("year", str(ret.rok))) != str(ret.rok):
-            print(
-                f"CZY TO PROBLEM? year rozny od ret.rok {ret.rok=}, {orig_journalIssue=} "
-                f"{ret.tytul_oryginalny} {zrodlo.nazwa}"
-            )
-        if str(journalIssue.pop("publishedYear", str(ret.rok))) != str(ret.rok):
-            print(
-                f"CZY TO PROBLEM? publishedYear rozny od ret.rok {ret.rok=}, {orig_journalIssue=} "
-                f"{ret.tytul_oryginalny} {zrodlo.nazwa}"
-            )
-        if "number" in journalIssue or "volume" in journalIssue:
-            ret.adnotacje += "JournalIssue: " + str(journalIssue) + "\n"
-            ret.save(update_fields=["adnotacje"])
-            journalIssue.pop("number", "")
-            journalIssue.pop("volume", "")
-        journalIssue.pop("doi", None)
-        assert_dictionary_empty(journalIssue)
+    _przetworz_journal_issue(pbn_json, ret, zrodlo)
 
     pbn_keywords = pbn_json.pop("keywords", {})
     pbn_keywords_pl = pbn_keywords_to_slowa_kluczowe(pbn_keywords, "pol")
-    if pbn_keywords_pl:
-        if len(pbn_keywords_pl) == 1:
-
-            # hotfix...
-
-            if (
-                "pasze pasze lecznicze substancje przeciwbakteryjne antybiotyki antybiotykooporność zdrowie publiczne "
-                "urzędowa kontrola" in pbn_keywords_pl
-            ):
-                pbn_keywords_pl = {
-                    "pasze",
-                    "pasze lecznicze",
-                    "substancje przeciwbakteryjne",
-                    "antybiotyki",
-                    "antybiotykooporność",
-                    "zdrowie publiczne",
-                    "urzędowa kontrola",
-                }
-        ret.slowa_kluczowe.add(*(pbn_keywords_pl))
-
     pbn_keywords_en = pbn_keywords_to_slowa_kluczowe(pbn_keywords, "eng")
-    if pbn_keywords_en:
-        if len(pbn_keywords_en) == 1:
-            if (
-                "animal feed medicated feed antibacterial substances antibiotics antimicrobial resistance public "
-                "health official controll" in pbn_keywords_en
-            ):
-                pbn_keywords_en = {
-                    "animal feed",
-                    "medicated feed",
-                    "antibacterial substances",
-                    "antibiotics",
-                    "antimicrobial resistance",
-                    "public health",
-                    "official control",
-                }
-
-        ret.slowa_kluczowe_eng = pbn_keywords_en
+    _przetworz_slowa_kluczowe(pbn_keywords_pl, pbn_keywords_en, ret)
 
     importuj_streszczenia(pbn_json, ret)
 
-    conference = pbn_json.pop("conference", None)
-    if conference:
-        ret.adnotacje += "Conference: " + str(conference) + "\n"
-        ret.save(update_fields=["adnotacje"])
-
-    evaluationData = pbn_json.pop("evaluationData", None)
-    if evaluationData:
-        ret.adnotacje += "EvaluationData: " + str(evaluationData) + "\n"
-        ret.save(update_fields=["adnotacje"])
-
-    conferenceSeries = pbn_json.pop("conferenceSeries", None)
-    if conferenceSeries:
-        ret.adnotacje += "ConferenceSeries: " + str(conferenceSeries) + "\n"
-        ret.save(update_fields=["adnotacje"])
-
-    proceedings = pbn_json.pop("proceedings", None)
-    if proceedings:
-        ret.adnotacje += "Proceedings: " + str(proceedings) + "\n"
-        ret.save(update_fields=["adnotacje"])
+    _przetworz_metadane_konferencji(pbn_json, ret)
 
     if "titles" in pbn_json:
         titles = pbn_json.pop("titles")
@@ -441,11 +495,90 @@ def importuj_artykul(mongoId, default_jednostka: Jednostka, client: PBNClient):
     return ret
 
 
+def _pobierz_lub_utworz_autora(pbn_uid_autora, client):
+    """Fetch or create an author from PBN."""
+    try:
+        return Autor.objects.get(pbn_uid_id=pbn_uid_autora)
+    except Autor.DoesNotExist:
+        pbn_scientist = pobierz_i_zapisz_dane_jednej_osoby(
+            client_or_token=client,
+            personId=pbn_uid_autora,
+            from_institution_api=False,
+        )
+
+        if (
+            pbn_scientist.orcid
+            and Autor.objects.filter(orcid=pbn_scientist.orcid).exists()
+        ):
+            print(
+                f"UWAGA Wiecej niz jeden autor w PBNie ma TEN SAM ORCID: {pbn_scientist.orcid=}"
+            )
+            print("ID autorow: ", pbn_scientist.pk, pbn_uid_autora)
+            return Autor.objects.get(orcid=pbn_scientist.orcid)
+        else:
+            return utworz_wpis_dla_jednego_autora(pbn_scientist)
+
+
+def _przetworz_afiliacje(
+    ta_afiliacja,
+    default_jednostka,
+    typ_odpowiedzialnosci_autor,
+    typ_odpowiedzialnosci_redaktor,
+):
+    """Process author affiliation data."""
+    jednostka = Uczelnia.objects.default.obca_jednostka
+    afiliuje = False
+    typ_odpowiedzialnosci = typ_odpowiedzialnosci_autor
+
+    if ta_afiliacja is None:
+        return jednostka, afiliuje, typ_odpowiedzialnosci
+
+    if isinstance(ta_afiliacja, list) and len(ta_afiliacja) == 1:
+        ta_afiliacja = ta_afiliacja[0]
+    else:
+        jest_nasz = False
+        typ_autora = ta_afiliacja[0]["type"]
+        if ta_afiliacja[0]["institutionId"] == Uczelnia.objects.default.pbn_uid_id:
+            jest_nasz = True
+        for elem in ta_afiliacja[1:]:
+            if elem["type"] != typ_autora:
+                print(
+                    f"UWAGA: autor w afiliacji -- jako kilka roznych typow {ta_afiliacja=}"
+                )
+                continue
+            if elem["institutionId"] == Uczelnia.objects.default.pbn_uid_id:
+                jest_nasz = True
+
+        ta_afiliacja = {
+            "type": typ_autora,
+            "institutionId": (
+                Uczelnia.objects.default.pbn_uid_id if jest_nasz else "123"
+            ),
+        }
+
+    pbn_typ_odpowiedzialnosci = ta_afiliacja.pop("type")
+    if pbn_typ_odpowiedzialnosci == "AUTHOR":
+        typ_odpowiedzialnosci = typ_odpowiedzialnosci_autor
+    elif pbn_typ_odpowiedzialnosci == "EDITOR":
+        typ_odpowiedzialnosci = typ_odpowiedzialnosci_redaktor
+    else:
+        raise NotImplementedError(f"{pbn_typ_odpowiedzialnosci=}")
+
+    pbn_institution_id = ta_afiliacja.pop("institutionId")
+
+    if pbn_institution_id == Uczelnia.objects.default.pbn_uid_id:
+        jednostka = default_jednostka
+        afiliuje = True
+
+    assert_dictionary_empty(ta_afiliacja)
+
+    return jednostka, afiliuje, typ_odpowiedzialnosci
+
+
 def utworz_autorow(ret, pbn_json, client, default_jednostka):
     wyliczona_kolejnosc = 0
 
     afiliacje = pbn_json.pop("affiliations", {})
-
     pbn_kolejnosci = pbn_json.pop("orderList", {})
 
     typ_odpowiedzialnosci_autor = Typ_Odpowiedzialnosci.objects.get(nazwa="autor")
@@ -462,75 +595,15 @@ def utworz_autorow(ret, pbn_json, client, default_jednostka):
         for pbn_uid_autora, pbn_autor in pbn_json.pop(
             pbn_klucz_slownika_autorow, {}
         ).items():
-            try:
-                autor = Autor.objects.get(pbn_uid_id=pbn_uid_autora)
-            except Autor.DoesNotExist:
-                pbn_scientist = pobierz_i_zapisz_dane_jednej_osoby(
-                    client_or_token=client,
-                    personId=pbn_uid_autora,
-                    from_institution_api=False,
-                )
-
-                if (
-                    pbn_scientist.orcid
-                    and Autor.objects.filter(orcid=pbn_scientist.orcid).exists()
-                ):
-                    print(
-                        f"UWAGA Wiecej niz jeden autor w PBNie ma TEN SAM ORCID: {pbn_scientist.orcid=}"
-                    )
-                    print("ID autorow: ", pbn_scientist.pk, pbn_uid_autora)
-
-                    autor = Autor.objects.get(orcid=pbn_scientist.orcid)
-                else:
-                    autor = utworz_wpis_dla_jednego_autora(pbn_scientist)
-
-            jednostka = Uczelnia.objects.default.obca_jednostka
-            afiliuje = False
+            autor = _pobierz_lub_utworz_autora(pbn_uid_autora, client)
 
             ta_afiliacja = afiliacje.pop(autor.pbn_uid_id, None)
-            if ta_afiliacja is not None:
-                if isinstance(ta_afiliacja, list) and len(ta_afiliacja) == 1:
-                    ta_afiliacja = ta_afiliacja[0]
-                else:
-                    jest_nasz = False
-                    typ_autora = ta_afiliacja[0]["type"]
-                    if (
-                        ta_afiliacja[0]["institutionId"]
-                        == Uczelnia.objects.default.pbn_uid_id
-                    ):
-                        jest_nasz = True
-                    for elem in ta_afiliacja[1:]:
-                        if elem["type"] != typ_autora:
-                            print(
-                                f"UWAGA: autor w afiliacji {ret=} -- jako kilka roznych typow {ta_afiliacja=}"
-                            )
-                            continue
-
-                        if elem["institutionId"] == Uczelnia.objects.default.pbn_uid_id:
-                            jest_nasz = True
-
-                    ta_afiliacja = {
-                        "type": typ_autora,
-                        "institutionId": (
-                            Uczelnia.objects.default.pbn_uid_id if jest_nasz else "123"
-                        ),
-                    }
-
-                pbn_typ_odpowiedzialnosci = ta_afiliacja.pop("type")
-                if pbn_typ_odpowiedzialnosci == "AUTHOR":
-                    typ_odpowiedzialnosci = typ_odpowiedzialnosci_autor
-                elif pbn_typ_odpowiedzialnosci == "EDITOR":
-                    typ_odpowiedzialnosci = typ_odpowiedzialnosci_redaktor
-                else:
-                    raise NotImplementedError(f"{pbn_typ_odpowiedzialnosci=}")
-
-                pbn_institution_id = ta_afiliacja.pop("institutionId")
-
-                if pbn_institution_id == Uczelnia.objects.default.pbn_uid_id:
-                    jednostka = default_jednostka
-                    afiliuje = True
-
-                assert_dictionary_empty(ta_afiliacja)
+            jednostka, afiliuje, typ_odpowiedzialnosci = _przetworz_afiliacje(
+                ta_afiliacja,
+                default_jednostka,
+                typ_odpowiedzialnosci_autor,
+                typ_odpowiedzialnosci_redaktor,
+            )
 
             try:
                 kolejnosc = pbn_kolejnosci.get(pbn_typ_odpowiedzialnosci, []).index(
@@ -567,16 +640,25 @@ def importuj_rozdzial(
     mongoId,
     default_jednostka: Jednostka,
     client: PBNClient,
+    force=False,
 ):
+    """Importuje rozdział z PBN do BPP jako Wydawnictwo_Zwarte z wydawnictwem nadrzędnym.
+
+    Args:
+        mongoId: Identyfikator publikacji w MongoDB
+        default_jednostka: Domyślna jednostka dla autorów
+        client: Klient PBN API
+        force: Jeśli True, tworzy nowy rekord nawet jeśli publikacja z tym pbn_uid_id już istnieje w BPP
+    """
     # print(f"importuj rozdzial {mongoId=}")
     try:
         pbn_publication = Publication.objects.get(pk=mongoId)
-    except Publication.DoesNotExist:
-        raise NotImplementedError(f"Publikacja {mongoId=} nie istnieje")
+    except Publication.DoesNotExist as err:
+        raise NotImplementedError(f"Publikacja {mongoId=} nie istnieje") from err
 
     ret = pbn_publication.rekord_w_bpp
 
-    if ret is not None:
+    if ret is not None and not force:
         return ret
 
     pbn_json = pbn_publication.current_version["object"]
@@ -585,7 +667,9 @@ def importuj_rozdzial(
     try:
         wydawnictwo_nadrzedne = Wydawnictwo_Zwarte.objects.get(pbn_uid_id=pbn_book_id)
     except Wydawnictwo_Zwarte.DoesNotExist:
-        wydawnictwo_nadrzedne = importuj_ksiazke(pbn_book_id, default_jednostka, client)
+        wydawnictwo_nadrzedne = importuj_ksiazke(
+            pbn_book_id, default_jednostka, client, force=force
+        )
 
     rok = wydawnictwo_nadrzedne.rok
 
@@ -656,12 +740,8 @@ def importuj_rozdzial(
     pbn_json.pop("keywords", None)
     pbn_keywords = pbn_chapter_json.pop("keywords", {})
     pbn_keywords_pl = pbn_keywords_to_slowa_kluczowe(pbn_keywords, "pol")
-    if pbn_keywords_pl:
-        ret.slowa_kluczowe.add(*(pbn_keywords_pl))
-
     pbn_keywords_en = pbn_keywords_to_slowa_kluczowe(pbn_keywords, "eng")
-    if pbn_keywords_en:
-        ret.slowa_kluczowe_eng = pbn_keywords_en
+    _przetworz_slowa_kluczowe(pbn_keywords_pl, pbn_keywords_en, ret)
 
     assert_dictionary_empty(pbn_chapter_json)
 
@@ -694,8 +774,8 @@ def importuj_openaccess(
             ret.openaccess_licencja = Licencja_OpenAccess.objects.get(
                 skrot=pbn_licencja
             )
-        except Licencja_OpenAccess.DoesNotExist:
-            raise ValueError(f"W BPP nie istnieje licancja {pbn_licencja=}")
+        except Licencja_OpenAccess.DoesNotExist as err:
+            raise ValueError(f"W BPP nie istnieje licancja {pbn_licencja=}") from err
         ret.openaccess_tryb_dostepu = klasa_bazowa_tryb_dostepu.objects.get(
             skrot=oa_json.pop("mode")
         )
@@ -708,10 +788,10 @@ def importuj_openaccess(
             ret.openaccess_wersja_tekstu = Wersja_Tekstu_OpenAccess.objects.get(
                 skrot=pbn_wersja_tekstu
             )
-        except Wersja_Tekstu_OpenAccess.DoesNotExist:
+        except Wersja_Tekstu_OpenAccess.DoesNotExist as err:
             raise NotImplementedError(
                 f"W BPP nie istnieje wersja tekstu openaccess {pbn_wersja_tekstu=}"
-            )
+            ) from err
 
         months = oa_json.pop("months", None)
         if months:
@@ -720,7 +800,7 @@ def importuj_openaccess(
         reldate = oa_json.pop("releaseDate", None)
         if reldate:
             reldate = reldate.split("T")[0]
-            ret.openaccess_data_opublikowania = reldate
+            ret.openaccess_data_opublikowania = date.fromisoformat(reldate)
 
             oa_json.pop("releaseDateYear", None)
             oa_json.pop("releaseDateMonth", None)
@@ -747,7 +827,6 @@ def importuj_openaccess(
                 if reldate_year is None:
                     print("bez zartow BLAD DDATY")
                 else:
-
                     ret.openaccess_data_opublikowania = date(
                         int(reldate_year),
                         strMonth.get(oa_json.pop("releaseDateMonth")),
@@ -881,7 +960,6 @@ def sciagnij_i_zapisz_wydawce(pbn_wydawca_id, client):
 
 
 def get_or_download_publication(mongoId, client):
-
     try:
         pbn_publication = Publication.objects.get(pk=mongoId)
     except Publication.DoesNotExist:
@@ -893,13 +971,23 @@ def get_or_download_publication(mongoId, client):
 
 
 @transaction.atomic
-def importuj_ksiazke(mongoId, default_jednostka: Jednostka, client: PBNClient):
+def importuj_ksiazke(
+    mongoId, default_jednostka: Jednostka, client: PBNClient, force=False
+):
+    """Importuje książkę z PBN do BPP jako Wydawnictwo_Zwarte.
+
+    Args:
+        mongoId: Identyfikator publikacji w MongoDB
+        default_jednostka: Domyślna jednostka dla autorów
+        client: Klient PBN API
+        force: Jeśli True, tworzy nowy rekord nawet jeśli publikacja z tym pbn_uid_id już istnieje w BPP
+    """
     # print(f"importuj ksiazke {mongoId=}")
     pbn_publication = get_or_download_publication(mongoId, client)
 
     ret = pbn_publication.rekord_w_bpp
 
-    if ret is not None:
+    if ret is not None and not force:
         return ret
 
     pbn_json = pbn_publication.current_version["object"]
@@ -951,8 +1039,16 @@ def importuj_ksiazke(mongoId, default_jednostka: Jednostka, client: PBNClient):
 
 
 def importuj_publikacje_po_pbn_uid_id(
-    pbn_uid_id, client: PBNClient, default_jednostka: Jednostka
+    pbn_uid_id, client: PBNClient, default_jednostka: Jednostka, force=False
 ):
+    """Importuje publikację z PBN do BPP.
+
+    Args:
+        pbn_uid_id: Identyfikator publikacji w PBN
+        client: Klient PBN API
+        default_jednostka: Domyślna jednostka dla autorów
+        force: Jeśli True, tworzy nowy rekord nawet jeśli publikacja z tym pbn_uid_id już istnieje w BPP
+    """
     # print(f"importuj publikacje {pbn_uid_id=}")
     pbn_publication = get_or_download_publication(pbn_uid_id, client)
 
@@ -967,24 +1063,28 @@ def importuj_publikacje_po_pbn_uid_id(
                 pbn_publication.pk,
                 default_jednostka=default_jednostka,
                 client=client,
+                force=force,
             )
         case "EDITED_BOOK":
             ret = importuj_ksiazke(
                 pbn_publication.pk,
                 default_jednostka=default_jednostka,
                 client=client,
+                force=force,
             )
         case "CHAPTER":
             ret = importuj_ksiazke(
                 cv["object"]["book"]["id"],
                 default_jednostka=default_jednostka,
                 client=client,
+                force=force,
             )
 
             ret = importuj_rozdzial(
                 pbn_publication.pk,
                 default_jednostka=default_jednostka,
                 client=client,
+                force=force,
             )
 
         case "ARTICLE":
@@ -993,6 +1093,7 @@ def importuj_publikacje_po_pbn_uid_id(
                 pbn_publication.pk,
                 default_jednostka=default_jednostka,
                 client=client,
+                force=force,
             )
         case _:
             raise NotImplementedError(f"Nie obsluze {cv['object']['type']}")
