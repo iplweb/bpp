@@ -1314,7 +1314,11 @@ def _analyze_multi_author_works_impl(  # noqa: C901
     # Update task state
     task.update_state(
         state="PROGRESS",
-        meta={"step": "loading_metrics", "progress": progress_offset + 10},
+        meta={
+            "stage": "unpinning",
+            "step": "loading_metrics",
+            "progress": progress_offset + 10,
+        },
     )
 
     # Filtruj metryki - szukamy autorów z PEŁNYMI slotami (>=80% wypełnienia)
@@ -1337,6 +1341,7 @@ def _analyze_multi_author_works_impl(  # noqa: C901
     task.update_state(
         state="PROGRESS",
         meta={
+            "stage": "unpinning",
             "step": "analyzing_works",
             "progress": progress_offset + 30,
             "metrics_loaded": len(metryki_dict),
@@ -1421,6 +1426,7 @@ def _analyze_multi_author_works_impl(  # noqa: C901
     task.update_state(
         state="PROGRESS",
         meta={
+            "stage": "unpinning",
             "step": "finding_opportunities",
             "progress": progress_offset + 50,
             "works_to_analyze": len(works_by_rekord),
@@ -1559,13 +1565,14 @@ def _analyze_multi_author_works_impl(  # noqa: C901
                 )
 
         analyzed_count += 1
-        if analyzed_count % 20 == 0:
+        if analyzed_count % 5 == 0:
             progress = (
                 progress_offset + 50 + int((analyzed_count / len(works_by_rekord)) * 40)
             )
             task.update_state(
                 state="PROGRESS",
                 meta={
+                    "stage": "unpinning",
                     "step": "finding_opportunities",
                     "progress": progress,
                     "analyzed": analyzed_count,
@@ -1580,6 +1587,7 @@ def _analyze_multi_author_works_impl(  # noqa: C901
     task.update_state(
         state="PROGRESS",
         meta={
+            "stage": "unpinning",
             "step": "saving_results",
             "progress": progress_offset + 90,
             "opportunities_found": len(opportunities),
@@ -1665,9 +1673,21 @@ def run_unpinning_after_metrics_wrapper(
             "No metrics found in database! Unpinning analysis will likely find nothing."
         )
 
-    # Wywołaj analizę unpinning
+    # Aktualizuj status - faza unpinning rozpoczęta (50% całości)
+    self.update_state(
+        state="PROGRESS",
+        meta={
+            "stage": "unpinning",
+            "step": "starting",
+            "progress": 50,
+            "metrics_count": metrics_count,
+            "metrics_result": metrics_result,
+        },
+    )
+
+    # Wywołaj analizę unpinning z offsetem 50 (metryki zajęły 0-50%)
     result = _analyze_multi_author_works_impl(
-        self, uczelnia_id, dyscyplina_id, min_slot_filled, progress_offset=0
+        self, uczelnia_id, dyscyplina_id, min_slot_filled, progress_offset=50
     )
 
     # Dodaj informacje o metrykach do wyniku

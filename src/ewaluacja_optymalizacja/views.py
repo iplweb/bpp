@@ -1796,11 +1796,95 @@ def unpinning_analysis_status(request, task_id):
     )
 
 
+def _get_dyscyplina_filter(request):
+    """Extract and validate dyscyplina ID from request."""
+    dyscyplina_id = request.GET.get("dyscyplina")
+    if not dyscyplina_id:
+        return None
+
+    try:
+        return int(dyscyplina_id)
+    except (ValueError, TypeError):
+        return None
+
+
+def _cache_rekord_objects(opportunities_qs):
+    """Preload Rekord objects to avoid N+1 queries."""
+    from bpp.models import Rekord
+
+    all_opportunities = list(opportunities_qs)
+    rekord_ids = [opp.rekord_id for opp in all_opportunities]
+    rekordy = {r.pk: r for r in Rekord.objects.filter(pk__in=rekord_ids)}
+
+    # Attach rekord objects to opportunities
+    for opp in all_opportunities:
+        opp._cached_rekord = rekordy.get(opp.rekord_id)
+
+    return all_opportunities
+
+
+def _get_punkty_kbn(opportunity):
+    """Safely get punkty_kbn from opportunity's rekord."""
+    try:
+        return opportunity.rekord.original.punkty_kbn or Decimal("0")
+    except (AttributeError, TypeError):
+        return Decimal("0")
+
+
+def _filter_by_punktacja(opportunities, punktacja_zrodla):
+    """Filter opportunities by punktacja_zrodla range."""
+    if not punktacja_zrodla:
+        return opportunities
+
+    punktacja_ranges = {
+        "0-100": lambda p: p < Decimal("100"),
+        "100-140": lambda p: Decimal("100") <= p < Decimal("140"),
+        "140-200": lambda p: Decimal("140") <= p < Decimal("200"),
+        "200+": lambda p: p >= Decimal("200"),
+    }
+
+    filter_func = punktacja_ranges.get(punktacja_zrodla)
+    if not filter_func:
+        return opportunities
+
+    return [opp for opp in opportunities if filter_func(_get_punkty_kbn(opp))]
+
+
+def _create_sort_key_function(sort_by):
+    """Create a sort key function based on sort_by parameter."""
+    # Define sort key extractors
+    sort_keys = {
+        "tytul": lambda opp: opp.rekord_tytul or "",
+        "punktacja": _get_punkty_kbn,
+        "dyscyplina": lambda opp: (
+            opp.dyscyplina_naukowa.nazwa if opp.dyscyplina_naukowa else ""
+        ),
+        "autor_a": lambda opp: (
+            opp.autor_could_benefit.nazwisko if opp.autor_could_benefit else ""
+        ),
+        "slots_missing": lambda opp: opp.slots_missing or Decimal("0"),
+        "slot_in_work": lambda opp: opp.slot_in_work or Decimal("0"),
+        "punkty_a": lambda opp: opp.punkty_roznica_a or Decimal("0"),
+        "sloty_a": lambda opp: opp.sloty_roznica_a or Decimal("0"),
+        "punkty_b": lambda opp: opp.punkty_roznica_b or Decimal("0"),
+        "sloty_b": lambda opp: opp.sloty_roznica_b or Decimal("0"),
+        "autor_b": lambda opp: (
+            opp.autor_currently_using.nazwisko if opp.autor_currently_using else ""
+        ),
+        "makes_sense": lambda opp: opp.makes_sense,
+    }
+
+    # Return the requested sort key function, defaulting to punkty_b
+    return sort_keys.get(sort_by, sort_keys["punkty_b"])
+
+
 @login_required
 def unpinning_opportunities_list(request):
     """
     Wyświetla listę możliwości odpinania prac wieloautorskich.
     """
+    from bpp.models import Dyscyplina_Naukowa
+
     from .models import UnpinningOpportunity
 
     # Pobierz pierwszą uczelnię (zakładamy, że jest tylko jedna)
@@ -1810,23 +1894,17 @@ def unpinning_opportunities_list(request):
         messages.error(request, "Nie znaleziono uczelni w systemie.")
         return redirect("ewaluacja_optymalizacja:index")
 
-    # Filtrowanie
+    # Podstawowe filtrowanie
     opportunities_qs = UnpinningOpportunity.objects.filter(uczelnia=uczelnia)
 
-    # Filtr po dyscyplinie (opcjonalnie)
-    dyscyplina_id = request.GET.get("dyscyplina")
+    # Filtr po dyscyplinie
+    dyscyplina_id = _get_dyscyplina_filter(request)
     if dyscyplina_id:
-        try:
-            dyscyplina_id = int(dyscyplina_id)
-            opportunities_qs = opportunities_qs.filter(
-                dyscyplina_naukowa_id=dyscyplina_id
-            )
-        except (ValueError, TypeError):
-            pass
+        opportunities_qs = opportunities_qs.filter(dyscyplina_naukowa_id=dyscyplina_id)
 
     # Filtr "tylko sensowne"
-    only_sensible = request.GET.get("only_sensible")
-    if only_sensible == "1":
+    only_sensible = request.GET.get("only_sensible") == "1"
+    if only_sensible:
         opportunities_qs = opportunities_qs.filter(makes_sense=True)
 
     # Select related dla optymalizacji
@@ -1840,22 +1918,27 @@ def unpinning_opportunities_list(request):
         "metryka_currently_using__autor",
     )
 
-    # Paginacja
+    # Preload Rekord objects
+    all_opportunities = _cache_rekord_objects(opportunities_qs)
+
+    # Filtr po punktacji źródła
+    punktacja_zrodla = request.GET.get("punktacja_zrodla")
+    all_opportunities = _filter_by_punktacja(all_opportunities, punktacja_zrodla)
+
+    # Sortowanie
+    sort_by = request.GET.get("sort_by", "punkty_b")
+    sort_dir = request.GET.get("sort_dir", "desc")
+    sort_key = _create_sort_key_function(sort_by)
+    all_opportunities = sorted(
+        all_opportunities, key=sort_key, reverse=(sort_dir == "desc")
+    )
+
+    # Paginacja po filtrowaniu i sortowaniu
     from django.core.paginator import Paginator
 
-    paginator = Paginator(opportunities_qs, 50)  # 50 wyników na stronę
+    paginator = Paginator(all_opportunities, 50)
     page_number = request.GET.get("page")
     opportunities = paginator.get_page(page_number)
-
-    # Preload Rekord objects to avoid N+1 queries
-    from bpp.models import Rekord
-
-    rekord_ids = [opp.rekord_id for opp in opportunities]
-    rekordy = {r.pk: r for r in Rekord.objects.filter(pk__in=rekord_ids)}
-
-    # Attach rekord objects to opportunities
-    for opp in opportunities:
-        opp._cached_rekord = rekordy.get(opp.rekord_id)
 
     # Statystyki
     total_count = UnpinningOpportunity.objects.filter(uczelnia=uczelnia).count()
@@ -1864,8 +1947,6 @@ def unpinning_opportunities_list(request):
     ).count()
 
     # Lista dyscyplin dla filtra
-    from bpp.models import Dyscyplina_Naukowa
-
     dyscypliny = Dyscyplina_Naukowa.objects.filter(
         pk__in=UnpinningOpportunity.objects.filter(uczelnia=uczelnia).values_list(
             "dyscyplina_naukowa_id", flat=True
@@ -1878,7 +1959,10 @@ def unpinning_opportunities_list(request):
         "sensible_count": sensible_count,
         "dyscypliny": dyscypliny,
         "selected_dyscyplina": dyscyplina_id,
-        "only_sensible": only_sensible == "1",
+        "only_sensible": only_sensible,
+        "selected_punktacja_zrodla": punktacja_zrodla or "",
+        "sort_by": sort_by,
+        "sort_dir": sort_dir,
     }
 
     return render(
@@ -1934,6 +2018,7 @@ def database_verification_view(request):
 def export_unpinning_opportunities_xlsx(request):  # noqa: C901
     """Export unpinning opportunities list to XLSX format with filters applied"""
     import datetime
+    from decimal import Decimal
 
     from django.http import HttpResponse
     from openpyxl import Workbook
@@ -1985,12 +2070,40 @@ def export_unpinning_opportunities_xlsx(request):  # noqa: C901
     )
 
     # Preload Rekord objects to avoid N+1 queries
-    rekord_ids = [opp.rekord_id for opp in opportunities_qs]
+    all_opportunities = list(opportunities_qs)
+    rekord_ids = [opp.rekord_id for opp in all_opportunities]
     rekordy = {r.pk: r for r in Rekord.objects.filter(pk__in=rekord_ids)}
 
     # Attach rekord objects to opportunities
-    for opp in opportunities_qs:
+    for opp in all_opportunities:
         opp._cached_rekord = rekordy.get(opp.rekord_id)
+
+    # Filtr po punktacji źródła (identyczne jak w unpinning_opportunities_list)
+    punktacja_zrodla = request.GET.get("punktacja_zrodla")
+    if punktacja_zrodla:
+        filtered_opportunities = []
+        for opp in all_opportunities:
+            try:
+                punkty = opp.rekord.original.punkty_kbn or Decimal("0")
+            except (AttributeError, TypeError):
+                punkty = Decimal("0")
+
+            if punktacja_zrodla == "0-100" and punkty < Decimal("100"):
+                filtered_opportunities.append(opp)
+            elif punktacja_zrodla == "100-140" and Decimal("100") <= punkty < Decimal(
+                "140"
+            ):
+                filtered_opportunities.append(opp)
+            elif punktacja_zrodla == "140-200" and Decimal("140") <= punkty < Decimal(
+                "200"
+            ):
+                filtered_opportunities.append(opp)
+            elif punktacja_zrodla == "200+" and punkty >= Decimal("200"):
+                filtered_opportunities.append(opp)
+
+        all_opportunities = filtered_opportunities
+
+    opportunities_qs = all_opportunities
 
     # Setup workbook
     wb = Workbook()
@@ -2023,6 +2136,7 @@ def export_unpinning_opportunities_xlsx(request):  # noqa: C901
     headers = [
         "Lp.",
         "Tytuł pracy",
+        "Punktacja źródła",
         "Dyscyplina",
         "Autor A (do odpięcia)",
         "Rodzaj autora A",
@@ -2088,6 +2202,18 @@ def export_unpinning_opportunities_xlsx(request):  # noqa: C901
         # Tytuł pracy
         cell = ws.cell(row=row_idx, column=col, value=opp.rekord_tytul)
         cell.border = thin_border
+        if row_fill:
+            cell.fill = row_fill
+        col += 1
+
+        # Punktacja źródła
+        try:
+            punkty_kbn = float(opp.rekord.original.punkty_kbn or 0)
+        except (AttributeError, TypeError, ValueError):
+            punkty_kbn = 0
+        cell = ws.cell(row=row_idx, column=col, value=punkty_kbn)
+        cell.border = thin_border
+        cell.alignment = Alignment(horizontal="center")
         if row_fill:
             cell.fill = row_fill
         col += 1
@@ -2347,7 +2473,7 @@ def export_unpinning_opportunities_xlsx(request):  # noqa: C901
     summary_row = last_data_row + 2 if last_data_row > 1 else 3
     ws.cell(row=summary_row, column=1, value="Podsumowanie:")
     ws.cell(row=summary_row + 1, column=1, value="Liczba wierszy:")
-    ws.cell(row=summary_row + 1, column=2, value=opportunities_qs.count())
+    ws.cell(row=summary_row + 1, column=2, value=len(opportunities_qs))
 
     # Add filter information
     filter_info = []
@@ -2357,6 +2483,17 @@ def export_unpinning_opportunities_xlsx(request):  # noqa: C901
             filter_info.append(f"Dyscyplina: {dyscyplina.nazwa}")
         except Dyscyplina_Naukowa.DoesNotExist:
             pass
+
+    if punktacja_zrodla:
+        punktacja_labels = {
+            "0-100": "0-100 punktów",
+            "100-140": "100-140 punktów",
+            "140-200": "140-200 punktów",
+            "200+": "200+ punktów",
+        }
+        filter_info.append(
+            f"Punktacja źródła: {punktacja_labels.get(punktacja_zrodla, punktacja_zrodla)}"
+        )
 
     if only_sensible == "1":
         filter_info.append("Tylko sensowne: TAK")
