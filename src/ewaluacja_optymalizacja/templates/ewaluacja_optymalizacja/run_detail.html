@@ -134,6 +134,14 @@
         </div>
 
         <h2><span class="fi-torsos-all"></span> Wyniki autorów</h2>
+
+        <div style="margin: 15px 0;">
+            <a href="{% url 'ewaluacja_optymalizacja:export-all-authors-zip' run_pk=run.pk %}"
+               class="button success">
+                <span class="fi-archive"></span> Pobierz archiwum ZIP (wszystkie XLS)
+            </a>
+        </div>
+
         <table>
             <thead>
                 <tr>
@@ -145,6 +153,7 @@
                     <th>Limit</th>
                     <th>Publikacje</th>
                     <th>LOW-MONO</th>
+                    <th>XLS</th>
                 </tr>
             </thead>
             <tbody>
@@ -183,6 +192,13 @@
                     </td>
                     <td>{{ author_result.pub_count }}</td>
                     <td>{{ author_result.low_mono_count }}</td>
+                    <td>
+                        <a href="{% url 'ewaluacja_optymalizacja:export-author-sedn-xlsx' run_pk=run.pk autor_pk=author_result.autor.pk %}"
+                           class="button tiny"
+                           title="Pobierz prace autora w formacie SEDN">
+                            XLS
+                        </a>
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -194,6 +210,9 @@
             </a>
             <a href="{% url 'ewaluacja_optymalizacja:discipline-comparison' %}" class="button">
                 <span class="fi-graph-bar"></span> Porównanie dyscyplin
+            </a>
+            <a href="{% url 'ewaluacja_optymalizacja:export-all-authors-zip' run_pk=run.pk %}" class="button success">
+                <span class="fi-archive"></span> Pobierz archiwum ZIP (wszystkie XLS)
             </a>
         </div>
     </div>

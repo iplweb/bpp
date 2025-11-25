@@ -69,4 +69,14 @@ urlpatterns = [
         views.database_verification_view,
         name="database-verification",
     ),
+    path(
+        "runs/<int:run_pk>/author/<int:autor_pk>/export-xlsx/",
+        views.export_author_sedn_xlsx,
+        name="export-author-sedn-xlsx",
+    ),
+    path(
+        "runs/<int:run_pk>/export-all-authors-zip/",
+        views.export_all_authors_zip,
+        name="export-all-authors-zip",
+    ),
 ]

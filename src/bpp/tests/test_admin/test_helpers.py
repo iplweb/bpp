@@ -49,3 +49,24 @@ def test_poszukaj_duplikatu_pola_www_i_ewentualnie_zmien_alternatywa(
     assert wydawnictwo_ciagle.www
     assert drugie_ciagle.www != wydawnictwo_ciagle.www
     assert "Aby uniknąć zdublowania".encode() in res.content
+
+
+@pytest.mark.django_db
+def test_poszukaj_duplikatu_pola_www_nie_modyfikuje_pustych_pol(
+    wydawnictwo_ciagle, admin_app
+):
+    """Test sprawdza, że puste pola www i public_www nie są modyfikowane"""
+    wydawnictwo_ciagle.www = ""
+    wydawnictwo_ciagle.public_www = ""
+    wydawnictwo_ciagle.save()
+
+    res = admin_app.get(
+        reverse("admin:bpp_wydawnictwo_ciagle_change", args=(wydawnictwo_ciagle.pk,))
+    )
+    res = res.forms["wydawnictwo_ciagle_form"].submit().maybe_follow()
+    wydawnictwo_ciagle.refresh_from_db()
+
+    assert wydawnictwo_ciagle.www == ""
+    assert wydawnictwo_ciagle.public_www == ""
+    assert "#bpp-auto-url" not in wydawnictwo_ciagle.www
+    assert "#bpp-auto-url" not in wydawnictwo_ciagle.public_www

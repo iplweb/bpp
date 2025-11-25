@@ -80,7 +80,7 @@ def poszukaj_duplikatu_pola_www_i_ewentualnie_zmien(request, obj):
 
     for field, drugie in (("www", "public_www"), ("public_www", "www")):
         cur_value = getattr(obj, field)
-        if cur_value is None:
+        if not cur_value:
             continue
 
         rekord_pk = None
