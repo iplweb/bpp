@@ -318,34 +318,16 @@ def _create_optimization_snapshot(uczelnia, logger_func):
     return snapshot, suma_punktow_przed, suma_slotow_przed
 
 
-def _should_unpin_publication(autor_id, rekord_id, logger_func):
-    """Check if a publication should be unpinned based on slot value."""
+def _collect_ids_to_unpin(uczelnia, autorzy_z_wynikami, logger_func):
+    """Collect IDs of publications to unpin.
+
+    Only considers publications from years 2022-2025 (rok >= 2022 and rok < 2026).
+    Unpins publications that are either:
+    - Not in optimization results, OR
+    - In optimization results but with slot < 1.0
+    """
     from decimal import Decimal
 
-    from bpp.models import Cache_Punktacja_Autora_Query
-
-    try:
-        cache_entry = Cache_Punktacja_Autora_Query.objects.filter(
-            autor_id=autor_id,
-            rekord_id=list(rekord_id),
-            dyscyplina__isnull=False,
-        ).first()
-
-        if cache_entry and cache_entry.slot < Decimal("1.0"):
-            return True
-        elif cache_entry is None:
-            return True
-        return False
-
-    except Exception as e:
-        logger_func(
-            f"Error checking slot for autor {autor_id}, rekord {rekord_id}: {e}"
-        )
-        return True  # Unpin for safety
-
-
-def _collect_ids_to_unpin(uczelnia, autorzy_z_wynikami, logger_func):
-    """Collect IDs of publications to unpin."""
     from django.contrib.contenttypes.models import ContentType
 
     from bpp.models import (
@@ -364,35 +346,42 @@ def _collect_ids_to_unpin(uczelnia, autorzy_z_wynikami, logger_func):
     ids_to_unpin_zwarte = []
 
     for autor_id in autorzy_z_wynikami:
-        # Collect all works shown for this author (from all disciplines)
-        autor_wykazane_prace = set(
-            OptimizationPublication.objects.filter(
+        # Build a lookup dict: rekord_id -> slots from optimization results
+        autor_wykazane_prace = {
+            rekord_id: slots
+            for rekord_id, slots in OptimizationPublication.objects.filter(
                 author_result__autor_id=autor_id,
                 author_result__optimization_run__uczelnia=uczelnia,
                 author_result__optimization_run__status="completed",
-            ).values_list("rekord_id", flat=True)
-        )
+            ).values_list("rekord_id", "slots")
+        }
 
-        # Wydawnictwa ciągłe
+        # Wydawnictwa ciągłe - only years 2022-2025
         for udział in Wydawnictwo_Ciagle_Autor.objects.filter(
-            autor_id=autor_id, przypieta=True
+            autor_id=autor_id,
+            przypieta=True,
+            rekord__rok__gte=2022,
+            rekord__rok__lt=2026,
         ).select_related("rekord"):
             rekord_id = (ct_ciagle.pk, udział.rekord.pk)
 
-            if rekord_id not in autor_wykazane_prace and _should_unpin_publication(
-                autor_id, rekord_id, logger_func
-            ):
+            # Unpin if not in optimization results OR slot < 1.0
+            slots = autor_wykazane_prace.get(rekord_id)
+            if slots is None or slots < Decimal("1.0"):
                 ids_to_unpin_ciagle.append(udział.pk)
 
-        # Wydawnictwa zwarte
+        # Wydawnictwa zwarte - only years 2022-2025
         for udział in Wydawnictwo_Zwarte_Autor.objects.filter(
-            autor_id=autor_id, przypieta=True
+            autor_id=autor_id,
+            przypieta=True,
+            rekord__rok__gte=2022,
+            rekord__rok__lt=2026,
         ).select_related("rekord"):
             rekord_id = (ct_zwarte.pk, udział.rekord.pk)
 
-            if rekord_id not in autor_wykazane_prace and _should_unpin_publication(
-                autor_id, rekord_id, logger_func
-            ):
+            # Unpin if not in optimization results OR slot < 1.0
+            slots = autor_wykazane_prace.get(rekord_id)
+            if slots is None or slots < Decimal("1.0"):
                 ids_to_unpin_zwarte.append(udział.pk)
 
     logger_func(
