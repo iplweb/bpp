@@ -76,11 +76,18 @@
                     onclick="{% if dirty_count > 0 %}event.preventDefault(); alert('Czekamy na przeliczenie punktów. Obecnie jest {{ dirty_count }} rekordów do przeliczenia.'); return false;{% else %}return confirm('Czy na pewno chcesz uruchomić optymalizację dla WSZYSTKICH dyscyplin raportowanych (>= 12 slotów)? Proces może potrwać kilka do kilkunastu minut.');{% endif %}">
                 <span class="fi-play"></span> Policz całą ewaluację
             </button>
+            {% if status_odpinania.w_trakcie and status_odpinania.task_id %}
+            <a href="{% url 'ewaluacja_optymalizacja:optimize-unpin-status' task_id=status_odpinania.task_id %}"
+               class="button success">
+                <span class="fi-loop"></span> Zobacz status optymalizacji
+            </a>
+            {% else %}
             <a href="{% url 'ewaluacja_optymalizacja:optimize-unpin' %}"
                class="button success{% if dirty_count > 0 %} disabled{% endif %}"
                {% if dirty_count > 0 %}onclick="event.preventDefault(); alert('Czekamy na przeliczenie punktów. Obecnie jest {{ dirty_count }} rekordów do przeliczenia.'); return false;"{% else %}onclick="return confirm('Czy na pewno chcesz zastosować optymalizację i odpiąć niepotrzebne sloty? Ta operacja:\n\n1. Sprawdzi czy wszystkie dyscypliny są przeliczone\n2. Utworzy snapshot obecnego stanu\n3. Odpnie dyscypliny w pracach niewykazanych do ewaluacji\n4. Automatycznie przeliczy punktację\n5. Przeliczy optymalizację dla wszystkich dyscyplin\n\nProces może potrwać 20-30 minut w zależności od liczby dyscyplin.');"{% endif %}>
                 <span class="fi-unlock"></span> Optymalizuj, odpinając sloty
             </a>
+            {% endif %}
         </div>
 
         <form id="bulk-optimization-form" method="POST" action="{% url 'ewaluacja_optymalizacja:bulk-start' %}">
@@ -127,12 +134,13 @@
                         "return confirm('Czy na pewno chcesz uruchomić optymalizację dla WSZYSTKICH dyscyplin raportowanych (>= 12 slotów)? Proces może potrwać kilka do kilkunastu minut.');");
                 }
 
-                // Przycisk "Optymalizuj, odpinając sloty"
-                const unpinButton = document.querySelector('a[href*="optimize-unpin"]');
+                // Przycisk "Optymalizuj, odpinając sloty" - tylko jeśli to przycisk start (nie status)
+                const unpinButton = document.querySelector('a[href*="optimize-unpin"] .fi-unlock');
                 if (unpinButton) {
-                    unpinButton.classList.remove('disabled');
-                    unpinButton.removeAttribute('onclick');
-                    unpinButton.setAttribute('onclick',
+                    const link = unpinButton.parentElement;
+                    link.classList.remove('disabled');
+                    link.removeAttribute('onclick');
+                    link.setAttribute('onclick',
                         "return confirm('Czy na pewno chcesz zastosować optymalizację i odpiąć niepotrzebne sloty? Ta operacja:\\n\\n1. Sprawdzi czy wszystkie dyscypliny są przeliczone\\n2. Utworzy snapshot obecnego stanu\\n3. Odpnie dyscypliny w pracach niewykazanych do ewaluacji\\n4. Automatycznie przeliczy punktację\\n5. Przeliczy optymalizację dla wszystkich dyscyplin\\n\\nProces może potrwać 20-30 minut w zależności od liczby dyscyplin.');");
                 }
             }

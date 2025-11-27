@@ -190,6 +190,11 @@ def index(request):
     # Sprawdź czy są problematyczne sloty < 0.1 dla przycisku weryfikacji
     has_problematic_slots = _check_for_problematic_slots()
 
+    # Sprawdź czy działa optymalizacja z odpinaniem
+    from .models import StatusOptymalizacjiZOdpinaniem
+
+    status_odpinania = StatusOptymalizacjiZOdpinaniem.get_or_create()
+
     context = {
         "optimization_runs": runs_with_stats,
         "liczba_n_count": liczba_n_count,
@@ -197,6 +202,7 @@ def index(request):
         "summary": summary,
         "dirty_count": dirty_count,
         "has_problematic_slots": has_problematic_slots,
+        "status_odpinania": status_odpinania,
     }
 
     return render(request, "ewaluacja_optymalizacja/index.html", context)
@@ -750,6 +756,19 @@ def optimize_with_unpinning(request):
 
     from ewaluacja_liczba_n.models import LiczbaNDlaUczelni
 
+    from .models import StatusOptymalizacjiZOdpinaniem
+
+    # Sprawdź czy zadanie już działa (przez model singleton)
+    status = StatusOptymalizacjiZOdpinaniem.get_or_create()
+    if status.w_trakcie and status.task_id:
+        messages.info(
+            request,
+            "Zadanie optymalizacji z odpinaniem już działa. Przekierowuję do statusu.",
+        )
+        return redirect(
+            "ewaluacja_optymalizacja:optimize-unpin-status", task_id=status.task_id
+        )
+
     # Sprawdź czy są rekordy do przeliczenia
     dirty_count = DirtyInstance.objects.count()
     if dirty_count > 0:
@@ -789,31 +808,40 @@ def optimize_with_unpinning(request):
         ).exists():
             messages.error(
                 request,
-                f"Dyscyplina {liczba_n_obj.dyscyplina_naukowa.nazwa} nie ma wykonanej optymalizacji. "
-                "Najpierw uruchom 'Policz całą ewaluację'.",
+                f"Dyscyplina {liczba_n_obj.dyscyplina_naukowa.nazwa} nie ma "
+                "wykonanej optymalizacji. Najpierw uruchom 'Policz całą ewaluację'.",
             )
             return redirect("ewaluacja_optymalizacja:index")
 
     logger.info(f"Starting optimization with unpinning for {uczelnia}")
 
     # Uruchom zadanie Celery
-    # Sprawdź czy nie ma już uruchomionego zadania
     from celery_singleton import DuplicateTaskError
 
     from .tasks import optimize_and_unpin_task
 
     try:
         task = optimize_and_unpin_task.delay(uczelnia.pk)
+        # Zapisz status w modelu singleton
+        status.rozpocznij(task_id=str(task.id))
     except DuplicateTaskError:
+        # Fallback - celery_singleton złapał duplikat, ale model może mieć task_id
+        if status.task_id:
+            messages.info(
+                request,
+                "Zadanie optymalizacji z odpinaniem już działa. Przekierowuję do statusu.",
+            )
+            return redirect(
+                "ewaluacja_optymalizacja:optimize-unpin-status", task_id=status.task_id
+            )
         messages.error(
             request,
             "Zadanie optymalizacji z odpinaniem jest już uruchomione. "
-            "Poczekaj na zakończenie obecnego zadania.",
+            "Nie można ustalić ID zadania.",
         )
         return redirect("ewaluacja_optymalizacja:index")
 
-    # Nie pokazuj komunikatu sukcesu - zadanie dopiero się rozpoczyna
-    # Przekieruj od razu do strony statusu
+    # Przekieruj do strony statusu
     return redirect("ewaluacja_optymalizacja:optimize-unpin-status", task_id=task.id)
 
 
@@ -882,29 +910,17 @@ def _determine_unpin_task_context(
                     "task_state": "FAILURE",
                 }
             )
-        elif task.successful() and all_data_complete:
+        elif task.successful():
+            # Task zakończony pomyślnie - pokaż sukces od razu
+            # (bez czekania na all_data_complete)
             result = task.result
-            logger.info(f"Task {task.id} successful, all data verified")
+            logger.info(f"Task {task.id} successful")
             context_update.update(
                 {
                     "result": result,
                     "success": True,
                     "task_ready": True,
                     "task_state": "SUCCESS",
-                }
-            )
-        else:
-            context_update.update(
-                {
-                    "task_ready": False,
-                    "task_state": "PROGRESS",
-                    "info": {
-                        "step": "finalizing",
-                        "progress": 99,
-                        "message": "Finalizowanie zapisów do bazy danych...",
-                        "completed_optimizations": completed_count,
-                        "total_optimizations": discipline_count,
-                    },
                 }
             )
     else:
@@ -1058,6 +1074,12 @@ def optimize_unpin_status(request, task_id):
     # to znaczy że wszystko jest OK - przekieruj z flash message
     # WAŻNE: Dla HTMX używamy nagłówka HX-Redirect zamiast zwykłego redirect 302
     if context.get("success"):
+        # Wyczyść status w modelu singleton - zadanie zakończone
+        from .models import StatusOptymalizacjiZOdpinaniem
+
+        status = StatusOptymalizacjiZOdpinaniem.get_or_create()
+        status.zakoncz("Optymalizacja zakończona pomyślnie")
+
         result = context.get("result", {})
         unpinned_total = result.get("unpinned_total", 0)
 
@@ -1078,6 +1100,13 @@ def optimize_unpin_status(request, task_id):
 
         # Dla zwykłych requestów normalny redirect
         return redirect("ewaluacja_optymalizacja:index")
+
+    # Jeśli zadanie zakończyło się błędem, też wyczyść status
+    if context.get("error") and context.get("task_ready"):
+        from .models import StatusOptymalizacjiZOdpinaniem
+
+        status = StatusOptymalizacjiZOdpinaniem.get_or_create()
+        status.zakoncz(f"Błąd: {str(context.get('error', 'Nieznany błąd'))[:200]}")
 
     # If HTMX request, return only the progress partial
     if request.headers.get("HX-Request"):

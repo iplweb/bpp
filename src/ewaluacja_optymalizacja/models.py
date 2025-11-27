@@ -1,5 +1,6 @@
 from django.db import models
 from django.urls import reverse
+from django.utils import timezone
 
 from bpp.models import Autor, Dyscyplina_Naukowa, Uczelnia
 from bpp.models.fields import TupleField
@@ -383,3 +384,76 @@ class UnpinningOpportunity(models.Model):
         from bpp.models import Rekord
 
         return Rekord.objects.get(pk=self.rekord_id)
+
+
+class StatusOptymalizacjiZOdpinaniem(models.Model):
+    """
+    Singleton model śledzący status zadania optymalizacji z odpinaniem.
+    Używany do zapewnienia, że tylko jedno zadanie może być uruchomione naraz
+    oraz do przekierowania użytkownika do strony statusu działającego zadania.
+    """
+
+    w_trakcie = models.BooleanField(
+        default=False,
+        verbose_name="W trakcie",
+        help_text="Czy zadanie jest obecnie uruchomione",
+    )
+    task_id = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        verbose_name="ID zadania Celery",
+    )
+    data_rozpoczecia = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Data rozpoczęcia",
+    )
+    data_zakonczenia = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Data zakończenia",
+    )
+    ostatni_komunikat = models.TextField(
+        blank=True,
+        default="",
+        verbose_name="Ostatni komunikat",
+    )
+
+    class Meta:
+        verbose_name = "Status optymalizacji z odpinaniem"
+        verbose_name_plural = "Status optymalizacji z odpinaniem"
+
+    def __str__(self):
+        if self.w_trakcie:
+            return f"W trakcie (task_id: {self.task_id})"
+        elif self.data_zakonczenia:
+            return f"Zakończono: {self.data_zakonczenia.strftime('%Y-%m-%d %H:%M:%S')}"
+        return "Brak uruchomionych zadań"
+
+    def save(self, *args, **kwargs):
+        # Singleton - zawsze nadpisuj rekord o pk=1
+        self.pk = 1
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def get_or_create(cls):
+        """Pobierz lub utwórz instancję singleton."""
+        obj, created = cls.objects.get_or_create(pk=1)
+        return obj
+
+    def rozpocznij(self, task_id):
+        """Oznacz rozpoczęcie zadania optymalizacji z odpinaniem."""
+        self.w_trakcie = True
+        self.task_id = task_id
+        self.data_rozpoczecia = timezone.now()
+        self.data_zakonczenia = None
+        self.ostatni_komunikat = "Rozpoczęto optymalizację z odpinaniem"
+        self.save()
+
+    def zakoncz(self, komunikat=""):
+        """Oznacz zakończenie zadania optymalizacji z odpinaniem."""
+        self.w_trakcie = False
+        self.data_zakonczenia = timezone.now()
+        self.ostatni_komunikat = komunikat or "Zakończono"
+        self.save()
