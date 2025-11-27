@@ -5,6 +5,7 @@ from celery.result import AsyncResult
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Q
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
 from bpp.models import Uczelnia
@@ -191,9 +192,10 @@ def index(request):
     has_problematic_slots = _check_for_problematic_slots()
 
     # Sprawdź czy działa optymalizacja z odpinaniem
-    from .models import StatusOptymalizacjiZOdpinaniem
+    from .models import StatusOptymalizacjiBulk, StatusOptymalizacjiZOdpinaniem
 
     status_odpinania = StatusOptymalizacjiZOdpinaniem.get_or_create()
+    status_bulk = StatusOptymalizacjiBulk.get_or_create()
 
     context = {
         "optimization_runs": runs_with_stats,
@@ -203,6 +205,7 @@ def index(request):
         "dirty_count": dirty_count,
         "has_problematic_slots": has_problematic_slots,
         "status_odpinania": status_odpinania,
+        "status_bulk": status_bulk,
     }
 
     return render(request, "ewaluacja_optymalizacja/index.html", context)
@@ -435,6 +438,21 @@ def start_bulk_optimization(request):
 
     from ewaluacja_liczba_n.models import LiczbaNDlaUczelni
 
+    from .models import StatusOptymalizacjiBulk
+
+    # Sprawdź czy zadanie już działa (przez model singleton)
+    status = StatusOptymalizacjiBulk.get_or_create()
+    if status.w_trakcie and status.task_id and status.uczelnia:
+        messages.info(
+            request,
+            "Zadanie optymalizacji już działa. Przekierowuję do statusu.",
+        )
+        return redirect(
+            "ewaluacja_optymalizacja:bulk-status",
+            uczelnia_id=status.uczelnia.pk,
+            task_id=status.task_id,
+        )
+
     # Sprawdź czy są rekordy do przeliczenia
     dirty_count = DirtyInstance.objects.count()
     if dirty_count > 0:
@@ -497,6 +515,9 @@ def start_bulk_optimization(request):
 
     # Uruchom zadanie Celery
     task = solve_all_reported_disciplines.delay(uczelnia.pk, algorithm_mode)
+
+    # Zapisz status w modelu singleton
+    status.rozpocznij(task_id=str(task.id), uczelnia=uczelnia)
 
     # Nie pokazuj natychmiastowego komunikatu sukcesu - zadanie dopiero się rozpoczęło
     # Komunikat pojawi się na stronie statusu po faktycznym zakończeniu wszystkich operacji
@@ -724,6 +745,12 @@ def bulk_optimization_status(request, uczelnia_id, task_id):
 
     # Handle redirect for completed tasks
     if context.get("redirect_to_index"):
+        # Wyczyść status w modelu singleton - zadanie zakończone
+        from .models import StatusOptymalizacjiBulk
+
+        status = StatusOptymalizacjiBulk.get_or_create()
+        status.zakoncz("Optymalizacja zakończona pomyślnie")
+
         messages.success(request, context["success_message"])
 
         if request.headers.get("HX-Request"):
@@ -1600,6 +1627,22 @@ def denorm_progress(request):
     }
 
     return render(request, "ewaluacja_optymalizacja/_denorm_progress.html", context)
+
+
+@login_required
+def trigger_denorm_flush(request):
+    """
+    Endpoint do ręcznego wyzwolenia flush_via_queue gdy denorm się zawiesi.
+    Wywoływany automatycznie przez JavaScript gdy dirty_count nie zmienia się przez 15 sekund.
+    Zwraca JSON z informacją o sukcesie.
+    """
+    from denorm.tasks import flush_via_queue
+
+    if request.method == "POST":
+        flush_via_queue.delay()
+        return JsonResponse({"status": "ok", "message": "Flush triggered"})
+
+    return JsonResponse({"status": "error", "message": "POST required"}, status=405)
 
 
 @login_required

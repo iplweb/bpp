@@ -542,8 +542,8 @@ class TestPerformanceCharacteristics:
         for i in range(50):
             Wydawnictwo_Zwarte.objects.create(
                 tytul_oryginalny=f"Publication {i}",
-                e_isbn=f"isbn_{i}" if i % 3 == 0 else None,
-                doi=f"doi_{i}" if i % 5 == 0 else None,
+                e_isbn=f"isbn_{i}" if i % 3 == 0 else "",
+                doi=f"doi_{i}" if i % 5 == 0 else "",
                 rok=PBN_MIN_ROK + (i % 5),
                 charakter_formalny=pbn_charakter_formalny,
                 jezyk=pbn_jezyk,

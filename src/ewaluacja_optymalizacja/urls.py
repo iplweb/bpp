@@ -40,6 +40,9 @@ urlpatterns = [
     ),
     path("denorm-progress/", views.denorm_progress, name="denorm-progress"),
     path(
+        "trigger-denorm-flush/", views.trigger_denorm_flush, name="trigger-denorm-flush"
+    ),
+    path(
         "analyze-unpinning/",
         views.analyze_unpinning_opportunities,
         name="analyze-unpinning",

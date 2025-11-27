@@ -2,10 +2,8 @@ import json
 import re
 
 import pytest
-
-from django.contrib.contenttypes.models import ContentType
-from django.core.cache import cache
 from cacheops import invalidate_all
+from django.contrib.contenttypes.models import ContentType
 
 try:
     from django.core.urlresolvers import reverse
@@ -16,10 +14,9 @@ from model_bakery import baker
 from multiseek.logic import EQUAL, EQUAL_FEMALE, EQUAL_NONE
 from multiseek.views import MULTISEEK_SESSION_KEY
 
-from miniblog.models import Article
-
 from bpp.models import Rekord, Wydawnictwo_Zwarte
 from bpp.views.browse import BuildSearch, PracaViewBySlug
+from miniblog.models import Article
 
 
 def test_buildSearch(settings):
@@ -163,7 +160,6 @@ def test_darmowy_platny_dostep_www_wyswietlanie(client, wydawnictwo_ciagle, deno
 
 @pytest.mark.django_db
 def test_artykuly(uczelnia, client):
-
     res = client.get(reverse("bpp:browse_uczelnia", args=(uczelnia.slug,)))
     assert res.status_code == 200
 
@@ -281,7 +277,7 @@ def test_browse_praca_wydawnictwa_powiazane(wydawnictwo_zwarte, client, denorms)
 
 @pytest.mark.django_db
 def test_praca_tabela_no_pmc_id(wydawnictwo_zwarte, client):
-    wydawnictwo_zwarte.pmc_id = None
+    wydawnictwo_zwarte.pmc_id = ""
     wydawnictwo_zwarte.save()
 
     res = client.get(
@@ -414,7 +410,7 @@ def test_zglos_publikacje_button_pokazuj_zawsze(client, uczelnia):
 
     res = client.get(reverse("bpp:browse_uczelnia", args=(uczelnia.slug,)))
     assert res.status_code == 200
-    assert "Masz nową publikację? Zgłoś ją do bazy!".encode("utf-8") in res.content
+    assert "Masz nową publikację? Zgłoś ją do bazy!".encode() in res.content
 
 
 @pytest.mark.django_db
@@ -429,7 +425,7 @@ def test_zglos_publikacje_button_pokazuj_nigdy(client, uczelnia):
 
     res = client.get(reverse("bpp:browse_uczelnia", args=(uczelnia.slug,)))
     assert res.status_code == 200
-    assert "Masz nową publikację? Zgłoś ją do bazy!".encode("utf-8") not in res.content
+    assert "Masz nową publikację? Zgłoś ją do bazy!".encode() not in res.content
 
 
 @pytest.mark.django_db
@@ -444,7 +440,7 @@ def test_zglos_publikacje_button_pokazuj_zalogowanym_anon(client, uczelnia):
 
     res = client.get(reverse("bpp:browse_uczelnia", args=(uczelnia.slug,)))
     assert res.status_code == 200
-    assert "Masz nową publikację? Zgłoś ją do bazy!".encode("utf-8") not in res.content
+    assert "Masz nową publikację? Zgłoś ją do bazy!".encode() not in res.content
 
 
 @pytest.mark.django_db
@@ -459,7 +455,7 @@ def test_zglos_publikacje_button_pokazuj_zalogowanym_logged(admin_client, uczeln
 
     res = admin_client.get(reverse("bpp:browse_uczelnia", args=(uczelnia.slug,)))
     assert res.status_code == 200
-    assert "Masz nową publikację? Zgłoś ją do bazy!".encode("utf-8") in res.content
+    assert "Masz nową publikację? Zgłoś ją do bazy!".encode() in res.content
 
 
 @pytest.mark.django_db
@@ -490,7 +486,7 @@ def test_autorzy_view_original_malicious_string(client, autor):
     """Test: AutorzyView should block the original malicious string from traceback"""
     # This is the actual malicious string from the user's production logs
     malicious_page = (
-        "                                94\" AND ANd/**/1373=(seLEcT/**/uPPeR(XMlTYpE(chr(60)||CHr(58)||"
+        '                                94" AND ANd/**/1373=(seLEcT/**/uPPeR(XMlTYpE(chr(60)||CHr(58)||'
         "%27~%27||(SELECt/**/(cASe/**/when/**/(1373=1373)/**/TheN/**/1/**/eLse/**/0/**/End)/**/fROM/**/"
         "DuaL)||%27~%27||Chr(62)))/**/FROM/**/DUal)-- -"
     )

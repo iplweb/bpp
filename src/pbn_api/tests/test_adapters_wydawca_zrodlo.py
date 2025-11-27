@@ -1,11 +1,10 @@
 import pytest
 from model_bakery import baker
 
+from bpp.models import Wydawca, Zrodlo
 from pbn_api.adapters.wydawca import WydawcaPBNAdapter
 from pbn_api.adapters.zrodlo import ZrodloPBNAdapter
 from pbn_api.models import Journal, Publisher
-from bpp.models import Wydawca, Zrodlo
-
 
 # ==================== WydawcaPBNAdapter Tests ====================
 
@@ -52,7 +51,6 @@ def test_wydawca_adapter_without_pbn_uid():
 @pytest.mark.django_db
 def test_wydawca_adapter_get_toplevel():
     """Test WydawcaPBNAdapter uses get_toplevel method"""
-    parent_wydawca = baker.make(Wydawca, pbn_uid=None, nazwa="Parent")
     child_wydawca = baker.make(Wydawca, pbn_uid=None, nazwa="Child")
 
     adapter = WydawcaPBNAdapter(child_wydawca)
@@ -84,9 +82,9 @@ def test_zrodlo_adapter_without_pbn_uid():
         pbn_uid=None,
         nazwa="Test Journal",
         wydawca="Test Publisher",
-        issn=None,
+        issn="",
         www=None,
-        e_issn=None,
+        e_issn="",
     )
 
     adapter = ZrodloPBNAdapter(zrodlo)
@@ -104,9 +102,9 @@ def test_zrodlo_adapter_without_pbn_uid_with_publisher():
         pbn_uid=None,
         nazwa="Test Journal",
         wydawca="Test Publisher",
-        issn=None,
+        issn="",
         www=None,
-        e_issn=None,
+        e_issn="",
     )
 
     adapter = ZrodloPBNAdapter(zrodlo)
@@ -126,7 +124,7 @@ def test_zrodlo_adapter_without_pbn_uid_with_issn():
         nazwa="Test Journal",
         issn="1234-5678",
         www=None,
-        e_issn=None,
+        e_issn="",
     )
 
     adapter = ZrodloPBNAdapter(zrodlo)
@@ -143,8 +141,8 @@ def test_zrodlo_adapter_without_pbn_uid_with_www():
         pbn_uid=None,
         nazwa="Test Journal",
         www="https://example.com",
-        issn=None,
-        e_issn=None,
+        issn="",
+        e_issn="",
     )
 
     adapter = ZrodloPBNAdapter(zrodlo)
@@ -161,7 +159,7 @@ def test_zrodlo_adapter_without_pbn_uid_with_e_issn():
         pbn_uid=None,
         nazwa="Test Journal",
         e_issn="1234-5678",
-        issn=None,
+        issn="",
         www=None,
     )
 
@@ -227,9 +225,9 @@ def test_zrodlo_adapter_json_structure_without_pbn_uid():
         pbn_uid=None,
         nazwa="Test",
         wydawca="Publisher",
-        issn=None,
+        issn="",
         www=None,
-        e_issn=None,
+        e_issn="",
     )
 
     adapter = ZrodloPBNAdapter(zrodlo)
@@ -247,9 +245,9 @@ def test_zrodlo_adapter_without_pbn_uid_omits_none_values():
         pbn_uid=None,
         nazwa="Test Journal",
         wydawca="Publisher",
-        issn=None,
+        issn="",
         www=None,
-        e_issn=None,
+        e_issn="",
     )
 
     adapter = ZrodloPBNAdapter(zrodlo)

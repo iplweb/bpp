@@ -121,7 +121,7 @@
                         <h4>Wydawnictwa ciągłe ({{ ciagle_not_sent }})</h4>
                         <p>Publikacje ciągłe z okresu {{ evaluation_start_year }}-{{ evaluation_end_year }} nie wysłane
                             do PBN.</p>
-                        <a href="/admin/bpp/wydawnictwo_ciagle/?q-l=on&q=rok+%3E%3D+2022+and+rok+%3C%3D+2025+and+pbn_uid+%3D+None+and+%28doi%21%3DNone+or+www%21%3DNone+or+public_www+%21%3DNone%29+and+charakter_formalny.rodzaj_pbn+%21%3D+None{% if uczelnia.pbn_api_nie_wysylaj_prac_bez_pk %}+and+punkty_kbn+%3E+0{% endif %}"
+                        <a href="/admin/bpp/wydawnictwo_ciagle/?q-l=on&q=rok+%3E%3D+2022+and+rok+%3C%3D+2025+and+pbn_uid+%3D+None+and+%28doi%21%3D%22%22+or+www%21%3D%22%22+or+public_www%21%3D%22%22%29+and+charakter_formalny.rodzaj_pbn+%21%3D+None{% if uczelnia.pbn_api_nie_wysylaj_prac_bez_pk %}+and+punkty_kbn+%3E+0{% endif %}"
                            class="button expanded success" target="_blank">
                             <i class="fi-list"></i> Pokaż w module redagowania
                         </a>
@@ -132,7 +132,7 @@
                         <h4>Wydawnictwa zwarte ({{ zwarte_not_sent }})</h4>
                         <p>Publikacje zwarte z okresu {{ evaluation_start_year }}-{{ evaluation_end_year }} nie wysłane
                             do PBN.</p>
-                        <a href="/admin/bpp/wydawnictwo_zwarte/?q-l=on&q=rok+%3E%3D+2022+and+rok+%3C%3D+2025+and+pbn_uid+%3D+None+and+%28doi%21%3DNone+or+www%21%3DNone+or+public_www+%21%3DNone%29+and+charakter_formalny.rodzaj_pbn+%21%3D+None{% if uczelnia.pbn_api_nie_wysylaj_prac_bez_pk %}+and+punkty_kbn+%3E+0{% endif %}"
+                        <a href="/admin/bpp/wydawnictwo_zwarte/?q-l=on&q=rok+%3E%3D+2022+and+rok+%3C%3D+2025+and+pbn_uid+%3D+None+and+%28doi%21%3D%22%22+or+www%21%3D%22%22+or+public_www%21%3D%22%22%29+and+charakter_formalny.rodzaj_pbn+%21%3D+None{% if uczelnia.pbn_api_nie_wysylaj_prac_bez_pk %}+and+punkty_kbn+%3E+0{% endif %}"
                            class="button expanded info" target="_blank">
                             <i class="fi-list"></i> Pokaż w module redagowania
                         </a>

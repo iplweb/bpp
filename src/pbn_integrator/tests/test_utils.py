@@ -484,8 +484,8 @@ class TestLargeDataVolumes:
         for i in range(100):
             Wydawnictwo_Zwarte.objects.create(
                 tytul_oryginalny=f"Publication {i}",
-                isbn=f"isbn_{i:04d}" if i % 2 == 0 else None,
-                e_isbn=f"e_isbn_{i:04d}" if i % 3 == 0 else None,
+                isbn=f"isbn_{i:04d}" if i % 2 == 0 else "",
+                e_isbn=f"e_isbn_{i:04d}" if i % 3 == 0 else "",
                 rok=PBN_MIN_ROK + (i % 10),
                 doi=f"10.9999/pub{i:04d}",
                 charakter_formalny=pbn_charakter_formalny,
@@ -509,7 +509,7 @@ class TestLargeDataVolumes:
         for i in range(30):
             Wydawnictwo_Ciagle.objects.create(
                 tytul_oryginalny=f"Journal {i}",
-                doi=f"10.{i}" if i % 2 == 0 else None,
+                doi=f"10.{i}" if i % 2 == 0 else "",
                 rok=PBN_MIN_ROK + (i % 5),
                 charakter_formalny=pbn_charakter_formalny,
                 jezyk=pbn_jezyk,
@@ -520,7 +520,7 @@ class TestLargeDataVolumes:
         for i in range(30):
             Wydawnictwo_Zwarte.objects.create(
                 tytul_oryginalny=f"Book {i}",
-                isbn=f"isbn_{i}" if i % 2 == 0 else None,
+                isbn=f"isbn_{i}" if i % 2 == 0 else "",
                 rok=PBN_MIN_ROK + (i % 5),
                 charakter_formalny=pbn_charakter_formalny,
                 jezyk=pbn_jezyk,
@@ -585,7 +585,7 @@ class TestDataConsistency:
         for i in range(10):
             Wydawnictwo_Zwarte.objects.create(
                 tytul_oryginalny=f"Publication {i}",
-                isbn=f"isbn_{i}" if i % 2 == 0 else None,
+                isbn=f"isbn_{i}" if i % 2 == 0 else "",
                 rok=PBN_MIN_ROK + (i % 5),
                 charakter_formalny=pbn_charakter_formalny,
                 jezyk=pbn_jezyk,

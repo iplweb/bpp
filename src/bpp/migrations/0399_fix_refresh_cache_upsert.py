@@ -2,14 +2,17 @@
 
 from pathlib import Path
 
-from django.db import migrations
+from django.db import connection, migrations
 
 
 def load_sql(apps, schema_editor):
     sql_file = Path(__file__).parent / "0399_fix_refresh_cache_upsert.sql"
     with open(sql_file) as f:
         sql = f.read()
-    schema_editor.execute(sql)
+    # Użyj connection.cursor() zamiast schema_editor.execute()
+    # bo schema_editor próbuje interpretować %s jako placeholdery parametrów SQL
+    with connection.cursor() as cursor:
+        cursor.execute(sql)
 
 
 class Migration(migrations.Migration):

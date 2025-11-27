@@ -332,3 +332,51 @@ def test_evaluation_period_filtering(client_logged_in_staff, basic_setup):
     assert isinstance(context["total_not_sent"], int)
     assert isinstance(context["total_sent"], int)
     assert isinstance(context["pbn_publications_not_in_bpp"], int)
+
+
+@pytest.mark.django_db
+def test_djangoql_links_in_komparator_main_view_work(admin_app, basic_setup):
+    """Test that DjangoQL query links in komparator_pbn main view work correctly.
+
+    This test verifies that the admin pages with DjangoQL queries don't throw
+    exceptions when accessed. The DjangoQL queries check for non-empty www/public_www
+    fields using empty string comparison (www!="") rather than None comparison.
+    """
+    # Get the komparator_pbn main page
+    url = reverse("komparator_pbn:main")
+    response = admin_app.get(url)
+    assert response.status_code == 200
+
+    # DjangoQL queries for publications not sent to PBN
+    # These are URL-encoded queries from the template that check:
+    # rok >= 2022 and rok <= 2025 and pbn_uid = None and
+    # (doi!="" or www!="" or public_www!="") and charakter_formalny.rodzaj_pbn != None
+    djangoql_queries = [
+        (
+            "/admin/bpp/wydawnictwo_ciagle/",
+            "rok >= 2022 and rok <= 2025 and pbn_uid = None and "
+            '(doi!="" or www!="" or public_www!="") and '
+            "charakter_formalny.rodzaj_pbn != None",
+        ),
+        (
+            "/admin/bpp/wydawnictwo_zwarte/",
+            "rok >= 2022 and rok <= 2025 and pbn_uid = None and "
+            '(doi!="" or www!="" or public_www!="") and '
+            "charakter_formalny.rodzaj_pbn != None",
+        ),
+    ]
+
+    for admin_url, query in djangoql_queries:
+        # Make request with DjangoQL query enabled (q-l=on enables DjangoQL mode)
+        full_url = f"{admin_url}?q-l=on&q={query}"
+        response = admin_app.get(full_url)
+
+        # Verify no server error (200 OK means the query was parsed correctly)
+        assert response.status_code == 200, (
+            f"DjangoQL query failed for {admin_url}: {query}"
+        )
+
+        # Verify we're on the change list page (not an error page)
+        assert b"changelist" in response.content or b"results" in response.content, (
+            f"Expected admin changelist page for {admin_url}"
+        )
