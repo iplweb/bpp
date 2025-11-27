@@ -16,14 +16,6 @@
             <span class="fi-target-two"></span> Optymalizacja ewaluacji
         </h1>
 
-        <div class="callout warning" style="border-left: 4px solid #ffae00;">
-            <h4><span class="fi-alert"></span> BETA - PODGLĄD TECHNICZNY - MOŻE ZAWIERAĆ BŁĘDY</h4>
-            <p style="margin-bottom: 0;">
-                Ta funkcjonalność jest udostępniona jako <strong>wczesny podgląd techniczny</strong>.
-                Wyniki optymalizacji są wstępne i mogą zawierać błędy lub niedokładności.
-            </p>
-        </div>
-
         {% if liczba_n_count == 0 %}
         <div class="callout alert">
             <h4><span class="fi-alert"></span> Brak danych liczby N!</h4>
@@ -68,19 +60,36 @@
             <a href="/snapshot_odpiec/" class="button secondary">
                 <span class="fi-camera"></span> Snapshoty odpięć
             </a>
-            <a href="{% url 'ewaluacja_optymalizacja:unpinning-list' %}" class="button info">
+            <a href="{% url 'ewaluacja_optymalizacja:unpinning-list' %}"
+               class="button info{% if dirty_count > 0 %} disabled{% endif %}"
+               id="optymalizuj-przed-btn"
+               {% if dirty_count > 0 %}onclick="event.preventDefault(); alert('Czekamy na przeliczenie punktów. Obecnie jest {{ dirty_count }} rekordów do przeliczenia.'); return false;"{% endif %}>
                 <span class="fi-zoom-in"></span> Optymalizuj przed
             </a>
+            {% if status_bulk.w_trakcie and status_bulk.task_id and status_bulk.uczelnia %}
+            <a href="{% url 'ewaluacja_optymalizacja:bulk-status' uczelnia_id=status_bulk.uczelnia.pk task_id=status_bulk.task_id %}"
+               class="button warning">
+                <span class="fi-loop"></span> Zobacz status ewaluacji
+            </a>
+            {% else %}
             <button form="bulk-optimization-form" type="submit" class="button warning{% if dirty_count > 0 %} disabled{% endif %}"
                     {% if dirty_count > 0 %}disabled{% endif %}
                     onclick="{% if dirty_count > 0 %}event.preventDefault(); alert('Czekamy na przeliczenie punktów. Obecnie jest {{ dirty_count }} rekordów do przeliczenia.'); return false;{% else %}return confirm('Czy na pewno chcesz uruchomić optymalizację dla WSZYSTKICH dyscyplin raportowanych (>= 12 slotów)? Proces może potrwać kilka do kilkunastu minut.');{% endif %}">
                 <span class="fi-play"></span> Policz całą ewaluację
             </button>
+            {% endif %}
+            {% if status_odpinania.w_trakcie and status_odpinania.task_id %}
+            <a href="{% url 'ewaluacja_optymalizacja:optimize-unpin-status' task_id=status_odpinania.task_id %}"
+               class="button success">
+                <span class="fi-loop"></span> Zobacz status optymalizacji
+            </a>
+            {% else %}
             <a href="{% url 'ewaluacja_optymalizacja:optimize-unpin' %}"
                class="button success{% if dirty_count > 0 %} disabled{% endif %}"
                {% if dirty_count > 0 %}onclick="event.preventDefault(); alert('Czekamy na przeliczenie punktów. Obecnie jest {{ dirty_count }} rekordów do przeliczenia.'); return false;"{% else %}onclick="return confirm('Czy na pewno chcesz zastosować optymalizację i odpiąć niepotrzebne sloty? Ta operacja:\n\n1. Sprawdzi czy wszystkie dyscypliny są przeliczone\n2. Utworzy snapshot obecnego stanu\n3. Odpnie dyscypliny w pracach niewykazanych do ewaluacji\n4. Automatycznie przeliczy punktację\n5. Przeliczy optymalizację dla wszystkich dyscyplin\n\nProces może potrwać 20-30 minut w zależności od liczby dyscyplin.');"{% endif %}>
                 <span class="fi-unlock"></span> Optymalizuj, odpinając sloty
             </a>
+            {% endif %}
         </div>
 
         <form id="bulk-optimization-form" method="POST" action="{% url 'ewaluacja_optymalizacja:bulk-start' %}">
@@ -115,6 +124,13 @@
         (function() {
             const container = document.getElementById('denorm-progress-container');
             const baseUrl = "{% url 'ewaluacja_optymalizacja:denorm-progress' %}";
+            const flushUrl = "{% url 'ewaluacja_optymalizacja:trigger-denorm-flush' %}";
+            const csrfToken = "{{ csrf_token }}";
+
+            // Zmienne do śledzenia "zawieszonego" denorm
+            let lastDirtyCount = null;
+            let stuckSince = null;
+            let lastFlushTriggered = null;
 
             // Funkcja aktywująca przyciski
             function enableButtons() {
@@ -127,12 +143,20 @@
                         "return confirm('Czy na pewno chcesz uruchomić optymalizację dla WSZYSTKICH dyscyplin raportowanych (>= 12 slotów)? Proces może potrwać kilka do kilkunastu minut.');");
                 }
 
-                // Przycisk "Optymalizuj, odpinając sloty"
-                const unpinButton = document.querySelector('a[href*="optimize-unpin"]');
+                // Przycisk "Optymalizuj przed"
+                const optymalizujPrzedBtn = document.getElementById('optymalizuj-przed-btn');
+                if (optymalizujPrzedBtn) {
+                    optymalizujPrzedBtn.classList.remove('disabled');
+                    optymalizujPrzedBtn.onclick = null;
+                }
+
+                // Przycisk "Optymalizuj, odpinając sloty" - tylko jeśli to przycisk start (nie status)
+                const unpinButton = document.querySelector('a[href*="optimize-unpin"] .fi-unlock');
                 if (unpinButton) {
-                    unpinButton.classList.remove('disabled');
-                    unpinButton.removeAttribute('onclick');
-                    unpinButton.setAttribute('onclick',
+                    const link = unpinButton.parentElement;
+                    link.classList.remove('disabled');
+                    link.removeAttribute('onclick');
+                    link.setAttribute('onclick',
                         "return confirm('Czy na pewno chcesz zastosować optymalizację i odpiąć niepotrzebne sloty? Ta operacja:\\n\\n1. Sprawdzi czy wszystkie dyscypliny są przeliczone\\n2. Utworzy snapshot obecnego stanu\\n3. Odpnie dyscypliny w pracach niewykazanych do ewaluacji\\n4. Automatycznie przeliczy punktację\\n5. Przeliczy optymalizację dla wszystkich dyscyplin\\n\\nProces może potrwać 20-30 minut w zależności od liczby dyscyplin.');");
                 }
             }
@@ -161,6 +185,48 @@
                 // Jeśli dirty_count spadł do 0, aktywuj przyciski
                 if (dirtyAttr && parseInt(dirtyAttr) === 0) {
                     enableButtons();
+                    // Reset zmiennych śledzenia
+                    lastDirtyCount = null;
+                    stuckSince = null;
+                }
+
+                // Wykrywanie "zawieszonego" denorm i automatyczne wyzwalanie flush
+                const currentDirty = dirtyAttr ? parseInt(dirtyAttr) : 0;
+
+                if (currentDirty > 0) {
+                    const now = Date.now();
+
+                    // Sprawdź czy liczba się nie zmieniła (denorm zawieszony)
+                    if (lastDirtyCount !== null && currentDirty === lastDirtyCount) {
+                        // Liczba nie zmieniła się od ostatniego sprawdzenia
+                        if (stuckSince === null) {
+                            stuckSince = now;
+                        } else if (now - stuckSince >= 15000) {
+                            // Zawieszony przez 15+ sekund
+                            // Sprawdź czy możemy wywołać flush (30s cooldown)
+                            if (lastFlushTriggered === null || now - lastFlushTriggered >= 30000) {
+                                // Wywołaj flush
+                                console.log('Denorm zawieszony - wywołuję flush_via_queue');
+                                fetch(flushUrl, {
+                                    method: "POST",
+                                    headers: {
+                                        "X-CSRFToken": csrfToken
+                                    }
+                                });
+                                lastFlushTriggered = now;
+                                stuckSince = null; // Reset timera zawieszenia
+                            }
+                        }
+                    } else {
+                        // Liczba się zmieniła - reset timera zawieszenia
+                        stuckSince = null;
+                    }
+
+                    lastDirtyCount = currentDirty;
+                } else {
+                    // Reset gdy nie ma dirty instances
+                    lastDirtyCount = null;
+                    stuckSince = null;
                 }
             });
         })();

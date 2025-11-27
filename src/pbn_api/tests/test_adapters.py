@@ -4,10 +4,6 @@ from decimal import Decimal
 import pytest
 from model_bakery import baker
 
-from fixtures.pbn_api import _zrob_wydawnictwo_pbn
-from pbn_api.adapters.wydawnictwo import WydawnictwoPBNAdapter
-from pbn_api.exceptions import PKZeroExportDisabled, WillNotExportError
-
 from bpp import const
 from bpp.models import (
     Autor,
@@ -18,6 +14,9 @@ from bpp.models import (
     Wydawnictwo_Zwarte,
     Wydawnictwo_Zwarte_Autor,
 )
+from fixtures.pbn_api import _zrob_wydawnictwo_pbn
+from pbn_api.adapters.wydawnictwo import WydawnictwoPBNAdapter
+from pbn_api.exceptions import PKZeroExportDisabled, WillNotExportError
 
 
 @pytest.mark.django_db
@@ -191,7 +190,7 @@ def test_WydawnictwoPBNAdapter_www_eksport(
     wydawnictwo_nadrzedne.public_www = WWW
     wydawnictwo_nadrzedne.save()
 
-    wydawnictwo_zwarte.www = wydawnictwo_zwarte.public_www = None
+    wydawnictwo_zwarte.www = wydawnictwo_zwarte.public_www = ""
     wydawnictwo_zwarte.wydawnictwo_nadrzedne = wydawnictwo_nadrzedne
     wydawnictwo_zwarte.save()
 

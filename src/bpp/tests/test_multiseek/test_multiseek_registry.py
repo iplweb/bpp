@@ -88,7 +88,7 @@ def test_TytulPracyQueryObject(value, operation):
 def test_StronaWWWUstawionaQueryObject_jedna_z(wydawnictwo_zwarte, tested_field):
     fields = ["public_www", "www"]
     for field in fields:
-        setattr(wydawnictwo_zwarte, field, None)
+        setattr(wydawnictwo_zwarte, field, "")
     wydawnictwo_zwarte.save()
 
     qry = StronaWWWUstawionaQueryObject("x1x").real_query(True, logic.EQUAL_FEMALE)
@@ -159,9 +159,7 @@ def test_DataUtworzeniaQueryObject():
 def test_DyscyplinaQueryObject(autor_jan_kowalski, wydawnictwo_zwarte, rok, jednostka):
     dn = baker.make(Dyscyplina_Naukowa)
     ad, created = Autor_Dyscyplina.objects.get_or_create(
-        autor=autor_jan_kowalski,
-        rok=rok,
-        defaults={'dyscyplina_naukowa': dn}
+        autor=autor_jan_kowalski, rok=rok, defaults={"dyscyplina_naukowa": dn}
     )
     if not created:
         ad.dyscyplina_naukowa = dn

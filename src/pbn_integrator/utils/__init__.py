@@ -1812,12 +1812,14 @@ def wydawnictwa_zwarte_do_synchronizacji():
         .exclude(jezyk__pbn_uid_id=None)
         .exclude(
             (Q(doi=None) | Q(doi=""))
-            & (Q(public_www=None) | Q(public_www=""))
-            & (Q(www=None) | Q(www=""))
-            & (Q(wydawnictwo_nadrzedne__www=None) | Q(wydawnictwo_nadrzedne__www=""))
+            & Q(public_www="")
+            & Q(www="")
             & (
-                Q(wydawnictwo_nadrzedne__public_www=None)
-                | Q(wydawnictwo_nadrzedne__public_www="")
+                Q(wydawnictwo_nadrzedne__isnull=True)
+                | (
+                    Q(wydawnictwo_nadrzedne__www="")
+                    & Q(wydawnictwo_nadrzedne__public_www="")
+                )
             )
         )
         # rekordy bez WWW wysylamy gdy jest okreslone nadrzedne + nadrzende ma WWW
@@ -1829,11 +1831,7 @@ def wydawnictwa_ciagle_do_synchronizacji():
         Wydawnictwo_Ciagle.objects.filter(rok__gte=PBN_MIN_ROK)
         .exclude(jezyk__pbn_uid_id=None)
         .exclude(charakter_formalny__rodzaj_pbn=None)
-        .exclude(
-            (Q(doi=None) | Q(doi=""))
-            & (Q(public_www=None) | Q(public_www=""))
-            & (Q(www=None) | Q(www=""))
-        )
+        .exclude((Q(doi=None) | Q(doi="")) & Q(public_www="") & Q(www=""))
     )
 
 
