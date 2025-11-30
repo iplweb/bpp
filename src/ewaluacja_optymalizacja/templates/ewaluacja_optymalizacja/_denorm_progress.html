@@ -1,15 +1,15 @@
-{% load humanize %}
+{% load humanize l10n %}
 
-<div data-dirty-count="{{ dirty_count }}">
+<div data-dirty-count="{{ dirty_count }}" data-unpinning-running="{{ unpinning_analysis_running|yesno:'true,false' }}">
 {% if dirty_count > 0 %}
     <div class="callout warning" style="margin-top: 1rem;">
         <h5><span class="fi-refresh"></span> Trwa przeliczanie punktacji</h5>
 
         {% if initial_count %}
-            <div class="progress large" role="progressbar" aria-valuenow="{{ completed_pct }}"
+            <div class="progress large" role="progressbar" aria-valuenow="{{ completed_pct|unlocalize }}"
                  aria-valuemin="0" aria-valuemax="100">
-                <div class="progress-meter" style="width: {{ completed_pct }}%">
-                    <p class="progress-meter-text">{{ completed_pct|floatformat:0 }}%</p>
+                <div class="progress-meter" style="width: {{ completed_pct|unlocalize }}%">
+                    <p class="progress-meter-text" style="color: white;">{{ completed_pct|floatformat:0 }}%</p>
                 </div>
             </div>
 
@@ -17,6 +17,13 @@
                 <strong>Do przeliczenia:</strong> {{ dirty_count|intcomma }} / {{ initial_count|intcomma }} rekordów
                 (pozostało {{ remaining_pct|floatformat:1 }}%)
             </p>
+            {% if estimated_time_formatted %}
+            <p>
+                <span class="fi-clock"></span>
+                <strong>Szacowany czas:</strong> ~{{ estimated_time_formatted }}
+                {% if records_per_second %}({{ records_per_second|intcomma }} rek./s){% endif %}
+            </p>
+            {% endif %}
         {% else %}
             <p><strong>Do przeliczenia:</strong> {{ dirty_count|intcomma }} rekordów</p>
         {% endif %}

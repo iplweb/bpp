@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}Prace autora - {{ autor }}{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url 'ewaluacja_optymalizacja:index' %}">Optymalizacja ewaluacji</a></li>
+    <li><a href="{% url 'ewaluacja_optymalizacja:run-detail' run.pk %}">Wyniki optymalizacji</a></li>
+    <li class="current">Prace autora</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="large-12 columns">
+        <h1>
+            <span class="fi-torso"></span> Prace autora: {{ autor }}
+        </h1>
+
+        <div class="callout">
+            <h3>{{ run.dyscyplina_naukowa.nazwa }}</h3>
+            <p>
+                Data optymalizacji: {{ run.started_at|date:"Y-m-d H:i" }}
+                {% if run.uczelnia %} | Uczelnia: {{ run.uczelnia }}{% endif %}
+            </p>
+
+            {% if inna_dyscyplina and inny_run %}
+            <p>
+                <a href="{% url 'ewaluacja_optymalizacja:author-works-detail' run_pk=inny_run.pk autor_pk=autor.pk %}" class="button small secondary">
+                    <span class="fi-loop"></span> Przejdz do dyscypliny: {{ inna_dyscyplina.nazwa }}
+                </a>
+            </p>
+            {% endif %}
+        </div>
+
+        <div class="row">
+            <div class="large-4 medium-4 columns">
+                <div class="callout success">
+                    <h4>Prace nazbierane</h4>
+                    <p class="lead">{{ liczba_nazbieranych }}</p>
+                </div>
+            </div>
+            <div class="large-4 medium-4 columns">
+                <div class="callout secondary">
+                    <h4>Prace nienazbierane</h4>
+                    <p class="lead">{{ liczba_nienazbieranych }}</p>
+                </div>
+            </div>
+            <div class="large-4 medium-4 columns">
+                <div class="callout {% if liczba_odpietych > 0 %}warning{% else %}secondary{% endif %}">
+                    <h4>Prace z odpietymi dyscyplinami</h4>
+                    <p class="lead">{{ liczba_odpietych }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="large-6 columns">
+                <div class="callout">
+                    <strong>Sloty nazbierane:</strong> {{ metryka.slot_nazbierany|floatformat:4 }} / {{ metryka.slot_maksymalny|floatformat:4 }}
+                </div>
+            </div>
+            <div class="large-6 columns">
+                <div class="callout">
+                    <strong>Punkty nazbierane:</strong> {{ metryka.punkty_nazbierane|floatformat:2 }}
+                </div>
+            </div>
+        </div>
+
+        <h2>
+            <span class="fi-check"></span> Prace nazbierane ({{ liczba_nazbieranych }})
+            {% if prace_nazbierane %}
+            <a href="{% url 'ewaluacja_optymalizacja:export-prace-nazbierane-xlsx' run_pk=run.pk autor_pk=autor.pk %}"
+               class="button tiny success" style="margin-left: 10px;">
+                <span class="fi-download"></span> XLS
+            </a>
+            {% endif %}
+        </h2>
+        {% if prace_nazbierane %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Tytul</th>
+                    <th>Rok</th>
+                    <th>Punkty</th>
+                    <th>PKDaut</th>
+                    <th>Slot</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for praca in prace_nazbierane %}
+                <tr>
+                    <td>
+                        <a href="{{ praca.rekord.get_absolute_url }}">
+                            {{ praca.rekord.tytul_oryginalny|truncatechars:100 }}
+                        </a>
+                    </td>
+                    <td>{{ praca.rekord.rok }}</td>
+                    <td>{{ praca.rekord.punkty_kbn|floatformat:2|default:"-" }}</td>
+                    <td>{{ praca.pkdaut|floatformat:2 }}</td>
+                    <td>{{ praca.slot|floatformat:4 }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr>
+                    <th colspan="3">Suma:</th>
+                    <th>{{ suma_pkdaut_nazbierane|floatformat:2 }}</th>
+                    <th>{{ suma_slot_nazbierane|floatformat:4 }}</th>
+                </tr>
+            </tfoot>
+        </table>
+        {% else %}
+        <p class="callout secondary">Brak prac nazbieranych.</p>
+        {% endif %}
+
+        <h2>
+            <span class="fi-minus-circle"></span> Prace nienazbierane ({{ liczba_nienazbieranych }})
+            {% if prace_nienazbierane %}
+            <a href="{% url 'ewaluacja_optymalizacja:export-prace-nienazbierane-xlsx' run_pk=run.pk autor_pk=autor.pk %}"
+               class="button tiny" style="margin-left: 10px;">
+                <span class="fi-download"></span> XLS
+            </a>
+            {% endif %}
+        </h2>
+        {% if prace_nienazbierane %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Tytul</th>
+                    <th>Rok</th>
+                    <th>Punkty</th>
+                    <th>PKDaut</th>
+                    <th>Slot</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for praca in prace_nienazbierane %}
+                <tr>
+                    <td>
+                        <a href="{{ praca.rekord.get_absolute_url }}">
+                            {{ praca.rekord.tytul_oryginalny|truncatechars:100 }}
+                        </a>
+                    </td>
+                    <td>{{ praca.rekord.rok }}</td>
+                    <td>{{ praca.rekord.punkty_kbn|floatformat:2|default:"-" }}</td>
+                    <td>{{ praca.pkdaut|floatformat:2 }}</td>
+                    <td>{{ praca.slot|floatformat:4 }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr>
+                    <th colspan="3">Suma:</th>
+                    <th>{{ suma_pkdaut_nienazbierane|floatformat:2 }}</th>
+                    <th>{{ suma_slot_nienazbierane|floatformat:4 }}</th>
+                </tr>
+            </tfoot>
+        </table>
+        {% else %}
+        <p class="callout secondary">Brak prac nienazbieranych.</p>
+        {% endif %}
+
+        <h2>
+            <span class="fi-unlink"></span> Prace z odpietymi dyscyplinami ({{ liczba_odpietych }})
+            {% if prace_odpiete %}
+            <a href="{% url 'ewaluacja_optymalizacja:export-prace-odpiete-xlsx' run_pk=run.pk autor_pk=autor.pk %}"
+               class="button tiny warning" style="margin-left: 10px;">
+                <span class="fi-download"></span> XLS
+            </a>
+            {% endif %}
+        </h2>
+        {% if prace_odpiete %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Tytul</th>
+                    <th>Rok</th>
+                    <th>Punkty</th>
+                    <th>Typ</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for praca in prace_odpiete %}
+                <tr>
+                    <td>
+                        <a href="{{ praca.rekord.get_absolute_url }}">
+                            {{ praca.rekord.tytul_oryginalny|truncatechars:100 }}
+                        </a>
+                    </td>
+                    <td>{{ praca.rekord.rok }}</td>
+                    <td>{{ praca.rekord.punkty_kbn|floatformat:2|default:"-" }}</td>
+                    <td>{{ praca.typ }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="callout secondary">Brak prac z odpietymi dyscyplinami.</p>
+        {% endif %}
+
+        <div style="margin-top: 30px;">
+            <a href="{% url 'ewaluacja_optymalizacja:run-detail' run.pk %}" class="button secondary">
+                <span class="fi-arrow-left"></span> Powrot do wynikow optymalizacji
+            </a>
+            <a href="{% url 'ewaluacja_optymalizacja:export-all-works-xlsx' run_pk=run.pk autor_pk=autor.pk %}"
+               class="button success">
+                <span class="fi-download"></span> Pobierz wszystkie prace (XLS)
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

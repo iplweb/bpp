@@ -1,0 +1,94 @@
+"""
+Solver functions for evaluation optimization.
+
+This module contains the knapsack solver and callback for the CP-SAT solver.
+"""
+
+import sys
+
+from ortools.sat.python import cp_model
+
+from .data_structures import SCALE, Pub
+
+
+def solve_author_knapsack(
+    author_pubs: list[Pub], max_slots: float, max_mono_slots: float
+) -> list[Pub]:
+    """
+    Solve knapsack problem for a single author using dynamic programming.
+    Returns list of selected publications that maximize points within slot constraints.
+    """
+    if not author_pubs:
+        return []
+
+    # Sort by efficiency (points/slot ratio) descending, then by author count ascending
+    # This ensures that when efficiency is equal, works with fewer authors are prioritized
+    sorted_pubs = sorted(author_pubs, key=lambda p: (-p.efficiency, p.author_count))
+
+    # Use CP-SAT for single-author optimization with both constraints
+    m = cp_model.CpModel()
+
+    # Decision variables
+    selected = {}
+    for p in sorted_pubs:
+        selected[p.id] = m.NewBoolVar(f"select_{p.id[0]}_{p.id[1]}")
+
+    # Objective: maximize points
+    m.Maximize(sum(p.points * selected[p.id] for p in sorted_pubs))
+
+    # Constraint 1: Total slots
+    m.Add(
+        sum(int(p.base_slots * SCALE) * selected[p.id] for p in sorted_pubs)
+        <= int(max_slots * SCALE)
+    )
+
+    # Constraint 2: Monography slots
+    mono_pubs = [p for p in sorted_pubs if p.kind == "monography"]
+    if mono_pubs:
+        m.Add(
+            sum(int(p.base_slots * SCALE) * selected[p.id] for p in mono_pubs)
+            <= int(max_mono_slots * SCALE)
+        )
+
+    # Solve
+    solver = cp_model.CpSolver()
+    solver.parameters.num_search_workers = 1  # Single thread for deterministic results
+    status = solver.Solve(m)
+
+    if status not in [cp_model.OPTIMAL, cp_model.FEASIBLE]:
+        return []
+
+    # Return selected publications
+    result = []
+    for p in sorted_pubs:
+        if solver.Value(selected[p.id]) == 1:
+            result.append(p)
+
+    return result
+
+
+class SolutionCallback(cp_model.CpSolverSolutionCallback):
+    """Callback to report solver progress"""
+
+    def __init__(self, variables, pubs, verbose=False):
+        cp_model.CpSolverSolutionCallback.__init__(self)
+        self.variables = variables
+        self.pubs = pubs
+        self.solution_count = 0
+        self.verbose = verbose
+        self.best_objective = 0
+
+    def on_solution_callback(self):
+        self.solution_count += 1
+        current_objective = self.ObjectiveValue()
+
+        if current_objective > self.best_objective:
+            self.best_objective = current_objective
+            if self.verbose:
+                sys.stdout.write(
+                    f"\rFound solution #{self.solution_count}: {int(current_objective)} points"
+                )
+                sys.stdout.flush()
+            else:
+                sys.stdout.write(".")
+                sys.stdout.flush()

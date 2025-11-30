@@ -44,6 +44,17 @@
             <a href="{% url 'ewaluacja_optymalizacja:index' %}" class="button secondary">
                 <span class="fi-arrow-left"></span> Powrót do optymalizacji
             </a>
+            {% if not task_ready and not error %}
+                <form method="post"
+                      action="{% url 'ewaluacja_optymalizacja:cancel-optimize-unpin' task_id %}"
+                      style="display: inline;"
+                      onsubmit="return confirm('Czy na pewno chcesz anulować zadanie optymalizacji z odpinaniem?');">
+                    {% csrf_token %}
+                    <button type="submit" class="button alert">
+                        <span class="fi-x"></span> Anuluj zadanie
+                    </button>
+                </form>
+            {% endif %}
             {% if success %}
                 <a href="{% url 'ewaluacja_optymalizacja:discipline-comparison' %}" class="button">
                     <span class="fi-graph-bar"></span> Porównanie dyscyplin

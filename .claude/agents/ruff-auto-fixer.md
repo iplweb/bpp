@@ -2,7 +2,7 @@
 name: ruff-auto-fixer
 description: Use this agent immediately after any file editing or creation operation that involves Python code. This agent should activate proactively whenever Python files (.py) are modified or created, without requiring explicit user request. Examples:\n\n<example>\nContext: User has just created a new Django model file.\nuser: "Please create a new model for tracking publication citations"\nassistant: "Here is the new model:"\n<creates src/bpp/models/citation.py>\nassistant: "Now let me use the ruff-auto-fixer agent to check and fix any code quality issues in the newly created file."\n<uses Task tool to launch ruff-auto-fixer agent>\n</example>\n\n<example>\nContext: User has just modified an existing view file.\nuser: "Can you update the author detail view to include ORCID information?"\nassistant: "I've updated the view:"\n<modifies src/bpp/views/autor.py>\nassistant: "Let me run the ruff-auto-fixer agent to ensure the code meets quality standards."\n<uses Task tool to launch ruff-auto-fixer agent>\n</example>\n\n<example>\nContext: User has written a new utility function.\nuser: "Add a helper function to format author names"\nassistant: "Here's the new function:"\n<creates or modifies file>\nassistant: "I'll now use the ruff-auto-fixer agent to check for any linting issues and apply automatic fixes."\n<uses Task tool to launch ruff-auto-fixer agent>\n</example>
 tools: Edit, Write, NotebookEdit, Bash
-model: sonnet
+model: opus
 color: yellow
 ---
 
