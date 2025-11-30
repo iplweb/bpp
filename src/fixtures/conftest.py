@@ -1,7 +1,8 @@
 """
-Main conftest.py - imports from submodules and contains pytest hooks.
+Fixtures conftest.py - contains pytest hooks and additional fixtures.
 
-This file uses pytest_plugins to load fixtures from submodules:
+Note: pytest_plugins declaration moved to top-level conftest.py (per pytest requirements).
+Fixtures are loaded from submodules:
 - conftest_models: Core model fixtures (uczelnia, wydzial, jednostka, autor)
 - conftest_publications: Publication fixtures (wydawnictwo_ciagle, wydawnictwo_zwarte, etc.)
 - conftest_system: System data fixtures (typy_odpowiedzialnosci, jezyki, etc.)
@@ -25,14 +26,7 @@ from bpp.models import Kierunek_Studiow
 from bpp.models.szablondlaopisubibliograficznego import SzablonDlaOpisuBibliograficznego
 from bpp.tests.util import setup_model_bakery
 
-# Load fixtures from submodules
-pytest_plugins = [
-    "fixtures.conftest_models",
-    "fixtures.conftest_publications",
-    "fixtures.conftest_system",
-    "fixtures.conftest_browser",
-    "fixtures.conftest_disciplines",
-]
+# Note: pytest_plugins moved to top-level conftest.py as required by pytest
 
 # Setup model_bakery
 setup_model_bakery()
