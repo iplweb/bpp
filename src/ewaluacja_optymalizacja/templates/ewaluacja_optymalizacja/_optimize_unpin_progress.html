@@ -57,8 +57,53 @@
                 <p><em>{{ info.message }}</em></p>
             {% endif %}
 
-            {% if info.total_pinned_ciagle or info.total_pinned_zwarte %}
+            {% if info.step == "unpinning" and info.total_batches %}
                 <h5>Status odpinania:</h5>
+                <table style="width: 100%; margin-bottom: 1rem;">
+                    <tbody>
+                        <tr>
+                            <td><strong>Faza:</strong></td>
+                            <td>
+                                {% if info.unpinning_phase == "ciagle" %}
+                                    Wydawnictwa ciągłe
+                                {% elif info.unpinning_phase == "zwarte" %}
+                                    Wydawnictwa zwarte
+                                {% else %}
+                                    {{ info.unpinning_phase }}
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Porcja:</strong></td>
+                            <td>
+                                <span class="label warning">
+                                    {{ info.current_batch }} / {{ info.total_batches }}
+                                </span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Odpiętych w tej fazie:</strong></td>
+                            <td>{{ info.unpinned_so_far|intcomma }} / {{ info.total_to_unpin|intcomma }}</td>
+                        </tr>
+                        {% if info.total_batches_all %}
+                        <tr>
+                            <td><strong>Łącznie porcji:</strong></td>
+                            <td>
+                                <span class="label secondary">
+                                    {{ info.batches_processed_all }} / {{ info.total_batches_all }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+                {% if info.eta_formatted %}
+                <p><strong><span class="fi-clock"></span> Szacowany czas:</strong> ~{{ info.eta_formatted }}</p>
+                {% endif %}
+            {% endif %}
+
+            {% if info.total_pinned_ciagle or info.total_pinned_zwarte %}
+                <h5>Podsumowanie odpinania:</h5>
                 <table style="width: 100%; margin-bottom: 1rem;">
                     <thead>
                         <tr>

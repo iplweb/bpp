@@ -55,7 +55,8 @@
       "Bash(docker logs:*)",
       "Bash(docker exec:*)",
       "Bash(git add:*)",
-      "Bash(pre-commit)"
+      "Bash(pre-commit)",
+      "Bash(DJANGO_SETTINGS_MODULE=django_bpp.settings.local uv run python:*)"
     ],
     "deny": [],
     "ask": [],

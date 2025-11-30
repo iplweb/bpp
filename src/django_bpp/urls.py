@@ -3,7 +3,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.views import LoginView, LogoutView
+from django.contrib.auth.views import LogoutView
 from django.urls import include, path
 from django.urls import re_path as url
 from django.views.decorators.cache import cache_page
@@ -31,6 +31,7 @@ from bpp.views.sentry_tester import (
     test_500_view,
     test_exception_view,
 )
+from django_bpp.views import HTMXAwareLoginView
 
 admin.autodiscover()
 
@@ -346,7 +347,7 @@ if not apps.is_installed("microsoft_auth"):
     urlpatterns += [
         url(
             r"^accounts/login/$",
-            LoginView.as_view(authentication_form=MyAuthenticationForm),
+            HTMXAwareLoginView.as_view(authentication_form=MyAuthenticationForm),
             name="login_form",
         ),
         url(r"^logout/$", login_required(LogoutView.as_view()), name="logout"),
@@ -358,7 +359,7 @@ else:
         # Local login route - always available even with Microsoft auth
         url(
             r"^accounts/login/local/$",
-            LoginView.as_view(authentication_form=MyAuthenticationForm),
+            HTMXAwareLoginView.as_view(authentication_form=MyAuthenticationForm),
             name="local_login_form",
         ),
         # Default login redirects to Microsoft

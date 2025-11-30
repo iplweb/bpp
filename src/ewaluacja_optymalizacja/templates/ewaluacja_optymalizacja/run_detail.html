@@ -161,7 +161,7 @@
                 <tr>
                     <td>
                         {% if author_result.ma_metryke %}
-                            <a href="{% url 'ewaluacja_metryki:szczegoly' autor_slug=author_result.autor.slug dyscyplina_kod=run.dyscyplina_naukowa.kod %}">
+                            <a href="{% url 'ewaluacja_optymalizacja:author-works-detail' run_pk=run.pk autor_pk=author_result.autor.pk %}">
                                 {{ author_result.autor }}
                             </a>
                         {% else %}

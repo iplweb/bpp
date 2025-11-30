@@ -22,6 +22,11 @@ urlpatterns = [
         name="optimize-unpin-status",
     ),
     path(
+        "cancel-optimize-unpin/<str:task_id>/",
+        views.cancel_optimize_unpin_task,
+        name="cancel-optimize-unpin",
+    ),
+    path(
         "reset-pins/<int:pk>/",
         views.reset_discipline_pins,
         name="reset-discipline-pins",
@@ -53,6 +58,11 @@ urlpatterns = [
         name="unpinning-combined-status",
     ),
     path(
+        "cancel-unpinning-task/<str:task_id>/",
+        views.cancel_unpinning_task,
+        name="cancel-unpinning-task",
+    ),
+    path(
         "unpinning-status/<str:task_id>/",
         views.unpinning_analysis_status,
         name="unpinning-status",
@@ -73,13 +83,43 @@ urlpatterns = [
         name="database-verification",
     ),
     path(
+        "runs/<int:run_pk>/author/<int:autor_pk>/",
+        views.author_works_detail,
+        name="author-works-detail",
+    ),
+    path(
         "runs/<int:run_pk>/author/<int:autor_pk>/export-xlsx/",
         views.export_author_sedn_xlsx,
         name="export-author-sedn-xlsx",
     ),
     path(
+        "runs/<int:run_pk>/author/<int:autor_pk>/export-nazbierane-xlsx/",
+        views.export_prace_nazbierane_xlsx,
+        name="export-prace-nazbierane-xlsx",
+    ),
+    path(
+        "runs/<int:run_pk>/author/<int:autor_pk>/export-nienazbierane-xlsx/",
+        views.export_prace_nienazbierane_xlsx,
+        name="export-prace-nienazbierane-xlsx",
+    ),
+    path(
+        "runs/<int:run_pk>/author/<int:autor_pk>/export-odpiete-xlsx/",
+        views.export_prace_odpiete_xlsx,
+        name="export-prace-odpiete-xlsx",
+    ),
+    path(
+        "runs/<int:run_pk>/author/<int:autor_pk>/export-all-xlsx/",
+        views.export_all_works_xlsx,
+        name="export-all-works-xlsx",
+    ),
+    path(
         "runs/<int:run_pk>/export-all-authors-zip/",
         views.export_all_authors_zip,
         name="export-all-authors-zip",
+    ),
+    path(
+        "export-all-disciplines-zip/",
+        views.export_all_disciplines_zip,
+        name="export-all-disciplines-zip",
     ),
 ]

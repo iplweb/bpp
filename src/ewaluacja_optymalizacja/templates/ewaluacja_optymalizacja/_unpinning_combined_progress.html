@@ -10,7 +10,7 @@
             <!-- Etap 1: Przeliczanie metryk (0-50%) -->
             <div style="margin-bottom: 2rem;">
                 <h5>
-                    {% if info.stage == "metrics" %}
+                    {% if info.stage == "metrics" or info.stage == "unknown" %}
                         <span class="fi-loop"></span> Etap 1/2: Przeliczanie metryk ewaluacyjnych
                         <span class="label warning">W TRAKCIE</span>
                     {% else %}
@@ -19,7 +19,7 @@
                     {% endif %}
                 </h5>
 
-                {% if info.stage == "metrics" %}
+                {% if info.stage == "metrics" or info.stage == "unknown" %}
                     {% widthratio info.progress|default:0 50 100 as stage1_progress %}
                     <div class="progress large" role="progressbar"
                          aria-valuenow="{{ stage1_progress }}"
@@ -35,6 +35,8 @@
                             <span class="fi-trash"></span> Usuwanie starych metryk
                         {% elif info.step == "calculating" %}
                             <span class="fi-loop"></span> Przeliczanie metryk
+                        {% elif info.step == "unknown" %}
+                            <span class="fi-loop"></span> Uruchamianie...
                         {% else %}
                             {{ info.step }}
                         {% endif %}
@@ -68,12 +70,10 @@
                     {% if info.stage == "unpinning" %}
                         <span class="fi-loop"></span> Etap 2/2: Analiza możliwości odpinania
                         <span class="label warning">W TRAKCIE</span>
-                    {% elif info.stage == "metrics" %}
+                    {% else %}
+                        {# metrics, unknown, lub brak stage - etap 2 jeszcze nie rozpoczęty #}
                         <span class="fi-clock"></span> Etap 2/2: Analiza możliwości odpinania
                         <span class="label secondary">OCZEKUJE</span>
-                    {% else %}
-                        <span class="fi-check"></span> Etap 2/2: Analiza możliwości odpinania
-                        <span class="label success">ZAKOŃCZONO</span>
                     {% endif %}
                 </h5>
 
@@ -122,6 +122,14 @@
                         <p><strong>Przeanalizowano:</strong> {{ info.analyzed|intcomma }} / {{ info.total|intcomma }}</p>
                     {% endif %}
 
+                    {% if info.items_per_second %}
+                        <p><strong>Predkosc:</strong> {{ info.items_per_second }} prac/s</p>
+                    {% endif %}
+
+                    {% if info.estimated_time_formatted %}
+                        <p><strong>Szacowany czas do zakonczenia:</strong> {{ info.estimated_time_formatted }}</p>
+                    {% endif %}
+
                     {% if info.found %}
                         <p><strong>Znalezionych możliwości:</strong> <span class="label success">{{ info.found|intcomma }}</span></p>
                     {% endif %}
@@ -129,7 +137,7 @@
                     {% if info.opportunities_found %}
                         <p><strong>Łącznie znalezionych możliwości:</strong> <span class="label success">{{ info.opportunities_found|intcomma }}</span></p>
                     {% endif %}
-                {% elif info.stage == "metrics" %}
+                {% else %}
                     <!-- Etap unpinning jeszcze nie rozpoczęty -->
                     <div class="progress large" role="progressbar"
                          aria-valuenow="0" aria-valuemin="0" aria-valuemax="50">

@@ -1,0 +1,1 @@
+Dodano możliwość anulowania długo trwających zadań w module optymalizacji ewaluacji. Przyciski anulowania są dostępne na stronach statusu zadań optymalizacji z odpinaniem oraz analizy możliwości odpinania.

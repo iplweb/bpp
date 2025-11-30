@@ -3,10 +3,42 @@ from urllib.parse import urlencode
 
 from django.conf import settings
 from django.contrib.auth import logout
-from django.http import HttpResponseRedirect
+from django.contrib.auth.views import LoginView
+from django.http import HttpResponse, HttpResponseRedirect
+from django.urls import reverse
 from django.views import View
 
 logger = logging.getLogger(__name__)
+
+
+class HTMXAwareLoginView(LoginView):
+    """
+    Login view that handles HTMX requests by returning HX-Redirect header
+    instead of rendering the login form inline.
+
+    When a user's session expires and they trigger an HTMX action, Django redirects
+    them to the login page. Without this view, the login page HTML would be injected
+    into the HTMX target element. This view detects HTMX requests and returns
+    an HX-Redirect header to trigger a full page navigation to the login page,
+    preserving the original URL as the 'next' parameter.
+    """
+
+    def get(self, request, *args, **kwargs):
+        if request.headers.get("HX-Request"):
+            # Get the URL the user was on when the HTMX request was made
+            current_url = request.headers.get("HX-Current-URL", "")
+
+            # Build login URL with next parameter (properly URL encoded)
+            login_url = reverse("login_form")
+            if current_url:
+                login_url = f"{login_url}?{urlencode({'next': current_url})}"
+
+            # Return HX-Redirect to trigger full page navigation
+            response = HttpResponse(status=200)
+            response["HX-Redirect"] = login_url
+            return response
+
+        return super().get(request, *args, **kwargs)
 
 
 class MicrosoftLogoutView(View):

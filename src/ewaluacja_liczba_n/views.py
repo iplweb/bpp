@@ -1,23 +1,21 @@
 import sys
 import traceback
-from io import BytesIO
 
 import rollbar
 from braces.views import GroupRequiredMixin
 from django.contrib import messages
 from django.db.models import Count, Q, Sum
-from django.http import HttpResponse, HttpResponseRedirect
+from django.http import HttpResponseRedirect
 from django.urls import reverse
 from django.views import View
 from django.views.generic import ListView, TemplateView
-from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
-from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.table import Table, TableStyleInfo
 
 from bpp.const import GR_WPROWADZANIE_DANYCH
 from bpp.models import Autor_Dyscyplina, Uczelnia
 
+from .excel_export import LiczbaNExcelExporter
 from .models import (
     IloscUdzialowDlaAutoraZaCalosc,
     IloscUdzialowDlaAutoraZaRok,
@@ -522,58 +520,19 @@ class UdzialyZaCaloscListView(GroupRequiredMixin, ListView):
         return context
 
 
-class ExportAutorzyLiczbaNView(GroupRequiredMixin, View):
-    """Eksport danych autorów do pliku XLSX"""
+class AutorzyLiczbaNExporter(LiczbaNExcelExporter):
+    """Exporter for author N-number data with yearly breakdown."""
 
-    group_required = GR_WPROWADZANIE_DANYCH
-
-    def _create_summary_worksheet(self, wb, uczelnia):
-        """Create summary worksheet with Liczba N data"""
-        ws_summary = wb.active
-        ws_summary.title = "Podsumowanie Liczba N"
-
-        # Nagłówki
-        headers = ["Dyscyplina", "Kod", "Liczba N"]
-        for col_num, header in enumerate(headers, 1):
-            cell = ws_summary.cell(row=1, column=col_num, value=header)
-            cell.font = Font(bold=True)
-            cell.fill = PatternFill(
-                start_color="CCCCCC", end_color="CCCCCC", fill_type="solid"
-            )
-
-        # Dane
-        liczby_n = (
-            LiczbaNDlaUczelni.objects.filter(uczelnia=uczelnia)
-            .select_related("dyscyplina_naukowa")
-            .order_by("dyscyplina_naukowa__nazwa")
-        )
-
-        row_num = 2
-        suma = 0
-        for liczba_n in liczby_n:
-            ws_summary.cell(
-                row=row_num, column=1, value=liczba_n.dyscyplina_naukowa.nazwa
-            )
-            ws_summary.cell(
-                row=row_num, column=2, value=liczba_n.dyscyplina_naukowa.kod
-            )
-            ws_summary.cell(row=row_num, column=3, value=float(liczba_n.liczba_n))
-            suma += float(liczba_n.liczba_n)
-            row_num += 1
-
-        # Suma
-        ws_summary.cell(row=row_num, column=1, value="SUMA")
-        ws_summary.cell(row=row_num, column=3, value=suma)
-        ws_summary.cell(row=row_num, column=1).font = Font(bold=True)
-        ws_summary.cell(row=row_num, column=3).font = Font(bold=True)
+    def get_filename(self) -> str:
+        return "liczba_n_ewaluacja_2022_2025.xlsx"
 
     def _get_filtered_udzialy_queryset(self, request):
-        """Get filtered queryset based on request parameters"""
+        """Get filtered queryset based on request parameters."""
         udzialy = IloscUdzialowDlaAutoraZaRok.objects.filter(
             rok__gte=2022, rok__lte=2025
         )
 
-        # Zastosuj filtry jeśli są w URL
+        # Apply filters from URL
         search = request.GET.get("search")
         if search:
             udzialy = udzialy.filter(
@@ -599,7 +558,7 @@ class ExportAutorzyLiczbaNView(GroupRequiredMixin, View):
         )
 
     def _calculate_wymiar_etatu_dla_dyscypliny(self, udzial, autor_dyscyplina):
-        """Calculate wymiar etatu for discipline"""
+        """Calculate wymiar etatu for discipline."""
         from decimal import Decimal
 
         if not autor_dyscyplina or not autor_dyscyplina.wymiar_etatu:
@@ -620,7 +579,7 @@ class ExportAutorzyLiczbaNView(GroupRequiredMixin, View):
         return None
 
     def _format_autorzy_detail_worksheet(self, ws_detail, row_num):
-        """Apply formatting to autorzy detail worksheet"""
+        """Apply formatting to autorzy detail worksheet."""
         if row_num <= 2:
             return
 
@@ -663,11 +622,11 @@ class ExportAutorzyLiczbaNView(GroupRequiredMixin, View):
             # Column 8: Ilość Udziałów - Monografie (decimal with 2 places)
             ws_detail.cell(row=row, column=8).number_format = "0.00"
 
-    def _create_autorzy_detail_worksheet(self, wb, request):
-        """Create detailed author data worksheet"""
+    def _create_detail_worksheet(self, wb, request):
+        """Create detailed author data worksheet."""
         ws_detail = wb.create_sheet("Autorzy - Liczba N")
 
-        # Nagłówki
+        # Headers
         headers = [
             "Autor",
             "Rok",
@@ -686,7 +645,7 @@ class ExportAutorzyLiczbaNView(GroupRequiredMixin, View):
                 start_color="CCCCCC", end_color="CCCCCC", fill_type="solid"
             )
 
-        # Dane autorów - z uwzględnieniem filtrów z URL
+        # Author data - with URL filters applied
         udzialy = self._get_filtered_udzialy_queryset(request)
 
         row_num = 2
@@ -725,7 +684,7 @@ class ExportAutorzyLiczbaNView(GroupRequiredMixin, View):
                     ),
                 )
 
-            # Ilość udziałów
+            # Number of shares
             ws_detail.cell(row=row_num, column=7, value=float(udzial.ilosc_udzialow))
             ws_detail.cell(
                 row=row_num, column=8, value=float(udzial.ilosc_udzialow_monografie)
@@ -736,136 +695,25 @@ class ExportAutorzyLiczbaNView(GroupRequiredMixin, View):
         # Create Excel Table and apply formatting
         self._format_autorzy_detail_worksheet(ws_detail, row_num)
 
-    def _create_nieraportowane_worksheet(self, wb, uczelnia):
-        """Create non-reported disciplines worksheet"""
-        ws_nieraportowane = wb.create_sheet("Dyscypliny Nieraportowane")
 
-        headers = ["Dyscyplina", "Kod", "Liczba N - średnia", "Liczba N - koniec 2025"]
-        for col_num, header in enumerate(headers, 1):
-            cell = ws_nieraportowane.cell(row=1, column=col_num, value=header)
-            cell.font = Font(bold=True)
-            cell.fill = PatternFill(
-                start_color="CCCCCC", end_color="CCCCCC", fill_type="solid"
-            )
-
-        # Pobierz wszystkie dyscypliny i oblicz liczby N na koniec 2025
-        wszystkie_liczby_n = (
-            LiczbaNDlaUczelni.objects.filter(uczelnia=uczelnia)
-            .select_related("dyscyplina_naukowa")
-            .order_by("dyscyplina_naukowa__nazwa")
-        )
-        liczby_n_2025 = oblicz_liczbe_n_na_koniec_2025(uczelnia)
-
-        # Filtruj tylko nieraportowane (N < 12 na koniec 2025)
-        row_num = 2
-        for liczba in wszystkie_liczby_n:
-            liczba_n_2025 = liczby_n_2025.get(liczba.dyscyplina_naukowa_id, 0)
-            if liczba_n_2025 < 12:
-                ws_nieraportowane.cell(
-                    row=row_num, column=1, value=liczba.dyscyplina_naukowa.nazwa
-                )
-                ws_nieraportowane.cell(
-                    row=row_num, column=2, value=liczba.dyscyplina_naukowa.kod
-                )
-                ws_nieraportowane.cell(
-                    row=row_num, column=3, value=float(liczba.liczba_n)
-                )
-                ws_nieraportowane.cell(
-                    row=row_num, column=4, value=float(liczba_n_2025)
-                )
-                row_num += 1
-
-    def _apply_column_widths(self, wb):
-        """Adjust column widths for all worksheets"""
-        for sheet in wb.worksheets:
-            for column_cells in sheet.columns:
-                length = max(len(str(cell.value or "")) for cell in column_cells)
-                sheet.column_dimensions[
-                    get_column_letter(column_cells[0].column)
-                ].width = min(length + 2, 50)
-
-    def _create_excel_response(self, wb, filename):
-        """Create HTTP response with Excel file"""
-        response = HttpResponse(
-            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
-        response["Content-Disposition"] = f'attachment; filename="{filename}"'
-
-        # Zapisz do bufora
-        virtual_workbook = BytesIO()
-        wb.save(virtual_workbook)
-        virtual_workbook.seek(0)
-        response.write(virtual_workbook.getvalue())
-
-        return response
-
-    def get(self, request, *args, **kwargs):
-        # Przygotuj dane
-        uczelnia = Uczelnia.objects.get_default()
-
-        # Utworzenie skoroszytu Excel
-        wb = Workbook()
-
-        # Arkusz 1: Podsumowanie liczby N dla uczelni
-        self._create_summary_worksheet(wb, uczelnia)
-
-        # Arkusz 2: Szczegółowe dane autorów
-        self._create_autorzy_detail_worksheet(wb, request)
-
-        # Arkusz 3: Dyscypliny nieraportowane
-        self._create_nieraportowane_worksheet(wb, uczelnia)
-
-        # Dostosuj szerokość kolumn
-        self._apply_column_widths(wb)
-
-        # Przygotuj odpowiedź
-        return self._create_excel_response(wb, "liczba_n_ewaluacja_2022_2025.xlsx")
-
-
-class ExportUdzialyZaCaloscView(GroupRequiredMixin, View):
-    """Eksport danych udziałów za cały okres do pliku XLSX"""
+class ExportAutorzyLiczbaNView(GroupRequiredMixin, View):
+    """Eksport danych autorów do pliku XLSX"""
 
     group_required = GR_WPROWADZANIE_DANYCH
 
-    def _create_summary_worksheet(self, wb, uczelnia):
-        """Create summary worksheet with Liczba N data"""
-        ws_summary = wb.active
-        ws_summary.title = "Podsumowanie Liczba N"
+    def get(self, request, *args, **kwargs):
+        exporter = AutorzyLiczbaNExporter()
+        return exporter.export(request)
 
-        headers = ["Dyscyplina", "Kod", "Liczba N"]
-        for col_num, header in enumerate(headers, 1):
-            cell = ws_summary.cell(row=1, column=col_num, value=header)
-            cell.font = Font(bold=True)
-            cell.fill = PatternFill(
-                start_color="CCCCCC", end_color="CCCCCC", fill_type="solid"
-            )
 
-        liczby_n = (
-            LiczbaNDlaUczelni.objects.filter(uczelnia=uczelnia)
-            .select_related("dyscyplina_naukowa")
-            .order_by("dyscyplina_naukowa__nazwa")
-        )
+class UdzialyZaCaloscExporter(LiczbaNExcelExporter):
+    """Exporter for full evaluation period share data."""
 
-        row_num = 2
-        suma = 0
-        for liczba_n in liczby_n:
-            ws_summary.cell(
-                row=row_num, column=1, value=liczba_n.dyscyplina_naukowa.nazwa
-            )
-            ws_summary.cell(
-                row=row_num, column=2, value=liczba_n.dyscyplina_naukowa.kod
-            )
-            ws_summary.cell(row=row_num, column=3, value=float(liczba_n.liczba_n))
-            suma += float(liczba_n.liczba_n)
-            row_num += 1
-
-        ws_summary.cell(row=row_num, column=1, value="SUMA")
-        ws_summary.cell(row=row_num, column=3, value=suma)
-        ws_summary.cell(row=row_num, column=1).font = Font(bold=True)
-        ws_summary.cell(row=row_num, column=3).font = Font(bold=True)
+    def get_filename(self) -> str:
+        return "udzialy_za_calosc_ewaluacja_2022_2025.xlsx"
 
     def _get_filtered_udzialy_calosc_queryset(self, request):
-        """Get filtered udzialy za calosc queryset"""
+        """Get filtered udzialy za calosc queryset."""
         udzialy = IloscUdzialowDlaAutoraZaCalosc.objects.all()
 
         search = request.GET.get("search")
@@ -888,7 +736,7 @@ class ExportUdzialyZaCaloscView(GroupRequiredMixin, View):
         ).order_by("autor__nazwisko", "autor__imiona", "dyscyplina_naukowa__nazwa")
 
     def _format_calosc_detail_worksheet(self, ws_detail, row_num):
-        """Apply formatting to full period detail worksheet"""
+        """Apply formatting to full period detail worksheet."""
         if row_num <= 2:
             return
 
@@ -916,8 +764,8 @@ class ExportUdzialyZaCaloscView(GroupRequiredMixin, View):
                     wrap_text=True, vertical="top"
                 )
 
-    def _create_calosc_detail_worksheet(self, wb, request):
-        """Create full period detail worksheet"""
+    def _create_detail_worksheet(self, wb, request):
+        """Create full period detail worksheet."""
         ws_detail = wb.create_sheet("Udziały za cały okres")
 
         headers = [
@@ -962,80 +810,15 @@ class ExportUdzialyZaCaloscView(GroupRequiredMixin, View):
 
         self._format_calosc_detail_worksheet(ws_detail, row_num)
 
-    def _create_nieraportowane_worksheet(self, wb, uczelnia):
-        """Create non-reported disciplines worksheet"""
-        ws_nieraportowane = wb.create_sheet("Dyscypliny Nieraportowane")
 
-        headers = ["Dyscyplina", "Kod", "Liczba N - średnia", "Liczba N - koniec 2025"]
-        for col_num, header in enumerate(headers, 1):
-            cell = ws_nieraportowane.cell(row=1, column=col_num, value=header)
-            cell.font = Font(bold=True)
-            cell.fill = PatternFill(
-                start_color="CCCCCC", end_color="CCCCCC", fill_type="solid"
-            )
+class ExportUdzialyZaCaloscView(GroupRequiredMixin, View):
+    """Eksport danych udziałów za cały okres do pliku XLSX"""
 
-        # Pobierz wszystkie dyscypliny i oblicz liczby N na koniec 2025
-        wszystkie_liczby_n = (
-            LiczbaNDlaUczelni.objects.filter(uczelnia=uczelnia)
-            .select_related("dyscyplina_naukowa")
-            .order_by("dyscyplina_naukowa__nazwa")
-        )
-        liczby_n_2025 = oblicz_liczbe_n_na_koniec_2025(uczelnia)
-
-        # Filtruj tylko nieraportowane (N < 12 na koniec 2025)
-        row_num = 2
-        for liczba in wszystkie_liczby_n:
-            liczba_n_2025 = liczby_n_2025.get(liczba.dyscyplina_naukowa_id, 0)
-            if liczba_n_2025 < 12:
-                ws_nieraportowane.cell(
-                    row=row_num, column=1, value=liczba.dyscyplina_naukowa.nazwa
-                )
-                ws_nieraportowane.cell(
-                    row=row_num, column=2, value=liczba.dyscyplina_naukowa.kod
-                )
-                ws_nieraportowane.cell(
-                    row=row_num, column=3, value=float(liczba.liczba_n)
-                )
-                ws_nieraportowane.cell(
-                    row=row_num, column=4, value=float(liczba_n_2025)
-                )
-                row_num += 1
-
-    def _apply_column_widths(self, wb):
-        """Adjust column widths for all worksheets"""
-        for sheet in wb.worksheets:
-            for column_cells in sheet.columns:
-                length = max(len(str(cell.value or "")) for cell in column_cells)
-                sheet.column_dimensions[
-                    get_column_letter(column_cells[0].column)
-                ].width = min(length + 2, 50)
-
-    def _create_excel_response(self, wb, filename):
-        """Create HTTP response with Excel file"""
-        response = HttpResponse(
-            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
-        response["Content-Disposition"] = f'attachment; filename="{filename}"'
-
-        virtual_workbook = BytesIO()
-        wb.save(virtual_workbook)
-        virtual_workbook.seek(0)
-        response.write(virtual_workbook.getvalue())
-
-        return response
+    group_required = GR_WPROWADZANIE_DANYCH
 
     def get(self, request, *args, **kwargs):
-        uczelnia = Uczelnia.objects.get_default()
-        wb = Workbook()
-
-        self._create_summary_worksheet(wb, uczelnia)
-        self._create_calosc_detail_worksheet(wb, request)
-        self._create_nieraportowane_worksheet(wb, uczelnia)
-        self._apply_column_widths(wb)
-
-        return self._create_excel_response(
-            wb, "udzialy_za_calosc_ewaluacja_2022_2025.xlsx"
-        )
+        exporter = UdzialyZaCaloscExporter()
+        return exporter.export(request)
 
 
 class WeryfikujBazeView(GroupRequiredMixin, TemplateView):

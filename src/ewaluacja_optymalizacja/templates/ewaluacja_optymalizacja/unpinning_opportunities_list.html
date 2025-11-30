@@ -75,9 +75,15 @@
             <p>
                 Znaleziono <strong>{{ total_count }}</strong> możliwości odpinania,
                 w tym <strong>{{ sensible_count }}</strong> sensownych
-                (<strong>{{ sensible_count|floatformat:0|default:"0" }}%</strong> z {{ total_count|add:0|default:"1" }}).
+                (<strong>{{ sensible_percentage|floatformat:1|default:"0" }}%</strong> z {{ total_count }}).
             </p>
         </div>
+
+        {% if status_unpinning.data_zakonczenia %}
+        <div class="callout secondary" style="margin-top: 1rem;">
+            <span class="fi-clock"></span> Wyniki wygenerowane: {{ status_unpinning.data_zakonczenia|date:"Y-m-d H:i" }}
+        </div>
+        {% endif %}
 
         <!-- Filtry -->
         <form method="GET" action="{% url 'ewaluacja_optymalizacja:unpinning-list' %}" id="filterForm">
