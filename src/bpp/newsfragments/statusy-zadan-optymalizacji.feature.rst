@@ -1,1 +1,0 @@
-Ulepszono wyświetlanie statusów długo działających zadań w module optymalizacji ewaluacji. Dodano automatyczne odświeżanie stanu co 5 sekund, wyraźne komunikaty o etapach przetwarzania oraz globalne śledzenie stanu zadań analizy odpinania.

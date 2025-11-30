@@ -1,1 +1,0 @@
-Poprawiono obsługę wygaśnięcia sesji podczas żądań HTMX - zamiast wstrzykiwania strony logowania w miejsce elementu, użytkownik jest teraz przekierowywany na stronę logowania z zachowaniem pierwotnego adresu URL.

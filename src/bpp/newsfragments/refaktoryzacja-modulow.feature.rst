@@ -1,1 +1,0 @@
-Refaktoryzacja wewnętrzna: rozbito duże pliki na mniejsze moduły tematyczne w aplikacjach ewaluacja_optymalizacja, ewaluacja_metryki, pbn_api, pbn_integrator i bpp. Poprawa czytelności i łatwości utrzymania kodu.
