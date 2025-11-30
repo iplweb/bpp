@@ -4,6 +4,20 @@ Historia zmian
 
 .. towncrier release notes start
 
+bpp 202511.1288 (2025-11-30)
+============================
+
+Usprawnienie
+------------
+
+- Dodano możliwość anulowania długo trwających zadań w module optymalizacji ewaluacji. Przyciski anulowania są dostępne na stronach statusu zadań optymalizacji z odpinaniem oraz analizy możliwości odpinania. (anulowanie-zadan-optymalizacji)
+- Plik ZIP z wynikami optymalizacji bulk jest teraz cache'owany w bazie danych, co przyspiesza ponowne pobieranie wyników bez konieczności regenerowania pliku. (cache-zip-optymalizacji)
+- Poprawiono obsługę wygaśnięcia sesji podczas żądań HTMX - zamiast wstrzykiwania strony logowania w miejsce elementu, użytkownik jest teraz przekierowywany na stronę logowania z zachowaniem pierwotnego adresu URL. (htmx-login-redirect)
+- Rozszerzono moduł optymalizacji ewaluacji o widok szczegółów prac autora z możliwością eksportu do XLSX: prace nazbierane, prace nienazbierane, prace odpięte, wszystkie prace. Dodano również eksport ZIP ze wszystkimi dyscyplinami. (prace-autora-eksporty)
+- Refaktoryzacja wewnętrzna: rozbito duże pliki na mniejsze moduły tematyczne w aplikacjach ewaluacja_optymalizacja, ewaluacja_metryki, pbn_api, pbn_integrator i bpp. Poprawa czytelności i łatwości utrzymania kodu. (refaktoryzacja-modulow)
+- Ulepszono wyświetlanie statusów długo działających zadań w module optymalizacji ewaluacji. Dodano automatyczne odświeżanie stanu co 5 sekund, wyraźne komunikaty o etapach przetwarzania oraz globalne śledzenie stanu zadań analizy odpinania. (statusy-zadan-optymalizacji)
+
+
 bpp 202511.1285 (2025-11-27)
 ============================
 

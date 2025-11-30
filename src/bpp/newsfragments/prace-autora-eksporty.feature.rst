@@ -1,1 +1,0 @@
-Rozszerzono moduł optymalizacji ewaluacji o widok szczegółów prac autora z możliwością eksportu do XLSX: prace nazbierane, prace nienazbierane, prace odpięte, wszystkie prace. Dodano również eksport ZIP ze wszystkimi dyscyplinami.
