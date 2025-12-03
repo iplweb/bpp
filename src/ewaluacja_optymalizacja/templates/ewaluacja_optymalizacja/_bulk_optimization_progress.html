@@ -14,6 +14,12 @@
         <div class="callout warning">
             <h4><span class="fi-loop"></span> Zadanie w trakcie wykonywania</h4>
 
+            <p><strong>Konfiguracja solvera:</strong>
+                <span class="label">wielowątkowość</span>
+                <span class="label secondary">per-autor: bez limitu</span>
+                <span class="label secondary">timeout instytucji: 10 min</span>
+            </p>
+
             {% if info %}
             <div class="progress large" role="progressbar" aria-valuenow="{{ info.progress|default:0|unlocalize }}"
                  aria-valuemin="0" aria-valuemax="100">

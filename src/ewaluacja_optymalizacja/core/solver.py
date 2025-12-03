@@ -4,6 +4,7 @@ Solver functions for evaluation optimization.
 This module contains the knapsack solver and callback for the CP-SAT solver.
 """
 
+import os
 import sys
 
 from ortools.sat.python import cp_model
@@ -11,15 +12,44 @@ from ortools.sat.python import cp_model
 from .data_structures import SCALE, Pub
 
 
+def configure_solver(timeout_seconds: float | None = 600.0) -> cp_model.CpSolver:
+    """
+    Configure CP-SAT solver with optimal settings.
+
+    Args:
+        timeout_seconds: Maximum solving time in seconds. None means no limit.
+
+    Returns:
+        Configured CpSolver instance
+    """
+    solver = cp_model.CpSolver()
+
+    # Use all available CPUs for better performance
+    solver.parameters.num_search_workers = os.cpu_count() or 8
+
+    # Ensure deterministic results despite parallelization
+    solver.parameters.random_seed = 42
+    solver.parameters.interleave_search = True
+
+    # Set timeout to prevent indefinite execution (if specified)
+    if timeout_seconds is not None:
+        solver.parameters.max_time_in_seconds = timeout_seconds
+
+    return solver
+
+
 def solve_author_knapsack(
     author_pubs: list[Pub], max_slots: float, max_mono_slots: float
-) -> list[Pub]:
+) -> tuple[list[Pub], bool]:
     """
-    Solve knapsack problem for a single author using dynamic programming.
-    Returns list of selected publications that maximize points within slot constraints.
+    Solve knapsack problem for a single author using CP-SAT.
+
+    Returns:
+        Tuple of (selected publications list, is_optimal flag)
+        is_optimal is True if solver found OPTIMAL solution, False if FEASIBLE (possibly timed out)
     """
     if not author_pubs:
-        return []
+        return [], True  # Empty is trivially optimal
 
     # Sort by efficiency (points/slot ratio) descending, then by author count ascending
     # This ensures that when efficiency is equal, works with fewer authors are prioritized
@@ -50,21 +80,21 @@ def solve_author_knapsack(
             <= int(max_mono_slots * SCALE)
         )
 
-    # Solve
-    solver = cp_model.CpSolver()
-    solver.parameters.num_search_workers = 1  # Single thread for deterministic results
+    # Solve with configured solver (no timeout for per-author knapsack)
+    solver = configure_solver(timeout_seconds=None)
     status = solver.Solve(m)
 
     if status not in [cp_model.OPTIMAL, cp_model.FEASIBLE]:
-        return []
+        return [], False
 
-    # Return selected publications
+    # Return selected publications and optimality status
     result = []
     for p in sorted_pubs:
         if solver.Value(selected[p.id]) == 1:
             result.append(p)
 
-    return result
+    is_optimal = status == cp_model.OPTIMAL
+    return result, is_optimal
 
 
 class SolutionCallback(cp_model.CpSolverSolutionCallback):

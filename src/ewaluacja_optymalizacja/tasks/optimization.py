@@ -102,6 +102,7 @@ def solve_single_discipline_task(
             low_mono_count=optimization_results.low_mono_count,
             low_mono_percentage=Decimal(str(optimization_results.low_mono_percentage)),
             validation_passed=optimization_results.validation_passed,
+            is_optimal=optimization_results.is_optimal,
             finished_at=datetime.now(),
         )
 

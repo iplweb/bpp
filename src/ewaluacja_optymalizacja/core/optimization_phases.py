@@ -8,7 +8,7 @@ optimization functions, as well as validation and result building functions.
 from ortools.sat.python import cp_model
 
 from .data_structures import SCALE, OptimizationResults, Pub, is_low_mono, slot_units
-from .solver import SolutionCallback, solve_author_knapsack
+from .solver import SolutionCallback, configure_solver, solve_author_knapsack
 
 
 def run_phase1_per_author_optimization(
@@ -17,7 +17,7 @@ def run_phase1_per_author_optimization(
     author_slot_limits: dict,
     verbose: bool,
     log_func,
-) -> tuple[dict, float]:
+) -> tuple[dict, float, bool]:
     """
     Run Phase 1: Per-author optimization using knapsack algorithm.
 
@@ -29,7 +29,8 @@ def run_phase1_per_author_optimization(
         log_func: Function to call for logging
 
     Returns:
-        Tuple of (author_selections dict, total_phase1_points)
+        Tuple of (author_selections dict, total_phase1_points, all_optimal)
+        all_optimal is True if all per-author solvers found OPTIMAL solutions
     """
     log_func("=" * 80)
     log_func("PHASE 1: Per-author optimization")
@@ -45,6 +46,7 @@ def run_phase1_per_author_optimization(
     # Solve knapsack for each author
     author_selections = {}
     total_phase1_points = 0
+    all_optimal = True
 
     for author_id in authors:
         author_pubs = pubs_by_author.get(author_id, [])
@@ -61,7 +63,11 @@ def run_phase1_per_author_optimization(
             )
 
         # Solve knapsack for this author
-        selected = solve_author_knapsack(author_pubs, limits["total"], limits["mono"])
+        selected, is_optimal = solve_author_knapsack(
+            author_pubs, limits["total"], limits["mono"]
+        )
+        if not is_optimal:
+            all_optimal = False
 
         author_selections[author_id] = selected
         author_points = sum(p.points for p in selected)
@@ -69,13 +75,14 @@ def run_phase1_per_author_optimization(
         total_phase1_points += author_points
 
         if verbose:
+            opt_status = "OPTIMAL" if is_optimal else "FEASIBLE"
             log_func(
                 f"  Selected: {len(selected)} pubs, "
-                f"{author_points:.1f} points, {author_slots:.2f} slots"
+                f"{author_points:.1f} points, {author_slots:.2f} slots ({opt_status})"
             )
 
     log_func(f"\nPhase 1 complete: {total_phase1_points:.1f} total points")
-    return author_selections, total_phase1_points
+    return author_selections, total_phase1_points, all_optimal
 
 
 def _add_per_author_constraints(m, y, all_selected, authors, author_slot_limits):
@@ -108,7 +115,7 @@ def apply_institution_constraints(  # noqa: C901
     author_slot_limits: dict,
     liczba_n: float | None,
     log_func,
-) -> tuple[list[Pub], float]:
+) -> tuple[list[Pub], float, bool]:
     """
     Apply Phase 2: Institution-level constraints.
 
@@ -120,7 +127,8 @@ def apply_institution_constraints(  # noqa: C901
         log_func: Function to call for logging
 
     Returns:
-        Tuple of (all_selected publications, total_points)
+        Tuple of (all_selected publications, total_points, is_optimal)
+        is_optimal is True if solver found OPTIMAL solution (or no adjustment needed)
     """
     # Collect all selected publications
     all_selected = []
@@ -225,13 +233,16 @@ def apply_institution_constraints(  # noqa: C901
             m.Add(5 * outside_n_slots_expr <= total_slots_expr)
             log_func("Institution constraint: outside-N slots <= 20% of total")
 
-        # Solve
-        solver = cp_model.CpSolver()
+        # Solve with configured solver (10 min timeout for institution-level)
+        solver = configure_solver(timeout_seconds=600.0)
         status = solver.Solve(m)
 
         if status not in [cp_model.OPTIMAL, cp_model.FEASIBLE]:
             log_func("Could not satisfy institution constraints!", "ERROR")
             raise RuntimeError("Could not satisfy institution constraints!")
+
+        is_optimal = status == cp_model.OPTIMAL
+        opt_status = "OPTIMAL" if is_optimal else "FEASIBLE (timeout)"
 
         # Update selections based on global optimization
         final_selected = []
@@ -243,13 +254,14 @@ def apply_institution_constraints(  # noqa: C901
         total_points = sum(p.points for p in all_selected)
         log_func(
             f"Adjusted selection: {len(all_selected)} publications, "
-            f"{total_points:.1f} points"
+            f"{total_points:.1f} points ({opt_status})"
         )
     else:
         total_points = sum(p.points for p in all_selected)
+        is_optimal = True  # No adjustment needed = trivially optimal
         log_func("Institution constraints satisfied", "SUCCESS")
 
-    return all_selected, total_points
+    return all_selected, total_points, is_optimal
 
 
 def validate_author_limits(
@@ -319,6 +331,7 @@ def build_optimization_results(
     author_slot_limits: dict,
     total_points: float,
     validation_passed: bool,
+    is_optimal: bool = True,
 ) -> OptimizationResults:
     """
     Build the final OptimizationResults object.
@@ -331,6 +344,7 @@ def build_optimization_results(
         author_slot_limits: Dictionary of slot limits per author
         total_points: Total points from optimization
         validation_passed: Whether validation passed
+        is_optimal: Whether all solvers found OPTIMAL solutions
 
     Returns:
         OptimizationResults object
@@ -366,6 +380,7 @@ def build_optimization_results(
         authors=author_results,
         all_pubs=pubs,
         validation_passed=validation_passed,
+        is_optimal=is_optimal,
     )
 
 
@@ -376,7 +391,7 @@ def run_single_phase_optimization(  # noqa: C901
     liczba_n: float | None,
     verbose: bool,
     log_func,
-) -> tuple[list[Pub], float]:
+) -> tuple[list[Pub], float, bool]:
     """
     Run single-phase optimization using global CP-SAT with all constraints.
 
@@ -389,14 +404,15 @@ def run_single_phase_optimization(  # noqa: C901
         log_func: Function to call for logging
 
     Returns:
-        Tuple of (selected publications, total_points)
+        Tuple of (selected publications, total_points, is_optimal)
+        is_optimal is True if solver found OPTIMAL solution
     """
     log_func("=" * 80)
     log_func("SINGLE-PHASE: Global CP-SAT optimization with all constraints")
     log_func("=" * 80)
 
     if not pubs:
-        return [], 0.0
+        return [], 0.0, True  # Empty is trivially optimal
 
     # Create global CP-SAT model
     m = cp_model.CpModel()
@@ -455,12 +471,9 @@ def run_single_phase_optimization(  # noqa: C901
         # outside_n / total <= 0.2  =>  5 * outside_n <= total
         m.Add(5 * outside_n_slots_expr <= total_slots_expr)
 
-    # Solve with progress callback
+    # Solve with configured solver (10 min timeout for global optimization)
     log_func("Solving global CP-SAT problem...")
-    solver = cp_model.CpSolver()
-    solver.parameters.num_search_workers = (
-        8  # Use multiple threads for better performance
-    )
+    solver = configure_solver(timeout_seconds=600.0)
 
     if verbose:
         callback = SolutionCallback(x, pubs, verbose=True)
@@ -472,6 +485,8 @@ def run_single_phase_optimization(  # noqa: C901
     if status not in [cp_model.OPTIMAL, cp_model.FEASIBLE]:
         log_func("Could not find feasible solution!", "ERROR")
         raise RuntimeError("Could not find feasible solution with all constraints!")
+
+    is_optimal = status == cp_model.OPTIMAL
 
     # Extract selected publications
     selected = []
@@ -488,9 +503,10 @@ def run_single_phase_optimization(  # noqa: C901
         (100.0 * outside_n_slots_val / total_slots) if total_slots > 0 else 0.0
     )
 
+    opt_status = "OPTIMAL" if is_optimal else "FEASIBLE (timeout)"
     log_func(
         f"Solution found: {len(selected)} publications, "
-        f"{total_points:.1f} points, {total_slots:.2f} slots"
+        f"{total_points:.1f} points, {total_slots:.2f} slots ({opt_status})"
     )
     log_func(f"  LOW-MONO: {low_mono_count}/{len(selected)} ({low_mono_pct:.1f}%)")
     if liczba_n is not None:
@@ -500,4 +516,4 @@ def run_single_phase_optimization(  # noqa: C901
         f"({outside_n_pct:.1f}%)"
     )
 
-    return selected, total_points
+    return selected, total_points, is_optimal
