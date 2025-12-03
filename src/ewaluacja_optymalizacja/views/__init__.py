@@ -12,6 +12,7 @@ from .author_works_exports import (
 )
 from .bulk_optimization import (
     bulk_optimization_status,
+    cancel_bulk_optimization,
     start_bulk_optimization,
 )
 from .exports import (
@@ -73,6 +74,7 @@ __all__ = [
     # bulk_optimization.py
     "start_bulk_optimization",
     "bulk_optimization_status",
+    "cancel_bulk_optimization",
     # optimize_unpin.py
     "optimize_with_unpinning",
     "optimize_unpin_status",

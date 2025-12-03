@@ -15,6 +15,11 @@ urlpatterns = [
         views.bulk_optimization_status,
         name="bulk-status",
     ),
+    path(
+        "bulk/cancel/<int:uczelnia_id>/<str:task_id>/",
+        views.cancel_bulk_optimization,
+        name="bulk-cancel",
+    ),
     path("optimize-unpin/", views.optimize_with_unpinning, name="optimize-unpin"),
     path(
         "optimize-unpin-status/<str:task_id>/",
