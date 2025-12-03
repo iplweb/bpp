@@ -1,10 +1,18 @@
 from datetime import timedelta
 
 import pytest
+from django.utils.translation import activate
+
+# Load fixtures from submodules - must be at top-level conftest per pytest requirements
+pytest_plugins = [
+    "fixtures.conftest_models",
+    "fixtures.conftest_publications",
+    "fixtures.conftest_system",
+    "fixtures.conftest_browser",
+    "fixtures.conftest_disciplines",
+]
 
 from fixtures import *  # noqa
-
-from django.utils.translation import activate
 
 
 @pytest.fixture(scope="session")

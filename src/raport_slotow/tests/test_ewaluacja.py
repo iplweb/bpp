@@ -1,6 +1,6 @@
 from django.urls import reverse
 
-from fixtures.conftest import _wydawnictwo_ciagle_maker
+from fixtures.conftest_publications import _wydawnictwo_ciagle_maker
 from raport_slotow.tests.conftest import _rekord_slotu_maker
 from raport_slotow.views import ewaluacja
 

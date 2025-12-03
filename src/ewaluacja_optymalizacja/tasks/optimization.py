@@ -6,6 +6,7 @@ from datetime import datetime
 from decimal import Decimal
 
 from celery import group, shared_task
+from celery.exceptions import SoftTimeLimitExceeded
 from celery_singleton import Singleton
 
 from ewaluacja_liczba_n.models import LiczbaNDlaUczelni
@@ -22,7 +23,10 @@ from .helpers import (
 logger = logging.getLogger(__name__)
 
 
-@shared_task
+@shared_task(
+    soft_time_limit=600,  # 10 minutes - raises SoftTimeLimitExceeded
+    time_limit=660,  # 11 minutes - hard kill
+)
 def solve_single_discipline_task(
     uczelnia_id, dyscyplina_id, liczba_n, algorithm_mode="two-phase"
 ):
@@ -153,6 +157,26 @@ def solve_single_discipline_task(
         )
 
         logger.info(f"Successfully saved optimization results for {dyscyplina_nazwa}")
+
+    except SoftTimeLimitExceeded:
+        # Handle timeout - discipline calculation took too long
+        logger.error(f"Timeout: discipline {dyscyplina_nazwa} took too long (>10 min)")
+
+        discipline_result["status"] = "failed"
+        discipline_result["error"] = "Przekroczono limit czasu (10 minut)"
+
+        # Save timeout failure to database
+        try:
+            OptimizationRun.objects.create(
+                dyscyplina_naukowa=dyscyplina,
+                uczelnia=uczelnia,
+                status="failed",
+                notes="Przekroczono limit czasu obliczeń (10 minut). "
+                "Spróbuj ponownie lub sprawdź logi systemu.",
+                finished_at=datetime.now(),
+            )
+        except Exception as db_error:
+            logger.error(f"Failed to save timeout error to database: {db_error}")
 
     except Exception as e:
         # Log full traceback for debugging

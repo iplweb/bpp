@@ -6,6 +6,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.shortcuts import redirect, render
+from django.views.decorators.http import require_POST
 
 from bpp.models import Uczelnia
 
@@ -368,3 +369,52 @@ def bulk_optimization_status(request, uczelnia_id, task_id):
     return render(
         request, "ewaluacja_optymalizacja/bulk_optimization_status.html", context
     )
+
+
+@login_required
+@require_POST
+def cancel_bulk_optimization(request, uczelnia_id, task_id):
+    """
+    Anuluje zadanie masowej optymalizacji.
+    """
+    from celery.result import AsyncResult
+
+    from django_bpp.celery_tasks import app
+
+    # Sprawdź czy to jest aktualnie działające zadanie w bazie danych
+    status = StatusOptymalizacjiBulk.get_or_create()
+    if not status.w_trakcie or status.task_id != task_id:
+        messages.error(
+            request,
+            "Nie możesz anulować tego zadania - nie jest aktualnie uruchomione.",
+        )
+        return redirect("ewaluacja_optymalizacja:index")
+
+    try:
+        # Revoke the task (terminate if running)
+        task = AsyncResult(task_id)
+        app.control.revoke(task_id, terminate=True)
+
+        # Forget the result from backend (Redis)
+        task.forget()
+
+        # Mark running OptimizationRun records as failed
+        running_runs = OptimizationRun.objects.filter(
+            uczelnia_id=uczelnia_id,
+            status="running",
+        )
+        running_runs.update(status="failed", notes="Anulowane przez użytkownika")
+
+        # Clear from database
+        status.zakoncz("Zadanie anulowane przez użytkownika")
+
+        logger.info(
+            f"Bulk optimization task {task_id} cancelled by user {request.user}"
+        )
+        messages.success(request, "Zadanie optymalizacji zostało anulowane.")
+
+    except Exception as e:
+        logger.error(f"Failed to cancel bulk optimization task {task_id}: {e}")
+        messages.error(request, f"Nie udało się anulować zadania: {e}")
+
+    return redirect("ewaluacja_optymalizacja:index")

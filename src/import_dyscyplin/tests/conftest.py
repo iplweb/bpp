@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 from model_bakery import baker
 
-from fixtures.conftest import (
+from fixtures.conftest_browser import (
     NORMAL_DJANGO_USER_LOGIN,
     NORMAL_DJANGO_USER_PASSWORD,
     _webtest_login,
