@@ -14,7 +14,7 @@ class SankcjeForm(forms.ModelForm):
                     "step": "0.01",
                     "min": "0",
                     "class": "text-right",
-                    "style": "width: 80px;",
+                    "style": "width: 80px; margin-left: auto; display: block;",
                 }
             )
         }
