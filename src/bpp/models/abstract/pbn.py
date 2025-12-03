@@ -66,6 +66,8 @@ class LinkDoPBNMixin:
             if current_version is not None:
                 # w testach moze tak byc, ze bedzie None
                 return current_version.get("versionHash", None)
+            # Publication exists but has no current version (empty versions list)
+            return None
         except AttributeError:
             pass
 

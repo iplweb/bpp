@@ -28,13 +28,13 @@ def _get_author_works_data(run_pk, autor_pk):
         dyscyplina_naukowa=run.dyscyplina_naukowa,
     )
 
-    prace_nazbierane_ids = {tuple(r) for r in (metryka.prace_nazbierane or [])}
-    prace_wszystkie_ids = {tuple(r) for r in (metryka.prace_wszystkie or [])}
-    prace_nienazbierane_ids = prace_wszystkie_ids - prace_nazbierane_ids
+    prace_nazbierane_ids = metryka.prace_nazbierane or []
+    prace_wszystkie_ids = set(metryka.prace_wszystkie or [])
+    prace_nienazbierane_ids = prace_wszystkie_ids - set(prace_nazbierane_ids)
 
     prace_nazbierane = (
         Cache_Punktacja_Autora_Query.objects.filter(
-            rekord__pk__in=prace_nazbierane_ids,
+            rekord_id__in=prace_nazbierane_ids,
             autor=autor,
             dyscyplina=run.dyscyplina_naukowa,
         )
@@ -44,7 +44,7 @@ def _get_author_works_data(run_pk, autor_pk):
 
     prace_nienazbierane = (
         Cache_Punktacja_Autora_Query.objects.filter(
-            rekord__pk__in=prace_nienazbierane_ids,
+            rekord_id__in=prace_nienazbierane_ids,
             autor=autor,
             dyscyplina=run.dyscyplina_naukowa,
         )
