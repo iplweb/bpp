@@ -356,7 +356,9 @@ class TestDopiszszJednoZrodlo:
         from pbn_integrator.importer import dopisz_jedno_zrodlo
 
         # Create an actual PBN Journal record
-        pbn_journal = baker.make(Journal)
+        pbn_journal = baker.make(
+            Journal, title="", issn="", eissn="", websiteLink="", status="ACTIVE"
+        )
 
         # Mock rekord_w_bpp to return something (existing record)
         with patch.object(pbn_journal, "rekord_w_bpp", return_value=Mock()):
@@ -367,7 +369,9 @@ class TestDopiszszJednoZrodlo:
         """Should require current_version structure"""
 
         # Create an actual PBN Journal record
-        pbn_journal = baker.make(Journal)
+        pbn_journal = baker.make(
+            Journal, title="", issn="", eissn="", websiteLink="", status="ACTIVE"
+        )
 
         with patch.object(pbn_journal, "rekord_w_bpp", return_value=None):
             # Should have required attributes
@@ -388,7 +392,7 @@ class TestImportujJednegoWydawce:
         from pbn_integrator.importer import importuj_jednego_wydawce
 
         # Create an actual Publisher record
-        publisher = baker.make(Publisher)
+        publisher = baker.make(Publisher, publisherName="", status="ACTIVE")
 
         # Should not raise when called with valid publisher
         # (may fail due to missing dependencies, but structure is correct)

@@ -18,14 +18,29 @@ MAX_TEXT_FIELD_LENGTH = 350
 
 class BasePBNMongoDBModel(BasePBNModel):
     mongoId = models.CharField(max_length=32, primary_key=True)
-    status = models.CharField(max_length=32, db_index=True)
-    verificationLevel = models.CharField(max_length=32, db_index=True)
+    status = models.CharField(max_length=32, db_index=True, default="")
+    verificationLevel = models.CharField(max_length=32, db_index=True, default="")
     verified = models.BooleanField(default=False, db_index=True)
-    versions = JSONField()
+    versions = JSONField(default=list)
 
     # Nazwy pól wyciaganych "na wierzch" do pól obiektu
     # ze słownika JSONa (pole 'values')
     pull_up_on_save = None
+
+    class Meta:
+        abstract = True
+
+    def save(
+        self, force_insert=False, force_update=False, using=None, update_fields=None
+    ):
+        if self.pull_up_on_save:
+            self._pull_up_on_save()
+        return super().save(
+            force_insert=force_insert,
+            force_update=force_update,
+            using=using,
+            update_fields=update_fields,
+        )
 
     def _pull_up_on_save(self):
         for attr in self.pull_up_on_save:
@@ -43,19 +58,7 @@ class BasePBNMongoDBModel(BasePBNModel):
                 if isinstance(v, str):
                     if len(v) >= MAX_TEXT_FIELD_LENGTH:
                         v = v[:MAX_TEXT_FIELD_LENGTH]
-            setattr(self, attr, v)
-
-    def save(
-        self, force_insert=False, force_update=False, using=None, update_fields=None
-    ):
-        if self.pull_up_on_save:
-            self._pull_up_on_save()
-        return super().save(
-            force_insert=force_insert,
-            force_update=force_update,
-            using=using,
-            update_fields=update_fields,
-        )
+                setattr(self, attr, v)
 
     @cached_property
     def current_version(self):
@@ -68,7 +71,8 @@ class BasePBNMongoDBModel(BasePBNModel):
         v = self.current_version
         if v is None:
             warnings.warn(
-                f"Model {self.__class__} with id {self.mongoId} has NO current_version!"
+                f"Model {self.__class__} with id {self.mongoId} has NO current_version!",
+                stacklevel=2,
             )
             if return_none:
                 return
@@ -88,6 +92,3 @@ class BasePBNMongoDBModel(BasePBNModel):
 
     def website(self):
         return self.value("object", "website")
-
-    class Meta:
-        abstract = True

@@ -166,6 +166,10 @@ def normalize_doi(s: str) -> None | str:
     if not s:
         return
 
+    # Strip URL query parameters (e.g., ?urlappend=...&jav=VoR&rel=cite-as)
+    if "?" in s:
+        s = s.split("?")[0]
+
     return (
         s.lower()
         .replace("http://", "")
@@ -205,7 +209,7 @@ def normalize_nulldecimalfield(probably_decimal):
     except TypeError:
         raise ValidationError(
             f"Nie mogę skonwertować liczby w formacie {probably_decimal} na typ Decimal"
-        )
+        ) from None
 
     try:
         # float() zeby pozbyc sie np numpy.int64
@@ -213,7 +217,7 @@ def normalize_nulldecimalfield(probably_decimal):
     except TypeError:
         raise ValidationError(
             f"Nie mogę skonwertować liczby w formacie {probably_decimal} na typ Decimal"
-        )
+        ) from None
 
 
 def normalize_oplaty_za_publikacje(

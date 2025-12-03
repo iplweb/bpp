@@ -10,6 +10,7 @@ from email.utils import getaddresses
 from textwrap import dedent
 
 import environ
+from celery.schedules import crontab
 from django.core.exceptions import ImproperlyConfigured
 
 from bpp.util import slugify_function
@@ -586,6 +587,10 @@ CELERYBEAT_SCHEDULE = {
     "pbn-api-kolejka-wyczysc-wpisy-bez-rekordow": {
         "task": "pbn_api.tasks.kolejka_wyczysc_wpisy_bez_rekordow",
         "schedule": timedelta(days=7),
+    },
+    "scan-for-duplicates-daily": {
+        "task": "deduplikator_autorow.scan_for_duplicates",
+        "schedule": crontab(hour=3, minute=0),  # Daily at 3 AM
     },
 }
 

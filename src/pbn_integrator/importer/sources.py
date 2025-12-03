@@ -16,10 +16,10 @@ def dopisz_jedno_zrodlo(pbn_journal):
 
     rodzaj_periodyk = Rodzaj_Zrodla.objects.get(nazwa="periodyk")
     zrodlo = Zrodlo.objects.create(
-        nazwa=cv.get("title"),
-        skrot=cv.get("title"),
-        issn=cv.get("issn"),
-        e_issn=cv.get("eissn"),
+        nazwa=cv.get("title") or "",
+        skrot=cv.get("title") or "",
+        issn=cv.get("issn") or "",
+        e_issn=cv.get("eissn") or "",
         pbn_uid=pbn_journal,
         rodzaj=rodzaj_periodyk,
     )

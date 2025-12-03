@@ -70,7 +70,7 @@ def solve_discipline(
         dyscyplina_nazwa: Name of the scientific discipline
         verbose: Show detailed progress
         log_callback: Optional function to call for logging (receives message string)
-        liczba_n: Institution-level slot limit for this discipline (from LiczbaNDlaUczelni)
+        liczba_n: Institution-level slot limit (3N - sankcje, used directly as max slots)
         algorithm_mode: "two-phase" (default) or "single-phase"
             - "two-phase": Phase 1 per-author optimization, Phase 2 institution constraints
             - "single-phase": Global CP-SAT with all constraints from start

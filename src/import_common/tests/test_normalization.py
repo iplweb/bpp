@@ -46,6 +46,15 @@ def test_normalize_kod_dyscypliny(i, o):
         ),
         (None, None),
         ("", None),
+        # DOI with URL query parameters should be stripped
+        (
+            "https://doi.org/10.1021/acs.jmedchem.2c01612?urlappend=%3Fref%3DPDF&jav=VoR&rel=cite-as",
+            "10.1021/acs.jmedchem.2c01612",
+        ),
+        (
+            "10.1021/acs.jmedchem.2c01612?foo=bar",
+            "10.1021/acs.jmedchem.2c01612",
+        ),
     ],
 )
 def test_normalize_doi(i, o):

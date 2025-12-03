@@ -75,20 +75,19 @@ def szukaj_kopii(osoba_z_instytucji: OsobaZInstytucji) -> QuerySet[Autor]:  # no
     if "-" not in nazwisko and len(nazwisko) > 6:
         q |= Q(nazwisko__icontains=nazwisko)
 
-    # 6. Zamiana imienia z nazwiskiem (swap detection) - tylko dokładne dopasowania
-    # Sprawdzamy czy nazwisko głównego autora może być dokładnie imieniem duplikatu i odwrotnie
-    if imiona:
-        # Pobierz wszystkie imiona głównego autora
-        lista_imion_glownego = imiona.split()
-
-        for imie_glownego in lista_imion_glownego:
-            # Sprawdź czy nazwisko duplikatu dokładnie pasuje do imienia głównego autora
-            q |= Q(nazwisko__iexact=imie_glownego)
-
-        # Sprawdź czy nazwisko głównego może być imieniem duplikatu
-        # Szukaj PEŁNEGO nazwiska w imionach (dla swap detection)
-        # Ale NIE szukamy CZĘŚCI nazwiska złożonego - to zostało usunięte poniżej
-        q |= Q(imiona__icontains=nazwisko)
+    # 6. Zamiana imienia z nazwiskiem (swap detection) - OBA warunki muszą być spełnione
+    # Sprawdzamy czy:
+    # - nazwisko duplikatu == imię głównego autora ORAZ
+    # - imię duplikatu == nazwisko głównego autora
+    # Wymaga minimum 5 znaków aby uniknąć fałszywych dopasowań
+    if imiona and len(nazwisko) >= 5:
+        for imie_glownego in imiona.split():
+            if len(imie_glownego) >= 5:
+                # Obie strony zamiany muszą się zgadzać (AND, nie OR)
+                swap_condition = Q(nazwisko__iexact=imie_glownego) & Q(
+                    imiona__iregex=r"(^|[ ])" + nazwisko + r"($|[ ])"
+                )
+                q |= swap_condition
 
     # Wyszukaj kandydatów na duplikaty
     kandydaci = Autor.objects.filter(q).exclude(pk=glowny_autor.pk)
@@ -103,23 +102,28 @@ def szukaj_kopii(osoba_z_instytucji: OsobaZInstytucji) -> QuerySet[Autor]:  # no
 
             for imie in lista_imion:
                 if len(imie) > 0:
-                    # Dokładne dopasowanie imienia
-                    filtr_imion |= Q(imiona__icontains=imie)
+                    # Sprawdź czy to inicjał (1-2 znaki, ewentualnie z kropką)
+                    is_initial = len(imie) <= 2 or (len(imie) == 2 and imie[1] == ".")
 
-                    # Podobne imiona (pierwsze 3 znaki)
-                    if len(imie) >= 3:
-                        prefix = imie[:3]
-                        filtr_imion |= Q(imiona__istartswith=prefix)
+                    if is_initial:
+                        # Dla inicjałów - szukaj inicjału lub imion zaczynających się od tej litery
+                        inicjal = imie[0].upper()
+                        filtr_imion |= Q(
+                            imiona__iregex=r"(^|[ ])" + inicjal + r"(\.| |$)"
+                        )
+                        filtr_imion |= Q(imiona__istartswith=inicjal)
+                    else:
+                        # Dla pełnych imion - bardziej restrykcyjne dopasowanie
+                        # Dokładne dopasowanie imienia (jako pełne słowo)
+                        filtr_imion |= Q(imiona__iregex=r"(^|[ ])" + imie + r"($|[ ])")
 
-                    # Dopasowanie inicjału (pierwsza litera + kropka opcjonalna)
-                    inicjal = imie[0].upper()
-                    # Szukaj inicjału na początku stringa, po spacji lub z kropką
-                    filtr_imion |= Q(imiona__iregex=r"(^|[ ])" + inicjal + r"(\.| |$)")
+                        # Podobne imiona (pierwsze 4 znaki) - ale tylko dla dłuższych imion
+                        if len(imie) >= 4:
+                            prefix = imie[:4]
+                            filtr_imion |= Q(imiona__istartswith=prefix)
 
-            # Dodaj warunki dla zamiany imienia z nazwiskiem
-            # Szukaj PEŁNEGO nazwiska w imionach (dla swap detection)
-            # Ale NIE szukamy CZĘŚCI nazwiska złożonego - to zostało usunięte wyżej
-            filtr_imion |= Q(imiona__icontains=nazwisko)
+                        # NIE dopasowujemy inicjałów dla pełnych imion
+                        # "Krzysztof" nie powinien pasować do "K." ani do "Barbara"
 
             # Zastosuj filtr imion jako dodatkowy warunek OR z pustymi imionami
             kandydaci = kandydaci.filter(

@@ -91,3 +91,16 @@ def get_sort_icon(current_sort, field):
     elif current_sort == f"-{field}":
         return "↓"  # Descending
     return "↕"  # Not sorted
+
+
+@register.filter
+def get_item(dictionary, key):
+    """
+    Get item from dictionary using a variable key.
+
+    Usage in template:
+    {{ my_dict|get_item:my_key }}
+    """
+    if dictionary is None:
+        return None
+    return dictionary.get(key)

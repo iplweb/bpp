@@ -8,7 +8,9 @@ from przemapuj_zrodla_pbn.forms import PrzeMapowanieZrodlaForm
 @pytest.mark.django_db
 def test_przemapowanie_zrodla_form_initialization():
     """Test czy formularz inicjalizuje się poprawnie"""
-    journal_deleted = baker.make("pbn_api.Journal", status="DELETED")
+    journal_deleted = baker.make(
+        "pbn_api.Journal", status="DELETED", title="", issn="", eissn="", websiteLink=""
+    )
     zrodlo_skasowane = baker.make("bpp.Zrodlo", pbn_uid=journal_deleted)
 
     # Pusty queryset
@@ -25,10 +27,14 @@ def test_przemapowanie_zrodla_form_initialization():
 @pytest.mark.django_db
 def test_przemapowanie_zrodla_form_with_suggested_sources():
     """Test czy formularz poprawnie ustawia queryset z sugerowanych źródeł"""
-    journal_deleted = baker.make("pbn_api.Journal", status="DELETED")
+    journal_deleted = baker.make(
+        "pbn_api.Journal", status="DELETED", title="", issn="", eissn="", websiteLink=""
+    )
     zrodlo_skasowane = baker.make("bpp.Zrodlo", pbn_uid=journal_deleted)
 
-    journal_active = baker.make("pbn_api.Journal", status="ACTIVE")
+    journal_active = baker.make(
+        "pbn_api.Journal", status="ACTIVE", title="", issn="", eissn="", websiteLink=""
+    )
     zrodlo_sugerowane = baker.make("bpp.Zrodlo", pbn_uid=journal_active)
 
     # Queryset z sugerowanym źródłem
@@ -46,10 +52,14 @@ def test_przemapowanie_zrodla_form_with_suggested_sources():
 @pytest.mark.django_db
 def test_przemapowanie_zrodla_form_valid_data():
     """Test czy formularz akceptuje poprawne dane"""
-    journal_deleted = baker.make("pbn_api.Journal", status="DELETED")
+    journal_deleted = baker.make(
+        "pbn_api.Journal", status="DELETED", title="", issn="", eissn="", websiteLink=""
+    )
     zrodlo_skasowane = baker.make("bpp.Zrodlo", pbn_uid=journal_deleted)
 
-    journal_active = baker.make("pbn_api.Journal", status="ACTIVE")
+    journal_active = baker.make(
+        "pbn_api.Journal", status="ACTIVE", title="", issn="", eissn="", websiteLink=""
+    )
     zrodlo_docelowe = baker.make("bpp.Zrodlo", pbn_uid=journal_active)
 
     # Queryset z docelowym źródłem
@@ -68,7 +78,9 @@ def test_przemapowanie_zrodla_form_valid_data():
 @pytest.mark.django_db
 def test_przemapowanie_zrodla_form_invalid_empty_data():
     """Test czy formularz odrzuca puste dane - brak wybranego źródła"""
-    journal_deleted = baker.make("pbn_api.Journal", status="DELETED")
+    journal_deleted = baker.make(
+        "pbn_api.Journal", status="DELETED", title="", issn="", eissn="", websiteLink=""
+    )
     zrodlo_skasowane = baker.make("bpp.Zrodlo", pbn_uid=journal_deleted)
 
     # Pusty queryset

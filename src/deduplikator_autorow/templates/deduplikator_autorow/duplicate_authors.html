@@ -14,11 +14,111 @@
         <div class="left-menu-sidebar">
             <div class="left-menu-menu">
                 <ul class="accordion" data-accordion data-allow-all-closed="true" data-multi-expand="true" style="border: none; padding: 0; margin: 0;">
-                    {% if total_authors_with_duplicates %}
+                    <!-- Status skanowania duplikatów -->
+                    <li class="accordion-item is-active" data-accordion-item>
+                        <a class="accordion-title" href="#" aria-expanded="true" style="pointer-events: none; cursor: default;">
+                            <span class="fi-magnifying-glass"></span> Skanowanie duplikatów
+                        </a>
+                        <div class="accordion-content" data-tab-content style="display: block; padding: 10px 15px;">
+                            {% if running_scan %}
+                                <div id="scan-progress-container">
+                                    <p style="margin-bottom: 5px; font-size: 0.85rem;">
+                                        <strong>Status:</strong>
+                                        <span style="color: orange;"><span class="fi-loop"></span> {{ running_scan.get_status_display }}</span>
+                                    </p>
+                                    <div style="width: 100%; background: #ddd; border-radius: 4px; margin-bottom: 10px;">
+                                        <div id="scan-progress-bar"
+                                             style="width: {{ running_scan.progress_percent }}%; background: #4CAF50; height: 20px; border-radius: 4px; transition: width 0.3s;">
+                                        </div>
+                                    </div>
+                                    <p id="scan-progress-text" style="font-size: 0.85rem; margin-bottom: 10px;">
+                                        {{ running_scan.progress_percent }}% ({{ running_scan.authors_scanned }}/{{ running_scan.total_authors_to_scan }} autorów)
+                                    </p>
+                                    <p id="scan-duplicates-text" style="font-size: 0.85rem; margin-bottom: 10px;">
+                                        Znaleziono duplikatów: {{ running_scan.duplicates_found }}
+                                    </p>
+                                    <form method="post" action="{% url 'deduplikator_autorow:cancel_scan' %}" style="margin: 0;">
+                                        {% csrf_token %}
+                                        <button type="submit" class="button alert expanded small"
+                                                onclick="return confirm('Czy na pewno chcesz anulować skanowanie?');">
+                                            <span class="fi-x"></span> Anuluj skanowanie
+                                        </button>
+                                    </form>
+                                </div>
+                                <script>
+                                    // Auto-refresh scan progress
+                                    (function() {
+                                        var scanId = {{ running_scan.pk }};
+                                        var refreshInterval = setInterval(function() {
+                                            fetch('{% url "deduplikator_autorow:scan_status" running_scan.pk %}')
+                                                .then(function(response) { return response.json(); })
+                                                .then(function(data) {
+                                                    if (data.finished) {
+                                                        clearInterval(refreshInterval);
+                                                        location.reload();
+                                                    } else {
+                                                        // Update sidebar progress
+                                                        document.getElementById('scan-progress-bar').style.width = data.progress_percent + '%';
+                                                        document.getElementById('scan-progress-text').textContent =
+                                                            data.progress_percent + '% (' + data.authors_scanned + '/' + data.total_authors_to_scan + ' autorów)';
+                                                        document.getElementById('scan-duplicates-text').textContent =
+                                                            'Znaleziono duplikatów: ' + data.duplicates_found;
+                                                        // Update main content progress (if exists)
+                                                        var mainBar = document.getElementById('main-scan-progress-bar');
+                                                        var mainText = document.getElementById('main-scan-progress-text');
+                                                        if (mainBar) {
+                                                            mainBar.style.width = data.progress_percent + '%';
+                                                        }
+                                                        if (mainText) {
+                                                            mainText.textContent = data.progress_percent + '% (' + data.authors_scanned + '/' + data.total_authors_to_scan + ' autorów)';
+                                                        }
+                                                    }
+                                                })
+                                                .catch(function(err) {
+                                                    console.error('Error fetching scan status:', err);
+                                                });
+                                        }, 3000);  // Refresh every 3 seconds
+                                    })();
+                                </script>
+                            {% elif completed_scan %}
+                                <p style="margin-bottom: 5px; font-size: 0.85rem;">
+                                    <strong>Ostatnie skanowanie:</strong><br>
+                                    {{ completed_scan.finished_at|date:"d.m.Y H:i" }}
+                                </p>
+                                <p style="margin-bottom: 5px; font-size: 0.85rem;">
+                                    <strong>Status:</strong>
+                                    <span style="color: green;"><span class="fi-check"></span> {{ completed_scan.get_status_display }}</span>
+                                </p>
+                                <p style="margin-bottom: 10px; font-size: 0.85rem;">
+                                    <strong>Znaleziono:</strong> {{ completed_scan.duplicates_found }} duplikatów<br>
+                                    <strong>Do sprawdzenia:</strong> {{ pending_candidates_count }}
+                                </p>
+                                <form method="post" action="{% url 'deduplikator_autorow:start_scan' %}" style="margin: 0;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="button primary expanded small"
+                                            onclick="return confirm('Czy na pewno chcesz uruchomić nowe skanowanie? Poprzednie wyniki zostaną zastąpione.');">
+                                        <span class="fi-refresh"></span> Uruchom nowe skanowanie
+                                    </button>
+                                </form>
+                            {% else %}
+                                <p style="margin-bottom: 10px; font-size: 0.85rem; color: #666;">
+                                    Brak wyników skanowania. Uruchom skanowanie, aby znaleźć duplikaty autorów.
+                                </p>
+                                <form method="post" action="{% url 'deduplikator_autorow:start_scan' %}" style="margin: 0;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="button primary expanded small">
+                                        <span class="fi-magnifying-glass"></span> Uruchom skanowanie
+                                    </button>
+                                </form>
+                            {% endif %}
+                        </div>
+                    </li>
+
+                    {% if pending_candidates_count %}
                     <!-- Liczba autorów z duplikatami -->
                     <li class="accordion-item is-active" data-accordion-item>
                         <a class="accordion-title" href="#" aria-expanded="true" style="pointer-events: none; cursor: default;">
-                            👥 {{ total_authors_with_duplicates }} autor{% if total_authors_with_duplicates != 1 %}ów{% endif %} z duplikatami
+                            <span class="fi-torsos-all"></span> {{ pending_candidates_count }} duplikat{% if pending_candidates_count != 1 %}ów{% endif %} do sprawdzenia
                         </a>
                         <div class="accordion-content" data-tab-content style="display: none;"></div>
                     </li>
@@ -257,8 +357,8 @@
                 <div class="cell shrink">
                     {% if not search_lastname and scientist %}
                         <div class="button-group">
-                            {% if has_previous_authors %}
-                                <a href="{% url 'deduplikator_autorow:duplicate_authors' %}?go_previous=1"
+                            {% if skip_count > 0 %}
+                                <a href="{% url 'deduplikator_autorow:duplicate_authors' %}?skip_count={{ skip_count|add:"-1" }}"
                                    class="button secondary">← Poprzedni autor</a>
                             {% endif %}
                             <form method="post" action="{% url 'deduplikator_autorow:ignore_author' %}" style="display: inline;">
@@ -271,16 +371,16 @@
                                     🚫 Ignoruj autora
                                 </button>
                             </form>
-                            <a href="{% url 'deduplikator_autorow:duplicate_authors' %}?skip_current=1"
+                            <a href="{% url 'deduplikator_autorow:duplicate_authors' %}?skip_count={{ skip_count|add:"1" }}"
                                class="button primary">Następny autor →</a>
                         </div>
-                    {% elif not search_lastname %}
+                    {% elif not search_lastname and glowny_autor %}
                         <div class="button-group">
-                            {% if has_previous_authors %}
-                                <a href="{% url 'deduplikator_autorow:duplicate_authors' %}?go_previous=1"
+                            {% if skip_count > 0 %}
+                                <a href="{% url 'deduplikator_autorow:duplicate_authors' %}?skip_count={{ skip_count|add:"-1" }}"
                                    class="button secondary">← Poprzedni autor</a>
                             {% endif %}
-                            <a href="{% url 'deduplikator_autorow:duplicate_authors' %}?skip_current=1"
+                            <a href="{% url 'deduplikator_autorow:duplicate_authors' %}?skip_count={{ skip_count|add:"1" }}"
                                class="button primary">Następny autor →</a>
                         </div>
                     {% endif %}
@@ -288,11 +388,44 @@
             </div>
 
 
-            {% if not scientist %}
-                <div class="callout warning">
-                    <p><strong>Nie znaleziono autorów z duplikatami.</strong></p>
-                    <p>Wszystkie duplikaty zostały prawdopodobnie już przetworzone lub nie ma autorów wymagających
-                        deduplikacji.</p>
+            {% if no_scan_available %}
+                <div class="callout primary" style="text-align: center; padding: 40px 20px;">
+                    <h3><span class="fi-magnifying-glass"></span> Uruchom skanowanie</h3>
+                    <p>Przed rozpoczęciem pracy z deduplikatorem, należy uruchomić skanowanie bazy danych w poszukiwaniu duplikatów autorów.</p>
+                    <p style="margin-bottom: 20px;">Skanowanie jest wykonywane w tle i może potrwać kilka minut w zależności od wielkości bazy.</p>
+                    <form method="post" action="{% url 'deduplikator_autorow:start_scan' %}">
+                        {% csrf_token %}
+                        <button type="submit" class="button primary large">
+                            <span class="fi-magnifying-glass"></span> Uruchom skanowanie duplikatów
+                        </button>
+                    </form>
+                </div>
+            {% elif running_scan and not glowny_autor %}
+                <div class="callout secondary" style="text-align: center; padding: 40px 20px;">
+                    <h3><span class="fi-loop"></span> Skanowanie w toku...</h3>
+                    <p>Proszę czekać, skanowanie bazy w poszukiwaniu duplikatów jest w trakcie.</p>
+                    <div style="width: 50%; margin: 20px auto; background: #ddd; border-radius: 4px;">
+                        <div id="main-scan-progress-bar"
+                             style="width: {{ running_scan.progress_percent }}%; background: #4CAF50; height: 30px; border-radius: 4px; transition: width 0.3s;">
+                        </div>
+                    </div>
+                    <p id="main-scan-progress-text" style="font-size: 1.2rem;">
+                        {{ running_scan.progress_percent }}% ({{ running_scan.authors_scanned }}/{{ running_scan.total_authors_to_scan }} autorów)
+                    </p>
+                    <p>Strona odświeży się automatycznie po zakończeniu skanowania.</p>
+                </div>
+            {% elif not glowny_autor %}
+                <div class="callout success" style="text-align: center; padding: 40px 20px;">
+                    <h3><span class="fi-check"></span> Gratulacje!</h3>
+                    <p><strong>Wszystkie duplikaty zostały już przetworzone.</strong></p>
+                    <p>Brak więcej duplikatów do sprawdzenia. Możesz uruchomić nowe skanowanie, aby sprawdzić czy pojawiły się nowi kandydaci.</p>
+                    <form method="post" action="{% url 'deduplikator_autorow:start_scan' %}" style="margin-top: 20px;">
+                        {% csrf_token %}
+                        <button type="submit" class="button primary"
+                                onclick="return confirm('Czy na pewno chcesz uruchomić nowe skanowanie?');">
+                            <span class="fi-refresh"></span> Uruchom nowe skanowanie
+                        </button>
+                    </form>
                 </div>
             {% else %}
                 {% if glowny_autor %}
@@ -495,11 +628,31 @@
                                 <div class="cell medium-4 text-right">
                                     <div class="button-group stacked">
                                         <button type="button"
+                                                id="merge-with-disc-btn-{{ duplikat_data.autor.pk }}"
+                                                class="button small success"
+                                                onclick="return confirmMergeWithDiscipline({{ glowny_autor.pk }}, {{ duplikat_data.autor.pk }}, {% if duplikat_data.candidate_id %}{{ duplikat_data.candidate_id }}{% else %}null{% endif %});"
+                                                style="width: 100%;">
+                                            <span class="button-text">Scal + ustaw dyscyplinę</span>
+                                            <span class="spinner" style="display: none;">
+                                                <i class="fi-loop" style="animation: spin 1s linear infinite;"></i> Scalanie...
+                                            </span>
+                                        </button>
+                                        <button type="button"
+                                                id="merge-with-subdisc-btn-{{ duplikat_data.autor.pk }}"
+                                                class="button small success"
+                                                onclick="return confirmMergeWithSubdiscipline({{ glowny_autor.pk }}, {{ duplikat_data.autor.pk }}, {% if duplikat_data.candidate_id %}{{ duplikat_data.candidate_id }}{% else %}null{% endif %});"
+                                                style="width: 100%;">
+                                            <span class="button-text">Scal + ustaw subdyscyplinę</span>
+                                            <span class="spinner" style="display: none;">
+                                                <i class="fi-loop" style="animation: spin 1s linear infinite;"></i> Scalanie...
+                                            </span>
+                                        </button>
+                                        <button type="button"
                                                 id="merge-btn-{{ duplikat_data.autor.pk }}"
                                                 class="button small primary"
-                                                onclick="return confirmMerge({{ glowny_autor.pk }}, {{ duplikat_data.autor.pk }});"
+                                                onclick="return confirmMerge({{ glowny_autor.pk }}, {{ duplikat_data.autor.pk }}, {% if duplikat_data.candidate_id %}{{ duplikat_data.candidate_id }}{% else %}null{% endif %});"
                                                 style="width: 100%;">
-                                            <span class="button-text">Scal automatycznie</span>
+                                            <span class="button-text">Scal bez zmian dyscyplin</span>
                                             <span class="spinner" style="display: none;">
                                                 <i class="fi-loop" style="animation: spin 1s linear infinite;"></i> Scalanie...
                                             </span>
@@ -507,22 +660,46 @@
                                         <button type="button"
                                                 id="merge-no-pbn-btn-{{ duplikat_data.autor.pk }}"
                                                 class="button small warning"
-                                                onclick="return confirmMergeNoPBN({{ glowny_autor.pk }}, {{ duplikat_data.autor.pk }});"
+                                                onclick="return confirmMergeNoPBN({{ glowny_autor.pk }}, {{ duplikat_data.autor.pk }}, {% if duplikat_data.candidate_id %}{{ duplikat_data.candidate_id }}{% else %}null{% endif %});"
                                                 style="width: 100%;">
                                             <span class="button-text">Scal, nie wysyłaj do PBN</span>
                                             <span class="spinner" style="display: none;">
                                                 <i class="fi-loop" style="animation: spin 1s linear infinite;"></i> Scalanie...
                                             </span>
                                         </button>
+                                        <a href="#"
+                                           onclick="openEditCiagle({{ duplikat_data.autor.pk }}); return false;"
+                                           class="button small secondary"
+                                           style="width: 100%;">
+                                            <span class="fi-pencil"></span> Pokaż wyd. ciągłe
+                                        </a>
+                                        <a href="#"
+                                           onclick="openEditZwarte({{ duplikat_data.autor.pk }}); return false;"
+                                           class="button small secondary"
+                                           style="width: 100%;">
+                                            <span class="fi-pencil"></span> Pokaż wyd. zwarte
+                                        </a>
+                                        {% if duplikat_data.candidate_id %}
+                                        <form method="post" action="{% url 'deduplikator_autorow:mark_candidate_not_duplicate' %}"
+                                              style="display: block; width: 100%;">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="candidate_id"
+                                                   value="{{ duplikat_data.candidate_id }}">
+                                            <button type="submit" class="button small alert" style="width: 100%;">
+                                                Nie są duplikatami
+                                            </button>
+                                        </form>
+                                        {% else %}
                                         <form method="post" action="{% url 'deduplikator_autorow:mark_non_duplicate' %}"
                                               style="display: block; width: 100%;">
                                             {% csrf_token %}
                                             <input type="hidden" name="scientist_pk"
                                                    value="{{ duplikat_data.autor.pk }}">
-                                            <button type="submit" class="button small secondary" style="width: 100%;">
+                                            <button type="submit" class="button small alert" style="width: 100%;">
                                                 Nie są duplikatami
                                             </button>
                                         </form>
+                                        {% endif %}
                                         {% if duplikat_data.publikacje_count == 0 %}
                                             <button class="button small alert"
                                                     onclick="return confirmDelete({{ duplikat_data.autor.pk }});"
@@ -717,13 +894,9 @@
         style.textContent = '@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }';
         document.head.appendChild(style);
 
-        function confirmMerge(mainAuthorId, duplicateAuthorId) {
-            if (!confirm('Czy jesteś pewny/a? W ten sposób przypiszesz wszystkie publikacje potencjalnego duplikatu autorowi głównemu, domyślnie z główną dyscypliną. Zostanie zlecona też wysyłka tych prac do PBN w tle. Tej operacji nie można cofnąć.')) {
-                return false;
-            }
-
+        function executeMerge(mainAuthorId, duplicateAuthorId, candidateId, skipPbn, autoAssignDiscipline, useSubdiscipline, buttonId) {
             // Get button and card elements
-            var button = document.getElementById('merge-btn-' + duplicateAuthorId);
+            var button = document.getElementById(buttonId);
             var card = document.getElementById('duplicate-card-' + duplicateAuthorId);
 
             // Show spinner, disable button
@@ -733,17 +906,31 @@
                 button.querySelector('.spinner').style.display = 'inline';
             }
 
+            // Build request data
+            var requestData = {
+                'main_scientist_id': mainAuthorId,
+                'duplicate_scientist_id': duplicateAuthorId
+            };
+            if (candidateId) {
+                requestData['candidate_id'] = candidateId;
+            }
+            if (skipPbn) {
+                requestData['skip_pbn'] = 'true';
+            }
+            if (autoAssignDiscipline) {
+                requestData['auto_assign_discipline'] = 'true';
+            }
+            if (useSubdiscipline) {
+                requestData['use_subdiscipline'] = 'true';
+            }
+
             // Make AJAX call
             $.ajax({
                 url: '{% url "deduplikator_autorow:scal_autorow" %}',
                 type: 'GET',
                 dataType: 'json',
-                data: {
-                    'main_scientist_id': mainAuthorId,
-                    'duplicate_scientist_id': duplicateAuthorId
-                },
+                data: requestData,
                 complete: function(xhr, status) {
-                    // Handle both success and error responses here
                     console.log('AJAX complete, status:', status, 'xhr:', xhr);
 
                     var response = null;
@@ -755,7 +942,6 @@
 
                     console.log('Parsed response:', response);
 
-                    // ONLY fade out if success is EXACTLY true
                     if (response && response.success === true) {
                         // Success - fade out the card
                         console.log('Merge successful (success === true), fading out card');
@@ -763,14 +949,12 @@
                             $(card).fadeOut(600, function() {
                                 $(this).remove();
 
-                                // Update the duplicate count in the header
                                 var countElement = document.querySelector('h3');
                                 if (countElement && countElement.textContent.includes('Możliwe duplikaty')) {
                                     var currentCount = parseInt(countElement.textContent.match(/\((\d+)\)/)[1]);
                                     var newCount = currentCount - 1;
                                     countElement.textContent = 'Możliwe duplikaty (' + newCount + ')';
 
-                                    // If no more duplicates, reload the page to get next author
                                     if (newCount === 0) {
                                         setTimeout(function() {
                                             window.location.reload();
@@ -801,16 +985,14 @@
                             });
                         }
                     } else {
-                        // Error from server - DO NOT fade out the card
+                        // Error from server
                         console.log('Merge failed, response:', response);
 
                         var errorMessage = 'Błąd podczas scalania autorów:\n\n';
 
-                        // Handle different error scenarios
                         if (!response) {
                             errorMessage += 'Brak odpowiedzi z serwera.';
                         } else if (response.success === false) {
-                            // Explicitly handle success: false
                             if (response.error) {
                                 errorMessage += response.error;
                             } else if (response.result && response.result.error) {
@@ -824,24 +1006,20 @@
                             errorMessage += 'Nieoczekiwana odpowiedź serwera: ' + JSON.stringify(response);
                         }
 
-                        // Add error message directly to the card
                         if (card) {
-                            // Remove any existing error messages
                             var existingError = card.querySelector('.merge-error-alert');
                             if (existingError) {
                                 existingError.remove();
                             }
 
-                            // Create and add new error message
                             var errorDiv = document.createElement('div');
                             errorDiv.className = 'callout alert merge-error-alert';
                             errorDiv.style.marginTop = '15px';
-                            errorDiv.innerHTML = '<h5 style="margin-bottom: 10px;">❌ Błąd scalania</h5>' +
+                            errorDiv.innerHTML = '<h5 style="margin-bottom: 10px;">Błąd scalania</h5>' +
                                                 '<p style="margin-bottom: 0;">' +
                                                 errorMessage.replace(/\n/g, '<br>') +
                                                 '</p>';
 
-                            // Insert error after the main content div
                             var mainDiv = card.querySelector('.grid-x');
                             if (mainDiv) {
                                 mainDiv.parentNode.insertBefore(errorDiv, mainDiv.nextSibling);
@@ -849,11 +1027,9 @@
                                 card.appendChild(errorDiv);
                             }
 
-                            // Scroll to error message
                             errorDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
                         }
 
-                        // Also show as notification if available
                         if (bppNotifications && bppNotifications.addMessage) {
                             bppNotifications.addMessage({
                                 cssClass: 'alert',
@@ -862,7 +1038,6 @@
                             });
                         }
 
-                        // Re-enable button so user can retry
                         if (button) {
                             button.disabled = false;
                             button.querySelector('.button-text').style.display = 'inline';
@@ -875,163 +1050,46 @@
             return false;
         }
 
-        function confirmMergeNoPBN(mainAuthorId, duplicateAuthorId) {
+        function confirmMerge(mainAuthorId, duplicateAuthorId, candidateId) {
+            if (!confirm('Czy jesteś pewny/a? W ten sposób przypiszesz wszystkie publikacje potencjalnego duplikatu autorowi głównemu, domyślnie z główną dyscypliną. Zostanie zlecona też wysyłka tych prac do PBN w tle. Tej operacji nie można cofnąć.')) {
+                return false;
+            }
+            return executeMerge(mainAuthorId, duplicateAuthorId, candidateId, false, false, false,
+                'merge-btn-' + duplicateAuthorId);
+        }
+
+        function confirmMergeWithDiscipline(mainAuthorId, duplicateAuthorId, candidateId) {
+            if (!confirm('Czy jesteś pewny/a? Scalisz autorów i przypisz główną dyscyplinę autora głównego do prac bez dyscypliny. Zostanie zlecona wysyłka do PBN.')) {
+                return false;
+            }
+            return executeMerge(mainAuthorId, duplicateAuthorId, candidateId, false, true, false,
+                'merge-with-disc-btn-' + duplicateAuthorId);
+        }
+
+        function confirmMergeWithSubdiscipline(mainAuthorId, duplicateAuthorId, candidateId) {
+            if (!confirm('Czy jesteś pewny/a? Scalisz autorów i przypisz subdyscyplinę autora głównego jako dyscyplinę dla prac bez dyscypliny. Zostanie zlecona wysyłka do PBN.')) {
+                return false;
+            }
+            return executeMerge(mainAuthorId, duplicateAuthorId, candidateId, false, false, true,
+                'merge-with-subdisc-btn-' + duplicateAuthorId);
+        }
+
+        function openEditCiagle(autorId) {
+            var baseQuery = encodeURIComponent('rok >= 2022 and rok <= 2025 and autorzy_set.autor.id = ' + autorId);
+            window.open('/admin/bpp/wydawnictwo_ciagle/?q-l=on&q=' + baseQuery, '_blank');
+        }
+
+        function openEditZwarte(autorId) {
+            var baseQuery = encodeURIComponent('rok >= 2022 and rok <= 2025 and autorzy_set.autor.id = ' + autorId);
+            window.open('/admin/bpp/wydawnictwo_zwarte/?q-l=on&q=' + baseQuery, '_blank');
+        }
+
+        function confirmMergeNoPBN(mainAuthorId, duplicateAuthorId, candidateId) {
             if (!confirm('Czy jesteś pewny/a? W ten sposób przypiszesz wszystkie publikacje potencjalnego duplikatu autorowi głównemu, domyślnie z główną dyscypliną. Publikacje NIE zostaną wysłane do PBN. Tej operacji nie można cofnąć.')) {
                 return false;
             }
-
-            // Get button and card elements
-            var button = document.getElementById('merge-no-pbn-btn-' + duplicateAuthorId);
-            var card = document.getElementById('duplicate-card-' + duplicateAuthorId);
-
-            // Show spinner, disable button
-            if (button) {
-                button.disabled = true;
-                button.querySelector('.button-text').style.display = 'none';
-                button.querySelector('.spinner').style.display = 'inline';
-            }
-
-            // Make AJAX call with skip_pbn parameter
-            $.ajax({
-                url: '{% url "deduplikator_autorow:scal_autorow" %}',
-                type: 'GET',
-                dataType: 'json',
-                data: {
-                    'main_scientist_id': mainAuthorId,
-                    'duplicate_scientist_id': duplicateAuthorId,
-                    'skip_pbn': true
-                },
-                complete: function(xhr, status) {
-                    // Handle both success and error responses here
-                    console.log('AJAX complete (no PBN), status:', status, 'xhr:', xhr);
-
-                    var response = null;
-                    try {
-                        response = xhr.responseJSON || JSON.parse(xhr.responseText);
-                    } catch(e) {
-                        console.log('Failed to parse response:', e);
-                    }
-
-                    console.log('Parsed response:', response);
-
-                    // ONLY fade out if success is EXACTLY true
-                    if (response && response.success === true) {
-                        // Success - fade out the card
-                        console.log('Merge successful without PBN (success === true), fading out card');
-                        if (card) {
-                            $(card).fadeOut(600, function() {
-                                $(this).remove();
-
-                                // Update the duplicate count in the header
-                                var countElement = document.querySelector('h3');
-                                if (countElement && countElement.textContent.includes('Możliwe duplikaty')) {
-                                    var currentCount = parseInt(countElement.textContent.match(/\((\d+)\)/)[1]);
-                                    var newCount = currentCount - 1;
-                                    countElement.textContent = 'Możliwe duplikaty (' + newCount + ')';
-
-                                    // If no more duplicates, reload the page to get next author
-                                    if (newCount === 0) {
-                                        setTimeout(function() {
-                                            window.location.reload();
-                                        }, 500);
-                                    }
-                                }
-                            });
-                        }
-
-                        // Show success message with details
-                        if (bppNotifications && bppNotifications.addMessage) {
-                            var message = 'Autorzy zostali pomyślnie scaleni (bez wysyłki do PBN)';
-                            if (response.result) {
-                                if (response.result.total_updated) {
-                                    message += '\n• ' + response.result.total_updated + ' publikacji przeniesionych';
-                                }
-                                if (response.result.disciplines_transferred && response.result.disciplines_transferred.length > 0) {
-                                    message += '\n• ' + response.result.disciplines_transferred.length + ' dyscyplin przeniesionych';
-                                }
-                                if (response.result.warnings && response.result.warnings.length > 0) {
-                                    message += '\n• ' + response.result.warnings.length + ' ostrzeżeń';
-                                }
-                            }
-                            bppNotifications.addMessage({
-                                cssClass: 'success',
-                                text: message,
-                                sound: false
-                            });
-                        }
-                    } else {
-                        // Error from server - DO NOT fade out the card
-                        console.log('Merge failed (no PBN), response:', response);
-
-                        var errorMessage = 'Błąd podczas scalania autorów:\n\n';
-
-                        // Handle different error scenarios
-                        if (!response) {
-                            errorMessage += 'Brak odpowiedzi z serwera.';
-                        } else if (response.success === false) {
-                            // Explicitly handle success: false
-                            if (response.error) {
-                                errorMessage += response.error;
-                            } else if (response.result && response.result.error) {
-                                errorMessage += response.result.error;
-                            } else {
-                                errorMessage += 'Operacja nie powiodła się (success: false). Sprawdź logi serwera.';
-                            }
-                        } else if (response.error) {
-                            errorMessage += response.error;
-                        } else {
-                            errorMessage += 'Nieoczekiwana odpowiedź serwera: ' + JSON.stringify(response);
-                        }
-
-                        // Add error message directly to the card
-                        if (card) {
-                            // Remove any existing error messages
-                            var existingError = card.querySelector('.merge-error-alert');
-                            if (existingError) {
-                                existingError.remove();
-                            }
-
-                            // Create and add new error message
-                            var errorDiv = document.createElement('div');
-                            errorDiv.className = 'callout alert merge-error-alert';
-                            errorDiv.style.marginTop = '15px';
-                            errorDiv.innerHTML = '<h5 style="margin-bottom: 10px;">❌ Błąd scalania</h5>' +
-                                                '<p style="margin-bottom: 0;">' +
-                                                errorMessage.replace(/\n/g, '<br>') +
-                                                '</p>';
-
-                            // Insert error after the main content div
-                            var mainDiv = card.querySelector('.grid-x');
-                            if (mainDiv) {
-                                mainDiv.parentNode.insertBefore(errorDiv, mainDiv.nextSibling);
-                            } else {
-                                card.appendChild(errorDiv);
-                            }
-
-                            // Scroll to error message
-                            errorDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        }
-
-                        // Also show as notification if available
-                        if (bppNotifications && bppNotifications.addMessage) {
-                            bppNotifications.addMessage({
-                                cssClass: 'alert',
-                                text: errorMessage.replace(/\n/g, ' '),
-                                sound: true
-                            });
-                        }
-
-                        // Re-enable button so user can retry
-                        if (button) {
-                            button.disabled = false;
-                            button.querySelector('.button-text').style.display = 'inline';
-                            button.querySelector('.spinner').style.display = 'none';
-                        }
-                    }
-                }
-            });
-
-            return false;
+            return executeMerge(mainAuthorId, duplicateAuthorId, candidateId, true, false, false,
+                'merge-no-pbn-btn-' + duplicateAuthorId);
         }
 
         function confirmDelete(authorId) {

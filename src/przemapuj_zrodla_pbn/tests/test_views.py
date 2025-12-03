@@ -24,13 +24,23 @@ def test_lista_skasowanych_zrodel_view_shows_deleted_sources(client, django_user
 
     # Utwórz źródło ze statusem DELETED
     journal_deleted = baker.make(
-        "pbn_api.Journal", status="DELETED", title="Skasowana Gazeta"
+        "pbn_api.Journal",
+        status="DELETED",
+        title="Skasowana Gazeta",
+        issn="",
+        eissn="",
+        websiteLink="",
     )
     baker.make("bpp.Zrodlo", nazwa="Skasowana Gazeta", pbn_uid=journal_deleted)
 
     # Utwórz źródło ze statusem ACTIVE (nie powinno się pojawić)
     journal_active = baker.make(
-        "pbn_api.Journal", status="ACTIVE", title="Aktywna Gazeta"
+        "pbn_api.Journal",
+        status="ACTIVE",
+        title="Aktywna Gazeta",
+        issn="",
+        eissn="",
+        websiteLink="",
     )
     baker.make("bpp.Zrodlo", nazwa="Aktywna Gazeta", pbn_uid=journal_active)
 
@@ -45,7 +55,9 @@ def test_lista_skasowanych_zrodel_view_shows_deleted_sources(client, django_user
 @pytest.mark.django_db
 def test_przemapuj_zrodlo_view_requires_login(client):
     """Test czy widok przemapowania wymaga zalogowania"""
-    journal = baker.make("pbn_api.Journal", status="DELETED")
+    journal = baker.make(
+        "pbn_api.Journal", status="DELETED", title="", issn="", eissn="", websiteLink=""
+    )
     zrodlo = baker.make("bpp.Zrodlo", pbn_uid=journal)
 
     url = reverse(
@@ -65,7 +77,12 @@ def test_przemapuj_zrodlo_view_get(client, django_user_model):
     client.force_login(user)
 
     journal_deleted = baker.make(
-        "pbn_api.Journal", status="DELETED", title="Stara Gazeta"
+        "pbn_api.Journal",
+        status="DELETED",
+        title="Stara Gazeta",
+        issn="",
+        eissn="",
+        websiteLink="",
     )
     zrodlo_stare = baker.make(
         "bpp.Zrodlo", nazwa="Stara Gazeta", pbn_uid=journal_deleted
@@ -86,24 +103,46 @@ def test_znajdz_podobne_zrodla_function_categorizes_correctly():
     """Test czy funkcja znajdz_podobne_zrodla kategoryzuje źródła poprawnie"""
     # Źródło skasowane
     journal_deleted = baker.make(
-        "pbn_api.Journal", status="DELETED", title="Test Journal"
+        "pbn_api.Journal",
+        status="DELETED",
+        title="Test Journal",
+        issn="",
+        eissn="",
+        websiteLink="",
     )
 
     # Najlepsze: ACTIVE + mniswId
     journal_best = baker.make(
-        "pbn_api.Journal", status="ACTIVE", title="Test Journal A", mniswId="12345"
+        "pbn_api.Journal",
+        status="ACTIVE",
+        title="Test Journal A",
+        mniswId="12345",
+        issn="",
+        eissn="",
+        websiteLink="",
     )
     baker.make("bpp.Zrodlo", nazwa="Test Journal A", pbn_uid=journal_best)
 
     # Dobre: ACTIVE bez mniswId
     journal_good = baker.make(
-        "pbn_api.Journal", status="ACTIVE", title="Test Journal B", mniswId=None
+        "pbn_api.Journal",
+        status="ACTIVE",
+        title="Test Journal B",
+        mniswId=None,
+        issn="",
+        eissn="",
+        websiteLink="",
     )
     baker.make("bpp.Zrodlo", nazwa="Test Journal B", pbn_uid=journal_good)
 
     # Akceptowalne: nie-DELETED
     journal_acceptable = baker.make(
-        "pbn_api.Journal", status="MERGED", title="Test Journal C"
+        "pbn_api.Journal",
+        status="MERGED",
+        title="Test Journal C",
+        issn="",
+        eissn="",
+        websiteLink="",
     )
     baker.make("bpp.Zrodlo", nazwa="Test Journal C", pbn_uid=journal_acceptable)
 
@@ -132,7 +171,12 @@ def test_przemapuj_zrodlo_view_post_preview(client, django_user_model):
 
     # Użyj podobnej nazwy i tego samego ISSN aby źródło było znalezione przez algorytm
     journal_deleted = baker.make(
-        "pbn_api.Journal", status="DELETED", title="Test Gazeta", issn="1234-5678"
+        "pbn_api.Journal",
+        status="DELETED",
+        title="Test Gazeta",
+        issn="1234-5678",
+        eissn="",
+        websiteLink="",
     )
     zrodlo_stare = baker.make(
         "bpp.Zrodlo", nazwa="Test Gazeta", pbn_uid=journal_deleted, issn="1234-5678"
@@ -140,7 +184,12 @@ def test_przemapuj_zrodlo_view_post_preview(client, django_user_model):
 
     # Nazwa zaczyna się od "Test Gazeta" więc będzie znaleziona przez PREFIX matching
     journal_new = baker.make(
-        "pbn_api.Journal", status="ACTIVE", title="Test Gazeta Nowa", issn="1234-5678"
+        "pbn_api.Journal",
+        status="ACTIVE",
+        title="Test Gazeta Nowa",
+        issn="1234-5678",
+        eissn="",
+        websiteLink="",
     )
     zrodlo_nowe = baker.make(
         "bpp.Zrodlo", nazwa="Test Gazeta Nowa", pbn_uid=journal_new, issn="1234-5678"
@@ -168,7 +217,12 @@ def test_przemapuj_zrodlo_view_shows_pbn_links_for_zrodla_bpp(
 
     # Źródło skasowane
     journal_deleted = baker.make(
-        "pbn_api.Journal", status="DELETED", title="Skasowana Gazeta", issn="1234-5678"
+        "pbn_api.Journal",
+        status="DELETED",
+        title="Skasowana Gazeta",
+        issn="1234-5678",
+        eissn="",
+        websiteLink="",
     )
     zrodlo_stare = baker.make(
         "bpp.Zrodlo", nazwa="Skasowana Gazeta", pbn_uid=journal_deleted
@@ -182,6 +236,8 @@ def test_przemapuj_zrodlo_view_shows_pbn_links_for_zrodla_bpp(
         title="Gazeta z PBN",
         issn="1234-5678",
         mniswId=12345,
+        eissn="",
+        websiteLink="",
     )
     baker.make(
         "bpp.Zrodlo",
@@ -199,9 +255,9 @@ def test_przemapuj_zrodlo_view_shows_pbn_links_for_zrodla_bpp(
     content = response.content.decode()
 
     # Sprawdź czy źródło jest na liście
-    assert (
-        "Skasowana Gazeta A" in content
-    ), "Źródło z podobnym ISSN powinno być na liście"
+    assert "Skasowana Gazeta A" in content, (
+        "Źródło z podobnym ISSN powinno być na liście"
+    )
 
     # Sprawdź czy jest link "Zobacz w PBN" dla źródła z pbn_uid
     assert "Zobacz w PBN" in content, "Link 'Zobacz w PBN' nie został znaleziony w HTML"
@@ -223,6 +279,8 @@ def test_przemapuj_zrodlo_view_shows_pbn_links_for_journale_pbn(
         status="DELETED",
         title="Testowa Gazeta",
         issn="1234-5678",
+        eissn="",
+        websiteLink="",
     )
     zrodlo_stare = baker.make(
         "bpp.Zrodlo", nazwa="Testowa Gazeta", pbn_uid=journal_deleted, issn="1234-5678"
@@ -235,6 +293,8 @@ def test_przemapuj_zrodlo_view_shows_pbn_links_for_journale_pbn(
         title="Testowa Gazeta - Edycja Nowa",
         issn="1234-5678",
         mniswId=12345,
+        eissn="",
+        websiteLink="",
     )
     baker.make(
         "bpp.Zrodlo",
@@ -259,7 +319,9 @@ def test_przemapuj_zrodlo_view_shows_pbn_links_for_journale_pbn(
 @pytest.mark.django_db
 def test_usun_zrodlo_view_requires_login(client):
     """Test czy widok usuwania wymaga zalogowania"""
-    journal = baker.make("pbn_api.Journal", status="DELETED")
+    journal = baker.make(
+        "pbn_api.Journal", status="DELETED", title="", issn="", eissn="", websiteLink=""
+    )
     zrodlo = baker.make("bpp.Zrodlo", pbn_uid=journal)
 
     url = reverse("przemapuj_zrodla_pbn:usun_zrodlo", kwargs={"zrodlo_id": zrodlo.pk})
@@ -277,7 +339,12 @@ def test_usun_zrodlo_view_get_shows_confirmation_page(client, django_user_model)
     client.force_login(user)
 
     journal_deleted = baker.make(
-        "pbn_api.Journal", status="DELETED", title="Gazeta do Usunięcia"
+        "pbn_api.Journal",
+        status="DELETED",
+        title="Gazeta do Usunięcia",
+        issn="",
+        eissn="",
+        websiteLink="",
     )
     zrodlo = baker.make(
         "bpp.Zrodlo", nazwa="Gazeta do Usunięcia", pbn_uid=journal_deleted
@@ -301,7 +368,12 @@ def test_usun_zrodlo_view_rejects_non_deleted_source(client, django_user_model):
     client.force_login(user)
 
     journal_active = baker.make(
-        "pbn_api.Journal", status="ACTIVE", title="Aktywna Gazeta"
+        "pbn_api.Journal",
+        status="ACTIVE",
+        title="Aktywna Gazeta",
+        issn="",
+        eissn="",
+        websiteLink="",
     )
     zrodlo = baker.make("bpp.Zrodlo", nazwa="Aktywna Gazeta", pbn_uid=journal_active)
 
@@ -323,7 +395,12 @@ def test_usun_zrodlo_view_rejects_source_with_records(client, django_user_model)
     client.force_login(user)
 
     journal_deleted = baker.make(
-        "pbn_api.Journal", status="DELETED", title="Gazeta z Rekordami"
+        "pbn_api.Journal",
+        status="DELETED",
+        title="Gazeta z Rekordami",
+        issn="",
+        eissn="",
+        websiteLink="",
     )
     zrodlo = baker.make(
         "bpp.Zrodlo", nazwa="Gazeta z Rekordami", pbn_uid=journal_deleted
@@ -350,7 +427,12 @@ def test_usun_zrodlo_view_post_deletes_source_successfully(client, django_user_m
     client.force_login(user)
 
     journal_deleted = baker.make(
-        "pbn_api.Journal", status="DELETED", title="Gazeta do Usunięcia"
+        "pbn_api.Journal",
+        status="DELETED",
+        title="Gazeta do Usunięcia",
+        issn="",
+        eissn="",
+        websiteLink="",
     )
     zrodlo = baker.make(
         "bpp.Zrodlo", nazwa="Gazeta do Usunięcia", pbn_uid=journal_deleted
@@ -391,13 +473,23 @@ def test_lista_skasowanych_zrodel_shows_usun_button_for_zero_records(
 
     # Źródło bez rekordów
     journal_deleted_empty = baker.make(
-        "pbn_api.Journal", status="DELETED", title="Pusta Gazeta"
+        "pbn_api.Journal",
+        status="DELETED",
+        title="Pusta Gazeta",
+        issn="",
+        eissn="",
+        websiteLink="",
     )
     baker.make("bpp.Zrodlo", nazwa="Pusta Gazeta", pbn_uid=journal_deleted_empty)
 
     # Źródło z rekordami
     journal_deleted_with_records = baker.make(
-        "pbn_api.Journal", status="DELETED", title="Gazeta z Rekordami"
+        "pbn_api.Journal",
+        status="DELETED",
+        title="Gazeta z Rekordami",
+        issn="",
+        eissn="",
+        websiteLink="",
     )
     zrodlo_with_records = baker.make(
         "bpp.Zrodlo", nazwa="Gazeta z Rekordami", pbn_uid=journal_deleted_with_records

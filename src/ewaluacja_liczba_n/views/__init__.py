@@ -10,13 +10,14 @@ from .export import (
     ExportUdzialyZaCaloscView,
     UdzialyZaCaloscExporter,
 )
-from .index import LiczbaNIndexView, ObliczLiczbeNView
+from .index import LiczbaNIndexView, ObliczLiczbeNView, SaveSankcjeView
 from .list import AutorzyLiczbaNListView, UdzialyZaCaloscListView
 from .verify import WeryfikujBazeView
 
 __all__ = [
     "LiczbaNIndexView",
     "ObliczLiczbeNView",
+    "SaveSankcjeView",
     "AutorzyLiczbaNListView",
     "UdzialyZaCaloscListView",
     "AutorzyLiczbaNExporter",

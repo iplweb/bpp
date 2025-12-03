@@ -12,6 +12,20 @@ from multiseek.logic import (
 from bpp.multiseek_registry.mixins import BppMultiseekVisibilityMixin
 
 
+class SafeDecimalQueryObject(DecimalQueryObject):
+    """DecimalQueryObject that rejects NaN and Infinity values.
+
+    Decimal('NaN') and Decimal('Infinity') are valid Python Decimal objects,
+    but Django's DecimalField rejects them during filtering, causing ValidationError.
+    """
+
+    def value_from_web(self, value):
+        result = super().value_from_web(value)
+        if result is not None and (result.is_nan() or result.is_infinite()):
+            return None
+        return result
+
+
 def create_string_query_object(label, field_name, public=True, mixin=None):
     """Factory function to create simple string query objects.
 
@@ -77,7 +91,7 @@ def create_decimal_query_object(label, field_name, public=True):
     """
     return type(
         f"{field_name.title().replace('_', '')}QueryObject",
-        (BppMultiseekVisibilityMixin, DecimalQueryObject),
+        (BppMultiseekVisibilityMixin, SafeDecimalQueryObject),
         {"label": label, "field_name": field_name, "public": public},
     )
 

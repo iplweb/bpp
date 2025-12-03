@@ -35,12 +35,19 @@ class OptymalizujPublikacjeView(LoginRequiredMixin, View):
 
             # Process all author assignments
             autorzy_data_dict = {}
+            stale_data_error = False
+
             for autor_assignment in publikacja.original.autorzy_set.exclude(
                 dyscyplina_naukowa=None
             ):
-                autor_info = self._process_autor_assignment(
-                    autor_assignment, publikacja, cache_punktacja_lookup
-                )
+                try:
+                    autor_info = self._process_autor_assignment(
+                        autor_assignment, publikacja, cache_punktacja_lookup
+                    )
+                except TypeError:
+                    # Old data format detected in metryka.prace_nazbierane
+                    stale_data_error = True
+                    break
 
                 if autor_info is None:
                     continue
@@ -52,27 +59,30 @@ class OptymalizujPublikacjeView(LoginRequiredMixin, View):
                     autorzy_data_dict[dyscyplina_key] = []
                 autorzy_data_dict[dyscyplina_key].append(autor_info)
 
-            # Group and sort by discipline
-            autorzy_po_dyscyplinach = self._group_autorzy_by_discipline(
-                autorzy_data_dict
-            )
-            context["autorzy_po_dyscyplinach"] = autorzy_po_dyscyplinach
+            if stale_data_error:
+                context["stale_data_error"] = True
+            else:
+                # Group and sort by discipline
+                autorzy_po_dyscyplinach = self._group_autorzy_by_discipline(
+                    autorzy_data_dict
+                )
+                context["autorzy_po_dyscyplinach"] = autorzy_po_dyscyplinach
 
-            # Get publication points
-            context["total_punkty"] = publikacja.original.punkty_kbn or 0
+                # Get publication points
+                context["total_punkty"] = publikacja.original.punkty_kbn or 0
 
-            # Calculate total slots from pinned assignments
-            all_autorzy = [
-                autor
-                for dyscyplina_group in autorzy_po_dyscyplinach
-                for autor in dyscyplina_group["autorzy"]
-            ]
-            total_sloty = sum(
-                a["sloty"] or 0
-                for a in all_autorzy
-                if a["przypieta"] and a["sloty"] is not None
-            )
-            context["total_sloty"] = total_sloty
+                # Calculate total slots from pinned assignments
+                all_autorzy = [
+                    autor
+                    for dyscyplina_group in autorzy_po_dyscyplinach
+                    for autor in dyscyplina_group["autorzy"]
+                ]
+                total_sloty = sum(
+                    a["sloty"] or 0
+                    for a in all_autorzy
+                    if a["przypieta"] and a["sloty"] is not None
+                )
+                context["total_sloty"] = total_sloty
 
         else:
             context["form"] = OptymalizacjaForm()

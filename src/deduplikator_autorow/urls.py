@@ -28,4 +28,13 @@ urlpatterns = [
         views.download_duplicates_xlsx,
         name="download_duplicates_xlsx",
     ),
+    # Scan management endpoints
+    path("start-scan/", views.start_scan_view, name="start_scan"),
+    path("cancel-scan/", views.cancel_scan_view, name="cancel_scan"),
+    path("scan-status/<int:scan_id>/", views.scan_status_view, name="scan_status"),
+    path(
+        "mark-candidate-not-duplicate/",
+        views.mark_candidate_not_duplicate,
+        name="mark_candidate_not_duplicate",
+    ),
 ]

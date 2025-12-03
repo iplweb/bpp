@@ -14,14 +14,71 @@ from bpp.models import Autor
 from .analysis import analiza_duplikatow
 
 
-def scal_autora(glowny_autor, autor_duplikat, user, skip_pbn=False):  # noqa: C901
+def _assign_discipline_if_missing(
+    autor_record, glowny_autor, rok, auto_assign_discipline, use_subdiscipline, warnings
+):
+    """
+    Przypisuje dyscyplinę do rekordu autora publikacji jeśli brakuje.
+
+    Args:
+        autor_record: Rekord autor-publikacja (np. Wydawnictwo_Ciagle_Autor)
+        glowny_autor: Główny autor
+        rok: Rok publikacji
+        auto_assign_discipline: Czy przypisać główną dyscyplinę
+        use_subdiscipline: Czy użyć subdyscypliny jako dyscypliny
+        warnings: Lista ostrzeżeń do uzupełnienia
+
+    Returns:
+        bool: True jeśli przypisano dyscyplinę, False w przeciwnym razie
+    """
+    from bpp.models import Autor_Dyscyplina
+
+    if autor_record.dyscyplina_naukowa or not rok:
+        return False
+
+    if auto_assign_discipline:
+        autor_dyscyplina = Autor_Dyscyplina.objects.filter(
+            autor=glowny_autor, rok=rok
+        ).first()
+        if autor_dyscyplina and autor_dyscyplina.dyscyplina_naukowa:
+            autor_record.dyscyplina_naukowa = autor_dyscyplina.dyscyplina_naukowa
+            return True
+        else:
+            warnings.append(f"Brak dyscypliny głównego autora dla roku {rok}")
+
+    elif use_subdiscipline:
+        autor_dyscyplina = Autor_Dyscyplina.objects.filter(
+            autor=glowny_autor, rok=rok, subdyscyplina_naukowa__isnull=False
+        ).first()
+        if autor_dyscyplina and autor_dyscyplina.subdyscyplina_naukowa:
+            autor_record.dyscyplina_naukowa = autor_dyscyplina.subdyscyplina_naukowa
+            return True
+        else:
+            warnings.append(f"Brak subdyscypliny głównego autora dla roku {rok}")
+
+    return False
+
+
+def scal_autora(  # noqa: C901
+    glowny_autor,
+    autor_duplikat,
+    user,
+    skip_pbn=False,
+    auto_assign_discipline=False,
+    use_subdiscipline=False,
+):
     """
     Scala duplikat autora na głównego autora.
 
     Args:
         glowny_autor: Obiekt Autor głównego autora
         autor_duplikat: Obiekt Autor duplikatu
+        user: Użytkownik zlecający operację
         skip_pbn: Jeśli True, nie dodawaj publikacji do kolejki PBN
+        auto_assign_discipline: Jeśli True, przypisz główną dyscyplinę autora
+            do prac bez dyscypliny
+        use_subdiscipline: Jeśli True, użyj subdyscypliny autora jako
+            dyscypliny dla prac bez dyscypliny
 
     Returns:
         dict: Wynik operacji scalania zawierający szczegóły przemapowań
@@ -135,8 +192,8 @@ def scal_autora(glowny_autor, autor_duplikat, user, skip_pbn=False):  # noqa: C9
                     continue
 
                 # Sprawdź dyscypliny
+                rok = wc_autor.rekord.rok if wc_autor.rekord else None
                 if wc_autor.dyscyplina_naukowa:
-                    rok = wc_autor.rekord.rok if wc_autor.rekord else None
                     if (
                         rok
                         and not Autor_Dyscyplina.objects.filter(
@@ -151,6 +208,16 @@ def scal_autora(glowny_autor, autor_duplikat, user, skip_pbn=False):  # noqa: C9
                             f"{wc_autor.rekord}"
                         )
                         wc_autor.dyscyplina_naukowa = None
+
+                # Przypisz dyscyplinę jeśli brak i włączona opcja
+                _assign_discipline_if_missing(
+                    wc_autor,
+                    glowny_autor,
+                    rok,
+                    auto_assign_discipline,
+                    use_subdiscipline,
+                    results["warnings"],
+                )
 
                 # Przemapuj autora
                 wc_autor.autor = glowny_autor
@@ -218,8 +285,8 @@ def scal_autora(glowny_autor, autor_duplikat, user, skip_pbn=False):  # noqa: C9
                     continue
 
                 # Sprawdź dyscypliny
+                rok = wz_autor.rekord.rok if wz_autor.rekord else None
                 if wz_autor.dyscyplina_naukowa:
-                    rok = wz_autor.rekord.rok if wz_autor.rekord else None
                     if (
                         rok
                         and not Autor_Dyscyplina.objects.filter(
@@ -234,6 +301,16 @@ def scal_autora(glowny_autor, autor_duplikat, user, skip_pbn=False):  # noqa: C9
                             f"{wz_autor.rekord}"
                         )
                         wz_autor.dyscyplina_naukowa = None
+
+                # Przypisz dyscyplinę jeśli brak i włączona opcja
+                _assign_discipline_if_missing(
+                    wz_autor,
+                    glowny_autor,
+                    rok,
+                    auto_assign_discipline,
+                    use_subdiscipline,
+                    results["warnings"],
+                )
 
                 # Przemapuj autora
                 wz_autor.autor = glowny_autor
@@ -278,8 +355,8 @@ def scal_autora(glowny_autor, autor_duplikat, user, skip_pbn=False):  # noqa: C9
                     continue
 
                 # Sprawdź dyscypliny
+                rok = patent_autor.rekord.rok if patent_autor.rekord else None
                 if patent_autor.dyscyplina_naukowa:
-                    rok = patent_autor.rekord.rok if patent_autor.rekord else None
                     if (
                         rok
                         and not Autor_Dyscyplina.objects.filter(
@@ -295,6 +372,16 @@ def scal_autora(glowny_autor, autor_duplikat, user, skip_pbn=False):  # noqa: C9
                             f"{patent_autor.rekord}"
                         )
                         patent_autor.dyscyplina_naukowa = None
+
+                # Przypisz dyscyplinę jeśli brak i włączona opcja
+                _assign_discipline_if_missing(
+                    patent_autor,
+                    glowny_autor,
+                    rok,
+                    auto_assign_discipline,
+                    use_subdiscipline,
+                    results["warnings"],
+                )
 
                 # Przemapuj autora
                 patent_autor.autor = glowny_autor
@@ -372,7 +459,12 @@ def scal_autora(glowny_autor, autor_duplikat, user, skip_pbn=False):  # noqa: C9
 
 
 def scal_autorow(
-    main_scientist_id: str, duplicate_scientist_id: str, user, skip_pbn: bool = False
+    main_scientist_id: str,
+    duplicate_scientist_id: str,
+    user,
+    skip_pbn: bool = False,
+    auto_assign_discipline: bool = False,
+    use_subdiscipline: bool = False,
 ) -> dict:
     """
     Scala automatycznie duplikaty autorów.
@@ -382,6 +474,10 @@ def scal_autorow(
         duplicate_scientist_id: ID duplikatu autora (Scientist)
         user: Użytkownik zlecający operację
         skip_pbn: Jeśli True, nie dodawaj publikacji do kolejki PBN
+        auto_assign_discipline: Jeśli True, przypisz główną dyscyplinę autora
+            do prac bez dyscypliny
+        use_subdiscipline: Jeśli True, użyj subdyscypliny autora jako
+            dyscypliny dla prac bez dyscypliny
 
     Returns:
         dict: Wynik operacji scalania
@@ -431,7 +527,14 @@ def scal_autorow(
         duplicate_autor_pk = autor_duplikat.pk
 
         # Wykonaj scalanie
-        result = scal_autora(glowny_autor, autor_duplikat, user, skip_pbn=skip_pbn)
+        result = scal_autora(
+            glowny_autor,
+            autor_duplikat,
+            user,
+            skip_pbn=skip_pbn,
+            auto_assign_discipline=auto_assign_discipline,
+            use_subdiscipline=use_subdiscipline,
+        )
 
         # Dodaj informacje o autorach do wyniku
         result["main_author"] = str(glowny_autor)

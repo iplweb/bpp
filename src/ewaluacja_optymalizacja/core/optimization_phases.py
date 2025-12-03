@@ -123,7 +123,7 @@ def apply_institution_constraints(  # noqa: C901
         author_selections: Dictionary of selections from Phase 1
         authors: List of author IDs
         author_slot_limits: Dictionary of slot limits per author
-        liczba_n: Institution-level slot limit
+        liczba_n: Institution-level slot limit (3N - sankcje, used directly)
         log_func: Function to call for logging
 
     Returns:
@@ -164,21 +164,21 @@ def apply_institution_constraints(  # noqa: C901
         f"({outside_n_percentage:.1f}%)"
     )
 
-    # Check if 3×N constraint is violated
-    exceeds_3n = False
+    # Check if slot limit constraint is violated
+    exceeds_limit = False
     if liczba_n is not None:
-        max_slots = 3 * liczba_n
-        log_func(f"Total slots vs 3×N limit: {total_slots:.2f} / {max_slots:.2f}")
+        max_slots = liczba_n
+        log_func(f"Total slots vs limit: {total_slots:.2f} / {max_slots:.2f}")
         if total_slots > max_slots:
-            exceeds_3n = True
+            exceeds_limit = True
             log_func(
-                f"Exceeds 3×N limit by {total_slots - max_slots:.2f} slots", "WARNING"
+                f"Exceeds slot limit by {total_slots - max_slots:.2f} slots", "WARNING"
             )
 
     # Check if any institution constraint is violated
     needs_adjustment = (
         (low_mono_percentage > 20.0 and len(low_mono_selected) > 0)
-        or exceeds_3n
+        or exceeds_limit
         or outside_n_percentage > 20.0
     )
 
@@ -187,9 +187,9 @@ def apply_institution_constraints(  # noqa: C901
         log_func("Institution constraints violated - adjusting selection...", "WARNING")
         if low_mono_percentage > 20.0 and len(low_mono_selected) > 0:
             log_func(f"  → LOW-MONO exceeds 20%: {low_mono_percentage:.1f}%", "WARNING")
-        if exceeds_3n:
+        if exceeds_limit:
             log_func(
-                f"  → Total slots exceed 3×N: {total_slots:.2f} > {3 * liczba_n:.2f}",
+                f"  → Total slots exceed limit: {total_slots:.2f} > {liczba_n:.2f}",
                 "WARNING",
             )
         if outside_n_percentage > 20.0:
@@ -218,11 +218,8 @@ def apply_institution_constraints(  # noqa: C901
         # Institution-level total slots constraint
         if liczba_n is not None:
             institution_total_slots = sum(slot_units(p) * y[p.id] for p in all_selected)
-            m.Add(institution_total_slots <= int(3 * liczba_n * SCALE))
-            log_func(
-                f"Institution constraint: total slots <= {3 * liczba_n:.2f} "
-                f"(3×N where N={liczba_n:.2f})"
-            )
+            m.Add(institution_total_slots <= int(liczba_n * SCALE))
+            log_func(f"Institution constraint: total slots <= {liczba_n:.2f}")
 
         # Institution constraint: slots from outside-N authors <= 20%
         pubs_outside_n = [p for p in all_selected if not p.jest_w_n]
@@ -399,7 +396,7 @@ def run_single_phase_optimization(  # noqa: C901
         pubs: List of all publications
         authors: List of author IDs
         author_slot_limits: Dictionary of slot limits per author
-        liczba_n: Institution-level slot limit
+        liczba_n: Institution-level slot limit (3N - sankcje, used directly)
         verbose: Show detailed progress
         log_func: Function to call for logging
 
@@ -454,13 +451,11 @@ def run_single_phase_optimization(  # noqa: C901
         total_count = sum(x[p.id] for p in pubs)
         m.Add(5 * low_mono_count <= total_count)  # 20% limit
 
-    # Institution constraint 2: Total slots <= 3×N
+    # Institution constraint 2: Total slots <= limit (3N - sankcje)
     if liczba_n is not None:
-        log_func(
-            f"Adding institution constraint: total slots <= 3×N (3×{liczba_n:.2f})..."
-        )
+        log_func(f"Adding institution constraint: total slots <= {liczba_n:.2f}...")
         institution_total_slots = sum(slot_units(p) * x[p.id] for p in pubs)
-        m.Add(institution_total_slots <= int(3 * liczba_n * SCALE))
+        m.Add(institution_total_slots <= int(liczba_n * SCALE))
 
     # Institution constraint 3: Outside-N slots <= 20% of total slots
     log_func("Adding institution constraint: outside-N slots <= 20%...")
@@ -510,7 +505,7 @@ def run_single_phase_optimization(  # noqa: C901
     )
     log_func(f"  LOW-MONO: {low_mono_count}/{len(selected)} ({low_mono_pct:.1f}%)")
     if liczba_n is not None:
-        log_func(f"  Total slots: {total_slots:.2f} / {3 * liczba_n:.2f} (3×N)")
+        log_func(f"  Total slots: {total_slots:.2f} / {liczba_n:.2f} (limit)")
     log_func(
         f"  Outside-N: {outside_n_slots_val:.2f}/{total_slots:.2f} "
         f"({outside_n_pct:.1f}%)"

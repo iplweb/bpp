@@ -500,9 +500,9 @@ def przemapuj_zrodlo(request, zrodlo_id):  # noqa: C901
 
                     # Utwórz nowe Zrodlo na podstawie Journal
                     zrodlo_nowe = Zrodlo.objects.create(
-                        nazwa=journal_docelowy.title,
-                        issn=journal_docelowy.issn,
-                        e_issn=journal_docelowy.eissn,
+                        nazwa=journal_docelowy.title or "",
+                        issn=journal_docelowy.issn or "",
+                        e_issn=journal_docelowy.eissn or "",
                         pbn_uid=journal_docelowy,
                         rodzaj=rodzaj_czasopismo,
                     )
