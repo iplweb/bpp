@@ -6,6 +6,7 @@ from bpp.models import Autor
 from bpp.models.cache import Rekord
 from pbn_api.models import OsobaZInstytucji
 
+from .gender import Gender, plcie_sa_rozne, zgadnij_plec_autora
 from .search import szukaj_kopii
 
 
@@ -37,8 +38,29 @@ def analiza_duplikatow(osoba_z_instytucji: OsobaZInstytucji) -> dict:  # noqa: C
 
     analiza_duplikatow_lista = []
 
+    # Zgadnij płeć głównego autora (raz, przed pętlą)
+    plec_glowny = zgadnij_plec_autora(glowny_autor.imiona, glowny_autor.plec)
+
     for duplikat in duplikaty:
         analiza = {"autor": duplikat, "powody_podobienstwa": [], "pewnosc": 0}  # 0-100%
+
+        # Analiza płci - jeśli płcie są na pewno różne, to NIE mogą być duplikatami
+        plec_duplikat = zgadnij_plec_autora(duplikat.imiona, duplikat.plec)
+
+        if plcie_sa_rozne(plec_glowny, plec_duplikat):
+            plec_glowny_str = "mężczyzna" if plec_glowny == Gender.MALE else "kobieta"
+            plec_duplikat_str = (
+                "mężczyzna" if plec_duplikat == Gender.MALE else "kobieta"
+            )
+            analiza["powody_podobienstwa"].append(
+                f"RÓŻNA PŁEĆ: główny autor to {plec_glowny_str} "
+                f"({glowny_autor.imiona or '?'}), "
+                f"duplikat to {plec_duplikat_str} ({duplikat.imiona or '?'}) "
+                "- NIE MOGĄ być tą samą osobą"
+            )
+            analiza["pewnosc"] -= (
+                100  # Bardzo silna kara - praktycznie wyklucza duplikat
+            )
 
         # Analiza liczby publikacji - autorzy z wieloma publikacjami rzadziej są duplikatami
         publikacje_duplikat = Rekord.objects.prace_autora(duplikat).count()
@@ -133,7 +155,8 @@ def analiza_duplikatow(osoba_z_instytucji: OsobaZInstytucji) -> dict:  # noqa: C
                 for imie_d in imiona_duplikat
             )
 
-            # Punktacja za zamianę - tylko dokładne dopasowania
+            # Punktacja za zamianę - tylko pełna zamiana (OBE strony muszą się zgadzać)
+            # Częściowa zamiana nie istnieje - swap to albo "Jan Kowalski"→"Kowalski Jan", albo nic
             if dokladna_zamiana_nazwisko_duplikat and dokladna_zamiana_nazwisko_glowny:
                 analiza["powody_podobienstwa"].append(
                     f"wykryto pełną zamianę imienia z nazwiskiem "
@@ -141,13 +164,6 @@ def analiza_duplikatow(osoba_z_instytucji: OsobaZInstytucji) -> dict:  # noqa: C
                     f"'{duplikat.nazwisko} {duplikat.imiona}')"
                 )
                 analiza["pewnosc"] += 50
-            elif dokladna_zamiana_nazwisko_duplikat or dokladna_zamiana_nazwisko_glowny:
-                analiza["powody_podobienstwa"].append(
-                    f"wykryto częściową zamianę imienia z nazwiskiem "
-                    f"('{glowny_autor.nazwisko} {glowny_autor.imiona}' ~ "
-                    f"'{duplikat.nazwisko} {duplikat.imiona}')"
-                )
-                analiza["pewnosc"] += 5
 
         # Analiza imion
         if duplikat.imiona and glowny_autor.imiona:

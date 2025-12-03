@@ -2,6 +2,7 @@
 Funkcje eksportu duplikatów do plików.
 """
 
+from collections import Counter
 from io import BytesIO
 
 from django.contrib.sites.models import Site
@@ -9,15 +10,76 @@ from openpyxl.styles import Font
 from openpyxl.workbook import Workbook
 
 from bpp.util import worksheet_columns_autosize, worksheet_create_table
-from deduplikator_autorow.models import NotADuplicate
-from pbn_api.models import Scientist
-
-from .analysis import analiza_duplikatow
+from deduplikator_autorow.models import DuplicateCandidate
 
 
-def export_duplicates_to_xlsx():  # noqa: C901
+def _get_site_domain():
+    """Pobierz domenę serwisu do konstrukcji pełnych URLi."""
+    try:
+        current_site = Site.objects.get_current()
+        return f"https://{current_site.domain}"
+    except BaseException:
+        return "https://bpp.iplweb.pl"
+
+
+def _create_pbn_url(pbn_uid):
+    """Tworzy URL do profilu autora w PBN."""
+    if pbn_uid:
+        return f"https://pbn.nauka.gov.pl/sedno-webapp/persons/details/{pbn_uid}"
+    return ""
+
+
+def _get_author_name(candidate_name, autor):
+    """Pobierz nazwę autora z cache'a lub z modelu."""
+    if candidate_name:
+        return candidate_name
+    return f"{autor.nazwisko or ''} {autor.imiona or ''}".strip()
+
+
+def _build_candidate_row(candidate, site_domain, duplicate_counts):
+    """Buduje pojedynczy wiersz danych dla kandydata na duplikat."""
+    main = candidate.main_autor
+    dup = candidate.duplicate_autor
+
+    main_name = _get_author_name(candidate.main_autor_name, main)
+    dup_name = _get_author_name(candidate.duplicate_autor_name, dup)
+
+    return [
+        main_name,
+        main.pk,
+        f"{site_domain}/bpp/autor/{main.pk}/",
+        main.pbn_uid_id or "",
+        _create_pbn_url(main.pbn_uid_id),
+        dup_name,
+        dup.pk,
+        f"{site_domain}/bpp/autor/{dup.pk}/",
+        dup.pbn_uid_id or "",
+        _create_pbn_url(dup.pbn_uid_id),
+        round(candidate.confidence_percent, 2),
+        duplicate_counts[candidate.main_autor_id],
+    ]
+
+
+def _format_url_hyperlinks(ws, data_rows_count):
+    """Formatuje kolumny URL jako klikalne linki."""
+    # Kolumny z URL-ami: C (BPP główny), E (PBN główny), H (BPP duplikat), J (PBN duplikat)
+    url_columns = [3, 5, 8, 10]  # 1-indexed dla Excel
+
+    for row_idx in range(2, data_rows_count + 2):  # Start from row 2 (after header)
+        for col_idx in url_columns:
+            cell = ws.cell(row=row_idx, column=col_idx)
+            if cell.value and str(cell.value).startswith("https://"):
+                cell.hyperlink = cell.value
+                cell.style = "Hyperlink"
+                cell.font = Font(color="0000FF", underline="single")
+
+
+def export_duplicates_to_xlsx():
     """
-    Eksportuje wszystkich autorów z duplikatami do formatu XLSX.
+    Eksportuje kandydatów na duplikaty do formatu XLSX.
+
+    Korzysta z pre-calculated danych z tabeli DuplicateCandidate
+    (wypełnianej podczas skanowania) zamiast przeliczać wszystko od nowa.
 
     Struktura pliku XLSX:
     - Kolumna A: Główny autor (NAZWISKO IMIĘ)
@@ -36,117 +98,31 @@ def export_duplicates_to_xlsx():  # noqa: C901
     Returns:
         bytes: Zawartość pliku XLSX
     """
-    # Pobierz domenę serwisu do konstrukcji pełnych URLi
-    try:
-        current_site = Site.objects.get_current()
-        site_domain = f"https://{current_site.domain}"
-    except BaseException:
-        # Fallback jeśli Site nie jest skonfigurowany
-        site_domain = "https://bpp.iplweb.pl"
+    site_domain = _get_site_domain()
 
-    def create_pbn_url(pbn_uid):
-        """Helper function to create PBN author URL"""
-        if pbn_uid:
-            return f"https://pbn.nauka.gov.pl/sedno-webapp/persons/details/{pbn_uid}"
-        return ""
+    # JEDNO zapytanie zamiast tysięcy!
+    # Pobierz wszystkich kandydatów ze statusem PENDING
+    candidates = (
+        DuplicateCandidate.objects.filter(status=DuplicateCandidate.Status.PENDING)
+        .select_related(
+            "main_autor",
+            "duplicate_autor",
+        )
+        .order_by("main_autor_name", "-confidence_score")
+    )
 
-    # Pobierz wszystkich autorów z duplikatami
-    # Najpierw pobierz IDs autorów oznaczonych jako nie-duplikat
-    excluded_author_ids = list(NotADuplicate.objects.values_list("autor", flat=True))
+    # Policz duplikaty per główny autor (dla kolumny "Ilość duplikatów")
+    duplicate_counts = Counter(c.main_autor_id for c in candidates)
 
-    # Następnie znajdź Scientists, którzy mają związanych autorów BPP z duplikatami
-    scientists_with_authors = Scientist.objects.filter(
-        osobazinstytucji__isnull=False,
-        autor__isnull=False,  # Scientist musi mieć związanego autora BPP
-    ).exclude(autor__in=excluded_author_ids)
-
-    # Przygotuj dane do eksportu
-    data_rows = []
-    processed_scientists = set()
-
-    for scientist in scientists_with_authors:
-        if scientist.pk in processed_scientists:
-            continue
-
-        try:
-            # Pobierz analizę duplikatów
-            analiza_result = analiza_duplikatow(scientist.osobazinstytucji)
-
-            if "error" in analiza_result or not analiza_result.get("analiza"):
-                continue
-
-            glowny_autor = analiza_result["glowny_autor"]
-            duplikaty = analiza_result["analiza"]
-
-            if not duplikaty:
-                continue
-
-            # Dodaj głównego autora do przetworzonych
-            processed_scientists.add(scientist.pk)
-
-            # Przygotuj dane głównego autora
-            # Format: NAZWISKO IMIĘ
-            glowny_autor_name = (
-                f"{glowny_autor.nazwisko or ''} {glowny_autor.imiona or ''}".strip()
-            )
-            glowny_bpp_id = glowny_autor.pk
-            glowny_bpp_url = f"{site_domain}/bpp/autor/{glowny_autor.pk}/"
-            glowny_pbn_uid = glowny_autor.pbn_uid_id if glowny_autor.pbn_uid_id else ""
-            glowny_pbn_url = create_pbn_url(glowny_pbn_uid)
-
-            # Liczba duplikatów dla tego autora
-            duplicate_count = len(duplikaty)
-
-            # Dodaj każdy duplikat jako osobny wiersz
-            for duplikat_info in duplikaty:
-                autor_duplikat = duplikat_info["autor"]
-                pewnosc = duplikat_info["pewnosc"]
-
-                # Oznacz duplikat jako przetworzony
-                if hasattr(autor_duplikat, "pbn_uid") and autor_duplikat.pbn_uid:
-                    processed_scientists.add(autor_duplikat.pbn_uid.pk)
-
-                # Przygotuj dane duplikatu
-                # Format: NAZWISKO IMIĘ
-                duplikat_name = (
-                    f"{autor_duplikat.nazwisko or ''} "
-                    f"{autor_duplikat.imiona or ''}".strip()
-                )
-                duplikat_bpp_id = autor_duplikat.pk
-                duplikat_bpp_url = f"{site_domain}/bpp/autor/{autor_duplikat.pk}/"
-                duplikat_pbn_uid = (
-                    autor_duplikat.pbn_uid_id if autor_duplikat.pbn_uid_id else ""
-                )
-                duplikat_pbn_url = create_pbn_url(duplikat_pbn_uid)
-
-                data_rows.append(
-                    [
-                        glowny_autor_name,
-                        glowny_bpp_id,
-                        glowny_bpp_url,
-                        glowny_pbn_uid,
-                        glowny_pbn_url,
-                        duplikat_name,
-                        duplikat_bpp_id,
-                        duplikat_bpp_url,
-                        duplikat_pbn_uid,
-                        duplikat_pbn_url,
-                        round(pewnosc / 100, 2),  # Convert percentage to decimal
-                        duplicate_count,  # Number of duplicates for this main author
-                    ]
-                )
-
-        except Exception:
-            # Pomiń autorów z błędami w analizie
-            continue
+    data_rows = [
+        _build_candidate_row(candidate, site_domain, duplicate_counts)
+        for candidate in candidates
+    ]
 
     # Stwórz plik XLSX
     wb = Workbook()
     ws = wb.active
     ws.title = "Duplikaty autorów"
-
-    # Sortuj dane alfabetycznie po głównym autorze
-    data_rows.sort(key=lambda x: x[0])  # Sort by main author name
 
     # Nagłówki
     headers = [
@@ -171,22 +147,12 @@ def export_duplicates_to_xlsx():  # noqa: C901
         ws.append(row)
 
     # Sformatuj URL-e jako klikalne linki
-    if len(data_rows) > 0:
-        # Kolumny z URL-ami: C (BPP główny), E (PBN główny), H (BPP duplikat), J (PBN duplikat)
-        url_columns = [3, 5, 8, 10]  # 0-indexed: C=2, E=4, H=7, J=9
-
-        for row_idx in range(2, len(data_rows) + 2):  # Start from row 2 (after header)
-            for col_idx in url_columns:
-                cell = ws.cell(row=row_idx, column=col_idx)  # Excel is 1-indexed
-                if cell.value and str(cell.value).startswith("https://"):
-                    # Make it a hyperlink
-                    cell.hyperlink = cell.value
-                    cell.style = "Hyperlink"
-                    cell.font = Font(color="0000FF", underline="single")
+    if data_rows:
+        _format_url_hyperlinks(ws, len(data_rows))
 
     # Sformatuj arkusz
     worksheet_columns_autosize(ws)
-    if len(data_rows) > 0:
+    if data_rows:
         worksheet_create_table(ws)
 
     # Zapisz do BytesIO

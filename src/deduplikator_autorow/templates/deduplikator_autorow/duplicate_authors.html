@@ -37,6 +37,9 @@
                                     <p id="scan-duplicates-text" style="font-size: 0.85rem; margin-bottom: 10px;">
                                         Znaleziono duplikatów: {{ running_scan.duplicates_found }}
                                     </p>
+                                    <p id="scan-eta-text" style="font-size: 0.85rem; margin-bottom: 10px; color: #666;">
+                                        <span class="fi-clock"></span> ETA: obliczanie...
+                                    </p>
                                     <form method="post" action="{% url 'deduplikator_autorow:cancel_scan' %}" style="margin: 0;">
                                         {% csrf_token %}
                                         <button type="submit" class="button alert expanded small"
@@ -63,6 +66,21 @@
                                                             data.progress_percent + '% (' + data.authors_scanned + '/' + data.total_authors_to_scan + ' autorów)';
                                                         document.getElementById('scan-duplicates-text').textContent =
                                                             'Znaleziono duplikatów: ' + data.duplicates_found;
+                                                        // Update ETA
+                                                        var etaElement = document.getElementById('scan-eta-text');
+                                                        if (etaElement && data.eta_seconds !== null) {
+                                                            var etaMinutes = Math.floor(data.eta_seconds / 60);
+                                                            var etaSecondsRest = data.eta_seconds % 60;
+                                                            var etaStr = '';
+                                                            if (etaMinutes > 0) {
+                                                                etaStr = etaMinutes + ' min ' + etaSecondsRest + ' s';
+                                                            } else {
+                                                                etaStr = etaSecondsRest + ' s';
+                                                            }
+                                                            etaElement.innerHTML = '<span class="fi-clock"></span> Pozostało: ~' + etaStr + ' (zakończenie ok. ' + data.eta_time + ')';
+                                                        } else if (etaElement) {
+                                                            etaElement.innerHTML = '<span class="fi-clock"></span> ETA: obliczanie...';
+                                                        }
                                                         // Update main content progress (if exists)
                                                         var mainBar = document.getElementById('main-scan-progress-bar');
                                                         var mainText = document.getElementById('main-scan-progress-text');
@@ -71,6 +89,21 @@
                                                         }
                                                         if (mainText) {
                                                             mainText.textContent = data.progress_percent + '% (' + data.authors_scanned + '/' + data.total_authors_to_scan + ' autorów)';
+                                                        }
+                                                        // Update main ETA
+                                                        var mainEtaElement = document.getElementById('main-scan-eta-text');
+                                                        if (mainEtaElement && data.eta_seconds !== null) {
+                                                            var etaMinutes = Math.floor(data.eta_seconds / 60);
+                                                            var etaSecondsRest = data.eta_seconds % 60;
+                                                            var etaStr = '';
+                                                            if (etaMinutes > 0) {
+                                                                etaStr = etaMinutes + ' min ' + etaSecondsRest + ' s';
+                                                            } else {
+                                                                etaStr = etaSecondsRest + ' s';
+                                                            }
+                                                            mainEtaElement.innerHTML = '<span class="fi-clock"></span> Pozostało: ~' + etaStr + ' (zakończenie ok. ' + data.eta_time + ')';
+                                                        } else if (mainEtaElement) {
+                                                            mainEtaElement.innerHTML = '<span class="fi-clock"></span> ETA: obliczanie...';
                                                         }
                                                     }
                                                 })
@@ -411,6 +444,9 @@
                     </div>
                     <p id="main-scan-progress-text" style="font-size: 1.2rem;">
                         {{ running_scan.progress_percent }}% ({{ running_scan.authors_scanned }}/{{ running_scan.total_authors_to_scan }} autorów)
+                    </p>
+                    <p id="main-scan-eta-text" style="font-size: 1rem; color: #666;">
+                        <span class="fi-clock"></span> ETA: obliczanie...
                     </p>
                     <p>Strona odświeży się automatycznie po zakończeniu skanowania.</p>
                 </div>

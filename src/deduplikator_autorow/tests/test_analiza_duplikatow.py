@@ -491,37 +491,6 @@ def test_analiza_duplikatow_name_surname_swap_full_detection(
     assert duplikat_analiza["pewnosc"] >= 40
 
 
-def test_analiza_duplikatow_name_surname_swap_partial_detection(
-    autor_maker, tytuly, osoba_z_instytucji, glowny_autor
-):
-    """Test punktacji za częściową zamianę imienia z nazwiskiem"""
-    # Główny autor: imiona "Jan Marian", nazwisko "Kowalski"
-    glowny_autor.imiona = "Jan Marian"
-    glowny_autor.nazwisko = "Kowalski"
-    glowny_autor.save()
-
-    # Duplikat z częściową zamianą - nazwisko głównego (Kowalski) = imię duplikatu (Kowalski),
-    # ale nazwisko duplikatu (Tomasz) NIE jest imieniem głównego (Jan, Marian)
-    duplikat = autor_maker(imiona="Kowalski", nazwisko="Tomasz")
-
-    analiza = analiza_duplikatow(osoba_z_instytucji)
-
-    duplikat_analiza = next(
-        (a for a in analiza["analiza"] if a["autor"] == duplikat), None
-    )
-    assert duplikat_analiza is not None
-
-    # Sprawdź czy wykryto częściową zamianę
-    assert any(
-        "wykryto częściową zamianę imienia z nazwiskiem" in powod
-        for powod in duplikat_analiza["powody_podobienstwa"]
-    )
-
-    # Sprawdź czy częściowa zamiana dodaje niewielką punktację (+5 punktów)
-    # Bazowa punktacja: +10 (mało publikacji) -15 (różny tytuł lub brak) +5 (częściowa zamiana) = około 0
-    assert duplikat_analiza["pewnosc"] >= 0
-
-
 def test_analiza_duplikatow_name_surname_swap_compound_surname_scoring(
     autor_maker, tytuly, osoba_z_instytucji, glowny_autor
 ):

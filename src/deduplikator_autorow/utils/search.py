@@ -2,6 +2,8 @@
 Funkcje wyszukiwania zdublowanych autorów.
 """
 
+import re
+
 from django.db.models import Q, QuerySet
 
 from bpp.models import Autor
@@ -70,19 +72,24 @@ def szukaj_kopii(osoba_z_instytucji: OsobaZInstytucji) -> QuerySet[Autor]:  # no
             if len(czesc) > 2:  # Tylko części dłuższe niż 2 znaki
                 q |= Q(nazwisko__iexact=czesc)
 
-    # 4. Substring matching tylko dla nazwisk BEZ myślnika i długich (>6 znaków)
-    # Dla nazwisk z myślnikiem używamy TYLKO dokładnego dopasowania części
-    if "-" not in nazwisko and len(nazwisko) > 6:
-        q |= Q(nazwisko__icontains=nazwisko)
+    # 4. Nazwisko jako pełny człon w nazwisku złożonym
+    # np. "Woźniak" dopasuje "Kowalska-Woźniak" lub "Woźniak-Kowalska"
+    # ale NIE "Przewoźniak" (bo Woźniak to tylko część słowa)
+    # Warunek: nazwisko musi być na początku (przed myślnikiem) lub na końcu (po myślniku)
+    if len(nazwisko) > 3:
+        escaped_nazwisko = re.escape(nazwisko)
+        # Dopasuj: "Nazwisko-..." lub "...-Nazwisko"
+        q |= Q(nazwisko__iregex=r"^" + escaped_nazwisko + r"-")
+        q |= Q(nazwisko__iregex=r"-" + escaped_nazwisko + r"$")
 
     # 6. Zamiana imienia z nazwiskiem (swap detection) - OBA warunki muszą być spełnione
     # Sprawdzamy czy:
     # - nazwisko duplikatu == imię głównego autora ORAZ
     # - imię duplikatu == nazwisko głównego autora
-    # Wymaga minimum 5 znaków aby uniknąć fałszywych dopasowań
-    if imiona and len(nazwisko) >= 5:
+    # Wymaga minimum 3 znaków aby uniknąć fałszywych dopasowań
+    if imiona and len(nazwisko) >= 3:
         for imie_glownego in imiona.split():
-            if len(imie_glownego) >= 5:
+            if len(imie_glownego) >= 3:
                 # Obie strony zamiany muszą się zgadzać (AND, nie OR)
                 swap_condition = Q(nazwisko__iexact=imie_glownego) & Q(
                     imiona__iregex=r"(^|[ ])" + nazwisko + r"($|[ ])"
@@ -117,13 +124,27 @@ def szukaj_kopii(osoba_z_instytucji: OsobaZInstytucji) -> QuerySet[Autor]:  # no
                         # Dokładne dopasowanie imienia (jako pełne słowo)
                         filtr_imion |= Q(imiona__iregex=r"(^|[ ])" + imie + r"($|[ ])")
 
-                        # Podobne imiona (pierwsze 4 znaki) - ale tylko dla dłuższych imion
-                        if len(imie) >= 4:
-                            prefix = imie[:4]
+                        # Podobne imiona (pierwsze 3+ znaki) - dla imion >= 3 znaków
+                        # np. "Jan" dopasuje "Janek", "Janusz"
+                        if len(imie) >= 3:
+                            prefix = imie[:3]
                             filtr_imion |= Q(imiona__istartswith=prefix)
 
-                        # NIE dopasowujemy inicjałów dla pełnych imion
-                        # "Krzysztof" nie powinien pasować do "K." ani do "Barbara"
+                        # Dopasuj pełne imię do inicjału duplikatu
+                        # "Jan" powinien pasować do "J."
+                        inicjal = imie[0].upper()
+                        filtr_imion |= Q(
+                            imiona__iregex=r"(^|[ ])" + inicjal + r"(\.| |$)"
+                        )
+
+            # Dla swap detection - imię duplikatu może być równe nazwisku głównego
+            # np. główny: "Kowalski Janusz" -> duplikat: "Janusz Kowalski"
+            # Imię duplikatu ("Kowalski") = nazwisko głównego ("Kowalski")
+            if len(nazwisko) >= 5:
+                escaped_nazwisko = re.escape(nazwisko)
+                filtr_imion |= Q(
+                    imiona__iregex=r"(^|[ ])" + escaped_nazwisko + r"($|[ ])"
+                )
 
             # Zastosuj filtr imion jako dodatkowy warunek OR z pustymi imionami
             kandydaci = kandydaci.filter(
@@ -139,4 +160,5 @@ def szukaj_kopii(osoba_z_instytucji: OsobaZInstytucji) -> QuerySet[Autor]:  # no
     # Tacy autorzy są pełnoprawnymi pracownikami i nie powinni być traktowani jako duplikaty
     kandydaci = kandydaci.exclude(pbn_uid__osobazinstytucji__isnull=False)
 
-    return kandydaci.distinct()
+    # select_related dla optymalizacji - unikamy N+1 queries w analysis.py
+    return kandydaci.select_related("tytul", "pbn_uid", "plec").distinct()
