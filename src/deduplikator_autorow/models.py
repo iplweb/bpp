@@ -217,3 +217,201 @@ class LogScalania(models.Model):
             f"{self.operation_type}: {self.duplicate_autor_str} → {self.main_autor} "
             f"({self.created_on.strftime('%Y-%m-%d %H:%M')})"
         )
+
+
+class DuplicateScanRun(models.Model):
+    """Represents a single scan operation for finding author duplicates."""
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Oczekuje"
+        RUNNING = "running", "W trakcie"
+        COMPLETED = "completed", "Zakończone"
+        CANCELLED = "cancelled", "Anulowane"
+        FAILED = "failed", "Błąd"
+
+    started_at = models.DateTimeField("Rozpoczęto", auto_now_add=True)
+    finished_at = models.DateTimeField("Zakończono", null=True, blank=True)
+    status = models.CharField(
+        "Status",
+        max_length=20,
+        choices=Status.choices,
+        default=Status.PENDING,
+        db_index=True,
+    )
+    created_by = models.ForeignKey(
+        BppUser,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="Utworzył",
+        help_text="Użytkownik który uruchomił skanowanie (null dla zadań automatycznych)",
+    )
+
+    # Progress tracking
+    total_authors_to_scan = models.PositiveIntegerField(
+        "Autorów do przeskanowania",
+        default=0,
+    )
+    authors_scanned = models.PositiveIntegerField(
+        "Przeskanowano autorów",
+        default=0,
+    )
+    duplicates_found = models.PositiveIntegerField(
+        "Znaleziono duplikatów",
+        default=0,
+    )
+
+    # Error tracking
+    error_message = models.TextField(
+        "Komunikat błędu",
+        blank=True,
+    )
+
+    # Celery task ID for cancellation
+    celery_task_id = models.CharField(
+        "ID zadania Celery",
+        max_length=255,
+        blank=True,
+    )
+
+    class Meta:
+        verbose_name = "Skanowanie duplikatów"
+        verbose_name_plural = "Skanowania duplikatów"
+        ordering = ["-started_at"]
+
+    def __str__(self):
+        return f"Skanowanie #{self.pk} ({self.get_status_display()}) - {self.started_at.strftime('%Y-%m-%d %H:%M')}"
+
+    @property
+    def progress_percent(self):
+        """Returns progress as percentage (0-100)."""
+        if self.total_authors_to_scan == 0:
+            return 0
+        return round((self.authors_scanned / self.total_authors_to_scan) * 100, 1)
+
+
+class DuplicateCandidate(models.Model):
+    """Stores a potential duplicate pair found during scanning."""
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Do sprawdzenia"
+        MERGED = "merged", "Scalony"
+        NOT_DUPLICATE = "not_duplicate", "Nie jest duplikatem"
+
+    scan_run = models.ForeignKey(
+        DuplicateScanRun,
+        on_delete=models.CASCADE,
+        related_name="candidates",
+        verbose_name="Skanowanie",
+    )
+
+    # The main author (from OsobaZInstytucji/pbn_uid)
+    main_autor = models.ForeignKey(
+        "bpp.Autor",
+        on_delete=models.CASCADE,
+        related_name="duplicate_main_candidates",
+        verbose_name="Autor główny",
+    )
+    main_osoba_z_instytucji = models.ForeignKey(
+        "pbn_api.OsobaZInstytucji",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="OsobaZInstytucji",
+    )
+
+    # The potential duplicate
+    duplicate_autor = models.ForeignKey(
+        "bpp.Autor",
+        on_delete=models.CASCADE,
+        related_name="duplicate_candidates",
+        verbose_name="Potencjalny duplikat",
+    )
+
+    # Analysis results
+    confidence_score = models.IntegerField(
+        "Wynik pewności",
+        help_text="Surowy wynik pewności (-115 do 250)",
+        db_index=True,
+    )
+    confidence_percent = models.FloatField(
+        "Pewność (%)",
+        help_text="Znormalizowany wynik (0.0 do 1.0)",
+    )
+    reasons = models.JSONField(
+        "Powody dopasowania",
+        default=list,
+        help_text="Lista powodów dopasowania",
+    )
+
+    # Priority for sorting (100 = 2022-2025 with disciplines, 50 = 2022-2025, 0 = other)
+    priority = models.IntegerField(
+        "Priorytet",
+        default=0,
+        db_index=True,
+        help_text="Priorytet wyświetlania: 100=prace 2022-2025 z dyscyplinami, 50=prace 2022-2025, 0=inne",
+    )
+
+    # Status tracking
+    status = models.CharField(
+        "Status",
+        max_length=20,
+        choices=Status.choices,
+        default=Status.PENDING,
+        db_index=True,
+    )
+    reviewed_at = models.DateTimeField(
+        "Data sprawdzenia",
+        null=True,
+        blank=True,
+    )
+    reviewed_by = models.ForeignKey(
+        BppUser,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="reviewed_duplicates",
+        verbose_name="Sprawdził",
+    )
+
+    # Metadata cached at scan time (for display without extra queries)
+    main_autor_name = models.CharField(
+        "Nazwa autora głównego",
+        max_length=1024,
+    )
+    duplicate_autor_name = models.CharField(
+        "Nazwa duplikatu",
+        max_length=1024,
+    )
+    main_publications_count = models.PositiveIntegerField(
+        "Publikacje autora głównego",
+        default=0,
+    )
+    duplicate_publications_count = models.PositiveIntegerField(
+        "Publikacje duplikatu",
+        default=0,
+    )
+
+    created_at = models.DateTimeField("Utworzono", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Kandydat na duplikat"
+        verbose_name_plural = "Kandydaci na duplikaty"
+        ordering = ["-priority", "-confidence_score", "main_autor__nazwisko"]
+        indexes = [
+            models.Index(fields=["scan_run", "status"]),
+            models.Index(fields=["main_autor", "status"]),
+            models.Index(fields=["priority", "confidence_score"]),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["scan_run", "main_autor", "duplicate_autor"],
+                name="unique_scan_main_duplicate",
+            ),
+        ]
+
+    def __str__(self):
+        return (
+            f"{self.main_autor_name} ↔ {self.duplicate_autor_name} "
+            f"({self.confidence_percent:.0%})"
+        )

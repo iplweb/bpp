@@ -42,6 +42,7 @@ class OptimizationResults:
     authors: dict  # author_id -> {selected_pubs: list[Pub], limits: dict}
     all_pubs: list[Pub]  # All input publications
     validation_passed: bool
+    is_optimal: bool = True  # True if all solvers found OPTIMAL solutions
 
 
 def slot_units(p: Pub) -> int:

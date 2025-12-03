@@ -102,6 +102,7 @@ def solve_single_discipline_task(
             low_mono_count=optimization_results.low_mono_count,
             low_mono_percentage=Decimal(str(optimization_results.low_mono_percentage)),
             validation_passed=optimization_results.validation_passed,
+            is_optimal=optimization_results.is_optimal,
             finished_at=datetime.now(),
         )
 
@@ -259,8 +260,12 @@ def solve_all_reported_disciplines(self, uczelnia_id, algorithm_mode="two-phase"
 
     for liczba_n_obj in raportowane_dyscypliny:
         dyscyplina = liczba_n_obj.dyscyplina_naukowa
+        # Używamy liczba_n_ostateczna (N - sankcje) dla optymalizacji
         task = solve_single_discipline_task.s(
-            uczelnia_id, dyscyplina.pk, float(liczba_n_obj.liczba_n), algorithm_mode
+            uczelnia_id,
+            dyscyplina.pk,
+            float(liczba_n_obj.liczba_n_ostateczna),
+            algorithm_mode,
         )
         tasks.append(task)
 
@@ -320,8 +325,12 @@ def _run_bulk_optimization(
     tasks = []
     for liczba_n_obj in raportowane_dyscypliny:
         dyscyplina = liczba_n_obj.dyscyplina_naukowa
+        # Używamy liczba_n_ostateczna (N - sankcje) dla optymalizacji
         task_obj = solve_single_discipline_task.s(
-            uczelnia.pk, dyscyplina.pk, float(liczba_n_obj.liczba_n), algorithm_mode
+            uczelnia.pk,
+            dyscyplina.pk,
+            float(liczba_n_obj.liczba_n_ostateczna),
+            algorithm_mode,
         )
         tasks.append(task_obj)
 

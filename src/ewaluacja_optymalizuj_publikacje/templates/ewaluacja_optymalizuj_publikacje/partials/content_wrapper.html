@@ -16,6 +16,20 @@
             <p>ID: {{ publikacja.pk }} | Typ: {{ publikacja.typ_kbn|default:"" }}</p>
         </div>
 
+        {% if stale_data_error %}
+        <div class="callout alert" style="background: #fff3cd; border: 1px solid #ffc107; border-left: 4px solid #dc3545; padding: 20px; margin-bottom: 20px; border-radius: 4px;">
+            <h5 style="color: #856404; margin: 0 0 10px 0;">
+                <span class="fi-alert"></span> Nieaktualne dane metryk
+            </h5>
+            <p style="color: #856404; margin: 0 0 15px 0;">
+                Wykryto nieaktualne dane metryk ewaluacyjnych. Proszę przebudować metryki ewaluacyjne autorów.
+            </p>
+            <a href="{% url 'ewaluacja_metryki:lista' %}" class="button" style="background: #28a745; color: white; padding: 10px 20px; border-radius: 4px; text-decoration: none;">
+                <span class="fi-refresh"></span> Przebuduj metryki ewaluacyjne autorów
+            </a>
+        </div>
+        {% else %}
+
         <div id="summary-section" class="summary-box" style="background: #f8f9fa; border: 2px solid #dee2e6; padding: 20px; border-radius: 8px; margin: 30px 0;">
             <h4 style="text-align: center; margin-bottom: 20px; color: #495057;">Podsumowanie punktacji</h4>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; text-align: center;">
@@ -286,5 +300,6 @@
         {% endfor %}
         </div>
 
+        {% endif %}{# stale_data_error #}
     {% endif %}
 </div>

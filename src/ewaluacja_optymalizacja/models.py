@@ -69,6 +69,13 @@ class OptimizationRun(models.Model):
         default=True, verbose_name="Walidacja przeszła pomyślnie"
     )
 
+    is_optimal = models.BooleanField(
+        default=True,
+        verbose_name="Rozwiązanie optymalne",
+        help_text="False jeśli solver zwrócił rozwiązanie dopuszczalne ale nieoptymalne "
+        "(np. z powodu timeout)",
+    )
+
     # Additional metadata
     notes = models.TextField(blank=True, default="", verbose_name="Notatki")
 

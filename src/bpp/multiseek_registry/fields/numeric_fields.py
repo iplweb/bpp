@@ -4,7 +4,6 @@ from django.conf import settings
 from multiseek.logic import (
     EQUALITY_OPS_MALE,
     VALUE_LIST,
-    DecimalQueryObject,
     QueryObject,
     RangeQueryObject,
 )
@@ -12,7 +11,11 @@ from multiseek.logic import (
 from bpp.models import Jezyk, Uczelnia
 from bpp.multiseek_registry.mixins import BppMultiseekVisibilityMixin
 
-from .factories import create_decimal_query_object, create_integer_query_object
+from .factories import (
+    SafeDecimalQueryObject,
+    create_decimal_query_object,
+    create_integer_query_object,
+)
 
 
 class ZakresLatQueryObject(BppMultiseekVisibilityMixin, RangeQueryObject):
@@ -49,7 +52,7 @@ class PunktacjaWewnetrznaEnabledMixin:
 
 
 class PunktacjaWewnetrznaQueryObject(
-    BppMultiseekVisibilityMixin, PunktacjaWewnetrznaEnabledMixin, DecimalQueryObject
+    BppMultiseekVisibilityMixin, PunktacjaWewnetrznaEnabledMixin, SafeDecimalQueryObject
 ):
     label = "Punktacja wewnętrzna"
     field_name = "punktacja_wewnetrzna"
@@ -60,7 +63,7 @@ PunktacjaSNIP = create_decimal_query_object("Punktacja SNIP", "punktacja_snip")
 PunktyKBNQueryObject = create_decimal_query_object("Punkty MNiSW/MEiN", "punkty_kbn")
 
 
-class IndexCopernicusQueryObject(BppMultiseekVisibilityMixin, DecimalQueryObject):
+class IndexCopernicusQueryObject(BppMultiseekVisibilityMixin, SafeDecimalQueryObject):
     label = "Index Copernicus"
     field_name = "index_copernicus"
 

@@ -6,6 +6,7 @@ using constraint programming (CP-SAT solver from OR-Tools).
 """
 
 import logging
+import os
 import traceback
 
 from bpp.models import Dyscyplina_Naukowa
@@ -69,7 +70,7 @@ def solve_discipline(
         dyscyplina_nazwa: Name of the scientific discipline
         verbose: Show detailed progress
         log_callback: Optional function to call for logging (receives message string)
-        liczba_n: Institution-level slot limit for this discipline (from LiczbaNDlaUczelni)
+        liczba_n: Institution-level slot limit (3N - sankcje, used directly as max slots)
         algorithm_mode: "two-phase" (default) or "single-phase"
             - "two-phase": Phase 1 per-author optimization, Phase 2 institution constraints
             - "single-phase": Global CP-SAT with all constraints from start
@@ -93,6 +94,16 @@ def solve_discipline(
         )
 
     log(f"Algorithm mode: {algorithm_mode}")
+
+    # Log solver configuration
+    cpu_count = os.cpu_count() or 8
+    if algorithm_mode == "single-phase":
+        log(f"Solver config: {cpu_count} workers, timeout 10 min (600s)")
+    else:
+        log(
+            f"Solver config: {cpu_count} workers, per-author: no limit, institution timeout 10 min"
+        )
+
     log(f"Loading publications for discipline: {dyscyplina_nazwa}")
 
     # Generate publication data from database
@@ -135,27 +146,31 @@ def solve_discipline(
     # Run optimization based on selected algorithm mode
     if algorithm_mode == "single-phase":
         # Single-phase: Global CP-SAT with all constraints from start
-        all_selected, total_points = run_single_phase_optimization(
+        all_selected, total_points, is_optimal = run_single_phase_optimization(
             pubs, authors, author_slot_limits, liczba_n, verbose, log
         )
     else:
         # Two-phase: Per-author optimization, then institution constraints
         # PHASE 1: Solve per-author knapsack problems
-        author_selections, _ = run_phase1_per_author_optimization(
+        author_selections, _, phase1_optimal = run_phase1_per_author_optimization(
             pubs, authors, author_slot_limits, verbose, log
         )
 
         # PHASE 2: Apply institution-level constraints
-        all_selected, total_points = apply_institution_constraints(
+        all_selected, total_points, phase2_optimal = apply_institution_constraints(
             author_selections, authors, author_slot_limits, liczba_n, log
         )
+
+        # Overall optimality: both phases must be optimal
+        is_optimal = phase1_optimal and phase2_optimal
 
     # Validation: Check that no author exceeds their limits
     validation_passed = validate_author_limits(
         all_selected, authors, author_slot_limits, log
     )
 
-    log(f"\nTotal points: {int(total_points)}", "SUCCESS")
+    opt_status = "OPTIMAL" if is_optimal else "FEASIBLE (sub-optimal)"
+    log(f"\nTotal points: {int(total_points)} ({opt_status})", "SUCCESS")
 
     # Build and return results
     return build_optimization_results(
@@ -166,6 +181,7 @@ def solve_discipline(
         author_slot_limits,
         total_points,
         validation_passed,
+        is_optimal,
     )
 
 

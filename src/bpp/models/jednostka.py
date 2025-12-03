@@ -271,12 +271,11 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
         )
 
     def kierownik(self):
-        try:
-            return self.obecni_autorzy().get(
-                autor_jednostka__funkcja__nazwa="kierownik"
-            )
-        except Autor.DoesNotExist:
-            return None
+        return (
+            self.obecni_autorzy()
+            .filter(autor_jednostka__funkcja__nazwa="kierownik")
+            .first()
+        )
 
     def prace_w_latach(self):
         from bpp.models.cache import Rekord

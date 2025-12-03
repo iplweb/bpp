@@ -31,7 +31,7 @@ def _add_run_statistics(run, uczelnia):
         liczba_n_obj = LiczbaNDlaUczelni.objects.get(
             uczelnia=uczelnia, dyscyplina_naukowa=run.dyscyplina_naukowa
         )
-        run.liczba_3n = liczba_n_obj.liczba_n * 3
+        run.liczba_3n = liczba_n_obj.liczba_n_ostateczna
         if run.liczba_3n > 0:
             run.slots_fill_pct = (run.total_slots / run.liczba_3n) * 100
         else:

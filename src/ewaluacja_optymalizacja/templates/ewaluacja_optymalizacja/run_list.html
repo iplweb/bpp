@@ -57,6 +57,15 @@
                     <td>
                         {% if run.status == "completed" %}
                             <span class="label success">Zakończono</span>
+                            {% if run.is_optimal %}
+                            <span class="label success" title="Rozwiązanie optymalne - solver znalazł najlepszy wynik">
+                                <span class="fi-check"></span> opt
+                            </span>
+                            {% else %}
+                            <span class="label warning" title="Rozwiązanie może nie być optymalne (solver przekroczył limit czasu)">
+                                <span class="fi-alert"></span>
+                            </span>
+                            {% endif %}
                         {% elif run.status == "running" %}
                             <span class="label warning">W trakcie</span>
                         {% else %}

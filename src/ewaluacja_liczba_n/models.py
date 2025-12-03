@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator
 from django.db import models
@@ -14,6 +16,10 @@ class LiczbaNDlaUczelni(models.Model):
     uczelnia = models.ForeignKey(Uczelnia, on_delete=models.CASCADE)
     dyscyplina_naukowa = models.ForeignKey(Dyscyplina_Naukowa, on_delete=models.CASCADE)
     liczba_n = LiczbaNField()
+    sankcje = LiczbaNField(
+        default=0,
+        help_text="Sankcje zmniejszające liczbę N dla optymalizacji",
+    )
 
     class Meta:
         verbose_name = "Liczba N dla uczelni"
@@ -24,6 +30,11 @@ class LiczbaNDlaUczelni(models.Model):
 
     def __str__(self):
         return f"{self.dyscyplina_naukowa.nazwa} -> {self.liczba_n}"
+
+    @property
+    def liczba_n_ostateczna(self):
+        """Liczba 3N minus sankcje (używana w optymalizacji jako limit slotów)"""
+        return max(Decimal("0"), (self.liczba_n * 3) - (self.sankcje or Decimal("0")))
 
 
 class IloscUdzialowDlaAutoraBase(models.Model):

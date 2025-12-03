@@ -60,6 +60,12 @@ def oblicz_srednia_liczbe_n_dla_dyscyplin(uczelnia, rok_min=2022, rok_max=2025):
             # Jeśli nie ma przypisania dla autora, pomijamy
             continue
 
+    # Zapisz istniejące sankcje przed usunięciem rekordów
+    istniejace_sankcje = {
+        obj.dyscyplina_naukowa_id: obj.sankcje
+        for obj in LiczbaNDlaUczelni.objects.filter(uczelnia=uczelnia)
+    }
+
     # Usuń istniejące rekordy dla uczelni
     LiczbaNDlaUczelni.objects.filter(uczelnia=uczelnia).delete()
 
@@ -69,13 +75,16 @@ def oblicz_srednia_liczbe_n_dla_dyscyplin(uczelnia, rok_min=2022, rok_max=2025):
     for dyscyplina, stats in dyscyplina_stats.items():
         if stats["suma_udzialow"] > 0:
             # Średnia arytmetyczna w przeliczeniu na pełny wymiar czasu pracy
-
             srednia_calkowita = stats["suma_udzialow"] / liczba_lat
+
+            # Przywróć poprzednie sankcje jeśli istniały
+            sankcje = istniejace_sankcje.get(dyscyplina.pk, Decimal("0"))
 
             LiczbaNDlaUczelni.objects.create(
                 uczelnia=uczelnia,
                 dyscyplina_naukowa=dyscyplina,
                 liczba_n=srednia_calkowita,
+                sankcje=sankcje,
             )
 
 

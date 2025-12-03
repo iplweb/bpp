@@ -31,6 +31,19 @@
             {% endif %}
         </div>
 
+        {% if run.is_optimal %}
+        <div class="callout success">
+            <span class="fi-check"></span>
+            <strong>Rozwiązanie optymalne</strong> - solver znalazł najlepszy możliwy wynik dla tej dyscypliny.
+        </div>
+        {% else %}
+        <div class="callout warning">
+            <span class="fi-alert"></span>
+            <strong>Uwaga:</strong> rozwiązanie może nie być optymalne (solver przekroczył limit czasu).
+            Wynik jest poprawny i spełnia wszystkie ograniczenia, ale może nie maksymalizować punktów w 100%.
+        </div>
+        {% endif %}
+
         <div class="row">
             <div class="large-3 medium-6 columns">
                 <div class="callout">

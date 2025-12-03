@@ -8,7 +8,9 @@ from przemapuj_zrodla_pbn.models import PrzeMapowanieZrodla
 def test_przemapowanie_zrodla_creation(django_user_model):
     """Test podstawowego utworzenia obiektu PrzeMapowanieZrodla"""
     user = baker.make(django_user_model)
-    journal_skasowane = baker.make("pbn_api.Journal", status="DELETED")
+    journal_skasowane = baker.make(
+        "pbn_api.Journal", status="DELETED", title="", issn="", eissn="", websiteLink=""
+    )
     zrodlo_stare = baker.make("bpp.Zrodlo", pbn_uid=journal_skasowane)
     zrodlo_nowe = baker.make("bpp.Zrodlo")
 
@@ -34,7 +36,9 @@ def test_przemapowanie_zrodla_creation(django_user_model):
 def test_przemapowanie_zrodla_str_representation(django_user_model):
     """Test reprezentacji tekstowej obiektu PrzeMapowanieZrodla"""
     user = baker.make(django_user_model)
-    journal_skasowane = baker.make("pbn_api.Journal", status="DELETED")
+    journal_skasowane = baker.make(
+        "pbn_api.Journal", status="DELETED", title="", issn="", eissn="", websiteLink=""
+    )
     zrodlo_stare = baker.make(
         "bpp.Zrodlo", nazwa="Stara Gazeta", pbn_uid=journal_skasowane
     )
@@ -57,7 +61,9 @@ def test_przemapowanie_zrodla_str_representation(django_user_model):
 def test_przemapowanie_zrodla_default_rekordy_historia(django_user_model):
     """Test domyślnej wartości pola rekordy_historia"""
     user = baker.make(django_user_model)
-    journal_skasowane = baker.make("pbn_api.Journal", status="DELETED")
+    journal_skasowane = baker.make(
+        "pbn_api.Journal", status="DELETED", title="", issn="", eissn="", websiteLink=""
+    )
     zrodlo_stare = baker.make("bpp.Zrodlo", pbn_uid=journal_skasowane)
     zrodlo_nowe = baker.make("bpp.Zrodlo")
 

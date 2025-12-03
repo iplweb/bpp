@@ -12,6 +12,7 @@ from django.views.generic import TemplateView
 from bpp.const import GR_WPROWADZANIE_DANYCH
 from bpp.models import Autor_Dyscyplina, Uczelnia
 
+from ..forms import SankcjeFormSet
 from ..models import LiczbaNDlaUczelni
 from ..utils import (
     oblicz_liczbe_n_na_koniec_2025,
@@ -55,9 +56,29 @@ class LiczbaNIndexView(GroupRequiredMixin, TemplateView):
         context["liczby_n"] = liczby_n_raportowane
         context["dyscypliny_nieraportowane"] = liczby_n_nieraportowane
 
+        # Formset do edycji sankcji
+        context["formset"] = SankcjeFormSet(
+            queryset=LiczbaNDlaUczelni.objects.filter(uczelnia=uczelnia).order_by(
+                "-liczba_n"
+            )
+        )
+
+        # Słownik mapujący id obiektu LiczbaNDlaUczelni na formularz
+        context["forms_by_id"] = {form.instance.pk: form for form in context["formset"]}
+
         # Oblicz sumę liczby N (średnia) - tylko dla dyscyplin raportowanych
         context["suma_liczby_n"] = sum(
             float(liczba.liczba_n) for liczba in liczby_n_raportowane
+        )
+
+        # Oblicz sumę sankcji - tylko dla dyscyplin raportowanych
+        context["suma_sankcji"] = sum(
+            float(liczba.sankcje or 0) for liczba in liczby_n_raportowane
+        )
+
+        # Oblicz sumę liczby N ostatecznej - tylko dla dyscyplin raportowanych
+        context["suma_liczby_n_ostatecznej"] = sum(
+            float(liczba.liczba_n_ostateczna) for liczba in liczby_n_raportowane
         )
 
         # Oblicz sumę liczby N na koniec 2025 - tylko dla dyscyplin raportowanych
@@ -109,4 +130,19 @@ class ObliczLiczbeNView(GroupRequiredMixin, View):
                 "Skontaktuj się z administratorem systemu.",
             )
 
+        return HttpResponseRedirect(reverse("ewaluacja_liczba_n:index"))
+
+
+class SaveSankcjeView(GroupRequiredMixin, View):
+    """Widok do zapisywania sankcji dla wszystkich dyscyplin"""
+
+    group_required = GR_WPROWADZANIE_DANYCH
+
+    def post(self, request, *args, **kwargs):
+        formset = SankcjeFormSet(request.POST)
+        if formset.is_valid():
+            formset.save()
+            messages.success(request, "Sankcje zostały zapisane.")
+        else:
+            messages.error(request, "Błąd podczas zapisywania sankcji.")
         return HttpResponseRedirect(reverse("ewaluacja_liczba_n:index"))

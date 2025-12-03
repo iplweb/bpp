@@ -6,7 +6,13 @@ from django.utils.safestring import mark_safe
 from bpp.admin.core import DynamicAdminFilterMixin
 from pbn_api.models import Scientist
 
-from .models import IgnoredAuthor, LogScalania, NotADuplicate
+from .models import (
+    DuplicateCandidate,
+    DuplicateScanRun,
+    IgnoredAuthor,
+    LogScalania,
+    NotADuplicate,
+)
 
 
 @admin.register(NotADuplicate)
@@ -319,4 +325,214 @@ class LogScalaniaAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
 
     def has_change_permission(self, request, obj=None):
         """Log entries are read-only"""
+        return False
+
+
+@admin.register(DuplicateScanRun)
+class DuplicateScanRunAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
+    list_display = [
+        "id",
+        "status",
+        "get_progress",
+        "total_authors_to_scan",
+        "authors_scanned",
+        "duplicates_found",
+        "created_by",
+        "started_at",
+        "finished_at",
+    ]
+
+    list_filter = [
+        "status",
+        "started_at",
+        "created_by",
+    ]
+
+    search_fields = [
+        "created_by__username",
+        "error_message",
+    ]
+
+    readonly_fields = [
+        "started_at",
+        "finished_at",
+        "status",
+        "total_authors_to_scan",
+        "authors_scanned",
+        "duplicates_found",
+        "error_message",
+        "celery_task_id",
+        "created_by",
+    ]
+
+    date_hierarchy = "started_at"
+    ordering = ["-started_at"]
+    actions = ["start_new_scan", "cancel_scan"]
+
+    def get_progress(self, obj):
+        """Display progress percentage with bar"""
+        percent = obj.progress_percent
+        if obj.status == DuplicateScanRun.Status.RUNNING:
+            return format_html(
+                '<div style="width:100px;background:#ddd;">'
+                '<div style="width:{}%;background:#4CAF50;height:20px;"></div>'
+                "</div> {}%",
+                percent,
+                percent,
+            )
+        return f"{percent}%"
+
+    get_progress.short_description = "Postęp"
+
+    @admin.action(description="Uruchom nowe skanowanie")
+    def start_new_scan(self, request, queryset):
+        """Start a new duplicate scan"""
+        from .tasks import scan_for_duplicates
+
+        # Check if any scan is already running
+        if DuplicateScanRun.objects.filter(
+            status=DuplicateScanRun.Status.RUNNING
+        ).exists():
+            self.message_user(
+                request,
+                "Skanowanie jest już w trakcie. Poczekaj na jego zakończenie.",
+                level="warning",
+            )
+            return
+
+        # Start new scan
+        scan_for_duplicates.delay(user_id=request.user.pk)
+        self.message_user(
+            request,
+            "Nowe skanowanie duplikatów zostało uruchomione w tle.",
+            level="success",
+        )
+
+    @admin.action(description="Anuluj skanowanie")
+    def cancel_scan(self, request, queryset):
+        """Cancel selected running scans"""
+        from .tasks import cancel_scan
+
+        cancelled_count = 0
+        for scan_run in queryset.filter(status=DuplicateScanRun.Status.RUNNING):
+            cancel_scan.delay(scan_run.pk)
+            cancelled_count += 1
+
+        if cancelled_count:
+            self.message_user(
+                request,
+                f"Anulowano {cancelled_count} skanowanie(ń).",
+                level="success",
+            )
+        else:
+            self.message_user(
+                request,
+                "Brak aktywnych skanowań do anulowania.",
+                level="warning",
+            )
+
+    def has_add_permission(self, request):
+        """Disable manual creation - use action instead"""
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        """Scan runs are read-only"""
+        return False
+
+
+@admin.register(DuplicateCandidate)
+class DuplicateCandidateAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
+    list_display = [
+        "id",
+        "get_main_autor_link",
+        "get_duplicate_autor_link",
+        "get_confidence_display",
+        "status",
+        "main_publications_count",
+        "duplicate_publications_count",
+        "reviewed_by",
+        "reviewed_at",
+    ]
+
+    list_filter = [
+        "status",
+        "scan_run",
+        ("confidence_score", admin.AllValuesFieldListFilter),
+        "reviewed_at",
+    ]
+
+    search_fields = [
+        "main_autor__nazwisko",
+        "main_autor__imiona",
+        "duplicate_autor__nazwisko",
+        "duplicate_autor__imiona",
+        "main_autor_name",
+        "duplicate_autor_name",
+    ]
+
+    readonly_fields = [
+        "scan_run",
+        "main_autor",
+        "main_osoba_z_instytucji",
+        "duplicate_autor",
+        "confidence_score",
+        "confidence_percent",
+        "reasons",
+        "main_autor_name",
+        "duplicate_autor_name",
+        "main_publications_count",
+        "duplicate_publications_count",
+        "created_at",
+        "reviewed_at",
+        "reviewed_by",
+    ]
+
+    date_hierarchy = "created_at"
+    ordering = ["-confidence_score"]
+
+    def get_main_autor_link(self, obj):
+        """Create link to main author"""
+        if obj.main_autor:
+            url = reverse("admin:bpp_autor_change", args=[obj.main_autor.pk])
+            return mark_safe(f'<a href="{url}">{obj.main_autor_name}</a>')
+        return obj.main_autor_name
+
+    get_main_autor_link.short_description = "Autor główny"
+    get_main_autor_link.admin_order_field = "main_autor__nazwisko"
+
+    def get_duplicate_autor_link(self, obj):
+        """Create link to duplicate author"""
+        if obj.duplicate_autor:
+            url = reverse("admin:bpp_autor_change", args=[obj.duplicate_autor.pk])
+            return mark_safe(f'<a href="{url}">{obj.duplicate_autor_name}</a>')
+        return obj.duplicate_autor_name
+
+    get_duplicate_autor_link.short_description = "Potencjalny duplikat"
+    get_duplicate_autor_link.admin_order_field = "duplicate_autor__nazwisko"
+
+    def get_confidence_display(self, obj):
+        """Display confidence with color coding"""
+        percent = obj.confidence_percent * 100
+        if percent >= 70:
+            color = "green"
+        elif percent >= 50:
+            color = "orange"
+        else:
+            color = "red"
+        return format_html(
+            '<span style="color: {};">{:.0f}% ({})</span>',
+            color,
+            percent,
+            obj.confidence_score,
+        )
+
+    get_confidence_display.short_description = "Pewność"
+    get_confidence_display.admin_order_field = "confidence_score"
+
+    def has_add_permission(self, request):
+        """Disable manual creation"""
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        """Candidates are managed through the deduplication view"""
         return False
