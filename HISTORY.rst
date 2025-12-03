@@ -4,6 +4,16 @@ Historia zmian
 
 .. towncrier release notes start
 
+bpp 202512.1290 (2025-12-03)
+============================
+
+Usprawnienie
+------------
+
+- Deduplikator autorów: rozbudowa przycisków scalania - dodano opcje "Scal + ustaw dyscyplinę" i "Scal + ustaw subdyscyplinę" dla automatycznego przypisywania dyscyplin do prac bez dyscypliny. Dodano przyciski "Pokaż wyd. ciągłe" i "Pokaż wyd. zwarte" otwierające moduł redagowania z filtrem DjangoQL. Poprawiono wykrywanie zamiany imienia z nazwiskiem (teraz obie strony muszą się zgadzać). Zmieniono kolor przycisku "Nie są duplikatami" na czerwony. (deduplikator-przyciski)
+- Możliwość ręcznego wpisania sankcji dla każdej z dyscyplin w module Liczba N. Sankcje zmniejszają limit slotów (3N - sankcje) używany w optymalizacji ewaluacji. (sankcje)
+
+
 bpp 202512.1289 (2025-12-03)
 ============================
 
