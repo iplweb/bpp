@@ -72,6 +72,9 @@ createuser -s bpp || true
 
 pg_restore -j 6 -d $LOCAL_DATABASE_NAME  "$DUMP_FILE" || true
 
+# Clear denorm dirty instances to avoid unnecessary recalculations after restore
+psql $LOCAL_DATABASE_NAME -c "DELETE FROM denorm_dirtyinstance;" || true
+
 for tbl in `psql -qAt -c "select tablename from pg_tables where schemaname = 'public';" $LOCAL_DATABASE_NAME` ; do  psql -c "alter table \"$tbl\" owner to postgres" $LOCAL_DATABASE_NAME ; done
 
 for tbl in `psql -qAt -c "select sequence_name from information_schema.sequences where sequence_schema = 'public';" $LOCAL_DATABASE_NAME` ; do  psql -c "alter sequence \"$tbl\" owner to postgres" $LOCAL_DATABASE_NAME ; done

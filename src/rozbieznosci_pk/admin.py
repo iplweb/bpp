@@ -1,24 +1,23 @@
-# Register your models here.
 from django.contrib import admin
 
-from rozbieznosci_if.models import IgnorujRozbieznoscIf, RozbieznosciIfLog
+from rozbieznosci_pk.models import IgnorujRozbieznoscPk, RozbieznosciPkLog
 
 
-@admin.register(IgnorujRozbieznoscIf)
-class IgnorujRozbieznoscIfAdmin(admin.ModelAdmin):
+@admin.register(IgnorujRozbieznoscPk)
+class IgnorujRozbieznoscPkAdmin(admin.ModelAdmin):
     list_display = ["object", "created_on"]
 
 
-@admin.register(RozbieznosciIfLog)
-class RozbieznosciIfLogAdmin(admin.ModelAdmin):
-    list_display = ["rekord", "zrodlo", "if_before", "if_after", "user", "created_on"]
+@admin.register(RozbieznosciPkLog)
+class RozbieznosciPkLogAdmin(admin.ModelAdmin):
+    list_display = ["rekord", "zrodlo", "pk_before", "pk_after", "user", "created_on"]
     list_filter = ["created_on", "user"]
     search_fields = ["rekord__tytul_oryginalny", "zrodlo__nazwa"]
     readonly_fields = [
         "rekord",
         "zrodlo",
-        "if_before",
-        "if_after",
+        "pk_before",
+        "pk_after",
         "user",
         "created_on",
     ]

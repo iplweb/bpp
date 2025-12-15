@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+
+{% block title %}
+    Wydruk oswiadczen 2022-2025
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li class="current">Wydruk oswiadczen 2022-2025</li>
+{% endblock %}
+
+{% block content %}
+    <div class="row">
+        <div class="medium-12 columns">
+            <h1>Wydruk oswiadczen 2022-2025</h1>
+        </div>
+    </div>
+    <div class="row">
+        <div class="medium-12 columns">
+            <form method="get" class="callout">
+                <div class="row">
+                    <div class="medium-2 columns">
+                        <label>Rok od:
+                            <input type="number" name="rok_od" value="{{ rok_od }}" min="2022" max="2025"
+                                   style="width: 80px;">
+                        </label>
+                    </div>
+                    <div class="medium-2 columns">
+                        <label>Rok do:
+                            <input type="number" name="rok_do" value="{{ rok_do }}" min="2022" max="2025"
+                                   style="width: 80px;">
+                        </label>
+                    </div>
+                    <div class="medium-2 columns">
+                        <label>Autor:
+                            <input type="text" name="szukaj_autor" value="{{ szukaj_autor }}"
+                                   placeholder="Szukaj autora...">
+                        </label>
+                    </div>
+                    <div class="medium-2 columns">
+                        <label>Tytul:
+                            <input type="text" name="szukaj_tytul" value="{{ szukaj_tytul }}"
+                                   placeholder="Szukaj tytulu...">
+                        </label>
+                    </div>
+                    <div class="medium-2 columns">
+                        <label>Dyscyplina:
+                            <select name="dyscyplina">
+                                <option value="">-- wszystkie --</option>
+                                {% for d in dyscypliny %}
+                                    <option value="{{ d.pk }}" {% if dyscyplina and dyscyplina.pk == d.pk %}selected{% endif %}>{{ d }}</option>
+                                {% endfor %}
+                            </select>
+                        </label>
+                    </div>
+                    <div class="medium-2 columns" style="padding-top: 1.5rem;">
+                        <button type="submit" class="button">
+                            <span class="fi-filter"></span> Filtruj
+                        </button>
+                        <a href="{% url 'oswiadczenia:wydruk-2022-25' %}" class="button secondary">
+                            <span class="fi-x"></span> Resetuj
+                        </a>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="medium-12 columns" style="padding-top: 0.5rem;">
+                        {% if filter_query_string %}
+                            <a href="{% url 'oswiadczenia:wydruk-2022-25-export' %}?{{ filter_query_string }}"
+                               class="button success">
+                                <span class="fi-download"></span> Eksport XLSX
+                            </a>
+                        {% else %}
+                            <a href="{% url 'oswiadczenia:wydruk-2022-25-export' %}"
+                               class="button success">
+                                <span class="fi-download"></span> Eksport XLSX
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </form>
+            <div class="row">
+                <div class="medium-12 columns" style="padding-top: 0.5rem;">
+                    <strong>Generuj ZIP (HTML):</strong>
+                    {% if export_ranges %}
+                        {% for start, end, label in export_ranges %}
+                            <form method="post"
+                                  action="{% url 'oswiadczenia:start-export' %}?{% if filter_query_string %}{{ filter_query_string }}&{% endif %}offset={{ start }}&limit={{ export_chunk_size }}"
+                                  style="display: inline;">
+                                {% csrf_token %}
+                                <input type="hidden" name="format" value="html">
+                                <button type="submit" class="button warning small">
+                                    <span class="fi-archive"></span> {{ label }}
+                                </button>
+                            </form>
+                        {% endfor %}
+                    {% else %}
+                        <form method="post"
+                              action="{% url 'oswiadczenia:start-export' %}{% if filter_query_string %}?{{ filter_query_string }}{% endif %}"
+                              style="display: inline;">
+                            {% csrf_token %}
+                            <input type="hidden" name="format" value="html">
+                            <button type="submit" class="button warning">
+                                <span class="fi-archive"></span> Generuj ZIP (HTML)
+                            </button>
+                        </form>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="row">
+                <div class="medium-12 columns" style="padding-top: 0.5rem;">
+                    <strong>Generuj ZIP (PDF):</strong>
+                    {% if export_ranges %}
+                        {% for start, end, label in export_ranges %}
+                            <form method="post"
+                                  action="{% url 'oswiadczenia:start-export' %}?{% if filter_query_string %}{{ filter_query_string }}&{% endif %}offset={{ start }}&limit={{ export_chunk_size }}"
+                                  style="display: inline;">
+                                {% csrf_token %}
+                                <input type="hidden" name="format" value="pdf">
+                                <button type="submit" class="button small">
+                                    <span class="fi-archive"></span> {{ label }}
+                                </button>
+                            </form>
+                        {% endfor %}
+                    {% else %}
+                        <form method="post"
+                              action="{% url 'oswiadczenia:start-export' %}{% if filter_query_string %}?{{ filter_query_string }}{% endif %}"
+                              style="display: inline;">
+                            {% csrf_token %}
+                            <input type="hidden" name="format" value="pdf">
+                            <button type="submit" class="button">
+                                <span class="fi-archive"></span> Generuj ZIP (PDF)
+                            </button>
+                        </form>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="medium-12 columns">
+            <p>
+                Znaleziono: <strong>{{ page_obj.paginator.count }}</strong> rekordow
+            </p>
+        </div>
+    </div>
+
+    {% include "pagination/pagination_with_anchor.html" %}
+
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 5%;">Rok</th>
+                <th style="width: 15%;">Autor</th>
+                <th style="width: 15%;">Dyscyplina</th>
+                <th style="width: 7%;">Przypieta</th>
+                <th style="width: 13%;">Alt. dyscyplina</th>
+                <th style="width: 35%;">Opis bibliograficzny</th>
+                <th style="width: 10%;">Akcje</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for entry in object_list %}
+                <tr>
+                    <td>{{ entry.rekord.rok }}</td>
+                    <td>
+                        <a href="{% url 'bpp:browse_autor' entry.autor.slug %}">
+                            {{ entry.autor }}
+                        </a>
+                    </td>
+                    <td>{{ entry.dyscyplina_naukowa }}</td>
+                    <td>
+                        {% if entry.przypieta %}
+                            <span style="color: green;">tak</span>
+                        {% else %}
+                            <span style="color: red;">nie</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if entry.autor_dyscyplina_info.ma_dwie_dyscypliny %}
+                            {% if entry.dyscyplina_naukowa == entry.autor_dyscyplina_info.dyscyplina_naukowa %}
+                                {{ entry.autor_dyscyplina_info.subdyscyplina_naukowa }}
+                            {% else %}
+                                {{ entry.autor_dyscyplina_info.dyscyplina_naukowa }}
+                            {% endif %}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                    <td style="font-size: 0.85em;">
+                        <a href="{{ entry.rekord.get_absolute_url }}">
+                            {{ entry.rekord.opis_bibliograficzny_cache|safe|truncatechars:200 }}
+                        </a>
+                    </td>
+                    <td>
+                        <a href="{% url 'oswiadczenia:jedno-oswiadczenie' entry.rekord.id.0 entry.rekord.id.1 entry.autor.id entry.dyscyplina_naukowa.id %}"
+                           target="_blank"
+                           title="Wydruk oswiadczenia dla dyscypliny zgloszonej"
+                           class="button tiny success">
+                            <span class="fi-print"></span>
+                        </a>
+                        {% if entry.autor_dyscyplina_info.ma_dwie_dyscypliny %}
+                            <a href="{% url 'oswiadczenia:jedno-oswiadczenie-druga-dyscyplina' entry.rekord.id.0 entry.rekord.id.1 entry.autor.id entry.dyscyplina_naukowa.id %}"
+                               target="_blank"
+                               title="Wydruk oswiadczenia dla alternatywnej dyscypliny"
+                               class="button tiny warning">
+                                <span class="fi-print"></span>
+                            </a>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% empty %}
+                <tr>
+                    <td colspan="7" class="text-center">
+                        Brak rekordow z dyscyplinami dla wybranych kryteriow.
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% include "pagination/pagination_with_anchor.html" %}
+
+{% endblock %}

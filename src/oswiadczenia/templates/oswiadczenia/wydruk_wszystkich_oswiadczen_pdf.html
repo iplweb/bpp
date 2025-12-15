@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Oswiadczenia 2022-2025</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 12pt;
+            line-height: 1.4;
+        }
+        h1 {
+            font-size: 16pt;
+            text-align: center;
+        }
+        h2 {
+            font-size: 14pt;
+        }
+        h3 {
+            font-size: 12pt;
+        }
+        .declaration {
+            page-break-after: always;
+        }
+        .declaration:last-child {
+            page-break-after: avoid;
+        }
+        .signature {
+            text-align: center;
+            width: 50%;
+            float: right;
+            margin-top: 2em;
+        }
+        .clearfix {
+            clear: both;
+        }
+    </style>
+</head>
+<body>
+{% for decl in declarations %}
+    <div class="declaration">
+        <h1>Oswiadczenie upowazniajace podmiot do wykazania osiagniec w ewaluacji jakosci dzialalnosci naukowej</h1>
+        <hr>
+        <p>
+        <h2>{{ decl.autor.nazwisko }} {{ decl.autor.imiona }}</h2>
+        ORCID: <strong>{{ decl.autor.orcid }}</strong>
+        </p>
+        <p>
+            Dyscypliny:
+        <ul>
+            <li>{{ decl.dyscyplina_naukowa }}</li>
+            {% if decl.subdyscyplina_naukowa %}
+                <li>{{ decl.subdyscyplina_naukowa }}</li>
+            {% endif %}
+        </ul>
+        </p>
+        <p>
+            Ja, <strong>{{ decl.autor.nazwisko }} {{ decl.autor.imiona }}</strong>, zgodnie z art. 265 ust. 13 ustawy z dnia
+            20 lipca 2018 r. - Prawo o szkolnictwie
+            wyzszym i nauce (Dz. U. z 2021 r. poz. 478, z pozn. zm.) upowazniaj do wykazania na potrzeby
+            ewaluacji jakosci dzialalnosci naukowej za lata <strong>2022-2025</strong> moich, wymienionych w niniejszym
+            oswiadczeniu osiagniec przez <strong>{{ uczelnia.nazwa }}</strong> w dyscyplinie:
+            <strong>{{ decl.dyscyplina_pracy }}</strong>.
+        </p>
+        <p>
+            Oswiadczam, ze osiagniecia te powstaly w zwiazku z prowadzeniem przeze mnie dzialalnosci naukowej
+            w tym podmiocie (nie dotyczy osiagniec artystycznych).
+        </p>
+        <div class="signature">
+            <p>...........................................................</p>
+            <p>(data i podpis)</p>
+        </div>
+        <div class="clearfix"></div>
+        <h3>Dotyczy:</h3>
+        {{ decl.object.opis_bibliograficzny_cache|safe }}
+    </div>
+{% empty %}
+    <p>Brak oswiadczen do wydruku.</p>
+{% endfor %}
+</body>
+</html>

@@ -2,7 +2,7 @@ from django.contrib.contenttypes.fields import GenericForeignKey
 from django.db import models
 
 
-class IgnorujRozbieznoscIf(models.Model):
+class IgnorujRozbieznoscPk(models.Model):
     object = GenericForeignKey()
 
     content_type = models.ForeignKey(
@@ -12,18 +12,21 @@ class IgnorujRozbieznoscIf(models.Model):
     created_on = models.DateTimeField("Utworzono", auto_now_add=True)
 
     class Meta:
-        verbose_name = "ignorowanie rozbieżności impact factor"
-        verbose_name = "ignorowanie rozbieżności impact factor"
+        verbose_name = "ignorowanie rozbieżności punktów MNiSW"
+        verbose_name_plural = "ignorowanie rozbieżności punktów MNiSW"
 
     def __str__(self):
         try:
-            return f"Ignoruj rozbieżności punktacji IF dla rekordu {self.object}"
+            return f"Ignoruj rozbieżności punktacji MNiSW dla rekordu {self.object}"
         except BaseException:
-            return 'Ignoruj rozbieżności punktacji IF dla rekordu "[brak rekordu, został usunięty]"'
+            return (
+                'Ignoruj rozbieżności punktacji MNiSW dla rekordu "[brak rekordu, '
+                'został usunięty]"'
+            )
 
 
-class RozbieznosciIfLog(models.Model):
-    """Log of IF updates from rozbieznosci_if view."""
+class RozbieznosciPkLog(models.Model):
+    """Log of punkty_kbn updates from rozbieznosci_pk view."""
 
     rekord = models.ForeignKey(
         "bpp.Wydawnictwo_Ciagle",
@@ -36,16 +39,16 @@ class RozbieznosciIfLog(models.Model):
         null=True,
         verbose_name="Źródło",
     )
-    if_before = models.DecimalField(
-        "IF przed zmianą",
+    pk_before = models.DecimalField(
+        "Punkty MNiSW przed zmianą",
         max_digits=6,
-        decimal_places=3,
+        decimal_places=2,
         null=True,
     )
-    if_after = models.DecimalField(
-        "IF po zmianie",
+    pk_after = models.DecimalField(
+        "Punkty MNiSW po zmianie",
         max_digits=6,
-        decimal_places=3,
+        decimal_places=2,
         null=True,
     )
     user = models.ForeignKey(
@@ -57,9 +60,11 @@ class RozbieznosciIfLog(models.Model):
     created_on = models.DateTimeField("Kiedy", auto_now_add=True)
 
     class Meta:
-        verbose_name = "log zmiany IF"
-        verbose_name_plural = "logi zmian IF"
+        verbose_name = "log zmiany punktów MNiSW"
+        verbose_name_plural = "logi zmian punktów MNiSW"
         ordering = ["-created_on"]
 
     def __str__(self):
-        return f"Zmiana IF: {self.rekord} ({self.if_before} -> {self.if_after})"
+        return (
+            f"Zmiana punktów MNiSW: {self.rekord} ({self.pk_before} -> {self.pk_after})"
+        )

@@ -43,7 +43,7 @@
                         <button type="submit" class="button">
                             <span class="fi-filter"></span> Filtruj
                         </button>
-                        <a href="{% url 'rozbieznosci_if:index' %}" class="button secondary">
+                        <a href="{% url 'rozbieznosci_pk:index' %}" class="button secondary">
                             <span class="fi-x"></span> Resetuj
                         </a>
                     </div>
@@ -51,21 +51,21 @@
                 <div class="row">
                     <div class="medium-12 columns" style="padding-top: 0.5rem;">
                         {% if filter_query_string %}
-                            <a href="{% url 'rozbieznosci_if:export' %}?{{ filter_query_string }}&sort={{ current_sort }}"
+                            <a href="{% url 'rozbieznosci_pk:export' %}?{{ filter_query_string }}&sort={{ current_sort }}"
                                class="button success">
                                 <span class="fi-download"></span> Eksport XLSX
                             </a>
-                            <a href="{% url 'rozbieznosci_if:ustaw_wszystkie' %}?{{ filter_query_string }}"
+                            <a href="{% url 'rozbieznosci_pk:ustaw_wszystkie' %}?{{ filter_query_string }}"
                                class="button warning"
                                onclick="return confirm('Czy na pewno chcesz zaktualizować {{ field_label }} dla wszystkich {{ page_obj.paginator.count }} rekordów?');">
                                 <span class="fi-check"></span> Ustaw wszystkie wg źródła
                             </a>
                         {% else %}
-                            <a href="{% url 'rozbieznosci_if:export' %}?sort={{ current_sort }}"
+                            <a href="{% url 'rozbieznosci_pk:export' %}?sort={{ current_sort }}"
                                class="button success">
                                 <span class="fi-download"></span> Eksport XLSX
                             </a>
-                            <a href="{% url 'rozbieznosci_if:ustaw_wszystkie' %}"
+                            <a href="{% url 'rozbieznosci_pk:ustaw_wszystkie' %}"
                                class="button warning"
                                onclick="return confirm('Czy na pewno chcesz zaktualizować {{ field_label }} dla wszystkich {{ page_obj.paginator.count }} rekordów?');">
                                 <span class="fi-check"></span> Ustaw wszystkie wg źródła
@@ -81,7 +81,7 @@
         <div class="medium-12 columns">
             <p>
                 Znaleziono: <strong>{{ page_obj.paginator.count }}</strong> rekordów
-                | <a href="{% url "admin:rozbieznosci_if_ignorujrozbieznoscif_changelist" %}">pokaż ignorowane rekordy</a>
+                | <a href="{% url "admin:rozbieznosci_pk_ignorujrozbieznoscpk_changelist" %}">pokaż ignorowane rekordy</a>
             </p>
         </div>
     </div>
@@ -166,10 +166,10 @@
                         </a>
                     </td>
                     <td>
-                        {{ elem.impact_factor }}
+                        {{ elem.punkty_kbn }}
                     </td>
                     <td>
-                        {{ elem.punktacja_zrodla_impact_factor }}
+                        {{ elem.punktacja_zrodla_punkty_kbn }}
                     </td>
                     <td>{{ elem.ostatnio_zmieniony }}</td>
                     <td>

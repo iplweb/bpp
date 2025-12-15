@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block title %}
+    Generowanie oswiadczen
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url 'oswiadczenia:wydruk-2022-25' %}">Wydruk oswiadczen 2022-2025</a></li>
+    <li class="current">Status generowania</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="medium-8 medium-centered columns">
+        <h2>Generowanie oswiadczen</h2>
+
+        <div class="callout">
+            <p><strong>Format:</strong> {{ task.get_export_format_display }}</p>
+            <p><strong>Lata:</strong> {{ task.rok_od }} - {{ task.rok_do }}</p>
+            {% if task.szukaj_autor %}
+                <p><strong>Szukaj autora:</strong> {{ task.szukaj_autor }}</p>
+            {% endif %}
+            {% if task.szukaj_tytul %}
+                <p><strong>Szukaj tytulu:</strong> {{ task.szukaj_tytul }}</p>
+            {% endif %}
+        </div>
+
+        <div id="progress-container"
+             hx-get="{% url 'oswiadczenia:task-status' task.pk %}"
+             hx-trigger="{% if task.status == 'pending' or task.status == 'running' %}every 2s{% endif %}"
+             hx-swap="innerHTML">
+            {% include "oswiadczenia/_progress.html" %}
+        </div>
+
+        <p style="margin-top: 1rem;">
+            <a href="{% url 'oswiadczenia:wydruk-2022-25' %}" class="button secondary">
+                <span class="fi-arrow-left"></span> Powrot do listy
+            </a>
+        </p>
+    </div>
+</div>
+{% endblock %}

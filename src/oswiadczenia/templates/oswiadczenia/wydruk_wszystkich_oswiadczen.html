@@ -1,0 +1,15 @@
+<body onload="window.print()" onfocus="window.close()">
+<style>
+    @media print {
+        footer {
+            page-break-after: always;
+        }
+    }
+</style>
+{% for decl in declarations %}
+    {% include "oswiadczenia/tresc_jednego_oswiadczenia.html" with autor=decl.autor dyscyplina_naukowa=decl.dyscyplina_naukowa subdyscyplina_naukowa=decl.subdyscyplina_naukowa uczelnia=uczelnia object=decl.object dyscyplina_pracy=decl.dyscyplina_pracy %}
+    <footer></footer>
+{% empty %}
+    <p>Brak oswiadczen do wydruku.</p>
+{% endfor %}
+</body>
