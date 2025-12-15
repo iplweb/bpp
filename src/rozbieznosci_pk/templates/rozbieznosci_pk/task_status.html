@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}
+    Status zadania - {{ page_title }}
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url 'rozbieznosci_pk:index' %}">{{ page_title }}</a></li>
+    <li class="current">Status zadania</li>
+{% endblock %}
+
+{% block content %}
+    <div class="row">
+        <div class="large-12 columns">
+            <h1>
+                <span class="fi-loop"></span> Aktualizacja w toku
+            </h1>
+
+            <div class="callout primary">
+                <h4><span class="fi-info"></span> Zadanie aktualizacji zostalo uruchomione</h4>
+                <p>
+                    Strona odswiezy sie automatycznie co 5 sekund.
+                    Po zakonczeniu zostaniesz przekierowany z powrotem do listy rozbieznosci.
+                </p>
+            </div>
+
+            <div class="callout secondary">
+                <p><strong>ID zadania:</strong> {{ task_id }}</p>
+            </div>
+
+            <!-- Progress section with HTMX polling -->
+            <div id="progress-container"
+                 hx-get="{% url 'rozbieznosci_pk:task_status' task_id %}"
+                 hx-trigger="every 5s"
+                 hx-swap="innerHTML">
+                {% include "rozbieznosci_pk/_progress.html" %}
+            </div>
+
+            <div class="button-group" style="margin-top: 1rem;">
+                <a href="{% url 'rozbieznosci_pk:index' %}" class="button secondary">
+                    <span class="fi-arrow-left"></span> Powrot (zadanie bedzie kontynuowane w tle)
+                </a>
+            </div>
+        </div>
+    </div>
+{% endblock %}

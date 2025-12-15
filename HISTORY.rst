@@ -4,6 +4,17 @@ Historia zmian
 
 .. towncrier release notes start
 
+bpp 202512.1292 (2025-12-15)
+============================
+
+Usprawnienie
+------------
+
+- Aktualizacja aplikacji do analizy rozbieżności Impact Factor - usunięto nieużywaną funkcjonalność wysyłki do PBN. (rozbieznosci_if_update)
+- Nowa aplikacja do analizy rozbieżności punktów MNiSW pomiędzy rekordami a źródłami. (rozbieznosci_pk)
+- Nowa aplikacja do wydruku oświadczeń pracowników. (wydruki_oswiadczen)
+
+
 bpp 202512.1291 (2025-12-03)
 ============================
 

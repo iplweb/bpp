@@ -25,6 +25,11 @@ def test_author_works_detail_accessible(client, admin_user):
         dyscyplina_naukowa=dyscyplina,
         prace_nazbierane=[],
         prace_wszystkie=[],
+        slot_maksymalny=4,
+        slot_nazbierany=2,
+        punkty_nazbierane=100,
+        slot_wszystkie=3,
+        punkty_wszystkie=150,
     )
 
     client.force_login(admin_user)
@@ -110,6 +115,11 @@ def test_export_nazbierane_xlsx_content_type(client, admin_user):
         dyscyplina_naukowa=dyscyplina,
         prace_nazbierane=[],
         prace_wszystkie=[],
+        slot_maksymalny=4,
+        slot_nazbierany=2,
+        punkty_nazbierane=100,
+        slot_wszystkie=3,
+        punkty_wszystkie=150,
     )
 
     client.force_login(admin_user)

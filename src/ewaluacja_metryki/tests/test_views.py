@@ -176,10 +176,15 @@ def test_statystyki_view(admin_user, client):
     """Test widoku statystyk"""
     client.force_login(admin_user)
 
+    # Stwórz dyscyplinę raz i użyj dla wszystkich metryk
+    # (unika race condition z unikalnym polem kod w Dyscyplina_Naukowa)
+    dyscyplina = baker.make(Dyscyplina_Naukowa)
+
     # Stwórz kilka metryk
     for i in range(5):
         baker.make(
             MetrykaAutora,
+            dyscyplina_naukowa=dyscyplina,
             slot_maksymalny=Decimal("4.0"),
             slot_nazbierany=Decimal(f"{3.0 + i * 0.2}"),
             punkty_nazbierane=Decimal(f"{120.0 + i * 10}"),

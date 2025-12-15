@@ -115,6 +115,7 @@
                         <li><a href="{% url "ewaluacja_metryki:lista" %}"><i class="fi-graph-trend"></i> metryki ewaluacyjne</a></li>
                         <li><a href="{% url "ewaluacja_optymalizacja:index" %}"><i class="fi-target-two"></i> optymalizacja ewaluacji</a></li>
                         <li><a href="{% url "snapshot_odpiec:index" %}"><i class="fi-camera"></i> snapshoty odpięć</a></li>
+                        <li><a href="{% url "oswiadczenia:wydruk-2022-25" %}"><i class="fi-print"></i> wydruk oświadczeń 2022-25</a></li>
                     <hr>
                     {% endif %}
                     {% load czy_pokazywac %}
@@ -201,6 +202,8 @@
                                         <i class="fi-page-search"></i> rozbieżności dyscyplin źródeł</a></li>
                                     <li><a href="{% url "rozbieznosci_if:index" %}"><i class="fi-graph-pie"></i> rozbieżności
                                         punktacji IF</a></li>
+                                    <li><a href="{% url "rozbieznosci_pk:index" %}"><i class="fi-graph-pie"></i> rozbieżności
+                                        punktacji MNiSW</a></li>
                                     <hr>
                                     <li><a href="{% url "deduplikator_zrodel:duplicate_sources" %}">
                                         <i class="fi-page-multiple"></i> deduplikator źródeł</a></li>

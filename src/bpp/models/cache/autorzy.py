@@ -27,6 +27,8 @@ class AutorzyBase(models.Model):
     upowaznienie_pbn = models.BooleanField()
     oswiadczenie_ken = models.BooleanField()
     profil_orcid = models.BooleanField()
+    przypieta = models.BooleanField()
+    data_oswiadczenia = models.DateField()
 
     objects = AutorzyManager()
 
@@ -50,6 +52,10 @@ class Autorzy(AutorzyBase):
     dyscyplina_naukowa = models.ForeignKey("Dyscyplina_Naukowa", DO_NOTHING)
     kierunek_studiow = models.ForeignKey("Kierunek_Studiow", DO_NOTHING)
 
+    class Meta:
+        managed = False
+        db_table = "bpp_autorzy_mat"
+
     @cached_property
     def wydawnictwo_autor_class(self):
         return (
@@ -61,10 +67,6 @@ class Autorzy(AutorzyBase):
     @cached_property
     def original(self):
         return self.wydawnictwo_autor_class.objects.get(pk=self.id[1])
-
-    class Meta:
-        managed = False
-        db_table = "bpp_autorzy_mat"
 
 
 class AutorzyView(AutorzyBase):

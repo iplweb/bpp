@@ -1148,6 +1148,11 @@ $dropdown-border: 1px solid rgba(0, 0, 0, 0.15) !default;
   border-radius: 8px !important;
 }
 
+// Light purple panel for rozbieznosci_pk
+.callout.pk-panel {
+  background-color: #f0e8f4;  // Light purple/lavender
+}
+
 // Also apply to alert boxes for consistency
 .alert-box {
   border-radius: 8px !important;

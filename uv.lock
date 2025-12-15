@@ -184,7 +184,7 @@ wheels = [
 
 [[package]]
 name = "bpp-iplweb"
-version = "202512.1291"
+version = "202512.1292"
 source = { editable = "." }
 dependencies = [
     { name = "amqp", marker = "platform_python_implementation != 'PyPy'" },
@@ -241,6 +241,8 @@ dependencies = [
     { name = "django-querysetsequence", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-redis", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-reversion", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-reversion-compare", version = "0.17.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11' and platform_python_implementation != 'PyPy'" },
+    { name = "django-reversion-compare", version = "0.19.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11' and platform_python_implementation != 'PyPy'" },
     { name = "django-sendfile2", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-session-security", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-soft-delete", marker = "platform_python_implementation != 'PyPy'" },
@@ -402,6 +404,7 @@ requires-dist = [
     { name = "django-querysetsequence", specifier = "==0.12" },
     { name = "django-redis", specifier = "==5.3.0" },
     { name = "django-reversion", specifier = "==5.0.4" },
+    { name = "django-reversion-compare", specifier = ">=0.17.0" },
     { name = "django-sendfile2", specifier = ">=0.7.2" },
     { name = "django-session-security", specifier = ">=2.6.7" },
     { name = "django-soft-delete", specifier = ">=1.0.15" },
@@ -1753,6 +1756,43 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/16/13/1e351dc0c83ae2ee4faf55efd6f2244e97c35518b728a99830ca726e930e/django-reversion-5.0.4.tar.gz", hash = "sha256:c12bab452d31dd3c244456cf1df383acf14ba147cf99404c5e44412596de42fc", size = 72336, upload-time = "2022-11-12T14:45:37.557Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/82/e0/90bdd626ebd17361a410a773019808d74e5159830bbc39442c3e30b0ce83/django_reversion-5.0.4-py3-none-any.whl", hash = "sha256:a591cbce8621b5d036a37617554668b5ef2eb9777682e3af20b6401ee87cfbc5", size = 87140, upload-time = "2022-11-12T14:45:35.072Z" },
+]
+
+[[package]]
+name = "django-reversion-compare"
+version = "0.17.0"
+source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "python_full_version < '3.11' and platform_python_implementation != 'PyPy'",
+]
+dependencies = [
+    { name = "diff-match-patch", marker = "python_full_version < '3.11' and platform_python_implementation != 'PyPy'" },
+    { name = "django", marker = "python_full_version < '3.11' and platform_python_implementation != 'PyPy'" },
+    { name = "django-reversion", marker = "python_full_version < '3.11' and platform_python_implementation != 'PyPy'" },
+    { name = "rich", marker = "python_full_version < '3.11' and platform_python_implementation != 'PyPy'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/df/a5/4c1fd7f1e3fef219fb3e3b492106e1d8deb284531fde5c0fa969ce327625/django-reversion-compare-0.17.0.tar.gz", hash = "sha256:bfb036f32943965d01132809f94b853531cf6c9e3607b8894149c82fe68eddaa", size = 191520, upload-time = "2024-02-20T08:32:50.148Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/73/0e/995212d8039496e8a3d8849366b1696788aa81c679216d78f9b5cf2a4acd/django_reversion_compare-0.17.0-py3-none-any.whl", hash = "sha256:02d13ed7994d24d505671d84a005c6f99d13ed92531fa457c63245b518f835ff", size = 101095, upload-time = "2024-02-20T08:32:47.406Z" },
+]
+
+[[package]]
+name = "django-reversion-compare"
+version = "0.19.1"
+source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "python_full_version >= '3.12' and platform_python_implementation != 'PyPy'",
+    "python_full_version == '3.11.*' and platform_python_implementation != 'PyPy'",
+]
+dependencies = [
+    { name = "diff-match-patch", marker = "python_full_version >= '3.11' and platform_python_implementation != 'PyPy'" },
+    { name = "django", marker = "python_full_version >= '3.11' and platform_python_implementation != 'PyPy'" },
+    { name = "django-reversion", marker = "python_full_version >= '3.11' and platform_python_implementation != 'PyPy'" },
+    { name = "rich", marker = "python_full_version >= '3.11' and platform_python_implementation != 'PyPy'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/9b/19/a1ffd6d739dd65a0a0475c3148a71de4df5c43fd785977f96e4a74ddf8c9/django_reversion_compare-0.19.1.tar.gz", hash = "sha256:7bef83812716d2313c7dc21ffc32ca1416e746de916829cd899ccf7baa0a1f3c", size = 182660, upload-time = "2025-10-21T12:09:19.851Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/df/4c/51d97cb56f6d9ff310d2e13a56b5cf3f2fd79bc6a9d0f2bbce37bb69910a/django_reversion_compare-0.19.1-py3-none-any.whl", hash = "sha256:824ee619388cdeec033a7bb4c97d0dda06b9a06d64c949ea96fe563c7de01f99", size = 127305, upload-time = "2025-10-21T12:09:17.963Z" },
 ]
 
 [[package]]
