@@ -39,6 +39,9 @@ def task_ustaw_pk_ze_zrodla(self, pks, user_id=None):
                 wc.punkty_kbn = punktacja.punkty_kbn
                 wc.save()
 
+                # Recalculate cache
+                wc.przelicz_punkty_dyscyplin()
+
                 # Log the change
                 RozbieznosciPkLog.objects.create(
                     rekord=wc,

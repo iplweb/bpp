@@ -280,6 +280,10 @@ class BaseRozbieznosciView(GroupRequiredMixin, ListView):
                 setattr(wc, self.field_name, new_value)
                 wc.save()
 
+                # Recalculate cache if this is a scoring field
+                if self.field_name == "punkty_kbn":
+                    wc.przelicz_punkty_dyscyplin()
+
                 # Log the change
                 self.log_model.objects.create(
                     rekord=wc,
@@ -472,6 +476,10 @@ def ustaw_pole_ze_zrodla(
             if punktacja and old_value != new_value:
                 setattr(wc, field_name, new_value)
                 wc.save()
+
+                # Recalculate cache if this is a scoring field
+                if field_name == "punkty_kbn":
+                    wc.przelicz_punkty_dyscyplin()
 
                 # Log the change
                 log_model.objects.create(

@@ -67,6 +67,8 @@ def build_declarations_list(queryset, uczelnia):
                 "dyscyplina_pracy": entry.dyscyplina_naukowa,
                 "dyscyplina_naukowa": ad_info["dyscyplina_naukowa"],
                 "subdyscyplina_naukowa": ad_info["subdyscyplina_naukowa"],
+                "data_oswiadczenia": entry.data_oswiadczenia,
+                "przypieta": entry.przypieta,
             }
         )
 
@@ -84,6 +86,8 @@ def build_declarations_list(queryset, uczelnia):
                     "dyscyplina_pracy": alt_dyscyplina,
                     "dyscyplina_naukowa": ad_info["dyscyplina_naukowa"],
                     "subdyscyplina_naukowa": ad_info["subdyscyplina_naukowa"],
+                    "data_oswiadczenia": entry.data_oswiadczenia,
+                    "przypieta": entry.przypieta,
                 }
             )
 
@@ -143,6 +147,8 @@ def render_declaration_html(decl, uczelnia):
             "dyscyplina_naukowa": decl["dyscyplina_naukowa"],
             "subdyscyplina_naukowa": decl["subdyscyplina_naukowa"],
             "uczelnia": uczelnia,
+            "data_oswiadczenia": decl["data_oswiadczenia"],
+            "przypieta": decl["przypieta"],
         },
     )
 

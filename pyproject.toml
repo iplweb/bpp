@@ -15,6 +15,7 @@ dependencies = [
     "django-tabular-permissions==2.9.1",
     "simplejson==3.17.5",
     "django-reversion==5.0.4",
+    "django-reversion-compare>=0.17.0",
     "channels[daphne]>=4,<5",
     "uvicorn[standard]>=0.31.0",
     "channels-redis>=4,<5",

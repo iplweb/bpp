@@ -28,6 +28,7 @@ class AutorzyBase(models.Model):
     oswiadczenie_ken = models.BooleanField()
     profil_orcid = models.BooleanField()
     przypieta = models.BooleanField()
+    data_oswiadczenia = models.DateField()
 
     objects = AutorzyManager()
 

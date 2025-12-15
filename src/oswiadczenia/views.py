@@ -8,6 +8,7 @@ from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views import View
 from django.views.generic import DetailView, ListView
+from django_sendfile import sendfile
 from openpyxl import Workbook
 
 from bpp.models import (
@@ -217,8 +218,9 @@ class WydrukOswiadczen2022View(GroupRequiredMixin, ListView):
         return context
 
 
-class OswiadczenieAutoraView(DetailView):
+class OswiadczenieAutoraView(GroupRequiredMixin, DetailView):
     template_name = "oswiadczenia/oswiadczenie_autora.html"
+    group_required = "wprowadzanie danych"
 
     def get_object(self, queryset=None):
         try:
@@ -229,9 +231,12 @@ class OswiadczenieAutoraView(DetailView):
             raise Http404 from None
 
         try:
-            self.autor = self.object.autorzy_set.get(
+            autorzy_entry = self.object.autorzy_set.get(
                 autor_id=self.kwargs["autor_id"]
-            ).autor
+            )
+            self.autor = autorzy_entry.autor
+            self.data_oswiadczenia = autorzy_entry.data_oswiadczenia
+            self.przypieta = autorzy_entry.przypieta
         except Autor.DoesNotExist:
             raise Http404 from None
 
@@ -265,6 +270,8 @@ class OswiadczenieAutoraView(DetailView):
             "dyscyplina_pracy": self.dyscyplina_pracy,
             "dyscyplina_naukowa": self.dyscyplina_naukowa,
             "subdyscyplina_naukowa": self.subdyscyplina_naukowa,
+            "data_oswiadczenia": self.data_oswiadczenia,
+            "przypieta": self.przypieta,
         }
 
 
@@ -279,8 +286,9 @@ class OswiadczenieAutoraAlternatywnaDyscyplinaView(OswiadczenieAutoraView):
         return super().get_context_data(**kwargs)
 
 
-class OswiadczeniaPublikacji(DetailView):
+class OswiadczeniaPublikacji(GroupRequiredMixin, DetailView):
     template_name = "oswiadczenia/wiele_oswiadczen.html"
+    group_required = "wprowadzanie danych"
 
     def get_object(self, **kwargs):
         try:
@@ -496,7 +504,10 @@ class DownloadResultView(GroupRequiredMixin, View):
         if not task.result_file:
             raise Http404("File not found")
 
-        response = HttpResponse(task.result_file.read(), content_type="application/zip")
         filename = task.result_file.name.split("/")[-1]
-        response["Content-Disposition"] = f'attachment; filename="{filename}"'
-        return response
+        return sendfile(
+            request,
+            task.result_file.path,
+            attachment=True,
+            attachment_filename=filename,
+        )

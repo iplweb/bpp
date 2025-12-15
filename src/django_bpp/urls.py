@@ -4,12 +4,14 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import LogoutView
-from django.urls import include, path
+from django.http import Http404
+from django.urls import include, path, re_path
 from django.urls import re_path as url
 from django.views.decorators.cache import cache_page
 from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import RedirectView
 from django.views.i18n import JavaScriptCatalog
+from django.views.static import serve as static_serve
 from loginas.views import user_login
 
 from bpp.forms import MyAuthenticationForm
@@ -34,6 +36,17 @@ from bpp.views.sentry_tester import (
 from django_bpp.views import HTMXAwareLoginView
 
 admin.autodiscover()
+
+
+def protected_media_serve(request, path, document_root=None):
+    """Serve media files but block direct access to protected/ paths.
+
+    Files in protected/ directory should only be accessible through authenticated
+    views that use django-sendfile.
+    """
+    if path.startswith("protected/"):
+        raise Http404("Use the download endpoint")
+    return static_serve(request, path, document_root)
 
 
 urlpatterns = (
@@ -317,7 +330,13 @@ urlpatterns = (
             name="global-nav-redir",
         ),
     ]
-    + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    + [
+        re_path(
+            r"^media/(?P<path>.*)$",
+            protected_media_serve,
+            {"document_root": settings.MEDIA_ROOT},
+        ),
+    ]
     + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 )
 

@@ -353,6 +353,7 @@ INSTALLED_APPS = [
     "formtools",
     "denorm.apps.DenormAppConfig",
     "reversion",
+    "reversion_compare",
     "djangoql",
     "cacheops",
     "channels",
@@ -844,6 +845,7 @@ TABULAR_PERMISSIONS_CONFIG = {
 # PERMISSIONS_WIDGET_PATCH_USERADMIN = True
 
 DBTEMPLATES_USE_REVERSION = True
+DBTEMPLATES_USE_REVERSION_COMPARE = True
 
 DENORM_DISABLE_AUTOTIME_DURING_FLUSH = True
 DENORM_AUTOTIME_FIELD_NAMES = [

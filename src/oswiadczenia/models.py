@@ -40,7 +40,7 @@ class OswiadczeniaExportTask(models.Model):
 
     # Result
     result_file = models.FileField(
-        upload_to="oswiadczenia_exports/",
+        upload_to="protected/oswiadczenia/",
         null=True,
         blank=True,
     )
