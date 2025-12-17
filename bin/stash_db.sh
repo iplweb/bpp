@@ -57,15 +57,28 @@ fi
 
 # Query the database for skrot and ostatnio_zmieniony
 echo -e "${YELLOW}Querying database for stash parameters...${NC}"
-QUERY_RESULT=$(psql -d "$SOURCE_DB" -A -t -F'|' -c "SELECT (SELECT skrot FROM bpp_uczelnia LIMIT 1), COALESCE(to_char(MAX(ostatnio_zmieniony), 'YYYYMMDDHH24MISS'), to_char(NOW(), 'YYYYMMDDHH24MISS')) FROM bpp_rekord_mat;")
 
-# Parse the result using | as separator
-SKROT=$(echo "$QUERY_RESULT" | cut -d '|' -f 1 | xargs)
-TIMESTAMP=$(echo "$QUERY_RESULT" | cut -d '|' -f 2 | xargs)
+# Get skrot from bpp_uczelnia
+SKROT=$(psql -d "$SOURCE_DB" -A -t -c "SELECT skrot FROM bpp_uczelnia LIMIT 1;" | xargs)
+
+# Check if bpp_rekord_mat table exists and get timestamp
+TABLE_EXISTS=$(psql -d "$SOURCE_DB" -A -t -c "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'bpp_rekord_mat');" | xargs)
+
+if [ "$TABLE_EXISTS" = "t" ]; then
+    TIMESTAMP=$(psql -d "$SOURCE_DB" -A -t -c "SELECT COALESCE(to_char(MAX(ostatnio_zmieniony), 'YYYYMMDDHH24MISS'), to_char(NOW(), 'YYYYMMDDHH24MISS')) FROM bpp_rekord_mat;" | xargs)
+else
+    echo -e "${YELLOW}Note: bpp_rekord_mat table does not exist, using current timestamp${NC}"
+    TIMESTAMP=$(psql -d "$SOURCE_DB" -A -t -c "SELECT to_char(NOW(), 'YYYYMMDDHH24MISS');" | xargs)
+fi
 
 # Validate we got values
-if [ -z "$SKROT" ] || [ -z "$TIMESTAMP" ]; then
-    echo -e "${RED}Error: Could not query skrot from bpp_uczelnia or ostatnio_zmieniony from bpp_rekord_mat${NC}" >&2
+if [ -z "$SKROT" ]; then
+    echo -e "${RED}Error: Could not query skrot from bpp_uczelnia${NC}" >&2
+    exit 1
+fi
+
+if [ -z "$TIMESTAMP" ]; then
+    echo -e "${RED}Error: Could not determine timestamp${NC}" >&2
     exit 1
 fi
 
