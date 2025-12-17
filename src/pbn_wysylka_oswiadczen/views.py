@@ -1,7 +1,7 @@
 from io import BytesIO
 
 from django.core.paginator import Paginator
-from django.db.models import Count, Q
+from django.db.models import Count, Q, Sum
 from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
 from django.utils.decorators import method_decorator
@@ -139,6 +139,14 @@ class PbnWysylkaOswiadczenMainView(TemplateView):
         ciagle_count = ciagle_qs.count()
         zwarte_count = zwarte_qs.count()
 
+        # Calculate total oświadczeń (sum of liczba_oswiadczen across all publications)
+        ciagle_oswiadczen = (
+            ciagle_qs.aggregate(total=Sum("liczba_oswiadczen"))["total"] or 0
+        )
+        zwarte_oswiadczen = (
+            zwarte_qs.aggregate(total=Sum("liczba_oswiadczen"))["total"] or 0
+        )
+
         context["rok_od"] = rok_od
         context["rok_do"] = rok_do
         context["tytul"] = tytul
@@ -146,6 +154,7 @@ class PbnWysylkaOswiadczenMainView(TemplateView):
         context["ciagle_count"] = ciagle_count
         context["zwarte_count"] = zwarte_count
         context["total_count"] = ciagle_count + zwarte_count
+        context["total_oswiadczen"] = ciagle_oswiadczen + zwarte_oswiadczen
 
         # Add latest task information
         latest_task = PbnWysylkaOswiadczenTask.get_latest_task()
