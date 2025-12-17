@@ -236,6 +236,52 @@ The project uses multiple Django applications in `src/`:
 - Foundation's grid system classes should remain untouched to maintain framework integrity
 - Example: To make a column wider, change `<div class="medium-4 columns">` to `<div class="medium-12 columns">` in the HTML, don't override `.medium-4` in SCSS
 
+## CSS/SCSS Build System
+
+### Build Commands
+- `grunt build` - Build all SCSS themes and collect static files
+- `grunt watch` - Watch SCSS files for changes and rebuild automatically
+
+### Theme Files (Color Schemes)
+Three theme files in `src/bpp/static/scss/`:
+
+| Theme File | Primary Color |
+|------------|---------------|
+| `app-blue.scss` | `#1779ba` (Foundation default) |
+| `app-orange.scss` | `#f26621` |
+| `app-green.scss` | `green` |
+
+Each theme imports: settings -> common.scss -> components -> Foundation framework.
+
+### Common.scss
+Location: `src/bpp/static/scss/common.scss`
+
+Central style repository importing: `left_menu`, `top_bar`, `base_footer`, `search_banner`,
+`praca_detail`, `uczelnia`, `jednostka`, `flash_messages`, `komparator_pbn`,
+`ewaluacja_metryki`, `ewaluacja_optymalizacja`, `_support_button`.
+
+Also contains: external link styling, multiseek reports, Select2, discipline colors, print styles.
+
+### Key Component Files
+Location: `src/bpp/static/scss/`
+- `top_bar.scss` - Navigation header and dropdown menus
+- `browse*.scss` - Browse page styles
+- `checkbox.scss` - Form controls
+
+### Icon System - Foundation Icons
+Icons use `fi-*` classes. **Navigation menu icons require explicit sizing in `top_bar.scss`:**
+
+```scss
+.top-bar .dropdown.menu {
+    .menu.vertical .fi-icon-name {
+        font-size: 1.6rem;
+        margin-right: 0.8rem;
+    }
+}
+```
+
+When adding new icons to menus, add them to the selector list in `top_bar.scss` (lines 389-426).
+
 ### Settings Structure
 - `src/django_bpp/settings/base.py` - Base settings
 - `src/django_bpp/settings/local.py` - Development settings

@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Log #{{ log.pk }} - {{ block.super }}{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url 'pbn_wysylka_oswiadczen:main' %}">Wysyłka oświadczeń do PBN</a></li>
+    <li><a href="{% url 'pbn_wysylka_oswiadczen:logs' %}">Logi</a></li>
+    <li class="current">Log #{{ log.pk }}</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="large-12 columns">
+        <h1><span class="fi-page"></span> Szczegoly logu #{{ log.pk }}</h1>
+    </div>
+</div>
+
+<div class="row">
+    <div class="large-6 columns">
+        <div class="panel callout">
+            <h4><span class="fi-info"></span> Informacje podstawowe</h4>
+
+            <table>
+                <tr>
+                    <td><strong>ID:</strong></td>
+                    <td>{{ log.pk }}</td>
+                </tr>
+                <tr>
+                    <td><strong>Zadanie:</strong></td>
+                    <td>#{{ log.task.pk }}</td>
+                </tr>
+                <tr>
+                    <td><strong>PBN UID:</strong></td>
+                    <td><code>{{ log.pbn_uid }}</code></td>
+                </tr>
+                <tr>
+                    <td><strong>Status:</strong></td>
+                    <td>
+                        {% if log.status == "success" %}
+                        <span class="label success">Sukces</span>
+                        {% elif log.status == "error" %}
+                        <span class="label alert">Blad</span>
+                        {% else %}
+                        <span class="label secondary">Pominiete</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <td><strong>Liczba prob:</strong></td>
+                    <td>{{ log.retry_count }}</td>
+                </tr>
+                <tr>
+                    <td><strong>Data:</strong></td>
+                    <td>{{ log.created_at|date:"Y-m-d H:i:s" }}</td>
+                </tr>
+                <tr>
+                    <td><strong>Typ publikacji:</strong></td>
+                    <td>{{ log.content_type }}</td>
+                </tr>
+                <tr>
+                    <td><strong>ID publikacji:</strong></td>
+                    <td>{{ log.object_id }}</td>
+                </tr>
+            </table>
+
+            {% if log.publication %}
+            <p>
+                <a href="{% url 'bpp:browse_rekord' log.content_type_id log.object_id %}" class="button secondary small" target="_blank">
+                    <span class="fi-link"></span> Otworz publikacje
+                </a>
+            </p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="large-6 columns">
+        {% if log.error_message %}
+        <div class="panel callout alert">
+            <h4><span class="fi-alert"></span> Komunikat bledu</h4>
+            <pre style="white-space: pre-wrap; font-size: 0.85rem;">{{ log.error_message }}</pre>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% if log.json_sent %}
+<div class="row">
+    <div class="large-12 columns">
+        <div class="panel">
+            <h4><span class="fi-arrow-right"></span> JSON wyslany do PBN</h4>
+            <pre style="white-space: pre-wrap; background: #f5f5f5; padding: 1rem; font-size: 0.8rem; max-height: 400px; overflow-y: auto;">{{ log.json_sent|pprint }}</pre>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if log.json_response %}
+<div class="row">
+    <div class="large-12 columns">
+        <div class="panel">
+            <h4><span class="fi-arrow-left"></span> Odpowiedz z PBN</h4>
+            <pre style="white-space: pre-wrap; background: #f5f5f5; padding: 1rem; font-size: 0.8rem; max-height: 400px; overflow-y: auto;">{{ log.json_response|pprint }}</pre>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="row">
+    <div class="large-12 columns">
+        <a href="{% url 'pbn_wysylka_oswiadczen:logs' %}?task_id={{ log.task_id }}" class="button secondary">
+            <span class="fi-arrow-left"></span> Powrot do logow
+        </a>
+    </div>
+</div>
+{% endblock %}

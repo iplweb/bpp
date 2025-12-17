@@ -56,7 +56,12 @@
       "Bash(docker exec:*)",
       "Bash(git add:*)",
       "Bash(pre-commit)",
-      "Bash(DJANGO_SETTINGS_MODULE=django_bpp.settings.local uv run python:*)"
+      "Bash(DJANGO_SETTINGS_MODULE=django_bpp.settings.local uv run python:*)",
+      "mcp__playwright__browser_click",
+      "mcp__playwright__browser_hover",
+      "mcp__playwright__browser_take_screenshot",
+      "Bash(tr:*)",
+      "mcp__playwright__browser_fill_form"
     ],
     "deny": [],
     "ask": [],

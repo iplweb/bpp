@@ -391,6 +391,7 @@ INSTALLED_APPS = [
     "crossref_bpp",
     "pbn_api",
     "pbn_export_queue",
+    "pbn_komparator_zrodel",
     "dal",
     "dal_select2",
     "grappelli",
@@ -455,6 +456,7 @@ INSTALLED_APPS = [
     "przemapuj_zrodla_pbn",
     "przemapuj_zrodlo",
     "pbn_downloader_app",
+    "pbn_wysylka_oswiadczen",
     "pbn_integrator",
     "pbn_import",
     "komparator_pbn_udzialy",
@@ -593,6 +595,10 @@ CELERYBEAT_SCHEDULE = {
     "scan-for-duplicates-daily": {
         "task": "deduplikator_autorow.scan_for_duplicates",
         "schedule": crontab(hour=3, minute=0),  # Daily at 3 AM
+    },
+    "cleanup-oswiadczenia-export-files": {
+        "task": "oswiadczenia.tasks.remove_old_oswiadczenia_export_files",
+        "schedule": timedelta(days=1),
     },
 }
 

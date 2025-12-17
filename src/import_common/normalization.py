@@ -141,9 +141,9 @@ def normalize_kod_dyscypliny(k):
     if k.find(".") >= 0:
         return k
 
-    if len(k) == 4 and k[0] in "123456789":
-        # 1001 -> 10.1
-        return f"{k[0]}{k[1]}.{int(k[2:])}"
+    if len(k) == 4 and k[:2] == "10":
+        # 1001 -> 10.1, 1010 -> 10.10
+        return f"10.{int(k[2:])}"
 
     return f"{k[0]}.{int(k[1:])}"
 

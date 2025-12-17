@@ -422,5 +422,13 @@ class Wydawnictwo_CiagleAdmin(
         sprobuj_policzyc_sloty(request, obj)
         sprawdz_duplikaty_www_doi(request, obj)
 
+    def lookup_allowed(self, lookup, value):
+        if lookup in (
+            "autorzy_set__dyscyplina_naukowa__isnull",
+            "autorzy_set__data_oswiadczenia__isnull",
+        ):
+            return True
+        return super().lookup_allowed(lookup, value)
+
 
 admin.site.register(Wydawnictwo_Ciagle, Wydawnictwo_CiagleAdmin)

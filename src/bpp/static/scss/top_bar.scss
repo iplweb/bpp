@@ -254,6 +254,12 @@
         display: flex !important;  // Ensure flex display is maintained when visible
     }
 
+    // Opens-left support for two-column menus - align to right edge when button is near right side
+    .dropdown.menu > li.has-submenu.opens-left > .menu-columns-wrapper {
+        left: auto !important;
+        right: 0 !important;
+    }
+
     // Add arrow for has-submenu items (like operacje)
     .dropdown.menu > li.has-submenu > a::after {
         content: "";
@@ -387,6 +393,7 @@
     .menu.vertical .fi-list-number,
     .menu.vertical .fi-target-two,
     .menu.vertical .fi-camera,
+    .menu.vertical .fi-print,
     .menu.vertical .fi-torso,
     .menu.vertical .fi-clipboard-notes,
     .menu.vertical .fi-clipboard-pencil,
@@ -408,7 +415,9 @@
     .menu.vertical .fi-home,
     .menu.vertical .fi-cloud,
     .menu.vertical .fi-pencil,
-    .menu.vertical .fi-torso-business {
+    .menu.vertical .fi-torso-business,
+    .menu.vertical .fi-graph-pie,
+    .menu.vertical .fi-x-circle {
         font-size: 1.6rem;
         margin-right: 0.8rem;
     }

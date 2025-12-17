@@ -1,18 +1,18 @@
 {% extends "base.html" %}
 
 {% block title %}
-    Wydruk oswiadczen 2022-2025
+    Wydruk oświadczeń 2022-2025
 {% endblock %}
 
 {% block breadcrumbs %}
     {{ block.super }}
-    <li class="current">Wydruk oswiadczen 2022-2025</li>
+    <li class="current">Wydruk oświadczeń 2022-2025</li>
 {% endblock %}
 
 {% block content %}
     <div class="row">
         <div class="medium-12 columns">
-            <h1>Wydruk oswiadczen 2022-2025</h1>
+            <h1>Wydruk oświadczeń 2022-2025</h1>
         </div>
     </div>
     <div class="row">
@@ -38,9 +38,9 @@
                         </label>
                     </div>
                     <div class="medium-2 columns">
-                        <label>Tytul:
+                        <label>Tytuł:
                             <input type="text" name="szukaj_tytul" value="{{ szukaj_tytul }}"
-                                   placeholder="Szukaj tytulu...">
+                                   placeholder="Szukaj tytułu...">
                         </label>
                     </div>
                     <div class="medium-2 columns">
@@ -53,7 +53,16 @@
                             </select>
                         </label>
                     </div>
-                    <div class="medium-2 columns" style="padding-top: 1.5rem;">
+                    <div class="medium-1 columns">
+                        <label>Przypięta:
+                            <select name="przypieta">
+                                {% for val, label in przypieta_choices %}
+                                    <option value="{{ val }}" {% if przypieta == val %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </label>
+                    </div>
+                    <div class="medium-1 columns" style="padding-top: 1.5rem;">
                         <button type="submit" class="button">
                             <span class="fi-filter"></span> Filtruj
                         </button>
@@ -62,78 +71,126 @@
                         </a>
                     </div>
                 </div>
-                <div class="row">
-                    <div class="medium-12 columns" style="padding-top: 0.5rem;">
-                        {% if filter_query_string %}
-                            <a href="{% url 'oswiadczenia:wydruk-2022-25-export' %}?{{ filter_query_string }}"
-                               class="button success">
-                                <span class="fi-download"></span> Eksport XLSX
-                            </a>
-                        {% else %}
-                            <a href="{% url 'oswiadczenia:wydruk-2022-25-export' %}"
-                               class="button success">
-                                <span class="fi-download"></span> Eksport XLSX
-                            </a>
-                        {% endif %}
-                    </div>
-                </div>
             </form>
-            <div class="row">
-                <div class="medium-12 columns" style="padding-top: 0.5rem;">
-                    <strong>Generuj ZIP (HTML):</strong>
-                    {% if export_ranges %}
-                        {% for start, end, label in export_ranges %}
-                            <form method="post"
-                                  action="{% url 'oswiadczenia:start-export' %}?{% if filter_query_string %}{{ filter_query_string }}&{% endif %}offset={{ start }}&limit={{ export_chunk_size }}"
-                                  style="display: inline;">
-                                {% csrf_token %}
-                                <input type="hidden" name="format" value="html">
-                                <button type="submit" class="button warning small">
-                                    <span class="fi-archive"></span> {{ label }}
-                                </button>
-                            </form>
-                        {% endfor %}
-                    {% else %}
+
+            <div class="row" style="padding-top: 0.5rem;">
+                {% if not export_ranges %}
+                <div class="medium-6 columns">
+                    <fieldset style="border: 1px solid #ccc; padding: 0.5rem; margin-bottom: 0.5rem;">
+                        <legend style="font-weight: bold; padding: 0 0.5rem;">ZIP (wiele plikow)</legend>
                         <form method="post"
                               action="{% url 'oswiadczenia:start-export' %}{% if filter_query_string %}?{{ filter_query_string }}{% endif %}"
                               style="display: inline;">
                             {% csrf_token %}
                             <input type="hidden" name="format" value="html">
                             <button type="submit" class="button warning">
-                                <span class="fi-archive"></span> Generuj ZIP (HTML)
+                                <span class="fi-archive"></span> HTML
                             </button>
                         </form>
-                    {% endif %}
-                </div>
-            </div>
-            <div class="row">
-                <div class="medium-12 columns" style="padding-top: 0.5rem;">
-                    <strong>Generuj ZIP (PDF):</strong>
-                    {% if export_ranges %}
-                        {% for start, end, label in export_ranges %}
-                            <form method="post"
-                                  action="{% url 'oswiadczenia:start-export' %}?{% if filter_query_string %}{{ filter_query_string }}&{% endif %}offset={{ start }}&limit={{ export_chunk_size }}"
-                                  style="display: inline;">
-                                {% csrf_token %}
-                                <input type="hidden" name="format" value="pdf">
-                                <button type="submit" class="button small">
-                                    <span class="fi-archive"></span> {{ label }}
-                                </button>
-                            </form>
-                        {% endfor %}
-                    {% else %}
                         <form method="post"
                               action="{% url 'oswiadczenia:start-export' %}{% if filter_query_string %}?{{ filter_query_string }}{% endif %}"
                               style="display: inline;">
                             {% csrf_token %}
                             <input type="hidden" name="format" value="pdf">
                             <button type="submit" class="button">
-                                <span class="fi-archive"></span> Generuj ZIP (PDF)
+                                <span class="fi-archive"></span> PDF
                             </button>
                         </form>
-                    {% endif %}
+                        <form method="post"
+                              action="{% url 'oswiadczenia:start-export' %}{% if filter_query_string %}?{{ filter_query_string }}{% endif %}"
+                              style="display: inline;">
+                            {% csrf_token %}
+                            <input type="hidden" name="format" value="docx">
+                            <button type="submit" class="button secondary">
+                                <span class="fi-archive"></span> DOCX
+                            </button>
+                        </form>
+                    </fieldset>
+                </div>
+                {% endif %}
+
+                <div class="medium-6 columns">
+                    <fieldset style="border: 1px solid #ccc; padding: 0.5rem; margin-bottom: 0.5rem;">
+                        <legend style="font-weight: bold; padding: 0 0.5rem;">Jeden plik</legend>
+                        <a href="{% url 'oswiadczenia:wydruk-2022-25-export' %}{% if filter_query_string %}?{{ filter_query_string }}{% endif %}"
+                           class="button success">
+                            <span class="fi-download"></span> XLSX
+                        </a>
+                        <form method="post"
+                              action="{% url 'oswiadczenia:start-export' %}{% if filter_query_string %}?{{ filter_query_string }}{% endif %}"
+                              style="display: inline;">
+                            {% csrf_token %}
+                            <input type="hidden" name="format" value="html_single">
+                            <button type="submit" class="button warning">
+                                <span class="fi-page"></span> HTML
+                            </button>
+                        </form>
+                        <form method="post"
+                              action="{% url 'oswiadczenia:start-export' %}{% if filter_query_string %}?{{ filter_query_string }}{% endif %}"
+                              style="display: inline;">
+                            {% csrf_token %}
+                            <input type="hidden" name="format" value="pdf_single">
+                            <button type="submit" class="button">
+                                <span class="fi-page"></span> PDF
+                            </button>
+                        </form>
+                        <form method="post"
+                              action="{% url 'oswiadczenia:start-export' %}{% if filter_query_string %}?{{ filter_query_string }}{% endif %}"
+                              style="display: inline;">
+                            {% csrf_token %}
+                            <input type="hidden" name="format" value="docx_single">
+                            <button type="submit" class="button secondary">
+                                <span class="fi-page"></span> DOCX
+                            </button>
+                        </form>
+                    </fieldset>
                 </div>
             </div>
+
+            {% if export_ranges %}
+            <div class="row">
+                <div class="medium-12 columns">
+                    <fieldset style="border: 1px solid #ccc; padding: 0.5rem; margin-bottom: 0.5rem;">
+                        <legend style="font-weight: bold; padding: 0 0.5rem;">ZIP (czesci)</legend>
+                        {% for start, end, label in export_ranges %}
+                            <form method="post"
+                                  action="{% url 'oswiadczenia:start-export' %}?{% if filter_query_string %}{{ filter_query_string }}&{% endif %}offset={{ start }}&limit={{ export_chunk_size }}"
+                                  style="display: inline;">
+                                {% csrf_token %}
+                                <input type="hidden" name="format" value="html">
+                                <button type="submit" class="button warning tiny">
+                                    HTML {{ label }}
+                                </button>
+                            </form>
+                        {% endfor %}
+                        |
+                        {% for start, end, label in export_ranges %}
+                            <form method="post"
+                                  action="{% url 'oswiadczenia:start-export' %}?{% if filter_query_string %}{{ filter_query_string }}&{% endif %}offset={{ start }}&limit={{ export_chunk_size }}"
+                                  style="display: inline;">
+                                {% csrf_token %}
+                                <input type="hidden" name="format" value="pdf">
+                                <button type="submit" class="button tiny">
+                                    PDF {{ label }}
+                                </button>
+                            </form>
+                        {% endfor %}
+                        |
+                        {% for start, end, label in export_ranges %}
+                            <form method="post"
+                                  action="{% url 'oswiadczenia:start-export' %}?{% if filter_query_string %}{{ filter_query_string }}&{% endif %}offset={{ start }}&limit={{ export_chunk_size }}"
+                                  style="display: inline;">
+                                {% csrf_token %}
+                                <input type="hidden" name="format" value="docx">
+                                <button type="submit" class="button secondary tiny">
+                                    DOCX {{ label }}
+                                </button>
+                            </form>
+                        {% endfor %}
+                    </fieldset>
+                </div>
+            </div>
+            {% endif %}
         </div>
     </div>
 
@@ -195,14 +252,14 @@
                     <td>
                         <a href="{% url 'oswiadczenia:jedno-oswiadczenie' entry.rekord.id.0 entry.rekord.id.1 entry.autor.id entry.dyscyplina_naukowa.id %}"
                            target="_blank"
-                           title="Wydruk oswiadczenia dla dyscypliny zgloszonej"
+                           title="Wydruk oświadczenia dla dyscypliny zgłoszonej"
                            class="button tiny success">
                             <span class="fi-print"></span>
                         </a>
                         {% if entry.autor_dyscyplina_info.ma_dwie_dyscypliny %}
                             <a href="{% url 'oswiadczenia:jedno-oswiadczenie-druga-dyscyplina' entry.rekord.id.0 entry.rekord.id.1 entry.autor.id entry.dyscyplina_naukowa.id %}"
                                target="_blank"
-                               title="Wydruk oswiadczenia dla alternatywnej dyscypliny"
+                               title="Wydruk oświadczenia dla alternatywnej dyscypliny"
                                class="button tiny warning">
                                 <span class="fi-print"></span>
                             </a>
@@ -212,7 +269,7 @@
             {% empty %}
                 <tr>
                     <td colspan="7" class="text-center">
-                        Brak rekordow z dyscyplinami dla wybranych kryteriow.
+                        Brak rekordów z dyscyplinami dla wybranych kryteriów.
                     </td>
                 </tr>
             {% endfor %}

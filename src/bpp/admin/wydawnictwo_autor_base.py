@@ -51,6 +51,7 @@ class Wydawnictwo_Autor_Base(
         "upowaznienie_pbn",
         "dyscyplina_naukowa",
         "przypieta",
+        "data_oswiadczenia",
     ]
     search_fields = [
         "rekord__tytul_oryginalny",

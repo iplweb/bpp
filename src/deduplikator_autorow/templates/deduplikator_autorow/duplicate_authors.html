@@ -383,6 +383,8 @@
             <!-- Local messages placeholder that respects sidebar layout -->
             <div id="localMessagesPlaceholder" style="margin-bottom: 20px;"></div>
 
+            {% include "includes/pbn_freshness_warning.html" with custom_message="Analiza duplikatów opiera się na lokalnej kopii danych autorów z PBN. Wyniki mogą być nieaktualne." %}
+
             <div class="grid-x grid-padding-x align-middle" style="margin-bottom: 20px;">
                 <div class="cell auto">
                     <h1>Deduplikator Autorów PBN <span class="label warning" style="font-size: 0.6em; vertical-align: top;">BETA</span></h1>

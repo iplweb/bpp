@@ -87,6 +87,8 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
         help_text="Informacja eksportowana do PBN, gdy uzupełniono",
     )
 
+    ostatnio_zmieniony = models.DateTimeField(auto_now=True, db_index=True)
+
     class Meta:
         abstract = True
         ordering = ("kolejnosc", "typ_odpowiedzialnosci__skrot")

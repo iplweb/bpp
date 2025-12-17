@@ -237,6 +237,14 @@ class KomparatorMainView(TemplateView):
         latest_task = PbnDownloadTask.get_latest_task()
         context["latest_task"] = latest_task
 
+        # Add PBN data freshness checks
+        from pbn_downloader_app.freshness import is_all_pbn_data_fresh
+
+        is_fresh, stale_messages, last_downloads = is_all_pbn_data_fresh()
+        context["pbn_data_fresh"] = is_fresh
+        context["pbn_stale_messages"] = stale_messages
+        context["pbn_last_downloads"] = last_downloads
+
         return context
 
 

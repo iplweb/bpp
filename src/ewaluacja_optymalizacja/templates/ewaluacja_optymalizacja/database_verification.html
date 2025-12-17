@@ -96,12 +96,11 @@
         </table>
 
         {% else %}
-        <!-- Brak problemów -->
+        <!-- Brak prac ze slotami poniżej 0.1 -->
         <div class="callout success">
-            <h4><span class="fi-check"></span> Brak problemów</h4>
+            <h4><span class="fi-check"></span> Brak prac ze slotami poniżej 0.1</h4>
             <p style="margin-bottom: 0;">
                 Nie znaleziono prac ze slotami poniżej 0.1 w latach 2022-2025.
-                Baza danych jest poprawna i gotowa do dalszych kroków optymalizacji.
             </p>
         </div>
 
@@ -109,6 +108,110 @@
             <a href="{% url 'ewaluacja_optymalizacja:index' %}" class="button secondary">
                 <span class="fi-arrow-left"></span> Powrót
             </a>
+        </div>
+        {% endif %}
+
+        <!-- Sekcja: Brak daty oświadczenia -->
+        <hr style="margin: 2rem 0;">
+        <h2><span class="fi-calendar"></span> Brak daty oświadczenia</h2>
+        <p>
+            Poniższe liczby pokazują publikacje od roku 2022, gdzie autor ma ustawioną dyscyplinę naukową,
+            ale nie ma uzupełnionej daty oświadczenia.
+        </p>
+
+        <div class="callout info">
+            <p>
+                <strong>Wydawnictwa ciągłe:</strong> {{ brak_oswiadczenia_ciagle_count }} publikacji<br>
+                <strong>Wydawnictwa zwarte:</strong> {{ brak_oswiadczenia_zwarte_count }} publikacji
+            </p>
+        </div>
+
+        <div class="button-group">
+            {% if brak_oswiadczenia_ciagle_count > 0 %}
+            <a href="{% url 'admin:bpp_wydawnictwo_ciagle_changelist' %}?rok__gte=2022&autorzy_set__dyscyplina_naukowa__isnull=False&autorzy_set__data_oswiadczenia__isnull=True"
+               class="button"
+               target="_blank">
+                <span class="fi-page-multiple"></span> Wydawnictwa ciągłe w admin
+            </a>
+            {% endif %}
+            {% if brak_oswiadczenia_zwarte_count > 0 %}
+            <a href="{% url 'admin:bpp_wydawnictwo_zwarte_changelist' %}?rok__gte=2022&autorzy_set__dyscyplina_naukowa__isnull=False&autorzy_set__data_oswiadczenia__isnull=True"
+               class="button"
+               target="_blank">
+                <span class="fi-page-multiple"></span> Wydawnictwa zwarte w admin
+            </a>
+            {% endif %}
+        </div>
+
+        <!-- Sekcja: Prace z dyscypliną, ale bez przypięcia -->
+        <hr style="margin: 2rem 0;">
+        <h2><span class="fi-unlink"></span> Prace z dyscypliną, ale bez przypięcia</h2>
+        <p>
+            Poniższe rekordy mają ustawioną dyscyplinę naukową, ale pole "przypieta" ma wartość False.
+            Oznacza to, że dyscyplina nie będzie używana do obliczeń punktowych ani eksportu do PBN.
+        </p>
+
+        {% if nieprzypiete_ciagle %}
+        <h3>Wydawnictwa ciągłe ({{ nieprzypiete_ciagle|length }})</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Tytuł pracy</th>
+                    <th>Autor</th>
+                    <th>Dyscyplina</th>
+                    <th>Rok</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for record in nieprzypiete_ciagle %}
+                <tr>
+                    <td>
+                        <a href="{{ record.rekord.get_absolute_url }}" target="_blank">
+                            {{ record.rekord.tytul_oryginalny|truncatewords:10 }}
+                        </a>
+                    </td>
+                    <td>{{ record.autor.nazwisko }} {{ record.autor.imiona }}</td>
+                    <td>{{ record.dyscyplina_naukowa.nazwa }}</td>
+                    <td style="text-align: center;">{{ record.rekord.rok }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="callout success">
+            <p style="margin-bottom: 0;">Brak wydawnictw ciągłych z odpiętą dyscypliną.</p>
+        </div>
+        {% endif %}
+
+        {% if nieprzypiete_zwarte %}
+        <h3>Wydawnictwa zwarte ({{ nieprzypiete_zwarte|length }})</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Tytuł pracy</th>
+                    <th>Autor</th>
+                    <th>Dyscyplina</th>
+                    <th>Rok</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for record in nieprzypiete_zwarte %}
+                <tr>
+                    <td>
+                        <a href="{{ record.rekord.get_absolute_url }}" target="_blank">
+                            {{ record.rekord.tytul_oryginalny|truncatewords:10 }}
+                        </a>
+                    </td>
+                    <td>{{ record.autor.nazwisko }} {{ record.autor.imiona }}</td>
+                    <td>{{ record.dyscyplina_naukowa.nazwa }}</td>
+                    <td style="text-align: center;">{{ record.rekord.rok }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="callout success">
+            <p style="margin-bottom: 0;">Brak wydawnictw zwartych z odpiętą dyscypliną.</p>
         </div>
         {% endif %}
     </div>

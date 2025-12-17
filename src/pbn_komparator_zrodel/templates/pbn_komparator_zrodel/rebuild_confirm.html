@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block title %}
+    Przebuduj rozbieżności - Komparator źródeł BPP-PBN
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url 'pbn_komparator_zrodel:list' %}">Komparator źródeł BPP-PBN</a></li>
+    <li class="current">Przebuduj rozbieżności</li>
+{% endblock %}
+
+{% block content %}
+    <div class="row">
+        <div class="medium-12 columns">
+            <h1>Przebuduj rozbieżności</h1>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="medium-8 columns">
+            <div class="callout">
+                <h4>Informacje</h4>
+                <p>
+                    Ta operacja porówna wszystkie źródła BPP posiadające powiązanie z PBN
+                    i zapisze znalezione rozbieżności w punktach i dyscyplinach.
+                </p>
+                <p>
+                    <strong>Aktualna liczba rozbieżności:</strong> {{ current_count }}
+                </p>
+                {% if meta.ostatnie_uruchomienie %}
+                    <p>
+                        <strong>Ostatnie uruchomienie:</strong> {{ meta.ostatnie_uruchomienie|date:"Y-m-d H:i" }}
+                    </p>
+                {% endif %}
+                {% if meta.status == "running" %}
+                    <p class="warning">
+                        <span class="fi-alert"></span>
+                        <strong>Uwaga:</strong> Zadanie jest aktualnie w trakcie wykonywania.
+                    </p>
+                {% endif %}
+            </div>
+
+            {% if not pbn_data_fresh %}
+            <div class="callout alert">
+                <h4><span class="fi-alert"></span> Dane PBN nieaktualne</h4>
+                <p>
+                    {{ pbn_stale_message }}
+                </p>
+                {% if pbn_last_download %}
+                    <p>
+                        <strong>Ostatnie pobranie danych źródeł:</strong> {{ pbn_last_download|date:"Y-m-d H:i" }}
+                    </p>
+                {% endif %}
+                <p>
+                    Aby uruchomić porównywanie, najpierw pobierz aktualne dane źródeł z PBN:
+                </p>
+                <a href="{% url 'pbn_downloader_app:main' %}" class="button">
+                    <span class="fi-download"></span> Przejdź do pobierania danych PBN
+                </a>
+            </div>
+            {% else %}
+
+            <form method="post">
+                {% csrf_token %}
+                <div class="row">
+                    <div class="medium-6 columns">
+                        <label>Minimalny rok:
+                            <input type="number" name="min_rok" value="2022" min="2000" max="2100">
+                        </label>
+                        <p class="help-text">Porównaj tylko dane dla lat począwszy od tego roku.</p>
+                    </div>
+                    <div class="medium-6 columns">
+                        <label>
+                            <input type="checkbox" name="clear_existing" checked>
+                            Wyczyść istniejące rozbieżności przed porównaniem
+                        </label>
+                        <p class="help-text">Zalecane - usuwa stare dane przed utworzeniem nowych.</p>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="medium-12 columns">
+                        <button type="submit" class="button alert"
+                                onclick="return confirm('Czy na pewno chcesz uruchomić przebudowę rozbieżności?');">
+                            <span class="fi-refresh"></span> Rozpocznij przebudowę
+                        </button>
+                        <a href="{% url 'pbn_komparator_zrodel:list' %}" class="button secondary">
+                            <span class="fi-arrow-left"></span> Anuluj
+                        </a>
+                    </div>
+                </div>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+{% endblock %}

@@ -1,0 +1,24 @@
+{% if not pbn_data_fresh %}
+<div class="callout alert">
+    <h4><span class="fi-alert"></span> Dane PBN nieaktualne</h4>
+    {% if pbn_stale_messages %}
+        <p>Niektóre dane PBN nie są aktualne lub nigdy nie zostały pobrane:</p>
+        <ul>
+        {% for msg in pbn_stale_messages %}
+            <li>{{ msg }}</li>
+        {% endfor %}
+        </ul>
+    {% else %}
+        <p>{{ pbn_stale_message }}</p>
+    {% endif %}
+    {% if pbn_last_download %}
+    <p><strong>Ostatnie pobranie:</strong> {{ pbn_last_download|date:"Y-m-d H:i" }}</p>
+    {% endif %}
+    {% if custom_message %}
+    <p>{{ custom_message }}</p>
+    {% endif %}
+    <a href="{% url 'pbn_downloader_app:main' %}" class="button">
+        <span class="fi-download"></span> Przejdź do pobierania danych PBN
+    </a>
+</div>
+{% endif %}

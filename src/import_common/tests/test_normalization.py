@@ -22,6 +22,10 @@ from import_common.normalization import (
         ("1001", "10.1"),
         ("1010", "10.10"),
         ("4.1", "4.1"),
+        # 4-digit codes with single-digit area (regression test for bug fix)
+        ("2061", "2.61"),  # area 2, subdiscipline 61
+        ("201", "2.1"),  # area 2, subdiscipline 1
+        ("209", "2.9"),  # area 2, subdiscipline 9
     ],
 )
 def test_normalize_kod_dyscypliny(i, o):

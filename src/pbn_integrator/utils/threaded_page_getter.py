@@ -16,7 +16,9 @@ class ThreadedPageGetter:
         """
         self.max_workers = max_workers
         self.model_class = model_class
-        self.pbn_api_klass = model_class  # Alias for backward compatibility
+        # Only set pbn_api_klass if model_class is provided, to preserve class attributes
+        if model_class is not None:
+            self.pbn_api_klass = model_class
         self.client = None
         self.data = None
 

@@ -1,7 +1,7 @@
 {% if task.status == "pending" %}
     <div class="callout warning">
         <h4><span class="fi-clock"></span> Oczekuje na uruchomienie...</h4>
-        <p>Zadanie zostalo dodane do kolejki i wkrotce zostanie uruchomione.</p>
+        <p>Zadanie zostało dodane do kolejki i wkrótce zostanie uruchomione.</p>
     </div>
 {% elif task.status == "running" %}
     <div class="callout warning">
@@ -12,28 +12,52 @@
                 <p class="progress-meter-text">{{ task.progress_percent }}%</p>
             </div>
         </div>
-        <p><strong>Postep:</strong> {{ task.processed_items }} / {{ task.total_items }}</p>
+        <p><strong>Postęp:</strong> {{ task.processed_items }} / {{ task.total_items }}</p>
         {% if task.current_item %}
             <p><strong>Aktualnie:</strong> {{ task.current_item }}</p>
         {% endif %}
     </div>
 {% elif task.status == "completed" %}
     <div class="callout success">
-        <h4><span class="fi-check"></span> Zakonczono!</h4>
+        <h4><span class="fi-check"></span> Zakończono!</h4>
         {% if task.result_file %}
-            <p>Plik ZIP zostal wygenerowany pomyslnie.</p>
-            <p><strong>Przetworzono:</strong> {{ task.processed_items }} oswiadczen</p>
-            <a href="{% url 'oswiadczenia:download-result' task.pk %}" class="button success large">
-                <span class="fi-download"></span> Pobierz plik ZIP
+            {% if "single" in task.export_format %}
+                <p>Plik {{ task.get_export_format_display }} został wygenerowany pomyślnie.</p>
+            {% else %}
+                <p>Plik ZIP został wygenerowany pomyślnie.</p>
+            {% endif %}
+            <p><strong>Przetworzono:</strong> {{ task.processed_items }} oświadczeń</p>
+            <p><em>Plik powinien pobrać się automatycznie w tle. Jeżeli tak się nie stało, skorzystaj z poniższego przycisku.</em></p>
+            <a href="{% url 'oswiadczenia:download-result' task.pk %}" class="button success large"
+               id="download-link">
+                <span class="fi-download"></span>
+                {% if "single" in task.export_format %}
+                    Pobierz plik
+                {% else %}
+                    Pobierz plik ZIP
+                {% endif %}
             </a>
+            <script>
+                // Auto-download when task completes
+                (function() {
+                    var downloadLink = document.getElementById('download-link');
+                    if (downloadLink && !window.autoDownloadTriggered) {
+                        window.autoDownloadTriggered = true;
+                        // Small delay to ensure UI is visible first
+                        setTimeout(function() {
+                            window.location.href = downloadLink.href;
+                        }, 500);
+                    }
+                })();
+            </script>
         {% else %}
             <p>{{ task.error_message }}</p>
         {% endif %}
     </div>
 {% elif task.status == "failed" %}
     <div class="callout alert">
-        <h4><span class="fi-x"></span> Blad!</h4>
-        <p>Wystapil blad podczas generowania plikow:</p>
+        <h4><span class="fi-x"></span> Błąd!</h4>
+        <p>Wystąpił błąd podczas generowania plików:</p>
         <pre>{{ task.error_message }}</pre>
     </div>
 {% endif %}

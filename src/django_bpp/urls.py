@@ -208,11 +208,16 @@ urlpatterns = (
             "pbn_downloader_app/",
             include("pbn_downloader_app.urls", namespace="pbn_downloader_app"),
         ),
+        path(
+            "pbn-wysylka-oswiadczen/",
+            include("pbn_wysylka_oswiadczen.urls", namespace="pbn_wysylka_oswiadczen"),
+        ),
         path("rozbieznosci_dyscyplin/", include("rozbieznosci_dyscyplin.urls")),
         path("rozbieznosci_if/", include("rozbieznosci_if.urls")),
         path("rozbieznosci_pk/", include("rozbieznosci_pk.urls")),
         path("komparator-pbn-udzialy/", include("komparator_pbn_udzialy.urls")),
         path("komparator-publikacji-pbn/", include("komparator_publikacji_pbn.urls")),
+        path("komparator-zrodel-pbn/", include("pbn_komparator_zrodel.urls")),
         path(
             "deduplikator_autorow/",
             include(

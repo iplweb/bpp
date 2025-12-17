@@ -32,7 +32,7 @@ class JezykQueryObject(BppMultiseekVisibilityMixin, QueryObject):
     field_name = "jezyk"
 
     def value_from_web(self, value):
-        return Jezyk.objects.get(nazwa=value)
+        return Jezyk.objects.filter(nazwa=value).first()
 
 
 # Simple integer/decimal query objects created with factory functions

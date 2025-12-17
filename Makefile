@@ -29,7 +29,7 @@
 
 BRANCH=`git branch | sed -n '/\* /s///p'`
 
-.PHONY: clean distclean tests release tests-without-selenium tests-with-selenium docker destroy-test-databases coveralls-upload clean-coverage combine-coverage cache-delete buildx-cache-stats buildx-cache-prune buildx-cache-prune-aggressive bump-dev bump-release bump-and-start-dev
+.PHONY: clean distclean tests release tests-without-selenium tests-with-selenium docker destroy-test-databases coveralls-upload clean-coverage combine-coverage cache-delete buildx-cache-stats buildx-cache-prune buildx-cache-prune-aggressive bump-dev bump-release bump-and-start-dev migrate
 
 PYTHON=python3
 
@@ -267,7 +267,7 @@ loc: clean
 	pygount -N ... -F "...,staticroot,migrations,fixtures" src --format=summary
 
 
-DOCKER_VERSION="202512.1292"
+DOCKER_VERSION="202512.1293"
 
 DOCKER_BUILD=build --platform linux/amd64 --push
 #--no-cache
@@ -349,6 +349,9 @@ celery-worker-denorm:
 denorm-queue:
 	uv run python src/manage.py denorm_queue
 
+migrate:
+	uv run python src/manage.py migrate
+
 cache-delete:
 	python src/manage.py clear_cache
 
@@ -356,3 +359,13 @@ docker-celery-inspect:
 	docker compose exec workerserver-general uv run celery -A django_bpp.celery_tasks inspect active
 	docker compose exec workerserver-general uv run celery -A django_bpp.celery_tasks inspect active_queues
 	docker compose exec workerserver-general uv run celery -A django_bpp.celery_tasks inspect stats | grep max-concurrency
+
+refresh:
+	docker system prune -f
+	docker compose stop
+	docker compose rm -f
+	docker compose up -d
+	docker system prune -f
+
+remove-denorms:
+	echo "DELETE FROM denorm_dirtyinstance;" | uv run python src/manage.py dbshell

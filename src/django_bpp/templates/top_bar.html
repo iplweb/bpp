@@ -107,49 +107,57 @@
                 }
             </script>
 
-            <li>
-                <a href="#"><i class="fi-graph-bar"></i> ewaluacja</a>
-                <ul class="menu vertical" id="top-bar-menu-ewaluacji">
+            <li class="has-submenu">
+                <a href="#" data-toggle><i class="fi-graph-bar"></i> ewaluacja</a>
+                <div class="menu-columns-wrapper" data-submenu id="top-bar-menu-ewaluacji">
                     {% if request.user.is_superuser or request.user|has_group:"wprowadzanie danych" %}
-                        <li><a href="{% url "ewaluacja_liczba_n:index" %}"><i class="fi-list-number"></i> liczba N</a></li>
-                        <li><a href="{% url "ewaluacja_metryki:lista" %}"><i class="fi-graph-trend"></i> metryki ewaluacyjne</a></li>
-                        <li><a href="{% url "ewaluacja_optymalizacja:index" %}"><i class="fi-target-two"></i> optymalizacja ewaluacji</a></li>
-                        <li><a href="{% url "snapshot_odpiec:index" %}"><i class="fi-camera"></i> snapshoty odpięć</a></li>
-                        <li><a href="{% url "oswiadczenia:wydruk-2022-25" %}"><i class="fi-print"></i> wydruk oświadczeń 2022-25</a></li>
-                    <hr>
+                        <ul class="menu vertical column-1">
+                            <li><a href="{% url "ewaluacja_liczba_n:index" %}"><i class="fi-list-number"></i> liczba N</a></li>
+                            <li><a href="{% url "ewaluacja_metryki:lista" %}"><i class="fi-graph-trend"></i> metryki ewaluacyjne</a></li>
+                            <li><a href="{% url "ewaluacja_optymalizacja:index" %}"><i class="fi-target-two"></i> optymalizacja ewaluacji</a></li>
+                            <li><a href="{% url "snapshot_odpiec:index" %}"><i class="fi-camera"></i> snapshoty odpięć</a></li>
+                            <li><a href="{% url "oswiadczenia:wydruk-2022-25" %}"><i class="fi-print"></i> wydruk oświadczeń 2022-25</a></li>
+                        </ul>
                     {% endif %}
                     {% load czy_pokazywac %}
                     {% load user_in_group %}
-
-                    {% czy_pokazywac raport_slotow_autor %}
-                        <li><a href="{% url "raport_slotow:index" %}"><i class="fi-torso"></i> raport slotów - autor</a></li>
-                    {% end_czy_pokazywac %}
-                    {% czy_pokazywac raport_slotow_zerowy %}
-                        <li><a href="{% url "raport_slotow:raport-slotow-zerowy-parametry" %}"><i class="fi-clipboard-notes"></i> raport slotów -
-                            zerowy</a>
-                        </li>
-                    {% end_czy_pokazywac %}
-
-                    {% czy_pokazywac raport_slotow_uczelnia %}
-                        <li><a href="{% url "raport_slotow:lista-raport-slotow-uczelnia" %}"><i class="fi-foundation"></i> raport slotów -
-                            uczelnia</a></li>
-                        <li><a href="{% url "raport_slotow:index-ewaluacja" %}"><i class="fi-clipboard-pencil"></i> raport slotów - ewaluacja</a>
-                        <li><a href="{% url "raport_slotow:index-upowaznienia" %}"><i class="fi-shield"></i> raport ewaluacja -
-                            upoważnienia</a>
-                        {# Disabled 3N report #}
-                        {# <li><a href="{% url "ewaluacja2021:lista-raportow3n" %}"><i class="fi-page-multiple" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> raport ewaluacja - 3N</a> #}
-                        </li>
-                    {% end_czy_pokazywac %}
-
-                </ul>
+                    <ul class="menu vertical column-2">
+                        {% czy_pokazywac raport_slotow_autor %}
+                            <li><a href="{% url "raport_slotow:index" %}"><i class="fi-torso"></i> raport slotów - autor</a></li>
+                        {% end_czy_pokazywac %}
+                        {% czy_pokazywac raport_slotow_zerowy %}
+                            <li><a href="{% url "raport_slotow:raport-slotow-zerowy-parametry" %}"><i class="fi-clipboard-notes"></i> raport slotów -
+                                zerowy</a>
+                            </li>
+                        {% end_czy_pokazywac %}
+                        {% czy_pokazywac raport_slotow_uczelnia %}
+                            <li><a href="{% url "raport_slotow:lista-raport-slotow-uczelnia" %}"><i class="fi-foundation"></i> raport slotów -
+                                uczelnia</a></li>
+                            <li><a href="{% url "raport_slotow:index-ewaluacja" %}"><i class="fi-clipboard-pencil"></i> raport slotów - ewaluacja</a>
+                            <li><a href="{% url "raport_slotow:index-upowaznienia" %}"><i class="fi-shield"></i> raport ewaluacja -
+                                upoważnienia</a>
+                            {# Disabled 3N report #}
+                            {# <li><a href="{% url "ewaluacja2021:lista-raportow3n" %}"><i class="fi-page-multiple" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> raport ewaluacja - 3N</a> #}
+                            </li>
+                        {% end_czy_pokazywac %}
+                    </ul>
+                </div>
             </li>
 
             <script type="text/javascript">
-                // Hide ewaluacja menu if it's empty
+                // Hide ewaluacja menu if both columns are empty
                 var ewaluacjaMenu = document.getElementById("top-bar-menu-ewaluacji");
-                if (ewaluacjaMenu && ewaluacjaMenu.children.length === 0) {
-                    // Hide the parent <li> element that contains the menu
-                    ewaluacjaMenu.parentElement.style.display = 'none';
+                if (ewaluacjaMenu) {
+                    var columns = ewaluacjaMenu.querySelectorAll('ul.menu.vertical');
+                    var allEmpty = true;
+                    columns.forEach(function(col) {
+                        if (col.querySelectorAll('li').length > 0) {
+                            allEmpty = false;
+                        }
+                    });
+                    if (columns.length === 0 || allEmpty) {
+                        ewaluacjaMenu.parentElement.style.display = 'none';
+                    }
                 }
             </script>
 
@@ -157,22 +165,28 @@
 
                 {% if request.user.is_superuser or request.user|has_group:"wprowadzanie danych" %}
                     {% if uczelnia.pbn_integracja %}
-                        <li>
-                            <a href="#"><i class="fi-link"></i> PBN</a>
-                            <ul class="menu vertical">
+                        <li class="has-submenu">
+                            <a href="#" data-toggle><i class="fi-link"></i> PBN</a>
+                            <div class="menu-columns-wrapper" data-submenu>
                                 {% if request.user|has_group:"wprowadzanie danych" or request.user.is_superuser %}
-                                    <li><a href="{% url "pbn_api:authorize" %}" onclick="this.href='{% url "pbn_api:authorize" %}?next=' + encodeURIComponent(window.location.pathname + window.location.search + window.location.hash)"><i class="fi-key"></i> autoryzuj PBN API</a></li>
-                                    <li><a href="{% url "pbn_import:dashboard" %}"><i class="fi-burst-new"></i> Import z PBN</a></li>
-                                    <li><a href="{% url "pbn_downloader_app:main" %}"><i class="fi-download"></i> pobieranie danych z PBN</a></li>
-                                    <li><a href="{% url "pbn_export_queue:export-queue-list" %}"><i class="fi-list"></i> kolejka eksportu do PBN</a></li>
-                                    <li><a href="{% url "komparator_pbn:main" %}"><i class="fi-arrows-compress"></i> komparator PBN</a></li>
-                                    <li><a href="{% url "komparator_pbn_udzialy:list" %}"><i class="fi-alert"></i> komparator udziałów PBN</a></li>
-                                    <li><a href="{% url "komparator_publikacji_pbn:comparison_list" %}"><i class="fi-page-search"></i> komparator publikacji PBN</a></li>
-                                    <li><a href="{% url "importer_autorow_pbn:main" %}"><i class="fi-torsos-female-male"></i> importer autorów PBN</a></li>
-                                    <li><a href="{% url "deduplikator_autorow:duplicate_authors" %}"><i class="fi-filter"></i> deduplikator autorów PBN</a></li>
-                                    <li><a href="{% url "przemapuj_zrodla_pbn:lista_skasowanych_zrodel" %}"><i class="fi-x-circle"></i> źródła skasowane w PBN</a></li>
+                                    <ul class="menu vertical column-1">
+                                        <li><a href="{% url "pbn_api:authorize" %}" onclick="this.href='{% url "pbn_api:authorize" %}?next=' + encodeURIComponent(window.location.pathname + window.location.search + window.location.hash)"><i class="fi-key"></i> autoryzuj PBN API</a></li>
+                                        <li><a href="{% url "pbn_import:dashboard" %}"><i class="fi-burst-new"></i> Import z PBN</a></li>
+                                        <li><a href="{% url "pbn_downloader_app:main" %}"><i class="fi-download"></i> pobieranie danych z PBN</a></li>
+                                        <li><a href="{% url "pbn_wysylka_oswiadczen:main" %}"><i class="fi-upload"></i> wysylka oswiadczen do PBN</a></li>
+                                        <li><a href="{% url "pbn_export_queue:export-queue-list" %}"><i class="fi-list"></i> kolejka eksportu do PBN</a></li>
+                                        <li><a href="{% url "importer_autorow_pbn:main" %}"><i class="fi-torsos-female-male"></i> importer autorów PBN</a></li>
+                                        <li><a href="{% url "deduplikator_autorow:duplicate_authors" %}"><i class="fi-filter"></i> deduplikator autorów PBN</a></li>
+                                    </ul>
+                                    <ul class="menu vertical column-2">
+                                        <li><a href="{% url "komparator_pbn:main" %}"><i class="fi-arrows-compress"></i> komparator PBN</a></li>
+                                        <li><a href="{% url "komparator_pbn_udzialy:list" %}"><i class="fi-alert"></i> komparator udziałów PBN</a></li>
+                                        <li><a href="{% url "komparator_publikacji_pbn:comparison_list" %}"><i class="fi-page-search"></i> komparator publikacji PBN</a></li>
+                                        <li><a href="{% url "pbn_komparator_zrodel:list" %}"><i class="fi-book"></i> komparator źródeł PBN</a></li>
+                                        <li><a href="{% url "przemapuj_zrodla_pbn:lista_skasowanych_zrodel" %}"><i class="fi-x-circle"></i> źródła skasowane w PBN</a></li>
+                                    </ul>
                                 {% endif %}
-                            </ul>
+                            </div>
                         </li>
                     {% endif %}
 
@@ -316,6 +330,58 @@
                                 }
                             }
                         }
+                    });
+                </script>
+
+                <script type="text/javascript">
+                    // Auto-position two-column menus to prevent viewport overflow
+                    document.addEventListener('DOMContentLoaded', function() {
+                        var hasSubmenus = document.querySelectorAll('li.has-submenu');
+
+                        hasSubmenus.forEach(function(li) {
+                            var menu = li.querySelector('.menu-columns-wrapper');
+                            if (!menu) return;
+
+                            li.addEventListener('mouseenter', function() {
+                                // Reset position first
+                                li.classList.remove('opens-left');
+                                menu.style.left = '';
+                                menu.style.right = '';
+
+                                // Temporarily make menu measurable (visible layout but hidden visually)
+                                var originalVisibility = menu.style.visibility;
+                                var originalDisplay = menu.style.display;
+                                menu.style.visibility = 'hidden';
+                                menu.style.display = 'flex';
+
+                                var menuRect = menu.getBoundingClientRect();
+                                var liRect = li.getBoundingClientRect();
+                                var viewportWidth = window.innerWidth;
+
+                                // Calculate overflow for both directions
+                                // Case 1: Open to right (left: 0) - menu left edge at li left edge
+                                var menuRightIfOpenRight = liRect.left + menuRect.width;
+                                var overflowRight = Math.max(0, menuRightIfOpenRight - viewportWidth);
+
+                                // Case 2: Open to left (right: 0) - menu right edge at li right edge
+                                var menuLeftIfOpenLeft = liRect.right - menuRect.width;
+                                var overflowLeft = Math.max(0, -menuLeftIfOpenLeft);
+
+                                // Restore original styles (CSS hover will take over)
+                                menu.style.visibility = originalVisibility;
+                                menu.style.display = originalDisplay;
+
+                                // Choose direction with less overflow
+                                if (overflowLeft < overflowRight) {
+                                    li.classList.add('opens-left');
+                                    menu.style.left = 'auto';
+                                    menu.style.right = '0';
+                                } else {
+                                    menu.style.left = '0';
+                                    menu.style.right = '';
+                                }
+                            });
+                        });
                     });
                 </script>
 

@@ -1,19 +1,19 @@
 {% extends "base.html" %}
 
 {% block title %}
-    Generowanie oswiadczen
+    Generowanie oświadczeń
 {% endblock %}
 
 {% block breadcrumbs %}
     {{ block.super }}
-    <li><a href="{% url 'oswiadczenia:wydruk-2022-25' %}">Wydruk oswiadczen 2022-2025</a></li>
+    <li><a href="{% url 'oswiadczenia:wydruk-2022-25' %}">Wydruk oświadczeń 2022-2025</a></li>
     <li class="current">Status generowania</li>
 {% endblock %}
 
 {% block content %}
 <div class="row">
     <div class="medium-8 medium-centered columns">
-        <h2>Generowanie oswiadczen</h2>
+        <h2>Generowanie oświadczeń</h2>
 
         <div class="callout">
             <p><strong>Format:</strong> {{ task.get_export_format_display }}</p>

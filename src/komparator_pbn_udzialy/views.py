@@ -13,6 +13,7 @@ from django.views import View
 from django.views.generic import DetailView, ListView
 
 from komparator_pbn_udzialy.models import RozbieznoscDyscyplinPBN
+from pbn_downloader_app.freshness import is_pbn_publications_data_fresh
 
 logger = logging.getLogger(__name__)
 
@@ -101,6 +102,11 @@ class RozbieznoscDyscyplinPBNListView(ListView):
             dyscyplina_pbn__isnull=False,
         ).count()
 
+        # Add PBN data freshness check
+        pbn_data_fresh, pbn_stale_message, pbn_last_download = (
+            is_pbn_publications_data_fresh()
+        )
+
         context.update(
             {
                 "total_count": total,
@@ -111,6 +117,9 @@ class RozbieznoscDyscyplinPBNListView(ListView):
                 "filter": self.request.GET.get("filter", ""),
                 "rok_min": self.request.GET.get("rok_min", "2022"),
                 "rok_max": self.request.GET.get("rok_max", "2025"),
+                "pbn_data_fresh": pbn_data_fresh,
+                "pbn_stale_message": pbn_stale_message,
+                "pbn_last_download": pbn_last_download,
             }
         )
 
@@ -167,8 +176,15 @@ class RebuildDiscrepanciesView(View):
 
     def get(self, request):
         """Wyświetla stronę potwierdzenia."""
+        pbn_data_fresh, pbn_stale_message, pbn_last_download = (
+            is_pbn_publications_data_fresh()
+        )
+
         context = {
             "current_count": RozbieznoscDyscyplinPBN.objects.count(),
+            "pbn_data_fresh": pbn_data_fresh,
+            "pbn_stale_message": pbn_stale_message,
+            "pbn_last_download": pbn_last_download,
         }
         return render(
             request,
@@ -178,6 +194,16 @@ class RebuildDiscrepanciesView(View):
 
     def post(self, request):
         """Uruchamia przebudowę rozbieżności."""
+        # Check if PBN data is fresh before allowing rebuild
+        pbn_data_fresh, pbn_stale_message, _ = is_pbn_publications_data_fresh()
+        if not pbn_data_fresh:
+            messages.error(
+                request,
+                f"Nie można przebudować rozbieżności: {pbn_stale_message}. "
+                "Pobierz aktualne dane z PBN.",
+            )
+            return HttpResponseRedirect(reverse("komparator_pbn_udzialy:rebuild"))
+
         run_async = request.POST.get("run_async") == "on"
 
         if run_async:
