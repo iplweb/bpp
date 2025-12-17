@@ -21,9 +21,9 @@ class WydawnictwoAutorToStatementPBNAdapter:
             ),
         }
 
-        if self.original.profil_orcid:
-            # To jest flaga dot. czy dane są w indeksie ORCID
-            ret["orcid"] = True
+        # if self.original.profil_orcid:
+        #     # To jest flaga dot. czy dane są w indeksie ORCID
+        #     ret["orcid"] = True
 
         if self.original.dyscyplina_naukowa_id is not None and self.original.przypieta:
             przetlumaczona = TlumaczDyscyplin.objects.przetlumacz_dyscypline(
