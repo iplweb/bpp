@@ -14,7 +14,8 @@ def porownaj_zrodla_task(self, min_rok=2022, clear_existing=False):
     """
     Celery task do porównywania źródeł BPP z PBN.
 
-    Raportuje postęp przez mechanizm update_state Celery.
+    Wykorzystuje ThreadPoolExecutor do równoległego przetwarzania.
+    Raportuje postęp przez mechanizm cache i update_state Celery.
 
     Args:
         min_rok: Minimalny rok do porównania
@@ -23,8 +24,6 @@ def porownaj_zrodla_task(self, min_rok=2022, clear_existing=False):
     Returns:
         dict ze statystykami
     """
-    from bpp.models import Zrodlo
-
     from .models import KomparatorZrodelMeta
     from .utils import KomparatorZrodelPBN, aktualizuj_brakujace_dyscypliny_pbn
 
@@ -46,52 +45,38 @@ def porownaj_zrodla_task(self, min_rok=2022, clear_existing=False):
         # Aktualizuj listę brakujących dyscyplin na początku
         aktualizuj_brakujace_dyscypliny_pbn()
 
+        # Progress callback dla aktualizacji cache i Celery state
+        def progress_callback(current, total_count, stats):
+            progress = int((current / total_count) * 100) if total_count > 0 else 0
+            cache.set(
+                cache_key,
+                {
+                    "status": "PROGRESS",
+                    "current": current,
+                    "total": total_count,
+                    "message": f"Przetwarzanie... ({current}/{total_count})",
+                    "stats": stats,
+                    "progress": progress,
+                },
+                3600,
+            )
+            self.update_state(
+                state="PROGRESS",
+                meta={
+                    "current": current,
+                    "total": total_count,
+                    "stats": stats,
+                    "progress": progress,
+                },
+            )
+
         komparator = KomparatorZrodelPBN(
             min_rok=min_rok,
             clear_existing=clear_existing,
             show_progress=False,
+            progress_callback=progress_callback,
         )
 
-        total = Zrodlo.objects.exclude(pbn_uid_id=None).count()
-
-        # Nadpisz metodę compare_zrodlo aby raportować postęp
-        original_compare = komparator.compare_zrodlo
-
-        def compare_with_progress(zrodlo):
-            result = original_compare(zrodlo)
-
-            if komparator.stats["processed"] % 10 == 0:
-                progress = (
-                    int((komparator.stats["processed"] / total) * 100)
-                    if total > 0
-                    else 0
-                )
-                cache.set(
-                    cache_key,
-                    {
-                        "status": "PROGRESS",
-                        "current": komparator.stats["processed"],
-                        "total": total,
-                        "message": f"Przetwarzanie... ({komparator.stats['processed']}/{total})",
-                        "stats": komparator.stats,
-                        "progress": progress,
-                    },
-                    3600,
-                )
-
-                self.update_state(
-                    state="PROGRESS",
-                    meta={
-                        "current": komparator.stats["processed"],
-                        "total": total,
-                        "stats": komparator.stats,
-                        "progress": progress,
-                    },
-                )
-
-            return result
-
-        komparator.compare_zrodlo = compare_with_progress
         stats = komparator.run()
 
         cache.set(

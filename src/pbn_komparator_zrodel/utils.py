@@ -1,4 +1,7 @@
 import logging
+import os
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import timedelta
 from decimal import Decimal
 
@@ -173,13 +176,24 @@ def cleanup_stale_discrepancies(max_age_days=DATA_FRESHNESS_MAX_AGE_DAYS):
 class KomparatorZrodelPBN:
     """
     Klasa porównująca dane źródeł między BPP a PBN.
+    Wykorzystuje ThreadPoolExecutor do równoległego przetwarzania.
     """
 
-    def __init__(self, min_rok=2022, clear_existing=False, show_progress=True):
+    def __init__(
+        self,
+        min_rok=2022,
+        clear_existing=False,
+        show_progress=True,
+        progress_callback=None,
+    ):
         self.min_rok = min_rok
         self.clear_existing = clear_existing
         self.show_progress = show_progress
-        self.stats = {
+        self.progress_callback = progress_callback
+
+        # Thread-safe stats
+        self._stats_lock = threading.Lock()
+        self._stats = {
             "processed": 0,
             "points_discrepancies": 0,
             "discipline_discrepancies": 0,
@@ -188,6 +202,17 @@ class KomparatorZrodelPBN:
             "errors": 0,
         }
         self._dyscypliny_cache = None
+
+    @property
+    def stats(self):
+        """Zwraca kopię stats (thread-safe read)."""
+        with self._stats_lock:
+            return dict(self._stats)
+
+    def _increment_stat(self, key, value=1):
+        """Thread-safe increment stat."""
+        with self._stats_lock:
+            self._stats[key] += value
 
     def _get_dyscypliny_cache(self):
         """Pobiera cache kodów dyscyplin."""
@@ -253,10 +278,23 @@ class KomparatorZrodelPBN:
         return dyscypliny_kody
 
     def compare_zrodlo(self, zrodlo):
-        """Porównuje pojedyncze źródło z danymi PBN."""
+        """Porównuje pojedyncze źródło z danymi PBN.
+
+        Returns:
+            dict: Lokalne statystyki z tego porównania do agregacji.
+        """
+        local_stats = {
+            "processed": 0,
+            "points_discrepancies": 0,
+            "discipline_discrepancies": 0,
+            "skipped_no_pbn": 0,
+            "skipped_no_data": 0,
+            "errors": 0,
+        }
+
         if not zrodlo.pbn_uid:
-            self.stats["skipped_no_pbn"] += 1
-            return
+            local_stats["skipped_no_pbn"] = 1
+            return local_stats
 
         journal = zrodlo.pbn_uid
         points_data = journal.value("object", "points", return_none=True) or {}
@@ -268,62 +306,130 @@ class KomparatorZrodelPBN:
         # Sprawdź czy są jakiekolwiek dane do porównania
         valid_years = [rok for rok in points_data if int(rok) >= self.min_rok]
         if not valid_years:
-            self.stats["skipped_no_data"] += 1
-            return
+            local_stats["skipped_no_data"] = 1
+            return local_stats
 
-        # Iteruj po latach z punktami PBN
-        for rok_str in valid_years:
-            try:
-                rok = int(rok_str)
-            except ValueError:
-                continue
+        # Iteruj po latach z punktami PBN - per-source transaction
+        with transaction.atomic():
+            for rok_str in valid_years:
+                try:
+                    rok = int(rok_str)
+                except ValueError:
+                    continue
 
-            pbn_punkty = points_data[rok_str].get("points")
-            if pbn_punkty is not None:
-                pbn_punkty = Decimal(str(pbn_punkty))
+                pbn_punkty = points_data[rok_str].get("points")
+                if pbn_punkty is not None:
+                    pbn_punkty = Decimal(str(pbn_punkty))
 
-            # Pobierz punkty BPP
-            try:
-                punktacja = zrodlo.punktacja_zrodla_set.get(rok=rok)
-                bpp_punkty = punktacja.punkty_kbn
-            except Punktacja_Zrodla.DoesNotExist:
-                bpp_punkty = None
+                # Pobierz punkty BPP
+                try:
+                    punktacja = zrodlo.punktacja_zrodla_set.get(rok=rok)
+                    bpp_punkty = punktacja.punkty_kbn
+                except Punktacja_Zrodla.DoesNotExist:
+                    bpp_punkty = None
 
-            # Pobierz dyscypliny BPP dla tego roku
-            bpp_dyscypliny = self.get_bpp_dyscypliny_for_year(zrodlo, rok)
+                # Pobierz dyscypliny BPP dla tego roku
+                bpp_dyscypliny = self.get_bpp_dyscypliny_for_year(zrodlo, rok)
 
-            # Sprawdź rozbieżności
-            ma_rozbieznosc_punktow = bpp_punkty != pbn_punkty
-            ma_rozbieznosc_dyscyplin = bpp_dyscypliny != pbn_dyscypliny_kody
+                # Sprawdź rozbieżności
+                ma_rozbieznosc_punktow = bpp_punkty != pbn_punkty
+                ma_rozbieznosc_dyscyplin = bpp_dyscypliny != pbn_dyscypliny_kody
 
-            if ma_rozbieznosc_punktow or ma_rozbieznosc_dyscyplin:
-                RozbieznoscZrodlaPBN.objects.update_or_create(
-                    zrodlo=zrodlo,
-                    rok=rok,
-                    defaults={
-                        "ma_rozbieznosc_punktow": ma_rozbieznosc_punktow,
-                        "punkty_bpp": bpp_punkty,
-                        "punkty_pbn": pbn_punkty,
-                        "ma_rozbieznosc_dyscyplin": ma_rozbieznosc_dyscyplin,
-                        "dyscypliny_bpp": ",".join(sorted(bpp_dyscypliny)),
-                        "dyscypliny_pbn": ",".join(sorted(pbn_dyscypliny_kody)),
-                    },
-                )
+                if ma_rozbieznosc_punktow or ma_rozbieznosc_dyscyplin:
+                    RozbieznoscZrodlaPBN.objects.update_or_create(
+                        zrodlo=zrodlo,
+                        rok=rok,
+                        defaults={
+                            "ma_rozbieznosc_punktow": ma_rozbieznosc_punktow,
+                            "punkty_bpp": bpp_punkty,
+                            "punkty_pbn": pbn_punkty,
+                            "ma_rozbieznosc_dyscyplin": ma_rozbieznosc_dyscyplin,
+                            "dyscypliny_bpp": ",".join(sorted(bpp_dyscypliny)),
+                            "dyscypliny_pbn": ",".join(sorted(pbn_dyscypliny_kody)),
+                        },
+                    )
 
-                if ma_rozbieznosc_punktow:
-                    self.stats["points_discrepancies"] += 1
-                if ma_rozbieznosc_dyscyplin:
-                    self.stats["discipline_discrepancies"] += 1
-            else:
-                # Usuń ewentualną starą rozbieżność
-                RozbieznoscZrodlaPBN.objects.filter(zrodlo=zrodlo, rok=rok).delete()
+                    if ma_rozbieznosc_punktow:
+                        local_stats["points_discrepancies"] += 1
+                    if ma_rozbieznosc_dyscyplin:
+                        local_stats["discipline_discrepancies"] += 1
+                else:
+                    # Usuń ewentualną starą rozbieżność
+                    RozbieznoscZrodlaPBN.objects.filter(zrodlo=zrodlo, rok=rok).delete()
 
-        self.stats["processed"] += 1
+        local_stats["processed"] = 1
+        return local_stats
 
-    @transaction.atomic
+    def _process_single_zrodlo(self, zrodlo):
+        """Przetwarza pojedyncze źródło - wywoływane z thread pool."""
+        try:
+            return self.compare_zrodlo(zrodlo)
+        except Exception as e:
+            logger.error(f"Błąd podczas porównywania źródła {zrodlo.pk}: {e}")
+            return {
+                "processed": 0,
+                "points_discrepancies": 0,
+                "discipline_discrepancies": 0,
+                "skipped_no_pbn": 0,
+                "skipped_no_data": 0,
+                "errors": 1,
+            }
+
+    def _save_meta_completed(self, meta):
+        """Zapisuje meta jako zakończone."""
+        meta.ostatnie_uruchomienie = timezone.now()
+        meta.status = "completed"
+        meta.statystyki = self.stats
+        meta.ostatni_blad = ""
+        meta.save()
+
+    def _process_future_result(self, future, future_to_zrodlo):
+        """Przetwarza wynik future i aktualizuje statystyki."""
+        zrodlo = future_to_zrodlo[future]
+        try:
+            local_stats = future.result()
+            for key, value in local_stats.items():
+                self._increment_stat(key, value)
+        except Exception as e:
+            logger.error(f"Błąd podczas porównywania źródła {zrodlo}: {e}")
+            self._increment_stat("errors")
+
+    def _run_parallel_processing(self, zrodla, total):
+        """Wykonuje równoległe przetwarzanie źródeł."""
+        max_workers = min(8, os.cpu_count() or 4)
+        processed_count = 0
+
+        logger.info(f"Przetwarzanie {total} źródeł z {max_workers} workerami")
+
+        pbar = (
+            tqdm(total=total, desc="Porównywanie źródeł")
+            if self.show_progress
+            else None
+        )
+
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            future_to_zrodlo = {
+                executor.submit(self._process_single_zrodlo, zrodlo): zrodlo
+                for zrodlo in zrodla
+            }
+
+            for future in as_completed(future_to_zrodlo):
+                self._process_future_result(future, future_to_zrodlo)
+                processed_count += 1
+
+                if pbar:
+                    pbar.update(1)
+
+                if processed_count % 10 == 0 or processed_count == total:
+                    if self.progress_callback:
+                        self.progress_callback(processed_count, total, self.stats)
+
+        if pbar:
+            pbar.close()
+
     def run(self):
-        """Główna metoda uruchamiająca porównanie."""
-        logger.info("Rozpoczynam porównywanie źródeł BPP-PBN")
+        """Główna metoda uruchamiająca porównanie (równoległe przetwarzanie)."""
+        logger.info("Rozpoczynam porównywanie źródeł BPP-PBN (parallel)")
 
         meta = KomparatorZrodelMeta.get_instance()
         meta.status = "running"
@@ -333,23 +439,20 @@ class KomparatorZrodelPBN:
             if self.clear_existing:
                 self.clear_discrepancies()
 
-            zrodla = Zrodlo.objects.exclude(pbn_uid_id=None).select_related("pbn_uid")
-            total = zrodla.count()
+            self._get_dyscypliny_cache()
 
-            iterator = tqdm(zrodla, total=total, disable=not self.show_progress)
+            zrodla = list(
+                Zrodlo.objects.exclude(pbn_uid_id=None).select_related("pbn_uid")
+            )
+            total = len(zrodla)
 
-            for zrodlo in iterator:
-                try:
-                    self.compare_zrodlo(zrodlo)
-                except Exception as e:
-                    logger.error(f"Błąd podczas porównywania źródła {zrodlo}: {e}")
-                    self.stats["errors"] += 1
+            if total == 0:
+                self._save_meta_completed(meta)
+                logger.info("Brak źródeł do porównania.")
+                return self.stats
 
-            meta.ostatnie_uruchomienie = timezone.now()
-            meta.status = "completed"
-            meta.statystyki = self.stats
-            meta.ostatni_blad = ""
-            meta.save()
+            self._run_parallel_processing(zrodla, total)
+            self._save_meta_completed(meta)
 
         except Exception as e:
             meta.status = "error"
@@ -361,13 +464,25 @@ class KomparatorZrodelPBN:
         return self.stats
 
 
-def porownaj_zrodla_pbn(min_rok=2022, clear_existing=False, show_progress=True):
+def porownaj_zrodla_pbn(
+    min_rok=2022, clear_existing=False, show_progress=True, progress_callback=None
+):
     """
     Funkcja pomocnicza do uruchamiania porównania źródeł.
+
+    Args:
+        min_rok: Minimalny rok do porównania (domyślnie 2022)
+        clear_existing: Czy wyczyścić istniejące rozbieżności przed porównaniem
+        show_progress: Czy pokazywać pasek postępu tqdm (dla CLI)
+        progress_callback: Callback wywoływany z (current, total, stats) dla aktualizacji postępu
+
+    Returns:
+        dict: Statystyki porównania
     """
     komparator = KomparatorZrodelPBN(
         min_rok=min_rok,
         clear_existing=clear_existing,
         show_progress=show_progress,
+        progress_callback=progress_callback,
     )
     return komparator.run()
