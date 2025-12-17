@@ -41,7 +41,9 @@ def group_required(group_name):
     return decorator
 
 
-def get_publications_queryset(rok_od=2022, rok_do=2025, tytul=None):
+def get_publications_queryset(
+    rok_od=2022, rok_do=2025, tytul=None, tylko_odpiete=False
+):
     """
     Get publications that need statements sent to PBN.
 
@@ -54,6 +56,8 @@ def get_publications_queryset(rok_od=2022, rok_do=2025, tytul=None):
       - afiliuje=True
       - jednostka != Uczelnia.obca_jednostka
     - (optional) title contains search text (case-insensitive)
+    - (optional) tylko_odpiete: only publications with all declarations unattached
+      (liczba_oswiadczen > 0 AND liczba_przypietych == 0)
     """
     uczelnia = Uczelnia.objects.get_default()
     obca_jednostka_id = uczelnia.obca_jednostka_id if uczelnia else None
@@ -71,7 +75,7 @@ def get_publications_queryset(rok_od=2022, rok_do=2025, tytul=None):
     annotations = {
         "liczba_oswiadczen": Count(
             "autorzy_set__pk",
-            filter=Q(autorzy_set__data_oswiadczenia__isnull=False),
+            filter=Q(autorzy_set__dyscyplina_naukowa__isnull=False),
             distinct=True,
         ),
         "liczba_przypietych": Count(
@@ -105,6 +109,11 @@ def get_publications_queryset(rok_od=2022, rok_do=2025, tytul=None):
         ciagle_qs = ciagle_qs.filter(tytul_oryginalny__icontains=tytul)
         zwarte_qs = zwarte_qs.filter(tytul_oryginalny__icontains=tytul)
 
+    # Apply tylko_odpiete filter (publications with all declarations unattached)
+    if tylko_odpiete:
+        ciagle_qs = ciagle_qs.filter(liczba_oswiadczen__gt=0, liczba_przypietych=0)
+        zwarte_qs = zwarte_qs.filter(liczba_oswiadczen__gt=0, liczba_przypietych=0)
+
     return ciagle_qs.distinct(), zwarte_qs.distinct()
 
 
@@ -121,15 +130,19 @@ class PbnWysylkaOswiadczenMainView(TemplateView):
         rok_od = int(self.request.GET.get("rok_od", 2022))
         rok_do = int(self.request.GET.get("rok_do", 2025))
         tytul = self.request.GET.get("tytul", "").strip()
+        tylko_odpiete = self.request.GET.get("tylko_odpiete", "").lower() == "true"
 
         # Get publication counts
-        ciagle_qs, zwarte_qs = get_publications_queryset(rok_od, rok_do, tytul or None)
+        ciagle_qs, zwarte_qs = get_publications_queryset(
+            rok_od, rok_do, tytul or None, tylko_odpiete
+        )
         ciagle_count = ciagle_qs.count()
         zwarte_count = zwarte_qs.count()
 
         context["rok_od"] = rok_od
         context["rok_do"] = rok_do
         context["tytul"] = tytul
+        context["tylko_odpiete"] = tylko_odpiete
         context["ciagle_count"] = ciagle_count
         context["zwarte_count"] = zwarte_count
         context["total_count"] = ciagle_count + zwarte_count
@@ -161,11 +174,14 @@ class PublicationListView(TemplateView):
         rok_od = int(self.request.GET.get("rok_od", 2022))
         rok_do = int(self.request.GET.get("rok_do", 2025))
         tytul = self.request.GET.get("tytul", "").strip()
+        tylko_odpiete = self.request.GET.get("tylko_odpiete", "").lower() == "true"
         page = int(self.request.GET.get("page", 1))
         per_page = 50
 
         # Get publications
-        ciagle_qs, zwarte_qs = get_publications_queryset(rok_od, rok_do, tytul or None)
+        ciagle_qs, zwarte_qs = get_publications_queryset(
+            rok_od, rok_do, tytul or None, tylko_odpiete
+        )
 
         # Combine querysets
         combined_qs = QuerySetSequence(ciagle_qs, zwarte_qs)
@@ -178,6 +194,7 @@ class PublicationListView(TemplateView):
         context["rok_od"] = rok_od
         context["rok_do"] = rok_do
         context["tytul"] = tytul
+        context["tylko_odpiete"] = tylko_odpiete
 
         return context
 
@@ -400,9 +417,12 @@ class ExcelExportView(View):
         rok_od = int(request.GET.get("rok_od", 2022))
         rok_do = int(request.GET.get("rok_do", 2025))
         tytul = request.GET.get("tytul", "").strip()
+        tylko_odpiete = request.GET.get("tylko_odpiete", "").lower() == "true"
 
         # Get publications
-        ciagle_qs, zwarte_qs = get_publications_queryset(rok_od, rok_do, tytul or None)
+        ciagle_qs, zwarte_qs = get_publications_queryset(
+            rok_od, rok_do, tytul or None, tylko_odpiete
+        )
         combined_qs = QuerySetSequence(ciagle_qs, zwarte_qs)
 
         # Create workbook

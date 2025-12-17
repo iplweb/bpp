@@ -60,7 +60,7 @@ class PbnWysylkaOswiadczenTask(models.Model):
         verbose_name_plural = "Zadania wysylki oswiadczen"
 
     def __str__(self):
-        return f"Wysylka oswiadczen {self.pk} ({self.status}) - {self.created_at}"
+        return f"Wysyłka oświadczeń {self.pk} ({self.status}) - {self.created_at}"
 
     @property
     def progress_percent(self):

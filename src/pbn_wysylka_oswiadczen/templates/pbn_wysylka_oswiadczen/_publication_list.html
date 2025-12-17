@@ -68,6 +68,10 @@
         margin: 0;
     }
 
+    .pagination li.current {
+        background: transparent;
+    }
+
     .pagination li a,
     .pagination li span {
         background: #fff;
@@ -138,39 +142,39 @@
 </style>
 <ul class="pagination" role="navigation" aria-label="Pagination">
     {% if page_obj.has_previous %}
-        <li class="pagination-previous"><a hx-get="{% url 'pbn_wysylka_oswiadczen:publications' %}?rok_od={{ rok_od }}&rok_do={{ rok_do }}&tytul={{ tytul|urlencode }}&page={{ page_obj.previous_page_number }}" hx-target="#publication-list" hx-swap="innerHTML">poprzednia</a></li>
+        <li class="pagination-previous"><a hx-get="{% url 'pbn_wysylka_oswiadczen:publications' %}?rok_od={{ rok_od }}&rok_do={{ rok_do }}&tytul={{ tytul|urlencode }}&tylko_odpiete={{ tylko_odpiete|yesno:"true,false" }}&page={{ page_obj.previous_page_number }}" hx-target="#publication-list" hx-swap="innerHTML">poprzednia</a></li>
     {% else %}
         <li class="pagination-previous disabled"><span>poprzednia</span></li>
     {% endif %}
 
     {% if page_obj.number >= 5 %}
-        <li><a hx-get="{% url 'pbn_wysylka_oswiadczen:publications' %}?rok_od={{ rok_od }}&rok_do={{ rok_do }}&tytul={{ tytul|urlencode }}&page=1" hx-target="#publication-list" hx-swap="innerHTML">1</a></li>
+        <li><a hx-get="{% url 'pbn_wysylka_oswiadczen:publications' %}?rok_od={{ rok_od }}&rok_do={{ rok_do }}&tytul={{ tytul|urlencode }}&tylko_odpiete={{ tylko_odpiete|yesno:"true,false" }}&page=1" hx-target="#publication-list" hx-swap="innerHTML">1</a></li>
         <li class="ellipsis"><span>...</span></li>
     {% elif page_obj.number == 4 %}
-        <li><a hx-get="{% url 'pbn_wysylka_oswiadczen:publications' %}?rok_od={{ rok_od }}&rok_do={{ rok_do }}&tytul={{ tytul|urlencode }}&page=1" hx-target="#publication-list" hx-swap="innerHTML">1</a></li>
+        <li><a hx-get="{% url 'pbn_wysylka_oswiadczen:publications' %}?rok_od={{ rok_od }}&rok_do={{ rok_do }}&tytul={{ tytul|urlencode }}&tylko_odpiete={{ tylko_odpiete|yesno:"true,false" }}&page=1" hx-target="#publication-list" hx-swap="innerHTML">1</a></li>
     {% endif %}
     {% if page_obj.number|add:"-2" >= 1 %}
-        <li><a hx-get="{% url 'pbn_wysylka_oswiadczen:publications' %}?rok_od={{ rok_od }}&rok_do={{ rok_do }}&tytul={{ tytul|urlencode }}&page={{ page_obj.number|add:"-2" }}" hx-target="#publication-list" hx-swap="innerHTML">{{ page_obj.number|add:"-2" }}</a></li>
+        <li><a hx-get="{% url 'pbn_wysylka_oswiadczen:publications' %}?rok_od={{ rok_od }}&rok_do={{ rok_do }}&tytul={{ tytul|urlencode }}&tylko_odpiete={{ tylko_odpiete|yesno:"true,false" }}&page={{ page_obj.number|add:"-2" }}" hx-target="#publication-list" hx-swap="innerHTML">{{ page_obj.number|add:"-2" }}</a></li>
     {% endif %}
     {% if page_obj.number|add:"-1" >= 1 %}
-        <li><a hx-get="{% url 'pbn_wysylka_oswiadczen:publications' %}?rok_od={{ rok_od }}&rok_do={{ rok_do }}&tytul={{ tytul|urlencode }}&page={{ page_obj.number|add:"-1" }}" hx-target="#publication-list" hx-swap="innerHTML">{{ page_obj.number|add:"-1" }}</a></li>
+        <li><a hx-get="{% url 'pbn_wysylka_oswiadczen:publications' %}?rok_od={{ rok_od }}&rok_do={{ rok_do }}&tytul={{ tytul|urlencode }}&tylko_odpiete={{ tylko_odpiete|yesno:"true,false" }}&page={{ page_obj.number|add:"-1" }}" hx-target="#publication-list" hx-swap="innerHTML">{{ page_obj.number|add:"-1" }}</a></li>
     {% endif %}
     <li class="current"><span>{{ page_obj.number }}</span></li>
     {% if page_obj.number|add:"1" <= page_obj.paginator.num_pages %}
-        <li><a hx-get="{% url 'pbn_wysylka_oswiadczen:publications' %}?rok_od={{ rok_od }}&rok_do={{ rok_do }}&tytul={{ tytul|urlencode }}&page={{ page_obj.number|add:"1" }}" hx-target="#publication-list" hx-swap="innerHTML">{{ page_obj.number|add:"1" }}</a></li>
+        <li><a hx-get="{% url 'pbn_wysylka_oswiadczen:publications' %}?rok_od={{ rok_od }}&rok_do={{ rok_do }}&tytul={{ tytul|urlencode }}&tylko_odpiete={{ tylko_odpiete|yesno:"true,false" }}&page={{ page_obj.number|add:"1" }}" hx-target="#publication-list" hx-swap="innerHTML">{{ page_obj.number|add:"1" }}</a></li>
     {% endif %}
     {% if page_obj.number|add:"2" <= page_obj.paginator.num_pages %}
-        <li><a hx-get="{% url 'pbn_wysylka_oswiadczen:publications' %}?rok_od={{ rok_od }}&rok_do={{ rok_do }}&tytul={{ tytul|urlencode }}&page={{ page_obj.number|add:"2" }}" hx-target="#publication-list" hx-swap="innerHTML">{{ page_obj.number|add:"2" }}</a></li>
+        <li><a hx-get="{% url 'pbn_wysylka_oswiadczen:publications' %}?rok_od={{ rok_od }}&rok_do={{ rok_do }}&tytul={{ tytul|urlencode }}&tylko_odpiete={{ tylko_odpiete|yesno:"true,false" }}&page={{ page_obj.number|add:"2" }}" hx-target="#publication-list" hx-swap="innerHTML">{{ page_obj.number|add:"2" }}</a></li>
     {% endif %}
     {% if page_obj.number|add:"2" <= page_obj.paginator.num_pages|add:"-2" %}
         <li class="ellipsis"><span>...</span></li>
-        <li><a hx-get="{% url 'pbn_wysylka_oswiadczen:publications' %}?rok_od={{ rok_od }}&rok_do={{ rok_do }}&tytul={{ tytul|urlencode }}&page={{ page_obj.paginator.num_pages }}" hx-target="#publication-list" hx-swap="innerHTML">{{ page_obj.paginator.num_pages }}</a></li>
+        <li><a hx-get="{% url 'pbn_wysylka_oswiadczen:publications' %}?rok_od={{ rok_od }}&rok_do={{ rok_do }}&tytul={{ tytul|urlencode }}&tylko_odpiete={{ tylko_odpiete|yesno:"true,false" }}&page={{ page_obj.paginator.num_pages }}" hx-target="#publication-list" hx-swap="innerHTML">{{ page_obj.paginator.num_pages }}</a></li>
     {% elif page_obj.number|add:"1" <= page_obj.paginator.num_pages|add:"-2" %}
-        <li><a hx-get="{% url 'pbn_wysylka_oswiadczen:publications' %}?rok_od={{ rok_od }}&rok_do={{ rok_do }}&tytul={{ tytul|urlencode }}&page={{ page_obj.paginator.num_pages }}" hx-target="#publication-list" hx-swap="innerHTML">{{ page_obj.paginator.num_pages }}</a></li>
+        <li><a hx-get="{% url 'pbn_wysylka_oswiadczen:publications' %}?rok_od={{ rok_od }}&rok_do={{ rok_do }}&tytul={{ tytul|urlencode }}&tylko_odpiete={{ tylko_odpiete|yesno:"true,false" }}&page={{ page_obj.paginator.num_pages }}" hx-target="#publication-list" hx-swap="innerHTML">{{ page_obj.paginator.num_pages }}</a></li>
     {% endif %}
 
     {% if page_obj.has_next %}
-        <li class="pagination-next"><a hx-get="{% url 'pbn_wysylka_oswiadczen:publications' %}?rok_od={{ rok_od }}&rok_do={{ rok_do }}&tytul={{ tytul|urlencode }}&page={{ page_obj.next_page_number }}" hx-target="#publication-list" hx-swap="innerHTML">następna</a></li>
+        <li class="pagination-next"><a hx-get="{% url 'pbn_wysylka_oswiadczen:publications' %}?rok_od={{ rok_od }}&rok_do={{ rok_do }}&tytul={{ tytul|urlencode }}&tylko_odpiete={{ tylko_odpiete|yesno:"true,false" }}&page={{ page_obj.next_page_number }}" hx-target="#publication-list" hx-swap="innerHTML">następna</a></li>
     {% else %}
         <li class="pagination-next disabled"><span>następna</span></li>
     {% endif %}

@@ -1,18 +1,32 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}Wysylka oswiadczen do PBN - {{ block.super }}{% endblock %}
+{% block title %}Wysyłka oświadczeń do PBN - {{ block.super }}{% endblock %}
 
 {% block breadcrumbs %}
     {{ block.super }}
-    <li class="current">Wysylka oswiadczen do PBN</li>
+    <li class="current">Wysyłka oświadczeń do PBN</li>
 {% endblock %}
 
 {% block content %}
 <div class="row">
     <div class="large-12 columns">
-        <h1><span class="fi-upload"></span> Wysylka oswiadczen do PBN</h1>
+        <h1><span class="fi-upload"></span> Wysyłka oświadczeń do PBN</h1>
         <p class="lead">Narzedzie do wysylania oswiadczen dyscyplin do Polskiej Bibliografii Naukowej (PBN)</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="large-12 columns">
+        <div class="callout secondary">
+            <h5><span class="fi-info"></span> Kryteria wyboru publikacji</h5>
+            <ul>
+                <li>publikacja musi byc wyslana do PBN (musi posiadac PBN UID)</li>
+                <li>publikacja musi miec co najmniej jednego autora z przypisana dyscyplina,
+                    dla ktorego zatrudniony=Tak i afiliuje=Tak</li>
+                <li>rok publikacji musi miescic sie w podanym zakresie lat</li>
+            </ul>
+        </div>
     </div>
 </div>
 
@@ -36,6 +50,14 @@
                     <div class="medium-12 columns">
                         <label for="tytul">Tytul (zawiera):</label>
                         <input type="text" id="tytul" name="tytul" value="{{ tytul }}" placeholder="Wpisz fragment tytulu...">
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="medium-12 columns">
+                        <label>
+                            <input type="checkbox" name="tylko_odpiete" value="true" {% if tylko_odpiete %}checked{% endif %}>
+                            Tylko odpięte (oświadczenia bez przypiętych)
+                        </label>
                     </div>
                 </div>
                 <button type="submit" class="button secondary small">
@@ -65,23 +87,25 @@
             <div class="button-group">
                 <button id="start-fresh-btn" class="button success"
                         hx-post="{% url 'pbn_wysylka_oswiadczen:start' %}"
-                        hx-vals='{"rok_od": "{{ rok_od }}", "rok_do": "{{ rok_do }}", "tytul": "{{ tytul }}", "resume_mode": "false"}'
+                        hx-vals='{"rok_od": "{{ rok_od }}", "rok_do": "{{ rok_do }}", "tytul": "{{ tytul }}", "tylko_odpiete": "{{ tylko_odpiete|yesno:"true,false" }}", "resume_mode": "false"}'
                         hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
-                        hx-swap="none">
-                    <span class="fi-play"></span> Wyslij wyswietlane rekordy
+                        hx-swap="none"
+                        hx-on:htmx:after-request="startStatusPolling()">
+                    <span class="fi-play"></span> Wyślij wybrane rekordy
                 </button>
 
                 {% if can_resume %}
                 <button id="resume-btn" class="button warning"
                         hx-post="{% url 'pbn_wysylka_oswiadczen:start' %}"
-                        hx-vals='{"rok_od": "{{ rok_od }}", "rok_do": "{{ rok_do }}", "tytul": "{{ tytul }}", "resume_mode": "true"}'
+                        hx-vals='{"rok_od": "{{ rok_od }}", "rok_do": "{{ rok_do }}", "tytul": "{{ tytul }}", "tylko_odpiete": "{{ tylko_odpiete|yesno:"true,false" }}", "resume_mode": "true"}'
                         hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
-                        hx-swap="none">
+                        hx-swap="none"
+                        hx-on:htmx:after-request="startStatusPolling()">
                     <span class="fi-fast-forward"></span> Kontynuuj
                 </button>
                 {% endif %}
 
-                <a href="{% url 'pbn_wysylka_oswiadczen:export-excel' %}?rok_od={{ rok_od }}&rok_do={{ rok_do }}&tytul={{ tytul|urlencode }}" class="button secondary">
+                <a href="{% url 'pbn_wysylka_oswiadczen:export-excel' %}?rok_od={{ rok_od }}&rok_do={{ rok_do }}&tytul={{ tytul|urlencode }}&tylko_odpiete={{ tylko_odpiete|yesno:"true,false" }}" class="button secondary">
                     <span class="fi-page-export"></span> Eksportuj do Excel
                 </a>
             </div>
@@ -94,10 +118,7 @@
     </div>
 
     <div class="large-6 columns">
-        <div id="task-status-panel"
-             hx-get="{% url 'pbn_wysylka_oswiadczen:status-partial' %}"
-             hx-trigger="load, taskStarted from:body, every 3s[document.querySelector('.task-running')]"
-             hx-swap="innerHTML">
+        <div id="task-status-panel">
             {% include "pbn_wysylka_oswiadczen/_task_status.html" %}
         </div>
     </div>
@@ -108,7 +129,7 @@
         <h4><span class="fi-page-multiple"></span> Podglad publikacji</h4>
 
         <div id="publication-list"
-             hx-get="{% url 'pbn_wysylka_oswiadczen:publications' %}?rok_od={{ rok_od }}&rok_do={{ rok_do }}&tytul={{ tytul|urlencode }}"
+             hx-get="{% url 'pbn_wysylka_oswiadczen:publications' %}?rok_od={{ rok_od }}&rok_do={{ rok_do }}&tytul={{ tytul|urlencode }}&tylko_odpiete={{ tylko_odpiete|yesno:"true,false" }}"
              hx-trigger="load"
              hx-swap="innerHTML">
             <div class="text-center">
@@ -118,54 +139,41 @@
     </div>
 </div>
 
-{% endblock %}
-
-{% block extra_js %}
 <script>
-document.body.addEventListener('htmx:afterRequest', function(evt) {
-    if (evt.detail.pathInfo.requestPath.includes('/start/')) {
-        var response = JSON.parse(evt.detail.xhr.responseText);
-        if (response.success) {
-            // Trigger status panel refresh
-            htmx.trigger(document.body, 'taskStarted');
+var statusPollingInterval = null;
 
-            // Show success message
-            showFlashMessage('success', response.message);
-        } else {
-            showFlashMessage('alert', response.error);
-        }
+function refreshStatusPanel() {
+    htmx.ajax('GET', '{% url "pbn_wysylka_oswiadczen:status-partial" %}', {target: '#task-status-panel', swap: 'innerHTML'});
+}
+
+function startStatusPolling() {
+    // Refresh immediately
+    refreshStatusPanel();
+
+    // Clear any existing interval
+    if (statusPollingInterval) {
+        clearInterval(statusPollingInterval);
     }
 
-    if (evt.detail.pathInfo.requestPath.includes('/cancel/')) {
-        var response = JSON.parse(evt.detail.xhr.responseText);
-        if (response.success) {
-            htmx.trigger(document.body, 'taskStarted');
-            showFlashMessage('success', response.message);
+    // Start polling every 3 seconds
+    statusPollingInterval = setInterval(function() {
+        // Only poll if there's a running or pending task
+        if (document.querySelector('.task-running')) {
+            refreshStatusPanel();
         } else {
-            showFlashMessage('alert', response.error);
+            // Task finished, stop polling
+            clearInterval(statusPollingInterval);
+            statusPollingInterval = null;
         }
+    }, 3000);
+}
+
+// Also start polling on page load if there's an active task
+document.addEventListener('DOMContentLoaded', function() {
+    if (document.querySelector('.task-running')) {
+        startStatusPolling();
     }
 });
-
-function showFlashMessage(type, message) {
-    var container = document.querySelector('.flash-messages') || createFlashContainer();
-    var alert = document.createElement('div');
-    alert.className = 'callout ' + type;
-    alert.setAttribute('data-closable', '');
-    alert.innerHTML = message + '<button class="close-button" aria-label="Dismiss alert" type="button" data-close><span aria-hidden="true">&times;</span></button>';
-    container.appendChild(alert);
-
-    // Auto-remove after 5 seconds
-    setTimeout(function() {
-        alert.remove();
-    }, 5000);
-}
-
-function createFlashContainer() {
-    var container = document.createElement('div');
-    container.className = 'flash-messages';
-    document.querySelector('.row').prepend(container);
-    return container;
-}
 </script>
+
 {% endblock %}

@@ -60,7 +60,7 @@ def test_pbn_wysylka_oswiadczen_task_model_creation():
     assert task.rok_do == 2025
     assert task.total_publications == 100
     assert task.processed_publications == 50
-    assert "Wysylka oswiadczen" in str(task)
+    assert "Wysyłka oświadczeń" in str(task)
 
 
 @pytest.mark.django_db
@@ -816,7 +816,7 @@ def test_main_view_authenticated(client, uczelnia):
 
     response = client.get(reverse("pbn_wysylka_oswiadczen:main"))
     assert response.status_code == 200
-    assert b"Wysylka oswiadczen" in response.content
+    assert "Wysyłka oświadczeń" in response.content.decode("utf-8")
 
 
 @pytest.mark.django_db
@@ -843,3 +843,299 @@ def test_status_api_returns_json(client, uczelnia):
     data = response.json()
     assert "is_running" in data
     assert "latest_task" in data
+
+
+@pytest.mark.django_db
+def test_get_publications_queryset_tylko_odpiete_parameter(uczelnia):
+    """Test get_publications_queryset accepts tylko_odpiete parameter."""
+    from pbn_wysylka_oswiadczen.views import (
+        get_publications_queryset as get_publications_queryset_view,
+    )
+
+    # Test with tylko_odpiete=False (default)
+    ciagle_qs, zwarte_qs = get_publications_queryset_view(
+        rok_od=2022, rok_do=2025, tylko_odpiete=False
+    )
+    assert ciagle_qs.count() == 0
+    assert zwarte_qs.count() == 0
+
+    # Test with tylko_odpiete=True
+    ciagle_qs, zwarte_qs = get_publications_queryset_view(
+        rok_od=2022, rok_do=2025, tylko_odpiete=True
+    )
+    assert ciagle_qs.count() == 0
+    assert zwarte_qs.count() == 0
+
+
+@pytest.mark.django_db
+def test_main_view_context_tylko_odpiete(uczelnia):
+    """Test main view returns tylko_odpiete in context."""
+    factory = RequestFactory()
+    request = factory.get("/?rok_od=2022&rok_do=2024&tylko_odpiete=true")
+
+    user = create_user_with_group()
+    request.user = user
+    request.session = {}
+
+    view = PbnWysylkaOswiadczenMainView()
+    view.setup(request)
+
+    context = view.get_context_data()
+    assert "tylko_odpiete" in context
+    assert context["tylko_odpiete"] is True
+
+
+@pytest.mark.django_db
+def test_main_view_context_tylko_odpiete_false(uczelnia):
+    """Test main view returns tylko_odpiete=False when not set."""
+    factory = RequestFactory()
+    request = factory.get("/?rok_od=2022&rok_do=2024")
+
+    user = create_user_with_group()
+    request.user = user
+    request.session = {}
+
+    view = PbnWysylkaOswiadczenMainView()
+    view.setup(request)
+
+    context = view.get_context_data()
+    assert "tylko_odpiete" in context
+    assert context["tylko_odpiete"] is False
+
+
+# ============================================================================
+# Fixture for Publication with PBN UID
+# ============================================================================
+
+
+@pytest.fixture
+def publication_with_pbn_uid(
+    uczelnia,
+    jednostka,
+    autor_jan_nowak,
+    dyscyplina1,
+    jezyki,
+    charaktery_formalne,
+    typy_kbn,
+    statusy_korekt,
+    typy_odpowiedzialnosci,
+):
+    """Create a publication that matches get_publications_queryset criteria."""
+    from model_bakery import baker
+
+    from bpp.models import Autor_Dyscyplina, Wydawnictwo_Ciagle
+
+    # Create PBN publication UID
+    pbn_pub = baker.make("pbn_api.Publication")
+
+    # Create the publication
+    wyd = baker.make(
+        Wydawnictwo_Ciagle,
+        tytul_oryginalny="Test Publication of ionic liquids",
+        rok=2022,
+        pbn_uid=pbn_pub,
+    )
+
+    # Set up author discipline
+    Autor_Dyscyplina.objects.get_or_create(
+        autor=autor_jan_nowak,
+        dyscyplina_naukowa=dyscyplina1,
+        rok=2022,
+    )
+
+    # Add author to publication with discipline
+    autor_wyd = wyd.dodaj_autora(
+        autor_jan_nowak,
+        jednostka,
+        dyscyplina_naukowa=dyscyplina1,
+        afiliuje=True,
+    )
+    # Set zatrudniony separately (defaults to False)
+    autor_wyd.zatrudniony = True
+    autor_wyd.save()
+
+    return wyd
+
+
+# ============================================================================
+# Title Filtering Tests
+# ============================================================================
+
+
+@pytest.mark.django_db
+def test_get_publications_queryset_title_filter(publication_with_pbn_uid):
+    """Test title filtering in get_publications_queryset."""
+    from pbn_wysylka_oswiadczen.views import (
+        get_publications_queryset as get_pubs_qs,
+    )
+
+    # Should find with matching title
+    ciagle_qs, zwarte_qs = get_pubs_qs(rok_od=2022, rok_do=2022, tytul="of ionic")
+    assert ciagle_qs.count() == 1
+
+    # Should not find with non-matching title
+    ciagle_qs, zwarte_qs = get_pubs_qs(rok_od=2022, rok_do=2022, tytul="nonexistent")
+    assert ciagle_qs.count() == 0
+
+
+@pytest.mark.django_db
+def test_get_publications_queryset_title_filter_case_insensitive(
+    publication_with_pbn_uid,
+):
+    """Test title filtering is case-insensitive."""
+    from pbn_wysylka_oswiadczen.views import (
+        get_publications_queryset as get_pubs_qs,
+    )
+
+    ciagle_qs, _ = get_pubs_qs(rok_od=2022, rok_do=2022, tytul="OF IONIC")
+    assert ciagle_qs.count() == 1
+
+
+@pytest.mark.django_db
+def test_main_view_title_filter(client, uczelnia, publication_with_pbn_uid):
+    """Test main view with title filter shows correct count."""
+    user = create_user_with_group()
+    client.force_login(user)
+
+    response = client.get(
+        reverse("pbn_wysylka_oswiadczen:main"),
+        {"rok_od": 2022, "rok_do": 2022, "tytul": "of ionic"},
+    )
+    assert response.status_code == 200
+    assert response.context["total_count"] == 1
+    assert response.context["tytul"] == "of ionic"
+
+
+# ============================================================================
+# PublicationListView Tests
+# ============================================================================
+
+
+@pytest.mark.django_db
+def test_publication_list_view_basic(client, uczelnia, publication_with_pbn_uid):
+    """Test PublicationListView returns publications."""
+    user = create_user_with_group()
+    client.force_login(user)
+
+    response = client.get(
+        reverse("pbn_wysylka_oswiadczen:publications"),
+        {"rok_od": 2022, "rok_do": 2022},
+    )
+    assert response.status_code == 200
+    assert "page_obj" in response.context
+    assert response.context["page_obj"].paginator.count == 1
+
+
+@pytest.mark.django_db
+def test_publication_list_view_with_title_filter(
+    client, uczelnia, publication_with_pbn_uid
+):
+    """Test PublicationListView with title filter."""
+    user = create_user_with_group()
+    client.force_login(user)
+
+    # With matching title
+    response = client.get(
+        reverse("pbn_wysylka_oswiadczen:publications"),
+        {"rok_od": 2022, "rok_do": 2022, "tytul": "of ionic"},
+    )
+    assert response.context["page_obj"].paginator.count == 1
+
+    # With non-matching title
+    response = client.get(
+        reverse("pbn_wysylka_oswiadczen:publications"),
+        {"rok_od": 2022, "rok_do": 2022, "tytul": "nonexistent"},
+    )
+    assert response.context["page_obj"].paginator.count == 0
+
+
+@pytest.mark.django_db
+def test_publication_list_view_requires_auth(client):
+    """Test PublicationListView requires authentication."""
+    response = client.get(reverse("pbn_wysylka_oswiadczen:publications"))
+    assert response.status_code == 302
+    assert "login" in response.url
+
+
+# ============================================================================
+# Excel Export Tests
+# ============================================================================
+
+
+@pytest.mark.django_db
+def test_excel_export_view_basic(client, uczelnia, publication_with_pbn_uid):
+    """Test ExcelExportView returns Excel file."""
+    user = create_user_with_group()
+    client.force_login(user)
+
+    response = client.get(
+        reverse("pbn_wysylka_oswiadczen:export-excel"),
+        {"rok_od": 2022, "rok_do": 2022},
+    )
+
+    assert response.status_code == 200
+    assert (
+        response["Content-Type"]
+        == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    assert "attachment" in response["Content-Disposition"]
+    assert ".xlsx" in response["Content-Disposition"]
+
+
+@pytest.mark.django_db
+def test_excel_export_view_with_title_filter(
+    client, uczelnia, publication_with_pbn_uid
+):
+    """Test ExcelExportView with title filter."""
+    from io import BytesIO
+
+    from openpyxl import load_workbook
+
+    user = create_user_with_group()
+    client.force_login(user)
+
+    response = client.get(
+        reverse("pbn_wysylka_oswiadczen:export-excel"),
+        {"rok_od": 2022, "rok_do": 2022, "tytul": "of ionic"},
+    )
+
+    assert response.status_code == 200
+
+    wb = load_workbook(BytesIO(response.content))
+    ws = wb.active
+
+    # Header row + 1 data row
+    assert ws.max_row == 2
+    assert "ionic" in ws.cell(2, 3).value.lower()  # Title column
+
+
+@pytest.mark.django_db
+def test_excel_export_view_empty_results(client, uczelnia):
+    """Test ExcelExportView with no matching publications."""
+    from io import BytesIO
+
+    from openpyxl import load_workbook
+
+    user = create_user_with_group()
+    client.force_login(user)
+
+    response = client.get(
+        reverse("pbn_wysylka_oswiadczen:export-excel"),
+        {"rok_od": 2022, "rok_do": 2022, "tytul": "nonexistent"},
+    )
+
+    assert response.status_code == 200
+
+    wb = load_workbook(BytesIO(response.content))
+    ws = wb.active
+
+    # Only header row
+    assert ws.max_row == 1
+
+
+@pytest.mark.django_db
+def test_excel_export_view_requires_auth(client):
+    """Test ExcelExportView requires authentication."""
+    response = client.get(reverse("pbn_wysylka_oswiadczen:export-excel"))
+    assert response.status_code == 302
+    assert "login" in response.url

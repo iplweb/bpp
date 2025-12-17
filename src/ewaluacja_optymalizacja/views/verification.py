@@ -6,6 +6,13 @@ from decimal import Decimal
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
 
+from bpp.models import (
+    Wydawnictwo_Ciagle,
+    Wydawnictwo_Ciagle_Autor,
+    Wydawnictwo_Zwarte,
+    Wydawnictwo_Zwarte_Autor,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -41,11 +48,47 @@ def database_verification_view(request):
     unique_works = problematic_records.values("rekord_id").distinct().count()
     unique_authors = problematic_records.values("autor_id").distinct().count()
 
+    # Prace z dyscypliną naukową ustawioną, ale bez przypięcia (przypieta=False)
+    nieprzypiete_ciagle = Wydawnictwo_Ciagle_Autor.objects.filter(
+        dyscyplina_naukowa__isnull=False,
+        przypieta=False,
+    ).select_related("rekord", "autor", "dyscyplina_naukowa")
+
+    nieprzypiete_zwarte = Wydawnictwo_Zwarte_Autor.objects.filter(
+        dyscyplina_naukowa__isnull=False,
+        przypieta=False,
+    ).select_related("rekord", "autor", "dyscyplina_naukowa")
+
+    # Liczba publikacji z rok >= 2022, gdzie autor ma dyscyplinę, ale brak daty oświadczenia
+    brak_oswiadczenia_ciagle_count = (
+        Wydawnictwo_Ciagle.objects.filter(
+            rok__gte=2022,
+            autorzy_set__dyscyplina_naukowa__isnull=False,
+            autorzy_set__data_oswiadczenia__isnull=True,
+        )
+        .distinct()
+        .count()
+    )
+
+    brak_oswiadczenia_zwarte_count = (
+        Wydawnictwo_Zwarte.objects.filter(
+            rok__gte=2022,
+            autorzy_set__dyscyplina_naukowa__isnull=False,
+            autorzy_set__data_oswiadczenia__isnull=True,
+        )
+        .distinct()
+        .count()
+    )
+
     context = {
         "problematic_records": problematic_records,
         "total_count": total_count,
         "unique_works": unique_works,
         "unique_authors": unique_authors,
+        "nieprzypiete_ciagle": nieprzypiete_ciagle,
+        "nieprzypiete_zwarte": nieprzypiete_zwarte,
+        "brak_oswiadczenia_ciagle_count": brak_oswiadczenia_ciagle_count,
+        "brak_oswiadczenia_zwarte_count": brak_oswiadczenia_zwarte_count,
     }
 
     return render(
