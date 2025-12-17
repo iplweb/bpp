@@ -1,0 +1,277 @@
+{% extends "base.html" %}
+
+{% block title %}
+    Komparator źródeł BPP-PBN
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li class="current">Komparator źródeł BPP-PBN</li>
+{% endblock %}
+
+{% block content %}
+    <div class="row">
+        <div class="medium-12 columns">
+            <h1>Komparator źródeł BPP-PBN</h1>
+            <p class="lead">
+                Punkty - porównanie punktacji źródeł w BPP z danymi PBN.
+            </p>
+        </div>
+    </div>
+
+    {# Nawigacja między widokami - przyciski 50%-50% #}
+    <div class="row">
+        <div class="medium-12 columns">
+            <div class="button-group expanded" style="margin-bottom: 1rem;">
+                <a href="{% url 'pbn_komparator_zrodel:list' %}" class="button">
+                    <span class="fi-list"></span> Punkty
+                </a>
+                <a href="{% url 'pbn_komparator_zrodel:dyscypliny_list' %}" class="button secondary">
+                    <span class="fi-book"></span> Dyscypliny
+                </a>
+            </div>
+        </div>
+    </div>
+
+    {% if not pbn_data_fresh %}
+    <div class="row">
+        <div class="medium-12 columns">
+            <div class="callout alert">
+                <h4><span class="fi-alert"></span> Dane PBN nieaktualne</h4>
+                <p>{{ pbn_stale_message }}</p>
+                {% if pbn_last_download %}
+                <p><strong>Ostatnie pobranie danych źródeł PBN:</strong> {{ pbn_last_download|date:"Y-m-d H:i" }}</p>
+                {% endif %}
+                <p>Lista rozbieżności opiera się na lokalnej kopii danych PBN. Wyniki mogą być nieaktualne.</p>
+                <a href="{% url 'pbn_downloader_app:main' %}" class="button">
+                    <span class="fi-download"></span> Przejdź do pobierania danych PBN
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {# Statystyki #}
+    <div class="row">
+        <div class="medium-12 columns">
+            <div class="callout">
+                <div class="row">
+                    <div class="medium-3 columns">
+                        <strong>Łącznie rozbieżności:</strong> {{ total_count }}
+                    </div>
+                    <div class="medium-3 columns">
+                        <strong>Rozbieżności punktów:</strong> {{ points_count }}
+                    </div>
+                    <div class="medium-3 columns">
+                        <strong>Rozbieżności dyscyplin:</strong> {{ disciplines_count }}
+                    </div>
+                    <div class="medium-3 columns">
+                        {% if meta.ostatnie_uruchomienie %}
+                            <strong>Ostatnia aktualizacja:</strong><br>
+                            {{ meta.ostatnie_uruchomienie|date:"Y-m-d H:i" }}
+                        {% else %}
+                            <strong>Jeszcze nie uruchomiono</strong>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# Filtry #}
+    <div class="row">
+        <div class="medium-12 columns">
+            <form method="get" class="callout" id="filter-form">
+                <div class="row">
+                    <div class="medium-2 columns">
+                        <label>Rok od:
+                            <input type="number" name="rok_od" value="{{ rok_od }}" min="1900" max="2100"
+                                   style="width: 80px;" onchange="this.form.submit()">
+                        </label>
+                    </div>
+                    <div class="medium-2 columns">
+                        <label>Rok do:
+                            <input type="number" name="rok_do" value="{{ rok_do }}" min="1900" max="2100"
+                                   style="width: 80px;" onchange="this.form.submit()">
+                        </label>
+                    </div>
+                    <div class="medium-4 columns">
+                        <label>Szukaj (nazwa/ISSN):
+                            <input type="text" name="search" value="{{ search }}"
+                                   placeholder="Szukaj w nazwie/ISSN...">
+                        </label>
+                    </div>
+                    <div class="medium-4 columns">
+                        <label style="padding-top: 1.5rem;">
+                            <input type="checkbox" name="tylko_rozbieznosci"
+                                   {% if tylko_rozbieznosci %}checked{% endif %}
+                                   onchange="this.form.submit()">
+                            Tylko rozbieżności punktów
+                        </label>
+                        <label>
+                            <input type="checkbox" name="bez_publikacji"
+                                   {% if bez_publikacji %}checked{% endif %}
+                                   onchange="this.form.submit()">
+                            Nie wyświetlaj źródeł bez publikacji
+                        </label>
+                        <label>
+                            <input type="checkbox" name="bez_publikacji_2022_2025"
+                                   {% if bez_publikacji_2022_2025 %}checked{% endif %}
+                                   onchange="this.form.submit()">
+                            Nie wyświetlaj źródeł bez publikacji 2022-2025
+                        </label>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="medium-12 columns" style="padding-top: 0.5rem;">
+                        <button type="submit" class="button">
+                            <span class="fi-filter"></span> Filtruj
+                        </button>
+                        <a href="{% url 'pbn_komparator_zrodel:list' %}" class="button secondary">
+                            <span class="fi-x"></span> Resetuj
+                        </a>
+                        <a href="{% url 'pbn_komparator_zrodel:przebuduj' %}" class="button alert">
+                            <span class="fi-refresh"></span> Przebuduj rozbieżności
+                        </a>
+                        {% if page_obj.paginator.count > 0 %}
+                        <a href="{% url 'pbn_komparator_zrodel:eksport_xlsx' %}{% if filter_query_string %}?{{ filter_query_string }}{% endif %}"
+                           class="button success">
+                            <span class="fi-download"></span> Eksport XLSX
+                        </a>
+                        <button type="submit" form="form-ustaw-punkty" class="button warning"
+                                onclick="return confirm('Czy na pewno chcesz zaktualizować punkty dla wszystkich {{ page_obj.paginator.count }} rekordów?');">
+                            <span class="fi-check"></span> Ustaw punkty wg PBN
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+            </form>
+            {% if page_obj.paginator.count > 0 %}
+            <form method="post" id="form-ustaw-punkty"
+                  action="{% url 'pbn_komparator_zrodel:aktualizuj_wszystkie' %}{% if filter_query_string %}?{{ filter_query_string }}{% endif %}"
+                  style="display: none;">
+                {% csrf_token %}
+                <input type="hidden" name="typ" value="punkty">
+            </form>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="medium-12 columns">
+            <p>
+                Znaleziono: <strong>{{ page_obj.paginator.count }}</strong> rekordów
+            </p>
+        </div>
+    </div>
+
+    {% include "pagination/pagination_with_anchor.html" %}
+
+    <table>
+        <thead>
+            <tr>
+                <th>
+                    {% if filter_query_string %}
+                        <a href="?{{ filter_query_string }}&sort={% if current_sort == 'zrodlo__nazwa' %}-zrodlo__nazwa{% else %}zrodlo__nazwa{% endif %}">
+                    {% else %}
+                        <a href="?sort={% if current_sort == 'zrodlo__nazwa' %}-zrodlo__nazwa{% else %}zrodlo__nazwa{% endif %}">
+                    {% endif %}
+                        Źródło
+                        {% if current_sort == 'zrodlo__nazwa' %}
+                            <span class="fi-arrow-up"></span>
+                        {% elif current_sort == '-zrodlo__nazwa' %}
+                            <span class="fi-arrow-down"></span>
+                        {% endif %}
+                    </a>
+                </th>
+                <th>
+                    {% if filter_query_string %}
+                        <a href="?{{ filter_query_string }}&sort={% if current_sort == 'rok' %}-rok{% else %}rok{% endif %}">
+                    {% else %}
+                        <a href="?sort={% if current_sort == 'rok' %}-rok{% else %}rok{% endif %}">
+                    {% endif %}
+                        Rok
+                        {% if current_sort == 'rok' %}
+                            <span class="fi-arrow-up"></span>
+                        {% elif current_sort == '-rok' %}
+                            <span class="fi-arrow-down"></span>
+                        {% endif %}
+                    </a>
+                </th>
+                <th>
+                    {% if filter_query_string %}
+                        <a href="?{{ filter_query_string }}&sort={% if current_sort == 'punkty_bpp' %}-punkty_bpp{% else %}punkty_bpp{% endif %}">
+                    {% else %}
+                        <a href="?sort={% if current_sort == 'punkty_bpp' %}-punkty_bpp{% else %}punkty_bpp{% endif %}">
+                    {% endif %}
+                        Punkty BPP
+                        {% if current_sort == 'punkty_bpp' %}
+                            <span class="fi-arrow-up"></span>
+                        {% elif current_sort == '-punkty_bpp' %}
+                            <span class="fi-arrow-down"></span>
+                        {% endif %}
+                    </a>
+                </th>
+                <th>
+                    {% if filter_query_string %}
+                        <a href="?{{ filter_query_string }}&sort={% if current_sort == 'punkty_pbn' %}-punkty_pbn{% else %}punkty_pbn{% endif %}">
+                    {% else %}
+                        <a href="?sort={% if current_sort == 'punkty_pbn' %}-punkty_pbn{% else %}punkty_pbn{% endif %}">
+                    {% endif %}
+                        Punkty PBN
+                        {% if current_sort == 'punkty_pbn' %}
+                            <span class="fi-arrow-up"></span>
+                        {% elif current_sort == '-punkty_pbn' %}
+                            <span class="fi-arrow-down"></span>
+                        {% endif %}
+                    </a>
+                </th>
+                <th>Operacje</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for elem in rozbieznosci %}
+                <tr>
+                    <td style="font-size: 0.85em;">
+                        <a href="{% url 'admin:bpp_zrodlo_change' elem.zrodlo.pk %}">
+                            {{ elem.zrodlo.nazwa }}
+                        </a>
+                        {% if elem.zrodlo.issn %}
+                            <br><small>ISSN: {{ elem.zrodlo.issn }}</small>
+                        {% endif %}
+                    </td>
+                    <td>{{ elem.rok }}</td>
+                    <td{% if elem.ma_rozbieznosc_punktow %} style="background-color: #fff3cd;"{% endif %}>
+                        {{ elem.punkty_bpp|default:"-" }}
+                    </td>
+                    <td{% if elem.ma_rozbieznosc_punktow %} style="background-color: #d4edda;"{% endif %}>
+                        {{ elem.punkty_pbn|default:"-" }}
+                    </td>
+                    <td>
+                        {% if elem.ma_rozbieznosc_punktow %}
+                        <form method="post" action="{% url 'pbn_komparator_zrodel:aktualizuj' elem.pk %}" style="display: inline;">
+                            {% csrf_token %}
+                            <input type="hidden" name="typ" value="punkty">
+                            <button type="submit" class="button tiny success"
+                                    onclick="return confirm('Czy na pewno chcesz zaktualizować punkty wg PBN?');">
+                                Ustaw wg PBN
+                            </button>
+                        </form>
+                        {% else %}
+                            <span class="label success">OK</span>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% empty %}
+                <tr>
+                    <td colspan="5" class="text-center">
+                        Brak rozbieżności dla wybranych kryteriów.
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% include "pagination/pagination_with_anchor.html" %}
+
+{% endblock %}

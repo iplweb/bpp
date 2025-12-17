@@ -14,6 +14,8 @@
             <h1>Importer autorów PBN</h1>
             <p class="lead">Naukowcy z PBN bez odpowiedników w BPP</p>
 
+            {% include "includes/pbn_freshness_warning.html" with custom_message="Lista naukowców PBN opiera się na lokalnej kopii danych. Wyniki mogą być nieaktualne." %}
+
             <div class="panel callout secondary">
                 <h5><i class="fi-info"></i> Informacje</h5>
                 <p>Ta strona pokazuje naukowców pobranych z API instytucji PBN, którzy nie mają jeszcze odpowiedników w bazie BPP.</p>

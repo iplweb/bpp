@@ -15,6 +15,7 @@ from django.views.generic import ListView
 from bpp.models import Autor, Tytul
 from import_common.core import matchuj_autora
 from pbn_api.models import Scientist
+from pbn_downloader_app.freshness import is_pbn_people_data_fresh
 
 from .models import DoNotRemind
 
@@ -82,12 +83,20 @@ class ImporterAutorowPBNView(ListView):
         total_unmatched = self.get_queryset().count()
         total_ignored = DoNotRemind.objects.count()
 
+        # Check PBN people data freshness
+        pbn_data_fresh, pbn_stale_message, pbn_last_download = (
+            is_pbn_people_data_fresh()
+        )
+
         context.update(
             {
                 "total_unmatched": total_unmatched,
                 "total_ignored": total_ignored,
                 "matches_count": matches_count,  # Matches on current page
                 "total_with_matches": total_with_matches,  # Total matches across all pages
+                "pbn_data_fresh": pbn_data_fresh,
+                "pbn_stale_message": pbn_stale_message,
+                "pbn_last_download": pbn_last_download,
             }
         )
 
@@ -146,36 +155,35 @@ class ImporterAutorowPBNView(ListView):
                 params["tytul"] = tytul_id
 
         # Employment data
-        employment_data = self._get_employment_data(scientist)
-        if employment_data:
-            if employment_data.get("jednostka_id"):
-                # Prepare inline for Autor_Jednostka
-                params["autor_jednostka_set-0-jednostka"] = employment_data[
-                    "jednostka_id"
-                ]
-                if employment_data.get("od"):
-                    # Convert date to YYYY-MM-DD format
-                    try:
-                        date_obj = datetime.strptime(employment_data["od"], "%Y-%m-%d")
-                        params["autor_jednostka_set-0-rozpoczal_prace"] = (
-                            date_obj.strftime("%Y-%m-%d")
-                        )
-                    except BaseException:
-                        pass
-                if employment_data.get("do"):
-                    try:
-                        date_obj = datetime.strptime(employment_data["do"], "%Y-%m-%d")
-                        params["autor_jednostka_set-0-zakonczyl_prace"] = (
-                            date_obj.strftime("%Y-%m-%d")
-                        )
-                    except BaseException:
-                        pass
-
-                # Set management form data for inline
-                params["autor_jednostka_set-TOTAL_FORMS"] = "1"
-                params["autor_jednostka_set-INITIAL_FORMS"] = "0"
+        self._add_employment_params(scientist, params)
 
         return params
+
+    def _add_employment_params(self, scientist, params):
+        """Add employment-related params if available."""
+        employment_data = self._get_employment_data(scientist)
+        if not employment_data or not employment_data.get("jednostka_id"):
+            return
+
+        params["autor_jednostka_set-0-jednostka"] = employment_data["jednostka_id"]
+        self._add_date_param(params, employment_data, "od", "rozpoczal_prace")
+        self._add_date_param(params, employment_data, "do", "zakonczyl_prace")
+
+        # Set management form data for inline
+        params["autor_jednostka_set-TOTAL_FORMS"] = "1"
+        params["autor_jednostka_set-INITIAL_FORMS"] = "0"
+
+    def _add_date_param(self, params, employment_data, date_key, param_suffix):
+        """Add a date parameter to params if available."""
+        if not employment_data.get(date_key):
+            return
+        try:
+            date_obj = datetime.strptime(employment_data[date_key], "%Y-%m-%d")
+            params[f"autor_jednostka_set-0-{param_suffix}"] = date_obj.strftime(
+                "%Y-%m-%d"
+            )
+        except BaseException:
+            pass
 
     def _get_tytul_id(self, qualifications):
         """Get or create Tytul based on qualifications"""
@@ -328,6 +336,49 @@ def link_all_scientists(request):
     )
 
 
+def _prepare_autor_data(scientist, view):
+    """Prepare base data dict for creating an Autor."""
+    autor_data = {
+        "imiona": scientist.name or "",
+        "nazwisko": scientist.lastName or "",
+        "pbn_uid_id": scientist.pk,
+    }
+
+    if scientist.orcid:
+        autor_data["orcid"] = scientist.orcid
+
+    if scientist.qualifications:
+        tytul_id = view._get_tytul_id(scientist.qualifications)
+        if tytul_id:
+            autor_data["tytul_id"] = tytul_id
+
+    return autor_data
+
+
+def _create_autor_jednostka(autor, employment_data):
+    """Create Autor_Jednostka if employment data is available."""
+    if not employment_data or not employment_data.get("jednostka_id"):
+        return
+
+    from bpp.models import Autor_Jednostka
+
+    aj_data = {
+        "autor": autor,
+        "jednostka_id": employment_data["jednostka_id"],
+    }
+
+    for date_key, field_name in [("od", "rozpoczal_prace"), ("do", "zakonczyl_prace")]:
+        if employment_data.get(date_key):
+            try:
+                aj_data[field_name] = datetime.strptime(
+                    employment_data[date_key], "%Y-%m-%d"
+                ).date()
+            except BaseException:
+                pass
+
+    Autor_Jednostka.objects.create(**aj_data)
+
+
 @login_required
 @staff_member_required
 @require_POST
@@ -337,68 +388,21 @@ def create_all_unmatched_scientists(request):
     view = ImporterAutorowPBNView()
     view.request = request
 
-    # Get all unmatched scientists
     scientists = view.get_queryset()
-
     created_count = 0
     errors = []
 
     with transaction.atomic():
         for scientist in scientists:
-            # Skip if has a match
             if view._find_match(scientist):
                 continue
 
             try:
-                # Prepare data for creating an Autor
-                autor_data = {
-                    "imiona": scientist.name or "",
-                    "nazwisko": scientist.lastName or "",
-                    "pbn_uid_id": scientist.pk,
-                }
-
-                if scientist.orcid:
-                    autor_data["orcid"] = scientist.orcid
-
-                # Get academic title
-                if scientist.qualifications:
-                    tytul_id = view._get_tytul_id(scientist.qualifications)
-                    if tytul_id:
-                        autor_data["tytul_id"] = tytul_id
-
-                # Create the Autor
+                autor_data = _prepare_autor_data(scientist, view)
                 autor = Autor.objects.create(**autor_data)
-
-                # Add employment if available
                 employment_data = view._get_employment_data(scientist)
-                if employment_data and employment_data.get("jednostka_id"):
-                    from bpp.models import Autor_Jednostka
-
-                    aj_data = {
-                        "autor": autor,
-                        "jednostka_id": employment_data["jednostka_id"],
-                    }
-
-                    if employment_data.get("od"):
-                        try:
-                            aj_data["rozpoczal_prace"] = datetime.strptime(
-                                employment_data["od"], "%Y-%m-%d"
-                            ).date()
-                        except BaseException:
-                            pass
-
-                    if employment_data.get("do"):
-                        try:
-                            aj_data["zakonczyl_prace"] = datetime.strptime(
-                                employment_data["do"], "%Y-%m-%d"
-                            ).date()
-                        except BaseException:
-                            pass
-
-                    Autor_Jednostka.objects.create(**aj_data)
-
+                _create_autor_jednostka(autor, employment_data)
                 created_count += 1
-
             except Exception as e:
                 errors.append(f"{scientist} - błąd: {str(e)}")
 

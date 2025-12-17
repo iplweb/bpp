@@ -18,16 +18,16 @@
     </div>
 
     <div class="row equal-height-panels">
-        <div class="large-12 xlarge-6 columns">
+        <div class="large-12 xlarge-4 columns">
             <div class="panel callout secondary download-panel">
                 <div class="panel-header">
-                    <h4><i class="fi-page-multiple"></i> Pobieranie publikacji i oświadczeń</h4>
-                    <p>Pobieranie publikacji instytucji oraz oświadczeń autorów z PBN.</p>
+                    <h4><i class="fi-page-multiple"></i> Pobieranie publikacji i oswiadczen</h4>
+                    <p>Pobieranie publikacji instytucji oraz oswiadczen autorow z PBN.</p>
                 </div>
 
                 <div class="panel-icon">
-                    <span style="color: #0066cc; font-size: 2em;">📄</span>
-                    <span style="color: #0066cc; font-size: 1.2em; display: block;">Publications</span>
+                    <span class="fi-page-multiple" style="color: #0066cc; font-size: 2em;"></span>
+                    <span style="color: #0066cc; font-size: 1.2em; display: block;">Publikacje</span>
                 </div>
 
                 <div class="panel-action">
@@ -56,16 +56,16 @@
                     </div>
 
                     <div id="task-completed" class="status-badge success" style="display: none;">
-                        <i class="fi-check"></i> <strong>Pobrane pomyślnie</strong>
+                        <i class="fi-check"></i> <strong>Pobrane pomyslnie</strong>
                         <small>Ostatnia aktualizacja: <span id="last-update"></span></small>
-                        <small>Użytkownik: <span id="task-user"></span></small>
+                        <small>Uzytkownik: <span id="task-user"></span></small>
                     </div>
 
                     <div id="task-failed" class="status-badge alert" style="display: none;">
-                        <i class="fi-alert"></i> <strong>Błąd pobierania</strong>
+                        <i class="fi-alert"></i> <strong>Blad pobierania</strong>
                         <small><span id="error-message"></span></small>
                         <button id="retry-btn" class="button warning tiny">
-                            <i class="fi-refresh"></i> Ponów
+                            <i class="fi-refresh"></i> Ponow
                         </button>
                     </div>
 
@@ -73,24 +73,29 @@
                         <i class="fi-info"></i> <strong>Brak danych</strong>
                         <small>Nie wykonano jeszcze pobierania</small>
                     </div>
+
+                    <div id="task-outdated" class="status-badge warning" style="display: none; margin-top: 0.5rem;">
+                        <i class="fi-clock"></i> <strong>Dane przestarzale</strong>
+                        <small>Ostatnie pobranie bylo ponad 7 dni temu. Zalecamy ponowne pobranie.</small>
+                    </div>
                 </div>
 
                 <div class="panel-footer">
-                    <small class="text-muted"><strong>Info:</strong> Proces może potrwać kilka minut</small>
+                    <small class="text-muted"><strong>Info:</strong> Proces moze potrwac kilka minut</small>
                 </div>
             </div>
         </div>
 
-        <div class="large-12 xlarge-6 columns">
+        <div class="large-12 xlarge-4 columns">
             <div class="panel callout warning download-panel">
                 <div class="panel-header">
-                    <h4><i class="fi-torsos-all"></i> Pobieranie osób z instytucji</h4>
-                    <p>Pobieranie danych osób powiązanych z instytucją z PBN.</p>
+                    <h4><i class="fi-torsos-all"></i> Pobieranie osob z instytucji</h4>
+                    <p>Pobieranie danych osob powiazanych z instytucja z PBN.</p>
                 </div>
 
                 <div class="panel-icon">
-                    <span style="color: #e07600; font-size: 2em;">👥</span>
-                    <span style="color: #e07600; font-size: 1.2em; display: block;">People</span>
+                    <span class="fi-torsos-all" style="color: #e07600; font-size: 2em;"></span>
+                    <span style="color: #e07600; font-size: 1.2em; display: block;">Osoby</span>
                 </div>
 
                 <div class="panel-action">
@@ -119,16 +124,16 @@
                     </div>
 
                     <div id="people-task-completed" class="status-badge success" style="display: none;">
-                        <i class="fi-check"></i> <strong>Pobrane pomyślnie</strong>
+                        <i class="fi-check"></i> <strong>Pobrane pomyslnie</strong>
                         <small>Ostatnia aktualizacja: <span id="people-last-update"></span></small>
-                        <small>Użytkownik: <span id="people-task-user"></span></small>
+                        <small>Uzytkownik: <span id="people-task-user"></span></small>
                     </div>
 
                     <div id="people-task-failed" class="status-badge alert" style="display: none;">
-                        <i class="fi-alert"></i> <strong>Błąd pobierania</strong>
+                        <i class="fi-alert"></i> <strong>Blad pobierania</strong>
                         <small><span id="people-error-message"></span></small>
                         <button id="people-retry-btn" class="button alert tiny">
-                            <i class="fi-refresh"></i> Ponów
+                            <i class="fi-refresh"></i> Ponow
                         </button>
                     </div>
 
@@ -136,10 +141,83 @@
                         <i class="fi-info"></i> <strong>Brak danych</strong>
                         <small>Nie wykonano jeszcze pobierania</small>
                     </div>
+
+                    <div id="people-task-outdated" class="status-badge warning" style="display: none; margin-top: 0.5rem;">
+                        <i class="fi-clock"></i> <strong>Dane przestarzale</strong>
+                        <small>Ostatnie pobranie bylo ponad 7 dni temu. Zalecamy ponowne pobranie.</small>
+                    </div>
                 </div>
 
                 <div class="panel-footer">
-                    <small class="text-muted"><strong>Info:</strong> Proces może potrwać kilka minut</small>
+                    <small class="text-muted"><strong>Info:</strong> Proces moze potrwac kilka minut</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="large-12 xlarge-4 columns">
+            <div class="panel callout success download-panel">
+                <div class="panel-header">
+                    <h4><i class="fi-book"></i> Pobieranie zrodel (czasopism)</h4>
+                    <p>Pobieranie danych zrodel z PBN i integracja z BPP.</p>
+                </div>
+
+                <div class="panel-icon">
+                    <span class="fi-book" style="color: #27ae60; font-size: 2em;"></span>
+                    <span style="color: #27ae60; font-size: 1.2em; display: block;">Zrodla</span>
+                </div>
+
+                <div class="panel-action">
+                    <button id="journals-download-btn" class="button success expanded">
+                        <i class="fi-book"></i> Pobierz zrodla z PBN
+                    </button>
+                </div>
+
+                <!-- Simplified status display -->
+                <div id="journals-task-status" class="status-section" style="display: none;">
+                    <hr />
+                    <h5 class="status-title">Status pobierania</h5>
+
+                    <div id="journals-task-running" class="status-content" style="display: none;">
+                        <div class="status-message">
+                            <i class="fi-refresh"></i> <strong>Pobieranie w toku...</strong>
+                            <small id="journals-current-step" class="step-info">Inicjalizacja...</small>
+                        </div>
+                        <div class="progress">
+                            <div id="journals-progress-meter" class="meter success" style="width: 0%;"></div>
+                        </div>
+                        <div class="progress-info">
+                            <span id="journals-progress-percentage">0%</span>
+                            <span id="journals-progress-details"></span>
+                        </div>
+                    </div>
+
+                    <div id="journals-task-completed" class="status-badge success" style="display: none;">
+                        <i class="fi-check"></i> <strong>Pobrane pomyslnie</strong>
+                        <small>Ostatnia aktualizacja: <span id="journals-last-update"></span></small>
+                        <small>Uzytkownik: <span id="journals-task-user"></span></small>
+                    </div>
+
+                    <div id="journals-task-failed" class="status-badge alert" style="display: none;">
+                        <i class="fi-alert"></i> <strong>Blad pobierania</strong>
+                        <small><span id="journals-error-message"></span></small>
+                        <button id="journals-retry-btn" class="button success tiny">
+                            <i class="fi-refresh"></i> Ponow
+                        </button>
+                    </div>
+
+                    <div id="journals-task-no-data" class="status-badge secondary" style="display: none;">
+                        <i class="fi-info"></i> <strong>Brak danych</strong>
+                        <small>Nie wykonano jeszcze pobierania</small>
+                    </div>
+
+                    <div id="journals-task-outdated" class="status-badge warning" style="display: none; margin-top: 0.5rem;">
+                        <i class="fi-clock"></i> <strong>Dane przestarzale</strong>
+                        <small>Ostatnie pobranie bylo ponad 7 dni temu. Zalecamy ponowne pobranie.</small>
+                    </div>
+                </div>
+
+                <div class="panel-footer">
+                    <small class="text-muted"><strong>Info:</strong> Proces moze potrwac kilka minut</small>
                 </div>
             </div>
         </div>
@@ -150,37 +228,45 @@
             <div class="panel callout info">
                 <h3><i class="fi-info"></i> Informacje o pobieraniu</h3>
                 <div class="row">
-                    <div class="medium-6 columns">
-                        <h4>📄 Pobieranie publikacji</h4>
-                        <p>Składa się z dwóch głównych etapów:</p>
+                    <div class="medium-4 columns">
+                        <h4><span class="fi-page-multiple"></span> Pobieranie publikacji</h4>
+                        <p>Sklada sie z dwoch glownych etapow:</p>
                         <ul>
                             <li><strong>Faza 1:</strong> Pobieranie publikacji instytucji z PBN</li>
-                            <li><strong>Faza 2:</strong> Pobieranie oświadczeń i publikacji</li>
+                            <li><strong>Faza 2:</strong> Pobieranie oswiadczen i publikacji</li>
                         </ul>
                     </div>
-                    <div class="medium-6 columns">
-                        <h4>👥 Pobieranie osób</h4>
-                        <p>Pobieranie danych osób powiązanych z instytucją:</p>
+                    <div class="medium-4 columns">
+                        <h4><span class="fi-torsos-all"></span> Pobieranie osob</h4>
+                        <p>Pobieranie danych osob powiazanych z instytucja:</p>
                         <ul>
-                            <li>Pobieranie listy osób z instytucji</li>
-                            <li>Aktualizacja danych naukowców w systemie</li>
+                            <li>Pobieranie listy osob z instytucji</li>
+                            <li>Aktualizacja danych naukowcow w systemie</li>
+                        </ul>
+                    </div>
+                    <div class="medium-4 columns">
+                        <h4><span class="fi-book"></span> Pobieranie zrodel</h4>
+                        <p>Pobieranie danych czasopism z PBN:</p>
+                        <ul>
+                            <li><strong>Faza 1:</strong> Pobieranie zrodel MNiSW z PBN</li>
+                            <li><strong>Faza 2:</strong> Integracja z istniejacymi zrodlami w BPP</li>
                         </ul>
                     </div>
                 </div>
-                <p><strong>Uwaga:</strong> Do rozpoczęcia pobierania wymagana jest ważna autoryzacja w systemie PBN. Upewnij się, że jesteś zalogowany w PBN i posiadasz odpowiednie uprawnienia.</p>
+                <p><strong>Uwaga:</strong> Do rozpoczecia pobierania wymagana jest wazna autoryzacja w systemie PBN. Upewnij sie, ze jestes zalogowany w PBN i posiadasz odpowiednie uprawnienia.</p>
             </div>
         </div>
     </div>
 
-    {% if latest_task or latest_people_task %}
+    {% if latest_task or latest_people_task or latest_journals_task %}
     <div class="row">
         <div class="large-12 columns">
             <div class="panel callout">
-                <h3><i class="fi-clock"></i> Historia ostatnich zadań</h3>
+                <h3><i class="fi-clock"></i> Historia ostatnich zadan</h3>
                 <div class="row">
                     {% if latest_task %}
-                    <div class="medium-6 columns">
-                        <h4>📄 Ostatnie pobieranie publikacji</h4>
+                    <div class="medium-4 columns">
+                        <h4><span class="fi-page-multiple"></span> Ostatnie pobieranie publikacji</h4>
                         <div class="stat-box">
                             <strong>Status:</strong>
                             <span class="label
@@ -189,10 +275,16 @@
                                 {% elif latest_task.status == 'running' %}warning
                                 {% endif %}">
                                 {{ latest_task.get_status_display }}
-                            </span><br/>
-                            <strong>Użytkownik:</strong> {{ latest_task.user.username }}<br/>
-                            <strong>Rozpoczęte:</strong> {{ latest_task.started_at|date:"d.m.Y H:i:s" }}<br/>
-                            <strong>Zakończone:</strong>
+                            </span>
+                            {% if latest_task.is_outdated %}
+                                <span class="label warning" style="margin-left: 0.25rem;">
+                                    <span class="fi-clock"></span> Przestarzale
+                                </span>
+                            {% endif %}
+                            <br/>
+                            <strong>Uzytkownik:</strong> {{ latest_task.user.username }}<br/>
+                            <strong>Rozpoczete:</strong> {{ latest_task.started_at|date:"d.m.Y H:i:s" }}<br/>
+                            <strong>Zakonczone:</strong>
                             {% if latest_task.completed_at %}
                                 {{ latest_task.completed_at|date:"d.m.Y H:i:s" }}
                             {% else %}
@@ -202,7 +294,7 @@
                                 <br/><strong>Aktualny krok:</strong> {{ latest_task.current_step }}
                             {% endif %}
                             {% if latest_task.error_message %}
-                                <br/><strong>Błąd:</strong>
+                                <br/><strong>Blad:</strong>
                                 <div class="callout alert small" style="margin-top: 0.5rem;">
                                     {{ latest_task.error_message|truncatewords:15 }}
                                 </div>
@@ -212,8 +304,8 @@
                     {% endif %}
 
                     {% if latest_people_task %}
-                    <div class="medium-6 columns">
-                        <h4>👥 Ostatnie pobieranie osób</h4>
+                    <div class="medium-4 columns">
+                        <h4><span class="fi-torsos-all"></span> Ostatnie pobieranie osob</h4>
                         <div class="stat-box">
                             <strong>Status:</strong>
                             <span class="label
@@ -222,10 +314,16 @@
                                 {% elif latest_people_task.status == 'running' %}warning
                                 {% endif %}">
                                 {{ latest_people_task.get_status_display }}
-                            </span><br/>
-                            <strong>Użytkownik:</strong> {{ latest_people_task.user.username }}<br/>
-                            <strong>Rozpoczęte:</strong> {{ latest_people_task.started_at|date:"d.m.Y H:i:s" }}<br/>
-                            <strong>Zakończone:</strong>
+                            </span>
+                            {% if latest_people_task.is_outdated %}
+                                <span class="label warning" style="margin-left: 0.25rem;">
+                                    <span class="fi-clock"></span> Przestarzale
+                                </span>
+                            {% endif %}
+                            <br/>
+                            <strong>Uzytkownik:</strong> {{ latest_people_task.user.username }}<br/>
+                            <strong>Rozpoczete:</strong> {{ latest_people_task.started_at|date:"d.m.Y H:i:s" }}<br/>
+                            <strong>Zakonczone:</strong>
                             {% if latest_people_task.completed_at %}
                                 {{ latest_people_task.completed_at|date:"d.m.Y H:i:s" }}
                             {% else %}
@@ -235,9 +333,51 @@
                                 <br/><strong>Aktualny krok:</strong> {{ latest_people_task.current_step }}
                             {% endif %}
                             {% if latest_people_task.error_message %}
-                                <br/><strong>Błąd:</strong>
+                                <br/><strong>Blad:</strong>
                                 <div class="callout alert small" style="margin-top: 0.5rem;">
                                     {{ latest_people_task.error_message|truncatewords:15 }}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if latest_journals_task %}
+                    <div class="medium-4 columns">
+                        <h4><span class="fi-book"></span> Ostatnie pobieranie zrodel</h4>
+                        <div class="stat-box">
+                            <strong>Status:</strong>
+                            <span class="label
+                                {% if latest_journals_task.status == 'completed' %}success
+                                {% elif latest_journals_task.status == 'failed' %}alert
+                                {% elif latest_journals_task.status == 'running' %}warning
+                                {% endif %}">
+                                {{ latest_journals_task.get_status_display }}
+                            </span>
+                            {% if latest_journals_task.is_outdated %}
+                                <span class="label warning" style="margin-left: 0.25rem;">
+                                    <span class="fi-clock"></span> Przestarzale
+                                </span>
+                            {% endif %}
+                            <br/>
+                            <strong>Uzytkownik:</strong> {{ latest_journals_task.user.username }}<br/>
+                            <strong>Rozpoczete:</strong> {{ latest_journals_task.started_at|date:"d.m.Y H:i:s" }}<br/>
+                            <strong>Zakonczone:</strong>
+                            {% if latest_journals_task.completed_at %}
+                                {{ latest_journals_task.completed_at|date:"d.m.Y H:i:s" }}
+                            {% else %}
+                                <em>W toku</em>
+                            {% endif %}
+                            {% if latest_journals_task.current_step %}
+                                <br/><strong>Aktualny krok:</strong> {{ latest_journals_task.current_step }}
+                            {% endif %}
+                            {% if latest_journals_task.zrodla_integrated %}
+                                <br/><strong>Zintegrowano zrodel:</strong> {{ latest_journals_task.zrodla_integrated }}
+                            {% endif %}
+                            {% if latest_journals_task.error_message %}
+                                <br/><strong>Blad:</strong>
+                                <div class="callout alert small" style="margin-top: 0.5rem;">
+                                    {{ latest_journals_task.error_message|truncatewords:15 }}
                                 </div>
                             {% endif %}
                         </div>
@@ -248,6 +388,58 @@
         </div>
     </div>
     {% endif %}
+
+    <!-- Cancel buttons section at bottom of page -->
+    <div id="cancel-buttons-section" class="row" style="display: none;">
+        <div class="large-12 columns">
+            <div class="panel callout alert cancel-panel">
+                <div class="row">
+                    <div class="large-12 columns">
+                        <h5><span class="fi-x"></span> Anulowanie zadan</h5>
+                        <p class="cancel-description">
+                            Mozesz anulowac uruchomione zadania. Jesli zadanie nie aktualizowalo sie
+                            przez 15 minut, jest prawdopodobnie zablokowane.
+                        </p>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="medium-4 columns" id="cancel-publications-wrapper" style="display: none;">
+                        <div class="cancel-task-item">
+                            <span class="cancel-task-label">Publikacje</span>
+                            <span id="publications-stalled-badge" class="label warning" style="display: none;">
+                                <span class="fi-clock"></span> Zablokowane
+                            </span>
+                            <button id="cancel-publications-btn" class="button tiny alert">
+                                <span class="fi-x"></span> Anuluj
+                            </button>
+                        </div>
+                    </div>
+                    <div class="medium-4 columns" id="cancel-people-wrapper" style="display: none;">
+                        <div class="cancel-task-item">
+                            <span class="cancel-task-label">Osoby</span>
+                            <span id="people-stalled-badge" class="label warning" style="display: none;">
+                                <span class="fi-clock"></span> Zablokowane
+                            </span>
+                            <button id="cancel-people-btn" class="button tiny alert">
+                                <span class="fi-x"></span> Anuluj
+                            </button>
+                        </div>
+                    </div>
+                    <div class="medium-4 columns" id="cancel-journals-wrapper" style="display: none;">
+                        <div class="cancel-task-item">
+                            <span class="cancel-task-label">Zrodla</span>
+                            <span id="journals-stalled-badge" class="label warning" style="display: none;">
+                                <span class="fi-clock"></span> Zablokowane
+                            </span>
+                            <button id="cancel-journals-btn" class="button tiny alert">
+                                <span class="fi-x"></span> Anuluj
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <style>
         @keyframes pulse {
@@ -270,8 +462,8 @@
         }
 
         @media screen and (min-width: 1440px) {
-            .equal-height-panels > .xlarge-6 {
-                flex: 1 1 calc(50% - 0.5rem);
+            .equal-height-panels > .xlarge-4 {
+                flex: 1 1 calc(33.33% - 0.67rem);
             }
         }
 
@@ -354,6 +546,12 @@
             color: #5f6368;
         }
 
+        .status-badge.warning {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            color: #856404;
+        }
+
         .status-badge small {
             display: block;
             margin-top: 0.25rem;
@@ -415,6 +613,39 @@
                 min-height: auto;
             }
         }
+
+        /* Cancel section styles */
+        .cancel-panel {
+            background: #fef3f3;
+            border: 1px solid #e74c3c;
+        }
+
+        .cancel-panel h5 {
+            color: #c0392b;
+            margin-bottom: 0.5rem;
+        }
+
+        .cancel-description {
+            font-size: 0.85rem;
+            color: #666;
+            margin-bottom: 1rem;
+        }
+
+        .cancel-task-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .cancel-task-label {
+            font-weight: bold;
+            min-width: 70px;
+        }
+
+        .cancel-task-item .button {
+            margin: 0;
+        }
     </style>
 
     <script>
@@ -422,9 +653,11 @@
             // Check task status on page load and then periodically
             checkTaskStatus();
             checkPeopleTaskStatus();
+            checkJournalsTaskStatus();
             var statusInterval = setInterval(function() {
                 checkTaskStatus();
                 checkPeopleTaskStatus();
+                checkJournalsTaskStatus();
             }, 5000); // Check every 5 seconds
 
             // Publication download button click handler
@@ -515,13 +748,62 @@
                         if (data.success) {
                             checkPeopleTaskStatus();
                         } else {
-                            alert('Błąd: ' + data.error);
-                            btn.removeClass('disabled').html('<i class="fi-refresh"></i> Spróbuj ponownie');
+                            alert('Blad: ' + data.error);
+                            btn.removeClass('disabled').html('<i class="fi-refresh"></i> Ponow');
                         }
                     },
                     error: function() {
-                        alert('Wystąpił błąd podczas komunikacji z serwerem');
-                        btn.removeClass('disabled').html('<i class="fi-refresh"></i> Spróbuj ponownie');
+                        alert('Wystapil blad podczas komunikacji z serwerem');
+                        btn.removeClass('disabled').html('<i class="fi-refresh"></i> Ponow');
+                    }
+                });
+            });
+
+            // Journals download button click handler
+            $('#journals-download-btn').click(function() {
+                var btn = $(this);
+                if (btn.hasClass('disabled')) return false;
+
+                btn.addClass('disabled').html('<i class="fi-refresh"></i> Rozpoczynam pobieranie...');
+
+                $.ajax({
+                    url: '{% url "pbn_downloader_app:start_journals_download" %}',
+                    type: 'POST',
+                    headers: { 'X-CSRFToken': $('[name=csrfmiddlewaretoken]').val() },
+                    success: function(data) {
+                        if (data.success) {
+                            checkJournalsTaskStatus();
+                        } else {
+                            alert('Blad: ' + data.error);
+                            btn.removeClass('disabled').html('<i class="fi-book"></i> Pobierz zrodla z PBN');
+                        }
+                    },
+                    error: function() {
+                        alert('Wystapil blad podczas komunikacji z serwerem');
+                        btn.removeClass('disabled').html('<i class="fi-book"></i> Pobierz zrodla z PBN');
+                    }
+                });
+            });
+
+            $(document).on('click', '#journals-retry-btn', function() {
+                var btn = $(this);
+                btn.addClass('disabled').html('<i class="fi-refresh"></i> Ponawiam...');
+
+                $.ajax({
+                    url: '{% url "pbn_downloader_app:retry_journals_task" %}',
+                    type: 'POST',
+                    headers: { 'X-CSRFToken': $('[name=csrfmiddlewaretoken]').val() },
+                    success: function(data) {
+                        if (data.success) {
+                            checkJournalsTaskStatus();
+                        } else {
+                            alert('Blad: ' + data.error);
+                            btn.removeClass('disabled').html('<i class="fi-refresh"></i> Ponow');
+                        }
+                    },
+                    error: function() {
+                        alert('Wystapil blad podczas komunikacji z serwerem');
+                        btn.removeClass('disabled').html('<i class="fi-refresh"></i> Ponow');
                     }
                 });
             });
@@ -543,11 +825,13 @@
                 var taskCompleted = $('#task-completed');
                 var taskFailed = $('#task-failed');
                 var taskNoData = $('#task-no-data');
+                var taskOutdated = $('#task-outdated');
 
                 taskRunning.hide();
                 taskCompleted.hide();
                 taskFailed.hide();
                 taskNoData.hide();
+                taskOutdated.hide();
 
                 if (data.is_running) {
                     downloadBtn.addClass('disabled').html('<i class="fi-refresh"></i> Pobieranie w toku...');
@@ -582,6 +866,9 @@
                         taskCompleted.show();
                         $('#last-update').text(formatDate(task.completed_at));
                         $('#task-user').text(task.user);
+                        if (task.is_outdated) {
+                            taskOutdated.show();
+                        }
                     } else if (task.status === 'failed') {
                         downloadBtn.removeClass('disabled').html('<i class="fi-cloud-download"></i> Pobierz publikacje z PBN');
                         taskStatus.show();
@@ -613,11 +900,13 @@
                 var peopleTaskCompleted = $('#people-task-completed');
                 var peopleTaskFailed = $('#people-task-failed');
                 var peopleTaskNoData = $('#people-task-no-data');
+                var peopleTaskOutdated = $('#people-task-outdated');
 
                 peopleTaskRunning.hide();
                 peopleTaskCompleted.hide();
                 peopleTaskFailed.hide();
                 peopleTaskNoData.hide();
+                peopleTaskOutdated.hide();
 
                 if (data.is_running) {
                     peopleDownloadBtn.addClass('disabled').html('<i class="fi-refresh"></i> Pobieranie w toku...');
@@ -648,6 +937,9 @@
                         peopleTaskCompleted.show();
                         $('#people-last-update').text(formatDate(task.completed_at));
                         $('#people-task-user').text(task.user);
+                        if (task.is_outdated) {
+                            peopleTaskOutdated.show();
+                        }
                     } else if (task.status === 'failed') {
                         peopleDownloadBtn.removeClass('disabled').html('<i class="fi-torsos-all"></i> Pobierz osoby z PBN');
                         peopleTaskStatus.show();
@@ -662,11 +954,242 @@
                 }
             }
 
+            // Journals task status functions
+            function checkJournalsTaskStatus() {
+                $.ajax({
+                    url: '{% url "pbn_downloader_app:journals_task_status" %}',
+                    type: 'GET',
+                    success: function(data) { updateJournalsTaskStatus(data); },
+                    error: function() { console.log('Error checking journals task status'); }
+                });
+            }
+
+            function updateJournalsTaskStatus(data) {
+                var journalsDownloadBtn = $('#journals-download-btn');
+                var journalsTaskStatus = $('#journals-task-status');
+                var journalsTaskRunning = $('#journals-task-running');
+                var journalsTaskCompleted = $('#journals-task-completed');
+                var journalsTaskFailed = $('#journals-task-failed');
+                var journalsTaskNoData = $('#journals-task-no-data');
+                var journalsTaskOutdated = $('#journals-task-outdated');
+
+                journalsTaskRunning.hide();
+                journalsTaskCompleted.hide();
+                journalsTaskFailed.hide();
+                journalsTaskNoData.hide();
+                journalsTaskOutdated.hide();
+
+                if (data.is_running) {
+                    journalsDownloadBtn.addClass('disabled').html('<i class="fi-refresh"></i> Pobieranie w toku...');
+                    journalsTaskStatus.show();
+                    journalsTaskRunning.show();
+
+                    if (data.latest_task) {
+                        var task = data.latest_task;
+                        if (task.current_step) $('#journals-current-step').text(task.current_step);
+                        if (task.progress_percentage !== undefined && task.progress_percentage !== null) {
+                            var percentage = Math.max(0, Math.min(100, parseInt(task.progress_percentage)));
+                            $('#journals-progress-percentage').text(percentage + '%');
+                            $('#journals-progress-meter').css('width', percentage + '%');
+                        }
+
+                        var details = [];
+                        if (task.journals_processed > 0 || task.total_journals) {
+                            details.push('Zrodla: ' + (task.journals_processed || 0) +
+                                        (task.total_journals ? '/' + task.total_journals : ''));
+                        }
+                        if (task.zrodla_integrated > 0) {
+                            details.push('Zintegrowano: ' + task.zrodla_integrated);
+                        }
+                        $('#journals-progress-details').text(details.join(', '));
+                    }
+                } else if (data.latest_task) {
+                    var task = data.latest_task;
+                    if (task.status === 'completed') {
+                        journalsDownloadBtn.removeClass('disabled').html('<i class="fi-book"></i> Pobierz zrodla z PBN');
+                        journalsTaskStatus.show();
+                        journalsTaskCompleted.show();
+                        $('#journals-last-update').text(formatDate(task.completed_at));
+                        $('#journals-task-user').text(task.user);
+                        if (task.is_outdated) {
+                            journalsTaskOutdated.show();
+                        }
+                    } else if (task.status === 'failed') {
+                        journalsDownloadBtn.removeClass('disabled').html('<i class="fi-book"></i> Pobierz zrodla z PBN');
+                        journalsTaskStatus.show();
+                        journalsTaskFailed.show();
+                        $('#journals-error-message').text(task.error_message || 'Nieznany blad');
+                        $('#journals-error-time').text(formatDate(task.completed_at));
+                    }
+                } else {
+                    journalsDownloadBtn.removeClass('disabled').html('<i class="fi-book"></i> Pobierz zrodla z PBN');
+                    journalsTaskStatus.show();
+                    journalsTaskNoData.show();
+                }
+            }
+
             function formatDate(isoString) {
                 if (!isoString) return '';
                 var date = new Date(isoString);
                 return date.toLocaleString('pl-PL');
             }
+
+            // Cancel section visibility management
+            var publicationsRunning = false;
+            var peopleRunning = false;
+            var journalsRunning = false;
+            var publicationsStalled = false;
+            var peopleStalled = false;
+            var journalsStalled = false;
+
+            function updateCancelSection() {
+                var anyRunning = publicationsRunning || peopleRunning || journalsRunning;
+                if (anyRunning) {
+                    $('#cancel-buttons-section').show();
+                } else {
+                    $('#cancel-buttons-section').hide();
+                }
+
+                // Update publications cancel
+                if (publicationsRunning) {
+                    $('#cancel-publications-wrapper').show();
+                    if (publicationsStalled) {
+                        $('#publications-stalled-badge').show();
+                    } else {
+                        $('#publications-stalled-badge').hide();
+                    }
+                } else {
+                    $('#cancel-publications-wrapper').hide();
+                }
+
+                // Update people cancel
+                if (peopleRunning) {
+                    $('#cancel-people-wrapper').show();
+                    if (peopleStalled) {
+                        $('#people-stalled-badge').show();
+                    } else {
+                        $('#people-stalled-badge').hide();
+                    }
+                } else {
+                    $('#cancel-people-wrapper').hide();
+                }
+
+                // Update journals cancel
+                if (journalsRunning) {
+                    $('#cancel-journals-wrapper').show();
+                    if (journalsStalled) {
+                        $('#journals-stalled-badge').show();
+                    } else {
+                        $('#journals-stalled-badge').hide();
+                    }
+                } else {
+                    $('#cancel-journals-wrapper').hide();
+                }
+            }
+
+            // Override status update functions to track running/stalled state
+            var originalUpdateTaskStatus = updateTaskStatus;
+            updateTaskStatus = function(data) {
+                publicationsRunning = data.is_running;
+                publicationsStalled = data.latest_task && data.latest_task.is_stalled;
+                originalUpdateTaskStatus(data);
+                updateCancelSection();
+            };
+
+            var originalUpdatePeopleTaskStatus = updatePeopleTaskStatus;
+            updatePeopleTaskStatus = function(data) {
+                peopleRunning = data.is_running;
+                peopleStalled = data.latest_task && data.latest_task.is_stalled;
+                originalUpdatePeopleTaskStatus(data);
+                updateCancelSection();
+            };
+
+            var originalUpdateJournalsTaskStatus = updateJournalsTaskStatus;
+            updateJournalsTaskStatus = function(data) {
+                journalsRunning = data.is_running;
+                journalsStalled = data.latest_task && data.latest_task.is_stalled;
+                originalUpdateJournalsTaskStatus(data);
+                updateCancelSection();
+            };
+
+            // Cancel button click handlers
+            $('#cancel-publications-btn').click(function() {
+                if (!confirm('Czy na pewno chcesz anulowac zadanie pobierania publikacji?')) {
+                    return;
+                }
+                var btn = $(this);
+                btn.addClass('disabled').html('<span class="fi-refresh"></span> Anulowanie...');
+
+                $.ajax({
+                    url: '{% url "pbn_downloader_app:cancel_task" %}',
+                    type: 'POST',
+                    headers: { 'X-CSRFToken': $('[name=csrfmiddlewaretoken]').val() },
+                    success: function(data) {
+                        if (data.success) {
+                            checkTaskStatus();
+                        } else {
+                            alert('Blad: ' + data.error);
+                        }
+                        btn.removeClass('disabled').html('<span class="fi-x"></span> Anuluj');
+                    },
+                    error: function() {
+                        alert('Wystapil blad podczas komunikacji z serwerem');
+                        btn.removeClass('disabled').html('<span class="fi-x"></span> Anuluj');
+                    }
+                });
+            });
+
+            $('#cancel-people-btn').click(function() {
+                if (!confirm('Czy na pewno chcesz anulowac zadanie pobierania osob?')) {
+                    return;
+                }
+                var btn = $(this);
+                btn.addClass('disabled').html('<span class="fi-refresh"></span> Anulowanie...');
+
+                $.ajax({
+                    url: '{% url "pbn_downloader_app:cancel_people_task" %}',
+                    type: 'POST',
+                    headers: { 'X-CSRFToken': $('[name=csrfmiddlewaretoken]').val() },
+                    success: function(data) {
+                        if (data.success) {
+                            checkPeopleTaskStatus();
+                        } else {
+                            alert('Blad: ' + data.error);
+                        }
+                        btn.removeClass('disabled').html('<span class="fi-x"></span> Anuluj');
+                    },
+                    error: function() {
+                        alert('Wystapil blad podczas komunikacji z serwerem');
+                        btn.removeClass('disabled').html('<span class="fi-x"></span> Anuluj');
+                    }
+                });
+            });
+
+            $('#cancel-journals-btn').click(function() {
+                if (!confirm('Czy na pewno chcesz anulowac zadanie pobierania zrodel?')) {
+                    return;
+                }
+                var btn = $(this);
+                btn.addClass('disabled').html('<span class="fi-refresh"></span> Anulowanie...');
+
+                $.ajax({
+                    url: '{% url "pbn_downloader_app:cancel_journals_task" %}',
+                    type: 'POST',
+                    headers: { 'X-CSRFToken': $('[name=csrfmiddlewaretoken]').val() },
+                    success: function(data) {
+                        if (data.success) {
+                            checkJournalsTaskStatus();
+                        } else {
+                            alert('Blad: ' + data.error);
+                        }
+                        btn.removeClass('disabled').html('<span class="fi-x"></span> Anuluj');
+                    },
+                    error: function() {
+                        alert('Wystapil blad podczas komunikacji z serwerem');
+                        btn.removeClass('disabled').html('<span class="fi-x"></span> Anuluj');
+                    }
+                });
+            });
         });
     </script>
 {% endblock %}

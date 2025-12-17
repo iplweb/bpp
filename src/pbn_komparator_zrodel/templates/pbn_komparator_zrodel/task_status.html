@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}
+    Status zadania - Komparator źródeł BPP-PBN
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url 'pbn_komparator_zrodel:list' %}">Komparator źródeł BPP-PBN</a></li>
+    <li class="current">Status zadania</li>
+{% endblock %}
+
+{% block content %}
+    <div class="row">
+        <div class="large-12 columns">
+            <h1>
+                <span class="fi-loop"></span> Zadanie w toku
+            </h1>
+
+            <div class="callout primary">
+                <h4><span class="fi-info"></span> Zadanie zostało uruchomione</h4>
+                <p>
+                    Strona odświeży się automatycznie co 5 sekund.
+                    Po zakończeniu zostaniesz przekierowany z powrotem do listy rozbieżności.
+                </p>
+            </div>
+
+            <div class="callout secondary">
+                <p><strong>ID zadania:</strong> {{ task_id }}</p>
+            </div>
+
+            <!-- Progress section with HTMX polling -->
+            <div id="progress-container"
+                 hx-get="{% url 'pbn_komparator_zrodel:task_status' task_id %}"
+                 hx-trigger="every 5s"
+                 hx-swap="innerHTML">
+                {% include "pbn_komparator_zrodel/_progress.html" %}
+            </div>
+
+            <div class="button-group" style="margin-top: 1rem;">
+                <a href="{% url 'pbn_komparator_zrodel:list' %}" class="button secondary">
+                    <span class="fi-arrow-left"></span> Powrót (zadanie będzie kontynuowane w tle)
+                </a>
+            </div>
+        </div>
+    </div>
+{% endblock %}

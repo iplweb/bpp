@@ -1,0 +1,55 @@
+{% load humanize %}
+
+{% if not task_ready %}
+    <!-- Task in progress -->
+    <div class="callout warning">
+        <h4><span class="fi-loop"></span> Zadanie w trakcie wykonywania</h4>
+
+        {% if info %}
+            <div class="progress large" role="progressbar"
+                 aria-valuenow="{{ info.progress|default:0 }}"
+                 aria-valuemin="0" aria-valuemax="100">
+                <div class="progress-meter"
+                     style="width: {{ info.progress|default:0 }}%">
+                    <p class="progress-meter-text">{{ info.progress|default:0 }}%</p>
+                </div>
+            </div>
+
+            <p><strong>Postęp:</strong>
+                {{ info.current|default:0|intcomma }} / {{ info.total|intcomma }} rekordów
+            </p>
+
+            {% if info.updated is not None %}
+                <p><strong>Zaktualizowano:</strong> {{ info.updated|default:0|intcomma }}</p>
+            {% endif %}
+
+            {% if info.stats %}
+                <p><strong>Przetworzono źródeł:</strong> {{ info.stats.processed|default:0|intcomma }}</p>
+                <p><strong>Rozbieżności punktów:</strong> {{ info.stats.points_discrepancies|default:0|intcomma }}</p>
+                <p><strong>Rozbieżności dyscyplin:</strong> {{ info.stats.discipline_discrepancies|default:0|intcomma }}</p>
+            {% endif %}
+
+            {% if info.errors %}
+                <p><strong>Błędy:</strong> {{ info.errors|intcomma }}</p>
+            {% endif %}
+        {% else %}
+            <p>Inicjalizacja...</p>
+        {% endif %}
+
+        <p><em>Status odświeża się automatycznie co 5 sekund.</em></p>
+    </div>
+
+{% elif error %}
+    <!-- Task failed -->
+    <div class="callout alert">
+        <h4><span class="fi-x"></span> Wystąpił błąd</h4>
+        <pre>{{ error }}</pre>
+    </div>
+
+{% else %}
+    <!-- Task completed successfully - should redirect, but fallback display -->
+    <div class="callout success">
+        <h4><span class="fi-check"></span> Zadanie zakończone pomyślnie!</h4>
+        <p>Przekierowywanie...</p>
+    </div>
+{% endif %}

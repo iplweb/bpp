@@ -10,8 +10,12 @@ class OswiadczeniaExportTask(models.Model):
         ("failed", "Błąd"),
     ]
     FORMAT_CHOICES = [
-        ("html", "HTML (do druku)"),
-        ("pdf", "PDF"),
+        ("html", "HTML (ZIP)"),
+        ("pdf", "PDF (ZIP)"),
+        ("docx", "DOCX (ZIP)"),
+        ("html_single", "HTML (jeden plik)"),
+        ("pdf_single", "PDF (jeden plik)"),
+        ("docx_single", "DOCX (jeden plik)"),
     ]
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
@@ -20,7 +24,7 @@ class OswiadczeniaExportTask(models.Model):
     completed_at = models.DateTimeField(null=True, blank=True)
 
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
-    export_format = models.CharField(max_length=10, choices=FORMAT_CHOICES)
+    export_format = models.CharField(max_length=15, choices=FORMAT_CHOICES)
 
     # Filter parameters (stored for reproducibility)
     rok_od = models.IntegerField()
@@ -28,6 +32,7 @@ class OswiadczeniaExportTask(models.Model):
     szukaj_autor = models.CharField(max_length=200, blank=True, default="")
     szukaj_tytul = models.CharField(max_length=200, blank=True, default="")
     dyscyplina_id = models.IntegerField(null=True, blank=True)
+    przypieta = models.CharField(max_length=10, blank=True, default="")
 
     # Pagination for chunked exports
     offset = models.IntegerField(default=0)

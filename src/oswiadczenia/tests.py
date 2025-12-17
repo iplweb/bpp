@@ -2,7 +2,6 @@ import pytest
 from django.urls import reverse
 
 from bpp.models import Rekord
-from bpp.tests.test_models.test_sloty.conftest import zwarte_z_dyscyplinami  # noqa
 
 
 @pytest.mark.django_db
@@ -109,3 +108,28 @@ def test_oswiadczenie_wiele(zwarte_z_dyscyplinami, admin_client):  # noqa
     res = admin_client.get(url)
     assert res.status_code == 200
     assert b"window.print" in res.content
+
+
+@pytest.mark.django_db
+def test_remove_old_oswiadczenia_export_files():
+    from datetime import timedelta
+
+    from django.utils import timezone
+    from model_bakery import baker
+
+    from oswiadczenia.models import OswiadczeniaExportTask
+    from oswiadczenia.tasks import remove_old_oswiadczenia_export_files
+
+    # Create a recent task (should NOT be deleted)
+    baker.make(OswiadczeniaExportTask)
+
+    # Create an old task (should be deleted)
+    old_task = baker.make(OswiadczeniaExportTask)
+    old_task.created_at = timezone.now() - timedelta(days=20)
+    old_task.save()
+
+    assert OswiadczeniaExportTask.objects.count() == 2
+
+    remove_old_oswiadczenia_export_files()
+
+    assert OswiadczeniaExportTask.objects.count() == 1

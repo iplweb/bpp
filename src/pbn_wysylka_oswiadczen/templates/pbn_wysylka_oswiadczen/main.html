@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Wysylka oswiadczen do PBN - {{ block.super }}{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li class="current">Wysylka oswiadczen do PBN</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="large-12 columns">
+        <h1><span class="fi-upload"></span> Wysylka oswiadczen do PBN</h1>
+        <p class="lead">Narzedzie do wysylania oswiadczen dyscyplin do Polskiej Bibliografii Naukowej (PBN)</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="large-6 columns">
+        <div class="panel callout">
+            <h4><span class="fi-filter"></span> Parametry</h4>
+
+            <form id="filter-form" method="get">
+                <div class="row">
+                    <div class="medium-6 columns">
+                        <label for="rok_od">Rok od:</label>
+                        <input type="number" id="rok_od" name="rok_od" value="{{ rok_od }}" min="2000" max="2100">
+                    </div>
+                    <div class="medium-6 columns">
+                        <label for="rok_do">Rok do:</label>
+                        <input type="number" id="rok_do" name="rok_do" value="{{ rok_do }}" min="2000" max="2100">
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="medium-12 columns">
+                        <label for="tytul">Tytul (zawiera):</label>
+                        <input type="text" id="tytul" name="tytul" value="{{ tytul }}" placeholder="Wpisz fragment tytulu...">
+                    </div>
+                </div>
+                <button type="submit" class="button secondary small">
+                    <span class="fi-refresh"></span> Odswiez
+                </button>
+            </form>
+
+            <hr>
+
+            <h5><span class="fi-list"></span> Publikacje do przetworzenia</h5>
+            <table>
+                <tr>
+                    <td>Wydawnictwa ciagle:</td>
+                    <td><strong>{{ ciagle_count }}</strong></td>
+                </tr>
+                <tr>
+                    <td>Wydawnictwa zwarte:</td>
+                    <td><strong>{{ zwarte_count }}</strong></td>
+                </tr>
+                <tr class="total">
+                    <td><strong>Razem:</strong></td>
+                    <td><strong>{{ total_count }}</strong></td>
+                </tr>
+            </table>
+
+            {% if total_count > 0 %}
+            <div class="button-group">
+                <button id="start-fresh-btn" class="button success"
+                        hx-post="{% url 'pbn_wysylka_oswiadczen:start' %}"
+                        hx-vals='{"rok_od": "{{ rok_od }}", "rok_do": "{{ rok_do }}", "tytul": "{{ tytul }}", "resume_mode": "false"}'
+                        hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+                        hx-swap="none">
+                    <span class="fi-play"></span> Wyslij wyswietlane rekordy
+                </button>
+
+                {% if can_resume %}
+                <button id="resume-btn" class="button warning"
+                        hx-post="{% url 'pbn_wysylka_oswiadczen:start' %}"
+                        hx-vals='{"rok_od": "{{ rok_od }}", "rok_do": "{{ rok_do }}", "tytul": "{{ tytul }}", "resume_mode": "true"}'
+                        hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+                        hx-swap="none">
+                    <span class="fi-fast-forward"></span> Kontynuuj
+                </button>
+                {% endif %}
+
+                <a href="{% url 'pbn_wysylka_oswiadczen:export-excel' %}?rok_od={{ rok_od }}&rok_do={{ rok_do }}&tytul={{ tytul|urlencode }}" class="button secondary">
+                    <span class="fi-page-export"></span> Eksportuj do Excel
+                </a>
+            </div>
+            {% else %}
+            <div class="callout secondary">
+                <span class="fi-info"></span> Brak publikacji spelniajacych kryteria.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="large-6 columns">
+        <div id="task-status-panel"
+             hx-get="{% url 'pbn_wysylka_oswiadczen:status-partial' %}"
+             hx-trigger="load, taskStarted from:body, every 3s[document.querySelector('.task-running')]"
+             hx-swap="innerHTML">
+            {% include "pbn_wysylka_oswiadczen/_task_status.html" %}
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="large-12 columns">
+        <h4><span class="fi-page-multiple"></span> Podglad publikacji</h4>
+
+        <div id="publication-list"
+             hx-get="{% url 'pbn_wysylka_oswiadczen:publications' %}?rok_od={{ rok_od }}&rok_do={{ rok_do }}&tytul={{ tytul|urlencode }}"
+             hx-trigger="load"
+             hx-swap="innerHTML">
+            <div class="text-center">
+                <span class="fi-refresh"></span> Ladowanie...
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.body.addEventListener('htmx:afterRequest', function(evt) {
+    if (evt.detail.pathInfo.requestPath.includes('/start/')) {
+        var response = JSON.parse(evt.detail.xhr.responseText);
+        if (response.success) {
+            // Trigger status panel refresh
+            htmx.trigger(document.body, 'taskStarted');
+
+            // Show success message
+            showFlashMessage('success', response.message);
+        } else {
+            showFlashMessage('alert', response.error);
+        }
+    }
+
+    if (evt.detail.pathInfo.requestPath.includes('/cancel/')) {
+        var response = JSON.parse(evt.detail.xhr.responseText);
+        if (response.success) {
+            htmx.trigger(document.body, 'taskStarted');
+            showFlashMessage('success', response.message);
+        } else {
+            showFlashMessage('alert', response.error);
+        }
+    }
+});
+
+function showFlashMessage(type, message) {
+    var container = document.querySelector('.flash-messages') || createFlashContainer();
+    var alert = document.createElement('div');
+    alert.className = 'callout ' + type;
+    alert.setAttribute('data-closable', '');
+    alert.innerHTML = message + '<button class="close-button" aria-label="Dismiss alert" type="button" data-close><span aria-hidden="true">&times;</span></button>';
+    container.appendChild(alert);
+
+    // Auto-remove after 5 seconds
+    setTimeout(function() {
+        alert.remove();
+    }, 5000);
+}
+
+function createFlashContainer() {
+    var container = document.createElement('div');
+    container.className = 'flash-messages';
+    document.querySelector('.row').prepend(container);
+    return container;
+}
+</script>
+{% endblock %}

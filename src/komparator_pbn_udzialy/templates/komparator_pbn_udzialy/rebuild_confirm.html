@@ -17,6 +17,10 @@
         <div class="panel">
             <h3>Potwierdzenie operacji</h3>
 
+            {% if not pbn_data_fresh %}
+            {% include "includes/pbn_freshness_warning.html" with custom_message="Przebudowa rozbieżności wymaga aktualnych danych z PBN. Pobierz dane przed kontynuowaniem." %}
+            {% else %}
+
             <div class="alert-box warning">
                 <strong>Uwaga!</strong> Ta operacja może zająć kilka minut w zależności od liczby rekordów do przetworzenia.
             </div>
@@ -66,6 +70,7 @@
                     </a>
                 </div>
             </form>
+            {% endif %}
         </div>
 
         <div class="panel">

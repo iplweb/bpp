@@ -1,0 +1,127 @@
+<div class="panel {% if latest_task and latest_task.status == 'running' %}callout primary{% elif latest_task and latest_task.status == 'completed' %}callout success{% elif latest_task and latest_task.status == 'failed' %}callout alert{% else %}callout secondary{% endif %}">
+    <h4><span class="fi-info"></span> Status zadania</h4>
+
+    {% if latest_task %}
+        {% if latest_task.status == 'running' %}
+        <div class="task-running">
+            <p><strong><span class="fi-refresh"></span> Wysylka w toku...</strong></p>
+
+            <div class="progress">
+                <div class="progress-meter" style="width: {{ latest_task.progress_percent }}%"></div>
+            </div>
+
+            <p>
+                <strong>{{ latest_task.progress_percent }}%</strong>
+                ({{ latest_task.processed_publications }}/{{ latest_task.total_publications }})
+            </p>
+
+            {% if latest_task.current_publication %}
+            <p class="text-muted small">
+                <span class="fi-page"></span> {{ latest_task.current_publication|truncatechars:60 }}
+            </p>
+            {% endif %}
+
+            <table class="small">
+                <tr>
+                    <td><span class="fi-check" style="color: green;"></span> Sukces:</td>
+                    <td><strong>{{ latest_task.success_count }}</strong></td>
+                </tr>
+                <tr>
+                    <td><span class="fi-x" style="color: red;"></span> Bledy:</td>
+                    <td><strong>{{ latest_task.error_count }}</strong></td>
+                </tr>
+                <tr>
+                    <td><span class="fi-minus" style="color: gray;"></span> Pominiete:</td>
+                    <td><strong>{{ latest_task.skipped_count }}</strong></td>
+                </tr>
+            </table>
+
+            <button class="button alert small"
+                    hx-post="{% url 'pbn_wysylka_oswiadczen:cancel' %}"
+                    hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+                    hx-swap="none">
+                <span class="fi-x"></span> Anuluj
+            </button>
+
+            {% if latest_task.is_stalled %}
+            <div class="callout warning small">
+                <span class="fi-alert"></span> Zadanie moze byc zawieszone (brak aktualizacji od 15 minut)
+            </div>
+            {% endif %}
+        </div>
+
+        {% elif latest_task.status == 'completed' %}
+        <p><strong><span class="fi-check"></span> Zakonczone pomyslnie</strong></p>
+
+        <table class="small">
+            <tr>
+                <td>Rozpoczeto:</td>
+                <td>{{ latest_task.started_at|date:"Y-m-d H:i:s" }}</td>
+            </tr>
+            <tr>
+                <td>Zakonczone:</td>
+                <td>{{ latest_task.completed_at|date:"Y-m-d H:i:s" }}</td>
+            </tr>
+            <tr>
+                <td>Uzytkownik:</td>
+                <td>{{ latest_task.user.username }}</td>
+            </tr>
+        </table>
+
+        <table class="small">
+            <tr>
+                <td><span class="fi-check" style="color: green;"></span> Sukces:</td>
+                <td><strong>{{ latest_task.success_count }}</strong></td>
+            </tr>
+            <tr>
+                <td><span class="fi-x" style="color: red;"></span> Bledy:</td>
+                <td><strong>{{ latest_task.error_count }}</strong></td>
+            </tr>
+            <tr>
+                <td><span class="fi-minus" style="color: gray;"></span> Pominiete:</td>
+                <td><strong>{{ latest_task.skipped_count }}</strong></td>
+            </tr>
+        </table>
+
+        {% if latest_task.error_count > 0 %}
+        <a href="{% url 'pbn_wysylka_oswiadczen:logs' %}?task_id={{ latest_task.pk }}&status=error" class="button warning small">
+            <span class="fi-list"></span> Zobacz bledy
+        </a>
+        {% endif %}
+
+        {% elif latest_task.status == 'failed' %}
+        <p><strong><span class="fi-x"></span> Blad</strong></p>
+
+        <table class="small">
+            <tr>
+                <td>Rozpoczeto:</td>
+                <td>{{ latest_task.started_at|date:"Y-m-d H:i:s" }}</td>
+            </tr>
+            <tr>
+                <td>Zakonczone:</td>
+                <td>{{ latest_task.completed_at|date:"Y-m-d H:i:s" }}</td>
+            </tr>
+            <tr>
+                <td>Uzytkownik:</td>
+                <td>{{ latest_task.user.username }}</td>
+            </tr>
+        </table>
+
+        {% if latest_task.error_message %}
+        <div class="callout alert small">
+            <pre style="white-space: pre-wrap; font-size: 0.8rem;">{{ latest_task.error_message|truncatechars:500 }}</pre>
+        </div>
+        {% endif %}
+
+        {% elif latest_task.status == 'pending' %}
+        <p><strong><span class="fi-clock"></span> Oczekuje na uruchomienie...</strong></p>
+
+        {% endif %}
+
+    {% else %}
+        <p class="text-muted">
+            <span class="fi-info"></span> Brak zadan wysylki.
+            Wybierz parametry i kliknij "Rozpocznij od nowa" aby rozpoczac.
+        </p>
+    {% endif %}
+</div>

@@ -16,6 +16,7 @@ from bpp.const import GR_WPROWADZANIE_DANYCH
 from bpp.models import Autor
 from bpp.models.cache import Rekord
 from pbn_api.models import Scientist
+from pbn_downloader_app.freshness import is_pbn_people_data_fresh
 from pbn_downloader_app.models import PbnDownloadTask
 
 from .models import (
@@ -202,6 +203,9 @@ def duplicate_authors_view(request):  # noqa: C901
     ignored_authors_count = IgnoredAuthor.objects.count()
     latest_pbn_download = PbnDownloadTask.get_latest_task()
 
+    # Check PBN people data freshness
+    pbn_data_fresh, pbn_stale_message, pbn_last_download = is_pbn_people_data_fresh()
+
     recent_merges = (
         LogScalania.objects.filter(created_by=request.user)
         .select_related("main_autor", "dyscyplina_before", "dyscyplina_after")
@@ -230,6 +234,10 @@ def duplicate_authors_view(request):  # noqa: C901
         "pending_candidates_count": 0,
         # Navigation
         "skip_count": 0,
+        # PBN data freshness
+        "pbn_data_fresh": pbn_data_fresh,
+        "pbn_stale_message": pbn_stale_message,
+        "pbn_last_download": pbn_last_download,
     }
 
     # If no completed scan, show "run scan first" message
@@ -655,6 +663,16 @@ def start_scan_view(request):
     Start a new duplicate scan task.
     """
     from .tasks import scan_for_duplicates
+
+    # Check if PBN people data is fresh
+    pbn_data_fresh, pbn_stale_message, _ = is_pbn_people_data_fresh()
+    if not pbn_data_fresh:
+        messages.error(
+            request,
+            f"Nie można uruchomić skanowania: {pbn_stale_message}. "
+            "Pobierz aktualne dane z PBN.",
+        )
+        return redirect("deduplikator_autorow:duplicate_authors")
 
     # Check if scan is already running
     if get_running_scan():

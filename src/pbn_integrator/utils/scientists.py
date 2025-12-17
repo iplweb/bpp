@@ -138,7 +138,7 @@ def pobierz_ludzi_z_uczelni(client_or_token: PBNClient, instutition_id, callback
                 "lastName": person.get("lastName", ""),
                 "institutionId": Institution.objects.get(pk=person["institutionId"]),
                 "institutionName": person.get("institutionName", ""),
-                "title": person.get("title"),
+                "title": person.get("title") or "",
                 "polonUuid": person.get("polonUuid"),
                 "phdStudent": person.get("phdStudent", False),
                 "_from": person.get("from"),

@@ -26,6 +26,13 @@ DEFAULT_ROK_DO = 2025
 EXPORT_CHUNK_SIZE = 5000
 
 
+PRZYPIETA_CHOICES = [
+    ("", "-- wszystkie --"),
+    ("tak", "tak"),
+    ("nie", "nie"),
+]
+
+
 class WydrukOswiadczenFilterForm(forms.Form):
     rok_od = forms.IntegerField(
         min_value=2022,
@@ -58,6 +65,10 @@ class WydrukOswiadczenFilterForm(forms.Form):
         required=False,
         empty_label="-- wszystkie dyscypliny --",
     )
+    przypieta = forms.ChoiceField(
+        choices=PRZYPIETA_CHOICES,
+        required=False,
+    )
 
     def clean_rok_od(self):
         return self.cleaned_data.get("rok_od") or DEFAULT_ROK_OD
@@ -71,6 +82,9 @@ class WydrukOswiadczenFilterForm(forms.Form):
     def clean_szukaj_tytul(self):
         return self.cleaned_data.get("szukaj_tytul") or ""
 
+    def clean_przypieta(self):
+        return self.cleaned_data.get("przypieta") or ""
+
 
 def get_base_queryset():
     """Return base queryset for declarations (Autorzy with discipline assigned)."""
@@ -83,7 +97,13 @@ def get_base_queryset():
 
 
 def apply_filters(
-    queryset, rok_od, rok_do, szukaj_autor="", szukaj_tytul="", dyscyplina=None
+    queryset,
+    rok_od,
+    rok_do,
+    szukaj_autor="",
+    szukaj_tytul="",
+    dyscyplina=None,
+    przypieta="",
 ):
     """Apply filters to queryset."""
     queryset = queryset.filter(rekord__rok__gte=rok_od, rekord__rok__lte=rok_do)
@@ -96,6 +116,10 @@ def apply_filters(
         queryset = queryset.filter(rekord__tytul_oryginalny__icontains=szukaj_tytul)
     if dyscyplina:
         queryset = queryset.filter(dyscyplina_naukowa=dyscyplina)
+    if przypieta == "tak":
+        queryset = queryset.filter(przypieta=True)
+    elif przypieta == "nie":
+        queryset = queryset.filter(przypieta=False)
     return queryset
 
 
@@ -150,25 +174,33 @@ class WydrukOswiadczen2022View(GroupRequiredMixin, ListView):
             szukaj_autor = form.cleaned_data["szukaj_autor"]
             szukaj_tytul = form.cleaned_data["szukaj_tytul"]
             dyscyplina = form.cleaned_data.get("dyscyplina")
+            przypieta = form.cleaned_data.get("przypieta", "")
         else:
             rok_od = DEFAULT_ROK_OD
             rok_do = DEFAULT_ROK_DO
             szukaj_autor = ""
             szukaj_tytul = ""
             dyscyplina = None
-        return rok_od, rok_do, szukaj_autor, szukaj_tytul, dyscyplina
+            przypieta = ""
+        return rok_od, rok_do, szukaj_autor, szukaj_tytul, dyscyplina, przypieta
 
     def get_queryset(self):
-        rok_od, rok_do, szukaj_autor, szukaj_tytul, dyscyplina = (
+        rok_od, rok_do, szukaj_autor, szukaj_tytul, dyscyplina, przypieta = (
             self.get_filter_params()
         )
         return apply_filters(
-            get_base_queryset(), rok_od, rok_do, szukaj_autor, szukaj_tytul, dyscyplina
+            get_base_queryset(),
+            rok_od,
+            rok_do,
+            szukaj_autor,
+            szukaj_tytul,
+            dyscyplina,
+            przypieta,
         )
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        rok_od, rok_do, szukaj_autor, szukaj_tytul, dyscyplina = (
+        rok_od, rok_do, szukaj_autor, szukaj_tytul, dyscyplina, przypieta = (
             self.get_filter_params()
         )
 
@@ -177,6 +209,8 @@ class WydrukOswiadczen2022View(GroupRequiredMixin, ListView):
         context["szukaj_autor"] = szukaj_autor
         context["szukaj_tytul"] = szukaj_tytul
         context["dyscyplina"] = dyscyplina
+        context["przypieta"] = przypieta
+        context["przypieta_choices"] = PRZYPIETA_CHOICES
         context["dyscypliny"] = (
             Dyscyplina_Naukowa.objects.filter(
                 autorzy__rekord__rok__gte=DEFAULT_ROK_OD,
@@ -198,6 +232,8 @@ class WydrukOswiadczen2022View(GroupRequiredMixin, ListView):
             query_params.append(f"szukaj_tytul={quote(szukaj_tytul)}")
         if dyscyplina:
             query_params.append(f"dyscyplina={dyscyplina.pk}")
+        if przypieta:
+            query_params.append(f"przypieta={przypieta}")
         context["filter_query_string"] = "&".join(query_params)
 
         # Calculate export ranges for chunked exports
@@ -323,22 +359,24 @@ class WydrukOswiadczenExportView(GroupRequiredMixin, View):
             szukaj_autor = form.cleaned_data["szukaj_autor"]
             szukaj_tytul = form.cleaned_data["szukaj_tytul"]
             dyscyplina = form.cleaned_data.get("dyscyplina")
+            przypieta = form.cleaned_data.get("przypieta", "")
         else:
             rok_od = DEFAULT_ROK_OD
             rok_do = DEFAULT_ROK_DO
             szukaj_autor = ""
             szukaj_tytul = ""
             dyscyplina = None
-        return rok_od, rok_do, szukaj_autor, szukaj_tytul, dyscyplina
+            przypieta = ""
+        return rok_od, rok_do, szukaj_autor, szukaj_tytul, dyscyplina, przypieta
 
     def get(self, request):
-        rok_od, rok_do, szukaj_autor, szukaj_tytul, dyscyplina = (
+        rok_od, rok_do, szukaj_autor, szukaj_tytul, dyscyplina, przypieta = (
             self.get_filter_params()
         )
 
         queryset = get_base_queryset()
         queryset = apply_filters(
-            queryset, rok_od, rok_do, szukaj_autor, szukaj_tytul, dyscyplina
+            queryset, rok_od, rok_do, szukaj_autor, szukaj_tytul, dyscyplina, przypieta
         )
 
         wb = Workbook()
@@ -434,12 +472,14 @@ class StartExportTaskView(GroupRequiredMixin, View):
             szukaj_autor = form.cleaned_data["szukaj_autor"]
             szukaj_tytul = form.cleaned_data["szukaj_tytul"]
             dyscyplina = form.cleaned_data.get("dyscyplina")
+            przypieta = form.cleaned_data.get("przypieta", "")
         else:
             rok_od = DEFAULT_ROK_OD
             rok_do = DEFAULT_ROK_DO
             szukaj_autor = ""
             szukaj_tytul = ""
             dyscyplina = None
+            przypieta = ""
 
         # Get offset and limit for chunked exports
         try:
@@ -460,6 +500,7 @@ class StartExportTaskView(GroupRequiredMixin, View):
             szukaj_autor=szukaj_autor,
             szukaj_tytul=szukaj_tytul,
             dyscyplina_id=dyscyplina.pk if dyscyplina else None,
+            przypieta=przypieta,
             offset=offset,
             limit=limit,
         )

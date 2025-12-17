@@ -28,4 +28,34 @@ urlpatterns = [
         views.RetryPeopleTaskView.as_view(),
         name="retry_people_task",
     ),
+    path(
+        "api/start-journals-download/",
+        views.StartJournalsDownloadView.as_view(),
+        name="start_journals_download",
+    ),
+    path(
+        "api/journals-task-status/",
+        views.JournalsTaskStatusView.as_view(),
+        name="journals_task_status",
+    ),
+    path(
+        "api/retry-journals-task/",
+        views.RetryJournalsTaskView.as_view(),
+        name="retry_journals_task",
+    ),
+    path(
+        "api/cancel-task/",
+        views.CancelTaskView.as_view(),
+        name="cancel_task",
+    ),
+    path(
+        "api/cancel-people-task/",
+        views.CancelPeopleTaskView.as_view(),
+        name="cancel_people_task",
+    ),
+    path(
+        "api/cancel-journals-task/",
+        views.CancelJournalsTaskView.as_view(),
+        name="cancel_journals_task",
+    ),
 ]

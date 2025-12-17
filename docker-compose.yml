@@ -33,7 +33,7 @@ services:
     restart: always
     volumes:
       - ./src:/app/src
-      - staticfiles:/staticroot
+      - ./src/django_bpp/staticroot:/staticroot
       - media:/mediaroot
     depends_on:
       redis:
@@ -67,7 +67,7 @@ services:
       - 8000:8000
     volumes:
       - ./src:/app/src
-      - staticfiles:/staticroot
+      - ./src/django_bpp/staticroot:/staticroot
       - media:/mediaroot
 
   workerserver-general:
@@ -86,7 +86,7 @@ services:
     restart: always
     volumes:
       - ./src:/app/src
-      - staticfiles:/staticroot
+      - ./src/django_bpp/staticroot:/staticroot
       - media:/mediaroot
     depends_on:
       # Musi czekać na appserver, gdyż appserver aktualizuje ewentualnie baze danych.
@@ -113,7 +113,7 @@ services:
     restart: always
     volumes:
       - ./src:/app/src
-      - staticfiles:/staticroot
+      - ./src/django_bpp/staticroot:/staticroot
       - media:/mediaroot
     depends_on:
       # Musi czekać na appserver, gdyż appserver aktualizuje ewentualnie baze danych.
@@ -182,7 +182,7 @@ services:
       - 1080:80
       - 10443:443
     volumes:
-      - staticfiles:/var/www/html/staticroot
+      - ./src/django_bpp/staticroot:/var/www/html/staticroot
       - media:/mediaroot
       - ssl_certs:/etc/ssl/private
 

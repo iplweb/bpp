@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% load static url_helpers %}
+
+{% block title %}Logi wysylki oswiadczen - {{ block.super }}{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url 'pbn_wysylka_oswiadczen:main' %}">Wysylka oswiadczen do PBN</a></li>
+    <li class="current">Logi</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="large-12 columns">
+        <h1><span class="fi-list"></span> Logi wysylki oswiadczen</h1>
+    </div>
+</div>
+
+<div class="row">
+    <div class="large-12 columns">
+        <div class="panel callout secondary">
+            <form method="get" class="inline-form">
+                <div class="row">
+                    <div class="medium-4 columns">
+                        <label for="task_id">Zadanie:</label>
+                        <select name="task_id" id="task_id">
+                            <option value="">-- Wszystkie --</option>
+                            {% for t in tasks %}
+                            <option value="{{ t.pk }}" {% if task_id == t.pk|stringformat:"s" %}selected{% endif %}>
+                                #{{ t.pk }} - {{ t.created_at|date:"Y-m-d H:i" }} ({{ t.status }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="medium-4 columns">
+                        <label for="status">Status:</label>
+                        <select name="status" id="status">
+                            <option value="">-- Wszystkie --</option>
+                            <option value="success" {% if status_filter == "success" %}selected{% endif %}>Sukces</option>
+                            <option value="error" {% if status_filter == "error" %}selected{% endif %}>Blad</option>
+                            <option value="skipped" {% if status_filter == "skipped" %}selected{% endif %}>Pominiete</option>
+                        </select>
+                    </div>
+                    <div class="medium-4 columns">
+                        <label>&nbsp;</label>
+                        <button type="submit" class="button secondary expanded">
+                            <span class="fi-filter"></span> Filtruj
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="large-12 columns">
+        <table class="stack hover">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Zadanie</th>
+                    <th>PBN UID</th>
+                    <th>Status</th>
+                    <th>Proby</th>
+                    <th>Data</th>
+                    <th>Akcje</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in page_obj %}
+                <tr>
+                    <td>{{ log.pk }}</td>
+                    <td>#{{ log.task_id }}</td>
+                    <td><code class="small">{{ log.pbn_uid|truncatechars:20 }}</code></td>
+                    <td>
+                        {% if log.status == "success" %}
+                        <span class="label success">Sukces</span>
+                        {% elif log.status == "error" %}
+                        <span class="label alert">Blad</span>
+                        {% else %}
+                        <span class="label secondary">Pominiete</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ log.retry_count }}</td>
+                    <td>{{ log.created_at|date:"Y-m-d H:i:s" }}</td>
+                    <td>
+                        <a href="{% url 'pbn_wysylka_oswiadczen:log-detail' log.pk %}" class="button tiny secondary">
+                            <span class="fi-magnifying-glass"></span> Szczegoly
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="text-center text-muted">
+                        Brak logow spelniajacych kryteria.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        {% include "pagination/pagination_with_anchor.html" %}
+    </div>
+</div>
+{% endblock %}

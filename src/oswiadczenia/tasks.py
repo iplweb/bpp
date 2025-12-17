@@ -1,11 +1,11 @@
-import functools
 import os
-import ssl
 import tempfile
 import zipfile
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from io import BytesIO
 from typing import Any
 
+import rollbar
 from celery import shared_task
 from django.core.files.base import ContentFile
 from django.db.models import Q
@@ -15,11 +15,31 @@ from django.utils import timezone
 from bpp.models import Autor_Dyscyplina, Autorzy, Uczelnia
 
 try:
-    from django_weasyprint.utils import django_url_fetcher
-    from weasyprint import HTML
+    from xhtml2pdf import pisa
 except ImportError:
-    django_url_fetcher = None
-    HTML = None
+    pisa = None
+
+# Font paths for DejaVuSans (supports Polish characters)
+DEJAVU_FONT_PATH = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+DEJAVU_BOLD_FONT_PATH = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+
+
+def check_fonts_available():
+    """Check if DejaVuSans fonts are available, report to Rollbar if not."""
+    missing_fonts = []
+    if not os.path.exists(DEJAVU_FONT_PATH):
+        missing_fonts.append(DEJAVU_FONT_PATH)
+    if not os.path.exists(DEJAVU_BOLD_FONT_PATH):
+        missing_fonts.append(DEJAVU_BOLD_FONT_PATH)
+
+    if missing_fonts:
+        rollbar.report_message(
+            "DejaVuSans fonts not found - Polish characters in PDFs will not render correctly",
+            level="warning",
+            extra_data={"missing_fonts": missing_fonts},
+        )
+        return False
+    return True
 
 
 def sanitize_filename(name: str, max_length: int = 30) -> str:
@@ -119,6 +139,11 @@ def build_queryset_for_task(task):
     if task.dyscyplina_id:
         queryset = queryset.filter(dyscyplina_naukowa_id=task.dyscyplina_id)
 
+    if task.przypieta == "tak":
+        queryset = queryset.filter(przypieta=True)
+    elif task.przypieta == "nie":
+        queryset = queryset.filter(przypieta=False)
+
     queryset = queryset.order_by("rekord__rok", "autor__nazwisko", "autor__imiona")
 
     # Apply offset and limit for chunked exports
@@ -126,14 +151,6 @@ def build_queryset_for_task(task):
         queryset = queryset[task.offset : task.offset + task.limit]
 
     return queryset
-
-
-def setup_pdf_url_fetcher():
-    """Setup URL fetcher for PDF generation with SSL context."""
-    ssl_context = ssl.create_default_context()
-    ssl_context.check_hostname = False
-    ssl_context.verify_mode = ssl.CERT_NONE
-    return functools.partial(django_url_fetcher, ssl_context=ssl_context)
 
 
 def render_declaration_html(decl, uczelnia):
@@ -158,15 +175,26 @@ def render_declaration_html(decl, uczelnia):
     <meta charset="UTF-8">
     <title>Oswiadczenie</title>
     <style>
-        body {{
-            font-family: Arial, sans-serif;
-            font-size: 12pt;
-            line-height: 1.4;
-            margin: 2cm;
+        @font-face {{
+            font-family: "DejaVuSans";
+            src: url("{DEJAVU_FONT_PATH}");
         }}
-        h1 {{ font-size: 16pt; text-align: center; }}
-        h2 {{ font-size: 14pt; }}
-        h3 {{ font-size: 12pt; }}
+        @font-face {{
+            font-family: "DejaVuSans";
+            src: url("{DEJAVU_BOLD_FONT_PATH}");
+            font-weight: bold;
+        }}
+        body {{
+            font-family: "DejaVuSans", sans-serif;
+            font-size: 10pt;
+            line-height: 1.4;
+            margin: 2.5cm;
+        }}
+        h1 {{ font-size: 14pt; text-align: center; margin: 0.5em 0; }}
+        h2 {{ font-size: 12pt; margin: 0.5em 0; }}
+        h3 {{ font-size: 10pt; margin: 0.5em 0; }}
+        p {{ margin: 0.3em 0; }}
+        ul {{ margin: 0.3em 0; }}
     </style>
 </head>
 <body>
@@ -175,7 +203,7 @@ def render_declaration_html(decl, uczelnia):
 </html>"""
 
 
-def generate_declaration_content(decl, uczelnia, export_format, url_fetcher):
+def generate_declaration_content(decl, uczelnia, export_format):
     """Generate content for a single declaration.
 
     Returns:
@@ -191,23 +219,31 @@ def generate_declaration_content(decl, uczelnia, export_format, url_fetcher):
     full_html = render_declaration_html(decl, uczelnia)
 
     if export_format == "pdf":
-        pdf_content = HTML(string=full_html, url_fetcher=url_fetcher).write_pdf()
+        result = BytesIO()
+        pisa_status = pisa.CreatePDF(full_html, dest=result, encoding="utf-8")
+        if pisa_status.err:
+            raise Exception(f"PDF generation failed for {decl['autor']}")
+        pdf_content = result.getvalue()
         filename = f"{autor_name}/{rekord_id}_{tytul}_{dyscyplina_name}.pdf"
         return filename, pdf_content
+    elif export_format == "docx":
+        from nowe_raporty.docx_export import html_to_docx
+
+        docx_content = html_to_docx(full_html)
+        filename = f"{autor_name}/{rekord_id}_{tytul}_{dyscyplina_name}.docx"
+        return filename, docx_content
     else:
         filename = f"{autor_name}/{rekord_id}_{tytul}_{dyscyplina_name}.html"
         return filename, full_html.encode("utf-8")
 
 
-def write_declaration_to_zip(zf, decl, uczelnia, export_format, url_fetcher):
+def write_declaration_to_zip(zf, decl, uczelnia, export_format):
     """Write a single declaration to the ZIP file."""
-    filename, content = generate_declaration_content(
-        decl, uczelnia, export_format, url_fetcher
-    )
+    filename, content = generate_declaration_content(decl, uczelnia, export_format)
     zf.writestr(filename, content)
 
 
-def generate_pdfs_parallel(declarations, uczelnia, url_fetcher, task):
+def generate_pdfs_parallel(declarations, uczelnia, task):
     """Generate PDFs in parallel using ThreadPoolExecutor.
 
     Returns:
@@ -223,7 +259,6 @@ def generate_pdfs_parallel(declarations, uczelnia, url_fetcher, task):
                 decl,
                 uczelnia,
                 "pdf",
-                url_fetcher,
             ): (idx, decl)
             for idx, decl in enumerate(declarations, 1)
         }
@@ -246,7 +281,7 @@ def generate_pdfs_parallel(declarations, uczelnia, url_fetcher, task):
 def generate_html_sequential(zf, declarations, uczelnia, task):
     """Generate HTML files sequentially and write to ZIP."""
     for idx, decl in enumerate(declarations, 1):
-        write_declaration_to_zip(zf, decl, uczelnia, "html", None)
+        write_declaration_to_zip(zf, decl, uczelnia, "html")
 
         task.processed_items = idx
         task.current_item = f"{decl['autor']} - {decl['rekord'].tytul_oryginalny[:30]}"
@@ -254,9 +289,255 @@ def generate_html_sequential(zf, declarations, uczelnia, task):
             task.save()
 
 
+def generate_docx_sequential(zf, declarations, uczelnia, task):
+    """Generate DOCX files sequentially and write to ZIP."""
+    for idx, decl in enumerate(declarations, 1):
+        write_declaration_to_zip(zf, decl, uczelnia, "docx")
+
+        task.processed_items = idx
+        task.current_item = f"{decl['autor']} - {decl['rekord'].tytul_oryginalny[:30]}"
+        if idx % 10 == 0 or idx == len(declarations):
+            task.save()
+
+
+def render_declaration_content_only(decl, uczelnia):
+    """Render a single declaration content (without full HTML wrapper)."""
+    return render_to_string(
+        "oswiadczenia/tresc_jednego_oswiadczenia.html",
+        {
+            "autor": decl["autor"],
+            "object": decl["rekord"],
+            "dyscyplina_pracy": decl["dyscyplina_pracy"],
+            "dyscyplina_naukowa": decl["dyscyplina_naukowa"],
+            "subdyscyplina_naukowa": decl["subdyscyplina_naukowa"],
+            "uczelnia": uczelnia,
+            "data_oswiadczenia": decl["data_oswiadczenia"],
+            "przypieta": decl["przypieta"],
+        },
+    )
+
+
+def generate_combined_html(declarations, uczelnia, task):
+    """Generate a single HTML file with all declarations separated by page breaks.
+
+    Returns:
+        bytes: Combined HTML content as UTF-8 encoded bytes
+    """
+    html_parts = []
+
+    for idx, decl in enumerate(declarations, 1):
+        content = render_declaration_content_only(decl, uczelnia)
+        html_parts.append(content)
+
+        task.processed_items = idx
+        task.current_item = f"{decl['autor']} - {decl['rekord'].tytul_oryginalny[:30]}"
+        if idx % 10 == 0 or idx == len(declarations):
+            task.save()
+
+    # Join with page break dividers
+    combined_content = '<div style="page-break-after: always;"></div>\n'.join(
+        html_parts
+    )
+
+    full_html = f"""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Oswiadczenia</title>
+    <style>
+        @font-face {{
+            font-family: "DejaVuSans";
+            src: url("{DEJAVU_FONT_PATH}");
+        }}
+        @font-face {{
+            font-family: "DejaVuSans";
+            src: url("{DEJAVU_BOLD_FONT_PATH}");
+            font-weight: bold;
+        }}
+        body {{
+            font-family: "DejaVuSans", sans-serif;
+            font-size: 12pt;
+            line-height: 1.4;
+            margin: 2cm;
+        }}
+        h1 {{ font-size: 16pt; text-align: center; }}
+        h2 {{ font-size: 14pt; }}
+        h3 {{ font-size: 12pt; }}
+        @media print {{
+            .page-break {{
+                page-break-after: always;
+            }}
+        }}
+    </style>
+</head>
+<body>
+{combined_content}
+</body>
+</html>"""
+
+    return full_html.encode("utf-8")
+
+
+def generate_combined_docx(declarations, uczelnia, task):
+    """Generate a single DOCX file with all declarations.
+
+    Returns:
+        bytes: DOCX file content
+    """
+    from nowe_raporty.docx_export import html_to_docx
+
+    html_parts = []
+
+    for idx, decl in enumerate(declarations, 1):
+        content = render_declaration_content_only(decl, uczelnia)
+        html_parts.append(content)
+
+        task.processed_items = idx
+        task.current_item = f"{decl['autor']} - {decl['rekord'].tytul_oryginalny[:30]}"
+        if idx % 10 == 0 or idx == len(declarations):
+            task.save()
+
+    # Join with page break markers - will be replaced with real page breaks by html_to_docx
+    from nowe_raporty.docx_export import PAGEBREAK_MARKER
+
+    combined_content = f"<p>{PAGEBREAK_MARKER}</p>\n".join(html_parts)
+
+    full_html = f"""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Oswiadczenia</title>
+</head>
+<body>
+{combined_content}
+</body>
+</html>"""
+
+    return html_to_docx(full_html)
+
+
+def generate_combined_pdf(declarations, uczelnia, task):
+    """Generate a single PDF file with all declarations.
+
+    Returns:
+        bytes: PDF file content
+    """
+    html_parts = []
+
+    for idx, decl in enumerate(declarations, 1):
+        content = render_declaration_content_only(decl, uczelnia)
+        html_parts.append(content)
+
+        task.processed_items = idx
+        task.current_item = f"{decl['autor']} - {decl['rekord'].tytul_oryginalny[:30]}"
+        if idx % 10 == 0 or idx == len(declarations):
+            task.save()
+
+    # Join with page break dividers
+    combined_content = '<div style="page-break-after: always;"></div>\n'.join(
+        html_parts
+    )
+
+    full_html = f"""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Oswiadczenia</title>
+    <style>
+        @font-face {{
+            font-family: "DejaVuSans";
+            src: url("{DEJAVU_FONT_PATH}");
+        }}
+        @font-face {{
+            font-family: "DejaVuSans";
+            src: url("{DEJAVU_BOLD_FONT_PATH}");
+            font-weight: bold;
+        }}
+        body {{
+            font-family: "DejaVuSans", sans-serif;
+            font-size: 10pt;
+            line-height: 1.4;
+            margin: 2.5cm;
+        }}
+        h1 {{ font-size: 14pt; text-align: center; margin: 0.5em 0; }}
+        h2 {{ font-size: 12pt; margin: 0.5em 0; }}
+        h3 {{ font-size: 10pt; margin: 0.5em 0; }}
+        p {{ margin: 0.3em 0; }}
+        ul {{ margin: 0.3em 0; }}
+    </style>
+</head>
+<body>
+{combined_content}
+</body>
+</html>"""
+
+    result = BytesIO()
+    pisa_status = pisa.CreatePDF(full_html, dest=result, encoding="utf-8")
+    if pisa_status.err:
+        raise Exception("PDF generation failed")
+    return result.getvalue()
+
+
+def _generate_single_file_output(task, declarations, uczelnia):
+    """Generate a single file output (html_single, pdf_single, or docx_single).
+
+    Returns:
+        tuple: (filename, content) or None if format is not a single-file format.
+    """
+    format_handlers = {
+        "html_single": (
+            generate_combined_html,
+            f"oswiadczenia_{task.rok_od}_{task.rok_do}.html",
+        ),
+        "pdf_single": (
+            generate_combined_pdf,
+            f"oswiadczenia_{task.rok_od}_{task.rok_do}.pdf",
+        ),
+        "docx_single": (
+            generate_combined_docx,
+            f"oswiadczenia_{task.rok_od}_{task.rok_do}.docx",
+        ),
+    }
+
+    if task.export_format not in format_handlers:
+        return None
+
+    generator, filename = format_handlers[task.export_format]
+    content = generator(declarations, uczelnia, task)
+    return filename, content
+
+
+def _generate_zip_output(task, declarations, uczelnia):
+    """Generate a ZIP file with multiple declaration files.
+
+    Returns:
+        tuple: (filename, content) for the ZIP file.
+    """
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".zip") as tmp_file:
+        with zipfile.ZipFile(tmp_file, "w", zipfile.ZIP_DEFLATED) as zf:
+            if task.export_format == "pdf":
+                results = generate_pdfs_parallel(declarations, uczelnia, task)
+                for fname, file_content in results:
+                    zf.writestr(fname, file_content)
+            elif task.export_format == "docx":
+                generate_docx_sequential(zf, declarations, uczelnia, task)
+            else:
+                generate_html_sequential(zf, declarations, uczelnia, task)
+
+        tmp_path = tmp_file.name
+
+    with open(tmp_path, "rb") as f:
+        content = f.read()
+
+    os.unlink(tmp_path)
+
+    filename = f"oswiadczenia_{task.rok_od}_{task.rok_do}_{task.export_format}.zip"
+    return filename, content
+
+
 @shared_task(bind=True)
 def generate_oswiadczenia_zip(self, task_id: int):
-    """Generate ZIP file with declarations.
+    """Generate ZIP or single file with declarations.
 
     Args:
         task_id: ID of OswiadczeniaExportTask record.
@@ -289,39 +570,27 @@ def generate_oswiadczenia_zip(self, task_id: int):
             task.save()
             return {"status": "empty", "task_id": task_id}
 
-        # Setup PDF generation if needed
-        url_fetcher = None
-        if task.export_format == "pdf":
-            if django_url_fetcher is None or HTML is None:
+        # Check PDF generation dependencies
+        if task.export_format in ("pdf", "pdf_single"):
+            if pisa is None:
                 task.status = "failed"
-                task.error_message = "WeasyPrint nie jest zainstalowany."
+                task.error_message = "xhtml2pdf nie jest zainstalowany."
                 task.completed_at = timezone.now()
                 task.save()
                 return {"status": "error", "task_id": task_id}
-            url_fetcher = setup_pdf_url_fetcher()
 
-        # Generate ZIP with parallel processing for PDF format
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".zip") as tmp_file:
-            with zipfile.ZipFile(tmp_file, "w", zipfile.ZIP_DEFLATED) as zf:
-                if task.export_format == "pdf":
-                    results = generate_pdfs_parallel(
-                        declarations, uczelnia, url_fetcher, task
-                    )
-                    for filename, content in results:
-                        zf.writestr(filename, content)
-                else:
-                    generate_html_sequential(zf, declarations, uczelnia, task)
+            # Check if fonts are available for proper Polish character rendering
+            check_fonts_available()
 
-            tmp_path = tmp_file.name
-
-        # Save result file
-        with open(tmp_path, "rb") as f:
-            filename = (
-                f"oswiadczenia_{task.rok_od}_{task.rok_do}_{task.export_format}.zip"
-            )
-            task.result_file.save(filename, ContentFile(f.read()))
-
-        os.unlink(tmp_path)
+        # Handle single-file formats or ZIP
+        single_file_result = _generate_single_file_output(task, declarations, uczelnia)
+        if single_file_result:
+            filename, content = single_file_result
+            task.result_file.save(filename, ContentFile(content))
+        else:
+            # Generate ZIP
+            filename, content = _generate_zip_output(task, declarations, uczelnia)
+            task.result_file.save(filename, ContentFile(content))
 
         task.status = "completed"
         task.completed_at = timezone.now()
@@ -335,3 +604,17 @@ def generate_oswiadczenia_zip(self, task_id: int):
         task.completed_at = timezone.now()
         task.save()
         raise
+
+
+@shared_task
+def remove_old_oswiadczenia_export_files():
+    """Remove OswiadczeniaExportTask records and their files older than 7 days."""
+    from bpp.util import remove_old_objects
+    from oswiadczenia.models import OswiadczeniaExportTask
+
+    return remove_old_objects(
+        OswiadczeniaExportTask,
+        file_field="result_file",
+        field_name="created_at",
+        days=7,
+    )

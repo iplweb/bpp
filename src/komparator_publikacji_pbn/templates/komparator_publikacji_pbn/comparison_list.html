@@ -19,6 +19,12 @@
 
 <div class="row">
     <div class="large-12 columns">
+        {% include "includes/pbn_freshness_warning.html" with custom_message="Porównanie publikacji opiera się na lokalnej kopii danych PBN. Wyniki mogą być nieaktualne." %}
+    </div>
+</div>
+
+<div class="row">
+    <div class="large-12 columns">
         <div class="panel">
             <form method="get" class="search-form" id="filter-form">
                 <div class="row">

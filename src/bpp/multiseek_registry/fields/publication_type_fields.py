@@ -31,7 +31,7 @@ class Typ_OdpowiedzialnosciQueryObject(BppMultiseekVisibilityMixin, QueryObject)
     public = False
 
     def value_from_web(self, value):
-        return Typ_Odpowiedzialnosci.objects.get(nazwa=value)
+        return Typ_Odpowiedzialnosci.objects.filter(nazwa=value).first()
 
     def real_query(self, value, operation):
         if operation in EQUALITY_OPS_ALL:
@@ -133,7 +133,9 @@ class CharakterFormalnyQueryObject(
     def value_from_web(self, value):
         if value is None:
             return None
-        return Charakter_Formalny.objects.get(nazwa=value.lstrip("-").lstrip(" "))
+        return Charakter_Formalny.objects.filter(
+            nazwa=value.lstrip("-").lstrip(" ")
+        ).first()
 
     def __init__(self, *args, **kwargs):
         ValueListQueryObject.__init__(self, *args, **kwargs)

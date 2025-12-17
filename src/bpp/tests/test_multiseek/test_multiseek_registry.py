@@ -8,8 +8,10 @@ from multiseek.logic import DIFFERENT, EQUAL, AutocompleteQueryObject
 from bpp import const
 from bpp.models import (
     Autor_Dyscyplina,
+    Charakter_Formalny,
     Dyscyplina_Naukowa,
     Jednostka,
+    Jezyk,
     Typ_Odpowiedzialnosci,
     Zewnetrzna_Baza_Danych,
 )
@@ -25,12 +27,14 @@ from bpp.multiseek_registry import (
     EQUAL_PLUS_SUB_UNION_FEMALE,
     UNION,
     AktualnaJednostkaAutoraQueryObject,
+    CharakterFormalnyQueryObject,
     CharakterOgolnyQueryObject,
     DataUtworzeniaQueryObject,
     DOIQueryObject,
     DyscyplinaQueryObject,
     ForeignKeyDescribeMixin,
     JednostkaQueryObject,
+    JezykQueryObject,
     KierunekStudiowQueryObject,
     LicencjaOpenAccessUstawionaQueryObject,
     LiczbaAutorowQueryObject,
@@ -531,3 +535,61 @@ def test_OswiadczenieKENQueryObject(param, value):
 def test_StatusKorektyQueryObject(param, statusy_korekt):
     ret = StatusKorektyQueryObject().real_query(statusy_korekt["przed korektą"], param)
     assert Rekord.objects.filter(*(ret,)).count() == 0
+
+
+@pytest.mark.django_db
+def test_Typ_OdpowiedzialnosciQueryObject_value_from_web_missing():
+    """Test that value_from_web returns None for non-existent Typ_Odpowiedzialnosci."""
+    result = Typ_OdpowiedzialnosciQueryObject().value_from_web(
+        "non-existent-nazwa-xyz-123"
+    )
+    assert result is None
+
+
+@pytest.mark.django_db
+def test_Typ_OdpowiedzialnosciQueryObject_value_from_web_existing():
+    """Test that value_from_web returns the object for existing Typ_Odpowiedzialnosci."""
+    t = baker.make(Typ_Odpowiedzialnosci, nazwa="test-typ-odpowiedzialnosci")
+    result = Typ_OdpowiedzialnosciQueryObject().value_from_web(
+        "test-typ-odpowiedzialnosci"
+    )
+    assert result == t
+
+
+@pytest.mark.django_db
+def test_CharakterFormalnyQueryObject_value_from_web_missing():
+    """Test that value_from_web returns None for non-existent Charakter_Formalny."""
+    result = CharakterFormalnyQueryObject().value_from_web(
+        "non-existent-charakter-xyz-123"
+    )
+    assert result is None
+
+
+@pytest.mark.django_db
+def test_CharakterFormalnyQueryObject_value_from_web_existing(charaktery_formalne):
+    """Test that value_from_web returns the object for existing Charakter_Formalny."""
+    cf = Charakter_Formalny.objects.first()
+    result = CharakterFormalnyQueryObject().value_from_web(cf.nazwa)
+    assert result == cf
+
+
+@pytest.mark.django_db
+def test_CharakterFormalnyQueryObject_value_from_web_none():
+    """Test that value_from_web returns None when value is None."""
+    result = CharakterFormalnyQueryObject().value_from_web(None)
+    assert result is None
+
+
+@pytest.mark.django_db
+def test_JezykQueryObject_value_from_web_missing():
+    """Test that value_from_web returns None for non-existent Jezyk."""
+    result = JezykQueryObject().value_from_web("non-existent-jezyk-xyz-123")
+    assert result is None
+
+
+@pytest.mark.django_db
+def test_JezykQueryObject_value_from_web_existing(jezyki):
+    """Test that value_from_web returns the object for existing Jezyk."""
+    j = Jezyk.objects.first()
+    result = JezykQueryObject().value_from_web(j.nazwa)
+    assert result == j
