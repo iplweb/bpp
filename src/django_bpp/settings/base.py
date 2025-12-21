@@ -600,6 +600,10 @@ CELERYBEAT_SCHEDULE = {
         "task": "oswiadczenia.tasks.remove_old_oswiadczenia_export_files",
         "schedule": timedelta(days=1),
     },
+    "rebuild-pbn-author-match-cache": {
+        "task": "importer_autorow_pbn.tasks.auto_rebuild_match_cache_task",
+        "schedule": crontab(hour=3, minute=30),  # Daily at 3:30 AM
+    },
 }
 
 

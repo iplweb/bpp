@@ -88,7 +88,7 @@
         <h2 style="margin: 0;">Kolejka eksportu do PBN</h2>
 
         {% if request.user.is_staff or perms.pbn_api %}
-            {% if error_count > 0 or waiting_count > 0 or never_sent_count > 0 %}
+            {% if error_techniczny_count > 0 or waiting_count > 0 or never_sent_count > 0 %}
             <div style="text-align: right;">
                 {% if never_sent_count > 0 %}
                 <form method="post" action="{% url 'pbn_export_queue:export-queue-wake-up' %}" style="display: inline;">
@@ -98,11 +98,11 @@
                     </button>
                 </form>
                 {% endif %}
-                {% if error_count > 0 %}
+                {% if error_techniczny_count > 0 %}
                 <form method="post" action="{% url 'pbn_export_queue:export-queue-resend-all-errors' %}" style="display: inline;">
                     {% csrf_token %}
-                    <button type="submit" class="button alert" onclick="return confirm('Czy na pewno chcesz wysłać ponownie wszystkie {{ error_count }} rekordów z błędami?');">
-                        <span class="fi-refresh"></span> Wyślij ponownie błędy ({{ error_count }})
+                    <button type="submit" class="button alert" onclick="return confirm('Czy na pewno chcesz wysłać ponownie wszystkie {{ error_techniczny_count }} rekordów z błędami technicznymi?');">
+                        <span class="fi-refresh"></span> Wyślij ponownie błędy techniczne ({{ error_techniczny_count }})
                     </button>
                 </form>
                 {% endif %}
@@ -121,64 +121,106 @@
 
     {% if request.user.is_staff or perms.pbn_api %}
 
-        <div class="filter-section" style="display: flex; justify-content: space-between; align-items: center;">
-            <div style="flex-grow: 1;">
-                <h4>Filtry</h4>
-                <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-                    <div class="button-group">
-                        <a href="?{% if search_query %}q={{ search_query|urlencode }}&{% endif %}" class="button {% if current_filter == 'all' %}primary{% else %}secondary{% endif %}">
+        <fieldset class="filter-section" style="border: 1px solid #cacaca; padding: 15px; margin: 20px 0;">
+            <legend style="padding: 0 10px; font-weight: bold;">Filtry</legend>
+
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <div style="flex-grow: 1;">
+                    <!-- Wiersz 1: Przyciski filtrów statusu -->
+                    <div class="button-group" style="margin-bottom: 15px;">
+                        <a href="?{% if search_query %}q={{ search_query|urlencode }}&{% endif %}{% if rok_od %}rok_od={{ rok_od }}&{% endif %}{% if rok_do %}rok_do={{ rok_do }}{% endif %}" class="button {% if current_filter == 'all' and not current_error_type %}primary{% else %}secondary{% endif %}">
                             <span class="fi-list"></span> Wszystkie ({{ total_count }})
                         </a>
-                        <a href="?zakonczono_pomyslnie=true{% if search_query %}&q={{ search_query|urlencode }}{% endif %}" class="button {% if current_filter == 'true' %}success{% else %}secondary{% endif %}">
-                            <span class="fi-check"></span> Zakończone pomyślnie ({{ success_count }})
+                        <a href="?zakonczono_pomyslnie=true{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if rok_od %}&rok_od={{ rok_od }}{% endif %}{% if rok_do %}&rok_do={{ rok_do }}{% endif %}" class="button {% if current_filter == 'true' %}success{% else %}secondary{% endif %}">
+                            <span class="fi-check"></span> Zakonczone pomyslnie ({{ success_count }})
                         </a>
-                        <a href="?zakonczono_pomyslnie=false{% if search_query %}&q={{ search_query|urlencode }}{% endif %}" class="button {% if current_filter == 'false' %}alert{% else %}secondary{% endif %}">
-                            <span class="fi-x"></span> Zakończone z błędem ({{ error_count }})
+                        <a href="?zakonczono_pomyslnie=false{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if rok_od %}&rok_od={{ rok_od }}{% endif %}{% if rok_do %}&rok_do={{ rok_do }}{% endif %}" class="button {% if current_filter == 'false' and not current_error_type %}alert{% else %}secondary{% endif %}">
+                            <span class="fi-x"></span> Wszystkie bledy ({{ error_count }})
                         </a>
-                        <a href="?zakonczono_pomyslnie=none{% if search_query %}&q={{ search_query|urlencode }}{% endif %}" class="button {% if current_filter == 'none' %}warning{% else %}secondary{% endif %}">
-                            <span class="fi-clock"></span> W trakcie/oczekujące ({{ pending_count }})
+                        <a href="?rodzaj_bledu=MERYT{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if rok_od %}&rok_od={{ rok_od }}{% endif %}{% if rok_do %}&rok_do={{ rok_do }}{% endif %}" class="button {% if current_error_type == 'MERYT' %}alert{% else %}secondary{% endif %}">
+                            <span class="fi-x"></span> Bledy merytoryczne ({{ error_merytoryczny_count }})
+                        </a>
+                        <a href="?rodzaj_bledu=TECH{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if rok_od %}&rok_od={{ rok_od }}{% endif %}{% if rok_do %}&rok_do={{ rok_do }}{% endif %}" class="button {% if current_error_type == 'TECH' %}alert{% else %}secondary{% endif %}">
+                            <span class="fi-x"></span> Bledy techniczne ({{ error_techniczny_count }})
+                        </a>
+                        <a href="?zakonczono_pomyslnie=none{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if rok_od %}&rok_od={{ rok_od }}{% endif %}{% if rok_do %}&rok_do={{ rok_do }}{% endif %}" class="button {% if current_filter == 'none' %}warning{% else %}secondary{% endif %}">
+                            <span class="fi-clock"></span> W trakcie/oczekujace ({{ pending_count }})
                         </a>
                     </div>
-                    <div style="display: flex; align-items: center; gap: 5px;">
-                        <form method="get" action="" style="margin: 0; display: flex; align-items: center;">
-                            {% if request.GET.zakonczono_pomyslnie %}
-                                <input type="hidden" name="zakonczono_pomyslnie" value="{{ request.GET.zakonczono_pomyslnie }}">
-                            {% endif %}
+
+                    <!-- Wiersz 2: Rok od, Rok do, Szukaj w tytule, przyciski -->
+                    <form method="get" action="" style="margin: 0;">
+                        {% if request.GET.zakonczono_pomyslnie %}
+                            <input type="hidden" name="zakonczono_pomyslnie" value="{{ request.GET.zakonczono_pomyslnie }}">
+                        {% endif %}
+                        {% if request.GET.rodzaj_bledu %}
+                            <input type="hidden" name="rodzaj_bledu" value="{{ request.GET.rodzaj_bledu }}">
+                        {% endif %}
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <input type="number"
+                                   name="rok_od"
+                                   placeholder="Rok od"
+                                   value="{{ rok_od }}"
+                                   style="margin: 0; height: 37px; width: 80px;"
+                                   min="1900" max="2100">
+                            <input type="number"
+                                   name="rok_do"
+                                   placeholder="Rok do"
+                                   value="{{ rok_do }}"
+                                   style="margin: 0; height: 37px; width: 80px;"
+                                   min="1900" max="2100">
                             <input type="search"
                                    name="q"
                                    placeholder="Szukaj w tytule..."
                                    value="{{ search_query }}"
-                                   style="margin: 0; height: 37px; min-width: 200px;"
+                                   style="margin: 0; height: 37px; width: 150px;"
                                    autocomplete="off">
-                            <button type="submit" class="button secondary" style="margin: 0; margin-left: 5px;">
-                                <span class="fi-magnifying-glass"></span>
+                            <button type="submit" class="button" style="margin: 0;">
+                                <span class="fi-magnifying-glass"></span> Filtruj
                             </button>
-                            {% if search_query %}
-                            <a href="?{% if request.GET.zakonczono_pomyslnie %}zakonczono_pomyslnie={{ request.GET.zakonczono_pomyslnie }}{% endif %}"
-                               class="button secondary"
-                               style="margin: 0; margin-left: 5px;"
-                               title="Wyczyść wyszukiwanie">
-                                <span class="fi-x"></span>
+                            <a href="?" class="button secondary" style="margin: 0;">
+                                <span class="fi-x"></span> Resetuj
                             </a>
-                            {% endif %}
-                        </form>
-                    </div>
+                        </div>
+                    </form>
                 </div>
-            </div>
 
-            <div class="refresh-control">
-                <div class="progress-bar-container" id="progress-container">
-                    <div class="progress-bar" id="progress-bar"></div>
+                <div class="refresh-control" style="margin-left: 20px;">
+                    <div class="progress-bar-container" id="progress-container">
+                        <div class="progress-bar" id="progress-bar"></div>
+                    </div>
+                    <label style="font-weight: normal;">
+                        <input type="checkbox" id="auto-refresh-toggle" style="margin-right: 5px;">
+                        <span class="fi-refresh"></span> Odswiezaj co 5 sekund
+                    </label>
                 </div>
-                <label style="font-weight: normal;">
-                    <input type="checkbox" id="auto-refresh-toggle" style="margin-right: 5px;">
-                    <span class="fi-refresh"></span> Odświeżaj co 5 sekund
-                </label>
             </div>
+        </fieldset>
+
+        <div style="margin-bottom: 15px;">
+            <form method="post" action="{% url 'pbn_export_queue:export-queue-resend-filtered' %}" style="display: inline;">
+                {% csrf_token %}
+                {% if request.GET.zakonczono_pomyslnie %}
+                    <input type="hidden" name="zakonczono_pomyslnie" value="{{ request.GET.zakonczono_pomyslnie }}">
+                {% endif %}
+                {% if request.GET.rodzaj_bledu %}
+                    <input type="hidden" name="rodzaj_bledu" value="{{ request.GET.rodzaj_bledu }}">
+                {% endif %}
+                <input type="hidden" name="rok_od" value="{{ rok_od }}">
+                {% if rok_do %}
+                    <input type="hidden" name="rok_do" value="{{ rok_do }}">
+                {% endif %}
+                {% if search_query %}
+                    <input type="hidden" name="q" value="{{ search_query }}">
+                {% endif %}
+                <button type="submit" class="button primary" onclick="return confirm('Czy na pewno chcesz wyslac widoczne rekordy (max 100)?');">
+                    <span class="fi-upload"></span> Wyslij widoczne rekordy
+                </button>
+            </form>
         </div>
 
         <div id="export-queue-table"
-             hx-get="{% url 'pbn_export_queue:export-queue-table' %}?{% if request.GET.zakonczono_pomyslnie %}zakonczono_pomyslnie={{ request.GET.zakonczono_pomyslnie }}&{% endif %}{% if search_query %}q={{ search_query|urlencode }}&{% endif %}sort={{ current_sort|default:'-ostatnia_aktualizacja' }}"
+             hx-get="{% url 'pbn_export_queue:export-queue-table' %}?{% if request.GET.zakonczono_pomyslnie %}zakonczono_pomyslnie={{ request.GET.zakonczono_pomyslnie }}&{% endif %}{% if request.GET.rodzaj_bledu %}rodzaj_bledu={{ request.GET.rodzaj_bledu }}&{% endif %}{% if search_query %}q={{ search_query|urlencode }}&{% endif %}{% if rok_od %}rok_od={{ rok_od }}&{% endif %}{% if rok_do %}rok_do={{ rok_do }}&{% endif %}sort={{ current_sort|default:'-ostatnia_aktualizacja' }}"
              hx-swap="innerHTML">
             {% include 'pbn_export_queue/pbn_export_queue_table.html' %}
         </div>
@@ -190,7 +232,6 @@
                 var progressContainer = document.getElementById('progress-container');
                 var progressBar = document.getElementById('progress-bar');
                 var refreshInterval = null;
-                var errorExpanded = false;
 
                 // Load saved preference from localStorage
                 var savedPreference = localStorage.getItem('pbn_export_queue_auto_refresh');
@@ -208,25 +249,7 @@
                     }
                 });
 
-                // Listen for error expansion events from the table
-                document.addEventListener('errorToggled', function(event) {
-                    errorExpanded = event.detail.expanded;
-
-                    if (errorExpanded && refreshToggle.checked) {
-                        // Temporarily stop refresh when error is expanded
-                        stopAutoRefresh(true);
-                    } else if (!errorExpanded && refreshToggle.checked) {
-                        // Resume refresh when error is collapsed
-                        startAutoRefresh();
-                    }
-                });
-
                 function startAutoRefresh() {
-                    // Don't start if error is expanded
-                    if (errorExpanded) {
-                        return;
-                    }
-
                     // Show progress bar
                     progressContainer.classList.add('active');
 
@@ -241,22 +264,18 @@
 
                     // Set up interval for continuous polling
                     refreshInterval = setInterval(function() {
-                        if (!errorExpanded) {
-                            refreshTable();
-                            refreshCounts();
-                            // Reset animation
-                            progressBar.style.animation = 'none';
-                            void progressBar.offsetHeight; // Trigger reflow
-                            progressBar.style.animation = 'countdown 5s linear infinite';
-                        }
+                        refreshTable();
+                        refreshCounts();
+                        // Reset animation
+                        progressBar.style.animation = 'none';
+                        void progressBar.offsetHeight; // Trigger reflow
+                        progressBar.style.animation = 'countdown 5s linear infinite';
                     }, 5000);
                 }
 
-                function stopAutoRefresh(temporary) {
-                    // Hide progress bar (unless this is temporary due to error expansion)
-                    if (!temporary) {
-                        progressContainer.classList.remove('active');
-                    }
+                function stopAutoRefresh() {
+                    // Hide progress bar
+                    progressContainer.classList.remove('active');
 
                     // Clear the interval
                     if (refreshInterval) {
@@ -284,9 +303,11 @@
                             updateButtonCount('true', data.success_count);
                             updateButtonCount('false', data.error_count);
                             updateButtonCount('none', data.pending_count);
+                            updateButtonCount('MERYT', data.error_merytoryczny_count);
+                            updateButtonCount('TECH', data.error_techniczny_count);
 
                             // Update resend buttons counts
-                            updateResendButtonCount('error', data.error_count);
+                            updateResendButtonCount('error_tech', data.error_techniczny_count);
                             updateResendButtonCount('waiting', data.waiting_count);
                         })
                         .catch(error => {
@@ -295,8 +316,15 @@
                 }
 
                 function updateButtonCount(filter, count) {
-                    var button = document.querySelector('.button-group a[href' +
-                        (filter === 'all' ? '="?"' : '="?zakonczono_pomyslnie=' + filter + '"') + ']');
+                    var selector;
+                    if (filter === 'all') {
+                        selector = '.button-group a[href="?"]';
+                    } else if (filter === 'MERYT' || filter === 'TECH') {
+                        selector = '.button-group a[href^="?rodzaj_bledu=' + filter + '"]';
+                    } else {
+                        selector = '.button-group a[href^="?zakonczono_pomyslnie=' + filter + '"]';
+                    }
+                    var button = document.querySelector(selector);
                     if (button) {
                         // Find the count in parentheses and update it
                         button.innerHTML = button.innerHTML.replace(/\(\d+\)/, '(' + count + ')');
@@ -304,8 +332,8 @@
                 }
 
                 function updateResendButtonCount(type, count) {
-                    if (type === 'error') {
-                        var button = document.querySelector('button[type="submit"][onclick*="błędami"]');
+                    if (type === 'error_tech') {
+                        var button = document.querySelector('button[type="submit"][onclick*="technicznymi"]');
                         if (button) {
                             button.innerHTML = button.innerHTML.replace(/\(\d+\)/, '(' + count + ')');
                             // Show/hide button based on count

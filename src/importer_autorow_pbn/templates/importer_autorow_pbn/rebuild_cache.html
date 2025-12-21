@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Przebudowa cache'u dopasowań - {{ block.super }}{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url 'importer_autorow_pbn:main' %}">Importer autorów PBN</a></li>
+    <li class="current">Przebudowa cache'u</li>
+{% endblock %}
+
+{% block content %}
+    <div class="row">
+        <div class="large-12 columns">
+            <h1>Przebudowa cache'u dopasowań</h1>
+            <p class="lead">Zarządzanie cache'em dopasowań naukowców PBN do autorów BPP</p>
+
+            <div class="row">
+                <div class="medium-6 columns">
+                    <div class="panel {% if cache_is_valid %}callout success{% else %}callout alert{% endif %}">
+                        <h5><span class="fi-info"></span> Status cache'u</h5>
+                        {% if cache_is_valid %}
+                            <p><span class="fi-check"></span> <strong>Cache jest aktualny</strong></p>
+                            {% if cache_last_computed %}
+                                <p>Ostatnia przebudowa: {{ cache_last_computed|date:"Y-m-d H:i" }}</p>
+                            {% endif %}
+                        {% else %}
+                            <p><span class="fi-x"></span> <strong>{{ cache_message }}</strong></p>
+                            {% if cache_last_computed %}
+                                <p>Ostatnia przebudowa: {{ cache_last_computed|date:"Y-m-d H:i" }}</p>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="medium-6 columns">
+                    {% if last_operation %}
+                        <div class="panel">
+                            <h5><span class="fi-results"></span> Ostatnia operacja</h5>
+                            <p><strong>Data:</strong> {{ last_operation.finished_on|date:"Y-m-d H:i" }}</p>
+                            <p><strong>Przetworzono:</strong> {{ last_operation.total_scientists }} naukowców</p>
+                            <p><strong>Znaleziono dopasowań:</strong> {{ last_operation.matches_found }}</p>
+                            {% if last_operation.finished_successfully %}
+                                <span class="label success">Zakończono pomyślnie</span>
+                            {% else %}
+                                <span class="label alert">Zakończono z błędem</span>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if running_operation %}
+                <div class="callout warning">
+                    <h5><span class="fi-loop"></span> Przebudowa w toku</h5>
+                    <p>Operacja przebudowy jest już uruchomiona.</p>
+                    <a href="{% url 'importer_autorow_pbn:rebuild_status' running_operation.pk %}" class="button">
+                        <span class="fi-eye"></span> Zobacz postęp
+                    </a>
+                </div>
+            {% else %}
+                <div class="panel">
+                    <h5><span class="fi-refresh"></span> Uruchom przebudowę</h5>
+                    <p>Przebudowa cache'u polega na ponownym dopasowaniu wszystkich naukowców PBN do autorów BPP.
+                    Operacja ta może potrwać kilka minut w zależności od liczby naukowców.</p>
+
+                    <form method="post" action="{% url 'importer_autorow_pbn:rebuild_start' %}">
+                        {% csrf_token %}
+                        <button type="submit" class="button large">
+                            <span class="fi-refresh"></span> Rozpocznij przebudowę cache'u
+                        </button>
+                    </form>
+                </div>
+            {% endif %}
+
+            <div class="panel secondary">
+                <p>
+                    <a href="{% url 'importer_autorow_pbn:main' %}" class="button secondary">
+                        <span class="fi-arrow-left"></span> Powrót do importera
+                    </a>
+                </p>
+            </div>
+        </div>
+    </div>
+{% endblock %}

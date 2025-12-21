@@ -16,6 +16,19 @@
 
             {% include "includes/pbn_freshness_warning.html" with custom_message="Lista naukowców PBN opiera się na lokalnej kopii danych. Wyniki mogą być nieaktualne." %}
 
+            {% if cache_is_valid %}
+                <div class="callout success small">
+                    <span class="fi-check"></span>
+                    <strong>Cache dopasowań aktualny</strong>
+                    {% if cache_last_computed %}
+                        (ostatnia przebudowa: {{ cache_last_computed|date:"Y-m-d H:i" }})
+                    {% endif %}
+                    <a href="{% url 'importer_autorow_pbn:rebuild' %}" class="float-right">
+                        <span class="fi-refresh"></span> Zarządzaj cache'em
+                    </a>
+                </div>
+            {% endif %}
+
             <div class="panel callout secondary">
                 <h5><i class="fi-info"></i> Informacje</h5>
                 <p>Ta strona pokazuje naukowców pobranych z API instytucji PBN, którzy nie mają jeszcze odpowiedników w bazie BPP.</p>

@@ -5,9 +5,11 @@ from .views import (
     PBNExportQueueDetailView,
     PBNExportQueueListView,
     PBNExportQueueTableView,
+    delete_from_queue,
     prepare_for_resend,
     resend_all_errors,
     resend_all_waiting,
+    resend_filtered,
     resend_to_pbn,
     try_send_to_pbn,
     wake_up_queue,
@@ -34,6 +36,7 @@ urlpatterns = [
         name="export-queue-detail",
     ),
     path("<int:pk>/resend/", resend_to_pbn, name="export-queue-resend"),
+    path("<int:pk>/delete/", delete_from_queue, name="export-queue-delete"),
     path(
         "<int:pk>/prepare-resend/",
         prepare_for_resend,
@@ -54,5 +57,10 @@ urlpatterns = [
         "wake-up/",
         wake_up_queue,
         name="export-queue-wake-up",
+    ),
+    path(
+        "resend-filtered/",
+        resend_filtered,
+        name="export-queue-resend-filtered",
     ),
 ]

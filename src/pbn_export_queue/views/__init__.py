@@ -7,9 +7,11 @@ in views.py are re-exported here.
 # Action views
 from .action_views import (
     PBNExportQueueCountsView,
+    delete_from_queue,
     prepare_for_resend,
     resend_all_errors,
     resend_all_waiting,
+    resend_filtered,
     resend_to_pbn,
     try_send_to_pbn,
     wake_up_queue,
@@ -76,11 +78,13 @@ __all__ = [
     # Detail view
     "PBNExportQueueDetailView",
     # Action views
+    "delete_from_queue",
     "resend_to_pbn",
     "prepare_for_resend",
     "try_send_to_pbn",
     "resend_all_waiting",
     "resend_all_errors",
+    "resend_filtered",
     "wake_up_queue",
     "PBNExportQueueCountsView",
 ]

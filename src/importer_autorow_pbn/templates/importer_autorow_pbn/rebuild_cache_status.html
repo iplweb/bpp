@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Postęp przebudowy cache'u - {{ block.super }}{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url 'importer_autorow_pbn:main' %}">Importer autorów PBN</a></li>
+    <li><a href="{% url 'importer_autorow_pbn:rebuild' %}">Przebudowa cache'u</a></li>
+    <li class="current">Postęp</li>
+{% endblock %}
+
+{% block content %}
+    <div class="row">
+        <div class="large-12 columns">
+            <h1>Przebudowa cache'u dopasowań</h1>
+
+            <div id="progress-container"
+                 hx-get="{% url 'importer_autorow_pbn:rebuild_progress' operation.pk %}"
+                 hx-trigger="every 2s"
+                 hx-swap="innerHTML">
+                {% include "importer_autorow_pbn/_cache_progress.html" %}
+            </div>
+
+            <div class="panel secondary" style="margin-top: 2rem;">
+                <p>
+                    <a href="{% url 'importer_autorow_pbn:rebuild' %}" class="button secondary">
+                        <span class="fi-arrow-left"></span> Powrót do zarządzania cache'em
+                    </a>
+                </p>
+            </div>
+        </div>
+    </div>
+{% endblock %}

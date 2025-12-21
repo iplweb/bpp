@@ -16,10 +16,12 @@ from pbn_api.exceptions import (
     AccessDeniedException,
     AlreadyEnqueuedError,
     CharakterFormalnyNieobslugiwanyError,
+    HttpException,
     NeedsPBNAuthorisationException,
     PKZeroExportDisabled,
     PraceSerwisoweException,
     ResourceLockedException,
+    WillNotExportError,
 )
 
 
@@ -52,6 +54,11 @@ class SendStatus(Enum):
     FINISHED_ERROR = 6
 
 
+class RodzajBledu(models.TextChoices):
+    TECHNICZNY = "TECH", "Techniczny"
+    MERYTORYCZNY = "MERYT", "Merytoryczny"
+
+
 def model_table_exists(model):
     """Check if a model's table exists"""
     from django.db import connection
@@ -61,8 +68,6 @@ def model_table_exists(model):
 
 
 class PBN_Export_Queue(models.Model):
-    objects = PBN_Export_QueueManager()
-
     object_id = PositiveIntegerField()
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
     rekord_do_wysylki = GenericForeignKey()
@@ -76,11 +81,22 @@ class PBN_Export_Queue(models.Model):
 
     ilosc_prob = models.PositiveSmallIntegerField(default=0)
     zakonczono_pomyslnie = models.BooleanField(null=True, default=None, db_index=True)
-    komunikat = models.TextField(null=True, blank=True)
+    komunikat = models.TextField(null=True, blank=True)  # noqa: DJ001
 
     retry_after_user_authorised = models.BooleanField(
         null=True, default=None, db_index=True
     )
+
+    rodzaj_bledu = models.CharField(  # noqa: DJ001
+        max_length=5,
+        choices=RodzajBledu.choices,
+        null=True,
+        blank=True,
+        db_index=True,
+        verbose_name="Rodzaj błędu",
+    )
+
+    objects = PBN_Export_QueueManager()
 
     class Meta:
         verbose_name = "Kolejka eksportu do PBN"
@@ -124,6 +140,7 @@ class PBN_Export_Queue(models.Model):
         self.wysylke_zakonczono = None
         self.zakonczono_pomyslnie = None
         self.retry_after_user_authorised = None
+        self.rodzaj_bledu = None
 
         msg = "Ponownie wysłano"
         if user is not None:
@@ -150,34 +167,140 @@ class PBN_Export_Queue(models.Model):
         else:
             self.komunikat = res
 
-    def error(self, msg):
+    def error(self, msg, rodzaj=None):
         self.wysylke_zakonczono = timezone.now()
         self.zakonczono_pomyslnie = False
+        self.rodzaj_bledu = rodzaj
         self.dopisz_komunikat(msg)
         self.save()
         return SendStatus.FINISHED_ERROR
 
+    def _is_pbn_validation_error(self, exc):
+        """Sprawdza czy HttpException zawiera błąd walidacji z PBN."""
+        if not exc.json:
+            return False
+
+        # Format 1: {"details": {...}} - obiekt z niepustym details
+        if isinstance(exc.json, dict) and "details" in exc.json and exc.json["details"]:
+            return True
+
+        # Format 2: [{"code": "NOT_UNIQUE_PUBLICATION", ...}] - tablica z kodem błędu
+        if (
+            isinstance(exc.json, list)
+            and exc.json
+            and isinstance(exc.json[0], dict)
+            and "code" in exc.json[0]
+        ):
+            return True
+
+        return False
+
+    def _handle_pbn_exception(self, exc):
+        """Obsługuje wyjątki z wysyłki do PBN. Zwraca SendStatus lub None."""
+        if isinstance(exc, PraceSerwisoweException):
+            self.dopisz_komunikat("Prace serwisowe w PBN, spróbuję za kilka godzin")
+            self.save()
+            return SendStatus.RETRY_MUCH_LATER
+
+        if isinstance(exc, NeedsPBNAuthorisationException):
+            self.dopisz_komunikat(
+                "Użytkownik bez autoryzacji w PBN, spróbuję po zalogowaniu do PBN."
+            )
+            self.retry_after_user_authorised = True
+            self.save()
+            return SendStatus.RETRY_AFTER_USER_AUTHORISED
+
+        if isinstance(exc, CharakterFormalnyNieobslugiwanyError):
+            return self.error(
+                "Charakter formalny tego rekordu nie jest ustawiony jako wysyłany do "
+                "PBN. Zmień konfigurację bazy BPP, Redagowanie -> Dane systemowe -> "
+                "Charaktery formalne",
+                rodzaj=RodzajBledu.MERYTORYCZNY,
+            )
+
+        if isinstance(exc, AccessDeniedException):
+            return self.error(
+                "Brak uprawnień, załączam traceback:\n" + traceback.format_exc(),
+                rodzaj=RodzajBledu.TECHNICZNY,
+            )
+
+        if isinstance(exc, PKZeroExportDisabled):
+            return self.error(
+                "Eksport prac bez punktów PK wyłączony w konfiguracji, nie wysłano.",
+                rodzaj=RodzajBledu.MERYTORYCZNY,
+            )
+
+        if isinstance(exc, ResourceLockedException):
+            self.dopisz_komunikat(f"{exc}, ponowiam wysyłkę za kilka minut...")
+            self.save()
+            return SendStatus.RETRY_LATER
+
+        # WillNotExportError i podklasy (DOIorWWWMissing, LanguageMissingPBNUID, etc.)
+        # PKZeroExportDisabled jest obsłużony wcześniej osobno
+        if isinstance(exc, WillNotExportError):
+            return self.error(
+                f"Rekord nie może być wysłany do PBN: {exc}\n\n"
+                + traceback.format_exc(),
+                rodzaj=RodzajBledu.MERYTORYCZNY,
+            )
+
+        # HttpException - sprawdź czy to błąd walidacji (MERYTORYCZNY) czy techniczny
+        if isinstance(exc, HttpException):
+            if self._is_pbn_validation_error(exc):
+                return self.error(
+                    "Błąd walidacji po stronie PBN, załączam traceback:\n"
+                    + traceback.format_exc(),
+                    rodzaj=RodzajBledu.MERYTORYCZNY,
+                )
+
+            # Inny HttpException bez walidacji - błąd techniczny
+            return self.error(
+                "Wystąpił błąd HTTP z PBN, załączam traceback:\n"
+                + traceback.format_exc(),
+                rodzaj=RodzajBledu.TECHNICZNY,
+            )
+
+        # Nieobsługiwany wyjątek
+        rollbar.report_exc_info(sys.exc_info())
+        return self.error(
+            "Wystąpił nieobsługiwany błąd, załączam traceback:\n"
+            + traceback.format_exc(),
+            rodzaj=RodzajBledu.TECHNICZNY,
+        )
+
+    def _handle_successful_send(self, sent_data, notificator):
+        """Obsługuje pomyślną wysyłkę do PBN."""
+        msg = (
+            "Wysłano poprawnie. Link do wysłanego kodu JSON <a href="
+            + reverse("admin:pbn_api_sentdata_change", args=[sent_data.pk])
+            + ">tutaj</a>. "
+        )
+        extra_info = "\n".join(notificator)
+        if extra_info:
+            msg += "\n\nDodatkowe informacje:\n" + extra_info
+
+        self.wysylke_zakonczono = timezone.now()
+        self.dopisz_komunikat(msg)
+        self.zakonczono_pomyslnie = True
+        self.save()
+        return SendStatus.FINISHED_OKAY
+
     def send_to_pbn(self):
-        """
-        :return: (int : SendStatus,)
-        """
-        # Odśwież stan z bazy na wypadek równoległych zmian
+        """:return: SendStatus"""
         self.refresh_from_db()
 
-        # Zabezpieczenie: jeśli rekord został już zakończony, nie wysyłaj ponownie
-        # (może się zdarzyć w przypadku race condition między workerami)
         if self.wysylke_zakonczono is not None:
-            # Rekord został już wysłany przez inny proces
             return SendStatus.FINISHED_OKAY
 
         if not self.check_if_record_still_exists():
-            return self.error("Rekord został usunięty nim wysyłka była możliwa.")
+            return self.error(
+                "Rekord został usunięty nim wysyłka była możliwa.",
+                rodzaj=RodzajBledu.TECHNICZNY,
+            )
 
         self.wysylke_podjeto = timezone.now()
         if self.retry_after_user_authorised:
-            self.retry_after_user_authorised = (
-                None  # Zresetuj wartosc tego pola, rekord wysyłany n-ty raz
-            )
+            self.retry_after_user_authorised = None
         self.ilosc_prob += 1
         self.save()
 
@@ -189,70 +312,14 @@ class PBN_Export_Queue(models.Model):
                 obj=self.rekord_do_wysylki,
                 force_upload=True,
             )
-        except PraceSerwisoweException:
-            self.dopisz_komunikat("Prace serwisowe w PBN, spróbuję za kilka godzin")
-            self.save()
-            return SendStatus.RETRY_MUCH_LATER
-
-        except NeedsPBNAuthorisationException:
-            self.dopisz_komunikat(
-                "Użytkownik bez autoryzacji w PBN, spróbuję po zalogowaniu do PBN."
-            )
-            self.retry_after_user_authorised = True
-            self.save()
-            return SendStatus.RETRY_AFTER_USER_AUTHORISED
-
-        except CharakterFormalnyNieobslugiwanyError:
-            self.error(
-                "Charakter formalny tego rekordu nie jest ustawiony jako wysyłany do PBN. Zmień konfigurację "
-                "bazy BPP, Redagowanie -> Dane systemowe -> Charaktery formalne"
-            )
-            return SendStatus.FINISHED_ERROR
-
-        except AccessDeniedException:
-            return self.error(
-                "Brak uprawnień, załączam traceback:\n" + traceback.format_exc()
-            )
-            return SendStatus.FINISHED_ERROR
-
-        except PKZeroExportDisabled:
-            self.error(
-                "Eksport prac bez punktów PK wyłączony w konfiguracji, nie wysłano."
-            )
-            return SendStatus.FINISHED_ERROR
-
-        except ResourceLockedException as e:
-            self.dopisz_komunikat(f"{e}, ponowiam wysyłkę za kilka minut...")
-            self.save()
-            return SendStatus.RETRY_LATER
-
-        except Exception:
-            rollbar.report_exc_info(sys.exc_info())
-            return self.error(
-                "Wystąpił nieobsługiwany błąd, załączam traceback:\n"
-                + traceback.format_exc()
-            )
+        except Exception as exc:
+            return self._handle_pbn_exception(exc)
 
         if sent_data is None:
             return self.error(
                 "Wystąpił błąd, dane nie zostały wysłane, wyjaśnienie poniżej.\n\n"
-                + "\n".join(notificator)
+                + "\n".join(notificator),
+                rodzaj=RodzajBledu.MERYTORYCZNY,
             )
 
-        msg = (
-            "Wysłano poprawnie. Link do wysłanego kodu JSON <a href="
-            + reverse("admin:pbn_api_sentdata_change", args=[sent_data.pk])
-            + ">tutaj</a>. "
-        )
-        extra_info = "\n".join(notificator)
-        # Jeżeli notyfikator zawiera cokolwiek, a może zawierać np ostrzeżenia czy uwagi do
-        # wysłanego rekordu to dołącz to
-        if extra_info:
-            msg += "\n\nDodatkowe informacje:\n" + extra_info
-
-        self.wysylke_zakonczono = timezone.now()
-        self.dopisz_komunikat(msg)
-        self.zakonczono_pomyslnie = True
-        self.save()
-
-        return SendStatus.FINISHED_OKAY
+        return self._handle_successful_send(sent_data, notificator)

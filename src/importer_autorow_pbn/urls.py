@@ -1,7 +1,11 @@
 from django.urls import path
 
 from .views import (
+    CacheRebuildProgressView,
+    CacheRebuildStatusView,
+    CacheRebuildView,
     ImporterAutorowPBNView,
+    StartCacheRebuildView,
     create_all_unmatched_scientists,
     ignore_scientist,
     link_all_scientists,
@@ -19,5 +23,18 @@ urlpatterns = [
         "create-all-unmatched/",
         create_all_unmatched_scientists,
         name="create_all_unmatched",
+    ),
+    # Cache rebuild URLs
+    path("rebuild/", CacheRebuildView.as_view(), name="rebuild"),
+    path("rebuild/start/", StartCacheRebuildView.as_view(), name="rebuild_start"),
+    path(
+        "rebuild/status/<uuid:pk>/",
+        CacheRebuildStatusView.as_view(),
+        name="rebuild_status",
+    ),
+    path(
+        "rebuild/progress/<uuid:pk>/",
+        CacheRebuildProgressView.as_view(),
+        name="rebuild_progress",
     ),
 ]

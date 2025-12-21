@@ -1,0 +1,54 @@
+// PBN Export Queue Error Display Styles
+
+.pbn-error {
+  // Container for the entire error message
+  &-container {
+    font-family: monospace;
+    line-height: 1.5;
+  }
+
+  // Main error header (e.g., "HttpException: HTTP 400")
+  &-header {
+    font-family: monospace;
+    line-height: 1.5;
+    font-size: 1.3em;
+    font-weight: bold;
+    color: red;
+  }
+
+  // Error details (code, description, message)
+  &-detail {
+    font-family: monospace;
+    margin-top: 8px;
+    line-height: 1.5;
+    font-size: 1.15em;
+    color: #222;
+  }
+
+  // Nested detail items (for details dict)
+  &-detail-item {
+    font-family: monospace;
+    margin-left: 20px;
+    line-height: 1.5;
+    font-size: 1.15em;
+    color: #222;
+  }
+
+  // Endpoint line (shown at bottom)
+  &-endpoint {
+    font-family: monospace;
+    margin-top: 12px;
+    font-size: 1em;
+    color: #444;
+    line-height: 1.5;
+  }
+
+  // Fallback/simple error text
+  &-text {
+    font-family: monospace;
+    line-height: 1.5;
+    font-size: 1.15em;
+    font-weight: bold;
+    color: red;
+  }
+}

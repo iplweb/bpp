@@ -314,7 +314,7 @@ build-beatserver: build-appserver-base
 
 build-servers: build-appserver-base build-appserver build-workerserver build-beatserver # build-flower
 
-docker: build-dbserver build-webserver build-servers
+build: build-dbserver build-webserver build-servers
 
 buildx-cache-stats:
 	docker buildx du

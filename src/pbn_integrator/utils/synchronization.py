@@ -278,7 +278,7 @@ def wyslij_informacje_o_platnosciach(client: PBNClient, rok=None):
 
     Args:
         client: PBN client.
-        rok: Optional year filter.
+          rok: Optional year filter.
     """
     for model in Wydawnictwo_Ciagle, Wydawnictwo_Zwarte:
         qset = model.objects.rekordy_z_oplata()
