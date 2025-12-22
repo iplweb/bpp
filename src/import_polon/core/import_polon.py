@@ -12,6 +12,11 @@ from import_polon.models import ImportPlikuPolon, WierszImportuPlikuPolon
 from import_polon.utils import read_excel_or_csv_dataframe_guess_encoding
 
 
+def _format_none(value, none_text="pustego"):
+    """Format value for display, replacing None with Polish text."""
+    return none_text if value is None else value
+
+
 def validate_zatrudnienie_starts_with_university(zatrudnienie_value):
     """
     Check if ZATRUDNIENIE field starts with any university name from the system.
@@ -215,30 +220,37 @@ def _update_autor_dyscyplina_fields(
             )
         else:
             ops.append(
-                f"Zmieniam dyscyplinę z {ad.dyscyplina_naukowa} na {dyscyplina_xlsx}"
+                f"Zmieniam dyscyplinę z {_format_none(ad.dyscyplina_naukowa, 'żadną')} "
+                f"na {_format_none(dyscyplina_xlsx, 'żadną')}"
             )
             ad.dyscyplina_naukowa = dyscyplina_xlsx
 
     if ad.subdyscyplina_naukowa != subdyscyplina_xlsx:
         ops.append(
-            f"Zmieniam subdyscyplinę z {ad.subdyscyplina_naukowa} na {subdyscyplina_xlsx}"
+            f"Zmieniam subdyscyplinę z {_format_none(ad.subdyscyplina_naukowa, 'żadną')} "
+            f"na {_format_none(subdyscyplina_xlsx, 'żadną')}"
         )
         ad.subdyscyplina_naukowa = subdyscyplina_xlsx
 
     if ad.procent_dyscypliny != procent_dyscypliny:
         ops.append(
-            f"Zmieniam procent dyscypliny z {ad.procent_dyscypliny} na {procent_dyscypliny}"
+            f"Zmieniam procent dyscypliny z {_format_none(ad.procent_dyscypliny)} "
+            f"na {_format_none(procent_dyscypliny)}"
         )
         ad.procent_dyscypliny = procent_dyscypliny
 
     if ad.procent_subdyscypliny != procent_subdyscypliny:
         ops.append(
-            f"Zmieniam procent dyscypliny z {ad.procent_subdyscypliny} na {procent_subdyscypliny}"
+            f"Zmieniam procent subdyscypliny z {_format_none(ad.procent_subdyscypliny)} "
+            f"na {_format_none(procent_subdyscypliny)}"
         )
         ad.procent_subdyscypliny = procent_subdyscypliny
 
     if ad.wymiar_etatu != wymiar_etatu:
-        ops.append(f"Zmieniam wymiar etatu z {ad.wymiar_etatu} na {wymiar_etatu}")
+        ops.append(
+            f"Zmieniam wymiar etatu z {_format_none(ad.wymiar_etatu)} "
+            f"na {_format_none(wymiar_etatu)}"
+        )
         ad.wymiar_etatu = wymiar_etatu
 
     return ops

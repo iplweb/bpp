@@ -64,8 +64,8 @@ def id_row_2(import_dyscyplin, autor_jan_nowak):
         original={},
         dyscyplina="Testowa",
         kod_dyscypliny="3.2",
-        subdyscyplina=None,
-        kod_subdyscypliny=None,
+        subdyscyplina="",
+        kod_subdyscypliny="",
         autor=autor_jan_nowak,
     )
 

@@ -29,12 +29,12 @@ def stworz_kolumny(self, pk):
     finally:
         i = Import_Dyscyplin.objects.get(pk=pk)
         self.update_state(state="DONE")
-        i.task_id = None
+        i.task_id = ""
         i.save()
 
         Notification.objects.send_redirect(
             i,
-            "%s?notification=1" % reverse("import_dyscyplin:detail", args=(i.pk,)),
+            f"{reverse('import_dyscyplin:detail', args=(i.pk,))}?notification=1",
         )
 
 
@@ -63,12 +63,12 @@ def przeanalizuj_import_dyscyplin(self, pk):
         i = Import_Dyscyplin.objects.get(pk=pk)
         self.update_state(state="DONE")
 
-        i.task_id = None
+        i.task_id = ""
         i.save()
 
         Notification.objects.send_redirect(
             i,
-            "%s?notification=1" % reverse("import_dyscyplin:detail", args=(i.pk,)),
+            f"{reverse('import_dyscyplin:detail', args=(i.pk,))}?notification=1",
         )
 
 
@@ -91,10 +91,10 @@ def integruj_import_dyscyplin(self, pk):
     finally:
         i = Import_Dyscyplin.objects.get(pk=pk)
         self.update_state(state="DONE")
-        i.task_id = None
+        i.task_id = ""
         i.save()
 
         Notification.objects.send_redirect(
             i,
-            "%s?notification=1" % reverse("import_dyscyplin:detail", args=(i.pk,)),
+            f"{reverse('import_dyscyplin:detail', args=(i.pk,))}?notification=1",
         )
