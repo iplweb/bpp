@@ -399,26 +399,27 @@ def analyze_file_import_polon(fn, parent_model: ImportPlikuPolon):
     records = data.to_dict("records")
     total = len(records)
     for n_row, row in enumerate(records):
-        # Validate employment - skip if invalid
-        zatrudnienie = row.get("ZATRUDNIENIE", "")
-        is_valid_employment, _ = validate_zatrudnienie_starts_with_university(
-            zatrudnienie
-        )
-        if not is_valid_employment:
-            WierszImportuPlikuPolon.objects.create(
-                parent=parent_model,
-                dane_z_xls=row,
-                nr_wiersza=n_row + 1,
-                autor=None,
-                dyscyplina_naukowa=None,
-                subdyscyplina_naukowa=None,
-                rezultat=(
-                    f"REKORD ZIGNOROWANY: Pole 'ZATRUDNIENIE' ('{zatrudnienie}') "
-                    f"nie zaczyna się od nazwy żadnej uczelni w systemie."
-                ),
+        # Validate employment - skip if invalid (unless ignored)
+        if not parent_model.ignoruj_miejsce_pracy:
+            zatrudnienie = row.get("ZATRUDNIENIE", "")
+            is_valid_employment, _ = validate_zatrudnienie_starts_with_university(
+                zatrudnienie
             )
-            parent_model.send_progress(n_row * 100.0 / total)
-            continue
+            if not is_valid_employment:
+                WierszImportuPlikuPolon.objects.create(
+                    parent=parent_model,
+                    dane_z_xls=row,
+                    nr_wiersza=n_row + 1,
+                    autor=None,
+                    dyscyplina_naukowa=None,
+                    subdyscyplina_naukowa=None,
+                    rezultat=(
+                        f"REKORD ZIGNOROWANY: Pole 'ZATRUDNIENIE' ('{zatrudnienie}') "
+                        f"nie zaczyna się od nazwy żadnej uczelni w systemie."
+                    ),
+                )
+                parent_model.send_progress(n_row * 100.0 / total)
+                continue
 
         # Match author
         orcid = row.get("ORCID", "") or ""

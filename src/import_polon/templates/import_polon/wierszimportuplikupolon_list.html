@@ -38,6 +38,21 @@
             margin-top: 0.1rem;
         }
 
+        /* Filter checkbox styling */
+        .filter-checkbox-label {
+            display: flex;
+            align-items: center;
+            margin-top: 1.5rem;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        .filter-checkbox-label input[type="checkbox"] {
+            width: 1.25rem;
+            height: 1.25rem;
+            margin-right: 0.5rem;
+            cursor: pointer;
+        }
+
         /* Anchor padding to prevent hiding behind top bar */
         a[name="filtry"] {
             display: block;
@@ -159,11 +174,35 @@
         </div>
     {% endif %}
 
-    {% include "long_running/operation_details.html" %}
+    <button id="toggle-details" class="button small secondary">
+        <span class="fi-info"></span> <span id="toggle-details-text">Pokaż</span> szczegóły operacji
+    </button>
+    <div id="operation-details-container" style="display: none; margin-top: 0.5rem;">
+        {% include "long_running/operation_details.html" %}
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const toggleDetailsBtn = document.getElementById('toggle-details');
+            const toggleDetailsText = document.getElementById('toggle-details-text');
+            const detailsContainer = document.getElementById('operation-details-container');
+
+            if (toggleDetailsBtn) {
+                toggleDetailsBtn.addEventListener('click', function() {
+                    if (detailsContainer.style.display === 'none') {
+                        detailsContainer.style.display = 'block';
+                        toggleDetailsText.textContent = 'Ukryj';
+                    } else {
+                        detailsContainer.style.display = 'none';
+                        toggleDetailsText.textContent = 'Pokaż';
+                    }
+                });
+            }
+        });
+    </script>
 
     {% if object.finished_successfully and unmatched_count > 0 %}
-        <div class="panel">
-            <h5 class="highlighted-header"><strong>Autorzy z przypisaniami dyscyplin w BPP, którzy nie byli w pliku Excel ({{ unmatched_count }})</strong></h5>
+        <div class="panel callout secondary">
+            <h5><strong>Autorzy z przypisaniami dyscyplin w BPP, którzy nie byli w pliku Excel ({{ unmatched_count }})</strong></h5>
             <p>Poniższa tabela pokazuje autorów, którzy mają przypisania dyscyplin dla roku {{ object.rok }} w systemie BPP, ale nie znaleźli się w importowanym pliku Excel.</p>
 
             <button id="toggle-unmatched" class="button small">
@@ -226,39 +265,36 @@
     {% if object.finished_successfully %}
 
         {% if filter_form %}
-            <div class="panel">
-                <a name="filtry"></a>
-                <h5 class="highlighted-header"><strong>Filtry</strong></h5>
+            <a name="filtry"></a>
+            <div class="panel callout primary">
+                <h5><strong>Filtry</strong></h5>
                 <form method="get" action="#filtry" class="filter-form" id="filter-form">
                     <div class="row">
-                        <div class="medium-4 columns">
+                        <div class="medium-3 columns">
                             {{ filter_form.autor_wiersz.label_tag }}
                             {{ filter_form.autor_wiersz }}
-                            {% if filter_form.autor_wiersz.help_text %}
-                                <small class="help-text">{{ filter_form.autor_wiersz.help_text }}</small>
-                            {% endif %}
                         </div>
-                        <div class="medium-4 columns">
+                        <div class="medium-3 columns">
                             {{ filter_form.dyscyplina.label_tag }}
                             {{ filter_form.dyscyplina }}
-                            {% if filter_form.dyscyplina.help_text %}
-                                <small class="help-text">{{ filter_form.dyscyplina.help_text }}</small>
-                            {% endif %}
                         </div>
-                        <div class="medium-4 columns">
+                        <div class="medium-3 columns">
                             {{ filter_form.grupa_stanowisk.label_tag }}
                             {{ filter_form.grupa_stanowisk }}
-                            {% if filter_form.grupa_stanowisk.help_text %}
-                                <small class="help-text">{{ filter_form.grupa_stanowisk.help_text }}</small>
-                            {% endif %}
+                        </div>
+                        <div class="medium-3 columns">
+                            <label class="filter-checkbox-label">
+                                {{ filter_form.pokaz_tylko_roznice }}
+                                {{ filter_form.pokaz_tylko_roznice.label }}
+                            </label>
                         </div>
                     </div>
-                    <div class="row">
+                    <div class="row" style="margin-top: 0.75rem;">
                         <div class="medium-12 columns">
-                            <button type="submit" class="button small">Filtruj</button>
-                            <a href="?page=1#filtry" class="button secondary small">Wyczyść filtry</a>
+                            <button type="submit" class="button">Filtruj</button>
+                            <a href="?page=1#filtry" class="button secondary">Wyczyść filtry</a>
                             {% if is_filtered %}
-                                <span class="label secondary">Filtry aktywne</span>
+                                <span class="label secondary" style="margin-left: 0.5rem;">Filtry aktywne</span>
                             {% endif %}
                         </div>
                     </div>
@@ -277,6 +313,13 @@
                     const grupaStanowiskSelect = document.querySelector('select[name="grupa_stanowisk"]');
                     if (grupaStanowiskSelect) {
                         grupaStanowiskSelect.addEventListener('change', function() {
+                            this.form.submit();
+                        });
+                    }
+
+                    const pokazTylkoRozniceCheckbox = document.querySelector('input[name="pokaz_tylko_roznice"]');
+                    if (pokazTylkoRozniceCheckbox) {
+                        pokazTylkoRozniceCheckbox.addEventListener('change', function() {
                             this.form.submit();
                         });
                     }
