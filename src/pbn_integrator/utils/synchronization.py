@@ -273,12 +273,16 @@ def synchronizuj_publikacje(
         )
 
 
-def wyslij_informacje_o_platnosciach(client: PBNClient, rok=None):
+def wyslij_informacje_o_platnosciach(
+    client: PBNClient, rok=None, upload_publication=False
+):
     """Send payment information for publications to PBN.
 
     Args:
         client: PBN client.
-          rok: Optional year filter.
+        rok: Optional year filter.
+        upload_publication: If True, upload publication when it has no PBN UID.
+            Default is False (skip such publications).
     """
     for model in Wydawnictwo_Ciagle, Wydawnictwo_Zwarte:
         qset = model.objects.rekordy_z_oplata()
@@ -289,12 +293,17 @@ def wyslij_informacje_o_platnosciach(client: PBNClient, rok=None):
             try:
                 client.upload_publication_fee(elem)
             except NoPBNUIDException:
-                try:
-                    client.upload_publication(elem)
-                except Exception as e:
+                if upload_publication:
+                    try:
+                        client.upload_publication(elem)
+                    except Exception as e:
+                        print(
+                            f"Podczas aktualizacji pracy {elem.tytul_oryginalny, elem.pk} wystąpił błąd: {e}. "
+                            f"Wczytaj dane tej pracy ręcznie. "
+                        )
+                else:
                     print(
-                        f"Podczas aktualizacji pracy {elem.tytul_oryginalny, elem.pk} wystąpił błąd: {e}. Wczytaj "
-                        f"dane tej pracy ręcznie. "
+                        f"Publikacja {elem.tytul_oryginalny} ({elem.pk}) nie ma PBN UID - pominięto."
                     )
             except NoFeeDataException:
                 pass
