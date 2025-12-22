@@ -101,7 +101,7 @@ jobs:
         set -e  # Exit on any error
         uname -a
         sudo apt update
-        sudo apt install software-properties-common gettext libldap2-dev libsasl2-dev
+        sudo apt install software-properties-common gettext libldap2-dev libsasl2-dev libcairo2-dev
         curl -fsSL https://deb.nodesource.com/setup_current.x | sudo bash -
         sudo apt install -y libpq-dev nodejs redis-tools
         sudo npm install -g --force yarn grunt-cli
