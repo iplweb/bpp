@@ -34,10 +34,14 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RunPython(move_files_to_protected, noop),
+        # FIRST: Increase max_length to accommodate longer paths
         migrations.AlterField(
             model_name="import_dyscyplin",
             name="plik",
-            field=models.FileField(upload_to="protected/import_dyscyplin/"),
+            field=models.FileField(
+                max_length=512, upload_to="protected/import_dyscyplin/"
+            ),
         ),
+        # THEN: Run the data migration
+        migrations.RunPython(move_files_to_protected, noop),
     ]

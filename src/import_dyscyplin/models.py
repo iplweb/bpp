@@ -201,7 +201,7 @@ class Import_Dyscyplin(TimeStampedModel):
     task_id = models.CharField(max_length=36, blank=True, default="")
     task_id.__doc__ = "celery.uuid() z identyfikatorem zadania"
 
-    plik = models.FileField(upload_to="protected/import_dyscyplin/")
+    plik = models.FileField(max_length=512, upload_to="protected/import_dyscyplin/")
     rok = YearField(default=obecny_rok)
     stan = FSMField(
         default=STAN.NOWY, choices=zip(STANY, STANY, strict=False), protected=True
