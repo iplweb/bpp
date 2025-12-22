@@ -14,6 +14,7 @@ from pbn_api.exceptions import (
     CannotDeleteStatementsException,
     DaneLokalneWymagajaAktualizacjiException,
     HttpException,
+    PraceSerwisoweException,
 )
 
 
@@ -119,6 +120,8 @@ def _delete_existing_statements(publication, pbn_client, log_entry):
     except CannotDeleteStatementsException:
         # OK - statements didn't exist
         pass
+    except PraceSerwisoweException:
+        raise  # Propagate to main handler
     except HttpException as e:
         # Log the delete error but continue
         log_entry.error_message = f"Blad usuwania oswiadczen: {str(e)}"
@@ -183,6 +186,12 @@ def _send_statements_with_retry(pbn_client, json_data, log_entry):
                 log_entry.error_message = f"HTTP {e.status_code}: {str(e)}"
                 log_entry.save()
                 return "error", log_entry
+
+        except PraceSerwisoweException:
+            log_entry.error_message = "Prace serwisowe w PBN - spróbuj ponownie później"
+            log_entry.status = "maintenance"
+            log_entry.save()
+            raise  # Propagate to main handler
 
         except Exception as e:
             last_error = e
@@ -359,6 +368,15 @@ def wysylka_oswiadczen_task(self, task_id: int):
             "error_count": task.error_count,
             "skipped_count": task.skipped_count,
         }
+
+    except PraceSerwisoweException:
+        task.status = "maintenance"
+        task.error_message = (
+            "Prace serwisowe w PBN. Proszę spróbować ponownie za kilka godzin."
+        )
+        task.completed_at = timezone.now()
+        task.save()
+        return {"error": "prace_serwisowe", "message": task.error_message}
 
     except Exception as e:
         task.status = "failed"

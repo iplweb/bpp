@@ -15,6 +15,7 @@ class PbnWysylkaOswiadczenTask(models.Model):
         ("running", "W trakcie"),
         ("completed", "Zakonczone"),
         ("failed", "Blad"),
+        ("maintenance", "Prace serwisowe PBN"),
     ]
 
     user = models.ForeignKey(
@@ -107,6 +108,7 @@ class PbnWysylkaLog(models.Model):
         ("success", "Sukces"),
         ("error", "Blad"),
         ("skipped", "Pominieto"),
+        ("maintenance", "Prace serwisowe PBN"),
     ]
 
     task = models.ForeignKey(
