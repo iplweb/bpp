@@ -47,6 +47,7 @@ class ImportPolonResultsView(BaseImportPlikuPolonMixin, LongRunningResultsView):
         autor_wiersz = self.request.GET.get("autor_wiersz", "").strip()
         dyscyplina = self.request.GET.get("dyscyplina", "").strip()
         grupa_stanowisk = self.request.GET.get("grupa_stanowisk", "").strip()
+        pokaz_tylko_roznice = self.request.GET.get("pokaz_tylko_roznice", "")
 
         # Apply combined autor/wiersz filter
         if autor_wiersz:
@@ -75,6 +76,12 @@ class ImportPolonResultsView(BaseImportPlikuPolonMixin, LongRunningResultsView):
                 dane_z_xls__GRUPA_STANOWISK__icontains=grupa_stanowisk
             )
 
+        # Apply "show only differences" filter
+        if pokaz_tylko_roznice:
+            queryset = queryset.exclude(
+                rezultat__startswith="W BPP jest identycznie jak w XLSX"
+            )
+
         return queryset
 
     def get_context_data(self, **kwargs):
@@ -97,6 +104,7 @@ class ImportPolonResultsView(BaseImportPlikuPolonMixin, LongRunningResultsView):
             self.request.GET.get("autor_wiersz")
             or self.request.GET.get("dyscyplina")
             or self.request.GET.get("grupa_stanowisk")
+            or self.request.GET.get("pokaz_tylko_roznice")
         )
 
         # Get unmatched Autor_Dyscyplina records for this import year
@@ -107,7 +115,8 @@ class ImportPolonResultsView(BaseImportPlikuPolonMixin, LongRunningResultsView):
             "autor_id", flat=True
         )
 
-        # Get all Autor_Dyscyplina records for the import year that are NOT in the matched authors
+        # Get all Autor_Dyscyplina records for the import year
+        # that are NOT in the matched authors
         unmatched_autor_dyscyplina = (
             Autor_Dyscyplina.objects.filter(rok=import_object.rok)
             .exclude(autor_id__in=matched_authors)

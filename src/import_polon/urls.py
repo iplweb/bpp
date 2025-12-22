@@ -1,7 +1,8 @@
 from django.urls import path
 
-app_name = "import_polon"
 from . import views
+
+app_name = "import_polon"
 
 urlpatterns = [
     path("dane/", views.PokazImporty.as_view(), name="index"),

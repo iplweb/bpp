@@ -21,10 +21,12 @@ def validate_polon_headers(file_path):
         # Read only the header row to validate - use nrows=0 to read just headers
         data = read_excel_or_csv_dataframe_guess_encoding(file_path, nrows=0)
 
-        # Check if we have any columns (headers) - data.empty will be True with nrows=0 even if headers exist
+        # Check if we have any columns (headers)
+        # data.empty will be True with nrows=0 even if headers exist
         if len(data.columns) == 0:
             return [
-                "Nie można odczytać nagłówków z pliku - plik może być pusty lub uszkodzony"
+                "Nie można odczytać nagłówków z pliku "
+                "- plik może być pusty lub uszkodzony"
             ]
 
         actual_headers = set(data.columns.str.upper())
@@ -66,10 +68,12 @@ def validate_absencje_headers(file_path):
         # Read only the header row to validate - use nrows=0 to read just headers
         data = read_excel_or_csv_dataframe_guess_encoding(file_path, nrows=0)
 
-        # Check if we have any columns (headers) - data.empty will be True with nrows=0 even if headers exist
+        # Check if we have any columns (headers)
+        # data.empty will be True with nrows=0 even if headers exist
         if len(data.columns) == 0:
             return [
-                "Nie można odczytać nagłówków z pliku - plik może być pusty lub uszkodzony"
+                "Nie można odczytać nagłówków z pliku "
+                "- plik może być pusty lub uszkodzony"
             ]
 
         actual_headers = set(data.columns.str.upper())
@@ -106,25 +110,28 @@ class NowyImportAbsencjiForm(forms.ModelForm):
 
             if file_extension not in valid_extensions:
                 raise ValidationError(
-                    f"Niewłaściwy format pliku. Proszę przesłać plik Excel (.xlsx, .xls) lub CSV (.csv). "
+                    "Niewłaściwy format pliku. "
+                    "Proszę przesłać plik Excel (.xlsx, .xls) lub CSV (.csv). "
                     f"Otrzymano plik z rozszerzeniem: {file_extension}"
                 )
 
             # Check MIME type if available
             if hasattr(plik, "content_type"):
                 valid_mime_types = [
-                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",  # xlsx
+                    # xlsx
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     "application/vnd.ms-excel",  # xls
                     "text/csv",  # csv
                     "application/csv",  # csv alternative
-                    "application/octet-stream",  # sometimes files are detected as this
+                    "application/octet-stream",  # sometimes detected as this
                 ]
                 if plik.content_type not in valid_mime_types:
                     # Don't reject based on MIME type alone if extension is valid
                     # Some browsers may report incorrect MIME types
                     if file_extension not in valid_extensions:
                         raise ValidationError(
-                            "Niewłaściwy typ pliku. Proszę przesłać plik Excel (.xlsx, .xls) lub CSV (.csv)."
+                            "Niewłaściwy typ pliku. "
+                            "Proszę przesłać plik Excel (.xlsx, .xls) lub CSV."
                         )
 
             # Validate headers for absences import
@@ -143,7 +150,10 @@ class NowyImportAbsencjiForm(forms.ModelForm):
                         "Plik nie zawiera wymaganych nagłówków. Brakujące nagłówki:\n"
                     )
                     error_msg += "\n".join(f"- {header}" for header in missing_headers)
-                    error_msg += "\n\nProszę upewnić się, że plik zawiera wszystkie wymagane kolumny."
+                    error_msg += (
+                        "\n\nProszę upewnić się, "
+                        "że plik zawiera wszystkie wymagane kolumny."
+                    )
                     raise ValidationError(error_msg)
             finally:
                 # Clean up temporary file
@@ -187,19 +197,20 @@ class WierszImportuPlikuPolonFilterForm(forms.Form):
     autor_wiersz = forms.CharField(
         required=False,
         label="Autor / Wiersz",
-        help_text="Tekst: szukaj autorze lub rezultacie. Liczba: numer wiersza",
     )
     dyscyplina = forms.ChoiceField(
         required=False,
         label="Dyscyplina",
         choices=[("", "---------")],
-        help_text="Szukaj w dyscyplinie lub subdyscyplinie",
     )
     grupa_stanowisk = forms.ChoiceField(
         required=False,
         label="Grupa stanowiska",
         choices=[("", "---------")],
-        help_text="Filtruj po grupie stanowiska",
+    )
+    pokaz_tylko_roznice = forms.BooleanField(
+        required=False,
+        label="Pokaż tylko różnice",
     )
 
     def __init__(self, *args, **kwargs):
@@ -265,6 +276,7 @@ class NowyImportForm(forms.ModelForm):
             "rok",
             "zapisz_zmiany_do_bazy",
             "ukryj_niezmatchowanych_autorow",
+            "ignoruj_miejsce_pracy",
         ]
 
     def clean_plik(self):
@@ -276,25 +288,28 @@ class NowyImportForm(forms.ModelForm):
 
             if file_extension not in valid_extensions:
                 raise ValidationError(
-                    f"Niewłaściwy format pliku. Proszę przesłać plik Excel (.xlsx, .xls) lub CSV (.csv). "
+                    "Niewłaściwy format pliku. "
+                    "Proszę przesłać plik Excel (.xlsx, .xls) lub CSV (.csv). "
                     f"Otrzymano plik z rozszerzeniem: {file_extension}"
                 )
 
             # Check MIME type if available
             if hasattr(plik, "content_type"):
                 valid_mime_types = [
-                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",  # xlsx
+                    # xlsx
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     "application/vnd.ms-excel",  # xls
                     "text/csv",  # csv
                     "application/csv",  # csv alternative
-                    "application/octet-stream",  # sometimes files are detected as this
+                    "application/octet-stream",  # sometimes detected as this
                 ]
                 if plik.content_type not in valid_mime_types:
                     # Don't reject based on MIME type alone if extension is valid
                     # Some browsers may report incorrect MIME types
                     if file_extension not in valid_extensions:
                         raise ValidationError(
-                            "Niewłaściwy typ pliku. Proszę przesłać plik Excel (.xlsx, .xls) lub CSV (.csv)."
+                            "Niewłaściwy typ pliku. "
+                            "Proszę przesłać plik Excel (.xlsx, .xls) lub CSV."
                         )
 
             # Validate headers for POLON import
@@ -313,7 +328,10 @@ class NowyImportForm(forms.ModelForm):
                         "Plik nie zawiera wymaganych nagłówków. Brakujące nagłówki:\n"
                     )
                     error_msg += "\n".join(f"- {header}" for header in missing_headers)
-                    error_msg += "\n\nProszę upewnić się, że plik zawiera wszystkie wymagane kolumny."
+                    error_msg += (
+                        "\n\nProszę upewnić się, "
+                        "że plik zawiera wszystkie wymagane kolumny."
+                    )
                     raise ValidationError(error_msg)
             finally:
                 # Clean up temporary file
@@ -339,6 +357,9 @@ class NowyImportForm(forms.ModelForm):
                     Column(
                         "ukryj_niezmatchowanych_autorow", css_class="large-12 small-12"
                     ),
+                ),
+                Row(
+                    Column("ignoruj_miejsce_pracy", css_class="large-12 small-12"),
                 ),
                 Row(
                     Column("zapisz_zmiany_do_bazy", css_class="large-12 small-12"),

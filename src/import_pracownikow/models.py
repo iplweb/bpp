@@ -68,7 +68,7 @@ class AutorForm(forms.Form):
 
 
 class ImportPracownikow(ASGINotificationMixin, Operation):
-    plik_xls = models.FileField()
+    plik_xls = models.FileField(upload_to="protected/import_pracownikow/")
 
     performed = models.BooleanField(default=False)
     integrated = models.BooleanField(default=False)
@@ -79,164 +79,167 @@ class ImportPracownikow(ASGINotificationMixin, Operation):
         self.importpracownikowrow_set.all().delete()
         self.save()
 
+    def _matchuj_jednostke(self, elem):
+        """Waliduje i matchuje jednostkę z danych XLS."""
+        jednostka_form = JednostkaForm(data=elem)
+        jednostka_form.full_clean()
+        if not jednostka_form.is_valid():
+            raise XLSParseError(elem, jednostka_form, "weryfikacja nazwy jednostki")
+
+        try:
+            return matchuj_jednostke(
+                jednostka_form.cleaned_data.get("nazwa_jednostki"),
+                wydzial=jednostka_form.cleaned_data.get("wydział"),
+            )
+        except Jednostka.MultipleObjectsReturned:
+            raise XLSMatchError(
+                elem, "jednostka", "wiele dopasowań w systemie - po nazwie"
+            ) from None
+        except Jednostka.DoesNotExist:
+            raise XLSMatchError(
+                elem, "jednostka", "brak dopasowania w systemie - po nazwie"
+            ) from None
+
+    def _waliduj_autora(self, elem):
+        """Waliduje dane autora i zwraca formularz z danymi."""
+        autor_form = AutorForm(data=elem)
+        autor_form.full_clean()
+        if not autor_form.is_valid():
+            raise XLSParseError(elem, autor_form, "weryfikacja danych autora")
+        assert isinstance(autor_form.cleaned_data.get("data_zatrudnienia"), date)
+        return autor_form
+
+    def _matchuj_funkcje_autora(self, data, elem, autor_form):
+        """Matchuje lub tworzy funkcję autora (stanowisko)."""
+        try:
+            return matchuj_funkcja_autora(data.get("stanowisko"))
+        except Funkcja_Autora.DoesNotExist:
+            try:
+                return Funkcja_Autora.objects.create(
+                    nazwa=normalize_funkcja_autora(data.get("stanowisko")),
+                    skrot=normalize_funkcja_autora(data.get("stanowisko")),
+                )
+            except IntegrityError:
+                raise XLSParseError(
+                    elem,
+                    autor_form,
+                    "nie można utworzyć nowego stanowiska na bazie takich danych",
+                ) from None
+        except Funkcja_Autora.MultipleObjectsReturned:
+            raise XLSMatchError(
+                elem,
+                "stanowisko",
+                "liczne dopasowania dla takiej funkcji autora (stanowiska) w systemie",
+            ) from None
+
+    def _matchuj_grupe_i_wymiar(self, data):
+        """Matchuje lub tworzy grupę pracowniczą i wymiar etatu."""
+        try:
+            grupa_pracownicza = matchuj_grupa_pracownicza(data.get("grupa_pracownicza"))
+        except Grupa_Pracownicza.DoesNotExist:
+            grupa_pracownicza = Grupa_Pracownicza.objects.create(
+                nazwa=normalize_grupa_pracownicza(data.get("grupa_pracownicza"))
+            )
+
+        try:
+            wymiar_etatu = matchuj_wymiar_etatu(data.get("wymiar_etatu"))
+        except Wymiar_Etatu.DoesNotExist:
+            wymiar_etatu = Wymiar_Etatu.objects.create(
+                nazwa=normalize_wymiar_etatu(data.get("wymiar_etatu"))
+            )
+
+        return grupa_pracownicza, wymiar_etatu
+
+    def _matchuj_autora_z_walidacja(self, data, elem, jednostka, tytul_str):
+        """Matchuje autora i waliduje zgodność BPP ID."""
+        autor = matchuj_autora(
+            imiona=data.get("imię"),
+            nazwisko=data.get("nazwisko"),
+            jednostka=jednostka,
+            bpp_id=data.get("bpp_id"),
+            pbn_uid_id=data.get("pbn_uuid"),
+            system_kadrowy_id=data.get("numer"),
+            pbn_id=data.get("pbn_id"),
+            orcid=data.get("orcid"),
+            tytul_str=tytul_str,
+        )
+        if autor is None:
+            raise XLSMatchError(elem, "autor", "brak dopasowania - różne kombinacje")
+
+        if data.get("bpp_id") is not None and data.get("bpp_id") != autor.pk:
+            raise XLSMatchError(
+                elem,
+                "autor",
+                "BPP ID zmatchowanego autora i BPP ID w pliku XLS nie zgadzają się",
+            )
+        return autor
+
+    def _znajdz_autor_jednostka(self, autor, jednostka, data, funkcja_autora, elem):
+        """Znajduje lub tworzy powiązanie autor-jednostka."""
+        try:
+            return Autor_Jednostka.objects.get(autor=autor, jednostka=jednostka)
+        except Autor_Jednostka.MultipleObjectsReturned:
+            if "data_zatrudnienia" in data:
+                try:
+                    return Autor_Jednostka.objects.get(
+                        autor=autor,
+                        jednostka=jednostka,
+                        rozpoczal_prace=data.get("data_zatrudnienia"),
+                    )
+                except Autor_Jednostka.DoesNotExist:
+                    raise BPPDatabaseMismatch(
+                        elem,
+                        "autor + jednostka",
+                        "brak jednoznacznego powiązania autor+jednostka po stronie BPP",
+                    ) from None
+        except Autor_Jednostka.DoesNotExist:
+            return Autor_Jednostka.objects.create(
+                autor=autor, jednostka=jednostka, funkcja=funkcja_autora
+            )
+
+    def _przetworz_wiersz(self, elem):
+        """Przetwarza pojedynczy wiersz z pliku XLS."""
+        jednostka = self._matchuj_jednostke(elem)
+        autor_form = self._waliduj_autora(elem)
+        data = autor_form.cleaned_data
+        tytul_str = data.get("tytuł_stopień")
+
+        funkcja_autora = self._matchuj_funkcje_autora(data, elem, autor_form)
+        grupa_pracownicza, wymiar_etatu = self._matchuj_grupe_i_wymiar(data)
+        autor = self._matchuj_autora_z_walidacja(data, elem, jednostka, tytul_str)
+        aj = self._znajdz_autor_jednostka(autor, jednostka, data, funkcja_autora, elem)
+
+        tytul = None
+        if tytul_str:
+            try:
+                tytul = Tytul.objects.get(Q(nazwa=tytul_str) | Q(skrot=tytul_str))
+            except Tytul.DoesNotExist:
+                pass
+
+        res = ImportPracownikowRow(
+            parent=self,
+            dane_z_xls=elem,
+            dane_znormalizowane=copy(autor_form.cleaned_data),
+            autor=autor,
+            jednostka=jednostka,
+            autor_jednostka=aj,
+            tytul=tytul,
+            funkcja_autora=funkcja_autora,
+            grupa_pracownicza=grupa_pracownicza,
+            wymiar_etatu=wymiar_etatu,
+            podstawowe_miejsce_pracy=normalize_nullboleanfield(
+                elem.get("podstawowe_miejsce_pracy")
+            ),
+        )
+        res.zmiany_potrzebne = res.check_if_integration_needed()
+        res.save()
+
     def perform(self):
         xif = XLSImportFile(self.plik_xls.path)
         total = xif.count()
 
         for no, elem in enumerate(xif.data()):
-            jednostka_form = JednostkaForm(data=elem)
-            jednostka_form.full_clean()
-            if not jednostka_form.is_valid():
-                raise XLSParseError(elem, jednostka_form, "weryfikacja nazwy jednostki")
-
-            try:
-                jednostka = matchuj_jednostke(
-                    jednostka_form.cleaned_data.get("nazwa_jednostki"),
-                    wydzial=jednostka_form.cleaned_data.get("wydział"),
-                )
-            except Jednostka.MultipleObjectsReturned:
-                raise XLSMatchError(
-                    elem, "jednostka", "wiele dopasowań w systemie - po nazwie"
-                )
-
-            except Jednostka.DoesNotExist:
-                raise XLSMatchError(
-                    elem, "jednostka", "brak dopasowania w systemie - po nazwie"
-                )
-
-            autor_form = AutorForm(data=elem)
-            autor_form.full_clean()
-            if not autor_form.is_valid():
-                raise XLSParseError(elem, autor_form, "weryfikacja danych autora")
-            assert isinstance(autor_form.cleaned_data.get("data_zatrudnienia"), date)
-            data = autor_form.cleaned_data
-
-            # if data.get("tytuł_stopień"):
-            #     try:
-            #         matchuj_tytul(data.get("tytuł_stopień"))
-            #     except Tytul.DoesNotExist:
-            #         raise XLSMatchError(
-            #             elem, "tytuł", "brak takiego tytułu w systemie (nazwa, skrót)"
-            #         )
-            #     except Tytul.MultipleObjectsReturned:
-            #         raise XLSMatchError(
-            #             elem,
-            #             "tytuł",
-            #             "liczne dopasowania dla takiego tytułu w systemie",
-            #         )
-
-            try:
-                funkcja_autora = matchuj_funkcja_autora(data.get("stanowisko"))
-            except Funkcja_Autora.DoesNotExist:
-                try:
-                    funkcja_autora = Funkcja_Autora.objects.create(
-                        nazwa=normalize_funkcja_autora(data.get("stanowisko")),
-                        skrot=normalize_funkcja_autora(data.get("stanowisko")),
-                    )
-                except IntegrityError:
-                    raise XLSParseError(
-                        elem,
-                        autor_form,
-                        "nie można utworzyć nowego stanowiska na bazie takich danych",
-                    )
-
-            except Funkcja_Autora.MultipleObjectsReturned:
-                raise XLSMatchError(
-                    elem,
-                    "stanowisko",
-                    "liczne dopasowania dla takiej funkcji autora (stanowiska) w systemie",
-                )
-
-            try:
-                grupa_pracownicza = matchuj_grupa_pracownicza(
-                    data.get("grupa_pracownicza")
-                )
-            except Grupa_Pracownicza.DoesNotExist:
-                grupa_pracownicza = Grupa_Pracownicza.objects.create(
-                    nazwa=normalize_grupa_pracownicza(data.get("grupa_pracownicza"))
-                )
-
-            try:
-                wymiar_etatu = matchuj_wymiar_etatu(data.get("wymiar_etatu"))
-            except Wymiar_Etatu.DoesNotExist:
-                wymiar_etatu = Wymiar_Etatu.objects.create(
-                    nazwa=normalize_wymiar_etatu(data.get("wymiar_etatu"))
-                )
-
-            tytul_str = data.get("tytuł_stopień")
-
-            autor = matchuj_autora(  # noqa
-                imiona=data.get("imię"),
-                nazwisko=data.get("nazwisko"),
-                jednostka=jednostka,
-                bpp_id=data.get("bpp_id"),
-                pbn_uid_id=data.get("pbn_uuid"),
-                system_kadrowy_id=data.get("numer"),
-                pbn_id=data.get("pbn_id"),
-                orcid=data.get("orcid"),
-                tytul_str=tytul_str,
-            )
-            if autor is None:
-                raise XLSMatchError(
-                    elem, "autor", "brak dopasowania - różne kombinacje"
-                )
-
-            # Jeżeli w danych jest podane BPP ID, ale zwrócony autor nie zmatchował po podanym BPP ID
-            # za to zmatchował po innych danych, sprawdźmy czy zwrócone BPP ID jest identyczne
-            if data.get("bpp_id") is not None:
-                if data.get("bpp_id") != autor.pk:
-                    raise XLSMatchError(
-                        elem,
-                        "autor",
-                        "BPP ID zmatchowanego autora i BPP ID w pliku XLS nie zgadzają się",
-                    )
-
-            try:
-                aj = Autor_Jednostka.objects.get(autor=autor, jednostka=jednostka)
-            except Autor_Jednostka.MultipleObjectsReturned:
-                if "data_zatrudnienia" in data:
-                    try:
-                        aj = Autor_Jednostka.objects.get(
-                            autor=autor,
-                            jednostka=jednostka,
-                            rozpoczal_prace=data.get("data_zatrudnienia"),
-                        )
-                    except Autor_Jednostka.DoesNotExist:
-                        raise BPPDatabaseMismatch(
-                            elem,
-                            "autor + jednostka",
-                            "brak jednoznacznego powiązania autor+jednostka po stronie BPP",
-                        )
-            except Autor_Jednostka.DoesNotExist:
-                aj = Autor_Jednostka.objects.create(
-                    autor=autor, jednostka=jednostka, funkcja=funkcja_autora
-                )
-
-            tytul = None
-            try:
-                if tytul_str:
-                    tytul = Tytul.objects.get(Q(nazwa=tytul_str) | Q(skrot=tytul_str))
-            except Tytul.DoesNotExist:
-                pass
-
-            res = ImportPracownikowRow(
-                parent=self,
-                dane_z_xls=elem,
-                dane_znormalizowane=copy(autor_form.cleaned_data),
-                autor=autor,
-                jednostka=jednostka,
-                autor_jednostka=aj,
-                tytul=tytul,
-                funkcja_autora=funkcja_autora,
-                grupa_pracownicza=grupa_pracownicza,
-                wymiar_etatu=wymiar_etatu,
-                podstawowe_miejsce_pracy=normalize_nullboleanfield(
-                    elem.get("podstawowe_miejsce_pracy")
-                ),
-            )
-            res.zmiany_potrzebne = res.check_if_integration_needed()
-            res.save()
-
+            self._przetworz_wiersz(elem)
             if no % 10 == 0:
                 self.send_progress(no / total / 2.0)
 
@@ -367,55 +370,35 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
 
         return self.dane_znormalizowane
 
+    def _check_autor_needs_update(self, dane):
+        """Sprawdza czy autor wymaga aktualizacji."""
+        a = self.autor
+        for klucz_danych, atrybut_autora in self.MAPPING_DANE_NA_AUTOR:
+            v = dane.get(klucz_danych)
+            if v is not None and str(v) != "" and getattr(a, atrybut_autora) != v:
+                return True
+        return self.tytul_id != a.tytul_id
+
+    def _check_autor_jednostka_needs_update(self, dane):
+        """Sprawdza czy powiązanie autor-jednostka wymaga aktualizacji."""
+        aj = self.autor_jednostka
+        checks = [
+            dane.get("data_zatrudnienia") is not None
+            and aj.rozpoczal_prace != dane["data_zatrudnienia"],
+            dane.get("data_końca_zatrudnienia") is not None
+            and aj.zakonczyl_prace != dane["data_końca_zatrudnienia"],
+            aj.funkcja != self.funkcja_autora,
+            aj.grupa_pracownicza != self.grupa_pracownicza,
+            aj.wymiar_etatu != self.wymiar_etatu,
+            self.podstawowe_miejsce_pracy != aj.podstawowe_miejsce_pracy,
+        ]
+        return any(checks)
+
     def check_if_integration_needed(self):
         dane = self.dane_bardziej_znormalizowane
-
-        # aktualizacja Autora
-        a = self.autor
-
-        def _spr(klucz_danych, atrybut_autora):
-            v = dane.get(klucz_danych)
-            if v is None or str(v) == "":
-                return
-
-            if getattr(a, atrybut_autora) != v:
-                return True
-
-        for klucz_danych, atrybut_autora in self.MAPPING_DANE_NA_AUTOR:
-            if _spr(klucz_danych, atrybut_autora):
-                return True
-
-        # aktualizacja Autor_Jednostka
-        aj = self.autor_jednostka
-
-        if (
-            dane.get("data_zatrudnienia") is not None
-            and aj.rozpoczal_prace != dane["data_zatrudnienia"]
-        ):
-            return True
-
-        if (
-            dane.get("data_końca_zatrudnienia") is not None
-            and aj.zakonczyl_prace != dane["data_końca_zatrudnienia"]
-        ):
-            return True
-
-        if aj.funkcja != self.funkcja_autora:
-            return True
-
-        if aj.grupa_pracownicza != self.grupa_pracownicza:
-            return True
-
-        if aj.wymiar_etatu != self.wymiar_etatu:
-            return True
-
-        if self.podstawowe_miejsce_pracy != aj.podstawowe_miejsce_pracy:
-            return True
-
-        if self.tytul_id != a.tytul_id:
-            return True
-
-        return False
+        return self._check_autor_needs_update(
+            dane
+        ) or self._check_autor_jednostka_needs_update(dane)
 
     def _integrate_autor(self):
         dane = self.dane_znormalizowane
@@ -446,7 +429,7 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
         try:
             a.save()
         except DataError as e:
-            raise BPPDatabaseError(self.dane_z_xls, self, f"DataError {e}")
+            raise BPPDatabaseError(self.dane_z_xls, self, f"DataError {e}") from e
 
     def _integrate_autor_jednostka(self):
         aj = self.autor_jednostka

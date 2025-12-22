@@ -61,7 +61,8 @@
       "mcp__playwright__browser_hover",
       "mcp__playwright__browser_take_screenshot",
       "Bash(tr:*)",
-      "mcp__playwright__browser_fill_form"
+      "mcp__playwright__browser_fill_form",
+      "Bash(ls:*)"
     ],
     "deny": [],
     "ask": [],

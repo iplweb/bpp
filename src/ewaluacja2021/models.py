@@ -68,18 +68,18 @@ class ZamowienieNaRaport(models.Model):
         on_delete=models.CASCADE,
         limit_choices_to=dyscypliny_naukowe_w_bazie,
     )
-    uid_zadania = models.TextField(blank=True, null=True)
-    plik_wyjsciowy = models.FileField()
-    wykres_wyjsciowy = models.ImageField()
+    uid_zadania = models.TextField(blank=True, default="")
+    plik_wyjsciowy = models.FileField(upload_to="protected/ewaluacja2021/")
+    wykres_wyjsciowy = models.ImageField(upload_to="protected/ewaluacja2021/")
 
     ostatnio_zmodyfikowany = models.DateTimeField(auto_now=True)
-    status = models.CharField(max_length=255, default="", blank=True, null=True)
-
-    def get_absolute_url(self):
-        return reverse("ewaluacja2021:szczegoly-raportu3n", args=(self.pk,))
+    status = models.CharField(max_length=255, default="", blank=True)
 
     class Meta:
         ordering = ("-ostatnio_zmodyfikowany",)
+
+    def get_absolute_url(self):
+        return reverse("ewaluacja2021:szczegoly-raportu3n", args=(self.pk,))
 
 
 class BazaLiczbyNDlaUczelni(models.Model):
@@ -141,9 +141,10 @@ class ImportMaksymalnychSlotow(models.Model):
     header_columns = const.IMPORT_MAKSYMALNYCH_SLOTOW_COLUMNS
 
     plik = models.FileField(
+        upload_to="protected/ewaluacja2021/",
         validators=[
             xlsx_header_validator(header_columns),
-        ]
+        ],
     )
 
     started_on = models.DateTimeField(null=True, blank=True)

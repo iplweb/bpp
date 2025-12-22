@@ -9,7 +9,7 @@ from long_running.notification_mixins import ASGINotificationMixin
 
 class ImportListMinisterialnych(ASGINotificationMixin, Operation):
     rok = YearField()
-    plik = models.FileField(upload_to="import_list_ministerialnych")
+    plik = models.FileField(upload_to="protected/import_list_ministerialnych/")
     zapisz_zmiany_do_bazy = models.BooleanField(default=False)
     importuj_dyscypliny = models.BooleanField(default=True)
     importuj_punktacje = models.BooleanField(default=True)
@@ -43,7 +43,7 @@ class WierszImportuListyMinisterialnej(models.Model):
 
     zrodlo = models.ForeignKey(Zrodlo, on_delete=models.SET_NULL, null=True, blank=True)
 
-    rezultat = models.TextField(blank=True, null=True)
+    rezultat = models.TextField(blank=True, default="")
 
     # Duplicate tracking fields
     is_duplicate = models.BooleanField(default=False)

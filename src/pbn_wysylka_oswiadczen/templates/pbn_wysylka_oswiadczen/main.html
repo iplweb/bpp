@@ -87,6 +87,10 @@
                 </tr>
             </table>
 
+            <div id="start-error" class="callout alert" style="display: none;">
+                <span class="fi-x"></span> <span id="start-error-message"></span>
+            </div>
+
             {% if total_count > 0 %}
             <div class="button-group">
                 <button id="start-fresh-btn" class="button success"
@@ -94,7 +98,7 @@
                         hx-vals='{"rok_od": "{{ rok_od }}", "rok_do": "{{ rok_do }}", "tytul": "{{ tytul }}", "tylko_odpiete": "{{ tylko_odpiete|yesno:"true,false" }}", "resume_mode": "false"}'
                         hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
                         hx-swap="none"
-                        hx-on:htmx:after-request="startStatusPolling()">
+                        hx-on:htmx:after-request="handleStartResponse(event)">
                     <span class="fi-play"></span> Wyślij wybrane rekordy
                 </button>
 
@@ -104,7 +108,7 @@
                         hx-vals='{"rok_od": "{{ rok_od }}", "rok_do": "{{ rok_do }}", "tytul": "{{ tytul }}", "tylko_odpiete": "{{ tylko_odpiete|yesno:"true,false" }}", "resume_mode": "true"}'
                         hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
                         hx-swap="none"
-                        hx-on:htmx:after-request="startStatusPolling()">
+                        hx-on:htmx:after-request="handleStartResponse(event)">
                     <span class="fi-fast-forward"></span> Kontynuuj
                 </button>
                 {% endif %}
@@ -170,6 +174,29 @@ function startStatusPolling() {
             statusPollingInterval = null;
         }
     }, 3000);
+}
+
+function handleStartResponse(event) {
+    var errorContainer = document.getElementById('start-error');
+    var errorMessage = document.getElementById('start-error-message');
+
+    try {
+        var response = JSON.parse(event.detail.xhr.response);
+        if (response.success) {
+            // Hide any previous error
+            errorContainer.style.display = 'none';
+            // Start polling
+            startStatusPolling();
+        } else {
+            // Show error message
+            errorMessage.textContent = response.error || 'Wystapil nieznany blad';
+            errorContainer.style.display = 'block';
+        }
+    } catch (e) {
+        // If response is not JSON, show generic error
+        errorMessage.textContent = 'Blad komunikacji z serwerem';
+        errorContainer.style.display = 'block';
+    }
 }
 
 // Also start polling on page load if there's an active task

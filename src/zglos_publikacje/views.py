@@ -183,7 +183,7 @@ class Zgloszenie_PublikacjiWizard(UczelniaSettingRequiredMixin, SessionWizardVie
 
     template_name = "zglos_publikacje/zgloszenie_publikacji_form.html"
     file_storage = FileSystemStorage(
-        location=os.path.join(settings.MEDIA_ROOT, "zglos_publikacje")
+        location=os.path.join(settings.MEDIA_ROOT, "protected", "zglos_publikacje")
     )
     form_list = [
         Zgloszenie_Publikacji_DaneOgolneForm,

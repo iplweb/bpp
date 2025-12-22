@@ -37,7 +37,7 @@ class BaseIntegration(models.Model):
 
     name = models.CharField("Nazwa pliku", max_length=255)
 
-    file = models.FileField(verbose_name="Plik", upload_to="integrator2")
+    file = models.FileField(verbose_name="Plik", upload_to="protected/integrator2/")
     owner = models.ForeignKey(BppUser, CASCADE)
 
     uploaded_on = models.DateTimeField(auto_now_add=True)

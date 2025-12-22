@@ -123,7 +123,7 @@ class UruchomZadaniePrzetwarzania(
 
         start_task = False
         if (
-            self.object.task_id is None
+            not self.object.task_id
             or AsyncResult(self.object.task_id).status == "PENDING"
         ):
             start_task = True
@@ -173,7 +173,7 @@ class UsunImport_Dyscyplin(
             lambda: messages.add_message(
                 self.request,
                 messages.INFO,
-                'Plik importu dyscyplin "%s" został usunięty.' % self.object.plik.name,
+                f'Plik importu dyscyplin "{self.object.plik.name}" został usunięty.',
             )
         )
         return super().delete(request, *args, **kwargs)
@@ -212,7 +212,7 @@ class API_Do_IntegracjiView(
 
         ordering = int(self.request.GET.get("order[0][column]", 0))
         direction = self.request.GET.get("order[0][dir]", "asc")
-        fld = self.request.GET.get("columns[%i][data]" % ordering, "dopasowanie_autora")
+        fld = self.request.GET.get(f"columns[{ordering}][data]", "dopasowanie_autora")
         if fld:
             ordering_mapping = {
                 "dopasowanie_autora": "autor__nazwisko",
