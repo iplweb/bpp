@@ -210,7 +210,7 @@ admin.site.register(Typ_Odpowiedzialnosci, Typ_OdpowiedzialnosciAdmin)
 # Bibliografia
 
 
-from django.contrib.auth.admin import UserAdmin
+from django.contrib.auth.admin import UserAdmin  # noqa
 
 
 class BppUserCreationForm(UserCreationForm):
@@ -291,5 +291,6 @@ SearchForm._meta.verbose_name_plural = "formularze wyszukiwania"
 admin.site.register(SearchForm, SearchFormAdmin)
 
 from .crossref_mapper import Crossref_Mapper_Admin  # noqa
+from .oplaty_log import OplatyPublikacjiLogAdmin  # noqa
 from .templates import TemplateAdmin  # noqa
 from .zrodlo import ZrodloAdmin  # noqa

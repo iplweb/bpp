@@ -1,0 +1,72 @@
+{% if operation.finished_on %}
+    {# Operation completed - stop polling #}
+    {% if operation.finished_successfully %}
+        <div class="callout success">
+            <h5><span class="fi-check"></span> Przebudowa zakończona pomyślnie</h5>
+            <p><strong>Przetworzono:</strong> {{ operation.total_scientists }} naukowców</p>
+            <p><strong>Znaleziono dopasowań:</strong> {{ operation.matches_found }}</p>
+            <p><strong>Data zakończenia:</strong> {{ operation.finished_on|date:"Y-m-d H:i:s" }}</p>
+
+            <a href="{% url 'importer_autorow_pbn:main' %}" class="button success">
+                <span class="fi-arrow-right"></span> Przejdź do importera autorów
+            </a>
+        </div>
+    {% else %}
+        <div class="callout alert">
+            <h5><span class="fi-x"></span> Przebudowa zakończona z błędem</h5>
+            <p><strong>Przetworzono:</strong> {{ operation.processed_scientists }} / {{ operation.total_scientists }} naukowców</p>
+            {% if operation.traceback %}
+                <details>
+                    <summary>Szczegóły błędu</summary>
+                    <pre style="white-space: pre-wrap; font-size: 0.8rem;">{{ operation.traceback }}</pre>
+                </details>
+            {% endif %}
+
+            <a href="{% url 'importer_autorow_pbn:rebuild' %}" class="button alert">
+                <span class="fi-refresh"></span> Spróbuj ponownie
+            </a>
+        </div>
+    {% endif %}
+{% elif operation.started_on %}
+    {# Operation in progress #}
+    <div class="callout primary">
+        <h5><span class="fi-loop"></span> Przebudowa w toku...</h5>
+
+        <div class="progress large" role="progressbar"
+             aria-valuenow="{{ progress_percent|default:0 }}"
+             aria-valuemin="0" aria-valuemax="100">
+            <div class="progress-meter" style="width: {{ progress_percent|default:0 }}%">
+                <p class="progress-meter-text">{{ progress_percent|default:0 }}%</p>
+            </div>
+        </div>
+
+        <table style="margin-top: 1rem;">
+            <tr>
+                <td><strong>Przetworzono:</strong></td>
+                <td>{{ operation.processed_scientists }} / {{ operation.total_scientists }} naukowców</td>
+            </tr>
+            <tr>
+                <td><strong>Znaleziono dopasowań:</strong></td>
+                <td>{{ operation.matches_found }}</td>
+            </tr>
+            <tr>
+                <td><strong>Rozpoczęto:</strong></td>
+                <td>{{ operation.started_on|date:"Y-m-d H:i:s" }}</td>
+            </tr>
+        </table>
+
+        <p class="text-muted" style="margin-top: 1rem;">
+            <small><span class="fi-loop"></span> Strona odświeża się automatycznie co 2 sekundy...</small>
+        </p>
+    </div>
+{% else %}
+    {# Operation not started yet #}
+    <div class="callout secondary">
+        <h5><span class="fi-clock"></span> Oczekiwanie na uruchomienie...</h5>
+        <p>Operacja została zlecona i wkrótce się rozpocznie.</p>
+
+        <p class="text-muted">
+            <small><span class="fi-loop"></span> Strona odświeża się automatycznie co 2 sekundy...</small>
+        </p>
+    </div>
+{% endif %}

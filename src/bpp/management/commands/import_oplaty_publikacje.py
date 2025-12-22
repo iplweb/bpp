@@ -7,6 +7,7 @@ from django.core.management import BaseCommand
 from django.db import transaction
 
 from bpp.models import ModelZOplataZaPublikacje, Rekord
+from bpp.models.oplaty_log import log_oplaty_change
 from import_common.normalization import (
     normalize_oplaty_za_publikacje,
     normalize_rekord_id,
@@ -40,7 +41,7 @@ class Command(BaseCommand):
                 continue
 
             for wiersz, row in xlsx.iterrows():
-                pk = normalize_rekord_id(row[1])
+                pk = normalize_rekord_id(row.iloc[1])
                 if pk is None:
                     continue
 
@@ -71,15 +72,15 @@ class Command(BaseCommand):
                     normalize_oplaty_za_publikacje(
                         original,
                         # Publikacja bezkosztowa
-                        row[4],
+                        row.iloc[4],
                         # Środki finansowe o których mowa w artykule 365
-                        row[5],
+                        row.iloc[5],
                         # Środki finansowe na realizację projektu
-                        row[6],
+                        row.iloc[6],
                         # Inne srodki finansowe
-                        row[7],
+                        row.iloc[7],
                         # Kwota
-                        row[8],
+                        row.iloc[8],
                     )
                 except ValidationError as e:
                     print(
@@ -89,6 +90,17 @@ class Command(BaseCommand):
                     print()
                     continue
 
+                log_oplaty_change(
+                    original,
+                    changed_by="import_oplaty_publikacje",
+                    source_file=plik.name,
+                    source_row=wiersz + 2,
+                    new_opl_pub_cost_free=original.opl_pub_cost_free,
+                    new_opl_pub_research_potential=original.opl_pub_research_potential,
+                    new_opl_pub_research_or_development_projects=original.opl_pub_research_or_development_projects,
+                    new_opl_pub_other=original.opl_pub_other,
+                    new_opl_pub_amount=original.opl_pub_amount,
+                )
                 original.save()
 
         if dry:

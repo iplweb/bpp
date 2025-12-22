@@ -4,20 +4,21 @@ from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.decorators import login_required
 from django.db import models, transaction
-from django.http import JsonResponse
+from django.http import HttpResponseRedirect, JsonResponse
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
 from django.utils.decorators import method_decorator
 from django.utils.http import urlencode
 from django.views.decorators.http import require_POST
-from django.views.generic import ListView
+from django.views.generic import DetailView, ListView, TemplateView, View
 
 from bpp.models import Autor, Tytul
 from import_common.core import matchuj_autora
 from pbn_api.models import Scientist
 from pbn_downloader_app.freshness import is_pbn_people_data_fresh
 
-from .models import DoNotRemind
+from .core import get_cache_status
+from .models import CachedScientistMatch, DoNotRemind, MatchCacheRebuildOperation
 
 
 @method_decorator(staff_member_required, name="dispatch")
@@ -27,6 +28,18 @@ class ImporterAutorowPBNView(ListView):
     template_name = "importer_autorow_pbn/main.html"
     context_object_name = "scientists"
     paginate_by = 50
+
+    def dispatch(self, request, *args, **kwargs):
+        """Check cache validity before processing the request"""
+        is_valid, _, message = get_cache_status()
+        if not is_valid:
+            messages.warning(
+                request,
+                f"Cache dopasowań jest nieaktualny: {message}. "
+                "Proszę przebudować cache przed kontynuowaniem.",
+            )
+            return HttpResponseRedirect(reverse("importer_autorow_pbn:rebuild"))
+        return super().dispatch(request, *args, **kwargs)
 
     def get_queryset(self):
         """Get Scientists without BPP equivalents, excluding ignored ones"""
@@ -64,29 +77,44 @@ class ImporterAutorowPBNView(ListView):
         context = super().get_context_data(**kwargs)
         context["query"] = self.request.GET.get("q", "")
 
-        # Add match suggestions for each scientist
+        # Get scientist IDs on current page for batch cache lookup
+        scientist_ids = [s.pk for s in context["scientists"]]
+
+        # Fetch cached matches for current page in one query
+        cached_matches = {
+            cm.scientist_id: cm.matched_autor
+            for cm in CachedScientistMatch.objects.filter(
+                scientist_id__in=scientist_ids
+            ).select_related("matched_autor")
+        }
+
+        # Add match suggestions for each scientist from cache
         matches_count = 0
         for scientist in context["scientists"]:
-            scientist.match_suggestion = self._find_match(scientist)
+            scientist.match_suggestion = cached_matches.get(scientist.pk)
             scientist.create_url = self._get_create_url(scientist)
             if scientist.match_suggestion:
                 matches_count += 1
 
-        # Get total matches across ALL pages (not just current page)
-        all_scientists = self.get_queryset()
-        total_with_matches = 0
-        for scientist in all_scientists:
-            if self._find_match(scientist):
-                total_with_matches += 1
+        # Get total matches using cache (fast COUNT query)
+        queryset = self.get_queryset()
+        total_unmatched = queryset.count()
 
-        # Statistics
-        total_unmatched = self.get_queryset().count()
+        # Count matches from cache for scientists in our queryset
+        total_with_matches = CachedScientistMatch.objects.filter(
+            scientist_id__in=queryset.values_list("mongoId", flat=True),
+            matched_autor__isnull=False,
+        ).count()
+
         total_ignored = DoNotRemind.objects.count()
 
         # Check PBN people data freshness
         pbn_data_fresh, pbn_stale_message, pbn_last_download = (
             is_pbn_people_data_fresh()
         )
+
+        # Get cache status for display
+        cache_is_valid, cache_last_computed, _ = get_cache_status()
 
         context.update(
             {
@@ -97,6 +125,8 @@ class ImporterAutorowPBNView(ListView):
                 "pbn_data_fresh": pbn_data_fresh,
                 "pbn_stale_message": pbn_stale_message,
                 "pbn_last_download": pbn_last_download,
+                "cache_is_valid": cache_is_valid,
+                "cache_last_computed": cache_last_computed,
             }
         )
 
@@ -307,14 +337,23 @@ def link_all_scientists(request):
 
     # Get all unmatched scientists
     scientists = view.get_queryset()
+    scientist_ids = list(scientists.values_list("mongoId", flat=True))
+
+    # Get cached matches in one query
+    cached_matches = {
+        cm.scientist_id: cm.matched_autor
+        for cm in CachedScientistMatch.objects.filter(
+            scientist_id__in=scientist_ids, matched_autor__isnull=False
+        ).select_related("matched_autor")
+    }
 
     linked_count = 0
     errors = []
 
     with transaction.atomic():
         for scientist in scientists:
-            # Try to find a match
-            autor = view._find_match(scientist)
+            # Get match from cache
+            autor = cached_matches.get(scientist.pk)
             if autor:
                 # Check if autor already has a different PBN UID
                 if autor.pbn_uid_id and autor.pbn_uid_id != scientist.pk:
@@ -389,12 +428,22 @@ def create_all_unmatched_scientists(request):
     view.request = request
 
     scientists = view.get_queryset()
+    scientist_ids = list(scientists.values_list("mongoId", flat=True))
+
+    # Get cached matches - we only want to create authors for those WITHOUT matches
+    scientists_with_matches = set(
+        CachedScientistMatch.objects.filter(
+            scientist_id__in=scientist_ids, matched_autor__isnull=False
+        ).values_list("scientist_id", flat=True)
+    )
+
     created_count = 0
     errors = []
 
     with transaction.atomic():
         for scientist in scientists:
-            if view._find_match(scientist):
+            # Skip if has a match in cache
+            if scientist.pk in scientists_with_matches:
                 continue
 
             try:
@@ -414,3 +463,103 @@ def create_all_unmatched_scientists(request):
     return JsonResponse(
         {"status": "success", "created_count": created_count, "errors": errors}
     )
+
+
+# ============================================================================
+# Cache Rebuild Views
+# ============================================================================
+
+
+@method_decorator(staff_member_required, name="dispatch")
+class CacheRebuildView(TemplateView):
+    """View for the cache rebuild page with progress tracking"""
+
+    template_name = "importer_autorow_pbn/rebuild_cache.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        # Check cache status
+        is_valid, last_computed, message = get_cache_status()
+        context["cache_is_valid"] = is_valid
+        context["cache_last_computed"] = last_computed
+        context["cache_message"] = message
+
+        # Check for running operation
+        running_operation = MatchCacheRebuildOperation.objects.filter(
+            started_on__isnull=False, finished_on__isnull=True
+        ).first()
+        context["running_operation"] = running_operation
+
+        # Get last completed operation
+        last_operation = (
+            MatchCacheRebuildOperation.objects.filter(finished_on__isnull=False)
+            .order_by("-finished_on")
+            .first()
+        )
+        context["last_operation"] = last_operation
+
+        return context
+
+
+@method_decorator(staff_member_required, name="dispatch")
+class StartCacheRebuildView(View):
+    """View to start a cache rebuild operation"""
+
+    def post(self, request):
+        # Check if there's already a running operation
+        running = MatchCacheRebuildOperation.objects.filter(
+            started_on__isnull=False, finished_on__isnull=True
+        ).exists()
+
+        if running:
+            messages.warning(request, "Przebudowa cache jest już w toku.")
+            return HttpResponseRedirect(reverse("importer_autorow_pbn:rebuild"))
+
+        # Create new operation
+        operation = MatchCacheRebuildOperation.objects.create(owner=request.user)
+
+        # Schedule the task
+        from django.db import transaction as db_transaction
+
+        from .tasks import rebuild_match_cache_task
+
+        db_transaction.on_commit(
+            lambda: rebuild_match_cache_task.delay(str(operation.pk))
+        )
+
+        messages.info(request, "Rozpoczęto przebudowę cache'u dopasowań.")
+        return HttpResponseRedirect(
+            reverse("importer_autorow_pbn:rebuild_status", args=[operation.pk])
+        )
+
+
+@method_decorator(staff_member_required, name="dispatch")
+class CacheRebuildStatusView(DetailView):
+    """View showing the status of a cache rebuild operation"""
+
+    model = MatchCacheRebuildOperation
+    template_name = "importer_autorow_pbn/rebuild_cache_status.html"
+    context_object_name = "operation"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["progress_percent"] = self.object.get_progress_percent()
+        return context
+
+
+@method_decorator(staff_member_required, name="dispatch")
+class CacheRebuildProgressView(DetailView):
+    """
+    HTMX partial view returning only the progress section.
+    Used for polling updates during cache rebuild.
+    """
+
+    model = MatchCacheRebuildOperation
+    template_name = "importer_autorow_pbn/_cache_progress.html"
+    context_object_name = "operation"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["progress_percent"] = self.object.get_progress_percent()
+        return context

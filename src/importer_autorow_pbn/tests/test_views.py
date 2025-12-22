@@ -19,7 +19,7 @@ def test_main_view_requires_staff(client, normal_django_user):
 
 
 @pytest.mark.django_db
-def test_main_view_accessible_to_staff(client, admin_user):
+def test_main_view_accessible_to_staff(client, admin_user, valid_cache):
     """Test that main view is accessible to staff members"""
     client.force_login(admin_user)
     url = reverse("importer_autorow_pbn:main")

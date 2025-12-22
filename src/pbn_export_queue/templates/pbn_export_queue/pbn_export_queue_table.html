@@ -1,10 +1,10 @@
-{% load humanize pbn_queue_extras %}
+{% load humanize pbn_queue_extras url_helpers %}
 <table>
     <thead>
         <tr>
             <th>
-                <a href="?{% if current_filter != 'all' %}zakonczono_pomyslnie={{ request.GET.zakonczono_pomyslnie }}&{% endif %}{% if search_query %}q={{ search_query|urlencode }}&{% endif %}sort={% if current_sort == 'pk' %}-pk{% else %}pk{% endif %}"
-                   hx-get="{% url 'pbn_export_queue:export-queue-table' %}?{% if current_filter != 'all' %}zakonczono_pomyslnie={{ request.GET.zakonczono_pomyslnie }}&{% endif %}{% if search_query %}q={{ search_query|urlencode }}&{% endif %}sort={% if current_sort == 'pk' %}-pk{% else %}pk{% endif %}"
+                <a href="?{% if current_filter != 'all' %}zakonczono_pomyslnie={{ request.GET.zakonczono_pomyslnie }}&{% endif %}{% if search_query %}q={{ search_query|urlencode }}&{% endif %}{% if rok_od %}rok_od={{ rok_od }}&{% endif %}{% if rok_do %}rok_do={{ rok_do }}&{% endif %}sort={% if current_sort == 'pk' %}-pk{% else %}pk{% endif %}"
+                   hx-get="{% url 'pbn_export_queue:export-queue-table' %}?{% if current_filter != 'all' %}zakonczono_pomyslnie={{ request.GET.zakonczono_pomyslnie }}&{% endif %}{% if search_query %}q={{ search_query|urlencode }}&{% endif %}{% if rok_od %}rok_od={{ rok_od }}&{% endif %}{% if rok_do %}rok_do={{ rok_do }}&{% endif %}sort={% if current_sort == 'pk' %}-pk{% else %}pk{% endif %}"
                    hx-target="#export-queue-table"
                    hx-swap="innerHTML"
                    hx-push-url="false">
@@ -12,19 +12,20 @@
                 </a>
             </th>
             <th>Rekord</th>
-            <th>Zamówił</th>
+            <th>Rok</th>
+            <th>Wysłał</th>
             <th>
-                <a href="?{% if current_filter != 'all' %}zakonczono_pomyslnie={{ request.GET.zakonczono_pomyslnie }}&{% endif %}{% if search_query %}q={{ search_query|urlencode }}&{% endif %}sort={% if current_sort == 'zamowiono' %}-zamowiono{% else %}zamowiono{% endif %}"
-                   hx-get="{% url 'pbn_export_queue:export-queue-table' %}?{% if current_filter != 'all' %}zakonczono_pomyslnie={{ request.GET.zakonczono_pomyslnie }}&{% endif %}{% if search_query %}q={{ search_query|urlencode }}&{% endif %}sort={% if current_sort == 'zamowiono' %}-zamowiono{% else %}zamowiono{% endif %}"
+                <a href="?{% if current_filter != 'all' %}zakonczono_pomyslnie={{ request.GET.zakonczono_pomyslnie }}&{% endif %}{% if search_query %}q={{ search_query|urlencode }}&{% endif %}{% if rok_od %}rok_od={{ rok_od }}&{% endif %}{% if rok_do %}rok_do={{ rok_do }}&{% endif %}sort={% if current_sort == 'zamowiono' %}-zamowiono{% else %}zamowiono{% endif %}"
+                   hx-get="{% url 'pbn_export_queue:export-queue-table' %}?{% if current_filter != 'all' %}zakonczono_pomyslnie={{ request.GET.zakonczono_pomyslnie }}&{% endif %}{% if search_query %}q={{ search_query|urlencode }}&{% endif %}{% if rok_od %}rok_od={{ rok_od }}&{% endif %}{% if rok_do %}rok_do={{ rok_do }}&{% endif %}sort={% if current_sort == 'zamowiono' %}-zamowiono{% else %}zamowiono{% endif %}"
                    hx-target="#export-queue-table"
                    hx-swap="innerHTML"
                    hx-push-url="false">
-                    Zamówiono {% if current_sort == 'zamowiono' %}▲{% elif current_sort == '-zamowiono' %}▼{% endif %}
+                    Wysłano {% if current_sort == 'zamowiono' %}▲{% elif current_sort == '-zamowiono' %}▼{% endif %}
                 </a>
             </th>
             <th>
-                <a href="?{% if current_filter != 'all' %}zakonczono_pomyslnie={{ request.GET.zakonczono_pomyslnie }}&{% endif %}{% if search_query %}q={{ search_query|urlencode }}&{% endif %}sort={% if current_sort == 'ostatnia_aktualizacja' %}-ostatnia_aktualizacja{% else %}ostatnia_aktualizacja{% endif %}"
-                   hx-get="{% url 'pbn_export_queue:export-queue-table' %}?{% if current_filter != 'all' %}zakonczono_pomyslnie={{ request.GET.zakonczono_pomyslnie }}&{% endif %}{% if search_query %}q={{ search_query|urlencode }}&{% endif %}sort={% if current_sort == 'ostatnia_aktualizacja' %}-ostatnia_aktualizacja{% else %}ostatnia_aktualizacja{% endif %}"
+                <a href="?{% if current_filter != 'all' %}zakonczono_pomyslnie={{ request.GET.zakonczono_pomyslnie }}&{% endif %}{% if search_query %}q={{ search_query|urlencode }}&{% endif %}{% if rok_od %}rok_od={{ rok_od }}&{% endif %}{% if rok_do %}rok_do={{ rok_do }}&{% endif %}sort={% if current_sort == 'ostatnia_aktualizacja' %}-ostatnia_aktualizacja{% else %}ostatnia_aktualizacja{% endif %}"
+                   hx-get="{% url 'pbn_export_queue:export-queue-table' %}?{% if current_filter != 'all' %}zakonczono_pomyslnie={{ request.GET.zakonczono_pomyslnie }}&{% endif %}{% if search_query %}q={{ search_query|urlencode }}&{% endif %}{% if rok_od %}rok_od={{ rok_od }}&{% endif %}{% if rok_do %}rok_do={{ rok_do }}&{% endif %}sort={% if current_sort == 'ostatnia_aktualizacja' %}-ostatnia_aktualizacja{% else %}ostatnia_aktualizacja{% endif %}"
                    hx-target="#export-queue-table"
                    hx-swap="innerHTML"
                    hx-push-url="false">
@@ -32,8 +33,8 @@
                 </a>
             </th>
             <th>
-                <a href="?{% if current_filter != 'all' %}zakonczono_pomyslnie={{ request.GET.zakonczono_pomyslnie }}&{% endif %}{% if search_query %}q={{ search_query|urlencode }}&{% endif %}sort={% if current_sort == 'ilosc_prob' %}-ilosc_prob{% else %}ilosc_prob{% endif %}"
-                   hx-get="{% url 'pbn_export_queue:export-queue-table' %}?{% if current_filter != 'all' %}zakonczono_pomyslnie={{ request.GET.zakonczono_pomyslnie }}&{% endif %}{% if search_query %}q={{ search_query|urlencode }}&{% endif %}sort={% if current_sort == 'ilosc_prob' %}-ilosc_prob{% else %}ilosc_prob{% endif %}"
+                <a href="?{% if current_filter != 'all' %}zakonczono_pomyslnie={{ request.GET.zakonczono_pomyslnie }}&{% endif %}{% if search_query %}q={{ search_query|urlencode }}&{% endif %}{% if rok_od %}rok_od={{ rok_od }}&{% endif %}{% if rok_do %}rok_do={{ rok_do }}&{% endif %}sort={% if current_sort == 'ilosc_prob' %}-ilosc_prob{% else %}ilosc_prob{% endif %}"
+                   hx-get="{% url 'pbn_export_queue:export-queue-table' %}?{% if current_filter != 'all' %}zakonczono_pomyslnie={{ request.GET.zakonczono_pomyslnie }}&{% endif %}{% if search_query %}q={{ search_query|urlencode }}&{% endif %}{% if rok_od %}rok_od={{ rok_od }}&{% endif %}{% if rok_do %}rok_do={{ rok_do }}&{% endif %}sort={% if current_sort == 'ilosc_prob' %}-ilosc_prob{% else %}ilosc_prob{% endif %}"
                    hx-target="#export-queue-table"
                    hx-swap="innerHTML"
                    hx-push-url="false">
@@ -41,8 +42,8 @@
                 </a>
             </th>
             <th>
-                <a href="?{% if current_filter != 'all' %}zakonczono_pomyslnie={{ request.GET.zakonczono_pomyslnie }}&{% endif %}{% if search_query %}q={{ search_query|urlencode }}&{% endif %}sort={% if current_sort == 'zakonczono_pomyslnie' %}-zakonczono_pomyslnie{% else %}zakonczono_pomyslnie{% endif %}"
-                   hx-get="{% url 'pbn_export_queue:export-queue-table' %}?{% if current_filter != 'all' %}zakonczono_pomyslnie={{ request.GET.zakonczono_pomyslnie }}&{% endif %}{% if search_query %}q={{ search_query|urlencode }}&{% endif %}sort={% if current_sort == 'zakonczono_pomyslnie' %}-zakonczono_pomyslnie{% else %}zakonczono_pomyslnie{% endif %}"
+                <a href="?{% if current_filter != 'all' %}zakonczono_pomyslnie={{ request.GET.zakonczono_pomyslnie }}&{% endif %}{% if search_query %}q={{ search_query|urlencode }}&{% endif %}{% if rok_od %}rok_od={{ rok_od }}&{% endif %}{% if rok_do %}rok_do={{ rok_do }}&{% endif %}sort={% if current_sort == 'zakonczono_pomyslnie' %}-zakonczono_pomyslnie{% else %}zakonczono_pomyslnie{% endif %}"
+                   hx-get="{% url 'pbn_export_queue:export-queue-table' %}?{% if current_filter != 'all' %}zakonczono_pomyslnie={{ request.GET.zakonczono_pomyslnie }}&{% endif %}{% if search_query %}q={{ search_query|urlencode }}&{% endif %}{% if rok_od %}rok_od={{ rok_od }}&{% endif %}{% if rok_do %}rok_do={{ rok_do }}&{% endif %}sort={% if current_sort == 'zakonczono_pomyslnie' %}-zakonczono_pomyslnie{% else %}zakonczono_pomyslnie{% endif %}"
                    hx-target="#export-queue-table"
                    hx-swap="innerHTML"
                    hx-push-url="false">
@@ -73,6 +74,15 @@
                         {% endif %}
                     </a>
                 </td>
+                <td>
+                    <a href="{% url 'pbn_export_queue:export-queue-detail' item.pk %}" style="color: inherit;">
+                        {% if item.rekord_do_wysylki and item.rekord_do_wysylki.rok %}
+                            {{ item.rekord_do_wysylki.rok }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </a>
+                </td>
                 <td><a href="{% url 'pbn_export_queue:export-queue-detail' item.pk %}" style="color: inherit;">{{ item.zamowil }}</a></td>
                 <td><a href="{% url 'pbn_export_queue:export-queue-detail' item.pk %}" style="color: inherit;">{{ item.zamowiono|naturaltime }}</a></td>
                 <td><a href="{% url 'pbn_export_queue:export-queue-detail' item.pk %}" style="color: inherit;">{{ item.ostatnia_aktualizacja|naturaltime }}</a></td>
@@ -80,16 +90,17 @@
                 <td>
                     <a href="{% url 'pbn_export_queue:export-queue-detail' item.pk %}" style="color: inherit;">
                         {% if item.zakonczono_pomyslnie == True %}
-                            <span class="label success">Pomyślnie</span>
+                            ✅
                         {% elif item.zakonczono_pomyslnie == False %}
-                            <span class="label alert" style="cursor: pointer; padding: 8px 12px; font-size: 0.9rem;"
-                                  onclick="event.stopPropagation(); event.preventDefault(); toggleError({{ item.pk }}, event);">
-                                Błąd ▼
-                            </span>
+                            {% if item.rodzaj_bledu == 'MERYT' %}
+                                ⚠️
+                            {% else %}
+                                ❌
+                            {% endif %}
                         {% elif item.retry_after_user_authorised %}
-                            <span class="label warning">Oczekuje na autoryzację</span>
+                            🔐
                         {% else %}
-                            <span class="label secondary">W kolejce</span>
+                            ⏳
                         {% endif %}
                     </a>
                 </td>
@@ -102,134 +113,19 @@
                 </td>
             </tr>
             {% if item.zakonczono_pomyslnie == False and item.komunikat %}
-            <tr id="error-{{ item.pk }}" style="display: none;">
-                <td colspan="8" style="background-color: #ffeeee; padding: 15px;">
-                    <div style="max-height: 400px; overflow-y: auto;">
-                        <strong style="font-size: 1.2em;">Komunikat błędu:</strong>
-                        <div style="font-family: monospace; font-size: 1em; margin-top: 10px; line-height: 1.6; white-space: pre-wrap;">
-                            {{ item.komunikat|format_pbn_error }}
-                        </div>
-                    </div>
+            <tr id="error-{{ item.pk }}">
+                <td></td>
+                <td colspan="8" style="padding: 10px;">
+                    <div style="font-family: monospace; font-size: 0.9em; line-height: 1.4; white-space: pre-wrap; max-height: 200px; overflow-y: auto;">{{ item.komunikat|format_pbn_error }}</div>
                 </td>
             </tr>
             {% endif %}
         {% empty %}
             <tr>
-                <td colspan="8" class="text-center">Brak elementów w kolejce eksportu do PBN.</td>
+                <td colspan="9" class="text-center">Brak elementów w kolejce eksportu do PBN.</td>
             </tr>
         {% endfor %}
     </tbody>
 </table>
 
-{% if is_paginated %}
-    <nav aria-label="Pagination">
-        <ul class="pagination text-center" role="navigation">
-            <li class="pagination-previous {% if not page_obj.has_previous %}disabled{% endif %}">
-                {% if page_obj.has_previous %}
-                    <a href="?page={{ page_obj.previous_page_number }}{% if current_filter != 'all' %}&zakonczono_pomyslnie={{ request.GET.zakonczono_pomyslnie }}{% endif %}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if current_sort != '-pk' %}&sort={{ current_sort }}{% endif %}"
-                       hx-get="{% url 'pbn_export_queue:export-queue-table' %}?page={{ page_obj.previous_page_number }}{% if current_filter != 'all' %}&zakonczono_pomyslnie={{ request.GET.zakonczono_pomyslnie }}{% endif %}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if current_sort != '-pk' %}&sort={{ current_sort }}{% endif %}"
-                       hx-target="#export-queue-table"
-                       hx-swap="innerHTML">« Poprzednia</a>
-                {% else %}
-                    <span>« Poprzednia</span>
-                {% endif %}
-            </li>
-
-            {% for page_num in page_obj.paginator.page_range %}
-                {% if page_num == page_obj.number %}
-                    <li class="current"><span class="show-for-sr">Jesteś na stronie</span> {{ page_num }}</li>
-                {% else %}
-                    <li><a href="?page={{ page_num }}{% if current_filter != 'all' %}&zakonczono_pomyslnie={{ request.GET.zakonczono_pomyslnie }}{% endif %}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if current_sort != '-pk' %}&sort={{ current_sort }}{% endif %}"
-                           hx-get="{% url 'pbn_export_queue:export-queue-table' %}?page={{ page_num }}{% if current_filter != 'all' %}&zakonczono_pomyslnie={{ request.GET.zakonczono_pomyslnie }}{% endif %}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if current_sort != '-pk' %}&sort={{ current_sort }}{% endif %}"
-                           hx-target="#export-queue-table"
-                           hx-swap="innerHTML">{{ page_num }}</a></li>
-                {% endif %}
-            {% endfor %}
-
-            <li class="pagination-next {% if not page_obj.has_next %}disabled{% endif %}">
-                {% if page_obj.has_next %}
-                    <a href="?page={{ page_obj.next_page_number }}{% if current_filter != 'all' %}&zakonczono_pomyslnie={{ request.GET.zakonczono_pomyslnie }}{% endif %}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if current_sort != '-pk' %}&sort={{ current_sort }}{% endif %}"
-                       hx-get="{% url 'pbn_export_queue:export-queue-table' %}?page={{ page_obj.next_page_number }}{% if current_filter != 'all' %}&zakonczono_pomyslnie={{ request.GET.zakonczono_pomyslnie }}{% endif %}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if current_sort != '-pk' %}&sort={{ current_sort }}{% endif %}"
-                       hx-target="#export-queue-table"
-                       hx-swap="innerHTML">Następna »</a>
-                {% else %}
-                    <span>Następna »</span>
-                {% endif %}
-            </li>
-        </ul>
-    </nav>
-{% endif %}
-
-<script>
-// Track which errors are expanded
-var expandedErrors = window.expandedErrors || new Set();
-
-function toggleError(itemId, evt) {
-    var errorRow = document.getElementById('error-' + itemId);
-    var labelSpan = evt ? evt.target : null;
-    var isExpanded = false;
-
-    if (errorRow) {
-        if (errorRow.style.display === 'none' || errorRow.style.display === '') {
-            errorRow.style.display = 'table-row';
-            expandedErrors.add(itemId);
-            isExpanded = true;
-            if (labelSpan && labelSpan.tagName === 'SPAN') {
-                labelSpan.innerHTML = labelSpan.innerHTML.replace('▼', '▲');
-            }
-        } else {
-            errorRow.style.display = 'none';
-            expandedErrors.delete(itemId);
-            isExpanded = false;
-            if (labelSpan && labelSpan.tagName === 'SPAN') {
-                labelSpan.innerHTML = labelSpan.innerHTML.replace('▲', '▼');
-            }
-        }
-
-        // Store in window object to persist across HTMX updates
-        window.expandedErrors = expandedErrors;
-
-        // Dispatch custom event to notify the main page
-        var customEvent = new CustomEvent('errorToggled', {
-            detail: {
-                itemId: itemId,
-                expanded: expandedErrors.size > 0
-            }
-        });
-        document.dispatchEvent(customEvent);
-    }
-    return false;
-}
-
-// Re-expand previously expanded errors after HTMX update
-document.addEventListener('DOMContentLoaded', function() {
-    if (window.expandedErrors && window.expandedErrors.size > 0) {
-        window.expandedErrors.forEach(function(itemId) {
-            var errorRow = document.getElementById('error-' + itemId);
-            var labelSpan = document.querySelector('span[onclick*="toggleError(' + itemId + ', event)"]');
-            if (errorRow) {
-                errorRow.style.display = 'table-row';
-                if (labelSpan) {
-                    labelSpan.innerHTML = labelSpan.innerHTML.replace('▼', '▲');
-                }
-            }
-        });
-    }
-});
-
-// Also re-expand after HTMX swap
-document.body.addEventListener('htmx:afterSwap', function(event) {
-    if (event.detail.target.id === 'export-queue-table' && window.expandedErrors && window.expandedErrors.size > 0) {
-        window.expandedErrors.forEach(function(itemId) {
-            var errorRow = document.getElementById('error-' + itemId);
-            var labelSpan = document.querySelector('span[onclick*="toggleError(' + itemId + ', event)"]');
-            if (errorRow) {
-                errorRow.style.display = 'table-row';
-                if (labelSpan) {
-                    labelSpan.innerHTML = labelSpan.innerHTML.replace('▼', '▲');
-                }
-            }
-        });
-    }
-});
-</script>
+{% include "pagination/pagination_with_anchor.html" %}

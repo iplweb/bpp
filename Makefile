@@ -267,7 +267,7 @@ loc: clean
 	pygount -N ... -F "...,staticroot,migrations,fixtures" src --format=summary
 
 
-DOCKER_VERSION="202512.1296"
+DOCKER_VERSION="202512.1297"
 
 DOCKER_BUILD=build --platform linux/amd64 --push
 #--no-cache
@@ -314,7 +314,7 @@ build-beatserver: build-appserver-base
 
 build-servers: build-appserver-base build-appserver build-workerserver build-beatserver # build-flower
 
-docker: build-dbserver build-webserver build-servers
+build: build-dbserver build-webserver build-servers
 
 buildx-cache-stats:
 	docker buildx du

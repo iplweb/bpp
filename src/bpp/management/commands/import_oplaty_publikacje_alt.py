@@ -7,6 +7,7 @@ from django.core.management import BaseCommand
 from django.db import transaction
 
 from bpp.models import ModelZOplataZaPublikacje, Rekord
+from bpp.models.oplaty_log import log_oplaty_change
 from bpp.util import pbar
 from import_common.normalization import (
     normalize_oplaty_za_publikacje,
@@ -25,8 +26,8 @@ class Command(BaseCommand):
     def handle(self, pliki, *args, **options):
         for plik in pliki:
             xlsx = pandas.read_excel(plik)
-            for wiersz, row in enumerate(pbar(xlsx.iloc, count=xlsx.count()[0])):
-                pk = normalize_rekord_id(row[0])
+            for wiersz, row in enumerate(pbar(xlsx.iloc, count=xlsx.count().iloc[0])):
+                pk = normalize_rekord_id(row.iloc[0])
                 if pk is None:
                     continue
 
@@ -37,21 +38,32 @@ class Command(BaseCommand):
                     normalize_oplaty_za_publikacje(
                         original,
                         # Publikacja bezkosztowa
-                        row[2],
+                        row.iloc[2],
                         # Środki finansowe o których mowa w artykule 365
-                        row[3],
+                        row.iloc[3],
                         # Środki finansowe na realizację projektu
-                        row[4],
+                        row.iloc[4],
                         # Inne srodki finansowe
-                        row[5],
+                        row.iloc[5],
                         # Kwota
-                        row[1],
+                        row.iloc[1],
                     )
                 except ValidationError as e:
                     print(
-                        f"Problem z walidacją plik {plik} wiersz {wiersz+2} rekordu "
+                        f"Problem z walidacją plik {plik} wiersz {wiersz + 2} rekordu "
                         f"{rekord.tytul_oryginalny} -- {e}. Zmiany nie zostały wprowadzone do bazy. "
                     )
                     continue
 
+                log_oplaty_change(
+                    original,
+                    changed_by="import_oplaty_publikacje_alt",
+                    source_file=plik.name,
+                    source_row=wiersz + 2,
+                    new_opl_pub_cost_free=original.opl_pub_cost_free,
+                    new_opl_pub_research_potential=original.opl_pub_research_potential,
+                    new_opl_pub_research_or_development_projects=original.opl_pub_research_or_development_projects,
+                    new_opl_pub_other=original.opl_pub_other,
+                    new_opl_pub_amount=original.opl_pub_amount,
+                )
                 original.save()

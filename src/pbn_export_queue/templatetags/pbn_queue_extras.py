@@ -30,6 +30,141 @@ def last_line(value):
     return lines[-1] if lines else ""
 
 
+def _extract_exception_line(value: str) -> str | None:
+    """Extract the last line containing pbn_api.exceptions from traceback."""
+    lines = [line for line in value.strip().split("\n") if line.strip()]
+    for line in reversed(lines):
+        if "pbn_api.exceptions" in line:
+            return line.strip()
+    return None
+
+
+def _get_fallback_line(value: str) -> str:
+    """Get the last non-empty line from value."""
+    lines = [line for line in value.strip().split("\n") if line.strip()]
+    return lines[-1] if lines else ""
+
+
+def _parse_exception_parts(exception_line: str) -> tuple[str, str] | None:
+    """Parse exception line into (exception_type, message_part)."""
+    if ":" not in exception_line:
+        return None
+
+    parts = exception_line.split(":", 1)
+    exception_class = parts[0].strip()
+    message_part = parts[1].strip()
+
+    if "." in exception_class:
+        exception_type = exception_class.split(".")[-1]
+    else:
+        exception_type = exception_class
+
+    return exception_type, message_part
+
+
+def _format_error_list(
+    exception_type: str, error_code: str, endpoint: str, errors: list
+) -> str:
+    """Format a list of PBN errors into HTML."""
+    html_parts = [
+        f'<div class="pbn-error-header">{exception_type}: HTTP {error_code}</div>'
+    ]
+
+    for error_item in errors:
+        if isinstance(error_item, dict):
+            error_code_pbn = error_item.get("code", "")
+            error_desc = error_item.get("description", "")
+
+            if error_code_pbn:
+                html_parts.append(
+                    f'<div class="pbn-error-detail">'
+                    f"<strong>Kod błędu:</strong> {error_code_pbn}</div>"
+                )
+            if error_desc:
+                html_parts.append(
+                    f'<div class="pbn-error-detail">'
+                    f"<strong>Opis:</strong> {error_desc}</div>"
+                )
+
+    html_parts.append(
+        f'<div class="pbn-error-endpoint"><em>Endpoint: {endpoint}</em></div>'
+    )
+    return "\n".join(html_parts)
+
+
+def _format_details(details) -> list[str]:
+    """Format error details into HTML parts."""
+    html_parts = []
+    if isinstance(details, dict):
+        html_parts.append(
+            '<div class="pbn-error-detail"><strong>Szczegóły:</strong></div>'
+        )
+        for key, val in details.items():
+            val_str = (
+                ", ".join(str(v) for v in val) if isinstance(val, list) else str(val)
+            )
+            html_parts.append(
+                f'<div class="pbn-error-detail-item">• <em>{key}:</em> {val_str}</div>'
+            )
+    else:
+        html_parts.append(
+            f'<div class="pbn-error-detail"><strong>Szczegóły:</strong> {details}</div>'
+        )
+    return html_parts
+
+
+def _format_error_object(
+    exception_type: str, error_code: str, endpoint: str, error: dict
+) -> str:
+    """Format a single error object into HTML."""
+    html_parts = [
+        f'<div class="pbn-error-header">{exception_type}: HTTP {error_code}</div>'
+    ]
+
+    if "message" in error:
+        html_parts.append(
+            f'<div class="pbn-error-detail"><strong>Wiadomość:</strong> {error["message"]}</div>'
+        )
+
+    if "description" in error:
+        html_parts.append(
+            f'<div class="pbn-error-detail"><strong>Opis:</strong> {error["description"]}</div>'
+        )
+
+    if "details" in error:
+        html_parts.extend(_format_details(error["details"]))
+
+    html_parts.append(
+        f'<div class="pbn-error-endpoint"><em>Endpoint: {endpoint}</em></div>'
+    )
+    return "\n".join(html_parts)
+
+
+def _format_http_exception(
+    exception_type: str, error_code: str, endpoint: str, json_str: str
+) -> str | None:
+    """Format HTTP exception with JSON payload. Returns None if JSON parsing fails."""
+    # Unescape the JSON string
+    json_str = json_str.replace('\\"', '"').replace("\\\\", "\\")
+
+    try:
+        error_json = json.loads(json_str)
+    except (json.JSONDecodeError, TypeError):
+        return None
+
+    if isinstance(error_json, list) and error_json:
+        return _format_error_list(exception_type, error_code, endpoint, error_json)
+
+    return _format_error_object(exception_type, error_code, endpoint, error_json)
+
+
+# Regex pattern for HttpException tuple format
+_HTTP_EXCEPTION_PATTERN = re.compile(
+    r'\((\d+),\s*["\']([^"\']+)["\']\s*,\s*["\'](.+)["\']\s*\)\s*$',
+    re.DOTALL,
+)
+
+
 @register.filter(name="format_pbn_error")
 def format_pbn_error(value):
     """
@@ -40,127 +175,39 @@ def format_pbn_error(value):
     if not value:
         return ""
 
-    # Extract the last line containing pbn_api.exceptions (this is the actual error)
-    # This removes all the traceback stack and keeps only the exception line
-    lines = [line for line in value.strip().split("\n") if line.strip()]
-    exception_line = None
-
-    # Search from the end for a line with pbn_api.exceptions
-    for line in reversed(lines):
-        if "pbn_api.exceptions" in line:
-            exception_line = line.strip()
-            break
-
-    # If no pbn_api.exceptions found, return last line
+    exception_line = _extract_exception_line(value)
     if not exception_line:
         return mark_safe(
-            f'<div style="font-family: monospace; line-height: 1.5; font-size: 1.05em;">'
-            f'{lines[-1] if lines else ""}</div>'
+            f'<div class="pbn-error-text">{_get_fallback_line(value)}</div>'
         )
 
-    # Now parse the exception line
     try:
-        # Try to extract tuple from HttpException format
-        # Format: "pbn_api.exceptions.HttpException: (400, '/api/v1/publications', '{...}')"
-        if ":" in exception_line:
-            parts = exception_line.split(":", 1)
-            exception_class = parts[0].strip()
-            message_part = parts[1].strip()
+        parsed = _parse_exception_parts(exception_line)
+        if not parsed:
+            return mark_safe(f'<div class="pbn-error-text">{exception_line}</div>')
 
-            # Extract exception type (e.g., "HttpException", "StatementsMissing")
-            if "." in exception_class:
-                exception_type = exception_class.split(".")[-1]
-            else:
-                exception_type = exception_class
+        exception_type, message_part = parsed
 
-            # Try to parse as tuple (HttpException format)
-            # Format: (400, '/api/v1/publications', '{"code":400,...}')
-            tuple_match = re.match(
-                r'\((\d+),\s*["\']([^"\']+)["\']\s*,\s*["\'](.+)["\']\s*\)\s*$',
-                message_part,
-                re.DOTALL,
+        # Try to match HttpException tuple format
+        tuple_match = _HTTP_EXCEPTION_PATTERN.match(message_part)
+        if tuple_match:
+            error_code, endpoint, json_str = tuple_match.groups()
+            result = _format_http_exception(
+                exception_type, error_code, endpoint, json_str
             )
-
-            if tuple_match:
-                error_code = tuple_match.group(1)
-                error_endpoint = tuple_match.group(2)
-                error_json_str = tuple_match.group(3)
-
-                # Unescape the JSON string
-                error_json_str = error_json_str.replace('\\"', '"').replace(
-                    "\\\\", "\\"
-                )
-
-                # Try to parse the JSON error response
-                try:
-                    error_json = json.loads(error_json_str)
-
-                    # Build a formatted HTML error message with monospace font
-                    html_parts = []
-                    html_parts.append(
-                        '<div style="font-family: monospace; color: #c00; font-weight: bold; font-size: 1.2em;">'
-                        f"{exception_type}: HTTP {error_code}</div>"
-                    )
-
-                    if "message" in error_json:
-                        html_parts.append(
-                            '<div style="font-family: monospace; margin-top: 8px; line-height: 1.5; font-size: 1.05em;">'
-                            f'<strong>Wiadomość:</strong> {error_json["message"]}</div>'
-                        )
-
-                    if "description" in error_json:
-                        html_parts.append(
-                            '<div style="font-family: monospace; margin-top: 8px; line-height: 1.5; font-size: 1.05em;">'
-                            f'<strong>Opis:</strong> {error_json["description"]}</div>'
-                        )
-
-                    if "details" in error_json:
-                        details = error_json["details"]
-                        if isinstance(details, dict):
-                            html_parts.append(
-                                '<div style="font-family: monospace; margin-top: 8px; line-height: 1.5; font-size: 1.05em;">'
-                                "<strong>Szczegóły:</strong></div>"
-                            )
-                            for key, val in details.items():
-                                if isinstance(val, list):
-                                    val_str = ", ".join(str(v) for v in val)
-                                else:
-                                    val_str = str(val)
-                                html_parts.append(
-                                    '<div style="font-family: monospace; margin-left: 20px; line-height: 1.5; '
-                                    f'font-size: 1.05em;">• <em>{key}:</em> {val_str}</div>'
-                                )
-                        else:
-                            html_parts.append(
-                                '<div style="font-family: monospace; margin-top: 8px; line-height: 1.5; font-size: 1.05em;">'
-                                f"<strong>Szczegóły:</strong> {details}</div>"
-                            )
-
-                    html_parts.append(
-                        '<div style="font-family: monospace; margin-top: 12px; font-size: 1em; '
-                        f'color: #666; line-height: 1.5;"><em>Endpoint: {error_endpoint}</em></div>'
-                    )
-
-                    return mark_safe("\n".join(html_parts))
-
-                except (json.JSONDecodeError, TypeError, KeyError):
-                    # JSON parsing failed, return raw error JSON in monospace
-                    return mark_safe(
-                        f'<div style="font-family: monospace; line-height: 1.5; font-size: 1.05em;">'
-                        f"{exception_type}: HTTP {error_code} - {error_json_str}</div>"
-                    )
-
-            # If not a tuple format, it's a simple exception like StatementsMissing
+            if result:
+                return mark_safe(result)
+            # JSON parsing failed, return raw error
             return mark_safe(
-                f'<div style="font-family: monospace; line-height: 1.5; font-size: 1.05em;">'
-                f"{exception_type}: {message_part.strip()}</div>"
+                f'<div class="pbn-error-text">{exception_type}: HTTP {error_code} - {json_str}</div>'
             )
+
+        # Simple exception format (e.g., StatementsMissing)
+        return mark_safe(
+            f'<div class="pbn-error-text">{exception_type}: {message_part}</div>'
+        )
 
     except (ValueError, AttributeError, IndexError):
-        # Parsing failed, return the exception line as-is
         pass
 
-    # Fallback: return exception line in monospace
-    return mark_safe(
-        f'<div style="font-family: monospace; line-height: 1.5; font-size: 1.05em;">{exception_line}</div>'
-    )
+    return mark_safe(f'<div class="pbn-error-text">{exception_line}</div>')

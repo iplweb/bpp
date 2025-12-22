@@ -98,13 +98,11 @@ class KomparatorMainView(TemplateView):
         ).count()
 
         # Count PBN publications never downloaded (not in BPP)
-        # Get all pbn_uid_ids that exist in BPP
+        # Use subquery instead of materializing all pbn_uid_ids into Python memory
         from bpp.models.cache import Rekord
 
-        bpp_pbn_uids = set(
-            Rekord.objects.exclude(pbn_uid_id__isnull=True).values_list(
-                "pbn_uid_id", flat=True
-            )
+        bpp_pbn_uids_subquery = Rekord.objects.exclude(pbn_uid_id__isnull=True).values(
+            "pbn_uid_id"
         )
 
         # Count PBN publications in 2022-2025 that are not in BPP
@@ -114,32 +112,26 @@ class KomparatorMainView(TemplateView):
                 year__lte=EVALUATION_END_YEAR,
                 status="ACTIVE",
             )
-            .exclude(mongoId__in=bpp_pbn_uids)
+            .exclude(mongoId__in=bpp_pbn_uids_subquery)
             .count()
         )
 
         # Count PBN scientists without BPP equivalents
-        # Get all mongoIds from Autor table where pbn_uid_id is not null
+        # Use subqueries instead of materializing all IDs into Python memory
         from bpp.models import Autor
-
-        bpp_autor_pbn_uids = set(
-            Autor.objects.exclude(pbn_uid_id__isnull=True).values_list(
-                "pbn_uid_id", flat=True
-            )
-        )
-
-        # Get ignored scientist IDs from DoNotRemind model
         from importer_autorow_pbn.models import DoNotRemind
 
-        ignored_scientist_ids = set(
-            DoNotRemind.objects.values_list("scientist_id", flat=True)
-        )
+        bpp_autor_pbn_uids_subquery = Autor.objects.exclude(
+            pbn_uid_id__isnull=True
+        ).values("pbn_uid_id")
+
+        ignored_scientist_ids_subquery = DoNotRemind.objects.values("scientist_id")
 
         # Count PBN scientists from institution API that are not in BPP and not ignored
         pbn_scientists_not_in_bpp = (
             Scientist.objects.filter(from_institution_api=True)
-            .exclude(mongoId__in=bpp_autor_pbn_uids)
-            .exclude(mongoId__in=ignored_scientist_ids)
+            .exclude(mongoId__in=bpp_autor_pbn_uids_subquery)
+            .exclude(mongoId__in=ignored_scientist_ids_subquery)
             .count()
         )
 
@@ -186,20 +178,21 @@ class KomparatorMainView(TemplateView):
             oswiadczenie_instytucji__publicationId__year__lte=EVALUATION_END_YEAR,
         )
 
-        total_discipline_discrepancies = discipline_discrepancies_qs.count()
+        # Use conditional aggregation to get all counts in a single query
+        discipline_stats = discipline_discrepancies_qs.aggregate(
+            total=Count("id"),
+            bpp_empty=Count("id", filter=Q(dyscyplina_bpp__isnull=True)),
+            pbn_empty=Count("id", filter=Q(dyscyplina_pbn__isnull=True)),
+            both_different=Count(
+                "id",
+                filter=Q(dyscyplina_bpp__isnull=False, dyscyplina_pbn__isnull=False),
+            ),
+        )
 
-        # Count by type of discrepancy
-        bpp_empty_disciplines = discipline_discrepancies_qs.filter(
-            dyscyplina_bpp__isnull=True
-        ).count()
-
-        pbn_empty_disciplines = discipline_discrepancies_qs.filter(
-            dyscyplina_pbn__isnull=True
-        ).count()
-
-        both_present_different = discipline_discrepancies_qs.filter(
-            dyscyplina_bpp__isnull=False, dyscyplina_pbn__isnull=False
-        ).count()
+        total_discipline_discrepancies = discipline_stats["total"]
+        bpp_empty_disciplines = discipline_stats["bpp_empty"]
+        pbn_empty_disciplines = discipline_stats["pbn_empty"]
+        both_present_different = discipline_stats["both_different"]
 
         context.update(
             {

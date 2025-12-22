@@ -1,4 +1,5 @@
 import pytest
+from django.apps import apps
 from django.urls import NoReverseMatch
 from django.urls.base import reverse
 from model_bakery import baker
@@ -110,9 +111,6 @@ def test_zapisz_wydawnictwo_w_adminie(klass, autor_klass, name, url, admin_app):
     Autorzy.objects.all().delete()
 
 
-from django.apps import apps
-
-
 @pytest.mark.parametrize("model", apps.get_models())
 @pytest.mark.django_db
 def test_widok_admina(admin_client, model):
@@ -138,12 +136,16 @@ def test_widok_admina(admin_client, model):
         return
 
     res = admin_client.get(url)
-    assert res.status_code == 200, "changelist failed for %r" % model
+    assert res.status_code == 200, f"changelist failed for {model!r}"
 
     res = admin_client.get(url + "?q=fafa")
-    assert res.status_code == 200, "changelist query failed for %r" % model
+    assert res.status_code == 200, f"changelist query failed for {model!r}"
 
-    MODELS_WITHOUT_ADD = [("bpp", "bppmultiseekvisibility"), ("bpp", "rzeczownik")]
+    MODELS_WITHOUT_ADD = [
+        ("bpp", "bppmultiseekvisibility"),
+        ("bpp", "rzeczownik"),
+        ("bpp", "oplatypublikacjilog"),
+    ]
     if (app_label, model_name) in MODELS_WITHOUT_ADD:
         return
 
@@ -151,7 +153,7 @@ def test_widok_admina(admin_client, model):
     url = reverse(url_name)
     res = admin_client.get(url)
 
-    assert res.status_code == 200, "add failed for %r" % model
+    assert res.status_code == 200, f"add failed for {model!r}"
 
 
 @pytest.mark.django_db

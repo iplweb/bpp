@@ -102,6 +102,14 @@
                             <span class="fi-alert"></span> Rekord źródłowy został usunięty
                         </div>
                     {% endif %}
+
+                    <form method="post" action="{% url 'pbn_export_queue:export-queue-delete' export_queue_item.pk %}" style="display: inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="button alert"
+                                onclick="return confirm('Czy na pewno chcesz usunąć ten element z kolejki?')">
+                            <span class="fi-trash"></span> Usuń z kolejki
+                        </button>
+                    </form>
                 </div>
             </div>
         </div>
@@ -161,11 +169,21 @@
                                 </td>
                             </tr>
                             <tr>
-                                <th>Zamówił:</th>
+                                <th>Rok:</th>
+                                <td>
+                                    {% if export_queue_item.rekord_do_wysylki and export_queue_item.rekord_do_wysylki.rok %}
+                                        {{ export_queue_item.rekord_do_wysylki.rok }}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Wysłał:</th>
                                 <td>{{ export_queue_item.zamowil }}</td>
                             </tr>
                             <tr>
-                                <th>Data zamówienia:</th>
+                                <th>Data wysłania:</th>
                                 <td>{{ export_queue_item.zamowiono }} ({{ export_queue_item.zamowiono|naturaltime }})</td>
                             </tr>
                             <tr>
@@ -206,7 +224,7 @@
                                                     {% if pbn_error_info.error_code %}
                                                         Błąd po stronie PBN -- kod {{ pbn_error_info.error_code }}
                                                     {% else %}
-                                                        Błąd PBN: {{ pbn_error_info.exception_type }}
+                                                        Błąd merytoryczny: {{ pbn_error_info.exception_type }}
                                                     {% endif %}
                                                 </strong>
                                                 {% if pbn_error_info.error_message %}
@@ -254,7 +272,18 @@
                     </div>
 
                     <div class="callout secondary">
-                        <h4>Błąd z wysyłką rekordu do PBN? Skopiuj do schowka lub pobierz plik:</h4>
+                        <h4>Wysłane dane JSON</h4>
+
+                        <details style="margin-bottom: 15px;">
+                            <summary style="cursor: pointer; color: #1779ba; font-weight: 500; padding: 8px 0;">
+                                <span class="fi-page-filled"></span> Pokaż/ukryj wysłane dane JSON
+                            </summary>
+                            <div style="margin-top: 10px;">
+                                <pre style="background: #f8f9fa; padding: 15px; border-radius: 5px; border: 1px solid #e9ecef; overflow-x: auto; max-height: 500px; overflow-y: auto;"><code class="json-highlight">{{ json_data|default:"Brak danych" }}</code></pre>
+                            </div>
+                        </details>
+
+                        <h5>Skopiuj do schowka lub pobierz plik:</h5>
 
                         {# Hidden fields containing pre-fetched data for Safari clipboard compatibility #}
                         <textarea id="json-data-field" style="position: absolute; left: -9999px;" readonly>{{ json_data|default:"" }}</textarea>
