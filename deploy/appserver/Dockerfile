@@ -17,7 +17,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     apt-get update; \
     apt-get install -y --no-install-recommends docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
-HEALTHCHECK --interval=10s --timeout=5s --retries=4 --start-period=50s \
+HEALTHCHECK --interval=10s --timeout=5s --retries=3 --start-period=1800s \
     CMD curl --fail --silent --write-out 'HTTP CODE : %{http_code}\n' --output /dev/null http://127.0.0.1:8000/
 
 ENTRYPOINT ["/bin/bash", "-c", "/entrypoint-appserver.sh"]

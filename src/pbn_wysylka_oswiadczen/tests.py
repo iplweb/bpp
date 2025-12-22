@@ -182,7 +182,7 @@ def test_pbn_wysylka_log_statuses():
     task = PbnWysylkaOswiadczenTask.objects.create(user=user)
     content_type = ContentType.objects.get_for_model(Wydawnictwo_Ciagle)
 
-    for status in ["success", "error", "skipped"]:
+    for status in ["success", "error", "skipped", "maintenance"]:
         log = PbnWysylkaLog.objects.create(
             task=task,
             content_type=content_type,
@@ -191,6 +191,19 @@ def test_pbn_wysylka_log_statuses():
             status=status,
         )
         assert log.status == status
+
+
+@pytest.mark.django_db
+def test_pbn_wysylka_task_maintenance_status():
+    """Test that maintenance status is available for tasks."""
+    user = User.objects.create_user("testuser", password="testpass")
+    task = PbnWysylkaOswiadczenTask.objects.create(
+        user=user,
+        status="maintenance",
+        error_message="Prace serwisowe w PBN",
+    )
+    assert task.status == "maintenance"
+    assert "Prace serwisowe" in task.error_message
 
 
 # ============================================================================
@@ -655,6 +668,25 @@ def test_delete_existing_statements_http_error():
 
 
 @pytest.mark.django_db
+def test_delete_existing_statements_prace_serwisowe():
+    """Test _delete_existing_statements re-raises PraceSerwisoweException."""
+    from pbn_api.exceptions import PraceSerwisoweException
+
+    mock_client = MagicMock()
+    mock_client.delete_all_publication_statements.side_effect = PraceSerwisoweException(
+        "Prace serwisowe"
+    )
+
+    mock_publication = MagicMock()
+    mock_publication.pbn_uid_id = "test-uid"
+
+    mock_log_entry = MagicMock()
+
+    with pytest.raises(PraceSerwisoweException):
+        _delete_existing_statements(mock_publication, mock_client, mock_log_entry)
+
+
+@pytest.mark.django_db
 def test_handle_http_400_error():
     """Test _handle_http_400_error function."""
     from pbn_api.exceptions import HttpException
@@ -749,6 +781,28 @@ def test_send_statements_with_retry_exhausted():
     assert status == "error"
     assert "Wszystkie proby nieudane" in mock_log_entry.error_message
     assert mock_client.post_discipline_statements.call_count == 5
+
+
+@pytest.mark.django_db
+def test_send_statements_with_retry_prace_serwisowe():
+    """Test _send_statements_with_retry raises PraceSerwisoweException."""
+    from pbn_api.exceptions import PraceSerwisoweException
+
+    mock_client = MagicMock()
+    mock_client.post_discipline_statements.side_effect = PraceSerwisoweException(
+        "Prace serwisowe"
+    )
+
+    mock_log_entry = MagicMock()
+    json_data = {"test": "data"}
+
+    with pytest.raises(PraceSerwisoweException):
+        _send_statements_with_retry(mock_client, json_data, mock_log_entry)
+
+    # Check that log entry was updated before re-raising
+    assert mock_log_entry.status == "maintenance"
+    assert "Prace serwisowe" in mock_log_entry.error_message
+    mock_log_entry.save.assert_called_once()
 
 
 @pytest.mark.django_db
