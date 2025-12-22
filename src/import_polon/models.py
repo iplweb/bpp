@@ -8,7 +8,7 @@ from long_running.notification_mixins import ASGINotificationMixin
 
 
 class ImportPlikuAbsencji(ASGINotificationMixin, Operation):
-    plik = models.FileField(upload_to="protected/import_polon")
+    plik = models.FileField(max_length=255, upload_to="protected/import_polon")
     zapisz_zmiany_do_bazy = models.BooleanField(default=False)
 
     def on_reset(self):
@@ -41,7 +41,7 @@ class WierszImportuPlikuAbsencji(models.Model):
 
 class ImportPlikuPolon(ASGINotificationMixin, Operation):
     rok = YearField()
-    plik = models.FileField(upload_to="protected/import_polon")
+    plik = models.FileField(max_length=255, upload_to="protected/import_polon")
     ukryj_niezmatchowanych_autorow = models.BooleanField(default=True)
     zapisz_zmiany_do_bazy = models.BooleanField(default=False)
     ignoruj_miejsce_pracy = models.BooleanField(

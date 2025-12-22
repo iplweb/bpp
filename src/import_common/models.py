@@ -9,7 +9,7 @@ from long_running.notification_mixins import ASGINotificationMixin
 
 
 class ImportOperation(ASGINotificationMixin, Operation):
-    plik_xls = models.FileField()
+    plik_xls = models.FileField(upload_to="protected/import_common/")
 
     try_names = None
     banned_names = None

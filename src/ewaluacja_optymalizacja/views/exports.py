@@ -262,7 +262,8 @@ def export_all_disciplines_zip(request):
 
     Jeśli plik nie istnieje, zwraca błąd 404.
     """
-    from django.http import FileResponse, Http404
+    from django.http import Http404
+    from django_sendfile import sendfile
 
     from ..models import StatusOptymalizacjiBulk
 
@@ -273,8 +274,9 @@ def export_all_disciplines_zip(request):
             "Plik ZIP nie został jeszcze wygenerowany. Uruchom 'Policz całą ewaluację'."
         )
 
-    return FileResponse(
-        status.plik_zip_wszystkie_xls.open("rb"),
-        as_attachment=True,
-        filename="prace_wszystkie_uczelnia.zip",
+    return sendfile(
+        request,
+        status.plik_zip_wszystkie_xls.path,
+        attachment=True,
+        attachment_filename="prace_wszystkie_uczelnia.zip",
     )

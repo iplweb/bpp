@@ -74,91 +74,103 @@ class Kolumna(models.Model):
         ]
 
 
+# Słownik mapowania nazw kolumn na rodzaje pól - używany przez guess_rodzaj()
+_NAZWA_DO_RODZAJU: dict[str, str] = {}
+
+
+def _zbuduj_mapowanie_nazw():
+    """Buduje słownik mapowania nazw na rodzaje pól."""
+    mapowania = [
+        (
+            Kolumna.RODZAJ.TYTUL,
+            [
+                "tytuł_stopień",
+                "tytuł",
+                "tytułnaukowy",
+                "tytuł/stopień",
+                "tytułstopień",
+                "stopieńnaukowy",
+                "stopień",
+                "stopien",
+                "tytul",
+                "tytulnaukowy",
+            ],
+        ),
+        (Kolumna.RODZAJ.NAZWISKO, ["nazwisko", "nazwiska"]),
+        (Kolumna.RODZAJ.IMIE, ["imię", "imie", "imiona"]),
+        (Kolumna.RODZAJ.ORCID, ["orcid", "identyfikatororcid", "ident.orcid"]),
+        (
+            Kolumna.RODZAJ.NAZWA_JEDNOSTKI,
+            ["jednostka", "nazwajednostki", "nazwa_jednostki"],
+        ),
+        (Kolumna.RODZAJ.WYDZIAL, ["wydzial", "wydz.", "wydział"]),
+        (
+            Kolumna.RODZAJ.DYSCYPLINA,
+            ["dyscyplina", "dyscyplina1", "dyscyplinagłówna", "dyscyplinaglowna"],
+        ),
+        (
+            Kolumna.RODZAJ.KOD_DYSCYPLINY,
+            [
+                "kod_dyscypliny",
+                "koddyscypliny",
+                "koddyscyplinyglownej",
+                "koddyscyplinygłównej",
+                "kod1",
+                "koddyscypliny1",
+            ],
+        ),
+        (
+            Kolumna.RODZAJ.PROCENT_DYSCYPLINY,
+            [
+                "procent_dyscypliny",
+                "procentdyscypliny",
+                "procentdyscypliny1",
+                "procentdyscyplinygłównej",
+                "procentdyscyplinyglownej",
+                "udziałprocentowy1",
+            ],
+        ),
+        (
+            Kolumna.RODZAJ.SUBDYSCYPLINA,
+            ["subdyscyplina", "dyscyplina2", "dyscyplinapoboczna"],
+        ),
+        (
+            Kolumna.RODZAJ.KOD_SUBDYSCYPLINY,
+            [
+                "kod_subdyscypliny",
+                "kodsubdyscypliny",
+                "koddyscyplinypoboczej",
+                "koddyscyplinydrugiej",
+                "kod2",
+                "koddyscypliny2",
+            ],
+        ),
+        (
+            Kolumna.RODZAJ.PROCENT_SUBDYSCYPLINY,
+            [
+                "procent_subdyscypliny",
+                "procentsubdyscypliny",
+                "procentdyscypliny2",
+                "procentdyscyplinypobocznej",
+                "udziałprocentowy2",
+            ],
+        ),
+        (
+            Kolumna.RODZAJ.PBN_ID,
+            ["pbn_id", "pbn-id", "pbnid", "pbn*id", "identyfikatorpbn", "ident.pbn"],
+        ),
+    ]
+    for rodzaj, nazwy in mapowania:
+        for nazwa in nazwy:
+            _NAZWA_DO_RODZAJU[nazwa] = rodzaj
+
+
 def guess_rodzaj(s):
+    """Odgaduje rodzaj kolumny na podstawie nazwy z pliku."""
+    if not _NAZWA_DO_RODZAJU:
+        _zbuduj_mapowanie_nazw()
     s = s.lower().replace(" ", "")
-    if s in [
-        "tytuł_stopień",
-        "tytuł",
-        "tytułnaukowy",
-        "tytuł/stopień",
-        "tytułstopień",
-        "stopieńnaukowy",
-        "stopień",
-        "stopien",
-        "tytul",
-        "tytulnaukowy",
-    ]:
-        return Kolumna.RODZAJ.TYTUL
-
-    if s in ["nazwisko", "nazwiska"]:
-        return Kolumna.RODZAJ.NAZWISKO
-    if s in ["imię", "imie", "imiona"]:
-        return Kolumna.RODZAJ.IMIE
-    if s in ["orcid", "identyfikatororcid", "ident.orcid"]:
-        return Kolumna.RODZAJ.ORCID
-    if s in ["jednostka", "nazwajednostki", "nazwa_jednostki"]:
-        return Kolumna.RODZAJ.NAZWA_JEDNOSTKI
-    if s in ["wydzial", "wydz.", "wydział"]:
-        return Kolumna.RODZAJ.WYDZIAL
-
-    if s in ["dyscyplina", "dyscyplina1", "dyscyplinagłówna", "dyscyplinaglowna"]:
-        return Kolumna.RODZAJ.DYSCYPLINA
-    if s in [
-        "kod_dyscypliny",
-        "koddyscypliny",
-        "koddyscyplinyglownej",
-        "koddyscyplinygłównej",
-        "kod1",
-        "koddyscypliny1",
-    ]:
-        return Kolumna.RODZAJ.KOD_DYSCYPLINY
-    if s in [
-        "procent_dyscypliny",
-        "procentdyscypliny",
-        "procentdyscypliny1",
-        "procentdyscyplinygłównej",
-        "procentdyscyplinyglownej",
-        "udziałprocentowy1",
-    ]:
-        return Kolumna.RODZAJ.PROCENT_DYSCYPLINY
-
-    if s in [
-        "subdyscyplina",
-        "dyscyplina2",
-        "dyscyplinapoboczna",
-        "dyscyplinapoboczna",
-    ]:
-        return Kolumna.RODZAJ.SUBDYSCYPLINA
-    if s in [
-        "kod_subdyscypliny",
-        "kodsubdyscypliny",
-        "koddyscyplinypoboczej",
-        "koddyscyplinydrugiej",
-        "kod2",
-        "koddyscypliny2",
-    ]:
-        return Kolumna.RODZAJ.KOD_SUBDYSCYPLINY
-    if s in [
-        "procent_subdyscypliny",
-        "procentsubdyscypliny",
-        "procentdyscypliny2",
-        "procentdyscyplinypobocznej",
-        "udziałprocentowy2",
-    ]:
-        return Kolumna.RODZAJ.PROCENT_SUBDYSCYPLINY
-
-    if s in [
-        "pbn_id",
-        "pbn-id",
-        "pbnid",
-        "pbn_id",
-        "pbn*id",
-        "identyfikatorpbn",
-        "ident.pbn",
-    ]:
-        return Kolumna.RODZAJ.PBN_ID
-
-    return Kolumna.RODZAJ.POMIJAJ
+    return _NAZWA_DO_RODZAJU.get(s, Kolumna.RODZAJ.POMIJAJ)
 
 
 class Import_Dyscyplin(TimeStampedModel):
@@ -181,22 +193,22 @@ class Import_Dyscyplin(TimeStampedModel):
     )
 
     owner = models.ForeignKey(AUTH_USER_MODEL, CASCADE)
-    web_page_uid = models.CharField(max_length=36, blank=True, null=True)
+    web_page_uid = models.CharField(max_length=36, blank=True, default="")
     web_page_uid.__doc__ = (
         "UUID4 strony internetowej która może być używana do notyfikacji. "
     )
 
-    task_id = models.CharField(max_length=36, blank=True, null=True)
+    task_id = models.CharField(max_length=36, blank=True, default="")
     task_id.__doc__ = "celery.uuid() z identyfikatorem zadania"
 
-    plik = models.FileField()
+    plik = models.FileField(upload_to="protected/import_dyscyplin/")
     rok = YearField(default=obecny_rok)
     stan = FSMField(
         default=STAN.NOWY, choices=zip(STANY, STANY, strict=False), protected=True
     )
 
     bledny = models.BooleanField(default=False)
-    info = models.TextField(blank=True, null=True)
+    info = models.TextField(blank=True, default="")
 
     wiersz_naglowka = models.PositiveSmallIntegerField(null=True, blank=True)
 
@@ -218,7 +230,7 @@ class Import_Dyscyplin(TimeStampedModel):
             kolumny, wiersz = znajdz_naglowek(self.plik.path)
         except ImproperFileException as e:
             self.bledny = True
-            self.info = "niepoprawny plik - %s" % e
+            self.info = f"niepoprawny plik - {e}"
             return
         except BadNoOfSheetsException:
             self.bledny = True
@@ -458,13 +470,8 @@ class Import_Dyscyplin(TimeStampedModel):
                             elem.info = ""
 
                         elem.info += (
-                            "Istniejące %s dla roku %i zmieniono z %s na %s. "
-                            % (
-                                attr.replace("_", " "),
-                                self.rok,
-                                target or "[brak]",
-                                source or "[brak]",
-                            )
+                            f"Istniejące {attr.replace('_', ' ')} dla roku {self.rok} "
+                            f"zmieniono z {target or '[brak]'} na {source or '[brak]'}. "
                         )
 
                         changed = True
@@ -483,10 +490,14 @@ class Import_Dyscyplin(TimeStampedModel):
                     subdyscyplina_naukowa=elem.subdyscyplina_naukowa,
                     procent_subdyscypliny=elem.procent_subdyscypliny,
                 )
-                elem.info = "nowe przypisanie dla %i: %s%s." % (
-                    self.rok,
-                    elem.dyscyplina_naukowa,
-                    (", " + str(elem.subdyscyplina_naukowa)).replace(", None", ""),
+                subdyscyplina_str = (
+                    f", {elem.subdyscyplina_naukowa}"
+                    if elem.subdyscyplina_naukowa
+                    else ""
+                )
+                elem.info = (
+                    f"nowe przypisanie dla {self.rok}: "
+                    f"{elem.dyscyplina_naukowa}{subdyscyplina_str}."
                 )
 
             elem.stan = Import_Dyscyplin_Row.STAN.ZINTEGROWANY
@@ -518,7 +529,7 @@ class Import_Dyscyplin_Row(models.Model):
         default=STAN.NOWY,
         db_index=True,
     )
-    info = models.TextField(blank=True, null=True)
+    info = models.TextField(blank=True, default="")
 
     row_no = models.IntegerField()
     original = JSONField(encoder=DjangoJSONEncoder)
@@ -528,15 +539,15 @@ class Import_Dyscyplin_Row(models.Model):
 
     autor = models.ForeignKey(Autor, null=True, on_delete=models.SET_NULL)
 
-    nazwa_jednostki = models.CharField(max_length=512, blank=True, null=True)
+    nazwa_jednostki = models.CharField(max_length=512, blank=True, default="")
     jednostka = models.ForeignKey(Jednostka, null=True, on_delete=models.SET_NULL)
 
-    nazwa_wydzialu = models.CharField(max_length=512, blank=True, null=True)
+    nazwa_wydzialu = models.CharField(max_length=512, blank=True, default="")
     wydzial = models.ForeignKey(Wydzial, null=True, on_delete=models.SET_NULL)
 
-    dyscyplina = models.CharField(max_length=200, db_index=True, blank=True, null=True)
+    dyscyplina = models.CharField(max_length=200, db_index=True, blank=True, default="")
     kod_dyscypliny = models.CharField(
-        max_length=20, db_index=True, blank=True, null=True
+        max_length=20, db_index=True, blank=True, default=""
     )
     procent_dyscypliny = models.DecimalField(
         max_digits=5, decimal_places=2, null=True, blank=True
@@ -550,10 +561,10 @@ class Import_Dyscyplin_Row(models.Model):
     )
 
     subdyscyplina = models.CharField(
-        max_length=200, null=True, blank=True, db_index=True
+        max_length=200, blank=True, default="", db_index=True
     )
     kod_subdyscypliny = models.CharField(
-        max_length=20, null=True, blank=True, db_index=True
+        max_length=20, blank=True, default="", db_index=True
     )
     procent_subdyscypliny = models.DecimalField(
         max_digits=5, decimal_places=2, null=True, blank=True
@@ -565,6 +576,9 @@ class Import_Dyscyplin_Row(models.Model):
         on_delete=models.SET_NULL,
         related_name="+",
     )
+
+    class Meta:
+        ordering = ("nazwisko", "imiona")
 
     def serialize_dict(self):
         ret = {
@@ -595,6 +609,3 @@ class Import_Dyscyplin_Row(models.Model):
             )
 
         return ret
-
-    class Meta:
-        ordering = ("nazwisko", "imiona")

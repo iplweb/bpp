@@ -97,15 +97,28 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        # Najpierw zwiększ max_length kolumny, żeby pomieścić dłuższe ścieżki
         migrations.AlterField(
             model_name="importplikuabsencji",
             name="plik",
-            field=models.FileField(upload_to="protected/import_polon"),
+            field=models.FileField(max_length=255, upload_to="import_polon"),
         ),
         migrations.AlterField(
             model_name="importplikupolon",
             name="plik",
-            field=models.FileField(upload_to="protected/import_polon"),
+            field=models.FileField(max_length=255, upload_to="import_polon"),
         ),
+        # Następnie przenieś pliki
         migrations.RunPython(move_files_to_protected, reverse_move_files),
+        # Na koniec zmień upload_to
+        migrations.AlterField(
+            model_name="importplikuabsencji",
+            name="plik",
+            field=models.FileField(max_length=255, upload_to="protected/import_polon"),
+        ),
+        migrations.AlterField(
+            model_name="importplikupolon",
+            name="plik",
+            field=models.FileField(max_length=255, upload_to="protected/import_polon"),
+        ),
     ]

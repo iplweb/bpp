@@ -85,6 +85,7 @@ class Zgloszenie_Publikacji(
 
     plik = models.FileField(
         "Plik załącznika",
+        upload_to="protected/zglos_publikacje/",
         help_text="""Jeżeli zgłaszana publikacja nie jest dostępna nigdzie w sieci internet,
         prosimy o dodanie załącznika""",
         blank=True,

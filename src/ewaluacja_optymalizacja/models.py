@@ -507,7 +507,7 @@ class StatusOptymalizacjiBulk(models.Model):
         verbose_name="Ostatni komunikat",
     )
     plik_zip_wszystkie_xls = models.FileField(
-        upload_to="ewaluacja_optymalizacja/cache/",
+        upload_to="protected/ewaluacja_optymalizacja/",
         null=True,
         blank=True,
         verbose_name="Plik ZIP ze wszystkimi XLS",
