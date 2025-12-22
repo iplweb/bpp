@@ -747,7 +747,6 @@ YARN_FILE_PATTERNS = {
     "jinplace": ["js/jinplace.js"],
     "jquery-circle-progress": ["dist/circle-progress.min.js"],
     "select2-foundation_theme": ["dist/select2-foundation-theme.css"],
-    "kbw-keypad": ["dist/*"],
     "plotly.js": ["dist/plotly.min.js", "dist/plotly-locale-pl.js"],
     "htmx.org": ["dist/htmx.js"],
     "tone": ["build/Tone.js", "build/Tone.js.map"],

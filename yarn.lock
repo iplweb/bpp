@@ -2548,10 +2548,6 @@ jsonfile@^6.0.1:
   optionalDependencies:
     graceful-fs "^4.1.6"
 
-"kbw-keypad@https://github.com/kbwood/keypad/archive/2.1.1.tar.gz":
-  version "2.1.0"
-  resolved "https://github.com/kbwood/keypad/archive/2.1.1.tar.gz#4ee32928372d08c4f28f60d8282d3ad02468070f"
-
 kdbush@^3.0.0:
   version "3.0.0"
   resolved "https://registry.yarnpkg.com/kdbush/-/kdbush-3.0.0.tgz#f8484794d47004cc2d85ed3a79353dbe0abc2bf0"
