@@ -724,7 +724,7 @@ class WyswietlDeklaracjeDostepnosci(TemplateView):
             raise Http404
 
         tekst = uczelnia.deklaracja_dostepnosci_tekst
-        url = uczelnia.deklaracja_dostepnosci_tekst
+        url = uczelnia.deklaracja_dostepnosci_url
 
         return {"tekst": tekst, "url": url, "uczelnia": uczelnia}
 
