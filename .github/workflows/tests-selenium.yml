@@ -108,7 +108,7 @@ jobs:
         # Install Firefox dependencies and tools
         sudo apt update
         sudo apt install -y libpq-dev nodejs redis-tools \
-          libldap2-dev libsasl2-dev \
+          libldap2-dev libsasl2-dev libcairo2-dev \
           xvfb  xauth xfonts-100dpi xfonts-75dpi xfonts-base xfonts-scalable \
           firefox firefox-geckodriver
         sudo npm install -g --force yarn grunt-cli

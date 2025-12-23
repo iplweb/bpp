@@ -4,6 +4,12 @@ Historia zmian
 
 .. towncrier release notes start
 
+bpp 202512.1303 (2025-12-23)
+============================
+
+No significant changes.
+
+
 bpp 202512.1302 (2025-12-22)
 ============================
 
