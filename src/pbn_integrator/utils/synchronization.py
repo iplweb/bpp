@@ -11,10 +11,12 @@ from bpp.const import PBN_MIN_ROK
 from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
 from bpp.util import pbar
 from pbn_api.exceptions import (
+    CannotUploadPublicationFee,
     HttpException,
     NeedsPBNAuthorisationException,
     NoFeeDataException,
     NoPBNUIDException,
+    PublicationDoesNotExistInInstitutionProfile,
     SameDataUploadedRecently,
     WillNotExportError,
 )
@@ -334,6 +336,10 @@ def _process_publication_fee(client: PBNClient, elem, upload_publication: bool) 
         _handle_no_pbn_uid(client, elem, upload_publication)
     except NoFeeDataException:
         pass
+    except CannotUploadPublicationFee as e:
+        tqdm.write(f"UWAGA: {elem.pk},{elem.tytul_oryginalny}: {e}")
+    except PublicationDoesNotExistInInstitutionProfile as e:
+        tqdm.write(f"UWAGA: {elem.pk},{elem.tytul_oryginalny}: {e}")
     except NeedsPBNAuthorisationException:
         raise
     except HttpException as exc:
@@ -341,7 +347,11 @@ def _process_publication_fee(client: PBNClient, elem, upload_publication: bool) 
 
 
 def wyslij_informacje_o_platnosciach(
-    client: PBNClient, rok=None, upload_publication=False
+    client: PBNClient,
+    rok=None,
+    upload_publication=False,
+    ignore_ciagle=False,
+    ignore_zwarte=False,
 ):
     """Send payment information for publications to PBN.
 
@@ -350,8 +360,16 @@ def wyslij_informacje_o_platnosciach(
         rok: Optional year filter.
         upload_publication: If True, upload publication when it has no PBN UID.
             Default is False (skip such publications).
+        ignore_ciagle: If True, skip Wydawnictwo_Ciagle publications.
+        ignore_zwarte: If True, skip Wydawnictwo_Zwarte publications.
     """
-    for model in Wydawnictwo_Ciagle, Wydawnictwo_Zwarte:
+    models = []
+    if not ignore_ciagle:
+        models.append(Wydawnictwo_Ciagle)
+    if not ignore_zwarte:
+        models.append(Wydawnictwo_Zwarte)
+
+    for model in models:
         qset = model.objects.rekordy_z_oplata()
         if rok:
             qset = qset.filter(rok=rok)

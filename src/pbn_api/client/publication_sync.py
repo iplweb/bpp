@@ -20,11 +20,13 @@ from pbn_api.const import (
 )
 from pbn_api.exceptions import (
     CannotDeleteStatementsException,
+    CannotUploadPublicationFee,
     HttpException,
     NoFeeDataException,
     NoPBNUIDException,
     PBNUIDChangedException,
     PBNUIDSetToExistentException,
+    PublicationDoesNotExistInInstitutionProfile,
     PublikacjaInstytucjiV2NieZnalezionaException,
     SameDataUploadedRecently,
     ZnalezionoWielePublikacjiInstytucjiV2Exception,
@@ -87,9 +89,23 @@ class PublicationSyncMixin:
         return self.transport.post(PBN_POST_PUBLICATION_NO_STATEMENTS_URL, body=[json])
 
     def post_publication_fee(self, publicationId, json):
-        return self.transport.post(
-            PBN_POST_PUBLICATION_FEE_URL.format(id=publicationId), body=json
-        )
+        try:
+            return self.transport.post(
+                PBN_POST_PUBLICATION_FEE_URL.format(id=publicationId), body=json
+            )
+        except HttpException as e:
+            if e.status_code == 400:
+                if e.content.find("nie jest objęta obowiązkiem") >= 0:
+                    raise CannotUploadPublicationFee(
+                        f"Publikacja {publicationId} nie jest objęta obowiązkiem "
+                        f"wprowadzenia opłat za publikacje."
+                    ) from e
+                if e.content.find("nie znajduje się w Profilu Instytucji") >= 0:
+                    raise PublicationDoesNotExistInInstitutionProfile(
+                        f"Publikacja {publicationId} nie istnieje lub nie znajduje się "
+                        f"w Profilu Instytucji."
+                    ) from e
+            raise
 
     def get_publication_fee(self, publicationId):
         res = self.transport.post_pages(
