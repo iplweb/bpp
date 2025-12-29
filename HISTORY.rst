@@ -4,6 +4,16 @@ Historia zmian
 
 .. towncrier release notes start
 
+bpp 202512.1304 (2025-12-29)
+============================
+
+Usprawnienie
+------------
+
+- Ulepszono obsługę błędów w funkcji wyslij_informacje_o_platnosciach: dodano sprawdzanie wartości zwracanej przez upload_publication_fee (success=True), re-raise dla nieobsłużonych HttpException oraz NeedsPBNAuthorisationException. Komunikaty błędów wyświetlają się teraz czytelnie nad paskiem postępu (tqdm.write). (pbn_integrator_sync)
+- Dodano dwa nowe raporty XLSX w module optymalizacji ewaluacji: "Raport SEDN #1" (szczegółowy per-autor) oraz "Raport SEDN #2" (zagregowany per-publikacja). Raporty zawierają dane o publikacjach z lat 2022-2025 wraz z informacją o wskazaniu przez algorytm optymalizacji. Przycisk "Pobierz wszystkie XLS (ZIP)" przeniesiono do nowej, trzeciej linii przycisków. (sedn-reports)
+
+
 bpp 202512.1303 (2025-12-23)
 ============================
 
