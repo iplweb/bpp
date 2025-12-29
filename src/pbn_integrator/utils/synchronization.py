@@ -2,16 +2,17 @@
 
 from __future__ import annotations
 
-import warnings
 from typing import TYPE_CHECKING
 
 from django.db.models import Q
+from tqdm import tqdm
 
 from bpp.const import PBN_MIN_ROK
 from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
 from bpp.util import pbar
 from pbn_api.exceptions import (
     HttpException,
+    NeedsPBNAuthorisationException,
     NoFeeDataException,
     NoPBNUIDException,
     SameDataUploadedRecently,
@@ -101,10 +102,9 @@ def _synchronizuj_pojedyncza_publikacje(  # noqa: C901
                 PBN_KOMUNIKAT_ISBN_ISTNIEJE in e.content
                 or PBN_KOMUNIKAT_DOI_ISTNIEJE in e.content
             ):
-                warnings.warn(
+                tqdm.write(
                     f"UWAGA: rekord z BPP {rec} mimo posiadania PBN UID {rec.pbn_uid_id} dostał"
-                    f"przy synchronizacji komunkat: {e.content} !! Sprawa DO SPRAWDZENIA RECZNIE",
-                    stacklevel=2,
+                    f"przy synchronizacji komunkat: {e.content} !! Sprawa DO SPRAWDZENIA RECZNIE"
                 )
                 return
 
@@ -134,9 +134,8 @@ def _synchronizuj_pojedyncza_publikacje(  # noqa: C901
                     )
 
             else:
-                warnings.warn(
-                    f"{rec.pk},{rec.tytul_oryginalny},{rec.rok},PBN Server Error: {e.content}",
-                    stacklevel=2,
+                tqdm.write(
+                    f"UWAGA: {rec.pk},{rec.tytul_oryginalny},{rec.rok},PBN Server Error: {e.content}"
                 )
                 return
 
@@ -153,9 +152,8 @@ def _synchronizuj_pojedyncza_publikacje(  # noqa: C901
             return _synchronizuj_pojedyncza_publikacje(client, rec)
 
         if e.status_code == 500:
-            warnings.warn(
-                f"{rec.pk},{rec.tytul_oryginalny},{rec.rok},PBN Server Error: {e.content}",
-                stacklevel=2,
+            tqdm.write(
+                f"UWAGA: {rec.pk},{rec.tytul_oryginalny},{rec.rok},PBN Server Error: {e.content}"
             )
 
         if e.status_code == 403:
@@ -170,9 +168,8 @@ def _synchronizuj_pojedyncza_publikacje(  # noqa: C901
             raise e
 
     except WillNotExportError as e:
-        warnings.warn(
-            f"{rec.pk},{rec.tytul_oryginalny},{rec.rok},nie wyeksportuje, bo: {e}",
-            stacklevel=2,
+        tqdm.write(
+            f"UWAGA: {rec.pk},{rec.tytul_oryginalny},{rec.rok},nie wyeksportuje, bo: {e}"
         )
 
 
@@ -273,6 +270,76 @@ def synchronizuj_publikacje(
         )
 
 
+def _handle_no_pbn_uid(client: PBNClient, elem, upload_publication: bool) -> None:
+    """Handle publication without PBN UID.
+
+    Args:
+        client: PBN client.
+        elem: Publication element.
+        upload_publication: If True, attempt to upload the publication.
+    """
+    if upload_publication:
+        try:
+            client.upload_publication(elem)
+        except Exception as e:
+            tqdm.write(
+                f"Podczas aktualizacji pracy {elem.tytul_oryginalny, elem.pk} wystąpił błąd: {e}. "
+                f"Wczytaj dane tej pracy ręcznie. "
+            )
+    else:
+        tqdm.write(
+            f"Publikacja {elem.tytul_oryginalny} ({elem.pk}) nie ma PBN UID - pominięto."
+        )
+
+
+def _handle_http_exception(exc: HttpException, elem) -> None:
+    """Handle HTTP exception during fee upload.
+
+    Args:
+        exc: HTTP exception.
+        elem: Publication element.
+
+    Raises:
+        HttpException: If the exception is not a known validation error.
+    """
+    is_validation_error = (
+        exc.status_code == 400
+        and exc.content.find("Validation failed") >= 0
+        and exc.content.find("no.institution.profile.publication") >= 0
+    )
+    if is_validation_error:
+        tqdm.write(
+            f"Publikacja {elem.tytul_oryginalny} nie wystepuje na profilu instytucji!"
+        )
+    else:
+        raise
+
+
+def _process_publication_fee(client: PBNClient, elem, upload_publication: bool) -> None:
+    """Process fee upload for a single publication.
+
+    Args:
+        client: PBN client.
+        elem: Publication element.
+        upload_publication: If True, upload publication when it has no PBN UID.
+    """
+    try:
+        ret = client.upload_publication_fee(elem)
+        if ret is None or not ret.get("success"):
+            tqdm.write(
+                f"UWAGA: Publikacja {elem.tytul_oryginalny} ({elem.pk}): "
+                f"upload_publication_fee zwrocil {ret}"
+            )
+    except NoPBNUIDException:
+        _handle_no_pbn_uid(client, elem, upload_publication)
+    except NoFeeDataException:
+        pass
+    except NeedsPBNAuthorisationException:
+        raise
+    except HttpException as exc:
+        _handle_http_exception(exc, elem)
+
+
 def wyslij_informacje_o_platnosciach(
     client: PBNClient, rok=None, upload_publication=False
 ):
@@ -290,29 +357,4 @@ def wyslij_informacje_o_platnosciach(
             qset = qset.filter(rok=rok)
 
         for elem in pbar(qset):
-            try:
-                client.upload_publication_fee(elem)
-            except NoPBNUIDException:
-                if upload_publication:
-                    try:
-                        client.upload_publication(elem)
-                    except Exception as e:
-                        print(
-                            f"Podczas aktualizacji pracy {elem.tytul_oryginalny, elem.pk} wystąpił błąd: {e}. "
-                            f"Wczytaj dane tej pracy ręcznie. "
-                        )
-                else:
-                    print(
-                        f"Publikacja {elem.tytul_oryginalny} ({elem.pk}) nie ma PBN UID - pominięto."
-                    )
-            except NoFeeDataException:
-                pass
-            except HttpException as exc:
-                if (
-                    exc.status_code == 400
-                    and exc.content.find("Validation failed") >= 0
-                    and exc.content.find("no.institution.profile.publication") >= 0
-                ):
-                    print(
-                        f"Publikacja {elem.tytul_oryginalny} nie wystepuje na profilu instytucji!"
-                    )
+            _process_publication_fee(client, elem, upload_publication)

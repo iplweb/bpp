@@ -1,0 +1,1 @@
+Ulepszono obsługę błędów w funkcji wyslij_informacje_o_platnosciach: dodano sprawdzanie wartości zwracanej przez upload_publication_fee (success=True), re-raise dla nieobsłużonych HttpException oraz NeedsPBNAuthorisationException. Komunikaty błędów wyświetlają się teraz czytelnie nad paskiem postępu (tqdm.write).
