@@ -114,6 +114,18 @@ class NoPBNUIDException(ValueError):
     pass
 
 
+class CannotUploadPublicationFee(ValueError):
+    """Raised when PBN server indicates that publication is not subject to fee requirements."""
+
+    pass
+
+
+class PublicationDoesNotExistInInstitutionProfile(ValueError):
+    """Raised when publication does not exist or is not in the institution profile."""
+
+    pass
+
+
 class PBNUIDChangedException(ValueError):
     """Podnoszony w sytuacji gdy wysłanej pracy która już posiada PBN UID należałoby zmienić PBN UID na inny
     na skutek odpowiedzi serwera. Technicznie nie jest to błąd i ten PBN UID jest ustawiany. Ten Exception

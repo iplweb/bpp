@@ -12,6 +12,18 @@ class Command(PBNBaseCommand):
             default=False,
             help="Upload publication if it has no PBN UID (default: skip)",
         )
+        parser.add_argument(
+            "--ignore-wydawnictwa-ciagle",
+            action="store_true",
+            default=False,
+            help="Skip Wydawnictwo_Ciagle publications",
+        )
+        parser.add_argument(
+            "--ignore-wydawnictwa-zwarte",
+            action="store_true",
+            default=False,
+            help="Skip Wydawnictwo_Zwarte publications",
+        )
 
     def handle(
         self,
@@ -21,10 +33,16 @@ class Command(PBNBaseCommand):
         user_token,
         rok,
         upload_publication,
+        ignore_wydawnictwa_ciagle,
+        ignore_wydawnictwa_zwarte,
         *args,
         **options,
     ):
         client = self.get_client(app_id, app_token, base_url, user_token)
         wyslij_informacje_o_platnosciach(
-            client, rok, upload_publication=upload_publication
+            client,
+            rok,
+            upload_publication=upload_publication,
+            ignore_ciagle=ignore_wydawnictwa_ciagle,
+            ignore_zwarte=ignore_wydawnictwa_zwarte,
         )
