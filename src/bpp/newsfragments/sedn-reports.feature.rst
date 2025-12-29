@@ -1,1 +1,0 @@
-Dodano dwa nowe raporty XLSX w module optymalizacji ewaluacji: "Raport SEDN #1" (szczegółowy per-autor) oraz "Raport SEDN #2" (zagregowany per-publikacja). Raporty zawierają dane o publikacjach z lat 2022-2025 wraz z informacją o wskazaniu przez algorytm optymalizacji. Przycisk "Pobierz wszystkie XLS (ZIP)" przeniesiono do nowej, trzeciej linii przycisków.
