@@ -127,4 +127,14 @@ urlpatterns = [
         views.export_all_disciplines_zip,
         name="export-all-disciplines-zip",
     ),
+    path(
+        "export-sedn-report-1/",
+        views.export_sedn_report_1,
+        name="export-sedn-report-1",
+    ),
+    path(
+        "export-sedn-report-2/",
+        views.export_sedn_report_2,
+        name="export-sedn-report-2",
+    ),
 ]

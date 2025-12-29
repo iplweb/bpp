@@ -67,16 +67,6 @@
                class="button {% if has_problematic_slots %}alert{% else %}success{% endif %}">
                 <span class="fi-magnifying-glass"></span> Weryfikacja bazy danych
             </a>
-            {% if optimization_runs and status_bulk.plik_zip_wszystkie_xls %}
-            <a href="{% url 'ewaluacja_optymalizacja:export-all-disciplines-zip' %}"
-               class="button success">
-                <span class="fi-archive"></span> Pobierz wszystkie XLS (ZIP)
-            </a>
-            {% elif optimization_runs %}
-            <span class="button disabled" title="Uruchom 'Policz całą ewaluację' aby wygenerować plik">
-                <span class="fi-archive"></span> Pobierz wszystkie XLS (ZIP)
-            </span>
-            {% endif %}
         </div>
 
         <div class="button-group" style="margin-top: 0.5rem;">
@@ -113,6 +103,29 @@
                id="optimize-unpin-btn"
                {% if dirty_count > 0 %}onclick="event.preventDefault(); alert('Czekamy na przeliczenie punktów. Obecnie jest {{ dirty_count }} rekordów do przeliczenia.'); return false;"{% elif unpinning_analysis_running %}onclick="event.preventDefault(); alert('Trwa analiza Optymalizuj przed. Poczekaj na zakonczenie.'); return false;"{% else %}onclick="return confirm('Czy na pewno chcesz zastosować optymalizację i odpiąć niepotrzebne sloty? Ta operacja:\n\n1. Sprawdzi czy wszystkie dyscypliny są przeliczone\n2. Utworzy snapshot obecnego stanu\n3. Odpnie dyscypliny w pracach niewykazanych do ewaluacji\n4. Automatycznie przeliczy punktację\n5. Przeliczy optymalizację dla wszystkich dyscyplin\n\nProces może potrwać 20-30 minut w zależności od liczby dyscyplin.');"{% endif %}>
                 <span class="fi-unlock"></span> Optymalizuj, odpinajac sloty
+            </a>
+            {% endif %}
+        </div>
+
+        <div class="button-group" style="margin-top: 0.5rem;">
+            {% if optimization_runs and status_bulk.plik_zip_wszystkie_xls %}
+            <a href="{% url 'ewaluacja_optymalizacja:export-all-disciplines-zip' %}"
+               class="button success">
+                <span class="fi-archive"></span> Pobierz wszystkie XLS (ZIP)
+            </a>
+            {% elif optimization_runs %}
+            <span class="button disabled" title="Uruchom 'Policz całą ewaluację' aby wygenerować plik">
+                <span class="fi-archive"></span> Pobierz wszystkie XLS (ZIP)
+            </span>
+            {% endif %}
+            {% if optimization_runs %}
+            <a href="{% url 'ewaluacja_optymalizacja:export-sedn-report-1' %}"
+               class="button secondary">
+                <span class="fi-page-export"></span> Raport SEDN #1
+            </a>
+            <a href="{% url 'ewaluacja_optymalizacja:export-sedn-report-2' %}"
+               class="button secondary">
+                <span class="fi-page-export"></span> Raport SEDN #2
             </a>
             {% endif %}
         </div>

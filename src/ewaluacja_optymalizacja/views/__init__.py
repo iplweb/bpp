@@ -19,6 +19,8 @@ from .exports import (
     export_all_authors_zip,
     export_all_disciplines_zip,
     export_author_sedn_xlsx,
+    export_sedn_report_1,
+    export_sedn_report_2,
     generate_all_disciplines_zip_file,
 )
 from .helpers import (
@@ -98,6 +100,8 @@ __all__ = [
     "export_author_sedn_xlsx",
     "export_all_authors_zip",
     "export_all_disciplines_zip",
+    "export_sedn_report_1",
+    "export_sedn_report_2",
     "generate_all_disciplines_zip_file",
     # verification.py
     "database_verification_view",
