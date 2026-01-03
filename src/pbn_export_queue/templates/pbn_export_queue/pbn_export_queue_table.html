@@ -91,6 +91,8 @@
                     <a href="{% url 'pbn_export_queue:export-queue-detail' item.pk %}" style="color: inherit;">
                         {% if item.zakonczono_pomyslnie == True %}
                             ✅
+                        {% elif item.wykluczone %}
+                            <span class="fi-minus-circle" style="color: #6c757d;" title="Wykluczone z eksportu"></span>
                         {% elif item.zakonczono_pomyslnie == False %}
                             {% if item.rodzaj_bledu == 'MERYT' %}
                                 ⚠️

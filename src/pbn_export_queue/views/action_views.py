@@ -273,7 +273,7 @@ class PBNExportQueueCountsView(LoginRequiredMixin, PBNExportQueuePermissionMixin
                 zakonczono_pomyslnie=True
             ).count(),
             "error_count": PBN_Export_Queue.objects.filter(
-                zakonczono_pomyslnie=False
+                zakonczono_pomyslnie=False, wykluczone=False
             ).count(),
             "pending_count": PBN_Export_Queue.objects.filter(
                 zakonczono_pomyslnie=None
@@ -281,11 +281,18 @@ class PBNExportQueueCountsView(LoginRequiredMixin, PBNExportQueuePermissionMixin
             "waiting_count": PBN_Export_Queue.objects.filter(
                 retry_after_user_authorised=True
             ).count(),
+            "wykluczone_count": PBN_Export_Queue.objects.filter(
+                wykluczone=True
+            ).count(),
             "error_techniczny_count": PBN_Export_Queue.objects.filter(
-                zakonczono_pomyslnie=False, rodzaj_bledu=RodzajBledu.TECHNICZNY
+                zakonczono_pomyslnie=False,
+                rodzaj_bledu=RodzajBledu.TECHNICZNY,
+                wykluczone=False,
             ).count(),
             "error_merytoryczny_count": PBN_Export_Queue.objects.filter(
-                zakonczono_pomyslnie=False, rodzaj_bledu=RodzajBledu.MERYTORYCZNY
+                zakonczono_pomyslnie=False,
+                rodzaj_bledu=RodzajBledu.MERYTORYCZNY,
+                wykluczone=False,
             ).count(),
         }
         return JsonResponse(counts)

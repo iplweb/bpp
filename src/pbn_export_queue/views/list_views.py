@@ -46,6 +46,13 @@ class BasePBNExportQueueListView(
             )
         return queryset
 
+    def _filter_by_wykluczone(self, queryset):
+        """Filter queryset by wykluczone parameter."""
+        wykluczone = self.request.GET.get("wykluczone")
+        if wykluczone == "true":
+            return queryset.filter(wykluczone=True)
+        return queryset
+
     def _find_matching_record_ids_by_title(self, queryset, search_query):
         """Find record IDs that match search query in their title fields."""
         matching_ids = []
@@ -172,6 +179,7 @@ class BasePBNExportQueueListView(
         # Apply filters
         queryset = self._filter_by_success_status(queryset)
         queryset = self._filter_by_error_type(queryset)
+        queryset = self._filter_by_wykluczone(queryset)
         queryset = self._filter_by_year_range(queryset)
         queryset = self._apply_search_filter(queryset)
         queryset = self._apply_sorting(queryset)
@@ -182,13 +190,14 @@ class BasePBNExportQueueListView(
         context = super().get_context_data(**kwargs)
         context["current_filter"] = self.request.GET.get("zakonczono_pomyslnie", "all")
         context["current_error_type"] = self.request.GET.get("rodzaj_bledu", "")
+        context["current_wykluczone"] = self.request.GET.get("wykluczone", "")
         context["search_query"] = self.request.GET.get("q", "")
         # Year filter values (rok_od defaults to 2022)
         context["rok_od"] = self.request.GET.get("rok_od", "2022")
         context["rok_do"] = self.request.GET.get("rok_do", "")
-        # Add count of error records for the resend button
+        # Add count of error records for the resend button (exclude wykluczone)
         context["error_count"] = PBN_Export_Queue.objects.filter(
-            zakonczono_pomyslnie=False
+            zakonczono_pomyslnie=False, wykluczone=False
         ).count()
         # Add count of waiting records for the resend button
         context["waiting_count"] = PBN_Export_Queue.objects.filter(
@@ -207,12 +216,20 @@ class BasePBNExportQueueListView(
         context["pending_count"] = PBN_Export_Queue.objects.filter(
             zakonczono_pomyslnie=None
         ).count()
-        # Add counts for error type filter buttons
+        # Add count of wykluczone records
+        context["wykluczone_count"] = PBN_Export_Queue.objects.filter(
+            wykluczone=True
+        ).count()
+        # Add counts for error type filter buttons (exclude wykluczone)
         context["error_techniczny_count"] = PBN_Export_Queue.objects.filter(
-            zakonczono_pomyslnie=False, rodzaj_bledu=RodzajBledu.TECHNICZNY
+            zakonczono_pomyslnie=False,
+            rodzaj_bledu=RodzajBledu.TECHNICZNY,
+            wykluczone=False,
         ).count()
         context["error_merytoryczny_count"] = PBN_Export_Queue.objects.filter(
-            zakonczono_pomyslnie=False, rodzaj_bledu=RodzajBledu.MERYTORYCZNY
+            zakonczono_pomyslnie=False,
+            rodzaj_bledu=RodzajBledu.MERYTORYCZNY,
+            wykluczone=False,
         ).count()
         # Add current sort parameter
         context["current_sort"] = self.request.GET.get("sort", "-ostatnia_aktualizacja")
