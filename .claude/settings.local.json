@@ -62,7 +62,9 @@
       "mcp__playwright__browser_take_screenshot",
       "Bash(tr:*)",
       "mcp__playwright__browser_fill_form",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(gh run list:*)",
+      "Bash(gh run view:*)"
     ],
     "deny": [],
     "ask": [],
