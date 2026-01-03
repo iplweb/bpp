@@ -1,1 +1,0 @@
-Kolejka eksportu PBN: dodano nowy status "Wykluczone" dla publikacji, które z przyczyn projektowych nie mogą być eksportowane (nieobsługiwany charakter formalny, brak mapowania PBN dla typu, wyłączony eksport prac bez punktów). Status ten odróżnia świadome wykluczenia od prawdziwych błędów - wyświetlany jest szarą ikoną i nie pozwala na ponowną wysyłkę.
