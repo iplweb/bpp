@@ -145,6 +145,7 @@ def zwarte_z_dyscyplinami(
     wydawca,
     typy_odpowiedzialnosci,
     rok,
+    rodzaj_autora_n,
 ):
     from model_bakery import baker
 
@@ -159,10 +160,16 @@ def zwarte_z_dyscyplinami(
 
     # Musi miec też przypisania do dyscyplin
     Autor_Dyscyplina.objects.create(
-        autor=autor_jan_nowak, dyscyplina_naukowa=dyscyplina1, rok=rok
+        autor=autor_jan_nowak,
+        dyscyplina_naukowa=dyscyplina1,
+        rok=rok,
+        rodzaj_autora=rodzaj_autora_n,
     )
     Autor_Dyscyplina.objects.create(
-        autor=autor_jan_kowalski, dyscyplina_naukowa=dyscyplina2, rok=rok
+        autor=autor_jan_kowalski,
+        dyscyplina_naukowa=dyscyplina2,
+        rok=rok,
+        rodzaj_autora=rodzaj_autora_n,
     )
     wydawnictwo_zwarte.dodaj_autora(
         autor_jan_nowak, jednostka, dyscyplina_naukowa=dyscyplina1
@@ -177,6 +184,8 @@ def zwarte_z_dyscyplinami(
     wydawnictwo_zwarte.wydawca = wydawca
     wydawnictwo_zwarte.charakter_formalny = Charakter_Formalny.objects.get(skrot="KSP")
     wydawnictwo_zwarte.save()
+
+    wydawnictwo_zwarte.przelicz_punkty_dyscyplin()
 
     return wydawnictwo_zwarte
 

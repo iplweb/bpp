@@ -100,7 +100,7 @@ LINK_PI_ADD_STATEMENTS = (
 PBN_MIN_ROK = 2017
 
 # Maksymalny rok dla procedur eksportujących do PBN, liczącyc punkty/sloty oraz testów
-PBN_MAX_ROK = 2025
+PBN_MAX_ROK = 2026
 
 PBN_LATA = list(range(PBN_MIN_ROK, PBN_MAX_ROK + 1))
 
