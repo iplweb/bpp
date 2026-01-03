@@ -52,7 +52,11 @@ def task_sprobuj_wyslac_do_pbn(pk):
                 check_and_send_next_in_queue()
                 return
 
-            case SendStatus.FINISHED_ERROR | SendStatus.RETRY_AFTER_USER_AUTHORISED:
+            case (
+                SendStatus.FINISHED_ERROR
+                | SendStatus.RETRY_AFTER_USER_AUTHORISED
+                | SendStatus.WYKLUCZONE
+            ):
                 return
 
             case _:

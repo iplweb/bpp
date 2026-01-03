@@ -1,7 +1,5 @@
 """Tests for pbn_export_queue models"""
 
-import sys
-import traceback
 from datetime import timedelta
 from unittest.mock import MagicMock, patch
 
@@ -13,17 +11,14 @@ from model_bakery import baker
 
 from bpp.models import Wydawnictwo_Ciagle
 from pbn_api.exceptions import (
-    AccessDeniedException,
     AlreadyEnqueuedError,
+    CharakterFormalnyMissingPBNUID,
     CharakterFormalnyNieobslugiwanyError,
-    NeedsPBNAuthorisationException,
     PKZeroExportDisabled,
     PraceSerwisoweException,
-    ResourceLockedException,
 )
 from pbn_export_queue.models import (
     PBN_Export_Queue,
-    PBN_Export_QueueManager,
     SendStatus,
     model_table_exists,
 )
@@ -207,7 +202,7 @@ class TestSendToPbn:
     def test_send_to_pbn_charakter_formalny_exception(
         self, wydawnictwo_ciagle, admin_user
     ):
-        """Test error when CharakterFormalnyNieobslugiwanyError is raised"""
+        """Test WYKLUCZONE when CharakterFormalnyNieobslugiwanyError is raised"""
         with patch.object(admin_user, "get_pbn_user"):
             queue_item = baker.make(
                 PBN_Export_Queue,
@@ -222,13 +217,16 @@ class TestSendToPbn:
 
                 result = queue_item.send_to_pbn()
 
-                assert result == SendStatus.FINISHED_ERROR
+                assert result == SendStatus.WYKLUCZONE
                 queue_item.refresh_from_db()
                 assert queue_item.zakonczono_pomyslnie is False
+                assert queue_item.wykluczone is True
+                assert queue_item.rodzaj_bledu is None
+                assert "Wykluczone" in queue_item.komunikat
                 assert "Charakter formalny" in queue_item.komunikat
 
     def test_send_to_pbn_pk_zero_export_disabled(self, wydawnictwo_ciagle, admin_user):
-        """Test error when PKZeroExportDisabled is raised"""
+        """Test WYKLUCZONE when PKZeroExportDisabled is raised"""
         queue_item = baker.make(
             PBN_Export_Queue,
             rekord_do_wysylki=wydawnictwo_ciagle,
@@ -242,10 +240,37 @@ class TestSendToPbn:
 
             result = queue_item.send_to_pbn()
 
-            assert result == SendStatus.FINISHED_ERROR
+            assert result == SendStatus.WYKLUCZONE
             queue_item.refresh_from_db()
             assert queue_item.zakonczono_pomyslnie is False
+            assert queue_item.wykluczone is True
+            assert queue_item.rodzaj_bledu is None
+            assert "Wykluczone" in queue_item.komunikat
             assert "punktów PK" in queue_item.komunikat
+
+    def test_send_to_pbn_charakter_formalny_missing_pbn_uid(
+        self, wydawnictwo_ciagle, admin_user
+    ):
+        """Test WYKLUCZONE when CharakterFormalnyMissingPBNUID is raised"""
+        queue_item = baker.make(
+            PBN_Export_Queue,
+            rekord_do_wysylki=wydawnictwo_ciagle,
+            zamowil=admin_user,
+        )
+
+        with patch(
+            "bpp.admin.helpers.pbn_api.cli.sprobuj_wyslac_do_pbn_celery"
+        ) as mock_send:
+            mock_send.side_effect = CharakterFormalnyMissingPBNUID("Brak rodzaju PBN")
+
+            result = queue_item.send_to_pbn()
+
+            assert result == SendStatus.WYKLUCZONE
+            queue_item.refresh_from_db()
+            assert queue_item.zakonczono_pomyslnie is False
+            assert queue_item.wykluczone is True
+            assert queue_item.rodzaj_bledu is None
+            assert "Wykluczone" in queue_item.komunikat
 
     def test_send_to_pbn_prace_serwisowe_exception_with_retry_later(
         self, wydawnictwo_ciagle, admin_user
@@ -620,3 +645,80 @@ def test_model_table_exists_false():
     # Check that the table doesn't exist
     assert "non_existent_table_xyz_123" not in connection.introspection.table_names()
     assert model_table_exists(mock_model) is False
+
+
+@pytest.mark.django_db
+class TestExclude:
+    """Tests for exclude method"""
+
+    def test_exclude_sets_fields_correctly(self, wydawnictwo_ciagle, admin_user):
+        """Test that exclude method sets fields correctly"""
+        queue_item = baker.make(
+            PBN_Export_Queue,
+            rekord_do_wysylki=wydawnictwo_ciagle,
+            zamowil=admin_user,
+        )
+
+        result = queue_item.exclude("Test exclusion message")
+
+        assert result == SendStatus.WYKLUCZONE
+        queue_item.refresh_from_db()
+        assert queue_item.wysylke_zakonczono is not None
+        assert queue_item.zakonczono_pomyslnie is False
+        assert queue_item.wykluczone is True
+        assert queue_item.rodzaj_bledu is None
+        assert "Test exclusion message" in queue_item.komunikat
+
+    def test_exclude_differs_from_error(self, wydawnictwo_ciagle, admin_user):
+        """Test that exclude differs from error in key fields"""
+        queue_item1 = baker.make(
+            PBN_Export_Queue,
+            rekord_do_wysylki=wydawnictwo_ciagle,
+            zamowil=admin_user,
+        )
+        queue_item2 = baker.make(
+            PBN_Export_Queue,
+            rekord_do_wysylki=wydawnictwo_ciagle,
+            zamowil=admin_user,
+        )
+
+        queue_item1.exclude("Exclusion")
+        queue_item2.error("Error", rodzaj="MERYT")
+
+        queue_item1.refresh_from_db()
+        queue_item2.refresh_from_db()
+
+        # Both have zakonczono_pomyslnie=False
+        assert queue_item1.zakonczono_pomyslnie is False
+        assert queue_item2.zakonczono_pomyslnie is False
+
+        # But exclude sets wykluczone=True and rodzaj_bledu=None
+        assert queue_item1.wykluczone is True
+        assert queue_item1.rodzaj_bledu is None
+
+        # While error keeps wykluczone=False and sets rodzaj_bledu
+        assert queue_item2.wykluczone is False
+        assert queue_item2.rodzaj_bledu == "MERYT"
+
+
+@pytest.mark.django_db
+class TestPrepareForResendResetsWykluczone:
+    """Tests for prepare_for_resend resetting wykluczone"""
+
+    def test_prepare_for_resend_resets_wykluczone(self, wydawnictwo_ciagle, admin_user):
+        """Test that prepare_for_resend resets wykluczone field"""
+        queue_item = baker.make(
+            PBN_Export_Queue,
+            rekord_do_wysylki=wydawnictwo_ciagle,
+            zamowil=admin_user,
+            wykluczone=True,
+            wysylke_zakonczono=timezone.now(),
+            zakonczono_pomyslnie=False,
+        )
+
+        queue_item.prepare_for_resend()
+
+        queue_item.refresh_from_db()
+        assert queue_item.wykluczone is False
+        assert queue_item.wysylke_zakonczono is None
+        assert queue_item.zakonczono_pomyslnie is None

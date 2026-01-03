@@ -90,13 +90,19 @@
                     </a>
 
                     {% if export_queue_item.rekord_do_wysylki %}
-                        <form method="post" action="{% url 'pbn_export_queue:export-queue-resend' export_queue_item.pk %}" style="display: inline;">
-                            {% csrf_token %}
-                            <button type="submit" class="button success"
-                                    onclick="return confirm('Czy na pewno chcesz wysłać ten rekord do PBN?')">
-                                <span class="fi-upload"></span> Wyślij do PBN
-                            </button>
-                        </form>
+                        {% if export_queue_item.wykluczone %}
+                            <div class="button secondary disabled" title="Nie można wysłać - publikacja wykluczona z eksportu" style="opacity: 0.6; cursor: not-allowed;">
+                                <span class="fi-minus-circle"></span> Wykluczone z eksportu
+                            </div>
+                        {% else %}
+                            <form method="post" action="{% url 'pbn_export_queue:export-queue-resend' export_queue_item.pk %}" style="display: inline;">
+                                {% csrf_token %}
+                                <button type="submit" class="button success"
+                                        onclick="return confirm('Czy na pewno chcesz wysłać ten rekord do PBN?')">
+                                    <span class="fi-upload"></span> Wyślij do PBN
+                                </button>
+                            </form>
+                        {% endif %}
                     {% else %}
                         <div class="button alert disabled">
                             <span class="fi-alert"></span> Rekord źródłowy został usunięty
@@ -215,6 +221,16 @@
                                 <td>
                                     {% if export_queue_item.zakonczono_pomyslnie == True %}
                                         <span class="label success">Zakończono pomyślnie</span>
+                                    {% elif export_queue_item.wykluczone %}
+                                        <span class="label secondary" style="background-color: #6c757d;">Wykluczone z eksportu</span>
+                                        <div style="margin-top: 10px; color: #6c757d;">
+                                            <strong>Ta publikacja została wykluczona z eksportu do PBN.</strong>
+                                            <p style="margin-top: 5px; font-size: 0.9em;">
+                                                Eksport nie jest możliwy z powodów konfiguracyjnych systemu.
+                                                Aby zmienić ten stan, należy zmodyfikować ustawienia charakterów formalnych
+                                                lub konfiguracji eksportu w panelu administracyjnym.
+                                            </p>
+                                        </div>
                                     {% elif export_queue_item.zakonczono_pomyslnie == False %}
                                         <span class="label alert">Zakończono z błędem</span>
 

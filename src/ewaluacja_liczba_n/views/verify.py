@@ -1,12 +1,13 @@
 from decimal import Decimal
 
 from braces.views import GroupRequiredMixin
-from django.db.models import Count, Q
+from django.db.models import Count, Q, Sum
 from django.views.generic import TemplateView
 
 from bpp.const import GR_WPROWADZANIE_DANYCH
 from bpp.models import Autor_Dyscyplina
 from ewaluacja_common.models import Rodzaj_Autora
+from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaRok
 
 
 class WeryfikujBazeView(GroupRequiredMixin, TemplateView):
@@ -167,5 +168,44 @@ class WeryfikujBazeView(GroupRequiredMixin, TemplateView):
         context["zla_suma_url"] = (
             "suma_procent=nieprawidlowa&rok__gte=2022&rok__lte=2025"
         )
+
+        # 5. Autorzy z obiema dyscyplinami nie-raportowanymi
+        # Oblicz nie-raportowane dyscypliny na podstawie sumy udziałów w 2025 (suma < 12)
+        sumy_2025 = (
+            IloscUdzialowDlaAutoraZaRok.objects.filter(rok=2025)
+            .values("dyscyplina_naukowa_id")
+            .annotate(suma=Sum("ilosc_udzialow"))
+        )
+        nieraportowane_ids = {
+            item["dyscyplina_naukowa_id"]
+            for item in sumy_2025
+            if item["suma"] is not None and item["suma"] < 12
+        }
+
+        # Znajdź autorów z dwoma dyscyplinami gdzie obie są nie-raportowane
+        autorzy_obie_nieraportowane = []
+        autorzy_dwie_dyscypliny = (
+            Autor_Dyscyplina.objects.filter(rok__gte=2022, rok__lte=2025)
+            .filter(subdyscyplina_naukowa__isnull=False)
+            .select_related("autor", "dyscyplina_naukowa", "subdyscyplina_naukowa")
+        )
+
+        for ad in autorzy_dwie_dyscypliny:
+            if (
+                ad.dyscyplina_naukowa_id in nieraportowane_ids
+                and ad.subdyscyplina_naukowa_id in nieraportowane_ids
+            ):
+                autorzy_obie_nieraportowane.append(
+                    {
+                        "autor": str(ad.autor),
+                        "rok": ad.rok,
+                        "dyscyplina": str(ad.dyscyplina_naukowa),
+                        "subdyscyplina": str(ad.subdyscyplina_naukowa),
+                        "ad_id": ad.id,
+                    }
+                )
+
+        context["autorzy_obie_nieraportowane"] = autorzy_obie_nieraportowane
+        context["liczba_obie_nieraportowane"] = len(autorzy_obie_nieraportowane)
 
         return context

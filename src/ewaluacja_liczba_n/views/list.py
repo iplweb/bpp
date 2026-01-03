@@ -9,6 +9,7 @@ from bpp.models import Autor_Dyscyplina, Dyscyplina_Naukowa
 from ewaluacja_common.models import Rodzaj_Autora
 
 from ..models import IloscUdzialowDlaAutoraZaCalosc, IloscUdzialowDlaAutoraZaRok
+from ..utils import oblicz_dyscypliny_nieraportowane
 
 
 class AutorzyLiczbaNListView(GroupRequiredMixin, ListView):
@@ -105,6 +106,17 @@ class AutorzyLiczbaNListView(GroupRequiredMixin, ListView):
         rodzaj_autora_id = self.request.GET.get("rodzaj_autora")
         if rodzaj_autora_id:
             queryset = self._filter_by_rodzaj_autora(queryset, rodzaj_autora_id, rok)
+
+        # Filtrowanie po statusie raportowana/nieraportowana
+        raportowana = self.request.GET.get("raportowana")
+        if raportowana:
+            nieraportowane_ids = oblicz_dyscypliny_nieraportowane()
+            if raportowana == "tak":
+                queryset = queryset.exclude(
+                    dyscyplina_naukowa_id__in=nieraportowane_ids
+                )
+            elif raportowana == "nie":
+                queryset = queryset.filter(dyscyplina_naukowa_id__in=nieraportowane_ids)
 
         return queryset
 
@@ -223,8 +235,12 @@ class AutorzyLiczbaNListView(GroupRequiredMixin, ListView):
         context["selected_dyscyplina"] = self.request.GET.get("dyscyplina", "")
         context["selected_rok"] = self.request.GET.get("rok", "")
         context["selected_rodzaj_autora"] = self.request.GET.get("rodzaj_autora", "")
+        context["selected_raportowana"] = self.request.GET.get("raportowana", "")
         context["search"] = self.request.GET.get("search", "")
         context["current_sort"] = self.request.GET.get("sort", "autor")
+
+        # Oblicz dyscypliny nieraportowane do wyświetlania w template
+        context["nieraportowane_ids"] = oblicz_dyscypliny_nieraportowane()
 
         # Oblicz sumy dla przefiltrowanych danych (przed paginacją)
         queryset_for_sum = self.get_queryset()
@@ -335,6 +351,19 @@ class UdzialyZaCaloscListView(GroupRequiredMixin, ListView):
         if rodzaj_autora_id:
             queryset = queryset.filter(rodzaj_autora_id=rodzaj_autora_id)
 
+        # Filtrowanie po statusie raportowana/nieraportowana
+        raportowana = self.request.GET.get("raportowana")
+        if raportowana:
+            nieraportowane_ids = oblicz_dyscypliny_nieraportowane()
+            if raportowana == "tak":
+                # Tylko dyscypliny raportowane (nie są w zbiorze nieraportowanych)
+                queryset = queryset.exclude(
+                    dyscyplina_naukowa_id__in=nieraportowane_ids
+                )
+            elif raportowana == "nie":
+                # Tylko dyscypliny nie-raportowane
+                queryset = queryset.filter(dyscyplina_naukowa_id__in=nieraportowane_ids)
+
         # Sortowanie
         sort = self.request.GET.get("sort", "autor")
 
@@ -375,8 +404,12 @@ class UdzialyZaCaloscListView(GroupRequiredMixin, ListView):
         # Aktualne filtry i sortowanie
         context["selected_dyscyplina"] = self.request.GET.get("dyscyplina", "")
         context["selected_rodzaj_autora"] = self.request.GET.get("rodzaj_autora", "")
+        context["selected_raportowana"] = self.request.GET.get("raportowana", "")
         context["search"] = self.request.GET.get("search", "")
         context["current_sort"] = self.request.GET.get("sort", "autor")
+
+        # Oblicz dyscypliny nieraportowane do wyświetlania w template
+        context["nieraportowane_ids"] = oblicz_dyscypliny_nieraportowane()
 
         # Oblicz sumy dla przefiltrowanych danych (przed paginacją)
         queryset_for_sum = self.get_queryset()

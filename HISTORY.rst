@@ -4,6 +4,16 @@ Historia zmian
 
 .. towncrier release notes start
 
+bpp 202601.1306 (2026-01-04)
+============================
+
+Usprawnienie
+------------
+
+- Dodano bonus +1 slot dla autorów z dwoma dyscyplinami, gdy jedna z nich jest nieraportowana. Bonus jest doliczany po obliczeniu średniej liczby N, więc nie wpływa na wartość liczby N dla uczelni. (bonus-nieraportowana)
+- Kolejka eksportu PBN: dodano nowy status "Wykluczone" dla publikacji, które z przyczyn projektowych nie mogą być eksportowane (nieobsługiwany charakter formalny, brak mapowania PBN dla typu, wyłączony eksport prac bez punktów). Status ten odróżnia świadome wykluczenia od prawdziwych błędów - wyświetlany jest szarą ikoną i nie pozwala na ponowną wysyłkę. (wykluczone-status)
+
+
 bpp 202512.1305 (2025-12-29)
 ============================
 

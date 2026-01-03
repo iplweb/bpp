@@ -164,6 +164,41 @@
             </div>
         </div>
 
+        <!-- Section 5: Both disciplines non-reported -->
+        <div class="callout {% if liczba_obie_nieraportowane > 0 %}alert{% else %}success{% endif %}">
+            <h3>5. Autorzy z obiema dyscyplinami nie-raportowanymi</h3>
+            <div class="grid-x grid-margin-x">
+                <div class="cell medium-8">
+                    <p>Liczba rekordów: <strong>{{ liczba_obie_nieraportowane }}</strong></p>
+                    {% if liczba_obie_nieraportowane > 0 %}
+                    <p><small>Autorzy mający dwie dyscypliny, gdzie obie są poniżej progu raportowania (N &lt; 12).</small></p>
+                    {% if autorzy_obie_nieraportowane %}
+                    <p><small><strong>Lista autorów:</strong></small></p>
+                    <ul style="font-size: 0.85rem;">
+                        {% for item in autorzy_obie_nieraportowane|slice:":5" %}
+                        <li>{{ item.autor }} ({{ item.rok }}): {{ item.dyscyplina }} + {{ item.subdyscyplina }}</li>
+                        {% endfor %}
+                        {% if liczba_obie_nieraportowane > 5 %}
+                        <li><em>... i {{ liczba_obie_nieraportowane|add:"-5" }} więcej</em></li>
+                        {% endif %}
+                    </ul>
+                    {% endif %}
+                    {% endif %}
+                </div>
+                <div class="cell medium-4 text-right">
+                    {% if liczba_obie_nieraportowane > 0 %}
+                        <span class="button warning disabled">
+                            <i class="fi-alert"></i> Wymaga uwagi
+                        </span>
+                    {% else %}
+                        <span class="button success disabled">
+                            <i class="fi-check"></i> Wszystko w porządku
+                        </span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
         <!-- Summary -->
         <div class="callout secondary">
             <h4>Podsumowanie</h4>
@@ -183,7 +218,10 @@
                 {% if zla_suma_procent > 0 %}
                 <li class="alert-text">⚠️ Wykryto {{ zla_suma_procent }} rekordów z nieprawidłową sumą procentów</li>
                 {% endif %}
-                {% if bez_wymiaru_etatu == 0 and bez_procent == 0 and zla_suma_procent == 0 %}
+                {% if liczba_obie_nieraportowane > 0 %}
+                <li class="alert-text">⚠️ Wykryto {{ liczba_obie_nieraportowane }} autorów z obiema dyscyplinami nie-raportowanymi</li>
+                {% endif %}
+                {% if bez_wymiaru_etatu == 0 and bez_procent == 0 and zla_suma_procent == 0 and liczba_obie_nieraportowane == 0 %}
                 <li class="success-text">✓ Wszystkie rekordy zawierają poprawne dane</li>
                 {% endif %}
             </ul>

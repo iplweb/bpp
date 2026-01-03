@@ -15,6 +15,7 @@ from django_bpp.settings.base import AUTH_USER_MODEL
 from pbn_api.exceptions import (
     AccessDeniedException,
     AlreadyEnqueuedError,
+    CharakterFormalnyMissingPBNUID,
     CharakterFormalnyNieobslugiwanyError,
     HttpException,
     NeedsPBNAuthorisationException,
@@ -49,6 +50,8 @@ class SendStatus(Enum):
     RETRY_MUCH_LATER = 2  # few hours, PraceSerwisoweExecption
 
     RETRY_AFTER_USER_AUTHORISED = 3  # when user logs in + authorizes
+
+    WYKLUCZONE = 4  # intentionally excluded from export (design reasons, not errors)
 
     FINISHED_OKAY = 5
     FINISHED_ERROR = 6
@@ -96,6 +99,13 @@ class PBN_Export_Queue(models.Model):
         verbose_name="Rodzaj błędu",
     )
 
+    wykluczone = models.BooleanField(
+        default=False,
+        db_index=True,
+        verbose_name="Wykluczone z eksportu",
+        help_text="Publikacja wykluczona z eksportu z przyczyn projektowych (nie błąd)",
+    )
+
     objects = PBN_Export_QueueManager()
 
     class Meta:
@@ -141,6 +151,7 @@ class PBN_Export_Queue(models.Model):
         self.zakonczono_pomyslnie = None
         self.retry_after_user_authorised = None
         self.rodzaj_bledu = None
+        self.wykluczone = False
 
         msg = "Ponownie wysłano"
         if user is not None:
@@ -175,6 +186,21 @@ class PBN_Export_Queue(models.Model):
         self.save()
         return SendStatus.FINISHED_ERROR
 
+    def exclude(self, msg):
+        """Oznacza element jako wykluczone z eksportu (WYKLUCZONE).
+
+        Używane dla publikacji, które z przyczyn projektowych nie mogą być eksportowane
+        (np. nieobsługiwany charakter formalny, wyłączony eksport PK=0).
+        To nie jest błąd - to zamierzone zachowanie systemu.
+        """
+        self.wysylke_zakonczono = timezone.now()
+        self.zakonczono_pomyslnie = False
+        self.wykluczone = True
+        self.rodzaj_bledu = None  # To nie jest błąd
+        self.dopisz_komunikat(msg)
+        self.save()
+        return SendStatus.WYKLUCZONE
+
     def _is_pbn_validation_error(self, exc):
         """Sprawdza czy HttpException zawiera błąd walidacji z PBN."""
         if not exc.json:
@@ -195,8 +221,8 @@ class PBN_Export_Queue(models.Model):
 
         return False
 
-    def _handle_pbn_exception(self, exc):
-        """Obsługuje wyjątki z wysyłki do PBN. Zwraca SendStatus lub None."""
+    def _handle_retry_exception(self, exc):
+        """Obsługuje wyjątki wymagające ponowienia. Zwraca SendStatus lub None."""
         if isinstance(exc, PraceSerwisoweException):
             self.dopisz_komunikat("Prace serwisowe w PBN, spróbuję za kilka godzin")
             self.save()
@@ -210,13 +236,46 @@ class PBN_Export_Queue(models.Model):
             self.save()
             return SendStatus.RETRY_AFTER_USER_AUTHORISED
 
+        if isinstance(exc, ResourceLockedException):
+            self.dopisz_komunikat(f"{exc}, ponowiam wysyłkę za kilka minut...")
+            self.save()
+            return SendStatus.RETRY_LATER
+
+        return None
+
+    def _handle_exclude_exception(self, exc):
+        """Obsługuje wyjątki prowadzące do wykluczenia. Zwraca SendStatus lub None."""
         if isinstance(exc, CharakterFormalnyNieobslugiwanyError):
-            return self.error(
-                "Charakter formalny tego rekordu nie jest ustawiony jako wysyłany do "
-                "PBN. Zmień konfigurację bazy BPP, Redagowanie -> Dane systemowe -> "
-                "Charaktery formalne",
-                rodzaj=RodzajBledu.MERYTORYCZNY,
+            return self.exclude(
+                "Wykluczone: Charakter formalny tego rekordu nie jest ustawiony jako "
+                "wysyłany do PBN. Zmień konfigurację bazy BPP, Redagowanie -> Dane "
+                "systemowe -> Charaktery formalne"
             )
+
+        if isinstance(exc, PKZeroExportDisabled):
+            return self.exclude(
+                "Wykluczone: Eksport prac bez punktów PK wyłączony w konfiguracji."
+            )
+
+        # CharakterFormalnyMissingPBNUID - wykluczone (brak mapowania PBN dla typu)
+        if isinstance(exc, CharakterFormalnyMissingPBNUID):
+            return self.exclude(
+                f"Wykluczone: Charakter formalny nie ma przypisanego rodzaju PBN. {exc}"
+            )
+
+        return None
+
+    def _handle_pbn_exception(self, exc):
+        """Obsługuje wyjątki z wysyłki do PBN. Zwraca SendStatus lub None."""
+        # Sprawdź wyjątki wymagające ponowienia
+        result = self._handle_retry_exception(exc)
+        if result is not None:
+            return result
+
+        # Sprawdź wyjątki prowadzące do wykluczenia
+        result = self._handle_exclude_exception(exc)
+        if result is not None:
+            return result
 
         if isinstance(exc, AccessDeniedException):
             return self.error(
@@ -224,19 +283,8 @@ class PBN_Export_Queue(models.Model):
                 rodzaj=RodzajBledu.TECHNICZNY,
             )
 
-        if isinstance(exc, PKZeroExportDisabled):
-            return self.error(
-                "Eksport prac bez punktów PK wyłączony w konfiguracji, nie wysłano.",
-                rodzaj=RodzajBledu.MERYTORYCZNY,
-            )
-
-        if isinstance(exc, ResourceLockedException):
-            self.dopisz_komunikat(f"{exc}, ponowiam wysyłkę za kilka minut...")
-            self.save()
-            return SendStatus.RETRY_LATER
-
         # WillNotExportError i podklasy (DOIorWWWMissing, LanguageMissingPBNUID, etc.)
-        # PKZeroExportDisabled jest obsłużony wcześniej osobno
+        # PKZeroExportDisabled i CharakterFormalnyMissingPBNUID są obsłużone wcześniej
         if isinstance(exc, WillNotExportError):
             return self.error(
                 f"Rekord nie może być wysłany do PBN: {exc}\n\n"

@@ -146,6 +146,9 @@
                         <a href="?zakonczono_pomyslnie=none{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if rok_od %}&rok_od={{ rok_od }}{% endif %}{% if rok_do %}&rok_do={{ rok_do }}{% endif %}" class="button {% if current_filter == 'none' %}warning{% else %}secondary{% endif %}">
                             <span class="fi-clock"></span> W trakcie/oczekujace ({{ pending_count }})
                         </a>
+                        <a href="?wykluczone=true{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if rok_od %}&rok_od={{ rok_od }}{% endif %}{% if rok_do %}&rok_do={{ rok_do }}{% endif %}" class="button {% if current_wykluczone == 'true' %}secondary{% else %}secondary{% endif %}" style="{% if current_wykluczone == 'true' %}background-color: #6c757d; color: white;{% endif %}">
+                            <span class="fi-minus-circle"></span> Wykluczone ({{ wykluczone_count }})
+                        </a>
                     </div>
 
                     <!-- Wiersz 2: Rok od, Rok do, Szukaj w tytule, przyciski -->

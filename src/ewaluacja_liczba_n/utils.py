@@ -88,6 +88,113 @@ def oblicz_srednia_liczbe_n_dla_dyscyplin(uczelnia, rok_min=2022, rok_max=2025):
             )
 
 
+def oblicz_dyscypliny_nieraportowane(rok=2025):
+    """
+    Oblicza zbiór ID dyscyplin nieraportowanych na podstawie sumy udziałów.
+    Dyscyplina jest nieraportowana gdy suma udziałów < 12.
+
+    Args:
+        rok: Rok dla którego sprawdzamy (domyślnie 2025)
+
+    Returns:
+        set: Zbiór ID dyscyplin nieraportowanych
+    """
+    from django.db.models import Sum
+
+    sumy = (
+        IloscUdzialowDlaAutoraZaRok.objects.filter(rok=rok)
+        .values("dyscyplina_naukowa_id")
+        .annotate(suma=Sum("ilosc_udzialow"))
+    )
+
+    return {
+        item["dyscyplina_naukowa_id"]
+        for item in sumy
+        if item["suma"] is not None and item["suma"] < 12
+    }
+
+
+def dolicz_bonus_za_nieraportowana(nieraportowane_ids, rok_min=2022, rok_max=2025):
+    """
+    Dolicza +1 slot dla autorów z dwoma dyscyplinami, gdzie jedna jest nieraportowana.
+
+    Warunki:
+    - Autor ma dwie dyscypliny (dyscyplina_naukowa + subdyscyplina_naukowa)
+    - AKTUALNA dyscyplina jest raportowana (NOT IN nieraportowane_ids)
+    - INNA dyscyplina jest nieraportowana (IN nieraportowane_ids)
+
+    Funkcja modyfikuje rekordy IloscUdzialowDlaAutoraZaCalosc dodając +1 slot
+    i odpowiedni komentarz. Jeśli suma przekroczy 4.0, zostanie zredukowana do 4.0.
+
+    Args:
+        nieraportowane_ids: set ID dyscyplin nieraportowanych
+        rok_min, rok_max: zakres lat ewaluacji
+    """
+    from bpp.models import Dyscyplina_Naukowa
+    from bpp.models.dyscyplina_naukowa import Autor_Dyscyplina
+
+    if not nieraportowane_ids:
+        return  # Brak nieraportowanych dyscyplin - nic do zrobienia
+
+    # Pobierz nazwy dyscyplin do komentarzy
+    dyscypliny_nazwy = {
+        d.pk: d.nazwa
+        for d in Dyscyplina_Naukowa.objects.filter(pk__in=nieraportowane_ids)
+    }
+
+    # Dla każdego rekordu IloscUdzialowDlaAutoraZaCalosc sprawdź warunki
+    for rekord in IloscUdzialowDlaAutoraZaCalosc.objects.select_related(
+        "autor", "dyscyplina_naukowa", "rodzaj_autora"
+    ):
+        # Pobierz Autor_Dyscyplina dla tego autora (dowolny rok z zakresu)
+        autor_dyscyplina = Autor_Dyscyplina.objects.filter(
+            autor_id=rekord.autor_id,
+            rok__gte=rok_min,
+            rok__lte=rok_max,
+        ).first()
+
+        if autor_dyscyplina is None or not autor_dyscyplina.dwie_dyscypliny():
+            continue
+
+        # Ustal która dyscyplina jest "inna"
+        if rekord.dyscyplina_naukowa_id == autor_dyscyplina.dyscyplina_naukowa_id:
+            inna_dyscyplina_id = autor_dyscyplina.subdyscyplina_naukowa_id
+        else:
+            inna_dyscyplina_id = autor_dyscyplina.dyscyplina_naukowa_id
+
+        # Sprawdź warunki dla +1
+        aktualna_raportowana = rekord.dyscyplina_naukowa_id not in nieraportowane_ids
+        inna_nieraportowana = inna_dyscyplina_id in nieraportowane_ids
+
+        if aktualna_raportowana and inna_nieraportowana:
+            # Dodaj +1 slot i +0.5 dla monografii
+            nowa_suma = rekord.ilosc_udzialow + Decimal("1")
+            nowa_suma_monografie = rekord.ilosc_udzialow_monografie + Decimal("0.5")
+            komentarz = rekord.komentarz or ""
+            komentarz += (
+                f"<br>+1 slot (+0.5 monografie): "
+                f"{dyscypliny_nazwy.get(inna_dyscyplina_id, '?')} nie-raportowana"
+            )
+
+            # Zastosuj cap do 4.0 jeśli przekroczone
+            if nowa_suma > 4:
+                komentarz += f"<br>Ilość udziałów zredukowana: {nowa_suma:.4f} → 4.00"
+                nowa_suma = Decimal("4")
+                # Proporcjonalnie zmniejsz monografie
+                nowa_suma_monografie = Decimal("2")
+
+            rekord.ilosc_udzialow = nowa_suma
+            rekord.ilosc_udzialow_monografie = nowa_suma_monografie
+            rekord.komentarz = komentarz
+            rekord.save(
+                update_fields=[
+                    "ilosc_udzialow",
+                    "ilosc_udzialow_monografie",
+                    "komentarz",
+                ]
+            )
+
+
 @transaction.atomic
 def oblicz_sumy_udzialow_za_calosc(rok_min=2022, rok_max=2025):
     """
@@ -281,11 +388,17 @@ def oblicz_liczby_n_dla_ewaluacji_2022_2025(uczelnia, rok_min=2022, rok_max=2025
                     autor_dyscyplina=ad,
                 )
 
-    # Oblicz sumę udziałów dla całego okresu ewaluacji
+    # Krok 1: Oblicz sumy udziałów za całość (BEZ bonusu +1)
     oblicz_sumy_udzialow_za_calosc(rok_min, rok_max)
 
-    # Policz średnią dla dyscyplin
+    # Krok 2: Policz średnią dla dyscyplin (BEZ bonusu!)
     oblicz_srednia_liczbe_n_dla_dyscyplin(uczelnia, rok_min, rok_max)
+
+    # Krok 3: Określ dyscypliny nieraportowane (suma 2025 < 12)
+    nieraportowane_ids = oblicz_dyscypliny_nieraportowane(rok_max)
+
+    # Krok 4: Doliczyć +1 slot gdzie potrzeba (NA KOŃCU - nie wpływa na średnią!)
+    dolicz_bonus_za_nieraportowana(nieraportowane_ids, rok_min, rok_max)
 
     #         # Jeżeli suma udziałów za 4 lata jest mniejsza jak 1 i jest włączona odpowiednia flaga
     #         # to zwiększ do 1 slota:

@@ -230,6 +230,8 @@ def praca_z_dyscyplina(
 
     denorms.flush()
 
+    wydawnictwo_ciagle_z_autorem.przelicz_punkty_dyscyplin()
+
     return wydawnictwo_ciagle_z_autorem
 
 
