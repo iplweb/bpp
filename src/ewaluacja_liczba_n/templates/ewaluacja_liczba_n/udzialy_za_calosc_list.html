@@ -31,11 +31,20 @@
                             <option value="">-- Wszystkie --</option>
                             {% for dyscyplina in dyscypliny %}
                                 <option value="{{ dyscyplina.pk }}" {% if selected_dyscyplina == dyscyplina.pk|stringformat:"s" %}selected{% endif %}>
-                                    {{ dyscyplina.nazwa }} ({{ dyscyplina.kod }})
+                                    {{ dyscyplina.nazwa }} ({{ dyscyplina.kod }}){% if dyscyplina.pk in nieraportowane_ids %} - nie-raportowana{% endif %}
                                 </option>
                             {% empty %}
                                 <option disabled>Brak dyscyplin z danymi</option>
                             {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="input-group">
+                        <span class="input-group-label">Raportowana:</span>
+                        <select name="raportowana" class="input-group-field auto-submit">
+                            <option value="">-- Wszystkie --</option>
+                            <option value="tak" {% if selected_raportowana == "tak" %}selected{% endif %}>Raportowana</option>
+                            <option value="nie" {% if selected_raportowana == "nie" %}selected{% endif %}>Nie-raportowana</option>
                         </select>
                     </div>
 
@@ -167,6 +176,9 @@
                         <td>
                             {{ udzial.dyscyplina_naukowa.nazwa }}
                             <small class="text-muted">({{ udzial.dyscyplina_naukowa.kod }})</small>
+                            {% if udzial.dyscyplina_naukowa.pk in nieraportowane_ids %}
+                                <span class="dyscyplina-badge nie-raportowana">nie-raportowana</span>
+                            {% endif %}
                         </td>
                         <td>
                             {% if udzial.rodzaj_autora %}
@@ -298,6 +310,10 @@
         background: #c9302c;
         color: white;
     }
+    .rounded-label.bonus {
+        background: #8e44ad;
+        color: white;
+    }
     .rodzaj-autora-badge {
         display: inline-block;
         padding: 0.3rem 0.6rem;
@@ -329,6 +345,20 @@
         opacity: 0.9;
         transform: scale(1.05);
         transition: all 0.2s ease;
+    }
+    .dyscyplina-badge {
+        display: inline-block;
+        padding: 0.2rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.7em;
+        font-weight: 600;
+        text-transform: uppercase;
+        margin-left: 0.5rem;
+        vertical-align: middle;
+    }
+    .dyscyplina-badge.nie-raportowana {
+        background: #d9534f;
+        color: white;
     }
     .rounded-label:hover::after {
         content: attr(title);
@@ -419,6 +449,15 @@ document.addEventListener('DOMContentLoaded', function() {
                             var newVal = parseFloat(match[2]).toFixed(2);
                             html += '<span class="rounded-label mono-reduced" title="Ilość udziałów za monografie zredukowana: ' +
                                     match[1] + ' → ' + match[2] + '">MONO RED. ' + oldVal + ' → ' + newVal + '</span>';
+                        }
+                    }
+                    // Sprawdź czy to info o bonusie za nieraportowaną dyscyplinę
+                    else if (part.includes('+1 slot')) {
+                        var matchBonus = part.match(/\+1 slot \(\+0\.5 monografie\):\s*(.+)/);
+                        if (matchBonus) {
+                            var dyscyplinaNazwa = matchBonus[1].trim();
+                            html += '<span class="rounded-label bonus" title="+1 slot (+0.5 monografie): ' +
+                                    dyscyplinaNazwa + '">+1 SLOT: ' + dyscyplinaNazwa + '</span>';
                         }
                     }
                 }
