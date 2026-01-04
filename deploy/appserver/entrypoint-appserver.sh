@@ -2,6 +2,7 @@
 
 export PGUSER="${DJANGO_BPP_DB_USER}"
 export PGHOST="${DJANGO_BPP_DB_HOST}"
+export PGPORT="${DJANGO_BPP_DB_PORT}"
 export PGPASSWORD="${DJANGO_BPP_DB_PASSWORD}"
 
 cd /app
