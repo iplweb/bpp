@@ -15,7 +15,7 @@ echo -n "Database migrations, if any... "
 uv run src/manage.py migrate
 echo "done."
 
-echo -n "Running collectstatic and compress"
+echo -n "Running collectstatic and compress... "
 uv run src/manage.py collectstatic --noinput -v0 --traceback
 uv run src/manage.py compress -v0 --force --traceback
 echo "done."
