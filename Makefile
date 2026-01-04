@@ -374,3 +374,10 @@ clean-docker-cache:
 	docker builder prune
 	docker builder prune --all
 	docker system prune -a --volumes
+
+new-worktree:
+	uv sync --all-extras
+	yarn install
+	uv run grunt build
+	uv run src/manage.py collectstatic --noinput
+	docker compose up -d
