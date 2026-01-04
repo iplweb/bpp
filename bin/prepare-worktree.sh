@@ -82,6 +82,9 @@ PGHOST=localhost
 PGPORT=$DJANGO_BPP_DB_PORT
 PGDATABASE=bpp
 PGUSER=postgres
+
+# Claude Code memory project
+CLAUDE_MEM_PROJECT=bpp
 EOF
 
 echo ""
