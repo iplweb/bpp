@@ -22,11 +22,12 @@ jobs:
 
     runs-on: ubuntu-latest
     timeout-minutes: 45  # Add job-level timeout
+    continue-on-error: ${{ matrix.python-version == '3.14' }}
 
     strategy:
       max-parallel: 4
       matrix:
-        python-version: [3.12,]
+        python-version: ["3.12", "3.14"]
 
     services:
       redis:
@@ -119,11 +120,11 @@ jobs:
         enable-cache: true
         cache-dependency-glob: "uv.lock"
 
-    - name: Install Python via uv
+    - name: Install Python ${{ matrix.python-version }}
       timeout-minutes: 10
       run: |
-        uv python install 3.12
-        uv python pin 3.12
+        uv python install ${{ matrix.python-version }}
+        uv python pin ${{ matrix.python-version }}
 
     - name: Install Python deps via uv
       timeout-minutes: 10

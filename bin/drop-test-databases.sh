@@ -1,8 +1,7 @@
 #!/bin/sh
+# Kasuje wszystkie testowe bazy danych (test_bpp, test_bpp_gw*, etc.)
 set -euo pipefail
 
-dropdb -f test_bpp || true
+SCRIPT_DIR="$(dirname "$0")"
 
-for a in test_bpp_gw{0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20};
-do dropdb -f $a || true;
-done
+"$SCRIPT_DIR/drop-databases-like.sh" -f -y test_bpp

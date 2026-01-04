@@ -64,7 +64,8 @@
       "mcp__playwright__browser_fill_form",
       "Bash(ls:*)",
       "Bash(gh run list:*)",
-      "Bash(gh run view:*)"
+      "Bash(gh run view:*)",
+      "mcp__plugin_claude-mem_mcp-search__get_observations"
     ],
     "deny": [],
     "ask": [],

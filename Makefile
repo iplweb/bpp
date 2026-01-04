@@ -369,3 +369,8 @@ refresh:
 
 remove-denorms:
 	echo "DELETE FROM denorm_dirtyinstance;" | uv run python src/manage.py dbshell
+
+clean-docker-cache:
+	docker builder prune
+	docker builder prune --all
+	docker system prune -a --volumes

@@ -14,7 +14,7 @@ services:
         - iplweb/bpp_dbserver:latest
     restart: always
     ports:
-      - 5432:5432
+      - ${DJANGO_BPP_DB_PORT:-5432}:5432
     volumes:
       - postgresql_data:/var/lib/postgresql/data
 
@@ -26,7 +26,11 @@ services:
       tags:
         - iplweb/bpp_beatserver:${DOCKER_VERSION:-latest}
         - iplweb/bpp_beatserver:latest
-    env_file: .env.docker
+    env_file:
+      - path: .env.docker
+        required: true
+      - path: .env
+        required: false
     environment:
       - DJANGO_SETTINGS_MODULE=django_bpp.settings.local
       - ENABLE_AUTORELOAD_ON_CODE_CHANGE=${ENABLE_AUTORELOAD_ON_CODE_CHANGE:-1}
@@ -52,7 +56,11 @@ services:
         - iplweb/bpp_appserver:${DOCKER_VERSION:-latest}
         - iplweb/bpp_appserver:latest
     restart: always
-    env_file: .env.docker
+    env_file:
+      - path: .env.docker
+        required: true
+      - path: .env
+        required: false
     environment:
       - DJANGO_SETTINGS_MODULE=django_bpp.settings.local
       - ENABLE_AUTORELOAD_ON_CODE_CHANGE=${ENABLE_AUTORELOAD_ON_CODE_CHANGE:-1}
@@ -64,7 +72,7 @@ services:
       db:
         condition: service_healthy
     ports:
-      - 8000:8000
+      - ${DJANGO_BPP_PORT_APP:-8000}:8000
     volumes:
       - ./src:/app/src
       - ./src/django_bpp/staticroot:/staticroot
@@ -78,7 +86,11 @@ services:
       tags:
         - iplweb/bpp_workerserver:${DOCKER_VERSION:-latest}
         - iplweb/bpp_workerserver:latest
-    env_file: .env.docker
+    env_file:
+      - path: .env.docker
+        required: true
+      - path: .env
+        required: false
     environment:
       - WEB_CONCURRENCY=4
       - DJANGO_SETTINGS_MODULE=django_bpp.settings.local
@@ -104,7 +116,11 @@ services:
       tags:
         - iplweb/bpp_workerserver:${DOCKER_VERSION:-latest}
         - iplweb/bpp_workerserver:latest
-    env_file: .env.docker
+    env_file:
+      - path: .env.docker
+        required: true
+      - path: .env
+        required: false
     environment:
       - WEB_CONCURRENCY=4
       - DJANGO_SETTINGS_MODULE=django_bpp.settings.local
@@ -131,7 +147,11 @@ services:
       tags:
         - iplweb/bpp_workerserver:${DOCKER_VERSION:-latest}
         - iplweb/bpp_workerserver:latest
-    env_file: .env.docker
+    env_file:
+      - path: .env.docker
+        required: true
+      - path: .env
+        required: false
     command: status
     depends_on:
       workerserver-general:
@@ -150,7 +170,11 @@ services:
       tags:
         - iplweb/bpp_denorm_queue:${DOCKER_VERSION:-latest}
         - iplweb/bpp_denorm_queue:latest
-    env_file: .env.docker
+    env_file:
+      - path: .env.docker
+        required: true
+      - path: .env
+        required: false
     environment:
       - DJANGO_SETTINGS_MODULE=django_bpp.settings.local
       - ENABLE_AUTORELOAD_ON_CODE_CHANGE=${ENABLE_AUTORELOAD_ON_CODE_CHANGE:-1}
@@ -172,15 +196,19 @@ services:
         - iplweb/bpp_webserver:${DOCKER_VERSION:-latest}
         - iplweb/bpp_webserver:latest
     restart: always
-    env_file: .env.docker
+    env_file:
+      - path: .env.docker
+        required: true
+      - path: .env
+        required: false
     environment:
       - USE_DEV_TEMPLATE=${USE_DEV_TEMPLATE:-true}
     depends_on:
       appserver:
         condition: service_healthy
     ports:
-      - 1080:80
-      - 10443:443
+      - ${DJANGO_BPP_PORT_HTTP:-1080}:80
+      - ${DJANGO_BPP_PORT_HTTPS:-10443}:443
     volumes:
       - ./src/django_bpp/staticroot:/var/www/html/staticroot
       - media:/mediaroot
@@ -197,17 +225,21 @@ services:
       timeout: 5s
       retries: 3
     ports:
-      - 6379:6379
+      - ${DJANGO_BPP_REDIS_PORT:-6379}:6379
     volumes:
       - redis_data:/data
 
   rabbitmq:
     image: rabbitmq:management-alpine
     restart: always
-    env_file: .env.docker
+    env_file:
+      - path: .env.docker
+        required: true
+      - path: .env
+        required: false
     ports:
-      - 5672:5672   # AMQP protocol port
-      - 15672:15672 # Management UI port
+      - ${DJANGO_BPP_RABBITMQ_PORT:-5672}:5672   # AMQP protocol port
+      - ${DJANGO_BPP_PORT_RABBITMQ_MGMT:-15672}:15672 # Management UI port
     environment:
       RABBITMQ_DEFAULT_USER: ${DJANGO_BPP_RABBITMQ_USER:-bpp}
       RABBITMQ_DEFAULT_PASS: ${DJANGO_BPP_RABBITMQ_PASS:-bpp}
