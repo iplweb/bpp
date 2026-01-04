@@ -144,6 +144,15 @@ nc -zv localhost 8000  # Check if port 8000 is in use
 - `make docker` - Build all Docker containers
 - `make bdist_wheel` - Build distribution wheel for production
 
+### Git Worktree Setup
+When creating a new git worktree for parallel development:
+
+```bash
+git worktree add -b feature/my-feature ../bpp-feature dev
+cd ../bpp-feature
+make new-worktree
+```
+
 ### Changelog Management
 - `towncrier create <name>.feature.rst` - Create feature changelog entry (in Polish)
 - `towncrier create <name>.bugfix.rst` - Create bugfix changelog entry (in Polish)

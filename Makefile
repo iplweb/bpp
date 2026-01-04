@@ -376,8 +376,11 @@ clean-docker-cache:
 	docker system prune -a --volumes
 
 new-worktree:
+	./bin/prepare-worktree.sh
+	direnv allow
 	uv sync --all-extras
 	yarn install
 	uv run grunt build
 	uv run src/manage.py collectstatic --noinput
 	docker compose up -d
+	./bin/show-settings.sh
