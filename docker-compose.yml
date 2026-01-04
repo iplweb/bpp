@@ -13,10 +13,18 @@ services:
         - iplweb/bpp_dbserver:${DOCKER_VERSION:-latest}
         - iplweb/bpp_dbserver:latest
     restart: always
+    environment:
+      - PGPORT=${DJANGO_BPP_DB_PORT:-5432}
     ports:
-      - ${DJANGO_BPP_DB_PORT:-5432}:5432
+      - ${DJANGO_BPP_DB_PORT:-5432}:${DJANGO_BPP_DB_PORT:-5432}
     volumes:
       - postgresql_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      start_period: 10s
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   celerybeat:
     image: iplweb/bpp_beatserver:${DOCKER_VERSION:-latest}
