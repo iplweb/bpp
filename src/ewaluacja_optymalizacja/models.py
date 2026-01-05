@@ -632,3 +632,302 @@ class StatusUnpinningAnalyzy(models.Model):
         self.data_zakonczenia = timezone.now()
         self.ostatni_komunikat = komunikat or "Zakończono"
         self.save()
+
+
+class DisciplineSwapOpportunity(models.Model):
+    """
+    Przechowuje wyniki analizy możliwości zamiany dyscyplin.
+
+    Identyfikuje publikacje gdzie:
+    - Autor ma przypisane dwie dyscypliny (dyscyplina + subdyscyplina) w Autor_Dyscyplina
+    - Zamiana dyscypliny z głównej na subdyscyplinę (lub odwrotnie) zwiększa punktację
+    """
+
+    # Metadane
+    created_at = models.DateTimeField(
+        auto_now_add=True, verbose_name="Data utworzenia analizy"
+    )
+
+    uczelnia = models.ForeignKey(
+        "bpp.Uczelnia",
+        on_delete=models.CASCADE,
+        verbose_name="Uczelnia",
+    )
+
+    # Informacje o publikacji
+    rekord_id = TupleField(
+        models.IntegerField(),
+        size=2,
+        db_index=True,
+        verbose_name="ID rekordu (content_type_id, object_id)",
+    )
+
+    rekord_tytul = models.TextField(
+        verbose_name="Tytuł pracy", help_text="Cache tytułu do wyświetlania"
+    )
+
+    rekord_rok = models.PositiveSmallIntegerField(
+        verbose_name="Rok publikacji",
+        null=True,
+        blank=True,
+    )
+
+    rekord_typ = models.CharField(
+        max_length=50,
+        verbose_name="Typ publikacji",
+        help_text="Ciagle/Zwarte",
+        default="",
+    )
+
+    # Autor do zamiany dyscypliny
+    autor = models.ForeignKey(
+        Autor,
+        on_delete=models.CASCADE,
+        related_name="discipline_swap_opportunities",
+        verbose_name="Autor do zamiany dyscypliny",
+    )
+
+    # Dyscypliny - obecna i docelowa
+    current_discipline = models.ForeignKey(
+        "bpp.Dyscyplina_Naukowa",
+        on_delete=models.CASCADE,
+        related_name="swap_from",
+        verbose_name="Obecna dyscyplina",
+    )
+
+    target_discipline = models.ForeignKey(
+        "bpp.Dyscyplina_Naukowa",
+        on_delete=models.CASCADE,
+        related_name="swap_to",
+        verbose_name="Docelowa dyscyplina",
+    )
+
+    # Punktacja przed i po zamianie
+    points_before = models.DecimalField(
+        max_digits=10,
+        decimal_places=4,
+        verbose_name="Punkty przed zamianą",
+        help_text="Całkowita punktacja publikacji przed zamianą dyscypliny",
+    )
+
+    points_after = models.DecimalField(
+        max_digits=10,
+        decimal_places=4,
+        verbose_name="Punkty po zamianie",
+        help_text="Całkowita punktacja publikacji po zamianie dyscypliny",
+    )
+
+    point_improvement = models.DecimalField(
+        max_digits=10,
+        decimal_places=4,
+        verbose_name="Poprawa punktów",
+        help_text="points_after - points_before",
+    )
+
+    # Dla Wydawnictwo_Ciagle: czy docelowa dyscyplina pasuje do dyscyplin źródła
+    zrodlo_discipline_match = models.BooleanField(
+        default=False,
+        verbose_name="Dyscyplina pasuje do źródła",
+        help_text=(
+            "True jeśli docelowa dyscyplina jest w Dyscyplina_Zrodla "
+            "dla tego źródła i roku"
+        ),
+    )
+
+    # Wynik analizy
+    makes_sense = models.BooleanField(
+        default=False,
+        verbose_name="Czy zamiana ma sens",
+        help_text="True jeśli zamiana zwiększa całkowitą punktację",
+    )
+
+    class Meta:
+        verbose_name = "Możliwość zamiany dyscypliny"
+        verbose_name_plural = "Możliwości zamiany dyscyplin"
+        ordering = ["-makes_sense", "-point_improvement", "rekord_tytul"]
+        indexes = [
+            models.Index(fields=["created_at"]),
+            models.Index(fields=["uczelnia"]),
+            models.Index(fields=["makes_sense"]),
+            models.Index(fields=["-point_improvement"]),
+            models.Index(fields=["current_discipline"]),
+            models.Index(fields=["target_discipline"]),
+            models.Index(fields=["zrodlo_discipline_match"]),
+            models.Index(fields=["rekord_rok"]),
+        ]
+
+    def __str__(self):
+        return (
+            f"{self.rekord_tytul[:50]}... - "
+            f"{self.autor}: {self.current_discipline} -> {self.target_discipline} "
+            f"(+{self.point_improvement})"
+        )
+
+    @property
+    def rekord(self):
+        """Pobierz obiekt Rekord dla tej publikacji."""
+        if hasattr(self, "_cached_rekord") and self._cached_rekord is not None:
+            return self._cached_rekord
+        from bpp.models import Rekord
+
+        return Rekord.objects.get(pk=self.rekord_id)
+
+
+class StatusDisciplineSwapAnalysis(models.Model):
+    """
+    Singleton model śledzący status zadania analizy zamiany dyscyplin.
+    Używany do zapewnienia, że tylko jedno zadanie może być uruchomione naraz
+    oraz do przekierowania użytkownika do strony statusu działającego zadania.
+    """
+
+    w_trakcie = models.BooleanField(
+        default=False,
+        verbose_name="W trakcie",
+        help_text="Czy zadanie jest obecnie uruchomione",
+    )
+    task_id = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        verbose_name="ID zadania Celery",
+    )
+    data_rozpoczecia = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Data rozpoczęcia",
+    )
+    data_zakonczenia = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Data zakończenia",
+    )
+    ostatni_komunikat = models.TextField(
+        blank=True,
+        default="",
+        verbose_name="Ostatni komunikat",
+    )
+
+    class Meta:
+        verbose_name = "Status analizy zamiany dyscyplin"
+        verbose_name_plural = "Status analizy zamiany dyscyplin"
+
+    def __str__(self):
+        if self.w_trakcie:
+            return f"W trakcie (task_id: {self.task_id})"
+        elif self.data_zakonczenia:
+            return f"Zakończono: {self.data_zakonczenia.strftime('%Y-%m-%d %H:%M:%S')}"
+        return "Brak uruchomionych zadań"
+
+    def save(self, *args, **kwargs):
+        # Singleton - zawsze nadpisuj rekord o pk=1
+        self.pk = 1
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def get_or_create(cls):
+        """Pobierz lub utwórz instancję singleton."""
+        obj, created = cls.objects.get_or_create(pk=1)
+        return obj
+
+    def rozpocznij(self, task_id):
+        """Oznacz rozpoczęcie zadania analizy zamiany dyscyplin."""
+        self.w_trakcie = True
+        self.task_id = task_id
+        self.data_rozpoczecia = timezone.now()
+        self.data_zakonczenia = None
+        self.ostatni_komunikat = "Rozpoczęto analizę możliwości zamiany dyscyplin"
+        self.save()
+
+    def zakoncz(self, komunikat=""):
+        """Oznacz zakończenie zadania analizy zamiany dyscyplin."""
+        self.w_trakcie = False
+        self.data_zakonczenia = timezone.now()
+        self.ostatni_komunikat = komunikat or "Zakończono"
+        self.save()
+
+
+class StatusPrzegladarkaRecalc(models.Model):
+    """
+    Singleton model śledzący status przeliczania z poziomu przeglądarki ewaluacji.
+    Przechowuje również punkty przed zmianą do obliczenia diff.
+    """
+
+    w_trakcie = models.BooleanField(
+        default=False,
+        verbose_name="W trakcie",
+        help_text="Czy przeliczanie jest obecnie uruchomione",
+    )
+    task_id = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        verbose_name="ID zadania Celery",
+    )
+    uczelnia = models.ForeignKey(
+        Uczelnia,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        verbose_name="Uczelnia",
+    )
+    data_rozpoczecia = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Data rozpoczęcia",
+    )
+    data_zakonczenia = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Data zakończenia",
+    )
+    ostatni_komunikat = models.TextField(
+        blank=True,
+        default="",
+        verbose_name="Ostatni komunikat",
+    )
+    # Punkty przed akcją - do obliczenia diff w podsumowaniu
+    punkty_przed = models.JSONField(
+        default=dict,
+        verbose_name="Punkty przed zmianą",
+        help_text="Dict: {discipline_id: points_value} przed akcją",
+    )
+
+    class Meta:
+        verbose_name = "Status przeliczania przeglądarki"
+        verbose_name_plural = "Status przeliczania przeglądarki"
+
+    def __str__(self):
+        if self.w_trakcie:
+            return f"W trakcie (task_id: {self.task_id})"
+        elif self.data_zakonczenia:
+            return f"Zakończono: {self.data_zakonczenia.strftime('%Y-%m-%d %H:%M:%S')}"
+        return "Brak uruchomionych zadań"
+
+    def save(self, *args, **kwargs):
+        # Singleton - zawsze nadpisuj rekord o pk=1
+        self.pk = 1
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def get_or_create(cls):
+        """Pobierz lub utwórz instancję singleton."""
+        obj, created = cls.objects.get_or_create(pk=1)
+        return obj
+
+    def rozpocznij(self, task_id, uczelnia, punkty_przed):
+        """Oznacz rozpoczęcie przeliczania z przeglądarki."""
+        self.w_trakcie = True
+        self.task_id = task_id
+        self.uczelnia = uczelnia
+        self.data_rozpoczecia = timezone.now()
+        self.data_zakonczenia = None
+        self.punkty_przed = punkty_przed
+        self.ostatni_komunikat = "Rozpoczęto przeliczanie ewaluacji"
+        self.save()
+
+    def zakoncz(self, komunikat=""):
+        """Oznacz zakończenie przeliczania."""
+        self.w_trakcie = False
+        self.data_zakonczenia = timezone.now()
+        self.ostatni_komunikat = komunikat or "Zakończono"
+        self.save()

@@ -1,0 +1,121 @@
+{% load humanize %}
+
+{% if publications %}
+<div class="publication-list">
+    {% for pub in publications %}
+    <div class="publication-item" style="border-bottom: 1px solid #e0e0e0; padding: 0.8rem 0;">
+        <!-- Wiersz 1: Tytuł + Rok + Punkty -->
+        <div>
+            <a href="{{ pub.url }}" target="_blank">{{ pub.tytul|truncatewords:15 }}</a>
+            <small style="margin-left: 0.5rem; color: #888;">({{ pub.rok }})</small>
+            <small style="margin-left: 0.5rem; color: #555;">
+                <strong>{{ pub.punkty_kbn }}</strong> pkt
+            </small>
+        </div>
+
+        <!-- Wiersz 2: Autorzy z wcięciem, jeden pod drugim -->
+        <div style="margin-left: 1.5rem; margin-top: 0.5rem; font-size: 0.9rem;">
+            {% for author in pub.authors %}
+            <div style="display: flex; align-items: center; margin-bottom: 0.3rem;">
+                <span style="min-width: 350px;">{{ author.autor }}</span>
+                <small style="min-width: 220px; color: #666;">
+                    {{ author.dyscyplina.nazwa|truncatechars:30 }}
+                </small>
+                <small style="min-width: 80px; color: #555; text-align: right;"
+                       title="Punktacja udziału">
+                    {% if author.pkdaut %}{{ author.pkdaut|floatformat:2 }} pkt{% else %}-{% endif %}
+                </small>
+                <small style="min-width: 70px; color: #555; text-align: right;"
+                       title="Slot udziału">
+                    {% if author.slot %}{{ author.slot|floatformat:4 }}{% else %}-{% endif %}
+                </small>
+
+                <!-- Badge: udział wybrany -->
+                <span style="min-width: 40px; margin-left: 0.5rem; text-align: center;">
+                    {% if pub.jest_wybrana and author.przypieta %}
+                    <span class="label success" style="font-size: 0.7rem; padding: 0.2rem 0.4rem;"
+                          title="Udział wybrany">TAK</span>
+                    {% else %}
+                    <span class="label secondary" style="font-size: 0.7rem; padding: 0.2rem 0.4rem;"
+                          title="Udział nie wybrany">NIE</span>
+                    {% endif %}
+                </span>
+
+                <!-- Przyciski akcji -->
+                <button class="button tiny{% if author.przypieta %} alert{% else %} success{% endif %}"
+                        title="{% if author.przypieta %}Odepnij dyscyplinę{% else %}Przypnij dyscyplinę{% endif %}"
+                        hx-post="{% url 'ewaluacja_optymalizacja:browser-toggle-pin' author.model_type author.pk %}"
+                        hx-target="#recalc-modal-content"
+                        hx-swap="innerHTML"
+                        onclick="$('#recalc-modal').foundation('open');"
+                        style="margin: 0 0 0 0.5rem; padding: 0.3rem 0.5rem;">
+                    <span class="fi-{% if author.przypieta %}unlock{% else %}lock{% endif %}"
+                          style="font-size: 1.2rem;"></span>
+                </button>
+
+                {% if author.has_two_disciplines %}
+                <button class="button tiny secondary"
+                        title="Zamień na drugą dyscyplinę"
+                        hx-post="{% url 'ewaluacja_optymalizacja:browser-swap-discipline' author.model_type author.pk %}"
+                        hx-target="#recalc-modal-content"
+                        hx-swap="innerHTML"
+                        onclick="$('#recalc-modal').foundation('open');"
+                        style="margin: 0 0 0 0.3rem; padding: 0.3rem 0.5rem;">
+                    <span class="fi-shuffle" style="font-size: 1.2rem;"></span>
+                </button>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Paginacja -->
+{% if page_obj.has_other_pages %}
+<div style="text-align: center; margin-top: 1rem;">
+    <nav aria-label="Paginacja">
+        <ul class="pagination" style="display: inline-flex;">
+            {% if page_obj.has_previous %}
+            <li class="pagination-previous">
+                <a href="#"
+                   hx-get="{% url 'ewaluacja_optymalizacja:browser-table' %}?page={{ page_obj.previous_page_number }}"
+                   hx-target="#publication-table"
+                   hx-include="#filter-form"
+                   hx-swap="innerHTML">
+                    Poprzednia
+                </a>
+            </li>
+            {% else %}
+            <li class="pagination-previous disabled">Poprzednia</li>
+            {% endif %}
+
+            <li class="current" style="padding: 0 1rem;">
+                Strona {{ page_obj.number }} z {{ page_obj.paginator.num_pages }}
+                ({{ page_obj.paginator.count }} publikacji)
+            </li>
+
+            {% if page_obj.has_next %}
+            <li class="pagination-next">
+                <a href="#"
+                   hx-get="{% url 'ewaluacja_optymalizacja:browser-table' %}?page={{ page_obj.next_page_number }}"
+                   hx-target="#publication-table"
+                   hx-include="#filter-form"
+                   hx-swap="innerHTML">
+                    Następna
+                </a>
+            </li>
+            {% else %}
+            <li class="pagination-next disabled">Następna</li>
+            {% endif %}
+        </ul>
+    </nav>
+</div>
+{% endif %}
+
+{% else %}
+<div class="callout warning">
+    <p><span class="fi-info"></span> Nie znaleziono publikacji dla wybranych filtrów.</p>
+    <p>Spróbuj zmienić kryteria wyszukiwania lub usuń filtry.</p>
+</div>
+{% endif %}

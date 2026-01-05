@@ -57,8 +57,11 @@
             <a href="{% url 'ewaluacja_optymalizacja:run-list' %}" class="button">
                 <span class="fi-list"></span> Wszystkie kalkulacje
             </a>
+            <a href="{% url 'ewaluacja_optymalizacja:evaluation-browser' %}" class="button">
+                <span class="fi-list-thumbnails"></span> Przegladarka ewaluacji
+            </a>
             <a href="{% url 'ewaluacja_optymalizacja:discipline-comparison' %}" class="button secondary">
-                <span class="fi-graph-bar"></span> Porównanie dyscyplin
+                <span class="fi-graph-bar"></span> Porownanie dyscyplin
             </a>
             <a href="{% url 'ewaluacja_dwudyscyplinowcy:index' %}" class="button secondary">
                 <span class="fi-torsos-all"></span> Dwudyscyplinowcy
@@ -78,6 +81,12 @@
                id="optymalizuj-przed-btn"
                {% if dirty_count > 0 %}onclick="event.preventDefault(); alert('Czekamy na przeliczenie punktów. Obecnie jest {{ dirty_count }} rekordów do przeliczenia.'); return false;"{% endif %}>
                 <span class="fi-zoom-in"></span> Optymalizuj przed
+            </a>
+            <a href="{% url 'ewaluacja_optymalizacja:discipline-swap-list' %}"
+               class="button info{% if dirty_count > 0 %} disabled{% endif %}"
+               id="discipline-swap-btn"
+               {% if dirty_count > 0 %}onclick="event.preventDefault(); alert('Czekamy na przeliczenie punktów. Obecnie jest {{ dirty_count }} rekordów do przeliczenia.'); return false;"{% endif %}>
+                <span class="fi-shuffle"></span> Zamiany dyscyplin
             </a>
             {% if status_bulk.w_trakcie and status_bulk.task_id and status_bulk.uczelnia %}
             <a href="{% url 'ewaluacja_optymalizacja:bulk-status' uczelnia_id=status_bulk.uczelnia.pk task_id=status_bulk.task_id %}"
@@ -187,6 +196,13 @@
                 if (optymalizujPrzedBtn) {
                     optymalizujPrzedBtn.classList.remove('disabled');
                     optymalizujPrzedBtn.onclick = null;
+                }
+
+                // Przycisk "Zamiany dyscyplin"
+                const disciplineSwapBtn = document.getElementById('discipline-swap-btn');
+                if (disciplineSwapBtn) {
+                    disciplineSwapBtn.classList.remove('disabled');
+                    disciplineSwapBtn.onclick = null;
                 }
 
                 // Przycisk "Optymalizuj, odpinajac sloty"

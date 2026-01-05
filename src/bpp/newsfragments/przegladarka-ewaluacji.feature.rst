@@ -1,0 +1,1 @@
+Dodano nowy widok "Przegladarka ewaluacji" umozliwiajacy przegladanie wszystkich publikacji z raportowanych dyscyplin. Widok wyswietla pozioma tabele z punktacja dyscyplin, filtrowanie po roku, tytule, dyscyplinie i nazwisku autora, oraz pozwala na przypinanie/odpinanie dyscyplin i zamiane dyscypliny na druga dla autorow dwudyscyplinowych.

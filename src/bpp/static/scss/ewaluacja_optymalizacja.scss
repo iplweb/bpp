@@ -12,6 +12,7 @@
 
 // Animated throbber icon - applies to fi-loop when used in progress/loading contexts
 .callout.warning .fi-loop,
+.callout.secondary .fi-loop,
 .callout.secondary .fi-clock {
   display: inline-block;
   animation: spin 2s linear infinite;
@@ -59,4 +60,99 @@ th.sortable {
 // Horizontal borders for unpinning opportunities table rows
 table tbody tr {
   border-bottom: 1px solid #e6e6e6;
+}
+
+// Animacje dla modala
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+// Modal przeliczania - ulepszone style
+#recalc-modal {
+  // Usuń białe tło i ramkę z zewnętrznego reveal
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+
+  // Animacja pojawienia się modala
+  animation: slideIn 0.3s ease-out;
+
+  // Kontener treści
+  #recalc-modal-content {
+    // Płynne przejścia między stanami
+    transition: all 0.3s ease-in-out;
+  }
+
+  // Wycentruj callout
+  .callout {
+    margin: 0;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+    min-width: 400px;
+
+    // Płynne przejście kolorów
+    transition: background-color 0.4s ease-in-out,
+                border-color 0.4s ease-in-out,
+                transform 0.3s ease-in-out;
+
+    // Efekt sukcesu
+    &.success {
+      animation: slideIn 0.3s ease-out;
+    }
+  }
+
+  // Stan ładowania (przed załadowaniem HTMX)
+  .modal-loading {
+    text-align: center;
+    padding: 2rem;
+    color: #666;
+
+    .fi-loop {
+      font-size: 2rem;
+      display: inline-block;
+      animation: spin 1.5s linear infinite;
+    }
+
+    p {
+      margin-top: 1rem;
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+  }
+}
+
+// Ciemniejszy overlay na całą stronę z animacją
+.reveal-overlay {
+  background-color: rgba(0, 0, 0, 0.6);
+  animation: fadeIn 0.25s ease-out;
+
+  // Animacja zamykania
+  &.closing {
+    animation: fadeIn 0.25s ease-out reverse;
+  }
 }

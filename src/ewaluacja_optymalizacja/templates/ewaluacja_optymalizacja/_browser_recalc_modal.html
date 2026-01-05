@@ -1,0 +1,47 @@
+{% load humanize %}
+
+<div class="callout {% if all_done %}success{% else %}warning{% endif %}"
+     {% if all_done %}data-recalc-complete="true"{% endif %}
+     {% if not all_done %}
+     hx-get="{% url 'ewaluacja_optymalizacja:browser-recalc-status' %}"
+     hx-trigger="every 3s"
+     hx-swap="innerHTML"
+     hx-target="#recalc-modal-content"
+     {% endif %}>
+
+    {% if not all_done %}
+    <h4 id="recalcModalTitle">
+        <span class="fi-loop"></span> Przeliczanie ewaluacji...
+    </h4>
+
+    {% if action %}
+    <p>Wykonana akcja: <strong>{{ action }}</strong></p>
+    {% endif %}
+
+    <div class="progress" role="progressbar"
+         aria-valuenow="{{ progress }}" aria-valuemin="0" aria-valuemax="100">
+        <div class="progress-meter" style="width: {{ progress }}%">
+            <p class="progress-meter-text">{{ progress }}%</p>
+        </div>
+    </div>
+
+    <p>
+        Przeliczono <strong>{{ completed }}</strong> z <strong>{{ total }}</strong>
+        dyscyplin.
+    </p>
+
+    <p><em><span class="fi-clock"></span> Status odświeżany co 3 sekundy...</em></p>
+
+    {% else %}
+    <h4 id="recalcModalTitle">
+        <span class="fi-check"></span> Przeliczanie zakończone!
+    </h4>
+
+    <p>
+        Wszystkie <strong>{{ total }}</strong> dyscyplin zostało przeliczonych
+        pomyślnie.
+    </p>
+
+    <p><em>Okno zamknie się automatycznie za chwilę...</em></p>
+    {% endif %}
+</div>

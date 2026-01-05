@@ -1,0 +1,51 @@
+{% load humanize %}
+
+<div class="callout" style="margin-bottom: 0; padding: 0.5rem 1rem;">
+    <h5 style="margin-bottom: 0.5rem;">
+        <span class="fi-graph-bar"></span> Podsumowanie punktacji dyscyplin
+    </h5>
+
+    <div style="overflow-x: auto;">
+        <table style="margin-bottom: 0; font-size: 0.85rem; table-layout: fixed; width: 100%;">
+            <thead>
+                <tr>
+                    {% for d in discipline_summary.disciplines %}
+                    <th style="text-align: center; padding: 0.3rem 0.5rem;
+                               white-space: nowrap; font-size: 0.75rem;">
+                        {{ d.dyscyplina.nazwa|truncatechars:30 }}
+                    </th>
+                    {% endfor %}
+                    <th style="text-align: center; padding: 0.3rem 0.5rem;
+                               font-weight: bold; background: #f0f0f0;">
+                        RAZEM
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    {% for d in discipline_summary.disciplines %}
+                    <td style="text-align: center; padding: 0.3rem 0.5rem;">
+                        <strong>{{ d.punkty|floatformat:2 }}</strong>
+                        {% if d.has_diff and d.diff != 0 %}
+                        <br>
+                        <small style="color: {% if d.diff > 0 %}green{% else %}red{% endif %};">
+                            {% if d.diff > 0 %}+{% endif %}{{ d.diff|floatformat:2 }}
+                        </small>
+                        {% endif %}
+                    </td>
+                    {% endfor %}
+                    <td style="text-align: center; padding: 0.3rem 0.5rem;
+                               font-weight: bold; background: #f0f0f0;">
+                        {{ discipline_summary.total_points|floatformat:2 }}
+                        {% if discipline_summary.has_diff and discipline_summary.total_diff != 0 %}
+                        <br>
+                        <small style="color: {% if discipline_summary.total_diff > 0 %}green{% else %}red{% endif %};">
+                            {% if discipline_summary.total_diff > 0 %}+{% endif %}{{ discipline_summary.total_diff|floatformat:2 }}
+                        </small>
+                        {% endif %}
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>

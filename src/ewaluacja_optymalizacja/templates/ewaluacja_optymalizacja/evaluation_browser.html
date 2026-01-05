@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}Przeglądarka ewaluacji{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url 'ewaluacja_optymalizacja:index' %}">Optymalizacja ewaluacji</a></li>
+    <li class="current">Przeglądarka ewaluacji</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="large-12 columns">
+        <h1>
+            <span class="fi-list-thumbnails"></span> Przeglądarka ewaluacji
+        </h1>
+
+        <div class="callout">
+            <p>
+                Ta strona pozwala przeglądać wszystkie publikacje z raportowanych
+                dyscyplin i zarządzać przypięciami dyscyplin dla poszczególnych
+                autorów. Po każdej zmianie następuje automatyczne przeliczenie
+                całej ewaluacji.
+            </p>
+        </div>
+
+        <div class="button-group" style="margin-bottom: 1rem;">
+            <a href="{% url 'ewaluacja_optymalizacja:index' %}" class="button secondary">
+                <span class="fi-arrow-left"></span> Powrót do optymalizacji
+            </a>
+        </div>
+
+        <!-- Podsumowanie dyscyplin (sticky) -->
+        <div id="discipline-summary"
+             hx-get="{% url 'ewaluacja_optymalizacja:browser-summary' %}"
+             hx-trigger="recalcComplete from:body"
+             style="position: sticky; top: 95px; z-index: 100; background: white;
+                    padding: 0.5rem 0; border-bottom: 1px solid #ccc;">
+            {% include "ewaluacja_optymalizacja/_browser_discipline_summary.html" %}
+        </div>
+
+        <!-- Filtry -->
+        <form id="filter-form"
+              hx-get="{% url 'ewaluacja_optymalizacja:browser-table' %}"
+              hx-target="#publication-table"
+              hx-trigger="submit"
+              hx-swap="innerHTML"
+              style="margin-top: 1rem;">
+            {% csrf_token %}
+            <fieldset style="border: 1px solid #ccc; padding: 1rem;
+                             margin-bottom: 1rem; border-radius: 3px;">
+                <legend style="font-weight: bold; padding: 0 0.5rem;">Filtry:</legend>
+
+                <div class="row">
+                    <div class="medium-2 columns">
+                        <label>Rok:
+                            <select name="rok" class="auto-submit-filter">
+                                <option value="">Wszystkie</option>
+                                {% for r in filters.lata %}
+                                <option value="{{ r }}">{{ r }}</option>
+                                {% endfor %}
+                            </select>
+                        </label>
+                    </div>
+
+                    <div class="medium-3 columns">
+                        <label>Tytuł:
+                            <input type="text" name="tytul" placeholder="Szukaj...">
+                        </label>
+                    </div>
+
+                    <div class="medium-3 columns">
+                        <label>Dyscyplina:
+                            <select name="dyscyplina" class="auto-submit-filter">
+                                <option value="">Wszystkie</option>
+                                {% for d in filters.dyscypliny %}
+                                <option value="{{ d.pk }}">{{ d.nazwa }}</option>
+                                {% endfor %}
+                            </select>
+                        </label>
+                    </div>
+
+                    <div class="medium-2 columns">
+                        <label>Nazwisko autora:
+                            <input type="text" name="nazwisko" placeholder="Szukaj...">
+                        </label>
+                    </div>
+
+                    <div class="medium-2 columns">
+                        <label>&nbsp;</label>
+                        <button type="submit" class="button small expanded">
+                            <span class="fi-filter"></span> Filtruj
+                        </button>
+                    </div>
+                </div>
+            </fieldset>
+        </form>
+
+        <!-- Tabela publikacji -->
+        <div id="publication-table"
+             hx-get="{% url 'ewaluacja_optymalizacja:browser-table' %}"
+             hx-trigger="load, recalcComplete from:body"
+             hx-include="#filter-form"
+             hx-swap="innerHTML">
+            <p><em>Ładowanie publikacji...</em></p>
+        </div>
+
+        <!-- Modal przeliczania -->
+        <div class="reveal" id="recalc-modal" data-reveal
+             data-close-on-click="false" data-close-on-esc="false"
+             aria-labelledby="recalcModalTitle" aria-hidden="true">
+            <div id="recalc-modal-content">
+                <!-- Domyślny throbber podczas ładowania HTMX -->
+                <div class="callout secondary modal-loading">
+                    <span class="fi-loop"></span>
+                    <p>Przygotowywanie...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-submit przy zmianie selectów
+    var autoSubmitElements = document.querySelectorAll('.auto-submit-filter');
+    autoSubmitElements.forEach(function(element) {
+        element.addEventListener('change', function() {
+            htmx.trigger(document.getElementById('filter-form'), 'submit');
+        });
+    });
+});
+
+// Konfiguracja CSRF dla HTMX
+document.body.addEventListener('htmx:configRequest', function(evt) {
+    var csrfInput = document.querySelector('[name=csrfmiddlewaretoken]');
+    if (csrfInput) {
+        evt.detail.headers['X-CSRFToken'] = csrfInput.value;
+    }
+});
+
+// Obsługa zakończenia przeliczania
+document.body.addEventListener('htmx:afterSettle', function(evt) {
+    if (evt.detail.target.id === 'recalc-modal-content') {
+        var modal = document.getElementById('recalc-modal');
+        var content = evt.detail.target;
+        var completeMarker = content.querySelector('[data-recalc-complete="true"]');
+
+        if (completeMarker) {
+            // Zamknij modal po 1.5s i odśwież dane
+            setTimeout(function() {
+                if (typeof $ !== 'undefined') {
+                    $('#recalc-modal').foundation('close');
+                } else {
+                    modal.style.display = 'none';
+                    modal.setAttribute('aria-hidden', 'true');
+                }
+                htmx.trigger(document.body, 'recalcComplete');
+            }, 1500);
+        }
+    }
+});
+
+// Reset modala po zamknięciu (przywróć throbber dla następnego użycia)
+$(document).on('closed.zf.reveal', '#recalc-modal', function() {
+    var defaultContent = '<div class="callout secondary modal-loading">' +
+        '<span class="fi-loop"></span>' +
+        '<p>Przygotowywanie...</p>' +
+        '</div>';
+    $('#recalc-modal-content').html(defaultContent);
+});
+</script>
+{% endblock %}

@@ -15,6 +15,23 @@ from .bulk_optimization import (
     cancel_bulk_optimization,
     start_bulk_optimization,
 )
+from .discipline_swap_analysis import (
+    analyze_discipline_swap_opportunities,
+    discipline_swap_status,
+)
+from .discipline_swap_list import (
+    cancel_discipline_swap_task,
+    discipline_swap_opportunities_list,
+    export_discipline_swap_xlsx,
+)
+from .evaluation_browser import (
+    browser_recalc_status,
+    browser_summary,
+    browser_swap_discipline,
+    browser_table,
+    browser_toggle_pin,
+    evaluation_browser,
+)
 from .exports import (
     export_all_authors_zip,
     export_all_disciplines_zip,
@@ -114,4 +131,18 @@ __all__ = [
     "export_prace_nazbierane_xlsx",
     "export_prace_nienazbierane_xlsx",
     "export_prace_odpiete_xlsx",
+    # discipline_swap_analysis.py
+    "analyze_discipline_swap_opportunities",
+    "discipline_swap_status",
+    # discipline_swap_list.py
+    "discipline_swap_opportunities_list",
+    "export_discipline_swap_xlsx",
+    "cancel_discipline_swap_task",
+    # evaluation_browser.py
+    "evaluation_browser",
+    "browser_summary",
+    "browser_table",
+    "browser_toggle_pin",
+    "browser_swap_discipline",
+    "browser_recalc_status",
 ]
