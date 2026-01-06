@@ -178,6 +178,8 @@ def test_get_discipline_pin_stats_filters_by_autor_dyscyplina():
 @pytest.mark.override_settings(CELERY_TASK_ALWAYS_EAGER=True)
 def test_reset_discipline_pins_creates_snapshot_and_resets(client, admin_user):
     """Test że reset tworzy snapshot i resetuje przypięcia."""
+    from unittest.mock import patch
+
     dyscyplina = baker.make(Dyscyplina_Naukowa, nazwa="Testowa", kod="1.1")
     autor = baker.make("bpp.Autor")
 
@@ -208,12 +210,19 @@ def test_reset_discipline_pins_creates_snapshot_and_resets(client, admin_user):
     assert all(not r.przypieta for r in odpięte_rekordy)
     snapshot_count_before = SnapshotOdpiec.objects.count()
 
-    # Wykonaj reset
-    client.force_login(admin_user)
-    url = reverse(
-        "ewaluacja_optymalizacja:reset-discipline-pins", kwargs={"pk": dyscyplina.pk}
-    )
-    response = client.get(url)
+    # Mock DirtyInstance.objects.count to return 30 first (dirty), then 0 (clean)
+    # Mock sleep to avoid actual waiting
+    with patch("denorm.models.DirtyInstance.objects.count") as mock_count:
+        mock_count.side_effect = [30, 0]
+
+        with patch("ewaluacja_optymalizacja.views.pins.sleep"):
+            # Wykonaj reset
+            client.force_login(admin_user)
+            url = reverse(
+                "ewaluacja_optymalizacja:reset-discipline-pins",
+                kwargs={"pk": dyscyplina.pk},
+            )
+            response = client.get(url)
 
     # Sprawdź czy utworzono snapshot
     assert SnapshotOdpiec.objects.count() == snapshot_count_before + 1
