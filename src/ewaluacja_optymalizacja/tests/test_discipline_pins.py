@@ -174,7 +174,8 @@ def test_get_discipline_pin_stats_filters_by_autor_dyscyplina():
     assert stats["pinned"] == 1
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
+@pytest.mark.override_settings(CELERY_TASK_ALWAYS_EAGER=True)
 def test_reset_discipline_pins_creates_snapshot_and_resets(client, admin_user):
     """Test że reset tworzy snapshot i resetuje przypięcia."""
     dyscyplina = baker.make(Dyscyplina_Naukowa, nazwa="Testowa", kod="1.1")
@@ -229,7 +230,8 @@ def test_reset_discipline_pins_creates_snapshot_and_resets(client, admin_user):
     assert response.url == reverse("ewaluacja_optymalizacja:index")
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
+@pytest.mark.override_settings(CELERY_TASK_ALWAYS_EAGER=True)
 def test_reset_discipline_pins_no_unpinned_shows_warning(client, admin_user):
     """Test że reset bez odpiętych rekordów pokazuje warning."""
     dyscyplina = baker.make(Dyscyplina_Naukowa, nazwa="Testowa", kod="1.1")
