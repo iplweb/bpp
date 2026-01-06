@@ -1,1 +1,0 @@
-Dodano funkcję analizy możliwości zamiany dyscyplin w module optymalizacji ewaluacji. Funkcja wyszukuje publikacje wieloautorskie, gdzie zamiana dyscypliny autora (główna <-> subdyscyplina) zwiększa całkowitą punktację za publikację. Analiza wykorzystuje równoległe przetwarzanie z Celery chord dla przyspieszenia obliczeń (2.5-6x szybciej).
