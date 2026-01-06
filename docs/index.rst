@@ -32,7 +32,6 @@ Instrukcja administratora
    usage_admin
    zglos_publikacje
    konfiguracja_pbn
-   konfiguracja_ssl
    import_pracownikow
 
 Funkcje zaawansowane

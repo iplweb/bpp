@@ -10,7 +10,7 @@ Code better Python than a brain-child of Guido van Rossum and Glyph Lefkowitz, r
 BPP (Bibliografia Publikacji Pracowników) is a Polish academic bibliography management system built with Django. It manages publication records for academic institutions and libraries in Poland.
 
 **Python Requirements:**
-- Python version: >=3.10,<3.13 (configured in pyproject.toml)
+- Python version: >=3.10,<3.15 (configured in pyproject.toml)
 
 ## General rule
 
@@ -22,7 +22,7 @@ BPP (Bibliografia Publikacji Pracowników) is a Polish academic bibliography man
 
 **IMPORTANT: if using icons, refrain from emojis, rather use monochrome Foundation-Icons (<span class="fi-icon"/>)**
 
-**IMPORTANT**: respect the maximum line length limit of 120 characters; if the line would be longer, please break it up to smaller pieces without losing its function.
+**IMPORTANT**: respect the maximum line length limit of 88 characters; if the line would be longer, please break it up to smaller pieces without losing its function.
 
 ## Python and Django Execution
 
@@ -144,6 +144,15 @@ nc -zv localhost 8000  # Check if port 8000 is in use
 - `make docker` - Build all Docker containers
 - `make bdist_wheel` - Build distribution wheel for production
 
+### Git Worktree Setup
+When creating a new git worktree for parallel development:
+
+```bash
+git worktree add -b feature/my-feature ../bpp-feature dev
+cd ../bpp-feature
+make new-worktree
+```
+
 ### Changelog Management
 - `towncrier create <name>.feature.rst` - Create feature changelog entry (in Polish)
 - `towncrier create <name>.bugfix.rst` - Create bugfix changelog entry (in Polish)
@@ -217,6 +226,12 @@ The project uses multiple Django applications in `src/`:
 - `test_bpp/` - BPP testing utilities
 - `maint-site/` - Site maintenance utilities
 - `create_test_db/` - Test database creation utilities
+- `admin_dashboard/` - Admin dashboard functionality
+- `deduplikator_zrodel/` - Source deduplication system
+- `pbn_wysylka_oswiadczen/` - PBN statement sending
+- `rozbieznosci_pk/` - PK discrepancy reports
+- `pbn_komparator_zrodel/` - PBN source comparison
+- `ewaluacja_dwudyscyplinowcy/` - Dual-discipline evaluation
 
 ### Database
 - PostgreSQL database with custom SQL functions and triggers

@@ -64,7 +64,14 @@
       "mcp__playwright__browser_fill_form",
       "Bash(ls:*)",
       "Bash(gh run list:*)",
-      "Bash(gh run view:*)"
+      "Bash(gh run view:*)",
+      "mcp__plugin_claude-mem_mcp-search__get_observations",
+      "Bash(for app in admin_dashboard deduplikator_zrodel pbn_wysylka_oswiadczen rozbieznosci_pk pbn_komparator_zrodel ewaluacja_dwudyscyplinowcy)",
+      "Bash(do)",
+      "Bash(if ! grep -q \"$app\" /Users/mpasternak/Programowanie/bpp/CLAUDE.md)",
+      "Bash(then)",
+      "Bash(fi)",
+      "Bash(done)"
     ],
     "deny": [],
     "ask": [],

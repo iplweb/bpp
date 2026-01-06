@@ -8,12 +8,15 @@ from bpp.models import Autor, Zrodlo
 
 @pytest.fixture(scope="function")
 def autorzy_page(page: Page, live_server):
-    baker.make(Autor, nazwisko="Atest", imiona="foo")
-
-    for _a in range(100):
-        baker.make(Autor)
+    # Create many authors starting with A and B to ensure letter pills appear
+    # even when filtered by letter (pagination requires > 1 page)
+    for i in range(60):
+        baker.make(Autor, nazwisko=f"Atest{i}", imiona="foo")
+    for i in range(60):
+        baker.make(Autor, nazwisko=f"Btest{i}", imiona="bar")
 
     page.goto(live_server.url + reverse("bpp:browse_autorzy"))
+    page.wait_for_load_state("networkidle")
     page.evaluate("Cookielaw.accept()")
     return page
 
@@ -43,24 +46,30 @@ def test_autorzy_search_form(autorzy_page: Page, live_server):
 def test_autorzy_literki(autorzy_page: Page):
     page = autorzy_page
 
-    # Click on letter A
-    page.get_by_role("link", name="A", exact=True).click()
+    # Click on letter A (using the letter pill selector from the modern template)
+    page.locator("a.autorzy-letter-pill.autorzy-letter-single", has_text="A").click()
+    page.wait_for_load_state("networkidle")
     expect(page.locator("body")).to_contain_text("Atest")
+    expect(page.locator("body")).not_to_contain_text("Btest")
 
     # Click on letter B
-    page.goto(page.url + "..")
-    page.get_by_role("link", name="B", exact=True).click()
+    page.locator("a.autorzy-letter-pill.autorzy-letter-single", has_text="B").click()
+    page.wait_for_load_state("networkidle")
+    expect(page.locator("body")).to_contain_text("Btest")
     expect(page.locator("body")).not_to_contain_text("Atest")
 
 
 @pytest.fixture(scope="function")
 def zrodla_page(page: Page, live_server):
-    baker.make(Zrodlo, nazwa="Atest")
-
-    for _a in range(100):
-        baker.make(Zrodlo)
+    # Create many sources starting with A and B to ensure letter pills appear
+    # even when filtered by letter (pagination requires > 1 page)
+    for i in range(80):
+        baker.make(Zrodlo, nazwa=f"Atest{i}")
+    for i in range(80):
+        baker.make(Zrodlo, nazwa=f"Btest{i}")
 
     page.goto(live_server.url + reverse("bpp:browse_zrodla"))
+    page.wait_for_load_state("networkidle")
     page.evaluate("Cookielaw.accept()")
     return page
 
@@ -75,13 +84,16 @@ def test_zrodla_index(zrodla_page: Page):
 def test_zrodla_literki(zrodla_page: Page):
     page = zrodla_page
 
-    # Click on letter A
-    page.get_by_role("link", name="A", exact=True).click()
+    # Click on letter A (using the letter pill selector from the template)
+    page.locator("a.letter-pill.letter-single", has_text="A").click()
+    page.wait_for_load_state("networkidle")
     expect(page.locator("body")).to_contain_text("Atest")
+    expect(page.locator("body")).not_to_contain_text("Btest")
 
     # Click on letter B
-    page.goto(page.url + "..")
-    page.get_by_role("link", name="B", exact=True).click()
+    page.locator("a.letter-pill.letter-single", has_text="B").click()
+    page.wait_for_load_state("networkidle")
+    expect(page.locator("body")).to_contain_text("Btest")
     expect(page.locator("body")).not_to_contain_text("Atest")
 
 

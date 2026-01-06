@@ -1,0 +1,160 @@
+{% load humanize %}
+
+{% if opportunities %}
+<table>
+    <thead>
+        <tr>
+            <th style="width: 20%;" class="sortable">
+                <a href="?sort_by=tytul&sort_dir={% if sort_by == 'tytul' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}{% if selected_current_discipline %}&current_discipline={{ selected_current_discipline }}{% endif %}{% if selected_target_discipline %}&target_discipline={{ selected_target_discipline }}{% endif %}{% if only_sensible %}&only_sensible=1{% endif %}{% if selected_pub_type %}&pub_type={{ selected_pub_type }}{% endif %}{% if selected_rok %}&rok={{ selected_rok }}{% endif %}{% if selected_zrodlo_match %}&zrodlo_match={{ selected_zrodlo_match }}{% endif %}">
+                    Tytuł pracy
+                    {% if sort_by == 'tytul' %}{% if sort_dir == 'asc' %}&#9650;{% else %}&#9660;{% endif %}{% endif %}
+                </a>
+            </th>
+            <th style="text-align: center;" class="sortable">
+                <a href="?sort_by=rok&sort_dir={% if sort_by == 'rok' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}{% if selected_current_discipline %}&current_discipline={{ selected_current_discipline }}{% endif %}{% if selected_target_discipline %}&target_discipline={{ selected_target_discipline }}{% endif %}{% if only_sensible %}&only_sensible=1{% endif %}{% if selected_pub_type %}&pub_type={{ selected_pub_type }}{% endif %}{% if selected_rok %}&rok={{ selected_rok }}{% endif %}{% if selected_zrodlo_match %}&zrodlo_match={{ selected_zrodlo_match }}{% endif %}">
+                    Rok
+                    {% if sort_by == 'rok' %}{% if sort_dir == 'asc' %}&#9650;{% else %}&#9660;{% endif %}{% endif %}
+                </a>
+            </th>
+            <th>Typ</th>
+            <th class="sortable">
+                <a href="?sort_by=autor&sort_dir={% if sort_by == 'autor' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}{% if selected_current_discipline %}&current_discipline={{ selected_current_discipline }}{% endif %}{% if selected_target_discipline %}&target_discipline={{ selected_target_discipline }}{% endif %}{% if only_sensible %}&only_sensible=1{% endif %}{% if selected_pub_type %}&pub_type={{ selected_pub_type }}{% endif %}{% if selected_rok %}&rok={{ selected_rok }}{% endif %}{% if selected_zrodlo_match %}&zrodlo_match={{ selected_zrodlo_match }}{% endif %}">
+                    Autor
+                    {% if sort_by == 'autor' %}{% if sort_dir == 'asc' %}&#9650;{% else %}&#9660;{% endif %}{% endif %}
+                </a>
+            </th>
+            <th>Obecna<br>dyscyplina</th>
+            <th>Docelowa<br>dyscyplina</th>
+            <th style="text-align: right;">Punkty<br>przed</th>
+            <th style="text-align: right;">Punkty<br>po</th>
+            <th style="text-align: right;" class="sortable">
+                <a href="?sort_by=point_improvement&sort_dir={% if sort_by == 'point_improvement' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}{% if selected_current_discipline %}&current_discipline={{ selected_current_discipline }}{% endif %}{% if selected_target_discipline %}&target_discipline={{ selected_target_discipline }}{% endif %}{% if only_sensible %}&only_sensible=1{% endif %}{% if selected_pub_type %}&pub_type={{ selected_pub_type }}{% endif %}{% if selected_rok %}&rok={{ selected_rok }}{% endif %}{% if selected_zrodlo_match %}&zrodlo_match={{ selected_zrodlo_match }}{% endif %}">
+                    Poprawa
+                    {% if sort_by == 'point_improvement' %}{% if sort_dir == 'asc' %}&#9650;{% else %}&#9660;{% endif %}{% endif %}
+                </a>
+            </th>
+            <th style="text-align: center;" class="sortable">
+                <a href="?sort_by=zrodlo_match&sort_dir={% if sort_by == 'zrodlo_match' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}{% if selected_current_discipline %}&current_discipline={{ selected_current_discipline }}{% endif %}{% if selected_target_discipline %}&target_discipline={{ selected_target_discipline }}{% endif %}{% if only_sensible %}&only_sensible=1{% endif %}{% if selected_pub_type %}&pub_type={{ selected_pub_type }}{% endif %}{% if selected_rok %}&rok={{ selected_rok }}{% endif %}{% if selected_zrodlo_match %}&zrodlo_match={{ selected_zrodlo_match }}{% endif %}">
+                    Zgodność<br>ze źródłem
+                    {% if sort_by == 'zrodlo_match' %}{% if sort_dir == 'asc' %}&#9650;{% else %}&#9660;{% endif %}{% endif %}
+                </a>
+            </th>
+            <th style="text-align: center;" class="sortable">
+                <a href="?sort_by=makes_sense&sort_dir={% if sort_by == 'makes_sense' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}{% if selected_current_discipline %}&current_discipline={{ selected_current_discipline }}{% endif %}{% if selected_target_discipline %}&target_discipline={{ selected_target_discipline }}{% endif %}{% if only_sensible %}&only_sensible=1{% endif %}{% if selected_pub_type %}&pub_type={{ selected_pub_type }}{% endif %}{% if selected_rok %}&rok={{ selected_rok }}{% endif %}{% if selected_zrodlo_match %}&zrodlo_match={{ selected_zrodlo_match }}{% endif %}">
+                    Sensowne?
+                    {% if sort_by == 'makes_sense' %}{% if sort_dir == 'asc' %}&#9650;{% else %}&#9660;{% endif %}{% endif %}
+                </a>
+            </th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for opp in opportunities %}
+        <tr {% if opp.makes_sense %}style="background-color: #e7f7e7;"{% endif %}>
+            <td>
+                <strong>{{ opp.rekord_tytul|truncatewords:10 }}</strong>
+            </td>
+            <td style="text-align: center;">
+                {{ opp.rekord_rok|default:"-" }}
+            </td>
+            <td>
+                {% if opp.rekord_typ == "Ciagle" %}
+                    Ciągłe
+                {% elif opp.rekord_typ == "Zwarte" %}
+                    Zwarte
+                {% else %}
+                    {{ opp.rekord_typ }}
+                {% endif %}
+            </td>
+            <td>
+                <strong>{{ opp.autor }}</strong>
+            </td>
+            <td>{{ opp.current_discipline.nazwa|truncatewords:3 }}</td>
+            <td>{{ opp.target_discipline.nazwa|truncatewords:3 }}</td>
+            <td style="text-align: right;">
+                {{ opp.points_before|floatformat:2 }}
+            </td>
+            <td style="text-align: right;">
+                {{ opp.points_after|floatformat:2 }}
+            </td>
+            <td style="text-align: right;">
+                {% if opp.point_improvement > 0 %}
+                    <strong style="color: green;">+{{ opp.point_improvement|floatformat:2 }}</strong>
+                {% elif opp.point_improvement < 0 %}
+                    <strong style="color: red;">{{ opp.point_improvement|floatformat:2 }}</strong>
+                {% else %}
+                    <strong>0.00</strong>
+                {% endif %}
+            </td>
+            <td style="text-align: center;">
+                {% if opp.rekord_typ == "Ciagle" %}
+                    {% if opp.zrodlo_discipline_match %}
+                        <span class="label success">TAK</span>
+                    {% else %}
+                        <span class="label alert">NIE</span>
+                    {% endif %}
+                {% else %}
+                    <span class="label secondary">N/D</span>
+                {% endif %}
+            </td>
+            <td style="text-align: center;">
+                {% if opp.makes_sense %}
+                    <span class="label success"><span class="fi-check"></span> TAK</span>
+                {% else %}
+                    <span class="label secondary">-</span>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<!-- Paginacja -->
+{% if opportunities.has_other_pages %}
+<div class="pagination-centered">
+    <ul class="pagination">
+        {% if opportunities.has_previous %}
+            <li class="arrow">
+                <a href="?page={{ opportunities.previous_page_number }}{% if selected_current_discipline %}&current_discipline={{ selected_current_discipline }}{% endif %}{% if selected_target_discipline %}&target_discipline={{ selected_target_discipline }}{% endif %}{% if only_sensible %}&only_sensible=1{% endif %}{% if selected_pub_type %}&pub_type={{ selected_pub_type }}{% endif %}{% if selected_rok %}&rok={{ selected_rok }}{% endif %}{% if selected_zrodlo_match %}&zrodlo_match={{ selected_zrodlo_match }}{% endif %}&sort_by={{ sort_by }}&sort_dir={{ sort_dir }}">
+                    &laquo;
+                </a>
+            </li>
+        {% else %}
+            <li class="arrow unavailable"><a href="">&laquo;</a></li>
+        {% endif %}
+
+        {% for num in opportunities.paginator.page_range %}
+            {% if opportunities.number == num %}
+                <li class="current"><a href="">{{ num }}</a></li>
+            {% elif num > opportunities.number|add:'-3' and num < opportunities.number|add:'3' %}
+                <li>
+                    <a href="?page={{ num }}{% if selected_current_discipline %}&current_discipline={{ selected_current_discipline }}{% endif %}{% if selected_target_discipline %}&target_discipline={{ selected_target_discipline }}{% endif %}{% if only_sensible %}&only_sensible=1{% endif %}{% if selected_pub_type %}&pub_type={{ selected_pub_type }}{% endif %}{% if selected_rok %}&rok={{ selected_rok }}{% endif %}{% if selected_zrodlo_match %}&zrodlo_match={{ selected_zrodlo_match }}{% endif %}&sort_by={{ sort_by }}&sort_dir={{ sort_dir }}">
+                        {{ num }}
+                    </a>
+                </li>
+            {% endif %}
+        {% endfor %}
+
+        {% if opportunities.has_next %}
+            <li class="arrow">
+                <a href="?page={{ opportunities.next_page_number }}{% if selected_current_discipline %}&current_discipline={{ selected_current_discipline }}{% endif %}{% if selected_target_discipline %}&target_discipline={{ selected_target_discipline }}{% endif %}{% if only_sensible %}&only_sensible=1{% endif %}{% if selected_pub_type %}&pub_type={{ selected_pub_type }}{% endif %}{% if selected_rok %}&rok={{ selected_rok }}{% endif %}{% if selected_zrodlo_match %}&zrodlo_match={{ selected_zrodlo_match }}{% endif %}&sort_by={{ sort_by }}&sort_dir={{ sort_dir }}">
+                    &raquo;
+                </a>
+            </li>
+        {% else %}
+            <li class="arrow unavailable"><a href="">&raquo;</a></li>
+        {% endif %}
+    </ul>
+</div>
+{% endif %}
+
+{% else %}
+<div class="callout warning">
+    <p>Nie znaleziono możliwości zamiany dyscyplin dla wybranych filtrów.</p>
+    <p>
+        <a href="{% url 'ewaluacja_optymalizacja:analyze-discipline-swap' %}"
+           class="button">
+            <span class="fi-refresh"></span> Uruchom analizę
+        </a>
+    </p>
+</div>
+{% endif %}

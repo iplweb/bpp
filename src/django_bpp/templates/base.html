@@ -47,7 +47,7 @@
             var breadcrumbs = document.getElementById('breadcrumbs-wrapper');
 
             if (topBar && breadcrumbs) {
-                var topBarHeight = topBar.offsetHeight - 5;
+                var topBarHeight = topBar.getBoundingClientRect().height;
                 breadcrumbs.style.top = topBarHeight + 'px';
             }
         }
@@ -64,7 +64,7 @@
         });
     </script>
     {% load notifications %}
-    <div id="messageTemplate" style="display: none;">
+    <div id="messageTemplate">
     {% verbatim messageTemplate %}
     <div data-closable
          data-url="{{ closeURL }}"
@@ -219,11 +219,10 @@
     {% include "top_bar.html" %}
     {% block before-breadcrumbs %}{% endblock %}
     {% block breadcrumbs-html %}
-        <div id="breadcrumbs-wrapper" class="grid-container-fluid hide-for-small-only"
-             style="background-color: rgba(240, 240, 240, 0.85); border-bottom: 1px solid #d6d6d6; padding: 10px 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); position: sticky; top: 50px; z-index: 1; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);">
+        <div id="breadcrumbs-wrapper" class="grid-container-fluid hide-for-small-only">
             <div class="grid-x align-middle">
                 <div class="cell auto">
-                    <ul class="breadcrumbs" style="margin: 0; background: transparent; display: inline-block;">
+                    <ul class="breadcrumbs">
                         {% block breadcrumbs %}
                             <li><a href="/">{{ uczelnia.skrot }}</a></li>
                         {% endblock %}
@@ -242,10 +241,10 @@
                 <div class="cell"><p/>
                     <div id="messagesPlaceholder"></div>
                     {% if DJANGO_BPP_ENABLE_TEST_CONFIGURATION %}
-                        <div class="test-server-banner hide-on-print" style="background: linear-gradient(135deg, #ff9800 0%, #ff6600 100%); color: white; padding: 12px 20px; margin: 10px 0 20px 0; border-radius: 8px; text-align: center; font-weight: 600; font-size: 1rem; box-shadow: 0 2px 8px rgba(255, 152, 0, 0.3); display: flex; align-items: center; justify-content: center; gap: 10px;">
-                            <span class="fi-alert" style="font-size: 1.3rem;"></span>
+                        <div class="test-server-banner hide-on-print">
+                            <span class="fi-alert"></span>
                             <span>SERWER TESTOWY - ZMIANY MOGĄ BYĆ NADPISANE BEZ OSTRZEŻENIA</span>
-                            <span class="fi-alert" style="font-size: 1.3rem;"></span>
+                            <span class="fi-alert"></span>
                         </div>
                     {% endif %}
                     <div id="content">
@@ -278,8 +277,7 @@
     </div>
 
     <!-- Full-width footer -->
-    <div class="grid-container-fluid"
-         style="background-color: #f8f8f8; border-top: 1px solid #e6e6e6; margin-top: 0px; padding: 40px 0; z-index: 10 !important; ">
+    <div class="grid-container-fluid footer-container">
         <div class="grid-container">
             <div class="grid-x">
                 {% include "base_footer.html" %}

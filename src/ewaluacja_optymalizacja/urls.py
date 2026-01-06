@@ -82,6 +82,32 @@ urlpatterns = [
         views.export_unpinning_opportunities_xlsx,
         name="unpinning-export-xlsx",
     ),
+    # Discipline swap analysis
+    path(
+        "analyze-discipline-swap/",
+        views.analyze_discipline_swap_opportunities,
+        name="analyze-discipline-swap",
+    ),
+    path(
+        "discipline-swap-status/<str:task_id>/",
+        views.discipline_swap_status,
+        name="discipline-swap-status",
+    ),
+    path(
+        "cancel-discipline-swap/<str:task_id>/",
+        views.cancel_discipline_swap_task,
+        name="cancel-discipline-swap",
+    ),
+    path(
+        "discipline-swap-opportunities/",
+        views.discipline_swap_opportunities_list,
+        name="discipline-swap-list",
+    ),
+    path(
+        "discipline-swap-opportunities/export-xlsx/",
+        views.export_discipline_swap_xlsx,
+        name="discipline-swap-export-xlsx",
+    ),
     path(
         "database-verification/",
         views.database_verification_view,
@@ -136,5 +162,36 @@ urlpatterns = [
         "export-sedn-report-2/",
         views.export_sedn_report_2,
         name="export-sedn-report-2",
+    ),
+    # Przeglądarka ewaluacji
+    path(
+        "przegladarka/",
+        views.evaluation_browser,
+        name="evaluation-browser",
+    ),
+    path(
+        "przegladarka/table/",
+        views.browser_table,
+        name="browser-table",
+    ),
+    path(
+        "przegladarka/summary/",
+        views.browser_summary,
+        name="browser-summary",
+    ),
+    path(
+        "przegladarka/toggle-pin/<str:model_type>/<int:pk>/",
+        views.browser_toggle_pin,
+        name="browser-toggle-pin",
+    ),
+    path(
+        "przegladarka/swap-discipline/<str:model_type>/<int:pk>/",
+        views.browser_swap_discipline,
+        name="browser-swap-discipline",
+    ),
+    path(
+        "przegladarka/recalc-status/",
+        views.browser_recalc_status,
+        name="browser-recalc-status",
     ),
 ]

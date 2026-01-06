@@ -3,6 +3,7 @@
 Ten moduł eksportuje wszystkie taski dla Celery autodiscover.
 """
 
+from .discipline_swap import analyze_discipline_swap_task
 from .optimization import (
     optimize_and_unpin_task,
     solve_all_reported_disciplines,
@@ -31,4 +32,6 @@ __all__ = [
     "run_unpinning_after_metrics_wrapper",
     # unpin_all_sensible.py
     "unpin_all_sensible_task",
+    # discipline_swap
+    "analyze_discipline_swap_task",
 ]

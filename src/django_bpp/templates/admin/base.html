@@ -188,7 +188,7 @@
             <!-- CONTEXT NAVIGATION -->
             <div id="grp-context-navigation">
                 <nav id="grp-breadcrumbs" class="{% block breadcrumbs-class %}{% endblock %}">
-                    <header style="display:none"><h1>Breadcrumbs</h1></header>
+                    <header><h1>Breadcrumbs</h1></header>
                     {% block breadcrumbs %}
                         <ul>
                             <li><a href="/">🏠</a></li>
@@ -199,7 +199,7 @@
                     {% endblock %}
                 </nav>
                 <nav id="grp-page-tools">
-                    <header style="display:none"><h1>Page Tools</h1></header>
+                    <header><h1>Page Tools</h1></header>
                     {% block page-tools %}{% endblock %}
                 </nav>
             </div>
@@ -219,7 +219,7 @@
                 <ul class="grp-messagelist">
                     {% for message in messages %}
                         <li{% if message.tags %} class="grp-{{ message.tags }}"{% endif %}>
-                            <a style="cursor: pointer; cursor: hand; }" class="close" data-dismiss="alert"
+                            <a class="close" data-dismiss="alert"
                                     {% if message.pk %}
                                close-href="{% url "messages_extends:message_mark_read" message.pk %}"{% endif %}> × </a>
                             {{ message|safe }}

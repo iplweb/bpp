@@ -29,7 +29,7 @@
 
 BRANCH=`git branch | sed -n '/\* /s///p'`
 
-.PHONY: clean distclean tests release tests-without-selenium tests-with-selenium docker destroy-test-databases coveralls-upload clean-coverage combine-coverage cache-delete buildx-cache-stats buildx-cache-prune buildx-cache-prune-aggressive bump-dev bump-release bump-and-start-dev migrate
+.PHONY: clean distclean tests release tests-without-selenium tests-with-selenium docker destroy-test-databases coveralls-upload clean-coverage combine-coverage cache-delete buildx-cache-stats buildx-cache-prune buildx-cache-prune-aggressive bump-dev bump-release bump-and-start-dev migrate new-worktree clean-worktree
 
 PYTHON=python3
 
@@ -267,7 +267,7 @@ loc: clean
 	pygount -N ... -F "...,staticroot,migrations,fixtures" src --format=summary
 
 
-DOCKER_VERSION="202601.1306"
+DOCKER_VERSION="202601.1307"
 
 DOCKER_BUILD=build --platform linux/amd64 --push
 #--no-cache
@@ -369,3 +369,21 @@ refresh:
 
 remove-denorms:
 	echo "DELETE FROM denorm_dirtyinstance;" | uv run python src/manage.py dbshell
+
+clean-docker-cache:
+	docker builder prune
+	docker builder prune --all
+	docker system prune -a --volumes
+
+new-worktree:
+	./bin/prepare-worktree.sh
+	direnv allow
+	uv sync --all-extras
+	yarn install
+	uv run grunt build
+	uv run src/manage.py collectstatic --noinput
+	docker compose up -d
+	./bin/show-settings.sh
+
+clean-worktree:
+	docker compose down -v --remove-orphans

@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}Status analizy zamiany dyscyplin{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url 'ewaluacja_optymalizacja:index' %}">Optymalizacja ewaluacji</a></li>
+    <li class="current">Status analizy zamiany dyscyplin</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="large-12 columns">
+        <h1>
+            <span class="fi-loop"></span> Analiza możliwości zamiany dyscyplin
+        </h1>
+
+        {% if not task_ready and not error %}
+        <div class="callout primary">
+            <h4><span class="fi-info"></span> Zadanie zostało uruchomione</h4>
+            <p>
+                Analiza sprawdza publikacje z lat 2022-2025, gdzie zamiana dyscypliny
+                autora (główna &lt;-&gt; subdyscyplina) zwiększy całkowitą punktację.
+            </p>
+            <p>
+                Proces może potrwać od kilku do kilkudziesięciu minut w zależności
+                od rozmiaru bazy danych. Strona odświeża się automatycznie co 5 sekund.
+            </p>
+        </div>
+        {% endif %}
+
+        <div class="callout info">
+            <p><strong>ID zadania:</strong> {{ task_id }}</p>
+            <p><strong>Status:</strong>
+                {% if task_state == "PROGRESS" %}
+                    <span class="label warning">W trakcie</span>
+                {% elif task_state == "SUCCESS" %}
+                    <span class="label success">Zakończono</span>
+                {% elif task_state == "FAILURE" %}
+                    <span class="label alert">Błąd</span>
+                {% elif task_state == "PENDING" %}
+                    <span class="label secondary">Oczekuje</span>
+                {% else %}
+                    <span class="label">{{ task_state }}</span>
+                {% endif %}
+            </p>
+        </div>
+
+        <!-- Progress section with HTMX polling -->
+        <div id="progress-container"
+             hx-get="{% url 'ewaluacja_optymalizacja:discipline-swap-status' task_id %}"
+             hx-trigger="every 5s"
+             hx-swap="innerHTML">
+            {% include "ewaluacja_optymalizacja/_discipline_swap_progress.html" %}
+        </div>
+
+        <div class="button-group">
+            <a href="{% url 'ewaluacja_optymalizacja:index' %}" class="button secondary">
+                <span class="fi-arrow-left"></span> Powrót do optymalizacji
+            </a>
+            {% if success %}
+                <a href="{% url 'ewaluacja_optymalizacja:discipline-swap-list' %}"
+                   class="button">
+                    <span class="fi-list"></span> Zobacz wyniki
+                </a>
+            {% endif %}
+        </div>
+
+        {% if not task_ready and not error %}
+        <div style="margin-top: 3rem; padding-top: 2rem; border-top: 1px solid #ccc;">
+            <p class="text-muted" style="font-size: 0.85rem; color: #666;">
+                Jeśli zadanie się zawiesiło i nie kończy (np. worker Celery przestał
+                działać), możesz je anulować poniższym przyciskiem.
+            </p>
+            <form method="post"
+                  action="{% url 'ewaluacja_optymalizacja:cancel-discipline-swap' task_id %}"
+                  onsubmit="return confirm('Czy na pewno chcesz anulować to zadanie?');">
+                {% csrf_token %}
+                <button type="submit" class="button small alert">
+                    <span class="fi-x"></span> Anuluj zadanie
+                </button>
+            </form>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

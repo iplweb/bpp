@@ -12,6 +12,7 @@
 
 // Animated throbber icon - applies to fi-loop when used in progress/loading contexts
 .callout.warning .fi-loop,
+.callout.secondary .fi-loop,
 .callout.secondary .fi-clock {
   display: inline-block;
   animation: spin 2s linear infinite;
@@ -59,4 +60,162 @@ th.sortable {
 // Horizontal borders for unpinning opportunities table rows
 table tbody tr {
   border-bottom: 1px solid #e6e6e6;
+}
+
+// Animacje dla modala
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+// Modal przeliczania - ulepszone style
+#recalc-modal {
+  // Usuń białe tło i ramkę z zewnętrznego reveal
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+
+  // Animacja pojawienia się modala
+  animation: slideIn 0.3s ease-out;
+
+  // Kontener treści
+  #recalc-modal-content {
+    // Płynne przejścia między stanami
+    transition: all 0.3s ease-in-out;
+  }
+
+  // Wycentruj callout
+  .callout {
+    margin: 0;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+    min-width: 400px;
+
+    // Płynne przejście kolorów
+    transition: background-color 0.4s ease-in-out,
+                border-color 0.4s ease-in-out,
+                transform 0.3s ease-in-out;
+
+    // Efekt sukcesu
+    &.success {
+      animation: slideIn 0.3s ease-out;
+    }
+  }
+
+  // Stan ładowania (przed załadowaniem HTMX)
+  .modal-loading {
+    text-align: center;
+    padding: 2rem;
+    color: #666;
+
+    .fi-loop {
+      font-size: 2rem;
+      display: inline-block;
+      animation: spin 1.5s linear infinite;
+    }
+
+    p {
+      margin-top: 1rem;
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+  }
+}
+
+// Ciemniejszy overlay na całą stronę z animacją
+.reveal-overlay {
+  background-color: rgba(0, 0, 0, 0.6);
+  animation: fadeIn 0.25s ease-out;
+  // Overlay musi być ponad top-bar (1000) ale poniżej modala (1005)
+  z-index: 1004 !important;
+
+  // Animacja zamykania
+  &.closing {
+    animation: fadeIn 0.25s ease-out reverse;
+  }
+}
+
+// Przeglądarka ewaluacji - sticky discipline summary
+#discipline-summary {
+  position: sticky;
+  top: 95px;
+  background: transparent;
+  padding: 0.5rem 0;
+  z-index: 5;
+
+  // Panel ma białe tło, bez zewnętrznej ramki
+  .callout {
+    background: white;
+    border: none;
+  }
+}
+
+// HTMX loading states - wyszarzenie podczas ładowania
+#publication-table {
+  position: relative;
+  transition: opacity 0.2s ease-in-out;
+
+  // Podczas ładowania HTMX
+  &.htmx-request {
+    opacity: 0.5;
+    pointer-events: none;
+
+    // Overlay z throbberem
+    &::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(255, 255, 255, 0.7);
+      z-index: 10;
+    }
+
+    &::after {
+      content: "Ładowanie...";
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      padding: 1rem 2rem;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+      z-index: 11;
+      font-weight: bold;
+      color: #666;
+    }
+  }
+}
+
+// Discipline summary loading state
+#discipline-summary {
+  &.htmx-request {
+    opacity: 0.6;
+  }
 }

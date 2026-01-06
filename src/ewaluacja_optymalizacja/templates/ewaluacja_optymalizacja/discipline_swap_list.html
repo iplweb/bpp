@@ -1,0 +1,203 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}Możliwości zamiany dyscyplin{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url 'ewaluacja_optymalizacja:index' %}">Optymalizacja ewaluacji</a></li>
+    <li class="current">Możliwości zamiany dyscyplin</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="large-12 columns">
+        <h1>
+            <span class="fi-shuffle"></span> Możliwości zamiany dyscyplin
+        </h1>
+
+        <div class="callout">
+            <h4><span class="fi-info"></span> Informacja</h4>
+            <p>
+                Ta analiza identyfikuje publikacje wieloautorskie gdzie zamiana
+                dyscypliny autora (główna &lt;-&gt; subdyscyplina) zwiększy
+                całkowitą punktację za publikację.
+            </p>
+            <ul>
+                <li>
+                    <strong>Obecna dyscyplina</strong>: aktualna dyscyplina
+                    przypisana do autora w tej publikacji
+                </li>
+                <li>
+                    <strong>Docelowa dyscyplina</strong>: dyscyplina na którą
+                    można zamienić (subdyscyplina lub główna)
+                </li>
+                <li>
+                    <strong>"Sensowne"</strong>: zamiana zwiększy punktację
+                    za publikację
+                </li>
+                <li>
+                    <strong>Zgodność ze źródłem</strong>: docelowa dyscyplina
+                    pasuje do dyscyplin źródła (tylko dla Wydawnictwo Ciągłe)
+                </li>
+            </ul>
+        </div>
+
+        <div class="button-group">
+            <a href="{% url 'ewaluacja_optymalizacja:index' %}" class="button secondary">
+                <span class="fi-arrow-left"></span> Powrót
+            </a>
+            <a href="{% url 'ewaluacja_optymalizacja:analyze-discipline-swap' %}"
+               class="button">
+                <span class="fi-refresh"></span> Przelicz ponownie
+            </a>
+            <a href="{% url 'ewaluacja_optymalizacja:discipline-swap-export-xlsx' %}?{% if selected_current_discipline %}current_discipline={{ selected_current_discipline }}&{% endif %}{% if selected_target_discipline %}target_discipline={{ selected_target_discipline }}&{% endif %}{% if only_sensible %}only_sensible=1&{% endif %}{% if selected_pub_type %}pub_type={{ selected_pub_type }}&{% endif %}{% if selected_rok %}rok={{ selected_rok }}&{% endif %}{% if selected_zrodlo_match %}zrodlo_match={{ selected_zrodlo_match }}{% endif %}"
+               class="button success">
+                <span class="fi-page-export-csv"></span> Eksport do Excel
+            </a>
+        </div>
+
+        <!-- Statystyki -->
+        <div class="callout success" style="margin-top: 1rem;">
+            <h5><span class="fi-graph-bar"></span> Statystyki</h5>
+            <p>
+                Znaleziono <strong>{{ total_count }}</strong> możliwości zamiany,
+                w tym <strong>{{ sensible_count }}</strong> sensownych
+                (<strong>{{ sensible_percentage|floatformat:1|default:"0" }}%</strong>
+                z {{ total_count }}).
+            </p>
+        </div>
+
+        {% if last_analysis %}
+        <div class="callout secondary" style="margin-top: 1rem;">
+            <span class="fi-clock"></span> Wyniki wygenerowane:
+            {{ last_analysis.created_at|date:"Y-m-d H:i" }}
+        </div>
+        {% endif %}
+
+        <!-- Filtry -->
+        <form method="GET"
+              action="{% url 'ewaluacja_optymalizacja:discipline-swap-list' %}"
+              id="filterForm">
+            <!-- Hidden inputs to preserve sorting when filtering -->
+            <input type="hidden" name="sort_by" value="{{ sort_by }}">
+            <input type="hidden" name="sort_dir" value="{{ sort_dir }}">
+
+            <fieldset style="border: 1px solid #ccc; padding: 1rem; margin-bottom: 1rem; border-radius: 3px;">
+                <legend style="font-weight: bold; padding: 0 0.5rem;">Filtry:</legend>
+
+                <div class="row">
+                    <div class="medium-2 columns">
+                        <label>Obecna dyscyplina:
+                            <select name="current_discipline" class="auto-submit-filter">
+                                <option value="">Wszystkie</option>
+                                {% for d in dyscypliny %}
+                                <option value="{{ d.pk }}"
+                                    {% if selected_current_discipline == d.pk|stringformat:"s" %}selected{% endif %}>
+                                    {{ d.nazwa }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </label>
+                    </div>
+
+                    <div class="medium-2 columns">
+                        <label>Docelowa dyscyplina:
+                            <select name="target_discipline" class="auto-submit-filter">
+                                <option value="">Wszystkie</option>
+                                {% for d in dyscypliny %}
+                                <option value="{{ d.pk }}"
+                                    {% if selected_target_discipline == d.pk|stringformat:"s" %}selected{% endif %}>
+                                    {{ d.nazwa }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </label>
+                    </div>
+
+                    <div class="medium-2 columns">
+                        <label>Typ publikacji:
+                            <select name="pub_type" class="auto-submit-filter">
+                                <option value="">Wszystkie</option>
+                                <option value="Ciagle"
+                                    {% if selected_pub_type == "Ciagle" %}selected{% endif %}>
+                                    Ciągłe
+                                </option>
+                                <option value="Zwarte"
+                                    {% if selected_pub_type == "Zwarte" %}selected{% endif %}>
+                                    Zwarte
+                                </option>
+                            </select>
+                        </label>
+                    </div>
+
+                    <div class="medium-1 columns">
+                        <label>Rok:
+                            <select name="rok" class="auto-submit-filter">
+                                <option value="">Wszystkie</option>
+                                {% for y in years %}
+                                <option value="{{ y }}"
+                                    {% if selected_rok == y|stringformat:"s" %}selected{% endif %}>
+                                    {{ y }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </label>
+                    </div>
+
+                    <div class="medium-2 columns">
+                        <label>Zgodność ze źródłem:
+                            <select name="zrodlo_match" class="auto-submit-filter">
+                                <option value="">Wszystkie</option>
+                                <option value="1"
+                                    {% if selected_zrodlo_match == "1" %}selected{% endif %}>
+                                    Pasuje
+                                </option>
+                                <option value="0"
+                                    {% if selected_zrodlo_match == "0" %}selected{% endif %}>
+                                    Nie pasuje
+                                </option>
+                            </select>
+                        </label>
+                    </div>
+
+                    <div class="medium-1 columns">
+                        <label>
+                            <input type="checkbox" name="only_sensible" value="1"
+                                {% if only_sensible %}checked{% endif %}
+                                class="auto-submit-filter">
+                            Tylko sensowne
+                        </label>
+                    </div>
+
+                    <div class="medium-2 columns">
+                        <button type="submit" class="button small">
+                            <span class="fi-filter"></span> Filtruj
+                        </button>
+                        <a href="{% url 'ewaluacja_optymalizacja:discipline-swap-list' %}"
+                           class="button small secondary">
+                            <span class="fi-x"></span> Wyczyść
+                        </a>
+                    </div>
+                </div>
+            </fieldset>
+        </form>
+
+        <script type="text/javascript">
+            // Auto-submit filter form when filters change
+            document.addEventListener('DOMContentLoaded', function() {
+                var filterForm = document.getElementById('filterForm');
+                var autoSubmitElements = document.querySelectorAll('.auto-submit-filter');
+
+                autoSubmitElements.forEach(function(element) {
+                    element.addEventListener('change', function() {
+                        filterForm.submit();
+                    });
+                });
+            });
+        </script>
+
+        {% include 'ewaluacja_optymalizacja/_discipline_swap_table.html' %}
+    </div>
+</div>
+{% endblock %}

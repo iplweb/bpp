@@ -15,7 +15,7 @@
     &.sticky-header {
         position: sticky;
         top: 0;
-        z-index: 1000;
+        z-index: 2000;  // Must be highest to ensure dropdown appears above all sticky elements
         backdrop-filter: blur(8px);
         -webkit-backdrop-filter: blur(8px);
     }
@@ -41,6 +41,7 @@
                 overflow: hidden;
                 display: block !important;
                 visibility: hidden;
+                z-index: 1001;  // Above sticky elements like discipline-summary
             }
 
             // Show dropdown on hover with animation

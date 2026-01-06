@@ -2,7 +2,13 @@ from django.contrib import admin
 from django.urls import reverse
 from django.utils.html import format_html
 
-from .models import OptimizationAuthorResult, OptimizationPublication, OptimizationRun
+from .models import (
+    DisciplineSwapOpportunity,
+    OptimizationAuthorResult,
+    OptimizationPublication,
+    OptimizationRun,
+    StatusDisciplineSwapAnalysis,
+)
 
 
 class OptimizationPublicationInline(admin.TabularInline):
@@ -148,3 +154,87 @@ class OptimizationPublicationAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return request.user.is_superuser
+
+
+@admin.register(DisciplineSwapOpportunity)
+class DisciplineSwapOpportunityAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "rekord_tytul_short",
+        "rekord_rok",
+        "rekord_typ",
+        "autor",
+        "current_discipline",
+        "target_discipline",
+        "point_improvement",
+        "zrodlo_discipline_match",
+        "makes_sense",
+        "created_at",
+    )
+    list_filter = (
+        "makes_sense",
+        "zrodlo_discipline_match",
+        "rekord_typ",
+        "rekord_rok",
+        "current_discipline",
+        "target_discipline",
+    )
+    search_fields = (
+        "rekord_tytul",
+        "autor__nazwisko",
+        "autor__imiona",
+    )
+    readonly_fields = (
+        "uczelnia",
+        "rekord_id",
+        "rekord_tytul",
+        "rekord_rok",
+        "rekord_typ",
+        "autor",
+        "current_discipline",
+        "target_discipline",
+        "points_before",
+        "points_after",
+        "point_improvement",
+        "zrodlo_discipline_match",
+        "makes_sense",
+        "created_at",
+    )
+    date_hierarchy = "created_at"
+
+    def rekord_tytul_short(self, obj):
+        if obj.rekord_tytul and len(obj.rekord_tytul) > 50:
+            return obj.rekord_tytul[:50] + "..."
+        return obj.rekord_tytul
+
+    rekord_tytul_short.short_description = "Tytuł"
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return request.user.is_superuser
+
+
+@admin.register(StatusDisciplineSwapAnalysis)
+class StatusDisciplineSwapAnalysisAdmin(admin.ModelAdmin):
+    list_display = (
+        "pk",
+        "w_trakcie",
+        "task_id",
+        "data_rozpoczecia",
+        "data_zakonczenia",
+    )
+    readonly_fields = (
+        "w_trakcie",
+        "task_id",
+        "data_rozpoczecia",
+        "data_zakonczenia",
+        "ostatni_komunikat",
+    )
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False

@@ -85,6 +85,11 @@ def analyze_unpinning_worker_task(  # noqa: C901
         if len(authors) < 2:
             continue
 
+        # Pomijaj prace jednoautorskie - nie ma komu przekazać slotu
+        distinct_author_ids = {a["autor_id"] for a in authors}
+        if len(distinct_author_ids) < 2:
+            continue
+
         for autor_a in authors:
             if autor_a["praca_weszla"]:
                 continue

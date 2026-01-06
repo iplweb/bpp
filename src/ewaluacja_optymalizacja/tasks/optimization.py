@@ -5,7 +5,7 @@ import traceback
 from datetime import datetime
 from decimal import Decimal
 
-from celery import group, shared_task
+from celery import chord, group, shared_task
 from celery.exceptions import SoftTimeLimitExceeded
 from celery_singleton import Singleton
 
@@ -206,6 +206,36 @@ def solve_single_discipline_task(
     return discipline_result
 
 
+@shared_task
+def finalize_browser_recalc(results, uczelnia_id):
+    """Callback wywoływany przez chord po zakończeniu wszystkich optymalizacji.
+
+    Aktualizuje StatusPrzegladarkaRecalc oraz StatusOptymalizacjiBulk,
+    aby użytkownik widział poprawny status nawet po odświeżeniu strony.
+    """
+    from django.utils import timezone
+
+    from ewaluacja_optymalizacja.models import (
+        StatusOptymalizacjiBulk,
+        StatusPrzegladarkaRecalc,
+    )
+
+    logger.info(f"finalize_browser_recalc called for uczelnia_id={uczelnia_id}")
+
+    status = StatusPrzegladarkaRecalc.get_or_create()
+    if status.w_trakcie:
+        status.zakoncz("Przeliczanie zakończone pomyślnie")
+        logger.info("StatusPrzegladarkaRecalc marked as completed")
+
+    # Aktualizuj również timestamp na stronie głównej
+    status_bulk = StatusOptymalizacjiBulk.get_or_create()
+    status_bulk.data_zakonczenia = timezone.now()
+    status_bulk.save(update_fields=["data_zakonczenia"])
+    logger.info("StatusOptymalizacjiBulk.data_zakonczenia updated")
+
+    return {"uczelnia_id": uczelnia_id, "completed": True}
+
+
 @shared_task(base=Singleton, unique_on=["uczelnia_id"], lock_expiry=3600, bind=True)
 def solve_all_reported_disciplines(self, uczelnia_id, algorithm_mode="two-phase"):
     """
@@ -269,19 +299,21 @@ def solve_all_reported_disciplines(self, uczelnia_id, algorithm_mode="two-phase"
         )
         tasks.append(task)
 
-    logger.info(f"Created {len(tasks)} parallel tasks, launching group...")
+    logger.info(f"Created {len(tasks)} parallel tasks, launching chord...")
 
-    # Uruchom wszystkie zadania równolegle używając group()
-    job = group(tasks)
-    result_group = job.apply_async()
+    # Uruchom wszystkie zadania równolegle używając chord()
+    # Po zakończeniu wszystkich tasków, chord wywoła finalize_browser_recalc
+    workflow = chord(tasks)(finalize_browser_recalc.s(uczelnia_id=uczelnia_id))
 
-    # Zbierz task_ids z grupy
-    task_ids = [r.id for r in result_group.results]
+    # Pobierz task_ids z chord header (grupy)
+    task_ids = []
+    if hasattr(workflow, "parent") and workflow.parent:
+        task_ids = [t.id for t in workflow.parent.results]
 
     logger.info(
-        f"Group launched with {len(task_ids)} tasks. "
+        f"Chord launched with {len(task_ids)} tasks + callback. "
         f"Tasks are running in background. "
-        f"Monitor progress via OptimizationRun records in database."
+        f"finalize_browser_recalc will be called when all tasks complete."
     )
 
     # Zwróć podstawowe informacje - NIE CZEKAMY NA ZAKOŃCZENIE!
@@ -291,6 +323,7 @@ def solve_all_reported_disciplines(self, uczelnia_id, algorithm_mode="two-phase"
         "started_at": started_at,
         "total_disciplines": discipline_count,
         "task_ids": task_ids,
+        "callback_task_id": workflow.id,
     }
 
 

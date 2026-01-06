@@ -1,0 +1,135 @@
+{% load humanize %}
+
+<!-- Partial template for HTMX polling -->
+{% if not task_ready %}
+    <!-- Zadanie w trakcie -->
+    <div class="callout warning">
+        <h4><span class="fi-loop"></span> Analiza w trakcie wykonywania</h4>
+
+        {% if info %}
+            <div style="margin-bottom: 1rem;">
+                <h5>
+                    <span class="fi-magnifying-glass"></span>
+                    Analiza możliwości zamiany dyscyplin
+                    <span class="label warning">W TRAKCIE</span>
+                </h5>
+
+                {% widthratio info.progress|default:0 100 100 as progress_pct %}
+                <div class="progress large" role="progressbar"
+                     aria-valuenow="{{ progress_pct }}"
+                     aria-valuemin="0" aria-valuemax="100">
+                    <div class="progress-meter"
+                         style="width: {{ progress_pct }}%">
+                        <p class="progress-meter-text">{{ progress_pct }}%</p>
+                    </div>
+                </div>
+
+                <p><strong>Aktualny krok:</strong>
+                    {% if info.step == "starting" %}
+                        <span class="fi-play"></span> Rozpoczynanie analizy
+                    {% elif info.step == "loading_publications" %}
+                        <span class="fi-magnifying-glass"></span> Wczytywanie publikacji
+                    {% elif info.step == "analyzing" %}
+                        <span class="fi-list"></span> Analiza publikacji
+                    {% elif info.step == "saving_results" %}
+                        <span class="fi-save"></span> Zapisywanie wyników
+                    {% elif info.step == "finishing" %}
+                        <span class="fi-check"></span> Kończenie analizy
+                    {% else %}
+                        {{ info.step|default:"Inicjalizacja..." }}
+                    {% endif %}
+                </p>
+
+                {% if info.analyzed and info.total %}
+                    <p>
+                        <strong>Przeanalizowano:</strong>
+                        {{ info.analyzed|intcomma }} / {{ info.total|intcomma }} publikacji
+                    </p>
+                {% endif %}
+
+                {% if info.message %}
+                    <p><em>{{ info.message }}</em></p>
+                {% endif %}
+
+                {% if info.items_per_second %}
+                    <p><strong>Prędkość:</strong> {{ info.items_per_second }} prac/s</p>
+                {% endif %}
+
+                {% if info.estimated_time_formatted %}
+                    <p>
+                        <strong>Szacowany czas do zakończenia:</strong>
+                        {{ info.estimated_time_formatted }}
+                    </p>
+                {% endif %}
+
+                {% if info.found %}
+                    <p>
+                        <strong>Znalezionych możliwości zamiany:</strong>
+                        <span class="label success">{{ info.found|intcomma }}</span>
+                    </p>
+                {% endif %}
+
+                {% if info.sensible_found %}
+                    <p>
+                        <strong>Sensownych możliwości:</strong>
+                        <span class="label success">{{ info.sensible_found|intcomma }}</span>
+                    </p>
+                {% endif %}
+            </div>
+        {% endif %}
+
+        <p style="margin-top: 1rem;">
+            <em>Status odświeża się automatycznie co 5 sekund.</em>
+        </p>
+    </div>
+
+{% elif success %}
+    <!-- Zadanie zakończone pomyślnie -->
+    <div class="callout success">
+        <h4><span class="fi-check"></span> Analiza zakończona pomyślnie!</h4>
+
+        {% if result %}
+            <h5>Podsumowanie:</h5>
+            <ul>
+                <li>
+                    <strong>Łącznie możliwości zamiany:</strong>
+                    <span class="label primary">
+                        {{ result.total_opportunities|intcomma }}
+                    </span>
+                </li>
+                <li>
+                    <strong>Sensownych możliwości:</strong>
+                    <span class="label success">
+                        {{ result.sensible_opportunities|intcomma }}
+                    </span>
+                </li>
+            </ul>
+
+            <div class="callout primary" style="margin-top: 1rem;">
+                <p>
+                    <span class="fi-info"></span> <strong>Wyjaśnienie:</strong>
+                    "Sensowne" oznacza, że zamiana dyscypliny zwiększa całkowitą
+                    punktację za daną publikację.
+                </p>
+            </div>
+
+            <p style="margin-top: 1rem;">
+                <a href="{% url 'ewaluacja_optymalizacja:discipline-swap-list' %}"
+                   class="button">
+                    <span class="fi-list"></span> Zobacz szczegółową listę
+                </a>
+            </p>
+        {% endif %}
+    </div>
+
+{% else %}
+    <!-- Zadanie zakończone z błędem -->
+    <div class="callout alert">
+        <h4><span class="fi-x"></span> Wystąpił błąd</h4>
+        {% if error %}
+            <pre>{{ error }}</pre>
+        {% else %}
+            <p>Nieznany błąd. Sprawdź logi systemowe.</p>
+        {% endif %}
+    </div>
+{% endif %}
