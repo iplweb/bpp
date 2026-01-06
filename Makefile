@@ -225,10 +225,10 @@ gh-run-watch-docker-images-alt:
 sleep-3:
 	sleep 3
 
- generate-500-page:
+generate-500-page:
 	uv run python src/manage.py generate_500_page
 
- new-release: uv-lock upgrade-version sleep-3 gh-run-watch-docker-images
+new-release: uv-lock upgrade-version sleep-3 gh-run-watch-docker-images
 
 release: full-tests new-release
 

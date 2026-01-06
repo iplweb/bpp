@@ -12,6 +12,12 @@ from bpp.tests import fill_admin_inline, normalize_html
 from django_bpp.selenium_util import SHORT_WAIT_TIME, wait_for_page_load
 
 
+@pytest.mark.skip(
+    reason=(
+        "Skonwertowano do Playwright: "
+        "src/bpp/tests/test_playwright/test_admin/test_wydawnictwo_autor.py"
+    )
+)
 @pytest.mark.django_db
 @pytest.mark.parametrize("klass", ["wydawnictwo_ciagle", "wydawnictwo_zwarte"])
 def test_changelist_no_argument(klass, live_server, admin_browser: WebDriver):

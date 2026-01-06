@@ -327,7 +327,7 @@ table tbody tr {
   background: #fff;
   color: #007bff;
   border: 1px solid #dee2e6;
-  border-radius: 6px;
+  border-radius: 6px !important;
   padding: 0.4rem 0.6rem;
   font-weight: 500;
   font-size: 0.85rem;
@@ -341,15 +341,8 @@ table tbody tr {
 }
 
 .ewaluacja-optymalizacja__pagination-link--nav {
-  background: #28a745;
-  color: #fff;
-  border: 1px solid #28a745;
+  border-radius: 6px !important;
   font-weight: 600;
-
-  &:hover {
-    background: #1e7e34;
-    color: #fff;
-  }
 }
 
 .ewaluacja-optymalizacja__pagination-link--disabled {
@@ -366,13 +359,18 @@ table tbody tr {
 
 .ewaluacja-optymalizacja__pagination-current {
   display: inline-block;
-  background: #007bff;
+  background: $primary-color;
   color: #fff;
-  border: 1px solid #007bff;
-  border-radius: 6px;
+  border: 1px solid $primary-color;
+  border-radius: 6px !important;
   padding: 0.4rem 0.6rem;
   font-weight: 600;
   font-size: 0.85rem;
+}
+
+// Usuń niebieskie tło z otaczającego <li>
+.ewaluacja-optymalizacja__pagination-item.current {
+  background: transparent !important;
 }
 
 .ewaluacja-optymalizacja__pagination-ellipsis {
