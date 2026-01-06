@@ -97,7 +97,14 @@
                         {% if run.pin_stats.unpinned > 0 %}
                         <a href="{% url 'ewaluacja_optymalizacja:reset-discipline-pins' run.dyscyplina_naukowa.pk %}"
                            class="button tiny warning"
-                           onclick="return confirm('Czy na pewno chcesz zresetować przypięcia dla dyscypliny \'{{ run.dyscyplina_naukowa.nazwa }}\'?\n\nTa operacja:\n1. Utworzy snapshot obecnego stanu\n2. Ustawi przypieta=True dla wszystkich {{ run.pin_stats.total }} rekordów z lat 2022-2025\n3. Automatycznie przeliczy punktację\n\nProces może potrwać kilka minut.');">
+                           data-confirm="Czy na pewno chcesz zresetować przypięcia dla dyscypliny '{{ run.dyscyplina_naukowa.nazwa }}'?
+
+Ta operacja:
+1. Utworzy snapshot obecnego stanu
+2. Ustawi przypieta=True dla wszystkich {{ run.pin_stats.total }} rekordów z lat 2022-2025
+3. Automatycznie przeliczy punktację
+
+Proces może potrwać kilka minut.">
                             <span class="fi-refresh"></span> Resetuj
                         </a>
                         {% endif %}

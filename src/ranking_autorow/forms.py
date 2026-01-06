@@ -1,7 +1,14 @@
 from crispy_forms.helper import FormHelper
-from crispy_forms_foundation.layout import HTML, ButtonHolder
+from crispy_forms_foundation.layout import (
+    HTML,
+    ButtonHolder,
+    Fieldset,
+    Hidden,
+    Layout,
+    Row,
+    Submit,
+)
 from crispy_forms_foundation.layout import Column as F4Column
-from crispy_forms_foundation.layout import Fieldset, Hidden, Layout, Row, Submit
 from dal import autocomplete
 from django import forms
 from django.core import validators
@@ -195,11 +202,10 @@ class RankingAutorowForm(forms.Form):
                     <div class="large-12 small-12 columns">
                         <div class="collapsible-section">
                             <a href="#" class="collapsible-trigger" data-target="charakter-section">
-                                <span class="fi-plus"></span> <span class="fi-minus" style="display:none;"></span>
+                                <span class="fi-plus"></span> <span class="fi-minus hidden"></span>
                                 Filtry charakteru formalnego (opcjonalne)
                             </a>
-                            <div id="charakter-section" class="collapsible-content"
-                                 style="display:none; margin-top: 1rem;">
+                            <div id="charakter-section" class="collapsible-content">
                 """
             ),
             Row(F4Column("charakter_formalny", css_class="large-12 small-12")),
@@ -218,11 +224,10 @@ class RankingAutorowForm(forms.Form):
                     <div class="large-12 small-12 columns">
                         <div class="collapsible-section">
                             <a href="#" class="collapsible-trigger" data-target="typ-kbn-section">
-                                <span class="fi-plus"></span> <span class="fi-minus" style="display:none;"></span>
+                                <span class="fi-plus"></span> <span class="fi-minus hidden"></span>
                                 Filtry typu MNiSW/MEiN (opcjonalne)
                             </a>
-                            <div id="typ-kbn-section" class="collapsible-content"
-                                 style="display:none; margin-top: 1rem;">
+                            <div id="typ-kbn-section" class="collapsible-content">
                 """
             ),
             Row(F4Column("typ_kbn", css_class="large-12 small-12")),

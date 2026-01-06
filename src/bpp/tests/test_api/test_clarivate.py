@@ -45,4 +45,37 @@ def test_GetWoSAMRInformation_post_error(wd_app, uczelnia, mocker):
     )
 
     assert res.json["status"] == "error"
-    assert res.json["info"].find("lel") >= 0
+    # Generic error message - raw exception details are not exposed to users
+    assert res.json["info"] == "Wewnętrzny błąd systemu"
+
+
+def test_GetWoSAMRInformation_post_request_error(wd_app, uczelnia, mocker):
+    """Test handling of network/connection errors."""
+    import requests
+
+    m = Mock()
+    m.query_single = Mock(side_effect=requests.ConnectionError("Connection failed"))
+    mocker.patch("bpp.models.struktura.Uczelnia.wosclient", return_value=m)
+
+    res = wd_app.post(
+        reverse("bpp:api_wos_amr", args=(uczelnia.slug,)), params={"pmid": "31337"}
+    )
+
+    assert res.json["status"] == "error"
+    assert res.json["info"] == "Błąd komunikacji z Clarivate API"
+
+
+def test_GetWoSAMRInformation_post_json_error(wd_app, uczelnia, mocker):
+    """Test handling of JSON parsing errors."""
+    import json
+
+    m = Mock()
+    m.query_single = Mock(side_effect=json.JSONDecodeError("msg", "doc", 0))
+    mocker.patch("bpp.models.struktura.Uczelnia.wosclient", return_value=m)
+
+    res = wd_app.post(
+        reverse("bpp:api_wos_amr", args=(uczelnia.slug,)), params={"pmid": "31337"}
+    )
+
+    assert res.json["status"] == "error"
+    assert res.json["info"] == "Błąd parsowania odpowiedzi z WOS"

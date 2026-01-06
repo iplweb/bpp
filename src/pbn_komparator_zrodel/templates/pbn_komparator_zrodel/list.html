@@ -86,13 +86,13 @@
                     <div class="medium-2 columns">
                         <label>Rok od:
                             <input type="number" name="rok_od" value="{{ rok_od }}" min="1900" max="2100"
-                                   style="width: 80px;" onchange="this.form.submit()">
+                                   style="width: 80px;" data-submit-on-change>
                         </label>
                     </div>
                     <div class="medium-2 columns">
                         <label>Rok do:
                             <input type="number" name="rok_do" value="{{ rok_do }}" min="1900" max="2100"
-                                   style="width: 80px;" onchange="this.form.submit()">
+                                   style="width: 80px;" data-submit-on-change>
                         </label>
                     </div>
                     <div class="medium-4 columns">
@@ -105,19 +105,19 @@
                         <label style="padding-top: 1.5rem;">
                             <input type="checkbox" name="tylko_rozbieznosci"
                                    {% if tylko_rozbieznosci %}checked{% endif %}
-                                   onchange="this.form.submit()">
+                                   data-submit-on-change>
                             Tylko rozbieżności punktów
                         </label>
                         <label>
                             <input type="checkbox" name="bez_publikacji"
                                    {% if bez_publikacji %}checked{% endif %}
-                                   onchange="this.form.submit()">
+                                   data-submit-on-change>
                             Nie wyświetlaj źródeł bez publikacji
                         </label>
                         <label>
                             <input type="checkbox" name="bez_publikacji_2022_2025"
                                    {% if bez_publikacji_2022_2025 %}checked{% endif %}
-                                   onchange="this.form.submit()">
+                                   data-submit-on-change>
                             Nie wyświetlaj źródeł bez publikacji 2022-2025
                         </label>
                     </div>
@@ -139,7 +139,7 @@
                             <span class="fi-download"></span> Eksport XLSX
                         </a>
                         <button type="submit" form="form-ustaw-punkty" class="button warning"
-                                onclick="return confirm('Czy na pewno chcesz zaktualizować punkty dla wszystkich {{ page_obj.paginator.count }} rekordów?');">
+                                data-confirm="Czy na pewno chcesz zaktualizować punkty dla wszystkich {{ page_obj.paginator.count }} rekordów?">
                             <span class="fi-check"></span> Ustaw punkty wg PBN
                         </button>
                         {% endif %}
@@ -253,7 +253,7 @@
                             {% csrf_token %}
                             <input type="hidden" name="typ" value="punkty">
                             <button type="submit" class="button tiny success"
-                                    onclick="return confirm('Czy na pewno chcesz zaktualizować punkty wg PBN?');">
+                                    data-confirm="Czy na pewno chcesz zaktualizować punkty wg PBN?">
                                 Ustaw wg PBN
                             </button>
                         </form>

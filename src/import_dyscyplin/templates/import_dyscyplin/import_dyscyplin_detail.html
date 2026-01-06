@@ -29,14 +29,10 @@
     </div>
 
 
-    <script type="text/javascript">
-        function usunImport() {
-            if (confirm('Czy na pewno usunąć ten plik z systemu?'))
-                location.href = "{% url "import_dyscyplin:usun" object.pk %}";
-        }
-    </script>
     <h2>Import dyscyplin - plik {{ object.plik }}
-        <button class="button warning" onclick="usunImport()">
+        <button class="button warning"
+                data-confirm="Czy na pewno usunąć ten plik z systemu?"
+                data-redirect-url="{% url "import_dyscyplin:usun" object.pk %}">
             <i class="fi-page-remove"></i> usuń plik
         </button>
     </h2>
@@ -116,24 +112,16 @@
             </li>
         </ul>
 
-        <script type="text/javascript">
-            function zintegruj() {
-                if (confirm("Po zatwierdzeniu, informacje wyświetlane zostaną wprowadzone do bazy danych")) {
-                    $("#modal1").foundation('open');
-                    $.ajax({
-                        url: "{% url "import_dyscyplin:integruj" object.pk %}",
-                        method: "GET",
-                        data: {"web_page_uid": bppNotifications.messageCookieId}
-                    });
-                }
-            }</script>
-
         <div class="tabs-content" data-tabs-content="example-tabs">
             <div class="tabs-panel {% if object.stan == "przeanalizowany" and object.poprawne_wiersze_do_integracji.count > 0 %}is-active{% endif %}"
                  id="panel1">
                 <h2>Rekordy do integracji - rok {{ object.rok }}
                     {% if object.poprawne_wiersze_do_integracji.count > 0 and object.stan == "przeanalizowany" %}
-                        <button class="button secondary" onclick="zintegruj()">
+                        <button class="button secondary"
+                                data-integrate-action="true"
+                                data-integrate-url="{% url "import_dyscyplin:integruj" object.pk %}"
+                                data-confirm="Po zatwierdzeniu, informacje wyświetlane zostaną wprowadzone do bazy danych"
+                                data-modal-id="modal1">
                             <i class="fi-arrows-in"></i> zintegruj dane
                         </button>
                     {% endif %}
@@ -160,12 +148,14 @@
                 <h2>Rekordy nie do integracji</h2>
                 <strong>Przyczyny</strong>:
                 <a href="#"
-                   onclick="$('#nie_do_integracji_filter input').val('').trigger('paste'); return false">
+                   data-filter-target="nie_do_integracji"
+                   data-filter-value="">
                     wszystkie ({{ object.niepoprawne_wiersze.count }})
                 </a> |
                 {% for elem in object.niepoprawne_wiersze_przyczyny %}
                     <a href="#"
-                       onclick="$('#nie_do_integracji_filter input').val('{{ elem.info }}').trigger('paste'); return false">
+                       data-filter-target="nie_do_integracji"
+                       data-filter-value="{{ elem.info }}">
                         {{ elem.info|truncatechars:"50"  }} ({{ elem.icount }})
                     </a> |
                 {% endfor %}
@@ -192,12 +182,14 @@
                 <h2>Rekordy zintegrowane</h2>
                 <strong>Rezultaty</strong>:
                 <a href="#"
-                   onclick="$('#zintegrowane_filter input').val('').trigger('paste'); return false">
+                   data-filter-target="zintegrowane"
+                   data-filter-value="">
                     wszystko ({{ object.zintegrowane_wiersze.count }})
                 </a> |
                 {% for elem in object.zintegrowane_wiersze_przyczyny %}
                     <a href="#"
-                       onclick="$('#zintegrowane_filter input').val('{{ elem.info }}').trigger('paste'); return false">
+                       data-filter-target="zintegrowane"
+                       data-filter-value="{{ elem.info }}">
                         {{ elem.info|truncatechars:"50"  }} ({{ elem.icount }})
                     </a> |
                 {% endfor %}
@@ -291,6 +283,51 @@
                 .delay(200)
                 .animate({'background-color': original_color}, 300, 'easeOutCirc')
                 .delay(200);
+        });
+
+        // Event delegation handlers
+        document.addEventListener('click', function(e) {
+            // Handle redirect with confirmation
+            var redirectBtn = e.target.closest('[data-redirect-url]');
+            if (redirectBtn) {
+                e.preventDefault();
+                var confirmMsg = redirectBtn.dataset.confirm;
+                var url = redirectBtn.dataset.redirectUrl;
+                if (!confirmMsg || confirm(confirmMsg)) {
+                    location.href = url;
+                }
+                return;
+            }
+
+            // Handle integrate action
+            var integrateBtn = e.target.closest('[data-integrate-action]');
+            if (integrateBtn) {
+                e.preventDefault();
+                var confirmMsg = integrateBtn.dataset.confirm;
+                if (!confirmMsg || confirm(confirmMsg)) {
+                    var modalId = integrateBtn.dataset.modalId;
+                    var url = integrateBtn.dataset.integrateUrl;
+                    if (modalId) {
+                        $('#' + modalId).foundation('open');
+                    }
+                    $.ajax({
+                        url: url,
+                        method: 'GET',
+                        data: {'web_page_uid': bppNotifications.messageCookieId}
+                    });
+                }
+                return;
+            }
+
+            // Handle filter links
+            var filterLink = e.target.closest('[data-filter-target]');
+            if (filterLink) {
+                e.preventDefault();
+                var target = filterLink.dataset.filterTarget;
+                var value = filterLink.dataset.filterValue || '';
+                $('#' + target + '_filter input').val(value).trigger('paste');
+                return;
+            }
         });
     </script>
 {% endblock %}

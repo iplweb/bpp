@@ -1,4 +1,5 @@
-var bppNotifications = bppNotifications || {};
+// Explicitly use window to ensure global scope even in IIFE bundles
+window.bppNotifications = window.bppNotifications || {};
 
 bppNotifications.init = function (extraChannels) {
     // Initialize Tone.js synth for notifications

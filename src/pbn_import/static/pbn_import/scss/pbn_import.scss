@@ -1,0 +1,756 @@
+// PBN Import styles
+// Używa konwencji BEM: .pbn-import__element--modifier
+
+// ==========================================================================
+// Dashboard styles
+// ==========================================================================
+
+.pbn-import__dashboard {
+    padding: 20px;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+// Active import card
+.pbn-import__active-card {
+    background: linear-gradient(135deg, #e0e7ff 0%, #f0f4ff 100%);
+    border: 1px solid #c7d2fe;
+    color: #4338ca;
+    padding: 20px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    position: relative;
+}
+
+.pbn-import__active-title {
+    margin: 0 0 15px 0;
+}
+
+// Preset cards
+.pbn-import__preset-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.pbn-import__preset-card {
+    background: white;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    cursor: pointer;
+    transition: all 0.3s;
+    border: 2px solid transparent;
+
+    &:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
+        border-color: #667eea;
+    }
+
+    &--selected {
+        border-color: #764ba2;
+        background: linear-gradient(
+            135deg,
+            rgba(102, 126, 234, 0.1) 0%,
+            rgba(118, 75, 162, 0.1) 100%
+        );
+    }
+}
+
+.pbn-import__preset-icon {
+    font-size: 2rem;
+    color: #667eea;
+    margin-bottom: 10px;
+}
+
+.pbn-import__preset-title {
+    font-size: 1.2rem;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.pbn-import__preset-description {
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.pbn-import__preset-actions {
+    margin-top: 15px;
+}
+
+// Session history
+.pbn-import__session-history {
+    background: white;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.pbn-import__session-item-wrapper {
+    border-bottom: 1px solid #eee;
+
+    &:last-child {
+        border-bottom: none;
+    }
+}
+
+.pbn-import__session-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    border-bottom: 1px solid #eee;
+    transition: background 0.3s;
+    cursor: pointer;
+    text-decoration: none;
+    color: inherit;
+
+    &:hover {
+        background: #f8f9fa;
+        transform: translateX(5px);
+    }
+}
+
+a.pbn-import__session-item {
+    display: flex;
+    color: inherit;
+    text-decoration: none;
+}
+
+.pbn-import__session-status {
+    display: inline-block;
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: bold;
+}
+
+.pbn-import__session-status--completed {
+    background: #d4edda;
+    color: #155724;
+}
+
+.pbn-import__session-status--running {
+    background: #cce5ff;
+    color: #004085;
+}
+
+.pbn-import__session-status--failed {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.pbn-import__session-status--cancelled {
+    background: #e2e3e5;
+    color: #383d41;
+}
+
+.pbn-import__session-status--pending {
+    background: #e7f3ff;
+    color: #004c8c;
+}
+
+// Error display
+.pbn-import__error-preview {
+    font-size: 0.85rem;
+    color: #e53e3e;
+    margin-top: 5px;
+}
+
+.pbn-import__error-toggle {
+    color: #667eea;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 0.8rem;
+    text-decoration: underline;
+}
+
+.pbn-import__error-details {
+    display: none;
+    padding: 15px;
+    background: #fff5f5;
+    border-top: 1px solid #feb2b2;
+    font-size: 0.9rem;
+
+    animation: pbn-import-slideDown 0.3s ease;
+}
+
+@keyframes pbn-import-slideDown {
+    from {
+        opacity: 0;
+        max-height: 0;
+    }
+    to {
+        opacity: 1;
+        max-height: 500px;
+    }
+}
+
+.pbn-import__error-label {
+    color: #c53030;
+}
+
+.pbn-import__error-message-pre {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    margin-top: 10px;
+    color: #742a2a;
+}
+
+.pbn-import__error-traceback-pre {
+    background: #2d3748;
+    color: #e2e8f0;
+    padding: 10px;
+    border-radius: 5px;
+    margin-top: 10px;
+    font-size: 0.8rem;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.pbn-import__session-meta-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.pbn-import__session-arrow {
+    color: #718096;
+}
+
+// Technical details toggle
+.pbn-import__details-wrapper {
+    margin-top: 10px;
+}
+
+.pbn-import__details-summary {
+    cursor: pointer;
+    color: #667eea;
+}
+
+// Modal configuration
+#import-config-modal {
+    border-radius: 20px;
+    box-shadow:
+        0 15px 35px rgba(0, 0, 0, 0.1),
+        0 5px 15px rgba(0, 0, 0, 0.07);
+    border: none;
+    overflow: hidden;
+
+    h2 {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        margin: -1rem -1rem 1.5rem -1rem;
+        padding: 1.5rem;
+        border-radius: 20px 20px 0 0;
+    }
+
+    .callout.primary {
+        border-radius: 15px;
+        border: 1px solid #c7d2fe;
+        background: linear-gradient(135deg, #f0f4ff 0%, #e0e7ff 100%);
+    }
+}
+
+.pbn-import__modal-content {
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+.pbn-import__modal-field--spaced {
+    margin-top: 20px;
+}
+
+// ==========================================================================
+// Session detail styles
+// ==========================================================================
+
+.pbn-import__session-detail {
+    padding: 20px;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+// Session header
+.pbn-import__session-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 30px;
+    border-radius: 10px;
+    margin-bottom: 30px;
+
+    h1 {
+        color: white;
+        margin-bottom: 10px;
+    }
+}
+
+.pbn-import__session-meta {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.pbn-import__meta-item {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 10px 15px;
+    border-radius: 5px;
+}
+
+.pbn-import__meta-label {
+    font-size: 0.85rem;
+    opacity: 0.9;
+}
+
+.pbn-import__meta-value {
+    font-size: 1.1rem;
+    font-weight: bold;
+}
+
+// Status badge
+.pbn-import__status-badge {
+    display: inline-block;
+    padding: 8px 15px;
+    border-radius: 25px;
+    font-weight: bold;
+    font-size: 0.9rem;
+
+    &--completed {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    &--running {
+        background: #cce5ff;
+        color: #004085;
+    }
+
+    &--failed {
+        background: #f8d7da;
+        color: #721c24;
+    }
+
+    &--cancelled {
+        background: #e2e3e5;
+        color: #383d41;
+    }
+
+    &--pending {
+        background: #e7f3ff;
+        color: #004c8c;
+    }
+}
+
+// Detail section
+.pbn-import__detail-section {
+    background: white;
+    border-radius: 10px;
+    padding: 25px;
+    margin-bottom: 25px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.pbn-import__section-title {
+    font-size: 1.3rem;
+    font-weight: bold;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    .fi {
+        color: #667eea;
+    }
+}
+
+// Error box
+.pbn-import__error-box {
+    background: #fff5f5;
+    border: 1px solid #feb2b2;
+    border-radius: 5px;
+    padding: 15px;
+    margin-bottom: 15px;
+}
+
+.pbn-import__error-message {
+    color: #c53030;
+    font-weight: 500;
+}
+
+.pbn-import__error-traceback {
+    background: #2d3748;
+    color: #cbd5e0;
+    padding: 15px;
+    border-radius: 5px;
+    font-family: "Courier New", monospace;
+    font-size: 0.85rem;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    max-height: 400px;
+    overflow-y: auto;
+    margin-top: 10px;
+}
+
+.pbn-import__error-summary {
+    cursor: pointer;
+    color: #718096;
+    margin-top: 10px;
+}
+
+// Log container
+.pbn-import__log-container {
+    max-height: 600px;
+    overflow-y: auto;
+    border: 1px solid #e2e8f0;
+    border-radius: 5px;
+    padding: 15px;
+    background: #f7fafc;
+}
+
+.pbn-import__log-entry {
+    display: flex;
+    gap: 10px;
+    padding: 10px;
+    border-bottom: 1px solid #e2e8f0;
+    font-size: 0.9rem;
+    transition: background 0.2s;
+
+    &:hover {
+        background: white;
+    }
+}
+
+.pbn-import__log-timestamp {
+    color: #718096;
+    min-width: 150px;
+}
+
+.pbn-import__log-level {
+    min-width: 80px;
+    font-weight: bold;
+    text-transform: uppercase;
+
+    &--info {
+        color: #3182ce;
+    }
+
+    &--success {
+        color: #38a169;
+    }
+
+    &--warning {
+        color: #d69e2e;
+    }
+
+    &--error {
+        color: #e53e3e;
+    }
+
+    &--critical {
+        color: #9b2c2c;
+    }
+}
+
+.pbn-import__log-step {
+    min-width: 150px;
+    color: #4a5568;
+    font-weight: 500;
+}
+
+.pbn-import__log-message {
+    flex: 1;
+    color: #2d3748;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
+.pbn-import__log-message-expanded {
+    display: none;
+    margin-top: 10px;
+}
+
+.pbn-import__log-pre {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.pbn-import__log-pre--styled {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    background: #f7fafc;
+    padding: 10px;
+    border-radius: 5px;
+}
+
+.pbn-import__log-pre--styled-spaced {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    background: #f7fafc;
+    padding: 10px;
+    border-radius: 5px;
+    margin-top: 10px;
+}
+
+// JSON display
+.pbn-import__json-display {
+    background: #2d3748;
+    color: #e2e8f0;
+    padding: 15px;
+    border-radius: 5px;
+    font-family: "Courier New", monospace;
+    font-size: 0.85rem;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-x: auto;
+    max-height: 400px;
+    overflow-y: auto;
+    margin: 10px 0;
+}
+
+// Error details toggle
+.pbn-import__error-details-toggle {
+    cursor: pointer;
+    color: #667eea;
+    font-size: 0.85rem;
+    margin-left: 10px;
+    text-decoration: underline;
+
+    &:hover {
+        color: #5a67d8;
+    }
+}
+
+// Log details
+.pbn-import__log-details {
+    margin-top: 10px;
+}
+
+.pbn-import__log-details-summary {
+    cursor: pointer;
+    color: #667eea;
+    font-size: 0.9rem;
+}
+
+.pbn-import__log-details-content {
+    margin-top: 10px;
+}
+
+// Config table
+.pbn-import__config-table {
+    width: 100%;
+    border-collapse: collapse;
+
+    td {
+        padding: 10px;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    td:first-child {
+        font-weight: 500;
+        color: #4a5568;
+        width: 200px;
+    }
+}
+
+.pbn-import__config-value {
+    font-family: "Courier New", monospace;
+    background: #edf2f7;
+    padding: 3px 6px;
+    border-radius: 3px;
+
+    &--true {
+        color: green;
+    }
+
+    &--false {
+        color: red;
+    }
+}
+
+// Stats grid
+.pbn-import__stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 15px;
+}
+
+.pbn-import__stat-card {
+    background: #f7fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 5px;
+    padding: 15px;
+    text-align: center;
+}
+
+.pbn-import__stat-value {
+    font-size: 1.8rem;
+    font-weight: bold;
+    color: #2d3748;
+}
+
+.pbn-import__stat-label {
+    font-size: 0.85rem;
+    color: #718096;
+    margin-top: 5px;
+}
+
+// Import errors summary
+.pbn-import__import-errors {
+    margin-top: 20px;
+    padding: 15px;
+    background: #fff5f5;
+    border-radius: 5px;
+}
+
+.pbn-import__import-errors-title {
+    color: #c53030;
+}
+
+// Back button
+.pbn-import__back-button {
+    margin-bottom: 20px;
+}
+
+// Tabs
+.pbn-import__tabs {
+    border-bottom: 2px solid #e2e8f0;
+    margin-bottom: 20px;
+}
+
+.pbn-import__tabs-title a {
+    color: #4a5568;
+    padding: 12px 20px;
+    font-weight: 500;
+}
+
+.pbn-import__tabs-title.is-active a {
+    color: #667eea;
+    border-bottom: 3px solid #667eea;
+}
+
+.pbn-import__tabs-content {
+    border: none;
+}
+
+// Progress section
+.pbn-import__progress-section {
+    margin: 20px 0;
+    padding: 20px;
+    background: linear-gradient(
+        135deg,
+        rgba(102, 126, 234, 0.05) 0%,
+        rgba(118, 75, 162, 0.05) 100%
+    );
+    border-radius: 12px;
+    border: 1px solid rgba(102, 126, 234, 0.2);
+
+    .import-progress-compact {
+        background: white;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+}
+
+// Progress bar
+.pbn-import__progress-bar {
+    height: 24px;
+    background: #f7fafc;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid #e2e8f0;
+    position: relative;
+}
+
+.pbn-import__progress-fill {
+    height: 100%;
+    transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 12px;
+    position: relative;
+    overflow: hidden;
+
+    &::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        right: 0;
+        background: linear-gradient(
+            105deg,
+            transparent 40%,
+            rgba(255, 255, 255, 0.7) 50%,
+            transparent 60%
+        );
+        animation: pbn-import-progress-shimmer 2s infinite;
+    }
+
+    &--completed {
+        background: linear-gradient(90deg, #43e97b 0%, #38f9d7 100%);
+    }
+
+    &--failed {
+        background: linear-gradient(90deg, #f77062 0%, #fe5196 100%);
+    }
+
+    &--cancelled {
+        background: linear-gradient(90deg, #718096 0%, #a0aec0 100%);
+    }
+
+    &--running {
+        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+    }
+}
+
+@keyframes pbn-import-progress-shimmer {
+    0% {
+        transform: translateX(-100%);
+    }
+    100% {
+        transform: translateX(200%);
+    }
+}
+
+.pbn-import__progress-info {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    font-size: 0.95rem;
+}
+
+.pbn-import__progress-percent {
+    color: #667eea;
+    font-weight: bold;
+}
+
+.pbn-import__progress-meta {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 8px;
+    font-size: 0.85rem;
+    color: #718096;
+}
+
+.pbn-import__status-label {
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 0.8rem;
+    font-weight: bold;
+
+    &--running {
+        background: #cce5ff;
+        color: #004085;
+    }
+
+    &--completed {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    &--failed {
+        background: #f8d7da;
+        color: #721c24;
+    }
+}

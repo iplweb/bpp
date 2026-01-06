@@ -48,7 +48,7 @@ class JSONWithActionsWidget(PrettyJSONWidgetReadonly):
 
         # Add a unique ID for the container
         if "id" not in attrs:
-            attrs["id"] = "id_%s" % name
+            attrs["id"] = f"id_{name}"
 
         container_id = f"{attrs['id']}_container"
 
@@ -58,11 +58,11 @@ class JSONWithActionsWidget(PrettyJSONWidgetReadonly):
         # Create the HTML with buttons and textarea
         html = f"""
         <div id="{container_id}" class="json-with-actions-widget">
-            <div class="json-actions" style="margin-bottom: 10px;">
-                <button type="button" class="button json-copy-btn" data-target="{attrs['id']}">
+            <div class="json-actions">
+                <button type="button" class="button json-copy-btn" data-target="{attrs["id"]}">
                     📋 Kopiuj JSON
                 </button>
-                <button type="button" class="button json-download-btn" data-target="{attrs['id']}">
+                <button type="button" class="button json-download-btn" data-target="{attrs["id"]}">
                     💾 Pobierz JSON
                 </button>
             </div>

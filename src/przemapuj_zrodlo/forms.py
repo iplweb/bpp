@@ -11,7 +11,7 @@ class PrzemapowaZrodloForm(forms.Form):
         queryset=Zrodlo.objects.all(),
         label="Źródło docelowe",
         help_text=(
-            '<span style="display: block; margin-top: 0.75rem;">'
+            '<span class="form-help-text-block">'
             "Wybierz źródło, do którego chcesz przemapować wszystkie publikacje"
             "</span>"
         ),

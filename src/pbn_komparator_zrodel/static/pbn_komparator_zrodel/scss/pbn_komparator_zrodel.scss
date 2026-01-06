@@ -1,0 +1,57 @@
+// pbn_komparator_zrodel.scss
+// Styles for PBN source comparator module
+
+.pbn-komparator-zrodel {
+    // Navigation button group
+    &__button-group {
+        margin-bottom: 1rem;
+    }
+
+    // Alert callout for missing disciplines
+    &__alert-callout {
+        background-color: #cc0000;
+        color: black;
+    }
+
+    // Table inside alert callout
+    &__alert-table {
+        background: white;
+        color: black;
+        margin-top: 1rem;
+    }
+
+    // Year filter inputs
+    &__year-input {
+        width: 80px;
+    }
+
+    // Checkbox label with top padding
+    &__checkbox-label {
+        padding-top: 1.5rem;
+    }
+
+    // Buttons row container
+    &__buttons-row {
+        padding-top: 0.5rem;
+    }
+
+    // Inline form (for buttons in table rows)
+    &__inline-form {
+        display: inline;
+    }
+
+    // Source name cell
+    &__source-cell {
+        font-size: 0.85em;
+    }
+
+    // Cell highlighting for discrepancies - BPP values (warning)
+    &__cell--bpp-warning {
+        background-color: #fff3cd;
+    }
+
+    // Cell highlighting for discrepancies - PBN values (success)
+    &__cell--pbn-success {
+        background-color: #d4edda;
+    }
+}

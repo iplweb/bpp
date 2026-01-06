@@ -54,10 +54,6 @@
 
     {% if removed_ids %}
         <script type="text/javascript">
-        function togglePokaz(){
-            $('#rekordy-usuniete').toggle();
-        }
-
         $(document).ready(function(){
             $("#rekordy-usuniete").hide();
         });
@@ -68,8 +64,8 @@
                     Z zapytania usunięto ręcznie <span class="removed-count">{{ removed_ids|length }}</span> rekord(ów).
                 </div>
                 <div class="removed-actions">
-                    <a id="pokaz-jakie" onclick="togglePokaz()">📋 Pokaż, jakie</a>
-                    <a onclick="return confirm('Czy na pewno dodać wszystkie ręcznie usunięte prace do wyników wyszukiwania ponownie?');" href="../reenable-removed-ids/">↩️ Przywróć wszystkie</a>
+                    <a id="pokaz-jakie" data-action="toggle-pokaz">📋 Pokaż, jakie</a>
+                    <a data-confirm="Czy na pewno dodać wszystkie ręcznie usunięte prace do wyników wyszukiwania ponownie?" href="../reenable-removed-ids/">↩️ Przywróć wszystkie</a>
                     <a href=".">🔄 Odśwież stronę</a>
                     <a href="?print-removed=1&all=1">👁️ Pokaż tylko usunięte</a>
                     <a href="?print=1&print-removed=1&all=1">🖨️ Wydrukuj tylko usunięte</a>
@@ -83,7 +79,7 @@
                                 <span class="multiseek-element" style="text-decoration: line-through">
                                 {% opis_bibliograficzny_cache elem %}
                                     </span>
-                                <a onclick="multiseek.removeFromResults('{{ elem.0 }}_{{ elem.1 }}')"
+                                <a data-restore-result="{{ elem.0 }}_{{ elem.1 }}"
                                 style="font-size: 8pt;">
                                     &nbsp;✅
                                 </a>
@@ -108,7 +104,7 @@
         <div class="multiseek-bibtex-container">
             {% if object_list %}
                 <div class="bibtex-actions bibtex-actions-top">
-                    <button onclick="copyBibTeXToClipboard()" type="button">
+                    <button data-action="copy-bibtex" type="button">
                         📋 Skopiuj wszystko do schowka
                     </button>
                     <span id="bibtex-copy-feedback" class="copy-feedback" style="display: none;">
@@ -142,7 +138,7 @@
                     </span>
                 {% if not print_removed %}
                     <span class="multiseek-remove-from-results">
-                        <a onclick="multiseek.removeFromResults('{{ element.js_safe_pk }}'); return false" style="font-size: 8pt;">
+                        <a data-remove-result="{{ element.js_safe_pk }}" style="font-size: 8pt;">
                             ❌
                         </a>
                     </span>
@@ -193,7 +189,7 @@
                     </span>
                         {% if not print_removed %}
                     <span class="multiseek-remove-from-results">
-                        <a onclick="multiseek.removeFromResults('{{ element.js_safe_pk }}'); return false" style="font-size: 8pt;">
+                        <a data-remove-result="{{ element.js_safe_pk }}" style="font-size: 8pt;">
                             ❌
                         </a>
                     </span>
@@ -319,4 +315,45 @@
             feedbackElement.style.display = 'none';
         }, 2000);
     }
+
+    function togglePokaz() {
+        $('#rekordy-usuniete').toggle();
+    }
+
+    // Event delegation handlers
+    document.addEventListener('click', function(e) {
+        var elem;
+
+        // Toggle pokaz
+        elem = e.target.closest('[data-action="toggle-pokaz"]');
+        if (elem) {
+            e.preventDefault();
+            togglePokaz();
+            return;
+        }
+
+        // Copy BibTeX
+        elem = e.target.closest('[data-action="copy-bibtex"]');
+        if (elem) {
+            e.preventDefault();
+            copyBibTeXToClipboard();
+            return;
+        }
+
+        // Remove from results
+        elem = e.target.closest('[data-remove-result]');
+        if (elem) {
+            e.preventDefault();
+            multiseek.removeFromResults(elem.dataset.removeResult);
+            return;
+        }
+
+        // Restore result (re-add to results)
+        elem = e.target.closest('[data-restore-result]');
+        if (elem) {
+            e.preventDefault();
+            multiseek.removeFromResults(elem.dataset.restoreResult);
+            return;
+        }
+    });
 </script>

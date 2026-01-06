@@ -100,11 +100,11 @@ class StatusGenerowaniaAdmin(admin.ModelAdmin):
 
     def status_display(self, obj):
         if obj.w_trakcie:
-            return format_html('<span style="color: orange;">W trakcie</span>')
+            return format_html('<span class="admin-status--orange">W trakcie</span>')
         elif obj.data_zakonczenia:
-            return format_html('<span style="color: green;">Zakończone</span>')
+            return format_html('<span class="admin-status--green">Zakończone</span>')
         else:
-            return format_html('<span style="color: gray;">Brak danych</span>')
+            return format_html('<span class="admin-status--gray">Brak danych</span>')
 
     status_display.short_description = "Status"
 

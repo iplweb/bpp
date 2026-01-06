@@ -15,13 +15,13 @@
 
 {% block content %}
     <!-- Modern Header Section -->
-    <div class="unit-header" style="margin-bottom: 30px;">
+    <div class="unit-header jednostka__header">
         <div class="grid-x grid-margin-x align-middle">
             <div class="cell auto">
-                <h1 style="color: #2c3e50; font-size: 2rem; margin-bottom: 10px;">{{ jednostka }}</h1>
+                <h1 class="jednostka__title">{{ jednostka }}</h1>
                 {% if jednostka.kierownik %}
-                    <div class="subheader" style="color: #7f8c8d; font-size: 1.1rem; margin-bottom: 15px;">
-                        <i class="fi-torso" style="margin-right: 5px;"></i>Kierownik: {{ jednostka.kierownik }}
+                    <div class="subheader jednostka__subheader">
+                        <i class="fi-torso jednostka__icon--mr-xs"></i>Kierownik: {{ jednostka.kierownik }}
                     </div>
                 {% endif %}
             </div>
@@ -70,14 +70,14 @@
 
     <!-- Unit Description -->
     {% if jednostka.pokazuj_opis and jednostka.opis %}
-        <div class="callout" style="background: #f8f9fa; border: 1px solid #e9ecef; margin-bottom: 30px;">
+        <div class="callout jednostka__description">
             {{ jednostka.opis|safe }}
         </div>
     {% endif %}
 
     <!-- Quick Actions -->
-    <div style="text-align: center; margin-bottom: 30px;">
-        <form method="post" action="{% url "bpp:browse_build_search" %}" style="display: inline;">
+    <div class="jednostka__quick-actions">
+        <form method="post" action="{% url "bpp:browse_build_search" %}" class="jednostka__quick-actions-form">
             {% csrf_token %}
             <input type="hidden" name="jednostka" value="{{ jednostka.pk }}"/>
             {% for descendant in jednostka.get_descendants %}
@@ -85,23 +85,20 @@
             {% endfor %}
             <input type="hidden" name="suggested-title" value="{{ jednostka }}"/>
             <button type="submit"
-                    class="button primary large"
-                    style="background: #27ae60; border: none; padding: 12px 24px; font-size: 1rem; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: all 0.2s ease;"
-                    onmouseover="this.style.backgroundColor='#229954'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.15)'"
-                    onmouseout="this.style.backgroundColor='#27ae60'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)'">
-                <i class="fi-list-bullet" style="margin-right: 8px;"></i>Pokaż wszystkie publikacje
+                    class="button primary large jednostka__btn-primary">
+                <i class="fi-list-bullet jednostka__icon--mr-sm"></i>Pokaż wszystkie publikacje
             </button>
         </form>
     </div>
 
 
     <!-- Modern Search Form -->
-    <div class="search-container" style="background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); padding: 30px; margin-bottom: 30px;">
-        <div class="search-header" style="margin-bottom: 25px;">
-            <h3 style="color: #2c3e50; margin-bottom: 5px;">
-                <i class="fi-magnifying-glass" style="margin-right: 10px;"></i>Wyszukaj publikacje
+    <div class="search-container jednostka__search-container">
+        <div class="search-header jednostka__search-header">
+            <h3 class="jednostka__search-title">
+                <i class="fi-magnifying-glass jednostka__icon--mr-md"></i>Wyszukaj publikacje
             </h3>
-            <p style="color: #7f8c8d; margin: 0; font-size: 0.9rem;">
+            <p class="jednostka__search-subtitle">
                 Znajdź publikacje powiązane z jednostką {{ jednostka }}
             </p>
         </div>
@@ -116,37 +113,37 @@
             {% endfor %}
             <input type="hidden" name="suggested-title" value="{{ jednostka }}"/>
 
-            <div class="card" style="margin-bottom: 20px; border: 1px solid #e9ecef;">
+            <div class="card jednostka__card">
                 <div class="card-section">
-                    <h6 style="color: #2c3e50; margin-bottom: 15px; font-weight: 600;">
-                        <i class="fi-list" style="margin-right: 5px;"></i>Typ publikacji:
+                    <h6 class="jednostka__card-title">
+                        <i class="fi-list jednostka__icon--mr-xs"></i>Typ publikacji:
                     </h6>
                     {% include "browse/typy.html" %}
                 </div>
             </div>
 
             {% if jednostka.pracownicy.exists and jednostka.pracownicy.count < MAX_NO_AUTHORS_ON_BROWSE_JEDNOSTKA_PAGE %}
-                <div class="card" style="margin-bottom: 20px; border: 1px solid #e9ecef;">
+                <div class="card jednostka__card">
                     <div class="card-section">
-                        <h6 style="color: #2c3e50; margin-bottom: 15px; font-weight: 600;">
-                            <i class="fi-torsos-all" style="margin-right: 5px;"></i>Obecni pracownicy:
+                        <h6 class="jednostka__card-title">
+                            <i class="fi-torsos-all jednostka__icon--mr-xs"></i>Obecni pracownicy:
                         </h6>
                         <div class="grid-x grid-margin-x">
                             {% for col in jednostka.pracownicy|columns:2 %}
                                 <div class="cell medium-6">
                                     {% for autor in col %}
-                                        <div style="margin-bottom: 8px;">
+                                        <div class="jednostka__checkbox-item">
                                             <input type="checkbox" name="autor"
                                                    value="{{ autor.pk }}"
                                                    id="autor_{{ autor.pk }}"
                                                    />
-                                            <label for="autor_{{ autor.pk }}" style="margin-bottom: 0; display: inline;">
+                                            <label for="autor_{{ autor.pk }}" class="jednostka__label">
                                                 {{ autor }}{% if autor.aktualna_funkcja.pokazuj_za_nazwiskiem %},
-                                                <span style="color: #7f8c8d; font-size: 0.9em;">{{ autor.aktualna_funkcja }}</span>{% endif %}
+                                                <span class="jednostka__function-text">{{ autor.aktualna_funkcja }}</span>{% endif %}
                                                 <a href="{% url "bpp:browse_autor" autor.slug %}"
-                                                   style="margin-left: 5px; color: #3498db; text-decoration: none;"
+                                                   class="jednostka__author-link"
                                                    title="Zobacz profil autora">
-                                                    <i class="fi-torso" style="font-size: 0.9rem;"></i>
+                                                    <i class="fi-torso jednostka__author-icon"></i>
                                                 </a>
                                             </label>
                                         </div>
@@ -158,32 +155,32 @@
                 </div>
 
                 {% if jednostka.wspolpracowali.exists and jednostka.wspolpracowali.count < MAX_NO_AUTHORS_ON_BROWSE_JEDNOSTKA_PAGE %}
-                    <div class="card" style="margin-bottom: 20px; border: 1px solid #e9ecef;">
+                    <div class="card jednostka__card">
                         <div class="card-section">
-                            <h6 style="color: #2c3e50; margin-bottom: 15px; font-weight: 600;">
-                                <i class="fi-torsos" style="margin-right: 5px;"></i>Byli pracownicy:
+                            <h6 class="jednostka__card-title">
+                                <i class="fi-torsos jednostka__icon--mr-xs"></i>Byli pracownicy:
                             </h6>
-                            <ul class="accordion" data-accordion data-allow-all-closed="true" style="border: none;">
-                                <li class="accordion-item" data-accordion-item style="border: none;">
-                                    <a href="#" class="accordion-title" style="background: #f8f9fa; padding: 10px 15px; border-radius: 4px;">
-                                        <i class="fi-plus" style="margin-right: 5px;"></i>Kliknij aby rozwinąć listę
+                            <ul class="accordion jednostka__accordion" data-accordion data-allow-all-closed="true">
+                                <li class="accordion-item jednostka__accordion-item" data-accordion-item>
+                                    <a href="#" class="accordion-title jednostka__accordion-title">
+                                        <i class="fi-plus jednostka__icon--mr-xs"></i>Kliknij aby rozwinąć listę
                                     </a>
-                                    <div class="accordion-content" data-tab-content style="padding: 15px 0 0 0;">
+                                    <div class="accordion-content jednostka__accordion-content" data-tab-content>
                                         <div class="grid-x grid-margin-x">
                                             {% for col in jednostka.wspolpracowali|columns:2 %}
                                                 <div class="cell medium-6">
                                                     {% for autor in col %}
-                                                        <div style="margin-bottom: 8px;">
+                                                        <div class="jednostka__checkbox-item">
                                                             <input type="checkbox" name="autor"
                                                                    value="{{ autor.pk }}"
                                                                    id="autor_{{ autor.pk }}"
-                                                                   style="margin-left: 8px;"/>
-                                                            <label for="autor_{{ autor.pk }}" style="margin-bottom: 0; display: inline;">
+                                                                   class="jednostka__checkbox--former"/>
+                                                            <label for="autor_{{ autor.pk }}" class="jednostka__label">
                                                                 {{ autor }}
                                                                 <a href="{% url "bpp:browse_autor" autor.slug %}"
-                                                                   style="margin-left: 5px; color: #3498db; text-decoration: none;"
+                                                                   class="jednostka__author-link"
                                                                    title="Zobacz profil autora">
-                                                                    <i class="fi-torso" style="font-size: 0.9rem;"></i></a>
+                                                                    <i class="fi-torso jednostka__author-icon"></i></a>
                                                             </label>
                                                         </div>
                                                     {% endfor %}
@@ -198,26 +195,26 @@
                 {% endif %}
             {% else %}
                 {% if jednostka.autorzy_na_strone_jednostki.exists and jednostka.autorzy_na_strone_jednostki.count < MAX_NO_AUTHORS_ON_BROWSE_JEDNOSTKA_PAGE %}
-                    <div class="card" style="margin-bottom: 20px; border: 1px solid #e9ecef;">
+                    <div class="card jednostka__card">
                         <div class="card-section">
-                            <h6 style="color: #2c3e50; margin-bottom: 15px; font-weight: 600;">
-                                <i class="fi-torsos-all" style="margin-right: 5px;"></i>Autorzy publikacji:
+                            <h6 class="jednostka__card-title">
+                                <i class="fi-torsos-all jednostka__icon--mr-xs"></i>Autorzy publikacji:
                             </h6>
                             <div class="grid-x grid-margin-x">
                                 {% for col in jednostka.autorzy_na_strone_jednostki|columns:2 %}
                                     <div class="cell medium-6">
                                         {% for autor in col %}
-                                            <div style="margin-bottom: 8px;">
+                                            <div class="jednostka__checkbox-item">
                                                 <input type="checkbox" name="autor"
                                                        value="{{ autor.pk }}"
                                                        id="autor_{{ autor.pk }}"
                                                        />
-                                                <label for="autor_{{ autor.pk }}" style="margin-bottom: 0; display: inline;">
+                                                <label for="autor_{{ autor.pk }}" class="jednostka__label">
                                                     {{ autor }}
                                                     <a href="{% url "bpp:browse_autor" autor.slug %}"
-                                                       style="margin-left: 5px; color: #3498db; text-decoration: none;"
+                                                       class="jednostka__author-link"
                                                        title="Zobacz profil autora">
-                                                        <i class="fi-torso" style="font-size: 0.9rem;"></i></a>
+                                                        <i class="fi-torso jednostka__author-icon"></i></a>
                                                 </label>
                                             </div>
                                         {% endfor %}
@@ -230,18 +227,18 @@
             {% endif %}
 
             <!-- Years Selection Card -->
-            <div class="card" style="margin-bottom: 20px; border: 1px solid #e9ecef;">
+            <div class="card jednostka__card">
                 <div class="card-section">
-                    <h6 style="color: #2c3e50; margin-bottom: 15px; font-weight: 600;">
-                        <i class="fi-calendar" style="margin-right: 5px;"></i>Opracowane w latach:
+                    <h6 class="jednostka__card-title">
+                        <i class="fi-calendar jednostka__icon--mr-xs"></i>Opracowane w latach:
                     </h6>
                     <div class="grid-x grid-margin-x">
                         {% for rok in jednostka.prace_w_latach reversed %}
-                            <div class="cell small-6 medium-4 large-2" style="margin-bottom: 10px;">
+                            <div class="cell small-6 medium-4 large-2 jednostka__checkbox-item--year">
                                 <input type="checkbox" name="rok"
                                        id="rok_{{ rok }}" value="{{ rok }}"
-                                       style="margin-right: 8px;"/>
-                                <label for="rok_{{ rok }}" style="margin-bottom: 0; display: inline;">
+                                       class="jednostka__checkbox"/>
+                                <label for="rok_{{ rok }}" class="jednostka__label">
                                     {{ rok }}
                                 </label>
                             </div>
@@ -251,31 +248,28 @@
             </div>
 
             <!-- Report Title Card -->
-            <div class="card" style="margin-bottom: 20px; border: 1px solid #e9ecef;">
+            <div class="card jednostka__card">
                 <div class="card-section">
-                    <h6 style="color: #2c3e50; margin-bottom: 15px; font-weight: 600;">
-                        <i class="fi-page-edit" style="margin-right: 5px;"></i>Tytuł raportu:
+                    <h6 class="jednostka__card-title">
+                        <i class="fi-page-edit jednostka__icon--mr-xs"></i>Tytuł raportu:
                     </h6>
                     <div class="grid-x grid-margin-x align-middle">
                         <div class="cell auto">
                             <input type="text" name="suggested-title" value="{{ jednostka }}"
-                                   style="margin-bottom: 0; border: 1px solid #e9ecef; border-radius: 4px;"/>
+                                   class="jednostka__input"/>
                         </div>
                     </div>
-                    <small style="color: #7f8c8d; font-style: italic;">
+                    <small class="jednostka__hint">
                         Tytuł wyszukiwania możesz zmienić, klikając go dwukrotnie.
                     </small>
                 </div>
             </div>
 
             <!-- Search Button -->
-            <div style="text-align: center; margin-top: 25px; padding-top: 20px; border-top: 1px solid #e9ecef;">
+            <div class="jednostka__search-button-section">
                 <button type="submit"
-                        class="button primary large"
-                        style="background: #3498db; border: none; padding: 15px 30px; font-size: 1.1rem; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: all 0.2s ease;"
-                        onmouseover="this.style.backgroundColor='#2980b9'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.15)'"
-                        onmouseout="this.style.backgroundColor='#3498db'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)'">
-                    <i class="fi-magnifying-glass" style="margin-right: 8px; color: white;"></i>Szukaj publikacji
+                        class="button primary large jednostka__btn-search">
+                    <i class="fi-magnifying-glass jednostka__icon--mr-sm jednostka__icon--white"></i>Szukaj publikacji
                 </button>
             </div>
         </form>

@@ -129,3 +129,108 @@ def test_task_ustaw_pk_ze_zrodla_recalculates_cache(wydawnictwo_z_rozbieznoscia_
     # Verify Cache_Punktacja_Autora was created/updated
     cache_entries = Cache_Punktacja_Autora.objects.filter(rekord_id=rekord_id)
     assert cache_entries.exists(), "Cache_Punktacja_Autora should be recalculated"
+
+
+@pytest.mark.django_db
+def test_task_ustaw_pk_ze_zrodla_creates_log(
+    wydawnictwo_z_rozbieznoscia_pk, admin_user
+):
+    """Test that Celery task creates log entries with user."""
+    from rozbieznosci_pk.tasks import task_ustaw_pk_ze_zrodla
+
+    wc = wydawnictwo_z_rozbieznoscia_pk
+    pk = wc.pk
+    old_pk = wc.punkty_kbn
+
+    # Run the Celery task synchronously with user_id
+    task_ustaw_pk_ze_zrodla.apply(args=([pk],), kwargs={"user_id": admin_user.id})
+
+    # Check log was created with correct user
+    log = RozbieznosciPkLog.objects.filter(rekord_id=pk).first()
+    assert log is not None
+    assert log.pk_before == old_pk
+    assert log.pk_after == 100
+    assert log.user == admin_user
+
+
+@pytest.mark.django_db
+def test_task_ustaw_pk_ze_zrodla_nonexistent():
+    """Test task handles nonexistent publication gracefully."""
+    from rozbieznosci_pk.tasks import task_ustaw_pk_ze_zrodla
+
+    # Run with nonexistent PK
+    result = task_ustaw_pk_ze_zrodla.apply(args=([999999],)).result
+
+    assert result["updated"] == 0
+    assert result["errors"] == 1
+    assert result["total"] == 1
+
+
+@pytest.mark.django_db
+def test_task_ustaw_pk_ze_zrodla_no_update_when_equal(rok):
+    """Test task doesn't update when values are already equal."""
+    from rozbieznosci_pk.tasks import task_ustaw_pk_ze_zrodla
+
+    # Create publication with matching punkty_kbn
+    zrodlo = baker.make(Zrodlo)
+    zrodlo.punktacja_zrodla_set.create(rok=rok, punkty_kbn=50)
+
+    wc = baker.make(Wydawnictwo_Ciagle, punkty_kbn=50, rok=rok, zrodlo=zrodlo)
+
+    result = task_ustaw_pk_ze_zrodla.apply(args=([wc.pk],)).result
+
+    assert result["updated"] == 0
+    assert result["errors"] == 0
+
+    # No log should be created
+    assert not RozbieznosciPkLog.objects.filter(rekord_id=wc.pk).exists()
+
+
+@pytest.mark.django_db
+def test_task_ustaw_pk_ze_zrodla_invalid_user_id(wydawnictwo_z_rozbieznoscia_pk):
+    """Test task handles invalid user_id gracefully."""
+    from rozbieznosci_pk.tasks import task_ustaw_pk_ze_zrodla
+
+    wc = wydawnictwo_z_rozbieznoscia_pk
+    pk = wc.pk
+
+    # Run with invalid user_id
+    result = task_ustaw_pk_ze_zrodla.apply(
+        args=([pk],), kwargs={"user_id": 999999}
+    ).result
+
+    assert result["updated"] == 1
+    assert result["errors"] == 0
+
+    # Log should exist but without user
+    log = RozbieznosciPkLog.objects.filter(rekord_id=pk).first()
+    assert log is not None
+    assert log.user is None
+
+
+@pytest.mark.django_db
+def test_rozbieznosci_pk_log_str(wydawnictwo_z_rozbieznoscia_pk, admin_user):
+    """Test RozbieznosciPkLog __str__ method."""
+    wc = wydawnictwo_z_rozbieznoscia_pk
+
+    log = RozbieznosciPkLog.objects.create(
+        rekord=wc,
+        zrodlo=wc.zrodlo,
+        pk_before=10,
+        pk_after=100,
+        user=admin_user,
+    )
+
+    assert "10" in str(log)
+    assert "100" in str(log)
+
+
+@pytest.mark.django_db
+def test_ignoruj_rozbieznosc_pk_str(wydawnictwo_z_rozbieznoscia_pk):
+    """Test IgnorujRozbieznoscPk __str__ method."""
+    from rozbieznosci_pk.models import IgnorujRozbieznoscPk
+
+    ignore = IgnorujRozbieznoscPk.objects.create(object=wydawnictwo_z_rozbieznoscia_pk)
+
+    assert "Ignoruj" in str(ignore)
+    assert "MNiSW" in str(ignore)

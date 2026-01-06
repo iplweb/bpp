@@ -73,7 +73,8 @@ class ZrodloForm(forms.ModelForm):
         required=False,
         queryset=Journal.objects.all(),
         widget=autocomplete.ModelSelect2(
-            url="bpp:journal-autocomplete", attrs=dict(style="width: 746px;")
+            url="bpp:journal-autocomplete",
+            attrs={"class": "bpp-autocomplete-wide"},
         ),
     )
 

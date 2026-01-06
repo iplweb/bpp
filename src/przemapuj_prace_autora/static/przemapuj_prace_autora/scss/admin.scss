@@ -1,0 +1,30 @@
+// Przemapuj Prace Autora Admin Styles
+// Historia przemapowanych prac - table styles
+
+.przemapuj-historia-container {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.przemapuj-historia-table {
+  width: 100%;
+  border-collapse: collapse;
+
+  thead tr {
+    background: #f0f0f0;
+  }
+
+  th,
+  td {
+    border: 1px solid #ddd;
+    padding: 8px;
+  }
+
+  th {
+    text-align: left;
+  }
+}
+
+.przemapuj-historia-summary {
+  margin-top: 10px;
+}

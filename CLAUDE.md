@@ -77,6 +77,20 @@ nc -zv localhost 8000  # Check if port 8000 is in use
 - `uv run python src/manage.py shell` - Django shell
 - `uv run bpp-manage.py` - Alternative management command entry point
 
+### Playwright Testing Setup
+
+**Admin credentials for Playwright tests:**
+- Username: `admin`
+- Password: `foobar123`
+- Reset script: `bin/ustaw-domyslne-haslo-admina.sh`
+
+**If login fails during Playwright tests, reset the admin password first:**
+```bash
+bin/ustaw-domyslne-haslo-admina.sh
+```
+
+**Note:** The script requires `expect` to be installed on the system.
+
 ### Frontend Build Commands
 - `yarn install` - Install Node.js dependencies
 - `grunt build` - Build frontend assets using Grunt

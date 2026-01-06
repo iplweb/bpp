@@ -5,359 +5,253 @@
 
 {% block extrahead %}
     {{ block.super }}
-    <style>
-        .uczelnia-wizard-container {
-            max-width: 800px;
-            margin: 50px auto;
-            padding: 40px;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-
-        .uczelnia-wizard-header {
-            text-align: center;
-            margin-bottom: 40px;
-            padding-bottom: 20px;
-            border-bottom: 2px solid #f0f0f0;
-        }
-
-        .uczelnia-wizard-header h1 {
-            color: #333;
-            font-size: 32px;
-            margin-bottom: 10px;
-        }
-
-        .uczelnia-wizard-header p {
-            color: #666;
-            font-size: 16px;
-            margin: 0;
-        }
-
-        .wizard-icon {
-            font-size: 48px;
-            color: #0a7cb8;
-            margin-bottom: 20px;
-        }
-
-        .setup-info {
-            background: #f8f9fa;
-            border-left: 4px solid #0a7cb8;
-            padding: 15px;
-            margin-bottom: 30px;
-            border-radius: 4px;
-        }
-
-        .setup-info h3 {
-            margin: 0 0 10px 0;
-            color: #333;
-            font-size: 18px;
-        }
-
-        .setup-info p {
-            margin: 5px 0;
-            color: #555;
-        }
-
-        .form-section {
-            margin-bottom: 30px;
-            padding: 20px;
-            background: #fafafa;
-            border-radius: 6px;
-        }
-
-        .form-section h4 {
-            margin: 0 0 20px 0;
-            color: #333;
-            font-size: 20px;
-            border-bottom: 2px solid #0a7cb8;
-            padding-bottom: 10px;
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 600;
-            color: #333;
-        }
-
-        .form-control {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 14px;
-        }
-
-        .form-control:focus {
-            outline: none;
-            border-color: #0a7cb8;
-            box-shadow: 0 0 0 3px rgba(10, 124, 184, 0.1);
-        }
-
-        .form-check {
-            margin-top: 20px;
-        }
-
-        .form-check-input {
-            margin-right: 10px;
-        }
-
-        .help-text {
-            display: block;
-            margin-top: 5px;
-            font-size: 12px;
-            color: #666;
-        }
-
-        .btn-primary {
-            background: #0a7cb8;
-            color: white;
-            border: none;
-            padding: 12px 30px;
-            font-size: 16px;
-            border-radius: 4px;
-            cursor: pointer;
-            width: 100%;
-            margin-top: 20px;
-        }
-
-        .btn-primary:hover {
-            background: #0969a0;
-        }
-
-        .error-message {
-            color: #d32f2f;
-            font-size: 14px;
-            margin-top: 5px;
-        }
-
-        .form-errors {
-            background: #ffebee;
-            border: 1px solid #ffcdd2;
-            border-radius: 4px;
-            padding: 15px;
-            margin-bottom: 20px;
-            color: #c62828;
-        }
-
-        .pbn-note {
-            background: #fff3cd;
-            border: 1px solid #ffc107;
-            border-radius: 4px;
-            padding: 10px;
-            margin-top: 10px;
-            font-size: 13px;
-            color: #856404;
-        }
-
-        .pbn-note .fi-alert {
-            margin-right: 5px;
-        }
-
-        .auto-configured-fields {
-            background: #e8f5e9;
-            border: 1px solid #4caf50;
-            border-radius: 4px;
-            padding: 15px;
-            margin-top: 30px;
-        }
-
-        .auto-configured-fields h5 {
-            color: #2e7d32;
-            margin: 0 0 10px 0;
-            font-size: 16px;
-        }
-
-        .auto-configured-fields ul {
-            margin: 10px 0 0 20px;
-            color: #2e7d32;
-        }
-
-        .auto-configured-fields li {
-            margin: 5px 0;
-            font-size: 14px;
-        }
-    </style>
+    <link rel="stylesheet"
+          href="{% static 'bpp_setup_wizard/css/bpp_setup_wizard.css' %}">
 {% endblock %}
 
 {% block body %}
-    <div class="uczelnia-wizard-container">
-        <div class="uczelnia-wizard-header">
-            <div class="wizard-icon">
+    <div class="bpp-setup-wizard">
+        <div class="bpp-setup-wizard__header">
+            <div class="bpp-setup-wizard__icon">
                 <span class="fi-foundation"></span>
             </div>
-            <h1>{{ title }}</h1>
-            <p>{{ subtitle }}</p>
+            <h1 class="bpp-setup-wizard__header-title">{{ title }}</h1>
+            <p class="bpp-setup-wizard__header-subtitle">{{ subtitle }}</p>
         </div>
 
-        <div class="setup-info">
-            <h3><span class="fi-info"></span> Informacja</h3>
-            <p>Konfiguracja podstawowych danych uczelni jest wymagana do prawidłowego działania systemu.</p>
-            <p>Po wypełnieniu formularza system zostanie w pełni skonfigurowany i gotowy do użycia.</p>
+        <div class="bpp-setup-wizard__info">
+            <h3 class="bpp-setup-wizard__info-title">
+                <span class="fi-info"></span> Informacja
+            </h3>
+            <p class="bpp-setup-wizard__info-text">
+                Konfiguracja podstawowych danych uczelni jest wymagana do
+                prawidlowego dzialania systemu.
+            </p>
+            <p class="bpp-setup-wizard__info-text">
+                Po wypelnieniu formularza system zostanie w pelni skonfigurowany
+                i gotowy do uzycia.
+            </p>
         </div>
 
         <form method="post" novalidate>
             {% csrf_token %}
 
             {% if form.non_field_errors %}
-                <div class="form-errors">
+                <div class="bpp-setup-wizard__form-errors">
                     {{ form.non_field_errors }}
                 </div>
             {% endif %}
 
-            <div class="form-section">
-                <h4>Dane podstawowe</h4>
+            <div class="bpp-setup-wizard__form-section">
+                <h4 class="bpp-setup-wizard__form-section-title">
+                    Dane podstawowe
+                </h4>
 
-                <div class="form-group">
+                <div class="bpp-setup-wizard__form-group">
                     {{ form.nazwa.label_tag }}
                     {{ form.nazwa }}
                     {% if form.nazwa.help_text %}
-                        <span class="help-text">{{ form.nazwa.help_text }}</span>
+                        <span class="bpp-setup-wizard__help-text">
+                            {{ form.nazwa.help_text }}
+                        </span>
                     {% endif %}
                     {% if form.nazwa.errors %}
-                        <div class="error-message">{{ form.nazwa.errors }}</div>
+                        <div class="bpp-setup-wizard__error-message">
+                            {{ form.nazwa.errors }}
+                        </div>
                     {% endif %}
                 </div>
 
-                <div class="form-group">
+                <div class="bpp-setup-wizard__form-group">
                     {{ form.nazwa_dopelniacz_field.label_tag }}
                     {{ form.nazwa_dopelniacz_field }}
                     {% if form.nazwa_dopelniacz_field.help_text %}
-                        <span class="help-text">{{ form.nazwa_dopelniacz_field.help_text }}</span>
+                        <span class="bpp-setup-wizard__help-text">
+                            {{ form.nazwa_dopelniacz_field.help_text }}
+                        </span>
                     {% endif %}
                     {% if form.nazwa_dopelniacz_field.errors %}
-                        <div class="error-message">{{ form.nazwa_dopelniacz_field.errors }}</div>
+                        <div class="bpp-setup-wizard__error-message">
+                            {{ form.nazwa_dopelniacz_field.errors }}
+                        </div>
                     {% endif %}
                 </div>
 
-                <div class="form-group">
+                <div class="bpp-setup-wizard__form-group">
                     {{ form.skrot.label_tag }}
                     {{ form.skrot }}
                     {% if form.skrot.help_text %}
-                        <span class="help-text">{{ form.skrot.help_text }}</span>
+                        <span class="bpp-setup-wizard__help-text">
+                            {{ form.skrot.help_text }}
+                        </span>
                     {% endif %}
                     {% if form.skrot.errors %}
-                        <div class="error-message">{{ form.skrot.errors }}</div>
+                        <div class="bpp-setup-wizard__error-message">
+                            {{ form.skrot.errors }}
+                        </div>
                     {% endif %}
                 </div>
             </div>
 
-            <div class="form-section">
-                <h4>Integracja z PBN</h4>
+            <div class="bpp-setup-wizard__form-section">
+                <h4 class="bpp-setup-wizard__form-section-title">
+                    Integracja z PBN
+                </h4>
 
-                <div class="form-group">
+                <div class="bpp-setup-wizard__form-group">
                     {{ form.pbn_api_root.label_tag }}
                     {{ form.pbn_api_root }}
                     {% if form.pbn_api_root.help_text %}
-                        <span class="help-text">{{ form.pbn_api_root.help_text }}</span>
+                        <span class="bpp-setup-wizard__help-text">
+                            {{ form.pbn_api_root.help_text }}
+                        </span>
                     {% endif %}
                     {% if form.pbn_api_root.errors %}
-                        <div class="error-message">{{ form.pbn_api_root.errors }}</div>
+                        <div class="bpp-setup-wizard__error-message">
+                            {{ form.pbn_api_root.errors }}
+                        </div>
                     {% endif %}
                 </div>
 
-                <div class="form-group">
+                <div class="bpp-setup-wizard__form-group">
                     {{ form.pbn_app_name.label_tag }}
                     {{ form.pbn_app_name }}
                     {% if form.pbn_app_name.help_text %}
-                        <span class="help-text">{{ form.pbn_app_name.help_text }}</span>
+                        <span class="bpp-setup-wizard__help-text">
+                            {{ form.pbn_app_name.help_text }}
+                        </span>
                     {% endif %}
                     {% if form.pbn_app_name.errors %}
-                        <div class="error-message">{{ form.pbn_app_name.errors }}</div>
+                        <div class="bpp-setup-wizard__error-message">
+                            {{ form.pbn_app_name.errors }}
+                        </div>
                     {% endif %}
                 </div>
 
-                <div class="form-group">
+                <div class="bpp-setup-wizard__form-group">
                     {{ form.pbn_app_token.label_tag }}
                     {{ form.pbn_app_token }}
                     {% if form.pbn_app_token.help_text %}
-                        <span class="help-text">{{ form.pbn_app_token.help_text }}</span>
+                        <span class="bpp-setup-wizard__help-text">
+                            {{ form.pbn_app_token.help_text }}
+                        </span>
                     {% endif %}
                     {% if form.pbn_app_token.errors %}
-                        <div class="error-message">{{ form.pbn_app_token.errors }}</div>
+                        <div class="bpp-setup-wizard__error-message">
+                            {{ form.pbn_app_token.errors }}
+                        </div>
                     {% endif %}
                 </div>
 
-                <div class="pbn-note">
+                <div class="bpp-setup-wizard__pbn-note">
                     <span class="fi-alert"></span>
-                    <strong>Uwaga:</strong> Dane do integracji z PBN można uzyskać po zarejestrowaniu aplikacji w systemie PBN.
-                    Jeśli nie posiadasz jeszcze tych danych, możesz je uzupełnić później w panelu administracyjnym.
+                    <strong>Uwaga:</strong> Dane do integracji z PBN mozna
+                    uzyskac po zarejestrowaniu aplikacji w systemie PBN.
+                    Jesli nie posiadasz jeszcze tych danych, mozesz je
+                    uzupelnic pozniej w panelu administracyjnym.
                 </div>
 
-                <div class="pbn-documentation" style="margin-top: 15px; padding: 15px; background: #e3f2fd; border: 1px solid #2196f3; border-radius: 4px;">
-                    <h5 style="margin: 0 0 10px 0; color: #1976d2; font-size: 16px;">
-                        <span class="fi-info"></span> Dokumentacja integracji z PBN
+                <div class="bpp-setup-wizard__pbn-documentation">
+                    <h5 class="bpp-setup-wizard__pbn-documentation-title">
+                        <span class="fi-info"></span> Dokumentacja integracji
+                        z PBN
                     </h5>
-                    <p style="margin: 10px 0; font-size: 14px;">Aby uzyskać dane do integracji, zapoznaj się z dokumentacją:</p>
-                    <ul style="margin: 10px 0 0 20px; font-size: 14px;">
-                        <li style="margin: 5px 0;">
+                    <p class="bpp-setup-wizard__pbn-documentation-text">
+                        Aby uzyskac dane do integracji, zapoznaj sie z
+                        dokumentacja:
+                    </p>
+                    <ul class="bpp-setup-wizard__pbn-documentation-list">
+                        <li class="bpp-setup-wizard__pbn-documentation-list-item">
                             <a href="https://pbn.nauka.gov.pl/centrum-pomocy/baza-wiedzy/uzyskanie-integracji-z-api-pbn/"
                                target="_blank"
-                               style="color: #1976d2; text-decoration: underline;">
-                                Oficjalna instrukcja PBN - Uzyskanie integracji z API PBN
-                                <span class="fi-link" style="font-size: 12px; margin-left: 3px;"></span>
+                               class="bpp-setup-wizard__pbn-documentation-link">
+                                Oficjalna instrukcja PBN - Uzyskanie integracji
+                                z API PBN
+                                <span class="fi-link bpp-setup-wizard__pbn-documentation-link-icon"></span>
                             </a>
                         </li>
-                        <li style="margin: 5px 0;">
+                        <li class="bpp-setup-wizard__pbn-documentation-list-item">
                             <a href="https://bpp.readthedocs.io/pl/latest/konfiguracja_pbn.html"
                                target="_blank"
-                               style="color: #1976d2; text-decoration: underline;">
+                               class="bpp-setup-wizard__pbn-documentation-link">
                                 Dokumentacja BPP - Konfiguracja PBN
-                                <span class="fi-link" style="font-size: 12px; margin-left: 3px;"></span>
+                                <span class="fi-link bpp-setup-wizard__pbn-documentation-link-icon"></span>
                             </a>
                         </li>
-                        <li style="margin: 5px 0;">
+                        <li class="bpp-setup-wizard__pbn-documentation-list-item">
                             <a href="https://bpp.iplweb.pl/zrodla"
                                target="_blank"
-                               style="color: #1976d2; text-decoration: underline;">
-                                Przykłady i dodatkowe zasoby BPP
-                                <span class="fi-link" style="font-size: 12px; margin-left: 3px;"></span>
+                               class="bpp-setup-wizard__pbn-documentation-link">
+                                Przyklady i dodatkowe zasoby BPP
+                                <span class="fi-link bpp-setup-wizard__pbn-documentation-link-icon"></span>
                             </a>
                         </li>
                     </ul>
-                    <p style="margin: 10px 0 0 0; font-size: 13px; color: #555;">
-                        <strong>Wskazówka:</strong> Rozpocznij od środowiska testowego, aby bezpiecznie przetestować integrację przed przejściem na środowisko produkcyjne.
+                    <p class="bpp-setup-wizard__pbn-documentation-hint">
+                        <strong>Wskazowka:</strong> Rozpocznij od srodowiska
+                        testowego, aby bezpiecznie przetestowac integracje
+                        przed przejsciem na srodowisko produkcyjne.
                     </p>
                 </div>
             </div>
 
-            <div class="form-section">
-                <h4>Struktura organizacyjna</h4>
+            <div class="bpp-setup-wizard__form-section">
+                <h4 class="bpp-setup-wizard__form-section-title">
+                    Struktura organizacyjna
+                </h4>
 
-                <div class="form-check">
+                <div class="bpp-setup-wizard__form-check">
                     {{ form.uzywaj_wydzialow }}
-                    <label for="{{ form.uzywaj_wydzialow.id_for_label }}" class="form-check-label">
+                    <label for="{{ form.uzywaj_wydzialow.id_for_label }}"
+                           class="bpp-setup-wizard__form-check-label">
                         {{ form.uzywaj_wydzialow.label }}
                     </label>
                     {% if form.uzywaj_wydzialow.help_text %}
-                        <span class="help-text">{{ form.uzywaj_wydzialow.help_text }}</span>
+                        <span class="bpp-setup-wizard__help-text">
+                            {{ form.uzywaj_wydzialow.help_text }}
+                        </span>
                     {% endif %}
                     {% if form.uzywaj_wydzialow.errors %}
-                        <div class="error-message">{{ form.uzywaj_wydzialow.errors }}</div>
+                        <div class="bpp-setup-wizard__error-message">
+                            {{ form.uzywaj_wydzialow.errors }}
+                        </div>
                     {% endif %}
                 </div>
             </div>
 
-            <div class="auto-configured-fields">
-                <h5><span class="fi-check"></span> Ustawienia automatycznie skonfigurowane</h5>
-                <p>Następujące opcje zostaną włączone automatycznie dla optymalnej pracy z PBN:</p>
-                <ul>
-                    <li>Kasowanie oświadczeń przed wysłaniem do PBN</li>
-                    <li>Niewysyłanie do PBN prac z PK=0</li>
-                    <li>Wysyłanie zawsze UID uczelni jako afiliację</li>
-                    <li>Wysyłanie prac bez oświadczeń</li>
-                    <li>Używanie integracji z PBN</li>
-                    <li>Opcjonalna aktualizacja przy edycji</li>
+            <div class="bpp-setup-wizard__auto-configured">
+                <h5 class="bpp-setup-wizard__auto-configured-title">
+                    <span class="fi-check"></span> Ustawienia automatycznie
+                    skonfigurowane
+                </h5>
+                <p class="bpp-setup-wizard__auto-configured-text">
+                    Nastepujace opcje zostana wlaczone automatycznie dla
+                    optymalnej pracy z PBN:
+                </p>
+                <ul class="bpp-setup-wizard__auto-configured-list">
+                    <li class="bpp-setup-wizard__auto-configured-list-item">
+                        Kasowanie oswiadczen przed wyslaniem do PBN
+                    </li>
+                    <li class="bpp-setup-wizard__auto-configured-list-item">
+                        Niewysylanie do PBN prac z PK=0
+                    </li>
+                    <li class="bpp-setup-wizard__auto-configured-list-item">
+                        Wysylanie zawsze UID uczelni jako afiliacje
+                    </li>
+                    <li class="bpp-setup-wizard__auto-configured-list-item">
+                        Wysylanie prac bez oswiadczen
+                    </li>
+                    <li class="bpp-setup-wizard__auto-configured-list-item">
+                        Uzywanie integracji z PBN
+                    </li>
+                    <li class="bpp-setup-wizard__auto-configured-list-item">
+                        Opcjonalna aktualizacja przy edycji
+                    </li>
                 </ul>
             </div>
 
-            <button type="submit" class="btn-primary">
-                <span class="fi-save"></span> Zapisz konfigurację uczelni
+            <button type="submit" class="bpp-setup-wizard__submit-btn">
+                <span class="fi-save"></span> Zapisz konfiguracje uczelni
             </button>
         </form>
     </div>

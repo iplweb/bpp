@@ -1,0 +1,110 @@
+// =============================================================================
+// PRINT STYLES
+// All @media print rules consolidated in one place
+// =============================================================================
+
+@media print {
+  // Page margins
+  @page {
+    margin-top: 1cm !important;
+    margin-bottom: 1.5cm !important;
+    margin-left: 0.5cm !important;
+    margin-right: 1cm !important;
+  }
+
+  // Basic typography
+  body, p, div {
+    font-size: 9pt;
+  }
+
+  // Links
+  a[href] {
+    text-decoration: none;
+  }
+
+  a[href]:after {
+    content: "" !important;
+  }
+
+  // Tables
+  table {
+    border: none;
+    margin: 0pt;
+  }
+
+  table tfoot tr th,
+  tfoot {
+    display: table-row-group;
+  }
+
+  // Multiseek title
+  h1.bpp-multiseek-title {
+    font-size: 12pt;
+    font-weight: bold;
+  }
+
+  // Multiseek report elements - hide interactive elements
+  .multiseek-removed-panel,
+  .multiseek-remove-from-results,
+  .bibtex-actions,
+  .title-edit-btn {
+    display: none !important;
+  }
+
+  .multiseek-report-title {
+    box-shadow: none;
+    border: none;
+    padding: 10px 0;
+  }
+
+  .multiseek-list-report li {
+    page-break-inside: avoid;
+    border: none;
+    box-shadow: none;
+  }
+
+  .multiseek-table-report {
+    box-shadow: none;
+
+    tr {
+      page-break-inside: avoid;
+    }
+  }
+
+  // Grid display
+  div.grid-x {
+    display: block !important;
+  }
+
+  // Page breaks
+  tr, img {
+    page-break-inside: auto !important;
+  }
+
+  // KBN table page breaks
+  table.kbntab tr td {
+    page-break-inside: auto;
+    page-break-after: avoid;
+  }
+
+  table.kbntab tr {
+    page-break-inside: auto;
+    page-break-after: avoid;
+  }
+
+  // BPP table page breaks
+  table.bpp-table tr td {
+    page-break-inside: auto;
+    page-break-after: avoid;
+  }
+
+  table.bpp-table tr {
+    page-break-inside: auto;
+    page-break-after: avoid;
+  }
+
+  // Django tables2 patch (issue #409)
+  div.table-container {
+    display: inline !important;
+  }
+}

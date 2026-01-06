@@ -41,7 +41,7 @@
         {% endif %}
 
         {% if unpinning_analysis_running %}
-        <div class="callout warning" id="unpinning-analysis-callout" style="margin-top: 1rem;">
+        <div class="callout warning ewaluacja-optymalizacja__callout-top-margin" id="unpinning-analysis-callout">
             <h5><span class="fi-loop"></span> Trwa analiza "Optymalizuj przed"</h5>
             <p>
                 Przyciski "Policz cala ewaluacje" i "Optymalizuj, odpinajac sloty" sa zablokowane
@@ -72,20 +72,20 @@
             </a>
         </div>
 
-        <div class="button-group" style="margin-top: 0.5rem;">
+        <div class="button-group ewaluacja-optymalizacja__button-group--spaced">
             <a href="/snapshot_odpiec/" class="button secondary">
                 <span class="fi-camera"></span> Snapshoty odpięć
             </a>
             <a href="{% url 'ewaluacja_optymalizacja:unpinning-list' %}"
                class="button info{% if dirty_count > 0 %} disabled{% endif %}"
                id="optymalizuj-przed-btn"
-               {% if dirty_count > 0 %}onclick="event.preventDefault(); alert('Czekamy na przeliczenie punktów. Obecnie jest {{ dirty_count }} rekordów do przeliczenia.'); return false;"{% endif %}>
+               {% if dirty_count > 0 %}data-disabled-alert="Czekamy na przeliczenie punktów. Obecnie jest {{ dirty_count }} rekordów do przeliczenia."{% endif %}>
                 <span class="fi-zoom-in"></span> Optymalizuj przed
             </a>
             <a href="{% url 'ewaluacja_optymalizacja:discipline-swap-list' %}"
                class="button info{% if dirty_count > 0 %} disabled{% endif %}"
                id="discipline-swap-btn"
-               {% if dirty_count > 0 %}onclick="event.preventDefault(); alert('Czekamy na przeliczenie punktów. Obecnie jest {{ dirty_count }} rekordów do przeliczenia.'); return false;"{% endif %}>
+               {% if dirty_count > 0 %}data-disabled-alert="Czekamy na przeliczenie punktów. Obecnie jest {{ dirty_count }} rekordów do przeliczenia."{% endif %}>
                 <span class="fi-shuffle"></span> Zamiany dyscyplin
             </a>
             {% if status_bulk.w_trakcie and status_bulk.task_id and status_bulk.uczelnia %}
@@ -97,7 +97,7 @@
             <button form="bulk-optimization-form" type="submit" class="button warning{% if dirty_count > 0 or unpinning_analysis_running %} disabled{% endif %}"
                     id="bulk-optimization-btn"
                     {% if dirty_count > 0 or unpinning_analysis_running %}disabled{% endif %}
-                    onclick="{% if dirty_count > 0 %}event.preventDefault(); alert('Czekamy na przeliczenie punktów. Obecnie jest {{ dirty_count }} rekordów do przeliczenia.'); return false;{% elif unpinning_analysis_running %}event.preventDefault(); alert('Trwa analiza Optymalizuj przed. Poczekaj na zakonczenie.'); return false;{% else %}return confirm('Czy na pewno chcesz uruchomić optymalizację dla WSZYSTKICH dyscyplin raportowanych (>= 12 slotów)? Proces może potrwać kilka do kilkunastu minut.');{% endif %}">
+                    {% if dirty_count > 0 %}data-disabled-alert="Czekamy na przeliczenie punktów. Obecnie jest {{ dirty_count }} rekordów do przeliczenia."{% elif unpinning_analysis_running %}data-disabled-alert="Trwa analiza Optymalizuj przed. Poczekaj na zakonczenie."{% else %}data-confirm="Czy na pewno chcesz uruchomić optymalizację dla WSZYSTKICH dyscyplin raportowanych (>= 12 slotów)? Proces może potrwać kilka do kilkunastu minut."{% endif %}>
                 <span class="fi-play"></span> Policz cala ewaluacje
             </button>
             {% endif %}
@@ -110,13 +110,13 @@
             <a href="{% url 'ewaluacja_optymalizacja:optimize-unpin' %}"
                class="button success{% if dirty_count > 0 or unpinning_analysis_running %} disabled{% endif %}"
                id="optimize-unpin-btn"
-               {% if dirty_count > 0 %}onclick="event.preventDefault(); alert('Czekamy na przeliczenie punktów. Obecnie jest {{ dirty_count }} rekordów do przeliczenia.'); return false;"{% elif unpinning_analysis_running %}onclick="event.preventDefault(); alert('Trwa analiza Optymalizuj przed. Poczekaj na zakonczenie.'); return false;"{% else %}onclick="return confirm('Czy na pewno chcesz zastosować optymalizację i odpiąć niepotrzebne sloty? Ta operacja:\n\n1. Sprawdzi czy wszystkie dyscypliny są przeliczone\n2. Utworzy snapshot obecnego stanu\n3. Odpnie dyscypliny w pracach niewykazanych do ewaluacji\n4. Automatycznie przeliczy punktację\n5. Przeliczy optymalizację dla wszystkich dyscyplin\n\nProces może potrwać 20-30 minut w zależności od liczby dyscyplin.');"{% endif %}>
+               {% if dirty_count > 0 %}data-disabled-alert="Czekamy na przeliczenie punktów. Obecnie jest {{ dirty_count }} rekordów do przeliczenia."{% elif unpinning_analysis_running %}data-disabled-alert="Trwa analiza Optymalizuj przed. Poczekaj na zakonczenie."{% else %}data-confirm="Czy na pewno chcesz zastosować optymalizację i odpiąć niepotrzebne sloty? Ta operacja:\n\n1. Sprawdzi czy wszystkie dyscypliny są przeliczone\n2. Utworzy snapshot obecnego stanu\n3. Odpnie dyscypliny w pracach niewykazanych do ewaluacji\n4. Automatycznie przeliczy punktację\n5. Przeliczy optymalizację dla wszystkich dyscyplin\n\nProces może potrwać 20-30 minut w zależności od liczby dyscyplin."{% endif %}>
                 <span class="fi-unlock"></span> Optymalizuj, odpinajac sloty
             </a>
             {% endif %}
         </div>
 
-        <div class="button-group" style="margin-top: 0.5rem;">
+        <div class="button-group ewaluacja-optymalizacja__button-group--spaced">
             {% if optimization_runs and status_bulk.plik_zip_wszystkie_xls %}
             <a href="{% url 'ewaluacja_optymalizacja:export-all-disciplines-zip' %}"
                class="button success">
@@ -141,17 +141,17 @@
 
         <form id="bulk-optimization-form" method="POST" action="{% url 'ewaluacja_optymalizacja:bulk-start' %}">
             {% csrf_token %}
-            <fieldset style="border: 1px solid #ccc; padding: 1rem; margin-bottom: 1rem; border-radius: 3px; margin-top: 1rem;">
-                <legend style="font-weight: bold; padding: 0 0.5rem;">Konfiguracja solvera:</legend>
-                <div style="margin-bottom: 0.5rem;">
+            <fieldset class="ewaluacja-optymalizacja__fieldset">
+                <legend class="ewaluacja-optymalizacja__legend">Konfiguracja solvera:</legend>
+                <div class="ewaluacja-optymalizacja__radio-option">
                     <input type="radio" id="algo-two-phase" name="algorithm_mode" value="two-phase" checked>
-                    <label for="algo-two-phase" style="display: inline; margin-right: 1rem;">
+                    <label for="algo-two-phase" class="ewaluacja-optymalizacja__radio-label">
                         <strong>Dwufazowy</strong> - najpierw per-autor, potem instytucja
                     </label>
                 </div>
                 <div>
                     <input type="radio" id="algo-single-phase" name="algorithm_mode" value="single-phase">
-                    <label for="algo-single-phase" style="display: inline;">
+                    <label for="algo-single-phase" class="ewaluacja-optymalizacja__radio-label--single">
                         <strong>Jednofazowy</strong> - wszystkie ograniczenia od razu
                     </label>
                 </div>
@@ -187,46 +187,49 @@
                 if (bulkOptButton) {
                     bulkOptButton.classList.remove('disabled');
                     bulkOptButton.removeAttribute('disabled');
-                    bulkOptButton.setAttribute('onclick',
-                        "return confirm('Czy na pewno chcesz uruchomic optymalizacje dla WSZYSTKICH dyscyplin raportowanych (>= 12 slotow)? Proces moze potrwac kilka do kilkunastu minut.');");
+                    bulkOptButton.removeAttribute('data-disabled-alert');
+                    bulkOptButton.setAttribute('data-confirm',
+                        'Czy na pewno chcesz uruchomic optymalizacje dla WSZYSTKICH dyscyplin raportowanych (>= 12 slotow)? Proces moze potrwac kilka do kilkunastu minut.');
                 }
 
                 // Przycisk "Optymalizuj przed"
                 const optymalizujPrzedBtn = document.getElementById('optymalizuj-przed-btn');
                 if (optymalizujPrzedBtn) {
                     optymalizujPrzedBtn.classList.remove('disabled');
-                    optymalizujPrzedBtn.onclick = null;
+                    optymalizujPrzedBtn.removeAttribute('data-disabled-alert');
                 }
 
                 // Przycisk "Zamiany dyscyplin"
                 const disciplineSwapBtn = document.getElementById('discipline-swap-btn');
                 if (disciplineSwapBtn) {
                     disciplineSwapBtn.classList.remove('disabled');
-                    disciplineSwapBtn.onclick = null;
+                    disciplineSwapBtn.removeAttribute('data-disabled-alert');
                 }
 
                 // Przycisk "Optymalizuj, odpinajac sloty"
                 const optimizeUnpinBtn = document.getElementById('optimize-unpin-btn');
                 if (optimizeUnpinBtn) {
                     optimizeUnpinBtn.classList.remove('disabled');
-                    optimizeUnpinBtn.setAttribute('onclick',
-                        "return confirm('Czy na pewno chcesz zastosowac optymalizacje i odpiac niepotrzebne sloty? Ta operacja:\\n\\n1. Sprawdzi czy wszystkie dyscypliny sa przeliczone\\n2. Utworzy snapshot obecnego stanu\\n3. Odpnie dyscypliny w pracach niewykazanych do ewaluacji\\n4. Automatycznie przeliczy punktacje\\n5. Przeliczy optymalizacje dla wszystkich dyscyplin\\n\\nProces moze potrwac 20-30 minut w zaleznosci od liczby dyscyplin.');");
+                    optimizeUnpinBtn.removeAttribute('data-disabled-alert');
+                    optimizeUnpinBtn.setAttribute('data-confirm',
+                        'Czy na pewno chcesz zastosowac optymalizacje i odpiac niepotrzebne sloty? Ta operacja:\n\n1. Sprawdzi czy wszystkie dyscypliny sa przeliczone\n2. Utworzy snapshot obecnego stanu\n3. Odpnie dyscypliny w pracach niewykazanych do ewaluacji\n4. Automatycznie przeliczy punktacje\n5. Przeliczy optymalizacje dla wszystkich dyscyplin\n\nProces moze potrwac 20-30 minut w zaleznosci od liczby dyscyplin.');
                 }
 
                 // Przyciski "Resetuj przypięcia" (per-dyscyplina i wszystkie)
                 const resetPinsBtns = document.querySelectorAll('.reset-pins-btn');
                 resetPinsBtns.forEach(function(btn) {
                     btn.classList.remove('disabled');
+                    btn.removeAttribute('data-disabled-alert');
                     // Przywróć oryginalne onclick z data atrybutu lub ustaw domyślne
                     const href = btn.getAttribute('href');
                     if (href.includes('reset-all-pins')) {
-                        btn.setAttribute('onclick',
-                            "return confirm('Czy na pewno chcesz zresetowac przypiecia dla WSZYSTKICH dyscyplin?\\n\\nTa operacja:\\n1. Utworzy snapshot obecnego stanu\\n2. Ustawi przypieta=True dla wszystkich rekordow z lat 2022-2025\\n3. Dotyczy autorow ktorzy maja dyscypline, sa zatrudnieni i afiliuja\\n4. Automatycznie przeliczy punktacje\\n\\nProces moze potrwac kilkanascie minut.');");
+                        btn.setAttribute('data-confirm',
+                            'Czy na pewno chcesz zresetowac przypiecia dla WSZYSTKICH dyscyplin?\n\nTa operacja:\n1. Utworzy snapshot obecnego stanu\n2. Ustawi przypieta=True dla wszystkich rekordow z lat 2022-2025\n3. Dotyczy autorow ktorzy maja dyscypline, sa zatrudnieni i afiliuja\n4. Automatycznie przeliczy punktacje\n\nProces moze potrwac kilkanascie minut.');
                     } else {
                         // Dla przycisków per-dyscyplina - potrzebujemy pobrać nazwę dyscypliny z kontekstu
                         // Użyjemy prostszego komunikatu bez nazwy dyscypliny
-                        btn.setAttribute('onclick',
-                            "return confirm('Czy na pewno chcesz zresetowac przypiecia dla tej dyscypliny?\\n\\nTa operacja:\\n1. Utworzy snapshot obecnego stanu\\n2. Ustawi przypieta=True dla wszystkich rekordow z lat 2022-2025\\n3. Automatycznie przeliczy punktacje\\n\\nProces moze potrwac kilka minut.');");
+                        btn.setAttribute('data-confirm',
+                            'Czy na pewno chcesz zresetowac przypiecia dla tej dyscypliny?\n\nTa operacja:\n1. Utworzy snapshot obecnego stanu\n2. Ustawi przypieta=True dla wszystkich rekordow z lat 2022-2025\n3. Automatycznie przeliczy punktacje\n\nProces moze potrwac kilka minut.');
                     }
                 });
 
@@ -316,11 +319,32 @@
                 }
             });
         })();
+
+        // Event delegation handlers for data attributes
+        document.addEventListener('click', function(e) {
+            // Handle disabled alert
+            var disabledElem = e.target.closest('[data-disabled-alert]');
+            if (disabledElem) {
+                e.preventDefault();
+                alert(disabledElem.dataset.disabledAlert);
+                return false;
+            }
+
+            // Handle confirm dialog
+            var confirmElem = e.target.closest('[data-confirm]');
+            if (confirmElem) {
+                var msg = confirmElem.dataset.confirm;
+                if (!confirm(msg)) {
+                    e.preventDefault();
+                    return false;
+                }
+            }
+        });
         </script>
 
         {% if optimization_runs %}
         {% if status_bulk.data_zakonczenia %}
-        <div class="callout secondary" style="margin-bottom: 1rem;">
+        <div class="callout secondary ewaluacja-optymalizacja__callout--results">
             <span class="fi-clock"></span> Wyniki wygenerowane: {{ status_bulk.data_zakonczenia|date:"Y-m-d H:i" }}
         </div>
         {% endif %}
@@ -386,7 +410,7 @@
                         {% if run.pin_stats.unpinned > 0 %}
                         <a href="{% url 'ewaluacja_optymalizacja:reset-discipline-pins' run.dyscyplina_naukowa.pk %}"
                            class="button tiny warning reset-pins-btn{% if dirty_count > 0 %} disabled{% endif %}"
-                           {% if dirty_count > 0 %}onclick="event.preventDefault(); alert('Czekamy na przeliczenie punktów. Obecnie jest {{ dirty_count }} rekordów do przeliczenia.'); return false;"{% else %}onclick="return confirm('Czy na pewno chcesz zresetować przypięcia dla dyscypliny \'{{ run.dyscyplina_naukowa.nazwa }}\'?\n\nTa operacja:\n1. Utworzy snapshot obecnego stanu\n2. Ustawi przypieta=True dla wszystkich {{ run.pin_stats.total }} rekordów z lat 2022-2025\n3. Automatycznie przeliczy punktację\n\nProces może potrwać kilka minut.');"{% endif %}>
+                           {% if dirty_count > 0 %}data-disabled-alert="Czekamy na przeliczenie punktów. Obecnie jest {{ dirty_count }} rekordów do przeliczenia."{% else %}data-confirm="Czy na pewno chcesz zresetować przypięcia dla dyscypliny '{{ run.dyscyplina_naukowa.nazwa }}'?\n\nTa operacja:\n1. Utworzy snapshot obecnego stanu\n2. Ustawi przypieta=True dla wszystkich {{ run.pin_stats.total }} rekordów z lat 2022-2025\n3. Automatycznie przeliczy punktację\n\nProces może potrwać kilka minut."{% endif %}>
                             <span class="fi-refresh"></span> Resetuj przypięcia
                         </a>
                         {% endif %}
@@ -396,7 +420,7 @@
             </tbody>
             {% if optimization_runs|slice:":10"|length > 1 %}
             <tfoot>
-                <tr style="font-weight: bold; background-color: #f4f4f4; border-top: 2px solid #333;">
+                <tr class="ewaluacja-optymalizacja__results-footer">
                     <td><strong>RAZEM</strong></td>
                     <td>{% if summary.total_3n > 0 %}{{ summary.total_3n|floatformat:0 }}{% else %}-{% endif %}</td>
                     <td>-</td>
@@ -418,7 +442,7 @@
                         <a href="{% url 'ewaluacja_optymalizacja:reset-all-pins' %}"
                            class="button tiny warning reset-pins-btn{% if dirty_count > 0 %} disabled{% endif %}"
                            id="reset-all-pins-btn"
-                           {% if dirty_count > 0 %}onclick="event.preventDefault(); alert('Czekamy na przeliczenie punktów. Obecnie jest {{ dirty_count }} rekordów do przeliczenia.'); return false;"{% else %}onclick="return confirm('Czy na pewno chcesz zresetować przypięcia dla WSZYSTKICH dyscyplin?\n\nTa operacja:\n1. Utworzy snapshot obecnego stanu\n2. Ustawi przypieta=True dla wszystkich rekordów z lat 2022-2025\n3. Dotyczy autorów którzy mają dyscyplinę, są zatrudnieni i afiliują\n4. Automatycznie przeliczy punktację\n\nProces może potrwać kilkanaście minut.');"{% endif %}>
+                           {% if dirty_count > 0 %}data-disabled-alert="Czekamy na przeliczenie punktów. Obecnie jest {{ dirty_count }} rekordów do przeliczenia."{% else %}data-confirm="Czy na pewno chcesz zresetować przypięcia dla WSZYSTKICH dyscyplin?\n\nTa operacja:\n1. Utworzy snapshot obecnego stanu\n2. Ustawi przypieta=True dla wszystkich rekordów z lat 2022-2025\n3. Dotyczy autorów którzy mają dyscyplinę, są zatrudnieni i afiliują\n4. Automatycznie przeliczy punktację\n\nProces może potrwać kilkanaście minut."{% endif %}>
                             <span class="fi-refresh"></span> Resetuj przypięcia
                         </a>
                         {% else %}

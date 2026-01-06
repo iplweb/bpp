@@ -1,0 +1,115 @@
+// =============================================================================
+// AUTOR LEGACY
+// Legacy author page styles (.author-* classes)
+// =============================================================================
+
+.author-header {
+  margin-bottom: 20px;
+
+  h1 {
+    color: #2c3e50;
+    font-size: 2.2rem;
+    margin-bottom: 8px;
+    font-weight: 600;
+  }
+
+  .author-title {
+    color: #7f8c8d;
+    font-size: 1.2rem;
+    font-style: italic;
+    margin-bottom: 15px;
+  }
+}
+
+.author-info-section {
+  margin-bottom: 20px;
+
+  h3 {
+    color: #2c3e50;
+    font-size: 1.3rem;
+    margin-bottom: 15px;
+    font-weight: 600;
+
+    i {
+      margin-right: 8px;
+      color: #7f8c8d;
+      width: 20px;
+    }
+  }
+
+  p {
+    color: #34495e;
+    line-height: 1.6;
+    margin-bottom: 10px;
+
+    strong {
+      color: #2c3e50;
+    }
+  }
+
+  a {
+    color: #3498db;
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}
+
+.author-ids-panel {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 20px;
+
+  h3 {
+    color: #2c3e50;
+    font-size: 1.3rem;
+    margin-bottom: 20px;
+    font-weight: 600;
+
+    i {
+      margin-right: 8px;
+      color: #7f8c8d;
+    }
+  }
+}
+
+.author-ids {
+  .id-item {
+    margin-bottom: 15px;
+    padding: 12px;
+    background: white;
+    border-radius: 4px;
+    border-left: 3px solid #3498db;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+
+    strong {
+      color: #2c3e50;
+      display: block;
+      margin-bottom: 4px;
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    a {
+      color: #3498db;
+      text-decoration: none;
+      font-family: monospace;
+
+      &:hover {
+        text-decoration: underline;
+      }
+    }
+
+    span:not([data-tooltip]) {
+      font-family: monospace;
+      color: #7f8c8d;
+    }
+  }
+}

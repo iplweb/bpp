@@ -194,3 +194,54 @@ def test_parse_informacje(input, exp_rok, exp_tom, exp_nr):
     assert res.get("rok") == exp_rok
     assert res.get("tom") == exp_tom
     assert res.get("numer") == exp_nr
+
+
+# =============================================================================
+# Testy przeniesione z tests_legacy/test_abstract.py
+# =============================================================================
+
+from model_bakery import baker
+
+from bpp.models import POLA_PUNKTACJI
+from bpp.models.abstract import ILOSC_ZNAKOW_NA_ARKUSZ
+
+
+def test_pola():
+    assert "impact_factor" in POLA_PUNKTACJI
+    assert "weryfikacja_punktacji" not in POLA_PUNKTACJI
+
+
+@pytest.mark.django_db
+def test_model_punktowany():
+    mp = baker.make(Wydawnictwo_Ciagle_Autor.rekord.field.related_model, impact_factor=0)
+    assert mp.ma_punktacje() is False
+
+    mp.impact_factor = 0
+    assert mp.ma_punktacje() is False
+
+    mp.impact_factor = 1
+    assert mp.ma_punktacje() is True
+
+
+@pytest.mark.django_db
+def test_model_ze_znakami_wydawniczymi():
+    from bpp.models import Wydawnictwo_Ciagle
+
+    x = baker.make(Wydawnictwo_Ciagle, liczba_znakow_wydawniczych=None)
+
+    assert not x.ma_wymiar_wydawniczy()
+
+    x.liczba_znakow_wydawniczych = 5
+    assert x.ma_wymiar_wydawniczy()
+
+    x.liczba_znakow_wydawniczych = None
+    assert not x.ma_wymiar_wydawniczy()
+
+    x.liczba_znakow_wydawniczych = 5
+    assert x.ma_wymiar_wydawniczy()
+
+    x.liczba_znakow_wydawniczych = ILOSC_ZNAKOW_NA_ARKUSZ
+    assert x.wymiar_wydawniczy_w_arkuszach() == "1.00"
+
+    x.liczba_znakow_wydawniczych = ILOSC_ZNAKOW_NA_ARKUSZ * 2.5
+    assert x.wymiar_wydawniczy_w_arkuszach() == "2.50"

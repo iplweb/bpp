@@ -1,7 +1,13 @@
+import logging
+import sys
 from contextlib import contextmanager
 from threading import Lock
 
+import rollbar
+
 from django_bpp.celery_tasks import app
+
+logger = logging.getLogger(__name__)
 
 
 class TqdmProgressPatcher:
@@ -75,7 +81,8 @@ class TqdmProgressPatcher:
 
                         task.save()
                 except Exception:
-                    pass  # Don't let database errors break the download
+                    rollbar.report_exc_info(sys.exc_info())
+                    logger.debug("Błąd aktualizacji postępu zadania", exc_info=True)
 
             return result
 
@@ -101,7 +108,10 @@ class TqdmProgressPatcher:
                         task.progress_percentage = min(90, int(total_progress))
                         task.save()
                 except Exception:
-                    pass
+                    rollbar.report_exc_info(sys.exc_info())
+                    logger.debug(
+                        "Błąd aktualizacji postępu zadania (close)", exc_info=True
+                    )
 
             return result
 

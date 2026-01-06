@@ -156,6 +156,48 @@ def generate_visualization_html(
             border-radius: 50%;
             margin-right: 8px;
         }}
+
+        .legend-color--author {{
+            background: #4A90E2;
+        }}
+
+        .legend-color--selected {{
+            background: #FF6B6B;
+        }}
+
+        .legend-color--connected {{
+            background: #FFA500;
+        }}
+
+        .legend-line {{
+            width: 20px;
+            height: 2px;
+            background: #666;
+            margin-right: 8px;
+        }}
+
+        .filter-panel {{
+            margin: 15px 0;
+            padding: 10px;
+            background: #f0f0f0;
+            border-radius: 3px;
+        }}
+
+        .filter-label {{
+            display: flex;
+            align-items: center;
+            font-size: 13px;
+            cursor: pointer;
+        }}
+
+        .filter-checkbox {{
+            margin-right: 5px;
+        }}
+
+        .no-results {{
+            padding: 5px;
+            color: #999;
+        }}
     </style>
 </head>
 <body>
@@ -168,9 +210,9 @@ def generate_visualization_html(
         <button onclick="resetView()">Resetuj widok</button>
         <button onclick="toggleEdgeLabels()">Etykiety krawędzi</button>
 
-        <div style="margin: 15px 0; padding: 10px; background: #f0f0f0; border-radius: 3px;">
-            <label style="display: flex; align-items: center; font-size: 13px; cursor: pointer;">
-                <input type="checkbox" id="filter-single-html" style="margin-right: 5px;"
+        <div class="filter-panel">
+            <label class="filter-label">
+                <input type="checkbox" id="filter-single-html" class="filter-checkbox"
                 onchange="filterSingleConnections(this.checked)">
                 <span>Ukryj połączenia z tylko 1 publikacją</span>
             </label>
@@ -184,19 +226,19 @@ def generate_visualization_html(
 
     <div class="legend">
         <div class="legend-item">
-            <div class="legend-color" style="background: #4A90E2;"></div>
+            <div class="legend-color legend-color--author"></div>
             <span>Autor</span>
         </div>
         <div class="legend-item">
-            <div class="legend-color" style="background: #FF6B6B;"></div>
+            <div class="legend-color legend-color--selected"></div>
             <span>Wybrany autor</span>
         </div>
         <div class="legend-item">
-            <div class="legend-color" style="background: #FFA500;"></div>
+            <div class="legend-color legend-color--connected"></div>
             <span>Połączony autor</span>
         </div>
         <div class="legend-item">
-            <div style="width: 20px; height: 2px; background: #666; margin-right: 8px;"></div>
+            <div class="legend-line"></div>
             <span>Grubość = liczba publikacji</span>
         </div>
     </div>
@@ -250,11 +292,20 @@ def generate_visualization_html(
 
                 // Display results
                 if (results.length > 0) {{
-                    resultsDiv.innerHTML = results.slice(0, 10).map(r =>
-                        `<div class="search-result-item" onclick="focusNode('${{r.id}}')">${{r.label}}</div>`
-                    ).join('');
+                    resultsDiv.textContent = '';
+                    results.slice(0, 10).forEach(r => {{
+                        const div = document.createElement('div');
+                        div.className = 'search-result-item';
+                        div.textContent = r.label;
+                        div.onclick = () => focusNode(r.id);
+                        resultsDiv.appendChild(div);
+                    }});
                 }} else {{
-                    resultsDiv.innerHTML = '<div style="padding: 5px; color: #999;">Nie znaleziono autorów</div>';
+                    resultsDiv.textContent = '';
+                    const noResults = document.createElement('div');
+                    noResults.className = 'no-results';
+                    noResults.textContent = 'Nie znaleziono autorów';
+                    resultsDiv.appendChild(noResults);
                 }}
             }}, 300);
         }}

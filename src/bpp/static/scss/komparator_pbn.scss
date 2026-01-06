@@ -1,5 +1,126 @@
 // Komparator PBN styles with improved color contrast
 
+// BEM naming: .komparator-pbn__element or .komparator-pbn__element--modifier
+
+// Main page container elements
+.komparator-pbn {
+  // Don't Panic section
+  &__dont-panic {
+    text-align: center;
+  }
+
+  &__dont-panic-emoji {
+    color: #f39c12;
+    font-size: 2.5em;
+  }
+
+  &__dont-panic-text {
+    color: #f39c12;
+    font-size: 1.5em;
+  }
+
+  // Task status section
+  &__task-status {
+    margin-top: 2rem;
+    padding-top: 1rem;
+    border-top: 1px solid #d3d3d3;
+  }
+
+  // Status alerts
+  &__status-alert {
+    padding: 1rem;
+    margin: 0.5rem 0;
+
+    &--success {
+      background-color: #d4edda;
+      border-left: 4px solid #28a745;
+    }
+
+    &--error {
+      background-color: #f8d7da;
+      border-left: 4px solid #dc3545;
+    }
+
+    &--running {
+      background-color: #fff3cd;
+      border-left: 4px solid #ffc107;
+    }
+  }
+
+  &__status-icon {
+    &--success {
+      color: #28a745;
+    }
+
+    &--error {
+      color: #dc3545;
+    }
+
+    &--running {
+      color: #ffc107;
+      animation: pulse 1s infinite;
+    }
+  }
+
+  &__status-title {
+    &--success {
+      color: #155724;
+    }
+
+    &--error {
+      color: #721c24;
+    }
+
+    &--running {
+      color: #856404;
+    }
+  }
+
+  &__status-details {
+    margin-top: 0.5rem;
+    font-size: 0.9em;
+
+    &--success {
+      color: #155724;
+    }
+
+    &--error {
+      color: #721c24;
+    }
+
+    &--running {
+      color: #856404;
+    }
+  }
+
+  // Action button wrapper
+  &__action-wrapper {
+    margin-top: 1rem;
+  }
+
+  // List styling inside stat boxes
+  &__list {
+    margin-top: 0.5rem;
+    margin-bottom: 0;
+  }
+
+  // Button with top margin
+  &__button-mt {
+    margin-top: 0.5rem;
+  }
+
+  // Row with top margin
+  &__row-mt {
+    margin-top: 1rem;
+  }
+
+  // Note/small text block
+  &__note {
+    display: block;
+    margin-top: 1rem;
+  }
+}
+
 // Stat box base styling
 .stat-box {
   background: #f8f8f8;
@@ -66,6 +187,38 @@
 
   small {
     color: #856404;
+  }
+}
+
+// Journals deleted stat box - Similar amber/warning styling
+.stat-box-deleted-journals {
+  border-color: #f0ad4e;
+  background: linear-gradient(135deg, #fffbf5 0%, #fff9f0 100%);
+  border-left: 4px solid #f0ad4e;
+
+  h4 {
+    color: #d58512;
+
+    span {
+      color: #ec971f;
+    }
+  }
+
+  p strong {
+    color: #d58512;
+  }
+
+  small {
+    color: #856404;
+
+    ul {
+      margin-top: 0.5rem;
+      margin-bottom: 0;
+
+      li {
+        margin-bottom: 0.3rem;
+      }
+    }
   }
 }
 

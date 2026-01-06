@@ -1,0 +1,28 @@
+// =============================================================================
+// API ROOT VIEW STYLES
+// Styles for the REST API root documentation page
+// =============================================================================
+
+.api-root-description {
+  margin-top: 20px;
+}
+
+.api-root-info-box {
+  margin-top: 25px;
+  padding: 15px;
+  background-color: #f8f9fa;
+  border-radius: 5px;
+}
+
+.api-root-info-box h5 {
+  margin-top: 0;
+}
+
+.api-root-links {
+  margin-top: 15px;
+}
+
+.api-root-links ul {
+  list-style: none;
+  padding-left: 0;
+}

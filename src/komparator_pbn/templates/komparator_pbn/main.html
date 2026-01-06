@@ -22,35 +22,35 @@
                 <strong>UWAGA:</strong> ta funkcja wymaga pobrania świeżych danych z PBN. Analizy, które widzisz,
                 opierają się na <strong>LOKALNEJ KOPII</strong> danych z PBN.
                 <br/><br/>
-                <div style="text-align: center;">
-                    <span style="color: #f39c12; font-size: 2.5em;">😊</span>
+                <div class="komparator-pbn__dont-panic">
+                    <span class="komparator-pbn__dont-panic-emoji">😊</span>
                     <br>
-                    <span style="color: #f39c12; font-size: 1.5em;">Don't Panic!</span>
+                    <span class="komparator-pbn__dont-panic-text">Don't Panic!</span>
                 </div>
 
                 {% if latest_task %}
-                    <div style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #d3d3d3;">
+                    <div class="komparator-pbn__task-status">
                         <h6><i class="fi-info"></i> Status pobierania danych z PBN</h6>
                         {% if latest_task.status == 'completed' %}
-                            <div style="padding: 1rem; background-color: #d4edda; border-left: 4px solid #28a745; margin: 0.5rem 0;">
-                                <i class="fi-check" style="color: #28a745;"></i> <strong style="color: #155724;">Ostatnie pobieranie zakończone pomyślnie</strong>
-                                <div style="margin-top: 0.5rem; font-size: 0.9em; color: #155724;">
+                            <div class="komparator-pbn__status-alert komparator-pbn__status-alert--success">
+                                <i class="fi-check komparator-pbn__status-icon--success"></i> <strong class="komparator-pbn__status-title--success">Ostatnie pobieranie zakończone pomyślnie</strong>
+                                <div class="komparator-pbn__status-details komparator-pbn__status-details--success">
                                     Data: {{ latest_task.completed_at|date:"d.m.Y H:i:s" }}<br>
                                     Użytkownik: {{ latest_task.user.username }}
                                 </div>
                             </div>
                         {% elif latest_task.status == 'failed' %}
-                            <div style="padding: 1rem; background-color: #f8d7da; border-left: 4px solid #dc3545; margin: 0.5rem 0;">
-                                <i class="fi-alert" style="color: #dc3545;"></i> <strong style="color: #721c24;">Ostatnie pobieranie nie powiodło się</strong>
-                                <div style="margin-top: 0.5rem; font-size: 0.9em; color: #721c24;">
+                            <div class="komparator-pbn__status-alert komparator-pbn__status-alert--error">
+                                <i class="fi-alert komparator-pbn__status-icon--error"></i> <strong class="komparator-pbn__status-title--error">Ostatnie pobieranie nie powiodło się</strong>
+                                <div class="komparator-pbn__status-details komparator-pbn__status-details--error">
                                     Data: {{ latest_task.completed_at|date:"d.m.Y H:i:s" }}<br>
                                     Błąd: {{ latest_task.error_message|truncatewords:10 }}
                                 </div>
                             </div>
                         {% elif latest_task.status == 'running' %}
-                            <div style="padding: 1rem; background-color: #fff3cd; border-left: 4px solid #ffc107; margin: 0.5rem 0;">
-                                <i class="fi-refresh" style="color: #ffc107; animation: pulse 1s infinite;"></i> <strong style="color: #856404;">Pobieranie w toku...</strong>
-                                <div style="margin-top: 0.5rem; font-size: 0.9em; color: #856404;">
+                            <div class="komparator-pbn__status-alert komparator-pbn__status-alert--running">
+                                <i class="fi-refresh komparator-pbn__status-icon--running"></i> <strong class="komparator-pbn__status-title--running">Pobieranie w toku...</strong>
+                                <div class="komparator-pbn__status-details komparator-pbn__status-details--running">
                                     Rozpoczęte: {{ latest_task.started_at|date:"d.m.Y H:i:s" }}<br>
                                     Aktualny krok: {{ latest_task.current_step }}
                                 </div>
@@ -59,7 +59,7 @@
                     </div>
                 {% endif %}
 
-                <div style="margin-top: 1rem;">
+                <div class="komparator-pbn__action-wrapper">
                     <a href="{% url "pbn_downloader_app:main" %}" class="button success expanded">
                         <i class="fi-cloud-download"></i> Przejdź do pobierania danych z PBN
                     </a>
@@ -161,12 +161,12 @@
                             <small>Publikacje z lat {{ evaluation_start_year }}-{{ evaluation_end_year }} w bazie PBN, których
                                 PBN UID ID nie występuje w tabeli rekordów.
                                 <br/>Potencjalnie:
-                                <ul style="margin-top: 0.5rem; margin-bottom: 0;">
+                                <ul class="komparator-pbn__list">
                                     <li>mogły zostać dopisane przez użytkowników PBNu poza bazą - przez interfejs GUI,</li>
                                     <li>mogą być to też zdublowane (po stronie PBN) rekordy, które powstały na skutek błędu podczas wysyłki do PBN.</li>
                                 </ul>
                             </small>
-                            <div style="margin-top: 1rem;">
+                            <div class="komparator-pbn__action-wrapper">
                                 <a href="/admin/pbn_api/publication/?odpowiednik=brak&q=year+%3E%3D+2022+and+year+%3C%3D+2025+&q-l=on&status=ACTIVE"
                                    class="button expanded alert" target="_blank">
                                     <i class="fi-list"></i> Pokaż w module redagowania
@@ -181,13 +181,13 @@
                             <small>Publikacje z bazy BPP, które mają przypisany PBN UID wskazujący na publikację ze statusem DELETED w bazie PBN.
                                 <br/>Te publikacje zostały usunięte po stronie PBN, ale nadal istnieją w BPP z referencją do usuniętej publikacji.
                                 <br/>Wymaga to przeglądu i ewentualnego:
-                                <ul style="margin-top: 0.5rem; margin-bottom: 0;">
+                                <ul class="komparator-pbn__list">
                                     <li>ponownego wysłania publikacji do PBN (jeśli została usunięta przez pomyłkę),</li>
                                     <li>usunięcia powiązania PBN UID w BPP (jeśli publikacja ma pozostać tylko w BPP),</li>
                                     <li>weryfikacji czy publikacja nie została zduplikowana w PBN z nowym ID.</li>
                                 </ul>
                             </small>
-                            <div style="margin-top: 1rem;">
+                            <div class="komparator-pbn__action-wrapper">
                                 <a href="/admin/pbn_api/publication/?odpowiednik=jest&status=DELETED"
                                    class="button expanded warning" target="_blank">
                                     <i class="fi-list"></i> Pokaż w module redagowania
@@ -212,13 +212,13 @@
                             <small>Autorzy z PBN API instytucji (from_institution_api=True), których mongoId nie występuje w tabeli bpp.Autor.
                                 <br/>Są to autorzy pobrani z API instytucji PBN, którzy nie zostali jeszcze powiązani z autorami w systemie BPP.
                             </small>
-                            <div style="margin-top: 1rem;">
+                            <div class="komparator-pbn__action-wrapper">
                                 <a href="/admin/pbn_api/scientist/?from_institution_api__exact=1&odpowiednik=brak"
                                    class="button expanded warning" target="_blank">
                                     <i class="fi-list"></i> Pokaż w module redagowania
                                 </a>
                                 <a href="{% url 'importer_autorow_pbn:main' %}"
-                                   class="button expanded success" style="margin-top: 0.5rem;">
+                                   class="button expanded success komparator-pbn__button-mt">
                                     <i class="fi-torsos-female-male"></i> Przejdź do importera autorów PBN
                                 </a>
                             </div>
@@ -231,7 +231,7 @@
                             <small>Autorzy w systemie BPP, którzy prawdopodobnie mają duplikaty na podstawie analizy nazwisk, imion i innych kryteriów.
                                 <br/>Wymagają przeglądu i ewentualnego scalenia duplikatów.
                             </small>
-                            <div style="margin-top: 1rem;">
+                            <div class="komparator-pbn__action-wrapper">
                                 <a href="{% url 'deduplikator_autorow:duplicate_authors' %}"
                                    class="button expanded secondary" target="_blank">
                                     <i class="fi-list"></i> Przejdź do deduplikatora autorów
@@ -246,12 +246,12 @@
                             <small>Autorzy w BPP, którzy mają przypisany PBN UID wskazujący na naukowca ze statusem DELETED w bazie PBN.
                                 <br/>Ci autorzy zostali usunięci po stronie PBN, ale nadal istnieją w BPP z referencją do usuniętego naukowca.
                                 <br/>Wymaga to przeglądu i ewentualnego:
-                                <ul style="margin-top: 0.5rem; margin-bottom: 0;">
+                                <ul class="komparator-pbn__list">
                                     <li>ponownego powiązania z aktywnym naukowcem PBN,</li>
                                     <li>usunięcia powiązania PBN UID w BPP.</li>
                                 </ul>
                             </small>
-                            <div style="margin-top: 1rem;">
+                            <div class="komparator-pbn__action-wrapper">
                                 <a href="/admin/pbn_api/scientist/?status=DELETED"
                                    class="button expanded warning" target="_blank">
                                     <i class="fi-list"></i> Pokaż w module redagowania
@@ -276,13 +276,13 @@
                             <small>Źródła w BPP, które mają przypisany PBN UID wskazujący na czasopismo ze statusem DELETED w bazie PBN, a nadal posiadają powiązane publikacje.
                                 <br/>Te źródła zostały usunięte po stronie PBN, ale nadal istnieją w BPP z publikacjami.
                                 <br/>Wymaga to przeglądu i przemapowania publikacji na aktualne źródła:
-                                <ul style="margin-top: 0.5rem; margin-bottom: 0;">
+                                <ul class="komparator-pbn__list">
                                     <li>znalezienia aktywnego odpowiednika źródła w PBN,</li>
                                     <li>przemapowania wszystkich publikacji do nowego źródła,</li>
                                     <li>automatycznego dodania publikacji do kolejki eksportu PBN.</li>
                                 </ul>
                             </small>
-                            <div style="margin-top: 1rem;">
+                            <div class="komparator-pbn__action-wrapper">
                                 <a href="{% url 'przemapuj_zrodla_pbn:lista_skasowanych_zrodel' %}"
                                    class="button expanded alert">
                                     <span class="fi-refresh"></span> Przejdź do przemapowania źródeł
@@ -303,7 +303,7 @@
                     <h4><i class="fi-alert"></i> Rozbieżności dyscyplin między BPP a PBN</h4>
                     <p><strong>Całkowita liczba rozbieżności: {{ total_discipline_discrepancies|default:0 }}</strong></p>
 
-                    <div class="row" style="margin-top: 1rem;">
+                    <div class="row komparator-pbn__row-mt">
                         <div class="medium-4 columns">
                             <div class="discipline-discrepancy-card empty-bpp">
                                 <h5><i class="fi-x-circle"></i> Brak dyscypliny w BPP</h5>
@@ -327,7 +327,7 @@
                         </div>
                     </div>
 
-                    <small style="display: block; margin-top: 1rem;">
+                    <small class="komparator-pbn__note">
                         Porównanie dotyczy oświadczeń instytucji (OswiadczenieInstytucji) z PBN
                         z rekordami autorów publikacji (Wydawnictwo_Ciagle_Autor, Wydawnictwo_Zwarte_Autor) w BPP.
                         <br/>Analiza obejmuje tylko publikacje z okresu {{ evaluation_start_year }}-{{ evaluation_end_year }}.
@@ -341,7 +341,7 @@
                         </ul>
                     </small>
 
-                    <div style="margin-top: 1rem;">
+                    <div class="komparator-pbn__action-wrapper">
                         <a href="{% url 'komparator_pbn_udzialy:list' %}?rok_min={{ evaluation_start_year }}&rok_max={{ evaluation_end_year }}"
                            class="button expanded">
                             <i class="fi-magnifying-glass"></i> Przejdź do szczegółowego komparatora udziałów

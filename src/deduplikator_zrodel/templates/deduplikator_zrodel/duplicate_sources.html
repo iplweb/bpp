@@ -1,6 +1,11 @@
 {% extends "base.html" %}
 {% load static %}
 
+{% block extra_css %}
+<link rel="stylesheet"
+      href="{% static 'deduplikator_zrodel/css/deduplikator_zrodel.css' %}">
+{% endblock %}
+
 {% block title %}Deduplikator Źródeł{% endblock %}
 
 {% block breadcrumbs %}
@@ -13,25 +18,40 @@
         <!-- Left Sidebar Menu -->
         <div class="left-menu-sidebar">
             <div class="left-menu-menu">
-                <ul class="accordion" data-accordion data-allow-all-closed="true" data-multi-expand="true" style="border: none; padding: 0; margin: 0;">
+                <ul class="accordion deduplikator-zrodel__accordion"
+                    data-accordion
+                    data-allow-all-closed="true"
+                    data-multi-expand="true">
                     {% if total_sources_with_duplicates %}
                     <!-- Liczba źródeł z duplikatami -->
                     <li class="accordion-item is-active" data-accordion-item>
-                        <a class="accordion-title" href="#" aria-expanded="true" style="pointer-events: none; cursor: default;">
-                            <span class="fi-page-multiple"></span> ~{{ total_sources_with_duplicates }} źróde{% if total_sources_with_duplicates != 1 %}ł{% endif %} z duplikatami
+                        <a class="accordion-title deduplikator-zrodel__accordion-title--static"
+                           href="#"
+                           aria-expanded="true">
+                            <span class="fi-page-multiple"></span>
+                            ~{{ total_sources_with_duplicates }}
+                            źróde{% if total_sources_with_duplicates != 1 %}ł{% endif %}
+                            z duplikatami
                         </a>
-                        <div class="accordion-content" data-tab-content style="display: none;"></div>
+                        <div class="accordion-content deduplikator-zrodel__accordion-content--hidden"
+                             data-tab-content></div>
                     </li>
                     {% endif %}
 
                     <!-- Nawigacja -->
                     {% if skipped_count > 0 %}
                     <li class="accordion-item is-active" data-accordion-item>
-                        <a class="accordion-title" href="#" aria-expanded="true" style="pointer-events: none; cursor: default;">
+                        <a class="accordion-title deduplikator-zrodel__accordion-title--static"
+                           href="#"
+                           aria-expanded="true">
                             <span class="fi-arrow-right"></span> Nawigacja
                         </a>
-                        <div class="accordion-content" data-tab-content style="display: block;">
-                            <p style="margin-bottom: 10px;">Pominięto już {{ skipped_count }} źróde{% if skipped_count != 1 %}ł{% else %}łło{% endif %}.</p>
+                        <div class="accordion-content deduplikator-zrodel__accordion-content--visible"
+                             data-tab-content>
+                            <p class="deduplikator-zrodel__paragraph--spaced">
+                                Pominięto już {{ skipped_count }}
+                                źróde{% if skipped_count != 1 %}ł{% else %}łło{% endif %}.
+                            </p>
                             <a href="{% url 'deduplikator_zrodel:reset_skipped' %}"
                                class="button alert expanded small">
                                 Zacznij od początku
@@ -46,10 +66,11 @@
                             <span class="fi-page-export"></span> Pobierz XLSX
                         </a>
                         <div class="accordion-content" data-tab-content>
-                            <p style="margin-bottom: 10px;">Pobierz wszystkie źródła z duplikatami w formacie Excel.</p>
+                            <p class="deduplikator-zrodel__paragraph--spaced">
+                                Pobierz wszystkie źródła z duplikatami w formacie Excel.
+                            </p>
                             <a href="{% url 'deduplikator_zrodel:download_duplicates_xlsx' %}"
-                               class="button success expanded small"
-                               style="margin: 0;">
+                               class="button success expanded small deduplikator-zrodel__button--no-margin">
                                 <span class="fi-page-export"></span> Pobierz XLSX
                             </a>
                         </div>
@@ -61,11 +82,12 @@
                             <span class="fi-eye"></span> Obejrzyj nie-duplikaty
                         </a>
                         <div class="accordion-content" data-tab-content>
-                            <p style="margin-bottom: 10px;">Przejrzyj źródła oznaczone jako nie będące duplikatami.</p>
+                            <p class="deduplikator-zrodel__paragraph--spaced">
+                                Przejrzyj źródła oznaczone jako nie będące duplikatami.
+                            </p>
                             <a href="/admin/deduplikator_zrodel/notaduplicate/"
-                               class="button secondary expanded small"
-                               target="_blank"
-                               style="margin: 0;">
+                               class="button secondary expanded small deduplikator-zrodel__button--no-margin"
+                               target="_blank">
                                 <span class="fi-list"></span> Otwórz listę
                             </a>
                         </div>
@@ -77,11 +99,12 @@
                             <span class="fi-prohibited"></span> Ignorowane źródła
                         </a>
                         <div class="accordion-content" data-tab-content>
-                            <p style="margin-bottom: 10px;">Źródła pominięte w procesie deduplikacji.</p>
+                            <p class="deduplikator-zrodel__paragraph--spaced">
+                                Źródła pominięte w procesie deduplikacji.
+                            </p>
                             <a href="/admin/deduplikator_zrodel/ignoredsource/"
-                               class="button secondary expanded small"
-                               target="_blank"
-                               style="margin: 0;">
+                               class="button secondary expanded small deduplikator-zrodel__button--no-margin"
+                               target="_blank">
                                 <span class="fi-list"></span> Otwórz listę
                             </a>
                         </div>
@@ -93,31 +116,44 @@
         <!-- Main Content -->
         <div class="main-content-with-sidebar">
             <!-- Local messages placeholder -->
-            <div id="localMessagesPlaceholder" style="margin-bottom: 20px;"></div>
+            <div id="localMessagesPlaceholder"
+                 class="deduplikator-zrodel__messages-placeholder"></div>
 
-            <div class="grid-x grid-padding-x align-middle" style="margin-bottom: 20px;">
+            <div class="grid-x grid-padding-x align-middle deduplikator-zrodel__header-row">
                 <div class="cell auto">
-                    <h1>Deduplikator Źródeł <span class="label warning" style="font-size: 0.6em; vertical-align: top;">BETA</span></h1>
+                    <h1>Deduplikator Źródeł
+                        <span class="label warning deduplikator-zrodel__beta-label">
+                            BETA
+                        </span>
+                    </h1>
                 </div>
                 <div class="cell shrink">
                     {% if zrodlo %}
                         <div class="button-group">
                             {% if skipped_count > 0 %}
                                 <a href="{% url 'deduplikator_zrodel:go_previous' %}"
-                                   class="button secondary"><span class="fi-arrow-left"></span> Poprzednie</a>
+                                   class="button secondary">
+                                    <span class="fi-arrow-left"></span> Poprzednie
+                                </a>
                             {% endif %}
-                            <form method="post" action="{% url 'deduplikator_zrodel:ignore_source' %}" style="display: inline;">
+                            <form method="post"
+                                  action="{% url 'deduplikator_zrodel:ignore_source' %}"
+                                  class="deduplikator-zrodel__form--inline">
                                 {% csrf_token %}
                                 <input type="hidden" name="zrodlo_id" value="{{ zrodlo.pk }}">
-                                <input type="hidden" name="reason" value="Pominięte przez użytkownika">
+                                <input type="hidden"
+                                       name="reason"
+                                       value="Pominięte przez użytkownika">
                                 <button type="submit"
                                         class="button warning"
-                                        onclick="return confirm('Czy na pewno chcesz ignorować to źródło? Nie będzie więcej wyświetlane w deduplikatorze.');">
+                                        data-confirm="Czy na pewno chcesz ignorować to źródło? Nie będzie więcej wyświetlane w deduplikatorze.">
                                     <span class="fi-prohibited"></span> Ignoruj źródło
                                 </button>
                             </form>
                             <a href="{% url 'deduplikator_zrodel:skip_current' %}?zrodlo_id={{ zrodlo.pk }}"
-                               class="button primary">Następne <span class="fi-arrow-right"></span></a>
+                               class="button primary">
+                                Następne <span class="fi-arrow-right"></span>
+                            </a>
                         </div>
                     {% endif %}
                 </div>
@@ -126,8 +162,8 @@
             {% if not zrodlo %}
                 <div class="callout warning">
                     <p><strong>Nie znaleziono źródeł z duplikatami.</strong></p>
-                    <p>Wszystkie duplikaty zostały prawdopodobnie już przetworzone lub nie ma źródeł wymagających
-                        deduplikacji.</p>
+                    <p>Wszystkie duplikaty zostały prawdopodobnie już przetworzone
+                       lub nie ma źródeł wymagających deduplikacji.</p>
                 </div>
             {% else %}
                 <!-- Główne źródło -->
@@ -136,9 +172,9 @@
                     <div class="grid-x grid-padding-x">
                         <div class="cell medium-6">
                             <strong>Nazwa:</strong><br>
-                            <span style="font-size: 1.3em; font-weight: bold; color: #1779ba;">
-                                <a href="{% url 'bpp:browse_zrodlo' zrodlo.slug %}" target="_blank"
-                                   style="color: inherit; text-decoration: none;">
+                            <span class="deduplikator-zrodel__main-source-name">
+                                <a href="{% url 'bpp:browse_zrodlo' zrodlo.slug %}"
+                                   target="_blank">
                                     {{ zrodlo.nazwa }}
                                 </a>
                             </span><br/>
@@ -149,24 +185,35 @@
                             <strong>ISSN:</strong> {{ zrodlo.issn|default:"brak" }}<br/>
                             <strong>E-ISSN:</strong> {{ zrodlo.e_issn|default:"brak" }}<br/>
                             {% if zrodlo.pbn_uid_id %}
-                                <strong>PBN UID:</strong> <a href="https://pbn.nauka.gov.pl/-/journal/{{ zrodlo.pbn_uid_id }}"
-                                                             target="_blank">{{ zrodlo.pbn_uid_id }}</a><br/>
+                                <strong>PBN UID:</strong>
+                                <a href="https://pbn.nauka.gov.pl/-/journal/{{ zrodlo.pbn_uid_id }}"
+                                   target="_blank">{{ zrodlo.pbn_uid_id }}</a><br/>
                             {% else %}
                                 <strong>PBN UID:</strong> brak<br/>
                             {% endif %}
-                            <strong>ID MNiSW:</strong> {% if main_mnisw_id %}<span class="label success">{{ main_mnisw_id }}</span>{% else %}brak{% endif %}<br/>
+                            <strong>ID MNiSW:</strong>
+                            {% if main_mnisw_id %}
+                                <span class="label success">{{ main_mnisw_id }}</span>
+                            {% else %}
+                                brak
+                            {% endif %}<br/>
                             {% if zrodlo.www %}
-                                <strong>WWW:</strong> <a href="{{ zrodlo.www }}" target="_blank">{{ zrodlo.www|truncatechars:50 }}</a><br/>
+                                <strong>WWW:</strong>
+                                <a href="{{ zrodlo.www }}"
+                                   target="_blank">{{ zrodlo.www|truncatechars:50 }}</a><br/>
                             {% endif %}
                         </div>
                     </div>
 
                     {% if main_pbn_data %}
-                    <h4 style="margin-top: 15px;">Dane z PBN:</h4>
-                    <div style="padding: 10px; background-color: #e7f4fd; border-radius: 4px;">
-                        <strong>Tytuł w PBN:</strong> {{ main_pbn_data.title|default:"brak" }}<br/>
-                        <strong>ISSN w PBN:</strong> {{ main_pbn_data.issn|default:"brak" }}<br/>
-                        <strong>E-ISSN w PBN:</strong> {{ main_pbn_data.e_issn|default:"brak" }}
+                    <h4 class="deduplikator-zrodel__section-header">Dane z PBN:</h4>
+                    <div class="deduplikator-zrodel__pbn-data-container">
+                        <strong>Tytuł w PBN:</strong>
+                        {{ main_pbn_data.title|default:"brak" }}<br/>
+                        <strong>ISSN w PBN:</strong>
+                        {{ main_pbn_data.issn|default:"brak" }}<br/>
+                        <strong>E-ISSN w PBN:</strong>
+                        {{ main_pbn_data.e_issn|default:"brak" }}
                     </div>
                     {% endif %}
                 </div>
@@ -175,64 +222,95 @@
                 <h3>Potencjalne duplikaty ({{ duplikaty|length }})</h3>
 
                 {% if duplikaty %}
-                    <div style="overflow-x: auto;">
-                        <table style="width: 100%; border-collapse: collapse;">
-                            <thead style="background-color: #f4f4f4;">
+                    <div class="deduplikator-zrodel__table-container">
+                        <table class="deduplikator-zrodel__table">
+                            <thead class="deduplikator-zrodel__table-header">
                                 <tr>
-                                    <th style="padding: 10px; border: 1px solid #e1e1e1; text-align: left;">Nazwa źródła</th>
-                                    <th style="padding: 10px; border: 1px solid #e1e1e1; text-align: center;">ISSN (lokal)</th>
-                                    <th style="padding: 10px; border: 1px solid #e1e1e1; text-align: center;">E-ISSN (lokal)</th>
-                                    <th style="padding: 10px; border: 1px solid #e1e1e1; text-align: center;">ISSN (PBN)</th>
-                                    <th style="padding: 10px; border: 1px solid #e1e1e1; text-align: center;">E-ISSN (PBN)</th>
-                                    <th style="padding: 10px; border: 1px solid #e1e1e1; text-align: center;">ID MNiSW</th>
-                                    <th style="padding: 10px; border: 1px solid #e1e1e1; text-align: center;">Pewność</th>
-                                    <th style="padding: 10px; border: 1px solid #e1e1e1; text-align: center;">Akcje</th>
+                                    <th class="deduplikator-zrodel__table-th">
+                                        Nazwa źródła
+                                    </th>
+                                    <th class="deduplikator-zrodel__table-th deduplikator-zrodel__table-th--center">
+                                        ISSN (lokal)
+                                    </th>
+                                    <th class="deduplikator-zrodel__table-th deduplikator-zrodel__table-th--center">
+                                        E-ISSN (lokal)
+                                    </th>
+                                    <th class="deduplikator-zrodel__table-th deduplikator-zrodel__table-th--center">
+                                        ISSN (PBN)
+                                    </th>
+                                    <th class="deduplikator-zrodel__table-th deduplikator-zrodel__table-th--center">
+                                        E-ISSN (PBN)
+                                    </th>
+                                    <th class="deduplikator-zrodel__table-th deduplikator-zrodel__table-th--center">
+                                        ID MNiSW
+                                    </th>
+                                    <th class="deduplikator-zrodel__table-th deduplikator-zrodel__table-th--center">
+                                        Pewność
+                                    </th>
+                                    <th class="deduplikator-zrodel__table-th deduplikator-zrodel__table-th--center">
+                                        Akcje
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for dup in duplikaty %}
-                                <tr style="{% cycle 'background-color: #ffffff;' 'background-color: #f9f9f9;' %}">
-                                    <td style="padding: 10px; border: 1px solid #e1e1e1;">
-                                        <strong><a href="{% url 'bpp:browse_zrodlo' dup.zrodlo.slug %}" target="_blank">
-                                            {{ dup.zrodlo.nazwa }}
-                                        </a></strong><br/>
-                                        <small style="color: #666;">
+                                <tr class="{% cycle 'deduplikator-zrodel__table-row--odd' 'deduplikator-zrodel__table-row--even' %}">
+                                    <td class="deduplikator-zrodel__table-td">
+                                        <strong>
+                                            <a href="{% url 'bpp:browse_zrodlo' dup.zrodlo.slug %}"
+                                               target="_blank">
+                                                {{ dup.zrodlo.nazwa }}
+                                            </a>
+                                        </strong><br/>
+                                        <small class="deduplikator-zrodel__table-subtext">
                                             Skrót: {{ dup.zrodlo.skrot|default:"brak" }}<br/>
                                             ID: {{ dup.zrodlo.pk }}
                                         </small>
                                     </td>
-                                    <td style="padding: 10px; border: 1px solid #e1e1e1; text-align: center;">
+                                    <td class="deduplikator-zrodel__table-td deduplikator-zrodel__table-td--center">
                                         {{ dup.zrodlo.issn|default:"-" }}
                                     </td>
-                                    <td style="padding: 10px; border: 1px solid #e1e1e1; text-align: center;">
+                                    <td class="deduplikator-zrodel__table-td deduplikator-zrodel__table-td--center">
                                         {{ dup.zrodlo.e_issn|default:"-" }}
                                     </td>
-                                    <td style="padding: 10px; border: 1px solid #e1e1e1; text-align: center;">
+                                    <td class="deduplikator-zrodel__table-td deduplikator-zrodel__table-td--center">
                                         {% if dup.pbn_data %}
                                             {{ dup.pbn_data.issn|default:"-" }}
                                         {% else %}
-                                            <span style="color: #999;">brak PBN</span>
+                                            <span class="deduplikator-zrodel__no-data-text">
+                                                brak PBN
+                                            </span>
                                         {% endif %}
                                     </td>
-                                    <td style="padding: 10px; border: 1px solid #e1e1e1; text-align: center;">
+                                    <td class="deduplikator-zrodel__table-td deduplikator-zrodel__table-td--center">
                                         {% if dup.pbn_data %}
                                             {{ dup.pbn_data.e_issn|default:"-" }}
                                         {% else %}
-                                            <span style="color: #999;">brak PBN</span>
+                                            <span class="deduplikator-zrodel__no-data-text">
+                                                brak PBN
+                                            </span>
                                         {% endif %}
                                     </td>
-                                    <td style="padding: 10px; border: 1px solid #e1e1e1; text-align: center;">
+                                    <td class="deduplikator-zrodel__table-td deduplikator-zrodel__table-td--center">
                                         {% if dup.mnisw_id %}
                                             {% if dup.mnisw_id == main_mnisw_id %}
-                                                <span class="label success" title="To samo ID co główne źródło!">{{ dup.mnisw_id }}</span>
+                                                <span class="label success"
+                                                      title="To samo ID co główne źródło!">
+                                                    {{ dup.mnisw_id }}
+                                                </span>
                                             {% else %}
-                                                <span class="label warning" title="Inne ID niż główne źródło">{{ dup.mnisw_id }}</span>
+                                                <span class="label warning"
+                                                      title="Inne ID niż główne źródło">
+                                                    {{ dup.mnisw_id }}
+                                                </span>
                                             {% endif %}
                                         {% else %}
-                                            <span style="color: #999;">-</span>
+                                            <span class="deduplikator-zrodel__no-data-text">
+                                                -
+                                            </span>
                                         {% endif %}
                                     </td>
-                                    <td style="padding: 10px; border: 1px solid #e1e1e1; text-align: center;">
+                                    <td class="deduplikator-zrodel__table-td deduplikator-zrodel__table-td--center">
                                         {% if dup.score >= 100 %}
                                             <span class="label success">{{ dup.score }}</span>
                                         {% elif dup.score >= 50 %}
@@ -241,16 +319,25 @@
                                             <span class="label secondary">{{ dup.score }}</span>
                                         {% endif %}
                                     </td>
-                                    <td style="padding: 10px; border: 1px solid #e1e1e1; text-align: center;">
+                                    <td class="deduplikator-zrodel__table-td deduplikator-zrodel__table-td--center">
                                         <div class="button-group tiny">
-                                            <a href="{{ dup.przemapuj_url }}" class="button success tiny" target="_blank">
+                                            <a href="{{ dup.przemapuj_url }}"
+                                               class="button success tiny"
+                                               target="_blank">
                                                 <span class="fi-arrow-right"></span> Przemapuj
                                             </a>
-                                            <form method="post" action="{% url 'deduplikator_zrodel:mark_non_duplicate' %}" style="display: inline; margin: 0;">
+                                            <form method="post"
+                                                  action="{% url 'deduplikator_zrodel:mark_non_duplicate' %}"
+                                                  class="deduplikator-zrodel__form--inline">
                                                 {% csrf_token %}
-                                                <input type="hidden" name="zrodlo_id" value="{{ zrodlo.pk }}">
-                                                <input type="hidden" name="duplikat_id" value="{{ dup.zrodlo.pk }}">
-                                                <button type="submit" class="button alert tiny">
+                                                <input type="hidden"
+                                                       name="zrodlo_id"
+                                                       value="{{ zrodlo.pk }}">
+                                                <input type="hidden"
+                                                       name="duplikat_id"
+                                                       value="{{ dup.zrodlo.pk }}">
+                                                <button type="submit"
+                                                        class="button alert tiny">
                                                     <span class="fi-x"></span> Nie duplikat
                                                 </button>
                                             </form>
@@ -262,16 +349,19 @@
                         </table>
                     </div>
 
-                    <div class="callout secondary" style="margin-top: 20px;">
+                    <div class="callout secondary deduplikator-zrodel__legend">
                         <h4>Legenda pewności:</h4>
-                        <p style="margin-bottom: 5px;">
-                            <span class="label success">≥ 100</span> Wysoka pewność (identyczne ISSN lub E-ISSN, ten sam PBN UID)
+                        <p class="deduplikator-zrodel__legend-item">
+                            <span class="label success">&gt;= 100</span>
+                            Wysoka pewność (identyczne ISSN lub E-ISSN, ten sam PBN UID)
                         </p>
-                        <p style="margin-bottom: 5px;">
-                            <span class="label warning">50-99</span> Średnia pewność (podobna nazwa, częściowe dopasowanie)
+                        <p class="deduplikator-zrodel__legend-item">
+                            <span class="label warning">50-99</span>
+                            Średnia pewność (podobna nazwa, częściowe dopasowanie)
                         </p>
-                        <p style="margin-bottom: 0;">
-                            <span class="label secondary">&lt; 50</span> Niska pewność (słabe podobieństwo)
+                        <p class="deduplikator-zrodel__legend-item">
+                            <span class="label secondary">&lt; 50</span>
+                            Niska pewność (słabe podobieństwo)
                         </p>
                     </div>
                 {% else %}

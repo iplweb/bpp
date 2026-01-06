@@ -299,15 +299,24 @@ class LogScalaniaAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
 
             if obj.dyscyplina_before and not obj.dyscyplina_after:
                 return format_html(
-                    '<span style="color: red;">{} → {}</span>', before, after
+                    '<span class="deduplikator-autorow__discipline-removed">'
+                    "{} → {}</span>",
+                    before,
+                    after,
                 )
             elif not obj.dyscyplina_before and obj.dyscyplina_after:
                 return format_html(
-                    '<span style="color: green;">{} → {}</span>', before, after
+                    '<span class="deduplikator-autorow__discipline-added">'
+                    "{} → {}</span>",
+                    before,
+                    after,
                 )
             elif before != after:
                 return format_html(
-                    '<span style="color: orange;">{} → {}</span>', before, after
+                    '<span class="deduplikator-autorow__discipline-changed">'
+                    "{} → {}</span>",
+                    before,
+                    after,
                 )
             else:
                 return format_html("<span>{}</span>", after)
@@ -374,8 +383,9 @@ class DuplicateScanRunAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
         percent = obj.progress_percent
         if obj.status == DuplicateScanRun.Status.RUNNING:
             return format_html(
-                '<div style="width:100px;background:#ddd;">'
-                '<div style="width:{}%;background:#4CAF50;height:20px;"></div>'
+                '<div class="deduplikator-autorow__admin-progress-container">'
+                '<div class="deduplikator-autorow__admin-progress-bar" '
+                'style="width:{}%"></div>'
                 "</div> {}%",
                 percent,
                 percent,
@@ -514,14 +524,14 @@ class DuplicateCandidateAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
         """Display confidence with color coding"""
         percent = obj.confidence_percent * 100
         if percent >= 70:
-            color = "green"
+            css_class = "deduplikator-autorow__confidence-high"
         elif percent >= 50:
-            color = "orange"
+            css_class = "deduplikator-autorow__confidence-medium"
         else:
-            color = "red"
+            css_class = "deduplikator-autorow__confidence-low"
         return format_html(
-            '<span style="color: {};">{:.0f}% ({})</span>',
-            color,
+            '<span class="{}">{:.0f}% ({})</span>',
+            css_class,
             percent,
             obj.confidence_score,
         )

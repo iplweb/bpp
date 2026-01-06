@@ -1,0 +1,108 @@
+// PBN Import Admin Styles
+// Status badges, progress bars, and error displays
+
+// Status badge base styles
+.pbn-status-badge {
+  color: white;
+  padding: 3px 8px;
+  border-radius: 3px;
+  font-weight: bold;
+  display: inline-block;
+
+  &--pending {
+    background-color: #ffc107;
+  }
+
+  &--running {
+    background-color: #17a2b8;
+  }
+
+  &--paused {
+    background-color: #6c757d;
+  }
+
+  &--completed {
+    background-color: #28a745;
+  }
+
+  &--failed {
+    background-color: #dc3545;
+  }
+
+  &--cancelled {
+    background-color: #6c757d;
+  }
+}
+
+// Progress bar styles
+.pbn-progress-bar {
+  width: 100px;
+  background-color: #e9ecef;
+  border-radius: 3px;
+  overflow: hidden;
+
+  &__fill {
+    height: 20px;
+    text-align: center;
+    color: white;
+    line-height: 20px;
+
+    &--complete {
+      background-color: #28a745;
+    }
+
+    &--in-progress {
+      background-color: #17a2b8;
+    }
+  }
+}
+
+// Level badge styles
+.pbn-level-badge {
+  color: white;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 0.9em;
+  display: inline-block;
+
+  &--debug {
+    background-color: #6c757d;
+  }
+
+  &--info {
+    background-color: #17a2b8;
+  }
+
+  &--warning {
+    background-color: #ffc107;
+  }
+
+  &--error {
+    background-color: #dc3545;
+  }
+
+  &--success {
+    background-color: #28a745;
+  }
+
+  &--critical {
+    background-color: #721c24;
+  }
+}
+
+// Error display styles
+.pbn-error-display {
+  color: #dc3545;
+
+  &__message {
+    margin-bottom: 10px;
+  }
+
+  &__traceback {
+    margin-top: 10px;
+  }
+
+  &__traceback-content {
+    font-size: 0.9em;
+  }
+}

@@ -168,7 +168,7 @@
         {% for elem in object_list %}
             <tr>
                 <td>
-                    <a onclick="return confirm('Czy na pewno chcesz zaaplikować snapshot odpięć nr {{ elem.pk }}?');"
+                    <a data-confirm="Czy na pewno chcesz zaaplikować snapshot odpięć nr {{ elem.pk }}?"
                        href="{% url "snapshot_odpiec:aplikuj" elem.pk %}">snapshot {{ elem.pk }}</a>
                 </td>
                 <td>{{ elem.created_on }}<br><small>{{ elem.created_on|naturaltime }}</td>

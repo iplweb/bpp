@@ -63,19 +63,16 @@ class ImportSessionAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
         ("Errors", {"fields": ("error_display",), "classes": ("collapse",)}),
     )
 
-    def status_badge(self, obj):
-        colors = {
-            "pending": "#ffc107",
-            "running": "#17a2b8",
-            "paused": "#6c757d",
-            "completed": "#28a745",
-            "failed": "#dc3545",
-            "cancelled": "#6c757d",
+    class Media:
+        css = {
+            "all": ["pbn_import/css/admin.css"],
         }
+
+    def status_badge(self, obj):
+        status_class = f"pbn-status-badge--{obj.status}"
         return format_html(
-            '<span style="background-color: {}; color: white; padding: 3px 8px; '
-            'border-radius: 3px; font-weight: bold;">{}</span>',
-            colors.get(obj.status, "#6c757d"),
+            '<span class="pbn-status-badge {}">{}</span>',
+            status_class,
             obj.get_status_display(),
         )
 
@@ -83,15 +80,17 @@ class ImportSessionAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
 
     def progress_bar(self, obj):
         progress = obj.overall_progress
-        color = "#28a745" if progress == 100 else "#17a2b8"
+        fill_class = (
+            "pbn-progress-bar__fill--complete"
+            if progress == 100
+            else "pbn-progress-bar__fill--in-progress"
+        )
         return format_html(
-            '<div style="width: 100px; background-color: #e9ecef; '
-            'border-radius: 3px; overflow: hidden;">'
-            '<div style="width: {}%; background-color: {}; height: 20px; '
-            'text-align: center; color: white; line-height: 20px;">'
+            '<div class="pbn-progress-bar">'
+            '<div class="pbn-progress-bar__fill {}" style="width: {}%">'
             "{}%</div></div>",
+            fill_class,
             progress,
-            color,
             progress,
         )
 
@@ -138,9 +137,13 @@ class ImportSessionAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
     def error_display(self, obj):
         if obj.error_message:
             return format_html(
-                '<div style="color: #dc3545;"><strong>Message:</strong><br>{}</div>'
-                '<details style="margin-top: 10px;"><summary>Traceback</summary>'
-                '<pre style="font-size: 0.9em;">{}</pre></details>',
+                '<div class="pbn-error-display">'
+                '<div class="pbn-error-display__message">'
+                "<strong>Message:</strong><br>{}</div>"
+                '<details class="pbn-error-display__traceback">'
+                "<summary>Traceback</summary>"
+                '<pre class="pbn-error-display__traceback-content">{}</pre>'
+                "</details></div>",
                 obj.error_message,
                 obj.error_traceback or "No traceback available",
             )
@@ -184,18 +187,10 @@ class ImportLogAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
     session_link.short_description = "Session"
 
     def level_badge(self, obj):
-        colors = {
-            "debug": "#6c757d",
-            "info": "#17a2b8",
-            "warning": "#ffc107",
-            "error": "#dc3545",
-            "success": "#28a745",
-            "critical": "#721c24",
-        }
+        level_class = f"pbn-level-badge--{obj.level}"
         return format_html(
-            '<span style="background-color: {}; color: white; padding: 2px 6px; '
-            'border-radius: 3px; font-size: 0.9em;">{}</span>',
-            colors.get(obj.level, "#6c757d"),
+            '<span class="pbn-level-badge {}">{}</span>',
+            level_class,
             obj.get_level_display(),
         )
 

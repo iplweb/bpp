@@ -13,17 +13,22 @@
 {% block extrahead %}
     {{ block.super }}
     <script type="text/javascript">
-        // Function to toggle filter parameters
-        function toggleFilter(filterName) {
-            var form = document.getElementById('filter-form');
-            var input = form.querySelector('input[name="' + filterName + '"]');
+        // Event delegation for toggle filter buttons
+        document.addEventListener('click', function(e) {
+            var btn = e.target.closest('[data-action="toggle-filter"]');
+            if (btn) {
+                e.preventDefault();
+                var filterName = btn.dataset.filterName;
+                var form = document.getElementById('filter-form');
+                var input = form.querySelector('input[name="' + filterName + '"]');
 
-            // Toggle the value
-            input.value = input.value === '1' ? '0' : '1';
+                // Toggle the value
+                input.value = input.value === '1' ? '0' : '1';
 
-            // Submit the form
-            form.submit();
-        }
+                // Submit the form
+                form.submit();
+            }
+        });
 
         // Debounce function for search input
         var searchTimeout;
@@ -91,21 +96,21 @@
                             <div class="medium-7 columns">
                                 <div class="button-group">
                                     <button type="button" class="button small {% if exclude_identical_punkty %}success{% else %}secondary{% endif %}"
-                                            onclick="toggleFilter('exclude_identical_punkty')">
+                                            data-action="toggle-filter" data-filter-name="exclude_identical_punkty">
                                         {% if exclude_identical_punkty %}
                                             <span class="fi-check"></span>
                                         {% endif %}
                                         Ukryj identyczną punktację
                                     </button>
                                     <button type="button" class="button small {% if exclude_identical_dyscypliny %}success{% else %}secondary{% endif %}"
-                                            onclick="toggleFilter('exclude_identical_dyscypliny')">
+                                            data-action="toggle-filter" data-filter-name="exclude_identical_dyscypliny">
                                         {% if exclude_identical_dyscypliny %}
                                             <span class="fi-check"></span>
                                         {% endif %}
                                         Ukryj identyczne dyscypliny
                                     </button>
                                     <button type="button" class="button small {% if only_duplicates %}warning{% else %}secondary{% endif %}"
-                                            onclick="toggleFilter('only_duplicates')">
+                                            data-action="toggle-filter" data-filter-name="only_duplicates">
                                         {% if only_duplicates %}
                                             <span class="fi-check"></span>
                                         {% endif %}

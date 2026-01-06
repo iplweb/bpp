@@ -1,6 +1,108 @@
 // Uczelnia page styles
 @use "sass:color";
 
+// BEM block: .uczelnia
+// Main university page component
+
+// Logo placeholder styling
+.uczelnia__logo-placeholder {
+    filter: grayscale(100%);
+    opacity: 0.7;
+}
+
+// Form wrapper for inline form display
+.uczelnia__form--inline {
+    display: inline;
+}
+
+// Button styled as link (invisible container)
+.uczelnia__button--invisible {
+    border: none;
+    background: none;
+    padding: 0;
+}
+
+// Inline block span wrapper
+.uczelnia__span--inline-block {
+    display: inline-block;
+}
+
+// Browse panels section
+.uczelnia__browse-section {
+    margin-top: 40px;
+}
+
+// Section heading
+.uczelnia__section-heading {
+    color: #2c3e50;
+    margin-bottom: 20px;
+    font-size: 1.5rem;
+}
+
+// Browse tile container
+.uczelnia__tile {
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+    text-align: center;
+    transition: all 0.3s ease;
+    height: 100%;
+}
+
+// Tile icon base style
+.uczelnia__tile-icon {
+    font-size: 3rem;
+    display: block;
+    margin-bottom: 10px;
+}
+
+// Tile icon color modifiers
+.uczelnia__tile-icon--blue {
+    color: #007bff;
+}
+
+.uczelnia__tile-icon--green {
+    color: #28a745;
+}
+
+.uczelnia__tile-icon--yellow {
+    color: #ffc107;
+}
+
+.uczelnia__tile-icon--red {
+    color: #dc3545;
+}
+
+// Tile title
+.uczelnia__tile-title {
+    color: #2c3e50;
+    margin-bottom: 5px;
+}
+
+// Tile description
+.uczelnia__tile-description {
+    color: #6c757d;
+    font-size: 0.9rem;
+    margin: 0;
+}
+
+// Section title with top margin (for recently updated sections)
+.uczelnia__section-title--margin-top {
+    margin-top: 30px;
+}
+
+// Center text with top margin
+.uczelnia__actions--centered {
+    text-align: center;
+    margin-top: 15px;
+}
+
+// Button with top margin
+.uczelnia__button--margin-top {
+    margin-top: 10px;
+}
+
 // Admin buttons - shared styles for all management buttons
 .admin-buttons-centered {
     display: flex;

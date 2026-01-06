@@ -1,0 +1,107 @@
+// =============================================================================
+// ADMIN UTILITIES
+// Admin form widgets, status badges, action buttons, and utilities
+// =============================================================================
+
+// Admin form widgets - autocomplete and input widths
+.bpp-autocomplete-wide {
+  width: 746px;
+}
+
+.bpp-input-narrow {
+  width: 150px;
+}
+
+// =============================================================================
+// ADMIN STATUS BADGES (common patterns)
+// =============================================================================
+
+.admin-status--running,
+.admin-status--warning,
+.admin-status--orange {
+  color: orange;
+}
+
+.admin-status--success,
+.admin-status--completed,
+.admin-status--green {
+  color: green;
+}
+
+.admin-status--error,
+.admin-status--danger,
+.admin-status--red {
+  color: red;
+}
+
+.admin-status--muted,
+.admin-status--gray {
+  color: gray;
+}
+
+.admin-status--bold {
+  font-weight: bold;
+}
+
+.admin-status--italic {
+  font-style: italic;
+}
+
+// =============================================================================
+// ADMIN ACTION BUTTONS
+// =============================================================================
+
+.admin-action-btn--warning {
+  background-color: #ff6b35;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  border-radius: 3px;
+  text-decoration: none;
+  display: inline-block;
+}
+
+.admin-action-btn--warning:hover {
+  background-color: #e85a2a;
+  color: white;
+}
+
+.admin-link--danger {
+  color: #e74c3c;
+  font-weight: bold;
+}
+
+.admin-link--danger:hover {
+  color: #c0392b;
+}
+
+// =============================================================================
+// FORM COLLAPSIBLE SECTIONS
+// =============================================================================
+
+.collapsible-content {
+  display: none;
+  margin-top: 1rem;
+}
+
+.collapsible-content--visible {
+  display: block;
+}
+
+// =============================================================================
+// JSON WIDGET ACTIONS
+// =============================================================================
+
+.json-actions {
+  margin-bottom: 10px;
+}
+
+// =============================================================================
+// FORM HELP TEXT SPACING
+// =============================================================================
+
+.form-help-text-block {
+  display: block;
+  margin-top: 0.75rem;
+}

@@ -100,9 +100,11 @@ class AutorAutocomplete(GroupRequiredMixin, AutorAutocompleteBase):
 
 
 class PublicAutorAutocomplete(AutorAutocompleteBase):
-    """Public autocomplete for authors (no create)."""
+    """Public autocomplete for authors (no create, no PBN/MNISW markers)."""
 
-    pass
+    def get_result_label(self, result):
+        """Return clean author name without PBN/MNISW markers."""
+        return str(result)
 
 
 class AutorZUczelniAutocopmlete(AutorAutocomplete):

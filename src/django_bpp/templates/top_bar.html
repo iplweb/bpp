@@ -1,10 +1,12 @@
 
+<nav role="navigation" aria-label="Główna nawigacja" class="sticky-header">
 <div class="title-bar" data-responsive-toggle="example-menu" data-hide-for="medium">
-    <button class="menu-icon" type="button" data-toggle="example-menu"></button>
+    <button class="menu-icon" type="button" data-toggle="example-menu"
+            aria-label="Otwórz menu nawigacyjne"></button>
     <div class="title-bar-title hide-for-print">Menu</div>
 </div>
 
-<div class="top-bar stacked-for-medium hide-for-print sticky-header" id="example-menu">
+<div class="top-bar stacked-for-medium hide-for-print" id="example-menu">
     <div class="top-bar-left">
         <ul class="dropdown menu" data-dropdown-menu>
             <li>
@@ -14,36 +16,36 @@
                 </a>
             </li>
             <li>
-                <a href="#"><i class="fi-magnifying-glass"></i> szukaj</a>
-                <ul class="menu vertical">
-                    <li>
-                        <a href="#" onclick="openGlobalSearch(event); return false;">
-                            <i class="fi-magnifying-glass"></i>
+                <a href="#" aria-haspopup="menu"><i class="fi-magnifying-glass" aria-hidden="true"></i> szukaj</a>
+                <ul class="menu vertical" role="menu">
+                    <li role="menuitem">
+                        <a href="#" data-action="open-global-search">
+                            <i class="fi-magnifying-glass" aria-hidden="true"></i>
                             szybko
-                            <span class="keyboard-shortcut">/</span>
+                            <span class="keyboard-shortcut" aria-label="Skrót klawiszowy: ukośnik">/</span>
                         </a>
                     </li>
-                    <li>
+                    <li role="menuitem">
                         <a href="{% url "multiseek:index" %}">
-                            <i class="fi-page-search"></i>
+                            <i class="fi-page-search" aria-hidden="true"></i>
                             precyzyjnie
                         </a>
                     </li>
                 </ul>
             </li>
             <li>
-                <a href="#"><i class="fi-list"></i> przeglądaj</a>
-                <ul class="menu vertical">{% load deklinacja %}
-                    <li><a href="/"><i class="fi-foundation"></i> {% rzeczownik_uczelnia %}</a></li>
-                    <li><a href="{% url "bpp:browse_jednostki" %}"><i class="fi-results-demographics"></i> {% rzeczownik_jednostki_m %}</a></li>
-                    <li><a href="{% url "bpp:browse_autorzy" %}"><i class="fi-torsos-all"></i> autorzy</a></li>
-                    <li><a href="{% url "bpp:browse_zrodla" %}"><i class="fi-book"></i> źródła</a></li>
-                    <li><a href="{% url "bpp:browse_lata" %}"><i class="fi-calendar"></i> wg roku</a></li>
+                <a href="#" aria-haspopup="menu"><i class="fi-list" aria-hidden="true"></i> przeglądaj</a>
+                <ul class="menu vertical" role="menu">{% load deklinacja %}
+                    <li role="menuitem"><a href="/"><i class="fi-foundation" aria-hidden="true"></i> {% rzeczownik_uczelnia %}</a></li>
+                    <li role="menuitem"><a href="{% url "bpp:browse_jednostki" %}"><i class="fi-results-demographics" aria-hidden="true"></i> {% rzeczownik_jednostki_m %}</a></li>
+                    <li role="menuitem"><a href="{% url "bpp:browse_autorzy" %}"><i class="fi-torsos-all" aria-hidden="true"></i> autorzy</a></li>
+                    <li role="menuitem"><a href="{% url "bpp:browse_zrodla" %}"><i class="fi-book" aria-hidden="true"></i> źródła</a></li>
+                    <li role="menuitem"><a href="{% url "bpp:browse_lata" %}"><i class="fi-calendar" aria-hidden="true"></i> wg roku</a></li>
                 </ul>
             </li>
             <li>
-                <a href="#"><i class="fi-graph-trend"></i> raporty</a>
-                <ul class="menu vertical" id="top-bar-menu-raportow">
+                <a href="#" aria-haspopup="menu"><i class="fi-graph-trend" aria-hidden="true"></i> raporty</a>
+                <ul class="menu vertical" role="menu" id="top-bar-menu-raportow">
                     {% load czy_pokazywac %}
                     {% load user_in_group %}
 
@@ -108,7 +110,7 @@
             </script>
 
             <li class="has-submenu">
-                <a href="#" data-toggle><i class="fi-graph-bar"></i> ewaluacja</a>
+                <a href="#" data-toggle aria-haspopup="menu"><i class="fi-graph-bar" aria-hidden="true"></i> ewaluacja</a>
                 <div class="menu-columns-wrapper" data-submenu id="top-bar-menu-ewaluacji">
                     {% if request.user.is_superuser or request.user|has_group:"wprowadzanie danych" %}
                         <ul class="menu vertical column-1">
@@ -166,11 +168,11 @@
                 {% if request.user.is_superuser or request.user|has_group:"wprowadzanie danych" %}
                     {% if uczelnia.pbn_integracja %}
                         <li class="has-submenu">
-                            <a href="#" data-toggle><i class="fi-link"></i> PBN</a>
+                            <a href="#" data-toggle aria-haspopup="menu"><i class="fi-link" aria-hidden="true"></i> PBN</a>
                             <div class="menu-columns-wrapper" data-submenu>
                                 {% if request.user|has_group:"wprowadzanie danych" or request.user.is_superuser %}
                                     <ul class="menu vertical column-1">
-                                        <li><a href="{% url "pbn_api:authorize" %}" onclick="this.href='{% url "pbn_api:authorize" %}?next=' + encodeURIComponent(window.location.pathname + window.location.search + window.location.hash)"><i class="fi-key"></i> autoryzuj PBN API</a></li>
+                                        <li><a href="{% url "pbn_api:authorize" %}" data-action="set-pbn-authorize-next"><i class="fi-key"></i> autoryzuj PBN API</a></li>
                                         <li><a href="{% url "pbn_import:dashboard" %}"><i class="fi-burst-new"></i> Import z PBN</a></li>
                                         <li><a href="{% url "pbn_downloader_app:main" %}"><i class="fi-download"></i> pobieranie danych z PBN</a></li>
                                         <li><a href="{% url "pbn_wysylka_oswiadczen:main" %}"><i class="fi-upload"></i> wysylka oswiadczen do PBN</a></li>
@@ -191,7 +193,7 @@
                     {% endif %}
 
                     <li class="has-submenu">
-                        <a href="#" data-toggle><i class="fi-wrench"></i> operacje</a>
+                        <a href="#" data-toggle aria-haspopup="menu"><i class="fi-wrench" aria-hidden="true"></i> operacje</a>
                         <div class="menu-columns-wrapper" data-submenu>
                             {% if request.user|has_group:"wprowadzanie danych" or request.user.is_superuser %}
                                 <ul class="menu vertical column-1">
@@ -229,8 +231,8 @@
 
                 {% if request.user.is_staff %}
                     <li>
-                        <a href="#"><i class="fi-pencil"></i> redagowanie</a>
-                        <ul class="menu vertical">
+                        <a href="#" aria-haspopup="menu"><i class="fi-pencil" aria-hidden="true"></i> redagowanie</a>
+                        <ul class="menu vertical" role="menu">
                             <li>
                                 <a target="_blank" href="{% url "admin:index" %}">
                                     <i class="fi-pencil"></i> redagowanie
@@ -280,13 +282,14 @@
                 {% endif %}
 
                 <li id="wyloguj-menu-item">
-                    <a href="#" onclick="document.getElementById('logout-form').submit(); return false;">
-                        <i class="fi-power"></i> wyloguj
+                    <a href="#" data-action="submit-logout-form"
+                       aria-haspopup="menu">
+                        <i class="fi-power" aria-hidden="true"></i> wyloguj
                     </a>
-                    <ul class="menu vertical" id="wyloguj-submenu">
-                        <li>
-                            <a href="#" onclick="document.getElementById('logout-form').submit(); return false;">
-                                <i class="fi-power"></i> wyloguj
+                    <ul class="menu vertical" role="menu" id="wyloguj-submenu">
+                        <li role="menuitem">
+                            <a href="#" data-action="submit-logout-form">
+                                <i class="fi-power" aria-hidden="true"></i> wyloguj
                             </a>
                         </li>
                         {% if not microsoft_login_enabled %}
@@ -385,6 +388,75 @@
                     });
                 </script>
 
+                <script type="text/javascript">
+                    // Menu closing with 500ms delay - JavaScript controls visibility completely
+                    // CSS :hover is NOT used for show/hide - only JS inline styles
+                    document.addEventListener('DOMContentLoaded', function() {
+                        var menuItems = document.querySelectorAll('.dropdown.menu > li');
+                        var CLOSING_TIME = 500; // ms
+
+                        menuItems.forEach(function(li) {
+                            var closeTimeout = null;
+                            var submenu = li.querySelector('.menu.vertical, .menu-columns-wrapper');
+                            if (!submenu) return;
+
+                            function showSubmenu() {
+                                submenu.style.visibility = 'visible';
+                                submenu.style.opacity = '1';
+                                submenu.style.maxHeight = '800px';
+                                submenu.style.transform = 'translateY(0) scaleY(1)';
+                            }
+
+                            function hideSubmenu() {
+                                submenu.style.visibility = 'hidden';
+                                submenu.style.opacity = '0';
+                                submenu.style.maxHeight = '0';
+                                submenu.style.transform = 'translateY(-20px) scaleY(0.8)';
+                            }
+
+                            // Mouseenter: show immediately, cancel own timeout, close others
+                            li.addEventListener('mouseenter', function() {
+                                if (closeTimeout) {
+                                    clearTimeout(closeTimeout);
+                                    closeTimeout = null;
+                                }
+
+                                // JavaScript SHOWS menu, not CSS :hover
+                                showSubmenu();
+
+                                // Close OTHER menus immediately
+                                menuItems.forEach(function(otherLi) {
+                                    if (otherLi !== li) {
+                                        if (otherLi._closeTimeout) {
+                                            clearTimeout(otherLi._closeTimeout);
+                                            otherLi._closeTimeout = null;
+                                        }
+                                        var otherSubmenu = otherLi.querySelector('.menu.vertical, .menu-columns-wrapper');
+                                        if (otherSubmenu) {
+                                            otherSubmenu.style.visibility = 'hidden';
+                                            otherSubmenu.style.opacity = '0';
+                                            otherSubmenu.style.maxHeight = '0';
+                                            otherSubmenu.style.transform = 'translateY(-20px) scaleY(0.8)';
+                                        }
+                                    }
+                                });
+                            });
+
+                            // Mouseleave: 500ms timeout before hiding
+                            li.addEventListener('mouseleave', function(e) {
+                                var goingToMenu = e.relatedTarget && e.relatedTarget.closest('.dropdown.menu > li');
+                                if (goingToMenu) return;
+
+                                closeTimeout = setTimeout(function() {
+                                    hideSubmenu();
+                                    closeTimeout = null;
+                                }, CLOSING_TIME);
+                                li._closeTimeout = closeTimeout;
+                            });
+                        });
+                    });
+                </script>
+
                 <!-- Hidden logout form -->
                 <form id="logout-form" action="{% url "logout" %}" method="post" class="hidden-logout-form">
                     {% csrf_token %}
@@ -395,9 +467,9 @@
             {% if request.user.is_anonymous %}
                 {% if microsoft_login_enabled %}
                     <li>
-                        <a href="#"><i class="fi-lock"></i>
+                        <a href="#" aria-haspopup="menu"><i class="fi-lock" aria-hidden="true"></i>
                         zaloguj</a>
-                        <ul class="menu vertical">
+                        <ul class="menu vertical" role="menu">
                             <li><a href="{% url "bpp:microsoft_auth_redirect" %}?next={{ request.get_full_path|urlencode }}">
                                 <i class="fi-cloud"></i> logowanie instytucjonalne</a></li>
                             <li><a href="{% url "local_login_form" %}?next={{ request.get_full_path|urlencode }}">
@@ -408,9 +480,9 @@
                     </li>
                 {% else %}
                     <li>
-                        <a href="#"><i class="fi-lock"></i>
+                        <a href="#" aria-haspopup="menu"><i class="fi-lock" aria-hidden="true"></i>
                         zaloguj</a>
-                        <ul class="menu vertical">
+                        <ul class="menu vertical" role="menu">
                             <li><a href="{% url "login_form" %}?next={{ request.get_full_path|urlencode }}">
                                 <i class="fi-home"></i> logowanie</a></li>
                             <li><a href="{% url "admin:login" %}?next={{ request.get_full_path|urlencode }}">
@@ -425,6 +497,7 @@
         </ul>
     </div>
 </div>
+</nav>
 
 <!-- Include Global Search Modal -->
 {% include 'global_search_modal.html' %}

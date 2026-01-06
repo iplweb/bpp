@@ -576,7 +576,7 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
     def autorzy_z_uczelni(self):
         # Zwróc listę wszystkich autorów, którzy są przypisani do
         # nie-obcych jednostek
-        from bpp.models.struktura import Autor
+        from bpp.models.autor import Autor
 
         return Autor.objects.filter(
             autor_jednostka__jednostka__skupia_pracownikow=True,

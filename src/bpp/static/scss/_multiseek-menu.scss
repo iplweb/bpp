@@ -1,0 +1,180 @@
+// =============================================================================
+// MULTISEEK MENU
+// Menu bar and pagination controls styling
+// =============================================================================
+
+// Mixin for menu bar styling
+@mixin multiseek-menu-style {
+  background: linear-gradient(to bottom, #ffffff, #f8f9fa);
+  border-radius: 8px;
+  padding: 12px 20px;
+  margin-bottom: 20px;
+  border: 1px solid #dee2e6;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+
+  li {
+    margin: 0;
+
+    a {
+      color: #495057;
+      padding: 8px 14px;
+      border-radius: 6px;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 500;
+
+      &:hover {
+        background: white;
+        color: $primary-color;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+        transform: translateY(-1px);
+      }
+
+      i {
+        font-size: 1rem;
+        opacity: 0.8;
+      }
+
+      // Special styling for action buttons
+      &[href*="print"] {
+        &:hover {
+          color: #28a745;
+        }
+      }
+
+      &[href*="all=1"]:not([href*="print"]) {
+        &:hover {
+          color: #17a2b8;
+        }
+      }
+    }
+
+    // Style for the record count (first item)
+    &:first-child a {
+      background: white;
+      border: 1px solid #e9ecef;
+      font-weight: 600;
+      cursor: default;
+
+      &:hover {
+        transform: none;
+        box-shadow: none;
+        color: #495057;
+      }
+    }
+  }
+}
+
+// Multiseek pagination and menu bar styling
+.multiseek-pagination-wrapper {
+  margin-bottom: 25px;
+
+  // Menu bar styling
+  ul.menu {
+    @include multiseek-menu-style;
+  }
+
+  // Pagination controls styling
+  ul.pagination {
+    background: white;
+    border-radius: 8px;
+    padding: 12px 16px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    border: 1px solid #e9ecef;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin: 20px auto;
+
+    li {
+      list-style: none;
+      margin: 0;
+
+      a, span {
+        display: inline-block;
+        padding: 6px 12px;
+        border-radius: 6px;
+        text-decoration: none;
+        transition: all 0.2s ease;
+        font-size: 0.9rem;
+        font-weight: 500;
+        min-width: 36px;
+        text-align: center;
+      }
+
+      a {
+        color: #495057;
+        background: #f8f9fa;
+        border: 1px solid transparent;
+
+        &:hover {
+          background: rgba($primary-color, 0.1);
+          color: $primary-color;
+          border-color: rgba($primary-color, 0.2);
+          transform: translateY(-1px);
+        }
+      }
+
+      // Current page
+      &.current {
+        span, a {
+          background: $primary-color;
+          color: white;
+          font-weight: 600;
+          box-shadow: 0 2px 4px rgba($primary-color, 0.3);
+        }
+      }
+
+      // Disabled state
+      &.disabled {
+        span {
+          color: #adb5bd;
+          background: transparent;
+          cursor: not-allowed;
+          opacity: 0.5;
+        }
+      }
+
+      // Previous/Next buttons
+      &.pagination-previous,
+      &.pagination-next {
+        a, span {
+          padding: 6px 16px;
+          font-weight: 500;
+        }
+
+        a {
+          background: white;
+          border: 1px solid #dee2e6;
+
+          &:hover {
+            background: rgba($primary-color, 0.05);
+          }
+        }
+      }
+
+      // Ellipsis
+      &.ellipsis {
+        padding: 6px 8px;
+        color: #6c757d;
+
+        &:before {
+          content: "•••";
+        }
+      }
+    }
+  }
+}
+
+// Ensure menu bar in report container also gets styled
+.multiseek-report-container > ul.menu {
+  @include multiseek-menu-style;
+}

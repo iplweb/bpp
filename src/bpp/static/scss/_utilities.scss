@@ -1,0 +1,101 @@
+// =============================================================================
+// UTILITIES
+// Small utility classes and miscellaneous styles
+// =============================================================================
+
+// Hidden elements
+.hidden {
+  display: none;
+}
+
+// Navigation autocomplete icon
+.navigation-autocomplete-icon {
+  width: 1.8em;
+  height: 1.8em;
+}
+
+// Wydzial navigation active state
+.wydzial-nav .is-active {
+  font-weight: bold;
+}
+
+// Record details table
+.szczegolyRekordu tr th {
+  vertical-align: top;
+  text-align: right;
+}
+
+// Flash notification (empty, kept for potential future use)
+.flash-on-notification {
+}
+
+// Import POLON table border
+.table-border-right {
+  border-right: 2px solid silver;
+}
+
+// Message template - hidden by default (moved from inline style in base.html)
+#messageTemplate {
+  display: none;
+}
+
+// Test server warning banner (moved from inline style in base.html)
+.test-server-banner {
+  background: linear-gradient(135deg, #ff9800 0%, #ff6600 100%);
+  color: white;
+  padding: 12px 20px;
+  margin: 10px 0 20px 0;
+  border-radius: 8px;
+  text-align: center;
+  font-weight: 600;
+  font-size: 1rem;
+  box-shadow: 0 2px 8px rgba(255, 152, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+
+  .fi-alert {
+    font-size: 1.3rem;
+  }
+}
+
+// Test div (development only)
+#test-div {
+  background-color: $primary-color !important;
+  border: 2px solid red;
+}
+
+// =============================================================================
+// ACCESSIBILITY UTILITIES
+// =============================================================================
+
+// Skip link - visible only on focus for keyboard navigation
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background: #000;
+  color: #fff;
+  padding: 8px 16px;
+  text-decoration: none;
+  z-index: 9999;
+  transition: top 0.2s ease;
+
+  &:focus {
+    top: 0;
+  }
+}
+
+// Screen reader only - visually hidden but accessible to screen readers
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

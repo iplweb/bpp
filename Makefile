@@ -178,7 +178,7 @@ combine-coverage:
 coveralls-upload:
 	uv run coveralls
 
-tests: clean-coverage tests-without-selenium tests-with-selenium combine-coverage js-tests coveralls-upload
+tests: destroy-test-databases clean-coverage tests-without-selenium tests-with-selenium combine-coverage js-tests coveralls-upload
 
 destroy-test-databases:
 	-./bin/drop-test-databases.sh

@@ -1,14 +1,30 @@
+from unittest.mock import Mock
+
 import pytest
 from django.apps import apps
+from django.contrib.auth.models import Group
+from django.contrib.contenttypes.models import ContentType
 from django.urls import NoReverseMatch
 from django.urls.base import reverse
 from model_bakery import baker
 
-from bpp.models import Autor, Jednostka, Praca_Doktorska, Praca_Habilitacyjna, Zrodlo
+from bpp.admin import Wydawnictwo_ZwarteAdmin
+from bpp.admin.filters import CalkowitaLiczbaAutorowFilter, LiczbaZnakowFilter
+from bpp.models import (
+    Autor,
+    Charakter_Formalny,
+    Jednostka,
+    Praca_Doktorska,
+    Praca_Habilitacyjna,
+    Zrodlo,
+)
 from bpp.models.cache import Autorzy, Rekord
 from bpp.models.patent import Patent, Patent_Autor
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle, Wydawnictwo_Ciagle_Autor
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte, Wydawnictwo_Zwarte_Autor
+from bpp.system import groups
+from bpp.tests.util import any_ciagle
+from bpp.views.admin import WydawnictwoCiagleTozView
 
 
 @pytest.mark.parametrize(
@@ -201,3 +217,94 @@ def test_BppTemplateAdmin_zapis_zlej_templatki(admin_app):
     res.forms["template_form"]["name"] = "nazwa.html"
     res = res.forms["template_form"].submit().maybe_follow()
     res.mustcontain("Błąd przy próbie analizy")
+
+
+# =============================================================================
+# Testy przeniesione z tests_legacy/test_admin.py
+# =============================================================================
+
+
+@pytest.mark.django_db
+def test_liczba_znakow_filter():
+    """Test filtrów liczby znaków i całkowitej liczby autorów."""
+    for klass in [LiczbaZnakowFilter, CalkowitaLiczbaAutorowFilter]:
+        flt = klass(Mock(), [], Wydawnictwo_Zwarte, Wydawnictwo_ZwarteAdmin)
+
+        for elem in ["brak", "zero", "powyzej"]:
+            flt.value = Mock(return_value=elem)
+            queryset = Mock()
+            flt.queryset(Mock(), queryset)
+            assert queryset.filter.called is True
+
+        flt.value = Mock(return_value="__nie ma tego parametru")
+        queryset = Mock()
+        flt.queryset(Mock(), queryset)
+        assert queryset.filter.called is False
+
+
+@pytest.mark.django_db
+def test_normal_user_admin(logged_in_client, test_user):
+    """Test dostępu do admina dla zwykłego użytkownika ze staff."""
+    test_user.is_staff = True
+    test_user.is_superuser = False
+
+    for grupa in groups:
+        test_user.groups.add(Group.objects.get_by_natural_key(grupa))
+    test_user.save()
+
+    response = logged_in_client.get("/admin/")
+    assert response.status_code == 200
+    assert "Administracja" in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_admin_root(superuser_client):
+    """Test dostępu do głównej strony admina dla superusera."""
+    response = superuser_client.get("/admin/")
+    assert response.status_code == 200
+    assert "Administracja" in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_admin_custom_app_index(superuser_client):
+    """Spowoduje wywołanie customappindex z django-admin-tools."""
+    response = superuser_client.get("/admin/bpp/")
+    assert response.status_code == 200
+    assert "Użytkownicy" in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_admin_wyszukiwanie(superuser_client):
+    """Dla wielu różnych modeli spróbuj wyszukiwać w tabelce."""
+    for model in [
+        Jednostka,
+        Autor,
+        Zrodlo,
+        Wydawnictwo_Ciagle,
+        Wydawnictwo_Zwarte,
+        Praca_Doktorska,
+        Praca_Habilitacyjna,
+        Patent,
+        Charakter_Formalny,
+    ]:
+        content_type = ContentType.objects.get_for_model(model)
+        url = reverse(f"admin:{content_type.app_label}_{content_type.model}_changelist")
+        res = superuser_client.get(url, data={"q": "wtf"})
+        assert res.status_code == 200
+
+
+@pytest.mark.django_db
+def test_wydawnictwociagletozview():
+    """Test tworzenia kopii wydawnictwa ciągłego."""
+    c1 = any_ciagle()
+    assert Wydawnictwo_Ciagle.objects.count() == 1
+
+    w = WydawnictwoCiagleTozView()
+    url = w.get_redirect_url(c1.pk)
+
+    # Czy jest poprawne ID w URLu?
+    c2 = Wydawnictwo_Ciagle.objects.all().exclude(pk=c1.pk)
+    assert str(c2[0].pk) in url
+
+    # Czy stworzył kopię?
+    assert Wydawnictwo_Ciagle.objects.count() == 2

@@ -31,7 +31,7 @@
                 <h1>
                     <i class="fi-calendar"></i> Przeglądaj publikacje według roku
                 </h1>
-                <p style="color: #7f8c8d; margin: 0; font-size: 0.9rem;">
+                <p class="lata__subtitle">
                     Łączna liczba publikacji w bazie: {{ total_publications }}
                 </p>
             </div>
@@ -41,23 +41,20 @@
     <!-- Years by Decade -->
     {% if decades %}
         {% for decade, years_in_decade in decades.items %}
-            <div class="decade-section" style="margin-bottom: 40px;">
-                <h2 style="color: #2c3e50; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #e9ecef;">
+            <div class="lata__decade-section">
+                <h2 class="lata__decade-heading">
                     <i class="fi-folder"></i> Lata {{ decade }}-{% with first_year=years_in_decade|first last_year=years_in_decade|last %}{% if first_year.year > decade|add:9 %}{{ decade|add:9 }}{% else %}{{ first_year.year }}{% endif %}{% endwith %}
                 </h2>
 
                 <div class="grid-x grid-margin-x">
                     {% for year_data in years_in_decade %}
-                        <div class="large-2 medium-3 small-6 cell" style="margin-bottom: 20px;">
+                        <div class="large-2 medium-3 small-6 cell lata__year-cell">
                             <a href="{% url 'bpp:browse_rok' year_data.year %}"
-                               class="year-card"
-                               style="display: block; padding: 20px; background: #fff; border: 2px solid #e9ecef; border-radius: 8px; text-align: center; text-decoration: none; transition: all 0.3s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.05);"
-                               onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 8px 16px rgba(0,0,0,0.1)'; this.style.borderColor='#3498db';"
-                               onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.05)'; this.style.borderColor='#e9ecef';">
-                                <div style="font-size: 1.5rem; font-weight: bold; color: #2c3e50; margin-bottom: 5px;">
+                               class="lata__year-card">
+                                <div class="lata__year-number">
                                     {{ year_data.year }}
                                 </div>
-                                <div style="font-size: 0.9rem; color: #7f8c8d;">
+                                <div class="lata__year-count">
                                     {{ year_data.count }}
                                     {% if year_data.count == 1 %}publikacja
                                     {% elif year_data.count < 5 %}publikacje
@@ -70,56 +67,31 @@
             </div>
         {% endfor %}
     {% else %}
-        <div class="callout warning" style="text-align: center; padding: 40px; border-radius: 8px;">
-            <h4 style="color: #856404; margin-bottom: 15px;">
-                <i class="fi-alert" style="margin-right: 10px;"></i>Brak publikacji
+        <div class="callout warning lata__empty-callout">
+            <h4 class="lata__empty-heading">
+                <i class="fi-alert lata__empty-icon"></i>Brak publikacji
             </h4>
-            <p style="margin-bottom: 20px; color: #6c5c00;">
+            <p class="lata__empty-message">
                 Nie znaleziono publikacji w bazie danych.
             </p>
-            <a href="{% url "multiseek:index" %}" class="button" style="background: #ffc107; color: #212529;">
-                <i class="fi-magnifying-glass" style="margin-right: 5px;"></i>Przejdź do wyszukiwarki
+            <a href="{% url "multiseek:index" %}" class="button lata__empty-btn">
+                <i class="fi-magnifying-glass lata__btn-icon"></i>Przejdź do wyszukiwarki
             </a>
         </div>
     {% endif %}
 
     <!-- SEO Content -->
-    <div style="margin-top: 60px; padding: 30px; background: #f8f9fa; border-radius: 8px;">
-        <h2 style="color: #2c3e50; margin-bottom: 15px;">O przeglądaniu według roku</h2>
-        <p style="color: #5a6c7d; line-height: 1.6;">
+    <div class="lata__seo-section">
+        <h2 class="lata__seo-heading">O przeglądaniu według roku</h2>
+        <p class="lata__seo-text">
             Przeglądaj publikacje naukowe według roku wydania. Każdy rok zawiera pełną listę publikacji
             z możliwością sortowania i filtrowania według typu publikacji. System umożliwia łatwe
             nawigowanie między latami oraz dostęp do szczegółowych informacji bibliograficznych.
         </p>
-        <p style="color: #5a6c7d; line-height: 1.6;">
+        <p class="lata__seo-text">
             Dane są automatycznie aktualizowane i zawierają wszystkie typy publikacji: artykuły naukowe,
             książki, rozdziały, patenty oraz inne formy dorobku naukowego pracowników uczelni.
         </p>
     </div>
-
-    <style>
-        .decade-section {
-            animation: fadeIn 0.5s ease-in;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .year-card:focus {
-            outline: 3px solid #3498db;
-            outline-offset: 2px;
-        }
-
-        @media (max-width: 640px) {
-            .year-card {
-                padding: 15px !important;
-            }
-            .year-card div:first-child {
-                font-size: 1.2rem !important;
-            }
-        }
-    </style>
 
 {% endblock %}

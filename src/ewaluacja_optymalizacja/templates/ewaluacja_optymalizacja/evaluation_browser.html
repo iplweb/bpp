@@ -13,7 +13,7 @@
 <div class="row">
     <div class="large-12 columns">
         <h1>
-            <span class="fi-list-thumbnails"></span> Przeglądarka ewaluacji
+            <span class="fi-list-thumbnails" aria-hidden="true"></span> Przeglądarka ewaluacji
         </h1>
 
         <div class="callout">
@@ -27,7 +27,7 @@
 
         <div class="button-group" style="margin-bottom: 1rem;">
             <a href="{% url 'ewaluacja_optymalizacja:index' %}" class="button secondary">
-                <span class="fi-arrow-left"></span> Powrót do optymalizacji
+                <span class="fi-arrow-left" aria-hidden="true"></span> Powrót do optymalizacji
             </a>
         </div>
 
@@ -35,7 +35,9 @@
         <div id="discipline-summary"
              hx-get="{% url 'ewaluacja_optymalizacja:browser-summary' %}"
              hx-trigger="recalcComplete from:body"
-             hx-indicator="this">
+             hx-indicator="this"
+             aria-live="polite"
+             aria-busy="false">
             {% include "ewaluacja_optymalizacja/_browser_discipline_summary.html" %}
         </div>
 
@@ -101,7 +103,7 @@
                     <div class="medium-2 columns">
                         <label>&nbsp;</label>
                         <button type="submit" class="button small expanded">
-                            <span class="fi-filter"></span> Filtruj
+                            <span class="fi-filter" aria-hidden="true"></span> Filtruj
                         </button>
                     </div>
                 </div>
@@ -114,18 +116,27 @@
              hx-trigger="load, recalcComplete from:body"
              hx-include="#filter-form"
              hx-swap="innerHTML"
-             hx-indicator="this">
+             hx-indicator="this"
+             aria-live="polite"
+             aria-busy="false"
+             role="region"
+             aria-label="Tabela publikacji">
             <p><em>Ładowanie publikacji...</em></p>
         </div>
 
         <!-- Modal przeliczania -->
         <div class="reveal" id="recalc-modal" data-reveal
              data-close-on-click="false" data-close-on-esc="false"
+             role="dialog"
+             aria-modal="true"
              aria-labelledby="recalcModalTitle" aria-hidden="true">
-            <div id="recalc-modal-content">
+            <h2 id="recalcModalTitle" class="sr-only">Przeliczanie ewaluacji</h2>
+            <div id="recalc-modal-content"
+                 aria-live="assertive"
+                 aria-busy="false">
                 <!-- Domyślny throbber podczas ładowania HTMX -->
                 <div class="callout secondary modal-loading">
-                    <span class="fi-loop"></span>
+                    <span class="fi-loop" aria-hidden="true"></span>
                     <p>Przygotowywanie...</p>
                 </div>
             </div>
@@ -149,6 +160,21 @@ document.body.addEventListener('htmx:configRequest', function(evt) {
     var csrfInput = document.querySelector('[name=csrfmiddlewaretoken]');
     if (csrfInput) {
         evt.detail.headers['X-CSRFToken'] = csrfInput.value;
+    }
+});
+
+// Obsługa aria-busy dla dostępności podczas ładowania HTMX
+document.body.addEventListener('htmx:beforeRequest', function(evt) {
+    var target = evt.detail.target;
+    if (target && target.hasAttribute('aria-busy')) {
+        target.setAttribute('aria-busy', 'true');
+    }
+});
+
+document.body.addEventListener('htmx:afterSwap', function(evt) {
+    var target = evt.detail.target;
+    if (target && target.hasAttribute('aria-busy')) {
+        target.setAttribute('aria-busy', 'false');
     }
 });
 
@@ -177,7 +203,7 @@ document.body.addEventListener('htmx:afterSettle', function(evt) {
 // Reset modala po zamknięciu (przywróć throbber dla następnego użycia)
 $(document).on('closed.zf.reveal', '#recalc-modal', function() {
     var defaultContent = '<div class="callout secondary modal-loading">' +
-        '<span class="fi-loop"></span>' +
+        '<span class="fi-loop" aria-hidden="true"></span>' +
         '<p>Przygotowywanie...</p>' +
         '</div>';
     $('#recalc-modal-content').html(defaultContent);

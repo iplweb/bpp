@@ -57,7 +57,7 @@
                             </a>
                             <a href="{% url 'rozbieznosci_if:ustaw_wszystkie' %}?{{ filter_query_string }}"
                                class="button warning"
-                               onclick="return confirm('Czy na pewno chcesz zaktualizować {{ field_label }} dla wszystkich {{ page_obj.paginator.count }} rekordów?');">
+                               data-confirm="Czy na pewno chcesz zaktualizować {{ field_label }} dla wszystkich {{ page_obj.paginator.count }} rekordów?">
                                 <span class="fi-check"></span> Ustaw wszystkie wg źródła
                             </a>
                         {% else %}
@@ -67,7 +67,7 @@
                             </a>
                             <a href="{% url 'rozbieznosci_if:ustaw_wszystkie' %}"
                                class="button warning"
-                               onclick="return confirm('Czy na pewno chcesz zaktualizować {{ field_label }} dla wszystkich {{ page_obj.paginator.count }} rekordów?');">
+                               data-confirm="Czy na pewno chcesz zaktualizować {{ field_label }} dla wszystkich {{ page_obj.paginator.count }} rekordów?">
                                 <span class="fi-check"></span> Ustaw wszystkie wg źródła
                             </a>
                         {% endif %}
@@ -176,20 +176,20 @@
                         {% if filter_query_string %}
                             <a href="?{{ filter_query_string }}&sort={{ current_sort }}&_ignore={{ elem.pk }}"
                                class="button tiny secondary expanded"
-                               onclick="return confirm('Czy jesteś pewny, że chcesz zignorować ten rekord? Tej operacji nie można cofnąć.');">
+                               data-confirm="Czy jesteś pewny, że chcesz zignorować ten rekord? Tej operacji nie można cofnąć.">
                                 zignoruj</a>
                             <a href="?{{ filter_query_string }}&sort={{ current_sort }}&_set={{ elem.pk }}"
                                class="button tiny success expanded"
-                               onclick="return confirm('Czy jesteś pewny, że chcesz ustawić {{ field_label }} wg źródła? Tej operacji nie można cofnąć.');">
+                               data-confirm="Czy jesteś pewny, że chcesz ustawić {{ field_label }} wg źródła? Tej operacji nie można cofnąć.">
                                 ustaw wg źródła</a>
                         {% else %}
                             <a href="?sort={{ current_sort }}&_ignore={{ elem.pk }}"
                                class="button tiny secondary expanded"
-                               onclick="return confirm('Czy jesteś pewny, że chcesz zignorować ten rekord? Tej operacji nie można cofnąć.');">
+                               data-confirm="Czy jesteś pewny, że chcesz zignorować ten rekord? Tej operacji nie można cofnąć.">
                                 zignoruj</a>
                             <a href="?sort={{ current_sort }}&_set={{ elem.pk }}"
                                class="button tiny success expanded"
-                               onclick="return confirm('Czy jesteś pewny, że chcesz ustawić {{ field_label }} wg źródła? Tej operacji nie można cofnąć.');">
+                               data-confirm="Czy jesteś pewny, że chcesz ustawić {{ field_label }} wg źródła? Tej operacji nie można cofnąć.">
                                 ustaw wg źródła</a>
                         {% endif %}
                     </td>

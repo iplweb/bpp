@@ -2,27 +2,12 @@
 {% load humanize static pbn_extras %}
 
 {% block extratitle %}
-    Szczegóły eksportu do PBN #{{ export_queue_item.pk }}
+    Szczegoly eksportu do PBN #{{ export_queue_item.pk }}
 {% endblock %}
 
 {% block extrahead %}
-<style>
-    /* Remove underlines only from buttons within this specific page */
-    .pbn-export-detail .button-group a.button,
-    .pbn-export-detail .button-group a.button:hover,
-    .pbn-export-detail .button-group a.button:focus,
-    .pbn-export-detail .button-group a.button:visited {
-        text-decoration: none !important;
-    }
-
-    /* JSON syntax highlighting */
-    .json-highlight {
-        font-family: 'Consolas', 'Monaco', 'Menlo', 'DejaVu Sans Mono', monospace;
-        font-size: 1.1em;
-        font-weight: 600;
-        line-height: 1.5;
-    }
-</style>
+<link rel="stylesheet"
+      href="{% static 'pbn_export_queue/css/pbn_export_queue.css' %}">
 
 <script>
     // Simple JSON syntax highlighting
@@ -46,22 +31,23 @@
                                 cls = 'key';
                                 // Remove the trailing colon for the key
                                 match = match.slice(0, -1);
-                                return '<span style="color: #d63031; font-weight: 700;">' + match + '</span>:';
+                                return '<span class="json-highlight__key">' + match + '</span>:';
                             } else {
                                 cls = 'string';
-                                return '<span style="color: #00b894; font-weight: 600;">' + match + '</span>';
+                                return '<span class="json-highlight__string">' + match + '</span>';
                             }
                         } else if (/true|false/.test(match)) {
                             cls = 'boolean';
-                            return '<span style="color: #0984e3; font-weight: 600;">' + match + '</span>';
+                            return '<span class="json-highlight__boolean">' + match + '</span>';
                         } else if (/null/.test(match)) {
                             cls = 'null';
-                            return '<span style="color: #636e72; font-weight: 600;">' + match + '</span>';
+                            return '<span class="json-highlight__null">' + match + '</span>';
                         }
-                        return '<span style="color: #6c5ce7; font-weight: 600;">' + match + '</span>';
+                        return '<span class="json-highlight__number">' + match + '</span>';
                     });
 
-                element.innerHTML = highlighted;
+                element.textContent = '';
+                element.insertAdjacentHTML('beforeend', highlighted);
             } catch (e) {
                 // If parsing fails, leave as is
                 console.error('Failed to parse JSON for highlighting:', e);
@@ -74,46 +60,51 @@
 {% block breadcrumbs %}
     {{ block.super }}
     <li><a href="{% url 'pbn_export_queue:export-queue-list' %}">Kolejka eksportu do PBN</a></li>
-    <li class="current">Szczegóły #{{ export_queue_item.pk }}</li>
+    <li class="current">Szczegoly #{{ export_queue_item.pk }}</li>
 {% endblock %}
 
 {% block content %}
     <div class="pbn-export-detail">
         <div class="row">
             <div class="large-6 columns">
-                <h2>Szczegóły eksportu do PBN #{{ export_queue_item.pk }}</h2>
+                <h2>Szczegoly eksportu do PBN #{{ export_queue_item.pk }}</h2>
             </div>
-            <div class="large-6 columns" style="text-align: right; padding-top: 20px;">
+            <div class="large-6 columns pbn-export-queue__header">
                 <div class="button-group">
                     <a href="{% url 'pbn_export_queue:export-queue-list' %}" class="button secondary">
-                        <span class="fi-arrow-left"></span> Powrót do listy
+                        <span class="fi-arrow-left"></span> Powrot do listy
                     </a>
 
                     {% if export_queue_item.rekord_do_wysylki %}
                         {% if export_queue_item.wykluczone %}
-                            <div class="button secondary disabled" title="Nie można wysłać - publikacja wykluczona z eksportu" style="opacity: 0.6; cursor: not-allowed;">
+                            <div class="button secondary disabled pbn-export-queue__button--disabled"
+                                 title="Nie mozna wyslac - publikacja wykluczona z eksportu">
                                 <span class="fi-minus-circle"></span> Wykluczone z eksportu
                             </div>
                         {% else %}
-                            <form method="post" action="{% url 'pbn_export_queue:export-queue-resend' export_queue_item.pk %}" style="display: inline;">
+                            <form method="post"
+                                  action="{% url 'pbn_export_queue:export-queue-resend' export_queue_item.pk %}"
+                                  class="pbn-export-queue__form--inline">
                                 {% csrf_token %}
                                 <button type="submit" class="button success"
-                                        onclick="return confirm('Czy na pewno chcesz wysłać ten rekord do PBN?')">
-                                    <span class="fi-upload"></span> Wyślij do PBN
+                                        data-confirm="Czy na pewno chcesz wyslac ten rekord do PBN?">
+                                    <span class="fi-upload"></span> Wyslij do PBN
                                 </button>
                             </form>
                         {% endif %}
                     {% else %}
                         <div class="button alert disabled">
-                            <span class="fi-alert"></span> Rekord źródłowy został usunięty
+                            <span class="fi-alert"></span> Rekord zrodlowy zostal usuniety
                         </div>
                     {% endif %}
 
-                    <form method="post" action="{% url 'pbn_export_queue:export-queue-delete' export_queue_item.pk %}" style="display: inline;">
+                    <form method="post"
+                          action="{% url 'pbn_export_queue:export-queue-delete' export_queue_item.pk %}"
+                          class="pbn-export-queue__form--inline">
                         {% csrf_token %}
                         <button type="submit" class="button alert"
-                                onclick="return confirm('Czy na pewno chcesz usunąć ten element z kolejki?')">
-                            <span class="fi-trash"></span> Usuń z kolejki
+                                data-confirm="Czy na pewno chcesz usunac ten element z kolejki?">
+                            <span class="fi-trash"></span> Usun z kolejki
                         </button>
                     </form>
                 </div>
@@ -132,12 +123,14 @@
                                 <td>{{ export_queue_item.pk }}</td>
                             </tr>
                             <tr>
-                                <th>Rekord do wysyłki:</th>
+                                <th>Rekord do wysylki:</th>
                                 <td>
                                     {% if export_queue_item.rekord_do_wysylki %}
                                         {% with rekord=export_queue_item.rekord_do_wysylki %}
                                             {% if rekord.slug %}
-                                                <a href="{% url 'bpp:browse_praca_by_slug' rekord.slug %}" target="_blank" style="text-decoration: none; color: inherit;">
+                                                <a href="{% url 'bpp:browse_praca_by_slug' rekord.slug %}"
+                                                   target="_blank"
+                                                   class="pbn-export-queue__link--plain">
                                             {% endif %}
                                             {% if rekord.opis_bibliograficzny_cache %}
                                                 {{ rekord.opis_bibliograficzny_cache|safe }}
@@ -153,7 +146,7 @@
                                         <br>
                                         <small>Typ: {{ export_queue_item.content_type }}</small>
                                         <br>
-                                        <div class="button-group small" style="margin-top: 5px;">
+                                        <div class="button-group small pbn-export-queue__button-group--small">
                                             {% if export_queue_item.rekord_do_wysylki.slug %}
                                                 <a href="{% url 'bpp:browse_praca_by_slug' export_queue_item.rekord_do_wysylki.slug %}"
                                                    target="_blank"
@@ -170,7 +163,7 @@
                                             {% endif %}
                                         </div>
                                     {% else %}
-                                        <em class="alert label">Rekord został usunięty</em>
+                                        <em class="alert label">Rekord zostal usuniety</em>
                                     {% endif %}
                                 </td>
                             </tr>
@@ -185,66 +178,66 @@
                                 </td>
                             </tr>
                             <tr>
-                                <th>Wysłał:</th>
+                                <th>Wyslal:</th>
                                 <td>{{ export_queue_item.zamowil }}</td>
                             </tr>
                             <tr>
-                                <th>Data wysłania:</th>
+                                <th>Data wyslania:</th>
                                 <td>{{ export_queue_item.zamowiono }} ({{ export_queue_item.zamowiono|naturaltime }})</td>
                             </tr>
                             <tr>
-                                <th>Wysyłkę podjęto:</th>
+                                <th>Wysylke podjeto:</th>
                                 <td>
                                     {% if export_queue_item.wysylke_podjeto %}
                                         {{ export_queue_item.wysylke_podjeto }} ({{ export_queue_item.wysylke_podjeto|naturaltime }})
                                     {% else %}
-                                        <em>Nie podjęto</em>
+                                        <em>Nie podjeto</em>
                                     {% endif %}
                                 </td>
                             </tr>
                             <tr>
-                                <th>Wysyłkę zakończono:</th>
+                                <th>Wysylke zakonczono:</th>
                                 <td>
                                     {% if export_queue_item.wysylke_zakonczono %}
                                         {{ export_queue_item.wysylke_zakonczono }} ({{ export_queue_item.wysylke_zakonczono|naturaltime }})
                                     {% else %}
-                                        <em>Nie zakończono</em>
+                                        <em>Nie zakonczono</em>
                                     {% endif %}
                                 </td>
                             </tr>
                             <tr>
-                                <th>Ilość prób:</th>
+                                <th>Ilosc prob:</th>
                                 <td>{{ export_queue_item.ilosc_prob }}</td>
                             </tr>
                             <tr>
                                 <th>Status:</th>
                                 <td>
                                     {% if export_queue_item.zakonczono_pomyslnie == True %}
-                                        <span class="label success">Zakończono pomyślnie</span>
+                                        <span class="label success">Zakonczono pomyslnie</span>
                                     {% elif export_queue_item.wykluczone %}
-                                        <span class="label secondary" style="background-color: #6c757d;">Wykluczone z eksportu</span>
-                                        <div style="margin-top: 10px; color: #6c757d;">
-                                            <strong>Ta publikacja została wykluczona z eksportu do PBN.</strong>
-                                            <p style="margin-top: 5px; font-size: 0.9em;">
-                                                Eksport nie jest możliwy z powodów konfiguracyjnych systemu.
-                                                Aby zmienić ten stan, należy zmodyfikować ustawienia charakterów formalnych
+                                        <span class="label secondary pbn-export-queue__label--excluded">Wykluczone z eksportu</span>
+                                        <div class="pbn-export-queue__status-excluded">
+                                            <strong>Ta publikacja zostala wykluczona z eksportu do PBN.</strong>
+                                            <p class="pbn-export-queue__status-excluded-text">
+                                                Eksport nie jest mozliwy z powodow konfiguracyjnych systemu.
+                                                Aby zmienic ten stan, nalezy zmodyfikowac ustawienia charakterow formalnych
                                                 lub konfiguracji eksportu w panelu administracyjnym.
                                             </p>
                                         </div>
                                     {% elif export_queue_item.zakonczono_pomyslnie == False %}
-                                        <span class="label alert">Zakończono z błędem</span>
+                                        <span class="label alert">Zakonczono z bledem</span>
 
                                         {% if pbn_error_info.is_pbn_api_error %}
-                                            <div style="margin-top: 10px;">
-                                                <strong style="color: #c60f13;">
+                                            <div class="pbn-export-queue__error-section">
+                                                <strong class="pbn-export-queue__error-title">
                                                     {% if pbn_error_info.error_code %}
-                                                        Błąd po stronie PBN -- kod {{ pbn_error_info.error_code }}
+                                                        Blad po stronie PBN -- kod {{ pbn_error_info.error_code }}
                                                     {% else %}
-                                                        Błąd merytoryczny: {{ pbn_error_info.exception_type }}
+                                                        Blad merytoryczny: {{ pbn_error_info.exception_type }}
                                                     {% endif %}
                                                 </strong>
                                                 {% if pbn_error_info.error_message %}
-                                                    <div style="margin-top: 5px; font-size: 0.9em;">
+                                                    <div class="pbn-export-queue__error-message">
                                                         {{ pbn_error_info.error_message }}
                                                         {% if pbn_error_info.error_description %}
                                                             - {{ pbn_error_info.error_description }}
@@ -252,16 +245,16 @@
                                                     </div>
                                                 {% endif %}
                                                 {% if pbn_error_info.error_details_json %}
-                                                    <div style="margin-top: 10px;">
-                                                        <strong>Szczegóły błędu:</strong>
-                                                        <pre style="background: #fff5f5; padding: 12px 15px; border-radius: 5px; border: 2px solid #ffc9c9; border-left: 4px solid #c60f13; overflow-x: auto; margin-top: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);"><code class="json-highlight">{{ pbn_error_info.error_details_json }}</code></pre>
+                                                    <div class="pbn-export-queue__error-details">
+                                                        <strong>Szczegoly bledu:</strong>
+                                                        <pre class="pbn-export-queue__json-pre"><code class="json-highlight">{{ pbn_error_info.error_details_json }}</code></pre>
                                                     </div>
                                                 {% endif %}
                                             </div>
                                         {% endif %}
 
                                     {% elif export_queue_item.retry_after_user_authorised %}
-                                        <span class="label warning">Oczekuje na autoryzację użytkownika</span>
+                                        <span class="label warning">Oczekuje na autoryzacje uzytkownika</span>
                                     {% else %}
                                         <span class="label secondary">W kolejce / w trakcie</span>
                                     {% endif %}
@@ -273,7 +266,7 @@
 
                 {% if sent_data %}
                     <div class="callout {% if export_queue_item.zakonczono_pomyslnie == True %}success{% elif export_queue_item.zakonczono_pomyslnie == False %}alert{% else %}secondary{% endif %}">
-                        <h4>Linki do wysłanego rekordu</h4>
+                        <h4>Linki do wyslanego rekordu</h4>
                         <div class="button-group">
                             {% if pbn_publication_url %}
                                 <a href="{{ pbn_publication_url }}" target="_blank" class="button primary">
@@ -282,34 +275,40 @@
                             {% endif %}
 
                             <a href="{% url 'admin:pbn_api_sentdata_change' sent_data.pk %}" target="_blank" class="button secondary">
-                                <span class="fi-page-filled"></span> Otwórz w admin
+                                <span class="fi-page-filled"></span> Otworz w admin
                             </a>
                         </div>
                     </div>
 
                     <div class="callout secondary">
-                        <h4>Wysłane dane JSON</h4>
+                        <h4>Wyslane dane JSON</h4>
 
-                        <details style="margin-bottom: 15px;">
-                            <summary style="cursor: pointer; color: #1779ba; font-weight: 500; padding: 8px 0;">
-                                <span class="fi-page-filled"></span> Pokaż/ukryj wysłane dane JSON
+                        <details class="pbn-export-queue__details">
+                            <summary class="pbn-export-queue__details-summary">
+                                <span class="fi-page-filled"></span> Pokaz/ukryj wyslane dane JSON
                             </summary>
-                            <div style="margin-top: 10px;">
-                                <pre style="background: #f8f9fa; padding: 15px; border-radius: 5px; border: 1px solid #e9ecef; overflow-x: auto; max-height: 500px; overflow-y: auto;"><code class="json-highlight">{{ json_data|default:"Brak danych" }}</code></pre>
+                            <div class="pbn-export-queue__details-content">
+                                <pre class="pbn-export-queue__json-data-pre"><code class="json-highlight">{{ json_data|default:"Brak danych" }}</code></pre>
                             </div>
                         </details>
 
                         <h5>Skopiuj do schowka lub pobierz plik:</h5>
 
                         {# Hidden fields containing pre-fetched data for Safari clipboard compatibility #}
-                        <textarea id="json-data-field" style="position: absolute; left: -9999px;" readonly>{{ json_data|default:"" }}</textarea>
-                        <textarea id="helpdesk-email-field" style="position: absolute; left: -9999px;" readonly>{{ helpdesk_email|default:"" }}</textarea>
-                        <textarea id="ai-prompt-field" style="position: absolute; left: -9999px;" readonly>{{ ai_prompt|default:"" }}</textarea>
+                        <textarea id="json-data-field"
+                                  class="pbn-export-queue__hidden-field"
+                                  readonly>{{ json_data|default:"" }}</textarea>
+                        <textarea id="helpdesk-email-field"
+                                  class="pbn-export-queue__hidden-field"
+                                  readonly>{{ helpdesk_email|default:"" }}</textarea>
+                        <textarea id="ai-prompt-field"
+                                  class="pbn-export-queue__hidden-field"
+                                  readonly>{{ ai_prompt|default:"" }}</textarea>
 
                         <div class="button-group">
                             <button type="button" class="button secondary copy-to-clipboard-btn"
                                     data-source-id="json-data-field">
-                                <span class="fi-page-copy"></span> JSON wysłanych danych
+                                <span class="fi-page-copy"></span> JSON wyslanych danych
                             </button>
                             <button type="button" class="button secondary download-file-btn"
                                     data-source-id="json-data-field"
@@ -320,7 +319,7 @@
                             {% if export_queue_item.zakonczono_pomyslnie == False %}
                                 <button type="button" class="button warning copy-to-clipboard-btn"
                                         data-source-id="helpdesk-email-field">
-                                    <span class="fi-mail"></span> Zgłoszenie do helpdesku PBN
+                                    <span class="fi-mail"></span> Zgloszenie do helpdesku PBN
                                 </button>
                                 <button type="button" class="button info copy-to-clipboard-btn"
                                         data-source-id="ai-prompt-field">
@@ -330,10 +329,10 @@
                         </div>
 
                         {% if export_queue_item.zakonczono_pomyslnie == False %}
-                            <p style="margin-top: 15px; font-size: 0.9em; color: #666;">
-                                <strong>Wskazówka:</strong> Kliknij przycisk "E-mail do helpdesku", aby skopiować gotową treść wiadomości
-                                z opisem problemu. Możesz też skopiować prompt dla AI (np. Claude, ChatGPT),
-                                który pomoże zidentyfikować problem zgodnie z dokumentacją API PBN.
+                            <p class="pbn-export-queue__hint">
+                                <strong>Wskazowka:</strong> Kliknij przycisk "E-mail do helpdesku", aby skopiowac gotowa tresc wiadomosci
+                                z opisem problemu. Mozesz tez skopiowac prompt dla AI (np. Claude, ChatGPT),
+                                ktory pomoze zidentyfikowac problem zgodnie z dokumentacja API PBN.
                             </p>
                         {% endif %}
                     </div>
@@ -346,7 +345,8 @@
                                     var sourceId = this.getAttribute('data-source-id');
                                     var sourceField = document.getElementById(sourceId);
                                     var button = this;
-                                    var originalHTML = button.innerHTML;
+                                    var originalText = button.textContent;
+                                    var originalClasses = button.className;
 
                                     if (!sourceField || !sourceField.value) {
                                         alert('Brak danych do skopiowania.');
@@ -361,26 +361,17 @@
                                         document.execCommand('copy');
 
                                         // Show success
-                                        button.innerHTML = '<span class="fi-check"></span> Skopiowano do schowka!';
+                                        button.textContent = 'Skopiowano do schowka!';
                                         button.classList.add('success');
                                         button.classList.remove('secondary', 'warning', 'info');
 
                                         setTimeout(function() {
-                                            button.innerHTML = originalHTML;
-                                            button.classList.remove('success');
-
-                                            // Restore original color class
-                                            if (originalHTML.includes('fi-mail')) {
-                                                button.classList.add('warning');
-                                            } else if (originalHTML.includes('fi-lightbulb')) {
-                                                button.classList.add('info');
-                                            } else {
-                                                button.classList.add('secondary');
-                                            }
+                                            button.textContent = originalText;
+                                            button.className = originalClasses;
                                         }, 2000);
                                     } catch (err) {
                                         console.error('Copy failed: ', err);
-                                        alert('Nie udało się skopiować do schowka. Spróbuj użyć innej przeglądarki.');
+                                        alert('Nie udalo sie skopiowac do schowka. Sprobuj uzyc innej przegladarki.');
                                     }
 
                                     // Deselect
@@ -397,7 +388,8 @@
                                     var sourceField = document.getElementById(sourceId);
                                     var filename = this.getAttribute('data-filename');
                                     var button = this;
-                                    var originalHTML = button.innerHTML;
+                                    var originalText = button.textContent;
+                                    var originalClasses = button.className;
 
                                     if (!sourceField || !sourceField.value) {
                                         alert('Brak danych do pobrania.');
@@ -420,14 +412,13 @@
                                     window.URL.revokeObjectURL(downloadUrl);
 
                                     // Show success
-                                    button.innerHTML = '<span class="fi-check"></span> Pobrano!';
+                                    button.textContent = 'Pobrano!';
                                     button.classList.add('success');
                                     button.classList.remove('secondary');
 
                                     setTimeout(function() {
-                                        button.innerHTML = originalHTML;
-                                        button.classList.remove('success');
-                                        button.classList.add('secondary');
+                                        button.textContent = originalText;
+                                        button.className = originalClasses;
                                     }, 2000);
                                 });
                             });
@@ -437,44 +428,44 @@
 
                 {% if export_queue_item.komunikat %}
                     <div class="callout">
-                        <h4>Historia komunikatów</h4>
+                        <h4>Historia komunikatow</h4>
 
                         {% with messages=export_queue_item.komunikat|parse_historia_komunikatow %}
                         {% if messages %}
                             <!-- Formatted view with toggle -->
-                            <div style="margin-bottom: 10px;">
-                                <button type="button" class="button tiny secondary" onclick="toggleKomunikatView()">
-                                    <span class="fi-arrows-expand"></span> Przełącz widok (sformatowany/surowy)
+                            <div class="pbn-export-queue__toggle-view">
+                                <button type="button" class="button tiny secondary" data-action="toggle-komunikat-view">
+                                    <span class="fi-arrows-expand"></span> Przelacz widok (sformatowany/surowy)
                                 </button>
                             </div>
 
                             <!-- Formatted messages view -->
-                            <div id="formatted-messages" style="max-height: 500px; overflow-y: auto;">
+                            <div id="formatted-messages" class="pbn-export-queue__messages-container">
                                 {% for msg in messages %}
-                                <div class="message-block" style="background: white; border-left: 4px solid {{ msg.type|message_color }}; border-radius: 4px; padding: 12px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-                                    <div style="display: flex; align-items: center; margin-bottom: 8px;">
-                                        <span class="{{ msg.type|message_icon }}" style="color: {{ msg.type|message_color }}; font-size: 1.2em; margin-right: 10px;"></span>
-                                        <strong style="color: #2c3e50;">{{ msg.datetime|format_datetime_pl }}</strong>
+                                <div class="pbn-export-queue__message-block pbn-export-queue__message-block--{{ msg.type }}">
+                                    <div class="pbn-export-queue__message-header">
+                                        <span class="{{ msg.type|message_icon }} pbn-export-queue__message-icon pbn-export-queue__message-icon--{{ msg.type }}"></span>
+                                        <strong class="pbn-export-queue__message-datetime">{{ msg.datetime|format_datetime_pl }}</strong>
                                         {% if msg.type == 'error' %}
-                                            <span class="label alert" style="margin-left: 10px;">Błąd</span>
+                                            <span class="label alert pbn-export-queue__message-label">Blad</span>
                                         {% elif msg.type == 'success' %}
-                                            <span class="label success" style="margin-left: 10px;">Sukces</span>
+                                            <span class="label success pbn-export-queue__message-label">Sukces</span>
                                         {% elif msg.type == 'warning' %}
-                                            <span class="label warning" style="margin-left: 10px;">Ostrzeżenie</span>
+                                            <span class="label warning pbn-export-queue__message-label">Ostrzezenie</span>
                                         {% elif msg.type == 'resend' %}
-                                            <span class="label info" style="margin-left: 10px;">Ponowna wysyłka</span>
+                                            <span class="label info pbn-export-queue__message-label">Ponowna wysylka</span>
                                         {% endif %}
                                     </div>
-                                    <div style="color: #495057; font-size: 0.95em;">
+                                    <div class="pbn-export-queue__message-content">
                                         {% if msg.is_traceback %}
                                             <details>
-                                                <summary style="cursor: pointer; color: #dc3545; font-weight: 500;">
-                                                    Wystąpił błąd (kliknij aby zobaczyć szczegóły)
+                                                <summary class="pbn-export-queue__traceback-summary">
+                                                    Wystapil blad (kliknij aby zobaczyc szczegoly)
                                                 </summary>
-                                                <pre style="margin-top: 10px; padding: 10px; background: #f8f9fa; border-radius: 4px; font-size: 0.85em; overflow-x: auto;">{{ msg.content|safe }}</pre>
+                                                <pre class="pbn-export-queue__traceback-pre">{{ msg.content|safe }}</pre>
                                             </details>
                                         {% else %}
-                                            <div style="white-space: pre-wrap; word-wrap: break-word;">{{ msg.content|safe }}</div>
+                                            <div class="pbn-export-queue__message-text">{{ msg.content|safe }}</div>
                                         {% endif %}
                                     </div>
                                 </div>
@@ -482,8 +473,8 @@
                             </div>
 
                             <!-- Raw text view (hidden by default) -->
-                            <div id="raw-messages" style="display: none; background-color: #f4f4f4; padding: 10px; border-radius: 3px; max-height: 500px; overflow-y: auto;">
-                                <pre style="white-space: pre-wrap; word-wrap: break-word; margin: 0;">{{ export_queue_item.komunikat|safe }}</pre>
+                            <div id="raw-messages" class="pbn-export-queue__raw-messages">
+                                <pre class="pbn-export-queue__raw-pre">{{ export_queue_item.komunikat|safe }}</pre>
                             </div>
 
                             <script>
@@ -499,11 +490,17 @@
                                         raw.style.display = 'block';
                                     }
                                 }
+                                document.addEventListener('click', function(e) {
+                                    if (e.target.closest('[data-action="toggle-komunikat-view"]')) {
+                                        e.preventDefault();
+                                        toggleKomunikatView();
+                                    }
+                                });
                             </script>
                         {% else %}
                             <!-- Fallback to raw view if parsing fails -->
-                            <div style="background-color: #f4f4f4; padding: 10px; border-radius: 3px; max-height: 500px; overflow-y: auto;">
-                                <pre style="white-space: pre-wrap; word-wrap: break-word;">{{ export_queue_item.komunikat|safe }}</pre>
+                            <div class="pbn-export-queue__raw-messages" style="display: block;">
+                                <pre class="pbn-export-queue__raw-pre">{{ export_queue_item.komunikat|safe }}</pre>
                             </div>
                         {% endif %}
                         {% endwith %}
@@ -513,7 +510,7 @@
             </div>
         </div>
         {% else %}
-            <p class="alert-box alert">Brak uprawnień do przeglądania szczegółów eksportu.</p>
+            <p class="alert-box alert">Brak uprawnien do przegladania szczegolow eksportu.</p>
         {% endif %}
     </div>
 

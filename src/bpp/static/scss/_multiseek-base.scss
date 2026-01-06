@@ -1,0 +1,42 @@
+// =============================================================================
+// MULTISEEK BASE
+// Base styles for multiseek search interface
+// =============================================================================
+
+// Range field label
+.multiseek-range-field-label {
+  padding-left: 0.5em !important;
+  padding-top: 0.5em !important;
+}
+
+// Remove ellipsis dots from pagination
+.pagination .ellipsis::after {
+  content: "" !important;
+}
+
+// Pagination styling
+.multiseek-pagination-wrapper {
+  margin-bottom: 5px !important;
+}
+
+.pagination {
+  font-size: 0.85rem !important;
+
+  li {
+    a, span {
+      font-size: 0.85rem !important;
+    }
+  }
+}
+
+// Multiseek Report Styles
+.multiseek-report-container {
+  background: white;
+  padding: 0 10px;
+  min-height: 100vh;
+}
+
+// Multiseek frame button group
+.multiseekFrame .button-group {
+  margin-top: 8px !important;
+}

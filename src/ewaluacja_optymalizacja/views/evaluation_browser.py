@@ -55,6 +55,8 @@ def _get_discipline_summary(uczelnia, punkty_przed=None, show_diff=True):
         punkty_przed: Dict {discipline_id: points} przed zmianą
         show_diff: Czy pokazywać diff (False gdy przeliczanie w trakcie)
     """
+    from django.db.models import OuterRef, Subquery
+
     from ewaluacja_liczba_n.models import LiczbaNDlaUczelni
 
     punkty_przed = punkty_przed or {}
@@ -70,6 +72,38 @@ def _get_discipline_summary(uczelnia, punkty_przed=None, show_diff=True):
         .order_by("dyscyplina_naukowa__nazwa")
     )
 
+    # Pre-fetch latest OptimizationRun per discipline (single query)
+    reported_disc_ids = list(
+        raportowane.values_list("dyscyplina_naukowa_id", flat=True)
+    )
+
+    latest_run_subquery = (
+        OptimizationRun.objects.filter(
+            uczelnia=uczelnia,
+            dyscyplina_naukowa_id=OuterRef("dyscyplina_naukowa_id"),
+            status="completed",
+        )
+        .order_by("-started_at")
+        .values("pk")[:1]
+    )
+
+    opt_runs = OptimizationRun.objects.filter(
+        uczelnia=uczelnia,
+        status="completed",
+        dyscyplina_naukowa_id__in=reported_disc_ids,
+        pk__in=Subquery(
+            OptimizationRun.objects.filter(
+                uczelnia=uczelnia,
+                status="completed",
+                dyscyplina_naukowa_id__in=reported_disc_ids,
+            )
+            .annotate(latest_pk=Subquery(latest_run_subquery))
+            .values("latest_pk")
+        ),
+    )
+
+    opt_runs_by_disc = {r.dyscyplina_naukowa_id: r for r in opt_runs}
+
     summary = []
     total_points = 0
     total_slots = 0
@@ -77,16 +111,7 @@ def _get_discipline_summary(uczelnia, punkty_przed=None, show_diff=True):
 
     for ln in raportowane:
         disc_id = ln.dyscyplina_naukowa_id
-
-        opt_run = (
-            OptimizationRun.objects.filter(
-                uczelnia=uczelnia,
-                dyscyplina_naukowa_id=disc_id,
-                status="completed",
-            )
-            .order_by("-started_at")
-            .first()
-        )
+        opt_run = opt_runs_by_disc.get(disc_id)
 
         current_points = float(opt_run.total_points) if opt_run else 0
         current_slots = (
@@ -160,13 +185,121 @@ def _get_distinct_punkty_kbn(rok=None):
     return sorted([p for p in all_punkty if p is not None], reverse=True)
 
 
+def _build_rekord_ids(ciagle_list, zwarte_list, ct_ciagle, ct_zwarte):
+    """Zbuduj słowniki rekord_id dla publikacji."""
+    all_rekord_ids = []
+    ciagle_rekord_ids = {}
+    zwarte_rekord_ids = {}
+
+    for pub in ciagle_list:
+        rekord_id = (ct_ciagle.pk, pub.pk)
+        ciagle_rekord_ids[pub.pk] = rekord_id
+        all_rekord_ids.append(list(rekord_id))
+
+    for pub in zwarte_list:
+        rekord_id = (ct_zwarte.pk, pub.pk)
+        zwarte_rekord_ids[pub.pk] = rekord_id
+        all_rekord_ids.append(list(rekord_id))
+
+    return all_rekord_ids, ciagle_rekord_ids, zwarte_rekord_ids
+
+
+def _prefetch_selected_publications(all_rekord_ids):
+    """Pobierz set rekord_ids wybranych publikacji."""
+    selected_rekord_ids = set()
+    if all_rekord_ids:
+        for op in OptimizationPublication.objects.filter(rekord_id__in=all_rekord_ids):
+            selected_rekord_ids.add(tuple(op.rekord_id))
+    return selected_rekord_ids
+
+
+def _prefetch_punktacja_cache(all_rekord_ids):
+    """Pobierz cache punktacji dla wszystkich publikacji."""
+    punktacja_cache = {}
+    if all_rekord_ids:
+        for cpa in Cache_Punktacja_Autora.objects.filter(rekord_id__in=all_rekord_ids):
+            rekord_key = tuple(cpa.rekord_id)
+            if rekord_key not in punktacja_cache:
+                punktacja_cache[rekord_key] = {}
+            punktacja_cache[rekord_key][(cpa.autor_id, cpa.dyscyplina_id)] = {
+                "pkdaut": cpa.pkdaut,
+                "slot": cpa.slot,
+            }
+    return punktacja_cache
+
+
+def _prefetch_autorzy_by_pub(autorzy_qs, pub_list):
+    """Grupuj autorów wg publikacji i zbierz pary (autor_id, rok)."""
+    autorzy_by_pub = {}
+    autor_rok_pairs = set()
+    pub_by_pk = {p.pk: p for p in pub_list}
+
+    for ar in autorzy_qs:
+        if ar.rekord_id not in autorzy_by_pub:
+            autorzy_by_pub[ar.rekord_id] = []
+        autorzy_by_pub[ar.rekord_id].append(ar)
+        pub = pub_by_pk.get(ar.rekord_id)
+        if pub:
+            autor_rok_pairs.add((ar.autor_id, pub.rok))
+
+    return autorzy_by_pub, autor_rok_pairs
+
+
+def _prefetch_autor_dyscypliny(autor_rok_pairs):
+    """Pobierz mapę Autor_Dyscyplina dla par (autor_id, rok)."""
+    from django.db.models import Q
+
+    autor_dyscypliny = {}
+    if autor_rok_pairs:
+        q_filter = Q()
+        for autor_id, r in autor_rok_pairs:
+            q_filter |= Q(autor_id=autor_id, rok=r)
+        for ad in Autor_Dyscyplina.objects.filter(q_filter):
+            autor_dyscypliny[(ad.autor_id, ad.rok)] = ad
+    return autor_dyscypliny
+
+
+def _build_publication_list(
+    pub_list, model_type, rekord_ids, selected, punktacja_cache, autorzy_by_pub, ad_map
+):
+    """Zbuduj listę publikacji z autorami."""
+    publications = []
+    for pub in pub_list:
+        rekord_id = rekord_ids[pub.pk]
+        jest_wybrana = rekord_id in selected
+        pub_punktacja = punktacja_cache.get(rekord_id, {})
+
+        authors = _build_authors_list(
+            autorzy_by_pub.get(pub.pk, []),
+            pub.rok,
+            model_type,
+            pub_punktacja,
+            ad_map,
+        )
+
+        if authors:
+            publications.append(
+                {
+                    "pk": pub.pk,
+                    "model_type": model_type,
+                    "tytul": pub.tytul_oryginalny,
+                    "rok": pub.rok,
+                    "punkty_kbn": pub.punkty_kbn,
+                    "jest_wybrana": jest_wybrana,
+                    "url": pub.get_absolute_url(),
+                    "authors": authors,
+                }
+            )
+    return publications
+
+
 def _get_filtered_publications(uczelnia, filters, reported_ids):
     """
     Pobierz publikacje z filtrami.
 
     Zwraca listę dict z informacjami o publikacjach i autorach.
+    Zoptymalizowano pod kątem unikania zapytań N+1.
     """
-
     from django.contrib.contenttypes.models import ContentType
 
     from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
@@ -198,15 +331,12 @@ def _get_filtered_publications(uczelnia, filters, reported_ids):
         "zatrudniony": True,
         "dyscyplina_naukowa_id__in": reported_ids,
     }
-
     if dyscyplina:
         author_filter["dyscyplina_naukowa_id"] = int(dyscyplina)
-
     if nazwisko:
         author_filter["autor__nazwisko__icontains"] = nazwisko
 
     # Ogranicz do publikacji z odpowiednimi autorami
-    # Używamy subquery przez rekord_id (FK do publikacji)
     ciagle_with_authors = Wydawnictwo_Ciagle_Autor.objects.filter(
         **author_filter
     ).values_list("rekord_id", flat=True)
@@ -221,99 +351,84 @@ def _get_filtered_publications(uczelnia, filters, reported_ids):
     ct_ciagle = ContentType.objects.get_for_model(Wydawnictwo_Ciagle)
     ct_zwarte = ContentType.objects.get_for_model(Wydawnictwo_Zwarte)
 
-    # Zbierz wyniki
-    publications = []
+    # Phase 1: Pobierz wszystkie publikacje jako listy
+    ciagle_list = list(ciagle_qs.order_by("rok", "tytul_oryginalny"))
+    zwarte_list = list(zwarte_qs.order_by("rok", "tytul_oryginalny"))
 
-    for pub in ciagle_qs.order_by("rok", "tytul_oryginalny"):
-        rekord_id = [ct_ciagle.pk, pub.pk]
-        jest_wybrana = OptimizationPublication.objects.filter(
-            rekord_id=rekord_id
-        ).exists()
+    # Phase 2-3: Zbuduj rekord_ids i pobierz wybrane publikacje
+    all_rekord_ids, ciagle_rekord_ids, zwarte_rekord_ids = _build_rekord_ids(
+        ciagle_list, zwarte_list, ct_ciagle, ct_zwarte
+    )
+    selected_rekord_ids = _prefetch_selected_publications(all_rekord_ids)
+    punktacja_cache = _prefetch_punktacja_cache(all_rekord_ids)
 
-        # Pobierz autorów
-        authors = _get_authors_for_publication(
-            pub, "ciagle", reported_ids, dyscyplina, nazwisko, rekord_id
+    # Phase 4: Pobierz wszystkich autorów dla publikacji (batch query)
+    ciagle_pks = [p.pk for p in ciagle_list]
+    zwarte_pks = [p.pk for p in zwarte_list]
+
+    autor_base_filter = {
+        "afiliuje": True,
+        "zatrudniony": True,
+        "dyscyplina_naukowa_id__in": reported_ids,
+    }
+    if dyscyplina:
+        autor_base_filter["dyscyplina_naukowa_id"] = int(dyscyplina)
+    if nazwisko:
+        autor_base_filter["autor__nazwisko__icontains"] = nazwisko
+
+    ciagle_autorzy = Wydawnictwo_Ciagle_Autor.objects.filter(
+        rekord_id__in=ciagle_pks, **autor_base_filter
+    ).select_related("autor", "dyscyplina_naukowa")
+
+    zwarte_autorzy = Wydawnictwo_Zwarte_Autor.objects.filter(
+        rekord_id__in=zwarte_pks, **autor_base_filter
+    ).select_related("autor", "dyscyplina_naukowa")
+
+    # Grupuj autorów po publikacji
+    ciagle_autorzy_by_pub, ciagle_pairs = _prefetch_autorzy_by_pub(
+        ciagle_autorzy, ciagle_list
+    )
+    zwarte_autorzy_by_pub, zwarte_pairs = _prefetch_autorzy_by_pub(
+        zwarte_autorzy, zwarte_list
+    )
+
+    # Phase 5: Batch pre-fetch Autor_Dyscyplina
+    autor_dyscypliny = _prefetch_autor_dyscypliny(ciagle_pairs | zwarte_pairs)
+
+    # Phase 6: Zbuduj wyniki
+    publications = _build_publication_list(
+        ciagle_list,
+        "ciagle",
+        ciagle_rekord_ids,
+        selected_rekord_ids,
+        punktacja_cache,
+        ciagle_autorzy_by_pub,
+        autor_dyscypliny,
+    )
+    publications.extend(
+        _build_publication_list(
+            zwarte_list,
+            "zwarte",
+            zwarte_rekord_ids,
+            selected_rekord_ids,
+            punktacja_cache,
+            zwarte_autorzy_by_pub,
+            autor_dyscypliny,
         )
-        if authors:  # Tylko jeśli są autorzy spełniający kryteria
-            publications.append(
-                {
-                    "pk": pub.pk,
-                    "model_type": "ciagle",
-                    "tytul": pub.tytul_oryginalny,
-                    "rok": pub.rok,
-                    "punkty_kbn": pub.punkty_kbn,
-                    "jest_wybrana": jest_wybrana,
-                    "url": pub.get_absolute_url(),
-                    "authors": authors,
-                }
-            )
-
-    for pub in zwarte_qs.order_by("rok", "tytul_oryginalny"):
-        rekord_id = [ct_zwarte.pk, pub.pk]
-        jest_wybrana = OptimizationPublication.objects.filter(
-            rekord_id=rekord_id
-        ).exists()
-
-        authors = _get_authors_for_publication(
-            pub, "zwarte", reported_ids, dyscyplina, nazwisko, rekord_id
-        )
-        if authors:
-            publications.append(
-                {
-                    "pk": pub.pk,
-                    "model_type": "zwarte",
-                    "tytul": pub.tytul_oryginalny,
-                    "rok": pub.rok,
-                    "punkty_kbn": pub.punkty_kbn,
-                    "jest_wybrana": jest_wybrana,
-                    "url": pub.get_absolute_url(),
-                    "authors": authors,
-                }
-            )
+    )
 
     return publications
 
 
-def _get_authors_for_publication(
-    pub, model_type, reported_ids, dyscyplina, nazwisko, rekord_id
-):
-    """Pobierz autorów publikacji spełniających kryteria."""
-    # Użyj modelu through (Wydawnictwo_*_Autor) - nie M2M do Autor
-    if model_type == "ciagle":
-        autor_qs = Wydawnictwo_Ciagle_Autor.objects.filter(
-            rekord=pub,
-            afiliuje=True,
-            zatrudniony=True,
-            dyscyplina_naukowa_id__in=reported_ids,
-        )
-    else:
-        autor_qs = Wydawnictwo_Zwarte_Autor.objects.filter(
-            rekord=pub,
-            afiliuje=True,
-            zatrudniony=True,
-            dyscyplina_naukowa_id__in=reported_ids,
-        )
-
-    if dyscyplina:
-        autor_qs = autor_qs.filter(dyscyplina_naukowa_id=int(dyscyplina))
-
-    if nazwisko:
-        autor_qs = autor_qs.filter(autor__nazwisko__icontains=nazwisko)
-
-    autor_qs = autor_qs.select_related("autor", "dyscyplina_naukowa")
-
-    # Pobierz cache punktacji dla tej publikacji
-    punktacja_cache = {}
-    for cpa in Cache_Punktacja_Autora.objects.filter(rekord_id=rekord_id):
-        key = (cpa.autor_id, cpa.dyscyplina_id)
-        punktacja_cache[key] = {"pkdaut": cpa.pkdaut, "slot": cpa.slot}
-
+def _build_authors_list(autor_records, rok, model_type, punktacja_cache, autor_dysc):
+    """Zbuduj listę autorów z prefetchowanych danych."""
     authors = []
-    for autor_rekord in autor_qs:
-        # Sprawdź czy autor ma 2 dyscypliny
-        has_two = _author_has_two_disciplines(autor_rekord.autor, pub.rok)
+    for autor_rekord in autor_records:
+        # Sprawdź czy autor ma 2 dyscypliny (używając prefetchowanych danych)
+        ad = autor_dysc.get((autor_rekord.autor_id, rok))
+        has_two = ad.dwie_dyscypliny() if ad else False
 
-        # Pobierz punktację autora z cache
+        # Pobierz punktację autora
         key = (autor_rekord.autor_id, autor_rekord.dyscyplina_naukowa_id)
         punktacja = punktacja_cache.get(key, {})
 
@@ -331,15 +446,6 @@ def _get_authors_for_publication(
         )
 
     return authors
-
-
-def _author_has_two_disciplines(autor, rok):
-    """Sprawdź czy autor ma dwie dyscypliny w danym roku."""
-    try:
-        ad = Autor_Dyscyplina.objects.get(autor=autor, rok=rok)
-        return ad.dwie_dyscypliny()
-    except Autor_Dyscyplina.DoesNotExist:
-        return False
 
 
 @login_required

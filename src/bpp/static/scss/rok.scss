@@ -1,0 +1,185 @@
+// rok.scss - Style dla strony rok.html (przeglądanie publikacji według roku)
+
+.rok {
+  // Subtitle text (count info)
+  &__subtitle {
+    color: #7f8c8d;
+    margin: 0;
+    font-size: 0.9rem;
+  }
+
+  // Publication item card
+  &__publication-item {
+    padding: 20px;
+    background: white;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    transition: all 0.3s ease;
+
+    &:hover {
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      transform: translateY(-2px);
+    }
+
+    &:focus-within {
+      outline: 3px solid #3498db;
+      outline-offset: 2px;
+    }
+  }
+
+  // Content wrapper with flex layout
+  &__content-wrapper {
+    display: flex;
+    align-items: start;
+    gap: 15px;
+  }
+
+  // Publication type icon
+  &__type-icon {
+    font-size: 1.5rem;
+    color: #3498db;
+    flex-shrink: 0;
+  }
+
+  // Content area
+  &__content {
+    flex-grow: 1;
+  }
+
+  // Publication title
+  &__title {
+    font-size: 1.1rem;
+    margin-bottom: 10px;
+  }
+
+  // Publication link
+  &__link {
+    color: #2c3e50;
+    text-decoration: none;
+    line-height: 1.4;
+
+    &:hover {
+      color: #3498db;
+    }
+  }
+
+  // Metadata section
+  &__metadata {
+    font-size: 0.85rem;
+    color: #7f8c8d;
+  }
+
+  // Metadata item with spacing
+  &__metadata-item {
+    margin-right: 20px;
+  }
+
+  // Icon with right margin
+  &__icon {
+    margin-right: 5px;
+  }
+
+  // Details button
+  &__details-btn {
+    margin: 0;
+  }
+
+  // Pagination section
+  &__pagination {
+    margin-top: 40px;
+    text-align: center;
+  }
+
+  // Pagination info text
+  &__pagination-info {
+    margin-bottom: 20px;
+    color: #7f8c8d;
+  }
+
+  // Pagination list
+  &__pagination-list {
+    display: inline-flex;
+    gap: 5px;
+  }
+
+  // Ellipsis between page numbers
+  &__ellipsis {
+    padding: 8px;
+  }
+
+  // Current page indicator
+  &__current-page {
+    padding: 8px 12px;
+    background: #3498db;
+    color: white;
+    border-radius: 6px;
+    font-weight: 600;
+  }
+
+  // Empty state callout
+  &__empty-callout {
+    text-align: center;
+    padding: 40px;
+    border-radius: 8px;
+  }
+
+  // Empty state heading
+  &__empty-heading {
+    color: #856404;
+    margin-bottom: 15px;
+  }
+
+  // Empty state icon
+  &__empty-icon {
+    margin-right: 10px;
+  }
+
+  // Empty state message
+  &__empty-message {
+    margin-bottom: 20px;
+    color: #6c5c00;
+  }
+
+  // Empty state button
+  &__empty-btn {
+    background: #ffc107;
+    color: #212529;
+  }
+
+  // Button icon
+  &__btn-icon {
+    margin-right: 5px;
+  }
+}
+
+// Pagination button styles (shared component)
+.pagination-btn {
+  display: inline-block;
+  padding: 8px 12px;
+  background: #f8f9fa;
+  color: #2c3e50;
+  border-radius: 6px;
+  text-decoration: none;
+  border: 1px solid #e9ecef;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: #e9ecef;
+    transform: translateY(-1px);
+  }
+}
+
+// Responsive styles
+@media (max-width: 640px) {
+  .button-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+
+    .button {
+      margin: 0 !important;
+      width: 100%;
+    }
+  }
+}

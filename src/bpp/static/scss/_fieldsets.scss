@@ -1,0 +1,85 @@
+// =============================================================================
+// FIELDSETS
+// Fieldset and legend styling with shadows and borders
+// =============================================================================
+
+// Nice shadows for fieldsets
+fieldset {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08),
+  0 1px 4px rgba(0, 0, 0, 0.06);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 8px;
+  background-color: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  transition: box-shadow 0.2s ease-in-out;
+  margin-top: 1em;
+  margin-bottom: 1em;
+}
+
+
+fieldset legend {
+  background: linear-gradient(135deg, rgba(248, 248, 248, 1) 0%, rgba(240, 240, 240, 1) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  border-radius: 3px;
+  padding: 4px 10px !important;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  margin-left: 16px;
+  font-size: 0.9em;
+  font-weight: 500;
+  color: #555;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+// Remove borders for nested fieldsets (except in multiseek)
+fieldset fieldset {
+  border: none !important;
+  box-shadow: none !important;
+  background-color: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+// Help text spacing for checkboxes
+// Fixes the issue where help text is too close to checkbox labels
+.holder.checkbox {
+  .help-text {
+    margin-top: 0.5rem;  // Add space between label and help text
+    margin-bottom: 0.75rem;  // Consistent bottom spacing
+    padding-left: 1.5rem;  // Indent to align with checkbox
+    color: #6c757d;  // Slightly muted color for better hierarchy
+    font-size: 0.875rem;  // Slightly smaller font for visual hierarchy
+    line-height: 1.4;  // Better line height for readability
+    display: block;  // Ensure it's on its own line
+  }
+
+  // Remove any default margins that might interfere
+  label {
+    margin-bottom: 0.25rem;  // Small space between label and help text
+  }
+}
+
+// Ensure proper spacing between consecutive checkbox groups
+.holder.checkbox + .holder.checkbox {
+  margin-top: 0.5rem;
+}
+
+// Add borders for nested fields in multiseek page
+.multiseekFrame fieldset fieldset {
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04) !important;
+  background-color: rgba(248, 248, 248, 0.3) !important;
+  border-radius: 4px !important;
+  padding-bottom: 4px !important;
+  margin-bottom: 24px !important;
+}
+
+// Style multiseek nested fieldset legends
+.multiseekFrame fieldset fieldset legend {
+  background-color: rgba(255, 255, 255, 0.8) !important;
+  padding: 4px 8px !important;
+  font-size: 0.9em !important;
+  border-radius: 3px !important;
+}

@@ -1,8 +1,14 @@
 {% extends "base.html" %}
-{% load pbn_komparator_tags %}
+{% load pbn_komparator_tags static %}
 
 {% block title %}
     Komparator źródeł BPP-PBN - Dyscypliny
+{% endblock %}
+
+{% block extra_css %}
+    {{ block.super }}
+    <link rel="stylesheet"
+          href="{% static 'pbn_komparator_zrodel/css/pbn_komparator_zrodel.css' %}">
 {% endblock %}
 
 {% block breadcrumbs %}
@@ -24,7 +30,7 @@
     {# Nawigacja między widokami - przyciski 50%-50% #}
     <div class="row">
         <div class="medium-12 columns">
-            <div class="button-group expanded" style="margin-bottom: 1rem;">
+            <div class="button-group expanded pbn-komparator-zrodel__button-group">
                 <a href="{% url 'pbn_komparator_zrodel:list' %}" class="button secondary">
                     <span class="fi-list"></span> Punkty
                 </a>
@@ -38,13 +44,13 @@
     {% if brakujace_dyscypliny %}
     <div class="row">
         <div class="medium-12 columns">
-            <div class="callout alert" style="background-color: #cc0000; color: black;">
+            <div class="callout alert pbn-komparator-zrodel__alert-callout">
                 <h4><span class="fi-alert"></span> Brakujące dyscypliny w BPP!</h4>
                 <p>
                     W danych PBN znaleziono dyscypliny, które nie istnieją w bazie BPP.
                     Porównanie dyscyplin będzie niekompletne do czasu dodania tych dyscyplin do BPP.
                 </p>
-                <table style="background: white; color: black; margin-top: 1rem;">
+                <table class="pbn-komparator-zrodel__alert-table">
                     <thead>
                         <tr>
                             <th>Kod PBN</th>
@@ -118,13 +124,15 @@
                     <div class="medium-2 columns">
                         <label>Rok od:
                             <input type="number" name="rok_od" value="{{ rok_od }}" min="1900" max="2100"
-                                   style="width: 80px;" onchange="this.form.submit()">
+                                   class="pbn-komparator-zrodel__year-input"
+                                   data-submit-on-change>
                         </label>
                     </div>
                     <div class="medium-2 columns">
                         <label>Rok do:
                             <input type="number" name="rok_do" value="{{ rok_do }}" min="1900" max="2100"
-                                   style="width: 80px;" onchange="this.form.submit()">
+                                   class="pbn-komparator-zrodel__year-input"
+                                   data-submit-on-change>
                         </label>
                     </div>
                     <div class="medium-4 columns">
@@ -134,35 +142,35 @@
                         </label>
                     </div>
                     <div class="medium-4 columns">
-                        <label style="padding-top: 1.5rem;">
+                        <label class="pbn-komparator-zrodel__checkbox-label">
                             <input type="checkbox" name="tylko_rozbieznosci"
                                    {% if tylko_rozbieznosci %}checked{% endif %}
-                                   onchange="this.form.submit()">
+                                   data-submit-on-change>
                             Tylko rozbieżności
                         </label>
                         <label>
                             <input type="checkbox" name="bez_publikacji"
                                    {% if bez_publikacji %}checked{% endif %}
-                                   onchange="this.form.submit()">
+                                   data-submit-on-change>
                             Nie wyświetlaj źródeł bez publikacji
                         </label>
                         <label>
                             <input type="checkbox" name="bez_publikacji_2022_2025"
                                    {% if bez_publikacji_2022_2025 %}checked{% endif %}
-                                   onchange="this.form.submit()">
+                                   data-submit-on-change>
                             Nie wyświetlaj źródeł bez publikacji 2022-2025
                         </label>
                         <label>
                             <input type="checkbox" name="wyswietlaj_nazwy"
                                    {% if wyswietlaj_nazwy %}checked{% endif %}
-                                   onchange="this.form.submit()">
+                                   data-submit-on-change>
                             Wyświetlaj nazwy dyscyplin
                         </label>
                     </div>
                 </div>
             </form>
             <div class="row">
-                <div class="medium-12 columns" style="padding-top: 0.5rem;">
+                <div class="medium-12 columns pbn-komparator-zrodel__buttons-row">
                     <button type="submit" form="filter-form" class="button">
                         <span class="fi-filter"></span> Filtruj
                     </button>
@@ -179,10 +187,10 @@
                     </a>
                     <form method="post"
                           action="{% url 'pbn_komparator_zrodel:aktualizuj_wszystkie_dyscypliny' %}{% if filter_query_string %}?{{ filter_query_string }}{% endif %}"
-                          style="display: inline;">
+                          class="pbn-komparator-zrodel__inline-form">
                         {% csrf_token %}
                         <button type="submit" class="button warning"
-                                onclick="return confirm('Czy na pewno chcesz zaktualizować dyscypliny dla wszystkich {{ page_obj.paginator.count }} rekordów?');">
+                                data-confirm="Czy na pewno chcesz zaktualizować dyscypliny dla wszystkich {{ page_obj.paginator.count }} rekordów?">
                             <span class="fi-check"></span> Ustaw dyscypliny wg PBN
                         </button>
                     </form>
@@ -243,7 +251,7 @@
         <tbody>
             {% for elem in rozbieznosci %}
                 <tr>
-                    <td style="font-size: 0.85em;">
+                    <td class="pbn-komparator-zrodel__source-cell">
                         <a href="{% url 'admin:bpp_zrodlo_change' elem.zrodlo.pk %}">
                             {{ elem.zrodlo.nazwa }}
                         </a>
@@ -252,25 +260,25 @@
                         {% endif %}
                     </td>
                     <td>{{ elem.rok }}</td>
-                    <td{% if elem.ma_rozbieznosc_dyscyplin %} style="background-color: #fff3cd;"{% endif %}>
+                    <td{% if elem.ma_rozbieznosc_dyscyplin %} class="pbn-komparator-zrodel__cell--bpp-warning"{% endif %}>
                         {{ elem.dyscypliny_bpp|dyscyplina_count }}
                     </td>
-                    <td{% if elem.ma_rozbieznosc_dyscyplin %} style="background-color: #d4edda;"{% endif %}>
+                    <td{% if elem.ma_rozbieznosc_dyscyplin %} class="pbn-komparator-zrodel__cell--pbn-success"{% endif %}>
                         {{ elem.dyscypliny_pbn|dyscyplina_count }}
                     </td>
-                    <td{% if elem.ma_rozbieznosc_dyscyplin %} style="background-color: #fff3cd;"{% endif %}>
+                    <td{% if elem.ma_rozbieznosc_dyscyplin %} class="pbn-komparator-zrodel__cell--bpp-warning"{% endif %}>
                         {% dyscyplina_display elem.dyscypliny_bpp wyswietlaj_nazwy dyscypliny_cache %}
                     </td>
-                    <td{% if elem.ma_rozbieznosc_dyscyplin %} style="background-color: #d4edda;"{% endif %}>
+                    <td{% if elem.ma_rozbieznosc_dyscyplin %} class="pbn-komparator-zrodel__cell--pbn-success"{% endif %}>
                         {% dyscyplina_display elem.dyscypliny_pbn wyswietlaj_nazwy dyscypliny_cache %}
                     </td>
                     <td>
                         {% if elem.ma_rozbieznosc_dyscyplin %}
-                        <form method="post" action="{% url 'pbn_komparator_zrodel:aktualizuj' elem.pk %}" style="display: inline;">
+                        <form method="post" action="{% url 'pbn_komparator_zrodel:aktualizuj' elem.pk %}" class="pbn-komparator-zrodel__inline-form">
                             {% csrf_token %}
                             <input type="hidden" name="typ" value="dyscypliny">
                             <button type="submit" class="button tiny"
-                                    onclick="return confirm('Czy na pewno chcesz zaktualizować dyscypliny wg PBN?');">
+                                    data-confirm="Czy na pewno chcesz zaktualizować dyscypliny wg PBN?">
                                 Ustaw wg PBN
                             </button>
                         </form>

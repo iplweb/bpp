@@ -1,0 +1,155 @@
+// Deduplikator Zrodel - Style specyficzne dla modulu
+// ===================================================
+
+// Accordion bez bordera
+.deduplikator-zrodel {
+  // Accordion
+  &__accordion {
+    border: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  // Accordion title bez interakcji (tylko informacyjny)
+  &__accordion-title--static {
+    pointer-events: none;
+    cursor: default;
+  }
+
+  // Accordion content widoczny
+  &__accordion-content--visible {
+    display: block;
+  }
+
+  // Accordion content ukryty
+  &__accordion-content--hidden {
+    display: none;
+  }
+
+  // Margines dolny dla paragrafow
+  &__paragraph--spaced {
+    margin-bottom: 10px;
+  }
+
+  // Przycisk bez marginesu
+  &__button--no-margin {
+    margin: 0;
+  }
+
+  // Placeholder na wiadomosci lokalne
+  &__messages-placeholder {
+    margin-bottom: 20px;
+  }
+
+  // Naglowek z marginesem
+  &__header-row {
+    margin-bottom: 20px;
+  }
+
+  // Label BETA
+  &__beta-label {
+    font-size: 0.6em;
+    vertical-align: top;
+  }
+
+  // Formularz inline
+  &__form--inline {
+    display: inline;
+    margin: 0;
+  }
+
+  // Nazwa glownego zrodla
+  &__main-source-name {
+    font-size: 1.3em;
+    font-weight: bold;
+    color: #1779ba;
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+  }
+
+  // Naglowek sekcji z marginesem
+  &__section-header {
+    margin-top: 15px;
+  }
+
+  // Kontener danych PBN
+  &__pbn-data-container {
+    padding: 10px;
+    background-color: #e7f4fd;
+    border-radius: 4px;
+  }
+
+  // Kontener tabeli z overflow
+  &__table-container {
+    overflow-x: auto;
+  }
+
+  // Tabela duplikatow
+  &__table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  // Naglowek tabeli
+  &__table-header {
+    background-color: #f4f4f4;
+  }
+
+  // Komorka naglowka
+  &__table-th {
+    padding: 10px;
+    border: 1px solid #e1e1e1;
+    text-align: left;
+
+    &--center {
+      text-align: center;
+    }
+  }
+
+  // Komorka danych
+  &__table-td {
+    padding: 10px;
+    border: 1px solid #e1e1e1;
+
+    &--center {
+      text-align: center;
+    }
+  }
+
+  // Wiersz tabeli - nieparzysty
+  &__table-row--odd {
+    background-color: #ffffff;
+  }
+
+  // Wiersz tabeli - parzysty
+  &__table-row--even {
+    background-color: #f9f9f9;
+  }
+
+  // Tekst pomocniczy w tabeli
+  &__table-subtext {
+    color: #666;
+  }
+
+  // Tekst brak danych
+  &__no-data-text {
+    color: #999;
+  }
+
+  // Legenda z marginesem
+  &__legend {
+    margin-top: 20px;
+  }
+
+  // Paragraf legendy
+  &__legend-item {
+    margin-bottom: 5px;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+}

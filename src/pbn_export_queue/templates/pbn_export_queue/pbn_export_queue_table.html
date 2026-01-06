@@ -13,14 +13,14 @@
             </th>
             <th>Rekord</th>
             <th>Rok</th>
-            <th>Wysłał</th>
+            <th>Wyslal</th>
             <th>
                 <a href="?{% if current_filter != 'all' %}zakonczono_pomyslnie={{ request.GET.zakonczono_pomyslnie }}&{% endif %}{% if search_query %}q={{ search_query|urlencode }}&{% endif %}{% if rok_od %}rok_od={{ rok_od }}&{% endif %}{% if rok_do %}rok_do={{ rok_do }}&{% endif %}sort={% if current_sort == 'zamowiono' %}-zamowiono{% else %}zamowiono{% endif %}"
                    hx-get="{% url 'pbn_export_queue:export-queue-table' %}?{% if current_filter != 'all' %}zakonczono_pomyslnie={{ request.GET.zakonczono_pomyslnie }}&{% endif %}{% if search_query %}q={{ search_query|urlencode }}&{% endif %}{% if rok_od %}rok_od={{ rok_od }}&{% endif %}{% if rok_do %}rok_do={{ rok_do }}&{% endif %}sort={% if current_sort == 'zamowiono' %}-zamowiono{% else %}zamowiono{% endif %}"
                    hx-target="#export-queue-table"
                    hx-swap="innerHTML"
                    hx-push-url="false">
-                    Wysłano {% if current_sort == 'zamowiono' %}▲{% elif current_sort == '-zamowiono' %}▼{% endif %}
+                    Wyslano {% if current_sort == 'zamowiono' %}▲{% elif current_sort == '-zamowiono' %}▼{% endif %}
                 </a>
             </th>
             <th>
@@ -38,7 +38,7 @@
                    hx-target="#export-queue-table"
                    hx-swap="innerHTML"
                    hx-push-url="false">
-                    Ilość prób {% if current_sort == 'ilosc_prob' %}▲{% elif current_sort == '-ilosc_prob' %}▼{% endif %}
+                    Ilosc prob {% if current_sort == 'ilosc_prob' %}▲{% elif current_sort == '-ilosc_prob' %}▼{% endif %}
                 </a>
             </th>
             <th>
@@ -55,10 +55,15 @@
     </thead>
     <tbody>
         {% for item in export_queue_items %}
-            <tr style="cursor: pointer;" onclick="if (!event.defaultPrevented) { window.location='{% url 'pbn_export_queue:export-queue-detail' item.pk %}'; }">
-                <td><a href="{% url 'pbn_export_queue:export-queue-detail' item.pk %}" style="color: inherit;">{{ item.pk }}</a></td>
+            <tr class="pbn-export-queue__table-row--clickable"
+                data-navigate-url="{% url 'pbn_export_queue:export-queue-detail' item.pk %}"
+                tabindex="0"
+                role="button">
+                <td><a href="{% url 'pbn_export_queue:export-queue-detail' item.pk %}"
+                       class="pbn-export-queue__table-link">{{ item.pk }}</a></td>
                 <td>
-                    <a href="{% url 'pbn_export_queue:export-queue-detail' item.pk %}" style="color: inherit;">
+                    <a href="{% url 'pbn_export_queue:export-queue-detail' item.pk %}"
+                       class="pbn-export-queue__table-link">
                         {% if item.rekord_do_wysylki %}
                             {% with rekord=item.rekord_do_wysylki %}
                                 {% if rekord.opis_bibliograficzny_cache %}
@@ -70,12 +75,13 @@
                                 {% endif %}
                             {% endwith %}
                         {% else %}
-                            <em>Rekord usunięty</em>
+                            <em>Rekord usuniety</em>
                         {% endif %}
                     </a>
                 </td>
                 <td>
-                    <a href="{% url 'pbn_export_queue:export-queue-detail' item.pk %}" style="color: inherit;">
+                    <a href="{% url 'pbn_export_queue:export-queue-detail' item.pk %}"
+                       class="pbn-export-queue__table-link">
                         {% if item.rekord_do_wysylki and item.rekord_do_wysylki.rok %}
                             {{ item.rekord_do_wysylki.rok }}
                         {% else %}
@@ -83,48 +89,54 @@
                         {% endif %}
                     </a>
                 </td>
-                <td><a href="{% url 'pbn_export_queue:export-queue-detail' item.pk %}" style="color: inherit;">{{ item.zamowil }}</a></td>
-                <td><a href="{% url 'pbn_export_queue:export-queue-detail' item.pk %}" style="color: inherit;">{{ item.zamowiono|naturaltime }}</a></td>
-                <td><a href="{% url 'pbn_export_queue:export-queue-detail' item.pk %}" style="color: inherit;">{{ item.ostatnia_aktualizacja|naturaltime }}</a></td>
-                <td><a href="{% url 'pbn_export_queue:export-queue-detail' item.pk %}" style="color: inherit;">{{ item.ilosc_prob }}</a></td>
+                <td><a href="{% url 'pbn_export_queue:export-queue-detail' item.pk %}"
+                       class="pbn-export-queue__table-link">{{ item.zamowil }}</a></td>
+                <td><a href="{% url 'pbn_export_queue:export-queue-detail' item.pk %}"
+                       class="pbn-export-queue__table-link">{{ item.zamowiono|naturaltime }}</a></td>
+                <td><a href="{% url 'pbn_export_queue:export-queue-detail' item.pk %}"
+                       class="pbn-export-queue__table-link">{{ item.ostatnia_aktualizacja|naturaltime }}</a></td>
+                <td><a href="{% url 'pbn_export_queue:export-queue-detail' item.pk %}"
+                       class="pbn-export-queue__table-link">{{ item.ilosc_prob }}</a></td>
                 <td>
-                    <a href="{% url 'pbn_export_queue:export-queue-detail' item.pk %}" style="color: inherit;">
+                    <a href="{% url 'pbn_export_queue:export-queue-detail' item.pk %}"
+                       class="pbn-export-queue__table-link">
                         {% if item.zakonczono_pomyslnie == True %}
-                            ✅
+                            <span class="fi-check"></span>
                         {% elif item.wykluczone %}
-                            <span class="fi-minus-circle" style="color: #6c757d;" title="Wykluczone z eksportu"></span>
+                            <span class="fi-minus-circle pbn-export-queue__icon--excluded"
+                                  title="Wykluczone z eksportu"></span>
                         {% elif item.zakonczono_pomyslnie == False %}
                             {% if item.rodzaj_bledu == 'MERYT' %}
-                                ⚠️
+                                <span class="fi-alert"></span>
                             {% else %}
-                                ❌
+                                <span class="fi-x"></span>
                             {% endif %}
                         {% elif item.retry_after_user_authorised %}
-                            🔐
+                            <span class="fi-lock"></span>
                         {% else %}
-                            ⏳
+                            <span class="fi-clock"></span>
                         {% endif %}
                     </a>
                 </td>
                 <td>
                     <a href="{% url 'pbn_export_queue:export-queue-detail' item.pk %}"
                        class="button tiny"
-                       onclick="event.stopPropagation();">
-                        <span class="fi-magnifying-glass"></span> Szczegóły
+                       data-stop-propagation="true">
+                        <span class="fi-magnifying-glass"></span> Szczegoly
                     </a>
                 </td>
             </tr>
             {% if item.zakonczono_pomyslnie == False and item.komunikat %}
             <tr id="error-{{ item.pk }}">
                 <td></td>
-                <td colspan="8" style="padding: 10px;">
-                    <div style="font-family: monospace; font-size: 0.9em; line-height: 1.4; white-space: pre-wrap; max-height: 200px; overflow-y: auto;">{{ item.komunikat|format_pbn_error }}</div>
+                <td colspan="8" class="pbn-export-queue__error-row-cell">
+                    <div class="pbn-export-queue__error-display">{{ item.komunikat|format_pbn_error }}</div>
                 </td>
             </tr>
             {% endif %}
         {% empty %}
             <tr>
-                <td colspan="9" class="text-center">Brak elementów w kolejce eksportu do PBN.</td>
+                <td colspan="9" class="text-center">Brak elementow w kolejce eksportu do PBN.</td>
             </tr>
         {% endfor %}
     </tbody>

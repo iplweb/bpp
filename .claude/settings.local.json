@@ -71,7 +71,13 @@
       "Bash(if ! grep -q \"$app\" /Users/mpasternak/Programowanie/bpp/CLAUDE.md)",
       "Bash(then)",
       "Bash(fi)",
-      "Bash(done)"
+      "Bash(done)",
+      "Bash(POSTGRESQL_UNSAFE_BUT_FAST=1 python:*)",
+      "Bash(grunt sass:*)",
+      "mcp__plugin_claude-mem_mcp-search__search",
+      "Bash(grunt shell:esbuild:*)",
+      "Bash(grunt shell:collectstatic:*)",
+      "mcp__playwright__browser_console_messages"
     ],
     "deny": [],
     "ask": [],

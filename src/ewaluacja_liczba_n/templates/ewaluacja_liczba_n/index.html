@@ -1,7 +1,11 @@
 {% extends "base.html" %}
-{% load humanize url_helpers %}
+{% load humanize url_helpers static %}
 
 {% block title %}Liczba N - Ewaluacja 2022-2025{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'ewaluacja_liczba_n/css/ewaluacja_liczba_n.css' %}">
+{% endblock %}
 
 {% block breadcrumbs %}
     <li><a href="/">Strona główna</a></li>
@@ -35,27 +39,27 @@
             </div>
 
             <div class="medium-6 columns">
-                <div class="callout" style="display: flex; flex-direction: column; height: 100%;">
+                <div class="callout ewaluacja-liczba-n__actions-callout">
                     <h4>Akcje</h4>
-                    <div style="display: flex; flex-direction: column; gap: 10px; margin-top: auto;">
-                        <div style="display: flex; gap: 10px;">
-                            <a href="{% url 'ewaluacja_liczba_n:autorzy-list' %}" class="button primary" style="margin-bottom: 0; flex: 1;">
+                    <div class="ewaluacja-liczba-n__actions-container">
+                        <div class="ewaluacja-liczba-n__button-row">
+                            <a href="{% url 'ewaluacja_liczba_n:autorzy-list' %}" class="button primary ewaluacja-liczba-n__action-button">
                                 <i class="fi-list"></i> Lista udziałów za rok
                             </a>
-                            <a href="{% url 'ewaluacja_liczba_n:autorzy-export' %}" class="button success" style="margin-bottom: 0; flex: 1;">
+                            <a href="{% url 'ewaluacja_liczba_n:autorzy-export' %}" class="button success ewaluacja-liczba-n__action-button">
                                 <i class="fi-download"></i> Eksportuj udziały za rok
                             </a>
                         </div>
-                        <div style="display: flex; gap: 10px;">
-                            <a href="{% url 'ewaluacja_liczba_n:udzialy-za-calosc-list' %}" class="button primary" style="margin-bottom: 0; flex: 1;">
+                        <div class="ewaluacja-liczba-n__button-row">
+                            <a href="{% url 'ewaluacja_liczba_n:udzialy-za-calosc-list' %}" class="button primary ewaluacja-liczba-n__action-button">
                                 <i class="fi-list"></i> Lista udziałów za całość
                             </a>
-                            <a href="{% url 'ewaluacja_liczba_n:udzialy-za-calosc-export' %}" class="button success" style="margin-bottom: 0; flex: 1;">
+                            <a href="{% url 'ewaluacja_liczba_n:udzialy-za-calosc-export' %}" class="button success ewaluacja-liczba-n__action-button">
                                 <i class="fi-download"></i> Eksportuj udziały
                             </a>
                         </div>
-                        <div style="display: flex; gap: 10px;">
-                            <a href="{% url 'ewaluacja_liczba_n:weryfikuj-baze' %}" class="button warning" style="margin-bottom: 0; flex: 1;">
+                        <div class="ewaluacja-liczba-n__button-row">
+                            <a href="{% url 'ewaluacja_liczba_n:weryfikuj-baze' %}" class="button warning ewaluacja-liczba-n__action-button">
                                 <i class="fi-magnifying-glass"></i> Weryfikuj poprawność bazy
                             </a>
                         </div>
@@ -109,7 +113,7 @@
                         </tr>
                     </tfoot>
                 </table>
-                <div class="text-right" style="margin-top: 10px;">
+                <div class="text-right ewaluacja-liczba-n__save-button-wrapper">
                     <button type="submit" class="button primary" id="saveSankcjeButton">
                         <span class="fi-save"></span> Zapisz sankcje
                     </button>

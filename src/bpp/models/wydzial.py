@@ -149,7 +149,13 @@ class Wydzial(ModelZAdnotacjami, ModelZPBN_ID):
         return res[True] >= 2
 
 
-class JednostkaManager(FulltextSearchMixin, models.Manager):
+class JednostkaCreateManager(FulltextSearchMixin, models.Manager):
+    """Manager zapewniający kompatybilność wsteczną przy tworzeniu Jednostka.
+
+    Automatycznie ustawia uczelnia na podstawie wydzial, jeśli nie podano.
+    Uwaga: Główny JednostkaManager znajduje się w jednostka.py (dziedziczy z TreeManager).
+    """
+
     def create(self, *args, **kw):
         if "wydzial" in kw and not ("uczelnia" in kw or "uczelnia_id" in kw):
             # Kompatybilność wsteczna, z czasów, gdy nie było metryczki historycznej

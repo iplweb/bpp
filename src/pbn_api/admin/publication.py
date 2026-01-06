@@ -157,11 +157,12 @@ class PublicationAdmin(
                 return format_html(
                     '<span title="Potencjalny duplikat po stronie PBN - mongoId ({}) inne od '
                     'rekord_w_bpp.pbn_uid_id ({})" '
-                    'style="color: red; font-size: 1em; font-weight: bold; cursor: help;">!?!</br>inne PBN '
+                    'class="admin-status--red admin-status--bold">!?!</br>inne PBN '
                     "UID<br/>usuń w PBN?</span>"
                     "<hr>"
-                    '<a href="{}" style="color: red; font-weight: bold;" '
-                    'title="Zaimportuj mimo ryzyka duplikatu">Zaimportuj do BPP mimo wszystko [ryzyko duplikatu]</a>',
+                    '<a href="{}" class="admin-link--danger" '
+                    'title="Zaimportuj mimo ryzyka duplikatu">'
+                    "Zaimportuj do BPP mimo wszystko [ryzyko duplikatu]</a>",
                     obj.pk,
                     rekord.pbn_uid_id,
                     force_import_url,
@@ -195,7 +196,7 @@ class PublicationAdmin(
                 "admin:pbn_api_publication_import_to_bpp", args=[obj.pk]
             )
             return format_html(
-                '<a href="{}" style="color: #e74c3c; font-weight: bold;" '
+                '<a href="{}" class="admin-link--danger" '
                 'title="Kliknij aby zaimportować do BPP">Zaimportuj do BPP</a>',
                 import_url,
             )

@@ -1,0 +1,73 @@
+// =============================================================================
+// LAYOUT
+// Body backgrounds, content areas, and general layout styles
+// =============================================================================
+
+// Safari overscroll background (rubber-band scrolling)
+// Must use !important to override Foundation's body{background-color:#fefefe}
+html {
+  // Solid color fallback for overscroll areas
+  background-color: #e6e6e6 !important;
+}
+
+body {
+  // Override Foundation's white background
+  background-color: transparent !important;
+}
+
+// Gradient background class with Safari compatibility
+// UWAGA: background-attachment: fixed łamie position: sticky w Firefox
+// Używamy pseudo-elementu ::before zamiast bezpośrednio na body
+.gradient-background {
+  position: relative;
+  min-height: 100vh !important;
+
+  &::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: -webkit-linear-gradient(top, #e6e6e6 0%, #f8f8f8 100%);
+    background: -o-linear-gradient(top, #e6e6e6 0%, #f8f8f8 100%);
+    background: linear-gradient(to bottom, #e6e6e6 0%, #f8f8f8 100%);
+    z-index: -1;
+    pointer-events: none;
+  }
+}
+
+// Apply gradient background to body
+body {
+  @extend .gradient-background;
+}
+
+// Set main content area to white background
+.grid-container-fluid[data-sticky-container] {
+  background-color: white;
+  min-height: calc(100vh - 200px); // Ensure content area has minimum height
+}
+
+// Also apply white background to main content container
+#content {
+  background-color: white !important;
+}
+
+// Top bar z-index - nie nadpisujemy dla sticky-header (obsługuje top_bar.scss)
+.top-bar:not(.sticky-header) {
+  z-index: 10;
+}
+
+// Make global nav expand to take available space
+.top-bar-right {
+  flex: 1 !important;
+}
+
+.top-bar-right .dropdown.menu {
+  width: 100% !important;
+  justify-content: flex-end !important;
+}
+
+// Table container (django_tables2)
+div.table-container ul.pagination {
+}

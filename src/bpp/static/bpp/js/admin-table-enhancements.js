@@ -29,6 +29,19 @@
                 // Add clickable-row class for cursor pointer styling
                 $row.addClass('clickable-row');
 
+                // Add accessibility attributes
+                $row.attr('tabindex', '0');
+                $row.attr('role', 'button');
+
+                // Click handler function
+                function navigateToLink(e, openInNewTab) {
+                    if (openInNewTab) {
+                        window.open(linkUrl, '_blank');
+                    } else {
+                        window.location.href = linkUrl;
+                    }
+                }
+
                 // Add click handler to the row
                 $row.on('click', function(e) {
                     // Don't trigger if clicking directly on:
@@ -42,10 +55,14 @@
                     }
 
                     // Check if Ctrl/Cmd key is pressed (for opening in new tab)
-                    if (e.ctrlKey || e.metaKey) {
-                        window.open(linkUrl, '_blank');
-                    } else {
-                        window.location.href = linkUrl;
+                    navigateToLink(e, e.ctrlKey || e.metaKey);
+                });
+
+                // Add keyboard handler for Enter and Space
+                $row.on('keydown', function(e) {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        navigateToLink(e, e.ctrlKey || e.metaKey);
                     }
                 });
             }

@@ -191,13 +191,13 @@
             <td>
                 <button class="button secondary"
                         type="button"
-                        onclick="window.open('{{ praca.link_do_pbn }}', '_blank')">
+                        data-open-url="{{ praca.link_do_pbn }}" data-target="_blank">
                     🔗 {{ praca.pbn_uid_id }}
                 </button>
                 {% if not request.user.is_anonymous and praca.link_do_pi %}
                     <button class="button secondary"
                             type="button"
-                            onclick="window.open('{{ praca.link_do_pi }}', '_blank')"
+                            data-open-url="{{ praca.link_do_pi }}" data-target="_blank"
                             style="margin-left: 10px;">
                         🏢 Profil instytucji
                     </button>

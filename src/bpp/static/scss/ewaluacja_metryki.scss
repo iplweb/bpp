@@ -1,4 +1,137 @@
 // Ewaluacja Metryki specific styles
+// BEM naming convention: .ewaluacja-metryki__element--modifier
+
+// =====================================================
+// SHARED STYLES (used in both lista.html and szczegoly.html)
+// =====================================================
+
+// Chart containers
+.ewaluacja-metryki__chart-container {
+    width: 100%;
+    height: 350px;
+}
+
+.ewaluacja-metryki__chart-container--large {
+    height: 700px;
+}
+
+// Form inline display
+.ewaluacja-metryki__form-inline {
+    display: inline;
+}
+
+// Fieldset with padding
+.ewaluacja-metryki__fieldset-padded {
+    padding-left: 20px;
+    padding-right: 20px;
+    padding-bottom: 20px;
+}
+
+// =====================================================
+// SZCZEGOLY.HTML SPECIFIC STYLES
+// =====================================================
+
+// Profile button next to author name
+.ewaluacja-metryki__profile-btn {
+    margin-left: 1rem;
+    vertical-align: middle;
+}
+
+// Callout for other disciplines
+.ewaluacja-metryki__disciplines-callout {
+    background-color: #f0f4f8;
+    border: 1px solid #d0d8e0;
+}
+
+// Button group with top margin
+.ewaluacja-metryki__button-group-spaced {
+    margin-top: 0.5rem;
+}
+
+// Discipline button styling
+.ewaluacja-metryki__discipline-btn {
+    background-color: #ffffff;
+    border: 1px solid #cbd5e0;
+    color: #2c3e50;
+    margin-bottom: 0.5rem;
+    text-align: left;
+    padding: 0.75rem;
+}
+
+// Discipline name inside button
+.ewaluacja-metryki__discipline-name {
+    display: inline-block;
+    margin-right: 1rem;
+}
+
+// Badge for discipline score
+.ewaluacja-metryki__discipline-badge {
+    font-size: 0.9rem;
+    padding: 0.3rem 0.6rem;
+}
+
+// Slot progress container with margin
+.ewaluacja-metryki__slot-progress {
+    margin: 1rem 0;
+}
+
+// Summary row in table
+.ewaluacja-metryki__summary-row {
+    border-top: 2px solid #ddd;
+    background-color: #f7f7f7;
+}
+
+// Legend callout
+.ewaluacja-metryki__legend-callout {
+    margin-top: 1rem;
+}
+
+// Paragraph without margin
+.ewaluacja-metryki__paragraph-no-margin {
+    margin: 0;
+}
+
+// Table cell with nowrap
+.ewaluacja-metryki__actions-cell {
+    white-space: nowrap;
+}
+
+// Optimize button with small right margin
+.ewaluacja-metryki__optimize-btn {
+    margin-right: 0.25rem;
+}
+
+// =====================================================
+// LISTA.HTML SPECIFIC STYLES
+// =====================================================
+
+// Filter buttons container
+.ewaluacja-metryki__filter-buttons {
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-end;
+    height: 100%;
+    min-height: 60px;
+}
+
+// Filter button with margin
+.ewaluacja-metryki__filter-btn {
+    margin-right: 0.5rem;
+}
+
+// Clickable table row
+.ewaluacja-metryki__clickable-row {
+    cursor: pointer;
+}
+
+// Table cell that avoids page break
+.ewaluacja-metryki__cell-no-break {
+    break-inside: avoid;
+}
+
+// =====================================================
+// EXISTING STYLES
+// =====================================================
 
 // Navigation menu with proper spacing
 .stats-navigation {

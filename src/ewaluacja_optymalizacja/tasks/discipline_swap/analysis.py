@@ -2,9 +2,12 @@
 
 import logging
 import random
+import sys
 from datetime import datetime, timedelta
 from itertools import chain
 from time import sleep
+
+import rollbar
 
 from .simulation import simulate_discipline_swap
 
@@ -343,7 +346,10 @@ def _run_parallel_analysis(  # noqa: C901
                             total_analyzed += result.result.get("analyzed_count", 0)
                             total_found += len(result.result.get("opportunities", []))
                 except Exception:
-                    pass
+                    rollbar.report_exc_info(sys.exc_info())
+                    logger.debug(
+                        "Błąd przetwarzania wyniku analizy chord", exc_info=True
+                    )
 
         # Oblicz postęp
         if total_chunks > 0:

@@ -219,3 +219,362 @@ table tbody tr {
     opacity: 0.6;
   }
 }
+
+// ============================================================================
+// Wspólne klasy tabel ewaluacja_optymalizacja
+// ============================================================================
+
+// Komórki tabeli - wyrównanie i szerokość
+.ewaluacja-optymalizacja__col-title {
+  width: 20%;
+}
+
+.ewaluacja-optymalizacja__cell-center {
+  text-align: center;
+}
+
+.ewaluacja-optymalizacja__cell-right {
+  text-align: right;
+}
+
+// Wiersz z sensowną propozycją (podświetlenie)
+.ewaluacja-optymalizacja__row-sensible {
+  background-color: #e7f7e7;
+}
+
+// Wartość z podkreśleniem (slots missing)
+.ewaluacja-optymalizacja__slots-missing {
+  font-size: 1.2em;
+  color: #c60;
+}
+
+// Wartości pozytywne/negatywne (różnice punktów/slotów)
+.ewaluacja-optymalizacja__value-positive {
+  color: green;
+}
+
+.ewaluacja-optymalizacja__value-negative {
+  color: red;
+}
+
+// ============================================================================
+// Database verification page
+// ============================================================================
+
+// Callout z lewą ramką ostrzegawczą
+.ewaluacja-optymalizacja__callout-warning-border {
+  border-left: 4px solid #ffae00;
+}
+
+// Akapity bez dolnego marginesu
+.ewaluacja-optymalizacja__no-margin-bottom {
+  margin-bottom: 0;
+}
+
+// Lista z małym górnym marginesem
+.ewaluacja-optymalizacja__list-small-top-margin {
+  margin-top: 0.5rem;
+}
+
+// Callout z górnym marginesem
+.ewaluacja-optymalizacja__callout-top-margin {
+  margin-top: 1rem;
+}
+
+// Komórka z błędem slotu (czerwona, pogrubiona)
+.ewaluacja-optymalizacja__slot-error {
+  text-align: right;
+  color: #c60f13;
+  font-weight: bold;
+}
+
+// Separator sekcji
+.ewaluacja-optymalizacja__section-separator {
+  margin: 2rem 0;
+}
+
+// =============================================================================
+// Browser Pagination
+// =============================================================================
+
+.ewaluacja-optymalizacja__pagination {
+  text-align: center;
+  margin: 1rem 0;
+}
+
+.ewaluacja-optymalizacja__pagination-list {
+  display: inline-flex;
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  margin: 0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  gap: 0.25rem;
+  align-items: center;
+}
+
+.ewaluacja-optymalizacja__pagination-item {
+  margin: 0;
+}
+
+.ewaluacja-optymalizacja__pagination-item--info {
+  margin: 0 0 0 0.5rem;
+}
+
+.ewaluacja-optymalizacja__pagination-link {
+  display: inline-block;
+  background: #fff;
+  color: #007bff;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  padding: 0.4rem 0.6rem;
+  font-weight: 500;
+  font-size: 0.85rem;
+  text-decoration: none;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: #e9ecef;
+    text-decoration: none;
+  }
+}
+
+.ewaluacja-optymalizacja__pagination-link--nav {
+  background: #28a745;
+  color: #fff;
+  border: 1px solid #28a745;
+  font-weight: 600;
+
+  &:hover {
+    background: #1e7e34;
+    color: #fff;
+  }
+}
+
+.ewaluacja-optymalizacja__pagination-link--disabled {
+  display: inline-block;
+  background: #e9ecef;
+  color: #6c757d;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  padding: 0.4rem 0.6rem;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: not-allowed;
+}
+
+.ewaluacja-optymalizacja__pagination-current {
+  display: inline-block;
+  background: #007bff;
+  color: #fff;
+  border: 1px solid #007bff;
+  border-radius: 6px;
+  padding: 0.4rem 0.6rem;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.ewaluacja-optymalizacja__pagination-ellipsis {
+  padding: 0 0.3rem;
+  color: #6c757d;
+}
+
+.ewaluacja-optymalizacja__pagination-count {
+  color: #6c757d;
+  font-size: 0.8rem;
+}
+
+// =============================================================================
+// Browser Publication Table
+// =============================================================================
+
+.ewaluacja-optymalizacja__publication-item {
+  border-bottom: 1px solid #e0e0e0;
+  padding: 0.8rem 0;
+}
+
+.ewaluacja-optymalizacja__publication-year {
+  margin-left: 0.5rem;
+  color: #888;
+}
+
+.ewaluacja-optymalizacja__publication-points {
+  margin-left: 0.5rem;
+  color: #555;
+}
+
+.ewaluacja-optymalizacja__authors-list {
+  margin-left: 1.5rem;
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.ewaluacja-optymalizacja__author-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.3rem;
+}
+
+.ewaluacja-optymalizacja__author-name {
+  min-width: 350px;
+}
+
+.ewaluacja-optymalizacja__author-discipline {
+  min-width: 220px;
+  color: #666;
+}
+
+.ewaluacja-optymalizacja__author-points {
+  min-width: 80px;
+  color: #555;
+  text-align: right;
+}
+
+.ewaluacja-optymalizacja__author-slot {
+  min-width: 70px;
+  color: #555;
+  text-align: right;
+}
+
+.ewaluacja-optymalizacja__author-badge {
+  min-width: 40px;
+  margin-left: 0.5rem;
+  text-align: center;
+}
+
+.ewaluacja-optymalizacja__badge {
+  font-size: 0.7rem;
+  padding: 0.2rem 0.4rem;
+}
+
+.ewaluacja-optymalizacja__action-button {
+  margin: 0 0 0 0.5rem;
+  padding: 0.3rem 0.5rem;
+}
+
+.ewaluacja-optymalizacja__action-button--swap {
+  margin: 0 0 0 0.3rem;
+  padding: 0.3rem 0.5rem;
+}
+
+.ewaluacja-optymalizacja__action-icon {
+  font-size: 1.2rem;
+}
+
+// =============================================================================
+// Browser Discipline Summary
+// =============================================================================
+
+.ewaluacja-optymalizacja__summary-callout {
+  margin-bottom: 0;
+  padding: 0.5rem 1rem;
+}
+
+.ewaluacja-optymalizacja__summary-title {
+  margin-bottom: 0.5rem;
+}
+
+.ewaluacja-optymalizacja__summary-scroll {
+  overflow-x: auto;
+}
+
+.ewaluacja-optymalizacja__summary-table {
+  margin-bottom: 0;
+  font-size: 0.85rem;
+  table-layout: fixed;
+  width: 100%;
+}
+
+.ewaluacja-optymalizacja__summary-header {
+  text-align: center;
+  padding: 0.3rem 0.5rem;
+  white-space: nowrap;
+  font-size: 0.75rem;
+}
+
+.ewaluacja-optymalizacja__summary-header--total {
+  text-align: center;
+  padding: 0.3rem 0.5rem;
+  font-weight: bold;
+  background: #f0f0f0;
+}
+
+.ewaluacja-optymalizacja__summary-cell {
+  text-align: center;
+  padding: 0.3rem 0.5rem;
+}
+
+.ewaluacja-optymalizacja__summary-cell--total {
+  text-align: center;
+  padding: 0.3rem 0.5rem;
+  font-weight: bold;
+  background: #f0f0f0;
+}
+
+.ewaluacja-optymalizacja__summary-cell--slots {
+  text-align: center;
+  padding: 0.3rem 0.5rem;
+  font-size: 0.75rem;
+  color: #666;
+}
+
+.ewaluacja-optymalizacja__summary-cell--slots-total {
+  text-align: center;
+  padding: 0.3rem 0.5rem;
+  font-weight: bold;
+  background: #f0f0f0;
+  font-size: 0.75rem;
+}
+
+.ewaluacja-optymalizacja__diff--positive {
+  color: green;
+}
+
+.ewaluacja-optymalizacja__diff--negative {
+  color: red;
+}
+
+// =============================================================================
+// Index Page
+// =============================================================================
+
+.ewaluacja-optymalizacja__button-group--spaced {
+  margin-top: 0.5rem;
+}
+
+.ewaluacja-optymalizacja__fieldset {
+  border: 1px solid #ccc;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  border-radius: 3px;
+  margin-top: 1rem;
+}
+
+.ewaluacja-optymalizacja__legend {
+  font-weight: bold;
+  padding: 0 0.5rem;
+}
+
+.ewaluacja-optymalizacja__radio-option {
+  margin-bottom: 0.5rem;
+}
+
+.ewaluacja-optymalizacja__radio-label {
+  display: inline;
+  margin-right: 1rem;
+}
+
+.ewaluacja-optymalizacja__radio-label--single {
+  display: inline;
+}
+
+.ewaluacja-optymalizacja__callout--results {
+  margin-bottom: 1rem;
+}
+
+.ewaluacja-optymalizacja__results-footer {
+  font-weight: bold;
+  background-color: #f4f4f4;
+  border-top: 2px solid #333;
+}

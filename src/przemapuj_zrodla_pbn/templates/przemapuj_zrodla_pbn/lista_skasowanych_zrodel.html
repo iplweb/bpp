@@ -48,7 +48,7 @@
                             {% if zrodlo.liczba_rekordow == 0 %}
                                 <a href="{% url 'przemapuj_zrodla_pbn:usun_zrodlo' zrodlo.pk %}"
                                    class="button small alert"
-                                   onclick="return confirm('Czy na pewno chcesz usunąć źródło \'{{ zrodlo.nazwa }}\'? Ta operacja jest nieodwracalna!');">
+                                   data-confirm="Czy na pewno chcesz usunąć źródło '{{ zrodlo.nazwa }}'? Ta operacja jest nieodwracalna!">
                                     <span class="fi-trash"></span> Usuń
                                 </a>
                             {% else %}

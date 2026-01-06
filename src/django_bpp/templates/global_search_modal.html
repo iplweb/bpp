@@ -391,18 +391,32 @@
 </style>
 
 <!-- Global Search Modal HTML -->
-<div id="globalSearchModal" class="global-search-modal">
+<div id="globalSearchModal" class="global-search-modal"
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="globalSearchTitle"
+     aria-hidden="true">
     <div class="global-search-container">
-        <button class="global-search-close" onclick="closeGlobalSearch()">&times;</button>
-        <div class="search-hint">
+        <h2 id="globalSearchTitle" class="sr-only">Wyszukiwanie globalne</h2>
+        <button class="global-search-close"
+                data-action="close-global-search"
+                aria-label="Zamknij wyszukiwanie">&times;</button>
+        <div class="search-hint" aria-hidden="true">
             Naciśnij <span class="keyboard-shortcut">/</span> aby szukać
         </div>
         <input type="text"
                id="globalSearchInput"
                class="global-search-input"
                placeholder="Wpisz, aby wyszukać... (minimum 3 znaki)"
-               autocomplete="off">
-        <div id="globalSearchResults" class="global-search-results">
+               autocomplete="off"
+               aria-label="Wpisz frazę do wyszukania"
+               aria-autocomplete="list"
+               aria-controls="globalSearchResults">
+        <div id="globalSearchResults"
+             class="global-search-results"
+             role="listbox"
+             aria-live="polite"
+             aria-busy="false">
             <div id="globalSearchHelp" class="global-search-help">
                 <h3>Jak wyszukiwać?</h3>
                 <ul>
@@ -550,6 +564,7 @@
 
             // Show modal with animation
             modal.classList.add('show');
+            modal.setAttribute('aria-hidden', 'false');
 
             // Show help text initially
             var helpHtml = '<div id="globalSearchHelp" class="global-search-help">' +
@@ -616,6 +631,7 @@
             setTimeout(function() {
                 modal.classList.remove('show', 'closing');
                 container.classList.remove('animating-out');
+                modal.setAttribute('aria-hidden', 'true');
 
                 // Restore background scrolling and position
                 document.body.style.position = '';
@@ -707,8 +723,8 @@
             }
 
             // Show loading
-            document.getElementById('globalSearchResults').innerHTML =
-                '<div class="global-search-loading">Wyszukiwanie...</div>';
+            document.getElementById('globalSearchResults').setAttribute('aria-busy', 'true');
+            document.getElementById('globalSearchResults').textContent = 'Wyszukiwanie...';
 
             // Store search term in closure for this specific request
             var searchTermForThisRequest = query;
@@ -743,6 +759,7 @@
         // Display results WITHOUT highlighting
         function displayResultsPlain(results) {
             var resultsContainer = document.getElementById('globalSearchResults');
+            resultsContainer.setAttribute('aria-busy', 'false');
             searchResults = [];
 
             if (!results || results.length === 0) {

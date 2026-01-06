@@ -1,5 +1,6 @@
 """Publication synchronization mixin for PBN API client."""
 
+import logging
 import sys
 import time
 
@@ -34,6 +35,8 @@ from pbn_api.exceptions import (
 from pbn_api.models.pbn_odpowiedzi_niepozadane import PBNOdpowiedziNiepozadane
 from pbn_api.models.sentdata import SentData
 from pbn_api.utils import rename_dict_key
+
+logger = logging.getLogger(__name__)
 
 
 class PublicationSyncMixin:
@@ -180,7 +183,12 @@ class PublicationSyncMixin:
             self.download_statements_of_publication(publication)
             self.pobierz_publikacje_instytucji_v2(objectId=objectId)
         except Exception:
-            pass
+            rollbar.report_exc_info(sys.exc_info())
+            logger.debug(
+                "Błąd podczas ponownego pobierania publikacji %s",
+                objectId,
+                exc_info=True,
+            )
 
     def upload_publication(
         self,

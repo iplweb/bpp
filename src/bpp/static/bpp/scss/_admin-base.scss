@@ -150,3 +150,68 @@ body:not(:has(footer.grp-module.grp-submit-row.grp-fixed-footer)) {
     bottom: 20px;
   }
 }
+
+// =============================================================================
+// Admin Dashboard - wydzielone z inline styles index.html
+// =============================================================================
+
+// Sekcja "Ostatnio edytowane"
+.admin-dashboard__empty-message {
+  padding: 10px;
+  color: #666;
+}
+
+.admin-dashboard__action-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.admin-dashboard__action-item {
+  padding: 8px 10px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.admin-dashboard__action-link {
+  font-weight: 500;
+}
+
+.admin-dashboard__action-meta {
+  font-size: 0.85em;
+  color: #666;
+}
+
+.admin-dashboard__action-time {
+  font-size: 0.85em;
+  color: #999;
+  float: right;
+}
+
+// Sekcja "Informacje"
+.admin-dashboard__info-container {
+  padding: 15px;
+}
+
+.admin-dashboard__info-version {
+  margin-bottom: 15px;
+}
+
+.admin-dashboard__info-links {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.admin-dashboard__info-link-item {
+  margin-bottom: 8px;
+}
+
+.admin-dashboard__info-link {
+  text-decoration: none;
+}
+
+// Sekcja "Najczesciej uzywane"
+.admin-dashboard__loading-message {
+  padding: 10px;
+  color: #666;
+}

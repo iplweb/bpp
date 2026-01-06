@@ -47,15 +47,16 @@ class SiteCountdownAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
         """Wyświetla pozostały czas w czytelnym formacie z kolorowym wskaźnikiem."""
         if obj.countdown_time is None:
             return format_html(
-                '<span style="color: gray; font-weight: bold;">Nie ustawiono</span>'
+                '<span class="admin-status--gray admin-status--bold">'
+                "Nie ustawiono</span>"
             )
         elif obj.is_expired():
             return format_html(
-                '<span style="color: red; font-weight: bold;">Wygasło</span>'
+                '<span class="admin-status--red admin-status--bold">Wygasło</span>'
             )
         else:
             return format_html(
-                '<span style="color: green; font-weight: bold;">{}</span>',
+                '<span class="admin-status--green admin-status--bold">{}</span>',
                 obj.time_remaining(),
             )
 

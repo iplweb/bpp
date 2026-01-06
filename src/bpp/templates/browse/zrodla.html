@@ -30,7 +30,7 @@
                     {% if wybrana %} - litera {{ wybrana }}{% endif %}
                 </h2>
                 {% if paginator %}
-                    <p style="color: #7f8c8d; margin: 0; font-size: 0.9rem;">
+                    <p class="zrodla__summary">
                         {% if object_list %}
                             Wyświetlono {{ object_list|length }} z {{ paginator.count }} źródeł
                         {% else %}
@@ -46,18 +46,17 @@
 
         <!-- Centered Search -->
         {% if paginator.num_pages > 1 %}
-        <div class="text-center" style="margin-top: 25px;">
-            <form method="get" action="{{ browse_zrodla }}" style="display: inline-block; max-width: 500px; width: 100%;">
-                <div class="input-group" style="background: #f8f9fa; border-radius: 6px; border: 1px solid #e9ecef;">
-                    <span class="input-group-label" style="background: transparent; border: none; color: #7f8c8d;">
+        <div class="text-center zrodla__search-section">
+            <form method="get" action="{{ browse_zrodla }}" class="zrodla__search-form">
+                <div class="input-group zrodla__search-group">
+                    <span class="input-group-label zrodla__search-icon">
                         <i class="fi-magnifying-glass"></i>
                     </span>
                     <input type="text"
                            name="search"
                            placeholder="Wpisz część nazwy i wciśnij ENTER..."
                            value="{{ flt|default:'' }}"
-                           class="input-group-field"
-                           style="background: transparent; border: none; font-size: 1rem; padding: 12px;"
+                           class="input-group-field zrodla__search-input"
                            id="search_form_input"/>
                 </div>
             </form>
@@ -118,14 +117,14 @@
 
                             <div class="zrodlo-details">
                                 {% if item.pbn_uid.status == "DELETED" %}
-                                    <div style="margin-bottom: 4px; color: #dc3545; font-size: 0.8rem;">
+                                    <div class="zrodla__deleted-warning">
                                         <i class="fi-alert"></i>
                                         Usunięty z PBN
                                     </div>
                                 {% endif %}
 
                                 {% if item.rekord_set.count > 0 %}
-                                    <div style="font-size: 0.8rem; color: #95a5a6;">
+                                    <div class="zrodla__publication-count">
                                         <i class="fi-page-multiple"></i>
                                         {{ item.rekord_set.count }} {% if item.rekord_set.count == 1 %}publikacja{% elif item.rekord_set.count < 5 %}publikacje{% else %}publikacji{% endif %}
                                     </div>
@@ -137,15 +136,15 @@
             {% endfor %}
         </div>
     {% else %}
-        <div class="callout warning" style="text-align: center; padding: 40px; border-radius: 8px;">
-            <h4 style="color: #856404; margin-bottom: 15px;">
-                <i class="fi-alert" style="margin-right: 10px;"></i>Nie znaleziono źródeł
+        <div class="callout warning zrodla__empty-callout">
+            <h4 class="zrodla__empty-title">
+                <i class="fi-alert zrodla__empty-icon"></i>Nie znaleziono źródeł
             </h4>
-            <p style="margin-bottom: 20px; color: #6c5c00;">
+            <p class="zrodla__empty-text">
                 Brak źródeł spełniających podane kryteria wyszukiwania.
             </p>
-            <a href="{% url "bpp:browse_zrodla" %}" class="button" style="background: #ffc107; color: #212529;">
-                <i class="fi-arrow-left" style="margin-right: 5px;"></i>Pokaż wszystkie źródła
+            <a href="{% url "bpp:browse_zrodla" %}" class="button zrodla__empty-button">
+                <i class="fi-arrow-left zrodla__empty-button-icon"></i>Pokaż wszystkie źródła
             </a>
         </div>
     {% endif %}
@@ -162,51 +161,47 @@
                 {% if page_obj.has_previous %}
                     <li>
                         <a href="?page={{ page_obj.previous_page_number }}{% if flt %}&search={{ flt }}{% endif %}{% if wybrana %}&literka={{ wybrana }}{% endif %}"
-                           style="display: inline-flex; align-items: center; padding: 8px 12px; background: #f8f9fa; color: #2c3e50; border-radius: 6px; text-decoration: none; border: 1px solid #e9ecef; transition: all 0.2s ease;"
-                           onmouseover="this.style.background='#e9ecef';"
-                           onmouseout="this.style.background='#f8f9fa';">
-                            <i class="fi-arrow-left" style="margin-right: 5px;"></i>Poprzednia
+                           class="zrodla__pagination-nav">
+                            <i class="fi-arrow-left zrodla__pagination-nav-icon--left"></i>Poprzednia
                         </a>
                     </li>
                 {% endif %}
 
                 {% if page_obj.number >= 5 %}
-                    <li><a href="?page=1{% if flt %}&search={{ flt }}{% endif %}{% if wybrana %}&literka={{ wybrana }}{% endif %}" class="page-btn">1</a></li>
-                    <li style="padding: 8px 4px; color: #bdc3c7;">...</li>
+                    <li><a href="?page=1{% if flt %}&search={{ flt }}{% endif %}{% if wybrana %}&literka={{ wybrana }}{% endif %}" class="page-btn zrodla__page-btn">1</a></li>
+                    <li class="zrodla__pagination-ellipsis">...</li>
                 {% endif %}
 
                 {% if page_obj.number|add:"-2" >= 1 %}
-                    <li><a href="?page={{ page_obj.number|add:"-2" }}{% if flt %}&search={{ flt }}{% endif %}{% if wybrana %}&literka={{ wybrana }}{% endif %}" class="page-btn">{{ page_obj.number|add:"-2" }}</a></li>
+                    <li><a href="?page={{ page_obj.number|add:"-2" }}{% if flt %}&search={{ flt }}{% endif %}{% if wybrana %}&literka={{ wybrana }}{% endif %}" class="page-btn zrodla__page-btn">{{ page_obj.number|add:"-2" }}</a></li>
                 {% endif %}
                 {% if page_obj.number|add:"-1" >= 1 %}
-                    <li><a href="?page={{ page_obj.number|add:"-1" }}{% if flt %}&search={{ flt }}{% endif %}{% if wybrana %}&literka={{ wybrana }}{% endif %}" class="page-btn">{{ page_obj.number|add:"-1" }}</a></li>
+                    <li><a href="?page={{ page_obj.number|add:"-1" }}{% if flt %}&search={{ flt }}{% endif %}{% if wybrana %}&literka={{ wybrana }}{% endif %}" class="page-btn zrodla__page-btn">{{ page_obj.number|add:"-1" }}</a></li>
                 {% endif %}
 
                 <li>
-                    <span style="display: inline-block; padding: 8px 12px; background: var(--primary-color, #3498db); color: white; border-radius: 6px; font-weight: 600;">
+                    <span class="zrodla__pagination-current">
                         {{ page_obj.number }}
                     </span>
                 </li>
 
                 {% if page_obj.number|add:"1" <= paginator.num_pages %}
-                    <li><a href="?page={{ page_obj.number|add:"1" }}{% if flt %}&search={{ flt }}{% endif %}{% if wybrana %}&literka={{ wybrana }}{% endif %}" class="page-btn">{{ page_obj.number|add:"1" }}</a></li>
+                    <li><a href="?page={{ page_obj.number|add:"1" }}{% if flt %}&search={{ flt }}{% endif %}{% if wybrana %}&literka={{ wybrana }}{% endif %}" class="page-btn zrodla__page-btn">{{ page_obj.number|add:"1" }}</a></li>
                 {% endif %}
                 {% if page_obj.number|add:"2" <= paginator.num_pages %}
-                    <li><a href="?page={{ page_obj.number|add:"2" }}{% if flt %}&search={{ flt }}{% endif %}{% if wybrana %}&literka={{ wybrana }}{% endif %}" class="page-btn">{{ page_obj.number|add:"2" }}</a></li>
+                    <li><a href="?page={{ page_obj.number|add:"2" }}{% if flt %}&search={{ flt }}{% endif %}{% if wybrana %}&literka={{ wybrana }}{% endif %}" class="page-btn zrodla__page-btn">{{ page_obj.number|add:"2" }}</a></li>
                 {% endif %}
 
                 {% if page_obj.number|add:"2" <= paginator.num_pages|add:"-2" %}
-                    <li style="padding: 8px 4px; color: #bdc3c7;">...</li>
-                    <li><a href="?page={{ paginator.num_pages }}{% if flt %}&search={{ flt }}{% endif %}{% if wybrana %}&literka={{ wybrana }}{% endif %}" class="page-btn">{{ paginator.num_pages }}</a></li>
+                    <li class="zrodla__pagination-ellipsis">...</li>
+                    <li><a href="?page={{ paginator.num_pages }}{% if flt %}&search={{ flt }}{% endif %}{% if wybrana %}&literka={{ wybrana }}{% endif %}" class="page-btn zrodla__page-btn">{{ paginator.num_pages }}</a></li>
                 {% endif %}
 
                 {% if page_obj.has_next %}
                     <li>
                         <a href="?page={{ page_obj.next_page_number }}{% if flt %}&search={{ flt }}{% endif %}{% if wybrana %}&literka={{ wybrana }}{% endif %}"
-                           style="display: inline-flex; align-items: center; padding: 8px 12px; background: #f8f9fa; color: #2c3e50; border-radius: 6px; text-decoration: none; border: 1px solid #e9ecef; transition: all 0.2s ease;"
-                           onmouseover="this.style.background='#e9ecef';"
-                           onmouseout="this.style.background='#f8f9fa';">
-                            Następna<i class="fi-arrow-right" style="margin-left: 5px;"></i>
+                           class="zrodla__pagination-nav">
+                            Następna<i class="fi-arrow-right zrodla__pagination-nav-icon--right"></i>
                         </a>
                     </li>
                 {% endif %}
@@ -217,13 +212,6 @@
     <script type="text/javascript">
         $(document).ready(function(){
             $("#search_form_input").focus();
-        });
-
-        // Add hover styles for page buttons
-        document.querySelectorAll('.page-btn').forEach(function(btn) {
-            btn.style.cssText = 'display: inline-block; padding: 8px 12px; background: #f8f9fa; color: #2c3e50; border-radius: 6px; text-decoration: none; border: 1px solid #e9ecef; transition: all 0.2s ease; min-width: 40px; text-align: center;';
-            btn.onmouseover = function() { this.style.background='#e9ecef'; };
-            btn.onmouseout = function() { this.style.background='#f8f9fa'; };
         });
     </script>
 

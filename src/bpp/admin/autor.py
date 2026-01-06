@@ -155,7 +155,8 @@ class AutorForm(forms.ModelForm):
         required=False,
         queryset=Scientist.objects.all(),
         widget=autocomplete.ModelSelect2(
-            url="bpp:scientist-autocomplete", attrs=dict(style="width: 746px;")
+            url="bpp:scientist-autocomplete",
+            attrs={"class": "bpp-autocomplete-wide"},
         ),
     )
 

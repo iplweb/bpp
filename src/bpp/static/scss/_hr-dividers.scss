@@ -1,0 +1,20 @@
+// =============================================================================
+// HR DIVIDERS
+// Custom styled horizontal rule dividers
+// =============================================================================
+
+// Custom styled HR divider
+.shaded-hr-div {
+  background: linear-gradient(to right, transparent, rgba(0, 0, 0, 0.1), transparent);
+  height: 1px;
+  margin: 20px 0;
+  border: none;
+}
+
+// Small version with minimal padding
+.shaded-hr-div-small {
+  background: linear-gradient(to right, transparent, rgba(0, 0, 0, 0.1), transparent);
+  height: 1px;
+  margin: 2px 0 6px 0;
+  border: none;
+}

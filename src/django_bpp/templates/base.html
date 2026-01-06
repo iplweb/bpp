@@ -4,8 +4,7 @@
 {% block extrahead %}
     {{ block.super }}
 
-    <!-- jQuery Circle Progress for circular progress bars -->
-    <script src="{% static 'jquery-circle-progress/dist/circle-progress.min.js' %}"></script>
+    {# jQuery Circle Progress is now included in the main bundle.js #}
 
     {% load session_security_tags %}
     {% load l10n %}
@@ -247,7 +246,7 @@
                             <span class="fi-alert"></span>
                         </div>
                     {% endif %}
-                    <div id="content">
+                    <main id="main-content" role="main">
 
                         {% include "test_server_detection.html" %}
 
@@ -268,7 +267,7 @@
                             {% block content %}
                             {% endblock %}
                         {% endif %}
-                    </div>
+                    </main>
                 </div>
             </div>
             {% load cookielaw_tags %}

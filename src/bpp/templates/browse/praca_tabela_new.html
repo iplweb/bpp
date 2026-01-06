@@ -1,35 +1,35 @@
 {% load prace user_in_group %}
 
 <!-- Main publication container with modern card layout -->
-<div class="publication-detail-container" style="max-width: 1400px; margin: 0 auto; padding: 20px;">
+<div class="praca-detail-new__container">
 
     <!-- Title Section - Most prominent -->
-    <div class="publication-title-section" style="margin-bottom: 30px;">
-        <h2 style="font-size: 1.8rem; line-height: 1.3; margin-bottom: 20px; color: #2c3e50;">
+    <div class="praca-detail-new__title-section">
+        <h2 class="praca-detail-new__title">
             {% if praca.tytul %}
-                {{ praca.tytul_oryginalny|safe }} <span style="color: #7f8c8d; font-size: 0.9em;">({{ praca.tytul|safe }})</span>
+                {{ praca.tytul_oryginalny|safe }} <span class="praca-detail-new__title-translated">({{ praca.tytul|safe }})</span>
             {% else %}
                 {{ praca.tytul_oryginalny|znak_na_koncu:"."|safe }}
             {% endif %}
             {% if praca.charakter_formalny.charakter_ogolny != 'roz' %}
-                <span style="font-weight: normal; font-size: 0.8em;">{{ praca.oznaczenie_wydania|default:""|znak_na_koncu:"." }}</span>
+                <span class="praca-detail-new__edition-mark">{{ praca.oznaczenie_wydania|default:""|znak_na_koncu:"." }}</span>
             {% endif %}
         </h2>
 
         <!-- Authors Section -->
-        <div class="authors-section" style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-            <div style="font-size: 1.1rem; line-height: 1.6;">
+        <div class="praca-detail-new__authors-section">
+            <div class="praca-detail-new__authors-list">
                 {{ praca.tekst_przed_pierwszym_autorem|default:"" }}
                 {% for autor in praca.autorzy_dla_opisu %}
                     {% ifchanged autor.typ_odpowiedzialnosci %}
-                        <span class="author-type-badge" style="background: #e74c3c; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.75em; margin: 0 3px;">{{ autor.typ_odpowiedzialnosci.skrot|upper }}</span>
+                        <span class="praca-detail-new__author-badge">{{ autor.typ_odpowiedzialnosci.skrot|upper }}</span>
                     {% endifchanged %}
                     {% if links == "admin" %}
-                        <a href="{% url "admin:bpp_autor_change" autor.autor.pk %}" style="color: #3498db; text-decoration: none;">
+                        <a href="{% url "admin:bpp_autor_change" autor.autor.pk %}" class="praca-detail-new__author-link">
                     {% elif links == "normal" %}
-                        <a href="{% url "bpp:browse_autor" autor.autor.slug %}" style="color: #3498db; text-decoration: none;">
+                        <a href="{% url "bpp:browse_autor" autor.autor.slug %}" class="praca-detail-new__author-link">
                     {% endif %}
-                    <span class="author-name" style="{% if links %}color: #3498db;{% else %}color: #2c3e50; font-weight: 500;{% endif %}">
+                    <span class="praca-detail-new__author-name {% if links %}praca-detail-new__author-name--linked{% else %}praca-detail-new__author-name--plain{% endif %}">
                         {{ autor.zapisany_jako|upper }}
                     </span>
                     {% if links == "admin" or links == "normal" %}</a>{% endif %}{% if not forloop.last %}, {% else %}{{ praca.tekst_po_ostatnim_autorze|default:"" }}.{% endif %}
@@ -37,29 +37,29 @@
             </div>
 
             <!-- Show more authors button if there are many -->
-            <div id="authors-toggle" style="display: none; margin-top: 10px;">
-                <button class="button tiny secondary" onclick="toggleAuthors()">Pokaż wszystkich autorów</button>
+            <div id="authors-toggle" class="praca-detail-new__authors-toggle">
+                <button class="button tiny secondary" data-action="toggle-authors">Pokaż wszystkich autorów</button>
             </div>
         </div>
     </div>
 
     <!-- Main content in two columns -->
-    <div class="content-columns" style="display: flex; gap: 30px; flex-wrap: wrap;">
+    <div class="praca-detail-new__columns">
 
         <!-- Left Column - Bibliographic Information -->
-        <div class="left-column" style="flex: 1 1 60%; min-width: 300px;">
+        <div class="praca-detail-new__left-column">
 
             <!-- Publication Details Card -->
-            <div class="info-card" style="background: white; border: 1px solid #e1e4e8; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
-                <h3 style="font-size: 1.2rem; margin-bottom: 15px; color: #2c3e50; padding-bottom: 8px;">
-                    <div style="background: linear-gradient(90deg, #3498db 0%, #5dade2 50%, #3498db 100%); height: 2px; margin-top: 10px;"></div>
-                    📋 Szczegóły publikacji
+            <div class="praca-detail-new__card">
+                <h3 class="praca-detail-new__card-title">
+                    <div class="praca-detail-new__gradient-line praca-detail-new__gradient-line--blue"></div>
+                    <span class="fi-clipboard"></span> Szczegoly publikacji
                 </h3>
 
                 {% if praca.zrodlo or praca.wydawnictwo_nadrzedne or praca.informacje or praca.szczegoly %}
-                <div class="detail-row" style="margin-bottom: 12px;">
-                    <strong style="color: #7f8c8d;">Źródło:</strong>
-                    <div style="margin-left: 20px; margin-top: 5px;">
+                <div class="praca-detail-new__detail-row">
+                    <strong class="praca-detail-new__detail-label">Zrodlo:</strong>
+                    <div class="praca-detail-new__detail-content">
                         {% if praca.zrodlo %}
                             {% if links == "admin" %}
                                 <a href="{% url "admin:bpp_zrodlo_change" praca.zrodlo.pk %}">{{ praca.zrodlo }}</a>
@@ -83,52 +83,52 @@
                 {% endif %}
 
                 {% if praca.wydawca or praca.wydawca_opis %}
-                <div class="detail-row" style="margin-bottom: 12px;">
-                    <strong style="color: #7f8c8d;">Wydawca:</strong>
-                    <div style="margin-left: 20px; margin-top: 5px;">
+                <div class="praca-detail-new__detail-row">
+                    <strong class="praca-detail-new__detail-label">Wydawca:</strong>
+                    <div class="praca-detail-new__detail-content">
                         {{ praca.wydawca|default:"" }} {{ praca.wydawca_opis|default:"" }}
                     </div>
                 </div>
                 {% endif %}
 
-                <div class="detail-row" style="margin-bottom: 12px;">
-                    <strong style="color: #7f8c8d;">Rok:</strong>
-                    <span style="margin-left: 10px;">{{ praca.rok }}</span>
+                <div class="praca-detail-new__detail-row">
+                    <strong class="praca-detail-new__detail-label">Rok:</strong>
+                    <span class="praca-detail-new__detail-inline">{{ praca.rok }}</span>
                 </div>
 
-                <div class="detail-row" style="margin-bottom: 12px;">
-                    <strong style="color: #7f8c8d;">Język:</strong>
-                    <span style="margin-left: 10px;">{{ praca.jezyk }}</span>
+                <div class="praca-detail-new__detail-row">
+                    <strong class="praca-detail-new__detail-label">Jezyk:</strong>
+                    <span class="praca-detail-new__detail-inline">{{ praca.jezyk }}</span>
                 </div>
 
-                <div class="detail-row" style="margin-bottom: 12px;">
-                    <strong style="color: #7f8c8d;">Charakter formalny:</strong>
-                    <span style="margin-left: 10px;">{{ praca.charakter_formalny }}</span>
+                <div class="praca-detail-new__detail-row">
+                    <strong class="praca-detail-new__detail-label">Charakter formalny:</strong>
+                    <span class="praca-detail-new__detail-inline">{{ praca.charakter_formalny }}</span>
                 </div>
 
                 {% if praca.typ_kbn %}
-                <div class="detail-row" style="margin-bottom: 12px;">
-                    <strong style="color: #7f8c8d;">Typ MNiSW/MEiN:</strong>
-                    <span style="margin-left: 10px;">{{ praca.typ_kbn }}</span>
+                <div class="praca-detail-new__detail-row">
+                    <strong class="praca-detail-new__detail-label">Typ MNiSW/MEiN:</strong>
+                    <span class="praca-detail-new__detail-inline">{{ praca.typ_kbn }}</span>
                 </div>
                 {% endif %}
             </div>
 
             <!-- Abstracts Card -->
             {% if praca.streszczenia.exists %}
-            <div class="info-card" style="background: white; border: 1px solid #e1e4e8; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
-                <h3 style="font-size: 1.2rem; margin-bottom: 15px; color: #2c3e50; padding-bottom: 8px;">
-                    📝 Streszczenia
-                    <div style="background: linear-gradient(90deg, #27ae60 0%, #52c234 50%, #27ae60 100%); height: 2px; margin-top: 10px;"></div>
+            <div class="praca-detail-new__card">
+                <h3 class="praca-detail-new__card-title">
+                    <span class="fi-page-edit"></span> Streszczenia
+                    <div class="praca-detail-new__gradient-line praca-detail-new__gradient-line--green"></div>
                 </h3>
                 {% for streszczenie in praca.streszczenia.all %}
-                    <div style="margin-bottom: 15px;">
+                    <div class="praca-detail-new__abstract">
                         {% if praca.streszczenia.count > 1 %}
-                            <strong style="color: #7f8c8d; display: block; margin-bottom: 5px;">
+                            <strong class="praca-detail-new__abstract-label">
                                 {{ streszczenie.jezyk_streszczenia.nazwa }}:
                             </strong>
                         {% endif %}
-                        <p style="text-align: justify; line-height: 1.6;">{{ streszczenie.streszczenie|safe }}</p>
+                        <p class="praca-detail-new__abstract-text">{{ streszczenie.streszczenie|safe }}</p>
                     </div>
                 {% endfor %}
             </div>
@@ -136,14 +136,14 @@
 
             <!-- OpenAccess Card -->
             {% if praca.openaccess_tryb_dostepu or praca.openaccess_wersja_tekstu or praca.openaccess_licencja %}
-            <div class="info-card" style="background: #f0f9ff; border: 1px solid #3498db; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
-                <h3 style="font-size: 1.2rem; margin-bottom: 15px; color: #2c3e50; padding-bottom: 8px;">
-                    🔓 Open Access
-                    <div style="background: linear-gradient(90deg, #3498db 0%, #5dade2 50%, #3498db 100%); height: 2px; margin-top: 10px;"></div>
+            <div class="praca-detail-new__card praca-detail-new__card--openaccess">
+                <h3 class="praca-detail-new__card-title">
+                    <span class="fi-unlock"></span> Open Access
+                    <div class="praca-detail-new__gradient-line praca-detail-new__gradient-line--blue"></div>
                 </h3>
-                <div style="display: grid; grid-template-columns: auto 1fr; gap: 10px;">
+                <div class="praca-detail-new__openaccess-grid">
                     {% if praca.openaccess_tryb_dostepu %}
-                        <strong>Tryb dostępu:</strong> <span>{{ praca.openaccess_tryb_dostepu|lower }}</span>
+                        <strong>Tryb dostepu:</strong> <span>{{ praca.openaccess_tryb_dostepu|lower }}</span>
                     {% endif %}
                     {% if praca.openaccess_wersja_tekstu %}
                         <strong>Wersja tekstu:</strong> <span>{{ praca.openaccess_wersja_tekstu|lower }}</span>
@@ -161,11 +161,11 @@
                         </span>
                     {% endif %}
                     {% if praca.openaccess_czas_publikacji %}
-                        <strong>Czas udostępnienia:</strong> <span>{{ praca.openaccess_czas_publikacji|lower }}</span>
+                        <strong>Czas udostepnienia:</strong> <span>{{ praca.openaccess_czas_publikacji|lower }}</span>
                     {% endif %}
                     {% if praca.openaccess_ilosc_miesiecy %}
-                        <strong>Ilość miesięcy:</strong>
-                        <span>{{ praca.openaccess_ilosc_miesiecy }} <small>(od publikacji do udostępnienia)</small></span>
+                        <strong>Ilosc miesiecy:</strong>
+                        <span>{{ praca.openaccess_ilosc_miesiecy }} <small>(od publikacji do udostepnienia)</small></span>
                     {% endif %}
                 </div>
             </div>
@@ -173,27 +173,29 @@
         </div>
 
         <!-- Right Column - Identifiers and Metadata -->
-        <div class="right-column" style="flex: 1 1 35%; min-width: 300px;">
+        <div class="praca-detail-new__right-column">
 
             <!-- External Links Card - Priority for PBN -->
             {% if praca.pbn_uid_id or praca.doi or praca.pubmed_id or praca.pmc_id or praca.public_www or praca.www %}
-            <div class="info-card" style="background: white; border: 1px solid #e1e4e8; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
-                <h3 style="font-size: 1.2rem; margin-bottom: 15px; color: #2c3e50; padding-bottom: 8px;">
-                    🌐 Linki zewnętrzne
-                    <div style="background: linear-gradient(90deg, #9b59b6 0%, #bb8fce 50%, #9b59b6 100%); height: 2px; margin-top: 10px;"></div>
+            <div class="praca-detail-new__card">
+                <h3 class="praca-detail-new__card-title">
+                    <span class="fi-web"></span> Linki zewnetrzne
+                    <div class="praca-detail-new__gradient-line praca-detail-new__gradient-line--purple"></div>
                 </h3>
 
                 {% if praca.pbn_uid_id %}
-                <div class="link-item" style="margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 6px;">
-                    <div style="display: flex; align-items: center; margin-bottom: 8px;">
-                        <span style="font-size: 1.5em; margin-right: 10px;">🏛️</span>
+                <div class="praca-detail-new__link-item praca-detail-new__link-item--pbn">
+                    <div class="praca-detail-new__link-header">
+                        <span class="praca-detail-new__link-icon fi-home"></span>
                         <strong>PBN UID</strong>
                     </div>
-                    <button class="button expanded" type="button" onclick="window.open('{{ praca.link_do_pbn }}', '_blank')" style="margin-bottom: 5px;">
-                        Otwórz w PBN: {{ praca.pbn_uid_id }}
+                    <button class="button expanded praca-detail-new__pbn-button" type="button"
+                            data-open-url="{{ praca.link_do_pbn }}" data-target="_blank">
+                        Otworz w PBN: {{ praca.pbn_uid_id }}
                     </button>
                     {% if not request.user.is_anonymous and praca.link_do_pi %}
-                        <button class="button expanded secondary" type="button" onclick="window.open('{{ praca.link_do_pi }}', '_blank')">
+                        <button class="button expanded secondary" type="button"
+                                data-open-url="{{ praca.link_do_pi }}" data-target="_blank">
                             Profil instytucji
                         </button>
                     {% endif %}
@@ -201,45 +203,45 @@
                 {% endif %}
 
                 {% if praca.doi %}
-                <div class="link-item" style="margin-bottom: 12px;">
-                    <span style="font-size: 1.2em; margin-right: 8px;">🔖</span>
+                <div class="praca-detail-new__link-item">
+                    <span class="praca-detail-new__link-icon praca-detail-new__link-icon--small fi-bookmark"></span>
                     <strong>DOI:</strong>
-                    <a target="_blank" href="http://doi.org/{{ praca.doi }}" style="color: #3498db; word-break: break-all;">
+                    <a target="_blank" href="http://doi.org/{{ praca.doi }}" class="praca-detail-new__link-text">
                         {{ praca.doi }}
                     </a>
                 </div>
                 {% endif %}
 
                 {% if praca.pubmed_id %}
-                <div class="link-item" style="margin-bottom: 12px;">
-                    <span style="font-size: 1.2em; margin-right: 8px;">🧬</span>
+                <div class="praca-detail-new__link-item">
+                    <span class="praca-detail-new__link-icon praca-detail-new__link-icon--small fi-torso"></span>
                     <strong>PubMed:</strong>
-                    <a target="_blank" href="https://www.ncbi.nlm.nih.gov/pubmed/{{ praca.pubmed_id }}" style="color: #3498db;">
+                    <a target="_blank" href="https://www.ncbi.nlm.nih.gov/pubmed/{{ praca.pubmed_id }}" class="praca-detail-new__link-text">
                         {{ praca.pubmed_id }}
                     </a>
                 </div>
                 {% endif %}
 
                 {% if praca.pmc_id %}
-                <div class="link-item" style="margin-bottom: 12px;">
-                    <span style="font-size: 1.2em; margin-right: 8px;">📚</span>
+                <div class="praca-detail-new__link-item">
+                    <span class="praca-detail-new__link-icon praca-detail-new__link-icon--small fi-book"></span>
                     <strong>PMC:</strong>
-                    <a href="https://www.ncbi.nlm.nih.gov/pmc/{{ praca.pmc_id }}" style="color: #3498db;">
+                    <a href="https://www.ncbi.nlm.nih.gov/pmc/{{ praca.pmc_id }}" class="praca-detail-new__link-text">
                         {{ praca.pmc_id }}
                     </a>
                 </div>
                 {% endif %}
 
                 {% if praca.public_www or praca.www %}
-                <div class="link-item" style="margin-bottom: 12px;">
-                    <span style="font-size: 1.2em; margin-right: 8px;">🌐</span>
+                <div class="praca-detail-new__link-item">
+                    <span class="praca-detail-new__link-icon praca-detail-new__link-icon--small fi-web"></span>
                     <strong>WWW:</strong>
                     {% if praca.public_www %}
-                        <a href="{{ praca.public_www }}" style="color: #3498db; word-break: break-all;">
+                        <a href="{{ praca.public_www }}" class="praca-detail-new__link-text">
                             {{ praca.public_www|truncatechars:60 }}
                         </a>
                     {% elif praca.www %}
-                        <a href="{{ praca.www }}" style="color: #3498db; word-break: break-all;">
+                        <a href="{{ praca.www }}" class="praca-detail-new__link-text">
                             {{ praca.www|truncatechars:60 }}
                         </a>
                     {% endif %}
@@ -249,121 +251,121 @@
             {% endif %}
 
             <!-- Identifiers Card -->
-            <div class="info-card" style="background: white; border: 1px solid #e1e4e8; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
-                <h3 style="font-size: 1.2rem; margin-bottom: 15px; color: #2c3e50; padding-bottom: 8px;">
-                    🆔 Identyfikatory
-                    <div style="background: linear-gradient(90deg, #f39c12 0%, #f5b041 50%, #f39c12 100%); height: 2px; margin-top: 10px;"></div>
+            <div class="praca-detail-new__card">
+                <h3 class="praca-detail-new__card-title">
+                    <span class="fi-price-tag"></span> Identyfikatory
+                    <div class="praca-detail-new__gradient-line praca-detail-new__gradient-line--orange"></div>
                 </h3>
 
                 {% if praca.isbn %}
-                <div class="id-item" style="margin-bottom: 10px;">
-                    <span style="font-size: 1.2em; margin-right: 8px;">📖</span>
+                <div class="praca-detail-new__id-item">
+                    <span class="praca-detail-new__id-icon fi-book"></span>
                     <strong>ISBN:</strong> {{ praca.isbn }}
                 </div>
                 {% endif %}
 
                 {% if praca.e_isbn %}
-                <div class="id-item" style="margin-bottom: 10px;">
-                    <span style="font-size: 1.2em; margin-right: 8px;">💻</span>
+                <div class="praca-detail-new__id-item">
+                    <span class="praca-detail-new__id-icon fi-laptop"></span>
                     <strong>e-ISBN:</strong> {{ praca.e_isbn }}
                 </div>
                 {% endif %}
 
                 {% if praca.issn %}
-                <div class="id-item" style="margin-bottom: 10px;">
-                    <span style="font-size: 1.2em; margin-right: 8px;">📰</span>
+                <div class="praca-detail-new__id-item">
+                    <span class="praca-detail-new__id-icon fi-page"></span>
                     <strong>ISSN:</strong> {{ praca.issn }}
                 </div>
                 {% endif %}
 
                 {% if praca.e_issn %}
-                <div class="id-item" style="margin-bottom: 10px;">
-                    <span style="font-size: 1.2em; margin-right: 8px;">💾</span>
+                <div class="praca-detail-new__id-item">
+                    <span class="praca-detail-new__id-icon fi-save"></span>
                     <strong>e-ISSN:</strong> {{ praca.e_issn }}
                 </div>
                 {% endif %}
 
-                <div class="id-item" style="margin-bottom: 10px;">
-                    <span style="font-size: 1.2em; margin-right: 8px;">🆔</span>
+                <div class="praca-detail-new__id-item">
+                    <span class="praca-detail-new__id-icon fi-price-tag"></span>
                     <strong>BPP ID:</strong> {{ rekord.pk }}
-                    <small style="color: #7f8c8d; display: block; margin-left: 28px;">
+                    <small class="praca-detail-new__id-subtext">
                         {{ rekord.describe_content_type }} #{{ praca.pk }}
                     </small>
                 </div>
 
                 {% if praca.pbn_id %}
-                <div class="id-item" style="margin-bottom: 10px;">
-                    <span style="font-size: 1.2em; margin-right: 8px;">📋</span>
+                <div class="praca-detail-new__id-item">
+                    <span class="praca-detail-new__id-icon fi-clipboard"></span>
                     <strong>PBN ID (hist.):</strong> {{ praca.pbn_id }}
                 </div>
                 {% endif %}
             </div>
 
             <!-- Metrics Card -->
-            <div class="info-card" style="background: white; border: 1px solid #e1e4e8; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
-                <h3 style="font-size: 1.2rem; margin-bottom: 15px; color: #2c3e50; padding-bottom: 8px;">
-                    📊 Metryki
-                    <div style="background: linear-gradient(90deg, #e74c3c 0%, #ec7063 50%, #e74c3c 100%); height: 2px; margin-top: 10px;"></div>
+            <div class="praca-detail-new__card">
+                <h3 class="praca-detail-new__card-title">
+                    <span class="fi-graph-bar"></span> Metryki
+                    <div class="praca-detail-new__gradient-line praca-detail-new__gradient-line--red"></div>
                 </h3>
 
-                <div class="metrics-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                    <div style="text-align: center; padding: 10px; background: #f8f9fa; border-radius: 6px;">
-                        <div style="font-size: 1.5em; font-weight: bold; color: #e74c3c;">{{ praca.punkty_kbn|default:"0" }}</div>
-                        <div style="font-size: 0.9em; color: #7f8c8d;">Punkty MNiSW/MEiN</div>
+                <div class="praca-detail-new__metrics-grid">
+                    <div class="praca-detail-new__metric-box">
+                        <div class="praca-detail-new__metric-value praca-detail-new__metric-value--points">{{ praca.punkty_kbn|default:"0" }}</div>
+                        <div class="praca-detail-new__metric-label">Punkty MNiSW/MEiN</div>
                     </div>
 
-                    <div style="text-align: center; padding: 10px; background: #f8f9fa; border-radius: 6px;">
-                        <div style="font-size: 1.5em; font-weight: bold; color: #3498db;">{{ praca.impact_factor|default:"0" }}</div>
-                        <div style="font-size: 0.9em; color: #7f8c8d;">Impact Factor</div>
+                    <div class="praca-detail-new__metric-box">
+                        <div class="praca-detail-new__metric-value praca-detail-new__metric-value--impact">{{ praca.impact_factor|default:"0" }}</div>
+                        <div class="praca-detail-new__metric-label">Impact Factor</div>
                     </div>
 
                     {% if praca.kwartyl_w_scopus %}
-                    <div style="text-align: center; padding: 10px; background: #f8f9fa; border-radius: 6px;">
-                        <div style="font-size: 1.5em; font-weight: bold; color: #27ae60;">Q{{ praca.kwartyl_w_scopus }}</div>
-                        <div style="font-size: 0.9em; color: #7f8c8d;">SCOPUS</div>
+                    <div class="praca-detail-new__metric-box">
+                        <div class="praca-detail-new__metric-value praca-detail-new__metric-value--scopus">Q{{ praca.kwartyl_w_scopus }}</div>
+                        <div class="praca-detail-new__metric-label">SCOPUS</div>
                     </div>
                     {% endif %}
 
                     {% if praca.kwartyl_w_wos %}
-                    <div style="text-align: center; padding: 10px; background: #f8f9fa; border-radius: 6px;">
-                        <div style="font-size: 1.5em; font-weight: bold; color: #9b59b6;">Q{{ praca.kwartyl_w_wos }}</div>
-                        <div style="font-size: 0.9em; color: #7f8c8d;">WoS</div>
+                    <div class="praca-detail-new__metric-box">
+                        <div class="praca-detail-new__metric-value praca-detail-new__metric-value--wos">Q{{ praca.kwartyl_w_wos }}</div>
+                        <div class="praca-detail-new__metric-label">WoS</div>
                     </div>
                     {% endif %}
 
                     {% if praca.liczba_cytowan %}
-                    <div style="text-align: center; padding: 10px; background: #f8f9fa; border-radius: 6px;">
-                        <div style="font-size: 1.5em; font-weight: bold; color: #f39c12;">{{ praca.liczba_cytowan }}</div>
-                        <div style="font-size: 0.9em; color: #7f8c8d;">Cytowania</div>
+                    <div class="praca-detail-new__metric-box">
+                        <div class="praca-detail-new__metric-value praca-detail-new__metric-value--citations">{{ praca.liczba_cytowan }}</div>
+                        <div class="praca-detail-new__metric-label">Cytowania</div>
                     </div>
                     {% endif %}
 
                     {% if uczelnia.pokazuj_punktacja_snip and praca.punktacja_snip %}
-                    <div style="text-align: center; padding: 10px; background: #f8f9fa; border-radius: 6px;">
-                        <div style="font-size: 1.5em; font-weight: bold; color: #16a085;">{{ praca.punktacja_snip }}</div>
-                        <div style="font-size: 0.9em; color: #7f8c8d;">SNIP</div>
+                    <div class="praca-detail-new__metric-box">
+                        <div class="praca-detail-new__metric-value praca-detail-new__metric-value--snip">{{ praca.punktacja_snip }}</div>
+                        <div class="praca-detail-new__metric-label">SNIP</div>
                     </div>
                     {% endif %}
                 </div>
             </div>
 
             <!-- BibTeX Card (Collapsible) -->
-            <div class="info-card" style="background: white; border: 1px solid #e1e4e8; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
-                <h3 style="font-size: 1.2rem; margin-bottom: 15px; color: #2c3e50; padding-bottom: 8px;">
-                    📄 BibTeX
-                    <div style="background: linear-gradient(90deg, #95a5a6 0%, #aab7b8 50%, #95a5a6 100%); height: 2px; margin-top: 10px;"></div>
+            <div class="praca-detail-new__card">
+                <h3 class="praca-detail-new__card-title">
+                    <span class="fi-page"></span> BibTeX
+                    <div class="praca-detail-new__gradient-line praca-detail-new__gradient-line--gray"></div>
                 </h3>
                 <button id="bibtex-toggle-btn" class="button expanded secondary" type="button">
-                    Pokaż BibTeX
+                    Pokaz BibTeX
                 </button>
-                <button id="bibtex-copy-btn" class="button expanded success" type="button" style="margin-top: 10px; display: none;">
+                <button id="bibtex-copy-btn" class="button expanded success praca-detail-new__bibtex-copy-btn" type="button">
                     Skopiuj do schowka
                 </button>
-                <span id="bibtex-copy-feedback" style="display: none; color: #27ae60; font-weight: bold;">
-                    ✓ Skopiowane!
+                <span id="bibtex-copy-feedback" class="praca-detail-new__bibtex-feedback">
+                    Skopiowane!
                 </span>
-                <div id="bibtex-container" style="display: none; margin-top: 15px;">
-                    <textarea id="bibtex-content" readonly style="width: 100%; min-height: 200px; font-family: monospace; font-size: 0.9em; padding: 10px; border: 1px solid #ddd; border-radius: 4px; background: #f8f9fa;"></textarea>
+                <div id="bibtex-container" class="praca-detail-new__bibtex-container">
+                    <textarea id="bibtex-content" readonly class="praca-detail-new__bibtex-textarea"></textarea>
                 </div>
             </div>
         </div>
@@ -372,50 +374,50 @@
     <!-- Points and Slots Tables -->
     {% if rekord.ma_punktacje_sloty %}
         {% if uczelnia.pokazuj_tabele_slotow_na_stronie_rekordu == "always" or uczelnia.pokazuj_tabele_slotow_na_stronie_rekordu == "logged-in" and not request.user.is_anonymous %}
-        <div class="slots-section" style="margin-top: 30px;">
-            <div class="info-card" style="background: white; border: 1px solid #e1e4e8; border-radius: 8px; padding: 20px;">
-                <h3 style="font-size: 1.2rem; margin-bottom: 15px; color: #2c3e50; padding-bottom: 8px;">
-                    👥 Punkty i sloty autorów
-                    <div style="background: linear-gradient(90deg, #3498db 0%, #5dade2 50%, #3498db 100%); height: 2px; margin-top: 10px;"></div>
+        <div class="praca-detail-new__slots-section">
+            <div class="praca-detail-new__card">
+                <h3 class="praca-detail-new__card-title">
+                    <span class="fi-torsos-all"></span> Punkty i sloty autorow
+                    <div class="praca-detail-new__gradient-line praca-detail-new__gradient-line--blue"></div>
                     {% if uczelnia.drukuj_oswiadczenia %}
                         {% if request.user.is_superuser or request.user|has_group:"wprowadzanie danych" %}
-                            <a target="_blank" href="{% url "oswiadczenia:wiele-oswiadczen" rekord.id.0 rekord.id.1 %}" style="float: right;">
+                            <a target="_blank" href="{% url "oswiadczenia:wiele-oswiadczen" rekord.id.0 rekord.id.1 %}" class="praca-detail-new__print-link">
                                 <span class="fi-print"></span>
                             </a>
                         {% endif %}
                     {% endif %}
                 </h3>
 
-                <div style="overflow-x: auto;">
-                    <table style="width: 100%; border-collapse: collapse;">
-                        <thead style="background: #f8f9fa;">
+                <div class="praca-detail-new__table-container">
+                    <table class="praca-detail-new__table">
+                        <thead class="praca-detail-new__table-head">
                             <tr>
-                                <th style="padding: 10px; text-align: left; border-bottom: 2px solid #dee2e6;">Autor</th>
-                                <th style="padding: 10px; text-align: left; border-bottom: 2px solid #dee2e6;">Dyscyplina</th>
-                                <th style="padding: 10px; text-align: center; border-bottom: 2px solid #dee2e6;">PkD / PkDAut</th>
-                                <th style="padding: 10px; text-align: center; border-bottom: 2px solid #dee2e6;">Slot</th>
+                                <th class="praca-detail-new__table-th">Autor</th>
+                                <th class="praca-detail-new__table-th">Dyscyplina</th>
+                                <th class="praca-detail-new__table-th praca-detail-new__table-th--center">PkD / PkDAut</th>
+                                <th class="praca-detail-new__table-th praca-detail-new__table-th--center">Slot</th>
                                 {% if uczelnia.drukuj_oswiadczenia %}
                                     {% if request.user.is_superuser or request.user|has_group:"wprowadzanie danych" %}
-                                        <th style="padding: 10px; text-align: center; border-bottom: 2px solid #dee2e6;">Oświadczenia</th>
+                                        <th class="praca-detail-new__table-th praca-detail-new__table-th--center">Oswiadczenia</th>
                                     {% endif %}
                                 {% endif %}
                             </tr>
                         </thead>
                         <tbody>
                             {% for pa in rekord.punktacja_autora.select_related %}
-                            <tr style="border-bottom: 1px solid #dee2e6;">
-                                <td style="padding: 10px;">{{ pa.autor }}</td>
-                                <td style="padding: 10px;">{{ pa.dyscyplina.nazwa }}</td>
-                                <td style="padding: 10px; text-align: center;">
-                                    <span style="background: #e3f2fd; padding: 2px 8px; border-radius: 4px;">{{ pa.pkdaut }}</span>
+                            <tr class="praca-detail-new__table-row">
+                                <td class="praca-detail-new__table-cell">{{ pa.autor }}</td>
+                                <td class="praca-detail-new__table-cell">{{ pa.dyscyplina.nazwa }}</td>
+                                <td class="praca-detail-new__table-cell praca-detail-new__table-cell--center">
+                                    <span class="praca-detail-new__badge praca-detail-new__badge--pkdaut">{{ pa.pkdaut }}</span>
                                 </td>
-                                <td style="padding: 10px; text-align: center;">
-                                    <span style="background: #fff3e0; padding: 2px 8px; border-radius: 4px;">{{ pa.slot }}</span>
+                                <td class="praca-detail-new__table-cell praca-detail-new__table-cell--center">
+                                    <span class="praca-detail-new__badge praca-detail-new__badge--slot">{{ pa.slot }}</span>
                                 </td>
                                 {% if uczelnia.drukuj_oswiadczenia %}
                                     {% if request.user.is_superuser or request.user|has_group:"wprowadzanie danych" %}
-                                        <td style="padding: 10px; text-align: center;">
-                                            <a target="_blank" title="Wydruk dyscypliny zgłoszonej dla publikacji"
+                                        <td class="praca-detail-new__table-cell praca-detail-new__table-cell--center">
+                                            <a target="_blank" title="Wydruk dyscypliny zgloszonej dla publikacji"
                                                href="{% url "oswiadczenia:jedno-oswiadczenie" rekord.id.0 rekord.id.1 pa.autor.id pa.dyscyplina.id %}">
                                                 <span class="fi-print"></span>
                                             </a>
@@ -423,7 +425,7 @@
                                                 &nbsp;
                                                 <a target="_blank" title="Wydruk alternatywnej dyscypliny autora"
                                                    href="{% url "oswiadczenia:jedno-oswiadczenie-druga-dyscyplina" rekord.id.0 rekord.id.1 pa.autor.id pa.dyscyplina.id %}">
-                                                    <span class="fi-print" style="color: palevioletred;"></span>
+                                                    <span class="fi-print praca-detail-new__print-icon-alt"></span>
                                                 </a>
                                             {% endif %}
                                         </td>
@@ -435,29 +437,29 @@
                     </table>
                 </div>
 
-                <h3 style="font-size: 1.2rem; margin-top: 30px; margin-bottom: 15px; color: #2c3e50; padding-bottom: 8px;">
-                    📈 Punkty i sloty dyscyplin
-                    <div style="background: linear-gradient(90deg, #27ae60 0%, #52c234 50%, #27ae60 100%); height: 2px; margin-top: 10px;"></div>
+                <h3 class="praca-detail-new__disc-slots-title">
+                    <span class="fi-graph-trend"></span> Punkty i sloty dyscyplin
+                    <div class="praca-detail-new__gradient-line praca-detail-new__gradient-line--green"></div>
                 </h3>
 
-                <div style="overflow-x: auto;">
-                    <table style="width: 100%; border-collapse: collapse;">
-                        <thead style="background: #f8f9fa;">
+                <div class="praca-detail-new__table-container">
+                    <table class="praca-detail-new__table">
+                        <thead class="praca-detail-new__table-head">
                             <tr>
-                                <th style="padding: 10px; text-align: left; border-bottom: 2px solid #dee2e6;">Dyscyplina</th>
-                                <th style="padding: 10px; text-align: center; border-bottom: 2px solid #dee2e6;">PkD / PkDAut</th>
-                                <th style="padding: 10px; text-align: center; border-bottom: 2px solid #dee2e6;">Slot</th>
+                                <th class="praca-detail-new__table-th">Dyscyplina</th>
+                                <th class="praca-detail-new__table-th praca-detail-new__table-th--center">PkD / PkDAut</th>
+                                <th class="praca-detail-new__table-th praca-detail-new__table-th--center">Slot</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for pd in rekord.punktacja_dyscypliny.select_related %}
-                            <tr style="border-bottom: 1px solid #dee2e6;">
-                                <td style="padding: 10px;">{{ pd.dyscyplina.nazwa }}</td>
-                                <td style="padding: 10px; text-align: center;">
-                                    <span style="background: #e8f5e9; padding: 2px 8px; border-radius: 4px;">{{ pd.pkd }}</span>
+                            <tr class="praca-detail-new__table-row">
+                                <td class="praca-detail-new__table-cell">{{ pd.dyscyplina.nazwa }}</td>
+                                <td class="praca-detail-new__table-cell praca-detail-new__table-cell--center">
+                                    <span class="praca-detail-new__badge praca-detail-new__badge--pkd">{{ pd.pkd }}</span>
                                 </td>
-                                <td style="padding: 10px; text-align: center;">
-                                    <span style="background: #fce4ec; padding: 2px 8px; border-radius: 4px;">{{ pd.slot }}</span>
+                                <td class="praca-detail-new__table-cell praca-detail-new__table-cell--center">
+                                    <span class="praca-detail-new__badge praca-detail-new__badge--disc-slot">{{ pd.slot }}</span>
                                 </td>
                             </tr>
                             {% endfor %}
@@ -470,25 +472,28 @@
     {% endif %}
 
     <!-- Additional Information (collapsed by default) -->
-    <div class="additional-info" style="margin-top: 30px;">
-        <div class="info-card" style="background: #f8f9fa; border: 1px solid #e1e4e8; border-radius: 8px; padding: 20px;">
-            <h3 style="font-size: 1.2rem; margin-bottom: 15px; color: #7f8c8d; cursor: pointer;" onclick="toggleAdditionalInfo()">
-                ⚙️ Informacje dodatkowe <span id="additional-toggle" style="float: right;">▼</span>
+    <div class="praca-detail-new__additional-info">
+        <div class="praca-detail-new__card praca-detail-new__card--additional">
+            <h3 class="praca-detail-new__card-title praca-detail-new__card-title--clickable"
+                data-action="toggle-additional-info"
+                tabindex="0"
+                role="button">
+                <span class="fi-widget"></span> Informacje dodatkowe <span id="additional-toggle" class="praca-detail-new__additional-toggle">V</span>
             </h3>
-            <div id="additional-content" style="display: none; margin-top: 15px;">
-                <table style="width: 100%;">
+            <div id="additional-content" class="praca-detail-new__additional-content">
+                <table class="praca-detail-new__additional-table">
                     {% if praca.charakter_formalny.skrot == "PAT" %}
                     <tr>
-                        <td colspan="2" style="padding: 10px; background: #fff; border-radius: 6px; margin-bottom: 10px;">
+                        <td colspan="2" class="praca-detail-new__additional-cell praca-detail-new__additional-cell--patent">
                             <strong>Patent:</strong><br/>
-                            <div style="margin-left: 20px; margin-top: 10px;">
-                                <b>Numer zgłoszenia:</b> {{ praca.numer_zgloszenia|default:"brak" }}<br/>
-                                <b>Wydział:</b> {{ praca.wydzial|default:"brak" }}<br/>
+                            <div class="praca-detail-new__patent-details">
+                                <b>Numer zgloszenia:</b> {{ praca.numer_zgloszenia|default:"brak" }}<br/>
+                                <b>Wydzial:</b> {{ praca.wydzial|default:"brak" }}<br/>
                                 <b>Rodzaj prawa:</b> {{ praca.rodzaj_prawa|default:"brak" }}<br/>
-                                <b>Data zgłoszenia:</b> {{ praca.data_zgloszenia|default:"brak" }}<br/>
+                                <b>Data zgloszenia:</b> {{ praca.data_zgloszenia|default:"brak" }}<br/>
                                 <b>Data decyzji:</b> {{ praca.data_decyzji|default:"brak" }}<br/>
-                                <b>Numer prawa wyłącznego:</b> {{ praca.numer_prawa_wylacznego|default:"brak" }}<br/>
-                                <b>Wdrożenie:</b> {% if praca.wdrozenie %}tak{% else %}nie{% endif %}
+                                <b>Numer prawa wylacznego:</b> {{ praca.numer_prawa_wylacznego|default:"brak" }}<br/>
+                                <b>Wdrozenie:</b> {% if praca.wdrozenie %}tak{% else %}nie{% endif %}
                             </div>
                         </td>
                     </tr>
@@ -496,29 +501,29 @@
 
                     {% if praca.liczba_znakow_wydawniczych %}
                     <tr>
-                        <th style="padding: 10px;">Liczba arkuszy wydawniczych:</th>
-                        <td style="padding: 10px;">{{ praca.wymiar_wydawniczy_w_arkuszach }}</td>
+                        <th class="praca-detail-new__additional-cell">Liczba arkuszy wydawniczych:</th>
+                        <td class="praca-detail-new__additional-cell">{{ praca.wymiar_wydawniczy_w_arkuszach }}</td>
                     </tr>
                     {% endif %}
 
                     {% if uczelnia.pokazuj_status_korekty == "always" or uczelnia.pokazuj_status_korekty == "logged-in" and not request.user.is_anonymous %}
                     <tr>
-                        <th style="padding: 10px;">Status:</th>
-                        <td style="padding: 10px;">{{ praca.status_korekty }}</td>
+                        <th class="praca-detail-new__additional-cell">Status:</th>
+                        <td class="praca-detail-new__additional-cell">{{ praca.status_korekty }}</td>
                     </tr>
                     {% endif %}
 
                     {% if uczelnia.pokazuj_praca_recenzowana == "always" or uczelnia.pokazuj_praca_recenzowana == "logged-in" and not request.user.is_anonymous %}
                     <tr>
-                        <th style="padding: 10px;">Praca recenzowana:</th>
-                        <td style="padding: 10px;">{{ praca.recenzowana|yesno }}</td>
+                        <th class="praca-detail-new__additional-cell">Praca recenzowana:</th>
+                        <td class="praca-detail-new__additional-cell">{{ praca.recenzowana|yesno }}</td>
                     </tr>
                     {% endif %}
 
                     {% if praca.ma_procenty %}
                     <tr>
-                        <th style="padding: 10px; vertical-align: top;">Odpowiedzialność za powstanie pracy:</th>
-                        <td style="padding: 10px;">
+                        <th class="praca-detail-new__additional-cell praca-detail-new__additional-cell--vertical">Odpowiedzialnosc za powstanie pracy:</th>
+                        <td class="praca-detail-new__additional-cell">
                             {% for autor in praca.autorzy_set.all %}
                                 {% if autor.procent %}
                                     {{ autor.procent }}% {{ autor.zapisany_jako }}<br/>
@@ -530,10 +535,10 @@
 
                     {% if praca.zewnetrzna_baza_danych.exists %}
                     <tr>
-                        <th style="padding: 10px; vertical-align: top;">Zewnętrzna baza danych:</th>
-                        <td style="padding: 10px;">
+                        <th class="praca-detail-new__additional-cell praca-detail-new__additional-cell--vertical">Zewnetrzna baza danych:</th>
+                        <td class="praca-detail-new__additional-cell">
                             {% for db in praca.zewnetrzna_baza_danych.all %}
-                                • {{ db.baza.nazwa }}<br/>
+                                - {{ db.baza.nazwa }}<br/>
                             {% endfor %}
                         </td>
                     </tr>
@@ -541,10 +546,10 @@
 
                     {% if praca.wydawnictwa_powiazane_set.exists %}
                     <tr>
-                        <th style="padding: 10px; vertical-align: top;">Rekordy powiązane:</th>
-                        <td style="padding: 10px;">
+                        <th class="praca-detail-new__additional-cell praca-detail-new__additional-cell--vertical">Rekordy powiazane:</th>
+                        <td class="praca-detail-new__additional-cell">
                             {% for elem in praca.wydawnictwa_powiazane_posortowane.all %}
-                                • <a href="{% url "bpp:browse_praca" "wydawnictwo_zwarte" elem.pk %}">
+                                - <a href="{% url "bpp:browse_praca" "wydawnictwo_zwarte" elem.pk %}">
                                     {{ elem.opis_bibliograficzny_cache|safe }}
                                 </a><br/>
                             {% endfor %}
@@ -553,40 +558,40 @@
                     {% endif %}
 
                     <tr>
-                        <th style="padding: 10px;">Rekord utworzony:</th>
-                        <td style="padding: 10px;">{{ praca.utworzono }}</td>
+                        <th class="praca-detail-new__additional-cell">Rekord utworzony:</th>
+                        <td class="praca-detail-new__additional-cell">{{ praca.utworzono }}</td>
                     </tr>
 
                     <tr>
-                        <th style="padding: 10px;">Ostatnia aktualizacja:</th>
-                        <td style="padding: 10px;">{{ praca.ostatnio_zmieniony }}</td>
+                        <th class="praca-detail-new__additional-cell">Ostatnia aktualizacja:</th>
+                        <td class="praca-detail-new__additional-cell">{{ praca.ostatnio_zmieniony }}</td>
                     </tr>
                 </table>
             </div>
         </div>
     </div>
 
-    <!-- "Odpięte" dyscypliny -->
+    <!-- "Odpiete" dyscypliny -->
     {% if rekord.ma_odpiete_dyscypliny %}
         {% if uczelnia.pokazuj_tabele_slotow_na_stronie_rekordu == "always" or uczelnia.pokazuj_tabele_slotow_na_stronie_rekordu == "logged-in" and not request.user.is_anonymous %}
-        <div class="detached-disciplines" style="margin-top: 30px;">
-            <div class="info-card" style="background: #fff5f5; border: 1px solid #ffcccc; border-radius: 8px; padding: 20px;">
-                <h3 style="font-size: 1.2rem; margin-bottom: 15px; color: #2c3e50; padding-bottom: 8px;">
-                    🔓 "Odpięte" dyscypliny
-                    <div style="background: linear-gradient(90deg, #e74c3c 0%, #ec7063 50%, #e74c3c 100%); height: 2px; margin-top: 10px;"></div>
+        <div class="praca-detail-new__detached-section">
+            <div class="praca-detail-new__card praca-detail-new__card--detached">
+                <h3 class="praca-detail-new__card-title">
+                    <span class="fi-unlock"></span> "Odpiete" dyscypliny
+                    <div class="praca-detail-new__gradient-line praca-detail-new__gradient-line--red"></div>
                 </h3>
-                <table style="width: 100%; border-collapse: collapse;">
-                    <thead style="background: #ffe5e5;">
+                <table class="praca-detail-new__table">
+                    <thead class="praca-detail-new__table-head praca-detail-new__table-head--detached">
                         <tr>
-                            <th style="padding: 10px; text-align: left;">Autor</th>
-                            <th style="padding: 10px; text-align: left;">Dyscyplina</th>
+                            <th class="praca-detail-new__table-th">Autor</th>
+                            <th class="praca-detail-new__table-th">Dyscyplina</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for pa in praca.odpiete_dyscypliny.select_related %}
-                        <tr style="border-bottom: 1px solid #ffcccc;">
-                            <td style="padding: 10px;">{{ pa.autor }}</td>
-                            <td style="padding: 10px;">{{ pa.dyscyplina_naukowa.nazwa }}</td>
+                        <tr class="praca-detail-new__table-row praca-detail-new__table-row--detached">
+                            <td class="praca-detail-new__table-cell">{{ pa.autor }}</td>
+                            <td class="praca-detail-new__table-cell">{{ pa.dyscyplina_naukowa.nazwa }}</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -712,53 +717,3 @@ function toggleAdditionalInfo() {
     }
 }
 </script>
-
-<!-- Responsive styles -->
-<style>
-@media screen and (max-width: 768px) {
-    .content-columns {
-        flex-direction: column !important;
-    }
-
-    .left-column, .right-column {
-        flex: 1 1 100% !important;
-        min-width: 100% !important;
-    }
-
-    .metrics-grid {
-        grid-template-columns: 1fr !important;
-    }
-
-    table {
-        font-size: 0.9em;
-    }
-
-    .publication-title-section h2 {
-        font-size: 1.4rem !important;
-    }
-}
-
-/* Hover effects */
-.info-card {
-    transition: box-shadow 0.3s ease;
-}
-
-.info-card:hover {
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-/* Print styles */
-@media print {
-    .button, #bibtex-toggle-btn, #bibtex-copy-btn {
-        display: none !important;
-    }
-
-    #additional-content {
-        display: block !important;
-    }
-
-    .info-card {
-        break-inside: avoid;
-    }
-}
-</style>

@@ -4,13 +4,13 @@
 <table>
     <thead>
         <tr>
-            <th style="width: 20%;" class="sortable">
+            <th class="ewaluacja-optymalizacja__col-title sortable">
                 <a href="?sort_by=tytul&sort_dir={% if sort_by == 'tytul' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}{% if selected_dyscyplina %}&dyscyplina={{ selected_dyscyplina }}{% endif %}{% if selected_punktacja_zrodla %}&punktacja_zrodla={{ selected_punktacja_zrodla }}{% endif %}{% if only_sensible %}&only_sensible=1{% endif %}{% if request.GET.fullwidth %}&fullwidth=1{% endif %}">
                     Tytuł pracy
                     {% if sort_by == 'tytul' %}{% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}{% endif %}
                 </a>
             </th>
-            <th style="text-align: center;" class="sortable">
+            <th class="ewaluacja-optymalizacja__cell-center sortable">
                 <a href="?sort_by=punktacja&sort_dir={% if sort_by == 'punktacja' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}{% if selected_dyscyplina %}&dyscyplina={{ selected_dyscyplina }}{% endif %}{% if selected_punktacja_zrodla %}&punktacja_zrodla={{ selected_punktacja_zrodla }}{% endif %}{% if only_sensible %}&only_sensible=1{% endif %}{% if request.GET.fullwidth %}&fullwidth=1{% endif %}">
                     Punktacja<br>źródła
                     {% if sort_by == 'punktacja' %}{% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}{% endif %}
@@ -70,7 +70,7 @@
                     {% if sort_by == 'autor_b' %}{% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}{% endif %}
                 </a>
             </th>
-            <th style="text-align: center;" class="sortable">
+            <th class="ewaluacja-optymalizacja__cell-center sortable">
                 <a href="?sort_by=makes_sense&sort_dir={% if sort_by == 'makes_sense' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}{% if selected_dyscyplina %}&dyscyplina={{ selected_dyscyplina }}{% endif %}{% if selected_punktacja_zrodla %}&punktacja_zrodla={{ selected_punktacja_zrodla }}{% endif %}{% if only_sensible %}&only_sensible=1{% endif %}{% if request.GET.fullwidth %}&fullwidth=1{% endif %}">
                     Sensowne?
                     {% if sort_by == 'makes_sense' %}{% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}{% endif %}
@@ -80,13 +80,13 @@
     </thead>
     <tbody>
         {% for opp in opportunities %}
-        <tr {% if opp.makes_sense %}style="background-color: #e7f7e7;"{% endif %}>
+        <tr {% if opp.makes_sense %}class="ewaluacja-optymalizacja__row-sensible"{% endif %}>
             <td>
                 <a href="{% url 'ewaluacja_optymalizuj_publikacje:optymalizuj' opp.rekord.slug %}">
                     <strong>{{ opp.rekord_tytul|truncatewords:10 }}</strong>
                 </a>
             </td>
-            <td style="text-align: center;">
+            <td class="ewaluacja-optymalizacja__cell-center">
                 <strong>{{ opp.rekord.original.punkty_kbn|default:"0"|floatformat:0 }}</strong>
             </td>
             <td>{{ opp.dyscyplina_naukowa.nazwa|truncatewords:3 }}</td>
@@ -99,44 +99,44 @@
                     ({{ opp.metryka_could_benefit.slot_nazbierany|floatformat:2 }} / {{ opp.metryka_could_benefit.slot_maksymalny|floatformat:2 }})
                 </small>
             </td>
-            <td style="text-align: center;">
-                <strong style="font-size: 1.2em; color: #c60;">{{ opp.slots_missing|floatformat:2 }}</strong>
+            <td class="ewaluacja-optymalizacja__cell-center">
+                <strong class="ewaluacja-optymalizacja__slots-missing">{{ opp.slots_missing|floatformat:2 }}</strong>
             </td>
-            <td style="text-align: center;">
+            <td class="ewaluacja-optymalizacja__cell-center">
                 <strong>{{ opp.slot_in_work|floatformat:2 }}</strong>
             </td>
-            <td style="text-align: center;">
+            <td class="ewaluacja-optymalizacja__cell-center">
                 {% if opp.punkty_roznica_a > 0 %}
-                    <strong style="color: green;">+{{ opp.punkty_roznica_a|floatformat:2 }}</strong>
+                    <strong class="ewaluacja-optymalizacja__value-positive">+{{ opp.punkty_roznica_a|floatformat:2 }}</strong>
                 {% elif opp.punkty_roznica_a < 0 %}
-                    <strong style="color: red;">{{ opp.punkty_roznica_a|floatformat:2 }}</strong>
+                    <strong class="ewaluacja-optymalizacja__value-negative">{{ opp.punkty_roznica_a|floatformat:2 }}</strong>
                 {% else %}
                     <strong>0.00</strong>
                 {% endif %}
             </td>
-            <td style="text-align: center;">
+            <td class="ewaluacja-optymalizacja__cell-center">
                 {% if opp.sloty_roznica_a > 0 %}
-                    <strong style="color: green;">+{{ opp.sloty_roznica_a|floatformat:2 }}</strong>
+                    <strong class="ewaluacja-optymalizacja__value-positive">+{{ opp.sloty_roznica_a|floatformat:2 }}</strong>
                 {% elif opp.sloty_roznica_a < 0 %}
-                    <strong style="color: red;">{{ opp.sloty_roznica_a|floatformat:2 }}</strong>
+                    <strong class="ewaluacja-optymalizacja__value-negative">{{ opp.sloty_roznica_a|floatformat:2 }}</strong>
                 {% else %}
                     <strong>0.00</strong>
                 {% endif %}
             </td>
-            <td style="text-align: center;">
+            <td class="ewaluacja-optymalizacja__cell-center">
                 {% if opp.punkty_roznica_b > 0 %}
-                    <strong style="color: green;">+{{ opp.punkty_roznica_b|floatformat:2 }}</strong>
+                    <strong class="ewaluacja-optymalizacja__value-positive">+{{ opp.punkty_roznica_b|floatformat:2 }}</strong>
                 {% elif opp.punkty_roznica_b < 0 %}
-                    <strong style="color: red;">{{ opp.punkty_roznica_b|floatformat:2 }}</strong>
+                    <strong class="ewaluacja-optymalizacja__value-negative">{{ opp.punkty_roznica_b|floatformat:2 }}</strong>
                 {% else %}
                     <strong>0.00</strong>
                 {% endif %}
             </td>
-            <td style="text-align: center;">
+            <td class="ewaluacja-optymalizacja__cell-center">
                 {% if opp.sloty_roznica_b > 0 %}
-                    <strong style="color: green;">+{{ opp.sloty_roznica_b|floatformat:2 }}</strong>
+                    <strong class="ewaluacja-optymalizacja__value-positive">+{{ opp.sloty_roznica_b|floatformat:2 }}</strong>
                 {% elif opp.sloty_roznica_b < 0 %}
-                    <strong style="color: red;">{{ opp.sloty_roznica_b|floatformat:2 }}</strong>
+                    <strong class="ewaluacja-optymalizacja__value-negative">{{ opp.sloty_roznica_b|floatformat:2 }}</strong>
                 {% else %}
                     <strong>0.00</strong>
                 {% endif %}
@@ -150,7 +150,7 @@
                     ({{ opp.metryka_currently_using.slot_nazbierany|floatformat:2 }} / {{ opp.metryka_currently_using.slot_maksymalny|floatformat:2 }})
                 </small>
             </td>
-            <td style="text-align: center;">
+            <td class="ewaluacja-optymalizacja__cell-center">
                 {% if opp.makes_sense %}
                     <span class="label success"><span class="fi-check"></span> TAK</span>
                 {% else %}

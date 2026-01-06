@@ -88,7 +88,7 @@
                                                     <a href="{{ zrodlo_item.link_do_pbn }}"
                                                        target="_blank"
                                                        class="button"
-                                                       onclick="event.stopPropagation();">
+                                                       data-stop-propagation="true">
                                                         <span class="fi-eye"></span> Zobacz w PBN
                                                     </a>
                                                 </div>
@@ -139,7 +139,7 @@
                                                     <a href="{{ zrodlo_item.link_do_pbn }}"
                                                        target="_blank"
                                                        class="button"
-                                                       onclick="event.stopPropagation();">
+                                                       data-stop-propagation="true">
                                                         <span class="fi-eye"></span> Zobacz w PBN
                                                     </a>
                                                 </div>
@@ -195,7 +195,7 @@
                                                         <a href="{{ zrodlo_item.link_do_pbn }}"
                                                            target="_blank"
                                                            class="button"
-                                                           onclick="event.stopPropagation();">
+                                                           data-stop-propagation="true">
                                                             <span class="fi-eye"></span> Zobacz w PBN
                                                         </a>
                                                     </div>
@@ -261,7 +261,7 @@
                                                     <a href="{{ journal.link_do_pbn }}"
                                                        target="_blank"
                                                        class="button"
-                                                       onclick="event.stopPropagation();">
+                                                       data-stop-propagation="true">
                                                         <span class="fi-eye"></span> Zobacz w PBN
                                                     </a>
                                                 </div>
@@ -311,7 +311,7 @@
                                                     <a href="{{ journal.link_do_pbn }}"
                                                        target="_blank"
                                                        class="button"
-                                                       onclick="event.stopPropagation();">
+                                                       data-stop-propagation="true">
                                                         <span class="fi-eye"></span> Zobacz w PBN
                                                     </a>
                                                 </div>
@@ -366,7 +366,7 @@
                                                         <a href="{{ journal.link_do_pbn }}"
                                                            target="_blank"
                                                            class="button"
-                                                           onclick="event.stopPropagation();">
+                                                           data-stop-propagation="true">
                                                             <span class="fi-eye"></span> Zobacz w PBN
                                                         </a>
                                                     </div>
@@ -582,6 +582,13 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Handle stop propagation for links inside clickable items
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('[data-stop-propagation]')) {
+            e.stopPropagation();
+        }
+    }, true);
+
     const typWyboruField = document.getElementById('id_typ_wyboru');
     const journalDocelowyField = document.getElementById('id_journal_docelowy');
     const zrodloDoceloweField = document.getElementById('id_zrodlo_docelowe');
