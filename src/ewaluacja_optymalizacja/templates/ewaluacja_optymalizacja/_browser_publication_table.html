@@ -28,8 +28,12 @@
                     {% if author.pkdaut %}{{ author.pkdaut|floatformat:2 }} pkt{% else %}-{% endif %}
                 </small>
                 <small class="ewaluacja-optymalizacja__author-slot"
-                       title="Slot udziału">
-                    {% if author.slot %}{{ author.slot|floatformat:4 }}{% else %}-{% endif %}
+                       title="Slot za pracę / nazbierany / maksymalny">
+                    {% if author.slot %}{{ author.slot|floatformat:2 }}{% else %}-{% endif %}
+                    /
+                    {% if author.slot_nazbierany %}{{ author.slot_nazbierany|floatformat:2 }}{% else %}-{% endif %}
+                    /
+                    {% if author.max_slot %}{{ author.max_slot|floatformat:2 }}{% else %}-{% endif %}
                 </small>
 
                 <!-- Badge: udział wybrany -->

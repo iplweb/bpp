@@ -259,8 +259,66 @@ def _prefetch_autor_dyscypliny(autor_rok_pairs):
     return autor_dyscypliny
 
 
+def _prefetch_autor_max_slots(autor_dysc_pairs):
+    """Pobierz maksymalne sloty dla par (autor_id, dyscyplina_id)."""
+    from django.db.models import Sum
+
+    from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaCalosc
+
+    max_slots = {}
+    if not autor_dysc_pairs:
+        return max_slots
+
+    autor_ids = {p[0] for p in autor_dysc_pairs}
+    dysc_ids = {p[1] for p in autor_dysc_pairs}
+
+    qs = (
+        IloscUdzialowDlaAutoraZaCalosc.objects.filter(
+            autor_id__in=autor_ids,
+            dyscyplina_naukowa_id__in=dysc_ids,
+        )
+        .values("autor_id", "dyscyplina_naukowa_id")
+        .annotate(total=Sum("ilosc_udzialow"))
+    )
+    for row in qs:
+        key = (row["autor_id"], row["dyscyplina_naukowa_id"])
+        max_slots[key] = float(row["total"]) if row["total"] else None
+    return max_slots
+
+
+def _prefetch_autor_slot_nazbierany(autor_dysc_pairs):
+    """Pobierz nazbierane sloty dla par (autor_id, dyscyplina_id)."""
+    from ewaluacja_metryki.models import MetrykaAutora
+
+    nazbierane = {}
+    if not autor_dysc_pairs:
+        return nazbierane
+
+    autor_ids = {p[0] for p in autor_dysc_pairs}
+    dysc_ids = {p[1] for p in autor_dysc_pairs}
+
+    qs = MetrykaAutora.objects.filter(
+        autor_id__in=autor_ids,
+        dyscyplina_naukowa_id__in=dysc_ids,
+    ).values("autor_id", "dyscyplina_naukowa_id", "slot_nazbierany")
+
+    for row in qs:
+        key = (row["autor_id"], row["dyscyplina_naukowa_id"])
+        val = row["slot_nazbierany"]
+        nazbierane[key] = float(val) if val else None
+    return nazbierane
+
+
 def _build_publication_list(
-    pub_list, model_type, rekord_ids, selected, punktacja_cache, autorzy_by_pub, ad_map
+    pub_list,
+    model_type,
+    rekord_ids,
+    selected,
+    punktacja_cache,
+    autorzy_by_pub,
+    ad_map,
+    autor_max_slots,
+    autor_slot_nazbierany,
 ):
     """Zbuduj listę publikacji z autorami."""
     publications = []
@@ -275,6 +333,8 @@ def _build_publication_list(
             model_type,
             pub_punktacja,
             ad_map,
+            autor_max_slots,
+            autor_slot_nazbierany,
         )
 
         if authors:
@@ -395,6 +455,15 @@ def _get_filtered_publications(uczelnia, filters, reported_ids):
     # Phase 5: Batch pre-fetch Autor_Dyscyplina
     autor_dyscypliny = _prefetch_autor_dyscypliny(ciagle_pairs | zwarte_pairs)
 
+    # Phase 5b: Pobierz maksymalne sloty dla par (autor, dyscyplina)
+    autor_dysc_pairs = set()
+    for ar in ciagle_autorzy:
+        autor_dysc_pairs.add((ar.autor_id, ar.dyscyplina_naukowa_id))
+    for ar in zwarte_autorzy:
+        autor_dysc_pairs.add((ar.autor_id, ar.dyscyplina_naukowa_id))
+    autor_max_slots = _prefetch_autor_max_slots(autor_dysc_pairs)
+    autor_slot_nazbierany = _prefetch_autor_slot_nazbierany(autor_dysc_pairs)
+
     # Phase 6: Zbuduj wyniki
     publications = _build_publication_list(
         ciagle_list,
@@ -404,6 +473,8 @@ def _get_filtered_publications(uczelnia, filters, reported_ids):
         punktacja_cache,
         ciagle_autorzy_by_pub,
         autor_dyscypliny,
+        autor_max_slots,
+        autor_slot_nazbierany,
     )
     publications.extend(
         _build_publication_list(
@@ -414,13 +485,23 @@ def _get_filtered_publications(uczelnia, filters, reported_ids):
             punktacja_cache,
             zwarte_autorzy_by_pub,
             autor_dyscypliny,
+            autor_max_slots,
+            autor_slot_nazbierany,
         )
     )
 
     return publications
 
 
-def _build_authors_list(autor_records, rok, model_type, punktacja_cache, autor_dysc):
+def _build_authors_list(
+    autor_records,
+    rok,
+    model_type,
+    punktacja_cache,
+    autor_dysc,
+    autor_max_slots,
+    autor_slot_nazbierany,
+):
     """Zbuduj listę autorów z prefetchowanych danych."""
     authors = []
     for autor_rekord in autor_records:
@@ -432,6 +513,10 @@ def _build_authors_list(autor_records, rok, model_type, punktacja_cache, autor_d
         key = (autor_rekord.autor_id, autor_rekord.dyscyplina_naukowa_id)
         punktacja = punktacja_cache.get(key, {})
 
+        # Pobierz maksymalny slot i nazbierany slot dla autora w dyscyplinie
+        max_slot = autor_max_slots.get(key)
+        slot_nazbierany = autor_slot_nazbierany.get(key)
+
         authors.append(
             {
                 "pk": autor_rekord.pk,
@@ -442,6 +527,8 @@ def _build_authors_list(autor_records, rok, model_type, punktacja_cache, autor_d
                 "model_type": model_type,
                 "pkdaut": punktacja.get("pkdaut"),
                 "slot": punktacja.get("slot"),
+                "slot_nazbierany": slot_nazbierany,
+                "max_slot": max_slot,
             }
         )
 
