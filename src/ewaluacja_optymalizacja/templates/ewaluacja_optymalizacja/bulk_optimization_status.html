@@ -69,7 +69,7 @@
             <form method="post"
                   action="{% url 'ewaluacja_optymalizacja:bulk-cancel' uczelnia_id task_id %}"
                   style="display: inline;"
-                  onsubmit="return confirm('Czy na pewno chcesz anulować zadanie optymalizacji?');">
+                  data-confirm="Czy na pewno chcesz anulować zadanie optymalizacji?">
                 {% csrf_token %}
                 <button type="submit" class="button alert">
                     <span class="fi-x"></span> Anuluj zadanie

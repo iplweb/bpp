@@ -9,7 +9,7 @@
             {% if session.status == 'running' %}
             <form method="post" action="{% url 'pbn_import:cancel' session.id %}"
                   style="display: inline;"
-                  onsubmit="return confirm('Czy na pewno chcesz anulować import?');">
+                  data-confirm="Czy na pewno chcesz anulować import?">
                 {% csrf_token %}
                 <button type="submit" class="button small alert">
                     <span class="fi-x"></span> Anuluj

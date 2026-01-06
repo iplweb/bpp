@@ -29,7 +29,7 @@
 
 BRANCH=`git branch | sed -n '/\* /s///p'`
 
-.PHONY: clean distclean tests release tests-without-selenium tests-with-selenium docker destroy-test-databases coveralls-upload clean-coverage combine-coverage cache-delete buildx-cache-stats buildx-cache-prune buildx-cache-prune-aggressive bump-dev bump-release bump-and-start-dev migrate new-worktree clean-worktree
+.PHONY: clean distclean tests release tests-without-selenium tests-with-selenium docker destroy-test-databases coveralls-upload clean-coverage combine-coverage cache-delete buildx-cache-stats buildx-cache-prune buildx-cache-prune-aggressive bump-dev bump-release bump-and-start-dev migrate new-worktree clean-worktree generate-500-page
 
 PYTHON=python3
 
@@ -225,7 +225,10 @@ gh-run-watch-docker-images-alt:
 sleep-3:
 	sleep 3
 
-new-release: uv-lock upgrade-version sleep-3 gh-run-watch-docker-images
+ generate-500-page:
+	uv run python src/manage.py generate_500_page
+
+ new-release: uv-lock upgrade-version sleep-3 gh-run-watch-docker-images
 
 release: full-tests new-release
 

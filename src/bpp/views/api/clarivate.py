@@ -5,6 +5,7 @@ import sys
 import requests
 import rollbar
 from braces.views import GroupRequiredMixin, JSONResponseMixin
+from django.core.exceptions import ImproperlyConfigured
 from django.views.generic.detail import BaseDetailView
 
 from bpp.const import GR_WPROWADZANIE_DANYCH
@@ -26,6 +27,10 @@ class GetWoSAMRInformation(JSONResponseMixin, GroupRequiredMixin, BaseDetailView
 
         try:
             res = self.object.wosclient().query_single(pmid, doi)
+        except ImproperlyConfigured as e:
+            rollbar.report_exc_info(sys.exc_info())
+            logger.exception("Błąd konfiguracji WOS-AMR")
+            return {"status": "error", "info": str(e)}
         except requests.RequestException:
             rollbar.report_exc_info(sys.exc_info())
             logger.exception("Błąd połączenia z WOS-AMR")

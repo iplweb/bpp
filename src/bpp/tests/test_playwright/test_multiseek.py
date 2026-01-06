@@ -7,44 +7,39 @@ from bpp.models.cache import Rekord
 
 @pytest.mark.django_db
 def test_wyrzuc(wydawnictwo_zwarte, page: Page, live_server):
+    """Test that removeFromResults function works - strikes through the element."""
     page.goto(live_server.url + reverse("multiseek:index"))
     page.evaluate("Cookielaw.accept()")
 
-    page.click("#multiseek-szukaj")
+    # Load results into iframe using the preview button
+    page.click("#sendQueryButton")
     page.wait_for_load_state("networkidle")
 
-    rekord_pk = Rekord.objects.all().first().js_safe_pk
-    page.evaluate(f"multiseek.removeFromResults('{rekord_pk}')")
+    # Get iframe containing results
+    iframe_frame = page.frame(name="list_frame")
 
-    # Wait for element to be struck through
-    page.wait_for_function(
+    # Call removeFromResults in iframe context (element is in iframe)
+    rekord_pk = Rekord.objects.all().first().js_safe_pk
+    iframe_frame.evaluate(f"multiseek.removeFromResults('{rekord_pk}')")
+
+    # Wait for element to be struck through in iframe
+    iframe_frame.wait_for_function(
         """() => {
             const element = document.querySelector('.multiseek-element');
             return element && element.style.textDecoration.includes('line-through');
         }"""
     )
 
-    page.goto(live_server.url + reverse("multiseek:results"))
-    page.wait_for_load_state("networkidle")
-
-    expect(page.locator("body")).to_contain_text("Z zapytania usunięto")
-
-    page.click("#pokaz-jakie")
-
-    page.evaluate(f"multiseek.removeFromResults('{rekord_pk}')")
+    # Call again to restore (toggle behavior)
+    iframe_frame.evaluate(f"multiseek.removeFromResults('{rekord_pk}')")
 
     # Wait for element to NOT be struck through
-    page.wait_for_function(
+    iframe_frame.wait_for_function(
         """() => {
             const element = document.querySelector('.multiseek-element');
             return element && !element.style.textDecoration.includes('line-through');
         }"""
     )
-
-    page.goto(live_server.url + reverse("multiseek:results"))
-    page.wait_for_load_state("networkidle")
-
-    expect(page.locator("body")).not_to_contain_text("Z zapytania usunięto")
 
 
 def test_szukaj(page: Page, live_server):

@@ -195,6 +195,7 @@ analyze_python() {
     analyze_python_broad_exceptions
     analyze_python_unsafe_get
     analyze_python_imports
+    analyze_test_coverage
 }
 
 analyze_python_large_files() {
@@ -368,6 +369,139 @@ analyze_python_imports() {
     fi
 }
 
+analyze_test_coverage() {
+    print_subheader "Pokrycie testami (liczba testów na aplikację)"
+
+    local total_test_files=0
+    local total_test_functions=0
+    local total_app_lines=0
+    local total_test_lines=0
+    local app_with_tests=0
+
+    # Użyj pliku tymczasowego do przechowywania danych
+    local tmpfile
+    tmpfile=$(mktemp)
+
+    # Dla każdego katalogu w src/ który jest aplikacją Django
+    while IFS= read -r app_dir; do
+        local app_name
+        app_name=$(basename "$app_dir")
+
+        # Sprawdź czy to aplikacja Django (ma models.py, admin.py, lub tests/)
+        if [[ ! -f "$app_dir/models.py" ]] && [[ ! -f "$app_dir/admin.py" ]] && [[ ! -d "$app_dir/tests" ]] && [[ ! -f "$app_dir/tests.py" ]]; then
+            continue
+        fi
+
+        # Zlicz linie kodu aplikacji (pomijając migracje i testy)
+        local app_lines=0
+        while IFS= read -r file; do
+            local lines
+            lines=$(wc -l < "$file" 2>/dev/null | tr -d ' ') || lines=0
+            app_lines=$((app_lines + lines))
+        done < <(find "$app_dir" -name "*.py" -type f \
+            ! -path "*/migrations/*" \
+            ! -path "*/tests/*" \
+            ! -name "test_*.py" \
+            ! -name "tests.py" \
+            ! -path "*/__pycache__/*" \
+            2>/dev/null)
+
+        # Znajdź pliki testowe w aplikacji
+        local test_files=()
+        local test_lines=0
+        local test_functions=0
+
+        # Dodaj tests.py jeśli istnieje
+        if [[ -f "$app_dir/tests.py" ]]; then
+            test_files+=("$app_dir/tests.py")
+        fi
+
+        # Dodaj wszystkie test_*.py w głównym katalogu aplikacji
+        while IFS= read -r test_file; do
+            test_files+=("$test_file")
+        done < <(find "$app_dir" -maxdepth 1 -name "test_*.py" -type f 2>/dev/null | sort)
+
+        # Dodaj wszystkie pliki z katalogu tests/
+        if [[ -d "$app_dir/tests" ]]; then
+            while IFS= read -r test_file; do
+                test_files+=("$test_file")
+            done < <(find "$app_dir/tests" -name "test_*.py" -type f 2>/dev/null | sort)
+        fi
+
+        # Jeśli brak plików testowych, pomiń
+        if [[ ${#test_files[@]} -eq 0 ]]; then
+            continue
+        fi
+
+        # Zlicz linie kodu testów i funkcje testowe
+        for test_file in "${test_files[@]}"; do
+            local lines
+            local count
+            if [[ -f "$test_file" ]]; then
+                lines=$(wc -l < "$test_file" 2>/dev/null | tr -d ' ') || lines=0
+                test_lines=$((test_lines + lines))
+                count=$(grep -c "^def test_" "$test_file" 2>/dev/null) || count=0
+            else
+                lines=0
+                count=0
+            fi
+            test_functions=$((test_functions + count))
+        done
+
+        # Oblicz ratio
+        local ratio=0
+        if [[ $app_lines -gt 0 ]]; then
+            ratio=$(echo "scale=2; $test_lines / $app_lines" | bc 2>/dev/null) || ratio=0
+        fi
+
+        # Zapisz dane do pliku tymczasowego (ratio, app_name, app_lines, test_lines, num_files)
+        echo "$ratio $app_name $app_lines $test_lines ${#test_files[@]}" >> "$tmpfile"
+
+        total_app_lines=$((total_app_lines + app_lines))
+        total_test_lines=$((total_test_lines + test_lines))
+        total_test_files=$((total_test_files + ${#test_files[@]}))
+        total_test_functions=$((total_test_functions + test_functions))
+        app_with_tests=$((app_with_tests + 1))
+
+    done < <(find "$SRC_DIR" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort)
+
+    # Oblicz całkowite ratio
+    local total_ratio=0
+    if [[ $total_app_lines -gt 0 ]]; then
+        total_ratio=$(echo "scale=2; $total_test_lines / $total_app_lines" | bc 2>/dev/null) || total_ratio=0
+    fi
+
+    # Wyświetl nagłówek
+    echo ""
+    printf "%-35s %-12s %-12s %-10s %-10s\n" "Aplikacja" "Linie app" "Linie test" "Ratio" "Pliki"
+    printf "%-35s %-12s %-12s %-10s %-10s\n" "$(printf '%35s' | tr ' ' '-')" "$(printf '%12s' | tr ' ' '-')" "$(printf '%12s' | tr ' ' '-')" "$(printf '%10s' | tr ' ' '-')" "$(printf '%10s' | tr ' ' '-')"
+
+    # Wyświetl posortowane dane
+    if [[ -f "$tmpfile" ]] && [[ -s "$tmpfile" ]]; then
+        while IFS=' ' read -r ratio app_name app_lines test_lines num_files; do
+            printf "%-35s %-12s %-12s %-10s %-10s\n" "$app_name" "$app_lines" "$test_lines" "$ratio" "$num_files"
+        done < <(sort -n "$tmpfile")
+    fi
+
+    # Wyświetl podsumowanie
+    printf "%-35s %-12s %-12s %-10s %-10s\n" "$(printf '%35s' | tr ' ' '-')" "$(printf '%12s' | tr ' ' '-')" "$(printf '%12s' | tr ' ' '-')" "$(printf '%10s' | tr ' ' '-')" "$(printf '%10s' | tr ' ' '-')"
+    printf "%-35s %-12s %-12s %-10s %-10s\n" "RAZEM" "$total_app_lines" "$total_test_lines" "$total_ratio" "$total_test_files"
+    echo ""
+    echo "Liczba aplikacji z testami: $app_with_tests"
+    echo "Całkowita liczba funkcji testowych: $total_test_functions"
+
+    if [[ $app_with_tests -lt 10 ]]; then
+        print_medium "Tylko $app_with_tests aplikacji ma testy"
+    elif [[ $app_with_tests -lt 30 ]]; then
+        print_ok "Dobry poziom pokrycia testami ($app_with_tests aplikacji)"
+    else
+        print_ok "Wysoki poziom pokrycia testami ($app_with_tests aplikacji)"
+    fi
+
+    # Usuń plik tymczasowy
+    rm -f "$tmpfile"
+}
+
 # ============================================================================
 # ANALIZA SZABLONÓW HTML
 # ============================================================================
@@ -390,10 +524,30 @@ analyze_inline_javascript() {
                     "onkeyup=" "onkeydown=" "onfocus=" "onblur=" "onmouseover=")
 
     for pattern in "${patterns[@]}"; do
-        while IFS=: read -r file line_num _; do
+        while IFS=: read -r file line_num content; do
             if [[ -z "$file" ]]; then
                 continue
             fi
+
+            # Pomiń 500.html (generowany automatycznie)
+            if [[ "$file" == *"/500.html" ]]; then
+                continue
+            fi
+
+            # Pomiń tinymce/examples (zewnętrzne)
+            if [[ "$file" == *"/tinymce/examples/"* ]]; then
+                continue
+            fi
+
+            # Sprawdź czy event handler używa namespaced funkcji
+            # Ignoruj jeśli zawiera window.bpp., window., document., return
+            if [[ "$content" =~ window\.[a-zA-Z] ]] || \
+               [[ "$content" =~ document\.[a-zA-Z] ]] || \
+               [[ "$content" == "return" ]] || \
+               [[ "$content" == *".bpp."* ]]; then
+                continue
+            fi
+
             local rel_path="${file#$PROJECT_ROOT/}"
             print_medium "$rel_path:$line_num - $pattern"
             found=1

@@ -75,7 +75,7 @@
             </p>
             <form method="post"
                   action="{% url 'ewaluacja_optymalizacja:cancel-discipline-swap' task_id %}"
-                  onsubmit="return confirm('Czy na pewno chcesz anulować to zadanie?');">
+                  data-confirm="Czy na pewno chcesz anulować to zadanie?">
                 {% csrf_token %}
                 <button type="submit" class="button small alert">
                     <span class="fi-x"></span> Anuluj zadanie

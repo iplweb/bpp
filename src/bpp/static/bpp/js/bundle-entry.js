@@ -37,7 +37,8 @@ select2(window.jQuery);
 window.jQuery.fn.select2.defaults.set('language', window.select2PlLanguage);
 
 // ===== 7. MUSTACHE + TONE (for notifications) =====
-import '../../../../notifications/static/notifications/js/mustache.js';
+import * as Mustache from '../../../../notifications/static/notifications/js/mustache.js';
+window.Mustache = Mustache;
 
 import * as Tone from 'tone';
 window.Tone = Tone;
@@ -45,7 +46,9 @@ window.Tone = Tone;
 // ===== 8. DJANGO LIBRARIES (from .venv) =====
 // Paths relative to site-packages
 import '../../../../../.venv/lib/python3.12/site-packages/cookielaw/static/cookielaw/js/cookielaw.js';
-// multiseek.js loaded separately in multiseek/index.html template (legacy global functions)
+// NOTE: multiseek.js must be loaded separately (not bundled) because it uses
+// sloppy mode global function declarations that don't work in ES modules.
+// It's loaded in multiseek/index.html template.
 import '../../../../../.venv/lib/python3.12/site-packages/session_security/static/session_security/script.js';
 import '../../../../../.venv/lib/python3.12/site-packages/dal/static/autocomplete_light/autocomplete_light.js';
 import '../../../../../.venv/lib/python3.12/site-packages/dal/static/autocomplete_light/i18n/pl.js';
@@ -56,9 +59,16 @@ import './jsi18n-pl.js';
 
 // ===== 10. BPP APPLICATION CODE =====
 import './bpp.js';
+import './form-handlers.js';
 import '../../../../notifications/static/notifications/js/notifications.js';
 
 // ===== 11. GLOBAL EXPORTS =====
 // NOTE: django-autocomplete-light's 'yl' namespace is patched via sed
 // post-processing in Gruntfile.js (shell:patchBundle task) to ensure
 // it's available globally for inline scripts.
+
+// ===== 12. PREVENT TREE-SHAKING FOR HTML-USED OBJECTS =====
+// These are used in HTML templates, so we need to prevent tree-shaking
+void window.bppNotifications;
+void window.Mustache;
+void window.Tone;

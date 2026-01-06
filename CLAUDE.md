@@ -157,6 +157,11 @@ bin/ustaw-domyslne-haslo-admina.sh
 - `make js-tests` - Run JavaScript/QUnit tests
 - `make docker` - Build all Docker containers
 - `make bdist_wheel` - Build distribution wheel for production
+- `make generate-500-page` - Generate static 500.html page (auto-generated, DO NOT EDIT)
+  - **IMPORTANT:** `src/bpp/static/500.html` is auto-generated from `src/bpp/templates/50x.html`
+  - Any manual edits to `500.html` will be lost when regenerated
+  - To modify the error page, edit the template at `src/bpp/templates/50x.html` and run `make generate-500-page`
+  - This command is automatically run during `make new-release`
 
 ### Git Worktree Setup
 When creating a new git worktree for parallel development:
@@ -351,6 +356,7 @@ When adding new icons to menus, add them to the selector list in `top_bar.scss` 
 - Migrations (including SQL): `src/*/migrations/`
 - Frontend assets: `src/bpp/static/` and build via Grunt
 - Configuration files: `pytest.ini`, `pyproject.toml`, `package.json`, `Gruntfile.js`
+- Generated files: `src/bpp/static/500.html` - Auto-generated 500 error page (DO NOT EDIT)
 
 ## Database Schema and Migrations
 The project uses a sophisticated migration system with both Python and SQL migrations:

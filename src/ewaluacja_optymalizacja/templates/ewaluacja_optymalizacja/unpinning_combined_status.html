@@ -76,7 +76,7 @@
                 możesz je anulować poniższym przyciskiem.
             </p>
             <form method="post" action="{% url 'ewaluacja_optymalizacja:cancel-unpinning-task' task_id %}"
-                  onsubmit="return confirm('Czy na pewno chcesz anulować to zadanie? Będziesz musiał uruchomić analizę ponownie.');">
+                  data-confirm="Czy na pewno chcesz anulować to zadanie? Będziesz musiał uruchomić analizę ponownie.">
                 {% csrf_token %}
                 <button type="submit" class="button small alert">
                     <span class="fi-x"></span> Anuluj zadanie

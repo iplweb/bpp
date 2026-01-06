@@ -95,6 +95,11 @@ def test_live_server(live_server, page: Page):
 @pytest.mark.django_db(transaction=True)
 def test_channels_live_server(preauth_asgi_page: Page):
     s = "test notyfikacji 123 456"
+
+    page = preauth_asgi_page
+
+    page.wait_for_timeout(500)
+
     call_command(
         "send_notification",
         preauth_asgi_page.authorized_user.username,
@@ -102,13 +107,12 @@ def test_channels_live_server(preauth_asgi_page: Page):
         verbosity=0,
     )
 
-    page = preauth_asgi_page
-
     page.wait_for_function(
         f"() => document.body.textContent.includes('{s}')", timeout=1000
     )
 
 
+@pytest.mark.django_db(transaction=True)
 def test_bpp_notifications(preauth_asgi_page: Page):
     """Sprawdz, czy notyfikacje dochodza.
     Wymaga uruchomionego staging-server.

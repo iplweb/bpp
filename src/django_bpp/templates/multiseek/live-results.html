@@ -9,6 +9,14 @@
 {% endblock %}
 
 {% block extrahead %}
+    <script type="text/javascript">
+        /* multiseek.js config */
+        var djangoLanguageCode = '{{ LANGUAGE_CODE }}';
+        var multiseekDateFormat = 'yyyy-mm-dd';
+        var multiseekDateWeekStart = 1;
+    </script>
+    <script src="{% static 'multiseek/js/multiseek.js' %}"></script>
+
     <style>
         html, body {
             height: auto;

@@ -52,7 +52,7 @@
             </ul>
         </div>
 
-        <form method="post" onsubmit="return confirm('Czy NA PEWNO chcesz usunąć źródło \'{{ zrodlo.nazwa }}\'?\n\nTa operacja jest NIEODWRACALNA!');">
+        <form method="post" data-confirm="Czy NA PEWNO chcesz usunąć źródło '{{ zrodlo.nazwa }}'?\n\nTa operacja jest NIEODWRACALNA!">
             {% csrf_token %}
 
             <div class="button-group">
