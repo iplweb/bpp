@@ -178,8 +178,9 @@ module.exports = function (grunt) {
             // Post-process bundle to fix IIFE scope issues
             // django-autocomplete-light: yl namespace (esbuild renames to yl2)
             patchBundle: {
-                command: "sed -i '' 's/var yl2=yl2||{}/window.yl=window.yl||{};var yl2=window.yl/g' " +
-                    "src/bpp/static/bpp/js/dist/bundle.js"
+                command: "sed -i.bak 's/var yl2=yl2||{}/window.yl=window.yl||{};var yl2=window.yl/g' " +
+                    "src/bpp/static/bpp/js/dist/bundle.js && " +
+                    "rm -f src/bpp/static/bpp/js/dist/bundle.js.bak"
             },
             collectstatic: {
                 command: 'uv run src/manage.py collectstatic --noinput -v0 --traceback'
