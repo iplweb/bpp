@@ -4,6 +4,17 @@ Historia zmian
 
 .. towncrier release notes start
 
+bpp 202601.1307 (2026-01-06)
+============================
+
+Usprawnienie
+------------
+
+- Dodano nowy widok "Przegladarka ewaluacji" umozliwiajacy przegladanie wszystkich publikacji z raportowanych dyscyplin. Widok wyswietla pozioma tabele z punktacja dyscyplin, filtrowanie po roku, tytule, dyscyplinie i nazwisku autora, oraz pozwala na przypinanie/odpinanie dyscyplin i zamiane dyscypliny na druga dla autorow dwudyscyplinowych. (przegladarka-ewaluacji)
+- Optymalizacja odpinania slotów pomija teraz prace jednoautorskie - nie ma sensu ich odpinać, bo nie ma alternatywnego autora do przypisania slotu. (unpinning-skip-single-author)
+- Dodano funkcję analizy możliwości zamiany dyscyplin w module optymalizacji ewaluacji. Funkcja wyszukuje publikacje wieloautorskie, gdzie zamiana dyscypliny autora (główna <-> subdyscyplina) zwiększa całkowitą punktację za publikację. Analiza wykorzystuje równoległe przetwarzanie z Celery chord dla przyspieszenia obliczeń (2.5-6x szybciej). (zamiana-dyscyplin)
+
+
 bpp 202601.1306 (2026-01-04)
 ============================
 
