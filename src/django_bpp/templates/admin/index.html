@@ -137,23 +137,23 @@
                 <h2>Ostatnio edytowane</h2>
                 {% get_admin_log 10 as admin_log for_user user %}
                 {% if not admin_log %}
-                <p style="padding: 10px; color: #666;">Brak dostępnych akcji</p>
+                <p class="admin-dashboard__empty-message">Brak dostępnych akcji</p>
                 {% else %}
-                <ul class="actionlist" style="list-style: none; padding: 0; margin: 0;">
+                <ul class="actionlist admin-dashboard__action-list">
                 {% for entry in admin_log %}
-                <li class="{% if entry.is_addition %}addlink{% endif %}{% if entry.is_change %}changelink{% endif %}{% if entry.is_deletion %}deletelink{% endif %}" style="padding: 8px 10px; border-bottom: 1px solid #e0e0e0;">
+                <li class="{% if entry.is_addition %}addlink{% endif %}{% if entry.is_change %}changelink{% endif %}{% if entry.is_deletion %}deletelink{% endif %} admin-dashboard__action-item">
                     {% if entry.is_deletion or not entry.get_admin_url %}
                         <strong>{{ entry.object_repr }}</strong>
                     {% else %}
-                        <a href="{{ entry.get_admin_url }}" style="font-weight: 500;">{{ entry.object_repr }}</a>
+                        <a href="{{ entry.get_admin_url }}" class="admin-dashboard__action-link">{{ entry.object_repr }}</a>
                     {% endif %}
                     <br>
                     {% if entry.content_type %}
-                        <span class="mini quiet" style="font-size: 0.85em; color: #666;">{{ entry.content_type.name|capfirst }}</span>
+                        <span class="mini quiet admin-dashboard__action-meta">{{ entry.content_type.name|capfirst }}</span>
                     {% else %}
-                        <span class="mini quiet" style="font-size: 0.85em; color: #666;">{% trans 'Unknown content' %}</span>
+                        <span class="mini quiet admin-dashboard__action-meta">{% trans 'Unknown content' %}</span>
                     {% endif %}
-                    <span class="mini quiet" style="font-size: 0.85em; color: #999; float: right;">{{ entry.action_time|naturaltime }}</span>
+                    <span class="mini quiet admin-dashboard__action-time">{{ entry.action_time|naturaltime }}</span>
                 </li>
                 {% endfor %}
                 </ul>
@@ -173,21 +173,21 @@
 
             <div class="grp-module">
                 <h2>Informacje</h2>
-                <div style="padding: 15px;">
-                    <p style="margin-bottom: 15px;">Używasz oprogramowania BPP wersja <strong>{% bpp_version %}</strong></p>
-                    <ul style="list-style: none; padding: 0; margin: 0;">
-                        <li style="margin-bottom: 8px;">
-                            <a href="https://support.iplweb.pl" target="_blank" style="text-decoration: none;">
+                <div class="admin-dashboard__info-container">
+                    <p class="admin-dashboard__info-version">Używasz oprogramowania BPP wersja <strong>{% bpp_version %}</strong></p>
+                    <ul class="admin-dashboard__info-links">
+                        <li class="admin-dashboard__info-link-item">
+                            <a href="https://support.iplweb.pl" target="_blank" class="admin-dashboard__info-link">
                                 <span class="fi-link"></span> support.iplweb.pl
                             </a>
                         </li>
-                        <li style="margin-bottom: 8px;">
-                            <a href="https://bpp.readthedocs.io" target="_blank" style="text-decoration: none;">
+                        <li class="admin-dashboard__info-link-item">
+                            <a href="https://bpp.readthedocs.io" target="_blank" class="admin-dashboard__info-link">
                                 <span class="fi-book"></span> bpp.readthedocs.io
                             </a>
                         </li>
-                        <li style="margin-bottom: 8px;">
-                            <a href="https://bpp.iplweb.pl" target="_blank" style="text-decoration: none;">
+                        <li class="admin-dashboard__info-link-item">
+                            <a href="https://bpp.iplweb.pl" target="_blank" class="admin-dashboard__info-link">
                                 <span class="fi-home"></span> bpp.iplweb.pl
                             </a>
                         </li>
@@ -253,7 +253,7 @@
                     hx-get="{% url 'admin_dashboard:menu_clicks_stats' %}"
                     hx-trigger="load"
                     hx-swap="innerHTML">
-                    <p style="padding: 10px; color: #666;">Ładowanie...</p>
+                    <p class="admin-dashboard__loading-message">Ładowanie...</p>
                 </div>
             </div>
 

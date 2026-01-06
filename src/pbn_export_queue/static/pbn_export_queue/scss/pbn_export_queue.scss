@@ -1,0 +1,470 @@
+// pbn_export_queue.scss
+// Styles for PBN Export Queue module
+// Uses BEM naming convention: .pbn-export-queue__element--modifier
+
+// =============================================================================
+// BLOCK: .pbn-export-queue
+// =============================================================================
+
+.pbn-export-queue {
+    // =========================================================================
+    // Detail page elements
+    // =========================================================================
+
+    // Header section with title and buttons
+    &__header {
+        text-align: right;
+        padding-top: 20px;
+    }
+
+    // Disabled button styling
+    &__button--disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    // Inline form for buttons
+    &__form--inline {
+        display: inline;
+    }
+
+    // Link without decoration (for record links)
+    &__link--plain {
+        text-decoration: none;
+        color: inherit;
+    }
+
+    // Small button group with top margin
+    &__button-group--small {
+        margin-top: 5px;
+    }
+
+    // Status section styles
+    &__status-excluded {
+        margin-top: 10px;
+        color: #6c757d;
+    }
+
+    &__status-excluded-text {
+        margin-top: 5px;
+        font-size: 0.9em;
+    }
+
+    // Error section styles
+    &__error-section {
+        margin-top: 10px;
+    }
+
+    &__error-title {
+        color: #c60f13;
+    }
+
+    &__error-message {
+        margin-top: 5px;
+        font-size: 0.9em;
+    }
+
+    &__error-details {
+        margin-top: 10px;
+    }
+
+    // JSON code block styling
+    &__json-pre {
+        background: #fff5f5;
+        padding: 12px 15px;
+        border-radius: 5px;
+        border: 2px solid #ffc9c9;
+        border-left: 4px solid #c60f13;
+        overflow-x: auto;
+        margin-top: 8px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    // Collapsible details styling
+    &__details {
+        margin-bottom: 15px;
+    }
+
+    &__details-summary {
+        cursor: pointer;
+        color: #1779ba;
+        font-weight: 500;
+        padding: 8px 0;
+    }
+
+    &__details-content {
+        margin-top: 10px;
+    }
+
+    // JSON data display pre block
+    &__json-data-pre {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 5px;
+        border: 1px solid #e9ecef;
+        overflow-x: auto;
+        max-height: 500px;
+        overflow-y: auto;
+    }
+
+    // Hidden textarea for clipboard operations
+    &__hidden-field {
+        position: absolute;
+        left: -9999px;
+    }
+
+    // Hint text at bottom
+    &__hint {
+        margin-top: 15px;
+        font-size: 0.9em;
+        color: #666;
+    }
+
+    // Message history styles
+    &__toggle-view {
+        margin-bottom: 10px;
+    }
+
+    &__messages-container {
+        max-height: 500px;
+        overflow-y: auto;
+    }
+
+    &__message-block {
+        background: white;
+        border-radius: 4px;
+        padding: 12px;
+        margin-bottom: 12px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+
+        &--info {
+            border-left: 4px solid #1779ba;
+        }
+
+        &--success {
+            border-left: 4px solid #3adb76;
+        }
+
+        &--warning {
+            border-left: 4px solid #ffae00;
+        }
+
+        &--error {
+            border-left: 4px solid #cc4b37;
+        }
+    }
+
+    &__message-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+
+    &__message-icon {
+        font-size: 1.2em;
+        margin-right: 10px;
+
+        &--info {
+            color: #1779ba;
+        }
+
+        &--success {
+            color: #3adb76;
+        }
+
+        &--warning {
+            color: #ffae00;
+        }
+
+        &--error {
+            color: #cc4b37;
+        }
+    }
+
+    &__message-datetime {
+        color: #2c3e50;
+    }
+
+    &__message-label {
+        margin-left: 10px;
+    }
+
+    &__message-content {
+        color: #495057;
+        font-size: 0.95em;
+    }
+
+    &__traceback-summary {
+        cursor: pointer;
+        color: #dc3545;
+        font-weight: 500;
+    }
+
+    &__traceback-pre {
+        margin-top: 10px;
+        padding: 10px;
+        background: #f8f9fa;
+        border-radius: 4px;
+        font-size: 0.85em;
+        overflow-x: auto;
+    }
+
+    &__message-text {
+        white-space: pre-wrap;
+        word-wrap: break-word;
+    }
+
+    // Raw messages view
+    &__raw-messages {
+        display: none;
+        background-color: #f4f4f4;
+        padding: 10px;
+        border-radius: 3px;
+        max-height: 500px;
+        overflow-y: auto;
+    }
+
+    &__raw-pre {
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        margin: 0;
+    }
+
+    // =========================================================================
+    // List page elements
+    // =========================================================================
+
+    // Page header with title and action buttons
+    &__page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 20px;
+    }
+
+    &__page-title {
+        margin: 0;
+    }
+
+    &__page-actions {
+        text-align: right;
+    }
+
+    // Filter section
+    &__filter-fieldset {
+        border: 1px solid #cacaca;
+        padding: 15px;
+        margin: 20px 0;
+    }
+
+    &__filter-legend {
+        padding: 0 10px;
+        font-weight: bold;
+    }
+
+    &__filter-content {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+    }
+
+    &__filter-main {
+        flex-grow: 1;
+    }
+
+    &__filter-buttons {
+        margin-bottom: 15px;
+    }
+
+    // Excluded filter button active state
+    &__filter-excluded--active {
+        background-color: #6c757d;
+        color: white;
+    }
+
+    // Filter form row
+    &__filter-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    &__filter-input {
+        margin: 0;
+        height: 37px;
+    }
+
+    &__filter-input--year {
+        width: 80px;
+    }
+
+    &__filter-input--search {
+        width: 150px;
+    }
+
+    &__filter-button {
+        margin: 0;
+    }
+
+    // Refresh control
+    &__refresh-control {
+        margin-left: 20px;
+    }
+
+    // Send visible records section
+    &__send-section {
+        margin-bottom: 15px;
+    }
+
+    // =========================================================================
+    // Table elements
+    // =========================================================================
+
+    // Clickable table row
+    &__table-row--clickable {
+        cursor: pointer;
+    }
+
+    // Table cell link (inherit color)
+    &__table-link {
+        color: inherit;
+    }
+
+    // Excluded icon in table
+    &__icon--excluded {
+        color: #6c757d;
+    }
+
+    // Error row
+    &__error-row-cell {
+        padding: 10px;
+    }
+
+    &__error-display {
+        font-family: monospace;
+        font-size: 0.9em;
+        line-height: 1.4;
+        white-space: pre-wrap;
+        max-height: 200px;
+        overflow-y: auto;
+    }
+
+    // Label for excluded status
+    &__label--excluded {
+        background-color: #6c757d;
+    }
+}
+
+// =============================================================================
+// Style block styles (from <style> in extrahead)
+// =============================================================================
+
+// Detail page button group link styles
+.pbn-export-detail .button-group a.button,
+.pbn-export-detail .button-group a.button:hover,
+.pbn-export-detail .button-group a.button:focus,
+.pbn-export-detail .button-group a.button:visited {
+    text-decoration: none !important;
+}
+
+// JSON syntax highlighting
+.json-highlight {
+    font-family: 'Consolas', 'Monaco', 'Menlo', 'DejaVu Sans Mono', monospace;
+    font-size: 1.1em;
+    font-weight: 600;
+    line-height: 1.5;
+}
+
+// JSON syntax colors (used by JavaScript highlighting)
+.json-highlight__key {
+    color: #d63031;
+    font-weight: 700;
+}
+
+.json-highlight__string {
+    color: #00b894;
+    font-weight: 600;
+}
+
+.json-highlight__boolean {
+    color: #0984e3;
+    font-weight: 600;
+}
+
+.json-highlight__null {
+    color: #636e72;
+    font-weight: 600;
+}
+
+.json-highlight__number {
+    color: #6c5ce7;
+    font-weight: 600;
+}
+
+// List page table link styles
+#export-queue-table tr[onclick] td a,
+#export-queue-table tr[onclick] td a:hover,
+#export-queue-table tr[onclick] td a:focus,
+#export-queue-table tr[onclick] td a:visited {
+    text-decoration: none !important;
+}
+
+// Filter section styles
+.filter-section {
+    margin: 20px 0;
+
+    h4 {
+        font-size: 0.9rem;
+        color: #666;
+        margin-bottom: 10px;
+    }
+
+    .button-group .button.secondary {
+        background-color: transparent;
+        border: 1px solid #cacaca;
+        color: #333;
+
+        &:hover {
+            background-color: #f0f0f0;
+        }
+    }
+}
+
+// Refresh control styles
+.refresh-control {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    margin-bottom: 15px;
+    gap: 10px;
+}
+
+.progress-bar-container {
+    width: 100px;
+    height: 6px;
+    background-color: #e0e0e0;
+    border-radius: 3px;
+    overflow: hidden;
+    display: none;
+
+    &.active {
+        display: block;
+    }
+}
+
+.progress-bar {
+    height: 100%;
+    background-color: #1779ba;
+    width: 0%;
+    border-radius: 3px;
+    animation: countdown 5s linear infinite;
+}
+
+@keyframes countdown {
+    from {
+        width: 0%;
+    }
+    to {
+        width: 100%;
+    }
+}

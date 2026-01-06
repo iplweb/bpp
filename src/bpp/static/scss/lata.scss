@@ -1,0 +1,147 @@
+// lata.scss - Style dla strony lata.html (przeglądanie lat publikacji)
+
+.lata {
+  // Subtitle text (total count info)
+  &__subtitle {
+    color: #7f8c8d;
+    margin: 0;
+    font-size: 0.9rem;
+  }
+
+  // Decade section container
+  &__decade-section {
+    margin-bottom: 40px;
+    animation: lata-fadeIn 0.5s ease-in;
+  }
+
+  // Decade heading
+  &__decade-heading {
+    color: #2c3e50;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #e9ecef;
+  }
+
+  // Year cell in grid
+  &__year-cell {
+    margin-bottom: 20px;
+  }
+
+  // Year card (clickable link)
+  &__year-card {
+    display: block;
+    padding: 20px;
+    background: #fff;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    text-align: center;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+
+    &:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+      border-color: #3498db;
+    }
+
+    &:focus {
+      outline: 3px solid #3498db;
+      outline-offset: 2px;
+    }
+  }
+
+  // Year number
+  &__year-number {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #2c3e50;
+    margin-bottom: 5px;
+  }
+
+  // Publication count
+  &__year-count {
+    font-size: 0.9rem;
+    color: #7f8c8d;
+  }
+
+  // Empty state callout
+  &__empty-callout {
+    text-align: center;
+    padding: 40px;
+    border-radius: 8px;
+  }
+
+  // Empty state heading
+  &__empty-heading {
+    color: #856404;
+    margin-bottom: 15px;
+  }
+
+  // Empty state icon
+  &__empty-icon {
+    margin-right: 10px;
+  }
+
+  // Empty state message
+  &__empty-message {
+    margin-bottom: 20px;
+    color: #6c5c00;
+  }
+
+  // Empty state button
+  &__empty-btn {
+    background: #ffc107;
+    color: #212529;
+  }
+
+  // Button icon
+  &__btn-icon {
+    margin-right: 5px;
+  }
+
+  // SEO content section
+  &__seo-section {
+    margin-top: 60px;
+    padding: 30px;
+    background: #f8f9fa;
+    border-radius: 8px;
+  }
+
+  // SEO section heading
+  &__seo-heading {
+    color: #2c3e50;
+    margin-bottom: 15px;
+  }
+
+  // SEO section paragraph
+  &__seo-text {
+    color: #5a6c7d;
+    line-height: 1.6;
+  }
+}
+
+// Fade in animation for decade sections
+@keyframes lata-fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// Responsive styles
+@media (max-width: 640px) {
+  .lata {
+    &__year-card {
+      padding: 15px;
+    }
+
+    &__year-number {
+      font-size: 1.2rem;
+    }
+  }
+}

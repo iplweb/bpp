@@ -35,7 +35,7 @@
                 {% if request.user == report.ordered_by %}
                     <p>
                         <a href="{% url "bpp:kasowanie-raportu" report.uid %}"
-                           onclick="return confirm('Czy na pewno chcesz usunąć ten raport?');">
+                           data-confirm="Czy na pewno chcesz usunąć ten raport?">
                             skasuj raport
                         </a>
                     </p>

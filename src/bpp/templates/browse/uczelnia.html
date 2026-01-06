@@ -154,7 +154,7 @@
             <div class="large-4 medium-2 cell">
                 <img src="{% static 'images/bpp-icon.png' %}"
                      alt="Logo {{ uczelnia.nazwa_dopelniacz }}"
-                     style="filter: grayscale(100%); opacity: 0.7;"
+                     class="uczelnia__logo-placeholder"
                 />
             </div>
         {% endif %}
@@ -174,12 +174,12 @@
                 </a>
             {% endif %}
             {% if total_rekord_count > 25000 %}
-                <form method="post" action="{% url 'bpp:browse_build_search' %}" style="display: inline;">
+                <form method="post" action="{% url 'bpp:browse_build_search' %}" class="uczelnia__form--inline">
                     {% csrf_token %}
                     <input type="hidden" name="zakres_lat" value="[2022,{{ current_year }}]">
                     <input type="hidden" name="suggested-title" value="Cała baza to {{ total_rekord_count }} rekordów. Oglądasz wycinek - rekordy od 2022r"/>
-                    <button type="submit" class="main-page-button-secondary" style="border: none; background: none; padding: 0;">
-                        <span class="main-page-button-secondary" style="display: inline-block;">
+                    <button type="submit" class="main-page-button-secondary uczelnia__button--invisible">
+                        <span class="main-page-button-secondary uczelnia__span--inline-block">
                             <i class="fi-page-search"></i> Przeglądaj najnowsze prace
                         </span>
                     </button>
@@ -189,7 +189,7 @@
                     <i class="fi-page-search"></i> Przeglądaj wszystkie prace
                 </a>
             {% endif %}
-            <a href="#" onclick="openGlobalSearch(event); return false;" class="main-page-button-search-field">
+            <a href="#" data-action="open-global-search" class="main-page-button-search-field">
                 <i class="fi-text-color"></i> Wyszukaj tekstem
             </a>
         </div>
@@ -199,45 +199,45 @@
     </div>
 
     <!-- Browse panels -->
-    <div class="grid-x grid-margin-x" style="margin-top: 40px;">
+    <div class="grid-x grid-margin-x uczelnia__browse-section">
         <div class="small-12 cell">
-            <h2 style="color: #2c3e50; margin-bottom: 20px; font-size: 1.5rem;">
+            <h2 class="uczelnia__section-heading">
                 <i class="fi-compass"></i> Przeglądaj bazę publikacji
             </h2>
             <div class="grid-x grid-margin-x">
                 <div class="small-12 medium-6 large-3 cell">
                     <a href="/bpp/autorzy/" class="browse-tile">
-                        <div style="padding: 20px; background: #f8f9fa; border-radius: 8px; border: 1px solid #dee2e6; text-align: center; transition: all 0.3s ease; height: 100%;">
-                            <i class="fi-torsos-all" style="font-size: 3rem; color: #007bff; display: block; margin-bottom: 10px;"></i>
-                            <h4 style="color: #2c3e50; margin-bottom: 5px;">Autorzy</h4>
-                            <p style="color: #6c757d; font-size: 0.9rem; margin: 0;">Przeglądaj według nazwiska autora</p>
+                        <div class="uczelnia__tile">
+                            <i class="fi-torsos-all uczelnia__tile-icon uczelnia__tile-icon--blue"></i>
+                            <h4 class="uczelnia__tile-title">Autorzy</h4>
+                            <p class="uczelnia__tile-description">Przeglądaj według nazwiska autora</p>
                         </div>
                     </a>
                 </div>
                 <div class="small-12 medium-6 large-3 cell">
                     <a href="/bpp/zrodla/" class="browse-tile">
-                        <div style="padding: 20px; background: #f8f9fa; border-radius: 8px; border: 1px solid #dee2e6; text-align: center; transition: all 0.3s ease; height: 100%;">
-                            <i class="fi-book" style="font-size: 3rem; color: #28a745; display: block; margin-bottom: 10px;"></i>
-                            <h4 style="color: #2c3e50; margin-bottom: 5px;">Źródła</h4>
-                            <p style="color: #6c757d; font-size: 0.9rem; margin: 0;">Przeglądaj czasopisma i wydawnictwa</p>
+                        <div class="uczelnia__tile">
+                            <i class="fi-book uczelnia__tile-icon uczelnia__tile-icon--green"></i>
+                            <h4 class="uczelnia__tile-title">Źródła</h4>
+                            <p class="uczelnia__tile-description">Przeglądaj czasopisma i wydawnictwa</p>
                         </div>
                     </a>
                 </div>
                 <div class="small-12 medium-6 large-3 cell">
                     <a href="{% url 'bpp:browse_lata' %}" class="browse-tile">
-                        <div style="padding: 20px; background: #f8f9fa; border-radius: 8px; border: 1px solid #dee2e6; text-align: center; transition: all 0.3s ease; height: 100%;">
-                            <i class="fi-calendar" style="font-size: 3rem; color: #ffc107; display: block; margin-bottom: 10px;"></i>
-                            <h4 style="color: #2c3e50; margin-bottom: 5px;">Lata</h4>
-                            <p style="color: #6c757d; font-size: 0.9rem; margin: 0;">Przeglądaj według roku wydania</p>
+                        <div class="uczelnia__tile">
+                            <i class="fi-calendar uczelnia__tile-icon uczelnia__tile-icon--yellow"></i>
+                            <h4 class="uczelnia__tile-title">Lata</h4>
+                            <p class="uczelnia__tile-description">Przeglądaj według roku wydania</p>
                         </div>
                     </a>
                 </div>
                 <div class="small-12 medium-6 large-3 cell">
                     <a href="/bpp/jednostki/" class="browse-tile">
-                        <div style="padding: 20px; background: #f8f9fa; border-radius: 8px; border: 1px solid #dee2e6; text-align: center; transition: all 0.3s ease; height: 100%;">
-                            <i class="fi-home" style="font-size: 3rem; color: #dc3545; display: block; margin-bottom: 10px;"></i>
-                            <h4 style="color: #2c3e50; margin-bottom: 5px;">Jednostki</h4>
-                            <p style="color: #6c757d; font-size: 0.9rem; margin: 0;">Przeglądaj wg jednostki</p>
+                        <div class="uczelnia__tile">
+                            <i class="fi-home uczelnia__tile-icon uczelnia__tile-icon--red"></i>
+                            <h4 class="uczelnia__tile-title">Jednostki</h4>
+                            <p class="uczelnia__tile-description">Przeglądaj wg jednostki</p>
                         </div>
                     </a>
                 </div>
@@ -794,7 +794,7 @@
             {% if recently_updated %}
                 {% cache 3600 recent_publications uczelnia.pk %}
                 <div class="small-12 large-6 cell">
-                    <h3 class="section-title" style="margin-top: 30px;">
+                    <h3 class="section-title uczelnia__section-title--margin-top">
                         <i class="fi-book section-icon"></i>Niedawno zaktualizowane rekordy
                     </h3>
                     <ul class="no-bullet">
@@ -810,9 +810,9 @@
                             </li>
                         {% endfor %}
                     </ul>
-                    <div class="text-center" style="margin-top: 15px;">
+                    <div class="uczelnia__actions--centered">
                         <a href="/multiseek/" class="button secondary expanded">Zobacz wszystkie publikacje</a>
-                        <a href="{% url 'bpp:browse_lata' %}" class="button primary expanded" style="margin-top: 10px;">
+                        <a href="{% url 'bpp:browse_lata' %}" class="button primary expanded uczelnia__button--margin-top">
                             <i class="fi-calendar"></i> Przeglądaj publikacje według roku
                         </a>
                     </div>
@@ -823,7 +823,7 @@
             {% if recent_abstracts %}
                 {% cache 3600 recent_abstracts uczelnia.pk %}
                 <div class="small-12 large-6 cell">
-                    <h3 class="section-title" style="margin-top: 30px;">
+                    <h3 class="section-title uczelnia__section-title--margin-top">
                         <i class="fi-page-multiple section-icon"></i>Najnowsze rekordy ze streszczeniem
                     </h3>
                     <ul class="no-bullet">

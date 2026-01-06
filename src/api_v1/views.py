@@ -1,6 +1,5 @@
-from rest_framework.routers import APIRootView
-
 from django.utils.safestring import mark_safe
+from rest_framework.routers import APIRootView
 
 
 class CustomAPIRootView(APIRootView):
@@ -26,7 +25,7 @@ AI bridges minds and texts —
 Knowledge finds its home.
 </pre>
 
-                <div style="margin-top: 20px;">
+                <div class="api-root-description">
                     <p><strong>PL:</strong> To jest interfejs programistyczny (API) systemu BPP, który umożliwia dostęp
                     do danych bibliograficznych publikacji naukowych.</p>
 
@@ -34,15 +33,15 @@ Knowledge finds its home.
                     to bibliographic data of academic publications.</p>
                 </div>
 
-                <div style="margin-top: 25px; padding: 15px; background-color: #f8f9fa; border-radius: 5px;">
-                    <h5 style="margin-top: 0;"><span class="fi-info"></span> Informacje / Information</h5>
+                <div class="api-root-info-box">
+                    <h5><span class="fi-info"></span> Informacje / Information</h5>
 
                     <p><strong>PL:</strong> BPP jest wolnym oprogramowaniem o otwartym kodzie źródłowym.</p>
                     <p><strong>EN:</strong> BPP is free and open source software.</p>
 
-                    <div style="margin-top: 15px;">
+                    <div class="api-root-links">
                         <p><strong>Przydatne linki / Useful links:</strong></p>
-                        <ul style="list-style: none; padding-left: 0;">
+                        <ul>
                             <li><span class="fi-book"></span> <strong>Dokumentacja / Documentation:</strong>
                                 <a href="https://bpp.readthedocs.io" target="_blank">bpp.readthedocs.io</a>
                             </li>

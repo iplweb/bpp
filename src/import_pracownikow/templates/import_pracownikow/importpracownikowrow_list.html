@@ -55,7 +55,7 @@
     {% if autorzy_spoza_pliku.exists %}
         <h4>Na podstawie tego pliku importu należałoby odpiąć
             {{ autorzy_spoza_pliku.count }} powiązań autor+jednostka, oto one ponizej: </h4>
-        <a onclick="return confirm('Czy na pewno?');" href="../resetuj-podstawowe-miejsce-pracy/">Kliknij tutaj, żeby przypisać. Uwaga, to zmieni bazę dancyh. </a>
+        <a data-confirm="Czy na pewno?" href="../resetuj-podstawowe-miejsce-pracy/">Kliknij tutaj, żeby przypisać. Uwaga, to zmieni bazę dancyh. </a>
         <table>
             <tr>
                 <th>Autor</th>

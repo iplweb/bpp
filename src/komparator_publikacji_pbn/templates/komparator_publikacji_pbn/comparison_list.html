@@ -3,6 +3,12 @@
 
 {% block title %}Komparator publikacji PBN - {{ block.super }}{% endblock %}
 
+{% block extra_css %}
+    {{ block.super }}
+    <link rel="stylesheet"
+          href="{% static 'komparator_publikacji_pbn/css/komparator_publikacji_pbn.css' %}">
+{% endblock %}
+
 {% block breadcrumbs %}
     {{ block.super }}
     <li><a href="{% url 'komparator_pbn:main' %}">Komparator PBN</a></li>
@@ -50,16 +56,16 @@
                     </div>
                 </div>
 
-                <div class="row" style="margin-top: 1rem;">
+                <div class="row komparator-publikacji-pbn__filter-section">
                     <div class="large-12 columns">
                         <fieldset>
                             <legend>Porównywane pola:</legend>
-                            <div style="display: flex; flex-wrap: wrap; gap: 1rem;">
+                            <div class="komparator-publikacji-pbn__fields-container">
                                 {% for field_key, field_name in all_fields.items %}
-                                    <label style="display: inline-flex; align-items: center;">
+                                    <label class="komparator-publikacji-pbn__field-label">
                                         <input type="checkbox" name="fields" value="{{ field_key }}"
                                                {% if field_key in enabled_fields %}checked{% endif %}>
-                                        <span style="margin-left: 0.5rem;">{{ field_name }}</span>
+                                        <span class="komparator-publikacji-pbn__field-text">{{ field_name }}</span>
                                     </label>
                                 {% endfor %}
                             </div>
@@ -67,7 +73,7 @@
                     </div>
                 </div>
 
-                <div class="row" style="margin-top: 1rem;">
+                <div class="row komparator-publikacji-pbn__filter-section">
                     <div class="large-12 columns">
                         <button type="submit" class="button">Zastosuj filtry</button>
                         <a href="{% url 'komparator_publikacji_pbn:comparison_list' %}?reset=1" class="button secondary">Resetuj</a>
@@ -90,7 +96,7 @@
                 <h4>Publikacje z różnicami między BPP a PBN</h4>
 
                 {% for comparison in comparisons %}
-                    <div class="panel" style="margin-bottom: 2rem;">
+                    <div class="panel komparator-publikacji-pbn__comparison-panel">
                         <div class="row">
                             <div class="large-12 columns">
                                 <h5>
@@ -112,12 +118,12 @@
                         </div>
 
                         {% if comparison.differences %}
-                            <table class="comparison-table" style="width: 100%;">
+                            <table class="komparator-publikacji-pbn__table">
                                 <thead>
                                     <tr>
-                                        <th style="width: 20%;">Pole</th>
-                                        <th style="width: 40%;">Wartość w BPP</th>
-                                        <th style="width: 40%;">Wartość w PBN</th>
+                                        <th class="komparator-publikacji-pbn__col-field">Pole</th>
+                                        <th class="komparator-publikacji-pbn__col-value">Wartość w BPP</th>
+                                        <th class="komparator-publikacji-pbn__col-value">Wartość w PBN</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -126,7 +132,7 @@
                                             <td><strong>{{ diff.field }}</strong></td>
                                             <td>
                                                 {% if diff.bpp_value %}
-                                                    <span style="background-color: #fff3cd; padding: 2px 4px;">
+                                                    <span class="komparator-publikacji-pbn__value-bpp">
                                                         {{ diff.bpp_value }}
                                                     </span>
                                                 {% else %}
@@ -135,7 +141,7 @@
                                             </td>
                                             <td>
                                                 {% if diff.pbn_value %}
-                                                    <span style="background-color: #d1ecf1; padding: 2px 4px;">
+                                                    <span class="komparator-publikacji-pbn__value-pbn">
                                                         {{ diff.pbn_value }}
                                                     </span>
                                                 {% else %}
@@ -148,7 +154,7 @@
                             </table>
                         {% endif %}
 
-                        <div class="row" style="margin-top: 1rem;">
+                        <div class="row komparator-publikacji-pbn__actions">
                             <div class="large-12 columns">
                                 <a href="/admin/bpp/wydawnictwo_{{ comparison.type }}/{{ comparison.bpp_id }}/"
                                    target="_blank"
@@ -214,23 +220,4 @@
         {% endif %}
     </div>
 </div>
-
-<style>
-    .comparison-table {
-        border-collapse: collapse;
-    }
-    .comparison-table th {
-        background-color: #f8f9fa;
-        padding: 8px;
-        text-align: left;
-        border: 1px solid #dee2e6;
-    }
-    .comparison-table td {
-        padding: 8px;
-        border: 1px solid #dee2e6;
-    }
-    .text-muted {
-        color: #6c757d;
-    }
-</style>
 {% endblock %}

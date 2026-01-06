@@ -1,18 +1,21 @@
 {% if is_paginated %}
+<nav aria-label="Paginacja">
 <ul class="pagination hide-for-print">
     {% if page_obj.has_previous %}
         <li class="pagination-previous"><a
-                href="?page{{ page_suffix }}={{ page_obj.previous_page_number }}{{ getvars }}{{ hashtag }}">poprzednia</a>
+                href="?page{{ page_suffix }}={{ page_obj.previous_page_number }}{{ getvars }}{{ hashtag }}"
+                aria-label="Poprzednia strona">poprzednia</a>
         </li>
     {% else %}
-        <li class="pagination-previous disabled">poprzednia</li>
+        <li class="pagination-previous disabled" aria-disabled="true">poprzednia</li>
     {% endif %}
     {% for page in pages %}
     {% if page %}
     {% if page == page_obj.number %}
-    <li class="current">{{ page }}</li>
+    <li class="current" aria-current="page">{{ page }}</li>
     {% else %}
-    <li><a href="?page{{ page_suffix }}={{ page }}{{ getvars }}{{ hashtag }}">{{ page }}</a>
+    <li><a href="?page{{ page_suffix }}={{ page }}{{ getvars }}{{ hashtag }}"
+           aria-label="Strona {{ page }}">{{ page }}</a>
     </li>
     {% endif %}
     {% else %}
@@ -20,10 +23,12 @@
     {% endif %}
     {% endfor %}
     {% if page_obj.has_next %}
-        <li class="pagination-next"><a href="?page{{ page_suffix }}={{ page_obj.next_page_number }}{{ getvars }}{{ hashtag }}">następna</a>
+        <li class="pagination-next"><a href="?page{{ page_suffix }}={{ page_obj.next_page_number }}{{ getvars }}{{ hashtag }}"
+                                       aria-label="Następna strona">następna</a>
         </li>
     {% else %}
-        <li class="pagination-next disabled">następna</li>
+        <li class="pagination-next disabled" aria-disabled="true">następna</li>
     {% endif %}
 </ul>
+</nav>
 {% endif %}

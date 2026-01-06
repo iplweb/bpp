@@ -30,7 +30,7 @@
                 <h1>
                     <i class="fi-calendar"></i> Publikacje z roku {{ year }}
                 </h1>
-                <p style="color: #7f8c8d; margin: 0; font-size: 0.9rem;">
+                <p class="rok__subtitle">
                     Znaleziono {{ total_count }}
                     {% if total_count == 1 %}publikację
                     {% elif total_count < 5 %}publikacje
@@ -71,33 +71,29 @@
     {% if publications %}
         <div class="publications-list">
             {% for publikacja in publications %}
-                <div class="publication-item" style="padding: 20px; background: white; border: 1px solid #e9ecef; border-radius: 8px; margin-bottom: 15px; transition: all 0.3s ease;"
-                     onmouseover="this.style.boxShadow='0 4px 8px rgba(0,0,0,0.1)'; this.style.transform='translateY(-2px)';"
-                     onmouseout="this.style.boxShadow='none'; this.style.transform='translateY(0)';">
+                <div class="rok__publication-item">
 
                     <div class="grid-x grid-margin-x align-middle">
                         <div class="cell auto">
                             <!-- Publication Type Icon -->
-                            <div style="display: flex; align-items: start; gap: 15px;">
-                                <div style="font-size: 1.5rem; color: #3498db; flex-shrink: 0;">
+                            <div class="rok__content-wrapper">
+                                <div class="rok__type-icon">
                                     <i class="fi-page"></i>
                                 </div>
 
-                                <div style="flex-grow: 1;">
+                                <div class="rok__content">
                                     <!-- Title and Link -->
-                                    <h3 style="font-size: 1.1rem; margin-bottom: 10px;">
+                                    <h3 class="rok__title">
                                         <a href="{{ publikacja.get_absolute_url }}"
-                                           style="color: #2c3e50; text-decoration: none; line-height: 1.4;"
-                                           onmouseover="this.style.color='#3498db';"
-                                           onmouseout="this.style.color='#2c3e50';">
+                                           class="rok__link">
                                             {{ publikacja.opis_bibliograficzny_cache|safe|default:"[Brak tytułu]" }}
                                         </a>
                                     </h3>
 
                                     <!-- Metadata -->
-                                    <div style="font-size: 0.85rem; color: #7f8c8d;">
-                                        <span style="margin-right: 20px;">
-                                            <i class="fi-calendar" style="margin-right: 5px;"></i>
+                                    <div class="rok__metadata">
+                                        <span class="rok__metadata-item">
+                                            <i class="fi-calendar rok__icon"></i>
                                             Ostatnia aktualizacja: {{ publikacja.ostatnio_zmieniony|date:"d.m.Y" }}
                                         </span>
                                     </div>
@@ -107,8 +103,7 @@
 
                         <div class="cell shrink">
                             <a href="{{ publikacja.get_absolute_url }}"
-                               class="button small"
-                               style="margin: 0;">
+                               class="button small rok__details-btn">
                                 Szczegóły <i class="fi-arrow-right"></i>
                             </a>
                         </div>
@@ -119,13 +114,13 @@
 
         <!-- Pagination -->
         {% if is_paginated %}
-            <div class="modern-pagination" style="margin-top: 40px; text-align: center;">
-                <div class="pagination-info" style="margin-bottom: 20px; color: #7f8c8d;">
+            <div class="rok__pagination">
+                <div class="rok__pagination-info">
                     Strona {{ page_obj.number }} z {{ paginator.num_pages }}
                     ({{ paginator.count }} {% if paginator.count == 1 %}publikacja{% elif paginator.count < 5 %}publikacje{% else %}publikacji{% endif %})
                 </div>
 
-                <ul class="pagination" role="navigation" aria-label="Pagination" style="display: inline-flex; gap: 5px;">
+                <ul class="pagination rok__pagination-list" role="navigation" aria-label="Pagination">
                     {% if page_obj.has_previous %}
                         <li>
                             <a href="?page={{ page_obj.previous_page_number }}"
@@ -139,7 +134,7 @@
                     {% if page_obj.number > 3 %}
                         <li><a href="?page=1" class="pagination-btn">1</a></li>
                         {% if page_obj.number > 4 %}
-                            <li><span style="padding: 8px;">...</span></li>
+                            <li><span class="rok__ellipsis">...</span></li>
                         {% endif %}
                     {% endif %}
 
@@ -147,7 +142,7 @@
                         {% if num >= page_obj.number|add:"-2" and num <= page_obj.number|add:"2" %}
                             {% if num == page_obj.number %}
                                 <li>
-                                    <span class="current-page" style="padding: 8px 12px; background: #3498db; color: white; border-radius: 6px; font-weight: 600;">
+                                    <span class="rok__current-page">
                                         {{ num }}
                                     </span>
                                 </li>
@@ -159,7 +154,7 @@
 
                     {% if page_obj.number < paginator.num_pages|add:"-2" %}
                         {% if page_obj.number < paginator.num_pages|add:"-3" %}
-                            <li><span style="padding: 8px;">...</span></li>
+                            <li><span class="rok__ellipsis">...</span></li>
                         {% endif %}
                         <li><a href="?page={{ paginator.num_pages }}" class="pagination-btn">{{ paginator.num_pages }}</a></li>
                     {% endif %}
@@ -177,53 +172,17 @@
         {% endif %}
 
     {% else %}
-        <div class="callout warning" style="text-align: center; padding: 40px; border-radius: 8px;">
-            <h4 style="color: #856404; margin-bottom: 15px;">
-                <i class="fi-alert" style="margin-right: 10px;"></i>Brak publikacji
+        <div class="callout warning rok__empty-callout">
+            <h4 class="rok__empty-heading">
+                <i class="fi-alert rok__empty-icon"></i>Brak publikacji
             </h4>
-            <p style="margin-bottom: 20px; color: #6c5c00;">
+            <p class="rok__empty-message">
                 Nie znaleziono publikacji z roku {{ year }}.
             </p>
-            <a href="{% url 'bpp:browse_lata' %}" class="button" style="background: #ffc107; color: #212529;">
-                <i class="fi-calendar" style="margin-right: 5px;"></i>Zobacz inne lata
+            <a href="{% url 'bpp:browse_lata' %}" class="button rok__empty-btn">
+                <i class="fi-calendar rok__btn-icon"></i>Zobacz inne lata
             </a>
         </div>
     {% endif %}
-
-    <style>
-        .pagination-btn {
-            display: inline-block;
-            padding: 8px 12px;
-            background: #f8f9fa;
-            color: #2c3e50;
-            border-radius: 6px;
-            text-decoration: none;
-            border: 1px solid #e9ecef;
-            transition: all 0.2s ease;
-        }
-
-        .pagination-btn:hover {
-            background: #e9ecef;
-            transform: translateY(-1px);
-        }
-
-        .publication-item:focus-within {
-            outline: 3px solid #3498db;
-            outline-offset: 2px;
-        }
-
-        @media (max-width: 640px) {
-            .button-group {
-                display: flex;
-                flex-direction: column;
-                gap: 10px;
-            }
-
-            .button-group .button {
-                margin: 0 !important;
-                width: 100%;
-            }
-        }
-    </style>
 
 {% endblock %}

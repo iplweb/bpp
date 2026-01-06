@@ -1,20 +1,21 @@
-var bppNotifications = bppNotifications || {};
+// Explicitly use window to ensure global scope even in IIFE bundles
+window.bppNotifications = window.bppNotifications || {};
 
-bppNotifications.init = function (extraChannels) {
+window.bppNotifications.init = function (extraChannels) {
     // Initialize Tone.js synth for notifications
     this.synth = null;
     this.toneInitialized = false;
 
     // Setup one-time click listener to initialize Tone.js on user interaction
     var initToneOnClick = function() {
-        if (!bppNotifications.toneInitialized) {
+        if (!window.bppNotifications.toneInitialized) {
             Tone.start().then(function() {
-                bppNotifications.synth = new Tone.PolySynth(Tone.Synth, {
+                window.bppNotifications.synth = new Tone.PolySynth(Tone.Synth, {
                     oscillator: { type: "sine" },
                     envelope: { attack: 0.01, decay: 0.3, sustain: 0.1, release: 0.8 }
                 }).toDestination();
-                bppNotifications.synth.volume.value = -14; // 50% quieter volume
-                bppNotifications.toneInitialized = true;
+                window.bppNotifications.synth.volume.value = -14; // 50% quieter volume
+                window.bppNotifications.toneInitialized = true;
                 console.info('Audio context initialized');
             }).catch(function(err) {
                 console.warn('Could not initialize audio context:', err);
@@ -52,21 +53,21 @@ bppNotifications.init = function (extraChannels) {
     };
 
     window.addEventListener("unload", function () {
-        if (bppNotifications.chatSocket.readyState == WebSocket.OPEN)
-            bppNotifications.chatSocket.close();
+        if (window.bppNotifications.chatSocket.readyState == WebSocket.OPEN)
+            window.bppNotifications.chatSocket.close();
     });
 };
 
-bppNotifications.goTo = function (url) {
+window.bppNotifications.goTo = function (url) {
     window.location.href = url;
 };
 
-bppNotifications.onmessage = function (event) {
+window.bppNotifications.onmessage = function (event) {
     // console.log(event);
     var message = JSON.parse(event.data);
 
     if (message['id']) {
-        bppNotifications.chatSocket.send(
+        window.bppNotifications.chatSocket.send(
             JSON.stringify({
                 "id": message["id"],
                 "type": "ack_message",
@@ -76,28 +77,28 @@ bppNotifications.onmessage = function (event) {
     ;
 
 
-    bppNotifications.addMessage(message);
+    window.bppNotifications.addMessage(message);
 }
 
-bppNotifications.playChime = function() {
+window.bppNotifications.playChime = function() {
     // Only play if Tone.js is initialized
     if (!this.toneInitialized) {
         // Try to initialize on notification if user hasn't clicked yet
         if (typeof Tone !== 'undefined') {
             Tone.start().then(function() {
-                bppNotifications.synth = new Tone.PolySynth(Tone.Synth, {
+                window.bppNotifications.synth = new Tone.PolySynth(Tone.Synth, {
                     oscillator: { type: "sine" },
                     envelope: { attack: 0.01, decay: 0.3, sustain: 0.1, release: 0.8 }
                 }).toDestination();
-                bppNotifications.synth.volume.value = -14; // 50% quieter volume
-                bppNotifications.toneInitialized = true;
+                window.bppNotifications.synth.volume.value = -14; // 50% quieter volume
+                window.bppNotifications.toneInitialized = true;
 
                 // Play the chime after initialization
                 var now = Tone.now();
-                bppNotifications.synth.triggerAttackRelease("C5", 0.1, now);
-                bppNotifications.synth.triggerAttackRelease("E5", 0.1, now + 0.05);
-                bppNotifications.synth.triggerAttackRelease("G5", 0.1, now + 0.1);
-                bppNotifications.synth.triggerAttackRelease("C6", 0.15, now + 0.15);
+                window.bppNotifications.synth.triggerAttackRelease("C5", 0.1, now);
+                window.bppNotifications.synth.triggerAttackRelease("E5", 0.1, now + 0.05);
+                window.bppNotifications.synth.triggerAttackRelease("G5", 0.1, now + 0.1);
+                window.bppNotifications.synth.triggerAttackRelease("C6", 0.15, now + 0.15);
             }).catch(function(err) {
                 // Silently fail if audio context can't be started
                 console.debug('Audio context not available:', err);
@@ -118,7 +119,7 @@ bppNotifications.playChime = function() {
     }
 };
 
-bppNotifications.addMessage = function (message) {
+window.bppNotifications.addMessage = function (message) {
     // Uzywane atrybuty z message:
     //  - cssClass,
     //  - closeURL,
@@ -135,10 +136,10 @@ bppNotifications.addMessage = function (message) {
         );
 
         if (message['sound'] != false)
-            bppNotifications.playChime();
+            window.bppNotifications.playChime();
 
     } else if (message['url']) {
-        bppNotifications.goTo(message['url']);
+        window.bppNotifications.goTo(message['url']);
     } else if (message['progress']) {
         $("#notifications-progress").css("width", message['percent']);
     }

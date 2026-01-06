@@ -3,9 +3,189 @@ from uuid import uuid4
 
 import pytest
 from django.apps import apps
+from django.contrib import auth
+from django.test.client import Client, RequestFactory
 from django.utils import timezone
+from model_bakery import baker
 
-from channels_live_server import *  # noqa
+from bpp.tests.helpers import (  # noqa: F401 - re-export helpers
+    UserRequestFactory,
+    _enrich_kw_for_wydawnictwo,
+    _stworz_obiekty_dla_raportow,
+    autor_ciaglego,
+    autor_publikacji,
+    autor_zwartego,
+    ciagle_publikacja,
+    zwarte_publikacja,
+)
+from channels_live_server import channels_live_server  # noqa: F401 pytest fixture
+
+# =============================================================================
+# Fixtures użytkowników i klientów (przeniesione z tests_legacy/conftest.py)
+# =============================================================================
+
+User = auth.get_user_model()
+
+# Stałe dla fixtures
+TEST_USERNAME = "user"
+TEST_PASSWORD = "foo"
+TEST_EMAIL = "foo@bar.pl"
+
+
+@pytest.fixture
+def web_client():
+    """Fixture zwracający Client."""
+    return Client()
+
+
+@pytest.fixture
+def request_factory():
+    """Fixture zwracający RequestFactory."""
+    return RequestFactory()
+
+
+@pytest.fixture
+def test_user(db):
+    """Fixture tworzący zwykłego użytkownika."""
+    return User.objects.create_user(
+        username=TEST_USERNAME,
+        password=TEST_PASSWORD,
+        email=TEST_EMAIL,
+    )
+
+
+@pytest.fixture
+def superuser(db):
+    """Fixture tworzący superusera."""
+    return User.objects.create_superuser(
+        username=TEST_USERNAME,
+        password=TEST_PASSWORD,
+        email=TEST_EMAIL,
+    )
+
+
+@pytest.fixture
+def logged_in_client(client, test_user):
+    """Fixture zwracający zalogowany Client."""
+    logged_in = client.login(username=TEST_USERNAME, password=TEST_PASSWORD)
+    if not logged_in:
+        raise Exception("Cannot login")
+    return client
+
+
+@pytest.fixture
+def superuser_client(client, superuser):
+    """Fixture zwracający zalogowanego superusera."""
+    logged_in = client.login(username=TEST_USERNAME, password=TEST_PASSWORD)
+    if not logged_in:
+        raise Exception("Cannot login")
+    return client
+
+
+@pytest.fixture
+def user_request_factory(test_user):
+    """Fixture zwracający UserRequestFactory."""
+    return UserRequestFactory(test_user)
+
+
+# =============================================================================
+# Helpery do tworzenia publikacji (przeniesione do bpp.tests.helpers)
+# =============================================================================
+
+
+@pytest.fixture
+def make_autor(db):
+    """
+    Fixture-factory do tworzenia autora z przypisaniem do jednostki.
+
+    Użycie:
+        def test_foo(make_autor, jednostka):
+            autor = make_autor(jednostka)
+    """
+    from bpp.models import Autor_Jednostka, Funkcja_Autora
+    from bpp.tests.util import any_autor
+
+    def _make_autor(jednostka, **kw):
+        a = any_autor()
+        Autor_Jednostka.objects.create(
+            autor=a, jednostka=jednostka, funkcja=baker.make(Funkcja_Autora), **kw
+        )
+        return a
+
+    return _make_autor
+
+
+@pytest.fixture
+def make_ciagle(db):
+    """
+    Fixture-factory do tworzenia wydawnictwa ciągłego z autorem.
+
+    Użycie:
+        def test_foo(make_ciagle, autor, jednostka):
+            ciagle = make_ciagle(autor, jednostka, tytul_oryginalny="Test")
+    """
+    from bpp.models import (
+        Typ_Odpowiedzialnosci,
+        Wydawnictwo_Ciagle,
+        Wydawnictwo_Ciagle_Autor,
+    )
+
+    def _make_ciagle(autor, jednostka, **kw):
+        _enrich_kw_for_wydawnictwo(kw)
+        w = baker.make(Wydawnictwo_Ciagle, **kw)
+        typ_odp = baker.make(Typ_Odpowiedzialnosci)
+        Wydawnictwo_Ciagle_Autor.objects.create(
+            autor=autor,
+            rekord=w,
+            jednostka=jednostka,
+            typ_odpowiedzialnosci=typ_odp,
+            zapisany_jako=f"{autor.nazwisko} {autor.imiona[0]}",
+        )
+        return w
+
+    return _make_ciagle
+
+
+@pytest.fixture
+def make_zwarte(db):
+    """
+    Fixture-factory do tworzenia wydawnictwa zwartego z autorem.
+
+    Użycie:
+        def test_foo(make_zwarte, autor, jednostka, typ_odpowiedzialnosci):
+            zwarte = make_zwarte(autor, jednostka, typ_odpowiedzialnosci)
+    """
+    from bpp.models import Wydawnictwo_Zwarte, Wydawnictwo_Zwarte_Autor
+
+    def _make_zwarte(autor, jednostka, typ_odpowiedzialnosci, **kw):
+        _enrich_kw_for_wydawnictwo(kw)
+        z = baker.make(Wydawnictwo_Zwarte, **kw)
+        Wydawnictwo_Zwarte_Autor.objects.create(
+            autor=autor,
+            rekord=z,
+            jednostka=jednostka,
+            typ_odpowiedzialnosci=typ_odpowiedzialnosci,
+            zapisany_jako=f"{autor.nazwisko} {autor.imiona[0]}",
+        )
+        return z
+
+    return _make_zwarte
+
+
+@pytest.fixture
+def stworz_obiekty_dla_raportow(db):
+    """
+    Fixture tworzący standardowe obiekty potrzebne do raportów.
+    """
+    _stworz_obiekty_dla_raportow()
+
+
+# Aliasy dla kompatybilności wstecznej z test_reports/util.py
+# (funkcje zaimportowane z bpp.tests.helpers)
+stworz_obiekty_dla_raportow_func = _stworz_obiekty_dla_raportow
+autor = autor_publikacji
+ciagle = ciagle_publikacja
+zwarte = zwarte_publikacja
 
 # Fix for VCR.py compatibility with urllib3
 # This resolves the AttributeError: 'VCRHTTPConnection' has no attribute 'debuglevel'

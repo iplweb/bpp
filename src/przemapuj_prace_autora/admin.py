@@ -72,30 +72,35 @@ class PrzemapoaniePracAutoraAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
         ),
     )
 
+    class Media:
+        css = {
+            "all": ["przemapuj_prace_autora/css/admin.css"],
+        }
+
     def display_prace_ciagle_historia(self, obj):
         """Wyświetl historię przemapowanych prac ciągłych w czytelnej formie"""
         if not obj.prace_ciagle_historia:
             return "Brak danych"
 
-        html = '<div style="max-height: 400px; overflow-y: auto;">'
-        html += '<table style="width: 100%; border-collapse: collapse;">'
-        html += '<thead><tr style="background: #f0f0f0;">'
-        html += '<th style="border: 1px solid #ddd; padding: 8px; text-align: left;">ID</th>'
-        html += '<th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Tytuł</th>'
-        html += '<th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Rok</th>'
-        html += '<th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Źródło</th>'
+        html = '<div class="przemapuj-historia-container">'
+        html += '<table class="przemapuj-historia-table">'
+        html += "<thead><tr>"
+        html += "<th>ID</th>"
+        html += "<th>Tytuł</th>"
+        html += "<th>Rok</th>"
+        html += "<th>Źródło</th>"
         html += "</tr></thead><tbody>"
 
         for praca in obj.prace_ciagle_historia:
             html += "<tr>"
-            html += f'<td style="border: 1px solid #ddd; padding: 8px;">{praca.get("id", "—")}</td>'
-            html += f'<td style="border: 1px solid #ddd; padding: 8px;">{praca.get("tytul", "—")}</td>'
-            html += f'<td style="border: 1px solid #ddd; padding: 8px;">{praca.get("rok", "—")}</td>'
-            html += f'<td style="border: 1px solid #ddd; padding: 8px;">{praca.get("zrodlo", "—") or "—"}</td>'
+            html += f"<td>{praca.get('id', '—')}</td>"
+            html += f"<td>{praca.get('tytul', '—')}</td>"
+            html += f"<td>{praca.get('rok', '—')}</td>"
+            html += f"<td>{praca.get('zrodlo', '—') or '—'}</td>"
             html += "</tr>"
 
         html += "</tbody></table></div>"
-        html += f'<p style="margin-top: 10px;"><strong>Łącznie: {len(obj.prace_ciagle_historia)} prac</strong></p>'
+        html += f'<p class="przemapuj-historia-summary"><strong>Łącznie: {len(obj.prace_ciagle_historia)} prac</strong></p>'
         return format_html(html)
 
     display_prace_ciagle_historia.short_description = "Przemapowane prace ciągłe"
@@ -105,27 +110,27 @@ class PrzemapoaniePracAutoraAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
         if not obj.prace_zwarte_historia:
             return "Brak danych"
 
-        html = '<div style="max-height: 400px; overflow-y: auto;">'
-        html += '<table style="width: 100%; border-collapse: collapse;">'
-        html += '<thead><tr style="background: #f0f0f0;">'
-        html += '<th style="border: 1px solid #ddd; padding: 8px; text-align: left;">ID</th>'
-        html += '<th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Tytuł</th>'
-        html += '<th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Rok</th>'
-        html += '<th style="border: 1px solid #ddd; padding: 8px; text-align: left;">ISBN</th>'
-        html += '<th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Wydawnictwo</th>'
+        html = '<div class="przemapuj-historia-container">'
+        html += '<table class="przemapuj-historia-table">'
+        html += "<thead><tr>"
+        html += "<th>ID</th>"
+        html += "<th>Tytuł</th>"
+        html += "<th>Rok</th>"
+        html += "<th>ISBN</th>"
+        html += "<th>Wydawnictwo</th>"
         html += "</tr></thead><tbody>"
 
         for praca in obj.prace_zwarte_historia:
             html += "<tr>"
-            html += f'<td style="border: 1px solid #ddd; padding: 8px;">{praca.get("id", "—")}</td>'
-            html += f'<td style="border: 1px solid #ddd; padding: 8px;">{praca.get("tytul", "—")}</td>'
-            html += f'<td style="border: 1px solid #ddd; padding: 8px;">{praca.get("rok", "—")}</td>'
-            html += f'<td style="border: 1px solid #ddd; padding: 8px;">{praca.get("isbn", "—") or "—"}</td>'
-            html += f'<td style="border: 1px solid #ddd; padding: 8px;">{praca.get("wydawnictwo", "—") or "—"}</td>'
+            html += f"<td>{praca.get('id', '—')}</td>"
+            html += f"<td>{praca.get('tytul', '—')}</td>"
+            html += f"<td>{praca.get('rok', '—')}</td>"
+            html += f"<td>{praca.get('isbn', '—') or '—'}</td>"
+            html += f"<td>{praca.get('wydawnictwo', '—') or '—'}</td>"
             html += "</tr>"
 
         html += "</tbody></table></div>"
-        html += f'<p style="margin-top: 10px;"><strong>Łącznie: {len(obj.prace_zwarte_historia)} prac</strong></p>'
+        html += f'<p class="przemapuj-historia-summary"><strong>Łącznie: {len(obj.prace_zwarte_historia)} prac</strong></p>'
         return format_html(html)
 
     display_prace_zwarte_historia.short_description = "Przemapowane prace zwarte"

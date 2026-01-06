@@ -61,6 +61,7 @@ class PrzemapowaZrodlaAdmin(admin.ModelAdmin):
             url = reverse("przemapuj_zrodlo:cofnij", args=[obj.pk])
             return format_html(
                 '<a href="{}" '
+                'class="admin-action-btn--warning" '
                 'onclick="'
                 "if (!confirm('Czy na pewno chcesz cofnąć to przemapowanie?\\n\\n"
                 "Przywróci to {} publikacji do źródła \\'{}\\'.')) return false; "
@@ -83,10 +84,7 @@ class PrzemapowaZrodlaAdmin(admin.ModelAdmin):
                 "form.appendChild(csrf); "
                 "document.body.appendChild(form); "
                 "form.submit(); "
-                'return false;" '
-                'style="background-color: #ff6b35; color: white; border: none; '
-                "padding: 0.5rem 1rem; cursor: pointer; border-radius: 3px; "
-                'text-decoration: none; display: inline-block;">'
+                'return false;">'
                 '<span class="fi-refresh"></span> Cofnij'
                 "</a>",
                 url,
@@ -95,12 +93,12 @@ class PrzemapowaZrodlaAdmin(admin.ModelAdmin):
             )
         elif obj.jest_cofniete:
             return format_html(
-                '<span style="color: #999; font-style: italic;">'
+                '<span class="admin-status--muted admin-status--italic">'
                 '<span class="fi-check"></span> Cofnięte'
                 "</span>"
             )
         else:
-            return format_html('<span style="color: #999;">-</span>')
+            return format_html('<span class="admin-status--muted">-</span>')
 
     akcje.short_description = "Akcje"
     akcje.allow_tags = True

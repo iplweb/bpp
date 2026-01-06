@@ -1,6 +1,537 @@
 // Jednostka page styles
 @use "sass:color";
 
+// =============================================================================
+// BEM STYLES FOR JEDNOSTKA PAGES
+// =============================================================================
+
+// Main block
+.jednostka {
+  // -------------------------------------------------------------------------
+  // Header section
+  // -------------------------------------------------------------------------
+  &__header {
+    margin-bottom: 30px;
+  }
+
+  &__title {
+    color: #2c3e50;
+    font-size: 2rem;
+    margin-bottom: 10px;
+  }
+
+  &__title--small {
+    font-size: 1.3rem;
+    margin-bottom: 5px;
+  }
+
+  &__subheader {
+    color: #7f8c8d;
+    font-size: 1.1rem;
+    margin-bottom: 15px;
+  }
+
+  &__subtitle {
+    color: #7f8c8d;
+    margin: 0;
+    font-size: 0.9rem;
+  }
+
+  // -------------------------------------------------------------------------
+  // Description callout
+  // -------------------------------------------------------------------------
+  &__description {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    margin-bottom: 30px;
+  }
+
+  // -------------------------------------------------------------------------
+  // Quick actions section
+  // -------------------------------------------------------------------------
+  &__quick-actions {
+    text-align: center;
+    margin-bottom: 30px;
+  }
+
+  &__quick-actions-form {
+    display: inline;
+  }
+
+  // -------------------------------------------------------------------------
+  // Buttons
+  // -------------------------------------------------------------------------
+  &__btn-primary {
+    background: #27ae60;
+    border: none;
+    padding: 12px 24px;
+    font-size: 1rem;
+    border-radius: 6px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s ease;
+
+    &:hover,
+    &:focus {
+      background-color: #229954;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    }
+  }
+
+  &__btn-search {
+    background: #3498db;
+    border: none;
+    padding: 15px 30px;
+    font-size: 1.1rem;
+    border-radius: 6px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s ease;
+
+    &:hover,
+    &:focus {
+      background-color: #2980b9;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    }
+  }
+
+  &__btn-warning {
+    background: #ffc107;
+    color: #212529;
+  }
+
+  // -------------------------------------------------------------------------
+  // Search container
+  // -------------------------------------------------------------------------
+  &__search-container {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    padding: 30px;
+    margin-bottom: 30px;
+  }
+
+  &__search-header {
+    margin-bottom: 25px;
+  }
+
+  &__search-title {
+    color: #2c3e50;
+    margin-bottom: 5px;
+  }
+
+  &__search-subtitle {
+    color: #7f8c8d;
+    margin: 0;
+    font-size: 0.9rem;
+  }
+
+  // -------------------------------------------------------------------------
+  // Cards
+  // -------------------------------------------------------------------------
+  &__card {
+    margin-bottom: 20px;
+    border: 1px solid #e9ecef;
+  }
+
+  &__card-title {
+    color: #2c3e50;
+    margin-bottom: 15px;
+    font-weight: 600;
+  }
+
+  // -------------------------------------------------------------------------
+  // Form elements
+  // -------------------------------------------------------------------------
+  &__checkbox-item {
+    margin-bottom: 8px;
+  }
+
+  &__checkbox-item--year {
+    margin-bottom: 10px;
+  }
+
+  &__checkbox {
+    margin-right: 8px;
+  }
+
+  &__checkbox--former {
+    margin-left: 8px;
+  }
+
+  &__label {
+    margin-bottom: 0;
+    display: inline;
+  }
+
+  &__function-text {
+    color: #7f8c8d;
+    font-size: 0.9em;
+  }
+
+  &__author-link {
+    margin-left: 5px;
+    color: #3498db;
+    text-decoration: none;
+  }
+
+  &__author-icon {
+    font-size: 0.9rem;
+  }
+
+  &__input {
+    margin-bottom: 0;
+    border: 1px solid #e9ecef;
+    border-radius: 4px;
+  }
+
+  &__hint {
+    color: #7f8c8d;
+    font-style: italic;
+  }
+
+  // -------------------------------------------------------------------------
+  // Accordion
+  // -------------------------------------------------------------------------
+  &__accordion {
+    border: none;
+  }
+
+  &__accordion-item {
+    border: none;
+  }
+
+  &__accordion-title {
+    background: #f8f9fa;
+    padding: 10px 15px;
+    border-radius: 4px;
+  }
+
+  &__accordion-content {
+    padding: 15px 0 0 0;
+  }
+
+  // -------------------------------------------------------------------------
+  // Search button section
+  // -------------------------------------------------------------------------
+  &__search-button-section {
+    text-align: center;
+    margin-top: 25px;
+    padding-top: 20px;
+    border-top: 1px solid #e9ecef;
+  }
+
+  // -------------------------------------------------------------------------
+  // Icons
+  // -------------------------------------------------------------------------
+  &__icon {
+    &--mr-xs {
+      margin-right: 5px;
+    }
+
+    &--mr-sm {
+      margin-right: 8px;
+    }
+
+    &--mr-md {
+      margin-right: 10px;
+    }
+
+    &--white {
+      color: white;
+    }
+  }
+}
+
+// =============================================================================
+// JEDNOSTKI LIST PAGE (jednostki_modern_bordered.html)
+// =============================================================================
+
+.jednostki {
+  // -------------------------------------------------------------------------
+  // Modern header
+  // -------------------------------------------------------------------------
+  &__modern-header {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    padding: 30px;
+    margin-bottom: 30px;
+  }
+
+  &__title {
+    color: #2c3e50;
+    margin-bottom: 5px;
+  }
+
+  &__subtitle {
+    color: #7f8c8d;
+    margin: 0;
+    font-size: 0.9rem;
+  }
+
+  // -------------------------------------------------------------------------
+  // Search form
+  // -------------------------------------------------------------------------
+  &__search-wrapper {
+    margin-top: 25px;
+  }
+
+  &__search-form {
+    display: inline-block;
+    max-width: 500px;
+    width: 100%;
+  }
+
+  &__search-input-group {
+    background: #f8f9fa;
+    border-radius: 6px;
+    border: 1px solid #e9ecef;
+  }
+
+  &__search-label {
+    background: transparent;
+    border: none;
+    color: #7f8c8d;
+  }
+
+  &__search-input {
+    background: transparent;
+    border: none;
+    font-size: 1rem;
+    padding: 12px;
+  }
+
+  // -------------------------------------------------------------------------
+  // Letter index
+  // -------------------------------------------------------------------------
+  &__letter-index {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    padding: 20px;
+    margin-bottom: 30px;
+  }
+
+  &__letter-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+  }
+
+  &__letter-pill {
+    display: inline-block;
+    padding: 8px 16px;
+    border-radius: 20px;
+    text-decoration: none;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    background: #f8f9fa;
+    color: #2c3e50;
+    border: 1px solid #e9ecef;
+
+    &:hover {
+      background: #e9ecef;
+      border-color: #dee2e6;
+      text-decoration: none;
+    }
+
+    &--active {
+      background: var(--primary-color, #3498db);
+      color: white;
+      box-shadow: 0 2px 4px rgba(52, 152, 219, 0.3);
+      border-color: transparent;
+
+      &:hover {
+        background: var(--primary-color, #3498db);
+        color: white;
+        border-color: transparent;
+      }
+    }
+  }
+
+  &__letter-pill--narrow {
+    padding: 8px 12px;
+    min-width: 40px;
+    text-align: center;
+  }
+
+  // -------------------------------------------------------------------------
+  // Jednostka card (bordered style)
+  // -------------------------------------------------------------------------
+  &__card {
+    background: white;
+    border-radius: 6px;
+    padding: 20px;
+    margin-bottom: 15px;
+    border: 2px solid #e9ecef;
+    transition: all 0.2s ease;
+    position: relative;
+
+    &:hover {
+      border-color: var(--primary-color, #3498db);
+      background: #fafbfc;
+    }
+  }
+
+  &__card-icon {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    color: #bdc3c7;
+    font-size: 1.5rem;
+  }
+
+  &__card-name {
+    margin-bottom: 8px;
+  }
+
+  &__card-link {
+    color: #2c3e50;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 1.1rem;
+    line-height: 1.4;
+
+    &:hover {
+      color: var(--primary-color, #3498db);
+      text-decoration: none;
+    }
+  }
+
+  &__card-details {
+    color: #7f8c8d;
+    font-size: 0.9rem;
+    line-height: 1.3;
+    padding-top: 8px;
+    border-top: 1px solid #f8f9fa;
+  }
+
+  &__card-detail-item {
+    margin-bottom: 4px;
+  }
+
+  &__card-detail-icon {
+    margin-right: 5px;
+    color: #bdc3c7;
+  }
+
+  &__card-authors {
+    font-size: 0.8rem;
+    color: #95a5a6;
+  }
+
+  // -------------------------------------------------------------------------
+  // Empty state
+  // -------------------------------------------------------------------------
+  &__empty-state {
+    text-align: center;
+    padding: 40px;
+    border-radius: 8px;
+  }
+
+  &__empty-title {
+    color: #856404;
+    margin-bottom: 15px;
+  }
+
+  &__empty-text {
+    margin-bottom: 20px;
+    color: #6c5c00;
+  }
+
+  // -------------------------------------------------------------------------
+  // Pagination
+  // -------------------------------------------------------------------------
+  &__pagination {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    padding: 20px;
+    margin-top: 30px;
+    text-align: center;
+  }
+
+  &__pagination-info {
+    margin-bottom: 15px;
+    color: #7f8c8d;
+    font-size: 0.9rem;
+  }
+
+  &__pagination-list {
+    display: inline-flex;
+    gap: 5px;
+    margin: 0;
+  }
+
+  &__pagination-ellipsis {
+    padding: 8px 4px;
+    color: #bdc3c7;
+  }
+
+  &__pagination-current {
+    display: inline-block;
+    padding: 8px 12px;
+    background: var(--primary-color, #3498db);
+    color: white;
+    border-radius: 6px;
+    font-weight: 600;
+  }
+
+  &__pagination-link {
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 12px;
+    background: #f8f9fa;
+    color: #2c3e50;
+    border-radius: 6px;
+    text-decoration: none;
+    border: 1px solid #e9ecef;
+    transition: all 0.2s ease;
+
+    &:hover {
+      background: #e9ecef;
+      text-decoration: none;
+    }
+  }
+
+  &__pagination-link--prev,
+  &__pagination-link--next {
+    .fi-arrow-left,
+    .fi-arrow-right {
+      margin-right: 5px;
+    }
+  }
+
+  &__pagination-link--next {
+    .fi-arrow-right {
+      margin-left: 5px;
+      margin-right: 0;
+    }
+  }
+
+  &__page-btn {
+    display: inline-block;
+    padding: 8px 12px;
+    background: #f8f9fa;
+    color: #2c3e50;
+    border-radius: 6px;
+    text-decoration: none;
+    border: 1px solid #e9ecef;
+    transition: all 0.2s ease;
+    min-width: 40px;
+    text-align: center;
+
+    &:hover {
+      background: #e9ecef;
+      text-decoration: none;
+    }
+  }
+}
+
+// =============================================================================
+// SHARED BUTTON STYLES FOR JEDNOSTKA/ZRODLO PAGES
+// =============================================================================
+
 // Shared button styles for jednostka/zrodlo pages
 .jednostka-edit-button,
 .jednostka-add-button,

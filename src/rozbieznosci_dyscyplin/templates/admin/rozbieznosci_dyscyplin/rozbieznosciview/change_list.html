@@ -2,17 +2,27 @@
 
 {% block object-tools-items %}
     <li>
-        <form action="przypisz-wszystkim-pierwsza/" method="POST" id="przypisz-wszystkim-form">
+        <form action="przypisz-wszystkim-pierwsza/" method="POST" id="przypisz-pierwsza-form">
             {% csrf_token %}
-            <a href="#" onclick="document.getElementById('przypisz-wszystkim-form').submit();">Przypisz pierwszą
+            <a href="#" data-action="submit-form" data-form-id="przypisz-pierwsza-form">Przypisz pierwszą
                 dyscyplinę wszystkim rekordom bez dyscypliny</a>
         </form>
     </li>
     <li>
-        <form action="przypisz-wszystkim-druga/" method="POST" id="przypisz-wszystkim-form">
+        <form action="przypisz-wszystkim-druga/" method="POST" id="przypisz-druga-form">
             {% csrf_token %}
-            <a href="#" onclick="document.getElementById('przypisz-wszystkim-form').submit();">Przypisz drugą
+            <a href="#" data-action="submit-form" data-form-id="przypisz-druga-form">Przypisz drugą
                 dyscyplinę wszystkim rekordom bez dyscypliny</a>
         </form>
     </li>
+    <script>
+    document.addEventListener('click', function(e) {
+        var link = e.target.closest('[data-action="submit-form"]');
+        if (link) {
+            e.preventDefault();
+            var formId = link.dataset.formId;
+            document.getElementById(formId).submit();
+        }
+    });
+    </script>
 {% endblock %}

@@ -225,7 +225,7 @@ groups_auto_add = {
 @transaction.atomic
 def odtworz_grupy(**kwargs):
     grp_dict = {}
-    for u in BppUser.objects.all():
+    for u in BppUser.objects.prefetch_related("groups"):
         grp_dict[u] = [grp.name for grp in u.groups.all()]
 
     for name, models in list(groups.items()):
@@ -240,9 +240,10 @@ def odtworz_grupy(**kwargs):
             for permission in Permission.objects.filter(content_type=content_type):
                 g.permissions.add(permission)
 
+    all_groups = {g.name: g for g in Group.objects.all()}
     for u, grps in list(grp_dict.items()):
         for gname in grps:
-            u.groups.add(Group.objects.get(name=gname))
+            u.groups.add(all_groups[gname])
             if gname in groups_auto_add:
                 for extra_group in groups_auto_add[gname]:
-                    u.groups.add(Group.objects.get(name=extra_group))
+                    u.groups.add(all_groups[extra_group])

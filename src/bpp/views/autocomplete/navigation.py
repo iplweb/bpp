@@ -4,6 +4,8 @@ from collections import OrderedDict
 
 from dal_select2_queryset_sequence.views import Select2QuerySetSequenceView
 from django.contrib.auth.mixins import UserPassesTestMixin
+from django.db.models import IntegerField
+from django.db.models.expressions import RawSQL
 from django.db.models.query_utils import Q
 from django.utils.text import capfirst
 from queryset_sequence import QuerySetSequence
@@ -177,9 +179,11 @@ class GlobalNavigationAutocomplete(
 
         if this_is_an_id:
             querysets.append(
-                Rekord.objects.extra(where=[f"id[2]={this_is_an_id}"]).only(
-                    "tytul_oryginalny"
+                Rekord.objects.annotate(
+                    _object_id=RawSQL("(id)[2]", [], output_field=IntegerField())
                 )
+                .filter(_object_id=this_is_an_id)
+                .only("tytul_oryginalny")
             )
 
         ret = QuerySetSequence(*querysets)

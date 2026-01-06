@@ -19,8 +19,7 @@
         <h1>
             <span class="fi-torso"></span> {{ metryka.autor }}
             <a href="{% url 'bpp:browse_autor' metryka.autor.pk %}"
-               class="button small secondary"
-               style="margin-left: 1rem; vertical-align: middle;"
+               class="button small secondary ewaluacja-metryki__profile-btn"
                target="_blank"
                title="Zobacz profil autora w BPP">
                 <span class="fi-magnifying-glass"></span> Profil w BPP
@@ -31,18 +30,16 @@
         {% include "ewaluacja_metryki/disclaimer.html" %}
 
         {% if inne_dyscypliny %}
-        <div class="callout" style="background-color: #f0f4f8; border: 1px solid #d0d8e0;">
+        <div class="callout ewaluacja-metryki__disciplines-callout">
             <strong>Inne dyscypliny tego autora:</strong>
-            <div class="button-group stacked-for-small" style="margin-top: 0.5rem;">
+            <div class="button-group stacked-for-small ewaluacja-metryki__button-group-spaced">
                 {% for inna in inne_dyscypliny %}
                     <a href="{% url 'ewaluacja_metryki:szczegoly' autor_slug=inna.autor.slug dyscyplina_kod=inna.dyscyplina_naukowa.kod %}"
-                       class="button hollow"
-                       style="background-color: #ffffff; border: 1px solid #cbd5e0; color: #2c3e50; margin-bottom: 0.5rem; text-align: left; padding: 0.75rem;">
-                        <span style="display: inline-block; margin-right: 1rem;">
+                       class="button hollow ewaluacja-metryki__discipline-btn">
+                        <span class="ewaluacja-metryki__discipline-name">
                             {{ inna.dyscyplina_naukowa.nazwa }}
                         </span>
-                        <span class="float-right badge {% if inna.srednia_za_slot_nazbierana > metryka.srednia_za_slot_nazbierana %}success{% elif inna.srednia_za_slot_nazbierana < metryka.srednia_za_slot_nazbierana %}alert{% else %}secondary{% endif %}"
-                              style="font-size: 0.9rem; padding: 0.3rem 0.6rem;">
+                        <span class="float-right badge ewaluacja-metryki__discipline-badge {% if inna.srednia_za_slot_nazbierana > metryka.srednia_za_slot_nazbierana %}success{% elif inna.srednia_za_slot_nazbierana < metryka.srednia_za_slot_nazbierana %}alert{% else %}secondary{% endif %}">
                             {{ inna.srednia_za_slot_nazbierana|floatformat:2 }}
                         </span>
                     </a>
@@ -90,7 +87,7 @@
 
                     <div class="row">
                         <div class="medium-6 columns">
-                            <div class="slot-progress-container" style="margin: 1rem 0;">
+                            <div class="slot-progress-container ewaluacja-metryki__slot-progress">
                                 <div class="circular-progress-wrapper">
                                     <div class="circle-progress-detail" data-value="{{ metryka.procent_wykorzystania_slotow|unlocalize }}" data-size="150" data-thickness="15"></div>
                                     <strong class="progress-percentage-detail">0%</strong>
@@ -135,7 +132,7 @@
             <div class="medium-6 columns">
                 <div class="callout">
                     <h5>Rozkład prac w czasie</h5>
-                    <div id="bubble-time-chart" style="width:100%; height:350px;"></div>
+                    <div id="bubble-time-chart" class="ewaluacja-metryki__chart-container"></div>
                 </div>
             </div>
 
@@ -143,7 +140,7 @@
             <div class="medium-6 columns">
                 <div class="callout">
                     <h5>Produktywność po latach</h5>
-                    <div id="year-bars-chart" style="width:100%; height:350px;"></div>
+                    <div id="year-bars-chart" class="ewaluacja-metryki__chart-container"></div>
                 </div>
             </div>
         </div>
@@ -153,7 +150,7 @@
             <div class="medium-6 columns">
                 <div class="callout">
                     <h5>Punkty vs Sloty (kolor = rok)</h5>
-                    <div id="scatter-time-chart" style="width:100%; height:350px;"></div>
+                    <div id="scatter-time-chart" class="ewaluacja-metryki__chart-container"></div>
                 </div>
             </div>
 
@@ -161,7 +158,7 @@
             <div class="medium-6 columns">
                 <div class="callout">
                     <h5>Mapa publikacji</h5>
-                    <div id="heatmap-chart" style="width:100%; height:350px;"></div>
+                    <div id="heatmap-chart" class="ewaluacja-metryki__chart-container"></div>
                 </div>
             </div>
         </div>
@@ -231,7 +228,7 @@
 
                             {% if srednia_etatu or srednia_procent %}
                             <!-- Podsumowanie -->
-                            <tr style="border-top: 2px solid #ddd; background-color: #f7f7f7;">
+                            <tr class="ewaluacja-metryki__summary-row">
                                 <td class="text-center">
                                     <strong>Średnia</strong>
                                 </td>
@@ -258,8 +255,8 @@
                     </table>
 
                     {% if dyscyplina_lata %}
-                    <div class="callout secondary" style="margin-top: 1rem;">
-                        <p style="margin: 0;">
+                    <div class="callout secondary ewaluacja-metryki__legend-callout">
+                        <p class="ewaluacja-metryki__paragraph-no-margin">
                             <small>
                                 <strong>Legenda rodzaju autora:</strong>
                                 N = Pracownik zaliczany do liczby N,
@@ -353,11 +350,10 @@
                     {% for praca in prace_nazbierane %}
                     <tr>
                         <td>{{ forloop.counter }}</td>
-                        <td class="text-center" style="white-space: nowrap;">
+                        <td class="text-center ewaluacja-metryki__actions-cell">
                             <a href="{% url 'ewaluacja_optymalizuj_publikacje:optymalizuj' praca.rekord.slug %}"
-                               class="button small warning"
-                               title="Optymalizuj publikację"
-                               style="margin-right: 0.25rem;">
+                               class="button small warning ewaluacja-metryki__optimize-btn"
+                               title="Optymalizuj publikację">
                                 <span class="fi-widget"></span>
                             </a>
                             <a href="{% url 'bpp:browse_praca_by_slug' praca.rekord.slug %}"
@@ -382,7 +378,7 @@
                             {% endif %}
                         </td>
                         <td class="text-center">
-                            <form method="post" action="{% url 'ewaluacja_metryki:odepnij' praca.rekord_content_type_id praca.rekord_object_id praca.autor_id praca.dyscyplina_id %}" style="display: inline;">
+                            <form method="post" action="{% url 'ewaluacja_metryki:odepnij' praca.rekord_content_type_id praca.rekord_object_id praca.autor_id praca.dyscyplina_id %}" class="ewaluacja-metryki__form-inline">
                                 {% csrf_token %}
                                 <button type="submit" class="button small alert" title="Odepnij dyscyplinę">
                                     <span class="fi-unlink"></span>
@@ -420,11 +416,10 @@
                         {% for praca in prace_wszystkie %}
                         <tr {% if praca.is_nazbierana %}class="success"{% endif %}>
                             <td>{{ forloop.counter }}</td>
-                            <td class="text-center" style="white-space: nowrap;">
+                            <td class="text-center ewaluacja-metryki__actions-cell">
                                 <a href="{% url 'ewaluacja_optymalizuj_publikacje:optymalizuj' praca.rekord.slug %}"
-                                   class="button small warning"
-                                   title="Optymalizuj publikację"
-                                   style="margin-right: 0.25rem;">
+                                   class="button small warning ewaluacja-metryki__optimize-btn"
+                                   title="Optymalizuj publikację">
                                     <span class="fi-widget"></span>
                                 </a>
                                 <a href="{% url 'bpp:browse_praca_by_slug' praca.rekord.slug %}"
@@ -452,7 +447,7 @@
                                 {% endif %}
                             </td>
                             <td>
-                                <form method="post" action="{% url 'ewaluacja_metryki:odepnij' praca.rekord_content_type_id praca.rekord_object_id praca.autor_id praca.dyscyplina_id %}" style="display: inline;">
+                                <form method="post" action="{% url 'ewaluacja_metryki:odepnij' praca.rekord_content_type_id praca.rekord_object_id praca.autor_id praca.dyscyplina_id %}" class="ewaluacja-metryki__form-inline">
                                     {% csrf_token %}
                                     <button type="submit" class="button tiny alert" title="Odepnij dyscyplinę">
                                         <span class="fi-unlink"></span>
@@ -514,7 +509,7 @@
                                 {% endif %}
                             </td>
                             <td>
-                                <form method="post" action="{% url 'ewaluacja_metryki:przypnij' praca.rekord_content_type_id praca.rekord_object_id praca.autor_id praca.dyscyplina_id %}" style="display: inline;">
+                                <form method="post" action="{% url 'ewaluacja_metryki:przypnij' praca.rekord_content_type_id praca.rekord_object_id praca.autor_id praca.dyscyplina_id %}" class="ewaluacja-metryki__form-inline">
                                     {% csrf_token %}
                                     <button type="submit" class="button tiny success" title="Przypnij dyscyplinę">
                                         <span class="fi-link"></span>

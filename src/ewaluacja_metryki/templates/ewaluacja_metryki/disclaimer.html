@@ -2,7 +2,7 @@
 <div id="ewaluacja-disclaimer" class="callout warning" style="position: relative; display: none;">
     <button type="button" class="close-button" aria-label="Zamknij"
             style="position: absolute; top: 0.5rem; right: 0.5rem; font-size: 1.5rem;"
-            onclick="closeDisclaimer()">
+            data-action="close-disclaimer">
         <span aria-hidden="true">&times;</span>
     </button>
 
@@ -67,6 +67,14 @@
             }, 300);
         }
     };
+
+    // Event delegation for close button
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('[data-action="close-disclaimer"]')) {
+            e.preventDefault();
+            closeDisclaimer();
+        }
+    });
 
     // Sprawdź przy załadowaniu strony
     document.addEventListener('DOMContentLoaded', function() {

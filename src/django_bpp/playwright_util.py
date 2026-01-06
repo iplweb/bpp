@@ -27,16 +27,12 @@ def wait_for_websocket_connection(page: Page, timeout: int = 10000):
         page: Playwright Page object
         timeout: Timeout in milliseconds (default 10000)
     """
-    try:
-        page.wait_for_function(
-            "() => typeof bppNotifications !== 'undefined' && "
-            "bppNotifications.chatSocket && "
-            "bppNotifications.chatSocket.readyState === 1",  # WebSocket.OPEN
-            timeout=timeout,
-        )
-    except BaseException:
-        # If bppNotifications doesn't exist, notifications might not be enabled on this page
-        pass
+    page.wait_for_function(
+        "() => typeof bppNotifications !== 'undefined' && "
+        "bppNotifications.chatSocket && "
+        "bppNotifications.chatSocket.readyState === 1",  # WebSocket.OPEN
+        timeout=timeout,
+    )
 
 
 def select_select2_autocomplete(

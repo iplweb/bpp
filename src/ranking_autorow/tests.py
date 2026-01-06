@@ -1,11 +1,7 @@
 import pytest
 from django.urls import reverse
-from model_bakery import baker
-
-from ranking_autorow.forms import RankingAutorowForm
-from ranking_autorow.views import RankingAutorow
-
 from django.utils import timezone
+from model_bakery import baker
 
 from bpp.models import (
     Charakter_Formalny,
@@ -14,6 +10,20 @@ from bpp.models import (
     Wydawnictwo_Ciagle,
     Wydzial,
 )
+from bpp.models.profile import BppUser
+from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle_Autor
+from bpp.tests.helpers import (
+    _stworz_obiekty_dla_raportow as stworz_obiekty_dla_raportow,
+)
+from bpp.tests.util import (
+    CURRENT_YEAR,
+    any_autor,
+    any_ciagle,
+    any_jednostka,
+    any_wydzial,
+)
+from ranking_autorow.forms import RankingAutorowForm
+from ranking_autorow.views import RankingAutorow
 
 TEST123 = "TEST123"
 
@@ -594,3 +604,157 @@ def test_ranking_autorow_form_includes_new_fields():
     # Check help text
     assert "charakter" in form.fields["charakter_formalny"].help_text.lower()
     assert "typ" in form.fields["typ_kbn"].help_text.lower()
+
+
+# =============================================================================
+# Testy przeniesione z tests_legacy/test_reports/test_ranking_autorow.py
+# =============================================================================
+
+
+@pytest.fixture
+def ranking_data(db, client):
+    """Fixture tworzący dane testowe dla testów rankingu autorów."""
+    stworz_obiekty_dla_raportow()
+
+    w1 = any_wydzial(nazwa="Wydzial 1", skrot="W9")
+    w1.zezwalaj_na_ranking_autorow = True
+    w1.save()
+    j1 = any_jednostka(wydzial=w1, uczelnia=w1.uczelnia)
+
+    w2 = any_wydzial(nazwa="Wydzial 2", skrot="W8")
+    w2.zezwalaj_na_ranking_autorow = True
+    w2.save()
+    j2 = any_jednostka(wydzial=w2, uczelnia=w2.uczelnia)
+
+    a1 = any_autor()
+
+    from bpp.models import Typ_Odpowiedzialnosci
+
+    wejdzie1 = any_ciagle(impact_factor=33.333)
+    Wydawnictwo_Ciagle_Autor.objects.create(
+        rekord=wejdzie1,
+        autor=a1,
+        jednostka=j1,
+        kolejnosc=1,
+        typ_odpowiedzialnosci=Typ_Odpowiedzialnosci.objects.get(skrot="aut."),
+    )
+
+    wejdzie2 = any_ciagle(impact_factor=44.444)
+    Wydawnictwo_Ciagle_Autor.objects.create(
+        rekord=wejdzie2,
+        autor=a1,
+        jednostka=j2,
+        kolejnosc=1,
+        typ_odpowiedzialnosci=Typ_Odpowiedzialnosci.objects.get(skrot="aut."),
+    )
+
+    from bpp.models import Typ_KBN
+
+    nie_wejdzie = any_ciagle(
+        typ_kbn=Typ_KBN.objects.get(skrot="PW"), impact_factor=55.555
+    )
+    Wydawnictwo_Ciagle_Autor.objects.create(
+        rekord=nie_wejdzie,
+        autor=a1,
+        jednostka=j1,
+        kolejnosc=1,
+        typ_odpowiedzialnosci=Typ_Odpowiedzialnosci.objects.get(skrot="aut."),
+    )
+
+    BppUser.objects.create_user(username="foo", email="foo@bar.pl", password="bar")
+
+    response = client.post(
+        reverse("login_form"), {"username": "foo", "password": "bar"}, follow=True
+    )
+    assert response.status_code == 200
+
+    return {
+        "w2": w2,
+        "client": client,
+    }
+
+
+@pytest.mark.uruchom_tylko_bez_microsoft_auth
+def test_ranking_bez_argumentow(ranking_data):
+    """Zsumuje punktacje ze wszystkich prac, ze wszystkich wydziałów dla roku."""
+    client = ranking_data["client"]
+
+    response = client.get(
+        reverse(
+            "bpp:ranking-autorow",
+            args=(
+                str(CURRENT_YEAR),
+                str(CURRENT_YEAR),
+            ),
+        ),
+        follow=True,
+    )
+    # wydział 2
+    assert "44,444" in response.rendered_content
+    # wydział 1
+    assert "33,333" in response.rendered_content
+
+
+@pytest.mark.uruchom_tylko_bez_microsoft_auth
+def test_ranking_z_wydzialem(ranking_data):
+    """Zsumuje punktacje ze wszystkich prac, ze wszystkich wydziałów dla roku."""
+    client = ranking_data["client"]
+    w2 = ranking_data["w2"]
+
+    response = client.get(
+        reverse(
+            "bpp:ranking-autorow",
+            args=(
+                str(CURRENT_YEAR),
+                str(CURRENT_YEAR),
+            ),
+        )
+        + "?wydzial="
+        + str(w2.pk)
+        + "",
+        follow=True,
+    )
+    # wydział 2
+    assert "44,444" in response.rendered_content
+    # wydział 1 - praca nie wejdzie do rankingu
+    assert "33,333" not in response.rendered_content
+
+
+@pytest.mark.uruchom_tylko_bez_microsoft_auth
+def test_ranking_bez_rozbicia(ranking_data):
+    """Zsumuje punktacje ze wszystkich prac bez rozbicia na jednostki."""
+    client = ranking_data["client"]
+
+    response = client.get(
+        reverse(
+            "bpp:ranking-autorow",
+            args=(
+                str(CURRENT_YEAR),
+                str(CURRENT_YEAR),
+            ),
+        )
+        + "?rozbij_na_jednostki=False",
+        follow=True,
+    )
+    # suma punktacji
+    assert "77,777" in response.rendered_content
+
+
+@pytest.mark.uruchom_tylko_bez_microsoft_auth
+def test_ranking_eksport_csv(ranking_data):
+    """XLS."""
+    client = ranking_data["client"]
+
+    response = client.get(
+        reverse(
+            "bpp:ranking-autorow",
+            args=(
+                str(CURRENT_YEAR),
+                str(CURRENT_YEAR),
+            ),
+        )
+        + "?_export=csv",
+        follow=True,
+    )
+    # suma punktacji
+    assert b",44.444," in response.content

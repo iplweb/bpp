@@ -1,0 +1,25 @@
+// =============================================================================
+// CALLOUTS
+// Alert/notification callout styles with rounded corners
+// =============================================================================
+
+// Add rounded borders to flash messages (callouts)
+.callout {
+  border-radius: 8px !important;
+}
+
+// Light purple panel for rozbieznosci_pk
+.callout.pk-panel {
+  background-color: #f0e8f4;  // Light purple/lavender
+}
+
+// Also apply to alert boxes for consistency
+.alert-box {
+  border-radius: 8px !important;
+}
+
+// Foundation ZURB variables for rounded corners
+$button-radius: 8px;
+$input-radius: 6px;
+$select-radius: 6px;
+$global-radius: 6px;

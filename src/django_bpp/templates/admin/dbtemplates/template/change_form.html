@@ -3,8 +3,24 @@
 {% block object-tools-items %}
     {% if original.name == "opis_bibliograficzny.html" %}
         <li>
-            <a onclick="window.open('../../preview/?template='+encodeURIComponent(django.jQuery('#id_content').val()), 'preview', 'width=600,height=400'); return false;"
-            >Szybki podgląd</a></li>
+            <a href="#" data-action="open-preview-window"
+               data-preview-url="../../preview/"
+               data-content-selector="#id_content">Szybki podgląd</a></li>
     {% endif %}
     {{ block.super }}
 {% endblock %}
+<script>
+document.addEventListener('click', function(e) {
+    var link = e.target.closest('[data-action="open-preview-window"]');
+    if (link) {
+        e.preventDefault();
+        var previewUrl = link.dataset.previewUrl;
+        var contentSelector = link.dataset.contentSelector;
+        var contentElement = document.querySelector(contentSelector);
+        if (contentElement) {
+            var template = encodeURIComponent(contentElement.value);
+            window.open(previewUrl + '?template=' + template, 'preview', 'width=600,height=400');
+        }
+    }
+});
+</script>

@@ -55,7 +55,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
     pip install uv && \
     apt update && \
-    apt install -y python3-pip libpango-1.0-0 libpangoft2-1.0-0 postgresql-client pandoc curl fonts-dejavu
+    apt install -y python3-pip libpango-1.0-0 libpangoft2-1.0-0 postgresql-client pandoc curl fonts-dejavu procps
 
 ENV PATH="/.venv/bin:$PATH" \
     PYTHONPATH=/src \

@@ -12,7 +12,7 @@
 
 {% block content %}
     <h1>Ostatnio wygenerowane raporty:</h1>
-    <input class="button" type="button" onclick="location.href='./new';" value="Zamów nowy raport">
+    <input class="button" type="button" data-open-url="./new" data-target="_self" value="Zamów nowy raport">
     <ul>
     {% for object in object_list %}
     <li>

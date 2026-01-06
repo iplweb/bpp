@@ -1,18 +1,16 @@
-from bpp.tests import show_element
-
-try:
-    from django.core.urlresolvers import reverse
-except ImportError:
-    from django.urls import reverse
-
 from unittest.mock import Mock
 
 import pytest
 from selenium.webdriver.support.expected_conditions import alert_is_present
 
+from bpp.tests import show_element
 from bpp.tests.util import assertPopupContains, scroll_into_view
-
 from django_bpp.selenium_util import wait_for, wait_for_page_load
+
+try:
+    from django.core.urlresolvers import reverse
+except ImportError:
+    from django.urls import reverse
 
 ID = "id_tytul_oryginalny"
 
@@ -80,7 +78,7 @@ def test_admin_get_wos_information_clarivate_err(
     scroll_into_view(browser_z_wydawnictwem, "id_liczba_cytowan_get")
     browser.find_by_id("id_liczba_cytowan_get").click()
     wait_for(lambda: alert_is_present()(browser.driver))
-    assertPopupContains(browser, "lel")
+    assertPopupContains(browser, "Wewnętrzny błąd systemu")
 
 
 def test_admin_get_wos_information_clarivate_misconfigured(

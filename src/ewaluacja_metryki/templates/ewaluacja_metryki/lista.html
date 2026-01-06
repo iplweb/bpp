@@ -134,14 +134,14 @@
                 </div>
 
                 <div class="medium-6 columns">
-                    <div class="button-container" style="display: flex; align-items: flex-end; justify-content: flex-end; height: 100%; min-height: 60px;">
-                        <button type="submit" class="button" style="margin-right: 0.5rem;">
+                    <div class="button-container ewaluacja-metryki__filter-buttons">
+                        <button type="submit" class="button ewaluacja-metryki__filter-btn">
                             <span class="fi-magnifying-glass"></span> Filtruj
                         </button>
-                        <a href="{% url 'ewaluacja_metryki:lista' %}{% clear_filters_url request %}" class="button secondary" style="margin-right: 0.5rem;">
+                        <a href="{% url 'ewaluacja_metryki:lista' %}{% clear_filters_url request %}" class="button secondary ewaluacja-metryki__filter-btn">
                             <span class="fi-x"></span> Wyczyść filtry
                         </a>
-                        <a href="{% url 'ewaluacja_metryki:export_lista_xlsx' %}?{{ request.GET.urlencode }}" class="button warning" style="margin-right: 0.5rem;">
+                        <a href="{% url 'ewaluacja_metryki:export_lista_xlsx' %}?{{ request.GET.urlencode }}" class="button warning ewaluacja-metryki__filter-btn">
                             <span class="fi-download"></span> Pobierz XLSX
                         </a>
                         <a href="{% url 'ewaluacja_metryki:statystyki' %}" class="button success">
@@ -209,11 +209,12 @@
             </thead>
             <tbody>
                 {% for metryka in metryki %}
-                <tr class="clickable-row"
+                <tr class="clickable-row ewaluacja-metryki__clickable-row"
                     data-autor-slug="{{ metryka.autor.slug }}"
                     data-dyscyplina-kod="{{ metryka.dyscyplina_naukowa.kod }}"
-                    style="cursor: pointer;"
-                    title="Kliknij aby zobaczyć szczegóły">
+                    title="Kliknij lub naciśnij Enter aby zobaczyć szczegóły"
+                    tabindex="0"
+                    role="button">
                     <td>
                         <strong>
                             <a href="{% url 'ewaluacja_metryki:szczegoly' autor_slug=metryka.autor.slug dyscyplina_kod=metryka.dyscyplina_naukowa.kod %}" title="Szczegóły metryki ewaluacyjnej">
@@ -252,7 +253,7 @@
                             </div>
                         </div>
                     </td>
-                    <td class="text-center" style="break-inside: avoid;">
+                    <td class="text-center ewaluacja-metryki__cell-no-break">
                         <a href="{% url 'ewaluacja_metryki:szczegoly' autor_slug=metryka.autor.slug dyscyplina_kod=metryka.dyscyplina_naukowa.kod %}" class="button" title="Szczegóły metryki">
                             <span class="fi-eye"></span>
                         </a>
@@ -337,7 +338,7 @@
                 Kolor reprezentuje wartość PKDaut/slot.
                 <strong>Kliknij w punkt, aby przejść do szczegółów metryki autora.</strong>
             </p>
-            <div id="heatmap-container" style="width:100%; height:700px;"></div>
+            <div id="heatmap-container" class="ewaluacja-metryki__chart-container ewaluacja-metryki__chart-container--large"></div>
             {% if not metryki %}
             <div class="text-center">
                 <em>Brak danych do wyświetlenia. Uruchom komendę 'python manage.py oblicz_metryki' aby wygenerować dane.</em>
@@ -354,7 +355,7 @@
                 Wizualizacja pokazuje gęstość rozkładu autorów w formie bloków.
                 Intensywność koloru reprezentuje liczbę autorów w danym obszarze (binned histogram 2D).
             </p>
-            <div id="heatmap-blocky-container" style="width:100%; height:700px;"></div>
+            <div id="heatmap-blocky-container" class="ewaluacja-metryki__chart-container ewaluacja-metryki__chart-container--large"></div>
             {% if not metryki %}
             <div class="text-center">
                 <em>Brak danych do wyświetlenia. Uruchom komendę 'python manage.py oblicz_metryki' aby wygenerować dane.</em>
@@ -371,7 +372,7 @@
                 Wizualizacja pokazuje gęstość rozkładu autorów w formie linii konturowych (jak mapa topograficzna).
                 Linie konturu reprezentują obszary o podobnej gęstości autorów.
             </p>
-            <div id="contour-container" style="width:100%; height:700px;"></div>
+            <div id="contour-container" class="ewaluacja-metryki__chart-container ewaluacja-metryki__chart-container--large"></div>
             {% if not metryki %}
             <div class="text-center">
                 <em>Brak danych do wyświetlenia. Uruchom komendę 'python manage.py oblicz_metryki' aby wygenerować dane.</em>
@@ -389,7 +390,7 @@
                 a kolor reprezentuje wartość PKDaut/slot. Pozwala zobaczyć 4 wymiary danych jednocześnie.
                 <strong>Kliknij w bąbelek, aby przejść do szczegółów metryki autora.</strong>
             </p>
-            <div id="bubble-container" style="width:100%; height:700px;"></div>
+            <div id="bubble-container" class="ewaluacja-metryki__chart-container ewaluacja-metryki__chart-container--large"></div>
             {% if not metryki %}
             <div class="text-center">
                 <em>Brak danych do wyświetlenia. Uruchom komendę 'python manage.py oblicz_metryki' aby wygenerować dane.</em>
@@ -407,7 +408,7 @@
                 Najlepsza z obu światów - widać zarówno ogólne trendy jak i poszczególnych autorów.
                 <strong>Kliknij w punkt, aby przejść do szczegółów metryki autora.</strong>
             </p>
-            <div id="contour-scatter-container" style="width:100%; height:700px;"></div>
+            <div id="contour-scatter-container" class="ewaluacja-metryki__chart-container ewaluacja-metryki__chart-container--large"></div>
             {% if not metryki %}
             <div class="text-center">
                 <em>Brak danych do wyświetlenia. Uruchom komendę 'python manage.py oblicz_metryki' aby wygenerować dane.</em>
@@ -426,7 +427,7 @@
                 Kolor reprezentuje wartość PKDaut/slot.
                 <strong>Kliknij w bąbelek, aby przejść do szczegółów metryki autora.</strong>
             </p>
-            <div id="efektywnosc-babelki-container" style="width:100%; height:700px;"></div>
+            <div id="efektywnosc-babelki-container" class="ewaluacja-metryki__chart-container ewaluacja-metryki__chart-container--large"></div>
             {% if not metryki %}
             <div class="text-center">
                 <em>Brak danych do wyświetlenia. Uruchom komendę 'python manage.py oblicz_metryki' aby wygenerować dane.</em>
@@ -444,7 +445,7 @@
                 i średniej PKDaut/slot (oś Y). Intensywność koloru reprezentuje liczbę autorów w danym obszarze.
                 Pozwala zidentyfikować obszary optymalnej efektywności.
             </p>
-            <div id="efektywnosc-mapa-ciepla-container" style="width:100%; height:700px;"></div>
+            <div id="efektywnosc-mapa-ciepla-container" class="ewaluacja-metryki__chart-container ewaluacja-metryki__chart-container--large"></div>
             {% if not metryki %}
             <div class="text-center">
                 <em>Brak danych do wyświetlenia. Uruchom komendę 'python manage.py oblicz_metryki' aby wygenerować dane.</em>
@@ -868,7 +869,7 @@
 
         <div class="row">
             <div class="medium-12 columns">
-                <fieldset style="padding-left:20px;padding-right:20px;padding-bottom:20px;">
+                <fieldset class="ewaluacja-metryki__fieldset-padded">
                     <legend>Rodzaje autorów do przetworzenia:</legend>
                     <div class="row">
                         {% for rodzaj in dostepne_rodzaje_autorow %}
@@ -1860,23 +1861,33 @@ $(document).ready(function() {
     })();
     {% endif %}
 
+    // Funkcja nawigacji do szczegółów
+    function navigateToDetails($row) {
+        var autorSlug = $row.data('autor-slug');
+        var dyscyplinaKod = $row.data('dyscyplina-kod');
+
+        if (autorSlug && dyscyplinaKod) {
+            var url = '{% url "ewaluacja_metryki:szczegoly" autor_slug="AUTOR_SLUG" dyscyplina_kod="DYSC_KOD" %}'
+                .replace('AUTOR_SLUG', autorSlug)
+                .replace('DYSC_KOD', dyscyplinaKod);
+            window.location.href = url;
+        }
+    }
+
     // Obsługa kliknięcia na wiersz tabeli
     $('.clickable-row').on('click', function(e) {
         // Nie przekierowuj jeśli kliknięto na link, przycisk lub element w kolumnie akcji
         if ($(e.target).closest('a, button, .button').length > 0) {
             return;
         }
+        navigateToDetails($(this));
+    });
 
-        // Pobierz dane z atrybutów wiersza
-        var autorSlug = $(this).data('autor-slug');
-        var dyscyplinaKod = $(this).data('dyscyplina-kod');
-
-        // Zbuduj URL i przekieruj
-        if (autorSlug && dyscyplinaKod) {
-            var url = '{% url "ewaluacja_metryki:szczegoly" autor_slug="AUTOR_SLUG" dyscyplina_kod="DYSC_KOD" %}'
-                .replace('AUTOR_SLUG', autorSlug)
-                .replace('DYSC_KOD', dyscyplinaKod);
-            window.location.href = url;
+    // Obsługa klawiatury (Enter i Spacja)
+    $('.clickable-row').on('keydown', function(e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            navigateToDetails($(this));
         }
     });
 

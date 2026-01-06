@@ -1,0 +1,66 @@
+// =============================================================================
+// MULTISEEK BIBTEX
+// BibTeX container and code display styles
+// =============================================================================
+
+.multiseek-bibtex-container {
+  background: white;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+
+  pre {
+    font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', Consolas,
+      'Liberation Mono', Menlo, 'Courier New', monospace;
+    font-size: 13px;
+    background-color: #fafbfc;
+    border: 1px solid #d1d5da;
+    border-radius: 6px;
+    padding: 20px;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-x: auto;
+    margin: 0;
+    color: #24292e;
+    line-height: 1.6;
+    font-weight: 400;
+  }
+
+  .bibtex-actions {
+    padding: 15px 0;
+    border-bottom: 1px solid #e9ecef;
+    margin-bottom: 15px;
+
+    &.bibtex-actions-top {
+      padding-top: 0;
+      padding-bottom: 15px;
+      border-top: none;
+      border-bottom: 1px solid #e9ecef;
+      margin-top: 0;
+      margin-bottom: 15px;
+    }
+
+    button {
+      background: #28a745;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      font-weight: 500;
+      transition: all 0.2s ease;
+
+      &:hover {
+        background: #218838;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(40, 167, 69, 0.3);
+      }
+    }
+
+    .copy-feedback {
+      margin-left: 15px;
+      color: #28a745;
+      font-weight: 500;
+    }
+  }
+}

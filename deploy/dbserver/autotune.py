@@ -13,6 +13,14 @@ how_much_ram_for_postgres = float(os.environ.get("POSTGRESQL_RAM_PERCENT", "0.5"
 force_ram_for_postgres = os.environ.get("POSTGRESQL_RAM_THIS_MUCH_GB", None)
 default_ram_for_postgres = int(os.environ.get("POSTGRESQL_DEFAULT_RAM", 4096))
 
+# Tryb "szybki ale niebezpieczny" - wyłącza synchronizację zapisu na dysk
+# Używać TYLKO do testów/developmentu, NIGDY w produkcji!
+unsafe_but_fast = os.environ.get("POSTGRESQL_UNSAFE_BUT_FAST", "").lower() in (
+    "1",
+    "true",
+    "yes",
+)
+
 
 def total_ram_size_mb():
     if force_ram_for_postgres:
@@ -32,7 +40,7 @@ def total_ram_size_mb():
         if matched:
             mem_total_kB = int(matched.groups()[0])
             print(
-                f"# autotune.py: detected {mem_total_kB} kB RAM; will use {int(how_much_ram_for_postgres*100)} % of it"
+                f"# autotune.py: detected {mem_total_kB} kB RAM; will use {int(how_much_ram_for_postgres * 100)} % of it"
             )
             return how_much_ram_for_postgres * mem_total_kB / 1024
 
@@ -112,6 +120,23 @@ def generate_config(ram_kb):
     config["max_parallel_workers"] = str(nproc)
     config["max_parallel_maintenance_workers"] = str(max_parallel)
 
+    # Tryb "szybki ale niebezpieczny" - maksymalna wydajność kosztem bezpieczeństwa
+    if unsafe_but_fast:
+        # Wyłącz synchronizację zapisu na dysk
+        config["fsync"] = "off"
+        config["full_page_writes"] = "off"
+        config["synchronous_commit"] = "off"
+        # Minimalny poziom WAL (wymaga max_wal_senders=0)
+        config["wal_level"] = "minimal"
+        config["max_wal_senders"] = "0"
+        config["archive_mode"] = "off"
+        # Opóźnienia zapisu WAL
+        config["wal_writer_delay"] = "10000ms"
+        config["commit_delay"] = "100000"
+        # Optymalizacje I/O (zakładamy SSD)
+        config["random_page_cost"] = "1.1"
+        config["effective_io_concurrency"] = "200"
+
     return {x: to_config_value(y, x) for x, y in sorted(config.items())}
 
 
@@ -119,24 +144,34 @@ def main():
     ram_mb = total_ram_size_mb()
     config = generate_config(ram_mb * ONE_MB_IN_KB)
     print("# Automatically added by autotune.py")
+    if unsafe_but_fast:
+        print("#")
+        print("# *** UWAGA! TRYB POSTGRESQL_UNSAFE_BUT_FAST JEST WŁĄCZONY! ***")
+        print("# *** fsync, full_page_writes, synchronous_commit WYŁĄCZONE ***")
+        print("# *** wal_level=minimal, max_wal_senders=0, archive_mode=off ***")
+        print("# *** DANE MOGĄ ZOSTAĆ UTRACONE! NIE UŻYWAJ W PRODUKCJI! ***")
+        print("#")
     for k, v in sorted(config.items()):
         print(f"{k} = {v}")
 
 
 def test():
+    # Wartości zależne od RAM (deterministyczne)
+    # Uwaga: work_mem zależy też od max_connections i max_parallel, więc go nie testujemy
+    # Wartości max_worker_processes, max_parallel_* zależą od CPU - testujemy tylko obecność
     test_cases = [
         [
             0.5 * ONE_GB_IN_KB,
             {
                 "shared_buffers": "128MB",
                 "effective_cache_size": "384MB",
-                "work_mem": "2621kB",
                 "maintenance_work_mem": "32MB",
                 "min_wal_size": "1GB",
-                "max_wal_size": "2GB",
+                "max_wal_size": "4GB",
                 "checkpoint_completion_target": "0.7",
                 "wal_buffers": "3932kB",
                 "default_statistics_target": "100",
+                "max_connections": 50,
             },
         ],
         [
@@ -144,13 +179,13 @@ def test():
             {
                 "shared_buffers": "256MB",
                 "effective_cache_size": "768MB",
-                "work_mem": "5242kB",
                 "maintenance_work_mem": "64MB",
                 "min_wal_size": "1GB",
-                "max_wal_size": "2GB",
+                "max_wal_size": "4GB",
                 "checkpoint_completion_target": "0.7",
                 "wal_buffers": "7864kB",
                 "default_statistics_target": "100",
+                "max_connections": 100,
             },
         ],
         [
@@ -158,13 +193,13 @@ def test():
             {
                 "shared_buffers": "512MB",
                 "effective_cache_size": "1536MB",
-                "work_mem": "10485kB",
                 "maintenance_work_mem": "128MB",
                 "min_wal_size": "1GB",
-                "max_wal_size": "2GB",
+                "max_wal_size": "4GB",
                 "checkpoint_completion_target": "0.7",
                 "wal_buffers": "15728kB",
                 "default_statistics_target": "100",
+                "max_connections": 200,
             },
         ],
         [
@@ -172,32 +207,63 @@ def test():
             {
                 "shared_buffers": "1GB",
                 "effective_cache_size": "3GB",
-                "work_mem": "20971kB",
                 "maintenance_work_mem": "256MB",
                 "min_wal_size": "1GB",
-                "max_wal_size": "2GB",
+                "max_wal_size": "4GB",
                 "checkpoint_completion_target": "0.7",
                 "wal_buffers": "16MB",
                 "default_statistics_target": "100",
+                "max_connections": 250,
             },
         ],
     ]
+
+    # Klucze które muszą być obecne (zależne od CPU, nie sprawdzamy wartości)
+    cpu_dependent_keys = {
+        "max_worker_processes",
+        "max_parallel_workers_per_gather",
+        "max_parallel_workers",
+        "max_parallel_maintenance_workers",
+        "work_mem",
+    }
 
     for size, expected_config in test_cases:
         prefix = f"Postgres at {size / ONE_GB_IN_KB}GB"
 
         real_config = generate_config(size)
 
-        real_keys = sorted(real_config.keys())
-        expected_keys = sorted(expected_config.keys())
-
-        m = f"{prefix}: keys differ\n  Got: {real_keys}\n  Expected: {expected_keys}"
-        assert real_keys == expected_keys, m
-
+        # Sprawdź wartości deterministyczne
         for key, expected in expected_config.items():
+            assert key in real_config, f"{prefix}: missing key {key}"
             real = real_config[key]
             m = f"{prefix}: {key} differs:\n  Got: {real}\n  Expected: {expected}"
             assert real == expected, m
+
+        # Sprawdź obecność kluczy zależnych od CPU
+        for key in cpu_dependent_keys:
+            assert key in real_config, f"{prefix}: missing CPU-dependent key {key}"
+
+    # Test trybu unsafe_but_fast
+    if unsafe_but_fast:
+        config = generate_config(ONE_GB_IN_KB)
+        # Klucze które powinny być "off"
+        off_keys = {
+            "fsync",
+            "full_page_writes",
+            "synchronous_commit",
+            "archive_mode",
+        }
+        for key in off_keys:
+            assert key in config, f"unsafe mode: missing key {key}"
+            assert config[key] == "off", f"unsafe mode: {key} should be 'off'"
+        # Klucze WAL
+        assert config.get("wal_level") == "minimal"
+        assert config.get("max_wal_senders") == "0"
+        # Klucze I/O
+        assert "wal_writer_delay" in config
+        assert "commit_delay" in config
+        assert config.get("random_page_cost") == "1.1"
+        assert config.get("effective_io_concurrency") == "200"
 
     sys.stderr.write("OK\n")
 

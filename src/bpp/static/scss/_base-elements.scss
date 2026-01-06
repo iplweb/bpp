@@ -1,0 +1,199 @@
+// =============================================================================
+// BASE ELEMENTS
+// Basic element styling: links, forms, tables, lists, pagination, alerts
+// =============================================================================
+
+.form-error {
+  margin-top: 0 !important;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+// External links styling - OPT-IN ONLY (use rel="external" or class="external-link")
+a[rel~="external"],
+a.external-link {
+  &::after {
+    content: "↗";
+    display: inline-block;
+    margin-left: 3px;
+    font-size: 0.85em;
+    font-weight: bold;
+    color: rgba($primary-color, 0.7);
+    transition: all 0.2s ease;
+    transform: translateY(-2px);
+    text-decoration: none !important;
+  }
+
+  &:hover::after {
+    color: $primary-color;
+    transform: translate(2px, -4px);
+  }
+}
+
+// Alternative external link styles with different arrow types
+a.external-arrow-box {
+  position: relative;
+  padding-right: 18px;
+
+  &::after {
+    content: "⧉";
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 1.1em;
+    color: rgba($primary-color, 0.6);
+    transition: all 0.2s ease;
+  }
+
+  &:hover::after {
+    color: $primary-color;
+    transform: translateY(-50%) rotate(15deg) scale(1.2);
+  }
+}
+
+// External link with curved arrow
+a.external-arrow-curved {
+  &::after {
+    content: "⤴";
+    display: inline-block;
+    margin-left: 4px;
+    font-size: 0.9em;
+    color: rgba($primary-color, 0.7);
+    transition: all 0.2s ease;
+  }
+
+  &:hover::after {
+    color: $primary-color;
+    transform: translateY(-2px) rotate(-10deg);
+  }
+}
+
+// External link with double arrow
+a.external-arrow-double {
+  &::after {
+    content: "»";
+    display: inline-block;
+    margin-left: 4px;
+    font-size: 1em;
+    font-weight: bold;
+    color: rgba($primary-color, 0.6);
+    transition: all 0.2s ease;
+  }
+
+  &:hover::after {
+    color: $primary-color;
+    margin-left: 6px;
+  }
+}
+
+// External link with window icon
+a.external-window {
+  &::after {
+    content: "🗗";
+    display: inline-block;
+    margin-left: 4px;
+    font-size: 0.85em;
+    color: rgba($primary-color, 0.6);
+    transition: all 0.2s ease;
+    transform: translateY(-1px);
+  }
+
+  &:hover::after {
+    color: $primary-color;
+    transform: translateY(-2px) scale(1.1);
+  }
+}
+
+// Disable external indicators when explicitly requested
+a.no-external-indicator {
+  &::after {
+    content: none !important;
+  }
+}
+
+// Pagination
+ul.pagination a {
+  text-decoration: none;
+}
+
+ul.pagination {
+  margin-bottom: 0px;
+}
+
+// Labels
+label:hover {
+  text-decoration: underline;
+}
+
+// Custom checkboxes
+form.custom .custom.checkbox.checked:before {
+  content: "\2714";
+}
+
+// Table sizes
+.small-table tbody tr td {
+  font-size: 80%;
+}
+
+.small-table thead tr th {
+  font-size: 70%;
+}
+
+.very-small-table tbody tr td {
+  font-size: 60%;
+}
+
+.very-small-table thead tr th {
+  font-size: 50%;
+}
+
+// Alert boxes
+.alert-box {
+  font-weight: normal;
+}
+
+.alert-box a {
+  color: white;
+  font-weight: bold;
+}
+
+// Lists
+body ol li {
+  list-style-type: decimal;
+  margin-left: 2em;
+}
+
+.radioselect li {
+  list-style-type: none;
+}
+
+// Sub navigation
+.sub-nav {
+  background-color: #f2f2f2;
+  border-radius: 6px;
+}
+
+// Non-field errors
+.nonfield-errors ol {
+  margin: 0px;
+}
+
+.nonfield-errors ol li {
+  list-style-type: none;
+}
+
+// BPP table styles
+.bpp-lp-column {
+  text-align: right;
+}
+
+table.bpp-table tbody tr td {
+  vertical-align: top;
+}
+
+table.bpp-table tbody tr.even {
+  background: white !important;
+}

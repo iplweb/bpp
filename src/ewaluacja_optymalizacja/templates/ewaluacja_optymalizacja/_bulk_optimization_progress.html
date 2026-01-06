@@ -198,7 +198,9 @@
                                     </a>
                                 {% elif disc.error %}
                                     <button type="button" class="button tiny alert"
-                                            onclick="alert('{{ disc.error|escapejs }}\n\n{% if disc.traceback %}Traceback:\n{{ disc.traceback|escapejs }}{% endif %}')">
+                                            data-action="show-error-alert"
+                                            data-error="{{ disc.error|escapejs }}"
+                                            data-traceback="{% if disc.traceback %}{{ disc.traceback|escapejs }}{% endif %}">
                                         Zobacz błąd
                                     </button>
                                 {% else %}

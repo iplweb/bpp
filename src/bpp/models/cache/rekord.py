@@ -4,6 +4,7 @@ from django.contrib.postgres.fields.array import ArrayField
 from django.contrib.postgres.search import SearchVectorField as VectorField
 from django.db import connections, models, router
 from django.db.models.deletion import DO_NOTHING
+from django.db.models.expressions import RawSQL
 from django.urls import reverse
 from django.utils.functional import cached_property
 from taggit.managers import TaggableManager, _TaggableManager
@@ -133,7 +134,7 @@ class _MyTaggableManager(_TaggableManager):
         fieldname = "rekord_id"
         fk = self.through._meta.get_field(fieldname)
         query = {
-            "%s__%s__in" % (self.through.tag_relname(), fk.name): {
+            f"{self.through.tag_relname()}__{fk.name}__in": {
                 obj._get_pk_val() for obj in instances
             }
         }
@@ -144,13 +145,17 @@ class _MyTaggableManager(_TaggableManager):
         qs = (
             self.get_queryset(query)
             .using(db)
-            .extra(
-                select={"_prefetch_related_val": f"{qn(join_table)}.{qn(source_col)}"}
+            .annotate(
+                _prefetch_related_val=RawSQL(f"{qn(join_table)}.{qn(source_col)}", [])
             )
         )
-        from operator import attrgetter
 
-        rel_obj_attr = attrgetter("_prefetch_related_val")
+        def get_prefetch_val(obj):
+            """Convert list to tuple for hashability (PostgreSQL returns arrays as lists)."""
+            val = obj._prefetch_related_val
+            return tuple(val) if isinstance(val, list) else val
+
+        rel_obj_attr = get_prefetch_val
 
         return (
             qs,
@@ -213,8 +218,6 @@ class RekordBase(
 
     liczba_cytowan = models.SmallIntegerField()
 
-    objects = RekordManager()
-
     opis_bibliograficzny_cache = models.TextField()
     opis_bibliograficzny_autorzy_cache = ArrayField(models.TextField())
     opis_bibliograficzny_zapisani_autorzy_cache = models.TextField()
@@ -230,6 +233,8 @@ class RekordBase(
 
     jezyk_alt = None
     jezyk_orig = None
+
+    objects = RekordManager()
 
     # Skróty dla django-dsl
 
@@ -247,6 +252,9 @@ class RekordBase(
 
     def __str__(self):
         return self.tytul_oryginalny
+
+    def get_absolute_url(self):
+        return reverse("bpp:browse_rekord", args=(self.pk[0], self.pk[1]))
 
     @cached_property
     def content_type(self):
@@ -266,11 +274,11 @@ class RekordBase(
 
     @cached_property
     def js_safe_pk(self):
-        return "%i_%i" % (self.pk[0], self.pk[1])
+        return f"{self.pk[0]:d}_{self.pk[1]:d}"
 
     @cached_property
     def form_post_pk(self):
-        return "{%i,%i}" % (self.pk[0], self.pk[1])
+        return "{" + f"{self.pk[0]:d},{self.pk[1]:d}" + "}"
 
     @cached_property
     def ma_punktacje_sloty(self):
@@ -312,9 +320,6 @@ class RekordBase(
         res = self.pierwszy_autor_afiliowany()
         if res is not None:
             return self.pierwszy_autor_afiliowany().jednostka
-
-    def get_absolute_url(self):
-        return reverse("bpp:browse_rekord", args=(self.pk[0], self.pk[1]))
 
 
 class Rekord(RekordBase):

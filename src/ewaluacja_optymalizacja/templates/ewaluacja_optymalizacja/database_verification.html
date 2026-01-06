@@ -17,16 +17,16 @@
         </h1>
 
         {% if total_count > 0 %}
-        <div class="callout warning" style="border-left: 4px solid #ffae00;">
+        <div class="callout warning ewaluacja-optymalizacja__callout-warning-border">
             <h4><span class="fi-alert"></span> Znaleziono prace z problemowymi slotami</h4>
             <p>
                 Poniższe prace mają autorów ze slotami poniżej 0.1.
                 <strong>Należy się ich pozbyć przed przejściem do dalszych kroków optymalizacji.</strong>
             </p>
-            <p style="margin-bottom: 0;">
+            <p class="ewaluacja-optymalizacja__no-margin-bottom">
                 Aby usunąć problematyczne sloty, możesz:
             </p>
-            <ul style="margin-top: 0.5rem;">
+            <ul class="ewaluacja-optymalizacja__list-small-top-margin">
                 <li>Odpiąć dyscyplinę od autora w danej pracy (jeśli slot jest bardzo mały)</li>
                 <li>Użyć funkcji "Optymalizuj ręcznie" dla danej pracy aby zmienić przypisania</li>
                 <li>Sprawdzić czy dane punktowe w pracy są poprawne</li>
@@ -40,9 +40,9 @@
         </div>
 
         <!-- Statystyki -->
-        <div class="callout info" style="margin-top: 1rem;">
+        <div class="callout info ewaluacja-optymalizacja__callout-top-margin">
             <h5><span class="fi-graph-bar"></span> Statystyki</h5>
-            <p style="margin-bottom: 0;">
+            <p class="ewaluacja-optymalizacja__no-margin-bottom">
                 Znaleziono <strong>{{ total_count }}</strong> przypisań autor-praca-dyscyplina ze slotem poniżej 0.1,
                 dotyczących <strong>{{ unique_works }}</strong> prac i <strong>{{ unique_authors }}</strong> autorów.
             </p>
@@ -56,8 +56,8 @@
                     <th>Tytuł pracy</th>
                     <th>Autor</th>
                     <th>Dyscyplina</th>
-                    <th style="text-align: right;">Slot</th>
-                    <th style="text-align: center;">Rok</th>
+                    <th class="ewaluacja-optymalizacja__cell-right">Slot</th>
+                    <th class="ewaluacja-optymalizacja__cell-center">Rok</th>
                     <th>Akcje</th>
                 </tr>
             </thead>
@@ -71,10 +71,10 @@
                     </td>
                     <td>{{ record.autor.nazwisko }} {{ record.autor.imiona }}</td>
                     <td>{{ record.dyscyplina.nazwa }}</td>
-                    <td style="text-align: right; color: #c60f13; font-weight: bold;">
+                    <td class="ewaluacja-optymalizacja__slot-error">
                         {{ record.slot|floatformat:4 }}
                     </td>
-                    <td style="text-align: center;">{{ record.rekord.rok }}</td>
+                    <td class="ewaluacja-optymalizacja__cell-center">{{ record.rekord.rok }}</td>
                     <td>
                         <div class="button-group">
                             <a href="{{ record.rekord.get_absolute_url }}"
@@ -99,7 +99,7 @@
         <!-- Brak prac ze slotami poniżej 0.1 -->
         <div class="callout success">
             <h4><span class="fi-check"></span> Brak prac ze slotami poniżej 0.1</h4>
-            <p style="margin-bottom: 0;">
+            <p class="ewaluacja-optymalizacja__no-margin-bottom">
                 Nie znaleziono prac ze slotami poniżej 0.1 w latach 2022-2025.
             </p>
         </div>
@@ -112,7 +112,7 @@
         {% endif %}
 
         <!-- Sekcja: Brak daty oświadczenia -->
-        <hr style="margin: 2rem 0;">
+        <hr class="ewaluacja-optymalizacja__section-separator">
         <h2><span class="fi-calendar"></span> Brak daty oświadczenia</h2>
         <p>
             Poniższe liczby pokazują publikacje od roku 2022, gdzie autor ma ustawioną dyscyplinę naukową,
@@ -144,7 +144,7 @@
         </div>
 
         <!-- Sekcja: Prace z dyscypliną, ale bez przypięcia -->
-        <hr style="margin: 2rem 0;">
+        <hr class="ewaluacja-optymalizacja__section-separator">
         <h2><span class="fi-unlink"></span> Prace z dyscypliną, ale bez przypięcia</h2>
         <p>
             Poniższe rekordy mają ustawioną dyscyplinę naukową, ale pole "przypieta" ma wartość False.
@@ -172,14 +172,14 @@
                     </td>
                     <td>{{ record.autor.nazwisko }} {{ record.autor.imiona }}</td>
                     <td>{{ record.dyscyplina_naukowa.nazwa }}</td>
-                    <td style="text-align: center;">{{ record.rekord.rok }}</td>
+                    <td class="ewaluacja-optymalizacja__cell-center">{{ record.rekord.rok }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
         {% else %}
         <div class="callout success">
-            <p style="margin-bottom: 0;">Brak wydawnictw ciągłych z odpiętą dyscypliną.</p>
+            <p class="ewaluacja-optymalizacja__no-margin-bottom">Brak wydawnictw ciągłych z odpiętą dyscypliną.</p>
         </div>
         {% endif %}
 
@@ -204,14 +204,14 @@
                     </td>
                     <td>{{ record.autor.nazwisko }} {{ record.autor.imiona }}</td>
                     <td>{{ record.dyscyplina_naukowa.nazwa }}</td>
-                    <td style="text-align: center;">{{ record.rekord.rok }}</td>
+                    <td class="ewaluacja-optymalizacja__cell-center">{{ record.rekord.rok }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
         {% else %}
         <div class="callout success">
-            <p style="margin-bottom: 0;">Brak wydawnictw zwartych z odpiętą dyscypliną.</p>
+            <p class="ewaluacja-optymalizacja__no-margin-bottom">Brak wydawnictw zwartych z odpiętą dyscypliną.</p>
         </div>
         {% endif %}
     </div>

@@ -1,9 +1,23 @@
+import datetime
+
 import pytest
+from django.conf import settings
 from model_bakery import baker
 
-from bpp.models import Praca_Doktorska, Wydawnictwo_Zwarte
+from bpp.models import (
+    Patent,
+    Patent_Autor,
+    Praca_Doktorska,
+    Praca_Habilitacyjna,
+    Status_Korekty,
+    Tytul,
+    Uczelnia,
+    Wydawnictwo_Zwarte,
+    Wydzial,
+    Zrodlo_Informacji,
+)
 from bpp.models.autor import Autor
-from bpp.models.cache import Autorzy, Rekord
+from bpp.models.cache import Autorzy, AutorzyView, Rekord
 from bpp.models.openaccess import (
     Czas_Udostepnienia_OpenAccess,
     Licencja_OpenAccess,
@@ -13,6 +27,8 @@ from bpp.models.struktura import Jednostka
 from bpp.models.system import Charakter_Formalny, Jezyk, Typ_KBN, Typ_Odpowiedzialnosci
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle, Wydawnictwo_Ciagle_Autor
 from bpp.models.zrodlo import Zrodlo
+from bpp.tests.helpers import autor as autor_publikacji, ciagle, zwarte
+from bpp.tests.util import any_autor, any_ciagle
 
 
 @pytest.mark.django_db
@@ -454,3 +470,302 @@ def test_rebuild_zwarte(
 def test_rebuild_patent(django_assert_max_num_queries, patent, denorms):
     with django_assert_max_num_queries(41):
         denorms.rebuildall("Patent")
+
+
+# =============================================================================
+# Testy przeniesione z tests_legacy/test_cache.py
+# =============================================================================
+
+
+@pytest.mark.django_db
+def test_liczba_znakow_bug():
+    """Test błędu związanego z liczbą znaków w cache."""
+    Rekord.objects.full_refresh()
+    assert Rekord.objects.all().count() == 0
+
+    any_ciagle(tytul="foo", liczba_znakow_wydawniczych=31337)
+    Rekord.objects.full_refresh()
+
+    assert Rekord.objects.all().count() == 1
+    assert Rekord.objects.all()[0].tytul == "foo"
+    assert Rekord.objects.all()[0].liczba_znakow_wydawniczych == 31337
+
+
+@pytest.fixture
+def cache_setup(db):
+    """Fixture przygotowujący dane dla testów cache."""
+    Typ_Odpowiedzialnosci.objects.get_or_create(skrot="aut.", nazwa="autor")
+    Charakter_Formalny.objects.get_or_create(skrot="PAT")
+    for skrot, nazwa in [("ang.", "angielski"), ("fr.", "francuski")]:
+        Jezyk.objects.get_or_create(skrot=skrot, nazwa=nazwa)
+    for klass in [Typ_KBN, Zrodlo_Informacji, Status_Korekty]:
+        baker.make(klass)
+
+    aut = Typ_Odpowiedzialnosci.objects.get(skrot="aut.")
+
+    uczelnia = baker.make(Uczelnia)
+    wydzial = baker.make(Wydzial, uczelnia=uczelnia)
+    j = baker.make(Jednostka, nazwa="Foo Bar", uczelnia=uczelnia, wydzial=wydzial)
+
+    a = autor_publikacji(j)
+    a.nazwisko = "Kowalski"
+    a.imiona = "Jan"
+    tytul_obj, _ = Tytul.objects.get_or_create(skrot="dr", defaults={"nazwa": "doktor"})
+    a.tytul = tytul_obj
+    a.save()
+
+    wspolne_dane = dict(
+        adnotacje="adnotacje",
+        informacja_z=Zrodlo_Informacji.objects.all()[0],
+        status_korekty=Status_Korekty.objects.all()[0],
+        rok=2000,
+        www="http://127.0.0.1/",
+        recenzowana=True,
+        impact_factor=5,
+        punkty_kbn=5,
+        index_copernicus=5,
+        punktacja_wewnetrzna=5,
+        weryfikacja_punktacji=True,
+        typ_kbn=Typ_KBN.objects.all()[0],
+        jezyk=Jezyk.objects.all()[0],
+        informacje="informacje",
+        szczegoly="szczegoly",
+        uwagi="uwagi",
+        slowa_kluczowe="slowa kluczowe",
+    )
+
+    zwarte_dane = dict(
+        miejsce_i_rok="Lublin 2012",
+        wydawnictwo="Pholium",
+        redakcja="Redkacja",
+        isbn="isbn",
+        e_isbn="e_isbn",
+        tytul="tytul",
+    )
+
+    z = zwarte(
+        a,
+        j,
+        aut,
+        tytul_oryginalny="zwarte",
+        liczba_znakow_wydawniczych=40000,
+        charakter_formalny=Charakter_Formalny.objects.all()[0],
+        **dict(list(zwarte_dane.items()) + list(wspolne_dane.items())),
+    )
+
+    zr = baker.make(Zrodlo, nazwa="Zrodlo")
+
+    c = ciagle(
+        a,
+        j,
+        tytul_oryginalny="ciągłe",
+        zrodlo=zr,
+        tytul="tytul",
+        issn="issn",
+        e_issn="e_issn",
+        charakter_formalny=Charakter_Formalny.objects.all()[0],
+        **wspolne_dane,
+    )
+    assert Wydawnictwo_Ciagle_Autor.objects.all().count() == 1
+
+    wca = Wydawnictwo_Ciagle_Autor.objects.all()[0]
+    wca.typ_odpowiedzialnosci = aut
+    wca.save()
+
+    settings.BPP_CACHE_ENABLED = True
+
+    # Doktorat i habilitacja
+    doktorat_kw = dict(list(zwarte_dane.items()) + list(wspolne_dane.items()))
+
+    d = baker.make(
+        Praca_Doktorska,
+        tytul_oryginalny="doktorat",
+        autor=a,
+        jednostka=j,
+        **doktorat_kw,
+    )
+
+    h = baker.make(
+        Praca_Habilitacyjna,
+        tytul_oryginalny="habilitacja",
+        autor=a,
+        jednostka=j,
+        **doktorat_kw,
+    )
+
+    # Patent
+    Charakter_Formalny.objects.get(skrot="PAT")
+
+    for elem in ["typ_kbn", "jezyk"]:
+        del wspolne_dane[elem]
+
+    p = baker.make(
+        Patent,
+        tytul_oryginalny="patent",
+        numer_zgloszenia="100",
+        data_decyzji=datetime.date(2012, 1, 1),
+        **wspolne_dane,
+    )
+
+    Patent_Autor.objects.create(
+        autor=a,
+        jednostka=j,
+        rekord=p,
+        typ_odpowiedzialnosci=aut,
+        zapisany_jako="Kowalski",
+    )
+
+    return {
+        "a": a,
+        "j": j,
+        "c": c,
+        "z": z,
+        "d": d,
+        "h": h,
+        "p": p,
+        "wszystkie_modele": [d, h, p, c, z],
+        "aut": aut,
+    }
+
+
+def test_get_original_object(cache_setup):
+    """Test pobierania oryginalnego obiektu z cache."""
+    Rekord.objects.full_refresh()
+    for model in cache_setup["wszystkie_modele"]:
+        c = Rekord.objects.get_original(model)
+        assert c.original == model
+
+
+def test_cache_triggers(cache_setup):
+    """Test triggerów aktualizacji cache."""
+    T1 = "OMG ROXX"
+    T2 = "LOL"
+
+    for model in cache_setup["wszystkie_modele"]:
+        model.tytul_oryginalny = T1
+        model.save()
+        assert Rekord.objects.get_original(model).tytul_oryginalny == T1
+
+        model.tytul_oryginalny = T2
+        model.save()
+        assert Rekord.objects.get_original(model).tytul_oryginalny == T2
+
+
+def test_tytul_sorted_version(cache_setup):
+    """Test sortowanej wersji tytułu."""
+    for elem in [
+        cache_setup["d"],
+        cache_setup["h"],
+        cache_setup["c"],
+        cache_setup["z"],
+    ]:
+        elem.tytul_oryginalny = "The 'APPROACH'"
+        elem.jezyk = Jezyk.objects.get(skrot="ang.")
+        elem.save()
+
+        assert Rekord.objects.get_original(elem).tytul_oryginalny_sort == "approach"
+
+        elem.tytul_oryginalny = "le 'test'"
+        elem.jezyk = Jezyk.objects.get(skrot="fr.")
+        elem.save()
+
+        assert Rekord.objects.get_original(elem).tytul_oryginalny_sort == "test"
+
+
+@pytest.fixture
+def cache_zapisani_setup(db):
+    """Fixture dla testów zapisanych autorów."""
+    typ_odp, _ = Typ_Odpowiedzialnosci.objects.get_or_create(
+        skrot="aut.", defaults={"nazwa": "autor"}
+    )
+    return typ_odp
+
+
+def test_zapisani_wielu(cache_zapisani_setup):
+    """Test cache dla wielu zapisanych autorów."""
+    typ_odp = cache_zapisani_setup
+
+    aut = any_autor("Kowalski", "Jan")
+    aut2 = any_autor("Nowak", "Jan")
+
+    baker.make(Uczelnia)
+    jed = baker.make(Jednostka)
+    wyd = any_ciagle(tytul_oryginalny="Wydawnictwo ciagle")
+
+    for kolejnosc, autorx in enumerate([aut, aut2]):
+        Wydawnictwo_Ciagle_Autor.objects.create(
+            autor=autorx,
+            jednostka=jed,
+            rekord=wyd,
+            typ_odpowiedzialnosci=typ_odp,
+            zapisany_jako="FOO BAR",
+            kolejnosc=kolejnosc,
+        )
+
+    Rekord.objects.full_refresh()
+    c = Rekord.objects.get_original(wyd)
+
+    # Upewnij się, że w przypadku pracy z wieloma autorami do cache
+    # zapisywane jest nie nazwisko z pól 'zapisany_jako' w bazie danych,
+    # a oryginalne
+    assert c.opis_bibliograficzny_autorzy_cache == ["Kowalski Jan", "Nowak Jan"]
+
+    # Upewnij się, że pole 'opis_bibliograficzny_zapisani_autorzy_cache'
+    # zapisywane jest prawidłowo
+    assert c.opis_bibliograficzny_zapisani_autorzy_cache == "FOO BAR, FOO BAR"
+
+
+def test_zapisani_jeden(cache_zapisani_setup):
+    """Test cache dla jednego zapisanego autora."""
+    aut = any_autor("Kowalski", "Jan")
+    baker.make(Uczelnia)
+    dok = baker.make(Praca_Doktorska, tytul_oryginalny="Doktorat", autor=aut)
+
+    Rekord.objects.full_refresh()
+    c = Rekord.objects.get_original(dok)
+
+    # Upewnij się, że w przypadku pracy z jednym autorem do cache
+    # zapisywana jest prawidłowa wartość
+    assert c.opis_bibliograficzny_autorzy_cache == ["Kowalski Jan"]
+
+    assert c.opis_bibliograficzny_zapisani_autorzy_cache == "Kowalski Jan"
+
+
+@pytest.mark.django_db
+def test_minimal_caching_problem_tworzenie(
+    statusy_korekt, jezyki, typy_odpowiedzialnosci
+):
+    """Test problemu z minimalnym cachowaniem przy tworzeniu."""
+    j = baker.make(Jednostka)
+    a = any_autor()
+
+    assert Autorzy.objects.all().count() == 0
+
+    c = any_ciagle(impact_factor=5, punktacja_wewnetrzna=0)
+    assert Rekord.objects.all().count() == 1
+
+    c.dodaj_autora(a, j)
+
+    assert AutorzyView.objects.all().count() == 1
+    assert Autorzy.objects.all().count() == 1
+
+
+@pytest.mark.django_db
+def test_minimal_caching_problem_usuwanie(
+    statusy_korekt, jezyki, typy_odpowiedzialnosci
+):
+    """Test problemu z minimalnym cachowaniem przy usuwaniu."""
+    j = baker.make(Jednostka)
+    a = any_autor()
+
+    assert Autorzy.objects.all().count() == 0
+
+    c = any_ciagle(impact_factor=5, punktacja_wewnetrzna=0)
+    assert Rekord.objects.all().count() == 1
+
+    c.dodaj_autora(a, j)
+
+    c.delete()
+
+    assert AutorzyView.objects.all().count() == 0
+    assert Autorzy.objects.all().count() == 0

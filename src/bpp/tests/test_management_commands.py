@@ -1,22 +1,21 @@
-# -*- encoding: utf-8 -*-
 """Tests for bpp management commands."""
 
-import pytest
-from io import StringIO
-from django.contrib.sites.models import Site
-from django.core.management import call_command
-from django.test import override_settings
 from optparse import OptionError
 
+import pytest
+from django.contrib.sites.models import Site
+from django.core.management import call_command
+
+from bpp.management.commands.look_for_unused_fields import (
+    Command as LookForUnusedFields,
+)
 from bpp.models import (
     Autor,
-    Autorzy,
-    Jednostka,
     Autor_Jednostka,
-    Wydzial,
-    Uczelnia,
-    Zrodlo,
+    Autorzy,
     BppMultiseekVisibility,
+    Jednostka,
+    Wydzial,
 )
 
 
@@ -42,7 +41,6 @@ class TestRebuildSlugsCommand:
 
     def test_rebuild_slugs_jednostka(self, jednostka):
         """Test that rebuild_slugs clears slug field for units."""
-        original_slug = jednostka.slug
         jednostka.slug = "modified-slug"
         jednostka.save()
         assert jednostka.slug == "modified-slug"
@@ -75,8 +73,6 @@ class TestRebuildSlugsCommand:
 
     def test_rebuild_slugs_zrodlo(self, zrodlo):
         """Test that rebuild_slugs clears slug field for sources."""
-        # Store original slug to verify it changes
-        original_slug = zrodlo.slug
         zrodlo.slug = "test-zrodlo-slug"
         zrodlo.save()
         assert zrodlo.slug == "test-zrodlo-slug"
@@ -156,7 +152,9 @@ class TestRebuildAutorJednostkaCommand:
     def test_rebuild_autor_jednostka_basic(self, autor_jan_kowalski, jednostka):
         """Test that rebuild_autor_jednostka runs without errors."""
         # Create an author-unit association
-        au = Autor_Jednostka.objects.create(autor=autor_jan_kowalski, jednostka=jednostka)
+        au = Autor_Jednostka.objects.create(
+            autor=autor_jan_kowalski, jednostka=jednostka
+        )
         original_id = au.pk
 
         call_command("rebuild_autor_jednostka")
@@ -169,7 +167,9 @@ class TestRebuildAutorJednostkaCommand:
     ):
         """Test rebuild with multiple associations."""
         # Create multiple associations
-        au1 = Autor_Jednostka.objects.create(autor=autor_jan_kowalski, jednostka=jednostka)
+        au1 = Autor_Jednostka.objects.create(
+            autor=autor_jan_kowalski, jednostka=jednostka
+        )
         au2 = Autor_Jednostka.objects.create(
             autor=autor_jan_nowak, jednostka=druga_jednostka
         )
@@ -187,7 +187,9 @@ class TestRebuildAutorJednostkaCommand:
     ):
         """Test that rebuild_autor_jednostka triggers model save logic."""
         # This tests that the command actually calls save() on each object
-        au = Autor_Jednostka.objects.create(autor=autor_jan_kowalski, jednostka=jednostka)
+        au = Autor_Jednostka.objects.create(
+            autor=autor_jan_kowalski, jednostka=jednostka
+        )
         au_id = au.pk
 
         call_command("rebuild_autor_jednostka")
@@ -251,9 +253,7 @@ class TestSetSiteNameCommand:
         Site.objects.all().delete()
         site = Site.objects.create(domain="old.com", name="Old Name")
 
-        call_command(
-            "set_site_name", "--domain", "new.com", "--name", "New Name"
-        )
+        call_command("set_site_name", "--domain", "new.com", "--name", "New Name")
 
         site.refresh_from_db()
         assert site.domain == "new.com"
@@ -300,12 +300,10 @@ class TestResetMultiseekOrderingCommand:
 
     def test_reset_multiseek_ordering_updates_sort_order(self):
         """Test that command updates sort_order values."""
-        from bpp.multiseek_registry import registry
 
         # Create some BppMultiseekVisibility objects if they don't exist
         visibility = BppMultiseekVisibility.objects.first()
         if visibility:
-            original_order = visibility.sort_order
             call_command("reset_multiseek_ordering")
             visibility.refresh_from_db()
             # Sort order should be updated based on registry order
@@ -343,12 +341,11 @@ class TestUstawPunktacjeCommand:
         """Test that ustaw_punktacje command executes without error."""
         call_command("ustaw_punktacje")
 
-    def test_ustaw_punktacje_with_publications(
-        self, wydawnictwo_ciagle, zrodlo
-    ):
+    def test_ustaw_punktacje_with_publications(self, wydawnictwo_ciagle, zrodlo):
         """Test ustaw_punktacje with actual publications."""
-        from bpp.models import Punktacja_Zrodla
         from model_bakery import baker
+
+        from bpp.models import Punktacja_Zrodla
 
         # Create a publication with points
         wydawnictwo_ciagle.punkty_kbn = 10
@@ -406,7 +403,9 @@ class TestRebuildSlugsCommandIntegration:
 class TestRemoveEmptyAuthorsCommandIntegration:
     """Integration tests for remove_empty_authors."""
 
-    def test_remove_empty_authors_idempotent(self, autor_jan_kowalski, wydawnictwo_zwarte, jednostka):
+    def test_remove_empty_authors_idempotent(
+        self, autor_jan_kowalski, wydawnictwo_zwarte, jednostka
+    ):
         """Test that running command multiple times is safe."""
         wydawnictwo_zwarte.dodaj_autora(autor_jan_kowalski, jednostka)
         author_id = autor_jan_kowalski.pk
@@ -440,3 +439,13 @@ class TestManagementCommandsEdgeCases:
 
         # Should not fail even with no records
         call_command("reset_multiseek_ordering")
+
+
+# =============================================================================
+# Testy przeniesione z tests_legacy/test_management.py
+# =============================================================================
+
+
+@pytest.mark.django_db
+def test_look_for_unused_fields():
+    LookForUnusedFields().handle(silent=True)

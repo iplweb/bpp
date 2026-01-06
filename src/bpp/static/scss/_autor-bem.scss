@@ -1,0 +1,307 @@
+// =============================================================================
+// AUTOR BEM
+// BEM author page styles (.autor-page__* classes)
+// =============================================================================
+
+.autor-page {
+  // Main heading
+  &__heading {
+    margin-bottom: 8px;
+  }
+
+  // Actions row
+  &__actions {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  // Quick actions section
+  &__quick-actions {
+    text-align: center;
+    margin-bottom: 30px;
+  }
+
+  &__quick-actions-form {
+    display: inline;
+  }
+
+  // Show all works button
+  &__show-all-btn {
+    background: #27ae60;
+    border: none;
+    padding: 12px 24px;
+    font-size: 1rem;
+    border-radius: 6px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s ease;
+
+    &:hover,
+    &:focus {
+      background-color: #229954;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    }
+  }
+
+  // Grid with gap
+  &__grid-gap {
+    gap: 10px;
+  }
+
+  // Identifier card (callout)
+  &__id-card {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+    padding: 12px;
+    margin: 0;
+    text-align: center;
+    min-width: 120px;
+  }
+
+  &__id-card--wide {
+    min-width: 160px;
+  }
+
+  &__id-label {
+    color: #2c3e50;
+    font-weight: 600;
+    font-size: 0.85rem;
+    margin-bottom: 4px;
+  }
+
+  &__id-link {
+    color: #3498db;
+    text-decoration: none;
+    font-family: monospace;
+    font-size: 0.9rem;
+  }
+
+  &__id-value {
+    color: #7f8c8d;
+    font-family: monospace;
+    font-size: 0.9rem;
+  }
+
+  // Metrics button
+  &__metrics-btn {
+    background: #3498db;
+    border: none;
+    padding: 10px 16px;
+    font-size: 0.9rem;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+
+    &:hover,
+    &:focus {
+      background-color: #2980b9;
+      transform: translateY(-2px);
+    }
+  }
+
+  // Search container
+  &__search-container {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    padding: 30px;
+    margin-bottom: 30px;
+  }
+
+  &__search-header {
+    margin-bottom: 25px;
+  }
+
+  &__search-title {
+    color: #2c3e50;
+    margin-bottom: 5px;
+  }
+
+  &__search-subtitle {
+    color: #7f8c8d;
+    margin: 0;
+    font-size: 0.9rem;
+  }
+
+  // Search card
+  &__search-card {
+    margin-bottom: 20px;
+    border: 1px solid #e9ecef;
+  }
+
+  &__search-card-title {
+    color: #2c3e50;
+    margin-bottom: 15px;
+    font-weight: 600;
+  }
+
+  // Checkbox items
+  &__checkbox-item {
+    margin-bottom: 8px;
+  }
+
+  &__checkbox-item--year {
+    margin-bottom: 10px;
+  }
+
+  &__checkbox {
+    margin-right: 8px;
+  }
+
+  &__checkbox-label {
+    margin-bottom: 0;
+    display: inline;
+  }
+
+  &__unit-link {
+    margin-left: 5px;
+    color: #3498db;
+    text-decoration: none;
+  }
+
+  &__unit-icon {
+    font-size: 0.9rem;
+  }
+
+  // Report title input
+  &__title-input {
+    margin-bottom: 0;
+    border: 1px solid #e9ecef;
+    border-radius: 4px;
+  }
+
+  &__title-hint {
+    color: #7f8c8d;
+    font-style: italic;
+  }
+
+  // Search button section
+  &__search-button-section {
+    text-align: center;
+    margin-top: 25px;
+    padding-top: 20px;
+    border-top: 1px solid #e9ecef;
+  }
+
+  &__search-btn {
+    background: #3498db;
+    border: none;
+    padding: 15px 30px;
+    font-size: 1.1rem;
+    border-radius: 6px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s ease;
+
+    &:hover,
+    &:focus {
+      background-color: #2980b9;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    }
+  }
+
+  // Embed section
+  &__embed-section {
+    margin-top: 30px;
+  }
+
+  &__embed-toggle {
+    cursor: pointer;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  &__embed-toggle-icon {
+    transition: transform 0.3s;
+    font-size: 0.8em;
+  }
+
+  &__embed-hint {
+    color: #7f8c8d;
+    margin-bottom: 15px;
+    font-size: 0.9rem;
+  }
+
+  &__embed-content-wrapper {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    padding: 30px;
+    margin-top: 20px;
+    margin-bottom: 20px;
+  }
+
+  &__embed-instruction {
+    color: #2c3e50;
+    margin-bottom: 10px;
+  }
+
+  &__embed-code-wrapper {
+    position: relative;
+  }
+
+  &__embed-code {
+    background: #f5f5f5;
+    color: #333;
+    padding: 20px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    overflow-x: auto;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    margin-bottom: 10px;
+  }
+
+  &__copy-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: #3498db;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background 0.2s;
+
+    &:hover,
+    &:focus {
+      background-color: #2980b9;
+    }
+  }
+
+  &__embed-tip {
+    background: #e8f5e9;
+    border-left: 4px solid #4caf50;
+    padding: 15px;
+    margin-top: 15px;
+    border-radius: 4px;
+  }
+
+  &__embed-tip-text {
+    margin: 0;
+    color: #2e7d32;
+  }
+
+  // Icon margins
+  &__icon--mr-sm {
+    margin-right: 5px;
+  }
+
+  &__icon--mr-md {
+    margin-right: 6px;
+  }
+
+  &__icon--mr-lg {
+    margin-right: 8px;
+  }
+
+  &__icon--mr-xl {
+    margin-right: 10px;
+  }
+
+  &__icon--white {
+    color: white;
+  }
+}

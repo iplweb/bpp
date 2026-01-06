@@ -76,7 +76,8 @@ class WydawcaForm(forms.ModelForm):
         required=False,
         queryset=Publisher.objects.all(),
         widget=autocomplete.ModelSelect2(
-            url="bpp:publisher-autocomplete", attrs=dict(style="width: 746px;")
+            url="bpp:publisher-autocomplete",
+            attrs={"class": "bpp-autocomplete-wide"},
         ),
     )
 
@@ -84,7 +85,8 @@ class WydawcaForm(forms.ModelForm):
         required=False,
         queryset=Wydawca.objects.all(),
         widget=autocomplete.ModelSelect2(
-            url="bpp:wydawca-autocomplete", attrs=dict(style="width: 746px;")
+            url="bpp:wydawca-autocomplete",
+            attrs={"class": "bpp-autocomplete-wide"},
         ),
     )
 

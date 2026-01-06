@@ -6,41 +6,38 @@
 {% endif %}
 
 <!-- Main publication container with modern card layout -->
-<div class="publication-detail-container" style="max-width: 1400px; margin: 0 auto; padding: 20px;">
+<div class="praca-mono">
 
     <!-- Title Section - Most prominent -->
-    <div class="publication-title-section" style="margin-bottom: 30px;">
-        <h2 style="font-size: 1.8rem; line-height: 1.3; margin-bottom: 20px; color: #2c3e50;">
+    <div class="praca-mono__title-section">
+        <h2 class="praca-mono__title">
             {% if praca.tytul %}
                 {{ praca.tytul_oryginalny|safe }}
-                <span style="color: #7f8c8d; font-size: 0.9em;">({{ praca.tytul|safe }})</span>
+                <span class="praca-mono__title-translation">({{ praca.tytul|safe }})</span>
             {% else %}
                 {{ praca.tytul_oryginalny|znak_na_koncu:"."|safe }}
             {% endif %}
             {% if praca.charakter_formalny.charakter_ogolny != 'roz' %}
-                <span style="font-weight: normal; font-size: 0.8em;">{{ praca.oznaczenie_wydania|default:""|znak_na_koncu:"." }}</span>
+                <span class="praca-mono__edition-mark">{{ praca.oznaczenie_wydania|default:""|znak_na_koncu:"." }}</span>
             {% endif %}
             {% comment %} COinS metadata for automatic bibliography manager detection {% endcomment %}
             {% generate_coins praca autorzy %}
         </h2>
 
         <!-- Authors Section -->
-        <div class="authors-section"
-             style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-            <div style="font-size: 1.1rem; line-height: 1.6;">
+        <div class="praca-mono__authors-section">
+            <div class="praca-mono__authors-list">
                 {{ praca.tekst_przed_pierwszym_autorem|default:"" }}
                 {% for autor in praca.autorzy_dla_opisu %}
                     {% ifchanged autor.typ_odpowiedzialnosci %}
-                        <span class="author-type-badge"
-                              style="background: #95a5a6; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.75em; margin: 0 3px;">{{ autor.typ_odpowiedzialnosci.skrot|upper }}</span>
+                        <span class="praca-mono__author-type-badge">{{ autor.typ_odpowiedzialnosci.skrot|upper }}</span>
                     {% endifchanged %}
                     {% if links == "admin" %}
                         <a href="{% url "admin:bpp_autor_change" autor.autor.pk %}">
                     {% elif links == "normal" %}
                         <a href="{% url "bpp:browse_autor" autor.autor.slug %}">
                     {% endif %}
-                <span class="author-name"
-                      style="{% if not links %}font-weight: 500;{% endif %}">
+                <span class="author-name{% if not links %} praca-mono__author-name{% endif %}">
                         {{ autor.zapisany_jako|upper }}
                     </span>
                 {% if links == "admin" or links == "normal" %}</a>{% endif %}{% if not forloop.last %},
@@ -49,17 +46,20 @@
             </div>
 
             <!-- Show more authors button if there are many -->
-            <div id="authors-toggle" style="display: none; margin-top: 10px;">
-                <button class="button tiny secondary" onclick="toggleAuthors()">Pokaż wszystkich autorów</button>
+            <div id="authors-toggle" class="praca-mono__authors-toggle">
+                <button class="button tiny secondary"
+                        data-toggle-authors="true"
+                        aria-expanded="false"
+                        aria-label="Pokaż wszystkich autorów publikacji">Pokaż wszystkich autorów</button>
             </div>
         </div>
     </div>
 
     <!-- Main content in two columns -->
-    <div class="content-columns" style="display: flex; gap: 30px; flex-wrap: wrap;">
+    <div class="praca-mono__columns">
 
         <!-- Left Column - Bibliographic Information -->
-        <div class="left-column" style="flex: 1 1 60%; min-width: 300px;">
+        <div class="praca-mono__column--left">
 
             <!-- Edit Record Panel - Only for authorized users -->
             {% if request.user.is_superuser or request.user|has_group:"wprowadzanie danych" %}
@@ -91,40 +91,39 @@
             {% endif %}
 
             <!-- Bibliographic Description Card -->
-            <div class="info-card"
-                 style="background: white; border: 1px solid #e1e4e8; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
-                <h3 style="font-size: 1.2rem; margin-bottom: 15px; color: #2c3e50; padding-bottom: 8px;">
+            <div class="praca-mono__card">
+                <h3 class="praca-mono__card-title">
                     <span class="fi-page-copy"></span> Opis bibliograficzny
                     <div class="shaded-hr-div-small"></div>
                 </h3>
                 <div id="bibliographic-description"
-                     style="padding: 10px; background: #f8f9fa; border-radius: 4px; cursor: pointer; position: relative;"
-                     onclick="copyBibliographicDescription()"
-                     title="Kliknij aby skopiować do schowka">
-                    <div style="font-size: 0.95em; line-height: 1.6; color: #333;">
+                     class="praca-mono__biblio-container"
+                     data-copy-content="true"
+                     role="button"
+                     tabindex="0"
+                     aria-label="Opis bibliograficzny - kliknij aby skopiować do schowka">
+                    <div class="praca-mono__biblio-text">
                         {{ praca.opis_bibliograficzny_cache|safe }}
                     </div>
-                    <div id="copy-biblio-feedback"
-                         style="position: absolute; top: 10px; right: 10px; display: none; background: #27ae60; color: white; padding: 5px 10px; border-radius: 4px; font-size: 0.85em;">
-                        ✓ Skopiowane!
+                    <div id="copy-biblio-feedback" class="praca-mono__biblio-feedback">
+                        Skopiowane!
                     </div>
                 </div>
-                <small style="color: #7f8c8d; display: block; margin-top: 10px;">Kliknij opis aby skopiować do
+                <small class="praca-mono__biblio-hint">Kliknij opis aby skopiować do
                     schowka</small>
             </div>
 
             <!-- Publication Details Card -->
-            <div class="info-card"
-                 style="background: white; border: 1px solid #e1e4e8; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
-                <h3 style="font-size: 1.2rem; margin-bottom: 15px; color: #2c3e50; padding-bottom: 8px;">
+            <div class="praca-mono__card">
+                <h3 class="praca-mono__card-title">
                     <span class="fi-clipboard-notes"></span> Szczegóły publikacji
                     <div class="shaded-hr-div-small"></div>
                 </h3>
 
                 {% if praca.zrodlo or praca.wydawnictwo_nadrzedne or praca.informacje or praca.szczegoly %}
-                    <div class="detail-row" style="margin-bottom: 12px;">
-                        <strong style="color: #7f8c8d;">Źródło:</strong>
-                        <div style="margin-left: 20px; margin-top: 5px;">
+                    <div class="praca-mono__detail-row">
+                        <strong class="praca-mono__detail-label">Źródło:</strong>
+                        <div class="praca-mono__detail-value">
                             {% if praca.zrodlo %}
                                 {% if links == "admin" %}
                                     <a href="{% url "admin:bpp_zrodlo_change" praca.zrodlo.pk %}">{{ praca.zrodlo }}</a>
@@ -152,7 +151,7 @@
                                             {% if not forloop.last %}, {% endif %}
                                         {% endfor %}
                                     {% endif %}
-                                    <span class="fi-link-external" style="font-size: 0.8em; margin-left: 3px;"></span>
+                                    <span class="fi-link-external praca-mono__external-link-icon"></span>
                                 </a>
                             {% endif %}
                             {{ praca.informacje|default:""|znak_na_koncu:", "|safe }}
@@ -162,53 +161,52 @@
                 {% endif %}
 
                 {% if praca.wydawca or praca.wydawca_opis %}
-                    <div class="detail-row" style="margin-bottom: 12px;">
-                        <strong style="color: #7f8c8d;">Wydawca:</strong>
-                        <div style="margin-left: 20px; margin-top: 5px;">
+                    <div class="praca-mono__detail-row">
+                        <strong class="praca-mono__detail-label">Wydawca:</strong>
+                        <div class="praca-mono__detail-value">
                             {{ praca.wydawca|default:"" }} {{ praca.wydawca_opis|default:"" }}
                         </div>
                     </div>
                 {% endif %}
 
-                <div class="detail-row" style="margin-bottom: 12px;">
-                    <strong style="color: #7f8c8d;">Rok:</strong>
-                    <span style="margin-left: 10px;">{{ praca.rok }}</span>
+                <div class="praca-mono__detail-row">
+                    <strong class="praca-mono__detail-label">Rok:</strong>
+                    <span class="praca-mono__detail-inline">{{ praca.rok }}</span>
                 </div>
 
-                <div class="detail-row" style="margin-bottom: 12px;">
-                    <strong style="color: #7f8c8d;">Język:</strong>
-                    <span style="margin-left: 10px;">{{ praca.jezyk }}</span>
+                <div class="praca-mono__detail-row">
+                    <strong class="praca-mono__detail-label">Język:</strong>
+                    <span class="praca-mono__detail-inline">{{ praca.jezyk }}</span>
                 </div>
 
-                <div class="detail-row" style="margin-bottom: 12px;">
-                    <strong style="color: #7f8c8d;">Charakter formalny:</strong>
-                    <span style="margin-left: 10px;">{{ praca.charakter_formalny }}</span>
+                <div class="praca-mono__detail-row">
+                    <strong class="praca-mono__detail-label">Charakter formalny:</strong>
+                    <span class="praca-mono__detail-inline">{{ praca.charakter_formalny }}</span>
                 </div>
 
                 {% if praca.typ_kbn %}
-                    <div class="detail-row" style="margin-bottom: 12px;">
-                        <strong style="color: #7f8c8d;">Typ MNiSW/MEiN:</strong>
-                        <span style="margin-left: 10px;">{{ praca.typ_kbn }}</span>
+                    <div class="praca-mono__detail-row">
+                        <strong class="praca-mono__detail-label">Typ MNiSW/MEiN:</strong>
+                        <span class="praca-mono__detail-inline">{{ praca.typ_kbn }}</span>
                     </div>
                 {% endif %}
             </div>
 
             <!-- Abstracts Card -->
             {% if praca.streszczenia.exists %}
-                <div class="info-card"
-                     style="background: white; border: 1px solid #e1e4e8; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
-                    <h3 style="font-size: 1.2rem; margin-bottom: 15px; color: #2c3e50; padding-bottom: 8px;">
+                <div class="praca-mono__card">
+                    <h3 class="praca-mono__card-title">
                         <span class="fi-page-edit"></span> Streszczenia
                         <div class="shaded-hr-div-small"></div>
                     </h3>
                     {% for streszczenie in praca.streszczenia.all %}
-                        <div style="margin-bottom: 15px;">
+                        <div class="praca-mono__abstract">
                             {% if praca.streszczenia.count > 1 %}
-                                <strong style="color: #7f8c8d; display: block; margin-bottom: 5px;">
+                                <strong class="praca-mono__abstract-label">
                                     {{ streszczenie.jezyk_streszczenia.nazwa }}:
                                 </strong>
                             {% endif %}
-                            <p style="text-align: justify; line-height: 1.6;">{{ streszczenie.streszczenie|safe }}</p>
+                            <p class="praca-mono__abstract-text">{{ streszczenie.streszczenie|safe }}</p>
                         </div>
                     {% endfor %}
                 </div>
@@ -216,13 +214,12 @@
 
             <!-- OpenAccess Card -->
             {% if praca.openaccess_tryb_dostepu or praca.openaccess_wersja_tekstu or praca.openaccess_licencja %}
-                <div class="info-card"
-                     style="background: #f0f9ff; border: 1px solid #3498db; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
-                    <h3 style="font-size: 1.2rem; margin-bottom: 15px; color: #2c3e50; padding-bottom: 8px;">
+                <div class="praca-mono__card praca-mono__card--openaccess">
+                    <h3 class="praca-mono__card-title">
                         <span class="fi-unlock"></span> Open Access
                         <div class="shaded-hr-div-small"></div>
                     </h3>
-                    <div style="display: grid; grid-template-columns: auto 1fr; gap: 10px;">
+                    <div class="praca-mono__openaccess-grid">
                         {% if praca.openaccess_tryb_dostepu %}
                             <strong>Tryb dostępu:</strong> <span>{{ praca.openaccess_tryb_dostepu|lower }}</span>
                         {% endif %}
@@ -256,7 +253,7 @@
         </div>
 
         <!-- Right Column - Identifiers and Metadata -->
-        <div class="right-column" style="flex: 1 1 35%; min-width: 300px;">
+        <div class="praca-mono__column--right">
 
             <!-- External Links Card - Redesigned -->
             {% if praca.pbn_uid_id or praca.doi or praca.pubmed_id or praca.pmc_id or praca.public_www or praca.www %}
@@ -276,12 +273,12 @@
                                 </div>
                                 <div class="link-actions">
                                     <button class="button copy-button" type="button"
-                                            onclick="navigator.clipboard.writeText('{{ praca.pbn_uid_id }}'); this.classList.add('copied'); this.innerHTML='<i class=\'fi-check\'></i>'; setTimeout(() => { this.classList.remove('copied'); this.innerHTML='<i class=\'fi-clipboard\'></i>'; }, 2000);"
+                                            data-copy-text="{{ praca.pbn_uid_id }}"
                                             title="Kopiuj identyfikator">
                                         <i class="fi-clipboard"></i>
                                     </button>
                                     <button class="button open-button" type="button"
-                                            onclick="window.open('{{ praca.link_do_pbn }}', '_blank')"
+                                            data-open-url="{{ praca.link_do_pbn }}" data-target="_blank"
                                             title="Otwórz w PBN">
                                         <i class="fi-arrow-right"></i> Otwórz
                                     </button>
@@ -291,19 +288,19 @@
 
                         {% if not request.user.is_anonymous and praca.link_do_pi %}
                             <div class="external-link-item link-pi">
-                                <span class="fi-home link-icon"></span>
+                                <span class="fi-home link-icon" aria-hidden="true"></span>
                                 <div class="link-content">
                                     <div class="link-label">Profil instytucji</div>
                                     <div class="link-value">{{ praca.link_do_pi|truncatechars:40 }}</div>
                                 </div>
                                 <div class="link-actions">
                                     <button class="button copy-button" type="button"
-                                            onclick="navigator.clipboard.writeText('{{ praca.link_do_pi }}'); this.classList.add('copied'); this.innerHTML='<i class=\'fi-check\'></i>'; setTimeout(() => { this.classList.remove('copied'); this.innerHTML='<i class=\'fi-clipboard\'></i>'; }, 2000);"
+                                            data-copy-text="{{ praca.link_do_pi }}"
                                             title="Kopiuj adres">
                                         <i class="fi-clipboard"></i>
                                     </button>
                                     <button class="button open-button" type="button"
-                                            onclick="window.open('{{ praca.link_do_pi }}', '_blank')"
+                                            data-open-url="{{ praca.link_do_pi }}" data-target="_blank"
                                             title="Otwórz w Profilu instytucji">
                                         <i class="fi-arrow-right"></i> Otwórz
                                     </button>
@@ -313,19 +310,19 @@
 
                         {% if praca.doi %}
                             <div class="external-link-item link-doi">
-                                <span class="fi-bookmark link-icon"></span>
+                                <span class="fi-bookmark link-icon" aria-hidden="true"></span>
                                 <div class="link-content">
                                     <div class="link-label">DOI</div>
                                     <div class="link-value">{{ praca.doi }}</div>
                                 </div>
                                 <div class="link-actions">
                                     <button class="button copy-button" type="button"
-                                            onclick="navigator.clipboard.writeText('{{ praca.doi }}'); this.classList.add('copied'); this.innerHTML='<i class=\'fi-check\'></i>'; setTimeout(() => { this.classList.remove('copied'); this.innerHTML='<i class=\'fi-clipboard\'></i>'; }, 2000);"
+                                            data-copy-text="{{ praca.doi }}"
                                             title="Kopiuj DOI">
                                         <i class="fi-clipboard"></i>
                                     </button>
                                     <button class="button open-button" type="button"
-                                            onclick="window.open('http://doi.org/{{ praca.doi }}', '_blank')"
+                                            data-open-url="http://doi.org/{{ praca.doi }}" data-target="_blank"
                                             title="Otwórz stronę DOI">
                                         <i class="fi-arrow-right"></i> Otwórz
                                     </button>
@@ -335,19 +332,19 @@
 
                         {% if praca.pubmed_id %}
                             <div class="external-link-item link-pubmed">
-                                <span class="fi-first-aid link-icon"></span>
+                                <span class="fi-first-aid link-icon" aria-hidden="true"></span>
                                 <div class="link-content">
                                     <div class="link-label">PubMed</div>
                                     <div class="link-value">{{ praca.pubmed_id }}</div>
                                 </div>
                                 <div class="link-actions">
                                     <button class="button copy-button" type="button"
-                                            onclick="navigator.clipboard.writeText('{{ praca.pubmed_id }}'); this.classList.add('copied'); this.innerHTML='<i class=\'fi-check\'></i>'; setTimeout(() => { this.classList.remove('copied'); this.innerHTML='<i class=\'fi-clipboard\'></i>'; }, 2000);"
+                                            data-copy-text="{{ praca.pubmed_id }}"
                                             title="Kopiuj ID">
                                         <i class="fi-clipboard"></i>
                                     </button>
                                     <button class="button open-button" type="button"
-                                            onclick="window.open('https://www.ncbi.nlm.nih.gov/pubmed/{{ praca.pubmed_id }}', '_blank')"
+                                            data-open-url="https://www.ncbi.nlm.nih.gov/pubmed/{{ praca.pubmed_id }}" data-target="_blank"
                                             title="Otwórz w PubMed">
                                         <i class="fi-arrow-right"></i> Otwórz
                                     </button>
@@ -357,19 +354,19 @@
 
                         {% if praca.pmc_id %}
                             <div class="external-link-item link-pmc">
-                                <span class="fi-book link-icon"></span>
+                                <span class="fi-book link-icon" aria-hidden="true"></span>
                                 <div class="link-content">
                                     <div class="link-label">PMC</div>
                                     <div class="link-value">{{ praca.pmc_id }}</div>
                                 </div>
                                 <div class="link-actions">
                                     <button class="button copy-button" type="button"
-                                            onclick="navigator.clipboard.writeText('{{ praca.pmc_id }}'); this.classList.add('copied'); this.innerHTML='<i class=\'fi-check\'></i>'; setTimeout(() => { this.classList.remove('copied'); this.innerHTML='<i class=\'fi-clipboard\'></i>'; }, 2000);"
+                                            data-copy-text="{{ praca.pmc_id }}"
                                             title="Kopiuj ID">
                                         <i class="fi-clipboard"></i>
                                     </button>
                                     <button class="button open-button" type="button"
-                                            onclick="window.open('https://www.ncbi.nlm.nih.gov/pmc/{{ praca.pmc_id }}', '_blank')"
+                                            data-open-url="https://www.ncbi.nlm.nih.gov/pmc/{{ praca.pmc_id }}" data-target="_blank"
                                             title="Otwórz w PMC">
                                         <i class="fi-arrow-right"></i> Otwórz
                                     </button>
@@ -380,19 +377,19 @@
                         {% if praca.public_www or praca.www %}
                             {% with url=praca.public_www|default:praca.www %}
                             <div class="external-link-item link-www">
-                                <span class="fi-web link-icon"></span>
+                                <span class="fi-web link-icon" aria-hidden="true"></span>
                                 <div class="link-content">
                                     <div class="link-label">Strona WWW</div>
                                     <div class="link-value">{{ url|truncatechars:40 }}</div>
                                 </div>
                                 <div class="link-actions">
                                     <button class="button copy-button" type="button"
-                                            onclick="navigator.clipboard.writeText('{{ url }}'); this.classList.add('copied'); this.innerHTML='<i class=\'fi-check\'></i>'; setTimeout(() => { this.classList.remove('copied'); this.innerHTML='<i class=\'fi-clipboard\'></i>'; }, 2000);"
+                                            data-copy-text="{{ url }}"
                                             title="Kopiuj adres">
                                         <i class="fi-clipboard"></i>
                                     </button>
                                     <button class="button open-button" type="button"
-                                            onclick="window.open('{{ url }}', '_blank')"
+                                            data-open-url="{{ url }}" data-target="_blank"
                                             title="Otwórz stronę">
                                         <i class="fi-arrow-right"></i> Otwórz
                                     </button>
@@ -405,136 +402,133 @@
             {% endif %}
 
             <!-- Identifiers Card -->
-            <div class="info-card"
-                 style="background: white; border: 1px solid #e1e4e8; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
-                <h3 style="font-size: 1.2rem; margin-bottom: 15px; color: #2c3e50; padding-bottom: 8px;">
+            <div class="praca-mono__card">
+                <h3 class="praca-mono__card-title">
                     <span class="fi-credit-card"></span> Identyfikatory
                     <div class="shaded-hr-div-small"></div>
                 </h3>
 
                 {% if praca.isbn %}
-                    <div class="id-item" style="margin-bottom: 10px;">
-                        <span class="fi-book" style="font-size: 1.2em; margin-right: 8px;"></span>
+                    <div class="praca-mono__id-item">
+                        <span class="fi-book praca-mono__id-icon"></span>
                         <strong>ISBN:</strong> {{ praca.isbn }}
                     </div>
                 {% endif %}
 
                 {% if praca.e_isbn %}
-                    <div class="id-item" style="margin-bottom: 10px;">
-                        <span class="fi-laptop" style="font-size: 1.2em; margin-right: 8px;"></span>
+                    <div class="praca-mono__id-item">
+                        <span class="fi-laptop praca-mono__id-icon"></span>
                         <strong>e-ISBN:</strong> {{ praca.e_isbn }}
                     </div>
                 {% endif %}
 
                 {% if praca.issn %}
-                    <div class="id-item" style="margin-bottom: 10px;">
-                        <span class="fi-page-multiple" style="font-size: 1.2em; margin-right: 8px;"></span>
+                    <div class="praca-mono__id-item">
+                        <span class="fi-page-multiple praca-mono__id-icon"></span>
                         <strong>ISSN:</strong> {{ praca.issn }}
                     </div>
                 {% endif %}
 
                 {% if praca.e_issn %}
-                    <div class="id-item" style="margin-bottom: 10px;">
-                        <span class="fi-save" style="font-size: 1.2em; margin-right: 8px;"></span>
+                    <div class="praca-mono__id-item">
+                        <span class="fi-save praca-mono__id-icon"></span>
                         <strong>e-ISSN:</strong> {{ praca.e_issn }}
                     </div>
                 {% endif %}
 
-                <div class="id-item" style="margin-bottom: 10px;">
-                    <span class="fi-tag" style="font-size: 1.2em; margin-right: 8px;"></span>
+                <div class="praca-mono__id-item">
+                    <span class="fi-tag praca-mono__id-icon"></span>
                     <strong>BPP ID:</strong> {{ rekord.pk }}
-                    <small style="color: #7f8c8d; display: block; margin-left: 28px;">
+                    <small class="praca-mono__id-subtext">
                         {{ rekord.describe_content_type }} #{{ praca.pk }}
                     </small>
                 </div>
 
                 {% if praca.pbn_id %}
-                    <div class="id-item" style="margin-bottom: 10px;">
-                        <span class="fi-clipboard" style="font-size: 1.2em; margin-right: 8px;"></span>
+                    <div class="praca-mono__id-item">
+                        <span class="fi-clipboard praca-mono__id-icon"></span>
                         <strong>PBN ID (hist.):</strong> {{ praca.pbn_id }}
                     </div>
                 {% endif %}
             </div>
 
             <!-- Metrics Card -->
-            <div class="info-card"
-                 style="background: white; border: 1px solid #e1e4e8; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
-                <h3 style="font-size: 1.2rem; margin-bottom: 15px; color: #2c3e50; padding-bottom: 8px;">
+            <div class="praca-mono__card">
+                <h3 class="praca-mono__card-title">
                     <span class="fi-graph-bar"></span> Metryki
                     <div class="shaded-hr-div-small"></div>
                 </h3>
 
-                <div class="metrics-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                    <div style="text-align: center; padding: 10px; background: #f8f9fa; border-radius: 6px;">
-                        <div style="font-size: 1.5em; font-weight: bold; color: #e74c3c;">
+                <div class="praca-mono__metrics-grid">
+                    <div class="praca-mono__metric-item">
+                        <div class="praca-mono__metric-value praca-mono__metric-value--points">
                             {{ praca.punkty_kbn|default:"0" }}</div>
-                        <div style="font-size: 0.9em; color: #7f8c8d;">Punkty MNiSW/MEiN</div>
+                        <div class="praca-mono__metric-label">Punkty MNiSW/MEiN</div>
                     </div>
 
-                    <div style="text-align: center; padding: 10px; background: #f8f9fa; border-radius: 6px;">
-                        <div style="font-size: 1.5em; font-weight: bold; color: #3498db;">
+                    <div class="praca-mono__metric-item">
+                        <div class="praca-mono__metric-value praca-mono__metric-value--impact">
                             {{ praca.impact_factor|default:"0" }}</div>
-                        <div style="font-size: 0.9em; color: #7f8c8d;">Impact Factor</div>
+                        <div class="praca-mono__metric-label">Impact Factor</div>
                     </div>
 
                     {% if praca.kwartyl_w_scopus %}
-                        <div style="text-align: center; padding: 10px; background: #f8f9fa; border-radius: 6px;">
-                            <div style="font-size: 1.5em; font-weight: bold; color: #27ae60;">
+                        <div class="praca-mono__metric-item">
+                            <div class="praca-mono__metric-value praca-mono__metric-value--scopus">
                                 Q{{ praca.kwartyl_w_scopus }}</div>
-                            <div style="font-size: 0.9em; color: #7f8c8d;">SCOPUS</div>
+                            <div class="praca-mono__metric-label">SCOPUS</div>
                         </div>
                     {% endif %}
 
                     {% if praca.kwartyl_w_wos %}
-                        <div style="text-align: center; padding: 10px; background: #f8f9fa; border-radius: 6px;">
-                            <div style="font-size: 1.5em; font-weight: bold; color: #9b59b6;">
+                        <div class="praca-mono__metric-item">
+                            <div class="praca-mono__metric-value praca-mono__metric-value--wos">
                                 Q{{ praca.kwartyl_w_wos }}</div>
-                            <div style="font-size: 0.9em; color: #7f8c8d;">WoS</div>
+                            <div class="praca-mono__metric-label">WoS</div>
                         </div>
                     {% endif %}
 
                     {% if praca.liczba_cytowan %}
-                        <div style="text-align: center; padding: 10px; background: #f8f9fa; border-radius: 6px;">
-                            <div style="font-size: 1.5em; font-weight: bold; color: #f39c12;">{{ praca.liczba_cytowan }}</div>
-                            <div style="font-size: 0.9em; color: #7f8c8d;">Cytowania</div>
+                        <div class="praca-mono__metric-item">
+                            <div class="praca-mono__metric-value praca-mono__metric-value--citations">{{ praca.liczba_cytowan }}</div>
+                            <div class="praca-mono__metric-label">Cytowania</div>
                         </div>
                     {% endif %}
 
                     {% if uczelnia.pokazuj_punktacja_snip and praca.punktacja_snip %}
-                        <div style="text-align: center; padding: 10px; background: #f8f9fa; border-radius: 6px;">
-                            <div style="font-size: 1.5em; font-weight: bold; color: #16a085;">{{ praca.punktacja_snip }}</div>
-                            <div style="font-size: 0.9em; color: #7f8c8d;">SNIP</div>
+                        <div class="praca-mono__metric-item">
+                            <div class="praca-mono__metric-value praca-mono__metric-value--snip">{{ praca.punktacja_snip }}</div>
+                            <div class="praca-mono__metric-label">SNIP</div>
                         </div>
                     {% endif %}
 
                     {% if uczelnia.pokazuj_index_copernicus %}
-                        <div style="text-align: center; padding: 10px; background: #f8f9fa; border-radius: 6px;">
-                            <div style="font-size: 1.5em; font-weight: bold; color: #2c3e50;">{{ praca.index_copernicus|default:"0" }}</div>
-                            <div style="font-size: 0.9em; color: #7f8c8d;">Index Copernicus</div>
+                        <div class="praca-mono__metric-item">
+                            <div class="praca-mono__metric-value praca-mono__metric-value--ic">{{ praca.index_copernicus|default:"0" }}</div>
+                            <div class="praca-mono__metric-label">Index Copernicus</div>
                         </div>
                     {% endif %}
 
                     {% if uczelnia.pokazuj_punktacje_wewnetrzna %}
-                        <div style="text-align: center; padding: 10px; background: #f8f9fa; border-radius: 6px;">
-                            <div style="font-size: 1.5em; font-weight: bold; color: #34495e;">{{ praca.punktacja_wewnetrzna|default:"0" }}</div>
-                            <div style="font-size: 0.9em; color: #7f8c8d;">Punktacja wewnętrzna</div>
+                        <div class="praca-mono__metric-item">
+                            <div class="praca-mono__metric-value praca-mono__metric-value--internal">{{ praca.punktacja_wewnetrzna|default:"0" }}</div>
+                            <div class="praca-mono__metric-label">Punktacja wewnętrzna</div>
                         </div>
                     {% endif %}
                 </div>
             </div>
 
             <!-- Citation Export Card -->
-            <div class="info-card"
-                 style="background: white; border: 1px solid #e1e4e8; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
-                <h3 style="font-size: 1.2rem; margin-bottom: 15px; color: #2c3e50; padding-bottom: 8px;">
+            <div class="praca-mono__card">
+                <h3 class="praca-mono__card-title">
                     <span class="fi-download"></span> Eksport cytowania
                     <div class="shaded-hr-div-small"></div>
                 </h3>
 
                 <!-- Reference Manager Support Info -->
-                <div style="background: #f0f9ff; border-left: 3px solid #3498db; padding: 10px 15px; margin-bottom: 15px; border-radius: 4px;">
-                    <p style="margin: 0; font-size: 0.9em; color: #2c3e50;">
-                        <span class="fi-info" style="color: #3498db; margin-right: 5px;"></span>
+                <div class="praca-mono__reference-info">
+                    <p class="praca-mono__reference-text">
+                        <span class="fi-info praca-mono__reference-icon"></span>
                         <strong>Wsparcie dla menedżerów bibliografii:</strong><br>
                         Ta strona wspiera automatyczny import do <strong>Zotero</strong>, <strong>Mendeley</strong> i <strong>EndNote</strong>.
                         Użytkownicy z zainstalowanym rozszerzeniem przeglądarki mogą zapisać tę publikację jednym kliknięciem -
@@ -545,16 +539,17 @@
                 <button id="bibtex-toggle-btn" class="button expanded secondary" type="button">
                     Pokaż BibTeX
                 </button>
-                <button id="bibtex-copy-btn" class="button expanded success" type="button"
-                        style="margin-top: 10px; display: none;">
+                <button id="bibtex-copy-btn"
+                        class="button expanded success praca-mono__bibtex-copy-btn"
+                        type="button">
                     Skopiuj do schowka
                 </button>
-                <span id="bibtex-copy-feedback" style="display: none; color: #27ae60; font-weight: bold;">
-                    ✓ Skopiowane!
+                <span id="bibtex-copy-feedback" class="praca-mono__bibtex-feedback">
+                    Skopiowane!
                 </span>
-                <div id="bibtex-container" style="display: none; margin-top: 15px;">
+                <div id="bibtex-container" class="praca-mono__bibtex-container">
                     <textarea id="bibtex-content" readonly
-                              style="width: 100%; min-height: 200px; font-family: monospace; font-size: 0.9em; padding: 10px; border: 1px solid #ddd; border-radius: 4px; background: #f8f9fa;"></textarea>
+                              class="praca-mono__bibtex-textarea"></textarea>
                 </div>
             </div>
         </div>
@@ -562,21 +557,19 @@
 
     <!-- Additional Information Card - Show here if no abstracts, taking full width -->
     {% if not praca.streszczenia.exists %}
-        <div class="additional-info" style="margin-top: 30px;">
-            <div class="info-card"
-                 style="background: white; border: 1px solid #e1e4e8; border-radius: 8px; padding: 20px;">
-                <h3 style="font-size: 1.2rem; margin-bottom: 15px; color: #2c3e50; padding-bottom: 8px;">
+        <div class="praca-mono__additional-info">
+            <div class="praca-mono__card">
+                <h3 class="praca-mono__card-title">
                     <span class="fi-widget"></span> Informacje dodatkowe
                     <div class="shaded-hr-div-small"></div>
                 </h3>
-                <div style="margin-top: 15px;">
-                    <table style="width: 100%;">
+                <div class="praca-mono__additional-content">
+                    <table class="praca-mono__table">
                         {% if praca.charakter_formalny.skrot == "PAT" %}
                             <tr>
-                                <td colspan="2"
-                                    style="padding: 10px; background: #f8f9fa; border-radius: 6px; margin-bottom: 10px;">
+                                <td colspan="2" class="praca-mono__patent-cell">
                                     <strong>Patent:</strong><br/>
-                                    <div style="margin-left: 20px; margin-top: 10px;">
+                                    <div class="praca-mono__patent-details">
                                         <b>Numer zgłoszenia:</b> {{ praca.numer_zgloszenia|default:"brak" }}<br/>
                                         <b>Wydział:</b> {{ praca.wydzial|default:"brak" }}<br/>
                                         <b>Rodzaj prawa:</b> {{ praca.rodzaj_prawa|default:"brak" }}<br/>
@@ -591,30 +584,30 @@
 
                         {% if praca.liczba_znakow_wydawniczych %}
                             <tr>
-                                <th style="padding: 10px;">Liczba arkuszy wydawniczych:</th>
-                                <td style="padding: 10px;">{{ praca.wymiar_wydawniczy_w_arkuszach }}</td>
+                                <th class="praca-mono__table-cell">Liczba arkuszy wydawniczych:</th>
+                                <td class="praca-mono__table-cell">{{ praca.wymiar_wydawniczy_w_arkuszach }}</td>
                             </tr>
                         {% endif %}
 
                         {% if uczelnia.pokazuj_status_korekty == "always" or uczelnia.pokazuj_status_korekty == "logged-in" and not request.user.is_anonymous %}
                             <tr>
-                                <th style="padding: 10px;">Status:</th>
-                                <td style="padding: 10px;">{{ praca.status_korekty }}</td>
+                                <th class="praca-mono__table-cell">Status:</th>
+                                <td class="praca-mono__table-cell">{{ praca.status_korekty }}</td>
                             </tr>
                         {% endif %}
 
                         {% if uczelnia.pokazuj_praca_recenzowana == "always" or uczelnia.pokazuj_praca_recenzowana == "logged-in" and not request.user.is_anonymous %}
                             <tr>
-                                <th style="padding: 10px;">Praca recenzowana:</th>
-                                <td style="padding: 10px;">{{ praca.recenzowana|yesno }}</td>
+                                <th class="praca-mono__table-cell">Praca recenzowana:</th>
+                                <td class="praca-mono__table-cell">{{ praca.recenzowana|yesno }}</td>
                             </tr>
                         {% endif %}
 
                         {% if praca.ma_procenty %}
                             <tr>
-                                <th style="padding: 10px; vertical-align: top;">Odpowiedzialność za powstanie pracy:
+                                <th class="praca-mono__table-cell--vertical-top">Odpowiedzialność za powstanie pracy:
                                 </th>
-                                <td style="padding: 10px;">
+                                <td class="praca-mono__table-cell">
                                     {% for autor in praca.autorzy_set.all %}
                                         {% if autor.procent %}
                                             {{ autor.procent }}% {{ autor.zapisany_jako }}<br/>
@@ -626,10 +619,10 @@
 
                         {% if praca.zewnetrzna_baza_danych.exists %}
                             <tr>
-                                <th style="padding: 10px; vertical-align: top;">Zewnętrzna baza danych:</th>
-                                <td style="padding: 10px;">
+                                <th class="praca-mono__table-cell--vertical-top">Zewnętrzna baza danych:</th>
+                                <td class="praca-mono__table-cell">
                                     {% for db in praca.zewnetrzna_baza_danych.all %}
-                                        • {{ db.baza.nazwa }}<br/>
+                                        {{ db.baza.nazwa }}<br/>
                                     {% endfor %}
                                 </td>
                             </tr>
@@ -637,23 +630,20 @@
 
                         {% if praca.wydawnictwa_powiazane_set.exists %}
                             <tr>
-                                <th style="padding: 10px; vertical-align: top;">
+                                <th class="praca-mono__table-cell--vertical-top">
                                     Rekordy powiązane ({{ praca.wydawnictwa_powiazane_posortowane.all.count }}):
                                 </th>
-                                <td style="padding: 10px;">
+                                <td class="praca-mono__table-cell">
                                     {% if praca.wydawnictwa_powiazane_posortowane.all.count > 2 %}
                                         <input type="text"
-                                               class="related-records-search"
-                                               placeholder="Szukaj w rekordach powiązanych..."
-                                               style="margin-bottom: 10px; width: 100%; padding: 8px; border: 1px solid #ddd;
-                                                      border-radius: 4px;">
-                                        <div class="related-records-count"
-                                             style="margin-bottom: 5px; font-size: 0.9em; color: #7f8c8d;"></div>
+                                               class="related-records-search praca-mono__related-search"
+                                               placeholder="Szukaj w rekordach powiązanych...">
+                                        <div class="related-records-count praca-mono__related-count"></div>
                                     {% endif %}
-                                    <ol class="related-records-list" style="margin-left: 0; padding-left: 30px;"
+                                    <ol class="related-records-list praca-mono__related-list"
                                         data-records='[{% for elem in praca.wydawnictwa_powiazane_posortowane.all %}{"url":"{% url "bpp:browse_praca" "wydawnictwo_zwarte" elem.pk %}","text":"{{ elem.opis_bibliograficzny_cache|safe|escapejs }}"}{% if not forloop.last %},{% endif %}{% endfor %}]'>
                                         {% for elem in praca.wydawnictwa_powiazane_posortowane.all %}
-                                            <li style="margin-bottom: 8px;">
+                                            <li class="praca-mono__related-item">
                                                 <a href="{% url "bpp:browse_praca" "wydawnictwo_zwarte" elem.pk %}">
                                                     {{ elem.opis_bibliograficzny_cache|safe }}
                                                 </a>
@@ -665,13 +655,13 @@
                         {% endif %}
 
                         <tr>
-                            <th style="padding: 10px;">Rekord utworzony:</th>
-                            <td style="padding: 10px;">{{ praca.utworzono }}</td>
+                            <th class="praca-mono__table-cell">Rekord utworzony:</th>
+                            <td class="praca-mono__table-cell">{{ praca.utworzono }}</td>
                         </tr>
 
                         <tr>
-                            <th style="padding: 10px;">Ostatnia aktualizacja:</th>
-                            <td style="padding: 10px;">{{ praca.ostatnio_zmieniony }}</td>
+                            <th class="praca-mono__table-cell">Ostatnia aktualizacja:</th>
+                            <td class="praca-mono__table-cell">{{ praca.ostatnio_zmieniony }}</td>
                         </tr>
                     </table>
                 </div>
@@ -682,19 +672,18 @@
     <!-- Points and Slots Tables -->
     {% if rekord.ma_punktacje_sloty %}
         {% if uczelnia.pokazuj_tabele_slotow_na_stronie_rekordu == "always" or uczelnia.pokazuj_tabele_slotow_na_stronie_rekordu == "logged-in" and not request.user.is_anonymous %}
-            <div class="slots-section" style="margin-top: 30px;">
-                <div class="info-card"
-                     style="background: white; border: 1px solid #e1e4e8; border-radius: 8px; padding: 20px;">
-                    <h3 style="font-size: 1.2rem; margin-bottom: 15px; color: #2c3e50; padding-bottom: 8px;">
+            <div class="praca-mono__slots-section">
+                <div class="praca-mono__card">
+                    <h3 class="praca-mono__card-title">
                         <span class="fi-torsos-all"></span> Punkty i sloty autorów
 
-                        <div style="float: right;">
+                        <div class="praca-mono__header-actions">
                             {% comment %} Check if there are multiple authors with disciplines set {% endcomment %}
                             {% with authors_with_disciplines=rekord.punktacja_autora.select_related|length %}
                             {% if authors_with_disciplines > 0 %}
                                 {% if request.user.is_authenticated %}
                                     <a href="{% url "ewaluacja_optymalizuj_publikacje:optymalizuj" rekord.slug %}"
-                                       class="print-button print-button-header optimize-button"
+                                       class="print-button print-button-header praca-mono__optimize-button"
                                        title="Optymalizuj przypisanie dyscyplin">
                                         <span class="fi-wrench"></span> Optymalizuj
                                     </a>
@@ -717,45 +706,37 @@
                         <div class="shaded-hr-div-small"></div>
                     </h3>
 
-                    <div style="overflow-x: auto;">
-                        <table style="width: 100%; border-collapse: collapse;">
-                            <thead style="background: #f8f9fa;">
+                    <div class="praca-mono__slots-overflow">
+                        <table class="praca-mono__slots-table">
+                            <thead class="praca-mono__slots-thead">
                             <tr>
-                                <th style="padding: 10px; text-align: left; border-bottom: 2px solid #dee2e6;">Autor
-                                </th>
-                                <th style="padding: 10px; text-align: left; border-bottom: 2px solid #dee2e6;">
-                                    Dyscyplina
-                                </th>
-                                <th style="padding: 10px; text-align: center; border-bottom: 2px solid #dee2e6;">PkD /
-                                    PkDAut
-                                </th>
-                                <th style="padding: 10px; text-align: center; border-bottom: 2px solid #dee2e6;">Slot
-                                </th>
+                                <th class="praca-mono__slots-th">Autor</th>
+                                <th class="praca-mono__slots-th">Dyscyplina</th>
+                                <th class="praca-mono__slots-th praca-mono__slots-th--center">PkD / PkDAut</th>
+                                <th class="praca-mono__slots-th praca-mono__slots-th--center">Slot</th>
                                 {% if uczelnia.drukuj_oswiadczenia %}
                                     {% if request.user.is_superuser or request.user|has_group:"wprowadzanie danych" %}
-                                        <th style="padding: 10px; text-align: center; border-bottom: 2px solid #dee2e6;">
-                                            Oświadczenia
-                                        </th>
+                                        <th class="praca-mono__slots-th praca-mono__slots-th--center">Oswiadczenia</th>
                                     {% endif %}
                                 {% endif %}
                             </tr>
                             </thead>
                             <tbody>
                             {% for pa in rekord.punktacja_autora.select_related %}
-                                <tr style="border-bottom: 1px solid #dee2e6;">
-                                    <td style="padding: 10px;">{{ pa.autor }}</td>
-                                    <td style="padding: 10px;">{{ pa.dyscyplina.nazwa }}</td>
-                                    <td style="padding: 10px; text-align: center;">
-                                        <span style="background: #e3f2fd; padding: 2px 8px; border-radius: 4px;">{{ pa.pkdaut }}</span>
+                                <tr class="praca-mono__slots-tr">
+                                    <td class="praca-mono__slots-td">{{ pa.autor }}</td>
+                                    <td class="praca-mono__slots-td">{{ pa.dyscyplina.nazwa }}</td>
+                                    <td class="praca-mono__slots-td praca-mono__slots-td--center">
+                                        <span class="praca-mono__slot-badge praca-mono__slot-badge--pkdaut">{{ pa.pkdaut }}</span>
                                     </td>
-                                    <td style="padding: 10px; text-align: center;">
-                                        <span style="background: #fff3e0; padding: 2px 8px; border-radius: 4px;">{{ pa.slot }}</span>
+                                    <td class="praca-mono__slots-td praca-mono__slots-td--center">
+                                        <span class="praca-mono__slot-badge praca-mono__slot-badge--slot">{{ pa.slot }}</span>
                                     </td>
                                     {% if uczelnia.drukuj_oswiadczenia %}
                                         {% if request.user.is_superuser or request.user|has_group:"wprowadzanie danych" %}
-                                            <td style="padding: 10px; text-align: center;">
+                                            <td class="praca-mono__slots-td praca-mono__slots-td--center">
                                                 <a target="_blank"
-                                                   title="Wydruk dyscypliny zgłoszonej dla publikacji"
+                                                   title="Wydruk dyscypliny zgloszonej dla publikacji"
                                                    href="{% url "oswiadczenia:jedno-oswiadczenie" rekord.id.0 rekord.id.1 pa.autor.id pa.dyscyplina.id %}"
                                                    class="print-button print-button-small">
                                                     <span class="fi-print"></span>
@@ -778,34 +759,29 @@
                         </table>
                     </div>
 
-                    <h3 style="font-size: 1.2rem; margin-top: 30px; margin-bottom: 15px; color: #2c3e50; padding-bottom: 8px;">
+                    <h3 class="praca-mono__slots-subtitle">
                         <span class="fi-graph-trend"></span> Punkty i sloty dyscyplin
                         <div class="shaded-hr-div-small"></div>
                     </h3>
 
-                    <div style="overflow-x: auto;">
-                        <table style="width: 100%; border-collapse: collapse;">
-                            <thead style="background: #f8f9fa;">
+                    <div class="praca-mono__slots-overflow">
+                        <table class="praca-mono__slots-table">
+                            <thead class="praca-mono__slots-thead">
                             <tr>
-                                <th style="padding: 10px; text-align: left; border-bottom: 2px solid #dee2e6;">
-                                    Dyscyplina
-                                </th>
-                                <th style="padding: 10px; text-align: center; border-bottom: 2px solid #dee2e6;">PkD /
-                                    PkDAut
-                                </th>
-                                <th style="padding: 10px; text-align: center; border-bottom: 2px solid #dee2e6;">Slot
-                                </th>
+                                <th class="praca-mono__slots-th">Dyscyplina</th>
+                                <th class="praca-mono__slots-th praca-mono__slots-th--center">PkD / PkDAut</th>
+                                <th class="praca-mono__slots-th praca-mono__slots-th--center">Slot</th>
                             </tr>
                             </thead>
                             <tbody>
                             {% for pd in rekord.punktacja_dyscypliny.select_related %}
-                                <tr style="border-bottom: 1px solid #dee2e6;">
-                                    <td style="padding: 10px;">{{ pd.dyscyplina.nazwa }}</td>
-                                    <td style="padding: 10px; text-align: center;">
-                                        <span style="background: #e8f5e9; padding: 2px 8px; border-radius: 4px;">{{ pd.pkd }}</span>
+                                <tr class="praca-mono__slots-tr">
+                                    <td class="praca-mono__slots-td">{{ pd.dyscyplina.nazwa }}</td>
+                                    <td class="praca-mono__slots-td praca-mono__slots-td--center">
+                                        <span class="praca-mono__slot-badge praca-mono__slot-badge--pkd">{{ pd.pkd }}</span>
                                     </td>
-                                    <td style="padding: 10px; text-align: center;">
-                                        <span style="background: #fce4ec; padding: 2px 8px; border-radius: 4px;">{{ pd.slot }}</span>
+                                    <td class="praca-mono__slots-td praca-mono__slots-td--center">
+                                        <span class="praca-mono__slot-badge praca-mono__slot-badge--discipline-slot">{{ pd.slot }}</span>
                                     </td>
                                 </tr>
                             {% endfor %}
@@ -819,21 +795,19 @@
 
     <!-- Additional Information Card - Show here if there are abstracts -->
     {% if praca.streszczenia.exists %}
-        <div class="additional-info" style="margin-top: 30px;">
-            <div class="info-card"
-                 style="background: white; border: 1px solid #e1e4e8; border-radius: 8px; padding: 20px;">
-                <h3 style="font-size: 1.2rem; margin-bottom: 15px; color: #2c3e50; padding-bottom: 8px;">
+        <div class="praca-mono__additional-info">
+            <div class="praca-mono__card">
+                <h3 class="praca-mono__card-title">
                     <span class="fi-widget"></span> Informacje dodatkowe
                     <div class="shaded-hr-div"></div>
                 </h3>
-                <div style="margin-top: 15px;">
-                    <table style="width: 100%;">
+                <div class="praca-mono__additional-content">
+                    <table class="praca-mono__table">
                         {% if praca.charakter_formalny.skrot == "PAT" %}
                             <tr>
-                                <td colspan="2"
-                                    style="padding: 10px; background: #f8f9fa; border-radius: 6px; margin-bottom: 10px;">
+                                <td colspan="2" class="praca-mono__patent-cell">
                                     <strong>Patent:</strong><br/>
-                                    <div style="margin-left: 20px; margin-top: 10px;">
+                                    <div class="praca-mono__patent-details">
                                         <b>Numer zgłoszenia:</b> {{ praca.numer_zgloszenia|default:"brak" }}<br/>
                                         <b>Wydział:</b> {{ praca.wydzial|default:"brak" }}<br/>
                                         <b>Rodzaj prawa:</b> {{ praca.rodzaj_prawa|default:"brak" }}<br/>
@@ -848,30 +822,30 @@
 
                         {% if praca.liczba_znakow_wydawniczych %}
                             <tr>
-                                <th style="padding: 10px;">Liczba arkuszy wydawniczych:</th>
-                                <td style="padding: 10px;">{{ praca.wymiar_wydawniczy_w_arkuszach }}</td>
+                                <th class="praca-mono__table-cell">Liczba arkuszy wydawniczych:</th>
+                                <td class="praca-mono__table-cell">{{ praca.wymiar_wydawniczy_w_arkuszach }}</td>
                             </tr>
                         {% endif %}
 
                         {% if uczelnia.pokazuj_status_korekty == "always" or uczelnia.pokazuj_status_korekty == "logged-in" and not request.user.is_anonymous %}
                             <tr>
-                                <th style="padding: 10px;">Status:</th>
-                                <td style="padding: 10px;">{{ praca.status_korekty }}</td>
+                                <th class="praca-mono__table-cell">Status:</th>
+                                <td class="praca-mono__table-cell">{{ praca.status_korekty }}</td>
                             </tr>
                         {% endif %}
 
                         {% if uczelnia.pokazuj_praca_recenzowana == "always" or uczelnia.pokazuj_praca_recenzowana == "logged-in" and not request.user.is_anonymous %}
                             <tr>
-                                <th style="padding: 10px;">Praca recenzowana:</th>
-                                <td style="padding: 10px;">{{ praca.recenzowana|yesno }}</td>
+                                <th class="praca-mono__table-cell">Praca recenzowana:</th>
+                                <td class="praca-mono__table-cell">{{ praca.recenzowana|yesno }}</td>
                             </tr>
                         {% endif %}
 
                         {% if praca.ma_procenty %}
                             <tr>
-                                <th style="padding: 10px; vertical-align: top;">Odpowiedzialność za powstanie pracy:
+                                <th class="praca-mono__table-cell--vertical-top">Odpowiedzialność za powstanie pracy:
                                 </th>
-                                <td style="padding: 10px;">
+                                <td class="praca-mono__table-cell">
                                     {% for autor in praca.autorzy_set.all %}
                                         {% if autor.procent %}
                                             {{ autor.procent }}% {{ autor.zapisany_jako }}<br/>
@@ -883,10 +857,10 @@
 
                         {% if praca.zewnetrzna_baza_danych.exists %}
                             <tr>
-                                <th style="padding: 10px; vertical-align: top;">Zewnętrzna baza danych:</th>
-                                <td style="padding: 10px;">
+                                <th class="praca-mono__table-cell--vertical-top">Zewnętrzna baza danych:</th>
+                                <td class="praca-mono__table-cell">
                                     {% for db in praca.zewnetrzna_baza_danych.all %}
-                                        • {{ db.baza.nazwa }}<br/>
+                                        {{ db.baza.nazwa }}<br/>
                                     {% endfor %}
                                 </td>
                             </tr>
@@ -894,23 +868,20 @@
 
                         {% if praca.wydawnictwa_powiazane_set.exists %}
                             <tr>
-                                <th style="padding: 10px; vertical-align: top;">
+                                <th class="praca-mono__table-cell--vertical-top">
                                     Rekordy powiązane ({{ praca.wydawnictwa_powiazane_posortowane.all.count }}):
                                 </th>
-                                <td style="padding: 10px;">
+                                <td class="praca-mono__table-cell">
                                     {% if praca.wydawnictwa_powiazane_posortowane.all.count > 2 %}
                                         <input type="text"
-                                               class="related-records-search"
-                                               placeholder="Szukaj w rekordach powiązanych..."
-                                               style="margin-bottom: 10px; width: 100%; padding: 8px; border: 1px solid #ddd;
-                                                      border-radius: 4px;">
-                                        <div class="related-records-count"
-                                             style="margin-bottom: 5px; font-size: 0.9em; color: #7f8c8d;"></div>
+                                               class="related-records-search praca-mono__related-search"
+                                               placeholder="Szukaj w rekordach powiązanych...">
+                                        <div class="related-records-count praca-mono__related-count"></div>
                                     {% endif %}
-                                    <ol class="related-records-list" style="margin-left: 0; padding-left: 30px;"
+                                    <ol class="related-records-list praca-mono__related-list"
                                         data-records='[{% for elem in praca.wydawnictwa_powiazane_posortowane.all %}{"url":"{% url "bpp:browse_praca" "wydawnictwo_zwarte" elem.pk %}","text":"{{ elem.opis_bibliograficzny_cache|safe|escapejs }}"}{% if not forloop.last %},{% endif %}{% endfor %}]'>
                                         {% for elem in praca.wydawnictwa_powiazane_posortowane.all %}
-                                            <li style="margin-bottom: 8px;">
+                                            <li class="praca-mono__related-item">
                                                 <a href="{% url "bpp:browse_praca" "wydawnictwo_zwarte" elem.pk %}">
                                                     {{ elem.opis_bibliograficzny_cache|safe }}
                                                 </a>
@@ -922,13 +893,13 @@
                         {% endif %}
 
                         <tr>
-                            <th style="padding: 10px;">Rekord utworzony:</th>
-                            <td style="padding: 10px;">{{ praca.utworzono }}</td>
+                            <th class="praca-mono__table-cell">Rekord utworzony:</th>
+                            <td class="praca-mono__table-cell">{{ praca.utworzono }}</td>
                         </tr>
 
                         <tr>
-                            <th style="padding: 10px;">Ostatnia aktualizacja:</th>
-                            <td style="padding: 10px;">{{ praca.ostatnio_zmieniony }}</td>
+                            <th class="praca-mono__table-cell">Ostatnia aktualizacja:</th>
+                            <td class="praca-mono__table-cell">{{ praca.ostatnio_zmieniony }}</td>
                         </tr>
                     </table>
                 </div>
@@ -939,25 +910,24 @@
     <!-- "Odpięte" dyscypliny -->
     {% if rekord.ma_odpiete_dyscypliny %}
         {% if uczelnia.pokazuj_tabele_slotow_na_stronie_rekordu == "always" or uczelnia.pokazuj_tabele_slotow_na_stronie_rekordu == "logged-in" and not request.user.is_anonymous %}
-            <div class="detached-disciplines" style="margin-top: 30px;">
-                <div class="info-card"
-                     style="background: #fff5f5; border: 1px solid #ffcccc; border-radius: 8px; padding: 20px;">
-                    <h3 style="font-size: 1.2rem; margin-bottom: 15px; color: #2c3e50; padding-bottom: 8px;">
+            <div class="praca-mono__detached-section">
+                <div class="praca-mono__card praca-mono__card--detached">
+                    <h3 class="praca-mono__card-title">
                         <span class="fi-unlink"></span> "Odpięte" dyscypliny
                         <div class="shaded-hr-div-small"></div>
                     </h3>
-                    <table style="width: 100%; border-collapse: collapse;">
-                        <thead style="background: #ffe5e5;">
+                    <table class="praca-mono__slots-table">
+                        <thead class="praca-mono__slots-thead praca-mono__slots-thead--detached">
                         <tr>
-                            <th style="padding: 10px; text-align: left;">Autor</th>
-                            <th style="padding: 10px; text-align: left;">Dyscyplina</th>
+                            <th class="praca-mono__slots-th">Autor</th>
+                            <th class="praca-mono__slots-th">Dyscyplina</th>
                         </tr>
                         </thead>
                         <tbody>
                         {% for pa in praca.odpiete_dyscypliny.select_related %}
-                            <tr style="border-bottom: 1px solid #ffcccc;">
-                                <td style="padding: 10px;">{{ pa.autor }}</td>
-                                <td style="padding: 10px;">{{ pa.dyscyplina_naukowa.nazwa }}</td>
+                            <tr class="praca-mono__slots-tr praca-mono__slots-tr--detached">
+                                <td class="praca-mono__slots-td">{{ pa.autor }}</td>
+                                <td class="praca-mono__slots-td">{{ pa.dyscyplina_naukowa.nazwa }}</td>
                             </tr>
                         {% endfor %}
                         </tbody>
@@ -1140,30 +1110,40 @@
         });
     })(jQuery || django.jQuery || $);
 
-    // Copy bibliographic description to clipboard
-    function copyBibliographicDescription() {
-        var descriptionDiv = document.getElementById('bibliographic-description');
-        var textContent = descriptionDiv.innerText || descriptionDiv.textContent;
-        var feedbackDiv = document.getElementById('copy-biblio-feedback');
+    // Event delegation for copy text (data-copy-text)
+    document.addEventListener('click', function(e) {
+        var target = e.target.closest('[data-copy-text]');
+        if (!target) return;
 
+        var text = target.dataset.copyText;
+        copyTextToClipboard(text, target);
+        e.preventDefault();
+    });
+
+    // Event delegation for copy content (data-copy-content)
+    document.addEventListener('click', function(e) {
+        var target = e.target.closest('[data-copy-content]');
+        if (!target) return;
+
+        var textContent = target.innerText || target.textContent;
+        var feedbackDiv = document.getElementById('copy-biblio-feedback');
+        copyTextToClipboard(textContent, null, feedbackDiv);
+    });
+
+    // Helper function for clipboard operations
+    function copyTextToClipboard(text, button, feedbackDiv) {
         if (navigator.clipboard && window.isSecureContext) {
-            navigator.clipboard.writeText(textContent).then(function () {
-                // Show feedback
-                feedbackDiv.style.display = 'block';
-                setTimeout(function () {
-                    feedbackDiv.style.display = 'none';
-                }, 2000);
-            }, function (err) {
-                // Fallback for older browsers
-                fallbackCopyBiblio(textContent, feedbackDiv);
+            navigator.clipboard.writeText(text).then(function() {
+                showCopyFeedback(button, feedbackDiv);
+            }, function(err) {
+                fallbackCopy(text, button, feedbackDiv);
             });
         } else {
-            fallbackCopyBiblio(textContent, feedbackDiv);
+            fallbackCopy(text, button, feedbackDiv);
         }
     }
 
-    function fallbackCopyBiblio(text, feedbackDiv) {
-        // Create temporary textarea
+    function fallbackCopy(text, button, feedbackDiv) {
         var textarea = document.createElement('textarea');
         textarea.value = text;
         textarea.style.position = 'fixed';
@@ -1173,93 +1153,37 @@
 
         try {
             document.execCommand('copy');
-            feedbackDiv.style.display = 'block';
-            setTimeout(function () {
-                feedbackDiv.style.display = 'none';
-            }, 2000);
+            showCopyFeedback(button, feedbackDiv);
         } catch (err) {
-            alert('Nie można skopiować do schowka. Proszę zaznaczyć tekst i skopiować ręcznie (Ctrl+C).');
+            alert('Nie można skopiować do schowka.');
         }
 
         document.body.removeChild(textarea);
     }
+
+    function showCopyFeedback(button, feedbackDiv) {
+        if (button) {
+            button.classList.add('copied');
+            // Store original icon element
+            var originalIcon = button.querySelector('i');
+            var originalClass = originalIcon ? originalIcon.className : '';
+            // Change to check icon
+            if (originalIcon) {
+                originalIcon.className = 'fi-check';
+            }
+            setTimeout(function() {
+                button.classList.remove('copied');
+                // Restore original icon
+                if (originalIcon) {
+                    originalIcon.className = originalClass;
+                }
+            }, 2000);
+        }
+        if (feedbackDiv) {
+            feedbackDiv.style.display = 'block';
+            setTimeout(function() {
+                feedbackDiv.style.display = 'none';
+            }, 2000);
+        }
+    }
 </script>
-
-<!-- Responsive styles -->
-<style>
-    @media screen and (max-width: 768px) {
-        .content-columns {
-            flex-direction: column !important;
-        }
-
-        .left-column, .right-column {
-            flex: 1 1 100% !important;
-            min-width: 100% !important;
-        }
-
-        .metrics-grid {
-            grid-template-columns: 1fr !important;
-        }
-
-        table {
-            font-size: 0.9em;
-        }
-
-        .publication-title-section h2 {
-            font-size: 1.4rem !important;
-        }
-    }
-
-    /* Hover effects */
-    .info-card {
-        transition: box-shadow 0.3s ease;
-    }
-
-    .info-card:hover {
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    }
-
-    /* Optimize button - smaller font size */
-    .optimize-button {
-        font-size: 0.875rem !important;
-    }
-
-    .optimize-button .fi-wrench {
-        font-size: 0.95rem;
-    }
-
-    /* Related records search styles */
-    .related-records-search {
-        font-size: 0.9rem;
-        transition: border-color 0.3s ease, box-shadow 0.3s ease;
-    }
-
-    .related-records-search:focus {
-        outline: none;
-        border-color: #3498db !important;
-        box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
-    }
-
-    .related-records-count {
-        font-style: italic;
-    }
-
-    .related-records-list li {
-        transition: opacity 0.2s ease;
-    }
-
-    /* Print styles */
-    @media print {
-        .button, #bibtex-toggle-btn, #bibtex-copy-btn {
-            display: none !important;
-        }
-
-        #additional-content {
-            display: block !important;
-        }
-
-        .info-card {
-            break-inside: avoid;
-        }
-    }
-</style>

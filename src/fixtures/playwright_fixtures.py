@@ -5,7 +5,7 @@ from playwright.sync_api import Page
 
 
 @pytest.fixture
-def admin_page(page: Page, admin_user, live_server, transactional_db):
+def admin_page(page: Page, admin_user, channels_live_server, transactional_db):
     """Provide a pre-authenticated admin page."""
     # Import here to avoid Django app loading issues
     from django.test import Client

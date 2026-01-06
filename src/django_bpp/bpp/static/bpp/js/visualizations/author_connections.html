@@ -9,6 +9,9 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/sigma.js/2.4.0/sigma.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/graphology/0.25.4/graphology.umd.min.js"></script>
 
+    <!-- BPP Author Connections UI -->
+    <script src="../../../bpp/static/bpp/js/visualizations/author-connections-ui.js"></script>
+
     <style>
         body {
             margin: 0;
@@ -135,18 +138,18 @@
 
     <div class="controls-panel">
         <h3>Kontrolki</h3>
-        <button onclick="resetView()">Resetuj widok</button>
-        <button onclick="toggleEdgeLabels()">Etykiety krawędzi</button>
+        <button onclick="window.bpp.authorConnections.resetView()">Resetuj widok</button>
+        <button onclick="window.bpp.authorConnections.toggleEdgeLabels()">Etykiety krawędzi</button>
 
         <div style="margin: 15px 0; padding: 10px; background: #f0f0f0; border-radius: 3px;">
             <label style="display: flex; align-items: center; font-size: 13px; cursor: pointer;">
-                <input type="checkbox" id="filter-single-html" style="margin-right: 5px;" onchange="filterSingleConnections(this.checked)">
+                <input type="checkbox" id="filter-single-html" style="margin-right: 5px;" onchange="window.bpp.authorConnections.filterSingleConnections(this.checked)">
                 <span>Ukryj połączenia z tylko 1 publikacją</span>
             </label>
         </div>
 
         <div class="search-box">
-            <input type="text" id="searchInput" placeholder="Szukaj autora..." onkeyup="searchAuthors(this.value)">
+            <input type="text" id="searchInput" placeholder="Szukaj autora..." onkeyup="window.bpp.authorConnections.searchAuthors(this.value)">
             <div id="searchResults" class="search-results"></div>
         </div>
     </div>
@@ -171,9 +174,6 @@
     </div>
 
     <script>
-        let showEdgeLabels = true;
-        let searchTimeout = null;
-
         // Hide loader when ready
         window.addEventListener('load', function() {
             setTimeout(function() {
@@ -181,88 +181,6 @@
                 if (loader) loader.style.display = 'none';
             }, 500);
         });
-
-        function resetView() {
-            if (window.sigmaInstance) {
-                const camera = window.sigmaInstance.getCamera();
-                camera.setState({ x: 0.5, y: 0.5, ratio: 1 });
-            }
-        }
-
-        function toggleEdgeLabels() {
-            showEdgeLabels = !showEdgeLabels;
-            if (window.sigmaInstance) {
-                window.sigmaInstance.setSetting('renderEdgeLabels', showEdgeLabels);
-            }
-        }
-
-        function searchAuthors(query) {
-            clearTimeout(searchTimeout);
-            const resultsDiv = document.getElementById('searchResults');
-
-            if (!query || query.length < 2) {
-                resultsDiv.innerHTML = '';
-                return;
-            }
-
-            searchTimeout = setTimeout(() => {
-                if (!window.authorGraph) return;
-
-                const results = [];
-                const lowerQuery = query.toLowerCase();
-
-                window.authorGraph.forEachNode((node, attrs) => {
-                    if (attrs.label.toLowerCase().includes(lowerQuery)) {
-                        results.push({ id: node, label: attrs.label });
-                    }
-                });
-
-                // Display results
-                if (results.length > 0) {
-                    resultsDiv.innerHTML = results.slice(0, 10).map(r =>
-                        `<div class="search-result-item" onclick="focusNode('${r.id}')">${r.label}</div>`
-                    ).join('');
-                } else {
-                    resultsDiv.innerHTML = '<div style="padding: 5px; color: #999;">Nie znaleziono autorów</div>';
-                }
-            }, 300);
-        }
-
-        function focusNode(nodeId) {
-            if (window.sigmaInstance && window.authorGraph) {
-                const nodeData = window.authorGraph.getNodeAttributes(nodeId);
-                if (nodeData) {
-                    // Focus camera on node
-                    const camera = window.sigmaInstance.getCamera();
-                    const { x, y } = window.sigmaInstance.graphToViewport({ x: nodeData.x, y: nodeData.y });
-                    camera.setState({
-                        x: 0.5 + (0.5 - x / container.offsetWidth),
-                        y: 0.5 + (0.5 - y / container.offsetHeight),
-                        ratio: 0.5
-                    });
-
-                    // Select the node
-                    setTimeout(() => {
-                        if (window.selectNode) {
-                            window.selectNode(nodeId);
-                        }
-                    }, 300);
-                }
-
-                // Clear search
-                document.getElementById('searchInput').value = '';
-                document.getElementById('searchResults').innerHTML = '';
-            }
-        }
-
-        function filterSingleConnections(filterEnabled) {
-            // Trigger the filter on the embedded visualization
-            const filterCheckbox = document.querySelector('#filter-single');
-            if (filterCheckbox) {
-                filterCheckbox.checked = filterEnabled;
-                filterCheckbox.dispatchEvent(new Event('change'));
-            }
-        }
     </script>
 
     <!-- Visualization Script -->

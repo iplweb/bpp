@@ -14,21 +14,24 @@
 <div class="author-header">
     <div class="grid-x grid-margin-x align-middle">
         <div class="cell auto">
-            <h1 style="margin-bottom: 8px;">{{ autor }}</h1>
+            <h1 class="autor-page__heading">{{ autor }}</h1>
             {% if autor.aktualna_funkcja.pokazuj_za_nazwiskiem %}
                 <div class="author-title">{{ autor.aktualna_funkcja }}</div>
             {% endif %}
         </div>
         <div class="cell shrink">
-            <div class="hide-for-print" style="display: flex; gap: 0;">
+            <div class="hide-for-print autor-page__actions">
                 {% if request.user.is_authenticated %}
-                    <a href="{% url 'przemapuj_prace_autora:przemapuj_prace' autor.pk %}" class="jednostka-remap-button">
+                    <a href="{% url 'przemapuj_prace_autora:przemapuj_prace' autor.pk %}"
+                       class="jednostka-remap-button">
                         <span class="fi fi-shuffle"></span>Przemapuj prace
                     </a>
                 {% endif %}
                 {% load user_in_group %}
                 {% if request.user.is_superuser or request.user|has_group:"wprowadzanie danych" %}
-                    <a target="_blank" href="{% url "admin:bpp_autor_change" autor.pk %}" class="jednostka-edit-button">
+                    <a target="_blank"
+                       href="{% url "admin:bpp_autor_change" autor.pk %}"
+                       class="jednostka-edit-button">
                         <span class="fi fi-page-edit"></span>Otwórz do edycji
                     </a>
                 {% endif %}
@@ -38,17 +41,16 @@
 </div>
 
 <!-- Quick Actions -->
-<div style="text-align: center; margin-bottom: 30px;">
-    <form method="post" action="{% url "bpp:browse_build_search" %}" style="display: inline;">
+<div class="autor-page__quick-actions">
+    <form method="post"
+          action="{% url "bpp:browse_build_search" %}"
+          class="autor-page__quick-actions-form">
         {% csrf_token %}
         <input type="hidden" name="autor" value="{{ autor.pk }}"/>
         <input type="hidden" name="suggested-title" value="{{ autor }}"/>
         <button type="submit"
-                class="button primary large"
-                style="background: #27ae60; border: none; padding: 12px 24px; font-size: 1rem; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: all 0.2s ease;"
-                onmouseover="this.style.backgroundColor='#229954'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.15)'"
-                onmouseout="this.style.backgroundColor='#27ae60'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)'">
-            <i class="fi-list-bullet" style="margin-right: 8px;"></i>Pokaż wszystkie prace
+                class="button primary large autor-page__show-all-btn">
+            <i class="fi-list-bullet autor-page__icon--mr-lg"></i>Pokaż wszystkie prace
         </button>
     </form>
 </div>
@@ -83,30 +85,37 @@
         <!-- External identifiers -->
         <div class="author-info-section">
             <h3><i class="fi-link"></i> Identyfikatory</h3>
-                <div class="grid-x grid-margin-x" style="gap: 10px;">
+                <div class="grid-x grid-margin-x autor-page__grid-gap">
                     {% if autor.orcid %}
                         <div class="cell shrink">
-                            <div class="callout" style="background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px; padding: 12px; margin: 0; text-align: center; min-width: 120px;">
-                                <div style="color: #2c3e50; font-weight: 600; font-size: 0.85rem; margin-bottom: 4px;">ORCID</div>
-                                <a href="https://orcid.org/{{ autor.orcid }}" target="_blank" style="color: #3498db; text-decoration: none; font-family: monospace; font-size: 0.9rem;">{{ autor.orcid }}</a>
+                            <div class="callout autor-page__id-card">
+                                <div class="autor-page__id-label">ORCID</div>
+                                <a href="https://orcid.org/{{ autor.orcid }}"
+                                   target="_blank"
+                                   class="autor-page__id-link">{{ autor.orcid }}</a>
                             </div>
                         </div>
                     {% endif %}
                     {% if autor.pbn_uid_id %}
                         <div class="cell shrink">
-                            <div class="callout" style="background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px; padding: 12px; margin: 0; text-align: center; min-width: 120px;">
-                                <div style="color: #2c3e50; font-weight: 600; font-size: 0.85rem; margin-bottom: 4px;">PBN UID</div>
-                                <a href="{{ autor.link_do_pbn }}" target="_blank" style="color: #3498db; text-decoration: none; font-family: monospace; font-size: 0.9rem;">{{ autor.pbn_uid_id }}</a>
+                            <div class="callout autor-page__id-card">
+                                <div class="autor-page__id-label">PBN UID</div>
+                                <a href="{{ autor.link_do_pbn }}"
+                                   target="_blank"
+                                   class="autor-page__id-link">{{ autor.pbn_uid_id }}</a>
                             </div>
                         </div>
                     {% endif %}
                     {% if autor.jest_w_polon %}
                         <div class="cell shrink">
-                            <div class="callout" style="background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px; padding: 12px; margin: 0; text-align: center; min-width: 160px;">
-                                <div style="color: #2c3e50; font-weight: 600; font-size: 0.85rem; margin-bottom: 4px;">
+                            <div class="callout autor-page__id-card autor-page__id-card--wide">
+                                <div class="autor-page__id-label">
                                     <span class="fi-shield"></span> Naukowiec z POL-on
                                 </div>
-                                <a href="{{ autor.link_do_pbn }}" target="_blank" rel="noopener" style="color: #3498db; text-decoration: none; font-size: 0.9rem;">
+                                <a href="{{ autor.link_do_pbn }}"
+                                   target="_blank"
+                                   rel="noopener"
+                                   class="autor-page__id-link">
                                     Zobacz w PBN <span class="fi-arrow-right"></span>
                                 </a>
                             </div>
@@ -114,26 +123,28 @@
                     {% endif %}
                     {% if autor.pbn_id %}
                         <div class="cell shrink">
-                            <div class="callout" style="background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px; padding: 12px; margin: 0; text-align: center; min-width: 120px;">
-                                <div style="color: #2c3e50; font-weight: 600; font-size: 0.85rem; margin-bottom: 4px;">PBN ID</div>
-                                <div style="color: #7f8c8d; font-family: monospace; font-size: 0.9rem;">{{ autor.pbn_id }}</div>
+                            <div class="callout autor-page__id-card">
+                                <div class="autor-page__id-label">PBN ID</div>
+                                <div class="autor-page__id-value">{{ autor.pbn_id }}</div>
                             </div>
                         </div>
                     {% endif %}
                     {% if autor.system_kadrowy_id %}
                         <div class="cell shrink">
-                            <div class="callout" style="background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px; padding: 12px; margin: 0; text-align: center; min-width: 120px;">
-                                <div style="color: #2c3e50; font-weight: 600; font-size: 0.85rem; margin-bottom: 4px;">System kadrowy</div>
-                                <div style="color: #7f8c8d; font-family: monospace; font-size: 0.9rem;">{{ autor.system_kadrowy_id }}</div>
+                            <div class="callout autor-page__id-card">
+                                <div class="autor-page__id-label">System kadrowy</div>
+                                <div class="autor-page__id-value">{{ autor.system_kadrowy_id }}</div>
                             </div>
                         </div>
                     {% endif %}
                     <div class="cell shrink">
-                        <div class="callout" style="background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px; padding: 12px; margin: 0; text-align: center; min-width: 120px;">
-                            <div style="color: #2c3e50; font-weight: 600; font-size: 0.85rem; margin-bottom: 4px;">BPP ID</div>
-                            <span data-tooltip class="top" data-click-open="false" tabindex="2"
-                                  title="Unikalny, wewnętrzny identyfikator autora w systemie BPP"
-                                  style="color: #7f8c8d; font-family: monospace; font-size: 0.9rem;">
+                        <div class="callout autor-page__id-card">
+                            <div class="autor-page__id-label">BPP ID</div>
+                            <span data-tooltip
+                                  class="top autor-page__id-value"
+                                  data-click-open="false"
+                                  tabindex="2"
+                                  title="Unikalny, wewnętrzny identyfikator autora w systemie BPP">
                                 {{ autor.pk }}
                             </span>
                         </div>
@@ -145,15 +156,12 @@
         {% if autor.metryki.exists %}
             <div class="author-info-section">
                 <h3><i class="fi-graph-trend"></i> Metryki ewaluacyjne</h3>
-                <div class="grid-x grid-margin-x" style="gap: 10px;">
+                <div class="grid-x grid-margin-x autor-page__grid-gap">
                     {% for metryka in autor.metryki.all %}
                         <div class="cell shrink">
                             <a href="{{ metryka.get_absolute_url }}"
-                               class="button primary"
-                               style="background: #3498db; border: none; padding: 10px 16px; font-size: 0.9rem; border-radius: 6px; transition: all 0.2s ease;"
-                               onmouseover="this.style.backgroundColor='#2980b9'; this.style.transform='translateY(-2px)'"
-                               onmouseout="this.style.backgroundColor='#3498db'; this.style.transform='translateY(0)'">
-                                <i class="fi-eye" style="margin-right: 6px;"></i>
+                               class="button primary autor-page__metrics-btn">
+                                <i class="fi-eye autor-page__icon--mr-md"></i>
                                 Metryka dla {{ metryka.dyscyplina_naukowa.nazwa }}
                                 {% if autor.metryki.count > 1 and metryka.jednostka %}
                                     ({{ metryka.jednostka.skrot|default:metryka.jednostka.nazwa }})
@@ -230,12 +238,12 @@
 
 
 <!-- Modern Search Form -->
-<div class="search-container" style="background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); padding: 30px; margin-bottom: 30px;">
-    <div class="search-header" style="margin-bottom: 25px;">
-        <h3 style="color: #2c3e50; margin-bottom: 5px;">
-            <i class="fi-magnifying-glass" style="margin-right: 10px;"></i>Wyszukaj publikacje autora
+<div class="search-container autor-page__search-container">
+    <div class="search-header autor-page__search-header">
+        <h3 class="autor-page__search-title">
+            <i class="fi-magnifying-glass autor-page__icon--mr-xl"></i>Wyszukaj publikacje autora
         </h3>
-        <p style="color: #7f8c8d; margin: 0; font-size: 0.9rem;">
+        <p class="autor-page__search-subtitle">
             Znajdź publikacje powiązane z autorem {{ autor }}
         </p>
     </div>
@@ -247,35 +255,36 @@
         <input type="hidden" name="suggested-title" value="{{ autor }}"/>
         <input type="hidden" name="autor" value="{{ autor.pk }}"/>
 
-        <div class="card" style="margin-bottom: 20px; border: 1px solid #e9ecef;">
+        <div class="card autor-page__search-card">
             <div class="card-section">
-                <h6 style="color: #2c3e50; margin-bottom: 15px; font-weight: 600;">
-                    <i class="fi-list" style="margin-right: 5px;"></i>Typ publikacji:
+                <h6 class="autor-page__search-card-title">
+                    <i class="fi-list autor-page__icon--mr-sm"></i>Typ publikacji:
                 </h6>
                 {% include "browse/typy.html" %}
             </div>
         </div>
 
         {% if autor.jednostki_gdzie_ma_publikacje %}
-            <div class="card" style="margin-bottom: 20px; border: 1px solid #e9ecef;">
+            <div class="card autor-page__search-card">
                 <div class="card-section">
-                    <h6 style="color: #2c3e50; margin-bottom: 15px; font-weight: 600;">
-                        <i class="fi-home" style="margin-right: 5px;"></i>Opracowane w jednostkach:
+                    <h6 class="autor-page__search-card-title">
+                        <i class="fi-home autor-page__icon--mr-sm"></i>Opracowane w jednostkach:
                     </h6>
                     <div class="grid-x grid-margin-x">
                         {% for jednostka in autor.jednostki_gdzie_ma_publikacje %}
-                            <div class="cell medium-6" style="margin-bottom: 8px;">
+                            <div class="cell medium-6 autor-page__checkbox-item">
                                 <input type="checkbox"
                                        name="jednostka"
                                        value="{{ jednostka.pk }}"
                                        id="jednostka_{{ jednostka.pk }}"
-                                       style="margin-right: 8px;"/>
-                                <label for="jednostka_{{ jednostka.pk }}" style="margin-bottom: 0; display: inline;">
+                                       class="autor-page__checkbox"/>
+                                <label for="jednostka_{{ jednostka.pk }}"
+                                       class="autor-page__checkbox-label">
                                     {{ jednostka.nazwa }}
                                     <a href="{% url "bpp:browse_jednostka" jednostka.slug %}"
-                                       style="margin-left: 5px; color: #3498db; text-decoration: none;"
+                                       class="autor-page__unit-link"
                                        title="Zobacz jednostkę">
-                                        <i class="fi-home" style="font-size: 0.9rem;"></i>
+                                        <i class="fi-home autor-page__unit-icon"></i>
                                     </a>
                                 </label>
                             </div>
@@ -286,18 +295,21 @@
         {% endif %}
 
         <!-- Years Selection Card -->
-        <div class="card" style="margin-bottom: 20px; border: 1px solid #e9ecef;">
+        <div class="card autor-page__search-card">
             <div class="card-section">
-                <h6 style="color: #2c3e50; margin-bottom: 15px; font-weight: 600;">
-                    <i class="fi-calendar" style="margin-right: 5px;"></i>Opracowane w latach:
+                <h6 class="autor-page__search-card-title">
+                    <i class="fi-calendar autor-page__icon--mr-sm"></i>Opracowane w latach:
                 </h6>
                 <div class="grid-x grid-margin-x">
                     {% for rok in autor.prace_w_latach reversed %}
-                        <div class="cell small-6 medium-4 large-2" style="margin-bottom: 10px;">
-                            <input type="checkbox" name="rok"
-                                   id="rok_{{ rok }}" value="{{ rok }}"
-                                   style="margin-right: 8px;"/>
-                            <label for="rok_{{ rok }}" style="margin-bottom: 0; display: inline;">
+                        <div class="cell small-6 medium-4 large-2 autor-page__checkbox-item--year">
+                            <input type="checkbox"
+                                   name="rok"
+                                   id="rok_{{ rok }}"
+                                   value="{{ rok }}"
+                                   class="autor-page__checkbox"/>
+                            <label for="rok_{{ rok }}"
+                                   class="autor-page__checkbox-label">
                                 {{ rok }}
                             </label>
                         </div>
@@ -307,61 +319,64 @@
         </div>
 
         <!-- Report Title Card -->
-        <div class="card" style="margin-bottom: 20px; border: 1px solid #e9ecef;">
+        <div class="card autor-page__search-card">
             <div class="card-section">
-                <h6 style="color: #2c3e50; margin-bottom: 15px; font-weight: 600;">
-                    <i class="fi-page-edit" style="margin-right: 5px;"></i>Tytuł raportu:
+                <h6 class="autor-page__search-card-title">
+                    <i class="fi-page-edit autor-page__icon--mr-sm"></i>Tytuł raportu:
                 </h6>
                 <div class="grid-x grid-margin-x align-middle">
                     <div class="cell auto">
-                        <input type="text" name="suggested-title" value="{{ autor }}"
-                               style="margin-bottom: 0; border: 1px solid #e9ecef; border-radius: 4px;"/>
+                        <input type="text"
+                               name="suggested-title"
+                               value="{{ autor }}"
+                               class="autor-page__title-input"/>
                     </div>
                 </div>
-                <small style="color: #7f8c8d; font-style: italic;">
+                <small class="autor-page__title-hint">
                     Tytuł wyszukiwania możesz zmienić, klikając go dwukrotnie.
                 </small>
             </div>
         </div>
 
         <!-- Search Button -->
-        <div style="text-align: center; margin-top: 25px; padding-top: 20px; border-top: 1px solid #e9ecef;">
+        <div class="autor-page__search-button-section">
             <button type="submit"
-                    class="button primary large"
-                    style="background: #3498db; border: none; padding: 15px 30px; font-size: 1.1rem; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: all 0.2s ease;"
-                    onmouseover="this.style.backgroundColor='#2980b9'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.15)'"
-                    onmouseout="this.style.backgroundColor='#3498db'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)'">
-                <i class="fi-magnifying-glass" style="margin-right: 8px; color: white;"></i>Szukaj publikacji
+                    class="button primary large autor-page__search-btn">
+                <i class="fi-magnifying-glass autor-page__icon--mr-lg autor-page__icon--white"></i>Szukaj publikacji
             </button>
         </div>
     </form>
 </div>
 
 <!-- Embed Code Section -->
-<div class="row" style="margin-top: 30px;">
+<div class="row autor-page__embed-section">
     <div class="large-12 columns">
         <div class="author-info-section">
-            <h3 style="cursor: pointer; user-select: none; display: flex; align-items: center; justify-content: space-between;" onclick="toggleEmbedCode()">
+            <h3 class="autor-page__embed-toggle"
+                data-action="toggle-embed"
+                data-keydown-toggle="true"
+                tabindex="0"
+                role="button">
                 <span><i class="fi-page-export"></i> Kod do osadzenia publikacji na stronie WWW</span>
-                <span id="embed-toggle-icon" style="transition: transform 0.3s; font-size: 0.8em;">▶</span>
+                <span id="embed-toggle-icon" class="autor-page__embed-toggle-icon">&#9654;</span>
             </h3>
-            <p style="color: #7f8c8d; margin-bottom: 15px; font-size: 0.9rem;">
-                Kliknij aby rozwinąć i skopiować kod JavaScript do wyświetlania Twoich publikacji na własnej stronie
+            <p class="autor-page__embed-hint">
+                Naciśnij Enter lub spację aby rozwinąć i skopiować kod JavaScript
             </p>
         </div>
         <div class="shaded-hr-div-small"></div>
 
         <div id="embed-content" style="display: none;">
-            <div style="background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); padding: 30px; margin-top: 20px; margin-bottom: 20px;">
-        <div style="margin-bottom: 15px;">
-            <p style="color: #2c3e50; margin-bottom: 10px;">
+            <div class="autor-page__embed-content-wrapper">
+        <div>
+            <p class="autor-page__embed-instruction">
                 <strong>Instrukcja:</strong> Skopiuj poniższy kod i wklej go w miejscu na swojej stronie WWW,
                 gdzie chcesz wyświetlić listę swoich najnowszych publikacji z systemu BPP.
             </p>
         </div>
 
-        <div style="position: relative;">
-            <pre id="embed-code" style="background: #f5f5f5; color: #333; padding: 20px; border: 1px solid #ddd; border-radius: 6px; overflow-x: auto; font-size: 0.85rem; line-height: 1.5; margin-bottom: 10px;"><code>&lt;!-- BPP - Lista publikacji autora {{ autor }} --&gt;
+        <div class="autor-page__embed-code-wrapper">
+            <pre id="embed-code" class="autor-page__embed-code"><code>&lt;!-- BPP - Lista publikacji autora {{ autor }} --&gt;
 &lt;!-- Ten kod automatycznie pobiera i wyświetla 25 najnowszych publikacji z systemu BPP --&gt;
 &lt;div id="bpp-publikacje" style="font-family: Arial, sans-serif;"&gt;
     &lt;div style="text-align: center; padding: 20px; color: #666;"&gt;
@@ -463,18 +478,16 @@
 })();
 &lt;/script&gt;</code></pre>
 
-            <button onclick="copyEmbedCode()"
+            <button data-action="copy-embed"
                     id="copy-button"
-                    style="position: absolute; top: 10px; right: 10px; background: #3498db; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 0.9rem; transition: background 0.2s;"
-                    onmouseover="this.style.backgroundColor='#2980b9'"
-                    onmouseout="this.style.backgroundColor='#3498db'">
+                    class="autor-page__copy-btn">
                 <i class="fi-clipboard"></i> Kopiuj kod
             </button>
         </div>
 
-        <div style="background: #e8f5e9; border-left: 4px solid #4caf50; padding: 15px; margin-top: 15px; border-radius: 4px;">
-            <p style="margin: 0; color: #2e7d32;">
-                <strong>💡 Podpowiedź:</strong> Ten kod jest w pełni samodzielny i będzie działał na każdej stronie HTML.
+        <div class="autor-page__embed-tip">
+            <p class="autor-page__embed-tip-text">
+                <strong>Podpowiedź:</strong> Ten kod jest w pełni samodzielny i będzie działał na każdej stronie HTML.
                 Automatycznie pobiera najnowsze publikacje z systemu BPP i wyświetla je w czytelnej formie.
             </p>
         </div>
@@ -534,6 +547,25 @@ function copyEmbedCode() {
     // Usuń tymczasowy element
     document.body.removeChild(textarea);
 }
+
+// Event delegation handlers
+document.addEventListener('click', function(e) {
+    if (e.target.closest('[data-action="toggle-embed"]')) {
+        e.preventDefault();
+        toggleEmbedCode();
+    }
+    if (e.target.closest('[data-action="copy-embed"]')) {
+        e.preventDefault();
+        copyEmbedCode();
+    }
+});
+document.addEventListener('keydown', function(e) {
+    var elem = e.target.closest('[data-keydown-toggle]');
+    if (elem && (e.key === 'Enter' || e.key === ' ')) {
+        e.preventDefault();
+        toggleEmbedCode();
+    }
+});
 </script>
 
 {% endblock %}

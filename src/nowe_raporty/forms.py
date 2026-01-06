@@ -58,7 +58,7 @@ class BaseRaportForm(forms.Form):
                 )
 
     def __init__(self, *args, **kwargs):
-        super(BaseRaportForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         self.helper = FormHelper()
         self.helper.form_class = "custom"
@@ -112,7 +112,8 @@ class WydzialRaportForm(BaseRaportForm):
         label="Wydział",
         queryset=Wydzial.objects.all(),
         widget=autocomplete.ModelSelect2(
-            url="bpp:wydzial-autocomplete", attrs=dict(style="width: 746px;")
+            url="bpp:wydzial-autocomplete",
+            attrs={"class": "bpp-autocomplete-wide"},
         ),
     )
 

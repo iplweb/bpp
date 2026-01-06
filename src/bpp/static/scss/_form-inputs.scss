@@ -1,0 +1,33 @@
+// =============================================================================
+// FORM INPUTS
+// Input fields hover and focus shadow effects
+// =============================================================================
+
+// Add shadows to input fields on hover
+input[type="text"]:hover,
+input[type="email"]:hover,
+input[type="password"]:hover,
+input[type="number"]:hover,
+input[type="search"]:hover,
+input[type="url"]:hover,
+input[type="tel"]:hover,
+textarea:hover,
+select:hover {
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.06) !important;
+  transition: box-shadow 0.2s ease-in-out !important;
+}
+
+// Add shadows to input fields on focus
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus,
+input[type="number"]:focus,
+input[type="search"]:focus,
+input[type="url"]:focus,
+input[type="tel"]:focus,
+textarea:focus,
+select:focus {
+  box-shadow: 0 3px 8px rgba($primary-color, 0.12),
+    0 2px 4px rgba($primary-color, 0.08) !important;
+  transition: box-shadow 0.2s ease-in-out !important;
+}

@@ -587,3 +587,1064 @@
         break-inside: avoid;
     }
 }
+
+// =============================================================================
+// praca_tabela_new.html styles
+// =============================================================================
+
+// Main container for new publication detail
+.praca-detail-new__container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+// Title section
+.praca-detail-new__title-section {
+    margin-bottom: 30px;
+}
+
+.praca-detail-new__title {
+    font-size: 1.8rem;
+    line-height: 1.3;
+    margin-bottom: 20px;
+    color: #2c3e50;
+}
+
+.praca-detail-new__title-translated {
+    color: #7f8c8d;
+    font-size: 0.9em;
+}
+
+.praca-detail-new__edition-mark {
+    font-weight: normal;
+    font-size: 0.8em;
+}
+
+// Authors section
+.praca-detail-new__authors-section {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.praca-detail-new__authors-list {
+    font-size: 1.1rem;
+    line-height: 1.6;
+}
+
+.praca-detail-new__author-badge {
+    background: #e74c3c;
+    color: white;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.75em;
+    margin: 0 3px;
+}
+
+.praca-detail-new__author-link {
+    color: #3498db;
+    text-decoration: none;
+}
+
+.praca-detail-new__author-name {
+    font-weight: 500;
+
+    &--linked {
+        color: #3498db;
+    }
+
+    &--plain {
+        color: #2c3e50;
+    }
+}
+
+.praca-detail-new__authors-toggle {
+    display: none;
+    margin-top: 10px;
+}
+
+// Content columns layout
+.praca-detail-new__columns {
+    display: flex;
+    gap: 30px;
+    flex-wrap: wrap;
+}
+
+.praca-detail-new__left-column {
+    flex: 1 1 60%;
+    min-width: 300px;
+}
+
+.praca-detail-new__right-column {
+    flex: 1 1 35%;
+    min-width: 300px;
+}
+
+// Info cards
+.praca-detail-new__card {
+    background: white;
+    border: 1px solid #e1e4e8;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    transition: box-shadow 0.3s ease;
+
+    &:hover {
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    &--openaccess {
+        background: #f0f9ff;
+        border-color: #3498db;
+    }
+
+    &--additional {
+        background: #f8f9fa;
+    }
+
+    &--detached {
+        background: #fff5f5;
+        border-color: #ffcccc;
+    }
+}
+
+.praca-detail-new__card-title {
+    font-size: 1.2rem;
+    margin-bottom: 15px;
+    color: #2c3e50;
+    padding-bottom: 8px;
+
+    &--clickable {
+        cursor: pointer;
+        color: #7f8c8d;
+    }
+}
+
+// Gradient underlines for card titles
+.praca-detail-new__gradient-line {
+    height: 2px;
+    margin-top: 10px;
+
+    &--blue {
+        background: linear-gradient(
+            90deg,
+            #3498db 0%,
+            #5dade2 50%,
+            #3498db 100%
+        );
+    }
+
+    &--green {
+        background: linear-gradient(
+            90deg,
+            #27ae60 0%,
+            #52c234 50%,
+            #27ae60 100%
+        );
+    }
+
+    &--purple {
+        background: linear-gradient(
+            90deg,
+            #9b59b6 0%,
+            #bb8fce 50%,
+            #9b59b6 100%
+        );
+    }
+
+    &--orange {
+        background: linear-gradient(
+            90deg,
+            #f39c12 0%,
+            #f5b041 50%,
+            #f39c12 100%
+        );
+    }
+
+    &--red {
+        background: linear-gradient(
+            90deg,
+            #e74c3c 0%,
+            #ec7063 50%,
+            #e74c3c 100%
+        );
+    }
+
+    &--gray {
+        background: linear-gradient(
+            90deg,
+            #95a5a6 0%,
+            #aab7b8 50%,
+            #95a5a6 100%
+        );
+    }
+}
+
+// Detail rows
+.praca-detail-new__detail-row {
+    margin-bottom: 12px;
+}
+
+.praca-detail-new__detail-label {
+    color: #7f8c8d;
+}
+
+.praca-detail-new__detail-content {
+    margin-left: 20px;
+    margin-top: 5px;
+}
+
+.praca-detail-new__detail-inline {
+    margin-left: 10px;
+}
+
+// Abstracts
+.praca-detail-new__abstract {
+    margin-bottom: 15px;
+}
+
+.praca-detail-new__abstract-label {
+    color: #7f8c8d;
+    display: block;
+    margin-bottom: 5px;
+}
+
+.praca-detail-new__abstract-text {
+    text-align: justify;
+    line-height: 1.6;
+}
+
+// OpenAccess grid
+.praca-detail-new__openaccess-grid {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 10px;
+}
+
+// External links
+.praca-detail-new__link-item {
+    margin-bottom: 12px;
+
+    &--pbn {
+        margin-bottom: 15px;
+        padding: 10px;
+        background: #f8f9fa;
+        border-radius: 6px;
+    }
+}
+
+.praca-detail-new__link-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.praca-detail-new__link-icon {
+    font-size: 1.5em;
+    margin-right: 10px;
+
+    &--small {
+        font-size: 1.2em;
+        margin-right: 8px;
+    }
+}
+
+.praca-detail-new__link-text {
+    color: #3498db;
+    word-break: break-all;
+}
+
+.praca-detail-new__pbn-button {
+    margin-bottom: 5px;
+}
+
+// Identifiers
+.praca-detail-new__id-item {
+    margin-bottom: 10px;
+}
+
+.praca-detail-new__id-icon {
+    font-size: 1.2em;
+    margin-right: 8px;
+}
+
+.praca-detail-new__id-subtext {
+    color: #7f8c8d;
+    display: block;
+    margin-left: 28px;
+}
+
+// Metrics grid
+.praca-detail-new__metrics-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+.praca-detail-new__metric-box {
+    text-align: center;
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 6px;
+}
+
+.praca-detail-new__metric-value {
+    font-size: 1.5em;
+    font-weight: bold;
+
+    &--points {
+        color: #e74c3c;
+    }
+
+    &--impact {
+        color: #3498db;
+    }
+
+    &--scopus {
+        color: #27ae60;
+    }
+
+    &--wos {
+        color: #9b59b6;
+    }
+
+    &--citations {
+        color: #f39c12;
+    }
+
+    &--snip {
+        color: #16a085;
+    }
+}
+
+.praca-detail-new__metric-label {
+    font-size: 0.9em;
+    color: #7f8c8d;
+}
+
+// BibTeX section
+.praca-detail-new__bibtex-copy-btn {
+    margin-top: 10px;
+    display: none;
+}
+
+.praca-detail-new__bibtex-feedback {
+    display: none;
+    color: #27ae60;
+    font-weight: bold;
+}
+
+.praca-detail-new__bibtex-container {
+    display: none;
+    margin-top: 15px;
+}
+
+.praca-detail-new__bibtex-textarea {
+    width: 100%;
+    min-height: 200px;
+    font-family: monospace;
+    font-size: 0.9em;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background: #f8f9fa;
+}
+
+// Slots section
+.praca-detail-new__slots-section {
+    margin-top: 30px;
+}
+
+.praca-detail-new__print-link {
+    float: right;
+}
+
+.praca-detail-new__table-container {
+    overflow-x: auto;
+}
+
+.praca-detail-new__table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.praca-detail-new__table-head {
+    background: #f8f9fa;
+
+    &--detached {
+        background: #ffe5e5;
+    }
+}
+
+.praca-detail-new__table-th {
+    padding: 10px;
+    text-align: left;
+    border-bottom: 2px solid #dee2e6;
+
+    &--center {
+        text-align: center;
+    }
+}
+
+.praca-detail-new__table-row {
+    border-bottom: 1px solid #dee2e6;
+
+    &--detached {
+        border-bottom-color: #ffcccc;
+    }
+}
+
+.praca-detail-new__table-cell {
+    padding: 10px;
+
+    &--center {
+        text-align: center;
+    }
+}
+
+.praca-detail-new__badge {
+    padding: 2px 8px;
+    border-radius: 4px;
+
+    &--pkdaut {
+        background: #e3f2fd;
+    }
+
+    &--slot {
+        background: #fff3e0;
+    }
+
+    &--pkd {
+        background: #e8f5e9;
+    }
+
+    &--disc-slot {
+        background: #fce4ec;
+    }
+}
+
+.praca-detail-new__print-icon-alt {
+    color: palevioletred;
+}
+
+// Discipline slots subsection
+.praca-detail-new__disc-slots-title {
+    font-size: 1.2rem;
+    margin-top: 30px;
+    margin-bottom: 15px;
+    color: #2c3e50;
+    padding-bottom: 8px;
+}
+
+// Additional info section
+.praca-detail-new__additional-info {
+    margin-top: 30px;
+}
+
+.praca-detail-new__additional-toggle {
+    float: right;
+}
+
+.praca-detail-new__additional-content {
+    display: none;
+    margin-top: 15px;
+}
+
+.praca-detail-new__additional-table {
+    width: 100%;
+}
+
+.praca-detail-new__additional-cell {
+    padding: 10px;
+
+    &--patent {
+        background: #fff;
+        border-radius: 6px;
+        margin-bottom: 10px;
+    }
+
+    &--vertical {
+        vertical-align: top;
+    }
+}
+
+.praca-detail-new__patent-details {
+    margin-left: 20px;
+    margin-top: 10px;
+}
+
+// Detached disciplines section
+.praca-detail-new__detached-section {
+    margin-top: 30px;
+}
+
+// Responsive styles for new template
+@media screen and (max-width: 768px) {
+    .praca-detail-new__columns {
+        flex-direction: column !important;
+    }
+
+    .praca-detail-new__left-column,
+    .praca-detail-new__right-column {
+        flex: 1 1 100% !important;
+        min-width: 100% !important;
+    }
+
+    .praca-detail-new__metrics-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .praca-detail-new__table {
+        font-size: 0.9em;
+    }
+
+    .praca-detail-new__title {
+        font-size: 1.4rem !important;
+    }
+}
+
+// Print styles for new template
+@media print {
+    .praca-detail-new__bibtex-copy-btn,
+    #bibtex-toggle-btn {
+        display: none !important;
+    }
+
+    .praca-detail-new__additional-content {
+        display: block !important;
+    }
+
+    .praca-detail-new__card {
+        break-inside: avoid;
+    }
+}
+
+// =============================================================================
+// praca_tabela_mono.html - BEM Style Classes
+// =============================================================================
+
+// Main container
+.praca-mono {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+// Title section
+.praca-mono__title-section {
+    margin-bottom: 30px;
+}
+
+.praca-mono__title {
+    font-size: 1.8rem;
+    line-height: 1.3;
+    margin-bottom: 20px;
+    color: #2c3e50;
+}
+
+.praca-mono__title-translation {
+    color: #7f8c8d;
+    font-size: 0.9em;
+}
+
+.praca-mono__edition-mark {
+    font-weight: normal;
+    font-size: 0.8em;
+}
+
+// Authors section
+.praca-mono__authors-section {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.praca-mono__authors-list {
+    font-size: 1.1rem;
+    line-height: 1.6;
+}
+
+.praca-mono__author-type-badge {
+    background: #95a5a6;
+    color: white;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.75em;
+    margin: 0 3px;
+}
+
+.praca-mono__author-name {
+    font-weight: 500;
+}
+
+.praca-mono__authors-toggle {
+    display: none;
+    margin-top: 10px;
+}
+
+// Content columns layout
+.praca-mono__columns {
+    display: flex;
+    gap: 30px;
+    flex-wrap: wrap;
+}
+
+.praca-mono__column--left {
+    flex: 1 1 60%;
+    min-width: 300px;
+}
+
+.praca-mono__column--right {
+    flex: 1 1 35%;
+    min-width: 300px;
+}
+
+// Info card - standard card style
+.praca-mono__card {
+    background: white;
+    border: 1px solid #e1e4e8;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    transition: box-shadow 0.3s ease;
+
+    &:hover {
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    &--openaccess {
+        background: #f0f9ff;
+        border-color: #3498db;
+    }
+
+    &--slots {
+        background: white;
+    }
+
+    &--detached {
+        background: #fff5f5;
+        border-color: #ffcccc;
+    }
+}
+
+.praca-mono__card-title {
+    font-size: 1.2rem;
+    margin-bottom: 15px;
+    color: #2c3e50;
+    padding-bottom: 8px;
+}
+
+// Bibliographic description
+.praca-mono__biblio-container {
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 4px;
+    cursor: pointer;
+    position: relative;
+}
+
+.praca-mono__biblio-text {
+    font-size: 0.95em;
+    line-height: 1.6;
+    color: #333;
+}
+
+.praca-mono__biblio-feedback {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    display: none;
+    background: #27ae60;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 0.85em;
+}
+
+.praca-mono__biblio-hint {
+    color: #7f8c8d;
+    display: block;
+    margin-top: 10px;
+}
+
+// Detail rows
+.praca-mono__detail-row {
+    margin-bottom: 12px;
+}
+
+.praca-mono__detail-label {
+    color: #7f8c8d;
+}
+
+.praca-mono__detail-value {
+    margin-left: 20px;
+    margin-top: 5px;
+}
+
+.praca-mono__detail-inline {
+    margin-left: 10px;
+}
+
+// External link icon
+.praca-mono__external-link-icon {
+    font-size: 0.8em;
+    margin-left: 3px;
+}
+
+// Abstracts
+.praca-mono__abstract {
+    margin-bottom: 15px;
+}
+
+.praca-mono__abstract-label {
+    color: #7f8c8d;
+    display: block;
+    margin-bottom: 5px;
+}
+
+.praca-mono__abstract-text {
+    text-align: justify;
+    line-height: 1.6;
+}
+
+// OpenAccess grid
+.praca-mono__openaccess-grid {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 10px;
+}
+
+// Identifiers
+.praca-mono__id-item {
+    margin-bottom: 10px;
+}
+
+.praca-mono__id-icon {
+    font-size: 1.2em;
+    margin-right: 8px;
+}
+
+.praca-mono__id-subtext {
+    color: #7f8c8d;
+    display: block;
+    margin-left: 28px;
+}
+
+// Metrics grid
+.praca-mono__metrics-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+.praca-mono__metric-item {
+    text-align: center;
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 6px;
+}
+
+.praca-mono__metric-value {
+    font-size: 1.5em;
+    font-weight: bold;
+
+    &--points {
+        color: #e74c3c;
+    }
+
+    &--impact {
+        color: #3498db;
+    }
+
+    &--scopus {
+        color: #27ae60;
+    }
+
+    &--wos {
+        color: #9b59b6;
+    }
+
+    &--citations {
+        color: #f39c12;
+    }
+
+    &--snip {
+        color: #16a085;
+    }
+
+    &--ic {
+        color: #2c3e50;
+    }
+
+    &--internal {
+        color: #34495e;
+    }
+}
+
+.praca-mono__metric-label {
+    font-size: 0.9em;
+    color: #7f8c8d;
+}
+
+// Citation export / Reference manager info
+.praca-mono__reference-info {
+    background: #f0f9ff;
+    border-left: 3px solid #3498db;
+    padding: 10px 15px;
+    margin-bottom: 15px;
+    border-radius: 4px;
+}
+
+.praca-mono__reference-text {
+    margin: 0;
+    font-size: 0.9em;
+    color: #2c3e50;
+}
+
+.praca-mono__reference-icon {
+    color: #3498db;
+    margin-right: 5px;
+}
+
+.praca-mono__bibtex-copy-btn {
+    margin-top: 10px;
+    display: none;
+}
+
+.praca-mono__bibtex-feedback {
+    display: none;
+    color: #27ae60;
+    font-weight: bold;
+}
+
+.praca-mono__bibtex-container {
+    display: none;
+    margin-top: 15px;
+}
+
+.praca-mono__bibtex-textarea {
+    width: 100%;
+    min-height: 200px;
+    font-family: monospace;
+    font-size: 0.9em;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background: #f8f9fa;
+}
+
+// Additional info section
+.praca-mono__additional-info {
+    margin-top: 30px;
+}
+
+.praca-mono__additional-content {
+    margin-top: 15px;
+}
+
+.praca-mono__table {
+    width: 100%;
+}
+
+.praca-mono__table-cell {
+    padding: 10px;
+}
+
+.praca-mono__table-cell--vertical-top {
+    padding: 10px;
+    vertical-align: top;
+}
+
+.praca-mono__patent-cell {
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 6px;
+    margin-bottom: 10px;
+}
+
+.praca-mono__patent-details {
+    margin-left: 20px;
+    margin-top: 10px;
+}
+
+// Related records
+.praca-mono__related-search {
+    margin-bottom: 10px;
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+
+    &:focus {
+        outline: none;
+        border-color: #3498db;
+        box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+    }
+}
+
+.praca-mono__related-count {
+    margin-bottom: 5px;
+    font-size: 0.9em;
+    color: #7f8c8d;
+    font-style: italic;
+}
+
+.praca-mono__related-list {
+    margin-left: 0;
+    padding-left: 30px;
+}
+
+.praca-mono__related-item {
+    margin-bottom: 8px;
+}
+
+// Slots section
+.praca-mono__slots-section {
+    margin-top: 30px;
+}
+
+.praca-mono__slots-overflow {
+    overflow-x: auto;
+}
+
+.praca-mono__slots-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.praca-mono__slots-thead {
+    background: #f8f9fa;
+
+    &--detached {
+        background: #ffe5e5;
+    }
+}
+
+.praca-mono__slots-th {
+    padding: 10px;
+    text-align: left;
+    border-bottom: 2px solid #dee2e6;
+
+    &--center {
+        text-align: center;
+    }
+}
+
+.praca-mono__slots-tr {
+    border-bottom: 1px solid #dee2e6;
+
+    &--detached {
+        border-bottom-color: #ffcccc;
+    }
+}
+
+.praca-mono__slots-td {
+    padding: 10px;
+
+    &--center {
+        text-align: center;
+    }
+}
+
+.praca-mono__slots-subtitle {
+    font-size: 1.2rem;
+    margin-top: 30px;
+    margin-bottom: 15px;
+    color: #2c3e50;
+    padding-bottom: 8px;
+}
+
+.praca-mono__header-actions {
+    float: right;
+}
+
+// Slot badges
+.praca-mono__slot-badge {
+    padding: 2px 8px;
+    border-radius: 4px;
+
+    &--pkdaut {
+        background: #e3f2fd;
+    }
+
+    &--slot {
+        background: #fff3e0;
+    }
+
+    &--pkd {
+        background: #e8f5e9;
+    }
+
+    &--discipline-slot {
+        background: #fce4ec;
+    }
+}
+
+// Detached disciplines section
+.praca-mono__detached-section {
+    margin-top: 30px;
+}
+
+// Optimize button
+.praca-mono__optimize-button {
+    font-size: 0.875rem;
+
+    .fi-wrench {
+        font-size: 0.95rem;
+    }
+}
+
+// Search highlight
+.praca-mono__search-highlight {
+    background-color: #fff59d;
+    padding: 2px;
+}
+
+// Responsive styles for praca-mono
+@media screen and (max-width: 768px) {
+    .praca-mono__columns {
+        flex-direction: column;
+    }
+
+    .praca-mono__column--left,
+    .praca-mono__column--right {
+        flex: 1 1 100%;
+        min-width: 100%;
+    }
+
+    .praca-mono__metrics-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .praca-mono__table {
+        font-size: 0.9em;
+    }
+
+    .praca-mono__title {
+        font-size: 1.4rem;
+    }
+}
+
+// Print styles for praca-mono
+@media print {
+    .praca-mono .button,
+    .praca-mono #bibtex-toggle-btn,
+    .praca-mono #bibtex-copy-btn,
+    .praca-mono .hide-for-print,
+    .praca-mono .print-button {
+        display: none !important;
+    }
+
+    .praca-mono #additional-content {
+        display: block !important;
+    }
+
+    .praca-mono__card {
+        break-inside: avoid;
+    }
+}

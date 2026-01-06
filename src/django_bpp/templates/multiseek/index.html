@@ -16,6 +16,7 @@
         var multiseekDateFormat = 'yyyy-mm-dd';
         var multiseekDateWeekStart = 1;
     </script>
+    <script src="{% static 'multiseek/js/multiseek.js' %}"></script>
 
 {% endblock %}
 
@@ -100,33 +101,37 @@
             <div class="cell button-group stacked-for-small">
 
                 <button type="button" class="button success"
-                        onclick="submitEventMine(this);return false;"
+                        data-action="submit-mine"
                         id="multiseek-szukaj">
-                    <i class="fi-magnifying-glass"></i> Wyświetl wyniki wyszukiwania
+                    <i class="fi-magnifying-glass" aria-hidden="true"></i> Wyświetl wyniki wyszukiwania
                 </button>
 
-                <button type="button" class="button" onclick="submitEvent(this); return false;"
+                <button type="button" class="button"
+                        data-action="submit-live"
                         id="sendQueryButton">
-                    <i class="fi-refresh"></i> Odśwież podgląd
+                    <i class="fi-refresh" aria-hidden="true"></i> Odśwież podgląd
                 </button>
 
                 <button type="button" class="button alert"
-                        onclick="if (confirm('Czy na pewno? Zatwierdzenie tej opcji spowoduje zresetowanie formularza do stanu wyjściowego.')) { resetMultiseekTitle(this); return false; }"
+                        data-action="reset-form"
+                        data-confirm="Czy na pewno? Zatwierdzenie tej opcji spowoduje zresetowanie formularza do stanu wyjściowego."
                         id="resetFormButton">
-                    <i class="fi-x"></i> Resetuj formularz
+                    <i class="fi-x" aria-hidden="true"></i> Resetuj formularz
                 </button>
 
                 {% if user_allowed_to_save_forms %}
-                    <button class="button warning" type="button" onclick="saveForm(this);return false;"
+                    <button class="button warning" type="button"
+                            data-action="save-form"
                             id="saveFormButton">
-                        <i class="fi-save"></i> Zapisz formularz
+                        <i class="fi-save" aria-hidden="true"></i> Zapisz formularz
                     </button>
                 {% endif %}
 
                 {% if saved_forms %}
                     <button type="button" class="secondary dropdown button" data-toggle="multiseek-form-menu" href="#"
-                            data-dropdown="drop2">
-                        <i class="fi-upload"></i> Wczytaj formularz</a>
+                            data-dropdown="drop2"
+                            aria-haspopup="menu">
+                        <i class="fi-upload" aria-hidden="true"></i> Wczytaj formularz</a>
                     </button>
 
                     <div class="dropdown-pane" id="multiseek-form-menu" data-dropdown>
@@ -134,7 +139,7 @@
                             {% for form in saved_forms %}
                                 <li>
                                     <a href="#"
-                                       onclick="location.href = multiseek.LOAD_FORM_URL + {{ form.pk }}">{{ form }}</a>
+                                       data-load-form-id="{{ form.pk }}">{{ form }}</a>
                                 </li>
                             {% endfor %}
                         </ul>
@@ -175,6 +180,54 @@
                 form.submit().remove();
             }
 
+            // Event delegation handlers
+            document.addEventListener('click', function(e) {
+                var btn;
+
+                // Submit to results page
+                btn = e.target.closest('[data-action="submit-mine"]');
+                if (btn) {
+                    e.preventDefault();
+                    submitEventMine(btn);
+                    return;
+                }
+
+                // Submit to live results
+                btn = e.target.closest('[data-action="submit-live"]');
+                if (btn) {
+                    e.preventDefault();
+                    submitEvent(btn);
+                    return;
+                }
+
+                // Reset form
+                btn = e.target.closest('[data-action="reset-form"]');
+                if (btn) {
+                    e.preventDefault();
+                    var confirmMsg = btn.dataset.confirm;
+                    if (!confirmMsg || confirm(confirmMsg)) {
+                        resetMultiseekTitle(btn);
+                    }
+                    return;
+                }
+
+                // Save form
+                btn = e.target.closest('[data-action="save-form"]');
+                if (btn) {
+                    e.preventDefault();
+                    saveForm(btn);
+                    return;
+                }
+
+                // Load form
+                btn = e.target.closest('[data-load-form-id]');
+                if (btn) {
+                    e.preventDefault();
+                    location.href = multiseek.LOAD_FORM_URL + btn.dataset.loadFormId;
+                    return;
+                }
+            });
+
         </script>
     </form>
     <hr size="1"/>
@@ -187,7 +240,8 @@
         }
     </style>
     <iframe src="./live-results/" width="100%" id="if"
-            name="list_frame"   scrolling="no">
+            name="list_frame" scrolling="no"
+            title="Podgląd wyników wyszukiwania">
     </iframe>
     <script type="text/javascript">
         function resetMultiseekTitle(form) {

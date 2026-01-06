@@ -59,8 +59,8 @@
                             <input type="hidden" name="{{ key }}" value="{{ value }}"/>
                         {% endfor %}
 
-                        <input type="reset" value="Usuń filtry" onclick="location.href='?';"/>
-                        <input type="button" value="Pobierz XLS" onclick="location.href='?{{ export_link }}';"/>
+                        <input type="reset" value="Usuń filtry" data-open-url="?" data-target="_self"/>
+                        <input type="button" value="Pobierz XLS" data-open-url="?{{ export_link }}" data-target="_self"/>
                     </td>
                 </tr>
             </table>

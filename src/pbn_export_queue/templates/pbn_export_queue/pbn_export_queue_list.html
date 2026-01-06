@@ -6,76 +6,8 @@
 {% endblock %}
 
 {% block extrahead %}
-<style>
-    /* Remove underlines from clickable table rows in export queue only */
-    #export-queue-table tr[onclick] td a,
-    #export-queue-table tr[onclick] td a:hover,
-    #export-queue-table tr[onclick] td a:focus,
-    #export-queue-table tr[onclick] td a:visited {
-        text-decoration: none !important;
-    }
-
-
-    /* Filter buttons de-emphasis */
-    .filter-section {
-        margin: 20px 0;
-    }
-
-    .filter-section h4 {
-        font-size: 0.9rem;
-        color: #666;
-        margin-bottom: 10px;
-    }
-
-    .filter-section .button-group .button.secondary {
-        background-color: transparent;
-        border: 1px solid #cacaca;
-        color: #333;
-    }
-
-    .filter-section .button-group .button.secondary:hover {
-        background-color: #f0f0f0;
-    }
-
-    /* Refresh toggle styling */
-    .refresh-control {
-        display: flex;
-        align-items: center;
-        justify-content: flex-end;
-        margin-bottom: 15px;
-        gap: 10px;
-    }
-
-    .progress-bar-container {
-        width: 100px;
-        height: 6px;
-        background-color: #e0e0e0;
-        border-radius: 3px;
-        overflow: hidden;
-        display: none;
-    }
-
-    .progress-bar-container.active {
-        display: block;
-    }
-
-    .progress-bar {
-        height: 100%;
-        background-color: #1779ba;
-        width: 0%;
-        border-radius: 3px;
-        animation: countdown 5s linear infinite;
-    }
-
-    @keyframes countdown {
-        from {
-            width: 0%;
-        }
-        to {
-            width: 100%;
-        }
-    }
-</style>
+<link rel="stylesheet"
+      href="{% static 'pbn_export_queue/css/pbn_export_queue.css' %}">
 {% endblock %}
 
 {% block breadcrumbs %}
@@ -84,33 +16,42 @@
 {% endblock %}
 
 {% block content %}
-    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px;">
-        <h2 style="margin: 0;">Kolejka eksportu do PBN</h2>
+    <div class="pbn-export-queue__page-header">
+        <h2 class="pbn-export-queue__page-title">Kolejka eksportu do PBN</h2>
 
         {% if request.user.is_staff or perms.pbn_api %}
             {% if error_techniczny_count > 0 or waiting_count > 0 or never_sent_count > 0 %}
-            <div style="text-align: right;">
+            <div class="pbn-export-queue__page-actions">
                 {% if never_sent_count > 0 %}
-                <form method="post" action="{% url 'pbn_export_queue:export-queue-wake-up' %}" style="display: inline;">
+                <form method="post"
+                      action="{% url 'pbn_export_queue:export-queue-wake-up' %}"
+                      class="pbn-export-queue__form--inline">
                     {% csrf_token %}
-                    <button type="submit" class="button info" onclick="return confirm('Czy na pewno chcesz obudzić wysyłkę dla {{ never_sent_count }} rekordów które nigdy nie były wysyłane?');">
-                        <span class="fi-play"></span> Obudź wysyłkę ({{ never_sent_count }})
+                    <button type="submit" class="button info"
+                            data-confirm="Czy na pewno chcesz obudzic wysylke dla {{ never_sent_count }} rekordow ktore nigdy nie byly wysylane?">
+                        <span class="fi-play"></span> Obudz wysylke ({{ never_sent_count }})
                     </button>
                 </form>
                 {% endif %}
                 {% if error_techniczny_count > 0 %}
-                <form method="post" action="{% url 'pbn_export_queue:export-queue-resend-all-errors' %}" style="display: inline;">
+                <form method="post"
+                      action="{% url 'pbn_export_queue:export-queue-resend-all-errors' %}"
+                      class="pbn-export-queue__form--inline">
                     {% csrf_token %}
-                    <button type="submit" class="button alert" onclick="return confirm('Czy na pewno chcesz wysłać ponownie wszystkie {{ error_techniczny_count }} rekordów z błędami technicznymi?');">
-                        <span class="fi-refresh"></span> Wyślij ponownie błędy techniczne ({{ error_techniczny_count }})
+                    <button type="submit" class="button alert"
+                            data-confirm="Czy na pewno chcesz wyslac ponownie wszystkie {{ error_techniczny_count }} rekordow z bledami technicznymi?">
+                        <span class="fi-refresh"></span> Wyslij ponownie bledy techniczne ({{ error_techniczny_count }})
                     </button>
                 </form>
                 {% endif %}
                 {% if waiting_count > 0 %}
-                <form method="post" action="{% url 'pbn_export_queue:export-queue-resend-all-waiting' %}" style="display: inline;">
+                <form method="post"
+                      action="{% url 'pbn_export_queue:export-queue-resend-all-waiting' %}"
+                      class="pbn-export-queue__form--inline">
                     {% csrf_token %}
-                    <button type="submit" class="button warning" onclick="return confirm('Czy na pewno chcesz wysłać ponownie wszystkie {{ waiting_count }} rekordów oczekujących na autoryzację?');">
-                        <span class="fi-clock"></span> Wyślij oczekujące ({{ waiting_count }})
+                    <button type="submit" class="button warning"
+                            data-confirm="Czy na pewno chcesz wyslac ponownie wszystkie {{ waiting_count }} rekordow oczekujacych na autoryzacje?">
+                        <span class="fi-clock"></span> Wyslij oczekujace ({{ waiting_count }})
                     </button>
                 </form>
                 {% endif %}
@@ -121,87 +62,96 @@
 
     {% if request.user.is_staff or perms.pbn_api %}
 
-        <fieldset class="filter-section" style="border: 1px solid #cacaca; padding: 15px; margin: 20px 0;">
-            <legend style="padding: 0 10px; font-weight: bold;">Filtry</legend>
+        <fieldset class="filter-section pbn-export-queue__filter-fieldset">
+            <legend class="pbn-export-queue__filter-legend">Filtry</legend>
 
-            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                <div style="flex-grow: 1;">
-                    <!-- Wiersz 1: Przyciski filtrów statusu -->
-                    <div class="button-group" style="margin-bottom: 15px;">
-                        <a href="?{% if search_query %}q={{ search_query|urlencode }}&{% endif %}{% if rok_od %}rok_od={{ rok_od }}&{% endif %}{% if rok_do %}rok_do={{ rok_do }}{% endif %}" class="button {% if current_filter == 'all' and not current_error_type %}primary{% else %}secondary{% endif %}">
+            <div class="pbn-export-queue__filter-content">
+                <div class="pbn-export-queue__filter-main">
+                    <!-- Wiersz 1: Przyciski filtrow statusu -->
+                    <div class="button-group pbn-export-queue__filter-buttons">
+                        <a href="?{% if search_query %}q={{ search_query|urlencode }}&{% endif %}{% if rok_od %}rok_od={{ rok_od }}&{% endif %}{% if rok_do %}rok_do={{ rok_do }}{% endif %}"
+                           class="button {% if current_filter == 'all' and not current_error_type %}primary{% else %}secondary{% endif %}">
                             <span class="fi-list"></span> Wszystkie ({{ total_count }})
                         </a>
-                        <a href="?zakonczono_pomyslnie=true{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if rok_od %}&rok_od={{ rok_od }}{% endif %}{% if rok_do %}&rok_do={{ rok_do }}{% endif %}" class="button {% if current_filter == 'true' %}success{% else %}secondary{% endif %}">
+                        <a href="?zakonczono_pomyslnie=true{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if rok_od %}&rok_od={{ rok_od }}{% endif %}{% if rok_do %}&rok_do={{ rok_do }}{% endif %}"
+                           class="button {% if current_filter == 'true' %}success{% else %}secondary{% endif %}">
                             <span class="fi-check"></span> Zakonczone pomyslnie ({{ success_count }})
                         </a>
-                        <a href="?zakonczono_pomyslnie=false{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if rok_od %}&rok_od={{ rok_od }}{% endif %}{% if rok_do %}&rok_do={{ rok_do }}{% endif %}" class="button {% if current_filter == 'false' and not current_error_type %}alert{% else %}secondary{% endif %}">
+                        <a href="?zakonczono_pomyslnie=false{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if rok_od %}&rok_od={{ rok_od }}{% endif %}{% if rok_do %}&rok_do={{ rok_do }}{% endif %}"
+                           class="button {% if current_filter == 'false' and not current_error_type %}alert{% else %}secondary{% endif %}">
                             <span class="fi-x"></span> Wszystkie bledy ({{ error_count }})
                         </a>
-                        <a href="?rodzaj_bledu=MERYT{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if rok_od %}&rok_od={{ rok_od }}{% endif %}{% if rok_do %}&rok_do={{ rok_do }}{% endif %}" class="button {% if current_error_type == 'MERYT' %}alert{% else %}secondary{% endif %}">
+                        <a href="?rodzaj_bledu=MERYT{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if rok_od %}&rok_od={{ rok_od }}{% endif %}{% if rok_do %}&rok_do={{ rok_do }}{% endif %}"
+                           class="button {% if current_error_type == 'MERYT' %}alert{% else %}secondary{% endif %}">
                             <span class="fi-x"></span> Bledy merytoryczne ({{ error_merytoryczny_count }})
                         </a>
-                        <a href="?rodzaj_bledu=TECH{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if rok_od %}&rok_od={{ rok_od }}{% endif %}{% if rok_do %}&rok_do={{ rok_do }}{% endif %}" class="button {% if current_error_type == 'TECH' %}alert{% else %}secondary{% endif %}">
+                        <a href="?rodzaj_bledu=TECH{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if rok_od %}&rok_od={{ rok_od }}{% endif %}{% if rok_do %}&rok_do={{ rok_do }}{% endif %}"
+                           class="button {% if current_error_type == 'TECH' %}alert{% else %}secondary{% endif %}">
                             <span class="fi-x"></span> Bledy techniczne ({{ error_techniczny_count }})
                         </a>
-                        <a href="?zakonczono_pomyslnie=none{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if rok_od %}&rok_od={{ rok_od }}{% endif %}{% if rok_do %}&rok_do={{ rok_do }}{% endif %}" class="button {% if current_filter == 'none' %}warning{% else %}secondary{% endif %}">
+                        <a href="?zakonczono_pomyslnie=none{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if rok_od %}&rok_od={{ rok_od }}{% endif %}{% if rok_do %}&rok_do={{ rok_do }}{% endif %}"
+                           class="button {% if current_filter == 'none' %}warning{% else %}secondary{% endif %}">
                             <span class="fi-clock"></span> W trakcie/oczekujace ({{ pending_count }})
                         </a>
-                        <a href="?wykluczone=true{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if rok_od %}&rok_od={{ rok_od }}{% endif %}{% if rok_do %}&rok_do={{ rok_do }}{% endif %}" class="button {% if current_wykluczone == 'true' %}secondary{% else %}secondary{% endif %}" style="{% if current_wykluczone == 'true' %}background-color: #6c757d; color: white;{% endif %}">
+                        <a href="?wykluczone=true{% if search_query %}&q={{ search_query|urlencode }}{% endif %}{% if rok_od %}&rok_od={{ rok_od }}{% endif %}{% if rok_do %}&rok_do={{ rok_do }}{% endif %}"
+                           class="button secondary {% if current_wykluczone == 'true' %}pbn-export-queue__filter-excluded--active{% endif %}">
                             <span class="fi-minus-circle"></span> Wykluczone ({{ wykluczone_count }})
                         </a>
                     </div>
 
                     <!-- Wiersz 2: Rok od, Rok do, Szukaj w tytule, przyciski -->
-                    <form method="get" action="" style="margin: 0;">
+                    <form method="get" action="">
                         {% if request.GET.zakonczono_pomyslnie %}
                             <input type="hidden" name="zakonczono_pomyslnie" value="{{ request.GET.zakonczono_pomyslnie }}">
                         {% endif %}
                         {% if request.GET.rodzaj_bledu %}
                             <input type="hidden" name="rodzaj_bledu" value="{{ request.GET.rodzaj_bledu }}">
                         {% endif %}
-                        <div style="display: flex; align-items: center; gap: 10px;">
+                        <div class="pbn-export-queue__filter-row">
                             <input type="number"
                                    name="rok_od"
                                    placeholder="Rok od"
                                    value="{{ rok_od }}"
-                                   style="margin: 0; height: 37px; width: 80px;"
+                                   class="pbn-export-queue__filter-input pbn-export-queue__filter-input--year"
                                    min="1900" max="2100">
                             <input type="number"
                                    name="rok_do"
                                    placeholder="Rok do"
                                    value="{{ rok_do }}"
-                                   style="margin: 0; height: 37px; width: 80px;"
+                                   class="pbn-export-queue__filter-input pbn-export-queue__filter-input--year"
                                    min="1900" max="2100">
                             <input type="search"
                                    name="q"
                                    placeholder="Szukaj w tytule..."
                                    value="{{ search_query }}"
-                                   style="margin: 0; height: 37px; width: 150px;"
+                                   class="pbn-export-queue__filter-input pbn-export-queue__filter-input--search"
                                    autocomplete="off">
-                            <button type="submit" class="button" style="margin: 0;">
+                            <button type="submit" class="button pbn-export-queue__filter-button">
                                 <span class="fi-magnifying-glass"></span> Filtruj
                             </button>
-                            <a href="?" class="button secondary" style="margin: 0;">
+                            <a href="?" class="button secondary pbn-export-queue__filter-button">
                                 <span class="fi-x"></span> Resetuj
                             </a>
                         </div>
                     </form>
                 </div>
 
-                <div class="refresh-control" style="margin-left: 20px;">
+                <div class="refresh-control pbn-export-queue__refresh-control">
                     <div class="progress-bar-container" id="progress-container">
                         <div class="progress-bar" id="progress-bar"></div>
                     </div>
-                    <label style="font-weight: normal;">
-                        <input type="checkbox" id="auto-refresh-toggle" style="margin-right: 5px;">
+                    <label>
+                        <input type="checkbox" id="auto-refresh-toggle">
                         <span class="fi-refresh"></span> Odswiezaj co 5 sekund
                     </label>
                 </div>
             </div>
         </fieldset>
 
-        <div style="margin-bottom: 15px;">
-            <form method="post" action="{% url 'pbn_export_queue:export-queue-resend-filtered' %}" style="display: inline;">
+        <div class="pbn-export-queue__send-section">
+            <form method="post"
+                  action="{% url 'pbn_export_queue:export-queue-resend-filtered' %}"
+                  class="pbn-export-queue__form--inline">
                 {% csrf_token %}
                 {% if request.GET.zakonczono_pomyslnie %}
                     <input type="hidden" name="zakonczono_pomyslnie" value="{{ request.GET.zakonczono_pomyslnie }}">
@@ -216,7 +166,8 @@
                 {% if search_query %}
                     <input type="hidden" name="q" value="{{ search_query }}">
                 {% endif %}
-                <button type="submit" class="button primary" onclick="return confirm('Czy na pewno chcesz wyslac widoczne rekordy (max 100)?');">
+                <button type="submit" class="button primary"
+                        data-confirm="Czy na pewno chcesz wyslac widoczne rekordy (max 100)?">
                     <span class="fi-upload"></span> Wyslij widoczne rekordy
                 </button>
             </form>
@@ -330,7 +281,7 @@
                     var button = document.querySelector(selector);
                     if (button) {
                         // Find the count in parentheses and update it
-                        button.innerHTML = button.innerHTML.replace(/\(\d+\)/, '(' + count + ')');
+                        button.textContent = button.textContent.replace(/\(\d+\)/, '(' + count + ')');
                     }
                 }
 
@@ -338,14 +289,14 @@
                     if (type === 'error_tech') {
                         var button = document.querySelector('button[type="submit"][onclick*="technicznymi"]');
                         if (button) {
-                            button.innerHTML = button.innerHTML.replace(/\(\d+\)/, '(' + count + ')');
+                            button.textContent = button.textContent.replace(/\(\d+\)/, '(' + count + ')');
                             // Show/hide button based on count
                             button.parentElement.style.display = count > 0 ? 'inline' : 'none';
                         }
                     } else if (type === 'waiting') {
-                        var button = document.querySelector('button[type="submit"][onclick*="oczekujących"]');
+                        var button = document.querySelector('button[type="submit"][onclick*="oczekujacych"]');
                         if (button) {
-                            button.innerHTML = button.innerHTML.replace(/\(\d+\)/, '(' + count + ')');
+                            button.textContent = button.textContent.replace(/\(\d+\)/, '(' + count + ')');
                             // Show/hide button based on count
                             button.parentElement.style.display = count > 0 ? 'inline' : 'none';
                         }
@@ -354,7 +305,7 @@
             });
         </script>
     {% else %}
-        <p class="alert-box alert">Brak uprawnień do przeglądania kolejki eksportu.</p>
+        <p class="alert-box alert">Brak uprawnien do przegladania kolejki eksportu.</p>
     {% endif %}
 
 {% endblock %}

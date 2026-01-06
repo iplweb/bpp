@@ -246,7 +246,7 @@ class Wydawnictwo_ZwarteForm(
         label="Wydawnictwo nadrzędne",
         widget=autocomplete.ModelSelect2(
             url="bpp:wydawnictwo-nadrzedne-autocomplete",
-            attrs=dict(style="width: 746px;"),
+            attrs={"class": "bpp-autocomplete-wide"},
         ),
     )
 
@@ -261,7 +261,7 @@ class Wydawnictwo_ZwarteForm(
     'Wydawnictwo nadrzędne' puste. """,
         widget=autocomplete.ModelSelect2(
             url="bpp:wydawnictwo-nadrzedne-w-pbn-autocomplete",
-            attrs=dict(style="width: 746px;"),
+            attrs={"class": "bpp-autocomplete-wide"},
         ),
     )
 
@@ -269,7 +269,7 @@ class Wydawnictwo_ZwarteForm(
         required=False,
         queryset=Wydawca.objects.all(),
         widget=autocomplete.ModelSelect2(
-            url="bpp:wydawca-autocomplete", attrs=dict(style="width: 746px;")
+            url="bpp:wydawca-autocomplete", attrs={"class": "bpp-autocomplete-wide"}
         ),
     )
 
@@ -277,7 +277,7 @@ class Wydawnictwo_ZwarteForm(
         required=False,
         queryset=Konferencja.objects.all(),
         widget=autocomplete.ModelSelect2(
-            url="bpp:konferencja-autocomplete", attrs=dict(style="width: 746px;")
+            url="bpp:konferencja-autocomplete", attrs={"class": "bpp-autocomplete-wide"}
         ),
     )
 
@@ -287,7 +287,7 @@ class Wydawnictwo_ZwarteForm(
         queryset=Publication.objects.all(),
         widget=autocomplete.ModelSelect2(
             url="bpp:publication-autocomplete",
-            attrs=dict(style="width: 746px;"),
+            attrs={"class": "bpp-autocomplete-wide"},
         ),
     )
 
@@ -296,7 +296,7 @@ class Wydawnictwo_ZwarteForm(
         queryset=Seria_Wydawnicza.objects.all(),
         widget=autocomplete.ModelSelect2(
             url="bpp:seria-wydawnicza-autocomplete",
-            attrs=dict(style="width: 746px;"),
+            attrs={"class": "bpp-autocomplete-wide"},
         ),
     )
 
@@ -417,8 +417,8 @@ class Wydawnictwo_ZwarteForm(
             "slowa_kluczowe",
         ]
         widgets = {
-            "strony": forms.TextInput(attrs=dict(style="width: 150px")),
-            "tom": forms.TextInput(attrs=dict(style="width: 150px")),
+            "strony": forms.TextInput(attrs={"class": "bpp-input-narrow"}),
+            "tom": forms.TextInput(attrs={"class": "bpp-input-narrow"}),
             "slowa_kluczowe": TextareaTagWidget(attrs={"rows": 2}),
         }
 

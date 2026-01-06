@@ -1,5 +1,17 @@
 {% extends "base.html" %}
 {% load pagination_tags %}
+{% load static %}
+
+{% block extrahead %}
+    {{ block.super }}
+    <script type="text/javascript">
+        /* multiseek.js config */
+        var djangoLanguageCode = '{{ LANGUAGE_CODE }}';
+        var multiseekDateFormat = 'yyyy-mm-dd';
+        var multiseekDateWeekStart = 1;
+    </script>
+    <script src="{% static 'multiseek/js/multiseek.js' %}"></script>
+{% endblock %}
 
 {% block extratitle %}
     Rezultaty wyszukiwania

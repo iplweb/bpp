@@ -1,3 +1,5 @@
+import logging
+
 from django.http import JsonResponse
 from django.utils.decorators import method_decorator
 from django.views import View
@@ -14,6 +16,8 @@ from pbn_downloader_app.tasks import (
     download_institution_publications,
     download_journals,
 )
+
+logger = logging.getLogger(__name__)
 
 # Custom group required decorator
 
@@ -105,11 +109,13 @@ class StartPbnDownloadView(View):
             return JsonResponse(
                 {"success": True, "message": "Zadanie pobierania rozpoczęte."}
             )
-        except Exception as e:
+        except RuntimeError:
+            logger.exception("Nie udało się dodać zadania do kolejki Celery")
             return JsonResponse(
                 {
                     "success": False,
-                    "error": f"Nie udało się uruchomić zadania: {str(e)}",
+                    "error": "Nie udało się uruchomić zadania. "
+                    "Prosimy spróbować później.",
                 }
             )
 
@@ -197,11 +203,13 @@ class RetryTaskView(View):
             return JsonResponse(
                 {"success": True, "message": "Zadanie pobierania uruchomione ponownie."}
             )
-        except Exception as e:
+        except RuntimeError:
+            logger.exception("Nie udało się dodać zadania do kolejki Celery (retry)")
             return JsonResponse(
                 {
                     "success": False,
-                    "error": f"Nie udało się ponownie uruchomić zadania: {str(e)}",
+                    "error": "Nie udało się ponownie uruchomić zadania. "
+                    "Prosimy spróbować później.",
                 }
             )
 
@@ -250,11 +258,15 @@ class StartPbnPeopleDownloadView(View):
             return JsonResponse(
                 {"success": True, "message": "Zadanie pobierania osób rozpoczęte."}
             )
-        except Exception as e:
+        except RuntimeError:
+            logger.exception(
+                "Nie udało się dodać zadania pobierania osób do kolejki Celery"
+            )
             return JsonResponse(
                 {
                     "success": False,
-                    "error": f"Nie udało się uruchomić zadania pobierania osób: {str(e)}",
+                    "error": "Nie udało się uruchomić zadania pobierania osób. "
+                    "Prosimy spróbować później.",
                 }
             )
 
@@ -343,11 +355,15 @@ class RetryPeopleTaskView(View):
                     "message": "Zadanie pobierania osób uruchomione ponownie.",
                 }
             )
-        except Exception as e:
+        except RuntimeError:
+            logger.exception(
+                "Nie udało się dodać zadania pobierania osób do kolejki Celery (retry)"
+            )
             return JsonResponse(
                 {
                     "success": False,
-                    "error": f"Nie udało się ponownie uruchomić zadania pobierania osób: {str(e)}",
+                    "error": "Nie udało się ponownie uruchomić zadania "
+                    "pobierania osób. Prosimy spróbować później.",
                 }
             )
 
@@ -397,11 +413,15 @@ class StartJournalsDownloadView(View):
             return JsonResponse(
                 {"success": True, "message": "Zadanie pobierania źródeł rozpoczęte."}
             )
-        except Exception as e:
+        except RuntimeError:
+            logger.exception(
+                "Nie udało się dodać zadania pobierania źródeł do kolejki Celery"
+            )
             return JsonResponse(
                 {
                     "success": False,
-                    "error": f"Nie udało się uruchomić zadania pobierania źródeł: {str(e)}",
+                    "error": "Nie udało się uruchomić zadania pobierania źródeł. "
+                    "Prosimy spróbować później.",
                 }
             )
 
@@ -492,11 +512,16 @@ class RetryJournalsTaskView(View):
                     "message": "Zadanie pobierania źródeł uruchomione ponownie.",
                 }
             )
-        except Exception as e:
+        except RuntimeError:
+            logger.exception(
+                "Nie udało się dodać zadania pobierania źródeł "
+                "do kolejki Celery (retry)"
+            )
             return JsonResponse(
                 {
                     "success": False,
-                    "error": f"Nie udało się ponownie uruchomić zadania pobierania źródeł: {str(e)}",
+                    "error": "Nie udało się ponownie uruchomić zadania "
+                    "pobierania źródeł. Prosimy spróbować później.",
                 }
             )
 

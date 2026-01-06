@@ -147,3 +147,20 @@ src/bpp/static/scss/*.css
 src/bpp/static/scss/*.map
 src/bpp/static/scss/app-blue.css
 src/bpp/static/scss/*.css
+src/pbn_downloader_app/static/pbn_downloader_app/css/pbn_downloader_app.css
+src/deduplikator_autorow/static/deduplikator_autorow/css/deduplikator_autorow.css
+src/deduplikator_zrodel/static/deduplikator_zrodel/css/deduplikator_zrodel.css
+src/ewaluacja_optymalizuj_publikacje/static/ewaluacja_optymalizuj_publikacje/css/ewaluacja_optymalizuj_publikacje.css
+
+# esbuild output
+src/bpp/static/bpp/js/dist/
+src/bpp_setup_wizard/static/bpp_setup_wizard/css/bpp_setup_wizard.css
+src/ewaluacja_dwudyscyplinowcy/static/ewaluacja_dwudyscyplinowcy/css/ewaluacja_dwudyscyplinowcy.css
+src/ewaluacja_liczba_n/static/ewaluacja_liczba_n/css/ewaluacja_liczba_n.css
+src/komparator_publikacji_pbn/static/komparator_publikacji_pbn/css/komparator_publikacji_pbn.css
+src/pbn_export_queue/static/pbn_export_queue/css/pbn_export_queue.css
+src/pbn_import/static/pbn_import/css/admin.css
+src/pbn_import/static/pbn_import/css/pbn_import.css
+src/pbn_komparator_zrodel/static/pbn_komparator_zrodel/css/pbn_komparator_zrodel.css
+src/przemapuj_prace_autora/static/przemapuj_prace_autora/css/admin.css
+src/bpp/static/500.html

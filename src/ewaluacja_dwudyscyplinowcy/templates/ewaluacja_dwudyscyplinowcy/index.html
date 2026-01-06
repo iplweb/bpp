@@ -1,7 +1,13 @@
 {% extends "base.html" %}
 {% load humanize %}
+{% load static %}
 
 {% block title %}Dwudyscyplinowcy{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet"
+      href="{% static 'ewaluacja_dwudyscyplinowcy/css/ewaluacja_dwudyscyplinowcy.css' %}">
+{% endblock %}
 
 {% block breadcrumbs %}
     {{ block.super }}
@@ -27,10 +33,12 @@
                 Dla każdego autora wyświetlane są publikacje ciągłe z oznaczeniem, czy subdyscyplina autora
                 jest zgodna z dyscyplinami źródła publikacji:
             </p>
-            <ul style="margin-left: 2rem;">
-                <li><span class="fi-check" style="color: green;"></span> <strong>Zielony znacznik</strong>
+            <ul class="ewaluacja-dwudyscyplinowcy__info-list">
+                <li><span class="fi-check ewaluacja-dwudyscyplinowcy__icon-check"></span>
+                    <strong>Zielony znacznik</strong>
                     - subdyscyplina jest zgodna z dyscyplinami źródła</li>
-                <li><span class="fi-x" style="color: #999;"></span> <strong>Szary znacznik</strong>
+                <li><span class="fi-x ewaluacja-dwudyscyplinowcy__icon-x"></span>
+                    <strong>Szary znacznik</strong>
                     - subdyscyplina NIE jest zgodna z dyscyplinami źródła</li>
             </ul>
         </div>
@@ -45,18 +53,18 @@
         </div>
 
         {% for autor_data in autorzy_dane %}
-        <div class="callout" style="margin-bottom: 2rem; border-left: 4px solid #1779ba;">
-            <h3 style="margin-bottom: 1rem;">
+        <div class="callout ewaluacja-dwudyscyplinowcy__author-card">
+            <h3 class="ewaluacja-dwudyscyplinowcy__author-title">
                 <span class="fi-torso"></span>
                 {{ autor_data.autor }}
             </h3>
 
-            <div style="margin-bottom: 1rem; padding: 0.5rem; background-color: #f4f4f4; border-radius: 4px;">
-                <h5 style="margin-bottom: 0.5rem;">Dyscypliny:</h5>
+            <div class="ewaluacja-dwudyscyplinowcy__disciplines-section">
+                <h5 class="ewaluacja-dwudyscyplinowcy__disciplines-heading">Dyscypliny:</h5>
                 {% for disc_info in autor_data.dyscypliny_info %}
-                <div style="margin-left: 1rem; margin-bottom: 0.5rem;">
+                <div class="ewaluacja-dwudyscyplinowcy__discipline-year">
                     <strong>Rok {{ disc_info.rok }}:</strong>
-                    <ul style="margin: 0.25rem 0 0 2rem;">
+                    <ul class="ewaluacja-dwudyscyplinowcy__discipline-list">
                         <li>Dyscyplina główna: {{ disc_info.dyscyplina_glowna.nazwa }}
                             <code>({{ disc_info.dyscyplina_glowna.kod }})</code></li>
                         <li>Subdyscyplina: {{ disc_info.subdyscyplina.nazwa }}
@@ -66,14 +74,14 @@
                 {% endfor %}
             </div>
 
-            <div style="margin-bottom: 1rem;">
+            <div class="ewaluacja-dwudyscyplinowcy__publications-summary">
                 <strong>Publikacje:</strong> {{ autor_data.liczba_publikacji }}
-                (<span style="color: green;">{{ autor_data.liczba_zgodnych }} zgodnych</span>,
-                <span style="color: #999;">{{ autor_data.liczba_niezgodnych }} niezgodnych</span>)
+                (<span class="ewaluacja-dwudyscyplinowcy__count-matched">{{ autor_data.liczba_zgodnych }} zgodnych</span>,
+                <span class="ewaluacja-dwudyscyplinowcy__count-unmatched">{{ autor_data.liczba_niezgodnych }} niezgodnych</span>)
             </div>
 
             {% if autor_data.publikacje %}
-            <table style="margin-bottom: 0;">
+            <table class="ewaluacja-dwudyscyplinowcy__table">
                 <thead>
                     <tr>
                         <th width="50">Status</th>
@@ -86,12 +94,12 @@
                 <tbody>
                     {% for pub in autor_data.publikacje %}
                     <tr>
-                        <td style="text-align: center;">
+                        <td class="ewaluacja-dwudyscyplinowcy__status-cell">
                             {% if pub.zgodna %}
-                            <span class="fi-check" style="color: green; font-size: 1.2em;"
+                            <span class="fi-check ewaluacja-dwudyscyplinowcy__status-icon ewaluacja-dwudyscyplinowcy__status-icon--check"
                                   title="Subdyscyplina zgodna z dyscyplinami źródła"></span>
                             {% else %}
-                            <span class="fi-x" style="color: #999; font-size: 1.2em;"
+                            <span class="fi-x ewaluacja-dwudyscyplinowcy__status-icon ewaluacja-dwudyscyplinowcy__status-icon--x"
                                   title="Subdyscyplina NIE jest zgodna z dyscyplinami źródła"></span>
                             {% endif %}
                         </td>
@@ -102,11 +110,11 @@
                                 {{ pub.rekord.tytul_oryginalny }}
                             </a>
                         </td>
-                        <td style="text-align: center;">
+                        <td class="ewaluacja-dwudyscyplinowcy__slots-cell">
                             {% if pub.sloty %}
                                 {{ pub.sloty|floatformat:4 }}
                             {% else %}
-                                <span style="color: #999;">-</span>
+                                <span class="ewaluacja-dwudyscyplinowcy__no-slots">-</span>
                             {% endif %}
                         </td>
                         <td>
@@ -120,7 +128,7 @@
                 </tbody>
             </table>
             {% else %}
-            <p style="color: #999; font-style: italic; margin-left: 1rem;">
+            <p class="ewaluacja-dwudyscyplinowcy__no-publications">
                 Brak publikacji ciągłych.
             </p>
             {% endif %}
@@ -129,7 +137,7 @@
 
         {% endif %}
 
-        <div style="margin-top: 2rem;">
+        <div class="ewaluacja-dwudyscyplinowcy__back-section">
             <a href="{% url 'ewaluacja_optymalizacja:index' %}" class="button secondary">
                 <span class="fi-arrow-left"></span> Powrót do optymalizacji ewaluacji
             </a>

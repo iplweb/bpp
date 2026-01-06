@@ -1,9 +1,8 @@
 import pytest
+from django.contrib.auth import get_user_model
 from django.test import Client
 from django.urls import reverse
 from model_bakery import baker
-
-from django.contrib.auth import get_user_model
 
 from bpp.const import GR_WPROWADZANIE_DANYCH
 from bpp.models import Autor, Jednostka, Uczelnia
@@ -65,8 +64,8 @@ def test_buttons_are_displayed_horizontally(logged_in_admin_client, autor):
     assert "Przemapuj prace" in content
     assert "Otwórz do edycji" in content
 
-    # Check that they're in a flex container
-    assert "display: flex" in content
+    # Check that they're in a flex container (class with display:flex in SCSS)
+    assert "autor-page__actions" in content
 
     # Check that both have correct classes
     assert "jednostka-remap-button" in content
@@ -77,7 +76,10 @@ def test_buttons_are_displayed_horizontally(logged_in_admin_client, autor):
     import re
 
     # Look for the pattern where both buttons are in the same container
-    pattern = r"<div[^>]*display:\s*flex[^>]*>.*?jednostka-remap-button.*?jednostka-edit-button.*?</div>"
+    pattern = (
+        r"<div[^>]*autor-page__actions[^>]*>.*?"
+        r"jednostka-remap-button.*?jednostka-edit-button.*?</div>"
+    )
     assert re.search(pattern, content.replace("\n", " "), re.DOTALL)
 
 

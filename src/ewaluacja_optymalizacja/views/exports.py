@@ -1,7 +1,9 @@
 """Widoki eksportu danych optymalizacji."""
 
 import logging
+import sys
 
+import rollbar
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect
@@ -85,7 +87,8 @@ def _generate_author_sedn_workbook(author_result, run):
             if hasattr(original, "pbn_uid_id") and original.pbn_uid_id:
                 pbn_uid = original.pbn_uid_id
         except Exception:
-            pass
+            rollbar.report_exc_info(sys.exc_info())
+            logger.debug("Błąd pobierania pbn_uid", exc_info=True)
 
         # Pobierz RODZAJ z charakter_formalny.rodzaj_pbn
         rodzaj = rodzaj_map.get(rekord.charakter_formalny.rodzaj_pbn, "brak")

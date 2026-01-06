@@ -1,0 +1,81 @@
+// Komparator Publikacji PBN styles
+// BEM naming convention: .komparator-publikacji-pbn__element
+
+.komparator-publikacji-pbn {
+    // Filter form sections
+    &__filter-section {
+        margin-top: 1rem;
+    }
+
+    // Fields checkbox container
+    &__fields-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    // Field checkbox label
+    &__field-label {
+        display: inline-flex;
+        align-items: center;
+    }
+
+    // Field checkbox text
+    &__field-text {
+        margin-left: 0.5rem;
+    }
+
+    // Comparison panel
+    &__comparison-panel {
+        margin-bottom: 2rem;
+    }
+
+    // Comparison table
+    &__table {
+        width: 100%;
+        border-collapse: collapse;
+
+        th {
+            background-color: #f8f9fa;
+            padding: 8px;
+            text-align: left;
+            border: 1px solid #dee2e6;
+        }
+
+        td {
+            padding: 8px;
+            border: 1px solid #dee2e6;
+        }
+    }
+
+    // Table column widths
+    &__col-field {
+        width: 20%;
+    }
+
+    &__col-value {
+        width: 40%;
+    }
+
+    // Value highlight - BPP (yellow)
+    &__value-bpp {
+        background-color: #fff3cd;
+        padding: 2px 4px;
+    }
+
+    // Value highlight - PBN (blue)
+    &__value-pbn {
+        background-color: #d1ecf1;
+        padding: 2px 4px;
+    }
+
+    // Actions row
+    &__actions {
+        margin-top: 1rem;
+    }
+}
+
+// Text muted helper (kept for compatibility)
+.text-muted {
+    color: #6c757d;
+}

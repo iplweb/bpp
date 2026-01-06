@@ -1,14 +1,22 @@
 import json
+from collections import namedtuple
 
 import pytest
 from django.urls import reverse
 
-from fixtures import pbn_publication_json
-
-from bpp.models import Autor_Dyscyplina, Uczelnia
-from bpp.views.api import OstatniaJednostkaIDyscyplinaView, const
+from bpp.models import Autor_Dyscyplina, Typ_Odpowiedzialnosci, Uczelnia
+from bpp.models.zrodlo import Punktacja_Zrodla
+from bpp.tests.util import CURRENT_YEAR, any_autor, any_habilitacja, any_zrodlo
+from bpp.views.api import (
+    OstatniaJednostkaIDyscyplinaView,
+    PunktacjaZrodlaView,
+    RokHabilitacjiView,
+    UploadPunktacjaZrodlaView,
+    const,
+)
 from bpp.views.api.pbn_get_by_parameter import GetPBNPublicationsByISBN
 from bpp.views.api.pubmed import GetPubmedIDView, get_data_from_ncbi
+from fixtures import pbn_publication_json
 
 
 def test_get_data_from_ncbi(mocker):
@@ -32,7 +40,6 @@ def test_GetPubmedIDView_post_nie_ma_tytulu(rf):
 
 
 def test_GetPubmedIDView_post_brak_rezultaut(rf, mocker):
-
     query = mocker.patch("pymed.PubMed.query")
     query.return_value = []
 
@@ -44,7 +51,6 @@ def test_GetPubmedIDView_post_brak_rezultaut(rf, mocker):
 
 
 def test_GetPubmedIDView_post_wiele_rezultatow(rf, mocker):
-
     query = mocker.patch("pymed.PubMed.query")
     query.return_value = ["1", "2", "3"]
 
@@ -239,3 +245,91 @@ def test_ustaw_orcid_autora(csrf_exempt_django_admin_app, autor_jan_kowalski):
 
     autor_jan_kowalski.refresh_from_db()
     assert autor_jan_kowalski.orcid == ORCID
+
+
+# =============================================================================
+# Testy przeniesione z tests_legacy/test_views/test_api.py
+# =============================================================================
+
+FakeRequest = namedtuple("FakeRequest", ["POST"])
+
+
+@pytest.mark.django_db
+def test_rok_habilitacji_view():
+    Typ_Odpowiedzialnosci.objects.get_or_create(skrot="aut.", nazwa="autor")
+
+    a = any_autor()
+    h = any_habilitacja(tytul_oryginalny="Testowa habilitacja", rok=CURRENT_YEAR)
+    h.autor = a
+    h.save()
+
+    request = FakeRequest({"autor_pk": a.pk})
+
+    rhv = RokHabilitacjiView()
+
+    res = rhv.post(request)
+    assert res.status_code == 200
+    assert str(CURRENT_YEAR) in res.content.decode()
+    assert json.loads(res.content)["rok"] == CURRENT_YEAR
+
+    h.delete()
+    res = rhv.post(request)
+    assert res.status_code == 404
+    assert "Habilitacja" in res.content.decode()
+
+    a.delete()
+    res = rhv.post(request)
+    assert res.status_code == 404
+    assert "Autor" in res.content.decode()
+
+
+@pytest.mark.django_db
+def test_punktacja_zrodla_view():
+    z = any_zrodlo()
+    Punktacja_Zrodla.objects.create(zrodlo=z, rok=CURRENT_YEAR, impact_factor=50)
+
+    res = PunktacjaZrodlaView().post(None, z.pk, CURRENT_YEAR)
+    analyze = json.loads(res.content.decode(res.charset))
+    assert analyze["impact_factor"] == "50.000"
+
+    res = PunktacjaZrodlaView().post(None, z.pk, CURRENT_YEAR + 100)
+    assert res.status_code == 404
+    assert "Rok" in res.content.decode()
+
+
+@pytest.mark.django_db
+def test_punktacja_zrodla_view_404():
+    res = PunktacjaZrodlaView().post(None, 1, CURRENT_YEAR)
+    assert res.status_code == 404
+    assert "Zrodlo" in res.content.decode()
+
+
+@pytest.mark.django_db
+def test_upload_punktacja_zrodla_404():
+    res = UploadPunktacjaZrodlaView().post(None, 1, CURRENT_YEAR)
+    assert res.status_code == 404
+    assert "Zrodlo" in res.content.decode()
+
+
+@pytest.mark.django_db
+def test_upload_punktacja_zrodla_simple():
+    z = any_zrodlo()
+    fr = FakeRequest(dict(impact_factor="50.00"))
+    UploadPunktacjaZrodlaView().post(fr, z.pk, CURRENT_YEAR)
+    assert Punktacja_Zrodla.objects.count() == 1
+    assert Punktacja_Zrodla.objects.all()[0].impact_factor == 50
+
+
+@pytest.mark.django_db
+def test_upload_punktacja_zrodla_overwrite():
+    z = any_zrodlo()
+    Punktacja_Zrodla.objects.create(rok=CURRENT_YEAR, zrodlo=z, impact_factor=50)
+    fr = FakeRequest(dict(impact_factor="60.00", punkty_kbn="60"))
+    res = UploadPunktacjaZrodlaView().post(fr, z.pk, CURRENT_YEAR)
+    assert res.status_code == 200
+    assert "exists" in res.content.decode()
+
+    fr = FakeRequest(dict(impact_factor="60.00", overwrite="1"))
+    UploadPunktacjaZrodlaView().post(fr, z.pk, CURRENT_YEAR)
+    assert Punktacja_Zrodla.objects.count() == 1
+    assert Punktacja_Zrodla.objects.all()[0].impact_factor == 60

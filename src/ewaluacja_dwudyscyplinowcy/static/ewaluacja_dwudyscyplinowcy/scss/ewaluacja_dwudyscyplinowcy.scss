@@ -1,0 +1,103 @@
+// ewaluacja_dwudyscyplinowcy.scss
+// Styles for dwudyscyplinowcy (dual-discipline authors) module
+
+.ewaluacja-dwudyscyplinowcy {
+    // Info list in callout
+    &__info-list {
+        margin-left: 2rem;
+    }
+
+    // Icon indicators
+    &__icon-check {
+        color: green;
+    }
+
+    &__icon-x {
+        color: #999;
+    }
+
+    // Author card
+    &__author-card {
+        margin-bottom: 2rem;
+        border-left: 4px solid #1779ba;
+    }
+
+    &__author-title {
+        margin-bottom: 1rem;
+    }
+
+    // Disciplines section
+    &__disciplines-section {
+        margin-bottom: 1rem;
+        padding: 0.5rem;
+        background-color: #f4f4f4;
+        border-radius: 4px;
+    }
+
+    &__disciplines-heading {
+        margin-bottom: 0.5rem;
+    }
+
+    &__discipline-year {
+        margin-left: 1rem;
+        margin-bottom: 0.5rem;
+    }
+
+    &__discipline-list {
+        margin: 0.25rem 0 0 2rem;
+    }
+
+    // Publications summary
+    &__publications-summary {
+        margin-bottom: 1rem;
+    }
+
+    &__count-matched {
+        color: green;
+    }
+
+    &__count-unmatched {
+        color: #999;
+    }
+
+    // Publications table
+    &__table {
+        margin-bottom: 0;
+    }
+
+    &__status-cell {
+        text-align: center;
+    }
+
+    &__status-icon {
+        font-size: 1.2em;
+    }
+
+    &__status-icon--check {
+        color: green;
+    }
+
+    &__status-icon--x {
+        color: #999;
+    }
+
+    &__slots-cell {
+        text-align: center;
+    }
+
+    &__no-slots {
+        color: #999;
+    }
+
+    // No publications message
+    &__no-publications {
+        color: #999;
+        font-style: italic;
+        margin-left: 1rem;
+    }
+
+    // Back button section
+    &__back-section {
+        margin-top: 2rem;
+    }
+}

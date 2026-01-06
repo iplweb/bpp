@@ -1,0 +1,483 @@
+// Deduplikator Autorow - Styles
+// BEM convention: .deduplikator-autorow__element--modifier
+
+// =============================================================================
+// SIDEBAR ACCORDION
+// =============================================================================
+
+.deduplikator-autorow__accordion {
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+
+.deduplikator-autorow__accordion-title {
+  pointer-events: none;
+  cursor: default;
+}
+
+.deduplikator-autorow__accordion-content {
+  display: block;
+  padding: 10px 15px;
+}
+
+.deduplikator-autorow__accordion-content--hidden {
+  display: none;
+}
+
+// =============================================================================
+// PROGRESS BAR
+// =============================================================================
+
+.deduplikator-autorow__progress-container {
+  width: 100%;
+  background: #ddd;
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+
+.deduplikator-autorow__progress-bar {
+  background: #4CAF50;
+  height: 20px;
+  border-radius: 4px;
+  transition: width 0.3s;
+}
+
+.deduplikator-autorow__progress-bar--large {
+  height: 30px;
+}
+
+.deduplikator-autorow__progress-wrapper {
+  width: 50%;
+  margin: 20px auto;
+  background: #ddd;
+  border-radius: 4px;
+}
+
+// =============================================================================
+// STATUS TEXT
+// =============================================================================
+
+.deduplikator-autorow__status-text {
+  margin-bottom: 5px;
+  font-size: 0.85rem;
+}
+
+.deduplikator-autorow__status-text--large {
+  font-size: 1.2rem;
+}
+
+.deduplikator-autorow__status-text--medium {
+  font-size: 1rem;
+  color: #666;
+}
+
+.deduplikator-autorow__status-text--spaced {
+  margin-bottom: 10px;
+  font-size: 0.85rem;
+}
+
+.deduplikator-autorow__status-text--muted {
+  margin-bottom: 10px;
+  font-size: 0.85rem;
+  color: #666;
+}
+
+.deduplikator-autorow__status-running {
+  color: orange;
+}
+
+.deduplikator-autorow__status-completed {
+  color: green;
+}
+
+.deduplikator-autorow__status-error {
+  color: red;
+}
+
+.deduplikator-autorow__status-warning {
+  color: #d63031;
+}
+
+// =============================================================================
+// FORMS
+// =============================================================================
+
+.deduplikator-autorow__form {
+  margin: 0;
+}
+
+.deduplikator-autorow__form--inline {
+  display: inline;
+}
+
+.deduplikator-autorow__form--block {
+  display: block;
+  width: 100%;
+}
+
+.deduplikator-autorow__label {
+  font-size: 0.9rem;
+}
+
+.deduplikator-autorow__input {
+  margin-bottom: 10px;
+  font-size: 0.9rem;
+}
+
+// =============================================================================
+// BUTTONS
+// =============================================================================
+
+.deduplikator-autorow__button {
+  margin: 0;
+}
+
+.deduplikator-autorow__button--margin-top {
+  margin-top: 5px;
+}
+
+.deduplikator-autorow__button--full-width {
+  width: 100%;
+}
+
+.deduplikator-autorow__button--margin-top-large {
+  margin-top: 10px;
+}
+
+.deduplikator-autorow__button-margin-bottom {
+  margin-bottom: 5px;
+}
+
+// =============================================================================
+// SEARCH RESULTS
+// =============================================================================
+
+.deduplikator-autorow__search-results {
+  margin-top: 10px;
+  font-size: 0.85rem;
+  color: #666;
+}
+
+// =============================================================================
+// MERGE HISTORY
+// =============================================================================
+
+.deduplikator-autorow__merge-list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.deduplikator-autorow__merge-item {
+  margin-bottom: 10px;
+  padding: 8px;
+  background: #f9f9f9;
+  border-radius: 4px;
+  font-size: 0.85rem;
+}
+
+.deduplikator-autorow__merge-title {
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+
+.deduplikator-autorow__merge-date {
+  color: #666;
+}
+
+.deduplikator-autorow__merge-stats {
+  margin-top: 4px;
+}
+
+// =============================================================================
+// MAIN CONTENT
+// =============================================================================
+
+.deduplikator-autorow__messages {
+  margin-bottom: 20px;
+}
+
+.deduplikator-autorow__header {
+  margin-bottom: 20px;
+}
+
+.deduplikator-autorow__beta-label {
+  font-size: 0.6em;
+  vertical-align: top;
+}
+
+// =============================================================================
+// CALLOUT SECTIONS
+// =============================================================================
+
+.deduplikator-autorow__callout-centered {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.deduplikator-autorow__callout-hint {
+  margin-bottom: 20px;
+}
+
+.deduplikator-autorow__callout-margin-top {
+  margin-top: 20px;
+}
+
+// =============================================================================
+// AUTHOR INFO
+// =============================================================================
+
+.deduplikator-autorow__author-name {
+  font-size: 1.5em;
+  font-weight: bold;
+  color: #1779ba;
+}
+
+.deduplikator-autorow__author-name--link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.deduplikator-autorow__publication-count {
+  font-size: 1.3em;
+  font-weight: bold;
+  color: #2ba6cb;
+  background-color: #e7f4fd;
+  padding: 5px 10px;
+  border-radius: 5px;
+  display: inline-block;
+}
+
+.deduplikator-autorow__year-hint {
+  color: #666;
+}
+
+// =============================================================================
+// DISCIPLINE TABLE
+// =============================================================================
+
+.deduplikator-autorow__discipline-table {
+  margin-bottom: 15px;
+}
+
+.deduplikator-autorow__table {
+  width: 100%;
+  border: 1px solid #e1e1e1;
+}
+
+.deduplikator-autorow__table-head {
+  background-color: #f4f4f4;
+}
+
+.deduplikator-autorow__table-head--light {
+  background-color: #f9f9f9;
+}
+
+.deduplikator-autorow__table-cell {
+  padding: 8px;
+  border: 1px solid #e1e1e1;
+}
+
+.deduplikator-autorow__table-cell--center {
+  text-align: center;
+}
+
+.deduplikator-autorow__table-cell--muted {
+  color: #999;
+}
+
+.deduplikator-autorow__table-cell--small {
+  padding: 6px;
+  border: 1px solid #e1e1e1;
+}
+
+.deduplikator-autorow__table-cell--warning {
+  background-color: #fff3cd;
+}
+
+.deduplikator-autorow__table--small {
+  font-size: 0.9em;
+}
+
+// =============================================================================
+// PUBLICATION LIST
+// =============================================================================
+
+.deduplikator-autorow__publication-list {
+  max-height: 300px;
+  overflow-y: auto;
+  border: 1px solid #e1e1e1;
+  padding: 10px;
+}
+
+.deduplikator-autorow__publication-list--short {
+  max-height: 250px;
+  background-color: #f9f9f9;
+}
+
+.deduplikator-autorow__publication-item {
+  margin-bottom: 8px;
+  padding: 5px;
+  border-left: 3px solid #1779ba;
+}
+
+.deduplikator-autorow__publication-item--duplicate {
+  margin-bottom: 6px;
+  padding: 3px;
+  border-left: 2px solid #8a8a8a;
+}
+
+.deduplikator-autorow__publication-link {
+  color: #1779ba;
+  text-decoration: none;
+}
+
+.deduplikator-autorow__publication-link--muted {
+  color: #333;
+  text-decoration: none;
+}
+
+.deduplikator-autorow__publication-year {
+  color: #666;
+  font-weight: normal;
+}
+
+.deduplikator-autorow__publication-description {
+  color: #666;
+}
+
+// =============================================================================
+// DUPLICATE CARDS
+// =============================================================================
+
+.deduplikator-autorow__duplicate-card {
+  margin-bottom: 20px;
+}
+
+.deduplikator-autorow__duplicate-header {
+  margin-bottom: 10px;
+}
+
+.deduplikator-autorow__duplicate-name {
+  font-size: 1.4em;
+  font-weight: bold;
+  color: #333;
+}
+
+.deduplikator-autorow__duplicate-name--link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.deduplikator-autorow__duplicate-publication-count {
+  font-size: 1.2em;
+  font-weight: bold;
+  color: #5e5e5e;
+  background-color: #f4f4f4;
+  padding: 3px 8px;
+  border-radius: 3px;
+  display: inline-block;
+}
+
+.deduplikator-autorow__reasons-section {
+  margin-top: 10px;
+}
+
+.deduplikator-autorow__section-title {
+  margin-top: 15px;
+}
+
+.deduplikator-autorow__discipline-section {
+  margin-bottom: 10px;
+}
+
+// =============================================================================
+// MERGE PROGRESS
+// =============================================================================
+
+.deduplikator-autorow__merge-progress {
+  display: none;
+  margin-right: 15px;
+}
+
+.deduplikator-autorow__merge-progress--visible {
+  display: block;
+}
+
+.deduplikator-autorow__duplicates-header {
+  margin-bottom: 15px;
+}
+
+.deduplikator-autorow__duplicates-title {
+  margin: 0;
+}
+
+// =============================================================================
+// ERROR DISPLAY
+// =============================================================================
+
+.deduplikator-autorow__error-title {
+  margin-bottom: 10px;
+}
+
+.deduplikator-autorow__error-message {
+  margin-bottom: 0;
+}
+
+// =============================================================================
+// SPINNER ANIMATION
+// =============================================================================
+
+@keyframes deduplikator-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.deduplikator-autorow__spinner {
+  animation: deduplikator-spin 1s linear infinite;
+}
+
+// =============================================================================
+// ADMIN LIST DISPLAY STYLES
+// =============================================================================
+
+// Progress bar for scan runs in admin
+.deduplikator-autorow__admin-progress-container {
+  width: 100px;
+  background: #ddd;
+}
+
+.deduplikator-autorow__admin-progress-bar {
+  background: #4CAF50;
+  height: 20px;
+}
+
+// Discipline change indicators in admin
+.deduplikator-autorow__discipline-removed {
+  color: red;
+}
+
+.deduplikator-autorow__discipline-added {
+  color: green;
+}
+
+.deduplikator-autorow__discipline-changed {
+  color: orange;
+}
+
+// Confidence display colors in admin
+.deduplikator-autorow__confidence-high {
+  color: green;
+}
+
+.deduplikator-autorow__confidence-medium {
+  color: orange;
+}
+
+.deduplikator-autorow__confidence-low {
+  color: red;
+}

@@ -1,0 +1,329 @@
+// PBN Downloader App Styles
+// Extracted from inline styles in main.html template
+
+// =============================================================================
+// Animations
+// =============================================================================
+
+@keyframes pulse {
+    0% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+    100% {
+        opacity: 1;
+    }
+}
+
+// =============================================================================
+// Panel Icon Section
+// =============================================================================
+
+.pbn-downloader__panel-icon {
+    &--publications {
+        color: #0066cc;
+        font-size: 2em;
+    }
+
+    &--people {
+        color: #e07600;
+        font-size: 2em;
+    }
+
+    &--journals {
+        color: #27ae60;
+        font-size: 2em;
+    }
+}
+
+.pbn-downloader__panel-icon-label {
+    font-size: 1.2em;
+    display: block;
+
+    &--publications {
+        color: #0066cc;
+    }
+
+    &--people {
+        color: #e07600;
+    }
+
+    &--journals {
+        color: #27ae60;
+    }
+}
+
+// =============================================================================
+// Equal Height Panels (Flexbox layout)
+// =============================================================================
+
+.equal-height-panels {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+
+    > .columns {
+        display: flex;
+        margin-bottom: 1rem;
+        flex: 1 1 100%;
+    }
+}
+
+@media screen and (min-width: 1440px) {
+    .equal-height-panels > .xlarge-4 {
+        flex: 1 1 calc(33.33% - 0.67rem);
+    }
+}
+
+// =============================================================================
+// Download Panel
+// =============================================================================
+
+.download-panel {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 450px;
+    width: 100%;
+}
+
+.panel-header {
+    flex-shrink: 0;
+}
+
+.panel-icon {
+    text-align: center;
+    padding: 1rem 0;
+    flex-shrink: 0;
+}
+
+.panel-action {
+    flex-shrink: 0;
+}
+
+.panel-footer {
+    margin-top: auto;
+    padding-top: 1rem;
+    border-top: 1px solid #e6e6e6;
+    flex-shrink: 0;
+}
+
+// =============================================================================
+// Status Section
+// =============================================================================
+
+.status-section {
+    flex: 1;
+    margin-top: 1rem;
+
+    &--hidden {
+        display: none;
+    }
+}
+
+.status-title {
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+    color: #666;
+}
+
+.status-content {
+    padding: 0.5rem 0;
+
+    &--hidden {
+        display: none;
+    }
+}
+
+.status-message {
+    margin-bottom: 0.5rem;
+
+    small {
+        display: block;
+        margin-top: 0.25rem;
+        color: #666;
+    }
+}
+
+// =============================================================================
+// Status Badges
+// =============================================================================
+
+.status-badge {
+    padding: 0.75rem;
+    border-radius: 3px;
+    margin-top: 0.5rem;
+
+    &--hidden {
+        display: none;
+    }
+
+    &.success {
+        background: #e6f4ea;
+        border: 1px solid #34a853;
+        color: #137333;
+    }
+
+    &.alert {
+        background: #fce8e6;
+        border: 1px solid #ea4335;
+        color: #a50e0e;
+    }
+
+    &.secondary {
+        background: #f8f9fa;
+        border: 1px solid #dadce0;
+        color: #5f6368;
+    }
+
+    &.warning {
+        background: #fff3cd;
+        border: 1px solid #ffc107;
+        color: #856404;
+    }
+
+    small {
+        display: block;
+        margin-top: 0.25rem;
+    }
+
+    button {
+        margin-top: 0.5rem;
+    }
+}
+
+.pbn-downloader__status-badge-outdated {
+    margin-top: 0.5rem;
+}
+
+// =============================================================================
+// Progress Bar
+// =============================================================================
+
+.progress {
+    background-color: #e6e6e6;
+    border-radius: 3px;
+    height: 20px;
+    overflow: hidden;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+    margin: 0.5rem 0;
+
+    .meter {
+        height: 100%;
+        transition: width 0.3s ease;
+        border-radius: 3px;
+        display: block;
+
+        &.success {
+            background-color: #28a745;
+        }
+
+        &.warning {
+            background-color: #e07600;
+        }
+    }
+}
+
+.progress-info {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8em;
+    color: #666;
+}
+
+// =============================================================================
+// History Section (Stat Box)
+// =============================================================================
+
+.stat-box {
+    padding: 0.5rem;
+    background: #f8f8f8;
+    border-radius: 3px;
+    margin-bottom: 1rem;
+}
+
+.pbn-downloader__outdated-label {
+    margin-left: 0.25rem;
+}
+
+.pbn-downloader__error-callout {
+    margin-top: 0.5rem;
+}
+
+// =============================================================================
+// Text Utilities
+// =============================================================================
+
+.text-muted {
+    color: #6c757d;
+}
+
+// =============================================================================
+// Cancel Section
+// =============================================================================
+
+.pbn-downloader__cancel-section {
+    &--hidden {
+        display: none;
+    }
+}
+
+.cancel-panel {
+    background: #fef3f3;
+    border: 1px solid #e74c3c;
+
+    h5 {
+        color: #c0392b;
+        margin-bottom: 0.5rem;
+    }
+}
+
+.cancel-description {
+    font-size: 0.85rem;
+    color: #666;
+    margin-bottom: 1rem;
+}
+
+.pbn-downloader__cancel-wrapper {
+    &--hidden {
+        display: none;
+    }
+}
+
+.cancel-task-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+
+    .button {
+        margin: 0;
+    }
+}
+
+.cancel-task-label {
+    font-weight: bold;
+    min-width: 70px;
+}
+
+.pbn-downloader__stalled-badge {
+    &--hidden {
+        display: none;
+    }
+}
+
+// =============================================================================
+// Responsive Adjustments
+// =============================================================================
+
+@media (max-width: 640px) {
+    .equal-height-panels {
+        display: block;
+    }
+
+    .download-panel {
+        min-height: auto;
+    }
+}

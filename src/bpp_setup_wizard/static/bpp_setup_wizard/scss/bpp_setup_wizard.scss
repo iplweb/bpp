@@ -1,0 +1,239 @@
+// BPP Setup Wizard styles
+// Using BEM naming convention: .bpp-setup-wizard__element
+
+.bpp-setup-wizard {
+    max-width: 800px;
+    margin: 50px auto;
+    padding: 40px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+
+    // Header section
+    &__header {
+        text-align: center;
+        margin-bottom: 40px;
+        padding-bottom: 20px;
+        border-bottom: 2px solid #f0f0f0;
+    }
+
+    &__header-title {
+        color: #333;
+        font-size: 32px;
+        margin-bottom: 10px;
+    }
+
+    &__header-subtitle {
+        color: #666;
+        font-size: 16px;
+        margin: 0;
+    }
+
+    &__icon {
+        font-size: 48px;
+        color: #0a7cb8;
+        margin-bottom: 20px;
+    }
+
+    // Info section
+    &__info {
+        background: #f8f9fa;
+        border-left: 4px solid #0a7cb8;
+        padding: 15px;
+        margin-bottom: 30px;
+        border-radius: 4px;
+    }
+
+    &__info-title {
+        margin: 0 0 10px 0;
+        color: #333;
+        font-size: 18px;
+    }
+
+    &__info-text {
+        margin: 5px 0;
+        color: #555;
+    }
+
+    // Form section
+    &__form-section {
+        margin-bottom: 30px;
+        padding: 20px;
+        background: #fafafa;
+        border-radius: 6px;
+    }
+
+    &__form-section-title {
+        margin: 0 0 20px 0;
+        color: #333;
+        font-size: 20px;
+        border-bottom: 2px solid #0a7cb8;
+        padding-bottom: 10px;
+    }
+
+    // Form group
+    &__form-group {
+        margin-bottom: 20px;
+    }
+
+    &__form-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+        color: #333;
+    }
+
+    // Form control
+    &__form-control {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 14px;
+
+        &:focus {
+            outline: none;
+            border-color: #0a7cb8;
+            box-shadow: 0 0 0 3px rgba(10, 124, 184, 0.1);
+        }
+    }
+
+    // Checkbox
+    &__form-check {
+        margin-top: 20px;
+    }
+
+    &__form-check-input {
+        margin-right: 10px;
+    }
+
+    // Help text
+    &__help-text {
+        display: block;
+        margin-top: 5px;
+        font-size: 12px;
+        color: #666;
+    }
+
+    // Submit button
+    &__submit-btn {
+        background: #0a7cb8;
+        color: white;
+        border: none;
+        padding: 12px 30px;
+        font-size: 16px;
+        border-radius: 4px;
+        cursor: pointer;
+        width: 100%;
+        margin-top: 20px;
+
+        &:hover {
+            background: #0969a0;
+        }
+    }
+
+    // Error messages
+    &__error-message {
+        color: #d32f2f;
+        font-size: 14px;
+        margin-top: 5px;
+    }
+
+    &__form-errors {
+        background: #ffebee;
+        border: 1px solid #ffcdd2;
+        border-radius: 4px;
+        padding: 15px;
+        margin-bottom: 20px;
+        color: #c62828;
+    }
+
+    // PBN note
+    &__pbn-note {
+        background: #fff3cd;
+        border: 1px solid #ffc107;
+        border-radius: 4px;
+        padding: 10px;
+        margin-top: 10px;
+        font-size: 13px;
+        color: #856404;
+
+        .fi-alert {
+            margin-right: 5px;
+        }
+    }
+
+    // PBN documentation section
+    &__pbn-documentation {
+        margin-top: 15px;
+        padding: 15px;
+        background: #e3f2fd;
+        border: 1px solid #2196f3;
+        border-radius: 4px;
+    }
+
+    &__pbn-documentation-title {
+        margin: 0 0 10px 0;
+        color: #1976d2;
+        font-size: 16px;
+    }
+
+    &__pbn-documentation-text {
+        margin: 10px 0;
+        font-size: 14px;
+    }
+
+    &__pbn-documentation-list {
+        margin: 10px 0 0 20px;
+        font-size: 14px;
+    }
+
+    &__pbn-documentation-list-item {
+        margin: 5px 0;
+    }
+
+    &__pbn-documentation-link {
+        color: #1976d2;
+        text-decoration: underline;
+    }
+
+    &__pbn-documentation-link-icon {
+        font-size: 12px;
+        margin-left: 3px;
+    }
+
+    &__pbn-documentation-hint {
+        margin: 10px 0 0 0;
+        font-size: 13px;
+        color: #555;
+    }
+
+    // Auto-configured fields
+    &__auto-configured {
+        background: #e8f5e9;
+        border: 1px solid #4caf50;
+        border-radius: 4px;
+        padding: 15px;
+        margin-top: 30px;
+    }
+
+    &__auto-configured-title {
+        color: #2e7d32;
+        margin: 0 0 10px 0;
+        font-size: 16px;
+    }
+
+    &__auto-configured-text {
+        color: #2e7d32;
+    }
+
+    &__auto-configured-list {
+        margin: 10px 0 0 20px;
+        color: #2e7d32;
+    }
+
+    &__auto-configured-list-item {
+        margin: 5px 0;
+        font-size: 14px;
+    }
+}

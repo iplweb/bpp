@@ -73,7 +73,7 @@ class Publikacja_HabilitacyjnaForm(
         widget=QuerySetSequenceSelect2(
             "bpp:podrzedna-publikacja-habilitacyjna-autocomplete",
             forward=["autor"],
-            attrs=dict(style="width: 764px;"),
+            attrs={"class": "bpp-autocomplete-wide"},
         ),
     )
 
@@ -104,7 +104,58 @@ class Praca_HabilitacyjnaForm(forms.ModelForm):
     status_korekty = DomyslnyStatusKorektyMixin.status_korekty
 
     class Meta:
-        fields = "__all__"
+        fields = [
+            "tytul_oryginalny",
+            "tytul",
+            "informacje",
+            "szczegoly",
+            "uwagi",
+            "slowa_kluczowe",
+            "slowa_kluczowe_eng",
+            "strony",
+            "tom",
+            "oznaczenie_wydania",
+            "miejsce_i_rok",
+            "wydawca",
+            "wydawca_opis",
+            "autor",
+            "jednostka",
+            "isbn",
+            "e_isbn",
+            "rok",
+            "www",
+            "dostep_dnia",
+            "public_www",
+            "public_dostep_dnia",
+            "pubmed_id",
+            "pmc_id",
+            "doi",
+            "liczba_cytowan",
+            "numer_odbitki",
+            "jezyk",
+            "jezyk_alt",
+            "jezyk_orig",
+            "typ_kbn",
+            "punkty_kbn",
+            "impact_factor",
+            "index_copernicus",
+            "punktacja_snip",
+            "punktacja_wewnetrzna",
+            "weryfikacja_punktacji",
+            "informacja_z",
+            "status_korekty",
+            "recenzowana",
+            "utworzono",
+            "ostatnio_zmieniony",
+            "id",
+            "adnotacje",
+            "nie_eksportuj_przez_api",
+            "opl_pub_cost_free",
+            "opl_pub_research_potential",
+            "opl_pub_research_or_development_projects",
+            "opl_pub_other",
+            "opl_pub_amount",
+        ]
         widgets = {
             "slowa_kluczowe": TextareaTagWidget(attrs={"rows": 2}),
         }

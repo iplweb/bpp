@@ -1,14 +1,17 @@
+import json
 import logging
 import sys
 
+import requests
 import rollbar
 from braces.views import GroupRequiredMixin, JSONResponseMixin
+from django.core.exceptions import ImproperlyConfigured
 from django.views.generic.detail import BaseDetailView
 
 from bpp.const import GR_WPROWADZANIE_DANYCH
 from bpp.models import Uczelnia
 
-logger = logging.getLogger("blabla")
+logger = logging.getLogger(__name__)
 
 
 class GetWoSAMRInformation(JSONResponseMixin, GroupRequiredMixin, BaseDetailView):
@@ -24,10 +27,22 @@ class GetWoSAMRInformation(JSONResponseMixin, GroupRequiredMixin, BaseDetailView
 
         try:
             res = self.object.wosclient().query_single(pmid, doi)
-        except Exception as e:
+        except ImproperlyConfigured as e:
             rollbar.report_exc_info(sys.exc_info())
-            logger.exception("Podczas zapytania WOS-AMR")
-            return {"status": "error", "info": "%s" % e}
+            logger.exception("Błąd konfiguracji WOS-AMR")
+            return {"status": "error", "info": str(e)}
+        except requests.RequestException:
+            rollbar.report_exc_info(sys.exc_info())
+            logger.exception("Błąd połączenia z WOS-AMR")
+            return {"status": "error", "info": "Błąd komunikacji z Clarivate API"}
+        except (KeyError, ValueError, json.JSONDecodeError):
+            rollbar.report_exc_info(sys.exc_info())
+            logger.exception("Nieprawidłowa odpowiedź WOS-AMR")
+            return {"status": "error", "info": "Błąd parsowania odpowiedzi z WOS"}
+        except Exception:
+            rollbar.report_exc_info(sys.exc_info())
+            logger.exception("Nieoczekiwany błąd WOS-AMR")
+            return {"status": "error", "info": "Wewnętrzny błąd systemu"}
 
         if res.get("message") == "No Result Found":
             return {"status": "ok", "timesCited": None}

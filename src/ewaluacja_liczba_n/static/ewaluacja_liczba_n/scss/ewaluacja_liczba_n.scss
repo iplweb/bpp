@@ -1,0 +1,35 @@
+// Styles for ewaluacja_liczba_n module
+
+.ewaluacja-liczba-n {
+    // Actions section callout - full height flex column
+    &__actions-callout {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+    }
+
+    // Actions container - flex column with gap, pushed to bottom
+    &__actions-container {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin-top: auto;
+    }
+
+    // Button row - horizontal flex with gap
+    &__button-row {
+        display: flex;
+        gap: 10px;
+    }
+
+    // Action button - no margin, flex grow
+    &__action-button {
+        margin-bottom: 0;
+        flex: 1;
+    }
+
+    // Save button wrapper - right aligned with top margin
+    &__save-button-wrapper {
+        margin-top: 10px;
+    }
+}

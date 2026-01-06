@@ -4,13 +4,13 @@
 <table>
     <thead>
         <tr>
-            <th style="width: 20%;" class="sortable">
+            <th class="ewaluacja-optymalizacja__col-title sortable">
                 <a href="?sort_by=tytul&sort_dir={% if sort_by == 'tytul' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}{% if selected_current_discipline %}&current_discipline={{ selected_current_discipline }}{% endif %}{% if selected_target_discipline %}&target_discipline={{ selected_target_discipline }}{% endif %}{% if only_sensible %}&only_sensible=1{% endif %}{% if selected_pub_type %}&pub_type={{ selected_pub_type }}{% endif %}{% if selected_rok %}&rok={{ selected_rok }}{% endif %}{% if selected_zrodlo_match %}&zrodlo_match={{ selected_zrodlo_match }}{% endif %}">
                     Tytuł pracy
                     {% if sort_by == 'tytul' %}{% if sort_dir == 'asc' %}&#9650;{% else %}&#9660;{% endif %}{% endif %}
                 </a>
             </th>
-            <th style="text-align: center;" class="sortable">
+            <th class="ewaluacja-optymalizacja__cell-center sortable">
                 <a href="?sort_by=rok&sort_dir={% if sort_by == 'rok' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}{% if selected_current_discipline %}&current_discipline={{ selected_current_discipline }}{% endif %}{% if selected_target_discipline %}&target_discipline={{ selected_target_discipline }}{% endif %}{% if only_sensible %}&only_sensible=1{% endif %}{% if selected_pub_type %}&pub_type={{ selected_pub_type }}{% endif %}{% if selected_rok %}&rok={{ selected_rok }}{% endif %}{% if selected_zrodlo_match %}&zrodlo_match={{ selected_zrodlo_match }}{% endif %}">
                     Rok
                     {% if sort_by == 'rok' %}{% if sort_dir == 'asc' %}&#9650;{% else %}&#9660;{% endif %}{% endif %}
@@ -25,21 +25,21 @@
             </th>
             <th>Obecna<br>dyscyplina</th>
             <th>Docelowa<br>dyscyplina</th>
-            <th style="text-align: right;">Punkty<br>przed</th>
-            <th style="text-align: right;">Punkty<br>po</th>
-            <th style="text-align: right;" class="sortable">
+            <th class="ewaluacja-optymalizacja__cell-right">Punkty<br>przed</th>
+            <th class="ewaluacja-optymalizacja__cell-right">Punkty<br>po</th>
+            <th class="ewaluacja-optymalizacja__cell-right sortable">
                 <a href="?sort_by=point_improvement&sort_dir={% if sort_by == 'point_improvement' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}{% if selected_current_discipline %}&current_discipline={{ selected_current_discipline }}{% endif %}{% if selected_target_discipline %}&target_discipline={{ selected_target_discipline }}{% endif %}{% if only_sensible %}&only_sensible=1{% endif %}{% if selected_pub_type %}&pub_type={{ selected_pub_type }}{% endif %}{% if selected_rok %}&rok={{ selected_rok }}{% endif %}{% if selected_zrodlo_match %}&zrodlo_match={{ selected_zrodlo_match }}{% endif %}">
                     Poprawa
                     {% if sort_by == 'point_improvement' %}{% if sort_dir == 'asc' %}&#9650;{% else %}&#9660;{% endif %}{% endif %}
                 </a>
             </th>
-            <th style="text-align: center;" class="sortable">
+            <th class="ewaluacja-optymalizacja__cell-center sortable">
                 <a href="?sort_by=zrodlo_match&sort_dir={% if sort_by == 'zrodlo_match' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}{% if selected_current_discipline %}&current_discipline={{ selected_current_discipline }}{% endif %}{% if selected_target_discipline %}&target_discipline={{ selected_target_discipline }}{% endif %}{% if only_sensible %}&only_sensible=1{% endif %}{% if selected_pub_type %}&pub_type={{ selected_pub_type }}{% endif %}{% if selected_rok %}&rok={{ selected_rok }}{% endif %}{% if selected_zrodlo_match %}&zrodlo_match={{ selected_zrodlo_match }}{% endif %}">
                     Zgodność<br>ze źródłem
                     {% if sort_by == 'zrodlo_match' %}{% if sort_dir == 'asc' %}&#9650;{% else %}&#9660;{% endif %}{% endif %}
                 </a>
             </th>
-            <th style="text-align: center;" class="sortable">
+            <th class="ewaluacja-optymalizacja__cell-center sortable">
                 <a href="?sort_by=makes_sense&sort_dir={% if sort_by == 'makes_sense' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}{% if selected_current_discipline %}&current_discipline={{ selected_current_discipline }}{% endif %}{% if selected_target_discipline %}&target_discipline={{ selected_target_discipline }}{% endif %}{% if only_sensible %}&only_sensible=1{% endif %}{% if selected_pub_type %}&pub_type={{ selected_pub_type }}{% endif %}{% if selected_rok %}&rok={{ selected_rok }}{% endif %}{% if selected_zrodlo_match %}&zrodlo_match={{ selected_zrodlo_match }}{% endif %}">
                     Sensowne?
                     {% if sort_by == 'makes_sense' %}{% if sort_dir == 'asc' %}&#9650;{% else %}&#9660;{% endif %}{% endif %}
@@ -49,11 +49,11 @@
     </thead>
     <tbody>
         {% for opp in opportunities %}
-        <tr {% if opp.makes_sense %}style="background-color: #e7f7e7;"{% endif %}>
+        <tr {% if opp.makes_sense %}class="ewaluacja-optymalizacja__row-sensible"{% endif %}>
             <td>
                 <strong>{{ opp.rekord_tytul|truncatewords:10 }}</strong>
             </td>
-            <td style="text-align: center;">
+            <td class="ewaluacja-optymalizacja__cell-center">
                 {{ opp.rekord_rok|default:"-" }}
             </td>
             <td>
@@ -70,22 +70,22 @@
             </td>
             <td>{{ opp.current_discipline.nazwa|truncatewords:3 }}</td>
             <td>{{ opp.target_discipline.nazwa|truncatewords:3 }}</td>
-            <td style="text-align: right;">
+            <td class="ewaluacja-optymalizacja__cell-right">
                 {{ opp.points_before|floatformat:2 }}
             </td>
-            <td style="text-align: right;">
+            <td class="ewaluacja-optymalizacja__cell-right">
                 {{ opp.points_after|floatformat:2 }}
             </td>
-            <td style="text-align: right;">
+            <td class="ewaluacja-optymalizacja__cell-right">
                 {% if opp.point_improvement > 0 %}
-                    <strong style="color: green;">+{{ opp.point_improvement|floatformat:2 }}</strong>
+                    <strong class="ewaluacja-optymalizacja__value-positive">+{{ opp.point_improvement|floatformat:2 }}</strong>
                 {% elif opp.point_improvement < 0 %}
-                    <strong style="color: red;">{{ opp.point_improvement|floatformat:2 }}</strong>
+                    <strong class="ewaluacja-optymalizacja__value-negative">{{ opp.point_improvement|floatformat:2 }}</strong>
                 {% else %}
                     <strong>0.00</strong>
                 {% endif %}
             </td>
-            <td style="text-align: center;">
+            <td class="ewaluacja-optymalizacja__cell-center">
                 {% if opp.rekord_typ == "Ciagle" %}
                     {% if opp.zrodlo_discipline_match %}
                         <span class="label success">TAK</span>
@@ -96,7 +96,7 @@
                     <span class="label secondary">N/D</span>
                 {% endif %}
             </td>
-            <td style="text-align: center;">
+            <td class="ewaluacja-optymalizacja__cell-center">
                 {% if opp.makes_sense %}
                     <span class="label success"><span class="fi-check"></span> TAK</span>
                 {% else %}

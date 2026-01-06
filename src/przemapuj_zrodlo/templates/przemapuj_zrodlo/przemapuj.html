@@ -116,7 +116,14 @@
             <!-- Action buttons -->
             <div class="button-group">
                 <button type="submit" class="button warning"
-                        onclick="return confirm('Czy na pewno chcesz przemapować {{ liczba_publikacji }} publikacji ze źródła \'{{ zrodlo_zrodlowe.nazwa }}\'?\n\nTa operacja:\n1. Zmieni źródło dla wszystkich {{ liczba_publikacji }} publikacji\n2. Zapisze historię przemapowania\n3. Będzie odwracalna z poziomu Django admin\n\nKontynuować?');">
+                        data-confirm="Czy na pewno chcesz przemapować {{ liczba_publikacji }} publikacji ze źródła '{{ zrodlo_zrodlowe.nazwa }}'?
+
+Ta operacja:
+1. Zmieni źródło dla wszystkich {{ liczba_publikacji }} publikacji
+2. Zapisze historię przemapowania
+3. Będzie odwracalna z poziomu Django admin
+
+Kontynuować?">
                     <span class="fi-arrow-right"></span> Przemapuj publikacje
                 </button>
                 <a href="{% url 'bpp:browse_zrodlo' zrodlo_zrodlowe.slug %}" class="button secondary">
