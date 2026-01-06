@@ -39,3 +39,12 @@
         display: none !important;
     }
 }
+
+// Footer container styling (moved from inline style in base.html)
+.footer-container {
+  background-color: #f8f8f8;
+  border-top: 1px solid #e6e6e6;
+  margin-top: 0;
+  padding: 40px 0;
+  z-index: 10;
+}

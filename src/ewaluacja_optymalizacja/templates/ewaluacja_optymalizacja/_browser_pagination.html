@@ -1,0 +1,196 @@
+{% if page_obj.has_other_pages %}
+<div class="browser-pagination" style="text-align: center; margin: 1rem 0;">
+    <nav aria-label="Paginacja">
+        <ul class="pagination" role="navigation" aria-label="Pagination"
+            style="display: inline-flex; background: #f8f9fa; border: 1px solid #dee2e6;
+                   border-radius: 8px; padding: 0.5rem 0.75rem; margin: 0;
+                   box-shadow: 0 2px 4px rgba(0,0,0,0.1); gap: 0.25rem;
+                   align-items: center;">
+
+            {# Poprzednia #}
+            {% if page_obj.has_previous %}
+            <li class="pagination-previous" style="margin: 0;">
+                <a href="#"
+                   hx-get="{% url 'ewaluacja_optymalizacja:browser-table' %}?page={{ page_obj.previous_page_number }}"
+                   hx-target="#publication-table"
+                   hx-include="#filter-form"
+                   hx-swap="innerHTML"
+                   style="display: inline-block; background: #28a745; color: #fff;
+                          border: 1px solid #28a745; border-radius: 6px;
+                          padding: 0.4rem 0.6rem; font-weight: 600; font-size: 0.85rem;
+                          text-decoration: none; transition: all 0.2s ease;">
+                    poprzednia
+                </a>
+            </li>
+            {% else %}
+            <li class="pagination-previous disabled" style="margin: 0;">
+                <span style="display: inline-block; background: #e9ecef; color: #6c757d;
+                             border: 1px solid #dee2e6; border-radius: 6px;
+                             padding: 0.4rem 0.6rem; font-weight: 600; font-size: 0.85rem;
+                             cursor: not-allowed;">poprzednia</span>
+            </li>
+            {% endif %}
+
+            {# Strona 1 jeśli daleko #}
+            {% if page_obj.number >= 5 %}
+            <li style="margin: 0;">
+                <a href="#"
+                   hx-get="{% url 'ewaluacja_optymalizacja:browser-table' %}?page=1"
+                   hx-target="#publication-table"
+                   hx-include="#filter-form"
+                   hx-swap="innerHTML"
+                   style="display: inline-block; background: #fff; color: #007bff;
+                          border: 1px solid #dee2e6; border-radius: 6px;
+                          padding: 0.4rem 0.6rem; font-weight: 500; font-size: 0.85rem;
+                          text-decoration: none; transition: all 0.2s ease;">1</a>
+            </li>
+            <li class="ellipsis" style="margin: 0;">
+                <span style="padding: 0 0.3rem; color: #6c757d;">...</span>
+            </li>
+            {% elif page_obj.number == 4 %}
+            <li style="margin: 0;">
+                <a href="#"
+                   hx-get="{% url 'ewaluacja_optymalizacja:browser-table' %}?page=1"
+                   hx-target="#publication-table"
+                   hx-include="#filter-form"
+                   hx-swap="innerHTML"
+                   style="display: inline-block; background: #fff; color: #007bff;
+                          border: 1px solid #dee2e6; border-radius: 6px;
+                          padding: 0.4rem 0.6rem; font-weight: 500; font-size: 0.85rem;
+                          text-decoration: none; transition: all 0.2s ease;">1</a>
+            </li>
+            {% endif %}
+
+            {# Strona -2 #}
+            {% if page_obj.number|add:"-2" >= 1 %}
+            <li style="margin: 0;">
+                <a href="#"
+                   hx-get="{% url 'ewaluacja_optymalizacja:browser-table' %}?page={{ page_obj.number|add:"-2" }}"
+                   hx-target="#publication-table"
+                   hx-include="#filter-form"
+                   hx-swap="innerHTML"
+                   style="display: inline-block; background: #fff; color: #007bff;
+                          border: 1px solid #dee2e6; border-radius: 6px;
+                          padding: 0.4rem 0.6rem; font-weight: 500; font-size: 0.85rem;
+                          text-decoration: none; transition: all 0.2s ease;">{{ page_obj.number|add:"-2" }}</a>
+            </li>
+            {% endif %}
+
+            {# Strona -1 #}
+            {% if page_obj.number|add:"-1" >= 1 %}
+            <li style="margin: 0;">
+                <a href="#"
+                   hx-get="{% url 'ewaluacja_optymalizacja:browser-table' %}?page={{ page_obj.number|add:"-1" }}"
+                   hx-target="#publication-table"
+                   hx-include="#filter-form"
+                   hx-swap="innerHTML"
+                   style="display: inline-block; background: #fff; color: #007bff;
+                          border: 1px solid #dee2e6; border-radius: 6px;
+                          padding: 0.4rem 0.6rem; font-weight: 500; font-size: 0.85rem;
+                          text-decoration: none; transition: all 0.2s ease;">{{ page_obj.number|add:"-1" }}</a>
+            </li>
+            {% endif %}
+
+            {# Aktualna strona #}
+            <li class="current" style="margin: 0;">
+                <span style="display: inline-block; background: #007bff; color: #fff;
+                             border: 1px solid #007bff; border-radius: 6px;
+                             padding: 0.4rem 0.6rem; font-weight: 600; font-size: 0.85rem;">
+                    {{ page_obj.number }}
+                </span>
+            </li>
+
+            {# Strona +1 #}
+            {% if page_obj.number|add:"1" <= page_obj.paginator.num_pages %}
+            <li style="margin: 0;">
+                <a href="#"
+                   hx-get="{% url 'ewaluacja_optymalizacja:browser-table' %}?page={{ page_obj.number|add:"1" }}"
+                   hx-target="#publication-table"
+                   hx-include="#filter-form"
+                   hx-swap="innerHTML"
+                   style="display: inline-block; background: #fff; color: #007bff;
+                          border: 1px solid #dee2e6; border-radius: 6px;
+                          padding: 0.4rem 0.6rem; font-weight: 500; font-size: 0.85rem;
+                          text-decoration: none; transition: all 0.2s ease;">{{ page_obj.number|add:"1" }}</a>
+            </li>
+            {% endif %}
+
+            {# Strona +2 #}
+            {% if page_obj.number|add:"2" <= page_obj.paginator.num_pages %}
+            <li style="margin: 0;">
+                <a href="#"
+                   hx-get="{% url 'ewaluacja_optymalizacja:browser-table' %}?page={{ page_obj.number|add:"2" }}"
+                   hx-target="#publication-table"
+                   hx-include="#filter-form"
+                   hx-swap="innerHTML"
+                   style="display: inline-block; background: #fff; color: #007bff;
+                          border: 1px solid #dee2e6; border-radius: 6px;
+                          padding: 0.4rem 0.6rem; font-weight: 500; font-size: 0.85rem;
+                          text-decoration: none; transition: all 0.2s ease;">{{ page_obj.number|add:"2" }}</a>
+            </li>
+            {% endif %}
+
+            {# Ostatnia strona jeśli daleko #}
+            {% if page_obj.number|add:"2" <= page_obj.paginator.num_pages|add:"-2" %}
+            <li class="ellipsis" style="margin: 0;">
+                <span style="padding: 0 0.3rem; color: #6c757d;">...</span>
+            </li>
+            <li style="margin: 0;">
+                <a href="#"
+                   hx-get="{% url 'ewaluacja_optymalizacja:browser-table' %}?page={{ page_obj.paginator.num_pages }}"
+                   hx-target="#publication-table"
+                   hx-include="#filter-form"
+                   hx-swap="innerHTML"
+                   style="display: inline-block; background: #fff; color: #007bff;
+                          border: 1px solid #dee2e6; border-radius: 6px;
+                          padding: 0.4rem 0.6rem; font-weight: 500; font-size: 0.85rem;
+                          text-decoration: none; transition: all 0.2s ease;">{{ page_obj.paginator.num_pages }}</a>
+            </li>
+            {% elif page_obj.number|add:"1" <= page_obj.paginator.num_pages|add:"-2" %}
+            <li style="margin: 0;">
+                <a href="#"
+                   hx-get="{% url 'ewaluacja_optymalizacja:browser-table' %}?page={{ page_obj.paginator.num_pages }}"
+                   hx-target="#publication-table"
+                   hx-include="#filter-form"
+                   hx-swap="innerHTML"
+                   style="display: inline-block; background: #fff; color: #007bff;
+                          border: 1px solid #dee2e6; border-radius: 6px;
+                          padding: 0.4rem 0.6rem; font-weight: 500; font-size: 0.85rem;
+                          text-decoration: none; transition: all 0.2s ease;">{{ page_obj.paginator.num_pages }}</a>
+            </li>
+            {% endif %}
+
+            {# Następna #}
+            {% if page_obj.has_next %}
+            <li class="pagination-next" style="margin: 0;">
+                <a href="#"
+                   hx-get="{% url 'ewaluacja_optymalizacja:browser-table' %}?page={{ page_obj.next_page_number }}"
+                   hx-target="#publication-table"
+                   hx-include="#filter-form"
+                   hx-swap="innerHTML"
+                   style="display: inline-block; background: #28a745; color: #fff;
+                          border: 1px solid #28a745; border-radius: 6px;
+                          padding: 0.4rem 0.6rem; font-weight: 600; font-size: 0.85rem;
+                          text-decoration: none; transition: all 0.2s ease;">
+                    następna
+                </a>
+            </li>
+            {% else %}
+            <li class="pagination-next disabled" style="margin: 0;">
+                <span style="display: inline-block; background: #e9ecef; color: #6c757d;
+                             border: 1px solid #dee2e6; border-radius: 6px;
+                             padding: 0.4rem 0.6rem; font-weight: 600; font-size: 0.85rem;
+                             cursor: not-allowed;">następna</span>
+            </li>
+            {% endif %}
+
+            {# Info o ilości #}
+            <li style="margin: 0 0 0 0.5rem;">
+                <small style="color: #6c757d; font-size: 0.8rem;">
+                    ({{ page_obj.paginator.count }} publikacji)
+                </small>
+            </li>
+        </ul>
+    </nav>
+</div>
+{% endif %}

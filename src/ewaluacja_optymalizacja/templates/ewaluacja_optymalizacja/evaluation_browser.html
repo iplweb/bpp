@@ -31,12 +31,11 @@
             </a>
         </div>
 
-        <!-- Podsumowanie dyscyplin (sticky) -->
+        <!-- Podsumowanie dyscyplin (sticky - style w ewaluacja_optymalizacja.scss) -->
         <div id="discipline-summary"
              hx-get="{% url 'ewaluacja_optymalizacja:browser-summary' %}"
              hx-trigger="recalcComplete from:body"
-             style="position: sticky; top: 95px; z-index: 100; background: white;
-                    padding: 0.5rem 0; border-bottom: 1px solid #ccc;">
+             hx-indicator="this">
             {% include "ewaluacja_optymalizacja/_browser_discipline_summary.html" %}
         </div>
 
@@ -46,6 +45,7 @@
               hx-target="#publication-table"
               hx-trigger="submit"
               hx-swap="innerHTML"
+              hx-indicator="#publication-table"
               style="margin-top: 1rem;">
             {% csrf_token %}
             <fieldset style="border: 1px solid #ccc; padding: 1rem;
@@ -64,13 +64,13 @@
                         </label>
                     </div>
 
-                    <div class="medium-3 columns">
+                    <div class="medium-2 columns">
                         <label>Tytuł:
                             <input type="text" name="tytul" placeholder="Szukaj...">
                         </label>
                     </div>
 
-                    <div class="medium-3 columns">
+                    <div class="medium-2 columns">
                         <label>Dyscyplina:
                             <select name="dyscyplina" class="auto-submit-filter">
                                 <option value="">Wszystkie</option>
@@ -82,8 +82,19 @@
                     </div>
 
                     <div class="medium-2 columns">
-                        <label>Nazwisko autora:
+                        <label>Nazwisko:
                             <input type="text" name="nazwisko" placeholder="Szukaj...">
+                        </label>
+                    </div>
+
+                    <div class="medium-2 columns">
+                        <label>Punkty:
+                            <select name="punkty_kbn" class="auto-submit-filter">
+                                <option value="">Wszystkie</option>
+                                {% for p in punkty_kbn_values %}
+                                <option value="{{ p }}">{{ p }}</option>
+                                {% endfor %}
+                            </select>
                         </label>
                     </div>
 
@@ -97,12 +108,13 @@
             </fieldset>
         </form>
 
-        <!-- Tabela publikacji -->
+        <!-- Tabela publikacji (loading state w ewaluacja_optymalizacja.scss) -->
         <div id="publication-table"
              hx-get="{% url 'ewaluacja_optymalizacja:browser-table' %}"
              hx-trigger="load, recalcComplete from:body"
              hx-include="#filter-form"
-             hx-swap="innerHTML">
+             hx-swap="innerHTML"
+             hx-indicator="this">
             <p><em>Ładowanie publikacji...</em></p>
         </div>
 

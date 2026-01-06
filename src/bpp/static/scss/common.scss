@@ -1679,3 +1679,48 @@ select[multiple] {
   background-color: $primary-color !important;
   border: 2px solid red;
 }
+
+// Message template - hidden by default (moved from inline style in base.html)
+#messageTemplate {
+  display: none;
+}
+
+// Breadcrumbs wrapper - sticky positioning (moved from inline style in base.html)
+#breadcrumbs-wrapper {
+  background-color: rgba(240, 240, 240, 0.85);
+  border-bottom: 1px solid #d6d6d6;
+  padding: 10px 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  position: sticky;
+  top: 50px;
+  z-index: 1;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+
+  .breadcrumbs {
+    margin: 0 !important;
+    background: transparent;
+    display: inline-block;
+  }
+}
+
+// Test server warning banner (moved from inline style in base.html)
+.test-server-banner {
+  background: linear-gradient(135deg, #ff9800 0%, #ff6600 100%);
+  color: white;
+  padding: 12px 20px;
+  margin: 10px 0 20px 0;
+  border-radius: 8px;
+  text-align: center;
+  font-weight: 600;
+  font-size: 1rem;
+  box-shadow: 0 2px 8px rgba(255, 152, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+
+  .fi-alert {
+    font-size: 1.3rem;
+  }
+}

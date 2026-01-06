@@ -84,7 +84,7 @@ module.exports = function (grunt) {
 
         shell: {
             collectstatic: {
-                command: 'python src/manage.py collectstatic --noinput -v0 --traceback'
+                command: 'uv run src/manage.py collectstatic --noinput -v0 --traceback'
             }
         }
     });

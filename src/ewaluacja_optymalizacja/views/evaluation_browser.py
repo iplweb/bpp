@@ -47,11 +47,19 @@ def _snapshot_discipline_points(uczelnia):
     return result
 
 
-def _get_discipline_summary(uczelnia, punkty_przed=None):
-    """Pobierz podsumowanie dyscyplin z punktacją i opcjonalnym diff."""
+def _get_discipline_summary(uczelnia, punkty_przed=None, show_diff=True):
+    """Pobierz podsumowanie dyscyplin z punktacją i opcjonalnym diff.
+
+    Args:
+        uczelnia: Instancja Uczelni
+        punkty_przed: Dict {discipline_id: points} przed zmianą
+        show_diff: Czy pokazywać diff (False gdy przeliczanie w trakcie)
+    """
     from ewaluacja_liczba_n.models import LiczbaNDlaUczelni
 
     punkty_przed = punkty_przed or {}
+    # Obliczaj diff tylko gdy show_diff=True (czyli po zakończeniu wszystkich tasków)
+    calculate_diff = show_diff and bool(punkty_przed)
 
     raportowane = (
         LiczbaNDlaUczelni.objects.filter(
@@ -64,6 +72,7 @@ def _get_discipline_summary(uczelnia, punkty_przed=None):
 
     summary = []
     total_points = 0
+    total_slots = 0
     total_diff = 0
 
     for ln in raportowane:
@@ -80,26 +89,32 @@ def _get_discipline_summary(uczelnia, punkty_przed=None):
         )
 
         current_points = float(opt_run.total_points) if opt_run else 0
-        before_points = punkty_przed.get(str(disc_id), 0)
-        diff = current_points - before_points if punkty_przed else 0
+        current_slots = (
+            float(opt_run.total_slots) if opt_run and opt_run.total_slots else 0
+        )
+        before_points = punkty_przed.get(str(disc_id), 0) if calculate_diff else 0
+        diff = current_points - before_points if calculate_diff else 0
 
         total_points += current_points
+        total_slots += current_slots
         total_diff += diff
 
         summary.append(
             {
                 "dyscyplina": ln.dyscyplina_naukowa,
                 "punkty": current_points,
+                "slots": current_slots,
                 "diff": diff,
-                "has_diff": bool(punkty_przed) and before_points > 0,
+                "has_diff": calculate_diff and before_points > 0,
             }
         )
 
     return {
         "disciplines": summary,
         "total_points": total_points,
+        "total_slots": total_slots,
         "total_diff": total_diff,
-        "has_diff": bool(punkty_przed),
+        "has_diff": calculate_diff,
     }
 
 
@@ -117,6 +132,34 @@ def _get_filter_options(uczelnia):
     }
 
 
+def _get_distinct_punkty_kbn(rok=None):
+    """
+    Pobierz unikalne wartości punkty_kbn z publikacji.
+
+    Zwraca posortowaną listę unikalnych wartości punkty_kbn z obu typów publikacji.
+    """
+    from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
+
+    base_filter = {"rok__in": [2022, 2023, 2024, 2025]}
+    if rok:
+        base_filter["rok"] = int(rok)
+
+    ciagle_punkty = set(
+        Wydawnictwo_Ciagle.objects.filter(**base_filter)
+        .values_list("punkty_kbn", flat=True)
+        .distinct()
+    )
+    zwarte_punkty = set(
+        Wydawnictwo_Zwarte.objects.filter(**base_filter)
+        .values_list("punkty_kbn", flat=True)
+        .distinct()
+    )
+
+    all_punkty = ciagle_punkty | zwarte_punkty
+    # Usuń None i posortuj malejąco (najwyższe punkty na górze)
+    return sorted([p for p in all_punkty if p is not None], reverse=True)
+
+
 def _get_filtered_publications(uczelnia, filters, reported_ids):
     """
     Pobierz publikacje z filtrami.
@@ -132,11 +175,14 @@ def _get_filtered_publications(uczelnia, filters, reported_ids):
     tytul = (filters.get("tytul") or "").strip()
     dyscyplina = filters.get("dyscyplina")
     nazwisko = (filters.get("nazwisko") or "").strip()
+    punkty_kbn = filters.get("punkty_kbn")
 
     # Bazowe filtrowanie
     base_filter = {"rok__in": [2022, 2023, 2024, 2025]}
     if rok:
         base_filter["rok"] = int(rok)
+    if punkty_kbn:
+        base_filter["punkty_kbn"] = punkty_kbn
 
     # Pobierz publikacje obu typów
     ciagle_qs = Wydawnictwo_Ciagle.objects.filter(**base_filter)
@@ -308,14 +354,20 @@ def evaluation_browser(request):
         return redirect("ewaluacja_optymalizacja:index")
 
     status = StatusPrzegladarkaRecalc.get_or_create()
-    discipline_summary = _get_discipline_summary(uczelnia, status.punkty_przed)
+    # Pokazuj diff tylko gdy przeliczanie zakończone (w_trakcie=False)
+    show_diff = not status.w_trakcie
+    discipline_summary = _get_discipline_summary(
+        uczelnia, status.punkty_przed, show_diff
+    )
     filters = _get_filter_options(uczelnia)
+    punkty_kbn_values = _get_distinct_punkty_kbn()
 
     context = {
         "uczelnia": uczelnia,
         "discipline_summary": discipline_summary,
         "filters": filters,
         "status": status,
+        "punkty_kbn_values": punkty_kbn_values,
     }
 
     return render(
@@ -333,7 +385,11 @@ def browser_summary(request):
         return HttpResponseBadRequest("Nie znaleziono uczelni")
 
     status = StatusPrzegladarkaRecalc.get_or_create()
-    discipline_summary = _get_discipline_summary(uczelnia, status.punkty_przed)
+    # Pokazuj diff tylko gdy przeliczanie zakończone (w_trakcie=False)
+    show_diff = not status.w_trakcie
+    discipline_summary = _get_discipline_summary(
+        uczelnia, status.punkty_przed, show_diff
+    )
 
     return render(
         request,
@@ -356,6 +412,7 @@ def browser_table(request):
         "tytul": request.GET.get("tytul"),
         "dyscyplina": request.GET.get("dyscyplina"),
         "nazwisko": request.GET.get("nazwisko"),
+        "punkty_kbn": request.GET.get("punkty_kbn"),
     }
 
     publications = _get_filtered_publications(uczelnia, filters, reported_ids)
@@ -532,8 +589,8 @@ def browser_recalc_status(request):
     progress = int((completed / raportowane) * 100) if raportowane > 0 else 0
     all_done = completed == raportowane
 
-    if all_done and status.w_trakcie:
-        status.zakoncz("Przeliczanie zakończone pomyślnie")
+    # Status jest aktualizowany przez Celery chord callback (finalize_browser_recalc)
+    # Tutaj sprawdzamy tylko w celu ustalenia all_done dla UI
 
     context = {
         "status": status,

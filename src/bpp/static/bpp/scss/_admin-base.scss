@@ -1,0 +1,152 @@
+// =============================================================================
+// Admin Base Styles - wydzielone z inline styles base_site.html i base.html
+// =============================================================================
+
+// Nav global container layout
+#nav-global-container {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+// Keypad styles
+.keypad-key {
+  color: black !important;
+}
+
+button.keypad-trigger {
+  border: none !important;
+  background-color: #f5f5f5 !important;
+  border-radius: 2px !important;
+  padding: 0 !important;
+  cursor: pointer !important;
+  line-height: 1 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 24px !important;
+  height: 24px !important;
+
+  &:hover {
+    background-color: #e0e0e0 !important;
+  }
+}
+
+// Grappelli hidden headers
+#grp-breadcrumbs header,
+#grp-page-tools header {
+  display: none;
+}
+
+// Message close button
+.grp-messagelist a.close {
+  cursor: pointer;
+}
+
+// Row hover effects - uzywa CSS custom property ustawionej przez Django
+#result_list tbody tr:hover td,
+#result_list tbody tr:hover th {
+  background-color: var(--admin-hover-bg, #f5f5f5) !important;
+  transition: background-color 0.15s ease;
+}
+
+.form-row.grp-row:hover {
+  background-color: #f5f5f5;
+  transition: background-color 0.15s ease;
+  border-radius: 3px;
+}
+
+// Admin Support Button - fixed colors for admin theme
+.bpp-support-button {
+  position: fixed;
+  bottom: 70px;
+  right: 25px;
+  z-index: 9999;
+  background-color: #417690;
+  border: none;
+  border-radius: 5px;
+  padding: 0 20px !important;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transition: all 0.3s ease;
+  min-width: 60px;
+  text-align: center;
+
+  .button-content {
+    position: relative;
+    display: inline-block;
+  }
+
+  .support-symbols {
+    display: inline-block;
+    opacity: 1;
+    transition: opacity 0.3s ease;
+    letter-spacing: 1px;
+  }
+
+  .support-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+
+  &:hover {
+    background-color: #205067;
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+    padding: 0 !important;
+    width: 150px;
+    height: 40px;
+
+    .support-symbols {
+      opacity: 0;
+    }
+
+    .support-text {
+      opacity: 1;
+    }
+  }
+
+  &:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  }
+
+  &:focus {
+    outline: 2px solid #79aec8;
+    outline-offset: 2px;
+  }
+
+  @media screen and (max-width: 640px) {
+    bottom: 20px;
+    right: 20px;
+    font-size: 16px;
+    padding: 0;
+
+    &:hover {
+      padding: 0;
+
+      .support-text {
+        font-size: 14px;
+      }
+    }
+  }
+
+  @media print {
+    display: none;
+  }
+}
+
+// Przesun przycisk nizej gdy brak fixed footer
+body:not(:has(footer.grp-module.grp-submit-row.grp-fixed-footer)) {
+  .bpp-support-button {
+    bottom: 20px;
+  }
+}

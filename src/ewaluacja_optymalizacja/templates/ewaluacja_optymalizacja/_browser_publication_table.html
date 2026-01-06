@@ -1,6 +1,8 @@
 {% load humanize %}
 
 {% if publications %}
+{% include "ewaluacja_optymalizacja/_browser_pagination.html" %}
+
 <div class="publication-list">
     {% for pub in publications %}
     <div class="publication-item" style="border-bottom: 1px solid #e0e0e0; padding: 0.8rem 0;">
@@ -71,47 +73,7 @@
     {% endfor %}
 </div>
 
-<!-- Paginacja -->
-{% if page_obj.has_other_pages %}
-<div style="text-align: center; margin-top: 1rem;">
-    <nav aria-label="Paginacja">
-        <ul class="pagination" style="display: inline-flex;">
-            {% if page_obj.has_previous %}
-            <li class="pagination-previous">
-                <a href="#"
-                   hx-get="{% url 'ewaluacja_optymalizacja:browser-table' %}?page={{ page_obj.previous_page_number }}"
-                   hx-target="#publication-table"
-                   hx-include="#filter-form"
-                   hx-swap="innerHTML">
-                    Poprzednia
-                </a>
-            </li>
-            {% else %}
-            <li class="pagination-previous disabled">Poprzednia</li>
-            {% endif %}
-
-            <li class="current" style="padding: 0 1rem;">
-                Strona {{ page_obj.number }} z {{ page_obj.paginator.num_pages }}
-                ({{ page_obj.paginator.count }} publikacji)
-            </li>
-
-            {% if page_obj.has_next %}
-            <li class="pagination-next">
-                <a href="#"
-                   hx-get="{% url 'ewaluacja_optymalizacja:browser-table' %}?page={{ page_obj.next_page_number }}"
-                   hx-target="#publication-table"
-                   hx-include="#filter-form"
-                   hx-swap="innerHTML">
-                    Następna
-                </a>
-            </li>
-            {% else %}
-            <li class="pagination-next disabled">Następna</li>
-            {% endif %}
-        </ul>
-    </nav>
-</div>
-{% endif %}
+{% include "ewaluacja_optymalizacja/_browser_pagination.html" %}
 
 {% else %}
 <div class="callout warning">

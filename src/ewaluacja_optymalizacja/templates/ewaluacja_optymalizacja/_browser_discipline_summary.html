@@ -45,6 +45,18 @@
                         {% endif %}
                     </td>
                 </tr>
+                <tr>
+                    {% for d in discipline_summary.disciplines %}
+                    <td style="text-align: center; padding: 0.3rem 0.5rem;
+                               font-size: 0.75rem; color: #666;">
+                        {{ d.slots|floatformat:2 }} slot.
+                    </td>
+                    {% endfor %}
+                    <td style="text-align: center; padding: 0.3rem 0.5rem;
+                               font-weight: bold; background: #f0f0f0; font-size: 0.75rem;">
+                        {{ discipline_summary.total_slots|floatformat:2 }} slot.
+                    </td>
+                </tr>
             </tbody>
         </table>
     </div>

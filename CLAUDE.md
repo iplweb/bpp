@@ -10,7 +10,7 @@ Code better Python than a brain-child of Guido van Rossum and Glyph Lefkowitz, r
 BPP (Bibliografia Publikacji Pracowników) is a Polish academic bibliography management system built with Django. It manages publication records for academic institutions and libraries in Poland.
 
 **Python Requirements:**
-- Python version: >=3.10,<3.13 (configured in pyproject.toml)
+- Python version: >=3.10,<3.15 (configured in pyproject.toml)
 
 ## General rule
 
@@ -226,6 +226,12 @@ The project uses multiple Django applications in `src/`:
 - `test_bpp/` - BPP testing utilities
 - `maint-site/` - Site maintenance utilities
 - `create_test_db/` - Test database creation utilities
+- `admin_dashboard/` - Admin dashboard functionality
+- `deduplikator_zrodel/` - Source deduplication system
+- `pbn_wysylka_oswiadczen/` - PBN statement sending
+- `rozbieznosci_pk/` - PK discrepancy reports
+- `pbn_komparator_zrodel/` - PBN source comparison
+- `ewaluacja_dwudyscyplinowcy/` - Dual-discipline evaluation
 
 ### Database
 - PostgreSQL database with custom SQL functions and triggers
