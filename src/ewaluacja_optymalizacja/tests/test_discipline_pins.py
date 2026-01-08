@@ -175,10 +175,9 @@ def test_get_discipline_pin_stats_filters_by_autor_dyscyplina():
 
 
 @pytest.mark.django_db(transaction=True)
-@pytest.mark.override_settings(CELERY_TASK_ALWAYS_EAGER=True)
 def test_reset_discipline_pins_creates_snapshot_and_resets(client, admin_user):
     """Test że reset tworzy snapshot i resetuje przypięcia."""
-    from unittest.mock import patch
+    from unittest.mock import MagicMock, patch
 
     dyscyplina = baker.make(Dyscyplina_Naukowa, nazwa="Testowa", kod="1.1")
     autor = baker.make("bpp.Autor")
@@ -210,19 +209,25 @@ def test_reset_discipline_pins_creates_snapshot_and_resets(client, admin_user):
     assert all(not r.przypieta for r in odpięte_rekordy)
     snapshot_count_before = SnapshotOdpiec.objects.count()
 
-    # Mock DirtyInstance.objects.count to return 30 first (dirty), then 0 (clean)
-    # Mock sleep to avoid actual waiting
+    # Mock Celery tasks and DirtyInstance to avoid actual async processing
     with patch("denorm.models.DirtyInstance.objects.count") as mock_count:
         mock_count.side_effect = [30, 0]
 
         with patch("ewaluacja_optymalizacja.views.pins.sleep"):
-            # Wykonaj reset
-            client.force_login(admin_user)
-            url = reverse(
-                "ewaluacja_optymalizacja:reset-discipline-pins",
-                kwargs={"pk": dyscyplina.pk},
-            )
-            response = client.get(url)
+            with patch("denorm.tasks.flush_via_queue.delay") as mock_flush:
+                mock_flush.return_value = MagicMock()
+                with patch(
+                    "ewaluacja_optymalizacja.tasks.solve_single_discipline_task"
+                ) as mock_solve:
+                    mock_solve.delay.return_value = MagicMock(id="test-task-id")
+
+                    # Wykonaj reset
+                    client.force_login(admin_user)
+                    url = reverse(
+                        "ewaluacja_optymalizacja:reset-discipline-pins",
+                        kwargs={"pk": dyscyplina.pk},
+                    )
+                    response = client.get(url)
 
     # Sprawdź czy utworzono snapshot
     assert SnapshotOdpiec.objects.count() == snapshot_count_before + 1
@@ -240,7 +245,6 @@ def test_reset_discipline_pins_creates_snapshot_and_resets(client, admin_user):
 
 
 @pytest.mark.django_db(transaction=True)
-@pytest.mark.override_settings(CELERY_TASK_ALWAYS_EAGER=True)
 def test_reset_discipline_pins_no_unpinned_shows_warning(client, admin_user):
     """Test że reset bez odpiętych rekordów pokazuje warning."""
     dyscyplina = baker.make(Dyscyplina_Naukowa, nazwa="Testowa", kod="1.1")
@@ -268,19 +272,14 @@ def test_reset_discipline_pins_no_unpinned_shows_warning(client, admin_user):
 
     snapshot_count_before = SnapshotOdpiec.objects.count()
 
-    from unittest.mock import patch
-
-    with patch("denorm.models.DirtyInstance.objects.count") as mock_count:
-        mock_count.side_effect = [30, 0]
-
-        with patch("ewaluacja_optymalizacja.views.pins.sleep"):
-            # Wykonaj reset
-            client.force_login(admin_user)
-            url = reverse(
-                "ewaluacja_optymalizacja:reset-discipline-pins",
-                kwargs={"pk": dyscyplina.pk},
-            )
-            response = client.get(url, follow=True)
+    # Wykonaj reset - ten test nie potrzebuje mocków Celery,
+    # bo gdy nie ma odpiętych rekordów, view zwraca wcześniej
+    client.force_login(admin_user)
+    url = reverse(
+        "ewaluacja_optymalizacja:reset-discipline-pins",
+        kwargs={"pk": dyscyplina.pk},
+    )
+    response = client.get(url, follow=True)
 
     # Sprawdź czy NIE utworzono snapshotu
     assert SnapshotOdpiec.objects.count() == snapshot_count_before
