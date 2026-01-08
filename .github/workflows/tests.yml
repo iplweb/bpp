@@ -156,14 +156,23 @@ jobs:
           sleep 2
         done
 
-    - name: Tests
-      timeout-minutes: 30
+    - name: Tests (without Playwright)
+      timeout-minutes: 20
       env:
          DJANGO_BPP_DB_HOST: 127.0.0.1
          DJANGO_BPP_DB_PORT: 5433
          DJANGO_BPP_DB_USER: postgres
       run: |
-         uv run pytest -n auto
+         uv run pytest -m "not playwright" -n auto
+
+    - name: Tests (Playwright)
+      timeout-minutes: 20
+      env:
+         DJANGO_BPP_DB_HOST: 127.0.0.1
+         DJANGO_BPP_DB_PORT: 5433
+         DJANGO_BPP_DB_USER: postgres
+      run: |
+         uv run pytest -m "playwright" -n auto
 
     - name: Upload coverage to Coveralls (parallel)
       if: always()
