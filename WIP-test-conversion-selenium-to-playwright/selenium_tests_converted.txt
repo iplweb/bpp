@@ -1,2 +1,0 @@
-test_changelist_no_argument
-bpp/tests/test_selenium/test_admin/test_wydawnictwo_autor.py

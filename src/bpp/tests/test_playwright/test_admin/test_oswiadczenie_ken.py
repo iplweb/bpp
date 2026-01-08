@@ -1,11 +1,9 @@
 import pytest
 from django.urls import reverse
 from model_bakery import baker
+from playwright.sync_api import Page
 
 from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
-from bpp.tests import normalize_html, show_element
-
-from django_bpp.selenium_util import wait_for_page_load
 
 
 @pytest.fixture
@@ -26,7 +24,7 @@ def pokazuj_oswiadczenia_ken(settings):
     ],
 )
 def test_oswiadczenie_ken_widoczne(
-    admin_browser,
+    admin_page: Page,
     live_server,
     model,
     url,
@@ -39,10 +37,13 @@ def test_oswiadczenie_ken_widoczne(
     model_inst = baker.make(model)
     model_inst.dodaj_autora(autor_jan_nowak, jednostka)
 
-    with wait_for_page_load(admin_browser):
-        admin_browser.visit(live_server.url + reverse(url, args=(model_inst.pk,)))
+    admin_page.goto(
+        live_server.url + reverse(url, args=(model_inst.pk,)), timeout=60000
+    )
+    admin_page.wait_for_load_state("domcontentloaded")
 
-    assert admin_browser.is_element_present_by_id("id_autorzy_set-0-oswiadczenie_ken")
+    # Check if element is present in DOM (not necessarily visible)
+    assert admin_page.locator("#id_autorzy_set-0-oswiadczenie_ken").count() > 0
 
 
 @pytest.mark.parametrize(
@@ -53,7 +54,7 @@ def test_oswiadczenie_ken_widoczne(
     ],
 )
 def test_oswiadczenie_ken_niewidoczne(
-    admin_browser,
+    admin_page: Page,
     live_server,
     model,
     url,
@@ -66,10 +67,12 @@ def test_oswiadczenie_ken_niewidoczne(
     model_inst = baker.make(model)
     model_inst.dodaj_autora(autor_jan_nowak, jednostka)
 
-    with wait_for_page_load(admin_browser):
-        admin_browser.visit(live_server.url + reverse(url, args=(model_inst.pk,)))
+    admin_page.goto(
+        live_server.url + reverse(url, args=(model_inst.pk,)), timeout=60000
+    )
+    admin_page.wait_for_load_state("domcontentloaded")
 
-    assert 'type="hidden" name="autorzy_set-0-oswiadczenie_ken"' in admin_browser.html
+    assert 'type="hidden" name="autorzy_set-0-oswiadczenie_ken"' in admin_page.content()
 
 
 @pytest.mark.parametrize(
@@ -80,7 +83,7 @@ def test_oswiadczenie_ken_niewidoczne(
     ],
 )
 def test_oswiadczenie_ken_oba_zaznaczone_problem(
-    admin_browser,
+    admin_page: Page,
     live_server,
     model,
     url,
@@ -90,23 +93,31 @@ def test_oswiadczenie_ken_oba_zaznaczone_problem(
     charaktery_formalne,
     typy_odpowiedzialnosci,
 ):
+    """Test that both KEN and PBN checkboxes cannot be selected together."""
+    from bpp.tests import normalize_html
+
     model_inst = baker.make(model)
     model_inst.dodaj_autora(autor_jan_nowak, jednostka)
 
-    with wait_for_page_load(admin_browser):
-        admin_browser.visit(live_server.url + reverse(url, args=(model_inst.pk,)))
-
-    show_element(
-        admin_browser, admin_browser.find_by_id("id_autorzy_set-0-oswiadczenie_ken")
+    admin_page.goto(
+        live_server.url + reverse(url, args=(model_inst.pk,)), timeout=60000
     )
+    admin_page.wait_for_load_state("domcontentloaded")
 
-    admin_browser.find_by_id("id_autorzy_set-0-oswiadczenie_ken").select("true")
-    admin_browser.find_by_id("id_autorzy_set-0-upowaznienie_pbn").check()
+    # Scroll element into view and select
+    admin_page.evaluate(
+        """
+        const elem = document.getElementById('id_autorzy_set-0-oswiadczenie_ken');
+        elem.scrollIntoView();
+    """
+    )
+    admin_page.select_option("#id_autorzy_set-0-oswiadczenie_ken", value="true")
+    admin_page.check("#id_autorzy_set-0-upowaznienie_pbn")
 
-    with wait_for_page_load(admin_browser):
-        admin_browser.find_by_name("_save").click()
+    admin_page.click('input[name="_save"]')
+    admin_page.wait_for_load_state("domcontentloaded")
 
     assert (
         "Pola 'Upoważnienie PBN' oraz 'Oświadczenie KEN' nie mogą być jednocześnie wybrane. Odznacz jedno lub drugie."
-        in normalize_html(admin_browser.html)
+        in normalize_html(admin_page.content())
     )

@@ -268,12 +268,19 @@ def test_reset_discipline_pins_no_unpinned_shows_warning(client, admin_user):
 
     snapshot_count_before = SnapshotOdpiec.objects.count()
 
-    # Wykonaj reset
-    client.force_login(admin_user)
-    url = reverse(
-        "ewaluacja_optymalizacja:reset-discipline-pins", kwargs={"pk": dyscyplina.pk}
-    )
-    response = client.get(url, follow=True)
+    from unittest.mock import patch
+
+    with patch("denorm.models.DirtyInstance.objects.count") as mock_count:
+        mock_count.side_effect = [30, 0]
+
+        with patch("ewaluacja_optymalizacja.views.pins.sleep"):
+            # Wykonaj reset
+            client.force_login(admin_user)
+            url = reverse(
+                "ewaluacja_optymalizacja:reset-discipline-pins",
+                kwargs={"pk": dyscyplina.pk},
+            )
+            response = client.get(url, follow=True)
 
     # Sprawdź czy NIE utworzono snapshotu
     assert SnapshotOdpiec.objects.count() == snapshot_count_before

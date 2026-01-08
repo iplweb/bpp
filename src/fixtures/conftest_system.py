@@ -49,6 +49,7 @@ def typ_odpowiedzialnosci_redaktor(db):
 
 @pytest.fixture(scope="function")
 def typy_odpowiedzialnosci(db):
+    Typ_Odpowiedzialnosci.objects.all().delete()
     for elem in fixture("typ_odpowiedzialnosci_v2.json"):
         Typ_Odpowiedzialnosci.objects.get_or_create(pk=elem["pk"], **elem["fields"])
     return {x.skrot: x for x in Typ_Odpowiedzialnosci.objects.all()}

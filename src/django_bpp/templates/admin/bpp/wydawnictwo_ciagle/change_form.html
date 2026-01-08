@@ -133,8 +133,8 @@
                  */
 
                 function resetButtonText() {
-                    $("#id_wypelnij_pola_punktacji_button").text(wypelnij_pola_punktacji);
-                    $("#id_dodaj_punktacje_do_zrodla_button").text(dodaj_punktacje_do_zrodla);
+                    $("#id_wypelnij_pola_punktacji_button").val(wypelnij_pola_punktacji);
+                    $("#id_dodaj_punktacje_do_zrodla_button").val(dodaj_punktacje_do_zrodla);
                 }
 
                 names.forEach(function (n) {
@@ -164,12 +164,12 @@
                 $("#id_uzupelnij_punktacje").css("display", "none");
                 $("label[for=id_uzupelnij_punktacje]").css("display", "none");
                 $("#id_uzupelnij_punktacje").parent()
-                    .append('<button style="width: 200px;" class="grp-button" ' +
-                        'id="id_wypelnij_pola_punktacji_button">' +
-                        'Uzupełnij punktację</button>')
-                    .append('<button style="width: 200px; margin-left: 30px;" class="grp-button" ' +
-                        'id="id_dodaj_punktacje_do_zrodla_button">' +
-                        'Dodaj punktację do źródła</button>');
+                    .append('<input type="button" style="width: 200px;" class="grp-button" ' +
+                        'id="id_wypelnij_pola_punktacji_button" ' +
+                        'value="Uzupełnij punktację" />')
+                    .append('<input type="button" style="width: 200px; margin-left: 30px;" ' +
+                        'class="grp-button" id="id_dodaj_punktacje_do_zrodla_button" ' +
+                        'value="Dodaj punktację do źródła" />');
 
                 $("#id_dodaj_punktacje_do_zrodla_button").click(function () {
                     var ret, data;
@@ -200,7 +200,7 @@
                                     x.done(
                                         function (res) {
                                             if (res.result == 'ok')
-                                                $("#id_dodaj_punktacje_do_zrodla_button").text("Punktacja zapisana!");
+                                                $("#id_dodaj_punktacje_do_zrodla_button").val("Punktacja zapisana!");
                                         }
                                     );
 
@@ -215,7 +215,7 @@
                             }
 
                             if (res.result == 'ok')
-                                $("#id_dodaj_punktacje_do_zrodla_button").text("Dodana!!");
+                                $("#id_dodaj_punktacje_do_zrodla_button").val("Dodana!!");
                         });
 
                     y.fail(
@@ -256,7 +256,7 @@
                                 $("#id_" + n).val(data[n]);
                             });
 
-                            $("#id_wypelnij_pola_punktacji_button").text("Wypełniona!");
+                            $("#id_wypelnij_pola_punktacji_button").val("Wypełniona!");
                         });
 
                     z.fail(
