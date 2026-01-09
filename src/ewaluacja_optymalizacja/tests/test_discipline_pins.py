@@ -211,7 +211,8 @@ def test_reset_discipline_pins_creates_snapshot_and_resets(client, admin_user):
 
     # Mock Celery tasks and DirtyInstance to avoid actual async processing
     with patch("denorm.models.DirtyInstance.objects.count") as mock_count:
-        mock_count.side_effect = [30, 0]
+        # Return 0 to skip the waiting loop entirely
+        mock_count.return_value = 0
 
         with patch("ewaluacja_optymalizacja.views.pins.sleep"):
             with patch("denorm.tasks.flush_via_queue.delay") as mock_flush:
