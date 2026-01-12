@@ -1,1 +1,0 @@
-Dodano endpoint autoryzacyjny `/__external_auth/is_superuser/` dla superużytkowników oraz konfigurację nginx proxy dla zewnętrznych usług monitoringu (Grafana, Dozzle, Beszel) z uwierzytelnianiem SSO przez BPP.
