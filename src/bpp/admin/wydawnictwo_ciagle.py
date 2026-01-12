@@ -75,9 +75,11 @@ from .helpers import (
     poszukaj_duplikatu_pola_www_i_ewentualnie_zmien,
     sprawdz_duplikaty_www_doi,
 )
+from .helpers.constance_field_mixin import ConstanceScoringFieldsMixin
 from .helpers.fieldsets import (
     MODEL_OPCJONALNIE_NIE_EKSPORTOWANY_DO_API_FIELDSET,
     MODEL_Z_OPLATA_ZA_PUBLIKACJE_FIELDSET,
+    MODEL_Z_POLAMI_EWALUACJI_PBN_FIELDSET,
 )
 from .helpers.mixins import OptionalPBNSaveMixin, RestrictDeletionWhenPBNUIDSetMixin
 from .xlsx_export import resources
@@ -258,6 +260,7 @@ class Wydawnictwo_Ciagle_Zewnetrzna_Baza_DanychInline(admin.StackedInline):
 
 
 class Wydawnictwo_CiagleAdmin(
+    ConstanceScoringFieldsMixin,
     DjangoQLSearchMixin,
     OptionalPBNSaveMixin,
     KolumnyZeSkrotamiMixin,
@@ -393,6 +396,7 @@ class Wydawnictwo_CiagleAdmin(
         POZOSTALE_MODELE_WYDAWNICTWO_CIAGLE_FIELDSET,
         ADNOTACJE_Z_DATAMI_ORAZ_PBN_FIELDSET,
         MODEL_OPCJONALNIE_NIE_EKSPORTOWANY_DO_API_FIELDSET,
+        MODEL_Z_POLAMI_EWALUACJI_PBN_FIELDSET,
         OPENACCESS_FIELDSET,
         PRACA_WYBITNA_FIELDSET,
         PRZED_PO_LISCIE_AUTOROW_FIELDSET,

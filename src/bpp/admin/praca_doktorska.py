@@ -14,6 +14,7 @@ from .core import BaseBppAdminMixin
 from .element_repozytorium import Element_RepozytoriumInline
 from .filters import OstatnioZmienionePrzezFilter, UtworzonePrzezFilter
 from .grant import Grant_RekorduInline
+from .helpers.constance_field_mixin import ConstanceScoringFieldsMixin
 from .helpers.fieldsets import (
     ADNOTACJE_Z_DATAMI_FIELDSET,
     DWA_TYTULY,
@@ -131,7 +132,56 @@ class Praca_DoktorskaForm(
 
     class Meta:
         model = Praca_Doktorska
-        fields = "__all__"
+        fields = [
+            "tytul_oryginalny",
+            "tytul",
+            "informacje",
+            "szczegoly",
+            "uwagi",
+            "slowa_kluczowe",
+            "slowa_kluczowe_eng",
+            "strony",
+            "tom",
+            "oznaczenie_wydania",
+            "miejsce_i_rok",
+            "wydawca",
+            "wydawca_opis",
+            "autor",
+            "jednostka",
+            "promotor",
+            "isbn",
+            "e_isbn",
+            "rok",
+            "www",
+            "dostep_dnia",
+            "public_www",
+            "public_dostep_dnia",
+            "pubmed_id",
+            "pmc_id",
+            "doi",
+            "liczba_cytowan",
+            "numer_odbitki",
+            "jezyk",
+            "jezyk_alt",
+            "jezyk_orig",
+            "typ_kbn",
+            "punkty_kbn",
+            "impact_factor",
+            "index_copernicus",
+            "punktacja_snip",
+            "punktacja_wewnetrzna",
+            "weryfikacja_punktacji",
+            "informacja_z",
+            "status_korekty",
+            "recenzowana",
+            "adnotacje",
+            "nie_eksportuj_przez_api",
+            "opl_pub_cost_free",
+            "opl_pub_research_potential",
+            "opl_pub_research_or_development_projects",
+            "opl_pub_other",
+            "opl_pub_amount",
+        ]
         widgets = {
             "slowa_kluczowe": TextareaTagWidget(attrs={"rows": 2}),
         }
@@ -145,6 +195,7 @@ class Praca_DoktorskaResource(resources.Wydawnictwo_ResourceBase):
 
 
 class Praca_DoktorskaAdmin(
+    ConstanceScoringFieldsMixin,
     EksportDanychZFormatowanieMixin,
     ExportActionsMixin,
     Praca_Doktorska_Habilitacyjna_Admin_Base,

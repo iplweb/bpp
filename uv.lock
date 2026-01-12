@@ -233,6 +233,7 @@ dependencies = [
     { name = "django-classy-tags", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-columns", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-compressor", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-constance", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-cookie-law", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-crispy-forms", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-dbtemplates", marker = "platform_python_implementation != 'PyPy'" },
@@ -396,6 +397,7 @@ requires-dist = [
     { name = "django-classy-tags", specifier = "==4.0.0" },
     { name = "django-columns", specifier = "==0.1.0" },
     { name = "django-compressor", specifier = "==4.4" },
+    { name = "django-constance", specifier = ">=3.1.0" },
     { name = "django-cookie-law", specifier = "==2.2.0" },
     { name = "django-crispy-forms", specifier = "==2.0.0" },
     { name = "django-dbtemplates", specifier = ">=4.0" },
@@ -1607,6 +1609,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/1c/7d/8b878b082d7aca3f3d76da1743754d2a812571d0ee2cccbb6ee543f05843/django_compressor-4.4.tar.gz", hash = "sha256:1b0acc9cfba9f69bc38e7c41da9b0d70a20bc95587b643ffef9609cf46064f67", size = 422254, upload-time = "2023-06-27T22:13:19.961Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a0/b5/3c000d6d7b8ffa8831d2ef5bcbbe5780de172024e226ec89391853d4b759/django_compressor-4.4-py2.py3-none-any.whl", hash = "sha256:6e2b0c0becb9607f5099c2546a824c5b84a6918a34bc37a8a622ffa250313596", size = 148954, upload-time = "2023-06-27T22:13:17.91Z" },
+]
+
+[[package]]
+name = "django-constance"
+version = "4.3.4"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/88/c7/ce27c5aac4f3283e88e4d8a5d6f8743c4952bccc56c7c474e2b08ef1ad36/django_constance-4.3.4.tar.gz", hash = "sha256:30d1b325f636177c708cce63abbde7015593f5c60b2bc0b0e2eebe8c36e2ce59", size = 175428, upload-time = "2025-11-12T10:43:01.098Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/82/f0/bd5d63ad23ca97ff3445c11c6cf2dbeb52336bbecb7c4692cc9d75a24c92/django_constance-4.3.4-py3-none-any.whl", hash = "sha256:598f8c967a675fe2c7fe3688510ac8302e1b6df2141d01b8d29577532a8241db", size = 64411, upload-time = "2025-11-12T10:42:59.198Z" },
 ]
 
 [[package]]

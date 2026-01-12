@@ -275,6 +275,7 @@ TEMPLATES = [
                 "password_policies.context_processors.password_status",
                 "bpp.context_processors.uczelnia.uczelnia",
                 "bpp.context_processors.config.bpp_configuration",
+                "bpp.context_processors.constance_config.constance_config",
                 "bpp.context_processors.global_nav.user",
                 "bpp.context_processors.google_analytics.google_analytics",
                 "bpp.context_processors.pbn_token_aktualny.pbn_token_aktualny",
@@ -352,6 +353,8 @@ INSTALLED_APPS = [
     "reversion_compare",
     "djangoql",
     "cacheops",
+    "constance",
+    "constance.backends.database",
     "channels",
     "dynamic_columns",
     "django.contrib.humanize",
@@ -1276,4 +1279,73 @@ CACHEOPS_REDIS = {
     # 'socket_timeout': 3,   # connection timeout in seconds, optional
     # 'password': '...',     # optional
     # 'unix_socket_path': '' # replaces host and port
+}
+
+#
+# Django-Constance - dynamiczne ustawienia techniczne
+#
+CONSTANCE_BACKEND = "constance.backends.database.DatabaseBackend"
+
+CONSTANCE_CONFIG = {
+    # Punktacja
+    "UZYWAJ_PUNKTACJI_WEWNETRZNEJ": (
+        env("DJANGO_BPP_UZYWAJ_PUNKTACJI_WEWNETRZNEJ"),
+        "Używaj punktacji wewnętrznej w systemie",
+        bool,
+    ),
+    "POKAZUJ_INDEX_COPERNICUS": (
+        True,
+        "Pokazuj pole Index Copernicus w formularzach",
+        bool,
+    ),
+    "POKAZUJ_PUNKTACJA_SNIP": (
+        True,
+        "Pokazuj pole punktacji SNIP w formularzach",
+        bool,
+    ),
+    # Funkcjonalność
+    "POKAZUJ_OSWIADCZENIE_KEN": (
+        env("DJANGO_BPP_POKAZUJ_OSWIADCZENIE_KEN"),
+        "Pokazuj opcję oświadczenia KEN",
+        bool,
+    ),
+    # Struktura uczelni
+    "SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI": (
+        env("DJANGO_BPP_SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI"),
+        "Wyświetlaj skrót wydziału w nazwie jednostki",
+        bool,
+    ),
+    "UCZELNIA_UZYWA_WYDZIALOW": (
+        env("DJANGO_BPP_UCZELNIA_UZYWA_WYDZIALOW"),
+        "Uczelnia używa struktury wydziałowej",
+        bool,
+    ),
+    # Integracje Google
+    "GOOGLE_ANALYTICS_PROPERTY_ID": (
+        env("DJANGO_BPP_GOOGLE_ANALYTICS_PROPERTY_ID"),
+        "Google Analytics Property ID (np. UA-XXXXXXXX-X lub G-XXXXXXXXXX)",
+        str,
+    ),
+    "GOOGLE_VERIFICATION_CODE": (
+        env("DJANGO_BPP_GOOGLE_VERIFICATION_CODE"),
+        "Kod weryfikacyjny Google Search Console",
+        str,
+    ),
+}
+
+CONSTANCE_CONFIG_FIELDSETS = {
+    "Punktacja": (
+        "UZYWAJ_PUNKTACJI_WEWNETRZNEJ",
+        "POKAZUJ_INDEX_COPERNICUS",
+        "POKAZUJ_PUNKTACJA_SNIP",
+    ),
+    "Funkcjonalność": ("POKAZUJ_OSWIADCZENIE_KEN",),
+    "Struktura uczelni": (
+        "SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI",
+        "UCZELNIA_UZYWA_WYDZIALOW",
+    ),
+    "Integracje Google": (
+        "GOOGLE_ANALYTICS_PROPERTY_ID",
+        "GOOGLE_VERIFICATION_CODE",
+    ),
 }

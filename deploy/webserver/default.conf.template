@@ -127,6 +127,13 @@ server {
         proxy_pass_request_body off;
         proxy_set_header Content-Length "";
         proxy_set_header X-Original-URI $request_uri;
+        # Forward headers required for Django session authentication
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        # Critical: forward session cookie for authentication
+        proxy_set_header Cookie $http_cookie;
     }
 
     # Login redirect handler for unauthorized access

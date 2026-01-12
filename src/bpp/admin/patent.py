@@ -8,6 +8,7 @@ from .core import generuj_inline_dla_autorow
 from .element_repozytorium import Element_RepozytoriumInline
 from .filters import OstatnioZmienionePrzezFilter, UtworzonePrzezFilter
 from .grant import Grant_RekorduInline
+from .helpers.constance_field_mixin import ConstanceScoringFieldsMixin
 from .helpers.fieldsets import (
     ADNOTACJE_Z_DATAMI_FIELDSET,
     MODEL_OPCJONALNIE_NIE_EKSPORTOWANY_DO_API_FIELDSET,
@@ -80,6 +81,7 @@ class PatentResource(resources.Wydawnictwo_ResourceBase):
 
 
 class Patent_Admin(
+    ConstanceScoringFieldsMixin,
     AdnotacjeZDatamiMixin,
     EksportDanychZFormatowanieMixin,
     ExportActionsMixin,

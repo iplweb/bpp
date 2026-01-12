@@ -20,6 +20,7 @@ from bpp.models.praca_habilitacyjna import Publikacja_Habilitacyjna
 
 from .element_repozytorium import Element_RepozytoriumInline
 from .grant import Grant_RekorduInline
+from .helpers.constance_field_mixin import ConstanceScoringFieldsMixin
 from .helpers.fieldsets import (
     ADNOTACJE_Z_DATAMI_FIELDSET,
     DWA_TYTULY,
@@ -145,9 +146,6 @@ class Praca_HabilitacyjnaForm(forms.ModelForm):
             "informacja_z",
             "status_korekty",
             "recenzowana",
-            "utworzono",
-            "ostatnio_zmieniony",
-            "id",
             "adnotacje",
             "nie_eksportuj_przez_api",
             "opl_pub_cost_free",
@@ -169,6 +167,7 @@ class Praca_HabilitacyjnaResource(resources.Wydawnictwo_ResourceBase):
 
 
 class Praca_HabilitacyjnaAdmin(
+    ConstanceScoringFieldsMixin,
     EksportDanychZFormatowanieMixin,
     ExportActionsMixin,
     Praca_Doktorska_Habilitacyjna_Admin_Base,

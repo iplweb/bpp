@@ -88,6 +88,11 @@ from .pbn import (
     ModelZPBN_UID,
 )
 
+# PBN Evaluation fields
+from .pbn_evaluation import (
+    ModelZPolamiEwaluacjiPBN,
+)
+
 # Publication base models
 from .publication_base import (
     ModelRecenzowany,
@@ -194,6 +199,7 @@ __all__ = [
     "ModelZOplataZaPublikacje",
     "ModelZPBN_ID",
     "ModelZPBN_UID",
+    "ModelZPolamiEwaluacjiPBN",
     "ModelZPrzeliczaniemDyscyplin",
     "ModelZPubmedID",
     "ModelZRokiem",

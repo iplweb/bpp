@@ -330,6 +330,39 @@ When adding new icons to menus, add them to the selector list in `top_bar.scss` 
 - Advanced reporting and analytics
 - ORCID integration for author identification
 - Open Access classification and tracking
+- Dynamic runtime configuration via django-constance
+
+### Django-Constance Integration
+The project uses django-constance for runtime configuration that can be changed via the admin panel without restarting the server.
+
+**Key files:**
+- `src/bpp/admin/constance_admin.py` - Custom admin limiting access to superusers
+- `src/bpp/admin/helpers/constance_field_mixin.py` - Mixins for dynamic field hiding
+- `src/bpp/context_processors/constance_config.py` - Template context processor
+
+**Configuration settings (editable at runtime):**
+- `UZYWAJ_PUNKTACJI_WEWNETRZNEJ` - Enable/disable internal scoring
+- `POKAZUJ_INDEX_COPERNICUS` - Show/hide Index Copernicus fields
+- `POKAZUJ_PUNKTACJA_SNIP` - Show/hide SNIP scoring fields
+- `POKAZUJ_OSWIADCZENIE_KEN` - Show/hide KEN declaration option
+- `UCZELNIA_UZYWA_WYDZIALOW` - Enable/disable faculty structure
+- `GOOGLE_ANALYTICS_PROPERTY_ID` - Google Analytics tracking
+
+**Using constance in code:**
+```python
+from constance import config
+if config.UZYWAJ_PUNKTACJI_WEWNETRZNEJ:
+    # show internal scoring
+```
+
+**Admin field hiding pattern:**
+Use `ConstanceScoringFieldsMixin` in admin classes to dynamically hide fields based on constance settings:
+```python
+from bpp.admin.helpers.constance_field_mixin import ConstanceScoringFieldsMixin
+
+class MyModelAdmin(ConstanceScoringFieldsMixin, admin.ModelAdmin):
+    # Fields like index_copernicus will auto-hide when POKAZUJ_INDEX_COPERNICUS=False
+```
 
 ### Development Notes
 - Uses UV for Python dependency management (pyproject.toml and uv.lock)
@@ -347,8 +380,11 @@ When adding new icons to menus, add them to the selector list in `top_bar.scss` 
 
 ## Common File Locations
 - Main models: `src/bpp/models/`
+- Abstract models/mixins: `src/bpp/models/abstract/`
 - Admin interfaces: `src/bpp/admin/`
+- Admin helpers/mixins: `src/bpp/admin/helpers/`
 - API serializers: `src/api_v1/serializers/`
+- Context processors: `src/bpp/context_processors/`
 - Templates: Look for `templates/` directories in each app
 - Static files: `src/*/static/` directories
 - Test files: `src/*/tests/` directories or `test_*.py` files
@@ -357,6 +393,21 @@ When adding new icons to menus, add them to the selector list in `top_bar.scss` 
 - Frontend assets: `src/bpp/static/` and build via Grunt
 - Configuration files: `pytest.ini`, `pyproject.toml`, `package.json`, `Gruntfile.js`
 - Generated files: `src/bpp/static/500.html` - Auto-generated 500 error page (DO NOT EDIT)
+
+## Abstract Models and Mixins
+The project uses abstract models for sharing fields across publication types. Located in `src/bpp/models/abstract/`:
+
+**Key abstract models:**
+- `ModelZPolamiEwaluacjiPBN` - PBN/SEDN evaluation fields for publications
+  - Fields: `pbn_czy_projekt_fnp`, `pbn_czy_projekt_ncn`, `pbn_czy_projekt_nprh`, `pbn_czy_projekt_ue`, `pbn_czy_czasopismo_indeksowane`, `pbn_czy_artykul_recenzyjny`, `pbn_czy_edycja_naukowa`
+  - Used by `Wydawnictwo_Ciagle` and `Wydawnictwo_Zwarte`
+  - Exported to PBN API as evaluation attributes
+
+**Admin fieldsets pattern:**
+Fieldsets for abstract model fields are defined in `src/bpp/admin/helpers/fieldsets.py`:
+```python
+from bpp.admin.helpers.fieldsets import MODEL_Z_POLAMI_EWALUACJI_PBN_FIELDSET
+```
 
 ## Database Schema and Migrations
 The project uses a sophisticated migration system with both Python and SQL migrations:

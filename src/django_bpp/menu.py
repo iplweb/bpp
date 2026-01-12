@@ -128,6 +128,7 @@ REDAKTOR_MENU = [
 ADMIN_MENU = [
     ("Grupy", "/admin/auth/group/"),
     ("Użytkownicy", "/admin/bpp/bppuser/"),
+    ("Ustawienia systemu", "/admin/constance/config/"),
     ("Formularze wyszukiwania", "/admin/multiseek/searchform/"),
     (
         "Obsługa zgłoszeń prac - wydziały",
