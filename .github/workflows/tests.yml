@@ -163,7 +163,7 @@ jobs:
          DJANGO_BPP_DB_PORT: 5433
          DJANGO_BPP_DB_USER: postgres
       run: |
-         uv run pytest -m "not playwright" -n auto
+         uv run pytest -m "not playwright" -n auto --cov=src/ --cov-branch --cov-report=xml:cov.xml
 
     - name: Tests (Playwright)
       timeout-minutes: 20
@@ -172,7 +172,7 @@ jobs:
          DJANGO_BPP_DB_PORT: 5433
          DJANGO_BPP_DB_USER: postgres
       run: |
-         uv run pytest -m "playwright" -n auto
+         uv run pytest -m "playwright" -n auto --cov=src/ --cov-branch --cov-append --cov-report=xml:cov.xml
 
     - name: Upload coverage to Coveralls (parallel)
       if: always()
