@@ -77,7 +77,14 @@
       "mcp__plugin_claude-mem_mcp-search__search",
       "Bash(grunt shell:esbuild:*)",
       "Bash(grunt shell:collectstatic:*)",
-      "mcp__playwright__browser_console_messages"
+      "mcp__playwright__browser_console_messages",
+      "WebFetch(domain:select2.org)",
+      "mcp__playwright__browser_type",
+      "mcp__playwright__browser_wait_for",
+      "mcp__playwright__browser_close",
+      "Bash(# Check skip status for autorform_browser and multiseek_browser tests echo \"\"=== autorform_browser tests ===\"\" grep -B10 \"\"def test_autorform_uzupelnianie_jednostki\\\\|def test_autorform_kasowanie_autora\"\" src/bpp/tests/test_selenium/test_admin/test_admin_forms.py)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nFix test_reset_discipline_pins StopIteration error\n\nThe mock for DirtyInstance.objects.count\\(\\) used side_effect with only\n2 values, but the while loop in the view calls count\\(\\) multiple times.\nChanged to return_value=0 to skip the waiting loop entirely, since\ntesting the denorm waiting isn''t the purpose of this test.\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "WebFetch(domain:beszel.dev)"
     ],
     "deny": [],
     "ask": [],

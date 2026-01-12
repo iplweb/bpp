@@ -60,11 +60,7 @@ def pytest_collection_modifyitems(items):
 
     for item in items:
         fixtures = getattr(item, "fixturenames", ())
-        if "splinter_browser" in fixtures or "admin_browser" in fixtures:
-            item.add_marker("selenium")
-            item.add_marker(flaky_test)
-
-        if "page" in fixtures:
+        if "page" in fixtures or "admin_page" in fixtures or "zrodla_page" in fixtures:
             item.add_marker("playwright")
             item.add_marker(pytest.mark.serial)
 

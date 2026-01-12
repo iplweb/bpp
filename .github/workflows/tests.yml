@@ -1,4 +1,4 @@
-name: Testy - Django, Playwright
+name: Tests
 
 on:
   push:
@@ -62,7 +62,7 @@ jobs:
       uses: actions/cache@v4
       with:
         path: /var/cache/apt/archives
-        key: ${{ runner.os }}-apt-${{ hashFiles('.github/workflows/tests-no-selenium.yml') }}
+        key: ${{ runner.os }}-apt-${{ hashFiles('.github/workflows/tests.yml') }}
         restore-keys: |
           ${{ runner.os }}-apt-
 
@@ -91,9 +91,9 @@ jobs:
           ~/.cache/uv
           ~/.local/share/uv
           .venv
-        key: ${{ runner.os }}-uv-no-selenium-${{ hashFiles('**/uv.lock') }}
+        key: ${{ runner.os }}-uv-with-playwright-${{ hashFiles('**/uv.lock') }}
         restore-keys: |
-          ${{ runner.os }}-uv-no-selenium-
+          ${{ runner.os }}-uv-with-playwright-
           ${{ runner.os }}-uv-
 
     - name: System setup and dependencies
@@ -156,20 +156,29 @@ jobs:
           sleep 2
         done
 
-    - name: Tests without Selenium (but include Playwright)
-      timeout-minutes: 30
+    - name: Tests (without Playwright)
+      timeout-minutes: 20
       env:
          DJANGO_BPP_DB_HOST: 127.0.0.1
          DJANGO_BPP_DB_PORT: 5433
          DJANGO_BPP_DB_USER: postgres
       run: |
-         uv run pytest -p no:pytest-splinter -m "not selenium" -n auto
+         uv run pytest -m "not playwright" -n auto
+
+    - name: Tests (Playwright)
+      timeout-minutes: 20
+      env:
+         DJANGO_BPP_DB_HOST: 127.0.0.1
+         DJANGO_BPP_DB_PORT: 5433
+         DJANGO_BPP_DB_USER: postgres
+      run: |
+         uv run pytest -m "playwright" -n auto
 
     - name: Upload coverage to Coveralls (parallel)
       if: always()
       uses: coverallsapp/github-action@v2
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}
-        flag-name: no-selenium
+        flag-name: tests
         parallel: true
         file: cov.xml

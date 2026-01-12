@@ -166,10 +166,6 @@ env = environ.Env(
     #
     DJANGO_BPP_ENABLE_PROMETHEUS=(bool, False),
     #
-    # Pydantic Logfire
-    #
-    PYDANTIC_LOGFIRE_TOKEN=(str, None),
-    #
     # Liczniki w filtrac
     #
     DYNAMIC_FILTER_COUNTS_ENABLE=(bool, True),
@@ -552,6 +548,16 @@ ALLOWED_HOSTS = [
 ]
 
 CSRF_TRUSTED_ORIGINS = ["https://" + DJANGO_BPP_HOSTNAME]
+
+# Optional extra CSRF origins for dev with non-standard ports
+# (comma-separated, e.g. "https://bpp.localnet:10443,https://localhost:10443")
+DJANGO_BPP_CSRF_EXTRA_ORIGINS = env("DJANGO_BPP_CSRF_EXTRA_ORIGINS", default="")
+if DJANGO_BPP_CSRF_EXTRA_ORIGINS:
+    CSRF_TRUSTED_ORIGINS.extend(
+        origin.strip()
+        for origin in DJANGO_BPP_CSRF_EXTRA_ORIGINS.split(",")
+        if origin.strip()
+    )
 
 REDIS_HOST = env("DJANGO_BPP_REDIS_HOST")
 REDIS_PORT = env("DJANGO_BPP_REDIS_PORT")
@@ -1255,32 +1261,6 @@ if DJANGO_BPP_ENABLE_PROMETHEUS:
     INSTALLED_APPS += [
         "django_prometheus",
     ]
-
-PYDANTIC_LOGFIRE_TOKEN = env("PYDANTIC_LOGFIRE_TOKEN")
-if PYDANTIC_LOGFIRE_TOKEN:
-    import logfire
-
-    #
-    # Logfire - musi być na końcu
-    #
-
-    LOGGING = {
-        "version": 1,
-        "disable_existing_loggers": False,
-        "handlers": {
-            "logfire": {
-                "class": "logfire.LogfireLoggingHandler",
-            },
-        },
-        "root": {
-            "handlers": ["logfire"],
-        },
-    }
-
-    # Add the following lines at the end of the file
-    logfire.configure(token=env("PYDANTIC_LOGFIRE_TOKEN"))
-    logfire.instrument_django()
-    # logfire.instrument_psycopg()
 
 DYNAMIC_FILTER_COUNTS_ENABLE = env("DYNAMIC_FILTER_COUNTS_ENABLE")
 

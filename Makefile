@@ -29,7 +29,7 @@
 
 BRANCH=`git branch | sed -n '/\* /s///p'`
 
-.PHONY: clean distclean tests release tests-without-selenium tests-with-selenium docker destroy-test-databases coveralls-upload clean-coverage combine-coverage cache-delete buildx-cache-stats buildx-cache-prune buildx-cache-prune-aggressive bump-dev bump-release bump-and-start-dev migrate new-worktree clean-worktree generate-500-page
+.PHONY: clean distclean tests release tests-without-playwright tests-only-playwright docker destroy-test-databases coveralls-upload clean-coverage combine-coverage cache-delete buildx-cache-stats buildx-cache-prune buildx-cache-prune-aggressive bump-dev bump-release bump-and-start-dev migrate new-worktree clean-worktree generate-500-page
 
 PYTHON=python3
 
@@ -159,16 +159,16 @@ clean-coverage:
 	rm -f .coverage .coverage.* cov.xml
 	rm -rf cov_html
 
-tests-without-selenium:
-	uv run pytest -n auto --splinter-headless -m "not selenium and not playwright" --maxfail 50
+tests-without-playwright:
+	uv run pytest -n auto -m "not playwright" --maxfail 50
 
-tests-without-selenium-with-microsoft-auth:
-	uv run pytest -n auto --splinter-headless -m "not selenium and not playwright" --maxfail 50
+tests-without-playwright-with-microsoft-auth:
+	uv run pytest -n auto -m "not playwright" --maxfail 50
 
-tests-with-microsoft-auth: enable-microsoft-auth tests-without-selenium-with-microsoft-auth disable-microsoft-auth
+tests-with-microsoft-auth: enable-microsoft-auth tests-without-playwright-with-microsoft-auth disable-microsoft-auth
 
-tests-with-selenium:
-	uv run pytest -n auto  --splinter-headless -m "selenium or playwright"
+tests-only-playwright:
+	uv run pytest -n auto -m "playwright"
 
 combine-coverage:
 	uv run coverage combine
@@ -178,12 +178,12 @@ combine-coverage:
 coveralls-upload:
 	uv run coveralls
 
-tests: destroy-test-databases clean-coverage tests-without-selenium tests-with-selenium combine-coverage js-tests coveralls-upload
+tests: destroy-test-databases clean-coverage tests-without-playwright tests-only-playwright combine-coverage js-tests coveralls-upload
 
 destroy-test-databases:
 	-./bin/drop-test-databases.sh
 
-full-tests: destroy-test-databases clean-coverage tests-with-microsoft-auth destroy-test-databases tests-without-selenium tests-with-selenium combine-coverage js-tests coveralls-upload
+full-tests: destroy-test-databases clean-coverage tests-with-microsoft-auth destroy-test-databases tests-without-playwright tests-only-playwright combine-coverage js-tests coveralls-upload
 
 
 integration-start-from-match:
@@ -270,7 +270,7 @@ loc: clean
 	pygount -N ... -F "...,staticroot,migrations,fixtures" src --format=summary
 
 
-DOCKER_VERSION="202601.1311"
+DOCKER_VERSION="202601.1312"
 
 DOCKER_BUILD=build --platform linux/amd64 --push
 #--no-cache
