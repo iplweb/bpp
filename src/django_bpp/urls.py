@@ -33,7 +33,7 @@ from bpp.views.sentry_tester import (
     test_500_view,
     test_exception_view,
 )
-from django_bpp.views import HTMXAwareLoginView
+from django_bpp.views import HTMXAwareLoginView, is_superuser
 
 admin.autodiscover()
 
@@ -57,6 +57,7 @@ urlpatterns = (
         path("test_403/", login_required(test_403_view)),
         path("test_500/", login_required(test_500_view)),
         path("test_exception/", login_required(test_exception_view)),
+        path("__external_auth/is_superuser/", is_superuser, name="is_superuser"),
         path("tinymce/", include("tinymce.urls")),
         url(
             r"^admin/bpp/wydawnictwo_ciagle/toz/(?P<pk>[\d]+)/$",

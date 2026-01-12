@@ -75,6 +75,7 @@ services:
     environment:
       - DJANGO_SETTINGS_MODULE=django_bpp.settings.local
       - ENABLE_AUTORELOAD_ON_CODE_CHANGE=${ENABLE_AUTORELOAD_ON_CODE_CHANGE:-1}
+      - DJANGO_BPP_CSRF_EXTRA_ORIGINS=https://bpp.localnet:10443,https://localhost:10443
     depends_on:
       redis:
         condition: service_healthy

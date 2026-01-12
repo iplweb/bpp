@@ -3,6 +3,7 @@ from urllib.parse import urlencode
 
 from django.conf import settings
 from django.contrib.auth import logout
+from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import LoginView
 from django.http import HttpResponse, HttpResponseRedirect
 from django.urls import reverse
@@ -103,3 +104,22 @@ class MicrosoftLogoutView(View):
 
         # Build absolute URI
         return request.build_absolute_uri(redirect_path)
+
+
+@login_required
+def is_superuser(request):
+    """Authorization endpoint for superusers.
+
+    Returns 200 OK with user headers if user is superuser,
+    returns 403 Forbidden otherwise.
+    """
+    u = request.user
+
+    if not u.is_superuser:
+        return HttpResponse("forbidden", status=403)
+
+    resp = HttpResponse("ok")
+    resp["X-WEBAUTH-USER"] = u.get_username()
+    resp["X-WEBAUTH-EMAIL"] = u.email or ""
+    resp["X-WEBAUTH-NAME"] = u.get_full_name() or u.get_username()
+    return resp
