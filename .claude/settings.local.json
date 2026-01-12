@@ -87,7 +87,11 @@
       "WebFetch(domain:beszel.dev)",
       "Bash(make tests-without-selenium:*)",
       "Bash(git commit -m \"$\\(cat <<''EOF''\nFix nginx auth_request 400 error for monitoring service proxies\n\nThe auth subrequest for /grafana/, /dozzle/, and /beszel/ was missing\ncritical headers needed for Django session authentication. Without\nforwarding the Cookie header, Host, and X-Forwarded-* headers, Django\nreturned HTTP 400, causing nginx to respond with 500 to the client.\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(docker buildx du:*)",
+      "WebFetch(domain:dozzle.dev)",
+      "Bash(docker-compose down:*)",
+      "Bash(docker compose exec:*)"
     ],
     "deny": [],
     "ask": [],

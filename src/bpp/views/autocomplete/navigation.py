@@ -288,7 +288,9 @@ class AdminNavigationAutocomplete(
     def _model_matches_query(self, model):
         """Check if model matches the search query."""
         model_verbose_name = model._meta.verbose_name_plural
-        model_verbose_name_singular = model._meta.verbose_name
+        model_verbose_name_singular = getattr(
+            model._meta, "verbose_name", model._meta.verbose_name_plural
+        )
         q_lower = self.q.lower()
         return (
             q_lower in model_verbose_name.lower()
@@ -305,7 +307,9 @@ class AdminNavigationAutocomplete(
 
         app_label = model._meta.app_label
         model_verbose_name = model._meta.verbose_name_plural
-        model_verbose_name_singular = model._meta.verbose_name
+        model_verbose_name_singular = getattr(
+            model._meta, "verbose_name", model._meta.verbose_name_plural
+        )
 
         # Add entry for model list (changelist)
         django_model = DjangoModel(

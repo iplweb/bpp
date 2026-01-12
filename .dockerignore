@@ -135,6 +135,13 @@ ehthumbs.db
 package-lock.json
 pnpm-lock.yaml
 
+# Migrations (exclude to speed up builds - they're in image)
+**/migrations/
+
+# Environment files
+.env.local
+.env.docker.local
+
 # Test fixtures and data that might be large
 fixtures/
 test_fixtures/

@@ -18,9 +18,15 @@ def test_raport_slotow_ewaluacja_parametry_view_post(admin_client):
 
 
 def test_raport_slotow_ewaluacja_raport(
-    admin_client, praca_z_dyscyplina, django_assert_max_num_queries
+    admin_client,
+    praca_z_dyscyplina,
+    django_assert_max_num_queries,
+    constance_cache_warmed_up,
 ):
-    with django_assert_max_num_queries(50):
+    # Query count increased from 50 to 65 after django-constance was added
+    # for runtime configuration (commit 2760c7aa). The constance context
+    # processor adds ~12 queries for cache checks on each request.
+    with django_assert_max_num_queries(65):
         res = admin_client.get(
             reverse("raport_slotow:raport-ewaluacja")
             + "?_export=html&od_roku=2020&do_roku=2020"

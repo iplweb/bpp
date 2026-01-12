@@ -13,7 +13,15 @@ setenv_default("DJANGO_SETTINGS_MODULE", "django_bpp.settings.local")
 setenv_default("DJANGO_BPP_SECRET_KEY", "0xdeadbeef 2")
 
 from .base import *  # noqa
-from .base import DATABASES, INSTALLED_APPS, MIDDLEWARE  # noqa
+from .base import (  # noqa
+    DATABASES,
+    INSTALLED_APPS,
+    MIDDLEWARE,
+    REDIS_HOST,
+    REDIS_PORT,
+    TEMPLATES,
+    env,
+)
 
 # DEBUG = False
 DEBUG = True
@@ -70,7 +78,18 @@ DATABASES["default"]["CONN_MAX_AGE"] = 0
 CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.dummy.DummyCache",
-    }
+    },
+    "constance_cache": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": f"redis://{REDIS_HOST}:{REDIS_PORT}/8",  # DB 8 for constance
+        "OPTIONS": {
+            "CONNECTION_POOL_CLASS": "redis.BlockingConnectionPool",
+            "CONNECTION_POOL_CLASS_KWARGS": {
+                "max_connections": 50,
+                "timeout": 20,
+            },
+        },
+    },
 }
 
 

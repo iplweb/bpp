@@ -29,7 +29,7 @@
 
 BRANCH=`git branch | sed -n '/\* /s///p'`
 
-.PHONY: clean distclean tests release tests-without-playwright tests-only-playwright docker destroy-test-databases coveralls-upload clean-coverage combine-coverage cache-delete buildx-cache-stats buildx-cache-prune buildx-cache-prune-aggressive bump-dev bump-release bump-and-start-dev migrate new-worktree clean-worktree generate-500-page
+.PHONY: clean distclean tests release tests-without-playwright tests-only-playwright docker destroy-test-databases coveralls-upload clean-coverage combine-coverage cache-delete buildx-cache-stats buildx-cache-prune buildx-cache-prune-aggressive buildx-cache-prune-registry buildx-cache-export buildx-cache-import buildx-cache-list bump-dev bump-release bump-and-start-dev migrate new-worktree clean-worktree generate-500-page build-denorm-queue
 
 PYTHON=python3
 
@@ -282,20 +282,27 @@ ifeq (${HOST},"swift-beast.local")
 DOCKER_BUILD=build --platform linux/arm64
 endif
 
+# Registry cache configuration for faster rebuilds across CI/CD
+CACHE_FLAGS=--cache-from=type=registry,ref=iplweb/bpp_base:latest \
+            --cache-to=type=registry,ref=iplweb/bpp_base:cache,mode=max
+
 build-dbserver: deploy/dbserver/Dockerfile deploy/dbserver/autotune.py deploy/dbserver/docker-entrypoint-autotune.sh
-	docker buildx ${DOCKER_BUILD} -t iplweb/bpp_dbserver:${DOCKER_VERSION} -t iplweb/bpp_dbserver:latest -f deploy/dbserver/Dockerfile deploy/dbserver/
+	docker buildx ${DOCKER_BUILD} --cache-from=type=registry,ref=iplweb/bpp_dbserver:latest --cache-to=type=registry,ref=iplweb/bpp_dbserver:cache,mode=max -t iplweb/bpp_dbserver:${DOCKER_VERSION} -t iplweb/bpp_dbserver:latest -f deploy/dbserver/Dockerfile deploy/dbserver/
 
 build-appserver-base:
-	docker buildx ${DOCKER_BUILD} -t iplweb/bpp_base:${DOCKER_VERSION} -t iplweb/bpp_base:latest -f deploy/bpp_base/Dockerfile .
+	docker buildx ${DOCKER_BUILD} ${CACHE_FLAGS} -t iplweb/bpp_base:${DOCKER_VERSION} -t iplweb/bpp_base:latest -f deploy/bpp_base/Dockerfile .
 
 build-appserver: build-appserver-base
-	docker buildx ${DOCKER_BUILD} -t iplweb/bpp_appserver:${DOCKER_VERSION} -t iplweb/bpp_appserver:latest -f deploy/appserver/Dockerfile .
+	docker buildx ${DOCKER_BUILD} --cache-from=type=registry,ref=iplweb/bpp_base:latest --cache-from=type=registry,ref=iplweb/bpp_appserver:latest --cache-to=type=registry,ref=iplweb/bpp_appserver:cache,mode=max -t iplweb/bpp_appserver:${DOCKER_VERSION} -t iplweb/bpp_appserver:latest -f deploy/appserver/Dockerfile .
 
 build-workerserver: build-appserver-base
-	docker buildx ${DOCKER_BUILD} -t iplweb/bpp_workerserver:${DOCKER_VERSION} -t iplweb/bpp_workerserver:latest -f deploy/workerserver/Dockerfile .
+	docker buildx ${DOCKER_BUILD} --cache-from=type=registry,ref=iplweb/bpp_base:latest --cache-from=type=registry,ref=iplweb/bpp_workerserver:latest --cache-to=type=registry,ref=iplweb/bpp_workerserver:cache,mode=max -t iplweb/bpp_workerserver:${DOCKER_VERSION} -t iplweb/bpp_workerserver:latest -f deploy/workerserver/Dockerfile .
 
 build-webserver: deploy/webserver/Dockerfile deploy/webserver/default.conf.template deploy/webserver/maintenance.html deploy/webserver/key.pem deploy/webserver/cert.pem
-	docker buildx ${DOCKER_BUILD} -t iplweb/bpp_webserver:${DOCKER_VERSION} -t iplweb/bpp_webserver:latest -f deploy/webserver/Dockerfile deploy/webserver/
+	docker buildx ${DOCKER_BUILD} --cache-from=type=registry,ref=iplweb/bpp_webserver:latest --cache-to=type=registry,ref=iplweb/bpp_webserver:cache,mode=max -t iplweb/bpp_webserver:${DOCKER_VERSION} -t iplweb/bpp_webserver:latest -f deploy/webserver/Dockerfile deploy/webserver/
+
+build-denorm-queue: deploy/denorm-queue/Dockerfile deploy/denorm-queue/entrypoint-denorm-queue.sh
+	docker buildx ${DOCKER_BUILD} --cache-from=type=registry,ref=iplweb/bpp_base:latest --cache-from=type=registry,ref=iplweb/bpp_denorm_queue:latest --cache-to=type=registry,ref=iplweb/bpp_denorm_queue:cache,mode=max -t iplweb/bpp_denorm_queue:${DOCKER_VERSION} -t iplweb/bpp_denorm_queue:latest -f deploy/denorm-queue/Dockerfile .
 
 run-webserver-without-appserver-for-testing: build-webserver
 	@echo "Odpalamy webserver wyłącznie, żeby zobaczyć, jak wygląda jego strona błędu..."
@@ -310,12 +317,12 @@ run-webserver-without-appserver-for-testing: build-webserver
 	@docker stop -s 9 -t 1 appserver
 
 build-beatserver: build-appserver-base
-	docker buildx ${DOCKER_BUILD} -t iplweb/bpp_beatserver:${DOCKER_VERSION} -t iplweb/bpp_beatserver:latest -f deploy/beatserver/Dockerfile deploy/beatserver/
+	docker buildx ${DOCKER_BUILD} --cache-from=type=registry,ref=iplweb/bpp_base:latest --cache-from=type=registry,ref=iplweb/bpp_beatserver:latest --cache-to=type=registry,ref=iplweb/bpp_beatserver:cache,mode=max -t iplweb/bpp_beatserver:${DOCKER_VERSION} -t iplweb/bpp_beatserver:latest -f deploy/beatserver/Dockerfile deploy/beatserver/
 
 #build-flower:
 #	docker buildx ${DOCKER_BUILD} -t iplweb/flower:${DOCKER_VERSION} -t iplweb/flower:latest -f deploy/flower/Dockerfile deploy/flower/
 
-build-servers: build-appserver-base build-appserver build-workerserver build-beatserver # build-flower
+build-servers: build-appserver-base build-appserver build-workerserver build-beatserver build-denorm-queue # build-flower
 
 build: build-dbserver build-webserver build-servers
 
@@ -327,6 +334,34 @@ buildx-cache-prune:
 
 buildx-cache-prune-aggressive:
 	docker buildx prune --keep-storage 5GB
+
+buildx-cache-prune-registry:
+	@echo "Note: Registry caches on Docker Hub must be pruned manually."
+	@echo "Use 'docker rmi iplweb/bpp_*:cache' to remove local copies of registry caches."
+
+buildx-cache-export:
+	@echo "Exporting build cache to local directory..."
+	mkdir -p /tmp/docker-buildx-cache-backup
+	docker buildx build --cache-to=type=local,dest=/tmp/docker-buildx-cache-backup,mode=max --load --target=scratch -f- . <<< "FROM scratch"
+
+buildx-cache-import:
+	@echo "Importing build cache from local directory..."
+	if [ -d /tmp/docker-buildx-cache-backup ]; then \
+		echo "Cache backup found at /tmp/docker-buildx-cache-backup"; \
+	else \
+		echo "No cache backup found. Run 'make buildx-cache-export' first."; \
+		exit 1; \
+	fi
+
+buildx-cache-list:
+	@echo "Registry caches on Docker Hub:"
+	@echo "  - iplweb/bpp_base:cache"
+	@echo "  - iplweb/bpp_appserver:cache"
+	@echo "  - iplweb/bpp_workerserver:cache"
+	@echo "  - iplweb/bpp_beatserver:cache"
+	@echo "  - iplweb/bpp_denorm_queue:cache"
+	@echo "  - iplweb/bpp_webserver:cache"
+	@echo "  - iplweb/bpp_dbserver:cache"
 
 compose-restart:
 	docker compose stop
@@ -363,10 +398,9 @@ docker-celery-inspect:
 	docker compose exec workerserver-general uv run celery -A django_bpp.celery_tasks inspect active_queues
 	docker compose exec workerserver-general uv run celery -A django_bpp.celery_tasks inspect stats | grep max-concurrency
 
-refresh:
+refresh: build
 	docker system prune -f
-	docker compose stop
-	docker compose rm -f
+	docker compose down
 	docker compose up -d
 	docker system prune -f
 

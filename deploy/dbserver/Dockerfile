@@ -10,8 +10,8 @@ ENV POSTGRES_HOST_AUTH_METHOD=trust
 HEALTHCHECK --interval=5s --timeout=3s --retries=5 --start-period=10s \
   CMD pg_isready -U postgres
 
-RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
-    --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=apt-cache \
+    --mount=type=cache,target=/var/lib/apt/lists,sharing=locked,id=apt-lists \
     apt update && apt install -y postgresql-plpython3-16 python-is-python3
 
 COPY --chmod=755 autotune.py /

@@ -1285,6 +1285,7 @@ CACHEOPS_REDIS = {
 # Django-Constance - dynamiczne ustawienia techniczne
 #
 CONSTANCE_BACKEND = "constance.backends.database.DatabaseBackend"
+CONSTANCE_DATABASE_CACHE_BACKEND = "constance_cache"
 
 CONSTANCE_CONFIG = {
     # Punktacja

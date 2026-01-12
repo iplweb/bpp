@@ -1,6 +1,9 @@
 import pytest
+from django.contrib.messages import get_messages
 from model_bakery import baker
 
+from bpp.admin.helpers.pbn_api.gui import sprobuj_wyslac_do_pbn_gui
+from bpp.models import Charakter_Formalny, Wydawnictwo_Ciagle
 from fixtures import MOCK_MONGO_ID, MOCK_RETURNED_INSTITUTION_PUBLICATION_V2_DATA
 from fixtures.pbn_api import MOCK_RETURNED_MONGODB_DATA
 from pbn_api.adapters.wydawnictwo import WydawnictwoPBNAdapter
@@ -16,11 +19,6 @@ from pbn_api.const import (
 from pbn_api.exceptions import AccessDeniedException
 from pbn_api.models import Publication, SentData
 from pbn_api.tests.utils import middleware
-
-from django.contrib.messages import get_messages
-
-from bpp.admin.helpers.pbn_api.gui import sprobuj_wyslac_do_pbn_gui
-from bpp.models import Charakter_Formalny, Wydawnictwo_Ciagle
 
 
 @pytest.mark.django_db
@@ -78,7 +76,7 @@ def test_sprobuj_wyslac_do_pbn_dane_juz_wyslane(
     pbn_wydawnictwo_zwarte_z_charakterem, pbn_uczelnia, pbn_client, rf
 ):
     js = WydawnictwoPBNAdapter(pbn_wydawnictwo_zwarte_z_charakterem).pbn_get_json()
-    js.pop("languageData")
+    js.pop("languageData", None)
     SentData.objects.updated(
         pbn_wydawnictwo_zwarte_z_charakterem,
         js,
