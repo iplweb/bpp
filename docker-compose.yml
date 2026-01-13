@@ -324,6 +324,7 @@ services:
         required: false
     environment:
       - GF_SERVER_SERVE_FROM_SUB_PATH=true
+      - GF_LOG_LEVEL=warn
       - GF_AUTH_PROXY_ENABLED=true
       - GF_AUTH_PROXY_HEADER_NAME=X-WEBAUTH-USER
       - GF_AUTH_PROXY_HEADER_PROPERTY=username
@@ -344,7 +345,7 @@ services:
       --server.http.listen-addr=0.0.0.0:12345
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - alloy_config:/etc/alloy:ro
+      - ./deploy/alloy/config.alloy:/etc/alloy/config.alloy:ro
     depends_on:
       - loki
 
@@ -400,4 +401,3 @@ volumes:
   backup:        # Backup storage (used by rclone)
   rclone_config: # Rclone configuration
   grafana_data:
-  alloy_config:

@@ -11,12 +11,16 @@ This auth server is designed to:
 - Share sessions with the main BPP application
 """
 
+from pathlib import Path
+
 # Import shared configuration from base settings
 # These imports define Django settings - they ARE used by Django's settings machinery
 # even though they appear "unused" to static analysis tools
 from django_bpp.settings.production import (  # noqa: F401
     # User model
     AUTH_USER_MODEL,
+    # CSRF trusted origins for login form
+    CSRF_TRUSTED_ORIGINS,
     DATABASES,
     DEFAULT_AUTO_FIELD,
     # Redis settings
@@ -47,13 +51,31 @@ INSTALLED_APPS = [
     "bpp",  # Required for AUTH_USER_MODEL = "bpp.BppUser"
 ]
 
-# Minimal middleware
+# Minimal middleware (includes CSRF for login form)
 MIDDLEWARE = [
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
 ]
 
 ROOT_URLCONF = "django_bpp.urls_auth_server"
+
+# Minimal template configuration for login form
+TEMPLATES = [
+    {
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [
+            Path(__file__).resolve().parent.parent / "templates",
+        ],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+            ],
+        },
+    },
+]
 
 # Use cache-based sessions (same as production.py)
 # This uses Redis cache for session storage
@@ -75,8 +97,9 @@ CACHES = {
     },
 }
 
-# LOGIN_URL for @login_required decorator redirect
-LOGIN_URL = "/accounts/login/"
+# Login URLs for the emergency login form
+LOGIN_URL = "/__external_auth/login/"
+LOGIN_REDIRECT_URL = "/"
 
 # Logging - minimal but useful for debugging
 LOGGING = {

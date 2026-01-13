@@ -47,7 +47,7 @@ RUN uv run src/manage.py compilemessages -v0 -l pl --traceback
 
 
 RUN find .venv -type f -name "*.pyc" -delete && \
-    python -m compileall .venv -x 'wsgiutils' || true
+    python -m compileall -j 0 .venv -x 'wsgiutils' || true
 
 ##########################################################################################
 

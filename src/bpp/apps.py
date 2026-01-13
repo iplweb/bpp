@@ -6,11 +6,15 @@ class BppConfig(AppConfig):
     verbose_name = "BPP"
 
     def ready(self):
+        from django.apps import apps
         from django.db.models.signals import post_migrate
 
-        from bpp.system import odtworz_grupy
+        # Only register post_migrate signal when dbtemplates is available
+        # (auth_server uses minimal INSTALLED_APPS without dbtemplates)
+        if apps.is_installed("dbtemplates"):
+            from bpp.system import odtworz_grupy
 
-        post_migrate.connect(odtworz_grupy, sender=self)
+            post_migrate.connect(odtworz_grupy, sender=self)
 
         # Ensure BppUserAdmin takes precedence over microsoft_auth's UserAdmin
         self._register_bpp_user_admin()

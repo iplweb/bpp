@@ -29,7 +29,7 @@
 
 BRANCH=`git branch | sed -n '/\* /s///p'`
 
-.PHONY: clean distclean tests release tests-without-playwright tests-only-playwright docker destroy-test-databases coveralls-upload clean-coverage combine-coverage cache-delete buildx-cache-stats buildx-cache-prune buildx-cache-prune-aggressive buildx-cache-prune-registry buildx-cache-export buildx-cache-import buildx-cache-list bump-dev bump-release bump-and-start-dev migrate new-worktree clean-worktree generate-500-page build-denorm-queue
+.PHONY: clean distclean tests release tests-without-playwright tests-only-playwright docker destroy-test-databases coveralls-upload clean-coverage combine-coverage cache-delete buildx-cache-stats buildx-cache-prune buildx-cache-prune-aggressive buildx-cache-prune-registry buildx-cache-export buildx-cache-import buildx-cache-list bump-dev bump-release bump-and-start-dev migrate new-worktree clean-worktree generate-500-page build-denorm-queue build-authserver
 
 PYTHON=python3
 
@@ -317,6 +317,8 @@ DENORM_QUEUE_CACHE_FROM=--cache-from=type=registry,ref=iplweb/bpp_denorm_queue:l
 DENORM_QUEUE_CACHE_TO=--cache-to=type=registry,ref=iplweb/bpp_denorm_queue:cache,mode=max
 BEATSERVER_CACHE_FROM=--cache-from=type=registry,ref=iplweb/bpp_beatserver:latest
 BEATSERVER_CACHE_TO=--cache-to=type=registry,ref=iplweb/bpp_beatserver:cache,mode=max
+AUTHSERVER_CACHE_FROM=--cache-from=type=registry,ref=iplweb/bpp_authserver:latest
+AUTHSERVER_CACHE_TO=--cache-to=type=registry,ref=iplweb/bpp_authserver:cache,mode=max
 else
 DBSERVER_CACHE_FROM=
 DBSERVER_CACHE_TO=--cache-to=type=local,dest=/tmp/.buildx-cache-dbserver,mode=max
@@ -330,6 +332,8 @@ DENORM_QUEUE_CACHE_FROM=
 DENORM_QUEUE_CACHE_TO=--cache-to=type=local,dest=/tmp/.buildx-cache-denorm-queue,mode=max
 BEATSERVER_CACHE_FROM=
 BEATSERVER_CACHE_TO=--cache-to=type=local,dest=/tmp/.buildx-cache-beatserver,mode=max
+AUTHSERVER_CACHE_FROM=
+AUTHSERVER_CACHE_TO=--cache-to=type=local,dest=/tmp/.buildx-cache-authserver,mode=max
 endif
 
 build-dbserver: deploy/dbserver/Dockerfile deploy/dbserver/autotune.py deploy/dbserver/docker-entrypoint-autotune.sh
@@ -365,10 +369,13 @@ run-webserver-without-appserver-for-testing: build-webserver
 build-beatserver: build-appserver-base
 	docker buildx ${DOCKER_BUILD} ${CACHE_FROM} ${BEATSERVER_CACHE_FROM} ${BEATSERVER_CACHE_TO} -t iplweb/bpp_beatserver:${DOCKER_VERSION} -t iplweb/bpp_beatserver:latest -f deploy/beatserver/Dockerfile deploy/beatserver/
 
+build-authserver: build-appserver-base deploy/authserver/Dockerfile deploy/authserver/entrypoint-authserver.sh
+	docker buildx ${DOCKER_BUILD} ${CACHE_FROM} ${AUTHSERVER_CACHE_FROM} ${AUTHSERVER_CACHE_TO} -t iplweb/bpp_authserver:${DOCKER_VERSION} -t iplweb/bpp_authserver:latest -f deploy/authserver/Dockerfile .
+
 #build-flower:
 #	docker buildx ${DOCKER_BUILD} -t iplweb/flower:${DOCKER_VERSION} -t iplweb/flower:latest -f deploy/flower/Dockerfile deploy/flower/
 
-build-servers: build-appserver-base build-appserver build-workerserver build-beatserver build-denorm-queue # build-flower
+build-servers: build-appserver-base build-appserver build-workerserver build-beatserver build-authserver build-denorm-queue # build-flower
 
 build: build-dbserver build-webserver build-servers
 
