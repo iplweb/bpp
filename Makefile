@@ -276,33 +276,79 @@ DOCKER_BUILD=build --platform linux/amd64 --push
 #--no-cache
 
 
-# Na lokalnej maszynie nie uzywaj --push + buduj tylko ARM
+# Na lokalnej maszynie nie uzywaj --push + buduj tylko ARM + uzywaj docker driver
 HOST="$(shell hostname)"
 ifeq (${HOST},"swift-beast.local")
-DOCKER_BUILD=build --platform linux/arm64
+DOCKER_BUILD=build --builder desktop-linux --platform linux/arm64 --load
 endif
 
-# Registry cache configuration for faster rebuilds across CI/CD
-CACHE_FLAGS=--cache-from=type=registry,ref=iplweb/bpp_base:latest \
-            --cache-to=type=registry,ref=iplweb/bpp_base:cache,mode=max
+# Cache configuration - use DOCKER_CACHE_TYPE environment variable
+# - local: use local cache only (default for local builds)
+#   Cache is stored in /tmp/.buildx-cache-* directories
+# - registry: use Docker Hub registry cache (for CI/CD)
+#   Cache is stored as iplweb/bpp_*:cache images on Docker Hub
+#
+# Usage:
+#   make build                           # uses local cache (default)
+#   DOCKER_CACHE_TYPE=local make build  # explicit local cache
+#   DOCKER_CACHE_TYPE=registry make build  # use Docker Hub cache
+DOCKER_CACHE_TYPE ?= local
+
+ifeq ($(DOCKER_CACHE_TYPE),registry)
+CACHE_FROM=--cache-from=type=registry,ref=iplweb/bpp_base:latest
+CACHE_TO=--cache-to=type=registry,ref=iplweb/bpp_base:cache,mode=max
+else
+CACHE_FROM=
+CACHE_TO=--cache-to=type=local,dest=/tmp/.buildx-cache,mode=max
+endif
+
+CACHE_FLAGS=$(CACHE_FROM) $(CACHE_TO)
+
+ifeq ($(DOCKER_CACHE_TYPE),registry)
+DBSERVER_CACHE_FROM=--cache-from=type=registry,ref=iplweb/bpp_dbserver:latest
+DBSERVER_CACHE_TO=--cache-to=type=registry,ref=iplweb/bpp_dbserver:cache,mode=max
+APPSERVER_CACHE_FROM=--cache-from=type=registry,ref=iplweb/bpp_appserver:latest
+APPSERVER_CACHE_TO=--cache-to=type=registry,ref=iplweb/bpp_appserver:cache,mode=max
+WORKERSERVER_CACHE_FROM=--cache-from=type=registry,ref=iplweb/bpp_workerserver:latest
+WORKERSERVER_CACHE_TO=--cache-to=type=registry,ref=iplweb/bpp_workerserver:cache,mode=max
+WEBSERVER_CACHE_FROM=--cache-from=type=registry,ref=iplweb/bpp_webserver:latest
+WEBSERVER_CACHE_TO=--cache-to=type=registry,ref=iplweb/bpp_webserver:cache,mode=max
+DENORM_QUEUE_CACHE_FROM=--cache-from=type=registry,ref=iplweb/bpp_denorm_queue:latest
+DENORM_QUEUE_CACHE_TO=--cache-to=type=registry,ref=iplweb/bpp_denorm_queue:cache,mode=max
+BEATSERVER_CACHE_FROM=--cache-from=type=registry,ref=iplweb/bpp_beatserver:latest
+BEATSERVER_CACHE_TO=--cache-to=type=registry,ref=iplweb/bpp_beatserver:cache,mode=max
+else
+DBSERVER_CACHE_FROM=
+DBSERVER_CACHE_TO=--cache-to=type=local,dest=/tmp/.buildx-cache-dbserver,mode=max
+APPSERVER_CACHE_FROM=
+APPSERVER_CACHE_TO=--cache-to=type=local,dest=/tmp/.buildx-cache-appserver,mode=max
+WORKERSERVER_CACHE_FROM=
+WORKERSERVER_CACHE_TO=--cache-to=type=local,dest=/tmp/.buildx-cache-workerserver,mode=max
+WEBSERVER_CACHE_FROM=
+WEBSERVER_CACHE_TO=--cache-to=type=local,dest=/tmp/.buildx-cache-webserver,mode=max
+DENORM_QUEUE_CACHE_FROM=
+DENORM_QUEUE_CACHE_TO=--cache-to=type=local,dest=/tmp/.buildx-cache-denorm-queue,mode=max
+BEATSERVER_CACHE_FROM=
+BEATSERVER_CACHE_TO=--cache-to=type=local,dest=/tmp/.buildx-cache-beatserver,mode=max
+endif
 
 build-dbserver: deploy/dbserver/Dockerfile deploy/dbserver/autotune.py deploy/dbserver/docker-entrypoint-autotune.sh
-	docker buildx ${DOCKER_BUILD} --cache-from=type=registry,ref=iplweb/bpp_dbserver:latest --cache-to=type=registry,ref=iplweb/bpp_dbserver:cache,mode=max -t iplweb/bpp_dbserver:${DOCKER_VERSION} -t iplweb/bpp_dbserver:latest -f deploy/dbserver/Dockerfile deploy/dbserver/
+	docker buildx ${DOCKER_BUILD} ${DBSERVER_CACHE_FROM} ${DBSERVER_CACHE_TO} -t iplweb/bpp_dbserver:${DOCKER_VERSION} -t iplweb/bpp_dbserver:latest -f deploy/dbserver/Dockerfile deploy/dbserver/
 
 build-appserver-base:
 	docker buildx ${DOCKER_BUILD} ${CACHE_FLAGS} -t iplweb/bpp_base:${DOCKER_VERSION} -t iplweb/bpp_base:latest -f deploy/bpp_base/Dockerfile .
 
 build-appserver: build-appserver-base
-	docker buildx ${DOCKER_BUILD} --cache-from=type=registry,ref=iplweb/bpp_base:latest --cache-from=type=registry,ref=iplweb/bpp_appserver:latest --cache-to=type=registry,ref=iplweb/bpp_appserver:cache,mode=max -t iplweb/bpp_appserver:${DOCKER_VERSION} -t iplweb/bpp_appserver:latest -f deploy/appserver/Dockerfile .
+	docker buildx ${DOCKER_BUILD} ${CACHE_FROM} ${APPSERVER_CACHE_FROM} ${APPSERVER_CACHE_TO} -t iplweb/bpp_appserver:${DOCKER_VERSION} -t iplweb/bpp_appserver:latest -f deploy/appserver/Dockerfile .
 
 build-workerserver: build-appserver-base
-	docker buildx ${DOCKER_BUILD} --cache-from=type=registry,ref=iplweb/bpp_base:latest --cache-from=type=registry,ref=iplweb/bpp_workerserver:latest --cache-to=type=registry,ref=iplweb/bpp_workerserver:cache,mode=max -t iplweb/bpp_workerserver:${DOCKER_VERSION} -t iplweb/bpp_workerserver:latest -f deploy/workerserver/Dockerfile .
+	docker buildx ${DOCKER_BUILD} ${CACHE_FROM} ${WORKERSERVER_CACHE_FROM} ${WORKERSERVER_CACHE_TO} -t iplweb/bpp_workerserver:${DOCKER_VERSION} -t iplweb/bpp_workerserver:latest -f deploy/workerserver/Dockerfile .
 
 build-webserver: deploy/webserver/Dockerfile deploy/webserver/default.conf.template deploy/webserver/maintenance.html deploy/webserver/key.pem deploy/webserver/cert.pem
-	docker buildx ${DOCKER_BUILD} --cache-from=type=registry,ref=iplweb/bpp_webserver:latest --cache-to=type=registry,ref=iplweb/bpp_webserver:cache,mode=max -t iplweb/bpp_webserver:${DOCKER_VERSION} -t iplweb/bpp_webserver:latest -f deploy/webserver/Dockerfile deploy/webserver/
+	docker buildx ${DOCKER_BUILD} ${WEBSERVER_CACHE_FROM} ${WEBSERVER_CACHE_TO} -t iplweb/bpp_webserver:${DOCKER_VERSION} -t iplweb/bpp_webserver:latest -f deploy/webserver/Dockerfile deploy/webserver/
 
 build-denorm-queue: deploy/denorm-queue/Dockerfile deploy/denorm-queue/entrypoint-denorm-queue.sh
-	docker buildx ${DOCKER_BUILD} --cache-from=type=registry,ref=iplweb/bpp_base:latest --cache-from=type=registry,ref=iplweb/bpp_denorm_queue:latest --cache-to=type=registry,ref=iplweb/bpp_denorm_queue:cache,mode=max -t iplweb/bpp_denorm_queue:${DOCKER_VERSION} -t iplweb/bpp_denorm_queue:latest -f deploy/denorm-queue/Dockerfile .
+	docker buildx ${DOCKER_BUILD} ${CACHE_FROM} ${DENORM_QUEUE_CACHE_FROM} ${DENORM_QUEUE_CACHE_TO} -t iplweb/bpp_denorm_queue:${DOCKER_VERSION} -t iplweb/bpp_denorm_queue:latest -f deploy/denorm-queue/Dockerfile .
 
 run-webserver-without-appserver-for-testing: build-webserver
 	@echo "Odpalamy webserver wyłącznie, żeby zobaczyć, jak wygląda jego strona błędu..."
@@ -317,7 +363,7 @@ run-webserver-without-appserver-for-testing: build-webserver
 	@docker stop -s 9 -t 1 appserver
 
 build-beatserver: build-appserver-base
-	docker buildx ${DOCKER_BUILD} --cache-from=type=registry,ref=iplweb/bpp_base:latest --cache-from=type=registry,ref=iplweb/bpp_beatserver:latest --cache-to=type=registry,ref=iplweb/bpp_beatserver:cache,mode=max -t iplweb/bpp_beatserver:${DOCKER_VERSION} -t iplweb/bpp_beatserver:latest -f deploy/beatserver/Dockerfile deploy/beatserver/
+	docker buildx ${DOCKER_BUILD} ${CACHE_FROM} ${BEATSERVER_CACHE_FROM} ${BEATSERVER_CACHE_TO} -t iplweb/bpp_beatserver:${DOCKER_VERSION} -t iplweb/bpp_beatserver:latest -f deploy/beatserver/Dockerfile deploy/beatserver/
 
 #build-flower:
 #	docker buildx ${DOCKER_BUILD} -t iplweb/flower:${DOCKER_VERSION} -t iplweb/flower:latest -f deploy/flower/Dockerfile deploy/flower/
@@ -411,6 +457,7 @@ clean-docker-cache:
 	docker builder prune
 	docker builder prune --all
 	docker system prune -a --volumes
+	rm -rf /tmp/.buildx-cache*
 
 new-worktree:
 	./bin/prepare-worktree.sh

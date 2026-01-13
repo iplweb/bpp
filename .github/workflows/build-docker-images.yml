@@ -33,3 +33,5 @@ jobs:
 
       - name: Build Docker images in the Docker Build Cloud!
         run: make build
+        env:
+          DOCKER_CACHE_TYPE: registry

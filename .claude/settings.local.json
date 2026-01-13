@@ -91,7 +91,8 @@
       "Bash(docker buildx du:*)",
       "WebFetch(domain:dozzle.dev)",
       "Bash(docker-compose down:*)",
-      "Bash(docker compose exec:*)"
+      "Bash(docker compose exec:*)",
+      "Bash(docker buildx:*)"
     ],
     "deny": [],
     "ask": [],
