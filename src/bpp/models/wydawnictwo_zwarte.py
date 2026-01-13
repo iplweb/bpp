@@ -42,6 +42,7 @@ from bpp.models.abstract import (
     ModelZKonferencja,
     ModelZLiczbaCytowan,
     ModelZOpenAccess,
+    ModelZPolamiEwaluacjiPBN,
     ModelZPrzeliczaniemDyscyplin,
     ModelZPubmedID,
     ModelZRokiem,
@@ -108,7 +109,7 @@ class Wydawnictwo_Zwarte_Baza(
     miejsce_i_rok = models.CharField(
         max_length=MIEJSCE_I_ROK_MAX_LENGTH,
         blank=True,
-        null=True,
+        default="",
         help_text="""Przykładowo:
         Warszawa 2012. Wpisz proszę najpierw miejsce potem rok; oddziel
         spacją.""",
@@ -116,10 +117,10 @@ class Wydawnictwo_Zwarte_Baza(
 
     wydawca = models.ForeignKey(Wydawca, PROTECT, null=True, blank=True)
     wydawca_opis = models.CharField(
-        "Wydawca - szczegóły", max_length=256, null=True, blank=True
+        "Wydawca - szczegóły", max_length=256, blank=True, default=""
     )
 
-    oznaczenie_wydania = models.CharField(max_length=400, null=True, blank=True)
+    oznaczenie_wydania = models.CharField(max_length=400, blank=True, default="")
 
     def get_wydawnictwo(self):
         # Zwróć nazwę wydawcy + pole wydawca_opis lub samo pole wydawca_opis, jeżeli
@@ -138,12 +139,14 @@ class Wydawnictwo_Zwarte_Baza(
         return f"{self.wydawca.nazwa} {opis}".strip()
 
     def set_wydawnictwo(self, value):
-        warnings.warn("W przyszlosci uzyj 'wydawca_opis'", DeprecationWarning)
+        warnings.warn(
+            "W przyszlosci uzyj 'wydawca_opis'", DeprecationWarning, stacklevel=2
+        )
         self.wydawca_opis = value
 
     wydawnictwo = property(get_wydawnictwo, set_wydawnictwo)
 
-    redakcja = models.TextField(null=True, blank=True)
+    redakcja = models.TextField(blank=True, default="")
 
     class Meta:
         abstract = True
@@ -181,6 +184,7 @@ class Wydawnictwo_Zwarte(
     ModelZISSN,
     ModelWybitny,
     ModelZPBN_UID,
+    ModelZPolamiEwaluacjiPBN,
     ModelZOplataZaPublikacje,
     MaProcentyMixin,
     DodajAutoraMixin,
@@ -394,7 +398,7 @@ class Wydawnictwo_Zwarte_Zewnetrzna_Baza_Danych(models.Model):
     )
     baza = models.ForeignKey(Zewnetrzna_Baza_Danych, CASCADE)
     info = models.CharField(
-        verbose_name="Informacje dodatkowe", max_length=512, blank=True, null=True
+        verbose_name="Informacje dodatkowe", max_length=512, blank=True, default=""
     )
 
     class Meta:

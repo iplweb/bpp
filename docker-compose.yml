@@ -12,6 +12,10 @@ services:
       tags:
         - iplweb/bpp_dbserver:${DOCKER_VERSION:-latest}
         - iplweb/bpp_dbserver:latest
+      cache_from:
+        - type=registry,ref=iplweb/bpp_dbserver:latest
+      cache_to:
+        - type=inline
     restart: always
     environment:
       - PGPORT=${DJANGO_BPP_DB_PORT:-5432}
@@ -37,6 +41,11 @@ services:
       tags:
         - iplweb/bpp_beatserver:${DOCKER_VERSION:-latest}
         - iplweb/bpp_beatserver:latest
+      cache_from:
+        - type=registry,ref=iplweb/bpp_base:latest
+        - type=registry,ref=iplweb/bpp_beatserver:latest
+      cache_to:
+        - type=inline
     env_file:
       - path: .env.docker
         required: true
@@ -66,6 +75,11 @@ services:
       tags:
         - iplweb/bpp_appserver:${DOCKER_VERSION:-latest}
         - iplweb/bpp_appserver:latest
+      cache_from:
+        - type=registry,ref=iplweb/bpp_base:latest
+        - type=registry,ref=iplweb/bpp_appserver:latest
+      cache_to:
+        - type=inline
     restart: always
     env_file:
       - path: .env.docker
@@ -98,6 +112,11 @@ services:
       tags:
         - iplweb/bpp_workerserver:${DOCKER_VERSION:-latest}
         - iplweb/bpp_workerserver:latest
+      cache_from:
+        - type=registry,ref=iplweb/bpp_base:latest
+        - type=registry,ref=iplweb/bpp_workerserver:latest
+      cache_to:
+        - type=inline
     env_file:
       - path: .env.docker
         required: true
@@ -128,6 +147,11 @@ services:
       tags:
         - iplweb/bpp_workerserver:${DOCKER_VERSION:-latest}
         - iplweb/bpp_workerserver:latest
+      cache_from:
+        - type=registry,ref=iplweb/bpp_base:latest
+        - type=registry,ref=iplweb/bpp_workerserver:latest
+      cache_to:
+        - type=inline
     env_file:
       - path: .env.docker
         required: true
@@ -159,6 +183,11 @@ services:
       tags:
         - iplweb/bpp_workerserver:${DOCKER_VERSION:-latest}
         - iplweb/bpp_workerserver:latest
+      cache_from:
+        - type=registry,ref=iplweb/bpp_base:latest
+        - type=registry,ref=iplweb/bpp_workerserver:latest
+      cache_to:
+        - type=inline
     env_file:
       - path: .env.docker
         required: true
@@ -182,6 +211,11 @@ services:
       tags:
         - iplweb/bpp_denorm_queue:${DOCKER_VERSION:-latest}
         - iplweb/bpp_denorm_queue:latest
+      cache_from:
+        - type=registry,ref=iplweb/bpp_base:latest
+        - type=registry,ref=iplweb/bpp_denorm_queue:latest
+      cache_to:
+        - type=inline
     env_file:
       - path: .env.docker
         required: true
@@ -207,6 +241,10 @@ services:
       tags:
         - iplweb/bpp_webserver:${DOCKER_VERSION:-latest}
         - iplweb/bpp_webserver:latest
+      cache_from:
+        - type=registry,ref=iplweb/bpp_webserver:latest
+      cache_to:
+        - type=inline
     restart: always
     env_file:
       - path: .env.docker
@@ -215,9 +253,6 @@ services:
         required: false
     environment:
       - USE_DEV_TEMPLATE=${USE_DEV_TEMPLATE:-true}
-    depends_on:
-      appserver:
-        condition: service_healthy
     ports:
       - ${DJANGO_BPP_PORT_HTTP:-1080}:80
       - ${DJANGO_BPP_PORT_HTTPS:-10443}:443
@@ -225,6 +260,55 @@ services:
       - ./src/django_bpp/staticroot:/var/www/html/staticroot
       - media:/mediaroot
       - ssl_certs:/etc/ssl/private
+
+  dozzle:
+    image: amir20/dozzle:latest
+    restart: always
+    environment:
+      - DOZZLE_BASE=/dozzle
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    expose:
+      - 8080
+
+  loki:
+    image: grafana/loki:3.4.1
+    restart: always
+    command: -config.file=/etc/loki/local-config.yaml
+
+  grafana:
+    image: grafana/grafana:latest
+    restart: always
+    env_file:
+      - path: .env.docker
+        required: true
+      - path: .env
+        required: false
+    environment:
+      - GF_SERVER_SERVE_FROM_SUB_PATH=true
+      - GF_AUTH_PROXY_ENABLED=true
+      - GF_AUTH_PROXY_HEADER_NAME=X-WEBAUTH-USER
+      - GF_AUTH_PROXY_HEADER_PROPERTY=username
+      - GF_AUTH_PROXY_AUTO_SIGN_UP=true
+      - GF_AUTH_PROXY_HEADERS=Email:X-WEBAUTH-EMAIL Name:X-WEBAUTH-NAME
+    volumes:
+      - grafana_data:/var/lib/grafana
+    expose:
+      - 3000
+    depends_on:
+      - loki
+
+  alloy:
+    image: grafana/alloy:latest
+    restart: always
+    command: >
+      run /etc/alloy/config.alloy
+      --server.http.listen-addr=0.0.0.0:12345
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - alloy_config:/etc/alloy:ro
+    depends_on:
+      - loki
 
   redis:
     image: redis:latest
@@ -277,3 +361,5 @@ volumes:
   ssl_certs:     # SSL certificates for production
   backup:        # Backup storage (used by rclone)
   rclone_config: # Rclone configuration
+  grafana_data:
+  alloy_config:

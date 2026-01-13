@@ -54,6 +54,7 @@ from .helpers import (
     poszukaj_duplikatu_pola_www_i_ewentualnie_zmien,
     sprawdz_duplikaty_www_doi,
 )
+from .helpers.constance_field_mixin import ConstanceScoringFieldsMixin
 from .helpers.mixins import OptionalPBNSaveMixin, RestrictDeletionWhenPBNUIDSetMixin
 from .nagroda import NagrodaInline
 
@@ -435,6 +436,7 @@ class Wydawnictwo_Zwarte_Zewnetrzna_Baza_DanychInline(admin.StackedInline):
 
 
 class Wydawnictwo_ZwarteAdmin(
+    ConstanceScoringFieldsMixin,
     DjangoQLSearchMixin,
     KolumnyZeSkrotamiMixin,
     helpers.mixins.AdnotacjeZDatamiOrazPBNMixin,
@@ -525,6 +527,7 @@ class Wydawnictwo_ZwarteAdmin(
         fieldsets.POZOSTALE_MODELE_WYDAWNICTWO_ZWARTE_FIELDSET,
         fieldsets.ADNOTACJE_Z_DATAMI_ORAZ_PBN_FIELDSET,
         fieldsets.MODEL_OPCJONALNIE_NIE_EKSPORTOWANY_DO_API_FIELDSET,
+        fieldsets.MODEL_Z_POLAMI_EWALUACJI_PBN_FIELDSET,
         fieldsets.OPENACCESS_FIELDSET,
         fieldsets.PRACA_WYBITNA_FIELDSET,
         fieldsets.PRZED_PO_LISCIE_AUTOROW_FIELDSET,

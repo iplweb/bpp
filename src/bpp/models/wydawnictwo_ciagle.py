@@ -38,6 +38,7 @@ from bpp.models.abstract import (
     ModelZNumeremZeszytu,
     ModelZOpenAccess,
     ModelZPBN_UID,
+    ModelZPolamiEwaluacjiPBN,
     ModelZPrzeliczaniemDyscyplin,
     ModelZPubmedID,
     ModelZRokiem,
@@ -112,6 +113,7 @@ class Wydawnictwo_Ciagle(
     ModelZKonferencja,
     ModelWybitny,
     ModelZPBN_UID,
+    ModelZPolamiEwaluacjiPBN,
     ModelZOplataZaPublikacje,
     ModelZLiczbaCytowan,
     ModelZMiejscemPrzechowywania,
@@ -278,15 +280,15 @@ class Wydawnictwo_Ciagle_Zewnetrzna_Baza_Danych(models.Model):
     )
     baza = models.ForeignKey(Zewnetrzna_Baza_Danych, CASCADE)
     info = models.CharField(
-        verbose_name="Informacje dodatkowe", max_length=512, blank=True, null=True
+        verbose_name="Informacje dodatkowe", max_length=512, blank=True, default=""
     )
-
-    def __str__(self):
-        return f"{self.baza}"
 
     class Meta:
         verbose_name = "powiązanie wyd. ciągłego z zewn. bazą danych"
         verbose_name_plural = "powiązania wyd. ciągłych z zewn. bazami danych"
+
+    def __str__(self):
+        return f"{self.baza}"
 
 
 class Wydawnictwo_Ciagle_Streszczenie(BazaModeluStreszczen):

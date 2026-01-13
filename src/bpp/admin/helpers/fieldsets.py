@@ -161,6 +161,24 @@ MODEL_OPCJONALNIE_NIE_EKSPORTOWANY_DO_API_FIELDSET = (
     {"classes": ("grp-collapse grp-closed",), "fields": ("nie_eksportuj_przez_api",)},
 )
 
+MODEL_Z_POLAMI_EWALUACJI_PBN = (
+    "pbn_czy_projekt_fnp",
+    "pbn_czy_projekt_ncn",
+    "pbn_czy_projekt_nprh",
+    "pbn_czy_projekt_ue",
+    "pbn_czy_czasopismo_indeksowane",
+    "pbn_czy_artykul_recenzyjny",
+    "pbn_czy_edycja_naukowa",
+)
+
+MODEL_Z_POLAMI_EWALUACJI_PBN_FIELDSET = (
+    "Pola dla PBN/SEDN",
+    {
+        "classes": ("grp-collapse grp-closed",),
+        "fields": MODEL_Z_POLAMI_EWALUACJI_PBN,
+    },
+)
+
 POZOSTALE_MODELE_FIELDSET = (
     "Pozostałe informacje",
     {

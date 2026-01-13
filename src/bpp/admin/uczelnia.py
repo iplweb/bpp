@@ -9,6 +9,7 @@ from ..models import Uczelnia, Ukryj_Status_Korekty, Wydzial
 
 # Uczelnia
 from .core import BaseBppAdminMixin, RestrictDeletionToAdministracjaGroupMixin
+from .helpers.constance_field_mixin import ConstanceUczelniaFieldsMixin
 from .helpers.fieldsets import ADNOTACJE_FIELDSET
 from .helpers.mixins import ZapiszZAdnotacjaMixin
 
@@ -60,6 +61,7 @@ class Ukryj_Status_KorektyInline(admin.StackedInline):
 
 
 class UczelniaAdmin(
+    ConstanceUczelniaFieldsMixin,
     RestrictDeletionToAdministracjaGroupMixin,
     ZapiszZAdnotacjaMixin,
     BaseBppAdminMixin,

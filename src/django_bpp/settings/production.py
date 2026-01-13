@@ -1,4 +1,13 @@
 from .base import *  # noqa
+from .base import (  # noqa
+    DJANGO_BPP_ENABLE_TEST_CONFIGURATION,
+    INSTALLED_APPS,
+    MIDDLEWARE,
+    REDIS_HOST,
+    REDIS_PORT,
+    ROLLBAR,
+    env,
+)
 
 DEBUG = False
 DEBUG_TOOLBAR = False
@@ -24,6 +33,21 @@ CACHES = {
             "DB": env("DJANGO_BPP_REDIS_DB_CACHE"),  # noqa
             "CONNECTION_POOL_CLASS": "redis.BlockingConnectionPool",
             #
+            "CONNECTION_POOL_CLASS_KWARGS": {
+                "max_connections": 50,
+                "timeout": 20,
+            },
+            "MAX_CONNECTIONS": 1000,
+            "PICKLE_VERSION": -1,
+        },
+    },
+    "constance_cache": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": [
+            f"redis://{REDIS_HOST}:{REDIS_PORT}/8",  # DB 8 for constance
+        ],
+        "OPTIONS": {
+            "CONNECTION_POOL_CLASS": "redis.BlockingConnectionPool",
             "CONNECTION_POOL_CLASS_KWARGS": {
                 "max_connections": 50,
                 "timeout": 20,
