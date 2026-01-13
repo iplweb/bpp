@@ -203,7 +203,7 @@ wheels = [
 
 [[package]]
 name = "bpp-iplweb"
-version = "202601.1313"
+version = "202601.1314"
 source = { editable = "." }
 dependencies = [
     { name = "amqp", marker = "platform_python_implementation != 'PyPy'" },
