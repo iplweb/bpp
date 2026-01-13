@@ -6,6 +6,12 @@ upstream appserver_bpp {
     server appserver:8000;
 }
 
+# Lightweight auth server for nginx auth_request
+# Starts quickly (seconds) and validates Django sessions for protected services
+upstream authserver_bpp {
+    server authserver:8001;
+}
+
 # ============================================================================
 # HTTP SERVER BLOCKS
 # ============================================================================
@@ -127,10 +133,11 @@ server {
     # ============================================================================
     # EXTERNAL SERVICE AUTHENTICATION
     # ============================================================================
-    # Auth subrequest to BPP - validates superuser session
+    # Auth subrequest to lightweight auth server - validates superuser session
+    # Uses authserver (port 8001) which starts quickly, independent of main app
     location = /_bpp_superuser_auth {
         internal;
-        proxy_pass http://appserver_bpp/__external_auth/is_superuser/;
+        proxy_pass http://authserver_bpp/__external_auth/is_superuser/;
         proxy_pass_request_body off;
         proxy_set_header Content-Length "";
         proxy_set_header X-Original-URI $request_uri;
