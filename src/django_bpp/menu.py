@@ -140,6 +140,13 @@ ADMIN_MENU = [
     ),
 ]
 
+DOCKER_SERVICES_MENU = [
+    ("Grafana", "/grafana/"),
+    ("Dozzle (logi)", "/dozzle/"),
+    ("Flower (Celery)", "/flower/"),
+    ("RabbitMQ", "/rabbitmq/"),
+]
+
 
 def submenu(label, tuples, icon_class=None):
     menu_item = items.MenuItem(
@@ -245,6 +252,11 @@ class CustomMenu(Menu):
 
         flt("raporty", "Raporty", RAPORTY_MENU, "menu-icon-reports")
         flt("administracja", "Administracja", ADMIN_MENU, "menu-icon-admin")
+
+        # Add Docker services to Administracja menu (superusers only)
+        if user.is_superuser:
+            for label, url in DOCKER_SERVICES_MENU:
+                self.children[-1].children.append(items.MenuItem(label, url))
 
         # Create user menu with "Mój profil" label and dropdown - add at the end
         username = (

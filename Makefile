@@ -29,7 +29,7 @@
 
 BRANCH=`git branch | sed -n '/\* /s///p'`
 
-.PHONY: clean distclean tests release tests-without-playwright tests-only-playwright docker destroy-test-databases coveralls-upload clean-coverage combine-coverage cache-delete buildx-cache-stats buildx-cache-prune buildx-cache-prune-aggressive buildx-cache-prune-registry buildx-cache-export buildx-cache-import buildx-cache-list bump-dev bump-release bump-and-start-dev migrate new-worktree clean-worktree generate-500-page build-denorm-queue build-authserver
+.PHONY: clean distclean tests release tests-without-playwright tests-only-playwright docker destroy-test-databases coveralls-upload clean-coverage combine-coverage cache-delete buildx-cache-stats buildx-cache-prune buildx-cache-prune-aggressive buildx-cache-prune-registry buildx-cache-export buildx-cache-import buildx-cache-list bump-dev bump-release bump-and-start-dev migrate new-worktree clean-worktree generate-500-page build build-force build-base build-independent build-app-services build-dbserver build-webserver build-appserver-base build-appserver build-workerserver build-beatserver build-authserver build-denorm-queue build-servers
 
 PYTHON=python3
 
@@ -270,89 +270,91 @@ loc: clean
 	pygount -N ... -F "...,staticroot,migrations,fixtures" src --format=summary
 
 
-DOCKER_VERSION="202601.1314"
+DOCKER_VERSION=202601.1314
 
-DOCKER_BUILD=build --platform linux/amd64 --push
-#--no-cache
-
-
-# Na lokalnej maszynie nie uzywaj --push + buduj tylko ARM + uzywaj docker driver
-HOST="$(shell hostname)"
-ifeq (${HOST},"swift-beast.local")
-DOCKER_BUILD=build --builder desktop-linux --platform linux/arm64 --load
-endif
-
-# Cache configuration - use DOCKER_CACHE_TYPE environment variable
-# - local: use local cache only (default for local builds)
-#   Cache is stored in /tmp/.buildx-cache-* directories
+# Cache configuration for docker buildx bake
+# - local: use local cache (default for local builds)
 # - registry: use Docker Hub registry cache (for CI/CD)
-#   Cache is stored as iplweb/bpp_*:cache images on Docker Hub
 #
 # Usage:
-#   make build                           # uses local cache (default)
-#   DOCKER_CACHE_TYPE=local make build  # explicit local cache
-#   DOCKER_CACHE_TYPE=registry make build  # use Docker Hub cache
+#   make build                              # parallel build with local cache
+#   DOCKER_CACHE_TYPE=registry make build   # parallel build with registry cache
+#   PUSH_TO_REGISTRY=true make build        # build and push to registry
 DOCKER_CACHE_TYPE ?= local
 
-ifeq ($(DOCKER_CACHE_TYPE),registry)
-CACHE_FROM=--cache-from=type=registry,ref=iplweb/bpp_base:latest
-CACHE_TO=--cache-to=type=registry,ref=iplweb/bpp_base:cache,mode=max
+# Platform detection: use ARM64 on Apple Silicon, AMD64 otherwise
+ARCH := $(shell uname -m)
+ifeq ($(ARCH),arm64)
+DOCKER_PLATFORM ?= linux/arm64
 else
-CACHE_FROM=
-CACHE_TO=--cache-to=type=local,dest=/tmp/.buildx-cache,mode=max
+DOCKER_PLATFORM ?= linux/amd64
 endif
 
-CACHE_FLAGS=$(CACHE_FROM) $(CACHE_TO)
+# Build arguments for docker buildx bake
+# Use --file to explicitly use only docker-bake.hcl (avoids merge with docker-compose.yml)
+# Variables are passed via environment, platform via --set
+# --allow grants filesystem access to cache directory (avoids interactive prompt)
+BAKE_ARGS = --file docker-bake.hcl --set '*.platform=$(DOCKER_PLATFORM)' --allow=fs.read=/tmp --allow=fs.write=/tmp
 
-ifeq ($(DOCKER_CACHE_TYPE),registry)
-DBSERVER_CACHE_FROM=--cache-from=type=registry,ref=iplweb/bpp_dbserver:latest
-DBSERVER_CACHE_TO=--cache-to=type=registry,ref=iplweb/bpp_dbserver:cache,mode=max
-APPSERVER_CACHE_FROM=--cache-from=type=registry,ref=iplweb/bpp_appserver:latest
-APPSERVER_CACHE_TO=--cache-to=type=registry,ref=iplweb/bpp_appserver:cache,mode=max
-WORKERSERVER_CACHE_FROM=--cache-from=type=registry,ref=iplweb/bpp_workerserver:latest
-WORKERSERVER_CACHE_TO=--cache-to=type=registry,ref=iplweb/bpp_workerserver:cache,mode=max
-WEBSERVER_CACHE_FROM=--cache-from=type=registry,ref=iplweb/bpp_webserver:latest
-WEBSERVER_CACHE_TO=--cache-to=type=registry,ref=iplweb/bpp_webserver:cache,mode=max
-DENORM_QUEUE_CACHE_FROM=--cache-from=type=registry,ref=iplweb/bpp_denorm_queue:latest
-DENORM_QUEUE_CACHE_TO=--cache-to=type=registry,ref=iplweb/bpp_denorm_queue:cache,mode=max
-BEATSERVER_CACHE_FROM=--cache-from=type=registry,ref=iplweb/bpp_beatserver:latest
-BEATSERVER_CACHE_TO=--cache-to=type=registry,ref=iplweb/bpp_beatserver:cache,mode=max
-AUTHSERVER_CACHE_FROM=--cache-from=type=registry,ref=iplweb/bpp_authserver:latest
-AUTHSERVER_CACHE_TO=--cache-to=type=registry,ref=iplweb/bpp_authserver:cache,mode=max
-else
-DBSERVER_CACHE_FROM=
-DBSERVER_CACHE_TO=--cache-to=type=local,dest=/tmp/.buildx-cache-dbserver,mode=max
-APPSERVER_CACHE_FROM=
-APPSERVER_CACHE_TO=--cache-to=type=local,dest=/tmp/.buildx-cache-appserver,mode=max
-WORKERSERVER_CACHE_FROM=
-WORKERSERVER_CACHE_TO=--cache-to=type=local,dest=/tmp/.buildx-cache-workerserver,mode=max
-WEBSERVER_CACHE_FROM=
-WEBSERVER_CACHE_TO=--cache-to=type=local,dest=/tmp/.buildx-cache-webserver,mode=max
-DENORM_QUEUE_CACHE_FROM=
-DENORM_QUEUE_CACHE_TO=--cache-to=type=local,dest=/tmp/.buildx-cache-denorm-queue,mode=max
-BEATSERVER_CACHE_FROM=
-BEATSERVER_CACHE_TO=--cache-to=type=local,dest=/tmp/.buildx-cache-beatserver,mode=max
-AUTHSERVER_CACHE_FROM=
-AUTHSERVER_CACHE_TO=--cache-to=type=local,dest=/tmp/.buildx-cache-authserver,mode=max
+# Export variables for bake (HCL variables read from environment)
+export DOCKER_VERSION
+export CACHE_TYPE := $(DOCKER_CACHE_TYPE)
+
+ifeq ($(PUSH_TO_REGISTRY),true)
+export PUSH := true
 endif
 
-build-dbserver: deploy/dbserver/Dockerfile deploy/dbserver/autotune.py deploy/dbserver/docker-entrypoint-autotune.sh
-	docker buildx ${DOCKER_BUILD} ${DBSERVER_CACHE_FROM} ${DBSERVER_CACHE_TO} -t iplweb/bpp_dbserver:${DOCKER_VERSION} -t iplweb/bpp_dbserver:latest -f deploy/dbserver/Dockerfile deploy/dbserver/
+# Main build target - parallel builds using docker buildx bake
+# This builds all images in parallel where possible:
+# - dbserver, webserver: independent, build immediately
+# - base: builds in parallel with above
+# - appserver, workerserver, beatserver, authserver, denorm-queue: wait for base
+build:
+	docker buildx bake $(BAKE_ARGS)
+
+# Force rebuild all images (ignores cache)
+build-force:
+	docker buildx bake $(BAKE_ARGS) --no-cache
+
+# Build only the base image
+build-base:
+	docker buildx bake $(BAKE_ARGS) base
+
+# Build independent images only (dbserver + webserver)
+build-independent:
+	docker buildx bake $(BAKE_ARGS) independent
+
+# Build app services only (requires base image to exist)
+build-app-services:
+	docker buildx bake $(BAKE_ARGS) app-services
+
+# Individual build targets (for debugging or specific rebuilds)
+build-dbserver:
+	docker buildx bake $(BAKE_ARGS) dbserver
+
+build-webserver:
+	docker buildx bake $(BAKE_ARGS) webserver
 
 build-appserver-base:
-	docker buildx ${DOCKER_BUILD} ${CACHE_FLAGS} -t iplweb/bpp_base:${DOCKER_VERSION} -t iplweb/bpp_base:latest -f deploy/bpp_base/Dockerfile .
+	docker buildx bake $(BAKE_ARGS) base
 
-build-appserver: build-appserver-base
-	docker buildx ${DOCKER_BUILD} ${CACHE_FROM} ${APPSERVER_CACHE_FROM} ${APPSERVER_CACHE_TO} -t iplweb/bpp_appserver:${DOCKER_VERSION} -t iplweb/bpp_appserver:latest -f deploy/appserver/Dockerfile .
+build-appserver:
+	docker buildx bake $(BAKE_ARGS) appserver
 
-build-workerserver: build-appserver-base
-	docker buildx ${DOCKER_BUILD} ${CACHE_FROM} ${WORKERSERVER_CACHE_FROM} ${WORKERSERVER_CACHE_TO} -t iplweb/bpp_workerserver:${DOCKER_VERSION} -t iplweb/bpp_workerserver:latest -f deploy/workerserver/Dockerfile .
+build-workerserver:
+	docker buildx bake $(BAKE_ARGS) workerserver
 
-build-webserver: deploy/webserver/Dockerfile deploy/webserver/default.conf.template deploy/webserver/maintenance.html deploy/webserver/key.pem deploy/webserver/cert.pem
-	docker buildx ${DOCKER_BUILD} ${WEBSERVER_CACHE_FROM} ${WEBSERVER_CACHE_TO} -t iplweb/bpp_webserver:${DOCKER_VERSION} -t iplweb/bpp_webserver:latest -f deploy/webserver/Dockerfile deploy/webserver/
+build-beatserver:
+	docker buildx bake $(BAKE_ARGS) beatserver
 
-build-denorm-queue: deploy/denorm-queue/Dockerfile deploy/denorm-queue/entrypoint-denorm-queue.sh
-	docker buildx ${DOCKER_BUILD} ${CACHE_FROM} ${DENORM_QUEUE_CACHE_FROM} ${DENORM_QUEUE_CACHE_TO} -t iplweb/bpp_denorm_queue:${DOCKER_VERSION} -t iplweb/bpp_denorm_queue:latest -f deploy/denorm-queue/Dockerfile .
+build-authserver:
+	docker buildx bake $(BAKE_ARGS) authserver
+
+build-denorm-queue:
+	docker buildx bake $(BAKE_ARGS) denorm-queue
+
+# Alias for backward compatibility
+build-servers: build
 
 run-webserver-without-appserver-for-testing: build-webserver
 	@echo "Odpalamy webserver wyłącznie, żeby zobaczyć, jak wygląda jego strona błędu..."
@@ -365,19 +367,6 @@ run-webserver-without-appserver-for-testing: build-webserver
 	@sleep 3
 	@docker run --rm -it --link appserver:appserver  -p 10080:80 -p 10443:443 -v ./deploy/webserver/:/etc/ssl/private iplweb/bpp_webserver
 	@docker stop -s 9 -t 1 appserver
-
-build-beatserver: build-appserver-base
-	docker buildx ${DOCKER_BUILD} ${CACHE_FROM} ${BEATSERVER_CACHE_FROM} ${BEATSERVER_CACHE_TO} -t iplweb/bpp_beatserver:${DOCKER_VERSION} -t iplweb/bpp_beatserver:latest -f deploy/beatserver/Dockerfile deploy/beatserver/
-
-build-authserver: build-appserver-base deploy/authserver/Dockerfile deploy/authserver/entrypoint-authserver.sh
-	docker buildx ${DOCKER_BUILD} ${CACHE_FROM} ${AUTHSERVER_CACHE_FROM} ${AUTHSERVER_CACHE_TO} -t iplweb/bpp_authserver:${DOCKER_VERSION} -t iplweb/bpp_authserver:latest -f deploy/authserver/Dockerfile .
-
-#build-flower:
-#	docker buildx ${DOCKER_BUILD} -t iplweb/flower:${DOCKER_VERSION} -t iplweb/flower:latest -f deploy/flower/Dockerfile deploy/flower/
-
-build-servers: build-appserver-base build-appserver build-workerserver build-beatserver build-authserver build-denorm-queue # build-flower
-
-build: build-dbserver build-webserver build-servers
 
 buildx-cache-stats:
 	docker buildx du

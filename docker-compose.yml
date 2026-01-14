@@ -87,7 +87,7 @@ services:
       - path: .env
         required: false
     environment:
-      - DJANGO_SETTINGS_MODULE=django_bpp.settings.local
+      - DJANGO_SETTINGS_MODULE=django_bpp.settings.docker
       - ENABLE_AUTORELOAD_ON_CODE_CHANGE=${ENABLE_AUTORELOAD_ON_CODE_CHANGE:-1}
       - DJANGO_BPP_CSRF_EXTRA_ORIGINS=https://bpp.localnet:10443,https://localhost:10443
     depends_on:
@@ -128,6 +128,7 @@ services:
         required: false
     environment:
       - DJANGO_SETTINGS_MODULE=django_bpp.settings.auth_server
+      - DJANGO_BPP_CSRF_EXTRA_ORIGINS=https://bpp.localnet:10443,https://localhost:10443
     depends_on:
       db:
         condition: service_healthy
@@ -271,6 +272,25 @@ services:
       workerserver-denorm:
         condition: service_healthy
 
+  flower:
+    image: mher/flower:2.0
+    container_name: flower_bpp
+    restart: always
+    environment:
+      - CELERY_BROKER_URL=amqp://${DJANGO_BPP_RABBITMQ_USER:-bpp}:${DJANGO_BPP_RABBITMQ_PASS:-bpp}@rabbitmq:${DJANGO_BPP_RABBITMQ_PORT:-5672}//
+      - FLOWER_PORT=5555
+      - FLOWER_URL_PREFIX=/flower
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    expose:
+      - 5555
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
   webserver:
     image: iplweb/bpp_webserver:${DOCKER_VERSION:-latest}
     build:
@@ -382,6 +402,7 @@ services:
       RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: >-
         -rabbit log_levels [{connection,error},{channel,error},{mirroring,error},{federation,error},{upgrade,error}]
         log [{console,[{level,error}]}]
+        -rabbitmq_management path_prefix "/rabbitmq"
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "ping"]
       start_period: 30s
@@ -392,12 +413,9 @@ services:
       - rabbitmq_data:/var/lib/rabbitmq
 
 volumes:
-  staticfiles:
   media:
   postgresql_data:
   redis_data:
-  rabbitmq_data: # RabbitMQ data persistence
-  ssl_certs:     # SSL certificates for production
-  backup:        # Backup storage (used by rclone)
-  rclone_config: # Rclone configuration
+  rabbitmq_data:
+  ssl_certs:
   grafana_data:
