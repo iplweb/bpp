@@ -6,6 +6,12 @@ upstream appserver_bpp {
     server appserver:8000;
 }
 
+# Lightweight auth server for nginx auth_request
+# Starts quickly (seconds) and validates Django sessions for protected services
+upstream authserver_bpp {
+    server authserver:8001;
+}
+
 # ============================================================================
 # HTTP SERVER BLOCKS
 # ============================================================================
@@ -127,10 +133,11 @@ server {
     # ============================================================================
     # EXTERNAL SERVICE AUTHENTICATION
     # ============================================================================
-    # Auth subrequest to BPP - validates superuser session
+    # Auth subrequest to lightweight auth server - validates superuser session
+    # Uses authserver (port 8001) which starts quickly, independent of main app
     location = /_bpp_superuser_auth {
         internal;
-        proxy_pass http://appserver_bpp/__external_auth/is_superuser/;
+        proxy_pass http://authserver_bpp/__external_auth/is_superuser/;
         proxy_pass_request_body off;
         proxy_set_header Content-Length "";
         proxy_set_header X-Original-URI $request_uri;
@@ -144,8 +151,21 @@ server {
     }
 
     # Login redirect handler for unauthorized access
+    # Redirects to authserver login (not main app) for faster response
+    # Uses absolute URL with $http_host to preserve port (Docker maps 10443->443 internally)
     location @bpp_login {
-        return 302 /accounts/login/?next=$scheme://$host$request_uri;
+        return 302 $scheme://$http_host/__external_auth/login/?next=$scheme://$http_host$request_uri;
+    }
+
+    # Route emergency auth endpoints to authserver
+    location /__external_auth/ {
+        proxy_pass http://authserver_bpp;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        # Required for Django CSRF validation on HTTPS
+        proxy_set_header Referer $http_referer;
     }
 
     # ============================================================================
@@ -222,6 +242,77 @@ server {
 
         # Pass to Dozzle (DOZZLE_BASE=/dozzle/ handles path rewriting)
         proxy_pass http://$upstream_dozzle:8080;
+
+        # Redirect to BPP login on auth failure
+        error_page 401 = @bpp_login;
+    }
+
+    # ============================================================================
+    # FLOWER PROXY (port 5555)
+    # ============================================================================
+    # Celery task monitoring dashboard
+    # Uses variables for hostname to defer DNS resolution to request time.
+    location /flower/ {
+        # Use Docker's internal DNS resolver (127.0.0.11)
+        resolver 127.0.0.11 valid=30s;
+        set $upstream_flower flower;
+
+        # Require superuser authentication from BPP
+        auth_request /_bpp_superuser_auth;
+
+        # Get user info from BPP response headers
+        auth_request_set $bpp_user  $upstream_http_x_webauth_user;
+        auth_request_set $bpp_email $upstream_http_x_webauth_email;
+        auth_request_set $bpp_name  $upstream_http_x_webauth_name;
+
+        # Override client headers with authenticated values
+        proxy_set_header X-WEBAUTH-USER  $bpp_user;
+        proxy_set_header X-WEBAUTH-EMAIL $bpp_email;
+        proxy_set_header X-WEBAUTH-NAME  $bpp_name;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Pass to Flower (FLOWER_URL_PREFIX=/flower handles path)
+        proxy_pass http://$upstream_flower:5555;
+
+        # Redirect to BPP login on auth failure
+        error_page 401 = @bpp_login;
+    }
+
+    # ============================================================================
+    # RABBITMQ MANAGEMENT PROXY (port 15672)
+    # ============================================================================
+    # RabbitMQ management dashboard
+    # Uses variables for hostname to defer DNS resolution to request time.
+    # Note: RabbitMQ management has its own auth after nginx auth
+    location /rabbitmq/ {
+        # Use Docker's internal DNS resolver (127.0.0.11)
+        resolver 127.0.0.11 valid=30s;
+        set $upstream_rabbitmq rabbitmq;
+
+        # Require superuser authentication from BPP
+        auth_request /_bpp_superuser_auth;
+
+        # Get user info from BPP response headers
+        auth_request_set $bpp_user  $upstream_http_x_webauth_user;
+        auth_request_set $bpp_email $upstream_http_x_webauth_email;
+        auth_request_set $bpp_name  $upstream_http_x_webauth_name;
+
+        # Override client headers with authenticated values
+        proxy_set_header X-WEBAUTH-USER  $bpp_user;
+        proxy_set_header X-WEBAUTH-EMAIL $bpp_email;
+        proxy_set_header X-WEBAUTH-NAME  $bpp_name;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Pass to RabbitMQ (path_prefix="/rabbitmq" configured in RabbitMQ)
+        proxy_pass http://$upstream_rabbitmq:15672;
 
         # Redirect to BPP login on auth failure
         error_page 401 = @bpp_login;

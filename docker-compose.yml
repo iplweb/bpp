@@ -87,7 +87,7 @@ services:
       - path: .env
         required: false
     environment:
-      - DJANGO_SETTINGS_MODULE=django_bpp.settings.local
+      - DJANGO_SETTINGS_MODULE=django_bpp.settings.docker
       - ENABLE_AUTORELOAD_ON_CODE_CHANGE=${ENABLE_AUTORELOAD_ON_CODE_CHANGE:-1}
       - DJANGO_BPP_CSRF_EXTRA_ORIGINS=https://bpp.localnet:10443,https://localhost:10443
     depends_on:
@@ -103,6 +103,45 @@ services:
       - ./src:/app/src
       - ./src/django_bpp/staticroot:/staticroot
       - media:/mediaroot
+
+  authserver:
+    # Lightweight auth server for nginx authentication
+    # Starts quickly (seconds) - no migrations, no collectstatic
+    # Used by nginx auth_request for Grafana, Dozzle, etc.
+    image: iplweb/bpp_authserver:${DOCKER_VERSION:-latest}
+    build:
+      context: .
+      dockerfile: deploy/authserver/Dockerfile
+      tags:
+        - iplweb/bpp_authserver:${DOCKER_VERSION:-latest}
+        - iplweb/bpp_authserver:latest
+      cache_from:
+        - type=registry,ref=iplweb/bpp_base:latest
+        - type=registry,ref=iplweb/bpp_authserver:latest
+      cache_to:
+        - type=inline
+    restart: always
+    env_file:
+      - path: .env.docker
+        required: true
+      - path: .env
+        required: false
+    environment:
+      - DJANGO_SETTINGS_MODULE=django_bpp.settings.auth_server
+      - DJANGO_BPP_CSRF_EXTRA_ORIGINS=https://bpp.localnet:10443,https://localhost:10443
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8001/health/"]
+      interval: 5s
+      timeout: 3s
+      start_period: 10s
+      retries: 3
+    volumes:
+      - ./src:/app/src
 
   workerserver-general:
     image: iplweb/bpp_workerserver:${DOCKER_VERSION:-latest}
@@ -233,6 +272,25 @@ services:
       workerserver-denorm:
         condition: service_healthy
 
+  flower:
+    image: mher/flower:2.0
+    container_name: flower_bpp
+    restart: always
+    environment:
+      - CELERY_BROKER_URL=amqp://${DJANGO_BPP_RABBITMQ_USER:-bpp}:${DJANGO_BPP_RABBITMQ_PASS:-bpp}@rabbitmq:${DJANGO_BPP_RABBITMQ_PORT:-5672}//
+      - FLOWER_PORT=5555
+      - FLOWER_URL_PREFIX=/flower
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    expose:
+      - 5555
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
   webserver:
     image: iplweb/bpp_webserver:${DOCKER_VERSION:-latest}
     build:
@@ -286,6 +344,7 @@ services:
         required: false
     environment:
       - GF_SERVER_SERVE_FROM_SUB_PATH=true
+      - GF_LOG_LEVEL=warn
       - GF_AUTH_PROXY_ENABLED=true
       - GF_AUTH_PROXY_HEADER_NAME=X-WEBAUTH-USER
       - GF_AUTH_PROXY_HEADER_PROPERTY=username
@@ -306,7 +365,7 @@ services:
       --server.http.listen-addr=0.0.0.0:12345
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - alloy_config:/etc/alloy:ro
+      - ./deploy/alloy/config.alloy:/etc/alloy/config.alloy:ro
     depends_on:
       - loki
 
@@ -343,6 +402,7 @@ services:
       RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: >-
         -rabbit log_levels [{connection,error},{channel,error},{mirroring,error},{federation,error},{upgrade,error}]
         log [{console,[{level,error}]}]
+        -rabbitmq_management path_prefix "/rabbitmq"
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "ping"]
       start_period: 30s
@@ -353,13 +413,9 @@ services:
       - rabbitmq_data:/var/lib/rabbitmq
 
 volumes:
-  staticfiles:
   media:
   postgresql_data:
   redis_data:
-  rabbitmq_data: # RabbitMQ data persistence
-  ssl_certs:     # SSL certificates for production
-  backup:        # Backup storage (used by rclone)
-  rclone_config: # Rclone configuration
+  rabbitmq_data:
+  ssl_certs:
   grafana_data:
-  alloy_config:

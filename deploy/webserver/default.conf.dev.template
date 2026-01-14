@@ -6,6 +6,12 @@ upstream appserver_bpp {
     server appserver:8000;
 }
 
+# Lightweight auth server for nginx auth_request
+# Starts quickly (seconds) and validates Django sessions for protected services
+upstream authserver_bpp {
+    server authserver:8001;
+}
+
 # ============================================================================
 # HTTP SERVER BLOCKS
 # ============================================================================
@@ -82,10 +88,11 @@ server {
     # ============================================================================
     # EXTERNAL SERVICE AUTHENTICATION
     # ============================================================================
-    # Auth subrequest to BPP - validates superuser session
+    # Auth subrequest to lightweight auth server - validates superuser session
+    # Uses authserver (port 8001) which starts quickly, independent of main app
     location = /_bpp_superuser_auth {
         internal;
-        proxy_pass http://appserver_bpp/__external_auth/is_superuser/;
+        proxy_pass http://authserver_bpp/__external_auth/is_superuser/;
         proxy_pass_request_body off;
         proxy_set_header Content-Length "";
         proxy_set_header X-Original-URI $request_uri;
@@ -99,8 +106,21 @@ server {
     }
 
     # Login redirect handler for unauthorized access
+    # Redirects to authserver login (not main app) for faster response
+    # Uses absolute URL with $http_host to preserve port (Docker maps 10443->443 internally)
     location @bpp_login {
-        return 302 /accounts/login/?next=$scheme://$host$request_uri;
+        return 302 $scheme://$http_host/__external_auth/login/?next=$scheme://$http_host$request_uri;
+    }
+
+    # Route emergency auth endpoints to authserver
+    location /__external_auth/ {
+        proxy_pass http://authserver_bpp;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        # Required for Django CSRF validation on HTTPS
+        proxy_set_header Referer $http_referer;
     }
 
     # ============================================================================
@@ -180,6 +200,62 @@ server {
         proxy_pass http://$upstream_dozzle:8080;
 
         # Redirect to BPP login on auth failure
+        error_page 401 = @bpp_login;
+    }
+
+    # ============================================================================
+    # FLOWER PROXY (port 5555)
+    # ============================================================================
+    # Celery task monitoring dashboard
+    location /flower/ {
+        resolver 127.0.0.11 valid=30s;
+        set $upstream_flower flower;
+
+        auth_request /_bpp_superuser_auth;
+
+        auth_request_set $bpp_user  $upstream_http_x_webauth_user;
+        auth_request_set $bpp_email $upstream_http_x_webauth_email;
+        auth_request_set $bpp_name  $upstream_http_x_webauth_name;
+
+        proxy_set_header X-WEBAUTH-USER  $bpp_user;
+        proxy_set_header X-WEBAUTH-EMAIL $bpp_email;
+        proxy_set_header X-WEBAUTH-NAME  $bpp_name;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        proxy_pass http://$upstream_flower:5555;
+
+        error_page 401 = @bpp_login;
+    }
+
+    # ============================================================================
+    # RABBITMQ MANAGEMENT PROXY (port 15672)
+    # ============================================================================
+    # RabbitMQ management dashboard
+    location /rabbitmq/ {
+        resolver 127.0.0.11 valid=30s;
+        set $upstream_rabbitmq rabbitmq;
+
+        auth_request /_bpp_superuser_auth;
+
+        auth_request_set $bpp_user  $upstream_http_x_webauth_user;
+        auth_request_set $bpp_email $upstream_http_x_webauth_email;
+        auth_request_set $bpp_name  $upstream_http_x_webauth_name;
+
+        proxy_set_header X-WEBAUTH-USER  $bpp_user;
+        proxy_set_header X-WEBAUTH-EMAIL $bpp_email;
+        proxy_set_header X-WEBAUTH-NAME  $bpp_name;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        proxy_pass http://$upstream_rabbitmq:15672;
+
         error_page 401 = @bpp_login;
     }
 
@@ -343,10 +419,11 @@ server {
     # ============================================================================
     # EXTERNAL SERVICE AUTHENTICATION
     # ============================================================================
-    # Auth subrequest to BPP - validates superuser session
+    # Auth subrequest to lightweight auth server - validates superuser session
+    # Uses authserver (port 8001) which starts quickly, independent of main app
     location = /_bpp_superuser_auth {
         internal;
-        proxy_pass http://appserver_bpp/__external_auth/is_superuser/;
+        proxy_pass http://authserver_bpp/__external_auth/is_superuser/;
         proxy_pass_request_body off;
         proxy_set_header Content-Length "";
         proxy_set_header X-Original-URI $request_uri;
@@ -360,8 +437,21 @@ server {
     }
 
     # Login redirect handler for unauthorized access
+    # Redirects to authserver login (not main app) for faster response
+    # Uses absolute URL with $http_host to preserve port (Docker maps 10443->443 internally)
     location @bpp_login {
-        return 302 /accounts/login/?next=$scheme://$host$request_uri;
+        return 302 $scheme://$http_host/__external_auth/login/?next=$scheme://$http_host$request_uri;
+    }
+
+    # Route emergency auth endpoints to authserver
+    location /__external_auth/ {
+        proxy_pass http://authserver_bpp;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        # Required for Django CSRF validation on HTTPS
+        proxy_set_header Referer $http_referer;
     }
 
     # ============================================================================
@@ -440,6 +530,62 @@ server {
         proxy_pass http://$upstream_dozzle:8080;
 
         # Redirect to BPP login on auth failure
+        error_page 401 = @bpp_login;
+    }
+
+    # ============================================================================
+    # FLOWER PROXY (port 5555)
+    # ============================================================================
+    # Celery task monitoring dashboard
+    location /flower/ {
+        resolver 127.0.0.11 valid=30s;
+        set $upstream_flower flower;
+
+        auth_request /_bpp_superuser_auth;
+
+        auth_request_set $bpp_user  $upstream_http_x_webauth_user;
+        auth_request_set $bpp_email $upstream_http_x_webauth_email;
+        auth_request_set $bpp_name  $upstream_http_x_webauth_name;
+
+        proxy_set_header X-WEBAUTH-USER  $bpp_user;
+        proxy_set_header X-WEBAUTH-EMAIL $bpp_email;
+        proxy_set_header X-WEBAUTH-NAME  $bpp_name;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        proxy_pass http://$upstream_flower:5555;
+
+        error_page 401 = @bpp_login;
+    }
+
+    # ============================================================================
+    # RABBITMQ MANAGEMENT PROXY (port 15672)
+    # ============================================================================
+    # RabbitMQ management dashboard
+    location /rabbitmq/ {
+        resolver 127.0.0.11 valid=30s;
+        set $upstream_rabbitmq rabbitmq;
+
+        auth_request /_bpp_superuser_auth;
+
+        auth_request_set $bpp_user  $upstream_http_x_webauth_user;
+        auth_request_set $bpp_email $upstream_http_x_webauth_email;
+        auth_request_set $bpp_name  $upstream_http_x_webauth_name;
+
+        proxy_set_header X-WEBAUTH-USER  $bpp_user;
+        proxy_set_header X-WEBAUTH-EMAIL $bpp_email;
+        proxy_set_header X-WEBAUTH-NAME  $bpp_name;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        proxy_pass http://$upstream_rabbitmq:15672;
+
         error_page 401 = @bpp_login;
     }
 

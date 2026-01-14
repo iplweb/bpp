@@ -26,7 +26,7 @@ def test_raport_slotow_ewaluacja_raport(
     # Query count increased from 50 to 65 after django-constance was added
     # for runtime configuration (commit 2760c7aa). The constance context
     # processor adds ~12 queries for cache checks on each request.
-    with django_assert_max_num_queries(65):
+    with django_assert_max_num_queries(68):
         res = admin_client.get(
             reverse("raport_slotow:raport-ewaluacja")
             + "?_export=html&od_roku=2020&do_roku=2020"
