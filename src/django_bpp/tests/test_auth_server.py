@@ -6,8 +6,8 @@ for protecting services like Grafana and Dozzle.
 """
 
 import pytest
+from django.contrib.auth.models import AnonymousUser
 from django.test import RequestFactory
-from django.urls import reverse
 
 
 def test_auth_server_settings_import():
@@ -20,31 +20,42 @@ def test_auth_server_settings_import():
     assert "bpp" in auth_server.INSTALLED_APPS
 
 
+def test_is_superuser_unauthenticated_returns_unauthorized():
+    """Unauthenticated requests should receive 401 Unauthorized."""
+    from django_bpp.views import is_superuser
+
+    rf = RequestFactory()
+    request = rf.get("/__external_auth/is_superuser/")
+    request.user = AnonymousUser()
+    response = is_superuser(request)
+
+    assert response.status_code == 401
+    assert response.content == b"unauthorized"
+
+
 @pytest.mark.django_db
-def test_is_superuser_unauthenticated_redirects_to_login(client):
-    """Unauthenticated requests should redirect to login."""
-    url = reverse("is_superuser")
-    response = client.get(url)
-
-    assert response.status_code == 302
-    assert "/accounts/login/" in response.url
-
-
-@pytest.mark.django_db
-def test_is_superuser_regular_user_gets_forbidden(logged_in_client):
+def test_is_superuser_regular_user_gets_forbidden(test_user):
     """Non-superuser should receive 403 Forbidden."""
-    url = reverse("is_superuser")
-    response = logged_in_client.get(url)
+    from django_bpp.views import is_superuser
+
+    rf = RequestFactory()
+    request = rf.get("/__external_auth/is_superuser/")
+    request.user = test_user
+    response = is_superuser(request)
 
     assert response.status_code == 403
     assert response.content == b"forbidden"
 
 
 @pytest.mark.django_db
-def test_is_superuser_superuser_gets_ok_with_headers(superuser_client, superuser):
+def test_is_superuser_superuser_gets_ok_with_headers(superuser):
     """Superuser should receive 200 OK with user headers."""
-    url = reverse("is_superuser")
-    response = superuser_client.get(url)
+    from django_bpp.views import is_superuser
+
+    rf = RequestFactory()
+    request = rf.get("/__external_auth/is_superuser/")
+    request.user = superuser
+    response = is_superuser(request)
 
     assert response.status_code == 200
     assert response.content == b"ok"
