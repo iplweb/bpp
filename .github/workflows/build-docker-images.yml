@@ -31,9 +31,18 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Get version from Makefile
+        id: version
+        run: echo "version=$(grep '^DOCKER_VERSION=' Makefile | cut -d'=' -f2)" >> $GITHUB_OUTPUT
+
       - name: Build Docker images in the Docker Build Cloud!
-        run: make build
-        env:
-          DOCKER_CACHE_TYPE: registry
-          PUSH_TO_REGISTRY: "true"
-          GIT_SHA: ${{ github.sha }}
+        run: |
+          docker buildx bake \
+            --file docker-bake.hcl \
+            --set 'DOCKER_VERSION=${{ steps.version.outputs.version }}' \
+            --set 'CACHE_TYPE=registry' \
+            --set 'PUSH=true' \
+            --set 'base.args.GIT_SHA=${{ github.sha }}' \
+            --set '*.platform=linux/amd64' \
+            --allow=fs.read=/tmp \
+            --allow=fs.write=/tmp
