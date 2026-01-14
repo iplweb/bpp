@@ -93,7 +93,9 @@
       "Bash(docker-compose down:*)",
       "Bash(docker compose exec:*)",
       "Bash(docker buildx:*)",
-      "Bash(sort:*)"
+      "Bash(sort:*)",
+      "Bash(git -C /Users/mpasternak/Programowanie/bpp log -10 --oneline --all -- '.github/workflows/build-docker-images.yml')",
+      "Bash(git -C /Users/mpasternak/Programowanie/bpp show bc0c9a5a:.github/workflows/build-docker-images.yml)"
     ],
     "deny": [],
     "ask": [],
