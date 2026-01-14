@@ -39,10 +39,11 @@ jobs:
         run: |
           docker buildx bake \
             --file docker-bake.hcl \
-            --set 'DOCKER_VERSION=${{ steps.version.outputs.version }}' \
-            --set 'CACHE_TYPE=registry' \
-            --set 'PUSH=true' \
             --set 'base.args.GIT_SHA=${{ github.sha }}' \
             --set '*.platform=linux/amd64' \
             --allow=fs.read=/tmp \
             --allow=fs.write=/tmp
+        env:
+          DOCKER_VERSION: ${{ steps.version.outputs.version }}
+          CACHE_TYPE: registry
+          PUSH: "true"
