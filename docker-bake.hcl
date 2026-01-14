@@ -26,6 +26,10 @@ variable "CACHE_TYPE" {
   default = "local"  # "local" or "registry"
 }
 
+variable "GIT_SHA" {
+  default = "unknown"
+}
+
 # Build groups for different scenarios
 group "default" {
   targets = ["dbserver", "webserver", "appserver", "workerserver",
@@ -48,6 +52,9 @@ group "app-services" {
 target "base" {
   dockerfile = "deploy/bpp_base/Dockerfile"
   context    = "."
+  args = {
+    GIT_SHA = GIT_SHA
+  }
   tags       = [
     "iplweb/bpp_base:${DOCKER_VERSION}",
     "iplweb/bpp_base:latest"

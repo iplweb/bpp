@@ -270,7 +270,7 @@ loc: clean
 	pygount -N ... -F "...,staticroot,migrations,fixtures" src --format=summary
 
 
-DOCKER_VERSION=202601.1317
+DOCKER_VERSION=202601.1318
 
 # Cache configuration for docker buildx bake
 # - local: use local cache (default for local builds)
@@ -299,6 +299,7 @@ BAKE_ARGS = --file docker-bake.hcl --set '*.platform=$(DOCKER_PLATFORM)' --allow
 # Export variables for bake (HCL variables read from environment)
 export DOCKER_VERSION
 export CACHE_TYPE := $(DOCKER_CACHE_TYPE)
+export GIT_SHA := $(shell git rev-parse --short HEAD)
 
 ifeq ($(PUSH_TO_REGISTRY),true)
 export PUSH := true
