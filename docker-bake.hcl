@@ -22,10 +22,6 @@ variable "PUSH" {
   default = false
 }
 
-variable "CACHE_TYPE" {
-  default = "local"  # "local" or "registry"
-}
-
 variable "GIT_SHA" {
   default = "unknown"
 }
@@ -61,16 +57,6 @@ target "base" {
   ]
   platforms = [PLATFORM]
   output    = PUSH ? ["type=registry"] : ["type=docker"]
-  cache-from = CACHE_TYPE == "registry" ? [
-    "type=registry,ref=iplweb/bpp_base:cache"
-  ] : [
-    "type=local,src=/tmp/.buildx-cache"
-  ]
-  cache-to = CACHE_TYPE == "registry" ? [
-    "type=registry,ref=iplweb/bpp_base:cache,mode=max"
-  ] : [
-    "type=local,dest=/tmp/.buildx-cache,mode=max"
-  ]
 }
 
 # Independent images - can build in parallel with base
@@ -83,16 +69,6 @@ target "dbserver" {
   ]
   platforms = [PLATFORM]
   output    = PUSH ? ["type=registry"] : ["type=docker"]
-  cache-from = CACHE_TYPE == "registry" ? [
-    "type=registry,ref=iplweb/bpp_dbserver:cache"
-  ] : [
-    "type=local,src=/tmp/.buildx-cache-dbserver"
-  ]
-  cache-to = CACHE_TYPE == "registry" ? [
-    "type=registry,ref=iplweb/bpp_dbserver:cache,mode=max"
-  ] : [
-    "type=local,dest=/tmp/.buildx-cache-dbserver,mode=max"
-  ]
 }
 
 target "webserver" {
@@ -104,16 +80,6 @@ target "webserver" {
   ]
   platforms = [PLATFORM]
   output    = PUSH ? ["type=registry"] : ["type=docker"]
-  cache-from = CACHE_TYPE == "registry" ? [
-    "type=registry,ref=iplweb/bpp_webserver:cache"
-  ] : [
-    "type=local,src=/tmp/.buildx-cache-webserver"
-  ]
-  cache-to = CACHE_TYPE == "registry" ? [
-    "type=registry,ref=iplweb/bpp_webserver:cache,mode=max"
-  ] : [
-    "type=local,dest=/tmp/.buildx-cache-webserver,mode=max"
-  ]
 }
 
 # Dependent images - wait for base to complete via contexts dependency
@@ -129,16 +95,6 @@ target "appserver" {
   ]
   platforms = [PLATFORM]
   output    = PUSH ? ["type=registry"] : ["type=docker"]
-  cache-from = CACHE_TYPE == "registry" ? [
-    "type=registry,ref=iplweb/bpp_appserver:cache"
-  ] : [
-    "type=local,src=/tmp/.buildx-cache-appserver"
-  ]
-  cache-to = CACHE_TYPE == "registry" ? [
-    "type=registry,ref=iplweb/bpp_appserver:cache,mode=max"
-  ] : [
-    "type=local,dest=/tmp/.buildx-cache-appserver,mode=max"
-  ]
 }
 
 target "workerserver" {
@@ -153,16 +109,6 @@ target "workerserver" {
   ]
   platforms = [PLATFORM]
   output    = PUSH ? ["type=registry"] : ["type=docker"]
-  cache-from = CACHE_TYPE == "registry" ? [
-    "type=registry,ref=iplweb/bpp_workerserver:cache"
-  ] : [
-    "type=local,src=/tmp/.buildx-cache-workerserver"
-  ]
-  cache-to = CACHE_TYPE == "registry" ? [
-    "type=registry,ref=iplweb/bpp_workerserver:cache,mode=max"
-  ] : [
-    "type=local,dest=/tmp/.buildx-cache-workerserver,mode=max"
-  ]
 }
 
 target "beatserver" {
@@ -177,16 +123,6 @@ target "beatserver" {
   ]
   platforms = [PLATFORM]
   output    = PUSH ? ["type=registry"] : ["type=docker"]
-  cache-from = CACHE_TYPE == "registry" ? [
-    "type=registry,ref=iplweb/bpp_beatserver:cache"
-  ] : [
-    "type=local,src=/tmp/.buildx-cache-beatserver"
-  ]
-  cache-to = CACHE_TYPE == "registry" ? [
-    "type=registry,ref=iplweb/bpp_beatserver:cache,mode=max"
-  ] : [
-    "type=local,dest=/tmp/.buildx-cache-beatserver,mode=max"
-  ]
 }
 
 target "authserver" {
@@ -201,16 +137,6 @@ target "authserver" {
   ]
   platforms = [PLATFORM]
   output    = PUSH ? ["type=registry"] : ["type=docker"]
-  cache-from = CACHE_TYPE == "registry" ? [
-    "type=registry,ref=iplweb/bpp_authserver:cache"
-  ] : [
-    "type=local,src=/tmp/.buildx-cache-authserver"
-  ]
-  cache-to = CACHE_TYPE == "registry" ? [
-    "type=registry,ref=iplweb/bpp_authserver:cache,mode=max"
-  ] : [
-    "type=local,dest=/tmp/.buildx-cache-authserver,mode=max"
-  ]
 }
 
 target "denorm-queue" {
@@ -225,14 +151,4 @@ target "denorm-queue" {
   ]
   platforms = [PLATFORM]
   output    = PUSH ? ["type=registry"] : ["type=docker"]
-  cache-from = CACHE_TYPE == "registry" ? [
-    "type=registry,ref=iplweb/bpp_denorm_queue:cache"
-  ] : [
-    "type=local,src=/tmp/.buildx-cache-denorm-queue"
-  ]
-  cache-to = CACHE_TYPE == "registry" ? [
-    "type=registry,ref=iplweb/bpp_denorm_queue:cache,mode=max"
-  ] : [
-    "type=local,dest=/tmp/.buildx-cache-denorm-queue,mode=max"
-  ]
 }
