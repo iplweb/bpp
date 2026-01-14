@@ -38,6 +38,10 @@ RUN --mount=type=cache,target=/root/.npm,id=npm-cache \
     npx yarn install --dev --ignore-optional && \
     npx yarn add grunt
 
+# Cache-busting: GIT_SHA changes with each commit, invalidating source code cache
+ARG GIT_SHA=unknown
+RUN echo "Building from git commit: ${GIT_SHA}"
+
 COPY . .
 
 RUN npx grunt build-non-interactive

@@ -299,6 +299,7 @@ BAKE_ARGS = --file docker-bake.hcl --set '*.platform=$(DOCKER_PLATFORM)' --allow
 # Export variables for bake (HCL variables read from environment)
 export DOCKER_VERSION
 export CACHE_TYPE := $(DOCKER_CACHE_TYPE)
+export GIT_SHA := $(shell git rev-parse --short HEAD)
 
 ifeq ($(PUSH_TO_REGISTRY),true)
 export PUSH := true
