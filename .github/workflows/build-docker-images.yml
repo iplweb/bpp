@@ -35,7 +35,20 @@ jobs:
         id: version
         run: echo "version=$(grep '^DOCKER_VERSION=' Makefile | cut -d'=' -f2)" >> $GITHUB_OUTPUT
 
-      - name: Build Docker images in the Docker Build Cloud!
+      - name: Build and push base image first
+        run: |
+          docker buildx bake base \
+            --file docker-bake.hcl \
+            --no-cache \
+            --set 'base.args.GIT_SHA=${{ github.sha }}' \
+            --set '*.platform=linux/amd64' \
+            --allow=fs.read=/tmp \
+            --allow=fs.write=/tmp
+        env:
+          DOCKER_VERSION: ${{ steps.version.outputs.version }}
+          PUSH: "true"
+
+      - name: Build and push dependent images
         run: |
           docker buildx bake \
             --file docker-bake.hcl \
