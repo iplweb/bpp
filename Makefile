@@ -270,7 +270,7 @@ loc: clean
 	pygount -N ... -F "...,staticroot,migrations,fixtures" src --format=summary
 
 
-DOCKER_VERSION=202601.1318
+DOCKER_VERSION=202601.1319
 
 # Cache configuration for docker buildx bake
 # - local: use local cache (default for local builds)
