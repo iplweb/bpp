@@ -51,8 +51,8 @@ jobs:
       - name: Build and push dependent images
         run: |
           docker buildx bake \
+            dbserver webserver appserver workerserver beatserver authserver denorm-queue \
             --file docker-bake.hcl \
-            --set 'base.args.GIT_SHA=${{ github.sha }}' \
             --set '*.platform=linux/amd64' \
             --allow=fs.read=/tmp \
             --allow=fs.write=/tmp
