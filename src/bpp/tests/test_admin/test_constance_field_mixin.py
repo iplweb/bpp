@@ -207,7 +207,7 @@ class TestConstanceAdminIntegration:
         # Sprawdź że admin ma metodę has_module_permission
         assert hasattr(admin_class, "has_module_permission")
 
-    def test_constance_admin_page_loads(self, superuser_client):
+    def test_constance_admin_page_loads(self, superuser_client, constance_cache_warmed_up):
         """Sprawdza, że strona /admin/constance/ ładuje się bez błędów."""
         response = superuser_client.get("/admin/constance/")
         assert response.status_code == 200

@@ -26,7 +26,7 @@ def test_import_session_admin_renders_with_compression_enabled(admin_client):
         "pbn_import.ImportSession",
         status="pending",
         current_step="initial",
-        progress_percentage=0,
+        current_step_progress=0,
     )
 
     # Get the admin changelist URL for ImportSession
@@ -63,7 +63,7 @@ def test_import_session_admin_detail_renders_with_compression(admin_client):
         "pbn_import.ImportSession",
         status="running",
         current_step="importing_authors",
-        progress_percentage=45,
+        current_step_progress=45,
         error_message="",
     )
 
