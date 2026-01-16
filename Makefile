@@ -29,7 +29,7 @@
 
 BRANCH=`git branch | sed -n '/\* /s///p'`
 
-.PHONY: clean distclean tests release tests-without-playwright tests-only-playwright docker destroy-test-databases coveralls-upload clean-coverage combine-coverage cache-delete buildx-cache-stats buildx-cache-prune buildx-cache-prune-aggressive buildx-cache-prune-registry buildx-cache-export buildx-cache-import buildx-cache-list bump-dev bump-release bump-and-start-dev migrate new-worktree clean-worktree generate-500-page build build-force build-base build-independent build-app-services build-dbserver build-webserver build-appserver-base build-appserver build-workerserver build-beatserver build-authserver build-denorm-queue build-servers
+.PHONY: clean distclean tests release tests-without-playwright tests-only-playwright docker destroy-test-databases coveralls-upload clean-coverage combine-coverage cache-delete buildx-cache-stats buildx-cache-prune buildx-cache-prune-aggressive buildx-cache-prune-registry buildx-cache-export buildx-cache-import buildx-cache-list bump-dev bump-release bump-and-start-dev migrate new-worktree clean-worktree generate-500-page build build-force build-base build-independent build-app-services build-dbserver build-webserver build-appserver-base build-appserver build-workerserver build-beatserver build-authserver build-denorm-queue build-servers check-clean-tree
 
 PYTHON=python3
 
@@ -230,7 +230,13 @@ generate-500-page:
 
 new-release: uv-lock upgrade-version sleep-3 gh-run-watch-docker-images
 
-release: full-tests new-release
+check-clean-tree:
+	@if [ -n "$$(git status --porcelain)" ]; then \
+		echo "Error: Working tree is dirty. Commit or stash changes before releasing."; \
+		exit 1; \
+	fi
+
+release: check-clean-tree full-tests new-release
 
 set-version-from-vcs:
 	$(eval CUR_VERSION_VCS=$(shell git describe | sed s/\-/\./ | sed s/\-/\+/))
