@@ -130,7 +130,7 @@ env = environ.Env(
     #
     # Konfiguracja usług Google
     #
-    DJANGO_BPP_GOOGLE_ANALYTICS_PROPERTY_ID=(str, None),
+    DJANGO_BPP_GOOGLE_ANALYTICS_PROPERTY_ID=(str, ""),
     DJANGO_BPP_GOOGLE_VERIFICATION_CODE=(str, "1111111111111111"),
     #
     # Konfiguracja widoczności opcji "Oświadczenie KEN"
