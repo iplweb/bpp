@@ -183,7 +183,7 @@ tests: destroy-test-databases clean-coverage tests-without-playwright tests-only
 destroy-test-databases:
 	-./bin/drop-test-databases.sh
 
-full-tests: destroy-test-databases clean-coverage tests-with-microsoft-auth destroy-test-databases tests-without-playwright tests-only-playwright combine-coverage js-tests coveralls-upload
+full-tests: destroy-test-databases clean-coverage tests-with-microsoft-auth destroy-test-databases tests-without-playwright tests-only-playwright js-tests
 
 
 integration-start-from-match:

@@ -12,6 +12,8 @@ BPP (Bibliografia Publikacji Pracowników) is a Polish academic bibliography man
 **Python Requirements:**
 - Python version: >=3.10,<3.15 (configured in pyproject.toml)
 
+For detailed architecture documentation, see [docs/CODEBASE_MAP.md](docs/CODEBASE_MAP.md).
+
 ## General rule
 
 **CRITICAL: if anything seems unclear, feel free to ask questions before taking on any non-trivial tasks or creating a plan.**

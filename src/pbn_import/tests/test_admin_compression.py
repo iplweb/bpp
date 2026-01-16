@@ -38,9 +38,10 @@ def test_import_session_admin_renders_with_compression_enabled(admin_client):
 
     # Assert successful render
     assert response.status_code == 200
+    # Check for Polish text "Sesja importu" (the admin is in Polish)
     assert (
-        b"Import Sessions" in response.content
-        or b"import session" in response.content.lower()
+        b"Sesja importu" in response.content
+        or b"sesja importu" in response.content.lower()
     )
 
 
