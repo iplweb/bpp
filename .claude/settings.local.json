@@ -99,7 +99,8 @@
       "mcp__rollbar__get-item-details",
       "mcp__freshdesk-mcp__get_tickets",
       "mcp__freshdesk-mcp__search_tickets",
-      "Bash(wc:*)"
+      "Bash(wc:*)",
+      "WebFetch(domain:pbn.nauka.gov.pl)"
     ],
     "deny": [],
     "ask": [],

@@ -5,6 +5,7 @@ from datetime import date
 
 from bpp.models import (
     Czas_Udostepnienia_OpenAccess,
+    Dyscyplina_Naukowa,
     Jezyk,
     Licencja_OpenAccess,
     ModelZOpenAccess,
@@ -89,8 +90,17 @@ def przetworz_slowa_kluczowe(pbn_keywords_pl, pbn_keywords_en, ret):
         ret.slowa_kluczowe_eng = pbn_keywords_en
 
 
-def pobierz_lub_utworz_zrodlo(pbn_zrodlo_id, client):
-    """Get or create journal source (zrodlo)."""
+def pobierz_lub_utworz_zrodlo(
+    pbn_zrodlo_id, client, rodzaj_periodyk=None, dyscypliny_cache=None
+):
+    """Get or create journal source (zrodlo).
+
+    Args:
+        pbn_zrodlo_id: PBN journal ID
+        client: PBN API client
+        rodzaj_periodyk: Optional Rodzaj_Zrodla instance for "periodyk"
+        dyscypliny_cache: Optional dict mapping discipline names to objects
+    """
     # Import here to avoid circular imports
     from .sources import dopisz_jedno_zrodlo
 
@@ -106,7 +116,14 @@ def pobierz_lub_utworz_zrodlo(pbn_zrodlo_id, client):
     except Zrodlo.DoesNotExist:
         res = client.get_journal_by_id(pbn_zrodlo_id)
         pbn_journal = zapisz_mongodb(res, Journal, client)
-        dopisz_jedno_zrodlo(pbn_journal)
+
+        # Create cache locally if not provided
+        if rodzaj_periodyk is None:
+            rodzaj_periodyk = Rodzaj_Zrodla.objects.get(nazwa="periodyk")
+        if dyscypliny_cache is None:
+            dyscypliny_cache = {d.nazwa: d for d in Dyscyplina_Naukowa.objects.all()}
+
+        dopisz_jedno_zrodlo(pbn_journal, rodzaj_periodyk, dyscypliny_cache)
         return Zrodlo.objects.get(pbn_uid_id=pbn_zrodlo_id)
 
 

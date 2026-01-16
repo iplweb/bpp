@@ -46,6 +46,13 @@ class OswiadczeniaInstytucjiGetter(ThreadedPageGetter):
         zapisz_oswiadczenie_instytucji(elem, None, client=self.client)
 
 
+class PublikacjeInstytucjiV2Getter(ThreadedPageGetter):
+    """Threaded getter for institution publications v2."""
+
+    def process_element(self, elem):
+        zapisz_publikacje_instytucji_v2(self.client, elem)
+
+
 def pobierz_prace(client: PBNClient):
     """Fetch active publications from PBN.
 
@@ -60,7 +67,7 @@ def pobierz_prace(client: PBNClient):
 
 
 def pobierz_publikacje_z_instytucji(
-    client: PBNClient, callback=None, use_threads=True, no_threads=8
+    client: PBNClient, callback=None, use_threads=True, no_threads=24
 ):
     """Fetch institution publications from PBN.
 
@@ -72,7 +79,7 @@ def pobierz_publikacje_z_instytucji(
     """
     if use_threads:
         # Use threaded version for better performance
-        data = client.get_institution_publications(page_size=2000)
+        data = client.get_institution_publications(page_size=10)
 
         threaded_page_getter(
             client,
@@ -118,15 +125,34 @@ def zapisz_publikacje_instytucji_v2(client: PBNClient, elem: dict):
     )
 
 
-def pobierz_publikacje_z_instytucji_v2(client: PBNClient):
+def pobierz_publikacje_z_instytucji_v2(
+    client: PBNClient, callback=None, use_threads=True, no_threads=8
+):
     """Fetch institution publications v2 from PBN.
 
     Args:
-        client: PBN client.
+        client: PBN API client.
+        callback: Optional progress callback for database tracking.
+        use_threads: Whether to use threading (default: True).
+        no_threads: Number of threads to use (default: 8).
     """
-    res = client.get_institution_publications_v2()
-    for elem in tqdm(res, total=res.count()):
-        zapisz_publikacje_instytucji_v2(client, elem)
+    if use_threads:
+        # Use threaded version for better performance
+        data = client.get_institution_publications_v2()
+
+        threaded_page_getter(
+            client,
+            data,
+            klass=PublikacjeInstytucjiV2Getter,
+            label="Pobieranie publikacji instytucji v2",
+            no_threads=no_threads,
+            callback=callback,
+        )
+    else:
+        # Fall back to single-threaded version if needed
+        res = client.get_institution_publications_v2()
+        for elem in tqdm(res, total=res.count()):
+            zapisz_publikacje_instytucji_v2(client, elem)
 
 
 def pobierz_oswiadczenia_z_instytucji(

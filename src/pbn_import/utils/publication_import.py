@@ -1,8 +1,10 @@
 """Publication import utilities"""
 
 from bpp.models import (
+    Dyscyplina_Naukowa,
     Jednostka,
     Rekord,
+    Rodzaj_Zrodla,
     Uczelnia,
     Wersja_Tekstu_OpenAccess,
     Wydawnictwo_Ciagle,
@@ -13,7 +15,7 @@ from pbn_integrator.importer import importuj_publikacje_po_pbn_uid_id
 from pbn_integrator.utils import (
     integruj_publikacje_instytucji,
     pobierz_publikacje_z_instytucji,
-    zapisz_publikacje_instytucji_v2,
+    pobierz_publikacje_z_instytucji_v2,
 )
 
 from .base import CancelledException, ImportStepBase
@@ -224,6 +226,10 @@ class PublicationImporter(ImportStepBase):
         total = chciane.count()
         self.log("info", f"Znaleziono {total} publikacji do importu")
 
+        # Create cache ONCE before loop
+        rodzaj_periodyk = Rodzaj_Zrodla.objects.get(nazwa="periodyk")
+        dyscypliny_cache = {d.nazwa: d for d in Dyscyplina_Naukowa.objects.all()}
+
         # Create subtask progress callback for import phase
         import_callback = self.create_subtask_progress(
             "Importowanie publikacji do bazy"
@@ -256,6 +262,8 @@ class PublicationImporter(ImportStepBase):
                     pbn_publication.mongoId,
                     client=self.client,
                     default_jednostka=self.default_jednostka,
+                    rodzaj_periodyk=rodzaj_periodyk,
+                    dyscypliny_cache=dyscypliny_cache,
                 )
                 if ret:
                     imported_count += 1
@@ -273,46 +281,12 @@ class PublicationImporter(ImportStepBase):
         )
 
     def _download_publications_v2_with_callback(self, callback):
-        """Download publications v2 with progress tracking"""
-        from bpp.util import pbar
-
-        # Get the result object from the API
-        res = self.client.get_institution_publications_v2()
-        total = res.count()
-
-        self.log("info", f"Znaleziono {total} publikacji w wersji 2 API")
-
-        # Process publications with progress tracking
-        downloaded_count = 0
-        failed_count = 0
-
-        # Use pbar for consistent progress tracking
-        for i, elem in enumerate(
-            pbar(res, count=total, label="Pobieranie publikacji v2", callback=callback)
-        ):
-            # Check cancellation every 10 items
-            if i % 10 == 0:
-                if self.check_cancelled():
-                    self.log(
-                        "warning",
-                        f"Pobieranie v2 anulowane po {downloaded_count} publikacjach",
-                    )
-                    raise CancelledException("Import został anulowany")
-
-            try:
-                zapisz_publikacje_instytucji_v2(self.client, elem)
-                downloaded_count += 1
-            except Exception as e:
-                failed_count += 1
-                self.handle_error(
-                    e,
-                    f"Nie udało się zapisać publikacji v2: {elem.get('id', 'unknown')}",
-                )
-                # Continue with next publication
-
-        self.log(
-            "info",
-            f"Pobrano {downloaded_count} publikacji v2, {failed_count} niepowodzeń",
+        """Download publications v2 with progress tracking using parallel threads."""
+        # Use threaded download for better performance
+        pobierz_publikacje_z_instytucji_v2(
+            self.client,
+            callback=callback,
+            use_threads=True,
         )
 
     def import_single_publication(self, pbn_uid_id):

@@ -100,8 +100,10 @@ def importuj_rozdzial(
         tytul_oryginalny=pbn_json.pop("title"),
         isbn=wydawnictwo_nadrzedne.isbn,
         rok=rok,
-        strony=pbn_json.pop("pagesFromTo", pbn_chapter_json.pop("pagesFromTo", None)),
-        public_www=pbn_chapter_json.pop("publicUri", pbn_json.pop("publicUri", None)),
+        strony=pbn_json.pop("pagesFromTo", pbn_chapter_json.pop("pagesFromTo", None))
+        or "",
+        public_www=pbn_chapter_json.pop("publicUri", pbn_json.pop("publicUri", None))
+        or "",
         wydawca=wydawca,
         wydawnictwo_nadrzedne=wydawnictwo_nadrzedne,
         jezyk=Jezyk.objects.get(

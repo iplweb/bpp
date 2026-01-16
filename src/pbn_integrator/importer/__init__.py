@@ -6,7 +6,7 @@ in importer.py are re-exported here.
 
 from tqdm import tqdm
 
-from bpp.models import Jednostka, Rekord
+from bpp.models import Dyscyplina_Naukowa, Jednostka, Rekord, Rodzaj_Zrodla
 from pbn_api.client import PBNClient
 from pbn_api.models import Publication
 
@@ -44,7 +44,12 @@ from .sources import dopisz_jedno_zrodlo, importuj_zrodla
 
 
 def importuj_publikacje_po_pbn_uid_id(
-    pbn_uid_id, client: PBNClient, default_jednostka: Jednostka, force=False
+    pbn_uid_id,
+    client: PBNClient,
+    default_jednostka: Jednostka,
+    force=False,
+    rodzaj_periodyk=None,
+    dyscypliny_cache=None,
 ):
     """Importuje publikację z PBN do BPP.
 
@@ -54,6 +59,8 @@ def importuj_publikacje_po_pbn_uid_id(
         default_jednostka: Domyślna jednostka dla autorów
         force: Jeśli True, tworzy nowy rekord nawet jeśli publikacja
                z tym pbn_uid_id już istnieje w BPP
+        rodzaj_periodyk: Optional Rodzaj_Zrodla instance for "periodyk"
+        dyscypliny_cache: Optional dict mapping discipline names to objects
     """
     pbn_publication = get_or_download_publication(pbn_uid_id, client)
 
@@ -97,6 +104,8 @@ def importuj_publikacje_po_pbn_uid_id(
                 default_jednostka=default_jednostka,
                 client=client,
                 force=force,
+                rodzaj_periodyk=rodzaj_periodyk,
+                dyscypliny_cache=dyscypliny_cache,
             )
         case _:
             raise NotImplementedError(f"Nie obsluze {cv['object']['type']}")
@@ -113,9 +122,17 @@ def importuj_publikacje_instytucji(
     if pbn_uid_id:
         chciane = chciane.filter(pk=pbn_uid_id)
 
+    # Create cache ONCE before loop
+    rodzaj_periodyk = Rodzaj_Zrodla.objects.get(nazwa="periodyk")
+    dyscypliny_cache = {d.nazwa: d for d in Dyscyplina_Naukowa.objects.all()}
+
     for pbn_publication in tqdm(chciane):
         ret = importuj_publikacje_po_pbn_uid_id(
-            pbn_publication.mongoId, client=client, default_jednostka=default_jednostka
+            pbn_publication.mongoId,
+            client=client,
+            default_jednostka=default_jednostka,
+            rodzaj_periodyk=rodzaj_periodyk,
+            dyscypliny_cache=dyscypliny_cache,
         )
 
         if pbn_uid_id:
