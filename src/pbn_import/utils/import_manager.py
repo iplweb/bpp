@@ -51,138 +51,141 @@ class ImportManager:
         # Check PBN authorization status
         self._check_pbn_authorization()
 
+    def _add_step_if_enabled(self, steps, config_key, step_def):
+        """Add step to list if not disabled in config"""
+        if not self.config.get(config_key):
+            steps.append(step_def)
+
     def _initialize_steps(self) -> list[dict[str, Any]]:
         """Initialize and return list of import steps"""
         steps = []
 
-        # Initial setup (always required)
-        if not self.config.get("disable_initial"):
-            steps.append(
-                {
-                    "name": "initial_setup",
-                    "display": "Konfiguracja początkowa",
-                    "class": InitialSetup,
-                    "args": {},
-                    "required": True,
-                }
-            )
+        self._add_step_if_enabled(
+            steps,
+            "disable_initial",
+            {
+                "name": "initial_setup",
+                "display": "Konfiguracja początkowa",
+                "class": InitialSetup,
+                "args": {},
+                "required": True,
+            },
+        )
 
-        # Institution setup
-        if not self.config.get("disable_institutions"):
-            steps.append(
-                {
-                    "name": "institution_setup",
-                    "display": "Konfiguracja jednostek",
-                    "class": InstitutionImporter,
-                    "args": {
-                        "wydzial_domyslny": self.config.get(
-                            "wydzial_domyslny", "Wydział Domyślny"
-                        ),
-                        "wydzial_domyslny_skrot": self.config.get(
-                            "wydzial_domyslny_skrot"
-                        ),
-                    },
-                    "required": True,
-                }
-            )
+        self._add_step_if_enabled(
+            steps,
+            "disable_institutions",
+            {
+                "name": "institution_setup",
+                "display": "Konfiguracja jednostek",
+                "class": InstitutionImporter,
+                "args": {
+                    "wydzial_domyslny": self.config.get(
+                        "wydzial_domyslny", "Wydział Domyślny"
+                    ),
+                    "wydzial_domyslny_skrot": self.config.get("wydzial_domyslny_skrot"),
+                },
+                "required": True,
+            },
+        )
 
-        # Sources
-        if not self.config.get("disable_zrodla"):
-            steps.append(
-                {
-                    "name": "source_import",
-                    "display": "Import źródeł",
-                    "class": SourceImporter,
-                    "args": {},
-                    "required": False,
-                }
-            )
+        self._add_step_if_enabled(
+            steps,
+            "disable_zrodla",
+            {
+                "name": "source_import",
+                "display": "Import źródeł",
+                "class": SourceImporter,
+                "args": {},
+                "required": False,
+            },
+        )
 
-        # Publishers
-        if not self.config.get("disable_wydawcy"):
-            steps.append(
-                {
-                    "name": "publisher_import",
-                    "display": "Import wydawców",
-                    "class": PublisherImporter,
-                    "args": {},
-                    "required": False,
-                }
-            )
+        self._add_step_if_enabled(
+            steps,
+            "disable_wydawcy",
+            {
+                "name": "publisher_import",
+                "display": "Import wydawców",
+                "class": PublisherImporter,
+                "args": {},
+                "required": False,
+            },
+        )
 
-        # Conferences
-        if not self.config.get("disable_konferencje"):
-            steps.append(
-                {
-                    "name": "conference_import",
-                    "display": "Import konferencji",
-                    "class": ConferenceImporter,
-                    "args": {},
-                    "required": False,
-                }
-            )
+        self._add_step_if_enabled(
+            steps,
+            "disable_konferencje",
+            {
+                "name": "conference_import",
+                "display": "Import konferencji",
+                "class": ConferenceImporter,
+                "args": {},
+                "required": False,
+            },
+        )
 
-        # Authors
-        if not self.config.get("disable_autorzy"):
-            steps.append(
-                {
-                    "name": "author_import",
-                    "display": "Import autorów",
-                    "class": AuthorImporter,
-                    "args": {},
-                    "required": False,
-                }
-            )
+        self._add_step_if_enabled(
+            steps,
+            "disable_autorzy",
+            {
+                "name": "author_import",
+                "display": "Import autorów",
+                "class": AuthorImporter,
+                "args": {},
+                "required": False,
+            },
+        )
 
-        # Publications
-        if not self.config.get("disable_publikacje"):
-            steps.append(
-                {
-                    "name": "publication_import",
-                    "display": "Import publikacji",
-                    "class": PublicationImporter,
-                    "args": {
-                        "delete_existing": self.config.get("delete_existing", False),
-                    },
-                    "required": False,
-                }
-            )
+        self._add_step_if_enabled(
+            steps,
+            "disable_publikacje",
+            {
+                "name": "publication_import",
+                "display": "Import publikacji",
+                "class": PublicationImporter,
+                "args": {
+                    "delete_existing": self.config.get("delete_existing", False),
+                },
+                "required": False,
+            },
+        )
 
-        # Data Integration - integrate new data after publication import
-        if not self.config.get("disable_integracja"):
-            steps.append(
-                {
-                    "name": "data_integration",
-                    "display": "Integruj nowe dane",
-                    "class": DataIntegrator,
-                    "args": {},
-                    "required": False,
-                }
-            )
+        self._add_step_if_enabled(
+            steps,
+            "disable_integracja",
+            {
+                "name": "data_integration",
+                "display": "Integruj nowe dane",
+                "class": DataIntegrator,
+                "args": {},
+                "required": False,
+            },
+        )
 
-        # Statements
-        if not self.config.get("disable_oswiadczenia"):
-            steps.append(
-                {
-                    "name": "statement_import",
-                    "display": "Import oświadczeń",
-                    "class": StatementImporter,
-                    "args": {},
-                    "required": False,
-                }
-            )
+        self._add_step_if_enabled(
+            steps,
+            "disable_oswiadczenia",
+            {
+                "name": "statement_import",
+                "display": "Import oświadczeń",
+                "class": StatementImporter,
+                "args": {},
+                "required": False,
+            },
+        )
 
-        # Fees
-        if not self.config.get("disable_oplaty"):
-            steps.append(
-                {
-                    "name": "fee_import",
-                    "display": "Import opłat",
-                    "class": FeeImporter,
-                    "args": {},
-                    "required": False,
-                }
-            )
+        self._add_step_if_enabled(
+            steps,
+            "disable_oplaty",
+            {
+                "name": "fee_import",
+                "display": "Import opłat",
+                "class": FeeImporter,
+                "args": {},
+                "required": False,
+            },
+        )
 
         return steps
 
@@ -263,6 +266,209 @@ class ImportManager:
         # Fallback to string representation
         return str(exception)
 
+    def _validate_pbn_authorization(self):
+        """Validate PBN authorization before starting import"""
+        needs_pbn = any(
+            step["name"] not in ["initial_setup", "institution_setup"]
+            for step in self.steps
+        )
+
+        if needs_pbn and not self.pbn_authorized:
+            error_msg = self.pbn_error_message or "Import wymaga autoryzacji PBN"
+            ImportLog.objects.create(
+                session=self.session,
+                level="critical",
+                step="Authorization Check",
+                message=error_msg,
+            )
+            raise Exception(error_msg)
+
+    def _check_cancellation(self, results):
+        """Check if import was cancelled and return early if so"""
+        self.session.refresh_from_db()
+        if self.session.status == "cancelled":
+            ImportLog.objects.create(
+                session=self.session,
+                level="warning",
+                step="Cancellation",
+                message="Import został anulowany przez użytkownika",
+            )
+            logger.warning(f"Import {self.session.id} został anulowany")
+            return {"success": False, "cancelled": True, "results": results}
+        return None
+
+    def _should_skip_step(self, step_config, results):
+        """Check if step should be skipped due to PBN auth"""
+        if not self.pbn_authorized and step_config["name"] not in [
+            "initial_setup",
+            "institution_setup",
+        ]:
+            logger.warning(
+                f"Pomijanie kroku {step_config['display']} - brak autoryzacji PBN"
+            )
+            results[step_config["name"]] = {
+                "error": "Brak autoryzacji PBN",
+                "skipped": True,
+            }
+            return True
+        return False
+
+    def _handle_step_error(
+        self, e, step_config, results, has_errors, critical_error, tb_string
+    ):
+        """Handle errors that occur during step execution"""
+        error_msg = self._extract_error_message(e)
+        logger.error(f"Krok {step_config['name']} nie powiódł się: {error_msg}")
+
+        rollbar.report_exc_info(
+            sys.exc_info(),
+            extra_data={
+                "step": step_config["name"],
+                "session_id": self.session.id,
+                "required": step_config.get("required", False),
+                "layer": "ImportManager",
+            },
+        )
+
+        tb_string = traceback.format_exc()
+
+        if hasattr(e, "content") or "403" in str(e) or "Forbidden" in error_msg:
+            has_errors = True
+            critical_error = error_msg
+            results[step_config["name"]] = {
+                "error": error_msg,
+                "skipped": False,
+                "critical": True,
+            }
+            return has_errors, critical_error, tb_string, True, None
+
+        if step_config.get("required"):
+            has_errors = True
+            critical_error = error_msg
+            return has_errors, critical_error, tb_string, False, None
+
+        has_errors = True
+        results[step_config["name"]] = {
+            "error": error_msg,
+            "skipped": False,
+        }
+        return has_errors, critical_error, tb_string, False, None
+
+    def _execute_step(
+        self, idx, step_config, results, has_errors, critical_error, tb_string
+    ):
+        """Execute a single import step"""
+        step_class = step_config["class"]
+        step = step_class(
+            session=self.session, client=self.client, **step_config["args"]
+        )
+
+        logger.info(
+            f"Uruchamianie kroku {idx + 1}/{len(self.steps)}: {step_config['display']}"
+        )
+
+        try:
+            result = step()
+            results[step_config["name"]] = result
+            return has_errors, critical_error, tb_string, False, None
+
+        except CancelledException:
+            ImportLog.objects.create(
+                session=self.session,
+                level="warning",
+                step=step_config["display"],
+                message="Import został anulowany podczas wykonywania kroku",
+            )
+            logger.warning(
+                f"Import {self.session.id} anulowany podczas kroku {step_config['name']}"
+            )
+            return (
+                has_errors,
+                critical_error,
+                tb_string,
+                False,
+                {"success": False, "cancelled": True, "results": results},
+            )
+
+        except Exception as e:
+            return self._handle_step_error(
+                e, step_config, results, has_errors, critical_error, tb_string
+            )
+
+    def _finalize_import(self, results, has_errors, critical_error, tb_string):
+        """Finalize the import process and return results"""
+        if not critical_error:
+            self._run_post_import_commands()
+
+        if hasattr(self.session, "statistics"):
+            self.session.statistics.calculate_coffee_breaks()
+            self.session.statistics.save()
+
+        if has_errors:
+            error_message = critical_error or "Import zakończony z błędami"
+            tb_string = tb_string if "tb_string" in locals() else ""
+            self.session.mark_failed(error_message, tb_string)
+            return {
+                "success": False,
+                "results": results,
+                "message": f"Import zakończony z błędami: {error_message}",
+            }
+        else:
+            self.session.mark_completed()
+            return {
+                "success": True,
+                "results": results,
+                "message": "Import zakończony pomyślnie",
+            }
+
+    def _run_import_steps(self, results):
+        """Run all import steps and return status"""
+        has_errors = False
+        critical_error = None
+        tb_string = None
+
+        for idx, step_config in enumerate(self.steps):
+            cancel_result = self._check_cancellation(results)
+            if cancel_result:
+                return (
+                    has_errors,
+                    critical_error,
+                    tb_string,
+                    True,
+                    cancel_result,
+                )
+
+            self.session.completed_steps = idx
+            self.session.save()
+
+            if self._should_skip_step(step_config, results):
+                has_errors = True
+                continue
+
+            (
+                has_errors,
+                critical_error,
+                tb_string,
+                should_break,
+                cancel_result,
+            ) = self._execute_step(
+                idx, step_config, results, has_errors, critical_error, tb_string
+            )
+
+            if cancel_result:
+                return (
+                    has_errors,
+                    critical_error,
+                    tb_string,
+                    True,
+                    cancel_result,
+                )
+
+            if should_break:
+                break
+
+        return has_errors, critical_error, tb_string, False, None
+
     def run(self):
         """Execute the complete import process"""
         self.session.status = "running"
@@ -274,162 +480,44 @@ class ImportManager:
         critical_error = None
 
         try:
-            # Check if we need PBN authorization for any steps
-            needs_pbn = any(
-                step["name"] not in ["initial_setup", "institution_setup"]
-                for step in self.steps
-            )
+            self._validate_pbn_authorization()
 
-            if needs_pbn and not self.pbn_authorized:
-                # If we need PBN but don't have authorization, fail immediately
-                # Use the actual error message from the API
-                error_msg = self.pbn_error_message or "Import wymaga autoryzacji PBN"
-                # Log this critical error
-                ImportLog.objects.create(
-                    session=self.session,
-                    level="critical",
-                    step="Authorization Check",
-                    message=error_msg,
-                )
-                raise Exception(error_msg)
+            (
+                has_errors,
+                critical_error,
+                tb_string,
+                should_cancel,
+                cancel_result,
+            ) = self._run_import_steps(results)
 
-            for idx, step_config in enumerate(self.steps):
-                # Check if import was cancelled
-                self.session.refresh_from_db()
-                if self.session.status == "cancelled":
-                    ImportLog.objects.create(
-                        session=self.session,
-                        level="warning",
-                        step="Cancellation",
-                        message="Import został anulowany przez użytkownika",
-                    )
-                    logger.warning(f"Import {self.session.id} został anulowany")
-                    return {"success": False, "cancelled": True, "results": results}
+            if should_cancel:
+                return cancel_result
 
-                self.session.completed_steps = idx
-                self.session.save()
-
-                # Skip PBN-dependent steps if not authorized
-                if not self.pbn_authorized and step_config["name"] not in [
-                    "initial_setup",
-                    "institution_setup",
-                ]:
-                    logger.warning(
-                        f"Pomijanie kroku {step_config['display']} - brak autoryzacji PBN"
-                    )
-                    results[step_config["name"]] = {
-                        "error": "Brak autoryzacji PBN",
-                        "skipped": True,
-                    }
-                    has_errors = True
-                    continue
-
-                # Create and run step
-                step_class = step_config["class"]
-                step = step_class(
-                    session=self.session, client=self.client, **step_config["args"]
-                )
-
-                logger.info(
-                    f"Uruchamianie kroku {idx + 1}/{len(self.steps)}: {step_config['display']}"
-                )
-
-                try:
-                    result = step()
-                    results[step_config["name"]] = result
-
-                except CancelledException:
-                    # Import was cancelled during step execution
-                    ImportLog.objects.create(
-                        session=self.session,
-                        level="warning",
-                        step=step_config["display"],
-                        message="Import został anulowany podczas wykonywania kroku",
-                    )
-                    logger.warning(
-                        f"Import {self.session.id} anulowany podczas kroku {step_config['name']}"
-                    )
-                    return {"success": False, "cancelled": True, "results": results}
-
-                except Exception as e:
-                    error_msg = self._extract_error_message(e)
-                    logger.error(
-                        f"Krok {step_config['name']} nie powiódł się: {error_msg}"
-                    )
-                    # Log full traceback to console and send to Sentry
-                    print(f"Błąd w kroku {step_config['name']}: {error_msg}")
-                    traceback.print_exc()
-                    rollbar.report_exc_info(sys.exc_info())
-
-                    # Check if it's an authorization/access error
-                    # The error message from API will be more descriptive
-                    if (
-                        hasattr(e, "content")
-                        or "403" in str(e)
-                        or "Forbidden" in error_msg
-                    ):
-                        has_errors = True
-                        critical_error = error_msg
-                        results[step_config["name"]] = {
-                            "error": error_msg,
-                            "skipped": False,
-                            "critical": True,
-                        }
-                        # Stop processing further steps
-                        break
-
-                    if step_config.get("required"):
-                        # Required step failed - abort
-                        has_errors = True
-                        critical_error = error_msg
-                        raise
-                    else:
-                        # Optional step failed - continue but mark as having errors
-                        has_errors = True
-                        results[step_config["name"]] = {
-                            "error": error_msg,
-                            "skipped": False,
-                        }
-
-            # Only run post-import commands if no critical errors
-            if not critical_error:
-                self._run_post_import_commands()
-
-            # Calculate fun statistics
-            if hasattr(self.session, "statistics"):
-                self.session.statistics.calculate_coffee_breaks()
-                self.session.statistics.save()
-
-            # If we had any errors, mark as failed
-            if has_errors:
-                error_message = critical_error or "Import zakończony z błędami"
-                self.session.mark_failed(error_message)
-                return {
-                    "success": False,
-                    "results": results,
-                    "message": f"Import zakończony z błędami: {error_message}",
-                }
-            else:
-                # Mark session as completed only if no errors
-                self.session.mark_completed()
-                return {
-                    "success": True,
-                    "results": results,
-                    "message": "Import zakończony pomyślnie",
-                }
+            return self._finalize_import(results, has_errors, critical_error, tb_string)
 
         except Exception as e:
-            logger.error(f"Import nie powiódł się: {e}")
-            # Log full traceback to console and send to Sentry
-            print(f"Krytyczny błąd importu: {e}")
-            traceback.print_exc()
-            rollbar.report_exc_info(sys.exc_info())
-            self.session.mark_failed(str(e))
-            return {
-                "success": False,
-                "error": str(e),
-                "message": f"Import nie powiódł się: {str(e)}",
-            }
+            return self._handle_critical_error(e)
+
+    def _handle_critical_error(self, e):
+        """Handle critical errors during import"""
+        logger.error(f"Import nie powiódł się: {e}")
+
+        rollbar.report_exc_info(
+            sys.exc_info(),
+            extra_data={
+                "session_id": self.session.id,
+                "error_type": "critical_import_failure",
+            },
+        )
+
+        tb_string = traceback.format_exc()
+        self.session.mark_failed(str(e), tb_string)
+        return {
+            "success": False,
+            "error": str(e),
+            "traceback": tb_string,
+            "message": f"Import nie powiódł się: {str(e)}",
+        }
 
     def _run_post_import_commands(self):
         """Run Django management commands after import"""

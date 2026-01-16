@@ -274,7 +274,6 @@ services:
 
   flower:
     image: mher/flower:2.0
-    container_name: flower_bpp
     restart: always
     environment:
       - CELERY_BROKER_URL=amqp://${DJANGO_BPP_RABBITMQ_USER:-bpp}:${DJANGO_BPP_RABBITMQ_PASS:-bpp}@rabbitmq:${DJANGO_BPP_RABBITMQ_PORT:-5672}//

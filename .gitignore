@@ -164,3 +164,5 @@ src/pbn_import/static/pbn_import/css/pbn_import.css
 src/pbn_komparator_zrodel/static/pbn_komparator_zrodel/css/pbn_komparator_zrodel.css
 src/przemapuj_prace_autora/static/przemapuj_prace_autora/css/admin.css
 src/bpp/static/500.html
+
+.mcp.json

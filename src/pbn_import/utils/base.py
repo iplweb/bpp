@@ -194,14 +194,33 @@ class ImportStepBase:
             self.session.save(update_fields=["progress_data"])
 
     def handle_error(self, error: Exception, context: str = ""):
-        """Handle and log an error"""
+        """Handle and log an error with full traceback"""
         error_msg = f"{context}: {str(error)}" if context else str(error)
         self.errors.append(error_msg)
 
-        # Log full traceback to console and send to Sentry
-        print(f"Błąd w {self.step_name}: {error_msg}")
-        traceback.print_exc()
-        rollbar.report_exc_info(sys.exc_info())
+        # Report to Rollbar
+        rollbar.report_exc_info(
+            sys.exc_info(),
+            extra_data={
+                "step": self.step_name,
+                "session_id": self.session.id,
+                "context": context,
+            },
+        )
+
+        # Get traceback for database storage
+        tb_string = traceback.format_exc()
+
+        # Create ImportLog entry with traceback
+        self.log(
+            "error",
+            error_msg,
+            {
+                "exception": type(error).__name__,
+                "traceback": tb_string,
+                "context": context,
+            },
+        )
 
     def handle_pbn_error(self, error: Exception, context: str = ""):
         """Handle PBN-specific errors, raising on authorization issues"""
@@ -212,20 +231,30 @@ class ImportStepBase:
             or "authorization" in error_str.lower()
         ):
             # This is an authorization error - should stop the import
-            self.log("critical", f"{context}: Błąd autoryzacji PBN")
+            rollbar.report_exc_info(
+                sys.exc_info(),
+                extra_data={
+                    "step": self.step_name,
+                    "session_id": self.session.id,
+                    "error_type": "authorization",
+                    "context": context,
+                },
+            )
+
+            tb_string = traceback.format_exc()
+            self.log(
+                "critical",
+                f"{context}: Błąd autoryzacji PBN",
+                {
+                    "exception": type(error).__name__,
+                    "traceback": tb_string,
+                    "context": context,
+                },
+            )
             raise
         else:
             # Non-critical error, just log it
-            self.handle_error(error, context)
-
-        self.log(
-            "error",
-            error_str,
-            {
-                "exception": str(type(error).__name__),
-                "traceback": traceback.format_exc(),
-            },
-        )
+            self.handle_error(error, context)  # This now handles everything
 
     def is_authorization_error(self, error: Exception) -> bool:
         """Check if an error is related to PBN authorization"""
@@ -249,10 +278,7 @@ class ImportStepBase:
             self.finish()
             return result
         except Exception as e:
+            # handle_error now does Rollbar reporting and logging
             self.handle_error(e, f"Krytyczny błąd w {self.step_name}")
-            # Additional console logging for critical failures
-            print(f"Krytyczny błąd w {self.step_name}: {str(e)}")
-            traceback.print_exc()
-            rollbar.report_exc_info(sys.exc_info())
-            self.session.mark_failed(str(e), traceback.format_exc())
+            # Note: Don't mark_failed here - let ImportManager handle it
             raise
