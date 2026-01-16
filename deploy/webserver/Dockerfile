@@ -19,4 +19,4 @@ RUN chmod +x /docker-entrypoint.d/05-ssl-and-template-setup.sh
 
 # Health check for Docker/orchestrators
 HEALTHCHECK --interval=10s --timeout=5s --retries=3 --start-period=10s \
-    CMD wget --no-verbose --tries=1 --spider http://127.0.0.1:80/healthz || exit 1
+    CMD curl -f -s -o /dev/null http://127.0.0.1:80/healthz || exit 1
