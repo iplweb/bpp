@@ -76,11 +76,18 @@
                     {% else %}
                         <pre class="pbn-import__error-message-pre">{{ session.error_message }}</pre>
                     {% endif %}
-                    {% if session.error_traceback %}
+                    {% if session.error_traceback and user.is_superuser %}
                     <details class="pbn-import__details-wrapper">
-                        <summary class="pbn-import__details-summary">Pokaż szczegóły techniczne</summary>
+                        <summary class="pbn-import__details-summary">
+                            <span class="fi-shield"></span>
+                            Pokaż szczegóły (superuser)
+                        </summary>
                         <pre class="pbn-import__error-traceback-pre">{{ session.error_traceback }}</pre>
                     </details>
+                    {% elif session.error_traceback %}
+                    <div class="pbn-import__error-restricted-notice">
+                        Szczegóły dostępne tylko dla superużytkowników
+                    </div>
                     {% endif %}
                 </div>
                 {% endif %}

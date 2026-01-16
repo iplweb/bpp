@@ -208,3 +208,73 @@ def test_oai_list_records(oai_data):
     assert res.status_code == 200
     assert b"foo" in res.content
     assert b"TEGO NIE BEDZIE" not in res.content
+
+
+@pytest.mark.django_db
+def test_autorzy_view_empty_page_redirects(client, setup_group):
+    """Test: AutorzyView redirects to page 1 when EmptyPage occurs."""
+    # Create test data - need 100+ authors for 2+ pages (paginate_by=50)
+    Uczelnia.objects.create(nazwa="Test University", skrot="TU")
+    baker.make(Autor, nazwisko="Test", imiona="Autor", pokazuj=True, _quantity=100)
+
+    # Try to access non-existent page (we have 2 pages, try page 10)
+    url = reverse("bpp:browse_autorzy") + "?page=10"
+    response = client.get(url, follow=False)
+
+    # Should get redirect (302)
+    assert response.status_code == 302
+    # Check redirect URL
+    assert "page=1" in response.url
+    # Check warning message was added
+    messages_list = list(response.wsgi_request._messages)
+    assert len(messages_list) == 1
+    assert "Podana strona nie istnieje" in str(messages_list[0])
+    assert messages_list[0].level_tag == 'warning'
+
+
+@pytest.mark.django_db
+def test_autorzy_view_empty_page_preserves_search(client, setup_group):
+    """Test: Redirect preserves search parameter."""
+    Uczelnia.objects.create(nazwa="Test University", skrot="TU")
+    baker.make(Autor, nazwisko="Test", imiona="Autor", pokazuj=True, _quantity=100)
+
+    url = reverse("bpp:browse_autorzy") + "?page=10&search=Test"
+    response = client.get(url, follow=True)
+
+    assert response.status_code == 200
+    redirect_url = response.redirect_chain[0][0]
+    assert "search=Test" in redirect_url
+    assert "page=1" in redirect_url
+
+
+@pytest.mark.django_db
+def test_autorzy_view_empty_page_preserves_literka_in_path(client, setup_group):
+    """Test: Redirect preserves literka in URL path."""
+    Uczelnia.objects.create(nazwa="Test University", skrot="TU")
+    # Create 100 authors starting with 'A'
+    baker.make(Autor, nazwisko="Atest", imiona="Autor", pokazuj=True, _quantity=100)
+
+    url = reverse("bpp:browse_autorzy_literka", kwargs={"literka": "A"}) + "?page=10"
+    response = client.get(url, follow=True)
+
+    assert response.status_code == 200
+    redirect_url = response.redirect_chain[0][0]
+    assert "/bpp/autorzy/A/" in redirect_url
+    assert "page=1" in redirect_url
+
+
+@pytest.mark.django_db
+def test_autorzy_view_page_not_integer_redirects(client, setup_group):
+    """Test: Non-integer page values redirect to page 1."""
+    Uczelnia.objects.create(nazwa="Test University", skrot="TU")
+    baker.make(Autor, nazwisko="Test", imiona="Autor", pokazuj=True, _quantity=100)
+
+    url = reverse("bpp:browse_autorzy") + "?page=abc"
+    response = client.get(url, follow=True)
+
+    assert response.status_code == 200
+    assert "page=1" in response.redirect_chain[0][0]
+    # Check warning message
+    messages_list = list(response.context['messages'])
+    assert len(messages_list) == 1
+    assert "Podana strona nie istnieje" in str(messages_list[0])

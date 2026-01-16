@@ -754,3 +754,39 @@ a.pbn-import__session-item {
         color: #721c24;
     }
 }
+
+// ==========================================================================
+// Restricted content indicators (for superuser-only tracebacks)
+// ==========================================================================
+
+// Restricted content indicators
+.pbn-import__error-restricted,
+.pbn-import__traceback-restricted,
+.pbn-import__error-restricted-notice {
+    padding: 0.75rem;
+    margin-top: 0.5rem;
+    background-color: #f4f4f4;
+    border-left: 3px solid #999;
+    color: #666;
+    font-size: 0.9rem;
+
+    .fi-lock,
+    .fi-shield {
+        margin-right: 0.5rem;
+        color: #999;
+    }
+}
+
+.pbn-import__error-summary {
+    cursor: pointer;
+    color: #1779ba;
+
+    .fi-shield {
+        margin-right: 0.5rem;
+        color: #ffa500;
+    }
+
+    &:hover {
+        text-decoration: underline;
+    }
+}

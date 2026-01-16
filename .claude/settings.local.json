@@ -95,7 +95,10 @@
       "Bash(docker buildx:*)",
       "Bash(sort:*)",
       "Bash(git -C /Users/mpasternak/Programowanie/bpp log -10 --oneline --all -- '.github/workflows/build-docker-images.yml')",
-      "Bash(git -C /Users/mpasternak/Programowanie/bpp show bc0c9a5a:.github/workflows/build-docker-images.yml)"
+      "Bash(git -C /Users/mpasternak/Programowanie/bpp show bc0c9a5a:.github/workflows/build-docker-images.yml)",
+      "mcp__rollbar__get-item-details",
+      "mcp__freshdesk-mcp__get_tickets",
+      "mcp__freshdesk-mcp__search_tickets"
     ],
     "deny": [],
     "ask": [],
@@ -103,5 +106,9 @@
       "/Users/mpasternak/Library/Caches/pypoetry/virtualenvs/bpp-iplweb-61_RsGZW-py3.11/lib/python3.11/site-packages"
     ]
   },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "rollbar"
+  ],
   "outputStyle": "default"
 }

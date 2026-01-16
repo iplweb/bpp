@@ -104,6 +104,12 @@ module.exports = function (grunt) {
                         'src/pbn_import/static/pbn_import/scss/pbn_import.scss'
                 }
             },
+            pbn_import_admin: {
+                files: {
+                    'src/pbn_import/static/pbn_import/css/admin.css':
+                        'src/pbn_import/static/pbn_import/scss/admin.scss'
+                }
+            },
             pbn_komparator_zrodel: {
                 files: {
                     'src/pbn_komparator_zrodel/static/pbn_komparator_zrodel/css/pbn_komparator_zrodel.css':
@@ -142,6 +148,7 @@ module.exports = function (grunt) {
                     'sass:ewaluacja_liczba_n',
                     'sass:ewaluacja_dwudyscyplinowcy',
                     'sass:pbn_import',
+                    'sass:pbn_import_admin',
                     'sass:pbn_komparator_zrodel',
                     'sass:bpp_setup_wizard',
                     'sass:komparator_publikacji_pbn'

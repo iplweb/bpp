@@ -127,24 +127,24 @@ def run_pbn_import(self, session_id):
     except ImportSession.DoesNotExist:
         print(f"Sesja {session_id} nie została znaleziona")
     except Exception as e:
-        print(f"Błąd importu: {e}")
-        traceback.print_exc()
-        rollbar.report_exc_info(sys.exc_info())
+        # Report to Rollbar
+        rollbar.report_exc_info(
+            sys.exc_info(),
+            extra_data={"session_id": session_id, "task": "run_pbn_import"},
+        )
+
+        tb_string = traceback.format_exc()
 
         try:
             session = ImportSession.objects.get(pk=session_id)
-            session.status = "failed"
-            session.completed_at = timezone.now()
-            session.error_message = str(e)
-            session.error_traceback = traceback.format_exc()
-            session.save()
+            session.mark_failed(str(e), tb_string)
 
             ImportLog.objects.create(
                 session=session,
                 level="critical",
                 step="Error",
                 message=f"Krytyczny błąd importu: {str(e)}",
-                details={"traceback": traceback.format_exc()},
+                details={"traceback": tb_string},
             )
 
             send_websocket_update(

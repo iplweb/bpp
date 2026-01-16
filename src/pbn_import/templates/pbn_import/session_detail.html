@@ -121,13 +121,19 @@ document.addEventListener('click', function(e) {
         </h2>
         <div class="pbn-import__error-box">
             <div class="pbn-import__error-message">{{ session.error_message }}</div>
-            {% if session.error_traceback %}
+            {% if session.error_traceback and user.is_superuser %}
             <details>
                 <summary class="pbn-import__error-summary">
-                    Pokaż szczegóły techniczne
+                    <span class="fi-shield"></span>
+                    Pokaż szczegóły techniczne (tylko dla superużytkowników)
                 </summary>
                 <div class="pbn-import__error-traceback">{{ session.error_traceback }}</div>
             </details>
+            {% elif session.error_traceback %}
+            <div class="pbn-import__error-restricted">
+                <span class="fi-lock"></span>
+                Szczegóły techniczne dostępne tylko dla superużytkowników
+            </div>
             {% endif %}
         </div>
     </div>
@@ -169,7 +175,14 @@ document.addEventListener('click', function(e) {
                                     {% if log.details %}
                                         <strong>Szczegóły techniczne:</strong>
                                         {% if log.details.traceback %}
-                                            <pre class="pbn-import__json-display">{{ log.details.traceback }}</pre>
+                                            {% if user.is_superuser %}
+                                                <pre class="pbn-import__json-display">{{ log.details.traceback }}</pre>
+                                            {% else %}
+                                                <div class="pbn-import__traceback-restricted">
+                                                    <span class="fi-lock"></span>
+                                                    Traceback dostępny tylko dla superużytkowników
+                                                </div>
+                                            {% endif %}
                                         {% else %}
                                             {{ log.details|format_json }}
                                         {% endif %}

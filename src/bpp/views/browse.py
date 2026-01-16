@@ -3,6 +3,7 @@ import re
 
 from cacheops import cached
 from django.conf import settings
+from django.contrib import messages
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Count
 from django.http import JsonResponse
@@ -16,7 +17,7 @@ except ImportError:
 from django.db.models import Max, Min
 from django.db.models.query_utils import Q
 from django.http import Http404, HttpResponseForbidden, HttpResponseRedirect
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, redirect
 from django.views.generic import DetailView, ListView, RedirectView, TemplateView
 from multiseek.logic import AND, OR
 from multiseek.util import make_field
@@ -173,6 +174,47 @@ class Browser(ListView):
             wybrana=self.kwargs.pop("literka", None),
             **kw,
         )
+
+    def get(self, request, *args, **kwargs):
+        """Handle GET request with graceful pagination error handling."""
+        try:
+            return super().get(request, *args, **kwargs)
+        except Http404 as e:
+            # Check if this is a pagination error
+            # Django converts EmptyPage/PageNotAnInteger to Http404 in paginate_queryset()
+            error_msg = str(e)
+            # Check for pagination errors in both Polish and English
+            pagination_error_markers = [
+                "Invalid page",  # English
+                "Page is not",  # English
+                "Nieprawidłowy numer strony",  # Polish - EmptyPage
+                "Ta strona nie zawiera",  # Polish - EmptyPage
+                "nie można przekształcić na liczbę",  # Polish - PageNotAnInteger
+            ]
+            is_pagination_error = any(
+                marker in error_msg for marker in pagination_error_markers
+            )
+
+            if is_pagination_error:
+                # Build redirect URL preserving all query parameters except 'page'
+                params = request.GET.copy()
+                params.pop("page", None)
+                params["page"] = "1"
+
+                redirect_url = request.path
+                if params:
+                    redirect_url += "?" + params.urlencode()
+
+                # Add warning message
+                messages.warning(
+                    request,
+                    "Podana strona nie istnieje. Przekierowano na pierwszą stronę.",
+                )
+
+                return redirect(redirect_url)
+            else:
+                # Not a pagination error, re-raise
+                raise
 
 
 class AutorzyView(Browser):
