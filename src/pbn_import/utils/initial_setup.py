@@ -48,7 +48,7 @@ class InitialSetup(ImportStepBase):
             # Check if it's an authorization error - this is critical and should stop the import
             if self.is_authorization_error(e):
                 self.log("critical", f"Brak autoryzacji PBN: {error_msg}")
-                raise Exception(f"Brak autoryzacji PBN: {error_msg}")
+                raise Exception(f"Brak autoryzacji PBN: {error_msg}") from e
 
             # For other errors, we can try minimal setup
             self.log("warning", f"Nie można zintegrować języków z PBN: {error_msg}")
@@ -86,48 +86,9 @@ class InitialSetup(ImportStepBase):
         finally:
             self.clear_subtask_progress()
 
-        # Auto-match Uczelnia if PBN UID not set
+        # Auto-match Uczelnia and enable PBN integration
         uczelnia = Uczelnia.objects.get_default()
-        if uczelnia and uczelnia.pbn_uid_id is None:
-            self.log(
-                "info", f"Próba automatycznego dopasowania uczelni: {uczelnia.nazwa}"
-            )
-            matched = matchuj_uczelnie(uczelnia.nazwa)
-
-            if matched:
-                uczelnia.pbn_uid = matched
-                uczelnia.save()
-                self.log(
-                    "success",
-                    f"Pomyślnie dopasowano uczelnię do PBN UID: {uczelnia.pbn_uid_id}",
-                )
-
-                # Store in session config for later reference
-                self.session.config["uczelnia_pbn_uid"] = matched.pbn_uid_id
-                self.session.config["uczelnia_auto_matched"] = True
-                self.session.save()
-            else:
-                self.log(
-                    "warning",
-                    f"Nie można automatycznie dopasować uczelni '{uczelnia.nazwa}'. Wymagany ręczny wybór.",
-                    {"uczelnia_nazwa": uczelnia.nazwa},
-                )
-
-                # Store warning in session
-                self.session.config["uczelnia_match_required"] = True
-                self.session.config["uczelnia_nazwa"] = uczelnia.nazwa
-                self.session.save()
-
-                # Don't fail the import, just warn
-                self.errors.append(
-                    f"Uczelnia '{uczelnia.nazwa}' wymaga ręcznego wyboru PBN UID"
-                )
-
-        # Enable PBN integration
-        if uczelnia and not uczelnia.pbn_integracja:
-            uczelnia.pbn_integracja = True
-            uczelnia.save(update_fields=["pbn_integracja"])
-            self.log("info", "Włączono integrację PBN dla uczelni")
+        self._finalize_uczelnia_setup(uczelnia)
 
         self.update_progress(4, 4, "Zakończono konfigurację początkową")
 
@@ -138,6 +99,56 @@ class InitialSetup(ImportStepBase):
             "institutions_fetched": True,
             "uczelnia_matched": uczelnia.pbn_uid_id is not None if uczelnia else False,
         }
+
+    def _finalize_uczelnia_setup(self, uczelnia):
+        """Finalize uczelnia setup: auto-match and enable PBN integration"""
+        if uczelnia is None:
+            return
+
+        # Auto-match if PBN UID not set
+        if uczelnia.pbn_uid_id is None:
+            self._auto_match_uczelnia(uczelnia)
+
+        # Enable PBN integration
+        if not uczelnia.pbn_integracja:
+            uczelnia.pbn_integracja = True
+            uczelnia.save(update_fields=["pbn_integracja"])
+            self.log("info", "Włączono integrację PBN dla uczelni")
+
+    def _auto_match_uczelnia(self, uczelnia):
+        """Try to automatically match uczelnia to PBN Institution"""
+        self.log("info", f"Próba automatycznego dopasowania uczelni: {uczelnia.nazwa}")
+        matched = matchuj_uczelnie(uczelnia.nazwa)
+
+        if matched:
+            uczelnia.pbn_uid = matched
+            uczelnia.save()
+            self.log(
+                "success",
+                f"Pomyślnie dopasowano uczelnię do PBN UID: {uczelnia.pbn_uid_id}",
+            )
+
+            # Store in session config for later reference
+            self.session.config["uczelnia_pbn_uid"] = uczelnia.pbn_uid_id
+            self.session.config["uczelnia_auto_matched"] = True
+            self.session.save()
+        else:
+            self.log(
+                "warning",
+                f"Nie można automatycznie dopasować uczelni '{uczelnia.nazwa}'. "
+                "Wymagany ręczny wybór.",
+                {"uczelnia_nazwa": uczelnia.nazwa},
+            )
+
+            # Store warning in session
+            self.session.config["uczelnia_match_required"] = True
+            self.session.config["uczelnia_nazwa"] = uczelnia.nazwa
+            self.session.save()
+
+            # Don't fail the import, just warn
+            self.errors.append(
+                f"Uczelnia '{uczelnia.nazwa}' wymaga ręcznego wyboru PBN UID"
+            )
 
     def _run_minimal_setup(self, uczelnia):
         """Run minimal setup without PBN API calls - just configure the basics"""

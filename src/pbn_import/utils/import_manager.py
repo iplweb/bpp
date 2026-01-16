@@ -103,6 +103,50 @@ class ImportManager:
         # Fallback to string representation
         return str(exception)
 
+    def _has_error_logs(self) -> bool:
+        """Check if there are any error or critical log entries for this session"""
+        return ImportLog.objects.filter(
+            session=self.session, level__in=["error", "critical"]
+        ).exists()
+
+    def _refresh_pbn_client_after_setup(self):
+        """Refresh PBN client after initial setup changes configuration.
+
+        On a clean database, pbn_uid_id may be None when the import starts.
+        InitialSetup may set it, but the original PBN client won't have this
+        configuration. This method refreshes the client after InitialSetup
+        to ensure proper authorization for subsequent API calls.
+        """
+        from bpp.models import Uczelnia
+
+        # Refresh uczelnia from database to get changes made by InitialSetup
+        uczelnia = Uczelnia.objects.get_default()
+
+        if uczelnia is None:
+            logger.warning("Nie znaleziono uczelni po InitialSetup")
+            return
+
+        # Log if pbn_uid_id is now set
+        if uczelnia.pbn_uid_id:
+            logger.info(f"Uczelnia ma PBN UID: {uczelnia.pbn_uid_id}")
+            self.session.config["uczelnia_pbn_uid"] = uczelnia.pbn_uid_id
+            self.session.save()
+
+        # Get user token and recreate client
+        pbn_token = getattr(self.session.user, "pbn_token", None)
+
+        if pbn_token and uczelnia.pbn_integracja:
+            try:
+                new_client = uczelnia.pbn_client(pbn_token)
+                self.client = new_client
+                logger.info("Odświeżono klienta PBN po konfiguracji początkowej")
+
+                # Re-check authorization with the new client
+                self._check_pbn_authorization()
+
+            except Exception as e:
+                logger.warning(f"Nie udało się odświeżyć klienta PBN: {e}")
+
     def _validate_pbn_authorization(self):
         """Validate PBN authorization before starting import"""
         needs_pbn = any(
@@ -207,6 +251,13 @@ class ImportManager:
         try:
             result = step()
             results[step_config["name"]] = result
+
+            # After initial_setup, refresh the client and authorization
+            # This is critical for clean database imports where pbn_uid_id
+            # gets set by InitialSetup after the client was created
+            if step_config["name"] == "initial_setup":
+                self._refresh_pbn_client_after_setup()
+
             return has_errors, critical_error, tb_string, False, None
 
         except CancelledException:
@@ -240,6 +291,21 @@ class ImportManager:
         if hasattr(self.session, "statistics"):
             self.session.statistics.calculate_coffee_breaks()
             self.session.statistics.save()
+
+        # Check if there are error logs even if no step raised an exception
+        if not has_errors and self._has_error_logs():
+            has_errors = True
+            if not critical_error:
+                # Get first error as the message
+                first_error = (
+                    ImportLog.objects.filter(
+                        session=self.session, level__in=["error", "critical"]
+                    )
+                    .order_by("timestamp")
+                    .first()
+                )
+                if first_error:
+                    critical_error = first_error.message
 
         if has_errors:
             error_message = critical_error or "Import zakończony z błędami"

@@ -68,6 +68,9 @@ class ImportDashboardView(LoginRequiredMixin, ImportPermissionMixin, TemplateVie
         context["uczelnia"] = uczelnia
         context["uzywaj_wydzialow"] = uczelnia.uzywaj_wydzialow if uczelnia else False
 
+        # Sprawdź czy użytkownik ma ważny token PBN
+        context["pbn_token_valid"] = self.request.user.pbn_token_possibly_valid()
+
         return context
 
     def get_motivational_message(self):
@@ -394,3 +397,39 @@ class ImportSessionDetailView(LoginRequiredMixin, ImportPermissionMixin, DetailV
             context["duration"] = None
 
         return context
+
+
+class ImportAllLogsView(LoginRequiredMixin, ImportPermissionMixin, View):
+    """HTMX endpoint for all logs"""
+
+    def get(self, request, pk):
+        session = get_object_or_404(ImportSession, pk=pk)
+        # Check permission - users can only see their own sessions unless superuser
+        if not request.user.is_superuser and session.user != request.user:
+            return HttpResponse("Forbidden", status=403)
+
+        logs = ImportLog.objects.filter(session=session).order_by("-timestamp")
+        return render(
+            request,
+            "pbn_import/components/all_logs.html",
+            {"logs": logs, "session": session, "user": request.user},
+        )
+
+
+class ImportErrorLogsView(LoginRequiredMixin, ImportPermissionMixin, View):
+    """HTMX endpoint for error logs"""
+
+    def get(self, request, pk):
+        session = get_object_or_404(ImportSession, pk=pk)
+        # Check permission - users can only see their own sessions unless superuser
+        if not request.user.is_superuser and session.user != request.user:
+            return HttpResponse("Forbidden", status=403)
+
+        error_logs = ImportLog.objects.filter(
+            session=session, level__in=["error", "critical", "warning"]
+        ).order_by("-timestamp")
+        return render(
+            request,
+            "pbn_import/components/error_logs.html",
+            {"error_logs": error_logs, "session": session, "user": request.user},
+        )

@@ -18,6 +18,17 @@
     </div>
     {% endif %}
 
+    {% if pbn_configured and not pbn_token_valid %}
+    <div class="callout warning">
+        <h5><span class="fi-alert"></span> Brak aktywnej sesji PBN</h5>
+        <p>Twój token PBN wygasł lub nie jesteś zalogowany do PBN.
+           Przed rozpoczęciem importu musisz się zalogować.</p>
+        <p><a href="{% url 'pbn_api:authorize' %}" class="button small warning">
+            <span class="fi-key"></span> Zaloguj się do PBN
+        </a></p>
+    </div>
+    {% endif %}
+
     <!-- Active Import Section -->
     {% if active_session %}
     <div class="pbn-import__active-card">

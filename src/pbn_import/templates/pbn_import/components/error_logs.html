@@ -1,0 +1,58 @@
+{% load pbn_import_tags %}
+
+<h2 class="pbn-import__section-title">
+    <span class="fi-alert"></span>
+    Błędy i ostrzeżenia ({{ error_logs|length }})
+</h2>
+{% if error_logs %}
+<div class="pbn-import__log-container">
+    {% for log in error_logs %}
+    <div class="pbn-import__log-entry">
+        <span class="pbn-import__log-timestamp">{{ log.timestamp|date:"d.m.Y H:i:s" }}</span>
+        <span class="pbn-import__log-level pbn-import__log-level--{{ log.level }}">{{ log.level }}</span>
+        <span class="pbn-import__log-step">{{ log.step }}</span>
+        <span class="pbn-import__log-message">
+            {{ log.message|truncate_message:150 }}
+            {% if log.details %}
+            <details class="pbn-import__log-details">
+                <summary class="pbn-import__log-details-summary">
+                    <span class="fi-magnifying-glass"></span> Pokaż szczegóły
+                </summary>
+                <div class="pbn-import__log-details-content">
+                    <strong>Pełna wiadomość:</strong>
+                    <pre class="pbn-import__log-pre--styled">{{ log.message }}</pre>
+                    <strong>Szczegóły techniczne:</strong>
+                    {% if log.details.traceback %}
+                        <pre class="pbn-import__json-display">{{ log.details.traceback }}</pre>
+                    {% else %}
+                        {{ log.details|format_json }}
+                    {% endif %}
+                </div>
+            </details>
+            {% elif log.message|length > 150 %}
+            <details class="pbn-import__log-details">
+                <summary class="pbn-import__log-details-summary">
+                    <span class="fi-magnifying-glass"></span> Pokaż pełną wiadomość
+                </summary>
+                <pre class="pbn-import__log-pre--styled-spaced">{{ log.message }}</pre>
+            </details>
+            {% endif %}
+        </span>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<p class="text-muted">
+    {% if session.status == 'completed' %}
+        Brak błędów i ostrzeżeń - import przebiegł pomyślnie!
+    {% elif session.status == 'running' %}
+        Brak błędów i ostrzeżeń - import na ten moment przebiega pomyślnie.
+    {% elif session.status == 'pending' %}
+        Import jeszcze się nie rozpoczął.
+    {% elif session.status == 'cancelled' %}
+        Import został anulowany bez błędów.
+    {% else %}
+        Brak błędów i ostrzeżeń.
+    {% endif %}
+</p>
+{% endif %}
