@@ -10,17 +10,8 @@ from django.core.management import call_command
 from django.utils import timezone
 
 from ..models import ImportLog, ImportSession, ImportStatistics, ImportStep
-from .author_import import AuthorImporter
 from .base import CancelledException
-from .conference_import import ConferenceImporter
-from .data_integration import DataIntegrator
-from .fee_import import FeeImporter
-from .initial_setup import InitialSetup
-from .institution_import import InstitutionImporter
-from .publication_import import PublicationImporter
-from .publisher_import import PublisherImporter
-from .source_import import SourceImporter
-from .statement_import import StatementImporter
+from .step_definitions import get_icon_for_step, get_step_definitions
 
 logger = logging.getLogger(__name__)
 
@@ -46,148 +37,10 @@ class ImportManager:
             ImportStatistics.objects.get_or_create(session=self.session)
 
         # Define import steps with their order
-        self.steps = self._initialize_steps()
+        self.steps = get_step_definitions(self.config)
 
         # Check PBN authorization status
         self._check_pbn_authorization()
-
-    def _add_step_if_enabled(self, steps, config_key, step_def):
-        """Add step to list if not disabled in config"""
-        if not self.config.get(config_key):
-            steps.append(step_def)
-
-    def _initialize_steps(self) -> list[dict[str, Any]]:
-        """Initialize and return list of import steps"""
-        steps = []
-
-        self._add_step_if_enabled(
-            steps,
-            "disable_initial",
-            {
-                "name": "initial_setup",
-                "display": "Konfiguracja początkowa",
-                "class": InitialSetup,
-                "args": {},
-                "required": True,
-            },
-        )
-
-        self._add_step_if_enabled(
-            steps,
-            "disable_institutions",
-            {
-                "name": "institution_setup",
-                "display": "Konfiguracja jednostek",
-                "class": InstitutionImporter,
-                "args": {
-                    "wydzial_domyslny": self.config.get(
-                        "wydzial_domyslny", "Wydział Domyślny"
-                    ),
-                    "wydzial_domyslny_skrot": self.config.get("wydzial_domyslny_skrot"),
-                },
-                "required": True,
-            },
-        )
-
-        self._add_step_if_enabled(
-            steps,
-            "disable_zrodla",
-            {
-                "name": "source_import",
-                "display": "Import źródeł",
-                "class": SourceImporter,
-                "args": {},
-                "required": False,
-            },
-        )
-
-        self._add_step_if_enabled(
-            steps,
-            "disable_wydawcy",
-            {
-                "name": "publisher_import",
-                "display": "Import wydawców",
-                "class": PublisherImporter,
-                "args": {},
-                "required": False,
-            },
-        )
-
-        self._add_step_if_enabled(
-            steps,
-            "disable_konferencje",
-            {
-                "name": "conference_import",
-                "display": "Import konferencji",
-                "class": ConferenceImporter,
-                "args": {},
-                "required": False,
-            },
-        )
-
-        self._add_step_if_enabled(
-            steps,
-            "disable_autorzy",
-            {
-                "name": "author_import",
-                "display": "Import autorów",
-                "class": AuthorImporter,
-                "args": {},
-                "required": False,
-            },
-        )
-
-        self._add_step_if_enabled(
-            steps,
-            "disable_publikacje",
-            {
-                "name": "publication_import",
-                "display": "Import publikacji",
-                "class": PublicationImporter,
-                "args": {
-                    "delete_existing": self.config.get("delete_existing", False),
-                },
-                "required": False,
-            },
-        )
-
-        self._add_step_if_enabled(
-            steps,
-            "disable_integracja",
-            {
-                "name": "data_integration",
-                "display": "Integruj nowe dane",
-                "class": DataIntegrator,
-                "args": {},
-                "required": False,
-            },
-        )
-
-        self._add_step_if_enabled(
-            steps,
-            "disable_oswiadczenia",
-            {
-                "name": "statement_import",
-                "display": "Import oświadczeń",
-                "class": StatementImporter,
-                "args": {},
-                "required": False,
-            },
-        )
-
-        self._add_step_if_enabled(
-            steps,
-            "disable_oplaty",
-            {
-                "name": "fee_import",
-                "display": "Import opłat",
-                "class": FeeImporter,
-                "args": {},
-                "required": False,
-            },
-        )
-
-        return steps
 
     def create_import_steps(self):
         """Create ImportStep records in database"""
@@ -198,26 +51,10 @@ class ImportManager:
                     "display_name": step["display"],
                     "order": idx * 10,
                     "is_optional": not step.get("required", False),
-                    "estimated_duration": 60,  # Default 60 seconds
-                    "icon_class": self._get_icon_for_step(step["name"]),
+                    "estimated_duration": 60,
+                    "icon_class": get_icon_for_step(step["name"]),
                 },
             )
-
-    def _get_icon_for_step(self, step_name: str) -> str:
-        """Get Foundation icon class for step"""
-        icons = {
-            "initial_setup": "fi-wrench",
-            "institution_setup": "fi-home",
-            "source_import": "fi-book",
-            "publisher_import": "fi-page-multiple",
-            "conference_import": "fi-calendar",
-            "author_import": "fi-torsos-all",
-            "publication_import": "fi-page-copy",
-            "data_integration": "fi-link",
-            "statement_import": "fi-clipboard-pencil",
-            "fee_import": "fi-dollar",
-        }
-        return icons.get(step_name, "fi-download")
 
     def _check_pbn_authorization(self):
         """Check if PBN client is properly authorized"""
