@@ -1,0 +1,153 @@
+{% extends "admin/base_site.html" %}
+
+{% load admin_list i18n grp_tags admin_urls %}
+
+{% block stylesheets %}
+    {{ block.super }}
+    {{ media.css }}
+{% endblock %}
+
+{% block extrastyle %}
+    {{ block.super }}
+    <style type="text/css">
+        .constance-config h2 {
+            line-height: 36px;
+        }
+        .constance-config .grp-module {
+            margin-bottom: 10px;
+        }
+        .constance-config .grp-help {
+            color: #666;
+            font-size: 11px;
+            margin-top: 3px;
+        }
+        .constance-config .reset-link {
+            font-size: 11px;
+            color: #666;
+        }
+        .constance-config .reset-link:hover {
+            color: #309bbf;
+        }
+        .constance-config .modified-indicator {
+            color: #309bbf;
+            font-weight: bold;
+        }
+        .constance-config .not-modified-indicator {
+            color: #999;
+        }
+    </style>
+{% endblock %}
+
+{% block javascripts %}
+    {{ block.super }}
+    {{ media.js }}
+    {% url 'admin:jsi18n' as jsi18nurl %}
+    <script type="text/javascript" src="{{ jsi18nurl|default:'../../jsi18n/'}}"></script>
+    <script type="text/javascript" charset="utf-8">
+        (function($) {
+            $(document).ready(function() {
+                // Initialize collapsible fieldsets
+                $("#grp-content-container .grp-collapse").grp_collapsible();
+
+                // Initialize date/time pickers
+                grappelli.initDateAndTimePicker();
+
+                // HACK: get rid of currently/change with URL-fields
+                $('p.url').each(function() {
+                    $(this).find("a").remove();
+                    var text = $(this).html();
+                    text = text.replace(/^\w*: /, "");
+                    text = text.replace(/<br>.*: /, "");
+                    $(this).html(text);
+                });
+
+                // Reset to default functionality
+                $('#grp-changelist.grp-editable').on('click', '.reset-link', function(e) {
+                    e.preventDefault();
+
+                    var field = $('#' + this.dataset.fieldId);
+                    var fieldType = this.dataset.fieldType;
+
+                    if (fieldType === 'checkbox') {
+                        field.prop('checked', this.dataset.default === 'true');
+                    } else if (fieldType === 'date') {
+                        var defaultDate = new Date(this.dataset.default * 1000);
+                        $('#' + this.dataset.fieldId).val(
+                            defaultDate.strftime(get_format('DATE_INPUT_FORMATS')[0])
+                        );
+                    } else if (fieldType === 'datetime') {
+                        var defaultDate = new Date(this.dataset.default * 1000);
+                        $('#' + this.dataset.fieldId + '_0').val(
+                            defaultDate.strftime(get_format('DATE_INPUT_FORMATS')[0])
+                        );
+                        $('#' + this.dataset.fieldId + '_1').val(
+                            defaultDate.strftime(get_format('TIME_INPUT_FORMATS')[0])
+                        );
+                    } else {
+                        field.val(this.dataset.default);
+                    }
+                });
+            });
+        })(grp.jQuery);
+    </script>
+{% endblock %}
+
+{% block bodyclass %}grp-change-list{% endblock %}
+{% block content-class %}{% endblock %}
+
+{% block breadcrumbs %}
+    {% if not is_popup %}
+        <ul class="grp-horizontal-list">
+            <li><a href="../../">{% trans "Home" %}</a></li>
+            <li><a href="../">{% trans app_label|capfirst|escape %}</a></li>
+            <li>{{ opts.verbose_name_plural|capfirst }}</li>
+        </ul>
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+    <form id="grp-changelist-form" action="" method="post" novalidate>
+        {% csrf_token %}
+        <section id="grp-changelist" class="grp-editable constance-config">
+            {% for field in form.hidden_fields %}
+                {% if form.errors %}
+                    <ul class="grp-messagelist">
+                        {% for error in field.errors %}
+                            <li class="grp-error">{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+                {{ field }}
+            {% endfor %}
+            <header style="display:none"><h1>Results</h1></header>
+            {% if fieldsets %}
+                {% for fieldset in fieldsets %}
+                    <fieldset class="module grp-module grp-collapse grp-open">
+                        <h2 class="grp-collapse-handler">{{ fieldset.title }}</h2>
+                        <div class="grp-row">
+                            {% with config_values=fieldset.config_values %}
+                                {% include "admin/constance/includes/results_list.html" %}
+                            {% endwith %}
+                        </div>
+                    </fieldset>
+                {% endfor %}
+            {% else %}
+                <fieldset class="module grp-module">
+                    <h2>{% trans "Configuration" %}</h2>
+                    <div class="grp-row">
+                        {% include "admin/constance/includes/results_list.html" %}
+                    </div>
+                </fieldset>
+            {% endif %}
+            <footer class="grp-module grp-submit-row grp-fixed-footer">
+                <header style="display:none"><h1>Submit Options</h1></header>
+                <ul>
+                    <li>
+                        <input type="submit" name="_save" class="grp-button grp-default"
+                               value="{% trans 'Save' %}"/>
+                    </li>
+                </ul>
+            </footer>
+        </section>
+    </form>
+{% endblock %}
