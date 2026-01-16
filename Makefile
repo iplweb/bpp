@@ -153,7 +153,7 @@ enable-microsoft-auth:
 
 disable-microsoft-auth:
 	rm -f ~/.env.local
-	uv pip uninstall -y django_microsoft_auth
+	uv pip uninstall django_microsoft_auth
 
 clean-coverage:
 	rm -f .coverage .coverage.* cov.xml
