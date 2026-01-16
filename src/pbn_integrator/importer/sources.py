@@ -1,20 +1,28 @@
 """Journal/source handling for PBN importer."""
 
 from django.db import DataError
+from django.db.models import Subquery
 
 from bpp import const
-from bpp.models import Dyscyplina_Naukowa, Rodzaj_Zrodla, Zrodlo
+from bpp.models import (
+    Dyscyplina_Naukowa,
+    Dyscyplina_Zrodla,
+    Punktacja_Zrodla,
+    Rodzaj_Zrodla,
+    Zrodlo,
+)
 from bpp.util import pbar
 from pbn_api.models import Journal
 from pbn_integrator.utils import integruj_zrodla
 
 
-def dopisz_jedno_zrodlo(pbn_journal):
+def dopisz_jedno_zrodlo(pbn_journal, rodzaj_periodyk, dyscypliny_cache):
+    """Process single journal - re-entrant, can be interrupted."""
     assert pbn_journal.rekord_w_bpp() is None
 
     cv = pbn_journal.current_version["object"]
 
-    rodzaj_periodyk = Rodzaj_Zrodla.objects.get(nazwa="periodyk")
+    # Create Zrodlo
     zrodlo = Zrodlo.objects.create(
         nazwa=cv.get("title") or "",
         skrot=cv.get("title") or "",
@@ -23,33 +31,50 @@ def dopisz_jedno_zrodlo(pbn_journal):
         pbn_uid=pbn_journal,
         rodzaj=rodzaj_periodyk,
     )
-    for rok, value in cv.get("points", {}).items():
-        if value.get("accepted"):
-            zrodlo.punktacja_zrodla_set.create(rok=rok, punkty_kbn=value.get("points"))
 
+    # Bulk create points
+    punktacje = [
+        Punktacja_Zrodla(zrodlo=zrodlo, rok=rok, punkty_kbn=value.get("points"))
+        for rok, value in cv.get("points", {}).items()
+        if value.get("accepted")
+    ]
+    if punktacje:
+        Punktacja_Zrodla.objects.bulk_create(punktacje, ignore_conflicts=True)
+
+    # Bulk create disciplines for all years
+    dyscypliny_zrodel = []
     for discipline in cv.get("disciplines", []):
-        nazwa_dyscypliny = discipline.get("name")
-        try:
-            dyscyplina_naukowa = Dyscyplina_Naukowa.objects.get(nazwa=nazwa_dyscypliny)
-        except Dyscyplina_Naukowa.DoesNotExist as err:
-            raise DataError(f"Brak dyscypliny o nazwie {nazwa_dyscypliny}") from err
+        nazwa = discipline.get("name")
+        dyscyplina = dyscypliny_cache.get(nazwa)
+        if not dyscyplina:
+            raise DataError(f"Brak dyscypliny o nazwie {nazwa}")
 
-        for rok in range(const.PBN_MIN_ROK, const.PBN_MAX_ROK):
-            zrodlo.dyscyplina_zrodla_set.get_or_create(
-                rok=rok,
-                dyscyplina=dyscyplina_naukowa,
+        for rok in range(const.PBN_MIN_ROK, const.PBN_MAX_ROK + 1):
+            dyscypliny_zrodel.append(
+                Dyscyplina_Zrodla(zrodlo=zrodlo, rok=rok, dyscyplina=dyscyplina)
             )
+
+    if dyscypliny_zrodel:
+        Dyscyplina_Zrodla.objects.bulk_create(dyscypliny_zrodel, ignore_conflicts=True)
 
 
 def importuj_zrodla():
+    """Import sources from PBN - re-entrant, can be interrupted and resumed."""
     integruj_zrodla()
 
-    # Dodaj do tabeli Źródła wszystkie źródła MNISW z PBNu, których tam jeszcze nie ma.
+    # Cache lookups ONCE (2 queries instead of N + N*M)
+    rodzaj_periodyk = Rodzaj_Zrodla.objects.get(nazwa="periodyk")
+    dyscypliny_cache = {d.nazwa: d for d in Dyscyplina_Naukowa.objects.all()}
 
-    # Robimy jako lista bo się popsuje zapytanie
-    exclude_list = list(Zrodlo.objects.values_list("pbn_uid_id", flat=True))
+    # Filter already imported - supports re-entrancy
+    imported_ids = Zrodlo.objects.filter(pbn_uid__isnull=False).values_list(
+        "pbn_uid_id", flat=True
+    )
+
     for pbn_journal in pbar(
-        query=Journal.objects.filter(status="ACTIVE").exclude(pk__in=exclude_list),
+        query=Journal.objects.filter(status="ACTIVE").exclude(
+            pk__in=Subquery(imported_ids)
+        ),
         label="Dopisywanie źródeł MNISW...",
     ):
-        dopisz_jedno_zrodlo(pbn_journal)
+        dopisz_jedno_zrodlo(pbn_journal, rodzaj_periodyk, dyscypliny_cache)
