@@ -8,7 +8,7 @@ ENV POSTGRES_INITDB_ARGS="--locale-provider=icu --icu-locale=pl-PL"
 ENV POSTGRES_HOST_AUTH_METHOD=trust
 
 HEALTHCHECK --interval=5s --timeout=3s --retries=5 --start-period=10s \
-  CMD pg_isready -U postgres
+  CMD pg_isready -U ${POSTGRES_USER:-postgres}
 
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=apt-cache \
     --mount=type=cache,target=/var/lib/apt/lists,sharing=locked,id=apt-lists \
