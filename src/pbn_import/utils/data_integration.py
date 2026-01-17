@@ -3,6 +3,8 @@
 import io
 import sys
 
+from django.contrib.contenttypes.models import ContentType
+
 from bpp.models import Dyscyplina_Naukowa, Jednostka, Rodzaj_Zrodla
 from pbn_integrator.importer import importuj_publikacje_po_pbn_uid_id
 from pbn_integrator.utils import (
@@ -10,6 +12,7 @@ from pbn_integrator.utils import (
     integruj_publikacje_instytucji,
 )
 
+from ..models import ImportInconsistency
 from .base import ImportStepBase
 
 
@@ -153,6 +156,63 @@ class DataIntegrator(ImportStepBase):
         finally:
             self.clear_subtask_progress()
 
+    def _create_inconsistency_callback(self):
+        """Create callback for recording statement integration inconsistencies."""
+        session = self.session
+
+        def inconsistency_callback(
+            inconsistency_type,
+            pbn_publication=None,
+            pbn_author=None,
+            bpp_publication=None,
+            bpp_author=None,
+            discipline=None,
+            message="",
+            action_taken="",
+        ):
+            """Record an inconsistency found during statement integration."""
+            try:
+                # Get content type for BPP publication to enable URL generation
+                bpp_publication_content_type = None
+                if bpp_publication:
+                    bpp_publication_content_type = ContentType.objects.get_for_model(
+                        bpp_publication
+                    )
+
+                ImportInconsistency.objects.create(
+                    session=session,
+                    inconsistency_type=inconsistency_type,
+                    pbn_publication_id=(
+                        str(pbn_publication.mongoId) if pbn_publication else ""
+                    ),
+                    pbn_publication_title=(
+                        str(pbn_publication.title) if pbn_publication else ""
+                    ),
+                    pbn_author_id=str(pbn_author.pk) if pbn_author else "",
+                    pbn_author_name=(
+                        f"{pbn_author.lastName} {pbn_author.name}" if pbn_author else ""
+                    ),
+                    pbn_discipline=str(discipline) if discipline else "",
+                    bpp_publication_id=bpp_publication.pk if bpp_publication else None,
+                    bpp_publication_content_type=bpp_publication_content_type,
+                    bpp_publication_title=(
+                        str(bpp_publication.tytul_oryginalny) if bpp_publication else ""
+                    ),
+                    bpp_author_id=bpp_author.pk if bpp_author else None,
+                    bpp_author_name=str(bpp_author) if bpp_author else "",
+                    message=message,
+                    action_taken=action_taken,
+                )
+            except Exception as e:
+                # Log the error but don't fail the import
+                self.log(
+                    "warning",
+                    f"Błąd podczas zapisu nieścisłości: {e}",
+                    {"inconsistency_type": inconsistency_type, "message": message},
+                )
+
+        return inconsistency_callback
+
     def _integrate_statements(self):
         """Integrate statements with missing publication callback."""
         self.log("info", "Rozpoczęcie integracji oświadczeń")
@@ -171,6 +231,9 @@ class DataIntegrator(ImportStepBase):
                 dyscypliny_cache=dyscypliny_cache,
             )
 
+        # Create inconsistency callback for structured tracking
+        inconsistency_callback = self._create_inconsistency_callback()
+
         try:
             subtask_callback = self.create_subtask_progress("Integracja oświadczeń")
 
@@ -178,6 +241,8 @@ class DataIntegrator(ImportStepBase):
                 integruj_oswiadczenia_z_instytucji(
                     missing_publication_callback=missing_publication_callback,
                     callback=subtask_callback,
+                    inconsistency_callback=inconsistency_callback,
+                    default_jednostka=self.default_jednostka,
                 )
 
             self._store_captured_output(
@@ -190,6 +255,15 @@ class DataIntegrator(ImportStepBase):
                 stats = self.session.statistics
                 stats.data_integrated = True
                 stats.save()
+
+            # Log inconsistency summary
+            inconsistency_count = self.session.inconsistencies.count()
+            if inconsistency_count > 0:
+                self.log(
+                    "warning",
+                    f"Znaleziono {inconsistency_count} nieścisłości podczas "
+                    f"integracji oświadczeń",
+                )
 
             self.log("success", "Oświadczenia zintegrowane pomyślnie")
 

@@ -1,10 +1,22 @@
 import pytest
 from model_bakery import baker
 
-from import_common.core import matchuj_dyscypline, matchuj_zrodlo
+from bpp.models import (
+    Autor,
+    Dyscyplina_Naukowa,
+    Jednostka,
+    Tytul,
+    Wydawnictwo_Ciagle,
+    Wydzial,
+    Zrodlo,
+)
+from import_common.core import (
+    _part_numbers_compatible,
+    matchuj_dyscypline,
+    matchuj_publikacje,
+    matchuj_zrodlo,
+)
 from import_dyscyplin.core import matchuj_autora, matchuj_jednostke, matchuj_wydzial
-
-from bpp.models import Autor, Dyscyplina_Naukowa, Jednostka, Tytul, Wydzial, Zrodlo
 
 
 @pytest.mark.parametrize(
@@ -317,3 +329,123 @@ def test_matchuj_zrodlo_multiple_journals_same_mnisw_id():
     # Should find the Zrodlo linked to one of the journals
     result = matchuj_zrodlo("Some Name", mnisw_id=44444)
     assert result == zrodlo
+
+
+# ===== Testy dla _part_numbers_compatible =====
+
+
+@pytest.mark.parametrize(
+    "title1,title2,expected",
+    [
+        # Oba bez numeru części - OK
+        ("Tytuł publikacji", "Tytuł publikacji", True),
+        ("Inny tytuł", "Jeszcze inny tytuł", True),
+        # Oba z tym samym numerem części - OK
+        ("Tytuł cz. II", "Tytuł część II", True),
+        ("Tytuł cz. 2", "Tytuł cz. II", True),
+        ("Tytuł tom III", "Tytuł cz. III", True),
+        # Różne numery części - NIE OK
+        ("Tytuł cz. II", "Tytuł cz. III", False),
+        ("Tytuł cz. 2", "Tytuł cz. 3", False),
+        ("Tytuł część I", "Tytuł część II", False),
+        ("Tytuł tom I", "Tytuł tom IV", False),
+        # Jeden ma numer części, drugi nie - NIE OK
+        ("Tytuł cz. II", "Tytuł", False),
+        ("Tytuł", "Tytuł cz. III", False),
+        # None values - zakładamy kompatybilność
+        (None, "Tytuł cz. II", True),
+        ("Tytuł cz. II", None, True),
+        (None, None, True),
+    ],
+)
+def test_part_numbers_compatible(title1, title2, expected):
+    assert _part_numbers_compatible(title1, title2) == expected
+
+
+# ===== Testy dla matchuj_publikacje z numerami części =====
+
+
+@pytest.mark.django_db
+def test_matchuj_publikacje_rozroznia_numery_czesci(zrodlo):
+    """Publikacje cz. II i cz. III nie powinny być matchowane."""
+    # Utwórz publikację z cz. III
+    pub = baker.make(
+        Wydawnictwo_Ciagle,
+        tytul_oryginalny=(
+            "Znaczenie jakości wody w wielkostadnej produkcji drobiarskiej cz. III"
+        ),
+        rok=2020,
+        zrodlo=zrodlo,
+    )
+
+    # cz. II NIE powinno matchować do cz. III
+    result = matchuj_publikacje(
+        Wydawnictwo_Ciagle,
+        title="Znaczenie jakości wody w wielkostadnej produkcji drobiarskiej cz. II",
+        year=2020,
+    )
+    assert result is None
+
+    # cz. III powinno matchować
+    result = matchuj_publikacje(
+        Wydawnictwo_Ciagle,
+        title="Znaczenie jakości wody w wielkostadnej produkcji drobiarskiej cz. III",
+        year=2020,
+    )
+    assert result == pub
+
+
+@pytest.mark.django_db
+def test_matchuj_publikacje_ten_sam_numer_czesci(zrodlo):
+    """Publikacje z tym samym numerem części powinny być matchowane."""
+    pub = baker.make(
+        Wydawnictwo_Ciagle,
+        tytul_oryginalny="Badania eksperymentalne cz. II",
+        rok=2021,
+        zrodlo=zrodlo,
+    )
+
+    # cz. II powinno matchować do cz. II (ten sam format)
+    result = matchuj_publikacje(
+        Wydawnictwo_Ciagle,
+        title="Badania eksperymentalne cz. II",
+        year=2021,
+    )
+    assert result == pub
+
+
+@pytest.mark.django_db
+def test_matchuj_publikacje_bez_numeru_czesci(zrodlo):
+    """Publikacje bez numeru części powinny matchować normalnie."""
+    pub = baker.make(
+        Wydawnictwo_Ciagle,
+        tytul_oryginalny="Zwykła publikacja bez numeru części",
+        rok=2022,
+        zrodlo=zrodlo,
+    )
+
+    result = matchuj_publikacje(
+        Wydawnictwo_Ciagle,
+        title="Zwykła publikacja bez numeru części",
+        year=2022,
+    )
+    assert result == pub
+
+
+@pytest.mark.django_db
+def test_matchuj_publikacje_rozroznia_tom_i_tom_ii(zrodlo):
+    """Tom I i Tom II to różne publikacje."""
+    baker.make(
+        Wydawnictwo_Ciagle,
+        tytul_oryginalny="Podręcznik akademicki tom I",
+        rok=2020,
+        zrodlo=zrodlo,
+    )
+
+    # tom II NIE powinno matchować do tom I
+    result = matchuj_publikacje(
+        Wydawnictwo_Ciagle,
+        title="Podręcznik akademicki tom II",
+        year=2020,
+    )
+    assert result is None

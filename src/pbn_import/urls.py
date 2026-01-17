@@ -36,6 +36,11 @@ urlpatterns = [
         name="error_logs",
     ),
     path(
+        "session/<int:pk>/inconsistencies/",
+        views.ImportInconsistenciesView.as_view(),
+        name="inconsistencies",
+    ),
+    path(
         "sessions/active/", views.ActiveSessionsView.as_view(), name="active_sessions"
     ),
     # Configuration presets

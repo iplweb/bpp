@@ -689,14 +689,23 @@ a.pbn-import__session-item {
 
     &--completed {
         background: linear-gradient(90deg, #43e97b 0%, #38f9d7 100%);
+        &::after {
+            animation: none;
+        }
     }
 
     &--failed {
         background: linear-gradient(90deg, #f77062 0%, #fe5196 100%);
+        &::after {
+            animation: none;
+        }
     }
 
     &--cancelled {
         background: linear-gradient(90deg, #718096 0%, #a0aec0 100%);
+        &::after {
+            animation: none;
+        }
     }
 
     &--running {
@@ -789,4 +798,343 @@ a.pbn-import__session-item {
     &:hover {
         text-decoration: underline;
     }
+}
+
+// ==========================================================================
+// Inconsistencies styles
+// ==========================================================================
+
+// Tab badge for inconsistency count
+.pbn-import__tab-badge {
+    display: inline-block;
+    background: #e53e3e;
+    color: white;
+    font-size: 0.75rem;
+    font-weight: bold;
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin-left: 5px;
+    min-width: 20px;
+    text-align: center;
+}
+
+// Summary badges container
+.pbn-import__inconsistency-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 20px;
+    padding: 15px;
+    background: #f7fafc;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+}
+
+// Filter label
+.pbn-import__filter-label {
+    font-size: 0.9rem;
+    color: #4a5568;
+    margin-right: 8px;
+    font-weight: 500;
+}
+
+// Filter info (shown when filter is active)
+.pbn-import__filter-info {
+    font-size: 0.85rem;
+    color: #718096;
+    font-weight: normal;
+}
+
+// Type badges (now interactive buttons)
+.pbn-import__inconsistency-type-badge {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+
+    &:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+    }
+
+    &:active {
+        transform: translateY(0);
+    }
+
+    // Active filter state
+    &--active {
+        border-color: currentColor;
+        box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.1);
+
+        &:hover {
+            opacity: 0.9;
+        }
+    }
+
+    &--author_not_found {
+        background: #fed7d7;
+        color: #c53030;
+
+        &:hover {
+            background: #feb2b2;
+        }
+    }
+
+    &--author_auto_fixed {
+        background: #c6f6d5;
+        color: #276749;
+
+        &:hover {
+            background: #9ae6b4;
+        }
+    }
+
+    &--author_needs_manual_fix {
+        background: #feebc8;
+        color: #c05621;
+
+        &:hover {
+            background: #fbd38d;
+        }
+    }
+
+    &--no_override_without_disciplines {
+        background: #e9d8fd;
+        color: #6b46c1;
+
+        &:hover {
+            background: #d6bcfa;
+        }
+    }
+
+    &--publication_not_found {
+        background: #bee3f8;
+        color: #2b6cb0;
+
+        &:hover {
+            background: #90cdf4;
+        }
+    }
+
+    &--author_not_in_bpp {
+        background: #fef3c7;
+        color: #92400e;
+
+        &:hover {
+            background: #fde68a;
+        }
+    }
+}
+
+// Clear icon inside active badge
+.pbn-import__badge-clear {
+    margin-left: 6px;
+    font-size: 0.75rem;
+    vertical-align: middle;
+}
+
+// Show all button
+.pbn-import__inconsistency-show-all {
+    display: inline-block;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    background: #edf2f7;
+    color: #4a5568;
+    border: 2px solid #cbd5e0;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-left: 8px;
+
+    .fi-list {
+        margin-right: 4px;
+    }
+
+    &:hover {
+        background: #e2e8f0;
+        border-color: #a0aec0;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    &:active {
+        transform: translateY(0);
+    }
+}
+
+// Inconsistency entry
+.pbn-import__inconsistency-entry {
+    padding: 20px;
+    margin-bottom: 15px;
+    border: 1px solid #e2e8f0;
+    border-left: 5px solid #e2e8f0;
+    border-radius: 8px;
+    background: white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    transition: all 0.2s;
+
+    &:last-child {
+        margin-bottom: 0;
+    }
+
+    &:hover {
+        background: #f7fafc;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    &--author_not_found {
+        border-left-color: #c53030;
+    }
+
+    &--author_auto_fixed {
+        border-left-color: #38a169;
+    }
+
+    &--author_needs_manual_fix {
+        border-left-color: #dd6b20;
+    }
+
+    &--no_override_without_disciplines {
+        border-left-color: #805ad5;
+    }
+
+    &--publication_not_found {
+        border-left-color: #3182ce;
+    }
+
+    &--author_not_in_bpp {
+        border-left-color: #d69e2e;
+    }
+}
+
+// Inconsistency header
+.pbn-import__inconsistency-header {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 8px;
+}
+
+// Inconsistency type label
+.pbn-import__inconsistency-type {
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 12px;
+
+    &--author_not_found {
+        background: #fed7d7;
+        color: #c53030;
+    }
+
+    &--author_auto_fixed {
+        background: #c6f6d5;
+        color: #276749;
+    }
+
+    &--author_needs_manual_fix {
+        background: #feebc8;
+        color: #c05621;
+    }
+
+    &--no_override_without_disciplines {
+        background: #e9d8fd;
+        color: #6b46c1;
+    }
+
+    &--publication_not_found {
+        background: #bee3f8;
+        color: #2b6cb0;
+    }
+
+    &--author_not_in_bpp {
+        background: #fef3c7;
+        color: #92400e;
+    }
+}
+
+// Inconsistency message
+.pbn-import__inconsistency-message {
+    color: #2d3748;
+    margin-bottom: 8px;
+    line-height: 1.5;
+}
+
+// Action taken box
+.pbn-import__inconsistency-action {
+    background: #c6f6d5;
+    color: #276749;
+    padding: 8px 12px;
+    border-radius: 5px;
+    font-size: 0.9rem;
+    margin-bottom: 10px;
+
+    .fi-check {
+        margin-right: 5px;
+    }
+}
+
+// Details section
+.pbn-import__inconsistency-details {
+    margin-top: 10px;
+}
+
+.pbn-import__inconsistency-details-content {
+    margin-top: 15px;
+    padding: 15px;
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 5px;
+}
+
+// Comparison table
+.pbn-import__inconsistency-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+
+    th {
+        background: #f7fafc;
+        padding: 10px;
+        text-align: left;
+        font-weight: 600;
+        border-bottom: 2px solid #e2e8f0;
+    }
+
+    td {
+        padding: 10px;
+        border-bottom: 1px solid #e2e8f0;
+        vertical-align: top;
+    }
+
+    td:first-child {
+        width: 100px;
+        font-weight: 500;
+        color: #4a5568;
+    }
+
+    a {
+        color: #667eea;
+
+        &:hover {
+            text-decoration: underline;
+        }
+
+        .fi-link {
+            margin-right: 3px;
+        }
+    }
+}
+
+// Full message display
+.pbn-import__inconsistency-full-message {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid #e2e8f0;
 }

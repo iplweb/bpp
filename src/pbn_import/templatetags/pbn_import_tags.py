@@ -6,7 +6,34 @@ import json
 from django import template
 from django.utils.safestring import mark_safe
 
+from bpp.models import Uczelnia
+
 register = template.Library()
+
+
+@register.simple_tag
+def pbn_publication_url(pbn_publication_id):
+    """Generate URL to publication in PBN system."""
+    if not pbn_publication_id:
+        return ""
+    uczelnia = Uczelnia.objects.get_default()
+    pbn_root = uczelnia.pbn_api_root if uczelnia else "https://pbn.nauka.gov.pl"
+    # Remove trailing slash if present
+    pbn_root = pbn_root.rstrip("/")
+    return f"{pbn_root}/core/#/publication/view/{pbn_publication_id}/current"
+
+
+@register.simple_tag
+def bpp_admin_url(content_type, object_id):
+    """Generate admin URL for a BPP publication given its content type and ID."""
+    if not content_type or not object_id:
+        return ""
+    # Generate admin URL like admin:bpp_wydawnictwo_ciagle_change
+    app_label = content_type.app_label
+    model_name = content_type.model
+    from django.urls import reverse
+
+    return reverse(f"admin:{app_label}_{model_name}_change", args=[object_id])
 
 
 @register.filter

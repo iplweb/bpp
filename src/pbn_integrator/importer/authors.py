@@ -138,8 +138,11 @@ def utworz_autorow(ret, pbn_json, client, default_jednostka):
                     jednostka=jednostka,
                     kolejnosc=kolejnosc,
                     zapisany_jako=" ".join(
-                        [pbn_autor.pop("lastName"), pbn_autor.pop("name")]
-                    ),
+                        [
+                            pbn_autor.pop("lastName", "") or "",
+                            pbn_autor.pop("name", "") or "",
+                        ]
+                    ).strip(),
                     afiliuje=afiliuje,
                 ),
             )

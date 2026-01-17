@@ -98,14 +98,17 @@ def run_pbn_import(self, session_id):
         # Update session status based on result
         session.refresh_from_db()
         if session.status == "cancelled":
-            session.status = "cancelled"
+            # Already cancelled, just update completed_at
+            session.completed_at = timezone.now()
+            session.save()
         elif result.get("success", False):
             session.status = "completed"
+            session.completed_at = timezone.now()
+            session.save()
         else:
-            session.status = "failed"
-
-        session.completed_at = timezone.now()
-        session.save()
+            # Use mark_failed() to properly set error_traceback
+            error_msg = result.get("error", "Import zakończony niepowodzeniem")
+            session.mark_failed(error_msg, "")
 
         ImportLog.objects.create(
             session=session,

@@ -92,7 +92,7 @@ def szukaj_kopii(osoba_z_instytucji: OsobaZInstytucji) -> QuerySet[Autor]:  # no
             if len(imie_glownego) >= 3:
                 # Obie strony zamiany muszą się zgadzać (AND, nie OR)
                 swap_condition = Q(nazwisko__iexact=imie_glownego) & Q(
-                    imiona__iregex=r"(^|[ ])" + nazwisko + r"($|[ ])"
+                    imiona__iregex=r"(^|[ ])" + re.escape(nazwisko) + r"($|[ ])"
                 )
                 q |= swap_condition
 
@@ -122,7 +122,9 @@ def szukaj_kopii(osoba_z_instytucji: OsobaZInstytucji) -> QuerySet[Autor]:  # no
                     else:
                         # Dla pełnych imion - bardziej restrykcyjne dopasowanie
                         # Dokładne dopasowanie imienia (jako pełne słowo)
-                        filtr_imion |= Q(imiona__iregex=r"(^|[ ])" + imie + r"($|[ ])")
+                        filtr_imion |= Q(
+                            imiona__iregex=r"(^|[ ])" + re.escape(imie) + r"($|[ ])"
+                        )
 
                         # Podobne imiona (pierwsze 3+ znaki) - dla imion >= 3 znaków
                         # np. "Jan" dopasuje "Janek", "Janusz"

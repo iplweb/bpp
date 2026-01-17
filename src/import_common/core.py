@@ -13,7 +13,6 @@ from bpp.models import (
     Rekord,
     Tytul,
     Wydawca,
-    Wydawnictwo_Ciagle,
     Wydawnictwo_Zwarte,
     Wydzial,
     Wymiar_Etatu,
@@ -22,6 +21,7 @@ from bpp.models import (
 from bpp.util import fail_if_seq_scan
 
 from .normalization import (
+    extract_part_number,
     normalize_doi,
     normalize_funkcja_autora,
     normalize_grupa_pracownicza,
@@ -129,6 +129,165 @@ def matchuj_jednostke(nazwa, wydzial=None):
         )
 
 
+def _try_get_autor_by_bpp_id(bpp_id: int | None) -> Autor | None:
+    """Próbuje pobrać autora po bpp_id."""
+    if bpp_id is None:
+        return None
+    try:
+        return Autor.objects.get(pk=bpp_id)
+    except Autor.DoesNotExist:
+        return None
+
+
+def _try_get_autor_by_orcid(orcid: str | None) -> Autor | None:
+    """Próbuje pobrać autora po ORCID."""
+    if not orcid:
+        return None
+    try:
+        return Autor.objects.get(orcid__iexact=orcid.strip())
+    except Autor.DoesNotExist:
+        return None
+
+
+def _try_get_autor_by_pbn_uid_id(pbn_uid_id: str | None) -> Autor | None:
+    """Próbuje pobrać autora po pbn_uid_id."""
+    if pbn_uid_id is None or pbn_uid_id.strip() == "":
+        return None
+    return Autor.objects.filter(pbn_uid_id=pbn_uid_id).first()
+
+
+def _try_get_autor_by_system_kadrowy_id(system_kadrowy_id) -> Autor | None:
+    """Próbuje pobrać autora po system_kadrowy_id."""
+    if system_kadrowy_id is None:
+        return None
+    try:
+        return Autor.objects.get(system_kadrowy_id=int(system_kadrowy_id))
+    except (TypeError, ValueError, Autor.DoesNotExist):
+        return None
+
+
+def _try_get_autor_by_pbn_id(pbn_id) -> Autor | None:
+    """Próbuje pobrać autora po pbn_id."""
+    if pbn_id is None:
+        return None
+    if isinstance(pbn_id, str):
+        pbn_id = pbn_id.strip()
+    try:
+        return Autor.objects.get(pbn_id=int(pbn_id))
+    except (TypeError, ValueError, Autor.DoesNotExist):
+        return None
+
+
+def _try_match_autor_by_direct_ids(
+    bpp_id: int | None,
+    orcid: str | None,
+    pbn_uid_id: str | None,
+    system_kadrowy_id: int | None,
+    pbn_id: int | None,
+) -> Autor | None:
+    """Próbuje dopasować autora po różnych identyfikatorach."""
+    return (
+        _try_get_autor_by_bpp_id(bpp_id)
+        or _try_get_autor_by_orcid(orcid)
+        or _try_get_autor_by_pbn_uid_id(pbn_uid_id)
+        or _try_get_autor_by_system_kadrowy_id(system_kadrowy_id)
+        or _try_get_autor_by_pbn_id(pbn_id)
+    )
+
+
+def _build_autor_name_query(nazwisko: str, imiona: str) -> Q:
+    """Buduje podstawowe zapytanie Q dla nazwiska i imion."""
+    return Q(
+        Q(nazwisko__iexact=nazwisko) | Q(poprzednie_nazwiska__icontains=nazwisko),
+        imiona__iexact=imiona,
+    )
+
+
+def _try_match_autor_by_name(
+    imiona: str,
+    nazwisko: str,
+    jednostka: Jednostka | None,
+    tytul_str: str | None,
+) -> Autor | None:
+    """Próbuje dopasować autora po imieniu i nazwisku."""
+    imiona = (imiona or "").strip()
+    nazwisko = (nazwisko or "").strip()
+
+    queries = [
+        _build_autor_name_query(nazwisko, imiona),
+        _build_autor_name_query(nazwisko, imiona.split(" ")[0]),
+    ]
+
+    if tytul_str:
+        queries.extend([q & Q(tytul__skrot=tytul_str) for q in queries[:]])
+
+    for qry in queries:
+        try:
+            return Autor.objects.get(qry)
+        except (Autor.DoesNotExist, Autor.MultipleObjectsReturned):
+            pass
+
+        if jednostka is not None:
+            try:
+                return Autor.objects.get(qry & Q(aktualna_jednostka=jednostka))
+            except (Autor.MultipleObjectsReturned, Autor.DoesNotExist):
+                pass
+
+    return None
+
+
+def _try_match_autor_in_jednostka(
+    imiona: str,
+    nazwisko: str,
+    jednostka: Jednostka,
+    tytul_str: str | None,
+) -> Autor | None:
+    """Szuka autora wśród przypisanych do jednostki."""
+    imiona = (imiona or "").strip()
+    nazwisko = (nazwisko or "").strip()
+
+    base_query = Q(
+        Q(autor__nazwisko__iexact=nazwisko)
+        | Q(autor__poprzednie_nazwiska__icontains=nazwisko),
+        autor__imiona__iexact=imiona,
+    )
+    queries = [base_query]
+    if tytul_str:
+        queries.append(base_query & Q(autor__tytul__skrot=tytul_str))
+
+    for qry in queries:
+        try:
+            return jednostka.autor_jednostka_set.get(qry).autor
+        except (Autor_Jednostka.MultipleObjectsReturned, Autor_Jednostka.DoesNotExist):
+            pass
+
+    return None
+
+
+def _try_match_autor_with_orcid_or_tytul(imiona: str, nazwisko: str) -> Autor | None:
+    """Ostatnia próba - szuka autora z ORCIDem lub tytułem."""
+    imiona = (imiona or "").strip()
+    nazwisko = (nazwisko or "").strip()
+
+    base_query = _build_autor_name_query(nazwisko, imiona)
+
+    # Próba z ORCIDem i tytułem
+    try:
+        return Autor.objects.get(
+            base_query, orcid__isnull=False, tytul_id__isnull=False
+        )
+    except (Autor.DoesNotExist, Autor.MultipleObjectsReturned):
+        pass
+
+    # Próba tylko z tytułem
+    try:
+        return Autor.objects.get(base_query, tytul_id__isnull=False)
+    except (Autor.DoesNotExist, Autor.MultipleObjectsReturned):
+        pass
+
+    return None
+
+
 def matchuj_autora(
     imiona: str | None,
     nazwisko: str | None,
@@ -140,139 +299,92 @@ def matchuj_autora(
     orcid: str | None = None,
     tytul_str: Tytul | None = None,
 ):
-    if bpp_id is not None:
-        try:
-            return Autor.objects.get(pk=bpp_id)
-        except Autor.DoesNotExist:
-            pass
+    # Najpierw próba po identyfikatorach
+    result = _try_match_autor_by_direct_ids(
+        bpp_id, orcid, pbn_uid_id, system_kadrowy_id, pbn_id
+    )
+    if result:
+        return result
 
-    if orcid:
-        try:
-            return Autor.objects.get(orcid__iexact=orcid.strip())
-        except Autor.DoesNotExist:
-            pass
+    # Próba po imieniu i nazwisku
+    result = _try_match_autor_by_name(imiona, nazwisko, jednostka, tytul_str)
+    if result:
+        return result
 
-    if pbn_uid_id is not None and pbn_uid_id.strip() != "":
-        # Może być > 1 autor z takim pbn_uid_id
-        _qset = Autor.objects.filter(pbn_uid_id=pbn_uid_id)
-        if _qset.exists():
-            return _qset.first()
-
-    if system_kadrowy_id is not None:
-        try:
-            int(system_kadrowy_id)
-        except (TypeError, ValueError):
-            system_kadrowy_id = None
-
-        if system_kadrowy_id is not None:
-            try:
-                return Autor.objects.get(system_kadrowy_id=system_kadrowy_id)
-            except Autor.DoesNotExist:
-                pass
-
-    if pbn_id is not None:
-        if isinstance(pbn_id, str):
-            pbn_id = pbn_id.strip()
-
-        try:
-            pbn_id = int(pbn_id)
-        except (TypeError, ValueError):
-            pbn_id = None
-
-        if pbn_id is not None:
-            try:
-                return Autor.objects.get(pbn_id=pbn_id)
-            except Autor.DoesNotExist:
-                pass
-
-    if imiona is None:
-        imiona = ""
-
-    if nazwisko is None:
-        nazwisko = ""
-
-    queries = [
-        Q(
-            Q(nazwisko__iexact=nazwisko.strip())
-            | Q(poprzednie_nazwiska__icontains=nazwisko.strip()),
-            imiona__iexact=imiona.strip(),
-        ),
-        Q(
-            Q(nazwisko__iexact=nazwisko.strip())
-            | Q(poprzednie_nazwiska__icontains=nazwisko.strip()),
-            imiona__iexact=imiona.strip().split(" ")[0],
-        ),
-    ]
-
-    if tytul_str:
-        for query in queries[: len(queries)]:
-            queries.append(query & Q(tytul__skrot=tytul_str))
-
-    for qry in queries:
-        try:
-            return Autor.objects.get(qry)
-        except (Autor.DoesNotExist, Autor.MultipleObjectsReturned):
-            pass
-
-        try:
-            return Autor.objects.get(qry & Q(aktualna_jednostka=jednostka))
-        except (Autor.MultipleObjectsReturned, Autor.DoesNotExist):
-            pass
-
-    # Jesteśmy tutaj. Najwyraźniej poszukiwanie po aktualnej jednostce, imieniu, nazwisku,
-    # tytule itp nie bardzo się powiodło. Spróbujmy innej strategii -- jednostka jest
-    # określona, poszukajmy w jej autorach. Wszak nie musi być ta jednostka jednostką
-    # aktualną...
-
+    # Szukanie w jednostce (niekoniecznie aktualnej)
     if jednostka:
-        queries = [
-            Q(
-                Q(autor__nazwisko__iexact=nazwisko.strip())
-                | Q(autor__poprzednie_nazwiska__icontains=nazwisko.strip()),
-                autor__imiona__iexact=imiona.strip(),
-            )
-        ]
-        if tytul_str:
-            queries.append(queries[0] & Q(autor__tytul__skrot=tytul_str))
+        result = _try_match_autor_in_jednostka(imiona, nazwisko, jednostka, tytul_str)
+        if result:
+            return result
 
-        for qry in queries:
+    # Ostatnia próba - autor z ORCIDem lub tytułem
+    return _try_match_autor_with_orcid_or_tytul(imiona, nazwisko)
+
+
+def _try_match_zrodlo_by_issn(issn: str | None, e_issn: str | None) -> Zrodlo | None:
+    """Próbuje dopasować źródło po ISSN lub e-ISSN."""
+    if issn is not None:
+        try:
+            return Zrodlo.objects.get(issn=issn)
+        except (Zrodlo.DoesNotExist, Zrodlo.MultipleObjectsReturned):
+            pass
+
+    if e_issn is not None:
+        try:
+            return Zrodlo.objects.get(e_issn=e_issn)
+        except (Zrodlo.DoesNotExist, Zrodlo.MultipleObjectsReturned):
+            pass
+
+    return None
+
+
+def _try_match_zrodlo_by_mnisw_id(mnisw_id: int | str | None) -> Zrodlo | None:
+    """Próbuje dopasować źródło po mniswId przez PBN Journal."""
+    if mnisw_id is None:
+        return None
+
+    from pbn_api.models import Journal
+
+    try:
+        mnisw_id = int(mnisw_id) if isinstance(mnisw_id, str) else mnisw_id
+    except (ValueError, TypeError):
+        return None
+
+    try:
+        pbn_journal = Journal.objects.get(mniswId=mnisw_id)
+        zrodlo = Zrodlo.objects.filter(pbn_uid=pbn_journal).first()
+        if zrodlo:
+            return zrodlo
+    except Journal.DoesNotExist:
+        pass
+    except Journal.MultipleObjectsReturned:
+        for pbn_journal in Journal.objects.filter(mniswId=mnisw_id):
+            zrodlo = Zrodlo.objects.filter(pbn_uid=pbn_journal).first()
+            if zrodlo:
+                return zrodlo
+
+    return None
+
+
+def _try_match_zrodlo_by_title_single(
+    elem: str, disable_skrot: bool, disable_fuzzy: bool
+) -> Zrodlo | None:
+    """Próbuje dopasować pojedynczy tytuł źródła."""
+    elem = normalize_tytul_zrodla(elem)
+    try:
+        if disable_skrot:
+            return Zrodlo.objects.get(nazwa__iexact=elem)
+        return Zrodlo.objects.get(Q(nazwa__iexact=elem) | Q(skrot__iexact=elem))
+    except Zrodlo.MultipleObjectsReturned:
+        pass
+    except Zrodlo.DoesNotExist:
+        if not disable_fuzzy and elem.endswith("."):
             try:
-                return jednostka.autor_jednostka_set.get(qry).autor
-            except (
-                Autor_Jednostka.MultipleObjectsReturned,
-                Autor_Jednostka.DoesNotExist,
-            ):
+                return Zrodlo.objects.get(
+                    Q(nazwa__istartswith=elem[:-1]) | Q(skrot__istartswith=elem[:-1])
+                )
+            except (Zrodlo.DoesNotExist, Zrodlo.MultipleObjectsReturned):
                 pass
-
-    # Jeżeli nie ma nadal jednego autora który spełnia te kryteria, spróbuj znaleźć konto
-    # z ORCIDem i tytułem. W przypadku importów z PBNu często było tak, że autorzy byli zdublowani, ale
-    # tylko jeden miał orcid i tytuł:
-
-    try:
-        return Autor.objects.get(
-            Q(
-                Q(nazwisko__iexact=nazwisko.strip())
-                | Q(poprzednie_nazwiska__icontains=nazwisko.strip()),
-                imiona__iexact=imiona.strip(),
-            ),
-            orcid__isnull=False,
-            tytul_id__isnull=False,
-        )
-    except (Autor.DoesNotExist, Autor.MultipleObjectsReturned):
-        pass
-
-    # .. albo tylko z tytułem:
-    try:
-        return Autor.objects.get(
-            Q(
-                Q(nazwisko__iexact=nazwisko.strip())
-                | Q(poprzednie_nazwiska__icontains=nazwisko.strip()),
-                imiona__iexact=imiona.strip(),
-            ),
-            tytul_id__isnull=False,
-        )
-    except (Autor.DoesNotExist, Autor.MultipleObjectsReturned):
-        pass
 
     return None
 
@@ -288,75 +400,35 @@ def matchuj_zrodlo(
     disable_title_matching=False,
 ) -> None | Zrodlo:
     if s is None or str(s) == "":
-        return
+        return None
 
-    if issn is not None:
-        try:
-            return Zrodlo.objects.get(issn=issn)
-        except (Zrodlo.DoesNotExist, Zrodlo.MultipleObjectsReturned):
-            pass
+    result = _try_match_zrodlo_by_issn(issn, e_issn)
+    if result:
+        return result
 
-    if e_issn is not None:
-        try:
-            return Zrodlo.objects.get(e_issn=e_issn)
-        except (Zrodlo.DoesNotExist, Zrodlo.MultipleObjectsReturned):
-            pass
+    result = _try_match_zrodlo_by_mnisw_id(mnisw_id)
+    if result:
+        return result
 
-    # Try matching by mniswId through PBN Journal
-    if mnisw_id is not None:
-        from pbn_api.models import Journal
-
-        try:
-            mnisw_id = int(mnisw_id) if isinstance(mnisw_id, str) else mnisw_id
-        except (ValueError, TypeError):
-            pass
-        else:
-            try:
-                pbn_journal = Journal.objects.get(mniswId=mnisw_id)
-                zrodlo = Zrodlo.objects.filter(pbn_uid=pbn_journal).first()
-                if zrodlo:
-                    return zrodlo
-            except Journal.DoesNotExist:
-                pass
-            except Journal.MultipleObjectsReturned:
-                # If multiple journals with same mniswId, try to get the first one with a Zrodlo
-                for pbn_journal in Journal.objects.filter(mniswId=mnisw_id):
-                    zrodlo = Zrodlo.objects.filter(pbn_uid=pbn_journal).first()
-                    if zrodlo:
-                        return zrodlo
-
-    # Skip title matching if disable_title_matching is True
     if not disable_title_matching:
-        for elem in s, alt_nazwa:
+        for elem in (s, alt_nazwa):
             if elem is None:
                 continue
+            result = _try_match_zrodlo_by_title_single(
+                elem, disable_skrot, disable_fuzzy
+            )
+            if result:
+                return result
 
-            elem = normalize_tytul_zrodla(elem)
-            try:
-                if disable_skrot is True:
-                    return Zrodlo.objects.get(nazwa__iexact=elem)
-                return Zrodlo.objects.get(Q(nazwa__iexact=elem) | Q(skrot__iexact=elem))
-            except Zrodlo.MultipleObjectsReturned:
-                pass
-            except Zrodlo.DoesNotExist:
-                if not disable_fuzzy and elem.endswith("."):
-                    try:
-                        return Zrodlo.objects.get(
-                            Q(nazwa__istartswith=elem[:-1])
-                            | Q(skrot__istartswith=elem[:-1])
-                        )
-                    except Zrodlo.DoesNotExist:
-                        pass
-                    except Zrodlo.MultipleObjectsReturned:
-                        pass
+    return None
 
 
 def matchuj_dyscypline(kod, nazwa):
     if nazwa:
-        for nazwa in [nazwa, nazwa.split("(", 2)[0]]:
-            nazwa = normalize_nazwa_dyscypliny(nazwa)
+        for nazwa_kandydat in [nazwa, nazwa.split("(", 2)[0]]:
+            nazwa_znormalizowana = normalize_nazwa_dyscypliny(nazwa_kandydat)
             try:
-                return Dyscyplina_Naukowa.objects.get(nazwa=nazwa)
+                return Dyscyplina_Naukowa.objects.get(nazwa=nazwa_znormalizowana)
             except Dyscyplina_Naukowa.DoesNotExist:
                 pass
             except Dyscyplina_Naukowa.MultipleObjectsReturned:
@@ -458,8 +530,201 @@ def normalize_zrodlo_nazwa_for_db_lookup(s):
 normalized_db_isbn = Trim(Replace(Lower("isbn"), Value("-"), Value("")))
 
 
+def _part_numbers_compatible(title1: str | None, title2: str | None) -> bool:
+    """Sprawdza czy numery części w tytułach są kompatybilne.
+
+    Zwraca True jeśli:
+    - Oba tytuły nie mają numeru części, LUB
+    - Oba mają ten sam numer części
+    - Którykolwiek z tytułów jest None (nie możemy sprawdzić)
+
+    Zwraca False jeśli numery części się różnią.
+
+    Ta funkcja zapobiega błędnemu matchowaniu publikacji takich jak
+    "Tytuł cz. II" do "Tytuł cz. III" - to są różne publikacje.
+    """
+    if title1 is None or title2 is None:
+        return True  # Nie możemy sprawdzić, zakładamy kompatybilność
+
+    _, part1 = extract_part_number(title1)
+    _, part2 = extract_part_number(title2)
+
+    # Jeśli oba nie mają numeru części - OK
+    if part1 is None and part2 is None:
+        return True
+
+    # Jeśli jeden ma, drugi nie - NIE matchuj
+    if part1 is None or part2 is None:
+        return False
+
+    # Oba mają - muszą być identyczne
+    return part1 == part2
+
+
+def _is_title_long_enough(title: str | None) -> bool:
+    """Sprawdza czy tytuł jest wystarczająco długi do matchowania."""
+    if title is None:
+        return False
+    title_has_spaces = " " in title
+    if title_has_spaces:
+        return len(title) >= TITLE_LIMIT_MANY_WORDS
+    return len(title) >= TITLE_LIMIT_SINGLE_WORD
+
+
+def _check_candidate(candidate, title: str, threshold: float) -> bool:
+    """Sprawdza czy kandydat spełnia próg podobieństwa i ma zgodny numer części."""
+    if candidate.podobienstwo >= threshold:
+        if _part_numbers_compatible(title, candidate.tytul_oryginalny):
+            return True
+    return False
+
+
+def _try_match_pub_by_doi(klass, title, year, doi, doi_matchuj_tylko_nadrzedne, debug):
+    """Próbuje dopasować publikację po DOI."""
+    doi = normalize_doi(doi)
+    if not doi:
+        return None
+
+    zapytanie = klass.objects.filter(doi__istartswith=doi, rok=year)
+    if doi_matchuj_tylko_nadrzedne and hasattr(klass, "wydawnictwo_nadrzedne_id"):
+        zapytanie = zapytanie.filter(wydawnictwo_nadrzedne_id=None)
+
+    res = zapytanie.annotate(
+        podobienstwo=TrigramSimilarity(normalized_db_title, title.lower())
+    ).order_by("-podobienstwo")[:2]
+    fail_if_seq_scan(res, debug)
+
+    if res.exists():
+        candidate = res.first()
+        if _check_candidate(candidate, title, MATCH_SIMILARITY_THRESHOLD_VERY_LOW):
+            return candidate
+    return None
+
+
+def _try_match_pub_by_zrodlo(klass, title, year, zrodlo):
+    """Próbuje dopasować publikację po źródle."""
+    if zrodlo is None or not hasattr(klass, "zrodlo"):
+        return None
+    try:
+        return klass.objects.get(
+            tytul_oryginalny__istartswith=title, rok=year, zrodlo=zrodlo
+        )
+    except klass.DoesNotExist:
+        return None
+    except klass.MultipleObjectsReturned:
+        print(
+            f"PPP ZZZ MultipleObjectsReturned title={title} rok={year} zrodlo={zrodlo}"
+        )
+        return None
+
+
+def _build_isbn_query(klass, isbn_matchuj_tylko_nadrzedne):
+    """Buduje zapytanie dla matchowania ISBN."""
+    from django.contrib.contenttypes.models import ContentType
+
+    zapytanie = klass.objects.exclude(isbn=None, e_isbn=None).exclude(
+        isbn="", e_isbn=""
+    )
+
+    if not isbn_matchuj_tylko_nadrzedne:
+        return zapytanie
+
+    zapytanie = zapytanie.filter(wydawnictwo_nadrzedne_id=None)
+
+    if klass == Rekord:
+        zapytanie = zapytanie.filter(
+            pk__in=[
+                (ContentType.objects.get_for_model(Wydawnictwo_Zwarte).pk, x)
+                for x in Wydawnictwo_Zwarte.objects.wydawnictwa_nadrzedne_dla_innych()
+            ]
+        )
+    elif klass == Wydawnictwo_Zwarte:
+        zapytanie = zapytanie.filter(
+            pk__in=Wydawnictwo_Zwarte.objects.wydawnictwa_nadrzedne_dla_innych()
+        )
+    else:
+        raise NotImplementedError(
+            "Matchowanie po ISBN dla czegoś innego niż wydawnictwo zwarte nie opracowane"
+        )
+
+    return zapytanie
+
+
+def _try_match_pub_by_isbn(klass, title, isbn, isbn_matchuj_tylko_nadrzedne, debug):
+    """Próbuje dopasować publikację po ISBN."""
+    if not isbn or not hasattr(klass, "isbn") or not hasattr(klass, "e_isbn"):
+        return None
+
+    ni = normalize_isbn(isbn)
+    zapytanie = _build_isbn_query(klass, isbn_matchuj_tylko_nadrzedne)
+
+    res = (
+        zapytanie.filter(Q(isbn=ni) | Q(e_isbn=ni))
+        .annotate(podobienstwo=TrigramSimilarity(normalized_db_title, title.lower()))
+        .order_by("-podobienstwo")[:2]
+    )
+    fail_if_seq_scan(res, debug)
+
+    if res.exists():
+        candidate = res.first()
+        if _check_candidate(candidate, title, MATCH_SIMILARITY_THRESHOLD_VERY_LOW):
+            return candidate
+    return None
+
+
+def _try_match_pub_by_uri(klass, title, public_uri, debug):
+    """Próbuje dopasować publikację po public_uri."""
+    public_uri = normalize_public_uri(public_uri)
+    if not public_uri:
+        return None
+
+    res = (
+        klass.objects.filter(Q(www=public_uri) | Q(public_www=public_uri))
+        .annotate(podobienstwo=TrigramSimilarity(normalized_db_title, title.lower()))
+        .order_by("-podobienstwo")[:2]
+    )
+    fail_if_seq_scan(res, debug)
+
+    if res.exists():
+        candidate = res.first()
+        if _check_candidate(candidate, title, MATCH_SIMILARITY_THRESHOLD):
+            return candidate
+    return None
+
+
+def _try_match_pub_by_title(klass, title, year, debug):
+    """Próbuje dopasować publikację po podobieństwie tytułu."""
+    # Najpierw próba z istartswith
+    res = (
+        klass.objects.filter(tytul_oryginalny__istartswith=title, rok=year)
+        .annotate(podobienstwo=TrigramSimilarity(normalized_db_title, title.lower()))
+        .order_by("-podobienstwo")[:2]
+    )
+    fail_if_seq_scan(res, debug)
+
+    if res.exists():
+        candidate = res.first()
+        if _check_candidate(candidate, title, MATCH_SIMILARITY_THRESHOLD):
+            return candidate
+
+    # Ostatnia szansa - tylko po roku z niskim progiem
+    res = (
+        klass.objects.filter(rok=year)
+        .annotate(podobienstwo=TrigramSimilarity(normalized_db_title, title.lower()))
+        .order_by("-podobienstwo")[:2]
+    )
+    fail_if_seq_scan(res, debug)
+
+    if res.exists():
+        candidate = res.first()
+        if _check_candidate(candidate, title, MATCH_SIMILARITY_THRESHOLD_LOW):
+            return candidate
+
+    return None
+
+
 def matchuj_publikacje(
-    klass: [Wydawnictwo_Zwarte, Wydawnictwo_Ciagle, Rekord],
+    klass,
     title,
     year,
     doi=None,
@@ -470,150 +735,41 @@ def matchuj_publikacje(
     isbn_matchuj_tylko_nadrzedne=True,
     doi_matchuj_tylko_nadrzedne=True,
 ):
-    from django.contrib.contenttypes.models import ContentType
-
+    # Próba po DOI (przed normalizacją tytułu)
     if doi is not None:
-        doi = normalize_doi(doi)
-        if doi:
-            zapytanie = klass.objects.filter(doi__istartswith=doi, rok=year)
-
-            if doi_matchuj_tylko_nadrzedne:
-                if hasattr(klass, "wydawnictwo_nadrzedne_id"):
-                    zapytanie = zapytanie.filter(wydawnictwo_nadrzedne_id=None)
-
-            res = zapytanie.annotate(
-                podobienstwo=TrigramSimilarity(normalized_db_title, title.lower())
-            ).order_by("-podobienstwo")[:2]
-            fail_if_seq_scan(res, DEBUG_MATCHOWANIE)
-            if res.exists():
-                if res.first().podobienstwo >= MATCH_SIMILARITY_THRESHOLD_VERY_LOW:
-                    return res.first()
+        result = _try_match_pub_by_doi(
+            klass, title, year, doi, doi_matchuj_tylko_nadrzedne, DEBUG_MATCHOWANIE
+        )
+        if result:
+            return result
 
     title = normalize_tytul_publikacji(title)
 
-    title_has_spaces = False
+    # Próba po źródle
+    if _is_title_long_enough(title):
+        result = _try_match_pub_by_zrodlo(klass, title, year, zrodlo)
+        if result:
+            return result
 
-    if title is not None:
-        title_has_spaces = title.find(" ") > 0
+    # Próba po ISBN
+    result = _try_match_pub_by_isbn(
+        klass, title, isbn, isbn_matchuj_tylko_nadrzedne, DEBUG_MATCHOWANIE
+    )
+    if result:
+        return result
 
-    if title is not None and (
-        (not title_has_spaces and len(title) >= TITLE_LIMIT_SINGLE_WORD)
-        or (title_has_spaces and len(title) >= TITLE_LIMIT_MANY_WORDS)
-    ):
-        if zrodlo is not None and hasattr(klass, "zrodlo"):
-            try:
-                return klass.objects.get(
-                    tytul_oryginalny__istartswith=title, rok=year, zrodlo=zrodlo
-                )
-            except klass.DoesNotExist:
-                pass
-            except klass.MultipleObjectsReturned:
-                print(
-                    f"PPP ZZZ MultipleObjectsReturned dla title={title} rok={year} zrodlo={zrodlo}"
-                )
+    # Próba po URI
+    result = _try_match_pub_by_uri(klass, title, public_uri, DEBUG_MATCHOWANIE)
+    if result:
+        return result
 
-    if (
-        isbn is not None
-        and isbn != ""
-        and hasattr(klass, "isbn")
-        and hasattr(klass, "e_isbn")
-    ):
-        ni = normalize_isbn(isbn)
+    # Próba po podobieństwie tytułu
+    if _is_title_long_enough(title):
+        result = _try_match_pub_by_title(klass, title, year, DEBUG_MATCHOWANIE)
+        if result:
+            return result
 
-        zapytanie = klass.objects.exclude(isbn=None, e_isbn=None).exclude(
-            isbn="", e_isbn=""
-        )
-
-        if isbn_matchuj_tylko_nadrzedne:
-            zapytanie = zapytanie.filter(wydawnictwo_nadrzedne_id=None)
-
-            if klass == Rekord:
-                zapytanie = zapytanie.filter(
-                    pk__in=[
-                        (ContentType.objects.get_for_model(Wydawnictwo_Zwarte).pk, x)
-                        for x in Wydawnictwo_Zwarte.objects.wydawnictwa_nadrzedne_dla_innych()
-                    ]
-                )
-            elif klass == Wydawnictwo_Zwarte:
-                zapytanie = zapytanie.filter(
-                    pk__in=Wydawnictwo_Zwarte.objects.wydawnictwa_nadrzedne_dla_innych()
-                )
-            else:
-                raise NotImplementedError(
-                    "Matchowanie po ISBN dla czegoś innego niż wydawnictwo zwarte nie opracowane"
-                )
-
-        #
-        # Uwaga uwaga uwaga.
-        #
-        # Gdy matchujemy ISBN, to w BPP dochodzi do takiej nieciekawej sytuacji: wpisywany jest
-        # ISBN zarówno dla rozdziałów jak i dla wydawnictw nadrzędnych.
-        #
-        # Zatem, na ten moment, aby usprawnić matchowanie ISBN, jeżeli ustawiona jest flaga
-        # isbn_matchuj_tylko_nadrzedne, to system bedzie szukał tylko i wyłącznie wśród
-        # rekordów będących wydawnictwami nadrzędnymi (czyli nie mającymi rekordów podrzędnych)
-        #
-
-        res = (
-            zapytanie.filter(Q(isbn=ni) | Q(e_isbn=ni))
-            .annotate(
-                podobienstwo=TrigramSimilarity(
-                    normalized_db_title,
-                    title.lower(),
-                )
-            )
-            .order_by("-podobienstwo")[:2]
-        )
-        fail_if_seq_scan(res, DEBUG_MATCHOWANIE)
-        if res.exists():
-            if res.first().podobienstwo >= MATCH_SIMILARITY_THRESHOLD_VERY_LOW:
-                return res.first()
-
-    public_uri = normalize_public_uri(public_uri)
-    if public_uri:
-        res = (
-            klass.objects.filter(Q(www=public_uri) | Q(public_www=public_uri))
-            .annotate(
-                podobienstwo=TrigramSimilarity(normalized_db_title, title.lower())
-            )
-            .order_by("-podobienstwo")[:2]
-        )
-        fail_if_seq_scan(res, DEBUG_MATCHOWANIE)
-        if res.exists():
-            if res.first().podobienstwo >= MATCH_SIMILARITY_THRESHOLD:
-                return res.first()
-
-    if title is not None and (
-        (not title_has_spaces and len(title) >= TITLE_LIMIT_SINGLE_WORD)
-        or (title_has_spaces and len(title) >= TITLE_LIMIT_MANY_WORDS)
-    ):
-        res = (
-            klass.objects.filter(tytul_oryginalny__istartswith=title, rok=year)
-            .annotate(
-                podobienstwo=TrigramSimilarity(normalized_db_title, title.lower())
-            )
-            .order_by("-podobienstwo")[:2]
-        )
-
-        fail_if_seq_scan(res, DEBUG_MATCHOWANIE)
-        if res.exists():
-            if res.first().podobienstwo >= MATCH_SIMILARITY_THRESHOLD:
-                return res.first()
-
-        # Ostatnia szansa, po podobieństwie, niski próg
-
-        res = (
-            klass.objects.filter(rok=year)
-            .annotate(
-                podobienstwo=TrigramSimilarity(normalized_db_title, title.lower())
-            )
-            .order_by("-podobienstwo")[:2]
-        )
-
-        fail_if_seq_scan(res, DEBUG_MATCHOWANIE)
-        if res.exists():
-            if res.first().podobienstwo >= MATCH_SIMILARITY_THRESHOLD_LOW:
-                return res.first()
+    return None
 
 
 def normalize_kod_dyscypliny_pbn(kod):

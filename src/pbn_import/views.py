@@ -17,7 +17,13 @@ from django.views.generic import DetailView, ListView, TemplateView
 
 from bpp.models import Uczelnia
 
-from .models import ImportLog, ImportSession, ImportStatistics, ImportStep
+from .models import (
+    ImportInconsistency,
+    ImportLog,
+    ImportSession,
+    ImportStatistics,
+    ImportStep,
+)
 
 
 class ImportPermissionMixin(PermissionRequiredMixin):
@@ -380,6 +386,25 @@ class ImportSessionDetailView(LoginRequiredMixin, ImportPermissionMixin, DetailV
             session=session, level__in=["error", "critical", "warning"]
         ).order_by("-timestamp")
 
+        # Get inconsistencies
+        inconsistencies = ImportInconsistency.objects.filter(session=session).order_by(
+            "-timestamp"
+        )
+        context["inconsistencies"] = inconsistencies
+        context["inconsistency_count"] = inconsistencies.count()
+
+        # Build inconsistency summary by type
+        inconsistency_summary = {}
+        for choice_code, choice_label in ImportInconsistency.INCONSISTENCY_TYPE_CHOICES:
+            count = inconsistencies.filter(inconsistency_type=choice_code).count()
+            if count > 0:
+                inconsistency_summary[choice_code] = {
+                    "label": choice_label,
+                    "count": count,
+                }
+        context["inconsistency_summary"] = inconsistency_summary
+        context["active_filter"] = ""  # No filter active on initial page load
+
         # Get statistics if available
         try:
             context["statistics"] = session.statistics
@@ -432,4 +457,53 @@ class ImportErrorLogsView(LoginRequiredMixin, ImportPermissionMixin, View):
             request,
             "pbn_import/components/error_logs.html",
             {"error_logs": error_logs, "session": session, "user": request.user},
+        )
+
+
+class ImportInconsistenciesView(LoginRequiredMixin, ImportPermissionMixin, View):
+    """HTMX endpoint for inconsistencies"""
+
+    def get(self, request, pk):
+        session = get_object_or_404(ImportSession, pk=pk)
+        # Check permission - users can only see their own sessions unless superuser
+        if not request.user.is_superuser and session.user != request.user:
+            return HttpResponse("Forbidden", status=403)
+
+        # Get filter type from query parameter
+        filter_type = request.GET.get("filter_type", "")
+
+        # Get all inconsistencies for building summary
+        all_inconsistencies = ImportInconsistency.objects.filter(session=session)
+
+        # Build inconsistency summary by type (always show all types)
+        inconsistency_summary = {}
+        for choice_code, choice_label in ImportInconsistency.INCONSISTENCY_TYPE_CHOICES:
+            count = all_inconsistencies.filter(inconsistency_type=choice_code).count()
+            if count > 0:
+                inconsistency_summary[choice_code] = {
+                    "label": choice_label,
+                    "count": count,
+                }
+
+        # Apply filter if specified
+        if filter_type and filter_type in dict(
+            ImportInconsistency.INCONSISTENCY_TYPE_CHOICES
+        ):
+            inconsistencies = all_inconsistencies.filter(
+                inconsistency_type=filter_type
+            ).order_by("-timestamp")
+        else:
+            inconsistencies = all_inconsistencies.order_by("-timestamp")
+            filter_type = ""  # Reset if invalid
+
+        return render(
+            request,
+            "pbn_import/components/inconsistencies.html",
+            {
+                "inconsistencies": inconsistencies,
+                "inconsistency_summary": inconsistency_summary,
+                "session": session,
+                "user": request.user,
+                "active_filter": filter_type,
+            },
         )

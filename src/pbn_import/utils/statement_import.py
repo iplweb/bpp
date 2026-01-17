@@ -1,5 +1,6 @@
 """Statement (oświadczenia) import utilities"""
 
+from bpp.models import Jednostka
 from pbn_integrator.utils import (
     integruj_oswiadczenia_z_instytucji,
     pobierz_oswiadczenia_z_instytucji,
@@ -40,13 +41,31 @@ class StatementImporter(ImportStepBase):
         self.update_progress(1, 2, "Integrowanie oświadczeń")
         self.log("info", "Integrating statements")
 
+        # Setup publication importer for any missing publications
+        uczelnia = self.publication_importer._setup_uczelnia_and_jednostka()
+        if not uczelnia:
+            self.log(
+                "warning",
+                "Brak Uczelni z PBN UID, pomijanie integracji oświadczeń",
+            )
+            return {"statements_imported": False, "reason": "No Uczelnia PBN UID"}
+
         def missing_publication_callback(pbn_uid_id):
             """Import missing publication when found in statements"""
             self.log("info", f"Importing missing publication: {pbn_uid_id}")
             return self.publication_importer.import_single_publication(pbn_uid_id)
 
+        # Pobierz jednostkę domyślną z konfiguracji sesji
+        default_jednostka = None
+        jednostka_id = self.session.config.get("default_jednostka_id")
+        if jednostka_id:
+            default_jednostka = Jednostka.objects.filter(pk=jednostka_id).first()
+
         try:
-            integruj_oswiadczenia_z_instytucji(missing_publication_callback)
+            integruj_oswiadczenia_z_instytucji(
+                missing_publication_callback,
+                default_jednostka=default_jednostka,
+            )
 
             # Update statistics
             if hasattr(self.session, "statistics"):

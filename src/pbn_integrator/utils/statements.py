@@ -29,7 +29,12 @@ if TYPE_CHECKING:
 
 
 def integruj_oswiadczenia_z_instytucji_pojedyncza_praca(  # noqa: C901
-    elem, noted_pub, noted_aut, missing_publication_callback=None
+    elem,
+    noted_pub,
+    noted_aut,
+    missing_publication_callback=None,
+    inconsistency_callback=None,
+    default_jednostka=None,
 ):
     """Integrate statements for a single publication.
 
@@ -38,6 +43,19 @@ def integruj_oswiadczenia_z_instytucji_pojedyncza_praca(  # noqa: C901
         noted_pub: Set of noted publication IDs.
         noted_aut: Set of noted author IDs.
         missing_publication_callback: Optional callback for missing publications.
+        inconsistency_callback: Optional callback for reporting inconsistencies.
+            Signature: inconsistency_callback(
+                inconsistency_type: str,
+                pbn_publication=None,
+                pbn_author=None,
+                bpp_publication=None,
+                bpp_author=None,
+                discipline=None,
+                message: str = "",
+                action_taken: str = "",
+            )
+        default_jednostka: Optional default unit to assign when updating
+            from "Obca jednostka" to a proper unit during discipline assignment.
     """
     pub = elem.get_bpp_publication()
     if pub is None:
@@ -49,10 +67,18 @@ def integruj_oswiadczenia_z_instytucji_pojedyncza_praca(  # noqa: C901
 
             if pub is None:
                 if elem.publicationId_id not in noted_pub:
-                    print(
-                        f"\r\nPPP Brak odpowiednika publikacji w BPP dla pracy {elem.publicationId}, "
-                        f"parametr inOrcid oraz dyscypliny dla tej pracy nie zostanie zaimportowany!"
+                    msg = (
+                        f"Brak odpowiednika publikacji w BPP dla pracy "
+                        f"{elem.publicationId}, parametr inOrcid oraz dyscypliny "
+                        f"dla tej pracy nie zostanie zaimportowany!"
                     )
+                    print(f"\r\nPPP {msg}")
+                    if inconsistency_callback:
+                        inconsistency_callback(
+                            inconsistency_type="publication_not_found",
+                            pbn_publication=elem.publicationId,
+                            message=msg,
+                        )
                     noted_pub.add(elem.publicationId_id)
                 return
             else:
@@ -64,10 +90,19 @@ def integruj_oswiadczenia_z_instytucji_pojedyncza_praca(  # noqa: C901
     aut = elem.get_bpp_autor()
     if aut is None:
         if elem.personId_id not in noted_aut:
-            print(
-                f"\r\nAAA Brak odpowiednika autora w BPP dla autora {elem.personId}, "
+            msg = (
+                f"Brak odpowiednika autora w BPP dla autora {elem.personId}, "
                 f"parametr inOrcid dla tego autora nie zostanie zaimportowany!"
             )
+            print(f"\r\nAAA {msg}")
+            if inconsistency_callback:
+                inconsistency_callback(
+                    inconsistency_type="author_not_in_bpp",
+                    pbn_publication=elem.publicationId,
+                    pbn_author=elem.personId,
+                    bpp_publication=pub,
+                    message=msg,
+                )
             noted_aut.add(elem.publicationId_id)
         return
 
@@ -76,11 +111,21 @@ def integruj_oswiadczenia_z_instytucji_pojedyncza_praca(  # noqa: C901
             autor=aut, typ_odpowiedzialnosci=elem.get_typ_odpowiedzialnosci()
         )
     except pub.autorzy_set.model.DoesNotExist:
-        print(
-            f"===========================================================\n"
-            f"XXX Po stronie PBN: {elem.publicationId}, \n"
-            f"XXX po stronie BPP: {pub}, {aut} -- nie ma ta praca takiego autora!"
+        msg = (
+            f"Po stronie PBN: {elem.publicationId}, "
+            f"po stronie BPP: {pub}, {aut} -- nie ma ta praca takiego autora!"
         )
+        print(f"===========================================================\nXXX {msg}")
+        if inconsistency_callback:
+            inconsistency_callback(
+                inconsistency_type="author_not_found",
+                pbn_publication=elem.publicationId,
+                pbn_author=elem.personId,
+                bpp_publication=pub,
+                bpp_author=aut,
+                discipline=elem.get_bpp_discipline() if elem.disciplines else None,
+                message=msg,
+            )
 
         try:
             rec = pub.autorzy_set.get(
@@ -96,25 +141,67 @@ def integruj_oswiadczenia_z_instytucji_pojedyncza_praca(  # noqa: C901
                     typ_odpowiedzialnosci=elem.get_typ_odpowiedzialnosci(),
                 )
             except pub.autorzy_set.model.DoesNotExist:
+                msg = "Nie mogę naprawić tego automatycznie - sprawdź ręcznie"
                 print(
-                    "XXX NIE MOGE NAPRAWIC TEGO AUTOMATYCZNIE -- SPRAWDŹ RĘCZNIE\n"
+                    f"XXX {msg}\n"
                     "==========================================================="
                 )
+                if inconsistency_callback:
+                    inconsistency_callback(
+                        inconsistency_type="author_needs_manual_fix",
+                        pbn_publication=elem.publicationId,
+                        pbn_author=elem.personId,
+                        bpp_publication=pub,
+                        bpp_author=aut,
+                        discipline=(
+                            elem.get_bpp_discipline() if elem.disciplines else None
+                        ),
+                        message=msg,
+                        action_taken="Rekord wymaga ręcznej korekty",
+                    )
                 return
 
         if elem.disciplines:
+            discipline = elem.get_bpp_discipline()
+            msg = (
+                f"Nadpisuję w tej pracy autora {rec.autor} autorem {aut}, "
+                f"wyślij tę pracę do PBN ponownie! (dyscyplina: {discipline})"
+            )
             print(
-                f"XXX NADPISZE w tej pracy autora {rec.autor} autorem {aut}, wyslij ta prace do PBNu "
-                f"ponownie! (dyscyplina: {elem.get_bpp_discipline()})\n"
+                f"XXX {msg}\n"
                 f"==========================================================="
             )
+            if inconsistency_callback:
+                inconsistency_callback(
+                    inconsistency_type="author_auto_fixed",
+                    pbn_publication=elem.publicationId,
+                    pbn_author=elem.personId,
+                    bpp_publication=pub,
+                    bpp_author=aut,
+                    discipline=discipline,
+                    message=msg,
+                    action_taken=f"Autor zmieniony z {rec.autor} na {aut}",
+                )
             rec.autor = aut
         else:
+            msg = (
+                f"Nie nadpisuję w tej pracy autora {rec.autor} autorem {aut}, "
+                f"bo nie ma dyscyplin - sprawdź rekord ręcznie"
+            )
             print(
-                f"XXX NIE NADPISZE w tej pracy autora {rec.autor} autorem {aut}, bo nei ma dyscyplin\n"
-                f"SPRAWDZ REKORD RECZNIE\n"
+                f"XXX {msg}\n"
                 f"==========================================================="
             )
+            if inconsistency_callback:
+                inconsistency_callback(
+                    inconsistency_type="no_override_without_disciplines",
+                    pbn_publication=elem.publicationId,
+                    pbn_author=elem.personId,
+                    bpp_publication=pub,
+                    bpp_author=aut,
+                    message=msg,
+                    action_taken="Brak działania - brak dyscyplin",
+                )
 
     if elem.disciplines:
         if elem.get_bpp_discipline().pk != rec.dyscyplina_naukowa_id:
@@ -133,18 +220,35 @@ def integruj_oswiadczenia_z_instytucji_pojedyncza_praca(  # noqa: C901
                         defaults={"dyscyplina_naukowa": elem.get_bpp_discipline()},
                     )
 
+        # Jeśli dyscyplina jest ustawiana i jednostka to "Obca jednostka",
+        # zaktualizuj jednostkę na domyślną i ustaw flagi afiliacji
+        if (
+            default_jednostka is not None
+            and rec.jednostka_id is not None
+            and not rec.jednostka.skupia_pracownikow
+        ):
+            rec.jednostka = default_jednostka
+            rec.afiliuje = True
+            rec.zatrudniony = True
+
     rec.profil_orcid = elem.inOrcid
     rec.save()
 
 
 def integruj_oswiadczenia_z_instytucji(
-    missing_publication_callback=None, callback=None
+    missing_publication_callback=None,
+    callback=None,
+    inconsistency_callback=None,
+    default_jednostka=None,
 ):
     """Integrate all institution statements.
 
     Args:
         missing_publication_callback: Optional callback for missing publications.
         callback: Optional progress callback.
+        inconsistency_callback: Optional callback for reporting inconsistencies.
+        default_jednostka: Optional default unit to assign when updating
+            from "Obca jednostka" to a proper unit during discipline assignment.
     """
     noted_pub = set()
     noted_aut = set()
@@ -154,7 +258,12 @@ def integruj_oswiadczenia_z_instytucji(
         callback=callback,
     ):
         integruj_oswiadczenia_z_instytucji_pojedyncza_praca(
-            elem, noted_pub, noted_aut, missing_publication_callback
+            elem,
+            noted_pub,
+            noted_aut,
+            missing_publication_callback,
+            inconsistency_callback,
+            default_jednostka,
         )
 
 

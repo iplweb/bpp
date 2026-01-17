@@ -4,10 +4,12 @@ import pytest
 
 from import_common.core import normalize_date
 from import_common.normalization import (
+    extract_part_number,
     normalize_doi,
     normalize_kod_dyscypliny,
     normalize_nazwa_dyscypliny,
     normalize_orcid,
+    normalize_part_number,
     normalize_tytul_publikacji,
 )
 
@@ -111,3 +113,111 @@ def test_normalize_tytul_publikacji(i, o):
 )
 def test_normalize_date(i, o):
     assert normalize_date(i) == o
+
+
+@pytest.mark.parametrize(
+    "part,expected",
+    [
+        # Cyfry rzymskie
+        ("I", 1),
+        ("II", 2),
+        ("III", 3),
+        ("IV", 4),
+        ("V", 5),
+        ("VI", 6),
+        ("VII", 7),
+        ("VIII", 8),
+        ("IX", 9),
+        ("X", 10),
+        # Małe litery
+        ("ii", 2),
+        ("iii", 3),
+        ("iv", 4),
+        # Cyfry arabskie
+        ("1", 1),
+        ("2", 2),
+        ("10", 10),
+        ("25", 25),
+        # Edge cases
+        (None, None),
+        ("", None),
+        ("  ", None),
+        ("abc", None),
+    ],
+)
+def test_normalize_part_number(part, expected):
+    assert normalize_part_number(part) == expected
+
+
+@pytest.mark.parametrize(
+    "title,expected_part",
+    [
+        # cz. z cyfrą rzymską
+        ("Znaczenie jakości wody w wielkostadnej produkcji drobiarskiej cz. II", 2),
+        ("Znaczenie jakości wody w wielkostadnej produkcji drobiarskiej cz. III", 3),
+        ("Tytuł publikacji cz. I", 1),
+        ("Tytuł publikacji cz. IV", 4),
+        ("Tytuł publikacji cz. V", 5),
+        # cz. z cyfrą arabską
+        ("Tytuł publikacji cz. 1", 1),
+        ("Tytuł publikacji cz. 2", 2),
+        ("Tytuł publikacji cz. 10", 10),
+        # część z cyfrą rzymską
+        ("Tytuł publikacji część I", 1),
+        ("Tytuł publikacji część II", 2),
+        # część z cyfrą arabską
+        ("Tytuł publikacji część 1", 1),
+        ("Tytuł publikacji część 2", 2),
+        # tom
+        ("Tytuł publikacji tom I", 1),
+        ("Tytuł publikacji tom IV", 4),
+        ("Tytuł publikacji tom 5", 5),
+        # vol.
+        ("Tytuł publikacji vol. I", 1),
+        ("Tytuł publikacji vol. 5", 5),
+        ("Tytuł publikacji vol 3", 3),
+        # part
+        ("Tytuł publikacji part I", 1),
+        ("Tytuł publikacji part III", 3),
+        ("Tytuł publikacji part 2", 2),
+        # Case insensitive
+        ("Tytuł publikacji CZ. II", 2),
+        ("Tytuł publikacji Cz. III", 3),
+        ("Tytuł publikacji CZĘŚĆ II", 2),
+        ("Tytuł publikacji TOM IV", 4),
+        ("Tytuł publikacji PART III", 3),
+        ("Tytuł publikacji VOL. 5", 5),
+        # Brak numeru części
+        ("Tytuł bez numeru części", None),
+        ("Inny tytuł publikacji", None),
+        ("Tytuł z CZ w środku słowa RZECZ", None),
+        # Edge cases
+        (None, None),
+    ],
+)
+def test_extract_part_number(title, expected_part):
+    _, part = extract_part_number(title)
+    assert part == expected_part
+
+
+def test_extract_part_number_returns_title_without_part():
+    """Sprawdza, że tytuł jest zwracany bez numeru części."""
+    title = "Znaczenie jakości wody cz. II w produkcji"
+    title_without_part, part = extract_part_number(title)
+    assert part == 2
+    assert "cz. II" not in title_without_part
+    assert "Znaczenie jakości wody" in title_without_part
+    assert "w produkcji" in title_without_part
+
+
+def test_extract_part_number_similar_titles_different_parts():
+    """Test głównego przypadku użytkownika - rozróżnianie cz. II i cz. III."""
+    title1 = "Znaczenie jakości wody w wielkostadnej produkcji drobiarskiej cz. II"
+    title2 = "Znaczenie jakości wody w wielkostadnej produkcji drobiarskiej cz. III"
+
+    _, part1 = extract_part_number(title1)
+    _, part2 = extract_part_number(title2)
+
+    assert part1 == 2
+    assert part2 == 3
+    assert part1 != part2

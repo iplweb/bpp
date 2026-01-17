@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.utils import timezone
 
@@ -26,7 +27,7 @@ class ImportSession(models.Model):
         max_length=20, choices=STATUS_CHOICES, default="pending", verbose_name="Status"
     )
     task_id = models.CharField(
-        max_length=255, blank=True, null=True, verbose_name="ID zadania Celery"
+        max_length=255, blank=True, default="", verbose_name="ID zadania Celery"
     )
     current_step = models.CharField(
         max_length=100, blank=True, verbose_name="Aktualny krok"
@@ -212,3 +213,94 @@ class ImportStatistics(models.Model):
         # One coffee break every 30 minutes
         self.coffee_breaks_recommended = int(duration_minutes / 30)
         return self.coffee_breaks_recommended
+
+
+class ImportInconsistency(models.Model):
+    """Track inconsistencies found during PBN statement integration"""
+
+    INCONSISTENCY_TYPE_CHOICES = [
+        ("author_not_found", "Autor nie znaleziony w publikacji"),
+        ("author_auto_fixed", "Autor automatycznie poprawiony"),
+        ("author_needs_manual_fix", "Wymaga ręcznej korekty"),
+        ("no_override_without_disciplines", "Brak nadpisania - brak dyscyplin"),
+        ("publication_not_found", "Brak publikacji w BPP"),
+        ("author_not_in_bpp", "Brak autora w BPP"),
+    ]
+
+    session = models.ForeignKey(
+        ImportSession,
+        on_delete=models.CASCADE,
+        related_name="inconsistencies",
+        verbose_name="Sesja",
+    )
+    timestamp = models.DateTimeField(auto_now_add=True, verbose_name="Czas")
+    inconsistency_type = models.CharField(
+        max_length=50,
+        choices=INCONSISTENCY_TYPE_CHOICES,
+        verbose_name="Typ nieścisłości",
+    )
+
+    # PBN-side data
+    pbn_publication_id = models.CharField(
+        max_length=255, blank=True, verbose_name="ID publikacji PBN"
+    )
+    pbn_publication_title = models.TextField(
+        blank=True, verbose_name="Tytuł publikacji PBN"
+    )
+    pbn_author_id = models.CharField(
+        max_length=255, blank=True, verbose_name="ID autora PBN"
+    )
+    pbn_author_name = models.CharField(
+        max_length=500, blank=True, verbose_name="Nazwa autora PBN"
+    )
+    pbn_discipline = models.CharField(
+        max_length=255, blank=True, verbose_name="Dyscyplina PBN"
+    )
+
+    # BPP-side data
+    bpp_publication_id = models.IntegerField(
+        null=True, blank=True, verbose_name="ID publikacji BPP"
+    )
+    bpp_publication_content_type = models.ForeignKey(
+        ContentType,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+        verbose_name="Typ publikacji BPP",
+    )
+    bpp_publication_title = models.TextField(
+        blank=True, verbose_name="Tytuł publikacji BPP"
+    )
+    bpp_author_id = models.IntegerField(
+        null=True, blank=True, verbose_name="ID autora BPP"
+    )
+    bpp_author_name = models.CharField(
+        max_length=500, blank=True, verbose_name="Nazwa autora BPP"
+    )
+
+    # Description and action
+    message = models.TextField(verbose_name="Opis problemu")
+    action_taken = models.TextField(blank=True, verbose_name="Podjęte działanie")
+
+    # Resolution tracking (for future use)
+    resolved = models.BooleanField(default=False, verbose_name="Rozwiązano")
+    resolved_at = models.DateTimeField(
+        null=True, blank=True, verbose_name="Data rozwiązania"
+    )
+
+    class Meta:
+        verbose_name = "Nieścisłość importu"
+        verbose_name_plural = "Nieścisłości importu"
+        ordering = ["-timestamp"]
+        indexes = [
+            models.Index(fields=["session", "-timestamp"]),
+            models.Index(fields=["inconsistency_type"]),
+            models.Index(fields=["resolved"]),
+        ]
+
+    def __str__(self):
+        return (
+            f"[{self.timestamp:%H:%M:%S}] "
+            f"{self.get_inconsistency_type_display()}: {self.message[:50]}"
+        )

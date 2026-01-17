@@ -143,6 +143,12 @@ document.addEventListener('click', function(e) {
     <ul class="tabs" data-tabs id="session-tabs">
         <li class="tabs-title is-active"><a href="#logs-panel" aria-selected="true">Logi</a></li>
         <li class="tabs-title"><a href="#errors-panel">Błędy i ostrzeżenia</a></li>
+        <li class="tabs-title">
+            <a href="#inconsistencies-panel">
+                Nieścisłości
+                {% if inconsistency_count %}<span class="pbn-import__tab-badge">{{ inconsistency_count }}</span>{% endif %}
+            </a>
+        </li>
         <li class="tabs-title"><a href="#config-panel">Konfiguracja</a></li>
         {% if statistics %}
         <li class="tabs-title"><a href="#stats-panel">Statystyki</a></li>
@@ -178,6 +184,22 @@ document.addEventListener('click', function(e) {
                 </div>
                 {% else %}
                 {% include "pbn_import/components/error_logs.html" %}
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Inconsistencies Panel -->
+        <div class="tabs-panel" id="inconsistencies-panel">
+            <div class="pbn-import__detail-section">
+                {% if session.status == 'running' %}
+                <div id="inconsistencies-container"
+                     hx-get="{% url 'pbn_import:inconsistencies' session.id %}"
+                     hx-trigger="load, every 5s"
+                     hx-swap="innerHTML">
+                    {% include "pbn_import/components/inconsistencies.html" %}
+                </div>
+                {% else %}
+                {% include "pbn_import/components/inconsistencies.html" %}
                 {% endif %}
             </div>
         </div>
