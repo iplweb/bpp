@@ -104,7 +104,8 @@
       "mcp__postgres__list_schemas",
       "mcp__postgres__list_objects",
       "mcp__postgres__get_object_details",
-      "mcp__postgres__analyze_db_health"
+      "mcp__postgres__analyze_db_health",
+      "mcp__postgres__execute_sql"
     ],
     "deny": [],
     "ask": [],
