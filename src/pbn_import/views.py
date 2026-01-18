@@ -23,6 +23,10 @@ from .models import (
     ImportLog,
     ImportSession,
 )
+from .utils.institution_import import (
+    znajdz_lub_utworz_jednostke_domyslna,
+    znajdz_lub_utworz_wydzial_domyslny,
+)
 
 
 class ImportPermissionMixin(PermissionRequiredMixin):
@@ -89,23 +93,13 @@ class ImportDashboardView(LoginRequiredMixin, ImportPermissionMixin, TemplateVie
 
         # Jeśli brak wydziałów I brak jednostek - utwórz domyślne
         if not wydzialy.exists() and not jednostki.exists() and uczelnia:
-            wydzial_domyslny, _ = Wydzial.objects.get_or_create(
-                skrot="WD",
-                defaults={
-                    "nazwa": "Wydział Domyślny",
-                    "skrot_nazwy": "Wydz. Dom.",
-                    "uczelnia": uczelnia,
-                },
-            )
-            jednostka_domyslna, _ = Jednostka.objects.get_or_create(
-                skrot="JD",
-                defaults={
-                    "nazwa": "Jednostka Domyślna",
-                    "uczelnia": uczelnia,
-                    "wydzial": wydzial_domyslny,
-                    "skupia_pracownikow": True,
-                },
-            )
+            wydzial_domyslny, _ = znajdz_lub_utworz_wydzial_domyslny(uczelnia)
+            jednostka_domyslna, _ = znajdz_lub_utworz_jednostke_domyslna(uczelnia)
+            # Przypisz wydział do jednostki jeśli brak
+            if jednostka_domyslna.wydzial is None:
+                jednostka_domyslna.wydzial = wydzial_domyslny
+                jednostka_domyslna.skupia_pracownikow = True
+                jednostka_domyslna.save(update_fields=["wydzial", "skupia_pracownikow"])
             # Odśwież querysets
             wydzialy = Wydzial.objects.all()
             jednostki = Jednostka.objects.filter(skupia_pracownikow=True)

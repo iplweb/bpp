@@ -19,6 +19,63 @@ def zrob_skrot(s: str) -> str:
     return res
 
 
+def znajdz_lub_utworz_wydzial_domyslny(uczelnia, nazwa_domyslna="Wydział Domyślny"):
+    """Szukaj wydziału zaczynającego się od podanej nazwy (case insensitive).
+
+    Args:
+        uczelnia: Obiekt Uczelnia
+        nazwa_domyslna: Nazwa do wyszukania (jako prefiks) i utworzenia jeśli nie
+            znaleziono
+
+    Returns:
+        tuple: (wydzial, created)
+    """
+    wydzial = Wydzial.objects.filter(
+        nazwa__istartswith=nazwa_domyslna,
+        uczelnia=uczelnia,
+    ).first()
+    if wydzial:
+        return wydzial, False
+
+    skrot = zrob_skrot(nazwa_domyslna)
+    return (
+        Wydzial.objects.create(
+            nazwa=nazwa_domyslna,
+            skrot=skrot,
+            uczelnia=uczelnia,
+        ),
+        True,
+    )
+
+
+def znajdz_lub_utworz_jednostke_domyslna(uczelnia, nazwa_domyslna="Jednostka Domyślna"):
+    """Szukaj jednostki zaczynającej się od podanej nazwy (case insensitive).
+
+    Args:
+        uczelnia: Obiekt Uczelnia
+        nazwa_domyslna: Nazwa do wyszukania (jako prefiks) i utworzenia jeśli nie
+            znaleziono
+
+    Returns:
+        tuple: (jednostka, created)
+    """
+    jednostka = Jednostka.objects.filter(
+        nazwa__istartswith=nazwa_domyslna,
+        uczelnia=uczelnia,
+    ).first()
+    if jednostka:
+        return jednostka, False
+
+    return (
+        Jednostka.objects.create(
+            nazwa=nazwa_domyslna,
+            skrot="JD",
+            uczelnia=uczelnia,
+        ),
+        True,
+    )
+
+
 class InstitutionImporter(ImportStepBase):
     """Setup default institutions and departments"""
 
@@ -49,10 +106,8 @@ class InstitutionImporter(ImportStepBase):
 
         # Create default department
         self.update_progress(0, 3, "Tworzenie domyślnego wydziału")
-        wydzial, created = Wydzial.objects.get_or_create(
-            nazwa=self.wydzial_domyslny,
-            skrot=self.wydzial_domyslny_skrot,
-            uczelnia=uczelnia,
+        wydzial, created = znajdz_lub_utworz_wydzial_domyslny(
+            uczelnia, self.wydzial_domyslny
         )
 
         if created:
@@ -62,11 +117,7 @@ class InstitutionImporter(ImportStepBase):
 
         # Create default unit
         self.update_progress(1, 3, "Tworzenie jednostki domyślnej")
-        jednostka, created = Jednostka.objects.get_or_create(
-            nazwa="Jednostka Domyślna",
-            skrot="JD",
-            uczelnia=uczelnia,
-        )
+        jednostka, created = znajdz_lub_utworz_jednostke_domyslna(uczelnia)
 
         if created:
             self.log("info", "Created default unit: Jednostka Domyślna")
@@ -84,9 +135,11 @@ class InstitutionImporter(ImportStepBase):
         self.update_progress(2, 3, "Tworzenie obcej jednostki")
         obca_jednostka, created = Jednostka.objects.get_or_create(
             nazwa="Obca jednostka",
-            skrot="O",
-            uczelnia=uczelnia,
-            skupia_pracownikow=False,
+            defaults={
+                "skrot": "O",
+                "uczelnia": uczelnia,
+                "skupia_pracownikow": False,
+            },
         )
 
         if created:
