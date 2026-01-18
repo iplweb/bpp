@@ -178,7 +178,7 @@ combine-coverage:
 coveralls-upload:
 	uv run coveralls
 
-tests: destroy-test-databases clean-coverage tests-without-playwright tests-only-playwright combine-coverage js-tests coveralls-upload
+tests: destroy-test-databases clean-pycache clean-coverage tests-without-playwright tests-only-playwright combine-coverage js-tests coveralls-upload
 
 destroy-test-databases:
 	-./bin/drop-test-databases.sh
