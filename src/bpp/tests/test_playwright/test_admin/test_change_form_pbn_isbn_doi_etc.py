@@ -26,6 +26,7 @@ def rozwin_ekstra_informacje_playwright(admin_page: Page):
             admin_page.wait_for_timeout(500)
 
 
+@pytest.mark.serial
 @pytest.mark.django_db(transaction=True)
 @pytest.mark.parametrize("wydawnictwo", ["wydawnictwo_ciagle", "wydawnictwo_zwarte"])
 def test_change_form_get_pbn_by_doi_via_api_nie_ma_w_api_jest_w_bazie(
