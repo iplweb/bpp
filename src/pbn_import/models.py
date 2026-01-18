@@ -52,10 +52,19 @@ class ImportSession(models.Model):
     error_message = models.TextField(blank=True, verbose_name="Komunikat błędu")
     error_traceback = models.TextField(blank=True, verbose_name="Ślad stosu błędu")
 
+    # Timestamp for detecting stale/lost tasks
+    last_updated = models.DateTimeField(
+        auto_now=True, verbose_name="Ostatnia aktualizacja"
+    )
+
     class Meta:
         verbose_name = "Sesja importu"
         verbose_name_plural = "Sesje importu"
         ordering = ["-started_at"]
+        indexes = [
+            models.Index(fields=["status", "-started_at"]),
+            models.Index(fields=["user", "status"]),
+        ]
 
     def __str__(self):
         return f"Import {self.user} - {self.started_at:%Y-%m-%d %H:%M} - {self.get_status_display()}"
@@ -64,7 +73,7 @@ class ImportSession(models.Model):
         """Mark the session as completed"""
         self.status = "completed"
         self.completed_at = timezone.now()
-        self.save()
+        self.save(update_fields=["status", "completed_at"])
 
     def mark_failed(self, error_message, traceback=""):
         """Mark the session as failed with error details"""
@@ -72,15 +81,19 @@ class ImportSession(models.Model):
         self.error_message = error_message
         self.error_traceback = traceback
         self.completed_at = timezone.now()
-        self.save()
+        self.save(
+            update_fields=["status", "error_message", "error_traceback", "completed_at"]
+        )
 
     def update_progress(self, step_name, progress_percent, step_number=None):
         """Update current progress"""
         self.current_step = step_name
         self.current_step_progress = progress_percent
+        update_fields = ["current_step", "current_step_progress"]
         if step_number:
             self.completed_steps = step_number
-        self.save()
+            update_fields.append("completed_steps")
+        self.save(update_fields=update_fields)
 
     @property
     def overall_progress(self):
@@ -97,6 +110,64 @@ class ImportSession(models.Model):
         if self.completed_at:
             return self.completed_at - self.started_at
         return timezone.now() - self.started_at
+
+    def is_task_lost(self):
+        """
+        Sprawdza czy zadanie Celery jest utracone.
+
+        Uwaga: Ta metoda sprawdza TYLKO czy zadanie zostało faktycznie anulowane
+        w Celery (status REVOKED). Zadania które długo nie aktualizują bazy
+        NIE są uznawane za utracone - mogą wykonywać długie operacje.
+
+        Returns:
+            tuple: (is_lost: bool, reason: str|None)
+        """
+        if self.status != "running":
+            return False, None
+
+        # Sprawdź status w Celery - tylko REVOKED oznacza faktyczne anulowanie
+        if self.task_id:
+            try:
+                from celery.result import AsyncResult
+
+                result = AsyncResult(self.task_id)
+
+                # REVOKED oznacza że zadanie zostało anulowane zewnętrznie
+                # (np. przez reset workera, revoke, itp.)
+                if result.state == "REVOKED":
+                    return True, "Zadanie w tle zostało anulowane zewnętrznie"
+
+            except Exception:
+                # Błąd połączenia z brokerem - nie możemy zweryfikować
+                pass
+
+        return False, None
+
+    def auto_cancel_if_lost(self):
+        """
+        Sprawdza czy zadanie jest utracone i automatycznie anuluje sesję.
+
+        Returns:
+            bool: True jeśli sesja została anulowana
+        """
+        is_lost, reason = self.is_task_lost()
+
+        if is_lost:
+            self.status = "failed"
+            self.error_message = f"Import automatycznie anulowany: {reason}"
+            self.save(update_fields=["status", "error_message"])
+
+            ImportLog.objects.create(
+                session=self,
+                level="warning",
+                step="Auto-anulowanie",
+                message=f"Sesja importu została automatycznie anulowana: {reason}",
+                details={"task_id": self.task_id, "reason": reason},
+            )
+
+            return True
+
+        return False
 
 
 class ImportLog(models.Model):
@@ -138,83 +209,6 @@ class ImportLog(models.Model):
         return f"[{self.timestamp:%H:%M:%S}] {self.get_level_display()}: {self.message[:50]}"
 
 
-class ImportStep(models.Model):
-    """Define import steps and their configuration"""
-
-    name = models.CharField(max_length=100, unique=True, verbose_name="Nazwa")
-    display_name = models.CharField(max_length=200, verbose_name="Nazwa wyświetlana")
-    description = models.TextField(blank=True, verbose_name="Opis")
-    order = models.IntegerField(default=0, verbose_name="Kolejność")
-    is_optional = models.BooleanField(default=False, verbose_name="Opcjonalny")
-    estimated_duration = models.IntegerField(
-        default=60,
-        help_text="Szacowany czas w sekundach",
-        verbose_name="Szacowany czas trwania",
-    )
-    icon_class = models.CharField(
-        max_length=50, default="fi-download", verbose_name="Klasa ikony"
-    )
-
-    class Meta:
-        verbose_name = "Krok importu"
-        verbose_name_plural = "Kroki importu"
-        ordering = ["order"]
-
-    def __str__(self):
-        return self.display_name
-
-
-class ImportStatistics(models.Model):
-    """Track statistics for import sessions"""
-
-    session = models.OneToOneField(
-        ImportSession,
-        on_delete=models.CASCADE,
-        related_name="statistics",
-        verbose_name="Sesja",
-    )
-
-    # Record counts
-    institutions_imported = models.IntegerField(default=0)
-    authors_imported = models.IntegerField(default=0)
-    publications_imported = models.IntegerField(default=0)
-    journals_imported = models.IntegerField(default=0)
-    publishers_imported = models.IntegerField(default=0)
-    conferences_imported = models.IntegerField(default=0)
-    statements_imported = models.IntegerField(default=0)
-
-    # Error counts
-    institutions_failed = models.IntegerField(default=0)
-    authors_failed = models.IntegerField(default=0)
-    publications_failed = models.IntegerField(default=0)
-
-    # Timing
-    total_api_calls = models.IntegerField(default=0)
-    total_api_time = models.FloatField(
-        default=0.0, help_text="Total API time in seconds"
-    )
-
-    # Fun statistics
-    coffee_breaks_recommended = models.IntegerField(default=0)
-    motivational_messages_shown = models.IntegerField(default=0)
-
-    class Meta:
-        verbose_name = "Statystyki importu"
-        verbose_name_plural = "Statystyki importu"
-
-    def __str__(self):
-        return f"Statystyki dla {self.session}"
-
-    def calculate_coffee_breaks(self):
-        """Calculate recommended coffee breaks based on duration"""
-        duration_minutes = (
-            self.session.duration.total_seconds() / 60 if self.session.duration else 0
-        )
-        # One coffee break every 30 minutes
-        self.coffee_breaks_recommended = int(duration_minutes / 30)
-        return self.coffee_breaks_recommended
-
-
 class ImportInconsistency(models.Model):
     """Track inconsistencies found during PBN statement integration"""
 
@@ -225,6 +219,11 @@ class ImportInconsistency(models.Model):
         ("no_override_without_disciplines", "Brak nadpisania - brak dyscyplin"),
         ("publication_not_found", "Brak publikacji w BPP"),
         ("author_not_in_bpp", "Brak autora w BPP"),
+        ("duplicate_orcid", "Duplikat ORCID - wielu autorów z tym samym ORCID"),
+        (
+            "leftover_affiliation_data",
+            "Pozostałe dane afiliacji po przetworzeniu autorów",
+        ),
     ]
 
     session = models.ForeignKey(

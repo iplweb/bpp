@@ -229,6 +229,7 @@ class DataIntegrator(ImportStepBase):
                 default_jednostka=self.default_jednostka,
                 rodzaj_periodyk=rodzaj_periodyk,
                 dyscypliny_cache=dyscypliny_cache,
+                inconsistency_callback=inconsistency_callback,
             )
 
         # Create inconsistency callback for structured tracking

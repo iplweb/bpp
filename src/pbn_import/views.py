@@ -7,6 +7,7 @@ from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
+from django.db.models import Count
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -15,14 +16,12 @@ from django.views import View
 from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import DetailView, ListView, TemplateView
 
-from bpp.models import Uczelnia
+from bpp.models import Jednostka, Uczelnia, Wydzial
 
 from .models import (
     ImportInconsistency,
     ImportLog,
     ImportSession,
-    ImportStatistics,
-    ImportStep,
 )
 
 
@@ -48,22 +47,29 @@ class ImportDashboardView(LoginRequiredMixin, ImportPermissionMixin, TemplateVie
         # Get recent sessions with related data
         context["recent_sessions"] = (
             ImportSession.objects.filter(user=self.request.user)
-            .select_related("statistics")
+            .select_related("user")
             .order_by("-started_at")[:10]
         )
 
-        # Get active session if any with related statistics
-        context["active_session"] = (
+        # Get active session if any
+        active_session = (
             ImportSession.objects.filter(
                 user=self.request.user, status__in=["running", "paused"]
             )
-            .select_related("statistics")
             .prefetch_related("logs")
             .first()
         )
 
-        # Get import steps
-        context["import_steps"] = ImportStep.objects.all().order_by("order")
+        # Sprawdź czy aktywna sesja nie jest "zgubiona"
+        if active_session and active_session.status == "running":
+            was_cancelled = active_session.auto_cancel_if_lost()
+            if was_cancelled:
+                # Sesja została anulowana - odśwież z bazy (status się zmienił)
+                active_session.refresh_from_db()
+                # Dodaj komunikat dla użytkownika
+                context["auto_cancelled_message"] = active_session.error_message
+
+        context["active_session"] = active_session
 
         # Get motivational message
         context["motivational_message"] = self.get_motivational_message()
@@ -76,6 +82,45 @@ class ImportDashboardView(LoginRequiredMixin, ImportPermissionMixin, TemplateVie
 
         # Sprawdź czy użytkownik ma ważny token PBN
         context["pbn_token_valid"] = self.request.user.pbn_token_possibly_valid()
+
+        # Pobierz wszystkie wydziały i jednostki
+        wydzialy = Wydzial.objects.all()
+        jednostki = Jednostka.objects.filter(skupia_pracownikow=True)
+
+        # Jeśli brak wydziałów I brak jednostek - utwórz domyślne
+        if not wydzialy.exists() and not jednostki.exists() and uczelnia:
+            wydzial_domyslny, _ = Wydzial.objects.get_or_create(
+                skrot="WD",
+                defaults={
+                    "nazwa": "Wydział Domyślny",
+                    "skrot_nazwy": "Wydz. Dom.",
+                    "uczelnia": uczelnia,
+                },
+            )
+            jednostka_domyslna, _ = Jednostka.objects.get_or_create(
+                skrot="JD",
+                defaults={
+                    "nazwa": "Jednostka Domyślna",
+                    "uczelnia": uczelnia,
+                    "wydzial": wydzial_domyslny,
+                    "skupia_pracownikow": True,
+                },
+            )
+            # Odśwież querysets
+            wydzialy = Wydzial.objects.all()
+            jednostki = Jednostka.objects.filter(skupia_pracownikow=True)
+
+        context["wydzialy"] = wydzialy
+        context["jednostki"] = jednostki
+
+        # Domyślnie wybrany wydział - pierwszy dostępny
+        context["wydzial_domyslny"] = wydzialy.first()
+
+        # Jednostka domyślna - szukaj "JD" lub pierwsza dostępna
+        jednostka_domyslna = Jednostka.objects.filter(skrot="JD").first()
+        if not jednostka_domyslna:
+            jednostka_domyslna = jednostki.first()
+        context["jednostka_domyslna"] = jednostka_domyslna
 
         return context
 
@@ -97,6 +142,15 @@ class StartImportView(LoginRequiredMixin, ImportPermissionMixin, View):
     def post(self, request):
         # Get configuration from POST data
         # Checkboxes are inverted - if checkbox is checked, we DON'T disable
+        # Pobierz ID z formularza i znajdź obiekty
+        wydzial_id = request.POST.get("wydzial_domyslny_id")
+        jednostka_id = request.POST.get("jednostka_domyslna_id")
+
+        wydzial = Wydzial.objects.filter(pk=wydzial_id).first() if wydzial_id else None
+        jednostka = (
+            Jednostka.objects.filter(pk=jednostka_id).first() if jednostka_id else None
+        )
+
         config = {
             "disable_initial": not request.POST.get("initial"),
             "disable_zrodla": not request.POST.get("zrodla"),
@@ -108,9 +162,10 @@ class StartImportView(LoginRequiredMixin, ImportPermissionMixin, View):
             "disable_oswiadczenia": not request.POST.get("oswiadczenia"),
             "disable_oplaty": not request.POST.get("oplaty"),
             "delete_existing": request.POST.get("delete_existing") == "on",
-            "wydzial_domyslny": request.POST.get(
-                "wydzial_domyslny", "Wydział Domyślny"
-            ),
+            "wydzial_domyslny": wydzial.nazwa if wydzial else "",
+            "wydzial_domyslny_id": wydzial.pk if wydzial else None,
+            "jednostka_domyslna": jednostka.nazwa if jednostka else "",
+            "jednostka_domyslna_id": jednostka.pk if jednostka else None,
         }
 
         # Create import session
@@ -120,9 +175,6 @@ class StartImportView(LoginRequiredMixin, ImportPermissionMixin, View):
             config=config,
             current_step="Przygotowywanie importu...",
         )
-
-        # Create statistics object
-        ImportStatistics.objects.create(session=session)
 
         # Launch Celery task
         from .tasks import run_pbn_import
@@ -266,24 +318,6 @@ class ImportLogStreamView(LoginRequiredMixin, ImportPermissionMixin, View):
         )
 
 
-class ImportStatisticsView(LoginRequiredMixin, ImportPermissionMixin, View):
-    """HTMX endpoint for statistics updates"""
-
-    def get(self, request, pk):
-        session = get_object_or_404(ImportSession, pk=pk, user=request.user)
-
-        try:
-            stats = session.statistics
-        except ImportStatistics.DoesNotExist:
-            stats = None
-
-        return render(
-            request,
-            "pbn_import/components/statistics_card.html",
-            {"stats": stats, "session": session},
-        )
-
-
 class ActiveSessionsView(LoginRequiredMixin, ImportPermissionMixin, ListView):
     """HTMX endpoint for active sessions list"""
 
@@ -291,8 +325,10 @@ class ActiveSessionsView(LoginRequiredMixin, ImportPermissionMixin, ListView):
     context_object_name = "sessions"
 
     def get_queryset(self):
-        return ImportSession.objects.filter(status__in=["running", "paused"]).order_by(
-            "-started_at"
+        return (
+            ImportSession.objects.filter(status__in=["running", "paused"])
+            .select_related("user")
+            .order_by("-started_at")
         )
 
 
@@ -387,39 +423,37 @@ class ImportSessionDetailView(LoginRequiredMixin, ImportPermissionMixin, DetailV
         ).order_by("-timestamp")
 
         # Get inconsistencies
-        inconsistencies = ImportInconsistency.objects.filter(session=session).order_by(
-            "-timestamp"
+        inconsistencies = (
+            ImportInconsistency.objects.filter(session=session)
+            .select_related("bpp_publication_content_type")
+            .order_by("-timestamp")
         )
         context["inconsistencies"] = inconsistencies
         context["inconsistency_count"] = inconsistencies.count()
 
-        # Build inconsistency summary by type
-        inconsistency_summary = {}
-        for choice_code, choice_label in ImportInconsistency.INCONSISTENCY_TYPE_CHOICES:
-            count = inconsistencies.filter(inconsistency_type=choice_code).count()
-            if count > 0:
-                inconsistency_summary[choice_code] = {
-                    "label": choice_label,
-                    "count": count,
-                }
+        # Build inconsistency summary by type using single aggregation query
+        inconsistency_counts = (
+            inconsistencies.values("inconsistency_type")
+            .annotate(count=Count("id"))
+            .order_by()
+        )
+        counts_dict = {
+            item["inconsistency_type"]: item["count"] for item in inconsistency_counts
+        }
+        choice_labels = dict(ImportInconsistency.INCONSISTENCY_TYPE_CHOICES)
+        inconsistency_summary = {
+            code: {"label": choice_labels[code], "count": counts_dict[code]}
+            for code in counts_dict
+        }
         context["inconsistency_summary"] = inconsistency_summary
         context["active_filter"] = ""  # No filter active on initial page load
-
-        # Get statistics if available
-        try:
-            context["statistics"] = session.statistics
-        except ImportStatistics.DoesNotExist:
-            context["statistics"] = None
 
         # Get configuration
         context["config"] = session.config
 
-        # Calculate duration
-        if session.completed_at and session.started_at:
-            duration = session.completed_at - session.started_at
-            context["duration"] = duration
-        else:
-            context["duration"] = None
+        # Calculate duration - use model property which handles both completed
+        # and running sessions
+        context["duration"] = session.duration
 
         return context
 
@@ -475,15 +509,20 @@ class ImportInconsistenciesView(LoginRequiredMixin, ImportPermissionMixin, View)
         # Get all inconsistencies for building summary
         all_inconsistencies = ImportInconsistency.objects.filter(session=session)
 
-        # Build inconsistency summary by type (always show all types)
-        inconsistency_summary = {}
-        for choice_code, choice_label in ImportInconsistency.INCONSISTENCY_TYPE_CHOICES:
-            count = all_inconsistencies.filter(inconsistency_type=choice_code).count()
-            if count > 0:
-                inconsistency_summary[choice_code] = {
-                    "label": choice_label,
-                    "count": count,
-                }
+        # Build inconsistency summary by type using single aggregation query
+        inconsistency_counts = (
+            all_inconsistencies.values("inconsistency_type")
+            .annotate(count=Count("id"))
+            .order_by()
+        )
+        counts_dict = {
+            item["inconsistency_type"]: item["count"] for item in inconsistency_counts
+        }
+        choice_labels = dict(ImportInconsistency.INCONSISTENCY_TYPE_CHOICES)
+        inconsistency_summary = {
+            code: {"label": choice_labels[code], "count": counts_dict[code]}
+            for code in counts_dict
+        }
 
         # Apply filter if specified
         if filter_type and filter_type in dict(

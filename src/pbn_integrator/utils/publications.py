@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import TYPE_CHECKING
 
 from tqdm import tqdm
@@ -384,3 +385,98 @@ def pobierz_rekordy_publikacji_instytucji(client: PBNClient):
 
     pool.close()
     pool.join()
+
+
+def _download_and_import_single_publication(
+    client: PBNClient,
+    pbn_uid_id: str,
+    default_jednostka,
+):
+    """Download and import a single publication.
+
+    Args:
+        client: PBN client.
+        pbn_uid_id: Publication PBN UID.
+        default_jednostka: Default unit for authors.
+
+    Returns:
+        Tuple of (pbn_uid_id, success, error_message).
+    """
+    from pbn_integrator.importer import importuj_publikacje_po_pbn_uid_id
+
+    try:
+        # First download the publication to Publication model
+        _pobierz_pojedyncza_prace(client, pbn_uid_id)
+
+        # Then import it to BPP
+        importuj_publikacje_po_pbn_uid_id(
+            pbn_uid_id,
+            client=client,
+            default_jednostka=default_jednostka,
+        )
+        return (pbn_uid_id, True, None)
+    except BrakIDPracyPoStroniePBN:
+        return (pbn_uid_id, False, "Publikacja nie istnieje w PBN")
+    except Exception as e:
+        return (pbn_uid_id, False, str(e))
+
+
+def pobierz_brakujace_publikacje_batch(
+    client: PBNClient,
+    missing_pbn_uids: set,
+    default_jednostka,
+    max_workers: int = 8,
+    callback=None,
+):
+    """Download and import missing publications in batch using ThreadPoolExecutor.
+
+    This function downloads publications from PBN API and imports them to BPP
+    in parallel using multiple threads.
+
+    Args:
+        client: PBN API client.
+        missing_pbn_uids: Set of PBN UID IDs for publications to download.
+        default_jednostka: Default unit for authors without affiliations.
+        max_workers: Number of worker threads (default: 8).
+        callback: Optional TqdmSessionProgress object with update(current, total, desc)
+            method for progress reporting.
+
+    Returns:
+        Dict with statistics: {'downloaded': int, 'failed': int, 'errors': list}.
+    """
+    if not missing_pbn_uids:
+        return {"downloaded": 0, "failed": 0, "errors": []}
+
+    total = len(missing_pbn_uids)
+    downloaded = 0
+    failed = 0
+    errors = []
+
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        # Submit all tasks
+        futures = {
+            executor.submit(
+                _download_and_import_single_publication,
+                client,
+                pbn_uid_id,
+                default_jednostka,
+            ): pbn_uid_id
+            for pbn_uid_id in missing_pbn_uids
+        }
+
+        # Process results as they complete
+        for i, future in enumerate(as_completed(futures), 1):
+            pbn_uid_id, success, error = future.result()
+
+            if success:
+                downloaded += 1
+            else:
+                failed += 1
+                if error:
+                    errors.append(f"{pbn_uid_id}: {error}")
+
+            if callback:
+                desc = f"Pobrano {downloaded}, błędów: {failed}"
+                callback.update(i, total, desc)
+
+    return {"downloaded": downloaded, "failed": failed, "errors": errors}

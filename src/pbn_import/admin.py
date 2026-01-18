@@ -1,11 +1,18 @@
 """Admin interface for PBN import models"""
 
+import html
+
 from django.contrib import admin
 from django.utils.html import format_html
+from django.utils.safestring import mark_safe
 
 from bpp.admin.core import DynamicAdminFilterMixin
 
-from .models import ImportLog, ImportSession, ImportStatistics, ImportStep
+from .models import (
+    ImportInconsistency,
+    ImportLog,
+    ImportSession,
+)
 
 
 @admin.register(ImportSession)
@@ -21,6 +28,7 @@ class ImportSessionAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
     ]
     list_filter = ["status", "started_at", "completed_at"]
     search_fields = ["user__username", "user__email", "current_step"]
+    list_select_related = ["user"]
     readonly_fields = [
         "started_at",
         "completed_at",
@@ -167,6 +175,7 @@ class ImportLogAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
     ]
     list_filter = ["level", "step", "timestamp"]
     search_fields = ["message", "step"]
+    list_select_related = ["session"]
     readonly_fields = [
         "timestamp",
         "session",
@@ -207,7 +216,16 @@ class ImportLogAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
         if obj.details:
             import json
 
-            return format_html("<pre>{}</pre>", json.dumps(obj.details, indent=2))
+            formatted = json.dumps(
+                obj.details, indent=2, sort_keys=True, ensure_ascii=False
+            )
+            # Zamień escaped newlines na rzeczywiste nowe linie dla czytelności
+            formatted = formatted.replace("\\n", "\n")
+            # Bezpieczne HTML escaping
+            escaped = html.escape(formatted)
+            return mark_safe(
+                f'<pre style="white-space: pre-wrap; max-width: 800px;">{escaped}</pre>'
+            )
         return "-"
 
     details_display.short_description = "Details"
@@ -219,128 +237,143 @@ class ImportLogAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
         return False
 
 
-@admin.register(ImportStep)
-class ImportStepAdmin(admin.ModelAdmin):
+@admin.register(ImportInconsistency)
+class ImportInconsistencyAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
     list_display = [
-        "order",
-        "icon_display",
-        "display_name",
-        "name",
-        "is_optional",
-        "estimated_duration_display",
+        "timestamp",
+        "session_link",
+        "type_badge",
+        "resolved_badge",
+        "pbn_author_name",
+        "bpp_author_name",
+        "message_truncated",
     ]
-    list_display_links = ["display_name"]
-    list_editable = ["order", "is_optional"]
-    ordering = ["order"]
-
-    def icon_display(self, obj):
-        return format_html('<span class="{}"></span>', obj.icon_class)
-
-    icon_display.short_description = "Icon"
-
-    def estimated_duration_display(self, obj):
-        if obj.estimated_duration >= 60:
-            minutes = obj.estimated_duration // 60
-            seconds = obj.estimated_duration % 60
-            if seconds:
-                return f"{minutes}m {seconds}s"
-            return f"{minutes}m"
-        return f"{obj.estimated_duration}s"
-
-    estimated_duration_display.short_description = "Est. Duration"
-
-
-@admin.register(ImportStatistics)
-class ImportStatisticsAdmin(admin.ModelAdmin):
-    list_display = ["session", "total_imported", "total_failed", "api_performance"]
-    readonly_fields = [
+    list_filter = [
         "session",
-        "institutions_imported",
-        "authors_imported",
-        "publications_imported",
-        "journals_imported",
-        "publishers_imported",
-        "conferences_imported",
-        "statements_imported",
-        "institutions_failed",
-        "authors_failed",
-        "publications_failed",
-        "total_api_calls",
-        "api_performance",
-        "coffee_breaks_display",
+        "inconsistency_type",
+        "resolved",
+        "timestamp",
     ]
+    search_fields = [
+        "message",
+        "action_taken",
+        "pbn_publication_title",
+        "pbn_author_name",
+        "pbn_discipline",
+        "bpp_publication_title",
+        "bpp_author_name",
+    ]
+    readonly_fields = [
+        "timestamp",
+        "session",
+        "inconsistency_type",
+        "pbn_publication_id",
+        "pbn_publication_title",
+        "pbn_author_id",
+        "pbn_author_name",
+        "pbn_discipline",
+        "bpp_publication_id",
+        "bpp_publication_content_type",
+        "bpp_publication_title",
+        "bpp_author_id",
+        "bpp_author_name",
+        "message",
+        "action_taken",
+    ]
+    date_hierarchy = "timestamp"
+    list_per_page = 50
+    list_select_related = ["session", "bpp_publication_content_type"]
 
     fieldsets = (
-        ("Session", {"fields": ("session",)}),
         (
-            "Import Statistics",
+            "Informacje podstawowe",
             {
                 "fields": (
-                    "institutions_imported",
-                    "authors_imported",
-                    "publications_imported",
-                    "journals_imported",
-                    "publishers_imported",
-                    "conferences_imported",
-                    "statements_imported",
+                    "session",
+                    "timestamp",
+                    "inconsistency_type",
+                    "resolved",
+                    "resolved_at",
                 )
             },
         ),
         (
-            "Error Statistics",
+            "Dane PBN",
             {
                 "fields": (
-                    "institutions_failed",
-                    "authors_failed",
-                    "publications_failed",
-                )
-            },
-        ),
-        ("Performance", {"fields": ("total_api_calls", "api_performance")}),
-        (
-            "Fun Stats",
-            {
-                "fields": ("coffee_breaks_display", "motivational_messages_shown"),
+                    "pbn_publication_id",
+                    "pbn_publication_title",
+                    "pbn_author_id",
+                    "pbn_author_name",
+                    "pbn_discipline",
+                ),
                 "classes": ("collapse",),
             },
         ),
+        (
+            "Dane BPP",
+            {
+                "fields": (
+                    "bpp_publication_id",
+                    "bpp_publication_content_type",
+                    "bpp_publication_title",
+                    "bpp_author_id",
+                    "bpp_author_name",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+        ("Opis problemu", {"fields": ("message", "action_taken")}),
     )
 
-    def total_imported(self, obj):
-        return (
-            obj.institutions_imported
-            + obj.authors_imported
-            + obj.publications_imported
-            + obj.journals_imported
-            + obj.publishers_imported
-            + obj.conferences_imported
-            + obj.statements_imported
+    def session_link(self, obj):
+        return format_html(
+            '<a href="/admin/pbn_import/importsession/{}/change/">Session #{}</a>',
+            obj.session.id,
+            obj.session.id,
         )
 
-    total_imported.short_description = "Total Imported"
+    session_link.short_description = "Sesja"
 
-    def total_failed(self, obj):
-        return obj.institutions_failed + obj.authors_failed + obj.publications_failed
+    def type_badge(self, obj):
+        type_colors = {
+            "author_not_found": "pbn-level-badge--warning",
+            "author_auto_fixed": "pbn-level-badge--info",
+            "author_needs_manual_fix": "pbn-level-badge--error",
+            "no_override_without_disciplines": "pbn-level-badge--warning",
+            "publication_not_found": "pbn-level-badge--error",
+            "author_not_in_bpp": "pbn-level-badge--error",
+        }
+        badge_class = type_colors.get(obj.inconsistency_type, "pbn-level-badge--info")
+        return format_html(
+            '<span class="pbn-level-badge {}">{}</span>',
+            badge_class,
+            obj.get_inconsistency_type_display(),
+        )
 
-    total_failed.short_description = "Total Failed"
+    type_badge.short_description = "Typ"
 
-    def api_performance(self, obj):
-        if obj.total_api_calls > 0:
-            avg_time = obj.total_api_time / obj.total_api_calls
-            return f"{obj.total_api_calls} calls, {avg_time:.2f}s avg"
-        return "No API calls"
+    def resolved_badge(self, obj):
+        if obj.resolved:
+            return format_html(
+                '<span class="pbn-status-badge pbn-status-badge--completed">Tak</span>'
+            )
+        return format_html(
+            '<span class="pbn-status-badge pbn-status-badge--pending">Nie</span>'
+        )
 
-    api_performance.short_description = "API Performance"
+    resolved_badge.short_description = "Rozwiązano"
 
-    def coffee_breaks_display(self, obj):
-        if obj.coffee_breaks_recommended > 0:
-            return format_html("☕ × {} (recommended)", obj.coffee_breaks_recommended)
-        return "None needed!"
+    def message_truncated(self, obj):
+        if len(obj.message) > 80:
+            return obj.message[:80] + "..."
+        return obj.message
 
-    coffee_breaks_display.short_description = "Coffee Breaks"
+    message_truncated.short_description = "Opis"
 
     def has_add_permission(self, request):
         return False
 
     def has_delete_permission(self, request, obj=None):
-        return False
+        # Pozwól na usuwanie - może być potrzebne do czyszczenia
+        return True

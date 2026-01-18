@@ -121,9 +121,6 @@ class Command(BaseCommand):
         # Create and run import manager
         manager = ImportManager(session=session, client=client, config=session.config)
 
-        # Create import steps in database
-        manager.create_import_steps()
-
         try:
             self.stdout.write("Starting import...")
             results = manager.run()
@@ -142,22 +139,8 @@ class Command(BaseCommand):
                     else:
                         self.stdout.write(f"  {step_name}: {self.style.SUCCESS('OK')}")
 
-            # Display statistics
-            if hasattr(session, "statistics"):
-                stats = session.statistics
-                self.stdout.write("\n=== Statistics ===")
-                self.stdout.write(f"  Authors imported: {stats.authors_imported}")
-                self.stdout.write(
-                    f"  Publications imported: {stats.publications_imported}"
-                )
-                self.stdout.write(f"  Duration: {session.duration}")
-
-                if stats.coffee_breaks_recommended > 0:
-                    self.stdout.write(
-                        self.style.WARNING(
-                            f"\n  ☕ You deserved {stats.coffee_breaks_recommended} coffee break(s)!"
-                        )
-                    )
+            # Display duration
+            self.stdout.write(f"\n  Duration: {session.duration}")
 
         except Exception as e:
             self.stderr.write(f"\n{self.style.ERROR('Import failed:')}")

@@ -9,11 +9,11 @@ import rollbar
 from django.core.management import call_command
 from django.utils import timezone
 
-from ..models import ImportLog, ImportSession, ImportStatistics, ImportStep
+from ..models import ImportLog, ImportSession
 from .base import CancelledException
-from .step_definitions import get_icon_for_step, get_step_definitions
+from .step_definitions import get_step_definitions
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("pbn_import")
 
 
 class ImportManager:
@@ -32,29 +32,11 @@ class ImportManager:
         self.session.config.update(self.config)
         self.session.save()
 
-        # Create statistics object if doesn't exist
-        if not hasattr(self.session, "statistics"):
-            ImportStatistics.objects.get_or_create(session=self.session)
-
         # Define import steps with their order
         self.steps = get_step_definitions(self.config)
 
         # Check PBN authorization status
         self._check_pbn_authorization()
-
-    def create_import_steps(self):
-        """Create ImportStep records in database"""
-        for idx, step in enumerate(self.steps):
-            ImportStep.objects.get_or_create(
-                name=step["name"],
-                defaults={
-                    "display_name": step["display"],
-                    "order": idx * 10,
-                    "is_optional": not step.get("required", False),
-                    "estimated_duration": 60,
-                    "icon_class": get_icon_for_step(step["name"]),
-                },
-            )
 
     def _check_pbn_authorization(self):
         """Check if PBN client is properly authorized"""
@@ -176,6 +158,10 @@ class ImportManager:
             )
             logger.warning(f"Import {self.session.id} został anulowany")
             return {"success": False, "cancelled": True, "results": results}
+
+        # Aktualizuj last_updated aby zaznaczyć że zadanie nadal działa
+        self.session.save(update_fields=["last_updated"])
+
         return None
 
     def _should_skip_step(self, step_config, results):
@@ -245,7 +231,8 @@ class ImportManager:
         )
 
         logger.info(
-            f"Uruchamianie kroku {idx + 1}/{len(self.steps)}: {step_config['display']}"
+            f">>> Uruchamianie etapu {idx + 1}/{len(self.steps)}: "
+            f"{step_config['display']}"
         )
 
         try:
@@ -288,10 +275,6 @@ class ImportManager:
         if not critical_error:
             self._run_post_import_commands()
 
-        if hasattr(self.session, "statistics"):
-            self.session.statistics.calculate_coffee_breaks()
-            self.session.statistics.save()
-
         # Check if there are error logs even if no step raised an exception
         if not has_errors and self._has_error_logs():
             has_errors = True
@@ -307,10 +290,15 @@ class ImportManager:
                 if first_error:
                     critical_error = first_error.message
 
+        logger.info("=" * 60)
+        logger.info("IMPORT PBN - ZAKOŃCZONY")
+
         if has_errors:
             error_message = critical_error or "Import zakończony z błędami"
             tb_string = tb_string if "tb_string" in locals() else ""
             self.session.mark_failed(error_message, tb_string)
+            logger.info("Status: BŁĘDY")
+            logger.info("=" * 60)
             return {
                 "success": False,
                 "results": results,
@@ -318,6 +306,8 @@ class ImportManager:
             }
         else:
             self.session.mark_completed()
+            logger.info("Status: SUKCES")
+            logger.info("=" * 60)
             return {
                 "success": True,
                 "results": results,
@@ -370,10 +360,40 @@ class ImportManager:
             if should_break:
                 break
 
+            # Check for error logs after each step - stop if errors occurred
+            if self._has_error_logs():
+                first_error = (
+                    ImportLog.objects.filter(
+                        session=self.session, level__in=["error", "critical"]
+                    )
+                    .order_by("timestamp")
+                    .first()
+                )
+                if first_error:
+                    critical_error = first_error.message
+                    has_errors = True
+                    logger.warning(
+                        f"Przerywanie importu z powodu błędu w kroku "
+                        f"{step_config['name']}: {critical_error}"
+                    )
+                    ImportLog.objects.create(
+                        session=self.session,
+                        level="warning",
+                        step="Import Control",
+                        message=f"Import zatrzymany z powodu błędu: {critical_error}",
+                    )
+                    break
+
         return has_errors, critical_error, tb_string, False, None
 
     def run(self):
         """Execute the complete import process"""
+        logger.info("=" * 60)
+        logger.info("IMPORT PBN - START")
+        logger.info(f"Sesja: {self.session.id}")
+        logger.info(f"Etapy do wykonania: {len(self.steps)}")
+        logger.info("=" * 60)
+
         self.session.status = "running"
         self.session.total_steps = len(self.steps)
         self.session.save()

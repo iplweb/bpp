@@ -39,7 +39,7 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RunPython(move_files_to_protected, noop),
+        # First: Increase max_length before moving files to longer paths
         migrations.AlterField(
             model_name="zgloszenie_publikacji",
             name="plik",
@@ -49,11 +49,14 @@ class Migration(migrations.Migration):
                     "Jeżeli zgłaszana publikacja nie jest dostępna nigdzie w sieci internet,\n"
                     "        prosimy o dodanie załącznika"
                 ),
+                max_length=255,
                 null=True,
                 upload_to="protected/zglos_publikacje/",
                 verbose_name="Plik załącznika",
             ),
         ),
+        # Then: Move files to protected directory
+        migrations.RunPython(move_files_to_protected, noop),
         migrations.AlterField(
             model_name="zgloszenie_publikacji",
             name="przyczyna_zwrotu",

@@ -50,6 +50,7 @@ def importuj_publikacje_po_pbn_uid_id(
     force=False,
     rodzaj_periodyk=None,
     dyscypliny_cache=None,
+    inconsistency_callback=None,
 ):
     """Importuje publikację z PBN do BPP.
 
@@ -75,6 +76,7 @@ def importuj_publikacje_po_pbn_uid_id(
                 default_jednostka=default_jednostka,
                 client=client,
                 force=force,
+                inconsistency_callback=inconsistency_callback,
             )
         case "EDITED_BOOK":
             ret = importuj_ksiazke(
@@ -82,6 +84,7 @@ def importuj_publikacje_po_pbn_uid_id(
                 default_jednostka=default_jednostka,
                 client=client,
                 force=force,
+                inconsistency_callback=inconsistency_callback,
             )
         case "CHAPTER":
             ret = importuj_ksiazke(
@@ -89,6 +92,7 @@ def importuj_publikacje_po_pbn_uid_id(
                 default_jednostka=default_jednostka,
                 client=client,
                 force=force,
+                inconsistency_callback=inconsistency_callback,
             )
 
             ret = importuj_rozdzial(
@@ -96,6 +100,7 @@ def importuj_publikacje_po_pbn_uid_id(
                 default_jednostka=default_jednostka,
                 client=client,
                 force=force,
+                inconsistency_callback=inconsistency_callback,
             )
 
         case "ARTICLE":
@@ -106,6 +111,7 @@ def importuj_publikacje_po_pbn_uid_id(
                 force=force,
                 rodzaj_periodyk=rodzaj_periodyk,
                 dyscypliny_cache=dyscypliny_cache,
+                inconsistency_callback=inconsistency_callback,
             )
         case _:
             raise NotImplementedError(f"Nie obsluze {cv['object']['type']}")

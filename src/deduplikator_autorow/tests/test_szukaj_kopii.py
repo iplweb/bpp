@@ -487,13 +487,17 @@ def test_szukaj_kopii_with_regex_metacharacters(autor_maker, tytuly):
     InvalidRegularExpression errors.
     """
     test_cases = [
-        ("Jan", "O'Brien [Jr.]"),  # brackets
+        ("Jan", "O'Brien [Jr.]"),  # brackets in surname
         ("Jan*", "Kowalski"),  # asterisk
         ("Jan+Maria", "Kowalski"),  # plus
         ("Jan?", "Kowalski"),  # question mark
         ("Jan", "Kowalski.Smith"),  # dot
         ("Jan", "Ko^wal$ki"),  # anchors
         ("Jan", "Kowal|ski"),  # alternation
+        # Przypadki testujące ścieżkę kodu z inicjałem (linie 118-120, 138-140)
+        # gdzie inicjał NIE jest escapowany i trafia bezpośrednio do iregex
+        ("[J]", "Kowalski"),  # bracket as first char of first name (inicjal = "[")
+        ("(Jan)", "Kowalski"),  # parentheses in first name (inicjal = "(")
     ]
 
     for imiona, nazwisko in test_cases:
@@ -505,4 +509,8 @@ def test_szukaj_kopii_with_regex_metacharacters(autor_maker, tytuly):
 
         # Should not raise InvalidRegularExpression
         duplikaty = szukaj_kopii(osoba_z_instytucji)
-        assert duplikaty is not None, f"Failed for: {imiona} {nazwisko}"
+        # Wymuszamy wykonanie SQL - QuerySet jest leniwy!
+        try:
+            _ = duplikaty.exists()
+        except Exception as e:
+            pytest.fail(f"Failed for: {imiona} {nazwisko} - {e}")

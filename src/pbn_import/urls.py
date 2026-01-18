@@ -24,7 +24,6 @@ urlpatterns = [
         name="progress",
     ),
     path("session/<int:pk>/logs/", views.ImportLogStreamView.as_view(), name="logs"),
-    path("session/<int:pk>/stats/", views.ImportStatisticsView.as_view(), name="stats"),
     path(
         "session/<int:pk>/all-logs/",
         views.ImportAllLogsView.as_view(),

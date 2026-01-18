@@ -5,12 +5,9 @@ import copy
 from django.db import transaction
 
 from bpp.models import (
-    Charakter_Formalny,
     Jednostka,
     Punktacja_Zrodla,
-    Status_Korekty,
     Tryb_OpenAccess_Wydawnictwo_Ciagle,
-    Typ_KBN,
     Wydawnictwo_Ciagle,
     Wydawnictwo_Ciagle_Streszczenie,
 )
@@ -18,6 +15,11 @@ from pbn_api.client import PBNClient
 from pbn_api.models import Publication
 
 from .authors import utworz_autorow
+from .cache import (
+    get_charakter_formalny_artykul,
+    get_status_korekty_przed,
+    get_typ_kbn_inne,
+)
 from .helpers import (
     assert_dictionary_empty,
     importuj_openaccess,
@@ -39,6 +41,7 @@ def importuj_artykul(
     force=False,
     rodzaj_periodyk=None,
     dyscypliny_cache=None,
+    inconsistency_callback=None,
 ):
     """Importuje artykuł z PBN do BPP jako Wydawnictwo_Ciagle.
 
@@ -82,13 +85,11 @@ def importuj_artykul(
         doi=pbn_json.pop("doi", None),
         issn=zrodlo.issn,
         e_issn=zrodlo.e_issn,
-        charakter_formalny=Charakter_Formalny.objects.get(
-            nazwa="Artykuł w czasopismie"
-        ),
-        status_korekty=Status_Korekty.objects.get(nazwa="przed korektą"),
+        charakter_formalny=get_charakter_formalny_artykul(),
+        status_korekty=get_status_korekty_przed(),
         zrodlo=zrodlo,
         pbn_uid=pbn_publication,
-        typ_kbn=Typ_KBN.objects.get(nazwa="inne"),
+        typ_kbn=get_typ_kbn_inne(),
     )
     importuj_openaccess(
         ret, pbn_json, klasa_bazowa_tryb_dostepu=Tryb_OpenAccess_Wydawnictwo_Ciagle
@@ -101,7 +102,7 @@ def importuj_artykul(
         )
 
     ret.save()
-    utworz_autorow(ret, pbn_json, client, default_jednostka)
+    utworz_autorow(ret, pbn_json, client, default_jednostka, inconsistency_callback)
     pbn_json.pop("type")
 
     przetworz_journal_issue(pbn_json, ret, zrodlo)

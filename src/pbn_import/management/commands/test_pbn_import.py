@@ -3,7 +3,7 @@
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
 
-from pbn_import.models import ImportSession, ImportStatistics
+from pbn_import.models import ImportSession
 
 User = get_user_model()
 
@@ -43,9 +43,6 @@ class Command(BaseCommand):
             },
             current_step="Przygotowywanie importu...",
         )
-
-        # Create statistics
-        ImportStatistics.objects.create(session=session)
 
         self.stdout.write(self.style.SUCCESS(f"Created import session #{session.id}"))
         self.stdout.write("Running import directly (not via Celery)...")

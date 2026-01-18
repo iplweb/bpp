@@ -5,11 +5,8 @@ import copy
 from django.db import transaction
 
 from bpp.models import (
-    Charakter_Formalny,
     Jednostka,
     Jezyk,
-    Status_Korekty,
-    Typ_KBN,
     Wydawca,
     Wydawnictwo_Zwarte,
     Wydawnictwo_Zwarte_Streszczenie,
@@ -19,6 +16,11 @@ from pbn_api.models import Publication
 
 from .authors import utworz_autorow
 from .books import importuj_ksiazke
+from .cache import (
+    get_charakter_formalny_rozdzial,
+    get_status_korekty_przed,
+    get_typ_kbn_inne,
+)
 from .helpers import (
     assert_dictionary_empty,
     importuj_streszczenia,
@@ -34,6 +36,7 @@ def importuj_rozdzial(
     default_jednostka: Jednostka,
     client: PBNClient,
     force=False,
+    inconsistency_callback=None,
 ):
     """Importuje rozdział z PBN do BPP jako Wydawnictwo_Zwarte z wydawnictwem nadrzędnym.
 
@@ -61,7 +64,11 @@ def importuj_rozdzial(
         wydawnictwo_nadrzedne = Wydawnictwo_Zwarte.objects.get(pbn_uid_id=pbn_book_id)
     except Wydawnictwo_Zwarte.DoesNotExist:
         wydawnictwo_nadrzedne = importuj_ksiazke(
-            pbn_book_id, default_jednostka, client, force=force
+            pbn_book_id,
+            default_jednostka,
+            client,
+            force=force,
+            inconsistency_callback=inconsistency_callback,
         )
 
     rok = wydawnictwo_nadrzedne.rok
@@ -113,9 +120,9 @@ def importuj_rozdzial(
         ),
         doi=pbn_json.pop("doi", pbn_chapter_json.pop("doi", None)),
         pbn_uid=pbn_publication,
-        charakter_formalny=Charakter_Formalny.objects.get(nazwa="Rozdział książki"),
-        typ_kbn=Typ_KBN.objects.get(nazwa="inne"),
-        status_korekty=Status_Korekty.objects.get(nazwa="przed korektą"),
+        charakter_formalny=get_charakter_formalny_rozdzial(),
+        typ_kbn=get_typ_kbn_inne(),
+        status_korekty=get_status_korekty_przed(),
     )
 
     if "titles" in pbn_json:
@@ -140,7 +147,7 @@ def importuj_rozdzial(
 
     assert_dictionary_empty(pbn_chapter_json)
 
-    utworz_autorow(ret, pbn_json, client, default_jednostka)
+    utworz_autorow(ret, pbn_json, client, default_jednostka, inconsistency_callback)
     pbn_json.pop("type")
     assert_dictionary_empty(pbn_json)
 

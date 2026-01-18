@@ -1,13 +1,17 @@
 """Publisher handling for PBN importer."""
 
+import logging
+
 from django.core.management import call_command
 from django.db import transaction
 
 from bpp import const
 from bpp.models import Wydawca
-from bpp.util import pbar
+from bpp.models.wydawca import Poziom_Wydawcy
 from pbn_api.models import Publisher
 from pbn_integrator.utils import zapisz_mongodb
+
+logger = logging.getLogger("pbn_import")
 
 
 def _utworz_nowego_wydawce(publisher, points_to_poziom_map, verbosity):
@@ -18,6 +22,8 @@ def _utworz_nowego_wydawce(publisher, points_to_poziom_map, verbosity):
     if verbosity > 1:
         print(f"1 Tworze nowego wydawce z MNISWID, {publisher.publisherName}")
 
+    # Bulk create all Poziom_Wydawcy records at once instead of one-by-one
+    poziomy_to_create = []
     for rok in const.PBN_LATA:
         points = publisher.points.get(str(rok))
 
@@ -33,7 +39,12 @@ def _utworz_nowego_wydawce(publisher, points_to_poziom_map, verbosity):
         poziom = points_to_poziom_map.get(points["points"])
         assert poziom, f"Brak odpowiednika dla {points['points']}"
 
-        nowy_wydawca.poziom_wydawcy_set.create(rok=rok, poziom=poziom)
+        poziomy_to_create.append(
+            Poziom_Wydawcy(wydawca=nowy_wydawca, rok=rok, poziom=poziom)
+        )
+
+    if poziomy_to_create:
+        Poziom_Wydawcy.objects.bulk_create(poziomy_to_create)
 
 
 def _aktualizuj_poziomy_wydawcy(
@@ -102,7 +113,10 @@ def importuj_jednego_wydawce(publisher, verbosity=1):
             )
         return poziom_bpp
 
-    if not publisher.wydawca_set.exists():
+    # Single exists() check instead of duplicate calls
+    has_wydawca = publisher.wydawca_set.exists()
+
+    if not has_wydawca:
         # Nie ma takiego wydawcy w bazie BPP, spróbuj go zmatchować:
         nw = publisher.matchuj_wydawce()
         if nw is not None:
@@ -113,8 +127,9 @@ def importuj_jednego_wydawce(publisher, verbosity=1):
                 )
             nw.pbn_uid = publisher
             nw.save()
+            has_wydawca = True
 
-    if not publisher.wydawca_set.exists():
+    if not has_wydawca:
         # Nie ma takiego wydawcy w bazie, utwórz go:
         _utworz_nowego_wydawce(publisher, points_to_poziom_map, verbosity)
         return True
@@ -124,9 +139,13 @@ def importuj_jednego_wydawce(publisher, verbosity=1):
         # Nie pracujemy na aliasach
         wydawca = wydawca.get_toplevel()
 
+        # Batch fetch all Poziom_Wydawcy records at once (single query)
+        # instead of querying for each year separately (~10 queries)
+        poziomy_dict = {pz.rok: pz for pz in wydawca.poziom_wydawcy_set.all()}
+
         for rok in const.PBN_LATA:
             pbn_side = publisher.points.get(str(rok))
-            wydawca_side = wydawca.poziom_wydawcy_set.filter(rok=rok).first()
+            wydawca_side = poziomy_dict.get(rok)
 
             _aktualizuj_poziomy_wydawcy(
                 wydawca,
@@ -139,20 +158,28 @@ def importuj_jednego_wydawce(publisher, verbosity=1):
                 verbosity,
             )
 
-            # wydawca_side is None, są równe zatem, nic nie robimy
 
-
-def importuj_wydawcow(verbosity=1):
+def importuj_wydawcow(verbosity=1, callback=None):
     needs_mapping = False
+    publishers = list(Publisher.objects.official())
+    total = len(publishers)
+    imported = 0
+    logger.info(f"Importowanie wydawców: {total} wydawców do przetworzenia")
 
     with transaction.atomic():
-        for publisher in pbar(Publisher.objects.official()):
+        for i, publisher in enumerate(publishers, 1):
             if importuj_jednego_wydawce(publisher):
                 needs_mapping = True
+                imported += 1
+
+            if callback:
+                callback.update(i, total, f"Zaimportowano: {imported}")
 
     # To uruchamiamy poza transakcją - jeżeli były zmiany
     if needs_mapping:
+        logger.info("Importowanie wydawców: uruchamiam mapowanie do publikacji...")
         call_command("zamapuj_wydawcow")
+        logger.info("Importowanie wydawców: mapowanie zakończone")
 
 
 def sciagnij_i_zapisz_wydawce(pbn_wydawca_id, client):
