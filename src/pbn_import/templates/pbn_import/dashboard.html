@@ -18,6 +18,26 @@
     </div>
     {% endif %}
 
+    {% if pbn_configured and not pbn_token_valid %}
+    <div class="callout warning">
+        <h5><span class="fi-alert"></span> Brak aktywnej sesji PBN</h5>
+        <p>Twój token PBN wygasł lub nie jesteś zalogowany do PBN.
+           Przed rozpoczęciem importu musisz się zalogować.</p>
+        <p><a href="{% url 'pbn_api:authorize' %}" class="button small warning">
+            <span class="fi-key"></span> Zaloguj się do PBN
+        </a></p>
+    </div>
+    {% endif %}
+
+    {% if auto_cancelled_message %}
+    <div class="callout alert">
+        <h5><span class="fi-alert"></span> Import automatycznie anulowany</h5>
+        <p>{{ auto_cancelled_message }}</p>
+        <p class="text-muted">Zadanie importu zostało utracone (np. z powodu restartu serwera)
+           i zostało automatycznie oznaczone jako zakończone niepowodzeniem.</p>
+    </div>
+    {% endif %}
+
     <!-- Active Import Section -->
     {% if active_session %}
     <div class="pbn-import__active-card">
@@ -158,14 +178,44 @@
             <input type="hidden" name="delete_existing" value="">
 
             {% if uzywaj_wydzialow %}
-            <label class="pbn-import__modal-field--spaced">
-                Domyślny wydział:
-                <input type="text" name="wydzial_domyslny" value="Wydział Domyślny">
-            </label>
+            <div class="pbn-import__modal-field--spaced">
+                <label>Domyślny wydział:</label>
+                {% if wydzialy.count == 1 %}
+                <input type="hidden" name="wydzial_domyslny_id" value="{{ wydzialy.0.pk }}">
+                <span class="pbn-import__readonly-value">{{ wydzialy.0.nazwa }}</span>
+                {% else %}
+                <select name="wydzial_domyslny_id" id="wydzial_domyslny_select">
+                    <option value="">-- Wybierz wydział --</option>
+                    {% for w in wydzialy %}
+                    <option value="{{ w.pk }}"{% if wydzial_domyslny and wydzial_domyslny.pk == w.pk %} selected{% endif %}>
+                        {{ w.nazwa }}
+                    </option>
+                    {% endfor %}
+                </select>
+                {% endif %}
+            </div>
             {% else %}
-            <!-- Hidden field with default value when wydziały are not used -->
-            <input type="hidden" name="wydzial_domyslny" value="Wydział Domyślny">
+            <!-- Hidden field when wydziały are not used -->
+            <input type="hidden" name="wydzial_domyslny_id" value="">
             {% endif %}
+
+            <div class="pbn-import__modal-field--spaced">
+                <label>Domyślna jednostka:</label>
+                {% if jednostki.count == 1 %}
+                <input type="hidden" name="jednostka_domyslna_id" value="{{ jednostki.0.pk }}">
+                <span class="pbn-import__readonly-value">{{ jednostki.0.nazwa }}</span>
+                {% else %}
+                <select name="jednostka_domyslna_id" id="jednostka_domyslna_select"
+                        class="jednostka-select2" style="width: 100%;">
+                    <option value="">-- Wybierz jednostkę --</option>
+                    {% for j in jednostki %}
+                    <option value="{{ j.pk }}"{% if jednostka_domyslna and jednostka_domyslna.pk == j.pk %} selected{% endif %}>
+                        {{ j.nazwa }}
+                    </option>
+                    {% endfor %}
+                </select>
+                {% endif %}
+            </div>
 
             <div class="callout primary pbn-import__modal-field--spaced">
                 <h5><span class="fi-info"></span> Wskazówka</h5>
@@ -201,6 +251,15 @@ document.addEventListener('DOMContentLoaded', function() {
     setTimeout(() => {
         $(document).foundation();
     }, 100);
+
+    // Initialize Select2 for jednostka dropdown
+    $('#jednostka_domyslna_select').select2({
+        language: 'pl',
+        placeholder: '-- Wybierz jednostkę --',
+        allowClear: true,
+        width: '100%',
+        dropdownParent: $('#import-config-modal')
+    });
 
     fetch('{% url "pbn_import:presets" %}')
         .then(response => response.json())
@@ -328,9 +387,16 @@ function applyPresetConfig(config) {
         } else if (key === 'delete_existing') {
             const input = form.querySelector('[name="delete_existing"]');
             if (input) input.checked = config[key];
-        } else if (key === 'wydzial_domyslny') {
-            const input = form.querySelector('[name="wydzial_domyslny"]');
-            if (input) input.value = config[key];
+        } else if (key === 'wydzial_domyslny_id') {
+            const select = form.querySelector('[name="wydzial_domyslny_id"]');
+            if (select) select.value = config[key];
+        } else if (key === 'jednostka_domyslna_id') {
+            const select = form.querySelector('[name="jednostka_domyslna_id"]');
+            if (select) {
+                select.value = config[key];
+                // Trigger Select2 update
+                $(select).trigger('change');
+            }
         }
     });
 

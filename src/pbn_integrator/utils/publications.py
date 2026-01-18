@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import TYPE_CHECKING
 
 from tqdm import tqdm
@@ -46,6 +47,13 @@ class OswiadczeniaInstytucjiGetter(ThreadedPageGetter):
         zapisz_oswiadczenie_instytucji(elem, None, client=self.client)
 
 
+class PublikacjeInstytucjiV2Getter(ThreadedPageGetter):
+    """Threaded getter for institution publications v2."""
+
+    def process_element(self, elem):
+        zapisz_publikacje_instytucji_v2(self.client, elem)
+
+
 def pobierz_prace(client: PBNClient):
     """Fetch active publications from PBN.
 
@@ -60,7 +68,7 @@ def pobierz_prace(client: PBNClient):
 
 
 def pobierz_publikacje_z_instytucji(
-    client: PBNClient, callback=None, use_threads=True, no_threads=8
+    client: PBNClient, callback=None, use_threads=True, no_threads=24
 ):
     """Fetch institution publications from PBN.
 
@@ -72,7 +80,7 @@ def pobierz_publikacje_z_instytucji(
     """
     if use_threads:
         # Use threaded version for better performance
-        data = client.get_institution_publications(page_size=2000)
+        data = client.get_institution_publications(page_size=10)
 
         threaded_page_getter(
             client,
@@ -118,15 +126,34 @@ def zapisz_publikacje_instytucji_v2(client: PBNClient, elem: dict):
     )
 
 
-def pobierz_publikacje_z_instytucji_v2(client: PBNClient):
+def pobierz_publikacje_z_instytucji_v2(
+    client: PBNClient, callback=None, use_threads=True, no_threads=8
+):
     """Fetch institution publications v2 from PBN.
 
     Args:
-        client: PBN client.
+        client: PBN API client.
+        callback: Optional progress callback for database tracking.
+        use_threads: Whether to use threading (default: True).
+        no_threads: Number of threads to use (default: 8).
     """
-    res = client.get_institution_publications_v2()
-    for elem in tqdm(res, total=res.count()):
-        zapisz_publikacje_instytucji_v2(client, elem)
+    if use_threads:
+        # Use threaded version for better performance
+        data = client.get_institution_publications_v2()
+
+        threaded_page_getter(
+            client,
+            data,
+            klass=PublikacjeInstytucjiV2Getter,
+            label="Pobieranie publikacji instytucji v2",
+            no_threads=no_threads,
+            callback=callback,
+        )
+    else:
+        # Fall back to single-threaded version if needed
+        res = client.get_institution_publications_v2()
+        for elem in tqdm(res, total=res.count()):
+            zapisz_publikacje_instytucji_v2(client, elem)
 
 
 def pobierz_oswiadczenia_z_instytucji(
@@ -358,3 +385,98 @@ def pobierz_rekordy_publikacji_instytucji(client: PBNClient):
 
     pool.close()
     pool.join()
+
+
+def _download_and_import_single_publication(
+    client: PBNClient,
+    pbn_uid_id: str,
+    default_jednostka,
+):
+    """Download and import a single publication.
+
+    Args:
+        client: PBN client.
+        pbn_uid_id: Publication PBN UID.
+        default_jednostka: Default unit for authors.
+
+    Returns:
+        Tuple of (pbn_uid_id, success, error_message).
+    """
+    from pbn_integrator.importer import importuj_publikacje_po_pbn_uid_id
+
+    try:
+        # First download the publication to Publication model
+        _pobierz_pojedyncza_prace(client, pbn_uid_id)
+
+        # Then import it to BPP
+        importuj_publikacje_po_pbn_uid_id(
+            pbn_uid_id,
+            client=client,
+            default_jednostka=default_jednostka,
+        )
+        return (pbn_uid_id, True, None)
+    except BrakIDPracyPoStroniePBN:
+        return (pbn_uid_id, False, "Publikacja nie istnieje w PBN")
+    except Exception as e:
+        return (pbn_uid_id, False, str(e))
+
+
+def pobierz_brakujace_publikacje_batch(
+    client: PBNClient,
+    missing_pbn_uids: set,
+    default_jednostka,
+    max_workers: int = 8,
+    callback=None,
+):
+    """Download and import missing publications in batch using ThreadPoolExecutor.
+
+    This function downloads publications from PBN API and imports them to BPP
+    in parallel using multiple threads.
+
+    Args:
+        client: PBN API client.
+        missing_pbn_uids: Set of PBN UID IDs for publications to download.
+        default_jednostka: Default unit for authors without affiliations.
+        max_workers: Number of worker threads (default: 8).
+        callback: Optional TqdmSessionProgress object with update(current, total, desc)
+            method for progress reporting.
+
+    Returns:
+        Dict with statistics: {'downloaded': int, 'failed': int, 'errors': list}.
+    """
+    if not missing_pbn_uids:
+        return {"downloaded": 0, "failed": 0, "errors": []}
+
+    total = len(missing_pbn_uids)
+    downloaded = 0
+    failed = 0
+    errors = []
+
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        # Submit all tasks
+        futures = {
+            executor.submit(
+                _download_and_import_single_publication,
+                client,
+                pbn_uid_id,
+                default_jednostka,
+            ): pbn_uid_id
+            for pbn_uid_id in missing_pbn_uids
+        }
+
+        # Process results as they complete
+        for i, future in enumerate(as_completed(futures), 1):
+            pbn_uid_id, success, error = future.result()
+
+            if success:
+                downloaded += 1
+            else:
+                failed += 1
+                if error:
+                    errors.append(f"{pbn_uid_id}: {error}")
+
+            if callback:
+                desc = f"Pobrano {downloaded}, błędów: {failed}"
+                callback.update(i, total, desc)
+
+    return {"downloaded": downloaded, "failed": failed, "errors": errors}

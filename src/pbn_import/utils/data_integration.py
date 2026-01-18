@@ -3,13 +3,16 @@
 import io
 import sys
 
-from bpp.models import Jednostka
+from django.contrib.contenttypes.models import ContentType
+
+from bpp.models import Dyscyplina_Naukowa, Jednostka, Rodzaj_Zrodla
 from pbn_integrator.importer import importuj_publikacje_po_pbn_uid_id
 from pbn_integrator.utils import (
     integruj_oswiadczenia_z_instytucji,
     integruj_publikacje_instytucji,
 )
 
+from ..models import ImportInconsistency
 from .base import ImportStepBase
 
 
@@ -104,9 +107,8 @@ class DataIntegrator(ImportStepBase):
         # Show output in real-time while also capturing it for logs
         self.tee_mode = True  # Set to False to capture silently without displaying
 
-    def run(self):
-        """Execute data integration"""
-        # Get default unit for missing publications
+    def _setup_default_jednostka(self):
+        """Setup default unit for integration."""
         jednostka_id = self.session.config.get("default_jednostka_id")
         if jednostka_id:
             self.default_jednostka = Jednostka.objects.get(pk=jednostka_id)
@@ -118,36 +120,35 @@ class DataIntegrator(ImportStepBase):
         if not self.default_jednostka:
             raise ValueError("Nie znaleziono domyślnej jednostki dla integracji danych")
 
-        total_steps = 2
+    def _store_captured_output(self, capture, section_name, log_msg):
+        """Store and log captured output from integration step."""
+        captured_text = capture.get_combined()
+        if captured_text:
+            self.captured_output.append(f"=== {section_name} ===\n{captured_text}")
+            self.log(
+                "debug",
+                log_msg,
+                {"output": captured_text[:5000]},
+            )  # Limit to 5000 chars in log
 
-        # Step 1: Integrate publications from institution
-        self.update_progress(0, total_steps, "Integrowanie publikacji instytucji")
+    def _integrate_publications(self):
+        """Integrate publications from institution."""
         self.log("info", "Rozpoczęcie integracji publikacji instytucji")
 
         try:
-            # Create progress callback for sub-task tracking
             subtask_callback = self.create_subtask_progress("Integracja publikacji")
 
-            # Capture stdout/stderr during integration
             with OutputCapture(tee_mode=self.tee_mode) as capture:
-                # Run integration with multiprocessing disabled as requested
                 integruj_publikacje_instytucji(
                     callback=subtask_callback,
                     use_threads=True,
                 )
 
-            # Store captured output
-            captured_text = capture.get_combined()
-            if captured_text:
-                self.captured_output.append(
-                    f"=== Integracja publikacji instytucji ===\n{captured_text}"
-                )
-                # Log captured output as debug info
-                self.log(
-                    "debug",
-                    "Captured output from publication integration",
-                    {"output": captured_text[:5000]},
-                )  # Limit to 5000 chars in log
+            self._store_captured_output(
+                capture,
+                "Integracja publikacji instytucji",
+                "Captured output from publication integration",
+            )
 
             self.log("success", "Publikacje instytucji zintegrowane pomyślnie")
         except Exception as e:
@@ -155,13 +156,69 @@ class DataIntegrator(ImportStepBase):
         finally:
             self.clear_subtask_progress()
 
-        # Check cancellation before proceeding
-        if self.check_cancelled():
-            return {"cancelled": True}
+    def _create_inconsistency_callback(self):
+        """Create callback for recording statement integration inconsistencies."""
+        session = self.session
 
-        # Step 2: Integrate statements with missing publication callback
-        self.update_progress(1, total_steps, "Integrowanie oświadczeń")
+        def inconsistency_callback(
+            inconsistency_type,
+            pbn_publication=None,
+            pbn_author=None,
+            bpp_publication=None,
+            bpp_author=None,
+            discipline=None,
+            message="",
+            action_taken="",
+        ):
+            """Record an inconsistency found during statement integration."""
+            try:
+                # Get content type for BPP publication to enable URL generation
+                bpp_publication_content_type = None
+                if bpp_publication:
+                    bpp_publication_content_type = ContentType.objects.get_for_model(
+                        bpp_publication
+                    )
+
+                ImportInconsistency.objects.create(
+                    session=session,
+                    inconsistency_type=inconsistency_type,
+                    pbn_publication_id=(
+                        str(pbn_publication.mongoId) if pbn_publication else ""
+                    ),
+                    pbn_publication_title=(
+                        str(pbn_publication.title) if pbn_publication else ""
+                    ),
+                    pbn_author_id=str(pbn_author.pk) if pbn_author else "",
+                    pbn_author_name=(
+                        f"{pbn_author.lastName} {pbn_author.name}" if pbn_author else ""
+                    ),
+                    pbn_discipline=str(discipline) if discipline else "",
+                    bpp_publication_id=bpp_publication.pk if bpp_publication else None,
+                    bpp_publication_content_type=bpp_publication_content_type,
+                    bpp_publication_title=(
+                        str(bpp_publication.tytul_oryginalny) if bpp_publication else ""
+                    ),
+                    bpp_author_id=bpp_author.pk if bpp_author else None,
+                    bpp_author_name=str(bpp_author) if bpp_author else "",
+                    message=message,
+                    action_taken=action_taken,
+                )
+            except Exception as e:
+                # Log the error but don't fail the import
+                self.log(
+                    "warning",
+                    f"Błąd podczas zapisu nieścisłości: {e}",
+                    {"inconsistency_type": inconsistency_type, "message": message},
+                )
+
+        return inconsistency_callback
+
+    def _integrate_statements(self):
+        """Integrate statements with missing publication callback."""
         self.log("info", "Rozpoczęcie integracji oświadczeń")
+
+        rodzaj_periodyk = Rodzaj_Zrodla.objects.get(nazwa="periodyk")
+        dyscypliny_cache = {d.nazwa: d for d in Dyscyplina_Naukowa.objects.all()}
 
         def missing_publication_callback(pbn_uid_id):
             """Import missing publication when found during statement integration"""
@@ -170,38 +227,44 @@ class DataIntegrator(ImportStepBase):
                 pbn_uid_id,
                 client=self.client,
                 default_jednostka=self.default_jednostka,
+                rodzaj_periodyk=rodzaj_periodyk,
+                dyscypliny_cache=dyscypliny_cache,
+                inconsistency_callback=inconsistency_callback,
             )
 
+        # Create inconsistency callback for structured tracking
+        inconsistency_callback = self._create_inconsistency_callback()
+
         try:
-            # Create progress callback for sub-task tracking
             subtask_callback = self.create_subtask_progress("Integracja oświadczeń")
 
-            # Capture stdout/stderr during integration
             with OutputCapture(tee_mode=self.tee_mode) as capture:
-                # Integrate statements with callback for missing publications
                 integruj_oswiadczenia_z_instytucji(
                     missing_publication_callback=missing_publication_callback,
                     callback=subtask_callback,
+                    inconsistency_callback=inconsistency_callback,
+                    default_jednostka=self.default_jednostka,
                 )
 
-            # Store captured output
-            captured_text = capture.get_combined()
-            if captured_text:
-                self.captured_output.append(
-                    f"=== Integracja oświadczeń ===\n{captured_text}"
-                )
-                # Log captured output as debug info
-                self.log(
-                    "debug",
-                    "Captured output from statement integration",
-                    {"output": captured_text[:5000]},
-                )  # Limit to 5000 chars in log
+            self._store_captured_output(
+                capture,
+                "Integracja oświadczeń",
+                "Captured output from statement integration",
+            )
 
-            # Update statistics
             if hasattr(self.session, "statistics"):
                 stats = self.session.statistics
                 stats.data_integrated = True
                 stats.save()
+
+            # Log inconsistency summary
+            inconsistency_count = self.session.inconsistencies.count()
+            if inconsistency_count > 0:
+                self.log(
+                    "warning",
+                    f"Znaleziono {inconsistency_count} nieścisłości podczas "
+                    f"integracji oświadczeń",
+                )
 
             self.log("success", "Oświadczenia zintegrowane pomyślnie")
 
@@ -210,10 +273,8 @@ class DataIntegrator(ImportStepBase):
         finally:
             self.clear_subtask_progress()
 
-        # Final progress update
-        self.update_progress(2, total_steps, "Zakończono integrację danych")
-
-        # Save complete captured output as a single log entry
+    def _finalize_and_log_output(self):
+        """Save complete captured output as a single log entry."""
         if self.captured_output:
             complete_output = "\n\n".join(self.captured_output)
             self.log(
@@ -222,12 +283,27 @@ class DataIntegrator(ImportStepBase):
                 {"full_output": complete_output},
             )
 
-            # Also save to a file if needed (optional)
-            # You could save this to a file in media directory for download
-            # from pathlib import Path
-            # output_path = Path(f"media/import_logs/session_{self.session.id}_output.txt")
-            # output_path.parent.mkdir(parents=True, exist_ok=True)
-            # output_path.write_text(complete_output)
+    def run(self):
+        """Execute data integration"""
+        self._setup_default_jednostka()
+
+        total_steps = 2
+
+        # Step 1: Integrate publications from institution
+        self.update_progress(0, total_steps, "Integrowanie publikacji instytucji")
+        self._integrate_publications()
+
+        # Check cancellation before proceeding
+        if self.check_cancelled():
+            return {"cancelled": True}
+
+        # Step 2: Integrate statements with missing publication callback
+        self.update_progress(1, total_steps, "Integrowanie oświadczeń")
+        self._integrate_statements()
+
+        # Final progress update
+        self.update_progress(2, total_steps, "Zakończono integrację danych")
+        self._finalize_and_log_output()
 
         return {
             "data_integrated": True,

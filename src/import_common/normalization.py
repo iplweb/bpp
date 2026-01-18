@@ -1,8 +1,125 @@
+import re
 from decimal import Decimal
 
 from django.core.exceptions import ValidationError
 from numpy import isnan
 from pathspec.util import normalize_file
+
+# Słownik konwersji cyfr rzymskich na arabskie
+ROMAN_TO_ARABIC = {
+    "I": 1,
+    "II": 2,
+    "III": 3,
+    "IV": 4,
+    "V": 5,
+    "VI": 6,
+    "VII": 7,
+    "VIII": 8,
+    "IX": 9,
+    "X": 10,
+    "XI": 11,
+    "XII": 12,
+    "XIII": 13,
+    "XIV": 14,
+    "XV": 15,
+    "XVI": 16,
+    "XVII": 17,
+    "XVIII": 18,
+    "XIX": 19,
+    "XX": 20,
+}
+
+# Wzorzec dla cyfr rzymskich (I-XX)
+# Dopasowuje: I, II, III, IV, V, VI, VII, VIII, IX, X, XI, XII, XIII, XIV, XV,
+# XVI, XVII, XVIII, XIX, XX
+ROMAN_NUMERAL_PATTERN = (
+    r"(?:"
+    r"XX|XIX|XVIII|XVII|XVI|XV|XIV|XIII|XII|XI|X|"  # 10-20
+    r"IX|VIII|VII|VI|V|IV|III|II|I"  # 1-9
+    r")"
+)
+
+# Wzorzec dla cyfr arabskich lub rzymskich
+NUMBER_PATTERN = rf"(?:\d+|{ROMAN_NUMERAL_PATTERN})"
+
+# Wzorce regex do ekstrakcji numeru części z tytułu publikacji
+# Każdy wzorzec to krotka: (regex, indeks_grupy_z_numerem)
+PART_NUMBER_PATTERNS = [
+    # cz. I, cz. II, cz. 1, cz. 2, etc. (case insensitive)
+    (re.compile(rf"\b(cz\.?\s*)({NUMBER_PATTERN})\b", re.IGNORECASE), 2),
+    # część I, część 1, etc.
+    (re.compile(rf"\b(część\s*)({NUMBER_PATTERN})\b", re.IGNORECASE), 2),
+    # part I, part 1, etc.
+    (re.compile(rf"\b(part\s*)({NUMBER_PATTERN})\b", re.IGNORECASE), 2),
+    # tom I, tom 1, etc.
+    (re.compile(rf"\b(tom\s*)({NUMBER_PATTERN})\b", re.IGNORECASE), 2),
+    # vol. I, vol. 1, etc.
+    (re.compile(rf"\b(vol\.?\s*)({NUMBER_PATTERN})\b", re.IGNORECASE), 2),
+]
+
+
+def normalize_part_number(part: str) -> int | None:
+    """Konwertuje numer części (rzymski lub arabski) na int.
+
+    Args:
+        part: Numer części jako string (np. "II", "3", "IV")
+
+    Returns:
+        Numer części jako int lub None jeśli nie można skonwertować
+    """
+    if part is None:
+        return None
+
+    part = part.upper().strip()
+
+    if not part:
+        return None
+
+    # Sprawdź czy to cyfra rzymska
+    if part in ROMAN_TO_ARABIC:
+        return ROMAN_TO_ARABIC[part]
+
+    # Sprawdź czy to cyfra arabska
+    try:
+        return int(part)
+    except ValueError:
+        return None
+
+
+def extract_part_number(title: str) -> tuple[str, int | None]:
+    """Wykrywa i ekstraktuje numer części z tytułu publikacji.
+
+    Obsługiwane wzorce:
+    - cz. I, cz. II, cz. 1, cz. 2, etc.
+    - część I, część 1, etc.
+    - part I, part 1, etc.
+    - tom I, tom 1, etc.
+    - vol. I, vol. 1, etc.
+
+    Args:
+        title: Tytuł publikacji
+
+    Returns:
+        Krotka (tytuł_bez_numeru_części, znormalizowany_numer_części_lub_None)
+        Numer części jest zwracany jako int (np. 2 dla "cz. II" lub "cz. 2")
+    """
+    if title is None:
+        return ("", None)
+
+    for pattern, group_idx in PART_NUMBER_PATTERNS:
+        match = pattern.search(title)
+        if match:
+            part_str = match.group(group_idx)
+            part_number = normalize_part_number(part_str)
+            if part_number is not None:
+                # Usuń dopasowany fragment z tytułu
+                title_without_part = pattern.sub("", title).strip()
+                # Usuń podwójne spacje które mogły powstać
+                while "  " in title_without_part:
+                    title_without_part = title_without_part.replace("  ", " ")
+                return (title_without_part, part_number)
+
+    return (title, None)
 
 
 def remove_trailing_interpunction(s: str) -> str:

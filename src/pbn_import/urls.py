@@ -24,7 +24,21 @@ urlpatterns = [
         name="progress",
     ),
     path("session/<int:pk>/logs/", views.ImportLogStreamView.as_view(), name="logs"),
-    path("session/<int:pk>/stats/", views.ImportStatisticsView.as_view(), name="stats"),
+    path(
+        "session/<int:pk>/all-logs/",
+        views.ImportAllLogsView.as_view(),
+        name="all_logs",
+    ),
+    path(
+        "session/<int:pk>/error-logs/",
+        views.ImportErrorLogsView.as_view(),
+        name="error_logs",
+    ),
+    path(
+        "session/<int:pk>/inconsistencies/",
+        views.ImportInconsistenciesView.as_view(),
+        name="inconsistencies",
+    ),
     path(
         "sessions/active/", views.ActiveSessionsView.as_view(), name="active_sessions"
     ),

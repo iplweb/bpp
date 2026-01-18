@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from django.db import transaction
+from django.db import IntegrityError, transaction
 
 from bpp.util import pbar
 from pbn_api.exceptions import HttpException
@@ -47,8 +47,12 @@ def zapisz_mongodb(elem, klass, client=None, **extra):
     try:
         v = existing.get()
     except klass.DoesNotExist:
-        v = klass.objects.create(pk=elem["mongoId"], **defaults)
-        created = True
+        try:
+            v = klass.objects.create(pk=elem["mongoId"], **defaults)
+            created = True
+        except IntegrityError:
+            # Another thread created this record - just fetch it
+            v = klass.objects.get(pk=elem["mongoId"])
 
     if not created:
         needs_saving = False

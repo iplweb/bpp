@@ -42,7 +42,7 @@ graph TB
     end
 
     subgraph Data["Data Layer"]
-        Models[(ImportSession<br/>ImportLog<br/>ImportStatistics)]
+        Models[(ImportSession<br/>ImportLog)]
         PBNAPI[PBN API Client]
         BPPModels[(BPP Models<br/>Autor, Publikacja, etc.)]
     end
@@ -113,25 +113,6 @@ Defines import steps and their configuration.
 | `is_optional` | BooleanField | Can be skipped |
 | `estimated_duration` | IntegerField | Seconds |
 | `icon_class` | CharField | Foundation Icons class |
-
-### ImportStatistics
-
-Numerical statistics for import sessions.
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `session` | OneToOneField | Related session |
-| `institutions_imported` | IntegerField | Count |
-| `authors_imported` | IntegerField | Count |
-| `publications_imported` | IntegerField | Count |
-| `journals_imported` | IntegerField | Count |
-| `publishers_imported` | IntegerField | Count |
-| `conferences_imported` | IntegerField | Count |
-| `statements_imported` | IntegerField | Count |
-| `*_failed` | IntegerField | Failure counts per type |
-| `total_api_calls` | IntegerField | API call count |
-| `total_api_time` | FloatField | Total API time (seconds) |
-| `coffee_breaks_recommended` | IntegerField | Fun stat (1 per 30 min) |
 
 ---
 
@@ -526,7 +507,6 @@ Test import with mock data (development only).
 |------|---------|
 | `test_import_session.py` | Session model tests |
 | `test_import_log.py` | Log model tests |
-| `test_import_statistics.py` | Statistics tests |
 | `test_import_step.py` | Step base class tests |
 | `test_step_definitions.py` | Step configuration tests |
 | `test_tasks.py` | Celery task tests |
@@ -534,7 +514,7 @@ Test import with mock data (development only).
 | `test_views_dashboard.py` | Dashboard view tests |
 | `test_views_session.py` | Session view tests |
 | `test_views_progress.py` | Progress endpoint tests |
-| `test_views_statistics.py` | Statistics view tests |
+| `test_views_statistics.py` | Presets view tests |
 | `test_views_permissions.py` | Permission tests |
 | `test_admin_compression.py` | Admin tests |
 

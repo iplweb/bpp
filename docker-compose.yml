@@ -19,6 +19,8 @@ services:
     restart: always
     environment:
       - PGPORT=${DJANGO_BPP_DB_PORT:-5432}
+      - POSTGRES_DB=${DJANGO_BPP_DB_NAME:-bpp}
+      - POSTGRES_USER=${DJANGO_BPP_DB_USER:-bpp}
       # Ustaw na "1" dla maksymalnej wydajności (wyłącza fsync, synchronous_commit)
       # TYLKO dla developmentu/testów! NIE UŻYWAĆ W PRODUKCJI!
       - POSTGRESQL_UNSAFE_BUT_FAST=1
@@ -27,7 +29,7 @@ services:
     volumes:
       - postgresql_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U ${DJANGO_BPP_DB_USER:-bpp}"]
       start_period: 10s
       interval: 5s
       timeout: 5s

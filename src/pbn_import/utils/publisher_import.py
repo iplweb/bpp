@@ -29,8 +29,9 @@ class PublisherImporter(ImportStepBase):
         self.update_progress(1, 2, "Importowanie wydawców do bazy danych")
         self.log("info", "Importing publishers to database")
 
+        subtask_callback = self.create_subtask_progress("Importowanie wydawców")
         try:
-            result = importer.importuj_wydawcow()
+            result = importer.importuj_wydawcow(callback=subtask_callback)
 
             # Update statistics if available
             if hasattr(self.session, "statistics"):
@@ -43,6 +44,8 @@ class PublisherImporter(ImportStepBase):
 
         except Exception as e:
             self.handle_error(e, "Nie udało się zaimportować wydawców")
+        finally:
+            self.clear_subtask_progress()
 
         self.update_progress(2, 2, "Zakończono import wydawców")
 

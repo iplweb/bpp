@@ -103,7 +103,7 @@ env = environ.Env(
     #
     DJANGO_BPP_HOSTNAME=(str, "localhost"),
     DJANGO_BPP_DB_NAME=(str, "bpp"),
-    DJANGO_BPP_DB_USER=(str, "postgres"),
+    DJANGO_BPP_DB_USER=(str, "bpp"),
     DJANGO_BPP_DB_PASSWORD=(str, "password"),
     DJANGO_BPP_DB_HOST=(str, "localhost"),
     DJANGO_BPP_DB_PORT=(int, 5432),
@@ -1266,6 +1266,36 @@ if DJANGO_BPP_ENABLE_PROMETHEUS:
     ]
 
 DYNAMIC_FILTER_COUNTS_ENABLE = env("DYNAMIC_FILTER_COUNTS_ENABLE")
+
+# =============================================================================
+# LOGGING CONFIGURATION
+# =============================================================================
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "pbn_import": {
+            # Bez timestampu - Celery/systemd dodaje swoje
+            "format": "[%(levelname)s] %(message)s",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "stream": "ext://sys.stderr",
+            "formatter": "pbn_import",
+        },
+    },
+    "loggers": {
+        # Logger dla pbn_import - wyświetla INFO+
+        "pbn_import": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+    },
+}
 
 #
 # Cacheops nawet na staging serwerze wymaga tych ustawień, bo potrafi łączyć

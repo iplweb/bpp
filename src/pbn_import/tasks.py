@@ -1,5 +1,6 @@
 """Celery tasks for PBN import"""
 
+import logging
 import sys
 import traceback
 
@@ -14,6 +15,8 @@ from bpp.models import Uczelnia
 from .models import ImportLog, ImportSession
 from .utils import ImportManager
 
+logger = logging.getLogger("pbn_import")
+
 
 def send_websocket_update(session, data):
     """Send update via WebSocket"""
@@ -24,7 +27,7 @@ def send_websocket_update(session, data):
                 f"import_{session.id}", {"type": "import_update", "data": data}
             )
         except Exception as e:
-            print(f"WebSocket error: {e}")
+            logger.warning(f"WebSocket error: {e}")
 
 
 def update_progress(session, step_name, progress, message=None):
@@ -57,6 +60,7 @@ def update_progress(session, step_name, progress, message=None):
 @shared_task(bind=True)
 def run_pbn_import(self, session_id):
     """Main PBN import task"""
+    logger.info(f"Uruchamianie zadania Celery dla sesji importu #{session_id}")
     try:
         session = ImportSession.objects.get(pk=session_id)
         session.status = "running"
@@ -98,14 +102,17 @@ def run_pbn_import(self, session_id):
         # Update session status based on result
         session.refresh_from_db()
         if session.status == "cancelled":
-            session.status = "cancelled"
+            # Already cancelled, just update completed_at
+            session.completed_at = timezone.now()
+            session.save()
         elif result.get("success", False):
             session.status = "completed"
+            session.completed_at = timezone.now()
+            session.save()
         else:
-            session.status = "failed"
-
-        session.completed_at = timezone.now()
-        session.save()
+            # Use mark_failed() to properly set error_traceback
+            error_msg = result.get("error", "Import zakończony niepowodzeniem")
+            session.mark_failed(error_msg, "")
 
         ImportLog.objects.create(
             session=session,
@@ -125,7 +132,7 @@ def run_pbn_import(self, session_id):
         )
 
     except ImportSession.DoesNotExist:
-        print(f"Sesja {session_id} nie została znaleziona")
+        logger.error(f"Sesja {session_id} nie została znaleziona")
     except Exception as e:
         # Report to Rollbar
         rollbar.report_exc_info(

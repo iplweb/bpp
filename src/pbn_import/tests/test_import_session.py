@@ -27,7 +27,7 @@ class TestImportSessionModel:
         assert session.current_step_progress == 0
         assert session.total_steps == 0
         assert session.completed_steps == 0
-        assert session.task_id is None
+        assert session.task_id == ""
         assert session.error_message == ""
         assert session.completed_at is None
 

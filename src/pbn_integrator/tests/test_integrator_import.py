@@ -31,7 +31,9 @@ class TestDopiszzJednoZrodlo:
         # Mock rekord_w_bpp to return something (existing record)
         with patch.object(pbn_journal, "rekord_w_bpp", return_value=Mock()):
             with pytest.raises(AssertionError):
-                dopisz_jedno_zrodlo(pbn_journal)
+                # Pass dummy values for rodzaj_periodyk and dyscypliny_cache
+                # since the assertion should fail before they are used
+                dopisz_jedno_zrodlo(pbn_journal, Mock(), {})
 
     def test_dopisz_jedno_zrodlo_requires_current_version(self):
         """Should require current_version structure."""

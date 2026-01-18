@@ -95,14 +95,14 @@ def test_update_progress_without_message():
 
 
 @pytest.mark.django_db
-def test_run_pbn_import_session_not_found(capsys):
+def test_run_pbn_import_session_not_found():
     """Test run_pbn_import handles missing session gracefully."""
-    # Task doesn't raise exception, just prints and returns
-    run_pbn_import.apply(args=(99999,))
+    # Task doesn't raise exception, just logs error and returns
+    with patch("pbn_import.tasks.logger") as mock_logger:
+        run_pbn_import.apply(args=(99999,))
 
-    # Verify the message was printed
-    captured = capsys.readouterr()
-    assert "Sesja 99999 nie została znaleziona" in captured.out
+    # Verify the error was logged
+    mock_logger.error.assert_called_once_with("Sesja 99999 nie została znaleziona")
 
 
 @pytest.mark.django_db

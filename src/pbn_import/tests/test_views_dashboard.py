@@ -9,7 +9,7 @@ from django.urls import reverse
 from model_bakery import baker
 
 from bpp.models import Uczelnia
-from pbn_import.models import ImportSession, ImportStatistics
+from pbn_import.models import ImportSession
 
 # ============================================================================
 # DASHBOARD VIEW TESTS
@@ -92,10 +92,8 @@ class TestImportDashboardView:
         client.force_login(user)
         baker.make(Uczelnia, pbn_integracja=True)
 
-        session1 = baker.make(ImportSession, user=user)
-        session2 = baker.make(ImportSession, user=user)
-        ImportStatistics.objects.create(session=session1)
-        ImportStatistics.objects.create(session=session2)
+        baker.make(ImportSession, user=user)
+        baker.make(ImportSession, user=user)
 
         response = client.get(reverse("pbn_import:dashboard"))
 
@@ -115,13 +113,11 @@ class TestImportDashboardView:
             user=user,
             status="running",
         )
-        completed_session = baker.make(
+        baker.make(
             ImportSession,
             user=user,
             status="completed",
         )
-        ImportStatistics.objects.create(session=running_session)
-        ImportStatistics.objects.create(session=completed_session)
 
         response = client.get(reverse("pbn_import:dashboard"))
 
@@ -137,8 +133,6 @@ class TestImportDashboardView:
 
         session1 = baker.make(ImportSession, user=user1)
         session2 = baker.make(ImportSession, user=user2)
-        ImportStatistics.objects.create(session=session1)
-        ImportStatistics.objects.create(session=session2)
 
         response = client.get(reverse("pbn_import:dashboard"))
 
@@ -192,30 +186,14 @@ class TestStartImportView:
         assert session.status == "pending"
         assert session.user == user
 
-    def test_start_import_creates_statistics(self, django_user_model):
-        """Test start import creates ImportStatistics"""
-        client = Client()
-        user = baker.make(django_user_model, is_superuser=True)
-        baker.make(Uczelnia, pbn_integracja=True)
-        client.force_login(user)
-
-        with (
-            patch("pbn_import.tasks.run_pbn_import") as mock_task,
-            patch("pbn_import.views.get_channel_layer"),
-            patch("pbn_import.views.async_to_sync"),
-        ):
-            mock_task.delay.return_value = MagicMock(id="task-123")
-
-            client.post(reverse("pbn_import:start"), {})
-
-        session = ImportSession.objects.get(user=user)
-        assert ImportStatistics.objects.filter(session=session).exists()
-
     def test_start_import_stores_config(self, django_user_model):
         """Test start import stores configuration from POST data"""
+        from bpp.models import Wydzial
+
         client = Client()
         user = baker.make(django_user_model, is_superuser=True)
-        baker.make(Uczelnia, pbn_integracja=True)
+        uczelnia = baker.make(Uczelnia, pbn_integracja=True)
+        wydzial = baker.make(Wydzial, nazwa="IT Department", uczelnia=uczelnia)
         client.force_login(user)
 
         with (
@@ -231,13 +209,14 @@ class TestStartImportView:
                     "initial": "on",
                     "zrodla": "on",
                     "delete_existing": "on",
-                    "wydzial_domyslny": "IT Department",
+                    "wydzial_domyslny_id": wydzial.pk,
                 },
             )
 
         session = ImportSession.objects.get(user=user)
         assert session.config["delete_existing"] is True
         assert session.config["wydzial_domyslny"] == "IT Department"
+        assert session.config["wydzial_domyslny_id"] == wydzial.pk
 
     def test_start_import_redirects_to_dashboard(self, django_user_model):
         """Test start import redirects to dashboard after creation"""

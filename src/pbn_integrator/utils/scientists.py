@@ -12,7 +12,7 @@ from bpp.models import Autor, Autor_Dyscyplina, Tytul, Uczelnia
 from bpp.util import pbar
 from pbn_api.models import Scientist
 from pbn_integrator.utils.constants import CPU_COUNT
-from pbn_integrator.utils.django_imports import _ensure_django_imports, matchuj_autora
+from pbn_integrator.utils.django_imports import _ensure_django_imports
 from pbn_integrator.utils.mongodb_ops import zapisz_mongodb
 
 if TYPE_CHECKING:
@@ -173,8 +173,8 @@ def utworz_wpis_dla_jednego_autora(person):
         orcid = None
 
     autor = Autor.objects.create(
-        imiona=cv["object"].pop("name"),
-        nazwisko=cv["object"].pop("lastName"),
+        imiona=cv["object"].pop("name", "[brak danych]"),
+        nazwisko=cv["object"].pop("lastName", "[brak danych]"),
         orcid=orcid,
         pbn_id=pbn_json_wez_pbn_id_stare(person),
         pbn_uid_id=person.pk,
@@ -213,6 +213,7 @@ def integruj_autorow_z_uczelni(
         callback: Optional progress callback.
     """
     _ensure_django_imports()
+    from import_common.core import matchuj_autora
 
     scientists = Scientist.objects.filter(from_institution_api=True)
     total = scientists.count()

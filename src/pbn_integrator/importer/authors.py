@@ -1,6 +1,9 @@
 """Author processing for PBN importer."""
 
+import logging
+
 from bpp.models import Autor, Typ_Odpowiedzialnosci, Uczelnia
+from pbn_api.models import Scientist
 from pbn_integrator.utils import (
     pobierz_i_zapisz_dane_jednej_osoby,
     utworz_wpis_dla_jednego_autora,
@@ -8,8 +11,10 @@ from pbn_integrator.utils import (
 
 from .helpers import assert_dictionary_empty
 
+logger = logging.getLogger(__name__)
 
-def _pobierz_lub_utworz_autora(pbn_uid_autora, client):
+
+def _pobierz_lub_utworz_autora(pbn_uid_autora, client, inconsistency_callback=None):
     """Fetch or create an author from PBN."""
     try:
         return Autor.objects.get(pbn_uid_id=pbn_uid_autora)
@@ -24,12 +29,39 @@ def _pobierz_lub_utworz_autora(pbn_uid_autora, client):
             pbn_scientist.orcid
             and Autor.objects.filter(orcid=pbn_scientist.orcid).exists()
         ):
-            print(
-                f"UWAGA Wiecej niz jeden autor w PBNie ma TEN SAM ORCID: "
-                f"{pbn_scientist.orcid=}"
+            # Pobrać wszystkich autorów BPP z tym ORCID
+            autorzy_bpp = list(Autor.objects.filter(orcid=pbn_scientist.orcid))
+            # Pobrać wszystkich naukowców PBN z tym ORCID
+            naukowcy_pbn = list(Scientist.objects.filter(orcid=pbn_scientist.orcid))
+
+            # Szczegółowe logowanie
+            logger.warning(
+                f"Duplikat ORCID {pbn_scientist.orcid}: "
+                f"PBN Scientist IDs: {[s.pk for s in naukowcy_pbn]}, "
+                f"BPP Autor IDs: {[a.pk for a in autorzy_bpp]}"
             )
-            print("ID autorow: ", pbn_scientist.pk, pbn_uid_autora)
-            return Autor.objects.get(orcid=pbn_scientist.orcid)
+            for autor in autorzy_bpp:
+                logger.warning(f"  BPP: {autor} (ID: {autor.pk})")
+            for scientist in naukowcy_pbn:
+                logger.warning(
+                    f"  PBN: {scientist.lastName} {scientist.name} (ID: {scientist.pk})"
+                )
+
+            # Zapisz do nieścisłości importu
+            if inconsistency_callback:
+                inconsistency_callback(
+                    inconsistency_type="duplicate_orcid",
+                    pbn_author=pbn_scientist,
+                    bpp_author=autorzy_bpp[0] if autorzy_bpp else None,
+                    message=(
+                        f"Duplikat ORCID: {pbn_scientist.orcid}. "
+                        f"BPP autorzy: {[str(a) for a in autorzy_bpp]}. "
+                        f"PBN naukowcy: "
+                        f"{[(s.lastName, s.name, s.pk) for s in naukowcy_pbn]}"
+                    ),
+                )
+
+            return autorzy_bpp[0]
         else:
             return utworz_wpis_dla_jednego_autora(pbn_scientist)
 
@@ -91,7 +123,9 @@ def _przetworz_afiliacje(
     return jednostka, afiliuje, typ_odpowiedzialnosci
 
 
-def utworz_autorow(ret, pbn_json, client, default_jednostka):
+def utworz_autorow(
+    ret, pbn_json, client, default_jednostka, inconsistency_callback=None
+):
     wyliczona_kolejnosc = 0
 
     afiliacje = pbn_json.pop("affiliations", {})
@@ -111,7 +145,9 @@ def utworz_autorow(ret, pbn_json, client, default_jednostka):
         for pbn_uid_autora, pbn_autor in pbn_json.pop(
             pbn_klucz_slownika_autorow, {}
         ).items():
-            autor = _pobierz_lub_utworz_autora(pbn_uid_autora, client)
+            autor = _pobierz_lub_utworz_autora(
+                pbn_uid_autora, client, inconsistency_callback
+            )
 
             ta_afiliacja = afiliacje.pop(autor.pbn_uid_id, None)
             jednostka, afiliuje, typ_odpowiedzialnosci = _przetworz_afiliacje(
@@ -138,8 +174,11 @@ def utworz_autorow(ret, pbn_json, client, default_jednostka):
                     jednostka=jednostka,
                     kolejnosc=kolejnosc,
                     zapisany_jako=" ".join(
-                        [pbn_autor.pop("lastName"), pbn_autor.pop("name")]
-                    ),
+                        [
+                            pbn_autor.pop("lastName", "") or "",
+                            pbn_autor.pop("name", "") or "",
+                        ]
+                    ).strip(),
                     afiliuje=afiliuje,
                 ),
             )
@@ -148,4 +187,16 @@ def utworz_autorow(ret, pbn_json, client, default_jednostka):
 
             assert_dictionary_empty(pbn_autor)
 
-    assert_dictionary_empty(afiliacje, warn=True)
+    if afiliacje:
+        if inconsistency_callback:
+            inconsistency_callback(
+                inconsistency_type="leftover_affiliation_data",
+                pbn_publication=ret.pbn_uid,
+                bpp_publication=ret,
+                message=f"Pozostałe dane afiliacji po przetworzeniu: {afiliacje}",
+            )
+        else:
+            logger.warning(
+                f"Pozostałe dane afiliacji: {afiliacje} "
+                f"(PBN: {ret.pbn_uid_id}, BPP: {ret.pk})"
+            )

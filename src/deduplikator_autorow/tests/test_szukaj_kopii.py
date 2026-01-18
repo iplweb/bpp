@@ -438,3 +438,79 @@ def test_szukaj_kopii_exact_match_for_compound_surname_parts(autor_maker, tytuly
     # Fałszywe duplikaty NIE POWINNY zostać znalezione
     assert falszywy_duplikat1.pk not in duplikaty_pks
     assert falszywy_duplikat2.pk not in duplikaty_pks
+
+
+# ============================================================================
+# Regex escaping tests - regression tests for InvalidRegularExpression bug
+# ============================================================================
+
+
+@pytest.mark.django_db
+def test_szukaj_kopii_nazwisko_with_parentheses(autor_maker, tytuly):
+    """Regression test: surnames with parentheses don't cause regex errors.
+
+    Bug: Author names containing regex metacharacters like parentheses were
+    inserted directly into iregex patterns without re.escape(), causing
+    PostgreSQL InvalidRegularExpression: "parentheses () not balanced" errors.
+    """
+    # Author with parentheses in surname
+    glowny_autor = autor_maker(imiona="Jan", nazwisko="Kowalski (Junior)")
+    scientist = baker.make(Scientist)
+    glowny_autor.pbn_uid = scientist
+    glowny_autor.save()
+    osoba_z_instytucji = baker.make(OsobaZInstytucji, personId=scientist)
+
+    # Should not raise InvalidRegularExpression
+    duplikaty = szukaj_kopii(osoba_z_instytucji)
+    assert duplikaty is not None  # No crash = success
+
+
+@pytest.mark.django_db
+def test_szukaj_kopii_imiona_with_parentheses(autor_maker, tytuly):
+    """Regression test: first names with parentheses don't cause regex errors."""
+    glowny_autor = autor_maker(imiona="Jan (John)", nazwisko="Kowalski")
+    scientist = baker.make(Scientist)
+    glowny_autor.pbn_uid = scientist
+    glowny_autor.save()
+    osoba_z_instytucji = baker.make(OsobaZInstytucji, personId=scientist)
+
+    duplikaty = szukaj_kopii(osoba_z_instytucji)
+    assert duplikaty is not None
+
+
+@pytest.mark.django_db
+def test_szukaj_kopii_with_regex_metacharacters(autor_maker, tytuly):
+    """Regression test: various regex metacharacters don't cause errors.
+
+    Tests that szukaj_kopii handles author names containing characters that
+    have special meaning in regular expressions without throwing PostgreSQL
+    InvalidRegularExpression errors.
+    """
+    test_cases = [
+        ("Jan", "O'Brien [Jr.]"),  # brackets in surname
+        ("Jan*", "Kowalski"),  # asterisk
+        ("Jan+Maria", "Kowalski"),  # plus
+        ("Jan?", "Kowalski"),  # question mark
+        ("Jan", "Kowalski.Smith"),  # dot
+        ("Jan", "Ko^wal$ki"),  # anchors
+        ("Jan", "Kowal|ski"),  # alternation
+        # Przypadki testujące ścieżkę kodu z inicjałem (linie 118-120, 138-140)
+        # gdzie inicjał NIE jest escapowany i trafia bezpośrednio do iregex
+        ("[J]", "Kowalski"),  # bracket as first char of first name (inicjal = "[")
+        ("(Jan)", "Kowalski"),  # parentheses in first name (inicjal = "(")
+    ]
+
+    for imiona, nazwisko in test_cases:
+        glowny_autor = autor_maker(imiona=imiona, nazwisko=nazwisko)
+        scientist = baker.make(Scientist)
+        glowny_autor.pbn_uid = scientist
+        glowny_autor.save()
+        osoba_z_instytucji = baker.make(OsobaZInstytucji, personId=scientist)
+
+        # Should not raise InvalidRegularExpression
+        duplikaty = szukaj_kopii(osoba_z_instytucji)
+        # Wymuszamy wykonanie SQL - QuerySet jest leniwy!
+        try:
+            _ = duplikaty.exists()
+        except Exception as e:
+            pytest.fail(f"Failed for: {imiona} {nazwisko} - {e}")

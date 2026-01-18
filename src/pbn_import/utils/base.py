@@ -11,7 +11,7 @@ from django.db import transaction
 
 from ..models import ImportLog, ImportSession
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("pbn_import")
 
 
 class CancelledException(Exception):
@@ -141,6 +141,9 @@ class ImportStepBase:
     def start(self):
         """Called when step starts"""
         self.start_time = time.time()
+        logger.info("=" * 60)
+        logger.info(f"ETAP: {self.step_description}")
+        logger.info("=" * 60)
         self.log("info", f"Rozpoczynanie: {self.step_description}")
         self.session.current_step = self.step_name
         self.session.save()
@@ -148,14 +151,23 @@ class ImportStepBase:
     def finish(self):
         """Called when step completes"""
         elapsed = time.time() - self.start_time if self.start_time else 0
+        minutes, seconds = divmod(elapsed, 60)
 
         if self.errors:
+            logger.warning(
+                f"[{self.step_name}] Zakończono z {len(self.errors)} błędami "
+                f"(czas: {int(minutes)}m {seconds:.1f}s)"
+            )
             self.log(
                 "warning",
                 f"Zakończono z {len(self.errors)} błędami w {elapsed:.2f}s",
                 {"errors": self.errors[:10]},
             )  # Log first 10 errors
         else:
+            logger.info(
+                f"[{self.step_name}] Zakończono pomyślnie "
+                f"(czas: {int(minutes)}m {seconds:.1f}s)"
+            )
             self.log("success", f"Zakończono pomyślnie w {elapsed:.2f}s")
 
         # Update statistics if available

@@ -122,6 +122,31 @@ class PublicationSyncMixin:
         else:
             raise NotImplementedError("count > 1")
 
+    def get_publication_fees_batch(self, publication_ids):
+        """Get fees for multiple publications in a single API call.
+
+        Args:
+            publication_ids: List of publication IDs (PBN UIDs).
+
+        Returns:
+            Dict mapping publication_id to fee data, or empty dict if no fees.
+        """
+        if not publication_ids:
+            return {}
+
+        res = self.transport.post_pages(
+            "/api/v1/institutionProfile/publications/search/fees",
+            body={"publicationIds": [str(pid) for pid in publication_ids]},
+        )
+
+        # Build a mapping of publication ID -> fee data
+        fees_map = {}
+        for item in res:
+            pub_id = item.get("publicationId")
+            if pub_id:
+                fees_map[pub_id] = item
+        return fees_map
+
     def _prepare_publication_json(self, rec, export_pk_zero, always_affiliate_to_uid):
         """Prepare publication JSON data."""
         js = WydawnictwoPBNAdapter(

@@ -8,7 +8,7 @@ from django.urls import reverse
 from django.utils import timezone
 from model_bakery import baker
 
-from pbn_import.models import ImportLog, ImportSession, ImportStatistics
+from pbn_import.models import ImportLog, ImportSession
 
 # ============================================================================
 # SESSION DETAIL VIEW TESTS
@@ -120,20 +120,6 @@ class TestImportSessionDetailView:
         assert error_log in error_logs
         assert warning_log in error_logs
         assert info_log not in error_logs
-
-    def test_detail_view_includes_statistics(self, django_user_model):
-        """Test detail view includes statistics"""
-        client = Client()
-        user = baker.make(django_user_model, is_superuser=True)
-        session = baker.make(ImportSession, user=user)
-        stats = ImportStatistics.objects.create(session=session)
-        client.force_login(user)
-
-        response = client.get(
-            reverse("pbn_import:session_detail", args=[session.id]),
-        )
-
-        assert response.context.get("statistics") == stats
 
     def test_detail_view_calculates_duration(self, django_user_model):
         """Test detail view calculates session duration"""

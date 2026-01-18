@@ -1,0 +1,184 @@
+{% load pbn_import_tags %}
+
+<div id="inconsistencies-container">
+<h2 class="pbn-import__section-title">
+    <span class="fi-alert"></span>
+    Nieścisłości ({{ inconsistencies|length }})
+    {% if active_filter %}
+    <small class="pbn-import__filter-info">
+        — filtrowanie aktywne
+    </small>
+    {% endif %}
+</h2>
+
+{% if inconsistency_summary %}
+<div class="pbn-import__inconsistency-summary">
+    <span class="pbn-import__filter-label">Filtruj:</span>
+    {% for type_code, type_data in inconsistency_summary.items %}
+    <button type="button"
+            class="pbn-import__inconsistency-type-badge pbn-import__inconsistency-type-badge--{{ type_code }}{% if active_filter == type_code %} pbn-import__inconsistency-type-badge--active{% endif %}"
+            hx-get="{% url 'pbn_import:inconsistencies' pk=session.pk %}{% if active_filter == type_code %}{% else %}?filter_type={{ type_code }}{% endif %}"
+            hx-target="#inconsistencies-container"
+            hx-swap="outerHTML"
+            title="{% if active_filter == type_code %}Kliknij, aby pokazać wszystkie{% else %}Kliknij, aby filtrować: {{ type_data.label }}{% endif %}">
+        {{ type_data.label }}: {{ type_data.count }}
+        {% if active_filter == type_code %}
+        <span class="fi-x pbn-import__badge-clear"></span>
+        {% endif %}
+    </button>
+    {% endfor %}
+    {% if active_filter %}
+    <button type="button"
+            class="pbn-import__inconsistency-show-all"
+            hx-get="{% url 'pbn_import:inconsistencies' pk=session.pk %}"
+            hx-target="#inconsistencies-container"
+            hx-swap="outerHTML"
+            title="Pokaż wszystkie nieścisłości">
+        <span class="fi-list"></span> Pokaż wszystkie
+    </button>
+    {% endif %}
+</div>
+{% endif %}
+
+{% if inconsistencies %}
+<div class="pbn-import__log-container">
+    {% for item in inconsistencies %}
+    <div class="pbn-import__inconsistency-entry pbn-import__inconsistency-entry--{{ item.inconsistency_type }}">
+        <div class="pbn-import__inconsistency-header">
+            <span class="pbn-import__log-timestamp">{{ item.timestamp|date:"d.m.Y H:i:s" }}</span>
+            <span class="pbn-import__inconsistency-type pbn-import__inconsistency-type--{{ item.inconsistency_type }}">
+                {{ item.get_inconsistency_type_display }}
+            </span>
+        </div>
+        <div class="pbn-import__inconsistency-message">
+            {{ item.message|truncate_message:200 }}
+        </div>
+        {% if item.action_taken %}
+        <div class="pbn-import__inconsistency-action">
+            <span class="fi-check"></span> {{ item.action_taken }}
+        </div>
+        {% endif %}
+
+        <details class="pbn-import__inconsistency-details">
+            <summary class="pbn-import__log-details-summary">
+                <span class="fi-magnifying-glass"></span> Pokaż szczegóły
+            </summary>
+            <div class="pbn-import__inconsistency-details-content">
+                <table class="pbn-import__inconsistency-table">
+                    <thead>
+                        <tr>
+                            <th></th>
+                            <th>Dane PBN</th>
+                            <th>Dane BPP</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if item.pbn_publication_title or item.bpp_publication_title %}
+                        <tr>
+                            <td><strong>Publikacja</strong></td>
+                            <td>
+                                {% if item.pbn_publication_title %}
+                                {{ item.pbn_publication_title|truncate_message:100 }}
+                                {% if item.pbn_publication_id %}
+                                <br><small>
+                                    <a href="{% pbn_publication_url item.pbn_publication_id %}" target="_blank" title="Otwórz w PBN">
+                                        <span class="fi-link"></span> PBN
+                                    </a>
+                                    |
+                                    <a href="{% url 'admin:pbn_api_publication_change' item.pbn_publication_id %}" target="_blank" title="Edytuj w adminie PBN">
+                                        <span class="fi-pencil"></span> Admin
+                                    </a>
+                                </small>
+                                {% endif %}
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if item.bpp_publication_title %}
+                                {{ item.bpp_publication_title|truncate_message:100 }}
+                                {% if item.bpp_publication_id and item.bpp_publication_content_type %}
+                                <br><small>
+                                    <a href="{% url 'bpp:browse_praca' item.bpp_publication_content_type.model item.bpp_publication_id %}" target="_blank" title="Otwórz w BPP">
+                                        <span class="fi-link"></span> BPP
+                                    </a>
+                                    |
+                                    <a href="{% bpp_admin_url item.bpp_publication_content_type item.bpp_publication_id %}" target="_blank" title="Edytuj w adminie BPP">
+                                        <span class="fi-pencil"></span> Admin
+                                    </a>
+                                </small>
+                                {% elif item.bpp_publication_id %}
+                                <br><small class="text-muted">ID: {{ item.bpp_publication_id }}</small>
+                                {% endif %}
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endif %}
+                        {% if item.pbn_author_name or item.bpp_author_name %}
+                        <tr>
+                            <td><strong>Autor</strong></td>
+                            <td>
+                                {% if item.pbn_author_name %}
+                                {{ item.pbn_author_name }}
+                                {% if item.pbn_author_id %}
+                                <br><small class="text-muted">ID: {{ item.pbn_author_id }}</small>
+                                {% endif %}
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if item.bpp_author_name %}
+                                {{ item.bpp_author_name }}
+                                {% if item.bpp_author_id %}
+                                <br><small>
+                                    <a href="{% url 'bpp:browse_autor' pk=item.bpp_author_id %}" target="_blank">
+                                        <span class="fi-link"></span> Otwórz autora
+                                    </a>
+                                </small>
+                                {% endif %}
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endif %}
+                        {% if item.pbn_discipline %}
+                        <tr>
+                            <td><strong>Dyscyplina</strong></td>
+                            <td>{{ item.pbn_discipline }}</td>
+                            <td><span class="text-muted">-</span></td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+
+                {% if item.message|length > 200 %}
+                <div class="pbn-import__inconsistency-full-message">
+                    <strong>Pełna wiadomość:</strong>
+                    <pre class="pbn-import__log-pre--styled">{{ item.message }}</pre>
+                </div>
+                {% endif %}
+            </div>
+        </details>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<p class="text-muted">
+    {% if session.status == 'completed' %}
+        Brak nieścisłości - integracja oświadczeń przebiegła pomyślnie!
+    {% elif session.status == 'running' %}
+        Brak nieścisłości - integracja na ten moment przebiega pomyślnie.
+    {% elif session.status == 'pending' %}
+        Import jeszcze się nie rozpoczął.
+    {% elif session.status == 'cancelled' %}
+        Import został anulowany.
+    {% else %}
+        Brak nieścisłości do wyświetlenia.
+    {% endif %}
+</p>
+{% endif %}
+</div>
