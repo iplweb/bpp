@@ -65,6 +65,7 @@ from bpp.views.autocomplete import (
 from bpp.views.autocomplete.pbn_api import (
     JournalAutocomplete,
     PublicationAutocomplete,
+    PublisherPBNAutocomplete,
     ScientistAutocomplete,
 )
 from bpp.views.browse import (
@@ -389,6 +390,11 @@ urlpatterns = [
         r"^publisher-autocomplete/$",
         PublisherAutocomplete.as_view(),
         name="publisher-autocomplete",
+    ),
+    url(
+        r"^publisher-pbn-autocomplete/$",
+        PublisherPBNAutocomplete.as_view(),
+        name="publisher-pbn-autocomplete",
     ),
     url(
         r"^lata-autocomplete/$",
