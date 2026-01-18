@@ -22,9 +22,23 @@
     padding: 0;
 }
 
-// Invisible button combined with secondary - ensure no border
-.uczelnia__button--invisible.main-page-button-secondary {
+// Invisible button combined with secondary - ensure no border on button element only
+button.uczelnia__button--invisible.main-page-button-secondary {
     border: 0 !important;
+    border-color: transparent !important;
+    background: none !important;
+    box-shadow: none !important;
+    outline: none !important;
+
+    &:hover,
+    &:focus,
+    &:active {
+        border: 0 !important;
+        border-color: transparent !important;
+        background: none !important;
+        box-shadow: none !important;
+        outline: none !important;
+    }
 }
 
 // Inline block span wrapper

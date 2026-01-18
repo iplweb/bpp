@@ -178,7 +178,7 @@ combine-coverage:
 coveralls-upload:
 	uv run coveralls
 
-tests: destroy-test-databases clean-coverage tests-without-playwright tests-only-playwright combine-coverage js-tests coveralls-upload
+tests: destroy-test-databases clean-pycache clean-coverage tests-without-playwright tests-only-playwright combine-coverage js-tests coveralls-upload
 
 destroy-test-databases:
 	-./bin/drop-test-databases.sh
@@ -276,7 +276,7 @@ loc: clean
 	pygount -N ... -F "...,staticroot,migrations,fixtures" src --format=summary
 
 
-DOCKER_VERSION=202601.1331
+DOCKER_VERSION=202601.1332
 
 # Cache configuration for docker buildx bake
 # - local: use local cache (default for local builds)

@@ -173,22 +173,18 @@
                     <i class="fi-page-add"></i> Masz nową publikację? Zgłoś ją do bazy!
                 </a>
             {% endif %}
-            {% if total_rekord_count > 25000 %}
-                <form method="post" action="{% url 'bpp:browse_build_search' %}" class="uczelnia__form--inline">
-                    {% csrf_token %}
+            <form method="post" action="{% url 'bpp:browse_build_search' %}" class="uczelnia__form--inline">
+                {% csrf_token %}
+                {% if total_rekord_count > 25000 %}
                     <input type="hidden" name="zakres_lat" value="[2022,{{ current_year }}]">
                     <input type="hidden" name="suggested-title" value="Cała baza to {{ total_rekord_count }} rekordów. Oglądasz wycinek - rekordy od 2022r"/>
-                    <button type="submit" class="main-page-button-secondary uczelnia__button--invisible">
-                        <span class="main-page-button-secondary uczelnia__span--inline-block">
-                            <i class="fi-page-search"></i> Przeglądaj najnowsze prace
-                        </span>
-                    </button>
-                </form>
-            {% else %}
-                <a href="{% url 'multiseek:index' %}" class="main-page-button-secondary">
-                    <i class="fi-page-search"></i> Przeglądaj wszystkie prace
-                </a>
-            {% endif %}
+                {% endif %}
+                <button type="submit" class="main-page-button-secondary uczelnia__button--invisible">
+                    <span class="main-page-button-secondary uczelnia__span--inline-block">
+                        <i class="fi-page-search"></i> Przeglądaj najnowsze prace
+                    </span>
+                </button>
+            </form>
             <a href="#" data-action="open-global-search" class="main-page-button-search-field">
                 <i class="fi-text-color"></i> Wyszukaj tekstem
             </a>

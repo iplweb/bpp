@@ -147,6 +147,7 @@ class Command(BaseCommand):
                 "pbn_api_root": options["pbn_api_root"],
                 "pbn_app_name": options["pbn_app_name"],
                 "pbn_app_token": options["pbn_app_token"],
+                "pbn_integracja": True,
             },
         )
 
@@ -156,6 +157,7 @@ class Command(BaseCommand):
             uczelnia.pbn_api_root = options["pbn_api_root"]
             uczelnia.pbn_app_name = options["pbn_app_name"]
             uczelnia.pbn_app_token = options["pbn_app_token"]
+            uczelnia.pbn_integracja = True
             uczelnia.save()
 
         action = "Created" if created else "Updated"
