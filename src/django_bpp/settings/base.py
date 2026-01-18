@@ -1162,6 +1162,7 @@ if INSTALL_PLUGINS:
 TINYMCE_DEFAULT_CONFIG = {
     "height": "320px",
     "width": "780px",
+    "promotion": False,
     "menubar": "file edit view insert format tools table help",
     "plugins": "advlist autolink lists link image charmap print preview anchor searchreplace visualblocks code "
     "fullscreen insertdatetime media table paste code help wordcount spellchecker",
