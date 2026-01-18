@@ -100,7 +100,11 @@
       "mcp__freshdesk-mcp__get_tickets",
       "mcp__freshdesk-mcp__search_tickets",
       "Bash(wc:*)",
-      "WebFetch(domain:pbn.nauka.gov.pl)"
+      "WebFetch(domain:pbn.nauka.gov.pl)",
+      "mcp__postgres__list_schemas",
+      "mcp__postgres__list_objects",
+      "mcp__postgres__get_object_details",
+      "mcp__postgres__analyze_db_health"
     ],
     "deny": [],
     "ask": [],
