@@ -8,12 +8,44 @@ set -euo pipefail
 
 BASEDIR=$(dirname "$0")
 
-DUMP_FILE="$1"
+# Default values
+NO_OWNER=false
+DUMP_FILE=""
+
+# Parse command line options
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -n|--no-owner)
+            NO_OWNER=true
+            shift
+            ;;
+        -h|--help)
+            echo "Użycie: $0 [-n|--no-owner] <ścieżka_do_pliku_pg_dump>"
+            echo ""
+            echo "Ten skrypt odtwarza bazę danych BPP z backupu."
+            echo ""
+            echo "Opcje:"
+            echo "  -n, --no-owner  Nie przywracaj właścicieli obiektów"
+            echo "                  (pomija błędy brakujących ról)"
+            echo "  -h, --help      Wyświetl tę pomoc"
+            exit 0
+            ;;
+        -*)
+            echo "Nieznana opcja: $1"
+            echo "Użycie: $0 [-n|--no-owner] <ścieżka_do_pliku_pg_dump>"
+            exit 1
+            ;;
+        *)
+            DUMP_FILE="$1"
+            shift
+            ;;
+    esac
+done
 
 # Sprawdź czy podano parametr z plikiem pg_dump
 if [ -z "$DUMP_FILE" ]; then
     echo "Błąd: Wymagana jest ścieżka do pliku pg_dump"
-    echo "Użycie: $0 <ścieżka_do_pliku_pg_dump>"
+    echo "Użycie: $0 [-n|--no-owner] <ścieżka_do_pliku_pg_dump>"
     echo ""
     echo "Ten skrypt odtwarza bazę danych BPP z backupu."
     exit 1
@@ -33,23 +65,34 @@ LOCAL_DATABASE_NAME=bpp
 dropdb -f "$LOCAL_DATABASE_NAME" 2>/dev/null || true
 
 createdb $LOCAL_DATABASE_NAME
-createuser -s mimooh || true
-createuser -s bpp || true
 
-pg_restore -j 6 -d $LOCAL_DATABASE_NAME  "$DUMP_FILE" || true
+# Filter out harmless errors from pg_restore (e.g., unknown config parameters
+# from newer PostgreSQL versions)
+filter_pg_restore_errors() {
+    grep -v "transaction_timeout" >&2
+}
+
+if [ "$NO_OWNER" = true ]; then
+    pg_restore -j 6 --no-owner -d $LOCAL_DATABASE_NAME "$DUMP_FILE" \
+        2> >(filter_pg_restore_errors) || true
+else
+    pg_restore -j 6 -d $LOCAL_DATABASE_NAME "$DUMP_FILE" \
+        2> >(filter_pg_restore_errors) || true
+fi
 
 # Clear denorm dirty instances to avoid unnecessary recalculations after restore
 psql $LOCAL_DATABASE_NAME -c "DELETE FROM denorm_dirtyinstance;" || true
 
-for tbl in `psql -qAt -c "select tablename from pg_tables where schemaname = 'public';" $LOCAL_DATABASE_NAME` ; do  psql -c "alter table \"$tbl\" owner to postgres" $LOCAL_DATABASE_NAME ; done
-
-for tbl in `psql -qAt -c "select sequence_name from information_schema.sequences where sequence_schema = 'public';" $LOCAL_DATABASE_NAME` ; do  psql -c "alter sequence \"$tbl\" owner to postgres" $LOCAL_DATABASE_NAME ; done
+#for tbl in `psql -qAt -c "select tablename from pg_tables where schemaname = 'public';" $LOCAL_DATABASE_NAME` ; do  psql -c "alter table \"$tbl\" owner to postgres" $LOCAL_DATABASE_NAME ; done
+# for tbl in `psql -qAt -c "select sequence_name from information_schema.sequences where sequence_schema = 'public';" $LOCAL_DATABASE_NAME` ; do  psql -c "alter sequence \"$tbl\" owner to postgres" $LOCAL_DATABASE_NAME ; done
 
 cd "$BASEDIR/.."
-uv run src/manage.py migrate
+make migrate
 
 # Update django_site domain to localhost for development
 psql $LOCAL_DATABASE_NAME -c "UPDATE django_site SET domain='127.0.0.1:8000' WHERE id=1;" || true
 
 uv run src/manage.py createsuperuser --noinput --username admin --email michal.dtz@gmail.com || true
 ./bin/ustaw-domyslne-haslo-admina.sh
+
+make invalidate
