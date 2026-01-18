@@ -61,11 +61,25 @@
                         <form method="get" action="">
                             <div class="input-group">
                                 <input type="text" name="q" value="{{ query }}" placeholder="Nazwisko, imię lub ORCID..." class="input-group-field">
+                                <input type="hidden" name="pokaz_wszystkich" value="{{ pokaz_wszystkich }}">
                                 <div class="input-group-button">
                                     <button type="submit" class="button"><i class="fi-magnifying-glass"></i> Szukaj</button>
                                 </div>
                             </div>
                         </form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="large-12 columns">
+                    <div class="callout secondary small">
+                        <label style="margin-bottom: 0;">
+                            <input type="checkbox" id="pokaz-wszystkich-checkbox"
+                                   {% if pokaz_wszystkich == "1" %}checked{% endif %}>
+                            Pokaż naukowców ze wszystkich instytucji
+                            <small class="text-muted">(domyślnie pokazywani są tylko pracownicy naszej uczelni)</small>
+                        </label>
                     </div>
                 </div>
             </div>
@@ -123,7 +137,17 @@
                                 </td>
                                 <td>{{ scientist.qualifications|default:"-" }}</td>
                                 <td>
-                                    {{ scientist.currentEmploymentsInstitutionDisplayName|default:"-" }}
+                                    {% with employments=scientist.allCurrentEmploymentsDisplayNames %}
+                                        {% if employments %}
+                                            <ul style="margin: 0; padding-left: 1rem; list-style: disc;">
+                                                {% for emp in employments %}
+                                                    <li>{{ emp }}</li>
+                                                {% endfor %}
+                                            </ul>
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    {% endwith %}
                                 </td>
                                 <td>
                                     {% if scientist.match_suggestion %}
@@ -170,16 +194,16 @@
                         <ul class="pagination text-center" role="navigation">
                             {% if page_obj.has_previous %}
                                 <li class="pagination-previous">
-                                    <a href="?page={{ page_obj.previous_page_number }}{% if query %}&q={{ query }}{% endif %}">
+                                    <a href="?page={{ page_obj.previous_page_number }}{% if query %}&q={{ query }}{% endif %}{% if pokaz_wszystkich == "1" %}&pokaz_wszystkich=1{% endif %}">
                                         <span class="fi-arrow-left"></span> Poprzednia
                                     </a>
                                 </li>
-                                <li><a href="?page=1{% if query %}&q={{ query }}{% endif %}">1</a></li>
+                                <li><a href="?page=1{% if query %}&q={{ query }}{% endif %}{% if pokaz_wszystkich == "1" %}&pokaz_wszystkich=1{% endif %}">1</a></li>
                                 {% if page_obj.previous_page_number > 2 %}
                                     <li class="ellipsis"></li>
                                 {% endif %}
                                 {% if page_obj.previous_page_number > 1 %}
-                                    <li><a href="?page={{ page_obj.previous_page_number }}{% if query %}&q={{ query }}{% endif %}">{{ page_obj.previous_page_number }}</a></li>
+                                    <li><a href="?page={{ page_obj.previous_page_number }}{% if query %}&q={{ query }}{% endif %}{% if pokaz_wszystkich == "1" %}&pokaz_wszystkich=1{% endif %}">{{ page_obj.previous_page_number }}</a></li>
                                 {% endif %}
                             {% else %}
                                 <li class="pagination-previous disabled">Poprzednia</li>
@@ -189,14 +213,14 @@
 
                             {% if page_obj.has_next %}
                                 {% if page_obj.next_page_number < page_obj.paginator.num_pages %}
-                                    <li><a href="?page={{ page_obj.next_page_number }}{% if query %}&q={{ query }}{% endif %}">{{ page_obj.next_page_number }}</a></li>
+                                    <li><a href="?page={{ page_obj.next_page_number }}{% if query %}&q={{ query }}{% endif %}{% if pokaz_wszystkich == "1" %}&pokaz_wszystkich=1{% endif %}">{{ page_obj.next_page_number }}</a></li>
                                 {% endif %}
                                 {% if page_obj.next_page_number < page_obj.paginator.num_pages|add:"-1" %}
                                     <li class="ellipsis"></li>
                                 {% endif %}
-                                <li><a href="?page={{ page_obj.paginator.num_pages }}{% if query %}&q={{ query }}{% endif %}">{{ page_obj.paginator.num_pages }}</a></li>
+                                <li><a href="?page={{ page_obj.paginator.num_pages }}{% if query %}&q={{ query }}{% endif %}{% if pokaz_wszystkich == "1" %}&pokaz_wszystkich=1{% endif %}">{{ page_obj.paginator.num_pages }}</a></li>
                                 <li class="pagination-next">
-                                    <a href="?page={{ page_obj.next_page_number }}{% if query %}&q={{ query }}{% endif %}">
+                                    <a href="?page={{ page_obj.next_page_number }}{% if query %}&q={{ query }}{% endif %}{% if pokaz_wszystkich == "1" %}&pokaz_wszystkich=1{% endif %}">
                                         Następna <span class="fi-arrow-right"></span>
                                     </a>
                                 </li>
@@ -306,6 +330,19 @@
     <script>
         $(document).ready(function() {
             var csrftoken = $('[name=csrfmiddlewaretoken]').val();
+
+            // Handle "show all institutions" checkbox change
+            $('#pokaz-wszystkich-checkbox').on('change', function() {
+                var currentUrl = new URL(window.location.href);
+                if (this.checked) {
+                    currentUrl.searchParams.set('pokaz_wszystkich', '1');
+                } else {
+                    currentUrl.searchParams.delete('pokaz_wszystkich');
+                }
+                // Reset to first page when changing filter
+                currentUrl.searchParams.delete('page');
+                window.location.href = currentUrl.toString();
+            });
 
             // Handle ignore button click
             $('.ignore-forever').on('click', function() {

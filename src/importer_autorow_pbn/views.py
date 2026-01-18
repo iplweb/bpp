@@ -12,7 +12,7 @@ from django.utils.http import urlencode
 from django.views.decorators.http import require_POST
 from django.views.generic import DetailView, ListView, TemplateView, View
 
-from bpp.models import Autor, Tytul
+from bpp.models import Autor, Tytul, Uczelnia
 from import_common.core import matchuj_autora
 from pbn_api.models import Scientist
 from pbn_downloader_app.freshness import is_pbn_people_data_fresh
@@ -62,6 +62,19 @@ class ImporterAutorowPBNView(ListView):
             .exclude(mongoId__in=ignored_scientist_ids)
         )
 
+        # Filter: only scientists from our institution (DEFAULT: ON)
+        # When "pokaz_wszystkich" param is set to "1", show all
+        pokaz_wszystkich = self.request.GET.get("pokaz_wszystkich", "0")
+        if pokaz_wszystkich != "1":
+            uczelnia = Uczelnia.objects.default
+            if uczelnia and uczelnia.pbn_uid_id:
+                # Filter by institution ID in currentEmployments JSON
+                queryset = queryset.filter(
+                    versions__0__object__currentEmployments__contains=[
+                        {"institutionId": str(uczelnia.pbn_uid_id)}
+                    ]
+                )
+
         # Search functionality
         query = self.request.GET.get("q", "")
         if query:
@@ -76,6 +89,7 @@ class ImporterAutorowPBNView(ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["query"] = self.request.GET.get("q", "")
+        context["pokaz_wszystkich"] = self.request.GET.get("pokaz_wszystkich", "0")
 
         # Get scientist IDs on current page for batch cache lookup
         scientist_ids = [s.pk for s in context["scientists"]]
