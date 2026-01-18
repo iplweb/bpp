@@ -4,13 +4,12 @@ from uuid import uuid4
 import pytest
 from model_bakery import baker
 
-from pbn_api.client import PBN_GET_LANGUAGES_URL, PBNClient
-from pbn_api.models import Institution, Language, Publication, Scientist
-from pbn_api.tests.utils import MockTransport
-
 from bpp import const
 from bpp.const import RODZAJ_PBN_KSIAZKA
 from bpp.models import Charakter_Formalny, Jezyk, Uczelnia, Wydawnictwo_Ciagle
+from pbn_api.client import PBN_GET_LANGUAGES_URL, PBNClient
+from pbn_api.models import Institution, Language, Publication, Scientist
+from pbn_api.tests.utils import MockTransport
 
 MOCK_MONGO_ID = "123"
 
@@ -302,6 +301,20 @@ def pbn_publication_json(
         obj.update({"isbn": isbn})
     if doi:
         obj.update({"doi": doi})
+
+    return pbn_general_json(obj, mongoId=mongoId, status=status, verified=verified)
+
+
+def pbn_publisher_json(
+    publisherName="Test Publisher",
+    mniswId=None,
+    mongoId=None,
+    status="ACTIVE",
+    verified=True,
+):
+    obj = {"publisherName": publisherName}
+    if mniswId:
+        obj.update({"mniswId": mniswId})
 
     return pbn_general_json(obj, mongoId=mongoId, status=status, verified=verified)
 

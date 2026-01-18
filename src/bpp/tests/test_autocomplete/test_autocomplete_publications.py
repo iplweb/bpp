@@ -17,11 +17,20 @@ from bpp.views.autocomplete import (
     AdminNavigationAutocomplete,
     GlobalNavigationAutocomplete,
 )
-from bpp.views.autocomplete.pbn_api import JournalAutocomplete, PublicationAutocomplete
-from fixtures import pbn_journal_json, pbn_pageable_json, pbn_publication_json
+from bpp.views.autocomplete.pbn_api import (
+    JournalAutocomplete,
+    PublicationAutocomplete,
+    PublisherPBNAutocomplete,
+)
+from fixtures import (
+    pbn_journal_json,
+    pbn_pageable_json,
+    pbn_publication_json,
+    pbn_publisher_json,
+)
 from pbn_api.client import PBN_GET_PUBLICATION_BY_ID_URL, PBN_SEARCH_PUBLICATIONS_URL
 from pbn_api.const import PBN_GET_JOURNAL_BY_ID
-from pbn_api.models import Journal, Publication
+from pbn_api.models import Journal, Publication, Publisher
 
 
 @pytest.mark.django_db
@@ -176,6 +185,84 @@ def test_JournalAutocomplete_post(pbn_uczelnia, pbn_client, rf, admin_user, pbn_
     pbn_serwer.expect_request(
         PBN_GET_JOURNAL_BY_ID.format(id=UID_REKORDU)
     ).respond_with_json(pub1)
+
+    ac.request = rf.post("/", data={"text": UID_REKORDU})
+    ac.request.user = admin_user
+    assert ac.create_object(UID_REKORDU)
+
+
+@pytest.mark.django_db
+def test_PublisherPBNAutocomplete_get_create_option_staff(rf, admin_user):
+    """Test PBN Publisher autocomplete create option for UID - staff user."""
+    ac = PublisherPBNAutocomplete()
+    ac.request = rf.get("/")
+    ac.request.user = admin_user
+    ac.q = "1" * PBN_UID_LEN
+    res = ac.get_create_option({"object_list": []}, "1" * PBN_UID_LEN)
+    assert str(res[0]["text"]).find("Pobierz rekord o UID") >= 0
+
+
+@pytest.mark.django_db
+def test_PublisherPBNAutocomplete_get_create_option_non_staff(rf, normal_django_user):
+    """Test PBN Publisher autocomplete create option for UID - non-staff user."""
+    ac = PublisherPBNAutocomplete()
+    ac.request = rf.get("/")
+    ac.request.user = normal_django_user
+    ac.q = "1" * PBN_UID_LEN
+    # Non-staff user should not see the create option
+    res = ac.get_create_option({"object_list": []}, "1" * PBN_UID_LEN)
+    assert len(res) == 0
+
+
+@pytest.mark.django_db
+def test_PublisherPBNAutocomplete_has_add_permission_staff(rf, admin_user):
+    """Test PBN Publisher autocomplete - staff has add permission."""
+    ac = PublisherPBNAutocomplete()
+    request = rf.get("/")
+    request.user = admin_user
+    assert ac.has_add_permission(request) is True
+
+
+@pytest.mark.django_db
+def test_PublisherPBNAutocomplete_has_add_permission_non_staff(rf, normal_django_user):
+    """Test PBN Publisher autocomplete - non-staff denied add permission."""
+    ac = PublisherPBNAutocomplete()
+    request = rf.get("/")
+    request.user = normal_django_user
+    assert ac.has_add_permission(request) is False
+
+
+@pytest.mark.django_db
+def test_PublisherPBNAutocomplete_get_queryset():
+    """Test PBN Publisher autocomplete queryset by UID and name."""
+    ac = PublisherPBNAutocomplete()
+
+    baker.make(
+        Publisher,
+        pk="1" * PBN_UID_LEN,
+        **pbn_publisher_json(publisherName="Test Publisher"),
+    )
+
+    ac.q = "1" * PBN_UID_LEN
+    assert ac.get_queryset().exists()
+    ac.q = "Test Publisher"
+    assert ac.get_queryset().exists()
+
+
+@pytest.mark.django_db
+def test_PublisherPBNAutocomplete_post(
+    pbn_uczelnia, pbn_client, rf, admin_user, pbn_serwer
+):
+    """Test PBN Publisher autocomplete POST request handling."""
+    ac = PublisherPBNAutocomplete()
+
+    UID_REKORDU = "1" * PBN_UID_LEN
+    MNISW_ID = 12345
+
+    pub1 = pbn_publisher_json(mongoId=UID_REKORDU, mniswId=MNISW_ID)
+    pbn_serwer.expect_request(f"/api/v1/publishers/{UID_REKORDU}").respond_with_json(
+        pub1
+    )
 
     ac.request = rf.post("/", data={"text": UID_REKORDU})
     ac.request.user = admin_user

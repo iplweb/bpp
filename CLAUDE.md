@@ -380,6 +380,13 @@ class MyModelAdmin(ConstanceScoringFieldsMixin, admin.ModelAdmin):
 - Uses model_bakery and django-dynamic-fixture for test data generation
 - Pre-commit hooks installed and configured for automated code quality checks
 
+## External Services
+
+### Freshdesk Support
+- **Domain**: `iplweb.freshdesk.com`
+- **Ticket URL format**: `https://iplweb.freshdesk.com/a/tickets/{ticket_id}`
+- Used for customer support ticket management
+
 ## Common File Locations
 - Main models: `src/bpp/models/`
 - Abstract models/mixins: `src/bpp/models/abstract/`

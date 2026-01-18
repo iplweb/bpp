@@ -13,7 +13,7 @@ from bpp.const import PBN_UID_LEN
 from bpp.models import Uczelnia
 from pbn_api.client import PBNClient
 from pbn_api.exceptions import AccessDeniedException
-from pbn_api.models import Journal, Publication, Scientist
+from pbn_api.models import Journal, Publication, Publisher, Scientist
 from pbn_integrator.utils import zapisz_mongodb
 
 from .mixins import SanitizedAutocompleteMixin
@@ -184,3 +184,23 @@ class JournalAutocomplete(BasePBNAutocomplete):
             | Q(eissn__exact=word)
             | Q(websiteLink__icontains=word)
         )
+
+
+class PublisherPBNAutocomplete(BasePBNAutocomplete):
+    """Autocomplete for PBN Publishers with fetch from PBN API.
+
+    Only staff users can fetch new publishers from PBN.
+    """
+
+    pbn_api_model = Publisher
+    sort_order = ("publisherName",)
+
+    def has_add_permission(self, request):
+        """Only staff users can create/fetch publishers from PBN."""
+        return request.user.is_authenticated and request.user.is_staff
+
+    def fetch_pbn_data(self, client: PBNClient, query):
+        return client.get_publisher_by_id(query)
+
+    def filter_queryset(self, qs, word):
+        return qs.filter(Q(publisherName__icontains=word) | Q(mniswId__icontains=word))
