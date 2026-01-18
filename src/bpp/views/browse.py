@@ -104,6 +104,23 @@ class WydzialView(DetailView):
     template_name = "browse/wydzial.html"
     model = Wydzial
 
+    def get(self, request, *args, **kwargs):
+        self.object = self.get_object()
+
+        # Zbierz wszystkie jednostki z trzech kategorii
+        aktualne = list(self.object.aktualne_jednostki())
+        kola = list(self.object.kola_naukowe())
+        historyczne = list(self.object.historyczne_jednostki())
+
+        wszystkie = aktualne + kola + historyczne
+
+        if len(wszystkie) == 1:
+            jednostka = wszystkie[0]
+            return redirect("bpp:browse_jednostka", slug=jednostka.slug)
+
+        context = self.get_context_data(object=self.object)
+        return self.render_to_response(context)
+
 
 class JednostkaView(DetailView):
     template_name = "browse/jednostka.html"

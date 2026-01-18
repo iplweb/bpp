@@ -57,6 +57,77 @@ def test_browse_wydzial(setup_group, logged_in_client):
 
 
 @pytest.mark.django_db
+def test_wydzial_with_single_jednostka_redirects(setup_group, logged_in_client):
+    """Wydzial z jedną jednostką przekierowuje na stronę jednostki."""
+    u = Uczelnia.objects.create(nazwa="uczelnia", skrot="uu")
+    w = Wydzial.objects.create(nazwa="wydzial", uczelnia=u)
+    j = Jednostka.objects.create(
+        nazwa="jedyna jednostka",
+        skrot="JJ",
+        wydzial=w,
+        uczelnia=u,
+        aktualna=True,
+        widoczna=True,
+    )
+
+    res = logged_in_client.get(
+        reverse("bpp:browse_wydzial", args=(w.slug,)), follow=False
+    )
+    assert res.status_code == 302
+    assert res.url == reverse("bpp:browse_jednostka", args=(j.slug,))
+
+
+@pytest.mark.django_db
+def test_wydzial_with_multiple_jednostki_shows_page(setup_group, logged_in_client):
+    """Wydzial z wieloma jednostkami wyświetla stronę wydziału."""
+    u = Uczelnia.objects.create(nazwa="uczelnia", skrot="uu")
+    w = Wydzial.objects.create(nazwa="wydzial", uczelnia=u)
+    Jednostka.objects.create(
+        nazwa="jednostka 1",
+        skrot="J1",
+        wydzial=w,
+        uczelnia=u,
+        aktualna=True,
+        widoczna=True,
+    )
+    Jednostka.objects.create(
+        nazwa="jednostka 2",
+        skrot="J2",
+        wydzial=w,
+        uczelnia=u,
+        aktualna=True,
+        widoczna=True,
+    )
+
+    res = logged_in_client.get(
+        reverse("bpp:browse_wydzial", args=(w.slug,)), follow=False
+    )
+    assert res.status_code == 200
+
+
+@pytest.mark.django_db
+def test_wydzial_with_single_kolo_naukowe_redirects(setup_group, logged_in_client):
+    """Wydzial z jednym kołem naukowym przekierowuje na stronę koła."""
+    u = Uczelnia.objects.create(nazwa="uczelnia", skrot="uu")
+    w = Wydzial.objects.create(nazwa="wydzial", uczelnia=u)
+    j = Jednostka.objects.create(
+        nazwa="koło naukowe",
+        skrot="KN",
+        wydzial=w,
+        uczelnia=u,
+        aktualna=True,
+        widoczna=True,
+        rodzaj_jednostki=Jednostka.RODZAJ_JEDNOSTKI.KOLO_NAUKOWE,
+    )
+
+    res = logged_in_client.get(
+        reverse("bpp:browse_wydzial", args=(w.slug,)), follow=False
+    )
+    assert res.status_code == 302
+    assert res.url == reverse("bpp:browse_jednostka", args=(j.slug,))
+
+
+@pytest.mark.django_db
 def test_browse_jednostka(setup_group, logged_in_client):
     u = Uczelnia.objects.create(nazwa="uczelnia", skrot="uu")
     w = Wydzial.objects.create(nazwa="wydzial", uczelnia=u)

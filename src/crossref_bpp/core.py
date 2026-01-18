@@ -536,7 +536,9 @@ class Komparator:
 
         if c.charakter_formalny_bpp_id is not None:
             return WynikPorownania(
-                StatusPorownania.DOKLADNE, "określony charakter formalny", rekordy=[c]
+                StatusPorownania.DOKLADNE,
+                "określony charakter formalny",
+                rekordy=[c.charakter_formalny_bpp],
             )
 
         return WynikPorownania(

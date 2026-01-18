@@ -17,9 +17,12 @@ from bpp.models import (  # noqa: E402
     Wersja_Tekstu_OpenAccess,
     Wydawnictwo_Ciagle,
     Wydawnictwo_Zwarte,
-    Wydzial,
 )
 from pbn_api.management.commands.util import PBNBaseCommand  # noqa: E402
+from pbn_import.utils.institution_import import (  # noqa: E402
+    znajdz_lub_utworz_jednostke_domyslna,
+    znajdz_lub_utworz_wydzial_domyslny,
+)
 from pbn_integrator import importer  # noqa: E402
 from pbn_integrator.utils import (  # noqa: E402
     integruj_autorow_z_uczelni,
@@ -35,22 +38,6 @@ from pbn_integrator.utils import (  # noqa: E402
     pobierz_wydawcow_mnisw,
     pobierz_zrodla_mnisw,
 )
-
-
-def zrob_skrot(s: str):
-    res = ""
-    for elem in s:
-        if elem.isspace():
-            continue
-
-        if not elem.isalnum():
-            res += elem
-            continue
-
-        if elem.isupper():
-            res += elem
-
-    return res
 
 
 class Command(PBNBaseCommand):
@@ -158,26 +145,21 @@ class Command(PBNBaseCommand):
             )
 
         # Setup przed kolejnymi krokami
+        uczelnia = Uczelnia.objects.default
 
-        wydzial = Wydzial.objects.get_or_create(
-            nazwa=wydzial_domyslny,
-            skrot=wydzial_domyslny_skrot or zrob_skrot(wydzial_domyslny),
-            uczelnia=Uczelnia.objects.default,
-        )[0]
+        wydzial, _ = znajdz_lub_utworz_wydzial_domyslny(uczelnia, wydzial_domyslny)
 
-        jednostka = Jednostka.objects.get_or_create(
-            nazwa="Jednostka Domyślna",
-            skrot="JD",
-            uczelnia=Uczelnia.objects.default,
-        )[0]
+        jednostka, _ = znajdz_lub_utworz_jednostke_domyslna(uczelnia)
 
         Jednostka_Wydzial.objects.get_or_create(jednostka=jednostka, wydzial=wydzial)
 
         obca_jednostka = Jednostka.objects.get_or_create(
             nazwa="Obca jednostka",
-            skrot="O",
-            uczelnia=Uczelnia.objects.default,
-            skupia_pracownikow=False,
+            defaults={
+                "skrot": "O",
+                "uczelnia": Uczelnia.objects.default,
+                "skupia_pracownikow": False,
+            },
         )[0]
 
         Jednostka_Wydzial.objects.get_or_create(

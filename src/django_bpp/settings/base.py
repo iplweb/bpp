@@ -613,6 +613,10 @@ CELERYBEAT_SCHEDULE = {
         "task": "importer_autorow_pbn.tasks.auto_rebuild_match_cache_task",
         "schedule": crontab(hour=3, minute=30),  # Daily at 3:30 AM
     },
+    "pbn-export-queue-watchdog": {
+        "task": "pbn_export_queue.tasks.queue_watchdog",
+        "schedule": timedelta(minutes=10),
+    },
 }
 
 
@@ -1158,6 +1162,7 @@ if INSTALL_PLUGINS:
 TINYMCE_DEFAULT_CONFIG = {
     "height": "320px",
     "width": "780px",
+    "promotion": False,
     "menubar": "file edit view insert format tools table help",
     "plugins": "advlist autolink lists link image charmap print preview anchor searchreplace visualblocks code "
     "fullscreen insertdatetime media table paste code help wordcount spellchecker",

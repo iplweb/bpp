@@ -221,6 +221,9 @@ def mark_task_failed(task_record, error):
     """Mark a task as failed with error message."""
     from django.utils import timezone
 
+    # Raportuj błąd do Rollbar
+    rollbar.report_exc_info(sys.exc_info())
+
     if task_record:
         task_record.status = "failed"
         task_record.error_message = str(error)

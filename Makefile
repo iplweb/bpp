@@ -29,7 +29,7 @@
 
 BRANCH=`git branch | sed -n '/\* /s///p'`
 
-.PHONY: clean distclean tests release tests-without-playwright tests-only-playwright docker destroy-test-databases coveralls-upload clean-coverage combine-coverage cache-delete buildx-cache-stats buildx-cache-prune buildx-cache-prune-aggressive buildx-cache-prune-registry buildx-cache-export buildx-cache-import buildx-cache-list bump-dev bump-release bump-and-start-dev migrate new-worktree clean-worktree generate-500-page build build-force build-base build-independent build-app-services build-dbserver build-webserver build-appserver-base build-appserver build-workerserver build-beatserver build-authserver build-denorm-queue build-servers check-clean-tree
+.PHONY: clean distclean tests release tests-without-playwright tests-only-playwright docker destroy-test-databases coveralls-upload clean-coverage combine-coverage cache-delete buildx-cache-stats buildx-cache-prune buildx-cache-prune-aggressive buildx-cache-prune-registry buildx-cache-export buildx-cache-import buildx-cache-list bump-dev bump-release bump-and-start-dev migrate new-worktree clean-worktree generate-500-page build build-force build-base build-independent build-app-services build-dbserver build-webserver build-appserver-base build-appserver build-workerserver build-beatserver build-authserver build-denorm-queue build-servers check-clean-tree prepare-claude
 
 PYTHON=python3
 
@@ -43,6 +43,26 @@ prepare-developer-machine-macos:
 	sudo ln -s /opt/homebrew/opt/harfbuzz/lib/libharfbuzz.dylib /usr/local/lib/harfbuzz
 	sudo ln -s /opt/homebrew/opt/fontconfig/lib/libfontconfig.1.dylib /usr/local/lib/fontconfig-1
 	sudo ln -s /opt/homebrew/opt/pango/lib/libpangoft2-1.0.dylib /usr/local/lib/pangoft2-1.0
+
+prepare-claude:
+	@echo "Setting up Claude Code with claude-mem plugin..."
+	@echo ""
+	@echo "NOTE: claude-mem stores memory data locally in ~/.claude/"
+	@echo "      Memory data is machine-specific and cannot be shared."
+	@echo ""
+	@echo "To install claude-mem:"
+	@echo "  1. Open Claude Code"
+	@echo "  2. Run: /install-plugin thedotmack/claude-mem"
+	@echo "  3. Restart Claude Code"
+	@echo ""
+	@echo "Current installation status:"
+	@if [ -d "$$HOME/.claude/plugins/cache/thedotmack/claude-mem" ]; then \
+		echo "  claude-mem: INSTALLED"; \
+		ls -1 "$$HOME/.claude/plugins/cache/thedotmack/claude-mem" | head -1 | \
+			xargs -I{} echo "  Version: {}"; \
+	else \
+		echo "  claude-mem: NOT INSTALLED"; \
+	fi
 
 cleanup-pycs:
 	find . -name __pycache__ -type d -print0 | xargs -0 rm -rf
@@ -276,7 +296,7 @@ loc: clean
 	pygount -N ... -F "...,staticroot,migrations,fixtures" src --format=summary
 
 
-DOCKER_VERSION=202601.1332
+DOCKER_VERSION=202601.1333
 
 # Cache configuration for docker buildx bake
 # - local: use local cache (default for local builds)
@@ -476,3 +496,6 @@ new-worktree:
 
 clean-worktree:
 	docker compose down -v --remove-orphans
+
+invalidate:
+	uv run src/manage.py invalidate all

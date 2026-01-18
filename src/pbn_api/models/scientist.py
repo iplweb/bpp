@@ -40,6 +40,18 @@ class Scientist(LinkDoPBNMixin, BasePBNMongoDBModel):
         if ces is not None:
             return ces[0].get("institutionDisplayName")
 
+    def allCurrentEmployments(self):
+        """Return all current employments as a list of dicts."""
+        return self.value("object", "currentEmployments", return_none=True) or []
+
+    def allCurrentEmploymentsDisplayNames(self):
+        """Return list of all institution display names from current employments."""
+        return [
+            emp.get("institutionDisplayName", "")
+            for emp in self.allCurrentEmployments()
+            if emp.get("institutionDisplayName")
+        ]
+
     def __str__(self):
         ret = (
             f"{self.lastName} {self.name}, {self.qualifications or '-'}, "

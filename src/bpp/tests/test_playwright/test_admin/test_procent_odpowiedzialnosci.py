@@ -142,6 +142,7 @@ def select_charakter_formalny(admin_page):
             return
 
 
+@pytest.mark.serial
 @pytest.mark.django_db
 @pytest.mark.parametrize(
     "klass", ["wydawnictwo_ciagle", "wydawnictwo_zwarte", "patent"]
@@ -310,6 +311,7 @@ def test_procent_odpowiedzialnosci_baseModel_AutorFormset_problem_jeden_autor(  
     )
 
 
+@pytest.mark.serial
 @pytest.mark.django_db
 @pytest.mark.parametrize(
     "klass", ["wydawnictwo_ciagle", "wydawnictwo_zwarte", "patent"]
@@ -543,6 +545,7 @@ def test_procent_odpowiedzialnosci_baseModel_AutorFormset_problem_dwoch_autorow(
     )
 
 
+@pytest.mark.serial
 @pytest.mark.django_db
 @pytest.mark.parametrize(
     "klass", ["wydawnictwo_ciagle", "wydawnictwo_zwarte", "patent"]
