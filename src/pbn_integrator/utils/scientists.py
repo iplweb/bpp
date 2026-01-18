@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import os
+import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import TYPE_CHECKING
 
+import rollbar
+from django.db import IntegrityError, transaction
 from django.db.models import Q
 
 from bpp.models import Autor, Autor_Dyscyplina, Tytul, Uczelnia
@@ -56,6 +59,59 @@ def pobierz_i_zapisz_dane_jednej_osoby(
     return zapisz_mongodb(
         scientist, Scientist, from_institution_api=from_institution_api
     )
+
+
+def _zapisz_osobe_z_instytucji(person):
+    """Save a person from institution to OsobaZInstytucji model.
+
+    Handles IntegrityError for polonUuid conflicts gracefully.
+
+    Args:
+        person: Person data dictionary from PBN API.
+
+    Returns:
+        True if saved successfully, False if skipped due to polonUuid conflict.
+    """
+    from pbn_api.models.institution import Institution
+    from pbn_api.models.osoba_z_instytucji import OsobaZInstytucji
+
+    try:
+        with transaction.atomic():
+            OsobaZInstytucji.objects.update_or_create(
+                personId=Scientist.objects.get(pk=person["personId"]),
+                defaults={
+                    "firstName": person.get("firstName", ""),
+                    "lastName": person.get("lastName", ""),
+                    "institutionId": Institution.objects.get(
+                        pk=person["institutionId"]
+                    ),
+                    "institutionName": person.get("institutionName", ""),
+                    "title": person.get("title") or "",
+                    "polonUuid": person.get("polonUuid"),
+                    "phdStudent": person.get("phdStudent", False),
+                    "_from": person.get("from"),
+                    "_to": person.get("to"),
+                },
+            )
+        return True
+    except IntegrityError as e:
+        if "polonUuid" in str(e):
+            # Loguj konflikt polonUuid do Rollbar jako ostrzeżenie
+            rollbar.report_exc_info(
+                sys.exc_info(),
+                extra_data={
+                    "personId": person.get("personId"),
+                    "polonUuid": person.get("polonUuid"),
+                    "firstName": person.get("firstName"),
+                    "lastName": person.get("lastName"),
+                },
+            )
+            print(
+                f"UWAGA: Konflikt polonUuid dla osoby {person.get('personId')}: "
+                f"{person.get('polonUuid')}. Pomijam wpis (zalogowano do Rollbar)."
+            )
+            return False
+        raise  # Inne błędy IntegrityError propaguj
 
 
 def pobierz_ludzi_z_uczelni(client_or_token: PBNClient, instutition_id, callback=None):
@@ -118,7 +174,6 @@ def pobierz_ludzi_z_uczelni(client_or_token: PBNClient, instutition_id, callback
                 print(f"Error processing person: {e}")
 
     from pbn_api.models.institution import Institution
-    from pbn_api.models.osoba_z_instytucji import OsobaZInstytucji
 
     for person in elementy:
         if not Institution.objects.filter(pk=person["institutionId"]).exists():
@@ -131,20 +186,7 @@ def pobierz_ludzi_z_uczelni(client_or_token: PBNClient, instutition_id, callback
                 client_or_token,
             )
 
-        OsobaZInstytucji.objects.update_or_create(
-            personId=Scientist.objects.get(pk=person["personId"]),
-            defaults={
-                "firstName": person.get("firstName", ""),
-                "lastName": person.get("lastName", ""),
-                "institutionId": Institution.objects.get(pk=person["institutionId"]),
-                "institutionName": person.get("institutionName", ""),
-                "title": person.get("title") or "",
-                "polonUuid": person.get("polonUuid"),
-                "phdStudent": person.get("phdStudent", False),
-                "_from": person.get("from"),
-                "_to": person.get("to"),
-            },
-        )
+        _zapisz_osobe_z_instytucji(person)
 
 
 def utworz_wpis_dla_jednego_autora(person):
