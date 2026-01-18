@@ -613,6 +613,10 @@ CELERYBEAT_SCHEDULE = {
         "task": "importer_autorow_pbn.tasks.auto_rebuild_match_cache_task",
         "schedule": crontab(hour=3, minute=30),  # Daily at 3:30 AM
     },
+    "pbn-export-queue-watchdog": {
+        "task": "pbn_export_queue.tasks.queue_watchdog",
+        "schedule": timedelta(minutes=10),
+    },
 }
 
 

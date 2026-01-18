@@ -162,3 +162,31 @@ def queue_pbn_export_batch(app_label, model_name, record_ids, user_id):
         except Exception:
             # Skip records with other errors
             pass
+
+
+@app.task
+def queue_watchdog():
+    """
+    Automatycznie budzi elementy kolejki PBN które nigdy nie zostały podjęte.
+    Uruchamiane przez Celery Beat co 10 minut.
+    """
+    # Szukamy elementów które:
+    # - nigdy nie podjęto wysyłki (wysylke_podjeto=None)
+    # - nie zakończono (wysylke_zakonczono=None)
+    # - nie są wykluczone
+    # - nie czekają na autoryzację użytkownika
+    pending = PBN_Export_Queue.objects.filter(
+        wysylke_podjeto=None,
+        wysylke_zakonczono=None,
+        wykluczone=False,
+        retry_after_user_authorised=False,
+    ).order_by("zamowiono")[:20]  # Limit żeby nie zalać kolejki
+
+    woken = 0
+    for item in pending:
+        lock_key = f"{LOCK_PREFIX}{item.pk}"
+        if not cache.get(lock_key):
+            task_sprobuj_wyslac_do_pbn.delay(item.pk)
+            woken += 1
+
+    return woken
