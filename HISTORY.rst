@@ -4,6 +4,26 @@ Historia zmian
 
 .. towncrier release notes start
 
+bpp 202601.1335 (2026-01-19)
+============================
+
+Naprawione
+----------
+
+- Naprawiono błąd "NOT NULL constraint" dla pola ``error_traceback`` w tabeli
+  ``pbn_import_importsession``, który występował podczas automatycznego anulowania
+  utraconej sesji importu PBN. Metoda ``auto_cancel_if_lost()`` używa teraz
+  ``mark_failed()`` zamiast ręcznego ustawiania pól, co zapewnia poprawne
+  wypełnienie wszystkich wymaganych pól (w tym ``error_traceback`` i ``completed_at``). (auto-cancel-null-traceback)
+- Naprawiono błąd naruszenia klucza obcego podczas importu publikacji instytucji z PBN. Funkcja `zapisz_publikacje_instytucji` nie sprawdzała istnienia rekordów Scientist i Institution przed utworzeniem PublikacjaInstytucji, co powodowało IntegrityError gdy osoba lub instytucja nie istniała lokalnie w bazie danych. (fix-fk-publikacja-instytucji)
+
+
+Usprawnienie
+------------
+
+- Moduł importu oświadczeń (StatementImporter) teraz prawidłowo zapisuje nieścisłości wykryte podczas integracji oświadczeń do bazy danych (model ImportInconsistency). Wcześniej nieścisłości były jedynie wypisywane na konsolę i tracone. (statement_import_inconsistency)
+
+
 bpp 202601.1334 (2026-01-18)
 ============================
 
