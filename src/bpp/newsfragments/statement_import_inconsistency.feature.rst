@@ -1,1 +1,0 @@
-Moduł importu oświadczeń (StatementImporter) teraz prawidłowo zapisuje nieścisłości wykryte podczas integracji oświadczeń do bazy danych (model ImportInconsistency). Wcześniej nieścisłości były jedynie wypisywane na konsolę i tracone.
