@@ -1,0 +1,1 @@
+Naprawiono błąd naruszenia klucza obcego podczas importu publikacji instytucji z PBN. Funkcja `zapisz_publikacje_instytucji` nie sprawdzała istnienia rekordów Scientist i Institution przed utworzeniem PublikacjaInstytucji, co powodowało IntegrityError gdy osoba lub instytucja nie istniała lokalnie w bazie danych.

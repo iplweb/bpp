@@ -153,9 +153,8 @@ class ImportSession(models.Model):
         is_lost, reason = self.is_task_lost()
 
         if is_lost:
-            self.status = "failed"
-            self.error_message = f"Import automatycznie anulowany: {reason}"
-            self.save(update_fields=["status", "error_message"])
+            error_msg = f"Import automatycznie anulowany: {reason}"
+            self.mark_failed(error_msg, "")
 
             ImportLog.objects.create(
                 session=self,

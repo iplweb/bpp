@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import logging
+import sys
 from typing import TYPE_CHECKING
 
+import rollbar
 from django.db import IntegrityError, transaction
 
 from bpp.util import pbar
@@ -18,6 +21,8 @@ from pbn_api.models import (
 
 if TYPE_CHECKING:
     from pbn_api.client import PBNClient
+
+logger = logging.getLogger(__name__)
 
 
 @transaction.atomic
@@ -128,12 +133,67 @@ def zapisz_publikacje_instytucji(elem, klass, client=None, **extra):
         ensure_publication_exists(client, elem["publicationId"])
     except HttpException as e:
         if e.status_code == 500:
-            print(
-                f"Podczas zapisywania publikacji instytucji, dla {elem['publicationId']} serwer "
-                f"PBN zwrócił bład 500. Publikacja instytucji może zostac nie zapisana poprawnie. Dump danych "
-                f"publikacji: {elem}"
+            logger.warning(
+                "PBN zwrócił błąd 500 podczas pobierania publikacji %s. "
+                "Publikacja instytucji może nie zostać zapisana poprawnie. "
+                "Dane: %s",
+                elem["publicationId"],
+                elem,
+            )
+            rollbar.report_exc_info(
+                sys.exc_info(),
+                extra_data={
+                    "publicationId": elem["publicationId"],
+                    "elem": elem,
+                },
             )
             return
+        else:
+            raise
+
+    try:
+        ensure_institution_exists(client, elem["institutionId"])
+    except HttpException as e:
+        if e.status_code == 500:
+            logger.warning(
+                "PBN zwrócił błąd 500 podczas pobierania instytucji %s. "
+                "Publikacja instytucji może nie zostać zapisana poprawnie. "
+                "Dane: %s",
+                elem["institutionId"],
+                elem,
+            )
+            rollbar.report_exc_info(
+                sys.exc_info(),
+                extra_data={
+                    "institutionId": elem["institutionId"],
+                    "elem": elem,
+                },
+            )
+            return
+        else:
+            raise
+
+    try:
+        ensure_person_exists(client, elem["insPersonId"])
+    except HttpException as e:
+        if e.status_code == 500:
+            logger.warning(
+                "PBN zwrócił błąd 500 podczas pobierania osoby %s. "
+                "Publikacja instytucji może nie zostać zapisana poprawnie. "
+                "Dane: %s",
+                elem["insPersonId"],
+                elem,
+            )
+            rollbar.report_exc_info(
+                sys.exc_info(),
+                extra_data={
+                    "insPersonId": elem["insPersonId"],
+                    "elem": elem,
+                },
+            )
+            return
+        else:
+            raise
 
     rec, _ign = PublikacjaInstytucji.objects.get_or_create(
         institutionId_id=elem["institutionId"],
@@ -178,34 +238,64 @@ def zapisz_oswiadczenie_instytucji(elem, klass, client=None, **extra):
         ensure_publication_exists(client, elem["publicationId"])
     except HttpException as e:
         if e.status_code == 500:
-            print(
-                f"Podczas próby pobrania danych o nie-istniejącej obecnie po naszej stronie publikacji o id"
-                f" {elem['publicationId']} z PBNu, wystąpił błąd wewnętrzny serwera po ich stronie. Dane "
-                f"dotyczące oświadczeń z tej publikacji nie zostały zapisane. "
+            logger.warning(
+                "PBN zwrócił błąd 500 podczas pobierania publikacji %s "
+                "dla oświadczenia instytucji. Dane: %s",
+                elem["publicationId"],
+                elem,
+            )
+            rollbar.report_exc_info(
+                sys.exc_info(),
+                extra_data={
+                    "publicationId": elem["publicationId"],
+                    "elem": elem,
+                },
             )
             return
+        else:
+            raise
 
     try:
         ensure_institution_exists(client, elem["institutionId"])
     except HttpException as e:
         if e.status_code == 500:
-            print(
-                f"Podczas próby pobrania danych o nie-istniejącej obecnie po naszej stronie publikacji o id"
-                f" {elem['publicationId']} z PBNu, wystąpił błąd wewnętrzny serwera po ich stronie. Dane "
-                f"dotyczące oświadczeń z tej publikacji nie zostały zapisane. "
+            logger.warning(
+                "PBN zwrócił błąd 500 podczas pobierania instytucji %s "
+                "dla oświadczenia instytucji. Dane: %s",
+                elem["institutionId"],
+                elem,
+            )
+            rollbar.report_exc_info(
+                sys.exc_info(),
+                extra_data={
+                    "institutionId": elem["institutionId"],
+                    "elem": elem,
+                },
             )
             return
+        else:
+            raise
 
     try:
         ensure_person_exists(client, elem["personId"])
     except HttpException as e:
         if e.status_code == 500:
-            print(
-                f"Podczas próby pobrania danych o nie-istniejącej obecnie po naszej stronie publikacji o id"
-                f" {elem['publicationId']} z PBNu, wystąpił błąd wewnętrzny serwera po ich stronie. Dane "
-                f"dotyczące oświadczeń z tej publikacji nie zostały zapisane. "
+            logger.warning(
+                "PBN zwrócił błąd 500 podczas pobierania osoby %s "
+                "dla oświadczenia instytucji. Dane: %s",
+                elem["personId"],
+                elem,
+            )
+            rollbar.report_exc_info(
+                sys.exc_info(),
+                extra_data={
+                    "personId": elem["personId"],
+                    "elem": elem,
+                },
             )
             return
+        else:
+            raise
 
     for key in "institution", "person", "publication":
         elem[f"{key}Id_id"] = elem[f"{key}Id"]
