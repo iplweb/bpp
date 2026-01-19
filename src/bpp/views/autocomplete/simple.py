@@ -203,17 +203,32 @@ class PublicZrodloAutocomplete(
 ):
     """Public autocomplete for sources (zrodla)."""
 
+    # Additional filter fields for subclasses to extend
+    extra_filter_fields = ()
+
+    def _get_base_queryset(self):
+        """Return the base queryset. Override in subclasses for customization."""
+        return Zrodlo.objects.all()
+
+    def _build_token_filter(self, token):
+        """Build Q filter for a single search token."""
+        qobj = (
+            Q(nazwa__icontains=token)
+            | Q(poprzednia_nazwa__icontains=token)
+            | Q(nazwa_alternatywna__icontains=token)
+            | Q(skrot__istartswith=token)
+            | Q(skrot_nazwy_alternatywnej__istartswith=token)
+        )
+        # Add extra filter fields from subclass
+        for field in self.extra_filter_fields:
+            qobj |= Q(**{f"{field}__icontains": token})
+        return qobj
+
     def get_queryset(self):
-        qs = Zrodlo.objects.all()
+        qs = self._get_base_queryset()
         if self.q:
             for token in [x.strip() for x in self.q.split(" ") if x.strip()]:
-                qs = qs.filter(
-                    Q(nazwa__icontains=token)
-                    | Q(poprzednia_nazwa__icontains=token)
-                    | Q(nazwa_alternatywna__icontains=token)
-                    | Q(skrot__istartswith=token)
-                    | Q(skrot_nazwy_alternatywnej__istartswith=token)
-                )
+                qs = qs.filter(self._build_token_filter(token))
         return qs
 
 
@@ -222,20 +237,16 @@ class ZrodloAutocomplete(GroupRequiredMixin, PublicZrodloAutocomplete):
 
     create_field = "nazwa"
     group_required = GR_WPROWADZANIE_DANYCH
+    extra_filter_fields = ("issn", "e_issn")
+
+    def _get_base_queryset(self):
+        return Zrodlo.objects.all().select_related("pbn_uid")
 
     def get_queryset(self):
-        qs = Zrodlo.objects.all().select_related("pbn_uid")
+        qs = self._get_base_queryset()
         if self.q:
             for token in [x.strip() for x in self.q.split(" ") if x.strip()]:
-                qs = qs.filter(
-                    Q(nazwa__icontains=token)
-                    | Q(poprzednia_nazwa__icontains=token)
-                    | Q(nazwa_alternatywna__icontains=token)
-                    | Q(skrot__istartswith=token)
-                    | Q(skrot_nazwy_alternatywnej__istartswith=token)
-                    | Q(issn__icontains=token)
-                    | Q(e_issn__icontains=token)
-                )
+                qs = qs.filter(self._build_token_filter(token))
 
             # Prioritize sources with PBN identifiers (both pbn_uid and mniswId)
             qs_with_full_pbn = qs.filter(

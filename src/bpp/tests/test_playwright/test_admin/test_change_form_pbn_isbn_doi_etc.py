@@ -70,16 +70,19 @@ def test_change_form_get_pbn_by_doi_via_api_nie_ma_w_api_jest_w_bazie(
         btn = admin_page.locator("#id_doi_pbn_get")
         btn.click()
 
-        # Wait for processing
-        admin_page.wait_for_timeout(500)
-
-        # No alert should appear (verify by checking page state is stable)
-        # In Playwright, we don't need to explicitly check for alerts like in Selenium
-
-        # Press Enter in the select2 search field to accept the result
+        # Wait for select2 search field and autocomplete results to appear
         admin_page.wait_for_selector("input.select2-search__field", state="visible")
-        admin_page.locator("input.select2-search__field").press("Enter")
-        admin_page.wait_for_timeout(500)
+        admin_page.wait_for_selector(
+            ".select2-results__option:not(.select2-results__message)",
+            state="visible",
+            timeout=5000,
+        )
+
+        # Click on the first result to select it
+        admin_page.locator(
+            ".select2-results__option:not(.select2-results__message)"
+        ).first.click()
+        admin_page.wait_for_timeout(300)
 
         # Verify pbn_uid field was populated with the local database record
         assert admin_page.locator("#id_pbn_uid").input_value() == UID_REKORDU
@@ -122,16 +125,19 @@ def test_change_form_get_pbn_by_doi_via_api_jest_w_api(
     btn = admin_page.locator("#id_doi_pbn_get")
     btn.click()
 
-    # Wait for processing
-    admin_page.wait_for_timeout(500)
-
-    # No alert should appear (verify by checking page state is stable)
-    # In Playwright, we don't need to explicitly check for alerts like in Selenium
-
-    # Press Enter in the select2 search field to accept the result
+    # Wait for select2 search field and autocomplete results to appear
     admin_page.wait_for_selector("input.select2-search__field", state="visible")
-    admin_page.locator("input.select2-search__field").press("Enter")
-    admin_page.wait_for_timeout(500)
+    admin_page.wait_for_selector(
+        ".select2-results__option:not(.select2-results__message)",
+        state="visible",
+        timeout=5000,
+    )
+
+    # Click on the first result to select it
+    admin_page.locator(
+        ".select2-results__option:not(.select2-results__message)"
+    ).first.click()
+    admin_page.wait_for_timeout(300)
 
     # Verify pbn_uid field was populated with the API result
     assert admin_page.locator("#id_pbn_uid").input_value() == UID_REKORDU
@@ -172,13 +178,19 @@ def test_change_form_get_pbn_by_isbn_or_eisbn_via_api_pub_jest_w_api(
     btn = admin_page.locator("#id_isbn_pbn_get")
     btn.click()
 
-    # Wait for processing
-    admin_page.wait_for_timeout(500)
-
-    # Press Enter in the select2 search field to accept the result
+    # Wait for select2 search field and autocomplete results to appear
     admin_page.wait_for_selector("input.select2-search__field", state="visible")
-    admin_page.locator("input.select2-search__field").press("Enter")
-    admin_page.wait_for_timeout(500)
+    admin_page.wait_for_selector(
+        ".select2-results__option:not(.select2-results__message)",
+        state="visible",
+        timeout=5000,
+    )
+
+    # Click on the first result to select it
+    admin_page.locator(
+        ".select2-results__option:not(.select2-results__message)"
+    ).first.click()
+    admin_page.wait_for_timeout(300)
 
     # Verify pbn_uid field was populated with the API result
     assert admin_page.locator("#id_pbn_uid").input_value() == UID_REKORDU
@@ -228,13 +240,19 @@ def test_change_form_get_pbn_by_isbn_or_eisbn_via_api_pub_jest_w_lokalnej_bazie(
         btn = admin_page.locator("#id_isbn_pbn_get")
         btn.click()
 
-        # Wait for processing
-        admin_page.wait_for_timeout(500)
-
-        # Press Enter in the select2 search field to accept the result
+        # Wait for select2 search field and autocomplete results to appear
         admin_page.wait_for_selector("input.select2-search__field", state="visible")
-        admin_page.locator("input.select2-search__field").press("Enter")
-        admin_page.wait_for_timeout(500)
+        admin_page.wait_for_selector(
+            ".select2-results__option:not(.select2-results__message)",
+            state="visible",
+            timeout=5000,
+        )
+
+        # Click on the first result to select it
+        admin_page.locator(
+            ".select2-results__option:not(.select2-results__message)"
+        ).first.click()
+        admin_page.wait_for_timeout(300)
 
         # Verify pbn_uid field was populated with the local database record
         assert admin_page.locator("#id_pbn_uid").input_value() == UID_REKORDU

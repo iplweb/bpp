@@ -1,5 +1,7 @@
 """Statement (oświadczenia) import utilities"""
 
+from django.contrib.contenttypes.models import ContentType
+
 from bpp.models import Jednostka, Rekord
 from pbn_api.models import OswiadczenieInstytucji
 from pbn_integrator.utils import (
@@ -8,6 +10,7 @@ from pbn_integrator.utils import (
     pobierz_oswiadczenia_z_instytucji,
 )
 
+from ..models import ImportInconsistency
 from .base import ImportStepBase
 from .publication_import import PublicationImporter
 
@@ -21,6 +24,63 @@ class StatementImporter(ImportStepBase):
     def __init__(self, session, client=None):
         super().__init__(session, client)
         self.publication_importer = PublicationImporter(session, client)
+
+    def _create_inconsistency_callback(self):
+        """Create callback for recording statement integration inconsistencies."""
+        session = self.session
+
+        def inconsistency_callback(
+            inconsistency_type,
+            pbn_publication=None,
+            pbn_author=None,
+            bpp_publication=None,
+            bpp_author=None,
+            discipline=None,
+            message="",
+            action_taken="",
+        ):
+            """Record an inconsistency found during statement integration."""
+            try:
+                # Get content type for BPP publication to enable URL generation
+                bpp_publication_content_type = None
+                if bpp_publication:
+                    bpp_publication_content_type = ContentType.objects.get_for_model(
+                        bpp_publication
+                    )
+
+                ImportInconsistency.objects.create(
+                    session=session,
+                    inconsistency_type=inconsistency_type,
+                    pbn_publication_id=(
+                        str(pbn_publication.mongoId) if pbn_publication else ""
+                    ),
+                    pbn_publication_title=(
+                        str(pbn_publication.title) if pbn_publication else ""
+                    ),
+                    pbn_author_id=str(pbn_author.pk) if pbn_author else "",
+                    pbn_author_name=(
+                        f"{pbn_author.lastName} {pbn_author.name}" if pbn_author else ""
+                    ),
+                    pbn_discipline=str(discipline) if discipline else "",
+                    bpp_publication_id=bpp_publication.pk if bpp_publication else None,
+                    bpp_publication_content_type=bpp_publication_content_type,
+                    bpp_publication_title=(
+                        str(bpp_publication.tytul_oryginalny) if bpp_publication else ""
+                    ),
+                    bpp_author_id=bpp_author.pk if bpp_author else None,
+                    bpp_author_name=str(bpp_author) if bpp_author else "",
+                    message=message,
+                    action_taken=action_taken,
+                )
+            except Exception as e:
+                # Log the error but don't fail the import
+                self.log(
+                    "warning",
+                    f"Błąd podczas zapisu nieścisłości: {e}",
+                    {"inconsistency_type": inconsistency_type, "message": message},
+                )
+
+        return inconsistency_callback
 
     def run(self):
         """Import statements"""
@@ -69,11 +129,24 @@ class StatementImporter(ImportStepBase):
         self.log("info", "Integrowanie oświadczeń")
 
         try:
-            # Pass None for callback - missing publications already downloaded
+            # Create inconsistency callback to log issues found during integration
+            inconsistency_callback = self._create_inconsistency_callback()
+
+            # Pass None for missing_publication_callback - publications already downloaded
             integruj_oswiadczenia_z_instytucji(
-                None,
+                missing_publication_callback=None,
+                inconsistency_callback=inconsistency_callback,
                 default_jednostka=default_jednostka,
             )
+
+            # Log inconsistency summary
+            inconsistency_count = self.session.inconsistencies.count()
+            if inconsistency_count > 0:
+                self.log(
+                    "warning",
+                    f"Znaleziono {inconsistency_count} nieścisłości podczas "
+                    f"integracji oświadczeń",
+                )
 
             # Update statistics
             if hasattr(self.session, "statistics"):

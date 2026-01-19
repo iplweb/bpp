@@ -22,72 +22,68 @@ class CacheMetadata:
     def __init__(self, orig):
         self.orig = orig
 
+    def _get_title(self, default):
+        if self.orig.tytul:
+            return [self.orig.tytul_oryginalny, self.orig.tytul]
+        return [self.orig.tytul_oryginalny]
+
+    def _get_language(self, default):
+        if hasattr(self.orig, "jezyk") and self.orig.jezyk:
+            return [self.orig.jezyk.nazwa]
+        return default
+
+    def _get_creator(self, default):
+        return self.orig.opis_bibliograficzny_autorzy_cache or []
+
+    def _get_date(self, default):
+        return [str(self.orig.rok)]
+
+    def _get_publisher(self, default):
+        if hasattr(self.orig, "wydawnictwo") and self.orig.wydawnictwo:
+            return [self.orig.wydawnictwo]
+        return default
+
+    def _get_subject(self, default):
+        if hasattr(self.orig, "slowa_kluczowe"):
+            return ", ".join(o.name for o in self.orig.slowa_kluczowe.all())
+        return default
+
+    def _get_source(self, default):
+        src = []
+        if getattr(self.orig, "zrodlo_id", None) is not None:
+            src.append(
+                f"{self.orig.zrodlo.nazwa} {self.orig.informacje} {self.orig.szczegoly}"
+            )
+        elif self.orig.informacje or self.orig.szczegoly:
+            src.append(f"{self.orig.informacje} {self.orig.szczegoly}")
+
+        if self.orig.www:
+            src.append(self.orig.www)
+
+        return src
+
+    def _get_type(self, default):
+        return [self.orig.charakter_formalny.nazwa_w_primo]
+
     def get(self, item, default):
-        def ifhas(attr):
-            if hasattr(item, attr):
-                return [
-                    getattr(item, attr),
-                ]
-            return default
-
-        if item == "title":
-            if self.orig.tytul:
-                return [self.orig.tytul_oryginalny, self.orig.tytul]
-            return [
-                self.orig.tytul_oryginalny,
-            ]
-
-        if item == "language":
-            if hasattr(self.orig, "jezyk"):
-                return [
-                    self.orig.jezyk.nazwa,
-                ]
-
-        if item == "creator":
-            return self.orig.opis_bibliograficzny_autorzy_cache or []
-
-        if item == "date":
-            return [
-                str(self.orig.rok),
-            ]
-
-        if item == "publisher":
-            return ifhas("wydawnictwo")
-
-        if item == "subject":
-            if hasattr(item, "slowa_kluczowe"):
-                return ", ".join(o.name for o in item.slowa_kluczowe.all())
-
-        if item == "source":
-            src = []
-            if getattr(self.orig, "zrodlo_id", None) is not None:
-                src.append(
-                    "%s %s %s"
-                    % (
-                        self.orig.zrodlo.nazwa,
-                        self.orig.informacje,
-                        self.orig.szczegoly,
-                    )
-                )
-            else:
-                if self.orig.informacje or self.orig.szczegoly:
-                    src.append("%s %s" % (self.orig.informacje, self.orig.szczegoly))
-
-            if self.orig.www:
-                src.append(self.orig.www)
-
-            return src
-
-        if item == "type":
-            return [
-                self.orig.charakter_formalny.nazwa_w_primo,
-            ]
-
+        handlers = {
+            "title": self._get_title,
+            "language": self._get_language,
+            "creator": self._get_creator,
+            "date": self._get_date,
+            "publisher": self._get_publisher,
+            "subject": self._get_subject,
+            "source": self._get_source,
+            "type": self._get_type,
+        }
+        handler = handlers.get(item)
+        if handler:
+            return handler(default)
         return default
 
 
 def get_dc_ident(model, obj_pk):
-    return "oai:bpp.umlub.pl:%s/%s" % (model, str(obj_pk))
+    return f"oai:bpp.umlub.pl:{model}/{obj_pk}"
 
 
 class BPPOAIDatabase:

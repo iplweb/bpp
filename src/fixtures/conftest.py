@@ -52,17 +52,19 @@ collect_ignore = [os.path.join(os.path.dirname(__file__), "media")]
 
 
 def pytest_collection_modifyitems(items):
-    # Dodaj marker "selenium" dla wszystkich testów uzywających fikstur 'browser'
-    # lub 'admin_browser', aby można było szybko uruchamiać wyłacznie te testy
-    # lub nie uruchamiać ich
-
-    flaky_test = pytest.mark.flaky(reruns=5)
+    # Dodaj marker "playwright" dla wszystkich testów używających fikstur 'page',
+    # 'admin_page' lub 'zrodla_page', aby można było szybko uruchamiać wyłącznie
+    # te testy lub je pomijać.
+    #
+    # NOTE: Serial marking was removed to enable parallelization.
+    # Each pytest-xdist worker gets its own database (test_bpp_gw0, gw1, etc.),
+    # so global .objects.all().delete() calls are safe - they only affect
+    # that worker's database.
 
     for item in items:
         fixtures = getattr(item, "fixturenames", ())
         if "page" in fixtures or "admin_page" in fixtures or "zrodla_page" in fixtures:
             item.add_marker("playwright")
-            item.add_marker(pytest.mark.serial)
 
 
 #

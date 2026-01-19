@@ -66,19 +66,18 @@ class MyMultiseekResults(MultiseekResults):
                 # "zrodlo_lub_nadrzedne",
             )
 
-        #
         ret = qset.only(*flds)
 
+        # Add DISTINCT when joining with views that can produce duplicates.
+        # This string-based SQL check is not ideal but avoids complex query
+        # introspection. The affected tables come from fulltext search joins.
         sql = str(ret.query)
-
         if "bpp_autorzy_mat" in sql or "bpp_zewnetrzne_bazy_view" in sql:
             ret = ret.distinct()
 
         return ret
 
     def get_context_data(self, **kwargs):
-        pass
-
         ctx = super().get_context_data()
 
         if not self.request.GET.get("print-removed", False):

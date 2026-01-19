@@ -19,6 +19,11 @@ class Command(BaseCommand):
             help="Uczelnia abbreviation (required unless --show-current)",
         )
         parser.add_argument(
+            "--nazwa-dopelniacz",
+            default="",
+            help="Uczelnia name in genitive case (dopełniacz)",
+        )
+        parser.add_argument(
             "--pbn-api-root",
             default="https://pbn.nauka.gov.pl",
             help="PBN API URL (default: https://pbn.nauka.gov.pl)",
@@ -34,6 +39,11 @@ class Command(BaseCommand):
             "--email",
             default="michal.dtz@gmail.com",
             help="Admin email (default: michal.dtz@gmail.com)",
+        )
+        parser.add_argument(
+            "--password",
+            default="foobar123",
+            help="Admin password (default: foobar123)",
         )
         parser.add_argument(
             "--pbn-token",
@@ -52,6 +62,7 @@ class Command(BaseCommand):
         field_mappings = [
             ("nazwa", "--nazwa"),
             ("skrot", "--skrot"),
+            ("nazwa_dopelniacz_field", "--nazwa-dopelniacz"),
             ("pbn_api_root", "--pbn-api-root"),
             ("pbn_app_name", "--pbn-app-name"),
             ("pbn_app_token", "--pbn-app-token"),
@@ -131,12 +142,13 @@ class Command(BaseCommand):
         )
         if not created:
             admin.email = options["email"]
-        admin.set_password("foobar123")
+        admin.set_password(options["password"])
         admin.save()
 
         action = "Created" if created else "Updated"
         self.stdout.write(
-            f"{action} admin user '{options['username']}' with password 'foobar123'"
+            f"{action} admin user '{options['username']}' "
+            f"with password '{options['password']}'"
         )
 
         # Create Uczelnia
@@ -144,6 +156,7 @@ class Command(BaseCommand):
             nazwa=options["nazwa"],
             defaults={
                 "skrot": options["skrot"],
+                "nazwa_dopelniacz_field": options["nazwa_dopelniacz"],
                 "pbn_api_root": options["pbn_api_root"],
                 "pbn_app_name": options["pbn_app_name"],
                 "pbn_app_token": options["pbn_app_token"],
@@ -154,6 +167,7 @@ class Command(BaseCommand):
         if not created:
             # Update existing
             uczelnia.skrot = options["skrot"]
+            uczelnia.nazwa_dopelniacz_field = options["nazwa_dopelniacz"]
             uczelnia.pbn_api_root = options["pbn_api_root"]
             uczelnia.pbn_app_name = options["pbn_app_name"]
             uczelnia.pbn_app_token = options["pbn_app_token"]
