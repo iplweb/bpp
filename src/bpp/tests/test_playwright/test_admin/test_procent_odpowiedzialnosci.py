@@ -223,7 +223,7 @@ def test_procent_odpowiedzialnosci_baseModel_AutorFormset_jeden_autor(  # noqa: 
 
     # Check success
     admin_page.wait_for_function(
-        "() => document.body.textContent.includes("
+        "() => document.body && document.body.textContent.includes("
         "'został(a)(-ło) dodany(-na)(-ne) pomyślnie')",
         timeout=10000,
     )
@@ -306,7 +306,7 @@ def test_procent_odpowiedzialnosci_baseModel_AutorFormset_problem_jeden_autor(  
 
     # Check failure
     admin_page.wait_for_function(
-        "() => document.body.textContent.includes('Prosimy poprawić')",
+        "() => document.body && document.body.textContent.includes('Prosimy poprawić')",
         timeout=10000,
     )
 
@@ -423,7 +423,7 @@ def test_procent_odpowiedzialnosci_baseModel_AutorFormset_dwoch_autorow(  # noqa
 
     # Check success
     admin_page.wait_for_function(
-        "() => document.body.textContent.includes("
+        "() => document.body && document.body.textContent.includes("
         "'został(a)(-ło) dodany(-na)(-ne) pomyślnie')",
         timeout=10000,
     )
@@ -540,7 +540,7 @@ def test_procent_odpowiedzialnosci_baseModel_AutorFormset_problem_dwoch_autorow(
 
     # Check failure - form should not validate with 100.01% total
     admin_page.wait_for_function(
-        "() => document.body.textContent.includes('Prosimy poprawić')",
+        "() => document.body && document.body.textContent.includes('Prosimy poprawić')",
         timeout=10000,
     )
 
@@ -599,9 +599,7 @@ def test_procent_odpowiedzialnosci_baseModel_AutorFormset_dobrze_potem_zle_dwoch
         admin_page.fill("#id_rok", str(random.randint(1, 2100)))
 
         # Add first author with 50% responsibility
-        admin_page.wait_for_selector(
-            ".grp-add-handler", state="visible", timeout=10000
-        )
+        admin_page.wait_for_selector(".grp-add-handler", state="visible", timeout=10000)
         add_buttons = admin_page.locator(".grp-add-handler").all()
         for button in add_buttons:
             if button.is_visible() and "powiązanie autora" in button.text_content():
@@ -659,14 +657,12 @@ def test_procent_odpowiedzialnosci_baseModel_AutorFormset_dobrze_potem_zle_dwoch
         admin_page.fill("#id_autorzy_set-1-procent", "50.00")
 
         # Submit form - should succeed
-        admin_page.evaluate(
-            'django.jQuery("input[type=submit].grp-default").click()'
-        )
+        admin_page.evaluate('django.jQuery("input[type=submit].grp-default").click()')
         admin_page.wait_for_load_state("domcontentloaded", timeout=10000)
 
         # Check success
         admin_page.wait_for_function(
-            "() => document.body.textContent.includes("
+            "() => document.body && document.body.textContent.includes("
             "'został(a)(-ło) dodany(-na)(-ne) pomyślnie')",
             timeout=10000,
         )
@@ -685,14 +681,13 @@ def test_procent_odpowiedzialnosci_baseModel_AutorFormset_dobrze_potem_zle_dwoch
         admin_page.fill("#id_autorzy_set-0-procent", "50.01")
 
         # Submit form - should fail
-        admin_page.evaluate(
-            'django.jQuery("input[type=submit].grp-default").click()'
-        )
+        admin_page.evaluate('django.jQuery("input[type=submit].grp-default").click()')
         admin_page.wait_for_load_state("domcontentloaded", timeout=10000)
 
         # Check failure
         admin_page.wait_for_function(
-            "() => document.body.textContent.includes('Prosimy poprawić')",
+            "() => document.body && document.body.textContent.includes("
+            "'Prosimy poprawić')",
             timeout=10000,
         )
 
