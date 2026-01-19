@@ -151,6 +151,32 @@ PODWOJNE = {
 }
 
 
+def get_available_letters(queryset, field_name):
+    """Calculate which letters have objects in the queryset.
+
+    Args:
+        queryset: Django queryset to check against
+        field_name: Name of the field to check for letter matches
+
+    Returns:
+        set: Set of letters that have matching objects
+    """
+    available_letters = set()
+    for literka in LITERKI:
+        args = [literka]
+        if literka in PODWOJNE:
+            args = PODWOJNE[literka]
+
+        qobj = Q(**{field_name + "__istartswith": literka})
+        for x in args[1:]:
+            qobj |= Q(**{field_name + "__istartswith": x})
+
+        if queryset.filter(qobj).exists():
+            available_letters.add(literka)
+
+    return available_letters
+
+
 class Browser(ListView):
     model = None
     param = None
@@ -241,39 +267,40 @@ class AutorzyView(Browser):
     literka_field = "nazwisko"
     paginate_by = 50
 
-    def get_queryset(self):
-        # Uwzględnia wybraną literkę etc
-        ret = super().get_queryset()
+    def _apply_uczelnia_filters(self, queryset):
+        """Apply uczelnia-based author filtering.
 
-        # Filter out hidden authors
-        ret = ret.filter(pokazuj=True)
-
+        Filters out foreign authors and authors without publications
+        based on uczelnia settings.
+        """
         uczelnia = Uczelnia.objects.get_for_request(self.request)
-        if uczelnia is not None:
-            if not uczelnia.pokazuj_autorow_obcych_w_przegladaniu_danych:
-                ret = ret.annotate(
-                    Count("autor_jednostka")
-                )  # ilość jednostek dla każdego autora
+        if uczelnia is None:
+            return queryset
 
-                # Wyrzuć autorów przypisanych do Obca + Błędna
-                ret = ret.exclude(
-                    Q(
-                        autor_jednostka__jednostka__pk=-1
-                    )  # "BŁĄD: brak wpisanej jednostki"
-                    & Q(autor_jednostka__jednostka__pk=uczelnia.obca_jednostka_id)
-                    & Q(autor_jednostka__count__lte=2)
-                )
+        if not uczelnia.pokazuj_autorow_obcych_w_przegladaniu_danych:
+            queryset = queryset.annotate(Count("autor_jednostka"))
+            # Wyrzuć autorów przypisanych do Obca + Błędna
+            queryset = queryset.exclude(
+                Q(autor_jednostka__jednostka__pk=-1)
+                & Q(autor_jednostka__jednostka__pk=uczelnia.obca_jednostka_id)
+                & Q(autor_jednostka__count__lte=2)
+            )
+            queryset = queryset.exclude(
+                aktualna_jednostka=None, autor_jednostka__count=1
+            )
+            queryset = queryset.exclude(
+                aktualna_jednostka_id=uczelnia.obca_jednostka_id,
+                autor_jednostka__count=1,
+            )
 
-                ret = ret.exclude(aktualna_jednostka=None, autor_jednostka__count=1)
-                ret = ret.exclude(
-                    aktualna_jednostka_id=uczelnia.obca_jednostka_id,
-                    autor_jednostka__count=1,
-                )
+        if not uczelnia.pokazuj_autorow_bez_prac_w_przegladaniu_danych:
+            queryset = queryset.exclude(autorzyview=None)
 
-            if not uczelnia.pokazuj_autorow_bez_prac_w_przegladaniu_danych:
-                # Nie pokazuj autorów bez prac
-                ret = ret.exclude(autorzyview=None)
+        return queryset
 
+    def get_queryset(self):
+        ret = super().get_queryset().filter(pokazuj=True)
+        ret = self._apply_uczelnia_filters(ret)
         return (
             ret.select_related("aktualna_jednostka", "aktualna_jednostka__wydzial")
             .only(
@@ -289,46 +316,11 @@ class AutorzyView(Browser):
 
     def get_context_data(self, *args, **kw):
         context = super().get_context_data(*args, **kw)
-
-        # Calculate which letters have authors
-        # Get base queryset (all visible authors, respecting uczelnia settings)
         base_qry = Autor.objects.filter(pokazuj=True)
-
-        uczelnia = Uczelnia.objects.get_for_request(self.request)
-        if uczelnia is not None:
-            if not uczelnia.pokazuj_autorow_obcych_w_przegladaniu_danych:
-                base_qry = base_qry.annotate(Count("autor_jednostka"))
-                base_qry = base_qry.exclude(
-                    Q(autor_jednostka__jednostka__pk=-1)
-                    & Q(autor_jednostka__jednostka__pk=uczelnia.obca_jednostka_id)
-                    & Q(autor_jednostka__count__lte=2)
-                )
-                base_qry = base_qry.exclude(
-                    aktualna_jednostka=None, autor_jednostka__count=1
-                )
-                base_qry = base_qry.exclude(
-                    aktualna_jednostka_id=uczelnia.obca_jednostka_id,
-                    autor_jednostka__count=1,
-                )
-
-            if not uczelnia.pokazuj_autorow_bez_prac_w_przegladaniu_danych:
-                base_qry = base_qry.exclude(autorzyview=None)
-
-        # Check each letter for available authors
-        available_letters = set()
-        for literka in LITERKI:
-            args = [literka]
-            if literka in PODWOJNE:
-                args = PODWOJNE[literka]
-
-            qobj = Q(**{self.literka_field + "__istartswith": literka})
-            for x in args[1:]:
-                qobj |= Q(**{self.literka_field + "__istartswith": x})
-
-            if base_qry.filter(qobj).exists():
-                available_letters.add(literka)
-
-        context["available_letters"] = available_letters
+        base_qry = self._apply_uczelnia_filters(base_qry)
+        context["available_letters"] = get_available_letters(
+            base_qry, self.literka_field
+        )
         return context
 
 
@@ -377,21 +369,9 @@ class ZrodlaView(Browser):
                     ).distinct()
                 )
 
-        # Check each letter for available sources
-        available_letters = set()
-        for literka in LITERKI:
-            args = [literka]
-            if literka in PODWOJNE:
-                args = PODWOJNE[literka]
-
-            qobj = Q(**{self.literka_field + "__istartswith": literka})
-            for x in args[1:]:
-                qobj |= Q(**{self.literka_field + "__istartswith": x})
-
-            if base_qry.filter(qobj).exists():
-                available_letters.add(literka)
-
-        context["available_letters"] = available_letters
+        context["available_letters"] = get_available_letters(
+            base_qry, self.literka_field
+        )
         return context
 
 
@@ -447,21 +427,9 @@ class JednostkiView(Browser):
         if uczelnia and uczelnia.pokazuj_tylko_jednostki_nadrzedne:
             base_qry = base_qry.filter(parent=None)
 
-        # Check each letter for available units
-        available_letters = set()
-        for literka in LITERKI:
-            args = [literka]
-            if literka in PODWOJNE:
-                args = PODWOJNE[literka]
-
-            qobj = Q(**{self.literka_field + "__istartswith": literka})
-            for x in args[1:]:
-                qobj |= Q(**{self.literka_field + "__istartswith": x})
-
-            if base_qry.filter(qobj).exists():
-                available_letters.add(literka)
-
-        context["available_letters"] = available_letters
+        context["available_letters"] = get_available_letters(
+            base_qry, self.literka_field
+        )
         return context
 
 
