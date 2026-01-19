@@ -29,11 +29,19 @@
 
 BRANCH=`git branch | sed -n '/\* /s///p'`
 
-.PHONY: clean distclean tests release tests-without-playwright tests-only-playwright docker destroy-test-databases coveralls-upload clean-coverage combine-coverage cache-delete buildx-cache-stats buildx-cache-prune buildx-cache-prune-aggressive buildx-cache-prune-registry buildx-cache-export buildx-cache-import buildx-cache-list bump-dev bump-release bump-and-start-dev migrate new-worktree clean-worktree generate-500-page build build-force build-base build-independent build-app-services build-dbserver build-webserver build-appserver-base build-appserver build-workerserver build-beatserver build-authserver build-denorm-queue build-servers check-clean-tree prepare-claude
+.PHONY: clean distclean tests release tests-without-playwright tests-only-playwright docker destroy-test-databases coveralls-upload clean-coverage combine-coverage cache-delete buildx-cache-stats buildx-cache-prune buildx-cache-prune-aggressive buildx-cache-prune-registry buildx-cache-export buildx-cache-import buildx-cache-list bump-dev bump-release bump-and-start-dev migrate new-worktree clean-worktree generate-500-page build build-force build-base build-independent build-app-services build-dbserver build-webserver build-appserver-base build-appserver build-workerserver build-beatserver build-authserver build-denorm-queue build-servers check-clean-tree prepare-claude prepare-developer-machine prepare-developer-machine-linux
 
 PYTHON=python3
 
-all:	prepare-developer-machine-macos release
+# Platform detection for developer machine setup
+OS := $(shell uname -s)
+ifeq ($(OS),Darwin)
+    YARN_CMD := yarn
+else
+    YARN_CMD := yarnpkg
+endif
+
+all:	prepare-developer-machine release
 
 prepare-developer-machine-macos:
 	uv sync --all-extras
@@ -43,6 +51,24 @@ prepare-developer-machine-macos:
 	sudo ln -s /opt/homebrew/opt/harfbuzz/lib/libharfbuzz.dylib /usr/local/lib/harfbuzz
 	sudo ln -s /opt/homebrew/opt/fontconfig/lib/libfontconfig.1.dylib /usr/local/lib/fontconfig-1
 	sudo ln -s /opt/homebrew/opt/pango/lib/libpangoft2-1.0.dylib /usr/local/lib/pangoft2-1.0
+
+prepare-developer-machine-linux:
+	sudo apt update
+	sudo apt install -y yarnpkg python3-dev libpq-dev libcairo2-dev \
+		libpango1.0-dev libgdk-pixbuf2.0-dev libffi-dev \
+		libgirepository1.0-dev libgtk-3-dev
+	uv sync --all-extras
+
+prepare-developer-machine:
+ifeq ($(OS),Darwin)
+	$(MAKE) prepare-developer-machine-macos
+else ifeq ($(OS),Linux)
+	$(MAKE) prepare-developer-machine-linux
+else
+	@echo "Unsupported platform: $(OS)"
+	@echo "Supported: Darwin (macOS), Linux"
+	@exit 1
+endif
 
 prepare-claude:
 	@echo "Setting up Claude Code with claude-mem plugin..."
@@ -119,7 +145,7 @@ PO_FILES := $(shell find src -name "*.po" -type f)
 MO_FILES := $(PO_FILES:.po=.mo)
 
 $(NODE_MODULES): package.json yarn.lock
-	export PUPPETEER_SKIP_CHROME_DOWNLOAD=true PUPPETEER_SKIP_CHROME_HEADLESS_SHELL_DOWNLOAD=true && yarn install  --no-progress --emoji false -s
+	export PUPPETEER_SKIP_CHROME_DOWNLOAD=true PUPPETEER_SKIP_CHROME_HEADLESS_SHELL_DOWNLOAD=true && $(YARN_CMD) install  --no-progress --emoji false -s
 	touch $(NODE_MODULES)
 
 $(CSS_TARGETS): $(SCSS_SOURCES) $(NODE_MODULES)
@@ -154,7 +180,7 @@ compilemessages: $(MO_FILES)
 
 
 js-tests: assets
-	yarn install --optional
+	$(YARN_CMD) install --optional
 	npx puppeteer browsers install chrome
 	grunt qunit
 
@@ -488,7 +514,7 @@ new-worktree:
 	./bin/prepare-worktree.sh
 	direnv allow
 	uv sync --all-extras
-	yarn install
+	$(YARN_CMD) install
 	uv run grunt build
 	uv run src/manage.py collectstatic --noinput
 	docker compose up -d
