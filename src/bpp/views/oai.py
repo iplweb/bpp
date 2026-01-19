@@ -28,7 +28,7 @@ class CacheMetadata:
         return [self.orig.tytul_oryginalny]
 
     def _get_language(self, default):
-        if hasattr(self.orig, "jezyk"):
+        if hasattr(self.orig, "jezyk") and self.orig.jezyk:
             return [self.orig.jezyk.nazwa]
         return default
 
@@ -39,7 +39,7 @@ class CacheMetadata:
         return [str(self.orig.rok)]
 
     def _get_publisher(self, default):
-        if hasattr(self.orig, "wydawnictwo"):
+        if hasattr(self.orig, "wydawnictwo") and self.orig.wydawnictwo:
             return [self.orig.wydawnictwo]
         return default
 
@@ -59,6 +59,7 @@ class CacheMetadata:
 
         if self.orig.www:
             src.append(self.orig.www)
+
         return src
 
     def _get_type(self, default):
@@ -97,10 +98,37 @@ class BPPOAIDatabase:
                 "description": "wszystkie rekordy",
                 "hidden": False,
             }
-        return None
+
+        return
+
+        row = self._sets.select(self._sets.c.set_id == oai_id).execute().fetchone()
+
+        if row is None:
+            return
+
+    # mpasternak, 24.02.2021 -- czy ten kod w ogóle był uzywany?
+    # def get_setrefs(self, oai_id, include_hidden_sets=False):
+    #     return [1]
+    #
+    #     set_ids = []
+    #     query = sql.select([self._setrefs.c.set_id])
+    #     query.append_whereclause(self._setrefs.c.record_id == oai_id)
+    #     if not include_hidden_sets:
+    #         query.append_whereclause(
+    #             sql.and_(
+    #                 self._sets.c.set_id == self._setrefs.c.set_id,
+    #                 self._sets.c.hidden == include_hidden_sets,
+    #             )
+    #         )
+    #
+    #     for row in query.execute():
+    #         set_ids.append(row[0])
+    #     set_ids.sort()
+    #     return set_ids
 
     def record_count(self):
         return self.original.count()
+        return self.original.objects.all().count()
 
     def set_count(self):
         return 1
