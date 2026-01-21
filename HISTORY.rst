@@ -4,6 +4,15 @@ Historia zmian
 
 .. towncrier release notes start
 
+bpp 202601.1336 (2026-01-21)
+============================
+
+Naprawione
+----------
+
+- Naprawiono błąd IntegrityError przy edycji zgłoszenia publikacji - pole przyczyna_zwrotu było ustawiane na None zamiast pusty ciąg znaków. (przyczyna_zwrotu_fix)
+
+
 bpp 202601.1335 (2026-01-19)
 ============================
 
