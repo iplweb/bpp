@@ -1,0 +1,80 @@
+# BPP Docker Deployment - Monitoring Component
+# Contains Flower, Dozzle, Loki, Grafana, and Alloy services
+# All services use 'monitoring' profile - start with: docker compose --profile monitoring up
+
+services:
+  flower:
+    profiles: ['monitoring']
+    image: mher/flower:2.0
+    restart: always
+    environment:
+      - CELERY_BROKER_URL=amqp://${DJANGO_BPP_RABBITMQ_USER:-bpp}:${DJANGO_BPP_RABBITMQ_PASS:-bpp}@rabbitmq:${DJANGO_BPP_RABBITMQ_PORT:-5672}//
+      - FLOWER_PORT=5555
+      - FLOWER_URL_PREFIX=/flower
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    expose:
+      - 5555
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  dozzle:
+    profiles: ['monitoring']
+    image: amir20/dozzle:latest
+    restart: always
+    environment:
+      - DOZZLE_BASE=/dozzle
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    expose:
+      - 8080
+
+  loki:
+    profiles: ['monitoring']
+    image: grafana/loki:3.4.1
+    restart: always
+    command: -config.file=/etc/loki/local-config.yaml
+
+  grafana:
+    profiles: ['monitoring']
+    image: grafana/grafana:latest
+    restart: always
+    env_file:
+      - path: .env.docker
+        required: true
+      - path: .env
+        required: false
+    environment:
+      - GF_SERVER_SERVE_FROM_SUB_PATH=true
+      - GF_LOG_LEVEL=warn
+      - GF_AUTH_PROXY_ENABLED=true
+      - GF_AUTH_PROXY_HEADER_NAME=X-WEBAUTH-USER
+      - GF_AUTH_PROXY_HEADER_PROPERTY=username
+      - GF_AUTH_PROXY_AUTO_SIGN_UP=true
+      - GF_AUTH_PROXY_HEADERS=Email:X-WEBAUTH-EMAIL Name:X-WEBAUTH-NAME
+    volumes:
+      - grafana_data:/var/lib/grafana
+    expose:
+      - 3000
+    depends_on:
+      - loki
+
+  alloy:
+    profiles: ['monitoring']
+    image: grafana/alloy:latest
+    restart: always
+    command: >
+      run /etc/alloy/config.alloy
+      --server.http.listen-addr=0.0.0.0:12345
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./deploy/alloy/config.alloy:/etc/alloy/config.alloy:ro
+    depends_on:
+      - loki
+
+volumes:
+  grafana_data:
