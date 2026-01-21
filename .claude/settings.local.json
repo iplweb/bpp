@@ -109,7 +109,8 @@
       "mcp__freshdesk-mcp__get_contact",
       "mcp__freshdesk-mcp__get_ticket",
       "mcp__freshdesk-mcp__search_contacts",
-      "mcp__freshdesk-mcp__list_contacts"
+      "mcp__freshdesk-mcp__list_contacts",
+      "WebFetch(domain:docs.rollbar.com)"
     ],
     "deny": [],
     "ask": [],
