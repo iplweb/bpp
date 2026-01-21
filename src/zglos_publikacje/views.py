@@ -270,7 +270,7 @@ class Zgloszenie_PublikacjiWizard(UczelniaSettingRequiredMixin, SessionWizardVie
             self.object.kod_do_edycji = None
 
             # Zresetuj przyczynę zwrotu -- rekord został zmodyfikowany
-            self.object.przyczyna_zwrotu = None
+            self.object.przyczyna_zwrotu = ""
 
         # Set all attributes from aggregated form data
         for attr_name, value in form_kwargs.items():
