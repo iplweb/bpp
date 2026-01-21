@@ -1,0 +1,166 @@
+# BPP Docker Deployment - Workers Component
+# Contains Celery beat, worker servers, and denorm queue services
+
+services:
+  celerybeat:
+    image: iplweb/bpp_beatserver:${DOCKER_VERSION:-latest}
+    build:
+      context: ./deploy/beatserver
+      dockerfile: Dockerfile
+      tags:
+        - iplweb/bpp_beatserver:${DOCKER_VERSION:-latest}
+        - iplweb/bpp_beatserver:latest
+      cache_from:
+        - type=registry,ref=iplweb/bpp_base:latest
+        - type=registry,ref=iplweb/bpp_beatserver:latest
+      cache_to:
+        - type=inline
+    env_file:
+      - path: .env.docker
+        required: true
+      - path: .env
+        required: false
+    environment:
+      - DJANGO_SETTINGS_MODULE=django_bpp.settings.local
+      - ENABLE_AUTORELOAD_ON_CODE_CHANGE=${ENABLE_AUTORELOAD_ON_CODE_CHANGE:-1}
+    restart: always
+    volumes:
+      - ./src:/app/src
+      - ./src/django_bpp/staticroot:/staticroot
+      - media:/mediaroot
+    depends_on:
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      appserver:
+        condition: service_healthy
+
+  workerserver-general:
+    image: iplweb/bpp_workerserver:${DOCKER_VERSION:-latest}
+    build:
+      context: .
+      dockerfile: deploy/workerserver/Dockerfile
+      tags:
+        - iplweb/bpp_workerserver:${DOCKER_VERSION:-latest}
+        - iplweb/bpp_workerserver:latest
+      cache_from:
+        - type=registry,ref=iplweb/bpp_base:latest
+        - type=registry,ref=iplweb/bpp_workerserver:latest
+      cache_to:
+        - type=inline
+    env_file:
+      - path: .env.docker
+        required: true
+      - path: .env
+        required: false
+    environment:
+      - WEB_CONCURRENCY=4
+      - DJANGO_SETTINGS_MODULE=django_bpp.settings.local
+      - ENABLE_AUTORELOAD_ON_CODE_CHANGE=${ENABLE_AUTORELOAD_ON_CODE_CHANGE:-1}
+    restart: always
+    volumes:
+      - ./src:/app/src
+      - ./src/django_bpp/staticroot:/staticroot
+      - media:/mediaroot
+    depends_on:
+      # Musi czekać na appserver, gdyż appserver aktualizuje ewentualnie baze danych.
+      # Czy nawet w ogóle ją buduje...
+      rabbitmq:
+        condition: service_healthy
+      appserver:
+        condition: service_healthy
+
+  workerserver-denorm:
+    image: iplweb/bpp_workerserver:${DOCKER_VERSION:-latest}
+    build:
+      context: .
+      dockerfile: deploy/workerserver/Dockerfile
+      tags:
+        - iplweb/bpp_workerserver:${DOCKER_VERSION:-latest}
+        - iplweb/bpp_workerserver:latest
+      cache_from:
+        - type=registry,ref=iplweb/bpp_base:latest
+        - type=registry,ref=iplweb/bpp_workerserver:latest
+      cache_to:
+        - type=inline
+    env_file:
+      - path: .env.docker
+        required: true
+      - path: .env
+        required: false
+    environment:
+      - WEB_CONCURRENCY=4
+      - DJANGO_SETTINGS_MODULE=django_bpp.settings.local
+      - ENABLE_AUTORELOAD_ON_CODE_CHANGE=${ENABLE_AUTORELOAD_ON_CODE_CHANGE:-1}
+      - CELERY_QUEUE=denorm
+    restart: always
+    volumes:
+      - ./src:/app/src
+      - ./src/django_bpp/staticroot:/staticroot
+      - media:/mediaroot
+    depends_on:
+      # Musi czekać na appserver, gdyż appserver aktualizuje ewentualnie baze danych.
+      # Czy nawet w ogóle ją buduje...
+      rabbitmq:
+        condition: service_healthy
+      appserver:
+        condition: service_healthy
+
+  workerserver-status:
+    image: iplweb/bpp_workerserver:${DOCKER_VERSION:-latest}
+    build:
+      context: .
+      dockerfile: deploy/workerserver/Dockerfile
+      tags:
+        - iplweb/bpp_workerserver:${DOCKER_VERSION:-latest}
+        - iplweb/bpp_workerserver:latest
+      cache_from:
+        - type=registry,ref=iplweb/bpp_base:latest
+        - type=registry,ref=iplweb/bpp_workerserver:latest
+      cache_to:
+        - type=inline
+    env_file:
+      - path: .env.docker
+        required: true
+      - path: .env
+        required: false
+    command: status
+    depends_on:
+      workerserver-general:
+        condition: service_healthy
+      workerserver-denorm:
+        condition: service_healthy
+    profiles: ['manual']
+
+  denorm-queue:
+    # run only SINGLE service, this is only a mechanism to pass
+    # PostgreSQL LISTEN to Celery queue
+    image: iplweb/bpp_denorm_queue:${DOCKER_VERSION:-latest}
+    build:
+      context: .
+      dockerfile: deploy/denorm-queue/Dockerfile
+      tags:
+        - iplweb/bpp_denorm_queue:${DOCKER_VERSION:-latest}
+        - iplweb/bpp_denorm_queue:latest
+      cache_from:
+        - type=registry,ref=iplweb/bpp_base:latest
+        - type=registry,ref=iplweb/bpp_denorm_queue:latest
+      cache_to:
+        - type=inline
+    env_file:
+      - path: .env.docker
+        required: true
+      - path: .env
+        required: false
+    environment:
+      - DJANGO_SETTINGS_MODULE=django_bpp.settings.local
+      - ENABLE_AUTORELOAD_ON_CODE_CHANGE=${ENABLE_AUTORELOAD_ON_CODE_CHANGE:-1}
+    restart: always
+    volumes:
+      - ./src:/app/src
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      workerserver-denorm:
+        condition: service_healthy

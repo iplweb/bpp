@@ -30,7 +30,10 @@ def unlock_all(**kwargs):
 @worker_ready.connect
 def initialize_rollbar(**kwargs):
     """Initialize Rollbar after Django settings are configured."""
-    rollbar.init(**settings.ROLLBAR)
+    from bpp.rollbar_config import configure_rollbar
+
+    configure_rollbar()
+    # Keep the Celery-specific base data hook for framework identification
     rollbar.BASE_DATA_HOOK = celery_base_data_hook
 
 
@@ -40,5 +43,9 @@ def handle_task_failure(**kw):
 
 
 def celery_base_data_hook(request, data):
+    """Add Celery framework identifier to Rollbar data.
+
+    Note: DJANGO_BPP_HOSTNAME is now handled globally by the payload handler
+    registered in bpp.rollbar_config.
+    """
     data["framework"] = "celery"
-    data["DJANGO_BPP_HOSTNAME"] = getattr(settings, "DJANGO_BPP_HOSTNAME", "None")

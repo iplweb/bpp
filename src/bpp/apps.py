@@ -19,6 +19,11 @@ class BppConfig(AppConfig):
         # Ensure BppUserAdmin takes precedence over microsoft_auth's UserAdmin
         self._register_bpp_user_admin()
 
+        # Initialize Rollbar with global hostname handler
+        from bpp.rollbar_config import configure_rollbar
+
+        configure_rollbar()
+
     def _register_bpp_user_admin(self):
         """Re-register BppUserAdmin to override any previous registrations."""
 

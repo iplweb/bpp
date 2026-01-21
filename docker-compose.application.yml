@@ -1,0 +1,112 @@
+# BPP Docker Deployment - Application Component
+# Contains main application servers: appserver, authserver, webserver
+
+services:
+  appserver:
+    image: iplweb/bpp_appserver:${DOCKER_VERSION:-latest}
+    build:
+      context: .
+      dockerfile: deploy/appserver/Dockerfile
+      tags:
+        - iplweb/bpp_appserver:${DOCKER_VERSION:-latest}
+        - iplweb/bpp_appserver:latest
+      cache_from:
+        - type=registry,ref=iplweb/bpp_base:latest
+        - type=registry,ref=iplweb/bpp_appserver:latest
+      cache_to:
+        - type=inline
+    restart: always
+    env_file:
+      - path: .env.docker
+        required: true
+      - path: .env
+        required: false
+    environment:
+      - DJANGO_SETTINGS_MODULE=django_bpp.settings.docker
+      - ENABLE_AUTORELOAD_ON_CODE_CHANGE=${ENABLE_AUTORELOAD_ON_CODE_CHANGE:-1}
+      - DJANGO_BPP_CSRF_EXTRA_ORIGINS=https://bpp.localnet:10443,https://localhost:10443
+    depends_on:
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+    ports:
+      - ${DJANGO_BPP_PORT_APP:-8000}:8000
+    volumes:
+      - ./src:/app/src
+      - ./src/django_bpp/staticroot:/staticroot
+      - media:/mediaroot
+
+  authserver:
+    # Lightweight auth server for nginx authentication
+    # Starts quickly (seconds) - no migrations, no collectstatic
+    # Used by nginx auth_request for Grafana, Dozzle, etc.
+    profiles: ['monitoring']
+    image: iplweb/bpp_authserver:${DOCKER_VERSION:-latest}
+    build:
+      context: .
+      dockerfile: deploy/authserver/Dockerfile
+      tags:
+        - iplweb/bpp_authserver:${DOCKER_VERSION:-latest}
+        - iplweb/bpp_authserver:latest
+      cache_from:
+        - type=registry,ref=iplweb/bpp_base:latest
+        - type=registry,ref=iplweb/bpp_authserver:latest
+      cache_to:
+        - type=inline
+    restart: always
+    env_file:
+      - path: .env.docker
+        required: true
+      - path: .env
+        required: false
+    environment:
+      - DJANGO_SETTINGS_MODULE=django_bpp.settings.auth_server
+      - DJANGO_BPP_CSRF_EXTRA_ORIGINS=https://bpp.localnet:10443,https://localhost:10443
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8001/health/"]
+      interval: 5s
+      timeout: 3s
+      start_period: 10s
+      retries: 3
+    volumes:
+      - ./src:/app/src
+
+  webserver:
+    image: iplweb/bpp_webserver:${DOCKER_VERSION:-latest}
+    build:
+      context: ./deploy/webserver
+      dockerfile: Dockerfile
+      tags:
+        - iplweb/bpp_webserver:${DOCKER_VERSION:-latest}
+        - iplweb/bpp_webserver:latest
+      cache_from:
+        - type=registry,ref=iplweb/bpp_webserver:latest
+      cache_to:
+        - type=inline
+    restart: always
+    env_file:
+      - path: .env.docker
+        required: true
+      - path: .env
+        required: false
+    environment:
+      - USE_DEV_TEMPLATE=${USE_DEV_TEMPLATE:-true}
+    ports:
+      - ${DJANGO_BPP_PORT_HTTP:-1080}:80
+      - ${DJANGO_BPP_PORT_HTTPS:-10443}:443
+    volumes:
+      - ./src/django_bpp/staticroot:/var/www/html/staticroot
+      - media:/mediaroot
+      - ssl_certs:/etc/ssl/private
+
+volumes:
+  media:
+  ssl_certs:
