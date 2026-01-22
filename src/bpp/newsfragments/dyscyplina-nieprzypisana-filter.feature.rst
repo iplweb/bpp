@@ -1,0 +1,1 @@
+Przeglądarka ewaluacji: dodano nowy filtr "Dyscyplina nieprzypisana", który pozwala wyszukiwać publikacje autorów posiadających daną dyscyplinę (główną lub subdyscyplinę) w swoim profilu, niezależnie od tego jaką dyscyplinę mają przypisaną do konkretnej publikacji. Zmieniono również układ panelu filtrów na 2 wiersze po 3 elementy dla lepszej czytelności.

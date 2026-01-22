@@ -55,7 +55,7 @@
                 <legend style="font-weight: bold; padding: 0 0.5rem;">Filtry:</legend>
 
                 <div class="row">
-                    <div class="medium-2 columns">
+                    <div class="medium-4 columns">
                         <label>Rok:
                             <select name="rok" class="auto-submit-filter">
                                 <option value="">Wszystkie</option>
@@ -66,14 +66,14 @@
                         </label>
                     </div>
 
-                    <div class="medium-2 columns">
+                    <div class="medium-4 columns">
                         <label>Tytuł:
                             <input type="text" name="tytul" placeholder="Szukaj...">
                         </label>
                     </div>
 
-                    <div class="medium-2 columns">
-                        <label>Dyscyplina:
+                    <div class="medium-4 columns">
+                        <label>Dyscyplina przypisana:
                             <select name="dyscyplina" class="auto-submit-filter">
                                 <option value="">Wszystkie</option>
                                 {% for d in filters.dyscypliny %}
@@ -82,14 +82,28 @@
                             </select>
                         </label>
                     </div>
+                </div>
 
-                    <div class="medium-2 columns">
+                <div class="row">
+                    <div class="medium-4 columns">
+                        <label>Dyscyplina nieprzypisana:
+                            <select name="dyscyplina_nieprzypisana"
+                                    class="auto-submit-filter">
+                                <option value="">Wszystkie</option>
+                                {% for d in filters.dyscypliny %}
+                                <option value="{{ d.pk }}">{{ d.nazwa }}</option>
+                                {% endfor %}
+                            </select>
+                        </label>
+                    </div>
+
+                    <div class="medium-4 columns">
                         <label>Nazwisko:
                             <input type="text" name="nazwisko" placeholder="Szukaj...">
                         </label>
                     </div>
 
-                    <div class="medium-2 columns">
+                    <div class="medium-4 columns">
                         <label>Punkty:
                             <select name="punkty_kbn" class="auto-submit-filter">
                                 <option value="">Wszystkie</option>
@@ -99,11 +113,14 @@
                             </select>
                         </label>
                     </div>
+                </div>
 
-                    <div class="medium-2 columns">
-                        <label>&nbsp;</label>
-                        <button type="submit" class="button small expanded">
-                            <span class="fi-filter" aria-hidden="true"></span> Filtruj
+                <div class="row">
+                    <div class="medium-12 columns text-center"
+                         style="margin-top: 1rem;">
+                        <button type="submit" class="button">
+                            <span class="fi-filter" aria-hidden="true"></span>
+                            Filtruj
                         </button>
                     </div>
                 </div>
