@@ -7,7 +7,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
 from queryset_sequence import QuerySetSequence
 
-from bpp.models import Uczelnia, Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
+from bpp.models import Uczelnia
 from pbn_api.adapters.wydawnictwo import WydawnictwoPBNAdapter
 from pbn_api.client import PBNClient, RequestsTransport
 from pbn_api.exceptions import (
@@ -16,52 +16,7 @@ from pbn_api.exceptions import (
     HttpException,
     PraceSerwisoweException,
 )
-
-
-def get_publications_queryset(rok_od=2022, rok_do=2025, tytul=None):
-    """
-    Get publications that need statements sent to PBN.
-
-    Criteria:
-    - rok in range [rok_od, rok_do]
-    - has pbn_uid_id (synced with PBN)
-    - has at least one author with:
-      - dyscyplina_naukowa is not NULL
-      - zatrudniony=True
-      - afiliuje=True
-      - jednostka != Uczelnia.obca_jednostka
-    - (optional) title contains search text (case-insensitive)
-    """
-    uczelnia = Uczelnia.objects.get_default()
-    obca_jednostka_id = uczelnia.obca_jednostka_id if uczelnia else None
-
-    base_filter = {
-        "rok__gte": rok_od,
-        "rok__lte": rok_do,
-        "pbn_uid_id__isnull": False,
-        "autorzy_set__dyscyplina_naukowa__isnull": False,
-        "autorzy_set__zatrudniony": True,
-        "autorzy_set__afiliuje": True,
-    }
-
-    ciagle_qs = Wydawnictwo_Ciagle.objects.filter(**base_filter).select_related(
-        "pbn_uid"
-    )
-    zwarte_qs = Wydawnictwo_Zwarte.objects.filter(**base_filter).select_related(
-        "pbn_uid"
-    )
-
-    # Exclude foreign unit if set
-    if obca_jednostka_id:
-        ciagle_qs = ciagle_qs.exclude(autorzy_set__jednostka_id=obca_jednostka_id)
-        zwarte_qs = zwarte_qs.exclude(autorzy_set__jednostka_id=obca_jednostka_id)
-
-    # Apply title filter if provided
-    if tytul:
-        ciagle_qs = ciagle_qs.filter(tytul_oryginalny__icontains=tytul)
-        zwarte_qs = zwarte_qs.filter(tytul_oryginalny__icontains=tytul)
-
-    return ciagle_qs.distinct(), zwarte_qs.distinct()
+from pbn_wysylka_oswiadczen.queries import get_publications_queryset
 
 
 def get_pbn_client(user):

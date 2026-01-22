@@ -15,12 +15,12 @@ from django.utils import timezone
 from bpp.const import GR_WPROWADZANIE_DANYCH
 from bpp.models import Uczelnia, Wydawnictwo_Ciagle
 from pbn_wysylka_oswiadczen.models import PbnWysylkaLog, PbnWysylkaOswiadczenTask
+from pbn_wysylka_oswiadczen.queries import get_publications_queryset
 from pbn_wysylka_oswiadczen.tasks import (
     _delete_existing_statements,
     _handle_http_400_error,
     _send_statements_with_retry,
     get_pbn_client,
-    get_publications_queryset,
     process_single_publication,
 )
 from pbn_wysylka_oswiadczen.views import (
@@ -902,20 +902,16 @@ def test_status_api_returns_json(client, uczelnia):
 @pytest.mark.django_db
 def test_get_publications_queryset_tylko_odpiete_parameter(uczelnia):
     """Test get_publications_queryset accepts tylko_odpiete parameter."""
-    from pbn_wysylka_oswiadczen.views import (
-        get_publications_queryset as get_publications_queryset_view,
-    )
-
     # Test with tylko_odpiete=False (default)
-    ciagle_qs, zwarte_qs = get_publications_queryset_view(
-        rok_od=2022, rok_do=2025, tylko_odpiete=False
+    ciagle_qs, zwarte_qs = get_publications_queryset(
+        rok_od=2022, rok_do=2025, tylko_odpiete=False, with_annotations=True
     )
     assert ciagle_qs.count() == 0
     assert zwarte_qs.count() == 0
 
     # Test with tylko_odpiete=True
-    ciagle_qs, zwarte_qs = get_publications_queryset_view(
-        rok_od=2022, rok_do=2025, tylko_odpiete=True
+    ciagle_qs, zwarte_qs = get_publications_queryset(
+        rok_od=2022, rok_do=2025, tylko_odpiete=True, with_annotations=True
     )
     assert ciagle_qs.count() == 0
     assert zwarte_qs.count() == 0
@@ -1019,16 +1015,16 @@ def publication_with_pbn_uid(
 @pytest.mark.django_db
 def test_get_publications_queryset_title_filter(publication_with_pbn_uid):
     """Test title filtering in get_publications_queryset."""
-    from pbn_wysylka_oswiadczen.views import (
-        get_publications_queryset as get_pubs_qs,
-    )
-
     # Should find with matching title
-    ciagle_qs, zwarte_qs = get_pubs_qs(rok_od=2022, rok_do=2022, tytul="of ionic")
+    ciagle_qs, zwarte_qs = get_publications_queryset(
+        rok_od=2022, rok_do=2022, tytul="of ionic"
+    )
     assert ciagle_qs.count() == 1
 
     # Should not find with non-matching title
-    ciagle_qs, zwarte_qs = get_pubs_qs(rok_od=2022, rok_do=2022, tytul="nonexistent")
+    ciagle_qs, zwarte_qs = get_publications_queryset(
+        rok_od=2022, rok_do=2022, tytul="nonexistent"
+    )
     assert ciagle_qs.count() == 0
 
 
@@ -1037,11 +1033,7 @@ def test_get_publications_queryset_title_filter_case_insensitive(
     publication_with_pbn_uid,
 ):
     """Test title filtering is case-insensitive."""
-    from pbn_wysylka_oswiadczen.views import (
-        get_publications_queryset as get_pubs_qs,
-    )
-
-    ciagle_qs, _ = get_pubs_qs(rok_od=2022, rok_do=2022, tytul="OF IONIC")
+    ciagle_qs, _ = get_publications_queryset(rok_od=2022, rok_do=2022, tytul="OF IONIC")
     assert ciagle_qs.count() == 1
 
 

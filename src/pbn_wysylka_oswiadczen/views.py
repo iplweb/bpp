@@ -1,7 +1,7 @@
 from io import BytesIO
 
 from django.core.paginator import Paginator
-from django.db.models import Count, Q, Sum
+from django.db.models import Sum
 from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
 from django.utils.decorators import method_decorator
@@ -11,8 +11,8 @@ from openpyxl import Workbook
 from queryset_sequence import QuerySetSequence
 
 from bpp.const import GR_WPROWADZANIE_DANYCH
-from bpp.models import Uczelnia, Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
 from pbn_wysylka_oswiadczen.models import PbnWysylkaLog, PbnWysylkaOswiadczenTask
+from pbn_wysylka_oswiadczen.queries import get_publications_queryset
 from pbn_wysylka_oswiadczen.tasks import wysylka_oswiadczen_task
 
 
@@ -41,82 +41,6 @@ def group_required(group_name):
     return decorator
 
 
-def get_publications_queryset(
-    rok_od=2022, rok_do=2025, tytul=None, tylko_odpiete=False
-):
-    """
-    Get publications that need statements sent to PBN.
-
-    Criteria:
-    - rok in range [rok_od, rok_do]
-    - has pbn_uid_id (synced with PBN)
-    - has at least one author with:
-      - dyscyplina_naukowa is not NULL
-      - zatrudniony=True
-      - afiliuje=True
-      - jednostka != Uczelnia.obca_jednostka
-    - (optional) title contains search text (case-insensitive)
-    - (optional) tylko_odpiete: only publications with all declarations unattached
-      (liczba_oswiadczen > 0 AND liczba_przypietych == 0)
-    """
-    uczelnia = Uczelnia.objects.get_default()
-    obca_jednostka_id = uczelnia.obca_jednostka_id if uczelnia else None
-
-    base_filter = {
-        "rok__gte": rok_od,
-        "rok__lte": rok_do,
-        "pbn_uid_id__isnull": False,
-        "autorzy_set__dyscyplina_naukowa__isnull": False,
-        "autorzy_set__zatrudniony": True,
-        "autorzy_set__afiliuje": True,
-    }
-
-    # Annotations for counts
-    annotations = {
-        "liczba_oswiadczen": Count(
-            "autorzy_set__pk",
-            filter=Q(autorzy_set__dyscyplina_naukowa__isnull=False),
-            distinct=True,
-        ),
-        "liczba_przypietych": Count(
-            "autorzy_set__pk",
-            filter=Q(
-                autorzy_set__przypieta=True,
-                autorzy_set__dyscyplina_naukowa__isnull=False,
-            ),
-            distinct=True,
-        ),
-    }
-
-    ciagle_qs = (
-        Wydawnictwo_Ciagle.objects.filter(**base_filter)
-        .select_related("pbn_uid")
-        .annotate(**annotations)
-    )
-    zwarte_qs = (
-        Wydawnictwo_Zwarte.objects.filter(**base_filter)
-        .select_related("pbn_uid")
-        .annotate(**annotations)
-    )
-
-    # Exclude foreign unit if set
-    if obca_jednostka_id:
-        ciagle_qs = ciagle_qs.exclude(autorzy_set__jednostka_id=obca_jednostka_id)
-        zwarte_qs = zwarte_qs.exclude(autorzy_set__jednostka_id=obca_jednostka_id)
-
-    # Apply title filter if provided
-    if tytul:
-        ciagle_qs = ciagle_qs.filter(tytul_oryginalny__icontains=tytul)
-        zwarte_qs = zwarte_qs.filter(tytul_oryginalny__icontains=tytul)
-
-    # Apply tylko_odpiete filter (publications with all declarations unattached)
-    if tylko_odpiete:
-        ciagle_qs = ciagle_qs.filter(liczba_oswiadczen__gt=0, liczba_przypietych=0)
-        zwarte_qs = zwarte_qs.filter(liczba_oswiadczen__gt=0, liczba_przypietych=0)
-
-    return ciagle_qs.distinct(), zwarte_qs.distinct()
-
-
 @method_decorator(group_required(GR_WPROWADZANIE_DANYCH), name="dispatch")
 class PbnWysylkaOswiadczenMainView(TemplateView):
     """Main dashboard for PBN statement sending."""
@@ -134,7 +58,7 @@ class PbnWysylkaOswiadczenMainView(TemplateView):
 
         # Get publication counts
         ciagle_qs, zwarte_qs = get_publications_queryset(
-            rok_od, rok_do, tytul or None, tylko_odpiete
+            rok_od, rok_do, tytul or None, tylko_odpiete, with_annotations=True
         )
         ciagle_count = ciagle_qs.count()
         zwarte_count = zwarte_qs.count()
@@ -189,7 +113,7 @@ class PublicationListView(TemplateView):
 
         # Get publications
         ciagle_qs, zwarte_qs = get_publications_queryset(
-            rok_od, rok_do, tytul or None, tylko_odpiete
+            rok_od, rok_do, tytul or None, tylko_odpiete, with_annotations=True
         )
 
         # Combine querysets
@@ -430,7 +354,7 @@ class ExcelExportView(View):
 
         # Get publications
         ciagle_qs, zwarte_qs = get_publications_queryset(
-            rok_od, rok_do, tytul or None, tylko_odpiete
+            rok_od, rok_do, tytul or None, tylko_odpiete, with_annotations=True
         )
         combined_qs = QuerySetSequence(ciagle_qs, zwarte_qs)
 
