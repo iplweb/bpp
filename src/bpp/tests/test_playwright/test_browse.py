@@ -16,7 +16,7 @@ def autorzy_page(page: Page, live_server):
         baker.make(Autor, nazwisko=f"Btest{i}", imiona="bar")
 
     page.goto(live_server.url + reverse("bpp:browse_autorzy"))
-    page.wait_for_load_state("networkidle")
+    page.wait_for_load_state("load")
     page.evaluate("Cookielaw.accept()")
     return page
 
@@ -69,7 +69,7 @@ def zrodla_page(page: Page, live_server):
         baker.make(Zrodlo, nazwa=f"Btest{i}")
 
     page.goto(live_server.url + reverse("bpp:browse_zrodla"))
-    page.wait_for_load_state("networkidle")
+    page.wait_for_load_state("load")
     page.evaluate("Cookielaw.accept()")
     return page
 

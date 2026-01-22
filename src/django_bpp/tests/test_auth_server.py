@@ -74,3 +74,25 @@ def test_auth_server_health_endpoint():
 
     assert response.status_code == 200
     assert response.content == b"ok"
+
+
+def test_auth_server_has_rollbar_config():
+    """
+    Verify auth server settings include ROLLBAR configuration.
+
+    The bpp app's ready() method calls configure_rollbar() which requires
+    settings.ROLLBAR to exist. This test ensures the auth server settings
+    include ROLLBAR to prevent AttributeError on startup.
+
+    Regression test for: AttributeError: 'Settings' object has no attribute
+    'ROLLBAR'
+    """
+    from django_bpp.settings import auth_server
+
+    assert hasattr(auth_server, "ROLLBAR"), (
+        "auth_server settings must include ROLLBAR configuration "
+        "because bpp app is in INSTALLED_APPS and calls configure_rollbar()"
+    )
+    assert isinstance(auth_server.ROLLBAR, dict)
+    assert "access_token" in auth_server.ROLLBAR
+    assert "environment" in auth_server.ROLLBAR

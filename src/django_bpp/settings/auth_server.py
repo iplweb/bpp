@@ -26,6 +26,8 @@ from django_bpp.settings.production import (  # noqa: F401
     # Redis settings
     REDIS_HOST,
     REDIS_PORT,
+    # Rollbar configuration
+    ROLLBAR,
     # Critical shared settings (Django reads these from module namespace)
     SECRET_KEY,
     SESSION_COOKIE_HTTPONLY,
