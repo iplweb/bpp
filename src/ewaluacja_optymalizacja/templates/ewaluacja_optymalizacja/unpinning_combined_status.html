@@ -72,7 +72,7 @@
         {% if not task_ready and not error %}
         <div style="margin-top: 3rem; padding-top: 2rem; border-top: 1px solid #ccc;">
             <p class="text-muted" style="font-size: 0.85rem; color: #666;">
-                Jeśli zadanie się zawiesiło i nie kończy (np. worker Celery przestał działać),
+                Jeśli zadanie się zawiesiło i nie kończy,
                 możesz je anulować poniższym przyciskiem.
             </p>
             <form method="post" action="{% url 'ewaluacja_optymalizacja:cancel-unpinning-task' task_id %}"

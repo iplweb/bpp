@@ -8,6 +8,5 @@ if [ "$ENABLE_AUTORELOAD_ON_CODE_CHANGE" = "1" ] || [ "$ENABLE_AUTORELOAD_ON_COD
     uv pip install watchdog --quiet
     exec uv run watchmedo auto-restart --directory=/app/src --pattern=*.py --recursive --ignore-patterns '__pycache__/*;*.pyc' -- python src/manage.py denorm_queue
 else
-    echo "Auto-reload DISABLED for denorm-queue"
     exec uv run python src/manage.py denorm_queue
 fi

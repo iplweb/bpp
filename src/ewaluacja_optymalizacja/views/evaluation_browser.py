@@ -309,6 +309,64 @@ def _prefetch_autor_slot_nazbierany(autor_dysc_pairs):
     return nazbierane
 
 
+def _apply_dyscyplina_nieprzypisana_filter(ciagle_qs, zwarte_qs, filters):
+    """Zastosuj filtr po dyscyplinie nieprzypisanej.
+
+    Filtr znajduje publikacje gdzie:
+    1. Autor jest DWUDYSCYPLINOWCEM (ma zarówno główną jak i subdyscyplinę)
+    2. Ma dyscyplinę X w profilu (główną lub sub) na dany rok
+    3. ALE publikacja ma przypisaną dyscyplinę Y (INNĄ niż X)
+
+    Celem jest znajdowanie "niewykorzystanych możliwości" - autorów
+    dwudyscyplinowców, którzy mogli użyć dyscypliny X, ale przypisali Y.
+    """
+    from django.db.models import Q
+
+    dyscyplina_nieprzypisana = filters.get("dyscyplina_nieprzypisana")
+    rok = filters.get("rok")
+
+    if not dyscyplina_nieprzypisana:
+        return ciagle_qs, zwarte_qs
+
+    dyscyplina_nieprzypisana_id = int(dyscyplina_nieprzypisana)
+    lata_filtra = [int(rok)] if rok else [2022, 2023, 2024, 2025]
+
+    # Znajdz DWUDYSCYPLINOWCÓW z dana dyscyplina (glowna lub subdyscyplina)
+    # Wymagamy subdyscyplina_naukowa__isnull=False - autor musi mieć dwie dyscypliny
+    autorzy_dwudyscyplinowcy = Autor_Dyscyplina.objects.filter(
+        Q(dyscyplina_naukowa_id=dyscyplina_nieprzypisana_id)
+        | Q(subdyscyplina_naukowa_id=dyscyplina_nieprzypisana_id),
+        rok__in=lata_filtra,
+        subdyscyplina_naukowa__isnull=False,
+    ).values_list("autor_id", flat=True)
+
+    # Filtruj publikacje gdzie autor ma INNĄ dyscyplinę przypisaną
+    # Wykluczamy publikacje gdzie przypisana dyscyplina = szukana dyscyplina
+    ciagle_with_dysc = (
+        Wydawnictwo_Ciagle_Autor.objects.filter(
+            autor_id__in=autorzy_dwudyscyplinowcy,
+            afiliuje=True,
+            zatrudniony=True,
+        )
+        .exclude(dyscyplina_naukowa_id=dyscyplina_nieprzypisana_id)
+        .values_list("rekord_id", flat=True)
+    )
+    ciagle_qs = ciagle_qs.filter(pk__in=ciagle_with_dysc)
+
+    zwarte_with_dysc = (
+        Wydawnictwo_Zwarte_Autor.objects.filter(
+            autor_id__in=autorzy_dwudyscyplinowcy,
+            afiliuje=True,
+            zatrudniony=True,
+        )
+        .exclude(dyscyplina_naukowa_id=dyscyplina_nieprzypisana_id)
+        .values_list("rekord_id", flat=True)
+    )
+    zwarte_qs = zwarte_qs.filter(pk__in=zwarte_with_dysc)
+
+    return ciagle_qs, zwarte_qs
+
+
 def _build_publication_list(
     pub_list,
     model_type,
@@ -377,7 +435,7 @@ def _get_filtered_publications(uczelnia, filters, reported_ids):
     if punkty_kbn:
         base_filter["punkty_kbn"] = punkty_kbn
 
-    # Pobierz publikacje obu typów
+    # Pobierz publikacje obu typow
     ciagle_qs = Wydawnictwo_Ciagle.objects.filter(**base_filter)
     zwarte_qs = Wydawnictwo_Zwarte.objects.filter(**base_filter)
 
@@ -385,7 +443,7 @@ def _get_filtered_publications(uczelnia, filters, reported_ids):
         ciagle_qs = ciagle_qs.filter(tytul_oryginalny__icontains=tytul)
         zwarte_qs = zwarte_qs.filter(tytul_oryginalny__icontains=tytul)
 
-    # Filtr po autorze z dyscypliną w raportowanych
+    # Filtr po autorze z dyscyplina w raportowanych
     author_filter = {
         "afiliuje": True,
         "zatrudniony": True,
@@ -406,6 +464,11 @@ def _get_filtered_publications(uczelnia, filters, reported_ids):
         **author_filter
     ).values_list("rekord_id", flat=True)
     zwarte_qs = zwarte_qs.filter(pk__in=zwarte_with_authors).distinct()
+
+    # Filtr po dyscyplinie nieprzypisanej
+    ciagle_qs, zwarte_qs = _apply_dyscyplina_nieprzypisana_filter(
+        ciagle_qs, zwarte_qs, filters
+    )
 
     # Pobierz content types
     ct_ciagle = ContentType.objects.get_for_model(Wydawnictwo_Ciagle)
@@ -604,6 +667,7 @@ def browser_table(request):
         "rok": request.GET.get("rok"),
         "tytul": request.GET.get("tytul"),
         "dyscyplina": request.GET.get("dyscyplina"),
+        "dyscyplina_nieprzypisana": request.GET.get("dyscyplina_nieprzypisana"),
         "nazwisko": request.GET.get("nazwisko"),
         "punkty_kbn": request.GET.get("punkty_kbn"),
     }

@@ -7,26 +7,37 @@ export PGPASSWORD="${DJANGO_BPP_DB_PASSWORD}"
 
 cd /app
 
-echo -n "Database migrations, if any... "
+# === PHASE 1: Migration (BLOCKING) ===
+echo "Database migrations..."
 uv run src/manage.py migrate
-echo "done."
+echo "Migrations done."
 
-echo -n "Update 500.html page... "
-uv run src/manage.py generate_500_page
-echo "done."
+# === PHASE 2: Background tasks ===
+echo "Starting background tasks..."
+(
+    echo "  [bg] collectstatic..."
+    uv run src/manage.py collectstatic --noinput -v0 --traceback
+    echo "  [bg] collectstatic done."
 
-echo -n "Running collectstatic and compress... "
-uv run src/manage.py collectstatic --noinput -v0 --traceback
-uv run src/manage.py compress -v0 --force --traceback
-echo "done."
+    echo "  [bg] compress..."
+    uv run src/manage.py compress -v0 --force --traceback
+    echo "  [bg] compress done."
 
-echo "Starting uvicorn... "
-if [ "$ENABLE_AUTORELOAD_ON_CODE_CHANGE" = "1" ] || [ "$ENABLE_AUTORELOAD_ON_CODE_CHANGE" = "true" ]; then
+    echo "  [bg] generate_500_page..."
+    uv run src/manage.py generate_500_page
+    echo "  [bg] generate_500_page done."
+
+    echo "  [bg] All background tasks completed."
+) &
+
+# === PHASE 3: Start server (immediately) ===
+echo "Starting uvicorn..."
+if [ "$ENABLE_AUTORELOAD_ON_CODE_CHANGE" = "1" ] || \
+   [ "$ENABLE_AUTORELOAD_ON_CODE_CHANGE" = "true" ]; then
     echo "Auto-reload ENABLED"
-    echo "Installing watchdog for auto-reload functionality..."
     uv pip install watchdog --quiet
-    uv run uvicorn --host 0 --port 8000 --reload --reload-dir /app/src django_bpp.asgi:application
+    exec uv run uvicorn --host 0 --port 8000 --reload \
+        --reload-dir /app/src django_bpp.asgi:application
 else
-    echo "Auto-reload DISABLED"
-    uv run uvicorn --host 0 --port 8000 django_bpp.asgi:application
+    exec uv run uvicorn --host 0 --port 8000 django_bpp.asgi:application
 fi
