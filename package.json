@@ -1,6 +1,6 @@
 {
     "name": "bpp-iplweb",
-    "version": "v202601.1338",
+    "version": "v202601.1339",
     "license": "MIT",
     "devDependencies": {
         "esbuild": "^0.27.2",
