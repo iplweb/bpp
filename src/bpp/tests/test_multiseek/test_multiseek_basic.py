@@ -214,6 +214,21 @@ def test_CharakterFormalnyQueryObject_value_from_web_none():
 
 
 @pytest.mark.django_db
+def test_CharakterFormalnyQueryObject_real_query_none():
+    """Test that real_query returns empty Q object when value is None.
+
+    This handles the case when a user selects a Charakter_Formalny that no longer
+    exists in the database - the query should return no results instead of crashing.
+    """
+    qobj = CharakterFormalnyQueryObject()
+    result = qobj.real_query(None, str(EQUAL))
+    # The result should be a Q object that matches no records
+    from bpp.models.cache import Rekord
+
+    assert Rekord.objects.filter(*(result,)).count() == 0
+
+
+@pytest.mark.django_db
 def test_JezykQueryObject_value_from_web_missing():
     """Test that value_from_web returns None for non-existent Jezyk."""
     result = JezykQueryObject().value_from_web("non-existent-jezyk-xyz-123")

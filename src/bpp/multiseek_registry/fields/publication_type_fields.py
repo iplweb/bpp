@@ -153,6 +153,9 @@ class CharakterFormalnyQueryObject(
         # self.queryset = queryset
 
     def real_query(self, value, operation, validate_operation=True):
+        if value is None:
+            return Q(pk__isnull=True)  # Return empty result for invalid filter value
+
         ret = None
 
         if operation in [str(x) for x in EQUALITY_OPS_ALL]:

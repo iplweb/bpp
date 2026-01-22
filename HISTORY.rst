@@ -4,6 +4,28 @@ Historia zmian
 
 .. towncrier release notes start
 
+bpp 202601.1337 (2026-01-22)
+============================
+
+Naprawione
+----------
+
+- Naprawiono błąd AttributeError w imporcie POLON gdy pole rodzaj_autora
+  w rekordzie Autor_Dyscyplina było puste. (import_polon_rodzaj_autora_none)
+- Naprawiono problem z drukowaniem tabel z wyszukiwarki multiseek w przeglądarce
+  Edge (formaty "Tabela" oraz "tabela z punktacją wewnętrzną"). Przyczyną był
+  atrybut CSS ``overflow: hidden``, który powodował ukrycie zawartości podczas
+  drukowania w starszych wersjach Edge. (multiseek-table-print-edge)
+
+
+Usprawnienie
+------------
+
+- Dodano raportowanie błędów do Rollbar w module importu danych z POLON.
+  Błędy podczas wczytywania plików Excel/CSV są teraz automatycznie
+  zgłaszane do systemu monitoringu wraz z kontekstem operacji. (rollbar-import-polon)
+
+
 bpp 202601.1336 (2026-01-21)
 ============================
 

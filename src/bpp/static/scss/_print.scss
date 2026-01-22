@@ -65,6 +65,7 @@
 
   .multiseek-table-report {
     box-shadow: none;
+    overflow: visible !important;  // Fix for Edge printing issue (similar to #409)
 
     tr {
       page-break-inside: avoid;

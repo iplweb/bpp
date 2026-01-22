@@ -1,5 +1,8 @@
+import sys
+
 import numpy as np
 import pandas as pd
+import rollbar
 
 
 def read_excel_or_csv_dataframe_guess_encoding(fn, header=0, nrows=None):
@@ -11,6 +14,10 @@ def read_excel_or_csv_dataframe_guess_encoding(fn, header=0, nrows=None):
             return pd.read_excel(fn, header=0, nrows=nrows).replace({np.nan: None})
         except ValueError as e:
             if "Excel file format cannot be determined" in str(e):
+                rollbar.report_exc_info(
+                    sys.exc_info(),
+                    extra_data={"context": "read_excel_or_csv", "file": fn},
+                )
                 raise ValueError(
                     "Plik nie jest rozpoznawany jako prawidłowy plik Excel. "
                     "Proszę sprawdzić, czy plik ma właściwy format .xlsx lub .xls "
@@ -19,6 +26,10 @@ def read_excel_or_csv_dataframe_guess_encoding(fn, header=0, nrows=None):
             raise
         except Exception as e:
             if "not supported" in str(e).lower():
+                rollbar.report_exc_info(
+                    sys.exc_info(),
+                    extra_data={"context": "read_excel_or_csv", "file": fn},
+                )
                 raise ValueError(
                     "Format pliku nie jest obsługiwany. Proszę użyć pliku Excel (.xlsx, .xls) lub CSV."
                 ) from e

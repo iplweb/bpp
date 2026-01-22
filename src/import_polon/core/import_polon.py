@@ -1,5 +1,8 @@
 import decimal
+import sys
 from decimal import Decimal
+
+import rollbar
 
 from bpp.models import (
     Autor_Dyscyplina,
@@ -261,6 +264,18 @@ def _update_rodzaj_autora(ad, jest_w_n_xlsx, jest_badawczy_xlsx):
     ops = []
     rodzaj_autora_zmieniony = False
 
+    # Obsługa przypadku gdy rodzaj_autora jest None
+    if ad.rodzaj_autora is None:
+        if jest_w_n_xlsx:
+            nowy_rodzaj = "N"
+        elif jest_badawczy_xlsx:
+            nowy_rodzaj = "B"
+        else:
+            nowy_rodzaj = "Z"
+        ad.rodzaj_autora = Rodzaj_Autora.objects.get(skrot=nowy_rodzaj)
+        ops.append(f"Ustawiam rodzaj autora na {ad.rodzaj_autora}")
+        return ops, True
+
     if jest_w_n_xlsx:
         if ad.rodzaj_autora.skrot != "N":
             ops.append(
@@ -388,6 +403,10 @@ def analyze_file_import_polon(fn, parent_model: ImportPlikuPolon):
     except ValueError as e:
         # Handle file format errors gracefully
         error_msg = str(e)
+        rollbar.report_exc_info(
+            sys.exc_info(),
+            extra_data={"context": "import_polon", "error_type": "file_format"},
+        )
         WierszImportuPlikuPolon.objects.create(
             parent=parent_model,
             dane_z_xls={},
@@ -399,6 +418,10 @@ def analyze_file_import_polon(fn, parent_model: ImportPlikuPolon):
     except Exception as e:
         # Handle any other unexpected errors
         error_msg = f"Błąd podczas wczytywania pliku: {str(e)}"
+        rollbar.report_exc_info(
+            sys.exc_info(),
+            extra_data={"context": "import_polon", "error_type": "unexpected"},
+        )
         WierszImportuPlikuPolon.objects.create(
             parent=parent_model,
             dane_z_xls={},
