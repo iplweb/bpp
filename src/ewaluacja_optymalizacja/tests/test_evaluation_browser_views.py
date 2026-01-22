@@ -374,9 +374,38 @@ def publikacja_autora_z_subdyscyplina(
 
 @pytest.mark.django_db
 def test_browser_table_filter_dyscyplina_nieprzypisana_glowna(
-    client, admin_user, uczelnia, dyscyplina_raportowana, publikacja_ciagle
+    client,
+    admin_user,
+    uczelnia,
+    dyscyplina_raportowana,
+    druga_dyscyplina_raportowana,
+    autor_z_subdyscyplina,
 ):
-    """Test filtra dyscyplina_nieprzypisana - znajduje po głównej dyscyplinie."""
+    """Test filtra dyscyplina_nieprzypisana - znajduje po głównej dyscyplinie.
+
+    Autor Nowak ma: główna=Informatyka, subdyscyplina=Matematyka.
+    Publikacja ma przypisaną Matematykę (sub).
+    Szukamy Informatyki (główna) - filtr powinien znaleźć tę publikację,
+    bo autor ma Informatykę dostępną, ale użył Matematyki.
+    """
+    autor, jednostka = autor_z_subdyscyplina
+
+    # Utwórz publikację z przypisaną subdyscypliną (Matematyka)
+    pub = baker.make(
+        Wydawnictwo_Ciagle,
+        rok=2023,
+        tytul_oryginalny="Publikacja z nieprzypisaną główną dyscypliną",
+    )
+    baker.make(
+        Wydawnictwo_Ciagle_Autor,
+        rekord=pub,
+        autor=autor,
+        jednostka=jednostka,
+        dyscyplina_naukowa=druga_dyscyplina_raportowana,  # Matematyka (sub)
+        afiliuje=True,
+        zatrudniony=True,
+    )
+
     client.force_login(admin_user)
     url = reverse("ewaluacja_optymalizacja:browser-table")
 
@@ -389,9 +418,10 @@ def test_browser_table_filter_dyscyplina_nieprzypisana_glowna(
 
     assert response.status_code == 200
     content = response.content.decode()
-    # Powinno znaleźć publikację bo autor ma Informatykę jako główną dyscyplinę
-    assert "Testowa publikacja" in content
-    assert "Kowalski" in content
+    # Powinno znaleźć publikację bo autor ma Informatykę jako główną,
+    # ale przypisał Matematykę do publikacji
+    assert "Publikacja z nieprzypisaną główną dyscypliną" in content
+    assert "Nowak" in content
 
 
 @pytest.mark.django_db
@@ -445,12 +475,22 @@ def test_browser_table_filter_dyscyplina_nieprzypisana_brak_wynikow(
 
 @pytest.mark.django_db
 def test_browser_table_filter_dyscyplina_nieprzypisana_z_rokiem(
-    client, admin_user, uczelnia, dyscyplina_raportowana, autor_z_dyscyplina
+    client,
+    admin_user,
+    uczelnia,
+    dyscyplina_raportowana,
+    druga_dyscyplina_raportowana,
+    autor_z_subdyscyplina,
 ):
-    """Test filtra dyscyplina_nieprzypisana z filtrem roku."""
-    autor, jednostka = autor_z_dyscyplina
+    """Test filtra dyscyplina_nieprzypisana z filtrem roku.
 
-    # Utwórz publikację na rok 2024
+    Autor Nowak ma: główna=Informatyka, sub=Matematyka.
+    Publikacje mają przypisaną Matematykę (sub).
+    Szukamy Informatyki (główna) z filtrem roku.
+    """
+    autor, jednostka = autor_z_subdyscyplina
+
+    # Utwórz publikację na rok 2024 z subdyscypliną (Matematyka)
     pub_2024 = baker.make(
         Wydawnictwo_Ciagle,
         rok=2024,
@@ -461,12 +501,12 @@ def test_browser_table_filter_dyscyplina_nieprzypisana_z_rokiem(
         rekord=pub_2024,
         autor=autor,
         jednostka=jednostka,
-        dyscyplina_naukowa=dyscyplina_raportowana,
+        dyscyplina_naukowa=druga_dyscyplina_raportowana,  # Matematyka (sub)
         afiliuje=True,
         zatrudniony=True,
     )
 
-    # Utwórz publikację na rok 2023
+    # Utwórz publikację na rok 2023 z subdyscypliną (Matematyka)
     pub_2023 = baker.make(
         Wydawnictwo_Ciagle,
         rok=2023,
@@ -477,7 +517,7 @@ def test_browser_table_filter_dyscyplina_nieprzypisana_z_rokiem(
         rekord=pub_2023,
         autor=autor,
         jednostka=jednostka,
-        dyscyplina_naukowa=dyscyplina_raportowana,
+        dyscyplina_naukowa=druga_dyscyplina_raportowana,  # Matematyka (sub)
         afiliuje=True,
         zatrudniony=True,
     )
@@ -485,7 +525,7 @@ def test_browser_table_filter_dyscyplina_nieprzypisana_z_rokiem(
     client.force_login(admin_user)
     url = reverse("ewaluacja_optymalizacja:browser-table")
 
-    # Filtruj po roku 2024 i dyscyplinie nieprzypisanej
+    # Filtruj po roku 2024 i dyscyplinie nieprzypisanej (Informatyka - główna)
     response = client.get(
         url,
         {
@@ -571,3 +611,84 @@ def test_browser_table_filter_dyscyplina_nieprzypisana_inna_dyscyplina_przypisan
     content = response.content.decode()
     # Nie powinno znaleźć publikacji Nowaka - nie ma Fizyki w profilu
     assert "Nowak" not in content
+
+
+@pytest.mark.django_db
+def test_browser_table_filter_dyscyplina_nieprzypisana_jednodyscyplinowiec_wykluczony(
+    client, admin_user, uczelnia, dyscyplina_raportowana, publikacja_ciagle
+):
+    """Test że autor z jedną dyscypliną NIE jest znajdowany.
+
+    Filtr dyscyplina_nieprzypisana powinien znajdować tylko dwudyscyplinowców
+    (autorów z główną I subdyscypliną). Autorzy z jedną dyscypliną nie mają
+    możliwości zamiany dyscyplin, więc nie powinni być znajdowani.
+
+    Autor Kowalski ma TYLKO Informatykę (bez subdyscypliny).
+    Publikacja ma przypisaną Informatykę.
+    """
+    client.force_login(admin_user)
+    url = reverse("ewaluacja_optymalizacja:browser-table")
+
+    # Szukamy Informatyki - ale autor Kowalski ma tylko jedną dyscyplinę
+    response = client.get(
+        url,
+        {"dyscyplina_nieprzypisana": str(dyscyplina_raportowana.pk)},
+        HTTP_HX_REQUEST="true",
+    )
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    # NIE powinno znaleźć publikacji bo autor nie jest dwudyscyplinowcem
+    assert "Kowalski" not in content
+
+
+@pytest.mark.django_db
+def test_browser_table_filter_dyscyplina_nieprzypisana_ta_sama_dyscyplina_wykluczena(
+    client,
+    admin_user,
+    uczelnia,
+    dyscyplina_raportowana,
+    druga_dyscyplina_raportowana,
+    autor_z_subdyscyplina,
+):
+    """Test że publikacja z przypisaną szukaną dyscypliną NIE jest znajdowana.
+
+    Filtr dyscyplina_nieprzypisana szuka publikacji gdzie autor MÓGŁby użyć
+    dyscypliny X, ale przypisał dyscyplinę Y. Jeśli publikacja już ma
+    przypisaną szukaną dyscyplinę - nie powinna być znajdowana.
+
+    Autor Nowak ma: główna=Informatyka, sub=Matematyka.
+    Publikacja ma przypisaną Informatykę (szukaną dyscyplinę).
+    """
+    autor, jednostka = autor_z_subdyscyplina
+
+    # Utwórz publikację z przypisaną główną dyscypliną (Informatyka)
+    pub = baker.make(
+        Wydawnictwo_Ciagle,
+        rok=2023,
+        tytul_oryginalny="Publikacja z przypisaną szukaną dyscypliną",
+    )
+    baker.make(
+        Wydawnictwo_Ciagle_Autor,
+        rekord=pub,
+        autor=autor,
+        jednostka=jednostka,
+        dyscyplina_naukowa=dyscyplina_raportowana,  # Informatyka (szukana)
+        afiliuje=True,
+        zatrudniony=True,
+    )
+
+    client.force_login(admin_user)
+    url = reverse("ewaluacja_optymalizacja:browser-table")
+
+    # Szukamy Informatyki - ale publikacja już ma Informatykę przypisaną
+    response = client.get(
+        url,
+        {"dyscyplina_nieprzypisana": str(dyscyplina_raportowana.pk)},
+        HTTP_HX_REQUEST="true",
+    )
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    # NIE powinno znaleźć tej publikacji - już ma szukaną dyscyplinę przypisaną
+    assert "Publikacja z przypisaną szukaną dyscypliną" not in content
