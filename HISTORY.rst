@@ -4,6 +4,36 @@ Historia zmian
 
 .. towncrier release notes start
 
+bpp 202601.1338 (2026-01-22)
+============================
+
+Naprawione
+----------
+
+- Naprawiono filtr "dyscyplina nieprzypisana" w przeglądarce ewaluacji. Filtr
+  teraz prawidłowo znajduje tylko publikacje autorów dwudyscyplinowców, którzy
+  mieli możliwość użycia dyscypliny X, ale przypisali dyscyplinę Y. Wcześniej
+  filtr zwracał wszystkie publikacje autorów z daną dyscypliną, niezależnie od
+  tego czy była ona przypisana do publikacji i czy autor był dwudyscyplinowcem. (filtr-dyscyplina-nieprzypisana)
+- usunięto techniczne odniesienia do nazwy "Celery" z interfejsu użytkownika;
+  użytkownik końcowy nie powinien widzieć szczegółów implementacyjnych systemu kolejkowania zadań (remove-celery-ui-references)
+
+
+Usprawnienie
+------------
+
+- Zoptymalizowano czas startu serwera aplikacji. Migracje bazy danych wykonywane są synchronicznie,
+  natomiast zadania collectstatic, compress i generate_500_page uruchamiane są w tle równolegle
+  ze startem serwera uvicorn. Skraca to czas do dostępności serwera o ~15-90 sekund. (appserver-startup-optimization)
+- Przeglądarka ewaluacji: dodano nowy filtr "Dyscyplina nieprzypisana", który pozwala wyszukiwać publikacje autorów posiadających daną dyscyplinę (główną lub subdyscyplinę) w swoim profilu, niezależnie od tego jaką dyscyplinę mają przypisaną do konkretnej publikacji. Zmieniono również układ panelu filtrów na 2 wiersze po 3 elementy dla lepszej czytelności. (dyscyplina-nieprzypisana-filter)
+- Uproszczono kryteria doboru publikacji do wysyłki oświadczeń PBN. Publikacje są teraz
+  wybierane tylko na podstawie roku wydania i obecności PBN UID, bez dodatkowych wymagań
+  dotyczących autorów (dyscyplina, zatrudnienie, afiliacja, jednostka). Dzięki temu możliwe
+  jest "wyczyszczenie" błędnie wysłanych oświadczeń - gdy autor miał przypisaną dyscyplinę,
+  a następnie została ona usunięta, system nadal podejmie ponowną wysyłkę tej publikacji
+  w celu usunięcia starych oświadczeń z PBN. (simplify-pbn-publication-criteria)
+
+
 bpp 202601.1337 (2026-01-22)
 ============================
 
