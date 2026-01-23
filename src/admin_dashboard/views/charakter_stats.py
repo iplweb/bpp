@@ -1,14 +1,11 @@
 """Charakter formalny statistics views for admin dashboard."""
 
 from django.contrib.admin.views.decorators import staff_member_required
-from django.db.models import Count
+from django.db.models import Count, F
 from django.http import JsonResponse
 from django.views.decorators.cache import cache_page
 
-from bpp.models import (
-    Wydawnictwo_Ciagle,
-    Wydawnictwo_Zwarte,
-)
+from bpp.models import Charakter_Formalny
 
 
 def _get_admin_url_for_charakter(skrot, charakter_id, ciagle_count, zwarte_count):
@@ -45,70 +42,35 @@ def _get_charakter_counts():
     """
     Helper function to get charakter formalny counts from database.
     Returns list of tuples: (nazwa, count, skrot, id, ciagle_count, zwarte_count)
+
+    Optimized version using Django ORM with conditional aggregation.
+    Queries from Charakter_Formalny and counts related publications in single query.
     """
-    # Agreguj dane z obu typów publikacji z dodatkowymi polami
-    ciagle_by_char = (
-        Wydawnictwo_Ciagle.objects.exclude(charakter_formalny__isnull=True)
-        .values(
-            "charakter_formalny__nazwa",
-            "charakter_formalny__skrot",
-            "charakter_formalny__id",
+    # Query from Charakter_Formalny and count related publications
+    results = (
+        Charakter_Formalny.objects.annotate(
+            ciagle_count=Count("wydawnictwo_ciagle"),
+            zwarte_count=Count("wydawnictwo_zwarte"),
         )
-        .annotate(count=Count("id"))
-        .order_by("-count")
+        .annotate(total_count=F("ciagle_count") + F("zwarte_count"))
+        .filter(total_count__gt=0)
+        .values("nazwa", "skrot", "id", "ciagle_count", "zwarte_count", "total_count")
+        .order_by("-total_count")
     )
 
-    zwarte_by_char = (
-        Wydawnictwo_Zwarte.objects.exclude(charakter_formalny__isnull=True)
-        .values(
-            "charakter_formalny__nazwa",
-            "charakter_formalny__skrot",
-            "charakter_formalny__id",
-        )
-        .annotate(count=Count("id"))
-        .order_by("-count")
-    )
-
-    # Połącz dane z obu typów
-    # Struktura: {id: {'nazwa': str, 'skrot': str, 'ciagle': int, 'zwarte': int}}
-    char_data = {}
-
-    for entry in ciagle_by_char:
-        char_id = entry["charakter_formalny__id"]
-        if char_id not in char_data:
-            char_data[char_id] = {
-                "nazwa": entry["charakter_formalny__nazwa"],
-                "skrot": entry["charakter_formalny__skrot"],
-                "ciagle": 0,
-                "zwarte": 0,
-            }
-        char_data[char_id]["ciagle"] += entry["count"]
-
-    for entry in zwarte_by_char:
-        char_id = entry["charakter_formalny__id"]
-        if char_id not in char_data:
-            char_data[char_id] = {
-                "nazwa": entry["charakter_formalny__nazwa"],
-                "skrot": entry["charakter_formalny__skrot"],
-                "ciagle": 0,
-                "zwarte": 0,
-            }
-        char_data[char_id]["zwarte"] += entry["count"]
-
-    # Konwertuj do listy tupli i posortuj według łącznej liczby
-    result = [
+    # Convert to list of tuples matching the expected format
+    # (nazwa, total_count, skrot, id, ciagle_count, zwarte_count)
+    return [
         (
-            data["nazwa"],
-            data["ciagle"] + data["zwarte"],
-            data["skrot"],
-            char_id,
-            data["ciagle"],
-            data["zwarte"],
+            row["nazwa"],
+            row["total_count"],
+            row["skrot"],
+            row["id"],
+            row["ciagle_count"],
+            row["zwarte_count"],
         )
-        for char_id, data in char_data.items()
+        for row in results
     ]
-
-    return sorted(result, key=lambda x: x[1], reverse=True)
 
 
 @staff_member_required

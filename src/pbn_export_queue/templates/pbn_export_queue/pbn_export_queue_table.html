@@ -130,7 +130,7 @@
             <tr id="error-{{ item.pk }}">
                 <td></td>
                 <td colspan="8" class="pbn-export-queue__error-row-cell">
-                    <div class="pbn-export-queue__error-display">{{ item.komunikat|format_pbn_error }}</div>
+                    <div class="pbn-export-queue__error-display">{{ item.komunikat|format_pbn_error:item.rodzaj_bledu }}</div>
                 </td>
             </tr>
             {% endif %}

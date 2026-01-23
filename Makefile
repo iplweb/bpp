@@ -153,7 +153,7 @@ $(CSS_TARGETS): $(SCSS_SOURCES) $(NODE_MODULES)
 
 $(MO_FILES): $(PO_FILES)
 	# cd src &&  django-admin compilemessages
-	python src/manage.py compilemessages --locale=pl --ignore=site-packages
+	uv run python src/manage.py compilemessages --locale=pl --ignore=site-packages
 
 assets: $(CSS_TARGETS) $(MO_FILES)
 
@@ -322,7 +322,7 @@ loc: clean
 	pygount -N ... -F "...,staticroot,migrations,fixtures" src --format=summary
 
 
-DOCKER_VERSION=202601.1339
+DOCKER_VERSION=202601.1340
 
 # Cache configuration for docker buildx bake
 # - local: use local cache (default for local builds)
