@@ -153,7 +153,7 @@ $(CSS_TARGETS): $(SCSS_SOURCES) $(NODE_MODULES)
 
 $(MO_FILES): $(PO_FILES)
 	# cd src &&  django-admin compilemessages
-	python src/manage.py compilemessages --locale=pl --ignore=site-packages
+	uv run python src/manage.py compilemessages --locale=pl --ignore=site-packages
 
 assets: $(CSS_TARGETS) $(MO_FILES)
 
