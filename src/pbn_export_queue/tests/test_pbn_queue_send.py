@@ -6,6 +6,7 @@ For helper method tests, see test_pbn_queue_helpers.py
 For manager tests, see test_pbn_queue_manager.py
 """
 
+import json
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -15,10 +16,12 @@ from model_bakery import baker
 from pbn_api.exceptions import (
     CharakterFormalnyMissingPBNUID,
     CharakterFormalnyNieobslugiwanyError,
+    HttpException,
     PKZeroExportDisabled,
     PraceSerwisoweException,
+    StatementsMissing,
 )
-from pbn_export_queue.models import PBN_Export_Queue, SendStatus
+from pbn_export_queue.models import PBN_Export_Queue, RodzajBledu, SendStatus
 
 
 @pytest.mark.django_db
@@ -315,3 +318,272 @@ class TestSendToPbn:
 
             queue_item.refresh_from_db()
             assert queue_item.retry_after_user_authorised is None
+
+
+@pytest.mark.django_db
+class TestHttpExceptionValidationClassification:
+    """
+    Regression tests to ensure HttpException with validation details
+    is classified as MERYTORYCZNY (not TECHNICZNY).
+
+    These tests prevent regression to the bug that existed before 2026-01-20
+    where validation errors were incorrectly classified as technical errors.
+    """
+
+    def test_http_400_with_details_isbn_duplicate(
+        self, wydawnictwo_ciagle, admin_user
+    ):
+        """ISBN duplicate error should be MERYTORYCZNY (regression test for ID 20)"""
+        queue_item = baker.make(
+            PBN_Export_Queue,
+            rekord_do_wysylki=wydawnictwo_ciagle,
+            zamowil=admin_user,
+        )
+
+        with patch(
+            "bpp.admin.helpers.pbn_api.cli.sprobuj_wyslac_do_pbn_celery"
+        ) as mock:
+            error_json = json.dumps(
+                {
+                    "code": 400,
+                    "message": "Bad Request",
+                    "description": "Validation failed.",
+                    "details": {
+                        "isbn": (
+                            "Publikacja o identycznym ISBN lub ISMN już istnieje!"
+                        )
+                    },
+                }
+            )
+            mock.side_effect = HttpException(400, "/api/v1/publications", error_json)
+
+            result = queue_item.send_to_pbn()
+
+            assert result == SendStatus.FINISHED_ERROR
+            queue_item.refresh_from_db()
+            assert queue_item.rodzaj_bledu == RodzajBledu.MERYTORYCZNY
+            assert "Błąd walidacji po stronie PBN" in queue_item.komunikat
+
+    def test_http_400_with_details_doi_duplicate(
+        self, wydawnictwo_ciagle, admin_user
+    ):
+        """DOI duplicate error should be MERYTORYCZNY (regression test for ID 19)"""
+        queue_item = baker.make(
+            PBN_Export_Queue,
+            rekord_do_wysylki=wydawnictwo_ciagle,
+            zamowil=admin_user,
+        )
+
+        with patch(
+            "bpp.admin.helpers.pbn_api.cli.sprobuj_wyslac_do_pbn_celery"
+        ) as mock:
+            error_json = json.dumps(
+                {
+                    "code": 400,
+                    "message": "Bad Request",
+                    "description": "Validation failed.",
+                    "details": {
+                        "doi": "Publikacja o identycznym numerze DOI już istnieje!"
+                    },
+                }
+            )
+            mock.side_effect = HttpException(400, "/api/v1/publications", error_json)
+
+            result = queue_item.send_to_pbn()
+
+            assert result == SendStatus.FINISHED_ERROR
+            queue_item.refresh_from_db()
+            assert queue_item.rodzaj_bledu == RodzajBledu.MERYTORYCZNY
+
+    def test_http_400_with_details_invalid_year(
+        self, wydawnictwo_ciagle, admin_user
+    ):
+        """Invalid year error should be MERYTORYCZNY (regression test for ID 11)"""
+        queue_item = baker.make(
+            PBN_Export_Queue,
+            rekord_do_wysylki=wydawnictwo_ciagle,
+            zamowil=admin_user,
+        )
+
+        with patch(
+            "bpp.admin.helpers.pbn_api.cli.sprobuj_wyslac_do_pbn_celery"
+        ) as mock:
+            error_json = json.dumps(
+                {
+                    "code": 400,
+                    "message": "Bad Request",
+                    "description": "Validation failed.",
+                    "details": {
+                        "year": (
+                            "Rok publikacji nie może być późniejszy"
+                            " od roku bieżącego!"
+                        )
+                    },
+                }
+            )
+            mock.side_effect = HttpException(400, "/api/v1/publications", error_json)
+
+            result = queue_item.send_to_pbn()
+
+            assert result == SendStatus.FINISHED_ERROR
+            queue_item.refresh_from_db()
+            assert queue_item.rodzaj_bledu == RodzajBledu.MERYTORYCZNY
+
+    def test_http_400_with_details_missing_book_id(
+        self, wydawnictwo_ciagle, admin_user
+    ):
+        """
+        Missing book.id error should be MERYTORYCZNY
+        (regression test for ID 9)
+        """
+        queue_item = baker.make(
+            PBN_Export_Queue,
+            rekord_do_wysylki=wydawnictwo_ciagle,
+            zamowil=admin_user,
+        )
+
+        with patch(
+            "bpp.admin.helpers.pbn_api.cli.sprobuj_wyslac_do_pbn_celery"
+        ) as mock:
+            error_json = json.dumps(
+                {
+                    "code": 400,
+                    "message": "Bad Request",
+                    "description": "Validation failed.",
+                    "details": {
+                        "book.id": (
+                            "Identyfikator źródła rozdziału (książki)"
+                            " jest wymagany!"
+                        )
+                    },
+                }
+            )
+            mock.side_effect = HttpException(400, "/api/v1/publications", error_json)
+
+            result = queue_item.send_to_pbn()
+
+            assert result == SendStatus.FINISHED_ERROR
+            queue_item.refresh_from_db()
+            assert queue_item.rodzaj_bledu == RodzajBledu.MERYTORYCZNY
+
+    def test_http_400_with_details_invalid_discipline(
+        self, wydawnictwo_ciagle, admin_user
+    ):
+        """
+        Invalid discipline error should be MERYTORYCZNY
+        (regression test for ID 25)
+        """
+        queue_item = baker.make(
+            PBN_Export_Queue,
+            rekord_do_wysylki=wydawnictwo_ciagle,
+            zamowil=admin_user,
+        )
+
+        with patch(
+            "bpp.admin.helpers.pbn_api.cli.sprobuj_wyslac_do_pbn_celery"
+        ) as mock:
+            error_json = json.dumps(
+                {
+                    "code": 400,
+                    "message": "Bad Request",
+                    "description": "Validation failed.",
+                    "details": {
+                        "statements.0": (
+                            "Dla wskazanej osoby nie podano prawidłowej dyscypliny!"
+                        )
+                    },
+                }
+            )
+            mock.side_effect = HttpException(400, "/api/v1/publications", error_json)
+
+            result = queue_item.send_to_pbn()
+
+            assert result == SendStatus.FINISHED_ERROR
+            queue_item.refresh_from_db()
+            assert queue_item.rodzaj_bledu == RodzajBledu.MERYTORYCZNY
+
+    def test_http_400_without_details_stays_techniczny(
+        self, wydawnictwo_ciagle, admin_user
+    ):
+        """
+        HTTP 400 without details should remain TECHNICZNY
+        (not all 400s are validation)
+        """
+        queue_item = baker.make(
+            PBN_Export_Queue,
+            rekord_do_wysylki=wydawnictwo_ciagle,
+            zamowil=admin_user,
+        )
+
+        with patch(
+            "bpp.admin.helpers.pbn_api.cli.sprobuj_wyslac_do_pbn_celery"
+        ) as mock:
+            error_json = json.dumps(
+                {
+                    "code": 400,
+                    "message": "Bad Request",
+                    "description": (
+                        "Some other server error without validation details"
+                    ),
+                }
+            )
+            mock.side_effect = HttpException(400, "/api/v1/publications", error_json)
+
+            result = queue_item.send_to_pbn()
+
+            assert result == SendStatus.FINISHED_ERROR
+            queue_item.refresh_from_db()
+            assert queue_item.rodzaj_bledu == RodzajBledu.TECHNICZNY
+
+    def test_http_500_stays_techniczny(self, wydawnictwo_ciagle, admin_user):
+        """
+        HTTP 500 errors should remain TECHNICZNY
+        (server errors, not validation)
+        """
+        queue_item = baker.make(
+            PBN_Export_Queue,
+            rekord_do_wysylki=wydawnictwo_ciagle,
+            zamowil=admin_user,
+        )
+
+        with patch(
+            "bpp.admin.helpers.pbn_api.cli.sprobuj_wyslac_do_pbn_celery"
+        ) as mock:
+            error_json = json.dumps(
+                {"code": 500, "message": "Internal Server Error"}
+            )
+            mock.side_effect = HttpException(500, "/api/v1/publications", error_json)
+
+            result = queue_item.send_to_pbn()
+
+            assert result == SendStatus.FINISHED_ERROR
+            queue_item.refresh_from_db()
+            assert queue_item.rodzaj_bledu == RodzajBledu.TECHNICZNY
+
+    def test_statements_missing_is_merytoryczny(
+        self, wydawnictwo_ciagle, admin_user
+    ):
+        """
+        StatementsMissing error should be MERYTORYCZNY
+        (business error - missing author statements/disciplines)
+        """
+        queue_item = baker.make(
+            PBN_Export_Queue,
+            rekord_do_wysylki=wydawnictwo_ciagle,
+            zamowil=admin_user,
+        )
+
+        with patch(
+            "bpp.admin.helpers.pbn_api.cli.sprobuj_wyslac_do_pbn_celery"
+        ) as mock:
+            mock.side_effect = StatementsMissing(
+                "Nie wyślę rekordu artykułu lub rozdziału bez zadeklarowanych "
+                "oświadczeń autorów (dyscyplin)."
+            )
+
+            result = queue_item.send_to_pbn()
+
+            assert result == SendStatus.FINISHED_ERROR
+            queue_item.refresh_from_db()
+            assert queue_item.rodzaj_bledu == RodzajBledu.MERYTORYCZNY
+            assert "Rekord nie może być wysłany do PBN" in queue_item.komunikat

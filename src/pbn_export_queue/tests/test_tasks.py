@@ -1,19 +1,19 @@
 from unittest.mock import MagicMock
 
 import pytest
+from django.contrib.contenttypes.models import ContentType
+from django.utils import timezone
 from model_bakery import baker
 
-from pbn_export_queue.models import PBN_Export_Queue, SendStatus
+from bpp.models import Wydawnictwo_Ciagle
+from pbn_export_queue.models import PBN_Export_Queue, RodzajBledu, SendStatus
 from pbn_export_queue.tasks import (
     kolejka_ponow_wysylke_prac_po_zalogowaniu,
     kolejka_wyczysc_wpisy_bez_rekordow,
     queue_pbn_export_batch,
+    report_technical_errors_to_rollbar,
     task_sprobuj_wyslac_do_pbn,
 )
-
-from django.contrib.contenttypes.models import ContentType
-
-from bpp.models import Wydawnictwo_Ciagle
 
 
 @pytest.mark.django_db(transaction=True)
@@ -395,3 +395,62 @@ def test_check_and_send_next_in_queue_with_locks(mocker):
     assert items[0].pk not in called_pks
     assert items[1].pk in called_pks
     assert items[2].pk in called_pks
+
+
+@pytest.mark.django_db
+def test_report_technical_errors_to_rollbar_with_errors(mocker, admin_user):
+    """Test that technical errors are reported to Rollbar when they exist."""
+    # Create some technical errors (finished with errors)
+    for _ in range(3):
+        baker.make(
+            PBN_Export_Queue,
+            rodzaj_bledu=RodzajBledu.TECHNICZNY,
+            wysylke_zakonczono=timezone.now(),  # Must be finished
+            zamowil=admin_user,
+        )
+
+    # Create some MERYTORYCZNY errors (should not be counted)
+    baker.make(
+        PBN_Export_Queue,
+        rodzaj_bledu=RodzajBledu.MERYTORYCZNY,
+        wysylke_zakonczono=timezone.now(),
+        zamowil=admin_user,
+    )
+
+    # Create an unfinished TECHNICZNY error (should not be counted)
+    baker.make(
+        PBN_Export_Queue,
+        rodzaj_bledu=RodzajBledu.TECHNICZNY,
+        wysylke_zakonczono=None,
+        zamowil=admin_user,
+    )
+
+    mock_rollbar = mocker.patch("pbn_export_queue.tasks.rollbar.report_message")
+
+    result = report_technical_errors_to_rollbar()
+
+    assert result == 3
+    mock_rollbar.assert_called_once()
+    call_args = mock_rollbar.call_args
+    assert "3 TECHNICAL errors" in call_args[0][0]
+    assert call_args[1]["level"] == "warning"
+    assert call_args[1]["extra_data"]["technical_errors_count"] == 3
+
+
+@pytest.mark.django_db
+def test_report_technical_errors_to_rollbar_no_errors(mocker, admin_user):
+    """Test that nothing is reported when there are no technical errors."""
+    # Create only MERYTORYCZNY errors
+    baker.make(
+        PBN_Export_Queue,
+        rodzaj_bledu=RodzajBledu.MERYTORYCZNY,
+        wysylke_zakonczono=timezone.now(),
+        zamowil=admin_user,
+    )
+
+    mock_rollbar = mocker.patch("pbn_export_queue.tasks.rollbar.report_message")
+
+    result = report_technical_errors_to_rollbar()
+
+    assert result == 0
+    mock_rollbar.assert_not_called()

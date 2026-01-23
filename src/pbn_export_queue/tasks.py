@@ -1,5 +1,6 @@
 from datetime import timedelta
 
+import rollbar
 from django.apps import apps
 from django.core.cache import cache
 from django.utils import timezone
@@ -7,7 +8,7 @@ from django.utils import timezone
 from django_bpp.celery_tasks import app
 from long_running.util import wait_for_object
 
-from .models import PBN_Export_Queue, SendStatus
+from .models import PBN_Export_Queue, RodzajBledu, SendStatus
 
 # Konfiguracja locków
 LOCK_TIMEOUT = 300  # 5 minut timeout dla locka
@@ -211,3 +212,32 @@ def queue_watchdog():
             woken += 1
 
     return woken
+
+
+@app.task
+def report_technical_errors_to_rollbar():
+    """
+    Raportuje do Rollbar liczbę błędów technicznych w kolejce PBN.
+    Uruchamiane przez Celery Beat raz dziennie.
+
+    Raportuje jedynie jeśli liczba błędów jest większa niż 0.
+    """
+    technical_errors_count = PBN_Export_Queue.objects.filter(
+        rodzaj_bledu=RodzajBledu.TECHNICZNY, wysylke_zakonczono__isnull=False
+    ).count()
+
+    if technical_errors_count > 0:
+        rollbar.report_message(
+            (
+                f"PBN Export Queue contains {technical_errors_count} "
+                "TECHNICAL errors that require investigation"
+            ),
+            level="warning",
+            extra_data={
+                "technical_errors_count": technical_errors_count,
+                "queue_name": "pbn_export_queue",
+                "error_type": "TECHNICZNY",
+            },
+        )
+
+    return technical_errors_count

@@ -63,12 +63,20 @@ def _parse_exception_parts(exception_line: str) -> tuple[str, str] | None:
 
 
 def _format_error_list(
-    exception_type: str, error_code: str, endpoint: str, errors: list
+    exception_type: str,
+    error_code: str,
+    endpoint: str,
+    errors: list,
+    rodzaj_bledu: str | None = None,
 ) -> str:
     """Format a list of PBN errors into HTML."""
-    html_parts = [
-        f'<div class="pbn-error-header">{exception_type}: HTTP {error_code}</div>'
-    ]
+    html_parts = []
+
+    # For MERYTORYCZNY errors, skip redundant header
+    if rodzaj_bledu != "MERYT":
+        html_parts.append(
+            f'<div class="pbn-error-header">{exception_type}: HTTP {error_code}</div>'
+        )
 
     for error_item in errors:
         if isinstance(error_item, dict):
@@ -114,26 +122,37 @@ def _format_details(details) -> list[str]:
 
 
 def _format_error_object(
-    exception_type: str, error_code: str, endpoint: str, error: dict
+    exception_type: str,
+    error_code: str,
+    endpoint: str,
+    error: dict,
+    rodzaj_bledu: str | None = None,
 ) -> str:
     """Format a single error object into HTML."""
-    html_parts = [
-        f'<div class="pbn-error-header">{exception_type}: HTTP {error_code}</div>'
-    ]
+    html_parts = []
 
-    if "message" in error:
+    # For MERYTORYCZNY errors, skip redundant header/message/description
+    # and show only the validation details
+    if rodzaj_bledu != "MERYT":
         html_parts.append(
-            f'<div class="pbn-error-detail"><strong>Wiadomość:</strong> {error["message"]}</div>'
+            f'<div class="pbn-error-header">{exception_type}: HTTP {error_code}</div>'
         )
 
-    if "description" in error:
-        html_parts.append(
-            f'<div class="pbn-error-detail"><strong>Opis:</strong> {error["description"]}</div>'
-        )
+        if "message" in error:
+            html_parts.append(
+                f'<div class="pbn-error-detail"><strong>Wiadomość:</strong> {error["message"]}</div>'
+            )
 
+        if "description" in error:
+            html_parts.append(
+                f'<div class="pbn-error-detail"><strong>Opis:</strong> {error["description"]}</div>'
+            )
+
+    # Always show details (this is what users need for MERYTORYCZNY errors)
     if "details" in error:
         html_parts.extend(_format_details(error["details"]))
 
+    # Always show endpoint for technical debugging
     html_parts.append(
         f'<div class="pbn-error-endpoint"><em>Endpoint: {endpoint}</em></div>'
     )
@@ -141,7 +160,11 @@ def _format_error_object(
 
 
 def _format_http_exception(
-    exception_type: str, error_code: str, endpoint: str, json_str: str
+    exception_type: str,
+    error_code: str,
+    endpoint: str,
+    json_str: str,
+    rodzaj_bledu: str | None = None,
 ) -> str | None:
     """Format HTTP exception with JSON payload. Returns None if JSON parsing fails."""
     # Unescape the JSON string
@@ -153,9 +176,13 @@ def _format_http_exception(
         return None
 
     if isinstance(error_json, list) and error_json:
-        return _format_error_list(exception_type, error_code, endpoint, error_json)
+        return _format_error_list(
+            exception_type, error_code, endpoint, error_json, rodzaj_bledu
+        )
 
-    return _format_error_object(exception_type, error_code, endpoint, error_json)
+    return _format_error_object(
+        exception_type, error_code, endpoint, error_json, rodzaj_bledu
+    )
 
 
 # Regex pattern for HttpException tuple format
@@ -166,11 +193,15 @@ _HTTP_EXCEPTION_PATTERN = re.compile(
 
 
 @register.filter(name="format_pbn_error")
-def format_pbn_error(value):
+def format_pbn_error(value, rodzaj_bledu=None):
     """
     Format PBN API error in a readable way.
     Extracts the last line with pbn_api.exceptions from traceback and formats it.
     Handles format: pbn_api.exceptions.HttpException: (400, '/api/v1/publications', '{"code":400,...}')
+
+    Args:
+        value: The error message/traceback string
+        rodzaj_bledu: Optional error type ('MERYT' or 'TECH') to control display
     """
     if not value:
         return ""
@@ -193,7 +224,7 @@ def format_pbn_error(value):
         if tuple_match:
             error_code, endpoint, json_str = tuple_match.groups()
             result = _format_http_exception(
-                exception_type, error_code, endpoint, json_str
+                exception_type, error_code, endpoint, json_str, rodzaj_bledu
             )
             if result:
                 return mark_safe(result)
