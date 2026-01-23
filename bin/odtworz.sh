@@ -9,7 +9,7 @@ set -euo pipefail
 BASEDIR=$(dirname "$0")
 
 # Default values
-NO_OWNER=false
+NO_OWNER=true
 DUMP_FILE=""
 
 # Parse command line options
@@ -19,20 +19,26 @@ while [[ $# -gt 0 ]]; do
             NO_OWNER=true
             shift
             ;;
+        -o|--with-owner)
+            NO_OWNER=false
+            shift
+            ;;
         -h|--help)
-            echo "Użycie: $0 [-n|--no-owner] <ścieżka_do_pliku_pg_dump>"
+            echo "Użycie: $0 [-o|--with-owner] <ścieżka_do_pliku_pg_dump>"
             echo ""
             echo "Ten skrypt odtwarza bazę danych BPP z backupu."
             echo ""
             echo "Opcje:"
-            echo "  -n, --no-owner  Nie przywracaj właścicieli obiektów"
-            echo "                  (pomija błędy brakujących ról)"
-            echo "  -h, --help      Wyświetl tę pomoc"
+            echo "  -o, --with-owner  Przywróć właścicieli obiektów z dumpu"
+            echo "                    (domyślnie: pomijaj właścicieli)"
+            echo "  -n, --no-owner    [przestarzałe] Nie przywracaj właścicieli"
+            echo "                    (to jest teraz domyślne zachowanie)"
+            echo "  -h, --help        Wyświetl tę pomoc"
             exit 0
             ;;
         -*)
             echo "Nieznana opcja: $1"
-            echo "Użycie: $0 [-n|--no-owner] <ścieżka_do_pliku_pg_dump>"
+            echo "Użycie: $0 [-o|--with-owner] <ścieżka_do_pliku_pg_dump>"
             exit 1
             ;;
         *)
@@ -45,7 +51,7 @@ done
 # Sprawdź czy podano parametr z plikiem pg_dump
 if [ -z "$DUMP_FILE" ]; then
     echo "Błąd: Wymagana jest ścieżka do pliku pg_dump"
-    echo "Użycie: $0 [-n|--no-owner] <ścieżka_do_pliku_pg_dump>"
+    echo "Użycie: $0 [-o|--with-owner] <ścieżka_do_pliku_pg_dump>"
     echo ""
     echo "Ten skrypt odtwarza bazę danych BPP z backupu."
     exit 1
