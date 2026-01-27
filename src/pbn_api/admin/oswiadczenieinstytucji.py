@@ -34,6 +34,8 @@ class OswiadczeniaInstytucjiAdmin(BasePBNAPIAdmin):
         "inOrcid",
         "type",
         "disciplines",
+        "addedTimestamp",
+        "statedTimestamp",
     ]
 
     readonly_fields = [
@@ -54,6 +56,7 @@ class OswiadczeniaInstytucjiAdmin(BasePBNAPIAdmin):
         "inOrcid",
         "area",
         "addedTimestamp",
+        "statedTimestamp",
     ]
 
     def odpowiednik_publikacji_w_bpp(self, obj: OswiadczenieInstytucji):

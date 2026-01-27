@@ -1,0 +1,1 @@
+Ulepszono metodę wyszukiwania autora przy integracji oświadczeń z PBN. Teraz oprócz wyszukiwania po pbn_uid_id, system próbuje również znaleźć autora po ORCID, a następnie po imieniu i nazwisku (case-insensitive). Dzięki temu autorzy bez przypisanego pbn_uid_id będą poprawnie dopasowywani podczas importu dyscyplin z oświadczeń PBN.

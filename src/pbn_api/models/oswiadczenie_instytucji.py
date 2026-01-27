@@ -21,6 +21,10 @@ class OswiadczenieInstytucji(LinkDoPBNMixin, models.Model):
     type = models.CharField(max_length=50)
     disciplines = models.JSONField(blank=True, null=True)
 
+    class Meta:
+        verbose_name = "Oświadczenie instytucji"
+        verbose_name_plural = "Oświadczenia instytucji"
+
     def get_bpp_publication(self):
         from bpp.models import (
             Praca_Doktorska,
@@ -57,10 +61,29 @@ class OswiadczenieInstytucji(LinkDoPBNMixin, models.Model):
     def get_bpp_autor(self):
         from bpp.models import Autor
 
+        # 1. Próba po pbn_uid_id
         try:
             return Autor.objects.get(pbn_uid_id=self.personId_id)
         except Autor.DoesNotExist:
-            return
+            pass
+
+        # 2. Próba po ORCID (jeśli naukowiec PBN ma ORCID)
+        if self.personId.orcid:
+            try:
+                return Autor.objects.get(orcid=self.personId.orcid)
+            except (Autor.DoesNotExist, Autor.MultipleObjectsReturned):
+                pass
+
+        # 3. Próba po imieniu i nazwisku (case-insensitive)
+        try:
+            return Autor.objects.get(
+                nazwisko__iexact=self.personId.lastName,
+                imiona__iexact=self.personId.name,
+            )
+        except (Autor.DoesNotExist, Autor.MultipleObjectsReturned):
+            pass
+
+        return None
 
     def get_bpp_wa(self):
         """Zwróć Wydawnictwo_*_Autor"""
@@ -88,10 +111,6 @@ class OswiadczenieInstytucji(LinkDoPBNMixin, models.Model):
 
         return Dyscyplina_Naukowa.objects.get(nazwa=self.disciplines["name"])
 
-    class Meta:
-        verbose_name = "Oświadczenie instytucji"
-        verbose_name_plural = "Oświadczenia instytucji"
-
     def sprobuj_skasowac_z_pbn(self, request=None, pbn_client=None):
         from bpp.models import Uczelnia
 
@@ -107,7 +126,7 @@ class OswiadczenieInstytucji(LinkDoPBNMixin, models.Model):
                 self.publicationId_id, self.personId_id, self.type
             )
         except HttpException as e:
-            raise StatementDeletionError(e.status_code, e.url, e.content)
+            raise StatementDeletionError(e.status_code, e.url, e.content) from e
 
     @transaction.atomic
     def delete(self, *args, **kw):
