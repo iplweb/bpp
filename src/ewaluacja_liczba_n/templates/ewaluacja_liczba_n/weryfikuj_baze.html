@@ -56,17 +56,41 @@
                     <span class="fi-alert"></span> Ostrzeżenie: Autor_Dyscyplina bez rodzaju zatrudnienia
                 </h5>
                 <div class="grid-x grid-margin-x">
-                    <div class="cell medium-8">
+                    <div class="cell medium-6">
                         <p>
-                            Liczba rekordów bez rodzaju zatrudnienia (brak danych): <strong>{{ bez_rodzaju_zatrudnienia }}</strong>
+                            Liczba rekordów bez rodzaju zatrudnienia (brak danych):
+                            <strong>{{ bez_rodzaju_zatrudnienia }}</strong>
                         </p>
-                        <p><small>Te rekordy wymagają uzupełnienia informacji o rodzaju zatrudnienia.</small></p>
+                        <p><small>Te rekordy wymagają uzupełnienia informacji
+                            o rodzaju zatrudnienia.</small></p>
                     </div>
-                    <div class="cell medium-4 text-right">
+                    <div class="cell medium-6 text-right">
                         <a href="/admin/bpp/autor_dyscyplina/?q={{ djangoql_queries.brak_danych|urlencode }}"
                            class="button alert" target="_blank">
                             <span class="fi-alert"></span> Zobacz problematyczne rekordy
                         </a>
+                        <form method="post"
+                              action="{% url 'ewaluacja_liczba_n:ustaw-rodzaj-autora' %}"
+                              style="margin-top: 0.5rem;">
+                            {% csrf_token %}
+                            <div class="input-group">
+                                <select name="rodzaj_autora" class="input-group-field"
+                                        required style="margin-bottom: 0;">
+                                    <option value="">-- wybierz rodzaj --</option>
+                                    {% for rodzaj in rodzaje_autora_lista %}
+                                    <option value="{{ rodzaj.id }}">
+                                        {{ rodzaj.nazwa }} ({{ rodzaj.skrot }})
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                <div class="input-group-button">
+                                    <button type="submit" class="button warning"
+                                            data-confirm="Czy na pewno ustawić wybrany rodzaj autora dla {{ bez_rodzaju_zatrudnienia }} rekordów? Tej operacji nie można cofnąć!">
+                                        <i class="fi-wrench"></i> Ustaw wszystkim
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
                     </div>
                 </div>
             </div>
@@ -78,9 +102,11 @@
             <h3>2. Autor_Dyscyplina bez informacji o wymiarze etatu</h3>
             <div class="grid-x grid-margin-x">
                 <div class="cell medium-8">
-                    <p>Liczba rekordów bez wymiaru etatu lub z wymiarem równym 0: <strong>{{ bez_wymiaru_etatu }}</strong></p>
+                    <p>Liczba rekordów bez wymiaru etatu lub z wymiarem równym 0:
+                        <strong>{{ bez_wymiaru_etatu }}</strong></p>
                     {% if bez_wymiaru_etatu > 0 %}
-                    <p><small>Brak wymiaru etatu uniemożliwia poprawne obliczenie liczby N dla dyscypliny.</small></p>
+                    <p><small>Brak wymiaru etatu uniemożliwia poprawne obliczenie
+                        liczby N dla dyscypliny.</small></p>
                     {% endif %}
                 </div>
                 <div class="cell medium-4 text-right">
@@ -89,6 +115,15 @@
                            class="button alert" target="_blank">
                             <i class="fi-alert"></i> Zobacz problematyczne rekordy
                         </a>
+                        <form method="post"
+                              action="{% url 'ewaluacja_liczba_n:ustaw-wymiar-etatu' %}"
+                              style="display: inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="button warning"
+                                    data-confirm="Czy na pewno ustawić wymiar etatu 1.0 dla {{ bez_wymiaru_etatu }} rekordów? Tej operacji nie można cofnąć!">
+                                <i class="fi-wrench"></i> Ustaw wymiar etatu 1.0 wszystkim
+                            </button>
+                        </form>
                     {% else %}
                         <span class="button success disabled">
                             <i class="fi-check"></i> Wszystko w porządku
@@ -98,27 +133,86 @@
             </div>
         </div>
 
-        <!-- Section 3: Without procent_dyscypliny -->
-        <div class="callout {% if bez_procent > 0 %}alert{% else %}success{% endif %}">
-            <h3>3. Autor_Dyscyplina z brakującymi procentami dyscyplin</h3>
+        <!-- Section 3: Without procent_dyscypliny (N/sloty authors) -->
+        <div class="callout {% if bez_procent_n_sloty > 0 %}alert{% else %}success{% endif %}">
+            <h3>3. Autor_Dyscyplina z brakującymi procentami dyscyplin
+                (autor w N lub licz sloty)</h3>
             <div class="grid-x grid-margin-x">
                 <div class="cell medium-8">
-                    <p>Liczba rekordów z problemami: <strong>{{ bez_procent }}</strong></p>
-                    {% if bez_procent > 0 %}
-                    <p><small>Sprawdzane problemy:</small></p>
+                    <p>Liczba rekordów z problemami: <strong>{{ bez_procent_n_sloty }}</strong></p>
+                    {% if bez_procent_n_sloty > 0 %}
+                    <p><small>Sprawdzane problemy (tylko autorzy z jest_w_n=True lub
+                        licz_sloty=True):</small></p>
                     <ul style="font-size: 0.9rem;">
                         <li>Brak procent_dyscypliny (dla dyscypliny głównej)</li>
                         <li>Przypisana subdyscyplina ale brak procent_subdyscypliny</li>
                     </ul>
-                    <p><small>Brak procentów uniemożliwia poprawne przypisanie udziałów do dyscyplin.</small></p>
+                    <p><small>Brak procentów uniemożliwia poprawne przypisanie udziałów
+                        do dyscyplin.</small></p>
                     {% endif %}
                 </div>
                 <div class="cell medium-4 text-right">
-                    {% if bez_procent > 0 %}
-                        <a href="/admin/bpp/autor_dyscyplina/?q={{ djangoql_queries.bez_procent|urlencode }}"
+                    {% if bez_procent_n_sloty > 0 %}
+                        <a href="/admin/bpp/autor_dyscyplina/?q={{ djangoql_queries.bez_procent_n_sloty|urlencode }}"
                            class="button alert" target="_blank">
                             <i class="fi-alert"></i> Zobacz problematyczne rekordy
                         </a>
+                        {% if bez_procent_n_sloty_do_naprawy > 0 %}
+                        <form method="post"
+                              action="{% url 'ewaluacja_liczba_n:ustaw-procent-n-sloty' %}"
+                              style="display: inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="button warning"
+                                    data-confirm="Czy na pewno ustawić procent dyscypliny 100% dla {{ bez_procent_n_sloty_do_naprawy }} rekordów (tylko autorzy z jedną dyscypliną)? Tej operacji nie można cofnąć!">
+                                <i class="fi-wrench"></i> Ustaw procent dyscypliny 100%
+                            </button>
+                        </form>
+                        <p><small style="color: #666;">Dotyczy tylko autorów z jedną
+                            dyscypliną ({{ bez_procent_n_sloty_do_naprawy }} rek.)</small></p>
+                        {% endif %}
+                    {% else %}
+                        <span class="button success disabled">
+                            <i class="fi-check"></i> Wszystko w porządku
+                        </span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 3.1: Without procent_dyscypliny (any author type) -->
+        <div class="callout {% if bez_procent_dowolny > 0 %}alert{% else %}success{% endif %}">
+            <h3>3.1. Autor_Dyscyplina z brakującymi procentami dyscyplin
+                (autor rodzaj dowolny)</h3>
+            <div class="grid-x grid-margin-x">
+                <div class="cell medium-8">
+                    <p>Liczba rekordów z problemami: <strong>{{ bez_procent_dowolny }}</strong></p>
+                    {% if bez_procent_dowolny > 0 %}
+                    <p><small>Sprawdzane problemy (niezależnie od rodzaju autora):</small></p>
+                    <ul style="font-size: 0.9rem;">
+                        <li>Brak procent_dyscypliny (dla dyscypliny głównej)</li>
+                        <li>Przypisana subdyscyplina ale brak procent_subdyscypliny</li>
+                    </ul>
+                    {% endif %}
+                </div>
+                <div class="cell medium-4 text-right">
+                    {% if bez_procent_dowolny > 0 %}
+                        <a href="/admin/bpp/autor_dyscyplina/?q={{ djangoql_queries.bez_procent_dowolny|urlencode }}"
+                           class="button alert" target="_blank">
+                            <i class="fi-alert"></i> Zobacz problematyczne rekordy
+                        </a>
+                        {% if bez_procent_dowolny_do_naprawy > 0 %}
+                        <form method="post"
+                              action="{% url 'ewaluacja_liczba_n:ustaw-procent-dowolny' %}"
+                              style="display: inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="button warning"
+                                    data-confirm="Czy na pewno ustawić procent dyscypliny 100% dla {{ bez_procent_dowolny_do_naprawy }} rekordów (tylko autorzy z jedną dyscypliną)? Tej operacji nie można cofnąć!">
+                                <i class="fi-wrench"></i> Ustaw procent dyscypliny 100%
+                            </button>
+                        </form>
+                        <p><small style="color: #666;">Dotyczy tylko autorów z jedną
+                            dyscypliną ({{ bez_procent_dowolny_do_naprawy }} rek.)</small></p>
+                        {% endif %}
                     {% else %}
                         <span class="button success disabled">
                             <i class="fi-check"></i> Wszystko w porządku
@@ -212,8 +306,13 @@
                 {% if bez_wymiaru_etatu > 0 %}
                 <li class="alert-text">⚠️ Wykryto {{ bez_wymiaru_etatu }} rekordów bez wymiaru etatu</li>
                 {% endif %}
-                {% if bez_procent > 0 %}
-                <li class="alert-text">⚠️ Wykryto {{ bez_procent }} rekordów z brakującymi procentami dyscyplin</li>
+                {% if bez_procent_n_sloty > 0 %}
+                <li class="alert-text">⚠️ Wykryto {{ bez_procent_n_sloty }} rekordów
+                    z brakującymi procentami dyscyplin (autor w N lub licz sloty)</li>
+                {% endif %}
+                {% if bez_procent_dowolny > 0 %}
+                <li class="alert-text">⚠️ Wykryto {{ bez_procent_dowolny }} rekordów
+                    z brakującymi procentami dyscyplin (autor rodzaj dowolny)</li>
                 {% endif %}
                 {% if zla_suma_procent > 0 %}
                 <li class="alert-text">⚠️ Wykryto {{ zla_suma_procent }} rekordów z nieprawidłową sumą procentów</li>
@@ -221,7 +320,7 @@
                 {% if liczba_obie_nieraportowane > 0 %}
                 <li class="alert-text">⚠️ Wykryto {{ liczba_obie_nieraportowane }} autorów z obiema dyscyplinami nie-raportowanymi</li>
                 {% endif %}
-                {% if bez_wymiaru_etatu == 0 and bez_procent == 0 and zla_suma_procent == 0 and liczba_obie_nieraportowane == 0 %}
+                {% if bez_wymiaru_etatu == 0 and bez_procent_n_sloty == 0 and bez_procent_dowolny == 0 and zla_suma_procent == 0 and liczba_obie_nieraportowane == 0 %}
                 <li class="success-text">✓ Wszystkie rekordy zawierają poprawne dane</li>
                 {% endif %}
             </ul>

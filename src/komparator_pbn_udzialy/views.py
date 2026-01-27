@@ -2,6 +2,7 @@ import logging
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, permission_required
+from django.contrib.contenttypes.models import ContentType
 from django.core.management import call_command
 from django.db import models
 from django.db.models import Q
@@ -158,10 +159,14 @@ class RozbieznoscDyscyplinPBNDetailView(DetailView):
         wydawnictwo_autor = rozbieznosc.get_wydawnictwo_autor()
 
         if wydawnictwo_autor:
+            publikacja = wydawnictwo_autor.rekord
             context["autor"] = wydawnictwo_autor.autor
-            context["publikacja"] = wydawnictwo_autor.rekord
+            context["publikacja"] = publikacja
             context["jednostka"] = wydawnictwo_autor.jednostka
             context["wydawnictwo_autor"] = wydawnictwo_autor
+            context["publikacja_content_type"] = ContentType.objects.get_for_model(
+                publikacja
+            )
 
         return context
 

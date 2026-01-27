@@ -87,9 +87,17 @@
                 {% endif %}
             </dl>
 
+            {% if publikacja_content_type %}
+            <a href="{% url 'admin:'|add:publikacja_content_type.app_label|add:'_'|add:publikacja_content_type.model|add:'_change' publikacja.pk %}"
+               class="button small" target="_blank">
+                <span class="fi-pencil"></span> Edytuj publikację
+            </a>
+            {% endif %}
+
             {% if wydawnictwo_autor %}
-            <a href="{% url 'admin:bpp_wydawnictwo_ciagle_autor_change' wydawnictwo_autor.pk %}" class="button tiny" target="_blank">
-                <span class="fi-pencil"></span> Edytuj przypisanie autora w panelu administracyjnym
+            <a href="{% url 'admin:'|add:rozbieznosc.content_type.app_label|add:'_'|add:rozbieznosc.content_type.model|add:'_change' wydawnictwo_autor.pk %}"
+               class="button small secondary" target="_blank">
+                <span class="fi-pencil"></span> Edytuj przypisanie autora
             </a>
             {% endif %}
         </div>

@@ -8,6 +8,10 @@ from .views import (
     ObliczLiczbeNView,
     SaveSankcjeView,
     UdzialyZaCaloscListView,
+    UstawProcentDyscyplinyDowolnyView,
+    UstawProcentDyscyplinyNSlotyView,
+    UstawRodzajAutoraView,
+    UstawWymiarEtatuView,
     WeryfikujBazeView,
 )
 
@@ -30,4 +34,24 @@ urlpatterns = [
         name="udzialy-za-calosc-export",
     ),
     path("weryfikuj-baze/", WeryfikujBazeView.as_view(), name="weryfikuj-baze"),
+    path(
+        "weryfikuj-baze/ustaw-wymiar-etatu/",
+        UstawWymiarEtatuView.as_view(),
+        name="ustaw-wymiar-etatu",
+    ),
+    path(
+        "weryfikuj-baze/ustaw-procent-n-sloty/",
+        UstawProcentDyscyplinyNSlotyView.as_view(),
+        name="ustaw-procent-n-sloty",
+    ),
+    path(
+        "weryfikuj-baze/ustaw-procent-dowolny/",
+        UstawProcentDyscyplinyDowolnyView.as_view(),
+        name="ustaw-procent-dowolny",
+    ),
+    path(
+        "weryfikuj-baze/ustaw-rodzaj-autora/",
+        UstawRodzajAutoraView.as_view(),
+        name="ustaw-rodzaj-autora",
+    ),
 ]
