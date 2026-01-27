@@ -231,6 +231,10 @@ def integruj_oswiadczenia_z_instytucji_pojedyncza_praca(  # noqa: C901
             rec.afiliuje = True
             rec.zatrudniony = True
 
+    # Ustaw data_oswiadczenia z statedTimestamp jeśli dostępne
+    if elem.statedTimestamp:
+        rec.data_oswiadczenia = elem.statedTimestamp
+
     rec.profil_orcid = elem.inOrcid
     rec.save()
 
