@@ -1,0 +1,60 @@
+<script type="text/javascript">
+    (function ($) {
+        $(document).ready(function () {
+            var pbnUidField = $("#id_pbn_uid");
+            var copyButton = $("<input id='id_pbn_uid_copy' type='button' " +
+                "value='Skopiuj PBN UID do schowka' style='margin-left: 5px;'/>");
+
+            copyButton.insertAfter(pbnUidField);
+
+            function updateButtonVisibility() {
+                var val = pbnUidField.val();
+                if (val && val.trim() !== '') {
+                    copyButton.show();
+                } else {
+                    copyButton.hide();
+                }
+            }
+
+            updateButtonVisibility();
+            pbnUidField.on('change select2:select select2:unselect select2:clear',
+                updateButtonVisibility);
+
+            function fallbackCopy(text) {
+                var textArea = document.createElement("textarea");
+                textArea.value = text;
+                textArea.style.cssText = "position:fixed;top:0;left:0;opacity:0;";
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    copyButton.val("Skopiowano!");
+                    setTimeout(function() { copyButton.val("Skopiuj PBN UID do schowka"); }, 2000);
+                } catch (err) {
+                    alert("Nie udalo sie skopiowac do schowka.");
+                }
+                document.body.removeChild(textArea);
+            }
+
+            copyButton.click(function () {
+                var pbnUid = pbnUidField.val();
+                if (!pbnUid || pbnUid.trim() === '') {
+                    alert("Pole 'Odpowiednik w PBN' jest puste.");
+                    return;
+                }
+
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(pbnUid).then(function() {
+                        copyButton.val("Skopiowano!");
+                        setTimeout(function() { copyButton.val("Skopiuj PBN UID do schowka"); }, 2000);
+                    }).catch(function() {
+                        fallbackCopy(pbnUid);
+                    });
+                } else {
+                    fallbackCopy(pbnUid);
+                }
+            });
+        });
+    }(django.jQuery));
+</script>

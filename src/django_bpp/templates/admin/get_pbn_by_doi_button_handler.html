@@ -8,6 +8,19 @@
             var doi_button = $("#id_doi_pbn_get");
             var orig = doi_button.val();
 
+            function updateDoiButtonVisibility() {
+                var val = i.val();
+                if (val && val.trim() !== '') {
+                    doi_button.hide();
+                } else {
+                    doi_button.show();
+                }
+            }
+
+            updateDoiButtonVisibility();
+            i.on('change select2:select select2:unselect select2:clear',
+                updateDoiButtonVisibility);
+
             doi_button.click(function () {
                 var t = $("#id_doi").val();
                 var rok = $("#id_rok").val();

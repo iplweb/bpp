@@ -21,16 +21,17 @@
 /* -------------------------------------------------------------------------------- */
 
 /* Inter Small (14px) */
+/* Inter has large x-height - reduced heading multipliers for visual balance */
 body.font-inter-small {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
     font-size: 14px !important;
     line-height: 1.5 !important;
 
-    // Scale all text elements
-    h1 { font-size: 1.75em !important; }
-    h2 { font-size: 1.5em !important; }
-    h3 { font-size: 1.25em !important; }
-    h4 { font-size: 1.1em !important; }
+    // Scale all text elements - adjusted for large x-height
+    h1 { font-size: 1.55em !important; }
+    h2 { font-size: 1.35em !important; }
+    h3 { font-size: 1.15em !important; }
+    h4 { font-size: 1.05em !important; }
 
     // Forms and inputs
     input, textarea, select {
@@ -64,15 +65,17 @@ body.font-inter-small {
 /* -------------------------------------------------------------------------------- */
 
 /* Open Sans Small (14px) */
+/* Open Sans has large x-height - reduced heading multipliers for visual balance */
 body.font-opensans-small {
     font-family: 'Open Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
     font-size: 14px !important;
     line-height: 1.5 !important;
 
-    h1 { font-size: 1.75em !important; }
-    h2 { font-size: 1.5em !important; }
-    h3 { font-size: 1.25em !important; }
-    h4 { font-size: 1.1em !important; }
+    // Adjusted for large x-height
+    h1 { font-size: 1.55em !important; }
+    h2 { font-size: 1.35em !important; }
+    h3 { font-size: 1.15em !important; }
+    h4 { font-size: 1.05em !important; }
 
     input, textarea, select {
         font-size: 13px !important;
@@ -103,16 +106,18 @@ body.font-opensans-small {
 /* -------------------------------------------------------------------------------- */
 
 /* Roboto Small (14px) */
+/* Roboto has medium-large x-height - slightly reduced heading multipliers */
 body.font-roboto-small {
     font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
     font-size: 14px !important;
     line-height: 1.5 !important;
     letter-spacing: 0.01em !important;
 
-    h1 { font-size: 1.75em !important; }
-    h2 { font-size: 1.5em !important; }
-    h3 { font-size: 1.25em !important; }
-    h4 { font-size: 1.1em !important; }
+    // Adjusted for medium x-height
+    h1 { font-size: 1.65em !important; }
+    h2 { font-size: 1.4em !important; }
+    h3 { font-size: 1.2em !important; }
+    h4 { font-size: 1.08em !important; }
 
     input, textarea, select {
         font-size: 13px !important;
@@ -142,11 +147,13 @@ body.font-roboto-small {
 /* -------------------------------------------------------------------------------- */
 
 /* Lato Small (14px) */
+/* Lato has small x-height - standard heading multipliers preserved */
 body.font-lato-small {
     font-family: 'Lato', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
     font-size: 14px !important;
     line-height: 1.5 !important;
 
+    // Standard values for small x-height font
     h1 { font-size: 1.75em !important; }
     h2 { font-size: 1.5em !important; }
     h3 { font-size: 1.25em !important; }
@@ -180,15 +187,17 @@ body.font-lato-small {
 /* -------------------------------------------------------------------------------- */
 
 /* Source Sans Pro Small (14px) */
+/* Source Sans Pro has medium x-height - slightly reduced heading multipliers */
 body.font-sourcesans-small {
     font-family: 'Source Sans Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
     font-size: 14px !important;
     line-height: 1.5 !important;
 
-    h1 { font-size: 1.75em !important; }
-    h2 { font-size: 1.5em !important; }
-    h3 { font-size: 1.25em !important; }
-    h4 { font-size: 1.1em !important; }
+    // Adjusted for medium x-height
+    h1 { font-size: 1.65em !important; }
+    h2 { font-size: 1.4em !important; }
+    h3 { font-size: 1.2em !important; }
+    h4 { font-size: 1.08em !important; }
 
     input, textarea, select {
         font-size: 13px !important;
@@ -352,15 +361,17 @@ body[class*="font-"] {
 /* -------------------------------------------------------------------------------- */
 
 /* Segoe UI Small (14px) */
+/* Segoe UI has medium x-height - slightly reduced heading multipliers */
 body.font-segoeui-small {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
     font-size: 14px !important;
     line-height: 1.5 !important;
 
-    h1 { font-size: 1.75em !important; }
-    h2 { font-size: 1.5em !important; }
-    h3 { font-size: 1.25em !important; }
-    h4 { font-size: 1.1em !important; }
+    // Adjusted for medium x-height
+    h1 { font-size: 1.65em !important; }
+    h2 { font-size: 1.4em !important; }
+    h3 { font-size: 1.2em !important; }
+    h4 { font-size: 1.08em !important; }
 
     input, textarea, select {
         font-size: 13px !important;
@@ -390,15 +401,17 @@ body.font-segoeui-small {
 /* -------------------------------------------------------------------------------- */
 
 /* Arial Small (14px) */
+/* Arial has medium x-height - slightly reduced heading multipliers */
 body.font-arial-small {
     font-family: Arial, Helvetica, sans-serif !important;
     font-size: 14px !important;
     line-height: 1.5 !important;
 
-    h1 { font-size: 1.75em !important; }
-    h2 { font-size: 1.5em !important; }
-    h3 { font-size: 1.25em !important; }
-    h4 { font-size: 1.1em !important; }
+    // Adjusted for medium x-height
+    h1 { font-size: 1.65em !important; }
+    h2 { font-size: 1.4em !important; }
+    h3 { font-size: 1.2em !important; }
+    h4 { font-size: 1.08em !important; }
 
     input, textarea, select {
         font-size: 13px !important;
@@ -428,16 +441,18 @@ body.font-arial-small {
 /* -------------------------------------------------------------------------------- */
 
 /* Verdana Small (14px) */
+/* Verdana has very large x-height - significantly reduced heading multipliers */
 body.font-verdana-small {
     font-family: Verdana, Geneva, Tahoma, sans-serif !important;
     font-size: 14px !important;
     line-height: 1.5 !important;
     letter-spacing: 0.01em !important;
 
-    h1 { font-size: 1.75em !important; }
-    h2 { font-size: 1.5em !important; }
-    h3 { font-size: 1.25em !important; }
-    h4 { font-size: 1.1em !important; }
+    // Adjusted for very large x-height - most significant reduction
+    h1 { font-size: 1.45em !important; }
+    h2 { font-size: 1.25em !important; }
+    h3 { font-size: 1.1em !important; }
+    h4 { font-size: 1.0em !important; }
 
     input, textarea, select {
         font-size: 13px !important;
@@ -467,11 +482,13 @@ body.font-verdana-small {
 /* -------------------------------------------------------------------------------- */
 
 /* Calibri Small (14px) */
+/* Calibri has small x-height - standard heading multipliers preserved */
 body.font-calibri-small {
     font-family: Calibri, Candara, 'Segoe UI', Optima, Arial, sans-serif !important;
     font-size: 14px !important;
     line-height: 1.5 !important;
 
+    // Standard values for small x-height font
     h1 { font-size: 1.75em !important; }
     h2 { font-size: 1.5em !important; }
     h3 { font-size: 1.25em !important; }
