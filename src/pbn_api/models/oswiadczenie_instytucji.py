@@ -3,7 +3,13 @@ from django.db import models, transaction
 
 from bpp.models import LinkDoPBNMixin, Typ_Odpowiedzialnosci
 
-from ..exceptions import HttpException, StatementDeletionError
+from ..exceptions import (
+    BPPAutorNotFound,
+    BPPAutorPublicationLinkNotFound,
+    BPPPublicationNotFound,
+    HttpException,
+    StatementDeletionError,
+)
 
 
 class OswiadczenieInstytucji(LinkDoPBNMixin, models.Model):
@@ -85,23 +91,42 @@ class OswiadczenieInstytucji(LinkDoPBNMixin, models.Model):
 
         return None
 
-    def get_bpp_wa(self):
-        """Zwróć Wydawnictwo_*_Autor"""
+    def get_bpp_wa_raises(self):
+        """Zwróć Wydawnictwo_*_Autor lub podnieś wyjątek z informacją co zawiodło."""
         pub = self.get_bpp_publication()
         if pub is None:
-            return
+            raise BPPPublicationNotFound(
+                f"Publikacja PBN {self.publicationId_id} nie ma odpowiednika w BPP"
+            )
 
         aut = self.get_bpp_autor()
         if aut is None:
-            return
+            raise BPPAutorNotFound(
+                f"Naukowiec PBN {self.personId_id} nie ma odpowiednika w BPP"
+            )
 
         try:
             return pub.autorzy_set.get(autor=aut)
+        except pub.autorzy_set.model.DoesNotExist as err:
+            raise BPPAutorPublicationLinkNotFound(
+                f"Autor {aut} nie jest powiązany z publikacją {pub}"
+            ) from err
         except MultipleObjectsReturned:
             return pub.autorzy_set.get(
                 autor=aut,
                 typ_odpowiedzialnosci=self.get_typ_odpowiedzialnosci(),
             )
+
+    def get_bpp_wa(self):
+        """Zwróć Wydawnictwo_*_Autor lub None (kompatybilność wsteczna)."""
+        try:
+            return self.get_bpp_wa_raises()
+        except (
+            BPPPublicationNotFound,
+            BPPAutorNotFound,
+            BPPAutorPublicationLinkNotFound,
+        ):
+            return None
 
     def get_bpp_discipline(self):
         from bpp.models import Dyscyplina_Naukowa

@@ -443,3 +443,52 @@ The project uses a sophisticated migration system with both Python and SQL migra
 - Never use unittest.TestCase classes or Django's TestCase
 - All test functions should be standalone functions with pytest fixtures
 - use ```@pytest.mark.django_db`` for tests using database
+
+## Exception Handling
+
+**NIGDY nie używaj catch-all exception handling (`except Exception`) który ukrywa szczegóły błędów!**
+
+### ❌ ŹLE - ukrywa błędy:
+```python
+try:
+    do_something()
+except Exception as e:
+    print(f"Błąd: {e}")  # Użytkownik nie widzi gdzie i dlaczego
+    error_count += 1
+```
+
+### ✅ DOBRZE - pozwól błędom się wywalić:
+```python
+# Łap tylko konkretne, oczekiwane wyjątki
+try:
+    do_something()
+except SpecificExpectedException as e:
+    handle_expected_case(e)
+# Nieoczekiwane błędy niech lecą z pełnym traceback
+```
+
+### ✅ DOBRZE - jeśli musisz złapać, pokaż pełny traceback:
+```python
+import traceback
+
+try:
+    do_something()
+except Exception:
+    traceback.print_exc()
+    raise  # lub reraise po logowaniu
+```
+
+### ✅ DOBRZE - raportuj do Rollbar jeśli łapiesz wyjątek procesu działającego w tle:
+```python
+import rollbar
+
+try:
+    do_something()
+except Exception:
+    rollbar.report_exc_info()
+    raise  # lub kontynuuj jeśli to dopuszczalne
+```
+
+**Zasada:** Kod nie powinien "działać za wszelką cenę". Błędy muszą być widoczne
+i debugowalne. W produkcji używaj `rollbar.report_exc_info()` do raportowania
+wyjątków.

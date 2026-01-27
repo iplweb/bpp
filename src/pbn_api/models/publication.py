@@ -118,6 +118,15 @@ class Publication(LinkDoPBNMixin, BasePBNMongoDBModel):
             zrodlo=self.matchuj_zrodlo_do_rekordu_bpp(),
         )
 
+    def get_bpp_publication(self):
+        """Zwraca rekord BPP powiązany przez PBN UID (bez fuzzy matching)."""
+        from bpp.models.cache import Rekord
+
+        try:
+            return Rekord.objects.get(pbn_uid_id=self.pk)
+        except (Rekord.DoesNotExist, Rekord.MultipleObjectsReturned):
+            return None
+
     @cached_property
     def rekord_w_bpp(self):
         from bpp.models.cache import Rekord

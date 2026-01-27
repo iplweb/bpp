@@ -4,10 +4,12 @@
     <li><a target="_blank" href="{{ original.link_do_pbn }}">PBN</a></li>
     <li><a target="_blank" href="{{ original.link_do_pi }}">PI</a></li>
     <li><a target="_blank" href="/admin/pbn_api/oswiadczenieinstytucji/?q={{ original.mongoId }}">Kopia ośw.</a></li>
-    {% if original.rekord_w_bpp %}
-        <li><a target="_blank" href="{{ original.rekord_w_bpp.original.get_absolute_url }}">BPP</a></li>
-    {% else %}
-        <li><a href="#" class="disabled">Brak dopasowania w BPP</a></li>
-    {% endif %}
+    {% with bpp_pub=original.get_bpp_publication %}
+        {% if bpp_pub %}
+            <li><a target="_blank" href="{{ bpp_pub.original.get_absolute_url }}">BPP</a></li>
+        {% else %}
+            <li><a href="#" class="disabled">🔴 Brak w BPP</a></li>
+        {% endif %}
+    {% endwith %}
     {{ block.super }}
 {% endblock %}

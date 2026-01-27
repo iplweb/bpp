@@ -7,10 +7,12 @@ from bpp.models import (
     Jednostka,
     Tytul,
     Wydawnictwo_Ciagle,
+    Wydawnictwo_Zwarte,
     Wydzial,
     Zrodlo,
 )
 from import_common.core import (
+    _isbn_matches,
     _part_numbers_compatible,
     matchuj_dyscypline,
     matchuj_publikacje,
@@ -449,3 +451,130 @@ def test_matchuj_publikacje_rozroznia_tom_i_tom_ii(zrodlo):
         year=2020,
     )
     assert result is None
+
+
+# ===== Testy dla _isbn_matches =====
+
+
+class MockCandidate:
+    """Klasa pomocnicza do testowania _isbn_matches."""
+
+    def __init__(self, isbn=None, e_isbn=None):
+        self.isbn = isbn
+        self.e_isbn = e_isbn
+
+
+@pytest.mark.parametrize(
+    "candidate_isbn,candidate_e_isbn,search_isbn,expected",
+    [
+        # Brak ISBN do porównania - zawsze True
+        (None, None, None, True),
+        ("978-83-7430-668-3", None, None, True),
+        # Kandydat bez ISBN - akceptujemy
+        (None, None, "978-83-7430-668-3", True),
+        ("", "", "978-83-7430-668-3", True),
+        # ISBN się zgadza
+        ("978-83-7430-668-3", None, "978-83-7430-668-3", True),
+        ("9788374306683", None, "978-83-7430-668-3", True),  # normalizacja
+        (None, "978-83-7430-668-3", "978-83-7430-668-3", True),  # e_isbn
+        # ISBN się NIE zgadza
+        ("978-83-7430-668-3", None, "9788374306706", False),
+        ("9788374306683", None, "9788374306706", False),
+        # Różne edycje tej samej książki - powinny NIE matchować
+        ("978-83-7430-668-3", None, "978-83-7430-670-6", False),
+    ],
+)
+def test_isbn_matches(candidate_isbn, candidate_e_isbn, search_isbn, expected):
+    """Test funkcji _isbn_matches sprawdzającej zgodność ISBN."""
+    candidate = MockCandidate(isbn=candidate_isbn, e_isbn=candidate_e_isbn)
+    assert _isbn_matches(candidate, search_isbn) == expected
+
+
+# ===== Testy dla matchuj_publikacje z różnymi ISBN =====
+
+
+@pytest.mark.django_db
+def test_matchuj_publikacje_rozroznia_rozdzialy_z_roznych_ksiazek():
+    """Rozdziały o tym samym tytule z różnych książek NIE powinny się matchować.
+
+    Przypadek: "Zaburzenia hemostazy w chorobach wątroby" z 2022 roku
+    występuje zarówno w "Interna Szczeklika 2022" (ISBN 978-83-7430-668-3)
+    jak i w "Interna Szczeklika 2022/23" (ISBN 9788374306706).
+    To są RÓŻNE publikacje!
+    """
+    # Utwórz rozdział z pierwszej książki (mały podręcznik)
+    baker.make(
+        Wydawnictwo_Zwarte,
+        tytul_oryginalny="Zaburzenia hemostazy w chorobach wątroby",
+        rok=2022,
+        isbn="9788374306706",  # mały podręcznik
+    )
+
+    # Szukamy rozdziału z dużej edycji - NIE powinno matchować
+    result = matchuj_publikacje(
+        Wydawnictwo_Zwarte,
+        title="Zaburzenia hemostazy w chorobach wątroby",
+        year=2022,
+        isbn="978-83-7430-668-3",  # duża edycja - inny ISBN!
+    )
+    assert result is None
+
+
+@pytest.mark.django_db
+def test_matchuj_publikacje_matchuje_rozdzialy_z_tej_samej_ksiazki():
+    """Rozdziały o tym samym tytule z tej samej książki POWINNY się matchować."""
+    pub = baker.make(
+        Wydawnictwo_Zwarte,
+        tytul_oryginalny="Zaburzenia hemostazy w chorobach wątroby",
+        rok=2022,
+        isbn="978-83-7430-668-3",
+    )
+
+    # Ten sam ISBN - powinno matchować
+    result = matchuj_publikacje(
+        Wydawnictwo_Zwarte,
+        title="Zaburzenia hemostazy w chorobach wątroby",
+        year=2022,
+        isbn="978-83-7430-668-3",
+    )
+    assert result == pub
+
+
+@pytest.mark.django_db
+def test_matchuj_publikacje_bez_isbn_matchuje_normalnie():
+    """Gdy nie podano ISBN, matchowanie po tytule działa normalnie."""
+    pub = baker.make(
+        Wydawnictwo_Zwarte,
+        tytul_oryginalny="Zaburzenia hemostazy w chorobach wątroby",
+        rok=2022,
+        isbn="978-83-7430-668-3",
+    )
+
+    # Brak ISBN w zapytaniu - powinno matchować (zachowanie wsteczne)
+    result = matchuj_publikacje(
+        Wydawnictwo_Zwarte,
+        title="Zaburzenia hemostazy w chorobach wątroby",
+        year=2022,
+    )
+    assert result == pub
+
+
+@pytest.mark.django_db
+def test_matchuj_publikacje_kandidat_bez_isbn_matchuje():
+    """Gdy kandydat nie ma ISBN, matchowanie po tytule akceptuje go."""
+    pub = baker.make(
+        Wydawnictwo_Zwarte,
+        tytul_oryginalny="Zaburzenia hemostazy w chorobach wątroby",
+        rok=2022,
+        isbn="",  # brak ISBN w bazie (pusty string zamiast None)
+        e_isbn="",
+    )
+
+    # Nawet z ISBN w zapytaniu - powinno matchować (kandydat bez ISBN)
+    result = matchuj_publikacje(
+        Wydawnictwo_Zwarte,
+        title="Zaburzenia hemostazy w chorobach wątroby",
+        year=2022,
+        isbn="978-83-7430-668-3",
+    )
+    assert result == pub

@@ -692,8 +692,45 @@ def _try_match_pub_by_uri(klass, title, public_uri, debug):
     return None
 
 
-def _try_match_pub_by_title(klass, title, year, debug):
-    """Próbuje dopasować publikację po podobieństwie tytułu."""
+def _isbn_matches(candidate, isbn):
+    """Sprawdza czy ISBN kandydata pasuje do szukanego ISBN.
+
+    Zwraca True jeśli:
+    - Nie mamy ISBN do porównania (isbn=None)
+    - Kandydat nie ma ISBN (akceptujemy)
+    - ISBN są takie same
+    """
+    if isbn is None:
+        return True
+
+    # Normalizuj ISBN wejściowy
+    ni = normalize_isbn(isbn)
+    if not ni:
+        return True
+
+    # Jeśli kandydat nie ma ISBN, akceptujemy (może to być ten sam rekord)
+    candidate_isbn = getattr(candidate, "isbn", None)
+    candidate_e_isbn = getattr(candidate, "e_isbn", None)
+
+    if not candidate_isbn and not candidate_e_isbn:
+        return True
+
+    # Sprawdź czy któryś ISBN pasuje
+    normalized_candidate_isbns = []
+    if candidate_isbn:
+        normalized_candidate_isbns.append(normalize_isbn(candidate_isbn))
+    if candidate_e_isbn:
+        normalized_candidate_isbns.append(normalize_isbn(candidate_e_isbn))
+    return ni in normalized_candidate_isbns
+
+
+def _try_match_pub_by_title(klass, title, year, debug, isbn=None):
+    """Próbuje dopasować publikację po podobieństwie tytułu.
+
+    Jeśli podano isbn, sprawdza dodatkowo czy kandydat ma zgodny ISBN.
+    Dzięki temu unika błędnego dopasowania rozdziałów z różnych książek
+    o tym samym tytule i roku.
+    """
     # Najpierw próba z istartswith
     res = (
         klass.objects.filter(tytul_oryginalny__istartswith=title, rok=year)
@@ -705,7 +742,8 @@ def _try_match_pub_by_title(klass, title, year, debug):
     if res.exists():
         candidate = res.first()
         if _check_candidate(candidate, title, MATCH_SIMILARITY_THRESHOLD):
-            return candidate
+            if _isbn_matches(candidate, isbn):
+                return candidate
 
     # Ostatnia szansa - tylko po roku z niskim progiem
     res = (
@@ -718,7 +756,8 @@ def _try_match_pub_by_title(klass, title, year, debug):
     if res.exists():
         candidate = res.first()
         if _check_candidate(candidate, title, MATCH_SIMILARITY_THRESHOLD_LOW):
-            return candidate
+            if _isbn_matches(candidate, isbn):
+                return candidate
 
     return None
 
@@ -765,7 +804,9 @@ def matchuj_publikacje(
 
     # Próba po podobieństwie tytułu
     if _is_title_long_enough(title):
-        result = _try_match_pub_by_title(klass, title, year, DEBUG_MATCHOWANIE)
+        result = _try_match_pub_by_title(
+            klass, title, year, DEBUG_MATCHOWANIE, isbn=isbn
+        )
         if result:
             return result
 

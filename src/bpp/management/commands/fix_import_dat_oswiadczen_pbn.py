@@ -10,6 +10,11 @@ from django.db import transaction
 from tqdm import tqdm
 
 from bpp.management.base import BaseCommand
+from pbn_api.exceptions import (
+    BPPAutorNotFound,
+    BPPAutorPublicationLinkNotFound,
+    BPPPublicationNotFound,
+)
 
 
 class Command(BaseCommand):
@@ -157,38 +162,64 @@ PRZYKŁADY UŻYCIA:
         else:
             self.stdout.write("Aktualizacja tylko rekordów z pustą datą oświadczenia")
 
+    def _print_missing_details(self, items, header, format_func):
+        """Wyświetla szczegóły brakujących elementów."""
+        if not items:
+            return
+        self.stdout.write("")
+        self.stdout.write(self.style.WARNING(f"{header} ({len(items)}):"))
+        for item in items[:15]:
+            self.stdout.write(f"  - {format_func(item)}")
+        if len(items) > 15:
+            self.stdout.write(f"    ... i {len(items) - 15} więcej")
+
     def _print_summary(
         self,
         updated_count,
-        skipped_no_wa,
         skipped_year_filter,
         skipped_existing_date,
-        missing_wa_records,
+        missing_publication,
+        missing_autor,
+        missing_link,
     ):
         """Wyświetla podsumowanie przetwarzania."""
         self.stdout.write("")
         self.stdout.write("Podsumowanie:")
         self.stdout.write(self.style.SUCCESS(f"  Zaktualizowano: {updated_count}"))
-        if skipped_no_wa > 0:
-            self.stdout.write(f"  Pominięto (brak WA): {skipped_no_wa}")
+
+        total_missing = (
+            len(missing_publication) + len(missing_autor) + len(missing_link)
+        )
+        if total_missing > 0:
+            self.stdout.write(f"  Pominięto (brak powiązania): {total_missing}")
+            self.stdout.write(
+                f"    - brak publikacji w BPP: {len(missing_publication)}"
+            )
+            self.stdout.write(f"    - brak autora w BPP: {len(missing_autor)}")
+            self.stdout.write(
+                f"    - brak powiązania autor-publikacja: {len(missing_link)}"
+            )
+
         if skipped_year_filter > 0:
             self.stdout.write(f"  Pominięto (filtr roku): {skipped_year_filter}")
         if skipped_existing_date > 0:
             self.stdout.write(f"  Pominięto (istniejąca data): {skipped_existing_date}")
 
-        # Wypisz brakujące powiązania autor-publikacja
-        if missing_wa_records:
-            self.stdout.write("")
-            self.stdout.write(
-                self.style.WARNING(
-                    f"Brakujące powiązania autor-publikacja ({len(missing_wa_records)}):"
-                )
-            )
-            for title, author_name, year, pbn_id in missing_wa_records:
-                year_str = f", {year}" if year else ""
-                self.stdout.write(
-                    f"  - {author_name}: {title}{year_str} (PBN ID: {pbn_id})"
-                )
+        self._print_missing_details(
+            missing_publication,
+            "Brak publikacji w BPP",
+            lambda x: f"PBN {x[0]}: {x[1]}",
+        )
+        self._print_missing_details(
+            missing_autor,
+            "Brak autora w BPP",
+            lambda x: f"PBN {x[0]}: {x[1]}",
+        )
+        self._print_missing_details(
+            missing_link,
+            "Brak powiązania autor-publikacja",
+            lambda x: (f"{x[1]}: {x[0]}{f', {x[2]}' if x[2] else ''} (PBN ID: {x[3]})"),
+        )
 
     def _should_skip_by_year(self, wa, year_range):
         """Sprawdza czy rekord powinien być pominięty ze względu na rok."""
@@ -200,8 +231,6 @@ PRZYKŁADY UŻYCIA:
     @transaction.atomic
     def _process_records(self, options, year_range):
         """Przetwarza rekordy w ramach transakcji."""
-        from django.core.exceptions import ObjectDoesNotExist
-
         from pbn_api.models import OswiadczenieInstytucji
 
         dry_run = options["dry_run"]
@@ -217,24 +246,33 @@ PRZYKŁADY UŻYCIA:
         self.stdout.write(f"Znaleziono {total_count} oświadczeń z datą statedTimestamp")
 
         updated_count = 0
-        skipped_no_wa = 0
         skipped_year_filter = 0
         skipped_existing_date = 0
-        missing_wa_records = []
+        missing_publication = []  # BPPPublicationNotFound
+        missing_autor = []  # BPPAutorNotFound
+        missing_link = []  # BPPAutorPublicationLinkNotFound
 
         for oswiadczenie in tqdm(queryset, desc="Przetwarzanie"):
-            try:
-                wa = oswiadczenie.get_bpp_wa()
-            except ObjectDoesNotExist:
-                # Autor istnieje, publikacja istnieje, ale autor nie jest
-                # powiązany z tą publikacją
-                wa = None
+            pub = oswiadczenie.publicationId
+            scientist = oswiadczenie.personId
 
-            if wa is None:
-                skipped_no_wa += 1
-                # Zbierz informacje o brakującym powiązaniu
-                pub = oswiadczenie.publicationId
-                scientist = oswiadczenie.personId
+            try:
+                wa = oswiadczenie.get_bpp_wa_raises()
+            except BPPPublicationNotFound:
+                title = pub.title if pub else "(brak tytułu)"
+                pbn_id = pub.pk if pub else "(brak)"
+                missing_publication.append((pbn_id, title[:80]))
+                continue
+            except BPPAutorNotFound:
+                author_name = (
+                    f"{scientist.lastName} {scientist.name}".strip()
+                    if scientist
+                    else "(brak autora)"
+                )
+                pbn_id = scientist.pk if scientist else "(brak)"
+                missing_autor.append((pbn_id, author_name))
+                continue
+            except BPPAutorPublicationLinkNotFound:
                 title = pub.title if pub else "(brak tytułu)"
                 year = pub.year if pub else None
                 pbn_id = pub.pk if pub else "(brak)"
@@ -243,7 +281,7 @@ PRZYKŁADY UŻYCIA:
                     if scientist
                     else "(brak autora)"
                 )
-                missing_wa_records.append((title, author_name, year, pbn_id))
+                missing_link.append((title[:80], author_name, year, pbn_id))
                 continue
 
             if self._should_skip_by_year(wa, year_range):
@@ -260,10 +298,11 @@ PRZYKŁADY UŻYCIA:
 
         self._print_summary(
             updated_count,
-            skipped_no_wa,
             skipped_year_filter,
             skipped_existing_date,
-            missing_wa_records,
+            missing_publication,
+            missing_autor,
+            missing_link,
         )
 
         if dry_run:

@@ -45,6 +45,7 @@ class OswiadczeniaInstytucjiAdmin(BasePBNAPIAdmin):
         "institutionId",
         "personId",
         "publicationId",
+        "publicationId_id",
         "type",
         "disciplines",
     ]

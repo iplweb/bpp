@@ -71,11 +71,25 @@ def _przetworz_afiliacje(
     default_jednostka,
     typ_odpowiedzialnosci_autor,
     typ_odpowiedzialnosci_redaktor,
+    default_typ_odpowiedzialnosci=None,
 ):
-    """Process author affiliation data."""
+    """Process author affiliation data.
+
+    Args:
+        ta_afiliacja: Affiliation data from PBN (dict or list of dicts).
+        default_jednostka: Default unit for affiliated authors.
+        typ_odpowiedzialnosci_autor: Typ_Odpowiedzialnosci for "autor".
+        typ_odpowiedzialnosci_redaktor: Typ_Odpowiedzialnosci for "redaktor".
+        default_typ_odpowiedzialnosci: Default responsibility type to use when
+            affiliation data is missing. If None, defaults to autor.
+
+    Returns:
+        Tuple of (jednostka, afiliuje, typ_odpowiedzialnosci).
+    """
     jednostka = Uczelnia.objects.default.obca_jednostka
     afiliuje = False
-    typ_odpowiedzialnosci = typ_odpowiedzialnosci_autor
+    # Use provided default or fallback to autor
+    typ_odpowiedzialnosci = default_typ_odpowiedzialnosci or typ_odpowiedzialnosci_autor
 
     if ta_afiliacja is None:
         return jednostka, afiliuje, typ_odpowiedzialnosci
@@ -155,6 +169,7 @@ def utworz_autorow(
                 default_jednostka,
                 typ_odpowiedzialnosci_autor,
                 typ_odpowiedzialnosci_redaktor,
+                default_typ_odpowiedzialnosci=typ_odpowiedzialnosci,
             )
 
             try:
