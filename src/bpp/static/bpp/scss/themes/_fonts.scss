@@ -57,6 +57,14 @@ body.font-inter-small {
     fieldset.grp-module .grp-row label {
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
     }
+
+    // Fixed footer (dolna belka z przyciskami)
+    .grp-fixed-footer,
+    .grp-fixed-footer .grp-button,
+    .grp-fixed-footer input[type="submit"],
+    .grp-fixed-footer button {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+    }
 }
 
 
@@ -96,6 +104,14 @@ body.font-opensans-small {
 
     // Form labels
     fieldset.grp-module .grp-row label {
+        font-family: 'Open Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+    }
+
+    // Fixed footer (dolna belka z przyciskami)
+    .grp-fixed-footer,
+    .grp-fixed-footer .grp-button,
+    .grp-fixed-footer input[type="submit"],
+    .grp-fixed-footer button {
         font-family: 'Open Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
     }
 }
@@ -140,6 +156,14 @@ body.font-roboto-small {
     fieldset.grp-module .grp-row label {
         font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
     }
+
+    // Fixed footer (dolna belka z przyciskami)
+    .grp-fixed-footer,
+    .grp-fixed-footer .grp-button,
+    .grp-fixed-footer input[type="submit"],
+    .grp-fixed-footer button {
+        font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+    }
 }
 
 /* -------------------------------------------------------------------------------- */
@@ -180,6 +204,14 @@ body.font-lato-small {
     fieldset.grp-module .grp-row label {
         font-family: 'Lato', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
     }
+
+    // Fixed footer (dolna belka z przyciskami)
+    .grp-fixed-footer,
+    .grp-fixed-footer .grp-button,
+    .grp-fixed-footer input[type="submit"],
+    .grp-fixed-footer button {
+        font-family: 'Lato', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+    }
 }
 
 /* -------------------------------------------------------------------------------- */
@@ -218,6 +250,14 @@ body.font-sourcesans-small {
 
     // Form labels
     fieldset.grp-module .grp-row label {
+        font-family: 'Source Sans Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+    }
+
+    // Fixed footer (dolna belka z przyciskami)
+    .grp-fixed-footer,
+    .grp-fixed-footer .grp-button,
+    .grp-fixed-footer input[type="submit"],
+    .grp-fixed-footer button {
         font-family: 'Source Sans Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
     }
 }
@@ -394,6 +434,14 @@ body.font-segoeui-small {
     fieldset.grp-module .grp-row label {
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
     }
+
+    // Fixed footer (dolna belka z przyciskami)
+    .grp-fixed-footer,
+    .grp-fixed-footer .grp-button,
+    .grp-fixed-footer input[type="submit"],
+    .grp-fixed-footer button {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
+    }
 }
 
 /* -------------------------------------------------------------------------------- */
@@ -432,6 +480,14 @@ body.font-arial-small {
 
     // Form labels
     fieldset.grp-module .grp-row label {
+        font-family: Arial, Helvetica, sans-serif !important;
+    }
+
+    // Fixed footer (dolna belka z przyciskami)
+    .grp-fixed-footer,
+    .grp-fixed-footer .grp-button,
+    .grp-fixed-footer input[type="submit"],
+    .grp-fixed-footer button {
         font-family: Arial, Helvetica, sans-serif !important;
     }
 }
@@ -475,6 +531,14 @@ body.font-verdana-small {
     fieldset.grp-module .grp-row label {
         font-family: Verdana, Geneva, Tahoma, sans-serif !important;
     }
+
+    // Fixed footer (dolna belka z przyciskami)
+    .grp-fixed-footer,
+    .grp-fixed-footer .grp-button,
+    .grp-fixed-footer input[type="submit"],
+    .grp-fixed-footer button {
+        font-family: Verdana, Geneva, Tahoma, sans-serif !important;
+    }
 }
 
 /* -------------------------------------------------------------------------------- */
@@ -513,6 +577,14 @@ body.font-calibri-small {
 
     // Form labels
     fieldset.grp-module .grp-row label {
+        font-family: Calibri, Candara, 'Segoe UI', Optima, Arial, sans-serif !important;
+    }
+
+    // Fixed footer (dolna belka z przyciskami)
+    .grp-fixed-footer,
+    .grp-fixed-footer .grp-button,
+    .grp-fixed-footer input[type="submit"],
+    .grp-fixed-footer button {
         font-family: Calibri, Candara, 'Segoe UI', Optima, Arial, sans-serif !important;
     }
 }

@@ -251,15 +251,38 @@ body.theme-navy-academic {
         }
     }
 
-    .grp-state-focus,
+    .grp-state-focus {
+        background: #2e3f54 !important;
+        color: #d4af37 !important;
+        border: 2px solid #d4af37 !important;
+
+        &:hover {
+            background: linear-gradient(#d4af37, #c19b2d) !important;
+            color: #1a2332 !important;
+        }
+    }
+
     ul.grp-object-tools li a {
         background: #2e3f54 !important;
         color: #d4af37 !important;
         border: 2px solid #d4af37 !important;
 
         &:hover {
-            background: #d4af37 !important;
+            background: linear-gradient(#d4af37, #c19b2d) !important;
             color: #1a2332 !important;
+            border-color: #c19b2d !important;
+        }
+    }
+
+    // Zachowaj ikonę strzałki dla linków zewnętrznych
+    ul.grp-object-tools li a[target="_blank"],
+    ul.grp-object-tools li a.grp-viewsite-link {
+        background: url('/static/grappelli/images/icons-s79f97b581c.png') 0 -935px no-repeat,
+                    #2e3f54 !important;
+
+        &:hover {
+            background: url('/static/grappelli/images/icons-s79f97b581c.png') 0 -935px no-repeat,
+                        linear-gradient(#d4af37, #c19b2d) !important;
         }
     }
 

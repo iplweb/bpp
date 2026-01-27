@@ -250,15 +250,38 @@ body.theme-gray-professional {
         }
     }
 
-    .grp-state-focus,
+    .grp-state-focus {
+        background: #555555 !important;
+        color: #ff6939 !important;
+        border: 2px solid #ff6939 !important;
+
+        &:hover {
+            background: linear-gradient(#ff6939, #e55a2e) !important;
+            color: #ffffff !important;
+        }
+    }
+
     ul.grp-object-tools li a {
         background: #555555 !important;
         color: #ff6939 !important;
         border: 2px solid #ff6939 !important;
 
         &:hover {
-            background: #ff6939 !important;
+            background: linear-gradient(#ff6939, #e55a2e) !important;
             color: #ffffff !important;
+            border-color: #e55a2e !important;
+        }
+    }
+
+    // Zachowaj ikonę strzałki dla linków zewnętrznych
+    ul.grp-object-tools li a[target="_blank"],
+    ul.grp-object-tools li a.grp-viewsite-link {
+        background: url('/static/grappelli/images/icons-s79f97b581c.png') 0 -935px no-repeat,
+                    #555555 !important;
+
+        &:hover {
+            background: url('/static/grappelli/images/icons-s79f97b581c.png') 0 -935px no-repeat,
+                        linear-gradient(#ff6939, #e55a2e) !important;
         }
     }
 
