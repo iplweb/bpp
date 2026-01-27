@@ -1,5 +1,5 @@
-Naprawiono błąd podwójnego potwierdzenia w module ewaluacja_optymalizacja.
-Kliknięcie przycisku "Policz całą ewaluację" wyświetlało dwa okna dialogowe
-potwierdzenia i wysyłało dwa requesty do serwera. Przyczyną był zduplikowany
-handler dla atrybutu ``data-confirm`` - jeden globalny w ``event-handlers.js``
-i drugi lokalny w szablonie. Usunięto duplikat z szablonu.
+Naprawiono błąd podwójnego potwierdzenia w modułach ewaluacja_optymalizacja,
+multiseek oraz import_dyscyplin. Kliknięcie przycisków z atrybutem
+``data-confirm`` wyświetlało dwa okna dialogowe potwierdzenia. Przyczyną były
+zduplikowane handlery - globalny w ``event-handlers.js`` i lokalne w szablonach.
+Usunięto duplikaty z szablonów, pozostawiając obsługę w globalnym handlerze.

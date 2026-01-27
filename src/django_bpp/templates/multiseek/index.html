@@ -201,13 +201,11 @@
                 }
 
                 // Reset form
+                // (data-confirm is handled globally by event-handlers.js)
                 btn = e.target.closest('[data-action="reset-form"]');
                 if (btn) {
                     e.preventDefault();
-                    var confirmMsg = btn.dataset.confirm;
-                    if (!confirmMsg || confirm(confirmMsg)) {
-                        resetMultiseekTitle(btn);
-                    }
+                    resetMultiseekTitle(btn);
                     return;
                 }
 
