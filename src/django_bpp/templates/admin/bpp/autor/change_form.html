@@ -20,3 +20,8 @@
     {% endif %}
     {{ block.super }}
 {% endblock %}
+
+{% block submit_buttons_bottom %}
+    {{ block.super }}
+    {% include "admin/copy_pbn_uid_button_handler.html" %}
+{% endblock %}
