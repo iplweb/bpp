@@ -320,7 +320,8 @@
             });
         })();
 
-        // Event delegation handlers for data attributes
+        // Event delegation handler for data-disabled-alert
+        // (data-confirm is handled globally by event-handlers.js)
         document.addEventListener('click', function(e) {
             // Handle disabled alert
             var disabledElem = e.target.closest('[data-disabled-alert]');
@@ -328,16 +329,6 @@
                 e.preventDefault();
                 alert(disabledElem.dataset.disabledAlert);
                 return false;
-            }
-
-            // Handle confirm dialog
-            var confirmElem = e.target.closest('[data-confirm]');
-            if (confirmElem) {
-                var msg = confirmElem.dataset.confirm;
-                if (!confirm(msg)) {
-                    e.preventDefault();
-                    return false;
-                }
             }
         });
         </script>
