@@ -8,6 +8,8 @@ from django.core.management import call_command
 from django.core.management.base import CommandError
 from model_bakery import baker
 
+# Required for mock.patch to resolve the module path
+import pbn_import.management.commands.pbn_importuj_uid  # noqa: F401
 from bpp.models import Jednostka, Uczelnia, Wydawnictwo_Ciagle
 
 

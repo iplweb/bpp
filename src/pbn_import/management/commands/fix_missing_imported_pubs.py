@@ -353,6 +353,9 @@ Przykłady użycia:
                     self.stdout.write(self.style.ERROR(f"\nPBN UID: {err['pbn_uid']}"))
                     self.stdout.write(f"Tytuł: {title}")
                     self.stdout.write(f"Błąd: {err['message']}")
+                    if err.get("traceback"):
+                        self.stdout.write("\nTraceback:")
+                        self.stdout.write(err["traceback"])
         else:
             self._display_summary(
                 imported, skipped, errors, statements_total, stopped_early

@@ -129,50 +129,13 @@
         <div class="pbn-import__modal-content">
             <h4>Dane do importu</h4>
 
+            {% for step in import_steps %}
             <label>
-                <input type="checkbox" name="initial" checked>
-                <span class="fi-flag"></span> Konfiguracja początkowa
+                <input type="checkbox" name="{{ step.form_field }}" checked>
+                <span class="{{ step.icon }}"></span> {{ step.display }}
+                {% if step.required %}<small class="text-muted">(wymagane)</small>{% endif %}
             </label>
-
-            <label>
-                <input type="checkbox" name="zrodla" checked>
-                <span class="fi-book"></span> Źródła (czasopisma)
-            </label>
-
-            <label>
-                <input type="checkbox" name="wydawcy" checked>
-                <span class="fi-page-multiple"></span> Wydawcy
-            </label>
-
-            <label>
-                <input type="checkbox" name="konferencje" checked>
-                <span class="fi-calendar"></span> Konferencje
-            </label>
-
-            <label>
-                <input type="checkbox" name="autorzy" checked>
-                <span class="fi-torsos-all"></span> Autorzy
-            </label>
-
-            <label>
-                <input type="checkbox" name="publikacje" checked>
-                <span class="fi-page-copy"></span> Publikacje
-            </label>
-
-            <label>
-                <input type="checkbox" name="integracja" checked>
-                <span class="fi-link"></span> Integracja danych
-            </label>
-
-            <label>
-                <input type="checkbox" name="oswiadczenia" checked>
-                <span class="fi-clipboard-pencil"></span> Oświadczenia
-            </label>
-
-            <label>
-                <input type="checkbox" name="oplaty" checked>
-                <span class="fi-dollar"></span> Opłaty
-            </label>
+            {% endfor %}
 
             <!-- Hidden field - never show delete existing option -->
             <input type="hidden" name="delete_existing" value="">

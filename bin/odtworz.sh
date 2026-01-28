@@ -67,10 +67,17 @@ LOCAL_DATABASE_NAME=bpp
 # pkill -TERM -f "src/manage.py runserver" || true
 # sleep 1
 
-# Drop the database if it exists
-dropdb -f "$LOCAL_DATABASE_NAME" 2>/dev/null || true
+# Stop all docker containers
+docker compose down -v
 
-createdb $LOCAL_DATABASE_NAME
+# Start only the database container and wait for it to be healthy
+docker compose up -d db
+
+echo "Czekam na uruchomienie bazy danych..."
+until docker compose exec db pg_isready -U ${DJANGO_BPP_DB_USER:-bpp} > /dev/null 2>&1; do
+    sleep 1
+done
+echo "Baza danych gotowa."
 
 # Filter out harmless errors from pg_restore (e.g., unknown config parameters
 # from newer PostgreSQL versions)
@@ -101,4 +108,5 @@ psql $LOCAL_DATABASE_NAME -c "UPDATE django_site SET domain='127.0.0.1:8000' WHE
 uv run src/manage.py createsuperuser --noinput --username admin --email michal.dtz@gmail.com || true
 ./bin/ustaw-domyslne-haslo-admina.sh
 
-make invalidate
+# Start all docker containers
+docker compose up -d

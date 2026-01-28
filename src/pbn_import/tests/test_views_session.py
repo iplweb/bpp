@@ -141,6 +141,42 @@ class TestImportSessionDetailView:
         duration = response.context.get("duration")
         assert duration == timedelta(hours=1)
 
+    def test_detail_view_handles_unknown_inconsistency_type(self, django_user_model):
+        """Test detail view handles unknown inconsistency types gracefully"""
+        from pbn_import.models import ImportInconsistency
+
+        client = Client()
+        user = baker.make(django_user_model, is_superuser=True)
+        session = baker.make(ImportSession, user=user)
+
+        # Create inconsistency with unknown type - bypass choice validation
+        unknown_type = "unknown_future_type"
+        inconsistency = ImportInconsistency(
+            session=session,
+            inconsistency_type=unknown_type,
+            message="Test unknown type",
+        )
+        # Save without full_clean to bypass choice validation
+        inconsistency.save()
+
+        client.force_login(user)
+
+        response = client.get(
+            reverse("pbn_import:session_detail", args=[session.id]),
+        )
+
+        # Should not raise KeyError, return 200
+        assert response.status_code == 200
+
+        # Should have fallback label for unknown type
+        inconsistency_summary = response.context.get("inconsistency_summary", {})
+        assert unknown_type in inconsistency_summary
+        assert (
+            inconsistency_summary[unknown_type]["label"]
+            == f"Nieznany typ: {unknown_type}"
+        )
+        assert inconsistency_summary[unknown_type]["count"] == 1
+
 
 # ============================================================================
 # ACTIVE SESSIONS VIEW TESTS

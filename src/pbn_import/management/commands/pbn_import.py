@@ -7,21 +7,39 @@ from bpp.models import Uczelnia
 from pbn_api.management.commands.util import PBNBaseCommand
 from pbn_import.models import ImportSession
 from pbn_import.utils import ImportManager
+from pbn_import.utils.step_definitions import (
+    ALL_STEP_DEFINITIONS,
+    get_command_steps,
+)
 
 User = get_user_model()
 
-IMPORT_STEPS = [
-    ("initial", "Początkowa konfiguracja"),
-    ("institutions", "Konfiguracja jednostek"),
-    ("zrodla", "Import źródeł"),
-    ("punktacja_zrodel", "Synchronizacja punktów i dyscyplin źródeł"),
-    ("konferencje", "Import konferencji"),
-    ("wydawcy", "Import wydawców"),
-    ("autorzy", "Import autorów"),
-    ("publikacje", "Import publikacji"),
-    ("oswiadczenia", "Import oświadczeń"),
-    ("oplaty", "Import opłat"),
-]
+# Import steps from single source of truth (step_definitions.py)
+IMPORT_STEPS = get_command_steps()
+
+
+def build_config_from_options(options):
+    """Build session config dict from command line options.
+
+    Maps form_field options (e.g., --disable-zrodla) to disable_key config
+    (e.g., disable_zrodla) using step_definitions as the source of truth.
+    """
+    config = {
+        "app_id": options.get("app_id"),
+        "base_url": options.get("base_url"),
+        "delete_existing": options.get("delete_existing", False),
+        "wydzial_domyslny": options.get("wydzial_domyslny"),
+        "wydzial_domyslny_skrot": options.get("wydzial_domyslny_skrot"),
+    }
+
+    # Map form_field to disable_key from step_definitions
+    for step in ALL_STEP_DEFINITIONS:
+        form_field = step["form_field"]
+        disable_key = step["disable_key"]
+        # Get option value using form_field name (from CLI --disable-{form_field})
+        config[disable_key] = options.get(f"disable_{form_field}", False)
+
+    return config
 
 
 class Command(PBNBaseCommand):
@@ -184,29 +202,11 @@ class Command(PBNBaseCommand):
             user_token=options["user_token"],
         )
 
-        # Utwórz sesję importu
+        # Utwórz sesję importu z config z step_definitions
         session = ImportSession.objects.create(
             user=user,
             status="pending",
-            config={
-                "app_id": options["app_id"],
-                "base_url": options["base_url"],
-                "disable_initial": options.get("disable_initial", False),
-                "disable_institutions": options.get("disable_institutions", False),
-                "disable_zrodla": options.get("disable_zrodla", False),
-                "disable_punktacja_zrodel": options.get(
-                    "disable_punktacja_zrodel", False
-                ),
-                "disable_konferencje": options.get("disable_konferencje", False),
-                "disable_wydawcy": options.get("disable_wydawcy", False),
-                "disable_autorzy": options.get("disable_autorzy", False),
-                "disable_publikacje": options.get("disable_publikacje", False),
-                "disable_oswiadczenia": options.get("disable_oswiadczenia", False),
-                "disable_oplaty": options.get("disable_oplaty", False),
-                "delete_existing": options.get("delete_existing", False),
-                "wydzial_domyslny": options.get("wydzial_domyslny"),
-                "wydzial_domyslny_skrot": options.get("wydzial_domyslny_skrot"),
-            },
+            config=build_config_from_options(options),
         )
 
         self.stdout.write(f"Utworzono sesję importu {session.id}")
