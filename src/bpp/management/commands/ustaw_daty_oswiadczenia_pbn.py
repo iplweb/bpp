@@ -6,6 +6,7 @@ Wydawnictwo_Ciagle_Autor oraz Wydawnictwo_Zwarte_Autor z elastycznym
 filtrowaniem po roku i różnymi źródłami daty.
 """
 
+import traceback
 from datetime import datetime
 
 from django.core.management.base import CommandError
@@ -89,6 +90,12 @@ PRZYKŁADY UŻYCIA:
             action="store_true",
             help="Nadpisz istniejące daty oświadczenia. Domyślnie aktualizowane "
             "są tylko rekordy z pustą datą.",
+        )
+        parser.add_argument(
+            "--ignoruj-bledy",
+            action="store_true",
+            help="Ignoruj błędy zapisu i kontynuuj przetwarzanie. "
+            "Błędne rekordy zostaną wyświetlone ale nie zatrzymają procesu.",
         )
 
         # Grupa filtrowania po roku
@@ -229,6 +236,83 @@ PRZYKŁADY UŻYCIA:
         else:
             return {"rekord__rok__gte": min(years), "rekord__rok__lte": max(years)}
 
+    def _print_configuration_info(
+        self, dry_run, years, date_source_type, explicit_date, nadpisz
+    ):
+        """Wyświetla informacje o konfiguracji działania polecenia."""
+        if dry_run:
+            self.stdout.write(
+                self.style.WARNING(
+                    "TRYB TESTOWY - żadne zmiany nie zostaną zapisane w bazie danych"
+                )
+            )
+
+        years_str = str(years[0]) if len(years) == 1 else f"{min(years)}-{max(years)}"
+        self.stdout.write(f"Lata do przetworzenia: {years_str}")
+
+        source_descriptions = {
+            "explicit": f"jawna data: {explicit_date}",
+            "creation": "data utworzenia rekordu",
+            "modification": "data ostatniej modyfikacji rekordu",
+            "default": "domyślne daty per rok",
+        }
+        self.stdout.write(f"Źródło daty: {source_descriptions[date_source_type]}")
+
+        if nadpisz:
+            self.stdout.write(
+                self.style.WARNING(
+                    "Tryb nadpisywania - istniejące daty zostaną zmienione"
+                )
+            )
+        else:
+            self.stdout.write("Aktualizacja tylko rekordów z pustą datą oświadczenia")
+
+    def _process_single_model(
+        self, klass, base_filter, date_source_type, explicit_date, ignoruj_bledy
+    ):
+        """Przetwarza rekordy dla pojedynczego modelu.
+
+        Zwraca krotkę (liczba_zaktualizowanych, liczba_błędów).
+        """
+        objs = klass.filter(**base_filter).select_related("rekord", "autor")
+
+        count = objs.count()
+        if count == 0:
+            self.stdout.write(f"{klass.model.__name__}: brak rekordów do aktualizacji")
+            return 0, 0
+
+        self.stdout.write(f"{klass.model.__name__}: {count} rekordów do aktualizacji")
+
+        updated = 0
+        errors = 0
+
+        for obj in tqdm(objs, desc=klass.model.__name__):
+            try:
+                new_date = self._get_date_for_object(
+                    obj, date_source_type, explicit_date
+                )
+                if new_date is not None:
+                    obj.data_oswiadczenia = new_date
+                    obj.save()
+                    updated += 1
+            except Exception:
+                self.stderr.write(
+                    self.style.ERROR(
+                        f"\nBłąd zapisu rekordu:\n"
+                        f"  Publikacja: {obj.rekord.tytul_oryginalny}\n"
+                        f"  Autor: {obj.autor}\n"
+                        f"  Rok: {obj.rekord.rok}\n"
+                    )
+                )
+                self.stderr.write(traceback.format_exc())
+
+                if ignoruj_bledy:
+                    errors += 1
+                    continue
+                raise
+
+        return updated, errors
+
     def _has_year_parameters(self, options):
         """Sprawdza czy podano jakiekolwiek parametry roku."""
         return (
@@ -268,40 +352,18 @@ PRZYKŁADY UŻYCIA:
         """Przetwarza rekordy w ramach transakcji."""
         dry_run = options["dry_run"]
         nadpisz = options["nadpisz"]
+        ignoruj_bledy = options["ignoruj_bledy"]
 
         # Wyświetl informacje o trybie działania
-        if dry_run:
-            self.stdout.write(
-                self.style.WARNING(
-                    "TRYB TESTOWY - żadne zmiany nie zostaną zapisane w bazie danych"
-                )
-            )
-
-        # Informacja o konfiguracji
-        years_str = str(years[0]) if len(years) == 1 else f"{min(years)}-{max(years)}"
-        self.stdout.write(f"Lata do przetworzenia: {years_str}")
-
-        source_descriptions = {
-            "explicit": f"jawna data: {explicit_date}",
-            "creation": "data utworzenia rekordu",
-            "modification": "data ostatniej modyfikacji rekordu",
-            "default": "domyślne daty per rok",
-        }
-        self.stdout.write(f"Źródło daty: {source_descriptions[date_source_type]}")
-
-        if nadpisz:
-            self.stdout.write(
-                self.style.WARNING(
-                    "Tryb nadpisywania - istniejące daty zostaną zmienione"
-                )
-            )
-        else:
-            self.stdout.write("Aktualizacja tylko rekordów z pustą datą oświadczenia")
+        self._print_configuration_info(
+            dry_run, years, date_source_type, explicit_date, nadpisz
+        )
 
         # Budowanie filtra
         year_filter = self._build_year_filter(years)
 
         total_updated = 0
+        error_count = 0
 
         for klass in [
             Wydawnictwo_Ciagle_Autor.objects,
@@ -311,31 +373,20 @@ PRZYKŁADY UŻYCIA:
             if not nadpisz:
                 base_filter["data_oswiadczenia__isnull"] = True
 
-            objs = klass.filter(**base_filter).select_related("rekord")
-
-            count = objs.count()
-            if count == 0:
-                self.stdout.write(
-                    f"{klass.model.__name__}: brak rekordów do aktualizacji"
-                )
-                continue
-
-            self.stdout.write(
-                f"{klass.model.__name__}: {count} rekordów do aktualizacji"
+            updated, errors = self._process_single_model(
+                klass, base_filter, date_source_type, explicit_date, ignoruj_bledy
             )
-
-            for obj in tqdm(objs, desc=klass.model.__name__):
-                new_date = self._get_date_for_object(
-                    obj, date_source_type, explicit_date
-                )
-                if new_date is not None:
-                    obj.data_oswiadczenia = new_date
-                    obj.save()
-                    total_updated += 1
+            total_updated += updated
+            error_count += errors
 
         self.stdout.write(
             self.style.SUCCESS(f"Zaktualizowano {total_updated} rekordów")
         )
+
+        if error_count > 0:
+            self.stderr.write(
+                self.style.WARNING(f"Pominięto {error_count} rekordów z powodu błędów")
+            )
 
         if dry_run:
             # Anuluj transakcję w trybie testowym
