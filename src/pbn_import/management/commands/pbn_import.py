@@ -14,6 +14,7 @@ IMPORT_STEPS = [
     ("initial", "Początkowa konfiguracja"),
     ("institutions", "Konfiguracja jednostek"),
     ("zrodla", "Import źródeł"),
+    ("punktacja_zrodel", "Synchronizacja punktów i dyscyplin źródeł"),
     ("konferencje", "Import konferencji"),
     ("wydawcy", "Import wydawców"),
     ("autorzy", "Import autorów"),
@@ -193,6 +194,9 @@ class Command(PBNBaseCommand):
                 "disable_initial": options.get("disable_initial", False),
                 "disable_institutions": options.get("disable_institutions", False),
                 "disable_zrodla": options.get("disable_zrodla", False),
+                "disable_punktacja_zrodel": options.get(
+                    "disable_punktacja_zrodel", False
+                ),
                 "disable_konferencje": options.get("disable_konferencje", False),
                 "disable_wydawcy": options.get("disable_wydawcy", False),
                 "disable_autorzy": options.get("disable_autorzy", False),

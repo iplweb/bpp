@@ -414,10 +414,6 @@ uv run python src/manage.py pbn_import \
 - `--delete-existing` - Delete existing PBN publications
 - `--wydzial-domyslny` - Default department name
 
-### pbn_first_import
-
-First-time setup with interactive prompts for PBN credentials.
-
 ### test_pbn_import
 
 Test import with mock data (development only).
@@ -479,7 +475,6 @@ Test import with mock data (development only).
 | Command | Purpose |
 |---------|---------|
 | `pbn_import.py` | Full CLI for imports |
-| `pbn_first_import.py` | First-time setup |
 | `test_pbn_import.py` | Test with mock data |
 
 ---

@@ -140,11 +140,14 @@ class PublicationSyncMixin:
         )
 
         # Build a mapping of publication ID -> fee data
+        # Note: API returns publicationId nested in "publication" object
         fees_map = {}
         for item in res:
-            pub_id = item.get("publicationId")
+            publication = item.get("publication", {})
+            pub_id = publication.get("publicationId") if publication else None
             if pub_id:
                 fees_map[pub_id] = item
+
         return fees_map
 
     def _prepare_publication_json(self, rec, export_pk_zero, always_affiliate_to_uid):

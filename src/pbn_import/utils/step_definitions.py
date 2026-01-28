@@ -8,12 +8,14 @@ from .institution_import import InstitutionImporter
 from .publication_import import PublicationImporter
 from .publisher_import import PublisherImporter
 from .source_import import SourceImporter
+from .source_scoring_import import SourceScoringImporter
 from .statement_import import StatementImporter
 
 STEP_ICONS = {
     "initial_setup": "fi-wrench",
     "institution_setup": "fi-home",
     "source_import": "fi-book",
+    "source_scoring_import": "fi-graph-bar",
     "publisher_import": "fi-page-multiple",
     "conference_import": "fi-calendar",
     "author_import": "fi-torsos-all",
@@ -43,6 +45,13 @@ ALL_STEP_DEFINITIONS = [
         "display": "Import źródeł",
         "class": SourceImporter,
         "disable_key": "disable_zrodla",
+        "required": False,
+    },
+    {
+        "name": "source_scoring_import",
+        "display": "Synchronizacja punktów i dyscyplin źródeł",
+        "class": SourceScoringImporter,
+        "disable_key": "disable_punktacja_zrodel",
         "required": False,
     },
     {
