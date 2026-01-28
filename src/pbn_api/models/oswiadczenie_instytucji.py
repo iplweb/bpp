@@ -1,3 +1,5 @@
+import logging
+
 from django.core.exceptions import MultipleObjectsReturned
 from django.db import models, transaction
 
@@ -10,6 +12,8 @@ from ..exceptions import (
     HttpException,
     StatementDeletionError,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class OswiadczenieInstytucji(LinkDoPBNMixin, models.Model):
@@ -66,6 +70,7 @@ class OswiadczenieInstytucji(LinkDoPBNMixin, models.Model):
 
     def get_bpp_autor(self):
         from bpp.models import Autor
+        from import_common.normalization import normalize_nazwisko_do_porownania
 
         # 1. Próba po pbn_uid_id
         try:
@@ -88,6 +93,32 @@ class OswiadczenieInstytucji(LinkDoPBNMixin, models.Model):
             )
         except (Autor.DoesNotExist, Autor.MultipleObjectsReturned):
             pass
+
+        # 4. Znormalizowane porównanie (polskie znaki diakrytyczne, myślniki)
+        pbn_nazwisko_norm = normalize_nazwisko_do_porownania(self.personId.lastName)
+        pbn_imiona_norm = normalize_nazwisko_do_porownania(self.personId.name)
+
+        matching_autorzy = []
+        for autor in Autor.objects.all().iterator():
+            if (
+                normalize_nazwisko_do_porownania(autor.nazwisko) == pbn_nazwisko_norm
+                and normalize_nazwisko_do_porownania(autor.imiona) == pbn_imiona_norm
+            ):
+                matching_autorzy.append(autor)
+
+        if len(matching_autorzy) == 1:
+            autor = matching_autorzy[0]
+            logger.warning(
+                f"NORMALIZED MATCH: PBN '{self.personId.lastName} "
+                f"{self.personId.name}' -> BPP '{autor.nazwisko} {autor.imiona}'"
+            )
+            return autor
+
+        if len(matching_autorzy) > 1:
+            logger.warning(
+                f"NORMALIZED MATCH AMBIGUOUS: PBN '{self.personId.lastName} "
+                f"{self.personId.name}' matches {len(matching_autorzy)} authors"
+            )
 
         return None
 

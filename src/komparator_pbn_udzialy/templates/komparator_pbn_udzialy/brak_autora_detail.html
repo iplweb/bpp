@@ -1,0 +1,230 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}Szczegóły - brakujący autor{% endblock %}
+
+{% block breadcrumbs %}
+    <li><a href="/">Strona główna</a></li>
+    <li><a href="{% url 'komparator_pbn_udzialy:list' %}">Problemy PBN</a></li>
+    <li class="active">Szczegóły - brakujący autor</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="large-12 columns">
+        <h2>Szczegóły - brakujący autor w publikacji</h2>
+
+        <!-- Typ problemu -->
+        <div class="panel">
+            <h3>Typ problemu</h3>
+            <div class="alert-box {% if brak_autora.typ == TYP_BRAK_PUBLIKACJI %}warning{% elif brak_autora.typ == TYP_BRAK_AUTORA %}alert{% else %}secondary{% endif %}">
+                <strong>{{ brak_autora.get_typ_display }}</strong>
+                <p>
+                    {% if brak_autora.typ == TYP_BRAK_PUBLIKACJI %}
+                        Publikacja z PBN nie istnieje w systemie BPP. Należy zaimportować publikację lub sprawdzić czy istnieje pod innym tytułem.
+                    {% elif brak_autora.typ == TYP_BRAK_AUTORA %}
+                        Naukowiec z PBN nie ma odpowiadającego mu autora w BPP. Należy utworzyć autora lub powiązać istniejącego z PBN UID.
+                    {% else %}
+                        Autor i publikacja istnieją w BPP, ale autor nie jest powiązany z tą publikacją. Należy dodać autora do listy autorów publikacji.
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+
+        <!-- Informacje o naukowcu PBN -->
+        <div class="panel">
+            <h3>Naukowiec PBN</h3>
+            {% if brak_autora.pbn_scientist %}
+            <dl class="dl-horizontal">
+                <dt>Imię:</dt>
+                <dd>{{ brak_autora.pbn_scientist.name }}</dd>
+
+                <dt>Nazwisko:</dt>
+                <dd>{{ brak_autora.pbn_scientist.lastName }}</dd>
+
+                {% if brak_autora.pbn_scientist.orcid %}
+                <dt>ORCID:</dt>
+                <dd>
+                    <a href="https://orcid.org/{{ brak_autora.pbn_scientist.orcid }}" target="_blank">
+                        {{ brak_autora.pbn_scientist.orcid }}
+                    </a>
+                </dd>
+                {% endif %}
+
+                <dt>PBN UID:</dt>
+                <dd>{{ brak_autora.pbn_scientist.pk }}</dd>
+            </dl>
+            {% else %}
+            <p><em>Brak danych o naukowcu PBN</em></p>
+            {% endif %}
+        </div>
+
+        <!-- Informacje o autorze BPP (jeśli istnieje) -->
+        {% if autor %}
+        <div class="panel">
+            <h3>Autor BPP</h3>
+            <dl class="dl-horizontal">
+                <dt>BPP ID:</dt>
+                <dd>{{ autor.pk }}</dd>
+
+                <dt>Imię i nazwisko:</dt>
+                <dd>{{ autor }}</dd>
+
+                {% if autor.orcid %}
+                <dt>ORCID:</dt>
+                <dd>{{ autor.orcid }}</dd>
+                {% endif %}
+
+                {% if autor.pbn_uid_id %}
+                <dt>PBN UID:</dt>
+                <dd>{{ autor.pbn_uid_id }}</dd>
+                {% endif %}
+            </dl>
+
+            <a href="{% url 'admin:bpp_autor_change' autor.pk %}" class="button tiny" target="_blank">
+                <span class="fi-pencil"></span> Edytuj autora w panelu administracyjnym
+            </a>
+        </div>
+        {% endif %}
+
+        <!-- Informacje o publikacji BPP (jeśli istnieje) -->
+        {% if publikacja %}
+        <div class="panel">
+            <h3>Publikacja BPP</h3>
+            <dl class="dl-horizontal">
+                <dt>BPP ID:</dt>
+                <dd>{{ publikacja.pk }}</dd>
+
+                <dt>Tytuł:</dt>
+                <dd>{{ publikacja.tytul_oryginalny }}</dd>
+
+                {% if publikacja.rok %}
+                <dt>Rok:</dt>
+                <dd>{{ publikacja.rok }}</dd>
+                {% endif %}
+
+                {% if publikacja.pbn_uid_id %}
+                <dt>PBN UID:</dt>
+                <dd>{{ publikacja.pbn_uid_id }}</dd>
+                {% endif %}
+            </dl>
+
+            {% if publikacja_content_type %}
+            <a href="{% url 'admin:'|add:publikacja_content_type.app_label|add:'_'|add:publikacja_content_type.model|add:'_change' publikacja.pk %}"
+               class="button small" target="_blank">
+                <span class="fi-pencil"></span> Edytuj publikację
+            </a>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- Informacje o publikacji PBN -->
+        <div class="panel">
+            <h3>Publikacja PBN</h3>
+            {% if brak_autora.oswiadczenie_instytucji.publicationId %}
+            <dl class="dl-horizontal">
+                <dt>Tytuł:</dt>
+                <dd>{{ brak_autora.oswiadczenie_instytucji.publicationId.title }}</dd>
+
+                {% if brak_autora.oswiadczenie_instytucji.publicationId.year %}
+                <dt>Rok:</dt>
+                <dd>{{ brak_autora.oswiadczenie_instytucji.publicationId.year }}</dd>
+                {% endif %}
+
+                <dt>PBN UID:</dt>
+                <dd>{{ brak_autora.oswiadczenie_instytucji.publicationId.pk }}</dd>
+            </dl>
+            {% else %}
+            <p><em>Brak danych o publikacji PBN</em></p>
+            {% endif %}
+        </div>
+
+        <!-- Dyscyplina PBN -->
+        {% if brak_autora.dyscyplina_pbn %}
+        <div class="panel">
+            <h3>Dyscyplina PBN</h3>
+            <dl class="dl-horizontal">
+                <dt>Kod:</dt>
+                <dd>{{ brak_autora.dyscyplina_pbn.kod }}</dd>
+
+                <dt>Nazwa:</dt>
+                <dd>{{ brak_autora.dyscyplina_pbn.nazwa }}</dd>
+            </dl>
+        </div>
+        {% endif %}
+
+        <!-- Informacje o oświadczeniu PBN -->
+        <div class="panel">
+            <h3>Oświadczenie PBN</h3>
+            <dl class="dl-horizontal">
+                <dt>ID oświadczenia:</dt>
+                <dd>{{ brak_autora.oswiadczenie_instytucji.pk }}</dd>
+
+                {% if brak_autora.oswiadczenie_instytucji.disciplines %}
+                <dt>Dyscypliny (JSON):</dt>
+                <dd><code>{{ brak_autora.oswiadczenie_instytucji.disciplines }}</code></dd>
+                {% endif %}
+
+                {% if brak_autora.oswiadczenie_instytucji.addedTimestamp %}
+                <dt>Data dodania:</dt>
+                <dd>{{ brak_autora.oswiadczenie_instytucji.addedTimestamp }}</dd>
+                {% endif %}
+
+                {% if brak_autora.oswiadczenie_instytucji.statedTimestamp %}
+                <dt>Data oświadczenia:</dt>
+                <dd>{{ brak_autora.oswiadczenie_instytucji.statedTimestamp }}</dd>
+                {% endif %}
+            </dl>
+        </div>
+
+        <!-- Metadane -->
+        <div class="panel">
+            <h3>Metadane</h3>
+            <dl class="dl-horizontal">
+                <dt>Data wykrycia:</dt>
+                <dd>{{ brak_autora.created_at|date:"Y-m-d H:i:s" }}</dd>
+
+                <dt>Ostatnia aktualizacja:</dt>
+                <dd>{{ brak_autora.updated_at|date:"Y-m-d H:i:s" }}</dd>
+            </dl>
+        </div>
+
+        <!-- Akcje -->
+        <div class="panel">
+            <a href="{% url 'komparator_pbn_udzialy:list' %}" class="button secondary">
+                <span class="fi-arrow-left"></span> Powrót do listy
+            </a>
+        </div>
+    </div>
+</div>
+
+<style>
+.dl-horizontal dt {
+    font-weight: bold;
+    float: left;
+    width: 200px;
+    clear: left;
+    text-align: right;
+    margin-right: 10px;
+}
+.dl-horizontal dd {
+    margin-left: 210px;
+    margin-bottom: 10px;
+}
+.alert-box.warning {
+    background-color: #fff3cd;
+    border-color: #ffc107;
+    color: #856404;
+}
+.alert-box.alert {
+    background-color: #f8d7da;
+    border-color: #f5c6cb;
+    color: #721c24;
+}
+.alert-box.secondary {
+    background-color: #e2e3e5;
+    border-color: #d6d8db;
+    color: #383d41;
+}
+</style>
+{% endblock %}

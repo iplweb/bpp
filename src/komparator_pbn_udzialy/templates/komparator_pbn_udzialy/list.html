@@ -1,42 +1,68 @@
 {% extends "base.html" %}
 {% load i18n %}
 
-{% block title %}Rozbieżności dyscyplin BPP-PBN{% endblock %}
+{% block title %}Problemy PBN{% endblock %}
 
 {% block breadcrumbs %}
     <li><a href="/">Strona główna</a></li>
-    <li class="active">Rozbieżności dyscyplin BPP-PBN</li>
+    <li class="active">Problemy PBN</li>
 {% endblock %}
 
 {% block content %}
 <div class="row">
     <div class="large-12 columns">
-        <h2>Rozbieżności dyscyplin BPP-PBN</h2>
+        <h2>Problemy PBN</h2>
 
         {% include "includes/pbn_freshness_warning.html" with custom_message="Wyświetlane dane mogą być nieaktualne. Zaleca się pobranie świeżych danych z PBN." %}
 
         <!-- Statystyki -->
         <div class="panel">
             <h4>Statystyki</h4>
+
+            <!-- Rozbieżności dyscyplin -->
+            <h5>Rozbieżności dyscyplin ({{ rozbieznosci_total }})</h5>
             <div class="row">
-                <div class="medium-3 columns">
-                    <div class="stat-box">
-                        <strong>Wszystkie rozbieżności:</strong> {{ total_count }}
-                    </div>
-                </div>
-                <div class="medium-3 columns">
+                <div class="medium-4 columns">
                     <div class="stat-box">
                         <strong>Brak w BPP:</strong> {{ bpp_empty_count }}
                     </div>
                 </div>
-                <div class="medium-3 columns">
+                <div class="medium-4 columns">
                     <div class="stat-box">
                         <strong>Brak w PBN:</strong> {{ pbn_empty_count }}
                     </div>
                 </div>
-                <div class="medium-3 columns">
+                <div class="medium-4 columns">
                     <div class="stat-box">
                         <strong>Różne dyscypliny:</strong> {{ both_present_count }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Brakujący autorzy -->
+            <h5>Brakujący autorzy ({{ brakujacy_total }})</h5>
+            <div class="row">
+                <div class="medium-4 columns">
+                    <div class="stat-box stat-box-alert">
+                        <strong>Brak autora:</strong> {{ missing_autor_count }}
+                    </div>
+                </div>
+                <div class="medium-4 columns">
+                    <div class="stat-box stat-box-warning">
+                        <strong>Brak powiązania:</strong> {{ missing_link_count }}
+                    </div>
+                </div>
+                <div class="medium-4 columns">
+                    <div class="stat-box stat-box-secondary">
+                        <strong>Brak publikacji:</strong> {{ missing_publication_count }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="medium-12 columns">
+                    <div class="stat-box stat-box-total">
+                        <strong>Wszystkie problemy:</strong> {{ total_count }}
                     </div>
                 </div>
             </div>
@@ -48,16 +74,23 @@
                 <div class="row">
                     <div class="medium-3 columns">
                         <label>Szukaj:
-                            <input type="text" name="search" value="{{ search }}" placeholder="Tytuł, nazwa dyscypliny...">
+                            <input type="text" name="search" value="{{ search }}" placeholder="Tytuł, nazwisko, dyscyplina...">
                         </label>
                     </div>
                     <div class="medium-3 columns">
                         <label>Filtruj:
                             <select name="filter">
                                 <option value="">Wszystkie</option>
-                                <option value="bpp_empty" {% if filter == 'bpp_empty' %}selected{% endif %}>Brak dyscypliny w BPP</option>
-                                <option value="pbn_empty" {% if filter == 'pbn_empty' %}selected{% endif %}>Brak dyscypliny w PBN</option>
-                                <option value="both_present" {% if filter == 'both_present' %}selected{% endif %}>Różne dyscypliny</option>
+                                <optgroup label="Rozbieżności dyscyplin">
+                                    <option value="bpp_empty" {% if filter == 'bpp_empty' %}selected{% endif %}>Brak dyscypliny w BPP</option>
+                                    <option value="pbn_empty" {% if filter == 'pbn_empty' %}selected{% endif %}>Brak dyscypliny w PBN</option>
+                                    <option value="both_present" {% if filter == 'both_present' %}selected{% endif %}>Różne dyscypliny</option>
+                                </optgroup>
+                                <optgroup label="Brakujący autorzy">
+                                    <option value="{{ TYP_BRAK_AUTORA }}" {% if filter == TYP_BRAK_AUTORA %}selected{% endif %}>Brak autora w BPP</option>
+                                    <option value="{{ TYP_BRAK_POWIAZANIA }}" {% if filter == TYP_BRAK_POWIAZANIA %}selected{% endif %}>Brak powiązania</option>
+                                    <option value="{{ TYP_BRAK_PUBLIKACJI }}" {% if filter == TYP_BRAK_PUBLIKACJI %}selected{% endif %}>Brak publikacji</option>
+                                </optgroup>
                             </select>
                         </label>
                     </div>
@@ -83,7 +116,7 @@
         <!-- Akcje -->
         <div class="panel">
             <a href="{% url 'komparator_pbn_udzialy:rebuild' %}" class="button alert">
-                <span class="fi-refresh"></span> Przebuduj rozbieżności
+                <span class="fi-refresh"></span> Przebuduj dane
             </a>
 
             {% if request.session.komparator_task_id %}
@@ -93,11 +126,12 @@
             {% endif %}
         </div>
 
-        <!-- Tabela rozbieżności -->
-        {% if rozbieznosci %}
+        <!-- Tabela problemów -->
+        {% if problemy %}
         <table class="table">
             <thead>
                 <tr>
+                    <th>Typ</th>
                     <th>Autor</th>
                     <th>Publikacja</th>
                     <th>Rok</th>
@@ -108,46 +142,49 @@
                 </tr>
             </thead>
             <tbody>
-                {% for rozbieznosc in rozbieznosci %}
+                {% for problem in problemy %}
                 <tr>
                     <td>
-                        {% if rozbieznosc.get_autor %}
-                            {{ rozbieznosc.get_autor }}
+                        <span class="label {{ problem.typ_css_class }}">{{ problem.typ_display }}</span>
+                    </td>
+                    <td>
+                        {% if problem.autor_display %}
+                            {{ problem.autor_display }}
                         {% else %}
                             <em>Brak danych</em>
                         {% endif %}
                     </td>
                     <td>
-                        {% if rozbieznosc.get_publikacja %}
-                            {{ rozbieznosc.get_publikacja|truncatechars:50 }}
+                        {% if problem.publikacja_display %}
+                            {{ problem.publikacja_display }}
                         {% else %}
                             <em>Brak danych</em>
                         {% endif %}
                     </td>
                     <td>
-                        {% if rozbieznosc.oswiadczenie_instytucji.publicationId.year %}
-                            {{ rozbieznosc.oswiadczenie_instytucji.publicationId.year }}
+                        {% if problem.rok %}
+                            {{ problem.rok }}
                         {% else %}
-                            <em>Brak danych</em>
+                            <em>-</em>
                         {% endif %}
                     </td>
                     <td>
-                        {% if rozbieznosc.dyscyplina_bpp %}
-                            <span class="label">{{ rozbieznosc.dyscyplina_bpp.nazwa }}</span>
+                        {% if problem.dyscyplina_bpp %}
+                            <span class="label">{{ problem.dyscyplina_bpp.nazwa }}</span>
                         {% else %}
-                            <span class="label alert">Brak</span>
+                            <span class="label secondary">-</span>
                         {% endif %}
                     </td>
                     <td>
-                        {% if rozbieznosc.dyscyplina_pbn %}
-                            <span class="label">{{ rozbieznosc.dyscyplina_pbn.nazwa }}</span>
+                        {% if problem.dyscyplina_pbn %}
+                            <span class="label">{{ problem.dyscyplina_pbn.nazwa }}</span>
                         {% else %}
-                            <span class="label alert">Brak</span>
+                            <span class="label secondary">-</span>
                         {% endif %}
                     </td>
-                    <td>{{ rozbieznosc.created_at|date:"Y-m-d H:i" }}</td>
+                    <td>{{ problem.created_at|date:"Y-m-d H:i" }}</td>
                     <td>
-                        <a href="{% url 'komparator_pbn_udzialy:detail' rozbieznosc.pk %}" class="button tiny">
+                        <a href="{% url problem.detail_url_name problem.pk %}" class="button tiny">
                             <span class="fi-magnifying-glass"></span> Szczegóły
                         </a>
                     </td>
@@ -156,30 +193,9 @@
             </tbody>
         </table>
 
-        <!-- Paginacja -->
-        {% if is_paginated %}
-        <div class="pagination">
-            <span class="page-links">
-                {% if page_obj.has_previous %}
-                    <a href="?page=1{% if search %}&search={{ search }}{% endif %}{% if filter %}&filter={{ filter }}{% endif %}{% if rok_min %}&rok_min={{ rok_min }}{% endif %}{% if rok_max %}&rok_max={{ rok_max }}{% endif %}">« pierwsza</a>
-                    <a href="?page={{ page_obj.previous_page_number }}{% if search %}&search={{ search }}{% endif %}{% if filter %}&filter={{ filter }}{% endif %}{% if rok_min %}&rok_min={{ rok_min }}{% endif %}{% if rok_max %}&rok_max={{ rok_max }}{% endif %}">poprzednia</a>
-                {% endif %}
-
-                <span class="current">
-                    Strona {{ page_obj.number }} z {{ page_obj.paginator.num_pages }}
-                </span>
-
-                {% if page_obj.has_next %}
-                    <a href="?page={{ page_obj.next_page_number }}{% if search %}&search={{ search }}{% endif %}{% if filter %}&filter={{ filter }}{% endif %}{% if rok_min %}&rok_min={{ rok_min }}{% endif %}{% if rok_max %}&rok_max={{ rok_max }}{% endif %}">następna</a>
-                    <a href="?page={{ page_obj.paginator.num_pages }}{% if search %}&search={{ search }}{% endif %}{% if filter %}&filter={{ filter }}{% endif %}{% if rok_min %}&rok_min={{ rok_min }}{% endif %}{% if rok_max %}&rok_max={{ rok_max }}{% endif %}">ostatnia »</a>
-                {% endif %}
-            </span>
-        </div>
-        {% endif %}
-
         {% else %}
         <div class="alert-box info">
-            Nie znaleziono żadnych rozbieżności.
+            Nie znaleziono żadnych problemów.
             {% if search or filter %}
                 <a href="{% url 'komparator_pbn_udzialy:list' %}">Pokaż wszystkie</a>
             {% endif %}
@@ -196,23 +212,20 @@
     text-align: center;
     margin-bottom: 10px;
 }
-.pagination {
-    text-align: center;
-    margin: 20px 0;
+.stat-box-alert {
+    background: #f04124;
+    color: white;
 }
-.page-links a {
-    padding: 5px 10px;
-    margin: 0 5px;
-    background: #f2f2f2;
-    text-decoration: none;
-    border-radius: 3px;
+.stat-box-warning {
+    background: #f08a24;
+    color: white;
 }
-.page-links a:hover {
-    background: #e0e0e0;
+.stat-box-secondary {
+    background: #e7e7e7;
 }
-.current {
-    padding: 5px 10px;
-    margin: 0 5px;
+.stat-box-total {
+    background: #008cba;
+    color: white;
 }
 </style>
 {% endblock %}

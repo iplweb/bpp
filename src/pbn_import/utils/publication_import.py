@@ -13,7 +13,6 @@ from bpp.models import (
 from pbn_api.models import Publication
 from pbn_integrator.importer import importuj_publikacje_po_pbn_uid_id
 from pbn_integrator.utils import (
-    integruj_publikacje_instytucji,
     pobierz_publikacje_z_instytucji,
     pobierz_publikacje_z_instytucji_v2,
 )
@@ -39,7 +38,7 @@ class PublicationImporter(ImportStepBase):
         if uczelnia is None:
             return {"authors_imported": False, "reason": "No Uczelnia PBN UID"}
 
-        total_steps = 5 if self.delete_existing else 4
+        total_steps = 4 if self.delete_existing else 3
         current_step = 0
 
         # Delete existing if requested
@@ -63,12 +62,6 @@ class PublicationImporter(ImportStepBase):
 
         # Import publications
         result = self._import_publications(current_step, total_steps)
-        if result:
-            return result
-        current_step += 1
-
-        # Integrate publications
-        result = self._integrate_publications(current_step, total_steps)
         if result:
             return result
 
@@ -198,21 +191,6 @@ class PublicationImporter(ImportStepBase):
             if hasattr(self.session, "statistics"):
                 self.session.statistics.publications_failed += 1
                 self.session.statistics.save()
-        return None
-
-    def _integrate_publications(self, current_step, total_steps):
-        """Integrate publications. Returns result dict if cancelled."""
-        if self.check_cancelled():
-            return {"cancelled": True}
-
-        self.update_progress(current_step, total_steps, "Integrowanie publikacji")
-        self.log("info", "Integrowanie publikacji")
-
-        try:
-            integruj_publikacje_instytucji(use_threads=True)
-            self.log("success", "Publikacje zintegrowane pomyślnie")
-        except Exception as e:
-            self.handle_error(e, "Nie udało się zintegrować publikacji")
         return None
 
     def _import_publications_with_cancellation(self):

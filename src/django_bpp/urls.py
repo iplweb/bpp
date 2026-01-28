@@ -254,6 +254,13 @@ urlpatterns = (
             ),
         ),
         path(
+            "deduplikator-publikacji/",
+            include(
+                ("deduplikator_publikacji.urls", "deduplikator_publikacji"),
+                namespace="deduplikator_publikacji",
+            ),
+        ),
+        path(
             "deduplikator-zrodel/",
             include(
                 ("deduplikator_zrodel.urls", "deduplikator_zrodel"),

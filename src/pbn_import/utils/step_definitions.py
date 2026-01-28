@@ -2,7 +2,6 @@
 
 from .author_import import AuthorImporter
 from .conference_import import ConferenceImporter
-from .data_integration import DataIntegrator
 from .fee_import import FeeImporter
 from .initial_setup import InitialSetup
 from .institution_import import InstitutionImporter
@@ -19,7 +18,6 @@ STEP_ICONS = {
     "conference_import": "fi-calendar",
     "author_import": "fi-torsos-all",
     "publication_import": "fi-page-copy",
-    "data_integration": "fi-link",
     "statement_import": "fi-clipboard-pencil",
     "fee_import": "fi-dollar",
 }
@@ -73,13 +71,6 @@ ALL_STEP_DEFINITIONS = [
         "display": "Import publikacji",
         "class": PublicationImporter,
         "disable_key": "disable_publikacje",
-        "required": False,
-    },
-    {
-        "name": "data_integration",
-        "display": "Integruj nowe dane",
-        "class": DataIntegrator,
-        "disable_key": "disable_integracja",
         "required": False,
     },
     {

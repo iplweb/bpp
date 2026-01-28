@@ -389,3 +389,58 @@ def normalize_rekord_id(rekord_id):
         ret += "}"
 
     return ret
+
+
+# Mapowanie polskich znaków diakrytycznych na ASCII
+POLISH_DIACRITICS_MAP = {
+    "ą": "a",
+    "ć": "c",
+    "ę": "e",
+    "ł": "l",
+    "ń": "n",
+    "ó": "o",
+    "ś": "s",
+    "ź": "z",
+    "ż": "z",
+    "Ą": "A",
+    "Ć": "C",
+    "Ę": "E",
+    "Ł": "L",
+    "Ń": "N",
+    "Ó": "O",
+    "Ś": "S",
+    "Ź": "Z",
+    "Ż": "Z",
+}
+
+
+def remove_polish_diacritics(s: str) -> str:
+    """Usuwa polskie znaki diakrytyczne.
+
+    'Łętowska' -> 'Letowska'
+    'Świątek' -> 'Swiatek'
+    """
+    if s is None:
+        return ""
+    for polish, ascii_char in POLISH_DIACRITICS_MAP.items():
+        s = s.replace(polish, ascii_char)
+    return s
+
+
+def normalize_nazwisko_do_porownania(s: str) -> str:
+    """Normalizuje nazwisko do porównania.
+
+    - Usuwa polskie znaki diakrytyczne
+    - Zamienia myślniki na spacje
+    - Lowercase
+    - Usuwa nadmiarowe spacje
+
+    'Lech-Marańda' -> 'lech maranda'
+    'Łętowska' -> 'letowska'
+    """
+    if s is None:
+        return ""
+    s = remove_polish_diacritics(s)
+    s = s.lower()
+    s = s.replace("-", " ")
+    return remove_extra_spaces(s)

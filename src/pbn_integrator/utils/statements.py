@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
 
 from django.contrib.postgres.search import TrigramSimilarity
@@ -19,10 +20,13 @@ from bpp.models import (
     Wydawnictwo_Zwarte_Autor,
 )
 from bpp.util import pbar
+from import_common.normalization import normalize_nazwisko_do_porownania
 from pbn_api.exceptions import StatementDeletionError
 from pbn_api.models import OswiadczenieInstytucji, Publication
 from pbn_integrator.utils.django_imports import normalize_tytul_publikacji
-from pbn_integrator.utils.integration import zweryfikuj_lub_stworz_match
+from pbn_integrator.utils.integration import ustaw_pbn_uid_jesli_brak
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     pass
@@ -82,7 +86,7 @@ def integruj_oswiadczenia_z_instytucji_pojedyncza_praca(  # noqa: C901
                     noted_pub.add(elem.publicationId_id)
                 return
             else:
-                zweryfikuj_lub_stworz_match(elem.publicationId, pub)
+                ustaw_pbn_uid_jesli_brak(elem.publicationId, pub)
 
     if isinstance(pub, Rekord):
         pub = pub.original
@@ -141,25 +145,78 @@ def integruj_oswiadczenia_z_instytucji_pojedyncza_praca(  # noqa: C901
                     typ_odpowiedzialnosci=elem.get_typ_odpowiedzialnosci(),
                 )
             except pub.autorzy_set.model.DoesNotExist:
-                msg = "Nie mogę naprawić tego automatycznie - sprawdź ręcznie"
-                print(
-                    f"XXX {msg}\n"
-                    "==========================================================="
-                )
-                if inconsistency_callback:
-                    inconsistency_callback(
-                        inconsistency_type="author_needs_manual_fix",
-                        pbn_publication=elem.publicationId,
-                        pbn_author=elem.personId,
-                        bpp_publication=pub,
-                        bpp_author=aut,
-                        discipline=(
-                            elem.get_bpp_discipline() if elem.disciplines else None
-                        ),
-                        message=msg,
-                        action_taken="Rekord wymaga ręcznej korekty",
+                # Tier 4: znormalizowane porównanie (polskie znaki, myślniki)
+                rec = None
+                pbn_nazwisko_norm = normalize_nazwisko_do_porownania(aut.nazwisko)
+                pbn_imiona_norm = normalize_nazwisko_do_porownania(aut.imiona)
+
+                matching_recs = []
+                for autor_rec in pub.autorzy_set.filter(
+                    typ_odpowiedzialnosci=elem.get_typ_odpowiedzialnosci()
+                ):
+                    if (
+                        normalize_nazwisko_do_porownania(autor_rec.autor.nazwisko)
+                        == pbn_nazwisko_norm
+                        and normalize_nazwisko_do_porownania(autor_rec.autor.imiona)
+                        == pbn_imiona_norm
+                    ):
+                        matching_recs.append(autor_rec)
+
+                if len(matching_recs) == 1:
+                    rec = matching_recs[0]
+
+                    # Jeśli autor w publikacji różni się od autora z PBN,
+                    # zamień na poprawnego (z get_bpp_autor)
+                    if rec.autor != aut:
+                        old_autor = rec.autor
+                        rec.autor = aut
+                        rec.save()
+                        logger.warning(
+                            f"NORMALIZED MATCH + FIX: zamieniono autora w publikacji "
+                            f"'{old_autor.nazwisko} {old_autor.imiona}' -> "
+                            f"'{aut.nazwisko} {aut.imiona}'"
+                        )
+                        if inconsistency_callback:
+                            inconsistency_callback(
+                                inconsistency_type="author_replaced",
+                                pbn_publication=elem.publicationId,
+                                bpp_publication=pub,
+                                old_author=old_autor,
+                                new_author=aut,
+                                message=(f"Zamieniono autora: {old_autor} -> {aut}"),
+                                action_taken="Autor w publikacji został zamieniony",
+                            )
+                    else:
+                        logger.warning(
+                            f"NORMALIZED MATCH in pub: '{aut.nazwisko} {aut.imiona}' "
+                            f"-> '{rec.autor.nazwisko} {rec.autor.imiona}'"
+                        )
+                elif len(matching_recs) > 1:
+                    logger.warning(
+                        f"NORMALIZED MATCH AMBIGUOUS in pub: '{aut.nazwisko} "
+                        f"{aut.imiona}' matches {len(matching_recs)} authors"
                     )
-                return
+
+                if rec is None:
+                    msg = "Nie mogę naprawić tego automatycznie - sprawdź ręcznie"
+                    print(
+                        f"XXX {msg}\n"
+                        "==========================================================="
+                    )
+                    if inconsistency_callback:
+                        inconsistency_callback(
+                            inconsistency_type="author_needs_manual_fix",
+                            pbn_publication=elem.publicationId,
+                            pbn_author=elem.personId,
+                            bpp_publication=pub,
+                            bpp_author=aut,
+                            discipline=(
+                                elem.get_bpp_discipline() if elem.disciplines else None
+                            ),
+                            message=msg,
+                            action_taken="Rekord wymaga ręcznej korekty",
+                        )
+                    return
 
         if elem.disciplines:
             discipline = elem.get_bpp_discipline()

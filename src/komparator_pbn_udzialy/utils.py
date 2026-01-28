@@ -4,7 +4,12 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
 from tqdm import tqdm
 
-from komparator_pbn_udzialy.models import RozbieznoscDyscyplinPBN
+from komparator_pbn_udzialy.models import BrakAutoraWPublikacji, RozbieznoscDyscyplinPBN
+from pbn_api.exceptions import (
+    BPPAutorNotFound,
+    BPPAutorPublicationLinkNotFound,
+    BPPPublicationNotFound,
+)
 from pbn_api.models import OswiadczenieInstytucji
 
 logger = logging.getLogger(__name__)
@@ -31,35 +36,56 @@ class KomparatorDyscyplinPBN:
             "processed": 0,
             "discrepancies_found": 0,
             "errors": 0,
-            "skipped": 0,
+            "missing_publication": 0,
+            "missing_autor": 0,
+            "missing_link": 0,
         }
 
     def clear_discrepancies(self):
-        """Usuwa wszystkie istniejące rozbieżności z bazy danych."""
-        count = RozbieznoscDyscyplinPBN.objects.all().delete()[0]
-        logger.info(f"Usunięto {count} istniejących rozbieżności")
-        return count
+        """Usuwa wszystkie istniejące rozbieżności i brakujących autorów."""
+        count1 = RozbieznoscDyscyplinPBN.objects.all().delete()[0]
+        count2 = BrakAutoraWPublikacji.objects.all().delete()[0]
+        logger.info(f"Usunięto {count1} rozbieżności i {count2} brakujących autorów")
+        return count1 + count2
 
-    def get_wydawnictwo_autor_for_oswiadczenie(
-        self, oswiadczenie: OswiadczenieInstytucji
-    ) -> object | None:
+    def save_missing_record(
+        self,
+        oswiadczenie: OswiadczenieInstytucji,
+        typ: str,
+        autor=None,
+        publikacja=None,
+    ):
         """
-        Znajduje odpowiedni rekord Wydawnictwo_*_Autor dla danego oświadczenia PBN.
+        Zapisuje brakujący rekord do bazy danych.
 
         Args:
-            oswiadczenie: Oświadczenie z PBN
-
-        Returns:
-            Instancja Wydawnictwo_Ciagle_Autor lub Wydawnictwo_Zwarte_Autor lub None
+            oswiadczenie: Oświadczenie PBN
+            typ: Typ problemu (z BrakAutoraWPublikacji.TYP_*)
+            autor: Autor z BPP (jeśli został znaleziony)
+            publikacja: Publikacja z BPP (jeśli została znaleziona)
         """
-        try:
-            # Używamy metody z modelu OswiadczenieInstytucji
-            return oswiadczenie.get_bpp_wa()
-        except Exception as e:
-            logger.debug(
-                f"Nie znaleziono wydawnictwo_autor dla oświadczenia {oswiadczenie.id}: {e}"
-            )
-            return None
+        content_type = None
+        object_id = None
+
+        if publikacja is not None:
+            content_type = ContentType.objects.get_for_model(publikacja.__class__)
+            object_id = publikacja.pk
+
+        dyscyplina_pbn = oswiadczenie.get_bpp_discipline()
+
+        BrakAutoraWPublikacji.objects.update_or_create(
+            oswiadczenie_instytucji=oswiadczenie,
+            defaults={
+                "pbn_scientist": oswiadczenie.personId,
+                "autor": autor,
+                "content_type": content_type,
+                "object_id": object_id,
+                "typ": typ,
+                "dyscyplina_pbn": dyscyplina_pbn,
+            },
+        )
+
+        logger.debug(f"Zapisano brak autora: typ={typ}, oswiadczenie={oswiadczenie.id}")
 
     def compare_disciplines(
         self,
@@ -153,14 +179,38 @@ class KomparatorDyscyplinPBN:
             oswiadczenie: Oświadczenie do przetworzenia
         """
         try:
-            # Znajdujemy odpowiedni rekord wydawnictwo_autor
-            wydawnictwo_autor = self.get_wydawnictwo_autor_for_oswiadczenie(
-                oswiadczenie
-            )
-
-            if wydawnictwo_autor is None:
-                # Brak publikacji po stronie BPP - pomijamy
-                self.stats["skipped"] += 1
+            # Próbujemy znaleźć odpowiedni rekord wydawnictwo_autor
+            try:
+                wydawnictwo_autor = oswiadczenie.get_bpp_wa_raises()
+            except BPPPublicationNotFound:
+                self.save_missing_record(
+                    oswiadczenie=oswiadczenie,
+                    typ=BrakAutoraWPublikacji.TYP_BRAK_PUBLIKACJI,
+                    autor=None,
+                    publikacja=None,
+                )
+                self.stats["missing_publication"] += 1
+                return
+            except BPPAutorNotFound:
+                publikacja = oswiadczenie.get_bpp_publication()
+                self.save_missing_record(
+                    oswiadczenie=oswiadczenie,
+                    typ=BrakAutoraWPublikacji.TYP_BRAK_AUTORA_W_BPP,
+                    autor=None,
+                    publikacja=publikacja,
+                )
+                self.stats["missing_autor"] += 1
+                return
+            except BPPAutorPublicationLinkNotFound:
+                publikacja = oswiadczenie.get_bpp_publication()
+                autor = oswiadczenie.get_bpp_autor()
+                self.save_missing_record(
+                    oswiadczenie=oswiadczenie,
+                    typ=BrakAutoraWPublikacji.TYP_BRAK_POWIAZANIA,
+                    autor=autor,
+                    publikacja=publikacja,
+                )
+                self.stats["missing_link"] += 1
                 return
 
             # Porównujemy dyscypliny
@@ -211,11 +261,19 @@ class KomparatorDyscyplinPBN:
                     f"Rozbieżności: {self.stats['discrepancies_found']}"
                 )
 
+        total_missing = (
+            self.stats["missing_publication"]
+            + self.stats["missing_autor"]
+            + self.stats["missing_link"]
+        )
         logger.info(
             f"Zakończono porównywanie. "
             f"Przetworzono: {self.stats['processed']}, "
-            f"Znaleziono rozbieżności: {self.stats['discrepancies_found']}, "
-            f"Pominięto: {self.stats['skipped']}, "
+            f"Rozbieżności: {self.stats['discrepancies_found']}, "
+            f"Brak publikacji: {self.stats['missing_publication']}, "
+            f"Brak autora: {self.stats['missing_autor']}, "
+            f"Brak powiązania: {self.stats['missing_link']}, "
+            f"(razem brakujących: {total_missing}), "
             f"Błędy: {self.stats['errors']}"
         )
 

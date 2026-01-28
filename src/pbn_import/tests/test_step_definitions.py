@@ -15,8 +15,10 @@ def test_get_step_definitions_default_config():
     config = {}
     steps = get_step_definitions(config)
 
-    # Should return all 10 steps when nothing is disabled
-    assert len(steps) == 10
+    # Should return all 9 steps when nothing is disabled
+    # (data_integration was removed as redundant - publications are created
+    # with pbn_uid_id already set, and statement integration is done in statement_import)
+    assert len(steps) == 9
 
     # Verify step names in order
     expected_names = [
@@ -27,7 +29,6 @@ def test_get_step_definitions_default_config():
         "conference_import",
         "author_import",
         "publication_import",
-        "data_integration",
         "statement_import",
         "fee_import",
     ]
@@ -46,7 +47,6 @@ def test_get_step_definitions_all_disabled():
         "disable_konferencje": True,
         "disable_autorzy": True,
         "disable_publikacje": True,
-        "disable_integracja": True,
         "disable_oswiadczenia": True,
         "disable_oplaty": True,
     }
@@ -64,70 +64,63 @@ def test_get_step_definitions_individual_disable_flags():
     steps = get_step_definitions(config)
     step_names = [step["name"] for step in steps]
     assert "initial_setup" not in step_names
-    assert len(steps) == 9
+    assert len(steps) == 8
 
     # Test disabling institutions
     config = {"disable_institutions": True}
     steps = get_step_definitions(config)
     step_names = [step["name"] for step in steps]
     assert "institution_setup" not in step_names
-    assert len(steps) == 9
+    assert len(steps) == 8
 
     # Test disabling sources
     config = {"disable_zrodla": True}
     steps = get_step_definitions(config)
     step_names = [step["name"] for step in steps]
     assert "source_import" not in step_names
-    assert len(steps) == 9
+    assert len(steps) == 8
 
     # Test disabling publishers
     config = {"disable_wydawcy": True}
     steps = get_step_definitions(config)
     step_names = [step["name"] for step in steps]
     assert "publisher_import" not in step_names
-    assert len(steps) == 9
+    assert len(steps) == 8
 
     # Test disabling conferences
     config = {"disable_konferencje": True}
     steps = get_step_definitions(config)
     step_names = [step["name"] for step in steps]
     assert "conference_import" not in step_names
-    assert len(steps) == 9
+    assert len(steps) == 8
 
     # Test disabling authors
     config = {"disable_autorzy": True}
     steps = get_step_definitions(config)
     step_names = [step["name"] for step in steps]
     assert "author_import" not in step_names
-    assert len(steps) == 9
+    assert len(steps) == 8
 
     # Test disabling publications
     config = {"disable_publikacje": True}
     steps = get_step_definitions(config)
     step_names = [step["name"] for step in steps]
     assert "publication_import" not in step_names
-    assert len(steps) == 9
-
-    # Test disabling data integration
-    config = {"disable_integracja": True}
-    steps = get_step_definitions(config)
-    step_names = [step["name"] for step in steps]
-    assert "data_integration" not in step_names
-    assert len(steps) == 9
+    assert len(steps) == 8
 
     # Test disabling statements
     config = {"disable_oswiadczenia": True}
     steps = get_step_definitions(config)
     step_names = [step["name"] for step in steps]
     assert "statement_import" not in step_names
-    assert len(steps) == 9
+    assert len(steps) == 8
 
     # Test disabling fees
     config = {"disable_oplaty": True}
     steps = get_step_definitions(config)
     step_names = [step["name"] for step in steps]
     assert "fee_import" not in step_names
-    assert len(steps) == 9
+    assert len(steps) == 8
 
 
 @pytest.mark.django_db
@@ -244,8 +237,8 @@ def test_get_step_definitions_combination_of_flags():
     }
     steps = get_step_definitions(config)
 
-    # Should have 7 steps (10 - 3 disabled)
-    assert len(steps) == 7
+    # Should have 6 steps (9 - 3 disabled)
+    assert len(steps) == 6
 
     step_names = [step["name"] for step in steps]
     assert "source_import" not in step_names
@@ -270,7 +263,6 @@ def test_get_icon_for_step():
     assert get_icon_for_step("conference_import") == "fi-calendar"
     assert get_icon_for_step("author_import") == "fi-torsos-all"
     assert get_icon_for_step("publication_import") == "fi-page-copy"
-    assert get_icon_for_step("data_integration") == "fi-link"
     assert get_icon_for_step("statement_import") == "fi-clipboard-pencil"
     assert get_icon_for_step("fee_import") == "fi-dollar"
 
@@ -291,7 +283,6 @@ def test_get_step_definitions_steps_with_empty_args():
         "publisher_import",
         "conference_import",
         "author_import",
-        "data_integration",
         "statement_import",
         "fee_import",
     ]

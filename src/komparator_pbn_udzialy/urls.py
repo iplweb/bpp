@@ -1,9 +1,10 @@
 from django.urls import path
 
 from komparator_pbn_udzialy.views import (
+    BrakAutoraDetailView,
+    ProblemyPBNListView,
     RebuildDiscrepanciesView,
     RozbieznoscDyscyplinPBNDetailView,
-    RozbieznoscDyscyplinPBNListView,
     TaskStatusAPIView,
     TaskStatusView,
 )
@@ -13,7 +14,7 @@ app_name = "komparator_pbn_udzialy"
 urlpatterns = [
     path(
         "",
-        RozbieznoscDyscyplinPBNListView.as_view(),
+        ProblemyPBNListView.as_view(),
         name="list",
     ),
     path(
@@ -35,5 +36,10 @@ urlpatterns = [
         "api/task/<str:task_id>/status/",
         TaskStatusAPIView.as_view(),
         name="task_status_api",
+    ),
+    path(
+        "brakujacy-autorzy/<int:pk>/",
+        BrakAutoraDetailView.as_view(),
+        name="missing_autor_detail",
     ),
 ]

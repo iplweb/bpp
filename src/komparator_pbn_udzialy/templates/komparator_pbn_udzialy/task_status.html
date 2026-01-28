@@ -40,8 +40,14 @@
                     <dt>Znaleziono rozbieżności:</dt>
                     <dd id="stat-discrepancies">0</dd>
 
-                    <dt>Pominięto:</dt>
-                    <dd id="stat-skipped">0</dd>
+                    <dt>Brak publikacji w BPP:</dt>
+                    <dd id="stat-missing-publication">0</dd>
+
+                    <dt>Brak autora w BPP:</dt>
+                    <dd id="stat-missing-autor">0</dd>
+
+                    <dt>Brak powiązania:</dt>
+                    <dd id="stat-missing-link">0</dd>
 
                     <dt>Błędy:</dt>
                     <dd id="stat-errors">0</dd>
@@ -126,7 +132,9 @@ function updateUI(data) {
             statsContainer.style.display = 'block';
             document.getElementById('stat-processed').textContent = data.stats.processed || 0;
             document.getElementById('stat-discrepancies').textContent = data.stats.discrepancies_found || 0;
-            document.getElementById('stat-skipped').textContent = data.stats.skipped || 0;
+            document.getElementById('stat-missing-publication').textContent = data.stats.missing_publication || 0;
+            document.getElementById('stat-missing-autor').textContent = data.stats.missing_autor || 0;
+            document.getElementById('stat-missing-link').textContent = data.stats.missing_link || 0;
             document.getElementById('stat-errors').textContent = data.stats.errors || 0;
         }
     } else if (data.status === 'SUCCESS') {
@@ -139,7 +147,9 @@ function updateUI(data) {
             statsContainer.style.display = 'block';
             document.getElementById('stat-processed').textContent = data.stats.processed || 0;
             document.getElementById('stat-discrepancies').textContent = data.stats.discrepancies_found || 0;
-            document.getElementById('stat-skipped').textContent = data.stats.skipped || 0;
+            document.getElementById('stat-missing-publication').textContent = data.stats.missing_publication || 0;
+            document.getElementById('stat-missing-autor').textContent = data.stats.missing_autor || 0;
+            document.getElementById('stat-missing-link').textContent = data.stats.missing_link || 0;
             document.getElementById('stat-errors').textContent = data.stats.errors || 0;
         }
 
@@ -148,6 +158,11 @@ function updateUI(data) {
             clearInterval(intervalId);
             intervalId = null;
         }
+
+        // Przekieruj na stronę główną po 3 sekundach
+        setTimeout(function() {
+            window.location.href = "{% url 'komparator_pbn_udzialy:list' %}";
+        }, 3000);
     } else if (data.status === 'FAILURE' || data.status === 'ERROR') {
         statusContainer.innerHTML = '<div class="alert-box alert"><span class="fi-x"></span> Błąd: ' + (data.message || 'Nieznany błąd') + '</div>';
         progressContainer.style.display = 'none';

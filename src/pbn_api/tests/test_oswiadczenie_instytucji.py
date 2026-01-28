@@ -139,3 +139,113 @@ def test_get_bpp_autor_name_multiple_returns_none():
     result = oswiadczenie.get_bpp_autor()
 
     assert result is None
+
+
+# Testy dla Tier 4: znormalizowane dopasowanie (polskie znaki, myślniki)
+
+
+@pytest.mark.django_db
+def test_get_bpp_autor_normalized_polish_diacritics():
+    """Test że autor z polskimi znakami jest dopasowany do PBN bez znaków.
+
+    Główny przypadek: 'Łętowska' w BPP dopasowana do 'Letowska' z PBN.
+    """
+    # Autor w BPP ma polskie znaki diakrytyczne
+    autor = baker.make(Autor, nazwisko="Łętowska", imiona="Anna")
+
+    # Scientist w PBN ma nazwisko bez polskich znaków
+    scientist = baker.make(
+        Scientist,
+        lastName="Letowska",
+        name="Anna",
+        orcid="",
+    )
+    oswiadczenie = baker.make(OswiadczenieInstytucji, personId=scientist)
+
+    result = oswiadczenie.get_bpp_autor()
+
+    assert result == autor
+
+
+@pytest.mark.django_db
+def test_get_bpp_autor_normalized_hyphen_vs_space():
+    """Test że autor z myślnikiem jest dopasowany do PBN ze spacją.
+
+    Główny przypadek: 'Lech-Marańda' w BPP dopasowana do 'Lech Maranda' z PBN.
+    """
+    # Autor w BPP ma myślnik w nazwisku
+    autor = baker.make(Autor, nazwisko="Lech-Marańda", imiona="Ewa")
+
+    # Scientist w PBN ma spację zamiast myślnika i bez polskich znaków
+    scientist = baker.make(
+        Scientist,
+        lastName="Lech Maranda",
+        name="Ewa",
+        orcid="",
+    )
+    oswiadczenie = baker.make(OswiadczenieInstytucji, personId=scientist)
+
+    result = oswiadczenie.get_bpp_autor()
+
+    assert result == autor
+
+
+@pytest.mark.django_db
+def test_get_bpp_autor_normalized_missing_diacritic():
+    """Test dla brakującego znaku diakrytycznego: 'Łetowska' vs 'Łętowska'."""
+    # Autor w BPP ma pełne polskie znaki
+    autor = baker.make(Autor, nazwisko="Łętowska", imiona="Magdalena")
+
+    # Scientist w PBN ma brakujący znak diakrytyczny
+    scientist = baker.make(
+        Scientist,
+        lastName="Łetowska",  # brakuje ę
+        name="Magdalena",
+        orcid="",
+    )
+    oswiadczenie = baker.make(OswiadczenieInstytucji, personId=scientist)
+
+    result = oswiadczenie.get_bpp_autor()
+
+    assert result == autor
+
+
+@pytest.mark.django_db
+def test_get_bpp_autor_normalized_priority_exact_over_normalized():
+    """Test że dokładne dopasowanie ma priorytet nad znormalizowanym."""
+    # Dwaj autorzy: jeden z dokładnym dopasowaniem, drugi ze znormalizowanym
+    autor_exact = baker.make(Autor, nazwisko="Kowalski", imiona="Jan")
+    baker.make(Autor, nazwisko="Kowálski", imiona="Jan")  # różni się akcentem
+
+    scientist = baker.make(
+        Scientist,
+        lastName="Kowalski",
+        name="Jan",
+        orcid="",
+    )
+    oswiadczenie = baker.make(OswiadczenieInstytucji, personId=scientist)
+
+    result = oswiadczenie.get_bpp_autor()
+
+    # Powinno zwrócić dokładne dopasowanie (Tier 3), nie znormalizowane (Tier 4)
+    assert result == autor_exact
+
+
+@pytest.mark.django_db
+def test_get_bpp_autor_normalized_both_names():
+    """Test że normalizacja działa dla imion i nazwisk jednocześnie."""
+    # Autor w BPP z polskimi znakami w imieniu i nazwisku
+    autor = baker.make(Autor, nazwisko="Świątek-Górniak", imiona="Żółć")
+
+    # Scientist w PBN bez polskich znaków
+    scientist = baker.make(
+        Scientist,
+        lastName="Swiatek Gorniak",
+        name="Zolc",
+        orcid="",
+    )
+    oswiadczenie = baker.make(OswiadczenieInstytucji, personId=scientist)
+
+    result = oswiadczenie.get_bpp_autor()
+
+    assert result == autor

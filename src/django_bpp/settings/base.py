@@ -449,6 +449,7 @@ INSTALLED_APPS = [
     "snapshot_odpiec",
     "stan_systemu",
     "deduplikator_autorow",
+    "deduplikator_publikacji",
     "deduplikator_zrodel",
     "importer_autorow_pbn",
     "przemapuj_prace_autora",
