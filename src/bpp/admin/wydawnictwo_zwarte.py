@@ -561,6 +561,7 @@ class Wydawnictwo_ZwarteAdmin(
         if lookup in (
             "autorzy_set__dyscyplina_naukowa__isnull",
             "autorzy_set__data_oswiadczenia__isnull",
+            "autorzy_set__autor__id__exact",
         ):
             return True
         return super().lookup_allowed(lookup, value)

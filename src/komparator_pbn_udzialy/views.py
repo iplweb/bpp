@@ -2,7 +2,7 @@ import logging
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, permission_required
-from django.core.management import call_command
+from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.db.models import Q
 from django.http import HttpResponseRedirect, JsonResponse
@@ -10,28 +10,71 @@ from django.shortcuts import render
 from django.urls import reverse
 from django.utils.decorators import method_decorator
 from django.views import View
-from django.views.generic import DetailView, ListView
+from django.views.generic import DetailView
 
-from komparator_pbn_udzialy.models import RozbieznoscDyscyplinPBN
+from komparator_pbn_udzialy.models import (
+    BrakAutoraWPublikacji,
+    ProblemWrapper,
+    RozbieznoscDyscyplinPBN,
+)
 from pbn_downloader_app.freshness import is_pbn_publications_data_fresh
 
 logger = logging.getLogger(__name__)
 
 
-class RozbieznoscDyscyplinPBNListView(ListView):
-    """Widok listy rozbieżności dyscyplin między BPP a PBN."""
+class ProblemyPBNListView(View):
+    """Widok listy wszystkich problemów PBN - rozbieżności i brakujących autorów."""
 
-    model = RozbieznoscDyscyplinPBN
     template_name = "komparator_pbn_udzialy/list.html"
-    context_object_name = "rozbieznosci"
-    paginate_by = 50
 
-    def get_queryset(self):
-        """Optymalizowany queryset z prefetch_related."""
-        queryset = super().get_queryset()
+    def get(self, request):
+        # Filtry
+        search = request.GET.get("search", "")
+        filter_type = request.GET.get("filter", "")
+        rok_min = request.GET.get("rok_min", "2022")
+        rok_max = request.GET.get("rok_max", "2025")
 
-        # Optymalizacja zapytań
-        queryset = queryset.select_related(
+        # Pobierz rozbieżności
+        rozbieznosci = self._get_rozbieznosci(search, filter_type, rok_min, rok_max)
+
+        # Pobierz brakujących autorów
+        brakujacy = self._get_brakujacy(search, filter_type, rok_min, rok_max)
+
+        # Opakuj w wrapper i połącz
+        all_problems = []
+        for r in rozbieznosci:
+            all_problems.append(ProblemWrapper(r))
+        for b in brakujacy:
+            all_problems.append(ProblemWrapper(b))
+
+        # Sortuj po dacie (najnowsze pierwsze)
+        all_problems.sort(key=lambda x: x.created_at, reverse=True)
+
+        # Statystyki
+        stats = self._get_stats()
+
+        # PBN data freshness check
+        pbn_data_fresh, pbn_stale_message, pbn_last_download = (
+            is_pbn_publications_data_fresh()
+        )
+
+        context = {
+            "problemy": all_problems,
+            "search": search,
+            "filter": filter_type,
+            "rok_min": rok_min,
+            "rok_max": rok_max,
+            "pbn_data_fresh": pbn_data_fresh,
+            "pbn_stale_message": pbn_stale_message,
+            "pbn_last_download": pbn_last_download,
+            **stats,
+        }
+
+        return render(request, self.template_name, context)
+
+    def _get_rozbieznosci(self, search, filter_type, rok_min, rok_max):
+        """Pobiera rozbieżności dyscyplin z uwzględnieniem filtrów."""
+        queryset = RozbieznoscDyscyplinPBN.objects.select_related(
             "oswiadczenie_instytucji",
             "oswiadczenie_instytucji__publicationId",
             "dyscyplina_bpp",
@@ -41,8 +84,7 @@ class RozbieznoscDyscyplinPBNListView(ListView):
             "oswiadczenie_instytucji__personId",
         )
 
-        # Filtrowanie
-        search = self.request.GET.get("search")
+        # Wyszukiwanie
         if search:
             queryset = queryset.filter(
                 Q(oswiadczenie_instytucji__publicationId__tytul__icontains=search)
@@ -50,8 +92,7 @@ class RozbieznoscDyscyplinPBNListView(ListView):
                 | Q(dyscyplina_pbn__nazwa__icontains=search)
             )
 
-        # Filtrowanie po typie rozbieżności
-        filter_type = self.request.GET.get("filter")
+        # Filtrowanie po typie - dla rozbieżności
         if filter_type == "bpp_empty":
             queryset = queryset.filter(dyscyplina_bpp__isnull=True)
         elif filter_type == "pbn_empty":
@@ -61,11 +102,15 @@ class RozbieznoscDyscyplinPBNListView(ListView):
                 dyscyplina_bpp__isnull=False,
                 dyscyplina_pbn__isnull=False,
             ).exclude(dyscyplina_bpp=models.F("dyscyplina_pbn"))
+        elif filter_type in [
+            BrakAutoraWPublikacji.TYP_BRAK_AUTORA_W_BPP,
+            BrakAutoraWPublikacji.TYP_BRAK_POWIAZANIA,
+            BrakAutoraWPublikacji.TYP_BRAK_PUBLIKACJI,
+        ]:
+            # Filtr dla typu brakującego autora - nie pokazuj rozbieżności
+            return []
 
-        # Filtrowanie po roku publikacji
-        rok_min = self.request.GET.get("rok_min", "2022")
-        rok_max = self.request.GET.get("rok_max", "2025")
-
+        # Filtrowanie po roku
         if rok_min:
             try:
                 rok_min_int = int(rok_min)
@@ -84,13 +129,64 @@ class RozbieznoscDyscyplinPBNListView(ListView):
             except (ValueError, TypeError):
                 pass
 
-        return queryset
+        return list(queryset)
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
+    def _get_brakujacy(self, search, filter_type, rok_min, rok_max):
+        """Pobiera brakujących autorów z uwzględnieniem filtrów."""
+        queryset = BrakAutoraWPublikacji.objects.select_related(
+            "oswiadczenie_instytucji",
+            "oswiadczenie_instytucji__publicationId",
+            "pbn_scientist",
+            "autor",
+            "dyscyplina_pbn",
+            "content_type",
+        )
 
-        # Statystyki
-        total = RozbieznoscDyscyplinPBN.objects.count()
+        # Wyszukiwanie
+        if search:
+            queryset = queryset.filter(
+                Q(pbn_scientist__lastName__icontains=search)
+                | Q(pbn_scientist__name__icontains=search)
+                | Q(oswiadczenie_instytucji__publicationId__tytul__icontains=search)
+                | Q(autor__nazwisko__icontains=search)
+            )
+
+        # Filtrowanie po typie - dla brakujących autorów
+        if filter_type in [
+            BrakAutoraWPublikacji.TYP_BRAK_AUTORA_W_BPP,
+            BrakAutoraWPublikacji.TYP_BRAK_POWIAZANIA,
+            BrakAutoraWPublikacji.TYP_BRAK_PUBLIKACJI,
+        ]:
+            queryset = queryset.filter(typ=filter_type)
+        elif filter_type in ["bpp_empty", "pbn_empty", "both_present"]:
+            # Filtr dla rozbieżności - nie pokazuj brakujących
+            return []
+
+        # Filtrowanie po roku
+        if rok_min:
+            try:
+                rok_min_int = int(rok_min)
+                queryset = queryset.filter(
+                    oswiadczenie_instytucji__publicationId__year__gte=rok_min_int
+                )
+            except (ValueError, TypeError):
+                pass
+
+        if rok_max:
+            try:
+                rok_max_int = int(rok_max)
+                queryset = queryset.filter(
+                    oswiadczenie_instytucji__publicationId__year__lte=rok_max_int
+                )
+            except (ValueError, TypeError):
+                pass
+
+        return list(queryset)
+
+    def _get_stats(self):
+        """Zwraca statystyki dla wszystkich typów problemów."""
+        # Statystyki rozbieżności
+        rozbieznosci_total = RozbieznoscDyscyplinPBN.objects.count()
         bpp_empty = RozbieznoscDyscyplinPBN.objects.filter(
             dyscyplina_bpp__isnull=True
         ).count()
@@ -102,28 +198,33 @@ class RozbieznoscDyscyplinPBNListView(ListView):
             dyscyplina_pbn__isnull=False,
         ).count()
 
-        # Add PBN data freshness check
-        pbn_data_fresh, pbn_stale_message, pbn_last_download = (
-            is_pbn_publications_data_fresh()
-        )
+        # Statystyki brakujących autorów
+        brakujacy_total = BrakAutoraWPublikacji.objects.count()
+        missing_autor = BrakAutoraWPublikacji.objects.filter(
+            typ=BrakAutoraWPublikacji.TYP_BRAK_AUTORA_W_BPP
+        ).count()
+        missing_link = BrakAutoraWPublikacji.objects.filter(
+            typ=BrakAutoraWPublikacji.TYP_BRAK_POWIAZANIA
+        ).count()
+        missing_publication = BrakAutoraWPublikacji.objects.filter(
+            typ=BrakAutoraWPublikacji.TYP_BRAK_PUBLIKACJI
+        ).count()
 
-        context.update(
-            {
-                "total_count": total,
-                "bpp_empty_count": bpp_empty,
-                "pbn_empty_count": pbn_empty,
-                "both_present_count": both_present,
-                "search": self.request.GET.get("search", ""),
-                "filter": self.request.GET.get("filter", ""),
-                "rok_min": self.request.GET.get("rok_min", "2022"),
-                "rok_max": self.request.GET.get("rok_max", "2025"),
-                "pbn_data_fresh": pbn_data_fresh,
-                "pbn_stale_message": pbn_stale_message,
-                "pbn_last_download": pbn_last_download,
-            }
-        )
-
-        return context
+        return {
+            "total_count": rozbieznosci_total + brakujacy_total,
+            "rozbieznosci_total": rozbieznosci_total,
+            "bpp_empty_count": bpp_empty,
+            "pbn_empty_count": pbn_empty,
+            "both_present_count": both_present,
+            "brakujacy_total": brakujacy_total,
+            "missing_autor_count": missing_autor,
+            "missing_link_count": missing_link,
+            "missing_publication_count": missing_publication,
+            # Stałe dla filtrów
+            "TYP_BRAK_AUTORA": BrakAutoraWPublikacji.TYP_BRAK_AUTORA_W_BPP,
+            "TYP_BRAK_POWIAZANIA": BrakAutoraWPublikacji.TYP_BRAK_POWIAZANIA,
+            "TYP_BRAK_PUBLIKACJI": BrakAutoraWPublikacji.TYP_BRAK_PUBLIKACJI,
+        }
 
 
 class RozbieznoscDyscyplinPBNDetailView(DetailView):
@@ -158,10 +259,14 @@ class RozbieznoscDyscyplinPBNDetailView(DetailView):
         wydawnictwo_autor = rozbieznosc.get_wydawnictwo_autor()
 
         if wydawnictwo_autor:
+            publikacja = wydawnictwo_autor.rekord
             context["autor"] = wydawnictwo_autor.autor
-            context["publikacja"] = wydawnictwo_autor.rekord
+            context["publikacja"] = publikacja
             context["jednostka"] = wydawnictwo_autor.jednostka
             context["wydawnictwo_autor"] = wydawnictwo_autor
+            context["publikacja_content_type"] = ContentType.objects.get_for_model(
+                publikacja
+            )
 
         return context
 
@@ -172,29 +277,14 @@ class RozbieznoscDyscyplinPBNDetailView(DetailView):
     name="dispatch",
 )
 class RebuildDiscrepanciesView(View):
-    """Widok do przebudowy rozbieżności."""
+    """Widok do przebudowy rozbieżności.
+
+    Kliknięcie od razu uruchamia zadanie Celery z clear_existing=True.
+    """
 
     def get(self, request):
-        """Wyświetla stronę potwierdzenia."""
-        pbn_data_fresh, pbn_stale_message, pbn_last_download = (
-            is_pbn_publications_data_fresh()
-        )
-
-        context = {
-            "current_count": RozbieznoscDyscyplinPBN.objects.count(),
-            "pbn_data_fresh": pbn_data_fresh,
-            "pbn_stale_message": pbn_stale_message,
-            "pbn_last_download": pbn_last_download,
-        }
-        return render(
-            request,
-            "komparator_pbn_udzialy/rebuild_confirm.html",
-            context,
-        )
-
-    def post(self, request):
-        """Uruchamia przebudowę rozbieżności."""
-        # Check if PBN data is fresh before allowing rebuild
+        """Uruchamia przebudowę rozbieżności od razu."""
+        # Sprawdź świeżość danych PBN
         pbn_data_fresh, pbn_stale_message, _ = is_pbn_publications_data_fresh()
         if not pbn_data_fresh:
             messages.error(
@@ -202,65 +292,35 @@ class RebuildDiscrepanciesView(View):
                 f"Nie można przebudować rozbieżności: {pbn_stale_message}. "
                 "Pobierz aktualne dane z PBN.",
             )
-            return HttpResponseRedirect(reverse("komparator_pbn_udzialy:rebuild"))
+            return HttpResponseRedirect(reverse("komparator_pbn_udzialy:list"))
 
-        run_async = request.POST.get("run_async") == "on"
+        # Uruchom w tle z clear_existing=True
+        try:
+            from komparator_pbn_udzialy.tasks import porownaj_dyscypliny_pbn_task
 
-        if run_async:
-            # Uruchom w tle używając Celery
-            try:
-                from komparator_pbn_udzialy.tasks import porownaj_dyscypliny_pbn_task
+            task = porownaj_dyscypliny_pbn_task.delay(clear_existing=True)
+            request.session["komparator_task_id"] = task.id
 
-                clear_existing = request.POST.get("clear_existing") == "on"
-                task = porownaj_dyscypliny_pbn_task.delay(clear_existing=clear_existing)
+            messages.info(
+                request,
+                f"Przebudowa rozbieżności została uruchomiona w tle. "
+                f"ID zadania: {task.id}",
+            )
 
-                # Zapisz task_id w sesji
-                request.session["komparator_task_id"] = task.id
-
-                messages.info(
-                    request,
-                    f"Przebudowa rozbieżności została uruchomiona w tle. ID zadania: {task.id}",
+            return HttpResponseRedirect(
+                reverse(
+                    "komparator_pbn_udzialy:task_status",
+                    kwargs={"task_id": task.id},
                 )
+            )
 
-                # Przekieruj do strony statusu
-                return HttpResponseRedirect(
-                    reverse(
-                        "komparator_pbn_udzialy:task_status",
-                        kwargs={"task_id": task.id},
-                    )
-                )
-
-            except Exception as e:
-                logger.error(f"Błąd podczas uruchamiania zadania Celery: {e}")
-                messages.error(
-                    request,
-                    f"Nie można uruchomić zadania w tle: {str(e)}. Spróbuj uruchomić synchronicznie.",
-                )
-                return HttpResponseRedirect(reverse("komparator_pbn_udzialy:rebuild"))
-        else:
-            # Uruchom synchronicznie (stara metoda)
-            try:
-                clear_existing = request.POST.get("clear_existing") == "on"
-
-                call_command(
-                    "porownaj_dyscypliny_pbn",
-                    clear=clear_existing,
-                    no_progress=True,
-                )
-
-                messages.success(
-                    request,
-                    "Przebudowa rozbieżności zakończona pomyślnie.",
-                )
-
-            except Exception as e:
-                logger.error(f"Błąd podczas przebudowy rozbieżności: {e}")
-                messages.error(
-                    request,
-                    f"Wystąpił błąd podczas przebudowy: {str(e)}",
-                )
-
-        return HttpResponseRedirect(reverse("komparator_pbn_udzialy:list"))
+        except Exception as e:
+            logger.error(f"Błąd podczas uruchamiania zadania Celery: {e}")
+            messages.error(
+                request,
+                f"Nie można uruchomić zadania w tle: {str(e)}",
+            )
+            return HttpResponseRedirect(reverse("komparator_pbn_udzialy:list"))
 
 
 @method_decorator(login_required, name="dispatch")
@@ -289,3 +349,47 @@ class TaskStatusAPIView(View):
         except Exception as e:
             logger.error(f"Błąd podczas pobierania statusu zadania: {e}")
             return JsonResponse({"status": "ERROR", "message": str(e)}, status=500)
+
+
+class BrakAutoraDetailView(DetailView):
+    """Widok szczegółowy brakującego autora."""
+
+    model = BrakAutoraWPublikacji
+    template_name = "komparator_pbn_udzialy/brak_autora_detail.html"
+    context_object_name = "brak_autora"
+
+    def get_queryset(self):
+        """Optymalizowany queryset."""
+        return (
+            super()
+            .get_queryset()
+            .select_related(
+                "oswiadczenie_instytucji",
+                "oswiadczenie_instytucji__publicationId",
+                "pbn_scientist",
+                "autor",
+                "dyscyplina_pbn",
+                "content_type",
+            )
+        )
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        brak = self.object
+
+        # Dodaj autora i publikację do kontekstu
+        context["autor"] = brak.autor
+        context["publikacja"] = brak.publikacja
+
+        if brak.publikacja:
+            context["publikacja_content_type"] = ContentType.objects.get_for_model(
+                brak.publikacja
+            )
+
+        # Stałe dla szablonu
+        context["TYP_BRAK_PUBLIKACJI"] = BrakAutoraWPublikacji.TYP_BRAK_PUBLIKACJI
+        context["TYP_BRAK_AUTORA"] = BrakAutoraWPublikacji.TYP_BRAK_AUTORA_W_BPP
+        context["TYP_BRAK_POWIAZANIA"] = BrakAutoraWPublikacji.TYP_BRAK_POWIAZANIA
+
+        return context

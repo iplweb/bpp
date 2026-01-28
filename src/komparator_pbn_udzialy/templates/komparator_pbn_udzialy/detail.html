@@ -5,8 +5,8 @@
 
 {% block breadcrumbs %}
     <li><a href="/">Strona główna</a></li>
-    <li><a href="{% url 'komparator_pbn_udzialy:list' %}">Rozbieżności dyscyplin BPP-PBN</a></li>
-    <li class="active">Szczegóły</li>
+    <li><a href="{% url 'komparator_pbn_udzialy:list' %}">Problemy PBN</a></li>
+    <li class="active">Szczegóły - różne dyscypliny</li>
 {% endblock %}
 
 {% block content %}
@@ -46,8 +46,11 @@
         <!-- Informacje o autorze -->
         {% if autor %}
         <div class="panel">
-            <h3>Autor</h3>
+            <h3>Autor BPP</h3>
             <dl class="dl-horizontal">
+                <dt>BPP ID:</dt>
+                <dd>{{ autor.pk }}</dd>
+
                 <dt>Imię i nazwisko:</dt>
                 <dd>{{ autor }}</dd>
 
@@ -56,9 +59,9 @@
                 <dd>{{ autor.orcid }}</dd>
                 {% endif %}
 
-                {% if autor.pbn_id %}
-                <dt>PBN ID:</dt>
-                <dd>{{ autor.pbn_id }}</dd>
+                {% if autor.pbn_uid_id %}
+                <dt>PBN UID:</dt>
+                <dd>{{ autor.pbn_uid_id }}</dd>
                 {% endif %}
             </dl>
 
@@ -71,8 +74,11 @@
         <!-- Informacje o publikacji -->
         {% if publikacja %}
         <div class="panel">
-            <h3>Publikacja</h3>
+            <h3>Publikacja BPP</h3>
             <dl class="dl-horizontal">
+                <dt>BPP ID:</dt>
+                <dd>{{ publikacja.pk }}</dd>
+
                 <dt>Tytuł:</dt>
                 <dd>{{ publikacja.tytul_oryginalny }}</dd>
 
@@ -81,15 +87,23 @@
                 <dd>{{ publikacja.rok }}</dd>
                 {% endif %}
 
-                {% if publikacja.pbn_id %}
-                <dt>PBN ID:</dt>
-                <dd>{{ publikacja.pbn_id }}</dd>
+                {% if publikacja.pbn_uid_id %}
+                <dt>PBN UID:</dt>
+                <dd>{{ publikacja.pbn_uid_id }}</dd>
                 {% endif %}
             </dl>
 
+            {% if publikacja_content_type %}
+            <a href="{% url 'admin:'|add:publikacja_content_type.app_label|add:'_'|add:publikacja_content_type.model|add:'_change' publikacja.pk %}"
+               class="button small" target="_blank">
+                <span class="fi-pencil"></span> Edytuj publikację
+            </a>
+            {% endif %}
+
             {% if wydawnictwo_autor %}
-            <a href="{% url 'admin:bpp_wydawnictwo_ciagle_autor_change' wydawnictwo_autor.pk %}" class="button tiny" target="_blank">
-                <span class="fi-pencil"></span> Edytuj przypisanie autora w panelu administracyjnym
+            <a href="{% url 'admin:'|add:rozbieznosc.content_type.app_label|add:'_'|add:rozbieznosc.content_type.model|add:'_change' wydawnictwo_autor.pk %}"
+               class="button small secondary" target="_blank">
+                <span class="fi-pencil"></span> Edytuj przypisanie autora
             </a>
             {% endif %}
         </div>

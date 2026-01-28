@@ -1,7 +1,11 @@
 from decimal import Decimal
 
 from braces.views import GroupRequiredMixin
+from django.contrib import messages
 from django.db.models import Count, Q, Sum
+from django.http import HttpResponseRedirect
+from django.urls import reverse
+from django.views import View
 from django.views.generic import TemplateView
 
 from bpp.const import GR_WPROWADZANIE_DANYCH
@@ -67,6 +71,9 @@ class WeryfikujBazeView(GroupRequiredMixin, TemplateView):
             .count()
         )
 
+        # List of available rodzaj_autora types for dropdown
+        context["rodzaje_autora_lista"] = Rodzaj_Autora.objects.all().order_by("sort")
+
         # 2. Records without wymiar_etatu
         context["bez_wymiaru_etatu"] = (
             Autor_Dyscyplina.objects.filter(rok__gte=2022, rok__lte=2025)
@@ -80,7 +87,7 @@ class WeryfikujBazeView(GroupRequiredMixin, TemplateView):
         # - procent_dyscypliny must not be NULL or 0
         # - if subdyscyplina_naukowa exists, procent_subdyscypliny must not be NULL or 0
         # - only for authors with jest_w_n=True OR licz_sloty=True
-        context["bez_procent"] = (
+        context["bez_procent_n_sloty"] = (
             Autor_Dyscyplina.objects.filter(rok__gte=2022, rok__lte=2025)
             .filter(Q(rodzaj_autora__jest_w_n=True) | Q(rodzaj_autora__licz_sloty=True))
             .filter(
@@ -94,6 +101,45 @@ class WeryfikujBazeView(GroupRequiredMixin, TemplateView):
                         | Q(procent_subdyscypliny=Decimal("0"))
                     )
                 )
+            )
+            .count()
+        )
+
+        # 3.1. Records with missing percentage - any author type
+        context["bez_procent_dowolny"] = (
+            Autor_Dyscyplina.objects.filter(rok__gte=2022, rok__lte=2025)
+            .filter(
+                Q(procent_dyscypliny__isnull=True)
+                | Q(procent_dyscypliny=Decimal("0"))
+                | (
+                    Q(subdyscyplina_naukowa__isnull=False)
+                    & (
+                        Q(procent_subdyscypliny__isnull=True)
+                        | Q(procent_subdyscypliny=Decimal("0"))
+                    )
+                )
+            )
+            .count()
+        )
+
+        # Count records that can be auto-fixed (only single discipline, no subdyscyplina)
+        # For N/sloty authors
+        context["bez_procent_n_sloty_do_naprawy"] = (
+            Autor_Dyscyplina.objects.filter(rok__gte=2022, rok__lte=2025)
+            .filter(Q(rodzaj_autora__jest_w_n=True) | Q(rodzaj_autora__licz_sloty=True))
+            .filter(subdyscyplina_naukowa__isnull=True)
+            .filter(
+                Q(procent_dyscypliny__isnull=True) | Q(procent_dyscypliny=Decimal("0"))
+            )
+            .count()
+        )
+
+        # For any author type
+        context["bez_procent_dowolny_do_naprawy"] = (
+            Autor_Dyscyplina.objects.filter(rok__gte=2022, rok__lte=2025)
+            .filter(subdyscyplina_naukowa__isnull=True)
+            .filter(
+                Q(procent_dyscypliny__isnull=True) | Q(procent_dyscypliny=Decimal("0"))
             )
             .count()
         )
@@ -150,9 +196,15 @@ class WeryfikujBazeView(GroupRequiredMixin, TemplateView):
                 "rok >= 2022 and rok <= 2025 and "
                 "(wymiar_etatu = None or wymiar_etatu = 0)"
             ),
-            "bez_procent": (
+            "bez_procent_n_sloty": (
                 "rok >= 2022 and rok <= 2025 and "
-                "(rodzaj_autora.jest_w_n = True or rodzaj_autora.licz_sloty = True) and "
+                "(rodzaj_autora.jest_w_n = True or rodzaj_autora.licz_sloty = True) "
+                "and (procent_dyscypliny = None or procent_dyscypliny = 0 or "
+                "(subdyscyplina_naukowa != None and "
+                "(procent_subdyscypliny = None or procent_subdyscypliny = 0)))"
+            ),
+            "bez_procent_dowolny": (
+                "rok >= 2022 and rok <= 2025 and "
                 "(procent_dyscypliny = None or procent_dyscypliny = 0 or "
                 "(subdyscyplina_naukowa != None and "
                 "(procent_subdyscypliny = None or procent_subdyscypliny = 0)))"
@@ -209,3 +261,110 @@ class WeryfikujBazeView(GroupRequiredMixin, TemplateView):
         context["liczba_obie_nieraportowane"] = len(autorzy_obie_nieraportowane)
 
         return context
+
+
+class UstawWymiarEtatuView(GroupRequiredMixin, View):
+    """Ustawia wymiar_etatu=1.0 dla rekordów z brakującym wymiarem etatu."""
+
+    group_required = GR_WPROWADZANIE_DANYCH
+
+    def post(self, request):
+        updated = (
+            Autor_Dyscyplina.objects.filter(rok__gte=2022, rok__lte=2025)
+            .filter(Q(wymiar_etatu__isnull=True) | Q(wymiar_etatu=0))
+            .update(wymiar_etatu=Decimal("1.0"))
+        )
+
+        messages.success(
+            request,
+            f"Zaktualizowano wymiar etatu dla {updated} rekordów.",
+        )
+        return HttpResponseRedirect(reverse("ewaluacja_liczba_n:weryfikuj-baze"))
+
+
+class UstawProcentDyscyplinyNSlotyView(GroupRequiredMixin, View):
+    """Ustawia procent_dyscypliny=100% dla autorów N/sloty z jedną dyscypliną."""
+
+    group_required = GR_WPROWADZANIE_DANYCH
+
+    def post(self, request):
+        # Only update records without subdyscyplina (single discipline)
+        updated = (
+            Autor_Dyscyplina.objects.filter(rok__gte=2022, rok__lte=2025)
+            .filter(Q(rodzaj_autora__jest_w_n=True) | Q(rodzaj_autora__licz_sloty=True))
+            .filter(subdyscyplina_naukowa__isnull=True)
+            .filter(
+                Q(procent_dyscypliny__isnull=True) | Q(procent_dyscypliny=Decimal("0"))
+            )
+            .update(procent_dyscypliny=Decimal("100"))
+        )
+
+        messages.success(
+            request,
+            f"Ustawiono procent dyscypliny 100% dla {updated} rekordów "
+            f"(autorzy N/sloty z jedną dyscypliną).",
+        )
+        return HttpResponseRedirect(reverse("ewaluacja_liczba_n:weryfikuj-baze"))
+
+
+class UstawProcentDyscyplinyDowolnyView(GroupRequiredMixin, View):
+    """Ustawia procent_dyscypliny=100% dla autorów z jedną dyscypliną (dowolny typ)."""
+
+    group_required = GR_WPROWADZANIE_DANYCH
+
+    def post(self, request):
+        # Only update records without subdyscyplina (single discipline)
+        updated = (
+            Autor_Dyscyplina.objects.filter(rok__gte=2022, rok__lte=2025)
+            .filter(subdyscyplina_naukowa__isnull=True)
+            .filter(
+                Q(procent_dyscypliny__isnull=True) | Q(procent_dyscypliny=Decimal("0"))
+            )
+            .update(procent_dyscypliny=Decimal("100"))
+        )
+
+        messages.success(
+            request,
+            f"Ustawiono procent dyscypliny 100% dla {updated} rekordów "
+            f"(autorzy z jedną dyscypliną, dowolny typ).",
+        )
+        return HttpResponseRedirect(reverse("ewaluacja_liczba_n:weryfikuj-baze"))
+
+
+class UstawRodzajAutoraView(GroupRequiredMixin, View):
+    """Ustawia rodzaj_autora dla rekordów bez rodzaju zatrudnienia."""
+
+    group_required = GR_WPROWADZANIE_DANYCH
+
+    def post(self, request):
+        rodzaj_id = request.POST.get("rodzaj_autora")
+        if not rodzaj_id:
+            messages.error(request, "Nie wybrano rodzaju autora.")
+            return HttpResponseRedirect(reverse("ewaluacja_liczba_n:weryfikuj-baze"))
+
+        try:
+            rodzaj = Rodzaj_Autora.objects.get(pk=rodzaj_id)
+        except Rodzaj_Autora.DoesNotExist:
+            messages.error(request, "Wybrany rodzaj autora nie istnieje.")
+            return HttpResponseRedirect(reverse("ewaluacja_liczba_n:weryfikuj-baze"))
+
+        # Get IDs of known rodzaj_autora types (N, D, B, Z)
+        known_rodzaje_ids = list(
+            Rodzaj_Autora.objects.filter(skrot__in=["N", "D", "B", "Z"]).values_list(
+                "id", flat=True
+            )
+        )
+
+        # Update records without rodzaj_autora or with unknown rodzaj_autora
+        updated = (
+            Autor_Dyscyplina.objects.filter(rok__gte=2022, rok__lte=2025)
+            .exclude(rodzaj_autora__in=known_rodzaje_ids)
+            .update(rodzaj_autora=rodzaj)
+        )
+
+        messages.success(
+            request,
+            f"Ustawiono rodzaj autora '{rodzaj.nazwa}' ({rodzaj.skrot}) "
+            f"dla {updated} rekordów.",
+        )
+        return HttpResponseRedirect(reverse("ewaluacja_liczba_n:weryfikuj-baze"))

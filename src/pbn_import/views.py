@@ -27,6 +27,10 @@ from .utils.institution_import import (
     znajdz_lub_utworz_jednostke_domyslna,
     znajdz_lub_utworz_wydzial_domyslny,
 )
+from .utils.step_definitions import (
+    get_all_disable_keys,
+    get_form_steps,
+)
 
 
 class ImportPermissionMixin(PermissionRequiredMixin):
@@ -116,6 +120,9 @@ class ImportDashboardView(LoginRequiredMixin, ImportPermissionMixin, TemplateVie
             jednostka_domyslna = jednostki.first()
         context["jednostka_domyslna"] = jednostka_domyslna
 
+        # Import steps for dynamic form rendering (from step_definitions.py)
+        context["import_steps"] = get_form_steps()
+
         return context
 
     def get_motivational_message(self):
@@ -145,22 +152,23 @@ class StartImportView(LoginRequiredMixin, ImportPermissionMixin, View):
             Jednostka.objects.filter(pk=jednostka_id).first() if jednostka_id else None
         )
 
+        # Build config dynamically from step_definitions
+        disable_keys = get_all_disable_keys()
         config = {
-            "disable_initial": not request.POST.get("initial"),
-            "disable_zrodla": not request.POST.get("zrodla"),
-            "disable_wydawcy": not request.POST.get("wydawcy"),
-            "disable_konferencje": not request.POST.get("konferencje"),
-            "disable_autorzy": not request.POST.get("autorzy"),
-            "disable_publikacje": not request.POST.get("publikacje"),
-            "disable_integracja": not request.POST.get("integracja"),
-            "disable_oswiadczenia": not request.POST.get("oswiadczenia"),
-            "disable_oplaty": not request.POST.get("oplaty"),
-            "delete_existing": request.POST.get("delete_existing") == "on",
-            "wydzial_domyslny": wydzial.nazwa if wydzial else "",
-            "wydzial_domyslny_id": wydzial.pk if wydzial else None,
-            "jednostka_domyslna": jednostka.nazwa if jednostka else "",
-            "jednostka_domyslna_id": jednostka.pk if jednostka else None,
+            disable_key: not request.POST.get(form_field)
+            for form_field, disable_key in disable_keys.items()
         }
+
+        # Add additional config options
+        config.update(
+            {
+                "delete_existing": request.POST.get("delete_existing") == "on",
+                "wydzial_domyslny": wydzial.nazwa if wydzial else "",
+                "wydzial_domyslny_id": wydzial.pk if wydzial else None,
+                "jednostka_domyslna": jednostka.nazwa if jednostka else "",
+                "jednostka_domyslna_id": jednostka.pk if jednostka else None,
+            }
+        )
 
         # Create import session
         session = ImportSession.objects.create(
@@ -330,13 +338,17 @@ class ImportPresetsView(LoginRequiredMixin, ImportPermissionMixin, View):
     """Get available import presets"""
 
     def get(self, request):
+        # Build disable config for all steps (used for presets that skip steps)
+        disable_keys = get_all_disable_keys()
+        all_disabled = {disable_key: True for disable_key in disable_keys.values()}
+
         presets = [
             {
                 "id": "full",
                 "name": "Wszystko",
                 "description": "Importuje wszystkie dane z PBN",
                 "icon": "fi-download",
-                "config": {},
+                "config": {},  # Empty = all enabled
             },
             {
                 "id": "update",
@@ -347,27 +359,22 @@ class ImportPresetsView(LoginRequiredMixin, ImportPermissionMixin, View):
                     "disable_initial": True,
                     "disable_institutions": True,
                     "disable_zrodla": True,
+                    "disable_punktacja_zrodel": True,
                     "disable_wydawcy": True,
                     "disable_konferencje": True,
+                    # autorzy, publikacje, oswiadczenia, oplaty remain enabled
                     "delete_existing": False,
                 },
             },
             {
-                "id": "integration",
-                "name": "Integracja danych",
-                "description": "Integruje i synchronizuje dane między systemami",
-                "icon": "fi-link",
+                "id": "sources_only",
+                "name": "Tylko źródła",
+                "description": "Importuje i aktualizuje punktację źródeł",
+                "icon": "fi-book",
                 "config": {
-                    "disable_initial": True,
-                    "disable_institutions": True,
-                    "disable_zrodla": True,
-                    "disable_wydawcy": True,
-                    "disable_konferencje": True,
-                    "disable_autorzy": True,
-                    "disable_publikacje": True,
-                    "disable_integracja": False,
-                    "disable_oswiadczenia": True,
-                    "disable_oplaty": True,
+                    **all_disabled,
+                    "disable_zrodla": False,
+                    "disable_punktacja_zrodel": False,
                     "delete_existing": False,
                 },
             },
@@ -436,7 +443,10 @@ class ImportSessionDetailView(LoginRequiredMixin, ImportPermissionMixin, DetailV
         }
         choice_labels = dict(ImportInconsistency.INCONSISTENCY_TYPE_CHOICES)
         inconsistency_summary = {
-            code: {"label": choice_labels[code], "count": counts_dict[code]}
+            code: {
+                "label": choice_labels.get(code, f"Nieznany typ: {code}"),
+                "count": counts_dict[code],
+            }
             for code in counts_dict
         }
         context["inconsistency_summary"] = inconsistency_summary
@@ -514,7 +524,10 @@ class ImportInconsistenciesView(LoginRequiredMixin, ImportPermissionMixin, View)
         }
         choice_labels = dict(ImportInconsistency.INCONSISTENCY_TYPE_CHOICES)
         inconsistency_summary = {
-            code: {"label": choice_labels[code], "count": counts_dict[code]}
+            code: {
+                "label": choice_labels.get(code, f"Nieznany typ: {code}"),
+                "count": counts_dict[code],
+            }
             for code in counts_dict
         }
 

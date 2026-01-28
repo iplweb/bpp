@@ -9,12 +9,14 @@ from .institution_import import InstitutionImporter
 from .publication_import import PublicationImporter
 from .publisher_import import PublisherImporter
 from .source_import import SourceImporter
+from .source_scoring_import import SourceScoringImporter
 from .statement_import import StatementImporter
 
 __all__ = [
     "InitialSetup",
     "InstitutionImporter",
     "SourceImporter",
+    "SourceScoringImporter",
     "PublisherImporter",
     "ConferenceImporter",
     "AuthorImporter",

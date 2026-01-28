@@ -148,3 +148,22 @@ class PublikacjaInstytucjiV2NieZnalezionaException(Exception):
 
 class ZnalezionoWielePublikacjiInstytucjiV2Exception(Exception):
     pass
+
+
+class BPPPublicationNotFound(Exception):
+    """Publikacja z PBN nie ma odpowiednika w BPP."""
+
+    pass
+
+
+class BPPAutorNotFound(Exception):
+    """Naukowiec z PBN nie ma odpowiednika w BPP."""
+
+    pass
+
+
+class BPPAutorPublicationLinkNotFound(Exception):
+    """Autor istnieje w BPP, publikacja istnieje w BPP,
+    ale autor nie jest powiązany z tą publikacją."""
+
+    pass

@@ -22,7 +22,9 @@ For detailed architecture documentation, see [docs/CODEBASE_MAP.md](docs/CODEBAS
 
 **CRITICAL: NEVER modify existing migration files in src/*/migrations/ directories. Existing migrations represent the database history and must remain unchanged. Only create new migrations when needed.**
 
-**IMPORTANT: if using icons, refrain from emojis, rather use monochrome Foundation-Icons (<span class="fi-icon"/>)**
+**IMPORTANT: Icons in templates:**
+- **Public frontend** (Foundation CSS): use monochrome Foundation-Icons (`<span class="fi-icon"/>`)
+- **Django admin** (`templates/admin/`): use emoji - admin doesn't load Foundation Icons
 
 **IMPORTANT**: respect the maximum line length limit of 88 characters; if the line would be longer, please break it up to smaller pieces without losing its function.
 
@@ -66,15 +68,20 @@ python src/manage.py shell -c "from bpp.models import Autor"
 
 ### Development Commands
 
-**CRITICAL: ALWAYS check if the development server is already running before starting it:**
+**🔴 CRITICAL: NEVER run `manage.py runserver` directly! 🔴**
+
+The development server (appserver) runs through **docker-compose** and automatically restarts when code changes are detected. There is no need to manually start or restart the server.
+
+**To check if the server is running:**
 ```bash
 nc -zv localhost 8000  # Check if port 8000 is in use
-# If connection succeeded, server is already running - no need to start it again
+# If connection succeeded, server is already running
 ```
 
-- `uv run python src/manage.py runserver` - Start development server (default settings: django_bpp.settings.local)
-  - **NOTE:** If you see "Listen failure: Couldn't listen on 127.0.0.1:8000: [Errno 48] Address already in use." it means the server is ALREADY RUNNING in the background as another process. This is expected behavior - no action needed.
-  - **IMPORTANT:** During Claude development sessions, the server often runs in the background. ALWAYS check with `nc -zv localhost 8000` before attempting to start the server.
+**To view server logs (if needed):**
+```bash
+docker-compose logs -f appserver
+```
 - `uv run python src/manage.py migrate` - Apply database migrations
 - `uv run python src/manage.py shell` - Django shell
 - `uv run bpp-manage.py` - Alternative management command entry point
@@ -436,3 +443,52 @@ The project uses a sophisticated migration system with both Python and SQL migra
 - Never use unittest.TestCase classes or Django's TestCase
 - All test functions should be standalone functions with pytest fixtures
 - use ```@pytest.mark.django_db`` for tests using database
+
+## Exception Handling
+
+**NIGDY nie używaj catch-all exception handling (`except Exception`) który ukrywa szczegóły błędów!**
+
+### ❌ ŹLE - ukrywa błędy:
+```python
+try:
+    do_something()
+except Exception as e:
+    print(f"Błąd: {e}")  # Użytkownik nie widzi gdzie i dlaczego
+    error_count += 1
+```
+
+### ✅ DOBRZE - pozwól błędom się wywalić:
+```python
+# Łap tylko konkretne, oczekiwane wyjątki
+try:
+    do_something()
+except SpecificExpectedException as e:
+    handle_expected_case(e)
+# Nieoczekiwane błędy niech lecą z pełnym traceback
+```
+
+### ✅ DOBRZE - jeśli musisz złapać, pokaż pełny traceback:
+```python
+import traceback
+
+try:
+    do_something()
+except Exception:
+    traceback.print_exc()
+    raise  # lub reraise po logowaniu
+```
+
+### ✅ DOBRZE - raportuj do Rollbar jeśli łapiesz wyjątek procesu działającego w tle:
+```python
+import rollbar
+
+try:
+    do_something()
+except Exception:
+    rollbar.report_exc_info()
+    raise  # lub kontynuuj jeśli to dopuszczalne
+```
+
+**Zasada:** Kod nie powinien "działać za wszelką cenę". Błędy muszą być widoczne
+i debugowalne. W produkcji używaj `rollbar.report_exc_info()` do raportowania
+wyjątków.

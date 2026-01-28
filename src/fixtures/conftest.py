@@ -15,15 +15,12 @@ import random
 import time
 
 import pytest
-from dbtemplates.models import Template
 from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.db import connections
 from django.db.utils import OperationalError
 from django.test import TransactionTestCase
 
-from bpp.models import Kierunek_Studiow
-from bpp.models.szablondlaopisubibliograficznego import SzablonDlaOpisuBibliograficznego
 from bpp.tests.util import setup_model_bakery
 
 # Note: pytest_plugins moved to top-level conftest.py as required by pytest
@@ -137,20 +134,25 @@ def szablony():
         return f"{dirname}/../bpp/templates/{elem}"
 
     def create_template(Template, name):
+        from dbtemplates.models import Template
+
         Template.objects.create(
             name=name,
             content=open(template_n(name)).read(),
         )
 
     def instaluj_szablony():
+        from dbtemplates.models import Template
         create_template(Template, "opis_bibliograficzny.html")
         create_template(Template, "browse/praca_tabela.html")
 
+        from bpp.models.szablondlaopisubibliograficznego import SzablonDlaOpisuBibliograficznego
         SzablonDlaOpisuBibliograficznego.objects.create(
             model=None,
             template=Template.objects.get(name="opis_bibliograficzny.html"),
         )
 
+    from dbtemplates.models import Template
     instaluj_szablony()
     return Template.objects
 
@@ -182,6 +184,7 @@ def django_db_setup(django_db_setup, django_db_blocker):  # noqa
 @pytest.mark.django_db
 @pytest.fixture
 def kierunek_studiow(wydzial):
+    from bpp.models import Kierunek_Studiow
     return Kierunek_Studiow.objects.get_or_create(
         wydzial=wydzial,
         nazwa="memetyka użytkowa",

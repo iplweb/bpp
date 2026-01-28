@@ -4,6 +4,32 @@ Historia zmian
 
 .. towncrier release notes start
 
+bpp 202601.1341 (2026-01-28)
+============================
+
+Naprawione
+----------
+
+- Naprawiono błąd podwójnego potwierdzenia w modułach ewaluacja_optymalizacja,
+  multiseek oraz import_dyscyplin. Kliknięcie przycisków z atrybutem
+  ``data-confirm`` wyświetlało dwa okna dialogowe potwierdzenia. Przyczyną były
+  zduplikowane handlery - globalny w ``event-handlers.js`` i lokalne w szablonach.
+  Usunięto duplikaty z szablonów, pozostawiając obsługę w globalnym handlerze. (double-confirm-fix)
+- Naprawiono błąd importu książek z PBN, gdzie redaktorzy (EDITOR) byli importowani
+  jako autorzy gdy brakowało danych afiliacji. Dodano komendę
+  ``fix_pbn_import_oswiadczen_ksiazki`` do naprawy istniejących rekordów. (fix_pbn_editor_import)
+
+
+Usprawnienie
+------------
+
+- Podczas importu oświadczeń z PBN, pole ``data_oswiadczenia`` na rekordach autorów publikacji jest teraz automatycznie ustawiane na podstawie pola ``statedTimestamp`` z oświadczenia PBN. (data_oswiadczenia_import)
+- Dodano nowy moduł Deduplikator Publikacji umożliwiający automatyczne wykrywanie potencjalnych duplikatów publikacji w bazie danych. Funkcje modułu obejmują: skanowanie publikacji w zadanym zakresie lat, wykrywanie duplikatów na podstawie DOI, WWW, ISBN, źródła i podobieństwa tytułów, prezentację wyników z oceną podobieństwa oraz możliwość oznaczania rekordów jako duplikaty lub nie-duplikaty. (deduplikator_publikacji)
+- Ulepszono metodę wyszukiwania autora przy integracji oświadczeń z PBN. Teraz oprócz wyszukiwania po pbn_uid_id, system próbuje również znaleźć autora po ORCID, a następnie po imieniu i nazwisku (case-insensitive). Dzięki temu autorzy bez przypisanego pbn_uid_id będą poprawnie dopasowywani podczas importu dyscyplin z oświadczeń PBN. (get_bpp_autor_fallback)
+- Komparator PBN: połączono widoki rozbieżności dyscyplin i brakujących autorów w jedną stronę "Problemy PBN". Nowa tabela wyświetla wszystkie typy problemów z kolorowymi etykietami: różne dyscypliny (niebieski), brak autora w BPP (czerwony), brak powiązania (pomarańczowy), brak publikacji (szary). Dodano pogrupowane filtry i rozbudowane statystyki dla każdego typu problemu. Na stronach szczegółów dodano BPP ID dla autorów i publikacji. (komparator_pbn_udzialy_unified_view)
+- Komenda ``pbn_import`` zawiera teraz krok "Konfiguracja jednostek" w menu interaktywnym oraz flagę ``--disable-institutions`` dla trybu batch. (pbn_import_institutions)
+
+
 bpp 202601.1340 (2026-01-23)
 ============================
 

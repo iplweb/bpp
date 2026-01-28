@@ -20,12 +20,20 @@ if TYPE_CHECKING:
     pass
 
 
-def zweryfikuj_lub_stworz_match(elem, bpp_rekord):
-    """Verify or create a match between PBN publication and BPP record.
+def ustaw_pbn_uid_jesli_brak(elem, bpp_rekord):
+    """Set pbn_uid_id on existing BPP record if not already set.
+
+    This function does NOT create new records - it only links existing BPP records
+    to PBN publications by setting the pbn_uid_id field. This is useful for matching
+    records that were created manually before PBN import.
+
+    Note: New publications imported from PBN are created with pbn_uid_id already set
+    by importuj_publikacje_po_pbn_uid_id(), so this function is only needed for
+    pre-existing records that don't have pbn_uid_id.
 
     Args:
         elem: PBN Publication object.
-        bpp_rekord: BPP record.
+        bpp_rekord: BPP record to potentially update.
     """
     if bpp_rekord is not None:
         if bpp_rekord.pbn_uid_id is not None and bpp_rekord.pbn_uid_id != elem.pk:
@@ -54,7 +62,7 @@ def _integruj_single_part(ids):
             print(f"Brak publikacji o ID {_id}")
             raise e
         p = elem.matchuj_do_rekordu_bpp()
-        zweryfikuj_lub_stworz_match(elem, p)
+        ustaw_pbn_uid_jesli_brak(elem, p)
 
 
 def _integruj_publikacje(

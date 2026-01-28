@@ -1,0 +1,296 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet"
+      href="{% static 'deduplikator_publikacji/css/deduplikator_publikacji.css' %}">
+{% endblock %}
+
+{% block title %}Deduplikator Publikacji{% endblock %}
+
+{% block breadcrumbs %}
+    <li><a href="/">Strona główna</a></li>
+    <li><a href="{% url "deduplikator_publikacji:duplicate_publications" %}">Deduplikator publikacji</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="large-12 columns">
+        <h2>Deduplikator publikacji</h2>
+
+        <!-- Panel: Status skanowania (widoczny gdy running_scan) -->
+        {% if running_scan %}
+        <div class="panel" id="scan-progress-container">
+            <h4><span class="fi-loop"></span> Skanowanie w toku</h4>
+            <p class="deduplikator-publikacji__status-text">
+                <strong>Status:</strong>
+                <span class="deduplikator-publikacji__status-running">
+                    {{ running_scan.get_status_display }}
+                </span>
+            </p>
+            <div class="deduplikator-publikacji__progress-container">
+                <div id="scan-progress-bar"
+                     class="deduplikator-publikacji__progress-bar"
+                     style="width: {{ running_scan.progress_percent }}%;">
+                </div>
+            </div>
+            <p id="scan-progress-text" class="deduplikator-publikacji__status-text--spaced">
+                {{ running_scan.progress_percent }}%
+                ({{ running_scan.publications_scanned }}/{{ running_scan.total_publications_to_scan }} publikacji)
+            </p>
+            <p id="scan-duplicates-text" class="deduplikator-publikacji__status-text--spaced">
+                Znaleziono duplikatów: {{ running_scan.duplicates_found }}
+            </p>
+            <p id="scan-eta-text" class="deduplikator-publikacji__status-text--muted">
+                <span id="scan-eta-icon" class="fi-clock"></span>
+                <span id="scan-eta-content">ETA: obliczanie...</span>
+            </p>
+            <form method="post" action="{% url 'deduplikator_publikacji:cancel_scan' %}">
+                {% csrf_token %}
+                <button type="submit" class="button alert small"
+                        data-confirm="Czy na pewno chcesz anulować skanowanie?">
+                    <span class="fi-x"></span> Anuluj skanowanie
+                </button>
+            </form>
+            <script>
+                (function() {
+                    var scanId = {{ running_scan.pk }};
+                    var refreshInterval = setInterval(function() {
+                        fetch('{% url "deduplikator_publikacji:scan_status" running_scan.pk %}')
+                            .then(function(response) { return response.json(); })
+                            .then(function(data) {
+                                if (data.finished) {
+                                    clearInterval(refreshInterval);
+                                    location.reload();
+                                } else {
+                                    document.getElementById('scan-progress-bar').style.width = data.progress_percent + '%';
+                                    document.getElementById('scan-progress-text').textContent =
+                                        data.progress_percent + '% (' + data.publications_scanned + '/' + data.total_publications_to_scan + ' publikacji)';
+                                    document.getElementById('scan-duplicates-text').textContent =
+                                        'Znaleziono duplikatów: ' + data.duplicates_found;
+                                    var etaContent = document.getElementById('scan-eta-content');
+                                    if (etaContent && data.eta_seconds !== null) {
+                                        var etaMinutes = Math.floor(data.eta_seconds / 60);
+                                        var etaSecondsRest = data.eta_seconds % 60;
+                                        var etaStr = '';
+                                        if (etaMinutes > 0) {
+                                            etaStr = etaMinutes + ' min ' + etaSecondsRest + ' s';
+                                        } else {
+                                            etaStr = etaSecondsRest + ' s';
+                                        }
+                                        etaContent.textContent = 'Pozostało: ~' + etaStr + ' (zakończenie ok. ' + data.eta_time + ')';
+                                    } else if (etaContent) {
+                                        etaContent.textContent = 'ETA: obliczanie...';
+                                    }
+                                }
+                            })
+                            .catch(function(err) {
+                                console.error('Error fetching scan status:', err);
+                            });
+                    }, 3000);
+                })();
+            </script>
+        </div>
+        {% elif completed_scan %}
+        <div class="panel">
+            <h4><span class="fi-check"></span> Ostatnie skanowanie</h4>
+            <p class="deduplikator-publikacji__status-text">
+                <strong>Data:</strong> {{ completed_scan.finished_at|date:"d.m.Y H:i" }}
+            </p>
+            <p class="deduplikator-publikacji__status-text">
+                <strong>Status:</strong>
+                <span class="deduplikator-publikacji__status-completed">
+                    {{ completed_scan.get_status_display }}
+                </span>
+            </p>
+            <p class="deduplikator-publikacji__status-text">
+                <strong>Znaleziono:</strong> {{ completed_scan.duplicates_found }} duplikatów
+            </p>
+        </div>
+        {% endif %}
+
+        <!-- Panel: Ustawienia skanowania -->
+        <div class="panel">
+            <h4><span class="fi-magnifying-glass"></span> Skanowanie duplikatów</h4>
+            <form method="post" action="{% url 'deduplikator_publikacji:start_scan' %}">
+                {% csrf_token %}
+                <div class="row">
+                    <div class="medium-2 columns">
+                        <label for="year_from">Rok od:
+                            <input type="number" id="year_from" name="year_from"
+                                   value="{{ year_from }}" min="2000" max="2030">
+                        </label>
+                    </div>
+                    <div class="medium-2 columns">
+                        <label for="year_to">Rok do:
+                            <input type="number" id="year_to" name="year_to"
+                                   value="{{ year_to }}" min="2000" max="2030">
+                        </label>
+                    </div>
+                    <div class="medium-5 columns">
+                        <label>&nbsp;</label>
+                        <div class="deduplikator-publikacji__checkboxes-inline">
+                            <label>
+                                <input type="checkbox" name="ignore_doi" {% if ignore_doi %}checked{% endif %}>
+                                Ignoruj DOI
+                            </label>
+                            <label>
+                                <input type="checkbox" name="ignore_www" {% if ignore_www %}checked{% endif %}>
+                                Ignoruj WWW
+                            </label>
+                            <label>
+                                <input type="checkbox" name="ignore_isbn" {% if ignore_isbn %}checked{% endif %}>
+                                Ignoruj ISBN
+                            </label>
+                            <label>
+                                <input type="checkbox" name="ignore_zrodlo" {% if ignore_zrodlo %}checked{% endif %}>
+                                Ignoruj źródło
+                            </label>
+                        </div>
+                    </div>
+                    <div class="medium-3 columns">
+                        <label>&nbsp;</label>
+                        <button type="submit" class="button primary expanded"
+                                {% if running_scan %}disabled{% endif %}
+                                data-confirm="{% if completed_scan %}Czy na pewno chcesz uruchomić nowe skanowanie? Poprzednie wyniki zostaną zastąpione.{% endif %}">
+                            <span class="fi-magnifying-glass"></span>
+                            {% if running_scan %}Skanowanie w toku...{% else %}Uruchom skanowanie{% endif %}
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- Panel: Statystyki -->
+        <div class="panel">
+            <strong>Do sprawdzenia:</strong> {{ pending_candidates_count }} duplikatów
+        </div>
+
+        <!-- Zawartość główna -->
+        {% if no_scan_available and not running_scan %}
+            <div class="callout warning">
+                <p>Brak wyników skanowania. Uruchom skanowanie powyżej,
+                   aby znaleźć potencjalne duplikaty publikacji.</p>
+            </div>
+        {% elif running_scan %}
+            <div class="callout primary">
+                <p><span class="fi-loop"></span> Skanowanie publikacji jest w toku. Proszę czekać...</p>
+            </div>
+        {% elif pending_candidates_count == 0 %}
+            <div class="callout success">
+                <p><span class="fi-check"></span> Brak duplikatów do sprawdzenia.
+                   Wszystkie zostały już przetworzone lub nie znaleziono żadnych.</p>
+            </div>
+        {% else %}
+            <!-- Tabela duplikatów -->
+            <table class="deduplikator-publikacji__table">
+                <thead>
+                    <tr>
+                        <th>Podobieństwo</th>
+                        <th>Oryginał</th>
+                        <th>Potencjalny duplikat</th>
+                        <th>Powody</th>
+                        <th>Akcje</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for candidate in candidates %}
+                    <tr>
+                        <td class="deduplikator-publikacji__similarity">
+                            <span class="deduplikator-publikacji__similarity-badge
+                                {% if candidate.similarity_score >= 0.95 %}deduplikator-publikacji__similarity-badge--high
+                                {% elif candidate.similarity_score >= 0.85 %}deduplikator-publikacji__similarity-badge--medium
+                                {% else %}deduplikator-publikacji__similarity-badge--low{% endif %}">
+                                {{ candidate.similarity_score|floatformat:0 }}%
+                            </span>
+                        </td>
+                        <td>
+                            <div class="deduplikator-publikacji__pub-info">
+                                <span class="deduplikator-publikacji__pub-type">{{ candidate.original_type }}</span>
+                                <a href="{% url 'bpp:browse_rekord' candidate.original_content_type.pk candidate.original_object_id %}"
+                                   target="_blank" title="{{ candidate.original_title }}">
+                                    {{ candidate.original_title|truncatechars:80 }}
+                                </a>
+                                {% if candidate.original_year %}
+                                <span class="deduplikator-publikacji__pub-year">({{ candidate.original_year }})</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            <div class="deduplikator-publikacji__pub-info">
+                                <span class="deduplikator-publikacji__pub-type">{{ candidate.duplicate_type }}</span>
+                                <a href="{% url 'bpp:browse_rekord' candidate.duplicate_content_type.pk candidate.duplicate_object_id %}"
+                                   target="_blank" title="{{ candidate.duplicate_title }}">
+                                    {{ candidate.duplicate_title|truncatechars:80 }}
+                                </a>
+                                {% if candidate.duplicate_year %}
+                                <span class="deduplikator-publikacji__pub-year">({{ candidate.duplicate_year }})</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            {% for reason in candidate.match_reasons %}
+                            <span class="deduplikator-publikacji__reason-badge">{{ reason }}</span>
+                            {% endfor %}
+                        </td>
+                        <td class="deduplikator-publikacji__actions">
+                            <form method="post" action="{% url 'deduplikator_publikacji:mark_confirmed_duplicate' %}" style="display:inline;">
+                                {% csrf_token %}
+                                <input type="hidden" name="candidate_id" value="{{ candidate.pk }}">
+                                <button type="submit" class="button small success"
+                                        title="Potwierdź jako duplikat">
+                                    <span class="fi-check"></span>
+                                </button>
+                            </form>
+                            <form method="post" action="{% url 'deduplikator_publikacji:mark_not_duplicate' %}" style="display:inline;">
+                                {% csrf_token %}
+                                <input type="hidden" name="candidate_id" value="{{ candidate.pk }}">
+                                <button type="submit" class="button small alert"
+                                        title="Nie jest duplikatem">
+                                    <span class="fi-x"></span>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <!-- Paginacja -->
+            {% if page_obj and page_obj.paginator.num_pages > 1 %}
+            <nav class="deduplikator-publikacji__pagination" aria-label="Paginacja">
+                <ul class="pagination text-center" role="navigation">
+                    {% if page_obj.has_previous %}
+                        <li class="pagination-previous">
+                            <a href="?page={{ page_obj.previous_page_number }}" aria-label="Poprzednia strona">Poprzednia</a>
+                        </li>
+                    {% else %}
+                        <li class="pagination-previous disabled">Poprzednia</li>
+                    {% endif %}
+
+                    {% for num in page_obj.paginator.page_range %}
+                        {% if page_obj.number == num %}
+                            <li class="current"><span class="show-for-sr">Jesteś na stronie </span>{{ num }}</li>
+                        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                            <li><a href="?page={{ num }}" aria-label="Strona {{ num }}">{{ num }}</a></li>
+                        {% elif num == 1 or num == page_obj.paginator.num_pages %}
+                            <li><a href="?page={{ num }}" aria-label="Strona {{ num }}">{{ num }}</a></li>
+                        {% elif num == page_obj.number|add:'-3' or num == page_obj.number|add:'3' %}
+                            <li class="ellipsis" aria-hidden="true"></li>
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if page_obj.has_next %}
+                        <li class="pagination-next">
+                            <a href="?page={{ page_obj.next_page_number }}" aria-label="Następna strona">Następna</a>
+                        </li>
+                    {% else %}
+                        <li class="pagination-next disabled">Następna</li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

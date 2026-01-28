@@ -7,11 +7,13 @@
     {% if original.link_do_pi %}
         <li><a target="_blank" href="{{ original.link_do_pi }}">PI</a></li>
     {% endif %}
-    {% if original.publicationId.rekord_w_bpp %}
-        <li><a target="_blank" href="{{ original.publicationId.rekord_w_bpp.original.get_absolute_url }}">BPP</a></li>
-    {% else %}
-        <li><a href="#" class="disabled">Brak w BPP</a></li>
-    {% endif %}
+    {% with bpp_pub=original.get_bpp_publication %}
+        {% if bpp_pub %}
+            <li><a target="_blank" href="{{ bpp_pub.get_absolute_url }}">BPP</a></li>
+        {% else %}
+            <li><a href="#" class="disabled">🔴 Brak w BPP</a></li>
+        {% endif %}
+    {% endwith %}
     {% if original.personId_id %}
         <li><a target="_blank" href="{{ original.personId.link_do_pbn }}">Autor PBN</a></li>
         {% if original.personId.rekord_w_bpp %}

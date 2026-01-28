@@ -79,8 +79,11 @@ from pbn_integrator.utils.integration import (  # noqa
     _integruj_single_part,
     integruj_publikacje_instytucji,
     integruj_wszystkie_publikacje,
-    zweryfikuj_lub_stworz_match,
+    ustaw_pbn_uid_jesli_brak,
 )
+
+# Backwards compatibility alias
+zweryfikuj_lub_stworz_match = ustaw_pbn_uid_jesli_brak
 
 # Journals
 from pbn_integrator.utils.journals import (  # noqa
@@ -283,7 +286,8 @@ __all__ = [
     "_integruj_single_part",
     "integruj_publikacje_instytucji",
     "integruj_wszystkie_publikacje",
-    "zweryfikuj_lub_stworz_match",
+    "ustaw_pbn_uid_jesli_brak",
+    "zweryfikuj_lub_stworz_match",  # Backwards compatibility alias
     # Statements
     "integruj_oswiadczenia_pbn_first_import",
     "integruj_oswiadczenia_z_instytucji",

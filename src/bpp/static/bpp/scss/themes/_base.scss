@@ -17,6 +17,8 @@ ul.grp-object-tools li a {
     -webkit-border-radius: 3px !important;
     transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease !important;
     position: relative !important;
+    /* Increase default opacity from Grappelli's 0.5 for better visibility */
+    opacity: 0.85 !important;
 }
 
 /* Icons for different link types in grp-object-tools */
@@ -118,4 +120,9 @@ ul.grp-messagelist li.info {
 
 .menu-click-item:hover .menu-icon {
     background-color: #205067 !important;
+}
+
+/* Author page publication navigation buttons - reduced left padding (no icon) */
+ul.grp-object-tools li a.autor-publikacje-nav {
+    padding-left: 12px !important;
 }

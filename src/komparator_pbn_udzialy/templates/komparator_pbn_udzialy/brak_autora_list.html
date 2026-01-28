@@ -1,0 +1,243 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}Brakujący autorzy w publikacjach{% endblock %}
+
+{% block breadcrumbs %}
+    <li><a href="/">Strona główna</a></li>
+    <li><a href="{% url 'komparator_pbn_udzialy:list' %}">Rozbieżności dyscyplin</a></li>
+    <li class="active">Brakujący autorzy</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="large-12 columns">
+        <h2>Brakujący autorzy w publikacjach</h2>
+
+        {% include "includes/pbn_freshness_warning.html" with custom_message="Wyświetlane dane mogą być nieaktualne. Zaleca się pobranie świeżych danych z PBN." %}
+
+        <!-- Statystyki -->
+        <div class="panel">
+            <h4>Statystyki</h4>
+            <div class="row">
+                <div class="medium-3 columns">
+                    <div class="stat-box">
+                        <strong>Wszystkie problemy:</strong> {{ total_count }}
+                    </div>
+                </div>
+                <div class="medium-3 columns">
+                    <div class="stat-box stat-publikacja">
+                        <strong>Brak publikacji:</strong> {{ missing_publication_count }}
+                    </div>
+                </div>
+                <div class="medium-3 columns">
+                    <div class="stat-box stat-autor">
+                        <strong>Brak autora:</strong> {{ missing_autor_count }}
+                    </div>
+                </div>
+                <div class="medium-3 columns">
+                    <div class="stat-box stat-powiazanie">
+                        <strong>Brak powiązania:</strong> {{ missing_link_count }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filtry -->
+        <div class="panel">
+            <form method="get">
+                <div class="row">
+                    <div class="medium-3 columns">
+                        <label>Szukaj:
+                            <input type="text" name="search" value="{{ search }}" placeholder="Nazwisko, tytuł...">
+                        </label>
+                    </div>
+                    <div class="medium-3 columns">
+                        <label>Typ problemu:
+                            <select name="typ">
+                                <option value="">Wszystkie</option>
+                                <option value="{{ TYP_BRAK_PUBLIKACJI }}" {% if typ == TYP_BRAK_PUBLIKACJI %}selected{% endif %}>Brak publikacji w BPP</option>
+                                <option value="{{ TYP_BRAK_AUTORA }}" {% if typ == TYP_BRAK_AUTORA %}selected{% endif %}>Brak autora w BPP</option>
+                                <option value="{{ TYP_BRAK_POWIAZANIA }}" {% if typ == TYP_BRAK_POWIAZANIA %}selected{% endif %}>Brak powiązania</option>
+                            </select>
+                        </label>
+                    </div>
+                    <div class="medium-2 columns">
+                        <label>Rok od:
+                            <input type="number" name="rok_min" value="{{ rok_min }}" min="2000" max="2050">
+                        </label>
+                    </div>
+                    <div class="medium-2 columns">
+                        <label>Rok do:
+                            <input type="number" name="rok_max" value="{{ rok_max }}" min="2000" max="2050">
+                        </label>
+                    </div>
+                    <div class="medium-2 columns">
+                        <label>&nbsp;</label>
+                        <button type="submit" class="button expanded">Filtruj</button>
+                        <a href="{% url 'komparator_pbn_udzialy:missing_autor_list' %}" class="button secondary expanded">Wyczyść</a>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- Akcje -->
+        <div class="panel">
+            <a href="{% url 'komparator_pbn_udzialy:list' %}" class="button secondary">
+                <span class="fi-arrow-left"></span> Powrót do rozbieżności dyscyplin
+            </a>
+        </div>
+
+        <!-- Tabela brakujących autorów -->
+        {% if brakujacy_autorzy %}
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Typ</th>
+                    <th>Naukowiec PBN</th>
+                    <th>Autor BPP</th>
+                    <th>Publikacja</th>
+                    <th>Rok</th>
+                    <th>Dyscyplina PBN</th>
+                    <th>Akcje</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for brak in brakujacy_autorzy %}
+                <tr>
+                    <td>
+                        {% if brak.typ == TYP_BRAK_PUBLIKACJI %}
+                            <span class="label warning" title="Publikacja nie istnieje w BPP">Brak pub.</span>
+                        {% elif brak.typ == TYP_BRAK_AUTORA %}
+                            <span class="label alert" title="Autor nie istnieje w BPP">Brak aut.</span>
+                        {% elif brak.typ == TYP_BRAK_POWIAZANIA %}
+                            <span class="label secondary" title="Autor nie jest powiązany z publikacją">Brak pow.</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if brak.pbn_scientist %}
+                            {{ brak.pbn_scientist.name }} {{ brak.pbn_scientist.lastName }}
+                            {% if brak.pbn_scientist.orcid %}
+                                <br><small class="text-muted">ORCID: {{ brak.pbn_scientist.orcid }}</small>
+                            {% endif %}
+                        {% else %}
+                            <em>Brak danych</em>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if brak.autor %}
+                            <a href="{% url 'admin:bpp_autor_change' brak.autor.pk %}" target="_blank">
+                                {{ brak.autor }}
+                            </a>
+                        {% else %}
+                            <em class="text-muted">-</em>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if brak.publikacja %}
+                            {{ brak.publikacja|truncatechars:40 }}
+                        {% elif brak.oswiadczenie_instytucji.publicationId %}
+                            <em>{{ brak.oswiadczenie_instytucji.publicationId.title|truncatechars:40 }}</em>
+                        {% else %}
+                            <em>Brak danych</em>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if brak.oswiadczenie_instytucji.publicationId.year %}
+                            {{ brak.oswiadczenie_instytucji.publicationId.year }}
+                        {% else %}
+                            <em>-</em>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if brak.dyscyplina_pbn %}
+                            <span class="label">{{ brak.dyscyplina_pbn.nazwa }}</span>
+                        {% else %}
+                            <em class="text-muted">-</em>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{% url 'komparator_pbn_udzialy:missing_autor_detail' brak.pk %}" class="button tiny">
+                            <span class="fi-magnifying-glass"></span> Szczegóły
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <!-- Paginacja -->
+        {% if is_paginated %}
+        <div class="pagination">
+            <span class="page-links">
+                {% if page_obj.has_previous %}
+                    <a href="?page=1{% if search %}&search={{ search }}{% endif %}{% if typ %}&typ={{ typ }}{% endif %}{% if rok_min %}&rok_min={{ rok_min }}{% endif %}{% if rok_max %}&rok_max={{ rok_max }}{% endif %}">« pierwsza</a>
+                    <a href="?page={{ page_obj.previous_page_number }}{% if search %}&search={{ search }}{% endif %}{% if typ %}&typ={{ typ }}{% endif %}{% if rok_min %}&rok_min={{ rok_min }}{% endif %}{% if rok_max %}&rok_max={{ rok_max }}{% endif %}">poprzednia</a>
+                {% endif %}
+
+                <span class="current">
+                    Strona {{ page_obj.number }} z {{ page_obj.paginator.num_pages }}
+                </span>
+
+                {% if page_obj.has_next %}
+                    <a href="?page={{ page_obj.next_page_number }}{% if search %}&search={{ search }}{% endif %}{% if typ %}&typ={{ typ }}{% endif %}{% if rok_min %}&rok_min={{ rok_min }}{% endif %}{% if rok_max %}&rok_max={{ rok_max }}{% endif %}">następna</a>
+                    <a href="?page={{ page_obj.paginator.num_pages }}{% if search %}&search={{ search }}{% endif %}{% if typ %}&typ={{ typ }}{% endif %}{% if rok_min %}&rok_min={{ rok_min }}{% endif %}{% if rok_max %}&rok_max={{ rok_max }}{% endif %}">ostatnia »</a>
+                {% endif %}
+            </span>
+        </div>
+        {% endif %}
+
+        {% else %}
+        <div class="alert-box info">
+            Nie znaleziono żadnych brakujących autorów.
+            {% if search or typ %}
+                <a href="{% url 'komparator_pbn_udzialy:missing_autor_list' %}">Pokaż wszystkie</a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.stat-box {
+    background: #f2f2f2;
+    padding: 10px;
+    border-radius: 3px;
+    text-align: center;
+    margin-bottom: 10px;
+}
+.stat-box.stat-publikacja {
+    background: #fff3cd;
+    border-left: 4px solid #ffc107;
+}
+.stat-box.stat-autor {
+    background: #f8d7da;
+    border-left: 4px solid #dc3545;
+}
+.stat-box.stat-powiazanie {
+    background: #e2e3e5;
+    border-left: 4px solid #6c757d;
+}
+.pagination {
+    text-align: center;
+    margin: 20px 0;
+}
+.page-links a {
+    padding: 5px 10px;
+    margin: 0 5px;
+    background: #f2f2f2;
+    text-decoration: none;
+    border-radius: 3px;
+}
+.page-links a:hover {
+    background: #e0e0e0;
+}
+.current {
+    padding: 5px 10px;
+    margin: 0 5px;
+}
+.text-muted {
+    color: #999;
+}
+</style>
+{% endblock %}

@@ -8,9 +8,11 @@ from import_common.normalization import (
     normalize_doi,
     normalize_kod_dyscypliny,
     normalize_nazwa_dyscypliny,
+    normalize_nazwisko_do_porownania,
     normalize_orcid,
     normalize_part_number,
     normalize_tytul_publikacji,
+    remove_polish_diacritics,
 )
 
 
@@ -221,3 +223,70 @@ def test_extract_part_number_similar_titles_different_parts():
     assert part1 == 2
     assert part2 == 3
     assert part1 != part2
+
+
+# Testy funkcji normalizacji nazwisk dla fuzzy matching PBN
+
+
+@pytest.mark.parametrize(
+    "i,o",
+    [
+        ("Łętowska", "Letowska"),
+        ("Świątek", "Swiatek"),
+        ("Żółć", "Zolc"),
+        ("ŻÓŁĆ", "ZOLC"),
+        ("Smith", "Smith"),
+        ("Kowalski", "Kowalski"),
+        ("Zając", "Zajac"),
+        ("Górniak", "Gorniak"),
+        ("Błażejewski", "Blazejewski"),
+        ("Lech-Marańda", "Lech-Maranda"),  # myślnik zostaje
+        ("", ""),
+        (None, ""),
+    ],
+)
+def test_remove_polish_diacritics(i, o):
+    assert remove_polish_diacritics(i) == o
+
+
+@pytest.mark.parametrize(
+    "i,o",
+    [
+        # Przypadek główny: myślnik vs spacja
+        ("Lech-Marańda", "lech maranda"),
+        ("Lech Marańda", "lech maranda"),
+        # Przypadek główny: polskie znaki diakrytyczne
+        ("Łętowska", "letowska"),
+        ("Łetowska", "letowska"),
+        ("Letowska", "letowska"),
+        # Kombinacje
+        ("Kowalska-Błażejewska", "kowalska blazejewska"),
+        ("Kowalska Błażejewska", "kowalska blazejewska"),
+        # Wielkie litery
+        ("KOWALSKI", "kowalski"),
+        ("ŻÓŁCIŃSKI", "zolcinski"),
+        # Białe znaki
+        ("  Kowalski  ", "kowalski"),
+        ("Kowalski   Nowak", "kowalski nowak"),
+        # Edge cases
+        ("", ""),
+        (None, ""),
+        ("Smith", "smith"),
+    ],
+)
+def test_normalize_nazwisko_do_porownania(i, o):
+    assert normalize_nazwisko_do_porownania(i) == o
+
+
+def test_normalize_nazwisko_matching_case_letowska():
+    """Test głównego przypadku: 'Łetowska' vs 'Łętowska'."""
+    assert normalize_nazwisko_do_porownania(
+        "Łętowska"
+    ) == normalize_nazwisko_do_porownania("Łetowska")  # noqa: E501
+
+
+def test_normalize_nazwisko_matching_case_lech_maranda():
+    """Test głównego przypadku: 'Lech-Marańda' vs 'Lech Marańda'."""
+    assert normalize_nazwisko_do_porownania(
+        "Lech-Marańda"
+    ) == normalize_nazwisko_do_porownania("Lech Marańda")  # noqa: E501

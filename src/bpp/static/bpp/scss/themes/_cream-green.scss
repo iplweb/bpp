@@ -251,15 +251,38 @@ body.theme-cream-green {
         }
     }
 
-    .grp-state-focus,
-    ul.grp-object-tools li a {
-        background: #e8f5e9 !important;
-        color: #2e7d32 !important;
-        border: 2px solid #2e7d32 !important;
+    .grp-state-focus {
+        background: linear-gradient(#2e7d32, #1b5e20) !important;
+        color: #ffffff !important;
+        border: 2px solid #1b5e20 !important;
 
         &:hover {
-            background: #2e7d32 !important;
+            background: linear-gradient(#1b5e20, #145218) !important;
             color: #ffffff !important;
+        }
+    }
+
+    ul.grp-object-tools li a {
+        background: linear-gradient(#2e7d32, #1b5e20) !important;
+        color: #ffffff !important;
+        border: 2px solid #1b5e20 !important;
+
+        &:hover {
+            background: linear-gradient(#1b5e20, #145218) !important;
+            color: #ffffff !important;
+            border-color: #145218 !important;
+        }
+    }
+
+    // Zachowaj ikonę strzałki dla linków zewnętrznych
+    ul.grp-object-tools li a[target="_blank"],
+    ul.grp-object-tools li a.grp-viewsite-link {
+        background: url('/static/grappelli/images/icons-s79f97b581c.png') 0 -935px no-repeat,
+                    linear-gradient(#2e7d32, #1b5e20) !important;
+
+        &:hover {
+            background: url('/static/grappelli/images/icons-s79f97b581c.png') 0 -935px no-repeat,
+                        linear-gradient(#1b5e20, #145218) !important;
         }
     }
 

@@ -1,8 +1,27 @@
  {% extends "admin/change_form.html" %}
 
 {% block object-tools-items %}
+    {% if original %}
+        <li>
+            <a class="autor-publikacje-nav"
+               href="{% url 'admin:bpp_wydawnictwo_ciagle_changelist' %}?autorzy_set__autor__id__exact={{ original.pk }}">
+                📰 Wyd. ciągłe
+            </a>
+        </li>
+        <li>
+            <a class="autor-publikacje-nav"
+               href="{% url 'admin:bpp_wydawnictwo_zwarte_changelist' %}?autorzy_set__autor__id__exact={{ original.pk }}">
+                📚 Wyd. zwarte
+            </a>
+        </li>
+    {% endif %}
     {% if original.pbn_uid_id %}
         <li><a target="_blank" href="{{ original.link_do_pbn }}">Zobacz w PBN</a></li>
     {% endif %}
     {{ block.super }}
+{% endblock %}
+
+{% block submit_buttons_bottom %}
+    {{ block.super }}
+    {% include "admin/copy_pbn_uid_button_handler.html" %}
 {% endblock %}

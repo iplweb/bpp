@@ -49,8 +49,12 @@ class ImportSession(models.Model):
     )
 
     # Error information if failed
-    error_message = models.TextField(blank=True, verbose_name="Komunikat błędu")
-    error_traceback = models.TextField(blank=True, verbose_name="Ślad stosu błędu")
+    error_message = models.TextField(
+        blank=True, default="", verbose_name="Komunikat błędu"
+    )
+    error_traceback = models.TextField(
+        blank=True, default="", verbose_name="Ślad stosu błędu"
+    )
 
     # Timestamp for detecting stale/lost tasks
     last_updated = models.DateTimeField(
@@ -78,8 +82,8 @@ class ImportSession(models.Model):
     def mark_failed(self, error_message, traceback=""):
         """Mark the session as failed with error details"""
         self.status = "failed"
-        self.error_message = error_message
-        self.error_traceback = traceback
+        self.error_message = error_message or ""
+        self.error_traceback = traceback or ""
         self.completed_at = timezone.now()
         self.save(
             update_fields=["status", "error_message", "error_traceback", "completed_at"]
@@ -214,6 +218,7 @@ class ImportInconsistency(models.Model):
     INCONSISTENCY_TYPE_CHOICES = [
         ("author_not_found", "Autor nie znaleziony w publikacji"),
         ("author_auto_fixed", "Autor automatycznie poprawiony"),
+        ("author_replaced", "Autor zamieniony na innego"),
         ("author_needs_manual_fix", "Wymaga ręcznej korekty"),
         ("no_override_without_disciplines", "Brak nadpisania - brak dyscyplin"),
         ("publication_not_found", "Brak publikacji w BPP"),

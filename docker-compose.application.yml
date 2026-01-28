@@ -43,7 +43,6 @@ services:
     # Lightweight auth server for nginx authentication
     # Starts quickly (seconds) - no migrations, no collectstatic
     # Used by nginx auth_request for Grafana, Dozzle, etc.
-    profiles: ['monitoring']
     image: iplweb/bpp_authserver:${DOCKER_VERSION:-latest}
     build:
       context: .

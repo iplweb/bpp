@@ -38,6 +38,7 @@ class StatementImporter(ImportStepBase):
             discipline=None,
             message="",
             action_taken="",
+            **kwargs,
         ):
             """Record an inconsistency found during statement integration."""
             try:

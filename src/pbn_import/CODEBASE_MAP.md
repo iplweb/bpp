@@ -156,9 +156,12 @@ sequenceDiagram
 | 5 | `conference_import` | ConferenceImporter | No | Conference data |
 | 6 | `author_import` | AuthorImporter | No | Authors from institution |
 | 7 | `publication_import` | PublicationImporter | No | Publications (v1 + v2 API) |
-| 8 | `data_integration` | DataIntegrator | No | Integrate & link data |
-| 9 | `statement_import` | StatementImporter | No | Author statements |
-| 10 | `fee_import` | FeeImporter | No | Publication fees |
+| 8 | `statement_import` | StatementImporter | No | Author statements |
+| 9 | `fee_import` | FeeImporter | No | Publication fees |
+
+> **Note**: The `data_integration` step was removed as redundant. Publications are created
+> with `pbn_uid_id` already set during import, and statement integration is handled by
+> `statement_import`.
 
 ### Step Configuration
 
@@ -411,10 +414,6 @@ uv run python src/manage.py pbn_import \
 - `--delete-existing` - Delete existing PBN publications
 - `--wydzial-domyslny` - Default department name
 
-### pbn_first_import
-
-First-time setup with interactive prompts for PBN credentials.
-
 ### test_pbn_import
 
 Test import with mock data (development only).
@@ -455,7 +454,6 @@ Test import with mock data (development only).
 | `utils/conference_import.py` | Conference import | 289 |
 | `utils/author_import.py` | Author import | 658 |
 | `utils/publication_import.py` | Publication import | 2,300 |
-| `utils/data_integration.py` | Data integration | 1,805 |
 | `utils/statement_import.py` | Statement import | 534 |
 | `utils/fee_import.py` | Fee import | 700 |
 | `templatetags/pbn_import_tags.py` | Template tags | 343 |
@@ -477,7 +475,6 @@ Test import with mock data (development only).
 | Command | Purpose |
 |---------|---------|
 | `pbn_import.py` | Full CLI for imports |
-| `pbn_first_import.py` | First-time setup |
 | `test_pbn_import.py` | Test with mock data |
 
 ---

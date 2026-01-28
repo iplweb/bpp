@@ -1,6 +1,6 @@
 [project]
 name = "bpp_iplweb"
-version = "202601.1340"
+version = "202601.1341"
 description = ""
 authors = [
     { name = "Michał Pasternak", email = "michal.dtz@gmail.com" }
@@ -109,6 +109,7 @@ dependencies = [
     "psycopg2>=2.9.11",  # ZOSTAW psycopg2 dla django-denorm
     "amqp>=5.2.0",  # RabbitMQ support for Celery
     "python-docx>=1.1.0",  # Post-processing DOCX dla page breaks
+    "questionary>=2.0.0",  # Interactive CLI menus
 ]
 
 [project.optional-dependencies]
@@ -203,7 +204,7 @@ include = [
 ]
 
 [tool.bumpver]
-current_version = "v202601.1340"
+current_version = "v202601.1341"
 version_pattern = "vYYYY0M.BUILD[-TAGNUM]"
 commit_message = "bump version {old_version} -> {new_version}"
 commit = true
@@ -310,7 +311,7 @@ dev = [
 
 [tool.towncrier]
 package = "bpp"
-version = "202601.1340"
+version = "202601.1341"
 package_dir = "src"
 filename = "HISTORY.rst"
 

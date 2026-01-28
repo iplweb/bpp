@@ -278,17 +278,42 @@ body.theme-mario-bros {
         }
     }
 
-    .grp-state-focus,
-    ul.grp-object-tools li a {
-        background: linear-gradient(135deg, #fff5d6 0%, #ffe89d 100%) !important;
-        color: #e52521 !important;
-        border: 2px solid #fff200 !important;
+    .grp-state-focus {
+        background: linear-gradient(#e52521, #c91e1a) !important;
+        color: #ffffff !important;
+        border: 2px solid #c91e1a !important;
         border-radius: 4px !important;
         font-weight: bold !important;
 
         &:hover {
-            background: linear-gradient(135deg, #fff200 0%, #ffd54f 100%) !important;
-            color: #c91e1a !important;
+            background: linear-gradient(#c91e1a, #a81815) !important;
+            color: #ffffff !important;
+        }
+    }
+
+    ul.grp-object-tools li a {
+        background: linear-gradient(#e52521, #c91e1a) !important;
+        color: #ffffff !important;
+        border: 2px solid #c91e1a !important;
+        border-radius: 4px !important;
+        font-weight: bold !important;
+
+        &:hover {
+            background: linear-gradient(#c91e1a, #a81815) !important;
+            color: #ffffff !important;
+            border-color: #a81815 !important;
+        }
+    }
+
+    // Zachowaj ikonę strzałki dla linków zewnętrznych
+    ul.grp-object-tools li a[target="_blank"],
+    ul.grp-object-tools li a.grp-viewsite-link {
+        background: url('/static/grappelli/images/icons-s79f97b581c.png') 0 -935px no-repeat,
+                    linear-gradient(#e52521, #c91e1a) !important;
+
+        &:hover {
+            background: url('/static/grappelli/images/icons-s79f97b581c.png') 0 -935px no-repeat,
+                        linear-gradient(#c91e1a, #a81815) !important;
         }
     }
 

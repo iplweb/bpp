@@ -12,7 +12,13 @@ from .export import (
 )
 from .index import LiczbaNIndexView, ObliczLiczbeNView, SaveSankcjeView
 from .list import AutorzyLiczbaNListView, UdzialyZaCaloscListView
-from .verify import WeryfikujBazeView
+from .verify import (
+    UstawProcentDyscyplinyDowolnyView,
+    UstawProcentDyscyplinyNSlotyView,
+    UstawRodzajAutoraView,
+    UstawWymiarEtatuView,
+    WeryfikujBazeView,
+)
 
 __all__ = [
     "LiczbaNIndexView",
@@ -25,4 +31,8 @@ __all__ = [
     "UdzialyZaCaloscExporter",
     "ExportUdzialyZaCaloscView",
     "WeryfikujBazeView",
+    "UstawWymiarEtatuView",
+    "UstawProcentDyscyplinyNSlotyView",
+    "UstawProcentDyscyplinyDowolnyView",
+    "UstawRodzajAutoraView",
 ]

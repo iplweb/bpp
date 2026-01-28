@@ -216,6 +216,19 @@ class AdminNavigationAutocomplete(
                 return f"➕ Dodaj {result.verbose_name.lower()}"
             return f"📄 {result.verbose_name}"
 
+        # Publikacje - wyświetl opis_bibliograficzny_cache
+        elif isinstance(
+            result,
+            (
+                Wydawnictwo_Zwarte,
+                Wydawnictwo_Ciagle,
+                Patent,
+                Praca_Doktorska,
+                Praca_Habilitacyjna,
+            ),
+        ):
+            return result.opis_bibliograficzny_cache or str(result)
+
         # Default handling for other types
         return super().get_result_label(result)
 
@@ -230,9 +243,29 @@ class AdminNavigationAutocomplete(
         return super().get_model_name(model)
 
     def get_results(self, context):
-        """Override to include Django items in the results."""
-        # Get regular results from parent class
-        results = super().get_results(context)
+        """Override to include Django items and use get_result_label for formatting."""
+        # Build results with get_result_label instead of str()
+        # (the parent library uses str() which doesn't call our get_result_label)
+        groups = OrderedDict()
+
+        for result in context["object_list"]:
+            groups.setdefault(type(result), [])
+            groups[type(result)].append(result)
+
+        results = [
+            {
+                "id": None,
+                "text": capfirst(self.get_model_name(model)),
+                "children": [
+                    {
+                        "id": self.get_result_value(result),
+                        "text": self.get_result_label(result),
+                    }
+                    for result in model_results
+                ],
+            }
+            for model, model_results in groups.items()
+        ]
 
         # If we have Django items, add them to the results
         if self.django_items:
@@ -454,7 +487,9 @@ class AdminNavigationAutocomplete(
             else:
                 qset = klass.objects.filter(query_filter)
 
-            querysets.append(qset.only("tytul_oryginalny"))
+            querysets.append(
+                qset.only("tytul_oryginalny", "opis_bibliograficzny_cache")
+            )
 
     def get_queryset(self):
         if not self.q or len(self.q) < 1:

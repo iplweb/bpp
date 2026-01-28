@@ -7,6 +7,7 @@ from typing import Any
 
 import rollbar
 from django.core.management import call_command
+from django.db import transaction
 from django.utils import timezone
 
 from ..models import ImportLog, ImportSession
@@ -457,7 +458,6 @@ class ImportManager:
                 "przypisz_rekordy_aktualnym_jednostkom_autorow",
                 "Przypisywanie rekordów do jednostek",
             ),
-            ("denorm_flush", "Odświeżanie denormalizacji"),
         ]
 
         for cmd, description in commands:
@@ -471,6 +471,12 @@ class ImportManager:
             except Exception as e:
                 logger.error(f"Komenda {cmd} nie powiodła się: {e}")
                 # Don't fail the entire import for post-processing errors
+
+        # Uruchom denorm_flush po zacommitowaniu transakcji, aby uniknąć deadlocka
+        self.session.current_step = "Odświeżanie denormalizacji"
+        self.session.save()
+        logger.info("Zaplanowano denorm_flush po zacommitowaniu transakcji")
+        transaction.on_commit(lambda: call_command("denorm_flush"))
 
     def pause(self):
         """Pause the import process"""

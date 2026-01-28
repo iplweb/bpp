@@ -8,6 +8,19 @@
             var isbn_button = $("#id_isbn_pbn_get");
             var orig = isbn_button.val();
 
+            function updateIsbnButtonVisibility() {
+                var val = i.val();
+                if (val && val.trim() !== '') {
+                    isbn_button.hide();
+                } else {
+                    isbn_button.show();
+                }
+            }
+
+            updateIsbnButtonVisibility();
+            i.on('change select2:select select2:unselect select2:clear',
+                updateIsbnButtonVisibility);
+
             isbn_button.click(function () {
                 var t = $("#id_isbn").val();
                 if (!t)

@@ -61,13 +61,21 @@ class Command(BaseCommand):
             )
 
             # Wyświetlamy podsumowanie
+            total_missing = (
+                stats["missing_publication"]
+                + stats["missing_autor"]
+                + stats["missing_link"]
+            )
             self.stdout.write(
                 self.style.SUCCESS(
                     f"\nPorównywanie zakończone pomyślnie!\n"
                     f"----------------------------------------\n"
                     f"Przetworzono oświadczeń: {stats['processed']}\n"
                     f"Znaleziono rozbieżności: {stats['discrepancies_found']}\n"
-                    f"Pominięto (brak w BPP): {stats['skipped']}\n"
+                    f"Brak publikacji w BPP: {stats['missing_publication']}\n"
+                    f"Brak autora w BPP: {stats['missing_autor']}\n"
+                    f"Brak powiązania autor-publikacja: {stats['missing_link']}\n"
+                    f"Razem brakujących: {total_missing}\n"
                     f"Błędy: {stats['errors']}\n"
                 )
             )
