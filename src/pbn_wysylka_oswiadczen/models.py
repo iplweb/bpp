@@ -40,6 +40,7 @@ class PbnWysylkaOswiadczenTask(models.Model):
     success_count = models.IntegerField(default=0)
     error_count = models.IntegerField(default=0)
     skipped_count = models.IntegerField(default=0)
+    synchronized_count = models.IntegerField(default=0)
 
     # Parameters
     rok_od = models.IntegerField(default=2022)
@@ -108,6 +109,7 @@ class PbnWysylkaLog(models.Model):
         ("success", "Sukces"),
         ("error", "Blad"),
         ("skipped", "Pominieto"),
+        ("synchronized", "Zsynchronizowana"),
         ("maintenance", "Prace serwisowe PBN"),
     ]
 

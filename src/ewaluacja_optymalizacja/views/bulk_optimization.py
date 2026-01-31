@@ -61,6 +61,16 @@ def _process_discipline_optimization_status(liczba_n_obj, uczelnia):
         if opt_run.status == "failed":
             disc_info["status"] = "failed"
             disc_info["error"] = opt_run.notes
+            # Wyodrębnij traceback dla superuserów
+            if "Traceback:" in (opt_run.notes or ""):
+                parts = opt_run.notes.split("Traceback:", 1)
+                disc_info["error_message"] = parts[0].strip()
+                disc_info["traceback"] = (
+                    "Traceback:" + parts[1] if len(parts) > 1 else ""
+                )
+            else:
+                disc_info["error_message"] = opt_run.notes
+                disc_info["traceback"] = ""
             return disc_info, "failed"
 
         # status == "running"

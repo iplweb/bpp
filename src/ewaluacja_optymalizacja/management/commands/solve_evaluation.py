@@ -69,6 +69,42 @@ class Command(BaseCommand):
             choices=["two-phase", "single-phase"],
             help='Algorithm mode: "two-phase" (default) or "single-phase"',
         )
+        parser.add_argument(
+            "--show-publications",
+            action="store_true",
+            default=False,
+            help="Show detailed publication list per author at the end",
+        )
+        parser.add_argument(
+            "--analyze-unpinning",
+            action="store_true",
+            default=False,
+            help="Analyze optimal unpinning based on capacity rule, show recommendations",
+        )
+        parser.add_argument(
+            "--auto-unpin",
+            action="store_true",
+            default=False,
+            help="Apply capacity-based unpinning before optimization (with preview)",
+        )
+        parser.add_argument(
+            "--analyze-pinning",
+            action="store_true",
+            default=False,
+            help=(
+                "After optimization, analyze which unpinned authors could be re-pinned "
+                "to utilize free slots (Phase 3 analysis only, no changes)"
+            ),
+        )
+        parser.add_argument(
+            "--enable-pinning",
+            action="store_true",
+            default=False,
+            help=(
+                "Apply Phase 3 capacity-based pinning after optimization: "
+                "re-pin authors who have free slots to unselected publications"
+            ),
+        )
 
     @transaction.atomic
     def handle(  # noqa: C901
@@ -79,6 +115,11 @@ class Command(BaseCommand):
         unpin_not_selected,
         rerun_after_unpin,
         algorithm_mode,
+        show_publications,
+        analyze_unpinning,
+        auto_unpin,
+        analyze_pinning,
+        enable_pinning,
         *args,
         **options,
     ):
@@ -102,10 +143,12 @@ class Command(BaseCommand):
                 liczba_n_obj = LiczbaNDlaUczelni.objects.get(
                     uczelnia=uczelnia, dyscyplina_naukowa=dyscyplina_obj
                 )
-                liczba_n = float(liczba_n_obj.liczba_n)
+                liczba_n = float(liczba_n_obj.liczba_n_ostateczna)
                 self.stdout.write(
                     self.style.SUCCESS(
-                        f"Found liczba_n={liczba_n} for {dyscyplina} (3×N limit: {3 * liczba_n})"
+                        f"Found for {dyscyplina}: N={liczba_n_obj.liczba_n}, "
+                        f"sankcje={liczba_n_obj.sankcje}, "
+                        f"3×N - sankcje = {liczba_n}"
                     )
                 )
         except (Dyscyplina_Naukowa.DoesNotExist, LiczbaNDlaUczelni.DoesNotExist):
@@ -115,6 +158,24 @@ class Command(BaseCommand):
                     "Institution constraint will not be applied."
                 )
             )
+
+        # Handle capacity-based unpinning analysis/application (PRE-optimization)
+        if analyze_unpinning or auto_unpin:
+            dyscyplina_obj = Dyscyplina_Naukowa.objects.get(nazwa=dyscyplina)
+            self._handle_capacity_based_unpinning(
+                dyscyplina_obj,
+                dry_run=not auto_unpin,  # If auto_unpin, apply changes
+            )
+
+            # If only analyzing (not applying), stop here
+            if analyze_unpinning and not auto_unpin:
+                self.stdout.write(
+                    self.style.WARNING(
+                        "\nAnalysis complete. Use --auto-unpin to apply changes "
+                        "and run optimization."
+                    )
+                )
+                return
 
         # Run optimization using core logic
         self.stdout.write(f"Using algorithm mode: {algorithm_mode}")
@@ -160,7 +221,10 @@ class Command(BaseCommand):
         total_points = results.total_points
 
         # Display results
-        self._display_author_results(authors, by_author, author_names, rekords, results)
+        if show_publications:
+            self._display_author_results(
+                authors, by_author, author_names, rekords, results
+            )
         self._display_institution_statistics(all_selected, total_points)
 
         # Find and display unselected multi-author publications
@@ -181,6 +245,21 @@ class Command(BaseCommand):
                 rekords,
                 sorted_unselected,
                 author_slot_limits,
+            )
+
+        # Handle Phase 3: Capacity-based pinning (analyze or apply)
+        if analyze_pinning or enable_pinning:
+            dyscyplina_obj = Dyscyplina_Naukowa.objects.get(nazwa=dyscyplina)
+            self._handle_phase3_pinning(
+                results,
+                all_selected,
+                author_slot_limits,
+                dyscyplina_obj,
+                log_callback,
+                dry_run=not enable_pinning,  # If enable_pinning, apply changes
+                rerun_after_pinning=enable_pinning,  # Re-run optimization after pinning
+                algorithm_mode=algorithm_mode,
+                verbose=verbose,
             )
 
         # Handle unpinning if requested
@@ -608,6 +687,203 @@ class Command(BaseCommand):
             json.dump(results_dict, f, indent=2, ensure_ascii=False)
 
         self.stdout.write(self.style.SUCCESS(f"\nResults saved to: {output}"))
+
+    def _handle_phase3_pinning(
+        self,
+        results,
+        all_selected,
+        author_slot_limits,
+        dyscyplina_obj,
+        log_callback,
+        dry_run=True,
+        rerun_after_pinning=False,
+        algorithm_mode="two-phase",
+        verbose=False,
+    ):
+        """
+        Phase 3: Analyze and optionally apply capacity-based pinning.
+
+        This finds unpinned authors who have free slots and can be re-pinned
+        to unselected publications to utilize remaining capacity.
+
+        Args:
+            results: OptimizationResults from Phase 1+2
+            all_selected: List of selected publications
+            author_slot_limits: Dictionary of slot limits per author
+            dyscyplina_obj: Dyscyplina_Naukowa object
+            log_callback: Logging function
+            dry_run: If True, show preview without applying changes
+            rerun_after_pinning: If True, re-run optimization after pinning
+            algorithm_mode: Algorithm mode for re-run
+            verbose: Verbose output for re-run
+        """
+        from denorm import denorms
+
+        from ewaluacja_optymalizacja.core import (
+            analyze_pinning_candidates,
+            apply_pinning_candidates,
+        )
+
+        self.stdout.write("\n" + "=" * 80)
+        self.stdout.write("PHASE 3: CAPACITY-BASED PINNING ANALYSIS")
+        self.stdout.write("=" * 80)
+
+        # Find pinning candidates
+        candidates = analyze_pinning_candidates(
+            all_selected=all_selected,
+            all_pubs=results.all_pubs,
+            author_slot_limits=author_slot_limits,
+            dyscyplina_id=dyscyplina_obj.pk,
+            log_func=log_callback,
+        )
+
+        if not candidates:
+            self.stdout.write(self.style.WARNING("No pinning candidates found."))
+            return
+
+        # Calculate potential gains
+        total_potential_points = sum(c.points for c in candidates)
+        total_potential_slots = sum(c.slots for c in candidates)
+
+        self.stdout.write("\n" + "-" * 40)
+        self.stdout.write(f"Total candidates: {len(candidates)}")
+        self.stdout.write(f"Potential points gain: {total_potential_points:.1f}")
+        self.stdout.write(f"Potential slots used: {total_potential_slots:.2f}")
+        self.stdout.write("-" * 40)
+
+        if dry_run:
+            self.stdout.write(
+                self.style.WARNING(
+                    f"\nAnalysis complete (dry-run). Use --enable-pinning to apply "
+                    f"changes for {len(candidates)} candidates."
+                )
+            )
+            return
+
+        # Apply pinning changes
+        self.stdout.write("\nApplying pinning changes...")
+        result = apply_pinning_candidates(
+            candidates=candidates,
+            dyscyplina_obj=dyscyplina_obj,
+            log_func=log_callback,
+            dry_run=False,
+        )
+
+        if result["errors"]:
+            for error in result["errors"]:
+                self.stdout.write(self.style.ERROR(f"  Error: {error}"))
+
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"Applied pinning: {result['pinned_count']} assignments modified"
+            )
+        )
+
+        # Flush denorms to update cache
+        self.stdout.write("Flushing denorms...")
+        denorms.flush()
+        self.stdout.write(self.style.SUCCESS("Denorms flushed"))
+
+        # Re-run optimization if requested
+        if rerun_after_pinning and result["pinned_count"] > 0:
+            self.stdout.write("\n" + "=" * 80)
+            self.stdout.write("RE-RUNNING OPTIMIZATION AFTER PINNING")
+            self.stdout.write("=" * 80)
+
+            from django.core.management import call_command
+
+            # Prepare arguments for re-run
+            rerun_args = [dyscyplina_obj.nazwa]
+            rerun_kwargs = {
+                "verbose": verbose,
+                "algorithm_mode": algorithm_mode,
+                "unpin_not_selected": False,
+                "rerun_after_unpin": False,
+                "analyze_unpinning": False,
+                "auto_unpin": False,
+                "analyze_pinning": False,
+                "enable_pinning": False,  # Don't recurse
+                "show_publications": False,
+            }
+
+            # Save old points for comparison
+            old_points = results.total_points
+
+            try:
+                call_command("solve_evaluation", *rerun_args, **rerun_kwargs)
+                self.stdout.write(
+                    self.style.SUCCESS(
+                        f"\nPhase 3 complete. Previous points: {old_points:.1f}"
+                    )
+                )
+            except Exception as e:
+                self.stdout.write(self.style.ERROR(f"Error during re-run: {e}"))
+
+    def _handle_capacity_based_unpinning(self, dyscyplina_obj, dry_run=True):
+        """
+        Analyze and optionally apply capacity-based unpinning.
+
+        This implements the "capacity rule" algorithm (84% accuracy):
+        For each multi-author publication, keep the author with
+        MOST REMAINING CAPACITY (= 4.0 - current_slots), unpin others.
+
+        Args:
+            dyscyplina_obj: Dyscyplina_Naukowa object
+            dry_run: If True, show preview without applying changes
+
+        Returns:
+            List of UnpinningCandidate objects
+        """
+        from denorm import denorms
+
+        from ewaluacja_optymalizacja.tasks.unpinning.capacity_analysis import (
+            apply_unpinning,
+            format_unpinning_preview,
+            identify_unpinning_candidates,
+        )
+
+        self.stdout.write("\n" + "=" * 80)
+        self.stdout.write("CAPACITY-BASED UNPINNING ANALYSIS")
+        self.stdout.write("=" * 80)
+        self.stdout.write(f"Analyzing discipline: {dyscyplina_obj.nazwa}")
+
+        # Find unpinning candidates
+        candidates = identify_unpinning_candidates(dyscyplina_obj)
+
+        # Display preview
+        preview_text = format_unpinning_preview(candidates)
+        self.stdout.write(preview_text)
+
+        if not candidates:
+            self.stdout.write(self.style.WARNING("No unpinning candidates found."))
+            return candidates
+
+        if dry_run:
+            self.stdout.write(
+                self.style.WARNING(
+                    f"\nDry-run mode: {len(candidates)} publications would be modified."
+                )
+            )
+        else:
+            self.stdout.write("\nApplying unpinning decisions...")
+            result = apply_unpinning(candidates, dyscyplina_obj, dry_run=False)
+
+            self.stdout.write(
+                self.style.SUCCESS(
+                    f"Applied unpinning: {result['unpinned_count']} assignments modified"
+                )
+            )
+
+            if result["errors"]:
+                for error in result["errors"]:
+                    self.stdout.write(self.style.ERROR(f"  Error: {error}"))
+
+            # Flush denorms to update cache
+            self.stdout.write("Flushing denorms...")
+            denorms.flush()
+            self.stdout.write(self.style.SUCCESS("Denorms flushed"))
+
+        return candidates
 
     def _handle_unpinning(
         self,

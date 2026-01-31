@@ -76,6 +76,26 @@ class OptimizationRun(models.Model):
         "(np. z powodu timeout)",
     )
 
+    optimality_gap = models.DecimalField(
+        max_digits=10,
+        decimal_places=4,
+        null=True,
+        blank=True,
+        verbose_name="Luka optymalizacyjna (%)",
+        help_text="Różnica procentowa między znalezionym rozwiązaniem a teoretycznym "
+        "maksimum. Wartość 0% oznacza rozwiązanie optymalne. Null jeśli niedostępne.",
+    )
+
+    best_bound = models.DecimalField(
+        max_digits=20,
+        decimal_places=4,
+        null=True,
+        blank=True,
+        verbose_name="Teoretyczna górna granica punktów",
+        help_text="Teoretyczne maksimum punktów obliczone przez solver. "
+        "Null jeśli niedostępne.",
+    )
+
     # Additional metadata
     notes = models.TextField(blank=True, default="", verbose_name="Notatki")
 

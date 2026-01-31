@@ -42,6 +42,8 @@
                         <span class="label success">Sukces</span>
                         {% elif log.status == "error" %}
                         <span class="label alert">Blad</span>
+                        {% elif log.status == "synchronized" %}
+                        <span class="label info">Zsynchronizowana</span>
                         {% else %}
                         <span class="label secondary">Pominiete</span>
                         {% endif %}

@@ -31,6 +31,8 @@ def test_solve_single_discipline_task_success(uczelnia, dyscyplina1):
     mock_results.low_mono_percentage = 40.0
     mock_results.validation_passed = True
     mock_results.is_optimal = True
+    mock_results.optimality_gap_percent = None
+    mock_results.best_bound = None
     mock_results.authors = {}
 
     with patch(
@@ -69,6 +71,8 @@ def test_solve_single_discipline_task_deletes_old_runs(uczelnia, dyscyplina1):
     mock_results.low_mono_percentage = 0.0
     mock_results.validation_passed = True
     mock_results.is_optimal = True
+    mock_results.optimality_gap_percent = None
+    mock_results.best_bound = None
     mock_results.authors = {}
 
     with patch(
