@@ -28,6 +28,15 @@
         .fouc-visible { visibility: visible; opacity: 1; }
     </style>
 
+    {# Print margins from constance settings #}
+    <style>
+    @media print {
+      @page {
+        margin: {{ WYDRUK_MARGINES_GORA|default:"2cm" }} {{ WYDRUK_MARGINES_PRAWO|default:"2cm" }} {{ WYDRUK_MARGINES_DOL|default:"2cm" }} {{ WYDRUK_MARGINES_LEWO|default:"2cm" }};
+      }
+    }
+    </style>
+
     {% compress css %}
         <link rel="stylesheet" type="text/css" href="{% static THEME_NAME %}"/>
         <link rel="stylesheet" type="text/css" href="{% static "jqueryui/jquery-ui.css" %}">

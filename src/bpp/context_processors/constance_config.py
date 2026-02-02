@@ -30,6 +30,10 @@ def constance_config(request):
             "UCZELNIA_UZYWA_WYDZIALOW": config.UCZELNIA_UZYWA_WYDZIALOW,
             "GOOGLE_ANALYTICS_PROPERTY_ID": config.GOOGLE_ANALYTICS_PROPERTY_ID,
             "GOOGLE_VERIFICATION_CODE": config.GOOGLE_VERIFICATION_CODE,
+            "WYDRUK_MARGINES_GORA": config.WYDRUK_MARGINES_GORA,
+            "WYDRUK_MARGINES_DOL": config.WYDRUK_MARGINES_DOL,
+            "WYDRUK_MARGINES_LEWO": config.WYDRUK_MARGINES_LEWO,
+            "WYDRUK_MARGINES_PRAWO": config.WYDRUK_MARGINES_PRAWO,
         }
     except (ImportError, AttributeError):
         from django.conf import settings
@@ -55,4 +59,8 @@ def constance_config(request):
             "GOOGLE_VERIFICATION_CODE": getattr(
                 settings, "WEBMASTER_VERIFICATION", {}
             ).get("google", ""),
+            "WYDRUK_MARGINES_GORA": "2cm",
+            "WYDRUK_MARGINES_DOL": "2cm",
+            "WYDRUK_MARGINES_LEWO": "2cm",
+            "WYDRUK_MARGINES_PRAWO": "2cm",
         }

@@ -1372,6 +1372,27 @@ CONSTANCE_CONFIG = {
         "Kod weryfikacyjny Google Search Console",
         str,
     ),
+    # Wydruk - marginesy
+    "WYDRUK_MARGINES_GORA": (
+        "2cm",
+        "Margines górny wydruku (np. 2cm, 20mm, 0.8in)",
+        str,
+    ),
+    "WYDRUK_MARGINES_DOL": (
+        "2cm",
+        "Margines dolny wydruku (np. 2cm, 20mm, 0.8in)",
+        str,
+    ),
+    "WYDRUK_MARGINES_LEWO": (
+        "2cm",
+        "Margines lewy wydruku (np. 2cm, 20mm, 0.8in)",
+        str,
+    ),
+    "WYDRUK_MARGINES_PRAWO": (
+        "2cm",
+        "Margines prawy wydruku (np. 2cm, 20mm, 0.8in)",
+        str,
+    ),
 }
 
 CONSTANCE_CONFIG_FIELDSETS = {
@@ -1388,5 +1409,11 @@ CONSTANCE_CONFIG_FIELDSETS = {
     "Integracje Google": (
         "GOOGLE_ANALYTICS_PROPERTY_ID",
         "GOOGLE_VERIFICATION_CODE",
+    ),
+    "Wydruk": (
+        "WYDRUK_MARGINES_GORA",
+        "WYDRUK_MARGINES_DOL",
+        "WYDRUK_MARGINES_LEWO",
+        "WYDRUK_MARGINES_PRAWO",
     ),
 }
