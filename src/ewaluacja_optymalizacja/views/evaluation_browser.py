@@ -157,34 +157,6 @@ def _get_filter_options(uczelnia):
     }
 
 
-def _get_distinct_punkty_kbn(rok=None):
-    """
-    Pobierz unikalne wartości punkty_kbn z publikacji.
-
-    Zwraca posortowaną listę unikalnych wartości punkty_kbn z obu typów publikacji.
-    """
-    from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
-
-    base_filter = {"rok__in": [2022, 2023, 2024, 2025]}
-    if rok:
-        base_filter["rok"] = int(rok)
-
-    ciagle_punkty = set(
-        Wydawnictwo_Ciagle.objects.filter(**base_filter)
-        .values_list("punkty_kbn", flat=True)
-        .distinct()
-    )
-    zwarte_punkty = set(
-        Wydawnictwo_Zwarte.objects.filter(**base_filter)
-        .values_list("punkty_kbn", flat=True)
-        .distinct()
-    )
-
-    all_punkty = ciagle_punkty | zwarte_punkty
-    # Usuń None i posortuj malejąco (najwyższe punkty na górze)
-    return sorted([p for p in all_punkty if p is not None], reverse=True)
-
-
 def _build_rekord_ids(ciagle_list, zwarte_list, ct_ciagle, ct_zwarte):
     """Zbuduj słowniki rekord_id dla publikacji."""
     all_rekord_ids = []
@@ -367,6 +339,50 @@ def _apply_dyscyplina_nieprzypisana_filter(ciagle_qs, zwarte_qs, filters):
     return ciagle_qs, zwarte_qs
 
 
+def _build_base_filter(filters):
+    """Zbuduj bazowy filtr dla publikacji."""
+    from decimal import Decimal, InvalidOperation
+
+    rok = filters.get("rok")
+    punkty_od = filters.get("punkty_od")
+    punkty_do = filters.get("punkty_do")
+
+    base_filter = {"rok__in": [2022, 2023, 2024, 2025]}
+    if rok:
+        base_filter["rok"] = int(rok)
+
+    if punkty_od:
+        try:
+            base_filter["punkty_kbn__gte"] = Decimal(punkty_od)
+        except InvalidOperation:
+            pass  # Ignoruj nieprawidłowe wartości
+    if punkty_do:
+        try:
+            base_filter["punkty_kbn__lte"] = Decimal(punkty_do)
+        except InvalidOperation:
+            pass  # Ignoruj nieprawidłowe wartości
+
+    return base_filter
+
+
+def _build_author_filter(filters, reported_ids):
+    """Zbuduj filtr dla autorów publikacji."""
+    dyscyplina = filters.get("dyscyplina")
+    nazwisko = (filters.get("nazwisko") or "").strip()
+
+    author_filter = {
+        "afiliuje": True,
+        "zatrudniony": True,
+        "dyscyplina_naukowa_id__in": reported_ids,
+    }
+    if dyscyplina:
+        author_filter["dyscyplina_naukowa_id"] = int(dyscyplina)
+    if nazwisko:
+        author_filter["autor__nazwisko__icontains"] = nazwisko
+
+    return author_filter
+
+
 def _build_publication_list(
     pub_list,
     model_type,
@@ -422,18 +438,11 @@ def _get_filtered_publications(uczelnia, filters, reported_ids):
 
     from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
 
-    rok = filters.get("rok")
     tytul = (filters.get("tytul") or "").strip()
-    dyscyplina = filters.get("dyscyplina")
-    nazwisko = (filters.get("nazwisko") or "").strip()
-    punkty_kbn = filters.get("punkty_kbn")
 
     # Bazowe filtrowanie
-    base_filter = {"rok__in": [2022, 2023, 2024, 2025]}
-    if rok:
-        base_filter["rok"] = int(rok)
-    if punkty_kbn:
-        base_filter["punkty_kbn"] = punkty_kbn
+    base_filter = _build_base_filter(filters)
+    author_filter = _build_author_filter(filters, reported_ids)
 
     # Pobierz publikacje obu typow
     ciagle_qs = Wydawnictwo_Ciagle.objects.filter(**base_filter)
@@ -442,17 +451,6 @@ def _get_filtered_publications(uczelnia, filters, reported_ids):
     if tytul:
         ciagle_qs = ciagle_qs.filter(tytul_oryginalny__icontains=tytul)
         zwarte_qs = zwarte_qs.filter(tytul_oryginalny__icontains=tytul)
-
-    # Filtr po autorze z dyscyplina w raportowanych
-    author_filter = {
-        "afiliuje": True,
-        "zatrudniony": True,
-        "dyscyplina_naukowa_id__in": reported_ids,
-    }
-    if dyscyplina:
-        author_filter["dyscyplina_naukowa_id"] = int(dyscyplina)
-    if nazwisko:
-        author_filter["autor__nazwisko__icontains"] = nazwisko
 
     # Ogranicz do publikacji z odpowiednimi autorami
     ciagle_with_authors = Wydawnictwo_Ciagle_Autor.objects.filter(
@@ -489,22 +487,12 @@ def _get_filtered_publications(uczelnia, filters, reported_ids):
     ciagle_pks = [p.pk for p in ciagle_list]
     zwarte_pks = [p.pk for p in zwarte_list]
 
-    autor_base_filter = {
-        "afiliuje": True,
-        "zatrudniony": True,
-        "dyscyplina_naukowa_id__in": reported_ids,
-    }
-    if dyscyplina:
-        autor_base_filter["dyscyplina_naukowa_id"] = int(dyscyplina)
-    if nazwisko:
-        autor_base_filter["autor__nazwisko__icontains"] = nazwisko
-
     ciagle_autorzy = Wydawnictwo_Ciagle_Autor.objects.filter(
-        rekord_id__in=ciagle_pks, **autor_base_filter
+        rekord_id__in=ciagle_pks, **author_filter
     ).select_related("autor", "dyscyplina_naukowa")
 
     zwarte_autorzy = Wydawnictwo_Zwarte_Autor.objects.filter(
-        rekord_id__in=zwarte_pks, **autor_base_filter
+        rekord_id__in=zwarte_pks, **author_filter
     ).select_related("autor", "dyscyplina_naukowa")
 
     # Grupuj autorów po publikacji
@@ -616,14 +604,12 @@ def evaluation_browser(request):
         uczelnia, status.punkty_przed, show_diff
     )
     filters = _get_filter_options(uczelnia)
-    punkty_kbn_values = _get_distinct_punkty_kbn()
 
     context = {
         "uczelnia": uczelnia,
         "discipline_summary": discipline_summary,
         "filters": filters,
         "status": status,
-        "punkty_kbn_values": punkty_kbn_values,
     }
 
     return render(
@@ -669,7 +655,8 @@ def browser_table(request):
         "dyscyplina": request.GET.get("dyscyplina"),
         "dyscyplina_nieprzypisana": request.GET.get("dyscyplina_nieprzypisana"),
         "nazwisko": request.GET.get("nazwisko"),
-        "punkty_kbn": request.GET.get("punkty_kbn"),
+        "punkty_od": request.GET.get("punkty_od"),
+        "punkty_do": request.GET.get("punkty_do"),
     }
 
     publications = _get_filtered_publications(uczelnia, filters, reported_ids)

@@ -351,3 +351,97 @@ def test_get_filtered_publications_by_author(
         uczelnia, {"nazwisko": "Nieistniejący"}, reported_ids
     )
     assert len(result_none) == 0
+
+
+@pytest.mark.django_db
+def test_get_filtered_publications_by_punkty_range(
+    db, uczelnia, dyscyplina_raportowana, autor_z_dyscyplina
+):
+    """Test filtrowania po zakresie punktów (punkty_od, punkty_do)."""
+    from decimal import Decimal
+
+    autor, jednostka = autor_z_dyscyplina
+    reported_ids = [dyscyplina_raportowana.pk]
+
+    # Utwórz publikacje z różnymi punktami
+    pub1 = baker.make(
+        Wydawnictwo_Ciagle,
+        rok=2023,
+        tytul_oryginalny="Publikacja 40 pkt",
+        punkty_kbn=Decimal("40.00"),
+    )
+    baker.make(
+        Wydawnictwo_Ciagle_Autor,
+        rekord=pub1,
+        autor=autor,
+        jednostka=jednostka,
+        dyscyplina_naukowa=dyscyplina_raportowana,
+        afiliuje=True,
+        zatrudniony=True,
+    )
+
+    pub2 = baker.make(
+        Wydawnictwo_Ciagle,
+        rok=2023,
+        tytul_oryginalny="Publikacja 100 pkt",
+        punkty_kbn=Decimal("100.00"),
+    )
+    baker.make(
+        Wydawnictwo_Ciagle_Autor,
+        rekord=pub2,
+        autor=autor,
+        jednostka=jednostka,
+        dyscyplina_naukowa=dyscyplina_raportowana,
+        afiliuje=True,
+        zatrudniony=True,
+    )
+
+    pub3 = baker.make(
+        Wydawnictwo_Ciagle,
+        rok=2023,
+        tytul_oryginalny="Publikacja 200 pkt",
+        punkty_kbn=Decimal("200.00"),
+    )
+    baker.make(
+        Wydawnictwo_Ciagle_Autor,
+        rekord=pub3,
+        autor=autor,
+        jednostka=jednostka,
+        dyscyplina_naukowa=dyscyplina_raportowana,
+        afiliuje=True,
+        zatrudniony=True,
+    )
+
+    # Filtr tylko punkty_od (>= 100)
+    result_od = _get_filtered_publications(uczelnia, {"punkty_od": "100"}, reported_ids)
+    assert len(result_od) == 2
+    punkty = {p["punkty_kbn"] for p in result_od}
+    assert Decimal("100.00") in punkty
+    assert Decimal("200.00") in punkty
+
+    # Filtr tylko punkty_do (<= 100)
+    result_do = _get_filtered_publications(uczelnia, {"punkty_do": "100"}, reported_ids)
+    assert len(result_do) == 2
+    punkty = {p["punkty_kbn"] for p in result_do}
+    assert Decimal("40.00") in punkty
+    assert Decimal("100.00") in punkty
+
+    # Filtr zakres (40-100)
+    result_range = _get_filtered_publications(
+        uczelnia, {"punkty_od": "40", "punkty_do": "100"}, reported_ids
+    )
+    assert len(result_range) == 2
+    punkty = {p["punkty_kbn"] for p in result_range}
+    assert Decimal("40.00") in punkty
+    assert Decimal("100.00") in punkty
+    assert Decimal("200.00") not in punkty
+
+    # Filtr zakres wykluczający wszystkie (150-180)
+    result_empty = _get_filtered_publications(
+        uczelnia, {"punkty_od": "150", "punkty_do": "180"}, reported_ids
+    )
+    assert len(result_empty) == 0
+
+    # Bez filtra punktów - wszystkie publikacje
+    result_all = _get_filtered_publications(uczelnia, {}, reported_ids)
+    assert len(result_all) == 3
