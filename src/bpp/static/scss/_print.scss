@@ -1,15 +1,14 @@
 // =============================================================================
 // PRINT STYLES
 // All @media print rules consolidated in one place
+// Marginesy strony (@page) są teraz generowane dynamicznie przez szablon bare.html
+// na podstawie ustawień django-constance (WYDRUK_MARGINES_*)
 // =============================================================================
 
 @media print {
-  // Page margins
-  @page {
-    margin-top: 1cm !important;
-    margin-bottom: 1.5cm !important;
-    margin-left: 0.5cm !important;
-    margin-right: 1cm !important;
+  // Hide skip-link in print (accessibility element not needed in print)
+  .skip-link {
+    display: none !important;
   }
 
   // Basic typography
