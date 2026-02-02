@@ -15,6 +15,12 @@ from .bulk_optimization import (
     cancel_bulk_optimization,
     start_bulk_optimization,
 )
+from .capacity_analysis import (
+    capacity_analysis_apply,
+    capacity_analysis_apply_all,
+    capacity_analysis_detail,
+    capacity_analysis_list,
+)
 from .discipline_swap_analysis import (
     analyze_discipline_swap_opportunities,
     discipline_swap_status,
@@ -82,6 +88,11 @@ from .verification import (
 )
 
 __all__ = [
+    # capacity_analysis.py
+    "capacity_analysis_list",
+    "capacity_analysis_detail",
+    "capacity_analysis_apply",
+    "capacity_analysis_apply_all",
     # index.py
     "index",
     "denorm_progress",

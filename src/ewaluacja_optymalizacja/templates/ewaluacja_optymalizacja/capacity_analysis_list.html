@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block title %}Analiza capacity-based unpinning{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url 'ewaluacja_optymalizacja:index' %}">Optymalizacja ewaluacji</a></li>
+    <li class="current">Analiza capacity</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="large-12 columns">
+        <h1>
+            <span class="fi-graph-pie"></span> Analiza capacity-based unpinning
+        </h1>
+
+        <div class="callout secondary">
+            <p>
+                <strong>Reguła capacity (84% dokładności):</strong>
+                Dla każdej publikacji wieloautorskiej, zachowaj autora z
+                <strong>największą pozostałą pojemnością</strong> (= 4.0 - obecne sloty),
+                odpnij pozostałych.
+            </p>
+            <p>
+                Ta analiza jest szybka i nie wymaga przeliczania metryk.
+                Bazuje na obecnym stanie przypisań w bazie danych.
+            </p>
+        </div>
+
+        {% if summary.total_candidates > 0 %}
+        <div class="callout success">
+            <h4><span class="fi-check"></span> Podsumowanie dla wszystkich dyscyplin</h4>
+            <ul>
+                <li>Dyscyplin raportowanych: <strong>{{ summary.total_disciplines }}</strong></li>
+                <li>Publikacji do optymalizacji: <strong>{{ summary.total_candidates }}</strong></li>
+                <li>Autorów do odpięcia: <strong>{{ summary.total_to_unpin }}</strong></li>
+                <li>Szacowana poprawa slotów: <strong>+{{ summary.total_slot_gain|floatformat:2 }}</strong></li>
+                <li>Szacowany zysk punktów: <strong>+{{ summary.total_point_gain|floatformat:1 }}</strong></li>
+            </ul>
+            <form method="POST" action="{% url 'ewaluacja_optymalizacja:capacity-analysis-apply-all' %}"
+                  style="margin-top: 1rem;">
+                {% csrf_token %}
+                <button type="submit" class="button alert"
+                        data-confirm="Czy na pewno chcesz zastosować capacity-based unpinning dla WSZYSTKICH dyscyplin?
+
+Ta operacja:
+1. Odpnie {{ summary.total_to_unpin }} przypisań autorów w {{ summary.total_candidates }} publikacjach
+2. Zachowa autorów z największą pozostałą pojemnością slotów
+3. Automatycznie przeliczy punktację
+
+Szacowany zysk: +{{ summary.total_point_gain|floatformat:1 }} punktów">
+                    <span class="fi-unlock"></span> Zastosuj dla wszystkich dyscyplin
+                </button>
+            </form>
+        </div>
+        {% else %}
+        <div class="callout warning">
+            <h4><span class="fi-info"></span> Brak kandydatów do optymalizacji</h4>
+            <p>Nie znaleziono publikacji wieloautorskich, które można zoptymalizować.</p>
+        </div>
+        {% endif %}
+
+        <div class="button-group" style="margin-bottom: 1rem;">
+            <a href="{% url 'ewaluacja_optymalizacja:index' %}" class="button secondary">
+                <span class="fi-arrow-left"></span> Powrót
+            </a>
+        </div>
+
+        <h2>Analiza per dyscyplina</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Dyscyplina</th>
+                    <th>Publikacji</th>
+                    <th>Autorów do odpięcia</th>
+                    <th>Poprawa slotów</th>
+                    <th>Szac. zysk punktów</th>
+                    <th>Akcje</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for stat in discipline_stats %}
+                <tr>
+                    <td>{{ stat.dyscyplina.nazwa }}</td>
+                    <td>{{ stat.candidates_count }}</td>
+                    <td>{{ stat.total_to_unpin }}</td>
+                    <td>+{{ stat.total_slot_gain|floatformat:2 }}</td>
+                    <td>
+                        {% if stat.total_point_gain > 0 %}
+                        <span class="label success">+{{ stat.total_point_gain|floatformat:1 }}</span>
+                        {% else %}
+                        <span class="label secondary">{{ stat.total_point_gain|floatformat:1 }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if stat.candidates_count > 0 %}
+                        <a href="{% url 'ewaluacja_optymalizacja:capacity-analysis-detail' stat.dyscyplina.pk %}"
+                           class="button tiny">
+                            <span class="fi-eye"></span> Szczegóły
+                        </a>
+                        {% else %}
+                        <span class="label secondary">Brak</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6">Brak dyscyplin raportowanych.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

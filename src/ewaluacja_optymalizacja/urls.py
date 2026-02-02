@@ -163,6 +163,27 @@ urlpatterns = [
         views.export_sedn_report_2,
         name="export-sedn-report-2",
     ),
+    # Capacity-based unpinning analysis
+    path(
+        "capacity-analysis/",
+        views.capacity_analysis_list,
+        name="capacity-analysis-list",
+    ),
+    path(
+        "capacity-analysis/<int:dyscyplina_pk>/",
+        views.capacity_analysis_detail,
+        name="capacity-analysis-detail",
+    ),
+    path(
+        "capacity-analysis/<int:dyscyplina_pk>/apply/",
+        views.capacity_analysis_apply,
+        name="capacity-analysis-apply",
+    ),
+    path(
+        "capacity-analysis/apply-all/",
+        views.capacity_analysis_apply_all,
+        name="capacity-analysis-apply-all",
+    ),
     # Przeglądarka ewaluacji
     path(
         "przegladarka/",

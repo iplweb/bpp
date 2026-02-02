@@ -34,6 +34,7 @@ class PbnWysylkaOswiadczenTaskAdmin(admin.ModelAdmin):
         "progress_display",
         "success_count",
         "error_count",
+        "synchronized_count",
         "skipped_count",
         "created_at",
     ]
@@ -51,6 +52,7 @@ class PbnWysylkaOswiadczenTaskAdmin(admin.ModelAdmin):
         "current_publication",
         "success_count",
         "error_count",
+        "synchronized_count",
         "skipped_count",
         "celery_task_id",
         "error_message",

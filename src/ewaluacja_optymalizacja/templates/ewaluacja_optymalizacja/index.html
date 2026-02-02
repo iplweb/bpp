@@ -76,6 +76,12 @@
             <a href="/snapshot_odpiec/" class="button secondary">
                 <span class="fi-camera"></span> Snapshoty odpięć
             </a>
+            <a href="{% url 'ewaluacja_optymalizacja:capacity-analysis-list' %}"
+               class="button info{% if dirty_count > 0 %} disabled{% endif %}"
+               id="capacity-analysis-btn"
+               {% if dirty_count > 0 %}data-disabled-alert="Czekamy na przeliczenie punktów. Obecnie jest {{ dirty_count }} rekordów do przeliczenia."{% endif %}>
+                <span class="fi-graph-pie"></span> Analiza capacity
+            </a>
             <a href="{% url 'ewaluacja_optymalizacja:unpinning-list' %}"
                class="button info{% if dirty_count > 0 %} disabled{% endif %}"
                id="optymalizuj-przed-btn"
@@ -190,6 +196,13 @@
                     bulkOptButton.removeAttribute('data-disabled-alert');
                     bulkOptButton.setAttribute('data-confirm',
                         'Czy na pewno chcesz uruchomic optymalizacje dla WSZYSTKICH dyscyplin raportowanych (>= 12 slotow)? Proces moze potrwac kilka do kilkunastu minut.');
+                }
+
+                // Przycisk "Analiza capacity"
+                const capacityAnalysisBtn = document.getElementById('capacity-analysis-btn');
+                if (capacityAnalysisBtn) {
+                    capacityAnalysisBtn.classList.remove('disabled');
+                    capacityAnalysisBtn.removeAttribute('data-disabled-alert');
                 }
 
                 // Przycisk "Optymalizuj przed"

@@ -7,13 +7,25 @@ Ten moduł zawiera:
 - analysis.py - główna implementacja analizy
 - workers.py - Celery worker taski do równoległego przetwarzania
 - main_tasks.py - główne taski Celery (punkty wejścia)
+- capacity_analysis.py - algorytm capacity-based unpinning (84% dokładności)
 
 Eksportuje wszystkie publiczne symbole dla zachowania kompatybilności wstecznej.
 """
 
-# Clustering utilities
 # Main analysis implementation
 from .analysis import _analyze_multi_author_works_impl
+
+# Capacity-based unpinning (new algorithm)
+from .capacity_analysis import (
+    UnpinningCandidate,
+    apply_unpinning,
+    calculate_author_capacity,
+    calculate_author_slot_usage,
+    format_unpinning_preview,
+    identify_unpinning_candidates,
+)
+
+# Clustering utilities
 from .clustering import build_author_clusters, partition_works_into_chunks
 
 # Main entry point tasks
@@ -36,6 +48,13 @@ __all__ = [
     "simulate_unpinning_benefit",
     # Analysis
     "_analyze_multi_author_works_impl",
+    # Capacity-based unpinning
+    "UnpinningCandidate",
+    "calculate_author_slot_usage",
+    "calculate_author_capacity",
+    "identify_unpinning_candidates",
+    "apply_unpinning",
+    "format_unpinning_preview",
     # Worker tasks
     "analyze_unpinning_worker_task",
     "collect_unpinning_results",

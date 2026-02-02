@@ -38,6 +38,7 @@
                             <option value="">-- Wszystkie --</option>
                             <option value="success" {% if status_filter == "success" %}selected{% endif %}>Sukces</option>
                             <option value="error" {% if status_filter == "error" %}selected{% endif %}>Blad</option>
+                            <option value="synchronized" {% if status_filter == "synchronized" %}selected{% endif %}>Zsynchronizowana</option>
                             <option value="skipped" {% if status_filter == "skipped" %}selected{% endif %}>Pominiete</option>
                         </select>
                     </div>
@@ -78,6 +79,8 @@
                         <span class="label success">Sukces</span>
                         {% elif log.status == "error" %}
                         <span class="label alert">Blad</span>
+                        {% elif log.status == "synchronized" %}
+                        <span class="label info">Zsynchronizowana</span>
                         {% else %}
                         <span class="label secondary">Pominiete</span>
                         {% endif %}

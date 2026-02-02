@@ -43,6 +43,11 @@ class OptimizationResults:
     all_pubs: list[Pub]  # All input publications
     validation_passed: bool
     is_optimal: bool = True  # True if all solvers found OPTIMAL solutions
+    # Optimality gap information (None if not available or OPTIMAL)
+    optimality_gap_percent: float | None = (
+        None  # (best_bound - value) / best_bound * 100
+    )
+    best_bound: float | None = None  # Theoretical upper bound from solver
 
 
 def slot_units(p: Pub) -> int:

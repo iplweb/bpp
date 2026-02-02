@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block title %}Analiza capacity - {{ dyscyplina.nazwa }}{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url 'ewaluacja_optymalizacja:index' %}">Optymalizacja ewaluacji</a></li>
+    <li><a href="{% url 'ewaluacja_optymalizacja:capacity-analysis-list' %}">Analiza capacity</a></li>
+    <li class="current">{{ dyscyplina.nazwa }}</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="large-12 columns">
+        <h1>
+            <span class="fi-graph-pie"></span> Analiza capacity: {{ dyscyplina.nazwa }}
+        </h1>
+
+        {% if summary.candidates_count > 0 %}
+        <div class="callout success">
+            <h4><span class="fi-check"></span> Podsumowanie</h4>
+            <ul>
+                <li>Publikacji do optymalizacji: <strong>{{ summary.candidates_count }}</strong></li>
+                <li>Autorów do odpięcia: <strong>{{ summary.total_to_unpin }}</strong></li>
+                <li>Szacowana poprawa slotów: <strong>+{{ summary.total_slot_gain|floatformat:2 }}</strong></li>
+                <li>Szacowany zysk punktów: <strong>+{{ summary.total_point_gain|floatformat:1 }}</strong></li>
+            </ul>
+            <form method="POST"
+                  action="{% url 'ewaluacja_optymalizacja:capacity-analysis-apply' dyscyplina.pk %}"
+                  style="margin-top: 1rem;">
+                {% csrf_token %}
+                <button type="submit" class="button alert"
+                        data-confirm="Czy na pewno chcesz zastosować capacity-based unpinning dla dyscypliny '{{ dyscyplina.nazwa }}'?
+
+Ta operacja:
+1. Odpnie {{ summary.total_to_unpin }} przypisań autorów w {{ summary.candidates_count }} publikacjach
+2. Zachowa autorów z największą pozostałą pojemnością slotów
+3. Automatycznie przeliczy punktację
+
+Szacowany zysk: +{{ summary.total_point_gain|floatformat:1 }} punktów">
+                    <span class="fi-unlock"></span> Zastosuj unpinning
+                </button>
+            </form>
+        </div>
+        {% else %}
+        <div class="callout warning">
+            <h4><span class="fi-info"></span> Brak kandydatów</h4>
+            <p>Nie znaleziono publikacji wieloautorskich do optymalizacji w tej dyscyplinie.</p>
+        </div>
+        {% endif %}
+
+        <div class="button-group" style="margin-bottom: 1rem;">
+            <a href="{% url 'ewaluacja_optymalizacja:capacity-analysis-list' %}" class="button secondary">
+                <span class="fi-arrow-left"></span> Powrót do listy
+            </a>
+        </div>
+
+        {% if candidates %}
+        <h2>Rekomendacje (posortowane wg szacowanego zysku)</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 35%">Publikacja</th>
+                    <th>Zachowaj</th>
+                    <th>Pojemność</th>
+                    <th>Odpnij</th>
+                    <th>Zysk slotu</th>
+                    <th>Szac. punkty</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in candidates %}
+                <tr>
+                    <td>
+                        <small>{{ c.publication_title|truncatechars:60 }}</small>
+                    </td>
+                    <td>
+                        <strong>{{ c.keep_author_name }}</strong>
+                        <br><small>sloty: {{ c.keep_author_current_slots|floatformat:2 }}</small>
+                    </td>
+                    <td>
+                        {% if c.keep_author_capacity > 1 %}
+                        <span class="label success">{{ c.keep_author_capacity|floatformat:2 }}</span>
+                        {% elif c.keep_author_capacity > 0 %}
+                        <span class="label warning">{{ c.keep_author_capacity|floatformat:2 }}</span>
+                        {% else %}
+                        <span class="label alert">{{ c.keep_author_capacity|floatformat:2 }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% for name in c.unpin_author_names %}
+                        <span class="label secondary">{{ name }}</span>{% if not forloop.last %} {% endif %}
+                        {% endfor %}
+                    </td>
+                    <td>+{{ c.slot_gain|floatformat:2 }}</td>
+                    <td>
+                        {% if c.estimated_point_gain > 10 %}
+                        <span class="label success">+{{ c.estimated_point_gain|floatformat:1 }}</span>
+                        {% elif c.estimated_point_gain > 0 %}
+                        <span class="label warning">+{{ c.estimated_point_gain|floatformat:1 }}</span>
+                        {% else %}
+                        <span class="label secondary">{{ c.estimated_point_gain|floatformat:1 }}</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

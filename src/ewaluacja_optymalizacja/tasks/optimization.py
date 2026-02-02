@@ -5,6 +5,7 @@ import traceback
 from datetime import datetime
 from decimal import Decimal
 
+import rollbar
 from celery import chord, group, shared_task
 from celery.exceptions import SoftTimeLimitExceeded
 from celery_singleton import Singleton
@@ -103,6 +104,16 @@ def solve_single_discipline_task(
             low_mono_percentage=Decimal(str(optimization_results.low_mono_percentage)),
             validation_passed=optimization_results.validation_passed,
             is_optimal=optimization_results.is_optimal,
+            optimality_gap=(
+                Decimal(str(optimization_results.optimality_gap_percent))
+                if optimization_results.optimality_gap_percent is not None
+                else None
+            ),
+            best_bound=(
+                Decimal(str(optimization_results.best_bound))
+                if optimization_results.best_bound is not None
+                else None
+            ),
             finished_at=datetime.now(),
         )
 
@@ -186,6 +197,9 @@ def solve_single_discipline_task(
             f"Failed to optimize discipline {dyscyplina_nazwa}: {e}\n"
             f"Full traceback:\n{tb}"
         )
+
+        # Report to Rollbar for production monitoring
+        rollbar.report_exc_info()
 
         discipline_result["status"] = "failed"
         discipline_result["error"] = f"{type(e).__name__}: {str(e)}"

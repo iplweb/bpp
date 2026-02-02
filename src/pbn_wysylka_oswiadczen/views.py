@@ -169,6 +169,7 @@ class TaskStatusView(View):
                 "success_count": latest_task.success_count,
                 "error_count": latest_task.error_count,
                 "skipped_count": latest_task.skipped_count,
+                "synchronized_count": latest_task.synchronized_count,
                 "last_updated": latest_task.last_updated.isoformat(),
                 "is_stalled": latest_task.is_stalled(),
             }

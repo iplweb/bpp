@@ -201,11 +201,13 @@ def process_single_publication(publication, pbn_client, task, log_model):
     ).exists()
 
     if not has_przypiete:
-        # No przypiete statements to send - mark as skipped
-        log_entry.status = "skipped"
-        log_entry.error_message = "Brak autorow z przypieta dyscyplina"
+        # Statements were deleted, mark as synchronized (not skipped)
+        log_entry.status = "synchronized"
+        log_entry.error_message = (
+            "Brak autorow z przypieta dyscyplina - oswiadczenia skasowane"
+        )
         log_entry.save()
-        return "skipped", log_entry
+        return "synchronized", log_entry
 
     # Step 3: Get statements data
     try:
@@ -226,6 +228,58 @@ def process_single_publication(publication, pbn_client, task, log_model):
 
     # Step 4: Send statements with retry
     return _send_statements_with_retry(pbn_client, json_data, log_entry)
+
+
+def _update_task_counter(task, status):
+    """Update task counter based on publication processing status."""
+    if status == "success":
+        task.success_count += 1
+    elif status == "error":
+        task.error_count += 1
+    elif status == "synchronized":
+        task.synchronized_count += 1
+    else:  # skipped (only resume mode)
+        task.skipped_count += 1
+
+
+def _process_publications_loop(
+    task, publications, pbn_client, already_processed, log_model
+):
+    """
+    Process all publications in the list.
+
+    Args:
+        task: PbnWysylkaOswiadczenTask instance
+        publications: List of publications to process
+        pbn_client: PBN API client
+        already_processed: Set of already processed PBN UIDs (for resume mode)
+        log_model: PbnWysylkaLog model class
+    """
+    for idx, publication in enumerate(publications, 1):
+        pbn_uid = str(publication.pbn_uid_id) if publication.pbn_uid_id else ""
+
+        # Update progress
+        title_short = (publication.tytul_oryginalny or "")[:50]
+        task.current_publication = f"{publication.pk}: {title_short}"
+        task.processed_publications = idx
+
+        # Check if already processed in resume mode
+        if task.resume_mode and pbn_uid in already_processed:
+            task.skipped_count += 1
+            task.save()
+            continue
+
+        # Process publication
+        status, _log_entry = process_single_publication(
+            publication, pbn_client, task, log_model
+        )
+
+        # Update counters
+        _update_task_counter(task, status)
+
+        # Save progress periodically (every 10 publications)
+        if idx % 10 == 0:
+            task.save()
 
 
 @shared_task(bind=True)
@@ -277,37 +331,10 @@ def wysylka_oswiadczen_task(self, task_id: int):
                 )
             )
 
-        # Process publications
-        for idx, publication in enumerate(publications, 1):
-            pbn_uid = str(publication.pbn_uid_id) if publication.pbn_uid_id else ""
-
-            # Update progress
-            title_short = (publication.tytul_oryginalny or "")[:50]
-            task.current_publication = f"{publication.pk}: {title_short}"
-            task.processed_publications = idx
-
-            # Check if already processed in resume mode
-            if task.resume_mode and pbn_uid in already_processed_pbn_uids:
-                task.skipped_count += 1
-                task.save()
-                continue
-
-            # Process publication
-            status, log_entry = process_single_publication(
-                publication, pbn_client, task, PbnWysylkaLog
-            )
-
-            # Update counters
-            if status == "success":
-                task.success_count += 1
-            elif status == "error":
-                task.error_count += 1
-            else:  # skipped
-                task.skipped_count += 1
-
-            # Save progress periodically (every 10 publications)
-            if idx % 10 == 0:
-                task.save()
+        # Process all publications
+        _process_publications_loop(
+            task, publications, pbn_client, already_processed_pbn_uids, PbnWysylkaLog
+        )
 
         # Mark as completed
         task.status = "completed"
@@ -322,6 +349,7 @@ def wysylka_oswiadczen_task(self, task_id: int):
             "success_count": task.success_count,
             "error_count": task.error_count,
             "skipped_count": task.skipped_count,
+            "synchronized_count": task.synchronized_count,
         }
 
     except PraceSerwisoweException:

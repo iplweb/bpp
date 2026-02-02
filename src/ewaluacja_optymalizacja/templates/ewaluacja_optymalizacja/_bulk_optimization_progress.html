@@ -111,6 +111,14 @@
                                         <span class="label success">Zakończono</span>
                                     {% elif disc.status == "failed" %}
                                         <span class="label alert">Błąd</span>
+                                        {% if user.is_superuser and disc.error %}
+                                            <button type="button" class="button tiny alert"
+                                                    data-action="show-error-alert"
+                                                    data-error="{{ disc.error_message|default:disc.error|escapejs }}"
+                                                    data-traceback="{% if disc.traceback %}{{ disc.traceback|escapejs }}{% endif %}">
+                                                Szczegóły
+                                            </button>
+                                        {% endif %}
                                     {% elif disc.status == "running" %}
                                         <span class="label warning">W trakcie</span>
                                     {% elif disc.status == "queued" %}

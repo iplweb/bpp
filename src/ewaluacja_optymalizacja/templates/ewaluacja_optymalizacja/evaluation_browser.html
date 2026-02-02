@@ -103,14 +103,19 @@
                         </label>
                     </div>
 
-                    <div class="medium-4 columns">
-                        <label>Punkty:
-                            <select name="punkty_kbn" class="auto-submit-filter">
-                                <option value="">Wszystkie</option>
-                                {% for p in punkty_kbn_values %}
-                                <option value="{{ p }}">{{ p }}</option>
-                                {% endfor %}
-                            </select>
+                    <div class="medium-2 columns">
+                        <label>Punkty od:
+                            <input type="number" name="punkty_od"
+                                   step="0.01" min="0" placeholder="od"
+                                   class="auto-submit-filter">
+                        </label>
+                    </div>
+
+                    <div class="medium-2 columns">
+                        <label>Punkty do:
+                            <input type="number" name="punkty_do"
+                                   step="0.01" min="0" placeholder="do"
+                                   class="auto-submit-filter">
                         </label>
                     </div>
                 </div>
@@ -163,12 +168,27 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Auto-submit przy zmianie selectów
+    // Auto-submit przy zmianie filtrów
     var autoSubmitElements = document.querySelectorAll('.auto-submit-filter');
     autoSubmitElements.forEach(function(element) {
-        element.addEventListener('change', function() {
-            htmx.trigger(document.getElementById('filter-form'), 'submit');
-        });
+        if (element.tagName === 'SELECT') {
+            // Dla selectów: submit na change
+            element.addEventListener('change', function() {
+                htmx.trigger(document.getElementById('filter-form'), 'submit');
+            });
+        } else if (element.type === 'number') {
+            // Dla inputów numerycznych: submit na blur (opuszczenie pola)
+            element.addEventListener('blur', function() {
+                htmx.trigger(document.getElementById('filter-form'), 'submit');
+            });
+            // Oraz na Enter
+            element.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    htmx.trigger(document.getElementById('filter-form'), 'submit');
+                }
+            });
+        }
     });
 });
 

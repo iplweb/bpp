@@ -182,7 +182,7 @@ def test_pbn_wysylka_log_statuses():
     task = PbnWysylkaOswiadczenTask.objects.create(user=user)
     content_type = ContentType.objects.get_for_model(Wydawnictwo_Ciagle)
 
-    for status in ["success", "error", "skipped", "maintenance"]:
+    for status in ["success", "error", "skipped", "synchronized", "maintenance"]:
         log = PbnWysylkaLog.objects.create(
             task=task,
             content_type=content_type,
@@ -806,8 +806,8 @@ def test_send_statements_with_retry_prace_serwisowe():
 
 
 @pytest.mark.django_db
-def test_process_single_publication_no_przypiete():
-    """Test process_single_publication when no przypiete authors."""
+def test_process_single_publication_no_przypiete_returns_synchronized():
+    """Test process_single_publication returns synchronized when no przypiete authors."""
     user = User.objects.create_user("testuser", password="testpass")
     task = PbnWysylkaOswiadczenTask.objects.create(user=user)
 
@@ -835,9 +835,10 @@ def test_process_single_publication_no_przypiete():
             mock_publication, mock_client, task, PbnWysylkaLog
         )
 
-    assert status == "skipped"
-    assert log_entry.status == "skipped"
+    assert status == "synchronized"
+    assert log_entry.status == "synchronized"
     assert "przypieta" in log_entry.error_message.lower()
+    assert "skasowane" in log_entry.error_message.lower()
 
 
 # ============================================================================

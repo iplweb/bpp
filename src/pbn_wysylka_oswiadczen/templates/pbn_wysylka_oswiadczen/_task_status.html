@@ -70,6 +70,10 @@
                     <td><strong>{{ latest_task.error_count }}</strong></td>
                 </tr>
                 <tr>
+                    <td><span class="fi-refresh" style="color: blue;"></span> Zsynchronizowane:</td>
+                    <td><strong>{{ latest_task.synchronized_count }}</strong></td>
+                </tr>
+                <tr>
                     <td><span class="fi-minus" style="color: gray;"></span> Pominięte:</td>
                     <td><strong>{{ latest_task.skipped_count }}</strong></td>
                 </tr>
@@ -117,6 +121,10 @@
             <tr>
                 <td><span class="fi-x" style="color: red;"></span> Błędy:</td>
                 <td><strong>{{ latest_task.error_count }}</strong></td>
+            </tr>
+            <tr>
+                <td><span class="fi-refresh" style="color: blue;"></span> Zsynchronizowane:</td>
+                <td><strong>{{ latest_task.synchronized_count }}</strong></td>
             </tr>
             <tr>
                 <td><span class="fi-minus" style="color: gray;"></span> Pominięte:</td>
