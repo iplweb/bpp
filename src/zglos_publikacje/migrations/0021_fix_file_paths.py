@@ -1,7 +1,7 @@
 import os
 
 from django.conf import settings
-from django.db import migrations
+from django.db import migrations, models
 
 
 def fix_file_paths(apps, schema_editor):
@@ -51,5 +51,22 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        # First: Ensure max_length is large enough (3x of original 255)
+        migrations.AlterField(
+            model_name="zgloszenie_publikacji",
+            name="plik",
+            field=models.FileField(
+                blank=True,
+                help_text=(
+                    "Jeżeli zgłaszana publikacja nie jest dostępna nigdzie "
+                    "w sieci internet,\n        prosimy o dodanie załącznika"
+                ),
+                max_length=765,
+                null=True,
+                upload_to="protected/zglos_publikacje/",
+                verbose_name="Plik załącznika",
+            ),
+        ),
+        # Then: Fix file paths
         migrations.RunPython(fix_file_paths, noop),
     ]
