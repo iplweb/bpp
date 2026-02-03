@@ -26,6 +26,9 @@
     <style>
         .fouc-hidden { visibility: hidden; opacity: 0; transition: opacity 0.3s ease-in-out; }
         .fouc-visible { visibility: visible; opacity: 1; }
+        @media print {
+            body.fouc-hidden { visibility: visible !important; opacity: 1 !important; }
+        }
     </style>
 
     {# Print margins from constance settings #}
