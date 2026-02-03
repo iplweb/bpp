@@ -8,8 +8,10 @@ from django.contrib import admin, messages
 from django.contrib.admin import helpers
 from django.contrib.admin.templatetags.admin_urls import add_preserved_filters
 from django.db import transaction
-from django.http import HttpResponseRedirect
+from django.http import Http404, HttpResponseRedirect
 from django.shortcuts import render
+from django.utils.html import format_html
+from django_sendfile import sendfile
 from djangoql.admin import DjangoQLSearchMixin
 from templated_email import send_templated_mail
 
@@ -76,13 +78,15 @@ class Zgloszenie_PublikacjiAdmin(
         + (
             "email",
             "strona_www",
-            "plik",
+            "plik_do_pobrania",
             "status",
             "przyczyna_zwrotu",
             "kod_do_edycji",
             "zgoda_na_publikacje_pelnego_tekstu",
         )
     )
+
+    readonly_fields = ["plik_do_pobrania"]
 
     inlines = [
         Zgloszenie_Publikacji_AutorInline,
@@ -110,6 +114,11 @@ class Zgloszenie_PublikacjiAdmin(
                 r"^(.+)/zwroc/$",
                 wrap(self.zwroc_view),
                 name=f"{info[0]}_{info[1]}_zwroc",
+            ),
+            url(
+                r"^(.+)/pobierz_plik/$",
+                wrap(self.pobierz_plik_view),
+                name=f"{info[0]}_{info[1]}_pobierz_plik",
             ),
         ]
 
@@ -208,6 +217,39 @@ class Zgloszenie_PublikacjiAdmin(
         context.update(extra_context or {})
 
         return render(request, self.zwroc_view_template, context)
+
+    def pobierz_plik_view(self, request, id):
+        """Pobierz plik załącznika przez X-Accel-Redirect."""
+        obj = self.get_object(request, id)
+        if obj is None:
+            raise Http404("Zgłoszenie nie istnieje")
+
+        if not obj.plik:
+            raise Http404("Brak pliku")
+
+        filename = obj.plik.name.split("/")[-1]
+        return sendfile(
+            request,
+            obj.plik.path,
+            attachment=True,
+            attachment_filename=filename,
+        )
+
+    @admin.display(description="Plik załącznika")
+    def plik_do_pobrania(self, obj):
+        if not obj.plik:
+            return "-"
+        from django.urls import reverse
+
+        url = reverse(
+            "admin:zglos_publikacje_zgloszenie_publikacji_pobierz_plik",
+            args=[obj.pk],
+        )
+        return format_html(
+            '<a href="{}">{}</a>',
+            url,
+            obj.plik.name.split("/")[-1],
+        )
 
     def wydzial_pierwszego_autora(self, obj: Zgloszenie_Publikacji):
         try:
