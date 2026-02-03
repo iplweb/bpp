@@ -30,6 +30,14 @@ class Crossref_Mapper(models.Model):
         "bpp.Charakter_Formalny", on_delete=models.CASCADE, null=True, blank=True
     )
 
+    jest_wydawnictwem_zwartym = models.BooleanField(
+        "Jest wydawnictwem zwartym",
+        default=False,
+        help_text="Zaznacz, jeśli prace tego typu powinny być dodawane jako "
+        "wydawnictwa zwarte (książki, rozdziały). "
+        "W przeciwnym razie będą traktowane jako wydawnictwa ciągłe (artykuły).",
+    )
+
     class Meta:
         verbose_name = "mapowanie typu CrossRef na BPP"
         verbose_name_plural = "mapowania typów CrossRef na BPP"

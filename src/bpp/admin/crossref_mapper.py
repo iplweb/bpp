@@ -6,8 +6,17 @@ from .core import BaseBppAdminMixin
 
 @admin.register(Crossref_Mapper)
 class Crossref_Mapper_Admin(BaseBppAdminMixin, admin.ModelAdmin):
-    list_display = ["charakter_crossref", "charakter_formalny_bpp"]
+    list_display = [
+        "charakter_crossref",
+        "charakter_formalny_bpp",
+        "jest_wydawnictwem_zwartym",
+    ]
+    list_editable = ["jest_wydawnictwem_zwartym"]
     list_select_related = ["charakter_formalny_bpp"]
 
-    list_filter = ("charakter_crossref", "charakter_formalny_bpp")
+    list_filter = (
+        "charakter_crossref",
+        "charakter_formalny_bpp",
+        "jest_wydawnictwem_zwartym",
+    )
     search_fields = ["charakter_formalny_bpp__nazwa", "charakter_formalny_bpp__skrot"]
