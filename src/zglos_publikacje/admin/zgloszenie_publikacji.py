@@ -227,7 +227,8 @@ class Zgloszenie_PublikacjiAdmin(
         if not obj.plik:
             raise Http404("Brak pliku")
 
-        filename = obj.plik.name.split("/")[-1]
+        # Użyj oryginalnej nazwy pliku jeśli dostępna, w przeciwnym razie UUID
+        filename = obj.oryginalna_nazwa_pliku or obj.plik.name.split("/")[-1]
         return sendfile(
             request,
             obj.plik.path,
@@ -245,10 +246,12 @@ class Zgloszenie_PublikacjiAdmin(
             "admin:zglos_publikacje_zgloszenie_publikacji_pobierz_plik",
             args=[obj.pk],
         )
+        # Wyświetl oryginalną nazwę pliku jeśli dostępna
+        display_name = obj.oryginalna_nazwa_pliku or obj.plik.name.split("/")[-1]
         return format_html(
             '<a href="{}">{}</a>',
             url,
-            obj.plik.name.split("/")[-1],
+            display_name,
         )
 
     def wydzial_pierwszego_autora(self, obj: Zgloszenie_Publikacji):

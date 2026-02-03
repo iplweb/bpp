@@ -322,7 +322,7 @@ loc: clean
 	pygount -N ... -F "...,staticroot,migrations,fixtures" src --format=summary
 
 
-DOCKER_VERSION=202602.1347
+DOCKER_VERSION=202602.1348
 
 # Cache configuration for docker buildx bake
 # - local: use local cache (default for local builds)
@@ -525,3 +525,17 @@ clean-worktree:
 
 invalidate:
 	uv run src/manage.py invalidate all
+
+prune-orphan-volumes:
+	docker volume prune -f
+
+open-docker-volume: prune-orphan-volumes
+	@VOLUME=$$(docker volume ls --format '{{.Name}}' | fzf --prompt="Select volume: ") && \
+	docker run --rm -it -v "$$VOLUME":/volume -w /volume alpine:latest /bin/sh -c "ls -las; exec /bin/sh"
+
+open-all-docker-volumes:  prune-orphan-volumes
+	@MOUNTS=$$(docker volume ls --format '{{.Name}}' | grep "^$(CONTEXT_NAME)_" | while read vol; do \
+		name=$${vol#$(CONTEXT_NAME)_}; \
+		echo "-v $$vol:/volumes/$$name"; \
+	done | tr '\n' ' ') && \
+	docker run --rm -it $$MOUNTS -w /volumes alpine:latest /bin/sh -c "ls -las; exec /bin/sh"
