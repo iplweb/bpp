@@ -115,7 +115,7 @@ def test_admin_wydawnictwo_zwarte_toz(live_server, admin_page: Page):
 
     # Wait for the copy to be created
     admin_page.wait_for_function(
-        f"() => true",  # Just wait for dialog to be processed
+        "() => true",  # Just wait for dialog to be processed
         timeout=5000,
     )
 
@@ -161,7 +161,7 @@ def test_admin_wydawnictwo_ciagle_toz(live_server, admin_page: Page):
 
     # Wait for the copy to be created
     admin_page.wait_for_function(
-        f"() => true",  # Just wait for dialog to be processed
+        "() => true",  # Just wait for dialog to be processed
         timeout=5000,
     )
 
@@ -205,7 +205,7 @@ def test_admin_patent_toz(live_server, admin_page: Page):
 
     # Wait for the copy to be created
     admin_page.wait_for_function(
-        f"() => true",  # Just wait for dialog to be processed
+        "() => true",  # Just wait for dialog to be processed
         timeout=5000,
     )
 
@@ -251,3 +251,47 @@ def test_admin_wydawnictwo_ciagle_tamze(live_server, admin_page: Page):
 
     # Verify that www was NOT copied
     assert "te www" not in page_content
+
+
+@pytest.mark.django_db(transaction=True)
+def test_admin_wydawnictwo_zwarte_tamze_wydawnictwo_nadrzedne(
+    live_server, admin_page: Page
+):
+    """Test that 'tamze' button copies wydawnictwo_nadrzedne
+    and wydawnictwo_nadrzedne_w_pbn fields."""
+    from model_bakery import baker
+
+    from pbn_api.models import Publication
+
+    # Create parent publication
+    parent = any_zwarte(tytul_oryginalny="Książka Nadrzędna")
+
+    # Create PBN publication
+    pbn_pub = baker.make(Publication, title="PBN Nadrzędna")
+
+    # Create publication with parent publications
+    child = any_zwarte(
+        tytul_oryginalny="Rozdział",
+        wydawnictwo_nadrzedne=parent,
+        wydawnictwo_nadrzedne_w_pbn=pbn_pub,
+    )
+
+    admin_page.goto(
+        live_server.url
+        + reverse("admin:bpp_wydawnictwo_zwarte_change", args=(child.pk,))
+    )
+    admin_page.wait_for_load_state("domcontentloaded")
+
+    # Click "tamze" button
+    admin_page.click("#tamze")
+
+    # Wait for add form
+    admin_page.wait_for_selector("text=Dodaj wydawnictwo", timeout=10000)
+
+    # Check that wydawnictwo_nadrzedne is set
+    select_wn = admin_page.locator("select[name=wydawnictwo_nadrzedne]")
+    expect(select_wn).to_have_value(str(parent.pk))
+
+    # Check that wydawnictwo_nadrzedne_w_pbn is set
+    select_pbn = admin_page.locator("select[name=wydawnictwo_nadrzedne_w_pbn]")
+    expect(select_pbn).to_have_value(str(pbn_pub.pk))
