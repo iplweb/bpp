@@ -31,6 +31,7 @@ from zglos_publikacje.forms import (
 from zglos_publikacje.models import (
     Obslugujacy_Zgloszenia_Wydzialow,
     Zgloszenie_Publikacji,
+    skroc_nazwe_pliku,
 )
 
 
@@ -271,6 +272,11 @@ class Zgloszenie_PublikacjiWizard(UczelniaSettingRequiredMixin, SessionWizardVie
 
             # Zresetuj przyczynę zwrotu -- rekord został zmodyfikowany
             self.object.przyczyna_zwrotu = ""
+
+        # Zapisz oryginalną nazwę pliku przed zapisem (skróconą jeśli za długa)
+        plik = form_kwargs.get("plik")
+        if plik and hasattr(plik, "name"):
+            self.object.oryginalna_nazwa_pliku = skroc_nazwe_pliku(plik.name)
 
         # Set all attributes from aggregated form data
         for attr_name, value in form_kwargs.items():

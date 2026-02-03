@@ -1,3 +1,6 @@
+import os
+import uuid
+
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
@@ -14,6 +17,40 @@ from bpp.models.abstract import (
     ModelZOplataZaPublikacje,
     ModelZRokiem,
 )
+
+
+def skroc_nazwe_pliku(nazwa: str, max_dlugosc: int = 512) -> str:
+    """
+    Skraca nazwę pliku jeśli przekracza max_dlugosc.
+    Zachowuje rozszerzenie i dodaje '...' przed rozszerzeniem.
+
+    Przykład: 'bardzo_dluga_nazwa_pliku.pdf' -> 'bardzo_dluga_na....pdf'
+    """
+    if len(nazwa) <= max_dlugosc:
+        return nazwa
+
+    # Rozdziel nazwę i rozszerzenie
+    base, ext = os.path.splitext(nazwa)
+
+    # Oblicz ile znaków możemy zostawić dla nazwy bazowej
+    # Potrzebujemy miejsca na: nazwa_bazowa + '...' + rozszerzenie
+    dostepne_znaki = max_dlugosc - len(ext) - 3  # 3 znaki na '...'
+
+    if dostepne_znaki <= 0:
+        # Ekstremalny przypadek - samo rozszerzenie jest za długie
+        return nazwa[:max_dlugosc]
+
+    return f"{base[:dostepne_znaki]}...{ext}"
+
+
+def zgloszenie_publikacji_upload_to(instance, filename):
+    """
+    Generuje unikalną nazwę pliku opartą na UUID.
+    Zachowuje rozszerzenie oryginalnego pliku (małymi literami).
+    """
+    ext = os.path.splitext(filename)[1].lower()
+    new_filename = f"{uuid.uuid4()}{ext}"
+    return f"protected/zglos_publikacje/{new_filename}"
 
 
 class Zgloszenie_Publikacji(
@@ -85,12 +122,20 @@ class Zgloszenie_Publikacji(
 
     plik = models.FileField(
         "Plik załącznika",
-        upload_to="protected/zglos_publikacje/",
+        upload_to=zgloszenie_publikacji_upload_to,
         max_length=765,
         help_text="""Jeżeli zgłaszana publikacja nie jest dostępna nigdzie w sieci internet,
         prosimy o dodanie załącznika""",
         blank=True,
         null=True,
+    )
+
+    oryginalna_nazwa_pliku = models.CharField(
+        "Oryginalna nazwa pliku",
+        max_length=512,
+        blank=True,
+        default="",
+        help_text="Oryginalna nazwa pliku przesłana przez użytkownika",
     )
 
     def clean(self):
