@@ -25,12 +25,21 @@ def test_global_search_user(
         page.goto(channels_live_server.url)
         wait_for_page_load(page)
 
-        # Accept cookies if needed
-        page.evaluate("if (typeof Cookielaw !== 'undefined') { Cookielaw.accept(); }")
+        # Dismiss cookie banner without triggering page reload
+        page.evaluate(
+            "document.cookie = "
+            "'cookielaw_accepted=1; max-age=31536000;"
+            " path=/; SameSite=Lax';"
+            " var banner = "
+            "document.getElementById('CookielawBanner');"
+            " if (banner) banner.style.display = 'none';"
+        )
 
-        import time
-
-        time.sleep(0.5)
+        # Wait for the global search handler to be ready
+        page.wait_for_function(
+            "() => typeof openGlobalSearch === 'function'",
+            timeout=5000,
+        )
 
         # Press "/" to open the global search dialog
         page.keyboard.press("/")
@@ -43,7 +52,9 @@ def test_global_search_user(
 
         # Wait for "Rekord" to appear in the dropdown
         page.wait_for_function(
-            "() => document.querySelector('#globalSearchResults').textContent.includes('Rekord')",
+            "() => document.querySelector("
+            "'#globalSearchResults')"
+            ".textContent.includes('Rekord')",
             timeout=5000,
         )
 
@@ -85,20 +96,31 @@ def test_global_search_logged_in(
         Rekord.objects.full_refresh()
 
         # Verify the record was properly indexed
-        assert (
-            Rekord.objects.filter(tytul_oryginalny__icontains=unique_title).exists()
-        ), f"Record with title '{unique_title}' not found in Rekord cache after refresh"
+        assert Rekord.objects.filter(
+            tytul_oryginalny__icontains=unique_title
+        ).exists(), (
+            f"Record with title '{unique_title}'"
+            " not found in Rekord cache after refresh"
+        )
 
         admin_page.goto(channels_live_server.url)
         wait_for_page_load(admin_page)
 
-        # Accept cookies if needed
+        # Dismiss cookie banner without triggering page reload
         admin_page.evaluate(
-            "if (typeof Cookielaw !== 'undefined') { Cookielaw.accept(); }"
+            "document.cookie = "
+            "'cookielaw_accepted=1; max-age=31536000;"
+            " path=/; SameSite=Lax';"
+            " var banner = "
+            "document.getElementById('CookielawBanner');"
+            " if (banner) banner.style.display = 'none';"
         )
-        import time
 
-        time.sleep(0.5)
+        # Wait for the global search handler to be ready
+        admin_page.wait_for_function(
+            "() => typeof openGlobalSearch === 'function'",
+            timeout=5000,
+        )
 
         # Press "/" to open the global search dialog
         admin_page.keyboard.press("/")
@@ -113,7 +135,9 @@ def test_global_search_logged_in(
 
         # Wait for "Rekord" to appear in the dropdown
         admin_page.wait_for_function(
-            "() => document.querySelector('#globalSearchResults').textContent.includes('Rekord')",
+            "() => document.querySelector("
+            "'#globalSearchResults')"
+            ".textContent.includes('Rekord')",
             timeout=5000,
         )
 
@@ -144,8 +168,15 @@ def test_global_search_in_admin(
     admin_page.goto(channels_live_server.url + "/admin/")
     wait_for_page_load(admin_page)
 
-    # Accept cookies if needed
-    admin_page.evaluate("if (typeof Cookielaw !== 'undefined') { Cookielaw.accept(); }")
+    # Dismiss cookie banner without triggering page reload
+    admin_page.evaluate(
+        "document.cookie = "
+        "'cookielaw_accepted=1; max-age=31536000;"
+        " path=/; SameSite=Lax';"
+        " var banner = "
+        "document.getElementById('CookielawBanner');"
+        " if (banner) banner.style.display = 'none';"
+    )
 
     select_select2_autocomplete(
         admin_page,
