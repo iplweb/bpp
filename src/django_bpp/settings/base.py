@@ -462,6 +462,7 @@ INSTALLED_APPS = [
     "komparator_pbn_udzialy",
     "komparator_publikacji_pbn",
     "admin_dashboard",
+    "importer_publikacji",
 ]
 
 # Profile użytkowników

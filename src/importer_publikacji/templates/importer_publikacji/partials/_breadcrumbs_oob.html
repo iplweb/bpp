@@ -1,0 +1,19 @@
+<ul class="breadcrumbs"
+    id="importer-breadcrumbs"
+    hx-swap-oob="true">
+    <li>
+        <a href="/">{{ uczelnia.skrot }}</a>
+    </li>
+    {% if session %}
+        <li>
+            <a href="{% url 'importer_publikacji:index' %}">
+                Importer publikacji
+            </a>
+        </li>
+        <li>
+            {{ session.normalized_data.title|truncatechars:60 }}
+        </li>
+    {% else %}
+        <li>Importer publikacji</li>
+    {% endif %}
+</ul>

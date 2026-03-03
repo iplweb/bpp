@@ -1,0 +1,695 @@
+{% load static %}
+<div class="callout">
+    <h4>
+        <span class="fi-torsos-all"></span>
+        Krok 4: Dopasowanie autorów
+    </h4>
+
+    <div class="callout secondary">
+        <div class="grid-x grid-margin-x small-up-2 medium-up-4">
+            <div class="cell">
+                <strong>{{ stats.total }}</strong> autorów ogółem
+            </div>
+            <div class="cell">
+                <span class="label success">
+                    {{ stats.auto_exact }}
+                </span> dokładne
+            </div>
+            <div class="cell">
+                <span class="label warning">
+                    {{ stats.auto_loose }}
+                </span> luźne
+            </div>
+            <div class="cell">
+                <span class="label primary">
+                    {{ stats.manual }}
+                </span> ręczne
+            </div>
+            <div class="cell">
+                <span class="label alert">
+                    {{ stats.unmatched }}
+                </span> niedopasowane
+            </div>
+        </div>
+    </div>
+
+    {% if error %}
+        <div class="callout alert">
+            {{ error }}
+        </div>
+    {% endif %}
+
+    {% if stats.unmatched > 0 %}
+        <form hx-post="{% url 'importer_publikacji:authors-create-unmatched' session.pk %}"
+              hx-target="#importer-wizard"
+              hx-confirm="Czy na pewno chcesz utworzyć {{ stats.unmatched }} nowych autorów w systemie BPP? Nowi autorzy zostaną przypisani do obcej jednostki.">
+            {% csrf_token %}
+            <button type="submit" class="button warning">
+                <span class="fi-torsos-all"></span>
+                Utwórz {{ stats.unmatched }}
+                niedopasowanych autorów
+            </button>
+        </form>
+        <p class="help-text">
+            Nowi autorzy zostaną przypisani
+            do obcej jednostki.
+        </p>
+    {% endif %}
+
+    {% if orcid_settable_count > 0 %}
+        <form hx-post="{% url 'importer_publikacji:authors-set-orcids' session.pk %}"
+              hx-target="#importer-wizard"
+              hx-confirm="Ustawić ORCIDy {{ orcid_settable_count }} autorom w BPP, którzy nie mają jeszcze ORCID?">
+            {% csrf_token %}
+            <button type="submit" class="button success">
+                <span class="fi-check"></span>
+                Ustaw ORCIDy autorom bez ORCIDów
+                ({{ orcid_settable_count }})
+            </button>
+        </form>
+        <p class="help-text">
+            Dotyczy tylko autorów jednoznacznie
+            dopasowanych, posiadających ORCID
+            od dostawcy.
+        </p>
+    {% endif %}
+
+    <table class="hover" id="authors-table">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Autor (dane dostawcy)</th>
+                <th>ORCID</th>
+                <th>Dopasowanie</th>
+                <th>Autor w BPP</th>
+                <th>Jednostka</th>
+                <th>Dyscyplina</th>
+                <th>Źródło dyscypliny</th>
+                <th>Akcje</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for author in authors %}
+                {% include "importer_publikacji/partials/author_row.html" %}
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% if stats.unmatched > 0 %}
+        <div class="callout warning" id="unmatched-warning">
+            <span class="fi-alert"></span>
+            Nie można przejść dalej — pozostało
+            <strong>{{ stats.unmatched }}</strong>
+            niedopasowanych autorów. Dopasuj ich
+            ręcznie lub utwórz jako nowych autorów
+            w systemie.
+            <button type="button"
+                    class="button small hollow"
+                    style="margin-left:1rem"
+                    hx-get="{% url 'importer_publikacji:authors' session.pk %}"
+                    hx-target="#importer-wizard">
+                <span class="fi-refresh"></span>
+                Sprawdź ponownie
+            </button>
+        </div>
+    {% endif %}
+
+    <div class="grid-x">
+        <div class="cell">
+            <form hx-post="{% url 'importer_publikacji:authors-confirm' session.pk %}"
+                  hx-target="#importer-wizard"
+                  hx-indicator="#authors-spinner">
+                {% csrf_token %}
+                <button type="button"
+                        class="button secondary"
+                        hx-get="{% url 'importer_publikacji:source' session.pk %}"
+                        hx-target="#importer-wizard">
+                    <span class="fi-arrow-left"></span>
+                    Wstecz
+                </button>
+                <button type="submit"
+                        class="button"
+                        {% if stats.unmatched > 0 %}
+                            disabled
+                        {% endif %}>
+                    <span class="fi-arrow-right"></span>
+                    Potwierdź i przejdź dalej
+                </button>
+            </form>
+        </div>
+        <div class="cell">
+            <a href="{% url 'importer_publikacji:index' %}"
+               class="button hollow secondary small">
+                <span class="fi-list"></span>
+                Powrót do listy
+            </a>
+        </div>
+        <div class="cell">
+            <button type="button"
+                    class="button alert hollow small"
+                    hx-post="{% url 'importer_publikacji:cancel' session.pk %}"
+                    hx-target="#importer-wizard"
+                    hx-confirm="Czy na pewno chcesz anulować import? Sesja zostanie skasowana.">
+                <span class="fi-x"></span>
+                Anuluj import
+            </button>
+        </div>
+    </div>
+    <div id="authors-spinner" class="htmx-indicator">
+        <span class="fi-loop"></span> Przetwarzanie...
+    </div>
+</div>
+
+{# ===== Modal edycji autora (Foundation Reveal) ===== #}
+<div class="reveal" id="author-edit-modal" data-reveal
+     data-close-on-click="false"
+     style="height:70vh;overflow-y:auto;top:15vh">
+    <h5 id="modal-author-title"></h5>
+    <form id="modal-author-form">
+        {% csrf_token %}
+        <input type="hidden" id="modal-author-id" value="">
+
+        <label>Autor w BPP
+            <select name="autor"
+                    id="modal-autor-select"
+                    data-url="{% url 'bpp:autor-autocomplete' %}"
+                    style="width:100%">
+            </select>
+        </label>
+
+        <label>Jednostka
+            <select name="jednostka"
+                    id="modal-jednostka-select"
+                    data-url="{% url 'bpp:jednostka-autocomplete' %}"
+                    style="width:100%">
+            </select>
+        </label>
+
+        <label>Dyscyplina
+            <select name="dyscyplina"
+                    id="modal-dyscyplina-select"
+                    data-url="{% url 'bpp:dyscyplina-naukowa-przypisanie-autocomplete' %}"
+                    data-rok="{{ session.normalized_data.year }}"
+                    style="width:100%">
+            </select>
+        </label>
+
+        <div class="text-right"
+             style="margin-top:1rem">
+            <button type="button"
+                    class="button secondary"
+                    data-close>
+                Anuluj
+            </button>
+            <button type="submit" class="button">
+                <span class="fi-check"></span>
+                Zapisz
+            </button>
+        </div>
+    </form>
+    <button class="close-button" data-close
+            aria-label="Zamknij" type="button">
+        <span aria-hidden="true">&times;</span>
+    </button>
+</div>
+
+<script>
+$(document).ready(function() {
+    // ===== DataTables =====
+    var table = $('#authors-table');
+    if (table.length && $.fn.DataTable
+        && !$.fn.DataTable.isDataTable(table)) {
+        table.DataTable({
+            paging: true,
+            pageLength: 10,
+            ordering: false,
+            info: true,
+            searching: true,
+            language: {
+                url: "{% static 'bpp/js/Polish.json' %}"
+            },
+            initComplete: function() {
+                var api = this.api();
+                var textCols = [
+                    {idx: 1, ph: 'Imię/nazwisko...'}
+                ];
+                // 3=dopasowanie, 5=jednostka,
+                // 6=dyscyplina, 7=źródło
+                var selectCols = [3, 5, 6, 7];
+
+                var $header = table.find('thead');
+                var $row = $(
+                    '<tr class="dt-column-filters"></tr>'
+                );
+                var selects = {};
+
+                api.columns().every(function(idx) {
+                    var tc = textCols.find(function(c) {
+                        return c.idx === idx;
+                    });
+                    if (tc) {
+                        var $td = $('<th></th>');
+                        var $input = $(
+                            '<input type="text"'
+                            + ' placeholder="'
+                            + tc.ph + '"'
+                            + ' style="width:100%;'
+                            + 'font-size:0.8rem;'
+                            + 'padding:0.2rem 0.4rem">'
+                        );
+                        $input.on(
+                            'keyup change',
+                            function() {
+                                api.column(idx)
+                                    .search(this.value)
+                                    .draw();
+                            }
+                        );
+                        $td.append($input);
+                        $row.append($td);
+                    } else if (
+                        selectCols.indexOf(idx) !== -1
+                    ) {
+                        var $td2 = $('<th></th>');
+                        var $sel = $(
+                            '<select data-col="' + idx
+                            + '" style="width:100%;'
+                            + 'font-size:0.8rem;'
+                            + 'padding:0.2rem 0.4rem;'
+                            + 'height:auto">'
+                            + '<option value="">'
+                            + 'Wszystkie</option>'
+                            + '</select>'
+                        );
+                        $sel.on('change', function() {
+                            var ci = $(this).data('col');
+                            var val = $.fn.dataTable
+                                .util.escapeRegex(
+                                    $(this).val()
+                                );
+                            api.column(ci).search(
+                                val ? '^' + val + '$'
+                                    : '',
+                                true, false
+                            ).draw();
+                        });
+                        selects[idx] = $sel;
+                        $td2.append($sel);
+                        $row.append($td2);
+                    } else {
+                        $row.append('<th></th>');
+                    }
+                });
+                $header.append($row);
+
+                function rebuildSelects() {
+                    selectCols.forEach(function(idx) {
+                        var $sel = selects[idx];
+                        var cur = $sel.val();
+                        var prev = api.column(idx)
+                            .search();
+                        api.column(idx).search('');
+                        var vals = {};
+                        api.column(idx, {
+                            search: 'applied'
+                        }).data().each(function(d) {
+                            var txt = $('<div/>')
+                                .html(d)
+                                .text().trim();
+                            if (txt) vals[txt] = true;
+                        });
+                        api.column(idx).search(
+                            prev, true, false
+                        );
+                        $sel.find(
+                            'option:not(:first)'
+                        ).remove();
+                        Object.keys(vals).sort()
+                            .forEach(function(v) {
+                                $sel.append(
+                                    '<option value="'
+                                    + $('<div/>')
+                                        .text(v).html()
+                                    + '">' + v
+                                    + '</option>'
+                                );
+                            });
+                        if (cur && $sel.find(
+                            'option[value="'
+                            + cur + '"]'
+                        ).length) {
+                            $sel.val(cur);
+                        }
+                    });
+                }
+                rebuildSelects();
+                api.on('draw', rebuildSelects);
+            }
+        });
+    }
+
+    // ===== Modal edycji autora =====
+    // Foundation Reveal moves the modal into a
+    // .reveal-overlay appended to <body>. When HTMX
+    // replaces #importer-wizard, the old modal
+    // survives outside the swap — creating duplicate
+    // IDs on next load. Remove stale overlay+modal.
+    // Do NOT call _destroy() — it moves the modal
+    // back to <body> as an orphan before removing
+    // the overlay, leaving a stale element behind.
+    $('body > .reveal-overlay').each(function() {
+        if ($(this).find('#author-edit-modal').length) {
+            $(this).remove();
+        }
+    });
+    // Safety net: remove any orphaned modal at body
+    // level (e.g. if _destroy was called elsewhere)
+    $('body > #author-edit-modal').remove();
+    // Clean up global state left by old Reveal
+    $('body').removeClass('is-reveal-open');
+
+    var $modal = $('#author-edit-modal');
+
+    // Inicjalizuj Foundation Reveal na nowym elemencie
+    // (wymagane po wstawieniu przez HTMX — Foundation
+    // nie auto-odkrywa nowych data-reveal elementów)
+    if ($modal.length && !$modal.data('zfPlugin')) {
+        new Foundation.Reveal($modal);
+    }
+
+    var rok = $('#modal-dyscyplina-select').data('rok');
+    var modalInitialized = false;
+
+    function initModalSelect2() {
+        if (modalInitialized) return;
+        modalInitialized = true;
+
+        var $autor = $('#modal-autor-select');
+        $autor.select2({
+            dropdownParent: $modal,
+            ajax: {
+                url: $autor.data('url'),
+                dataType: 'json',
+                delay: 300,
+                data: function(params) {
+                    return {q: params.term};
+                },
+                processResults: function(data) {
+                    return data;
+                }
+            },
+            minimumInputLength: 2,
+            placeholder: 'Szukaj autora...',
+            allowClear: true,
+            language: 'pl'
+        });
+
+        var $jednostka = $('#modal-jednostka-select');
+        $jednostka.select2({
+            dropdownParent: $modal,
+            ajax: {
+                url: $jednostka.data('url'),
+                dataType: 'json',
+                delay: 300,
+                data: function(params) {
+                    return {q: params.term};
+                },
+                processResults: function(data) {
+                    return data;
+                }
+            },
+            minimumInputLength: 2,
+            placeholder: 'Szukaj jednostki...',
+            allowClear: true,
+            language: 'pl'
+        });
+
+        var $dyscyplina = $('#modal-dyscyplina-select');
+        $dyscyplina.select2({
+            dropdownParent: $modal,
+            placeholder: 'Wybierz dyscyplinę...',
+            allowClear: true,
+            language: 'pl'
+        });
+
+        // Load disciplines for current autor
+        function loadDyscypliny() {
+            var autorId = $autor.val();
+            var currentVal = $dyscyplina.val();
+            $dyscyplina.empty().append(
+                '<option value="">---</option>'
+            );
+            if (autorId && rok) {
+                var fwd = JSON.stringify(
+                    {autor: autorId, rok: rok}
+                );
+                $.ajax({
+                    url: $dyscyplina.data('url'),
+                    data: {forward: fwd},
+                    dataType: 'json'
+                }).done(function(data) {
+                    data.results.forEach(function(item) {
+                        if (item.id) {
+                            var sel =
+                                String(item.id)
+                                === String(currentVal)
+                                ? ' selected' : '';
+                            $dyscyplina.append(
+                                '<option value="'
+                                + item.id + '"'
+                                + sel + '>'
+                                + item.text
+                                + '</option>'
+                            );
+                        }
+                    });
+                    $dyscyplina.trigger('change.select2');
+                });
+            }
+        }
+
+        // When autor changes: auto-fill jednostka + dyscyplina
+        $autor.on('change', function() {
+            loadDyscypliny();
+            var autorId = $(this).val();
+            if (!autorId) {
+                $jednostka.val(null)
+                    .trigger('change.select2');
+                return;
+            }
+            $.ajax({
+                url: '/bpp/api/'
+                    + 'ostatnia-jednostka-i-dyscyplina/',
+                method: 'POST',
+                data: {
+                    autor_id: autorId,
+                    rok: rok,
+                    csrfmiddlewaretoken: $modal.find(
+                        '[name=csrfmiddlewaretoken]'
+                    ).val()
+                }
+            }).done(function(data) {
+                if (data.status !== 'ok') return;
+                if (data.jednostka_id) {
+                    var $j = $('#modal-jednostka-select');
+                    if (!$j.find(
+                        'option[value="'
+                        + data.jednostka_id + '"]'
+                    ).length) {
+                        $j.append(
+                            '<option value="'
+                            + data.jednostka_id + '">'
+                            + data.nazwa + '</option>'
+                        );
+                    }
+                    $j.val(data.jednostka_id)
+                        .trigger('change');
+                }
+                if (data.dyscyplina_id) {
+                    var $d = $('#modal-dyscyplina-select');
+                    if (!$d.find(
+                        'option[value="'
+                        + data.dyscyplina_id + '"]'
+                    ).length) {
+                        $d.append(
+                            '<option value="'
+                            + data.dyscyplina_id + '">'
+                            + data.dyscyplina_nazwa
+                            + '</option>'
+                        );
+                    }
+                    $d.val(data.dyscyplina_id)
+                        .trigger('change');
+                }
+            });
+        });
+    }
+
+    // Stop ORCID button clicks from opening modal
+    $(document).off(
+        'click.authorModal',
+        '.author-row-clickable form'
+    );
+    $(document).on(
+        'click.authorModal',
+        '.author-row-clickable form',
+        function(e) { e.stopPropagation(); }
+    );
+
+    // Open modal: row click or Edytuj button
+    function openAuthorModal($row) {
+        initModalSelect2();
+
+        $('#modal-author-title').text(
+            'Edycja: ' + $row.data('author-name')
+        );
+        $('#modal-author-id').val(
+            $row.data('author-id')
+        );
+        $('#modal-author-form').attr(
+            'hx-post', $row.data('match-url')
+        ).attr(
+            'hx-target',
+            '#author-row-' + $row.data('author-id')
+        ).attr('hx-swap', 'outerHTML');
+        htmx.process(
+            document.getElementById(
+                'modal-author-form'
+            )
+        );
+
+        // Set autor
+        var $autor = $('#modal-autor-select');
+        $autor.empty();
+        if ($row.data('autor-pk')) {
+            $autor.append(
+                '<option value="'
+                + $row.data('autor-pk')
+                + '" selected>'
+                + $row.data('autor-name')
+                + '</option>'
+            );
+        }
+        $autor.trigger('change.select2');
+
+        // Set jednostka
+        var $j = $('#modal-jednostka-select');
+        $j.empty();
+        if ($row.data('jednostka-pk')) {
+            $j.append(
+                '<option value="'
+                + $row.data('jednostka-pk')
+                + '" selected>'
+                + $row.data('jednostka-name')
+                + '</option>'
+            );
+        }
+        $j.trigger('change.select2');
+
+        // Set dyscyplina + load options for autor
+        var $d = $('#modal-dyscyplina-select');
+        $d.empty().append(
+            '<option value="">---</option>'
+        );
+        if ($row.data('dyscyplina-pk')) {
+            $d.append(
+                '<option value="'
+                + $row.data('dyscyplina-pk')
+                + '" selected>'
+                + $row.data('dyscyplina-name')
+                + '</option>'
+            );
+        }
+        if ($row.data('autor-pk') && rok) {
+            var fwd = JSON.stringify({
+                autor: $row.data('autor-pk'),
+                rok: rok
+            });
+            $.ajax({
+                url: $d.data('url'),
+                data: {forward: fwd},
+                dataType: 'json'
+            }).done(function(data) {
+                var cur = String(
+                    $row.data('dyscyplina-pk') || ''
+                );
+                data.results.forEach(function(item) {
+                    if (item.id
+                        && String(item.id) !== cur) {
+                        $d.append(
+                            '<option value="'
+                            + item.id + '">'
+                            + item.text + '</option>'
+                        );
+                    }
+                });
+                $d.trigger('change.select2');
+            });
+        }
+        $d.trigger('change.select2');
+
+        $modal.foundation('open');
+    }
+
+    // Click on row
+    $(document).off(
+        'click.authorModal',
+        '.author-row-clickable'
+    );
+    $(document).on(
+        'click.authorModal',
+        '.author-row-clickable',
+        function() {
+            openAuthorModal($(this));
+        }
+    );
+
+    // Click on Edytuj button (stop propagation
+    // to avoid double-open from row click)
+    $(document).off(
+        'click.authorModal',
+        '.author-row-clickable .btn-edit-author'
+    );
+    $(document).on(
+        'click.authorModal',
+        '.author-row-clickable .btn-edit-author',
+        function(e) {
+            e.stopPropagation();
+            openAuthorModal(
+                $(this).closest(
+                    '.author-row-clickable'
+                )
+            );
+        }
+    );
+
+    // Submit modal form via HTMX and close
+    $('#modal-author-form').on('submit', function(e) {
+        e.preventDefault();
+        var $form = $(this);
+        htmx.ajax(
+            'POST',
+            $form.attr('hx-post'),
+            {
+                target: $form.attr('hx-target'),
+                swap: 'outerHTML',
+                values: {
+                    csrfmiddlewaretoken: $form.find(
+                        '[name=csrfmiddlewaretoken]'
+                    ).val(),
+                    autor: $(
+                        '#modal-autor-select'
+                    ).val() || '',
+                    jednostka: $(
+                        '#modal-jednostka-select'
+                    ).val() || '',
+                    dyscyplina: $(
+                        '#modal-dyscyplina-select'
+                    ).val() || ''
+                }
+            }
+        );
+        $modal.foundation('close');
+    });
+});
+</script>

@@ -1,0 +1,196 @@
+{% load i18n static %}
+
+<div id="session-list-container">
+
+    <h5>Sesje importu</h5>
+
+    <form id="session-filter-form"
+          hx-get="{% url 'importer_publikacji:sessions' %}"
+          hx-target="#session-list-container"
+          hx-swap="outerHTML"
+          hx-push-url="false"
+          hx-trigger="change from:find input,
+                      change from:find select">
+
+        <div class="grid-x grid-margin-x align-bottom">
+            <div class="cell shrink">
+                <label>{{ filter_form.date_from.label }}
+                    {{ filter_form.date_from }}
+                </label>
+            </div>
+            <div class="cell shrink">
+                <label>{{ filter_form.date_to.label }}
+                    {{ filter_form.date_to }}
+                </label>
+            </div>
+            <div class="cell auto">
+                <label>{{ filter_form.title.label }}
+                    {{ filter_form.title }}
+                </label>
+            </div>
+            <div class="cell auto">
+                <label>{{ filter_form.doi.label }}
+                    {{ filter_form.doi }}
+                </label>
+            </div>
+        </div>
+
+        <div class="grid-x grid-margin-x">
+            <div class="cell shrink">
+                <label>{{ filter_form.provider_name.label }}
+                </label>
+                {{ filter_form.provider_name }}
+            </div>
+            <div class="cell shrink">
+                <label>{{ filter_form.created_by.label }}
+                </label>
+                {{ filter_form.created_by }}
+            </div>
+            <div class="cell shrink">
+                <label>{{ filter_form.modified_by.label }}
+                </label>
+                {{ filter_form.modified_by }}
+            </div>
+            <div class="cell shrink">
+                <label>&nbsp;</label>
+                <button type="button"
+                        class="button small secondary"
+                        id="session-filter-reset">
+                    Reset
+                </button>
+            </div>
+        </div>
+    </form>
+
+    {% if sessions %}
+        <table class="hover" id="sessions-table">
+            <thead>
+                <tr>
+                    <th>Data</th>
+                    <th>Tytuł</th>
+                    <th>DOI / Identyfikator</th>
+                    <th>Źródło</th>
+                    <th>Status</th>
+                    <th>Utworzył</th>
+                    <th>Zmodyfikował</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in sessions %}
+                    <tr>
+                        <td data-order="{{ s.created|date:'Y-m-d H:i:s' }}">
+                            {{ s.created|date:"Y-m-d H:i" }}
+                        </td>
+                        <td>
+                            {{ s.normalized_data.title|default:""|truncatechars:60 }}
+                        </td>
+                        <td>
+                            {% if s.normalized_data.doi %}
+                                {{ s.normalized_data.doi }}
+                            {% elif s.normalized_data.url %}
+                                <a href="{{ s.normalized_data.url }}"
+                                   target="_blank"
+                                   title="{{ s.normalized_data.url }}">
+                                    {{ s.normalized_data.url|truncatechars:40 }}
+                                </a>
+                            {% elif s.identifier %}
+                                {{ s.identifier|truncatechars:40 }}
+                            {% endif %}
+                        </td>
+                        <td>{{ s.provider_name }}</td>
+                        <td>
+                            <span class="label
+                                {% if s.status == 'completed' %}
+                                    success
+                                {% elif s.status == 'cancelled' %}
+                                    alert
+                                {% else %}
+                                    primary
+                                {% endif %}">
+                                {{ s.get_status_display }}
+                            </span>
+                        </td>
+                        <td>
+                            {{ s.created_by.get_username|default:"" }}
+                        </td>
+                        <td>
+                            {% if s.modified_by %}
+                                {{ s.modified_by.get_username }}
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if s.get_continue_url %}
+                                <a href="{{ s.get_continue_url }}"
+                                   class="button tiny">
+                                    Kontynuuj
+                                </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>Brak sesji importu.</p>
+    {% endif %}
+
+</div>
+
+<style>
+#session-filter-form .select2-container .select2-selection {
+    min-height: 39px;
+    display: flex;
+    align-items: center;
+}
+</style>
+
+<script>
+$(document).ready(function() {
+    var $form = $('#session-filter-form');
+
+    $('#session-list-container .importer-user-select2')
+        .select2({
+            placeholder: 'Wybierz...',
+            allowClear: true,
+            language: 'pl',
+            width: '150px'
+        })
+        .on('change', function() {
+            htmx.trigger($form[0], 'change');
+        });
+
+    $('#session-filter-reset').on('click', function() {
+        $form.find('input[type="text"]').val('');
+        $form.find('input[type="date"]').val('');
+        $form.find('select').each(function() {
+            var $sel = $(this);
+            if ($sel.hasClass('importer-user-select2')) {
+                $sel.val(null)
+                    .trigger('change.select2');
+            } else {
+                $sel.val('');
+            }
+        });
+        htmx.trigger($form[0], 'change');
+    });
+
+    var table = $('#sessions-table');
+    if (table.length && $.fn.DataTable) {
+        table.DataTable({
+            paging: true,
+            pageLength: 25,
+            ordering: true,
+            order: [[0, 'desc']],
+            info: true,
+            searching: false,
+            language: {
+                url: "{% static 'bpp/js/Polish.json' %}"
+            },
+            columnDefs: [
+                {orderable: false, targets: [7]}
+            ]
+        });
+    }
+});
+</script>

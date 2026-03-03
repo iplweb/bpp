@@ -65,6 +65,7 @@ def tytuly():
 def jezyki():
     pl, created = Jezyk.objects.get_or_create(pk=1, skrot="pol.", nazwa="polski")
     pl.skrot_dla_pbn = "PL"
+    pl.skrot_crossref = "pl"
     pl.save()
     assert pl.pk == 1
 

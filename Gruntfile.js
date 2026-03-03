@@ -174,6 +174,13 @@ module.exports = function (grunt) {
         },
 
         shell: {
+            // Create a stable .venv/lib/python symlink pointing to the
+            // actual python3.XX directory, so bundle-entry.js imports
+            // work regardless of Python version.
+            linkSitePackages: {
+                command: 'rm -f .venv/lib/python && ' +
+                         'ln -s $(cd .venv/lib && ls -d python3.* | head -1) .venv/lib/python'
+            },
             esbuild: {
                 command: 'npx esbuild src/bpp/static/bpp/js/bundle-entry.js ' +
                          '--bundle --minify-syntax --minify-whitespace --sourcemap ' +
@@ -204,12 +211,14 @@ module.exports = function (grunt) {
     grunt.registerTask('shell-test', ['shell:collectstatic']);
     grunt.registerTask('build', [
         'concurrent:themes',
+        'shell:linkSitePackages',
         'shell:esbuild',
         'shell:patchBundle',
         'shell:collectstatic'
     ]);
     grunt.registerTask('build-non-interactive', [
         'concurrent:themes',
+        'shell:linkSitePackages',
         'shell:esbuild',
         'shell:patchBundle'
     ]);

@@ -267,6 +267,16 @@ urlpatterns = (
                 namespace="deduplikator_zrodel",
             ),
         ),
+        path(
+            "importer_publikacji/",
+            include(
+                (
+                    "importer_publikacji.urls",
+                    "importer_publikacji",
+                ),
+                namespace="importer_publikacji",
+            ),
+        ),
         url(
             r"^multiseek/results/$",
             csrf_exempt(

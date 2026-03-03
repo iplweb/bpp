@@ -1,0 +1,381 @@
+{% load static %}
+<div class="callout">
+    <h4>
+        <span class="fi-page-filled"></span>
+        Krok 5: Przegląd końcowy
+    </h4>
+
+    <div class="callout secondary">
+        <h6>Dane publikacji</h6>
+        <table>
+            <tr>
+                <th>Tytuł</th>
+                <td>{{ data.title }}</td>
+            </tr>
+            {% if data.doi %}
+                <tr>
+                    <th>DOI</th>
+                    <td>{{ data.doi }}</td>
+                </tr>
+            {% endif %}
+            {% if data.year %}
+                <tr>
+                    <th>Rok</th>
+                    <td>{{ data.year }}</td>
+                </tr>
+            {% endif %}
+            <tr>
+                <th>Typ rekordu</th>
+                <td>
+                    {% if session.jest_wydawnictwem_zwartym %}
+                        Wydawnictwo zwarte
+                    {% else %}
+                        Wydawnictwo ciągłe
+                    {% endif %}
+                </td>
+            </tr>
+            {% if session.charakter_formalny %}
+                <tr>
+                    <th>Charakter formalny</th>
+                    <td>{{ session.charakter_formalny }}</td>
+                </tr>
+            {% endif %}
+            {% if session.typ_kbn %}
+                <tr>
+                    <th>Typ MNiSW</th>
+                    <td>{{ session.typ_kbn }}</td>
+                </tr>
+            {% endif %}
+            {% if session.jezyk %}
+                <tr>
+                    <th>Język</th>
+                    <td>{{ session.jezyk }}</td>
+                </tr>
+            {% endif %}
+            {% if session.zrodlo %}
+                <tr>
+                    <th>Źródło</th>
+                    <td>{{ session.zrodlo }}</td>
+                </tr>
+            {% endif %}
+            {% if session.wydawca %}
+                <tr>
+                    <th>Wydawca</th>
+                    <td>{{ session.wydawca }}</td>
+                </tr>
+            {% endif %}
+            {% if data.volume %}
+                <tr>
+                    <th>Tom</th>
+                    <td>{{ data.volume }}</td>
+                </tr>
+            {% endif %}
+            {% if data.issue %}
+                <tr>
+                    <th>Nr zeszytu</th>
+                    <td>{{ data.issue }}</td>
+                </tr>
+            {% endif %}
+            {% if data.pages %}
+                <tr>
+                    <th>Strony</th>
+                    <td>{{ data.pages }}</td>
+                </tr>
+            {% endif %}
+            {% if data.issn %}
+                <tr>
+                    <th>ISSN</th>
+                    <td>{{ data.issn }}</td>
+                </tr>
+            {% endif %}
+            {% if data.isbn %}
+                <tr>
+                    <th>ISBN</th>
+                    <td>{{ data.isbn }}</td>
+                </tr>
+            {% endif %}
+            {% if data.url %}
+                <tr>
+                    <th>URL</th>
+                    <td>
+                        <a href="{{ data.url }}"
+                           target="_blank"
+                           rel="noopener">
+                            {{ data.url }}
+                        </a>
+                    </td>
+                </tr>
+            {% endif %}
+            {% if data.license_url %}
+                <tr>
+                    <th>Licencja</th>
+                    <td>
+                        <a href="{{ data.license_url }}"
+                           target="_blank"
+                           rel="noopener">
+                            {{ data.license_url }}
+                        </a>
+                    </td>
+                </tr>
+            {% endif %}
+            {% if data.keywords %}
+                <tr>
+                    <th>Słowa kluczowe</th>
+                    <td>
+                        {% for kw in data.keywords %}
+                            {{ kw }}{% if not forloop.last %},
+                            {% endif %}
+                        {% endfor %}
+                    </td>
+                </tr>
+            {% endif %}
+            {% if data.abstract %}
+                <tr>
+                    <th>Streszczenie</th>
+                    <td>
+                        <details>
+                            <summary>
+                                {{ data.abstract|truncatewords:30 }}
+                            </summary>
+                            {{ data.abstract }}
+                        </details>
+                    </td>
+                </tr>
+            {% endif %}
+        </table>
+    </div>
+
+    {% if authors %}
+        <div class="callout secondary">
+            <h6>Autorzy do przypisania ({{ authors|length }})</h6>
+            <table class="hover" id="review-authors-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Nazwa (dostawca)</th>
+                        <th>Autor BPP</th>
+                        <th>Jednostka</th>
+                        <th>Dyscyplina</th>
+                        <th>Źródło dyscypliny</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for a in authors %}
+                        <tr>
+                            <td>{{ a.order|add:1 }}</td>
+                            <td>{{ a.display_name }}</td>
+                            <td>
+                                {% if a.matched_autor %}
+                                    {{ a.matched_autor }}
+                                {% else %}
+                                    <em>niedopasowany</em>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if a.matched_jednostka %}
+                                    <small>
+                                        {{ a.matched_jednostka }}
+                                    </small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if a.matched_dyscyplina %}
+                                    <small>
+                                        {{ a.matched_dyscyplina }}
+                                    </small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if a.dyscyplina_source %}
+                                    <small>
+                                        {{ a.get_dyscyplina_source_display }}
+                                    </small>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% endif %}
+
+    <div class="callout warning">
+        <span class="fi-alert"></span>
+        Kliknięcie przycisku <strong>Utwórz publikację</strong>
+        spowoduje utworzenie nowego rekordu publikacji w bazie
+        danych BPP z powyższymi danymi.
+    </div>
+
+    <form hx-post="{% url 'importer_publikacji:create' session.pk %}"
+          hx-target="#importer-wizard"
+          hx-indicator="#create-spinner">
+        {% csrf_token %}
+        <button type="button" class="button secondary"
+                hx-get="{% url 'importer_publikacji:authors' session.pk %}"
+                hx-target="#importer-wizard">
+            <span class="fi-arrow-left"></span>
+            Wstecz
+        </button>
+        <button type="submit" class="button success">
+            <span class="fi-plus"></span>
+            Utwórz publikację
+        </button>
+    </form>
+    <div>
+        <a href="{% url 'importer_publikacji:index' %}"
+           class="button hollow secondary small">
+            <span class="fi-list"></span>
+            Powrót do listy
+        </a>
+    </div>
+    <div>
+        <button type="button"
+                class="button alert hollow small"
+                hx-post="{% url 'importer_publikacji:cancel' session.pk %}"
+                hx-target="#importer-wizard"
+                hx-confirm="Czy na pewno chcesz anulować import? Sesja zostanie skasowana.">
+            <span class="fi-x"></span>
+            Anuluj import
+        </button>
+    </div>
+    <div id="create-spinner" class="htmx-indicator">
+        <span class="fi-loop"></span>
+        Tworzenie rekordu publikacji...
+    </div>
+</div>
+
+{% if authors %}
+<script>
+$(document).ready(function() {
+    var table = $('#review-authors-table');
+    if (table.length && $.fn.DataTable) {
+        table.DataTable({
+            paging: true,
+            pageLength: 10,
+            ordering: false,
+            info: true,
+            searching: true,
+            language: {
+                url: "{% static 'bpp/js/Polish.json' %}"
+            },
+            initComplete: function() {
+                var api = this.api();
+                var textCols = [
+                    {idx: 1, placeholder: 'Imię/nazwisko...'}
+                ];
+                var selectCols = [3, 4, 5];
+
+                var $header = table.find('thead');
+                var $filterRow = $(
+                    '<tr class="dt-column-filters"></tr>'
+                );
+                var selects = {};
+
+                api.columns().every(function(idx) {
+                    var tc = textCols.find(
+                        function(c) {
+                            return c.idx === idx;
+                        }
+                    );
+                    if (tc) {
+                        var $td = $('<th></th>');
+                        var $input = $(
+                            '<input type="text"'
+                            + ' placeholder="'
+                            + tc.placeholder + '"'
+                            + ' style="width:100%;'
+                            + 'font-size:0.8rem;'
+                            + 'padding:0.2rem 0.4rem">'
+                        );
+                        $input.on(
+                            'keyup change',
+                            function() {
+                                api.column(idx)
+                                    .search(this.value)
+                                    .draw();
+                            }
+                        );
+                        $td.append($input);
+                        $filterRow.append($td);
+                    } else if (
+                        selectCols.indexOf(idx) !== -1
+                    ) {
+                        var $td2 = $('<th></th>');
+                        var $sel = $(
+                            '<select data-col="' + idx
+                            + '" style="width:100%;'
+                            + 'font-size:0.8rem;'
+                            + 'padding:0.2rem 0.4rem;'
+                            + 'height:auto">'
+                            + '<option value="">'
+                            + 'Wszystkie</option>'
+                            + '</select>'
+                        );
+                        $sel.on('change', function() {
+                            var ci = $(this).data('col');
+                            var val = $.fn.dataTable
+                                .util.escapeRegex(
+                                    $(this).val()
+                                );
+                            api.column(ci).search(
+                                val ? '^' + val + '$'
+                                    : '',
+                                true, false
+                            ).draw();
+                        });
+                        selects[idx] = $sel;
+                        $td2.append($sel);
+                        $filterRow.append($td2);
+                    } else {
+                        $filterRow.append('<th></th>');
+                    }
+                });
+                $header.append($filterRow);
+
+                function rebuildSelects() {
+                    selectCols.forEach(function(idx) {
+                        var $sel = selects[idx];
+                        var cur = $sel.val();
+                        var prev = api.column(idx)
+                            .search();
+                        api.column(idx).search('');
+                        var vals = {};
+                        api.column(idx, {
+                            search: 'applied'
+                        }).data().each(function(d) {
+                            var txt = $('<div/>')
+                                .html(d).text().trim();
+                            if (txt) vals[txt] = true;
+                        });
+                        api.column(idx).search(
+                            prev, true, false
+                        );
+                        $sel.find(
+                            'option:not(:first)'
+                        ).remove();
+                        Object.keys(vals).sort()
+                            .forEach(function(v) {
+                                $sel.append(
+                                    '<option value="'
+                                    + $('<div/>')
+                                        .text(v).html()
+                                    + '">' + v
+                                    + '</option>'
+                                );
+                            });
+                        if (cur && $sel.find(
+                            'option[value="'
+                            + cur + '"]'
+                        ).length) {
+                            $sel.val(cur);
+                        }
+                    });
+                }
+                rebuildSelects();
+                api.on('draw', rebuildSelects);
+            }
+        });
+    }
+});
+</script>
+{% endif %}

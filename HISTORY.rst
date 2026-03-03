@@ -4,14 +4,13 @@ Historia zmian
 
 .. towncrier release notes start
 
-bpp 202603.1350 (2026-03-03)
+bpp 202603.1351 (2026-03-03)
 ============================
 
 Naprawione
 ----------
 
 - Przywrócono brakujący przycisk "Zmień hasło" na stronie zmiany hasła. (password-change-submit)
-- Naprawiono podwójne okienko potwierdzenia na stronie usuwania źródła (przemapuj źródła PBN). (usun-zrodlo-double-confirm)
 
 
 Usprawnienie

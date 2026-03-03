@@ -1,0 +1,81 @@
+<tr id="author-row-{{ author.pk }}"
+    class="author-row-clickable"
+    style="cursor:pointer"
+    data-author-id="{{ author.pk }}"
+    data-author-name="{{ author.display_name }}"
+    data-match-url="{% url 'importer_publikacji:author-match' session.pk author.pk %}"
+    data-autor-pk="{{ author.matched_autor.pk|default:'' }}"
+    data-autor-name="{{ author.matched_autor|default:'' }}"
+    data-jednostka-pk="{{ author.matched_jednostka.pk|default:'' }}"
+    data-jednostka-name="{{ author.matched_jednostka|default:'' }}"
+    data-dyscyplina-pk="{{ author.matched_dyscyplina.pk|default:'' }}"
+    data-dyscyplina-name="{{ author.matched_dyscyplina|default:'' }}">
+    <td>{{ author.order|add:1 }}</td>
+    <td>{{ author.display_name }}</td>
+    <td>
+        {% if author.orcid %}
+            <small>{{ author.orcid }}</small>
+        {% endif %}
+    </td>
+    <td>
+        {% if author.match_status == 'auto_exact' %}
+            <span class="label success">dokładne</span>
+        {% elif author.match_status == 'auto_loose' %}
+            <span class="label warning">luźne</span>
+        {% elif author.match_status == 'manual' %}
+            <span class="label primary">ręczne</span>
+        {% else %}
+            <span class="label alert">niedopasowany</span>
+        {% endif %}
+    </td>
+    <td>
+        {% if author.matched_autor %}
+            {{ author.matched_autor }}
+        {% else %}
+            <em>-</em>
+        {% endif %}
+    </td>
+    <td>
+        {% if author.matched_jednostka %}
+            <small>{{ author.matched_jednostka }}</small>
+        {% else %}
+            <em>-</em>
+        {% endif %}
+    </td>
+    <td>
+        {% if author.matched_dyscyplina %}
+            <small>{{ author.matched_dyscyplina }}</small>
+        {% else %}
+            <em>-</em>
+        {% endif %}
+    </td>
+    <td>
+        {% if author.dyscyplina_source %}
+            <small>
+                {{ author.get_dyscyplina_source_display }}
+            </small>
+        {% endif %}
+    </td>
+    <td>
+        <button type="button"
+                class="button small secondary btn-edit-author">
+            <span class="fi-pencil"></span>
+            Edytuj
+        </button>
+        {% if author.orcid and author.matched_autor and not author.matched_autor.orcid %}
+            <form style="display:inline"
+                  hx-post="{% url 'importer_publikacji:author-set-orcid' session.pk author.pk %}"
+                  hx-target="#author-row-{{ author.pk }}"
+                  hx-swap="outerHTML"
+                  hx-confirm="Ustawić ORCID {{ author.orcid }} autorowi {{ author.matched_autor }}?">
+                {% csrf_token %}
+                <button type="submit"
+                        class="button tiny success"
+                        title="Ustaw ORCID {{ author.orcid }} autorowi {{ author.matched_autor }}">
+                    <span class="fi-check"></span>
+                    ORCID
+                </button>
+            </form>
+        {% endif %}
+    </td>
+</tr>

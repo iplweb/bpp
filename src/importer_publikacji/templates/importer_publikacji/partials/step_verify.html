@@ -1,0 +1,403 @@
+{% load importer_tags %}
+<div class="callout">
+    <h4>
+        <span class="fi-check"></span>
+        Krok 2: Weryfikacja danych publikacji
+    </h4>
+
+    {% if existing %}
+        <div class="callout alert">
+            <span class="fi-alert"></span>
+            <strong>
+                Potencjalne duplikaty w BPP:
+            </strong>
+            <ul>
+                {% for pub, method in existing %}
+                    <li>
+                        <strong>[{{ method }}]</strong>
+                        {{ pub }}
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+    {% endif %}
+
+    {% if suggest_crossref %}
+        <div class="callout warning">
+            <span class="fi-info"></span>
+            Dane pobrane z <strong>{{ session.provider_name }}</strong>
+            zawierają DOI.
+            Możesz pobrać pełniejsze metadane z CrossRef API.
+            <form style="display:inline; margin:0;"
+                  hx-post="{% url 'importer_publikacji:fetch' %}"
+                  hx-target="#importer-wizard"
+                  hx-indicator="#verify-spinner"
+                  hx-confirm="Bieżąca sesja zostanie anulowana i zastąpiona danymi z CrossRef. Kontynuować?">
+                {% csrf_token %}
+                <input type="hidden"
+                       name="provider"
+                       value="CrossRef">
+                <input type="hidden"
+                       name="identifier"
+                       value="{{ crossref_doi }}">
+                <button type="submit"
+                        class="button small warning"
+                        style="margin-bottom: 0;">
+                    <span class="fi-refresh"></span>
+                    Pobierz z CrossRef ({{ crossref_doi }})
+                </button>
+            </form>
+        </div>
+    {% endif %}
+
+    <div class="callout secondary">
+        <h6>Dane z {{ session.provider_name }}</h6>
+        <table>
+            <tr>
+                <th>Tytuł</th>
+                <td>{{ session.normalized_data.title }}</td>
+            </tr>
+            {% if session.normalized_data.doi %}
+                <tr>
+                    <th>DOI</th>
+                    <td>{{ session.normalized_data.doi }}</td>
+                </tr>
+            {% endif %}
+            {% if session.normalized_data.year %}
+                <tr>
+                    <th>Rok</th>
+                    <td>{{ session.normalized_data.year }}</td>
+                </tr>
+            {% endif %}
+            {% if session.normalized_data.source_title %}
+                <tr>
+                    <th>Źródło</th>
+                    <td>
+                        {{ session.normalized_data.source_title }}
+                    </td>
+                </tr>
+            {% endif %}
+            {% if session.normalized_data.issn %}
+                <tr>
+                    <th>ISSN</th>
+                    <td>{{ session.normalized_data.issn }}</td>
+                </tr>
+            {% endif %}
+            {% if session.normalized_data.isbn %}
+                <tr>
+                    <th>ISBN</th>
+                    <td>{{ session.normalized_data.isbn }}</td>
+                </tr>
+            {% endif %}
+            {% if session.normalized_data.publisher %}
+                <tr>
+                    <th>Wydawca</th>
+                    <td>
+                        {{ session.normalized_data.publisher }}
+                    </td>
+                </tr>
+            {% endif %}
+            {% if session.normalized_data.publication_type %}
+                <tr>
+                    <th>Typ</th>
+                    <td>
+                        {{ session.normalized_data.publication_type }}
+                    </td>
+                </tr>
+            {% endif %}
+            {% if session.normalized_data.language %}
+                <tr>
+                    <th>Język</th>
+                    <td>
+                        {{ session.normalized_data.language }}
+                    </td>
+                </tr>
+            {% endif %}
+            {% if session.normalized_data.volume %}
+                <tr>
+                    <th>Tom</th>
+                    <td>{{ session.normalized_data.volume }}</td>
+                </tr>
+            {% endif %}
+            {% if session.normalized_data.issue %}
+                <tr>
+                    <th>Numer</th>
+                    <td>{{ session.normalized_data.issue }}</td>
+                </tr>
+            {% endif %}
+            {% if session.normalized_data.pages %}
+                <tr>
+                    <th>Strony</th>
+                    <td>{{ session.normalized_data.pages }}</td>
+                </tr>
+            {% endif %}
+            {% if session.normalized_data.url %}
+                <tr>
+                    <th>URL</th>
+                    <td>
+                        <a href="{{ session.normalized_data.url }}"
+                           target="_blank"
+                           rel="noopener">
+                            {{ session.normalized_data.url }}
+                        </a>
+                    </td>
+                </tr>
+            {% endif %}
+            {% if session.normalized_data.license_url %}
+                <tr>
+                    <th>Licencja</th>
+                    <td>
+                        <a href="{{ session.normalized_data.license_url }}"
+                           target="_blank"
+                           rel="noopener">
+                            {{ session.normalized_data.license_url }}
+                        </a>
+                    </td>
+                </tr>
+            {% endif %}
+            {% if session.normalized_data.keywords %}
+                <tr>
+                    <th>Słowa kluczowe</th>
+                    <td>
+                        {{ session.normalized_data.keywords|join:", " }}
+                    </td>
+                </tr>
+            {% endif %}
+            {% if session.normalized_data.abstract %}
+                <tr>
+                    <th>Streszczenie</th>
+                    <td>
+                        <details>
+                            <summary>Pokaż</summary>
+                            {{ session.normalized_data.abstract }}
+                        </details>
+                    </td>
+                </tr>
+            {% endif %}
+            <tr>
+                <th>Autorzy</th>
+                <td>{{ session.authors.count }}</td>
+            </tr>
+        </table>
+    </div>
+
+    {% if field_categories %}
+        <details class="callout secondary">
+            <summary>
+                Kategoryzacja p&oacute;l z API
+                ({{ field_categories.wyodrebnione|length }} wyodr.,
+                {{ field_categories.ignorowane|length }} ignor.,
+                {{ field_categories.obce|length }} nieznanych)
+            </summary>
+
+            {% if field_categories.wyodrebnione %}
+                <h6>Wyodr&eogon;bnione
+                    ({{ field_categories.wyodrebnione|length }})</h6>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Pole</th>
+                            <th>Warto&sacute;&cacute;</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for key, value in field_categories.wyodrebnione %}
+                            <tr>
+                                <td>
+                                    <code>{{ key }}</code>
+                                </td>
+                                <td>
+                                    <pre style="font-size:0.8rem;
+                                                margin:0;
+                                                white-space:pre-wrap;
+                                                max-height:200px;
+                                                overflow-y:auto;">{{ value|pretty_json }}</pre>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% endif %}
+
+            {% if field_categories.ignorowane %}
+                <h6>Ignorowane
+                    ({{ field_categories.ignorowane|length }})</h6>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Pole</th>
+                            <th>Warto&sacute;&cacute;</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for key, value in field_categories.ignorowane %}
+                            <tr>
+                                <td>
+                                    <code>{{ key }}</code>
+                                </td>
+                                <td>
+                                    <pre style="font-size:0.8rem;
+                                                margin:0;
+                                                white-space:pre-wrap;
+                                                max-height:200px;
+                                                overflow-y:auto;">{{ value|pretty_json }}</pre>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% endif %}
+
+            {% if field_categories.obce %}
+                <h6>Nieznane
+                    ({{ field_categories.obce|length }})</h6>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Pole</th>
+                            <th>Warto&sacute;&cacute;</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for key, value in field_categories.obce %}
+                            <tr>
+                                <td>
+                                    <code>{{ key }}</code>
+                                </td>
+                                <td>
+                                    <pre style="font-size:0.8rem;
+                                                margin:0;
+                                                white-space:pre-wrap;
+                                                max-height:200px;
+                                                overflow-y:auto;">{{ value|pretty_json }}</pre>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% endif %}
+        </details>
+
+        {% if raw_json_pretty %}
+            <details class="callout secondary">
+                <summary>
+                    Surowe dane z API (JSON)
+                </summary>
+                <pre style="max-height:400px;
+                            overflow-y:auto;
+                            font-size:0.8rem;">{{ raw_json_pretty }}</pre>
+            </details>
+        {% endif %}
+    {% endif %}
+
+    {% if auto_charakter %}
+        <div class="callout success small">
+            <span class="fi-check"></span>
+            Na podstawie typu <strong>
+            {{ session.normalized_data.publication_type }}
+            </strong> ustawiono:
+            charakter formalny
+            <strong>{{ auto_charakter }}</strong>,
+            {% if auto_zwarte %}
+                wydawnictwo zwarte.
+            {% else %}
+                wydawnictwo ciągłe.
+            {% endif %}
+            Możesz zmienić poniżej.
+        </div>
+    {% endif %}
+
+    <form hx-post="{% url 'importer_publikacji:verify' session.pk %}"
+          hx-target="#importer-wizard"
+          hx-indicator="#verify-spinner">
+        {% csrf_token %}
+
+        <div class="grid-x grid-margin-x">
+            <div class="cell medium-6">
+                <label for="{{ form.charakter_formalny.id_for_label }}">
+                    {{ form.charakter_formalny.label }} *
+                </label>
+                {{ form.charakter_formalny }}
+            </div>
+            <div class="cell medium-6">
+                <label for="{{ form.typ_kbn.id_for_label }}">
+                    {{ form.typ_kbn.label }} *
+                </label>
+                {{ form.typ_kbn }}
+            </div>
+        </div>
+
+        <div class="grid-x grid-margin-x">
+            <div class="cell medium-6">
+                <label for="{{ form.jezyk.id_for_label }}">
+                    {{ form.jezyk.label }} *
+                </label>
+                {{ form.jezyk }}
+            </div>
+            <div class="cell medium-6">
+                <label>&nbsp;</label>
+                <label>
+                    {{ form.jest_wydawnictwem_zwartym }}
+                    {{ form.jest_wydawnictwem_zwartym.label }}
+                </label>
+            </div>
+        </div>
+
+        <p class="help-text">* pola wymagane</p>
+
+        {% if existing %}
+            <label>
+                <input type="checkbox" required>
+                System BPP twierdzi, że prawdopodobnie
+                dodaję teraz duplikat tej pracy, ale ja
+                uważam inaczej. Dodaj rekord mimo to.
+            </label>
+        {% endif %}
+
+        {% if form.errors %}
+            <div class="callout alert">
+                {% for field, errors in form.errors.items %}
+                    {% for error in errors %}
+                        <p>{{ error }}</p>
+                    {% endfor %}
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <div class="grid-x">
+            <div class="cell">
+                <button type="button"
+                        class="button secondary"
+                        hx-get="{% url 'importer_publikacji:index' %}"
+                        hx-target="#importer-wizard">
+                    <span class="fi-arrow-left"></span>
+                    Wstecz
+                </button>
+                <button type="submit" class="button">
+                    <span class="fi-arrow-right"></span>
+                    Dalej
+                </button>
+            </div>
+            <div class="cell">
+                <a href="{% url 'importer_publikacji:index' %}"
+                   class="button hollow secondary small">
+                    <span class="fi-list"></span>
+                    Powrót do listy
+                </a>
+            </div>
+            <div class="cell">
+                <button type="button"
+                        class="button alert hollow small"
+                        hx-post="{% url 'importer_publikacji:cancel' session.pk %}"
+                        hx-target="#importer-wizard"
+                        hx-confirm="Czy na pewno chcesz anulować import? Sesja zostanie skasowana.">
+                    <span class="fi-x"></span>
+                    Anuluj import
+                </button>
+            </div>
+        </div>
+    </form>
+    <div id="verify-spinner" class="htmx-indicator">
+        <span class="fi-loop"></span> Przetwarzanie...
+    </div>
+</div>

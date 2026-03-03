@@ -45,14 +45,14 @@ window.Tone = Tone;
 
 // ===== 8. DJANGO LIBRARIES (from .venv) =====
 // Paths relative to site-packages
-import '../../../../../.venv/lib/python3.12/site-packages/cookielaw/static/cookielaw/js/cookielaw.js';
+import '../../../../../.venv/lib/python/site-packages/cookielaw/static/cookielaw/js/cookielaw.js';
 // NOTE: multiseek.js must be loaded separately (not bundled) because it uses
 // sloppy mode global function declarations that don't work in ES modules.
 // It's loaded in multiseek/index.html template.
-import '../../../../../.venv/lib/python3.12/site-packages/session_security/static/session_security/script.js';
-import '../../../../../.venv/lib/python3.12/site-packages/dal/static/autocomplete_light/autocomplete_light.js';
-import '../../../../../.venv/lib/python3.12/site-packages/dal/static/autocomplete_light/i18n/pl.js';
-import '../../../../../.venv/lib/python3.12/site-packages/dal_select2/static/autocomplete_light/select2.js';
+import '../../../../../.venv/lib/python/site-packages/session_security/static/session_security/script.js';
+import '../../../../../.venv/lib/python/site-packages/dal/static/autocomplete_light/autocomplete_light.js';
+import '../../../../../.venv/lib/python/site-packages/dal/static/autocomplete_light/i18n/pl.js';
+import '../../../../../.venv/lib/python/site-packages/dal_select2/static/autocomplete_light/select2.js';
 
 // ===== 9. DJANGO I18N (static file) =====
 import './jsi18n-pl.js';
