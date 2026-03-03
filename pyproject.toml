@@ -1,6 +1,6 @@
 [project]
 name = "bpp_iplweb"
-version = "202602.1350"
+version = "202602.1351"
 description = ""
 authors = [
     { name = "Michał Pasternak", email = "michal.dtz@gmail.com" }
