@@ -248,6 +248,54 @@ server {
     }
 
     # ============================================================================
+    # PORTAINER PROXY (port 9000)
+    # ============================================================================
+    # Docker container management dashboard
+    # Uses variables for hostname to defer DNS resolution to request time.
+    # Portainer uses --base-url /portainer to generate correct URLs,
+    # but serves content at / internally — proxy_pass strips the prefix.
+    location = /portainer {
+        return 301 /portainer/;
+    }
+    location /portainer/ {
+        resolver 127.0.0.11 valid=30s;
+        set $upstream_portainer portainer;
+
+        auth_request /_bpp_superuser_auth;
+
+        auth_request_set $bpp_user  $upstream_http_x_webauth_user;
+        auth_request_set $bpp_email $upstream_http_x_webauth_email;
+        auth_request_set $bpp_name  $upstream_http_x_webauth_name;
+
+        proxy_set_header X-WEBAUTH-USER  $bpp_user;
+        proxy_set_header X-WEBAUTH-EMAIL $bpp_email;
+        proxy_set_header X-WEBAUTH-NAME  $bpp_name;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Rewrite Origin/Referer to hostname-only format
+        # to work around Portainer CSRF not supporting ports
+        # (github.com/portainer/portainer/issues/12751)
+        proxy_set_header Origin https://$host;
+        proxy_set_header Referer https://$host;
+
+        # WebSocket support for Portainer real-time features
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+
+        # Strip /portainer/ prefix (required because proxy_pass
+        # with a variable does not do automatic URI rewriting)
+        rewrite ^/portainer/(.*) /$1 break;
+        proxy_pass http://$upstream_portainer:9000;
+
+        error_page 401 = @bpp_login;
+    }
+
+    # ============================================================================
     # FLOWER PROXY (port 5555)
     # ============================================================================
     # Celery task monitoring dashboard

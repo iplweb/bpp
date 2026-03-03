@@ -123,7 +123,9 @@
       "WebFetch(domain:ppm.edu.pl)",
       "mcp__plugin_playwright_playwright__browser_type",
       "mcp__plugin_playwright_playwright__browser_evaluate",
-      "mcp__plugin_playwright_playwright__browser_take_screenshot"
+      "mcp__plugin_playwright_playwright__browser_take_screenshot",
+      "Bash(docker compose:*)",
+      "WebFetch(domain:docs.portainer.io)"
     ],
     "deny": [],
     "ask": [],
