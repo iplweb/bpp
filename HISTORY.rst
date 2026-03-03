@@ -4,6 +4,23 @@ Historia zmian
 
 .. towncrier release notes start
 
+bpp 202603.1350 (2026-03-03)
+============================
+
+Naprawione
+----------
+
+- Przywrócono brakujący przycisk "Zmień hasło" na stronie zmiany hasła. (password-change-submit)
+- Naprawiono podwójne okienko potwierdzenia na stronie usuwania źródła (przemapuj źródła PBN). (usun-zrodlo-double-confirm)
+
+
+Usprawnienie
+------------
+
+- Przycisk "Tamże" w wydawnictwie zwartym kopiuje teraz również pola
+  "Wydawnictwo nadrzędne" oraz "Wydawnictwo nadrzędne w PBN". (tamze-wydawnictwo-nadrzedne)
+
+
 bpp 202602.1349 (2026-02-03)
 ============================
 
