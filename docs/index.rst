@@ -30,6 +30,7 @@ Instrukcja administratora
    :maxdepth: 2
 
    usage_admin
+   importer_publikacji
    zglos_publikacje
    konfiguracja_pbn
    import_pracownikow

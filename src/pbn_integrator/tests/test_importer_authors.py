@@ -49,6 +49,10 @@ def uczelnia_with_obca_jednostka(db):
         uczelnia.obca_jednostka = obca
         uczelnia.save()
 
+    # Clear cached_property so Uczelnia.objects.default
+    # re-queries the DB and finds the Uczelnia we just created
+    Uczelnia.objects.__dict__.pop("default", None)
+
     return uczelnia
 
 

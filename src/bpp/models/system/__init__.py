@@ -61,6 +61,7 @@ class Jezyk(NazwaISkrot):
     class SKROT_CROSSREF(models.TextChoices):
         en = "en", "en - angielski"
         es = "es", "es - hiszpański"
+        pl = "pl", "pl - polski"
 
     skrot_crossref = models.CharField(
         max_length=10,

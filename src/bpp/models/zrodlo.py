@@ -22,6 +22,25 @@ from bpp.models.system import Jezyk
 from bpp.util import FulltextSearchMixin
 
 
+def uzupelnij_punktacje_z_zrodla(rekord, zrodlo, rok):
+    """Uzupełnij pola punktacji rekordu na podstawie Punktacja_Zrodla.
+
+    Zwraca True jeśli punktacja została uzupełniona,
+    False jeśli brak danych.
+    """
+    from bpp.models.abstract import POLA_PUNKTACJI
+
+    try:
+        pz = Punktacja_Zrodla.objects.get(zrodlo=zrodlo, rok=rok)
+    except Punktacja_Zrodla.DoesNotExist:
+        return False
+
+    for pole in POLA_PUNKTACJI:
+        setattr(rekord, pole, getattr(pz, pole))
+    rekord.save()
+    return True
+
+
 class Rodzaj_Zrodla(ModelZNazwa):
     class Meta:
         verbose_name = "rodzaj źródła"
@@ -51,11 +70,11 @@ class Redakcja_Zrodla(models.Model):
         verbose_name_plural = "redaktorzy źródła"
 
     def __str__(self):
-        buf = "Redaktorem od %s " % self.od_roku
+        buf = f"Redaktorem od {self.od_roku} "
 
         if self.do_roku is not None:
             key = "czas_przeszly"
-            buf += "do %s " % self.do_roku
+            buf += f"do {self.do_roku} "
         else:
             key = "czas_terazniejszy"
 
@@ -76,15 +95,15 @@ class Punktacja_Zrodla(ModelPunktowanyBaza, ModelZKwartylami, models.Model):
     zrodlo = models.ForeignKey("Zrodlo", CASCADE)
     rok = YearField()
 
-    def __str__(self):
-        return f'Punktacja źródła "{self.zrodlo}" za rok {self.rok}'
-
     class Meta:
         verbose_name = "punktacja źródła"
         verbose_name_plural = "punktacja źródła"
         ordering = ["zrodlo__nazwa", "rok"]
         unique_together = [("zrodlo", "rok")]
         app_label = "bpp"
+
+    def __str__(self):
+        return f'Punktacja źródła "{self.zrodlo}" za rok {self.rok}'
 
 
 class Dyscyplina_Zrodla(models.Model):
@@ -115,10 +134,10 @@ class Zrodlo(LinkDoPBNMixin, ModelZAdnotacjami, ModelZISSN):
 
     rodzaj = models.ForeignKey(Rodzaj_Zrodla, CASCADE)
 
-    nazwa_alternatywna = models.CharField(
+    nazwa_alternatywna = models.CharField(  # noqa: DJ001
         max_length=1024, db_index=True, blank=True, null=True
     )
-    skrot_nazwy_alternatywnej = models.CharField(
+    skrot_nazwy_alternatywnej = models.CharField(  # noqa: DJ001
         max_length=512, blank=True, null=True, db_index=True
     )
 
@@ -126,12 +145,18 @@ class Zrodlo(LinkDoPBNMixin, ModelZAdnotacjami, ModelZISSN):
         Zasieg_Zrodla, SET_NULL, null=True, blank=True, default=None
     )
 
-    www = models.URLField("WWW", max_length=1024, blank=True, null=True, db_index=True)
+    www = models.URLField(  # noqa: DJ001
+        "WWW", max_length=1024, blank=True, null=True, db_index=True
+    )
 
     doi = DOIField("DOI", blank=True, null=True, db_index=True)
 
-    poprzednia_nazwa = models.CharField(
-        "Poprzedni tytuł", max_length=1024, db_index=True, blank=True, null=True
+    poprzednia_nazwa = models.CharField(  # noqa: DJ001
+        "Poprzedni tytuł",
+        max_length=1024,
+        db_index=True,
+        blank=True,
+        null=True,
     )
 
     openaccess_tryb_dostepu = models.CharField(
@@ -171,13 +196,13 @@ class Zrodlo(LinkDoPBNMixin, ModelZAdnotacjami, ModelZISSN):
         return reverse("bpp:browse_zrodlo", args=(self.slug,))
 
     def __str__(self):
-        ret = "%s" % self.nazwa
+        ret = f"{self.nazwa}"
 
         # if self.nazwa_alternatywna:
         #     ret += " (%s)" % self.nazwa_alternatywna
         #
         if self.poprzednia_nazwa:
-            ret += " (d. %s)" % (self.poprzednia_nazwa)
+            ret += f" (d. {self.poprzednia_nazwa})"
 
         return ret
 

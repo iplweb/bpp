@@ -1,0 +1,70 @@
+{% if error %}
+    <div class="callout alert">
+        <h4>
+            <span class="fi-alert"></span>
+            Błąd
+        </h4>
+        <p>{{ error }}</p>
+        {% if traceback %}
+            <pre style="font-size: 0.75rem; overflow-x: auto;
+                        white-space: pre-wrap;">{{ traceback }}</pre>
+        {% endif %}
+    </div>
+{% else %}
+    <div class="callout success">
+        <h4>
+            <span class="fi-check"></span>
+            Publikacja została utworzona
+        </h4>
+        <p>
+            Rekord
+            <strong>{{ record }}</strong>
+            został pomyślnie utworzony.
+        </p>
+    </div>
+
+    {% if record %}
+        <div class="grid-x grid-margin-x grid-margin-y">
+            <div class="cell medium-6 large-3">
+                <a href="/admin/bpp/{% if session.jest_wydawnictwem_zwartym %}wydawnictwo_zwarte{% else %}wydawnictwo_ciagle{% endif %}/{{ record.pk }}/change/"
+                   class="button expanded">
+                    <span class="fi-pencil"></span>
+                    Edytuj w module redagowania
+                </a>
+            </div>
+            <div class="cell medium-6 large-3">
+                <a href="{{ record.get_absolute_url }}"
+                   class="button expanded secondary">
+                    <span class="fi-eye"></span>
+                    Pokaż w BPP
+                </a>
+            </div>
+            {% if record.pbn_uid_id %}
+                <div class="cell medium-6 large-3">
+                    <a href="{{ record.link_do_pbn }}"
+                       class="button expanded"
+                       target="_blank">
+                        <span class="fi-link"></span>
+                        Pokaż w PBN
+                    </a>
+                </div>
+            {% endif %}
+            {% if record.doi %}
+                <div class="cell medium-6 large-3">
+                    <a href="https://dx.doi.org/{{ record.doi }}"
+                       class="button expanded"
+                       target="_blank">
+                        <span class="fi-link"></span>
+                        Otwórz DOI
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    {% endif %}
+
+    <a href="{% url 'importer_publikacji:index' %}"
+       class="button hollow secondary">
+        <span class="fi-arrow-left"></span>
+        Importuj kolejną publikację
+    </a>
+{% endif %}

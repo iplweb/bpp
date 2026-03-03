@@ -114,7 +114,9 @@ class Komparator:
 
         do_skopiowania = [
             "abstract",
+            "article-number",
             "issue",
+            "original-title",
             "page",
             "subject",
             "volume",
@@ -130,7 +132,6 @@ class Komparator:
             "issued",
             "journal-issue",
             "member",
-            "original-title",
             "published",
             "published-online",
             "reference",

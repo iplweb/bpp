@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block extratitle %}Importer publikacji{% endblock %}
+
+{% block breadcrumbs-html %}
+    <div id="breadcrumbs-wrapper"
+         class="grid-container-fluid hide-for-small-only">
+        <div class="grid-x align-middle">
+            <div class="cell auto">
+                <ul class="breadcrumbs"
+                    id="importer-breadcrumbs">
+                    <li>
+                        <a href="/">
+                            {{ uczelnia.skrot }}
+                        </a>
+                    </li>
+                    {% if session %}
+                        <li>
+                            <a href="{% url 'importer_publikacji:index' %}">
+                                Importer publikacji
+                            </a>
+                        </li>
+                        <li>
+                            {{ session.normalized_data.title|truncatechars:60 }}
+                        </li>
+                    {% else %}
+                        <li>Importer publikacji</li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extrahead %}
+    {{ block.super }}
+    <style>
+    @keyframes wizardFadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(8px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    #importer-wizard > .callout {
+        animation: wizardFadeIn 0.3s ease-out;
+    }
+    </style>
+    <script
+      src="https://unpkg.com/htmx.org@2.0.4"
+      crossorigin="anonymous"
+    ></script>
+    <script>
+    function showWizardError(msg) {
+        var wizard = document.getElementById(
+            'importer-wizard'
+        );
+        if (!wizard) return;
+        while (wizard.firstChild) {
+            wizard.removeChild(wizard.firstChild);
+        }
+        var box = document.createElement('div');
+        box.className = 'callout alert';
+        var strong = document.createElement('strong');
+        strong.textContent = msg;
+        box.appendChild(strong);
+        wizard.appendChild(box);
+    }
+    document.addEventListener('htmx:responseError',
+        function(e) {
+            showWizardError(
+                'Błąd serwera ('
+                + e.detail.xhr.status
+                + '). Sprawdź logi serwera.'
+            );
+        }
+    );
+    document.addEventListener('htmx:sendError',
+        function() {
+            showWizardError(
+                'Błąd połączenia z serwerem.'
+            );
+        }
+    );
+    document.addEventListener('htmx:afterSettle',
+        function(e) {
+            if (e.detail.target.id !== 'importer-wizard')
+                return;
+            var heading = e.detail.target
+                .querySelector('h4')
+                || e.detail.target;
+            setTimeout(function() {
+                window.bpp.scrollToVisible(heading);
+            }, 50);
+        }
+    );
+    </script>
+{% endblock %}
+
+{% block content %}
+
+    <div id="importer-wizard">
+        {% include step_template %}
+    </div>
+
+{% endblock %}

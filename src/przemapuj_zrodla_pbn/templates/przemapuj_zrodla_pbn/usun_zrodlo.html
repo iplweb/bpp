@@ -52,12 +52,11 @@
             </ul>
         </div>
 
-        <form method="post">
+        <form method="post" data-confirm="Czy NA PEWNO chcesz usunąć źródło '{{ zrodlo.nazwa }}'?\n\nTa operacja jest NIEODWRACALNA!">
             {% csrf_token %}
 
             <div class="button-group">
-                <button type="submit" class="button alert"
-                        data-confirm="Czy NA PEWNO chcesz usunąć źródło '{{ zrodlo.nazwa }}'?&#10;&#10;Ta operacja jest NIEODWRACALNA!">
+                <button type="submit" class="button alert">
                     <span class="fi-trash"></span> Tak, usuń źródło
                 </button>
                 <a href="{% url 'przemapuj_zrodla_pbn:lista_skasowanych_zrodel' %}" class="button secondary">

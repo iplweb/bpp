@@ -1,0 +1,83 @@
+from django.urls import path
+
+from . import views
+
+app_name = "importer_publikacji"
+
+urlpatterns = [
+    path(
+        "",
+        views.IndexView.as_view(),
+        name="index",
+    ),
+    path(
+        "sessions/",
+        views.SessionListView.as_view(),
+        name="sessions",
+    ),
+    path(
+        "fetch/",
+        views.FetchView.as_view(),
+        name="fetch",
+    ),
+    path(
+        "<int:session_id>/verify/",
+        views.VerifyView.as_view(),
+        name="verify",
+    ),
+    path(
+        "<int:session_id>/source/",
+        views.SourceView.as_view(),
+        name="source",
+    ),
+    path(
+        "<int:session_id>/authors/",
+        views.AuthorsView.as_view(),
+        name="authors",
+    ),
+    path(
+        "<int:session_id>/authors/<int:author_id>/match/",
+        views.AuthorMatchView.as_view(),
+        name="author-match",
+    ),
+    path(
+        "<int:session_id>/authors/create-unmatched/",
+        views.CreateUnmatchedAuthorsView.as_view(),
+        name="authors-create-unmatched",
+    ),
+    path(
+        "<int:session_id>/authors/<int:author_id>/set-orcid/",
+        views.AuthorSetOrcidView.as_view(),
+        name="author-set-orcid",
+    ),
+    path(
+        "<int:session_id>/authors/set-orcids/",
+        views.AuthorsSetOrcidsView.as_view(),
+        name="authors-set-orcids",
+    ),
+    path(
+        "<int:session_id>/authors/confirm/",
+        views.AuthorsConfirmView.as_view(),
+        name="authors-confirm",
+    ),
+    path(
+        "<int:session_id>/review/",
+        views.ReviewView.as_view(),
+        name="review",
+    ),
+    path(
+        "<int:session_id>/create/",
+        views.CreateView.as_view(),
+        name="create",
+    ),
+    path(
+        "<int:session_id>/done/",
+        views.DoneView.as_view(),
+        name="done",
+    ),
+    path(
+        "<int:session_id>/cancel/",
+        views.CancelView.as_view(),
+        name="cancel",
+    ),
+]

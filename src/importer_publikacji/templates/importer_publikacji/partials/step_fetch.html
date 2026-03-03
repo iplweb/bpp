@@ -1,0 +1,130 @@
+{% if cancelled %}
+    <div class="callout warning" data-closable>
+        Sesja importu została anulowana.
+        <button class="close-button" data-close
+                type="button" aria-label="Zamknij">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+{% endif %}
+
+<div class="callout">
+    <h4>
+        <span class="fi-magnifying-glass"></span>
+        Krok 1: Podaj dane publikacji
+    </h4>
+    <form hx-post="{% url 'importer_publikacji:fetch' %}"
+          hx-target="#importer-wizard"
+          hx-indicator="#fetch-spinner">
+        {% csrf_token %}
+
+        <label>{{ form.provider.label }}</label>
+        <div id="provider-radios">
+            {% for radio in form.provider %}
+                <div>{{ radio }}</div>
+            {% endfor %}
+        </div>
+        {% if form.provider.errors %}
+            {% for error in form.provider.errors %}
+                <p class="help-text"
+                   style="color: red;">{{ error }}</p>
+            {% endfor %}
+        {% endif %}
+
+        <div id="input-identifier" class="grid-x grid-margin-x">
+            <div class="cell medium-8">
+                {{ form.identifier.label_tag }}
+                {{ form.identifier }}
+                {% if form.identifier.errors %}
+                    {% for error in form.identifier.errors %}
+                        <p class="help-text"
+                           style="color: red;">{{ error }}</p>
+                    {% endfor %}
+                {% endif %}
+            </div>
+            <div class="cell medium-4">
+                <label>&nbsp;</label>
+                <button type="submit"
+                        class="button expanded">
+                    <span class="fi-magnifying-glass"></span>
+                    Pobierz dane
+                </button>
+            </div>
+        </div>
+
+        <div id="input-text" class="grid-x grid-margin-x"
+             style="display: none;">
+            <div class="cell medium-12">
+                {{ form.text_input.label_tag }}
+                {{ form.text_input }}
+                {% if form.text_input.errors %}
+                    {% for error in form.text_input.errors %}
+                        <p class="help-text"
+                           style="color: red;">{{ error }}</p>
+                    {% endfor %}
+                {% endif %}
+            </div>
+            <div class="cell medium-12">
+                <p class="help-text" id="input-help-text"></p>
+            </div>
+            <div class="cell medium-4">
+                <button type="submit"
+                        class="button expanded">
+                    <span class="fi-magnifying-glass"></span>
+                    Importuj
+                </button>
+            </div>
+        </div>
+    </form>
+    <div id="fetch-spinner" class="htmx-indicator">
+        <span class="fi-loop"></span> Przetwarzanie danych...
+    </div>
+</div>
+
+{% if providers_metadata_json %}
+<script>
+(function() {
+    var meta = {{ providers_metadata_json|safe }};
+    var radios = document.querySelectorAll(
+        'input[name="provider"]'
+    );
+    var idBlock = document.getElementById('input-identifier');
+    var textBlock = document.getElementById('input-text');
+    var helpText = document.getElementById('input-help-text');
+
+    function toggle() {
+        var checked = document.querySelector(
+            'input[name="provider"]:checked'
+        );
+        if (!checked) return;
+        var info = meta[checked.value];
+        if (!info) return;
+        if (info.input_mode === 'text') {
+            idBlock.style.display = 'none';
+            textBlock.style.display = '';
+            helpText.textContent =
+                info.input_help_text || '';
+        } else {
+            idBlock.style.display = '';
+            textBlock.style.display = 'none';
+            helpText.textContent = '';
+            var idLabel = idBlock.querySelector('label');
+            if (idLabel && info.identifier_label) {
+                idLabel.textContent =
+                    info.identifier_label;
+            }
+        }
+    }
+
+    radios.forEach(function(r) {
+        r.addEventListener('change', toggle);
+    });
+    toggle();
+})();
+</script>
+{% endif %}
+
+{% if sessions is not None %}
+    <hr>
+    {% include "importer_publikacji/partials/session_list.html" %}
+{% endif %}

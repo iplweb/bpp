@@ -279,6 +279,15 @@ The project uses multiple Django applications in `src/`:
 - Foundation's grid system classes should remain untouched to maintain framework integrity
 - Example: To make a column wider, change `<div class="medium-4 columns">` to `<div class="medium-12 columns">` in the HTML, don't override `.medium-4` in SCSS
 
+**IMPORTANT: Scroll offset for sticky navigation!**
+- The public frontend has TWO sticky elements at the top:
+  - `nav.sticky-header` — main navigation bar (variable height)
+  - `#breadcrumbs-wrapper` — breadcrumb bar below nav (also sticky)
+- Django admin has its own sticky header + breadcrumbs
+- When implementing scroll-to-element, ALWAYS use `window.bpp.scrollToVisible(element)` (defined in `src/bpp/static/bpp/js/bpp.js`) — it dynamically reads sticky elements' height via `element.offsetHeight`
+- `scrollIntoView({ block: 'start' })` alone is NOT sufficient — it scrolls under the sticky bars
+- Never hardcode pixel offsets for scroll calculations
+
 ## CSS/SCSS Build System
 
 ### Build Commands

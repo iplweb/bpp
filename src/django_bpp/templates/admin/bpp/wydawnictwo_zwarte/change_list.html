@@ -4,14 +4,9 @@
 {% block object-tools-items %}
     {{ block.super }}
     {% if has_add_permission %}
-        <li><a href="./pobierz-z-crossref/"
+        <li><a href="{% url 'importer_publikacji:index' %}?provider=CrossRef"
                class="grp-add-link">
             Dodaj z CrossRef API
         </a></li>
-        {# Temporarily hidden - CrossRef + PBN button #}
-        {# <li><a href="./pobierz-z-crossref-pbn/" #}
-        {#        class="grp-add-link" style="background-color: #9b59b6;"> #}
-        {#     Dodaj z CrossRef ORAZ PBN #}
-        {# </a></li> #}
     {% endif %}
 {% endblock %}

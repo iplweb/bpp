@@ -1,0 +1,113 @@
+<div class="callout">
+    <h4>
+        <span class="fi-book"></span>
+        Krok 3: Dopasowanie źródła
+    </h4>
+
+    {% if session.normalized_data.source_title %}
+        <div class="callout secondary">
+            <strong>Źródło w danych dostawcy:</strong>
+            {{ session.normalized_data.source_title }}
+            {% if session.normalized_data.source_abbreviation %}
+                ({{ session.normalized_data.source_abbreviation }})
+            {% endif %}
+        </div>
+    {% endif %}
+
+    {% if session.normalized_data.publisher %}
+        <div class="callout secondary">
+            <strong>Wydawca w danych dostawcy:</strong>
+            {{ session.normalized_data.publisher }}
+        </div>
+    {% endif %}
+
+    <form hx-post="{% url 'importer_publikacji:source' session.pk %}"
+          hx-target="#importer-wizard"
+          hx-indicator="#source-spinner">
+        {% csrf_token %}
+
+        {% if session.jest_wydawnictwem_zwartym %}
+            {# Wydawnictwo zwarte: wydawca wymagany #}
+            <div class="grid-x grid-margin-x">
+                <div class="cell medium-6">
+                    <label for="{{ form.wydawca.id_for_label }}">
+                        {{ form.wydawca.label }}
+                    </label>
+                    {{ form.wydawca }}
+                </div>
+                <div class="cell medium-6">
+                    <label
+                        for="{{ form.wydawca_opis.id_for_label }}">
+                        {{ form.wydawca_opis.label }}
+                    </label>
+                    {{ form.wydawca_opis }}
+                </div>
+            </div>
+            <p class="help-text">
+                Podaj wydawcę lub wpisz szczegóły wydawcy.
+            </p>
+        {% else %}
+            {# Wydawnictwo ciągłe: źródło wymagane #}
+            <div class="grid-x grid-margin-x">
+                <div class="cell medium-6">
+                    <label
+                        for="{{ form.zrodlo.id_for_label }}">
+                        {{ form.zrodlo.label }} *
+                    </label>
+                    {{ form.zrodlo }}
+                    {% if form.zrodlo.help_text %}
+                        <p class="help-text">
+                            {{ form.zrodlo.help_text }}
+                        </p>
+                    {% endif %}
+                </div>
+            </div>
+        {% endif %}
+
+        {% if form.errors %}
+            <div class="callout alert">
+                {% for field, errors in form.errors.items %}
+                    {% for error in errors %}
+                        <p>{{ error }}</p>
+                    {% endfor %}
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <div class="grid-x">
+            <div class="cell">
+                <button type="button"
+                        class="button secondary"
+                        hx-get="{% url 'importer_publikacji:verify' session.pk %}"
+                        hx-target="#importer-wizard">
+                    <span class="fi-arrow-left"></span>
+                    Wstecz
+                </button>
+                <button type="submit" class="button">
+                    <span class="fi-arrow-right"></span>
+                    Dalej
+                </button>
+            </div>
+            <div class="cell">
+                <a href="{% url 'importer_publikacji:index' %}"
+                   class="button hollow secondary small">
+                    <span class="fi-list"></span>
+                    Powrót do listy
+                </a>
+            </div>
+            <div class="cell">
+                <button type="button"
+                        class="button alert hollow small"
+                        hx-post="{% url 'importer_publikacji:cancel' session.pk %}"
+                        hx-target="#importer-wizard"
+                        hx-confirm="Czy na pewno chcesz anulować import? Sesja zostanie skasowana.">
+                    <span class="fi-x"></span>
+                    Anuluj import
+                </button>
+            </div>
+        </div>
+    </form>
+    <div id="source-spinner" class="htmx-indicator">
+        <span class="fi-loop"></span> Przetwarzanie...
+    </div>
+</div>
