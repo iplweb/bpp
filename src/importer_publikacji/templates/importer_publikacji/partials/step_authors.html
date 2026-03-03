@@ -163,7 +163,7 @@
 {# ===== Modal edycji autora (Foundation Reveal) ===== #}
 <div class="reveal" id="author-edit-modal" data-reveal
      data-close-on-click="false"
-     style="height:80vh;overflow-y:auto">
+     style="height:70vh;overflow-y:auto;top:15vh">
     <h5 id="modal-author-title"></h5>
     <form id="modal-author-form">
         {% csrf_token %}
@@ -217,7 +217,8 @@
 $(document).ready(function() {
     // ===== DataTables =====
     var table = $('#authors-table');
-    if (table.length && $.fn.DataTable) {
+    if (table.length && $.fn.DataTable
+        && !$.fn.DataTable.isDataTable(table)) {
         table.DataTable({
             paging: true,
             pageLength: 10,
@@ -348,6 +349,25 @@ $(document).ready(function() {
     }
 
     // ===== Modal edycji autora =====
+    // Foundation Reveal moves the modal into a
+    // .reveal-overlay appended to <body>. When HTMX
+    // replaces #importer-wizard, the old modal
+    // survives outside the swap — creating duplicate
+    // IDs on next load. Remove stale overlay+modal.
+    // Do NOT call _destroy() — it moves the modal
+    // back to <body> as an orphan before removing
+    // the overlay, leaving a stale element behind.
+    $('body > .reveal-overlay').each(function() {
+        if ($(this).find('#author-edit-modal').length) {
+            $(this).remove();
+        }
+    });
+    // Safety net: remove any orphaned modal at body
+    // level (e.g. if _destroy was called elsewhere)
+    $('body > #author-edit-modal').remove();
+    // Clean up global state left by old Reveal
+    $('body').removeClass('is-reveal-open');
+
     var $modal = $('#author-edit-modal');
 
     // Inicjalizuj Foundation Reveal na nowym elemencie
@@ -506,8 +526,12 @@ $(document).ready(function() {
     }
 
     // Stop ORCID button clicks from opening modal
+    $(document).off(
+        'click.authorModal',
+        '.author-row-clickable form'
+    );
     $(document).on(
-        'click',
+        'click.authorModal',
         '.author-row-clickable form',
         function(e) { e.stopPropagation(); }
     );
@@ -608,8 +632,12 @@ $(document).ready(function() {
     }
 
     // Click on row
+    $(document).off(
+        'click.authorModal',
+        '.author-row-clickable'
+    );
     $(document).on(
-        'click',
+        'click.authorModal',
         '.author-row-clickable',
         function() {
             openAuthorModal($(this));
@@ -618,10 +646,13 @@ $(document).ready(function() {
 
     // Click on Edytuj button (stop propagation
     // to avoid double-open from row click)
+    $(document).off(
+        'click.authorModal',
+        '.author-row-clickable .btn-edit-author'
+    );
     $(document).on(
-        'click',
-        '.author-row-clickable '
-        + '[data-open="author-edit-modal"]',
+        'click.authorModal',
+        '.author-row-clickable .btn-edit-author',
         function(e) {
             e.stopPropagation();
             openAuthorModal(

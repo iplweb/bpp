@@ -1,7 +1,6 @@
 <tr id="author-row-{{ author.pk }}"
     class="author-row-clickable"
     style="cursor:pointer"
-    data-open="author-edit-modal"
     data-author-id="{{ author.pk }}"
     data-author-name="{{ author.display_name }}"
     data-match-url="{% url 'importer_publikacji:author-match' session.pk author.pk %}"
@@ -59,8 +58,7 @@
     </td>
     <td>
         <button type="button"
-                class="button small secondary"
-                data-open="author-edit-modal">
+                class="button small secondary btn-edit-author">
             <span class="fi-pencil"></span>
             Edytuj
         </button>

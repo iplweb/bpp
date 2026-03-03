@@ -1,0 +1,157 @@
+interactions:
+- request:
+    body: null
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate, br
+      Connection:
+      - keep-alive
+      user-agent:
+      - 'undefined/undefined (undefined; mailto:anonymous) BasedOn: CrossrefAPI/1.7.0'
+    method: GET
+    uri: https://api.crossref.org/works/10.1182/blood-2025-848
+  response:
+    body:
+      string: '{"status":"ok","message-type":"work","message-version":"1.0.0","message":{"indexed":{"date-parts":[[2025,12,5]],"date-time":"2025-12-05T10:27:47Z","timestamp":1764930467230,"version":"3.46.0"},"reference-count":0,"publisher":"American
+        Society of Hematology","issue":"Supplement 1","content-domain":{"domain":["ashpublications.org"],"crossmark-restriction":true},"short-container-title":[],"published-print":{"date-parts":[[2025,11,3]]},"abstract":"<jats:title>Abstract<\/jats:title>\n                  <jats:sec>\n                    <jats:title\/>\n                    <jats:p>Introduction<\/jats:p>\n                    <jats:p>Data
+        from the final analysis of a phase 3 study (NCT03393975) that investigated
+        the efficacy and safety of recombinant ADAMTS13 (rADAMTS13; Takeda Pharmaceuticals
+        U.S.A., Inc.) and plasma-based therapy (PBT) prophylaxis in patients with
+        congenital thrombotic thrombocytopenic purpura (cTTP) are presented. Treatment
+        satisfaction was also investigated in the study.<\/jats:p>\n                    <jats:p>Methods<\/jats:p>\n                    <jats:p>In
+        this prospective, randomized, controlled, open-label phase 3 study, patients
+        0\u201370 years old with confirmed cTTP were randomized 1:1 to receive either
+        40 IU\/kg rADAMTS13 or PBT prophylaxis every 1\u20132 weeks as dictated by
+        the participant''s usual PBT prophylaxis schedule. Choice of PBT product and
+        dosing schedule were determined by the investigator, with the same dosing
+        frequency as rADAMTS13. Participants received treatment for 6 months (Period
+        1) and then crossed over to the alternate treatment for an additional 6 months
+        (Period 2); all participants then received rADAMTS13 prophylaxis for 6 months
+        (Period 3). All participants provided written informed consent. The primary
+        endpoint was the incidence of acute TTP events. Secondary endpoints included
+        the incidence of TTP manifestations, safety, and immunogenicity. The incidence
+        of subacute TTP events was an exploratory endpoint. For adult participants,
+        treatment satisfaction was assessed using the Treatment Satisfaction Questionnaire
+        for Medication (TSQM-9) which incorporates three domains (treatment effectiveness,
+        convenience, and global satisfaction) scored using a 0\u2013100 scale, with
+        higher scores indicating higher treatment satisfaction.<\/jats:p>\n                    <jats:p>Results<\/jats:p>\n                    <jats:p>In
+        total, 48 participants were enrolled in the prophylactic cohort: median (range)
+        age 32.5 (3\u201368) years; 58.3% (28\/48) were female. For Periods 1 and
+        2, the mean \u00b1SD observation period was 0.55 \u00b10.04 years for rADAMTS13
+        (n=45) and 0.53 \u00b10.08 years for PBT (n=46), and 0.57 \u00b10.18 years
+        for Period 3 (n=45). No participants experienced an acute TTP event while
+        receiving rADAMTS13 prophylaxis. One participant experienced an acute TTP
+        event due to a viral infection while receiving PBT; the mean \u00b1SD annualized
+        event rate (AER) was 0.04 \u00b10.25.<\/jats:p>\n                    <jats:p>The
+        mean \u00b1SD AER of thrombocytopenia was 2.09 \u00b14.56 for rADAMTS13 prophylaxis
+        and 4.02 \u00b16.05 for PBT in Periods 1 and 2, and 0.98 \u00b12.63 in Period
+        3. For elevated LDH, the mean \u00b1SD AER was 0.99 \u00b13.70 for rADAMTS13
+        and 1.60 \u00b14.34 for PBT (Periods 1 and 2), and 0.85 \u00b12.67 for Period
+        3. The mean \u00b1SD AER of neurological symptoms was 0.72 \u00b12.91 for
+        rADAMTS13 and 1.11 \u00b13.94 for PBT in Periods 1 and 2, and 0.87 \u00b12.32
+        in Period 3. During rADAMTS13 prophylaxis (Periods 1 and 2), 1 participant
+        experienced a subacute TTP event (mean \u00b1SD AER, 0.04 \u00b10.28), and
+        3 participants each experienced a subacute TTP event during Period 3 (AER
+        0.10 \u00b10.41). During PBT, 7 subacute TTP events occurred in 6 participants
+        (AER 0.30 \u00b10.81).<\/jats:p>\n                    <jats:p>During Periods
+        1 and 2, 83.0% (39\/47) of participants experienced 273 adverse events (AEs)
+        while receiving rADAMTS13 prophylaxis, and 91.7% (44\/48) experienced 300
+        AEs while receiving PBT. During rADAMTS13 prophylaxis in Period 3, 76.1% (35\/46)
+        of participants experienced 237 AEs. During Periods 1 and 2, 1 serious AE
+        (SAE) occurred in 1 participant receiving rADAMTS13 and 7 SAEs occurred in
+        7 participants receiving PBT. In Period 3, 6 SAEs occurred in 5 participants.
+        During rADAMTS13 prophylaxis (Periods 1, 2, and 3), no SAEs were treatment
+        related, and no AEs led to treatment interruption\/discontinuation. During
+        PBT, 1 SAE (pyrexia) was considered treatment related, 18 AEs in 13 participants
+        led to treatment interruption and 1 AE (rash) led to treatment discontinuation.
+        No AEs led to study discontinuation or death. No neutralizing antibodies were
+        detected. Regardless of treatment sequence, participants receiving rADAMTS13
+        reported large increases in all TSQM-9 domain scores relative to baseline
+        (range of mean change: 21.4\u201336.1) at each end of period visit compared
+        with PBT (1.5\u201314.8).<\/jats:p>\n                    <jats:p>Conclusions<\/jats:p>\n                    <jats:p>Consistent
+        with the preplanned interim analysis, no acute TTP events occurred during
+        rADAMTS13 prophylaxis and lower AERs of TTP manifestations and subacute TTP
+        events were observed versus PBT in patients (adult and pediatric) with cTTP.
+        No new safety concerns were identified and, despite a small sample size owing
+        to the rarity of cTTP, participants reported greater treatment satisfaction
+        during rADAMTS13 prophylaxis compared with PBT. These findings support the
+        clinical benefit of rADAMTS13 prophylaxis in patients with cTTP.<\/jats:p>\n                  <\/jats:sec>","DOI":"10.1182\/blood-2025-848","type":"journal-article","created":{"date-parts":[[2025,12,5]],"date-time":"2025-12-05T00:58:00Z","timestamp":1764896280000},"page":"848-848","update-policy":"https:\/\/doi.org\/10.1182\/blood.2019cm0000","source":"Crossref","is-referenced-by-count":0,"title":["Recombinant
+        ADAMTS13 prophylaxis in patients with congenital thrombotic thrombocytopenic
+        purpura: Final analysis from A phase 3 randomized, controlled study"],"prefix":"10.1182","volume":"146","author":[{"given":"Marie","family":"Scully","sequence":"first","affiliation":[{"name":"1University
+        College London Hospital, Haematology Theme-NIHR UCLH\/UCL BRC, Department
+        of Haematology, London, United Kingdom"}]},{"given":"Paul","family":"Coppo","sequence":"additional","affiliation":[{"name":"2H\u00f4pital
+        Saint-Antoine, Assistance Publique-H\u00f4pitaux de Paris and Sorbonne \u2013
+        Universit\u00e9 (AP-HP.6), Department of Hematology and National Reference
+        Center for Thrombotic Microangiopathies, Paris, France"}]},{"given":"Masanori","family":"Matsumoto","sequence":"additional","affiliation":[{"name":"3Nara
+        Medical University, Kashihara, Department of Blood Transfusion Medicine, Nara,
+        Japan"}]},{"given":"Spero","family":"Cataland","sequence":"additional","affiliation":[{"name":"4Ohio
+        State University, Division of Hematology, Department of Internal Medicine,
+        Columbus, United States"}]},{"given":"Thomas","family":"Ortel","sequence":"additional","affiliation":[{"name":"5Duke
+        University, Division of Hematology, Department of Medicine, and Department
+        of Pathology, Durham, United States"}]},{"given":"Jerzy","family":"Windyga","sequence":"additional","affiliation":[{"name":"6Institute
+        of Hematology and Transfusion Medicine, Department of Hemostasis Disorders
+        and Internal Medicine, Laboratory of Hemostasis and Metabolic Diseases, Warsaw,
+        Poland"}]},{"given":"Paul","family":"Knoebl","sequence":"additional","affiliation":[{"name":"7Medical
+        University of Vienna, Division of Hematology and Hemostasis, Vienna, Austria"}]},{"given":"Karim","family":"Kentouche","sequence":"additional","affiliation":[{"name":"8Universit\u00e4tsklinikum
+        Jena, Section of Hematology and Oncology, Department of Pediatrics and Adolescent
+        Medicine, Jena, Germany"}]},{"given":"Ana","family":"Antun","sequence":"additional","affiliation":[{"name":"9Emory
+        University School of Medicine, Department of Hematology and Medical Oncology,
+        Atlanta, United States"}]},{"given":"Claire","family":"Dossier","sequence":"additional","affiliation":[{"name":"10Robert-Debr\u00e9
+        Hospital, Assistance Publique \u2013 H\u00f4pitaux de Paris (AP-HP) and University
+        of Paris, Department of Pediatric Nephrology, Paris, France"}]},{"given":"Nathalie","family":"Biebuyck","sequence":"additional","affiliation":[{"name":"11H\u00f4pital
+        Universitaire Necker-Enfants Malades, Assistance-Publique H\u00f4pitaux de
+        Paris, Department of Pediatric Nephrology, Paris, France"}]},{"given":"Wolf-Achim","family":"Hassenpflug","sequence":"additional","affiliation":[{"name":"12University
+        Medical Centre Hamburg-Eppendorf, Department of Pediatric Hematology and Oncology,
+        Hamburg, Germany"}]},{"given":"Sami","family":"Ibrahimi","sequence":"additional","affiliation":[{"name":"13University
+        of Oklahoma Health Sciences Center - Stephenson Cancer Center, Department
+        of Medicine, Section of Hematology and Medical Oncology, Oklahoma City, United
+        States"}]},{"given":"Masataka","family":"Ishimura","sequence":"additional","affiliation":[{"name":"14Kyushu
+        University, Department of Pediatrics, Graduate School of Medical Sciences,
+        Fukuoka, Japan"}]},{"given":"Indranil","family":"Bhattacharya","sequence":"additional","affiliation":[{"name":"15Takeda
+        Development Center Americas, Inc., Cambridge, United States"}]},{"given":"Shan","family":"Xiao","sequence":"additional","affiliation":[{"name":"15Takeda
+        Development Center Americas, Inc., Cambridge, United States"}]},{"given":"Kayode","family":"Badejo","sequence":"additional","affiliation":[{"name":"15Takeda
+        Development Center Americas, Inc., Cambridge, United States"}]},{"given":"Bjorn","family":"Mellgard","sequence":"additional","affiliation":[{"name":"15Takeda
+        Development Center Americas, Inc., Cambridge, United States"}]},{"given":"Dorothy","family":"Romanus","sequence":"additional","affiliation":[{"name":"15Takeda
+        Development Center Americas, Inc., Cambridge, United States"}]},{"given":"Linda","family":"Wang","sequence":"additional","affiliation":[{"name":"15Takeda
+        Development Center Americas, Inc., Cambridge, United States"}]},{"given":"Pinghai","family":"Zhang","sequence":"additional","affiliation":[{"name":"15Takeda
+        Development Center Americas, Inc., Cambridge, United States"}]},{"given":"Tara","family":"Robinson","sequence":"additional","affiliation":[{"name":"15Takeda
+        Development Center Americas, Inc., Cambridge, United States"}]}],"member":"234","container-title":["Blood"],"original-title":[],"language":"en","link":[{"URL":"https:\/\/ashpublications.org\/blood\/article-pdf\/146\/Supplement%201\/848\/2459960\/blood-3423-main.pdf","content-type":"application\/pdf","content-version":"vor","intended-application":"syndication"},{"URL":"https:\/\/ashpublications.org\/blood\/article-pdf\/146\/Supplement%201\/848\/2459960\/blood-3423-main.pdf","content-type":"unspecified","content-version":"vor","intended-application":"similarity-checking"}],"deposited":{"date-parts":[[2025,12,5]],"date-time":"2025-12-05T10:23:25Z","timestamp":1764930205000},"score":1,"resource":{"primary":{"URL":"https:\/\/ashpublications.org\/blood\/article\/146\/Supplement%201\/848\/553800\/Recombinant-ADAMTS13-prophylaxis-in-patients-with"}},"subtitle":[],"short-title":[],"issued":{"date-parts":[[2025,11,3]]},"references-count":0,"journal-issue":{"issue":"Supplement
+        1","published-print":{"date-parts":[[2025,11,3]]}},"URL":"https:\/\/doi.org\/10.1182\/blood-2025-848","relation":{},"ISSN":["0006-4971","1528-0020"],"issn-type":[{"type":"print","value":"0006-4971"},{"type":"electronic","value":"1528-0020"}],"subject":[],"published-other":{"date-parts":[[2025,11,3]]},"published":{"date-parts":[[2025,11,3]]}}}'
+    headers:
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '3775'
+      Content-Type:
+      - application/json
+      Date:
+      - Tue, 03 Mar 2026 13:28:37 GMT
+      access-control-allow-headers:
+      - X-Requested-With, Accept, Accept-Encoding, Accept-Charset, Accept-Language,
+        Accept-Ranges, Cache-Control
+      access-control-allow-origin:
+      - '*'
+      access-control-expose-headers:
+      - Link
+      content-encoding:
+      - gzip
+      permissions-policy:
+      - interest-cohort=()
+      server:
+      - Jetty(9.4.40.v20210413)
+      vary:
+      - Accept-Encoding
+      x-api-pool:
+      - public
+      x-concurrency-limit:
+      - '1'
+      x-rate-limit-interval:
+      - 1s
+      x-rate-limit-limit:
+      - '5'
+    status:
+      code: 200
+      message: OK
+version: 1

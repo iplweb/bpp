@@ -1257,19 +1257,20 @@ def _create_streszczenia(session, record):
 @transaction.atomic
 def _create_publication(session):
     """Utwórz rekord publikacji na podstawie sesji."""
-    nd = session.normalized_data
+    normalized_data = session.normalized_data
 
     common_fields = {
-        "tytul_oryginalny": nd.get("title") or "",
-        "rok": nd.get("year"),
-        "doi": nd.get("doi"),  # DOI accepts null
-        "tom": nd.get("volume") or "",
-        "nr_zeszytu": nd.get("issue") or "",
-        "strony": nd.get("pages") or "",
-        "www": nd.get("url") or "",
-        "issn": nd.get("issn") or "",
-        "e_issn": nd.get("e_issn") or "",
-        "slowa_kluczowe": ", ".join(f'"{kw}"' for kw in nd.get("keywords", [])),
+        "tytul_oryginalny": normalized_data.get("title") or "",
+        "rok": normalized_data.get("year"),
+        "doi": normalized_data.get("doi"),  # DOI accepts null
+        "tom": normalized_data.get("volume") or "",
+        "strony": normalized_data.get("pages") or "",
+        "www": normalized_data.get("url") or "",
+        "issn": normalized_data.get("issn") or "",
+        "e_issn": normalized_data.get("e_issn") or "",
+        "slowa_kluczowe": ", ".join(
+            f'"{kw}"' for kw in normalized_data.get("keywords", [])
+        ),
         "adnotacje": (f"Dodano przez importer publikacji ({session.provider_name})"),
         "charakter_formalny": session.charakter_formalny,
         "jezyk": session.jezyk,
@@ -1278,46 +1279,53 @@ def _create_publication(session):
     }
 
     # original-title z CrossRef → tytul (drugi tytuł)
-    original_title = nd.get("original_title")
+    original_title = normalized_data.get("original_title")
     if original_title:
         common_fields["tytul"] = original_title
 
     # article-number z CrossRef → szczegoly
-    article_number = nd.get("article_number")
+    article_number = normalized_data.get("article_number")
     if article_number:
         common_fields["szczegoly"] = article_number
 
     if session.jest_wydawnictwem_zwartym:
-        record = _create_wydawnictwo_zwarte(session, common_fields, nd)
+        record = _create_wydawnictwo_zwarte(session, common_fields, normalized_data)
     else:
-        record = _create_wydawnictwo_ciagle(session, common_fields)
+        record = _create_wydawnictwo_ciagle(session, common_fields, normalized_data)
 
     _add_authors_to_record(session, record)
     _create_streszczenia(session, record)
 
-    if session.zrodlo and nd.get("year"):
+    if session.zrodlo and normalized_data.get("year"):
         from bpp.models.zrodlo import uzupelnij_punktacje_z_zrodla
 
-        uzupelnij_punktacje_z_zrodla(record, session.zrodlo, nd["year"])
+        uzupelnij_punktacje_z_zrodla(record, session.zrodlo, normalized_data["year"])
 
     return record
 
 
-def _create_wydawnictwo_ciagle(session, common_fields):
+def _create_wydawnictwo_ciagle(session, common_fields, normalized_data):
     """Utwórz Wydawnictwo_Ciagle."""
     common_fields["zrodlo"] = session.zrodlo
+    common_fields["nr_zeszytu"] = normalized_data.get("issue") or ""
     return Wydawnictwo_Ciagle.objects.create(**common_fields)
 
 
-def _create_wydawnictwo_zwarte(session, common_fields, nd):
+def _create_wydawnictwo_zwarte(session, common_fields, normalized_data):
     """Utwórz Wydawnictwo_Zwarte."""
     common_fields["wydawca"] = session.wydawca
     common_fields["wydawca_opis"] = session.matched_data.get("wydawca_opis", "")
-    common_fields["isbn"] = nd.get("isbn") or ""
-    common_fields["e_isbn"] = nd.get("e_isbn") or ""
+    common_fields["isbn"] = normalized_data.get("isbn") or ""
+    common_fields["e_isbn"] = normalized_data.get("e_isbn") or ""
+
+    issue = normalized_data.get("issue")
+    if issue:
+        existing = common_fields.get("szczegoly", "")
+        prefix = f"{existing}, " if existing else ""
+        common_fields["szczegoly"] = f"{prefix}nr zeszytu: {issue}"
 
     publisher_loc = session.raw_data.get("publisher-location", "")
-    year = nd.get("year", "")
+    year = normalized_data.get("year", "")
     if publisher_loc:
         common_fields["miejsce_i_rok"] = f"{publisher_loc} {year}"
 
