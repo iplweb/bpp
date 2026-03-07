@@ -219,9 +219,22 @@ Playwright tests:
 uv run pytest -m "not playwright" --maxfail 50
 ```
 
+**Known sandbox-specific test failures** (not real bugs):
+- Tests using VCR cassettes for external APIs (CrossRef,
+  DOI) fail because the egress proxy changes the host/port
+  in requests. These tests pass on a normal machine.
+- Affected test files:
+  - `src/bpp/tests/test_admin/test_crossref_api_helpers.py`
+  - `src/bpp/tests/test_admin/test_crossref_api_sync.py`
+  - `src/importer_publikacji/tests/test_views.py`
+  - `src/pbn_import/tests/test_admin_compression.py`
+
 **Note:** Docker builds (`make build`, `docker compose up`)
 do not work in the sandbox because Docker image layer CDN
 (`*.r2.cloudflarestorage.com`) is not in the proxy allowlist.
+
+**Full test run (without Playwright) takes ~55 minutes** in
+the sandbox environment on a single worker.
 
 ## Key Commands
 
