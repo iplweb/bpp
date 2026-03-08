@@ -2,7 +2,7 @@ name: Coveralls - Finish Parallel Build
 
 on:
   workflow_run:
-    workflows: ["Testy - Django, Playwright", "Testy - Selenium"]
+    workflows: ["Testy - Django, Playwright"]
     types:
       - completed
 

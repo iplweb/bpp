@@ -123,8 +123,8 @@ bin/ustaw-domyslne-haslo-admina.sh
 - `uv run pytest --ds=django_bpp.settings.local` - Run tests with specific Django settings (rarely needed)
 
 **Alternative make commands (these internally use `uv run pytest`):**
-- `make tests-without-selenium` - Run tests excluding Selenium tests with parallelization (fast)
-- `make tests-with-selenium` - Run only Selenium tests with parallelization (slow)
+- `make tests-without-playwright` - Run tests excluding Playwright tests with parallelization (fast)
+- `make tests-only-playwright` - Run only Playwright tests with parallelization (slow)
 - `make tests` - Run full test suite
 - `make full-tests` - Run complete test suite
 
@@ -389,7 +389,7 @@ class MyModelAdmin(ConstanceScoringFieldsMixin, admin.ModelAdmin):
 
 ### Development Notes
 - Uses UV for Python dependency management (pyproject.toml and uv.lock)
-- Extensive test suite with pytest and Selenium integration
+- Extensive test suite with pytest and Playwright integration
 - Pre-commit hooks for code quality
 - Celery for background task processing
 - Django Channels for WebSocket support

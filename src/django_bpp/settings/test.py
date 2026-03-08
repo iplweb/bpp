@@ -11,9 +11,6 @@ DEBUG_TOOLBAR = False
 
 SENDFILE_BACKEND = "django_sendfile.backends.simple"
 
-SELENIUM_DRIVER = "Firefox"
-
-
 SESSION_COOKIE_SECURE = False
 CSRF_COOKIE_SECURE = False
 MEDIA_ROOT = os.path.abspath(

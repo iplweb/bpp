@@ -22,7 +22,7 @@ def autor_m():
 @pytest.mark.vcr(
     match_on=("method", "scheme", "path", "query")
 )
-def test_crossref_api_autor_wo_selenium(admin_app, autor_m):
+def test_crossref_api_autor(admin_app, autor_m):
     url = "/admin/bpp/wydawnictwo_ciagle/pobierz-z-crossref/"
     page = admin_app.get(url)
     page.forms["crossref_form"]["identyfikator_doi"] = "10.12775/jehs.2022.12.07.045"

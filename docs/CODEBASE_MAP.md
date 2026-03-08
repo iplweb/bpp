@@ -360,7 +360,7 @@ sequenceDiagram
 ### Testing
 - **Framework**: pytest with Django plugin
 - **Data Generation**: model_bakery (`baker.make()`)
-- **Selenium**: Firefox driver for browser tests
+- **Playwright**: Browser tests
 - **Convention**: Standalone functions, no unittest.TestCase
 
 ---
