@@ -4,7 +4,7 @@ from django.urls import reverse
 from bpp import const
 
 
-@pytest.mark.vcr
+@pytest.mark.vcr(match_on=("method", "scheme", "path", "query"))
 @pytest.mark.parametrize(
     "identyfikator_doi,nazwa_pola,wartosc",
     [

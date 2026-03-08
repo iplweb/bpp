@@ -17,7 +17,7 @@ def autor_m():
     )
 
 
-@pytest.mark.vcr
+@pytest.mark.vcr(match_on=("method", "scheme", "path", "query"))
 def test_crossref_api_autor_wo_selenium(admin_app, autor_m):
     url = "/admin/bpp/wydawnictwo_ciagle/pobierz-z-crossref/"
     page = admin_app.get(url)
@@ -38,7 +38,10 @@ def wydawnictwo_ciagle_jehs_2022():
 
 
 @pytest.mark.django_db
-@pytest.mark.vcr(ignore_localhost=True)
+@pytest.mark.vcr(
+    match_on=("method", "scheme", "path", "query"),
+    ignore_localhost=True,
+)
 def test_crossref_api_strony_view(
     wydawnictwo_ciagle_jehs_2022,
     csrf_exempt_django_admin_app,
