@@ -64,6 +64,11 @@ EOF
 python src/manage.py shell -c "from bpp.models import Autor"
 ```
 
+## Claude Code Web Environment Setup
+
+For cloud sandbox setup instructions, see
+[CLAUDE_CLOUD.md](CLAUDE_CLOUD.md).
+
 ## Key Commands
 
 ### Development Commands

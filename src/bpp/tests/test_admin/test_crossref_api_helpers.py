@@ -4,7 +4,12 @@ from django.urls import reverse
 from bpp import const
 
 
-@pytest.mark.vcr
+# Pomijamy matchowanie host/port, bo za egress proxy (np.
+# w środowisku Claude Code) VCR widzi adres proxy zamiast
+# docelowego api.crossref.org i nie dopasowuje kasety.
+@pytest.mark.vcr(
+    match_on=("method", "scheme", "path", "query")
+)
 @pytest.mark.parametrize(
     "identyfikator_doi,nazwa_pola,wartosc",
     [
