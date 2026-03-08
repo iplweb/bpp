@@ -28,8 +28,6 @@ DEBUG = True
 
 SENDFILE_BACKEND = "django_sendfile.backends.simple"
 
-SELENIUM_DRIVER = "Firefox"
-
 SESSION_COOKIE_SECURE = False
 CSRF_COOKIE_SECURE = False
 
