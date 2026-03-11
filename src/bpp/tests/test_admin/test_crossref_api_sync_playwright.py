@@ -18,7 +18,10 @@ def autor_m():
     )
 
 
-@pytest.mark.vcr(ignore_localhost=True)
+@pytest.mark.vcr(
+    match_on=("method", "scheme", "path", "query"),
+    ignore_localhost=True,
+)
 def test_crossref_api_autor_sync(
     admin_page: Page, live_server, transactional_db, autor_m
 ):
@@ -81,7 +84,10 @@ def admin_page_strona_porownania(admin_page: Page, live_server):
     return admin_page
 
 
-@pytest.mark.vcr(ignore_localhost=True)
+@pytest.mark.vcr(
+    match_on=("method", "scheme", "path", "query"),
+    ignore_localhost=True,
+)
 @pytest.mark.parametrize(
     "id_przycisku, atrybut, wynik",
     [
@@ -119,7 +125,10 @@ def test_crossref_api_strony_sync_browser(
     )
 
 
-@pytest.mark.vcr(ignore_localhost=True)
+@pytest.mark.vcr(
+    match_on=("method", "scheme", "path", "query"),
+    ignore_localhost=True,
+)
 def test_crossref_api_streszczenie_sync_browser(
     transactional_db,
     wydawnictwo_ciagle_jehs_2022,

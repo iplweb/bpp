@@ -6,7 +6,9 @@ from crossref_bpp.views import _czy_typ_jest_wydawnictwem_zwartym, pobierz_z_cro
 from pbn_api.tests.utils import middleware
 
 
-@pytest.mark.vcr
+@pytest.mark.vcr(
+    match_on=("method", "scheme", "path", "query")
+)
 @pytest.mark.django_db
 def test_pobierz_z_crossref_nie_ma_rekordu(rf, admin_user, jezyki):
     req = rf.post("/", {"identyfikator_doi": "10.1080/1042819021000006394"})
@@ -17,7 +19,9 @@ def test_pobierz_z_crossref_nie_ma_rekordu(rf, admin_user, jezyki):
         assert "brak takiego DOI w bazie" in ret.rendered_content
 
 
-@pytest.mark.vcr
+@pytest.mark.vcr(
+    match_on=("method", "scheme", "path", "query")
+)
 @pytest.mark.django_db
 def test_pobierz_z_crossref_form_errors(rf, admin_user):
     req = rf.post("/", {"identyfikator_doi": "aisjdfoasjdofaijsd"})
