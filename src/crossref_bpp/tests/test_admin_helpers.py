@@ -4,7 +4,9 @@ from crossref_bpp.admin.helpers import convert_crossref_to_changeform_initial_da
 from crossref_bpp.models import CrossrefAPICache
 
 
-@pytest.mark.vcr
+@pytest.mark.vcr(
+    match_on=("method", "scheme", "path", "query")
+)
 @pytest.mark.django_db
 def test_convert_crossref_to_changeform_initial_data_only_e_issn():
     z = CrossrefAPICache.objects.get_by_doi("10.3390/ijms24043114")
@@ -13,7 +15,9 @@ def test_convert_crossref_to_changeform_initial_data_only_e_issn():
     assert ret["issn"] is None
 
 
-@pytest.mark.vcr
+@pytest.mark.vcr(
+    match_on=("method", "scheme", "path", "query")
+)
 @pytest.mark.django_db
 def test_convert_crossref_to_changeform_initial_data_both_issns():
     z = CrossrefAPICache.objects.get_by_doi("10.3390/ijms24043114")
@@ -23,7 +27,9 @@ def test_convert_crossref_to_changeform_initial_data_both_issns():
     assert ret["issn"] == "1234-5678"
 
 
-@pytest.mark.vcr
+@pytest.mark.vcr(
+    match_on=("method", "scheme", "path", "query")
+)
 @pytest.mark.django_db
 def test_convert_crossref_to_changeform_initial_data_non_electronic_issn():
     z = CrossrefAPICache.objects.get_by_doi("10.3390/ijms24043114")

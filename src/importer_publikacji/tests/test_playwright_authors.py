@@ -42,7 +42,10 @@ def zrodlo_blood(db):
     return baker.make(Zrodlo, nazwa="Blood", issn="0006-4971")
 
 
-@pytest.mark.vcr(ignore_localhost=True)
+@pytest.mark.vcr(
+    match_on=("method", "scheme", "path", "query"),
+    ignore_localhost=True,
+)
 def test_import_crossref_doi_author_modal_single_open(
     importer_page: Page,
     live_server,
