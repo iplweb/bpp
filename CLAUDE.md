@@ -66,8 +66,11 @@ python src/manage.py shell -c "from bpp.models import Autor"
 
 ## Claude Code Web Environment Setup
 
-For cloud sandbox setup instructions, see
-[CLAUDE_CLOUD.md](CLAUDE_CLOUD.md).
+Cloud sandbox setup runs automatically via a `SessionStart` hook
+(`.claude/hooks/setup-cloud.sh`). The hook checks
+`CLAUDE_CODE_REMOTE` and exits immediately on CLI — no manual
+steps needed. For sandbox-specific notes (known test failures,
+limitations), see [CLAUDE_CLOUD.md](CLAUDE_CLOUD.md).
 
 ## Key Commands
 

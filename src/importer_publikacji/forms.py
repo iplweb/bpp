@@ -1,3 +1,4 @@
+from dal import autocomplete
 from django import forms
 from django.contrib.auth import get_user_model
 from django.db.models import Q
@@ -116,12 +117,18 @@ class SourceForm(forms.Form):
         queryset=Zrodlo.objects.all(),
         label="Źródło (czasopismo)",
         required=False,
-        help_text=("Wybierz istniejące źródło lub pozostaw puste"),
+        help_text="Wybierz istniejące źródło lub pozostaw puste",
+        widget=autocomplete.ModelSelect2(
+            url="bpp:admin-zrodlo-autocomplete",
+        ),
     )
     wydawca = forms.ModelChoiceField(
         queryset=Wydawca.objects.all(),
         label="Wydawca",
         required=False,
+        widget=autocomplete.ModelSelect2(
+            url="bpp:wydawca-autocomplete",
+        ),
     )
     wydawca_opis = forms.CharField(
         label="Wydawca - szczegóły",

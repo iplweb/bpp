@@ -21,6 +21,7 @@
         </div>
     {% endif %}
 
+    {{ form.media }}
     <form hx-post="{% url 'importer_publikacji:source' session.pk %}"
           hx-target="#importer-wizard"
           hx-indicator="#source-spinner">

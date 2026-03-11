@@ -4,7 +4,9 @@ from crossref_bpp.forms import PobierzZCrossrefAPIForm
 from crossref_bpp.models import CrossrefAPICache
 
 
-@pytest.mark.vcr
+@pytest.mark.vcr(
+    match_on=("method", "scheme", "path", "query")
+)
 @pytest.mark.django_db
 def test_PobierzZCrossrefAPIFrom_clean():
     assert CrossrefAPICache.objects.count() == 0
