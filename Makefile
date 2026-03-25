@@ -517,7 +517,7 @@ new-worktree:
 	$(YARN_CMD) install
 	uv run grunt build
 	uv run src/manage.py collectstatic --noinput
-	docker compose up -d
+	docker compose up -d db redis rabbitmq
 	./bin/show-settings.sh
 
 clean-worktree:
