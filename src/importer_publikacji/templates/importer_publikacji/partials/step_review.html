@@ -220,6 +220,14 @@
             <span class="fi-plus"></span>
             Utwórz publikację
         </button>
+        {% if show_save_and_pbn %}
+            <button type="submit"
+                    name="_create_and_pbn"
+                    class="button success">
+                <span class="fi-plus"></span>
+                Utwórz i dodaj do kolejki eksportu PBN
+            </button>
+        {% endif %}
     </form>
     <div>
         <a href="{% url 'importer_publikacji:index' %}"
