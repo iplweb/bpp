@@ -241,12 +241,22 @@ class BppUserAdmin(UserAdmin):
         "is_staff",
         "is_active",
         "is_superuser",
+        "autor",
         "lista_grup",
     )
 
     fieldsets = UserAdmin.fieldsets + (
-        ("PBN API", {"fields": ("przedstawiaj_w_pbn_jako",)}),
+        (
+            "Powiązanie z autorem",
+            {"fields": ("autor",)},
+        ),
+        (
+            "PBN API",
+            {"fields": ("przedstawiaj_w_pbn_jako",)},
+        ),
     )
+
+    autocomplete_fields = ["autor"]
 
     add_form = BppUserCreationForm
 

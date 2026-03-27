@@ -9,10 +9,13 @@ from ewaluacja_common.models import Rodzaj_Autora
 
 from ..models import StatusGenerowania
 from ..tasks import generuj_metryki_task_parallel
-from .mixins import ma_uprawnienia_ewaluacji
+from .mixins import ma_pelne_uprawnienia_ewaluacji, ma_uprawnienia_ewaluacji
 
 
-@method_decorator(user_passes_test(ma_uprawnienia_ewaluacji), name="dispatch")
+@method_decorator(
+    user_passes_test(ma_pelne_uprawnienia_ewaluacji),
+    name="dispatch",
+)
 class UruchomGenerowanieView(View):
     """Widok do uruchamiania generowania metryk przez Celery task"""
 

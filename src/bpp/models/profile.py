@@ -30,18 +30,18 @@ class BppUser(AbstractUser, ModelZAdnotacjami):
     multiseek_format = models.CharField(
         "Ostatnio wybrany format wyświetlania w Multiseeku",
         max_length=200,
-        null=True,
+        default="",
         blank=True,
     )
 
     multiseek_order_1 = models.CharField(
         "Ostatnio wybrane pole sortowania w Multiseeku",
         max_length=200,
-        null=True,
+        default="",
         blank=True,
     )
 
-    pbn_token = models.CharField(max_length=128, null=True, blank=True)
+    pbn_token = models.CharField(max_length=128, default="", blank=True)
     pbn_token_updated = models.DateTimeField(null=True, blank=True)
 
     przedstawiaj_w_pbn_jako = models.ForeignKey(
@@ -51,6 +51,16 @@ class BppUser(AbstractUser, ModelZAdnotacjami):
         on_delete=models.SET_NULL,
         help_text="Jeżeli wybrany użytkownik nie ma konta w PBNie, może nadal wysyłać prace jako inny użytkiownik "
         "systemu BPP; wybierz konto z którego ma być wysyłane w tym polu. ",
+    )
+
+    autor = models.OneToOneField(
+        "bpp.Autor",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="user",
+        verbose_name="Powiązany autor",
+        help_text="Autor powiązany z tym kontem użytkownika",
     )
 
     def __str__(self):
@@ -66,6 +76,43 @@ class BppUser(AbstractUser, ModelZAdnotacjami):
             return ret + f" ({self.username})"
 
         return self.username
+
+    def sprobuj_dopasowac_autora(self):
+        """Próbuje automatycznie dopasować autora do użytkownika.
+
+        Kolejność dopasowania:
+        1. Po adresie email (case-insensitive)
+        2. Po imieniu i nazwisku (case-insensitive, dokładnie 1 wynik)
+
+        Nic nie robi jeśli autor jest już ustawiony.
+        """
+        if self.autor_id is not None:
+            return
+
+        from bpp.models import Autor
+
+        # Próba dopasowania po emailu
+        if self.email and self.email != PUSTY_ADRES_EMAIL:
+            wynik = (
+                Autor.objects.filter(email__iexact=self.email)
+                .exclude(email="")
+                .exclude(email=PUSTY_ADRES_EMAIL)
+            )
+            if wynik.count() == 1:
+                self.autor = wynik.first()
+                self.save(update_fields=["autor"])
+                return
+
+        # Próba dopasowania po imieniu i nazwisku
+        if self.first_name and self.last_name:
+            wynik = Autor.objects.filter(
+                imiona__iexact=self.first_name,
+                nazwisko__iexact=self.last_name,
+            )
+            if wynik.count() == 1:
+                self.autor = wynik.first()
+                self.save(update_fields=["autor"])
+                return
 
     def pbn_token_possibly_valid(self):
         if (

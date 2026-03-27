@@ -89,10 +89,16 @@ from bpp.views.browse import (
 )
 from bpp.views.microsoft_auth_redirect import MicrosoftAuthRedirectView
 from bpp.views.oai import OAIView
+from bpp.views.profile import ProfilUzytkownikaView
 from bpp.views.xlsx_issn_chunks import xlsx_issn_chunks
 from ranking_autorow.views import RankingAutorow, RankingAutorowFormularz
 
 urlpatterns = [
+    path(
+        "profil/",
+        ProfilUzytkownikaView.as_view(),
+        name="profil-uzytkownika",
+    ),
     url(
         r"^microsoft-auth-redirect/$",
         MicrosoftAuthRedirectView.as_view(),
