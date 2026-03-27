@@ -22,8 +22,6 @@ services:
       # Ustaw na "1" dla maksymalnej wydajności (wyłącza fsync, synchronous_commit)
       # TYLKO dla developmentu/testów! NIE UŻYWAĆ W PRODUKCJI!
       - POSTGRESQL_UNSAFE_BUT_FAST=1
-    ports:
-      - ${DJANGO_BPP_DB_PORT:-5432}:${DJANGO_BPP_DB_PORT:-5432}
     volumes:
       - postgresql_data:/var/lib/postgresql/data
     healthcheck:

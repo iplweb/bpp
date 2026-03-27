@@ -18,3 +18,4 @@ include:
   - docker-compose.application.yml
   - docker-compose.workers.yml
   - docker-compose.monitoring.yml
+  - docker-compose.ports.yml

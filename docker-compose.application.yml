@@ -32,8 +32,6 @@ services:
         condition: service_healthy
       db:
         condition: service_healthy
-    ports:
-      - ${DJANGO_BPP_PORT_APP:-8000}:8000
     volumes:
       - ./src:/app/src
       - ./src/django_bpp/staticroot:/staticroot
@@ -98,9 +96,6 @@ services:
         required: false
     environment:
       - USE_DEV_TEMPLATE=${USE_DEV_TEMPLATE:-true}
-    ports:
-      - ${DJANGO_BPP_PORT_HTTP:-1080}:80
-      - ${DJANGO_BPP_PORT_HTTPS:-10443}:443
     volumes:
       - ./src/django_bpp/staticroot:/var/www/html/staticroot
       - media:/mediaroot

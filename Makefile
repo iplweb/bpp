@@ -226,6 +226,16 @@ coveralls-upload:
 
 tests: destroy-test-databases clean-pycache clean-coverage tests-without-playwright tests-only-playwright combine-coverage js-tests coveralls-upload
 
+tests-in-docker:
+	docker compose -f docker-compose.test.yml build test-runner
+	docker compose -f docker-compose.test.yml up -d db redis rabbitmq
+	docker compose -f docker-compose.test.yml run --rm test-runner \
+		uv run pytest -n auto -m "not playwright" --maxfail 50
+	docker compose -f docker-compose.test.yml down
+
+tests-in-docker-down:
+	docker compose -f docker-compose.test.yml down -v
+
 destroy-test-databases:
 	-./bin/drop-test-databases.sh
 
