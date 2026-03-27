@@ -119,7 +119,7 @@ distclean: clean
 	rm -rf src/django_bpp/staticroot
 	rm -rf *backup .pytest-cache
 	rm -rf node_modules src/node_modules src/django_bpp/staticroot
-	rm -rf .vagrant splintershots src/components/bower_components src/media
+	rm -rf .vagrant src/components/bower_components src/media
 	rm -rf dist
 	rm src/bpp/static/scss/*.css
 	rm src/bpp/static/scss/*.map

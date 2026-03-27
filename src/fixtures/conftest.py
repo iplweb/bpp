@@ -6,7 +6,7 @@ Fixtures are loaded from submodules:
 - conftest_models: Core model fixtures (uczelnia, wydzial, jednostka, autor)
 - conftest_publications: Publication fixtures (wydawnictwo_ciagle, wydawnictwo_zwarte, etc.)
 - conftest_system: System data fixtures (typy_odpowiedzialnosci, jezyki, etc.)
-- conftest_browser: Browser/Selenium fixtures
+- conftest_browser: Browser/webtest fixtures
 - conftest_disciplines: PBN discipline fixtures
 """
 
