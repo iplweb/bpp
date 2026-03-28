@@ -233,6 +233,11 @@ tests-in-docker:
 		uv run pytest -n auto -m "not playwright" --maxfail 50
 	docker compose -f docker-compose.test.yml down
 
+tests-in-docker-interactive:
+	docker compose -f docker-compose.test.yml build test-runner
+	docker compose -f docker-compose.test.yml up -d db redis rabbitmq
+	docker compose -f docker-compose.test.yml run --rm test-runner bash
+
 tests-in-docker-down:
 	docker compose -f docker-compose.test.yml down -v
 

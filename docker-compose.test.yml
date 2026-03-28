@@ -14,11 +14,15 @@ services:
   test-runner:
     build:
       context: .
-      dockerfile: deploy/test-runner/Dockerfile
+      dockerfile: deploy/bpp_base/Dockerfile
+      target: test-runner
       args:
-        PYTHON_VERSION: ${PYTHON_VERSION:-3.13}
+        PYTHON_VERSION: ${PYTHON_VERSION:-3.12}
+        DEBIAN_VERSION: ${DEBIAN_VERSION:-trixie}
+        NODEJS_VERSION: ${NODEJS_VERSION:-20}
     volumes:
       - .:/src
+      - /var/run/docker.sock:/var/run/docker.sock
     working_dir: /src
     depends_on:
       db: { condition: service_healthy }
