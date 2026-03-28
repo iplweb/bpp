@@ -64,6 +64,24 @@
                     <td>{{ session.wydawca }}</td>
                 </tr>
             {% endif %}
+            {% if session.wydawnictwo_nadrzedne %}
+                <tr>
+                    <th>Wydawnictwo nadrzędne</th>
+                    <td>
+                        {{ session.wydawnictwo_nadrzedne }}
+                    </td>
+                </tr>
+            {% endif %}
+            {% if session.wydawnictwo_nadrzedne_w_pbn %}
+                <tr>
+                    <th>
+                        Wydawnictwo nadrzędne (PBN)
+                    </th>
+                    <td>
+                        {{ session.wydawnictwo_nadrzedne_w_pbn }}
+                    </td>
+                </tr>
+            {% endif %}
             {% if data.volume %}
                 <tr>
                     <th>Tom</th>

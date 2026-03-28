@@ -47,6 +47,58 @@
             <p class="help-text">
                 Podaj wydawcę lub wpisz szczegóły wydawcy.
             </p>
+
+            {% if is_chapter %}
+                <hr>
+                <div class="callout secondary small">
+                    <strong>
+                        Rozdział wymaga wydawnictwa
+                        nadrzędnego.
+                    </strong>
+                    Wybierz istniejącą książkę z BPP
+                    lub publikację z PBN (jedno z dwóch).
+                </div>
+                <div class="grid-x grid-margin-x">
+                    <div class="cell medium-6">
+                        <label
+                            for="id_wydawnictwo_nadrzedne">
+                            Wydawnictwo nadrzędne (BPP) *
+                        </label>
+                        <select
+                            name="wydawnictwo_nadrzedne"
+                            id="id_wydawnictwo_nadrzedne"
+                            data-url="{% url 'bpp:wydawnictwo-nadrzedne-autocomplete' %}"
+                            style="width:100%">
+                            {% if wydawnictwo_nadrzedne_obj %}
+                                <option
+                                    value="{{ wydawnictwo_nadrzedne_obj.pk }}"
+                                    selected>
+                                    {{ wydawnictwo_nadrzedne_obj }}
+                                </option>
+                            {% endif %}
+                        </select>
+                    </div>
+                    <div class="cell medium-6">
+                        <label
+                            for="id_wydawnictwo_nadrzedne_w_pbn">
+                            Wydawnictwo nadrzędne (PBN)
+                        </label>
+                        <select
+                            name="wydawnictwo_nadrzedne_w_pbn"
+                            id="id_wydawnictwo_nadrzedne_w_pbn"
+                            data-url="{% url 'bpp:wydawnictwo-nadrzedne-w-pbn-autocomplete' %}"
+                            style="width:100%">
+                            {% if wydawnictwo_nadrzedne_w_pbn_obj %}
+                                <option
+                                    value="{{ wydawnictwo_nadrzedne_w_pbn_obj.pk }}"
+                                    selected>
+                                    {{ wydawnictwo_nadrzedne_w_pbn_obj }}
+                                </option>
+                            {% endif %}
+                        </select>
+                    </div>
+                </div>
+            {% endif %}
         {% else %}
             {# Wydawnictwo ciągłe: źródło wymagane #}
             <div class="grid-x grid-margin-x">
@@ -112,3 +164,39 @@
         <span class="fi-loop"></span> Przetwarzanie...
     </div>
 </div>
+
+{% if is_chapter %}
+<script>
+$(document).ready(function() {
+    function initSourceSelect2(selector, placeholder) {
+        var $el = $(selector);
+        if (!$el.length) return;
+        $el.select2({
+            ajax: {
+                url: $el.data('url'),
+                dataType: 'json',
+                delay: 300,
+                data: function(params) {
+                    return {q: params.term};
+                },
+                processResults: function(data) {
+                    return data;
+                }
+            },
+            minimumInputLength: 2,
+            placeholder: placeholder,
+            allowClear: true,
+            language: 'pl'
+        });
+    }
+    initSourceSelect2(
+        '#id_wydawnictwo_nadrzedne',
+        'Szukaj książki...'
+    );
+    initSourceSelect2(
+        '#id_wydawnictwo_nadrzedne_w_pbn',
+        'Szukaj w PBN...'
+    );
+});
+</script>
+{% endif %}
