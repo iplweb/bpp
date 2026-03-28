@@ -24,12 +24,9 @@
 
     {% if pbn_result %}
         {% if pbn_result.pbn_mongo_id %}
-            <div class="callout warning">
-                <span class="fi-alert"></span>
-                <strong>Znaleziono rekord w PBN:</strong>
-                Publikacja o tym DOI istnieje już
-                w Polskiej Bibliografii Naukowej.
-                <br>
+            <div class="callout success">
+                <span class="fi-check"></span>
+                <strong>Znaleziono odpowiednik w PBN.</strong>
                 PBN UID:
                 <code>{{ pbn_result.pbn_mongo_id }}</code>
                 {% if pbn_result.pbn_url %}
@@ -44,7 +41,7 @@
         {% elif pbn_result.pbn_needs_auth %}
             <div class="callout secondary">
                 <span class="fi-info"></span>
-                Nie można sprawdzić duplikatu
+                Nie można sprawdzić odpowiednika
                 w PBN &mdash; wymagana autoryzacja.
                 Zaloguj się do PBN w menu głównym.
             </div>

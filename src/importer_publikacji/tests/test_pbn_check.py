@@ -5,6 +5,7 @@ import pytest
 from importer_publikacji.views import (
     _check_pbn_by_doi,
     _empty_pbn_result,
+    _ensure_pbn_publication_local,
     _get_pbn_publication_by_doi,
     _link_pbn_uid,
     _populate_pbn_result,
@@ -129,7 +130,8 @@ def test_empty_pbn_result():
 
 
 @pytest.mark.django_db
-def test_populate_pbn_result_with_data():
+@patch("importer_publikacji.views._ensure_pbn_publication_local")
+def test_populate_pbn_result_with_data(mock_ensure):
     session = _make_session()
     result = _empty_pbn_result()
     data = {"mongoId": "abc123def456", "status": "ACTIVE"}
@@ -139,6 +141,7 @@ def test_populate_pbn_result_with_data():
     assert result["pbn_mongo_id"] == "abc123def456"
     assert session.matched_data["pbn_mongo_id"] == "abc123def456"
     session.save.assert_called_once()
+    mock_ensure.assert_called_once_with(data)
 
 
 def test_populate_pbn_result_with_empty_data():
@@ -153,6 +156,30 @@ def test_populate_pbn_result_no_mongo_id():
     result = _empty_pbn_result()
     _populate_pbn_result(result, {"status": "ACTIVE"}, session)
     assert result["pbn_mongo_id"] is None
+
+
+@patch("pbn_integrator.utils.zapisz_mongodb")
+def test_ensure_pbn_publication_local_calls_zapisz(
+    mock_zapisz,
+):
+    data = {
+        "mongoId": "abc123",
+        "status": "ACTIVE",
+        "verificationLevel": "MODERATOR",
+        "verified": True,
+        "versions": [],
+    }
+    _ensure_pbn_publication_local(data)
+    mock_zapisz.assert_called_once()
+
+
+@patch("pbn_integrator.utils.zapisz_mongodb")
+def test_ensure_pbn_publication_local_handles_error(
+    mock_zapisz,
+):
+    mock_zapisz.side_effect = Exception("DB error")
+    # Nie powinno rzucić wyjątku
+    _ensure_pbn_publication_local({"mongoId": "abc123"})
 
 
 @pytest.mark.django_db

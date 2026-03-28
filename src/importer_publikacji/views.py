@@ -822,7 +822,11 @@ def _empty_pbn_result():
 
 
 def _populate_pbn_result(result, data, session):
-    """Wypełnij result danymi z odpowiedzi PBN API."""
+    """Wypełnij result danymi z odpowiedzi PBN API.
+
+    Jeśli znaleziono odpowiednik, zapisz/zaktualizuj
+    lokalny rekord pbn_api.Publication.
+    """
     if not (data and isinstance(data, dict)):
         return
 
@@ -839,8 +843,26 @@ def _populate_pbn_result(result, data, session):
             pbn_api_root=uczelnia.pbn_api_root,
             pbn_uid_id=mongo_id,
         )
+
+    # Zaciągnij/zaktualizuj lokalny rekord Publication
+    _ensure_pbn_publication_local(data)
+
     session.matched_data["pbn_mongo_id"] = mongo_id
     session.save(update_fields=["matched_data"])
+
+
+def _ensure_pbn_publication_local(data):
+    """Zapisz dane z PBN API jako lokalny rekord Publication."""
+    try:
+        from pbn_api.models import Publication
+        from pbn_integrator.utils import zapisz_mongodb
+
+        zapisz_mongodb(data, Publication)
+    except Exception as e:
+        logger.warning(
+            "Nie udało się zapisać rekordu PBN lokalnie: %s",
+            e,
+        )
 
 
 def _check_pbn_by_doi(session):
