@@ -26,6 +26,10 @@ variable "GIT_SHA" {
   default = "unknown"
 }
 
+variable "TAG_LATEST" {
+  default = "true"
+}
+
 # Build groups for different scenarios
 group "default" {
   targets = ["dbserver", "webserver", "appserver", "workerserver",
@@ -51,9 +55,11 @@ target "base" {
   args = {
     GIT_SHA = GIT_SHA
   }
-  tags       = [
+  tags = TAG_LATEST == "true" ? [
     "iplweb/bpp_base:${DOCKER_VERSION}",
     "iplweb/bpp_base:latest"
+  ] : [
+    "iplweb/bpp_base:${DOCKER_VERSION}"
   ]
   platforms = [PLATFORM]
   output    = PUSH ? ["type=registry"] : ["type=docker"]
@@ -63,9 +69,11 @@ target "base" {
 target "dbserver" {
   dockerfile = "Dockerfile"
   context    = "deploy/dbserver"
-  tags       = [
+  tags = TAG_LATEST == "true" ? [
     "iplweb/bpp_dbserver:${DOCKER_VERSION}",
     "iplweb/bpp_dbserver:latest"
+  ] : [
+    "iplweb/bpp_dbserver:${DOCKER_VERSION}"
   ]
   platforms = [PLATFORM]
   output    = PUSH ? ["type=registry"] : ["type=docker"]
@@ -74,9 +82,11 @@ target "dbserver" {
 target "webserver" {
   dockerfile = "Dockerfile"
   context    = "deploy/webserver"
-  tags       = [
+  tags = TAG_LATEST == "true" ? [
     "iplweb/bpp_webserver:${DOCKER_VERSION}",
     "iplweb/bpp_webserver:latest"
+  ] : [
+    "iplweb/bpp_webserver:${DOCKER_VERSION}"
   ]
   platforms = [PLATFORM]
   output    = PUSH ? ["type=registry"] : ["type=docker"]
@@ -89,9 +99,11 @@ target "appserver" {
   contexts   = {
     "iplweb/bpp_base:latest" = "target:base"
   }
-  tags = [
+  tags = TAG_LATEST == "true" ? [
     "iplweb/bpp_appserver:${DOCKER_VERSION}",
     "iplweb/bpp_appserver:latest"
+  ] : [
+    "iplweb/bpp_appserver:${DOCKER_VERSION}"
   ]
   platforms = [PLATFORM]
   output    = PUSH ? ["type=registry"] : ["type=docker"]
@@ -103,9 +115,11 @@ target "workerserver" {
   contexts   = {
     "iplweb/bpp_base:latest" = "target:base"
   }
-  tags = [
+  tags = TAG_LATEST == "true" ? [
     "iplweb/bpp_workerserver:${DOCKER_VERSION}",
     "iplweb/bpp_workerserver:latest"
+  ] : [
+    "iplweb/bpp_workerserver:${DOCKER_VERSION}"
   ]
   platforms = [PLATFORM]
   output    = PUSH ? ["type=registry"] : ["type=docker"]
@@ -117,9 +131,11 @@ target "beatserver" {
   contexts   = {
     "iplweb/bpp_base:latest" = "target:base"
   }
-  tags = [
+  tags = TAG_LATEST == "true" ? [
     "iplweb/bpp_beatserver:${DOCKER_VERSION}",
     "iplweb/bpp_beatserver:latest"
+  ] : [
+    "iplweb/bpp_beatserver:${DOCKER_VERSION}"
   ]
   platforms = [PLATFORM]
   output    = PUSH ? ["type=registry"] : ["type=docker"]
@@ -131,9 +147,11 @@ target "authserver" {
   contexts   = {
     "iplweb/bpp_base:latest" = "target:base"
   }
-  tags = [
+  tags = TAG_LATEST == "true" ? [
     "iplweb/bpp_authserver:${DOCKER_VERSION}",
     "iplweb/bpp_authserver:latest"
+  ] : [
+    "iplweb/bpp_authserver:${DOCKER_VERSION}"
   ]
   platforms = [PLATFORM]
   output    = PUSH ? ["type=registry"] : ["type=docker"]
@@ -145,9 +163,11 @@ target "denorm-queue" {
   contexts   = {
     "iplweb/bpp_base:latest" = "target:base"
   }
-  tags = [
+  tags = TAG_LATEST == "true" ? [
     "iplweb/bpp_denorm_queue:${DOCKER_VERSION}",
     "iplweb/bpp_denorm_queue:latest"
+  ] : [
+    "iplweb/bpp_denorm_queue:${DOCKER_VERSION}"
   ]
   platforms = [PLATFORM]
   output    = PUSH ? ["type=registry"] : ["type=docker"]

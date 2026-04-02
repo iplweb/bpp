@@ -426,6 +426,54 @@ build-denorm-queue:
 # Alias for backward compatibility
 build-servers: build
 
+# =============================================================================
+# Budowanie obrazów z brancha na Docker Build Cloud
+# =============================================================================
+#
+# Użycie:
+#   git push
+#   make build-branch
+#
+# Obrazy trafiają na Docker Hub z tagiem = sanityzowana nazwa brancha.
+# Tag "latest" NIE jest ustawiany (tylko buildy z mastera mają "latest").
+#
+# Na serwerze docelowym:
+#   export DOCKER_VERSION=feature-nowe-zglos-publikacje
+#   docker compose pull && docker compose up -d
+#
+# =============================================================================
+# UWAGA: Celowo budujemy TYLKO dla platformy linux/amd64 (x86_64).
+#
+# Wszystkie nasze serwery produkcyjne działają na architekturze x86_64,
+# więc nie ma potrzeby budowania obrazów ARM. Budowanie na dwie platformy
+# trwa dłużej i zużywa więcej zasobów Docker Build Cloud.
+#
+# Jeśli w przyszłości pojawi się potrzeba budowania również na ARM
+# (np. dla serwerów ARM lub lokalnego testowania na Apple Silicon),
+# wystarczy zmienić BRANCH_BUILD_PLATFORM na linux/amd64,linux/arm64
+# — wtedy Docker Build Cloud zbuduje obrazy na obie platformy
+# automatycznie.
+# =============================================================================
+CLOUD_BUILDER = cloud-iplweb-bpp
+BRANCH_BUILD_PLATFORM = linux/amd64
+
+build-branch:
+	$(eval BRANCH_TAG := $(shell git rev-parse --abbrev-ref HEAD \
+	    | sed 's/[^a-zA-Z0-9._-]/-/g' \
+	    | tr '[:upper:]' '[:lower:]'))
+	@echo "========================================"
+	@echo "Building branch: $(BRANCH_TAG)"
+	@echo "Builder: $(CLOUD_BUILDER)"
+	@echo "Platform: $(BRANCH_BUILD_PLATFORM)"
+	@echo "========================================"
+	DOCKER_VERSION=$(BRANCH_TAG) TAG_LATEST=false PUSH=true \
+	    docker buildx bake \
+	    --builder=$(CLOUD_BUILDER) \
+	    --file docker-bake.hcl \
+	    --set '*.platform=$(BRANCH_BUILD_PLATFORM)' \
+	    --allow=fs.read=/tmp \
+	    --allow=fs.write=/tmp
+
 run-webserver-without-appserver-for-testing: build-webserver
 	@echo "Odpalamy webserver wyłącznie, żeby zobaczyć, jak wygląda jego strona błędu..."
 	@echo "=============================================================================="
