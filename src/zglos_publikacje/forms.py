@@ -1,33 +1,108 @@
 from crispy_forms.helper import FormHelper
 from crispy_forms_foundation.layout import Fieldset, Layout
 from dal import autocomplete
+from dal_select2_queryset_sequence.widgets import (
+    QuerySetSequenceSelect2,
+)
 from django import forms
 from django.core.exceptions import ValidationError
 from django.forms import inlineformset_factory
 from django.forms.widgets import HiddenInput
 
-from zglos_publikacje.models import Zgloszenie_Publikacji, Zgloszenie_Publikacji_Autor
+from bpp.models import Autor, Dyscyplina_Naukowa, Jednostka, Uczelnia
+from zglos_publikacje.models import (
+    Zgloszenie_Publikacji,
+    Zgloszenie_Publikacji_Autor,
+)
 from zglos_publikacje.validators import validate_file_extension_pdf
 
-from bpp.models import Autor, Dyscyplina_Naukowa, Jednostka, Uczelnia
+
+class MultipleFileInput(forms.FileInput):
+    """Widget umożliwiający upload wielu plików."""
+
+    allow_multiple_selected = True
+
+    def __init__(self, attrs=None):
+        default_attrs = {"accept": ".pdf"}
+        if attrs:
+            default_attrs.update(attrs)
+        super().__init__(attrs=default_attrs)
 
 
-class Zgloszenie_Publikacji_DaneOgolneForm(forms.ModelForm):
+# Mapowanie wartości formularza na enum Rodzaje
+RODZAJ_FORM_TO_MODEL = {
+    "ARTYKUL": Zgloszenie_Publikacji.Rodzaje.ARTYKUL,
+    "MONOGRAFIA": Zgloszenie_Publikacji.Rodzaje.MONOGRAFIA,
+    "ROZDZIAL": Zgloszenie_Publikacji.Rodzaje.ROZDZIAL_W_MONOGRAFII,
+    "POZOSTALE": Zgloszenie_Publikacji.Rodzaje.INNE,
+}
+
+FORMA_DOSTEPU_FORM_TO_MODEL = {
+    "OTWARTY": Zgloszenie_Publikacji.FormyDostepu.OTWARTY,
+    "OGRANICZONY": Zgloszenie_Publikacji.FormyDostepu.OGRANICZONY,
+}
+
+
+class RodzajPublikacjiForm(forms.Form):
+    """Krok 0: wybór rodzaju publikacji (kafelki)."""
+
+    rodzaj = forms.ChoiceField(
+        label="Rodzaj publikacji",
+        choices=[
+            ("ARTYKUL", "Artykuł"),
+            ("MONOGRAFIA", "Monografia"),
+            ("ROZDZIAL", "Rozdział"),
+            ("POZOSTALE", "Inne"),
+        ],
+        widget=forms.RadioSelect,
+    )
+
+
+class FormaDostepuForm(forms.Form):
+    """Krok 1: wybór formy dostępu (kafelki)."""
+
+    forma_dostepu = forms.ChoiceField(
+        label="Forma dostępu",
+        choices=[
+            ("OTWARTY", "Otwarty dostęp"),
+            ("OGRANICZONY", "Dostęp ograniczony"),
+        ],
+        widget=forms.RadioSelect,
+    )
+
+
+class Zgloszenie_Publikacji_DaneForm(forms.ModelForm):
+    """Krok 2: formularz danych o publikacji.
+
+    Pola zależą od wyborów z kroków 0 (rodzaj) i 1 (forma
+    dostępu). Dynamicznie dodaje/usuwa pola w __init__.
+    """
+
     rok = forms.IntegerField(
-        help_text="Rok publikacji zgłaszanej pracy. Rok na późniejszych etapach używany jest "
-        "do ustalenia i zweryfikowania dyscyplin naukowych zgłoszonych przez autorów. "
+        help_text=(
+            "Rok publikacji zgłaszanej pracy. Rok na"
+            " późniejszych etapach używany jest do ustalenia"
+            " i zweryfikowania dyscyplin naukowych zgłoszonych"
+            " przez autorów."
+        ),
     )
 
     tytul_oryginalny = forms.CharField(
         widget=forms.Textarea(attrs={"rows": 2, "cols": 80}),
-        help_text="Tytuł pracy. Prosimy o wpisanie samego tytułu. Proszę nie wpisywać źródła, miejsca publikacji, "
-        "autorów itp. -- wyłacznie tytuł pracy. ",
+        help_text=(
+            "Tytuł pracy. Prosimy o wpisanie samego tytułu."
+            " Proszę nie wpisywać źródła, miejsca publikacji,"
+            " autorów itp. -- wyłącznie tytuł pracy."
+        ),
         max_length=300,
     )
 
     email = forms.EmailField(
-        help_text="Prosimy o podanie poprawnego adresu e-mail. W razie problemów ze zgłoszeniem na ten adres "
-        "zostanie skierowana dalsza korespondencja."
+        help_text=(
+            "Prosimy o podanie poprawnego adresu e-mail."
+            " W razie problemów ze zgłoszeniem na ten adres"
+            " zostanie skierowana dalsza korespondencja."
+        )
     )
 
     zgoda_na_publikacje_pelnego_tekstu = forms.ChoiceField(
@@ -35,57 +110,196 @@ class Zgloszenie_Publikacji_DaneOgolneForm(forms.ModelForm):
             (None, "proszę określić"),
             (
                 True,
-                "tak, wyrażam zgodę na umieszczenie pełnego tekstu publikacji w repozytorium otwartego dostępu ",
+                "tak, wyrażam zgodę na umieszczenie pełnego"
+                " tekstu publikacji w repozytorium",
             ),
             (
                 False,
-                "nie, nie wyrażam zgody na umieszczenie pełnego tekstu publikacji w repozytorium otwartego dostępu ",
+                "nie, nie wyrażam zgody na umieszczenie"
+                " pełnego tekstu publikacji w repozytorium",
             ),
         ],
         required=True,
+    )
+
+    strona_www = forms.URLField(
+        label="Link do pełnego tekstu lub DOI",
+        help_text=(
+            "Adres URL lub identyfikator DOI. System automatycznie rozpozna format."
+        ),
+        max_length=1024,
+        required=False,
+    )
+
+    pliki = forms.FileField(
+        label="Pliki PDF",
+        required=False,
+        help_text=(
+            "Pliki PDF z pełnym tekstem pracy. Wymagany"
+            " min. 1 plik. Możliwość dodania wielu plików."
+        ),
+        validators=[validate_file_extension_pdf],
+        widget=MultipleFileInput(),
+    )
+
+    wydawca = forms.CharField(
+        required=False,
+        widget=QuerySetSequenceSelect2(
+            url="zglos_publikacje:public-wydawca-autocomplete",
+        ),
+        label="Wydawca",
+        help_text=(
+            "Wyszukaj wydawcę. Jeśli nie znaleziono"
+            " -- wpisz nazwę ręcznie w polu poniżej."
+        ),
+    )
+
+    wydawca_zgloszenia = forms.CharField(
+        label="Wydawca (wpisz ręcznie)",
+        max_length=512,
+        required=False,
+        help_text=("Jeśli wydawcy nie znaleziono w wyszukiwarce, wpisz nazwę ręcznie."),
+    )
+
+    wydawnictwo_nadrzedne = forms.CharField(
+        required=False,
+        widget=QuerySetSequenceSelect2(
+            url=("zglos_publikacje:public-wydawnictwo-nadrzedne-autocomplete"),
+        ),
+        label="Wydawnictwo nadrzędne",
+        help_text=(
+            "Wyszukaj monografię, w której jest rozdział."
+            " Jeśli nie znaleziono -- wpisz tytuł ręcznie"
+            " w polu poniżej."
+        ),
+    )
+
+    wydawnictwo_nadrzedne_tekst = forms.CharField(
+        label="Wydawnictwo nadrzędne (wpisz ręcznie)",
+        max_length=512,
+        required=False,
+        help_text=(
+            "Jeśli monografii nie znaleziono w wyszukiwarce, wpisz jej tytuł ręcznie."
+        ),
     )
 
     class Meta:
         model = Zgloszenie_Publikacji
         fields = [
             "tytul_oryginalny",
-            "rodzaj_zglaszanej_publikacji",
             "rok",
             "strona_www",
             "email",
             "zgoda_na_publikacje_pelnego_tekstu",
         ]
 
-    def __init__(self, *args, **kw):
+    def _usun_pola_wg_formy_dostepu(self, forma_dostepu):
+        """Usuwa/modyfikuje pola zależne od formy dostępu."""
+        if forma_dostepu == "OTWARTY":
+            self.fields["strona_www"].required = True
+            self.fields.pop("pliki", None)
+        elif forma_dostepu == "OGRANICZONY":
+            self.fields["strona_www"].required = False
+        else:
+            self.fields.pop("pliki", None)
+
+    def _usun_pola_wg_rodzaju(self, rodzaj):
+        """Usuwa pola zależne od rodzaju publikacji."""
+        if rodzaj == "MONOGRAFIA":
+            self.fields.pop("wydawnictwo_nadrzedne", None)
+            self.fields.pop("wydawnictwo_nadrzedne_tekst", None)
+        elif rodzaj == "ROZDZIAL":
+            pass  # wszystkie pola zostają
+        else:
+            # ARTYKUL, POZOSTALE -- brak wydawcy
+            # i wyd. nadrzędnego
+            for f in (
+                "wydawca",
+                "wydawca_zgloszenia",
+                "wydawnictwo_nadrzedne",
+                "wydawnictwo_nadrzedne_tekst",
+            ):
+                self.fields.pop(f, None)
+
+    def _zbuduj_layout(self):
+        """Buduje layout na podstawie aktualnych pól."""
+        layout_fields = ["tytul_oryginalny", "rok", "email"]
+        optional = [
+            "zgoda_na_publikacje_pelnego_tekstu",
+            "strona_www",
+            "pliki",
+            "wydawca",
+            "wydawca_zgloszenia",
+            "wydawnictwo_nadrzedne",
+            "wydawnictwo_nadrzedne_tekst",
+        ]
+        for name in optional:
+            if name in self.fields:
+                layout_fields.append(name)
+
+        self.helper.layout = Layout(
+            Fieldset("Dane o publikacji", *layout_fields),
+        )
+
+    def __init__(self, *args, rodzaj=None, forma_dostepu=None, **kw):
+        self.rodzaj = rodzaj
+        self.forma_dostepu = forma_dostepu
+
         self.helper = FormHelper()
         self.helper.form_tag = False
         self.helper.form_class = "custom"
         self.helper.form_action = "."
-        self.helper.layout = Layout(
-            Fieldset(
-                "Informacje o publikacji",
-                "tytul_oryginalny",
-                "rok",
-                "strona_www",
-                "email",
-            ),
-        )
+
         super().__init__(*args, **kw)
 
-        if (
-            not Uczelnia.objects.get_default().pytaj_o_zgode_na_publikacje_pelnego_tekstu
-        ):
+        uczelnia = Uczelnia.objects.get_default()
+        if not uczelnia.pytaj_o_zgode_na_publikacje_pelnego_tekstu:
             self.fields.pop("zgoda_na_publikacje_pelnego_tekstu", None)
+
+        self._usun_pola_wg_formy_dostepu(forma_dostepu)
+        self._usun_pola_wg_rodzaju(rodzaj)
+        self._zbuduj_layout()
+
+    def clean(self):
+        cleaned = super().clean()
+
+        # Dla rozdziału wymagane wyd. nadrzędne (FK lub tekst)
+        if self.rodzaj == "ROZDZIAL":
+            wn = cleaned.get("wydawnictwo_nadrzedne")
+            wn_tekst = cleaned.get("wydawnictwo_nadrzedne_tekst", "").strip()
+            if not wn and not wn_tekst:
+                raise ValidationError(
+                    "Dla rozdziału wymagane jest podanie"
+                    " wydawnictwa nadrzędnego -- wybierz"
+                    " z wyszukiwarki lub wpisz ręcznie."
+                )
+
+        # Dla dostępu ograniczonego wymagany min. 1 plik
+        if self.forma_dostepu == "OGRANICZONY":
+            pliki = self.files.getlist(self.add_prefix("pliki"))
+            if not pliki:
+                raise ValidationError(
+                    "Dla dostępu ograniczonego wymagany jest"
+                    " przynajmniej jeden plik PDF."
+                )
+
+        return cleaned
 
 
 class Zgloszenie_Publikacji_Plik(forms.ModelForm):
+    """Legacy: formularz pliku (zachowany dla kompatybilności)."""
+
     plik = forms.FileField(
         required=False,
-        help_text="""Ponieważ w poprzednim formularzu nie podano adresu WWW
-    ani adresu DOI publikacji, prosimy o załączenie pełnego tekstu pracy w formacie PDF.
-    Dodawany plik wyłącznie na potrzeby zarejestrowania rekordu w bazie publikacji -
-    do wglądu Biblioteki; nie będzie dalej udostępniany.
-""",
+        help_text=(
+            "Ponieważ w poprzednim formularzu nie podano"
+            " adresu WWW ani adresu DOI publikacji, prosimy"
+            " o załączenie pełnego tekstu pracy w formacie"
+            " PDF. Dodawany plik wyłącznie na potrzeby"
+            " zarejestrowania rekordu w bazie publikacji -"
+            " do wglądu Biblioteki; nie będzie dalej"
+            " udostępniany."
+        ),
         validators=[validate_file_extension_pdf],
     )
 
@@ -109,8 +323,9 @@ class Zgloszenie_Publikacji_Plik(forms.ModelForm):
     def clean_plik(self):
         if self.cleaned_data["plik"] is None:
             raise ValidationError(
-                "Kliknij przycisk 'Przeglądaj' aby uzupełnić plik PDF z pełnym tekstem "
-                "zgłaszanej publikacji. "
+                "Kliknij przycisk 'Przeglądaj' aby uzupełnić"
+                " plik PDF z pełnym tekstem zgłaszanej"
+                " publikacji. "
             )
         return self.cleaned_data["plik"]
 
@@ -155,7 +370,7 @@ class Zgloszenie_Publikacji_AutorForm(forms.ModelForm):
                 "autor",
                 "jednostka",
                 "dyscyplina_naukowa",
-                "rok",  # "delete"
+                "rok",
             )
         )
         super().__init__(*args, **kw)
@@ -166,7 +381,6 @@ Zgloszenie_Publikacji_AutorFormSet = inlineformset_factory(
     Zgloszenie_Publikacji_Autor,
     form=Zgloszenie_Publikacji_AutorForm,
     extra=1,
-    # min_num=1,
     validate_min=True,
 )
 

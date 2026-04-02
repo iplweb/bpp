@@ -1,0 +1,35 @@
+{% extends "zglos_publikacje/step_base.html" %}
+
+{% block wizard_content %}
+    <h3>Wybierz formę dostępu</h3>
+
+    <div class="tile-grid">
+        {% for choice in wizard.form.forma_dostepu %}
+            <label class="tile-card" data-value="{{ choice.data.value }}">
+                {{ choice.tag }}
+                <span class="tile-title">{{ choice.choice_label }}</span>
+                {% if choice.data.value == "OTWARTY" %}
+                    <span class="tile-desc">Pełny tekst jest dostępny online (link lub DOI)</span>
+                {% elif choice.data.value == "OGRANICZONY" %}
+                    <span class="tile-desc">Pełny tekst nie jest swobodnie dostępny w internecie</span>
+                {% endif %}
+            </label>
+        {% endfor %}
+    </div>
+
+    <script>
+        (function() {
+            var tiles = document.querySelectorAll('.tile-card');
+            tiles.forEach(function(tile) {
+                var radio = tile.querySelector('input[type="radio"]');
+                if (radio && radio.checked) {
+                    tile.classList.add('selected');
+                }
+                tile.addEventListener('click', function() {
+                    tiles.forEach(function(t) { t.classList.remove('selected'); });
+                    tile.classList.add('selected');
+                });
+            });
+        })();
+    </script>
+{% endblock %}

@@ -1,6 +1,10 @@
 from django.urls import path
 
 from . import views
+from .autocomplete import (
+    PublicWydawcaAutocomplete,
+    PublicWydawnictwoNadrzedneAutocomplete,
+)
 
 urlpatterns = [
     path(
@@ -14,4 +18,15 @@ urlpatterns = [
         name="edycja_zgloszenia",
     ),
     path("sukces/", views.Sukces.as_view()),
+    # Autocomplete
+    path(
+        "public-wydawca-autocomplete/",
+        PublicWydawcaAutocomplete.as_view(),
+        name="public-wydawca-autocomplete",
+    ),
+    path(
+        "public-wydawnictwo-nadrzedne-autocomplete/",
+        PublicWydawnictwoNadrzedneAutocomplete.as_view(),
+        name="public-wydawnictwo-nadrzedne-autocomplete",
+    ),
 ]

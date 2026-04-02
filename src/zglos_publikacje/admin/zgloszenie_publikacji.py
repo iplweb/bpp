@@ -17,7 +17,11 @@ from templated_email import send_templated_mail
 
 from bpp.admin.core import DynamicAdminFilterMixin
 from bpp.admin.helpers.fieldsets import MODEL_Z_OPLATA_ZA_PUBLIKACJE
-from zglos_publikacje.models import Zgloszenie_Publikacji, Zgloszenie_Publikacji_Autor
+from zglos_publikacje.models import (
+    Zgloszenie_Publikacji,
+    Zgloszenie_Publikacji_Autor,
+    Zgloszenie_Publikacji_Zalacznik,
+)
 
 from .filters import (
     DzienTygodniaFilter,
@@ -30,9 +34,18 @@ from .forms import ZwrocEmailForm
 
 class Zgloszenie_Publikacji_AutorInline(admin.StackedInline):
     model = Zgloszenie_Publikacji_Autor
-    # form = Zgloszenie_Publikacji_AutorInlineForm
-    # readonly_fields = ["autor", "jednostka", "dyscyplina_naukowa"]
     fields = ["autor", "jednostka", "dyscyplina_naukowa"]
+    extra = 0
+
+
+class Zgloszenie_Publikacji_ZalacznikInline(admin.TabularInline):
+    model = Zgloszenie_Publikacji_Zalacznik
+    fields = [
+        "plik",
+        "oryginalna_nazwa_pliku",
+        "kolejnosc",
+    ]
+    readonly_fields = ["plik", "oryginalna_nazwa_pliku"]
     extra = 0
 
 
@@ -73,12 +86,19 @@ class Zgloszenie_PublikacjiAdmin(
             "tytul_oryginalny",
             "rok",
             "rodzaj_zglaszanej_publikacji",
+            "forma_dostepu",
         )
         + MODEL_Z_OPLATA_ZA_PUBLIKACJE
         + (
             "email",
             "strona_www",
             "plik_do_pobrania",
+            "wydawca_zgloszenia",
+            "wydawca_bpp",
+            "wydawca_pbn",
+            "wydawnictwo_nadrzedne_tekst",
+            "wydawnictwo_nadrzedne_bpp",
+            "wydawnictwo_nadrzedne_pbn",
             "status",
             "przyczyna_zwrotu",
             "kod_do_edycji",
@@ -90,6 +110,7 @@ class Zgloszenie_PublikacjiAdmin(
 
     inlines = [
         Zgloszenie_Publikacji_AutorInline,
+        Zgloszenie_Publikacji_ZalacznikInline,
     ]
 
     def has_add_permission(self, request):

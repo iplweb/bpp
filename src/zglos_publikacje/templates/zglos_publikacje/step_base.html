@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% block extratitle %}
+    Zgłoś publikację
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url "zglos_publikacje:nowe_zgloszenie" %}">Zgłoś publikację</a></li>
+{% endblock %}
+
+{% block extrahead %}
+    {{ wizard.form.media }}
+    <style>
+        .tile-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin: 1.5rem 0;
+        }
+        .tile-card {
+            flex: 1 1 200px;
+            max-width: 300px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 1.5rem;
+            cursor: pointer;
+            text-align: center;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            background: #fff;
+        }
+        .tile-card:hover {
+            border-color: #1779ba;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .tile-card.selected {
+            border-color: #1779ba;
+            background: #f0f8ff;
+            box-shadow: 0 2px 12px rgba(23,121,186,0.2);
+        }
+        .tile-card input[type="radio"] {
+            display: none;
+        }
+        .tile-card .tile-title {
+            display: block;
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-top: 0.5rem;
+        }
+        .tile-card .tile-desc {
+            display: block;
+            font-size: 0.9rem;
+            color: #666;
+            margin-top: 0.3rem;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <h1>Zgłoś publikację</h1>
+    <p class="subheader">Formularz umożliwia zgłoszenie publikacji do biblioteki.</p>
+
+    <form action="" method="post" id="form-container" enctype="multipart/form-data">
+        {% csrf_token %}
+        {{ wizard.management_form }}
+
+        <fieldset class="fieldset">
+            <legend>Krok {{ wizard.steps.step1 }} z {{ wizard.steps.count }}</legend>
+            {% block wizard_content %}{% endblock %}
+        </fieldset>
+
+        {% if wizard.steps.prev %}
+            <button name="wizard_goto_step" type="submit" class="button success"
+                    value="{{ wizard.steps.prev }}">
+                <span class="fi-arrow-left"></span> poprzedni krok
+            </button>
+        {% endif %}
+        {% if wizard.steps.next %}
+            <button type="submit" class="button submit" id="id-wizard-submit">
+                następny krok <span class="fi-arrow-right"/>
+            </button>
+        {% else %}
+            <button type="submit" class="button submit" id="id-wizard-submit">
+                <span class="fi-check"/> zakończ i wyślij do akceptacji
+            </button>
+        {% endif %}
+    </form>
+{% endblock %}
