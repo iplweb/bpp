@@ -1,7 +1,8 @@
 # Lightweight auth server for nginx authentication
 # Uses the same base image but with minimal startup (no migrations, no collectstatic)
 
-FROM iplweb/bpp_base:latest
+ARG BPP_BASE_TAG=latest
+FROM iplweb/bpp_base:${BPP_BASE_TAG}
 
 # Install gunicorn + netcat (for Redis connectivity check)
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=apt-cache \

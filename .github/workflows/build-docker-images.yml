@@ -54,29 +54,18 @@ jobs:
             echo "tag_latest=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Build and push base image first
-        run: |
-          docker buildx bake base \
-            --file docker-bake.hcl \
-            --set 'base.args.GIT_SHA=${{ github.sha }}' \
-            --set '*.platform=linux/amd64' \
-            --allow=fs.read=/tmp \
-            --allow=fs.write=/tmp
-        env:
-          DOCKER_VERSION: ${{ steps.tag.outputs.docker_tag }}
-          TAG_LATEST: ${{ steps.tag.outputs.tag_latest }}
-          PUSH: "true"
-
-      - name: Build and push dependent images
+      - name: Build and push all images
         run: |
           docker buildx bake \
-            dbserver appserver workerserver beatserver authserver denorm-queue \
+            base dbserver appserver workerserver \
+            beatserver authserver denorm-queue \
             --file docker-bake.hcl \
-            --set 'base.args.GIT_SHA=${{ github.sha }}' \
+            --set "base.args.GIT_SHA=${GIT_SHA}" \
             --set '*.platform=linux/amd64' \
             --allow=fs.read=/tmp \
             --allow=fs.write=/tmp
         env:
+          GIT_SHA: ${{ github.sha }}
           DOCKER_VERSION: ${{ steps.tag.outputs.docker_tag }}
           TAG_LATEST: ${{ steps.tag.outputs.tag_latest }}
           PUSH: "true"

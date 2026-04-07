@@ -1,4 +1,5 @@
-FROM iplweb/bpp_base:latest
+ARG BPP_BASE_TAG=latest
+FROM iplweb/bpp_base:${BPP_BASE_TAG}
 
 COPY --chmod=755 docker/denorm-queue/entrypoint-denorm-queue.sh /app/entrypoint-denorm-queue.sh
 

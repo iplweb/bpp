@@ -1,4 +1,5 @@
-FROM iplweb/bpp_base:latest
+ARG BPP_BASE_TAG=latest
+FROM iplweb/bpp_base:${BPP_BASE_TAG}
 
 COPY docker/workerserver/entrypoint-workerserver.sh /app/entrypoint-workerserver.sh
 

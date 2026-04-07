@@ -83,8 +83,11 @@ target "dbserver" {
 target "appserver" {
   dockerfile = "docker/appserver/Dockerfile"
   context    = "."
-  contexts   = {
-    "iplweb/bpp_base:latest" = "target:base"
+  args = {
+    BPP_BASE_TAG = DOCKER_VERSION
+  }
+  contexts = {
+    "iplweb/bpp_base:${DOCKER_VERSION}" = "target:base"
   }
   tags = TAG_LATEST == "true" ? [
     "iplweb/bpp_appserver:${DOCKER_VERSION}",
@@ -99,8 +102,11 @@ target "appserver" {
 target "workerserver" {
   dockerfile = "docker/workerserver/Dockerfile"
   context    = "."
-  contexts   = {
-    "iplweb/bpp_base:latest" = "target:base"
+  args = {
+    BPP_BASE_TAG = DOCKER_VERSION
+  }
+  contexts = {
+    "iplweb/bpp_base:${DOCKER_VERSION}" = "target:base"
   }
   tags = TAG_LATEST == "true" ? [
     "iplweb/bpp_workerserver:${DOCKER_VERSION}",
@@ -115,8 +121,11 @@ target "workerserver" {
 target "beatserver" {
   dockerfile = "docker/beatserver/Dockerfile"
   context    = "."
-  contexts   = {
-    "iplweb/bpp_base:latest" = "target:base"
+  args = {
+    BPP_BASE_TAG = DOCKER_VERSION
+  }
+  contexts = {
+    "iplweb/bpp_base:${DOCKER_VERSION}" = "target:base"
   }
   tags = TAG_LATEST == "true" ? [
     "iplweb/bpp_beatserver:${DOCKER_VERSION}",
@@ -131,8 +140,11 @@ target "beatserver" {
 target "authserver" {
   dockerfile = "docker/authserver/Dockerfile"
   context    = "."
-  contexts   = {
-    "iplweb/bpp_base:latest" = "target:base"
+  args = {
+    BPP_BASE_TAG = DOCKER_VERSION
+  }
+  contexts = {
+    "iplweb/bpp_base:${DOCKER_VERSION}" = "target:base"
   }
   tags = TAG_LATEST == "true" ? [
     "iplweb/bpp_authserver:${DOCKER_VERSION}",
@@ -147,8 +159,11 @@ target "authserver" {
 target "denorm-queue" {
   dockerfile = "docker/denorm-queue/Dockerfile"
   context    = "."
-  contexts   = {
-    "iplweb/bpp_base:latest" = "target:base"
+  args = {
+    BPP_BASE_TAG = DOCKER_VERSION
+  }
+  contexts = {
+    "iplweb/bpp_base:${DOCKER_VERSION}" = "target:base"
   }
   tags = TAG_LATEST == "true" ? [
     "iplweb/bpp_denorm_queue:${DOCKER_VERSION}",
