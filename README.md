@@ -5,6 +5,7 @@
 <h1 align="center">BPP — Bibliografia Publikacji Pracowników</h1>
 
 <p align="center">
+  <a href="https://github.com/iplweb/bpp/actions/workflows/tests.yml"><img src="https://github.com/iplweb/bpp/actions/workflows/tests.yml/badge.svg?branch=dev" alt="Testy"></a>
   <a href="https://github.com/iplweb/bpp/actions/workflows/build-docker-images.yml"><img src="https://github.com/iplweb/bpp/actions/workflows/build-docker-images.yml/badge.svg?branch=master" alt="Docker - oficjalne obrazy"></a>
   <a href="http://bpp.readthedocs.io/pl/latest/?badge=latest"><img src="https://readthedocs.org/projects/bpp/badge/?version=latest" alt="Dokumentacja"></a>
 </p>
@@ -35,6 +36,13 @@ Oprogramowanie dystrybuowane jest na zasadach otwartoźródłowej
 - System zgłaszania publikacji przez pracowników
 - Powiadomienia w czasie rzeczywistym
 
+## Wymagania systemowe
+
+- PostgreSQL
+- Redis
+- RabbitMQ
+- Docker (zalecany sposób wdrożenia)
+
 ## Instalacja
 
 Instrukcja instalacji i wdrożenia dostępna jest na stronie
@@ -50,7 +58,7 @@ pod adresem e-mail michal.dtz@gmail.com.
 
 | | |
 |---|---|
-| **Backend** | Python, Django, Celery, Django Channels |
+| **Backend** | Python 3.10+, Django 4.2, Celery, Django Channels |
 | **Baza danych** | PostgreSQL |
 | **Cache / broker** | Redis, RabbitMQ |
 | **Frontend** | Foundation CSS, jQuery, HTMX, Select2 |
@@ -71,7 +79,7 @@ Dokumentacja dostępna jest na stronie
 ## Rozwój
 
 Chcesz pomóc w rozwoju projektu? Przeczytaj
-[CONTRIBUTING.rst](CONTRIBUTING.rst).
+[CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Licencja
 
