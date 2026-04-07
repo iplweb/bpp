@@ -1,22 +1,24 @@
 {% extends "zglos_publikacje/step_base.html" %}
 
+{% block wizard_buttons %}{% endblock %}
+
 {% block wizard_content %}
     <h3>Wybierz rodzaj publikacji</h3>
 
     <div class="tile-grid">
         {% for choice in wizard.form.rodzaj %}
-            <label class="tile-card" data-value="{{ choice.data.value }}">
+            <label class="tile-card"
+                   data-value="{{ choice.data.value }}">
                 {{ choice.tag }}
-                <span class="tile-title">{{ choice.choice_label }}</span>
-                {% if choice.data.value == "ARTYKUL" %}
-                    <span class="tile-desc">Artykuł w czasopiśmie naukowym</span>
-                {% elif choice.data.value == "MONOGRAFIA" %}
-                    <span class="tile-desc">Monografia naukowa</span>
-                {% elif choice.data.value == "ROZDZIAL" %}
-                    <span class="tile-desc">Rozdział w monografii</span>
-                {% elif choice.data.value == "POZOSTALE" %}
-                    <span class="tile-desc">Pozostałe rodzaje publikacji</span>
-                {% endif %}
+                <span class="tile-icon">
+                    {% if choice.data.value == "ARTYKUL" %}📄{% elif choice.data.value == "MONOGRAFIA" %}📚{% elif choice.data.value == "ROZDZIAL" %}📖{% elif choice.data.value == "POZOSTALE" %}📎{% endif %}
+                </span>
+                <span class="tile-title">
+                    {{ choice.choice_label }}
+                </span>
+                <span class="tile-desc">
+                    {% if choice.data.value == "ARTYKUL" %}Artykuł w czasopiśmie naukowym{% elif choice.data.value == "MONOGRAFIA" %}Monografia naukowa{% elif choice.data.value == "ROZDZIAL" %}Rozdział w monografii{% elif choice.data.value == "POZOSTALE" %}Pozostałe rodzaje publikacji{% endif %}
+                </span>
             </label>
         {% endfor %}
     </div>
@@ -24,14 +26,16 @@
     <script>
         (function() {
             var tiles = document.querySelectorAll('.tile-card');
+            var form = document.getElementById('form-container');
             tiles.forEach(function(tile) {
-                var radio = tile.querySelector('input[type="radio"]');
-                if (radio && radio.checked) {
-                    tile.classList.add('selected');
-                }
                 tile.addEventListener('click', function() {
-                    tiles.forEach(function(t) { t.classList.remove('selected'); });
-                    tile.classList.add('selected');
+                    var radio = tile.querySelector(
+                        'input[type="radio"]'
+                    );
+                    if (radio) {
+                        radio.checked = true;
+                        form.submit();
+                    }
                 });
             });
         })();

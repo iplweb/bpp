@@ -1,33 +1,50 @@
 {% extends "zglos_publikacje/step_base.html" %}
 
+{% block wizard_buttons %}{% endblock %}
+
 {% block wizard_content %}
     <h3>Wybierz formę dostępu</h3>
 
     <div class="tile-grid">
         {% for choice in wizard.form.forma_dostepu %}
-            <label class="tile-card" data-value="{{ choice.data.value }}">
+            <label class="tile-card"
+                   data-value="{{ choice.data.value }}">
                 {{ choice.tag }}
-                <span class="tile-title">{{ choice.choice_label }}</span>
-                {% if choice.data.value == "OTWARTY" %}
-                    <span class="tile-desc">Pełny tekst jest dostępny online (link lub DOI)</span>
-                {% elif choice.data.value == "OGRANICZONY" %}
-                    <span class="tile-desc">Pełny tekst nie jest swobodnie dostępny w internecie</span>
-                {% endif %}
+                <span class="tile-icon">
+                    {% if choice.data.value == "OTWARTY" %}🌐{% elif choice.data.value == "OGRANICZONY" %}🔒{% endif %}
+                </span>
+                <span class="tile-title">
+                    {{ choice.choice_label }}
+                </span>
+                <span class="tile-desc">
+                    {% if choice.data.value == "OTWARTY" %}Pełny tekst jest dostępny online (link lub DOI){% elif choice.data.value == "OGRANICZONY" %}Pełny tekst nie jest swobodnie dostępny w internecie{% endif %}
+                </span>
             </label>
         {% endfor %}
+        <button class="tile-card tile-back"
+                type="submit" name="wizard_goto_step"
+                formnovalidate
+                value="{{ wizard.steps.prev }}">
+            <span class="tile-icon">⬅️</span>
+            <span class="tile-title">Poprzedni krok</span>
+        </button>
     </div>
 
     <script>
         (function() {
-            var tiles = document.querySelectorAll('.tile-card');
+            var tiles = document.querySelectorAll(
+                '.tile-card:not(.tile-back)'
+            );
+            var form = document.getElementById('form-container');
             tiles.forEach(function(tile) {
-                var radio = tile.querySelector('input[type="radio"]');
-                if (radio && radio.checked) {
-                    tile.classList.add('selected');
-                }
                 tile.addEventListener('click', function() {
-                    tiles.forEach(function(t) { t.classList.remove('selected'); });
-                    tile.classList.add('selected');
+                    var radio = tile.querySelector(
+                        'input[type="radio"]'
+                    );
+                    if (radio) {
+                        radio.checked = true;
+                        form.submit();
+                    }
                 });
             });
         })();

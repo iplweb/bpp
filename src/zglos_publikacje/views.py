@@ -307,9 +307,59 @@ class Zgloszenie_PublikacjiWizard(UczelniaSettingRequiredMixin, SessionWizardVie
             self.request.session[const.SESSION_KEY] = form.cleaned_data.get("rok")
         return super().process_step(form)
 
+    RODZAJ_ETYKIETY = {
+        "ARTYKUL": "artykuł",
+        "MONOGRAFIA": "monografię",
+        "ROZDZIAL": "rozdział",
+        "POZOSTALE": "inną publikację",
+    }
+    FORMA_ETYKIETY = {
+        "OTWARTY": "w otwartym dostępie",
+        "OGRANICZONY": "w ograniczonym dostępie",
+    }
+
+    def _tytul_strony(self):
+        step0 = self.get_cleaned_data_for_step("0") or {}
+        rodzaj = step0.get("rodzaj")
+        if not rodzaj:
+            return "Zgłoś publikację"
+
+        tytul = "Zgłaszasz: " + self.RODZAJ_ETYKIETY.get(rodzaj, rodzaj)
+
+        step1 = self.get_cleaned_data_for_step("1") or {}
+        forma = step1.get("forma_dostepu")
+        if forma:
+            tytul += " " + self.FORMA_ETYKIETY.get(forma, forma)
+
+        return tytul
+
+    BREADCRUMB_LABELS = {
+        "0": "Rodzaj",
+        "1": "Dostęp",
+        "2": "Dane",
+        "3": "Autorzy",
+        "4": "Płatności",
+    }
+
+    def _wizard_breadcrumbs(self):
+        current = int(self.steps.current)
+        breadcrumbs = []
+        for i in range(current + 1):
+            step_str = str(i)
+            breadcrumbs.append(
+                {
+                    "step": step_str,
+                    "label": self.BREADCRUMB_LABELS.get(step_str, step_str),
+                    "current": i == current,
+                }
+            )
+        return breadcrumbs
+
     def get_context_data(self, form, **kwargs):
         if self.request.session.get(const.SESSION_KEY):
             kwargs["rok"] = self.request.session.get(const.SESSION_KEY)
+        kwargs["tytul_strony"] = self._tytul_strony()
+        kwargs["wizard_breadcrumbs"] = self._wizard_breadcrumbs()
         return super().get_context_data(form, **kwargs)
 
     @transaction.atomic

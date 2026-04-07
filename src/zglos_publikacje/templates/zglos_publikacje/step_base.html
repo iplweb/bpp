@@ -1,26 +1,32 @@
 {% extends "base.html" %}
 
 {% block extratitle %}
-    Zgłoś publikację
+    {{ tytul_strony|default:"Zgłoś publikację" }}
 {% endblock %}
 
 {% block breadcrumbs %}
     {{ block.super }}
     <li><a href="{% url "zglos_publikacje:nowe_zgloszenie" %}">Zgłoś publikację</a></li>
+    {% for bc in wizard_breadcrumbs %}
+        {% if bc.current %}
+            <li class="disabled">{{ bc.label }}</li>
+        {% else %}
+            <li><a href="#" class="wizard-bc-link"
+                   data-step="{{ bc.step }}">{{ bc.label }}</a></li>
+        {% endif %}
+    {% endfor %}
 {% endblock %}
 
 {% block extrahead %}
     {{ wizard.form.media }}
     <style>
         .tile-grid {
-            display: flex;
-            flex-wrap: wrap;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
             gap: 1rem;
             margin: 1.5rem 0;
         }
         .tile-card {
-            flex: 1 1 200px;
-            max-width: 300px;
             border: 2px solid #e0e0e0;
             border-radius: 8px;
             padding: 1.5rem;
@@ -28,6 +34,10 @@
             text-align: center;
             transition: border-color 0.2s, box-shadow 0.2s;
             background: #fff;
+        }
+        .tile-card,
+        .tile-card:hover {
+            text-decoration: none;
         }
         .tile-card:hover {
             border-color: #1779ba;
@@ -41,6 +51,11 @@
         .tile-card input[type="radio"] {
             display: none;
         }
+        .tile-card .tile-icon {
+            display: block;
+            font-size: 3rem;
+            line-height: 1.2;
+        }
         .tile-card .tile-title {
             display: block;
             font-size: 1.2rem;
@@ -53,11 +68,55 @@
             color: #666;
             margin-top: 0.3rem;
         }
+        .tile-card.tile-back {
+            border-color: #ccc;
+            background: #fff;
+            grid-column: 1 / -1;
+        }
+        .tile-card.tile-back:hover {
+            border-color: #999;
+        }
+        .wizard-nav {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin: 1.5rem 0;
+        }
+        .wizard-nav-btn {
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 1.2rem;
+            cursor: pointer;
+            text-align: center;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            background: #fff;
+            font-family: inherit;
+            text-decoration: none;
+        }
+        .wizard-nav-btn:hover {
+            border-color: #1779ba;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            text-decoration: none;
+        }
+        .wizard-nav-btn .tile-icon {
+            display: block;
+            font-size: 2rem;
+            line-height: 1.2;
+        }
+        .wizard-nav-btn .tile-title {
+            display: block;
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin-top: 0.3rem;
+        }
+        .wizard-nav-btn.nav-single {
+            grid-column: 1 / -1;
+        }
     </style>
 {% endblock %}
 
 {% block content %}
-    <h1>Zgłoś publikację</h1>
+    <h1>{{ tytul_strony }}</h1>
     <p class="subheader">Formularz umożliwia zgłoszenie publikacji do biblioteki.</p>
 
     <form action="" method="post" id="form-container" enctype="multipart/form-data">
@@ -69,20 +128,50 @@
             {% block wizard_content %}{% endblock %}
         </fieldset>
 
-        {% if wizard.steps.prev %}
-            <button name="wizard_goto_step" type="submit" class="button success"
-                    value="{{ wizard.steps.prev }}">
-                <span class="fi-arrow-left"></span> poprzedni krok
-            </button>
-        {% endif %}
-        {% if wizard.steps.next %}
-            <button type="submit" class="button submit" id="id-wizard-submit">
-                następny krok <span class="fi-arrow-right"/>
-            </button>
-        {% else %}
-            <button type="submit" class="button submit" id="id-wizard-submit">
-                <span class="fi-check"/> zakończ i wyślij do akceptacji
-            </button>
-        {% endif %}
+        {% block wizard_buttons %}
+        <div class="wizard-nav">
+            {% if wizard.steps.prev %}
+                <button name="wizard_goto_step" type="submit"
+                        class="wizard-nav-btn" formnovalidate
+                        value="{{ wizard.steps.prev }}">
+                    <span class="tile-icon">⬅️</span>
+                    <span class="tile-title">Poprzedni krok</span>
+                </button>
+            {% endif %}
+            {% if wizard.steps.next %}
+                <button type="submit" class="wizard-nav-btn{% if not wizard.steps.prev %} nav-single{% endif %}"
+                        id="id-wizard-submit">
+                    <span class="tile-icon">➡️</span>
+                    <span class="tile-title">Następny krok</span>
+                </button>
+            {% else %}
+                <button type="submit" class="wizard-nav-btn{% if not wizard.steps.prev %} nav-single{% endif %}"
+                        id="id-wizard-submit">
+                    <span class="tile-icon">✅</span>
+                    <span class="tile-title">Zakończ i wyślij</span>
+                </button>
+            {% endif %}
+        </div>
+        {% endblock %}
     </form>
+    <script>
+        document.querySelectorAll('.wizard-bc-link').forEach(
+            function(link) {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    var step = this.dataset.step;
+                    var form = document.getElementById(
+                        'form-container'
+                    );
+                    var input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'wizard_goto_step';
+                    input.value = step;
+                    form.appendChild(input);
+                    form.noValidate = true;
+                    form.submit();
+                });
+            }
+        );
+    </script>
 {% endblock %}
