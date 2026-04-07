@@ -3,7 +3,7 @@
 # Usage:
 #   make build                    # Local parallel build (default)
 #   make build-base               # Build only base image
-#   make build-independent        # Build dbserver + webserver only
+#   make build-independent        # Build dbserver only
 #   docker buildx bake --print    # Show build plan without executing
 #
 # Variables can be overridden via environment or --set flag:
@@ -32,7 +32,7 @@ variable "TAG_LATEST" {
 
 # Build groups for different scenarios
 group "default" {
-  targets = ["dbserver", "webserver", "appserver", "workerserver",
+  targets = ["dbserver", "appserver", "workerserver",
              "beatserver", "authserver", "denorm-queue"]
 }
 
@@ -41,7 +41,7 @@ group "base-only" {
 }
 
 group "independent" {
-  targets = ["dbserver", "webserver"]
+  targets = ["dbserver"]
 }
 
 group "app-services" {
@@ -74,19 +74,6 @@ target "dbserver" {
     "iplweb/bpp_dbserver:latest"
   ] : [
     "iplweb/bpp_dbserver:${DOCKER_VERSION}"
-  ]
-  platforms = [PLATFORM]
-  output    = PUSH ? ["type=registry"] : ["type=docker"]
-}
-
-target "webserver" {
-  dockerfile = "Dockerfile"
-  context    = "deploy/webserver"
-  tags = TAG_LATEST == "true" ? [
-    "iplweb/bpp_webserver:${DOCKER_VERSION}",
-    "iplweb/bpp_webserver:latest"
-  ] : [
-    "iplweb/bpp_webserver:${DOCKER_VERSION}"
   ]
   platforms = [PLATFORM]
   output    = PUSH ? ["type=registry"] : ["type=docker"]

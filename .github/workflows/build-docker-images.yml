@@ -50,7 +50,7 @@ jobs:
       - name: Build and push dependent images
         run: |
           docker buildx bake \
-            dbserver webserver appserver workerserver beatserver authserver denorm-queue \
+            dbserver appserver workerserver beatserver authserver denorm-queue \
             --file docker-bake.hcl \
             --set '*.platform=linux/amd64' \
             --allow=fs.read=/tmp \

@@ -77,29 +77,25 @@ services:
       - ./src:/app/src
 
   webserver:
-    image: iplweb/bpp_webserver:${DOCKER_VERSION:-latest}
-    build:
-      context: ./deploy/webserver
-      dockerfile: Dockerfile
-      tags:
-        - iplweb/bpp_webserver:${DOCKER_VERSION:-latest}
-        - iplweb/bpp_webserver:latest
-      cache_from:
-        - type=registry,ref=iplweb/bpp_webserver:latest
-      cache_to:
-        - type=inline
+    image: nginx:1.29.7
     restart: always
     env_file:
       - path: .env.docker
         required: true
       - path: .env
         required: false
-    environment:
-      - USE_DEV_TEMPLATE=${USE_DEV_TEMPLATE:-true}
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f -s -o /dev/null http://127.0.0.1:80/healthz || exit 1"]
+      start_period: 10s
+      interval: 10s
+      timeout: 5s
+      retries: 3
     volumes:
       - ./src/django_bpp/staticroot:/var/www/html/staticroot
       - media:/mediaroot
       - ssl_certs:/etc/ssl/private
+      - ./deploy/webserver/default.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - ./deploy/webserver/maintenance.html:/usr/share/nginx/html/maintenance.html:ro
 
 volumes:
   media:

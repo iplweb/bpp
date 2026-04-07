@@ -29,7 +29,7 @@
 
 BRANCH=`git branch | sed -n '/\* /s///p'`
 
-.PHONY: clean distclean tests release tests-without-playwright tests-only-playwright docker destroy-test-databases coveralls-upload clean-coverage combine-coverage cache-delete buildx-cache-stats buildx-cache-prune buildx-cache-prune-aggressive buildx-cache-prune-registry buildx-cache-export buildx-cache-import buildx-cache-list bump-dev bump-release bump-and-start-dev migrate new-worktree clean-worktree generate-500-page build build-force build-base build-independent build-app-services build-dbserver build-webserver build-appserver-base build-appserver build-workerserver build-beatserver build-authserver build-denorm-queue build-servers check-clean-tree prepare-claude prepare-developer-machine prepare-developer-machine-linux
+.PHONY: clean distclean tests release tests-without-playwright tests-only-playwright docker destroy-test-databases coveralls-upload clean-coverage combine-coverage cache-delete buildx-cache-stats buildx-cache-prune buildx-cache-prune-aggressive buildx-cache-prune-registry buildx-cache-export buildx-cache-import buildx-cache-list bump-dev bump-release bump-and-start-dev migrate new-worktree clean-worktree generate-500-page build build-force build-base build-independent build-app-services build-dbserver build-appserver-base build-appserver build-workerserver build-beatserver build-authserver build-denorm-queue build-servers check-clean-tree prepare-claude prepare-developer-machine prepare-developer-machine-linux
 
 PYTHON=python3
 
@@ -390,7 +390,7 @@ build-force:
 build-base:
 	docker buildx bake $(BAKE_ARGS) base
 
-# Build independent images only (dbserver + webserver)
+# Build independent images only (dbserver)
 build-independent:
 	docker buildx bake $(BAKE_ARGS) independent
 
@@ -401,9 +401,6 @@ build-app-services:
 # Individual build targets (for debugging or specific rebuilds)
 build-dbserver:
 	docker buildx bake $(BAKE_ARGS) dbserver
-
-build-webserver:
-	docker buildx bake $(BAKE_ARGS) webserver
 
 build-appserver-base:
 	docker buildx bake $(BAKE_ARGS) base
@@ -474,18 +471,6 @@ build-branch:
 	    --allow=fs.read=/tmp \
 	    --allow=fs.write=/tmp
 
-run-webserver-without-appserver-for-testing: build-webserver
-	@echo "Odpalamy webserver wyłącznie, żeby zobaczyć, jak wygląda jego strona błędu..."
-	@echo "=============================================================================="
-	@echo ""
-	@echo http://localhost:10080 and https://localhost:10443
-	@echo ""
-	@echo "=============================================================================="
-	@docker run -d --name appserver --rm alpine sleep infinity &
-	@sleep 3
-	@docker run --rm -it --link appserver:appserver  -p 10080:80 -p 10443:443 -v ./deploy/webserver/:/etc/ssl/private iplweb/bpp_webserver
-	@docker stop -s 9 -t 1 appserver
-
 buildx-cache-stats:
 	docker buildx du
 
@@ -520,7 +505,6 @@ buildx-cache-list:
 	@echo "  - iplweb/bpp_workerserver:cache"
 	@echo "  - iplweb/bpp_beatserver:cache"
 	@echo "  - iplweb/bpp_denorm_queue:cache"
-	@echo "  - iplweb/bpp_webserver:cache"
 	@echo "  - iplweb/bpp_dbserver:cache"
 
 compose-restart:
