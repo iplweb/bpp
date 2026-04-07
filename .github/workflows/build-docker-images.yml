@@ -51,7 +51,7 @@ jobs:
             BRANCH_TAG=$(echo "$REF_NAME" \
               | sed 's/[^a-zA-Z0-9._-]/-/g' \
               | tr '[:upper:]' '[:lower:]')
-            echo "docker_tag=${BASE_VERSION}.${BRANCH_TAG}" >> $GITHUB_OUTPUT
+            echo "docker_tag=${BRANCH_TAG}" >> $GITHUB_OUTPUT
             echo "tag_latest=false" >> $GITHUB_OUTPUT
           fi
 
