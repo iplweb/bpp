@@ -113,8 +113,8 @@ target "workerserver" {
 }
 
 target "beatserver" {
-  dockerfile = "Dockerfile"
-  context    = "docker/beatserver"
+  dockerfile = "docker/beatserver/Dockerfile"
+  context    = "."
   contexts   = {
     "iplweb/bpp_base:latest" = "target:base"
   }

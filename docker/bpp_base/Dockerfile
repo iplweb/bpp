@@ -14,8 +14,7 @@ ARG NODEJS_VERSION
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-RUN --mount=type=cache,target=/root/.cache/pip,id=pip-cache \
-    pip install uv
+COPY --from=ghcr.io/astral-sh/uv:0.7 /uv /usr/local/bin/uv
 
 ENV UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy
@@ -126,10 +125,10 @@ FROM python:${PYTHON_VERSION}-slim-${DEBIAN_VERSION} AS runtime
 RUN sed -i s/http/https/g /etc/apt/sources.list.d/debian.sources
 
 COPY docker/bpp_base/runtime.txt /tmp/
+COPY --from=ghcr.io/astral-sh/uv:0.7 /uv /usr/local/bin/uv
+
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=apt-cache \
     --mount=type=cache,target=/var/lib/apt/lists,sharing=locked,id=apt-lists \
-    --mount=type=cache,target=/root/.cache/pip,id=pip-cache \
-    pip install uv && \
     apt-get update && \
     xargs -a /tmp/runtime.txt apt-get install -y
 

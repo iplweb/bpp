@@ -1,6 +1,6 @@
 FROM iplweb/bpp_base:latest
 
-COPY entrypoint-beatserver.sh /app/entrypoint-beatserver.sh
+COPY docker/beatserver/entrypoint-beatserver.sh /app/entrypoint-beatserver.sh
 
 ENTRYPOINT ["/app/entrypoint-beatserver.sh"]
 
