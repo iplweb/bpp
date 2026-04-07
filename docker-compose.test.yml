@@ -14,7 +14,7 @@ services:
   test-runner:
     build:
       context: .
-      dockerfile: deploy/bpp_base/Dockerfile
+      dockerfile: docker/bpp_base/Dockerfile
       target: test-runner
       args:
         PYTHON_VERSION: ${PYTHON_VERSION:-3.12}

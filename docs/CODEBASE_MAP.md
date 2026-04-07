@@ -126,7 +126,7 @@ bpp/
 │   │
 │   └── [30+ supporting apps]     # Various features
 │
-├── deploy/                       # Docker & deployment configs
+├── docker/                       # Docker image build configs
 ├── docs/                         # Documentation (RST format)
 ├── bin/                          # Shell scripts & utilities
 └── tests/                        # Additional test files

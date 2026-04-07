@@ -14,7 +14,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=apt-cache \
 
 EXPOSE 8001
 
-COPY --chmod=755 deploy/authserver/entrypoint-authserver.sh /
+COPY --chmod=755 docker/authserver/entrypoint-authserver.sh /
 
 # Fast health check - auth server should start in seconds
 HEALTHCHECK --interval=5s --timeout=3s --retries=3 --start-period=10s \

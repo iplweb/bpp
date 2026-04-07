@@ -1,6 +1,6 @@
 FROM iplweb/bpp_base:latest
 
-COPY --chmod=755 deploy/denorm-queue/entrypoint-denorm-queue.sh /app/entrypoint-denorm-queue.sh
+COPY --chmod=755 docker/denorm-queue/entrypoint-denorm-queue.sh /app/entrypoint-denorm-queue.sh
 
 ENTRYPOINT ["/app/entrypoint-denorm-queue.sh"]
 

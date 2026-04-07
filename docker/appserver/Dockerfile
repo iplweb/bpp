@@ -5,7 +5,7 @@ FROM iplweb/bpp_base:latest
 
 EXPOSE 8000
 
-COPY --chmod=755 deploy/appserver/entrypoint-appserver.sh /
+COPY --chmod=755 docker/appserver/entrypoint-appserver.sh /
 
 # Copy Docker CLI from official image (fast - ~5s vs ~70s apt install)
 COPY --from=docker-cli /usr/local/bin/docker /usr/local/bin/docker

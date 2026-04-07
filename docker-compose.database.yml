@@ -5,7 +5,7 @@ services:
   db:
     image: iplweb/bpp_dbserver:${DOCKER_VERSION:-latest}
     build:
-      context: ./deploy/dbserver
+      context: ./docker/dbserver
       dockerfile: Dockerfile
       tags:
         - iplweb/bpp_dbserver:${DOCKER_VERSION:-latest}

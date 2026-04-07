@@ -44,8 +44,8 @@ jobs:
         key: >-
           ${{ runner.os }}-buildx-${{ matrix.python-version }}-${{
             hashFiles(
-              'deploy/bpp_base/Dockerfile',
-              'deploy/bpp_base/*.txt',
+              'docker/bpp_base/Dockerfile',
+              'docker/bpp_base/*.txt',
               'uv.lock'
             )
           }}

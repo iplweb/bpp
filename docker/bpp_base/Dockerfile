@@ -22,7 +22,7 @@ ENV UV_COMPILE_BYTECODE=1 \
 
 RUN sed -i s/http/https/g /etc/apt/sources.list.d/debian.sources
 
-COPY deploy/bpp_base/build.txt /tmp/
+COPY docker/bpp_base/build.txt /tmp/
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=apt-cache \
     --mount=type=cache,target=/var/lib/apt/lists,sharing=locked,id=apt-lists \
     apt-get update && \
@@ -75,8 +75,8 @@ RUN find .venv -type f -name "*.pyc" -delete && \
 FROM base AS test-runner
 
 # Runtime + test packages (build.txt already in base)
-COPY deploy/bpp_base/runtime.txt \
-     deploy/bpp_base/test.txt /tmp/packages/
+COPY docker/bpp_base/runtime.txt \
+     docker/bpp_base/test.txt /tmp/packages/
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=apt-cache \
     --mount=type=cache,target=/var/lib/apt/lists,sharing=locked,id=apt-lists \
     cat /tmp/packages/*.txt | xargs apt-get install -y
@@ -125,7 +125,7 @@ FROM python:${PYTHON_VERSION}-slim-${DEBIAN_VERSION} AS runtime
 
 RUN sed -i s/http/https/g /etc/apt/sources.list.d/debian.sources
 
-COPY deploy/bpp_base/runtime.txt /tmp/
+COPY docker/bpp_base/runtime.txt /tmp/
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=apt-cache \
     --mount=type=cache,target=/var/lib/apt/lists,sharing=locked,id=apt-lists \
     --mount=type=cache,target=/root/.cache/pip,id=pip-cache \

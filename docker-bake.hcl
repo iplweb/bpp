@@ -50,7 +50,7 @@ group "app-services" {
 
 # Base image - critical path, app services depend on this
 target "base" {
-  dockerfile = "deploy/bpp_base/Dockerfile"
+  dockerfile = "docker/bpp_base/Dockerfile"
   context    = "."
   args = {
     GIT_SHA = GIT_SHA
@@ -68,7 +68,7 @@ target "base" {
 # Independent images - can build in parallel with base
 target "dbserver" {
   dockerfile = "Dockerfile"
-  context    = "deploy/dbserver"
+  context    = "docker/dbserver"
   tags = TAG_LATEST == "true" ? [
     "iplweb/bpp_dbserver:${DOCKER_VERSION}",
     "iplweb/bpp_dbserver:latest"
@@ -81,7 +81,7 @@ target "dbserver" {
 
 # Dependent images - wait for base to complete via contexts dependency
 target "appserver" {
-  dockerfile = "deploy/appserver/Dockerfile"
+  dockerfile = "docker/appserver/Dockerfile"
   context    = "."
   contexts   = {
     "iplweb/bpp_base:latest" = "target:base"
@@ -97,7 +97,7 @@ target "appserver" {
 }
 
 target "workerserver" {
-  dockerfile = "deploy/workerserver/Dockerfile"
+  dockerfile = "docker/workerserver/Dockerfile"
   context    = "."
   contexts   = {
     "iplweb/bpp_base:latest" = "target:base"
@@ -114,7 +114,7 @@ target "workerserver" {
 
 target "beatserver" {
   dockerfile = "Dockerfile"
-  context    = "deploy/beatserver"
+  context    = "docker/beatserver"
   contexts   = {
     "iplweb/bpp_base:latest" = "target:base"
   }
@@ -129,7 +129,7 @@ target "beatserver" {
 }
 
 target "authserver" {
-  dockerfile = "deploy/authserver/Dockerfile"
+  dockerfile = "docker/authserver/Dockerfile"
   context    = "."
   contexts   = {
     "iplweb/bpp_base:latest" = "target:base"
@@ -145,7 +145,7 @@ target "authserver" {
 }
 
 target "denorm-queue" {
-  dockerfile = "deploy/denorm-queue/Dockerfile"
+  dockerfile = "docker/denorm-queue/Dockerfile"
   context    = "."
   contexts   = {
     "iplweb/bpp_base:latest" = "target:base"

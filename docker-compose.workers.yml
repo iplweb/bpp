@@ -5,7 +5,7 @@ services:
   celerybeat:
     image: iplweb/bpp_beatserver:${DOCKER_VERSION:-latest}
     build:
-      context: ./deploy/beatserver
+      context: ./docker/beatserver
       dockerfile: Dockerfile
       tags:
         - iplweb/bpp_beatserver:${DOCKER_VERSION:-latest}
@@ -40,7 +40,7 @@ services:
     image: iplweb/bpp_workerserver:${DOCKER_VERSION:-latest}
     build:
       context: .
-      dockerfile: deploy/workerserver/Dockerfile
+      dockerfile: docker/workerserver/Dockerfile
       tags:
         - iplweb/bpp_workerserver:${DOCKER_VERSION:-latest}
         - iplweb/bpp_workerserver:latest
@@ -75,7 +75,7 @@ services:
     image: iplweb/bpp_workerserver:${DOCKER_VERSION:-latest}
     build:
       context: .
-      dockerfile: deploy/workerserver/Dockerfile
+      dockerfile: docker/workerserver/Dockerfile
       tags:
         - iplweb/bpp_workerserver:${DOCKER_VERSION:-latest}
         - iplweb/bpp_workerserver:latest
@@ -111,7 +111,7 @@ services:
     image: iplweb/bpp_workerserver:${DOCKER_VERSION:-latest}
     build:
       context: .
-      dockerfile: deploy/workerserver/Dockerfile
+      dockerfile: docker/workerserver/Dockerfile
       tags:
         - iplweb/bpp_workerserver:${DOCKER_VERSION:-latest}
         - iplweb/bpp_workerserver:latest
@@ -139,7 +139,7 @@ services:
     image: iplweb/bpp_denorm_queue:${DOCKER_VERSION:-latest}
     build:
       context: .
-      dockerfile: deploy/denorm-queue/Dockerfile
+      dockerfile: docker/denorm-queue/Dockerfile
       tags:
         - iplweb/bpp_denorm_queue:${DOCKER_VERSION:-latest}
         - iplweb/bpp_denorm_queue:latest

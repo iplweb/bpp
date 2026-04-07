@@ -6,7 +6,7 @@ services:
     image: iplweb/bpp_appserver:${DOCKER_VERSION:-latest}
     build:
       context: .
-      dockerfile: deploy/appserver/Dockerfile
+      dockerfile: docker/appserver/Dockerfile
       tags:
         - iplweb/bpp_appserver:${DOCKER_VERSION:-latest}
         - iplweb/bpp_appserver:latest
@@ -44,7 +44,7 @@ services:
     image: iplweb/bpp_authserver:${DOCKER_VERSION:-latest}
     build:
       context: .
-      dockerfile: deploy/authserver/Dockerfile
+      dockerfile: docker/authserver/Dockerfile
       tags:
         - iplweb/bpp_authserver:${DOCKER_VERSION:-latest}
         - iplweb/bpp_authserver:latest
@@ -94,8 +94,8 @@ services:
       - ./src/django_bpp/staticroot:/var/www/html/staticroot
       - media:/mediaroot
       - ssl_certs:/etc/ssl/private
-      - ./deploy/webserver/default.conf.template:/etc/nginx/templates/default.conf.template:ro
-      - ./deploy/webserver/maintenance.html:/usr/share/nginx/html/maintenance.html:ro
+      - ./docker/webserver/default.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - ./docker/webserver/maintenance.html:/usr/share/nginx/html/maintenance.html:ro
 
 volumes:
   media:

@@ -72,7 +72,7 @@ services:
       --server.http.listen-addr=0.0.0.0:12345
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ./deploy/alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - ./docker/alloy/config.alloy:/etc/alloy/config.alloy:ro
     depends_on:
       - loki
 
