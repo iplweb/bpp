@@ -14,31 +14,41 @@ class SetupWizardMiddleware(MiddlewareMixin):
     Handles both user setup and uczelnia setup.
     """
 
-    def process_request(self, request):
-        # Skip middleware for static files and media files
-        if request.path.startswith("/static/") or request.path.startswith("/media/"):
-            return None
+    SKIP_PREFIXES = (
+        "/static/",
+        "/media/",
+        "/metrics",
+        "/setup/",
+    )
 
-        # Skip if we're already on the setup wizard URLs
-        if request.path.startswith("/setup/"):
-            return None
+    SKIP_SUBSTRINGS = (
+        "migrate",
+        "__debug__",
+        "login",
+        "logout",
+        "accounts",
+    )
 
-        # Skip for admin URLs during setup (in case we need to access admin for debugging)
-        if request.path.startswith("/admin/") and request.path != "/admin/":
-            # Allow access to admin if users exist
+    def _should_skip(self, request):
+        path = request.path
+
+        if any(path.startswith(p) for p in self.SKIP_PREFIXES):
+            return True
+
+        if any(s in path for s in self.SKIP_SUBSTRINGS):
+            return True
+
+        if path.startswith("/admin/") and path != "/admin/":
             try:
                 if BppUser.objects.exists():
-                    return None
+                    return True
             except BaseException:
-                # Database might not be migrated yet
-                return None
+                return True
 
-        # Skip for migration-related URLs
-        if any(path in request.path for path in ["migrate", "__debug__"]):
-            return None
+        return False
 
-        # Skip for login/logout URLs
-        if any(path in request.path for path in ["login", "logout", "accounts"]):
+    def process_request(self, request):
+        if self._should_skip(request):
             return None
 
         # First check if any users exist
