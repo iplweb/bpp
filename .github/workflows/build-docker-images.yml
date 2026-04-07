@@ -72,6 +72,7 @@ jobs:
           docker buildx bake \
             dbserver appserver workerserver beatserver authserver denorm-queue \
             --file docker-bake.hcl \
+            --set 'base.args.GIT_SHA=${{ github.sha }}' \
             --set '*.platform=linux/amd64' \
             --allow=fs.read=/tmp \
             --allow=fs.write=/tmp
