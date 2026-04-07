@@ -9,6 +9,11 @@
   <a href="http://bpp.readthedocs.io/pl/latest/?badge=latest"><img src="https://readthedocs.org/projects/bpp/badge/?version=latest" alt="Dokumentacja"></a>
 </p>
 
+<p align="center">
+  <b>Wsparcie komercyjne zapewnia</b><br><br>
+  <a href="https://bpp.iplweb.pl"><img src="https://www.iplweb.pl/images/ipl-logo-large.png" width="150" alt="IPL Web"></a>
+</p>
+
 ## O projekcie
 
 Bibliografia Publikacji Pracowników to system informatyczny do zarządzania
@@ -32,9 +37,9 @@ Oprogramowanie dystrybuowane jest na zasadach otwartoźródłowej
 
 ## Instalacja
 
-Instrukcja instalacji i wdrożenia dostępna jest w repozytorium
-**[bpp-deploy](https://github.com/iplweb/bpp-deploy)** oraz na stronie
-[bpp.iplweb.pl/zrodla](https://bpp.iplweb.pl/zrodla).
+Instrukcja instalacji i wdrożenia dostępna jest na stronie
+[bpp.iplweb.pl/zrodla](https://bpp.iplweb.pl/zrodla) oraz w repozytorium
+**[bpp-deploy](https://github.com/iplweb/bpp-deploy)**.
 
 ## Wersja demo
 
@@ -50,11 +55,6 @@ pod adresem e-mail michal.dtz@gmail.com.
 | **Cache / broker** | Redis, RabbitMQ |
 | **Frontend** | Foundation CSS, jQuery, HTMX, Select2 |
 | **Infrastruktura** | Docker, Nginx, Prometheus, Grafana |
-
-<p align="center">
-  <b>Wsparcie komercyjne zapewnia</b><br><br>
-  <a href="https://bpp.iplweb.pl"><img src="https://www.iplweb.pl/images/ipl-logo-large.png" width="150" alt="IPL Web"></a>
-</p>
 
 ## Zgłaszanie problemów
 
