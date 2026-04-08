@@ -8,6 +8,13 @@ class OsobaZInstytucji(models.Model):
     firstName = models.TextField()
     lastName = models.TextField()
     institutionId = models.ForeignKey("pbn_api.Institution", on_delete=models.PROTECT)
+    uczelnia = models.ForeignKey(
+        "bpp.Uczelnia",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="osoby_z_instytucji",
+    )
     institutionName = models.TextField()
     title = models.TextField(blank=True, default="")
     polonUuid = models.UUIDField(unique=True)

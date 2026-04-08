@@ -1,12 +1,14 @@
 from django.contrib import admin
 from django.db import models
 
+from bpp.admin.helpers.site_filtered import SiteFilteredAdminMixin
 from pbn_api.admin import BasePBNAPIAdmin, PrettyJSONWidgetReadonly
 from pbn_api.models import PublikacjaInstytucji_V2
 
 
 @admin.register(PublikacjaInstytucji_V2)
-class PublikacjaInstytucjiAdmin(BasePBNAPIAdmin):
+class PublikacjaInstytucjiAdmin(SiteFilteredAdminMixin, BasePBNAPIAdmin):
+    uczelnia_field_path = "uczelnia"
     list_per_page = 25
     actions = None
 

@@ -132,13 +132,21 @@ class SentData(LinkDoPBNMixin, models.Model):
 
     object = GenericForeignKey()
 
+    uczelnia = models.ForeignKey(
+        "bpp.Uczelnia",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="sent_data",
+    )
+
     data_sent = JSONField("Wysłane dane")
     last_updated_on = models.DateTimeField("Data operacji", auto_now=True)
 
     uploaded_okay = models.BooleanField(
         "Wysłano poprawnie", default=True, db_index=True
     )
-    exception = models.TextField("Kod błędu", max_length=65535, blank=True, null=True)
+    exception = models.TextField("Kod błędu", max_length=65535, blank=True, null=True)  # noqa: DJ001
 
     # New fields for success tracking
     submitted_successfully = models.BooleanField(
@@ -153,7 +161,7 @@ class SentData(LinkDoPBNMixin, models.Model):
         blank=True,
         help_text="Kiedy dane zostały wysłane do PBN",
     )
-    api_response_status = models.TextField(
+    api_response_status = models.TextField(  # noqa: DJ001
         "Status odpowiedzi API", null=True, blank=True, help_text="Odpowiedź z PBN API"
     )
 
@@ -165,7 +173,7 @@ class SentData(LinkDoPBNMixin, models.Model):
         on_delete=models.SET_NULL,
     )
 
-    typ_rekordu = models.CharField(max_length=50, blank=True, null=True)
+    typ_rekordu = models.CharField(max_length=50, blank=True, null=True)  # noqa: DJ001
 
     objects = SentDataManager()
 
@@ -190,7 +198,7 @@ class SentData(LinkDoPBNMixin, models.Model):
         except ObjectDoesNotExist:
             pass
 
-    def save(
+    def save(  # noqa: DJ012
         self, force_insert=False, force_update=False, using=None, update_fields=None
     ):
         if update_fields and "data_sent" in update_fields:
