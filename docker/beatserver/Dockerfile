@@ -1,6 +1,7 @@
-FROM iplweb/bpp_base:latest
+ARG BPP_BASE_TAG=latest
+FROM iplweb/bpp_base:${BPP_BASE_TAG}
 
-COPY entrypoint-beatserver.sh /app/entrypoint-beatserver.sh
+COPY docker/beatserver/entrypoint-beatserver.sh /app/entrypoint-beatserver.sh
 
 ENTRYPOINT ["/app/entrypoint-beatserver.sh"]
 

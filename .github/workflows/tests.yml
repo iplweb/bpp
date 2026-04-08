@@ -21,7 +21,7 @@ jobs:
       !(github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, 'Merge tag'))
 
     runs-on: ubuntu-latest
-    timeout-minutes: 45  # Add job-level timeout
+    timeout-minutes: 45
     continue-on-error: ${{ matrix.python-version == '3.14' }}
 
     strategy:
@@ -29,150 +29,84 @@ jobs:
       matrix:
         python-version: ["3.12", "3.14"]
 
-    services:
-      redis:
-        image: redis
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-      postgres:
-        image: iplweb/bpp_dbserver:latest
-        env:
-          POSTGRES_DB: postgres
-          POSTGRES_PASSWORD: password
-          POSTGRES_USER: postgres
-        ports:
-          - 5433:5432
-        # Set health checks to wait until postgres has started
-        options: >-
-          --health-cmd "pg_isready --username=postgres"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
 
-    - name: Cache APT packages
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v4
+      with:
+        driver: docker-container
+
+    - name: Cache Docker layers
       uses: actions/cache@v4
       with:
-        path: /var/cache/apt/archives
-        key: ${{ runner.os }}-apt-${{ hashFiles('.github/workflows/tests.yml') }}
+        path: /tmp/.buildx-cache
+        key: >-
+          ${{ runner.os }}-buildx-${{ matrix.python-version }}-${{
+            hashFiles(
+              'docker/bpp_base/Dockerfile',
+              'docker/bpp_base/*.txt',
+              'uv.lock'
+            )
+          }}
         restore-keys: |
-          ${{ runner.os }}-apt-
+          ${{ runner.os }}-buildx-${{ matrix.python-version }}-
 
-    - name: Cache Playwright browsers
-      uses: actions/cache@v4
-      with:
-        path: ~/.cache/ms-playwright
-        key: ${{ runner.os }}-playwright-${{ hashFiles('**/uv.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-playwright-
-
-    - name: Cache Yarn dependencies
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/.cache/yarn
-          node_modules
-        key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock', '**/package.json') }}
-        restore-keys: |
-          ${{ runner.os }}-yarn-
-
-    - name: Cache UV dependencies
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/.cache/uv
-          ~/.local/share/uv
-          .venv
-        key: ${{ runner.os }}-uv-with-playwright-${{ hashFiles('**/uv.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-uv-with-playwright-
-          ${{ runner.os }}-uv-
-
-    - name: System setup and dependencies
-      timeout-minutes: 10
-      run: |
-        set -e  # Exit on any error
-        uname -a
-        sudo apt update
-        sudo apt install software-properties-common gettext libldap2-dev libsasl2-dev libcairo2-dev
-        curl -fsSL https://deb.nodesource.com/setup_current.x | sudo bash -
-        sudo apt install -y libpq-dev nodejs redis-tools
-        sudo npm install -g --force yarn grunt-cli
-
-    - name: Install uv
-      uses: astral-sh/setup-uv@v4
-      with:
-        enable-cache: true
-        cache-dependency-glob: "uv.lock"
-
-    - name: Install Python ${{ matrix.python-version }}
-      timeout-minutes: 10
-      run: |
-        uv python install ${{ matrix.python-version }}
-        uv python pin ${{ matrix.python-version }}
-
-    - name: Install Python deps via uv
-      timeout-minutes: 10
-      run: |
-        uv sync --all-extras
-
-    - name: Build assets (yarn, collectstatic)
-      timeout-minutes: 10
+    - name: Build test-runner image
       env:
-        DJANGO_BPP_DB_HOST: 127.0.0.1
-        DJANGO_BPP_DB_PORT: 5433
-        DJANGO_BPP_DB_USER: postgres
+        PYTHON_VERSION: ${{ matrix.python-version }}
+        COMPOSE_DOCKER_CLI_BUILD: 1
+        DOCKER_BUILDKIT: 1
       run: |
-        uv run make assets
+        docker compose -f docker-compose.test.yml build test-runner
 
-    - name: playwright install chromium
-      timeout-minutes: 10
-      env:
-        DJANGO_BPP_DB_HOST: 127.0.0.1
-        DJANGO_BPP_DB_PORT: 5433
-        DJANGO_BPP_DB_USER: postgres
+    - name: Start services
       run: |
-        uv run playwright install chromium
+        docker compose -f docker-compose.test.yml up -d db redis rabbitmq
 
     - name: Wait for services
       timeout-minutes: 2
       run: |
-        # Wait for PostgreSQL to be ready
-        until pg_isready -h 127.0.0.1 -p 5433 -U postgres; do
+        until docker compose -f docker-compose.test.yml exec db \
+            pg_isready -U bpp; do
           echo "Waiting for PostgreSQL..."
           sleep 2
         done
-        # Wait for Redis to be ready
-        until redis-cli -h 127.0.0.1 -p 6379 ping; do
+        until docker compose -f docker-compose.test.yml exec redis \
+            redis-cli ping; do
           echo "Waiting for Redis..."
           sleep 2
         done
 
+    - name: Build assets
+      timeout-minutes: 10
+      run: |
+        docker compose -f docker-compose.test.yml run --rm \
+          test-runner uv run make assets
+
+    - name: Install Playwright browsers
+      timeout-minutes: 10
+      run: |
+        docker compose -f docker-compose.test.yml run --rm \
+          test-runner uv run playwright install chromium
+
     - name: Tests (without Playwright)
       timeout-minutes: 20
-      env:
-         DJANGO_BPP_DB_HOST: 127.0.0.1
-         DJANGO_BPP_DB_PORT: 5433
-         DJANGO_BPP_DB_USER: postgres
       run: |
-         uv run pytest -m "not playwright" -n auto --cov=src/ --cov-branch --cov-report=xml:cov.xml
+        docker compose -f docker-compose.test.yml run --rm \
+          test-runner uv run pytest \
+            -m "not playwright" -n auto \
+            --cov=src/ --cov-branch \
+            --cov-report=xml:cov.xml
 
     - name: Tests (Playwright)
       timeout-minutes: 20
-      env:
-         DJANGO_BPP_DB_HOST: 127.0.0.1
-         DJANGO_BPP_DB_PORT: 5433
-         DJANGO_BPP_DB_USER: postgres
       run: |
-         uv run pytest -m "playwright" -n auto --cov=src/ --cov-branch --cov-append --cov-report=xml:cov.xml
+        docker compose -f docker-compose.test.yml run --rm \
+          test-runner uv run pytest \
+            -m "playwright" -n auto \
+            --cov=src/ --cov-branch --cov-append \
+            --cov-report=xml:cov.xml
 
     - name: Upload coverage to Coveralls (parallel)
       if: always()
@@ -182,3 +116,8 @@ jobs:
         flag-name: tests
         parallel: true
         file: cov.xml
+
+    - name: Cleanup
+      if: always()
+      run: |
+        docker compose -f docker-compose.test.yml down -v

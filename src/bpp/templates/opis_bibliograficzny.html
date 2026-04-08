@@ -32,6 +32,8 @@
     {% else %}
         {% if praca.wydawnictwo_nadrzedne.tytul_oryginalny %}
             W: {{ praca.wydawnictwo_nadrzedne.tytul_oryginalny }}.
+        {% elif praca.wydawnictwo_nadrzedne_w_pbn.title %}
+            W: {{ praca.wydawnictwo_nadrzedne_w_pbn.title }}.
         {% endif %}
     {% endif %}
 {% endif %}

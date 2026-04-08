@@ -37,7 +37,11 @@ if [ "$ENABLE_AUTORELOAD_ON_CODE_CHANGE" = "1" ] || \
     echo "Auto-reload ENABLED"
     uv pip install watchdog --quiet
     exec uv run uvicorn --host 0 --port 8000 --reload \
-        --reload-dir /app/src django_bpp.asgi:application
+        --reload-dir /app/src \
+        --log-config /uvicorn_log_config.json \
+        django_bpp.asgi:application
 else
-    exec uv run uvicorn --host 0 --port 8000 django_bpp.asgi:application
+    exec uv run uvicorn --host 0 --port 8000 \
+        --log-config /uvicorn_log_config.json \
+        django_bpp.asgi:application
 fi

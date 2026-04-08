@@ -126,7 +126,7 @@ bpp/
 │   │
 │   └── [30+ supporting apps]     # Various features
 │
-├── deploy/                       # Docker & deployment configs
+├── docker/                       # Docker image build configs
 ├── docs/                         # Documentation (RST format)
 ├── bin/                          # Shell scripts & utilities
 └── tests/                        # Additional test files
@@ -360,7 +360,7 @@ sequenceDiagram
 ### Testing
 - **Framework**: pytest with Django plugin
 - **Data Generation**: model_bakery (`baker.make()`)
-- **Selenium**: Firefox driver for browser tests
+- **Playwright**: Browser tests
 - **Convention**: Standalone functions, no unittest.TestCase
 
 ---
@@ -388,6 +388,70 @@ sequenceDiagram
 - 403 errors require user re-authorization
 - "Prace serwisowe" (maintenance) triggers retry delays
 - Export queue has retry strategies with exponential backoff
+
+---
+
+## Django-Constance Integration
+
+The project uses django-constance for runtime configuration that can be changed
+via the admin panel without restarting the server.
+
+**Key files:**
+- `src/bpp/admin/constance_admin.py` - Custom admin limiting access to superusers
+- `src/bpp/admin/helpers/constance_field_mixin.py` - Mixins for dynamic field hiding
+- `src/bpp/context_processors/constance_config.py` - Template context processor
+
+**Configuration settings (editable at runtime):**
+- `UZYWAJ_PUNKTACJI_WEWNETRZNEJ` - Enable/disable internal scoring
+- `POKAZUJ_INDEX_COPERNICUS` - Show/hide Index Copernicus fields
+- `POKAZUJ_PUNKTACJA_SNIP` - Show/hide SNIP scoring fields
+- `POKAZUJ_OSWIADCZENIE_KEN` - Show/hide KEN declaration option
+- `UCZELNIA_UZYWA_WYDZIALOW` - Enable/disable faculty structure
+- `GOOGLE_ANALYTICS_PROPERTY_ID` - Google Analytics tracking
+
+**Using constance in code:**
+```python
+from constance import config
+if config.UZYWAJ_PUNKTACJI_WEWNETRZNEJ:
+    # show internal scoring
+```
+
+**Admin field hiding pattern:**
+Use `ConstanceScoringFieldsMixin` in admin classes to dynamically hide fields:
+```python
+from bpp.admin.helpers.constance_field_mixin import (
+    ConstanceScoringFieldsMixin,
+)
+
+class MyModelAdmin(ConstanceScoringFieldsMixin, admin.ModelAdmin):
+    # Fields like index_copernicus will auto-hide
+    # when POKAZUJ_INDEX_COPERNICUS=False
+```
+
+---
+
+## Abstract Models and Mixins
+
+The project uses abstract models for sharing fields across publication types.
+Located in `src/bpp/models/abstract/`:
+
+**Key abstract models:**
+- `ModelZPolamiEwaluacjiPBN` - PBN/SEDN evaluation fields for publications
+  - Fields: `pbn_czy_projekt_fnp`, `pbn_czy_projekt_ncn`,
+    `pbn_czy_projekt_nprh`, `pbn_czy_projekt_ue`,
+    `pbn_czy_czasopismo_indeksowane`, `pbn_czy_artykul_recenzyjny`,
+    `pbn_czy_edycja_naukowa`
+  - Used by `Wydawnictwo_Ciagle` and `Wydawnictwo_Zwarte`
+  - Exported to PBN API as evaluation attributes
+
+**Admin fieldsets pattern:**
+Fieldsets for abstract model fields are defined in
+`src/bpp/admin/helpers/fieldsets.py`:
+```python
+from bpp.admin.helpers.fieldsets import (
+    MODEL_Z_POLAMI_EWALUACJI_PBN_FIELDSET,
+)
+```
 
 ---
 

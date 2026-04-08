@@ -1,4 +1,4 @@
-"""Browser and Selenium fixtures."""
+"""Browser and webtest fixtures."""
 
 import pytest
 from django.apps import apps

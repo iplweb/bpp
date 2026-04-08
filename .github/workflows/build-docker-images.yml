@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - master
+      - 'feature/**'
+      - 'fix/**'
+      - 'hotfix/**'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -14,47 +17,55 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Log in to Docker Hub
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           username: ${{ vars.DOCKER_USER }}
           password: ${{ secrets.DOCKER_PAT }}
 
       - name: Set up Docker Buildx Action
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
         with:
           version: "lab:latest"
           driver: cloud
           endpoint: "iplweb/bpp"
-          install: true
           cache-binary: true
 
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Get version from Makefile
         id: version
         run: echo "version=$(grep '^DOCKER_VERSION=' Makefile | cut -d'=' -f2)" >> $GITHUB_OUTPUT
 
-      - name: Build and push base image first
-        run: |
-          docker buildx bake base \
-            --file docker-bake.hcl \
-            --set 'base.args.GIT_SHA=${{ github.sha }}' \
-            --set '*.platform=linux/amd64' \
-            --allow=fs.read=/tmp \
-            --allow=fs.write=/tmp
+      - name: Compute Docker tag
+        id: tag
         env:
-          DOCKER_VERSION: ${{ steps.version.outputs.version }}
-          PUSH: "true"
+          REF_NAME: ${{ github.ref_name }}
+          BASE_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          if [ "$REF_NAME" = "master" ]; then
+            echo "docker_tag=${BASE_VERSION}" >> $GITHUB_OUTPUT
+            echo "tag_latest=true" >> $GITHUB_OUTPUT
+          else
+            BRANCH_TAG=$(echo "$REF_NAME" \
+              | sed 's/[^a-zA-Z0-9._-]/-/g' \
+              | tr '[:upper:]' '[:lower:]')
+            echo "docker_tag=${BRANCH_TAG}" >> $GITHUB_OUTPUT
+            echo "tag_latest=false" >> $GITHUB_OUTPUT
+          fi
 
-      - name: Build and push dependent images
+      - name: Build and push all images
         run: |
           docker buildx bake \
-            dbserver webserver appserver workerserver beatserver authserver denorm-queue \
+            base dbserver appserver workerserver \
+            beatserver authserver denorm-queue \
             --file docker-bake.hcl \
+            --set "base.args.GIT_SHA=${GIT_SHA}" \
             --set '*.platform=linux/amd64' \
             --allow=fs.read=/tmp \
             --allow=fs.write=/tmp
         env:
-          DOCKER_VERSION: ${{ steps.version.outputs.version }}
+          GIT_SHA: ${{ github.sha }}
+          DOCKER_VERSION: ${{ steps.tag.outputs.docker_tag }}
+          TAG_LATEST: ${{ steps.tag.outputs.tag_latest }}
           PUSH: "true"

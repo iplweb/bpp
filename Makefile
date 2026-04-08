@@ -29,7 +29,7 @@
 
 BRANCH=`git branch | sed -n '/\* /s///p'`
 
-.PHONY: clean distclean tests release tests-without-playwright tests-only-playwright docker destroy-test-databases coveralls-upload clean-coverage combine-coverage cache-delete buildx-cache-stats buildx-cache-prune buildx-cache-prune-aggressive buildx-cache-prune-registry buildx-cache-export buildx-cache-import buildx-cache-list bump-dev bump-release bump-and-start-dev migrate new-worktree clean-worktree generate-500-page build build-force build-base build-independent build-app-services build-dbserver build-webserver build-appserver-base build-appserver build-workerserver build-beatserver build-authserver build-denorm-queue build-servers check-clean-tree prepare-claude prepare-developer-machine prepare-developer-machine-linux
+.PHONY: clean distclean tests release tests-without-playwright tests-only-playwright docker destroy-test-databases coveralls-upload clean-coverage combine-coverage cache-delete buildx-cache-stats buildx-cache-prune buildx-cache-prune-aggressive buildx-cache-prune-registry buildx-cache-export buildx-cache-import buildx-cache-list bump-dev bump-release bump-and-start-dev migrate new-worktree clean-worktree generate-500-page build build-force build-base build-independent build-app-services build-dbserver build-appserver-base build-appserver build-workerserver build-beatserver build-authserver build-denorm-queue build-servers check-clean-tree prepare-claude prepare-developer-machine prepare-developer-machine-linux
 
 PYTHON=python3
 
@@ -46,11 +46,11 @@ all:	prepare-developer-machine release
 prepare-developer-machine-macos:
 	uv sync --all-extras
 	brew install cairo pango gdk-pixbuf libffi gobject-introspection gtk+3
-	sudo ln -s /opt/homebrew/opt/glib/lib/libgobject-2.0.0.dylib /usr/local/lib/gobject-2.0
-	sudo ln -s /opt/homebrew/opt/pango/lib/libpango-1.0.dylib /usr/local/lib/pango-1.0
-	sudo ln -s /opt/homebrew/opt/harfbuzz/lib/libharfbuzz.dylib /usr/local/lib/harfbuzz
-	sudo ln -s /opt/homebrew/opt/fontconfig/lib/libfontconfig.1.dylib /usr/local/lib/fontconfig-1
-	sudo ln -s /opt/homebrew/opt/pango/lib/libpangoft2-1.0.dylib /usr/local/lib/pangoft2-1.0
+	sudo ln -sf /opt/homebrew/opt/glib/lib/libgobject-2.0.0.dylib /usr/local/lib/gobject-2.0
+	sudo ln -sf /opt/homebrew/opt/pango/lib/libpango-1.0.dylib /usr/local/lib/pango-1.0
+	sudo ln -sf /opt/homebrew/opt/harfbuzz/lib/libharfbuzz.dylib /usr/local/lib/harfbuzz
+	sudo ln -sf /opt/homebrew/opt/fontconfig/lib/libfontconfig.1.dylib /usr/local/lib/fontconfig-1
+	sudo ln -sf /opt/homebrew/opt/pango/lib/libpangoft2-1.0.dylib /usr/local/lib/pangoft2-1.0
 
 prepare-developer-machine-linux:
 	sudo apt update
@@ -119,7 +119,7 @@ distclean: clean
 	rm -rf src/django_bpp/staticroot
 	rm -rf *backup .pytest-cache
 	rm -rf node_modules src/node_modules src/django_bpp/staticroot
-	rm -rf .vagrant splintershots src/components/bower_components src/media
+	rm -rf .vagrant src/components/bower_components src/media
 	rm -rf dist
 	rm src/bpp/static/scss/*.css
 	rm src/bpp/static/scss/*.map
@@ -226,6 +226,21 @@ coveralls-upload:
 
 tests: destroy-test-databases clean-pycache clean-coverage tests-without-playwright tests-only-playwright combine-coverage js-tests coveralls-upload
 
+tests-in-docker:
+	docker compose -f docker-compose.test.yml build test-runner
+	docker compose -f docker-compose.test.yml up -d db redis rabbitmq
+	docker compose -f docker-compose.test.yml run --rm test-runner \
+		uv run pytest -n auto -m "not playwright" --maxfail 50
+	docker compose -f docker-compose.test.yml down
+
+tests-in-docker-interactive:
+	docker compose -f docker-compose.test.yml build test-runner
+	docker compose -f docker-compose.test.yml up -d db redis rabbitmq
+	docker compose -f docker-compose.test.yml run --rm test-runner bash
+
+tests-in-docker-down:
+	docker compose -f docker-compose.test.yml down -v
+
 destroy-test-databases:
 	-./bin/drop-test-databases.sh
 
@@ -322,7 +337,7 @@ loc: clean
 	pygount -N ... -F "...,staticroot,migrations,fixtures" src --format=summary
 
 
-DOCKER_VERSION=202603.1351
+DOCKER_VERSION=202604.1352
 
 # Cache configuration for docker buildx bake
 # - local: use local cache (default for local builds)
@@ -375,7 +390,7 @@ build-force:
 build-base:
 	docker buildx bake $(BAKE_ARGS) base
 
-# Build independent images only (dbserver + webserver)
+# Build independent images only (dbserver)
 build-independent:
 	docker buildx bake $(BAKE_ARGS) independent
 
@@ -386,9 +401,6 @@ build-app-services:
 # Individual build targets (for debugging or specific rebuilds)
 build-dbserver:
 	docker buildx bake $(BAKE_ARGS) dbserver
-
-build-webserver:
-	docker buildx bake $(BAKE_ARGS) webserver
 
 build-appserver-base:
 	docker buildx bake $(BAKE_ARGS) base
@@ -411,17 +423,53 @@ build-denorm-queue:
 # Alias for backward compatibility
 build-servers: build
 
-run-webserver-without-appserver-for-testing: build-webserver
-	@echo "Odpalamy webserver wyłącznie, żeby zobaczyć, jak wygląda jego strona błędu..."
-	@echo "=============================================================================="
-	@echo ""
-	@echo http://localhost:10080 and https://localhost:10443
-	@echo ""
-	@echo "=============================================================================="
-	@docker run -d --name appserver --rm alpine sleep infinity &
-	@sleep 3
-	@docker run --rm -it --link appserver:appserver  -p 10080:80 -p 10443:443 -v ./deploy/webserver/:/etc/ssl/private iplweb/bpp_webserver
-	@docker stop -s 9 -t 1 appserver
+# =============================================================================
+# Budowanie obrazów z brancha na Docker Build Cloud
+# =============================================================================
+#
+# Użycie:
+#   git push
+#   make build-branch
+#
+# Obrazy trafiają na Docker Hub z tagiem = sanityzowana nazwa brancha.
+# Tag "latest" NIE jest ustawiany (tylko buildy z mastera mają "latest").
+#
+# Na serwerze docelowym:
+#   export DOCKER_VERSION=feature-nowe-zglos-publikacje
+#   docker compose pull && docker compose up -d
+#
+# =============================================================================
+# UWAGA: Celowo budujemy TYLKO dla platformy linux/amd64 (x86_64).
+#
+# Wszystkie nasze serwery produkcyjne działają na architekturze x86_64,
+# więc nie ma potrzeby budowania obrazów ARM. Budowanie na dwie platformy
+# trwa dłużej i zużywa więcej zasobów Docker Build Cloud.
+#
+# Jeśli w przyszłości pojawi się potrzeba budowania również na ARM
+# (np. dla serwerów ARM lub lokalnego testowania na Apple Silicon),
+# wystarczy zmienić BRANCH_BUILD_PLATFORM na linux/amd64,linux/arm64
+# — wtedy Docker Build Cloud zbuduje obrazy na obie platformy
+# automatycznie.
+# =============================================================================
+CLOUD_BUILDER = cloud-iplweb-bpp
+BRANCH_BUILD_PLATFORM = linux/amd64
+
+build-branch:
+	$(eval BRANCH_TAG := $(shell git rev-parse --abbrev-ref HEAD \
+	    | sed 's/[^a-zA-Z0-9._-]/-/g' \
+	    | tr '[:upper:]' '[:lower:]'))
+	@echo "========================================"
+	@echo "Building branch: $(BRANCH_TAG)"
+	@echo "Builder: $(CLOUD_BUILDER)"
+	@echo "Platform: $(BRANCH_BUILD_PLATFORM)"
+	@echo "========================================"
+	DOCKER_VERSION=$(BRANCH_TAG) TAG_LATEST=false PUSH=true \
+	    docker buildx bake \
+	    --builder=$(CLOUD_BUILDER) \
+	    --file docker-bake.hcl \
+	    --set '*.platform=$(BRANCH_BUILD_PLATFORM)' \
+	    --allow=fs.read=/tmp \
+	    --allow=fs.write=/tmp
 
 buildx-cache-stats:
 	docker buildx du
@@ -457,7 +505,6 @@ buildx-cache-list:
 	@echo "  - iplweb/bpp_workerserver:cache"
 	@echo "  - iplweb/bpp_beatserver:cache"
 	@echo "  - iplweb/bpp_denorm_queue:cache"
-	@echo "  - iplweb/bpp_webserver:cache"
 	@echo "  - iplweb/bpp_dbserver:cache"
 
 compose-restart:
@@ -517,7 +564,7 @@ new-worktree:
 	$(YARN_CMD) install
 	uv run grunt build
 	uv run src/manage.py collectstatic --noinput
-	docker compose up -d
+	docker compose up -d db redis rabbitmq
 	./bin/show-settings.sh
 
 clean-worktree:

@@ -11,6 +11,5 @@ exec uv run gunicorn \
     --bind 0.0.0.0:8001 \
     --workers 2 \
     --timeout 30 \
-    --access-logfile - \
-    --error-logfile - \
+    --config /gunicorn_conf.py \
     django_bpp.wsgi_auth_server:application

@@ -1,0 +1,97 @@
+# BPP Isolated Test Runner
+# No ports exposed, full isolation, parallel-safe across worktrees.
+#
+# Usage:
+#   make tests-in-docker
+#   PYTHON_VERSION=3.12 make tests-in-docker
+#   make tests-in-docker-down
+
+services:
+  db:
+    image: iplweb/bpp_dbserver:${DOCKER_VERSION:-latest}
+    build:
+      context: ./docker/dbserver
+      dockerfile: Dockerfile
+      tags:
+        - iplweb/bpp_dbserver:${DOCKER_VERSION:-latest}
+        - iplweb/bpp_dbserver:latest
+      cache_from:
+        - type=registry,ref=iplweb/bpp_dbserver:latest
+      cache_to:
+        - type=inline
+    environment:
+      - PGPORT=${DJANGO_BPP_DB_PORT:-5432}
+      - POSTGRES_DB=${DJANGO_BPP_DB_NAME:-bpp}
+      - POSTGRES_USER=${DJANGO_BPP_DB_USER:-bpp}
+      - POSTGRESQL_UNSAFE_BUT_FAST=1
+    volumes:
+      - postgresql_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DJANGO_BPP_DB_USER:-bpp}"]
+      start_period: 10s
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:latest
+    command: redis-server --loglevel warning --port ${DJANGO_BPP_REDIS_PORT:-6379}
+    healthcheck:
+      test: ["CMD", "redis-cli", "-p", "${DJANGO_BPP_REDIS_PORT:-6379}", "ping"]
+      start_period: 5s
+      interval: 5s
+      timeout: 5s
+      retries: 3
+    volumes:
+      - redis_data:/data
+
+  rabbitmq:
+    image: rabbitmq:management-alpine
+    environment:
+      RABBITMQ_NODE_PORT: ${DJANGO_BPP_RABBITMQ_PORT:-5672}
+      RABBITMQ_DEFAULT_USER: ${DJANGO_BPP_RABBITMQ_USER:-bpp}
+      RABBITMQ_DEFAULT_PASS: ${DJANGO_BPP_RABBITMQ_PASS:-bpp}
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      start_period: 30s
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+
+  test-runner:
+    build:
+      context: .
+      dockerfile: docker/bpp_base/Dockerfile
+      target: test-runner
+      args:
+        PYTHON_VERSION: ${PYTHON_VERSION:-3.12}
+        DEBIAN_VERSION: ${DEBIAN_VERSION:-trixie}
+        NODEJS_VERSION: ${NODEJS_VERSION:-20}
+    volumes:
+      - .:/src
+      - /var/run/docker.sock:/var/run/docker.sock
+    working_dir: /src
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      rabbitmq: { condition: service_started }
+    environment:
+      DJANGO_BPP_DB_HOST: db
+      DJANGO_BPP_DB_PORT: 5432
+      DJANGO_BPP_DB_NAME: bpp
+      DJANGO_BPP_DB_USER: bpp
+      DJANGO_BPP_DB_PASSWORD: password
+      DJANGO_BPP_DB_DISABLE_SSL: 1
+      DJANGO_BPP_REDIS_HOST: redis
+      DJANGO_BPP_REDIS_PORT: 6379
+      DJANGO_BPP_RABBITMQ_HOST: rabbitmq
+      DJANGO_BPP_RABBITMQ_PORT: 5672
+      DJANGO_BPP_RABBITMQ_USER: bpp
+      DJANGO_BPP_RABBITMQ_PASS: bpp
+
+volumes:
+  postgresql_data:
+  redis_data:
+  rabbitmq_data:
