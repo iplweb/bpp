@@ -14,6 +14,7 @@ from .filters import PBN_UID_IDObecnyFilter
 from .helpers import LimitingFormset
 from .helpers.fieldsets import ADNOTACJE_FIELDSET
 from .helpers.mixins import ZapiszZAdnotacjaMixin
+from .helpers.site_filtered import SiteFilteredAdminMixin
 
 
 class Jednostka_WydzialInline(admin.TabularInline):
@@ -37,12 +38,14 @@ class Autor_JednostkaInline(admin.TabularInline):
 
 
 class JednostkaAdmin(
+    SiteFilteredAdminMixin,
     DjangoQLSearchMixin,
     RestrictDeletionToAdministracjaGroupMixin,
     ZapiszZAdnotacjaMixin,
     BaseBppAdminMixin,
     DraggableMPTTAdmin,
 ):
+    uczelnia_field_path = "uczelnia"
     djangoql_completion_enabled_by_default = False
     djangoql_completion = True
 

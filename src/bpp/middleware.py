@@ -295,6 +295,37 @@ class SiteResolutionMiddleware(MiddlewareMixin):
                 uczelnia = Uczelnia.objects.get_default()
         request._uczelnia = uczelnia
 
+    def process_view(self, request, view_func, view_args, view_kwargs):
+        """Block admin access for staff users without access to current site.
+
+        Anonymous users and public pages are not affected.
+        Superusers always have access to all sites.
+        """
+        if not getattr(request, "path", "").startswith("/admin/"):
+            return None
+
+        user = getattr(request, "user", None)
+        if user is None or not user.is_authenticated or user.is_superuser:
+            return None
+
+        site = getattr(request, "site", None)
+        if site is None:
+            return None
+
+        # If user has any accessible_sites configured, enforce the check.
+        # If user has none (backward compat / not yet configured), allow access.
+        if (
+            user.accessible_sites.exists()
+            and not user.accessible_sites.filter(pk=site.pk).exists()
+        ):
+            from django.http import HttpResponseForbidden
+
+            return HttpResponseForbidden(
+                "Nie masz dostępu do tej uczelni. Skontaktuj się z administratorem."
+            )
+
+        return None
+
 
 class CustomRollbarNotifierMiddleware(RollbarNotifierMiddleware):
     def get_extra_data(self, request, exc):

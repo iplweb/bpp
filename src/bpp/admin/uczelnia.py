@@ -12,6 +12,7 @@ from .core import BaseBppAdminMixin, RestrictDeletionToAdministracjaGroupMixin
 from .helpers.constance_field_mixin import ConstanceUczelniaFieldsMixin
 from .helpers.fieldsets import ADNOTACJE_FIELDSET
 from .helpers.mixins import ZapiszZAdnotacjaMixin
+from .helpers.site_filtered import SiteFilteredAdminMixin
 
 
 class WydzialInlineForm(forms.ModelForm):
@@ -61,6 +62,7 @@ class Ukryj_Status_KorektyInline(admin.StackedInline):
 
 
 class UczelniaAdmin(
+    SiteFilteredAdminMixin,
     ConstanceUczelniaFieldsMixin,
     RestrictDeletionToAdministracjaGroupMixin,
     ZapiszZAdnotacjaMixin,
@@ -68,6 +70,16 @@ class UczelniaAdmin(
     VersionAdmin,
 ):
     list_display = ["nazwa", "nazwa_dopelniacz_field", "skrot", "pbn_uid"]
+
+    def get_queryset(self, request):
+        qs = super(SiteFilteredAdminMixin, self).get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+        uczelnia = getattr(request, "_uczelnia", None)
+        if uczelnia:
+            return qs.filter(pk=uczelnia.pk)
+        return qs
+
     autocomplete_fields = ["pbn_uid", "obca_jednostka"]
     fieldsets = (
         (
