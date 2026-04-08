@@ -52,7 +52,7 @@ Full details: [docs/COMMANDS.md](docs/COMMANDS.md)
 
 ```bash
 # Infrastructure services (when not running locally):
-docker compose -f docker-compose.ai.yml up -d
+docker compose up db redis rabbitmq -d
 
 # Testing (full suite takes UP TO 10 MINUTES):
 uv run pytest

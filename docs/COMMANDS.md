@@ -15,7 +15,7 @@ nc -zv localhost 8000
 docker-compose logs -f appserver
 
 # Start infrastructure services (PostgreSQL, RabbitMQ, Redis):
-docker compose -f docker-compose.ai.yml up -d
+docker compose up db redis rabbitmq -d
 ```
 
 - `uv run python src/manage.py migrate` - Apply database migrations

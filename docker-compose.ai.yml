@@ -1,7 +1,0 @@
-# BPP Docker Deployment - AI/Agent Development
-# Minimal services for coding agents (tests, linting, etc.)
-# No ports exposed, no app servers, no workers, no monitoring.
-
-include:
-  - docker-compose.database.yml
-  - docker-compose.infrastructure.yml
