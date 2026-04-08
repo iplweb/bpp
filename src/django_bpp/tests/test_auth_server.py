@@ -66,7 +66,7 @@ def test_is_superuser_superuser_gets_ok_with_headers(superuser):
 
 def test_auth_server_health_endpoint():
     """Test that health endpoint returns ok."""
-    from django_bpp.urls_auth_server import health_check
+    from django_bpp.health import health_check
 
     rf = RequestFactory()
     request = rf.get("/health/")
@@ -74,6 +74,37 @@ def test_auth_server_health_endpoint():
 
     assert response.status_code == 200
     assert response.content == b"ok"
+
+
+def test_health_check_log_filter():
+    """Test that UvicornHealthCheckFilter suppresses /health/ logs."""
+    import logging
+
+    from django_bpp.health import UvicornHealthCheckFilter
+
+    f = UvicornHealthCheckFilter()
+
+    record = logging.LogRecord(
+        name="uvicorn.access",
+        level=logging.INFO,
+        pathname="",
+        lineno=0,
+        msg='127.0.0.1 - "GET /health/ HTTP/1.1" 200',
+        args=(),
+        exc_info=None,
+    )
+    assert f.filter(record) is False
+
+    record_normal = logging.LogRecord(
+        name="uvicorn.access",
+        level=logging.INFO,
+        pathname="",
+        lineno=0,
+        msg='127.0.0.1 - "GET /api/v1/data HTTP/1.1" 200',
+        args=(),
+        exc_info=None,
+    )
+    assert f.filter(record_normal) is True
 
 
 def test_auth_server_has_rollbar_config():

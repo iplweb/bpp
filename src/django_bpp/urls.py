@@ -33,6 +33,7 @@ from bpp.views.sentry_tester import (
     test_500_view,
     test_exception_view,
 )
+from django_bpp.health import health_check
 from django_bpp.views import HTMXAwareLoginView
 
 admin.autodiscover()
@@ -313,6 +314,7 @@ urlpatterns = (
         ),
         url(r"^admin_tools/", include("admin_tools.urls")),
         url(r"^grappelli/", include("grappelli.urls")),
+        path("health/", health_check, name="health"),
         url(r"^$", root, name="root"),
         url(
             r"^messages/",

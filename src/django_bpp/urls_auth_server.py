@@ -7,16 +7,10 @@ Exposes endpoints for nginx auth_request and emergency login:
 """
 
 from django.contrib.auth.views import LoginView
-from django.http import HttpResponse
 from django.urls import path
 
+from django_bpp.health import health_check
 from django_bpp.views import is_superuser
-
-
-def health_check(_request):
-    """Simple health check endpoint for Docker healthcheck."""
-    return HttpResponse("ok")
-
 
 urlpatterns = [
     path("__external_auth/is_superuser/", is_superuser, name="is_superuser"),

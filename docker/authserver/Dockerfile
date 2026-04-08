@@ -14,9 +14,6 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=apt-cache \
 EXPOSE 8001
 
 COPY --chmod=755 docker/authserver/entrypoint-authserver.sh /
-
-# Fast health check - auth server should start in seconds
-HEALTHCHECK --interval=5s --timeout=3s --retries=3 --start-period=10s \
-    CMD curl --fail --silent http://127.0.0.1:8001/health/ || exit 1
+COPY --chmod=644 docker/authserver/gunicorn_conf.py /
 
 ENTRYPOINT ["/bin/bash", "-c", "/entrypoint-authserver.sh"]
