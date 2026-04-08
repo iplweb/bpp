@@ -1,7 +1,7 @@
 # Multi-stage build: get Docker CLI from official image
+ARG BPP_BASE_TAG=latest
 FROM docker:cli AS docker-cli
 
-ARG BPP_BASE_TAG=latest
 FROM iplweb/bpp_base:${BPP_BASE_TAG}
 
 EXPOSE 8000
