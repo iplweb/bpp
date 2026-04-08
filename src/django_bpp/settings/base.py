@@ -292,6 +292,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "bpp.middleware.SiteResolutionMiddleware",  # After auth - resolves Site/Uczelnia from hostname
     "django_countdown.middleware.CountdownBlockingMiddleware",  # After auth - needs request.user
     "bpp_setup_wizard.middleware.SetupWizardMiddleware",  # After auth middleware to have request.user
     "django.contrib.messages.middleware.MessageMiddleware",

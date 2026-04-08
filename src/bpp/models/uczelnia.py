@@ -43,6 +43,12 @@ class UczelniaManager(models.Manager):
 
         return self.get_default()
 
+    def get_for_site(self, site) -> Union["Uczelnia", None]:
+        """Zwraca Uczelnię powiązaną z danym obiektem Site."""
+        if site is None:
+            return self.get_default()
+        return getattr(site, "uczelnia", None)
+
     @cached_property
     def default(self):
         return self.get_default()
@@ -65,7 +71,31 @@ class UczelniaManager(models.Manager):
         raise NotImplementedError
 
 
+THEME_CHOICES = [
+    ("app-green", "Zielony"),
+    ("app-blue", "Niebieski"),
+    ("app-orange", "Pomarańczowy"),
+]
+
+
 class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
+    site = models.OneToOneField(
+        "sites.Site",
+        verbose_name="Strona (domena)",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="uczelnia",
+        help_text="Powiązanie z obiektem Site (domena internetowa tej uczelni).",
+    )
+
+    theme_name = models.CharField(
+        "Motyw kolorystyczny",
+        max_length=50,
+        default="app-green",
+        choices=THEME_CHOICES,
+    )
+
     slug = AutoSlugField(populate_from="skrot", unique=True)
     logo_www = models.ImageField(
         "Logo na stronę WWW",

@@ -77,6 +77,8 @@ class UczelniaAdmin(
                     "nazwa",
                     "nazwa_dopelniacz_field",
                     "skrot",
+                    "site",
+                    "theme_name",
                     "pbn_uid",
                     "pbn_id",
                     "favicon_ico",

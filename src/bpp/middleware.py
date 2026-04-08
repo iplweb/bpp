@@ -1,6 +1,7 @@
 import json
 import logging
 
+from django.core.exceptions import ObjectDoesNotExist
 from django.http import HttpResponse
 from django.utils.deprecation import MiddlewareMixin
 from rollbar.contrib.django.middleware import RollbarNotifierMiddleware
@@ -250,6 +251,49 @@ class NonHtmlDebugToolbarMiddleware(MiddlewareMixin):
                 )
 
         return response
+
+
+class SiteResolutionMiddleware(MiddlewareMixin):
+    """Resolve the current Site and Uczelnia from the request hostname.
+
+    Sets ``request.site`` and ``request._uczelnia`` so that downstream code
+    (views, context processors, managers) can access the current university
+    without additional DB queries.
+
+    Fallback order:
+    1. Match hostname against ``Site.domain``
+    2. Use ``settings.SITE_ID`` (backward compat for single-site deployments)
+    """
+
+    def process_request(self, request):
+        from django.conf import settings
+        from django.contrib.sites.models import Site
+
+        hostname = request.get_host().split(":")[0]
+        try:
+            site = Site.objects.get(domain=hostname)
+        except Site.DoesNotExist:
+            site_id = getattr(settings, "SITE_ID", None)
+            if site_id is not None:
+                try:
+                    site = Site.objects.get(pk=site_id)
+                except Site.DoesNotExist:
+                    site = None
+            else:
+                site = None
+
+        request.site = site
+
+        uczelnia = None
+        if site is not None:
+            try:
+                uczelnia = site.uczelnia
+            except ObjectDoesNotExist:
+                # Site exists but no Uczelnia linked — fall back to default
+                from bpp.models.uczelnia import Uczelnia
+
+                uczelnia = Uczelnia.objects.get_default()
+        request._uczelnia = uczelnia
 
 
 class CustomRollbarNotifierMiddleware(RollbarNotifierMiddleware):
