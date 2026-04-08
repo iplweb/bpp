@@ -167,6 +167,10 @@ class UczelniaAdmin(
                     "wydruk_parametry_zapytania",
                     "drukuj_oswiadczenia",
                     "drukuj_alternatywne_oswiadczenia",
+                    "wydruk_margines_gora",
+                    "wydruk_margines_dol",
+                    "wydruk_margines_lewo",
+                    "wydruk_margines_prawo",
                 ),
             },
         ),
@@ -192,6 +196,26 @@ class UczelniaAdmin(
             {
                 "classes": ("grp-collapse grp-opened",),
                 "fields": ("przydzielaj_1_slot_gdy_udzial_mniejszy",),
+            },
+        ),
+        (
+            "Struktura uczelni",
+            {
+                "classes": ("grp-collapse grp-closed",),
+                "fields": (
+                    "skrot_wydzialu_w_nazwie_jednostki",
+                    "pokazuj_oswiadczenie_ken",
+                ),
+            },
+        ),
+        (
+            "Integracje Google",
+            {
+                "classes": ("grp-collapse grp-closed",),
+                "fields": (
+                    "google_analytics_property_id",
+                    "google_verification_code",
+                ),
             },
         ),
         ADNOTACJE_FIELDSET,

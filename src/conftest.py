@@ -586,8 +586,8 @@ def constance_cache_warmed_up(db):
     Fixture that pre-creates constance values in the database and warms
     the cache to prevent constance queries during test execution.
 
-    This ensures all constance values exist in the DB before the test runs,
-    avoiding INSERT/UPDATE queries during the test's query assertion block.
+    Note: Most constance settings have been migrated to Uczelnia model fields.
+    This fixture now only handles remaining constance entries (if any).
     """
     import json
 
@@ -601,15 +601,4 @@ def constance_cache_warmed_up(db):
         value_json = json.dumps({"__type__": "default", "__value__": default})
         Constance.objects.get_or_create(key=key, defaults={"value": value_json})
 
-    # Warm the cache by accessing all values
-    _ = (
-        config.UZYWAJ_PUNKTACJI_WEWNETRZNEJ,
-        config.POKAZUJ_INDEX_COPERNICUS,
-        config.POKAZUJ_PUNKTACJA_SNIP,
-        config.POKAZUJ_OSWIADCZENIE_KEN,
-        config.SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI,
-        config.UCZELNIA_UZYWA_WYDZIALOW,
-        config.GOOGLE_ANALYTICS_PROPERTY_ID,
-        config.GOOGLE_VERIFICATION_CODE,
-    )
     return config

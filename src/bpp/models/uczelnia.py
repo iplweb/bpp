@@ -476,6 +476,49 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         default=False,
     )
 
+    # Pola przeniesione z django-constance (per-uczelnia zamiast globalnych)
+    google_analytics_property_id = models.CharField(
+        "Google Analytics Property ID",
+        max_length=100,
+        blank=True,
+        default="",
+        help_text="Np. UA-XXXXXXXX-X lub G-XXXXXXXXXX",
+    )
+    google_verification_code = models.CharField(
+        "Kod weryfikacyjny Google Search Console",
+        max_length=100,
+        blank=True,
+        default="",
+    )
+    pokazuj_oswiadczenie_ken = models.BooleanField(
+        "Pokazuj opcję oświadczenia KEN",
+        default=False,
+    )
+    skrot_wydzialu_w_nazwie_jednostki = models.BooleanField(
+        "Wyświetlaj skrót wydziału w nazwie jednostki",
+        default=True,
+    )
+    wydruk_margines_gora = models.CharField(
+        "Margines górny wydruku",
+        max_length=10,
+        default="2cm",
+    )
+    wydruk_margines_dol = models.CharField(
+        "Margines dolny wydruku",
+        max_length=10,
+        default="2cm",
+    )
+    wydruk_margines_lewo = models.CharField(
+        "Margines lewy wydruku",
+        max_length=10,
+        default="2cm",
+    )
+    wydruk_margines_prawo = models.CharField(
+        "Margines prawy wydruku",
+        max_length=10,
+        default="2cm",
+    )
+
     objects = UczelniaManager()
 
     class Meta:

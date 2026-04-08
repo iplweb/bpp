@@ -1371,93 +1371,11 @@ CACHEOPS_REDIS = {
 CONSTANCE_BACKEND = "constance.backends.database.DatabaseBackend"
 CONSTANCE_DATABASE_CACHE_BACKEND = "constance_cache"
 
-CONSTANCE_CONFIG = {
-    # Punktacja
-    "UZYWAJ_PUNKTACJI_WEWNETRZNEJ": (
-        env("DJANGO_BPP_UZYWAJ_PUNKTACJI_WEWNETRZNEJ"),
-        "Używaj punktacji wewnętrznej w systemie",
-        bool,
-    ),
-    "POKAZUJ_INDEX_COPERNICUS": (
-        True,
-        "Pokazuj pole Index Copernicus w formularzach",
-        bool,
-    ),
-    "POKAZUJ_PUNKTACJA_SNIP": (
-        True,
-        "Pokazuj pole punktacji SNIP w formularzach",
-        bool,
-    ),
-    # Funkcjonalność
-    "POKAZUJ_OSWIADCZENIE_KEN": (
-        env("DJANGO_BPP_POKAZUJ_OSWIADCZENIE_KEN"),
-        "Pokazuj opcję oświadczenia KEN",
-        bool,
-    ),
-    # Struktura uczelni
-    "SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI": (
-        env("DJANGO_BPP_SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI"),
-        "Wyświetlaj skrót wydziału w nazwie jednostki",
-        bool,
-    ),
-    "UCZELNIA_UZYWA_WYDZIALOW": (
-        env("DJANGO_BPP_UCZELNIA_UZYWA_WYDZIALOW"),
-        "Uczelnia używa struktury wydziałowej",
-        bool,
-    ),
-    # Integracje Google
-    "GOOGLE_ANALYTICS_PROPERTY_ID": (
-        env("DJANGO_BPP_GOOGLE_ANALYTICS_PROPERTY_ID"),
-        "Google Analytics Property ID (np. UA-XXXXXXXX-X lub G-XXXXXXXXXX)",
-        str,
-    ),
-    "GOOGLE_VERIFICATION_CODE": (
-        env("DJANGO_BPP_GOOGLE_VERIFICATION_CODE"),
-        "Kod weryfikacyjny Google Search Console",
-        str,
-    ),
-    # Wydruk - marginesy
-    "WYDRUK_MARGINES_GORA": (
-        "2cm",
-        "Margines górny wydruku (np. 2cm, 20mm, 0.8in)",
-        str,
-    ),
-    "WYDRUK_MARGINES_DOL": (
-        "2cm",
-        "Margines dolny wydruku (np. 2cm, 20mm, 0.8in)",
-        str,
-    ),
-    "WYDRUK_MARGINES_LEWO": (
-        "2cm",
-        "Margines lewy wydruku (np. 2cm, 20mm, 0.8in)",
-        str,
-    ),
-    "WYDRUK_MARGINES_PRAWO": (
-        "2cm",
-        "Margines prawy wydruku (np. 2cm, 20mm, 0.8in)",
-        str,
-    ),
-}
-
-CONSTANCE_CONFIG_FIELDSETS = {
-    "Punktacja": (
-        "UZYWAJ_PUNKTACJI_WEWNETRZNEJ",
-        "POKAZUJ_INDEX_COPERNICUS",
-        "POKAZUJ_PUNKTACJA_SNIP",
-    ),
-    "Funkcjonalność": ("POKAZUJ_OSWIADCZENIE_KEN",),
-    "Struktura uczelni": (
-        "SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI",
-        "UCZELNIA_UZYWA_WYDZIALOW",
-    ),
-    "Integracje Google": (
-        "GOOGLE_ANALYTICS_PROPERTY_ID",
-        "GOOGLE_VERIFICATION_CODE",
-    ),
-    "Wydruk": (
-        "WYDRUK_MARGINES_GORA",
-        "WYDRUK_MARGINES_DOL",
-        "WYDRUK_MARGINES_LEWO",
-        "WYDRUK_MARGINES_PRAWO",
-    ),
-}
+# Ustawienia per-uczelnia przeniesione do modelu Uczelnia:
+# UZYWAJ_PUNKTACJI_WEWNETRZNEJ, POKAZUJ_INDEX_COPERNICUS, POKAZUJ_PUNKTACJA_SNIP,
+# POKAZUJ_OSWIADCZENIE_KEN, SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI,
+# UCZELNIA_UZYWA_WYDZIALOW, GOOGLE_ANALYTICS_PROPERTY_ID,
+# GOOGLE_VERIFICATION_CODE, WYDRUK_MARGINES_*
+# Puste CONSTANCE_CONFIG zachowane dla backward compat z django-constance.
+CONSTANCE_CONFIG = {}
+CONSTANCE_CONFIG_FIELDSETS = {}
