@@ -32,6 +32,16 @@ class Article(TimeStampedModel, StatusModel):
         verbose_name=_("Published on"), default=timezone.now
     )
     slug = models.SlugField(unique=True)
+    uczelnie = models.ManyToManyField(
+        "bpp.Uczelnia",
+        verbose_name=_("Universities"),
+        blank=True,
+        related_name="articles",
+        help_text=_(
+            "Universities where this article is displayed. "
+            "Leave empty for all universities."
+        ),
+    )
 
     class Meta:
         verbose_name_plural = _("Articles")
@@ -41,10 +51,14 @@ class Article(TimeStampedModel, StatusModel):
     def get_absolute_url(self):
         if self.status != self.STATUS.published:
             return reverse("admin:miniblog_article_change", args=(self.pk,))
-        # TODO: co gdy będzie wiele uczelni w systemie?
-        uczelnia = Uczelnia.objects.all().first()
+        uczelnia = self.uczelnie.first() or Uczelnia.objects.first()
+        if uczelnia is None:
+            return "#"
         if self.article_body.has_more:
-            return reverse("bpp:browse_artykul", args=(uczelnia.slug, self.slug))
+            return reverse(
+                "bpp:browse_artykul",
+                args=(uczelnia.slug, self.slug),
+            )
         return reverse("bpp:browse_uczelnia", args=(uczelnia.slug,))
 
     def __str__(self):

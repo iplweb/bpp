@@ -23,8 +23,7 @@ def root(request):
     """Wyświetl stronę główną z pierwszą dostępną w bazie danych
     uczelnią, lub wyświetl komunikat jeżeli nie ma żadnych uczelni wpisanych do
     bazy danych."""
-    # TODO: jeżeli będzie więcej, niż jeden obiekt Uczelnia...?
-    uczelnia = Uczelnia.objects.first()
+    uczelnia = Uczelnia.objects.get_for_request(request)
 
     if uczelnia is None:
         return shortcuts.render(request, "browse/brak_uczelni.html")

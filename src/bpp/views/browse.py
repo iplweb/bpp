@@ -54,22 +54,39 @@ def get_uczelnia_context_data(uczelnia, article_slug=None):
     context = {"object": uczelnia, "uczelnia": uczelnia}
 
     if article_slug:
-        context["article"] = get_object_or_404(Article, slug=article_slug)
+        context["article"] = get_object_or_404(
+            Article, slug=article_slug, uczelnie=uczelnia
+        )
     else:
-        context["miniblog"] = Article.objects.filter(status=Article.STATUS.published)[
-            :5
-        ]
-        # Add 5 most recently updated records
-        context["recently_updated"] = Rekord.objects.order_by("-ostatnio_zmieniony")[
-            :12
-        ]
-        # Add 5 recent records with abstracts
+        # Artykuły przypisane do tej uczelni
+        context["miniblog"] = Article.objects.filter(
+            status=Article.STATUS.published, uczelnie=uczelnia
+        )[:5]
+
+        # Rekordy z autorami z jednostek tej uczelni
+        jednostki_uczelni = uczelnia.jednostka_set.all()
+        context["recently_updated"] = (
+            Rekord.objects.filter(
+                original__autorzy_set__jednostka__in=jednostki_uczelni
+            )
+            .order_by("-ostatnio_zmieniony")
+            .distinct()[:12]
+        )
+
         context["recent_abstracts"] = (
             Wydawnictwo_Ciagle_Streszczenie.objects.exclude(streszczenie__isnull=True)
             .exclude(streszczenie__exact="")
-            .order_by("-rekord__ostatnio_zmieniony")[:5]
+            .filter(rekord__autorzy_set__jednostka__in=jednostki_uczelni)
+            .order_by("-rekord__ostatnio_zmieniony")
+            .distinct()[:5]
         )
-        context["total_rekord_count"] = Rekord.objects.count()
+        context["total_rekord_count"] = (
+            Rekord.objects.filter(
+                original__autorzy_set__jednostka__in=jednostki_uczelni
+            )
+            .distinct()
+            .count()
+        )
         context["current_year"] = timezone.now().date().year
 
     return context
