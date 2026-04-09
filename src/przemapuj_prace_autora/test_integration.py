@@ -35,6 +35,8 @@ def uczelnia(db):
     u = baker.make(Uczelnia, nazwa="Test University", skrot="TU")
     # Invalidate all caches so context processor returns the new uczelnia
     cache.delete(b"bpp_uczelnia")
+    cache.delete("bpp_uczelnia_0")
+    cache.delete("bpp_uczelnia_1")
     invalidate_all()
     return u
 
