@@ -388,9 +388,6 @@ class JednostkiView(Browser):
             uczelnia = Uczelnia.objects.get_for_request(self.request)
 
         if uczelnia is None:
-            uczelnia = Uczelnia.objects.get_default()
-
-        if uczelnia is None:
             return self.paginate_by
 
         return uczelnia.ilosc_jednostek_na_strone

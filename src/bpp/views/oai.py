@@ -87,8 +87,9 @@ def get_dc_ident(model, obj_pk):
 
 
 class BPPOAIDatabase:
-    def __init__(self, original):
+    def __init__(self, original, request=None):
         self.original = original
+        self.request = request
 
     def get_set(self, oai_id):
         if oai_id == 1:
@@ -183,7 +184,7 @@ class BPPOAIDatabase:
         if from_date is not None:
             query = query.filter(ostatnio_zmieniony__gte=from_date)
 
-        uczelnia = Uczelnia.objects.get_default()
+        uczelnia = Uczelnia.objects.get_for_request(self.request)
         if uczelnia:
             ukryte_statusy = uczelnia.ukryte_statusy("api")
             if ukryte_statusy:
@@ -240,7 +241,8 @@ class OAIView(View):
         url = "/".join(urlparts)
 
         db = BPPOAIDatabase(
-            Rekord.objects.all().exclude(charakter_formalny__nazwa_w_primo="")
+            Rekord.objects.all().exclude(charakter_formalny__nazwa_w_primo=""),
+            request=request,
         )
         oai_server = OAIServerFactory(db, FeedConfig("bpp", base_url))
         return HttpResponse(

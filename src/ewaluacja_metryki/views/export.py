@@ -242,11 +242,11 @@ class ExportListaXLSX(View):
             return queryset.order_by(*sort_mapping[sort])
         return queryset.order_by(sort)
 
-    def _determine_visible_columns(self):
+    def _determine_visible_columns(self, request):
         """Determine which columns should be visible in export."""
         from bpp.models import Dyscyplina_Naukowa
 
-        uczelnia = Uczelnia.objects.get_default()
+        uczelnia = Uczelnia.objects.get_for_request(request)
         uzywa_wydzialow = uczelnia.uzywaj_wydzialow if uczelnia else False
 
         wszystkie_dyscypliny = Dyscyplina_Naukowa.objects.filter(
@@ -623,7 +623,7 @@ class ExportListaXLSX(View):
         queryset = self._apply_sorting_to_queryset(queryset, request)
 
         # Determine visible columns
-        visible_columns = self._determine_visible_columns()
+        visible_columns = self._determine_visible_columns(request)
 
         # Create and write headers
         headers = self._create_headers(visible_columns)

@@ -183,6 +183,7 @@ def generuj_metryki_task_parallel(
     nadpisz=True,
     przelicz_liczbe_n=True,
     rodzaje_autora=None,
+    uczelnia_id=None,
 ):
     """
     Celery task do równoległego generowania metryk ewaluacyjnych.
@@ -212,7 +213,11 @@ def generuj_metryki_task_parallel(
             status.ostatni_komunikat = "Przeliczanie liczby N..."
             status.save()
 
-            uczelnia = Uczelnia.objects.get_default()
+            uczelnia = (
+                Uczelnia.objects.get(pk=uczelnia_id)
+                if uczelnia_id
+                else Uczelnia.objects.get_default()
+            )
             oblicz_liczby_n_dla_ewaluacji_2022_2025(uczelnia=uczelnia)
             logger.info("Przeliczono liczby N pomyślnie")
 
@@ -306,6 +311,7 @@ def generuj_metryki_task(
     nadpisz=True,
     przelicz_liczbe_n=True,
     rodzaje_autora=None,
+    uczelnia_id=None,
 ):
     """
     Celery task do generowania metryk ewaluacyjnych.
@@ -334,7 +340,11 @@ def generuj_metryki_task(
             status.ostatni_komunikat = "Przeliczanie liczby N..."
             status.save()
 
-            uczelnia = Uczelnia.objects.get_default()
+            uczelnia = (
+                Uczelnia.objects.get(pk=uczelnia_id)
+                if uczelnia_id
+                else Uczelnia.objects.get_default()
+            )
             oblicz_liczby_n_dla_ewaluacji_2022_2025(uczelnia=uczelnia)
             logger.info("Przeliczono liczby N pomyślnie")
 
