@@ -1,3 +1,4 @@
+# TODO: Multi-site — filtruj po autorach z aktualnej uczelni
 # Register your models here.
 import json
 from collections.abc import Iterable

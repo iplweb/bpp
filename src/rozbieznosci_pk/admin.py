@@ -1,3 +1,4 @@
+# TODO: Multi-site — filtruj po autorach z aktualnej uczelni
 from django.contrib import admin
 
 from rozbieznosci_pk.models import IgnorujRozbieznoscPk, RozbieznosciPkLog
