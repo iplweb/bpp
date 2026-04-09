@@ -204,7 +204,10 @@ LOCALE_PATHS = [
     os.path.join(BASE_DIR, "locale"),
 ]
 
-SITE_ID = 1  # dla static-sitemaps
+# SITE_ID służy jako fallback dla SiteResolutionMiddleware gdy hostname
+# nie pasuje do żadnego obiektu Site. W multi-hosted ustawia się na ID
+# domyślnego Site. static-sitemaps również wymaga tej wartości.
+SITE_ID = env("DJANGO_BPP_SITE_ID", default=1, cast=int)
 USE_I18N = True
 USE_TZ = True
 
@@ -1224,13 +1227,20 @@ TINYMCE_DEFAULT_CONFIG = {
 
 #
 # django-static-sitemaps
+# W trybie multi-hosted można wyłączyć sitemaps ustawiając
+# DJANGO_BPP_ENABLE_SITEMAPS=False, ponieważ static-sitemaps
+# generuje sitemapę tylko dla jednej domeny (SITE_ID).
 #
 
-STATICSITEMAPS_ROOT_SITEMAP = "django_bpp.sitemaps.django_bpp_sitemaps"
+ENABLE_SITEMAPS = env("DJANGO_BPP_ENABLE_SITEMAPS", default=True, cast=bool)
 
-STATICSITEMAPS_REFRESH_AFTER = 24 * 60
-
-STATICSITEMAPS_ROOT_DIR = os.path.relpath(STATIC_ROOT, os.getcwd())
+if ENABLE_SITEMAPS:
+    STATICSITEMAPS_ROOT_SITEMAP = "django_bpp.sitemaps.django_bpp_sitemaps"
+    STATICSITEMAPS_REFRESH_AFTER = 24 * 60
+    STATICSITEMAPS_ROOT_DIR = os.path.relpath(STATIC_ROOT, os.getcwd())
+else:
+    if "static_sitemaps" in INSTALLED_APPS:
+        INSTALLED_APPS.remove("static_sitemaps")
 
 #
 # "Audyt" bezpieczeństwa
