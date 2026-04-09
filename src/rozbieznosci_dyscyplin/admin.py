@@ -1,5 +1,3 @@
-# TODO: Multi-site — filtruj po autorach z aktualnej uczelni
-# Register your models here.
 import json
 from collections.abc import Iterable
 from json import JSONDecodeError
@@ -312,6 +310,15 @@ class RozbieznosciViewAdmin(
     list_per_page = 25
     search_fields = ["rekord__tytul_oryginalny", "autor__nazwisko", "autor__imiona"]
 
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+        uczelnia = getattr(request, "_uczelnia", None)
+        if uczelnia:
+            return qs.filter(autor__aktualna_jednostka__uczelnia=uczelnia)
+        return qs
+
     def get_object(self, request, object_id, from_field=None):
         parse_incoming_id = parse_object_id(object_id)
         return RozbieznosciView.objects.get(pk=tuple(parse_incoming_id))
@@ -412,6 +419,15 @@ class RozbieznosciZrodelViewAdmin(
         "zrodlo",
         "id",
     ]
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+        uczelnia = getattr(request, "_uczelnia", None)
+        if uczelnia:
+            return qs.filter(autor__aktualna_jednostka__uczelnia=uczelnia)
+        return qs
 
     def get_object(self, request, object_id, from_field=None):
         parse_incoming_id = parse_object_id(object_id, max_len=4)

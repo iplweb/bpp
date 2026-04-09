@@ -41,7 +41,7 @@ class AutorAutocompleteBase(
         )
 
         if self.q:
-            return (
+            qs = (
                 Autor.objects.fulltext_filter(self.q)
                 .select_related("tytul", "pbn_uid")
                 .annotate(
@@ -52,6 +52,11 @@ class AutorAutocompleteBase(
                     )
                 )
             )
+
+        uczelnia = getattr(self.request, "_uczelnia", None)
+        if uczelnia:
+            qs = qs.filter(aktualna_jednostka__uczelnia=uczelnia)
+
         return qs
 
     def get_result_label(self, result):
