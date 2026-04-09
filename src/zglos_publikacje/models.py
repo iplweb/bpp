@@ -154,7 +154,10 @@ class Zgloszenie_Publikacji(
         # warunkiem: pod takim warunkiem, ze NIC nie zostało wpisane jeżeli chodzi o informację o opłatach
         # -- czyli, że zmienna zupelny_brak_informacji_o_oplatach jest False.
 
-        uczelnia = Uczelnia.objects.get_default()
+        if not hasattr(self, "_uczelnia") or self._uczelnia is None:
+            uczelnia = Uczelnia.objects.get_default()
+        else:
+            uczelnia = self._uczelnia
 
         # Dla rozdziałów w monografii NIE zbieramy informacji o opłatach
         if (

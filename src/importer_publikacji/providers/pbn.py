@@ -33,12 +33,13 @@ PBN_LICENSE_MAP = {
 }
 
 
-def _get_pbn_client():
+def _get_pbn_client(uczelnia=None):
     from bpp.models import Uczelnia
     from pbn_api.client import PBNClient
     from pbn_api.client.transport import RequestsTransport
 
-    uczelnia = Uczelnia.objects.get_default()
+    if uczelnia is None:
+        uczelnia = Uczelnia.objects.get_default()
     if not uczelnia or not all(
         [
             uczelnia.pbn_app_name,

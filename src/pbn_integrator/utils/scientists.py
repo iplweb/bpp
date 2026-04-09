@@ -38,7 +38,7 @@ def pbn_json_wez_pbn_id_stare(person):
 
 
 def pobierz_i_zapisz_dane_jednej_osoby(
-    client_or_token, personId, from_institution_api
+    client_or_token, personId, from_institution_api, uczelnia=None
 ) -> Scientist:
     """Fetch and save data for a single person.
 
@@ -46,6 +46,7 @@ def pobierz_i_zapisz_dane_jednej_osoby(
         client_or_token: PBN client or token string.
         personId: Person ID.
         from_institution_api: Whether data is from institution API.
+        uczelnia: Optional Uczelnia instance for PBN client creation.
 
     Returns:
         The Scientist object.
@@ -53,7 +54,9 @@ def pobierz_i_zapisz_dane_jednej_osoby(
     client = client_or_token
     if isinstance(client_or_token, str):
         # Create PBN client
-        client = Uczelnia.objects.get_default().pbn_client(client_or_token)
+        if uczelnia is None:
+            uczelnia = Uczelnia.objects.get_default()
+        client = uczelnia.pbn_client(client_or_token)
 
     scientist = client.get_person_by_id(personId)
     return zapisz_mongodb(
@@ -114,7 +117,22 @@ def _zapisz_osobe_z_instytucji(person):
         raise  # Inne błędy IntegrityError propaguj
 
 
-def pobierz_ludzi_z_uczelni(client_or_token: PBNClient, instutition_id, callback=None):
+def _get_max_workers():
+    """Determine number of threads for parallel downloads."""
+    if CPU_COUNT == "auto":
+        max_workers = os.cpu_count() * 3 // 4
+        return max(max_workers, 1)
+    elif CPU_COUNT == "single":
+        return 1
+    return 4  # Default fallback
+
+
+def pobierz_ludzi_z_uczelni(
+    client_or_token: PBNClient,
+    instutition_id,
+    callback=None,
+    uczelnia=None,
+):
     """Fetch all people from a university.
 
     This procedure fetches data for all people from the university,
@@ -124,25 +142,20 @@ def pobierz_ludzi_z_uczelni(client_or_token: PBNClient, instutition_id, callback
         client_or_token: PBN client or token string.
         instutition_id: Institution ID.
         callback: Optional progress callback.
+        uczelnia: Optional Uczelnia instance for PBN client creation.
     """
     assert instutition_id is not None
 
     client = client_or_token
     if isinstance(client_or_token, str):
         # Create PBN client
-        client = Uczelnia.objects.get_default().pbn_client(client_or_token)
+        if uczelnia is None:
+            uczelnia = Uczelnia.objects.get_default()
+        client = uczelnia.pbn_client(client_or_token)
 
     elementy = client.get_people_by_institution_id(instutition_id)
 
-    # Determine number of threads (similar to initialize_pool logic)
-    if CPU_COUNT == "auto":
-        max_workers = os.cpu_count() * 3 // 4
-        if max_workers < 1:
-            max_workers = 1
-    elif CPU_COUNT == "single":
-        max_workers = 1
-    else:
-        max_workers = 4  # Default fallback
+    max_workers = _get_max_workers()
 
     # Use ThreadPoolExecutor instead of multiprocessing
     with ThreadPoolExecutor(max_workers=max_workers) as executor:

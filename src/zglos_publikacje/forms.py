@@ -6,10 +6,9 @@ from django.core.exceptions import ValidationError
 from django.forms import inlineformset_factory
 from django.forms.widgets import HiddenInput
 
+from bpp.models import Autor, Dyscyplina_Naukowa, Jednostka, Uczelnia
 from zglos_publikacje.models import Zgloszenie_Publikacji, Zgloszenie_Publikacji_Autor
 from zglos_publikacje.validators import validate_file_extension_pdf
-
-from bpp.models import Autor, Dyscyplina_Naukowa, Jednostka, Uczelnia
 
 
 class Zgloszenie_Publikacji_DaneOgolneForm(forms.ModelForm):
@@ -57,6 +56,8 @@ class Zgloszenie_Publikacji_DaneOgolneForm(forms.ModelForm):
         ]
 
     def __init__(self, *args, **kw):
+        uczelnia = kw.pop("uczelnia", None)
+
         self.helper = FormHelper()
         self.helper.form_tag = False
         self.helper.form_class = "custom"
@@ -72,8 +73,12 @@ class Zgloszenie_Publikacji_DaneOgolneForm(forms.ModelForm):
         )
         super().__init__(*args, **kw)
 
+        if uczelnia is None:
+            uczelnia = Uczelnia.objects.get_default()
+
         if (
-            not Uczelnia.objects.get_default().pytaj_o_zgode_na_publikacje_pelnego_tekstu
+            uczelnia is not None
+            and not uczelnia.pytaj_o_zgode_na_publikacje_pelnego_tekstu
         ):
             self.fields.pop("zgoda_na_publikacje_pelnego_tekstu", None)
 

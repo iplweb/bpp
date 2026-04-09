@@ -1577,7 +1577,7 @@ def _create_wydawnictwo_zwarte(session, common_fields, normalized_data):
     return Wydawnictwo_Zwarte.objects.create(**common_fields)
 
 
-def _add_authors_to_record(session, record):
+def _add_authors_to_record(session, record, uczelnia=None):
     """Dodaj dopasowanych autorów do rekordu."""
     authors = (
         session.authors.exclude(match_status=(ImportedAuthor.MatchStatus.UNMATCHED))
@@ -1591,7 +1591,8 @@ def _add_authors_to_record(session, record):
 
     typ_aut = Typ_Odpowiedzialnosci.objects.get(skrot="aut.")
 
-    uczelnia = Uczelnia.objects.get_default()
+    if uczelnia is None:
+        uczelnia = Uczelnia.objects.get_default()
     obca = uczelnia.obca_jednostka if uczelnia else None
 
     for imported_author in authors:

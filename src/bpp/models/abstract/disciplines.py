@@ -9,11 +9,15 @@ class ModelZPrzeliczaniemDyscyplin(models.Model):
     class Meta:
         abstract = True
 
-    def przelicz_punkty_dyscyplin(self):
+    def przelicz_punkty_dyscyplin(self, uczelnia=None):
         from bpp.models.sloty.core import IPunktacjaCacher
-        from bpp.models.uczelnia import Uczelnia
 
-        ipc = IPunktacjaCacher(self, Uczelnia.objects.get_default())
+        if uczelnia is None:
+            from bpp.models.uczelnia import Uczelnia
+
+            uczelnia = Uczelnia.objects.get_default()
+
+        ipc = IPunktacjaCacher(self, uczelnia)
         ipc.removeEntries()
         if ipc.canAdapt():
             ipc.rebuildEntries()

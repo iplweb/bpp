@@ -41,8 +41,9 @@ class JednostkaManager(FulltextSearchMixin, TreeManager):
             kw["uczelnia"] = kw["wydzial"].uczelnia
         return super().create(*args, **kw)
 
-    def get_default_ordering(self):
-        uczelnia = Uczelnia.objects.get_default()
+    def get_default_ordering(self, uczelnia=None):
+        if uczelnia is None:
+            uczelnia = Uczelnia.objects.get_default()
 
         ordering = SORTUJ_RECZNIE
         if uczelnia is None:

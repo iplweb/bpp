@@ -58,9 +58,10 @@ def pobierz_instytucje_polon(client: PBNClient, callback=None):
     )
 
 
-def integruj_uczelnie():
+def integruj_uczelnie(uczelnia=None):
     """Integrate the default university with PBN."""
-    uczelnia = Uczelnia.objects.get_default()
+    if uczelnia is None:
+        uczelnia = Uczelnia.objects.get_default()
 
     if uczelnia.pbn_uid_id is not None:
         return
@@ -79,9 +80,10 @@ def integruj_uczelnie():
         uczelnia.save()
 
 
-def integruj_instytucje():
+def integruj_instytucje(uczelnia=None):
     """Integrate university units with PBN institutions."""
-    uczelnia = Uczelnia.objects.get_default()
+    if uczelnia is None:
+        uczelnia = Uczelnia.objects.get_default()
     assert uczelnia.pbn_uid_id
 
     for j in Jednostka.objects.filter(skupia_pracownikow=True):

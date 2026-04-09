@@ -73,9 +73,10 @@ class PublicationImporter(ImportStepBase):
             "error_count": len(self.errors),
         }
 
-    def _setup_uczelnia_and_jednostka(self):
+    def _setup_uczelnia_and_jednostka(self, uczelnia=None):
         """Setup uczelnia and default jednostka for import."""
-        uczelnia = Uczelnia.objects.get_default()
+        if uczelnia is None:
+            uczelnia = Uczelnia.objects.get_default()
 
         if not uczelnia or not uczelnia.pbn_uid_id:
             self.log(
