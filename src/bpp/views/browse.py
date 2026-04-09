@@ -66,9 +66,7 @@ def get_uczelnia_context_data(uczelnia, article_slug=None):
         # Rekordy z autorami z jednostek tej uczelni
         jednostki_uczelni = uczelnia.jednostka_set.all()
         context["recently_updated"] = (
-            Rekord.objects.filter(
-                original__autorzy_set__jednostka__in=jednostki_uczelni
-            )
+            Rekord.objects.filter(autorzy__jednostka__in=jednostki_uczelni)
             .order_by("-ostatnio_zmieniony")
             .distinct()[:12]
         )
@@ -81,9 +79,7 @@ def get_uczelnia_context_data(uczelnia, article_slug=None):
             .distinct()[:5]
         )
         context["total_rekord_count"] = (
-            Rekord.objects.filter(
-                original__autorzy_set__jednostka__in=jednostki_uczelni
-            )
+            Rekord.objects.filter(autorzy__jednostka__in=jednostki_uczelni)
             .distinct()
             .count()
         )
