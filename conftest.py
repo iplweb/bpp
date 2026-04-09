@@ -52,6 +52,7 @@ def pytest_configure(config):
 # Load fixtures from submodules - must be at top-level conftest per pytest requirements
 pytest_plugins = [
     "fixtures.conftest_models",
+    "fixtures.conftest_multisite",
     "fixtures.conftest_publications",
     "fixtures.conftest_system",
     "fixtures.conftest_browser",
