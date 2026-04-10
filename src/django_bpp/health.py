@@ -15,7 +15,8 @@ def health_check(_request):
 
 
 class UvicornHealthCheckFilter(logging.Filter):
-    """Filter out /health/ requests from uvicorn access logs."""
+    """Filter out /health/ and /metrics requests from uvicorn access logs."""
 
     def filter(self, record):
-        return "/health/" not in record.getMessage()
+        message = record.getMessage()
+        return "/health/" not in message and "/metrics" not in message
