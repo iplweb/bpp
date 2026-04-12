@@ -201,6 +201,17 @@ class UczelniaAdmin(
             },
         ),
         (
+            "ORCID",
+            {
+                "classes": ("grp-collapse grp-closed",),
+                "fields": (
+                    "orcid_client_id",
+                    "orcid_client_secret",
+                    "orcid_sandbox",
+                ),
+            },
+        ),
+        (
             "Deklaracja dostępności",
             {
                 "classes": (

@@ -1,0 +1,45 @@
+import logging
+
+from bpp.models import Autor
+from bpp.models.profile import BppUser
+
+logger = logging.getLogger(__name__)
+
+
+class OrcidAuthenticationBackend:
+    """Authenticate users by matching an ORCID iD to an existing
+    Autor record, then finding the BppUser with the same email.
+    """
+
+    def authenticate(self, request, orcid_id=None, **kwargs):
+        if orcid_id is None:
+            return None
+
+        try:
+            autor = Autor.objects.get(orcid=orcid_id)
+        except Autor.DoesNotExist:
+            logger.info("ORCID login: no Autor with orcid=%s", orcid_id)
+            return None
+
+        if not autor.email:
+            logger.info(
+                "ORCID login: Autor pk=%s has no email, cannot match to BppUser",
+                autor.pk,
+            )
+            return None
+
+        try:
+            return BppUser.objects.get(email=autor.email)
+        except BppUser.DoesNotExist:
+            logger.info(
+                "ORCID login: no BppUser with email=%s (Autor pk=%s)",
+                autor.email,
+                autor.pk,
+            )
+            return None
+
+    def get_user(self, user_id):
+        try:
+            return BppUser.objects.get(pk=user_id)
+        except BppUser.DoesNotExist:
+            return None

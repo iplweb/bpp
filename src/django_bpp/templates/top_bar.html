@@ -479,6 +479,10 @@
                         <ul class="menu vertical" role="menu">
                             <li><a href="{% url "bpp:microsoft_auth_redirect" %}?next={{ request.get_full_path|urlencode }}">
                                 <i class="fi-cloud"></i> logowanie instytucjonalne</a></li>
+                            {% if orcid_login_enabled %}
+                            <li><a href="{% url "orcid_integration:login" %}?next={{ request.get_full_path|urlencode }}">
+                                <span class="fi-torso"></span> logowanie ORCID</a></li>
+                            {% endif %}
                             <li><a href="{% url "local_login_form" %}?next={{ request.get_full_path|urlencode }}">
                                 <i class="fi-home"></i> logowanie BPP</a></li>
                             <li><a href="{% url "admin:login" %}?next={{ request.get_full_path|urlencode }}">
@@ -492,6 +496,10 @@
                         <ul class="menu vertical" role="menu">
                             <li><a href="{% url "login_form" %}?next={{ request.get_full_path|urlencode }}">
                                 <i class="fi-home"></i> logowanie</a></li>
+                            {% if orcid_login_enabled %}
+                            <li><a href="{% url "orcid_integration:login" %}?next={{ request.get_full_path|urlencode }}">
+                                <span class="fi-torso"></span> logowanie ORCID</a></li>
+                            {% endif %}
                             <li><a href="{% url "admin:login" %}?next={{ request.get_full_path|urlencode }}">
                                 <i class="fi-pencil"></i> redagowanie</a></li>
                         </ul>

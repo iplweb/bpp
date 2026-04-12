@@ -282,6 +282,19 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         verbose_name="Hasło", blank=True, default="", max_length=50
     )
 
+    orcid_client_id = models.CharField(
+        "ORCID Client ID", max_length=128, blank=True, default=""
+    )
+    orcid_client_secret = models.CharField(
+        "ORCID Client Secret", max_length=128, blank=True, default=""
+    )
+    orcid_sandbox = models.BooleanField(
+        "Używaj ORCID Sandbox",
+        default=True,
+        help_text="Sandbox do testów (sandbox.orcid.org)."
+        " Odznacz dla produkcji (orcid.org).",
+    )
+
     DO_ROKU = Choices(
         (
             const.DO_STYCZNIA_POPRZEDNI_POTEM_OBECNY,
@@ -533,6 +546,22 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
             self.pbn_app_name, self.pbn_app_token, self.pbn_api_root, pbn_user_token
         )
         return client.PBNClient(transport)
+
+    @property
+    def orcid_base_url(self):
+        if self.orcid_sandbox:
+            return "https://sandbox.orcid.org"
+        return "https://orcid.org"
+
+    @property
+    def orcid_api_url(self):
+        if self.orcid_sandbox:
+            return "https://pub.sandbox.orcid.org/v3.0"
+        return "https://pub.orcid.org/v3.0"
+
+    @property
+    def orcid_enabled(self):
+        return bool(self.orcid_client_id and self.orcid_client_secret)
 
     def ukryte_statusy(self, dla_funkcji: str) -> list[int]:
         """

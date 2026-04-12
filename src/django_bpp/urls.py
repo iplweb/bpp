@@ -136,6 +136,10 @@ urlpatterns = (
             ),
         ),
         path(
+            "orcid/",
+            include("orcid_integration.urls"),
+        ),
+        path(
             "pbn_api/",
             include("pbn_api.urls"),
         ),
