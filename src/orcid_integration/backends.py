@@ -38,6 +38,13 @@ class OrcidAuthenticationBackend:
             )
             return None
 
+        if not user.is_active:
+            logger.info(
+                "ORCID login: user pk=%s is inactive",
+                user.pk,
+            )
+            return None
+
         uczelnia = Uczelnia.objects.get_default()
         if uczelnia and uczelnia.orcid_tylko_dla_pracownikow:
             if not (user.is_staff or user.is_superuser):

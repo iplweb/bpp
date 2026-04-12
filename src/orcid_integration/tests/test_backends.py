@@ -65,6 +65,41 @@ def test_get_user_nonexistent(db):
 
 
 @pytest.mark.django_db
+def test_authenticate_inactive_user_denied(
+    uczelnia_with_orcid, autor_with_orcid, db
+):
+    """is_active=False users must not be logged in."""
+    from bpp.models.profile import BppUser
+
+    inactive_user = BppUser.objects.create_user(
+        username="orcid_inactive",
+        password="testpass123",
+        email=ORCID_TEST_EMAIL,
+        is_active=False,
+    )
+
+    backend = OrcidAuthenticationBackend()
+    user = backend.authenticate(request=None, orcid_id=ORCID_TEST_ID)
+
+    assert user is None
+    assert inactive_user.is_active is False
+
+
+@pytest.mark.django_db
+def test_authenticate_active_user_allowed(
+    uczelnia_with_orcid, autor_with_orcid, bpp_user_matching_autor
+):
+    """is_active=True users (default) are allowed."""
+    assert bpp_user_matching_autor.is_active is True
+
+    backend = OrcidAuthenticationBackend()
+    user = backend.authenticate(request=None, orcid_id=ORCID_TEST_ID)
+
+    assert user is not None
+    assert user.pk == bpp_user_matching_autor.pk
+
+
+@pytest.mark.django_db
 def test_authenticate_staff_only_blocks_regular_user(
     uczelnia_with_orcid_staff_only, autor_with_orcid, bpp_user_matching_autor
 ):
