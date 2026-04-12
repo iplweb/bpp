@@ -1,6 +1,6 @@
 import logging
 
-from bpp.models import Autor
+from bpp.models import Autor, Uczelnia
 from bpp.models.profile import BppUser
 
 logger = logging.getLogger(__name__)
@@ -29,7 +29,7 @@ class OrcidAuthenticationBackend:
             return None
 
         try:
-            return BppUser.objects.get(email=autor.email)
+            user = BppUser.objects.get(email=autor.email)
         except BppUser.DoesNotExist:
             logger.info(
                 "ORCID login: no BppUser with email=%s (Autor pk=%s)",
@@ -37,6 +37,19 @@ class OrcidAuthenticationBackend:
                 autor.pk,
             )
             return None
+
+        uczelnia = Uczelnia.objects.get_default()
+        if uczelnia and uczelnia.orcid_tylko_dla_pracownikow:
+            if not (user.is_staff or user.is_superuser):
+                logger.info(
+                    "ORCID login: user pk=%s denied — "
+                    "orcid_tylko_dla_pracownikow is enabled "
+                    "and user is not staff/superuser",
+                    user.pk,
+                )
+                return None
+
+        return user
 
     def get_user(self, user_id):
         try:

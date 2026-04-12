@@ -60,3 +60,26 @@ def bpp_user_matching_autor(db):
         password="testpass123",
         email=ORCID_TEST_EMAIL,
     )
+
+
+@pytest.fixture
+def bpp_staff_user_matching_autor(db):
+    return BppUser.objects.create_user(
+        username="orcid_staff",
+        password="testpass123",
+        email=ORCID_TEST_EMAIL,
+        is_staff=True,
+    )
+
+
+@pytest.fixture
+def uczelnia_with_orcid_staff_only(db):
+    return baker.make(
+        Uczelnia,
+        nazwa="Uczelnia ORCID Staff Only",
+        skrot="TUSO",
+        orcid_client_id="APP-TESTCLIENTID1234",
+        orcid_client_secret="test-secret-1234",
+        orcid_sandbox=True,
+        orcid_tylko_dla_pracownikow=True,
+    )

@@ -294,6 +294,13 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         help_text="Sandbox do testów (sandbox.orcid.org)."
         " Odznacz dla produkcji (orcid.org).",
     )
+    orcid_tylko_dla_pracownikow = models.BooleanField(
+        "ORCID tylko dla pracowników",
+        default=False,
+        help_text="Gdy zaznaczone, logowanie przez ORCID będzie dostępne"
+        " wyłącznie dla użytkowników z uprawnieniem 'w zespole'"
+        " (is_staff) lub superużytkowników.",
+    )
 
     DO_ROKU = Choices(
         (

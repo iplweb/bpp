@@ -208,6 +208,7 @@ class UczelniaAdmin(
                     "orcid_client_id",
                     "orcid_client_secret",
                     "orcid_sandbox",
+                    "orcid_tylko_dla_pracownikow",
                 ),
             },
         ),
