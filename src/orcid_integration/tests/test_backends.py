@@ -65,9 +65,7 @@ def test_get_user_nonexistent(db):
 
 
 @pytest.mark.django_db
-def test_authenticate_inactive_user_denied(
-    uczelnia_with_orcid, autor_with_orcid, db
-):
+def test_authenticate_inactive_user_denied(uczelnia_with_orcid, autor_with_orcid, db):
     """is_active=False users must not be logged in."""
     from bpp.models.profile import BppUser
 
