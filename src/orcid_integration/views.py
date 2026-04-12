@@ -4,12 +4,24 @@ from django.contrib.auth import authenticate, login
 from django.http import Http404, HttpResponseBadRequest
 from django.shortcuts import redirect, render
 from django.urls import reverse
+from django.utils.http import url_has_allowed_host_and_scheme
 
 from bpp.models import Uczelnia
 
 from .client import OrcidClient
 
 logger = logging.getLogger(__name__)
+
+
+def _safe_next_url(next_url, request):
+    """Return *next_url* only when it points to our own host."""
+    if next_url and url_has_allowed_host_and_scheme(
+        next_url,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    ):
+        return next_url
+    return "/"
 
 
 def _get_orcid_client(request):
@@ -34,7 +46,7 @@ def orcid_login(request):
     url, state = client.get_authorization_url()
 
     request.session["orcid_oauth_state"] = state
-    next_url = request.GET.get("next", "/")
+    next_url = _safe_next_url(request.GET.get("next", "/"), request)
     request.session["orcid_next"] = next_url
 
     return redirect(url)
@@ -99,5 +111,5 @@ def orcid_callback(request):
         backend="orcid_integration.backends.OrcidAuthenticationBackend",
     )
 
-    next_url = request.session.pop("orcid_next", "/")
+    next_url = _safe_next_url(request.session.pop("orcid_next", "/"), request)
     return redirect(next_url)

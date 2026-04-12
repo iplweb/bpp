@@ -39,6 +39,47 @@ def test_orcid_login_stores_next_in_session(uczelnia_with_orcid):
 
 
 @pytest.mark.django_db
+def test_orcid_login_rejects_external_next_url(uczelnia_with_orcid):
+    client = Client()
+    client.get("/orcid/login/?next=https://evil.com/phish")
+    assert client.session.get("orcid_next") == "/"
+
+
+@pytest.mark.django_db
+def test_orcid_login_rejects_protocol_relative_next(uczelnia_with_orcid):
+    client = Client()
+    client.get("/orcid/login/?next=//evil.com/phish")
+    assert client.session.get("orcid_next") == "/"
+
+
+@pytest.mark.django_db
+@patch("orcid_integration.views.OrcidClient")
+def test_orcid_callback_rejects_external_next_url(
+    mock_client_class,
+    uczelnia_with_orcid,
+    autor_with_orcid,
+    bpp_user_matching_autor,
+):
+    mock_instance = mock_client_class.return_value
+    mock_instance.fetch_token.return_value = {
+        "orcid": ORCID_TEST_ID,
+        "name": "Jan Kowalski",
+        "access_token": "fake-token",
+    }
+
+    client = Client()
+    session = client.session
+    session["orcid_oauth_state"] = "test-state"
+    session["orcid_next"] = "https://evil.com/steal"
+    session.save()
+
+    response = client.get("/orcid/callback/?state=test-state&code=auth-code")
+
+    assert response.status_code == 302
+    assert response.url == "/"
+
+
+@pytest.mark.django_db
 def test_orcid_callback_invalid_state(uczelnia_with_orcid):
     client = Client()
     # Set a session state
