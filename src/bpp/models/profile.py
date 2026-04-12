@@ -44,13 +44,14 @@ class BppUser(AbstractUser, ModelZAdnotacjami):
     pbn_token = models.CharField(max_length=128, default="", blank=True)
     pbn_token_updated = models.DateTimeField(null=True, blank=True)
 
-    accessible_sites = models.ManyToManyField(
-        "sites.Site",
-        verbose_name="Dostępne strony (uczelnie)",
+    accessible_uczelnie = models.ManyToManyField(
+        "bpp.Uczelnia",
+        verbose_name="Dostępne uczelnie",
         blank=True,
-        related_name="bpp_users",
-        help_text="Uczelnie (strony), do których użytkownik ma dostęp. "
-        "Superużytkownicy mają dostęp do wszystkich.",
+        related_name="staff_users",
+        help_text="Uczelnie, do których użytkownik ma dostęp w panelu "
+        "administracyjnym. Puste = dostęp do wszystkich "
+        "(kompatybilność wsteczna).",
     )
 
     przedstawiaj_w_pbn_jako = models.ForeignKey(

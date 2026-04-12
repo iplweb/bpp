@@ -308,15 +308,15 @@ class SiteResolutionMiddleware(MiddlewareMixin):
         if user is None or not user.is_authenticated or user.is_superuser:
             return None
 
-        site = getattr(request, "site", None)
-        if site is None:
+        uczelnia = getattr(request, "_uczelnia", None)
+        if uczelnia is None:
             return None
 
-        # If user has any accessible_sites configured, enforce the check.
-        # If user has none (backward compat / not yet configured), allow access.
+        # If user has any accessible_uczelnie configured, enforce the check.
+        # If user has none (backward compat / not yet configured), allow.
         if (
-            user.accessible_sites.exists()
-            and not user.accessible_sites.filter(pk=site.pk).exists()
+            user.accessible_uczelnie.exists()
+            and not user.accessible_uczelnie.filter(pk=uczelnia.pk).exists()
         ):
             from django.http import HttpResponseForbidden
 

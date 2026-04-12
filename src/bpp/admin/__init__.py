@@ -257,7 +257,7 @@ class BppUserAdmin(UserAdmin):
         (
             "Dostęp do uczelni",
             {
-                "fields": ("accessible_sites",),
+                "fields": ("accessible_uczelnie",),
                 "description": "Superużytkownicy mają automatycznie dostęp "
                 "do wszystkich uczelni.",
             },

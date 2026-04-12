@@ -100,13 +100,13 @@ def test_middleware_allows_anonymous_public_pages(site1, uczelnia1):
 
 @pytest.mark.django_db
 def test_middleware_allows_staff_with_no_sites_configured(site1, uczelnia1, db):
-    """Staff with empty accessible_sites is allowed (backward compat)."""
+    """Staff with empty accessible_uczelnie is allowed (backward compat)."""
     from bpp.models import BppUser
 
     user = BppUser.objects.create_user(
         username="staff_no_sites", password="test", is_staff=True
     )
-    # user.accessible_sites is empty
+    # user.accessible_uczelnie is empty
     request = make_request_for_site(site1, path="/admin/", user=user)
     mw = SiteResolutionMiddleware(lambda r: None)
     response = mw.process_view(request, None, [], {})

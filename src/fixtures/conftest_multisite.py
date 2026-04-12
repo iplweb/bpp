@@ -121,26 +121,26 @@ def autor_uczelnia2(jednostka_uczelnia2, tytuly):
 
 
 @pytest.fixture
-def staff_user_uczelnia1(site1, db):
+def staff_user_uczelnia1(uczelnia1, db):
     """Staff user with access only to uczelnia1."""
     user = BppUser.objects.create_user(
         username="staff_u1",
         password="test12345",
         is_staff=True,
     )
-    user.accessible_sites.add(site1)
+    user.accessible_uczelnie.add(uczelnia1)
     return user
 
 
 @pytest.fixture
-def staff_user_uczelnia2(site2, db):
+def staff_user_uczelnia2(uczelnia2, db):
     """Staff user with access only to uczelnia2."""
     user = BppUser.objects.create_user(
         username="staff_u2",
         password="test12345",
         is_staff=True,
     )
-    user.accessible_sites.add(site2)
+    user.accessible_uczelnie.add(uczelnia2)
     return user
 
 
