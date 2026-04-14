@@ -673,8 +673,7 @@ PASSWORD_USE_HISTORY = env("DJANGO_BPP_USE_PASSWORD_HISTORY")
 
 PASSWORD_HISTORY_COUNT = env("DJANGO_BPP_PASSWORD_HISTORY_COUNT")
 
-# wymagane przez django-password-policies
-SESSION_SERIALIZER = "django.contrib.sessions.serializers.PickleSerializer"
+SESSION_SERIALIZER = "django.contrib.sessions.serializers.JSONSerializer"
 
 MESSAGE_STORAGE = "messages_extends.storages.FallbackStorage"
 

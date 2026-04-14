@@ -440,7 +440,7 @@ requires-dist = [
     { name = "django-model-utils", specifier = "==4.3.1" },
     { name = "django-mptt", specifier = "==0.13.4" },
     { name = "django-multiseek", specifier = "==0.9.47" },
-    { name = "django-password-policies-iplweb", specifier = "==0.8.5" },
+    { name = "django-password-policies-iplweb", specifier = "==0.9.0" },
     { name = "django-prometheus", specifier = ">=2.4.1" },
     { name = "django-querysetsequence", specifier = "==0.12" },
     { name = "django-redis", specifier = "==5.3.0" },
@@ -1937,13 +1937,14 @@ wheels = [
 
 [[package]]
 name = "django-password-policies-iplweb"
-version = "0.8.5"
+version = "0.9.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "django", marker = "platform_python_implementation != 'PyPy'" },
 ]
+sdist = { url = "https://files.pythonhosted.org/packages/f3/df/7b934230c45c74b0c8baa419d99aeb18edb5dbc8526ab79a77a4b7fe0a07/django_password_policies_iplweb-0.9.0.tar.gz", hash = "sha256:4ea38dd5d261e7e7c8694fd8447ca9ce7bceb51a6efac5a609870d81bcadfd43", size = 91109, upload-time = "2026-04-07T13:18:01.688Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/37/aa/45d8007d5c7cc2cec7888950985884273ab81f8a19869f0dc577fd40cb73/django_password_policies_iplweb-0.8.5-py3-none-any.whl", hash = "sha256:a77466719708d3dd5325b7a13c1f60bc998adfc3ea8be21f77a7862ca01d8618", size = 181934, upload-time = "2023-07-09T23:06:34.92Z" },
+    { url = "https://files.pythonhosted.org/packages/f8/36/53dd874280b1223015e1eaa79c21c0131b4d2f6512686e6f8723cdd3c6c5/django_password_policies_iplweb-0.9.0-py3-none-any.whl", hash = "sha256:2b702e17dd80b83e06c7247f6949c5f2c3297b49ac2996be4388049cc49016ab", size = 185463, upload-time = "2026-04-07T13:18:00.447Z" },
 ]
 
 [[package]]
