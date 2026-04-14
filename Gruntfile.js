@@ -177,9 +177,15 @@ module.exports = function (grunt) {
             // Create a stable .venv/lib/python symlink pointing to the
             // actual python3.XX directory, so bundle-entry.js imports
             // work regardless of Python version.
+            // Respects UV_PROJECT_ENVIRONMENT (set to /opt/venv in the
+            // test-runner Docker image) so the symlink resolves correctly
+            // whether running locally (.venv) or in CI (/opt/venv).
             linkSitePackages: {
-                command: 'rm -f .venv/lib/python && ' +
-                         'ln -s $(cd .venv/lib && ls -d python3.* | head -1) .venv/lib/python'
+                command: 'VENV_DIR=${UV_PROJECT_ENVIRONMENT:-.venv} && ' +
+                         'PY_DIR=$(ls -d "$VENV_DIR/lib/python3."* | head -1) && ' +
+                         'mkdir -p .venv/lib && ' +
+                         'rm -f .venv/lib/python && ' +
+                         'ln -sf "$(cd "$PY_DIR" && pwd)" .venv/lib/python'
             },
             esbuild: {
                 command: 'npx esbuild src/bpp/static/bpp/js/bundle-entry.js ' +
