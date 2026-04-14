@@ -67,12 +67,12 @@ urlpatterns = (
         url(
             r"^admin/bpp/wydawnictwo_zwarte/toz/(?P<pk>[\d]+)/$",
             login_required(WydawnictwoZwarteTozView.as_view()),
-            name="admin_bpp_wydawnictwo_ciagle_toz",
+            name="admin_bpp_wydawnictwo_zwarte_toz",
         ),
         url(
             r"^admin/bpp/patent/toz/(?P<pk>[\d]+)/$",
             login_required(PatentTozView.as_view()),
-            name="admin_bpp_wydawnictwo_ciagle_toz",
+            name="admin_bpp_patent_toz",
         ),
         # url(r'^admin/', include(admin.site.urls)),
         path("admin/", admin.site.urls),
