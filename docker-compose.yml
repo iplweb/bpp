@@ -166,30 +166,6 @@ services:
     volumes:
       - ./src:/app/src
 
-  webserver:
-    image: nginx:1.29.7
-    restart: always
-    env_file:
-      - path: .env.docker
-        required: true
-      - path: .env
-        required: false
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f -s -o /dev/null http://127.0.0.1:80/healthz || exit 1"]
-      start_period: 10s
-      interval: 10s
-      timeout: 5s
-      retries: 3
-    volumes:
-      - ./src/django_bpp/staticroot:/var/www/html/staticroot
-      - media:/mediaroot
-      - ssl_certs:/etc/ssl/private
-      - ./docker/webserver/default.conf.template:/etc/nginx/templates/default.conf.template:ro
-      - ./docker/webserver/maintenance.html:/usr/share/nginx/html/maintenance.html:ro
-    ports:
-      - ${DJANGO_BPP_PORT_HTTP:-1080}:80
-      - ${DJANGO_BPP_PORT_HTTPS:-10443}:443
-
   # ── Workers ────────────────────────────────────────────────────────────
 
   celerybeat:
@@ -431,5 +407,4 @@ volumes:
   redis_data:
   rabbitmq_data:
   media:
-  ssl_certs:
   grafana_data:

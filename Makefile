@@ -376,7 +376,7 @@ endif
 
 # Main build target - parallel builds using docker buildx bake
 # This builds all images in parallel where possible:
-# - dbserver, webserver: independent, build immediately
+# - dbserver: independent, builds immediately
 # - base: builds in parallel with above
 # - appserver, workerserver, beatserver, authserver, denorm-queue: wait for base
 build:
