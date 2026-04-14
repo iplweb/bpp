@@ -168,3 +168,4 @@ src/bpp/static/500.html
 opencode.jsonc
 dump.rdb
 .worktrees/
+.claude/
