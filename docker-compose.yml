@@ -105,7 +105,6 @@ services:
       - path: .env
         required: false
     environment:
-      - DJANGO_SETTINGS_MODULE=django_bpp.settings.docker
       - ENABLE_AUTORELOAD_ON_CODE_CHANGE=${ENABLE_AUTORELOAD_ON_CODE_CHANGE:-1}
       - DJANGO_BPP_CSRF_EXTRA_ORIGINS=https://bpp.localnet:10443,https://localhost:10443
     depends_on:
@@ -119,7 +118,7 @@ services:
       test: ["CMD", "curl", "-f", "http://127.0.0.1:8000/health/"]
       interval: 30s
       timeout: 5s
-      start_period: 1800s
+      start_period: 120s
       retries: 3
     volumes:
       - ./src:/app/src
@@ -212,7 +211,6 @@ services:
       - path: .env
         required: false
     environment:
-      - DJANGO_SETTINGS_MODULE=django_bpp.settings.local
       - ENABLE_AUTORELOAD_ON_CODE_CHANGE=${ENABLE_AUTORELOAD_ON_CODE_CHANGE:-1}
     restart: always
     volumes:
@@ -247,7 +245,6 @@ services:
         required: false
     environment:
       - WEB_CONCURRENCY=4
-      - DJANGO_SETTINGS_MODULE=django_bpp.settings.local
       - ENABLE_AUTORELOAD_ON_CODE_CHANGE=${ENABLE_AUTORELOAD_ON_CODE_CHANGE:-1}
     restart: always
     volumes:
@@ -282,7 +279,6 @@ services:
         required: false
     environment:
       - WEB_CONCURRENCY=4
-      - DJANGO_SETTINGS_MODULE=django_bpp.settings.local
       - ENABLE_AUTORELOAD_ON_CODE_CHANGE=${ENABLE_AUTORELOAD_ON_CODE_CHANGE:-1}
       - CELERY_QUEUE=denorm
     restart: always
@@ -345,7 +341,6 @@ services:
       - path: .env
         required: false
     environment:
-      - DJANGO_SETTINGS_MODULE=django_bpp.settings.local
       - ENABLE_AUTORELOAD_ON_CODE_CHANGE=${ENABLE_AUTORELOAD_ON_CODE_CHANGE:-1}
     restart: always
     volumes:

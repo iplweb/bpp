@@ -36,11 +36,6 @@ repos:
 #          language: python
 #          stages: [commit]
 
-    - repo: https://github.com/zahorniak/pre-commit-circleci.git
-      rev: v1.2.0 # Ensure this is the latest tag, comparing to the Releases tab
-      hooks:
-        - id: circleci_validate
-
     - repo: https://github.com/rhysd/actionlint
       rev: v1.7.8
       hooks:

@@ -69,3 +69,31 @@ jobs:
           DOCKER_VERSION: ${{ steps.tag.outputs.docker_tag }}
           TAG_LATEST: ${{ steps.tag.outputs.tag_latest }}
           PUSH: "true"
+
+      - name: Trivy image scan (report-only)
+        continue-on-error: true
+        env:
+          DOCKER_VERSION: ${{ steps.tag.outputs.docker_tag }}
+        run: |
+          set -u
+          images=(
+            iplweb/bpp_base
+            iplweb/bpp_dbserver
+            iplweb/bpp_appserver
+            iplweb/bpp_workerserver
+            iplweb/bpp_beatserver
+            iplweb/bpp_authserver
+            iplweb/bpp_denorm_queue
+          )
+          for img in "${images[@]}"; do
+            echo "::group::Trivy scan ${img}:${DOCKER_VERSION}"
+            docker run --rm \
+              -v /var/run/docker.sock:/var/run/docker.sock \
+              aquasec/trivy:latest image \
+                --severity CRITICAL,HIGH \
+                --exit-code 0 \
+                --ignore-unfixed \
+                --no-progress \
+                "${img}:${DOCKER_VERSION}" || true
+            echo "::endgroup::"
+          done
