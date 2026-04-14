@@ -13,9 +13,6 @@ DEBUG = False
 DEBUG_TOOLBAR = False
 SENDFILE_BACKEND = "django_sendfile.backends.nginx"
 
-SESSION_COOKIE_SECURE = False
-CSRF_COOKIE_SECURE = False
-
 COMPRESS_ENABLED = not DEBUG
 COMPRESS_OFFLINE = False
 

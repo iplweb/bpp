@@ -1,0 +1,6 @@
+Usunięto nadpisanie ``SESSION_COOKIE_SECURE`` i ``CSRF_COOKIE_SECURE``
+w ``production.py``, które wyłączało bezpieczne flagi ciasteczek sesji
+i CSRF. Wartości z ``base.py`` (``True``) są teraz poprawnie dziedziczone
+— ciasteczka są wysyłane wyłącznie przez HTTPS. Rozpoznawanie połączeń
+szyfrowanych za nginx-em działa dzięki już ustawionemu
+``SECURE_PROXY_SSL_HEADER``.
