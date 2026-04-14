@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block extratitle %}
+    Błąd logowania ORCID
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li class="current">Błąd logowania ORCID</li>
+{% endblock %}
+
+{% block content %}
+    <div class="grid-x align-center">
+        <div class="large-6 medium-8 small-12 cell">
+            <h1>Błąd logowania ORCID</h1>
+            <div class="callout alert">
+                <p>{{ message }}</p>
+            </div>
+            <a href="/" class="button">Powrót na stronę główną</a>
+        </div>
+    </div>
+{% endblock %}

@@ -280,6 +280,7 @@ TEMPLATES = [
                 "bpp.context_processors.google_analytics.google_analytics",
                 "bpp.context_processors.pbn_token_aktualny.pbn_token_aktualny",
                 "bpp.context_processors.microsoft_auth.microsoft_auth_status",
+                "bpp.context_processors.orcid.orcid_auth_status",
                 "bpp.context_processors.testing.testing",
                 "cookielaw.context_processors.cookielaw",
                 "django_countdown.context_processors.countdown_context",
@@ -459,6 +460,7 @@ INSTALLED_APPS = [
     "pbn_wysylka_oswiadczen",
     "pbn_integrator",
     "pbn_import",
+    "orcid_integration",
     "komparator_pbn_udzialy",
     "komparator_publikacji_pbn",
     "admin_dashboard",
@@ -1042,6 +1044,16 @@ if AUTH_LDAP_SERVER_URI and MICROSOFT_AUTH_CLIENT_ID:
 # Koniec weryfikacji konfiguracji ilości backendów autoryzacyjnych
 #
 
+#
+# ORCID authentication backend — always available, enabled per-Uczelnia
+#
+if "AUTHENTICATION_BACKENDS" not in dir():
+    AUTHENTICATION_BACKENDS = [
+        "django.contrib.auth.backends.ModelBackend",
+    ]
+AUTHENTICATION_BACKENDS = list(AUTHENTICATION_BACKENDS) + [
+    "orcid_integration.backends.OrcidAuthenticationBackend",
+]
 
 #
 # Konfiguracja serwera pocztowego
