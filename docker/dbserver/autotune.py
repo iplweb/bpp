@@ -9,7 +9,7 @@ import sys
 ONE_MB_IN_KB = 1024
 ONE_GB_IN_KB = 1024 * ONE_MB_IN_KB
 
-how_much_ram_for_postgres = float(os.environ.get("POSTGRESQL_RAM_PERCENT", "0.5"))
+how_much_ram_for_postgres = float(os.environ.get("POSTGRESQL_RAM_PERCENT", "0.95"))
 force_ram_for_postgres = os.environ.get("POSTGRESQL_RAM_THIS_MUCH_GB", None)
 default_ram_for_postgres = int(os.environ.get("POSTGRESQL_DEFAULT_RAM", 4096))
 
@@ -22,6 +22,42 @@ unsafe_but_fast = os.environ.get("POSTGRESQL_UNSAFE_BUT_FAST", "").lower() in (
 )
 
 
+def cgroup_limit_kb():
+    # /proc/meminfo zawsze pokazuje RAM hosta, nie limit kontenera — limit
+    # siedzi w cgroup. Zwracamy go w kB, albo None gdy brak skończonego limitu.
+    try:
+        with open("/sys/fs/cgroup/memory.max") as f:
+            raw = f.read().strip()
+        if raw != "max":
+            return int(raw) // 1024
+    except FileNotFoundError:
+        pass
+
+    try:
+        with open("/sys/fs/cgroup/memory/memory.limit_in_bytes") as f:
+            v = int(f.read().strip())
+        # cgroup v1 zwraca ogromną wartość-wartownik gdy limit nie jest ustawiony
+        if v < (1 << 62):
+            return v // 1024
+    except FileNotFoundError:
+        pass
+
+    return None
+
+
+def host_ram_kb():
+    import re
+
+    if not os.path.exists("/proc/meminfo"):
+        return None
+    with open("/proc/meminfo") as f:
+        meminfo = f.read()
+    matched = re.search(r"^MemTotal:\s+(\d+)", meminfo)
+    if not matched:
+        return None
+    return int(matched.groups()[0])
+
+
 def total_ram_size_mb():
     if force_ram_for_postgres:
         print(
@@ -31,18 +67,21 @@ def total_ram_size_mb():
         )
         return int(force_ram_for_postgres)
 
-    import re
+    host_kb = host_ram_kb()
+    cgroup_kb = cgroup_limit_kb()
 
-    if os.path.exists("/proc/meminfo"):
-        with open("/proc/meminfo") as f:
-            meminfo = f.read()
-        matched = re.search(r"^MemTotal:\s+(\d+)", meminfo)
-        if matched:
-            mem_total_kB = int(matched.groups()[0])
-            print(
-                f"# autotune.py: detected {mem_total_kB} kB RAM; will use {int(how_much_ram_for_postgres * 100)} % of it"
-            )
-            return how_much_ram_for_postgres * mem_total_kB / 1024
+    if cgroup_kb is not None and (host_kb is None or cgroup_kb < host_kb):
+        print(
+            f"# autotune.py: detected cgroup memory limit {cgroup_kb} kB "
+            f"(host RAM: {host_kb} kB); will use {int(how_much_ram_for_postgres * 100)} % of the cgroup limit"
+        )
+        return how_much_ram_for_postgres * cgroup_kb / 1024
+
+    if host_kb is not None:
+        print(
+            f"# autotune.py: detected {host_kb} kB RAM; will use {int(how_much_ram_for_postgres * 100)} % of it"
+        )
+        return how_much_ram_for_postgres * host_kb / 1024
 
     print(
         f"# autotune.py: unable to detect RAM size, returning default {default_ram_for_postgres} MB; "
