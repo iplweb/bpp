@@ -8,8 +8,8 @@ from functools import reduce
 from math import ceil, floor
 from pathlib import Path
 
-import bleach
 import lxml.html
+import nh3
 import openpyxl.worksheet.worksheet
 from django.apps import apps
 from django.conf import settings
@@ -392,12 +392,12 @@ def safe_html(html):
     ALLOWED_ATTRIBUTES = getattr(
         settings, "ALLOWED_ATTRIBUTES", safe_html_defaults.ALLOWED_ATTRIBUTES
     )
-    STRIP_TAGS = getattr(settings, "STRIP_TAGS", True)
-    return bleach.clean(
+    return nh3.clean(
         html,
-        tags=ALLOWED_TAGS,
-        attributes=ALLOWED_ATTRIBUTES,
-        strip=STRIP_TAGS,
+        tags=set(ALLOWED_TAGS),
+        attributes={k: set(v) for k, v in ALLOWED_ATTRIBUTES.items()},
+        clean_content_tags=set(),
+        link_rel=None,
     )
 
 

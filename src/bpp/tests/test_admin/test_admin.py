@@ -42,7 +42,7 @@ def test_safe_html_dwa_tytuly_DwaTytuly(
     admin_app,
     typy_odpowiedzialnosci,
 ):
-    """Upewnij sie, ze bleach jest uruchamiany dla tych dwóch pól z DwaTytuly"""
+    """Upewnij sie, ze nh3 jest uruchamiany dla tych dwóch pól z DwaTytuly"""
 
     i = baker.make(klass, rok=2020)
     if hasattr(i, "zrodlo"):
