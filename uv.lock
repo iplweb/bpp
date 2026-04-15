@@ -337,7 +337,6 @@ dev = [
     { name = "django-webtest", marker = "platform_python_implementation != 'PyPy'" },
     { name = "ipdb", marker = "platform_python_implementation != 'PyPy'" },
     { name = "ipython", marker = "platform_python_implementation != 'PyPy'" },
-    { name = "mock", marker = "platform_python_implementation != 'PyPy'" },
     { name = "model-bakery", marker = "platform_python_implementation != 'PyPy'" },
     { name = "nest-asyncio", marker = "platform_python_implementation != 'PyPy'" },
     { name = "playwright", marker = "platform_python_implementation != 'PyPy'" },
@@ -362,7 +361,6 @@ dev = [
     { name = "sphinx", marker = "platform_python_implementation != 'PyPy'" },
     { name = "towncrier", marker = "platform_python_implementation != 'PyPy'" },
     { name = "twine", marker = "platform_python_implementation != 'PyPy'" },
-    { name = "typing", marker = "platform_python_implementation != 'PyPy'" },
     { name = "vcrpy", marker = "platform_python_implementation != 'PyPy'" },
     { name = "watchdog", marker = "platform_python_implementation != 'PyPy'" },
     { name = "webtest", marker = "platform_python_implementation != 'PyPy'" },
@@ -465,7 +463,6 @@ requires-dist = [
     { name = "langdetect", specifier = ">=1.0.9" },
     { name = "markdown", specifier = "==3.2.1" },
     { name = "moai-iplweb", specifier = "==2.0.0" },
-    { name = "mock", marker = "extra == 'dev'", specifier = "==2.0.0" },
     { name = "model-bakery", marker = "extra == 'dev'", specifier = ">=1.20.5" },
     { name = "nest-asyncio", marker = "extra == 'dev'", specifier = ">=1.6.0" },
     { name = "nh3", specifier = ">=0.2.15" },
@@ -515,7 +512,6 @@ requires-dist = [
     { name = "tqdm", specifier = ">=4.67.1" },
     { name = "twine", marker = "extra == 'dev'", specifier = ">=5.1.0" },
     { name = "twisted", extras = ["http2", "tls"], specifier = ">=24.3.0" },
-    { name = "typing", marker = "extra == 'dev'", specifier = ">=3.6,<3.7" },
     { name = "unidecode", specifier = "==0.4.20" },
     { name = "urllib3", specifier = ">=2.2.3,<3.0.0" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.31.0" },
@@ -3259,19 +3255,6 @@ wheels = [
 ]
 
 [[package]]
-name = "mock"
-version = "2.0.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "pbr", marker = "platform_python_implementation != 'PyPy'" },
-    { name = "six", marker = "platform_python_implementation != 'PyPy'" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/0c/53/014354fc93c591ccc4abff12c473ad565a2eb24dcd82490fae33dbf2539f/mock-2.0.0.tar.gz", hash = "sha256:b158b6df76edd239b8208d481dc46b6afd45a846b7812ff0ce58971cf5bc8bba", size = 73684, upload-time = "2016-04-06T01:38:35.726Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/e6/35/f187bdf23be87092bd0f1200d43d23076cee4d0dec109f195173fd3ebc79/mock-2.0.0-py2.py3-none-any.whl", hash = "sha256:5ce3c71c5545b472da17b72268978914d0252980348636840bd34a00b5cc96c1", size = 56820, upload-time = "2016-04-06T01:38:18.05Z" },
-]
-
-[[package]]
 name = "model-bakery"
 version = "1.20.5"
 source = { registry = "https://pypi.org/simple" }
@@ -3911,18 +3894,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/ca/bc/f35b8446f4531a7cb215605d100cd88b7ac6f44ab3fc94870c120ab3adbf/pathspec-0.12.1.tar.gz", hash = "sha256:a482d51503a1ab33b1c67a6c3813a26953dbdc71c31dacaef9a838c4e29f5712", size = 51043, upload-time = "2023-12-10T22:30:45Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/cc/20/ff623b09d963f88bfde16306a54e12ee5ea43e9b597108672ff3a408aad6/pathspec-0.12.1-py3-none-any.whl", hash = "sha256:a0d503e138a4c123b27490a4f7beda6a01c6f288df0e4a8b79c7eb0dc7b4cc08", size = 31191, upload-time = "2023-12-10T22:30:43.14Z" },
-]
-
-[[package]]
-name = "pbr"
-version = "7.0.1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "setuptools", marker = "platform_python_implementation != 'PyPy'" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/ad/8d/23253ab92d4731eb34383a69b39568ca63a1685bec1e9946e91a32fc87ad/pbr-7.0.1.tar.gz", hash = "sha256:3ecbcb11d2b8551588ec816b3756b1eb4394186c3b689b17e04850dfc20f7e57", size = 130086, upload-time = "2025-08-21T09:40:56.015Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/56/c1/7e588435c2394dfded9197a8307417d1ca3b7f49d9bd5b6227d1f3f03ccd/pbr-7.0.1-py2.py3-none-any.whl", hash = "sha256:32df5156fbeccb6f8a858d1ebc4e465dcf47d6cc7a4895d5df9aa951c712fc35", size = 126091, upload-time = "2025-08-21T09:40:54.614Z" },
 ]
 
 [[package]]
@@ -5709,15 +5680,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/2b/20/2e7ccea9ab2dd824d0bd421d9364424afde3bb33863afb80cd9180335019/txaio-25.9.2.tar.gz", hash = "sha256:e42004a077c02eb5819ff004a4989e49db113836708430d59cb13d31bd309099", size = 50008, upload-time = "2025-09-25T22:21:07.958Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/7e/2c/e276b80f73fc0411cefa1c1eeae6bc17955197a9c3e2b41b41f957322549/txaio-25.9.2-py3-none-any.whl", hash = "sha256:a23ce6e627d130e9b795cbdd46c9eaf8abd35e42d2401bb3fea63d38beda0991", size = 31293, upload-time = "2025-09-25T22:21:06.394Z" },
-]
-
-[[package]]
-name = "typing"
-version = "3.6.6"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/bf/9b/2bf84e841575b633d8d91ad923e198a415e3901f228715524689495b4317/typing-3.6.6.tar.gz", hash = "sha256:4027c5f6127a6267a435201981ba156de91ad0d1d98e9ddc2aa173453453492d", size = 71799, upload-time = "2018-08-26T18:46:08.429Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/4a/bd/eee1157fc2d8514970b345d69cb9975dcd1e42cd7e61146ed841f6e68309/typing-3.6.6-py3-none-any.whl", hash = "sha256:57dcf675a99b74d64dacf6fba08fb17cf7e3d5fdff53d4a30ea2a5e7e52543d4", size = 25727, upload-time = "2018-08-26T18:46:06.784Z" },
 ]
 
 [[package]]
