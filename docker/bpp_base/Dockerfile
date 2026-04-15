@@ -182,3 +182,7 @@ WORKDIR /app
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/.venv ./.venv
 COPY --from=builder /app/src ./src
+# Baseline pg_dump used by entrypoint-appserver.sh on empty databases
+# to skip 800+ migrations on a cold install. Optional — entrypoint
+# checks the file exists before using it.
+COPY --from=builder /app/baseline ./baseline

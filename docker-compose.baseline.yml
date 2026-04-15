@@ -1,0 +1,34 @@
+# Isolated PostgreSQL container used by `make rebuild-baseline` to
+# generate baseline/baseline.sql. Same image as docker-compose.test.yml
+# so plpython3u and the pl_PL locale are guaranteed identical to CI/dev/prod.
+#
+# Different port (55433) and dedicated volume so it can run in parallel
+# with the regular dev/test stacks without conflicts.
+
+services:
+  db:
+    image: iplweb/bpp_dbserver:${DOCKER_VERSION:-latest}
+    build:
+      context: ./docker/dbserver
+      dockerfile: Dockerfile
+      cache_from:
+        - type=registry,ref=iplweb/bpp_dbserver:latest
+    ports:
+      - "127.0.0.1:55433:55433"
+    environment:
+      - PGPORT=55433
+      - POSTGRES_DB=bpp_baseline
+      - POSTGRES_USER=bpp
+      - POSTGRES_PASSWORD=password
+      - POSTGRESQL_UNSAFE_BUT_FAST=1
+    volumes:
+      - baseline_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bpp -p 55433"]
+      start_period: 10s
+      interval: 2s
+      timeout: 5s
+      retries: 15
+
+volumes:
+  baseline_pg_data:
