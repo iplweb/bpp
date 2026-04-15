@@ -41,7 +41,7 @@ dependencies = [
     "django-crispy-forms==2.0.0",
     "crispy-forms-foundation>=1.1.0,<2",
     "django-compressor==4.4",
-    "bleach>=3.3.0",
+    "nh3>=0.2.15",
     "django-session-security>=2.6.7",
     "django-password-policies-iplweb==0.9.0",
     "dj-pagination==2.4.0",
