@@ -58,7 +58,7 @@ dependencies = [
     "django-querysetsequence==0.12",
     "pypandoc>=1.13,<2",
     "django-static-sitemaps>=5.0.0",
-    "django-model-utils==4.3.1",
+    "django-model-utils==5.0.0",
     "django-fsm==2.8.0",
     "django-mptt==0.13.4",
     "wosclient==0.1.5",
