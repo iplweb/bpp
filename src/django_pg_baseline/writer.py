@@ -1,43 +1,16 @@
-"""Generate ``baseline/baseline.meta.json`` for the current source tree.
-
-Walks every Django app's ``migrations/`` directory on disk and records
-the highest-numbered (lexicographically last) migration name per app.
-That metadata is the source of truth for ``check_freshness.py`` and
-becomes a sidecar to the SQL dump in git.
-
-Run via:
-
-    uv run python baseline/write_meta.py
-
-The script needs Django to be importable but does NOT touch the
-database — it only walks ``MigrationLoader.disk_migrations``.
-"""
+"""Build ``baseline.meta.json`` from the current source tree."""
 
 from __future__ import annotations
 
 import json
-import os
 import subprocess
-import sys
 from pathlib import Path
-
-REPO_ROOT = Path(__file__).resolve().parent.parent
-META_PATH = Path(__file__).resolve().parent / "baseline.meta.json"
-
-
-def _setup_django() -> None:
-    sys.path.insert(0, str(REPO_ROOT / "src"))
-    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "django_bpp.settings.local")
-    import django
-
-    django.setup()
 
 
 def _git_sha() -> str | None:
     try:
         out = subprocess.check_output(
             ["git", "rev-parse", "HEAD"],
-            cwd=REPO_ROOT,
             stderr=subprocess.DEVNULL,
         )
         return out.decode().strip()
@@ -53,7 +26,8 @@ def _postgres_version() -> str | None:
             cur.execute("SELECT version()")
             row = cur.fetchone()
             return row[0] if row else None
-    except Exception:  # pragma: no cover — running without DB
+    except Exception as exc:  # noqa: BLE001
+        print(f"[baseline] could not read postgres version: {exc}")
         return None
 
 
@@ -68,17 +42,13 @@ def collect_last_migrations() -> dict[str, str]:
     return {app: max(names) for app, names in sorted(by_app.items())}
 
 
-def main() -> int:
-    _setup_django()
+def write_meta(meta_path: Path) -> None:
     meta = {
         "git_sha": _git_sha(),
         "postgres_version": _postgres_version(),
         "last_migration": collect_last_migrations(),
     }
-    META_PATH.write_text(json.dumps(meta, indent=2, sort_keys=True) + "\n")
-    print(f"[baseline] wrote {META_PATH}")
-    return 0
-
-
-if __name__ == "__main__":
-    sys.exit(main())
+    meta_path = Path(meta_path)
+    meta_path.parent.mkdir(parents=True, exist_ok=True)
+    meta_path.write_text(json.dumps(meta, indent=2, sort_keys=True) + "\n")
+    print(f"[baseline] wrote {meta_path}")

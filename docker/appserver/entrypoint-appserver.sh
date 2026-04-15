@@ -8,22 +8,10 @@ export PGPASSWORD="${DJANGO_BPP_DB_PASSWORD}"
 cd /app
 
 # === PHASE 1: Migration (BLOCKING) ===
-# On a completely empty database (`django_migrations` does not exist
-# yet) load the baseline pg_dump first — that turns 800+ migrations
-# into a few-second SQL import, after which `migrate` only needs to
-# apply the small delta of migrations added since the dump was last
-# regenerated. Existing production databases always have
-# `django_migrations`, so this branch is a no-op for them.
-NEEDS_BASELINE=$(psql -d "${DJANGO_BPP_DB_NAME}" -tAc \
-    "SELECT to_regclass('public.django_migrations') IS NULL")
-if [ "$NEEDS_BASELINE" = "t" ] && [ -f /app/baseline/baseline.sql ]; then
-    echo "Empty database detected — loading baseline dump..."
-    psql -d "${DJANGO_BPP_DB_NAME}" \
-        -v ON_ERROR_STOP=1 --single-transaction \
-        -f /app/baseline/baseline.sql
-    echo "Baseline loaded."
-fi
-
+# baseline_load fast-imports baseline.sql on an empty DB (no-op
+# otherwise); migrate then applies the small delta of newer migrations.
+echo "Loading baseline (no-op on non-empty DB)..."
+uv run src/manage.py baseline_load || true
 echo "Database migrations..."
 uv run src/manage.py migrate
 echo "Migrations done."

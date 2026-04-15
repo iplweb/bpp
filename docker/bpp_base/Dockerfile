@@ -181,8 +181,7 @@ WORKDIR /app
 
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/.venv ./.venv
+# The baseline pg_dump (src/baseline-sql) ships along with src/ and is
+# loaded by entrypoint-appserver.sh via `manage.py baseline_load` on
+# empty databases to skip 800+ migrations on a cold install.
 COPY --from=builder /app/src ./src
-# Baseline pg_dump used by entrypoint-appserver.sh on empty databases
-# to skip 800+ migrations on a cold install. Optional — entrypoint
-# checks the file exists before using it.
-COPY --from=builder /app/baseline ./baseline

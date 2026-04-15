@@ -1,6 +1,4 @@
-import sys
 from datetime import timedelta
-from pathlib import Path
 from uuid import uuid4
 
 import pytest
@@ -10,17 +8,7 @@ from django.test.client import Client, RequestFactory
 from django.utils import timezone
 from model_bakery import baker
 
-# Make ``baseline.load_baseline`` importable without installing it as a
-# package — the directory lives at the repo root, next to ``src/``.
-_REPO_ROOT = Path(__file__).resolve().parent.parent
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
-
-from baseline.load_baseline import (  # noqa: E402
-    BASELINE_SQL,
-    load_baseline,
-)
-from bpp.tests.helpers import (  # noqa: E402, F401 - re-export helpers
+from bpp.tests.helpers import (  # noqa: F401 - re-export helpers
     UserRequestFactory,
     _enrich_kw_for_wydawnictwo,
     _stworz_obiekty_dla_raportow,
@@ -30,70 +18,11 @@ from bpp.tests.helpers import (  # noqa: E402, F401 - re-export helpers
     ciagle_publikacja,
     zwarte_publikacja,
 )
-from channels_live_server import channels_live_server  # noqa: E402, F401
+from channels_live_server import channels_live_server  # noqa: F401
 
-# =============================================================================
-# Baseline-aware test database creation (monkey patch)
-# =============================================================================
-#
-# When ``baseline/baseline.sql`` exists we monkey-patch Django's database
-# creation backend so that immediately after ``CREATE DATABASE`` (the
-# first thing pytest-django's setup_databases() does) we ``psql -f`` the
-# baseline dump into the freshly created empty test DB. The subsequent
-# ``migrate`` step that pytest-django runs then sees every baseline-era
-# migration already recorded in ``django_migrations`` and only applies
-# the small delta of newer migrations on top.
-#
-# When the dump is absent we leave Django alone entirely — pytest-django
-# falls back to its normal "migrate from scratch" flow.
-
-if BASELINE_SQL.exists():
-    from django.db.backends.base import creation as _creation  # noqa: E402
-
-    _original_create_test_db = _creation.BaseDatabaseCreation._create_test_db
-
-    def _create_test_db_with_baseline(self, verbosity, autoclobber, keepdb=False):
-        # Let Django do its part first: with keepdb=True (which is the
-        # default in pytest.ini via --reuse-db) this either CREATEs a
-        # brand-new empty test DB or returns immediately if the DB
-        # already exists. We need to handle both cases — checking the
-        # actual DB state via a direct psycopg2 connection avoids
-        # fighting Django's connection caching of the source DB.
-        test_database_name = _original_create_test_db(
-            self, verbosity, autoclobber, keepdb
-        )
-
-        import psycopg2
-
-        dsn = self.connection.settings_dict
-        try:
-            inspect = psycopg2.connect(
-                host=dsn.get("HOST") or "localhost",
-                port=dsn.get("PORT") or 5432,
-                user=dsn.get("USER"),
-                password=dsn.get("PASSWORD") or "",
-                dbname=test_database_name,
-            )
-        except psycopg2.OperationalError:
-            # Couldn't connect — likely the DB doesn't exist yet for
-            # reasons we don't fully understand. Bail out cleanly so
-            # Django's normal migrate-from-scratch path takes over.
-            return test_database_name
-
-        try:
-            with inspect.cursor() as cursor:
-                cursor.execute("SELECT to_regclass('public.django_migrations')")
-                row = cursor.fetchone()
-            empty = row is None or row[0] is None
-        finally:
-            inspect.close()
-
-        if empty:
-            load_baseline({**dsn, "NAME": test_database_name})
-
-        return test_database_name
-
-    _creation.BaseDatabaseCreation._create_test_db = _create_test_db_with_baseline
+# Baseline test-DB monkey-patch is installed by
+# ``django_pg_baseline.apps.DjangoPgBaselineConfig.ready()`` (the app
+# lives in INSTALLED_APPS + settings.PG_BASELINE).
 
 # =============================================================================
 # Fixtures użytkowników i klientów (przeniesione z tests_legacy/conftest.py)

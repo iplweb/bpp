@@ -117,6 +117,7 @@ dependencies = [
 [project.optional-dependencies]
 ldap = ["django-auth-ldap>=4.1.0"]
 office365 = ["django-microsoft-auth>=3.0.1"]
+baseline-rebuild = ["testcontainers[postgres]>=4.0"]
 dev = [
     "bumpver>=2023.1124",
     "pytest-recording>=0.12.1",
@@ -166,6 +167,7 @@ include = [
     "crossref_bpp",
     "dynamic_columns",
     "django_bpp",
+    "django_pg_baseline",
     "ewaluacja2021",
     "fixtures",
     "formdefaults",

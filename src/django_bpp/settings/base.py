@@ -466,7 +466,24 @@ INSTALLED_APPS = [
     "komparator_publikacji_pbn",
     "admin_dashboard",
     "importer_publikacji",
+    "django_pg_baseline",
 ]
+
+PG_BASELINE = {
+    "BASELINE_DIR": os.path.join(SITE_ROOT, "baseline-sql"),
+    # Our image has plpython3u + pl_PL.UTF-8 locale — vanilla postgres doesn't.
+    "REBUILD_IMAGE": "iplweb/bpp_dbserver:latest",
+    # bpp-specific exclusions on top of the generic django_session default.
+    "PG_DUMP_EXTRA_EXCLUDE_TABLE_DATA": [
+        "django_cache*",
+        "easy_thumbnails_*",
+    ],
+    # dbtemplates inserts rows via data-migration — we keep them in the
+    # dump, but freeze their timestamps for a deterministic diff.
+    "FREEZE_TIMESTAMPS_EXTRA": [
+        ("django_template", ["creation_date", "last_changed"]),
+    ],
+}
 
 # Profile użytkowników
 AUTH_USER_MODEL = "bpp.BppUser"
