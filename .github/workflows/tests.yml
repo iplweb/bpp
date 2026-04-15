@@ -15,6 +15,71 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  lint:
+    # Lint only Python files changed in this push/PR. The repo's
+    # convention is that ruff runs on changed files only (see
+    # pre-commit config); historic drift in unchanged files is
+    # deliberately left alone, so CI must match that scope.
+    name: Lint changed files
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Determine diff base
+        id: base
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+          BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            git fetch --no-tags --depth=100 origin "$BASE_REF"
+            echo "ref=origin/$BASE_REF" >> "$GITHUB_OUTPUT"
+          elif [ -n "$BEFORE_SHA" ] && \
+               [ "$BEFORE_SHA" != "0000000000000000000000000000000000000000" ]; then
+            echo "ref=$BEFORE_SHA" >> "$GITHUB_OUTPUT"
+          else
+            # First push to a new branch: diff against dev
+            git fetch --no-tags --depth=100 origin dev
+            echo "ref=origin/dev" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Collect changed Python files
+        id: files
+        env:
+          DIFF_BASE: ${{ steps.base.outputs.ref }}
+        run: |
+          files=$(git diff --name-only --diff-filter=AM \
+            "$DIFF_BASE"...HEAD -- '*.py' | tr '\n' ' ')
+          echo "list=$files" >> "$GITHUB_OUTPUT"
+          if [ -n "$files" ]; then
+            echo "Changed Python files:"
+            printf '  %s\n' $files
+          else
+            echo "No Python files changed."
+          fi
+
+      - name: Ruff check
+        if: steps.files.outputs.list != ''
+        env:
+          FILES: ${{ steps.files.outputs.list }}
+        run: uv run ruff check $FILES
+
+      - name: Ruff format --check
+        if: steps.files.outputs.list != ''
+        env:
+          FILES: ${{ steps.files.outputs.list }}
+        run: uv run ruff format --check $FILES
+
   build:
     # Skip this job if it's a "Merge tag" commit on the dev branch
     if: |
