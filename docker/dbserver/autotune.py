@@ -21,6 +21,14 @@ unsafe_but_fast = os.environ.get("POSTGRESQL_UNSAFE_BUT_FAST", "").lower() in (
     "yes",
 )
 
+# Ręczne nadpisanie limitów tabeli locków — gdy równoległe workery (xdist, celery)
+# dotykają wielu tabel/indeksów w jednej transakcji, domyślne 64 bywa za małe
+# ("brak pamięci współdzielonej / max_locks_per_transaction"). Puste = PG default.
+max_locks_per_transaction = os.environ.get("POSTGRESQL_MAX_LOCKS_PER_TRANSACTION")
+max_pred_locks_per_transaction = os.environ.get(
+    "POSTGRESQL_MAX_PRED_LOCKS_PER_TRANSACTION"
+)
+
 
 def cgroup_limit_kb():
     # /proc/meminfo zawsze pokazuje RAM hosta, nie limit kontenera — limit
@@ -158,6 +166,13 @@ def generate_config(ram_kb):
     config["max_parallel_workers_per_gather"] = str(max_parallel)
     config["max_parallel_workers"] = str(nproc)
     config["max_parallel_maintenance_workers"] = str(max_parallel)
+
+    if max_locks_per_transaction:
+        config["max_locks_per_transaction"] = str(int(max_locks_per_transaction))
+    if max_pred_locks_per_transaction:
+        config["max_pred_locks_per_transaction"] = str(
+            int(max_pred_locks_per_transaction)
+        )
 
     # Tryb "szybki ale niebezpieczny" - maksymalna wydajność kosztem bezpieczeństwa
     if unsafe_but_fast:

@@ -24,6 +24,8 @@ services:
       - POSTGRES_DB=${DJANGO_BPP_DB_NAME:-bpp}
       - POSTGRES_USER=${DJANGO_BPP_DB_USER:-bpp}
       - POSTGRESQL_UNSAFE_BUT_FAST=1
+      # Zachowawczo — CI zwykle nie odpala tak wielu workerów jak lokal.
+      - POSTGRESQL_MAX_LOCKS_PER_TRANSACTION=128
     volumes:
       - postgresql_data:/var/lib/postgresql/data
     healthcheck:

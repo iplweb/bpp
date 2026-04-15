@@ -27,6 +27,9 @@ services:
       # Ustaw na "1" dla maksymalnej wydajności (wyłącza fsync, synchronous_commit)
       # TYLKO dla developmentu/testów! NIE UŻYWAĆ W PRODUKCJI!
       - POSTGRESQL_UNSAFE_BUT_FAST=1
+      # Powiększona tabela locków — xdist z wieloma workerami tworzy/dropuje
+      # setki tabel i indeksów w jednej transakcji. Default 64 jest za mały.
+      - POSTGRESQL_MAX_LOCKS_PER_TRANSACTION=512
     volumes:
       - postgresql_data:/var/lib/postgresql/data
     healthcheck:
