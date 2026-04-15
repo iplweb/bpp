@@ -251,6 +251,9 @@ rebuild-baseline:
 	DJANGO_BPP_DB_PASSWORD=password \
 		uv run python src/manage.py migrate --noinput
 	docker compose -f docker-compose.baseline.yml exec -T db \
+		psql -U bpp -p 55433 -d bpp_baseline -v ON_ERROR_STOP=1 \
+		-c "UPDATE django_migrations SET applied = '2000-01-01 00:00:00+00'::timestamptz"
+	docker compose -f docker-compose.baseline.yml exec -T db \
 		pg_dump -U bpp -p 55433 -d bpp_baseline \
 		--no-owner --no-acl --no-privileges --no-comments \
 		--format=plain --encoding=UTF8 \
@@ -259,6 +262,8 @@ rebuild-baseline:
 		--exclude-table-data=dbtemplates_template \
 		--exclude-table-data='easy_thumbnails_*' \
 		> baseline/baseline.sql
+	sed -i.bak -E '/^\\(un)?restrict /d' baseline/baseline.sql
+	rm baseline/baseline.sql.bak
 	DJANGO_BPP_SKIP_DOTENV=1 \
 	DJANGO_BPP_DB_NAME=bpp_baseline \
 	DJANGO_BPP_DB_HOST=127.0.0.1 \
