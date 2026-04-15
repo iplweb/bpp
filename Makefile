@@ -224,7 +224,53 @@ combine-coverage:
 coveralls-upload:
 	uv run coveralls
 
-tests: destroy-test-databases clean-pycache clean-coverage tests-without-playwright tests-only-playwright combine-coverage js-tests coveralls-upload
+tests: clean-pycache clean-coverage tests-without-playwright tests-only-playwright combine-coverage js-tests coveralls-upload
+
+# Same as `tests` but forces a full DB rebuild from scratch instead of
+# reusing the schema produced by the baseline + delta migrate. Use when
+# you suspect schema corruption or need to validate migrations from zero.
+tests-fresh: destroy-test-databases tests
+
+# Regenerate baseline/baseline.sql by spinning up an isolated postgres,
+# running migrate, dumping, and writing baseline.meta.json. Commit the
+# refreshed files to git.
+rebuild-baseline:
+	docker compose -f docker-compose.baseline.yml down -v
+	docker compose -f docker-compose.baseline.yml up -d db
+	@echo "Waiting for baseline postgres to become ready..."
+	@for i in $$(seq 1 30); do \
+		docker compose -f docker-compose.baseline.yml exec -T db \
+			pg_isready -U bpp -p 55433 -d bpp_baseline >/dev/null 2>&1 && break; \
+		sleep 1; \
+	done
+	DJANGO_BPP_DB_NAME=bpp_baseline \
+	DJANGO_BPP_DB_HOST=127.0.0.1 \
+	DJANGO_BPP_DB_PORT=55433 \
+	DJANGO_BPP_DB_USER=bpp \
+	DJANGO_BPP_DB_PASSWORD=password \
+		uv run python src/manage.py migrate --noinput
+	docker compose -f docker-compose.baseline.yml exec -T db \
+		pg_dump -U bpp -p 55433 -d bpp_baseline \
+		--no-owner --no-acl --no-privileges --no-comments \
+		--format=plain --encoding=UTF8 \
+		--exclude-table-data=django_session \
+		--exclude-table-data='django_cache*' \
+		--exclude-table-data=dbtemplates_template \
+		--exclude-table-data='easy_thumbnails_*' \
+		> baseline/baseline.sql
+	DJANGO_BPP_DB_NAME=bpp_baseline \
+	DJANGO_BPP_DB_HOST=127.0.0.1 \
+	DJANGO_BPP_DB_PORT=55433 \
+	DJANGO_BPP_DB_USER=bpp \
+	DJANGO_BPP_DB_PASSWORD=password \
+		uv run python baseline/write_meta.py
+	docker compose -f docker-compose.baseline.yml down -v
+	@echo ""
+	@echo "Baseline regenerated. Files:"
+	@ls -lh baseline/baseline.sql baseline/baseline.meta.json
+	@echo ""
+	@echo "Don't forget to commit:"
+	@echo "    git add baseline/baseline.sql baseline/baseline.meta.json"
 
 tests-in-docker:
 	docker compose -f docker-compose.test.yml build test-runner
