@@ -192,9 +192,10 @@ ENVFILE_PATHS.append(ENVFILE_HOMEDIR + ".local")
 # Jeżeli zmienna jest zdefiniowana w więcej, niż jednym pliku to zmienna będzie nadpisana
 # w kolejności plików:
 
-for fn in ENVFILE_PATHS:
-    if os.path.exists(fn) and os.path.isfile(fn):
-        environ.Env.read_env(fn, overwrite=True)
+if not os.environ.get("DJANGO_BPP_SKIP_DOTENV"):
+    for fn in ENVFILE_PATHS:
+        if os.path.exists(fn) and os.path.isfile(fn):
+            environ.Env.read_env(fn, overwrite=True)
 
 #
 # Czy proces jest interaktywny?

@@ -243,6 +243,7 @@ rebuild-baseline:
 			pg_isready -U bpp -p 55433 -d bpp_baseline >/dev/null 2>&1 && break; \
 		sleep 1; \
 	done
+	DJANGO_BPP_SKIP_DOTENV=1 \
 	DJANGO_BPP_DB_NAME=bpp_baseline \
 	DJANGO_BPP_DB_HOST=127.0.0.1 \
 	DJANGO_BPP_DB_PORT=55433 \
@@ -258,6 +259,7 @@ rebuild-baseline:
 		--exclude-table-data=dbtemplates_template \
 		--exclude-table-data='easy_thumbnails_*' \
 		> baseline/baseline.sql
+	DJANGO_BPP_SKIP_DOTENV=1 \
 	DJANGO_BPP_DB_NAME=bpp_baseline \
 	DJANGO_BPP_DB_HOST=127.0.0.1 \
 	DJANGO_BPP_DB_PORT=55433 \
