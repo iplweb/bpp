@@ -12,8 +12,11 @@ repos:
         -   id: check-yaml
         -   id: check-toml
         -   id: end-of-file-fixer
+            exclude: ^baseline/baseline\.sql$
         -   id: trailing-whitespace
+            exclude: ^baseline/baseline\.sql$
         -   id: mixed-line-ending
+            exclude: ^baseline/baseline\.sql$
         -   id: check-added-large-files
             args: ['--maxkb=500']
         -   id: check-merge-conflict

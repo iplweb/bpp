@@ -19,7 +19,6 @@ import json
 import os
 import subprocess
 import sys
-from datetime import datetime, timezone
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -72,7 +71,6 @@ def collect_last_migrations() -> dict[str, str]:
 def main() -> int:
     _setup_django()
     meta = {
-        "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "git_sha": _git_sha(),
         "postgres_version": _postgres_version(),
         "last_migration": collect_last_migrations(),

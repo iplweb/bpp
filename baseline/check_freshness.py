@@ -88,9 +88,8 @@ def main() -> int:
 
     over = {a: d for a, d in delta_per_app.items() if d > args.max_delta}
     print(
-        f"baseline generated_at = {meta.get('generated_at')}\n"
-        f"baseline git_sha      = {meta.get('git_sha')}\n"
-        f"max-delta threshold   = {args.max_delta}\n"
+        f"baseline git_sha    = {meta.get('git_sha')}\n"
+        f"max-delta threshold = {args.max_delta}\n"
     )
     if not over:
         worst = max(delta_per_app.values(), default=0)
