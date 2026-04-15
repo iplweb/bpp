@@ -252,7 +252,8 @@ rebuild-baseline:
 		uv run python src/manage.py migrate --noinput
 	docker compose -f docker-compose.baseline.yml exec -T db \
 		psql -U bpp -p 55433 -d bpp_baseline -v ON_ERROR_STOP=1 \
-		-c "UPDATE django_migrations SET applied = '2000-01-01 00:00:00+00'::timestamptz"
+		-c "UPDATE django_migrations SET applied = '2000-01-01 00:00:00+00'::timestamptz" \
+		-c "UPDATE django_template SET creation_date = '2000-01-01 00:00:00+00'::timestamptz, last_changed = '2000-01-01 00:00:00+00'::timestamptz"
 	docker compose -f docker-compose.baseline.yml exec -T db \
 		pg_dump -U bpp -p 55433 -d bpp_baseline \
 		--no-owner --no-acl --no-privileges --no-comments \
