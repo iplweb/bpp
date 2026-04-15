@@ -439,7 +439,20 @@ INSTALLED_APPS = [
     "ewaluacja_optymalizacja",
     "ewaluacja_optymalizuj_publikacje",
     "ewaluacja_dwudyscyplinowcy",
-    # Zostawiamy - bezwarunkowo
+    # UWAGA: NIE USUWAĆ aplikacji test_bpp z INSTALLED_APPS!
+    #
+    # Mimo nazwy sugerującej "tylko do testów", test_bpp dostarcza realnych
+    # modeli Django (TestOperation, TestObjectThatDoesNotExist) używanych przez
+    # testy aplikacji `long_running`. Aplikacja `long_running` operuje na
+    # modelach przez ContentType i wymaga prawdziwych tabel w bazie danych —
+    # tych modeli nie da się zastąpić mockami.
+    #
+    # Aplikacja MUSI być zarejestrowana bezwarunkowo (również w produkcji),
+    # bo baseline.sql oraz migracje zakładają istnienie tabel
+    # test_bpp_testoperation oraz test_bpp_testobjectthatdoesnotexist.
+    # W produkcji tabele pozostają puste i nieużywane — narzut = 0.
+    #
+    # Pełny opis: src/test_bpp/README.md
     "test_bpp",
     #
     "dbtemplates",
