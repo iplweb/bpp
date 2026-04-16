@@ -24,7 +24,7 @@ class Migration(migrations.Migration):
                 ('status', model_utils.fields.StatusField(choices=[('draft', 'draft'), ('published', 'published')], default='draft', max_length=100, no_check_for_status=True, verbose_name='status')),
                 ('status_changed', model_utils.fields.MonitorField(default=django.utils.timezone.now, monitor='status', verbose_name='status changed')),
                 ('title', models.TextField(verbose_name='Title')),
-                ('article_body', model_utils.fields.SplitField(help_text='Use the split marker "&lt;!-- tutaj --&gt;" in case you want to displaythe shorter version of the article body', no_excerpt_field=True, verbose_name='Article body')),
+                ('article_body', model_utils.fields.SplitField(help_text='Use the split marker "&lt;!-- tutaj --&gt;" in case you want to displaythe shorter version of the article body', verbose_name='Article body')),
                 ('published_on', models.DateTimeField(default=django.utils.timezone.now, verbose_name='Published on')),
                 ('slug', models.SlugField(unique=True)),
                 ('_article_body_excerpt', models.TextField(editable=False)),
