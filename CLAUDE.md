@@ -119,6 +119,27 @@ Full details: [docs/CSS_BUILD.md](docs/CSS_BUILD.md)
 - Fixtures in `src/conftest.py` and subdirectories
 - Full suite timeout: at least 600000ms (10 minutes)
 
+### Testcontainers
+
+Testy używają plugin-a `testcontainers_bpp`, który domyślnie startuje
+na losowych portach **własne** kontenery PostgreSQL
+(`iplweb/bpp_dbserver`), Redis i RabbitMQ. Dev-owe
+`docker compose up db redis rabbitmq` **nie jest wymagane** do
+uruchomienia testów i nie koliduje z nimi.
+
+- Wymaganie: działający Docker daemon.
+- Plugin wstrzykuje `DJANGO_BPP_DB_PORT`, `DJANGO_BPP_REDIS_PORT`,
+  `DJANGO_BPP_RABBITMQ_PORT` (i hosty/hasła) do `os.environ` **przed**
+  załadowaniem Django settings, oraz `DJANGO_BPP_SKIP_DOTENV=1`, żeby
+  `.env` nie nadpisał wstrzykniętych wartości.
+- Wyłączenie (gdy sam odpaliłeś usługi przez docker-compose):
+  `BPP_USE_TESTCONTAINERS=0 uv run pytest` lub flag `--no-testcontainers`.
+- Reuse kontenerów między runs (znacznie szybciej):
+  `BPP_TESTCONTAINERS_REUSE=1`. Domyślnie kontenery są ulotne
+  i kasowane przez Ryuk.
+- CI (`docker-compose.test.yml`) ma `BPP_USE_TESTCONTAINERS=0` —
+  usługi dostarcza tam docker-compose.
+
 ## Exception Handling
 
 **NEVER write bare `except: pass` or `except Exception: pass`.**

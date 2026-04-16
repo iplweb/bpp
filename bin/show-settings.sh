@@ -11,10 +11,6 @@ if [[ -f "$ENV_FILE" ]]; then
     source "$ENV_FILE"
 fi
 
-# Get worktree index from git
-WORKTREE_COUNT=$(git worktree list 2>/dev/null | wc -l | tr -d ' ')
-WORKTREE_INDEX=$((WORKTREE_COUNT - 1))
-
 # Use defaults if variables not set
 DB_PORT="${DJANGO_BPP_DB_PORT:-5432}"
 APP_PORT="${DJANGO_BPP_PORT_APP:-8000}"
@@ -49,7 +45,7 @@ print_port_line() {
 }
 
 echo ""
-echo "=== BPP Docker Port Configuration (worktree index: $WORKTREE_INDEX) ==="
+echo "=== BPP Docker Port Configuration ==="
 echo ""
 print_port_line "$DB_PORT" "PostgreSQL:" ""
 print_port_line "$APP_PORT" "Django App:" "http://127.0.0.1:$APP_PORT"

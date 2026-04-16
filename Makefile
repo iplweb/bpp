@@ -646,21 +646,6 @@ clean-docker-cache: ## Wyczyść cały cache Docker buildera i volumy (agresywne
 	docker system prune -a --volumes
 	rm -rf /tmp/.buildx-cache*
 
-##@ Worktrees
-
-new-worktree: ## Przygotuj nowy git worktree (uv + yarn + grunt + collectstatic + compose up)
-	./bin/prepare-worktree.sh
-	direnv allow
-	uv sync --all-extras
-	$(YARN_CMD) install
-	uv run grunt build
-	uv run src/manage.py collectstatic --noinput
-	docker compose up -d db redis rabbitmq
-	./bin/show-settings.sh
-
-clean-worktree: ## docker compose down -v --remove-orphans dla worktree
-	docker compose down -v --remove-orphans
-
 ##@ Django — zarządzanie
 
 invalidate: ## Unieważnij cały cache template fragments (`manage.py invalidate all`)

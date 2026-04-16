@@ -100,8 +100,13 @@ Note: The script requires `expect` to be installed on the system.
 ```bash
 git worktree add -b feature/my-feature ../bpp-feature dev
 cd ../bpp-feature
-make new-worktree
 ```
+
+Worktree działa out-of-the-box — testy używają `testcontainers_bpp`
+(własne kontenery na losowych portach), więc nie potrzebują
+`docker compose up db redis rabbitmq`. Jeśli chcesz uruchomić dev-server
+w worktree, pamiętaj że porty 5432/6379/5672/8000 są współdzielone z
+innymi worktree — odpalaj dev-stack tylko w jednym na raz.
 
 ## Changelog Management
 
