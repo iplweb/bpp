@@ -59,4 +59,4 @@ def test_crossref_api_strony_view(
 
     wydawnictwo_ciagle_jehs_2022.refresh_from_db()
 
-    return wydawnictwo_ciagle_jehs_2022.strony == "447-452"
+    assert wydawnictwo_ciagle_jehs_2022.strony == "447-452"
