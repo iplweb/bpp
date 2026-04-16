@@ -1,37 +1,10 @@
 import pytest
-from django.conf import settings as django_settings
 from django.contrib.sessions.backends.db import SessionStore
 from django.contrib.sessions.serializers import JSONSerializer
-from django.http import HttpResponse
-from django.test import RequestFactory, override_settings
-from django.urls import path
-
-
-def _password_change_stub(request):
-    return HttpResponse()
-
-
-# PasswordChangeMiddleware calls reverse("password_change") unconditionally;
-# when microsoft_auth is importable, settings/base.py removes password_policies
-# from INSTALLED_APPS and the project's urlconf does not register that name.
-urlpatterns = [
-    path("password_change/", _password_change_stub, name="password_change"),
-    path("", lambda request: HttpResponse(), name="root"),
-]
-
-
-def _installed_apps_with_password_policies():
-    apps = list(django_settings.INSTALLED_APPS)
-    if "password_policies" not in apps:
-        apps.append("password_policies")
-    return apps
+from django.test import RequestFactory
 
 
 @pytest.mark.django_db
-@override_settings(
-    ROOT_URLCONF=__name__,
-    INSTALLED_APPS=_installed_apps_with_password_policies(),
-)
 def test_password_policies_session_survives_json_serializer(test_user):
     """Regression guard for SESSION_SERIALIZER=JSONSerializer.
 

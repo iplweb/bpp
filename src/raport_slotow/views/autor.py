@@ -1,27 +1,24 @@
-import functools
 import ssl
 from copy import copy
 
 from django.http import HttpResponse, HttpResponseRedirect
 from django.template.defaultfilters import pluralize
 from django.urls import reverse
+from django.utils import timezone
+from django.utils.functional import cached_property
 from django.views.generic import FormView, TemplateView
 from django_tables2 import MultiTableMixin, RequestConfig
-from django_weasyprint.utils import django_url_fetcher
+from django_weasyprint.utils import DjangoURLFetcher
 
+from bpp.models import Cache_Punktacja_Autora_Query_View, Dyscyplina_Naukowa
+from django_bpp.version import VERSION
 from formdefaults.helpers import FormDefaultsMixin
 from nowe_raporty.views import BaseRaportAuthMixin
 from raport_slotow.forms.autor import AutorRaportSlotowForm
 from raport_slotow.tables import RaportSlotowAutorTable
 from raport_slotow.util import InitialValuesFromGETMixin, MyExportMixin, MyTableExport
+
 from .. import const
-
-from django.utils import timezone
-from django.utils.functional import cached_property
-
-from bpp.models import Cache_Punktacja_Autora_Query_View, Dyscyplina_Naukowa
-
-from django_bpp.version import VERSION
 
 SESSION_KEY = "raport_slotow_data"
 
@@ -206,7 +203,7 @@ class RaportSlotow(BaseRaportAuthMixin, MyExportMixin, MultiTableMixin, Template
                 context = ssl.create_default_context()
                 context.check_hostname = False
                 context.verify_mode = ssl.CERT_NONE
-                url_fetcher = functools.partial(django_url_fetcher, ssl_context=context)
+                url_fetcher = DjangoURLFetcher(ssl_context=context)
 
                 response = HttpResponse(
                     content=HTML(

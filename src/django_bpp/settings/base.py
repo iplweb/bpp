@@ -303,7 +303,7 @@ MIDDLEWARE = [
     "bpp_setup_wizard.middleware.SetupWizardMiddleware",  # After auth middleware to have request.user
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "password_policies.middleware.PasswordChangeMiddleware",
+    "django_bpp.middleware.ConditionalPasswordChangeMiddleware",
     "dj_pagination.middleware.PaginationMiddleware",
     "session_security.middleware.SessionSecurityMiddleware",
     "notifications.middleware.NotificationsMiddleware",
@@ -1028,21 +1028,9 @@ if MICROSOFT_AUTH_CLIENT_ID:
     # Konfiguracja w urls.py doda microsoft_auth.urls do ścieżki jezeli wykryje
     # aplikację `microsoft_auth` w INSTALLED_APPS
 
-    # A teraz, ponieważ korzystamy z logowania przez microsoft_auth, wyłącz
-    # polityki dotyczące haseł lokalnych. Problem polega na tym, że użytkownik po zalogowaniu
-    # się przez microsoft_auth dostaje komunikat, że jego hasło uległo przeterminowaniu
-    # i ma je zmienić...
-
-    TEMPLATES[0]["OPTIONS"]["context_processors"].remove(
-        "password_policies.context_processors.password_status"
-    )
-    MIDDLEWARE.remove("password_policies.middleware.PasswordChangeMiddleware")
-    INSTALLED_APPS.remove("password_policies")
-
-    logger.warning(
-        "Używam autoryzacji microsoft_auth, wbudowana w BPP polityka haseł (zmiany, skomplikowanie)"
-        " została wyłączona"
-    )
+    # password_policies pozostaje aktywne -- ConditionalPasswordChangeMiddleware
+    # rozróżnia OAuth (Microsoft, ORCID) od logowania klasycznego i pomija
+    # egzekwowanie polityki haseł dla użytkowników zalogowanych zewnętrznie.
 
 # Konfiguracja logout redirect dla Microsoft Auth
 # To jest URL, na który użytkownik zostanie przekierowany po wylogowaniu z Microsoft

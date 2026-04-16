@@ -16,6 +16,6 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='article',
             name='article_body',
-            field=model_utils.fields.SplitField(help_text='Użyj znacznika podziału „&lt;!-- tutaj --&gt;” w przypadku jeżeli chcesz wyświetlić krótszą wersję treści artykułu', no_excerpt_field=True, verbose_name='Article body'),
+            field=model_utils.fields.SplitField(help_text='Użyj znacznika podziału „&lt;!-- tutaj --&gt;” w przypadku jeżeli chcesz wyświetlić krótszą wersję treści artykułu', verbose_name='Article body'),
         ),
     ]
