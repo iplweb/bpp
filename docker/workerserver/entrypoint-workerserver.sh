@@ -2,8 +2,6 @@
 
 cd /app
 
-bpp-sync-deps
-
 CELERY_QUEUE=${CELERY_QUEUE:-celery}
 
 if [ "$ENABLE_AUTORELOAD_ON_CODE_CHANGE" = "1" ] || [ "$ENABLE_AUTORELOAD_ON_CODE_CHANGE" = "true" ]; then

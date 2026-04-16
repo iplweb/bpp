@@ -110,7 +110,17 @@ services:
     environment:
       - ENABLE_AUTORELOAD_ON_CODE_CHANGE=${ENABLE_AUTORELOAD_ON_CODE_CHANGE:-1}
       - DJANGO_BPP_CSRF_EXTRA_ORIGINS=https://bpp.localnet:10443,https://localhost:10443
-      - BPP_SYNC_DEPS_ON_START=1
+    # Dev-only: .venv jest shadowowane przez volume, więc trzeba zsynchronizować
+    # zależności przy starcie. Produkcja ma .venv wkompilowane w obraz i NIE
+    # uruchamia tego sync'a -- nie mamy tu żadnej flagi ani skryptu, który mógłby
+    # "przypadkiem" się odpalić w produkcji.
+    entrypoint:
+      - /bin/sh
+      - -c
+      - >
+        cd /app &&
+        uv sync --frozen --all-extras --no-extra=dev --no-install-project &&
+        exec /entrypoint-appserver.sh
     depends_on:
       redis:
         condition: service_healthy
@@ -157,7 +167,13 @@ services:
         required: false
     environment:
       - ENABLE_AUTORELOAD_ON_CODE_CHANGE=${ENABLE_AUTORELOAD_ON_CODE_CHANGE:-1}
-      - BPP_SYNC_DEPS_ON_START=1
+    entrypoint:
+      - /bin/sh
+      - -c
+      - >
+        cd /app &&
+        uv sync --frozen --all-extras --no-extra=dev --no-install-project &&
+        exec /app/entrypoint-beatserver.sh
     restart: always
     volumes:
       - ./src:/app/src
@@ -195,7 +211,13 @@ services:
     environment:
       - WEB_CONCURRENCY=4
       - ENABLE_AUTORELOAD_ON_CODE_CHANGE=${ENABLE_AUTORELOAD_ON_CODE_CHANGE:-1}
-      - BPP_SYNC_DEPS_ON_START=1
+    entrypoint:
+      - /bin/sh
+      - -c
+      - >
+        cd /app &&
+        uv sync --frozen --all-extras --no-extra=dev --no-install-project &&
+        exec /app/entrypoint-workerserver.sh
     restart: always
     volumes:
       - ./src:/app/src
@@ -234,7 +256,13 @@ services:
       - WEB_CONCURRENCY=4
       - ENABLE_AUTORELOAD_ON_CODE_CHANGE=${ENABLE_AUTORELOAD_ON_CODE_CHANGE:-1}
       - CELERY_QUEUE=denorm
-      - BPP_SYNC_DEPS_ON_START=1
+    entrypoint:
+      - /bin/sh
+      - -c
+      - >
+        cd /app &&
+        uv sync --frozen --all-extras --no-extra=dev --no-install-project &&
+        exec /app/entrypoint-workerserver.sh
     restart: always
     volumes:
       - ./src:/app/src
@@ -299,7 +327,13 @@ services:
         required: false
     environment:
       - ENABLE_AUTORELOAD_ON_CODE_CHANGE=${ENABLE_AUTORELOAD_ON_CODE_CHANGE:-1}
-      - BPP_SYNC_DEPS_ON_START=1
+    entrypoint:
+      - /bin/sh
+      - -c
+      - >
+        cd /app &&
+        uv sync --frozen --all-extras --no-extra=dev --no-install-project &&
+        exec /app/entrypoint-denorm-queue.sh
     restart: always
     volumes:
       - ./src:/app/src
