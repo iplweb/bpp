@@ -16,7 +16,8 @@ def test_przeanalizuj_plik_xls_wiele_skoroszytow(test3_multiple_sheets_xlsx):
 
 
 def test_przeanalizuj_plik_xls_dobry(test1_xlsx, import_dyscyplin):
-    import_dyscyplin.plik.save("test.xlsx", open(test1_xlsx, "rb"))
+    with open(test1_xlsx, "rb") as f:
+        import_dyscyplin.plik.save("test.xlsx", f)
     import_dyscyplin.stworz_kolumny()
 
     przeanalizuj_plik_xls(test1_xlsx, parent=import_dyscyplin)

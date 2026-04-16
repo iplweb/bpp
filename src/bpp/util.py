@@ -28,7 +28,8 @@ non_url = re.compile(r"[^\w-]+")
 
 def get_fixture(name):
     p = Path(__file__).parent / "fixtures" / f"{name}.json"
-    ret = json.load(open(p, "rb"))
+    with open(p, "rb") as f:
+        ret = json.load(f)
     ret = [x["fields"] for x in ret if x["model"] == f"bpp.{name}"]
     return {x["skrot"].lower().strip(): x for x in ret}
 

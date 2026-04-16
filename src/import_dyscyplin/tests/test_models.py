@@ -28,7 +28,8 @@ def test_Import_Dyscyplin_post_delete_handler(
             owner=normal_django_user,
         )
 
-        i.plik.save("test1.xls", ContentFile(open(test1_xlsx, "rb").read()))
+        with open(test1_xlsx, "rb") as f:
+            i.plik.save("test1.xls", ContentFile(f.read()))
         path = i.plik.path
         i.delete()
 
