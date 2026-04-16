@@ -464,6 +464,8 @@ def _make_session_for_publication(
     jezyki,
     charaktery_formalne,
     typy_kbn,
+    statusy_korekt,
+    typy_odpowiedzialnosci,
     abstracts=None,
     abstract=None,
 ):
@@ -471,13 +473,7 @@ def _make_session_for_publication(
     from bpp.models import (
         Charakter_Formalny,
         Jezyk,
-        Status_Korekty,
         Typ_KBN,
-    )
-
-    Status_Korekty.objects.get_or_create(
-        pk=1,
-        defaults={"nazwa": "po korekcie"},
     )
 
     cf = Charakter_Formalny.objects.first()
@@ -529,6 +525,8 @@ def test_create_publication_creates_streszczenie(
     jezyki,
     charaktery_formalne,
     typy_kbn,
+    statusy_korekt,
+    typy_odpowiedzialnosci,
 ):
     """Abstrakt z normalized_data → Streszczenie."""
     session = _make_session_for_publication(
@@ -536,6 +534,8 @@ def test_create_publication_creates_streszczenie(
         jezyki,
         charaktery_formalne,
         typy_kbn,
+        statusy_korekt,
+        typy_odpowiedzialnosci,
         abstracts=[
             {
                 "text": "This is a test abstract.",
@@ -557,6 +557,8 @@ def test_create_publication_abstract_language_detection(
     jezyki,
     charaktery_formalne,
     typy_kbn,
+    statusy_korekt,
+    typy_odpowiedzialnosci,
 ):
     """Brak language → auto-detect z tekstu."""
     session = _make_session_for_publication(
@@ -564,6 +566,8 @@ def test_create_publication_abstract_language_detection(
         jezyki,
         charaktery_formalne,
         typy_kbn,
+        statusy_korekt,
+        typy_odpowiedzialnosci,
         abstracts=[
             {
                 "text": "Właściwości materiałów "
@@ -588,6 +592,8 @@ def test_create_publication_fallback_abstract(
     jezyki,
     charaktery_formalne,
     typy_kbn,
+    statusy_korekt,
+    typy_odpowiedzialnosci,
 ):
     """Brak abstracts → fallback na abstract."""
     session = _make_session_for_publication(
@@ -595,6 +601,8 @@ def test_create_publication_fallback_abstract(
         jezyki,
         charaktery_formalne,
         typy_kbn,
+        statusy_korekt,
+        typy_odpowiedzialnosci,
         abstracts=[],
         abstract="Fallback abstract text.",
     )
@@ -610,6 +618,8 @@ def test_create_publication_no_abstract(
     jezyki,
     charaktery_formalne,
     typy_kbn,
+    statusy_korekt,
+    typy_odpowiedzialnosci,
 ):
     """Brak abstracts i abstract → brak streszczeń."""
     session = _make_session_for_publication(
@@ -617,6 +627,8 @@ def test_create_publication_no_abstract(
         jezyki,
         charaktery_formalne,
         typy_kbn,
+        statusy_korekt,
+        typy_odpowiedzialnosci,
     )
     record = _create_publication(session)
     assert record.streszczenia.count() == 0
@@ -628,6 +640,8 @@ def test_create_publication_multiple_abstracts(
     jezyki,
     charaktery_formalne,
     typy_kbn,
+    statusy_korekt,
+    typy_odpowiedzialnosci,
 ):
     """Wiele streszczeń → wiele rekordów."""
     session = _make_session_for_publication(
@@ -635,6 +649,8 @@ def test_create_publication_multiple_abstracts(
         jezyki,
         charaktery_formalne,
         typy_kbn,
+        statusy_korekt,
+        typy_odpowiedzialnosci,
         abstracts=[
             {
                 "text": "English abstract text here.",
