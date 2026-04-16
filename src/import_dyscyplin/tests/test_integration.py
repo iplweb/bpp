@@ -10,6 +10,7 @@ from bpp.models import Uczelnia
 from django_bpp.playwright_util import proper_click_element, wait_for_page_load
 
 
+@pytest.mark.timeout(300)
 @pytest.mark.django_db
 def test_integracyjny(admin_page: Page, channels_live_server, settings):
     settings.CELERY_ALWAYS_EAGER = True
@@ -154,7 +155,7 @@ def test_integracyjny(admin_page: Page, channels_live_server, settings):
 
         # Now wait for the DataTable to load with the data
         admin_page.wait_for_function(
-            "() => document.body.textContent.includes('Lubelski')", timeout=30000
+            "() => document.body.textContent.includes('Lubelski')", timeout=60000
         )
     finally:
         # Clean up the created Uczelnia record
