@@ -130,44 +130,6 @@ services:
     ports:
       - ${DJANGO_BPP_PORT_APP:-8000}:8000
 
-  authserver:
-    # Lightweight auth server for nginx authentication
-    # Starts quickly (seconds) - no migrations, no collectstatic
-    # Used by nginx auth_request for Grafana, Dozzle, etc.
-    image: iplweb/bpp_authserver:${DOCKER_VERSION:-latest}
-    build:
-      context: .
-      dockerfile: docker/authserver/Dockerfile
-      tags:
-        - iplweb/bpp_authserver:${DOCKER_VERSION:-latest}
-        - iplweb/bpp_authserver:latest
-      cache_from:
-        - type=registry,ref=iplweb/bpp_base:latest
-        - type=registry,ref=iplweb/bpp_authserver:latest
-      cache_to:
-        - type=inline
-    restart: always
-    env_file:
-      - path: .env.docker
-        required: true
-      - path: .env
-        required: false
-    environment:
-      - DJANGO_SETTINGS_MODULE=django_bpp.settings.auth_server
-      - DJANGO_BPP_CSRF_EXTRA_ORIGINS=https://bpp.localnet:10443,https://localhost:10443
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://127.0.0.1:8001/health/"]
-      interval: 30s
-      timeout: 3s
-      start_period: 10s
-      retries: 3
-    volumes:
-      - ./src:/app/src
 
   # ── Workers ────────────────────────────────────────────────────────────
 
