@@ -440,14 +440,14 @@ requires-dist = [
     { name = "django-flexible-reports", specifier = ">=0.2.11" },
     { name = "django-formtools", specifier = ">=2.5.1,<3" },
     { name = "django-fsm", specifier = "==2.8.0" },
-    { name = "django-grappelli", specifier = "==3.0.6" },
+    { name = "django-grappelli", specifier = "==4.0.3" },
     { name = "django-group-by", specifier = "==0.3.1" },
     { name = "django-htmlmin", specifier = "==0.11.0" },
     { name = "django-import-export", specifier = "==3.2.0" },
     { name = "django-loginas", specifier = "==0.3.14" },
     { name = "django-messages-extends", specifier = "==0.6.3" },
     { name = "django-microsoft-auth", marker = "extra == 'office365'", specifier = ">=3.0.1" },
-    { name = "django-model-utils", specifier = "==4.3.1" },
+    { name = "django-model-utils", specifier = "==5.0.0" },
     { name = "django-mptt", specifier = "==0.18.0" },
     { name = "django-multiseek", specifier = "==0.9.47" },
     { name = "django-password-policies-iplweb", specifier = "==0.9.0" },
@@ -464,7 +464,7 @@ requires-dist = [
     { name = "django-tabular-permissions", specifier = "==2.9.3" },
     { name = "django-taggit", specifier = "==4.0.0" },
     { name = "django-templated-email", specifier = ">=3.0.0" },
-    { name = "django-tinymce", specifier = ">=4.1.0" },
+    { name = "django-tinymce", specifier = ">=5.0.0" },
     { name = "django-weasyprint", specifier = ">=2.5.0" },
     { name = "django-webmaster-verification", specifier = "==0.4.3" },
     { name = "django-webtest", marker = "extra == 'dev'", specifier = "==1.9.14" },
@@ -511,7 +511,7 @@ requires-dist = [
     { name = "python-docx", specifier = ">=1.1.0" },
     { name = "questionary", specifier = ">=2.0.0" },
     { name = "requests", specifier = ">=2.32.4" },
-    { name = "requests-oauthlib", specifier = "==1.3.0" },
+    { name = "requests-oauthlib", specifier = "==2.0.0" },
     { name = "rjsmin", specifier = ">=1.2.1" },
     { name = "rollbar", specifier = ">=1.3.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.15.10" },
@@ -1829,11 +1829,11 @@ wheels = [
 
 [[package]]
 name = "django-grappelli"
-version = "3.0.6"
+version = "4.0.3"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/c5/af/2951f44d23af50fa964bc82e57c62f117e6e941fa379dae3f5c0bb873d92/django-grappelli-3.0.6.tar.gz", hash = "sha256:7a39f6c5bf5d3333fdbf8345c0427c1129a2fb6a37966d07a1bf74346d708c76", size = 11061215, upload-time = "2023-05-03T12:12:08.63Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c3/10/618d057a68602918b0605e8a8fac87c52dfeed7360a1425a985677aed9b3/django_grappelli-4.0.3.tar.gz", hash = "sha256:90f53247d51a588a0553563fd85b6620b6b30c4f7969860ec325bfb97c2609df", size = 11063421, upload-time = "2025-11-27T16:19:42.603Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/58/6e/a3a8d4d6576e02f4b16be2bd5c5f84ee931d245563ba860062ad9959d53d/django_grappelli-3.0.6-py2.py3-none-any.whl", hash = "sha256:6cef98fe717473f1cb2bddfe68218193d5709ffacf184cdb62138093a6bd8fc5", size = 1817950, upload-time = "2023-05-03T12:12:13.312Z" },
+    { url = "https://files.pythonhosted.org/packages/95/c2/446eaf4fe74267d32f1179d2199ee0103d5a139185d651aa506b1677816c/django_grappelli-4.0.3-py2.py3-none-any.whl", hash = "sha256:6d7ee985f51e8a61c4ac108a13d24ee340626ca0e9f2fd415958a3ea264db761", size = 1824922, upload-time = "2025-11-27T16:19:46.056Z" },
 ]
 
 [[package]]
@@ -1916,14 +1916,14 @@ wheels = [
 
 [[package]]
 name = "django-model-utils"
-version = "4.3.1"
+version = "5.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "django", marker = "platform_python_implementation != 'PyPy'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f1/42/969e79648ac83a552629323d9d6fde172dbf420c14e7dc7c800a9293f4cd/django-model-utils-4.3.1.tar.gz", hash = "sha256:2e2e4f13e4f14613134a9777db7ad4265f59a1d8f1384107bcaa3028fe3c87c1", size = 73913, upload-time = "2022-11-16T00:14:21.17Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/81/60/5e232c32a2c977cc1af8c70a38ef436598bc649ad89c2c4568454edde2c9/django_model_utils-5.0.0.tar.gz", hash = "sha256:041cdd6230d2fbf6cd943e1969318bce762272077f4ecd333ab2263924b4e5eb", size = 80559, upload-time = "2024-09-04T11:35:22.858Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/17/38/5381cfbee475ddf6c109e434516ac969163124dcaad2cfc258586c571515/django_model_utils-4.3.1-py3-none-any.whl", hash = "sha256:8c0b0177bab909a8635b602d960daa67e80607aa5469217857271a60726d7a4b", size = 36658, upload-time = "2022-11-16T00:14:36.625Z" },
+    { url = "https://files.pythonhosted.org/packages/fd/13/87a42048700c54bfce35900a34e2031245132775fb24363fc0e33664aa9c/django_model_utils-5.0.0-py3-none-any.whl", hash = "sha256:fec78e6c323d565a221f7c4edc703f4567d7bb1caeafe1acd16a80c5ff82056b", size = 42630, upload-time = "2024-09-04T11:36:23.166Z" },
 ]
 
 [[package]]
@@ -2154,14 +2154,14 @@ wheels = [
 
 [[package]]
 name = "django-tinymce"
-version = "4.1.0"
+version = "5.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "django", marker = "platform_python_implementation != 'PyPy'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b3/36/56faa2cb1bde28c66ffe38d67ddbacab9c416baecbb7dd911bfabc5fa409/django_tinymce-4.1.0.tar.gz", hash = "sha256:02e3b70e940fd299f0fbef4315aee5c185664e1eb8cd396b176963954e4357c9", size = 1087250, upload-time = "2024-06-21T07:07:03.915Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/0a/71/e9556c8bc1d99c0cb4081af0abc6440d7cf53c87b6c7da7b117f2de24881/django_tinymce-5.0.0.tar.gz", hash = "sha256:6257669ed596accf5fa967ff3061276b2c5352baac1bbc658fcd8252b12ca38a", size = 1161002, upload-time = "2025-10-21T19:25:25.831Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/91/a6/467464d08495360689380906db8e67427c381545ce8af9ce633e0128b004/django_tinymce-4.1.0-py3-none-any.whl", hash = "sha256:9804836e6d2b08de3b03a27c100f8c2e9633549913eff8b323678a10cd48b94e", size = 1317923, upload-time = "2024-06-21T07:07:40.454Z" },
+    { url = "https://files.pythonhosted.org/packages/21/22/b7b9299b40995b524bb2f6d61ae55bd690858630ff5e0ba9a06210313195/django_tinymce-5.0.0-py3-none-any.whl", hash = "sha256:c2e9c5efd2cc6c036f4c57e602b133180433e2bd1513b897089d3c4fb4e20579", size = 1400312, upload-time = "2025-10-21T19:25:24.113Z" },
 ]
 
 [[package]]
@@ -4468,14 +4468,14 @@ wheels = [
 
 [[package]]
 name = "pypdf"
-version = "6.10.0"
+version = "6.10.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "typing-extensions", marker = "python_full_version < '3.11' and platform_python_implementation != 'PyPy'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b8/9f/ca96abf18683ca12602065e4ed2bec9050b672c87d317f1079abc7b6d993/pypdf-6.10.0.tar.gz", hash = "sha256:4c5a48ba258c37024ec2505f7e8fd858525f5502784a2e1c8d415604af29f6ef", size = 5314833, upload-time = "2026-04-10T09:34:57.102Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/7b/3f/9f2167401c2e94833ca3b69535bad89e533b5de75fefe4197a2c224baec2/pypdf-6.10.2.tar.gz", hash = "sha256:7d09ce108eff6bf67465d461b6ef352dcb8d84f7a91befc02f904455c6eea11d", size = 5315679, upload-time = "2026-04-15T16:37:36.978Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/55/f2/7ebe366f633f30a6ad105f650f44f24f98cb1335c4157d21ae47138b3482/pypdf-6.10.0-py3-none-any.whl", hash = "sha256:90005e959e1596c6e6c84c8b0ad383285b3e17011751cedd17f2ce8fcdfc86de", size = 334459, upload-time = "2026-04-10T09:34:54.966Z" },
+    { url = "https://files.pythonhosted.org/packages/0c/d6/1d5c60cc17bbdf37c1552d9c03862fc6d32c5836732a0415b2d637edc2d0/pypdf-6.10.2-py3-none-any.whl", hash = "sha256:aa53be9826655b51c96741e5d7983ca224d898ac0a77896e64636810517624aa", size = 336308, upload-time = "2026-04-15T16:37:34.851Z" },
 ]
 
 [[package]]
@@ -5143,15 +5143,15 @@ wheels = [
 
 [[package]]
 name = "requests-oauthlib"
-version = "1.3.0"
+version = "2.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "oauthlib", marker = "platform_python_implementation != 'PyPy'" },
     { name = "requests", marker = "platform_python_implementation != 'PyPy'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/23/eb/68fc8fa86e0f5789832f275c8289257d8dc44dbe93fce7ff819112b9df8f/requests-oauthlib-1.3.0.tar.gz", hash = "sha256:b4261601a71fd721a8bd6d7aa1cc1d6a8a93b4a9f5e96626f8e4d91e8beeaa6a", size = 88157, upload-time = "2019-11-06T14:41:43.158Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/42/f2/05f29bc3913aea15eb670be136045bf5c5bbf4b99ecb839da9b422bb2c85/requests-oauthlib-2.0.0.tar.gz", hash = "sha256:b3dffaebd884d8cd778494369603a9e7b58d29111bf6b41bdc2dcd87203af4e9", size = 55650, upload-time = "2024-03-22T20:32:29.939Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a3/12/b92740d845ab62ea4edf04d2f4164d82532b5a0b03836d4d4e71c6f3d379/requests_oauthlib-1.3.0-py2.py3-none-any.whl", hash = "sha256:7f71572defaecd16372f9006f33c2ec8c077c3cfa6f5911a9a90202beb513f3d", size = 23560, upload-time = "2019-11-06T14:41:48.125Z" },
+    { url = "https://files.pythonhosted.org/packages/3b/5d/63d4ae3b9daea098d5d6f5da83984853c1bbacd5dc826764b249fe119d24/requests_oauthlib-2.0.0-py2.py3-none-any.whl", hash = "sha256:7dd8a5c40426b779b0868c404bdef9768deccf22749cde15852df527e6269b36", size = 24179, upload-time = "2024-03-22T20:32:28.055Z" },
 ]
 
 [[package]]
