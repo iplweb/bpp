@@ -289,7 +289,7 @@ class Wydawnictwo_CiagleAdmin(
         "show": "admin/bpp/wydawnictwo_ciagle/crossref_pbn_pokaz.html",
     }
 
-    resource_class = resources.Wydawnictwo_CiagleResource
+    resource_classes = [resources.Wydawnictwo_CiagleResource]
     bibtex_resource_class = resources.Wydawnictwo_CiagleBibTeXResource
 
     djangoql_completion_enabled_by_default = False

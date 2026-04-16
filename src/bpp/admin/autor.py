@@ -204,7 +204,7 @@ class AutorAdmin(
 
     form = AutorForm
     autocomplete_fields = ["pbn_uid"]
-    resource_class = resources.AutorResource
+    resource_classes = [resources.AutorResource]
     actions = [ustaw_pokazuj_true, ustaw_pokazuj_false]
 
     list_display_always = ["nazwisko", "imiona"]
