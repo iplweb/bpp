@@ -44,6 +44,8 @@ RUN --mount=type=cache,target=/root/.cache/uv,id=uv-cache \
     uv sync --frozen --all-extras \
         --no-extra=dev --no-install-project
 
+COPY --chmod=755 docker/bpp_base/sync-deps.sh /usr/local/bin/bpp-sync-deps
+
 RUN --mount=type=cache,target=/root/.npm,id=npm-cache \
     --mount=type=cache,target=/root/.yarn,id=yarn-cache \
     npx yarn install --dev --ignore-optional && \

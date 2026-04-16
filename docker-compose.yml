@@ -110,6 +110,7 @@ services:
     environment:
       - ENABLE_AUTORELOAD_ON_CODE_CHANGE=${ENABLE_AUTORELOAD_ON_CODE_CHANGE:-1}
       - DJANGO_BPP_CSRF_EXTRA_ORIGINS=https://bpp.localnet:10443,https://localhost:10443
+      - BPP_SYNC_DEPS_ON_START=1
     depends_on:
       redis:
         condition: service_healthy
@@ -126,6 +127,9 @@ services:
     volumes:
       - ./src:/app/src
       - ./src/django_bpp/staticroot:/staticroot
+      - ./pyproject.toml:/app/pyproject.toml:ro
+      - ./uv.lock:/app/uv.lock:ro
+      - appserver_venv:/app/.venv
       - media:/mediaroot
     ports:
       - ${DJANGO_BPP_PORT_APP:-8000}:8000
@@ -136,8 +140,8 @@ services:
   celerybeat:
     image: iplweb/bpp_beatserver:${DOCKER_VERSION:-latest}
     build:
-      context: ./docker/beatserver
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: docker/beatserver/Dockerfile
       tags:
         - iplweb/bpp_beatserver:${DOCKER_VERSION:-latest}
         - iplweb/bpp_beatserver:latest
@@ -153,10 +157,14 @@ services:
         required: false
     environment:
       - ENABLE_AUTORELOAD_ON_CODE_CHANGE=${ENABLE_AUTORELOAD_ON_CODE_CHANGE:-1}
+      - BPP_SYNC_DEPS_ON_START=1
     restart: always
     volumes:
       - ./src:/app/src
       - ./src/django_bpp/staticroot:/staticroot
+      - ./pyproject.toml:/app/pyproject.toml:ro
+      - ./uv.lock:/app/uv.lock:ro
+      - celerybeat_venv:/app/.venv
       - media:/mediaroot
     depends_on:
       redis:
@@ -187,10 +195,14 @@ services:
     environment:
       - WEB_CONCURRENCY=4
       - ENABLE_AUTORELOAD_ON_CODE_CHANGE=${ENABLE_AUTORELOAD_ON_CODE_CHANGE:-1}
+      - BPP_SYNC_DEPS_ON_START=1
     restart: always
     volumes:
       - ./src:/app/src
       - ./src/django_bpp/staticroot:/staticroot
+      - ./pyproject.toml:/app/pyproject.toml:ro
+      - ./uv.lock:/app/uv.lock:ro
+      - workerserver_general_venv:/app/.venv
       - media:/mediaroot
     depends_on:
       # Musi czekać na appserver, gdyż appserver aktualizuje ewentualnie baze danych.
@@ -222,10 +234,14 @@ services:
       - WEB_CONCURRENCY=4
       - ENABLE_AUTORELOAD_ON_CODE_CHANGE=${ENABLE_AUTORELOAD_ON_CODE_CHANGE:-1}
       - CELERY_QUEUE=denorm
+      - BPP_SYNC_DEPS_ON_START=1
     restart: always
     volumes:
       - ./src:/app/src
       - ./src/django_bpp/staticroot:/staticroot
+      - ./pyproject.toml:/app/pyproject.toml:ro
+      - ./uv.lock:/app/uv.lock:ro
+      - workerserver_denorm_venv:/app/.venv
       - media:/mediaroot
     depends_on:
       # Musi czekać na appserver, gdyż appserver aktualizuje ewentualnie baze danych.
@@ -283,9 +299,13 @@ services:
         required: false
     environment:
       - ENABLE_AUTORELOAD_ON_CODE_CHANGE=${ENABLE_AUTORELOAD_ON_CODE_CHANGE:-1}
+      - BPP_SYNC_DEPS_ON_START=1
     restart: always
     volumes:
       - ./src:/app/src
+      - ./pyproject.toml:/app/pyproject.toml:ro
+      - ./uv.lock:/app/uv.lock:ro
+      - denorm_queue_venv:/app/.venv
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -373,3 +393,8 @@ volumes:
   rabbitmq_data:
   media:
   grafana_data:
+  appserver_venv:
+  celerybeat_venv:
+  workerserver_general_venv:
+  workerserver_denorm_venv:
+  denorm_queue_venv:
