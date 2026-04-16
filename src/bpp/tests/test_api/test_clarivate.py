@@ -4,8 +4,6 @@ import pytest
 from django.core.exceptions import ImproperlyConfigured
 from django.urls import reverse
 
-pytestmark = pytest.mark.uruchom_tylko_bez_microsoft_auth
-
 
 def test_Uczelnia_wosclient(uczelnia):
     with pytest.raises(ImproperlyConfigured):
