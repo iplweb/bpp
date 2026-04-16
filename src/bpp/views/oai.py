@@ -161,7 +161,7 @@ class BPPOAIDatabase:
             batch_size = 0
 
         # make sure until date is set, and not in future
-        if until_date is None or until_date > datetime.datetime.utcnow():
+        if until_date is None or until_date > datetime.datetime.now(datetime.UTC):
             until_date = timezone.now()
 
         query = self.original.order_by("-ostatnio_zmieniony")
