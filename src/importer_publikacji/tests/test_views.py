@@ -75,6 +75,7 @@ def test_fetch_empty_identifier(importer_client):
     assert "wymagane" in content
 
 
+@pytest.mark.vcr
 @pytest.mark.django_db
 def test_fetch_invalid_doi(importer_client):
     url = reverse("importer_publikacji:fetch")
