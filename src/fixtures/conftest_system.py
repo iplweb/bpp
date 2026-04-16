@@ -183,7 +183,6 @@ def standard_data(
     return StandardData
 
 
-@pytest.mark.django_db
 @pytest.fixture(scope="function")
 def openaccess_data():
     from django.contrib.contenttypes.models import ContentType

@@ -80,7 +80,6 @@ def wydawnictwo_ciagle_maker(db):
 
 
 @pytest.fixture(scope="function")
-@pytest.mark.django_db
 def wydawnictwo_ciagle(
     jezyki, charaktery_formalne, typy_kbn, statusy_korekt, typy_odpowiedzialnosci
 ):
