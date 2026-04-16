@@ -309,7 +309,7 @@ class Zgloszenie_PublikacjiWizard(UczelniaSettingRequiredMixin, SessionWizardVie
 
     RODZAJ_ETYKIETY = {
         "ARTYKUL": "artykuł",
-        "MONOGRAFIA": "monografię",
+        "MONOGRAFIA": "książkę / monografię",
         "ROZDZIAL": "rozdział",
         "POZOSTALE": "inną publikację",
     }
@@ -470,6 +470,8 @@ class Zgloszenie_PublikacjiWizard(UczelniaSettingRequiredMixin, SessionWizardVie
 
     def _set_wydawca(self, dane):
         """Ustaw pola wydawcy na podstawie danych z formularza."""
+        if "wydawca" not in dane and "wydawca_zgloszenia" not in dane:
+            return
         # Reset
         self.object.wydawca_bpp = None
         self.object.wydawca_pbn = None

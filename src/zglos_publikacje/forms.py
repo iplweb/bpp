@@ -50,7 +50,7 @@ class RodzajPublikacjiForm(forms.Form):
         label="Rodzaj publikacji",
         choices=[
             ("ARTYKUL", "Artykuł"),
-            ("MONOGRAFIA", "Monografia"),
+            ("MONOGRAFIA", "Książka / Monografia"),
             ("ROZDZIAL", "Rozdział"),
             ("POZOSTALE", "Inne"),
         ],
@@ -123,12 +123,17 @@ class Zgloszenie_Publikacji_DaneForm(forms.ModelForm):
     )
 
     strona_www = forms.URLField(
-        label="Link do pełnego tekstu lub DOI",
+        label="Link do publikacji lub DOI",
         help_text=(
-            "Adres URL lub identyfikator DOI. System automatycznie rozpozna format."
+            "Pole wymagane — system Polska Bibliografia Naukowa (PBN), do którego"
+            " trafiają dane o publikacjach, wymaga podania adresu URL lub"
+            " identyfikatora DOI. Dla publikacji w otwartym dostępie prosimy"
+            " o link do pełnego tekstu. Jeśli pełny tekst nie jest dostępny"
+            " publicznie, wystarczy link do strony wydawcy, wpisu w katalogu"
+            " Biblioteki Narodowej (bn.org.pl) lub katalogu NUKAT (nukat.edu.pl)."
         ),
         max_length=1024,
-        required=False,
+        required=True,
     )
 
     pliki = forms.FileField(
@@ -140,25 +145,6 @@ class Zgloszenie_Publikacji_DaneForm(forms.ModelForm):
         ),
         validators=[validate_file_extension_pdf],
         widget=MultipleFileInput(),
-    )
-
-    wydawca = forms.CharField(
-        required=False,
-        widget=QuerySetSequenceSelect2(
-            url="zglos_publikacje:public-wydawca-autocomplete",
-        ),
-        label="Wydawca",
-        help_text=(
-            "Wyszukaj wydawcę. Jeśli nie znaleziono"
-            " -- wpisz nazwę ręcznie w polu poniżej."
-        ),
-    )
-
-    wydawca_zgloszenia = forms.CharField(
-        label="Wydawca (wpisz ręcznie)",
-        max_length=512,
-        required=False,
-        help_text=("Jeśli wydawcy nie znaleziono w wyszukiwarce, wpisz nazwę ręcznie."),
     )
 
     wydawnictwo_nadrzedne = forms.CharField(
@@ -196,10 +182,9 @@ class Zgloszenie_Publikacji_DaneForm(forms.ModelForm):
     def _usun_pola_wg_formy_dostepu(self, forma_dostepu):
         """Usuwa/modyfikuje pola zależne od formy dostępu."""
         if forma_dostepu == "OTWARTY":
-            self.fields["strona_www"].required = True
             self.fields.pop("pliki", None)
         elif forma_dostepu == "OGRANICZONY":
-            self.fields["strona_www"].required = False
+            pass  # strona_www wymagana, pliki wymagane — nic nie zmieniamy
         else:
             self.fields.pop("pliki", None)
 
@@ -211,15 +196,9 @@ class Zgloszenie_Publikacji_DaneForm(forms.ModelForm):
         elif rodzaj == "ROZDZIAL":
             pass  # wszystkie pola zostają
         else:
-            # ARTYKUL, POZOSTALE -- brak wydawcy
-            # i wyd. nadrzędnego
-            for f in (
-                "wydawca",
-                "wydawca_zgloszenia",
-                "wydawnictwo_nadrzedne",
-                "wydawnictwo_nadrzedne_tekst",
-            ):
-                self.fields.pop(f, None)
+            # ARTYKUL, POZOSTALE -- brak wyd. nadrzędnego
+            self.fields.pop("wydawnictwo_nadrzedne", None)
+            self.fields.pop("wydawnictwo_nadrzedne_tekst", None)
 
     def _zbuduj_layout(self):
         """Buduje layout na podstawie aktualnych pól."""
@@ -228,8 +207,6 @@ class Zgloszenie_Publikacji_DaneForm(forms.ModelForm):
             "zgoda_na_publikacje_pelnego_tekstu",
             "strona_www",
             "pliki",
-            "wydawca",
-            "wydawca_zgloszenia",
             "wydawnictwo_nadrzedne",
             "wydawnictwo_nadrzedne_tekst",
         ]
