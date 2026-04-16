@@ -19,7 +19,7 @@ dependencies = [
     "channels[daphne]>=4,<5",
     "uvicorn[standard]>=0.31.0",
     "channels-redis>=4,<5",
-    "django-flexible-reports>0.2.9",
+    "django-flexible-reports>=0.2.11",
     "django-group-by==0.3.1",
     "django-columns==0.1.0",
     "tablib==3.5.0",
@@ -40,7 +40,7 @@ dependencies = [
     "pyoai==2.5.0",
     "django-crispy-forms==2.0.0",
     "crispy-forms-foundation>=1.1.0,<2",
-    "django-compressor==4.4",
+    "django-compressor==4.6.0",
     "nh3>=0.2.15",
     "django-session-security>=2.6.7",
     "django-password-policies-iplweb==0.9.0",
@@ -70,7 +70,7 @@ dependencies = [
     "Markdown>=3.7,<4",
     "django-admin-sortable2>=2,<3",
     "cssmin==0.2.0",
-    "rjsmin==1.2.1",
+    "rjsmin>=1.2.1",
     "django-import-export==3.2.0",
     "pymed-iplweb==0.8.10",
     "django-taggit==4.0.0",
@@ -151,11 +151,15 @@ dev = [
     "playwright>=1.55.0,<2",
     "pytest-playwright>=0.4.0",
     "pytest-env>=1",
-    "nest-asyncio>=1.6.0"
+    "nest-asyncio>=1.6.0",
+    "testcontainers[postgres]>=4.0"
 ]
 
 [project.scripts]
 "bpp-manage.py" = "django_bpp.manage_command:entry_point"
+
+[project.entry-points."pytest11"]
+testcontainers_bpp = "testcontainers_bpp.plugin"
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -189,7 +193,8 @@ include = [
     "rozbieznosci_dyscyplin",
     "rozbieznosci_if",
     "tee",
-    "test_bpp"
+    "test_bpp",
+    "testcontainers_bpp"
 ]
 
 [tool.setuptools.package-data]
