@@ -23,14 +23,11 @@ from bpp.util import get_fixture
 
 
 def fixture(name):
-    return json.load(
-        open(
-            os.path.abspath(
-                os.path.join(os.path.dirname(__file__), "../bpp", "fixtures", name)
-            ),
-            "rb",
-        )
+    path = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "../bpp", "fixtures", name)
     )
+    with open(path, "rb") as f:
+        return json.load(f)
 
 
 @pytest.fixture(scope="function")
