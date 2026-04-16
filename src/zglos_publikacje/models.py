@@ -264,6 +264,17 @@ class Zgloszenie_Publikacji(
             Zgloszenie_Publikacji.Statusy.PO_ZMIANACH,
         ]
 
+    @property
+    def pokazuj_przycisk_wydawnictwo_zwarte(self) -> bool:
+        return self.rodzaj_zglaszanej_publikacji in (
+            self.Rodzaje.MONOGRAFIA,
+            self.Rodzaje.ROZDZIAL_W_MONOGRAFII,
+        )
+
+    @property
+    def pokazuj_przycisk_wydawnictwo_ciagle(self) -> bool:
+        return self.rodzaj_zglaszanej_publikacji == self.Rodzaje.ARTYKUL
+
 
 class Zgloszenie_Publikacji_Autor(BazaModeluOdpowiedzialnosciAutorow):
     rekord = models.ForeignKey(Zgloszenie_Publikacji, on_delete=models.CASCADE)
