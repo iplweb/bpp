@@ -1,12 +1,7 @@
 from django.contrib.auth import BACKEND_SESSION_KEY
 from password_policies.middleware import PasswordChangeMiddleware
 
-# Backendy zarządzające hasłami zewnętrznie -- nie wymuszamy
-# zmiany hasła dla użytkowników zalogowanych tymi backendami.
-EXTERNAL_AUTH_BACKENDS = {
-    "microsoft_auth.backends.MicrosoftAuthenticationBackend",
-    "orcid_integration.backends.OrcidAuthenticationBackend",
-}
+from django_bpp.external_auth import EXTERNAL_AUTH_BACKENDS
 
 
 class ConditionalPasswordChangeMiddleware(PasswordChangeMiddleware):
