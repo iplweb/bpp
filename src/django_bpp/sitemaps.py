@@ -16,6 +16,7 @@ from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
 
 
 class BppSitemap(Sitemap):
+    protocol = "https"
     url_obj_field = "pk"
 
     def items(self):
@@ -63,15 +64,15 @@ class AlphabeticBppSitemap(BppSitemap):
     litera = None
 
     def __init__(self, litera=""):
-        super(AlphabeticBppSitemap, self).__init__()
+        super().__init__()
         if litera:
             self.litera = litera
 
     def items(self):
         if not self.litera:
-            return list(super(AlphabeticBppSitemap, self).items())
+            return list(super().items())
         kw = {self.title_field + "__istartswith": self.litera}
-        return list(super(AlphabeticBppSitemap, self).items().filter(**kw))
+        return list(super().items().filter(**kw))
 
 
 class AutorSitemap(AlphabeticBppSitemap):
