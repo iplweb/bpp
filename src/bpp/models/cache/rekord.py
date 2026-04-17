@@ -124,6 +124,15 @@ class RekordManager(FulltextSearchMixin, models.Manager):
 
 
 class _MyTaggableManager(_TaggableManager):
+    def __init__(self, through, model, instance, prefetch_cache_name, ordering=None):
+        # django-taggit 5.0+ defaults self.ordering to
+        # [f"{Tag reverse related_query_name}__pk"], which breaks here because
+        # tags_for() below returns a SlowaKluczoweView queryset directly (not a
+        # Tag queryset). Order by the through table's own pk instead.
+        if ordering is None and instance is not None:
+            ordering = ["pk"]
+        super().__init__(through, model, instance, prefetch_cache_name, ordering)
+
     def get_prefetch_queryset(self, instances, queryset=None):
         if queryset is not None:
             raise ValueError("Custom queryset can't be used for this lookup.")
