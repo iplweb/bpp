@@ -462,7 +462,7 @@ requires-dist = [
     { name = "django-static-sitemaps", specifier = ">=5.0.0" },
     { name = "django-tables2", specifier = "==2.3.1" },
     { name = "django-tabular-permissions", specifier = "==2.9.3" },
-    { name = "django-taggit", specifier = "==4.0.0" },
+    { name = "django-taggit", specifier = "==6.1.0" },
     { name = "django-templated-email", specifier = ">=3.0.0" },
     { name = "django-tinymce", specifier = ">=5.0.0" },
     { name = "django-weasyprint", specifier = ">=2.5.0" },
@@ -2137,14 +2137,14 @@ sdist = { url = "https://files.pythonhosted.org/packages/40/67/385987d9d9b3d17bf
 
 [[package]]
 name = "django-taggit"
-version = "4.0.0"
+version = "6.1.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "django", marker = "platform_python_implementation != 'PyPy'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/83/54/241541a011c1e146c2708f0cf148f9255b7c04abecdf28e0f589d54c1851/django-taggit-4.0.0.tar.gz", hash = "sha256:4d52de9d37245a9b9f98c0ec71fdccf1d2283e38e8866d40a7ae6a3b6787a161", size = 58638, upload-time = "2023-05-04T02:15:57.57Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/34/a6/f1beaf8f552fe90c153cc039316ebab942c23dfbc88588dde081fefca816/django_taggit-6.1.0.tar.gz", hash = "sha256:c4d1199e6df34125dd36db5eb0efe545b254dec3980ce5dd80e6bab3e78757c3", size = 38151, upload-time = "2024-09-29T08:07:39.477Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/94/64/bb3432a4c177e16b236f0a211a984f51f44a287bac6a194762f1731a8994/django_taggit-4.0.0-py3-none-any.whl", hash = "sha256:eb800dabef5f0a4e047ab0751f82cf805bc4a9e972037ef12bf519f52cd92480", size = 60337, upload-time = "2023-05-04T02:16:48.847Z" },
+    { url = "https://files.pythonhosted.org/packages/6b/34/4185c345530b91d05cb82e05d07148f481a5eb5dc2ac44e092b3daa6f206/django_taggit-6.1.0-py3-none-any.whl", hash = "sha256:ab776264bbc76cb3d7e49e1bf9054962457831bd21c3a42db9138b41956e4cf0", size = 75749, upload-time = "2024-09-29T08:07:14.612Z" },
 ]
 
 [[package]]
