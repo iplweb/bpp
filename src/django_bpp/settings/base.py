@@ -484,7 +484,7 @@ INSTALLED_APPS = [
 PG_BASELINE = {
     "BASELINE_DIR": os.path.join(SITE_ROOT, "baseline-sql"),
     # Our image has plpython3u + pl_PL.UTF-8 locale — vanilla postgres doesn't.
-    "REBUILD_IMAGE": "iplweb/bpp_dbserver:latest",
+    "REBUILD_IMAGE": "iplweb/bpp_dbserver:psql-16.13",
     # bpp-specific exclusions on top of the generic django_session default.
     "PG_DUMP_EXTRA_EXCLUDE_TABLE_DATA": [
         "django_cache*",

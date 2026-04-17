@@ -8,17 +8,8 @@
 
 services:
   db:
-    image: iplweb/bpp_dbserver:${DOCKER_VERSION:-latest}
-    build:
-      context: ./docker/dbserver
-      dockerfile: Dockerfile
-      tags:
-        - iplweb/bpp_dbserver:${DOCKER_VERSION:-latest}
-        - iplweb/bpp_dbserver:latest
-      cache_from:
-        - type=registry,ref=iplweb/bpp_dbserver:latest
-      cache_to:
-        - type=inline
+    # Obraz budowany w osobnym repo: https://github.com/iplweb/bpp-dbserver
+    image: iplweb/bpp_dbserver:psql-16.13
     environment:
       - PGPORT=${DJANGO_BPP_DB_PORT:-5432}
       - POSTGRES_DB=${DJANGO_BPP_DB_NAME:-bpp}
