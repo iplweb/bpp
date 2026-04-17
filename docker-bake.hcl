@@ -65,6 +65,12 @@ target "base" {
   ] : [
     "iplweb/bpp_base:${DOCKER_VERSION}"
   ]
+  # Always rebuild base from scratch — Docker Build Cloud's layer cache has
+  # produced stale bpp_base images (missing files added in fresh COPY lines).
+  # Package downloads remain fast thanks to cache mounts inside
+  # docker/bpp_base/Dockerfile (apt-cache, apt-lists, uv-cache, npm-cache,
+  # yarn-cache) which persist across --no-cache builds.
+  no-cache  = true
   platforms = [PLATFORM]
   output    = PUSH ? ["type=registry"] : ["type=docker"]
 }
