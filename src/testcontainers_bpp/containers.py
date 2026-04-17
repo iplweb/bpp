@@ -81,7 +81,7 @@ def _start_pg(reuse: bool) -> tuple[PostgresContainer | None, str, int]:
             return None, host, port
 
     pg = PostgresContainer(
-        image="iplweb/bpp_dbserver:latest",
+        image="iplweb/bpp_dbserver:psql-16.13",
         port=5432,
         username="bpp",
         password="password",
@@ -93,12 +93,10 @@ def _start_pg(reuse: bool) -> tuple[PostgresContainer | None, str, int]:
     if reuse:
         pg.with_name(_PG_NAME)
 
-    # Obraz iplweb/bpp_dbserver budowany lokalnie przez `docker compose build`
-    # dostaje labele com.docker.compose.project="bpp" itp. wbite w obraz.
-    # Docker Desktop czyta te labele i grupuje kontener testcontainers razem
-    # z kontenerami docker-compose — co jest mylące. Nadpisujemy je pustymi
-    # wartościami na poziomie kontenera. (Nie da się tego naprawić w Dockerfile,
-    # bo `docker compose build` ustawia labele PO wykonaniu Dockerfile.)
+    # Defensive: jeśli ktoś kiedyś zbudował iplweb/bpp_dbserver lokalnie przez
+    # `docker compose build` (stary workflow), w obraz mogą być wbite labele
+    # com.docker.compose.*, przez które Docker Desktop grupowałby testcontainer
+    # z kontenerami docker-compose. Nadpisujemy je pustymi na poziomie kontenera.
     pg.with_kwargs(
         labels={
             "com.docker.compose.project": "",
