@@ -1,5 +1,7 @@
 import urllib
 
+from django.contrib import messages
+from django.contrib.postgres.aggregates.general import StringAgg
 from django.db import connection, transaction
 from django.db.models import CharField, Count, F
 from django.db.models.functions import Cast
@@ -16,9 +18,6 @@ from raport_slotow.forms.zerowy import RaportSlotowZerowyParametryFormularz
 from raport_slotow.models import RaportZerowyEntry
 from raport_slotow.tables import RaportSlotowZerowyTable
 from raport_slotow.util import MyExportMixin, create_temporary_table_as
-
-from django.contrib import messages
-from django.contrib.postgres.aggregates.general import StringAgg
 
 
 class RaportSlotowZerowyParametry(BaseRaportAuthMixin, FormView):
@@ -89,12 +88,24 @@ class RaportSlotowZerowyWyniki(
                 "ALTER TABLE raport_slotow_raportzerowyentry ADD COLUMN id SERIAL"
             )
 
-            for n, cn in enumerate(
-                ["autor_id", "rok", "dyscyplina_naukowa_id"], start=1
-            ):
-                cursor.execute(
-                    f"ALTER TABLE raport_slotow_raportzerowyentry RENAME COLUMN col{n} TO {cn}"
-                )
+            # Django <5 compiled set operations (EXCEPT/UNION) with anonymous
+            # column aliases (col1, col2, col3); Django 5+ preserves the
+            # left-hand SELECT's names instead (autor_id, rok, dyscyplina_id).
+            # Discover the actual column order and rename to what the
+            # RaportZerowyEntry model expects.
+            cursor.execute(
+                "SELECT column_name FROM information_schema.columns "
+                "WHERE table_name = 'raport_slotow_raportzerowyentry' "
+                "ORDER BY ordinal_position"
+            )
+            existing = [row[0] for row in cursor.fetchall() if row[0] != "id"]
+            target = ["autor_id", "rok", "dyscyplina_naukowa_id"]
+            for old, new in zip(existing, target, strict=True):
+                if old != new:
+                    cursor.execute(
+                        f"ALTER TABLE raport_slotow_raportzerowyentry "
+                        f"RENAME COLUMN {old} TO {new}"
+                    )
 
         qset = RaportZerowyEntry.objects.group_by(
             "autor", "dyscyplina_naukowa"

@@ -133,10 +133,7 @@ class _MyTaggableManager(_TaggableManager):
             ordering = ["pk"]
         super().__init__(through, model, instance, prefetch_cache_name, ordering)
 
-    def get_prefetch_queryset(self, instances, queryset=None):
-        if queryset is not None:
-            raise ValueError("Custom queryset can't be used for this lookup.")
-
+    def _build_prefetch_queryset(self, instances):
         instance = instances[0]
         db = self._db or router.db_for_read(type(instance), instance=instance)
 
@@ -164,16 +161,28 @@ class _MyTaggableManager(_TaggableManager):
             val = obj._prefetch_related_val
             return tuple(val) if isinstance(val, list) else val
 
-        rel_obj_attr = get_prefetch_val
-
         return (
             qs,
-            rel_obj_attr,
+            get_prefetch_val,
             lambda obj: obj._get_pk_val(),
             False,
             self.prefetch_cache_name,
             False,
         )
+
+    def get_prefetch_queryset(self, instances, queryset=None):
+        if queryset is not None:
+            raise ValueError("Custom queryset can't be used for this lookup.")
+        return self._build_prefetch_queryset(instances)
+
+    def get_prefetch_querysets(self, instances, querysets=None):
+        # Django 5.0+ prefetch machinery calls this new method directly,
+        # bypassing get_prefetch_queryset (singular). Without this override,
+        # taggit 6.x's default implementation would try to look up a
+        # "content_object" field on SlowaKluczoweView, which does not exist.
+        if querysets is not None:
+            raise ValueError("Custom querysets can't be used for this lookup.")
+        return self._build_prefetch_queryset(instances)
 
 
 class RekordBase(
