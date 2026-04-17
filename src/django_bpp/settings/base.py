@@ -290,8 +290,6 @@ TEMPLATES = [
 ]
 
 MIDDLEWARE = [
-    "htmlmin.middleware.HtmlMinifyMiddleware",
-    "htmlmin.middleware.MarkRequestMiddleware",
     "django.middleware.locale.LocaleMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "bpp.middleware.MaliciousRequestBlockingMiddleware",  # Block malicious requests (pagination, PHP, .git, etc.) early
@@ -725,8 +723,6 @@ SENDFILE_ROOT = MEDIA_ROOT
 GOOGLE_ANALYTICS_PROPERTY_ID = env("DJANGO_BPP_GOOGLE_ANALYTICS_PROPERTY_ID")
 
 WEBMASTER_VERIFICATION = {"google": env("DJANGO_BPP_GOOGLE_VERIFICATION_CODE")}
-
-EXCLUDE_FROM_MINIFYING = ["^google.*html$"]
 
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 

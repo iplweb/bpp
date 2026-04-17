@@ -47,7 +47,7 @@ dependencies = [
     "dj-pagination==2.5.0",
     "requests>=2.32.4",
     "django-extensions>=3.2,<5",
-    "django-htmlmin==0.11.0",
+    "django-minify-html>=1.14,<2",
     "Pillow>=12.2,<14",
     "django-grappelli==3.0.6",
     "django-multiseek==0.9.49",
