@@ -448,7 +448,7 @@ requires-dist = [
     { name = "django-messages-extends", specifier = "==0.6.3" },
     { name = "django-microsoft-auth", marker = "extra == 'office365'", specifier = ">=3.0.1" },
     { name = "django-model-utils", specifier = "==5.0.0" },
-    { name = "django-mptt", specifier = "==0.13.4" },
+    { name = "django-mptt", specifier = ">=0.16,<1" },
     { name = "django-multiseek", specifier = "==0.9.49" },
     { name = "django-password-policies-iplweb", specifier = "==0.9.0" },
     { name = "django-prometheus", specifier = ">=2.4.1" },
@@ -1934,14 +1934,14 @@ wheels = [
 
 [[package]]
 name = "django-mptt"
-version = "0.13.4"
+version = "0.18.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "django-js-asset", marker = "platform_python_implementation != 'PyPy'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/41/b2/095730e978551e25f538122a05de9232eef849244159ee639865215c743f/django-mptt-0.13.4.tar.gz", hash = "sha256:80c9fb34df7796a4e5af0cb6b8ade3697555b1aa438bd07a01f32b3ab5202b63", size = 102901, upload-time = "2021-09-27T12:56:02.003Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/eb/25/04bb8e4384f3484dabbd0e2a84946f1c972b95b07512509a17aaa361be0f/django_mptt-0.18.0.tar.gz", hash = "sha256:cf5661357ff22bc64e20d3341c26e538aa54583aea0763cfe6aaec0ab8e3a8ee", size = 71407, upload-time = "2025-08-26T09:27:01.05Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ab/b1/e9bf441448b880119f6a77c74a9555a0ef9dbba4ab5403b65abb12a5998f/django_mptt-0.13.4-py3-none-any.whl", hash = "sha256:75745b621ae31d97957ed924155a750dfa8cacd9543799ada2d713fd6bc3f5c7", size = 137069, upload-time = "2021-09-27T12:56:00.049Z" },
+    { url = "https://files.pythonhosted.org/packages/51/9e/78aad58a90f2e4d0c898eeadd2f2b720bcae29b43676dd37c2b627c4c6c6/django_mptt-0.18.0-py3-none-any.whl", hash = "sha256:bfa3f01627e3966a1df901aeca74570a3e933e66809ebf58d9df673e63627afb", size = 120157, upload-time = "2025-08-26T09:27:02.168Z" },
 ]
 
 [[package]]
