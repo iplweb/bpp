@@ -38,7 +38,7 @@ dependencies = [
     "django-cookie-law==2.2.0",
     "django-classy-tags==4.1.0",
     "pyoai==2.5.0",
-    "django-crispy-forms==2.0.0",
+    "django-crispy-forms>=2.4,<3",
     "crispy-forms-foundation>=1.1.0,<2",
     "django-compressor==4.6.0",
     "nh3>=0.3.4",
