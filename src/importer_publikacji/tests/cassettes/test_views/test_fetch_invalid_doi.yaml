@@ -1,0 +1,24 @@
+interactions:
+- request:
+    body: null
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate, br
+      Connection:
+      - keep-alive
+      user-agent:
+      - 'undefined/undefined (undefined; mailto:anonymous) BasedOn: CrossrefAPI/1.7.0'
+    method: GET
+    uri: https://api.crossref.org/works/not-a-doi
+  response:
+    body:
+      string: 'Resource not found.'
+    headers:
+      content-type:
+      - text/plain
+    status:
+      code: 404
+      message: Not Found
+version: 1

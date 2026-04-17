@@ -1,6 +1,6 @@
 import datetime
 
-import bleach
+import nh3
 from django import shortcuts
 
 try:
@@ -58,9 +58,11 @@ def update_multiseek_title(request):
         v = ""
     from django.conf import settings
 
-    v = bleach.clean(
+    v = nh3.clean(
         v.replace("\r\n", "\n").replace("\n", "<br/>"),
-        tags=list(getattr(settings, "ALLOWED_TAGS", [])) + ["hr", "p", "br"],
+        tags=set(getattr(settings, "ALLOWED_TAGS", [])) | {"hr", "p", "br"},
+        clean_content_tags=set(),
+        link_rel=None,
     )
     request.session["MULTISEEK_TITLE"] = v
     return JsonResponse(v, safe=False)

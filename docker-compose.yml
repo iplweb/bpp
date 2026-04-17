@@ -27,6 +27,9 @@ services:
       # Ustaw na "1" dla maksymalnej wydajności (wyłącza fsync, synchronous_commit)
       # TYLKO dla developmentu/testów! NIE UŻYWAĆ W PRODUKCJI!
       - POSTGRESQL_UNSAFE_BUT_FAST=1
+      # Powiększona tabela locków — xdist z wieloma workerami tworzy/dropuje
+      # setki tabel i indeksów w jednej transakcji. Default 64 jest za mały.
+      - POSTGRESQL_MAX_LOCKS_PER_TRANSACTION=512
     volumes:
       - postgresql_data:/var/lib/postgresql/data
     healthcheck:
@@ -105,9 +108,9 @@ services:
       - path: .env
         required: false
     environment:
-      - DJANGO_SETTINGS_MODULE=django_bpp.settings.docker
       - ENABLE_AUTORELOAD_ON_CODE_CHANGE=${ENABLE_AUTORELOAD_ON_CODE_CHANGE:-1}
       - DJANGO_BPP_CSRF_EXTRA_ORIGINS=https://bpp.localnet:10443,https://localhost:10443
+      - BPP_SYNC_DEPS_ON_START=1
     depends_on:
       redis:
         condition: service_healthy
@@ -119,85 +122,26 @@ services:
       test: ["CMD", "curl", "-f", "http://127.0.0.1:8000/health/"]
       interval: 30s
       timeout: 5s
-      start_period: 1800s
+      start_period: 120s
       retries: 3
     volumes:
       - ./src:/app/src
       - ./src/django_bpp/staticroot:/staticroot
+      - ./pyproject.toml:/app/pyproject.toml:ro
+      - ./uv.lock:/app/uv.lock:ro
+      - appserver_venv:/app/.venv
       - media:/mediaroot
     ports:
       - ${DJANGO_BPP_PORT_APP:-8000}:8000
 
-  authserver:
-    # Lightweight auth server for nginx authentication
-    # Starts quickly (seconds) - no migrations, no collectstatic
-    # Used by nginx auth_request for Grafana, Dozzle, etc.
-    image: iplweb/bpp_authserver:${DOCKER_VERSION:-latest}
-    build:
-      context: .
-      dockerfile: docker/authserver/Dockerfile
-      tags:
-        - iplweb/bpp_authserver:${DOCKER_VERSION:-latest}
-        - iplweb/bpp_authserver:latest
-      cache_from:
-        - type=registry,ref=iplweb/bpp_base:latest
-        - type=registry,ref=iplweb/bpp_authserver:latest
-      cache_to:
-        - type=inline
-    restart: always
-    env_file:
-      - path: .env.docker
-        required: true
-      - path: .env
-        required: false
-    environment:
-      - DJANGO_SETTINGS_MODULE=django_bpp.settings.auth_server
-      - DJANGO_BPP_CSRF_EXTRA_ORIGINS=https://bpp.localnet:10443,https://localhost:10443
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://127.0.0.1:8001/health/"]
-      interval: 30s
-      timeout: 3s
-      start_period: 10s
-      retries: 3
-    volumes:
-      - ./src:/app/src
-
-  webserver:
-    image: nginx:1.29.7
-    restart: always
-    env_file:
-      - path: .env.docker
-        required: true
-      - path: .env
-        required: false
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f -s -o /dev/null http://127.0.0.1:80/healthz || exit 1"]
-      start_period: 10s
-      interval: 10s
-      timeout: 5s
-      retries: 3
-    volumes:
-      - ./src/django_bpp/staticroot:/var/www/html/staticroot
-      - media:/mediaroot
-      - ssl_certs:/etc/ssl/private
-      - ./docker/webserver/default.conf.template:/etc/nginx/templates/default.conf.template:ro
-      - ./docker/webserver/maintenance.html:/usr/share/nginx/html/maintenance.html:ro
-    ports:
-      - ${DJANGO_BPP_PORT_HTTP:-1080}:80
-      - ${DJANGO_BPP_PORT_HTTPS:-10443}:443
 
   # ── Workers ────────────────────────────────────────────────────────────
 
   celerybeat:
     image: iplweb/bpp_beatserver:${DOCKER_VERSION:-latest}
     build:
-      context: ./docker/beatserver
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: docker/beatserver/Dockerfile
       tags:
         - iplweb/bpp_beatserver:${DOCKER_VERSION:-latest}
         - iplweb/bpp_beatserver:latest
@@ -212,12 +156,15 @@ services:
       - path: .env
         required: false
     environment:
-      - DJANGO_SETTINGS_MODULE=django_bpp.settings.local
       - ENABLE_AUTORELOAD_ON_CODE_CHANGE=${ENABLE_AUTORELOAD_ON_CODE_CHANGE:-1}
+      - BPP_SYNC_DEPS_ON_START=1
     restart: always
     volumes:
       - ./src:/app/src
       - ./src/django_bpp/staticroot:/staticroot
+      - ./pyproject.toml:/app/pyproject.toml:ro
+      - ./uv.lock:/app/uv.lock:ro
+      - celerybeat_venv:/app/.venv
       - media:/mediaroot
     depends_on:
       redis:
@@ -247,12 +194,15 @@ services:
         required: false
     environment:
       - WEB_CONCURRENCY=4
-      - DJANGO_SETTINGS_MODULE=django_bpp.settings.local
       - ENABLE_AUTORELOAD_ON_CODE_CHANGE=${ENABLE_AUTORELOAD_ON_CODE_CHANGE:-1}
+      - BPP_SYNC_DEPS_ON_START=1
     restart: always
     volumes:
       - ./src:/app/src
       - ./src/django_bpp/staticroot:/staticroot
+      - ./pyproject.toml:/app/pyproject.toml:ro
+      - ./uv.lock:/app/uv.lock:ro
+      - workerserver_general_venv:/app/.venv
       - media:/mediaroot
     depends_on:
       # Musi czekać na appserver, gdyż appserver aktualizuje ewentualnie baze danych.
@@ -282,13 +232,16 @@ services:
         required: false
     environment:
       - WEB_CONCURRENCY=4
-      - DJANGO_SETTINGS_MODULE=django_bpp.settings.local
       - ENABLE_AUTORELOAD_ON_CODE_CHANGE=${ENABLE_AUTORELOAD_ON_CODE_CHANGE:-1}
       - CELERY_QUEUE=denorm
+      - BPP_SYNC_DEPS_ON_START=1
     restart: always
     volumes:
       - ./src:/app/src
       - ./src/django_bpp/staticroot:/staticroot
+      - ./pyproject.toml:/app/pyproject.toml:ro
+      - ./uv.lock:/app/uv.lock:ro
+      - workerserver_denorm_venv:/app/.venv
       - media:/mediaroot
     depends_on:
       # Musi czekać na appserver, gdyż appserver aktualizuje ewentualnie baze danych.
@@ -345,11 +298,14 @@ services:
       - path: .env
         required: false
     environment:
-      - DJANGO_SETTINGS_MODULE=django_bpp.settings.local
       - ENABLE_AUTORELOAD_ON_CODE_CHANGE=${ENABLE_AUTORELOAD_ON_CODE_CHANGE:-1}
+      - BPP_SYNC_DEPS_ON_START=1
     restart: always
     volumes:
       - ./src:/app/src
+      - ./pyproject.toml:/app/pyproject.toml:ro
+      - ./uv.lock:/app/uv.lock:ro
+      - denorm_queue_venv:/app/.venv
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -436,5 +392,9 @@ volumes:
   redis_data:
   rabbitmq_data:
   media:
-  ssl_certs:
   grafana_data:
+  appserver_venv:
+  celerybeat_venv:
+  workerserver_general_venv:
+  workerserver_denorm_venv:
+  denorm_queue_venv:

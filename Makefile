@@ -29,7 +29,19 @@
 
 BRANCH=`git branch | sed -n '/\* /s///p'`
 
-.PHONY: clean distclean tests release tests-without-playwright tests-only-playwright docker destroy-test-databases coveralls-upload clean-coverage combine-coverage cache-delete buildx-cache-stats buildx-cache-prune buildx-cache-prune-aggressive buildx-cache-prune-registry buildx-cache-export buildx-cache-import buildx-cache-list bump-dev bump-release bump-and-start-dev migrate new-worktree clean-worktree generate-500-page build build-force build-base build-independent build-app-services build-dbserver build-appserver-base build-appserver build-workerserver build-beatserver build-authserver build-denorm-queue build-servers check-clean-tree prepare-claude prepare-developer-machine prepare-developer-machine-linux
+.PHONY: help clean distclean tests release tests-without-playwright tests-only-playwright docker destroy-test-databases coveralls-upload clean-coverage combine-coverage cache-delete buildx-cache-stats buildx-cache-prune buildx-cache-prune-aggressive buildx-cache-prune-registry buildx-cache-export buildx-cache-import buildx-cache-list bump-dev bump-release bump-and-start-dev migrate new-worktree clean-worktree generate-500-page build build-force build-base build-independent build-app-services build-dbserver build-appserver-base build-appserver build-workerserver build-beatserver build-authserver build-denorm-queue build-servers check-clean-tree prepare-claude prepare-developer-machine prepare-developer-machine-linux
+
+.DEFAULT_GOAL := help
+
+##@ Pomoc
+
+help: ## Wyświetl tę listę celów
+	@awk 'BEGIN {FS = ":.*?## "; \
+		printf "\nUżycie:\n  make \033[36m<cel>\033[0m\n"} \
+		/^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } \
+		/^[a-zA-Z_][a-zA-Z0-9_-]*:.*?## / { \
+			printf "  \033[36m%-32s\033[0m %s\n", $$1, $$2 }' \
+		$(MAKEFILE_LIST)
 
 PYTHON=python3
 
@@ -41,9 +53,11 @@ else
     YARN_CMD := yarnpkg
 endif
 
-all:	prepare-developer-machine release
+##@ Konfiguracja maszyny deweloperskiej
 
-prepare-developer-machine-macos:
+all:	prepare-developer-machine release ## UWAGA: pełna konfiguracja + release (uruchamia release!)
+
+prepare-developer-machine-macos: ## Zainstaluj zależności systemowe na macOS (brew + uv sync)
 	uv sync --all-extras
 	brew install cairo pango gdk-pixbuf libffi gobject-introspection gtk+3
 	sudo ln -sf /opt/homebrew/opt/glib/lib/libgobject-2.0.0.dylib /usr/local/lib/gobject-2.0
@@ -52,14 +66,14 @@ prepare-developer-machine-macos:
 	sudo ln -sf /opt/homebrew/opt/fontconfig/lib/libfontconfig.1.dylib /usr/local/lib/fontconfig-1
 	sudo ln -sf /opt/homebrew/opt/pango/lib/libpangoft2-1.0.dylib /usr/local/lib/pangoft2-1.0
 
-prepare-developer-machine-linux:
+prepare-developer-machine-linux: ## Zainstaluj zależności systemowe na Linuksie (apt + uv sync)
 	sudo apt update
 	sudo apt install -y yarnpkg python3-dev libpq-dev libcairo2-dev \
 		libpango1.0-dev libgdk-pixbuf2.0-dev libffi-dev \
 		libgirepository1.0-dev libgtk-3-dev
 	uv sync --all-extras
 
-prepare-developer-machine:
+prepare-developer-machine: ## Zainstaluj zależności systemowe (auto-detekcja macOS/Linux)
 ifeq ($(OS),Darwin)
 	$(MAKE) prepare-developer-machine-macos
 else ifeq ($(OS),Linux)
@@ -70,7 +84,7 @@ else
 	@exit 1
 endif
 
-prepare-claude:
+prepare-claude: ## Pokaż instrukcję instalacji wtyczki claude-mem w Claude Code
 	@echo "Setting up Claude Code with claude-mem plugin..."
 	@echo ""
 	@echo "NOTE: claude-mem stores memory data locally in ~/.claude/"
@@ -90,19 +104,21 @@ prepare-claude:
 		echo "  claude-mem: NOT INSTALLED"; \
 	fi
 
-cleanup-pycs:
+##@ Czyszczenie
+
+cleanup-pycs: ## Usuń __pycache__, *.pyc, *.log i pliki tymczasowe
 	find . -name __pycache__ -type d -print0 | xargs -0 rm -rf
 	find . -name \*~ -print0 | xargs -0 rm -f
 	find . -name \*pyc -print0 | xargs -0 rm -f
 	find . -name \*\\.log -print0 | xargs -0 rm -f
 	rm -rf build __pycache__ *.log
 
-clean-pycache:
+clean-pycache: ## Usuń __pycache__, *.pyc oraz .eggs/.cache
 	find . -name __pycache__ -type d -print0 | xargs -0 rm -rf
 	find . -name \*pyc -print0 | xargs -0 rm -f
 	rm -rf .eggs .cache
 
-clean: clean-pycache
+clean: clean-pycache ## Szersze czyszczenie: egg-info, logi, build, dist, staticroot/CACHE, .tox
 	find . -type d -name \*egg-info -print0 | xargs -0 rm -rf
 	find . -name \*~ -print0 | xargs -0 rm -f
 	find . -name \*.prof -print0 | xargs -0 rm -f
@@ -115,7 +131,7 @@ clean: clean-pycache
 	rm -rf .tox
 	rm -rf *xlsx pbn_json_data/
 
-distclean: clean
+distclean: clean ## Pełne czyszczenie: + node_modules, staticroot, media, dist, skompilowane CSS
 	rm -rf src/django_bpp/staticroot
 	rm -rf *backup .pytest-cache
 	rm -rf node_modules src/node_modules src/django_bpp/staticroot
@@ -128,7 +144,9 @@ distclean: clean
 #yarn:
 #	export PUPPETEER_SKIP_CHROME_DOWNLOAD=true PUPPETEER_SKIP_CHROME_HEADLESS_SHELL_DOWNLOAD=true && yarn install  --no-progress --emoji false -s
 
-grunt-build:
+##@ Frontend / Assety
+
+grunt-build: ## Uruchom `grunt build` (SCSS → CSS, bundling JS)
 	grunt build
 
 # CSS output files (targets)
@@ -155,11 +173,11 @@ $(MO_FILES): $(PO_FILES)
 	# cd src &&  django-admin compilemessages
 	uv run python src/manage.py compilemessages --locale=pl --ignore=site-packages
 
-assets: $(CSS_TARGETS) $(MO_FILES)
+assets: $(CSS_TARGETS) $(MO_FILES) ## Zbuduj frontend (CSS + .mo); uruchamia `yarn install` jeśli trzeba
 
-yarn: $(NODE_MODULES)
+yarn: $(NODE_MODULES) ## Zainstaluj zależności Node.js (yarn install)
 
-production-assets: distclean assets
+production-assets: distclean assets ## Pełny clean + build assetów pod produkcję
 # usuń ze staticroot niepotrzebne pakiety (Poetry pyproject.toml exclude
 # nie do końca to załatwia...)
 	rm -rf src/django_bpp/staticroot/{qunit,sinon}
@@ -171,7 +189,7 @@ production-assets: distclean assets
 	rm -rf src/django_bpp/staticroot/vendor/select2/docs
 	rm -rf src/django_bpp/staticroot/scss/*.scss
 
-compilemessages: $(MO_FILES)
+compilemessages: $(MO_FILES) ## Skompiluj tłumaczenia Django (*.po → *.mo)
 
 # bdist_wheel target removed - no longer using wheel distribution
 
@@ -179,86 +197,139 @@ compilemessages: $(MO_FILES)
 #	twine upload dist/*whl
 
 
-js-tests: assets
+js-tests: assets ## Uruchom testy JS (QUnit via Puppeteer)
 	$(YARN_CMD) install --optional
 	npx puppeteer browsers install chrome
 	grunt qunit
 
+##@ Dokumentacja
+
 # cel: live-docs
 # Uruchom sphinx-autobuild
-live-docs:
+live-docs: ## Uruchom sphinx-autobuild na porcie 8080 (live-reload docs)
 	# Nie wrzucam instalacji sphinx-autobuild do requirements_dev.in
 	# celowo i z premedytacją:
 	uv pip install --upgrade sphinx-autobuild
 	uv run sphinx-autobuild --port 8080 -D language=pl docs/ docs/_build
 
-enable-microsoft-auth:
+##@ Microsoft Auth
+
+enable-microsoft-auth: ## Włącz django_microsoft_auth (dla testów integracyjnych)
 	echo MICROSOFT_AUTH_CLIENT_ID=foobar > ~/.env.local
 	echo MICROSOFT_AUTH_CLIENT_SECRET=foobar >> ~/.env.local
 	uv pip install django_microsoft_auth
 
-disable-microsoft-auth:
+disable-microsoft-auth: ## Wyłącz django_microsoft_auth
 	rm -f ~/.env.local
 	uv pip uninstall django_microsoft_auth
 
-clean-coverage:
+##@ Czyszczenie
+
+clean-coverage: ## Usuń pliki pokrycia kodu (.coverage, cov.xml, cov_html)
 	rm -f .coverage .coverage.* cov.xml
 	rm -rf cov_html
 
-tests-without-playwright:
+##@ Testy
+
+tests-without-playwright: ## Szybkie testy bez Playwright (xdist -n auto, maxfail=50)
 	uv run pytest -n auto -m "not playwright" --maxfail 50
 
-tests-without-playwright-with-microsoft-auth:
+tests-without-playwright-with-microsoft-auth: ## tests-without-playwright z aktywnym Microsoft Auth
 	uv run pytest -n auto -m "not playwright" --maxfail 50
 
-tests-with-microsoft-auth: enable-microsoft-auth tests-without-playwright-with-microsoft-auth disable-microsoft-auth
+tests-with-microsoft-auth: enable-microsoft-auth tests-without-playwright-with-microsoft-auth disable-microsoft-auth ## Włącz MS Auth, uruchom testy, wyłącz
 
-tests-only-playwright:
+tests-only-playwright: ## Tylko testy Playwright (wolne)
 	uv run pytest -n auto -m "playwright"
 
-combine-coverage:
+combine-coverage: ## Scal pokrycie: coverage combine + xml + html
 	uv run coverage combine
 	uv run coverage xml
 	uv run coverage html
 
-coveralls-upload:
+coveralls-upload: ## Wyślij raport pokrycia do Coveralls
 	uv run coveralls
 
-tests: destroy-test-databases clean-pycache clean-coverage tests-without-playwright tests-only-playwright combine-coverage js-tests coveralls-upload
+uv-sync: ## uv sync --all-extras (synchronizacja zależności Pythona)
+	uv sync --all-extras
 
-tests-in-docker:
+tests: clean-pycache clean-coverage uv-sync tests-without-playwright tests-only-playwright combine-coverage js-tests coveralls-upload ## Pełny test suite (coverage + JS + Coveralls)
+
+# Same as `tests` but forces a full DB rebuild from scratch instead of
+# reusing the schema produced by the baseline + delta migrate. Use when
+# you suspect schema corruption or need to validate migrations from zero.
+tests-fresh: destroy-test-databases tests ## Jak `tests`, ale od zera (destroy-test-databases + tests)
+
+# Regenerate src/baseline-sql/baseline.sql by spinning up an isolated
+# postgres (via testcontainers), running migrate, dumping, and writing
+# baseline.meta.json. Commit the refreshed files to git.
+rebuild-baseline: ## Regeneruj baseline.sql do przyspieszenia testów (commit efektu!)
+	DJANGO_BPP_SKIP_DOTENV=1 uv run python src/manage.py baseline_rebuild
+	@echo ""
+	@echo "Baseline regenerated. Files:"
+	@ls -lh src/baseline-sql/baseline.sql src/baseline-sql/baseline.meta.json
+	@echo ""
+	@echo "Don't forget to commit:"
+	@echo "    git add src/baseline-sql/baseline.sql src/baseline-sql/baseline.meta.json"
+
+# Run tests against pre-existing docker-compose containers (no testcontainers).
+tests-no-containers: ## Testy przeciwko istniejącym kontenerom docker-compose (bez testcontainers)
+	uv run pytest --no-testcontainers -n auto -m "not playwright" --maxfail 50
+
+# Stop reusable testcontainers (bpp-tc-pg, bpp-tc-redis, bpp-tc-rabbitmq).
+tests-stop-containers: ## Zatrzymaj i usuń reużywalne testcontainers (bpp-tc-*)
+	-docker stop bpp-tc-pg bpp-tc-redis bpp-tc-rabbitmq 2>/dev/null
+	-docker rm bpp-tc-pg bpp-tc-redis bpp-tc-rabbitmq 2>/dev/null
+	@echo "Testcontainers stopped and removed."
+
+# Remove ALL orphaned testcontainers (including Ryuks from crashed pytest runs).
+clean-testcontainers: ## Usuń wszystkie osierocone testcontainers (PG/Redis/Rabbit/Ryuk + reuse bpp-tc-*)
+	@echo "Removing all containers labeled org.testcontainers=true ..."
+	-@docker ps -aq --filter "label=org.testcontainers=true" | xargs -r docker rm -f
+	-@docker rm -f bpp-tc-pg bpp-tc-redis bpp-tc-rabbitmq 2>/dev/null || true
+	@echo "Done."
+
+# Run tests with ephemeral containers (destroyed after run).
+tests-ephemeral: ## Testy w efemerycznych testcontainers (usuwane po teście)
+	BPP_TESTCONTAINERS_REUSE=0 uv run pytest -n auto -m "not playwright" --maxfail 50
+
+tests-in-docker: ## Testy w pełni w Dockerze (docker-compose.test.yml)
 	docker compose -f docker-compose.test.yml build test-runner
 	docker compose -f docker-compose.test.yml up -d db redis rabbitmq
 	docker compose -f docker-compose.test.yml run --rm test-runner \
 		uv run pytest -n auto -m "not playwright" --maxfail 50
 	docker compose -f docker-compose.test.yml down
 
-tests-in-docker-interactive:
+tests-in-docker-interactive: ## tests-in-docker z interaktywnym bashem w kontenerze
 	docker compose -f docker-compose.test.yml build test-runner
 	docker compose -f docker-compose.test.yml up -d db redis rabbitmq
 	docker compose -f docker-compose.test.yml run --rm test-runner bash
 
-tests-in-docker-down:
+tests-in-docker-down: ## Zatrzymaj i usuń środowisko tests-in-docker (wraz z volume)
 	docker compose -f docker-compose.test.yml down -v
 
-destroy-test-databases:
+destroy-test-databases: ## Drop wszystkich baz testowych (local Postgres)
 	-./bin/drop-test-databases.sh
 
-full-tests: destroy-test-databases clean-coverage tests-with-microsoft-auth destroy-test-databases tests-without-playwright tests-only-playwright js-tests
+full-tests: destroy-test-databases clean-coverage tests-with-microsoft-auth destroy-test-databases tests-without-playwright tests-only-playwright js-tests ## Ekstremalnie pełny test suite (drop DB + MS Auth + Playwright + JS)
 
 
-integration-start-from-match:
+##@ PBN — integracja
+
+integration-start-from-match: ## PBN integrator od etapu 15 (matching)
 	python src/manage.py pbn_integrator --enable-all --start-from-stage=15
 
-integration-start-from-download:
+integration-start-from-download: ## PBN integrator od etapu 12 (pobieranie)
 	python src/manage.py pbn_integrator --enable-all --start-from-stage=12
 
-integration-start-from-match-single-thread:
+integration-start-from-match-single-thread: ## integration-start-from-match bez multiprocessingu
 	python src/manage.py pbn_integrator --enable-all --start-from-stage=15 --disable-multiprocessing
 
-restart-pbn-from-download: remove-pbn-integracja-publikacji-dane integration-start-from-download
+restart-pbn-from-download: remove-pbn-integracja-publikacji-dane integration-start-from-download ## Wymaż dane integracji i zacznij od pobierania
 
-upgrade-version:
+##@ Wersjonowanie i release
+
+upgrade-version: ## git-flow release + bumpver + towncrier (podbij wersję i zamknij release branch)
 	$(eval CUR_VERSION=v$(shell ./bin/bpp-version.py))
 	$(eval NEW_VERSION=$(shell bumpver test $(CUR_VERSION) 'vYYYY0M.BUILD[-TAGNUM]' |head -1|cut -d: -f2))
 	git flow release start $(NEW_VERSION)
@@ -270,51 +341,59 @@ upgrade-version:
 	@afplay /System/Library/Sounds/Funk.aiff
 	GIT_MERGE_AUTOEDIT=no git flow release finish "$(NEW_VERSION)" -p -m "Release $(NEW_VERSION)"
 
-uv-lock:
+uv-lock: ## uv lock + commit uv.lock
 	uv lock
 	-git commit -m "Update lockfile" uv.lock
 
-gh-run-watch:
+##@ GitHub Actions
+
+gh-run-watch: ## `gh run watch` — obserwuj najnowszy run CI
 	gh run watch
 
-gh-run-watch-docker-images:
+gh-run-watch-docker-images: ## Obserwuj najnowszy run workflow "Docker - oficjalne obrazy"
 	gh run watch $$(gh run list --workflow="Docker - oficjalne obrazy" --limit=1 --json databaseId --jq '.[0].databaseId')
 
-gh-run-watch-docker-images-alt:
+gh-run-watch-docker-images-alt: ## Alternatywna wersja gh-run-watch-docker-images (pipe)
 	gh run list --workflow="Docker - oficjalne obrazy" --limit=1 --json databaseId --jq '.[0].databaseId' | xargs gh run watch
 
-sleep-3:
+##@ Wersjonowanie i release
+
+sleep-3: ## `sleep 3` (helper używany w pipeline release)
 	sleep 3
 
-generate-500-page:
+##@ Django — zarządzanie
+
+generate-500-page: ## Wygeneruj statyczną stronę 500.html z szablonu 50x.html
 	uv run python src/manage.py generate_500_page
 
-new-release: uv-lock upgrade-version sleep-3 gh-run-watch-docker-images
+##@ Wersjonowanie i release
 
-check-clean-tree:
+new-release: uv-lock upgrade-version sleep-3 gh-run-watch-docker-images ## Pełny pipeline release'u (uv-lock + bumpver + watch CI)
+
+check-clean-tree: ## Zawołaj błąd, jeśli working tree brudne (pre-release guard)
 	@if [ -n "$$(git status --porcelain)" ]; then \
 		echo "Error: Working tree is dirty. Commit or stash changes before releasing."; \
 		exit 1; \
 	fi
 
-release: check-clean-tree full-tests new-release
+release: check-clean-tree full-tests new-release ## Pełny release (tree clean + full-tests + new-release)
 
-set-version-from-vcs:
+set-version-from-vcs: ## Ustaw wersję bumpver na podstawie git describe
 	$(eval CUR_VERSION_VCS=$(shell git describe | sed s/\-/\./ | sed s/\-/\+/))
 	bumpver update --no-commit --set-version=$(CUR_VERSION_VCS)
 
 # Version management targets for development workflow
-bump-dev:
+bump-dev: ## Podbij wersję do kolejnego -devN (tag=dev)
 	@echo "Bumping to next development version..."
 	uv run bumpver update --tag dev --tag-num
 	@echo "New development version created. Build with: docker compose build"
 
-bump-release:
+bump-release: ## Zdejmij -dev z wersji (tag=final)
 	@echo "Creating release version (removing -dev tag)..."
 	uv run bumpver update --tag final
 	@echo "Release version created. You may want to run: make bump-dev"
 
-bump-and-start-dev:
+bump-and-start-dev: ## Release bieżącej + od razu nowy cykl dev
 	@echo "Releasing current version and starting next development cycle..."
 	uv run bumpver update --tag final
 	@echo "Released. Now bumping to next dev version..."
@@ -322,22 +401,21 @@ bump-and-start-dev:
 	@echo "Ready for development. Build with: docker compose build"
 
 .PHONY: check-git-clean
-check-git-clean:
+check-git-clean: ## Wyrzuć błąd jeśli `git diff` pokazuje zmiany
 	git diff --quiet
 
-uv-sync:
-	uv sync
-
-test-package-from-vcs: check-git-clean uv-sync set-version-from-vcs
+test-package-from-vcs: check-git-clean uv-sync set-version-from-vcs ## Przetestuj uv build z wersją z VCS (reset --hard po!)
 	uv build
 	ls -lash dist
 	git reset --hard
 
-loc: clean
+##@ Różne
+
+loc: clean ## Pokaż statystyki liczby linii (pygount)
 	pygount -N ... -F "...,staticroot,migrations,fixtures" src --format=summary
 
 
-DOCKER_VERSION=202604.1352
+DOCKER_VERSION=202604.1353
 
 # Cache configuration for docker buildx bake
 # - local: use local cache (default for local builds)
@@ -374,54 +452,56 @@ ifeq ($(PUSH_TO_REGISTRY),true)
 export PUSH := true
 endif
 
+##@ Docker build (buildx bake)
+
 # Main build target - parallel builds using docker buildx bake
 # This builds all images in parallel where possible:
-# - dbserver, webserver: independent, build immediately
+# - dbserver: independent, builds immediately
 # - base: builds in parallel with above
 # - appserver, workerserver, beatserver, authserver, denorm-queue: wait for base
-build:
+build: ## Równoległy build wszystkich obrazów (buildx bake)
 	docker buildx bake $(BAKE_ARGS)
 
 # Force rebuild all images (ignores cache)
-build-force:
+build-force: ## Pełny rebuild ignorujący cache
 	docker buildx bake $(BAKE_ARGS) --no-cache
 
 # Build only the base image
-build-base:
+build-base: ## Zbuduj tylko obraz `base`
 	docker buildx bake $(BAKE_ARGS) base
 
 # Build independent images only (dbserver)
-build-independent:
+build-independent: ## Zbuduj niezależne obrazy (dbserver)
 	docker buildx bake $(BAKE_ARGS) independent
 
 # Build app services only (requires base image to exist)
-build-app-services:
+build-app-services: ## Zbuduj tylko app-services (wymaga istniejącego `base`)
 	docker buildx bake $(BAKE_ARGS) app-services
 
 # Individual build targets (for debugging or specific rebuilds)
-build-dbserver:
+build-dbserver: ## Zbuduj tylko dbserver
 	docker buildx bake $(BAKE_ARGS) dbserver
 
-build-appserver-base:
+build-appserver-base: ## Alias do build-base (buduje base dla appservera)
 	docker buildx bake $(BAKE_ARGS) base
 
-build-appserver:
+build-appserver: ## Zbuduj tylko appserver
 	docker buildx bake $(BAKE_ARGS) appserver
 
-build-workerserver:
+build-workerserver: ## Zbuduj tylko workerserver
 	docker buildx bake $(BAKE_ARGS) workerserver
 
-build-beatserver:
+build-beatserver: ## Zbuduj tylko beatserver
 	docker buildx bake $(BAKE_ARGS) beatserver
 
-build-authserver:
+build-authserver: ## Zbuduj tylko authserver
 	docker buildx bake $(BAKE_ARGS) authserver
 
-build-denorm-queue:
+build-denorm-queue: ## Zbuduj tylko denorm-queue
 	docker buildx bake $(BAKE_ARGS) denorm-queue
 
 # Alias for backward compatibility
-build-servers: build
+build-servers: build ## Alias do `build` (kompatybilność wsteczna)
 
 # =============================================================================
 # Budowanie obrazów z brancha na Docker Build Cloud
@@ -454,7 +534,7 @@ build-servers: build
 CLOUD_BUILDER = cloud-iplweb-bpp
 BRANCH_BUILD_PLATFORM = linux/amd64
 
-build-branch:
+build-branch: ## Zbuduj i wypchnij obrazy z aktualnego brancha do Docker Hub (linux/amd64)
 	$(eval BRANCH_TAG := $(shell git rev-parse --abbrev-ref HEAD \
 	    | sed 's/[^a-zA-Z0-9._-]/-/g' \
 	    | tr '[:upper:]' '[:lower:]'))
@@ -471,25 +551,27 @@ build-branch:
 	    --allow=fs.read=/tmp \
 	    --allow=fs.write=/tmp
 
-buildx-cache-stats:
+##@ Docker buildx cache
+
+buildx-cache-stats: ## Pokaż `docker buildx du` (rozmiar cache)
 	docker buildx du
 
-buildx-cache-prune:
+buildx-cache-prune: ## Wyczyść cache buildx (ostrożnie)
 	docker buildx prune
 
-buildx-cache-prune-aggressive:
+buildx-cache-prune-aggressive: ## Wyczyść cache buildx, zostaw tylko 5GB
 	docker buildx prune --keep-storage 5GB
 
-buildx-cache-prune-registry:
+buildx-cache-prune-registry: ## Instrukcja usuwania cache z Docker Hub (manual)
 	@echo "Note: Registry caches on Docker Hub must be pruned manually."
 	@echo "Use 'docker rmi iplweb/bpp_*:cache' to remove local copies of registry caches."
 
-buildx-cache-export:
+buildx-cache-export: ## Wyeksportuj build cache do /tmp/docker-buildx-cache-backup
 	@echo "Exporting build cache to local directory..."
 	mkdir -p /tmp/docker-buildx-cache-backup
 	docker buildx build --cache-to=type=local,dest=/tmp/docker-buildx-cache-backup,mode=max --load --target=scratch -f- . <<< "FROM scratch"
 
-buildx-cache-import:
+buildx-cache-import: ## Zaimportuj build cache z /tmp/docker-buildx-cache-backup
 	@echo "Importing build cache from local directory..."
 	if [ -d /tmp/docker-buildx-cache-backup ]; then \
 		echo "Cache backup found at /tmp/docker-buildx-cache-backup"; \
@@ -498,7 +580,7 @@ buildx-cache-import:
 		exit 1; \
 	fi
 
-buildx-cache-list:
+buildx-cache-list: ## Wypisz znane nazwy cache'y rejestru na Docker Hub
 	@echo "Registry caches on Docker Hub:"
 	@echo "  - iplweb/bpp_base:cache"
 	@echo "  - iplweb/bpp_appserver:cache"
@@ -507,80 +589,85 @@ buildx-cache-list:
 	@echo "  - iplweb/bpp_denorm_queue:cache"
 	@echo "  - iplweb/bpp_dbserver:cache"
 
-compose-restart:
+##@ Docker compose
+
+compose-restart: ## Restart stacka docker-compose (stop + rm + up --force-recreate)
 	docker compose stop
 	docker compose rm -f
 	docker compose up --force-recreate
 
-compose-dbshell:
+compose-dbshell: ## Bash w kontenerze bazy danych (docker compose exec db bash)
 	docker compose exec db /bin/bash
 
 
-celery-worker-run:
+##@ Celery
+
+celery-worker-run: ## Uruchom celery worker (pool=threads, concurrency=0)
 	uv run celery -A django_bpp.celery_tasks worker --pool=threads --concurrency=0
 
-celery-purge:
+celery-purge: ## Wyczyść kolejki denorm i celery (purge -f)
 	DJANGO_SETTINGS_MODULE=django_bpp.settings.local uv run celery -A django_bpp.celery_tasks purge -Q denorm,celery -f
 
-celery-worker-normal:
+celery-worker-normal: ## Worker solo dla normalnych kolejek
 	uv run celery --app=django_bpp.celery_tasks worker --concurrency=1 --loglevel=INFO  -P solo --without-gossip --without-mingle --without-heartbeat
 
-celery-worker-denorm:
+celery-worker-denorm: ## Worker solo tylko dla kolejki denorm
 	uv run celery --app=django_bpp.celery_tasks worker -Q denorm --concurrency=1 --loglevel=INFO  -P solo --without-gossip --without-mingle --without-heartbeat
 
-denorm-queue:
+##@ Django — zarządzanie
+
+denorm-queue: ## Uruchom `manage.py denorm_queue`
 	uv run python src/manage.py denorm_queue
 
-migrate:
+migrate: ## Uruchom `manage.py migrate`
 	uv run python src/manage.py migrate
 
-cache-delete:
+cache-delete: ## `manage.py clear_cache` — wyczyść cache Django
 	python src/manage.py clear_cache
 
-docker-celery-inspect:
+##@ Celery
+
+docker-celery-inspect: ## Wykonaj celery inspect (active, active_queues, stats) na workerserver-general
 	docker compose exec workerserver-general uv run celery -A django_bpp.celery_tasks inspect active
 	docker compose exec workerserver-general uv run celery -A django_bpp.celery_tasks inspect active_queues
 	docker compose exec workerserver-general uv run celery -A django_bpp.celery_tasks inspect stats | grep max-concurrency
 
-refresh: build
+##@ Docker compose
+
+refresh: build ## Rebuild + restart całego stacka compose + prune
 	docker system prune -f
 	docker compose down
 	docker compose up -d
 	docker system prune -f
 
-remove-denorms:
+##@ Django — zarządzanie
+
+remove-denorms: ## Opróżnij tabelę denorm_dirtyinstance
 	echo "DELETE FROM denorm_dirtyinstance;" | uv run python src/manage.py dbshell
 
-clean-docker-cache:
+##@ Czyszczenie
+
+clean-docker-cache: ## Wyczyść cały cache Docker buildera i volumy (agresywne!)
 	docker builder prune
 	docker builder prune --all
 	docker system prune -a --volumes
 	rm -rf /tmp/.buildx-cache*
 
-new-worktree:
-	./bin/prepare-worktree.sh
-	direnv allow
-	uv sync --all-extras
-	$(YARN_CMD) install
-	uv run grunt build
-	uv run src/manage.py collectstatic --noinput
-	docker compose up -d db redis rabbitmq
-	./bin/show-settings.sh
+##@ Django — zarządzanie
 
-clean-worktree:
-	docker compose down -v --remove-orphans
-
-invalidate:
+invalidate: ## Unieważnij cały cache template fragments (`manage.py invalidate all`)
 	uv run src/manage.py invalidate all
 
-prune-orphan-volumes:
+##@ Docker compose
+
+prune-orphan-volumes: ## docker volume prune -f
 	docker volume prune -f
 
-open-docker-volume: prune-orphan-volumes
+open-docker-volume: prune-orphan-volumes ## Wybierz volume przez fzf i wejdź do niego shellem
 	@VOLUME=$$(docker volume ls --format '{{.Name}}' | fzf --prompt="Select volume: ") && \
 	docker run --rm -it -v "$$VOLUME":/volume -w /volume alpine:latest /bin/sh -c "ls -las; exec /bin/sh"
 
-open-all-docker-volumes:  prune-orphan-volumes
+open-all-docker-volumes:  prune-orphan-volumes ## Zamontuj wszystkie volumy kontekstu w alpinie
 	@MOUNTS=$$(docker volume ls --format '{{.Name}}' | grep "^$(CONTEXT_NAME)_" | while read vol; do \
 		name=$${vol#$(CONTEXT_NAME)_}; \
 		echo "-v $$vol:/volumes/$$name"; \

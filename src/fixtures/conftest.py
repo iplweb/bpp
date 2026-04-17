@@ -181,7 +181,6 @@ def django_db_setup(django_db_setup, django_db_blocker):  # noqa
         denorms.install_triggers()
 
 
-@pytest.mark.django_db
 @pytest.fixture
 def kierunek_studiow(wydzial):
     from bpp.models import Kierunek_Studiow

@@ -44,6 +44,8 @@ RUN --mount=type=cache,target=/root/.cache/uv,id=uv-cache \
     uv sync --frozen --all-extras \
         --no-extra=dev --no-install-project
 
+COPY --chmod=755 docker/bpp_base/sync-deps.sh /usr/local/bin/bpp-sync-deps
+
 RUN --mount=type=cache,target=/root/.npm,id=npm-cache \
     --mount=type=cache,target=/root/.yarn,id=yarn-cache \
     npx yarn install --dev --ignore-optional && \
@@ -181,4 +183,7 @@ WORKDIR /app
 
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/.venv ./.venv
+# The baseline pg_dump (src/baseline-sql) ships along with src/ and is
+# loaded by entrypoint-appserver.sh via `manage.py baseline_load` on
+# empty databases to skip 800+ migrations on a cold install.
 COPY --from=builder /app/src ./src

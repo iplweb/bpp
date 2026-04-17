@@ -1,6 +1,6 @@
 {
     "name": "bpp-iplweb",
-    "version": "v202604.1352",
+    "version": "v202604.1353",
     "license": "MIT",
     "devDependencies": {
         "esbuild": "^0.27.2",
@@ -12,6 +12,7 @@
         "sass": "^1.91.0"
     },
     "dependencies": {
+        "basic-ftp": "5.2.2",
         "datatables.net": "^1.10.16",
         "datatables.net-dt": "^1.10.16",
         "datatables.net-zf": "^1.10.16",
@@ -20,12 +21,14 @@
         "foundation-sites": "^6.9.0",
         "graphology": "^0.26.0",
         "htmx.org": "^1.9.12",
+        "immutable": "5.1.5",
         "jinplace": "1.0.1",
         "jquery": "^3.4.0",
         "jquery-circle-progress": "^1.2.2",
         "jquery-plugin": "^0.0.0-ignored",
         "jquery.cookie": "1.4.1",
         "jqueryui": "1.11.1",
+        "picomatch": "2.3.2",
         "plotly.js": "^2.35.2",
         "select2": "^4.1.0-rc.0",
         "select2-foundation_theme": "https://github.com/egemensarica/select2-foundation.git#v6",

@@ -111,7 +111,7 @@ def test_changelist_with_argument(klass, model, admin_page: Page, live_server):
 def test_changeform_add(
     klass,
     model,
-    channels_live_server,
+    live_server,
     admin_page: Page,
     autor_jan_nowak,
     jednostka,
@@ -130,7 +130,7 @@ def test_changeform_add(
     rec = baker.make(model_class)
     url = f"admin:bpp_{klass}_autor_changelist"
     admin_page.goto(
-        channels_live_server.url + reverse(url) + f"?rekord__id__exact={rec.pk}"
+        live_server.url + reverse(url) + f"?rekord__id__exact={rec.pk}"
     )
 
     admin_page.wait_for_selector('a[name="_add_wa"]', state="visible")

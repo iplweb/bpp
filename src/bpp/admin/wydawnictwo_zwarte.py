@@ -468,7 +468,7 @@ class Wydawnictwo_ZwarteAdmin(
     djangoql_completion_enabled_by_default = False
     djangoql_completion = True
     search_fields = Wydawnictwo_ZwarteAdmin_Baza.search_fields
-    resource_class = resources.Wydawnictwo_ZwarteResource
+    resource_classes = [resources.Wydawnictwo_ZwarteResource]
     bibtex_resource_class = resources.Wydawnictwo_ZwarteBibTeXResource
 
     inlines = (

@@ -30,6 +30,10 @@ variable "TAG_LATEST" {
   default = "true"
 }
 
+variable "POSTGRES_VERSION" {
+  default = "16.3"
+}
+
 # Build groups for different scenarios
 group "default" {
   targets = ["dbserver", "appserver", "workerserver",
@@ -69,11 +73,18 @@ target "base" {
 target "dbserver" {
   dockerfile = "Dockerfile"
   context    = "docker/dbserver"
+  args = {
+    POSTGRES_VERSION = POSTGRES_VERSION
+  }
   tags = TAG_LATEST == "true" ? [
     "iplweb/bpp_dbserver:${DOCKER_VERSION}",
-    "iplweb/bpp_dbserver:latest"
+    "iplweb/bpp_dbserver:latest",
+    "iplweb/bpp_dbserver:psql-${POSTGRES_VERSION}",
+    "iplweb/bpp_dbserver:psql-${split(".", POSTGRES_VERSION)[0]}"
   ] : [
-    "iplweb/bpp_dbserver:${DOCKER_VERSION}"
+    "iplweb/bpp_dbserver:${DOCKER_VERSION}",
+    "iplweb/bpp_dbserver:psql-${POSTGRES_VERSION}",
+    "iplweb/bpp_dbserver:psql-${split(".", POSTGRES_VERSION)[0]}"
   ]
   platforms = [PLATFORM]
   output    = PUSH ? ["type=registry"] : ["type=docker"]

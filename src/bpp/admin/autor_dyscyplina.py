@@ -142,7 +142,7 @@ class Autor_DyscyplinaAdmin(
 
     max_allowed_export_items = 10000
 
-    resource_class = Autor_DyscyplinaResource
+    resource_classes = [Autor_DyscyplinaResource]
     form = Autor_DyscyplinaForm
 
     list_filter = [

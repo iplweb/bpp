@@ -4,8 +4,6 @@ from django.urls import reverse
 
 from import_dyscyplin.models import Import_Dyscyplin, Import_Dyscyplin_Row
 
-pytestmark = pytest.mark.uruchom_tylko_bez_microsoft_auth
-
 
 def wyslij(wd_app, plik):
     assert Import_Dyscyplin.objects.all().count() == 0

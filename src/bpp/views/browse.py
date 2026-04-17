@@ -14,7 +14,6 @@ try:
 except ImportError:
     from django.urls import reverse
 
-from django.db.models import Max, Min
 from django.db.models.query_utils import Q
 from django.http import Http404, HttpResponseForbidden, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect
@@ -454,20 +453,13 @@ class LataView(ListView):
     paginate_by = None
 
     def get_queryset(self):
-        # Get all years that have publications, with counts
-        years_data = []
-
-        # Get min and max years from Rekord
-        year_range = Rekord.objects.aggregate(min_year=Min("rok"), max_year=Max("rok"))
-
-        if year_range["min_year"] and year_range["max_year"]:
-            # Generate list of years from max to min (newest first)
-            for year in range(year_range["max_year"], year_range["min_year"] - 1, -1):
-                count = Rekord.objects.filter(rok=year).count()
-                if count > 0:  # Only include years with publications
-                    years_data.append({"year": year, "count": count})
-
-        return years_data
+        return [
+            {"year": row["rok"], "count": row["count"]}
+            for row in Rekord.objects.values("rok")
+            .annotate(count=Count("*"))
+            .filter(count__gt=0)
+            .order_by("-rok")
+        ]
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

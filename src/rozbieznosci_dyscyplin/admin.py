@@ -278,7 +278,7 @@ class RozbieznosciViewAdmin(
     EksportDanychMixin,
     admin.ModelAdmin,
 ):
-    resource_class = RozbieznosciViewResource
+    resource_classes = [RozbieznosciViewResource]
     djangoql_completion_enabled_by_default = False
     max_allowed_export_items = 10000
 
@@ -365,7 +365,7 @@ class RozbieznosciZrodelViewAdmin(
     EksportDanychMixin,
     admin.ModelAdmin,
 ):
-    resource_class = RozbieznosciZrodelViewResource
+    resource_classes = [RozbieznosciZrodelViewResource]
     paginator = CachingPaginator
     max_allowed_export_items = 10000
 

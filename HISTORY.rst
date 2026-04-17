@@ -4,6 +4,124 @@ Historia zmian
 
 .. towncrier release notes start
 
+bpp 202604.1353 (2026-04-17)
+============================
+
+Naprawione
+----------
+
+- Naprawiono czyszczenie kontenerów tworzonych przez plugin
+  ``testcontainers_bpp``. Jawny cleanup w ``pytest_unconfigure``
+  bywał pomijany przy abrupt-exit procesu pytest (``sys.exit`` z
+  fixture, nieprzechwycony wyjątek), a Ryuk jako fallback również
+  zawodził przy restarcie Docker Desktop, pozostawiając osierocone
+  kontenery PostgreSQL / Redis / RabbitMQ. Dodano safety net przez
+  ``atexit``, który zatrzymuje kontenery przy każdym normalnym
+  zakończeniu procesu pytest (szanuje ``BPP_TESTCONTAINERS_REUSE``).
+
+  Dodano też target ``make clean-testcontainers``, który jednym
+  poleceniem usuwa wszystkie kontenery oznaczone etykietą
+  ``org.testcontainers=true`` oraz stałonazwane ``bpp-tc-*`` —
+  ratunek gdy cleanup mimo wszystko padnie (np. ``SIGKILL`` na
+  pytest albo restart demona Docker).
+- Naprawiono kolizję nazw URL-i w panelu administracyjnym: trzy widoki
+  "toż" (dla ``Wydawnictwo_Ciagle``, ``Wydawnictwo_Zwarte`` oraz ``Patent``)
+  były zarejestrowane pod tą samą nazwą ``admin_bpp_wydawnictwo_ciagle_toz``,
+  przez co ``reverse()`` zawsze zwracał adres widoku patentu. Nazwy zostały
+  rozdzielone na ``admin_bpp_wydawnictwo_ciagle_toz``,
+  ``admin_bpp_wydawnictwo_zwarte_toz`` i ``admin_bpp_patent_toz``, oraz
+  dodano test regresyjny.
+- Uporządkowano konfigurację DevOps: usunięto martwy hook
+  ``pre-commit-circleci`` (projekt używa GitHub Actions), skrócono
+  ``start_period`` healthchecka serwisu ``appserver`` z 1800s do 120s,
+  dodano raportujący (non-blocking) skan obrazów Docker przez Trivy
+  w workflow ``build-docker-images.yml`` oraz zastąpiono
+  ``filterwarnings = ignore`` w ``pytest.ini`` trybem ``default``
+  z wąskimi wyjątkami dla znanego szumu z bibliotek zewnętrznych,
+  tak aby realne ostrzeżenia (np. ``USE_L10N`` z Django) były widoczne.
+- Usunięto nadpisanie ``SESSION_COOKIE_SECURE`` i ``CSRF_COOKIE_SECURE``
+  w ``production.py``, które wyłączało bezpieczne flagi ciasteczek sesji
+  i CSRF. Wartości z ``base.py`` (``True``) są teraz poprawnie dziedziczone
+  — ciasteczka są wysyłane wyłącznie przez HTTPS. Rozpoznawanie połączeń
+  szyfrowanych za nginx-em działa dzięki już ustawionemu
+  ``SECURE_PROXY_SSL_HEADER``.
+- Zoptymalizowano widok listy lat publikacji (``/lata/``) — zamiast
+  wykonywać osobne zapytanie ``COUNT`` dla każdego rocznika, widok
+  pobiera liczby publikacji jednym zapytaniem ``GROUP BY``. Na
+  uczelniach z szerokim zakresem lat publikacji strona ładuje się
+  wyraźnie szybciej.
+
+
+Usprawnienie
+------------
+
+- Dodano testy jednostkowe dla aplikacji ``django_pg_baseline``
+  pokrywające ładowanie konfiguracji, obliczanie świeżości migracji,
+  generowanie metadanych, monkey-patch tworzenia bazy testowej,
+  regenerację dumpu oraz komendy zarządzające (``baseline_check``,
+  ``baseline_info``, ``baseline_load``, ``baseline_rebuild``).
+- Logika szybkiego bootstrapu bazy testowej z ``pg_dump`` (dotychczas
+  rozproszona po ``baseline/``, ``src/conftest.py``, ``Makefile``,
+  ``docker-compose.baseline.yml`` i entrypoincie kontenera) została
+  wyodrębniona do reusable Django app ``django_pg_baseline`` w
+  ``src/django_pg_baseline/``.
+
+  Pakiet udostępnia cztery komendy zarządzania: ``baseline_rebuild``
+  (regeneruje dump przez ``testcontainers``, bez potrzeby oddzielnego
+  ``docker-compose.baseline.yml``), ``baseline_load`` (ładuje dump do
+  wskazanej bazy, no-op gdy baza nie jest pusta), ``baseline_check``
+  (gate CI sprawdzający deltę migracji) oraz ``baseline_info``
+  (czytelny raport o stanie baseline).
+
+  Monkey-patch na ``_create_test_db``, wcześniej wklejony inline w
+  ``src/conftest.py``, jest teraz instalowany automatycznie z
+  ``AppConfig.ready()`` gdy pakiet jest w ``INSTALLED_APPS``.
+
+  Katalog z dumpem został przeniesiony z ``baseline/`` do
+  ``src/baseline-sql/`` — ``baseline.sql`` i ``baseline.meta.json``
+  dalej żyją w repo, ale jako wyraźny data sidecar obok kodu pakietu.
+  Konfiguracja w ``settings.PG_BASELINE`` została skrócona z ~25 linii
+  do kilku kluczy; defaulty (lista argumentów ``pg_dump``, zamrażane
+  kolumny timestampów, alias bazy, próg freshness) żyją teraz w samym
+  pakiecie, a projekt-konsument ustawia tylko ``BASELINE_DIR`` plus
+  ewentualne nadpisania.
+
+  Zależność ``testcontainers[postgres]`` jest opcjonalna
+  (``uv sync --extra baseline-rebuild``) — wymagana tylko dla
+  ``baseline_rebuild``, pozostałe komendy jej nie potrzebują.
+- Zmienna ``DJANGO_SETTINGS_MODULE`` została przeniesiona z sekcji
+  ``environment:`` kontenerów (``appserver``, ``celerybeat``,
+  ``workerserver-*``, ``denorm-queue``) do plików ``.env`` / ``.env.docker``
+  / ``.env.example``. Devowy docker-compose konsekwentnie używa ustawień
+  ``django_bpp.settings.local``; serwis ``authserver`` pozostaje bez
+  zmian (korzysta z własnego modułu ``django_bpp.settings.auth_server``).
+
+
+Usunięto
+--------
+
+- Usunięto dev-only serwis ``webserver`` (nginx) z ``docker-compose.yml``
+  oraz katalog ``docker/webserver/``. Produkcyjny nginx żyje w osobnym
+  repozytorium ``bpp-deploy`` (``defaults/webserver/``) i znacząco
+  różni się od dotychczasowej wersji lokalnej (HTTP/3 QUIC, nagłówki
+  bezpieczeństwa, resolver Dockera, ``/healthz``). Trzymanie dwóch
+  rozjechanych kopii w dwóch repo powodowało dryf konfiguracji
+  i fałszywe poczucie testowania prod-ready stacka lokalnie.
+
+  Lokalny development używa ``runserver`` razem z infrastrukturą
+  podnoszoną przez ``docker compose up db redis rabbitmq``, więc
+  nginx przed appserverem był nadmiarowy. Jeśli potrzebujesz
+  przetestować pełny stack za nginxem zgodny z produkcją, użyj
+  ``bpp-deploy``.
+- Usunięto mechanizm automatycznych offsetów portów per-worktree: skrypt
+  ``bin/prepare-worktree.sh``, targety ``make new-worktree`` /
+  ``make clean-worktree`` oraz sekcję „Docker exposed ports (with worktree
+  offset)” w ``.env.example``. Równoległa izolacja testów jest realizowana
+  przez ``testcontainers_bpp`` (losowe porty), więc dev-stack może
+  spokojnie jeździć na jednej kopii usług na maszynę na domyślnych
+  portach (``5432`` / ``6379`` / ``5672`` / ``8000`` …).
+
+
 bpp 202604.1352 (2026-04-08)
 ============================
 

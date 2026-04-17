@@ -101,7 +101,7 @@ class EksportDanychZFormatowanieMixin(ExportMixin):
         """
         if isinstance(file_format, BibTeXFormat) and self.bibtex_resource_class:
             return self.bibtex_resource_class
-        return self.resource_class
+        return self.resource_classes[0]
 
     def get_export_data(self, file_format, queryset, *args, **kwargs):
         """
@@ -217,9 +217,9 @@ class ExportActionsMixin:
         queryset = queryset[:max_allowed_export_items]
 
         file_format = PrettyXLSX()
-        if hasattr(self, "resource_class") and self.resource_class:
+        if hasattr(self, "resource_classes") and self.resource_classes:
             try:
-                resource = self.resource_class()
+                resource = self.resource_classes[0]()
                 dataset = resource.export(queryset)
                 export_data = file_format.export_data(dataset)
                 response = HttpResponse(

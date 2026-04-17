@@ -15,6 +15,15 @@
             {% if request.user.is_anonymous %}
                 {% load crispy_forms_tags %}
                 {% crispy form %}
+                {% if orcid_login_enabled %}
+                <div style="margin-top: 1rem;">
+                    <a href="{% url "orcid_integration:login" %}{% if request.GET.next %}?next={{ request.GET.next|urlencode }}{% endif %}"
+                       class="button expanded"
+                       style="background-color: #a6ce39; color: #fff;">
+                        Zaloguj się przez ORCID
+                    </a>
+                </div>
+                {% endif %}
                 {% if not microsoft_login_enabled %}
                 <a href="{% url "password_reset" %}">Zapomniałem/am hasła.</a>
                 {% endif %}

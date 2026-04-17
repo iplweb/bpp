@@ -87,7 +87,7 @@ class Patent_Admin(
     ExportActionsMixin,
     Wydawnictwo_ZwarteAdmin_Baza,
 ):
-    resource_class = PatentResource
+    resource_classes = [PatentResource]
     bibtex_resource_class = resources.PatentBibTeXResource
 
     inlines = (

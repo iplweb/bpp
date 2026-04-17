@@ -26,11 +26,17 @@ def disable_cache_for_tests(settings):
     Disable caching for all tests in this module.
     This ensures that changes to Uczelnia object are immediately visible.
     """
-    # Disable Django cache
+    # Disable Django cache. The `constance_cache` entry must remain defined
+    # because django-constance's DatabaseBackend does `caches[<name>]` on
+    # first access to `constance.config` and would raise
+    # InvalidCacheBackendError if the key is missing.
     settings.CACHES = {
         "default": {
             "BACKEND": "django.core.cache.backends.dummy.DummyCache",
-        }
+        },
+        "constance_cache": {
+            "BACKEND": "django.core.cache.backends.dummy.DummyCache",
+        },
     }
     # Disable cacheops
     settings.CACHEOPS_ENABLED = False

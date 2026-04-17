@@ -5,15 +5,12 @@ from django.db.models.aggregates import Sum
 from django.http.response import HttpResponseRedirect
 from django.template.defaultfilters import safe
 from django.urls import reverse
+from django.utils.functional import cached_property
 from django.views.generic.edit import FormView
 from django_tables2 import Column
 from django_tables2.export.views import ExportMixin
 from django_tables2.tables import Table
 from django_tables2.views import SingleTableView
-
-from .forms import RankingAutorowForm
-
-from django.utils.functional import cached_property
 
 from bpp.models import (
     Autor,
@@ -26,6 +23,8 @@ from bpp.models import (
     Uczelnia,
 )
 from bpp.models.struktura import Wydzial
+
+from .forms import RankingAutorowForm
 
 
 class RankingAutorowFormularz(FormView):
@@ -129,16 +128,11 @@ class RankingAutorowTable(Table):
         self.lp_counter = getattr(
             self, "lp_counter", itertools.count(self.page.start_index())
         )
-        return "%i." % next(self.lp_counter)
+        return f"{next(self.lp_counter)}."
 
     def render_autor(self, record):
-        return safe(
-            '<a href="%s">%s</a>'
-            % (
-                reverse("bpp:browse_autor", args=(record.autor.slug,)),
-                str(record.autor),
-            )
-        )
+        url = reverse("bpp:browse_autor", args=(record.autor.slug,))
+        return safe(f'<a href="{url}">{record.autor}</a>')
 
     def value_autor(self, record):
         return str(record.autor)
@@ -157,8 +151,8 @@ class RankingAutorowJednostkaWydzialTable(RankingAutorowTable):
         )
         order_by = ("-impact_factor_sum", "autor__nazwisko")
 
-    jednostka = Column(accessor="jednostka.nazwa")
-    wydzial = Column(accessor="jednostka.wydzial.nazwa")
+    jednostka = Column(accessor="jednostka__nazwa")
+    wydzial = Column(accessor="jednostka__wydzial__nazwa")
 
 
 class RankingAutorow(ExportMixin, SingleTableView):
@@ -224,58 +218,32 @@ class RankingAutorow(ExportMixin, SingleTableView):
     def bez_nieaktualnych(self):
         return self.request.GET.get("bez_nieaktualnych", "True") == "True"
 
-    def get_queryset(self):
-        qset = Sumy.objects.all()
-        qset = qset.filter(
-            rok__gte=self.kwargs["od_roku"], rok__lte=self.kwargs["do_roku"]
-        )
-
-        # Always check for jednostki filter first
+    def _apply_location_filters(self, qset):
         jednostki = self.get_jednostki()
         if jednostki:
             qset = qset.filter(jednostka__in=jednostki)
 
-        # Also check for wydzialy filter if uczelnia uses wydzialy
         uczelnia = Uczelnia.objects.first()
-        if uczelnia and uczelnia.uzywaj_wydzialow:
+        if uczelnia and uczelnia.uzywaj_wydzialow and not jednostki:
             wydzialy = self.get_wydzialy()
             if wydzialy:
-                # If both jednostki and wydzialy are specified,
-                # jednostki filter takes precedence (already applied above)
-                # Only apply wydzial filter if no jednostki filter was applied
-                if not jednostki:
-                    qset = qset.filter(jednostka__wydzial__in=wydzialy)
+                qset = qset.filter(jednostka__wydzial__in=wydzialy)
 
-        # Apply charakter_formalny filter if provided
+        return qset
+
+    def _apply_type_filters(self, qset):
         charakter_formalny_ids = self.get_charakter_formalny_ids()
         if charakter_formalny_ids:
             qset = qset.filter(charakter_formalny_id__in=charakter_formalny_ids)
 
-        # Apply typ_kbn filter if provided
         typ_kbn_ids = self.get_typ_kbn_ids()
         if typ_kbn_ids:
             qset = qset.filter(typ_kbn_id__in=typ_kbn_ids)
 
-        if self.tylko_afiliowane:
-            qset = qset.filter(jednostka__skupia_pracownikow=True)
-            qset = qset.filter(afiliuje=True)
+        return qset
 
-        if self.rozbij_na_wydzialy:
-            qset = qset.prefetch_related("jednostka__wydzial").select_related(
-                "autor", "jednostka"
-            )
-            qset = qset.group_by("autor", "jednostka")
-        else:
-            qset = qset.select_related("autor")
-            qset = qset.group_by("autor")
-
-        qset = qset.annotate(
-            impact_factor_sum=Sum("impact_factor"),
-            liczba_cytowan_sum=Sum("liczba_cytowan"),
-            punkty_kbn_sum=Sum("punkty_kbn"),
-        )
+    def _apply_exclusions(self, qset):
         qset = qset.exclude(impact_factor_sum=0, liczba_cytowan_sum=0, punkty_kbn_sum=0)
-
         qset = qset.exclude(autor__pokazuj=False)
 
         if self.bez_kol_naukowych:
@@ -293,6 +261,34 @@ class RankingAutorow(ExportMixin, SingleTableView):
                 qset = qset.exclude(status_korekty_id__in=ukryte_statusy)
 
         return qset
+
+    def get_queryset(self):
+        qset = Sumy.objects.filter(
+            rok__gte=self.kwargs["od_roku"], rok__lte=self.kwargs["do_roku"]
+        )
+
+        qset = self._apply_location_filters(qset)
+        qset = self._apply_type_filters(qset)
+
+        if self.tylko_afiliowane:
+            qset = qset.filter(jednostka__skupia_pracownikow=True, afiliuje=True)
+
+        if self.rozbij_na_wydzialy:
+            qset = qset.prefetch_related("jednostka__wydzial").select_related(
+                "autor", "jednostka"
+            )
+            qset = qset.group_by("autor", "jednostka")
+        else:
+            qset = qset.select_related("autor")
+            qset = qset.group_by("autor")
+
+        qset = qset.annotate(
+            impact_factor_sum=Sum("impact_factor"),
+            liczba_cytowan_sum=Sum("liczba_cytowan"),
+            punkty_kbn_sum=Sum("punkty_kbn"),
+        )
+
+        return self._apply_exclusions(qset)
 
     def get_dostepne_wydzialy(self):
         return Wydzial.objects.filter(zezwalaj_na_ranking_autorow=True)
@@ -361,11 +357,10 @@ class RankingAutorow(ExportMixin, SingleTableView):
 
         # Build title
         if jeden_rok:
-            context["table_title"] = "Ranking autorów za rok %s" % context["rok"]
+            context["table_title"] = f"Ranking autorów za rok {context['rok']}"
         else:
-            context["table_title"] = "Ranking autorów za lata {} - {}".format(
-                context["od_roku"],
-                context["do_roku"],
+            context["table_title"] = (
+                f"Ranking autorów za lata {context['od_roku']} - {context['do_roku']}"
             )
 
         # Build subtitle based on filters

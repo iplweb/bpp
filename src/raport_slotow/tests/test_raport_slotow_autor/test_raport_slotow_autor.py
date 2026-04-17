@@ -1,6 +1,6 @@
 from io import BytesIO
 
-import PyPDF2
+import pypdf
 import pytest
 from django.urls import reverse
 from openpyxl import load_workbook
@@ -45,7 +45,7 @@ def test_raport_slotow_autor_brak_danych(admin_client, autor_jan_kowalski, rok):
     res = admin_client.get(url + "?_export=xlsx")
     assert res.status_code == 200
     wb = load_workbook(BytesIO(res.content))
-    assert len(wb.get_sheet_names()) > 0
+    assert len(wb.sheetnames) > 0
 
 
 def test_raport_slotow_autor_sa_dane_eksport_wszystkiego(
@@ -76,7 +76,7 @@ def test_raport_slotow_autor_sa_dane_eksport_wszystkiego(
     res = admin_client.get(url + "?_export=xlsx")
     assert res.status_code == 200
     wb = load_workbook(BytesIO(res.content))
-    assert len(wb.get_sheet_names()) > 0
+    assert len(wb.sheetnames) > 0
 
 
 def test_raport_slotow_autor_sa_dane_eksport_wszystkiego_do_pdf(
@@ -102,8 +102,8 @@ def test_raport_slotow_autor_sa_dane_eksport_wszystkiego_do_pdf(
 
     res = admin_client.get(url + "?_export=pdf")
     assert res.status_code == 200
-    pdfReader = PyPDF2.PdfReader(BytesIO(res.content))
-    assert len(pdfReader.pages) >= 1
+    reader = pypdf.PdfReader(BytesIO(res.content))
+    assert len(reader.pages) >= 1
 
 
 def test_raport_slotow_autor_zbieraj_slot(
@@ -131,7 +131,7 @@ def test_raport_slotow_autor_zbieraj_slot(
     res = admin_client.get(url + "?_export=xlsx")
     assert res.status_code == 200
     wb = load_workbook(BytesIO(res.content))
-    assert len(wb.get_sheet_names()) > 0
+    assert len(wb.sheetnames) > 0
 
 
 def test_raport_slotow_autor_wartosci_poczatkowe(admin_client):

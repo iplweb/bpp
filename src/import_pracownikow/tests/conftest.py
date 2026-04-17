@@ -15,9 +15,10 @@ def testdata_xls_path_factory(suffix=""):
 
 def import_pracownikow_factory(user, path):
     i = ImportPracownikow(owner=user)
-    i.plik_xls = SimpleUploadedFile(
-        "import_dyscyplin_zrodel_przyklad.xlsx", open(path, "rb").read()
-    )
+    with open(path, "rb") as f:
+        i.plik_xls = SimpleUploadedFile(
+            "import_dyscyplin_zrodel_przyklad.xlsx", f.read()
+        )
     i.save()
     return i
 

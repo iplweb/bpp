@@ -41,13 +41,11 @@ def _wydzial_maker(nazwa, skrot, uczelnia, **kwargs):
     )[0]
 
 
-@pytest.mark.django_db
 @pytest.fixture
 def wydzial_maker(db):
     return _wydzial_maker
 
 
-@pytest.mark.django_db
 @pytest.fixture(scope="function")
 def wydzial(uczelnia, db):
     return _wydzial_maker(uczelnia=uczelnia, skrot="W1", nazwa="Wydział Testowy I")
@@ -91,13 +89,11 @@ def _jednostka_maker(nazwa, skrot, wydzial, **kwargs):
 JEDNOSTKA_UCZELNI = "Jednostka Uczelni"
 
 
-@pytest.mark.django_db
 @pytest.fixture(scope="function")
 def jednostka(wydzial, db):
     return _jednostka_maker(JEDNOSTKA_UCZELNI, skrot="Jedn. Ucz.", wydzial=wydzial)
 
 
-@pytest.mark.django_db
 @pytest.fixture(scope="function")
 def kolo_naukowe(jednostka: Jednostka):
     jednostka.nazwa = "Studenckie Koło Naukowe Przykładowe"
@@ -107,7 +103,6 @@ def kolo_naukowe(jednostka: Jednostka):
     return jednostka
 
 
-@pytest.mark.django_db
 @pytest.fixture(scope="function")
 def aktualna_jednostka(jednostka: Jednostka, wydzial, db):
     jednostka.jednostka_wydzial_set.create(wydzial=wydzial)
@@ -115,13 +110,11 @@ def aktualna_jednostka(jednostka: Jednostka, wydzial, db):
     return jednostka
 
 
-@pytest.mark.django_db
 @pytest.fixture
 def drugi_wydzial(uczelnia):
     return baker.make(Wydzial, uczelnia=uczelnia)
 
 
-@pytest.mark.django_db
 @pytest.fixture
 def druga_aktualna_jednostka(druga_jednostka, drugi_wydzial):
     druga_jednostka.jednostka_wydzial_set.create(wydzial=drugi_wydzial)
@@ -132,7 +125,6 @@ def druga_aktualna_jednostka(druga_jednostka, drugi_wydzial):
 JEDNOSTKA_PODRZEDNA = "Jednostka P-rzedna"
 
 
-@pytest.mark.django_db
 @pytest.fixture(scope="function")
 def jednostka_podrzedna(jednostka):
     return _jednostka_maker(
@@ -140,7 +132,6 @@ def jednostka_podrzedna(jednostka):
     )
 
 
-@pytest.mark.django_db
 @pytest.fixture(scope="function")
 def druga_jednostka(wydzial, db):
     return _jednostka_maker(
@@ -148,7 +139,6 @@ def druga_jednostka(wydzial, db):
     )
 
 
-@pytest.mark.django_db
 @pytest.fixture(scope="function")
 def obca_jednostka(wydzial):
     return _jednostka_maker(

@@ -2,6 +2,8 @@
 
 cd /app
 
+bpp-sync-deps
+
 if [ "$ENABLE_AUTORELOAD_ON_CODE_CHANGE" = "1" ] || [ "$ENABLE_AUTORELOAD_ON_CODE_CHANGE" = "true" ]; then
     echo "Auto-reload ENABLED for beat"
     echo "Installing watchdog for auto-reload functionality..."

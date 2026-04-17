@@ -12,26 +12,27 @@ from bpp.models import (
 )
 
 
+@pytest.fixture(params=["wydawnictwo_zwarte", "wydawnictwo_ciagle", "patent"])
+def rekord_wydawniczy(request):
+    return request.getfixturevalue(request.param)
+
+
 @pytest.mark.django_db
-@pytest.mark.parametrize(
-    "w",
-    [
-        pytest.lazy_fixture("wydawnictwo_zwarte"),
-        pytest.lazy_fixture("wydawnictwo_ciagle"),
-        pytest.lazy_fixture("patent"),
-    ],
-)
-def test_autor_jednostka_afiliuje_na_obca(autor_jan_kowalski, obca_jednostka, w):
+def test_autor_jednostka_afiliuje_na_obca(
+    autor_jan_kowalski, obca_jednostka, rekord_wydawniczy
+):
     from django.conf import settings
 
     assert getattr(settings, "BPP_WALIDUJ_AFILIACJE_AUTOROW", True)
 
     with pytest.raises(ValidationError):
-        w.dodaj_autora(autor_jan_kowalski, obca_jednostka, afiliuje=True)
+        rekord_wydawniczy.dodaj_autora(
+            autor_jan_kowalski, obca_jednostka, afiliuje=True
+        )
 
     obca_jednostka.skupia_pracownikow = True
     obca_jednostka.save()
-    w.dodaj_autora(autor_jan_kowalski, obca_jednostka, afiliuje=True)
+    rekord_wydawniczy.dodaj_autora(autor_jan_kowalski, obca_jednostka, afiliuje=True)
 
 
 @pytest.mark.django_db

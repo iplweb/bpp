@@ -41,7 +41,6 @@ COMPRESS_OFFLINE = False
 
 ALLOWED_HOSTS = [
     "dockerhost",
-    "webserver",
     "localhost",
     "127.0.0.1",
     "mac.iplweb",

@@ -172,7 +172,7 @@ class Praca_HabilitacyjnaAdmin(
     ExportActionsMixin,
     Praca_Doktorska_Habilitacyjna_Admin_Base,
 ):
-    resource_class = Praca_HabilitacyjnaResource
+    resource_classes = [Praca_HabilitacyjnaResource]
     bibtex_resource_class = resources.Praca_HabilitacyjnaBibTeXResource
 
     inlines = [

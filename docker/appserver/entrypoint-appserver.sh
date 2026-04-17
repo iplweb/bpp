@@ -7,7 +7,13 @@ export PGPASSWORD="${DJANGO_BPP_DB_PASSWORD}"
 
 cd /app
 
+bpp-sync-deps
+
 # === PHASE 1: Migration (BLOCKING) ===
+# baseline_load fast-imports baseline.sql on an empty DB (no-op
+# otherwise); migrate then applies the small delta of newer migrations.
+echo "Loading baseline (no-op on non-empty DB)..."
+uv run src/manage.py baseline_load || true
 echo "Database migrations..."
 uv run src/manage.py migrate
 echo "Migrations done."

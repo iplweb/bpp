@@ -5,6 +5,18 @@ import pytest
 from django.core.exceptions import ValidationError
 
 
+@pytest.fixture(
+    params=[
+        "wydawnictwo_ciagle",
+        "wydawnictwo_zwarte",
+        "praca_doktorska",
+        "praca_habilitacyjna",
+    ]
+)
+def opl_pub_obj(request):
+    return request.getfixturevalue(request.param)
+
+
 @pytest.mark.django_db
 @pytest.mark.parametrize(
     "kwargs,expectation",
@@ -55,18 +67,9 @@ from django.core.exceptions import ValidationError
         ),
     ],
 )
-@pytest.mark.parametrize(
-    "obj",
-    [
-        pytest.lazy_fixture("wydawnictwo_ciagle"),
-        pytest.lazy_fixture("wydawnictwo_zwarte"),
-        pytest.lazy_fixture("praca_doktorska"),
-        pytest.lazy_fixture("praca_habilitacyjna"),
-    ],
-)
-def test_ModelZeZrodlemFinansowania_clean(obj, kwargs, expectation):
+def test_ModelZeZrodlemFinansowania_clean(opl_pub_obj, kwargs, expectation):
     for attr, value in kwargs.items():
-        setattr(obj, attr, value)
+        setattr(opl_pub_obj, attr, value)
 
     with expectation:
-        obj.clean()
+        opl_pub_obj.clean()

@@ -10,7 +10,6 @@ from bpp.tests.util import CURRENT_YEAR, any_autor, any_ciagle, any_jednostka
 pytestmark = [pytest.mark.slow, pytest.mark.playwright]
 
 
-@pytest.mark.django_db
 @pytest.fixture
 def jednostka_raportow(
     typy_odpowiedzialnosci, jezyki, statusy_korekt, typy_kbn, charaktery_formalne

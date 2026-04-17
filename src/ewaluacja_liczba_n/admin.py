@@ -97,7 +97,7 @@ class LiczbaNDlaUczelniResource(resources.ModelResource):
 class IloscUdzialowDlaAutoraZaRokAdmin(
     DynamicAdminFilterMixin, EksportDanychMixin, ReadonlyAdminMixin, admin.ModelAdmin
 ):
-    resource_class = IloscUdzialowDlaAutoraZaRokResource
+    resource_classes = [IloscUdzialowDlaAutoraZaRokResource]
     list_display = [
         "autor",
         "dyscyplina_naukowa",
@@ -118,7 +118,7 @@ class IloscUdzialowDlaAutoraZaRokAdmin(
 class IloscUdzialowDlaAutoraZaCaloscAdmin(
     DynamicAdminFilterMixin, EksportDanychMixin, ReadonlyAdminMixin, admin.ModelAdmin
 ):
-    resource_class = IloscUdzialowDlaAutoraZaCaloscResource
+    resource_classes = [IloscUdzialowDlaAutoraZaCaloscResource]
     list_display = [
         "autor",
         "dyscyplina_naukowa",
@@ -146,7 +146,7 @@ class LiczbaNDlaUczelniAdmin(
     ImportExportMixin,
     admin.ModelAdmin,
 ):
-    resource_class = LiczbaNDlaUczelniResource
+    resource_classes = [LiczbaNDlaUczelniResource]
 
     list_display = [
         "uczelnia",

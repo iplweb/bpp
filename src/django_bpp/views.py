@@ -2,11 +2,14 @@ import logging
 from urllib.parse import urlencode
 
 from django.conf import settings
-from django.contrib.auth import logout
+from django.contrib.auth import BACKEND_SESSION_KEY, logout
 from django.contrib.auth.views import LoginView
 from django.http import HttpResponse, HttpResponseRedirect
+from django.shortcuts import render
 from django.urls import reverse
 from django.views import View
+
+from django_bpp.middleware import EXTERNAL_AUTH_BACKENDS
 
 logger = logging.getLogger(__name__)
 
@@ -103,6 +106,41 @@ class MicrosoftLogoutView(View):
 
         # Build absolute URI
         return request.build_absolute_uri(redirect_path)
+
+
+EXTERNAL_PROVIDER_URLS = {
+    "microsoft_auth.backends.MicrosoftAuthenticationBackend": (
+        "Microsoft",
+        "https://myaccount.microsoft.com/",
+    ),
+    "orcid_integration.backends.OrcidAuthenticationBackend": (
+        "ORCID",
+        "https://orcid.org/my-orcid",
+    ),
+}
+
+
+class SmartPasswordChangeView(View):
+    """Przekierowuje do odpowiedniej strony zmiany hasła
+    w zależności od backendu, którym użytkownik się zalogował."""
+
+    def dispatch(self, request, *args, **kwargs):
+        backend = request.session.get(BACKEND_SESSION_KEY, "")
+        if backend in EXTERNAL_AUTH_BACKENDS:
+            provider, url = EXTERNAL_PROVIDER_URLS[backend]
+            return render(
+                request,
+                "registration/password_change_external.html",
+                {"provider": provider, "url": url},
+            )
+        # Klasyczne logowanie -- oryginalny formularz password_policies
+        from password_policies.views import PasswordChangeFormView
+
+        from django_bpp.forms import BppPasswordChangeForm
+
+        return PasswordChangeFormView.as_view(form_class=BppPasswordChangeForm)(
+            request, *args, **kwargs
+        )
 
 
 def is_superuser(request):

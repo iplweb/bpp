@@ -192,9 +192,10 @@ ENVFILE_PATHS.append(ENVFILE_HOMEDIR + ".local")
 # Jeżeli zmienna jest zdefiniowana w więcej, niż jednym pliku to zmienna będzie nadpisana
 # w kolejności plików:
 
-for fn in ENVFILE_PATHS:
-    if os.path.exists(fn) and os.path.isfile(fn):
-        environ.Env.read_env(fn, overwrite=True)
+if not os.environ.get("DJANGO_BPP_SKIP_DOTENV"):
+    for fn in ENVFILE_PATHS:
+        if os.path.exists(fn) and os.path.isfile(fn):
+            environ.Env.read_env(fn, overwrite=True)
 
 #
 # Czy proces jest interaktywny?
@@ -214,7 +215,6 @@ LOCALE_PATHS = [
 
 SITE_ID = 1  # dla static-sitemaps
 USE_I18N = True
-USE_L10N = True
 USE_TZ = True
 
 STATIC_URL = "/static/"
@@ -280,6 +280,7 @@ TEMPLATES = [
                 "bpp.context_processors.google_analytics.google_analytics",
                 "bpp.context_processors.pbn_token_aktualny.pbn_token_aktualny",
                 "bpp.context_processors.microsoft_auth.microsoft_auth_status",
+                "bpp.context_processors.orcid.orcid_auth_status",
                 "bpp.context_processors.testing.testing",
                 "cookielaw.context_processors.cookielaw",
                 "django_countdown.context_processors.countdown_context",
@@ -302,7 +303,7 @@ MIDDLEWARE = [
     "bpp_setup_wizard.middleware.SetupWizardMiddleware",  # After auth middleware to have request.user
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "password_policies.middleware.PasswordChangeMiddleware",
+    "django_bpp.middleware.ConditionalPasswordChangeMiddleware",
     "dj_pagination.middleware.PaginationMiddleware",
     "session_security.middleware.SessionSecurityMiddleware",
     "notifications.middleware.NotificationsMiddleware",
@@ -437,7 +438,20 @@ INSTALLED_APPS = [
     "ewaluacja_optymalizacja",
     "ewaluacja_optymalizuj_publikacje",
     "ewaluacja_dwudyscyplinowcy",
-    # Zostawiamy - bezwarunkowo
+    # UWAGA: NIE USUWAĆ aplikacji test_bpp z INSTALLED_APPS!
+    #
+    # Mimo nazwy sugerującej "tylko do testów", test_bpp dostarcza realnych
+    # modeli Django (TestOperation, TestObjectThatDoesNotExist) używanych przez
+    # testy aplikacji `long_running`. Aplikacja `long_running` operuje na
+    # modelach przez ContentType i wymaga prawdziwych tabel w bazie danych —
+    # tych modeli nie da się zastąpić mockami.
+    #
+    # Aplikacja MUSI być zarejestrowana bezwarunkowo (również w produkcji),
+    # bo baseline.sql oraz migracje zakładają istnienie tabel
+    # test_bpp_testoperation oraz test_bpp_testobjectthatdoesnotexist.
+    # W produkcji tabele pozostają puste i nieużywane — narzut = 0.
+    #
+    # Pełny opis: src/test_bpp/README.md
     "test_bpp",
     #
     "dbtemplates",
@@ -459,11 +473,29 @@ INSTALLED_APPS = [
     "pbn_wysylka_oswiadczen",
     "pbn_integrator",
     "pbn_import",
+    "orcid_integration",
     "komparator_pbn_udzialy",
     "komparator_publikacji_pbn",
     "admin_dashboard",
     "importer_publikacji",
+    "django_pg_baseline",
 ]
+
+PG_BASELINE = {
+    "BASELINE_DIR": os.path.join(SITE_ROOT, "baseline-sql"),
+    # Our image has plpython3u + pl_PL.UTF-8 locale — vanilla postgres doesn't.
+    "REBUILD_IMAGE": "iplweb/bpp_dbserver:latest",
+    # bpp-specific exclusions on top of the generic django_session default.
+    "PG_DUMP_EXTRA_EXCLUDE_TABLE_DATA": [
+        "django_cache*",
+        "easy_thumbnails_*",
+    ],
+    # dbtemplates inserts rows via data-migration — we keep them in the
+    # dump, but freeze their timestamps for a deterministic diff.
+    "FREEZE_TIMESTAMPS_EXTRA": [
+        ("django_template", ["creation_date", "last_changed"]),
+    ],
+}
 
 # Profile użytkowników
 AUTH_USER_MODEL = "bpp.BppUser"
@@ -671,8 +703,7 @@ PASSWORD_USE_HISTORY = env("DJANGO_BPP_USE_PASSWORD_HISTORY")
 
 PASSWORD_HISTORY_COUNT = env("DJANGO_BPP_PASSWORD_HISTORY_COUNT")
 
-# wymagane przez django-password-policies
-SESSION_SERIALIZER = "django.contrib.sessions.serializers.PickleSerializer"
+SESSION_SERIALIZER = "django.contrib.sessions.serializers.JSONSerializer"
 
 MESSAGE_STORAGE = "messages_extends.storages.FallbackStorage"
 
@@ -997,21 +1028,9 @@ if MICROSOFT_AUTH_CLIENT_ID:
     # Konfiguracja w urls.py doda microsoft_auth.urls do ścieżki jezeli wykryje
     # aplikację `microsoft_auth` w INSTALLED_APPS
 
-    # A teraz, ponieważ korzystamy z logowania przez microsoft_auth, wyłącz
-    # polityki dotyczące haseł lokalnych. Problem polega na tym, że użytkownik po zalogowaniu
-    # się przez microsoft_auth dostaje komunikat, że jego hasło uległo przeterminowaniu
-    # i ma je zmienić...
-
-    TEMPLATES[0]["OPTIONS"]["context_processors"].remove(
-        "password_policies.context_processors.password_status"
-    )
-    MIDDLEWARE.remove("password_policies.middleware.PasswordChangeMiddleware")
-    INSTALLED_APPS.remove("password_policies")
-
-    logger.warning(
-        "Używam autoryzacji microsoft_auth, wbudowana w BPP polityka haseł (zmiany, skomplikowanie)"
-        " została wyłączona"
-    )
+    # password_policies pozostaje aktywne -- ConditionalPasswordChangeMiddleware
+    # rozróżnia OAuth (Microsoft, ORCID) od logowania klasycznego i pomija
+    # egzekwowanie polityki haseł dla użytkowników zalogowanych zewnętrznie.
 
 # Konfiguracja logout redirect dla Microsoft Auth
 # To jest URL, na który użytkownik zostanie przekierowany po wylogowaniu z Microsoft
@@ -1042,6 +1061,16 @@ if AUTH_LDAP_SERVER_URI and MICROSOFT_AUTH_CLIENT_ID:
 # Koniec weryfikacji konfiguracji ilości backendów autoryzacyjnych
 #
 
+#
+# ORCID authentication backend — always available, enabled per-Uczelnia
+#
+if "AUTHENTICATION_BACKENDS" not in dir():
+    AUTHENTICATION_BACKENDS = [
+        "django.contrib.auth.backends.ModelBackend",
+    ]
+AUTHENTICATION_BACKENDS = list(AUTHENTICATION_BACKENDS) + [
+    "orcid_integration.backends.OrcidAuthenticationBackend",
+]
 
 #
 # Konfiguracja serwera pocztowego

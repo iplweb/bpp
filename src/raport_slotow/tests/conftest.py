@@ -32,7 +32,6 @@ def _rekord_slotu_maker(autor, jednostka, dyscyplina, wydawnictwo_ciagle, rok):
     )
 
 
-@pytest.mark.django_db
 @pytest.fixture
 def rekord_slotu(
     autor_jan_kowalski, jednostka, dyscyplina1, wydawnictwo_ciagle_z_autorem, rok
@@ -42,7 +41,6 @@ def rekord_slotu(
     )
 
 
-@pytest.mark.django_db
 @pytest.fixture
 def raport_slotow_uczelnia(db):
     return baker.make(RaportSlotowUczelnia)

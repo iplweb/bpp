@@ -15,6 +15,80 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  lint:
+    # Lint only Python files changed in this push/PR. The repo's
+    # convention is that ruff runs on changed files only (see
+    # pre-commit config); historic drift in unchanged files is
+    # deliberately left alone, so CI must match that scope.
+    name: Lint changed files
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Install system build deps
+        # uv run triggers a full project sync, and several wheels (pycairo
+        # via svglib/xhtml2pdf, psycopg2, python-ldap, cryptography) need
+        # native headers to build. Reuse docker/bpp_base/build.txt so the
+        # package list stays in sync with the runtime/test images.
+        run: |
+          sudo apt-get update
+          xargs -a docker/bpp_base/build.txt sudo apt-get install -y
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Determine diff base
+        id: base
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+          BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            git fetch --no-tags --depth=100 origin "$BASE_REF"
+            echo "ref=origin/$BASE_REF" >> "$GITHUB_OUTPUT"
+          elif [ -n "$BEFORE_SHA" ] && \
+               [ "$BEFORE_SHA" != "0000000000000000000000000000000000000000" ]; then
+            echo "ref=$BEFORE_SHA" >> "$GITHUB_OUTPUT"
+          else
+            # First push to a new branch: diff against dev
+            git fetch --no-tags --depth=100 origin dev
+            echo "ref=origin/dev" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Collect changed Python files
+        id: files
+        env:
+          DIFF_BASE: ${{ steps.base.outputs.ref }}
+        run: |
+          files=$(git diff --name-only --diff-filter=AM \
+            "$DIFF_BASE"...HEAD -- '*.py' | tr '\n' ' ')
+          echo "list=$files" >> "$GITHUB_OUTPUT"
+          if [ -n "$files" ]; then
+            echo "Changed Python files:"
+            printf '  %s\n' $files
+          else
+            echo "No Python files changed."
+          fi
+
+      - name: Ruff check
+        if: steps.files.outputs.list != ''
+        env:
+          FILES: ${{ steps.files.outputs.list }}
+        run: uv run ruff check $FILES
+
+      - name: Ruff format --check
+        if: steps.files.outputs.list != ''
+        env:
+          FILES: ${{ steps.files.outputs.list }}
+        run: uv run ruff format --check $FILES
+
   build:
     # Skip this job if it's a "Merge tag" commit on the dev branch
     if: |
@@ -32,13 +106,26 @@ jobs:
     steps:
     - uses: actions/checkout@v6
 
+    - name: Set up Python for baseline freshness check
+      uses: actions/setup-python@v6
+      with:
+        python-version: "3.12"
+
+    - name: Check baseline freshness
+      # Fail loudly if migrations have outpaced the baseline pg_dump by
+      # more than --max-delta. When this fails, the fix is to run
+      # `make rebuild-baseline` locally and commit the refreshed files.
+      run: |
+        pip install --quiet django
+        python baseline/check_freshness.py --max-delta 50
+
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v4
       with:
         driver: docker-container
 
     - name: Cache Docker layers
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: /tmp/.buildx-cache
         key: >-
@@ -96,6 +183,7 @@ jobs:
         docker compose -f docker-compose.test.yml run --rm \
           test-runner uv run pytest \
             -m "not playwright" -n auto \
+            --timeout 300 \
             --cov=src/ --cov-branch \
             --cov-report=xml:cov.xml
 
@@ -105,6 +193,7 @@ jobs:
         docker compose -f docker-compose.test.yml run --rm \
           test-runner uv run pytest \
             -m "playwright" -n auto \
+            --timeout 300 \
             --cov=src/ --cov-branch --cov-append \
             --cov-report=xml:cov.xml
 

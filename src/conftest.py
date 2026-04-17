@@ -18,7 +18,11 @@ from bpp.tests.helpers import (  # noqa: F401 - re-export helpers
     ciagle_publikacja,
     zwarte_publikacja,
 )
-from channels_live_server import channels_live_server  # noqa: F401 pytest fixture
+from channels_live_server import channels_live_server  # noqa: F401
+
+# Baseline test-DB monkey-patch is installed by
+# ``django_pg_baseline.apps.DjangoPgBaselineConfig.ready()`` (the app
+# lives in INSTALLED_APPS + settings.PG_BASELINE).
 
 # =============================================================================
 # Fixtures użytkowników i klientów (przeniesione z tests_legacy/conftest.py)
@@ -250,8 +254,13 @@ def pytest_collection_modifyitems(items):
     """Ensure tests marked with 'serial' run sequentially on the same worker in pytest-xdist."""
     for item in items:
         if "serial" in item.keywords:
-            # Assign all serial tests to the same xdist_group so they run on the same worker
-            item.add_marker(pytest.mark.xdist_group("serial"))
+            # Group serial tests by directory prefix (4 path components) so that
+            # playwright/integration/multiseek/pbn groups each land on a separate
+            # worker instead of all queuing on one. Tests within a group still run
+            # sequentially because xdist_group guarantees same-worker ordering.
+            path_parts = item.nodeid.split("/")
+            group_key = "_".join(path_parts[: min(4, len(path_parts) - 1)])
+            item.add_marker(pytest.mark.xdist_group(f"serial_{group_key}"))
 
 
 pytest.mark.uruchom_tylko_bez_microsoft_auth = pytest.mark.skipif(
