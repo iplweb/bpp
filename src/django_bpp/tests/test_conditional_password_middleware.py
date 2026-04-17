@@ -3,10 +3,8 @@ from django.contrib.auth import BACKEND_SESSION_KEY
 from django.contrib.sessions.backends.db import SessionStore
 from django.test import RequestFactory
 
-from django_bpp.middleware import (
-    EXTERNAL_AUTH_BACKENDS,
-    ConditionalPasswordChangeMiddleware,
-)
+from django_bpp.external_auth import EXTERNAL_AUTH_BACKENDS
+from django_bpp.middleware import ConditionalPasswordChangeMiddleware
 
 
 @pytest.fixture()

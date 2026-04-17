@@ -9,7 +9,7 @@ from django.shortcuts import render
 from django.urls import reverse
 from django.views import View
 
-from django_bpp.middleware import EXTERNAL_AUTH_BACKENDS
+from django_bpp.external_auth import EXTERNAL_AUTH_BACKENDS
 
 logger = logging.getLogger(__name__)
 
