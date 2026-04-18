@@ -41,21 +41,22 @@ def test_load_baseline_missing_file_raises(tmp_path):
         load_baseline({"NAME": "db"}, tmp_path / "nope.sql")
 
 
+class _FakeCompleted:
+    returncode = 0
+
+
 def test_load_baseline_invokes_psql(tmp_path, monkeypatch):
     dump = tmp_path / "baseline.sql"
     dump.write_text("-- dump\n")
 
     captured = {}
 
-    def fake_run(cmd, env, check):
+    def fake_run(cmd, env, check, **kwargs):
         captured["cmd"] = cmd
         captured["env"] = env
         captured["check"] = check
-
-        class R:
-            returncode = 0
-
-        return R()
+        captured["kwargs"] = kwargs
+        return _FakeCompleted()
 
     monkeypatch.setattr(loader_module.subprocess, "run", fake_run)
 
@@ -68,7 +69,12 @@ def test_load_baseline_invokes_psql(tmp_path, monkeypatch):
     }
     load_baseline(dsn, dump)
 
-    assert captured["check"] is True
+    # load_baseline sets check=False and captures stdout so psql's "setval"
+    # rows don't flood stderr; only the returncode is inspected, and on
+    # nonzero it re-emits the captured stdout. The important contract is
+    # that we pass the db name, single-transaction, ON_ERROR_STOP and the
+    # dump file to psql through the right environment.
+    assert captured["check"] is False
     assert captured["cmd"][0] == "psql"
     assert "-d" in captured["cmd"]
     assert "test_db" in captured["cmd"]
@@ -89,8 +95,9 @@ def test_load_baseline_defaults_for_missing_dsn_keys(tmp_path, monkeypatch):
 
     captured = {}
 
-    def fake_run(cmd, env, check):
+    def fake_run(cmd, env, check, **kwargs):
         captured["env"] = env
+        return _FakeCompleted()
 
     monkeypatch.setattr(loader_module.subprocess, "run", fake_run)
 
