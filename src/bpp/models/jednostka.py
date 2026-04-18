@@ -56,6 +56,18 @@ class JednostkaManager(FulltextSearchMixin, TreeManager):
     def get_queryset(self, *args, **kwargs):
         return super().get_queryset(*args, **kwargs).select_related("wydzial")
 
+    def rebuild(self, *args, **kwargs):
+        # TreeManager.rebuild() internally runs `.only("pk")` on the queryset
+        # this manager returns, which under Django 5+ errors out because our
+        # default `select_related("wydzial")` can't coexist with a deferred
+        # field of the same FK. Bypass the override for this one path.
+        original = type(self).get_queryset
+        try:
+            type(self).get_queryset = TreeManager.get_queryset
+            return super().rebuild(*args, **kwargs)
+        finally:
+            type(self).get_queryset = original
+
     def widoczne(self):
         "Jednostki widoczne (nie-ukryte)"
         return self.filter(widoczna=True)

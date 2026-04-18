@@ -45,8 +45,10 @@ def test_admin_domyslnie_afiliuje_nowy_rekord(
 
     admin_page.goto(channels_live_server.url + reverse(f"admin:bpp_{url}_add"))
 
-    # Add an extra autor inline by clicking "Dodaj powiązanie autora" link
-    admin_page.get_by_text("Dodaj powiązanie autora").click()
+    # Add an extra autor inline by clicking "Dodaj powiązanie autora" link.
+    # Django 5.0+ Polish translation prepends "kolejne(go)(-ną)(-ny)" between
+    # "Dodaj" and the verbose_name, so match the stable suffix instead.
+    admin_page.locator("a.grp-add-handler", has_text="powiązanie autora").first.click()
 
     # Check if the afiliuje checkbox is checked according to the expected value
     checkbox = admin_page.locator("#id_autorzy_set-0-afiliuje")
@@ -94,8 +96,10 @@ def test_admin_domyslnie_afiliuje_istniejacy_rekord(
         + reverse(f"admin:bpp_{url}_change", args=(wydawnictwo.pk,))
     )
 
-    # Add extra autor inline - find the visible "Dodaj powiązanie autora" link and click it
-    admin_page.get_by_text("Dodaj powiązanie autora").click()
+    # Add extra autor inline - click the first "Add another powiązanie autora"
+    # link. Django 5.0+ Polish translation prepends "kolejne(go)(-ną)(-ny)" so
+    # match only the stable suffix.
+    admin_page.locator("a.grp-add-handler", has_text="powiązanie autora").first.click()
 
     # Wait for the new inline form to appear
     admin_page.wait_for_selector("#id_autorzy_set-1-autor", state="attached")
