@@ -6,9 +6,8 @@ This module contains Playwright tests that verify:
 - Default affiliation settings for new and existing records
 """
 
-from django.urls import reverse
-
 import pytest
+from django.urls import reverse
 from model_bakery import baker
 from playwright.sync_api import Page
 

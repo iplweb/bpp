@@ -110,6 +110,15 @@ jobs:
     steps:
     - uses: actions/checkout@v6
 
+    - name: Install system build deps (for uv sync)
+      # uv sync --frozen builds native wheels (pycairo, psycopg2, lxml,
+      # cryptography) that need header libraries not present on the
+      # default runner image. Reuse docker/bpp_base/build.txt so the
+      # package list stays in sync with the runtime/test images.
+      run: |
+        sudo apt-get update
+        xargs -a docker/bpp_base/build.txt sudo apt-get install -y
+
     - name: Install uv (for baseline_check)
       uses: astral-sh/setup-uv@v7
       with:
