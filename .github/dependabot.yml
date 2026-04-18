@@ -39,7 +39,6 @@ updates:
       - "/docker/beatserver"
       - "/docker/authserver"
       - "/docker/backupserver"
-      - "/docker/dbserver"
       - "/docker/denorm-queue"
     schedule:
       interval: "weekly"

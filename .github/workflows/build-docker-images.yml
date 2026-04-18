@@ -57,7 +57,7 @@ jobs:
       - name: Build and push all images
         run: |
           docker buildx bake \
-            base dbserver appserver workerserver \
+            base appserver workerserver \
             beatserver authserver denorm-queue \
             --file docker-bake.hcl \
             --set "base.args.GIT_SHA=${GIT_SHA}" \
@@ -78,7 +78,6 @@ jobs:
           set -u
           images=(
             iplweb/bpp_base
-            iplweb/bpp_dbserver
             iplweb/bpp_appserver
             iplweb/bpp_workerserver
             iplweb/bpp_beatserver

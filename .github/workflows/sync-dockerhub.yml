@@ -1,0 +1,46 @@
+name: Sync Docker Hub descriptions
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - DOCKERHUB.md
+      - .github/workflows/sync-dockerhub.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    name: Sync ${{ matrix.image }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: bpp_base
+            desc: "Base image dla stacku BPP — Django, Python deps, build-time zasoby JS/CSS."
+          - image: bpp_appserver
+            desc: "Web (Django + Daphne) dla BPP — backend HTTP/WebSocket."
+          - image: bpp_workerserver
+            desc: "Celery worker dla BPP — zadania asynchroniczne (PBN, import/eksport)."
+          - image: bpp_beatserver
+            desc: "Celery beat scheduler dla BPP — zadania periodyczne."
+          - image: bpp_authserver
+            desc: "Serwer autentykacji (SSO) dla BPP."
+          - image: bpp_denorm_queue
+            desc: "Kolejka denormalizacji danych dla BPP."
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Push DOCKERHUB.md to Docker Hub (${{ matrix.image }})
+        uses: peter-evans/dockerhub-description@v4
+        with:
+          username: ${{ vars.DOCKER_USER }}
+          password: ${{ secrets.DOCKERHUB_ADMIN_PAT }}
+          repository: iplweb/${{ matrix.image }}
+          short-description: ${{ matrix.desc }}
+          readme-filepath: ./DOCKERHUB.md
+          enable-url-completion: true
