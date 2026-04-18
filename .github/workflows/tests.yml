@@ -5,7 +5,6 @@ on:
     branches:
       - dev
       - master
-      - feature/*
   pull_request:
     branches:
       - dev
@@ -78,16 +77,19 @@ jobs:
           fi
 
       - name: Ruff check
+        # `ruff` lives in [project.optional-dependencies].dev, so the
+        # default `uv run` resolution doesn't see it. --extra dev pulls
+        # in the dev group that has ruff pinned.
         if: steps.files.outputs.list != ''
         env:
           FILES: ${{ steps.files.outputs.list }}
-        run: uv run ruff check $FILES
+        run: uv run --extra dev ruff check $FILES
 
       - name: Ruff format --check
         if: steps.files.outputs.list != ''
         env:
           FILES: ${{ steps.files.outputs.list }}
-        run: uv run ruff format --check $FILES
+        run: uv run --extra dev ruff format --check $FILES
 
   build:
     # Skip this job if it's a "Merge tag" commit on the dev branch
@@ -96,28 +98,37 @@ jobs:
 
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    continue-on-error: ${{ matrix.python-version == '3.14' }}
 
     strategy:
       max-parallel: 4
       matrix:
-        python-version: ["3.12", "3.14"]
+        # Django 5.2 officially tests on CPython 3.10–3.13; Python 3.14
+        # is not supported upstream yet. Keep the matrix to 3.12 so we
+        # aren't spending runner minutes on a build we expect to fail.
+        python-version: ["3.12"]
 
     steps:
     - uses: actions/checkout@v6
 
-    - name: Set up Python for baseline freshness check
-      uses: actions/setup-python@v6
+    - name: Install uv (for baseline_check)
+      uses: astral-sh/setup-uv@v7
       with:
-        python-version: "3.12"
+        enable-cache: true
+
+    - name: Install project deps (for baseline_check)
+      # baseline_check is a Django management command that loads the
+      # full INSTALLED_APPS. No DB connection needed — it reads
+      # src/baseline-sql/baseline.meta.json and counts migration files.
+      # --frozen is intentional: uv.lock is the single source of truth.
+      run: uv sync --frozen
 
     - name: Check baseline freshness
       # Fail loudly if migrations have outpaced the baseline pg_dump by
       # more than --max-delta. When this fails, the fix is to run
       # `make rebuild-baseline` locally and commit the refreshed files.
-      run: |
-        pip install --quiet django
-        python baseline/check_freshness.py --max-delta 50
+      env:
+        DJANGO_BPP_SKIP_DOTENV: "1"
+      run: uv run python src/manage.py baseline_check --max-delta 50
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v4
