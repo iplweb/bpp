@@ -79,9 +79,11 @@ def test_admin_domyslnie_afiliuje_istniejacy_rekord(
     autor = baker.make(Autor, nazwisko="Kowal", imiona="Ski")
     jednostka = baker.make(Jednostka, nazwa="Lol", skrot="WT")
 
-    klasa_model = {"Wydawnictwo_Ciagle": Wydawnictwo_Ciagle, "Wydawnictwo_Zwarte": Wydawnictwo_Zwarte, "Patent": Patent}[
-        klasa
-    ]
+    klasa_model = {
+        "Wydawnictwo_Ciagle": Wydawnictwo_Ciagle,
+        "Wydawnictwo_Zwarte": Wydawnictwo_Zwarte,
+        "Patent": Patent,
+    }[klasa]
     wydawnictwo = baker.make(klasa_model, tytul_oryginalny="test")
     Typ_Odpowiedzialnosci.objects.get_or_create(
         skrot="aut.", nazwa="autor", typ_ogolny=TO_AUTOR
