@@ -1,3 +1,4 @@
+from datetime import datetime
 from unittest.mock import patch
 
 import pytest
@@ -11,6 +12,9 @@ from pbn_export_queue.models import PBN_Export_Queue
 
 from django.contrib.admin.sites import AdminSite
 from django.contrib.auth import get_user_model
+from django.utils import timezone
+
+WYSYLKA_ZAKONCZONA_AT = timezone.make_aware(datetime(2023, 1, 1))
 
 
 @pytest.mark.django_db
@@ -36,7 +40,7 @@ def test_pbn_export_queue_admin_resend_single_item(wydawnictwo_ciagle, admin_use
         PBN_Export_Queue,
         rekord_do_wysylki=wydawnictwo_ciagle,
         zamowil=admin_user,
-        wysylke_zakonczono="2023-01-01 00:00:00",
+        wysylke_zakonczono=WYSYLKA_ZAKONCZONA_AT,
         zakonczono_pomyslnie=True,
         retry_after_user_authorised=True,
     )
@@ -69,7 +73,7 @@ def test_pbn_export_queue_admin_resend_action(wydawnictwo_ciagle, admin_user, rf
         PBN_Export_Queue,
         rekord_do_wysylki=wydawnictwo_ciagle,
         zamowil=admin_user,
-        wysylke_zakonczono="2023-01-01 00:00:00",
+        wysylke_zakonczono=WYSYLKA_ZAKONCZONA_AT,
         zakonczono_pomyslnie=True,
     )
 
@@ -77,7 +81,7 @@ def test_pbn_export_queue_admin_resend_action(wydawnictwo_ciagle, admin_user, rf
         PBN_Export_Queue,
         rekord_do_wysylki=wydawnictwo_ciagle,
         zamowil=admin_user,
-        wysylke_zakonczono="2023-01-01 00:00:00",
+        wysylke_zakonczono=WYSYLKA_ZAKONCZONA_AT,
         zakonczono_pomyslnie=False,
     )
 
@@ -126,7 +130,7 @@ def test_pbn_export_queue_admin_response_change_resend(
         PBN_Export_Queue,
         rekord_do_wysylki=wydawnictwo_ciagle,
         zamowil=admin_user,
-        wysylke_zakonczono="2023-01-01 00:00:00",
+        wysylke_zakonczono=WYSYLKA_ZAKONCZONA_AT,
         zakonczono_pomyslnie=True,
     )
 
