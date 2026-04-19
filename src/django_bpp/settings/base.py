@@ -542,7 +542,11 @@ def autoslug_gen():
     )
 
 
-BAKER_CUSTOM_FIELDS_GEN = {"autoslug.fields.AutoSlugField": autoslug_gen}
+BAKER_CUSTOM_FIELDS_GEN = {
+    "autoslug.fields.AutoSlugField": autoslug_gen,
+    "django.contrib.postgres.fields.array.ArrayField": lambda: [],
+    "django.contrib.postgres.search.SearchVectorField": lambda: None,
+}
 BAKER_CUSTOM_CLASS = "bpp.tests.bpp_baker.BPP_Baker"
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTOCOL", "https")
