@@ -24,8 +24,6 @@ CELERY_EAGER_PROPAGATES_EXCEPTIONS = True
 COMPRESS_ENABLED = True
 COMPRESS_OFFLINE = False
 
-HTML_MINIFY = False
-
 DATABASES["default"]["CONN_MAX_AGE"] = 0  # noqa
 
 # Vide komentarz w TEMPLATES[0]["OPTIONS"]["loaders"]

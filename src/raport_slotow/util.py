@@ -1,3 +1,4 @@
+from collections.abc import Iterable
 from tempfile import NamedTemporaryFile
 
 import openpyxl
@@ -7,8 +8,6 @@ from django_tables2.export import ExportMixin, TableExport
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.filters import AutoFilter
 from openpyxl.worksheet.table import Table, TableColumn, TableStyleInfo
-
-from django.utils.itercompat import is_iterable
 
 
 def drop_table(table_name, using=DEFAULT_DB_ALIAS):
@@ -87,8 +86,7 @@ class MyTableExport(TableExport):
     def export(self):
         return getattr(self, f"export_{self.format}")()
 
-    def export_xlsx(self):
-
+    def export_xlsx(self):  # noqa: C901
         wb = openpyxl.Workbook()
         ws = wb.active
         ws.title = "Sheet 1"
@@ -100,7 +98,7 @@ class MyTableExport(TableExport):
 
         if self.export_description:
             for elem in self.export_description:
-                if is_iterable(elem):
+                if isinstance(elem, Iterable):
                     ws.append(elem)
                     if len(elem) == 2:
                         ws[ws.max_row][0].font = openpyxl.styles.Font(bold=True)
@@ -168,7 +166,7 @@ class MyTableExport(TableExport):
             )
             tab = Table(
                 displayName=table_name,
-                ref=f"A{first_table_row}:{max_column_letter}{max_row }",
+                ref=f"A{first_table_row}:{max_column_letter}{max_row}",
                 autoFilter=AutoFilter(
                     ref=f"A{first_table_row}:{max_column_letter}{max_row - 1}"
                 ),
@@ -181,7 +179,7 @@ class MyTableExport(TableExport):
             ws.add_table(tab)
 
         max_width = 75
-        for ncol, col in enumerate(ws.columns):
+        for _ncol, col in enumerate(ws.columns):
             max_length = 0
             column = col[0].column_letter  # Get the column name
             # Since Openpyxl 2.6, the column name is  ".column_letter" as .column became the column number (1-based)

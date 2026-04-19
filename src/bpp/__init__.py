@@ -1,4 +1,3 @@
-default_app_config = "bpp.apps.BppConfig"
 import asgiref
 
 from . import monkey_patches

@@ -7,6 +7,8 @@ from formdefaults.util import full_name
 
 
 class TestForm(forms.Form):
+    __test__ = False  # pytest: nie kolekcjonuj jako testu
+
     fld = forms.CharField(label="Takietam", initial=123)
 
 

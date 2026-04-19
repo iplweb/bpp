@@ -2,6 +2,7 @@
 Profile użytkowników serwisu BPP
 """
 
+from collections.abc import Iterable
 from datetime import timedelta
 
 from django.conf import settings
@@ -10,7 +11,6 @@ from django.db import models
 from django.dispatch import receiver
 from django.utils import timezone
 from django.utils.functional import cached_property
-from django.utils.itercompat import is_iterable
 
 from bpp.const import PUSTY_ADRES_EMAIL
 from bpp.models import ModelZAdnotacjami
@@ -27,21 +27,21 @@ class BppUser(AbstractUser, ModelZAdnotacjami):
         "Ilość wyświetlanych rekordów na stronie", default=20
     )
 
-    multiseek_format = models.CharField(
+    multiseek_format = models.CharField(  # noqa: DJ001
         "Ostatnio wybrany format wyświetlania w Multiseeku",
         max_length=200,
         null=True,
         blank=True,
     )
 
-    multiseek_order_1 = models.CharField(
+    multiseek_order_1 = models.CharField(  # noqa: DJ001
         "Ostatnio wybrane pole sortowania w Multiseeku",
         max_length=200,
         null=True,
         blank=True,
     )
 
-    pbn_token = models.CharField(max_length=128, null=True, blank=True)
+    pbn_token = models.CharField(max_length=128, null=True, blank=True)  # noqa: DJ001
     pbn_token_updated = models.DateTimeField(null=True, blank=True)
 
     przedstawiaj_w_pbn_jako = models.ForeignKey(
@@ -128,7 +128,7 @@ if getattr(settings, "AUTH_LDAP_SERVER_URI", None):
             ldap_attr, default = value
             ldap_value = ldap_user.attrs.get(ldap_attr, value)
 
-            if is_iterable(ldap_value):
+            if isinstance(ldap_value, Iterable):
                 ldap_value = " ".join([str(x) for x in ldap_value])
             setattr(user, attr, ldap_value)
 

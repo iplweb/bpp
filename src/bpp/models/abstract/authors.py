@@ -198,7 +198,12 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
 
     def _waliduj_procent(self):
         """Validate percentage doesn't exceed 100."""
-        inne = self.__class__.objects.filter(rekord=self.rekord)
+        # Django 5.0 raises ValueError when an unsaved model instance is
+        # passed as a filter value. In inline admin add-view the parent
+        # Rekord may not be saved yet; fall back to filtering by the FK
+        # column so the query degenerates to an empty set (no existing
+        # siblings with NULL FK), matching the historical behaviour.
+        inne = self.__class__.objects.filter(rekord_id=self.rekord_id)
         if self.pk:
             inne = inne.exclude(pk=self.pk)
         suma = inne.aggregate(Sum("procent"))["procent__sum"] or Decimal("0.00")

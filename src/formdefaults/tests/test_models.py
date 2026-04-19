@@ -3,14 +3,18 @@ from django import forms
 from django.core.exceptions import ValidationError
 
 from formdefaults.core import update_form_db_repr
-from formdefaults.models import FormRepresentation, FormFieldRepresentation
+from formdefaults.models import FormFieldRepresentation, FormRepresentation
 
 
 class TestForm(forms.Form):
+    __test__ = False  # pytest: nie kolekcjonuj jako testu
+
     test = forms.IntegerField(label="test1", initial=50)
 
 
 class AnotherTestForm(forms.Form):
+    __test__ = False  # pytest: nie kolekcjonuj jako testu
+
     field = forms.CharField()
 
 
