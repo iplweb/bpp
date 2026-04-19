@@ -3,7 +3,7 @@ from django.contrib.admin import SimpleListFilter
 from django.db.models import Window
 from django.db.models.functions import ExtractWeekDay, FirstValue
 
-from bpp.models import Wydzial
+from bpp.models import Jednostka, Wydzial
 from zglos_publikacje.models import Zgloszenie_Publikacji_Autor
 
 
@@ -34,15 +34,17 @@ class WydzialJednostkiPierwszegoAutora(SimpleListFilter):
         if not v:
             return queryset
 
-        # Django 5.0 raises NotSupportedError for `QuerySet.get(filters)`
-        # when the queryset has a combinator set (seen here via the
-        # cacheops-wrapped Wydzial manager). Use filter().first() and
-        # bail out cleanly if the pk is stale.
-        wydzial = Wydzial.objects.filter(pk=v).first()
-        if wydzial is None:
-            return queryset.none()
+        # Django 5.0 raises NotSupportedError on QuerySet.get(filters) /
+        # QuerySet.first() when the queryset carries a combinator — which
+        # happens here because cacheops wraps `Wydzial.objects`. Inline
+        # the Wydzial.aktualne_jednostki() logic (jednostki + exclude
+        # KOLO_NAUKOWE + exclude non-aktualna) directly on Jednostka so
+        # we never touch the Wydzial queryset at all.
         jednostki_wybranego_wydzialu = list(
-            wydzial.aktualne_jednostki().values_list("pk", flat=True)
+            Jednostka.objects.filter(wydzial_id=v, widoczna=True)
+            .exclude(rodzaj_jednostki=Jednostka.RODZAJ_JEDNOSTKI.KOLO_NAUKOWE)
+            .exclude(aktualna=False)
+            .values_list("pk", flat=True)
         )
 
         pierwsze_nieobce_jednostki = (
