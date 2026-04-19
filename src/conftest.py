@@ -254,18 +254,8 @@ def pytest_configure(config):  # noqa
             if not hasattr(vcr.stubs.VCRHTTPSConnection, "_http_vsn_str"):
                 vcr.stubs.VCRHTTPSConnection._http_vsn_str = "HTTP/1.1"
 
-            # Add version_string property to VCRHTTPResponse for urllib3 2.5.0+ compatibility
-            if hasattr(vcr.stubs, "VCRHTTPResponse"):
-                if not hasattr(vcr.stubs.VCRHTTPResponse, "version_string"):
-                    # Create a property that returns HTTP/1.1 as the version string
-                    def _get_version_string(self):
-                        # Return HTTP/1.1 as a sensible default
-                        # This matches the _http_vsn_str we set above
-                        return "HTTP/1.1"
-
-                    vcr.stubs.VCRHTTPResponse.version_string = property(
-                        _get_version_string
-                    )
+            # vcrpy >=8.1.1 sets self.version_string = None in VCRHTTPResponse.__init__,
+            # so we no longer add a read-only property here (would break instance assignment).
 
     except ImportError:
         # VCR not installed, skip configuration
