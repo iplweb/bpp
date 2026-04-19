@@ -117,8 +117,12 @@ class PublicationListView(TemplateView):
             rok_od, rok_do, tytul or None, tylko_odpiete, with_annotations=True
         )
 
-        # Combine querysets
-        combined_qs = QuerySetSequence(ciagle_qs, zwarte_qs)
+        # Combine querysets with stable ordering — QuerySetSequence passes
+        # the order_by down to each underlying queryset, which lets
+        # Paginator produce consistent pages.
+        combined_qs = QuerySetSequence(ciagle_qs, zwarte_qs).order_by(
+            "-rok", "tytul_oryginalny", "pk"
+        )
 
         # Paginate
         paginator = Paginator(combined_qs, per_page)

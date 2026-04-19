@@ -225,7 +225,7 @@ class PublicZrodloAutocomplete(
         return qobj
 
     def get_queryset(self):
-        qs = self._get_base_queryset()
+        qs = self._get_base_queryset().order_by("nazwa", "pk")
         if self.q:
             for token in [x.strip() for x in self.q.split(" ") if x.strip()]:
                 qs = qs.filter(self._build_token_filter(token))
@@ -243,7 +243,7 @@ class ZrodloAutocomplete(GroupRequiredMixin, PublicZrodloAutocomplete):
         return Zrodlo.objects.all().select_related("pbn_uid")
 
     def get_queryset(self):
-        qs = self._get_base_queryset()
+        qs = self._get_base_queryset().order_by("nazwa", "pk")
         if self.q:
             for token in [x.strip() for x in self.q.split(" ") if x.strip()]:
                 qs = qs.filter(self._build_token_filter(token))
@@ -260,7 +260,7 @@ class ZrodloAutocomplete(GroupRequiredMixin, PublicZrodloAutocomplete):
             # Use QuerySetSequence to chain querysets with priority
             res = QuerySetSequence(
                 qs_with_full_pbn, qs_with_pbn_no_mnisw, qs_without_pbn
-            )
+            ).order_by("nazwa", "pk")
             res.model = Zrodlo  # django-autocomplete-light needs this
             return res
 
@@ -315,7 +315,7 @@ class Dyscyplina_NaukowaAutocomplete(
     """Autocomplete for scientific disciplines."""
 
     def get_queryset(self):
-        qs = Dyscyplina_Naukowa.objects.filter(widoczna=True)
+        qs = Dyscyplina_Naukowa.objects.filter(widoczna=True).order_by("kod", "nazwa")
         if self.q:
             qs = qs.filter(Q(nazwa__icontains=self.q) | Q(kod__icontains=self.q))
         return qs

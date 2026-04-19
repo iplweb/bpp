@@ -18,14 +18,13 @@ from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator
 from django.db import models
 
-from long_running.models import Report
-from long_running.notification_mixins import ASGINotificationMixin
-from raport_slotow.core import autorzy_zerowi
-
 from bpp.core import zbieraj_sloty
 from bpp.fields import YearField
 from bpp.models import Autor, Cache_Punktacja_Autora_Query, Uczelnia
 from bpp.util import year_last_month
+from long_running.models import Report
+from long_running.notification_mixins import ASGINotificationMixin
+from raport_slotow.core import autorzy_zerowi
 
 
 class RaportSlotowUczelnia(ASGINotificationMixin, Report):
@@ -98,7 +97,7 @@ class RaportSlotowUczelnia(ASGINotificationMixin, Report):
                     }
                 )
 
-    def create_report(self):
+    def create_report(self):  # noqa: C901 (pre-existing complexity)
         # lista wszystkich autorow z punktacja z okresu od-do roku
         lst = "autor_id", "dyscyplina_id"
         if self.dziel_na_jednostki_i_wydzialy:
@@ -183,7 +182,7 @@ class RaportSlotowUczelnia(ASGINotificationMixin, Report):
                 ).distinct()
             )
 
-            for autor_id, rok, dyscyplina_id in zerowi.values_list():
+            for autor_id, _rok, dyscyplina_id in zerowi.values_list():
                 if (autor_id, dyscyplina_id) in seen:
                     continue
 
@@ -214,8 +213,12 @@ class RaportSlotowUczelnia(ASGINotificationMixin, Report):
                     self.raportslotowuczelniawiersz_set.create(**kw)
 
     def get_details_set(self):
-        return self.raportslotowuczelniawiersz_set.all().select_related(
-            "autor", "autor__tytul", "jednostka", "jednostka__wydzial", "dyscyplina"
+        return (
+            self.raportslotowuczelniawiersz_set.all()
+            .select_related(
+                "autor", "autor__tytul", "jednostka", "jednostka__wydzial", "dyscyplina"
+            )
+            .order_by("autor__nazwisko", "autor__imiona", "pk")
         )
 
 
