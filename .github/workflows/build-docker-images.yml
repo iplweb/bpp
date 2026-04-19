@@ -7,13 +7,57 @@ on:
       - 'feature/**'
       - 'fix/**'
       - 'hotfix/**'
+  workflow_dispatch:
+    # Ręczne wywołanie z GUI GitHub lub przez
+    # `gh workflow run build-docker-images.yml --ref <branch>`.
+    # Zawsze buduje, niezależnie od obecności .docker-build.
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  check-flag:
+    # Guard job oszczędzający Docker Cloud Build minuty.
+    # - master         : buduj zawsze (release flow)
+    # - workflow_dispatch: buduj zawsze (świadomy trigger ręczny)
+    # - feature/fix/hotfix: buduj tylko gdy w root repo jest plik
+    #                      `.docker-build` (pusty, commitowany do
+    #                      gałęzi wymagającej obrazów pre-prod).
+    #
+    # Aby włączyć budowanie obrazów na branchu:
+    #   touch .docker-build && git add .docker-build && git commit
+    # Aby wyłączyć:
+    #   git rm .docker-build && git commit
+    # Budowanie ad-hoc bez commitowania flagi:
+    #   gh workflow run build-docker-images.yml --ref <branch>
+    runs-on: ubuntu-latest
+    outputs:
+      should_build: ${{ steps.check.outputs.should_build }}
+    steps:
+      - uses: actions/checkout@v6
+      - id: check
+        env:
+          REF_NAME: ${{ github.ref_name }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            echo "should_build=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::Docker build — trigger ręczny (workflow_dispatch)"
+          elif [ "$REF_NAME" = "master" ]; then
+            echo "should_build=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::Docker build — push na master (release)"
+          elif [ -f ".docker-build" ]; then
+            echo "should_build=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::Docker build włączone przez obecność .docker-build w root"
+          else
+            echo "should_build=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Pomijam Docker build — brak .docker-build w root repo"
+          fi
+
   docker:
+    needs: check-flag
+    if: needs.check-flag.outputs.should_build == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Log in to Docker Hub
