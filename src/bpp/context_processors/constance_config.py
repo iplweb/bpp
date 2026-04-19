@@ -5,10 +5,36 @@ Zapewnia fallback do Django settings (zmiennych środowiskowych) w przypadku,
 gdy constance nie jest jeszcze skonfigurowane (np. podczas migracji).
 """
 
+_CONSTANCE_KEYS = (
+    "UZYWAJ_PUNKTACJI_WEWNETRZNEJ",
+    "POKAZUJ_INDEX_COPERNICUS",
+    "POKAZUJ_PUNKTACJA_SNIP",
+    "POKAZUJ_OSWIADCZENIE_KEN",
+    "SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI",
+    "UCZELNIA_UZYWA_WYDZIALOW",
+    "GOOGLE_ANALYTICS_PROPERTY_ID",
+    "GOOGLE_VERIFICATION_CODE",
+    "WYDRUK_MARGINES_GORA",
+    "WYDRUK_MARGINES_DOL",
+    "WYDRUK_MARGINES_LEWO",
+    "WYDRUK_MARGINES_PRAWO",
+)
+
 
 def constance_config(request):
     """
     Udostępnia wybrane ustawienia z django-constance dla szablonów.
+
+    Używa ``constance.utils.get_values_for_keys`` zamiast
+    ``getattr(config, key)``. Powód: od constance 4.x
+    ``Config.__getattr__`` wykrywa aktywną pętlę asyncio (a Django
+    test client w nowszych wersjach startuje ją wewnętrznie) i
+    zwraca ``AsyncValueProxy`` — stringifikacja takiego proxy w
+    szablonie (``{{ VAR|default:"..." }}``) emituje
+    ``RuntimeWarning: Synchronous access to Constance setting '...'
+    inside an async loop``. ``get_values_for_keys`` idzie prosto do
+    backendu, bez tej detekcji, więc działa identycznie w sync i
+    async kontekście.
 
     Fallback: jeżeli constance nie jest skonfigurowane, używa wartości
     z Django settings (ze zmiennych środowiskowych).
@@ -17,24 +43,9 @@ def constance_config(request):
         dict: Słownik z ustawieniami dostępnymi w szablonach
     """
     try:
-        from constance import config
+        from constance.utils import get_values_for_keys
 
-        return {
-            "UZYWAJ_PUNKTACJI_WEWNETRZNEJ": config.UZYWAJ_PUNKTACJI_WEWNETRZNEJ,
-            "POKAZUJ_INDEX_COPERNICUS": config.POKAZUJ_INDEX_COPERNICUS,
-            "POKAZUJ_PUNKTACJA_SNIP": config.POKAZUJ_PUNKTACJA_SNIP,
-            "POKAZUJ_OSWIADCZENIE_KEN": config.POKAZUJ_OSWIADCZENIE_KEN,
-            "SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI": (
-                config.SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI
-            ),
-            "UCZELNIA_UZYWA_WYDZIALOW": config.UCZELNIA_UZYWA_WYDZIALOW,
-            "GOOGLE_ANALYTICS_PROPERTY_ID": config.GOOGLE_ANALYTICS_PROPERTY_ID,
-            "GOOGLE_VERIFICATION_CODE": config.GOOGLE_VERIFICATION_CODE,
-            "WYDRUK_MARGINES_GORA": config.WYDRUK_MARGINES_GORA,
-            "WYDRUK_MARGINES_DOL": config.WYDRUK_MARGINES_DOL,
-            "WYDRUK_MARGINES_LEWO": config.WYDRUK_MARGINES_LEWO,
-            "WYDRUK_MARGINES_PRAWO": config.WYDRUK_MARGINES_PRAWO,
-        }
+        return get_values_for_keys(_CONSTANCE_KEYS)
     except (ImportError, AttributeError):
         from django.conf import settings
 
