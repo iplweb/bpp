@@ -6,10 +6,11 @@ from zglos_publikacje.admin.filters import WydzialJednostkiPierwszegoAutora
 from zglos_publikacje.models import Zgloszenie_Publikacji
 
 
-# Flake under xdist: passes 100% in isolation but occasionally hits a
-# zombie Postgres connection when another xdist worker recycles the DB.
-# Two reruns are cheap and turn a ~1/10 failure into ~1/1000.
-@pytest.mark.flaky(reruns=2, reruns_delay=1)
+# Passes 100% in isolation, but under `-n auto` xdist this test
+# occasionally inherits a zombie Postgres connection recycled by
+# another worker. CI runs tests tagged @pytest.mark.serial in a
+# separate, non-xdist step — see .github/workflows/tests.yml.
+@pytest.mark.serial
 def test_WydzialJednostkiPierwszegoAutora_queryset(
     aktualna_jednostka,
     druga_aktualna_jednostka,
