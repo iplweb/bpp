@@ -195,7 +195,7 @@ jobs:
       timeout-minutes: 10
       run: |
         docker compose -f docker-compose.test.yml run --rm \
-          test-runner uv run playwright install chromium
+          test-runner uv run playwright install chromium chromium-headless-shell
 
     - name: Tests (without Playwright, parallel)
       timeout-minutes: 20
