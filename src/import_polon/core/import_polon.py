@@ -3,6 +3,7 @@ import sys
 from decimal import Decimal
 
 import rollbar
+from django.utils import timezone
 
 from bpp.models import (
     Autor_Dyscyplina,
@@ -13,6 +14,13 @@ from ewaluacja_common.models import Rodzaj_Autora
 from import_common.core import matchuj_autora, matchuj_dyscypline, normalize_date
 from import_polon.models import ImportPlikuPolon, WierszImportuPlikuPolon
 from import_polon.utils import read_excel_or_csv_dataframe_guess_encoding
+
+
+def _normalize_zatrudnienie_date(value):
+    dt = normalize_date(value)
+    if dt is None or timezone.is_aware(dt):
+        return dt
+    return timezone.make_aware(dt)
 
 
 def _format_none(value, none_text="pustego"):
@@ -494,8 +502,8 @@ def analyze_file_import_polon(fn, parent_model: ImportPlikuPolon):
 
         # Process employment details
         wymiar_etatu = _process_wymiar_etatu(row, autor, bledy)
-        zatrudnienie_od = normalize_date(row.get("ZATRUDNIENIE_OD"))
-        zatrudnienie_do = normalize_date(row.get("ZATRUDNIENIE_DO"))
+        zatrudnienie_od = _normalize_zatrudnienie_date(row.get("ZATRUDNIENIE_OD"))
+        zatrudnienie_do = _normalize_zatrudnienie_date(row.get("ZATRUDNIENIE_DO"))
 
         # Handle author not found
         if autor is None:
