@@ -429,7 +429,7 @@ requires-dist = [
     { name = "django-crispy-forms", specifier = ">=2.4,<3" },
     { name = "django-dbtemplates", specifier = ">=4.0" },
     { name = "django-debug-toolbar", marker = "extra == 'dev'", specifier = ">=6.3.0" },
-    { name = "django-denorm-iplweb", specifier = ">=1.10.1" },
+    { name = "django-denorm-iplweb", specifier = ">=1.10.2" },
     { name = "django-dirtyfields", specifier = "==1.9.9" },
     { name = "django-dynamic-fixture", marker = "extra == 'dev'", specifier = ">=1.8.0" },
     { name = "django-easy-audit", specifier = ">=1.3.9a2,<2" },
@@ -1681,7 +1681,7 @@ wheels = [
 
 [[package]]
 name = "django-denorm-iplweb"
-version = "1.10.1"
+version = "1.10.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "celery", marker = "platform_python_implementation != 'PyPy'" },
@@ -1689,9 +1689,9 @@ dependencies = [
     { name = "django", marker = "platform_python_implementation != 'PyPy'" },
     { name = "tqdm", marker = "platform_python_implementation != 'PyPy'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/31/78/d1f8326e46d9bebdf439d18714d6c24355ab5dc205fcf7cf7c0cf2af9297/django_denorm_iplweb-1.10.1.tar.gz", hash = "sha256:2da2aaa6adfe0be58fad1fbdbaeec85752841b60b4cfd2b83408c11b1a3b7ceb", size = 51979, upload-time = "2026-04-16T10:28:50.722Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/27/dc/0fc06068da69f49e441816076cfb3624cb992ee462c2b4253f29cee9f90c/django_denorm_iplweb-1.10.2.tar.gz", hash = "sha256:adf61edc4108e4d9c1fa866cc74176f8cf26a197e3270c7067888a46d1a2b8fa", size = 53737, upload-time = "2026-04-19T18:41:35.541Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a6/82/19c6a9bdad8618a58844c68a31cf7939555849cb990bc93ff5efa5ab68b6/django_denorm_iplweb-1.10.1-py3-none-any.whl", hash = "sha256:3155cde2b3ab3132f9dcc55dddd318bf2b2db5c93f863e1f68a3b319042a8187", size = 43209, upload-time = "2026-04-16T10:28:49.467Z" },
+    { url = "https://files.pythonhosted.org/packages/92/3c/767728cb91747501733318fff8de0fa78839904ca5e26e021a9c8d616041/django_denorm_iplweb-1.10.2-py3-none-any.whl", hash = "sha256:71fffc8e5e198fe5484c59f806bb3f2eed804bc05ed9d9d466f7f8ab7a062535", size = 43595, upload-time = "2026-04-19T18:41:31.785Z" },
 ]
 
 [[package]]
