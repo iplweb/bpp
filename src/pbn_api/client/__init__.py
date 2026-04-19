@@ -6,9 +6,8 @@ Network (PBN) API.
 """
 
 import sys
+from collections.abc import Iterable
 from pprint import pprint
-
-from django.utils.itercompat import is_iterable
 
 # Re-export constants for backwards compatibility
 # (previously these were importable from pbn_api.client)
@@ -135,7 +134,7 @@ class PBNClient(
         """Print result in interactive mode."""
         if type(res) is dict:
             pprint(res)
-        elif is_iterable(res):
+        elif isinstance(res, Iterable):
             if self._interactive and hasattr(res, "total_elements"):
                 print(
                     "Incoming data: no_elements=",

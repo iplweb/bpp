@@ -536,7 +536,7 @@ def cache_setup(db):
 
     zwarte_dane = dict(
         miejsce_i_rok="Lublin 2012",
-        wydawnictwo="Pholium",
+        wydawca_opis="Pholium",
         redakcja="Redkacja",
         isbn="isbn",
         e_isbn="e_isbn",

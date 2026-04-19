@@ -17,6 +17,7 @@ from bpp.views.api import (
 from bpp.views.api.pbn_get_by_parameter import GetPBNPublicationsByISBN
 from bpp.views.api.pubmed import GetPubmedIDView, get_data_from_ncbi
 from fixtures import pbn_publication_json
+from fixtures.pbn_api import pbn_pageable_json
 
 
 def test_get_data_from_ncbi(mocker):
@@ -101,7 +102,9 @@ def test_GetPBNPublicationsByISBN_jedna_praca(
     req = rf.post("/", data=dict(t=ISBN, rok="2021"))
     req.user = admin_user
 
-    pbn_client.transport.return_values["/api/v1/search/publications?size=10"] = [pub1]
+    pbn_client.transport.return_values[
+        "/api/v1/search/publications?size=10"
+    ] = pbn_pageable_json([pub1])
     pbn_client.transport.return_values[f"/api/v1/publications/id/{UID_REKORDU}"] = pub1
     try:
         Uczelnia.objects.get_default = lambda *args, **kw: pbn_uczelnia
@@ -139,10 +142,9 @@ def test_GetPBNPublicationsByISBN_wiele_isbn(
     req = rf.post("/", data=dict(t=ISBN, rok="2021"))
     req.user = admin_user
 
-    pbn_client.transport.return_values["/api/v1/search/publications?size=10"] = [
-        pub1,
-        pub2,
-    ]
+    pbn_client.transport.return_values[
+        "/api/v1/search/publications?size=10"
+    ] = pbn_pageable_json([pub1, pub2])
     pbn_client.transport.return_values[f"/api/v1/publications/id/{UID_REKORDU}"] = pub1
     pbn_client.transport.return_values[f"/api/v1/publications/id/{UID_REKORDU}2"] = pub2
 

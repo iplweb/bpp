@@ -16,7 +16,9 @@ SENDFILE_BACKEND = "django_sendfile.backends.nginx"
 COMPRESS_ENABLED = not DEBUG
 COMPRESS_OFFLINE = False
 
-HTML_MINIFY = True
+MIDDLEWARE = [
+    "django_minify_html.middleware.MinifyHtmlMiddleware",
+] + MIDDLEWARE
 
 SESSION_ENGINE = "django.contrib.sessions.backends.cache"
 

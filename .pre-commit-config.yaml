@@ -1,6 +1,10 @@
 repos:
     - repo: https://github.com/astral-sh/ruff-pre-commit
-      rev: v0.14.3
+      # Keep in sync with `ruff` pin in pyproject.toml's `[dev]` extra.
+      # A lower pin here caused pre-commit to accept an I001 layout that
+      # ruff 0.15.x (used by CI) rejected — the diff was invisible
+      # locally until GitHub Actions failed.
+      rev: v0.15.10
       hooks:
         - id: ruff
           args: ["--fix", "--exit-non-zero-on-fix"]

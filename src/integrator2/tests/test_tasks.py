@@ -11,7 +11,10 @@ from django.utils import timezone
 
 @pytest.mark.django_db(transaction=True)
 def test_analyze_file(lmi):
-    res = analyze_file(pk=lmi.pk)
+    # Wait_for_object używany przez analyze_file wymaga kontekstu
+    # celery (current_task.retry), dlatego zadanie wołamy przez
+    # .delay() (eager mode wykonuje je synchronicznie).
+    res = analyze_file.delay(pk=lmi.pk).get()
     assert res is None
 
 

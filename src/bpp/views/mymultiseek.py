@@ -114,6 +114,20 @@ class MyMultiseekResults(MultiseekResults):
         return ctx
 
 
+def _normalize_session_removed(request):
+    # JSONSerializer zamienia tuple → list przy zapisie sesji. Upstream
+    # manually_add_or_remove() robi `set(data)` na odczycie, co pada na
+    # listach (unhashable). Konwertujemy z powrotem do tuple w pamięci —
+    # w ramach tego requestu upstream zobaczy tuple; serializacja z
+    # powrotem do listy nastąpi przy zapisie sesji.
+    data = request.session.get(MULTISEEK_SESSION_KEY_REMOVED)
+    if not data:
+        return
+    normalized = [tuple(x) if isinstance(x, list) else x for x in data]
+    if normalized != data:
+        request.session[MULTISEEK_SESSION_KEY_REMOVED] = normalized
+
+
 @never_cache
 def bpp_remove_by_hand(request, pk):
     """Add a record's PK to a list of manually removed records.
@@ -124,6 +138,7 @@ def bpp_remove_by_hand(request, pk):
     records is cleaned when there is a form reset.
     """
     pk = tuple(int(x) for x in pk.split("_"))
+    _normalize_session_removed(request)
     return manually_add_or_remove(request, pk)
 
 
@@ -131,4 +146,5 @@ def bpp_remove_by_hand(request, pk):
 def bpp_remove_from_removed_by_hand(request, pk):
     """Cancel manual record removal."""
     pk = tuple(int(x) for x in pk.split("_"))
+    _normalize_session_removed(request)
     return manually_add_or_remove(request, pk, add=False)

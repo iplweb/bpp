@@ -1,25 +1,25 @@
 [project]
 name = "bpp_iplweb"
-version = "202604.1356"
+version = "202604.1357"
 description = ""
 authors = [
     { name = "Michał Pasternak", email = "michal.dtz@gmail.com" }
 ]
 requires-python = ">=3.10,<3.15"
 dependencies = [
-    "Django>=4.2.25,<4.3",
+    "Django>=5.2,<5.3",
     "arrow>=1.3,<2",
     "numpy>=2.1.2",
     "pygad>=3.6.0",
-    "django-denorm-iplweb>=1.10.1",
+    "django-denorm-iplweb>=1.10.2",
     "django-tabular-permissions==2.9.3",
     "simplejson>=3.19,<4",
-    "django-reversion==5.0.4",
+    "django-reversion>=6,<7",
     "django-reversion-compare>=0.17.0",
     "channels[daphne]>=4,<5",
     "uvicorn[standard]>=0.31.0",
     "channels-redis>=4,<5",
-    "django-flexible-reports>=0.2.11",
+    "django-flexible-reports>=0.2.12",
     "django-group-by==0.3.1",
     "django-columns==0.1.0",
     "tablib==3.9.0",
@@ -32,13 +32,13 @@ dependencies = [
     "xlrd==2.0.2",
     "celery>=5.6.3",
     "django-celery-results==2.6.0",
-    "django-tables2==2.3.1",
+    "django-tables2>=2.8,<2.9",
     "django-sendfile2>=0.7.2",
-    "Unidecode==0.4.20",
+    "Unidecode>=1.3,<2",
     "django-cookie-law==2.2.0",
     "django-classy-tags==4.1.0",
     "pyoai==2.5.0",
-    "django-crispy-forms==2.0.0",
+    "django-crispy-forms>=2.6,<3",
     "crispy-forms-foundation>=1.1.0,<2",
     "django-compressor==4.6.0",
     "nh3>=0.3.4",
@@ -47,9 +47,9 @@ dependencies = [
     "dj-pagination==2.5.0",
     "requests>=2.32.4",
     "django-extensions>=3.2,<5",
-    "django-htmlmin==0.11.0",
+    "django-minify-html>=1.14,<2",
     "Pillow>=12.2,<14",
-    "django-grappelli==3.0.6",
+    "django-grappelli>=4,<5",
     "django-multiseek==0.9.49",
     "django-braces>=1.15.0",
     "django-loginas==0.3.14",
@@ -59,21 +59,21 @@ dependencies = [
     "pypandoc>=1.13,<2",
     "django-static-sitemaps>=5.0.0",
     "django-model-utils==5.0.0",
-    "django-fsm==2.8.0",
-    "django-mptt==0.13.4",
+    "django-fsm>=3,<4",
+    "django-mptt>=0.16,<1",
     "wosclient==0.1.5",
-    "MOAI-iplweb==2.0.0",
+    "MOAI-iplweb>=2.0.2",
     "django_redis==5.3.0",
-    "django-filter==21.1",
+    "django-filter>=25.2,<25.3",
     "dbfread>=2.0.7",
     "djangorestframework==3.17.1",
     "Markdown>=3.7,<4",
     "django-admin-sortable2>=2.3.1,<3",
     "cssmin==0.2.0",
     "rjsmin>=1.2.1",
-    "django-import-export==3.2.0",
+    "django-import-export>=4.4,<5",
     "pymed-iplweb==0.8.11",
-    "django-taggit==4.0.0",
+    "django-taggit>=5,<7",
     "weasyprint>=66.0",
     "requests-oauthlib==2.0.0",
     "django-cacheops>=7.2,<8",
@@ -93,12 +93,12 @@ dependencies = [
     "crispy-bootstrap5>=0.7",
     "crispy-bootstrap3>=2022.1",
     "twisted[http2,tls]>=24.3.0",
-    "django-dbtemplates>=4.0",
+    "django-dbtemplates-iplweb>=4.3.2",
     "django-soft-delete>=1.0.23",
     "tqdm>=4.67.3",
     "xhtml2pdf>=0.2.16",
     "isbnlib>=3.10.14",
-    "chardet>=5.2.0",
+    "chardet>=7.4.3",
     "python-dateutil>=2.9.0.post0",
     "thefuzz>=0.22.1",
     "celery-singleton>=0.3.1",
@@ -111,16 +111,17 @@ dependencies = [
     "questionary>=2.0.0", # Interactive CLI menus
     "bibtexparser>=2.0.0b7", # BibTeX import
     "langdetect>=1.0.9", # Language detection for imports
+    "beautifulsoup4>=4.14.3", # importer_publikacji.providers.www imports at app-ready time
 ]
 
 [project.optional-dependencies]
 ldap = ["django-auth-ldap>=5.3.0"]
 office365 = ["django-microsoft-auth>=3.0.1"]
-baseline-rebuild = ["testcontainers[postgres]>=4.0"]
+baseline-rebuild = ["testcontainers[postgres]>=4.14.2"]
 dev = [
     "bumpver>=2023.1124",
     "pytest-recording>=0.12.1",
-    "vcrpy>=6.0.2,<7",
+    "vcrpy>=8.1.1,<9",
     "towncrier>=22.8.0",
     "pytest-sugar>=0.9.7",
     "pytest-rerunfailures>=14.0",
@@ -129,7 +130,6 @@ dev = [
     "model-bakery>=1.23.4",
     "django-dynamic-fixture>=1.8.0",
     "django-webtest==1.9.14",
-    "beautifulsoup4>=4.14.3",
     "WebTest==3.0.0",
     "Sphinx>=7,<9",
     "coveralls>=4.1.0,<5",
@@ -152,7 +152,7 @@ dev = [
     "pytest-playwright>=0.4.0",
     "pytest-env>=1.6.0",
     "nest-asyncio>=1.6.0",
-    "testcontainers[postgres]>=4.0"
+    "testcontainers[postgres]>=4.14.2"
 ]
 
 [project.scripts]
@@ -209,7 +209,7 @@ include = [
 ]
 
 [tool.bumpver]
-current_version = "v202604.1356"
+current_version = "v202604.1357"
 version_pattern = "vYYYY0M.BUILD[-TAGNUM]"
 commit_message = "bump version {old_version} -> {new_version}"
 commit = true
@@ -316,7 +316,7 @@ dev = [
 
 [tool.towncrier]
 package = "bpp"
-version = "202604.1356"
+version = "202604.1357"
 package_dir = "src"
 filename = "HISTORY.rst"
 

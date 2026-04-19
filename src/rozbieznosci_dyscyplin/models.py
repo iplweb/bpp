@@ -41,6 +41,7 @@ class RozbieznosciView(RozbieznosciViewBase):
     # oraz autora) to ten model i funkcja get_wydawnictwo_autor_obj zawiedzie.
     class Meta:
         managed = False
+        ordering = ["id"]
         verbose_name = "rozbieżność rekordu i dyscyplin"
         verbose_name_plural = "rozbieżności rekordów i dyscyplin"
 

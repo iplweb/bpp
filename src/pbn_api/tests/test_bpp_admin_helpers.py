@@ -5,7 +5,7 @@ from model_bakery import baker
 from bpp.admin.helpers.pbn_api.gui import sprobuj_wyslac_do_pbn_gui
 from bpp.models import Charakter_Formalny, Wydawnictwo_Ciagle
 from fixtures import MOCK_MONGO_ID, MOCK_RETURNED_INSTITUTION_PUBLICATION_V2_DATA
-from fixtures.pbn_api import MOCK_RETURNED_MONGODB_DATA
+from fixtures.pbn_api import MOCK_RETURNED_MONGODB_DATA, pbn_pageable_json
 from pbn_api.adapters.wydawnictwo import WydawnictwoPBNAdapter
 from pbn_api.client import (
     PBN_GET_INSTITUTION_STATEMENTS,
@@ -190,10 +190,10 @@ def test_sprobuj_wyslac_do_pbn_z_oswiadczeniami(
     ] = MOCK_RETURNED_MONGODB_DATA
     pbn_client.transport.return_values[
         PBN_GET_INSTITUTION_STATEMENTS + "?publicationId=123&size=5120"
-    ] = []
+    ] = pbn_pageable_json([])
     pbn_client.transport.return_values[
         PBN_GET_INSTITUTION_PUBLICATIONS_V2 + "?publicationId=123&size=10"
-    ] = MOCK_RETURNED_INSTITUTION_PUBLICATION_V2_DATA
+    ] = pbn_pageable_json(MOCK_RETURNED_INSTITUTION_PUBLICATION_V2_DATA)
 
     with middleware(req):
         sprobuj_wyslac_do_pbn_gui(
@@ -253,7 +253,7 @@ def test_sprobuj_wyslac_do_pbn_ostrzezenie_brak_dyscypliny_autora(
     ] = MOCK_RETURNED_MONGODB_DATA
     pbn_client.transport.return_values[
         PBN_GET_INSTITUTION_STATEMENTS + "?publicationId=123&size=5120"
-    ] = []
+    ] = pbn_pageable_json([])
 
     with middleware(req):
         sprobuj_wyslac_do_pbn_gui(
@@ -301,10 +301,10 @@ def test_sprobuj_wyslac_do_pbn_przychodzi_istniejacy_pbn_uid_dla_nowego_rekordu(
     )
     pbn_client.transport.return_values[
         PBN_GET_INSTITUTION_STATEMENTS + f"?publicationId={MOCK_MONGO_ID}&size=5120"
-    ] = []
+    ] = pbn_pageable_json([])
     pbn_client.transport.return_values[
         PBN_GET_INSTITUTION_PUBLICATIONS_V2 + "?publicationId=123&size=10"
-    ] = MOCK_RETURNED_INSTITUTION_PUBLICATION_V2_DATA
+    ] = pbn_pageable_json(MOCK_RETURNED_INSTITUTION_PUBLICATION_V2_DATA)
 
     with middleware(req):
         sprobuj_wyslac_do_pbn_gui(
@@ -350,10 +350,10 @@ def test_sprobuj_wyslac_do_pbn_przychodzi_inny_pbn_uid_dla_starego_rekordu(
     )
     pbn_client.transport.return_values[
         PBN_GET_INSTITUTION_STATEMENTS + f"?publicationId={MOCK_MONGO_ID}&size=5120"
-    ] = []
+    ] = pbn_pageable_json([])
     pbn_client.transport.return_values[
         PBN_GET_INSTITUTION_PUBLICATIONS_V2 + "?publicationId=123123&size=10"
-    ] = MOCK_RETURNED_INSTITUTION_PUBLICATION_V2_DATA
+    ] = pbn_pageable_json(MOCK_RETURNED_INSTITUTION_PUBLICATION_V2_DATA)
 
     with middleware(req):
         sprobuj_wyslac_do_pbn_gui(

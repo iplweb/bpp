@@ -160,9 +160,19 @@ class JednostkaAdmin(
         return self.list_display
 
     def get_list_per_page(self):
-        from django.db import connection
+        from django.db import OperationalError, connection
 
-        if "bpp_uczelnia" not in connection.introspection.table_names():
+        # Django evaluates `ModelAdmin.list_per_page` during app-ready
+        # system checks (`apps.populate()`), i.e. before any DB may exist
+        # — this is the hot path for `manage.py baseline_check` or
+        # `makemigrations` on a fresh clone / CI runner without Postgres.
+        # Bail out to the default in two cases: the DB is unreachable at
+        # all (OperationalError), or the connection works but the
+        # uczelnia table hasn't been created yet.
+        try:
+            if "bpp_uczelnia" not in connection.introspection.table_names():
+                return BaseBppAdminMixin.list_per_page
+        except OperationalError:
             return BaseBppAdminMixin.list_per_page
 
         req = None

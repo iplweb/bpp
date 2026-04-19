@@ -12,7 +12,7 @@ import sys
 from dataclasses import dataclass
 
 from testcontainers.core.container import DockerContainer
-from testcontainers.core.waiting_utils import wait_for_logs
+from testcontainers.core.wait_strategies import LogMessageWaitStrategy
 from testcontainers.postgres import PostgresContainer
 
 import docker
@@ -126,8 +126,10 @@ def _start_redis(reuse: bool) -> tuple[DockerContainer | None, str, int]:
     redis.with_exposed_ports(6379)
     if reuse:
         redis.with_name(_REDIS_NAME)
+    redis.waiting_for(
+        LogMessageWaitStrategy("Ready to accept connections").with_startup_timeout(30)
+    )
     redis.start()
-    wait_for_logs(redis, "Ready to accept connections", timeout=30)
 
     host = redis.get_container_host_ip()
     port = int(redis.get_exposed_port(6379))
@@ -152,8 +154,10 @@ def _start_rabbitmq(reuse: bool) -> tuple[DockerContainer | None, str, int]:
     rmq.with_env("RABBITMQ_DEFAULT_PASS", "bpp")
     if reuse:
         rmq.with_name(_RABBITMQ_NAME)
+    rmq.waiting_for(
+        LogMessageWaitStrategy("Server startup complete").with_startup_timeout(60)
+    )
     rmq.start()
-    wait_for_logs(rmq, "Server startup complete", timeout=60)
 
     host = rmq.get_container_host_ip()
     port = int(rmq.get_exposed_port(5672))
