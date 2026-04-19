@@ -196,14 +196,3 @@ def django_db_setup(django_db_setup, django_db_blocker):
                     f'ALTER SEQUENCE "{schema}"."{name}" '
                     f"RESTART WITH {next_val + offset}"
                 )
-
-
-@pytest.fixture
-def kierunek_studiow(wydzial):
-    from bpp.models import Kierunek_Studiow
-    return Kierunek_Studiow.objects.get_or_create(
-        wydzial=wydzial,
-        nazwa="memetyka użytkowa",
-        skrot="mem. uż.",
-        opis="testowy kierunek studiów",
-    )[0]

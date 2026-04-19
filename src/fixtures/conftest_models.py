@@ -165,3 +165,15 @@ def zrodlo_maker():
 @pytest.fixture(scope="function")
 def zrodlo(db):
     return _zrodlo_maker(nazwa="Testowe Źródło", skrot="Test. Źr.")
+
+
+@pytest.fixture
+def kierunek_studiow(wydzial):
+    from bpp.models import Kierunek_Studiow
+
+    return Kierunek_Studiow.objects.get_or_create(
+        wydzial=wydzial,
+        nazwa="memetyka użytkowa",
+        skrot="mem. uż.",
+        opis="testowy kierunek studiów",
+    )[0]
