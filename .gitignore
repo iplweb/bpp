@@ -169,3 +169,7 @@ opencode.jsonc
 dump.rdb
 .worktrees/
 .claude/
+
+# Local TODO / audit notes (not committed)
+TODO-*.txt
+TODO-*.md

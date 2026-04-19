@@ -1,9 +1,9 @@
 import json
-from datetime import datetime
 from decimal import Decimal
 
 from django.core.management import BaseCommand
 from django.db import transaction
+from django.utils import timezone
 
 from bpp.models import (
     Autor,
@@ -293,7 +293,7 @@ class Command(BaseCommand):
             low_mono_count=results.low_mono_count,
             low_mono_percentage=Decimal(str(results.low_mono_percentage)),
             validation_passed=results.validation_passed,
-            finished_at=datetime.now(),
+            finished_at=timezone.now(),
         )
 
         # Save author results

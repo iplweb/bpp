@@ -13,8 +13,7 @@ except ImportError:
 import django_webtest
 import webtest
 
-NORMAL_DJANGO_USER_LOGIN = "test_login_bpp"
-NORMAL_DJANGO_USER_PASSWORD = "test_password"
+from .const import NORMAL_DJANGO_USER_LOGIN, NORMAL_DJANGO_USER_PASSWORD
 
 
 @pytest.fixture

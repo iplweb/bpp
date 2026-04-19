@@ -1,6 +1,6 @@
 import sys
 import traceback
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from dbtemplates.admin import TemplateAdmin, TemplateAdminForm
 from dbtemplates.models import Template
@@ -13,6 +13,7 @@ from django.template.engine import Engine
 from django.template.loaders.cached import Loader as CachedLoader
 from django.template.response import TemplateResponse
 from django.urls import re_path as url
+from django.utils import timezone
 
 from bpp.util import rebuild_instances_of_models
 
@@ -78,7 +79,7 @@ class BppTemplateAdmin(TemplateAdmin):
             return
 
         ILE_DNI = 7
-        dni_temu = datetime.now() - timedelta(days=ILE_DNI)
+        dni_temu = timezone.now() - timedelta(days=ILE_DNI)
 
         messages.info(
             request,

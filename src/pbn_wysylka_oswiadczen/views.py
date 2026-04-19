@@ -8,6 +8,7 @@ from django.utils.decorators import method_decorator
 from django.views import View
 from django.views.generic import TemplateView
 from openpyxl import Workbook
+from openpyxl.styles import Font
 from queryset_sequence import QuerySetSequence
 
 from bpp.const import GR_WPROWADZANIE_DANYCH
@@ -116,8 +117,12 @@ class PublicationListView(TemplateView):
             rok_od, rok_do, tytul or None, tylko_odpiete, with_annotations=True
         )
 
-        # Combine querysets
-        combined_qs = QuerySetSequence(ciagle_qs, zwarte_qs)
+        # Combine querysets with stable ordering — QuerySetSequence passes
+        # the order_by down to each underlying queryset, which lets
+        # Paginator produce consistent pages.
+        combined_qs = QuerySetSequence(ciagle_qs, zwarte_qs).order_by(
+            "-rok", "tytul_oryginalny", "pk"
+        )
 
         # Paginate
         paginator = Paginator(combined_qs, per_page)
@@ -370,7 +375,7 @@ class ExcelExportView(View):
 
         # Style header row
         for cell in ws[1]:
-            cell.font = cell.font.copy(bold=True)
+            cell.font = Font(bold=True, name=cell.font.name, size=cell.font.size)
 
         # Data rows
         for publication in combined_qs:

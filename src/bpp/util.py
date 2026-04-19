@@ -3,7 +3,7 @@ import multiprocessing
 import operator
 import os
 import re
-from datetime import datetime, timedelta
+from datetime import timedelta
 from functools import reduce
 from math import ceil, floor
 from pathlib import Path
@@ -242,7 +242,7 @@ def zrob_cache(t):
 
 
 def remove_old_objects(klass, file_field="file", field_name="created_on", days=7):
-    since = datetime.now() - timedelta(days=days)
+    since = timezone.now() - timedelta(days=days)
 
     kwargs = {}
     kwargs[f"{field_name}__lt"] = since

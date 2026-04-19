@@ -12,7 +12,6 @@ from bpp.models import (
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def zwarte_z_dyscyplinami(
     wydawnictwo_zwarte,
     autor_jan_nowak,
@@ -56,7 +55,6 @@ def zwarte_z_dyscyplinami(
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def zwarte_z_dyscyplinami_hst(
     wydawnictwo_zwarte,
     autor_jan_nowak,
@@ -93,7 +91,6 @@ def zwarte_z_dyscyplinami_hst(
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def zwarte_z_dyscyplinami_hst_oraz_nie_hst(
     wydawnictwo_zwarte,
     autor_jan_nowak,
@@ -137,7 +134,6 @@ def zwarte_z_dyscyplinami_hst_oraz_nie_hst(
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def rodzaj_autora_n():
     return Rodzaj_Autora.objects.get_or_create(
         skrot="N", defaults={"licz_sloty": True, "sort": 1}
@@ -145,7 +141,6 @@ def rodzaj_autora_n():
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def ciagle_z_dyscyplinami(
     wydawnictwo_ciagle,
     autor_jan_nowak,

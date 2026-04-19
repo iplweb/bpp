@@ -6,10 +6,7 @@ from django.urls import reverse
 from django_tables2 import Column
 
 from bpp.models import CHARAKTER_SLOTY
-from bpp.models.cache import (
-    Cache_Punktacja_Autora_Query,
-    Cache_Punktacja_Autora_Query_View,
-)
+from bpp.models.cache import Cache_Punktacja_Autora_Query_View
 from raport_slotow import const
 from raport_slotow.columns import DecimalColumn, SummingColumn
 from raport_slotow.models import (
@@ -158,7 +155,7 @@ class RaportSlotowUczelniaBezJednostekIWydzialowTable(tables.Table):
 class RaportSlotowUczelniaTable(RaportSlotowUczelniaBezJednostekIWydzialowTable):
     class Meta:
         empty_text = "Brak danych"
-        model = Cache_Punktacja_Autora_Query
+        model = RaportSlotowUczelniaWiersz
         fields = (
             "autor",
             "pbn_id",

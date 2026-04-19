@@ -12,8 +12,6 @@ Ten moduł zawiera testy dla pozostałych QueryObject:
 - StatusKorektyQueryObject - wyszukiwanie po statusie korekty
 """
 
-from datetime import datetime
-
 import pytest
 from model_bakery import baker
 from multiseek import logic
@@ -31,12 +29,14 @@ from bpp.multiseek_registry import (
     ZewnetrznaBazaDanychQueryObject,
 )
 
+from django.utils import timezone
+
 pytestmark = pytest.mark.serial
 
 
 @pytest.mark.django_db
 def test_OstatnioZmieniony():
-    res = OstatnioZmieniony().real_query(datetime.now(), logic.EQUAL)
+    res = OstatnioZmieniony().real_query(timezone.now(), logic.EQUAL)
     assert Rekord.objects.filter(res).count() == 0
 
 

@@ -20,6 +20,24 @@ from bpp.tests.helpers import (  # noqa: F401 - re-export helpers
 )
 from channels_live_server import channels_live_server  # noqa: F401
 
+# pytest_plugins: rejestrujemy fixture'owe moduły jako pluginy, żeby
+# pytest zastosował assert-rewriting zanim je zaimportuje. Bez tej
+# deklaracji było 85+ ostrzeżeń ``PytestAssertRewriteWarning: Module
+# already imported so cannot be rewritten; fixtures.conftest_*``.
+# Kolejność wewnątrz conftest nie ma znaczenia — pytest czyta atrybut
+# po pełnym załadowaniu modułu; ważne, żeby
+# ``fixtures/__init__.py`` NIE importował tych modułów eager
+# (`from .conftest_X import *`), inaczej trafiają do ``sys.modules``
+# przed rejestracją.
+pytest_plugins = [
+    "fixtures.conftest",
+    "fixtures.conftest_models",
+    "fixtures.conftest_publications",
+    "fixtures.conftest_system",
+    "fixtures.conftest_browser",
+    "fixtures.conftest_disciplines",
+]
+
 # Baseline test-DB monkey-patch is installed by
 # ``django_pg_baseline.apps.DjangoPgBaselineConfig.ready()`` (the app
 # lives in INSTALLED_APPS + settings.PG_BASELINE).
@@ -322,7 +340,6 @@ def pbn_dyscyplina1(db, pbn_discipline_group):
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def zwarte_z_dyscyplinami(
     wydawnictwo_zwarte,
     autor_jan_nowak,
