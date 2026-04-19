@@ -13,7 +13,6 @@ from django_tables2.tables import Table
 from django_tables2.views import SingleTableView
 
 from bpp.models import (
-    Autor,
     Charakter_Formalny,
     Jednostka,
     OpcjaWyswietlaniaField,
@@ -102,7 +101,7 @@ class RankingAutorowFormularz(FormView):
 class RankingAutorowTable(Table):
     class Meta:
         attrs = {"class": "bpp-table"}
-        model = Autor
+        model = Sumy
         order_by = ("-impact_factor_sum", "autor__nazwisko")
         fields = (
             "lp",
