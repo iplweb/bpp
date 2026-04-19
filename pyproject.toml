@@ -117,7 +117,7 @@ dependencies = [
 [project.optional-dependencies]
 ldap = ["django-auth-ldap>=5.3.0"]
 office365 = ["django-microsoft-auth>=3.0.1"]
-baseline-rebuild = ["testcontainers[postgres]>=4.0"]
+baseline-rebuild = ["testcontainers[postgres]>=4.14.2"]
 dev = [
     "bumpver>=2023.1124",
     "pytest-recording>=0.12.1",
@@ -152,7 +152,7 @@ dev = [
     "pytest-playwright>=0.4.0",
     "pytest-env>=1.6.0",
     "nest-asyncio>=1.6.0",
-    "testcontainers[postgres]>=4.0"
+    "testcontainers[postgres]>=4.14.2"
 ]
 
 [project.scripts]
