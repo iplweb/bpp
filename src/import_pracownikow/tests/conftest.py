@@ -4,9 +4,8 @@ import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
 from model_bakery import baker
 
-from import_pracownikow.models import ImportPracownikow
-
 from bpp.models import Autor, Jednostka
+from import_pracownikow.models import ImportPracownikow
 
 
 def xls_path_factory(suffix=""):

@@ -3,7 +3,7 @@ from django import forms
 from django.core.exceptions import ValidationError
 
 from formdefaults.core import update_form_db_repr
-from formdefaults.models import FormRepresentation, FormFieldRepresentation
+from formdefaults.models import FormFieldRepresentation, FormRepresentation
 
 
 class TestForm(forms.Form):
