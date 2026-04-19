@@ -322,7 +322,6 @@ def pbn_dyscyplina1(db, pbn_discipline_group):
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def zwarte_z_dyscyplinami(
     wydawnictwo_zwarte,
     autor_jan_nowak,
