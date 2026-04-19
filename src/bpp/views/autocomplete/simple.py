@@ -257,10 +257,18 @@ class ZrodloAutocomplete(GroupRequiredMixin, PublicZrodloAutocomplete):
             )[:10]
             qs_without_pbn = qs.filter(pbn_uid__isnull=True)[:10]
 
-            # Use QuerySetSequence to chain querysets with priority
+            # Use QuerySetSequence to chain querysets with priority.
+            # UWAGA: nie wołamy tu .order_by() na sekwencji, bo
+            # sub-querysety są już sliced (`[:10]`), a QuerySetSequence
+            # propaguje order_by do każdego z nich — a Django od 4.x
+            # rzuca "Cannot reorder a query once a slice has been taken".
+            # Bazowy qs ma już .order_by("nazwa", "pk") z
+            # _get_base_queryset, więc każde filtrowane `[:10]` zachowuje
+            # porządek; jedynie kolejność między trzema gałęziami PBN
+            # jest priorytetowa (celowo, nie alfabetyczna).
             res = QuerySetSequence(
                 qs_with_full_pbn, qs_with_pbn_no_mnisw, qs_without_pbn
-            ).order_by("nazwa", "pk")
+            )
             res.model = Zrodlo  # django-autocomplete-light needs this
             return res
 

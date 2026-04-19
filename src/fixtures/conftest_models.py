@@ -9,6 +9,8 @@ from bpp.models.autor import Autor, Tytul
 from bpp.models.struktura import Jednostka, Uczelnia, Wydzial
 from bpp.models.zrodlo import Zrodlo
 
+from .const import JEDNOSTKA_PODRZEDNA, JEDNOSTKA_UCZELNI
+
 
 def current_rok():
     return datetime.now().date().year
@@ -86,9 +88,6 @@ def _jednostka_maker(nazwa, skrot, wydzial, **kwargs):
     return ret
 
 
-JEDNOSTKA_UCZELNI = "Jednostka Uczelni"
-
-
 @pytest.fixture(scope="function")
 def jednostka(wydzial, db):
     return _jednostka_maker(JEDNOSTKA_UCZELNI, skrot="Jedn. Ucz.", wydzial=wydzial)
@@ -120,9 +119,6 @@ def druga_aktualna_jednostka(druga_jednostka, drugi_wydzial):
     druga_jednostka.jednostka_wydzial_set.create(wydzial=drugi_wydzial)
     druga_jednostka.refresh_from_db()
     return druga_jednostka
-
-
-JEDNOSTKA_PODRZEDNA = "Jednostka P-rzedna"
 
 
 @pytest.fixture(scope="function")
