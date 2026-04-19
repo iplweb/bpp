@@ -34,15 +34,8 @@ class WydzialJednostkiPierwszegoAutora(SimpleListFilter):
         if not v:
             return queryset
 
-        # Django 5.0 raises NotSupportedError for `QuerySet.get(filters)`
-        # when the queryset has a combinator set (seen here via the
-        # cacheops-wrapped Wydzial manager). Use filter().first() and
-        # bail out cleanly if the pk is stale.
-        wydzial = Wydzial.objects.filter(pk=v).first()
-        if wydzial is None:
-            return queryset.none()
         jednostki_wybranego_wydzialu = list(
-            wydzial.aktualne_jednostki().values_list("pk", flat=True)
+            Wydzial.objects.get(pk=v).aktualne_jednostki().values_list("pk", flat=True)
         )
 
         pierwsze_nieobce_jednostki = (
