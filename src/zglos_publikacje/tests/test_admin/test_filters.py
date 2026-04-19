@@ -1,3 +1,4 @@
+import pytest
 from model_bakery import baker
 
 from zglos_publikacje.admin.filters import WydzialJednostkiPierwszegoAutora
@@ -6,6 +7,10 @@ from zglos_publikacje.models import Zgloszenie_Publikacji
 from bpp.models import Typ_Odpowiedzialnosci
 
 
+# Flake under xdist: passes 100% in isolation but occasionally hits a
+# zombie Postgres connection when another xdist worker recycles the DB.
+# Two reruns are cheap and turn a ~1/10 failure into ~1/1000.
+@pytest.mark.flaky(reruns=2, reruns_delay=1)
 def test_WydzialJednostkiPierwszegoAutora_queryset(
     aktualna_jednostka,
     druga_aktualna_jednostka,
