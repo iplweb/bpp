@@ -103,6 +103,14 @@ if "pytest" in sys.modules:
         for m in MIDDLEWARE
         if m != "bpp_setup_wizard.middleware.SetupWizardMiddleware"
     ]
+    # Testy nie powinny korzystać z cacheops — paczka monkey-patchuje
+    # globalnie Manager.get / QuerySet.* i potrafi wywalać
+    # NotSupportedError / ForeignKeyViolation przy losowej kolejności
+    # xdist workerów (queryset-y dzielą stan `combinator` między
+    # testami). Usunięcie cacheops z INSTALLED_APPS w trybie pytest
+    # wyłącza monkey-patching — produkcja dalej używa cacheops
+    # z pełnym CACHEOPS dict w production.py.
+    INSTALLED_APPS = [app for app in INSTALLED_APPS if app != "cacheops"]
 
 
 # django-easy-audit
