@@ -24,52 +24,6 @@ from channels_live_server import channels_live_server  # noqa: F401
 # ``django_pg_baseline.apps.DjangoPgBaselineConfig.ready()`` (the app
 # lives in INSTALLED_APPS + settings.PG_BASELINE).
 
-
-# =============================================================================
-# TEMPORARY DEBUG PROBE — do usunięcia po zdiagnozowaniu combinator.
-#
-# Loguje na stderr każde wywołanie QuerySet.get() na queryset z
-# ustawionym `.query.combinator`. Interesuje nas wyłącznie
-# `Wydzial.objects.get(pk=...)` ścieżka z zglos_publikacje filter.
-# =============================================================================
-def _install_combinator_probe():
-    import sys
-    import traceback
-
-    from django.db.models import QuerySet
-
-    original_get = QuerySet.get
-
-    def probed_get(self, *args, **kwargs):
-        if self.query.combinator and (args or kwargs):
-            sys.stderr.write(
-                "\n[combinator-probe] HIT: "
-                f"model={self.model.__name__} "
-                f"combinator={self.query.combinator!r} "
-                f"args={args!r} kwargs={kwargs!r}\n"
-            )
-            sys.stderr.write(
-                f"[combinator-probe] has_combined_queries="
-                f"{bool(self.query.combined_queries)} "
-                f"len={len(self.query.combined_queries or [])}\n"
-            )
-            sys.stderr.write(
-                f"[combinator-probe] manager_class="
-                f"{type(self.model._default_manager).__name__}\n"
-            )
-            sys.stderr.write("[combinator-probe] STACK:\n")
-            for frame in traceback.format_stack()[-15:]:
-                sys.stderr.write(frame)
-            sys.stderr.write("[combinator-probe] END\n\n")
-            sys.stderr.flush()
-        return original_get(self, *args, **kwargs)
-
-    QuerySet.get = probed_get
-
-
-_install_combinator_probe()
-# =============================================================================
-
 # =============================================================================
 # Fixtures użytkowników i klientów (przeniesione z tests_legacy/conftest.py)
 # =============================================================================
