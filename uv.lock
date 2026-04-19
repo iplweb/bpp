@@ -475,7 +475,7 @@ requires-dist = [
     { name = "isbnlib", specifier = ">=3.10.14" },
     { name = "langdetect", specifier = ">=1.0.9" },
     { name = "markdown", specifier = ">=3.7,<4" },
-    { name = "moai-iplweb", specifier = ">=2.0.1" },
+    { name = "moai-iplweb", specifier = ">=2.0.2" },
     { name = "model-bakery", marker = "extra == 'dev'", specifier = ">=1.23.4" },
     { name = "nest-asyncio", marker = "extra == 'dev'", specifier = ">=1.6.0" },
     { name = "nh3", specifier = ">=0.3.4" },
@@ -3323,22 +3323,21 @@ wheels = [
 
 [[package]]
 name = "moai-iplweb"
-version = "2.0.1"
+version = "2.0.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "paste", marker = "platform_python_implementation != 'PyPy'" },
     { name = "pastedeploy", marker = "platform_python_implementation != 'PyPy'" },
     { name = "pastescript", marker = "platform_python_implementation != 'PyPy'" },
     { name = "pyoai", marker = "platform_python_implementation != 'PyPy'" },
-    { name = "setuptools", marker = "platform_python_implementation != 'PyPy'" },
     { name = "sqlalchemy", marker = "platform_python_implementation != 'PyPy'" },
     { name = "webob", marker = "platform_python_implementation != 'PyPy'" },
     { name = "wsgi-intercept", marker = "platform_python_implementation != 'PyPy'" },
     { name = "wsgiutils", marker = "platform_python_implementation != 'PyPy'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/33/57/771558d6cbd4868652d0284f0e36bed7f408a34c3e794a58da294cf7a7ff/moai_iplweb-2.0.1.tar.gz", hash = "sha256:31266801424410994731cee79f897179ed65881948646bd4a6529cde1351e1ad", size = 36244, upload-time = "2026-04-16T12:32:47.898Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/1c/13/d2624e206d90885e93a49cb1320774abc82a239fa10ff06ec20210240b74/moai_iplweb-2.0.2.tar.gz", hash = "sha256:6109e12181ef2f473667372da6f785fbfb2c14724019a991847a299538243038", size = 36259, upload-time = "2026-04-19T20:57:07.637Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e3/98/8ef9f7ab6af9a06209dc8e0228b4fbf7418051ef49d613aa6db5b81df47d/moai_iplweb-2.0.1-py3-none-any.whl", hash = "sha256:396a954780c9bb6a566dc24446eb8e98bcdb479bea9b8eb7978455f7d5db06b5", size = 43830, upload-time = "2026-04-16T12:32:46.335Z" },
+    { url = "https://files.pythonhosted.org/packages/56/59/67c4fd977373fbe5ac4834e5306a39c93a5c8fa3038b2145b9840300981b/moai_iplweb-2.0.2-py3-none-any.whl", hash = "sha256:25c5a307b5a9d2c465ba822c6b28d757e8eca0f00d35dcc07cca672a5a1c5425", size = 43863, upload-time = "2026-04-19T20:57:06.291Z" },
 ]
 
 [[package]]
