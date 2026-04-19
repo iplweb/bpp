@@ -42,6 +42,6 @@
         "sinon": "^21.0.0"
     },
     "resolutions": {
-        "jquery": "^3.4.0"
+        "jquery": "^3.7.1"
     }
 }
