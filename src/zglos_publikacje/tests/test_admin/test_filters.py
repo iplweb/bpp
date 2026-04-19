@@ -1,10 +1,9 @@
 import pytest
 from model_bakery import baker
 
+from bpp.models import Typ_Odpowiedzialnosci
 from zglos_publikacje.admin.filters import WydzialJednostkiPierwszegoAutora
 from zglos_publikacje.models import Zgloszenie_Publikacji
-
-from bpp.models import Typ_Odpowiedzialnosci
 
 
 # Flake under xdist: passes 100% in isolation but occasionally hits a
