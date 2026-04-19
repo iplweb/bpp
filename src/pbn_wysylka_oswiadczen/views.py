@@ -8,6 +8,7 @@ from django.utils.decorators import method_decorator
 from django.views import View
 from django.views.generic import TemplateView
 from openpyxl import Workbook
+from openpyxl.styles import Font
 from queryset_sequence import QuerySetSequence
 
 from bpp.const import GR_WPROWADZANIE_DANYCH
@@ -370,7 +371,7 @@ class ExcelExportView(View):
 
         # Style header row
         for cell in ws[1]:
-            cell.font = cell.font.copy(bold=True)
+            cell.font = Font(bold=True, name=cell.font.name, size=cell.font.size)
 
         # Data rows
         for publication in combined_qs:
