@@ -1,11 +1,8 @@
 import pytest
+from django.contrib.auth import get_user_model
 from django.test import Client
 from django.urls import reverse
 from model_bakery import baker
-
-from .models import PrzemapoaniePracAutora
-
-from django.contrib.auth import get_user_model
 
 from bpp.models import (
     Autor,
@@ -17,6 +14,8 @@ from bpp.models import (
     Wydawnictwo_Zwarte_Autor,
     Zrodlo,
 )
+
+from .models import PrzemapoaniePracAutora
 
 User = get_user_model()
 
@@ -110,7 +109,7 @@ def test_przemapowanie_stores_work_history(
         tytul_oryginalny="Book Title",
         rok=2023,
         isbn="978-1234567890",
-        wydawnictwo="Test Publisher",
+        wydawca_opis="Test Publisher",
     )
     baker.make(
         Wydawnictwo_Zwarte_Autor,
