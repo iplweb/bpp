@@ -160,25 +160,42 @@ def szablony():
 @pytest.fixture(scope="session")
 def django_db_setup(django_db_setup, django_db_blocker):
     from denorm import denorms
+    from django.db import connection
 
     with django_db_blocker.unblock():
         denorms.install_triggers()
 
-
-@pytest.fixture(scope="function")
-def django_db_setup(django_db_setup, django_db_blocker):  # noqa
-    from denorm import denorms
-
-    with django_db_blocker.unblock():
-        denorms.install_triggers()
-
-
-@pytest.fixture(scope="class")
-def django_db_setup(django_db_setup, django_db_blocker):  # noqa
-    from denorm import denorms
-
-    with django_db_blocker.unblock():
-        denorms.install_triggers()
+        # Przesuń każdą sekwencję w public o losową wartość z zakresu
+        # [50 000, 500 000], niezależnie per sekwencja. Cel: nie pozwolić
+        # testom dostawać 1-/2-cyfrowych ID, które maskują bugi zależne
+        # od szerokości ID (padding, długość slugów, przekroczenia granicy
+        # cyfr). Różne offsety per tabela dodatkowo rozsynchronizowują
+        # relacje między ID różnych tabel, co demaskuje testy zakładające
+        # np. autor.pk == jednostka.pk.
+        #
+        # Ziarno PRNG: `random` w tym module jest seedowane przez
+        # pytest-randomly (jeśli zainstalowane) albo systemowo. Żeby
+        # zreprodukować konkretny run, wystarczy ten sam seed.
+        print(
+            f"[conftest] bump sekwencji, seed random.getstate() hash="
+            f"{hash(random.getstate()) & 0xFFFF_FFFF:#010x}"
+        )
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT schemaname, sequencename FROM pg_sequences "
+                "WHERE schemaname = 'public'"
+            )
+            for schema, name in cursor.fetchall():
+                cursor.execute(
+                    f'SELECT last_value, is_called FROM "{schema}"."{name}"'
+                )
+                last_value, is_called = cursor.fetchone()
+                next_val = last_value + (1 if is_called else 0)
+                offset = random.randint(50_000, 500_000)
+                cursor.execute(
+                    f'ALTER SEQUENCE "{schema}"."{name}" '
+                    f"RESTART WITH {next_val + offset}"
+                )
 
 
 @pytest.fixture
