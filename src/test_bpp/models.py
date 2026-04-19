@@ -5,8 +5,9 @@ from long_running.models import Operation
 
 
 class TestOperation(Operation):
+    __test__ = False  # pytest: nie kolekcjonuj jako testu
+
     # long_running.tests.test_models
-    pass
 
 
 class TestObjectThatDoesNotExistManager(models.Manager):
@@ -17,4 +18,6 @@ class TestObjectThatDoesNotExistManager(models.Manager):
 
 
 class TestObjectThatDoesNotExist(models.Model):
+    __test__ = False  # pytest: nie kolekcjonuj jako testu
+
     objects = TestObjectThatDoesNotExistManager()

@@ -2,7 +2,7 @@ import pytest
 
 from import_pracownikow.tests.conftest import (
     import_pracownikow_factory,
-    testdata_xls_path_factory,
+    xls_path_factory,
 )
 
 from bpp.models import Autor, Autor_Jednostka
@@ -32,7 +32,7 @@ def test_ImportPracownikow_perform_aktualizacja_tytulu_brakujacy_tytul(
     baza_importu_pracownikow, admin_user
 ):
     ip = import_pracownikow_factory(
-        admin_user, testdata_xls_path_factory("_nieistn_tytul")
+        admin_user, xls_path_factory("_nieistn_tytul")
     )
 
     ip.perform()

@@ -7,10 +7,14 @@ from formdefaults.models import FormRepresentation, FormFieldRepresentation
 
 
 class TestForm(forms.Form):
+    __test__ = False  # pytest: nie kolekcjonuj jako testu
+
     test = forms.IntegerField(label="test1", initial=50)
 
 
 class AnotherTestForm(forms.Form):
+    __test__ = False  # pytest: nie kolekcjonuj jako testu
+
     field = forms.CharField()
 
 

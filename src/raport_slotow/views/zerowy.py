@@ -110,7 +110,7 @@ class RaportSlotowZerowyWyniki(
         qset = RaportZerowyEntry.objects.group_by(
             "autor", "dyscyplina_naukowa"
         ).annotate(
-            lata=StringAgg(Cast("rok", CharField()), ", ", ordering=("rok")),
+            lata=StringAgg(Cast("rok", CharField()), ", ", order_by=("rok",)),
             ile_lat=Count("rok"),
             ile_deklaracji=Count("dyscyplina_naukowa"),
         )

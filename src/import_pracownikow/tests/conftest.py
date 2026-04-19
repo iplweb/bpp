@@ -9,7 +9,7 @@ from import_pracownikow.models import ImportPracownikow
 from bpp.models import Autor, Jednostka
 
 
-def testdata_xls_path_factory(suffix=""):
+def xls_path_factory(suffix=""):
     return os.path.join(os.path.dirname(__file__), "", f"testdata{suffix}.xlsx")
 
 
@@ -25,12 +25,12 @@ def import_pracownikow_factory(user, path):
 
 @pytest.fixture
 def testdata_xlsx_path():
-    return testdata_xls_path_factory()
+    return xls_path_factory()
 
 
 @pytest.fixture
 def testdata_brak_naglowka_xlsx_path():
-    return testdata_xls_path_factory("_brak_naglowka")
+    return xls_path_factory("_brak_naglowka")
 
 
 @pytest.fixture

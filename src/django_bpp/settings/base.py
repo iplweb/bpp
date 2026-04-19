@@ -217,6 +217,10 @@ SITE_ID = 1  # dla static-sitemaps
 USE_I18N = True
 USE_TZ = True
 
+# Django 5.0 transitional; stanie się domyślne w 6.0. Wycisza
+# RemovedInDjango60Warning z forms.URLField dla URL-i bez schematu.
+FORMS_URLFIELD_ASSUME_HTTPS = True
+
 STATIC_URL = "/static/"
 
 ADMIN_MEDIA_PREFIX = "/static/admin/"
