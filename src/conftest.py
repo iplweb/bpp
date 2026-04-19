@@ -29,8 +29,12 @@ from channels_live_server import channels_live_server  # noqa: F401
 # ``fixtures/__init__.py`` NIE importował tych modułów eager
 # (`from .conftest_X import *`), inaczej trafiają do ``sys.modules``
 # przed rejestracją.
+#
+# UWAGA: ``fixtures.conftest`` NIE może być na tej liście — to plik
+# ``conftest.py``, który pytest auto-rejestruje pod nazwą pełnej
+# ścieżki. Dodanie go tu powoduje ``ValueError: Plugin already
+# registered under a different name`` przy collectowaniu.
 pytest_plugins = [
-    "fixtures.conftest",
     "fixtures.conftest_models",
     "fixtures.conftest_publications",
     "fixtures.conftest_system",
