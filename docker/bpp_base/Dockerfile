@@ -116,6 +116,22 @@ RUN echo "Building from git commit: ${GIT_SHA}"
 
 COPY . .
 
+RUN /app/.venv/bin/python src/manage.py compilemessages -v0 -l pl --traceback
+
+# R5: collectstatic wymaga `node_modules` przez YarnFinder — uruchamiamy
+# go teraz, w builder stage, aby staticroot był pre-populowany, a runtime
+# mógł shipować tylko `/app/staticroot` zamiast 300+ MB node_modules.
+# collectstatic nie potrzebuje DB ani Redisa; wystarczy dummy SECRET_KEY.
+# UWAGA: musi biec PRZED R2 — src/import_pracownikow/static/.../przyklad.xlsx
+# to symlink do src/import_pracownikow/tests/testdata.xlsx; collectstatic
+# rozwiązuje symlink (kopiuje treść) i dopiero potem możemy usunąć tests/.
+RUN DJANGO_BPP_SECRET_KEY=build-time-only-not-used \
+    STATIC_ROOT=/app/staticroot \
+    /app/.venv/bin/python src/manage.py collectstatic \
+        --noinput -v0 --traceback
+
+RUN rm -rf /app/node_modules
+
 # R2: testy i pytest-only fixture package nie są potrzebne w produkcji.
 # UWAGA: NIE usuwamy:
 #  - /app/src/test_bpp — to INSTALLED_APP wymagany nawet w produkcji
@@ -125,13 +141,11 @@ COPY . .
 #    produkcyjnymi (charakter_formalny.json, typ_odpowiedzialnosci.json
 #    itp. — referencje w migracjach).
 # Usuwamy tylko katalogi `tests` na poziomie app (depth 2) i szczegółowe
-# ścieżki pytest-owe.
+# ścieżki pytest-owe. Musi biec PO collectstatic — patrz komentarz wyżej.
 RUN find /app/src -mindepth 2 -type d -name tests -exec rm -rf {} + && \
     rm -rf /app/src/fixtures \
            /app/src/conftest.py \
            /app/src/integration_tests
-
-RUN /app/.venv/bin/python src/manage.py compilemessages -v0 -l pl --traceback
 
 # R3: UV_COMPILE_BYTECODE=1 już wygenerowało .pyc podczas `uv sync`.
 # Dodatkowo strippujemy katalogi test* z wbudowanych pakietów, aby
@@ -139,17 +153,6 @@ RUN /app/.venv/bin/python src/manage.py compilemessages -v0 -l pl --traceback
 # się wewnętrznie do testowych aplikacji).
 RUN find /app/.venv -type d -name tests -not -path "*/django/*" \
       -exec rm -rf {} + 2>/dev/null || true
-
-# R5: collectstatic wymaga `node_modules` przez YarnFinder — uruchamiamy
-# go teraz, w builder stage, aby staticroot był pre-populowany, a runtime
-# mógł shipować tylko `/app/staticroot` zamiast 300+ MB node_modules.
-# collectstatic nie potrzebuje DB ani Redisa; wystarczy dummy SECRET_KEY.
-RUN DJANGO_BPP_SECRET_KEY=build-time-only-not-used \
-    STATIC_ROOT=/app/staticroot \
-    /app/.venv/bin/python src/manage.py collectstatic \
-        --noinput -v0 --traceback
-
-RUN rm -rf /app/node_modules
 
 ##############################################################################
 # TEST-RUNNER: test environment (source mounted at runtime via volume)
