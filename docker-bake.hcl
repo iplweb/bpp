@@ -1,9 +1,11 @@
 # docker-bake.hcl - Parallel Docker builds for BPP
 #
+# Obraz dbservera (iplweb/bpp_dbserver) jest budowany w osobnym repo:
+# https://github.com/iplweb/bpp-dbserver
+#
 # Usage:
 #   make build                    # Local parallel build (default)
 #   make build-base               # Build only base image
-#   make build-independent        # Build dbserver only
 #   docker buildx bake --print    # Show build plan without executing
 #
 # Variables can be overridden via environment or --set flag:
@@ -30,22 +32,14 @@ variable "TAG_LATEST" {
   default = "true"
 }
 
-variable "POSTGRES_VERSION" {
-  default = "16.3"
-}
-
 # Build groups for different scenarios
 group "default" {
-  targets = ["dbserver", "appserver", "workerserver",
+  targets = ["appserver", "workerserver",
              "beatserver", "authserver", "denorm-queue"]
 }
 
 group "base-only" {
   targets = ["base"]
-}
-
-group "independent" {
-  targets = ["dbserver"]
 }
 
 group "app-services" {
@@ -71,27 +65,6 @@ target "base" {
   # docker/bpp_base/Dockerfile (apt-cache, apt-lists, uv-cache, npm-cache,
   # yarn-cache) which persist across --no-cache builds.
   no-cache  = true
-  platforms = [PLATFORM]
-  output    = PUSH ? ["type=registry"] : ["type=docker"]
-}
-
-# Independent images - can build in parallel with base
-target "dbserver" {
-  dockerfile = "Dockerfile"
-  context    = "docker/dbserver"
-  args = {
-    POSTGRES_VERSION = POSTGRES_VERSION
-  }
-  tags = TAG_LATEST == "true" ? [
-    "iplweb/bpp_dbserver:${DOCKER_VERSION}",
-    "iplweb/bpp_dbserver:latest",
-    "iplweb/bpp_dbserver:psql-${POSTGRES_VERSION}",
-    "iplweb/bpp_dbserver:psql-${split(".", POSTGRES_VERSION)[0]}"
-  ] : [
-    "iplweb/bpp_dbserver:${DOCKER_VERSION}",
-    "iplweb/bpp_dbserver:psql-${POSTGRES_VERSION}",
-    "iplweb/bpp_dbserver:psql-${split(".", POSTGRES_VERSION)[0]}"
-  ]
   platforms = [PLATFORM]
   output    = PUSH ? ["type=registry"] : ["type=docker"]
 }

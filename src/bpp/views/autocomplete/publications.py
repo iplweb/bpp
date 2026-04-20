@@ -18,7 +18,7 @@ class Wydawnictwo_NadrzedneAutocomplete(
     def get_queryset(self):
         qs = Wydawnictwo_Zwarte.objects.filter(
             charakter_formalny__charakter_ogolny=CHARAKTER_OGOLNY_KSIAZKA
-        )
+        ).order_by("tytul_oryginalny", "pk")
 
         if self.q:
             qs = qs.filter(tytul_oryginalny__icontains=self.q)
@@ -31,7 +31,7 @@ class Wydawnictwo_CiagleAdminAutocomplete(
     """Admin autocomplete for continuous publications."""
 
     def get_queryset(self):
-        qs = Wydawnictwo_Ciagle.objects.all()
+        qs = Wydawnictwo_Ciagle.objects.all().order_by("tytul_oryginalny", "pk")
         if self.q:
             qs = qs.filter(tytul_oryginalny__icontains=self.q)
         return qs
@@ -43,7 +43,7 @@ class Wydawnictwo_ZwarteAdminAutocomplete(
     """Admin autocomplete for monographic publications."""
 
     def get_queryset(self):
-        qs = Wydawnictwo_Zwarte.objects.all()
+        qs = Wydawnictwo_Zwarte.objects.all().order_by("tytul_oryginalny", "pk")
         if self.q:
             qs = qs.filter(tytul_oryginalny__icontains=self.q)
         return qs
@@ -69,7 +69,7 @@ class PublicWydawnictwo_NadrzedneAutocomplete(Wydawnictwo_NadrzedneAutocomplete)
             pk__in=Wydawnictwo_Zwarte.objects.exclude(wydawnictwo_nadrzedne_id=None)
             .values_list("wydawnictwo_nadrzedne_id")
             .distinct()
-        )
+        ).order_by("tytul_oryginalny", "pk")
 
         if self.q:
             qs = qs.filter(tytul_oryginalny__icontains=self.q)

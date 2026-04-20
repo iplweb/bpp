@@ -87,7 +87,14 @@ def test_task_sprobuj_wyslac_do_pbn_retry_later(mocker, send_status):
 
     wait_for_object.return_value = mock_peq
 
-    task_sprobuj_wyslac_do_pbn(5)
+    # Wait_for_object pod spodem używa current_task.retry → wymaga
+    # wywołania przez celery (tu eager). .delay() → .apply() → get().
+    # Nie używamy .delay() bo niektóre testy mockują
+    # task_sprobuj_wyslac_do_pbn.apply_async (żeby zweryfikować
+    # re-schedulowanie w gałęzi RETRY_*). .delay() przeszłoby przez
+    # tamten mock i body zadania nigdy by się nie uruchomiło.
+    # .apply(args=...) idzie bezpośrednio do tracera eager mode.
+    task_sprobuj_wyslac_do_pbn.apply(args=(5,)).get()
 
     # Check that lock was acquired and released
     mock_cache_add.assert_called_once()
@@ -121,7 +128,12 @@ def test_task_sprobuj_wyslac_do_pbn_finished(mocker, send_status):
 
     wait_for_object.return_value = mock_peq
 
-    task_sprobuj_wyslac_do_pbn(5)
+    # Nie używamy .delay() bo niektóre testy mockują
+    # task_sprobuj_wyslac_do_pbn.apply_async (żeby zweryfikować
+    # re-schedulowanie w gałęzi RETRY_*). .delay() przeszłoby przez
+    # tamten mock i body zadania nigdy by się nie uruchomiło.
+    # .apply(args=...) idzie bezpośrednio do tracera eager mode.
+    task_sprobuj_wyslac_do_pbn.apply(args=(5,)).get()
 
     # Check that lock was acquired and released
     mock_cache_add.assert_called_once()
@@ -142,7 +154,7 @@ def test_task_sprobuj_wyslac_do_pbn_raises(mocker):
     wait_for_object.return_value = mock_peq
 
     with pytest.raises(NotImplementedError):
-        task_sprobuj_wyslac_do_pbn(5)
+        task_sprobuj_wyslac_do_pbn.apply(args=(5,)).get()
 
     # Lock should still be cleaned up even on error
     mock_cache_delete.assert_called_once()
@@ -156,7 +168,7 @@ def test_task_sprobuj_wyslac_do_pbn_lock_already_acquired(mocker):
 
     wait_for_object = mocker.patch("pbn_export_queue.tasks.wait_for_object")
 
-    result = task_sprobuj_wyslac_do_pbn(5)
+    result = task_sprobuj_wyslac_do_pbn.apply(args=(5,)).get()
 
     # Should return immediately without processing
     assert result == "ALREADY_PROCESSING"
@@ -177,7 +189,7 @@ def test_task_sprobuj_wyslac_do_pbn_already_completed(mocker):
 
     wait_for_object.return_value = mock_peq
 
-    result = task_sprobuj_wyslac_do_pbn(5)
+    result = task_sprobuj_wyslac_do_pbn.apply(args=(5,)).get()
 
     # Should return without calling send_to_pbn
     assert result == "ALREADY_COMPLETED"

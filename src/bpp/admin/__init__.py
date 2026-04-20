@@ -1,7 +1,7 @@
 from django import forms
 from django.contrib import admin
 from django.contrib.admin.sites import AlreadyRegistered
-from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.forms import AdminUserCreationForm
 from multiseek.models import SearchForm
 
 from bpp.models import Rodzaj_Prawa_Patentowego, Zewnetrzna_Baza_Danych
@@ -213,7 +213,7 @@ admin.site.register(Typ_Odpowiedzialnosci, Typ_OdpowiedzialnosciAdmin)
 from django.contrib.auth.admin import UserAdmin  # noqa
 
 
-class BppUserCreationForm(UserCreationForm):
+class BppUserCreationForm(AdminUserCreationForm):
     class Meta:
         model = BppUser
         fields = "__all__"

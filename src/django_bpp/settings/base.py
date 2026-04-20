@@ -217,6 +217,10 @@ SITE_ID = 1  # dla static-sitemaps
 USE_I18N = True
 USE_TZ = True
 
+# Django 5.0 transitional; stanie się domyślne w 6.0. Wycisza
+# RemovedInDjango60Warning z forms.URLField dla URL-i bez schematu.
+FORMS_URLFIELD_ASSUME_HTTPS = True
+
 STATIC_URL = "/static/"
 
 ADMIN_MEDIA_PREFIX = "/static/admin/"
@@ -290,8 +294,6 @@ TEMPLATES = [
 ]
 
 MIDDLEWARE = [
-    "htmlmin.middleware.HtmlMinifyMiddleware",
-    "htmlmin.middleware.MarkRequestMiddleware",
     "django.middleware.locale.LocaleMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "bpp.middleware.MaliciousRequestBlockingMiddleware",  # Block malicious requests (pagination, PHP, .git, etc.) early
@@ -484,7 +486,7 @@ INSTALLED_APPS = [
 PG_BASELINE = {
     "BASELINE_DIR": os.path.join(SITE_ROOT, "baseline-sql"),
     # Our image has plpython3u + pl_PL.UTF-8 locale — vanilla postgres doesn't.
-    "REBUILD_IMAGE": "iplweb/bpp_dbserver:latest",
+    "REBUILD_IMAGE": "iplweb/bpp_dbserver:psql-16.13",
     # bpp-specific exclusions on top of the generic django_session default.
     "PG_DUMP_EXTRA_EXCLUDE_TABLE_DATA": [
         "django_cache*",
@@ -540,7 +542,11 @@ def autoslug_gen():
     )
 
 
-BAKER_CUSTOM_FIELDS_GEN = {"autoslug.fields.AutoSlugField": autoslug_gen}
+BAKER_CUSTOM_FIELDS_GEN = {
+    "autoslug.fields.AutoSlugField": autoslug_gen,
+    "django.contrib.postgres.fields.array.ArrayField": lambda: [],
+    "django.contrib.postgres.search.SearchVectorField": lambda: None,
+}
 BAKER_CUSTOM_CLASS = "bpp.tests.bpp_baker.BPP_Baker"
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTOCOL", "https")
@@ -725,8 +731,6 @@ SENDFILE_ROOT = MEDIA_ROOT
 GOOGLE_ANALYTICS_PROPERTY_ID = env("DJANGO_BPP_GOOGLE_ANALYTICS_PROPERTY_ID")
 
 WEBMASTER_VERIFICATION = {"google": env("DJANGO_BPP_GOOGLE_VERIFICATION_CODE")}
-
-EXCLUDE_FROM_MINIFYING = ["^google.*html$"]
 
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 

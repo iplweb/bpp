@@ -29,7 +29,7 @@
 
 BRANCH=`git branch | sed -n '/\* /s///p'`
 
-.PHONY: help clean distclean tests release tests-without-playwright tests-only-playwright docker destroy-test-databases coveralls-upload clean-coverage combine-coverage cache-delete buildx-cache-stats buildx-cache-prune buildx-cache-prune-aggressive buildx-cache-prune-registry buildx-cache-export buildx-cache-import buildx-cache-list bump-dev bump-release bump-and-start-dev migrate new-worktree clean-worktree generate-500-page build build-force build-base build-independent build-app-services build-dbserver build-appserver-base build-appserver build-workerserver build-beatserver build-authserver build-denorm-queue build-servers check-clean-tree prepare-claude prepare-developer-machine prepare-developer-machine-linux
+.PHONY: help clean distclean tests release tests-without-playwright tests-only-playwright docker destroy-test-databases coveralls-upload clean-coverage combine-coverage cache-delete buildx-cache-stats buildx-cache-prune buildx-cache-prune-aggressive buildx-cache-prune-registry buildx-cache-export buildx-cache-import buildx-cache-list bump-dev bump-release bump-and-start-dev migrate new-worktree clean-worktree generate-500-page build build-force build-base build-app-services build-appserver-base build-appserver build-workerserver build-beatserver build-authserver build-denorm-queue build-servers check-clean-tree prepare-claude prepare-developer-machine prepare-developer-machine-linux
 
 .DEFAULT_GOAL := help
 
@@ -282,6 +282,13 @@ tests-stop-containers: ## Zatrzymaj i usuń reużywalne testcontainers (bpp-tc-*
 	-docker rm bpp-tc-pg bpp-tc-redis bpp-tc-rabbitmq 2>/dev/null
 	@echo "Testcontainers stopped and removed."
 
+# Remove ALL orphaned testcontainers (including Ryuks from crashed pytest runs).
+clean-testcontainers: ## Usuń wszystkie osierocone testcontainers (PG/Redis/Rabbit/Ryuk + reuse bpp-tc-*)
+	@echo "Removing all containers labeled org.testcontainers=true ..."
+	-@docker ps -aq --filter "label=org.testcontainers=true" | xargs -r docker rm -f
+	-@docker rm -f bpp-tc-pg bpp-tc-redis bpp-tc-rabbitmq 2>/dev/null || true
+	@echo "Done."
+
 # Run tests with ephemeral containers (destroyed after run).
 tests-ephemeral: ## Testy w efemerycznych testcontainers (usuwane po teście)
 	BPP_TESTCONTAINERS_REUSE=0 uv run pytest -n auto -m "not playwright" --maxfail 50
@@ -408,7 +415,7 @@ loc: clean ## Pokaż statystyki liczby linii (pygount)
 	pygount -N ... -F "...,staticroot,migrations,fixtures" src --format=summary
 
 
-DOCKER_VERSION=202604.1352
+DOCKER_VERSION=202604.1357
 
 # Cache configuration for docker buildx bake
 # - local: use local cache (default for local builds)
@@ -449,9 +456,10 @@ endif
 
 # Main build target - parallel builds using docker buildx bake
 # This builds all images in parallel where possible:
-# - dbserver: independent, builds immediately
-# - base: builds in parallel with above
+# - base: builds first
 # - appserver, workerserver, beatserver, authserver, denorm-queue: wait for base
+# Obraz dbservera (iplweb/bpp_dbserver) jest budowany w osobnym repo:
+# https://github.com/iplweb/bpp-dbserver
 build: ## Równoległy build wszystkich obrazów (buildx bake)
 	docker buildx bake $(BAKE_ARGS)
 
@@ -463,18 +471,11 @@ build-force: ## Pełny rebuild ignorujący cache
 build-base: ## Zbuduj tylko obraz `base`
 	docker buildx bake $(BAKE_ARGS) base
 
-# Build independent images only (dbserver)
-build-independent: ## Zbuduj niezależne obrazy (dbserver)
-	docker buildx bake $(BAKE_ARGS) independent
-
 # Build app services only (requires base image to exist)
 build-app-services: ## Zbuduj tylko app-services (wymaga istniejącego `base`)
 	docker buildx bake $(BAKE_ARGS) app-services
 
 # Individual build targets (for debugging or specific rebuilds)
-build-dbserver: ## Zbuduj tylko dbserver
-	docker buildx bake $(BAKE_ARGS) dbserver
-
 build-appserver-base: ## Alias do build-base (buduje base dla appservera)
 	docker buildx bake $(BAKE_ARGS) base
 
@@ -580,7 +581,6 @@ buildx-cache-list: ## Wypisz znane nazwy cache'y rejestru na Docker Hub
 	@echo "  - iplweb/bpp_workerserver:cache"
 	@echo "  - iplweb/bpp_beatserver:cache"
 	@echo "  - iplweb/bpp_denorm_queue:cache"
-	@echo "  - iplweb/bpp_dbserver:cache"
 
 ##@ Docker compose
 

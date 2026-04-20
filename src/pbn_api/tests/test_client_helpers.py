@@ -12,7 +12,7 @@ from model_bakery import baker
 
 from bpp.admin.helpers.pbn_api.gui import sprobuj_wyslac_do_pbn_gui
 from fixtures import MOCK_RETURNED_INSTITUTION_PUBLICATION_V2_DATA
-from fixtures.pbn_api import MOCK_RETURNED_MONGODB_DATA
+from fixtures.pbn_api import MOCK_RETURNED_MONGODB_DATA, pbn_pageable_json
 from pbn_api.client import (
     PBN_GET_INSTITUTION_STATEMENTS,
     PBN_GET_PUBLICATION_BY_ID_URL,
@@ -78,14 +78,14 @@ def test_helpers_wysylka_z_uid_uczelni(
     pbn_client.transport.return_values[
         PBN_GET_INSTITUTION_PUBLICATIONS_V2
         + f"?publicationId={pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.pk}&size=10"
-    ] = MOCK_RETURNED_INSTITUTION_PUBLICATION_V2_DATA
+    ] = pbn_pageable_json(MOCK_RETURNED_INSTITUTION_PUBLICATION_V2_DATA)
     pbn_client.transport.return_values[PBN_GET_PUBLICATION_BY_ID_URL.format(id=456)] = (
         MOCK_RETURNED_MONGODB_DATA
     )
 
     pbn_client.transport.return_values[
         PBN_GET_INSTITUTION_STATEMENTS + "?publicationId=123&size=5120"
-    ] = []
+    ] = pbn_pageable_json([])
 
     req = rf.get("/")
     req._uczelnia = pbn_uczelnia
@@ -141,11 +141,11 @@ def test_helpers_wysylka_bez_uid_uczelni(
     pbn_client.transport.return_values[
         PBN_GET_INSTITUTION_PUBLICATIONS_V2
         + f"?publicationId={pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.pk}&size=10"
-    ] = MOCK_RETURNED_INSTITUTION_PUBLICATION_V2_DATA
+    ] = pbn_pageable_json(MOCK_RETURNED_INSTITUTION_PUBLICATION_V2_DATA)
 
     pbn_client.transport.return_values[
         PBN_GET_INSTITUTION_STATEMENTS + "?publicationId=123&size=5120"
-    ] = []
+    ] = pbn_pageable_json([])
 
     req = rf.get("/")
     req._uczelnia = pbn_uczelnia

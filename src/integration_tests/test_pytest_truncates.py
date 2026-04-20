@@ -6,8 +6,8 @@ bpp_rekord_mat nie bedzie wlaczona do tej klauzuli TRUNCATE, zatem...
 
 
 def test1(preauth_page):
-    return True  # 1/0
+    assert preauth_page is not None
 
 
 def test2(preauth_asgi_page):
-    return True  # 1/0
+    assert preauth_asgi_page is not None

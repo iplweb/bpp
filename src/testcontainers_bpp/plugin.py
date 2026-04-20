@@ -17,6 +17,7 @@ xdist workers, denorm triggers) works unchanged.
 
 from __future__ import annotations
 
+import atexit
 import os
 
 import pytest
@@ -117,6 +118,13 @@ def pytest_load_initial_conftests(early_config, parser, args):  # noqa: ARG001
     }
     _containers = start_containers(reuse=_reuse)
 
+    # Safety net: pytest_unconfigure nie odpala się przy abrupt-exit
+    # (sys.exit z fixture, nieprzechwycony wyjątek, OOM killer na pytest).
+    # Ryuk bywa niezawodny tylko dopóki sam żyje — przy restarcie Docker
+    # Desktop również ginie. atexit łapie większość cichych padów, gdzie
+    # sam proces pytest kończy się normalnie. Nie chroni przed SIGKILL.
+    atexit.register(_atexit_stop)
+
     # Wstrzykujemy dane połączeniowe do os.environ ZANIM django.setup()
     # załaduje ustawienia.
     os.environ["DJANGO_BPP_DB_HOST"] = _containers.pg_host
@@ -135,6 +143,25 @@ def pytest_load_initial_conftests(early_config, parser, args):  # noqa: ARG001
 
     # Pomijamy ładowanie pliku .env — sami dostarczamy wszystkie dane.
     os.environ["DJANGO_BPP_SKIP_DOTENV"] = "1"
+
+
+def _atexit_stop() -> None:
+    """Backup cleanup triggered when pytest process exits without pytest_unconfigure."""
+    global _containers  # noqa: PLW0603
+
+    if _containers is None or _reuse:
+        return
+
+    try:
+        from .containers import stop_containers
+
+        stop_containers(_containers)
+    except Exception:
+        import traceback
+
+        traceback.print_exc()
+    finally:
+        _containers = None
 
 
 def pytest_unconfigure(config):  # noqa: ARG001

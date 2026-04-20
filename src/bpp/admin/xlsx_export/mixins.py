@@ -14,9 +14,10 @@ from .resources import BibTeXFormat
 class PrettyXLSXDefaultExportForm(ExportForm):
     """Export form with PrettyXLSX as default selection."""
 
-    def __init__(self, formats, *args, **kwargs):
-        super().__init__(formats, *args, **kwargs)
-        # Set PrettyXLSX as default if it's available
+    def __init__(self, formats, resources, **kwargs):
+        super().__init__(formats, resources, **kwargs)
+        # django-import-export 4.x renamed the field from `file_format`
+        # to `format` and changed ExportForm.__init__ to require `resources`.
         if len(formats) > 0:
             # Find the index of PrettyXLSX format
             for i, format_class in enumerate(formats):
@@ -24,11 +25,11 @@ class PrettyXLSXDefaultExportForm(ExportForm):
                     hasattr(format_class, "__name__")
                     and format_class.__name__ == "PrettyXLSX"
                 ):
-                    self.fields["file_format"].initial = str(i)
+                    self.fields["format"].initial = str(i)
                     break
             else:
                 # If PrettyXLSX not found, use first format as fallback
-                self.fields["file_format"].initial = "0"
+                self.fields["format"].initial = "0"
 
 
 class EksportDanychMixin(ExportMixin):
@@ -65,7 +66,7 @@ class EksportDanychMixin(ExportMixin):
         file_format = PrettyXLSX()
 
         queryset = self.get_export_queryset(request)
-        export_data = self.get_export_data(file_format, queryset, request=request)
+        export_data = self.get_export_data(file_format, request, queryset)
         content_type = file_format.get_content_type()
 
         response = HttpResponse(export_data, content_type=content_type)
@@ -103,17 +104,17 @@ class EksportDanychZFormatowanieMixin(ExportMixin):
             return self.bibtex_resource_class
         return self.resource_classes[0]
 
-    def get_export_data(self, file_format, queryset, *args, **kwargs):
+    def get_export_data(self, file_format, request, queryset, **kwargs):
         """
         Override to use format-specific resource classes.
         """
         if isinstance(file_format, BibTeXFormat) and self.bibtex_resource_class:
             # Use BibTeX-specific resource
             resource = self.bibtex_resource_class()
-            return resource.export(queryset, *args, **kwargs)
+            return resource.export(queryset=queryset, **kwargs)
         else:
             # Use default resource
-            return super().get_export_data(file_format, queryset, *args, **kwargs)
+            return super().get_export_data(file_format, request, queryset, **kwargs)
 
     def has_export_permission(self, request):
         try:

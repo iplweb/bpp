@@ -64,5 +64,20 @@ def load_baseline(
         f"[baseline] loading {dump_path.name} into {db_name} ...",
         file=sys.stderr,
     )
-    subprocess.run(cmd, env=env, check=True)
+    # stdout captured to silence the wall of `setval`/`set_config` result
+    # rows the dump produces; stderr stays inherited so real psql errors
+    # / NOTICEs still reach the user. On failure we re-emit the captured
+    # stdout to stderr so partial output is not lost.
+    result = subprocess.run(
+        cmd,
+        env=env,
+        check=False,
+        stdout=subprocess.PIPE,
+        text=True,
+    )
+    if result.returncode != 0:
+        sys.stderr.write(result.stdout)
+        raise subprocess.CalledProcessError(
+            result.returncode, cmd, output=result.stdout
+        )
     print("[baseline] load complete", file=sys.stderr)

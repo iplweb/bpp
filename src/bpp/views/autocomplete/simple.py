@@ -225,7 +225,7 @@ class PublicZrodloAutocomplete(
         return qobj
 
     def get_queryset(self):
-        qs = self._get_base_queryset()
+        qs = self._get_base_queryset().order_by("nazwa", "pk")
         if self.q:
             for token in [x.strip() for x in self.q.split(" ") if x.strip()]:
                 qs = qs.filter(self._build_token_filter(token))
@@ -243,7 +243,7 @@ class ZrodloAutocomplete(GroupRequiredMixin, PublicZrodloAutocomplete):
         return Zrodlo.objects.all().select_related("pbn_uid")
 
     def get_queryset(self):
-        qs = self._get_base_queryset()
+        qs = self._get_base_queryset().order_by("nazwa", "pk")
         if self.q:
             for token in [x.strip() for x in self.q.split(" ") if x.strip()]:
                 qs = qs.filter(self._build_token_filter(token))
@@ -257,7 +257,15 @@ class ZrodloAutocomplete(GroupRequiredMixin, PublicZrodloAutocomplete):
             )[:10]
             qs_without_pbn = qs.filter(pbn_uid__isnull=True)[:10]
 
-            # Use QuerySetSequence to chain querysets with priority
+            # Use QuerySetSequence to chain querysets with priority.
+            # UWAGA: nie wołamy tu .order_by() na sekwencji, bo
+            # sub-querysety są już sliced (`[:10]`), a QuerySetSequence
+            # propaguje order_by do każdego z nich — a Django od 4.x
+            # rzuca "Cannot reorder a query once a slice has been taken".
+            # Bazowy qs ma już .order_by("nazwa", "pk") z
+            # _get_base_queryset, więc każde filtrowane `[:10]` zachowuje
+            # porządek; jedynie kolejność między trzema gałęziami PBN
+            # jest priorytetowa (celowo, nie alfabetyczna).
             res = QuerySetSequence(
                 qs_with_full_pbn, qs_with_pbn_no_mnisw, qs_without_pbn
             )
@@ -315,7 +323,7 @@ class Dyscyplina_NaukowaAutocomplete(
     """Autocomplete for scientific disciplines."""
 
     def get_queryset(self):
-        qs = Dyscyplina_Naukowa.objects.filter(widoczna=True)
+        qs = Dyscyplina_Naukowa.objects.filter(widoczna=True).order_by("kod", "nazwa")
         if self.q:
             qs = qs.filter(Q(nazwa__icontains=self.q) | Q(kod__icontains=self.q))
         return qs

@@ -10,6 +10,7 @@ from dynamic_columns.util import qual, str_to_class
 
 def test_autor_admin_hide_column(admin_app, autor_jan_kowalski):
     POPRZEDNIE_NAZWISKA = "159ygquadfja0eth0qjaoidjgo"
+    COLUMN_TD = '<td class="field-poprzednie_nazwiska">'
 
     autor_jan_kowalski.poprzednie_nazwiska = POPRZEDNIE_NAZWISKA
     autor_jan_kowalski.save()
@@ -26,9 +27,13 @@ def test_autor_admin_hide_column(admin_app, autor_jan_kowalski):
     c.enabled = True
     c.save()
 
-    # Open the 'default' admin instance
+    # Open the 'default' admin instance - check the column TD is rendered.
+    # We look for the column's <td class="field-poprzednie_nazwiska">
+    # specifically rather than the value string, because Django 5.1+
+    # also emits the row's __str__() into the action checkbox aria-label,
+    # and Autor.__str__() embeds `poprzednie_nazwiska`.
     res = admin_app.get(reverse("admin:bpp_autor_changelist"))
-    assert POPRZEDNIE_NAZWISKA in res
+    assert COLUMN_TD in res
     assert "Kowalski" in res
 
     ma = ModelAdmin.objects.db_repr(autor_admin)
@@ -37,7 +42,7 @@ def test_autor_admin_hide_column(admin_app, autor_jan_kowalski):
     c.save()
 
     res = admin_app.get(reverse("admin:bpp_autor_changelist"))
-    assert POPRZEDNIE_NAZWISKA not in res
+    assert COLUMN_TD not in res
     assert "Kowalski" in res
 
 

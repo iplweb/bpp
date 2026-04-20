@@ -10,7 +10,7 @@ import pytest
 
 from bpp.decorators import json
 from fixtures import MOCK_RETURNED_INSTITUTION_PUBLICATION_V2_DATA
-from fixtures.pbn_api import MOCK_RETURNED_MONGODB_DATA
+from fixtures.pbn_api import MOCK_RETURNED_MONGODB_DATA, pbn_pageable_json
 from pbn_api.client import (
     PBN_DELETE_PUBLICATION_STATEMENT,
     PBN_GET_INSTITUTION_STATEMENTS,
@@ -43,25 +43,27 @@ def test_sync_publication_to_samo_id(
     ] = MOCK_RETURNED_MONGODB_DATA
     pbn_client.transport.return_values[
         PBN_GET_INSTITUTION_PUBLICATIONS_V2 + "?publicationId=123&size=10"
-    ] = MOCK_RETURNED_INSTITUTION_PUBLICATION_V2_DATA
+    ] = pbn_pageable_json(MOCK_RETURNED_INSTITUTION_PUBLICATION_V2_DATA)
     pbn_client.transport.return_values[PBN_GET_PUBLICATION_BY_ID_URL.format(id=456)] = (
         MOCK_RETURNED_MONGODB_DATA
     )
 
     pbn_client.transport.return_values[
         PBN_GET_INSTITUTION_STATEMENTS + "?publicationId=123&size=5120"
-    ] = [
-        {
-            "id": "eaec3254-2eb1-44d9-8c3c-e68fc2a48bd9",
-            "addedTimestamp": "2020.05.06",
-            "institutionId": pbn_jednostka.pbn_uid_id,
-            "personId": pbn_autor.pbn_uid_id,
-            "publicationId": pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.pbn_uid_id,
-            "area": "200",
-            "inOrcid": True,
-            "type": "FOOBAR",
-        }
-    ]
+    ] = pbn_pageable_json(
+        [
+            {
+                "id": "eaec3254-2eb1-44d9-8c3c-e68fc2a48bd9",
+                "addedTimestamp": "2020.05.06",
+                "institutionId": pbn_jednostka.pbn_uid_id,
+                "personId": pbn_autor.pbn_uid_id,
+                "publicationId": pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.pbn_uid_id,
+                "area": "200",
+                "inOrcid": True,
+                "type": "FOOBAR",
+            }
+        ]
+    )
 
     pbn_client.sync_publication(pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina)
 
@@ -86,11 +88,11 @@ def test_sync_publication_tekstowo_podane_id(
     )
     pbn_client.transport.return_values[
         PBN_GET_INSTITUTION_PUBLICATIONS_V2 + "?publicationId=123&size=10"
-    ] = MOCK_RETURNED_INSTITUTION_PUBLICATION_V2_DATA
+    ] = pbn_pageable_json(MOCK_RETURNED_INSTITUTION_PUBLICATION_V2_DATA)
 
     pbn_client.transport.return_values[
         PBN_GET_INSTITUTION_STATEMENTS + "?publicationId=123&size=5120"
-    ] = []
+    ] = pbn_pageable_json([])
 
     pbn_client.sync_publication(
         f"wydawnictwo_zwarte:{pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.pk}"
@@ -116,13 +118,13 @@ def test_sync_publication_nowe_id(
     ] = MOCK_RETURNED_MONGODB_DATA
     pbn_client.transport.return_values[
         PBN_GET_INSTITUTION_STATEMENTS + "?publicationId=123&size=5120"
-    ] = []
+    ] = pbn_pageable_json([])
     pbn_client.transport.return_values[PBN_GET_PUBLICATION_BY_ID_URL.format(id=456)] = (
         MOCK_RETURNED_MONGODB_DATA
     )
     pbn_client.transport.return_values[
         PBN_GET_INSTITUTION_PUBLICATIONS_V2 + "?publicationId=123&size=10"
-    ] = MOCK_RETURNED_INSTITUTION_PUBLICATION_V2_DATA
+    ] = pbn_pageable_json(MOCK_RETURNED_INSTITUTION_PUBLICATION_V2_DATA)
 
     pbn_client.sync_publication(pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina)
 
@@ -152,17 +154,17 @@ def test_sync_publication_wysylka_z_zerowym_pk(
     ] = MOCK_RETURNED_MONGODB_DATA
     pbn_client.transport.return_values[
         PBN_GET_INSTITUTION_PUBLICATIONS_V2 + "?publicationId=123&size=10"
-    ] = MOCK_RETURNED_INSTITUTION_PUBLICATION_V2_DATA
+    ] = pbn_pageable_json(MOCK_RETURNED_INSTITUTION_PUBLICATION_V2_DATA)
     pbn_client.transport.return_values[PBN_GET_PUBLICATION_BY_ID_URL.format(id=456)] = (
         MOCK_RETURNED_MONGODB_DATA
     )
 
     pbn_client.transport.return_values[
         PBN_GET_INSTITUTION_STATEMENTS + "?publicationId=123&size=5120"
-    ] = []
+    ] = pbn_pageable_json([])
     pbn_client.transport.return_values[
         PBN_GET_INSTITUTION_PUBLICATIONS_V2 + "?publicationId=123&size=10"
-    ] = MOCK_RETURNED_INSTITUTION_PUBLICATION_V2_DATA
+    ] = pbn_pageable_json(MOCK_RETURNED_INSTITUTION_PUBLICATION_V2_DATA)
 
     # To pójdzie
     pbn_client.sync_publication(
@@ -197,7 +199,7 @@ def test_sync_publication_kasuj_oswiadczenia_przed_wszystko_dobrze(
     ] = MOCK_RETURNED_MONGODB_DATA
     pbn_client.transport.return_values[
         PBN_GET_INSTITUTION_PUBLICATIONS_V2 + "?publicationId=123&size=10"
-    ] = MOCK_RETURNED_INSTITUTION_PUBLICATION_V2_DATA
+    ] = pbn_pageable_json(MOCK_RETURNED_INSTITUTION_PUBLICATION_V2_DATA)
     pbn_client.transport.return_values[PBN_GET_PUBLICATION_BY_ID_URL.format(id=456)] = (
         MOCK_RETURNED_MONGODB_DATA
     )
@@ -207,18 +209,20 @@ def test_sync_publication_kasuj_oswiadczenia_przed_wszystko_dobrze(
     ] = []
     pbn_client.transport.return_values[
         PBN_GET_INSTITUTION_STATEMENTS + "?publicationId=123&size=5120"
-    ] = [
-        {
-            "id": "eaec3254-2eb1-44d9-8c3c-e68fc2a48bd9",
-            "addedTimestamp": "2020.05.06",
-            "institutionId": pbn_jednostka.pbn_uid_id,
-            "personId": pbn_autor.pbn_uid_id,
-            "publicationId": pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.pbn_uid_id,
-            "area": "200",
-            "inOrcid": True,
-            "type": "FOOBAR",
-        }
-    ]
+    ] = pbn_pageable_json(
+        [
+            {
+                "id": "eaec3254-2eb1-44d9-8c3c-e68fc2a48bd9",
+                "addedTimestamp": "2020.05.06",
+                "institutionId": pbn_jednostka.pbn_uid_id,
+                "personId": pbn_autor.pbn_uid_id,
+                "publicationId": pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.pbn_uid_id,
+                "area": "200",
+                "inOrcid": True,
+                "type": "FOOBAR",
+            }
+        ]
+    )
 
     pbn_client.sync_publication(
         pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina,
@@ -252,7 +256,7 @@ def test_sync_publication_kasuj_oswiadczenia_przed_blad_400_nie_zaburzy(
     pbn_client.transport.return_values[
         PBN_GET_INSTITUTION_PUBLICATIONS_V2
         + f"?publicationId={pbn_publication.pk}&size=10"
-    ] = MOCK_RETURNED_INSTITUTION_PUBLICATION_V2_DATA
+    ] = pbn_pageable_json(MOCK_RETURNED_INSTITUTION_PUBLICATION_V2_DATA)
     pbn_client.transport.return_values[PBN_GET_PUBLICATION_BY_ID_URL.format(id=456)] = (
         MOCK_RETURNED_MONGODB_DATA
     )
@@ -274,18 +278,20 @@ def test_sync_publication_kasuj_oswiadczenia_przed_blad_400_nie_zaburzy(
 
     pbn_client.transport.return_values[
         PBN_GET_INSTITUTION_STATEMENTS + "?publicationId=123&size=5120"
-    ] = [
-        {
-            "id": "eaec3254-2eb1-44d9-8c3c-e68fc2a48bd9",
-            "addedTimestamp": "2020.05.06",
-            "institutionId": pbn_jednostka.pbn_uid_id,
-            "personId": pbn_autor.pbn_uid_id,
-            "publicationId": pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.pbn_uid_id,
-            "area": "200",
-            "inOrcid": True,
-            "type": "FOOBAR",
-        }
-    ]
+    ] = pbn_pageable_json(
+        [
+            {
+                "id": "eaec3254-2eb1-44d9-8c3c-e68fc2a48bd9",
+                "addedTimestamp": "2020.05.06",
+                "institutionId": pbn_jednostka.pbn_uid_id,
+                "personId": pbn_autor.pbn_uid_id,
+                "publicationId": pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.pbn_uid_id,
+                "area": "200",
+                "inOrcid": True,
+                "type": "FOOBAR",
+            }
+        ]
+    )
 
     pbn_client.sync_publication(
         pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina,
@@ -334,12 +340,12 @@ def test_upload_and_sync_publication_without_existing_publication(
     # Mock empty statements response
     pbn_client.transport.return_values[
         PBN_GET_INSTITUTION_STATEMENTS + f"?publicationId={new_object_id}&size=5120"
-    ] = []
+    ] = pbn_pageable_json([])
 
     # Mock institution publications v2 response
     pbn_client.transport.return_values[
         PBN_GET_INSTITUTION_PUBLICATIONS_V2 + f"?publicationId={new_object_id}&size=10"
-    ] = MOCK_RETURNED_INSTITUTION_PUBLICATION_V2_DATA
+    ] = pbn_pageable_json(MOCK_RETURNED_INSTITUTION_PUBLICATION_V2_DATA)
 
     # Call sync_publication() - this internally calls upload_publication()
     # which should succeed without FK error, then download_publication()

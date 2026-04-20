@@ -20,6 +20,28 @@ from bpp.tests.helpers import (  # noqa: F401 - re-export helpers
 )
 from channels_live_server import channels_live_server  # noqa: F401
 
+# pytest_plugins: rejestrujemy fixture'owe moduły jako pluginy, żeby
+# pytest zastosował assert-rewriting zanim je zaimportuje. Bez tej
+# deklaracji było 85+ ostrzeżeń ``PytestAssertRewriteWarning: Module
+# already imported so cannot be rewritten; fixtures.conftest_*``.
+# Kolejność wewnątrz conftest nie ma znaczenia — pytest czyta atrybut
+# po pełnym załadowaniu modułu; ważne, żeby
+# ``fixtures/__init__.py`` NIE importował tych modułów eager
+# (`from .conftest_X import *`), inaczej trafiają do ``sys.modules``
+# przed rejestracją.
+#
+# UWAGA: ``fixtures.conftest`` NIE może być na tej liście — to plik
+# ``conftest.py``, który pytest auto-rejestruje pod nazwą pełnej
+# ścieżki. Dodanie go tu powoduje ``ValueError: Plugin already
+# registered under a different name`` przy collectowaniu.
+pytest_plugins = [
+    "fixtures.conftest_models",
+    "fixtures.conftest_publications",
+    "fixtures.conftest_system",
+    "fixtures.conftest_browser",
+    "fixtures.conftest_disciplines",
+]
+
 # Baseline test-DB monkey-patch is installed by
 # ``django_pg_baseline.apps.DjangoPgBaselineConfig.ready()`` (the app
 # lives in INSTALLED_APPS + settings.PG_BASELINE).
@@ -232,18 +254,8 @@ def pytest_configure(config):  # noqa
             if not hasattr(vcr.stubs.VCRHTTPSConnection, "_http_vsn_str"):
                 vcr.stubs.VCRHTTPSConnection._http_vsn_str = "HTTP/1.1"
 
-            # Add version_string property to VCRHTTPResponse for urllib3 2.5.0+ compatibility
-            if hasattr(vcr.stubs, "VCRHTTPResponse"):
-                if not hasattr(vcr.stubs.VCRHTTPResponse, "version_string"):
-                    # Create a property that returns HTTP/1.1 as the version string
-                    def _get_version_string(self):
-                        # Return HTTP/1.1 as a sensible default
-                        # This matches the _http_vsn_str we set above
-                        return "HTTP/1.1"
-
-                    vcr.stubs.VCRHTTPResponse.version_string = property(
-                        _get_version_string
-                    )
+            # vcrpy >=8.1.1 sets self.version_string = None in VCRHTTPResponse.__init__,
+            # so we no longer add a read-only property here (would break instance assignment).
 
     except ImportError:
         # VCR not installed, skip configuration
@@ -322,7 +334,6 @@ def pbn_dyscyplina1(db, pbn_discipline_group):
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def zwarte_z_dyscyplinami(
     wydawnictwo_zwarte,
     autor_jan_nowak,

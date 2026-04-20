@@ -1,28 +1,38 @@
-import time
-import warnings
+from celery import current_task
 
 
 def wait_for_object(klass, pk, no_tries=10):
-    warnings.warn(
-        "Ta funkcja niepotrzebnie 'przetrzymuje' workera przez 10 sekund. "
-        "Rozsadne byloby jej nie uzywac i przepisac kod na konstrukcje zblizona do"
-        "long_running.tasks.perform_generic_long_running_task -- czyli funkcje, ktora"
-        "probuje uruchomic sie za 10 sekund za pomoca mechanizmow celery, nie zas "
-        "blokujaca worker za pomoca time.sleep ... ",
-        category=DeprecationWarning,
-    )
+    """Pobierz obiekt z bazy albo poproś celery o ponowne uruchomienie
+    bieżącego zadania za 1 sekundę.
 
-    obj = None
+    Przeznaczone do użycia w zadaniach celery, które startują zaraz po
+    utworzeniu obiektu w innej transakcji
+    (``transaction.on_commit(lambda: task.delay(pk))``): kiedy worker
+    wystartuje szybciej niż commit się upropaguje, obiekt jeszcze nie
+    istnieje.
 
-    while no_tries > 0:
-        try:
-            obj = klass.objects.get(pk=pk)
-            break
-        except klass.DoesNotExist:
-            time.sleep(1)
-            no_tries = no_tries - 1
+    Jeżeli obiekt nie został odnaleziony, funkcja wywołuje
+    ``current_task.retry(countdown=1, max_retries=no_tries)``. Celery
+    w produkcji zwróci zadanie do kolejki; po ``no_tries`` nieudanych
+    próbach podnosi ``MaxRetriesExceededError`` / oryginalny
+    ``DoesNotExist``. Worker nie jest blokowany ``time.sleep``-em, a
+    górne ograniczenie liczby prób jest egzekwowane przez framework.
 
-    if obj is None:
-        raise klass.DoesNotExist("Cannot fetch klass %r with pk %r" % (klass, pk))
+    UWAGA: w trybie ``CELERY_TASK_ALWAYS_EAGER=True`` z
+    ``CELERY_EAGER_PROPAGATES_EXCEPTIONS=True`` (ustawienia BPP dla
+    testów) celery **nie zapętla** retry wewnątrz ``.delay().get()``,
+    bo wyjątek ``Retry`` propaguje się natychmiast na zewnątrz
+    ``apply()``. Żeby uruchomić prawdziwą pętlę w testach, woła się
+    zadanie przez ``task.apply(args=..., throw=False)`` — wtedy
+    tracer nie propaguje wyjątku i ``apply`` rekurencyjnie wywołuje
+    sygnaturę zadania aż do wyczerpania ``max_retries``.
 
-    return obj
+    Funkcja musi być wywoływana z kontekstu zadania celery
+    (``task.delay(...)`` / ``apply_async(...)`` / ``apply(...)``).
+    Wywołanie funkcji-zadania wprost (``task_func(pk)``) nie ustawia
+    ``current_task`` i ominie mechanizm retry.
+    """
+    try:
+        return klass.objects.get(pk=pk)
+    except klass.DoesNotExist as exc:
+        raise current_task.retry(exc=exc, countdown=1, max_retries=no_tries) from exc

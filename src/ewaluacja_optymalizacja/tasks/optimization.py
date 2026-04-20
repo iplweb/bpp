@@ -9,6 +9,7 @@ import rollbar
 from celery import chord, group, shared_task
 from celery.exceptions import SoftTimeLimitExceeded
 from celery_singleton import Singleton
+from django.utils import timezone
 
 from ewaluacja_liczba_n.models import LiczbaNDlaUczelni
 from ewaluacja_optymalizacja.core import solve_discipline
@@ -114,7 +115,7 @@ def solve_single_discipline_task(
                 if optimization_results.best_bound is not None
                 else None
             ),
-            finished_at=datetime.now(),
+            finished_at=timezone.now(),
         )
 
         # Zapisz wyniki autorów i publikacji
@@ -185,7 +186,7 @@ def solve_single_discipline_task(
                 status="failed",
                 notes="Przekroczono limit czasu obliczeń (10 minut). "
                 "Spróbuj ponownie lub sprawdź logi systemu.",
-                finished_at=datetime.now(),
+                finished_at=timezone.now(),
             )
         except Exception as db_error:
             logger.error(f"Failed to save timeout error to database: {db_error}")
@@ -212,7 +213,7 @@ def solve_single_discipline_task(
                 uczelnia=uczelnia,
                 status="failed",
                 notes=f"Error: {type(e).__name__}: {str(e)}\n\nTraceback:\n{tb}",
-                finished_at=datetime.now(),
+                finished_at=timezone.now(),
             )
         except Exception as db_error:
             logger.error(f"Failed to save error to database: {db_error}")
@@ -227,8 +228,6 @@ def finalize_browser_recalc(results, uczelnia_id):
     Aktualizuje StatusPrzegladarkaRecalc oraz StatusOptymalizacjiBulk,
     aby użytkownik widział poprawny status nawet po odświeżeniu strony.
     """
-    from django.utils import timezone
-
     from ewaluacja_optymalizacja.models import (
         StatusOptymalizacjiBulk,
         StatusPrzegladarkaRecalc,

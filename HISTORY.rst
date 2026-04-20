@@ -4,6 +4,426 @@ Historia zmian
 
 .. towncrier release notes start
 
+bpp 202604.1357 (2026-04-19)
+============================
+
+Naprawione
+----------
+
+- Context processor ``bpp.context_processors.constance_config`` używa
+  teraz ``constance.utils.get_values_for_keys`` zamiast
+  ``getattr(config, key)``. Od django-constance 4.x
+  ``Config.__getattr__`` wykrywa aktywną pętlę ``asyncio`` i zwraca
+  ``AsyncValueProxy`` zamiast bezpośredniej wartości. Django test
+  client w nowszych wersjach startuje pętlę wewnętrznie, więc w
+  testach (i faktycznie w ASGI-runtime) szablony renderujące
+  ``{{ WYDRUK_MARGINES_GORA|default:"2cm" }}`` emitowały
+  ``RuntimeWarning: Synchronous access to Constance setting
+  'WYDRUK_MARGINES_*' inside an async loop``.
+  ``get_values_for_keys`` idzie prosto do backendu, bez detekcji
+  pętli, więc działa identycznie w obu kontekstach i nie odpala
+  warningu.
+- Dodano filtr w ``pytest.ini`` wygłuszający ``DeprecationWarning:
+  pkg_resources is deprecated`` pochodzący z ``oaipmh/common.py``
+  (pyoai 2.5.0). Kod jest upstream-owy, nie mamy forku — filtr jest
+  adekwatny do istniejącego już wpisu dla ``oaipmh.server``.
+- Dodano stabilne ``order_by`` do QuerySetów, które były stronicowane
+  bez jawnego sortowania. Django emitowało wtedy
+  ``UnorderedObjectListWarning: Pagination may yield inconsistent
+  results with an unordered object_list``, a kolejne strony mogły
+  zwracać zduplikowane lub pominięte rekordy.
+
+  Poprawione miejsca:
+
+  - Autocomplete w ``bpp.views.autocomplete``: ``Dyscyplina_Naukowa``
+    (``kod``), ``Wydawnictwo_Zwarte`` dla wydawnictwa nadrzędnego i
+    wariantów admina (``tytul_oryginalny``), ``Wydawnictwo_Ciagle``
+    admin (``tytul_oryginalny``), ``Zrodlo`` (``nazwa`` — zarówno
+    bazowy queryset jak i ``QuerySetSequence`` z priorytetami PBN).
+  - ``pbn_wysylka_oswiadczen.views.PublicationListView`` — combined
+    ``QuerySetSequence`` sortowany ``-rok, tytul_oryginalny, pk``.
+  - ``RaportSlotowUczelnia.get_details_set()`` — sortowanie po
+    ``autor__nazwisko, autor__imiona, pk`` dla stabilnej paginacji
+    szczegółów raportu.
+  - ``RozbieznosciView`` — dodano ``Meta.ordering = ["id"]`` (bazowy
+    abstrakcyjny model już miał tę opcję, ale lokalne ``Meta`` ją
+    nadpisywało). Migracja ``0021`` to wyłącznie ``AlterModelOptions``
+    (model jest ``managed = False``, brak DDL).
+- Mocki danych testowych PBN dla endpointów paginowanych są teraz
+  owinięte w ``fixtures.pbn_api.pbn_pageable_json`` — zgodnie z
+  rzeczywistym kształtem odpowiedzi PBN (``{content, pageable,
+  number, totalElements, totalPages, ...}``). Wcześniej mocki zwracały
+  płaską listę / pustą listę, co w
+  ``PBNClient._pages`` triggerowało
+  ``RuntimeWarning: PBNClient.{get,post}_page request for ... did not
+  return a paged resource, maybe use PBNClient.{get,post} (without
+  'page') instead``. Produkcyjne wywołania
+  (``search_publications``, ``get_institution_publication_v2``,
+  ``get_institution_statements_of_single_publication``) pozostają bez
+  zmian — to są paginowane endpointy PBN, więc ``get_pages`` /
+  ``post_pages`` są poprawne; problem był tylko w mockach.
+
+  Poprawione pliki testowe:
+
+  - ``src/pbn_api/tests/test_client_sync.py``
+  - ``src/pbn_api/tests/test_client_helpers.py``
+  - ``src/pbn_api/tests/test_bpp_admin_helpers.py``
+  - ``src/bpp/tests/test_views/test_api.py``
+- Naprawiono ``ValueError: Plugin already registered under a different
+  name`` przy zbieraniu testów — ``fixtures.conftest`` został usunięty
+  z listy ``pytest_plugins`` w ``src/conftest.py``. Plik ``conftest.py``
+  jest auto-rejestrowany przez pytest pod pełną ścieżką, więc
+  równoległa rejestracja pod nazwą moduły powodowała kolizję.
+- Naprawiono ``fixture 'kierunek_studiow' not found`` w testach
+  ``test_KierunekStudiowQueryObject`` — fixture przeniesiony z
+  ``src/fixtures/conftest.py`` do ``src/fixtures/conftest_models.py``,
+  który jest zarejestrowany w ``pytest_plugins`` i tym samym widoczny
+  globalnie. Fixture w zwykłym ``conftest.py`` był dostępny tylko dla
+  testów w podrzędnych katalogach.
+- Naprawiono błąd testów VCR (``AttributeError: property
+  '_get_version_string' of 'VCRHTTPResponse' object has no setter``)
+  występujący po podniesieniu ``vcrpy`` do 8.1.1. W ``conftest.py``
+  usunięto workaround rejestrujący ``version_string`` jako
+  read-only ``property`` — nowa wersja ``vcrpy`` ustawia ten atrybut
+  natywnie w ``VCRHTTPResponse.__init__``, a stary shim kolidował
+  z tą inicjalizacją.
+- Naprawiono zapis naive datetime do pól ``DateTimeField`` w kilku
+  miejscach kodu produkcyjnego, które używały ``datetime.now()``
+  zamiast ``django.utils.timezone.now()``. Przy ``USE_TZ=True`` Django
+  wywoływało ``RuntimeWarning: received a naive datetime while time
+  zone support is active`` i interpretowało wartość w lokalnej strefie
+  czasowej — co przy zmianach DST mogło prowadzić do niespójności
+  dat w bazie.
+
+  Zasięg zmian:
+
+  - ``OptimizationRun.finished_at`` — zapisywane w
+    ``ewaluacja_optymalizacja.tasks.optimization`` oraz w komendach
+    ``solve_uczelnia`` i ``solve_evaluation``.
+  - ``remove_old_objects`` (``bpp.util``) — filtr wieku plików
+    używany m.in. przez ``remove_old_oswiadczenia_export_files``
+    i ``remove_old_integrator_files``.
+  - ``TemplateAdmin.template_updated`` — filtr rekordów do
+    przebudowy cache opisu bibliograficznego.
+- Podniesiono zależność ``MOAI-iplweb`` do 2.0.2. Nowa wersja forka
+  zastępuje przestarzałe ``pkg_resources`` (``iter_entry_points``,
+  ``working_set``) przez standardowe ``importlib.metadata`` — eliminuje
+  16 ostrzeżeń ``DeprecationWarning: pkg_resources is deprecated as an
+  API`` pojawiających się przy uruchamianiu testów i zbieraniu pluginów
+  OAI.
+- Przeniesiono rejestrację generatorów ``model_bakery`` dla
+  ``ArrayField`` i ``SearchVectorField`` z imperatywnego
+  ``setup_model_bakery()`` do deklaratywnego
+  ``BAKER_CUSTOM_FIELDS_GEN`` w ``django_bpp.settings.base``. Dzięki
+  temu generatory są znane od startu Django, niezależnie od kolejności
+  ładowania plików ``conftest.py`` — eliminuje sporadyczne
+  ``TypeError: field search type <SearchVectorField> is not supported
+  by baker`` w testach uruchamianych bez załadowanego
+  ``src/fixtures/conftest.py``.
+- Pytest nie emituje już ostrzeżeń ``PytestAssertRewriteWarning:
+  Module already imported so cannot be rewritten; fixtures.conftest_*``
+  (85 wystąpień w poprzednim runie). Przywrócono deklarację
+  ``pytest_plugins = [...]`` w top-level ``src/conftest.py`` — pytest
+  rejestruje ``fixtures.conftest_{models,publications,system,browser,
+  disciplines}`` jako pluginy z aplikowanym assert-rewritingiem
+  przed ich pierwszym importem.
+
+  Jednocześnie ``fixtures/__init__.py`` przestał eager-importować
+  ``conftest_*`` — wcześniejsze ``from .conftest_X import *``
+  pociągało te moduły przez łańcuch
+  ``from fixtures.playwright_fixtures import ...`` → ``fixtures/
+  __init__.py`` PRZED rejestracją jako plugin, co właśnie generowało
+  ostrzeżenia.
+
+  Stałe (``NORMAL_DJANGO_USER_LOGIN/PASSWORD``, ``JEDNOSTKA_UCZELNI``,
+  ``JEDNOSTKA_PODRZEDNA``) przeniesione do nowego modułu
+  ``fixtures.const``, żeby ``from fixtures import X`` mogło je
+  re-eksportować bez ściągania modułów-pluginów.
+- Usunięto ``RuntimeWarning: Model 'long_running.testreport' was
+  already registered`` w testach ``long_running``. Testowy model
+  ``TestReport`` został przeniesiony z inline'owej definicji we
+  fixturze do ``test_bpp.models`` wraz z migracją, dzięki czemu
+  model jest rejestrowany w ``apps`` tylko raz, a nie przy każdym
+  wywołaniu fixture'a.
+- Usunięto redundantne dekoratory ``@pytest.mark.django_db`` nałożone
+  na fixtury w plikach ``conftest.py``. Pytest 8 ostrzegał
+  ``PytestRemovedIn9Warning: Marks applied to fixtures have no
+  effect``, a sam marker i tak nie miał efektu — dostęp do bazy
+  danych w fixturach jest dziedziczony z testu wywołującego. W pytest 9
+  stosowanie markerów na fixturach będzie błędem.
+- Wyciszono ``RemovedInDjango60Warning: The FORMS_URLFIELD_ASSUME_HTTPS
+  transitional setting is deprecated`` w konfiguracji pytest
+  (``pytest.ini``). Ustawienie zostaje, bo jest intencjonalnym opt-in
+  na domyślne zachowanie Django 6.0 — jego usunięcie w 5.x przywróci
+  warningi z ``forms.URLField`` dla URL-i bez schematu. Filter do
+  zdjęcia razem z samym ustawieniem podczas upgrade na Django 6.0.
+- Wyrównano ``class Meta: model = ...`` w tabelach ``django-tables2``
+  do faktycznego typu wierszy w QuerySecie. Dotychczas wyświetlane były
+  ostrzeżenia ``UserWarning: Table data is of type <X> but <Y> is
+  specified in Table.Meta.model``:
+
+  - ``RankingAutorowTable`` — ``model = Autor`` → ``model = Sumy``
+    (dane pochodzą z ``Nowe_Sumy_View`` / ``Sumy``, nie bezpośrednio
+    z ``Autor``).
+  - ``RaportSlotowUczelniaTable`` — ``model =
+    Cache_Punktacja_Autora_Query`` → ``model =
+    RaportSlotowUczelniaWiersz`` (widok listy iteruje po rekordach
+    ``RaportSlotowUczelnia.raportslotowuczelniawiersz_set``).
+
+  ``Meta.model`` w ``django-tables2`` służy tylko do introspekcji pól;
+  poza zniknięciem samego ostrzeżenia zachowanie tabel nie uległo
+  zmianie.
+- Zamieniono zależność ``django-dbtemplates`` na utrzymywany przez IPLweb
+  fork ``django-dbtemplates-iplweb`` (>=4.3.2). Fork używa
+  ``importlib.metadata`` zamiast przestarzałego ``pkg_resources``, co
+  likwiduje ``DeprecationWarning: pkg_resources is deprecated as an API``
+  podczas uruchamiania testów i serwera. Nazwa importu (``dbtemplates``)
+  nie zmienia się — kod aplikacji nie wymaga modyfikacji.
+- Zbumpowano ``MOAI-iplweb`` z ``==2.0.0`` do ``>=2.0.1`` (release
+  2.0.1 zawiera fix ``datetime.utcnow()`` → ``datetime.now(UTC)``).
+  Zniknęły ostrzeżenia ``DeprecationWarning`` z ``moai/oai.py``.
+
+  Dodano dwa targetowane filtry w ``pytest.ini`` dla pozostałych
+  zewnętrznych warningów, których nie mamy gdzie naprawić w bpp:
+
+  - ``oaipmh.server`` (paczka ``pyoai`` 2.5.0) — wywołuje
+    ``datetime.utcnow()``; nie mamy forka, zgłoszenie upstream
+    w toku.
+  - ``webtest.forms`` (paczka ``webtest`` 3.0.7) — używa
+    ``bs4.findAll`` zamiast ``find_all``; nie mamy forka, zgłoszenie
+    do ``Pylons/webtest`` w toku.
+
+  Zmienione zależności tranzytywne (uv downgrade wymuszone przez
+  moai-iplweb ``sqlalchemy<2`` i ``setuptools<80``): ``sqlalchemy
+  2.0.44 → 1.4.54``, ``setuptools 80.9 → 79.0``.
+- Zbumpowano ``django-denorm-iplweb`` z ``>=1.10.1`` do ``>=1.10.2``.
+  Release 1.10.2 dodaje ``get_joining_fields()`` do inline'owej
+  klasy ``JoinField`` w ``TriggerFilterQuery`` (``denorm/
+  denorms.py``), dzięki czemu Django 6.0 już nie emituje
+  ``RemovedInDjango60Warning: The usage of get_joining_columns() in
+  Join is deprecated``.
+- ``import_polon`` zapisuje teraz pola ``Autor_Dyscyplina.zatrudnienie_od``
+  i ``zatrudnienie_do`` jako tz-aware ``datetime``. Wcześniej
+  ``normalize_date()`` zwracał naiwny ``datetime`` (z ``dateutil.parser``),
+  przez co Django przy ``USE_TZ=True`` emitowało ``RuntimeWarning:
+  received a naive datetime`` i interpretowało wartość w lokalnej strefie
+  czasowej, co przy DST mogło powodować niespójności.
+- ``long_running.util.wait_for_object`` nie blokuje już workera
+  ``time.sleep``-em. W razie ``DoesNotExist`` woła
+  ``current_task.retry(countdown=1, max_retries=no_tries)`` — celery
+  planuje ponowne uruchomienie tego samego zadania za sekundę, a worker
+  obsługuje w tym czasie inne zadania. Po wyczerpaniu prób celery
+  podnosi oryginalny ``DoesNotExist``. Zniknął też
+  ``DeprecationWarning`` emitowany przy każdym wywołaniu.
+
+  Kontrakt: funkcję wywołujemy wyłącznie z kontekstu zadania celery
+  (``task.delay(...)``, ``.apply_async(...)``, ``.apply(...)``).
+  Wywołanie funkcji-zadania wprost jako zwykłej funkcji
+  (``task_func(pk)``) nie ustawia ``current_task`` i omija mechanizm
+  retry. Testy, które wcześniej wołały ``analyze_file`` i
+  ``task_sprobuj_wyslac_do_pbn`` bezpośrednio, zostały przerobione
+  na wywołanie przez celery (``.delay(...).get()`` albo
+  ``.apply(args=..., ...).get()`` — ``.apply()`` potrzebne tam, gdzie
+  test mockuje ``task.apply_async`` do weryfikacji re-schedulowania
+  i wtedy ``.delay()`` trafiłoby w mock zamiast uruchomić body
+  zadania).
+
+
+Dokumentacja
+------------
+
+- Workflow ``Docker - oficjalne obrazy``
+  (``.github/workflows/build-docker-images.yml``) buduje i publikuje
+  obrazy docker automatycznie tylko przy pushu na ``master``. Dla
+  branchy ``feature/**``, ``fix/**``, ``hotfix/**`` build odpala się
+  tylko wtedy, gdy w root repo istnieje pusty plik flaga
+  ``.docker-build`` — zmiana oszczędza Docker Cloud Build minuty
+  zużywane przez każdy push na długie feature-branche. Ręczne
+  uruchomienie niezależnie od flagi: ``gh workflow run
+  build-docker-images.yml --ref <branch>`` (lub GUI GitHub Actions).
+
+  Aby włączyć auto-build na branchu::
+
+      touch .docker-build
+      git add .docker-build && git commit -m "ci: enable docker auto-build"
+
+  Aby wyłączyć::
+
+      git rm .docker-build && git commit -m "ci: disable docker auto-build"
+
+
+
+
+Usprawnienie
+------------
+
+- Migracja do Django 5.2 LTS. System korzysta teraz z Django w wersji
+  5.2.x zamiast 4.2.x; 4.2 LTS wchodzi w fazę EOL w kwietniu 2026 i
+  traci wsparcie bezpieczeństwa.
+
+  W ramach migracji zaktualizowano pakiety zależne do wersji
+  kompatybilnych z Django 5.2: ``django-crispy-forms``, ``django-mptt``,
+  ``django-tables2``, ``django-taggit``, ``django-filter``,
+  ``django-import-export`` (z 3.x na 4.x), ``django-grappelli`` (z 3.x
+  na 4.x), ``django-fsm``, ``django-reversion``, oraz ``Unidecode``.
+
+  Porzucone ``django-htmlmin`` (brak wydań od 2019 r.) zastąpione przez
+  utrzymywane ``django-minify-html`` — minyfikator HTML oparty o
+  rust-owy ``minify-html``. Middleware jest aktywne tylko w środowisku
+  produkcyjnym, tak jak dotychczas.
+
+  Nie wymaga interwencji administratora — wszystkie zmiany są
+  transparentne na poziomie interfejsu użytkownika i panelu admina.
+
+
+bpp 202604.1356 (2026-04-17)
+============================
+
+Usunięto
+--------
+
+- Wydzielono budowanie obrazu ``iplweb/bpp_dbserver`` z tego
+  repozytorium do osobnego projektu
+  (`github.com/iplweb/bpp-dbserver <https://github.com/iplweb/bpp-dbserver>`_).
+  Usunięty został katalog ``docker/dbserver/`` oraz target ``dbserver``
+  z ``docker-bake.hcl``; ``docker-compose.yml``, ``docker-compose.test.yml``,
+  workflowy GitHub Actions i konfiguracja testcontainers pullują teraz
+  wersjonowany tag ``iplweb/bpp_dbserver:psql-16.13`` zamiast budować
+  obraz lokalnie. Cel: niezależny release cycle obrazu bazy (bump
+  Postgresa nie wymaga release'u BPP) i eliminacja tagu ``:latest``
+  po stronie konsumentów.
+
+
+bpp 202604.1355 (2026-04-17)
+============================
+
+No significant changes.
+
+
+bpp 202604.1354 (2026-04-17)
+============================
+
+No significant changes.
+
+
+bpp 202604.1353 (2026-04-17)
+============================
+
+Naprawione
+----------
+
+- Naprawiono czyszczenie kontenerów tworzonych przez plugin
+  ``testcontainers_bpp``. Jawny cleanup w ``pytest_unconfigure``
+  bywał pomijany przy abrupt-exit procesu pytest (``sys.exit`` z
+  fixture, nieprzechwycony wyjątek), a Ryuk jako fallback również
+  zawodził przy restarcie Docker Desktop, pozostawiając osierocone
+  kontenery PostgreSQL / Redis / RabbitMQ. Dodano safety net przez
+  ``atexit``, który zatrzymuje kontenery przy każdym normalnym
+  zakończeniu procesu pytest (szanuje ``BPP_TESTCONTAINERS_REUSE``).
+
+  Dodano też target ``make clean-testcontainers``, który jednym
+  poleceniem usuwa wszystkie kontenery oznaczone etykietą
+  ``org.testcontainers=true`` oraz stałonazwane ``bpp-tc-*`` —
+  ratunek gdy cleanup mimo wszystko padnie (np. ``SIGKILL`` na
+  pytest albo restart demona Docker).
+- Naprawiono kolizję nazw URL-i w panelu administracyjnym: trzy widoki
+  "toż" (dla ``Wydawnictwo_Ciagle``, ``Wydawnictwo_Zwarte`` oraz ``Patent``)
+  były zarejestrowane pod tą samą nazwą ``admin_bpp_wydawnictwo_ciagle_toz``,
+  przez co ``reverse()`` zawsze zwracał adres widoku patentu. Nazwy zostały
+  rozdzielone na ``admin_bpp_wydawnictwo_ciagle_toz``,
+  ``admin_bpp_wydawnictwo_zwarte_toz`` i ``admin_bpp_patent_toz``, oraz
+  dodano test regresyjny.
+- Uporządkowano konfigurację DevOps: usunięto martwy hook
+  ``pre-commit-circleci`` (projekt używa GitHub Actions), skrócono
+  ``start_period`` healthchecka serwisu ``appserver`` z 1800s do 120s,
+  dodano raportujący (non-blocking) skan obrazów Docker przez Trivy
+  w workflow ``build-docker-images.yml`` oraz zastąpiono
+  ``filterwarnings = ignore`` w ``pytest.ini`` trybem ``default``
+  z wąskimi wyjątkami dla znanego szumu z bibliotek zewnętrznych,
+  tak aby realne ostrzeżenia (np. ``USE_L10N`` z Django) były widoczne.
+- Usunięto nadpisanie ``SESSION_COOKIE_SECURE`` i ``CSRF_COOKIE_SECURE``
+  w ``production.py``, które wyłączało bezpieczne flagi ciasteczek sesji
+  i CSRF. Wartości z ``base.py`` (``True``) są teraz poprawnie dziedziczone
+  — ciasteczka są wysyłane wyłącznie przez HTTPS. Rozpoznawanie połączeń
+  szyfrowanych za nginx-em działa dzięki już ustawionemu
+  ``SECURE_PROXY_SSL_HEADER``.
+- Zoptymalizowano widok listy lat publikacji (``/lata/``) — zamiast
+  wykonywać osobne zapytanie ``COUNT`` dla każdego rocznika, widok
+  pobiera liczby publikacji jednym zapytaniem ``GROUP BY``. Na
+  uczelniach z szerokim zakresem lat publikacji strona ładuje się
+  wyraźnie szybciej.
+
+
+Usprawnienie
+------------
+
+- Dodano testy jednostkowe dla aplikacji ``django_pg_baseline``
+  pokrywające ładowanie konfiguracji, obliczanie świeżości migracji,
+  generowanie metadanych, monkey-patch tworzenia bazy testowej,
+  regenerację dumpu oraz komendy zarządzające (``baseline_check``,
+  ``baseline_info``, ``baseline_load``, ``baseline_rebuild``).
+- Logika szybkiego bootstrapu bazy testowej z ``pg_dump`` (dotychczas
+  rozproszona po ``baseline/``, ``src/conftest.py``, ``Makefile``,
+  ``docker-compose.baseline.yml`` i entrypoincie kontenera) została
+  wyodrębniona do reusable Django app ``django_pg_baseline`` w
+  ``src/django_pg_baseline/``.
+
+  Pakiet udostępnia cztery komendy zarządzania: ``baseline_rebuild``
+  (regeneruje dump przez ``testcontainers``, bez potrzeby oddzielnego
+  ``docker-compose.baseline.yml``), ``baseline_load`` (ładuje dump do
+  wskazanej bazy, no-op gdy baza nie jest pusta), ``baseline_check``
+  (gate CI sprawdzający deltę migracji) oraz ``baseline_info``
+  (czytelny raport o stanie baseline).
+
+  Monkey-patch na ``_create_test_db``, wcześniej wklejony inline w
+  ``src/conftest.py``, jest teraz instalowany automatycznie z
+  ``AppConfig.ready()`` gdy pakiet jest w ``INSTALLED_APPS``.
+
+  Katalog z dumpem został przeniesiony z ``baseline/`` do
+  ``src/baseline-sql/`` — ``baseline.sql`` i ``baseline.meta.json``
+  dalej żyją w repo, ale jako wyraźny data sidecar obok kodu pakietu.
+  Konfiguracja w ``settings.PG_BASELINE`` została skrócona z ~25 linii
+  do kilku kluczy; defaulty (lista argumentów ``pg_dump``, zamrażane
+  kolumny timestampów, alias bazy, próg freshness) żyją teraz w samym
+  pakiecie, a projekt-konsument ustawia tylko ``BASELINE_DIR`` plus
+  ewentualne nadpisania.
+
+  Zależność ``testcontainers[postgres]`` jest opcjonalna
+  (``uv sync --extra baseline-rebuild``) — wymagana tylko dla
+  ``baseline_rebuild``, pozostałe komendy jej nie potrzebują.
+- Zmienna ``DJANGO_SETTINGS_MODULE`` została przeniesiona z sekcji
+  ``environment:`` kontenerów (``appserver``, ``celerybeat``,
+  ``workerserver-*``, ``denorm-queue``) do plików ``.env`` / ``.env.docker``
+  / ``.env.example``. Devowy docker-compose konsekwentnie używa ustawień
+  ``django_bpp.settings.local``; serwis ``authserver`` pozostaje bez
+  zmian (korzysta z własnego modułu ``django_bpp.settings.auth_server``).
+
+
+Usunięto
+--------
+
+- Usunięto dev-only serwis ``webserver`` (nginx) z ``docker-compose.yml``
+  oraz katalog ``docker/webserver/``. Produkcyjny nginx żyje w osobnym
+  repozytorium ``bpp-deploy`` (``defaults/webserver/``) i znacząco
+  różni się od dotychczasowej wersji lokalnej (HTTP/3 QUIC, nagłówki
+  bezpieczeństwa, resolver Dockera, ``/healthz``). Trzymanie dwóch
+  rozjechanych kopii w dwóch repo powodowało dryf konfiguracji
+  i fałszywe poczucie testowania prod-ready stacka lokalnie.
+
+  Lokalny development używa ``runserver`` razem z infrastrukturą
+  podnoszoną przez ``docker compose up db redis rabbitmq``, więc
+  nginx przed appserverem był nadmiarowy. Jeśli potrzebujesz
+  przetestować pełny stack za nginxem zgodny z produkcją, użyj
+  ``bpp-deploy``.
+- Usunięto mechanizm automatycznych offsetów portów per-worktree: skrypt
+  ``bin/prepare-worktree.sh``, targety ``make new-worktree`` /
+  ``make clean-worktree`` oraz sekcję „Docker exposed ports (with worktree
+  offset)” w ``.env.example``. Równoległa izolacja testów jest realizowana
+  przez ``testcontainers_bpp`` (losowe porty), więc dev-stack może
+  spokojnie jeździć na jednej kopii usług na maszynę na domyślnych
+  portach (``5432`` / ``6379`` / ``5672`` / ``8000`` …).
+
+
 bpp 202604.1352 (2026-04-08)
 ============================
 

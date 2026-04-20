@@ -12,7 +12,7 @@ import sys
 from dataclasses import dataclass
 
 from testcontainers.core.container import DockerContainer
-from testcontainers.core.waiting_utils import wait_for_logs
+from testcontainers.core.wait_strategies import LogMessageWaitStrategy
 from testcontainers.postgres import PostgresContainer
 
 import docker
@@ -81,7 +81,7 @@ def _start_pg(reuse: bool) -> tuple[PostgresContainer | None, str, int]:
             return None, host, port
 
     pg = PostgresContainer(
-        image="iplweb/bpp_dbserver:latest",
+        image="iplweb/bpp_dbserver:psql-16.13",
         port=5432,
         username="bpp",
         password="password",
@@ -93,12 +93,10 @@ def _start_pg(reuse: bool) -> tuple[PostgresContainer | None, str, int]:
     if reuse:
         pg.with_name(_PG_NAME)
 
-    # Obraz iplweb/bpp_dbserver budowany lokalnie przez `docker compose build`
-    # dostaje labele com.docker.compose.project="bpp" itp. wbite w obraz.
-    # Docker Desktop czyta te labele i grupuje kontener testcontainers razem
-    # z kontenerami docker-compose — co jest mylące. Nadpisujemy je pustymi
-    # wartościami na poziomie kontenera. (Nie da się tego naprawić w Dockerfile,
-    # bo `docker compose build` ustawia labele PO wykonaniu Dockerfile.)
+    # Defensive: jeśli ktoś kiedyś zbudował iplweb/bpp_dbserver lokalnie przez
+    # `docker compose build` (stary workflow), w obraz mogą być wbite labele
+    # com.docker.compose.*, przez które Docker Desktop grupowałby testcontainer
+    # z kontenerami docker-compose. Nadpisujemy je pustymi na poziomie kontenera.
     pg.with_kwargs(
         labels={
             "com.docker.compose.project": "",
@@ -128,8 +126,10 @@ def _start_redis(reuse: bool) -> tuple[DockerContainer | None, str, int]:
     redis.with_exposed_ports(6379)
     if reuse:
         redis.with_name(_REDIS_NAME)
+    redis.waiting_for(
+        LogMessageWaitStrategy("Ready to accept connections").with_startup_timeout(30)
+    )
     redis.start()
-    wait_for_logs(redis, "Ready to accept connections", timeout=30)
 
     host = redis.get_container_host_ip()
     port = int(redis.get_exposed_port(6379))
@@ -154,8 +154,10 @@ def _start_rabbitmq(reuse: bool) -> tuple[DockerContainer | None, str, int]:
     rmq.with_env("RABBITMQ_DEFAULT_PASS", "bpp")
     if reuse:
         rmq.with_name(_RABBITMQ_NAME)
+    rmq.waiting_for(
+        LogMessageWaitStrategy("Server startup complete").with_startup_timeout(60)
+    )
     rmq.start()
-    wait_for_logs(rmq, "Server startup complete", timeout=60)
 
     host = rmq.get_container_host_ip()
     port = int(rmq.get_exposed_port(5672))

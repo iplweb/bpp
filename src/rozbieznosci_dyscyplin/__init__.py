@@ -1,1 +1,0 @@
-default_app_config = "rozbieznosci_dyscyplin.apps.RozbieznosciDyscyplinConfig"

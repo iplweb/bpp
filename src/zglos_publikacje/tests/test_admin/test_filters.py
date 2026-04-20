@@ -1,9 +1,8 @@
 from model_bakery import baker
 
+from bpp.models import Typ_Odpowiedzialnosci
 from zglos_publikacje.admin.filters import WydzialJednostkiPierwszegoAutora
 from zglos_publikacje.models import Zgloszenie_Publikacji
-
-from bpp.models import Typ_Odpowiedzialnosci
 
 
 def test_WydzialJednostkiPierwszegoAutora_queryset(
@@ -32,14 +31,18 @@ def test_WydzialJednostkiPierwszegoAutora_queryset(
         rok=2022,
     )
 
-    params = {"wydz1a": str(wydzial.pk)}
-    req = rf.get("/", params)
+    # Django 5.0+ SimpleListFilter expects params as dict[str, list]
+    # (matches QueryDict.lists() from real requests). Passing a plain
+    # string makes __init__ do `value[-1]`, which silently returns the
+    # last character of the string instead of the last list element.
+    params = {"wydz1a": [str(wydzial.pk)]}
+    req = rf.get("/", {"wydz1a": str(wydzial.pk)})
     filtr = WydzialJednostkiPierwszegoAutora(req, params, Zgloszenie_Publikacji, None)
     qs = filtr.queryset(req, Zgloszenie_Publikacji.objects.all())
     assert qs.count() == 1
 
-    params = {"wydz1a": str(drugi_wydzial.pk)}
-    req = rf.get("/", params)
+    params = {"wydz1a": [str(drugi_wydzial.pk)]}
+    req = rf.get("/", {"wydz1a": str(drugi_wydzial.pk)})
     filtr = WydzialJednostkiPierwszegoAutora(req, params, Zgloszenie_Publikacji, None)
     qs = filtr.queryset(req, Zgloszenie_Publikacji.objects.all())
     assert qs.count() == 0

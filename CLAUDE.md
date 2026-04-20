@@ -135,8 +135,12 @@ uruchomienia testów i nie koliduje z nimi.
 - Wyłączenie (gdy sam odpaliłeś usługi przez docker-compose):
   `BPP_USE_TESTCONTAINERS=0 uv run pytest` lub flag `--no-testcontainers`.
 - Reuse kontenerów między runs (znacznie szybciej):
-  `BPP_TESTCONTAINERS_REUSE=1`. Domyślnie kontenery są ulotne
-  i kasowane przez Ryuk.
+  `BPP_TESTCONTAINERS_REUSE=1`. Domyślnie kontenery są ulotne —
+  plugin jawnie je zatrzymuje w `pytest_unconfigure` (+ `atexit`
+  jako safety net), Ryuk to ostatnia linia obrony. Przy restarcie
+  Docker Desktop albo `SIGKILL` na pytest cleanup może zawieść;
+  wtedy `make clean-testcontainers` usuwa wszystkie osierocone
+  kontenery.
 - CI (`docker-compose.test.yml`) ma `BPP_USE_TESTCONTAINERS=0` —
   usługi dostarcza tam docker-compose.
 

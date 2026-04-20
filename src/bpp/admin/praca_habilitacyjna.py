@@ -81,7 +81,10 @@ class Publikacja_HabilitacyjnaForm(
     class Meta:
         model = Publikacja_Habilitacyjna
         widgets = {"kolejnosc": HiddenInput}
-        fields = ["publikacja", "kolejnosc"]
+        # `publikacja` is a GenericForeignKey on the model (non-editable).
+        # Django 5.0+ refuses to list non-editable fields in Meta.fields, so
+        # we rely on the class-level `publikacja` declaration above instead.
+        fields = ["kolejnosc"]
 
 
 class Publikacja_Habilitacyjna_Inline(admin.TabularInline):
