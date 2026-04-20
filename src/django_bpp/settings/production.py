@@ -1,3 +1,5 @@
+from django_minify_html.middleware import MinifyHtmlMiddleware
+
 from .base import *  # noqa
 from .base import (  # noqa
     DJANGO_BPP_ENABLE_TEST_CONFIGURATION,
@@ -16,8 +18,23 @@ SENDFILE_BACKEND = "django_sendfile.backends.nginx"
 COMPRESS_ENABLED = not DEBUG
 COMPRESS_OFFLINE = False
 
+
+class BppMinifyHtmlMiddleware(MinifyHtmlMiddleware):
+    # keep_input_type_text_attr: Foundation 6 stylizuje <input> selektorem
+    # input[type="text"]; bez atrybutu (minifier usuwa go jako domyślny
+    # per HTML5) selektor się nie dopasowuje i pole traci styling.
+    # keep_closing_tags: treści z BD (np. <jats:p> w abstraktach) po zrzuceniu
+    # opcjonalnych </li>, </p> łamią DOM i rozbijają layout (m.in. stopkę).
+    minify_args = {
+        "minify_css": True,
+        "minify_js": True,
+        "keep_input_type_text_attr": True,
+        "keep_closing_tags": True,
+    }
+
+
 MIDDLEWARE = [
-    "django_minify_html.middleware.MinifyHtmlMiddleware",
+    "django_bpp.settings.production.BppMinifyHtmlMiddleware",
 ] + MIDDLEWARE
 
 SESSION_ENGINE = "django.contrib.sessions.backends.cache"
