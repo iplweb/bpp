@@ -225,7 +225,7 @@ wheels = [
 
 [[package]]
 name = "bpp-iplweb"
-version = "202604.1359"
+version = "202604.1360"
 source = { editable = "." }
 dependencies = [
     { name = "amqp", marker = "platform_python_implementation != 'PyPy'" },
@@ -299,6 +299,7 @@ dependencies = [
     { name = "django-webmaster-verification", marker = "platform_python_implementation != 'PyPy'" },
     { name = "djangoql", marker = "platform_python_implementation != 'PyPy'" },
     { name = "djangorestframework", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "gunicorn", marker = "platform_python_implementation != 'PyPy'" },
     { name = "isbnlib", marker = "platform_python_implementation != 'PyPy'" },
     { name = "langdetect", marker = "platform_python_implementation != 'PyPy'" },
     { name = "markdown", marker = "platform_python_implementation != 'PyPy'" },
@@ -331,6 +332,7 @@ dependencies = [
     { name = "unidecode", marker = "platform_python_implementation != 'PyPy'" },
     { name = "urllib3", marker = "platform_python_implementation != 'PyPy'" },
     { name = "uvicorn", extra = ["standard"], marker = "platform_python_implementation != 'PyPy'" },
+    { name = "watchdog", marker = "platform_python_implementation != 'PyPy'" },
     { name = "weasyprint", marker = "platform_python_implementation != 'PyPy'" },
     { name = "wosclient", marker = "platform_python_implementation != 'PyPy'" },
     { name = "xhtml2pdf", marker = "platform_python_implementation != 'PyPy'" },
@@ -375,7 +377,6 @@ dev = [
     { name = "towncrier", marker = "platform_python_implementation != 'PyPy'" },
     { name = "twine", marker = "platform_python_implementation != 'PyPy'" },
     { name = "vcrpy", marker = "platform_python_implementation != 'PyPy'" },
-    { name = "watchdog", marker = "platform_python_implementation != 'PyPy'" },
     { name = "webtest", marker = "platform_python_implementation != 'PyPy'" },
 ]
 ldap = [
@@ -470,6 +471,7 @@ requires-dist = [
     { name = "django-webtest", marker = "extra == 'dev'", specifier = "==1.9.14" },
     { name = "djangoql", specifier = "==0.19.1" },
     { name = "djangorestframework", specifier = "==3.17.1" },
+    { name = "gunicorn", specifier = ">=23" },
     { name = "ipdb", marker = "extra == 'dev'", specifier = ">=0.13.9" },
     { name = "ipython", marker = "extra == 'dev'", specifier = ">=8.2.0" },
     { name = "isbnlib", specifier = ">=3.10.14" },
@@ -529,7 +531,7 @@ requires-dist = [
     { name = "urllib3", specifier = ">=2.6.3,<3.0.0" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.31.0" },
     { name = "vcrpy", marker = "extra == 'dev'", specifier = ">=8.1.1,<9" },
-    { name = "watchdog", marker = "extra == 'dev'", specifier = ">=5.0.3" },
+    { name = "watchdog", specifier = ">=5.0.3" },
     { name = "weasyprint", specifier = ">=66.0" },
     { name = "webtest", marker = "extra == 'dev'", specifier = "==3.0.0" },
     { name = "wosclient", specifier = "==0.1.5" },
@@ -2496,6 +2498,18 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/23/6e/74407aed965a4ab6ddd93a7ded3180b730d281c77b765788419484cdfeef/greenlet-3.2.4-cp314-cp314-musllinux_1_2_aarch64.whl", hash = "sha256:2917bdf657f5859fbf3386b12d68ede4cf1f04c90c3a6bc1f013dd68a22e2269", size = 1612508, upload-time = "2025-11-04T12:42:23.427Z" },
     { url = "https://files.pythonhosted.org/packages/0d/da/343cd760ab2f92bac1845ca07ee3faea9fe52bee65f7bcb19f16ad7de08b/greenlet-3.2.4-cp314-cp314-musllinux_1_2_x86_64.whl", hash = "sha256:015d48959d4add5d6c9f6c5210ee3803a830dce46356e3bc326d6776bde54681", size = 1680760, upload-time = "2025-11-04T12:42:25.341Z" },
     { url = "https://files.pythonhosted.org/packages/e3/a5/6ddab2b4c112be95601c13428db1d8b6608a8b6039816f2ba09c346c08fc/greenlet-3.2.4-cp314-cp314-win_amd64.whl", hash = "sha256:e37ab26028f12dbb0ff65f29a8d3d44a765c61e729647bf2ddfbbed621726f01", size = 303425, upload-time = "2025-08-07T13:32:27.59Z" },
+]
+
+[[package]]
+name = "gunicorn"
+version = "25.3.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "packaging", marker = "platform_python_implementation != 'PyPy'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/c4/f4/e78fa054248fab913e2eab0332c6c2cb07421fca1ce56d8fe43b6aef57a4/gunicorn-25.3.0.tar.gz", hash = "sha256:f74e1b2f9f76f6cd1ca01198968bd2dd65830edc24b6e8e4d78de8320e2fe889", size = 634883, upload-time = "2026-03-27T00:00:26.092Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/43/c8/8aaf447698c4d59aa853fd318eed300b5c9e44459f242ab8ead6c9c09792/gunicorn-25.3.0-py3-none-any.whl", hash = "sha256:cacea387dab08cd6776501621c295a904fe8e3b7aae9a1a3cbb26f4e7ed54660", size = 208403, upload-time = "2026-03-27T00:00:27.386Z" },
 ]
 
 [[package]]

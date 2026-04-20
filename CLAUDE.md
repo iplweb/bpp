@@ -103,6 +103,39 @@ Full details: [docs/CSS_BUILD.md](docs/CSS_BUILD.md)
 - Generated: `src/bpp/static/500.html` - auto-generated (DO NOT EDIT),
   edit `src/bpp/templates/50x.html` instead
 
+## Static files contract (Docker)
+
+Obraz produkcyjny `iplweb/bpp_appserver` nie generuje staticow na starcie od
+zera — robi to w **build stage** i shipuje gotowe pliki, zeby runtime mogl
+wystartowac bez `node_modules` (~300+ MB oszczednosci).
+
+Kontrakt miedzy obrazem a deploymentem:
+
+- **Build**: `docker/bpp_base/Dockerfile` (builder stage) robi
+  `collectstatic` do `/app/staticroot.baked/`. Katalog jest COPY-owany do
+  runtime stage i pozostaje tam jako read-only source of truth.
+- **Runtime ENV**: `STATIC_ROOT=/app/staticroot` (default) — ale deployment
+  moze to override'owac (np. bpp-deploy ustawia `STATIC_ROOT=/staticroot`
+  i mountuje named volume w tym miejscu).
+- **Entrypoint** (`docker/appserver/entrypoint-appserver.sh`, Phase 2):
+  kopiuje `cp -ru /app/staticroot.baked/. "$STATIC_ROOT/"`. `-u` (update
+  only if newer) nie nadpisuje tenant-specific zmian wgranych do volume
+  przez deployment. **Runtime nie uruchamia `collectstatic`** — wynik
+  bylby dokladnie taki sam jak `.baked` (bez `node_modules` YarnFinder
+  zwraca pusta liste, wiec nowych plikow by nie znalazl), wiec cp wystarcza.
+- **Fallback**: jesli `.baked` nie istnieje w obrazie (stary tag sprzed
+  wprowadzenia kontraktu), entrypoint degraduje do tradycyjnego
+  `collectstatic` — zachowuje backward compat z obrazami pre-contract.
+
+Deployment (`bpp-deploy`) nie musi nic robic — mountuje named volume na
+`$STATIC_ROOT` i nginx go serwuje. Przy upgrade obrazu entrypoint sam
+zalewa volume nowymi plikami z `.baked`.
+
+Jesli zmieniasz to: pamietaj ze `.baked` i `$STATIC_ROOT` to DWIE rozne
+rzeczy. Do `.baked` (w obrazie) pisze tylko `collectstatic` na buildzie.
+Do `$STATIC_ROOT` (volume/katalog runtime) pisze `cp -ru` + runtime
+`collectstatic` + ewentualne tenant tooling.
+
 ## External Services
 
 ### Freshdesk Support
