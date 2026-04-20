@@ -29,6 +29,26 @@ class MultipleFileInput(forms.FileInput):
         super().__init__(attrs=default_attrs)
 
 
+class MultipleFileField(forms.FileField):
+    """FileField obsługujący listę plików z MultipleFileInput.
+
+    Bez tej klasy zwykły `forms.FileField` przy pojedynczym pliku
+    otrzymanym z widgeta multi-select dostaje `[UploadedFile]` i
+    próbuje `.name` na liście → `ValidationError('invalid')` z
+    komunikatem „No file was submitted. Check the encoding type...".
+    """
+
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault("widget", MultipleFileInput())
+        super().__init__(*args, **kwargs)
+
+    def clean(self, data, initial=None):
+        single_file_clean = super().clean
+        if isinstance(data, (list, tuple)):
+            return [single_file_clean(d, initial) for d in data]
+        return single_file_clean(data, initial)
+
+
 # Mapowanie wartości formularza na enum Rodzaje
 RODZAJ_FORM_TO_MODEL = {
     "ARTYKUL": Zgloszenie_Publikacji.Rodzaje.ARTYKUL,
@@ -136,7 +156,7 @@ class Zgloszenie_Publikacji_DaneForm(forms.ModelForm):
         required=True,
     )
 
-    pliki = forms.FileField(
+    pliki = MultipleFileField(
         label="Pliki PDF",
         required=False,
         help_text=(
@@ -144,7 +164,6 @@ class Zgloszenie_Publikacji_DaneForm(forms.ModelForm):
             " min. 1 plik. Możliwość dodania wielu plików."
         ),
         validators=[validate_file_extension_pdf],
-        widget=MultipleFileInput(),
     )
 
     wydawnictwo_nadrzedne = forms.CharField(

@@ -39,14 +39,13 @@ def _przejdz_kroki_0_1_2(
         "if(window.Cookielaw) Cookielaw.accept()"
     )
 
-    # Krok 0: rodzaj
-    page.click(f"input[value='{rodzaj}']")
-    page.click("#id-wizard-submit")
+    # Krok 0: rodzaj — klik na kafelek auto-submituje form (tile JS handler).
+    # Radio input jest ukryty wewnątrz <label class="tile-card">.
+    page.click(f".tile-card[data-value='{rodzaj}']")
     page.wait_for_load_state("domcontentloaded")
 
-    # Krok 1: forma dostępu
-    page.click(f"input[value='{forma}']")
-    page.click("#id-wizard-submit")
+    # Krok 1: forma dostępu — identyczny wzorzec jak krok 0.
+    page.click(f".tile-card[data-value='{forma}']")
     page.wait_for_load_state("domcontentloaded")
 
     # Krok 2: dane
@@ -139,11 +138,10 @@ def test_zglos_publikacje_ograniczony_dostep(
         rok,
         rodzaj="POZOSTALE",
         forma="OGRANICZONY",
-        strona_www="",
     )
 
     # Powinien być na kroku 2 z polem pliku
-    # (bo brak pliku = błąd walidacji)
+    # (bo brak pliku = błąd walidacji serwerowej dla OGRANICZONY)
     assert admin_page.locator("[name='2-pliki']").count() > 0
 
     # Dodaj plik
