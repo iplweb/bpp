@@ -33,6 +33,31 @@ from .base import (
 from .mixins import SanitizedAutocompleteMixin
 
 
+class _OrderedSlicedQuerySetSequence(QuerySetSequence):
+    """QuerySetSequence wykrywający uporządkowanie przez sub-querysety.
+
+    Oryginalna klasa raportuje `ordered=True` tylko gdy na samej
+    sekwencji zawołano `.order_by()`. To nie obejmuje przypadku,
+    w którym każdy sub-queryset jest już posortowany (a między nimi
+    obowiązuje deterministyczna kolejność priorytetowa) — a takiego
+    układu nie można wyrazić przez `.order_by()` na sekwencji, gdy
+    sub-querysety są sliced (Django 4+: „Cannot reorder a query
+    once a slice has been taken").
+
+    Raportujemy ordered=True wtedy i tylko wtedy, gdy każdy
+    sub-queryset jest rzeczywiście uporządkowany (albo gdy
+    .order_by() zostało wywołane na sekwencji) — żaden fake.
+    Dzięki temu paginator (django-autocomplete-light) nie emituje
+    UnorderedObjectListWarning dla uzasadnionych przypadków.
+    """
+
+    @property
+    def ordered(self):
+        if bool(self._order_by):
+            return True
+        return all(qs.ordered for qs in self._querysets)
+
+
 class PublicTaggitTagAutocomplete(
     SanitizedAutocompleteMixin, autocomplete.Select2QuerySetView
 ):
@@ -258,15 +283,14 @@ class ZrodloAutocomplete(GroupRequiredMixin, PublicZrodloAutocomplete):
             qs_without_pbn = qs.filter(pbn_uid__isnull=True)[:10]
 
             # Use QuerySetSequence to chain querysets with priority.
-            # UWAGA: nie wołamy tu .order_by() na sekwencji, bo
-            # sub-querysety są już sliced (`[:10]`), a QuerySetSequence
-            # propaguje order_by do każdego z nich — a Django od 4.x
-            # rzuca "Cannot reorder a query once a slice has been taken".
             # Bazowy qs ma już .order_by("nazwa", "pk") z
             # _get_base_queryset, więc każde filtrowane `[:10]` zachowuje
-            # porządek; jedynie kolejność między trzema gałęziami PBN
-            # jest priorytetowa (celowo, nie alfabetyczna).
-            res = QuerySetSequence(
+            # porządek; kolejność między trzema gałęziami PBN jest
+            # priorytetowa (celowo, nie alfabetyczna).
+            # _OrderedSlicedQuerySetSequence — sygnalizuje paginatorowi
+            # że sekwencja jest ordered (nie da się wołać .order_by()
+            # na sliced sub-querysetach w Django 4+).
+            res = _OrderedSlicedQuerySetSequence(
                 qs_with_full_pbn, qs_with_pbn_no_mnisw, qs_without_pbn
             )
             res.model = Zrodlo  # django-autocomplete-light needs this
