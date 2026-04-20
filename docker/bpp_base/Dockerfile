@@ -4,6 +4,11 @@
 ARG PYTHON_VERSION=3.12
 ARG NODEJS_VERSION=20
 ARG DEBIAN_VERSION=trixie
+# Pandoc installed via COPY --from= zamiast apt-get, bo apt-owy pandoc
+# ciagnie pandoc-data i transitive deps (~300 MB). Osobny pinned tag
+# pozwala trzymac pandoc w stabilnej warstwie cache, niezaleznej od
+# rebuildow bpp. Update pandoc = zmiana tego jednego arg.
+ARG PANDOC_VERSION=3.5
 
 ##############################################################################
 # BASE: shared foundation for builder and test-runner
@@ -170,6 +175,12 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=apt-cache \
     --mount=type=cache,target=/var/lib/apt/lists,sharing=locked,id=apt-lists \
     cat /tmp/packages/*.txt | xargs apt-get install -y
 
+# Pandoc z oficjalnego obrazu (patrz komentarz R7 przy runtime stage).
+# libgmp10/liblua5.4-0 juz sa w runtime.txt instalowanym wyzej.
+ARG PANDOC_VERSION
+COPY --from=pandoc/core:${PANDOC_VERSION}-ubuntu \
+     /usr/local/bin/pandoc /usr/local/bin/pandoc
+
 # yarn + grunt (global install for CLI use)
 RUN --mount=type=cache,target=/root/.npm,id=npm-cache \
     npm install -g --force yarn grunt-cli
@@ -210,6 +221,7 @@ WORKDIR /src
 ##############################################################################
 ARG PYTHON_VERSION
 ARG DEBIAN_VERSION
+ARG PANDOC_VERSION
 FROM python:${PYTHON_VERSION}-slim-${DEBIAN_VERSION} AS runtime
 
 RUN sed -i s/http/https/g /etc/apt/sources.list.d/debian.sources
@@ -225,6 +237,13 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=apt-cache \
     --mount=type=cache,target=/var/lib/apt/lists,sharing=locked,id=apt-lists \
     apt-get update && \
     xargs -a /tmp/runtime.txt apt-get install -y
+
+# R7: pandoc binary z oficjalnego obrazu pandoc/core zamiast apt (~300 MB
+# oszczednosci + stabilna warstwa cache, niezalezna od rebuildow bpp).
+# Binary linkuje dynamicznie do libgmp10, liblua5.4-0 (w runtime.txt).
+ARG PANDOC_VERSION
+COPY --from=pandoc/core:${PANDOC_VERSION}-ubuntu \
+     /usr/local/bin/pandoc /usr/local/bin/pandoc
 
 # Uwaga: wcześniej PATH wskazywał na /.venv/bin, a venv jest pod
 # /app/.venv — działało to tylko dlatego, że wszystkie komendy w
