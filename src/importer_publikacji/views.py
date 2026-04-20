@@ -710,6 +710,13 @@ class CreateView(ImporterPermissionMixin, View):
         session.modified_by = request.user
         session.save()
 
+        if "_create_and_pbn" in request.POST:
+            from bpp.admin.helpers.pbn_api.gui import (
+                sprobuj_utworzyc_zlecenie_eksportu_do_PBN_gui,
+            )
+
+            sprobuj_utworzyc_zlecenie_eksportu_do_PBN_gui(request, record)
+
         url = reverse(
             "importer_publikacji:done",
             kwargs={"session_id": session.pk},
@@ -1184,17 +1191,29 @@ def _render_authors_full(request, session):
 
 def _review_context(request, session):
     """Przygotuj kontekst dla kroku przeglądu."""
+    from bpp.models import Uczelnia
+
     authors = session.authors.select_related(
         "matched_autor",
         "matched_jednostka",
         "matched_dyscyplina",
     ).exclude(matched_autor=None)
 
-    return {
+    ctx = {
         "session": session,
         "authors": authors,
         "data": session.normalized_data,
     }
+
+    uczelnia = Uczelnia.objects.get_default()
+    if (
+        uczelnia is not None
+        and uczelnia.pbn_integracja
+        and uczelnia.pbn_aktualizuj_na_biezaco
+    ):
+        ctx["show_save_and_pbn"] = True
+
+    return ctx
 
 
 def _render_review_step(request, session):
