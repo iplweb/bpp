@@ -120,13 +120,17 @@ RUN /app/.venv/bin/python src/manage.py compilemessages -v0 -l pl --traceback
 
 # R5: collectstatic wymaga `node_modules` przez YarnFinder — uruchamiamy
 # go teraz, w builder stage, aby staticroot był pre-populowany, a runtime
-# mógł shipować tylko `/app/staticroot` zamiast 300+ MB node_modules.
+# mógł shipować tylko `/app/staticroot.baked` zamiast 300+ MB node_modules.
+# Zapisujemy do `.baked` (nie `/app/staticroot`), bo runtime `STATIC_ROOT`
+# moze byc overridowane przez deployment (np. bpp-deploy mountuje named
+# volume na `/staticroot`). Entrypoint appservera kopiuje `.baked → $STATIC_ROOT`
+# przy starcie — kontrakt opisany w CLAUDE.md (sekcja "Static files contract").
 # collectstatic nie potrzebuje DB ani Redisa; wystarczy dummy SECRET_KEY.
 # UWAGA: musi biec PRZED R2 — src/import_pracownikow/static/.../przyklad.xlsx
 # to symlink do src/import_pracownikow/tests/testdata.xlsx; collectstatic
 # rozwiązuje symlink (kopiuje treść) i dopiero potem możemy usunąć tests/.
 RUN DJANGO_BPP_SECRET_KEY=build-time-only-not-used \
-    STATIC_ROOT=/app/staticroot \
+    STATIC_ROOT=/app/staticroot.baked \
     /app/.venv/bin/python src/manage.py collectstatic \
         --noinput -v0 --traceback
 
@@ -234,9 +238,14 @@ ENV PATH="/app/.venv/bin:$PATH" \
 
 WORKDIR /app
 
-# R5: zamiast 300+ MB node_modules shipujemy pre-populowany /app/staticroot
-# wygenerowany przez collectstatic w builder stage.
-COPY --from=builder /app/staticroot ./staticroot
+# R5: zamiast 300+ MB node_modules shipujemy pre-populowany /app/staticroot.baked
+# wygenerowany przez collectstatic w builder stage. Entrypoint appservera
+# kopiuje `.baked -> $STATIC_ROOT` przy starcie — pozwala to deploymentom
+# (bpp-deploy) overridowac STATIC_ROOT na wlasny named volume, a nadal
+# dostac pre-populowane pliki bez uruchamiania collectstatic od zera.
+# Kontrakt: `/app/staticroot.baked` to read-only shipowane pliki; runtime
+# pisze do `$STATIC_ROOT` (default `/app/staticroot`, override w compose).
+COPY --from=builder /app/staticroot.baked ./staticroot.baked
 COPY --from=builder /app/.venv ./.venv
 # The baseline pg_dump (src/baseline-sql) ships along with src/ and is
 # loaded by entrypoint-appserver.sh via `manage.py baseline_load` on

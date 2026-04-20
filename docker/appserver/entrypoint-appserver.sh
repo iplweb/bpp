@@ -17,16 +17,29 @@ python src/manage.py migrate
 echo "Migrations done."
 
 # === PHASE 2: Background tasks ===
-# STATIC_ROOT jest pre-populowany w builder stage (collectstatic przy
-# budowie obrazu — node_modules nie ląduje w runtime). collectstatic tutaj
-# jest idempotentny: gdy dodano nowe pliki statyczne w wolumenie/tenancie,
-# zostaną dopisane. Bez node_modules YarnFinder zwraca pustą listę, więc
-# plik vendor (plotly.min.js itp.) pochodzi z build-time staticroot.
+# Static files contract (patrz CLAUDE.md):
+#  - builder stage collectstatic'uje do `/app/staticroot.baked` (read-only
+#    w obrazie) — runtime NIE odpala collectstatic od nowa, bo to dokladnie
+#    ten sam wynik (bez node_modules YarnFinder zwraca pusta liste, wiec
+#    output byłby identyczny). `cp -ru` ponizej jest funkcjonalnym
+#    zamiennikiem: `.baked` to gotowy output collectstatic.
+#  - `$STATIC_ROOT` moze byc overridowane przez deployment (np. bpp-deploy
+#    mountuje named volume na `/staticroot`). cp honoruje te zmienna.
+#  - `cp -ru` nie nadpisuje nowszych plikow → tenant-specific zmiany wgrane
+#    do volume (np. custom branding) przetrwaja restart.
 echo "Starting background tasks..."
 (
-    echo "  [bg] collectstatic..."
-    python src/manage.py collectstatic --noinput -v0 --traceback
-    echo "  [bg] collectstatic done."
+    if [ -d /app/staticroot.baked ]; then
+        echo "  [bg] seeding STATIC_ROOT=$STATIC_ROOT z /app/staticroot.baked..."
+        mkdir -p "$STATIC_ROOT"
+        cp -ru /app/staticroot.baked/. "$STATIC_ROOT/"
+        echo "  [bg] seed done."
+    else
+        echo "  [bg] UWAGA: /app/staticroot.baked nie istnieje — obraz przed"
+        echo "  [bg] wprowadzeniem static files contract. Fallback:"
+        echo "  [bg] uruchamiam collectstatic tradycyjnie."
+        python src/manage.py collectstatic --noinput -v0 --traceback
+    fi
 
     echo "  [bg] compress..."
     python src/manage.py compress -v0 --force --traceback
