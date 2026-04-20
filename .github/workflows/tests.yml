@@ -5,7 +5,6 @@ on:
     branches:
       - dev
       - master
-      - feature/*
   pull_request:
     branches:
       - dev
@@ -15,164 +14,222 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  lint:
+    # Lint only Python files changed in this push/PR. The repo's
+    # convention is that ruff runs on changed files only (see
+    # pre-commit config); historic drift in unchanged files is
+    # deliberately left alone, so CI must match that scope.
+    name: Lint changed files
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Install system build deps
+        # uv run triggers a full project sync, and several wheels (pycairo
+        # via svglib/xhtml2pdf, psycopg2, python-ldap, cryptography) need
+        # native headers to build. Reuse docker/bpp_base/build.txt so the
+        # package list stays in sync with the runtime/test images.
+        run: |
+          sudo apt-get update
+          xargs -a docker/bpp_base/build.txt sudo apt-get install -y
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Determine diff base
+        id: base
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+          BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            git fetch --no-tags --depth=100 origin "$BASE_REF"
+            echo "ref=origin/$BASE_REF" >> "$GITHUB_OUTPUT"
+          elif [ -n "$BEFORE_SHA" ] && \
+               [ "$BEFORE_SHA" != "0000000000000000000000000000000000000000" ]; then
+            echo "ref=$BEFORE_SHA" >> "$GITHUB_OUTPUT"
+          else
+            # First push to a new branch: diff against dev
+            git fetch --no-tags --depth=100 origin dev
+            echo "ref=origin/dev" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Collect changed Python files
+        id: files
+        env:
+          DIFF_BASE: ${{ steps.base.outputs.ref }}
+        run: |
+          files=$(git diff --name-only --diff-filter=AM \
+            "$DIFF_BASE"...HEAD -- '*.py' | tr '\n' ' ')
+          echo "list=$files" >> "$GITHUB_OUTPUT"
+          if [ -n "$files" ]; then
+            echo "Changed Python files:"
+            printf '  %s\n' $files
+          else
+            echo "No Python files changed."
+          fi
+
+      - name: Ruff check
+        # `ruff` lives in [project.optional-dependencies].dev, so the
+        # default `uv run` resolution doesn't see it. --extra dev pulls
+        # in the dev group that has ruff pinned.
+        if: steps.files.outputs.list != ''
+        env:
+          FILES: ${{ steps.files.outputs.list }}
+        run: uv run --extra dev ruff check --force-exclude $FILES
+
+      - name: Ruff format --check
+        if: steps.files.outputs.list != ''
+        env:
+          FILES: ${{ steps.files.outputs.list }}
+        run: uv run --extra dev ruff format --check --force-exclude $FILES
+
   build:
     # Skip this job if it's a "Merge tag" commit on the dev branch
     if: |
       !(github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, 'Merge tag'))
 
     runs-on: ubuntu-latest
-    timeout-minutes: 45  # Add job-level timeout
-    continue-on-error: ${{ matrix.python-version == '3.14' }}
+    timeout-minutes: 45
 
     strategy:
       max-parallel: 4
       matrix:
-        python-version: ["3.12", "3.14"]
-
-    services:
-      redis:
-        image: redis
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-      postgres:
-        image: iplweb/bpp_dbserver:latest
-        env:
-          POSTGRES_DB: postgres
-          POSTGRES_PASSWORD: password
-          POSTGRES_USER: postgres
-        ports:
-          - 5433:5432
-        # Set health checks to wait until postgres has started
-        options: >-
-          --health-cmd "pg_isready --username=postgres"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+        # Django 5.2 officially tests on CPython 3.10–3.13; Python 3.14
+        # is not supported upstream yet. Keep the matrix to 3.12 so we
+        # aren't spending runner minutes on a build we expect to fail.
+        python-version: ["3.12"]
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
 
-    - name: Cache APT packages
-      uses: actions/cache@v4
-      with:
-        path: /var/cache/apt/archives
-        key: ${{ runner.os }}-apt-${{ hashFiles('.github/workflows/tests.yml') }}
-        restore-keys: |
-          ${{ runner.os }}-apt-
-
-    - name: Cache Playwright browsers
-      uses: actions/cache@v4
-      with:
-        path: ~/.cache/ms-playwright
-        key: ${{ runner.os }}-playwright-${{ hashFiles('**/uv.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-playwright-
-
-    - name: Cache Yarn dependencies
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/.cache/yarn
-          node_modules
-        key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock', '**/package.json') }}
-        restore-keys: |
-          ${{ runner.os }}-yarn-
-
-    - name: Cache UV dependencies
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/.cache/uv
-          ~/.local/share/uv
-          .venv
-        key: ${{ runner.os }}-uv-with-playwright-${{ hashFiles('**/uv.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-uv-with-playwright-
-          ${{ runner.os }}-uv-
-
-    - name: System setup and dependencies
-      timeout-minutes: 10
+    - name: Install system build deps (for uv sync)
+      # uv sync --frozen builds native wheels (pycairo, psycopg2, lxml,
+      # cryptography) that need header libraries not present on the
+      # default runner image. Reuse docker/bpp_base/build.txt so the
+      # package list stays in sync with the runtime/test images.
       run: |
-        set -e  # Exit on any error
-        uname -a
-        sudo apt update
-        sudo apt install software-properties-common gettext libldap2-dev libsasl2-dev libcairo2-dev
-        curl -fsSL https://deb.nodesource.com/setup_current.x | sudo bash -
-        sudo apt install -y libpq-dev nodejs redis-tools
-        sudo npm install -g --force yarn grunt-cli
+        sudo apt-get update
+        xargs -a docker/bpp_base/build.txt sudo apt-get install -y
 
-    - name: Install uv
-      uses: astral-sh/setup-uv@v4
+    - name: Install uv (for baseline_check)
+      uses: astral-sh/setup-uv@v7
       with:
         enable-cache: true
-        cache-dependency-glob: "uv.lock"
 
-    - name: Install Python ${{ matrix.python-version }}
-      timeout-minutes: 10
-      run: |
-        uv python install ${{ matrix.python-version }}
-        uv python pin ${{ matrix.python-version }}
+    - name: Install project deps (for baseline_check)
+      # baseline_check is a Django management command that loads the
+      # full INSTALLED_APPS. No DB connection needed — it reads
+      # src/baseline-sql/baseline.meta.json and counts migration files.
+      # --frozen is intentional: uv.lock is the single source of truth.
+      run: uv sync --frozen
 
-    - name: Install Python deps via uv
-      timeout-minutes: 10
-      run: |
-        uv sync --all-extras
-
-    - name: Build assets (yarn, collectstatic)
-      timeout-minutes: 10
+    - name: Check baseline freshness
+      # Fail loudly if migrations have outpaced the baseline pg_dump by
+      # more than --max-delta. When this fails, the fix is to run
+      # `make rebuild-baseline` locally and commit the refreshed files.
       env:
-        DJANGO_BPP_DB_HOST: 127.0.0.1
-        DJANGO_BPP_DB_PORT: 5433
-        DJANGO_BPP_DB_USER: postgres
-      run: |
-        uv run make assets
+        DJANGO_BPP_SKIP_DOTENV: "1"
+      run: uv run python src/manage.py baseline_check --max-delta 50
 
-    - name: playwright install chromium
-      timeout-minutes: 10
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v4
+      with:
+        driver: docker-container
+
+    - name: Cache Docker layers
+      uses: actions/cache@v5
+      with:
+        path: /tmp/.buildx-cache
+        key: >-
+          ${{ runner.os }}-buildx-${{ matrix.python-version }}-${{
+            hashFiles(
+              'docker/bpp_base/Dockerfile',
+              'docker/bpp_base/*.txt',
+              'uv.lock'
+            )
+          }}
+        restore-keys: |
+          ${{ runner.os }}-buildx-${{ matrix.python-version }}-
+
+    - name: Build test-runner image
       env:
-        DJANGO_BPP_DB_HOST: 127.0.0.1
-        DJANGO_BPP_DB_PORT: 5433
-        DJANGO_BPP_DB_USER: postgres
+        PYTHON_VERSION: ${{ matrix.python-version }}
+        COMPOSE_DOCKER_CLI_BUILD: 1
+        DOCKER_BUILDKIT: 1
       run: |
-        uv run playwright install chromium
+        docker compose -f docker-compose.test.yml build test-runner
+
+    - name: Start services
+      run: |
+        docker compose -f docker-compose.test.yml up -d db redis rabbitmq
 
     - name: Wait for services
       timeout-minutes: 2
       run: |
-        # Wait for PostgreSQL to be ready
-        until pg_isready -h 127.0.0.1 -p 5433 -U postgres; do
+        until docker compose -f docker-compose.test.yml exec db \
+            pg_isready -U bpp; do
           echo "Waiting for PostgreSQL..."
           sleep 2
         done
-        # Wait for Redis to be ready
-        until redis-cli -h 127.0.0.1 -p 6379 ping; do
+        until docker compose -f docker-compose.test.yml exec redis \
+            redis-cli ping; do
           echo "Waiting for Redis..."
           sleep 2
         done
 
-    - name: Tests (without Playwright)
-      timeout-minutes: 20
-      env:
-         DJANGO_BPP_DB_HOST: 127.0.0.1
-         DJANGO_BPP_DB_PORT: 5433
-         DJANGO_BPP_DB_USER: postgres
+    - name: Build assets
+      timeout-minutes: 10
       run: |
-         uv run pytest -m "not playwright" -n auto --cov=src/ --cov-branch --cov-report=xml:cov.xml
+        docker compose -f docker-compose.test.yml run --rm \
+          test-runner uv run make assets
+
+    - name: Install Playwright browsers
+      timeout-minutes: 10
+      run: |
+        docker compose -f docker-compose.test.yml run --rm \
+          test-runner uv run playwright install chromium chromium-headless-shell
+
+    - name: Tests (without Playwright, parallel)
+      timeout-minutes: 20
+      run: |
+        docker compose -f docker-compose.test.yml run --rm \
+          test-runner uv run pytest \
+            -m "not playwright and not serial" -n auto \
+            --timeout 300 \
+            --cov=src/ --cov-branch \
+            --cov-report=xml:cov.xml
+
+    - name: Tests (serial, no xdist)
+      # Tests tagged @pytest.mark.serial share state that xdist
+      # workers shouldn't race on (e.g. PG connections that flake when
+      # another worker recycles the DB). Run them sequentially in a
+      # single process; --cov-append keeps coverage merged.
+      timeout-minutes: 5
+      run: |
+        docker compose -f docker-compose.test.yml run --rm \
+          test-runner uv run pytest \
+            -m "serial and not playwright" \
+            --timeout 300 \
+            --cov=src/ --cov-branch --cov-append \
+            --cov-report=xml:cov.xml
 
     - name: Tests (Playwright)
       timeout-minutes: 20
-      env:
-         DJANGO_BPP_DB_HOST: 127.0.0.1
-         DJANGO_BPP_DB_PORT: 5433
-         DJANGO_BPP_DB_USER: postgres
       run: |
-         uv run pytest -m "playwright" -n auto --cov=src/ --cov-branch --cov-append --cov-report=xml:cov.xml
+        docker compose -f docker-compose.test.yml run --rm \
+          test-runner uv run pytest \
+            -m "playwright" -n auto \
+            --timeout 300 \
+            --cov=src/ --cov-branch --cov-append \
+            --cov-report=xml:cov.xml
 
     - name: Upload coverage to Coveralls (parallel)
       if: always()
@@ -182,3 +239,8 @@ jobs:
         flag-name: tests
         parallel: true
         file: cov.xml
+
+    - name: Cleanup
+      if: always()
+      run: |
+        docker compose -f docker-compose.test.yml down -v

@@ -6,12 +6,16 @@ from bpp.multiseek_registry.mixins import BppMultiseekVisibilityMixin
 
 
 class TestQueryObject(BppMultiseekVisibilityMixin, StringQueryObject):
+    __test__ = False  # pytest: nie kolekcjonuj jako testu
+
     label = "foo"
     field_name = "bar"
     public = True
 
 
 class TestQueryObjectDisabled(BppMultiseekVisibilityMixin, StringQueryObject):
+    __test__ = False  # pytest: nie kolekcjonuj jako testu
+
     label = "foo"
     field_name = "bar"
     public = True

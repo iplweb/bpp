@@ -200,7 +200,7 @@ class Praca_DoktorskaAdmin(
     ExportActionsMixin,
     Praca_Doktorska_Habilitacyjna_Admin_Base,
 ):
-    resource_class = Praca_DoktorskaResource
+    resource_classes = [Praca_DoktorskaResource]
     bibtex_resource_class = resources.Praca_DoktorskaBibTeXResource
 
     form = Praca_DoktorskaForm

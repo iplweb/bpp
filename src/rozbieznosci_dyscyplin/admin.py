@@ -1,12 +1,12 @@
 # Register your models here.
 import json
+from collections.abc import Iterable
 from json import JSONDecodeError
 
 from django.contrib import admin, messages
 from django.contrib.sites.models import Site
 from django.http import HttpResponseRedirect
 from django.urls import path, reverse
-from django.utils.itercompat import is_iterable
 from djangoql.admin import DjangoQLSearchMixin
 from import_export import resources
 from import_export.fields import Field
@@ -36,7 +36,7 @@ def parse_object_id(object_id, max_len=3):
     except TypeError:
         return None
 
-    if not is_iterable(ret):
+    if not isinstance(ret, Iterable):
         return
 
     if not len(ret) == max_len:
@@ -278,7 +278,7 @@ class RozbieznosciViewAdmin(
     EksportDanychMixin,
     admin.ModelAdmin,
 ):
-    resource_class = RozbieznosciViewResource
+    resource_classes = [RozbieznosciViewResource]
     djangoql_completion_enabled_by_default = False
     max_allowed_export_items = 10000
 
@@ -365,7 +365,7 @@ class RozbieznosciZrodelViewAdmin(
     EksportDanychMixin,
     admin.ModelAdmin,
 ):
-    resource_class = RozbieznosciZrodelViewResource
+    resource_classes = [RozbieznosciZrodelViewResource]
     paginator = CachingPaginator
     max_allowed_export_items = 10000
 

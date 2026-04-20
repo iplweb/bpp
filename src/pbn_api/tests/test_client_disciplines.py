@@ -18,18 +18,22 @@ from pbn_api.models.discipline import Discipline
 
 
 def test_get_disciplines(pbn_client):
-    pbn_client.transport.return_values[PBN_GET_DISCIPLINES_URL] = json.loads(
-        open(Path(__file__).parent / "fixture_test_get_disciplines.json", "rb").read()
-    )
+    fixture_path = Path(__file__).parent / "fixture_test_get_disciplines.json"
+    with open(fixture_path, "rb") as f:
+        pbn_client.transport.return_values[PBN_GET_DISCIPLINES_URL] = json.loads(
+            f.read()
+        )
     ret = pbn_client.get_disciplines()
     assert "validityDateFrom" in ret[0]
 
 
 @pytest.mark.django_db
 def test_download_disciplines(pbn_client):
-    pbn_client.transport.return_values[PBN_GET_DISCIPLINES_URL] = json.loads(
-        open(Path(__file__).parent / "fixture_test_get_disciplines.json", "rb").read()
-    )
+    fixture_path = Path(__file__).parent / "fixture_test_get_disciplines.json"
+    with open(fixture_path, "rb") as f:
+        pbn_client.transport.return_values[PBN_GET_DISCIPLINES_URL] = json.loads(
+            f.read()
+        )
 
     assert Discipline.objects.count() == 0
     pbn_client.download_disciplines()
@@ -38,9 +42,11 @@ def test_download_disciplines(pbn_client):
 
 @pytest.mark.django_db
 def test_sync_disciplines(pbn_client):
-    pbn_client.transport.return_values[PBN_GET_DISCIPLINES_URL] = json.loads(
-        open(Path(__file__).parent / "fixture_test_get_disciplines.json", "rb").read()
-    )
+    fixture_path = Path(__file__).parent / "fixture_test_get_disciplines.json"
+    with open(fixture_path, "rb") as f:
+        pbn_client.transport.return_values[PBN_GET_DISCIPLINES_URL] = json.loads(
+            f.read()
+        )
 
     d1 = Dyscyplina_Naukowa.objects.create(kod="5.1", nazwa="ekonomia i finanse")
     d2 = Dyscyplina_Naukowa.objects.create(kod="1.6", nazwa="nauka o kulturze")

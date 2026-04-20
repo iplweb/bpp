@@ -1,5 +1,5 @@
 from django.contrib import admin
-from django.utils.html import format_html
+from django.utils.safestring import mark_safe
 
 from bpp.admin.core import DynamicAdminFilterMixin
 
@@ -101,7 +101,7 @@ class PrzemapoaniePracAutoraAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
 
         html += "</tbody></table></div>"
         html += f'<p class="przemapuj-historia-summary"><strong>Łącznie: {len(obj.prace_ciagle_historia)} prac</strong></p>'
-        return format_html(html)
+        return mark_safe(html)
 
     display_prace_ciagle_historia.short_description = "Przemapowane prace ciągłe"
 
@@ -131,7 +131,7 @@ class PrzemapoaniePracAutoraAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
 
         html += "</tbody></table></div>"
         html += f'<p class="przemapuj-historia-summary"><strong>Łącznie: {len(obj.prace_zwarte_historia)} prac</strong></p>'
-        return format_html(html)
+        return mark_safe(html)
 
     display_prace_zwarte_historia.short_description = "Przemapowane prace zwarte"
 

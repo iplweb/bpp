@@ -1,11 +1,10 @@
 import pytest
 
+from bpp.models import Autor, Autor_Jednostka
 from import_pracownikow.tests.conftest import (
     import_pracownikow_factory,
-    testdata_xls_path_factory,
+    xls_path_factory,
 )
-
-from bpp.models import Autor, Autor_Jednostka
 
 
 @pytest.mark.django_db
@@ -31,9 +30,7 @@ def test_ImportPracownikow_perform_aktualizacja_tytulu_nastapila(
 def test_ImportPracownikow_perform_aktualizacja_tytulu_brakujacy_tytul(
     baza_importu_pracownikow, admin_user
 ):
-    ip = import_pracownikow_factory(
-        admin_user, testdata_xls_path_factory("_nieistn_tytul")
-    )
+    ip = import_pracownikow_factory(admin_user, xls_path_factory("_nieistn_tytul"))
 
     ip.perform()
     assert Autor.objects.get(pk=50).tytul is None

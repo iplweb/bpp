@@ -5,6 +5,8 @@ from django.template.defaultfilters import safe
 from django.urls import reverse
 from django_tables2 import Column
 
+from bpp.models import CHARAKTER_SLOTY
+from bpp.models.cache import Cache_Punktacja_Autora_Query_View
 from raport_slotow import const
 from raport_slotow.columns import DecimalColumn, SummingColumn
 from raport_slotow.models import (
@@ -13,12 +15,6 @@ from raport_slotow.models import (
     RaportZerowyEntry,
 )
 from raport_slotow.models.uczelnia import RaportSlotowUczelniaWiersz
-
-from bpp.models import CHARAKTER_SLOTY
-from bpp.models.cache import (
-    Cache_Punktacja_Autora_Query,
-    Cache_Punktacja_Autora_Query_View,
-)
 
 
 class RaportCommonMixin:
@@ -64,11 +60,13 @@ class RaportSlotowAutorTable(RaportCommonMixin, tables.Table):
 
     tytul_oryginalny = Column("Tytuł oryginalny", "rekord")
     autorzy = Column(
-        "Autorzy", "rekord.opis_bibliograficzny_zapisani_autorzy_cache", orderable=False
+        "Autorzy",
+        "rekord__opis_bibliograficzny_zapisani_autorzy_cache",
+        orderable=False,
     )
-    rok = Column("Rok", "rekord.rok", orderable=True)
+    rok = Column("Rok", "rekord__rok", orderable=True)
     dyscyplina = Column(orderable=False)
-    punkty_kbn = Column("Punkty MNiSW/MEiN", "rekord.punkty_kbn")
+    punkty_kbn = Column("Punkty MNiSW/MEiN", "rekord__punkty_kbn")
     zrodlo_informacje = Column(
         "Źródło / informacje", "rekord", empty_values=(), orderable=False
     )
@@ -86,7 +84,7 @@ class RaportSlotowAutorTable(RaportCommonMixin, tables.Table):
     )
     liczba_wszystkich_autorow = Column(
         "Liczba wszystkich autorów",
-        "rekord.opis_bibliograficzny_autorzy_cache",
+        "rekord__opis_bibliograficzny_autorzy_cache",
         orderable=False,
     )
 
@@ -115,9 +113,9 @@ class RaportSlotowUczelniaBezJednostekIWydzialowTable(tables.Table):
     slot = DecimalColumn("Slot")
     avg = Column("Średnio punktów dla autora na slot")
     dyscyplina = Column()
-    pbn_id = Column("PBN ID", "autor.pbn_id")
-    orcid = Column("ORCID", "autor.orcid")
-    system_kadrowy_id = Column("System kadrowy ID", "autor.system_kadrowy_id")
+    pbn_id = Column("PBN ID", "autor__pbn_id")
+    orcid = Column("ORCID", "autor__orcid")
+    system_kadrowy_id = Column("System kadrowy ID", "autor__system_kadrowy_id")
     jednostka = Column("Aktualna jednostka")
 
     def __init__(self, od_roku, do_roku, slot, *args, **kw):
@@ -157,7 +155,7 @@ class RaportSlotowUczelniaBezJednostekIWydzialowTable(tables.Table):
 class RaportSlotowUczelniaTable(RaportSlotowUczelniaBezJednostekIWydzialowTable):
     class Meta:
         empty_text = "Brak danych"
-        model = Cache_Punktacja_Autora_Query
+        model = RaportSlotowUczelniaWiersz
         fields = (
             "autor",
             "pbn_id",
@@ -173,7 +171,7 @@ class RaportSlotowUczelniaTable(RaportSlotowUczelniaBezJednostekIWydzialowTable)
 
     jednostka = Column("Jednostka")
 
-    wydzial = Column("Wydział", accessor="jednostka.wydzial.nazwa")
+    wydzial = Column("Wydział", accessor="jednostka__wydzial__nazwa")
 
 
 class RaportSlotowZerowyTable(tables.Table):
@@ -229,18 +227,20 @@ class RaportSlotowEwaluacjaTable(RaportCommonMixin, tables.Table):
             "slot",
         )
 
-    id = Column("ID publikacji", "rekord.id")
+    id = Column("ID publikacji", "rekord__id")
     tytul_oryginalny = Column("Tytuł oryginalny", "rekord")
-    pbn_uid_id = Column("PBN UID", "rekord.pbn_uid_id")
+    pbn_uid_id = Column("PBN UID", "rekord__pbn_uid_id")
     autorzy = Column(
-        "Autorzy", "rekord.opis_bibliograficzny_zapisani_autorzy_cache", orderable=False
+        "Autorzy",
+        "rekord__opis_bibliograficzny_zapisani_autorzy_cache",
+        orderable=False,
     )
     aktualna_jednostka = Column(
-        "Aktualna jednostka", "autorzy.autor.aktualna_jednostka.nazwa"
+        "Aktualna jednostka", "autorzy__autor__aktualna_jednostka__nazwa"
     )
 
-    afiliowana_jednostka = Column("Afiliowana jednostka", "autorzy.jednostka.nazwa")
-    rok = Column("Rok", "rekord.rok", orderable=True)
+    afiliowana_jednostka = Column("Afiliowana jednostka", "autorzy__jednostka__nazwa")
+    rok = Column("Rok", "rekord__rok", orderable=True)
     zrodlo_informacje = None
     # Column(
     #    "Źródło / informacje", "rekord", empty_values=(), orderable=False
@@ -286,37 +286,37 @@ class RaportSlotowEwaluacjaTable(RaportCommonMixin, tables.Table):
     )
     liczba_wszystkich_autorow = Column(
         "Liczba wszystkich autorów",
-        "rekord.opis_bibliograficzny_autorzy_cache",
+        "rekord__opis_bibliograficzny_autorzy_cache",
         orderable=False,
     )
-    punkty_pk = Column("PK", "rekord.punkty_kbn")
-    impact_factor = Column("IF", "rekord.impact_factor")
-    autor = Column("Autor ewaluowany", "autorzy.autor")
-    pbn_id = Column("PBN ID", "autorzy.autor.pbn_id")
-    orcid = Column("ORCID", "autorzy.autor.orcid")
+    punkty_pk = Column("PK", "rekord__punkty_kbn")
+    impact_factor = Column("IF", "rekord__impact_factor")
+    autor = Column("Autor ewaluowany", "autorzy__autor")
+    pbn_id = Column("PBN ID", "autorzy__autor__pbn_id")
+    orcid = Column("ORCID", "autorzy__autor__orcid")
     dyscyplina = Column(
-        "Dyscyplina 1", "autor_dyscyplina.dyscyplina_naukowa", orderable=False
+        "Dyscyplina 1", "autor_dyscyplina__dyscyplina_naukowa", orderable=False
     )
     procent_dyscypliny = Column(
-        "% dyscypliny 1", "autor_dyscyplina.procent_dyscypliny", orderable=False
+        "% dyscypliny 1", "autor_dyscyplina__procent_dyscypliny", orderable=False
     )
     subdyscyplina = Column(
-        "Dyscyplina 2", "autor_dyscyplina.subdyscyplina_naukowa", orderable=False
+        "Dyscyplina 2", "autor_dyscyplina__subdyscyplina_naukowa", orderable=False
     )
     procent_subdyscypliny = Column(
         "% dyscypliny 2",
-        "autor_dyscyplina.procent_subdyscypliny",
+        "autor_dyscyplina__procent_subdyscypliny",
         orderable=False,
     )
-    dyscyplina_rekordu = Column("dyscyplina rekordu", "autorzy.dyscyplina_naukowa")
+    dyscyplina_rekordu = Column("dyscyplina rekordu", "autorzy__dyscyplina_naukowa")
     pkdaut = SummingColumn("Punkty dla autora", "pkdaut")
     slot = SummingColumn("Slot")
 
-    kwartyl_w_wos = Column("Kwartyl WoS", accessor="rekord.kwartyl_w_wos")
+    kwartyl_w_wos = Column("Kwartyl WoS", accessor="rekord__kwartyl_w_wos")
     licencja_openaccess = Column(
-        "Licencja OpenAccess", accessor="rekord.openaccess_licencja"
+        "Licencja OpenAccess", accessor="rekord__openaccess_licencja"
     )
-    kwartyl_w_scopus = Column("Kwartyl SCOPUS", accessor="rekord.kwartyl_w_scopus")
+    kwartyl_w_scopus = Column("Kwartyl SCOPUS", accessor="rekord__kwartyl_w_scopus")
 
     def render_liczba_autorow_z_dyscypliny(self, value):
         if value:
@@ -338,7 +338,7 @@ class RaportSlotowEwaluacjaTable(RaportCommonMixin, tables.Table):
         return value
 
     system_kadrowy_id = Column(
-        "System kadrowy ID", accessor="autorzy.autor.system_kadrowy_id"
+        "System kadrowy ID", accessor="autorzy__autor__system_kadrowy_id"
     )
 
 

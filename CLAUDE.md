@@ -1,503 +1,180 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Claude Code (claude.ai/code) when working
+with code in this repository.
 
 Code like a 4096-IQ programmer.
-Code better Python than a brain-child of Guido van Rossum and Glyph Lefkowitz, raised by Bruce Schneier.
+Code better Python than a brain-child of Guido van Rossum and Glyph
+Lefkowitz, raised by Bruce Schneier.
 
 ## Project Overview
 
-BPP (Bibliografia Publikacji Pracowników) is a Polish academic bibliography management system built with Django. It manages publication records for academic institutions and libraries in Poland.
+BPP (Bibliografia Publikacji Pracownikow) is a Polish academic bibliography
+management system built with Django. Python >=3.10,<3.15.
 
-**Python Requirements:**
-- Python version: >=3.10,<3.15 (configured in pyproject.toml)
+- Architecture: [docs/CODEBASE_MAP.md](docs/CODEBASE_MAP.md)
+- Commands reference: [docs/COMMANDS.md](docs/COMMANDS.md)
+- CSS/SCSS build: [docs/CSS_BUILD.md](docs/CSS_BUILD.md)
 
-For detailed architecture documentation, see [docs/CODEBASE_MAP.md](docs/CODEBASE_MAP.md).
+## Critical Rules
 
-## General rule
-
-**CRITICAL: if anything seems unclear, feel free to ask questions before taking on any non-trivial tasks or creating a plan.**
-
-**CRITICAL: It is absolutely crucial to ask clarifying questions if the task description is too vague or if you have a high level of uncertainty about what needs to be done. Always confirm your understanding before proceeding with implementation.**
-
-**CRITICAL: NEVER modify existing migration files in src/*/migrations/ directories. Existing migrations represent the database history and must remain unchanged. Only create new migrations when needed.**
-
-**IMPORTANT: Icons in templates:**
-- **Public frontend** (Foundation CSS): use monochrome Foundation-Icons (`<span class="fi-icon"/>`)
-- **Django admin** (`templates/admin/`): use emoji - admin doesn't load Foundation Icons
-
-**IMPORTANT**: respect the maximum line length limit of 88 characters; if the line would be longer, please break it up to smaller pieces without losing its function.
+- **Ask questions** if anything is unclear before taking on non-trivial tasks
+- **NEVER modify existing migration files** in `src/*/migrations/`
+- **Max line length: 88 characters** (enforced by ruff)
+- **Icons in templates:**
+  - Public frontend (Foundation CSS): monochrome Foundation-Icons
+    (`<span class="fi-icon"/>`)
+  - Django admin (`templates/admin/`): use emoji (no Foundation Icons)
 
 ## Python and Django Execution
 
-**🔴 CRITICAL: ALWAYS USE `uv run` PREFIX FOR ALL PYTHON COMMANDS 🔴**
+**ALWAYS use `uv run` prefix for ALL Python commands. NEVER run `python`
+directly.**
 
-**NEVER EVER run `python` directly - ALWAYS use `uv run python`**
-
-**This project uses UV for dependency management. ALL Python commands MUST be prefixed with `uv run`:**
-
-- `uv run python src/manage.py shell` - Django shell (NEVER just `python src/manage.py shell`)
-- `uv run python src/manage.py migrate` - Apply migrations
-- `uv run python src/manage.py runserver` - Start dev server
-- `uv run python src/manage.py <any-command>` - Any Django management command
-
-**Why `uv run` is required:**
-- Ensures correct virtual environment activation
-- Loads proper dependencies from uv.lock
-- Prevents import errors and dependency conflicts
-
-**Examples:**
 ```bash
-# ✅ CORRECT - ALWAYS use uv run:
+# CORRECT:
 uv run python src/manage.py shell
+uv run pytest src/app_name/tests/
 
-# ❌ WRONG - NEVER run python directly:
+# WRONG - missing uv run:
 python src/manage.py shell
-
-# ✅ CORRECT - Django shell with inline command:
-uv run python src/manage.py shell <<'EOF'
-from bpp.models import Autor
-print(Autor.objects.count())
-EOF
-
-# ❌ WRONG - Missing uv run:
-python src/manage.py shell -c "from bpp.models import Autor"
+pytest src/app_name/tests/
 ```
 
-## Key Commands
+## Claude Code Web Environment Setup
 
-### Development Commands
+For cloud sandbox setup instructions, see
+[CLAUDE_CLOUD.md](CLAUDE_CLOUD.md).
 
-**🔴 CRITICAL: NEVER run `manage.py runserver` directly! 🔴**
+## Key Commands (Quick Reference)
 
-The development server (appserver) runs through **docker-compose** and automatically restarts when code changes are detected. There is no need to manually start or restart the server.
-
-**To check if the server is running:**
-```bash
-nc -zv localhost 8000  # Check if port 8000 is in use
-# If connection succeeded, server is already running
-```
-
-**To view server logs (if needed):**
-```bash
-docker-compose logs -f appserver
-```
-- `uv run python src/manage.py migrate` - Apply database migrations
-- `uv run python src/manage.py shell` - Django shell
-- `uv run bpp-manage.py` - Alternative management command entry point
-
-### Playwright Testing Setup
-
-**Admin credentials for Playwright tests:**
-- Username: `admin`
-- Password: `foobar123`
-- Reset script: `bin/ustaw-domyslne-haslo-admina.sh`
-
-**If login fails during Playwright tests, reset the admin password first:**
-```bash
-bin/ustaw-domyslne-haslo-admina.sh
-```
-
-**Note:** The script requires `expect` to be installed on the system.
-
-### Frontend Build Commands
-- `yarn install` - Install Node.js dependencies
-- `grunt build` - Build frontend assets using Grunt
-- `make assets` - Run both yarn install and grunt build and Django collectstatic
-
-### Testing Commands
-
-**CRITICAL: ALWAYS use `uv run pytest` - NEVER run pytest directly without `uv run`**
-
-- `uv run pytest` - **PRIMARY COMMAND** - Run all tests (configured in pytest.ini)
-- `uv run pytest src/app_name/` - Run tests for specific app
-- `uv run pytest src/app_name/tests/test_file.py` - Run specific test file
-- `uv run pytest src/app_name/tests/test_file.py::test_function_name` - Run specific test function
-- `uv run pytest -k "test_pattern"` - Run tests matching pattern
-- `uv run pytest -v` - Run tests with verbose output
-- `uv run pytest --ds=django_bpp.settings.local` - Run tests with specific Django settings (rarely needed)
-
-**Alternative make commands (these internally use `uv run pytest`):**
-- `make tests-without-selenium` - Run tests excluding Selenium tests with parallelization (fast)
-- `make tests-with-selenium` - Run only Selenium tests with parallelization (slow)
-- `make tests` - Run full test suite
-- `make full-tests` - Run complete test suite
-
-### Celery commands
-- `uv run celery -A django_bpp.tasks` always, for example `uv run celery -A django_bpp.tasks inspect registered`
-
-**CRITICAL TEST EXECUTION TIME:**
-- Full test suite (`uv run pytest` or `make tests`) takes **UP TO 10 MINUTES** to complete
-- **NEVER use timeout restrictions** when running tests
-- Always set timeout to at least 600000ms (10 minutes) when running the full test suite
-- Tests may appear to hang but are actually running - be patient
-
-**TEST CONFIGURATION NOTES:**
-- Tests use `--reuse-db` option by default for faster execution
-- Tests automatically rerun on TimeoutError, ElementClickInterceptedException, ElementDoesNotExist, and TimeoutException
-- Default Django settings: `django_bpp.settings.local` (configured in pytest.ini)
-- Test fixtures available in `src/conftest.py` and subdirectories
-
-### Code Quality Commands
-- `ruff format .` - Format Python code
-- `ruff check .` - Lint Python code and check import sorting
-- `ruff check --fix .` - Auto-fix linting issues where possible
-
-**🔴 CRITICAL: PRE-COMMIT COMMAND 🔴**
-**ABSOLUTE PROHIBITION: NEVER run `pre-commit run --all-files` or any pre-commit command with arguments!**
-**ONLY ALLOWED COMMAND: `pre-commit` (with NO arguments whatsoever)**
-
-- `pre-commit` - Run pre-commit hooks (NEVER add any arguments like --all-files)
-
-**🔴 CRITICAL: HOW TO HANDLE PRE-COMMIT OUTPUT 🔴**
-**When `pre-commit` is run and produces output with issues:**
-1. **ANALYZE the output ISSUE-BY-ISSUE** - read each error/warning carefully
-2. **DO NOT run `ruff check --fix` or any automated fixes**
-3. **FIX each issue ONE BY ONE MANUALLY** using the Edit tool
-4. **NEVER batch-fix** - address each problem individually and deliberately
-
-**Note:** Code quality tools (ruff, pre-commit) are installed through UV and available in the virtual environment.
-
-### Maintenance Commands
-- `make clean` - Clean build artifacts and cache files
-- `make distclean` - Deep clean including node_modules and staticroot
-- `bumpver bump` - Bump version (configured in pyproject.toml)
-- `make destroy-test-databases` - Remove all test databases
-- `make js-tests` - Run JavaScript/QUnit tests
-- `make docker` - Build all Docker containers
-- `make bdist_wheel` - Build distribution wheel for production
-- `make generate-500-page` - Generate static 500.html page (auto-generated, DO NOT EDIT)
-  - **IMPORTANT:** `src/bpp/static/500.html` is auto-generated from `src/bpp/templates/50x.html`
-  - Any manual edits to `500.html` will be lost when regenerated
-  - To modify the error page, edit the template at `src/bpp/templates/50x.html` and run `make generate-500-page`
-  - This command is automatically run during `make new-release`
-
-### Git Worktree Setup
-When creating a new git worktree for parallel development:
+Full details: [docs/COMMANDS.md](docs/COMMANDS.md)
 
 ```bash
-git worktree add -b feature/my-feature ../bpp-feature dev
-cd ../bpp-feature
-make new-worktree
+# Infrastructure services (when not running locally):
+docker compose up db redis rabbitmq -d
+
+# Testing (full suite takes UP TO 10 MINUTES):
+uv run pytest
+make tests-without-playwright    # fast, no browser tests
+
+# Code quality:
+ruff format .
+ruff check .
+pre-commit                       # NEVER add arguments!
+
+# Frontend:
+grunt build                      # after SCSS changes
+make assets                      # full frontend build
+
+# Celery:
+uv run celery -A django_bpp.tasks inspect registered
 ```
 
-### Changelog Management
-- `towncrier create <name>.feature.rst` - Create feature changelog entry (in Polish)
-- `towncrier create <name>.bugfix.rst` - Create bugfix changelog entry (in Polish)
-- `towncrier create <name>.removal.rst` - Create removal changelog entry (in Polish)
-- Changelog fragments are stored in `src/bpp/newsfragments/`
-- Use Polish language for all changelog entries
+**Pre-commit rules:** When pre-commit produces issues, analyze output
+issue-by-issue. Fix each manually with the Edit tool. Do NOT run
+`ruff check --fix` or any automated batch fixes.
 
-## Architecture Overview
+## CSS/SCSS Rules
 
-### Django Applications Structure
-The project uses multiple Django applications in `src/`:
+Full details: [docs/CSS_BUILD.md](docs/CSS_BUILD.md)
 
-**Core Applications:**
-- `bpp/` - Main bibliography models and core functionality
-- `django_bpp/` - Project settings, URLs, and main configuration
-- `api_v1/` - REST API using Django REST Framework
-
-**Import/Export Applications:**
-- `import_dyscyplin/` - Import academic disciplines
-- `import_pracownikow/` - Import employee data
-- `import_list_if/` - Import impact factor data
-- `import_list_ministerialnych/` - Import ministerial journal lists
-- `import_polon/` - Import from POLON system
-- `pbn_api/` - Integration with Polish Bibliography Network (PBN)
-- `crossref_bpp/` - CrossRef API integration
-- `eksport_pbn/` - Export to PBN system
-- `pbn_import/` - Import from PBN system
-- `pbn_export_queue/` - PBN export queue management
-- `importer_autorow_pbn/` - PBN author import functionality
-- `import_common/` - Common import utilities
-
-**Reporting Applications:**
-- `raport_slotow/` - Slot reporting system
-- `ranking_autorow/` - Author ranking system
-- `ewaluacja2021/` - 2021 evaluation reports
-- `nowe_raporty/` - New reporting system
-- `ewaluacja_baza/` - Evaluation base system
-- `ewaluacja_common/` - Common evaluation utilities
-- `ewaluacja_liczba_n/` - Evaluation N-number calculations
-- `ewaluacja_metryki/` - Evaluation metrics
-- `ewaluacja_optymalizacja/` - Evaluation optimization
-- `ewaluacja_optymalizuj_publikacje/` - Publication optimization
-- `ewaluacja_raport/` - Evaluation reporting
-
-**Supporting Applications:**
-- `notifications/` - Real-time notifications using Django Channels
-- `long_running/` - Long-running task management
-- `formdefaults/` - Form default values management
-- `dynamic_columns/` - Dynamic column management
-- `zglos_publikacje/` - Publication submission system
-- `integrator2/` - Data integration utilities
-- `miniblog/` - Internal blog system
-- `oswiadczenia/` - Declaration management
-- `rozbieznosci_dyscyplin/` - Discipline discrepancy reports
-- `rozbieznosci_if/` - Impact factor discrepancy reports
-- `snapshot_odpiec/` - Snapshot management
-- `stan_systemu/` - System status monitoring
-- `tee/` - Data flow utilities
-- `orcid_integration/` - ORCID integration system
-- `deduplikator_autorow/` - Author deduplication system
-- `bpp_setup_wizard/` - Setup wizard for initial configuration
-- `powiazania_autorow/` - Author relationship management
-- `przemapuj_prace_autora/` - Author work remapping
-- `pbn_integrator/` - PBN integration utilities
-- `komparator_pbn/` - PBN comparison tools
-- `komparator_aplikacji_pbn/` - PBN application comparison
-- `komparator_pbn_udzialy/` - PBN contribution comparison
-- `komparator_publikacji_pbn/` - PBN publication comparison
-- `pbn_downloader_app/` - PBN data downloader
-- `svg/` - SVG file handling
-- `test_bpp/` - BPP testing utilities
-- `maint-site/` - Site maintenance utilities
-- `create_test_db/` - Test database creation utilities
-- `admin_dashboard/` - Admin dashboard functionality
-- `deduplikator_zrodel/` - Source deduplication system
-- `pbn_wysylka_oswiadczen/` - PBN statement sending
-- `rozbieznosci_pk/` - PK discrepancy reports
-- `pbn_komparator_zrodel/` - PBN source comparison
-- `ewaluacja_dwudyscyplinowcy/` - Dual-discipline evaluation
-
-### Database
-- PostgreSQL database with custom SQL functions and triggers
-- Complex migration system with SQL files for database views and functions
-- Location: `src/bpp/migrations/` contains both Python and SQL migrations
-
-### Frontend
-- Foundation CSS framework
-- jQuery and various plugins (DataTables, Select2, HTMX)
-- Grunt build system for asset compilation
-
-**IMPORTANT** if you change any SCSS files, remember to run "grunt build" after.
-
-**CRITICAL: NEVER override Foundation's grid classes in SCSS!**
-- DO NOT override grid classes like `medium-4`, `medium-6`, `large-12`, `large-10`, etc. in SCSS files
-- If you need different column widths, change the classes in the HTML template instead
-- Foundation's grid system classes should remain untouched to maintain framework integrity
-- Example: To make a column wider, change `<div class="medium-4 columns">` to `<div class="medium-12 columns">` in the HTML, don't override `.medium-4` in SCSS
-
-**IMPORTANT: Scroll offset for sticky navigation!**
-- The public frontend has TWO sticky elements at the top:
-  - `nav.sticky-header` — main navigation bar (variable height)
-  - `#breadcrumbs-wrapper` — breadcrumb bar below nav (also sticky)
-- Django admin has its own sticky header + breadcrumbs
-- When implementing scroll-to-element, ALWAYS use `window.bpp.scrollToVisible(element)` (defined in `src/bpp/static/bpp/js/bpp.js`) — it dynamically reads sticky elements' height via `element.offsetHeight`
-- `scrollIntoView({ block: 'start' })` alone is NOT sufficient — it scrolls under the sticky bars
-- Never hardcode pixel offsets for scroll calculations
-
-## CSS/SCSS Build System
-
-### Build Commands
-- `grunt build` - Build all SCSS themes and collect static files
-- `grunt watch` - Watch SCSS files for changes and rebuild automatically
-
-### Theme Files (Color Schemes)
-Three theme files in `src/bpp/static/scss/`:
-
-| Theme File | Primary Color |
-|------------|---------------|
-| `app-blue.scss` | `#1779ba` (Foundation default) |
-| `app-orange.scss` | `#f26621` |
-| `app-green.scss` | `green` |
-
-Each theme imports: settings -> common.scss -> components -> Foundation framework.
-
-### Common.scss
-Location: `src/bpp/static/scss/common.scss`
-
-Central style repository importing: `left_menu`, `top_bar`, `base_footer`, `search_banner`,
-`praca_detail`, `uczelnia`, `jednostka`, `flash_messages`, `komparator_pbn`,
-`ewaluacja_metryki`, `ewaluacja_optymalizacja`, `_support_button`.
-
-Also contains: external link styling, multiseek reports, Select2, discipline colors, print styles.
-
-### Key Component Files
-Location: `src/bpp/static/scss/`
-- `top_bar.scss` - Navigation header and dropdown menus
-- `browse*.scss` - Browse page styles
-- `checkbox.scss` - Form controls
-
-### Icon System - Foundation Icons
-Icons use `fi-*` classes. **Navigation menu icons require explicit sizing in `top_bar.scss`:**
-
-```scss
-.top-bar .dropdown.menu {
-    .menu.vertical .fi-icon-name {
-        font-size: 1.6rem;
-        margin-right: 0.8rem;
-    }
-}
-```
-
-When adding new icons to menus, add them to the selector list in `top_bar.scss` (lines 389-426).
-
-### Settings Structure
-- `src/django_bpp/settings/base.py` - Base settings
-- `src/django_bpp/settings/local.py` - Development settings
-- `src/django_bpp/settings/production.py` - Production settings
-- `src/django_bpp/settings/test.py` - Test settings
-
-### Key Features
-- Multi-institutional academic publication management
-- Author and institution tracking
-- Publication scoring and ranking systems
-- Integration with external academic databases (PBN, CrossRef, Clarivate)
-- Advanced reporting and analytics
-- ORCID integration for author identification
-- Open Access classification and tracking
-- Dynamic runtime configuration via django-constance
-
-### Django-Constance Integration
-The project uses django-constance for runtime configuration that can be changed via the admin panel without restarting the server.
-
-**Key files:**
-- `src/bpp/admin/constance_admin.py` - Custom admin limiting access to superusers
-- `src/bpp/admin/helpers/constance_field_mixin.py` - Mixins for dynamic field hiding
-- `src/bpp/context_processors/constance_config.py` - Template context processor
-
-**Configuration settings (editable at runtime):**
-- `UZYWAJ_PUNKTACJI_WEWNETRZNEJ` - Enable/disable internal scoring
-- `POKAZUJ_INDEX_COPERNICUS` - Show/hide Index Copernicus fields
-- `POKAZUJ_PUNKTACJA_SNIP` - Show/hide SNIP scoring fields
-- `POKAZUJ_OSWIADCZENIE_KEN` - Show/hide KEN declaration option
-- `UCZELNIA_UZYWA_WYDZIALOW` - Enable/disable faculty structure
-- `GOOGLE_ANALYTICS_PROPERTY_ID` - Google Analytics tracking
-
-**Using constance in code:**
-```python
-from constance import config
-if config.UZYWAJ_PUNKTACJI_WEWNETRZNEJ:
-    # show internal scoring
-```
-
-**Admin field hiding pattern:**
-Use `ConstanceScoringFieldsMixin` in admin classes to dynamically hide fields based on constance settings:
-```python
-from bpp.admin.helpers.constance_field_mixin import ConstanceScoringFieldsMixin
-
-class MyModelAdmin(ConstanceScoringFieldsMixin, admin.ModelAdmin):
-    # Fields like index_copernicus will auto-hide when POKAZUJ_INDEX_COPERNICUS=False
-```
-
-### Development Notes
-- Uses UV for Python dependency management (pyproject.toml and uv.lock)
-- Extensive test suite with pytest and Selenium integration
-- Pre-commit hooks for code quality
-- Celery for background task processing
-- Django Channels for WebSocket support
-- Internationalization support (Polish primary language)
-- Docker support with multi-architecture builds
-- Yarn for Node.js dependency management
-- Grunt for frontend asset compilation
-- Optional Microsoft Auth integration (configured via project extras)
-- Uses model_bakery and django-dynamic-fixture for test data generation
-- Pre-commit hooks installed and configured for automated code quality checks
-
-## External Services
-
-### Freshdesk Support
-- **Domain**: `iplweb.freshdesk.com`
-- **Ticket URL format**: `https://iplweb.freshdesk.com/a/tickets/{ticket_id}`
-- Used for customer support ticket management
+- **NEVER override Foundation's grid classes** (`medium-4`, `large-12`,
+  etc.) in SCSS. Change classes in HTML templates instead.
+- After changing SCSS files, run `grunt build`.
+- For scroll-to-element, use `window.bpp.scrollToVisible(element)` -
+  never `scrollIntoView` alone (sticky headers obscure content).
 
 ## Common File Locations
+
 - Main models: `src/bpp/models/`
 - Abstract models/mixins: `src/bpp/models/abstract/`
 - Admin interfaces: `src/bpp/admin/`
 - Admin helpers/mixins: `src/bpp/admin/helpers/`
 - API serializers: `src/api_v1/serializers/`
 - Context processors: `src/bpp/context_processors/`
-- Templates: Look for `templates/` directories in each app
+- Templates: `templates/` directories in each app
 - Static files: `src/*/static/` directories
 - Test files: `src/*/tests/` directories or `test_*.py` files
 - Management commands: `src/bpp/management/commands/`
 - Migrations (including SQL): `src/*/migrations/`
 - Frontend assets: `src/bpp/static/` and build via Grunt
-- Configuration files: `pytest.ini`, `pyproject.toml`, `package.json`, `Gruntfile.js`
-- Generated files: `src/bpp/static/500.html` - Auto-generated 500 error page (DO NOT EDIT)
+- Config: `pytest.ini`, `pyproject.toml`, `package.json`, `Gruntfile.js`
+- Generated: `src/bpp/static/500.html` - auto-generated (DO NOT EDIT),
+  edit `src/bpp/templates/50x.html` instead
 
-## Abstract Models and Mixins
-The project uses abstract models for sharing fields across publication types. Located in `src/bpp/models/abstract/`:
+## External Services
 
-**Key abstract models:**
-- `ModelZPolamiEwaluacjiPBN` - PBN/SEDN evaluation fields for publications
-  - Fields: `pbn_czy_projekt_fnp`, `pbn_czy_projekt_ncn`, `pbn_czy_projekt_nprh`, `pbn_czy_projekt_ue`, `pbn_czy_czasopismo_indeksowane`, `pbn_czy_artykul_recenzyjny`, `pbn_czy_edycja_naukowa`
-  - Used by `Wydawnictwo_Ciagle` and `Wydawnictwo_Zwarte`
-  - Exported to PBN API as evaluation attributes
-
-**Admin fieldsets pattern:**
-Fieldsets for abstract model fields are defined in `src/bpp/admin/helpers/fieldsets.py`:
-```python
-from bpp.admin.helpers.fieldsets import MODEL_Z_POLAMI_EWALUACJI_PBN_FIELDSET
-```
-
-## Database Schema and Migrations
-The project uses a sophisticated migration system with both Python and SQL migrations:
-- Standard Django migrations for model changes
-- Custom SQL migrations for database views, functions, and triggers
-- Cache invalidation triggers and materialized views
-- Complex reporting views for academic evaluation
+### Freshdesk Support
+- **Domain**: `iplweb.freshdesk.com`
+- **Ticket URL format**: `https://iplweb.freshdesk.com/a/tickets/{ticket_id}`
 
 ## Tests
 
-**IMPORTANT: Always use pytest conventions - NEVER create unittest.TestCase tests**
+**ALWAYS use pytest conventions - NEVER create unittest.TestCase tests.**
 
-- Use pytest style with standalone functions (no classes)
-- Function names should follow pattern: `test_module_functionality_specific_case()`
-- Use available fixtures from conftest.py files in src/ and subdirectories
-- Use model_bakery.baker.make for creating database objects in tests
-- Never use unittest.TestCase classes or Django's TestCase
-- All test functions should be standalone functions with pytest fixtures
-- use ```@pytest.mark.django_db`` for tests using database
+- Standalone functions, no classes (e.g. `test_module_functionality()`)
+- Use `@pytest.mark.django_db` for tests using database
+- Use `model_bakery.baker.make` for creating database objects
+- Fixtures in `src/conftest.py` and subdirectories
+- Full suite timeout: at least 600000ms (10 minutes)
+
+### Testcontainers
+
+Testy używają plugin-a `testcontainers_bpp`, który domyślnie startuje
+na losowych portach **własne** kontenery PostgreSQL
+(`iplweb/bpp_dbserver`), Redis i RabbitMQ. Dev-owe
+`docker compose up db redis rabbitmq` **nie jest wymagane** do
+uruchomienia testów i nie koliduje z nimi.
+
+- Wymaganie: działający Docker daemon.
+- Plugin wstrzykuje `DJANGO_BPP_DB_PORT`, `DJANGO_BPP_REDIS_PORT`,
+  `DJANGO_BPP_RABBITMQ_PORT` (i hosty/hasła) do `os.environ` **przed**
+  załadowaniem Django settings, oraz `DJANGO_BPP_SKIP_DOTENV=1`, żeby
+  `.env` nie nadpisał wstrzykniętych wartości.
+- Wyłączenie (gdy sam odpaliłeś usługi przez docker-compose):
+  `BPP_USE_TESTCONTAINERS=0 uv run pytest` lub flag `--no-testcontainers`.
+- Reuse kontenerów między runs (znacznie szybciej):
+  `BPP_TESTCONTAINERS_REUSE=1`. Domyślnie kontenery są ulotne —
+  plugin jawnie je zatrzymuje w `pytest_unconfigure` (+ `atexit`
+  jako safety net), Ryuk to ostatnia linia obrony. Przy restarcie
+  Docker Desktop albo `SIGKILL` na pytest cleanup może zawieść;
+  wtedy `make clean-testcontainers` usuwa wszystkie osierocone
+  kontenery.
+- CI (`docker-compose.test.yml`) ma `BPP_USE_TESTCONTAINERS=0` —
+  usługi dostarcza tam docker-compose.
 
 ## Exception Handling
 
-**NIGDY nie używaj catch-all exception handling (`except Exception`) który ukrywa szczegóły błędów!**
+**NEVER write bare `except: pass` or `except Exception: pass`.**
+Every except block MUST either log, re-raise, or return a meaningful error.
 
-### ❌ ŹLE - ukrywa błędy:
 ```python
-try:
-    do_something()
-except Exception as e:
-    print(f"Błąd: {e}")  # Użytkownik nie widzi gdzie i dlaczego
-    error_count += 1
-```
-
-### ✅ DOBRZE - pozwól błędom się wywalić:
-```python
-# Łap tylko konkretne, oczekiwane wyjątki
+# GOOD - catch specific, expected exceptions:
 try:
     do_something()
 except SpecificExpectedException as e:
     handle_expected_case(e)
-# Nieoczekiwane błędy niech lecą z pełnym traceback
-```
 
-### ✅ DOBRZE - jeśli musisz złapać, pokaż pełny traceback:
-```python
-import traceback
-
+# GOOD - if you must catch broad, show full traceback:
 try:
     do_something()
 except Exception:
     traceback.print_exc()
-    raise  # lub reraise po logowaniu
-```
+    raise
 
-### ✅ DOBRZE - raportuj do Rollbar jeśli łapiesz wyjątek procesu działającego w tle:
-```python
-import rollbar
-
+# GOOD - report to Rollbar for background tasks:
 try:
     do_something()
 except Exception:
     rollbar.report_exc_info()
-    raise  # lub kontynuuj jeśli to dopuszczalne
+    raise
 ```
 
-**Zasada:** Kod nie powinien "działać za wszelką cenę". Błędy muszą być widoczne
-i debugowalne. W produkcji używaj `rollbar.report_exc_info()` do raportowania
-wyjątków.
+Narrow exception type + comment explaining WHY is acceptable:
+```python
+try:
+    os.remove(tmp_file)
+except FileNotFoundError:
+    pass  # File already cleaned up, not an error
+```

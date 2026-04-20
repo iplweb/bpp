@@ -5,7 +5,10 @@ from django.db import IntegrityError
 from django.contrib.contenttypes.models import ContentType
 
 from bpp.models import Wydawnictwo_Zwarte
-from bpp.models.szablondlaopisubibliograficznego import SzablonDlaOpisuBibliograficznego
+from bpp.models.szablondlaopisubibliograficznego import (
+    SzablonDlaOpisuBibliograficznego,
+)
+from pbn_api.models import Publication
 
 
 @pytest.mark.django_db
@@ -53,3 +56,59 @@ def test_rozne_opisy_rozne_klasy(wydawnictwo_ciagle, wydawnictwo_zwarte):
 
     assert wydawnictwo_ciagle.opis_bibliograficzny() == test_template.content
     assert wydawnictwo_zwarte.opis_bibliograficzny() == second_template.content
+
+
+@pytest.mark.django_db
+def test_opis_bibliograficzny_wydawnictwo_nadrzedne(
+    wydawnictwo_zwarte,
+):
+    """Rozdział z wydawnictwo_nadrzedne pokazuje 'W: tytuł'."""
+    parent = Wydawnictwo_Zwarte.objects.create(
+        tytul_oryginalny="Monografia Testowa",
+        charakter_formalny=wydawnictwo_zwarte.charakter_formalny,
+        typ_kbn=wydawnictwo_zwarte.typ_kbn,
+        jezyk=wydawnictwo_zwarte.jezyk,
+        status_korekty=wydawnictwo_zwarte.status_korekty,
+        rok=wydawnictwo_zwarte.rok,
+    )
+    wydawnictwo_zwarte.wydawnictwo_nadrzedne = parent
+    wydawnictwo_zwarte.informacje = ""
+    wydawnictwo_zwarte.zrodlo = None
+    wydawnictwo_zwarte.save()
+
+    opis = wydawnictwo_zwarte.opis_bibliograficzny()
+    assert "W: Monografia Testowa." in opis
+
+
+@pytest.mark.django_db
+def test_opis_bibliograficzny_wydawnictwo_nadrzedne_w_pbn(
+    wydawnictwo_zwarte,
+):
+    """Rozdział z wydawnictwo_nadrzedne_w_pbn pokazuje 'W: tytuł'."""
+    pbn_pub = Publication.objects.create(
+        mongoId="test-pbn-parent-id",
+        title="PBN Monografia Testowa",
+    )
+    wydawnictwo_zwarte.wydawnictwo_nadrzedne_w_pbn = pbn_pub
+    wydawnictwo_zwarte.wydawnictwo_nadrzedne = None
+    wydawnictwo_zwarte.informacje = ""
+    wydawnictwo_zwarte.zrodlo = None
+    wydawnictwo_zwarte.save()
+
+    opis = wydawnictwo_zwarte.opis_bibliograficzny()
+    assert "W: PBN Monografia Testowa." in opis
+
+
+@pytest.mark.django_db
+def test_opis_bibliograficzny_bez_wydawnictwa_nadrzednego(
+    wydawnictwo_zwarte,
+):
+    """Bez wydawnictwa nadrzędnego nie wyświetla 'W:'."""
+    wydawnictwo_zwarte.wydawnictwo_nadrzedne = None
+    wydawnictwo_zwarte.wydawnictwo_nadrzedne_w_pbn = None
+    wydawnictwo_zwarte.informacje = ""
+    wydawnictwo_zwarte.zrodlo = None
+    wydawnictwo_zwarte.save()
+
+    opis = wydawnictwo_zwarte.opis_bibliograficzny()
+    assert "W:" not in opis

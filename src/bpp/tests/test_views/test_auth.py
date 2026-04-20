@@ -48,7 +48,6 @@ def test_login_2(client: "django.test.client.Client"):  # noqa
     assert b"1641" not in res.content
 
 
-@pytest.mark.uruchom_tylko_bez_microsoft_auth
 @pytest.mark.django_db
 def test_login_microsoft_auth_admin_1(
     admin_user: BppUser, admin_client: "django.test.client.Client"  # noqa

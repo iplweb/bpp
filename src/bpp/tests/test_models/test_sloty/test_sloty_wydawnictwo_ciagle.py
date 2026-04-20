@@ -29,18 +29,9 @@ def powiel_wpisy_dyscyplin_autorow(wydawnictwo, rok_z, rok_do):
         ad.save()
 
 
-@pytest.mark.parametrize(
-    "rekord,ustaw_rok,punkty_kbn",
-    [
-        # (pytest.lazy_fixture("wydawnictwo_zwarte"), 2017, 20),
-        (pytest.lazy_fixture("wydawnictwo_ciagle"), 2017, 30)
-    ],
-)
 @pytest.mark.django_db
 def test_slot_wszyscy_slot_wszystkie_dyscypliny(
-    rekord,
-    ustaw_rok,
-    punkty_kbn,
+    wydawnictwo_ciagle,
     autor_jan_kowalski,
     autor_jan_nowak,
     dyscyplina1,
@@ -48,6 +39,10 @@ def test_slot_wszyscy_slot_wszystkie_dyscypliny(
     jednostka,
     typy_odpowiedzialnosci,
 ):
+    rekord = wydawnictwo_ciagle
+    ustaw_rok = 2017
+    punkty_kbn = 30
+
     rekord.rok = ustaw_rok
     rekord.punkty_kbn = punkty_kbn
     rekord.save()

@@ -33,6 +33,7 @@ from bpp.views.sentry_tester import (
     test_500_view,
     test_exception_view,
 )
+from django_bpp.health import health_check
 from django_bpp.views import HTMXAwareLoginView
 
 admin.autodiscover()
@@ -66,12 +67,12 @@ urlpatterns = (
         url(
             r"^admin/bpp/wydawnictwo_zwarte/toz/(?P<pk>[\d]+)/$",
             login_required(WydawnictwoZwarteTozView.as_view()),
-            name="admin_bpp_wydawnictwo_ciagle_toz",
+            name="admin_bpp_wydawnictwo_zwarte_toz",
         ),
         url(
             r"^admin/bpp/patent/toz/(?P<pk>[\d]+)/$",
             login_required(PatentTozView.as_view()),
-            name="admin_bpp_wydawnictwo_ciagle_toz",
+            name="admin_bpp_patent_toz",
         ),
         # url(r'^admin/', include(admin.site.urls)),
         path("admin/", admin.site.urls),
@@ -133,6 +134,10 @@ urlpatterns = (
             include(
                 ("zglos_publikacje.urls", "zglos_publikacje"),
             ),
+        ),
+        path(
+            "orcid/",
+            include("orcid_integration.urls"),
         ),
         path(
             "pbn_api/",
@@ -313,6 +318,7 @@ urlpatterns = (
         ),
         url(r"^admin_tools/", include("admin_tools.urls")),
         url(r"^grappelli/", include("grappelli.urls")),
+        path("health/", health_check, name="health"),
         url(r"^$", root, name="root"),
         url(
             r"^messages/",
@@ -418,20 +424,15 @@ else:
     ]
 
 if apps.is_installed("password_policies"):
-    #
-    # Jeżeli aplikacja microsoft-auth nie jest zainstalowana, włącz politykę haseł
-    # password_policies
-    #
     from password_policies.views import (
         PasswordChangeDoneView,
-        PasswordChangeFormView,
         PasswordResetCompleteView,
         PasswordResetConfirmView,
         PasswordResetDoneView,
         PasswordResetFormView,
     )
 
-    from django_bpp.forms import BppPasswordChangeForm
+    from django_bpp.views import SmartPasswordChangeView
 
     urlpatterns += [
         url(
@@ -441,7 +442,7 @@ if apps.is_installed("password_policies"):
         ),
         url(
             r"^password_change/$",
-            PasswordChangeFormView.as_view(form_class=BppPasswordChangeForm),
+            SmartPasswordChangeView.as_view(),
             name="password_change",
         ),
         url(

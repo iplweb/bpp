@@ -1,4 +1,4 @@
-"""Browser and Selenium fixtures."""
+"""Browser and webtest fixtures."""
 
 import pytest
 from django.apps import apps
@@ -13,8 +13,7 @@ except ImportError:
 import django_webtest
 import webtest
 
-NORMAL_DJANGO_USER_LOGIN = "test_login_bpp"
-NORMAL_DJANGO_USER_PASSWORD = "test_password"
+from .const import NORMAL_DJANGO_USER_LOGIN, NORMAL_DJANGO_USER_PASSWORD
 
 
 @pytest.fixture
@@ -43,18 +42,9 @@ def webtest_app(request):
 
 def _webtest_login(webtest_app, username, password, login_form="login_form"):
     if apps.is_installed("microsoft_auth"):
-        if username != "admin":
-            raise ImproperlyConfigured(
-                "Prawdopodobnie próbujesz zalogować zwykłego użytkownika przez panel "
-                "admina. Jednocześnie jest właczone microsoft_auth. To logowanie się nie powiedzie -"
-                " funkcja testowa musiałaby wciągnąć w test cały serwer Microsoftu. Wyłącz "
-                "microsoft_auth i uruchom ten test ponownie. "
-            )
-
-        # Nie używamy parametru login_form, logujemy hasłem przez admina. Czemu?
-        # temu, że przy włączonej autoryzacji microsoft_auth, ten formularz login_form
-        # nie będzie w ogóle dostępny w drzewku URLi (mpasternak, 12.10.2023)
-        form = webtest_app.get(reverse("admin:login")).form
+        # Z microsoft_auth standardowy login_form to redirect do Microsoft.
+        # Używamy local_login_form (dostępny zawsze pod /accounts/login/local/).
+        form = webtest_app.get(reverse("local_login_form")).form
     else:
         form = webtest_app.get(reverse(login_form)).form
 

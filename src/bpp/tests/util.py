@@ -33,13 +33,11 @@ from bpp.models.system import Status_Korekty
 
 
 def setup_model_bakery():
-    baker.generators.add(
-        "django.contrib.postgres.fields.array.ArrayField", lambda x: []
-    )
-
-    baker.generators.add(
-        "django.contrib.postgres.search.SearchVectorField", lambda x=None: None
-    )
+    # Generatory dla ArrayField i SearchVectorField są zadeklarowane
+    # deklaratywnie w ``django_bpp.settings.base.BAKER_CUSTOM_FIELDS_GEN``,
+    # dzięki czemu model_bakery zna je od startu Django (niezależnie od
+    # kolejności ładowania conftest-ów).
+    pass
 
 
 def set_default(varname, value, dct):

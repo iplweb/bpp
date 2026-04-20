@@ -20,7 +20,7 @@ from bpp.views.autocomplete import (
 )
 
 
-@pytest.mark.uruchom_tylko_bez_microsoft_auth
+
 def test_dyscyplina_naukowa_przypisanie_autocomplete(
     app, autor_jan_kowalski, dyscyplina1, dyscyplina2, rok
 ):
@@ -75,7 +75,7 @@ def test_dyscyplina_naukowa_przypisanie_autocomplete(
     assert res.json["results"][0]["text"] == "memetyka stosowana"
 
 
-@pytest.mark.uruchom_tylko_bez_microsoft_auth
+
 def test_dyscyplina_naukowa_przypisanie_autocomplete_brak_autora(
     app,
 ):
@@ -90,7 +90,7 @@ def test_dyscyplina_naukowa_przypisanie_autocomplete_brak_autora(
     assert res.json["results"][0]["text"] == "Podaj autora"
 
 
-@pytest.mark.uruchom_tylko_bez_microsoft_auth
+
 def test_dyscyplina_naukowa_przypisanie_autocomplete_brak_drugiej(
     app, autor_jan_kowalski, dyscyplina1, dyscyplina2, rok
 ):

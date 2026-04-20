@@ -108,10 +108,47 @@ def test_changelist_with_argument(klass, model, admin_page: Page, live_server):
         ("wydawnictwo_zwarte", "Wydawnictwo_Zwarte"),
     ],
 )
-def test_changeform_add(
+def test_changeform_add_form_renders(
     klass,
     model,
-    channels_live_server,
+    live_server,
+    admin_page: Page,
+):
+    from model_bakery import baker
+
+    from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
+
+    model_class = (
+        Wydawnictwo_Ciagle if model == "Wydawnictwo_Ciagle" else Wydawnictwo_Zwarte
+    )
+    rec = baker.make(model_class)
+    url = f"admin:bpp_{klass}_autor_changelist"
+    admin_page.goto(
+        live_server.url + reverse(url) + f"?rekord__id__exact={rec.pk}"
+    )
+
+    admin_page.wait_for_selector('a[name="_add_wa"]', state="visible")
+    admin_page.click('a[name="_add_wa"]')
+    admin_page.wait_for_load_state("domcontentloaded")
+
+    for field_id in ("id_autor", "id_jednostka", "id_zapisany_jako"):
+        admin_page.wait_for_selector(f"#{field_id}", state="attached")
+    admin_page.wait_for_selector('input[name="_save"]', state="visible")
+
+
+@pytest.mark.timeout(240)
+@pytest.mark.django_db(transaction=True)
+@pytest.mark.parametrize(
+    "klass,model",
+    [
+        ("wydawnictwo_ciagle", "Wydawnictwo_Ciagle"),
+        ("wydawnictwo_zwarte", "Wydawnictwo_Zwarte"),
+    ],
+)
+def test_changeform_add_full_flow(
+    klass,
+    model,
+    live_server,
     admin_page: Page,
     autor_jan_nowak,
     jednostka,
@@ -130,7 +167,7 @@ def test_changeform_add(
     rec = baker.make(model_class)
     url = f"admin:bpp_{klass}_autor_changelist"
     admin_page.goto(
-        channels_live_server.url + reverse(url) + f"?rekord__id__exact={rec.pk}"
+        live_server.url + reverse(url) + f"?rekord__id__exact={rec.pk}"
     )
 
     admin_page.wait_for_selector('a[name="_add_wa"]', state="visible")

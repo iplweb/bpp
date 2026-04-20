@@ -1,0 +1,66 @@
+name: Refresh baseline pg_dump
+
+# Regenerates src/baseline-sql/baseline.sql + baseline.meta.json after
+# any push to dev that touches a migration file. The workflow uses the
+# django_pg_baseline management commands, which spin up an isolated
+# Postgres via testcontainers (iplweb/bpp_dbserver:psql-16.13).
+#
+# Manual trigger via the Actions tab is also enabled.
+
+on:
+  push:
+    branches:
+      - dev
+    paths:
+      - 'src/**/migrations/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-baseline-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Install Python deps (with baseline-rebuild extra)
+        run: uv sync --frozen --extra baseline-rebuild
+
+      - name: Pre-pull dbserver image
+        run: docker pull iplweb/bpp_dbserver:psql-16.13 || true
+
+      - name: Rebuild baseline
+        env:
+          DJANGO_BPP_SKIP_DOTENV: "1"
+        run: uv run python src/manage.py baseline_rebuild
+
+      - name: Commit refreshed baseline
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet -- src/baseline-sql/baseline.sql src/baseline-sql/baseline.meta.json; then
+            echo "No baseline changes to commit"
+            exit 0
+          fi
+          git add src/baseline-sql/baseline.sql src/baseline-sql/baseline.meta.json
+          git commit -m "chore(baseline): refresh pg_dump after migration change [skip ci]"
+          git push origin HEAD:dev

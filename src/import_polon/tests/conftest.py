@@ -21,7 +21,6 @@ def fn_test_import_absencji():
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def zwarte_z_dyscyplinami(
     wydawnictwo_zwarte,
     autor_jan_nowak,

@@ -1,9 +1,10 @@
 import pytest
 from django.contrib.auth import get_user_model
-from django.test import Client
+from django.test import Client, RequestFactory
 from django.urls import reverse
 
 from bpp.models import Uczelnia
+from bpp_setup_wizard.middleware import SetupWizardMiddleware
 
 BppUser = get_user_model()
 
@@ -41,6 +42,18 @@ def test_setup_wizard_redirect_when_no_users():
     # Should redirect to setup wizard
     assert response.status_code == 302
     assert response.url == reverse("bpp_setup_wizard:setup")
+
+
+@pytest.mark.django_db
+def test_setup_wizard_does_not_redirect_metrics_endpoint():
+    """Test that the middleware does not redirect Prometheus metrics."""
+    request = RequestFactory().get("/metrics/")
+
+    assert BppUser.objects.count() == 0
+
+    response = SetupWizardMiddleware(lambda request: None).process_request(request)
+
+    assert response is None
 
 
 @pytest.mark.django_db

@@ -80,7 +80,6 @@ def wydawnictwo_ciagle_maker(db):
 
 
 @pytest.fixture(scope="function")
-@pytest.mark.django_db
 def wydawnictwo_ciagle(
     jezyki, charaktery_formalne, typy_kbn, statusy_korekt, typy_odpowiedzialnosci
 ):
@@ -96,7 +95,7 @@ def _zwarte_base_maker(klass, **kwargs):
 
     if klass not in [Patent]:
         set_default("miejsce_i_rok", f"Lublin {current_rok()}", kwargs)
-        set_default("wydawnictwo", "Wydawnictwo FOLIUM", kwargs)
+        set_default("wydawca_opis", "Wydawnictwo FOLIUM", kwargs)
         set_default("isbn", "123-IS-BN-34", kwargs)
         set_default("redakcja", "Redakcja", kwargs)
 

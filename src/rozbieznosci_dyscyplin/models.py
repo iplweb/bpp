@@ -23,6 +23,7 @@ class RozbieznosciViewBase(models.Model):
     class Meta:
         managed = False
         abstract = True
+        ordering = ["id"]
 
 
 class BrakPrzypisaniaView(RozbieznosciViewBase):
@@ -40,6 +41,7 @@ class RozbieznosciView(RozbieznosciViewBase):
     # oraz autora) to ten model i funkcja get_wydawnictwo_autor_obj zawiedzie.
     class Meta:
         managed = False
+        ordering = ["id"]
         verbose_name = "rozbieżność rekordu i dyscyplin"
         verbose_name_plural = "rozbieżności rekordów i dyscyplin"
 
@@ -51,11 +53,6 @@ class RozbieznosciView(RozbieznosciViewBase):
 
 
 class RozbieznosciZrodelView(models.Model):
-    class Meta:
-        managed = False
-        verbose_name = "rozbieżność dyscyplin źródeł"
-        verbose_name_plural = "rozbieżności dyscyplin źródeł"
-
     id = TupleField(models.IntegerField(), size=4, primary_key=True)
     zrodlo = models.ForeignKey("bpp.Zrodlo", on_delete=DO_NOTHING, related_name="+")
     rok = YearField()
@@ -76,3 +73,8 @@ class RozbieznosciZrodelView(models.Model):
         null=True,
         blank=True,
     )
+
+    class Meta:
+        managed = False
+        verbose_name = "rozbieżność dyscyplin źródeł"
+        verbose_name_plural = "rozbieżności dyscyplin źródeł"

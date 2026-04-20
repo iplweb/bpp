@@ -674,7 +674,6 @@ def ranking_data(db, client):
     }
 
 
-@pytest.mark.uruchom_tylko_bez_microsoft_auth
 def test_ranking_bez_argumentow(ranking_data):
     """Zsumuje punktacje ze wszystkich prac, ze wszystkich wydziałów dla roku."""
     client = ranking_data["client"]
@@ -695,7 +694,6 @@ def test_ranking_bez_argumentow(ranking_data):
     assert "33,333" in response.rendered_content
 
 
-@pytest.mark.uruchom_tylko_bez_microsoft_auth
 def test_ranking_z_wydzialem(ranking_data):
     """Zsumuje punktacje ze wszystkich prac, ze wszystkich wydziałów dla roku."""
     client = ranking_data["client"]
@@ -720,7 +718,6 @@ def test_ranking_z_wydzialem(ranking_data):
     assert "33,333" not in response.rendered_content
 
 
-@pytest.mark.uruchom_tylko_bez_microsoft_auth
 def test_ranking_bez_rozbicia(ranking_data):
     """Zsumuje punktacje ze wszystkich prac bez rozbicia na jednostki."""
     client = ranking_data["client"]
@@ -740,7 +737,6 @@ def test_ranking_bez_rozbicia(ranking_data):
     assert "77,777" in response.rendered_content
 
 
-@pytest.mark.uruchom_tylko_bez_microsoft_auth
 def test_ranking_eksport_csv(ranking_data):
     """XLS."""
     client = ranking_data["client"]

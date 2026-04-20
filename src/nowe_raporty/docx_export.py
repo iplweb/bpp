@@ -4,7 +4,7 @@ from collections.abc import Iterable, Mapping
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 
-import bleach
+import nh3
 import pypandoc
 from django.conf import settings
 from flexible_reports.adapters import django_tables2 as flexible_tables
@@ -54,11 +54,13 @@ def as_docx(  # noqa: PLR0913
 ):
     html = flexible_tables.as_html(report, parent_context)
 
-    cleaned_html = bleach.clean(
+    attrs = allowed_attributes or DEFAULT_ALLOWED_ATTRIBUTES
+    cleaned_html = nh3.clean(
         html,
-        tuple(allowed_tags or DEFAULT_ALLOWED_TAGS),
-        dict(allowed_attributes or DEFAULT_ALLOWED_ATTRIBUTES),
-        strip=True,
+        tags=set(allowed_tags or DEFAULT_ALLOWED_TAGS),
+        attributes={k: set(v) for k, v in attrs.items()},
+        clean_content_tags=set(),
+        link_rel=None,
     )
 
     output_file = NamedTemporaryFile(delete=False)

@@ -40,7 +40,7 @@ def may_contain_match(directory, patterns):
     return any(pattern.startswith(directory) for pattern in patterns)
 
 
-def get_files(storage, match_patterns="*", ignore_patterns=None, location=""):
+def get_files(storage, match_patterns="*", ignore_patterns=None, location=""):  # noqa: C901
     if ignore_patterns is None:
         ignore_patterns = []
     if match_patterns is None:
@@ -86,11 +86,15 @@ class YarnFinder(FileSystemFinder):
         filesystem_storage.prefix = self.locations[0][0]
         self.storages[self.locations[0][1]] = filesystem_storage
 
-    def find(self, path, all=False):
+    def find(self, path, find_all=False, **kwargs):
+        # Django 5.2 renamed the `all` kwarg on BaseFinder.find() to
+        # `find_all` (the old name is still accepted via **kwargs for now).
+        if "all" in kwargs:
+            find_all = kwargs.pop("all")
         relpath = os.path.relpath(path, self.destination)
         if not django_utils.matches_patterns(relpath, self.match_patterns):
             return []
-        return super(YarnFinder, self).find(path, all=all)
+        return super().find(path, find_all=find_all)
 
     def list(self, ignore_patterns=None):  # TODO should be configurable, add setting
         """List all files in all locations."""
@@ -101,7 +105,7 @@ class YarnFinder(FileSystemFinder):
         return self._make_list_generator(ignore_patterns)
 
     def _make_list_generator(self, ignore_patterns=None):
-        for prefix, root in self.locations:
+        for _prefix, root in self.locations:
             storage = self.storages[root]
             for path in get_files(storage, self.match_patterns, ignore_patterns):
                 yield path, storage

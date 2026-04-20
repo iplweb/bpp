@@ -821,7 +821,7 @@
                                     {{ rekord.rekord.opis_bibliograficzny_cache|safe }}
                                 </a>
                                 <div class="abstract-content">
-                                    {{ rekord.streszczenie|safe|truncatewords:130 }}
+                                    {{ rekord.streszczenie|truncatewords_html:130|safe }}
                                 </div>
                                 <div class="abstract-meta">
                                     {{ rekord.ostatnio_zmieniony|date:"d.m.Y H:i" }}

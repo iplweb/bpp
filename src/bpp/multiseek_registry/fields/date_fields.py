@@ -1,6 +1,7 @@
 """Date-related query objects."""
 
-from django.utils.itercompat import is_iterable
+from collections.abc import Iterable
+
 from multiseek.logic import DateQueryObject
 
 from bpp.multiseek_registry.mixins import BppMultiseekVisibilityMixin
@@ -17,7 +18,7 @@ class DataUtworzeniaQueryObject(BppMultiseekVisibilityMixin, DateQueryObject):
         value = self.value_from_web(value)
         if value is None:
             return NULL_VALUE
-        if is_iterable(value):
+        if isinstance(value, Iterable):
             return f"od {value[0]} do {value[1]}"
         return str(value)
 

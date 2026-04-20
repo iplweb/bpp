@@ -7,7 +7,6 @@ from django.db.models import DecimalField, ExpressionWrapper, F, Value
 from django.db.models.functions import Coalesce
 from djangoql.admin import DjangoQLSearchMixin
 from import_export import resources
-from import_export.fields import Field
 
 from bpp.admin.core import DynamicAdminFilterMixin
 from bpp.admin.filters import (
@@ -26,13 +25,6 @@ class Autor_DyscyplinaResource(resources.ModelResource):
             .select_related("autor")
             .prefetch_related("dyscyplina_naukowa", "subdyscyplina_naukowa")
         )
-
-    rodzaj_autora = Field()
-
-    def dehydrate_rodzaj_autora(self, ad):
-        if ad.rodzaj_autora_id is not None:
-            return ad.rodzaj_autora.skrot
-        return ""
 
     def dehydrate_autor__pbn_uid_id(self, ad):
         if ad.autor.pbn_uid_id:
@@ -142,7 +134,7 @@ class Autor_DyscyplinaAdmin(
 
     max_allowed_export_items = 10000
 
-    resource_class = Autor_DyscyplinaResource
+    resource_classes = [Autor_DyscyplinaResource]
     form = Autor_DyscyplinaForm
 
     list_filter = [

@@ -26,12 +26,12 @@ def lmi_base(db, admin_user):
 
 
 def _make_lmi(_lmi, fn, fn2):
-    pass
+    with open(test_file(fn), "rb") as src:
+        path = default_storage.save(fn2, src)
 
-    path = default_storage.save(fn2, test_xls(fn))
-
-    _lmi.file = File(default_storage.open(path), name=fn2)
-    _lmi.save()
+    with default_storage.open(path) as fh:
+        _lmi.file = File(fh, name=fn2)
+        _lmi.save()
     return _lmi
 
 

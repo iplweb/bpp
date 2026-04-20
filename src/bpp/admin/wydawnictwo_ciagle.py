@@ -289,7 +289,7 @@ class Wydawnictwo_CiagleAdmin(
         "show": "admin/bpp/wydawnictwo_ciagle/crossref_pbn_pokaz.html",
     }
 
-    resource_class = resources.Wydawnictwo_CiagleResource
+    resource_classes = [resources.Wydawnictwo_CiagleResource]
     bibtex_resource_class = resources.Wydawnictwo_CiagleBibTeXResource
 
     djangoql_completion_enabled_by_default = False
@@ -428,14 +428,14 @@ class Wydawnictwo_CiagleAdmin(
         sprobuj_policzyc_sloty(request, obj)
         sprawdz_duplikaty_www_doi(request, obj)
 
-    def lookup_allowed(self, lookup, value):
+    def lookup_allowed(self, lookup, value, request=None):
         if lookup in (
             "autorzy_set__dyscyplina_naukowa__isnull",
             "autorzy_set__data_oswiadczenia__isnull",
             "autorzy_set__autor__id__exact",
         ):
             return True
-        return super().lookup_allowed(lookup, value)
+        return super().lookup_allowed(lookup, value, request)
 
 
 admin.site.register(Wydawnictwo_Ciagle, Wydawnictwo_CiagleAdmin)

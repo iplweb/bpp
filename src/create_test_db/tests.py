@@ -1,10 +1,2 @@
-from django.test import TestCase
-
-# Create your tests here.
-
-
-class TestCreateTestDb(TestCase):
-    def test_create_test_db(self):
-        """Pusty testcase - jego uruchomienie zawsze kończy się powodzeniem"""
-
-        return True
+def test_create_test_db():
+    """Placeholder — jego uruchomienie zawsze kończy się powodzeniem."""

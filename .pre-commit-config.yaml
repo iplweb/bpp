@@ -1,6 +1,10 @@
 repos:
     - repo: https://github.com/astral-sh/ruff-pre-commit
-      rev: v0.14.3
+      # Keep in sync with `ruff` pin in pyproject.toml's `[dev]` extra.
+      # A lower pin here caused pre-commit to accept an I001 layout that
+      # ruff 0.15.x (used by CI) rejected — the diff was invisible
+      # locally until GitHub Actions failed.
+      rev: v0.15.10
       hooks:
         - id: ruff
           args: ["--fix", "--exit-non-zero-on-fix"]
@@ -12,8 +16,16 @@ repos:
         -   id: check-yaml
         -   id: check-toml
         -   id: end-of-file-fixer
+            exclude: ^src/baseline-sql/baseline\.sql$
         -   id: trailing-whitespace
+            exclude: ^src/baseline-sql/baseline\.sql$
         -   id: mixed-line-ending
+            exclude: ^src/baseline-sql/baseline\.sql$
+        -   id: check-added-large-files
+            args: ['--maxkb=500']
+        -   id: check-merge-conflict
+        -   id: check-case-conflict
+        -   id: debug-statements
 
     - repo: local
       hooks:
@@ -30,20 +42,6 @@ repos:
 #        - id: ggshield
 #          language: python
 #          stages: [commit]
-
-    - repo: local
-      hooks:
-        - id: no_debug
-          name: No debug on prod
-          types: [python]
-          args: [--multiline]
-          entry: 'breakpoint\(\)|set_trace'
-          language: pygrep
-
-    - repo: https://github.com/zahorniak/pre-commit-circleci.git
-      rev: v1.2.0 # Ensure this is the latest tag, comparing to the Releases tab
-      hooks:
-        - id: circleci_validate
 
     - repo: https://github.com/rhysd/actionlint
       rev: v1.7.8

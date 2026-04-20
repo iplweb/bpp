@@ -11,9 +11,6 @@ DEBUG_TOOLBAR = False
 
 SENDFILE_BACKEND = "django_sendfile.backends.simple"
 
-SELENIUM_DRIVER = "Firefox"
-
-
 SESSION_COOKIE_SECURE = False
 CSRF_COOKIE_SECURE = False
 MEDIA_ROOT = os.path.abspath(
@@ -26,8 +23,6 @@ CELERY_EAGER_PROPAGATES_EXCEPTIONS = True
 
 COMPRESS_ENABLED = True
 COMPRESS_OFFLINE = False
-
-HTML_MINIFY = False
 
 DATABASES["default"]["CONN_MAX_AGE"] = 0  # noqa
 

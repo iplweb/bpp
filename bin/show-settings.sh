@@ -11,15 +11,9 @@ if [[ -f "$ENV_FILE" ]]; then
     source "$ENV_FILE"
 fi
 
-# Get worktree index from git
-WORKTREE_COUNT=$(git worktree list 2>/dev/null | wc -l | tr -d ' ')
-WORKTREE_INDEX=$((WORKTREE_COUNT - 1))
-
 # Use defaults if variables not set
 DB_PORT="${DJANGO_BPP_DB_PORT:-5432}"
 APP_PORT="${DJANGO_BPP_PORT_APP:-8000}"
-HTTP_PORT="${DJANGO_BPP_PORT_HTTP:-1080}"
-HTTPS_PORT="${DJANGO_BPP_PORT_HTTPS:-10443}"
 REDIS_PORT="${DJANGO_BPP_REDIS_PORT:-6379}"
 RABBITMQ_PORT="${DJANGO_BPP_RABBITMQ_PORT:-5672}"
 RABBITMQ_MGMT_PORT="${DJANGO_BPP_PORT_RABBITMQ_MGMT:-15672}"
@@ -49,12 +43,10 @@ print_port_line() {
 }
 
 echo ""
-echo "=== BPP Docker Port Configuration (worktree index: $WORKTREE_INDEX) ==="
+echo "=== BPP Docker Port Configuration ==="
 echo ""
 print_port_line "$DB_PORT" "PostgreSQL:" ""
 print_port_line "$APP_PORT" "Django App:" "http://127.0.0.1:$APP_PORT"
-print_port_line "$HTTP_PORT" "HTTP:" "http://127.0.0.1:$HTTP_PORT"
-print_port_line "$HTTPS_PORT" "HTTPS:" "https://127.0.0.1:$HTTPS_PORT"
 print_port_line "$REDIS_PORT" "Redis:" ""
 print_port_line "$RABBITMQ_PORT" "RabbitMQ:" ""
 print_port_line "$RABBITMQ_MGMT_PORT" "RabbitMQ UI:" "http://127.0.0.1:$RABBITMQ_MGMT_PORT"
