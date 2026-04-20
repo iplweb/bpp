@@ -182,6 +182,15 @@ RUN find /app/.venv -type d -name tests -not -path "*/django/*" \
 RUN find /app/.venv -name "*.so" -exec strip --strip-unneeded {} + \
     2>/dev/null || true
 
+# R12: usun __pycache__ w venv (~118 MB). UV_COMPILE_BYTECODE=1 generuje
+# .pyc przy `uv sync`, ale w produkcji wolimy mniejszy obraz kosztem
+# wolniejszego cold startu pierwszego workera (Python kompiluje .pyc
+# in-memory przy pierwszym imporcie). Kolejne workery dzielą skompilowany
+# bytecode przez fork() (gunicorn) albo preload, wiec efekt jest tylko
+# na pierwszym starcie procesu.
+RUN find /app/.venv -type d -name __pycache__ -exec rm -rf {} + \
+    2>/dev/null || true
+
 ##############################################################################
 # TEST-RUNNER: test environment (source mounted at runtime via volume)
 ##############################################################################
