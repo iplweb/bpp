@@ -59,7 +59,7 @@ dependencies = [
     "pypandoc>=1.13,<2",
     "django-static-sitemaps>=5.0.0",
     "django-model-utils==5.0.0",
-    "django-fsm>=3,<4",
+    "django-fsm-2>=4,<5",
     "django-mptt>=0.16,<1",
     "wosclient==0.1.5",
     "MOAI-iplweb>=2.0.2",
