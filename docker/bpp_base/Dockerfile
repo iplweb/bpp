@@ -169,6 +169,15 @@ RUN find /app/src -mindepth 2 -type d -name tests -exec rm -rf {} + && \
 RUN find /app/.venv -type d -name tests -not -path "*/django/*" \
       -exec rm -rf {} + 2>/dev/null || true
 
+# R8: strip debug symbols z .so w venv (~180 MB .so total, ~30-50 MB zysku).
+# `--strip-unneeded` zachowuje symbole potrzebne do dynamic linking
+# (inaczej `--strip-all` dalby ImportError), wycina tylko debug info i
+# local symbols. binutils (strip) jest juz w python:3.12-trixie. Warning
+# swallowing: niektore wheels moga miec non-ELF .so (fallback Python
+# impl, np. w setuptools).
+RUN find /app/.venv -name "*.so" -exec strip --strip-unneeded {} + \
+    2>/dev/null || true
+
 ##############################################################################
 # TEST-RUNNER: test environment (source mounted at runtime via volume)
 ##############################################################################
