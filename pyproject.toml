@@ -13,7 +13,7 @@ dependencies = [
     "pygad>=3.6.0",
     "django-denorm-iplweb>=1.10.2",
     "django-tabular-permissions==2.9.3",
-    "simplejson>=3.19,<4",
+    "simplejson>=4.0.1,<5",
     "django-reversion>=6,<7",
     "django-reversion-compare>=0.17.0",
     "channels[daphne]>=4,<5",
