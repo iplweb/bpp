@@ -40,9 +40,21 @@ WORKDIR /app
 
 COPY pyproject.toml uv.lock yarn.lock package.json ./
 
+# R4: --all-extras --no-extra=dev również ciągnie `baseline-rebuild`
+# (testcontainers) i pakiety z [dependency-groups].dev (vulture, pytest-
+# repeat). Explicite wymieniamy extras potrzebne w produkcji.
 RUN --mount=type=cache,target=/root/.cache/uv,id=uv-cache \
-    uv sync --frozen --all-extras \
-        --no-extra=dev --no-install-project
+    uv sync --frozen --no-dev --no-install-project \
+        --extra ldap --extra office365
+
+# R6: pygad deklaruje matplotlib jako twardą dep dla funkcji rysowania
+# zbieżności algorytmu genetycznego (plot_fitness), których BPP nie używa.
+# matplotlib jest importowane lazy wewnątrz tych funkcji, więc usunięcie go
+# nie psuje `import pygad`. Oszczędność: ~38 MB (matplotlib + contourpy +
+# kiwisolver + cycler). fonttools zostaje — używa go weasyprint i pyphen.
+RUN --mount=type=cache,target=/root/.cache/uv,id=uv-cache \
+    uv pip uninstall --python /app/.venv/bin/python \
+        matplotlib contourpy kiwisolver cycler
 
 RUN --mount=type=cache,target=/root/.npm,id=npm-cache \
     --mount=type=cache,target=/root/.yarn,id=yarn-cache \
@@ -104,10 +116,40 @@ RUN echo "Building from git commit: ${GIT_SHA}"
 
 COPY . .
 
-RUN uv run src/manage.py compilemessages -v0 -l pl --traceback
+# R2: testy i pytest-only fixture package nie są potrzebne w produkcji.
+# UWAGA: NIE usuwamy:
+#  - /app/src/test_bpp — to INSTALLED_APP wymagany nawet w produkcji
+#    (modele używane przez aplikację `long_running`, patrz komentarz w
+#    src/django_bpp/settings/base.py)
+#  - src/*/fixtures/ — to katalogi Django loaddata fixtures z danymi
+#    produkcyjnymi (charakter_formalny.json, typ_odpowiedzialnosci.json
+#    itp. — referencje w migracjach).
+# Usuwamy tylko katalogi `tests` na poziomie app (depth 2) i szczegółowe
+# ścieżki pytest-owe.
+RUN find /app/src -mindepth 2 -type d -name tests -exec rm -rf {} + && \
+    rm -rf /app/src/fixtures \
+           /app/src/conftest.py \
+           /app/src/integration_tests
 
-RUN find .venv -type f -name "*.pyc" -delete && \
-    python -m compileall -j 0 .venv -x 'wsgiutils' || true
+RUN /app/.venv/bin/python src/manage.py compilemessages -v0 -l pl --traceback
+
+# R3: UV_COMPILE_BYTECODE=1 już wygenerowało .pyc podczas `uv sync`.
+# Dodatkowo strippujemy katalogi test* z wbudowanych pakietów, aby
+# zaoszczędzić kilkanaście MB (Django zachowujemy — template'y odwołują
+# się wewnętrznie do testowych aplikacji).
+RUN find /app/.venv -type d -name tests -not -path "*/django/*" \
+      -exec rm -rf {} + 2>/dev/null || true
+
+# R5: collectstatic wymaga `node_modules` przez YarnFinder — uruchamiamy
+# go teraz, w builder stage, aby staticroot był pre-populowany, a runtime
+# mógł shipować tylko `/app/staticroot` zamiast 300+ MB node_modules.
+# collectstatic nie potrzebuje DB ani Redisa; wystarczy dummy SECRET_KEY.
+RUN DJANGO_BPP_SECRET_KEY=build-time-only-not-used \
+    STATIC_ROOT=/app/staticroot \
+    /app/.venv/bin/python src/manage.py collectstatic \
+        --noinput -v0 --traceback
+
+RUN rm -rf /app/node_modules
 
 ##############################################################################
 # TEST-RUNNER: test environment (source mounted at runtime via volume)
@@ -166,20 +208,32 @@ FROM python:${PYTHON_VERSION}-slim-${DEBIAN_VERSION} AS runtime
 RUN sed -i s/http/https/g /etc/apt/sources.list.d/debian.sources
 
 COPY docker/bpp_base/runtime.txt /tmp/
-COPY --from=ghcr.io/astral-sh/uv:0.7 /uv /usr/local/bin/uv
+
+# R1: `uv` nie jest potrzebny do uruchamiania aplikacji — entrypointy
+# używają `python`/`celery`/`uvicorn`/`gunicorn` bezpośrednio z .venv/bin,
+# a wszystkie zależności (watchdog dla --reload, gunicorn dla authserver)
+# są deklarowane w pyproject.toml. uv zostaje w stage `builder`/`test-runner`.
 
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=apt-cache \
     --mount=type=cache,target=/var/lib/apt/lists,sharing=locked,id=apt-lists \
     apt-get update && \
     xargs -a /tmp/runtime.txt apt-get install -y
 
-ENV PATH="/.venv/bin:$PATH" \
-    PYTHONPATH=/src \
-    DJANGO_SETTINGS_MODULE=django_bpp.settings.production
+# Uwaga: wcześniej PATH wskazywał na /.venv/bin, a venv jest pod
+# /app/.venv — działało to tylko dlatego, że wszystkie komendy w
+# entrypointach zaczynały się od `uv run`, które samo znajdowało venv
+# po pyproject.toml. Po usunięciu `uv run` (R1) PATH musi wskazywać na
+# właściwy katalog venvu.
+ENV PATH="/app/.venv/bin:$PATH" \
+    PYTHONPATH=/app/src \
+    DJANGO_SETTINGS_MODULE=django_bpp.settings.production \
+    STATIC_ROOT=/app/staticroot
 
 WORKDIR /app
 
-COPY --from=builder /app/node_modules ./node_modules
+# R5: zamiast 300+ MB node_modules shipujemy pre-populowany /app/staticroot
+# wygenerowany przez collectstatic w builder stage.
+COPY --from=builder /app/staticroot ./staticroot
 COPY --from=builder /app/.venv ./.venv
 # The baseline pg_dump (src/baseline-sql) ships along with src/ and is
 # loaded by entrypoint-appserver.sh via `manage.py baseline_load` on
