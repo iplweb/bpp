@@ -83,13 +83,13 @@ jobs:
         if: steps.files.outputs.list != ''
         env:
           FILES: ${{ steps.files.outputs.list }}
-        run: uv run --extra dev ruff check $FILES
+        run: uv run --extra dev ruff check --force-exclude $FILES
 
       - name: Ruff format --check
         if: steps.files.outputs.list != ''
         env:
           FILES: ${{ steps.files.outputs.list }}
-        run: uv run --extra dev ruff format --check $FILES
+        run: uv run --extra dev ruff format --check --force-exclude $FILES
 
   build:
     # Skip this job if it's a "Merge tag" commit on the dev branch
