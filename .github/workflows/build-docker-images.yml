@@ -7,10 +7,15 @@ on:
       - 'feature/**'
       - 'fix/**'
       - 'hotfix/**'
+  pull_request:
+    # Buduje, gdy PR ma label `docker-build` (patrz check-flag).
+    # Typ `labeled` obsługuje moment dodania labela na już-pushniętym
+    # commicie — build odpala się od razu, bez konieczności nowego pushu.
+    types: [opened, synchronize, reopened, labeled]
   workflow_dispatch:
     # Ręczne wywołanie z GUI GitHub lub przez
     # `gh workflow run build-docker-images.yml --ref <branch>`.
-    # Zawsze buduje, niezależnie od obecności .docker-build.
+    # Zawsze buduje, niezależnie od obecności .docker-build / labela.
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -21,15 +26,20 @@ jobs:
     # Guard job oszczędzający Docker Cloud Build minuty.
     # - master         : buduj zawsze (release flow)
     # - workflow_dispatch: buduj zawsze (świadomy trigger ręczny)
+    # - pull_request z labelem `docker-build`: buduj przy każdym push
+    #                      do PR-a (label żyje w metadanych PR-a,
+    #                      nie trafia do kodu → bezpieczne przy mergu)
     # - feature/fix/hotfix: buduj tylko gdy w root repo jest plik
     #                      `.docker-build` (pusty, commitowany do
     #                      gałęzi wymagającej obrazów pre-prod).
     #
-    # Aby włączyć budowanie obrazów na branchu:
-    #   touch .docker-build && git add .docker-build && git commit
+    # Aby włączyć budowanie obrazów na branchu przez label PR-a:
+    #   gh pr edit <PR#> --add-label docker-build
     # Aby wyłączyć:
-    #   git rm .docker-build && git commit
-    # Budowanie ad-hoc bez commitowania flagi:
+    #   gh pr edit <PR#> --remove-label docker-build
+    # Alternatywnie, przez flagę w drzewie (uwaga: ryzyko merge'u do mastera):
+    #   touch .docker-build && git add .docker-build && git commit
+    # Budowanie ad-hoc bez commitowania flagi / ustawiania labela:
     #   gh workflow run build-docker-images.yml --ref <branch>
     runs-on: ubuntu-latest
     outputs:
@@ -40,10 +50,14 @@ jobs:
         env:
           REF_NAME: ${{ github.ref_name }}
           EVENT_NAME: ${{ github.event_name }}
+          HAS_DOCKER_BUILD_LABEL: ${{ contains(github.event.pull_request.labels.*.name, 'docker-build') }}
         run: |
           if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
             echo "should_build=true" >> "$GITHUB_OUTPUT"
             echo "::notice::Docker build — trigger ręczny (workflow_dispatch)"
+          elif [ "$EVENT_NAME" = "pull_request" ] && [ "$HAS_DOCKER_BUILD_LABEL" = "true" ]; then
+            echo "should_build=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::Docker build — PR ma label 'docker-build'"
           elif [ "$REF_NAME" = "master" ]; then
             echo "should_build=true" >> "$GITHUB_OUTPUT"
             echo "::notice::Docker build — push na master (release)"
@@ -52,7 +66,7 @@ jobs:
             echo "::notice::Docker build włączone przez obecność .docker-build w root"
           else
             echo "should_build=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::Pomijam Docker build — brak .docker-build w root repo"
+            echo "::notice::Pomijam Docker build — brak .docker-build w root repo oraz labela 'docker-build' na PR"
           fi
 
   docker:
