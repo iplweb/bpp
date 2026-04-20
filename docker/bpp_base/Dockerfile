@@ -140,10 +140,14 @@ RUN /app/.venv/bin/python src/manage.py compilemessages -v0 -l pl --traceback
 # UWAGA: musi biec PRZED R2 — src/import_pracownikow/static/.../przyklad.xlsx
 # to symlink do src/import_pracownikow/tests/testdata.xlsx; collectstatic
 # rozwiązuje symlink (kopiuje treść) i dopiero potem możemy usunąć tests/.
+# R11: --ignore sinon --ignore qunit wycina test-only biblioteki JS
+# (sinon/pkg/sinon.js + qunit/qunit/*) z production staticroot. Dev flow
+# jest nietknięty, bo używamy collectstatic tylko w buildzie obrazu.
 RUN DJANGO_BPP_SECRET_KEY=build-time-only-not-used \
     STATIC_ROOT=/app/staticroot.baked \
     /app/.venv/bin/python src/manage.py collectstatic \
-        --noinput -v0 --traceback
+        --noinput -v0 --traceback \
+        --ignore sinon --ignore qunit
 
 RUN rm -rf /app/node_modules
 
