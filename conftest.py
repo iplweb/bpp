@@ -1,7 +1,29 @@
+import subprocess
 from datetime import timedelta
+from pathlib import Path
 
 import pytest
 from django.utils.translation import activate
+
+
+def pytest_configure(config):
+    """Ensure frontend assets (CSS + .mo) are built before tests run.
+
+    BPP UI depends on built assets; there is no "pure Python" mode.
+    `make` handles incremental builds via timestamp deps, so this is
+    a no-op when assets are up to date.
+
+    UV_NO_SYNC=1 prevents the `uv run` calls inside Makefile targets
+    (e.g. `compilemessages`) from re-syncing and stripping dev extras
+    like `testcontainers` from the venv. Tests are expected to run in
+    a venv pre-synced with `uv sync --all-extras`.
+    """
+    import os
+
+    repo_root = Path(__file__).parent
+    env = {**os.environ, "UV_NO_SYNC": "1"}
+    subprocess.run(["make", "assets"], cwd=repo_root, check=True, env=env)
+
 
 # Load fixtures from submodules - must be at top-level conftest per pytest requirements
 pytest_plugins = [
