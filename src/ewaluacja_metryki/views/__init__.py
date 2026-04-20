@@ -14,13 +14,18 @@ from .generation import (
     UruchomGenerowanieView,
 )
 from .list import MetrykiListView
-from .mixins import EwaluacjaRequiredMixin, ma_uprawnienia_ewaluacji
+from .mixins import (
+    EwaluacjaRequiredMixin,
+    ma_pelne_uprawnienia_ewaluacji,
+    ma_uprawnienia_ewaluacji,
+)
 from .pin_unpin import OdepnijDyscyplineView, PrzypnijDyscyplineView
 from .statistics import StatystykiView
 
 __all__ = [
     # Mixins and utilities
     "ma_uprawnienia_ewaluacji",
+    "ma_pelne_uprawnienia_ewaluacji",
     "EwaluacjaRequiredMixin",
     # List view
     "MetrykiListView",

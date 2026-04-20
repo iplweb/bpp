@@ -5,7 +5,7 @@ from django.views.generic import DetailView
 from ewaluacja_common.models import Rodzaj_Autora
 
 from ..models import MetrykaAutora
-from .mixins import EwaluacjaRequiredMixin
+from .mixins import EwaluacjaRequiredMixin, ma_pelne_uprawnienia_ewaluacji
 
 
 class MetrykaDetailView(EwaluacjaRequiredMixin, DetailView):
@@ -26,15 +26,30 @@ class MetrykaDetailView(EwaluacjaRequiredMixin, DetailView):
 
             raise Http404("Autor slug and dyscyplina kod are required")
 
+        # Sprawdź uprawnienia autor-only
+        user = self.request.user
+        if not ma_pelne_uprawnienia_ewaluacji(user):
+            if not user.autor or user.autor.slug != autor_slug:
+                from django.core.exceptions import (
+                    PermissionDenied,
+                )
+
+                raise PermissionDenied(
+                    "Brak uprawnień do przeglądania metryk innego autora."
+                )
+
         try:
             obj = queryset.get(
-                autor__slug=autor_slug, dyscyplina_naukowa__kod=dyscyplina_kod
+                autor__slug=autor_slug,
+                dyscyplina_naukowa__kod=dyscyplina_kod,
             )
         except self.model.DoesNotExist as err:
             from django.http import Http404
 
             raise Http404(
-                f"MetrykaAutora for autor '{autor_slug}' and dyscyplina '{dyscyplina_kod}' not found"
+                f"MetrykaAutora for autor '{autor_slug}'"
+                f" and dyscyplina '{dyscyplina_kod}'"
+                " not found"
             ) from err
 
         return obj
@@ -366,6 +381,10 @@ class MetrykaDetailView(EwaluacjaRequiredMixin, DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         metryka = self.object
+
+        context["autor_only_mode"] = not ma_pelne_uprawnienia_ewaluacji(
+            self.request.user
+        )
 
         # Pobierz inne dyscypliny tego samego autora
         inne_dyscypliny = (

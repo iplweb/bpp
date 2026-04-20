@@ -8,10 +8,13 @@ from bpp.models.uczelnia import Uczelnia
 from ewaluacja_common.models import Rodzaj_Autora
 
 from ..models import MetrykaAutora
-from .mixins import ma_uprawnienia_ewaluacji
+from .mixins import ma_pelne_uprawnienia_ewaluacji
 
 
-@method_decorator(user_passes_test(ma_uprawnienia_ewaluacji), name="dispatch")
+@method_decorator(
+    user_passes_test(ma_pelne_uprawnienia_ewaluacji),
+    name="dispatch",
+)
 class ExportStatystykiXLSX(View):
     """Export statistics tables to XLSX format"""
 
@@ -102,7 +105,10 @@ class ExportStatystykiXLSX(View):
         return self._create_response(wb, table_type)
 
 
-@method_decorator(user_passes_test(ma_uprawnienia_ewaluacji), name="dispatch")
+@method_decorator(
+    user_passes_test(ma_pelne_uprawnienia_ewaluacji),
+    name="dispatch",
+)
 class ExportListaXLSX(View):
     """Export the main metrics list to XLSX format with filters applied"""
 
