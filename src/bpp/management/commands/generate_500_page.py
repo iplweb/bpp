@@ -90,6 +90,7 @@ To modify this page, edit src/bpp/templates/50x.html and run the generate_500_pa
             keep_comments=True,
             keep_closing_tags=True,
             keep_html_and_head_opening_tags=True,
+            keep_input_type_text_attr=True,
         )
 
         # Save to bpp app's static directory
