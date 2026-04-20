@@ -10,6 +10,7 @@ from django.template.loader import render_to_string
 from django.urls import reverse
 from django.views import View
 
+from bpp.const import CHARAKTER_OGOLNY_ROZDZIAL
 from bpp.models import (
     Autor,
     Crossref_Mapper,
@@ -425,6 +426,25 @@ class SourceView(ImporterPermissionMixin, View):
                     "Podaj wydawcę lub wpisz szczegóły wydawcy.",
                 )
                 return _render_source_step(request, session, form=form)
+
+            # Rozdział wymaga wydawnictwa nadrzędnego
+            if _is_chapter(session):
+                wn = form.cleaned_data.get("wydawnictwo_nadrzedne")
+                wn_pbn = form.cleaned_data.get("wydawnictwo_nadrzedne_w_pbn")
+                if not wn and not wn_pbn:
+                    form.add_error(
+                        "wydawnictwo_nadrzedne",
+                        "Dla rozdziału wymagane jest wydawnictwo nadrzędne.",
+                    )
+                    return _render_source_step(request, session, form=form)
+                if wn and wn_pbn:
+                    form.add_error(
+                        "wydawnictwo_nadrzedne",
+                        "Podaj tylko jedno: wydawnictwo"
+                        " nadrzędne lub wydawnictwo"
+                        " nadrzędne w PBN.",
+                    )
+                    return _render_source_step(request, session, form=form)
         else:
             if not form.cleaned_data.get("zrodlo"):
                 form.add_error(
@@ -436,6 +456,10 @@ class SourceView(ImporterPermissionMixin, View):
         session.zrodlo = form.cleaned_data["zrodlo"]
         session.wydawca = form.cleaned_data["wydawca"]
         session.matched_data["wydawca_opis"] = form.cleaned_data.get("wydawca_opis", "")
+        session.wydawnictwo_nadrzedne = form.cleaned_data.get("wydawnictwo_nadrzedne")
+        session.wydawnictwo_nadrzedne_w_pbn = form.cleaned_data.get(
+            "wydawnictwo_nadrzedne_w_pbn"
+        )
         session.status = ImportSession.Status.SOURCE_MATCHED
         session.modified_by = request.user
         session.save()
@@ -850,40 +874,68 @@ def _render_verify_full(request, session, form=None):
     return _render_full_page(request, STEP_VERIFY, ctx)
 
 
+def _is_chapter(session):
+    """Czy sesja dotyczy rozdziału (charakter_ogolny == 'roz')."""
+    return (
+        session.charakter_formalny_id
+        and session.charakter_formalny.charakter_ogolny == CHARAKTER_OGOLNY_ROZDZIAL
+    )
+
+
+def _source_initial_from_session(session):
+    """Odczytaj initial z zapisanych wartości sesji."""
+    initial = {}
+    if session.zrodlo_id:
+        initial["zrodlo"] = session.zrodlo_id
+    if session.wydawca_id:
+        initial["wydawca"] = session.wydawca_id
+    wydawca_opis = session.matched_data.get("wydawca_opis", "")
+    if wydawca_opis:
+        initial["wydawca_opis"] = wydawca_opis
+    if session.wydawnictwo_nadrzedne_id:
+        initial["wydawnictwo_nadrzedne"] = session.wydawnictwo_nadrzedne_id
+    if session.wydawnictwo_nadrzedne_w_pbn_id:
+        initial["wydawnictwo_nadrzedne_w_pbn"] = session.wydawnictwo_nadrzedne_w_pbn_id
+    return initial
+
+
+def _source_initial_auto_match(session):
+    """Auto-matching źródła i wydawcy z normalized_data."""
+    initial = {}
+    nd = session.normalized_data
+    source_title = nd.get("source_title")
+    if source_title:
+        src = Komparator.porownaj_container_title(source_title)
+        if src.rekord_po_stronie_bpp:
+            initial["zrodlo"] = src.rekord_po_stronie_bpp.pk
+
+    publisher = nd.get("publisher")
+    if publisher:
+        pub = Komparator.porownaj_publisher(publisher)
+        if pub.rekord_po_stronie_bpp:
+            initial["wydawca"] = pub.rekord_po_stronie_bpp.pk
+        else:
+            initial["wydawca_opis"] = publisher
+    return initial
+
+
 def _source_context(request, session, form=None):
     """Przygotuj kontekst dla kroku źródła."""
+    is_chapter = _is_chapter(session)
+
     if form is None:
-        initial = {}
-
-        # Użyj wartości sesji gdy istnieją (user już submitował)
-        if session.zrodlo_id:
-            initial["zrodlo"] = session.zrodlo_id
-        if session.wydawca_id:
-            initial["wydawca"] = session.wydawca_id
-        wydawca_opis = session.matched_data.get("wydawca_opis", "")
-        if wydawca_opis:
-            initial["wydawca_opis"] = wydawca_opis
-
-        # Auto-matching tylko gdy brak zapisanych wartości
+        initial = _source_initial_from_session(session)
         if not initial:
-            nd = session.normalized_data
-            source_title = nd.get("source_title")
-            if source_title:
-                src = Komparator.porownaj_container_title(source_title)
-                if src.rekord_po_stronie_bpp:
-                    initial["zrodlo"] = src.rekord_po_stronie_bpp.pk
-
-            publisher = nd.get("publisher")
-            if publisher:
-                pub = Komparator.porownaj_publisher(publisher)
-                if pub.rekord_po_stronie_bpp:
-                    initial["wydawca"] = pub.rekord_po_stronie_bpp.pk
-                else:
-                    initial["wydawca_opis"] = publisher
-
+            initial = _source_initial_auto_match(session)
         form = SourceForm(initial=initial)
 
-    return {"session": session, "form": form}
+    return {
+        "session": session,
+        "form": form,
+        "is_chapter": is_chapter,
+        "wydawnictwo_nadrzedne_obj": (session.wydawnictwo_nadrzedne),
+        "wydawnictwo_nadrzedne_w_pbn_obj": (session.wydawnictwo_nadrzedne_w_pbn),
+    }
 
 
 def _render_source_step(request, session, form=None):
@@ -1317,6 +1369,14 @@ def _create_wydawnictwo_zwarte(session, common_fields, normalized_data):
     common_fields["wydawca_opis"] = session.matched_data.get("wydawca_opis", "")
     common_fields["isbn"] = normalized_data.get("isbn") or ""
     common_fields["e_isbn"] = normalized_data.get("e_isbn") or ""
+
+    # Wydawnictwo nadrzędne (dla rozdziałów)
+    if session.wydawnictwo_nadrzedne_id:
+        common_fields["wydawnictwo_nadrzedne"] = session.wydawnictwo_nadrzedne
+    if session.wydawnictwo_nadrzedne_w_pbn_id:
+        common_fields["wydawnictwo_nadrzedne_w_pbn"] = (
+            session.wydawnictwo_nadrzedne_w_pbn
+        )
 
     issue = normalized_data.get("issue")
     if issue:
