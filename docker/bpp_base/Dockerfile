@@ -11,6 +11,12 @@ ARG DEBIAN_VERSION=trixie
 ARG PANDOC_VERSION=3.5
 
 ##############################################################################
+# PANDOC-SRC: pinned pandoc binary source
+# Oddzielny stage bo BuildKit nie rozwija zmiennych w `COPY --from=image:${VAR}`.
+##############################################################################
+FROM pandoc/core:${PANDOC_VERSION}-ubuntu AS pandoc-src
+
+##############################################################################
 # BASE: shared foundation for builder and test-runner
 ##############################################################################
 FROM python:${PYTHON_VERSION}-${DEBIAN_VERSION} AS base
@@ -177,9 +183,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=apt-cache \
 
 # Pandoc z oficjalnego obrazu (patrz komentarz R7 przy runtime stage).
 # libgmp10/liblua5.4-0 juz sa w runtime.txt instalowanym wyzej.
-ARG PANDOC_VERSION
-COPY --from=pandoc/core:${PANDOC_VERSION}-ubuntu \
-     /usr/local/bin/pandoc /usr/local/bin/pandoc
+COPY --from=pandoc-src /usr/local/bin/pandoc /usr/local/bin/pandoc
 
 # yarn + grunt (global install for CLI use)
 RUN --mount=type=cache,target=/root/.npm,id=npm-cache \
@@ -221,7 +225,6 @@ WORKDIR /src
 ##############################################################################
 ARG PYTHON_VERSION
 ARG DEBIAN_VERSION
-ARG PANDOC_VERSION
 FROM python:${PYTHON_VERSION}-slim-${DEBIAN_VERSION} AS runtime
 
 RUN sed -i s/http/https/g /etc/apt/sources.list.d/debian.sources
@@ -241,9 +244,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=apt-cache \
 # R7: pandoc binary z oficjalnego obrazu pandoc/core zamiast apt (~300 MB
 # oszczednosci + stabilna warstwa cache, niezalezna od rebuildow bpp).
 # Binary linkuje dynamicznie do libgmp10, liblua5.4-0 (w runtime.txt).
-ARG PANDOC_VERSION
-COPY --from=pandoc/core:${PANDOC_VERSION}-ubuntu \
-     /usr/local/bin/pandoc /usr/local/bin/pandoc
+COPY --from=pandoc-src /usr/local/bin/pandoc /usr/local/bin/pandoc
 
 # Uwaga: wcześniej PATH wskazywał na /.venv/bin, a venv jest pod
 # /app/.venv — działało to tylko dlatego, że wszystkie komendy w
