@@ -166,6 +166,13 @@ RUN find /app/src -mindepth 2 -type d -name tests -exec rm -rf {} + && \
            /app/src/conftest.py \
            /app/src/integration_tests
 
+# R13: analogicznie do R12, usuwamy .pyc z /app/src (~2 MB). Bytecode
+# zostaje skompilowany przez compilemessages + collectstatic powyzej;
+# runtime kompiluje on-demand przy pierwszym imporcie, kolejne workery
+# dziela bytecode przez fork() (gunicorn preload).
+RUN find /app/src -type d -name __pycache__ -exec rm -rf {} + \
+    2>/dev/null || true
+
 # R3: UV_COMPILE_BYTECODE=1 już wygenerowało .pyc podczas `uv sync`.
 # Dodatkowo strippujemy katalogi test* z wbudowanych pakietów, aby
 # zaoszczędzić kilkanaście MB (Django zachowujemy — template'y odwołują
