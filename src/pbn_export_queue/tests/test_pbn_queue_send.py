@@ -20,6 +20,7 @@ from pbn_api.exceptions import (
     PKZeroExportDisabled,
     PraceSerwisoweException,
     StatementsMissing,
+    StatementsResendFailedException,
 )
 from pbn_export_queue.models import PBN_Export_Queue, RodzajBledu, SendStatus
 
@@ -63,6 +64,39 @@ class TestSendToPbn:
         # This is a protection against race conditions
         result = queue_item.send_to_pbn()
         assert result == SendStatus.FINISHED_OKAY
+
+    def test_send_to_pbn_statements_resend_failed_exception(
+        self, wydawnictwo_ciagle, admin_user
+    ):
+        """Test RETRY_LATER when StatementsResendFailedException is raised.
+
+        Scenariusz: POST publikacji do /repositorium powiódł się, ale
+        kolejne kroki (GET/DELETE/POST /v2/statements) wyczerpały retry
+        w sync_publication. Kolejka ma ponowić za kilka minut.
+        """
+        queue_item = baker.make(
+            PBN_Export_Queue,
+            rekord_do_wysylki=wydawnictwo_ciagle,
+            zamowil=admin_user,
+        )
+
+        with patch(
+            "bpp.admin.helpers.pbn_api.cli.sprobuj_wyslac_do_pbn_celery"
+        ) as mock_send:
+            mock_send.side_effect = StatementsResendFailedException(
+                publication_pk=wydawnictwo_ciagle.pk,
+                pbn_uid="abc-123",
+                last_error="HTTP 500: Server Error",
+            )
+
+            result = queue_item.send_to_pbn()
+
+            assert result == SendStatus.RETRY_LATER
+            queue_item.refresh_from_db()
+            assert queue_item.ilosc_prob == 1
+            assert "Synchronizacja oświadczeń" in queue_item.komunikat
+            assert "abc-123" in queue_item.komunikat
+            assert "Ponowię" in queue_item.komunikat
 
     def test_send_to_pbn_prace_serwisowe_exception(
         self, wydawnictwo_ciagle, admin_user
@@ -330,9 +364,7 @@ class TestHttpExceptionValidationClassification:
     where validation errors were incorrectly classified as technical errors.
     """
 
-    def test_http_400_with_details_isbn_duplicate(
-        self, wydawnictwo_ciagle, admin_user
-    ):
+    def test_http_400_with_details_isbn_duplicate(self, wydawnictwo_ciagle, admin_user):
         """ISBN duplicate error should be MERYTORYCZNY (regression test for ID 20)"""
         queue_item = baker.make(
             PBN_Export_Queue,
@@ -349,9 +381,7 @@ class TestHttpExceptionValidationClassification:
                     "message": "Bad Request",
                     "description": "Validation failed.",
                     "details": {
-                        "isbn": (
-                            "Publikacja o identycznym ISBN lub ISMN już istnieje!"
-                        )
+                        "isbn": ("Publikacja o identycznym ISBN lub ISMN już istnieje!")
                     },
                 }
             )
@@ -364,9 +394,7 @@ class TestHttpExceptionValidationClassification:
             assert queue_item.rodzaj_bledu == RodzajBledu.MERYTORYCZNY
             assert "Błąd walidacji po stronie PBN" in queue_item.komunikat
 
-    def test_http_400_with_details_doi_duplicate(
-        self, wydawnictwo_ciagle, admin_user
-    ):
+    def test_http_400_with_details_doi_duplicate(self, wydawnictwo_ciagle, admin_user):
         """DOI duplicate error should be MERYTORYCZNY (regression test for ID 19)"""
         queue_item = baker.make(
             PBN_Export_Queue,
@@ -395,9 +423,7 @@ class TestHttpExceptionValidationClassification:
             queue_item.refresh_from_db()
             assert queue_item.rodzaj_bledu == RodzajBledu.MERYTORYCZNY
 
-    def test_http_400_with_details_invalid_year(
-        self, wydawnictwo_ciagle, admin_user
-    ):
+    def test_http_400_with_details_invalid_year(self, wydawnictwo_ciagle, admin_user):
         """Invalid year error should be MERYTORYCZNY (regression test for ID 11)"""
         queue_item = baker.make(
             PBN_Export_Queue,
@@ -415,8 +441,7 @@ class TestHttpExceptionValidationClassification:
                     "description": "Validation failed.",
                     "details": {
                         "year": (
-                            "Rok publikacji nie może być późniejszy"
-                            " od roku bieżącego!"
+                            "Rok publikacji nie może być późniejszy od roku bieżącego!"
                         )
                     },
                 }
@@ -452,8 +477,7 @@ class TestHttpExceptionValidationClassification:
                     "description": "Validation failed.",
                     "details": {
                         "book.id": (
-                            "Identyfikator źródła rozdziału (książki)"
-                            " jest wymagany!"
+                            "Identyfikator źródła rozdziału (książki) jest wymagany!"
                         )
                     },
                 }
@@ -549,9 +573,7 @@ class TestHttpExceptionValidationClassification:
         with patch(
             "bpp.admin.helpers.pbn_api.cli.sprobuj_wyslac_do_pbn_celery"
         ) as mock:
-            error_json = json.dumps(
-                {"code": 500, "message": "Internal Server Error"}
-            )
+            error_json = json.dumps({"code": 500, "message": "Internal Server Error"})
             mock.side_effect = HttpException(500, "/api/v1/publications", error_json)
 
             result = queue_item.send_to_pbn()
@@ -560,9 +582,7 @@ class TestHttpExceptionValidationClassification:
             queue_item.refresh_from_db()
             assert queue_item.rodzaj_bledu == RodzajBledu.TECHNICZNY
 
-    def test_statements_missing_is_merytoryczny(
-        self, wydawnictwo_ciagle, admin_user
-    ):
+    def test_statements_missing_is_merytoryczny(self, wydawnictwo_ciagle, admin_user):
         """
         StatementsMissing error should be MERYTORYCZNY
         (business error - missing author statements/disciplines)

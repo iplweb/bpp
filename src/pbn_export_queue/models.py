@@ -22,6 +22,7 @@ from pbn_api.exceptions import (
     PKZeroExportDisabled,
     PraceSerwisoweException,
     ResourceLockedException,
+    StatementsResendFailedException,
     WillNotExportError,
 )
 
@@ -238,6 +239,19 @@ class PBN_Export_Queue(models.Model):
 
         if isinstance(exc, ResourceLockedException):
             self.dopisz_komunikat(f"{exc}, ponowiam wysyłkę za kilka minut...")
+            self.save()
+            return SendStatus.RETRY_LATER
+
+        if isinstance(exc, StatementsResendFailedException):
+            # Publikacja została wysłana do PBN (POST /repositorium OK),
+            # ale synchronizacja oświadczeń (GET/DELETE/POST /v2) wyczerpała
+            # retry w sync_publication. Ponawiamy po kilku minutach —
+            # zwykle chwilowa niedostępność PBN.
+            self.dopisz_komunikat(
+                f"Synchronizacja oświadczeń nie powiodła się po wyczerpaniu prób "
+                f"(PBN UID={exc.pbn_uid}): {exc.last_error}. "
+                f"Ponowię wysyłkę za kilka minut..."
+            )
             self.save()
             return SendStatus.RETRY_LATER
 
