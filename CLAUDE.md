@@ -136,6 +136,57 @@ rzeczy. Do `.baked` (w obrazie) pisze tylko `collectstatic` na buildzie.
 Do `$STATIC_ROOT` (volume/katalog runtime) pisze `cp -ru` + runtime
 `collectstatic` + ewentualne tenant tooling.
 
+## Docker image publishing (staging-tag + Trivy gate)
+
+Workflow `.github/workflows/build-docker-images.yml` publikuje obrazy
+Docker w trzech fazach, zeby skaner bezpieczenstwa mogl faktycznie
+zablokowac release zanim kanoniczny tag pojawi sie w rejestrze.
+
+**Dlaczego nie prosty „build → push → scan"?**
+Docker Hub nie ma mechanizmu „un-push". Jesli Trivy znajdzie CRITICAL
+CVE dopiero po pushu, obraz juz jest publicznie dostepny pod tagiem
+wersji (`:2025.12.1`, `:latest`) i deployment moze go pullnac, zanim
+ktokolwiek zobaczy raport. Gate po pushu jest dekoracyjny.
+
+**Faza 1 — Build → staging tag**
+Bake pushuje do tagu `sha-<short_sha>` (np. `sha-abc1234`). Tag jest
+publiczny technicznie, ale niekanoniczny — zadna dokumentacja, zadne
+deployment scripty nie referencuja `sha-*`, wiec w praktyce nikt go
+nie pullnie.
+
+**Faza 2 — Trivy gate (TYLKO master)**
+Skan staging tagu. Polityka:
+- **CRITICAL** (z dostepnym fix-em) → hard fail, workflow sie wywala,
+  promocja sie NIE wykonuje. Kanoniczny tag wersji nigdy nie powstaje.
+- **HIGH** → raport w GitHub Step Summary, nie blokuje. Wiekszosc HIGH
+  to szum (DoS w build-time libach, CVE w `wheel`/`jaraco.context`
+  z minimalnym realnym impaktem).
+- **`--ignore-unfixed`** → pomijamy CVE bez fixa (nic nie da sie z tym
+  zrobic).
+- Skipowane false-positivy: `autobahn/wamp/cryptosign.py` (przykladowy
+  klucz w docstringu), `slapdtest/certs/` (test fixtures python-ldap).
+
+Feature branche NIE sa skanowane — to +3.5 min na pipeline, a ich tagi
+sa jawnie tymczasowe (nie release).
+
+**Faza 3 — Promote staging → canonical**
+`docker buildx imagetools create -t <canonical> <staging>` kopiuje
+manifest w rejestrze. Nie rebuilduje, nie re-pushuje warstw — tylko
+zapisuje metadane z referencja do istniejacych layers. ~sek per obraz.
+Na master dodatkowo tworzy tag `:latest`.
+
+**Zastrzezenie o rejestrze:**
+Raz pushniety digest (nawet pod staging tagiem) zyje w Docker Hub do
+momentu recznego DELETE. Staging-tag pattern chroni przed *odkryciem*
+zlego obrazu (kanoniczny tag nie powstaje), nie przed jego *istnieniem*.
+Dla pelnej izolacji potrzebne bylo by prywatne staging registry +
+kopiowanie czystych obrazow do public — niepotrzebne przy obecnej skali.
+
+**Staging tagi akumuluja sie** w Docker Hub jako `sha-*`. Obecnie nie
+sa czyszczone — zostaja dla mozliwosci rollbacku po SHA. Jesli lista
+staje sie za dluga, dopisz krok DELETE przez Docker Hub API lub cron
+usuwajacy tagi starsze niz N dni.
+
 ## External Services
 
 ### Freshdesk Support
