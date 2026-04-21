@@ -29,6 +29,7 @@ from pbn_api.exceptions import (
     PublicationDoesNotExistInInstitutionProfile,
     PublikacjaInstytucjiV2NieZnalezionaException,
     SameDataUploadedRecently,
+    StatementsResendFailedException,
     ZnalezionoWielePublikacjiInstytucjiV2Exception,
 )
 from pbn_api.models.pbn_odpowiedzi_niepozadane import PBNOdpowiedziNiepozadane
@@ -288,6 +289,264 @@ class PublicationSyncMixin:
                     raise e
                 no_tries -= 1
                 time.sleep(0.5)
+
+    # ----------- Helpery do nowego split-flow sync_publication -----------
+    # Mapowanie kluczy porównania:
+    # - PBN GET /page/statements zwraca: {personId, area, type, institutionId, ...}
+    # - Adapter pbn_get_json_statements() zwraca: {personObjectId, disciplineId,
+    #   disciplineUuid, type, ...}
+    # Klucz porównania: (person mongoId, discipline numerek). Oba na string.
+    # Selektywny DELETE używa (personId, role) — delete_publication_statement.
+
+    _STATEMENT_RETRY_DELAYS = (2, 4, 8)  # exponential backoff przy 3 próbach
+
+    @staticmethod
+    def _statement_key_pbn(stmt):
+        """Klucz porównania dla oświadczenia z PBN GET response."""
+        return (
+            str(stmt.get("personId", "")),
+            str(stmt.get("area", "")),
+        )
+
+    @staticmethod
+    def _statement_key_intended(stmt):
+        """Klucz porównania dla oświadczenia z ``pbn_get_json_statements``."""
+        return (
+            str(stmt.get("personObjectId", "")),
+            str(stmt.get("disciplineId", "")),
+        )
+
+    def _diff_statements(self, pbn_statements, intended_statements):
+        """Porównuje zestaw oświadczeń PBN z intencją BPP.
+
+        Zwraca (only_in_pbn, only_in_intended) jako sety kluczy
+        ``(person_mongoId, discipline_numerek)``:
+
+        - ``only_in_pbn`` — do usunięcia z PBN (PBN ma, BPP nie chce)
+        - ``only_in_intended`` — do dodania do PBN (BPP chce, PBN nie ma)
+        """
+        pbn_keys = {self._statement_key_pbn(s) for s in pbn_statements}
+        intended_keys = {self._statement_key_intended(s) for s in intended_statements}
+        return pbn_keys - intended_keys, intended_keys - pbn_keys
+
+    def _report_statements_failure_and_raise(
+        self, publication_pk, objectId, last_error
+    ):
+        """Raportuje do Rollbar (level=warning) i rzuca StatementsResendFailedException."""
+        try:
+            raise StatementsResendFailedException(publication_pk, objectId, last_error)
+        except StatementsResendFailedException:
+            rollbar.report_exc_info(
+                sys.exc_info(),
+                level="warning",
+                extra_data={
+                    "publication_pk": publication_pk,
+                    "pbn_uid": str(objectId),
+                    "last_error": str(last_error),
+                },
+            )
+            raise
+
+    def _get_pbn_statements_with_retry(self, objectId, publication_pk, max_tries=3):
+        """Pobiera oświadczenia publikacji z PBN z retry (exponential backoff).
+
+        Po wyczerpaniu prób: rollbar.report_exc_info(level="warning") oraz
+        raise ``StatementsResendFailedException``.
+        """
+        last_error = None
+        for attempt in range(max_tries):
+            try:
+                return list(
+                    self.get_institution_statements_of_single_publication(
+                        str(objectId), 5120
+                    )
+                )
+            except Exception as e:
+                last_error = e
+                logger.warning(
+                    "Błąd pobierania oświadczeń PBN dla %s, próba %d/%d: %s",
+                    objectId,
+                    attempt + 1,
+                    max_tries,
+                    e,
+                    exc_info=True,
+                )
+                if attempt < max_tries - 1:
+                    time.sleep(self._STATEMENT_RETRY_DELAYS[attempt])
+
+        self._report_statements_failure_and_raise(publication_pk, objectId, last_error)
+
+    def _delete_statements_selective(
+        self, objectId, pbn_statements_to_delete, publication_pk, max_tries=3
+    ):
+        """Selektywne DELETE oświadczeń per-osoba (delete_publication_statement).
+
+        Iteruje po liście oświadczeń PBN do usunięcia i wywołuje DELETE dla
+        każdego (klucz: personId + type z PBN GET response). Po wyczerpaniu
+        prób per oświadczenie: rollbar + raise StatementsResendFailedException.
+        """
+        for stmt in pbn_statements_to_delete:
+            person_id = stmt.get("personId")
+            role = stmt.get("type")
+            last_error = None
+            success = False
+            for attempt in range(max_tries):
+                try:
+                    self.delete_publication_statement(str(objectId), person_id, role)
+                    success = True
+                    break
+                except Exception as e:
+                    last_error = e
+                    logger.warning(
+                        "Błąd DELETE oświadczenia (%s, %s) dla %s, próba %d/%d: %s",
+                        person_id,
+                        role,
+                        objectId,
+                        attempt + 1,
+                        max_tries,
+                        e,
+                        exc_info=True,
+                    )
+                    if attempt < max_tries - 1:
+                        time.sleep(self._STATEMENT_RETRY_DELAYS[attempt])
+            if not success:
+                self._report_statements_failure_and_raise(
+                    publication_pk, objectId, last_error
+                )
+
+    def _delete_statements_batch(self, objectId, publication_pk, max_tries=3):
+        """Batch DELETE wszystkich oświadczeń publikacji z retry.
+
+        Rzuca ``CannotDeleteStatementsException`` w górę (caller może
+        zignorować gdy PBN mówi że nie ma oświadczeń). Po wyczerpaniu prób
+        dla innych błędów: rollbar + raise StatementsResendFailedException.
+        """
+        last_error = None
+        for attempt in range(max_tries):
+            try:
+                self.delete_all_publication_statements(str(objectId))
+                return
+            except CannotDeleteStatementsException:
+                raise
+            except Exception as e:
+                last_error = e
+                logger.warning(
+                    "Błąd batch DELETE oświadczeń dla %s, próba %d/%d: %s",
+                    objectId,
+                    attempt + 1,
+                    max_tries,
+                    e,
+                    exc_info=True,
+                )
+                if attempt < max_tries - 1:
+                    time.sleep(self._STATEMENT_RETRY_DELAYS[attempt])
+
+        self._report_statements_failure_and_raise(publication_pk, objectId, last_error)
+
+    def _post_statements_with_retry(self, rec, objectId, publication_pk, max_tries=3):
+        """POST oświadczeń publikacji do ``/api/v2/institution-profile/statements``.
+
+        Wymaga lokalnego ``PublikacjaInstytucji_V2`` (``pbn_get_api_statements``
+        rzuca ``DaneLokalneWymagajaAktualizacjiException`` gdy brak) —
+        sync_publication wywołuje ``pobierz_publikacje_instytucji_v2`` przed
+        tym helperem, więc V2 powinno istnieć.
+
+        Retry z exponential backoff. Po wyczerpaniu: rollbar + raise
+        ``StatementsResendFailedException``.
+        """
+        # Może rzucić DaneLokalneWymagajaAktualizacjiException — propaguje
+        # do callera (sync_publication), który loguje warning zamiast crash.
+        payload = WydawnictwoPBNAdapter(rec).pbn_get_api_statements()
+        body = {"data": [payload]}
+
+        last_error = None
+        for attempt in range(max_tries):
+            try:
+                self.post_discipline_statements(body)
+                return
+            except Exception as e:
+                last_error = e
+                logger.warning(
+                    "Błąd POST oświadczeń dla %s, próba %d/%d: %s",
+                    objectId,
+                    attempt + 1,
+                    max_tries,
+                    e,
+                    exc_info=True,
+                )
+                if attempt < max_tries - 1:
+                    time.sleep(self._STATEMENT_RETRY_DELAYS[attempt])
+
+        self._report_statements_failure_and_raise(publication_pk, objectId, last_error)
+
+    def _sync_statements_with_pbn(
+        self, rec, objectId, kasuj_selektywnie, notificator=None
+    ):
+        """Synchronizuje oświadczenia publikacji z PBN po wysyłce publikacji.
+
+        Algorytm:
+        1. GET aktualnych oświadczeń z PBN
+        2. Intencja BPP z ``WydawnictwoPBNAdapter.pbn_get_json_statements()``
+        3. Diff (klucz: person mongoId + numerek dyscypliny)
+        4a. PBN ma + BPP nie chce → DELETE (selektywnie lub batch)
+        4b. PBN nie ma + BPP chce → POST /v2/statements
+        4c. Różnice (oba) → DELETE brakujących + POST dodatkowych
+        4d. Identyczne → nic
+
+        Args:
+            rec: rekord BPP (Wydawnictwo_Ciagle/Wydawnictwo_Zwarte)
+            objectId: PBN UID publikacji
+            kasuj_selektywnie: True=per-osoba DELETE, False=batch delete_all
+            notificator: opcjonalny logger UI
+
+        Raises:
+            StatementsResendFailedException: gdy retry operacji się wyczerpie
+            DaneLokalneWymagajaAktualizacjiException: gdy POST potrzebuje
+                V2 którego nie ma lokalnie (propagowana — caller loguje
+                warning zamiast crashować)
+        """
+        publication_pk = rec.pk
+
+        pbn_statements = self._get_pbn_statements_with_retry(objectId, publication_pk)
+        intended = WydawnictwoPBNAdapter(rec).pbn_get_json_statements()
+
+        only_in_pbn, only_in_intended = self._diff_statements(pbn_statements, intended)
+
+        if not only_in_pbn and not only_in_intended:
+            if notificator is not None:
+                notificator.info(
+                    "Oświadczenia w PBN identyczne z intencją BPP — bez zmian."
+                )
+            return
+
+        if only_in_pbn:
+            if kasuj_selektywnie:
+                # Zbuduj listę oświadczeń do usunięcia z PBN (pełne dict-y
+                # zachowują personId + type, potrzebne dla delete_publication_statement).
+                stmts_to_delete = [
+                    s
+                    for s in pbn_statements
+                    if self._statement_key_pbn(s) in only_in_pbn
+                ]
+                self._delete_statements_selective(
+                    objectId, stmts_to_delete, publication_pk
+                )
+            else:
+                try:
+                    self._delete_statements_batch(objectId, publication_pk)
+                except CannotDeleteStatementsException:
+                    # PBN mówi że nie ma oświadczeń — akceptowalne, kontynuuj
+                    pass
+
+        if only_in_intended:
+            self._post_statements_with_retry(rec, objectId, publication_pk)
+
+        if notificator is not None:
+            notificator.info(
+                f"Zsynchronizowano oświadczenia: "
+                f"skasowano z PBN {len(only_in_pbn)}, "
+                f"dodano do PBN {len(only_in_intended)}."
+            )
 
     def _handle_no_objectid(self, notificator, ret, js, pub):
         """Handle case when server doesn't return object ID."""
