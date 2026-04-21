@@ -78,7 +78,6 @@ def _synchronizuj_pojedyncza_publikacje(  # noqa: C901
     rec,
     force_upload=False,
     export_pk_zero=None,
-    delete_statements_before_upload=False,
 ):
     """Synchronize a single publication to PBN.
 
@@ -87,14 +86,12 @@ def _synchronizuj_pojedyncza_publikacje(  # noqa: C901
         rec: BPP record.
         force_upload: Whether to force upload.
         export_pk_zero: Export pk zero setting.
-        delete_statements_before_upload: Whether to delete statements before upload.
     """
     try:
         client.sync_publication(
             rec,
             force_upload=force_upload,
             export_pk_zero=export_pk_zero,
-            delete_statements_before_upload=delete_statements_before_upload,
         )
     except SameDataUploadedRecently:
         pass
@@ -182,7 +179,6 @@ def synchronizuj_publikacje(
     only_new=False,
     skip=0,
     export_pk_zero=None,
-    delete_statements_before_upload=False,
 ):
     """Synchronize publications to PBN.
 
@@ -196,7 +192,6 @@ def synchronizuj_publikacje(
         only_new: Export only records that don't have an entry in SentData.
         skip: Number of records to skip.
         export_pk_zero: Export pk zero setting.
-        delete_statements_before_upload: Whether to delete statements before upload.
     """
     assert not (only_bad and only_new), "Te parametry wykluczają się wzajemnie"
     #
@@ -225,7 +220,6 @@ def synchronizuj_publikacje(
             client,
             rec,
             force_upload=force_upload,
-            delete_statements_before_upload=delete_statements_before_upload,
             export_pk_zero=export_pk_zero,
         )
 
@@ -237,7 +231,6 @@ def synchronizuj_publikacje(
             client,
             rec,
             force_upload=force_upload,
-            delete_statements_before_upload=delete_statements_before_upload,
             export_pk_zero=export_pk_zero,
         )
 
@@ -267,7 +260,6 @@ def synchronizuj_publikacje(
             client,
             rec,
             force_upload=force_upload,
-            delete_statements_before_upload=delete_statements_before_upload,
             export_pk_zero=export_pk_zero,
         )
 
