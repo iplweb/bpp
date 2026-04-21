@@ -273,7 +273,12 @@ COPY docker/bpp_base/runtime.txt /tmp/
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=apt-cache \
     --mount=type=cache,target=/var/lib/apt/lists,sharing=locked,id=apt-lists \
     apt-get update && \
-    xargs -a /tmp/runtime.txt apt-get install -y
+    xargs -a /tmp/runtime.txt apt-get install -y && \
+    rm -rf /usr/share/doc/* /usr/share/man/* /var/lib/apt/lists/*
+# R15: rm /usr/share/{doc,man}/* + /var/lib/apt/lists/* (~3.4 MB).
+# Standardowy docker-slim pattern — runtime nigdy nie czyta README,
+# changelog.Debian.gz ani copyright. apt-lists i tak jest w cache mount,
+# ale explicite rm to defensive (BuildKit zostawia czasem residual).
 
 # R7: pandoc binary z oficjalnego obrazu pandoc/core zamiast apt (~300 MB
 # oszczednosci + stabilna warstwa cache, niezalezna od rebuildow bpp).
