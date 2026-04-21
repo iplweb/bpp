@@ -143,11 +143,16 @@ RUN /app/.venv/bin/python src/manage.py compilemessages -v0 -l pl --traceback
 # R11: --ignore sinon --ignore qunit wycina test-only biblioteki JS
 # (sinon/pkg/sinon.js + qunit/qunit/*) z production staticroot. Dev flow
 # jest nietknięty, bo używamy collectstatic tylko w buildzie obrazu.
+# R14: --ignore '*.map' wycina source maps (~8 MB rozsianych po
+# foundation-sites, tone, djangoql, rest_framework, bpp/js/dist, ...).
+# Source maps sluza tylko browser devtools podczas debugowania JS/CSS;
+# w prod 404 na .map pojawia sie w konsoli gdy user otworzy devtools —
+# bez wplywu na dzialanie aplikacji.
 RUN DJANGO_BPP_SECRET_KEY=build-time-only-not-used \
     STATIC_ROOT=/app/staticroot.baked \
     /app/.venv/bin/python src/manage.py collectstatic \
         --noinput -v0 --traceback \
-        --ignore sinon --ignore qunit
+        --ignore sinon --ignore qunit --ignore '*.map'
 
 RUN rm -rf /app/node_modules
 
