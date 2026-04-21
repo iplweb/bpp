@@ -4,6 +4,21 @@ Historia zmian
 
 .. towncrier release notes start
 
+bpp 202604.1361 (2026-04-21)
+============================
+
+Usprawnienie
+------------
+
+- Autorzy powiązani z kontami użytkowników mogą teraz przeglądać swoje
+  własne metryki ewaluacyjne. Dodano dwupoziomowy system uprawnień: pełny
+  dostęp (administratorzy i grupa "wprowadzanie danych") oraz dostęp
+  autorski (tylko podgląd własnych metryk). Dodano pole BppUser.autor
+  (OneToOneField) łączące konta użytkowników z rekordami autorów,
+  automatyczne dopasowywanie po adresie e-mail, stronę profilu użytkownika
+  oraz link "Mój profil" w menu nawigacji. (freshdesk-308)
+
+
 bpp 202604.1360 (2026-04-20)
 ============================
 
