@@ -17,7 +17,6 @@ from pbn_api.adapters.wydawnictwo import (
 from pbn_api.const import (
     PBN_POST_PUBLICATION_FEE_URL,
     PBN_POST_PUBLICATION_NO_STATEMENTS_URL,
-    PBN_POST_PUBLICATIONS_URL,
 )
 from pbn_api.exceptions import (
     CannotDeleteStatementsException,
@@ -41,9 +40,6 @@ logger = logging.getLogger(__name__)
 
 class PublicationSyncMixin:
     """Mixin providing publication synchronization methods."""
-
-    def post_publication(self, json):
-        return self.transport.post(PBN_POST_PUBLICATIONS_URL, body=json)
 
     def convert_js_with_statements_to_no_statements(self, json):
         # PBN zmienił givenNames na firstName
@@ -151,18 +147,22 @@ class PublicationSyncMixin:
         return fees_map
 
     def _prepare_publication_json(self, rec, export_pk_zero, always_affiliate_to_uid):
-        """Prepare publication JSON data."""
+        """Przygotowuje JSON publikacji do wysyłki przez endpoint repozytoryjny.
+
+        Zawsze wywołuje ``convert_js_with_statements_to_no_statements``, bo
+        ``upload_publication`` używa teraz wyłącznie endpointu repo
+        ``/api/v1/repositorium/publications``, który nie przyjmuje klucza
+        ``statements`` w payload i wymaga konwersji formatu (``givenNames``
+        → ``firstName``, ``abstracts`` w root, brak ``fee`` itp.).
+        """
         js = WydawnictwoPBNAdapter(
             rec,
             export_pk_zero=export_pk_zero,
             always_affiliate_to_uid=always_affiliate_to_uid,
         ).pbn_get_json()
 
-        bez_oswiadczen = "statements" not in js
-        if bez_oswiadczen:
-            js = self.convert_js_with_statements_to_no_statements(js)
-
-        return js, bez_oswiadczen
+        js = self.convert_js_with_statements_to_no_statements(js)
+        return js
 
     def _check_upload_needed(self, rec, js, force_upload):
         """Check if upload is needed."""
@@ -173,50 +173,21 @@ class PublicationSyncMixin:
                     SentData.objects.get_for_rec(rec).last_updated_on
                 )
 
-    def _post_publication_data(self, js, bez_oswiadczen):
-        """Post publication data and extract objectId."""
-        if not bez_oswiadczen:
-            ret = self.post_publication(js)
-            objectId = ret.get("objectId", None)
-        else:
-            ret = self.post_publication_no_statements(js)
-            if len(ret) != 1:
-                raise Exception(
-                    "Lista zwróconych obiektów przy wysyłce pracy bez oświadczeń "
-                    "różna od jednego. "
-                    "Sytuacja nieobsługiwana, proszę o kontakt z autorem programu. "
-                )
-            try:
-                objectId = ret[0].get("id", None)
-            except KeyError as e:
-                raise Exception(
-                    f"Serwer zwrócił nieoczekiwaną odpowiedź. {ret=}"
-                ) from e
+    def _post_publication_data(self, js):
+        """POST publikacji do endpointu repo i wyciągnięcie ``objectId``."""
+        ret = self.post_publication_no_statements(js)
+        if len(ret) != 1:
+            raise Exception(
+                "Lista zwróconych obiektów przy wysyłce pracy do repozytorium "
+                "różna od jednego. "
+                "Sytuacja nieobsługiwana, proszę o kontakt z autorem programu. "
+            )
+        try:
+            objectId = ret[0].get("id", None)
+        except (KeyError, IndexError) as e:
+            raise Exception(f"Serwer zwrócił nieoczekiwaną odpowiedź. {ret=}") from e
 
         return ret, objectId
-
-    def _should_retry_validation_error(self, e):
-        """Check if HTTP exception is a retryable validation error."""
-        return (
-            e.status_code == 400
-            and e.url == "/api/v1/publications"
-            and "Bad Request" in e.content
-            and "Validation failed." in e.content
-        )
-
-    def _retry_download_publication(self, objectId):
-        """Attempt to download publication data after validation error."""
-        try:
-            publication = self.download_publication(objectId=objectId)
-            self.download_statements_of_publication(publication)
-            self.pobierz_publikacje_instytucji_v2(objectId=objectId)
-        except Exception:
-            rollbar.report_exc_info(sys.exc_info())
-            logger.debug(
-                "Błąd podczas ponownego pobierania publikacji %s",
-                objectId,
-                exc_info=True,
-            )
 
     def upload_publication(
         self,
@@ -224,57 +195,39 @@ class PublicationSyncMixin:
         force_upload=False,
         export_pk_zero=None,
         always_affiliate_to_uid=None,
-        max_retries_on_validation_error=3,
+        max_retries_on_validation_error=3,  # DEPRECATED: nieużywany, backward compat
     ):
         """
-        Ta funkcja wysyła dane publikacji na serwer, w zależności od obecności oświadczeń
-        w JSONie (klucz: "statements") używa albo api /v1/ do wysyłki publikacji
-        "ze wszystkim", albo korzysta z api /v1/ repozytorialnego.
+        Wysyła publikację do PBN przez endpoint repozytoryjny
+        ``POST /api/v1/repositorium/publications`` (zawsze, niezależnie od
+        obecności oświadczeń w JSON). Oświadczenia synchronizuje osobno
+        ``sync_publication`` przez endpoint ``/api/v2/institution-profile/statements``.
 
-        Zwracane wyniki wyjściowe też różnią się w zależnosci od użytego API stąd też
-        ta funkcja stara się w miarę rozsądnie to ogarnąć.
+        Zwraca ``(objectId, ret, js, True)`` — ostatnie pole (``bez_oswiadczen``)
+        zachowane dla backward compat; zawsze ``True`` bo endpoint repo nigdy
+        nie wysyła oświadczeń w body publikacji.
         """
-        js, bez_oswiadczen = self._prepare_publication_json(
+        js = self._prepare_publication_json(
             rec, export_pk_zero, always_affiliate_to_uid
         )
         self._check_upload_needed(rec, js, force_upload)
 
         # Create or update SentData record BEFORE API call
-        sent_data = SentData.objects.create_or_update_before_upload(rec, js)  # noqa
+        SentData.objects.create_or_update_before_upload(rec, js)
 
-        retry_count = max_retries_on_validation_error
-        ret = None
-        objectId = None
+        try:
+            ret, objectId = self._post_publication_data(js)
+            SentData.objects.mark_as_successful(rec, api_response_status=str(ret))
+        except HttpException as e:
+            SentData.objects.mark_as_failed(
+                rec, exception=str(e), api_response_status=e.content
+            )
+            raise
+        except Exception as e:
+            SentData.objects.mark_as_failed(rec, exception=str(e))
+            raise
 
-        while True:
-            try:
-                ret, objectId = self._post_publication_data(js, bez_oswiadczen)
-                SentData.objects.mark_as_successful(rec, api_response_status=str(ret))
-                break
-
-            except HttpException as e:
-                if self._should_retry_validation_error(e):
-                    retry_count -= 1
-                    if retry_count <= 0:
-                        SentData.objects.mark_as_failed(
-                            rec, exception=str(e), api_response_status=e.content
-                        )
-                        raise e
-
-                    time.sleep(0.5)
-                    self._retry_download_publication(objectId)
-                    continue
-
-                SentData.objects.mark_as_failed(
-                    rec, exception=str(e), api_response_status=e.content
-                )
-                raise e
-
-            except Exception as e:
-                SentData.objects.mark_as_failed(rec, exception=str(e))
-                raise e
-
-        return objectId, ret, js, bez_oswiadczen
+        return objectId, ret, js, True
 
     def download_publication(self, doi=None, objectId=None):
         from pbn_api.models import Publication
@@ -317,14 +270,21 @@ class PublicationSyncMixin:
         return zapisz_publikacje_instytucji_v2(self, elem[0])
 
     def _delete_statements_with_retry(self, pbn_uid_id, max_tries=5):
-        """Delete publication statements with retry on failure."""
+        """Delete publication statements with retry on failure.
+
+        Używane przez batch flow (``pbn_wysylka_oswiadczen/tasks.py``) oraz
+        przez nowy ``_delete_statements_batch`` helper w ``sync_publication``.
+        """
         no_tries = max_tries
         while True:
             try:
                 self.delete_all_publication_statements(pbn_uid_id)
                 return True
             except CannotDeleteStatementsException as e:
-                if no_tries < 0:
+                # Warunek <= 0 (nie < 0): dla ``max_tries=5`` chcemy dokładnie
+                # 5 prób (no_tries: 5→4→3→2→1→0), po szóstej iteracji rzucamy.
+                # Wcześniejsze ``< 0`` pozwalało na 6 prób.
+                if no_tries <= 0:
                     raise e
                 no_tries -= 1
                 time.sleep(0.5)
