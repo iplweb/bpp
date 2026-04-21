@@ -1,7 +1,8 @@
 libpango-1.0-0
 libpangoft2-1.0-0
 postgresql-client
-pandoc
+libgmp10
+liblua5.4-0
 fonts-dejavu
 procps
 curl
