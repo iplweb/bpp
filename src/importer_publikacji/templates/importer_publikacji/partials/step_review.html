@@ -64,6 +64,24 @@
                     <td>{{ session.wydawca }}</td>
                 </tr>
             {% endif %}
+            {% if session.wydawnictwo_nadrzedne %}
+                <tr>
+                    <th>Wydawnictwo nadrzędne</th>
+                    <td>
+                        {{ session.wydawnictwo_nadrzedne }}
+                    </td>
+                </tr>
+            {% endif %}
+            {% if session.wydawnictwo_nadrzedne_w_pbn %}
+                <tr>
+                    <th>
+                        Wydawnictwo nadrzędne (PBN)
+                    </th>
+                    <td>
+                        {{ session.wydawnictwo_nadrzedne_w_pbn }}
+                    </td>
+                </tr>
+            {% endif %}
             {% if data.volume %}
                 <tr>
                     <th>Tom</th>
@@ -220,6 +238,14 @@
             <span class="fi-plus"></span>
             Utwórz publikację
         </button>
+        {% if show_save_and_pbn %}
+            <button type="submit"
+                    name="_create_and_pbn"
+                    class="button success">
+                <span class="fi-plus"></span>
+                Utwórz i dodaj do kolejki eksportu PBN
+            </button>
+        {% endif %}
     </form>
     <div>
         <a href="{% url 'importer_publikacji:index' %}"

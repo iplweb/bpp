@@ -2,10 +2,25 @@ from django.db.models import Avg, Count, Sum
 from django.views.generic import ListView
 
 from ..models import MetrykaAutora
-from .mixins import EwaluacjaRequiredMixin
+from .mixins import EwaluacjaRequiredMixin, ma_pelne_uprawnienia_ewaluacji
 
 
-class StatystykiView(EwaluacjaRequiredMixin, ListView):
+class PelneUprawnieniaEwaluacjiMixin:
+    """Mixin wymagający pełnych uprawnień do ewaluacji."""
+
+    def dispatch(self, request, *args, **kwargs):
+        if not ma_pelne_uprawnienia_ewaluacji(request.user):
+            from django.core.exceptions import PermissionDenied
+
+            raise PermissionDenied("Brak uprawnień do tej strony.")
+        return super().dispatch(request, *args, **kwargs)
+
+
+class StatystykiView(
+    PelneUprawnieniaEwaluacjiMixin,
+    EwaluacjaRequiredMixin,
+    ListView,
+):
     model = MetrykaAutora
     template_name = "ewaluacja_metryki/statystyki.html"
     context_object_name = "top_autorzy_pkd"  # Renamed for clarity

@@ -1,5 +1,65 @@
 name: Docker - oficjalne obrazy
 
+# =============================================================================
+# Flow publikacji obrazow Docker (staging-tag + promotion pattern)
+# =============================================================================
+#
+# Problem ktory to rozwiazuje:
+#   Trivy (lub jakikolwiek skaner) odpalony PO pushu jest bezuzyteczny jako
+#   gate — jesli znajdzie CRITICAL CVE, obraz juz jest w Docker Hub pod
+#   kanonicznym tagiem (np. :2025.12.1, :latest) i uzytkownicy/deployment
+#   moga go pullnac, zanim zobaczymy raport.
+#
+# Jak dzialamy:
+#   Faza 1 — Build → push do STAGING TAGU (np. ":sha-abc1234")
+#     Bake pushuje obrazy do Docker Hub, ale pod tagiem *niekanonicznym*,
+#     unikalnym per-build (SHA commitu). Zaden deployment ani dokumentacja
+#     nie odwoluje sie do tych tagow — sa technicznie publiczne, ale w
+#     praktyce "ukryte" (nikt nie pullnie `iplweb/bpp_appserver:sha-abc1234`
+#     bo nikt tego tagu nie zna). Staging tag umozliwia Trivy skanowanie
+#     obrazu tak, jak bylby po release.
+#
+#   Faza 2 — Trivy gate (TYLKO na master)
+#     Skan staging tagu. Polityka:
+#       • CRITICAL (z dostepnym fix-em) → HARD FAIL. Promocja sie nie
+#         wykona, wiec kanoniczny tag nigdy nie powstanie w rejestrze.
+#       • HIGH       → report-only w GitHub Step Summary. Dominuje szum
+#         (DoS w build-time libach, test fixtures z privnymi kluczami w
+#         bibliotekach pythonowych). Blokowanie HIGH spowodowalo by
+#         stale czerwone master bez dzialania po stronie kodu.
+#       • --ignore-unfixed → pomijamy CVE bez fixa (nic nie mozemy
+#         zrobic, nie blokujemy release-u w nieskonczonosc).
+#     Feature branche NIE sa skanowane — to +3.5 min na pipeline i nie
+#     dotycza release-u (pushuja do branch-specific tagu, ktory jest
+#     jawnie tymczasowy).
+#
+#   Faza 3 — Promote staging → canonical tag
+#     Po przejsciu Trivy (na master) lub bezwarunkowo (na feature branch),
+#     `docker buildx imagetools create` *kopiuje manifest* z staging tagu
+#     pod kanoniczny tag — to jest operacja na metadanych rejestru, bez
+#     rebuildu, bez re-pushu warstw. Koszt ~sekunda per obraz.
+#     Na master dodatkowo ustawia tag ":latest".
+#
+# Wazne zastrzezenie o rejestrze Docker Hub:
+#   Raz pushniety digest zyje w rejestrze do momentu recznego DELETE przez
+#   API Docker Hub. Staging-tag pattern chroni przed *odkryciem* zepsutego
+#   obrazu przez standardowe kanaly (tag), nie przed jego *istnieniem*.
+#   Dla pelnej izolacji trzeba by uzywac prywatnego staging registry i
+#   kopiowac tylko czyste obrazy do public — to znaczaca zmiana
+#   infrastruktury i nie jest potrzebne w BPP, gdzie uzytkownicy pullnuja
+#   po wersji.
+#
+# Cleanup staging tagow:
+#   Obecnie NIE sa usuwane po promocji — akumuluja sie w Docker Hub jako
+#   ":sha-XXXXXXX". Jesli kumulacja stanie sie problemem, mozna:
+#     a) dodac krok po promocji ktory DELETE-uje staging tag przez API
+#        Docker Hub (wymaga PAT z uprawnieniem do delete)
+#     b) uruchamiac periodyczny cron czyszczacy tagi starsze niz N dni
+#   Aktualnie: akceptujemy kumulacje, bo daje to mozliwosc rollbacku po
+#   SHA w razie potrzeby.
+#
+# =============================================================================
+
 on:
   push:
     branches:
@@ -42,16 +102,37 @@ jobs:
     # Budowanie ad-hoc bez commitowania flagi / ustawiania labela:
     #   gh workflow run build-docker-images.yml --ref <branch>
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
     outputs:
       should_build: ${{ steps.check.outputs.should_build }}
     steps:
       - uses: actions/checkout@v6
       - id: check
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REF_NAME: ${{ github.ref_name }}
           EVENT_NAME: ${{ github.event_name }}
+          REPO: ${{ github.repository }}
           HAS_DOCKER_BUILD_LABEL: ${{ contains(github.event.pull_request.labels.*.name, 'docker-build') }}
         run: |
+          # Dedupe: push event na branchu z otwartym PR-em jest duplikatem
+          # pull_request eventu dla tego samego commita. Pomijamy push run,
+          # zeby nie budowac i nie pushowac tego samego SHA dwa razy do
+          # Docker Cloud (~7 min build + transfer do rejestru kazdorazowo).
+          # pull_request event bedzie tagowal obraz <PR#>-merge.
+          if [ "$EVENT_NAME" = "push" ] && [ "$REF_NAME" != "master" ]; then
+            PR=$(gh pr list --head "$REF_NAME" --state open \
+                 --repo "$REPO" \
+                 --json number --jq '.[0].number // empty')
+            if [ -n "$PR" ]; then
+              echo "should_build=false" >> "$GITHUB_OUTPUT"
+              echo "::notice::Pomijam push run — PR #${PR} obsluzy ten commit (tag ${PR}-merge)"
+              exit 0
+            fi
+          fi
+
           if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
             echo "should_build=true" >> "$GITHUB_OUTPUT"
             echo "::notice::Docker build — trigger ręczny (workflow_dispatch)"
@@ -95,24 +176,64 @@ jobs:
         id: version
         run: echo "version=$(grep '^DOCKER_VERSION=' Makefile | cut -d'=' -f2)" >> $GITHUB_OUTPUT
 
-      - name: Compute Docker tag
+      - name: Compute Docker tags (staging + final)
         id: tag
         env:
           REF_NAME: ${{ github.ref_name }}
           BASE_VERSION: ${{ steps.version.outputs.version }}
+          GIT_SHA: ${{ github.sha }}
+          EVENT_NAME: ${{ github.event_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
+          # -----------------------------------------------------------------
+          # Dwa rodzaje tagow dla kazdego obrazu (patrz naglowek pliku):
+          #
+          # staging_tag: niekanoniczny, unikalny per build. Bake pushuje
+          #              TU przed skanem. Format: "sha-<short_sha>".
+          #              Uzytkownicy go nie znaja — zadne docs, zadne
+          #              deployment scripty nie odwoluja sie do sha-*.
+          #
+          # final_tag:   kanoniczny tag — tworzony DOPIERO po skanie przez
+          #              promocje manifestu (imagetools create).
+          #              • master       → DOCKER_VERSION z Makefile (np. "2025.12.1")
+          #              • pull_request → "<PR#>-merge" (jesli jest PR)
+          #              • feature/fix  → sanitized branch name
+          #
+          # tag_latest:  czy dodatkowo pushowac ":latest" po promocji
+          #              (tylko na master).
+          # -----------------------------------------------------------------
+
+          SHORT_SHA="${GIT_SHA:0:7}"
+          STAGING_TAG="sha-${SHORT_SHA}"
+          echo "staging_tag=${STAGING_TAG}" >> "$GITHUB_OUTPUT"
+
           if [ "$REF_NAME" = "master" ]; then
-            echo "docker_tag=${BASE_VERSION}" >> $GITHUB_OUTPUT
-            echo "tag_latest=true" >> $GITHUB_OUTPUT
+            echo "final_tag=${BASE_VERSION}" >> "$GITHUB_OUTPUT"
+            echo "tag_latest=true" >> "$GITHUB_OUTPUT"
+          elif [ "$EVENT_NAME" = "pull_request" ] && [ -n "$PR_NUMBER" ]; then
+            echo "final_tag=${PR_NUMBER}-merge" >> "$GITHUB_OUTPUT"
+            echo "tag_latest=false" >> "$GITHUB_OUTPUT"
           else
             BRANCH_TAG=$(echo "$REF_NAME" \
               | sed 's/[^a-zA-Z0-9._-]/-/g' \
               | tr '[:upper:]' '[:lower:]')
-            echo "docker_tag=${BRANCH_TAG}" >> $GITHUB_OUTPUT
-            echo "tag_latest=false" >> $GITHUB_OUTPUT
+            echo "final_tag=${BRANCH_TAG}" >> "$GITHUB_OUTPUT"
+            echo "tag_latest=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Build and push all images
+      # -----------------------------------------------------------------
+      # FAZA 1: Build → push do staging tagu
+      # -----------------------------------------------------------------
+      # Przekazujemy DOCKER_VERSION=${staging_tag} i TAG_LATEST=false,
+      # zeby bake pushnal TYLKO do "sha-XXXXXXX" (bez ":latest", bez
+      # kanonicznego tagu). Reszta parametrow bake niezmieniona.
+      # -----------------------------------------------------------------
+      - name: Build and push to staging tag
+        env:
+          GIT_SHA: ${{ github.sha }}
+          DOCKER_VERSION: ${{ steps.tag.outputs.staging_tag }}
+          TAG_LATEST: "false"
+          PUSH: "true"
         run: |
           docker buildx bake \
             base appserver workerserver \
@@ -122,16 +243,25 @@ jobs:
             --set '*.platform=linux/amd64' \
             --allow=fs.read=/tmp \
             --allow=fs.write=/tmp
-        env:
-          GIT_SHA: ${{ github.sha }}
-          DOCKER_VERSION: ${{ steps.tag.outputs.docker_tag }}
-          TAG_LATEST: ${{ steps.tag.outputs.tag_latest }}
-          PUSH: "true"
 
-      - name: Trivy image scan (report-only)
-        continue-on-error: true
+      # -----------------------------------------------------------------
+      # FAZA 2: Trivy gate (TYLKO na master)
+      # -----------------------------------------------------------------
+      # Skanuje staging tag. CRITICAL z dostepnym fix-em → exit 1,
+      # promocja sie nie wykona (krok "Promote" ma domyslnie
+      # "if: success()"). HIGH → zapis do Step Summary, nie blokuje.
+      #
+      # Skipowane sciezki (znane false-positivy w zaleznosciach):
+      #   • autobahn/wamp/cryptosign.py — przykladowy klucz w docstringu
+      #   • slapdtest/certs/             — test fixtures python-ldap
+      # Jesli pojawi sie nowa biblioteka z podobnymi false-positivami,
+      # dopisz tutaj z komentarzem wyjasniajacym dlaczego to nie jest
+      # prawdziwy sekret.
+      # -----------------------------------------------------------------
+      - name: Trivy CRITICAL gate (master only)
+        if: github.ref_name == 'master'
         env:
-          DOCKER_VERSION: ${{ steps.tag.outputs.docker_tag }}
+          STAGING_TAG: ${{ steps.tag.outputs.staging_tag }}
         run: |
           set -u
           images=(
@@ -142,15 +272,161 @@ jobs:
             iplweb/bpp_authserver
             iplweb/bpp_denorm_queue
           )
+
+          # Cache Trivy vulndb miedzy skanami (6 obrazow x ~200MB db = znaczna
+          # oszczednosc, pobiera sie raz do volume, reszta skanow reuse-uje).
+          mkdir -p /tmp/trivy-cache
+
+          TRIVY_COMMON_ARGS=(
+            --severity CRITICAL
+            --exit-code 1
+            --ignore-unfixed
+            --no-progress
+            --skip-files "**/autobahn/wamp/cryptosign.py"
+            --skip-dirs "**/slapdtest"
+          )
+
+          FAILED_IMAGES=()
           for img in "${images[@]}"; do
-            echo "::group::Trivy scan ${img}:${DOCKER_VERSION}"
-            docker run --rm \
+            echo "::group::Trivy CRITICAL scan ${img}:${STAGING_TAG}"
+            if ! docker run --rm \
               -v /var/run/docker.sock:/var/run/docker.sock \
+              -v /tmp/trivy-cache:/root/.cache/trivy \
               aquasec/trivy:latest image \
-                --severity CRITICAL,HIGH \
+                "${TRIVY_COMMON_ARGS[@]}" \
+                "${img}:${STAGING_TAG}"; then
+              FAILED_IMAGES+=("${img}")
+            fi
+            echo "::endgroup::"
+          done
+
+          if [ ${#FAILED_IMAGES[@]} -gt 0 ]; then
+            {
+              echo "## ❌ Trivy CRITICAL gate failed"
+              echo ""
+              echo "Znaleziono CRITICAL CVE (z dostepnym fix-em) w obrazach:"
+              echo ""
+              for img in "${FAILED_IMAGES[@]}"; do
+                echo "- \`${img}:${STAGING_TAG}\`"
+              done
+              echo ""
+              echo "**Promocja do kanonicznych tagow ZABLOKOWANA.**"
+              echo "Staging tag \`:${STAGING_TAG}\` pozostaje w rejestrze pod SHA"
+              echo "(do diagnostyki), ale wersja i \`:latest\` nie zostana utworzone."
+              echo ""
+              echo "Co zrobic:"
+              echo "1. Przejrzyj log powyzej — Trivy wypisuje CVE ID i pakiet"
+              echo "2. Zaktualizuj bazowy obraz / zaleznosc z fixem"
+              echo "3. Ponow push do mastera"
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+      - name: Trivy HIGH report (master only, report-only)
+        # Pokaz liste HIGH w Step Summary, ale nie blokuj. To jest
+        # pomocna informacja o "dlugu CVE" — pozwala zdecydowac co bumpnac
+        # przy nastepnej aktualizacji zaleznosci, bez zatrzymywania release-u.
+        if: github.ref_name == 'master'
+        continue-on-error: true
+        env:
+          STAGING_TAG: ${{ steps.tag.outputs.staging_tag }}
+        run: |
+          set -u
+          images=(
+            iplweb/bpp_base
+            iplweb/bpp_appserver
+            iplweb/bpp_workerserver
+            iplweb/bpp_beatserver
+            iplweb/bpp_authserver
+            iplweb/bpp_denorm_queue
+          )
+
+          {
+            echo "## Trivy HIGH CVE report (informacyjny, nie blokuje)"
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          for img in "${images[@]}"; do
+            echo "::group::Trivy HIGH scan ${img}:${STAGING_TAG}"
+            REPORT=$(docker run --rm \
+              -v /var/run/docker.sock:/var/run/docker.sock \
+              -v /tmp/trivy-cache:/root/.cache/trivy \
+              aquasec/trivy:latest image \
+                --severity HIGH \
                 --exit-code 0 \
                 --ignore-unfixed \
                 --no-progress \
-                "${img}:${DOCKER_VERSION}" || true
+                --skip-files "**/autobahn/wamp/cryptosign.py" \
+                --skip-dirs "**/slapdtest" \
+                --format table \
+                "${img}:${STAGING_TAG}" 2>&1 || true)
+            echo "$REPORT"
+            {
+              echo "<details><summary><code>${img}:${STAGING_TAG}</code></summary>"
+              echo ""
+              echo '```'
+              echo "$REPORT"
+              echo '```'
+              echo ""
+              echo "</details>"
+              echo ""
+            } >> "$GITHUB_STEP_SUMMARY"
             echo "::endgroup::"
           done
+
+      # -----------------------------------------------------------------
+      # FAZA 3: Promote staging tag → canonical tag(s)
+      # -----------------------------------------------------------------
+      # docker buildx imagetools create -t NEW SOURCE:
+      #   kopiuje manifest z SOURCE pod tag NEW w tym samym rejestrze.
+      #   Nie rebuilduje, nie pushuje warstw — tylko zapisuje manifest
+      #   z referencja do istniejacych (juz pushnietych) layers.
+      #   Koszt: 1-2 sek per tag.
+      #
+      # if: success() (domyslne) — na master wykona sie tylko jesli Trivy
+      # gate przeszedl. Na feature branch zawsze (tam skan sie nie uruchomil,
+      # poprzednie kroki byly "if: github.ref_name == 'master'" i zakonczyly
+      # sie jako "skipped" → success=true dla nastepnych).
+      # -----------------------------------------------------------------
+      - name: Promote staging tag to canonical tag(s)
+        env:
+          STAGING_TAG: ${{ steps.tag.outputs.staging_tag }}
+          FINAL_TAG: ${{ steps.tag.outputs.final_tag }}
+          TAG_LATEST: ${{ steps.tag.outputs.tag_latest }}
+        run: |
+          set -eu
+          images=(
+            iplweb/bpp_base
+            iplweb/bpp_appserver
+            iplweb/bpp_workerserver
+            iplweb/bpp_beatserver
+            iplweb/bpp_authserver
+            iplweb/bpp_denorm_queue
+          )
+
+          echo "::notice::Promocja: ${STAGING_TAG} → ${FINAL_TAG} (latest=${TAG_LATEST})"
+
+          for img in "${images[@]}"; do
+            echo "::group::Promote ${img}: ${STAGING_TAG} → ${FINAL_TAG}"
+            docker buildx imagetools create \
+              -t "${img}:${FINAL_TAG}" \
+              "${img}:${STAGING_TAG}"
+
+            if [ "$TAG_LATEST" = "true" ]; then
+              echo "→ also tagging :latest"
+              docker buildx imagetools create \
+                -t "${img}:latest" \
+                "${img}:${STAGING_TAG}"
+            fi
+            echo "::endgroup::"
+          done
+
+          {
+            echo "## ✅ Promoted staging → canonical"
+            echo ""
+            echo "Staging tag: \`${STAGING_TAG}\`"
+            echo "Final tag:   \`${FINAL_TAG}\`"
+            if [ "$TAG_LATEST" = "true" ]; then
+              echo "Also:        \`:latest\`"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

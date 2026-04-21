@@ -299,6 +299,11 @@
                                 <i class="fi-power" aria-hidden="true"></i> wyloguj
                             </a>
                         </li>
+                        <li>
+                            <a href="{% url "bpp:profil-uzytkownika" %}">
+                                <i class="fi-torso" aria-hidden="true"></i> mój profil
+                            </a>
+                        </li>
                         {% if not microsoft_login_enabled %}
                             <li><a id="password-change-link" href="{% url "password_change" %}"><i class="fi-key"></i> zmiana hasła</a></li>
                         {% endif %}

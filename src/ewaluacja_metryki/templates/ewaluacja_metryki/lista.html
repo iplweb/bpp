@@ -24,14 +24,16 @@
         {% include "ewaluacja_metryki/disclaimer.html" %}
 
 
+        {% if not autor_only_mode %}
         <!-- Status generowania -->
         <div id="status-container">
             {% include "ewaluacja_metryki/partials/status_box.html" %}
         </div>
+        {% endif %}
 
         <!-- Panel filtrów -->
         <div class="callout">
-            {% if request.GET.autor_id %}
+            {% if not autor_only_mode and request.GET.autor_id %}
             <div class="callout warning">
                 <p>
                     <span class="fi-filter"></span>
@@ -48,7 +50,7 @@
             </div>
             {% endif %}
             <form method="get" class="row" id="filter-form">
-                {% if request.GET.autor_id %}
+                {% if not autor_only_mode and request.GET.autor_id %}
                 <input type="hidden" name="autor_id" value="{{ request.GET.autor_id }}">
                 {% endif %}
                 <div class="medium-3 columns">
@@ -141,12 +143,14 @@
                         <a href="{% url 'ewaluacja_metryki:lista' %}{% clear_filters_url request %}" class="button secondary ewaluacja-metryki__filter-btn">
                             <span class="fi-x"></span> Wyczyść filtry
                         </a>
+                        {% if not autor_only_mode %}
                         <a href="{% url 'ewaluacja_metryki:export_lista_xlsx' %}?{{ request.GET.urlencode }}" class="button warning ewaluacja-metryki__filter-btn">
                             <span class="fi-download"></span> Pobierz XLSX
                         </a>
                         <a href="{% url 'ewaluacja_metryki:statystyki' %}" class="button success">
                             <span class="fi-graph-bar"></span> Statystyki
                         </a>
+                        {% endif %}
                     </div>
                 </div>
             </form>
@@ -260,7 +264,7 @@
                         <a href="{% url 'bpp:browse_autor' metryka.autor.pk %}" class="button success" target="_blank" title="Profil autora w BPP">
                             <span class="fi-torso"></span>
                         </a>
-                        {% if metryka.autor_discipline_count > 1 %}
+                        {% if not autor_only_mode and metryka.autor_discipline_count > 1 %}
                         <a href="{% url 'ewaluacja_metryki:lista' %}?autor_id={{ metryka.autor.pk }}" class="button secondary" title="Kadruj - pokaż tylko tego autora">
                             <span class="fi-crop"></span>
                         </a>

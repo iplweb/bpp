@@ -343,7 +343,9 @@
                         <th class="text-right">PKDaut</th>
                         <th class="text-right">Slot</th>
                         <th class="text-right">PKDaut/Slot</th>
+                        {% if not autor_only_mode %}
                         <th class="text-center">Odepnij</th>
+                        {% endif %}
                     </tr>
                 </thead>
                 <tbody>
@@ -377,6 +379,7 @@
                                 -
                             {% endif %}
                         </td>
+                        {% if not autor_only_mode %}
                         <td class="text-center">
                             <form method="post" action="{% url 'ewaluacja_metryki:odepnij' praca.rekord_content_type_id praca.rekord_object_id praca.autor_id praca.dyscyplina_id %}" class="ewaluacja-metryki__form-inline">
                                 {% csrf_token %}
@@ -385,6 +388,7 @@
                                 </button>
                             </form>
                         </td>
+                        {% endif %}
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -409,7 +413,9 @@
                             <th class="text-right">PKDaut</th>
                             <th class="text-right">Slot</th>
                             <th class="text-right">PKDaut/Slot</th>
+                            {% if not autor_only_mode %}
                             <th>Akcje</th>
+                            {% endif %}
                         </tr>
                     </thead>
                     <tbody>
@@ -446,6 +452,7 @@
                                     -
                                 {% endif %}
                             </td>
+                            {% if not autor_only_mode %}
                             <td>
                                 <form method="post" action="{% url 'ewaluacja_metryki:odepnij' praca.rekord_content_type_id praca.rekord_object_id praca.autor_id praca.dyscyplina_id %}" class="ewaluacja-metryki__form-inline">
                                     {% csrf_token %}
@@ -454,6 +461,7 @@
                                     </button>
                                 </form>
                             </td>
+                            {% endif %}
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -485,7 +493,9 @@
                             <th class="text-right">PKDaut</th>
                             <th class="text-right">Slot</th>
                             <th class="text-right">PKDaut/Slot</th>
+                            {% if not autor_only_mode %}
                             <th>Akcje</th>
+                            {% endif %}
                         </tr>
                     </thead>
                     <tbody>
@@ -508,6 +518,7 @@
                                     -
                                 {% endif %}
                             </td>
+                            {% if not autor_only_mode %}
                             <td>
                                 <form method="post" action="{% url 'ewaluacja_metryki:przypnij' praca.rekord_content_type_id praca.rekord_object_id praca.autor_id praca.dyscyplina_id %}" class="ewaluacja-metryki__form-inline">
                                     {% csrf_token %}
@@ -516,6 +527,7 @@
                                     </button>
                                 </form>
                             </td>
+                            {% endif %}
                         </tr>
                         {% endfor %}
                     </tbody>

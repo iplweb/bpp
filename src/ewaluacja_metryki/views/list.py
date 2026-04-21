@@ -6,7 +6,7 @@ from bpp.models.uczelnia import Uczelnia
 from ewaluacja_common.models import Rodzaj_Autora
 
 from ..models import MetrykaAutora, StatusGenerowania
-from .mixins import EwaluacjaRequiredMixin
+from .mixins import EwaluacjaRequiredMixin, ma_pelne_uprawnienia_ewaluacji
 
 
 class MetrykiListView(EwaluacjaRequiredMixin, ListView):
@@ -34,12 +34,21 @@ class MetrykiListView(EwaluacjaRequiredMixin, ListView):
             return None  # Disable pagination for visualization views
         return self.paginate_by
 
+    def _is_autor_only(self):
+        """Czy użytkownik ma dostęp tylko do swoich metryk."""
+        return not ma_pelne_uprawnienia_ewaluacji(self.request.user)
+
     def _apply_filters(self, queryset):
         """Apply all filter parameters from GET request to queryset."""
-        # Filtrowanie po ID autora (dla przycisku "Kadruj")
-        autor_id = self.request.GET.get("autor_id")
-        if autor_id:
-            queryset = queryset.filter(autor_id=autor_id)
+        # Dla użytkowników autor-only: wymuszaj filtrowanie
+        # po ich własnym autorze
+        if self._is_autor_only():
+            queryset = queryset.filter(autor_id=self.request.user.autor_id)
+        else:
+            # Filtrowanie po ID autora (dla przycisku "Kadruj")
+            autor_id = self.request.GET.get("autor_id")
+            if autor_id:
+                queryset = queryset.filter(autor_id=autor_id)
 
         # Filtrowanie po nazwisku
         nazwisko = self.request.GET.get("nazwisko")
@@ -285,6 +294,9 @@ class MetrykiListView(EwaluacjaRequiredMixin, ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
 
+        autor_only_mode = self._is_autor_only()
+        context["autor_only_mode"] = autor_only_mode
+
         # Set default widok to "tabela" if not provided
         context["widok"] = self.request.GET.get("widok", "tabela")
 
@@ -292,7 +304,8 @@ class MetrykiListView(EwaluacjaRequiredMixin, ListView):
         context["request"] = self.request
 
         # Update context with data from helper methods
-        context.update(self._get_filtered_autor_context())
+        if not autor_only_mode:
+            context.update(self._get_filtered_autor_context())
         context.update(self._get_jednostki_wydzialy_context())
         context.update(self._get_dyscypliny_context())
         context.update(self._get_statistics_context())
