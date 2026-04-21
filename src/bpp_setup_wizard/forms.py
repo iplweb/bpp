@@ -183,8 +183,8 @@ class UczelniaSetupForm(forms.ModelForm):
         uczelnia = super().save(commit=False)
 
         # Set the fields that should always be True
-        uczelnia.pbn_api_kasuj_przed_wysylka = (
-            True  # Kasuj oświadczenia przed wysłaniem do PBN
+        uczelnia.pbn_kasuj_dyscypliny_selektywnie = (
+            True  # Selektywny DELETE oświadczeń per-osoba (nowy flow)
         )
         uczelnia.pbn_api_nie_wysylaj_prac_bez_pk = (
             True  # Nie wysyłaj do PBN prac z PK=0
