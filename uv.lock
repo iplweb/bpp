@@ -325,6 +325,7 @@ dependencies = [
     { name = "rjsmin", marker = "platform_python_implementation != 'PyPy'" },
     { name = "rollbar", marker = "platform_python_implementation != 'PyPy'" },
     { name = "simplejson", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "sqlparse", marker = "platform_python_implementation != 'PyPy'" },
     { name = "tablib", marker = "platform_python_implementation != 'PyPy'" },
     { name = "thefuzz", marker = "platform_python_implementation != 'PyPy'" },
     { name = "tqdm", marker = "platform_python_implementation != 'PyPy'" },
@@ -357,7 +358,6 @@ dev = [
     { name = "pre-commit", marker = "platform_python_implementation != 'PyPy'" },
     { name = "psutil", marker = "platform_python_implementation != 'PyPy'" },
     { name = "pyparsing", marker = "platform_python_implementation != 'PyPy'" },
-    { name = "pypdf2", marker = "platform_python_implementation != 'PyPy'" },
     { name = "pytest", marker = "platform_python_implementation != 'PyPy'" },
     { name = "pytest-cov", marker = "platform_python_implementation != 'PyPy'" },
     { name = "pytest-django", marker = "platform_python_implementation != 'PyPy'" },
@@ -378,6 +378,7 @@ dev = [
     { name = "twine", marker = "platform_python_implementation != 'PyPy'" },
     { name = "vcrpy", marker = "platform_python_implementation != 'PyPy'" },
     { name = "webtest", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "werkzeug", marker = "platform_python_implementation != 'PyPy'" },
 ]
 ldap = [
     { name = "django-auth-ldap", marker = "platform_python_implementation != 'PyPy'" },
@@ -496,7 +497,6 @@ requires-dist = [
     { name = "pyoai", specifier = "==2.5.0" },
     { name = "pypandoc", specifier = ">=1.13,<2" },
     { name = "pyparsing", marker = "extra == 'dev'", specifier = ">=3.3.2" },
-    { name = "pypdf2", marker = "extra == 'dev'", specifier = ">=1.27.7" },
     { name = "pytest", marker = "extra == 'dev'", specifier = "<10.0.0" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=7.1.0" },
     { name = "pytest-django", marker = "extra == 'dev'", specifier = ">=4.12.0" },
@@ -519,6 +519,7 @@ requires-dist = [
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.15.10" },
     { name = "simplejson", specifier = ">=4.0.1,<5" },
     { name = "sphinx", marker = "extra == 'dev'", specifier = ">=7,<9" },
+    { name = "sqlparse", specifier = ">=0.5.4" },
     { name = "tablib", specifier = "==3.9.0" },
     { name = "testcontainers", extras = ["postgres"], marker = "extra == 'baseline-rebuild'", specifier = ">=4.14.2" },
     { name = "testcontainers", extras = ["postgres"], marker = "extra == 'dev'", specifier = ">=4.14.2" },
@@ -534,6 +535,7 @@ requires-dist = [
     { name = "watchdog", specifier = ">=5.0.3" },
     { name = "weasyprint", specifier = ">=66.0" },
     { name = "webtest", marker = "extra == 'dev'", specifier = "==3.0.0" },
+    { name = "werkzeug", marker = "extra == 'dev'", specifier = ">=3.1.6" },
     { name = "wosclient", specifier = "==0.1.5" },
     { name = "xhtml2pdf", specifier = ">=0.2.16" },
     { name = "xlrd", specifier = "==2.0.2" },
@@ -4358,15 +4360,6 @@ wheels = [
 ]
 
 [[package]]
-name = "pypdf2"
-version = "3.0.1"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/9f/bb/18dc3062d37db6c491392007dfd1a7f524bb95886eb956569ac38a23a784/PyPDF2-3.0.1.tar.gz", hash = "sha256:a74408f69ba6271f71b9352ef4ed03dc53a31aa404d29b5d31f53bfecfee1440", size = 227419, upload-time = "2022-12-31T10:36:13.13Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/8e/5e/c86a5643653825d3c913719e788e41386bee415c2b87b4f955432f2de6b2/pypdf2-3.0.1-py3-none-any.whl", hash = "sha256:d16e4205cfee272fbdc0568b68d82be796540b1537508cef59388f839c191928", size = 232572, upload-time = "2022-12-31T10:36:10.327Z" },
-]
-
-[[package]]
 name = "pyphen"
 version = "0.17.2"
 source = { registry = "https://pypi.org/simple" }
@@ -5493,11 +5486,11 @@ wheels = [
 
 [[package]]
 name = "sqlparse"
-version = "0.5.3"
+version = "0.5.5"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/e5/40/edede8dd6977b0d3da179a342c198ed100dd2aba4be081861ee5911e4da4/sqlparse-0.5.3.tar.gz", hash = "sha256:09f67787f56a0b16ecdbde1bfc7f5d9c3371ca683cfeaa8e6ff60b4807ec9272", size = 84999, upload-time = "2024-12-10T12:05:30.728Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/90/76/437d71068094df0726366574cf3432a4ed754217b436eb7429415cf2d480/sqlparse-0.5.5.tar.gz", hash = "sha256:e20d4a9b0b8585fdf63b10d30066c7c94c5d7a7ec47c889a2d83a3caa93ff28e", size = 120815, upload-time = "2025-12-19T07:17:45.073Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a9/5c/bfd6bd0bf979426d405cc6e71eceb8701b148b16c21d2dc3c261efc61c7b/sqlparse-0.5.3-py3-none-any.whl", hash = "sha256:cf2196ed3418f3ba5de6af7e82c694a9fbdbfecccdfc72e281548517081f16ca", size = 44415, upload-time = "2024-12-10T12:05:27.824Z" },
+    { url = "https://files.pythonhosted.org/packages/49/4b/359f28a903c13438ef59ebeee215fb25da53066db67b305c125f1c6d2a25/sqlparse-0.5.5-py3-none-any.whl", hash = "sha256:12a08b3bf3eec877c519589833aed092e2444e68240a3577e8e26148acc7b1ba", size = 46138, upload-time = "2025-12-19T07:17:46.573Z" },
 ]
 
 [[package]]
@@ -6266,14 +6259,14 @@ wheels = [
 
 [[package]]
 name = "werkzeug"
-version = "3.1.3"
+version = "3.1.8"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "markupsafe", marker = "platform_python_implementation != 'PyPy'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/9f/69/83029f1f6300c5fb2471d621ab06f6ec6b3324685a2ce0f9777fd4a8b71e/werkzeug-3.1.3.tar.gz", hash = "sha256:60723ce945c19328679790e3282cc758aa4a6040e4bb330f53d30fa546d44746", size = 806925, upload-time = "2024-11-08T15:52:18.093Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/dd/b2/381be8cfdee792dd117872481b6e378f85c957dd7c5bca38897b08f765fd/werkzeug-3.1.8.tar.gz", hash = "sha256:9bad61a4268dac112f1c5cd4630a56ede601b6ed420300677a869083d70a4c44", size = 875852, upload-time = "2026-04-02T18:49:14.268Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/52/24/ab44c871b0f07f491e5d2ad12c9bd7358e527510618cb1b803a88e986db1/werkzeug-3.1.3-py3-none-any.whl", hash = "sha256:54b78bf3716d19a65be4fceccc0d1d7b89e608834989dfae50ea87564639213e", size = 224498, upload-time = "2024-11-08T15:52:16.132Z" },
+    { url = "https://files.pythonhosted.org/packages/93/8c/2e650f2afeb7ee576912636c23ddb621c91ac6a98e66dc8d29c3c69446e1/werkzeug-3.1.8-py3-none-any.whl", hash = "sha256:63a77fb8892bf28ebc3178683445222aa500e48ebad5ec77b0ad80f8726b1f50", size = 226459, upload-time = "2026-04-02T18:49:12.72Z" },
 ]
 
 [[package]]
