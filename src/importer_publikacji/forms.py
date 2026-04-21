@@ -12,8 +12,10 @@ from bpp.models import (
     Jezyk,
     Typ_KBN,
     Wydawca,
+    Wydawnictwo_Zwarte,
     Zrodlo,
 )
+from pbn_api.models import Publication as PBNPublication
 
 from .providers import (
     get_available_providers,
@@ -133,6 +135,16 @@ class SourceForm(forms.Form):
     wydawca_opis = forms.CharField(
         label="Wydawca - szczegóły",
         max_length=256,
+        required=False,
+    )
+    wydawnictwo_nadrzedne = forms.ModelChoiceField(
+        queryset=Wydawnictwo_Zwarte.objects.all(),
+        label="Wydawnictwo nadrzędne",
+        required=False,
+    )
+    wydawnictwo_nadrzedne_w_pbn = forms.ModelChoiceField(
+        queryset=PBNPublication.objects.all(),
+        label="Wydawnictwo nadrzędne w PBN",
         required=False,
     )
 
