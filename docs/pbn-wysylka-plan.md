@@ -293,12 +293,62 @@ Obserwacje notujemy w osobnym pliku `docs/pbn-wysylka-eksperymenty.md`
   `uv run python src/manage.py makemigrations --merge --noinput`
   (nie modyfikuje istniejących migracji, dodaje nową merge-ową).
 
-## Faza 2 — refaktoryzacja `sync_publication` (osobna gałąź)
+## Faza 2 — refaktoryzacja `sync_publication` (**zaimplementowana, PR #164**)
 
-Po ręcznych testach narzędziem z Fazy 1 i udokumentowaniu wyników
-(osobny dokument `docs/pbn-wysylka-eksperymenty.md` w kolejnym PR)
-implementujemy docelowy flow w `src/pbn_api/client/publication_sync.py`.
-Plan dla Fazy 2 — szczegóły po zebraniu obserwacji z eksperymentów.
+Refaktoryzacja została wykonana na tej samej gałęzi
+`feature/pbn-test-wysylka-interaktywna` (8 commitów, cała seria w PR #164).
+Narzędzie CLI `pbn_test_wysylka_interaktywna` zostaje jako diagnostyka —
+aktualna `sync_publication` ma tą samą logikę wewnętrznie.
+
+### Flow docelowy (zaimplementowany)
+
+1. `upload_publication(rec, ...)` → ZAWSZE `POST /api/v1/repositorium/publications`
+   (`post_publication_no_statements`), niezależnie od obecności oświadczeń
+   w JSON. Konwersja przez `convert_js_with_statements_to_no_statements()`.
+2. `download_publication(objectId)` + update `SentData.pbn_uid`.
+3. Obsługa zmiany/konfliktu PBN UID (`_handle_uid_change`/`_conflict`).
+4. `_download_statements_with_retry()` — best effort odświeżenie lokalnego
+   cache `OswiadczenieInstytucji` + pobranie `PublikacjaInstytucji_V2`
+   (potrzebne dla `pbn_get_api_statements`). Błąd tutaj = warning log,
+   flow kontynuuje.
+5. `_sync_statements_with_pbn(rec, objectId, kasuj_selektywnie)`:
+   - GET aktualnych oświadczeń z PBN (retry x3 + rollbar + raise
+     `StatementsResendFailedException` po wyczerpaniu).
+   - Diff z `pbn_get_json_statements()` — klucz `(person mongoId, dyscyplina numerek)`.
+   - Selektywny DELETE per-osoba (`delete_publication_statement(pub_id, personId, role)`)
+     gdy `Uczelnia.pbn_kasuj_dyscypliny_selektywnie=True` (default),
+     batch `delete_all_publication_statements` gdy `False`.
+   - POST batch `/api/v2/institution-profile/statements` dla brakujących.
+   - Każdy krok z retry x3 + rollbar level=warning + `StatementsResendFailedException`.
+
+### Zmiany modelu
+
+- Usunięto `Uczelnia.pbn_api_kasuj_przed_wysylka` (migracja 0414).
+- Dodano `Uczelnia.pbn_kasuj_dyscypliny_selektywnie` BooleanField default=True.
+- Zachowano `Uczelnia.pbn_wysylaj_bez_oswiadczen` (semantyka: odmawia
+  wysyłki publikacji bez oświadczeń — walidacja w adapterze `pbn_get_json`).
+
+### Nowy wyjątek
+
+`pbn_api.exceptions.StatementsResendFailedException(publication_pk, pbn_uid, last_error)`
+— podnoszony po wyczerpaniu retry dla GET/DELETE/POST oświadczeń.
+Klasyfikowany w `pbn_export_queue._handle_retry_exception` jako
+`RETRY_LATER`.
+
+### Historia commitów (PR #164)
+
+1. Exception class + model Uczelnia + migracja + admin
+2. Dead code removal (`post_publication`, `_should_retry_validation_error`,
+   `_retry_download_publication`) + bug fix `_delete_statements_with_retry`
+   (`< 0` → `<= 0`)
+3. Helpery: `_diff_statements`, `_get_pbn_statements_with_retry`,
+   `_delete_statements_selective`, `_delete_statements_batch`,
+   `_post_statements_with_retry`, `_sync_statements_with_pbn`
+4. Refaktoryzacja `sync_publication` (nowy split flow)
+5. Aktualizacja callerów (usunięcie `delete_statements_before_upload`)
+6. Aktualizacja 5 plików testowych (37 testów, nowe scenariusze)
+7. Handling `StatementsResendFailedException` w `pbn_export_queue` + test
+8. Changelog + docs
 
 ## Wymagania CI
 
