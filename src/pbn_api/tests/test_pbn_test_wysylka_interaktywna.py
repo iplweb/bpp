@@ -48,6 +48,22 @@ def _patch_input(monkeypatch, answers):
     monkeypatch.setattr("builtins.input", _input)
 
 
+def _patch_intended_statements(monkeypatch, statements):
+    """Patchuje WydawnictwoPBNAdapter.pbn_get_api_statements() żeby
+    zwracał zadaną listę intended statements (bez wymagania PublikacjaInstytucji_V2).
+    """
+    from pbn_api.adapters.wydawnictwo import WydawnictwoPBNAdapter
+
+    monkeypatch.setattr(
+        WydawnictwoPBNAdapter,
+        "pbn_get_api_statements",
+        lambda self: {
+            "publicationUuid": "00000000-0000-0000-0000-000000000001",
+            "statements": list(statements),
+        },
+    )
+
+
 @pytest.mark.django_db
 def test_wymaga_jednego_argumentu_publikacji(pbn_client, monkeypatch):
     _patch_get_client(monkeypatch, pbn_client)
@@ -103,6 +119,7 @@ def test_dry_run_nie_wysyla_niczego_do_pbn(
     pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.save()
 
     _patch_get_client(monkeypatch, pbn_client)
+    _patch_intended_statements(monkeypatch, [])
     # kolejność promptów: preview JSON? n, wybór endpointa=1, [Enter]-y
     _patch_input(monkeypatch, ["n", "1"])
 
@@ -137,6 +154,9 @@ def test_happy_path_endpoint_publications(
     pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.save()
 
     _patch_get_client(monkeypatch, pbn_client)
+    # Intended statements puste — tak samo jak PBN → identyczne → domyślnie
+    # nie robimy DELETE ani POST oświadczeń (default_act=False w yes_all).
+    _patch_intended_statements(monkeypatch, [])
     pbn_client.transport.return_values[PBN_POST_PUBLICATIONS_URL] = {
         "objectId": pbn_publication.pk,
     }
@@ -145,9 +165,8 @@ def test_happy_path_endpoint_publications(
         + f"?publicationId={pbn_publication.pk}&size=5120"
     ] = pbn_pageable_json([])
 
-    # --yes-all akceptuje domyślnie, a dla wyboru endpointu robimy wejście "1"
-    # — _prompt w trybie yes-all zwraca "", a _step_choose_endpoint wtedy
-    # pętli dopóki nie dostanie prawidłowej odpowiedzi; dlatego wstrzykujemy "1".
+    # --yes-all akceptuje domyślnie (Enter, yes/no z defaultem), a dla
+    # wyboru endpointu (niedomyślny prompt) musimy dostarczyć "1".
     _patch_input(monkeypatch, ["1"])
 
     out = StringIO()
@@ -191,6 +210,7 @@ def test_happy_path_endpoint_repositorium(
     pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.save()
 
     _patch_get_client(monkeypatch, pbn_client)
+    _patch_intended_statements(monkeypatch, [])
     pbn_client.transport.return_values[PBN_POST_PUBLICATION_NO_STATEMENTS_URL] = [
         {"id": pbn_publication.pk},
     ]
@@ -237,6 +257,7 @@ def test_nieprawidlowa_opcja_endpointa_potem_prawidlowa(
     pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.save()
 
     _patch_get_client(monkeypatch, pbn_client)
+    _patch_intended_statements(monkeypatch, [])
     pbn_client.transport.return_values[PBN_POST_PUBLICATIONS_URL] = {
         "objectId": pbn_publication.pk,
     }
@@ -445,9 +466,10 @@ def test_odmowa_delete_post_gdy_sa_roznice_ale_user_nie_chce(
         ]
     )
 
-    # Pełen flow bez --yes-all, bo chcemy dać user-owi odpowiedź "n" na pytanie
-    # o skasowanie oświadczeń (yes_all ignoruje decyzje yes/no i wraca do defaultów).
-    # Lista odpowiedzi (po kolei):
+    # Pełen flow bez --yes-all, bo chcemy dać user-owi odpowiedź "n" na
+    # dwa pytania (DELETE i POST). yes_all ignoruje decyzje yes/no i
+    # wraca do defaultów, a default_act=True (są różnice) → DELETE+POST
+    # by się wykonały. Lista odpowiedzi (po kolei):
     #   1) Enter po KROK 1
     #   2) "" (n na preview JSON, default=False)
     #   3) Enter po KROK 2
@@ -456,8 +478,9 @@ def test_odmowa_delete_post_gdy_sa_roznice_ale_user_nie_chce(
     #   6) Enter po KROK 4
     #   7) Enter po KROK 5
     #   8) Enter po KROK 6
-    #   9) "n" — nie kasuj oświadczeń
-    _patch_input(monkeypatch, ["", "", "", "1", "", "", "", "", "n"])
+    #   9) "n" — nie kasuj oświadczeń (DELETE)
+    #  10) "n" — nie wysyłaj oświadczeń (POST)
+    _patch_input(monkeypatch, ["", "", "", "1", "", "", "", "", "n", "n"])
 
     out = StringIO()
     call_command(
@@ -476,6 +499,92 @@ def test_odmowa_delete_post_gdy_sa_roznice_ale_user_nie_chce(
 
     output = out.getvalue()
     assert "decyzja użytkownika" in output
+
+
+@pytest.mark.django_db
+def test_compare_uses_intended_not_cache_bug1(
+    pbn_client,
+    pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina,
+    pbn_publication,
+    pbn_autor,
+    pbn_jednostka,
+    monkeypatch,
+):
+    """Regression BUG 1: narzędzie ma porównywać intended (adapter) z PBN,
+    NIE cache OswiadczenieInstytucji.
+
+    Scenariusz: cache (OswiadczenieInstytucji) ma 1 rekord (stary stan),
+    PBN zwraca ten sam 1 rekord. Intended z adaptera zwraca PUSTĄ listę
+    (user skasował autora lokalnie). Stary kod pokazałby "identyczne"
+    (cache 1 == PBN 1). Nowy kod musi pokazać "różnice" (intended 0 ≠ PBN 1).
+    """
+    from datetime import date
+
+    from model_bakery import baker
+
+    from pbn_api.models import OswiadczenieInstytucji
+
+    pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.pbn_uid = pbn_publication
+    pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.save()
+
+    # Cache (stary stan, niesprzątnięty) — 1 rekord OswiadczenieInstytucji:
+    baker.make(
+        OswiadczenieInstytucji,
+        publicationId=pbn_publication,
+        personId=pbn_autor.pbn_uid,
+        institutionId=pbn_jednostka.pbn_uid,
+        area=100,
+        addedTimestamp=date(2020, 1, 1),
+    )
+    assert OswiadczenieInstytucji.objects.count() == 1
+
+    # Intended BPP (live) — PUSTE (jakby user skasował autora z rekordu):
+    _patch_intended_statements(monkeypatch, [])
+
+    _patch_get_client(monkeypatch, pbn_client)
+    pbn_client.transport.return_values[PBN_POST_PUBLICATIONS_URL] = {
+        "objectId": pbn_publication.pk,
+    }
+    # PBN zwraca 1 oświadczenie (zgodne z cache):
+    pbn_client.transport.return_values[
+        PBN_GET_INSTITUTION_STATEMENTS
+        + f"?publicationId={pbn_publication.pk}&size=5120"
+    ] = pbn_pageable_json(
+        [
+            {
+                "id": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+                "institutionId": pbn_jednostka.pbn_uid_id,
+                "personId": pbn_autor.pbn_uid_id,
+                "publicationId": pbn_publication.pk,
+                "area": "100",
+                "type": "AUTHOR",
+                "inOrcid": True,
+            }
+        ]
+    )
+
+    # Wybieramy endpoint 1, nie kasujemy/nie wysyłamy (chcemy sprawdzić
+    # tylko KROK 6/8 output).
+    _patch_input(
+        monkeypatch,
+        ["", "", "", "1", "", "", "", "", "n", "n"],
+    )
+
+    out = StringIO()
+    call_command(
+        "pbn_test_wysylka_interaktywna",
+        "--wydawnictwo-zwarte",
+        str(pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.pk),
+        stdout=out,
+    )
+
+    output = out.getvalue()
+    # Musi pokazać intencja 0 vs PBN 1 → różnice (NIE identyczne):
+    assert "Intencja BPP (live):          0" in output
+    assert "Aktualnie w PBN:              1" in output
+    assert "Tylko w PBN (do usunięcia):    1" in output
+    # A NIE pokazać że są identyczne (to byłby stary bug):
+    assert "Porównanie                     → różnice" in output
 
 
 def test_json_truncated_obcina_dlugi_tekst():

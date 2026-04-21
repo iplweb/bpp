@@ -154,36 +154,60 @@ class Command(PBNBaseCommand):
         pbn_statements = self._step_get_pbn_statements(pbn_client, object_id)
         identyczne = self._step_compare_statements(publication, pbn_statements)
 
-        if identyczne:
-            self._info("Oświadczenia w PBN identyczne z lokalnymi — nie ruszam ich.")
-            return
+        # Zawsze pytamy osobno o DELETE i POST — nawet gdy identyczne.
+        # Default zależy od wyniku porównania (False dla identycznych,
+        # True dla różnic), ale user ma ostatnie słowo. Pozwala to
+        # wymusić operację (np. żeby empirycznie sprawdzić jak PBN
+        # reaguje na „zbędny" DELETE+POST).
+        ctx = "identyczne — zwykle nie trzeba" if identyczne else "są różnice"
+        default_act = not identyczne
 
-        if not self._prompt_yes_no(
-            "Czy skasować oświadczenia w PBN i wysłać nowe?", default=True
+        if self._prompt_yes_no(
+            f"Czy skasować oświadczenia w PBN? ({ctx})", default=default_act
         ):
-            self._info("Pominięto DELETE + POST oświadczeń (decyzja użytkownika).")
-            return
+            self._step_delete_statements(pbn_client, object_id)
+        else:
+            self._info("Pominięto DELETE oświadczeń (decyzja użytkownika).")
+            self.stats.append(("DELETE oświadczeń", "pominięty"))
 
-        self._step_delete_statements(pbn_client, object_id)
-        self._step_post_statements(pbn_client, publication)
+        if self._prompt_yes_no(
+            f"Czy wysłać (POST) oświadczenia do PBN? ({ctx})",
+            default=default_act,
+        ):
+            self._step_post_statements(pbn_client, publication)
+        else:
+            self._info("Pominięto POST oświadczeń (decyzja użytkownika).")
+            self.stats.append(("POST oświadczeń", "pominięty"))
 
     # ------------------------- kroki -------------------------
 
     def _step_show_publication(self, publication):
         self._header("KROK 1/8 — Wybrana publikacja")
-        lokalne = (
+
+        # Cache ostatniej synchronizacji z PBN (może być nieaktualny).
+        cache = (
             OswiadczenieInstytucji.objects.filter(
                 publicationId_id=publication.pbn_uid_id
             ).count()
             if publication.pbn_uid_id
             else 0
         )
+        # Intencja BPP — live count tego co by adapter wysłał teraz.
+        try:
+            intended_count = len(
+                WydawnictwoPBNAdapter(publication).pbn_get_json_statements()
+            )
+            intended_label = str(intended_count)
+        except Exception as e:  # noqa: BLE001
+            intended_label = f"?? (błąd adaptera: {e})"
+
         self._info(f"Typ:          {type(publication).__name__}")
         self._info(f"PK:           {publication.pk}")
         self._info(f"Tytuł:        {publication.tytul_oryginalny[:100]}")
         self._info(f"Rok:          {publication.rok}")
         self._info(f"PBN UID:      {publication.pbn_uid_id or '(brak)'}")
-        self._info(f"Oświadczenia lokalnie (OswiadczenieInstytucji): {lokalne}")
+        self._info(f"Oświadczenia w cache (OswiadczenieInstytucji): {cache}")
+        self._info(f"Oświadczenia intencji BPP (live, adapter):     {intended_label}")
         self._prompt_enter()
 
     def _step_generate_json(self, publication):
@@ -324,43 +348,56 @@ class Command(PBNBaseCommand):
         return result
 
     def _step_compare_statements(self, publication, pbn_statements):
-        self._header("KROK 6/8 — Porównanie oświadczeń lokalnych z PBN")
-        lokalne = (
-            list(
-                OswiadczenieInstytucji.objects.filter(
-                    publicationId_id=publication.pbn_uid_id
-                ).values("personId_id", "area", "institutionId_id")
+        self._header("KROK 6/8 — Porównanie: intencja BPP (live) vs PBN")
+
+        # Intencja BPP: co wygenerowałby adapter GDYBY teraz wysłać — czyli
+        # aktualny stan autorów/dyscyplin w rekordzie. NIE używamy cache'a
+        # ``OswiadczenieInstytucji`` (to snapshot *PBN* z poprzedniego
+        # pobrania, nie BPP); po edycji w rekordzie — skasowaniu autora,
+        # dyscypliny, wypięciu — cache pozostałby nieaktualny.
+        try:
+            payload = WydawnictwoPBNAdapter(publication).pbn_get_api_statements()
+            intended = payload.get("statements", [])
+        except DaneLokalneWymagajaAktualizacjiException as e:
+            self._warn(
+                f"Nie mogę wygenerować intended-state "
+                f"(adapter wymaga UUID publikacji z PublikacjaInstytucji_V2): {e}"
             )
-            if publication.pbn_uid_id
-            else []
-        )
+            self._info("Zwracam 'różnice' — user zdecyduje co robić.")
+            self.stats.append(("Porównanie", "nieznane (błąd adaptera)"))
+            self._prompt_enter()
+            return False  # traktujemy jak "różne"
 
         def _key(stmt):
-            if isinstance(stmt, dict):
-                return (
-                    stmt.get("personId") or stmt.get("personId_id"),
-                    str(stmt.get("area") or ""),
-                    stmt.get("institutionId") or stmt.get("institutionId_id"),
-                )
-            return (None, None, None)
+            if not isinstance(stmt, dict):
+                return (None, None, None)
+            # PBN v1 zwraca personId (mongoId), v2 statement payload używa
+            # personObjectId. Adapter zwraca personId. Bierzemy co jest.
+            return (
+                stmt.get("personId") or stmt.get("personObjectId"),
+                str(stmt.get("area") or ""),
+                stmt.get("institutionId"),
+            )
 
-        local_keys = {_key(x) for x in lokalne}
+        intended_keys = {_key(x) for x in intended}
         pbn_keys = {_key(x) for x in pbn_statements}
 
-        only_local = local_keys - pbn_keys
-        only_pbn = pbn_keys - local_keys
-        common = local_keys & pbn_keys
+        only_intended = intended_keys - pbn_keys
+        only_pbn = pbn_keys - intended_keys
+        common = intended_keys & pbn_keys
 
-        self._info(f"Identycznych (lokalne ∩ PBN):            {len(common)}")
-        self._info(f"Tylko lokalnie (lokalne \\ PBN):          {len(only_local)}")
-        self._info(f"Tylko w PBN (PBN \\ lokalne):             {len(only_pbn)}")
+        self._info(f"Intencja BPP (live):          {len(intended_keys)}")
+        self._info(f"Aktualnie w PBN:              {len(pbn_keys)}")
+        self._info(f"Identycznych:                 {len(common)}")
+        self._info(f"Tylko w intencji (do dodania): {len(only_intended)}")
+        self._info(f"Tylko w PBN (do usunięcia):    {len(only_pbn)}")
 
-        if only_local:
-            self._info(f"  → lokalne bez odpowiednika w PBN: {list(only_local)[:5]}")
+        if only_intended:
+            self._info(f"  → intencja bez PBN: {list(only_intended)[:5]}")
         if only_pbn:
-            self._info(f"  → w PBN bez odpowiednika lokalnie: {list(only_pbn)[:5]}")
+            self._info(f"  → w PBN bez intencji: {list(only_pbn)[:5]}")
 
-        identyczne = not only_local and not only_pbn
+        identyczne = not only_intended and not only_pbn
         self.stats.append(
             (
                 "Porównanie",
@@ -384,10 +421,9 @@ class Command(PBNBaseCommand):
             self._prompt_enter()
             return
 
-        if not self._prompt_yes_no("Wyślij DELETE?", default=True):
-            self._info("Pominięto DELETE (decyzja użytkownika).")
-            self.stats.append(("DELETE oświadczeń", "pominięty"))
-            return
+        # Uwaga: zewnętrzny _prompt_yes_no w _run_flow już zapytał czy
+        # w ogóle robić DELETE — jeśli tu jesteśmy, user się zgodził.
+        # Nie dodajemy drugiego pytania "Wyślij DELETE?" dla prostoty.
 
         try:
             response = pbn_client.delete_all_publication_statements(object_id)
@@ -430,10 +466,9 @@ class Command(PBNBaseCommand):
             self._prompt_enter()
             return
 
-        if not self._prompt_yes_no("Wyślij POST oświadczeń?", default=True):
-            self._info("Pominięto POST oświadczeń (decyzja użytkownika).")
-            self.stats.append(("POST oświadczeń", "pominięty"))
-            return
+        # Zewnętrzny _prompt_yes_no w _run_flow już zapytał czy w ogóle
+        # robić POST — jeśli tu jesteśmy, user się zgodził. Pomijamy
+        # drugie pytanie "Wyślij POST?" dla prostoty.
 
         max_tries = 3
         attempt = 0

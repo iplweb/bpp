@@ -217,19 +217,30 @@ po q).
 5. **KROK 5/8** — GET aktualnych oświadczeń z PBN dla tego objectId
    (`/api/v1/institutionProfile/publications/page/statements
    ?publicationId={id}`).
-6. **KROK 6/8** — porównanie oświadczeń. Narzędzie pokazuje:
-   - ile oświadczeń jest identycznych (lokalne ∩ PBN),
-   - ile jest tylko lokalnie (lokalne \ PBN),
-   - ile jest tylko w PBN (PBN \ lokalne).
-   Jeśli sety są identyczne, narzędzie kończy flow (nie rusza
-   oświadczeń). Inaczej pyta czy kasować i nadpisywać.
+6. **KROK 6/8** — porównanie: **intencja BPP na żywo** vs **aktualnie
+   w PBN**. „Intencja BPP" to wynik
+   `WydawnictwoPBNAdapter.pbn_get_api_statements()` — generowany z
+   aktualnych `Wydawnictwo_*_Autor` + dyscyplin, czyli to co BPP
+   **wysłałby teraz**. **Nie** używamy lokalnego cache'a
+   `OswiadczenieInstytucji` (to snapshot poprzedniej synchronizacji
+   *PBN*, nie aktualnej intencji BPP — po skasowaniu autora cache
+   zostałby nieaktualny). Narzędzie pokazuje:
+   - ile oświadczeń jest identycznych (intencja ∩ PBN),
+   - ile jest tylko w intencji (intencja \ PBN, „do dodania"),
+   - ile jest tylko w PBN (PBN \ intencja, „do usunięcia").
+   Następnie przechodzi do pytań o DELETE i POST (punkty 7-8).
 7. **KROK 7/8** — DELETE oświadczeń w PBN
    (`DELETE /api/v1/institutionProfile/publications/{objectId}` z
-   `{"all": true, "statementsOfPersons": []}`). Pytanie o potwierdzenie.
+   `{"all": true, "statementsOfPersons": []}`). Narzędzie **zawsze
+   pyta** czy wykonać DELETE, nawet gdy porównanie zwróciło
+   identyczność. Domyślna wartość zależy od wyniku KROK 6/8:
+   „identyczne" → default `n`, „różnice" → default `t`. Pozwala to
+   wymusić DELETE dla testowania reakcji PBN.
 8. **KROK 8/8** — POST nowych oświadczeń
    (`POST /api/v2/institution-profile/statements` z payloadem z
    `WydawnictwoPBNAdapter.pbn_get_api_statements()`). Retry ×3 dla
-   HTTP 500/423 z exponential backoff.
+   HTTP 500/423 z exponential backoff. **Zawsze pyta** — jak w
+   KROK 7/8 — z domyślną wartością zależną od identyczności.
 
 Narzędzie wypisuje **PODSUMOWANIE** z wynikami każdego kroku (OK /
 dry-run / pominięty / BŁĄD HTTP XXX).
