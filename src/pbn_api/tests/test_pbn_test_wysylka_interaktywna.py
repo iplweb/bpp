@@ -49,19 +49,47 @@ def _patch_input(monkeypatch, answers):
 
 
 def _patch_intended_statements(monkeypatch, statements):
-    """Patchuje WydawnictwoPBNAdapter.pbn_get_api_statements() żeby
-    zwracał zadaną listę intended statements (bez wymagania PublikacjaInstytucji_V2).
+    """Patchuje adapter żeby zwracał zadaną listę intended statements.
+
+    Patch dotyczy:
+    - ``pbn_get_json_statements`` — używana w KROK 6/8 (porównanie).
+      Zwraca surową listę dict-ów (każdy może mieć personObjectId,
+      disciplineId, disciplineUuid, type itd.).
+    - ``pbn_get_api_statements`` — używana w KROK 8/8 (POST /v2/statements).
+      Zwraca ``{"publicationUuid": ..., "statements": [...]}``.
+    - ``__init__`` — dodatkowo ustawia ``pbn_wysylaj_bez_oswiadczen=True``
+      na instancji. Potrzebne gdy ``statements=[]``: inaczej ``pbn_get_json``
+      w KROK 2/8 wywoła ``StatementsMissing`` (bo artykuł/rozdział bez
+      statements jest walidowany jako błąd). W testach chcemy móc
+      symulować każdy stan — flaga wyłącza walidację.
+
+    Fixture testowy ``pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina`` nie
+    tworzy ``PublikacjaInstytucji_V2``, bez czego ``pbn_get_api_statements``
+    rzuciłoby ``DaneLokalneWymagajaAktualizacjiException``.
     """
     from pbn_api.adapters.wydawnictwo import WydawnictwoPBNAdapter
 
+    statements_list = list(statements)
+    monkeypatch.setattr(
+        WydawnictwoPBNAdapter,
+        "pbn_get_json_statements",
+        lambda self, _lst=None: list(statements_list),
+    )
     monkeypatch.setattr(
         WydawnictwoPBNAdapter,
         "pbn_get_api_statements",
         lambda self: {
             "publicationUuid": "00000000-0000-0000-0000-000000000001",
-            "statements": list(statements),
+            "statements": list(statements_list),
         },
     )
+    original_init = WydawnictwoPBNAdapter.__init__
+
+    def patched_init(self, *args, **kwargs):
+        original_init(self, *args, **kwargs)
+        self.pbn_wysylaj_bez_oswiadczen = True
+
+    monkeypatch.setattr(WydawnictwoPBNAdapter, "__init__", patched_init)
 
 
 @pytest.mark.django_db

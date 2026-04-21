@@ -355,28 +355,42 @@ class Command(PBNBaseCommand):
         # ``OswiadczenieInstytucji`` (to snapshot *PBN* z poprzedniego
         # pobrania, nie BPP); po edycji w rekordzie — skasowaniu autora,
         # dyscypliny, wypięciu — cache pozostałby nieaktualny.
+        #
+        # Używamy ``pbn_get_json_statements()`` (surowa lista dict-ów
+        # przed konwersją w ``pbn_get_api_statements``, która usuwa
+        # ``disciplineId`` gdy jest ``disciplineUuid``). Surowy format
+        # zachowuje ``disciplineId`` (numerek MNiSW) i ``personObjectId``
+        # — oba nam potrzebne do porównania z PBN GET response, gdzie są
+        # ``area`` i ``personId``.
         try:
-            payload = WydawnictwoPBNAdapter(publication).pbn_get_api_statements()
-            intended = payload.get("statements", [])
-        except DaneLokalneWymagajaAktualizacjiException as e:
-            self._warn(
-                f"Nie mogę wygenerować intended-state "
-                f"(adapter wymaga UUID publikacji z PublikacjaInstytucji_V2): {e}"
-            )
+            intended = WydawnictwoPBNAdapter(publication).pbn_get_json_statements()
+        except Exception as e:  # noqa: BLE001
+            self._warn(f"Nie mogę wygenerować intencji BPP (adapter): {e}")
             self._info("Zwracam 'różnice' — user zdecyduje co robić.")
             self.stats.append(("Porównanie", "nieznane (błąd adaptera)"))
             self._prompt_enter()
             return False  # traktujemy jak "różne"
 
         def _key(stmt):
+            """Klucz porównania: (person-mongoId, disciplineNumer).
+
+            Mapowanie między formatami:
+            - PBN GET response (``/page/statements``): ``personId`` (mongoId),
+              ``area`` (string, numerek dyscypliny MNiSW np. "301").
+            - Adapter ``pbn_get_json_statements()`` (przed konwersją):
+              ``personObjectId`` (mongoId), ``disciplineId`` (int, numerek
+              dyscypliny MNiSW).
+            Oba oznaczają to samo.
+            """
             if not isinstance(stmt, dict):
-                return (None, None, None)
-            # PBN v1 zwraca personId (mongoId), v2 statement payload używa
-            # personObjectId. Adapter zwraca personId. Bierzemy co jest.
+                return (None, None)
+            person = stmt.get("personId") or stmt.get("personObjectId")
+            discipline = stmt.get("area")
+            if discipline is None:
+                discipline = stmt.get("disciplineId")
             return (
-                stmt.get("personId") or stmt.get("personObjectId"),
-                str(stmt.get("area") or ""),
-                stmt.get("institutionId"),
+                str(person) if person else None,
+                str(discipline) if discipline is not None else "",
             )
 
         intended_keys = {_key(x) for x in intended}
