@@ -122,14 +122,165 @@ Tryb `--dry-run` pokazuje wszystkie żądania, ale nic nie wysyła.
 - Identyfikacja użytkownika PBN — wzorzec z
   `pbn_wysylka_oswiadczen/tasks.py::get_pbn_client()`.
 
-### CLI argumenty
+## Jak testować narzędzie — krok po kroku
 
+Ta sekcja to konkretna instrukcja uruchomienia narzędzia
+`pbn_test_wysylka_interaktywna` — zarówno lokalnie, jak i w kontenerze
+pre-prod zbudowanym przez CI.
+
+### 1. Testy jednostkowe (bez PBN)
+
+Szybka weryfikacja że narzędzie działa na poziomie kodu — używa
+mockowanego transportu, nie wymaga tokena PBN ani dostępu do sieci.
+
+```bash
+cd /sciezka/do/worktree
+UV_NO_SYNC=1 uv run --all-extras pytest \
+    src/pbn_api/tests/test_pbn_test_wysylka_interaktywna.py -n auto
 ```
-uv run python src/manage.py pbn_test_wysylka_interaktywna \
-    --wydawnictwo-zwarte <PK>       # albo --wydawnictwo-ciagle <PK>
-    --user <USERNAME>               # użytkownik z tokenem PBN
-    [--dry-run]                     # nic nie wysyłaj
+
+Powinieneś zobaczyć `13 passed`.
+
+### 2. Smoke test na preprod PBN (tryb dry-run)
+
+Dry-run pokazuje wszystkie żądania HTTP które *zostałyby* wysłane do
+PBN, ale nic nie wysyła. Idealne do weryfikacji że narzędzie widzi
+Twoją publikację i poprawnie generuje JSON.
+
+```bash
+# Lokalnie (worktree ma własne .venv i testcontainers):
+UV_NO_SYNC=1 uv run --all-extras python src/manage.py \
+    pbn_test_wysylka_interaktywna \
+    --wydawnictwo-zwarte 12345 \
+    --dry-run
 ```
+
+W tym trybie żaden token PBN nie jest wymagany — narzędzie nie wysyła
+niczego. Naciskasz Enter między krokami, narzędzie wypisze każde
+żądanie (METODA, URL, body).
+
+### 3. Rzeczywisty test na preprod PBN
+
+Gdy upewniłeś się że dry-run wygląda OK, puść bez `--dry-run`. Wymaga
+tokena PBN — można go podać przez `--user-token` albo skonfigurować
+uczelnię (`Uczelnia.pbn_api_user`) w adminie.
+
+```bash
+# Wariant A: token z parametru
+UV_NO_SYNC=1 uv run --all-extras python src/manage.py \
+    pbn_test_wysylka_interaktywna \
+    --wydawnictwo-zwarte 12345 \
+    --user-token <TOKEN_PBN>
+
+# Wariant B: token zaciągnięty z Uczelnia.pbn_api_user (automatycznie,
+# bez --user-token, jeśli uczelnia ma skonfigurowany pbn_api_user_id)
+UV_NO_SYNC=1 uv run --all-extras python src/manage.py \
+    pbn_test_wysylka_interaktywna \
+    --wydawnictwo-ciagle 67890
+```
+
+### 4. Uruchomienie w obrazie Docker zbudowanym przez CI
+
+Po tym jak w tej gałęzi jest plik `.docker-build`, CI buduje obrazy
+`iplweb/bpp_appserver:feature-pbn-test-wysylka-interaktywna` (tag =
+nazwa brancha, tylko małe litery / kreski). Po zakończeniu buildu:
+
+```bash
+# Pobierz obraz:
+docker pull iplweb/bpp_appserver:feature-pbn-test-wysylka-interaktywna
+
+# Uruchom narzędzie w kontenerze (zakładam że bpp-deploy już stoi):
+docker exec -it <nazwa-kontenera-appserver> \
+    python src/manage.py pbn_test_wysylka_interaktywna \
+    --wydawnictwo-zwarte 12345 --dry-run
+```
+
+### 5. Co robi narzędzie (flow, 8 kroków)
+
+Między każdym krokiem naciskasz **Enter** aby kontynuować albo **q**
+żeby przerwać (narzędzie zawsze wypisze podsumowanie na końcu, nawet
+po q).
+
+1. **KROK 1/8** — info o publikacji (PK, tytuł, rok, aktualny PBN UID,
+   liczba lokalnych `OswiadczenieInstytucji`).
+2. **KROK 2/8** — generowanie JSON przez `WydawnictwoPBNAdapter`.
+   Narzędzie pokaże czy JSON zawiera klucz `statements` i zapyta czy
+   pokazać pełną treść (default: `n`, tylko preview do 600 znaków).
+3. **KROK 3/8** — wybór endpointa: `[1]` `/api/v1/publications`
+   (all-in-one, wysyła razem z oświadczeniami jeśli są w JSON) albo
+   `[2]` `/api/v1/repositorium/publications` (narzędzie usuwa klucz
+   `statements` i przepuszcza JSON przez
+   `convert_js_with_statements_to_no_statements` — zgodnie ze
+   specyfikacją PBN endpoint repozytoryjny nie przyjmuje oświadczeń).
+4. **KROK 4/8** — POST publikacji. Narzędzie wypisze URL, body i prosi
+   o potwierdzenie. Po sukcesie wyciąga `objectId` z odpowiedzi PBN.
+5. **KROK 5/8** — GET aktualnych oświadczeń z PBN dla tego objectId
+   (`/api/v1/institutionProfile/publications/page/statements
+   ?publicationId={id}`).
+6. **KROK 6/8** — porównanie oświadczeń. Narzędzie pokazuje:
+   - ile oświadczeń jest identycznych (lokalne ∩ PBN),
+   - ile jest tylko lokalnie (lokalne \ PBN),
+   - ile jest tylko w PBN (PBN \ lokalne).
+   Jeśli sety są identyczne, narzędzie kończy flow (nie rusza
+   oświadczeń). Inaczej pyta czy kasować i nadpisywać.
+7. **KROK 7/8** — DELETE oświadczeń w PBN
+   (`DELETE /api/v1/institutionProfile/publications/{objectId}` z
+   `{"all": true, "statementsOfPersons": []}`). Pytanie o potwierdzenie.
+8. **KROK 8/8** — POST nowych oświadczeń
+   (`POST /api/v2/institution-profile/statements` z payloadem z
+   `WydawnictwoPBNAdapter.pbn_get_api_statements()`). Retry ×3 dla
+   HTTP 500/423 z exponential backoff.
+
+Narzędzie wypisuje **PODSUMOWANIE** z wynikami każdego kroku (OK /
+dry-run / pominięty / BŁĄD HTTP XXX).
+
+### 6. Co sprawdzać ręcznie w preprod (checklist)
+
+Cel Fazy 1: zebrać empiryczne obserwacje zachowania PBN przed
+decyzjami projektowymi Fazy 2.
+
+- [ ] **Publikacja z PBN UID + oświadczeniami lokalnymi**, wysłana
+  opcją `[1]` (`/api/v1/publications`) — potwierdzenie że PBN
+  zaakceptuje JSON z `statements` (znany case, weryfikacja baseline).
+- [ ] **Ta sama publikacja** wysłana opcją `[2]`
+  (`/api/v1/repositorium/publications` bez `statements` w JSON) —
+  czy PBN zaakceptuje? Jaki jest `status` publikacji po wysyłce?
+  Czy oświadczenia wcześniej skojarzone z publikacją pozostają
+  nietknięte?
+- [ ] **Sekwencja** opcja `[2]` → GET oświadczeń → jeśli się różnią,
+  `t` na DELETE → POST `/v2/statements`. Ma to być docelowy flow
+  Fazy 2 — chcemy wiedzieć że PBN jest z tym OK.
+- [ ] **Edge case** — publikacja ze statusem "LOGED" (jeśli
+  napotkamy): co zwraca GET? Czy DELETE działa? Co zwraca POST
+  `/v2/statements`?
+- [ ] **Publikacja bez PBN UID (nowa)** — opcja `[1]` powinna
+  zwrócić nowy `objectId`. Opcja `[2]` też (`.../repositorium`).
+- [ ] **Publikacja bez oświadczeń lokalnych** — porównanie w KROK 6/8
+  ma pokazać że lokalne są puste, a więc nie ma o czym rozmawiać.
+
+Obserwacje notujemy w osobnym pliku `docs/pbn-wysylka-eksperymenty.md`
+(tworzony w osobnym PR), żeby były bazą do decyzji w Fazie 2.
+
+### 7. Rozwiązywanie problemów
+
+- **`NeedsPBNAuthorisationException`** — brak tokena PBN. Podaj
+  `--user-token <TOKEN>` albo skonfiguruj `Uczelnia.pbn_api_user_id`
+  (Django admin → Redagowanie → Uczelnia).
+- **`BrakZdefiniowanegoObiektuUczelniaWSystemieError`** — stwórz
+  obiekt Uczelnia w adminie (tylko raz na instalację).
+- **`DaneLokalneWymagajaAktualizacjiException`** w KROK 8/8 — brak
+  lokalnego `PublikacjaInstytucji_V2` dla tego PBN UID. Pobierz
+  ręcznie przez
+  `python src/manage.py pbn_pobierz_publikacje_z_instytucji_v2
+  --user-token <TOKEN>` albo wyślij publikację najpierw opcją `[1]`
+  (PBN wtedy zwróci PublikacjaInstytucji_V2, a my ją pobierzemy).
+- **`HttpException 423 Locked`** przy POST — publikacja lub zasób
+  zablokowany w PBN. Poczekaj chwilę i spróbuj ponownie (dla POST
+  `/v2/statements` narzędzie ma wbudowany retry ×3).
+- **Pliki migracji** — jeśli podczas pytest widzisz konflikt leaf
+  nodes w `importer_publikacji`, zrób
+  `uv run python src/manage.py makemigrations --merge --noinput`
+  (nie modyfikuje istniejących migracji, dodaje nową merge-ową).
 
 ## Faza 2 — refaktoryzacja `sync_publication` (osobna gałąź)
 
@@ -138,22 +289,13 @@ Po ręcznych testach narzędziem z Fazy 1 i udokumentowaniu wyników
 implementujemy docelowy flow w `src/pbn_api/client/publication_sync.py`.
 Plan dla Fazy 2 — szczegóły po zebraniu obserwacji z eksperymentów.
 
-## Testowanie (Faza 1)
-
-```bash
-# Testy narzędzia (unit):
-UV_NO_SYNC=1 uv run --all-extras pytest \
-    src/pbn_api/tests/test_pbn_test_wysylka_interaktywna.py -n auto
-
-# Smoke test na preprod PBN (ręczny):
-uv run python src/manage.py pbn_test_wysylka_interaktywna \
-    --wydawnictwo-zwarte <PK> --user <USERNAME> --dry-run
-# a potem bez --dry-run, na rzeczywistej publikacji w preprod
-```
-
 ## Wymagania CI
 
 - `.docker-build` w root repo ⇒ CI buduje obraz Docker dla tej gałęzi,
   tak by user mógł uruchomić narzędzie w środowisku testowym.
 - Pełny pipeline (`tests.yml`): lint + testy (non-playwright, serial,
   playwright) muszą przejść.
+- Build Docker odpala się **raz** na commit (push do master lub
+  event pull_request) — od zmiany z 2026-04-21 push do
+  feature/fix/hotfix nie triggeruje już buildu (tylko PR events),
+  żeby uniknąć duplikatów.
