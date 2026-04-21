@@ -32,6 +32,21 @@ variable "TAG_LATEST" {
   default = "true"
 }
 
+# R16: zstd compression przy pushu do rejestru (~20-30% mniejszy transfer
+# pull/push niz gzip). Dotyczy TYLKO `type=registry` — lokalny `type=docker`
+# zapisuje uncompressed do daemon storage. Override wartosci:
+#   COMPRESSION=gzip make build              # stare zachowanie
+#   COMPRESSION_LEVEL=9 make build           # wyzsza kompresja, wolniejszy push
+# Docker Hub wspiera zstd od 2023; klienci z Docker 23+ pullna natywnie,
+# starsi dostana gzip fallback (koszt po stronie rejestru).
+variable "COMPRESSION" {
+  default = "zstd"
+}
+
+variable "COMPRESSION_LEVEL" {
+  default = "3"
+}
+
 # Build groups for different scenarios
 group "default" {
   targets = ["appserver", "workerserver",
@@ -66,7 +81,7 @@ target "base" {
   # yarn-cache) which persist across --no-cache builds.
   no-cache  = true
   platforms = [PLATFORM]
-  output    = PUSH ? ["type=registry"] : ["type=docker"]
+  output    = PUSH ? ["type=registry,compression=${COMPRESSION},compression-level=${COMPRESSION_LEVEL},force-compression=true"] : ["type=docker"]
 }
 
 # Dependent images - wait for base to complete via contexts dependency
@@ -86,7 +101,7 @@ target "appserver" {
     "iplweb/bpp_appserver:${DOCKER_VERSION}"
   ]
   platforms = [PLATFORM]
-  output    = PUSH ? ["type=registry"] : ["type=docker"]
+  output    = PUSH ? ["type=registry,compression=${COMPRESSION},compression-level=${COMPRESSION_LEVEL},force-compression=true"] : ["type=docker"]
 }
 
 target "workerserver" {
@@ -105,7 +120,7 @@ target "workerserver" {
     "iplweb/bpp_workerserver:${DOCKER_VERSION}"
   ]
   platforms = [PLATFORM]
-  output    = PUSH ? ["type=registry"] : ["type=docker"]
+  output    = PUSH ? ["type=registry,compression=${COMPRESSION},compression-level=${COMPRESSION_LEVEL},force-compression=true"] : ["type=docker"]
 }
 
 target "beatserver" {
@@ -124,7 +139,7 @@ target "beatserver" {
     "iplweb/bpp_beatserver:${DOCKER_VERSION}"
   ]
   platforms = [PLATFORM]
-  output    = PUSH ? ["type=registry"] : ["type=docker"]
+  output    = PUSH ? ["type=registry,compression=${COMPRESSION},compression-level=${COMPRESSION_LEVEL},force-compression=true"] : ["type=docker"]
 }
 
 target "authserver" {
@@ -143,7 +158,7 @@ target "authserver" {
     "iplweb/bpp_authserver:${DOCKER_VERSION}"
   ]
   platforms = [PLATFORM]
-  output    = PUSH ? ["type=registry"] : ["type=docker"]
+  output    = PUSH ? ["type=registry,compression=${COMPRESSION},compression-level=${COMPRESSION_LEVEL},force-compression=true"] : ["type=docker"]
 }
 
 target "denorm-queue" {
@@ -162,5 +177,5 @@ target "denorm-queue" {
     "iplweb/bpp_denorm_queue:${DOCKER_VERSION}"
   ]
   platforms = [PLATFORM]
-  output    = PUSH ? ["type=registry"] : ["type=docker"]
+  output    = PUSH ? ["type=registry,compression=${COMPRESSION},compression-level=${COMPRESSION_LEVEL},force-compression=true"] : ["type=docker"]
 }

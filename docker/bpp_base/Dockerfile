@@ -4,6 +4,17 @@
 ARG PYTHON_VERSION=3.12
 ARG NODEJS_VERSION=20
 ARG DEBIAN_VERSION=trixie
+# Pandoc installed via COPY --from= zamiast apt-get, bo apt-owy pandoc
+# ciagnie pandoc-data i transitive deps (~300 MB). Osobny pinned tag
+# pozwala trzymac pandoc w stabilnej warstwie cache, niezaleznej od
+# rebuildow bpp. Update pandoc = zmiana tego jednego arg.
+ARG PANDOC_VERSION=3.5
+
+##############################################################################
+# PANDOC-SRC: pinned pandoc binary source
+# Oddzielny stage bo BuildKit nie rozwija zmiennych w `COPY --from=image:${VAR}`.
+##############################################################################
+FROM pandoc/core:${PANDOC_VERSION}-ubuntu AS pandoc-src
 
 ##############################################################################
 # BASE: shared foundation for builder and test-runner
@@ -129,10 +140,19 @@ RUN /app/.venv/bin/python src/manage.py compilemessages -v0 -l pl --traceback
 # UWAGA: musi biec PRZED R2 — src/import_pracownikow/static/.../przyklad.xlsx
 # to symlink do src/import_pracownikow/tests/testdata.xlsx; collectstatic
 # rozwiązuje symlink (kopiuje treść) i dopiero potem możemy usunąć tests/.
+# R11: --ignore sinon --ignore qunit wycina test-only biblioteki JS
+# (sinon/pkg/sinon.js + qunit/qunit/*) z production staticroot. Dev flow
+# jest nietknięty, bo używamy collectstatic tylko w buildzie obrazu.
+# R14: --ignore '*.map' wycina source maps (~8 MB rozsianych po
+# foundation-sites, tone, djangoql, rest_framework, bpp/js/dist, ...).
+# Source maps sluza tylko browser devtools podczas debugowania JS/CSS;
+# w prod 404 na .map pojawia sie w konsoli gdy user otworzy devtools —
+# bez wplywu na dzialanie aplikacji.
 RUN DJANGO_BPP_SECRET_KEY=build-time-only-not-used \
     STATIC_ROOT=/app/staticroot.baked \
     /app/.venv/bin/python src/manage.py collectstatic \
-        --noinput -v0 --traceback
+        --noinput -v0 --traceback \
+        --ignore sinon --ignore qunit --ignore '*.map'
 
 RUN rm -rf /app/node_modules
 
@@ -151,12 +171,37 @@ RUN find /app/src -mindepth 2 -type d -name tests -exec rm -rf {} + && \
            /app/src/conftest.py \
            /app/src/integration_tests
 
+# R13: analogicznie do R12, usuwamy .pyc z /app/src (~2 MB). Bytecode
+# zostaje skompilowany przez compilemessages + collectstatic powyzej;
+# runtime kompiluje on-demand przy pierwszym imporcie, kolejne workery
+# dziela bytecode przez fork() (gunicorn preload).
+RUN find /app/src -type d -name __pycache__ -exec rm -rf {} + \
+    2>/dev/null || true
+
 # R3: UV_COMPILE_BYTECODE=1 już wygenerowało .pyc podczas `uv sync`.
 # Dodatkowo strippujemy katalogi test* z wbudowanych pakietów, aby
 # zaoszczędzić kilkanaście MB (Django zachowujemy — template'y odwołują
 # się wewnętrznie do testowych aplikacji).
 RUN find /app/.venv -type d -name tests -not -path "*/django/*" \
       -exec rm -rf {} + 2>/dev/null || true
+
+# R8: strip debug symbols z .so w venv (~180 MB .so total, ~30-50 MB zysku).
+# `--strip-unneeded` zachowuje symbole potrzebne do dynamic linking
+# (inaczej `--strip-all` dalby ImportError), wycina tylko debug info i
+# local symbols. binutils (strip) jest juz w python:3.12-trixie. Warning
+# swallowing: niektore wheels moga miec non-ELF .so (fallback Python
+# impl, np. w setuptools).
+RUN find /app/.venv -name "*.so" -exec strip --strip-unneeded {} + \
+    2>/dev/null || true
+
+# R12: usun __pycache__ w venv (~118 MB). UV_COMPILE_BYTECODE=1 generuje
+# .pyc przy `uv sync`, ale w produkcji wolimy mniejszy obraz kosztem
+# wolniejszego cold startu pierwszego workera (Python kompiluje .pyc
+# in-memory przy pierwszym imporcie). Kolejne workery dzielą skompilowany
+# bytecode przez fork() (gunicorn) albo preload, wiec efekt jest tylko
+# na pierwszym starcie procesu.
+RUN find /app/.venv -type d -name __pycache__ -exec rm -rf {} + \
+    2>/dev/null || true
 
 ##############################################################################
 # TEST-RUNNER: test environment (source mounted at runtime via volume)
@@ -169,6 +214,10 @@ COPY docker/bpp_base/runtime.txt \
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=apt-cache \
     --mount=type=cache,target=/var/lib/apt/lists,sharing=locked,id=apt-lists \
     cat /tmp/packages/*.txt | xargs apt-get install -y
+
+# Pandoc z oficjalnego obrazu (patrz komentarz R7 przy runtime stage).
+# libgmp10/liblua5.4-0 juz sa w runtime.txt instalowanym wyzej.
+COPY --from=pandoc-src /usr/local/bin/pandoc /usr/local/bin/pandoc
 
 # yarn + grunt (global install for CLI use)
 RUN --mount=type=cache,target=/root/.npm,id=npm-cache \
@@ -224,7 +273,17 @@ COPY docker/bpp_base/runtime.txt /tmp/
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=apt-cache \
     --mount=type=cache,target=/var/lib/apt/lists,sharing=locked,id=apt-lists \
     apt-get update && \
-    xargs -a /tmp/runtime.txt apt-get install -y
+    xargs -a /tmp/runtime.txt apt-get install -y && \
+    rm -rf /usr/share/doc/* /usr/share/man/* /var/lib/apt/lists/*
+# R15: rm /usr/share/{doc,man}/* + /var/lib/apt/lists/* (~3.4 MB).
+# Standardowy docker-slim pattern — runtime nigdy nie czyta README,
+# changelog.Debian.gz ani copyright. apt-lists i tak jest w cache mount,
+# ale explicite rm to defensive (BuildKit zostawia czasem residual).
+
+# R7: pandoc binary z oficjalnego obrazu pandoc/core zamiast apt (~300 MB
+# oszczednosci + stabilna warstwa cache, niezalezna od rebuildow bpp).
+# Binary linkuje dynamicznie do libgmp10, liblua5.4-0 (w runtime.txt).
+COPY --from=pandoc-src /usr/local/bin/pandoc /usr/local/bin/pandoc
 
 # Uwaga: wcześniej PATH wskazywał na /.venv/bin, a venv jest pod
 # /app/.venv — działało to tylko dlatego, że wszystkie komendy w
