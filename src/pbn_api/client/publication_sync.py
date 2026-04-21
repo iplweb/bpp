@@ -21,6 +21,7 @@ from pbn_api.const import (
 from pbn_api.exceptions import (
     CannotDeleteStatementsException,
     CannotUploadPublicationFee,
+    DaneLokalneWymagajaAktualizacjiException,
     HttpException,
     NoFeeDataException,
     NoPBNUIDException,
@@ -688,59 +689,60 @@ class PublicationSyncMixin:
         pub,
         notificator=None,
         force_upload=False,
-        delete_statements_before_upload=False,
+        delete_statements_before_upload=False,  # DEPRECATED: ignorowany
         export_pk_zero=None,
         always_affiliate_to_uid=None,
     ):
         """
-        @param delete_statements_before_upload: gdy True, kasuj oświadczenia publikacji
-            przed wysłaniem (jeżeli posiada PBN UID)
+        Synchronizuje publikację BPP z PBN w dwóch niezależnych krokach:
+
+        1. POST publikacji do endpointu repozytoryjnego
+           ``/api/v1/repositorium/publications`` (bez oświadczeń w body).
+        2. Synchronizacja oświadczeń (po sukcesie kroku 1): GET aktualnego
+           stanu w PBN, porównanie z intencją BPP, selektywne DELETE/POST.
+
+        Gdy POST publikacji zawiedzie — oświadczenia w PBN pozostają
+        nietknięte (ważna gwarancja bezpieczeństwa). Gdy POST publikacji
+        OK ale synchronizacja oświadczeń nie — rzuca
+        ``StatementsResendFailedException`` (klasyfikowane w
+        ``pbn_export_queue`` jako RETRY_LATER).
+
+        :param delete_statements_before_upload: DEPRECATED, ignorowany —
+            zachowany w sygnaturze dla backward compat. Nowa logika zawsze
+            synchronizuje oświadczenia po wysyłce publikacji (split flow),
+            a tryb kasowania sterowany jest przez
+            ``Uczelnia.pbn_kasuj_dyscypliny_selektywnie``.
         """
+        from bpp.models import Uczelnia
+
         pub = self.eventually_coerce_to_publication(pub)
 
-        if (
-            delete_statements_before_upload
-            and hasattr(pub, "pbn_uid_id")
-            and pub.pbn_uid_id is not None
-        ):
-            try:
-                self._delete_statements_with_retry(pub.pbn_uid_id)
-                force_upload = True
-            except CannotDeleteStatementsException:
-                pass
-
-        objectId, ret, js, bez_oswiadczen = self.upload_publication(
+        # KROK 1: POST publikacji do endpointu repo (zawsze)
+        objectId, ret, js, _bez_oswiadczen = self.upload_publication(
             pub,
             force_upload=force_upload,
             export_pk_zero=export_pk_zero,
             always_affiliate_to_uid=always_affiliate_to_uid,
         )
 
-        if bez_oswiadczen and notificator is not None:
-            notificator.info(
-                "Rekord nie posiada oświadczeń - wysłano wyłącznie do repozytorium PBN."
-            )
-
         if not objectId:
             self._handle_no_objectid(notificator, ret, js, pub)
             return
 
+        # KROK 2: pobierz lokalnie Publication (obiekt mongodb)
         publication = self.download_publication(objectId=objectId)
 
-        # Update SentData with the publication link now that it exists in the database
+        # Update SentData with the publication link now that it exists
         try:
             sent_data = SentData.objects.get_for_rec(pub)
             if sent_data.pbn_uid_id is None:
                 sent_data.pbn_uid_id = publication.pk
                 sent_data.save()
         except SentData.DoesNotExist:
-            # This shouldn't happen if upload_publication was called,
-            # but handle gracefully
+            # This shouldn't happen if upload_publication was called
             pass
 
-        if not bez_oswiadczen:
-            self._download_statements_with_retry(publication, objectId, notificator)
-
+        # KROK 3: obsługa zmiany/konfliktu PBN UID
         if pub.pbn_uid_id != objectId:
             if pub.pbn_uid_id is not None:
                 self._handle_uid_change(pub, objectId, notificator, js, ret)
@@ -754,6 +756,32 @@ class PublicationSyncMixin:
 
             pub.pbn_uid = publication
             pub.save()
+
+        # KROK 4: pobierz lokalnie PublikacjaInstytucji_V2 (potrzebne do
+        # ``pbn_get_api_statements``, które wymaga UUID publikacji z V2).
+        # ``_download_statements_with_retry`` pobiera też V2 jako efekt
+        # uboczny (patrz pobierz_publikacje_instytucji_v2 w helperze).
+        self._download_statements_with_retry(publication, objectId, notificator)
+
+        # KROK 5: synchronizacja oświadczeń (split flow, po wysyłce publikacji)
+        uczelnia = Uczelnia.objects.get_default()
+        kasuj_selektywnie = (
+            uczelnia.pbn_kasuj_dyscypliny_selektywnie if uczelnia else True
+        )
+        try:
+            self._sync_statements_with_pbn(
+                pub, objectId, kasuj_selektywnie, notificator
+            )
+        except DaneLokalneWymagajaAktualizacjiException as e:
+            # Brak lokalnego PublikacjaInstytucji_V2 — nie da się wysłać
+            # oświadczeń. Logujemy warning i kontynuujemy (publikacja
+            # została już wysłana w KROK 1, to nie jest fatal error).
+            logger.warning("Brak V2 dla %s — pomijam sync oświadczeń: %s", objectId, e)
+            if notificator is not None:
+                notificator.warning(
+                    f"Nie mogę zsynchronizować oświadczeń (brak lokalnych "
+                    f"danych V2): {e}"
+                )
 
         return publication
 
