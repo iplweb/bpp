@@ -757,11 +757,19 @@ class PublicationSyncMixin:
             pub.pbn_uid = publication
             pub.save()
 
-        # KROK 4: pobierz lokalnie PublikacjaInstytucji_V2 (potrzebne do
-        # ``pbn_get_api_statements``, które wymaga UUID publikacji z V2).
-        # ``_download_statements_with_retry`` pobiera też V2 jako efekt
-        # uboczny (patrz pobierz_publikacje_instytucji_v2 w helperze).
-        self._download_statements_with_retry(publication, objectId, notificator)
+        # KROK 4: pobierz lokalnie PublikacjaInstytucji_V2 (wymagane przez
+        # ``pbn_get_api_statements`` w ``_post_statements_with_retry``).
+        # Przy okazji odświeża lokalny cache ``OswiadczenieInstytucji``
+        # (best effort — błąd tu nie blokuje synchronizacji oświadczeń,
+        # bo ``_sync_statements_with_pbn`` zrobi własne GET dla porównania).
+        try:
+            self._download_statements_with_retry(publication, objectId, notificator)
+        except Exception as e:
+            logger.warning(
+                "Odświeżenie lokalnego cache oświadczeń dla %s nie powiodło się: %s",
+                objectId,
+                e,
+            )
 
         # KROK 5: synchronizacja oświadczeń (split flow, po wysyłce publikacji)
         uczelnia = Uczelnia.objects.get_default()

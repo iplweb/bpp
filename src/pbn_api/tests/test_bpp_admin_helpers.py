@@ -10,10 +10,10 @@ from pbn_api.adapters.wydawnictwo import WydawnictwoPBNAdapter
 from pbn_api.client import (
     PBN_GET_INSTITUTION_STATEMENTS,
     PBN_GET_PUBLICATION_BY_ID_URL,
-    PBN_POST_PUBLICATIONS_URL,
 )
 from pbn_api.const import (
     PBN_GET_INSTITUTION_PUBLICATIONS_V2,
+    PBN_POST_INSTITUTION_STATEMENTS_URL,
     PBN_POST_PUBLICATION_NO_STATEMENTS_URL,
 )
 from pbn_api.exceptions import AccessDeniedException
@@ -147,7 +147,9 @@ def test_sprobuj_wyslac_do_pbn_inny_exception(
 ):
     req = rf.get("/")
 
-    pbn_client.transport.return_values[PBN_POST_PUBLICATIONS_URL] = ZeroDivisionError
+    pbn_client.transport.return_values[PBN_POST_PUBLICATION_NO_STATEMENTS_URL] = (
+        ZeroDivisionError
+    )
 
     with middleware(req):
         sprobuj_wyslac_do_pbn_gui(
@@ -164,7 +166,9 @@ def test_sprobuj_wyslac_do_pbn_inny_blad(
 ):
     req = rf.get("/")
 
-    pbn_client.transport.return_values[PBN_POST_PUBLICATIONS_URL] = Exception("test")
+    pbn_client.transport.return_values[PBN_POST_PUBLICATION_NO_STATEMENTS_URL] = (
+        Exception("test")
+    )
 
     with middleware(req):
         sprobuj_wyslac_do_pbn_gui(
@@ -181,7 +185,9 @@ def test_sprobuj_wyslac_do_pbn_z_oswiadczeniami(
 ):
     req = rf.get("/")
 
-    pbn_client.transport.return_values[PBN_POST_PUBLICATIONS_URL] = {"objectId": "123"}
+    pbn_client.transport.return_values[PBN_POST_PUBLICATION_NO_STATEMENTS_URL] = [
+        {"id": "123"}
+    ]
     pbn_client.transport.return_values[
         PBN_GET_PUBLICATION_BY_ID_URL.format(id="123")
     ] = MOCK_RETURNED_MONGODB_DATA
@@ -194,21 +200,31 @@ def test_sprobuj_wyslac_do_pbn_z_oswiadczeniami(
     pbn_client.transport.return_values[
         PBN_GET_INSTITUTION_PUBLICATIONS_V2 + "?publicationId=123&size=10"
     ] = pbn_pageable_json(MOCK_RETURNED_INSTITUTION_PUBLICATION_V2_DATA)
+    # Publikacja ma autorów z dyscyplinami → intencja BPP != puste PBN →
+    # sync_statements wykona POST /v2/statements (i potrzebuje mocka).
+    pbn_client.transport.return_values[PBN_POST_INSTITUTION_STATEMENTS_URL] = {
+        "data": []
+    }
 
     with middleware(req):
         sprobuj_wyslac_do_pbn_gui(
             req, pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina, pbn_client=pbn_client
         )
 
-    msg = get_messages(req)
-    assert "zostały zaktualizowane" in list(msg)[0].message
+    msg = list(get_messages(req))
+    # Może być kilka wiadomości (info o sync oświadczeń + success końcowy).
+    assert any("zostały zaktualizowane" in m.message for m in msg)
 
 
 @pytest.mark.django_db
 def test_sprobuj_wyslac_do_pbn_bez_oswiadczen_sukces(
     pbn_wydawnictwo_zwarte_z_charakterem, pbn_client, rf, pbn_uczelnia
 ):
+    """Uczelnia z pbn_wysylaj_bez_oswiadczen=True pozwala na wysyłkę prac bez dyscyplin."""
     req = rf.get("/")
+
+    pbn_uczelnia.pbn_wysylaj_bez_oswiadczen = True
+    pbn_uczelnia.save()
 
     pbn_client.transport.return_values[PBN_POST_PUBLICATION_NO_STATEMENTS_URL] = [
         {"id": "123"}
@@ -216,15 +232,26 @@ def test_sprobuj_wyslac_do_pbn_bez_oswiadczen_sukces(
     pbn_client.transport.return_values[
         PBN_GET_PUBLICATION_BY_ID_URL.format(id="123")
     ] = MOCK_RETURNED_MONGODB_DATA
+    pbn_client.transport.return_values[PBN_GET_PUBLICATION_BY_ID_URL.format(id=456)] = (
+        MOCK_RETURNED_MONGODB_DATA
+    )
+    pbn_client.transport.return_values[
+        PBN_GET_INSTITUTION_PUBLICATIONS_V2 + "?publicationId=123&size=10"
+    ] = pbn_pageable_json(MOCK_RETURNED_INSTITUTION_PUBLICATION_V2_DATA)
+    pbn_client.transport.return_values[
+        PBN_GET_INSTITUTION_STATEMENTS + "?publicationId=123&size=5120"
+    ] = pbn_pageable_json([])
 
     with middleware(req):
         sprobuj_wyslac_do_pbn_gui(
             req, pbn_wydawnictwo_zwarte_z_charakterem, pbn_client=pbn_client
         )
 
-    msg = get_messages(req)
-    assert "nie posiada oświadczeń" in list(msg)[0].message
-    assert "zostały zaktualizowane" in list(msg)[1].message
+    msg = list(get_messages(req))
+    # Po refaktoryzacji: sync_publication nie rozróżnia "bez oświadczeń" vs
+    # "z oświadczeniami" (zawsze repo endpoint). Wiadomość o sukcesie
+    # zawsze pojawia się po udanej wysyłce.
+    assert any("zaktualizowane" in m.message for m in msg)
 
 
 @pytest.mark.django_db
@@ -247,7 +274,9 @@ def test_sprobuj_wyslac_do_pbn_ostrzezenie_brak_dyscypliny_autora(
         autor.pbn_uid_id = None
         autor.save()
 
-    pbn_client.transport.return_values[PBN_POST_PUBLICATIONS_URL] = {"objectId": "123"}
+    pbn_client.transport.return_values[PBN_POST_PUBLICATION_NO_STATEMENTS_URL] = [
+        {"id": "123"}
+    ]
     pbn_client.transport.return_values[
         PBN_GET_PUBLICATION_BY_ID_URL.format(id="123")
     ] = MOCK_RETURNED_MONGODB_DATA
@@ -287,9 +316,9 @@ def test_sprobuj_wyslac_do_pbn_przychodzi_istniejacy_pbn_uid_dla_nowego_rekordu(
     pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.save(update_fields=["pbn_uid"])
 
     # To jest odpowiedź z PBNu gdzie zwrotnie przyjdzie objectId = MOCK_MONGO_ID
-    pbn_client.transport.return_values[PBN_POST_PUBLICATIONS_URL] = {
-        "objectId": MOCK_MONGO_ID
-    }
+    pbn_client.transport.return_values[PBN_POST_PUBLICATION_NO_STATEMENTS_URL] = [
+        {"id": MOCK_MONGO_ID}
+    ]
     pbn_client.transport.return_values[
         PBN_GET_PUBLICATION_BY_ID_URL.format(id=MOCK_MONGO_ID)
     ] = MOCK_RETURNED_MONGODB_DATA
@@ -339,9 +368,9 @@ def test_sprobuj_wyslac_do_pbn_przychodzi_inny_pbn_uid_dla_starego_rekordu(
     pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.save(update_fields=["pbn_uid"])
 
     # To jest odpowiedź z PBNu gdzie zwrotnie przyjdzie objectId = MOCK_MONGO_ID*2
-    pbn_client.transport.return_values[PBN_POST_PUBLICATIONS_URL] = {
-        "objectId": MOCK_MONGO_ID * 2
-    }
+    pbn_client.transport.return_values[PBN_POST_PUBLICATION_NO_STATEMENTS_URL] = [
+        {"id": MOCK_MONGO_ID * 2}
+    ]
     pbn_client.transport.return_values[
         PBN_GET_PUBLICATION_BY_ID_URL.format(id=MOCK_MONGO_ID * 2)
     ] = MOCK_RETURNED_MONGODB_DATA
