@@ -65,17 +65,21 @@ class PublicationSyncMixin:
         # OpenAccess modeArticle -> mode
         json = rename_dict_key(json, "modeArticle", "mode")
 
-        # OpenAccess releaseDateYear "2022" -> 2022
-        if json.get("openAccess", False):
-            if isinstance(json["openAccess"], dict) and json["openAccess"].get(
-                "releaseDateYear"
-            ):
+        # OpenAccess releaseDateYear "2022" -> 2022 (int)
+        # Jeśli konwersja na int zawiedzie — zachowujemy oryginalną wartość
+        # (PBN zwróci validation error z jasnym komunikatem, jeśli format
+        # jest nieprawidłowy). Wcześniejsza implementacja miała NameError:
+        # zmienna ``i`` była zdefiniowana tylko wewnątrz ``try``, a
+        # bezwarunkowy assignment poza blokiem rzucał NameError gdy
+        # ``int()`` failowało.
+        if json.get("openAccess", False) and isinstance(json["openAccess"], dict):
+            value = json["openAccess"].get("releaseDateYear")
+            if value is not None:
                 try:
-                    i = int(json["openAccess"]["releaseDateYear"])
-                except (ValueError, TypeError, AttributeError):
+                    json["openAccess"]["releaseDateYear"] = int(value)
+                except (ValueError, TypeError):
+                    # Nie ruszamy wartości — PBN wskaże problem w walidacji.
                     pass
-
-                json["openAccess"]["releaseDateYear"] = i
         return json
 
     def post_publication_no_statements(self, json):

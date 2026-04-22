@@ -237,15 +237,34 @@ class WydawnictwoPBNAdapter:
         return oa
 
     def _build_open_access_release_date(self, oa: dict) -> None:
-        """Add release date fields to OpenAccess dict."""
-        if self.original.public_dostep_dnia is not None:
+        """Ustawia pola daty udostępnienia OpenAccess.
+
+        Priorytet źródeł (od najbardziej dedykowanego):
+
+        1. ``openaccess_data_opublikowania`` — pole dedykowane OpenAccess
+           (``ModelZOpenAccess``), ustawiane przez importer z PBN i przez
+           redakcję ręcznie. To powinno być podstawowe źródło.
+        2. ``public_dostep_dnia`` — data wolnego dostępu do strony WWW
+           (``ModelZWWW``). Fallback dla starszych rekordów bez dedykowanej
+           daty OpenAccess.
+        3. ``dostep_dnia`` — data płatnego dostępu. Ostatni fallback.
+
+        Gdy żadna z dat nie jest wypełniona, pola ``releaseDate``,
+        ``releaseDateMonth``, ``releaseDateYear`` NIE są ustawiane.
+        Wcześniejsza implementacja wstawiała hardcoded
+        ``{"releaseDateMonth": "JANUARY", "releaseDateYear": str(rok)}``,
+        co wysyłało do PBN nieprawdziwe dane (styczeń niezależnie od
+        faktycznego miesiąca publikacji). Lepiej pominąć pola i zmusić
+        PBN do zwrócenia validation error (lub zaakceptowania, jeśli
+        spec pozwala), niż wysyłać kłamliwy miesiąc.
+        """
+        data_oa = getattr(self.original, "openaccess_data_opublikowania", None)
+        if data_oa is not None:
+            oa["releaseDate"] = str(data_oa)
+        elif self.original.public_dostep_dnia is not None:
             oa["releaseDate"] = str(self.original.public_dostep_dnia)
         elif self.original.dostep_dnia is not None:
             oa["releaseDate"] = str(self.original.dostep_dnia)
-
-        if oa.get("releaseDate") is None:
-            oa["releaseDateMonth"] = "JANUARY"
-            oa["releaseDateYear"] = str(self.original.rok)
 
     def _build_open_access(self, pub_type: str) -> dict | None:
         """Build OpenAccess data structure if all required fields are present."""
