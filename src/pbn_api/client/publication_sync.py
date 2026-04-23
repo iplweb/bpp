@@ -448,20 +448,109 @@ class PublicationSyncMixin:
 
         self._report_statements_failure_and_raise(publication_pk, objectId, last_error)
 
-    def _post_statements_with_retry(self, rec, objectId, publication_pk, max_tries=3):
+    @staticmethod
+    def _convert_stmt_for_api(stmt):
+        """Konwersja statement z formatu ``pbn_get_json_statements`` do formatu
+        akceptowanego przez ``POST /api/v2/institution-profile/statements``.
+
+        Skopiowane z ``WydawnictwoPBNAdapter.pbn_get_api_statements._convert_stmt``
+        (``src/pbn_api/adapters/wydawnictwo.py:201-210``). Gdy zmieni się tam
+        format, zmień też tutaj.
+        """
+        stmt = dict(stmt)  # shallow copy — nie modyfikujemy oryginalnego
+        if "disciplineId" in stmt and "disciplineUuid" in stmt:
+            del stmt["disciplineId"]
+        if "type" in stmt:
+            stmt["personRole"] = stmt.pop("type")
+        stmt.pop("personNaturalId", None)
+        return stmt
+
+    def _build_post_statements_payload(self, rec, filter_keys=None):
+        """Buduje payload dla ``POST /api/v2/institution-profile/statements``.
+
+        Gdy ``filter_keys`` jest ``None``, zwraca pełen payload z
+        ``WydawnictwoPBNAdapter.pbn_get_api_statements()`` (wszystkie
+        lokalne statements w formacie zgodnym z endpointem).
+
+        Gdy ``filter_keys`` to set tupli
+        ``(personObjectId_str, disciplineId_str)``:
+
+        - ``publicationUuid`` bierzemy z wynikowego ``pbn_get_api_statements``
+          (to również wymusza wywołanie ``get_pbn_uuid`` w adapterze —
+          jeśli nie ma V2 lokalnie, rzuci ``DaneLokalneWymagajaAktualizacjiException``).
+        - Statements bierzemy z surowego ``pbn_get_json_statements()`` (format
+          przed konwersją, zawiera ``disciplineId`` używany jako część klucza
+          porównania). Filtrujemy po ``_statement_key_intended`` i przepuszczamy
+          każdy przez ``_convert_stmt_for_api``.
+
+        Zwraca ``None`` gdy zestaw po filtrowaniu jest pusty (brak sensu
+        POST-ować pustą listę).
+        """
+        adapter = WydawnictwoPBNAdapter(rec)
+
+        # Zawsze wywołujemy pbn_get_api_statements — daje publicationUuid
+        # i pełen zestaw dla trybu bez-filtra. Może rzucić
+        # DaneLokalneWymagajaAktualizacjiException — propaguje do callera.
+        full_payload = adapter.pbn_get_api_statements()
+
+        if filter_keys is None:
+            # Pełen zestaw (tryb batch — po delete_all POST-ujemy wszystko).
+            return full_payload
+
+        if not filter_keys:
+            return None
+
+        # Filtrowanie po kluczu ``(personObjectId, disciplineId)``.
+        # Klucz wymaga surowego disciplineId (``pbn_get_api_statements``
+        # usuwa disciplineId gdy jest disciplineUuid, więc nie da się
+        # filtrować po full_payload).
+        filtered = [
+            self._convert_stmt_for_api(s)
+            for s in adapter.pbn_get_json_statements()
+            if self._statement_key_intended(s) in filter_keys
+        ]
+        if not filtered:
+            return None
+        return {
+            "publicationUuid": full_payload["publicationUuid"],
+            "statements": filtered,
+        }
+
+    def _post_statements_with_retry(
+        self, rec, objectId, publication_pk, filter_keys=None, max_tries=3
+    ):
         """POST oświadczeń publikacji do ``/api/v2/institution-profile/statements``.
 
-        Wymaga lokalnego ``PublikacjaInstytucji_V2`` (``pbn_get_api_statements``
-        rzuca ``DaneLokalneWymagajaAktualizacjiException`` gdy brak) —
-        sync_publication wywołuje ``pobierz_publikacje_instytucji_v2`` przed
-        tym helperem, więc V2 powinno istnieć.
+        Args:
+            rec: rekord BPP (Wydawnictwo_Ciagle/Wydawnictwo_Zwarte).
+            objectId: PBN UID publikacji (do logowania błędów).
+            publication_pk: PK rekordu BPP (do logowania błędów).
+            filter_keys: Optional[set] zestaw kluczy
+                ``(personObjectId_str, disciplineId_str)`` — gdy podany,
+                POST-ujemy tylko te statements których klucz jest w zestawie
+                (używane w krokach 3/4b algorytmu — wysyłamy tylko brakujące
+                w PBN, nie dublujemy istniejących). Gdy ``None`` — POST-ujemy
+                pełen zestaw lokalnych (używane w trybie batch).
+            max_tries: liczba prób retry (default 3).
+
+        Wymaga lokalnego ``PublikacjaInstytucji_V2`` (wywołanie
+        ``get_pbn_uuid`` rzuca ``DaneLokalneWymagajaAktualizacjiException``
+        gdy brak) — ``sync_publication`` wywołuje ``pobierz_publikacje_instytucji_v2``
+        przed tym helperem, więc V2 powinno istnieć.
 
         Retry z exponential backoff. Po wyczerpaniu: rollbar + raise
         ``StatementsResendFailedException``.
+
+        Gdy ``filter_keys`` jest pustym setem albo po filtrowaniu zestaw
+        jest pusty — metoda nie wykonuje POST-a (brak czego wysłać).
         """
-        # Może rzucić DaneLokalneWymagajaAktualizacjiException — propaguje
-        # do callera (sync_publication), który loguje warning zamiast crash.
-        payload = WydawnictwoPBNAdapter(rec).pbn_get_api_statements()
+        # _build_post_statements_payload może rzucić
+        # DaneLokalneWymagajaAktualizacjiException — propaguje do callera
+        # (sync_publication), który loguje warning zamiast crash.
+        payload = self._build_post_statements_payload(rec, filter_keys=filter_keys)
+        if payload is None:
+            return  # nic do wysłania
+
         body = {"data": [payload]}
 
         last_error = None
@@ -544,7 +633,24 @@ class PublicationSyncMixin:
                     pass
 
         if only_in_intended:
-            self._post_statements_with_retry(rec, objectId, publication_pk)
+            if kasuj_selektywnie:
+                # Selective (kroki 3 i 4b algorytmu): wyślij TYLKO oświadczenia
+                # brakujące w PBN (``only_in_intended``). Nie dublujemy już
+                # istniejących — zakładamy że API PBN może sobie z duplikatami
+                # nie radzić (idempotentność nie jest gwarantowana). Ten sam
+                # filter działa dla obu scenariuszy (PBN puste vs PBN+BPP
+                # różnią się), bo w obu ``only_in_intended`` reprezentuje
+                # dokładnie "co trzeba dodać do PBN".
+                self._post_statements_with_retry(
+                    rec,
+                    objectId,
+                    publication_pk,
+                    filter_keys=only_in_intended,
+                )
+            else:
+                # Batch: po ``delete_all`` PBN jest puste, więc POST-ujemy
+                # pełen zestaw lokalny (wipe+rewrite). Bez filtra.
+                self._post_statements_with_retry(rec, objectId, publication_pk)
 
         if notificator is not None:
             notificator.info(

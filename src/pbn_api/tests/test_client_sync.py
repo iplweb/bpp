@@ -482,6 +482,215 @@ def test_sync_statements_roznice_selektywnie(
     assert url_delete in pbn_client.transport.input_values
     assert PBN_POST_INSTITUTION_STATEMENTS_URL in pbn_client.transport.input_values
 
+    # W selektywnym trybie POST wysyła TYLKO oświadczenia brakujące w PBN
+    # (only_in_intended) — nie pełen zestaw BPP. Sprawdzamy że payload
+    # zawiera dokładnie jeden statement (autor, dyscyplina 100).
+    post_body = pbn_client.transport.input_values[PBN_POST_INSTITUTION_STATEMENTS_URL][
+        "body"
+    ]
+    statements_sent = post_body["data"][0]["statements"]
+    assert len(statements_sent) == 1
+    assert statements_sent[0]["personObjectId"] == pbn_autor.pbn_uid_id
+
+
+@pytest.mark.django_db
+def test_sync_statements_pbn_subset_bpp_superset_tylko_brakujace(
+    pbn_client,
+    pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina,
+    pbn_publication,
+    pbn_autor,
+    pbn_jednostka,
+    pbn_uczelnia,
+    monkeypatch,
+):
+    """PBN = {(A, 301)}, BPP = {(A, 301), (B, 200)} — selektywny tryb.
+
+    ``only_in_pbn`` = ∅ → brak DELETE.
+    ``only_in_intended`` = {(B, 200)} → POST tylko (B, 200).
+
+    Weryfikacja że POST nie dubluje (A, 301) który już jest w PBN —
+    wysyłamy TYLKO brakujący (B, 200) zgodnie z algorytmem kroku 4b.
+    """
+    pbn_uczelnia.pbn_kasuj_dyscypliny_selektywnie = True
+    pbn_uczelnia.save()
+
+    autor_b_pbn_uid = "autor-B-mongo-id-xxxxxxxxxxxx"
+
+    # Intencja BPP: autor A z dyscypliną 301 + autor B z dyscypliną 200
+    _patch_intended_statements(
+        monkeypatch,
+        [
+            {
+                "personObjectId": pbn_autor.pbn_uid_id,
+                "disciplineId": 301,
+                "disciplineUuid": "uuid-301",
+                "type": "AUTHOR",
+            },
+            {
+                "personObjectId": autor_b_pbn_uid,
+                "disciplineId": 200,
+                "disciplineUuid": "uuid-200",
+                "type": "AUTHOR",
+            },
+        ],
+    )
+    # PBN ma tylko autora A z dyscypliną 301 (BPP jest supersetem)
+    _setup_common_mocks(
+        pbn_client,
+        pbn_publication.pk,
+        pbn_statements=[
+            {
+                "id": "aaa",
+                "personId": pbn_autor.pbn_uid_id,
+                "area": "301",
+                "type": "AUTHOR",
+                "institutionId": pbn_jednostka.pbn_uid_id,
+            }
+        ],
+    )
+    pbn_client.transport.return_values[PBN_POST_INSTITUTION_STATEMENTS_URL] = {
+        "data": []
+    }
+
+    pbn_client.sync_publication(pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina)
+
+    # DELETE nie wywołany — (A, 301) jest w obu, only_in_pbn puste
+    url_delete = PBN_DELETE_PUBLICATION_STATEMENT.format(
+        publicationId=pbn_publication.pk
+    )
+    assert url_delete not in pbn_client.transport.input_values
+
+    # POST wysłany tylko dla (B, 200) — nie dublujemy (A, 301)
+    assert PBN_POST_INSTITUTION_STATEMENTS_URL in pbn_client.transport.input_values
+    post_body = pbn_client.transport.input_values[PBN_POST_INSTITUTION_STATEMENTS_URL][
+        "body"
+    ]
+    statements_sent = post_body["data"][0]["statements"]
+    assert len(statements_sent) == 1
+    assert statements_sent[0]["personObjectId"] == autor_b_pbn_uid
+
+
+@pytest.mark.django_db
+def test_sync_statements_pbn_puste_wysyla_wszystkie_w_selektywnym(
+    pbn_client,
+    pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina,
+    pbn_publication,
+    pbn_autor,
+    pbn_uczelnia,
+    monkeypatch,
+):
+    """Krok 3 algorytmu: PBN puste + BPP ma N oświadczeń → POST zawiera N.
+
+    W selektywnym trybie filter_keys = only_in_intended, które w tym
+    scenariuszu = wszystkie klucze BPP (bo PBN jest pusty), więc POST
+    wysyła kompletny zestaw BPP — równoważne z "wyślij wszystkie".
+    """
+    pbn_uczelnia.pbn_kasuj_dyscypliny_selektywnie = True
+    pbn_uczelnia.save()
+
+    autor_b_pbn_uid = "autor-B-mongo-id-yyyyyyyyyyyy"
+    _patch_intended_statements(
+        monkeypatch,
+        [
+            {
+                "personObjectId": pbn_autor.pbn_uid_id,
+                "disciplineId": 301,
+                "disciplineUuid": "uuid-301",
+                "type": "AUTHOR",
+            },
+            {
+                "personObjectId": autor_b_pbn_uid,
+                "disciplineId": 200,
+                "disciplineUuid": "uuid-200",
+                "type": "AUTHOR",
+            },
+        ],
+    )
+    _setup_common_mocks(pbn_client, pbn_publication.pk, pbn_statements=[])
+    pbn_client.transport.return_values[PBN_POST_INSTITUTION_STATEMENTS_URL] = {
+        "data": []
+    }
+
+    pbn_client.sync_publication(pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina)
+
+    assert PBN_POST_INSTITUTION_STATEMENTS_URL in pbn_client.transport.input_values
+    post_body = pbn_client.transport.input_values[PBN_POST_INSTITUTION_STATEMENTS_URL][
+        "body"
+    ]
+    statements_sent = post_body["data"][0]["statements"]
+    assert len(statements_sent) == 2
+    person_ids = {s["personObjectId"] for s in statements_sent}
+    assert person_ids == {pbn_autor.pbn_uid_id, autor_b_pbn_uid}
+
+
+@pytest.mark.django_db
+def test_sync_statements_batch_mode_post_wszystkie(
+    pbn_client,
+    pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina,
+    pbn_publication,
+    pbn_autor,
+    pbn_jednostka,
+    pbn_uczelnia,
+    monkeypatch,
+):
+    """Batch mode + różnice: delete_all kasuje całość, POST wysyła wszystkie BPP.
+
+    ``kasuj_selektywnie=False`` — po ``delete_all`` PBN jest puste, więc
+    mimo że diff dał ``only_in_intended = {nowy}`` i ``only_in_pbn = {stary}``,
+    POST musi wysłać PEŁNY zestaw BPP (nie tylko only_in_intended),
+    inaczej po delete_all stare oświadczenia znikną bez odtworzenia.
+    """
+    pbn_uczelnia.pbn_kasuj_dyscypliny_selektywnie = False
+    pbn_uczelnia.save()
+
+    _patch_intended_statements(
+        monkeypatch,
+        [
+            {
+                "personObjectId": pbn_autor.pbn_uid_id,
+                "disciplineId": 100,
+                "disciplineUuid": "uuid-100",
+                "type": "AUTHOR",
+            }
+        ],
+    )
+    _setup_common_mocks(
+        pbn_client,
+        pbn_publication.pk,
+        pbn_statements=[
+            {
+                "id": "aaa",
+                "personId": pbn_autor.pbn_uid_id,
+                "area": "301",
+                "type": "AUTHOR",
+                "institutionId": pbn_jednostka.pbn_uid_id,
+            }
+        ],
+    )
+    url_delete = PBN_DELETE_PUBLICATION_STATEMENT.format(
+        publicationId=pbn_publication.pk
+    )
+    pbn_client.transport.return_values[url_delete] = []
+    pbn_client.transport.return_values[PBN_POST_INSTITUTION_STATEMENTS_URL] = {
+        "data": []
+    }
+
+    pbn_client.sync_publication(pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina)
+
+    # Batch DELETE wykonany — kasuje wszystko
+    body_del = pbn_client.transport.input_values[url_delete]["body"]
+    assert body_del == {"all": True, "statementsOfPersons": []}
+
+    # POST wysłał pełen zestaw BPP (tutaj 1 statement — autor z dyscypliną 100),
+    # bez filtra ``only_in_intended``. Sprawdzamy że personObjectId i
+    # disciplineId pasują do intencji BPP (nie do tego co było w PBN).
+    post_body = pbn_client.transport.input_values[PBN_POST_INSTITUTION_STATEMENTS_URL][
+        "body"
+    ]
+    statements_sent = post_body["data"][0]["statements"]
+    assert len(statements_sent) == 1
+    assert statements_sent[0]["personObjectId"] == pbn_autor.pbn_uid_id
+
 
 # ============================================================
 # Error handling: retry + rollbar + StatementsResendFailedException
