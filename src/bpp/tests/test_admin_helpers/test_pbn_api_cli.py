@@ -22,6 +22,12 @@ def test_TextNotificator(level):
 
 @pytest.mark.django_db
 def test_sprobuj_wyslac_do_pbn_celery(wydawnictwo_ciagle, admin_user, mocker):
+    # WydawnictwoPBNAdapter wymaga DOI lub www; bez tego rzuca DOIorWWWMissing
+    # zanim dojdziemy do walidacji tokena PBN — ustawiamy DOI, żeby test
+    # mógł sprawdzić późniejsze kroki (Uczelnia, token, sukces).
+    wydawnictwo_ciagle.doi = "10.1234/test"
+    wydawnictwo_ciagle.save()
+
     cf = mommy.make("bpp.Charakter_Formalny", rodzaj_pbn=None)
     wydawnictwo_ciagle.charakter_formalny = cf
     wydawnictwo_ciagle.save()
@@ -44,6 +50,11 @@ def test_sprobuj_wyslac_do_pbn_celery(wydawnictwo_ciagle, admin_user, mocker):
     uczelnia.pbn_aktualizuj_na_biezaco = True
     uczelnia.pbn_app_name = uczelnia.pbn_app_token = "fubar"
     uczelnia.save()
+
+    # cli.py sprawdza ``user.pbn_token is None`` — model BppUser ma
+    # default="" (nie None), więc wymuszamy None in-memory żeby trafić
+    # w gałąź rzucającą NeedsPBNAuthorisationException.
+    admin_user.pbn_token = None
 
     with pytest.raises(NeedsPBNAuthorisationException):
         sprobuj_wyslac_do_pbn_celery(admin_user, wydawnictwo_ciagle)

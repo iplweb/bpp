@@ -45,19 +45,19 @@ def test_check_pbn_skip_when_empty_doi():
     assert _check_pbn_by_doi(session) is None
 
 
-@patch("importer_publikacji.views._get_pbn_client")
-def test_check_pbn_skip_when_client_fails(mock_import):
-    mock_import.side_effect = ValueError("Brak konfiguracji")
+def test_check_pbn_skip_when_client_fails():
+    # W views.py ``_get_pbn_client`` jest importowany lokalnie w ciele
+    # ``_check_pbn_by_doi`` (from .providers.pbn import _get_pbn_client) —
+    # nie jest atrybutem modułu ``importer_publikacji.views`` i nie można
+    # go zpatchować przez "importer_publikacji.views._get_pbn_client".
+    # Patchujemy u źródła (``importer_publikacji.providers.pbn``), co
+    # jest równoważne — lokalny import złapie zpatchowaną wersję.
     with patch(
-        "importer_publikacji.views._get_pbn_client",
+        "importer_publikacji.providers.pbn._get_pbn_client",
         side_effect=ValueError("Brak konfiguracji"),
     ):
-        with patch(
-            "importer_publikacji.providers.pbn._get_pbn_client",
-            side_effect=ValueError("Brak konfiguracji"),
-        ):
-            session = _make_session()
-            assert _check_pbn_by_doi(session) is None
+        session = _make_session()
+        assert _check_pbn_by_doi(session) is None
 
 
 def test_get_pbn_publication_by_doi_success():
