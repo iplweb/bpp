@@ -1,0 +1,25 @@
+/*
+ * Tailwind v4 entry for the BLUE theme.
+ *
+ * Compiled by Grunt (shell:tailwindBlue) into ./dist/blue.css and loaded
+ * from bare.html alongside app-blue.css during the Foundation -> Tailwind
+ * migration.
+ */
+
+@import "tailwindcss";
+
+/* @source — explicit scan paths for class extraction. Tailwind v4 also
+ * scans automatically, but pinning these guards against missed locations
+ * once we start authoring Tailwind classes outside of templates/. */
+@source "../../../../**/templates/**/*.html";
+@source "../../../../**/*.py";
+
+@import "./_theme-base.css";
+
+@theme {
+  /* Foundation _settings.scss palette: primary / secondary */
+  --color-primary:   #1779ba;
+  --color-secondary: #767676;
+}
+
+@import "./_components.css";

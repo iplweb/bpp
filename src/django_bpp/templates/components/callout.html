@@ -1,0 +1,34 @@
+{% comment %}
+Tailwind callout — drop-in replacement for Foundation's `.callout`.
+Optionally closable via Alpine (replaces Foundation `data-closable`).
+
+Usage:
+  {% include "components/callout.html" with body=msg variant="success" closable=True %}
+
+  Or with custom body via {% block %}-style include with `{% with %}`:
+  {% include "components/callout.html" with variant="warning" body_html="<b>Uwaga!</b>" %}
+
+Variables:
+  body        — text body (escaped; safe for plain strings)
+  body_html   — if set, used instead of body and rendered raw (caller responsibility to escape)
+  variant     — primary|secondary|success|warning|alert (default: none = neutral)
+  closable    — truthy => add a close button (Alpine x-show)
+  size        — small|large (optional)
+{% endcomment %}
+<div{% if closable %} x-data="{ open: true }" x-show="open" x-transition.opacity{% endif %}
+  class="relative my-0 mb-4 border border-black/25 text-black
+    {% if size == 'small' %}p-2{% elif size == 'large' %}p-12{% else %}p-4{% endif %}
+    {% if variant == 'primary' %}bg-primary/10
+    {% elif variant == 'secondary' %}bg-secondary/10
+    {% elif variant == 'success' %}bg-success/10
+    {% elif variant == 'warning' %}bg-warning/10
+    {% elif variant == 'alert' %}bg-alert/10
+    {% else %}bg-white{% endif %}">
+  {% if body_html %}{{ body_html|safe }}{% else %}{{ body }}{% endif %}
+  {% if closable %}
+    <button type="button" @click="open = false" aria-label="Zamknij"
+      class="absolute top-2 right-4 text-2xl leading-none text-dark-gray hover:text-black bg-transparent border-0 cursor-pointer">
+      &times;
+    </button>
+  {% endif %}
+</div>

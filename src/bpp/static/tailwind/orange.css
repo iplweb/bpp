@@ -1,0 +1,22 @@
+/*
+ * Tailwind v4 entry for the ORANGE theme.
+ * See blue.css for the structural rationale.
+ */
+
+@import "tailwindcss";
+
+@source "../../../../**/templates/**/*.html";
+@source "../../../../**/*.py";
+
+@import "./_theme-base.css";
+
+@theme {
+  /* Foundation _settings_orange.scss: primary = #f26621, secondary = #eb9626.
+   * Note: success in the orange theme is overridden to #c32838 (a red) —
+   * keep parity with Foundation. */
+  --color-primary:   #f26621;
+  --color-secondary: #eb9626;
+  --color-success:   #c32838;
+}
+
+@import "./_components.css";

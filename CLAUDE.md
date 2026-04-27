@@ -15,6 +15,7 @@ management system built with Django. Python >=3.10,<3.15.
 - Architecture: [docs/CODEBASE_MAP.md](docs/CODEBASE_MAP.md)
 - Commands reference: [docs/COMMANDS.md](docs/COMMANDS.md)
 - CSS/SCSS build: [docs/CSS_BUILD.md](docs/CSS_BUILD.md)
+- Tailwind migration (in progress): [docs/TAILWIND_MIGRATION.md](docs/TAILWIND_MIGRATION.md)
 
 ## Critical Rules
 

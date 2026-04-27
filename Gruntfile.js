@@ -165,6 +165,16 @@ module.exports = function (grunt) {
                 options: {
                     logConcurrentOutput: true
                 }
+            },
+            tailwind: {
+                tasks: [
+                    'shell:tailwindBlue',
+                    'shell:tailwindGreen',
+                    'shell:tailwindOrange'
+                ],
+                options: {
+                    logConcurrentOutput: true
+                }
             }
         },
 
@@ -174,6 +184,11 @@ module.exports = function (grunt) {
             sass: {
                 files: ['src/bpp/static/scss/*.scss','src/bpp/static/bpp/scss/*.scss'],
                 tasks: ['concurrent:themes']
+            },
+
+            tailwind: {
+                files: ['src/bpp/static/tailwind/*.css'],
+                tasks: ['concurrent:tailwind']
             }
 
         },
@@ -204,6 +219,28 @@ module.exports = function (grunt) {
                          '--inject:src/bpp/static/bpp/js/jquery-shim.js ' +
                          '--define:global=window'
             },
+            // Tailwind v4 theme builds — one CSS bundle per Foundation theme
+            // (blue/green/orange). Outputs are loaded from bare.html alongside
+            // the existing app-{theme}.css during the Foundation -> Tailwind
+            // migration. See docs/TAILWIND_MIGRATION.md.
+            tailwindBlue: {
+                command: 'npx @tailwindcss/cli ' +
+                         '-i src/bpp/static/tailwind/blue.css ' +
+                         '-o src/bpp/static/tailwind/dist/blue.css ' +
+                         '--minify'
+            },
+            tailwindGreen: {
+                command: 'npx @tailwindcss/cli ' +
+                         '-i src/bpp/static/tailwind/green.css ' +
+                         '-o src/bpp/static/tailwind/dist/green.css ' +
+                         '--minify'
+            },
+            tailwindOrange: {
+                command: 'npx @tailwindcss/cli ' +
+                         '-i src/bpp/static/tailwind/orange.css ' +
+                         '-o src/bpp/static/tailwind/dist/orange.css ' +
+                         '--minify'
+            },
             // Post-process bundle to fix IIFE scope issues
             // django-autocomplete-light: yl namespace (esbuild renames to yl2)
             patchBundle: {
@@ -226,6 +263,7 @@ module.exports = function (grunt) {
     grunt.registerTask('shell-test', ['shell:collectstatic']);
     grunt.registerTask('build', [
         'concurrent:themes',
+        'concurrent:tailwind',
         'shell:linkSitePackages',
         'shell:esbuild',
         'shell:patchBundle',
@@ -233,10 +271,12 @@ module.exports = function (grunt) {
     ]);
     grunt.registerTask('build-non-interactive', [
         'concurrent:themes',
+        'concurrent:tailwind',
         'shell:linkSitePackages',
         'shell:esbuild',
         'shell:patchBundle'
     ]);
+    grunt.registerTask('tailwind', ['concurrent:tailwind']);
 
     // Rename the original watch task and create an alias that builds first
     grunt.renameTask('watch', '_watch');

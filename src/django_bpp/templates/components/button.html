@@ -1,0 +1,30 @@
+{% comment %}
+Tailwind button — drop-in replacement for Foundation's `.button`.
+
+Usage:
+  {% include "components/button.html" with text="Zapisz" type="submit" variant="primary" %}
+  {% include "components/button.html" with text="Anuluj" href=cancel_url variant="secondary" %}
+
+Variables:
+  text     — button label (required)
+  href     — if set, renders an <a>; otherwise <button>
+  type     — submit|button|reset (default: button)
+  variant  — primary|secondary|success|warning|alert|hollow (default: primary)
+  size     — tiny|small|large (optional)
+  expanded — truthy => block-level full-width button
+  extra_class — extra classes appended (rarely needed)
+{% endcomment %}
+{% spaceless %}
+{% if href %}<a href="{{ href }}"{% else %}<button type="{{ type|default:'button' }}"{% endif %}
+  class="inline-block align-middle mb-4 px-4 py-3 leading-none text-center text-sm cursor-pointer
+    border border-transparent rounded-none transition-colors
+    {% if variant == 'secondary' %}bg-secondary text-white hover:bg-secondary/85
+    {% elif variant == 'success' %}bg-success text-black hover:bg-success/85
+    {% elif variant == 'warning' %}bg-warning text-black hover:bg-warning/85
+    {% elif variant == 'alert' %}bg-alert text-white hover:bg-alert/85
+    {% elif variant == 'hollow' %}bg-transparent text-primary border-primary hover:text-primary/75 hover:border-primary/75
+    {% else %}bg-primary text-white hover:bg-primary/85{% endif %}
+    {% if size == 'tiny' %} text-xs{% elif size == 'small' %} text-sm{% elif size == 'large' %} text-xl{% endif %}
+    {% if expanded %} block w-full mx-0{% endif %}
+    {{ extra_class|default:'' }}">{{ text }}{% if href %}</a>{% else %}</button>{% endif %}
+{% endspaceless %}

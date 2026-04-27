@@ -80,6 +80,9 @@ COPY Gruntfile.js ./
 # Theme and admin SCSS
 COPY src/bpp/static/scss/ src/bpp/static/scss/
 COPY src/bpp/static/bpp/scss/ src/bpp/static/bpp/scss/
+# Tailwind v4 entry points (blue/green/orange + shared base + components).
+# Compiled by `grunt build` -> shell:tailwind* into static/tailwind/dist/.
+COPY src/bpp/static/tailwind/ src/bpp/static/tailwind/
 # JS for esbuild bundle
 COPY src/bpp/static/bpp/js/ src/bpp/static/bpp/js/
 COPY src/notifications/static/notifications/js/ \

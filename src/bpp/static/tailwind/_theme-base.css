@@ -1,0 +1,46 @@
+/*
+ * Shared Tailwind theme tokens for BPP (everything except the per-theme
+ * primary/secondary palette). Theme entry files (blue.css, green.css,
+ * orange.css) declare their own primary/secondary on top of this.
+ *
+ * Tokens are sourced from src/bpp/static/scss/_settings.scss so the visual
+ * contract matches Foundation 6.9 during the migration period.
+ */
+
+@theme {
+  /* Status palette — identical across themes (Foundation defaults) */
+  --color-success: #3adb76;
+  --color-warning: #ffae00;
+  --color-alert:   #cc4b37;
+
+  /* Neutrals from _settings.scss */
+  --color-black:        #0a0a0a;
+  --color-white:        #fefefe;
+  --color-light-gray:   #e6e6e6;
+  --color-medium-gray:  #cacaca;
+  --color-dark-gray:    #8a8a8a;
+
+  /* Breakpoints — Foundation: small/medium/large/xlarge/xxlarge */
+  --breakpoint-sm: 0;
+  --breakpoint-md: 640px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1200px;
+  --breakpoint-2xl: 1440px;
+
+  /* Typography */
+  --font-sans: 'Helvetica Neue', Helvetica, Roboto, Arial, sans-serif;
+  --font-mono: Consolas, 'Liberation Mono', Courier, monospace;
+
+  /* Foundation $global-font-size: 92% */
+  --text-base: 0.92rem;
+
+  /* Layout */
+  --container-3xl: 75rem; /* Foundation $global-width = 1200px */
+
+  /* Foundation $global-radius is 0 — keep Tailwind matching for parity */
+  --radius-default: 0;
+  --radius-sm: 0;
+  --radius-md: 0;
+  --radius-lg: 0;
+  --radius-xl: 0;
+}

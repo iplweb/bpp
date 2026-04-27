@@ -1,0 +1,19 @@
+/*
+ * Tailwind v4 entry for the GREEN theme.
+ * See blue.css for the structural rationale.
+ */
+
+@import "tailwindcss";
+
+@source "../../../../**/templates/**/*.html";
+@source "../../../../**/*.py";
+
+@import "./_theme-base.css";
+
+@theme {
+  /* Foundation _settings_green.scss: primary = green (named), secondary = #767676 */
+  --color-primary:   green;
+  --color-secondary: #767676;
+}
+
+@import "./_components.css";

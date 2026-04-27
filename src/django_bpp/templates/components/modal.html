@@ -1,0 +1,47 @@
+{% comment %}
+Tailwind + Alpine modal — replaces Foundation's `data-reveal`.
+
+Wrap the trigger in an `x-data` scope and bind the modal to a flag:
+
+  <div x-data="{ openIgnore: false }">
+    <button @click="openIgnore = true" class="button">Otwórz</button>
+    {% include "components/modal.html" with id="ignoreModal" trigger="openIgnore" title="Potwierdź" body_html="<p>Na pewno?</p>" %}
+  </div>
+
+Or open from outside via window dispatch:
+  window.dispatchEvent(new CustomEvent('open-modal', {detail: {id: 'ignoreModal'}}))
+
+Variables:
+  id         — DOM id (required, used for focus and external open events)
+  trigger    — Alpine binding name in the parent x-data scope
+  title      — modal heading
+  body       — text body
+  body_html  — raw html body (caller-escaped)
+  size       — small|large (default: medium)
+{% endcomment %}
+<div
+  x-cloak
+  x-show="{{ trigger }}"
+  x-on:keydown.escape.window="{{ trigger }} = false"
+  x-on:open-modal.window="if ($event.detail.id === '{{ id }}') {{ trigger }} = true"
+  id="{{ id }}"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="{{ id }}-title"
+  class="fixed inset-0 z-50 flex items-center justify-center"
+  style="display: none;">
+  <div class="fixed inset-0 bg-black/50" @click="{{ trigger }} = false"></div>
+  <div
+    x-show="{{ trigger }}"
+    x-transition
+    class="relative bg-white border border-black/25 shadow-lg
+      {% if size == 'small' %}max-w-md{% elif size == 'large' %}max-w-4xl{% else %}max-w-2xl{% endif %}
+      w-full mx-4 p-6 max-h-[90vh] overflow-y-auto">
+    {% if title %}<h3 id="{{ id }}-title" class="mt-0 mb-4">{{ title }}</h3>{% endif %}
+    {% if body_html %}{{ body_html|safe }}{% else %}{{ body }}{% endif %}
+    <button type="button" @click="{{ trigger }} = false" aria-label="Zamknij"
+      class="absolute top-2 right-4 text-2xl leading-none text-dark-gray hover:text-black bg-transparent border-0 cursor-pointer">
+      &times;
+    </button>
+  </div>
+</div>

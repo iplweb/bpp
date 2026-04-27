@@ -18,6 +18,18 @@ import 'foundation-sites';
 import 'foundation-datepicker';
 import 'foundation-datepicker/js/locales/foundation-datepicker.pl.js';
 
+// ===== 3a. ALPINE.JS =====
+// Alpine.js is the lightweight Foundation-JS replacement during the
+// Foundation -> Tailwind migration. New components (modal, dropdown,
+// accordion, sticky toggle, ...) author x-data templates instead of
+// data-foundation attributes. See docs/TAILWIND_MIGRATION.md.
+//
+// Alpine.start() defers initialization to DOMContentLoaded internally,
+// so this is safe to call eagerly at bundle load time.
+import Alpine from 'alpinejs';
+window.Alpine = Alpine;
+Alpine.start();
+
 // ===== 4. HTMX =====
 import htmx from 'htmx.org';
 window.htmx = htmx;  // Export to window for inline scripts

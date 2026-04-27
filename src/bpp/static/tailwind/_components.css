@@ -1,0 +1,165 @@
+/*
+ * Foundation -> Tailwind compatibility layer.
+ *
+ * Re-implements the most common Foundation classes in Tailwind utilities so
+ * existing templates keep rendering during the migration. New templates
+ * should use Tailwind utilities directly. Each entry maps the Foundation
+ * visual contract; verify visually before removing the Foundation rule it
+ * shadows.
+ */
+
+@layer components {
+  /* ===== Button ===== */
+  .button {
+    display: inline-block;
+    vertical-align: middle;
+    margin: 0 0 1rem 0;
+    padding: 0.85em 1em;
+    border: 1px solid transparent;
+    border-radius: 0;
+    transition: background-color 0.25s ease-out, color 0.25s ease-out;
+    font-family: inherit;
+    font-size: 0.9rem;
+    line-height: 1;
+    text-align: center;
+    cursor: pointer;
+    background-color: var(--color-primary);
+    color: #fff;
+  }
+  .button:hover,
+  .button:focus {
+    background-color: color-mix(in srgb, var(--color-primary) 85%, black);
+    color: #fff;
+  }
+  .button.secondary {
+    background-color: var(--color-secondary);
+    color: #fff;
+  }
+  .button.secondary:hover,
+  .button.secondary:focus {
+    background-color: color-mix(in srgb, var(--color-secondary) 85%, black);
+  }
+  .button.success {
+    background-color: var(--color-success);
+    color: #0a0a0a;
+  }
+  .button.success:hover,
+  .button.success:focus {
+    background-color: color-mix(in srgb, var(--color-success) 85%, black);
+  }
+  .button.warning {
+    background-color: var(--color-warning);
+    color: #0a0a0a;
+  }
+  .button.warning:hover,
+  .button.warning:focus {
+    background-color: color-mix(in srgb, var(--color-warning) 85%, black);
+  }
+  .button.alert {
+    background-color: var(--color-alert);
+    color: #fff;
+  }
+  .button.alert:hover,
+  .button.alert:focus {
+    background-color: color-mix(in srgb, var(--color-alert) 85%, black);
+  }
+  .button.hollow {
+    background-color: transparent;
+    color: var(--color-primary);
+    border: 1px solid var(--color-primary);
+  }
+  .button.hollow:hover,
+  .button.hollow:focus {
+    background-color: transparent;
+    color: color-mix(in srgb, var(--color-primary) 75%, black);
+    border-color: color-mix(in srgb, var(--color-primary) 75%, black);
+  }
+  .button.disabled,
+  .button[disabled] {
+    opacity: 0.25;
+    cursor: not-allowed;
+  }
+  .button.tiny  { font-size: 0.6rem; }
+  .button.small { font-size: 0.75rem; }
+  .button.large { font-size: 1.25rem; }
+  .button.expanded { display: block; width: 100%; margin-left: 0; margin-right: 0; }
+
+  /* ===== Callout ===== */
+  .callout {
+    position: relative;
+    margin: 0 0 1rem 0;
+    padding: 1rem;
+    border: 1px solid rgba(10,10,10,0.25);
+    border-radius: 0;
+    background-color: #fff;
+    color: #0a0a0a;
+  }
+  .callout > :first-child { margin-top: 0; }
+  .callout > :last-child  { margin-bottom: 0; }
+  .callout.primary   { background-color: color-mix(in srgb, var(--color-primary)   10%, white); }
+  .callout.secondary { background-color: color-mix(in srgb, var(--color-secondary) 10%, white); }
+  .callout.success   { background-color: color-mix(in srgb, var(--color-success)   10%, white); }
+  .callout.warning   { background-color: color-mix(in srgb, var(--color-warning)   10%, white); }
+  .callout.alert     { background-color: color-mix(in srgb, var(--color-alert)     10%, white); }
+  .callout.small     { padding: 0.5rem; }
+  .callout.large     { padding: 3rem; }
+
+  /* ===== Label ===== */
+  .label {
+    display: inline-block;
+    padding: 0.33333rem 0.5rem;
+    border-radius: 0;
+    font-size: 0.8rem;
+    line-height: 1;
+    white-space: nowrap;
+    cursor: default;
+    background-color: var(--color-primary);
+    color: #fff;
+  }
+  .label.secondary { background-color: var(--color-secondary); color: #fff; }
+  .label.success   { background-color: var(--color-success);   color: #0a0a0a; }
+  .label.warning   { background-color: var(--color-warning);   color: #0a0a0a; }
+  .label.alert     { background-color: var(--color-alert);     color: #fff; }
+
+  /* ===== Badge ===== */
+  .badge {
+    display: inline-block;
+    min-width: 2.1em;
+    padding: 0.3em;
+    border-radius: 50%;
+    font-size: 0.6rem;
+    text-align: center;
+    background-color: var(--color-primary);
+    color: #fff;
+  }
+  .badge.secondary { background-color: var(--color-secondary); color: #fff; }
+  .badge.success   { background-color: var(--color-success);   color: #0a0a0a; }
+  .badge.warning   { background-color: var(--color-warning);   color: #0a0a0a; }
+  .badge.alert     { background-color: var(--color-alert);     color: #fff; }
+
+  /* ===== Close button (used inside callouts) ===== */
+  .close-button {
+    position: absolute;
+    top: 0.5rem;
+    right: 1rem;
+    color: #8a8a8a;
+    font-size: 2em;
+    line-height: 1;
+    cursor: pointer;
+    background: transparent;
+    border: 0;
+  }
+  .close-button:hover,
+  .close-button:focus { color: #0a0a0a; }
+  .close-button.small { font-size: 1.5em; }
+}
+
+/* Alpine.js — hide x-cloak elements until Alpine has hydrated them.
+ * Without this, modal/dropdown bodies flash on page load. */
+[x-cloak] { display: none !important; }
+
+/* Smoke marker so you can confirm Tailwind theme is loaded in DevTools. */
+.tw-loaded::before {
+  content: 'tw';
+  display: none;
+}
