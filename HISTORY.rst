@@ -4,6 +4,88 @@ Historia zmian
 
 .. towncrier release notes start
 
+bpp 202604.1366 (2026-04-27)
+============================
+
+Naprawione
+----------
+
+- Rozszerzono ``MaliciousRequestBlockingMiddleware`` o dwie dodatkowe
+  heurystyki ograniczające szum w logach od skanerów bezpieczeństwa:
+
+  - Pełny URL (ścieżka + query string) dłuższy niż 2048 znaków zwraca
+    HTTP 444. Dotychczasowy limit 1024 znaków obejmował tylko
+    ``request.path`` i przepuszczał wzdęte query stringi.
+  - Parametr ``next=`` zawierający kolejne ``?next=`` (po dekodowaniu
+    query stringu przez Django) jest blokowany jako odcisk bota
+    podążającego za przekierowaniami logowania bez cookies — typowy
+    wzorzec rekurencyjnie zakodowanych łańcuchów krążących między
+    ``/accounts/login/`` a ``/admin/login/``.
+
+  Pojedynczy, prawidłowy ``next=`` (np. po nieautoryzowanej próbie
+  wejścia do widoku ``toz``) pozostaje dozwolony. (blokada-zagnezdzonych-next)
+- Naprawiono renderowanie paginacji w widokach z HTMX (np. ``/pbn_export_queue/``),
+  gdzie stopka strony lądowała pomiędzy pagerem a tabelą. Przyczyną była
+  minifikacja HTML aplikowana do fragmentów ładowanych przez
+  ``hx-swap="innerHTML"`` — ``minify-html`` zaprojektowany dla pełnych
+  dokumentów restrukturyzował niezamknięte/puste tagi (m.in. pusty
+  ``<li class="ellipsis">``) w partial-ach, rozjeżdżając DOM po wstawieniu.
+
+  Wprowadzono prewencję systemową przeciwko regresjom tej klasy:
+
+  - ``BppMinifyHtmlMiddleware`` omija minifikację gdy żądanie ma nagłówek
+    ``HX-Request: true`` (wszystkie HTMX-owe partial-e bypassują minifier).
+  - Linter ``djlint`` dodany do pre-commit z aktywnymi regułami
+    strukturalnymi (H020 puste-tag-pair, H025 orphan-tag) — wykrywa
+    podobne pułapki przed merge-em.
+  - Test integralności ``test_html_minify_integrity.py`` weryfikuje że
+    typowe trefne wzorce (puste ``<li>``, ``<p/>``, ``<span/>``) po
+    minifikacji nie rozjeżdżają struktury DOM, plus że HTMX-owe requesty
+    są właściwie bypassowane.
+
+  Dodatkowo style paginacji ``pagination_with_anchor.html`` przeniesione z
+  inline ``<style>`` (re-injektowanego przy każdym HTMX-swap-ie) do
+  osobnego SCSS partial-a ``_pagination.scss`` importowanego z głównych
+  schematów (blue/orange/green). (htmx-minify-paginacja)
+
+
+Usprawnienie
+------------
+
+- Broker Celery przeniesiony z RabbitMQ na Redis (baza ``DB 1``,
+  zmienna ``DJANGO_BPP_REDIS_DB_BROKER``). Result backend (Redis ``DB 2``)
+  i routing tasków bez zmian — migracja jest neutralna funkcjonalnie.
+
+  Usunięte zostały:
+
+  - serwis ``rabbitmq`` z ``docker-compose.yml`` i
+    ``docker-compose.test.yml``,
+  - zmienne ``DJANGO_BPP_RABBITMQ_*`` z konfiguracji oraz
+    ``.env.docker`` / ``.env.example``,
+  - zależność pakietu ``amqp`` z ``pyproject.toml``,
+  - start kontenera RabbitMQ w plugin-ie ``testcontainers_bpp``,
+  - pozycja „RabbitMQ" z menu admina (DOCKER_SERVICES_MENU).
+
+  Po pull-u wymagany jest ``uv lock`` / rebuild obrazów (zniknie
+  biblioteka ``amqp``); istniejące deploye po przepięciu wymagają
+  ``stop workers → up -d → start workers``. Zadania zalegające
+  w kolejce RabbitMQ przy migracji zostaną porzucone.
+
+  Lokalne ``docker compose up`` startuje teraz znacząco szybciej —
+  RabbitMQ pod emulacją amd64 na arm64 potrafił rozgrzewać się
+  ~3 minuty, Redis w sekundę.
+
+  Dla deploymentów: zmiany w ``bpp-deploy`` (compose, init-configs,
+  prometheus job, nginx routing ``/rabbitmq/``) muszą zostać
+  wdrożone razem z tą wersją obrazu — szczegóły w ``CHANGELOG`` repo
+  ``iplweb/bpp-deploy``.
+
+  Dodano ``CELERY_BROKER_TRANSPORT_OPTIONS`` z ``visibility_timeout``
+  ustawionym na 6 godzin — Redis re-deliveruje zadanie po tym
+  timeout-cie jeśli worker padł, więc wartość musi przekraczać
+  najdłuższy realny task (PBN export, import POLON). (celery-broker-redis)
+
+
 bpp 202604.1365 (2026-04-27)
 ============================
 
