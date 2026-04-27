@@ -261,6 +261,13 @@ ARG PYTHON_VERSION
 ARG DEBIAN_VERSION
 FROM python:${PYTHON_VERSION}-slim-${DEBIAN_VERSION} AS runtime
 
+# Bake'a przekazuje GIT_SHA z `--set "base.args.GIT_SHA=..."`. Nadpisanie
+# możliwe dla lokalnych buildów; default `unknown` zostaje, kiedy nikt nie
+# poda wartości. BPP_BUILD_FLAVOR rozróżnia release (master) od dev (PR/feature)
+# — pokazujemy SHA w stopce tylko poza release-em.
+ARG GIT_SHA=unknown
+ARG BPP_BUILD_FLAVOR=dev
+
 RUN sed -i s/http/https/g /etc/apt/sources.list.d/debian.sources
 
 COPY docker/bpp_base/runtime.txt /tmp/
@@ -293,7 +300,9 @@ COPY --from=pandoc-src /usr/local/bin/pandoc /usr/local/bin/pandoc
 ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONPATH=/app/src \
     DJANGO_SETTINGS_MODULE=django_bpp.settings.production \
-    STATIC_ROOT=/app/staticroot
+    STATIC_ROOT=/app/staticroot \
+    BPP_GIT_SHA=${GIT_SHA} \
+    BPP_BUILD_FLAVOR=${BPP_BUILD_FLAVOR}
 
 WORKDIR /app
 
@@ -310,3 +319,10 @@ COPY --from=builder /app/.venv ./.venv
 # loaded by entrypoint-appserver.sh via `manage.py baseline_load` on
 # empty databases to skip 800+ migrations on a cold install.
 COPY --from=builder /app/src ./src
+
+# Sanity-check: zapisuje GIT_SHA do pliku, żeby `cat /app/.git-sha`
+# w runtime od razu pokazywał commit, na podstawie którego zbudowano obraz.
+# Diagnozuje sytuacje, w których pull tagu zwraca nieoczekiwaną treść
+# (np. nie ten PR/branch). Pisane PO wszystkich `COPY --from=builder`,
+# żeby nie zostało nadpisane.
+RUN echo "${GIT_SHA}" > /app/.git-sha
