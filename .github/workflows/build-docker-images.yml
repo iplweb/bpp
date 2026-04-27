@@ -62,19 +62,15 @@ name: Docker - oficjalne obrazy
 
 on:
   push:
-    # Tylko master — release flow. Push do feature/fix/hotfix nie
-    # triggeruje buildu, żeby nie duplikować: PR eventy (opened/
-    # synchronize/reopened/labeled) już obsługują każdy commit w
-    # otwartym PR-ze. Wcześniej push + pull_request odpalały dwa
-    # równoległe buildy dla tego samego commita (marnowanie Docker
-    # Cloud Build minut). Dla branchy bez PR-a, ad-hoc build przez
-    # `gh workflow run build-docker-images.yml --ref <branch>`.
     branches:
       - master
+      - 'feature/**'
+      - 'fix/**'
+      - 'hotfix/**'
   pull_request:
-    # Buduje, gdy PR ma label `docker-build` lub gdy w drzewie jest
-    # `.docker-build` (patrz check-flag). Typ `labeled` obsługuje
-    # moment dodania labela na już-pushniętym commicie.
+    # Buduje, gdy PR ma label `docker-build` (patrz check-flag).
+    # Typ `labeled` obsługuje moment dodania labela na już-pushniętym
+    # commicie — build odpala się od razu, bez konieczności nowego pushu.
     types: [opened, synchronize, reopened, labeled]
   workflow_dispatch:
     # Ręczne wywołanie z GUI GitHub lub przez
