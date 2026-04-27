@@ -1,1 +1,0 @@
-Audyt potwierdził, że wszystkie ścieżki instalacji w CI i Docker buildzie używają ``uv sync --frozen`` (deterministic install z hashami SHA-256 z ``uv.lock``). Dodano ``--frozen`` do targetów ``prepare-developer-machine-*`` w Makefile (pierwsze setup deweloperskie). Powstał ``docs/SECURITY_PRACTICES.md`` agregujący polityki bezpieczeństwa BPP.

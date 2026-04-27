@@ -1,1 +1,0 @@
-Dodano ``cooldown`` do ``.github/dependabot.yml`` dla wszystkich trzech ekosystemów (Python/uv, GitHub Actions, Docker). Aktualizacje czekają 3 dni (major: 7) zanim Dependabot otworzy PR — chroni przed wciąganiem swieżo skompromitowanych wersji (np. atak typu LiteLLM 2.5h przed quarantine). Aktualizacje security (CVE) automatycznie omijają cooldown.

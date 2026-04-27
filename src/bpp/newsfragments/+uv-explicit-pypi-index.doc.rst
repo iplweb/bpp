@@ -1,1 +1,0 @@
-Jawnie zadeklarowano PyPI jako jedyny domyślny indeks ``uv`` w ``pyproject.toml``. Chroni przed dependency confusion (publikacją zlosliwego pakietu na PyPI o tej samej nazwie co przyszly prywatny pakiet).

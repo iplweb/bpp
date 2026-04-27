@@ -1,1 +1,0 @@
-Dodano ``make uv-lock-cooldown`` jako defense-in-depth do Dependabot cooldown — ręczne wywołanie ``uv lock`` z 3-dniowym oknem ostygania (pakiety opublikowane w ostatnich 3 dniach są wykluczane). Pakiety in-house (``*-iplweb``) zwolnione z cooldownu (atak na konto teamu uderzylby je tak czy tak). Override ``CUTOFF`` przez env var.

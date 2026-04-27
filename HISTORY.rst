@@ -4,6 +4,71 @@ Historia zmian
 
 .. towncrier release notes start
 
+bpp 202604.1364 (2026-04-27)
+============================
+
+Naprawione
+----------
+
+- Naprawiono renderowanie formularza zgłaszania publikacji
+  (``/zglos_publikacje/``) — stopka strony była "wciągana" do
+  wnętrza przycisku "następny krok" / "zakończ i wyślij do akceptacji".
+  Przyczyną były XHTML-owe samozamykające się ``<span class="fi-..."/>``
+  przy ikonach Foundation: minifier ``minify-html`` (zgodnie ze
+  specyfikacją HTML5) ignoruje ``/`` na elementach nie-void, więc span
+  pozostawał otwarty, a wraz z nim zjadał także zamykający ``</button>``,
+  co powodowało, że dalsza zawartość strony — łącznie ze stopką — stawała
+  się dzieckiem przycisku. Spany ikon zamieniono na pełną parę
+  ``<span></span>``.
+- Przypięto wersję ``sass`` do ``~1.99.0`` w ``package.json`` zamiast
+  ``^1.91.0``. Powód: blokada przed niekontrolowanym podniesieniem do
+  Sass 2.0 (które przerobi ``@import`` z deprecation warning na twardy
+  błąd kompilacji) oraz przed minor bumps (np. 1.100.x), które mogą
+  eskalować nowe kategorie deprecation warnings. Świadomy upgrade
+  wymaga teraz ręcznej zmiany pinu i przeglądu konsekwencji.
+- Wszystkie ``uses:`` w workflowach GitHub Actions zostały przepięte z ruchomych tagów (``@v6``, ``@v4`` itd.) na pełne 40-znakowe SHA z komentarzem wersji. Chroni przed atakami typu tag-promotion (np. atakujący przejmuje konto utrzymującego akcję i przepina tag ``@v4`` na złośliwy commit). Dodano także ``zizmor`` jako pre-commit hook by wyłapywać regresje + plik konfiguracyjny ``zizmor.yml`` z udokumentowanymi pre-existing tech-debt findings (osobne follow-up PR-y).
+- Wyciszono ``if-function`` w Dart Sass podczas ``make assets`` — wewnętrzne
+  ostrzeżenia z foundation-sites 6.9.0 (util/_value.scss, _breakpoint.scss,
+  _color.scss, _flex.scss, _math.scss), nieusuwalne z poziomu naszego repo,
+  ponieważ Foundation jest w trybie maintenance. Komentarz w
+  ``Gruntfile.js`` wyjaśnia, dlaczego każda z trzech kategorii
+  (``global-builtin``, ``if-function``, ``import``) jest na liście
+  ``silenceDeprecations``. Liczba ostrzeżeń budowy spadła z 50 do 0.
+
+
+Dokumentacja
+------------
+
+- Audyt potwierdził, że wszystkie ścieżki instalacji w CI i Docker buildzie używają ``uv sync --frozen`` (deterministic install z hashami SHA-256 z ``uv.lock``). Dodano ``--frozen`` do targetów ``prepare-developer-machine-*`` w Makefile (pierwsze setup deweloperskie). Powstał ``docs/SECURITY_PRACTICES.md`` agregujący polityki bezpieczeństwa BPP.
+- Dodano ``SECURITY.md`` z polityką zgłaszania luk bezpieczeństwa (preferowany kanał: GitHub Security Advisory) oraz SLA dla łat. README odsyła do polityki zamiast publicznego issue trackera.
+- Jawnie zadeklarowano PyPI jako jedyny domyślny indeks ``uv`` w ``pyproject.toml``. Chroni przed dependency confusion (publikacją zlosliwego pakietu na PyPI o tej samej nazwie co przyszly prywatny pakiet).
+
+
+Usprawnienie
+------------
+
+- BPP nie jest już instalowany jako Python package — wszystkie ``uv sync`` używają ``--no-install-project``. Usunięto ``[project.scripts]`` (``bpp-manage.py`` był dead code) i ``[project.entry-points."pytest11"]`` (workspace install nie jest potrzebny). Plugin ``testcontainers_bpp`` ładowany teraz przez ``-p testcontainers_bpp.plugin`` w ``pytest.ini`` addopts. Udokumentowano politykę wheel-only z 11 pre-existing sdist-only deps jako accepted exceptions w ``pyproject.toml`` ``[tool.uv]`` komentarzu.
+- Dodano ``cooldown`` do ``.github/dependabot.yml`` dla wszystkich trzech ekosystemów (Python/uv, GitHub Actions, Docker). Aktualizacje czekają 3 dni (major: 7) zanim Dependabot otworzy PR — chroni przed wciąganiem swieżo skompromitowanych wersji (np. atak typu LiteLLM 2.5h przed quarantine). Aktualizacje security (CVE) automatycznie omijają cooldown.
+- Dodano ``make uv-lock-cooldown`` jako defense-in-depth do Dependabot cooldown — ręczne wywołanie ``uv lock`` z 3-dniowym oknem ostygania (pakiety opublikowane w ostatnich 3 dniach są wykluczane). Pakiety in-house (``*-iplweb``) zwolnione z cooldownu (atak na konto teamu uderzylby je tak czy tak). Override ``CUTOFF`` przez env var.
+- Dodano workflow ``Dependency vulnerability scan`` (``.github/workflows/dependency-audit.yml``) używający ``uv-secure`` do skanowania ``uv.lock`` pod kątem znanych CVE. Triggers: zmiany w ``uv.lock``/``pyproject.toml``, weekly cron poniedziałek 6:00 UTC, manualny ``workflow_dispatch``. Gate: HIGH/CRITICAL z dostępnym fix-em failuje workflow; LOW/MEDIUM raportowane w job summary. Przy okazji wprowadzania bumpniety ``jaraco.context`` z 6.0.1 do 6.1.2 (GHSA-58pv-8j8x-9vj2 — ReDoS w transitive zależności).
+- Uruchamianie testów na świeżej maszynie nie wymaga już hostowego klienta
+  ``psql``. Plugin ``testcontainers_bpp`` mountuje ``baseline.sql`` jako
+  ``/docker-entrypoint-initdb.d/01-baseline.sql`` w kontenerze Postgresa,
+  więc wbudowany entrypoint obrazu sam ładuje dump przy starcie — wewnątrz
+  kontenera, bez udziału hosta. Plugin ustawia też
+  ``DJANGO_BPP_TEST_TEMPLATE=bpp``, dzięki czemu Django tworzy ``test_bpp``
+  przez natywne ``CREATE DATABASE … WITH TEMPLATE bpp`` (instant clone w
+  silniku), zamiast ponownie odgrywać dump przez ``psql``. Hostowy ``psql``
+  pozostaje wymagany tylko dla ``manage.py baseline_load`` i scenariusza
+  ``--no-testcontainers`` (gdzie usługi dostarcza docker-compose).
+
+  Konwencja lokalizacji baseline: ``src/baseline-sql/baseline.sql``;
+  override przez ``BPP_BASELINE_SQL_PATH``. Patch w
+  ``django_pg_baseline.patches`` dodatkowo zamyka połączenie Django i
+  ubija pozostałe sesje na bazie-szablonie (``pg_terminate_backend``)
+  przed CREATE, żeby Postgres pozwolił na clone.
+
+
 bpp 202604.1363 (2026-04-27)
 ============================
 
