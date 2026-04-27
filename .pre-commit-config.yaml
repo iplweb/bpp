@@ -36,6 +36,19 @@ repos:
           language: system
           stages: ["pre-commit", "pre-push"]
 
+        # Egzekwuje wheel-only dla wszystkich zewnetrznych dep (praktyka #1
+        # z pypi-security-best-practices). Failuje gdy ktorakolwiek dep
+        # wymaga build z source (sdist - wektor wykonania zlosliwego kodu
+        # w setup.py). Dlaczego nie globalne `no-build = true` w
+        # pyproject.toml: blokowaloby editable install workspace roota.
+        - id: uv-lock-no-build
+          name: uv lock --check --no-build (wheel-only policy)
+          description: Verify all third-party deps have prebuilt wheels.
+          entry: uv lock --check --no-build
+          language: system
+          files: ^(pyproject\.toml|uv\.lock)$
+          pass_filenames: false
+
 #    - repo: https://github.com/gitguardian/ggshield
 #      rev: v1.43.0
 #      hooks:
