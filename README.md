@@ -70,6 +70,9 @@ pod adresem e-mail michal.dtz@gmail.com.
   [support.iplweb.pl](https://support.iplweb.pl/)
 - **Społeczność** — zgłoszenia na GitHub:
   [github.com/iplweb/bpp/issues](https://github.com/iplweb/bpp/issues)
+- **Luki bezpieczeństwa** — *nie* otwieraj publicznego issue. Zob.
+  [SECURITY.md](SECURITY.md) — preferowany kanał:
+  [GitHub Security Advisory](https://github.com/iplweb/bpp/security/advisories/new).
 
 ## Dokumentacja
 
