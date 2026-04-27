@@ -180,13 +180,18 @@ jobs:
         id: tag
         env:
           REF_NAME: ${{ github.ref_name }}
+          # head_ref jest ustawione tylko dla pull_request eventów — to nazwa
+          # gałęzi PR-a (czyli "feature/...", a nie "<PR#>/merge" jak ref_name).
+          # Sanityzujemy przed użyciem (sed/tr poniżej) — tag nie trafia
+          # bezpośrednio do shella jako kod, tylko jako argument do imagetools.
+          HEAD_REF: ${{ github.head_ref }}
           BASE_VERSION: ${{ steps.version.outputs.version }}
           GIT_SHA: ${{ github.sha }}
           EVENT_NAME: ${{ github.event_name }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           # -----------------------------------------------------------------
-          # Dwa rodzaje tagow dla kazdego obrazu (patrz naglowek pliku):
+          # Dwa-trzy rodzaje tagow dla kazdego obrazu (patrz naglowek pliku):
           #
           # staging_tag: niekanoniczny, unikalny per build. Bake pushuje
           #              TU przed skanem. Format: "sha-<short_sha>".
@@ -199,6 +204,13 @@ jobs:
           #              • pull_request → "<PR#>-merge" (jesli jest PR)
           #              • feature/fix  → sanitized branch name
           #
+          # branch_tag:  DODATKOWY alias = sanityzowana nazwa source brancha.
+          #              Ustawiany TYLKO dla pull_request eventow, zeby tester
+          #              mogl pullowac obraz po nazwie brancha (intuicyjne)
+          #              zamiast pamietac numer PR. Dla feature/fix push
+          #              brancha bez PR-a final_tag = branch_tag, wiec nie
+          #              ma sensu duplikowac.
+          #
           # tag_latest:  czy dodatkowo pushowac ":latest" po promocji
           #              (tylko na master).
           # -----------------------------------------------------------------
@@ -210,15 +222,21 @@ jobs:
           if [ "$REF_NAME" = "master" ]; then
             echo "final_tag=${BASE_VERSION}" >> "$GITHUB_OUTPUT"
             echo "tag_latest=true" >> "$GITHUB_OUTPUT"
+            echo "branch_tag=" >> "$GITHUB_OUTPUT"
           elif [ "$EVENT_NAME" = "pull_request" ] && [ -n "$PR_NUMBER" ]; then
             echo "final_tag=${PR_NUMBER}-merge" >> "$GITHUB_OUTPUT"
             echo "tag_latest=false" >> "$GITHUB_OUTPUT"
+            BRANCH_TAG=$(echo "$HEAD_REF" \
+              | sed 's/[^a-zA-Z0-9._-]/-/g' \
+              | tr '[:upper:]' '[:lower:]')
+            echo "branch_tag=${BRANCH_TAG}" >> "$GITHUB_OUTPUT"
           else
             BRANCH_TAG=$(echo "$REF_NAME" \
               | sed 's/[^a-zA-Z0-9._-]/-/g' \
               | tr '[:upper:]' '[:lower:]')
             echo "final_tag=${BRANCH_TAG}" >> "$GITHUB_OUTPUT"
             echo "tag_latest=false" >> "$GITHUB_OUTPUT"
+            echo "branch_tag=" >> "$GITHUB_OUTPUT"
           fi
 
       # -----------------------------------------------------------------
@@ -234,12 +252,22 @@ jobs:
           DOCKER_VERSION: ${{ steps.tag.outputs.staging_tag }}
           TAG_LATEST: "false"
           PUSH: "true"
+          # Wynikiem ekspresji jest literal "release" albo "dev" — nie ma
+          # tu untrusted input z github.event.*. Ref name jest weryfikowane
+          # przez równość z literałem, więc nie ma ryzyka injection.
+          BPP_BUILD_FLAVOR: ${{ github.ref_name == 'master' && 'release' || 'dev' }}
+          # Kanoniczny tag finalny — wpisany do obrazu jako BPP_IMAGE_TAG
+          # ENV, żeby stopka dla dev buildów wyświetlała "119-merge" obok
+          # commit SHA. Wartość pochodzi ze stepa `tag` powyżej.
+          BPP_IMAGE_TAG: ${{ steps.tag.outputs.final_tag }}
         run: |
           docker buildx bake \
             base appserver workerserver \
             beatserver authserver denorm-queue \
             --file docker-bake.hcl \
             --set "base.args.GIT_SHA=${GIT_SHA}" \
+            --set "base.args.BPP_BUILD_FLAVOR=${BPP_BUILD_FLAVOR}" \
+            --set "base.args.BPP_IMAGE_TAG=${BPP_IMAGE_TAG}" \
             --set '*.platform=linux/amd64' \
             --allow=fs.read=/tmp \
             --allow=fs.write=/tmp
@@ -393,6 +421,9 @@ jobs:
           STAGING_TAG: ${{ steps.tag.outputs.staging_tag }}
           FINAL_TAG: ${{ steps.tag.outputs.final_tag }}
           TAG_LATEST: ${{ steps.tag.outputs.tag_latest }}
+          # Alias-tag dla source brancha PR-a (pusty dla master/non-PR);
+          # patrz komentarz w stepie "Compute Docker tags".
+          BRANCH_TAG: ${{ steps.tag.outputs.branch_tag }}
         run: |
           set -eu
           images=(
@@ -404,7 +435,7 @@ jobs:
             iplweb/bpp_denorm_queue
           )
 
-          echo "::notice::Promocja: ${STAGING_TAG} → ${FINAL_TAG} (latest=${TAG_LATEST})"
+          echo "::notice::Promocja: ${STAGING_TAG} → ${FINAL_TAG} (latest=${TAG_LATEST}, branch=${BRANCH_TAG:-})"
 
           for img in "${images[@]}"; do
             echo "::group::Promote ${img}: ${STAGING_TAG} → ${FINAL_TAG}"
@@ -418,6 +449,15 @@ jobs:
                 -t "${img}:latest" \
                 "${img}:${STAGING_TAG}"
             fi
+
+            # Tester pullujący po nazwie brancha dostaje świeży obraz
+            # (PR-owy build re-promuje ten alias przy każdym pushu).
+            if [ -n "${BRANCH_TAG:-}" ] && [ "$BRANCH_TAG" != "$FINAL_TAG" ]; then
+              echo "→ also tagging :${BRANCH_TAG}"
+              docker buildx imagetools create \
+                -t "${img}:${BRANCH_TAG}" \
+                "${img}:${STAGING_TAG}"
+            fi
             echo "::endgroup::"
           done
 
@@ -428,5 +468,8 @@ jobs:
             echo "Final tag:   \`${FINAL_TAG}\`"
             if [ "$TAG_LATEST" = "true" ]; then
               echo "Also:        \`:latest\`"
+            fi
+            if [ -n "${BRANCH_TAG:-}" ] && [ "$BRANCH_TAG" != "$FINAL_TAG" ]; then
+              echo "Branch alias: \`:${BRANCH_TAG}\`"
             fi
           } >> "$GITHUB_STEP_SUMMARY"

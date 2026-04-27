@@ -13,7 +13,7 @@
                 zalogowany/a jako {{ request.user.username }} -
             {% endif %}
             Oprogramowanie <a href="http://bpp.iplweb.pl/">Bibliografia Publikacji Pracowników</a> &copy;
-            2004-2026 <a href="http://iplweb.pl">iplweb</a>; wersja {% load bpp_version %}{% bpp_version %}
+            2004-2026 <a href="http://iplweb.pl">iplweb</a>; wersja {% load bpp_version %}{% bpp_version %}{% bpp_image_tag as img_tag %}{% bpp_git_sha_short as git_sha %}{% if img_tag or git_sha %} ({{ img_tag }}{% if img_tag and git_sha %}, {% endif %}{% if git_sha %}commit {{ git_sha }}{% endif %}){% endif %}
             <div id="test-image-copyright" class="footer__test-copyright">
                 Obrazek tła dla serwera testowego: <a href=http://www.freepik.com>Designed by pch.vector /
                 Freepik</a>.
