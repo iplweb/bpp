@@ -139,25 +139,43 @@ document.addEventListener('click', function(e) {
     </div>
     {% endif %}
 
+    {% comment %}
+    Tabs: Foundation `data-tabs` + `data-tabs-content` -> Alpine x-data
+    z polem `active` (id aktywnego panelu). Każdy <li> tabs-title aktywuje
+    panel przez @click; panele renderują się przez x-show. Klasy Foundation
+    (.tabs, .tabs-title, .tabs-panel, .is-active) zostają — Foundation CSS
+    je styluje. HTMX hx-get z hx-trigger="load" wciąż wystrzeli przy
+    pierwszym renderze panelu — x-show NIE odmontowuje DOM, tylko display
+    none, więc HTMX requesty przeleciał normalnie po załadowaniu strony.
+    {% endcomment %}
+    <div x-data="{ active: 'logs-panel' }">
     <!-- Tabs for different sections -->
-    <ul class="tabs" data-tabs id="session-tabs">
-        <li class="tabs-title is-active"><a href="#logs-panel" aria-selected="true">Logi</a></li>
-        <li class="tabs-title"><a href="#errors-panel">Błędy i ostrzeżenia</a></li>
-        <li class="tabs-title">
-            <a href="#inconsistencies-panel">
+    <ul class="tabs" id="session-tabs">
+        <li class="tabs-title" :class="{ 'is-active': active === 'logs-panel' }">
+            <a href="#" @click.prevent="active = 'logs-panel'" :aria-selected="active === 'logs-panel'">Logi</a>
+        </li>
+        <li class="tabs-title" :class="{ 'is-active': active === 'errors-panel' }">
+            <a href="#" @click.prevent="active = 'errors-panel'" :aria-selected="active === 'errors-panel'">Błędy i ostrzeżenia</a>
+        </li>
+        <li class="tabs-title" :class="{ 'is-active': active === 'inconsistencies-panel' }">
+            <a href="#" @click.prevent="active = 'inconsistencies-panel'" :aria-selected="active === 'inconsistencies-panel'">
                 Nieścisłości
                 {% if inconsistency_count %}<span class="pbn-import__tab-badge">{{ inconsistency_count }}</span>{% endif %}
             </a>
         </li>
-        <li class="tabs-title"><a href="#config-panel">Konfiguracja</a></li>
+        <li class="tabs-title" :class="{ 'is-active': active === 'config-panel' }">
+            <a href="#" @click.prevent="active = 'config-panel'" :aria-selected="active === 'config-panel'">Konfiguracja</a>
+        </li>
         {% if statistics %}
-        <li class="tabs-title"><a href="#stats-panel">Statystyki</a></li>
+        <li class="tabs-title" :class="{ 'is-active': active === 'stats-panel' }">
+            <a href="#" @click.prevent="active = 'stats-panel'" :aria-selected="active === 'stats-panel'">Statystyki</a>
+        </li>
         {% endif %}
     </ul>
 
-    <div class="tabs-content" data-tabs-content="session-tabs">
+    <div class="tabs-content">
         <!-- All Logs Panel -->
-        <div class="tabs-panel is-active" id="logs-panel">
+        <div class="tabs-panel" :class="{ 'is-active': active === 'logs-panel' }" x-show="active === 'logs-panel'" id="logs-panel">
             <div class="pbn-import__detail-section">
                 {% if session.status == 'running' %}
                 <div id="all-logs-container"
@@ -173,7 +191,7 @@ document.addEventListener('click', function(e) {
         </div>
 
         <!-- Errors Panel -->
-        <div class="tabs-panel" id="errors-panel">
+        <div class="tabs-panel" :class="{ 'is-active': active === 'errors-panel' }" x-show="active === 'errors-panel'" id="errors-panel">
             <div class="pbn-import__detail-section">
                 {% if session.status == 'running' %}
                 <div id="error-logs-container"
@@ -189,7 +207,7 @@ document.addEventListener('click', function(e) {
         </div>
 
         <!-- Inconsistencies Panel -->
-        <div class="tabs-panel" id="inconsistencies-panel">
+        <div class="tabs-panel" :class="{ 'is-active': active === 'inconsistencies-panel' }" x-show="active === 'inconsistencies-panel'" id="inconsistencies-panel">
             <div class="pbn-import__detail-section">
                 {% if session.status == 'running' %}
                 <div id="inconsistencies-container"
@@ -205,7 +223,7 @@ document.addEventListener('click', function(e) {
         </div>
 
         <!-- Configuration Panel -->
-        <div class="tabs-panel" id="config-panel">
+        <div class="tabs-panel" :class="{ 'is-active': active === 'config-panel' }" x-show="active === 'config-panel'" id="config-panel">
             <div class="pbn-import__detail-section">
                 <h2 class="pbn-import__section-title">
                     <span class="fi-widget"></span>
@@ -236,7 +254,7 @@ document.addEventListener('click', function(e) {
 
         <!-- Statistics Panel -->
         {% if statistics %}
-        <div class="tabs-panel" id="stats-panel">
+        <div class="tabs-panel" :class="{ 'is-active': active === 'stats-panel' }" x-show="active === 'stats-panel'" id="stats-panel">
             <div class="pbn-import__detail-section">
                 <h2 class="pbn-import__section-title">
                     <span class="fi-graph-bar"></span>
@@ -283,14 +301,16 @@ document.addEventListener('click', function(e) {
             </div>
         </div>
         {% endif %}
-    </div>
+    </div>{# /tabs-content #}
+    </div>{# /Alpine x-data wrapper #}
 </div>
 {% endblock %}
 
 {% block extrajs %}
 <script>
+// Foundation init zostaje, bo strona moze miec inne data-* (np. nadrzedny base.html
+// wciaz inicjalizuje Foundation; tu nie jest to strict required, ale nie szkodzi).
 $(document).ready(function() {
-    // Initialize Foundation tabs
     $(document).foundation();
 });
 </script>
