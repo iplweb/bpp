@@ -70,7 +70,7 @@ wpływają na bezpieczeństwo):
 - **HTTPS** wymuszone na warstwie reverse-proxy (nginx/traefik).
 - **`SECRET_KEY`** unikalny per instancja, trzymany poza repozytorium.
 - **Backupy bazy** szyfrowane i regularnie testowane na restore.
-- **PostgreSQL/Redis/RabbitMQ** dostępne wyłącznie z sieci wewnętrznej.
+- **PostgreSQL/Redis** dostępne wyłącznie z sieci wewnętrznej.
 - Aktualizacje obrazów Docker w cyklu zgodnym z polityką organizacji
   (zob. `iplweb/bpp_appserver:latest` — Trivy gate na CRITICAL CVE).
 

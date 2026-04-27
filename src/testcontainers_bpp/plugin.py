@@ -45,8 +45,8 @@ def pytest_addoption(parser):
         action="store_true",
         default=False,
         help=(
-            "Disable testcontainers — assume PostgreSQL, Redis, and "
-            "RabbitMQ are already running (e.g. via docker-compose)."
+            "Disable testcontainers — assume PostgreSQL and Redis are "
+            "already running (e.g. via docker-compose)."
         ),
     )
 
@@ -152,11 +152,6 @@ def pytest_load_initial_conftests(early_config, parser, args):  # noqa: ARG001
 
     os.environ["DJANGO_BPP_REDIS_HOST"] = _containers.redis_host
     os.environ["DJANGO_BPP_REDIS_PORT"] = str(_containers.redis_port)
-
-    os.environ["DJANGO_BPP_RABBITMQ_HOST"] = _containers.rabbitmq_host
-    os.environ["DJANGO_BPP_RABBITMQ_PORT"] = str(_containers.rabbitmq_port)
-    os.environ["DJANGO_BPP_RABBITMQ_USER"] = "bpp"
-    os.environ["DJANGO_BPP_RABBITMQ_PASS"] = "bpp"
 
     # Pomijamy ładowanie pliku .env — sami dostarczamy wszystkie dane.
     os.environ["DJANGO_BPP_SKIP_DOTENV"] = "1"

@@ -106,7 +106,6 @@ dependencies = [
     "django-prometheus>=2.4.1",
     "ortools>=9.15.6755",
     "psycopg2-binary>=2.9.12", # ZOSTAW psycopg2 dla django-denorm
-    "amqp>=5.2.0", # RabbitMQ support for Celery
     "python-docx>=1.1.0", # Post-processing DOCX dla page breaks
     "questionary>=2.0.0", # Interactive CLI menus
     "bibtexparser>=2.0.0b7", # BibTeX import

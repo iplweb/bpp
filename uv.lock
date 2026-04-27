@@ -223,7 +223,6 @@ name = "bpp-iplweb"
 version = "202604.1365"
 source = { editable = "." }
 dependencies = [
-    { name = "amqp", marker = "platform_python_implementation != 'PyPy'" },
     { name = "arrow", marker = "platform_python_implementation != 'PyPy'" },
     { name = "beautifulsoup4", marker = "platform_python_implementation != 'PyPy'" },
     { name = "bibtexparser", marker = "platform_python_implementation != 'PyPy'" },
@@ -388,7 +387,6 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "amqp", specifier = ">=5.2.0" },
     { name = "arrow", specifier = ">=1.3,<2" },
     { name = "beautifulsoup4", specifier = ">=4.14.3" },
     { name = "bibtexparser", specifier = ">=2.0.0b7" },

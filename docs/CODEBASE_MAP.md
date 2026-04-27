@@ -40,7 +40,7 @@ graph TB
     end
 
     subgraph Background["Background Processing"]
-        Celery[Celery Workers<br/>RabbitMQ Broker]
+        Celery[Celery Workers<br/>Redis Broker]
         Redis[Redis Cache<br/>Sessions + Caching]
         Channels[Django Channels<br/>WebSocket Notifications]
     end
@@ -78,7 +78,7 @@ graph TB
 | **Backend** | Python 3.10-3.14, Django |
 | **Database** | PostgreSQL with custom SQL functions |
 | **Cache** | Redis (sessions, ORM caching, locks) |
-| **Task Queue** | Celery + RabbitMQ |
+| **Task Queue** | Celery + Redis |
 | **WebSockets** | Django Channels |
 | **Frontend** | Foundation 6 CSS, jQuery, HTMX |
 | **Build** | Grunt (SCSS), Yarn (deps), UV (Python) |
@@ -514,7 +514,7 @@ Key environment variables (via `.env`):
 DJANGO_BPP_DB_NAME, DJANGO_BPP_DB_USER, DJANGO_BPP_DB_PASSWORD
 DJANGO_BPP_DB_HOST, DJANGO_BPP_DB_PORT
 DJANGO_BPP_REDIS_HOST, DJANGO_BPP_REDIS_PORT
-DJANGO_BPP_RABBITMQ_HOST, DJANGO_BPP_RABBITMQ_USER
+DJANGO_BPP_REDIS_DB_BROKER, DJANGO_BPP_REDIS_DB_CELERY
 DJANGO_BPP_SECRET_KEY
 DJANGO_BPP_ROLLBAR_TOKEN (optional)
 MICROSOFT_AUTH_CLIENT_ID (optional)

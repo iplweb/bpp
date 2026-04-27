@@ -14,8 +14,8 @@ nc -zv localhost 8000
 # View server logs:
 docker-compose logs -f appserver
 
-# Start infrastructure services (PostgreSQL, RabbitMQ, Redis):
-docker compose up db redis rabbitmq -d
+# Start infrastructure services (PostgreSQL, Redis):
+docker compose up db redis -d
 ```
 
 - `uv run python src/manage.py migrate` - Apply database migrations
@@ -104,8 +104,8 @@ cd ../bpp-feature
 
 Worktree działa out-of-the-box — testy używają `testcontainers_bpp`
 (własne kontenery na losowych portach), więc nie potrzebują
-`docker compose up db redis rabbitmq`. Jeśli chcesz uruchomić dev-server
-w worktree, pamiętaj że porty 5432/6379/5672/8000 są współdzielone z
+`docker compose up db redis`. Jeśli chcesz uruchomić dev-server
+w worktree, pamiętaj że porty 5432/6379/8000 są współdzielone z
 innymi worktree — odpalaj dev-stack tylko w jednym na raz.
 
 ## Changelog Management

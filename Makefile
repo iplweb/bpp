@@ -276,17 +276,17 @@ rebuild-baseline: ## Regeneruj baseline.sql do przyspieszenia testów (commit ef
 tests-no-containers: ## Testy przeciwko istniejącym kontenerom docker-compose (bez testcontainers)
 	uv run pytest --no-testcontainers -n auto -m "not playwright" --maxfail 50
 
-# Stop reusable testcontainers (bpp-tc-pg, bpp-tc-redis, bpp-tc-rabbitmq).
+# Stop reusable testcontainers (bpp-tc-pg, bpp-tc-redis).
 tests-stop-containers: ## Zatrzymaj i usuń reużywalne testcontainers (bpp-tc-*)
-	-docker stop bpp-tc-pg bpp-tc-redis bpp-tc-rabbitmq 2>/dev/null
-	-docker rm bpp-tc-pg bpp-tc-redis bpp-tc-rabbitmq 2>/dev/null
+	-docker stop bpp-tc-pg bpp-tc-redis 2>/dev/null
+	-docker rm bpp-tc-pg bpp-tc-redis 2>/dev/null
 	@echo "Testcontainers stopped and removed."
 
 # Remove ALL orphaned testcontainers (including Ryuks from crashed pytest runs).
-clean-testcontainers: ## Usuń wszystkie osierocone testcontainers (PG/Redis/Rabbit/Ryuk + reuse bpp-tc-*)
+clean-testcontainers: ## Usuń wszystkie osierocone testcontainers (PG/Redis/Ryuk + reuse bpp-tc-*)
 	@echo "Removing all containers labeled org.testcontainers=true ..."
 	-@docker ps -aq --filter "label=org.testcontainers=true" | xargs -r docker rm -f
-	-@docker rm -f bpp-tc-pg bpp-tc-redis bpp-tc-rabbitmq 2>/dev/null || true
+	-@docker rm -f bpp-tc-pg bpp-tc-redis 2>/dev/null || true
 	@echo "Done."
 
 # Run tests with ephemeral containers (destroyed after run).
@@ -295,14 +295,14 @@ tests-ephemeral: ## Testy w efemerycznych testcontainers (usuwane po teście)
 
 tests-in-docker: ## Testy w pełni w Dockerze (docker-compose.test.yml)
 	docker compose -f docker-compose.test.yml build test-runner
-	docker compose -f docker-compose.test.yml up -d db redis rabbitmq
+	docker compose -f docker-compose.test.yml up -d db redis
 	docker compose -f docker-compose.test.yml run --rm test-runner \
 		uv run pytest -n auto -m "not playwright" --maxfail 50
 	docker compose -f docker-compose.test.yml down
 
 tests-in-docker-interactive: ## tests-in-docker z interaktywnym bashem w kontenerze
 	docker compose -f docker-compose.test.yml build test-runner
-	docker compose -f docker-compose.test.yml up -d db redis rabbitmq
+	docker compose -f docker-compose.test.yml up -d db redis
 	docker compose -f docker-compose.test.yml run --rm test-runner bash
 
 tests-in-docker-down: ## Zatrzymaj i usuń środowisko tests-in-docker (wraz z volume)

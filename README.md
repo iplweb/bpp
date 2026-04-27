@@ -40,7 +40,6 @@ Oprogramowanie dystrybuowane jest na zasadach otwartoźródłowej
 
 - PostgreSQL
 - Redis
-- RabbitMQ
 - Docker (zalecany sposób wdrożenia)
 
 ## Instalacja
@@ -80,7 +79,7 @@ pod adresem e-mail michal.dtz@gmail.com.
 >
 > **Pierwsze wykonanie poniższych kroków może trwać bardzo długo** —
 > ściągane są zależności Pythona, paczki npm/yarn, przeglądarki Playwright
-> oraz obrazy Dockera dla testcontainers (PostgreSQL, Redis, RabbitMQ).
+> oraz obrazy Dockera dla testcontainers (PostgreSQL, Redis).
 > Łącznie kilkaset MB do kilku GB transferu sieciowego. Pod każdym krokiem
 > podany jest sposób, jak włączyć szczegółowe logowanie postępu.
 
@@ -136,7 +135,7 @@ grunt build --verbose       # alternatywa dla `make grunt-build`
 uv run pytest
 ```
 
-Pytest startuje **własne** kontenery Docker (PostgreSQL, Redis, RabbitMQ)
+Pytest startuje **własne** kontenery Docker (PostgreSQL, Redis)
 przez plugin `testcontainers_bpp` — przy pierwszym uruchomieniu pobiera
 obrazy z Docker Hub (kolejne kilkaset MB). Wymagany jest działający
 **Docker daemon**.
@@ -178,7 +177,7 @@ Instaluje przez `apt` pakiety `yarnpkg`, `python3-dev`, `libpq-dev`,
 |---|---|
 | **Backend** | Python 3.10+, Django 4.2, Celery, Django Channels |
 | **Baza danych** | PostgreSQL |
-| **Cache / broker** | Redis, RabbitMQ |
+| **Cache / broker** | Redis |
 | **Frontend** | Foundation CSS, jQuery, HTMX, Select2 |
 | **Infrastruktura** | Docker, Nginx, Prometheus, Grafana |
 

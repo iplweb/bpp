@@ -52,7 +52,7 @@ Full details: [docs/COMMANDS.md](docs/COMMANDS.md)
 
 ```bash
 # Infrastructure services (when not running locally):
-docker compose up db redis rabbitmq -d
+docker compose up db redis -d
 
 # Testing (full suite takes UP TO 10 MINUTES):
 uv run pytest
@@ -207,13 +207,13 @@ usuwajacy tagi starsze niz N dni.
 
 Testy używają plugin-a `testcontainers_bpp`, który domyślnie startuje
 na losowych portach **własne** kontenery PostgreSQL
-(`iplweb/bpp_dbserver`), Redis i RabbitMQ. Dev-owe
-`docker compose up db redis rabbitmq` **nie jest wymagane** do
+(`iplweb/bpp_dbserver`) i Redis. Dev-owe
+`docker compose up db redis` **nie jest wymagane** do
 uruchomienia testów i nie koliduje z nimi.
 
 - Wymaganie: działający Docker daemon.
-- Plugin wstrzykuje `DJANGO_BPP_DB_PORT`, `DJANGO_BPP_REDIS_PORT`,
-  `DJANGO_BPP_RABBITMQ_PORT` (i hosty/hasła) do `os.environ` **przed**
+- Plugin wstrzykuje `DJANGO_BPP_DB_PORT` i `DJANGO_BPP_REDIS_PORT`
+  (i hosty/hasła) do `os.environ` **przed**
   załadowaniem Django settings, oraz `DJANGO_BPP_SKIP_DOTENV=1`, żeby
   `.env` nie nadpisał wstrzykniętych wartości.
 - Wyłączenie (gdy sam odpaliłeś usługi przez docker-compose):
