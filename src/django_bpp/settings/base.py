@@ -624,6 +624,10 @@ CELERYD_HIJACK_ROOT_LOGGER = False
 
 CELERY_TRACK_STARTED = False
 
+# Workerzy emituja eventy lifecycle (online/heartbeat/offline + task-received/
+# started/succeeded/failed) na RabbitMQ. Bez tego Flower nie widzi workerow.
+CELERY_WORKER_SEND_TASK_EVENTS = True
+
 CELERY_ROUTES = [
     {"denorm.tasks.flush_single": {"queue": "denorm"}},
 ]
