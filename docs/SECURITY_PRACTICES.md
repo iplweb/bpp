@@ -12,6 +12,7 @@ Polityka zgłaszania luk bezpieczeństwa: [SECURITY.md](../SECURITY.md).
 - [Cooldown przed instalacją](#cooldown-przed-instalacją)
 - [Eksplicytny indeks PyPI](#eksplicytny-indeks-pypi)
 - [SHA-pinning GitHub Actions](#sha-pinning-github-actions)
+- [Dep tree audit (kwiecień 2026)](#dep-tree-audit-kwiecień-2026)
 
 ---
 
@@ -117,6 +118,88 @@ commit. Wszystkie runy używające `@v6` dostają kompromat natychmiast
 **Update workflow**: Dependabot z `github-actions` ekosystemu
 automatycznie podbija SHA gdy wyjdzie nowa wersja akcji (z 3-dniowym
 cooldownem).
+
+## Dep tree audit (kwiecień 2026)
+
+Praktyka #14 z pypi-security-best-practices (Reduce Your Package
+Dependency Tree) — mniej deps = mniejsza powierzchnia ataku.
+
+Audyt przeprowadzony na `uv.lock` z `dev` (331 packages, 84 top-level
++ 247 transitive). Wynik: większość deps uzasadniona, kilka kandydatów
+do follow-up.
+
+### Confirmed-used (no action)
+
+Sprawdzone przez `grep -rn "import <name>\|from <name>"`:
+
+| Package        | Imports | Notatka                                          |
+| -------------- | ------: | ------------------------------------------------ |
+| `requests`     | 16      | Heavy use; `urllib.request` byłby ogromnym refactorem. |
+| `crossrefapi`  | 23      | Rdzeń integracji z CrossRef.                     |
+| `celery`       | 55      | Background jobs, fundamentalne.                  |
+| `pandas`       | 8       | Raporty / data wrangling.                        |
+| `ortools`      | 4       | Optymalizacja slotów ewaluacji.                  |
+| `weasyprint`   | 1 lazy  | Lazy import w `raport_slotow/views/autor.py:200`. |
+
+### Stripped at Docker build (no action)
+
+| Package      | Status                                                     |
+| ------------ | ---------------------------------------------------------- |
+| `matplotlib` | 0 imports w BPP. Stripped w Dockerfile R6 (~38 MB).        |
+| `contourpy`  | Pulled przez matplotlib. Stripped razem.                   |
+| `kiwisolver` | Pulled przez matplotlib. Stripped razem.                   |
+| `cycler`     | Pulled przez matplotlib. Stripped razem.                   |
+
+### Dev-only (no action)
+
+W `[dev]` extras, nie idzie do produkcji:
+
+| Package                   | Status        |
+| ------------------------- | ------------- |
+| `ipython`                 | 0 imports w produkcyjnym kodzie, dev-only. ✅ |
+| `pytest*`                 | Test runner. ✅                                |
+| `playwright`              | E2E testy. ✅                                  |
+| `model-bakery`            | Test fixtures. ✅                              |
+| `Sphinx` + `sphinx-*`     | Build dokumentacji. ✅                         |
+
+### Follow-up candidates (track but not blocking)
+
+Pakiety, których refactor mógłby być wartościowy ale wymaga oddzielnej
+analizy (poza scope tej serii pypi-security-best-practices):
+
+1. **`pygad` (3.6.0)** → `matplotlib` w transitive (pomimo strip).
+   - Used in: `ewaluacja2021` (algorytm genetyczny do optymalizacji slotów).
+   - Alternative: re-implementacja jako `numpy` + custom GA loop, lub
+     wybór innego GA libu (`deap`, `pymoo`) z lżejszymi transitive.
+   - Priority: LOW. Strip Dockerfile rozwiązuje problem rozmiaru obrazu.
+
+2. **`requests-oauthlib` (2.0.0)** → audit czy używamy całej OAuth flow,
+   czy tylko `requests` wystarczy.
+   - Priority: LOW. Niewielka dep.
+
+3. **`bibtexparser>=2.0.0b9`** — beta version.
+   - Action: monitor stable 2.0 release, bump kiedy wyjdzie.
+
+### Audit recipe
+
+Reprodukcja tego audytu:
+
+```sh
+# Top-level deps tree:
+uv tree --depth 1
+
+# Detal dla jednego pakietu:
+uv tree --package <name>
+
+# Imports count w produkcyjnym kodzie:
+grep -rn "^import <name>\|^from <name>" src/
+
+# Confirm dev-only (nie powinno byc w produkcyjnym venv):
+grep -A 2 "<name>" pyproject.toml | head
+```
+
+Zalecane powtórzenie audytu raz na rok lub przy major version bump
+(Python 3.x → 3.x+1).
 
 ---
 

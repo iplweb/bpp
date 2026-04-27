@@ -1,0 +1,1 @@
+Przeprowadzono audit drzewa zależności (kwiecień 2026): 331 pakietów (84 top-level + 247 transitive), z czego większość confirmed-used przez import grep. matplotlib + transitive (contourpy/kiwisolver/cycler) stripped w Dockerfile R6. ipython tylko w ``[dev]`` extras. Audit udokumentowany w ``docs/SECURITY_PRACTICES.md`` jako baseline + recipe do powtórzenia.
