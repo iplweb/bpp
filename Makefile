@@ -58,7 +58,7 @@ endif
 all:	prepare-developer-machine release ## UWAGA: pełna konfiguracja + release (uruchamia release!)
 
 prepare-developer-machine-macos: ## Zainstaluj zależności systemowe na macOS (brew + uv sync)
-	uv sync --all-extras
+	uv sync --frozen --all-extras
 	brew install cairo pango gdk-pixbuf libffi gobject-introspection gtk+3
 	sudo ln -sf /opt/homebrew/opt/glib/lib/libgobject-2.0.0.dylib /usr/local/lib/gobject-2.0
 	sudo ln -sf /opt/homebrew/opt/pango/lib/libpango-1.0.dylib /usr/local/lib/pango-1.0
@@ -71,7 +71,7 @@ prepare-developer-machine-linux: ## Zainstaluj zależności systemowe na Linuksi
 	sudo apt install -y yarnpkg python3-dev libpq-dev libcairo2-dev \
 		libpango1.0-dev libgdk-pixbuf2.0-dev libffi-dev \
 		libgirepository1.0-dev libgtk-3-dev
-	uv sync --all-extras
+	uv sync --frozen --all-extras
 
 prepare-developer-machine: ## Zainstaluj zależności systemowe (auto-detekcja macOS/Linux)
 ifeq ($(OS),Darwin)
