@@ -28,7 +28,7 @@
             <li><a href="?page={{ page_obj.number|add:"2" }}">{{ page_obj.number|add:"2" }}</a></li>
         {% endif %}
         {% if page_obj.number|add:"2" <= paginator.num_pages|add:"-2" %}
-            <li class="ellipsis" aria-hidden="true"></li>
+            <li class="ellipsis" aria-hidden="true"><span>&hellip;</span></li>
             <li><a href="?page={{ paginator.num_pages }}">{{ paginator.num_pages }}</a></li>
         {% elif page_obj.number|add:"1" <= paginator.num_pages|add:"-2" %}
             <li><a href="?page={{ paginator.num_pages }}">{{ paginator.num_pages }}</a></li>

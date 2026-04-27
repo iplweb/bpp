@@ -1,97 +1,5 @@
 {% load url_helpers %}
 {% if is_paginated %}
-    <style>
-        /* Anchor padding to prevent hiding behind top bar */
-        a[name="pager"] {
-            display: block;
-            padding-top: 200px;
-            margin-top: -200px;
-            visibility: hidden;
-        }
-
-        /* Modern pagination styling */
-        .pagination {
-            background: #f8f9fa;
-            border: 1px solid #dee2e6;
-            border-radius: 8px;
-            padding: 0.75rem 1rem;
-            margin: 1.5rem 0;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            display: flex !important;
-            justify-content: center;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .pagination li {
-            margin: 0;
-        }
-
-        .pagination li a,
-        .pagination li span {
-            background: #fff;
-            border: 1px solid #dee2e6;
-            border-radius: 6px;
-            padding: 0.5rem 0.75rem;
-            margin: 0 0.25rem;
-            font-weight: 500;
-            transition: all 0.2s ease;
-            text-decoration: none;
-            color: #007bff;
-        }
-
-        .pagination li a:hover {
-            background: #007bff;
-            color: #fff;
-            border-color: #007bff;
-            transform: translateY(-1px);
-            box-shadow: 0 2px 4px rgba(0,123,255,0.3);
-        }
-
-        .pagination li.current a,
-        .pagination li.current span {
-            background: #007bff;
-            color: #fff;
-            border-color: #007bff;
-            font-weight: 600;
-        }
-
-        .pagination li.disabled a,
-        .pagination li.disabled span {
-            background: #e9ecef;
-            color: #6c757d;
-            border-color: #dee2e6;
-            cursor: not-allowed;
-        }
-
-        .pagination li.ellipsis span {
-            background: transparent;
-            border: none;
-            color: #6c757d;
-            padding: 0 0.5rem;
-        }
-
-        .pagination .pagination-previous a,
-        .pagination .pagination-next a {
-            background: #28a745;
-            color: #fff;
-            border-color: #28a745;
-            font-weight: 600;
-        }
-
-        .pagination .pagination-previous a:hover,
-        .pagination .pagination-next a:hover {
-            background: #218838;
-            border-color: #218838;
-        }
-
-        .pagination .pagination-previous.disabled a,
-        .pagination .pagination-next.disabled a {
-            background: #e9ecef;
-            color: #6c757d;
-            border-color: #dee2e6;
-        }
-    </style>
     <a name="pager"></a>
     <ul class="pagination hide-for-print" role="navigation" aria-label="Pagination">
         {% if page_obj.has_previous %}
@@ -114,7 +22,7 @@
         {% if page_obj.number|add:"-1" >= 1 %}
             <li><a href="?{% url_replace page=page_obj.number|add:"-1" %}#pager">{{ page_obj.number|add:"-1" }}</a></li>
         {% endif %}
-        <li class="current">{{ page_obj.number }}</li>
+        <li class="current"><span>{{ page_obj.number }}</span></li>
         {% if page_obj.number|add:"1" <= paginator.num_pages %}
             <li><a href="?{% url_replace page=page_obj.number|add:"1" %}#pager">{{ page_obj.number|add:"1" }}</a></li>
         {% endif %}
@@ -122,7 +30,7 @@
             <li><a href="?{% url_replace page=page_obj.number|add:"2" %}#pager">{{ page_obj.number|add:"2" }}</a></li>
         {% endif %}
         {% if page_obj.number|add:"2" <= paginator.num_pages|add:"-2" %}
-            <li class="ellipsis" aria-hidden="true"></li>
+            <li class="ellipsis" aria-hidden="true"><span>&hellip;</span></li>
             <li><a href="?{% url_replace page=paginator.num_pages %}#pager">{{ paginator.num_pages }}</a></li>
         {% elif page_obj.number|add:"1" <= paginator.num_pages|add:"-2" %}
             <li><a href="?{% url_replace page=paginator.num_pages %}#pager">{{ paginator.num_pages }}</a></li>
