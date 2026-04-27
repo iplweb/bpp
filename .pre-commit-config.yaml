@@ -10,6 +10,22 @@ repos:
           args: ["--fix", "--exit-non-zero-on-fix"]
         - id: ruff-format
 
+    # djlint: walidacja strukturalna templatów HTML/Django. Konfiguracja
+    # w [tool.djlint] w pyproject.toml — egzekwujemy tylko reguły
+    # strukturalne (H020 empty-tag-pair, H025 orphan-tag) ktore lapią
+    # bugi rozjezdzajace minifier HTML; reszta wyciszona zeby pre-commit
+    # nie blokowal istniejacego codebase.
+    - repo: https://github.com/djlint/djLint
+      rev: v1.36.4
+      hooks:
+        - id: djlint-django
+          # --lint: tylko reguly strukturalne (H020/H025/H017 etc.),
+          # bez sugestii reformatowania (--check by przepuszczal cale
+          # diff-y indentacji na pre-commit, blokujac niezmienione pliki).
+          args: ["--lint"]
+          files: \.html$
+          exclude: ^(node_modules/|.*/migrations/|.*/staticroot/|src/django_bpp/static/500\.html$|src/bpp/static/500\.html$)
+
     - repo: https://github.com/pre-commit/pre-commit-hooks
       rev: 'v6.0.0'
       hooks:
