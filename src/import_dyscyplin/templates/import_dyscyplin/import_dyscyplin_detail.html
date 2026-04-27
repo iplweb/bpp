@@ -13,19 +13,35 @@
 
 
 {% block content %}
-    <div class="reveal" id="modal1" data-reveal>
-        <h1>Przetwarzanie danych</h1>
-        <p class="lead">Poproszę o dwie chwile cierpliwości...</p>
-        <div class="spinner">
-            <div class="bounce1"></div>
-            <div class="bounce2"></div>
-            <div class="bounce3"></div>
+    {% comment %}
+    Modal "Przetwarzanie danych": Foundation Reveal -> Alpine x-show.
+    Otwierany przez window event 'open-modal-modal1' z 3 inline scriptow
+    ponizej (dla 3 stanow object.stan) + z data-integrate-action button-a.
+    {% endcomment %}
+    <div x-data="{ open: false }"
+         x-show="open" x-cloak
+         x-on:keydown.escape.window="open = false"
+         x-on:open-modal.window="if ($event.detail.id === 'modal1') open = true"
+         x-on:close-modal.window="if ($event.detail.id === 'modal1') open = false"
+         id="modal1" role="dialog" aria-modal="true" aria-labelledby="modal1-title"
+         class="fixed inset-0 z-50 flex items-center justify-center">
+        <div class="fixed inset-0 bg-black/50" @click="open = false"></div>
+        <div x-show="open" x-transition
+             class="relative bg-white border border-black/25 shadow-lg max-w-2xl w-full mx-4 p-6 max-h-[90vh] overflow-y-auto">
+            <h1 id="modal1-title" class="mt-0 mb-4">Przetwarzanie danych</h1>
+            <p class="lead">Poproszę o dwie chwile cierpliwości...</p>
+            <div class="spinner">
+                <div class="bounce1"></div>
+                <div class="bounce2"></div>
+                <div class="bounce3"></div>
+            </div>
+            <p>Trwa przetwarzanie danych. Możesz zamknąć to okno dialogowe, kontynuować pracę normalnie
+                i wrócić ponownie tą stronę w późniejszym czasie. </p>
+            <button type="button" @click="open = false" aria-label="Zamknij okienko"
+                    class="absolute top-2 right-4 text-2xl leading-none text-dark-gray hover:text-black bg-transparent border-0 cursor-pointer">
+                <span aria-hidden="true">&times;</span>
+            </button>
         </div>
-        <p>Trwa przetwarzanie danych. Możesz zamknąć to okno dialogowe, kontynuować pracę normalnie
-            i wrócić ponownie tą stronę w późniejszym czasie. </p>
-        <button class="close-button" data-close aria-label="Zamknij okienko" type="button">
-            <span aria-hidden="true">&times;</span>
-        </button>
     </div>
 
 
@@ -45,7 +61,7 @@
 
         <script type="text/javascript">
             $(document).ready(function () {
-                $("#modal1").foundation('open');
+                window.dispatchEvent(new CustomEvent('open-modal', {detail: {id: 'modal1'}}));
                 $.ajax({
                     url: "{% url "import_dyscyplin:stworz_kolumny" object.pk %}",
                     method: "GET",
@@ -67,7 +83,7 @@
 
         <script type="text/javascript">
             $(document).ready(function () {
-                $("#modal1").foundation('open');
+                window.dispatchEvent(new CustomEvent('open-modal', {detail: {id: 'modal1'}}));
                 $.ajax({
                     url: "{% url "import_dyscyplin:przetwarzaj" object.pk %}",
                     method: "GET",
@@ -91,29 +107,34 @@
 
     {% if object.stan == "przeanalizowany" or object.stan == "zintegrowany" %}
 
-        <ul class="tabs" data-tabs id="example-tabs">
-            <li class="tabs-title {% if object.stan == "przeanalizowany" and object.poprawne_wiersze_do_integracji.count > 0 %}is-active{% endif %}">
-                <a href="#panel1" aria-selected="true">
+        {% comment %}
+        Tabs: Foundation data-tabs/data-tabs-content -> Alpine. Initial
+        active panel zalezy od object.stan + zawartosci queryset-ow.
+        {% endcomment %}
+        <div x-data="{ active: '{% if object.stan == 'przeanalizowany' and object.poprawne_wiersze_do_integracji.count > 0 %}panel1{% elif object.stan == 'przeanalizowany' and object.poprawne_wiersze_do_integracji.count == 0 %}panel2{% elif object.stan == 'zintegrowany' %}panel3{% else %}panel1{% endif %}' }">
+        <ul class="tabs" id="example-tabs">
+            <li class="tabs-title" :class="{ 'is-active': active === 'panel1' }">
+                <a href="#" @click.prevent="active = 'panel1'" :aria-selected="active === 'panel1'">
                     Rekordy do integracji
                     ({{ object.poprawne_wiersze_do_integracji.count }})
                 </a>
             </li>
-            <li class="tabs-title {% if object.stan == "przeanalizowany" and object.poprawne_wiersze_do_integracji.count == 0 %}is-active{% endif %}">
-                <a data-tabs-target="panel2" href="#panel2">
+            <li class="tabs-title" :class="{ 'is-active': active === 'panel2' }">
+                <a href="#" @click.prevent="active = 'panel2'" :aria-selected="active === 'panel2'">
                     Rekordy nie do integracji
                     ({{ object.niepoprawne_wiersze.count }})
                 </a>
             </li>
-            <li class="tabs-title {% if object.stan == "zintegrowany" %}is-active{% endif %}">
-                <a data-tabs-target="panel3" href="#panel2">
+            <li class="tabs-title" :class="{ 'is-active': active === 'panel3' }">
+                <a href="#" @click.prevent="active = 'panel3'" :aria-selected="active === 'panel3'">
                     Rekordy zintegrowane
                     ({{ object.zintegrowane_wiersze.count }})
                 </a>
             </li>
         </ul>
 
-        <div class="tabs-content" data-tabs-content="example-tabs">
-            <div class="tabs-panel {% if object.stan == "przeanalizowany" and object.poprawne_wiersze_do_integracji.count > 0 %}is-active{% endif %}"
+        <div class="tabs-content">
+            <div class="tabs-panel" :class="{ 'is-active': active === 'panel1' }" x-show="active === 'panel1'"
                  id="panel1">
                 <h2>Rekordy do integracji - rok {{ object.rok }}
                     {% if object.poprawne_wiersze_do_integracji.count > 0 and object.stan == "przeanalizowany" %}
@@ -143,7 +164,7 @@
 
 
             </div>
-            <div class="tabs-panel {% if object.stan == "przeanalizowany" and object.poprawne_wiersze_do_integracji.count == 0 %}is-active{% endif %}"
+            <div class="tabs-panel" :class="{ 'is-active': active === 'panel2' }" x-show="active === 'panel2'"
                  id="panel2">
                 <h2>Rekordy nie do integracji</h2>
                 <strong>Przyczyny</strong>:
@@ -178,7 +199,7 @@
                 </table>
             </div>
 
-            <div class="tabs-panel {% if object.stan == "zintegrowany" %}is-active{% endif %}" id="panel3">
+            <div class="tabs-panel" :class="{ 'is-active': active === 'panel3' }" x-show="active === 'panel3'" id="panel3">
                 <h2>Rekordy zintegrowane</h2>
                 <strong>Rezultaty</strong>:
                 <a href="#"
@@ -212,7 +233,8 @@
                 </table>
 
             </div>
-        </div>
+        </div>{# /tabs-content #}
+        </div>{# /Alpine x-data wrapper #}
 
 
         <script type="text/javascript">
@@ -304,7 +326,7 @@
                 var modalId = integrateBtn.dataset.modalId;
                 var url = integrateBtn.dataset.integrateUrl;
                 if (modalId) {
-                    $('#' + modalId).foundation('open');
+                    window.dispatchEvent(new CustomEvent('open-modal', {detail: {id: modalId}}));
                 }
                 $.ajax({
                     url: url,

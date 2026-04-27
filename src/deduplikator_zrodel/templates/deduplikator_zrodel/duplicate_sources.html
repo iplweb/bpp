@@ -18,36 +18,40 @@
         <!-- Left Sidebar Menu -->
         <div class="left-menu-sidebar">
             <div class="left-menu-menu">
-                <ul class="accordion deduplikator-zrodel__accordion"
-                    data-accordion
-                    data-allow-all-closed="true"
-                    data-multi-expand="true">
+                {% comment %}
+                Multi-expand accordion (sidebar): Foundation data-accordion +
+                data-multi-expand -> per-li x-data, niezalezne stany.
+                Wzor jak w deduplikator_autorow/duplicate_authors.html.
+                {% endcomment %}
+                <ul class="accordion deduplikator-zrodel__accordion">
                     {% if total_sources_with_duplicates %}
                     <!-- Liczba źródeł z duplikatami -->
-                    <li class="accordion-item is-active" data-accordion-item>
+                    <li class="accordion-item" x-data="{ open: true }">
                         <a class="accordion-title deduplikator-zrodel__accordion-title--static"
                            href="#"
-                           aria-expanded="true">
+                           @click.prevent="open = !open"
+                           :aria-expanded="open">
                             <span class="fi-page-multiple"></span>
                             ~{{ total_sources_with_duplicates }}
                             źróde{% if total_sources_with_duplicates != 1 %}ł{% endif %}
                             z duplikatami
                         </a>
                         <div class="accordion-content deduplikator-zrodel__accordion-content--hidden"
-                             data-tab-content></div>
+                             x-show="open" x-cloak></div>
                     </li>
                     {% endif %}
 
                     <!-- Nawigacja -->
                     {% if skipped_count > 0 %}
-                    <li class="accordion-item is-active" data-accordion-item>
+                    <li class="accordion-item" x-data="{ open: true }">
                         <a class="accordion-title deduplikator-zrodel__accordion-title--static"
                            href="#"
-                           aria-expanded="true">
+                           @click.prevent="open = !open"
+                           :aria-expanded="open">
                             <span class="fi-arrow-right"></span> Nawigacja
                         </a>
                         <div class="accordion-content deduplikator-zrodel__accordion-content--visible"
-                             data-tab-content>
+                             x-show="open" x-cloak>
                             <p class="deduplikator-zrodel__paragraph--spaced">
                                 Pominięto już {{ skipped_count }}
                                 źróde{% if skipped_count != 1 %}ł{% else %}łło{% endif %}.
@@ -61,11 +65,13 @@
                     {% endif %}
 
                     <!-- Pobierz XLSX -->
-                    <li class="accordion-item" data-accordion-item>
-                        <a class="accordion-title" href="#">
+                    <li class="accordion-item" x-data="{ open: false }">
+                        <a class="accordion-title" href="#"
+                           @click.prevent="open = !open"
+                           :aria-expanded="open">
                             <span class="fi-page-export"></span> Pobierz XLSX
                         </a>
-                        <div class="accordion-content" data-tab-content>
+                        <div class="accordion-content" x-show="open" x-cloak>
                             <p class="deduplikator-zrodel__paragraph--spaced">
                                 Pobierz wszystkie źródła z duplikatami w formacie Excel.
                             </p>
@@ -77,11 +83,13 @@
                     </li>
 
                     <!-- Obejrzyj nie-duplikaty -->
-                    <li class="accordion-item" data-accordion-item>
-                        <a class="accordion-title" href="#">
+                    <li class="accordion-item" x-data="{ open: false }">
+                        <a class="accordion-title" href="#"
+                           @click.prevent="open = !open"
+                           :aria-expanded="open">
                             <span class="fi-eye"></span> Obejrzyj nie-duplikaty
                         </a>
-                        <div class="accordion-content" data-tab-content>
+                        <div class="accordion-content" x-show="open" x-cloak>
                             <p class="deduplikator-zrodel__paragraph--spaced">
                                 Przejrzyj źródła oznaczone jako nie będące duplikatami.
                             </p>
@@ -94,11 +102,13 @@
                     </li>
 
                     <!-- Ignorowane źródła -->
-                    <li class="accordion-item" data-accordion-item>
-                        <a class="accordion-title" href="#">
+                    <li class="accordion-item" x-data="{ open: false }">
+                        <a class="accordion-title" href="#"
+                           @click.prevent="open = !open"
+                           :aria-expanded="open">
                             <span class="fi-prohibited"></span> Ignorowane źródła
                         </a>
-                        <div class="accordion-content" data-tab-content>
+                        <div class="accordion-content" x-show="open" x-cloak>
                             <p class="deduplikator-zrodel__paragraph--spaced">
                                 Źródła pominięte w procesie deduplikacji.
                             </p>
