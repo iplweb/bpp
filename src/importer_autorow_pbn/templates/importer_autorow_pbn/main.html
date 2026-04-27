@@ -18,8 +18,8 @@
    wycofany; jQuery `$('#xxx').foundation('open/close')` zastąpione mutacją
    stanu Alpine. #}
 <div x-data="importerAutorowPbn">
-    <div class="row">
-        <div class="large-12 columns">
+    <div class="flex flex-wrap -mx-2">
+        <div class="w-full px-2">
             <h1>Importer autorów PBN</h1>
             <p class="lead">Naukowcy z PBN bez odpowiedników w BPP</p>
 
@@ -49,8 +49,8 @@
                 </ul>
             </div>
 
-            <div class="row">
-                <div class="medium-6 columns">
+            <div class="flex flex-wrap -mx-2">
+                <div class="md:w-1/2 px-2">
                     <div class="stat-box">
                         <h4><i class="fi-torso"></i> Statystyki</h4>
                         <p><strong>Nieprzypisani naukowcy:</strong> {{ total_unmatched }}</p>
@@ -64,7 +64,7 @@
                         {% endif %}
                     </div>
                 </div>
-                <div class="medium-6 columns">
+                <div class="md:w-1/2 px-2">
                     <div class="panel">
                         <h5><i class="fi-magnifying-glass"></i> Wyszukiwanie</h5>
                         <form method="get" action="">
@@ -80,8 +80,8 @@
                 </div>
             </div>
 
-            <div class="row">
-                <div class="large-12 columns">
+            <div class="flex flex-wrap -mx-2">
+                <div class="w-full px-2">
                     <div class="callout secondary small">
                         <label style="margin-bottom: 0;">
                             <input type="checkbox" id="pokaz-wszystkich-checkbox"
@@ -94,8 +94,8 @@
             </div>
 
             {% if total_with_matches > 0 or total_unmatched > total_with_matches %}
-                <div class="row">
-                    <div class="large-12 columns">
+                <div class="flex flex-wrap -mx-2">
+                    <div class="w-full px-2">
                         <div class="panel">
                             <h5><i class="fi-widget"></i> Akcje masowe</h5>
                             <div class="button-group">
