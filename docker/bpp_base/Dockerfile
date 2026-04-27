@@ -67,6 +67,19 @@ RUN --mount=type=cache,target=/root/.cache/uv,id=uv-cache \
     uv pip uninstall --python /app/.venv/bin/python \
         matplotlib contourpy kiwisolver cycler
 
+# SBOM (Software Bill of Materials, format CycloneDX 1.6).
+# Generowany PO uv pip uninstall matplotlib aby oddawal rzeczywisty
+# stan venva produkcyjnego. uvx pulluje cyclonedx-bom ephemerally - nie
+# zostaje w obrazie, tylko sbom.json (~50-100 KB) idzie do runtime stage.
+# Praktyka #15 z lirantal/pypi-security-best-practices - SBOM pozwala
+# szybko sprawdzic czy nasz produkcyjny obraz zawiera podatne wersje
+# gdy nowy CVE jest disclosed.
+RUN --mount=type=cache,target=/root/.cache/uv,id=uv-cache \
+    uvx --from cyclonedx-bom cyclonedx-py environment \
+        /app/.venv \
+        --output-format JSON \
+        --output-file /app/sbom.json
+
 RUN --mount=type=cache,target=/root/.npm,id=npm-cache \
     --mount=type=cache,target=/root/.yarn,id=yarn-cache \
     npx yarn install --dev --ignore-optional && \
@@ -306,6 +319,11 @@ WORKDIR /app
 # pisze do `$STATIC_ROOT` (default `/app/staticroot`, override w compose).
 COPY --from=builder /app/staticroot.baked ./staticroot.baked
 COPY --from=builder /app/.venv ./.venv
+# SBOM (CycloneDX 1.6) wygenerowany w builder stage. Shipowany w obrazie
+# zeby uzytkownicy mogli dostac inwentaryzacje pakietow bez rebuildu:
+#   docker run --rm <image> cat /app/sbom.json | jq '.components[].name'
+# Praktyka #15 z lirantal/pypi-security-best-practices.
+COPY --from=builder /app/sbom.json ./sbom.json
 # The baseline pg_dump (src/baseline-sql) ships along with src/ and is
 # loaded by entrypoint-appserver.sh via `manage.py baseline_load` on
 # empty databases to skip 800+ migrations on a cold install.

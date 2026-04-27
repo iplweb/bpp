@@ -430,3 +430,46 @@ jobs:
               echo "Also:        \`:latest\`"
             fi
           } >> "$GITHUB_STEP_SUMMARY"
+
+      # -----------------------------------------------------------------
+      # FAZA 4: Extract SBOM from promoted appserver image
+      # -----------------------------------------------------------------
+      # Praktyka #15 z lirantal/pypi-security-best-practices.
+      # SBOM (CycloneDX 1.6) wygenerowany przez cyclonedx-py environment
+      # w builder stage Dockerfile, shipowany w obrazie pod /app/sbom.json.
+      # Wyciagamy go i uploadujemy jako workflow artifact - ulatwia szybki
+      # impact assessment przy disclosure nowego CVE w PyPI ekosystemie.
+      # -----------------------------------------------------------------
+      - name: Extract SBOM from appserver image
+        id: sbom
+        env:
+          STAGING_TAG: ${{ steps.tag.outputs.staging_tag }}
+          FINAL_TAG: ${{ steps.tag.outputs.final_tag }}
+        run: |
+          set -eu
+          IMAGE="iplweb/bpp_appserver:${FINAL_TAG}"
+          echo "Extracting SBOM from ${IMAGE}..."
+          # Pull explicit (cloud builder moze nie miec lokalnie po promote)
+          docker pull "${IMAGE}"
+          CID=$(docker create "${IMAGE}")
+          # Fallback: starsze obrazy (sprzed wprowadzenia SBOM) nie maja
+          # /app/sbom.json - nie failuj workflow, zaloguj.
+          if docker cp "${CID}:/app/sbom.json" ./sbom.json 2>/dev/null; then
+            echo "sbom_present=true" >> "$GITHUB_OUTPUT"
+            COMPONENTS=$(jq '.components | length' ./sbom.json)
+            echo "sbom_components=${COMPONENTS}" >> "$GITHUB_OUTPUT"
+            echo "::notice::SBOM extracted: ${COMPONENTS} components"
+          else
+            echo "sbom_present=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::SBOM not found in image - obrazy sprzed PR #6 nie maja sbom.json"
+          fi
+          docker rm "${CID}" >/dev/null
+
+      - name: Upload SBOM as workflow artifact
+        if: steps.sbom.outputs.sbom_present == 'true'
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: sbom-${{ steps.tag.outputs.final_tag }}
+          path: sbom.json
+          retention-days: 90
+          if-no-files-found: error
