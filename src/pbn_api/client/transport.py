@@ -1,5 +1,6 @@
 """HTTP transport layer for PBN API client."""
 
+import logging
 import random
 import time
 import warnings
@@ -23,6 +24,8 @@ from pbn_api.exceptions import (
 from .auth import OAuthMixin
 from .pagination import PageableResource
 from .utils import smart_content
+
+logger = logging.getLogger(__name__)
 
 
 class PBNClientTransport:
@@ -160,6 +163,15 @@ class RequestsTransport(OAuthMixin, PBNClientTransport):
             if ret.status_code == 423 and smart_content(ret.content) == "Locked":
                 raise ResourceLockedException(
                     ret.status_code, url, smart_content(ret.content)
+                )
+            if ret.status_code >= 500:
+                logger.error(
+                    "PBN %s on %s: headers=%r body_len=%d body=%r",
+                    ret.status_code,
+                    url,
+                    dict(ret.headers),
+                    len(ret.content),
+                    ret.content[:4000],
                 )
             raise HttpException(ret.status_code, url, smart_content(ret.content))
 
