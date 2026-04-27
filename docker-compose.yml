@@ -23,6 +23,11 @@ services:
       - POSTGRESQL_MAX_LOCKS_PER_TRANSACTION=512
     volumes:
       - postgresql_data:/var/lib/postgresql/data
+      # Baseline pg_dump ładowany przez postgresowy entrypoint przy
+      # pierwszej inicjalizacji bazy (tj. gdy volume postgresql_data jest
+      # pusty). Skraca bootstrap z ~minut migracji do sekund.
+      # Patrz: src/baseline-sql/README.md.
+      - ./src/baseline-sql/baseline.sql:/docker-entrypoint-initdb.d/baseline.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DJANGO_BPP_DB_USER:-bpp}"]
       start_period: 10s
