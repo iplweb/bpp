@@ -128,13 +128,22 @@
                 {% endif %}
 
                 {% if saved_forms %}
-                    <button type="button" class="secondary dropdown button" data-toggle="multiseek-form-menu" href="#"
-                            data-dropdown="drop2"
-                            aria-haspopup="menu">
-                        <i class="fi-upload" aria-hidden="true"></i> Wczytaj formularz</a>
+                    {% comment %}
+                    Dropdown "Wczytaj formularz": Foundation data-toggle/
+                    data-dropdown -> Alpine x-data + x-show + click-outside.
+                    {% endcomment %}
+                    <span x-data="{ open: false }">
+                    <button type="button" class="secondary dropdown button"
+                            @click="open = !open"
+                            aria-haspopup="menu"
+                            :aria-expanded="open">
+                        <i class="fi-upload" aria-hidden="true"></i> Wczytaj formularz
                     </button>
 
-                    <div class="dropdown-pane" id="multiseek-form-menu" data-dropdown>
+                    <div class="dropdown-pane" id="multiseek-form-menu"
+                         x-show="open" x-cloak
+                         @click.outside="open = false"
+                         @keydown.escape.window="open = false">
                         <ul class="no-bullet">
                             {% for form in saved_forms %}
                                 <li>
@@ -144,6 +153,7 @@
                             {% endfor %}
                         </ul>
                     </div>
+                    </span>
 
 
 

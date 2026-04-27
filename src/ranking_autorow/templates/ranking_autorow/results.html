@@ -25,11 +25,19 @@
                 <a href="?{{ request.GET.urlencode }}&_export=xlsx" class="button export-button" title="Pobierz jako XLSX">
                     <span class="fi-page-export"></span> Pobierz XLSX
                 </a>
-                <div class="export-dropdown">
-                    <button class="button dropdown-button" data-toggle="export-dropdown">
+                {% comment %}
+                Dropdown export-formatow: Foundation data-toggle/data-dropdown
+                -> Alpine x-data + x-show, click-outside-to-close.
+                {% endcomment %}
+                <div class="export-dropdown" x-data="{ open: false }">
+                    <button class="button dropdown-button" type="button"
+                            @click="open = !open">
                         Inne formaty <span class="fi-arrow-down"></span>
                     </button>
-                    <ul id="export-dropdown" class="dropdown-content" data-dropdown data-auto-focus="true">
+                    <ul id="export-dropdown" class="dropdown-content"
+                        x-show="open" x-cloak
+                        @click.outside="open = false"
+                        @keydown.escape.window="open = false">
                         <li><a href="?{{ request.GET.urlencode }}&_export=csv">
                             <span class="fi-page-csv"></span> CSV
                         </a></li>
