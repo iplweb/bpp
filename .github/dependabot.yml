@@ -12,6 +12,12 @@ updates:
     commit-message:
       prefix: "ci"
       include: "scope"
+    # Cooldown: GitHub Actions tag-promotion attacks (np. malicious tag
+    # nadpisany na popularnej akcji) sa wykrywane szybko - daj 3 dni
+    # community na zauwazenie problemu zanim wystawimy PR.
+    cooldown:
+      default-days: 3
+      semver-major-days: 7
 
   - package-ecosystem: "uv"
     directory: "/"
@@ -25,6 +31,16 @@ updates:
     commit-message:
       prefix: "deps"
       include: "scope"
+    # Cooldown: czekaj az pakiet "ostygnie" przed otwarciem PR-a.
+    # Chroni przed atakami typu LiteLLM (atak trwal 2.5h zanim PyPI
+    # quarantine zadzialalo - 119k pobran zlosliwego pakietu). Dependabot
+    # automatycznie omija cooldown dla aktualizacji security (CVE).
+    # Praktyka #2 z lirantal/pypi-security-best-practices.
+    cooldown:
+      default-days: 3
+      semver-major-days: 7
+      semver-minor-days: 3
+      semver-patch-days: 3
     groups:
       python-minor-and-patch:
         update-types:
@@ -50,6 +66,11 @@ updates:
     commit-message:
       prefix: "docker"
       include: "scope"
+    # Cooldown: 3 dni na bazowe obrazy. Tag promotion attacks na obrazach
+    # bazowych (np. python:3.13-slim) sa rzadkie ale mozliwe.
+    cooldown:
+      default-days: 3
+      semver-major-days: 7
     groups:
       docker-base-images:
         patterns:

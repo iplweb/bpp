@@ -144,6 +144,12 @@ def pytest_load_initial_conftests(early_config, parser, args):  # noqa: ARG001
     os.environ["DJANGO_BPP_DB_PASSWORD"] = "password"
     os.environ["DJANGO_BPP_DB_NAME"] = "bpp"
 
+    # Baseline jest ładowane do bazy `bpp` wewnątrz kontenera przez
+    # /docker-entrypoint-initdb.d/. Mówimy Django, żeby tworzył
+    # `test_bpp` jako klon `bpp` przez CREATE DATABASE ... WITH TEMPLATE
+    # bpp — to natywna operacja Postgresa, instant, bez psql.
+    os.environ["DJANGO_BPP_TEST_TEMPLATE"] = "bpp"
+
     os.environ["DJANGO_BPP_REDIS_HOST"] = _containers.redis_host
     os.environ["DJANGO_BPP_REDIS_PORT"] = str(_containers.redis_port)
 

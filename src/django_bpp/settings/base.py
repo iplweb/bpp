@@ -109,6 +109,7 @@ env = environ.Env(
     DJANGO_BPP_DB_PORT=(int, 5432),
     DJANGO_BPP_CONN_MAX_AGE=(int_or_none, 0),
     DJANGO_BPP_DB_DISABLE_SSL=(bool, False),
+    DJANGO_BPP_TEST_TEMPLATE=(str, ""),
     DJANGO_BPP_SECRET_KEY=(str, SECRET_KEY_UNSET),
     DJANGO_BPP_MEDIA_ROOT=(str, os.path.join(os.getenv("HOME", "C:/"), "bpp-media")),
     #
@@ -697,6 +698,18 @@ if (DATABASES["default"]["HOST"] in ["localhost", "127.0.0.1"]) or (
     options = DATABASES["default"].get("OPTIONS", {})
     options["sslmode"] = "disable"
     DATABASES["default"]["OPTIONS"] = options
+
+# Pozwól pluginowi testcontainers (i potencjalnie innym setupom) zażądać
+# stworzenia testowej bazy jako klonu bazy źródłowej:
+# CREATE DATABASE test_bpp WITH TEMPLATE <template>. Używane by
+# preloadowany baseline (mountowany do /docker-entrypoint-initdb.d/
+# w kontenerze) został natychmiast dostępny dla testów bez ponownego
+# uruchamiania psql.
+_test_template = env("DJANGO_BPP_TEST_TEMPLATE")
+if _test_template:
+    test_settings = DATABASES["default"].get("TEST", {})
+    test_settings["TEMPLATE"] = _test_template
+    DATABASES["default"]["TEST"] = test_settings
 
 SECRET_KEY = env("DJANGO_BPP_SECRET_KEY")
 
