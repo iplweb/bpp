@@ -117,8 +117,8 @@
             });
         </script>
 
-        <!-- Custom Support Button -->
-        <button class="bpp-support-button hide-on-print" id="bppSupportButton">
+        <!-- Custom Support Button. .bpp-support-button styles still live in custom SCSS. -->
+        <button class="bpp-support-button print:hidden" id="bppSupportButton">
             <span class="button-content">
                 <span class="support-symbols">!?!</span>
                 <span class="support-text">Support BPP</span>
@@ -218,9 +218,13 @@
     {% include "top_bar.html" %}
     {% block before-breadcrumbs %}{% endblock %}
     {% block breadcrumbs-html %}
-        <div id="breadcrumbs-wrapper" class="grid-container-fluid hide-for-small-only">
-            <div class="grid-x align-middle">
-                <div class="cell auto">
+        {# Migrated wrappers to Tailwind. <ul class="breadcrumbs"> still uses
+           Foundation .breadcrumbs styles (etap 7 swap to Tailwind).
+           hide-for-small-only -> hidden md:block (md breakpoint = 640px,
+           Foundation small ends at 39.9375em ≈ 640px). #}
+        <div id="breadcrumbs-wrapper" class="hidden md:block w-full px-4 mx-auto">
+            <div class="flex flex-wrap items-center">
+                <div class="flex-1">
                     <ul class="breadcrumbs">
                         {% block breadcrumbs %}
                             <li><a href="/">{{ uczelnia.skrot }}</a></li>
@@ -234,13 +238,16 @@
     {% comment %}Countdown banner - handles both active and maintenance countdowns{% endcomment %}
     {% include "django_countdown/countdown_banner.html" %}
 
-    <div class="grid-container-fluid" data-sticky-container>
-        <div class="grid-container">
-            <div class="grid-x">
-                <div class="cell"><p/>
+    {# Main content wrapper: Tailwind for grid containers, data-sticky-container
+       attribute kept (Foundation Sticky plugin reads it as a sticky boundary
+       for any data-sticky elements rendered inside child blocks). #}
+    <div class="w-full px-4 mx-auto" data-sticky-container>
+        <div class="max-w-3xl mx-auto px-4">
+            <div class="flex flex-wrap">
+                <div class="w-full"><p/>
                     <div id="messagesPlaceholder"></div>
                     {% if DJANGO_BPP_ENABLE_TEST_CONFIGURATION %}
-                        <div class="test-server-banner hide-on-print">
+                        <div class="test-server-banner print:hidden">
                             <span class="fi-alert"></span>
                             <span>SERWER TESTOWY - ZMIANY MOGĄ BYĆ NADPISANE BEZ OSTRZEŻENIA</span>
                             <span class="fi-alert"></span>
@@ -279,10 +286,10 @@
         </div>
     </div>
 
-    <!-- Full-width footer -->
-    <div class="grid-container-fluid footer-container">
-        <div class="grid-container">
-            <div class="grid-x">
+    <!-- Full-width footer (.footer-container styling stays in base_footer.scss). -->
+    <div class="w-full px-4 mx-auto footer-container">
+        <div class="max-w-3xl mx-auto px-4">
+            <div class="flex flex-wrap">
                 {% include "base_footer.html" %}
             </div>
         </div>
