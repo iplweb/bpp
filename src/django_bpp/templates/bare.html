@@ -42,11 +42,13 @@
 
     {% compress css %}
         <link rel="stylesheet" type="text/css" href="{% static THEME_NAME %}"/>
-        {# Tailwind v4 theme — coexists with Foundation during the
-           Foundation -> Tailwind migration. Tailwind is loaded AFTER the
-           Foundation theme so its @layer components (compat layer) and
-           utility classes can shadow the Foundation defaults where needed.
-           See docs/TAILWIND_MIGRATION.md. #}
+        {% comment %}
+        Tailwind v4 theme — coexists with Foundation during the
+        Foundation -> Tailwind migration. Tailwind is loaded AFTER the
+        Foundation theme so its @layer components (compat layer) and
+        utility classes can shadow the Foundation defaults where needed.
+        See docs/TAILWIND_MIGRATION.md.
+        {% endcomment %}
         <link rel="stylesheet" type="text/css" href="{% static TAILWIND_THEME_NAME %}"/>
         <link rel="stylesheet" type="text/css" href="{% static "jqueryui/jquery-ui.css" %}">
         <link rel="stylesheet" type="text/css" href="{% static "multiseek/css/style.css" %}">
