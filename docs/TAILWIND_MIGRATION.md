@@ -226,6 +226,66 @@ Co się stało:
   jeśli body to prosty string. Tutaj body to multiline z encodowanymi
   znakami specjalnymi, więc utility classes są wygodniejsze.
 
+### `import_list_if/importlistifrow_list.html` — accordion (Foundation JS → Alpine)
+
+**Przed**:
+
+```html
+<ul class="accordion" data-accordion data-allow-all-closed="true">
+    <li class="accordion-item is-closed" data-accordion-item>
+        <a href="#" class="accordion-title">Szczegóły operacji</a>
+        <div class="accordion-content" data-tab-content>
+            {% include "long_running/operation_details.html" %}
+        </div>
+    </li>
+</ul>
+```
+
+**Po**:
+
+```html
+<ul class="my-4 list-none p-0" x-data="{ open: false }">
+    <li class="border border-light-gray bg-white">
+        <a href="#"
+           @click.prevent="open = !open"
+           :aria-expanded="open"
+           class="relative block px-4 py-5 text-xs leading-none text-primary cursor-pointer hover:bg-light-gray">
+            Szczegóły operacji
+            <span class="absolute right-4 top-1/2 -translate-y-1/2 font-bold" x-text="open ? '–' : '+'"></span>
+        </a>
+        <div x-show="open" x-cloak class="border-t border-light-gray px-4 py-5">
+            {% include "long_running/operation_details.html" %}
+        </div>
+    </li>
+</ul>
+```
+
+Co się stało:
+- `data-accordion` / `data-accordion-item` / `data-tab-content` /
+  `data-allow-all-closed` — wszystkie hooki Foundation JS usunięte.
+  Stan accordion-a kontroluje teraz `x-data="{ open: false }"`
+  (zmienna boolean) plus `@click.prevent="open = !open"` na linku
+  toggling.
+- `is-closed` / `is-active` — Foundation classy stanu, zastąpione
+  reaktywną zmienną `open`. Wariant "initially open" (`is-active`)
+  to po prostu `x-data="{ open: true }"`.
+- `accordion-title` → Tailwind utilities odtwarzające Foundation
+  styling: `relative block px-4 py-5 text-xs leading-none text-primary
+  cursor-pointer hover:bg-light-gray`. Indikator `+`/`–` przez
+  `<span x-text="open ? '–' : '+'">`.
+- `accordion-content` → `border-t border-light-gray px-4 py-5` plus
+  `x-show="open" x-cloak`. `x-cloak` zapobiega flash-of-content
+  przed hydratacją Alpine (CSS rule w `_components.css` ukrywa
+  `[x-cloak]` aż Alpine je usunie).
+- `:aria-expanded="open"` — accessibility binding, screen reader
+  zna stan accordion.
+
+Wzór do reuse: jednoelementowy accordion zawsze ma postać
+`<wrapper x-data="{open:bool}">` + `<trigger @click="open=!open">` +
+`<content x-show="open" x-cloak>`. Multi-item accordions z exclusive
+opening: użyj `x-data="{ open: null }"` w wrapperze i sprawdzaj
+`open === N` per item.
+
 ## Build i dev
 
 ```bash

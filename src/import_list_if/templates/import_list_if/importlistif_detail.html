@@ -14,11 +14,18 @@
 {% block content %}
     <h1>Import danych {{ object.plik_xls.name }}</h1>
 
-    <ul class="accordion" data-accordion data-allow-all-closed="true">
-        <li class="accordion-item is-active" data-accordion-item>
-            <a href="#" class="accordion-title">Szczegóły operacji</a>
-
-            <div class="accordion-content" data-tab-content>
+    {# Migrated from Foundation accordion to Alpine x-data + x-show.
+       Single-item accordion, initially OPEN (was: is-active). #}
+    <ul class="my-4 list-none p-0" x-data="{ open: true }">
+        <li class="border border-light-gray bg-white">
+            <a href="#"
+               @click.prevent="open = !open"
+               :aria-expanded="open"
+               class="relative block px-4 py-5 text-xs leading-none text-primary cursor-pointer hover:bg-light-gray">
+                Szczegóły operacji
+                <span class="absolute right-4 top-1/2 -translate-y-1/2 font-bold" x-text="open ? '–' : '+'"></span>
+            </a>
+            <div x-show="open" x-cloak class="border-t border-light-gray px-4 py-5">
                 {% include "long_running/operation_details.html" %}
             </div>
         </li>
