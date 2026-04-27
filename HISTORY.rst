@@ -4,6 +4,21 @@ Historia zmian
 
 .. towncrier release notes start
 
+bpp 202604.1363 (2026-04-27)
+============================
+
+Usprawnienie
+------------
+
+- Workerzy Celery emituja teraz eventy lifecycle (``worker-online``,
+  ``worker-heartbeat``, ``worker-offline``) oraz eventy zadan
+  (``task-received``, ``task-started``, ``task-succeeded``,
+  ``task-failed``) na RabbitMQ. Dzieki temu Flower poprawnie pokazuje
+  status workerow (online/offline) oraz historie wykonywanych zadan.
+  Wczesniej workerzy startowali z ``task events: OFF`` i Flower nie
+  widzial ich w ogole.
+
+
 bpp 202604.1362 (2026-04-26)
 ============================
 
