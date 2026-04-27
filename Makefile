@@ -68,8 +68,8 @@ prepare-developer-machine-macos: ## Zainstaluj zależności systemowe na macOS (
 
 prepare-developer-machine-linux: ## Zainstaluj zależności systemowe na Linuksie (apt + uv sync)
 	sudo apt update
-	sudo apt install -y yarnpkg python3-dev libpq-dev libcairo2-dev \
-		libpango1.0-dev libgdk-pixbuf2.0-dev libffi-dev \
+	sudo apt install -y yarnpkg python3-dev libpq-dev postgresql-client \
+		libcairo2-dev libpango1.0-dev libgdk-pixbuf2.0-dev libffi-dev \
 		libgirepository1.0-dev libgtk-3-dev
 	uv sync --all-extras
 

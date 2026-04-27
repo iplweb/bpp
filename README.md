@@ -49,6 +49,112 @@ Instrukcja instalacji i wdrożenia dostępna jest na stronie
 [bpp.iplweb.pl/zrodla](https://bpp.iplweb.pl/zrodla) oraz w repozytorium
 **[bpp-deploy](https://github.com/iplweb/bpp-deploy)**.
 
+## Praca nad kodem (Linux)
+
+> **To NIE jest instrukcja wdrożenia produkcyjnego.** Jeżeli chcesz
+> zainstalować BPP na serwerze, skorzystaj z repozytorium
+> **[bpp-deploy](https://github.com/iplweb/bpp-deploy)**. Poniższe kroki
+> opisują wyłącznie konfigurację lokalnego środowiska deweloperskiego
+> i uruchamianie testów.
+>
+> **Pierwsze wykonanie poniższych kroków może trwać bardzo długo** —
+> ściągane są zależności Pythona, paczki npm/yarn, przeglądarki Playwright
+> oraz obrazy Dockera dla testcontainers (PostgreSQL, Redis, RabbitMQ).
+> Łącznie kilkaset MB do kilku GB transferu sieciowego. Pod każdym krokiem
+> podany jest sposób, jak włączyć szczegółowe logowanie postępu.
+
+### 1. Sklonuj repozytorium
+
+```bash
+git clone https://github.com/iplweb/bpp.git
+cd bpp
+```
+
+### 2. Zainstaluj zależności Pythona i Playwright
+
+```bash
+sudo apt install -y postgresql-client
+uv sync --extra=dev
+uv run playwright install
+sudo playwright install-deps
+```
+
+`postgresql-client` jest potrzebny m.in. do `manage.py dbshell` oraz
+narzędzi pomocniczych (`psql`, `pg_dump`).
+`uv sync --extra=dev` instaluje pakiety potrzebne do pracy
+i testów (pytest, pytest-django, model-bakery, ruff, pre-commit, …).
+`uv run playwright install` pobiera przeglądarki używane w testach E2E
+(~500 MB). `sudo playwright install-deps` doinstalowuje systemowe
+biblioteki, których wymagają te przeglądarki (libnss3, libatk, libgtk-3,
+…) — wymaga sudo, bo używa `apt`.
+
+Aby uzyskać dodatkowe logowanie postępu:
+
+- `uv sync --extra=dev -v` — verbose output uv
+- `uv run playwright install --with-deps` — alternatywa, która sama
+  wywołuje `apt` (jeśli wolisz nie rozdzielać kroku z sudo)
+
+### 3. Zbuduj assety frontendowe
+
+```bash
+make assets
+```
+
+Ten krok uruchamia `yarn install` (pierwszy raz pobiera kilkaset MB
+zależności Node.js do `node_modules/`), następnie `grunt build`
+(kompilacja SCSS → CSS, bundling JS) oraz `compilemessages` (tłumaczenia
+Django). Pierwsze wykonanie trwa kilka minut.
+
+Aby zobaczyć szczegółowy postęp:
+
+```bash
+yarn install --verbose      # zanim uruchomisz make assets
+grunt build --verbose       # alternatywa dla `make grunt-build`
+```
+
+### 4. Uruchom testy
+
+```bash
+uv run pytest
+```
+
+Pytest startuje **własne** kontenery Docker (PostgreSQL, Redis, RabbitMQ)
+przez plugin `testcontainers_bpp` — przy pierwszym uruchomieniu pobiera
+obrazy z Docker Hub (kolejne kilkaset MB). Wymagany jest działający
+**Docker daemon**.
+
+Pełen suite może trwać do **10 minut**. Domyślnie `pytest-sugar` pokazuje
+pasek postępu, ale jeśli chcesz więcej szczegółów:
+
+```bash
+uv run pytest -v                 # wypisuj nazwę każdego testu
+uv run pytest -vv -s             # + nieprzechwycony stdout (print, logi)
+make tests-without-playwright    # szybki wariant bez testów E2E
+```
+
+Reuse kontenerów testowych między uruchomieniami (znacznie szybsze
+kolejne biegi):
+
+```bash
+BPP_TESTCONTAINERS_REUSE=1 uv run pytest
+```
+
+### Skrót: `make prepare-developer-machine-linux`
+
+Część kroku 2 (zależności systemowe + `uv sync --all-extras`)
+automatyzuje cel:
+
+```bash
+make prepare-developer-machine-linux
+```
+
+Instaluje przez `apt` pakiety `yarnpkg`, `python3-dev`, `libpq-dev`,
+`postgresql-client`, `libcairo2-dev`, `libpango1.0-dev`,
+`libgdk-pixbuf2.0-dev`, `libffi-dev`, `libgirepository1.0-dev`,
+`libgtk-3-dev`, a następnie woła `uv sync --all-extras`. Po nim nadal
+trzeba ręcznie wywołać `uv run playwright install` oraz
+`sudo playwright install-deps`.
+
 ## Wersja demo
 
 Live-demo serwisu dostępne jest na żądanie — prosimy o kontakt
