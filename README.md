@@ -94,14 +94,11 @@ cd bpp
 ### 2. Zainstaluj zależności Pythona i Playwright
 
 ```bash
-sudo apt install -y postgresql-client
 uv sync --extra=dev
 uv run playwright install
 sudo playwright install-deps
 ```
 
-`postgresql-client` jest potrzebny m.in. do `manage.py dbshell` oraz
-narzędzi pomocniczych (`psql`, `pg_dump`).
 `uv sync --extra=dev` instaluje pakiety potrzebne do pracy
 i testów (pytest, pytest-django, model-bakery, ruff, pre-commit, …).
 `uv run playwright install` pobiera przeglądarki używane w testach E2E
@@ -170,11 +167,10 @@ make prepare-developer-machine-linux
 ```
 
 Instaluje przez `apt` pakiety `yarnpkg`, `python3-dev`, `libpq-dev`,
-`postgresql-client`, `libcairo2-dev`, `libpango1.0-dev`,
-`libgdk-pixbuf2.0-dev`, `libffi-dev`, `libgirepository1.0-dev`,
-`libgtk-3-dev`, a następnie woła `uv sync --all-extras`. Po nim nadal
-trzeba ręcznie wywołać `uv run playwright install` oraz
-`sudo playwright install-deps`.
+`libcairo2-dev`, `libpango1.0-dev`, `libgdk-pixbuf2.0-dev`, `libffi-dev`,
+`libgirepository1.0-dev`, `libgtk-3-dev`, a następnie woła
+`uv sync --all-extras`. Po nim nadal trzeba ręcznie wywołać
+`uv run playwright install` oraz `sudo playwright install-deps`.
 
 ## Technologie
 
