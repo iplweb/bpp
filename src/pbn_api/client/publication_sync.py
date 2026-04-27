@@ -17,6 +17,7 @@ from pbn_api.adapters.wydawnictwo import (
 from pbn_api.const import (
     PBN_POST_PUBLICATION_FEE_URL,
     PBN_POST_PUBLICATION_NO_STATEMENTS_URL,
+    PBN_POST_PUBLICATIONS_URL,
 )
 from pbn_api.exceptions import (
     CannotDeleteStatementsException,
@@ -42,6 +43,16 @@ logger = logging.getLogger(__name__)
 
 class PublicationSyncMixin:
     """Mixin providing publication synchronization methods."""
+
+    def post_publication(self, json):
+        """POST publikacji wraz z oświadczeniami do ``/api/v1/publications``.
+
+        Endpoint all-in-one — przyjmuje payload z kluczem ``statements``
+        bezpośrednio z ``WydawnictwoPBNAdapter.pbn_get_json()`` (bez
+        konwersji pól, bez owijania w listę). Zwraca pojedynczy obiekt
+        z ``objectId`` (a nie listę z ``id`` jak endpoint repo).
+        """
+        return self.transport.post(PBN_POST_PUBLICATIONS_URL, body=json)
 
     def convert_json_with_statements_to_no_statements(self, json):
         # Endpoint repozytoryjny `/api/v1/repositorium/publications` nie
@@ -158,13 +169,24 @@ class PublicationSyncMixin:
         return fees_map
 
     def _prepare_publication_json(self, rec, export_pk_zero, always_affiliate_to_uid):
-        """Przygotowuje JSON publikacji do wysyłki przez endpoint repozytoryjny.
+        """Przygotowuje JSON publikacji do wysyłki.
 
-        Zawsze wywołuje ``convert_json_with_statements_to_no_statements``, bo
-        ``upload_publication`` używa teraz wyłącznie endpointu repo
-        ``/api/v1/repositorium/publications``, który nie przyjmuje klucza
-        ``statements`` w payload i wymaga konwersji formatu (``givenNames``
-        → ``firstName``, ``abstracts`` w root, brak ``fee`` itp.).
+        Decyzja o endpoincie wynika z obecności klucza ``statements`` w
+        payloadzie z adaptera:
+
+        - Praca ma lokalne statements → zwracamy surowy JSON adaptera,
+          ``upload_publication`` POST-uje do ``/api/v1/publications``
+          (all-in-one).
+        - Praca nie ma lokalnych statements (uczelnia z flagą
+          ``pbn_wysylaj_bez_oswiadczen=True``) → konwertujemy przez
+          ``convert_json_with_statements_to_no_statements`` (renames pól
+          + brak ``fee``); ``upload_publication`` POST-uje do
+          ``/api/v1/repositorium/publications``.
+
+        Adapter rzuca ``StatementsMissing`` gdy brak statements + flaga
+        uczelni ``=False`` — ten przypadek nie dochodzi tu.
+
+        Zwraca: ``(js, bez_oswiadczen)``.
         """
         js = WydawnictwoPBNAdapter(
             rec,
@@ -172,8 +194,11 @@ class PublicationSyncMixin:
             always_affiliate_to_uid=always_affiliate_to_uid,
         ).pbn_get_json()
 
-        js = self.convert_json_with_statements_to_no_statements(js)
-        return js
+        bez_oswiadczen = "statements" not in js
+        if bez_oswiadczen:
+            js = self.convert_json_with_statements_to_no_statements(js)
+
+        return js, bez_oswiadczen
 
     def _check_upload_needed(self, rec, js, force_upload):
         """Check if upload is needed."""
@@ -184,8 +209,19 @@ class PublicationSyncMixin:
                     SentData.objects.get_for_rec(rec).last_updated_on
                 )
 
-    def _post_publication_data(self, js):
-        """POST publikacji do endpointu repo i wyciągnięcie ``objectId``."""
+    def _post_publication_data(self, js, bez_oswiadczen):
+        """POST publikacji do właściwego endpointu i wyciągnięcie ``objectId``.
+
+        - ``bez_oswiadczen=False`` → ``/v1/publications``,
+          response: ``{"objectId": ...}`` (single dict).
+        - ``bez_oswiadczen=True``  → ``/v1/repositorium/publications``,
+          response: ``[{"id": ...}]`` (lista 1 elementu).
+        """
+        if not bez_oswiadczen:
+            ret = self.post_publication(js)
+            objectId = ret.get("objectId", None) if isinstance(ret, dict) else None
+            return ret, objectId
+
         ret = self.post_publication_no_statements(js)
         if len(ret) != 1:
             raise Exception(
@@ -208,27 +244,43 @@ class PublicationSyncMixin:
         always_affiliate_to_uid=None,
         max_retries_on_validation_error=3,  # DEPRECATED: nieużywany, backward compat
     ):
-        """
-        Wysyła publikację do PBN przez endpoint repozytoryjny
-        ``POST /api/v1/repositorium/publications`` (zawsze, niezależnie od
-        obecności oświadczeń w JSON). Oświadczenia synchronizuje osobno
-        ``sync_publication`` przez endpoint ``/api/v2/institution-profile/statements``.
+        """Wysyła publikację do PBN.
 
-        Zwraca ``(objectId, ret, js, True)`` — ostatnie pole (``bez_oswiadczen``)
-        zachowane dla backward compat; zawsze ``True`` bo endpoint repo nigdy
-        nie wysyła oświadczeń w body publikacji.
+        Wybór endpointu zależy od obecności lokalnych oświadczeń:
+
+        - Praca z lokalnymi statements → ``POST /v1/publications``
+          (all-in-one, surowy payload z adaptera; statements w body).
+        - Praca bez lokalnych statements (uczelnia z
+          ``pbn_wysylaj_bez_oswiadczen=True``) →
+          ``POST /v1/repositorium/publications`` (po konwersji
+          ``convert_json_with_statements_to_no_statements`` + body
+          owinięte w listę).
+
+        Niezależnie od endpointu, ``sync_publication`` PO udanej wysyłce
+        synchronizuje oświadczenia osobno przez
+        ``/api/v2/institution-profile/statements`` (GET → diff →
+        DELETE/POST). Dla ``/v1/publications`` typowo no-op (PBN ma
+        identyczne statements z body); dla ``/v1/repositorium`` z
+        lokalnym brakiem statements — kasuje pozostałe stare statements
+        z PBN, jeśli były.
+
+        Zwraca ``(objectId, ret, js, bez_oswiadczen)``.
         """
-        js = self._prepare_publication_json(
+        js, bez_oswiadczen = self._prepare_publication_json(
             rec, export_pk_zero, always_affiliate_to_uid
         )
         self._check_upload_needed(rec, js, force_upload)
 
-        # Create or update SentData record BEFORE API call
-        api_url = self.transport.base_url + PBN_POST_PUBLICATION_NO_STATEMENTS_URL
+        endpoint_path = (
+            PBN_POST_PUBLICATION_NO_STATEMENTS_URL
+            if bez_oswiadczen
+            else PBN_POST_PUBLICATIONS_URL
+        )
+        api_url = self.transport.base_url + endpoint_path
         SentData.objects.create_or_update_before_upload(rec, js, api_url=api_url)
 
         try:
-            ret, objectId = self._post_publication_data(js)
+            ret, objectId = self._post_publication_data(js, bez_oswiadczen)
             SentData.objects.mark_as_successful(rec, api_response_status=str(ret))
         except HttpException as e:
             SentData.objects.mark_as_failed(
@@ -239,7 +291,7 @@ class PublicationSyncMixin:
             SentData.objects.mark_as_failed(rec, exception=str(e))
             raise
 
-        return objectId, ret, js, True
+        return objectId, ret, js, bez_oswiadczen
 
     def download_publication(self, doi=None, objectId=None):
         from pbn_api.models import Publication
@@ -812,10 +864,18 @@ class PublicationSyncMixin:
         """
         Synchronizuje publikację BPP z PBN w dwóch niezależnych krokach:
 
-        1. POST publikacji do endpointu repozytoryjnego
-           ``/api/v1/repositorium/publications`` (bez oświadczeń w body).
+        1. POST publikacji — endpoint zależy od obecności lokalnych
+           oświadczeń (``upload_publication`` decyduje):
+           - praca z statements → ``/v1/publications`` (all-in-one);
+           - praca bez statements (flaga uczelni
+             ``pbn_wysylaj_bez_oswiadczen=True``) →
+             ``/v1/repositorium/publications``.
         2. Synchronizacja oświadczeń (po sukcesie kroku 1): GET aktualnego
            stanu w PBN, porównanie z intencją BPP, selektywne DELETE/POST.
+           Działa dla obu endpointów — po ``/v1/publications`` typowo no-op
+           (PBN ma już identyczne statements z body), po
+           ``/v1/repositorium`` z lokalnym brakiem statements: kasuje
+           ewentualne pozostałości z PBN.
 
         Gdy POST publikacji zawiedzie — oświadczenia w PBN pozostają
         nietknięte (ważna gwarancja bezpieczeństwa). Gdy POST publikacji

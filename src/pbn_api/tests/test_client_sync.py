@@ -1,15 +1,19 @@
 """
 Tests for PBNClient sync_publication method.
 
-Po refaktoryzacji w Commitach 2-4 (patrz docs/pbn-wysylka-plan.md):
-- ``upload_publication`` ZAWSZE wysyła przez endpoint repozytoryjny
-  ``POST /api/v1/repositorium/publications`` (bez oświadczeń w body),
-  odpowiedź w formacie ``[{"id": ...}]``.
-- ``sync_publication`` synchronizuje oświadczenia osobno przez
-  ``_sync_statements_with_pbn`` — GET aktualnego stanu w PBN, diff z
-  intencją BPP (``pbn_get_json_statements``), selektywne DELETE (lub
-  batch — sterowane ``Uczelnia.pbn_kasuj_dyscypliny_selektywnie``) +
-  POST przez ``/api/v2/institution-profile/statements``.
+Logika wyboru endpointu w ``upload_publication``:
+- praca z lokalnymi statements → ``POST /v1/publications`` (all-in-one,
+  surowy payload), odpowiedź ``{"objectId": ...}``;
+- praca bez lokalnych statements (uczelnia z
+  ``pbn_wysylaj_bez_oswiadczen=True``) → ``POST /v1/repositorium/publications``
+  (po konwersji), odpowiedź ``[{"id": ...}]``.
+
+``sync_publication`` synchronizuje oświadczenia osobno przez
+``_sync_statements_with_pbn`` — GET aktualnego stanu w PBN, diff z
+intencją BPP (``pbn_get_json_statements``), selektywne DELETE (lub
+batch — sterowane ``Uczelnia.pbn_kasuj_dyscypliny_selektywnie``) +
+POST przez ``/api/v2/institution-profile/statements``. Działa
+niezależnie od endpointu wysyłki publikacji.
 
 For upload tests, see test_client_upload.py
 For discipline tests, see test_client_disciplines.py
@@ -33,6 +37,7 @@ from pbn_api.const import (
     PBN_GET_INSTITUTION_PUBLICATIONS_V2,
     PBN_POST_INSTITUTION_STATEMENTS_URL,
     PBN_POST_PUBLICATION_NO_STATEMENTS_URL,
+    PBN_POST_PUBLICATIONS_URL,
 )
 from pbn_api.exceptions import (
     HttpException,
@@ -82,8 +87,12 @@ def _patch_intended_statements(monkeypatch, statements):
 def _setup_common_mocks(pbn_client, object_id, pbn_statements=None):
     """Ustawia standardowe odpowiedzi mockowe dla sync_publication flow.
 
-    Mockuje: POST repo, download_publication, V2 institution publications,
-    GET statements (pusta lub podana lista).
+    Mockuje OBA endpointy POST publikacji (``/v1/publications`` +
+    ``/v1/repositorium/publications``), download_publication, V2
+    institution publications oraz GET statements (pusta lub podana
+    lista). Dzięki temu testy nie muszą wiedzieć którą drogą poszedł
+    upload (zależy od tego czy ``_patch_intended_statements`` ustawił
+    statements puste czy nie).
 
     Uwaga: ``object_id`` przekazujemy w formacie natywnym (int albo str)
     — PBN GET endpointy formatują URL przez ``.format(id=...)``, a POST
@@ -93,6 +102,9 @@ def _setup_common_mocks(pbn_client, object_id, pbn_statements=None):
     pbn_client.transport.return_values[PBN_POST_PUBLICATION_NO_STATEMENTS_URL] = [
         {"id": object_id}
     ]
+    pbn_client.transport.return_values[PBN_POST_PUBLICATIONS_URL] = {
+        "objectId": object_id
+    }
     pbn_client.transport.return_values[
         PBN_GET_PUBLICATION_BY_ID_URL.format(id=object_id)
     ] = MOCK_RETURNED_MONGODB_DATA
@@ -234,31 +246,74 @@ def test_upload_and_sync_publication_without_existing_publication(
 
 
 # ============================================================
-# Endpoint: zawsze /api/v1/repositorium/publications
+# Wybór endpointu na podstawie obecności statements
 # ============================================================
 
 
 @pytest.mark.django_db
-def test_sync_publication_zawsze_endpoint_repo(
+def test_sync_publication_bez_statements_idzie_do_repo(
     pbn_client,
     pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina,
     pbn_publication,
     monkeypatch,
 ):
-    """Upload zawsze idzie przez endpoint repo, nie /api/v1/publications."""
+    """Brak lokalnych statements (flaga uczelni allowed) → endpoint repo."""
     _patch_intended_statements(monkeypatch, [])
     _setup_common_mocks(pbn_client, pbn_publication.pk, pbn_statements=[])
 
     pbn_client.sync_publication(pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina)
 
-    # Potwierdzamy że wysyłka poszła do endpointu repozytoryjnego
     assert PBN_POST_PUBLICATION_NO_STATEMENTS_URL in pbn_client.transport.input_values
-    # Body bez klucza "statements"
+    assert PBN_POST_PUBLICATIONS_URL not in pbn_client.transport.input_values
     body = pbn_client.transport.input_values[PBN_POST_PUBLICATION_NO_STATEMENTS_URL][
         "body"
     ]
     assert isinstance(body, list) and len(body) == 1
     assert "statements" not in body[0]
+
+
+@pytest.mark.django_db
+def test_sync_publication_z_statements_idzie_do_v1_publications(
+    pbn_client,
+    pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina,
+    pbn_publication,
+    pbn_autor,
+    pbn_jednostka,
+    monkeypatch,
+):
+    """Lokalne statements obecne → all-in-one ``/v1/publications`` (raw payload)."""
+    _patch_intended_statements(
+        monkeypatch,
+        [
+            {
+                "personObjectId": pbn_autor.pbn_uid_id,
+                "disciplineId": 301,
+                "type": "AUTHOR",
+            }
+        ],
+    )
+    _setup_common_mocks(
+        pbn_client,
+        pbn_publication.pk,
+        pbn_statements=[
+            {
+                "id": "aaa",
+                "personId": pbn_autor.pbn_uid_id,
+                "area": "301",
+                "type": "AUTHOR",
+                "institutionId": pbn_jednostka.pbn_uid_id,
+            }
+        ],
+    )
+
+    pbn_client.sync_publication(pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina)
+
+    assert PBN_POST_PUBLICATIONS_URL in pbn_client.transport.input_values
+    assert PBN_POST_PUBLICATION_NO_STATEMENTS_URL not in pbn_client.transport.input_values
+    # Body to surowy dict z adaptera (NIE lista) — z kluczem statements.
+    body = pbn_client.transport.input_values[PBN_POST_PUBLICATIONS_URL]["body"]
+    assert isinstance(body, dict)
+    assert "statements" in body
 
 
 # ============================================================

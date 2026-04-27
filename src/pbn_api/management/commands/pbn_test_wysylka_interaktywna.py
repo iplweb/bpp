@@ -239,6 +239,12 @@ class Command(PBNBaseCommand):
             f"Opcja [2]: POST {PBN_POST_PUBLICATION_NO_STATEMENTS_URL} "
             f"(wymusza JSON bez oświadczeń — convert_json_with_statements_to_no_statements)"
         )
+        prod_endpoint = (
+            "[2] /v1/repositorium/publications"
+            if bez_oswiadczen
+            else "[1] /v1/publications"
+        )
+        self._info(f"Produkcja wybrałaby: {prod_endpoint}")
         if not bez_oswiadczen:
             self._warn(
                 "UWAGA: JSON zawiera klucz 'statements'. Opcja [2] wyrzuci go "

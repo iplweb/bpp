@@ -15,6 +15,7 @@ from pbn_api.const import (
     PBN_GET_INSTITUTION_PUBLICATIONS_V2,
     PBN_POST_INSTITUTION_STATEMENTS_URL,
     PBN_POST_PUBLICATION_NO_STATEMENTS_URL,
+    PBN_POST_PUBLICATIONS_URL,
 )
 from pbn_api.exceptions import AccessDeniedException
 from pbn_api.models import Publication, SentData
@@ -185,9 +186,9 @@ def test_sprobuj_wyslac_do_pbn_z_oswiadczeniami(
 ):
     req = rf.get("/")
 
-    pbn_client.transport.return_values[PBN_POST_PUBLICATION_NO_STATEMENTS_URL] = [
-        {"id": "123"}
-    ]
+    # Praca ma autora z dyscypliną → adapter generuje statements w JSON →
+    # endpoint /v1/publications (all-in-one).
+    pbn_client.transport.return_values[PBN_POST_PUBLICATIONS_URL] = {"objectId": "123"}
     pbn_client.transport.return_values[
         PBN_GET_PUBLICATION_BY_ID_URL.format(id="123")
     ] = MOCK_RETURNED_MONGODB_DATA
@@ -315,13 +316,11 @@ def test_sprobuj_wyslac_do_pbn_przychodzi_istniejacy_pbn_uid_dla_nowego_rekordu(
     pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.pbn_uid = None
     pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.save(update_fields=["pbn_uid"])
 
-    # To jest odpowiedź z PBNu gdzie zwrotnie przyjdzie objectId = MOCK_MONGO_ID
-    pbn_client.transport.return_values[PBN_POST_PUBLICATION_NO_STATEMENTS_URL] = [
-        {"id": MOCK_MONGO_ID}
-    ]
-    pbn_client.transport.return_values[
-        PBN_GET_PUBLICATION_BY_ID_URL.format(id=MOCK_MONGO_ID)
-    ] = MOCK_RETURNED_MONGODB_DATA
+    # Praca z dyscypliną → /v1/publications (all-in-one). Odpowiedź:
+    # objectId = MOCK_MONGO_ID (już istnieje lokalnie pod inną pracą).
+    pbn_client.transport.return_values[PBN_POST_PUBLICATIONS_URL] = {
+        "objectId": MOCK_MONGO_ID
+    }
     pbn_client.transport.return_values[
         PBN_GET_PUBLICATION_BY_ID_URL.format(id=MOCK_MONGO_ID)
     ] = MOCK_RETURNED_MONGODB_DATA
@@ -367,10 +366,10 @@ def test_sprobuj_wyslac_do_pbn_przychodzi_inny_pbn_uid_dla_starego_rekordu(
     pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.pbn_uid = publikacja
     pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.save(update_fields=["pbn_uid"])
 
-    # To jest odpowiedź z PBNu gdzie zwrotnie przyjdzie objectId = MOCK_MONGO_ID*2
-    pbn_client.transport.return_values[PBN_POST_PUBLICATION_NO_STATEMENTS_URL] = [
-        {"id": MOCK_MONGO_ID * 2}
-    ]
+    # Praca z dyscypliną → /v1/publications. Odpowiedź: objectId = MOCK_MONGO_ID*2.
+    pbn_client.transport.return_values[PBN_POST_PUBLICATIONS_URL] = {
+        "objectId": MOCK_MONGO_ID * 2
+    }
     pbn_client.transport.return_values[
         PBN_GET_PUBLICATION_BY_ID_URL.format(id=MOCK_MONGO_ID * 2)
     ] = MOCK_RETURNED_MONGODB_DATA
