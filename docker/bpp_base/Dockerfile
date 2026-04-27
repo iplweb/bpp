@@ -255,6 +255,108 @@ RUN --mount=type=cache,target=/root/.cache/uv,id=uv-cache \
 WORKDIR /src
 
 ##############################################################################
+# TESTSERVER: lokalny obraz developerski (NIE jest publikowany do registry)
+#
+# Buduj: docker compose build (NIGDY przez docker buildx bake — ten target
+# swiadomie nie istnieje w docker-bake.hcl, dzieki czemu CI go nie pushuje).
+# Cel: dev-friendly obraz dla appserver/celerybeat/worker/denorm-queue
+# uruchamianych przez docker-compose.yml. Source code mountowany przez
+# bind-mount, .venv zyje w /opt/venv (poza /app/src), wiec bind-mount nie
+# shadowuje deps i uv sync nie jest potrzebny przy starcie kontenera.
+#
+# Roznica vs runtime (production):
+#  - Pelne extras + dev group (--all-extras --all-groups): testcontainers,
+#    pytest, vulture, pytest-repeat itd. dla rzeczy uruchamianych w kontenerze.
+#  - uv pozostaje, .venv w /opt/venv (nie /app/.venv).
+#  - Brak strip/rm tests/__pycache__/-debug-symbols (to optymalizacje rozmiaru,
+#    niepotrzebne lokalnie).
+#  - Wszystkie entrypointy skopiowane do /; docker-compose wybiera per-service
+#    przez `entrypoint:`. Ten stage celowo NIE definiuje wlasnego ENTRYPOINT.
+##############################################################################
+FROM base AS testserver
+
+# Runtime + test apt packages (jak test-runner). build.txt jest juz w base.
+COPY docker/bpp_base/runtime.txt \
+     docker/bpp_base/test.txt /tmp/packages/
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=apt-cache \
+    --mount=type=cache,target=/var/lib/apt/lists,sharing=locked,id=apt-lists \
+    apt-get update && \
+    cat /tmp/packages/*.txt | xargs apt-get install -y
+
+# Pandoc z oficjalnego obrazu (patrz komentarz R7 przy runtime stage).
+COPY --from=pandoc-src /usr/local/bin/pandoc /usr/local/bin/pandoc
+
+# yarn + grunt CLI dla developera w kontenerze.
+RUN --mount=type=cache,target=/root/.npm,id=npm-cache \
+    npm install -g --force yarn grunt-cli
+
+# Docker CLI dla testow ktore wolaja docker (html2docx, testcontainers).
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=apt-cache \
+    --mount=type=cache,target=/var/lib/apt/lists,sharing=locked,id=apt-lists \
+    install -m 0755 -d /etc/apt/keyrings && \
+    curl -fsSL https://download.docker.com/linux/debian/gpg \
+        -o /etc/apt/keyrings/docker.asc && \
+    echo "deb [arch=$(dpkg --print-architecture) \
+        signed-by=/etc/apt/keyrings/docker.asc] \
+        https://download.docker.com/linux/debian \
+        $(. /etc/os-release && echo $VERSION_CODENAME) stable" \
+        > /etc/apt/sources.list.d/docker.list && \
+    apt-get update && apt-get install -y docker-ce-cli
+
+# Deps do /opt/venv. Bind-mount source do /app/src (z docker-compose.yml) nie
+# tknie venva — inny prefix sciezki, dlatego nie potrzeba named volume na .venv.
+ENV UV_PROJECT_ENVIRONMENT=/opt/venv \
+    PATH="/opt/venv/bin:${PATH}" \
+    PYTHONPATH=/app/src \
+    DJANGO_SETTINGS_MODULE=django_bpp.settings.production \
+    STATIC_ROOT=/app/staticroot
+
+WORKDIR /app
+COPY pyproject.toml uv.lock ./
+RUN --mount=type=cache,target=/root/.cache/uv,id=uv-cache \
+    uv sync --frozen --all-extras --all-groups --no-install-project
+
+# Yarn + grunt + collectstatic — mirror production builder, zeby:
+# 1. /app/staticroot.baked istnial → entrypoint-appserver.sh przy starcie wybiera
+#    szybki `cp -ru .baked -> $STATIC_ROOT` zamiast pelnego collectstatic
+#    (ktore wymaga /app/node_modules przez custom YarnFinder, src/bpp/finders.py).
+# 2. node_modules zostalo w obrazie (vs production, ktora je kasuje) → developer
+#    moze odpalic `docker compose exec appserver npx grunt build` po edycji SCSS.
+COPY package.json yarn.lock Gruntfile.js ./
+RUN --mount=type=cache,target=/root/.npm,id=npm-cache \
+    --mount=type=cache,target=/root/.yarn,id=yarn-cache \
+    npx yarn install --dev --ignore-optional && \
+    npx yarn add grunt
+
+# Snapshot src/ dla grunt build + collectstatic. Cache invalidation na zmiane
+# dowolnego pliku w src/ jest akceptowalny w dev: yarn install (powyzej) i tak
+# zostaje cached, a grunt + collectstatic licza sie ~minute lacznie.
+# Runtime przykrywa ten snapshot bind-mountem `./src:/app/src` z compose.
+COPY src/ src/
+
+RUN npx grunt build-non-interactive
+
+# collectstatic do .baked (kontrakt static files z CLAUDE.md). Dummy SECRET_KEY
+# wystarcza — collectstatic nie wymaga DB ani Redisa. Bez --ignore sinon/qunit/
+# *.map — zostawiamy w dev, latwiej debugowac.
+RUN DJANGO_BPP_SECRET_KEY=build-time-only-not-used \
+    STATIC_ROOT=/app/staticroot.baked \
+    python src/manage.py collectstatic \
+        --noinput -v0 --traceback
+
+# Entrypointy dla wszystkich uslug — docker-compose wybiera wlasciwy per-service.
+COPY --chmod=755 docker/appserver/entrypoint-appserver.sh \
+                 /entrypoint-appserver.sh
+COPY --chmod=755 docker/beatserver/entrypoint-beatserver.sh \
+                 /entrypoint-beatserver.sh
+COPY --chmod=755 docker/workerserver/entrypoint-workerserver.sh \
+                 /entrypoint-workerserver.sh
+COPY --chmod=755 docker/denorm-queue/entrypoint-denorm-queue.sh \
+                 /entrypoint-denorm-queue.sh
+COPY --chmod=644 docker/appserver/uvicorn_log_config.json \
+                 /uvicorn_log_config.json
+
+##############################################################################
 # RUNTIME: slim production image
 ##############################################################################
 ARG PYTHON_VERSION
