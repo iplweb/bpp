@@ -103,7 +103,7 @@ Legenda: **W** = wymagane, **O** = opcjonalne, **—** = nie pojawia się
 | `rok`                                | W          | W            | W             | W               | W           | W             | W       | W         |
 | `email`                              | W          | W            | W             | W               | W           | W             | W       | W         |
 | `zgoda_na_publikacje_pelnego_tekstu` | O*         | O*           | O*            | O*              | O*          | O*            | O*      | O*        |
-| `strona_www` (link/DOI)              | W          | O            | W             | O               | W           | O             | W       | O         |
+| `strona_www` (link/DOI)              | W          | W            | W             | W               | W           | W             | O       | O         |
 | `pliki` (PDF, wiele)                 | —          | W            | —             | W               | —           | W             | —       | W         |
 | `wydawca`                            | —          | —            | O             | O               | O           | O             | —       | —         |
 | `wydawnictwo_nadrzedne`              | —          | —            | —             | —               | W           | W             | —       | —         |

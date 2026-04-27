@@ -63,6 +63,36 @@ FORMA_DOSTEPU_FORM_TO_MODEL = {
 }
 
 
+_PBN_PREFIX = (
+    "Pole wymagane — system Polska Bibliografia Naukowa (PBN), do którego"
+    " trafiają dane o publikacjach, wymaga podania adresu URL lub"
+    " identyfikatora DOI."
+)
+_OA_TEKST = "Dla publikacji w otwartym dostępie prosimy o link do pełnego tekstu."
+_OGR_INFO_TEKST = (
+    "Dla publikacji z ograniczonym dostępem prosimy o podanie linku do strony"
+    " z informacją o publikacji."
+)
+_OGR_KATALOGI_TEKST = (
+    "Jeśli pełny tekst nie jest dostępny publicznie, wystarczy podać link do"
+    " strony wydawcy, wpisu w katalogu Biblioteki Narodowej (bn.org.pl) lub"
+    " katalogu NUKAT (nukat.edu.pl)."
+)
+_POZOSTALE_PBN_NOTE = "Materiałów konferencyjnych nie wysyłamy do PBN."
+
+# Mapowanie (rodzaj, forma_dostepu) → tekst pomocniczy pola `strona_www`.
+STRONA_WWW_HELP_TEXT = {
+    ("ARTYKUL", "OTWARTY"): f"{_PBN_PREFIX} {_OA_TEKST}",
+    ("ARTYKUL", "OGRANICZONY"): f"{_PBN_PREFIX} {_OGR_INFO_TEKST}",
+    ("MONOGRAFIA", "OTWARTY"): f"{_PBN_PREFIX} {_OA_TEKST}",
+    ("MONOGRAFIA", "OGRANICZONY"): f"{_PBN_PREFIX} {_OGR_KATALOGI_TEKST}",
+    ("ROZDZIAL", "OTWARTY"): f"{_PBN_PREFIX} {_OA_TEKST}",
+    ("ROZDZIAL", "OGRANICZONY"): f"{_PBN_PREFIX} {_OGR_KATALOGI_TEKST}",
+    ("POZOSTALE", "OTWARTY"): f"{_OA_TEKST} {_POZOSTALE_PBN_NOTE}",
+    ("POZOSTALE", "OGRANICZONY"): f"{_OGR_INFO_TEKST} {_POZOSTALE_PBN_NOTE}",
+}
+
+
 class RodzajPublikacjiForm(forms.Form):
     """Krok 0: wybór rodzaju publikacji (kafelki)."""
 
@@ -144,14 +174,6 @@ class Zgloszenie_Publikacji_DaneForm(forms.ModelForm):
 
     strona_www = forms.URLField(
         label="Link do publikacji lub DOI",
-        help_text=(
-            "Pole wymagane — system Polska Bibliografia Naukowa (PBN), do którego"
-            " trafiają dane o publikacjach, wymaga podania adresu URL lub"
-            " identyfikatora DOI. Dla publikacji w otwartym dostępie prosimy"
-            " o link do pełnego tekstu. Jeśli pełny tekst nie jest dostępny"
-            " publicznie, wystarczy link do strony wydawcy, wpisu w katalogu"
-            " Biblioteki Narodowej (bn.org.pl) lub katalogu NUKAT (nukat.edu.pl)."
-        ),
         max_length=1024,
         required=True,
     )
@@ -207,6 +229,18 @@ class Zgloszenie_Publikacji_DaneForm(forms.ModelForm):
         else:
             self.fields.pop("pliki", None)
 
+    def _dostosuj_strona_www(self, rodzaj, forma_dostepu):
+        """Ustaw help_text i required dla `strona_www`.
+
+        Treść pomocnicza zależy od kombinacji (rodzaj, forma dostępu) —
+        dla publikacji typu „Inne" PBN nie wymaga linku, więc pole jest
+        opcjonalne (przy ograniczonym dostępie wymagany pozostaje PDF).
+        """
+        field = self.fields["strona_www"]
+        field.help_text = STRONA_WWW_HELP_TEXT.get((rodzaj, forma_dostepu), "")
+        if rodzaj == "POZOSTALE":
+            field.required = False
+
     def _usun_pola_wg_rodzaju(self, rodzaj):
         """Usuwa pola zależne od rodzaju publikacji."""
         if rodzaj == "MONOGRAFIA":
@@ -254,6 +288,7 @@ class Zgloszenie_Publikacji_DaneForm(forms.ModelForm):
 
         self._usun_pola_wg_formy_dostepu(forma_dostepu)
         self._usun_pola_wg_rodzaju(rodzaj)
+        self._dostosuj_strona_www(rodzaj, forma_dostepu)
         self._zbuduj_layout()
 
     def clean(self):
