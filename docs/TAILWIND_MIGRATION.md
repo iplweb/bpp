@@ -286,6 +286,171 @@ Wzór do reuse: jednoelementowy accordion zawsze ma postać
 opening: użyj `x-data="{ open: null }"` w wrapperze i sprawdzaj
 `open === N` per item.
 
+### Modal: Foundation `data-reveal` → Alpine x-show
+
+Trzy warianty otwierania:
+
+**Wariant 1 — modal i triggery w jednym x-data scope** (najczystszy,
+gdy modal jest tuż przy triggerze, np. lista wierszy z przyciskami akcji).
+Zob. `importer_autorow_pbn/main.html`:
+
+```html
+<div x-data="importerAutorowPbn">
+    {% for row in rows %}
+        <button @click="openIgnore('{{ row.id }}', '{{ row.name|escapejs }}')">Ignoruj</button>
+    {% endfor %}
+
+    <div x-show="ignoreModal" x-cloak
+         x-on:keydown.escape.window="ignoreModal = false"
+         class="fixed inset-0 z-50 flex items-center justify-center">
+        <div class="fixed inset-0 bg-black/50" @click="ignoreModal = false"></div>
+        <div class="relative bg-white border border-black/25 shadow-lg max-w-2xl w-full mx-4 p-6 max-h-[90vh] overflow-y-auto">
+            ...
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('alpine:init', () => {
+    Alpine.data('importerAutorowPbn', () => ({
+        ignoreModal: false,
+        ignoreScientist: { id: '', name: '' },
+        openIgnore(id, name) {
+            this.ignoreScientist = { id, name };
+            this.ignoreModal = true;
+        },
+        confirmIgnore() {
+            // ... AJAX, then `this.ignoreModal = false`
+        }
+    }));
+});
+</script>
+```
+
+**Wariant 2 — modal otwierany przez window event** (gdy trigger jest w innym
+template lub dynamicznie generowany przez JS). Zob.
+`ewaluacja_optymalizuj_publikacje/optymalizuj_fixed.html`,
+`ewaluacja_metryki/lista.html`, `pbn_import/dashboard.html`:
+
+```html
+<div x-data="{ open: false }"
+     x-show="open" x-cloak
+     x-on:keydown.escape.window="open = false"
+     x-on:open-status-modal.window="open = true"
+     x-on:close-status-modal.window="open = false"
+     id="status-modal"
+     class="fixed inset-0 z-50 flex items-center justify-center">
+    <div class="fixed inset-0 bg-black/50" @click="open = false"></div>
+    <div class="relative bg-white border border-black/25 shadow-lg ...">
+        ...
+    </div>
+</div>
+
+<script>
+function openTheModal() {
+    window.dispatchEvent(new CustomEvent('open-status-modal'));
+}
+</script>
+```
+
+**Wariant 3 — generic `open-modal` event z `detail.id`** (gdy mamy
+istniejący globalny handler typu `data-action="open-modal" data-modal-id=...`,
+np. w `event-handlers.js`). Zob. `evaluation_browser.html`,
+`import_dyscyplin/import_dyscyplin_detail.html`:
+
+```html
+<div x-data="{ open: false }"
+     x-show="open" x-cloak
+     x-on:open-modal.window="if ($event.detail.id === 'recalc-modal') open = true"
+     x-on:close-modal.window="if ($event.detail.id === 'recalc-modal') open = false"
+     id="recalc-modal" class="fixed inset-0 z-50 flex items-center justify-center">
+    ...
+</div>
+
+<script>
+// otwarcie z dowolnego miejsca:
+window.dispatchEvent(new CustomEvent('open-modal', {detail: {id: 'recalc-modal'}}));
+</script>
+```
+
+**Sticky modal** (nie zamykany przypadkowo) — pomija
+`x-on:keydown.escape.window` i `@click="open=false"` na backdropie. Zob.
+`evaluation_browser.html` (#recalc-modal podczas HTMX-driven recalculation).
+
+### Tabs: Foundation `data-tabs` → Alpine x-data + active
+
+Wzór z `pbn_import/session_detail.html` i
+`import_dyscyplin/import_dyscyplin_detail.html`:
+
+```html
+<div x-data="{ active: 'panel1' }">
+    <ul class="tabs">
+        <li class="tabs-title" :class="{ 'is-active': active === 'panel1' }">
+            <a href="#" @click.prevent="active = 'panel1'" :aria-selected="active === 'panel1'">Tab 1</a>
+        </li>
+        <li class="tabs-title" :class="{ 'is-active': active === 'panel2' }">
+            <a href="#" @click.prevent="active = 'panel2'" :aria-selected="active === 'panel2'">Tab 2</a>
+        </li>
+    </ul>
+    <div class="tabs-content">
+        <div class="tabs-panel" :class="{ 'is-active': active === 'panel1' }" x-show="active === 'panel1'" id="panel1">
+            ...
+        </div>
+        <div class="tabs-panel" :class="{ 'is-active': active === 'panel2' }" x-show="active === 'panel2'" id="panel2">
+            ...
+        </div>
+    </div>
+</div>
+```
+
+`x-show` ukrywa przez `display: none` (DOM zostaje), więc HTMX
+`hx-trigger="load"` w panelach działa niezależnie od widoczności tabu.
+DataTables i Select2 inicjalizowane w `$(document).ready` w panelach
+nieaktywnych też działa — Alpine nie odmontowuje DOM.
+
+Initial `active` można derive-ować z Django context:
+`x-data="{ active: '{% if X %}panel1{% elif Y %}panel2{% else %}panel3{% endif %}' }"`.
+
+### Dropdown: Foundation `data-toggle` → Alpine x-data + click-outside
+
+Wzór z `ranking_autorow/results.html` i `multiseek/index.html`:
+
+```html
+<div x-data="{ open: false }">
+    <button @click="open = !open" :aria-expanded="open" class="button dropdown-button">
+        Inne formaty
+    </button>
+    <ul class="dropdown-content"
+        x-show="open" x-cloak
+        @click.outside="open = false"
+        @keydown.escape.window="open = false">
+        <li><a href="...">CSV</a></li>
+        <li><a href="...">JSON</a></li>
+    </ul>
+</div>
+```
+
+`@click.outside` zamyka dropdown gdy user kliknie poza nim. ESC też zamyka.
+
+### Pulapki
+
+- **Multi-line `{# ... #}` NIE działają w Django** — to single-line
+  syntax. Multi-line trzeba `{% comment %}...{% endcomment %}`. Inaczej
+  komentarz leakuje do HTMLa jako tekst.
+- **`{% verbatim %}` parsuje wszystko jako text** — nie da się włożyć
+  `{% comment %}` wewnątrz verbatim block-u, bo tag nie zostanie
+  zinterpretowany. Komentarze opisujące verbatim treść umieść **przed**
+  `{% verbatim %}`.
+- **`{% comment %}` nie może zawierać literalu `{% something %}`** w
+  tekście — Django parser czasem traktuje to jako otwarcie tag-u i szuka
+  match-ującego `{% endsomething %}`. Opisz w czystym tekście.
+- **Alpine.js v3 obserwuje DOM** przez MutationObserver — nowe elementy
+  z `x-data` dodane dynamicznie (Mustache, HTMX swap, jQuery `.html()`,
+  `.append()`) **są automatycznie hydratowane**. Wyjątek: jeśli element
+  jest dodany w `$(document).ready` przed Alpine.start(), trzeba upewnić
+  się, że Alpine już wystartował (Alpine.start() w `bundle-entry.js` —
+  bezpieczne).
+
 ## Build i dev
 
 ```bash
@@ -302,24 +467,54 @@ grunt watch
 Output Tailwinda: `src/bpp/static/tailwind/dist/{blue,green,orange}.css`.
 collectstatic je przenosi do `STATIC_ROOT/tailwind/dist/...`.
 
-## Następne etapy (roadmapa)
+## Status (commit-by-commit)
 
-Etapy są niezależnymi PR-ami opartymi o tę gałąź.
+Gałąź `feature/tailwind-migration` zawiera już:
 
-- **Etap 1**: `bare.html`, `base.html`, `top_bar.html` — wymiana
-  Foundation grid + custom JS dropdown menu.
-- **Etap 2**: strona główna i `browse/` — `wydzial.html` (Magellan +
-  sticky), karty jednostek/autorów.
-- **Etap 3**: formularze (`crispy_forms` rendering) i flash messages
-  (`base.html` -> Alpine callout).
-- **Etap 4**: `multiseek/` (formularz wyszukiwania), tabele wyników.
-- **Etap 5**: szczegóły pracy (`praca_detail.html`), profil autora.
-- **Etap 6**: panele administracyjne *poza* Django admin (operacje,
-  importy, ewaluacja).
-- **Etap 7**: ikony — `fi-*` (1551 wystąpień) na Heroicons albo Tabler
-  Icons (SVG).
-- **Etap 8**: usunięcie Foundation z `package.json`, czystka SCSS,
-  usunięcie compat layer (jeśli zostały tam tylko nieużywane klasy).
+| # | Commit | Co zmigrowane |
+|---|--------|---------------|
+| 0 | setup Tailwind v4 + Alpine.js | infrastructure (config + compat layer + components partials + docs) |
+| 1 | base_footer + password_change block | Foundation grid + visibility utilities |
+| 2 | base.html grid wrappers | grid-container/grid-x/cell + Support button + test-server banner |
+| 3 | import_list_if accordion | first Foundation JS → Alpine pattern (single-item accordion) |
+| 4 | importer_autorow_pbn 4 modale | Alpine.data() pattern (state + AJAX in one component) |
+| 5 | importer_autorow_pbn legacy grid | row/columns/large-N/medium-N → flex/w-full/md:w-1/2 |
+| 6 | ewaluacja_optymalizuj status-modal | Foundation.Reveal direct API call → window event |
+| 7 | 3 modale batch (lista, dashboard, evaluation_browser) | + sticky modal (recalc) + generic open-modal event |
+| 8 | fix multi-line {# #} + 3 accordions (zrodlo, jednostka, deduplikator_autorow) | naprawione komentarze + wzór multi-item accordion |
+| 9 | session_detail tabs | first Foundation tabs → Alpine x-data with active state |
+| 10 | messageTemplate notifications | Alpine na Mustache-rendered DOM |
+| 11 | step_fetch data-closable | ostatni `data-closable` w app templates |
+| 12 | dropdowns (ranking_autorow, multiseek) | data-toggle/data-dropdown → Alpine + click-outside |
+| 13 | deduplikator_zrodel + import_dyscyplin | accordion + tabs + modal w 2 plikach |
+
+## Co jeszcze przed nami (roadmapa)
+
+- **Etap A — `top_bar.html`** (470 linii custom JS dropdown menu).
+  `data-dropdown-menu` + `data-responsive-toggle` + 6 sub-menusów z
+  `data-submenu`. Wymaga porting do Alpine z zachowaniem: hover-show
+  (desktop), tap-to-open (mobile), 500ms close timeout, keyboard nav,
+  viewport-aware positioning. **HIGH RISK** — to navigation na każdej
+  stronie. Wymaga wizualnej weryfikacji przed mergem.
+- **Etap B — `browse/wydzial.html`** (data-magellan + data-sticky).
+  Magellan to scrollspy nav + smooth scroll do anchor-ów. IntersectionObserver
+  + Alpine binding zastąpi Foundation Magellan. Sticky → CSS `position: sticky`.
+- **Etap C — `importer_publikacji/step_authors.html`** (HTMX-driven modal
+  z Select2 + autocomplete-light). Alpine.js v3 powinien obsłużyć DOM
+  po HTMX swap, ale modal jest re-tworzony per swap, więc Alpine init
+  timing jest delikatny. Wymaga ostrożnej walidacji.
+- **Etap D — pozostała siatka Foundation** w app templates (np.
+  `praca_detail.html`, app-specific browse pages). Mechaniczna zamiana
+  `row/columns/large-N/medium-N` → `flex/w-full/md:w-1/2` wedle wzoru
+  z `importer_autorow_pbn/main.html`.
+- **Etap E — Foundation icons fi-*** (1551 wystąpień) → Heroicons /
+  Tabler Icons / inline SVG. Mechaniczna zamiana, ale duża powierzchnia.
+- **Etap F — usunięcie Foundation**. Po zakończonej migracji wszystkich
+  templates: `foundation-sites` z `package.json` + `bundle-entry.js`,
+  `select2-foundation-theme` (zamiana na Tailwind theme dla Select2),
+  `datatables.net-zf` → `datatables.net-dt`, czystka `_settings_*.scss`,
+  redukcja compat layer w `_components.css` (zostaje tylko to co jeszcze
+  używane lub usuwa się gdy wszystko zmigrowane).
 
 ## Why not Vite?
 
