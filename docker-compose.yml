@@ -84,19 +84,17 @@ services:
 
   # ── Application ────────────────────────────────────────────────────────
 
+  # Wszystkie serwisy aplikacyjne (appserver/celerybeat/workerserver*/denorm-queue)
+  # uzywaja tego samego, lokalnie budowanego obrazu `bpp_testserver:dev` —
+  # stage `testserver` z docker/bpp_base/Dockerfile. Obraz NIE jest publikowany
+  # do registry (brak go w docker-bake.hcl). Zmieniasz pyproject.toml/uv.lock?
+  # `docker compose build` rebuilduje obraz raz dla wszystkich serwisow.
   appserver:
-    image: iplweb/bpp_appserver:${DOCKER_VERSION:-latest}
-    build:
+    image: bpp_testserver:dev
+    build: &testserver-build
       context: .
-      dockerfile: docker/appserver/Dockerfile
-      tags:
-        - iplweb/bpp_appserver:${DOCKER_VERSION:-latest}
-        - iplweb/bpp_appserver:latest
-      cache_from:
-        - type=registry,ref=iplweb/bpp_base:latest
-        - type=registry,ref=iplweb/bpp_appserver:latest
-      cache_to:
-        - type=inline
+      dockerfile: docker/bpp_base/Dockerfile
+      target: testserver
     restart: always
     env_file:
       - path: .env.docker
@@ -106,17 +104,7 @@ services:
     environment:
       - ENABLE_AUTORELOAD_ON_CODE_CHANGE=${ENABLE_AUTORELOAD_ON_CODE_CHANGE:-1}
       - DJANGO_BPP_CSRF_EXTRA_ORIGINS=https://bpp.localnet:10443,https://localhost:10443
-    # Dev-only: .venv jest shadowowane przez volume, więc trzeba zsynchronizować
-    # zależności przy starcie. Produkcja ma .venv wkompilowane w obraz i NIE
-    # uruchamia tego sync'a -- nie mamy tu żadnej flagi ani skryptu, który mógłby
-    # "przypadkiem" się odpalić w produkcji.
-    entrypoint:
-      - /bin/sh
-      - -c
-      - >
-        cd /app &&
-        uv sync --frozen --all-extras --no-extra=dev --no-install-project &&
-        exec /entrypoint-appserver.sh
+    entrypoint: ["/entrypoint-appserver.sh"]
     depends_on:
       redis:
         condition: service_healthy
@@ -133,9 +121,6 @@ services:
     volumes:
       - ./src:/app/src
       - ./src/django_bpp/staticroot:/staticroot
-      - ./pyproject.toml:/app/pyproject.toml:ro
-      - ./uv.lock:/app/uv.lock:ro
-      - appserver_venv:/app/.venv
       - media:/mediaroot
     ports:
       - ${DJANGO_BPP_PORT_APP:-8000}:8000
@@ -144,18 +129,8 @@ services:
   # ── Workers ────────────────────────────────────────────────────────────
 
   celerybeat:
-    image: iplweb/bpp_beatserver:${DOCKER_VERSION:-latest}
-    build:
-      context: .
-      dockerfile: docker/beatserver/Dockerfile
-      tags:
-        - iplweb/bpp_beatserver:${DOCKER_VERSION:-latest}
-        - iplweb/bpp_beatserver:latest
-      cache_from:
-        - type=registry,ref=iplweb/bpp_base:latest
-        - type=registry,ref=iplweb/bpp_beatserver:latest
-      cache_to:
-        - type=inline
+    image: bpp_testserver:dev
+    build: *testserver-build
     env_file:
       - path: .env.docker
         required: true
@@ -163,20 +138,11 @@ services:
         required: false
     environment:
       - ENABLE_AUTORELOAD_ON_CODE_CHANGE=${ENABLE_AUTORELOAD_ON_CODE_CHANGE:-1}
-    entrypoint:
-      - /bin/sh
-      - -c
-      - >
-        cd /app &&
-        uv sync --frozen --all-extras --no-extra=dev --no-install-project &&
-        exec /app/entrypoint-beatserver.sh
+    entrypoint: ["/entrypoint-beatserver.sh"]
     restart: always
     volumes:
       - ./src:/app/src
       - ./src/django_bpp/staticroot:/staticroot
-      - ./pyproject.toml:/app/pyproject.toml:ro
-      - ./uv.lock:/app/uv.lock:ro
-      - celerybeat_venv:/app/.venv
       - media:/mediaroot
     depends_on:
       redis:
@@ -187,18 +153,8 @@ services:
         condition: service_healthy
 
   workerserver-general:
-    image: iplweb/bpp_workerserver:${DOCKER_VERSION:-latest}
-    build:
-      context: .
-      dockerfile: docker/workerserver/Dockerfile
-      tags:
-        - iplweb/bpp_workerserver:${DOCKER_VERSION:-latest}
-        - iplweb/bpp_workerserver:latest
-      cache_from:
-        - type=registry,ref=iplweb/bpp_base:latest
-        - type=registry,ref=iplweb/bpp_workerserver:latest
-      cache_to:
-        - type=inline
+    image: bpp_testserver:dev
+    build: *testserver-build
     env_file:
       - path: .env.docker
         required: true
@@ -207,20 +163,22 @@ services:
     environment:
       - WEB_CONCURRENCY=4
       - ENABLE_AUTORELOAD_ON_CODE_CHANGE=${ENABLE_AUTORELOAD_ON_CODE_CHANGE:-1}
-    entrypoint:
-      - /bin/sh
-      - -c
-      - >
-        cd /app &&
-        uv sync --frozen --all-extras --no-extra=dev --no-install-project &&
-        exec /app/entrypoint-workerserver.sh
+    entrypoint: ["/entrypoint-workerserver.sh"]
     restart: always
+    # Mirror produkcyjnego HEALTHCHECK z docker/workerserver/Dockerfile:8.
+    # Testserver stage celowo nie ma HEALTHCHECK (jest shared dla wszystkich
+    # uslug, kazda ma inne wymagania) — musimy go dolozyc per-service tutaj.
+    # $$HOSTNAME (escaped $) → docker compose passuje literalne $HOSTNAME do
+    # shella w kontenerze, ktory rozwija to do nazwy hosta (= identifier workera).
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A django_bpp.celery_tasks inspect ping --destination celery@$$HOSTNAME"]
+      interval: 10s
+      timeout: 10s
+      start_period: 120s
+      retries: 5
     volumes:
       - ./src:/app/src
       - ./src/django_bpp/staticroot:/staticroot
-      - ./pyproject.toml:/app/pyproject.toml:ro
-      - ./uv.lock:/app/uv.lock:ro
-      - workerserver_general_venv:/app/.venv
       - media:/mediaroot
     depends_on:
       # Musi czekać na appserver, gdyż appserver aktualizuje ewentualnie baze danych.
@@ -231,18 +189,8 @@ services:
         condition: service_healthy
 
   workerserver-denorm:
-    image: iplweb/bpp_workerserver:${DOCKER_VERSION:-latest}
-    build:
-      context: .
-      dockerfile: docker/workerserver/Dockerfile
-      tags:
-        - iplweb/bpp_workerserver:${DOCKER_VERSION:-latest}
-        - iplweb/bpp_workerserver:latest
-      cache_from:
-        - type=registry,ref=iplweb/bpp_base:latest
-        - type=registry,ref=iplweb/bpp_workerserver:latest
-      cache_to:
-        - type=inline
+    image: bpp_testserver:dev
+    build: *testserver-build
     env_file:
       - path: .env.docker
         required: true
@@ -252,20 +200,17 @@ services:
       - WEB_CONCURRENCY=4
       - ENABLE_AUTORELOAD_ON_CODE_CHANGE=${ENABLE_AUTORELOAD_ON_CODE_CHANGE:-1}
       - CELERY_QUEUE=denorm
-    entrypoint:
-      - /bin/sh
-      - -c
-      - >
-        cd /app &&
-        uv sync --frozen --all-extras --no-extra=dev --no-install-project &&
-        exec /app/entrypoint-workerserver.sh
+    entrypoint: ["/entrypoint-workerserver.sh"]
     restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A django_bpp.celery_tasks inspect ping --destination celery@$$HOSTNAME"]
+      interval: 10s
+      timeout: 10s
+      start_period: 120s
+      retries: 5
     volumes:
       - ./src:/app/src
       - ./src/django_bpp/staticroot:/staticroot
-      - ./pyproject.toml:/app/pyproject.toml:ro
-      - ./uv.lock:/app/uv.lock:ro
-      - workerserver_denorm_venv:/app/.venv
       - media:/mediaroot
     depends_on:
       # Musi czekać na appserver, gdyż appserver aktualizuje ewentualnie baze danych.
@@ -276,23 +221,14 @@ services:
         condition: service_healthy
 
   workerserver-status:
-    image: iplweb/bpp_workerserver:${DOCKER_VERSION:-latest}
-    build:
-      context: .
-      dockerfile: docker/workerserver/Dockerfile
-      tags:
-        - iplweb/bpp_workerserver:${DOCKER_VERSION:-latest}
-        - iplweb/bpp_workerserver:latest
-      cache_from:
-        - type=registry,ref=iplweb/bpp_base:latest
-        - type=registry,ref=iplweb/bpp_workerserver:latest
-      cache_to:
-        - type=inline
+    image: bpp_testserver:dev
+    build: *testserver-build
     env_file:
       - path: .env.docker
         required: true
       - path: .env
         required: false
+    entrypoint: ["/entrypoint-workerserver.sh"]
     command: status
     depends_on:
       workerserver-general:
@@ -304,18 +240,8 @@ services:
   denorm-queue:
     # run only SINGLE service, this is only a mechanism to pass
     # PostgreSQL LISTEN to Celery queue
-    image: iplweb/bpp_denorm_queue:${DOCKER_VERSION:-latest}
-    build:
-      context: .
-      dockerfile: docker/denorm-queue/Dockerfile
-      tags:
-        - iplweb/bpp_denorm_queue:${DOCKER_VERSION:-latest}
-        - iplweb/bpp_denorm_queue:latest
-      cache_from:
-        - type=registry,ref=iplweb/bpp_base:latest
-        - type=registry,ref=iplweb/bpp_denorm_queue:latest
-      cache_to:
-        - type=inline
+    image: bpp_testserver:dev
+    build: *testserver-build
     env_file:
       - path: .env.docker
         required: true
@@ -323,19 +249,10 @@ services:
         required: false
     environment:
       - ENABLE_AUTORELOAD_ON_CODE_CHANGE=${ENABLE_AUTORELOAD_ON_CODE_CHANGE:-1}
-    entrypoint:
-      - /bin/sh
-      - -c
-      - >
-        cd /app &&
-        uv sync --frozen --all-extras --no-extra=dev --no-install-project &&
-        exec /app/entrypoint-denorm-queue.sh
+    entrypoint: ["/entrypoint-denorm-queue.sh"]
     restart: always
     volumes:
       - ./src:/app/src
-      - ./pyproject.toml:/app/pyproject.toml:ro
-      - ./uv.lock:/app/uv.lock:ro
-      - denorm_queue_venv:/app/.venv
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -423,8 +340,3 @@ volumes:
   rabbitmq_data:
   media:
   grafana_data:
-  appserver_venv:
-  celerybeat_venv:
-  workerserver_general_venv:
-  workerserver_denorm_venv:
-  denorm_queue_venv:

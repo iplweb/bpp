@@ -28,6 +28,21 @@ variable "GIT_SHA" {
   default = "unknown"
 }
 
+# Rozróżnienie release vs developer build. Master release -> "release"
+# (stopka pokazuje tylko numer wersji); PR/feature/lokalne -> "dev"
+# (stopka dokleja `(<image_tag>, commit XXXXXXX)` po wersji, dla łatwego
+# namierzenia którego commitu/buildu dotyczy obraz, gdy tag jest
+# niejednoznaczny).
+variable "BPP_BUILD_FLAVOR" {
+  default = "dev"
+}
+
+# Kanoniczny tag obrazu (np. "119-merge", nazwa brancha, "202604.1364"
+# dla mastera). Workflow przekazuje wartość z steps.tag.outputs.final_tag.
+variable "BPP_IMAGE_TAG" {
+  default = "unknown"
+}
+
 variable "TAG_LATEST" {
   default = "true"
 }
@@ -66,7 +81,9 @@ target "base" {
   dockerfile = "docker/bpp_base/Dockerfile"
   context    = "."
   args = {
-    GIT_SHA = GIT_SHA
+    GIT_SHA          = GIT_SHA
+    BPP_BUILD_FLAVOR = BPP_BUILD_FLAVOR
+    BPP_IMAGE_TAG    = BPP_IMAGE_TAG
   }
   tags = TAG_LATEST == "true" ? [
     "iplweb/bpp_base:${DOCKER_VERSION}",
