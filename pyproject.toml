@@ -221,6 +221,16 @@ push = false
 [tool.uv]
 environments = ["python_version >= '3.10' and python_version < '3.15' and platform_python_implementation != 'PyPy'"]
 
+# Jawne zadeklarowanie indeksu PyPI jako jedynego, domyslnego zrodla
+# pakietow. Chroni przed dependency confusion: gdyby kiedys pojawil sie
+# prywatny indeks, ten wpis musi pozostac jawnie default = true a nowy
+# indeks dodawany jako pierwszy z `explicit = true` aby tylko wybrane
+# pakiety byly z niego pobierane. Patrz docs/SECURITY_PRACTICES.md.
+[[tool.uv.index]]
+name = "pypi"
+url = "https://pypi.org/simple"
+default = true
+
 [tool.bumpver.file_patterns]
 "pyproject.toml" = ['current_version = "{version}"',
     'version = "{pep440_version}"']
