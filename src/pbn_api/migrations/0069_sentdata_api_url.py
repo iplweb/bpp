@@ -14,6 +14,14 @@ def fill_null_strings(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
+    # Migracja musi byc non-atomic: RunPython robi UPDATE na pbn_api_sentdata,
+    # ktory generuje deferred trigger events (denorm/easyaudit aktywne na
+    # tabeli). Nastepujacy AlterField (ALTER TABLE) wywala sie wtedy z
+    # `ObjectInUse: nie mozna ALTER TABLE ... posiada oczekujace zdarzenia
+    # wyzwalaczy`. Z atomic=False kazda operacja commituje sie osobno —
+    # triggery odpalaja sie po UPDATE, a ALTER startuje z czystym stanem.
+    atomic = False
+
     dependencies = [
         ("pbn_api", "0068_add_cache_models"),
     ]
