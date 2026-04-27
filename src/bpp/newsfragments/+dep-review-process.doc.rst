@@ -1,0 +1,1 @@
+Dodano proces "Adding a new dependency" w ``docs/SECURITY_PRACTICES.md`` (5-minutowy review checklist: Snyk DB / OSV / liveness / Trusted Publisher attestation / wheel availability) oraz ``.github/PULL_REQUEST_TEMPLATE.md`` z checklistą bezpieczeństwa dla nowych deps, sekretów, workflowów i Dockerfile.

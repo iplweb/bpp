@@ -12,6 +12,7 @@ Polityka zgłaszania luk bezpieczeństwa: [SECURITY.md](../SECURITY.md).
 - [Cooldown przed instalacją](#cooldown-przed-instalacją)
 - [Eksplicytny indeks PyPI](#eksplicytny-indeks-pypi)
 - [SHA-pinning GitHub Actions](#sha-pinning-github-actions)
+- [Adding a new dependency](#adding-a-new-dependency)
 
 ---
 
@@ -117,6 +118,89 @@ commit. Wszystkie runy używające `@v6` dostają kompromat natychmiast
 **Update workflow**: Dependabot z `github-actions` ekosystemu
 automatycznie podbija SHA gdy wyjdzie nowa wersja akcji (z 3-dniowym
 cooldownem).
+
+## Adding a new dependency
+
+**Reguła**: Każda nowa Python dep musi przejść 5-minutowy review zanim
+wyląduje w `pyproject.toml`. Praktyki #16 i #17 z pypi-security-best-practices.
+
+### Checklist
+
+Dla każdej nowej zależności (lub większego bumpa major version):
+
+1. **Vulnerability databases**:
+   - [snyk.io/advisor/python/<package>](https://snyk.io/advisor/python/) —
+     security score, popularność, maintenance status w jednym widoku.
+   - [osv.dev](https://osv.dev/list?ecosystem=PyPI) — surowa lista CVE.
+   - [github.com/pypa/advisory-database](https://github.com/pypa/advisory-database) —
+     PyPI-specific advisories.
+
+2. **Liveness check**:
+   - Ostatni release w ostatnich 12 mies (jeśli starszy — sprawdź czy
+     to "done done" feature, czy abandonware).
+   - GitHub: stars, contributors > 1, otwarte issues nie eksplodują.
+   - PyPI: maintainer count, czy konto ma 2FA badge.
+
+3. **Trusted Publisher attestation** (od 2024+ standard PyPI):
+   - Strona pakietu na PyPI powinna mieć badge
+     "Verified details" + "Sigstore" (oznacza publish via OIDC/Trusted
+     Publishing zamiast long-lived API tokenu).
+   - Brak attestacji nie dyskwalifikuje (wiele starych pakietów ich nie
+     ma), ale obecność dodaje punkt zaufania.
+
+4. **Reduce dependency tree first** (praktyka #14):
+   - Sprawdź czy biblioteka standardowa Python nie wystarczy:
+     `requests` → często `urllib.request` wystarczy dla simple HTTP.
+     `python-dotenv` → Python 3.13+ ma natywne wsparcie dla .env.
+     Zewnętrzne path utils → `pathlib.Path`.
+   - Zliczyć co pakiet wyciągnie: `uv tree --package <name>` po dodaniu.
+     Jeśli > 5 nowych transitive deps — uzasadnij.
+
+5. **Wheel availability** (praktyka #1):
+   - `uv lock --check --no-build` musi przejść po dodaniu (egzekwowane
+     przez pre-commit hook `uv-lock-no-build`).
+   - Jeśli pakiet nie ma wheel — szukaj alternatywy LUB zgłoś u
+     maintainera.
+
+### Verify published wheel content (high-risk packages)
+
+Dla pakietów dotykających auth, kryptografii, networkingu, lub
+upublishingowych narzędzi:
+
+```sh
+# Pobierz bez instalacji:
+uv pip download <package>==<version> --no-deps -d ./inspect
+
+# Rozpakuj wheel:
+unzip ./inspect/<package>-*.whl -d ./inspect/unpacked
+
+# Porównaj z tagged source:
+git clone https://github.com/<owner>/<repo>
+cd <repo>
+git checkout <tag>
+diff -r ./inspect/unpacked/<package>/ ./<package>/
+```
+
+Pomaga wykryć GitHub Actions cache poisoning lub build-time injection
+(złośliwy kod tylko w opublikowanym artefakcie, nie w repo).
+
+### Co commitować
+
+Wraz z dodaniem dep w `pyproject.toml`:
+
+- Krótki komentarz INLINE w `pyproject.toml` z powodem (jeśli niemainstreamowy):
+  ```toml
+  "questionary>=2.0.0", # Interactive CLI menus
+  ```
+- Newsfragment `feature` z opisem use case (towncrier).
+- Jeśli to pakiet z istotnym security profilem (auth/crypto/network) —
+  notatka w PR description z wynikami snyk.io / osv.dev review.
+
+### Template w PR
+
+[`.github/PULL_REQUEST_TEMPLATE.md`](../.github/PULL_REQUEST_TEMPLATE.md)
+zawiera checkbox "Jeśli ten PR dodaje nową zależność..." który
+przypomina o tym procesie.
 
 ---
 
