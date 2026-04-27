@@ -1,6 +1,6 @@
 {
     "name": "bpp-iplweb",
-    "version": "v202604.1357",
+    "version": "v202604.1363",
     "license": "MIT",
     "devDependencies": {
         "esbuild": "^0.27.2",
@@ -9,7 +9,7 @@
         "grunt-contrib-watch": "^1.1.0",
         "grunt-sass": "^4.0.0",
         "grunt-shell": "^4.0.0",
-        "sass": "^1.91.0"
+        "sass": "~1.99.0"
     },
     "dependencies": {
         "basic-ftp": "5.3.0",
@@ -31,7 +31,7 @@
         "picomatch": "2.3.2",
         "plotly.js": "^2.35.2",
         "select2": "^4.1.0-rc.0",
-        "select2-foundation_theme": "https://github.com/egemensarica/select2-foundation.git#v6",
+        "select2-foundation-theme": "https://github.com/mpasternak/select2-foundation.git#modernize-foundation-6.9",
         "sigma": "^3.0.2",
         "tone": "^15.1.22",
         "what-input": "^5.0.5"
@@ -42,6 +42,7 @@
         "sinon": "^21.0.0"
     },
     "resolutions": {
-        "jquery": "^3.7.1"
+        "jquery": "^3.7.1",
+        "minimatch": "^3.1.2"
     }
 }

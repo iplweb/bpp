@@ -1,9 +1,22 @@
+from django.core.exceptions import PermissionDenied
 from django.views import View
 
-from .mixins import EwaluacjaRequiredMixin
+from .mixins import EwaluacjaRequiredMixin, ma_pelne_uprawnienia_ewaluacji
 
 
-class PrzypnijDyscyplineView(EwaluacjaRequiredMixin, View):
+class PelneUprawnieniaEwaluacjiMixin:
+    """Mixin wymagający pełnych uprawnień do ewaluacji
+    (odrzuca użytkowników autor-only)."""
+
+    def dispatch(self, request, *args, **kwargs):
+        if not ma_pelne_uprawnienia_ewaluacji(request.user):
+            raise PermissionDenied("Brak uprawnień do modyfikacji metryk.")
+        return super().dispatch(request, *args, **kwargs)
+
+
+class PrzypnijDyscyplineView(
+    PelneUprawnieniaEwaluacjiMixin, EwaluacjaRequiredMixin, View
+):
     """Handle pinning a discipline for an author in a publication"""
 
     def post(self, request, content_type_id, object_id, autor_id, dyscyplina_id):
@@ -74,7 +87,9 @@ class PrzypnijDyscyplineView(EwaluacjaRequiredMixin, View):
         return redirect("ewaluacja_metryki:lista")
 
 
-class OdepnijDyscyplineView(EwaluacjaRequiredMixin, View):
+class OdepnijDyscyplineView(
+    PelneUprawnieniaEwaluacjiMixin, EwaluacjaRequiredMixin, View
+):
     """Handle unpinning a discipline for an author in a publication"""
 
     def post(self, request, content_type_id, object_id, autor_id, dyscyplina_id):

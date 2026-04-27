@@ -4,6 +4,139 @@ Historia zmian
 
 .. towncrier release notes start
 
+bpp 202604.1363 (2026-04-27)
+============================
+
+Usprawnienie
+------------
+
+- Workerzy Celery emituja teraz eventy lifecycle (``worker-online``,
+  ``worker-heartbeat``, ``worker-offline``) oraz eventy zadan
+  (``task-received``, ``task-started``, ``task-succeeded``,
+  ``task-failed``) na RabbitMQ. Dzieki temu Flower poprawnie pokazuje
+  status workerow (online/offline) oraz historie wykonywanych zadan.
+  Wczesniej workerzy startowali z ``task events: OFF`` i Flower nie
+  widzial ich w ogole.
+
+
+bpp 202604.1362 (2026-04-26)
+============================
+
+Naprawione
+----------
+
+- Zaktualizowano zależności bezpieczeństwa wskazane przez Dependabot:
+  ``werkzeug`` ``3.1.3`` → ``3.1.8`` (naprawa ``safe_join()`` dla
+  nazw urządzeń specjalnych Windows; transient dep przez
+  ``pytest-httpserver``) oraz ``sqlparse`` ``0.5.3`` → ``0.5.5``
+  (DoS przy formatowaniu list krotek; transient dep przez Django).
+
+
+Usunięto
+--------
+
+- Usunięto nieużywaną zależność deweloperską ``PyPDF2`` z
+  ``pyproject.toml``. Testy PDF korzystają z pakietu ``pypdf``,
+  który trafia do środowiska jako zależność tranzytywna
+  ``xhtml2pdf``. ``PyPDF2`` jest nieutrzymywany i posiadał alert
+  bezpieczeństwa Dependabot bez dostępnej poprawki.
+
+
+bpp 202604.1361 (2026-04-21)
+============================
+
+Usprawnienie
+------------
+
+- Autorzy powiązani z kontami użytkowników mogą teraz przeglądać swoje
+  własne metryki ewaluacyjne. Dodano dwupoziomowy system uprawnień: pełny
+  dostęp (administratorzy i grupa "wprowadzanie danych") oraz dostęp
+  autorski (tylko podgląd własnych metryk). Dodano pole BppUser.autor
+  (OneToOneField) łączące konta użytkowników z rekordami autorów,
+  automatyczne dopasowywanie po adresie e-mail, stronę profilu użytkownika
+  oraz link "Mój profil" w menu nawigacji. (freshdesk-308)
+
+
+bpp 202604.1360 (2026-04-20)
+============================
+
+Usprawnienie
+------------
+
+- Zmniejszono rozmiar obrazów Docker o ~25% (z ~1.67 GB do ~1.25 GB
+  rozpakowanego ``iplweb/bpp_appserver``). Zmiany w ``docker/bpp_base``:
+
+  - ``collectstatic`` uruchamiany w builder stage — ``node_modules``
+    (~327 MB) nie trafia już do runtime, shipowany jest tylko pre-
+    populowany ``/app/staticroot``.
+  - ``uv`` usunięty ze stage ``runtime`` — entrypointy używają
+    ``python``/``celery``/``uvicorn``/``gunicorn`` wprost z ``.venv/bin``.
+  - Poprawiono błąd w zmiennej ``PATH`` (wskazywała ``/.venv/bin``
+    zamiast ``/app/.venv/bin``) — działało to tylko dzięki ``uv run``.
+  - ``pygad`` instalowany bez ``matplotlib`` (biblioteka używana wyłącznie
+    dla nieużywanych funkcji plotowania zbieżności algorytmu genetycznego).
+  - ``uv sync`` ograniczony do realnych extras produkcyjnych
+    (``--extra ldap --extra office365``) zamiast ``--all-extras``;
+    ``testcontainers`` oraz pakiety z grupy dev nie trafiają już do
+    obrazu.
+  - ``gunicorn`` oraz ``watchdog`` przeniesione do głównych zależności
+    w ``pyproject.toml`` — wcześniej były doinstalowywane runtime'owo
+    przez ``uv pip install``.
+  - Katalogi ``tests`` na poziomie aplikacji oraz ``src/integration_tests``
+    nie są już kopiowane do obrazów produkcyjnych.
+
+
+bpp 202604.1359 (2026-04-20)
+============================
+
+Naprawione
+----------
+
+- Stopka na stronie głównej potrafiła wyświetlić się wewnątrz prawej
+  kolumny (sekcja „Najnowsze rekordy ze streszczeniem") zamiast na
+  dole jako pełnoszerokościowy pasek. Przyczyną było użycie filtra
+  ``truncatewords`` (który nie zna się na HTML) na streszczeniach
+  publikacji zawierających znaczniki z bazy (np. ``<jats:p>``).
+  Truncate obcinał tekst w środku znacznika, pozostawiając niedomknięte
+  tagi, przez co przeglądarka dopasowywała zamknięcia dopiero na
+  stopce. Przełączono na ``truncatewords_html``, który zamyka otwarte
+  tagi w punkcie obcięcia i utrzymuje poprawne drzewo DOM.
+
+
+bpp 202604.1358 (2026-04-20)
+============================
+
+Naprawione
+----------
+
+- Pole „Nazwa użytkownika" na stronie ``/accounts/login/`` było
+  wyświetlane bez stylu Foundation — wąskie, niskie, wyraźnie inne
+  niż pole „Hasło". Przyczyną była agresywna minifikacja HTML przez
+  ``django-minify-html`` usuwająca atrybut ``type="text"`` (domyślny
+  w HTML5), do którego odwołuje się Foundation 6 przez selektor
+  ``input[type="text"]``. Po skonfigurowaniu middleware z opcją
+  ``keep_input_type_text_attr=True`` atrybut jest zachowywany i pole
+  wygląda tak samo jak pozostałe pola tekstowe w systemie.
+
+  Dodatkowo włączono ``keep_closing_tags=True`` — treści z bazy
+  (np. znacznik ``<jats:p>`` w abstraktach publikacji) po zrzuceniu
+  opcjonalnych ``</li>``/``</p>`` potrafiły rozjechać drzewo DOM
+  i przesłaniać stopkę na stronie głównej.
+
+  Zaktualizowano rok w stopce na 2026.
+
+
+Usprawnienie
+------------
+
+- Zastąpiono nieutrzymywany pakiet ``django-fsm`` jego aktywnie
+  rozwijanym forkiem ``django-fsm-2``. API pozostało niezmienione
+  (``from django_fsm import FSMField, transition, GET_STATE``),
+  więc zmiana jest przezroczysta dla kodu i migracji bazy danych.
+  Dzięki temu znika ostrzeżenie ``UserWarning`` o braku wsparcia
+  dla ``django-fsm``.
+
+
 bpp 202604.1357 (2026-04-19)
 ============================
 

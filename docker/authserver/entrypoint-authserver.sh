@@ -7,7 +7,7 @@
 cd /app
 
 echo "Starting gunicorn auth server on port 8001..."
-exec uv run gunicorn \
+exec gunicorn \
     --bind 0.0.0.0:8001 \
     --workers 2 \
     --timeout 30 \

@@ -1,4 +1,5 @@
 import json
+import logging
 import traceback
 
 from django.contrib.contenttypes.models import ContentType
@@ -10,6 +11,7 @@ from django.template.loader import render_to_string
 from django.urls import reverse
 from django.views import View
 
+from bpp.const import CHARAKTER_OGOLNY_ROZDZIAL
 from bpp.models import (
     Autor,
     Crossref_Mapper,
@@ -45,6 +47,8 @@ from .providers import (
     get_provider,
     get_providers_metadata,
 )
+
+logger = logging.getLogger(__name__)
 
 _POLISH_DIACRITICS = set("ąćęłńóśźżĄĆĘŁŃÓŚŹŻ")
 
@@ -425,6 +429,25 @@ class SourceView(ImporterPermissionMixin, View):
                     "Podaj wydawcę lub wpisz szczegóły wydawcy.",
                 )
                 return _render_source_step(request, session, form=form)
+
+            # Rozdział wymaga wydawnictwa nadrzędnego
+            if _is_chapter(session):
+                wn = form.cleaned_data.get("wydawnictwo_nadrzedne")
+                wn_pbn = form.cleaned_data.get("wydawnictwo_nadrzedne_w_pbn")
+                if not wn and not wn_pbn:
+                    form.add_error(
+                        "wydawnictwo_nadrzedne",
+                        "Dla rozdziału wymagane jest wydawnictwo nadrzędne.",
+                    )
+                    return _render_source_step(request, session, form=form)
+                if wn and wn_pbn:
+                    form.add_error(
+                        "wydawnictwo_nadrzedne",
+                        "Podaj tylko jedno: wydawnictwo"
+                        " nadrzędne lub wydawnictwo"
+                        " nadrzędne w PBN.",
+                    )
+                    return _render_source_step(request, session, form=form)
         else:
             if not form.cleaned_data.get("zrodlo"):
                 form.add_error(
@@ -436,6 +459,10 @@ class SourceView(ImporterPermissionMixin, View):
         session.zrodlo = form.cleaned_data["zrodlo"]
         session.wydawca = form.cleaned_data["wydawca"]
         session.matched_data["wydawca_opis"] = form.cleaned_data.get("wydawca_opis", "")
+        session.wydawnictwo_nadrzedne = form.cleaned_data.get("wydawnictwo_nadrzedne")
+        session.wydawnictwo_nadrzedne_w_pbn = form.cleaned_data.get(
+            "wydawnictwo_nadrzedne_w_pbn"
+        )
         session.status = ImportSession.Status.SOURCE_MATCHED
         session.modified_by = request.user
         session.save()
@@ -683,6 +710,13 @@ class CreateView(ImporterPermissionMixin, View):
         session.modified_by = request.user
         session.save()
 
+        if "_create_and_pbn" in request.POST:
+            from bpp.admin.helpers.pbn_api.gui import (
+                sprobuj_utworzyc_zlecenie_eksportu_do_PBN_gui,
+            )
+
+            sprobuj_utworzyc_zlecenie_eksportu_do_PBN_gui(request, record)
+
         url = reverse(
             "importer_publikacji:done",
             kwargs={"session_id": session.pk},
@@ -768,6 +802,135 @@ def _find_duplicates(session):
     return results
 
 
+def _get_pbn_publication_by_doi(client, doi):
+    """Wywołaj API PBN i zwróć (data, result) lub result przy błędzie.
+
+    Zwraca krotkę (data, None) przy sukcesie lub
+    (None, result_dict) przy błędzie wymagającym
+    natychmiastowego zwrotu.
+    """
+    from pbn_api.exceptions import (
+        AccessDeniedException,
+        HttpException,
+        NeedsPBNAuthorisationException,
+        PraceSerwisoweException,
+    )
+
+    result = _empty_pbn_result()
+
+    try:
+        data = client.get_publication_by_doi(doi)
+    except (
+        AccessDeniedException,
+        NeedsPBNAuthorisationException,
+    ):
+        result["pbn_needs_auth"] = True
+        return None, result
+    except PraceSerwisoweException:
+        result["pbn_error"] = "PBN w trakcie prac serwisowych"
+        return None, result
+    except HttpException as e:
+        if getattr(e, "status_code", None) == 404:
+            return None, result
+        result["pbn_error"] = f"Błąd komunikacji z PBN: {e}"
+        return None, result
+    except Exception as e:
+        logger.warning("Błąd sprawdzania PBN: %s", e)
+        result["pbn_error"] = f"Błąd sprawdzania PBN: {e}"
+        return None, result
+
+    return data, None
+
+
+def _empty_pbn_result():
+    """Zwróć pusty słownik wyniku sprawdzenia PBN."""
+    return {
+        "pbn_mongo_id": None,
+        "pbn_url": None,
+        "pbn_error": None,
+        "pbn_needs_auth": False,
+    }
+
+
+def _populate_pbn_result(result, data, session):
+    """Wypełnij result danymi z odpowiedzi PBN API.
+
+    Jeśli znaleziono odpowiednik, zapisz/zaktualizuj
+    lokalny rekord pbn_api.Publication.
+    """
+    if not (data and isinstance(data, dict)):
+        return
+
+    mongo_id = data.get("mongoId")
+    if not mongo_id:
+        return
+
+    result["pbn_mongo_id"] = mongo_id
+    uczelnia = Uczelnia.objects.get_default()
+    if uczelnia and uczelnia.pbn_api_root:
+        from bpp.const import LINK_PBN_DO_PUBLIKACJI
+
+        result["pbn_url"] = LINK_PBN_DO_PUBLIKACJI.format(
+            pbn_api_root=uczelnia.pbn_api_root,
+            pbn_uid_id=mongo_id,
+        )
+
+    # Zaciągnij/zaktualizuj lokalny rekord Publication
+    _ensure_pbn_publication_local(data)
+
+    session.matched_data["pbn_mongo_id"] = mongo_id
+    session.save(update_fields=["matched_data"])
+
+
+def _ensure_pbn_publication_local(data):
+    """Zapisz dane z PBN API jako lokalny rekord Publication."""
+    try:
+        from pbn_api.models import Publication
+        from pbn_integrator.utils import zapisz_mongodb
+
+        zapisz_mongodb(data, Publication)
+    except Exception as e:
+        logger.warning(
+            "Nie udało się zapisać rekordu PBN lokalnie: %s",
+            e,
+        )
+
+
+def _check_pbn_by_doi(session):
+    """Sprawdź czy publikacja z danym DOI istnieje w PBN.
+
+    Zwraca dict z kluczami pbn_mongo_id, pbn_url,
+    pbn_error, pbn_needs_auth — lub None jeśli sprawdzenie
+    nie dotyczy (brak DOI, provider PBN, brak konfiguracji).
+    """
+    if session.provider_name == "PBN":
+        return None
+
+    doi = session.normalized_data.get("doi")
+    if not doi:
+        return None
+
+    normalized = normalize_doi(doi)
+    if not normalized:
+        return None
+
+    try:
+        from .providers.pbn import _get_pbn_client
+
+        client = _get_pbn_client()
+    except Exception as e:
+        logger.warning("Nie można utworzyć klienta PBN: %s", e)
+        return None
+
+    data, error_result = _get_pbn_publication_by_doi(client, normalized)
+    if error_result is not None:
+        return error_result
+
+    result = _empty_pbn_result()
+    _populate_pbn_result(result, data, session)
+    return result
+
+
 def _is_crossref_data(raw_data):
     """Heurystyka: czy raw_data to JSON z CrossRef API."""
     if not raw_data or not isinstance(raw_data, dict):
@@ -795,6 +958,7 @@ def _verify_context(request, session, form=None):
         form = VerifyForm(initial=initial)
 
     existing = _find_duplicates(session)
+    pbn_result = _check_pbn_by_doi(session)
 
     doi = session.normalized_data.get("doi")
     suggest_crossref = bool(doi and session.provider_name != "CrossRef")
@@ -827,6 +991,7 @@ def _verify_context(request, session, form=None):
         "auto_zwarte": (mapper.jest_wydawnictwem_zwartym if mapper else None),
         "suggest_crossref": suggest_crossref,
         "crossref_doi": doi if suggest_crossref else None,
+        "pbn_result": pbn_result,
         "field_categories": field_categories,
         "raw_json_pretty": raw_json_pretty,
     }
@@ -850,40 +1015,68 @@ def _render_verify_full(request, session, form=None):
     return _render_full_page(request, STEP_VERIFY, ctx)
 
 
+def _is_chapter(session):
+    """Czy sesja dotyczy rozdziału (charakter_ogolny == 'roz')."""
+    return (
+        session.charakter_formalny_id
+        and session.charakter_formalny.charakter_ogolny == CHARAKTER_OGOLNY_ROZDZIAL
+    )
+
+
+def _source_initial_from_session(session):
+    """Odczytaj initial z zapisanych wartości sesji."""
+    initial = {}
+    if session.zrodlo_id:
+        initial["zrodlo"] = session.zrodlo_id
+    if session.wydawca_id:
+        initial["wydawca"] = session.wydawca_id
+    wydawca_opis = session.matched_data.get("wydawca_opis", "")
+    if wydawca_opis:
+        initial["wydawca_opis"] = wydawca_opis
+    if session.wydawnictwo_nadrzedne_id:
+        initial["wydawnictwo_nadrzedne"] = session.wydawnictwo_nadrzedne_id
+    if session.wydawnictwo_nadrzedne_w_pbn_id:
+        initial["wydawnictwo_nadrzedne_w_pbn"] = session.wydawnictwo_nadrzedne_w_pbn_id
+    return initial
+
+
+def _source_initial_auto_match(session):
+    """Auto-matching źródła i wydawcy z normalized_data."""
+    initial = {}
+    nd = session.normalized_data
+    source_title = nd.get("source_title")
+    if source_title:
+        src = Komparator.porownaj_container_title(source_title)
+        if src.rekord_po_stronie_bpp:
+            initial["zrodlo"] = src.rekord_po_stronie_bpp.pk
+
+    publisher = nd.get("publisher")
+    if publisher:
+        pub = Komparator.porownaj_publisher(publisher)
+        if pub.rekord_po_stronie_bpp:
+            initial["wydawca"] = pub.rekord_po_stronie_bpp.pk
+        else:
+            initial["wydawca_opis"] = publisher
+    return initial
+
+
 def _source_context(request, session, form=None):
     """Przygotuj kontekst dla kroku źródła."""
+    is_chapter = _is_chapter(session)
+
     if form is None:
-        initial = {}
-
-        # Użyj wartości sesji gdy istnieją (user już submitował)
-        if session.zrodlo_id:
-            initial["zrodlo"] = session.zrodlo_id
-        if session.wydawca_id:
-            initial["wydawca"] = session.wydawca_id
-        wydawca_opis = session.matched_data.get("wydawca_opis", "")
-        if wydawca_opis:
-            initial["wydawca_opis"] = wydawca_opis
-
-        # Auto-matching tylko gdy brak zapisanych wartości
+        initial = _source_initial_from_session(session)
         if not initial:
-            nd = session.normalized_data
-            source_title = nd.get("source_title")
-            if source_title:
-                src = Komparator.porownaj_container_title(source_title)
-                if src.rekord_po_stronie_bpp:
-                    initial["zrodlo"] = src.rekord_po_stronie_bpp.pk
-
-            publisher = nd.get("publisher")
-            if publisher:
-                pub = Komparator.porownaj_publisher(publisher)
-                if pub.rekord_po_stronie_bpp:
-                    initial["wydawca"] = pub.rekord_po_stronie_bpp.pk
-                else:
-                    initial["wydawca_opis"] = publisher
-
+            initial = _source_initial_auto_match(session)
         form = SourceForm(initial=initial)
 
-    return {"session": session, "form": form}
+    return {
+        "session": session,
+        "form": form,
+        "is_chapter": is_chapter,
+        "wydawnictwo_nadrzedne_obj": (session.wydawnictwo_nadrzedne),
+        "wydawnictwo_nadrzedne_w_pbn_obj": (session.wydawnictwo_nadrzedne_w_pbn),
+    }
 
 
 def _render_source_step(request, session, form=None):
@@ -998,17 +1191,29 @@ def _render_authors_full(request, session):
 
 def _review_context(request, session):
     """Przygotuj kontekst dla kroku przeglądu."""
+    from bpp.models import Uczelnia
+
     authors = session.authors.select_related(
         "matched_autor",
         "matched_jednostka",
         "matched_dyscyplina",
     ).exclude(matched_autor=None)
 
-    return {
+    ctx = {
         "session": session,
         "authors": authors,
         "data": session.normalized_data,
     }
+
+    uczelnia = Uczelnia.objects.get_default()
+    if (
+        uczelnia is not None
+        and uczelnia.pbn_integracja
+        and uczelnia.pbn_aktualizuj_na_biezaco
+    ):
+        ctx["show_save_and_pbn"] = True
+
+    return ctx
 
 
 def _render_review_step(request, session):
@@ -1254,6 +1459,34 @@ def _create_streszczenia(session, record):
         )
 
 
+def _link_pbn_uid(session, record):
+    """Powiąż PBN UID z rekordem publikacji, jeśli znaleziono."""
+    pbn_mongo_id = session.matched_data.get("pbn_mongo_id")
+    if not pbn_mongo_id:
+        return
+
+    from django.db import IntegrityError
+
+    from pbn_api.models import Publication
+
+    try:
+        pbn_pub = Publication.objects.get(
+            mongoId=pbn_mongo_id,
+        )
+        record.pbn_uid = pbn_pub
+        record.save(update_fields=["pbn_uid_id"])
+    except Publication.DoesNotExist:
+        logger.info(
+            "Rekord PBN %s nie istnieje lokalnie — pominięto linkowanie",
+            pbn_mongo_id,
+        )
+    except IntegrityError:
+        logger.warning(
+            "PBN UID %s jest już powiązany z innym rekordem BPP",
+            pbn_mongo_id,
+        )
+
+
 @transaction.atomic
 def _create_publication(session):
     """Utwórz rekord publikacji na podstawie sesji."""
@@ -1297,9 +1530,13 @@ def _create_publication(session):
     _create_streszczenia(session, record)
 
     if session.zrodlo and normalized_data.get("year"):
-        from bpp.models.zrodlo import uzupelnij_punktacje_z_zrodla
+        from bpp.models.zrodlo import (
+            uzupelnij_punktacje_z_zrodla,
+        )
 
         uzupelnij_punktacje_z_zrodla(record, session.zrodlo, normalized_data["year"])
+
+    _link_pbn_uid(session, record)
 
     return record
 
@@ -1317,6 +1554,14 @@ def _create_wydawnictwo_zwarte(session, common_fields, normalized_data):
     common_fields["wydawca_opis"] = session.matched_data.get("wydawca_opis", "")
     common_fields["isbn"] = normalized_data.get("isbn") or ""
     common_fields["e_isbn"] = normalized_data.get("e_isbn") or ""
+
+    # Wydawnictwo nadrzędne (dla rozdziałów)
+    if session.wydawnictwo_nadrzedne_id:
+        common_fields["wydawnictwo_nadrzedne"] = session.wydawnictwo_nadrzedne
+    if session.wydawnictwo_nadrzedne_w_pbn_id:
+        common_fields["wydawnictwo_nadrzedne_w_pbn"] = (
+            session.wydawnictwo_nadrzedne_w_pbn
+        )
 
     issue = normalized_data.get("issue")
     if issue:

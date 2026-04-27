@@ -1,3 +1,14 @@
+{% if messages %}
+    {% for message in messages %}
+        <div class="callout
+            {% if 'error' in message.tags %}alert
+            {% elif 'success' in message.tags %}success
+            {% elif 'warning' in message.tags %}warning
+            {% else %}primary{% endif %}">
+            {{ message|safe }}
+        </div>
+    {% endfor %}
+{% endif %}
 {% if error %}
     <div class="callout alert">
         <h4>

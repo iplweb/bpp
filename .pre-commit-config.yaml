@@ -48,6 +48,15 @@ repos:
       hooks:
         - id: actionlint
 
+    # zizmor: security audyt workflowów GitHub Actions. Wykrywa m.in.
+    # nie-pinowane akcje, niebezpieczne triggery (pull_request_target),
+    # injection w expressionach, zbyt szerokie permissions. Praktyka #13
+    # z lirantal/pypi-security-best-practices.
+    - repo: https://github.com/zizmorcore/zizmor-pre-commit
+      rev: v1.24.1
+      hooks:
+        - id: zizmor
+
 #
 #    - repo: local
 #      hooks:

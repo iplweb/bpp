@@ -103,6 +103,90 @@ Full details: [docs/CSS_BUILD.md](docs/CSS_BUILD.md)
 - Generated: `src/bpp/static/500.html` - auto-generated (DO NOT EDIT),
   edit `src/bpp/templates/50x.html` instead
 
+## Static files contract (Docker)
+
+Obraz produkcyjny `iplweb/bpp_appserver` nie generuje staticow na starcie od
+zera — robi to w **build stage** i shipuje gotowe pliki, zeby runtime mogl
+wystartowac bez `node_modules` (~300+ MB oszczednosci).
+
+Kontrakt miedzy obrazem a deploymentem:
+
+- **Build**: `docker/bpp_base/Dockerfile` (builder stage) robi
+  `collectstatic` do `/app/staticroot.baked/`. Katalog jest COPY-owany do
+  runtime stage i pozostaje tam jako read-only source of truth.
+- **Runtime ENV**: `STATIC_ROOT=/app/staticroot` (default) — ale deployment
+  moze to override'owac (np. bpp-deploy ustawia `STATIC_ROOT=/staticroot`
+  i mountuje named volume w tym miejscu).
+- **Entrypoint** (`docker/appserver/entrypoint-appserver.sh`, Phase 2):
+  kopiuje `cp -ru /app/staticroot.baked/. "$STATIC_ROOT/"`. `-u` (update
+  only if newer) nie nadpisuje tenant-specific zmian wgranych do volume
+  przez deployment. **Runtime nie uruchamia `collectstatic`** — wynik
+  bylby dokladnie taki sam jak `.baked` (bez `node_modules` YarnFinder
+  zwraca pusta liste, wiec nowych plikow by nie znalazl), wiec cp wystarcza.
+- **Fallback**: jesli `.baked` nie istnieje w obrazie (stary tag sprzed
+  wprowadzenia kontraktu), entrypoint degraduje do tradycyjnego
+  `collectstatic` — zachowuje backward compat z obrazami pre-contract.
+
+Deployment (`bpp-deploy`) nie musi nic robic — mountuje named volume na
+`$STATIC_ROOT` i nginx go serwuje. Przy upgrade obrazu entrypoint sam
+zalewa volume nowymi plikami z `.baked`.
+
+Jesli zmieniasz to: pamietaj ze `.baked` i `$STATIC_ROOT` to DWIE rozne
+rzeczy. Do `.baked` (w obrazie) pisze tylko `collectstatic` na buildzie.
+Do `$STATIC_ROOT` (volume/katalog runtime) pisze `cp -ru` + runtime
+`collectstatic` + ewentualne tenant tooling.
+
+## Docker image publishing (staging-tag + Trivy gate)
+
+Workflow `.github/workflows/build-docker-images.yml` publikuje obrazy
+Docker w trzech fazach, zeby skaner bezpieczenstwa mogl faktycznie
+zablokowac release zanim kanoniczny tag pojawi sie w rejestrze.
+
+**Dlaczego nie prosty „build → push → scan"?**
+Docker Hub nie ma mechanizmu „un-push". Jesli Trivy znajdzie CRITICAL
+CVE dopiero po pushu, obraz juz jest publicznie dostepny pod tagiem
+wersji (`:2025.12.1`, `:latest`) i deployment moze go pullnac, zanim
+ktokolwiek zobaczy raport. Gate po pushu jest dekoracyjny.
+
+**Faza 1 — Build → staging tag**
+Bake pushuje do tagu `sha-<short_sha>` (np. `sha-abc1234`). Tag jest
+publiczny technicznie, ale niekanoniczny — zadna dokumentacja, zadne
+deployment scripty nie referencuja `sha-*`, wiec w praktyce nikt go
+nie pullnie.
+
+**Faza 2 — Trivy gate (TYLKO master)**
+Skan staging tagu. Polityka:
+- **CRITICAL** (z dostepnym fix-em) → hard fail, workflow sie wywala,
+  promocja sie NIE wykonuje. Kanoniczny tag wersji nigdy nie powstaje.
+- **HIGH** → raport w GitHub Step Summary, nie blokuje. Wiekszosc HIGH
+  to szum (DoS w build-time libach, CVE w `wheel`/`jaraco.context`
+  z minimalnym realnym impaktem).
+- **`--ignore-unfixed`** → pomijamy CVE bez fixa (nic nie da sie z tym
+  zrobic).
+- Skipowane false-positivy: `autobahn/wamp/cryptosign.py` (przykladowy
+  klucz w docstringu), `slapdtest/certs/` (test fixtures python-ldap).
+
+Feature branche NIE sa skanowane — to +3.5 min na pipeline, a ich tagi
+sa jawnie tymczasowe (nie release).
+
+**Faza 3 — Promote staging → canonical**
+`docker buildx imagetools create -t <canonical> <staging>` kopiuje
+manifest w rejestrze. Nie rebuilduje, nie re-pushuje warstw — tylko
+zapisuje metadane z referencja do istniejacych layers. ~sek per obraz.
+Na master dodatkowo tworzy tag `:latest`.
+
+**Zastrzezenie o rejestrze:**
+Raz pushniety digest (nawet pod staging tagiem) zyje w Docker Hub do
+momentu recznego DELETE. Staging-tag pattern chroni przed *odkryciem*
+zlego obrazu (kanoniczny tag nie powstaje), nie przed jego *istnieniem*.
+Dla pelnej izolacji potrzebne bylo by prywatne staging registry +
+kopiowanie czystych obrazow do public — niepotrzebne przy obecnej skali.
+
+**Staging tagi akumuluja sie** w Docker Hub jako `sha-*`. Obecnie nie
+sa czyszczone — zostaja dla mozliwosci rollbacku po SHA. Jesli lista
+staje sie za dluga, dopisz krok DELETE przez Docker Hub API lub cron
+usuwajacy tagi starsze niz N dni.
+
 ## External Services
 
 ### Freshdesk Support

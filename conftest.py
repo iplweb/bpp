@@ -19,10 +19,34 @@ def pytest_configure(config):
     a venv pre-synced with `uv sync --all-extras`.
     """
     import os
+    import sys
 
     repo_root = Path(__file__).parent
     env = {**os.environ, "UV_NO_SYNC": "1"}
-    subprocess.run(["make", "assets"], cwd=repo_root, check=True, env=env)
+    result = subprocess.run(
+        ["make", "assets"],
+        cwd=repo_root,
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        sys.stderr.write(f"\n=== `make assets` failed (exit {result.returncode}) ===\n")
+        if result.stdout:
+            sys.stderr.write("--- stdout ---\n")
+            sys.stderr.write(result.stdout)
+            if not result.stdout.endswith("\n"):
+                sys.stderr.write("\n")
+        if result.stderr:
+            sys.stderr.write("--- stderr ---\n")
+            sys.stderr.write(result.stderr)
+            if not result.stderr.endswith("\n"):
+                sys.stderr.write("\n")
+        sys.stderr.write("=" * 50 + "\n")
+        pytest.exit(
+            f"make assets failed (exit {result.returncode}) — see output above",
+            returncode=2,
+        )
 
 
 # Load fixtures from submodules - must be at top-level conftest per pytest requirements

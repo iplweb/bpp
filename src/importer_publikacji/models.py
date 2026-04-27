@@ -90,6 +90,20 @@ class ImportSession(models.Model):
         blank=True,
         verbose_name="wydawca",
     )
+    wydawnictwo_nadrzedne = models.ForeignKey(
+        "bpp.Wydawnictwo_Zwarte",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="wydawnictwo nadrzędne",
+    )
+    wydawnictwo_nadrzedne_w_pbn = models.ForeignKey(
+        "pbn_api.Publication",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="wydawnictwo nadrzędne w PBN",
+    )
     jezyk = models.ForeignKey(
         "bpp.Jezyk",
         on_delete=models.SET_NULL,

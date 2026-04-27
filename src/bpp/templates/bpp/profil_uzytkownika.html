@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}Mój profil{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="/">Strona główna</a></li>
+    <li class="current">Mój profil</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="medium-8 medium-centered columns">
+        <h2><span class="fi-torso"></span> Mój profil</h2>
+
+        <div class="callout">
+            <table>
+                <tr>
+                    <th>Użytkownik</th>
+                    <td>{{ request.user.get_full_name|default:request.user.username }}</td>
+                </tr>
+                <tr>
+                    <th>Email</th>
+                    <td>{{ request.user.email|default:"brak" }}</td>
+                </tr>
+            </table>
+        </div>
+
+        {% if autor %}
+            <div class="callout success">
+                <h4><span class="fi-check"></span> Powiązany autor</h4>
+                <p>
+                    Twoje konto jest powiązane z autorem:
+                    <strong>
+                        <a href="{% url 'bpp:browse_autor' autor.pk %}">
+                            {{ autor }}
+                        </a>
+                    </strong>
+                </p>
+            </div>
+
+            {% if metryki %}
+                <h3>Metryki ewaluacyjne</h3>
+                <table class="hover">
+                    <thead>
+                        <tr>
+                            <th>Dyscyplina</th>
+                            <th>Średnia PKDaut/slot</th>
+                            <th>Wykorzystanie slotów</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for metryka in metryki %}
+                        <tr>
+                            <td>{{ metryka.dyscyplina_naukowa }}</td>
+                            <td>{{ metryka.srednia_za_slot_nazbierana|floatformat:2 }}</td>
+                            <td>{{ metryka.procent_wykorzystania_slotow|floatformat:1 }}%</td>
+                            <td>
+                                <a href="{% url 'ewaluacja_metryki:szczegoly' metryka.autor.slug metryka.dyscyplina_naukowa.kod %}" class="button small">
+                                    <span class="fi-graph-trend"></span> szczegóły
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+
+                <a href="{% url 'ewaluacja_metryki:lista' %}?autor_id={{ autor.pk }}" class="button expanded">
+                    <span class="fi-graph-trend"></span> Moje metryki ewaluacyjne
+                </a>
+            {% else %}
+                <div class="callout secondary">
+                    <p>
+                        <span class="fi-info"></span>
+                        Metryki ewaluacyjne nie zostały jeszcze wygenerowane dla Twojego konta.
+                    </p>
+                </div>
+            {% endif %}
+
+        {% else %}
+            <div class="callout warning">
+                <h4><span class="fi-alert"></span> Brak powiązania z autorem</h4>
+                <p>
+                    Twoje konto nie jest powiązane z żadnym autorem w systemie.
+                    Skontaktuj się z administratorem w celu powiązania konta z autorem.
+                </p>
+            </div>
+        {% endif %}
+
+    </div>
+</div>
+{% endblock %}

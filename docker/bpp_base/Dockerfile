@@ -4,6 +4,17 @@
 ARG PYTHON_VERSION=3.12
 ARG NODEJS_VERSION=20
 ARG DEBIAN_VERSION=trixie
+# Pandoc installed via COPY --from= zamiast apt-get, bo apt-owy pandoc
+# ciagnie pandoc-data i transitive deps (~300 MB). Osobny pinned tag
+# pozwala trzymac pandoc w stabilnej warstwie cache, niezaleznej od
+# rebuildow bpp. Update pandoc = zmiana tego jednego arg.
+ARG PANDOC_VERSION=3.5
+
+##############################################################################
+# PANDOC-SRC: pinned pandoc binary source
+# Oddzielny stage bo BuildKit nie rozwija zmiennych w `COPY --from=image:${VAR}`.
+##############################################################################
+FROM pandoc/core:${PANDOC_VERSION}-ubuntu AS pandoc-src
 
 ##############################################################################
 # BASE: shared foundation for builder and test-runner
@@ -40,9 +51,21 @@ WORKDIR /app
 
 COPY pyproject.toml uv.lock yarn.lock package.json ./
 
+# R4: --all-extras --no-extra=dev również ciągnie `baseline-rebuild`
+# (testcontainers) i pakiety z [dependency-groups].dev (vulture, pytest-
+# repeat). Explicite wymieniamy extras potrzebne w produkcji.
 RUN --mount=type=cache,target=/root/.cache/uv,id=uv-cache \
-    uv sync --frozen --all-extras \
-        --no-extra=dev --no-install-project
+    uv sync --frozen --no-dev --no-install-project \
+        --extra ldap --extra office365
+
+# R6: pygad deklaruje matplotlib jako twardą dep dla funkcji rysowania
+# zbieżności algorytmu genetycznego (plot_fitness), których BPP nie używa.
+# matplotlib jest importowane lazy wewnątrz tych funkcji, więc usunięcie go
+# nie psuje `import pygad`. Oszczędność: ~38 MB (matplotlib + contourpy +
+# kiwisolver + cycler). fonttools zostaje — używa go weasyprint i pyphen.
+RUN --mount=type=cache,target=/root/.cache/uv,id=uv-cache \
+    uv pip uninstall --python /app/.venv/bin/python \
+        matplotlib contourpy kiwisolver cycler
 
 RUN --mount=type=cache,target=/root/.npm,id=npm-cache \
     --mount=type=cache,target=/root/.yarn,id=yarn-cache \
@@ -104,10 +127,81 @@ RUN echo "Building from git commit: ${GIT_SHA}"
 
 COPY . .
 
-RUN uv run src/manage.py compilemessages -v0 -l pl --traceback
+RUN /app/.venv/bin/python src/manage.py compilemessages -v0 -l pl --traceback
 
-RUN find .venv -type f -name "*.pyc" -delete && \
-    python -m compileall -j 0 .venv -x 'wsgiutils' || true
+# R5: collectstatic wymaga `node_modules` przez YarnFinder — uruchamiamy
+# go teraz, w builder stage, aby staticroot był pre-populowany, a runtime
+# mógł shipować tylko `/app/staticroot.baked` zamiast 300+ MB node_modules.
+# Zapisujemy do `.baked` (nie `/app/staticroot`), bo runtime `STATIC_ROOT`
+# moze byc overridowane przez deployment (np. bpp-deploy mountuje named
+# volume na `/staticroot`). Entrypoint appservera kopiuje `.baked → $STATIC_ROOT`
+# przy starcie — kontrakt opisany w CLAUDE.md (sekcja "Static files contract").
+# collectstatic nie potrzebuje DB ani Redisa; wystarczy dummy SECRET_KEY.
+# UWAGA: musi biec PRZED R2 — src/import_pracownikow/static/.../przyklad.xlsx
+# to symlink do src/import_pracownikow/tests/testdata.xlsx; collectstatic
+# rozwiązuje symlink (kopiuje treść) i dopiero potem możemy usunąć tests/.
+# R11: --ignore sinon --ignore qunit wycina test-only biblioteki JS
+# (sinon/pkg/sinon.js + qunit/qunit/*) z production staticroot. Dev flow
+# jest nietknięty, bo używamy collectstatic tylko w buildzie obrazu.
+# R14: --ignore '*.map' wycina source maps (~8 MB rozsianych po
+# foundation-sites, tone, djangoql, rest_framework, bpp/js/dist, ...).
+# Source maps sluza tylko browser devtools podczas debugowania JS/CSS;
+# w prod 404 na .map pojawia sie w konsoli gdy user otworzy devtools —
+# bez wplywu na dzialanie aplikacji.
+RUN DJANGO_BPP_SECRET_KEY=build-time-only-not-used \
+    STATIC_ROOT=/app/staticroot.baked \
+    /app/.venv/bin/python src/manage.py collectstatic \
+        --noinput -v0 --traceback \
+        --ignore sinon --ignore qunit --ignore '*.map'
+
+RUN rm -rf /app/node_modules
+
+# R2: testy i pytest-only fixture package nie są potrzebne w produkcji.
+# UWAGA: NIE usuwamy:
+#  - /app/src/test_bpp — to INSTALLED_APP wymagany nawet w produkcji
+#    (modele używane przez aplikację `long_running`, patrz komentarz w
+#    src/django_bpp/settings/base.py)
+#  - src/*/fixtures/ — to katalogi Django loaddata fixtures z danymi
+#    produkcyjnymi (charakter_formalny.json, typ_odpowiedzialnosci.json
+#    itp. — referencje w migracjach).
+# Usuwamy tylko katalogi `tests` na poziomie app (depth 2) i szczegółowe
+# ścieżki pytest-owe. Musi biec PO collectstatic — patrz komentarz wyżej.
+RUN find /app/src -mindepth 2 -type d -name tests -exec rm -rf {} + && \
+    rm -rf /app/src/fixtures \
+           /app/src/conftest.py \
+           /app/src/integration_tests
+
+# R13: analogicznie do R12, usuwamy .pyc z /app/src (~2 MB). Bytecode
+# zostaje skompilowany przez compilemessages + collectstatic powyzej;
+# runtime kompiluje on-demand przy pierwszym imporcie, kolejne workery
+# dziela bytecode przez fork() (gunicorn preload).
+RUN find /app/src -type d -name __pycache__ -exec rm -rf {} + \
+    2>/dev/null || true
+
+# R3: UV_COMPILE_BYTECODE=1 już wygenerowało .pyc podczas `uv sync`.
+# Dodatkowo strippujemy katalogi test* z wbudowanych pakietów, aby
+# zaoszczędzić kilkanaście MB (Django zachowujemy — template'y odwołują
+# się wewnętrznie do testowych aplikacji).
+RUN find /app/.venv -type d -name tests -not -path "*/django/*" \
+      -exec rm -rf {} + 2>/dev/null || true
+
+# R8: strip debug symbols z .so w venv (~180 MB .so total, ~30-50 MB zysku).
+# `--strip-unneeded` zachowuje symbole potrzebne do dynamic linking
+# (inaczej `--strip-all` dalby ImportError), wycina tylko debug info i
+# local symbols. binutils (strip) jest juz w python:3.12-trixie. Warning
+# swallowing: niektore wheels moga miec non-ELF .so (fallback Python
+# impl, np. w setuptools).
+RUN find /app/.venv -name "*.so" -exec strip --strip-unneeded {} + \
+    2>/dev/null || true
+
+# R12: usun __pycache__ w venv (~118 MB). UV_COMPILE_BYTECODE=1 generuje
+# .pyc przy `uv sync`, ale w produkcji wolimy mniejszy obraz kosztem
+# wolniejszego cold startu pierwszego workera (Python kompiluje .pyc
+# in-memory przy pierwszym imporcie). Kolejne workery dzielą skompilowany
+# bytecode przez fork() (gunicorn) albo preload, wiec efekt jest tylko
+# na pierwszym starcie procesu.
+RUN find /app/.venv -type d -name __pycache__ -exec rm -rf {} + \
+    2>/dev/null || true
 
 ##############################################################################
 # TEST-RUNNER: test environment (source mounted at runtime via volume)
@@ -120,6 +214,10 @@ COPY docker/bpp_base/runtime.txt \
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=apt-cache \
     --mount=type=cache,target=/var/lib/apt/lists,sharing=locked,id=apt-lists \
     cat /tmp/packages/*.txt | xargs apt-get install -y
+
+# Pandoc z oficjalnego obrazu (patrz komentarz R7 przy runtime stage).
+# libgmp10/liblua5.4-0 juz sa w runtime.txt instalowanym wyzej.
+COPY --from=pandoc-src /usr/local/bin/pandoc /usr/local/bin/pandoc
 
 # yarn + grunt (global install for CLI use)
 RUN --mount=type=cache,target=/root/.npm,id=npm-cache \
@@ -166,20 +264,47 @@ FROM python:${PYTHON_VERSION}-slim-${DEBIAN_VERSION} AS runtime
 RUN sed -i s/http/https/g /etc/apt/sources.list.d/debian.sources
 
 COPY docker/bpp_base/runtime.txt /tmp/
-COPY --from=ghcr.io/astral-sh/uv:0.7 /uv /usr/local/bin/uv
+
+# R1: `uv` nie jest potrzebny do uruchamiania aplikacji — entrypointy
+# używają `python`/`celery`/`uvicorn`/`gunicorn` bezpośrednio z .venv/bin,
+# a wszystkie zależności (watchdog dla --reload, gunicorn dla authserver)
+# są deklarowane w pyproject.toml. uv zostaje w stage `builder`/`test-runner`.
 
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=apt-cache \
     --mount=type=cache,target=/var/lib/apt/lists,sharing=locked,id=apt-lists \
     apt-get update && \
-    xargs -a /tmp/runtime.txt apt-get install -y
+    xargs -a /tmp/runtime.txt apt-get install -y && \
+    rm -rf /usr/share/doc/* /usr/share/man/* /var/lib/apt/lists/*
+# R15: rm /usr/share/{doc,man}/* + /var/lib/apt/lists/* (~3.4 MB).
+# Standardowy docker-slim pattern — runtime nigdy nie czyta README,
+# changelog.Debian.gz ani copyright. apt-lists i tak jest w cache mount,
+# ale explicite rm to defensive (BuildKit zostawia czasem residual).
 
-ENV PATH="/.venv/bin:$PATH" \
-    PYTHONPATH=/src \
-    DJANGO_SETTINGS_MODULE=django_bpp.settings.production
+# R7: pandoc binary z oficjalnego obrazu pandoc/core zamiast apt (~300 MB
+# oszczednosci + stabilna warstwa cache, niezalezna od rebuildow bpp).
+# Binary linkuje dynamicznie do libgmp10, liblua5.4-0 (w runtime.txt).
+COPY --from=pandoc-src /usr/local/bin/pandoc /usr/local/bin/pandoc
+
+# Uwaga: wcześniej PATH wskazywał na /.venv/bin, a venv jest pod
+# /app/.venv — działało to tylko dlatego, że wszystkie komendy w
+# entrypointach zaczynały się od `uv run`, które samo znajdowało venv
+# po pyproject.toml. Po usunięciu `uv run` (R1) PATH musi wskazywać na
+# właściwy katalog venvu.
+ENV PATH="/app/.venv/bin:$PATH" \
+    PYTHONPATH=/app/src \
+    DJANGO_SETTINGS_MODULE=django_bpp.settings.production \
+    STATIC_ROOT=/app/staticroot
 
 WORKDIR /app
 
-COPY --from=builder /app/node_modules ./node_modules
+# R5: zamiast 300+ MB node_modules shipujemy pre-populowany /app/staticroot.baked
+# wygenerowany przez collectstatic w builder stage. Entrypoint appservera
+# kopiuje `.baked -> $STATIC_ROOT` przy starcie — pozwala to deploymentom
+# (bpp-deploy) overridowac STATIC_ROOT na wlasny named volume, a nadal
+# dostac pre-populowane pliki bez uruchamiania collectstatic od zera.
+# Kontrakt: `/app/staticroot.baked` to read-only shipowane pliki; runtime
+# pisze do `$STATIC_ROOT` (default `/app/staticroot`, override w compose).
+COPY --from=builder /app/staticroot.baked ./staticroot.baked
 COPY --from=builder /app/.venv ./.venv
 # The baseline pg_dump (src/baseline-sql) ships along with src/ and is
 # loaded by entrypoint-appserver.sh via `manage.py baseline_load` on

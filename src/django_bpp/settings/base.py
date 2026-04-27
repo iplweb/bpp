@@ -109,6 +109,7 @@ env = environ.Env(
     DJANGO_BPP_DB_PORT=(int, 5432),
     DJANGO_BPP_CONN_MAX_AGE=(int_or_none, 0),
     DJANGO_BPP_DB_DISABLE_SSL=(bool, False),
+    DJANGO_BPP_TEST_TEMPLATE=(str, ""),
     DJANGO_BPP_SECRET_KEY=(str, SECRET_KEY_UNSET),
     DJANGO_BPP_MEDIA_ROOT=(str, os.path.join(os.getenv("HOME", "C:/"), "bpp-media")),
     #
@@ -624,6 +625,10 @@ CELERYD_HIJACK_ROOT_LOGGER = False
 
 CELERY_TRACK_STARTED = False
 
+# Workerzy emituja eventy lifecycle (online/heartbeat/offline + task-received/
+# started/succeeded/failed) na RabbitMQ. Bez tego Flower nie widzi workerow.
+CELERY_WORKER_SEND_TASK_EVENTS = True
+
 CELERY_ROUTES = [
     {"denorm.tasks.flush_single": {"queue": "denorm"}},
 ]
@@ -693,6 +698,18 @@ if (DATABASES["default"]["HOST"] in ["localhost", "127.0.0.1"]) or (
     options = DATABASES["default"].get("OPTIONS", {})
     options["sslmode"] = "disable"
     DATABASES["default"]["OPTIONS"] = options
+
+# Pozwól pluginowi testcontainers (i potencjalnie innym setupom) zażądać
+# stworzenia testowej bazy jako klonu bazy źródłowej:
+# CREATE DATABASE test_bpp WITH TEMPLATE <template>. Używane by
+# preloadowany baseline (mountowany do /docker-entrypoint-initdb.d/
+# w kontenerze) został natychmiast dostępny dla testów bez ponownego
+# uruchamiania psql.
+_test_template = env("DJANGO_BPP_TEST_TEMPLATE")
+if _test_template:
+    test_settings = DATABASES["default"].get("TEST", {})
+    test_settings["TEMPLATE"] = _test_template
+    DATABASES["default"]["TEST"] = test_settings
 
 SECRET_KEY = env("DJANGO_BPP_SECRET_KEY")
 
@@ -800,7 +817,7 @@ YARN_FILE_PATTERNS = {
     ],
     "jinplace": ["js/jinplace.js"],
     "jquery-circle-progress": ["dist/circle-progress.min.js"],
-    "select2-foundation_theme": ["dist/select2-foundation-theme.css"],
+    "select2-foundation-theme": ["dist/select2-foundation-theme.css"],
     "plotly.js": ["dist/plotly.min.js", "dist/plotly-locale-pl.js"],
     "htmx.org": ["dist/htmx.js"],
     "tone": ["build/Tone.js", "build/Tone.js.map"],

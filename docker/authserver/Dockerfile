@@ -4,12 +4,12 @@
 ARG BPP_BASE_TAG=latest
 FROM iplweb/bpp_base:${BPP_BASE_TAG}
 
-# Install gunicorn + netcat (for Redis connectivity check)
+# gunicorn jest instalowany jako główna zależność w pyproject.toml,
+# więc tu tylko doinstalujemy netcat do sprawdzania Redisa.
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=apt-cache \
     --mount=type=cache,target=/var/lib/apt/lists,sharing=locked,id=apt-lists \
     apt-get update && \
-    apt-get install -y --no-install-recommends netcat-openbsd && \
-    uv pip install gunicorn
+    apt-get install -y --no-install-recommends netcat-openbsd
 
 EXPOSE 8001
 
