@@ -264,9 +264,11 @@ FROM python:${PYTHON_VERSION}-slim-${DEBIAN_VERSION} AS runtime
 # Bake'a przekazuje GIT_SHA z `--set "base.args.GIT_SHA=..."`. Nadpisanie
 # możliwe dla lokalnych buildów; default `unknown` zostaje, kiedy nikt nie
 # poda wartości. BPP_BUILD_FLAVOR rozróżnia release (master) od dev (PR/feature)
-# — pokazujemy SHA w stopce tylko poza release-em.
+# — pokazujemy SHA w stopce tylko poza release-em. BPP_IMAGE_TAG to kanoniczny
+# tag obrazu (np. "119-merge"), który workflow promuje po skanie Trivy.
 ARG GIT_SHA=unknown
 ARG BPP_BUILD_FLAVOR=dev
+ARG BPP_IMAGE_TAG=unknown
 
 RUN sed -i s/http/https/g /etc/apt/sources.list.d/debian.sources
 
@@ -302,7 +304,8 @@ ENV PATH="/app/.venv/bin:$PATH" \
     DJANGO_SETTINGS_MODULE=django_bpp.settings.production \
     STATIC_ROOT=/app/staticroot \
     BPP_GIT_SHA=${GIT_SHA} \
-    BPP_BUILD_FLAVOR=${BPP_BUILD_FLAVOR}
+    BPP_BUILD_FLAVOR=${BPP_BUILD_FLAVOR} \
+    BPP_IMAGE_TAG=${BPP_IMAGE_TAG}
 
 WORKDIR /app
 

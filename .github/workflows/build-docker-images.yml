@@ -238,6 +238,10 @@ jobs:
           # tu untrusted input z github.event.*. Ref name jest weryfikowane
           # przez równość z literałem, więc nie ma ryzyka injection.
           BPP_BUILD_FLAVOR: ${{ github.ref_name == 'master' && 'release' || 'dev' }}
+          # Kanoniczny tag finalny — wpisany do obrazu jako BPP_IMAGE_TAG
+          # ENV, żeby stopka dla dev buildów wyświetlała "119-merge" obok
+          # commit SHA. Wartość pochodzi ze stepa `tag` powyżej.
+          BPP_IMAGE_TAG: ${{ steps.tag.outputs.final_tag }}
         run: |
           docker buildx bake \
             base appserver workerserver \
@@ -245,6 +249,7 @@ jobs:
             --file docker-bake.hcl \
             --set "base.args.GIT_SHA=${GIT_SHA}" \
             --set "base.args.BPP_BUILD_FLAVOR=${BPP_BUILD_FLAVOR}" \
+            --set "base.args.BPP_IMAGE_TAG=${BPP_IMAGE_TAG}" \
             --set '*.platform=linux/amd64' \
             --allow=fs.read=/tmp \
             --allow=fs.write=/tmp
