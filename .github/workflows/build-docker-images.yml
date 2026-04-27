@@ -64,18 +64,18 @@ on:
   push:
     branches:
       - master
+      - main
       - 'feature/**'
       - 'fix/**'
       - 'hotfix/**'
+      # dev intentionally excluded — merge dev->master jest release flow,
+      # nie chcemy palic Docker Cloud minutek na intermediate state dev.
   pull_request:
-    # Buduje, gdy PR ma label `docker-build` (patrz check-flag).
-    # Typ `labeled` obsługuje moment dodania labela na już-pushniętym
-    # commicie — build odpala się od razu, bez konieczności nowego pushu.
-    types: [opened, synchronize, reopened, labeled]
+    # Buduje na każdy push do PR-a (oraz na otwarcie/reopen).
+    types: [opened, synchronize, reopened]
   workflow_dispatch:
     # Ręczne wywołanie z GUI GitHub lub przez
     # `gh workflow run build-docker-images.yml --ref <branch>`.
-    # Zawsze buduje, niezależnie od labela PR-a.
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -83,21 +83,16 @@ concurrency:
 
 jobs:
   check-flag:
-    # Guard job oszczędzający Docker Cloud Build minuty.
-    # - master push:                buduj zawsze (release flow)
-    # - feature/fix/hotfix push:    buduj zawsze (auto-build, dedupe poniżej
-    #                               jeśli branch ma otwarty PR)
-    # - workflow_dispatch:           buduj zawsze (trigger ręczny)
-    # - pull_request z labelem `docker-build`: buduj na każdy push do PR-a
-    #                               (label żyje w metadanych PR-a, nie
-    #                               trafia do kodu → bezpieczne przy mergu)
-    # - pull_request bez labela:     skip
+    # Guard job decyduje czy budowac obraz Docker.
+    # - master/main push:           buduj zawsze (release flow, dowolny actor)
+    # - workflow_dispatch:           buduj zawsze (manual override, dowolny actor)
+    # - PR push / feature push:      buduj tylko gdy actor=mpasternak
+    #                                (aby nie palic Docker Cloud minutek na PR-y
+    #                                contributorow — manualnie odpalisz przez
+    #                                `gh workflow run` jesli trzeba)
+    # Plus dedupe: push do branchu z otwartym PR-em → skip (PR run obsluzy).
     #
-    # Aby włączyć budowanie obrazów dla otwartego PR-a:
-    #   gh pr edit <PR#> --add-label docker-build
-    # Aby wyłączyć:
-    #   gh pr edit <PR#> --remove-label docker-build
-    # Budowanie ad-hoc bez ustawiania labela:
+    # Budowanie ad-hoc dowolnego branchu jako inny user:
     #   gh workflow run build-docker-images.yml --ref <branch>
     runs-on: ubuntu-latest
     permissions:
@@ -113,14 +108,16 @@ jobs:
           REF_NAME: ${{ github.ref_name }}
           EVENT_NAME: ${{ github.event_name }}
           REPO: ${{ github.repository }}
-          HAS_DOCKER_BUILD_LABEL: ${{ contains(github.event.pull_request.labels.*.name, 'docker-build') }}
+          ACTOR: ${{ github.actor }}
         run: |
           # Dedupe: push event na branchu z otwartym PR-em jest duplikatem
           # pull_request eventu dla tego samego commita. Pomijamy push run,
           # zeby nie budowac i nie pushowac tego samego SHA dwa razy do
           # Docker Cloud (~7 min build + transfer do rejestru kazdorazowo).
           # pull_request event bedzie tagowal obraz <PR#>-merge.
-          if [ "$EVENT_NAME" = "push" ] && [ "$REF_NAME" != "master" ]; then
+          if [ "$EVENT_NAME" = "push" ] \
+             && [ "$REF_NAME" != "master" ] \
+             && [ "$REF_NAME" != "main" ]; then
             PR=$(gh pr list --head "$REF_NAME" --state open \
                  --repo "$REPO" \
                  --json number --jq '.[0].number // empty')
@@ -131,21 +128,26 @@ jobs:
             fi
           fi
 
+          # Zawsze: master/main push (release) i workflow_dispatch (manual)
+          if [ "$EVENT_NAME" = "push" ] \
+             && { [ "$REF_NAME" = "master" ] || [ "$REF_NAME" = "main" ]; }; then
+            echo "should_build=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::Docker build — push na ${REF_NAME} (release flow)"
+            exit 0
+          fi
           if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
             echo "should_build=true" >> "$GITHUB_OUTPUT"
-            echo "::notice::Docker build — trigger ręczny (workflow_dispatch)"
-          elif [ "$EVENT_NAME" = "pull_request" ] && [ "$HAS_DOCKER_BUILD_LABEL" = "true" ]; then
+            echo "::notice::Docker build — workflow_dispatch (manual override)"
+            exit 0
+          fi
+
+          # Pozostale (PR event, feature push bez PR) — tylko mpasternak.
+          if [ "$ACTOR" = "mpasternak" ]; then
             echo "should_build=true" >> "$GITHUB_OUTPUT"
-            echo "::notice::Docker build — PR ma label 'docker-build'"
-          elif [ "$EVENT_NAME" = "push" ] && [ "$REF_NAME" = "master" ]; then
-            echo "should_build=true" >> "$GITHUB_OUTPUT"
-            echo "::notice::Docker build — push na master (release)"
-          elif [ "$EVENT_NAME" = "push" ]; then
-            echo "should_build=true" >> "$GITHUB_OUTPUT"
-            echo "::notice::Docker build — push na ${REF_NAME} (auto-build feature/fix/hotfix)"
+            echo "::notice::Docker build — actor=mpasternak, event=${EVENT_NAME}"
           else
             echo "should_build=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::Pomijam Docker build — PR bez labela 'docker-build'"
+            echo "::notice::Pomijam Docker build — actor=${ACTOR} != mpasternak"
           fi
 
   docker:
