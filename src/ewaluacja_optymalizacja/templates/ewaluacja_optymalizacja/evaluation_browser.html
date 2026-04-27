@@ -146,11 +146,13 @@
             <p><em>Ładowanie publikacji...</em></p>
         </div>
 
-        {# Modal przeliczania: Foundation Reveal -> Alpine. Sticky modal —
-           NIE zamykany kliknięciem w backdrop ani ESC (data-close-on-click
-           /data-close-on-esc=false w Foundation). HTMX wstrzykuje content
-           do #recalc-modal-content i zamyka modal po wykryciu markera
-           [data-recalc-complete=true] (patrz htmx:afterSettle handler). #}
+        {% comment %}
+        Modal przeliczania: Foundation Reveal -> Alpine. Sticky modal —
+        NIE zamykany klikiem w backdrop ani ESC (data-close-on-click
+        /data-close-on-esc=false w Foundation). HTMX wstrzykuje content
+        do #recalc-modal-content i zamyka modal po wykryciu markera
+        [data-recalc-complete=true] (patrz htmx:afterSettle handler).
+        {% endcomment %}
         <div x-data="{ open: false }"
              x-show="open" x-cloak
              x-on:open-modal.window="if ($event.detail.id === 'recalc-modal') open = true"

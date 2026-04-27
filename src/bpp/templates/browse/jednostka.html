@@ -160,12 +160,19 @@
                             <h6 class="jednostka__card-title">
                                 <i class="fi-torsos jednostka__icon--mr-xs"></i>Byli pracownicy:
                             </h6>
-                            <ul class="accordion jednostka__accordion" data-accordion data-allow-all-closed="true">
-                                <li class="accordion-item jednostka__accordion-item" data-accordion-item>
-                                    <a href="#" class="accordion-title jednostka__accordion-title">
-                                        <i class="fi-plus jednostka__icon--mr-xs"></i>Kliknij aby rozwinąć listę
+                            {% comment %}
+                            Single-item accordion w karcie "Byli pracownicy".
+                            Foundation -> Alpine; CSS classy custom
+                            (jednostka__accordion*) zostają.
+                            {% endcomment %}
+                            <ul class="accordion jednostka__accordion" x-data="{ open: false }">
+                                <li class="accordion-item jednostka__accordion-item">
+                                    <a href="#" class="accordion-title jednostka__accordion-title"
+                                       @click.prevent="open = !open"
+                                       :aria-expanded="open">
+                                        <i class="fi-plus jednostka__icon--mr-xs" x-show="!open"></i><i class="fi-minus jednostka__icon--mr-xs" x-show="open" x-cloak></i>Kliknij aby rozwinąć listę
                                     </a>
-                                    <div class="accordion-content jednostka__accordion-content" data-tab-content>
+                                    <div class="accordion-content jednostka__accordion-content" x-show="open" x-cloak>
                                         <div class="grid-x grid-margin-x">
                                             {% for col in jednostka.wspolpracowali|columns:2 %}
                                                 <div class="cell medium-6">

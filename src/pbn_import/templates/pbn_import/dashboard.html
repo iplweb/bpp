@@ -119,9 +119,11 @@
     </div>
 </div>
 
-{# Modal: Foundation Reveal -> Alpine. Trigger: dispatch 'open-import-config-modal'
-   z kodu JS po wyborze presetu (linia ~297). Select2 dropdownParent zostaje
-   #import-config-modal — element jest w DOM, tylko visibility kontroluje Alpine. #}
+{% comment %}
+Modal: Foundation Reveal -> Alpine. Trigger: dispatch 'open-import-config-modal'
+z kodu JS po wyborze presetu (linia ~297). Select2 dropdownParent zostaje
+#import-config-modal — element jest w DOM, tylko visibility kontroluje Alpine.
+{% endcomment %}
 <div x-data="{ open: false }"
      x-show="open" x-cloak
      x-on:keydown.escape.window="open = false"

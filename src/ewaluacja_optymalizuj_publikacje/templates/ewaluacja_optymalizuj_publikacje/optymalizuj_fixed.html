@@ -87,11 +87,13 @@
     </div>
 </div>
 
-{# Modal: Foundation Reveal -> Alpine x-show. Triggerowany przez window
-   event `status-modal-open` (dispatchowany z window-funkcji
-   pokazStatusGenerowania w skrypcie ponizej). DOM-injection do
-   #status-content dalej przez jQuery (krotka generacja HTML w
-   builder-ze pozostaje bez zmian). #}
+{% comment %}
+Modal: Foundation Reveal -> Alpine x-show. Triggerowany przez window
+event 'status-modal-open' (dispatchowany z window-funkcji
+pokazStatusGenerowania w skrypcie ponizej). DOM-injection do
+#status-content dalej przez jQuery (krotka generacja HTML w
+builder-ze pozostaje bez zmian).
+{% endcomment %}
 <div x-data="{ open: false }"
      x-show="open" x-cloak
      x-on:keydown.escape.window="open = false"

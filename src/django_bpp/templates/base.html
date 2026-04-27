@@ -218,10 +218,12 @@
     {% include "top_bar.html" %}
     {% block before-breadcrumbs %}{% endblock %}
     {% block breadcrumbs-html %}
-        {# Migrated wrappers to Tailwind. <ul class="breadcrumbs"> still uses
-           Foundation .breadcrumbs styles (etap 7 swap to Tailwind).
-           hide-for-small-only -> hidden md:block (md breakpoint = 640px,
-           Foundation small ends at 39.9375em ≈ 640px). #}
+        {% comment %}
+        Migrated wrappers to Tailwind. <ul class="breadcrumbs"> still uses
+        Foundation .breadcrumbs styles (etap 7 swap to Tailwind).
+        hide-for-small-only -> hidden md:block (md breakpoint = 640px,
+        Foundation small ends at 39.9375em ~= 640px).
+        {% endcomment %}
         <div id="breadcrumbs-wrapper" class="hidden md:block w-full px-4 mx-auto">
             <div class="flex flex-wrap items-center">
                 <div class="flex-1">
@@ -238,9 +240,11 @@
     {% comment %}Countdown banner - handles both active and maintenance countdowns{% endcomment %}
     {% include "django_countdown/countdown_banner.html" %}
 
-    {# Main content wrapper: Tailwind for grid containers, data-sticky-container
-       attribute kept (Foundation Sticky plugin reads it as a sticky boundary
-       for any data-sticky elements rendered inside child blocks). #}
+    {% comment %}
+    Main content wrapper: Tailwind for grid containers, data-sticky-container
+    attribute kept (Foundation Sticky plugin reads it as a sticky boundary
+    for any data-sticky elements rendered inside child blocks).
+    {% endcomment %}
     <div class="w-full px-4 mx-auto" data-sticky-container>
         <div class="max-w-3xl mx-auto px-4">
             <div class="flex flex-wrap">
@@ -258,9 +262,11 @@
                         {% include "test_server_detection.html" %}
 
                         {% if password_change_required %}
-                            {# Migrated to Tailwind: grid-x align-center -> flex flex-wrap justify-center;
-                               large-6 medium-8 small-12 cell -> w-full md:w-2/3 lg:w-1/2;
-                               callout primary -> Tailwind utilities matching the compat layer. #}
+                            {% comment %}
+                            Migrated to Tailwind: grid-x align-center -> flex flex-wrap justify-center;
+                            large-6 medium-8 small-12 cell -> w-full md:w-2/3 lg:w-1/2;
+                            callout primary -> Tailwind utilities matching the compat layer.
+                            {% endcomment %}
                             <div class="flex flex-wrap justify-center">
                                 <div class="w-full md:w-2/3 lg:w-1/2">
 

@@ -197,25 +197,33 @@
                     <h6>
                         <i class="fi-book"></i>Dyscypliny naukowe w ewaluacji
                     </h6>
-                    <ul class="accordion" data-accordion data-allow-all-closed="false">
+                    {% comment %}
+                    Multi-item accordion (allow-all-closed=false in Foundation
+                    — odpowiednik: każdy <li> trzyma własne x-data; rok 2025
+                    startuje rozwinięty, reszta zwinięte). .accordion /
+                    .accordion-item / .accordion-title style-uje Foundation
+                    CSS dopóki nie zmigrujemy do compat layer / per-page CSS.
+                    {% endcomment %}
+                    <ul class="accordion">
                         {% regroup zrodlo.dyscypliny_aktualna_ewaluacja by rok as disciplines_by_year %}
                         {% for year_group in disciplines_by_year reversed %}
-                            <li class="accordion-item{% if year_group.grouper == 2025 %} is-active{% endif %}" data-accordion-item>
-                                <a href="#" class="accordion-title">
+                            <li class="accordion-item"
+                                x-data="{ open: {% if year_group.grouper == 2025 %}true{% else %}false{% endif %} }">
+                                <a href="#" class="accordion-title"
+                                   @click.prevent="open = !open"
+                                   :aria-expanded="open">
                                     <i class="fi-calendar"></i>
                                     Rok {{ year_group.grouper }}
                                     <span class="count-badge">
                                         {{ year_group.list|length }}
                                     </span>
                                 </a>
-                                <div class="accordion-content dyscypliny" data-tab-content>
-{#                                    <div class="dyscypliny">#}
+                                <div class="accordion-content dyscypliny" x-show="open" x-cloak>
                                         {% for discipline in year_group.list %}
                                             <div class="dyscyplina dziedzina-{{ discipline.dyscyplina.kod_dziedziny }} dyscyplina-{{ discipline.dyscyplina.kod }}">
                                                 {{ discipline.dyscyplina }}
                                             </div>
                                         {% endfor %}
-{#                                    </div>#}
                                 </div>
                             </li>
                         {% endfor %}

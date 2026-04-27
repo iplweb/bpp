@@ -14,8 +14,10 @@
 {% block content %}
     <h1>Import danych {{ object.plik_xls.name }}</h1>
 
-    {# Migrated from Foundation accordion to Alpine x-data + x-show.
-       Single-item accordion, initially OPEN (was: is-active). #}
+    {% comment %}
+    Migrated from Foundation accordion to Alpine x-data + x-show.
+    Single-item accordion, initially OPEN (was: is-active).
+    {% endcomment %}
     <ul class="my-4 list-none p-0" x-data="{ open: true }">
         <li class="border border-light-gray bg-white">
             <a href="#"

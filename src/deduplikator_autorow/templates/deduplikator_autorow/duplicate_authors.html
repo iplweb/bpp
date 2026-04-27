@@ -18,13 +18,19 @@
         <!-- Left Sidebar Menu -->
         <div class="left-menu-sidebar">
             <div class="left-menu-menu">
-                <ul class="accordion deduplikator-autorow__accordion" data-accordion data-allow-all-closed="true" data-multi-expand="true" role="region" aria-label="Panel boczny z opcjami">
+                {% comment %}
+                Multi-expand accordion: każdy <li> trzyma własne x-data
+                (boolean open). Foundation data-accordion+data-multi-expand
+                nie potrzebne — niezależne stany per item to default.
+                {% endcomment %}
+                <ul class="accordion deduplikator-autorow__accordion" role="region" aria-label="Panel boczny z opcjami">
                     <!-- Status skanowania duplikatów -->
-                    <li class="accordion-item is-active" data-accordion-item>
-                        <a class="accordion-title deduplikator-autorow__accordion-title" href="#" aria-expanded="true">
+                    <li class="accordion-item" x-data="{ open: true }">
+                        <a class="accordion-title deduplikator-autorow__accordion-title" href="#"
+                           @click.prevent="open = !open" :aria-expanded="open">
                             <span class="fi-magnifying-glass" aria-hidden="true"></span> Skanowanie duplikatów
                         </a>
-                        <div class="accordion-content deduplikator-autorow__accordion-content" data-tab-content>
+                        <div class="accordion-content deduplikator-autorow__accordion-content" x-show="open" x-cloak>
                             {% if running_scan %}
                                 <div id="scan-progress-container">
                                     <p class="deduplikator-autorow__status-text">
@@ -154,21 +160,25 @@
                     </li>
 
                     {% if pending_candidates_count %}
-                    <!-- Liczba autorów z duplikatami -->
-                    <li class="accordion-item is-active" data-accordion-item>
-                        <a class="accordion-title deduplikator-autorow__accordion-title" href="#" aria-expanded="true">
+                    <!-- Liczba autorów z duplikatami (czysto info, brak content
+                         do toggle-owania — link to pseudo-akordeon, x-data
+                         tylko dla aria-expanded) -->
+                    <li class="accordion-item" x-data="{ open: true }">
+                        <a class="accordion-title deduplikator-autorow__accordion-title" href="#"
+                           @click.prevent="open = !open" :aria-expanded="open">
                             <span class="fi-torsos-all" aria-hidden="true"></span> {{ pending_candidates_count }} duplikat{% if pending_candidates_count != 1 %}ów{% endif %} do sprawdzenia
                         </a>
-                        <div class="accordion-content deduplikator-autorow__accordion-content--hidden" data-tab-content></div>
+                        <div class="accordion-content deduplikator-autorow__accordion-content--hidden" x-show="open" x-cloak></div>
                     </li>
                     {% endif %}
 
                     <!-- PBN Download Info -->
-                    <li class="accordion-item" data-accordion-item>
-                        <a class="accordion-title deduplikator-autorow__accordion-title" href="#">
+                    <li class="accordion-item" x-data="{ open: false }">
+                        <a class="accordion-title deduplikator-autorow__accordion-title" href="#"
+                           @click.prevent="open = !open" :aria-expanded="open">
                             <span class="fi-download" aria-hidden="true"></span> Dane PBN
                         </a>
-                        <div class="accordion-content deduplikator-autorow__accordion-content" data-tab-content>
+                        <div class="accordion-content deduplikator-autorow__accordion-content" x-show="open" x-cloak>
                             {% if latest_pbn_download %}
                                 <p class="deduplikator-autorow__status-text">
                                     <strong>Ostatnie pobieranie:</strong><br>
@@ -205,11 +215,12 @@
 
                     <!-- Zacznij od początku -->
                     {% if has_skipped_authors and not search_lastname %}
-                    <li class="accordion-item is-active" data-accordion-item>
-                        <a class="accordion-title deduplikator-autorow__accordion-title" href="#" aria-expanded="true">
+                    <li class="accordion-item" x-data="{ open: true }">
+                        <a class="accordion-title deduplikator-autorow__accordion-title" href="#"
+                           @click.prevent="open = !open" :aria-expanded="open">
                             <span class="fi-loop" aria-hidden="true"></span> Nawigacja
                         </a>
-                        <div class="accordion-content deduplikator-autorow__accordion-content" data-tab-content>
+                        <div class="accordion-content deduplikator-autorow__accordion-content" x-show="open" x-cloak>
                             <p class="deduplikator-autorow__status-text--spaced">Prześledzileś już kilku autorów.</p>
                             <a href="{% url 'deduplikator_autorow:reset_skipped_authors' %}"
                                class="button alert expanded small">

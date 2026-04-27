@@ -833,9 +833,11 @@
 
 </style>
 
-{# Modal generowania: Foundation Reveal -> Alpine x-show. Trigger:
-   `partials/status_box.html` dispatchuje window event 'open-generowanie-modal'.
-   Close: w htmx:beforeRequest handler dispatchuje 'close-generowanie-modal'. #}
+{% comment %}
+Modal generowania: Foundation Reveal -> Alpine x-show. Trigger:
+partials/status_box.html dispatchuje window event 'open-generowanie-modal'.
+Close: w htmx:beforeRequest handler dispatchuje 'close-generowanie-modal'.
+{% endcomment %}
 <div x-data="{ open: false }"
      x-show="open" x-cloak
      x-on:keydown.escape.window="open = false"

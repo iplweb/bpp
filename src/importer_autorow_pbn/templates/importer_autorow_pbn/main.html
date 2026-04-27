@@ -9,14 +9,16 @@
 {% endblock %}
 
 {% block content %}
-{# Alpine wrapper obejmuje content + modale — całe state (open flags, dane
-   wybranego naukowca/autora) żyje w `Alpine.data('importerAutorowPbn')`
-   zarejestrowanym w skrypcie poniżej. Triggery wywołują metody (openIgnore,
-   openLink itp.), confirm-buttony — confirmIgnore / confirmLink / ...
-   które trzymają jQuery AJAX (CSRF, error handling identyczne jak wcześniej)
-   i ustawiają flagi modali na false po sukcesie. Foundation `data-reveal`
-   wycofany; jQuery `$('#xxx').foundation('open/close')` zastąpione mutacją
-   stanu Alpine. #}
+{% comment %}
+Alpine wrapper obejmuje content + modale — całe state (open flags, dane
+wybranego naukowca/autora) żyje w Alpine.data('importerAutorowPbn')
+zarejestrowanym w skrypcie poniżej. Triggery wywołują metody (openIgnore,
+openLink itp.), confirm-buttony — confirmIgnore / confirmLink / ...
+które trzymają jQuery AJAX (CSRF, error handling identyczne jak wcześniej)
+i ustawiają flagi modali na false po sukcesie. Foundation data-reveal
+wycofany; jQuery $('#xxx').foundation('open/close') zastąpione mutacją
+stanu Alpine.
+{% endcomment %}
 <div x-data="importerAutorowPbn">
     <div class="flex flex-wrap -mx-2">
         <div class="w-full px-2">
@@ -247,12 +249,14 @@
         </div>
     </div>
 
-    {# Modale: Foundation `data-reveal` zastąpione przez Alpine x-show.
-       Każdy modal ma własną flagę w Alpine state (ignoreModal, linkAllModal,
-       ...). Zamknięcie przez ESC: x-on:keydown.escape.window.
-       Kliknięcie w backdrop: @click na półprzezroczystym overlay.
-       `class="button-group"` i `class="button success/alert/secondary"` zostają
-       — Foundation CSS dalej je styluje przez compat layer. #}
+    {% comment %}
+    Modale: Foundation data-reveal zastąpione przez Alpine x-show.
+    Każdy modal ma własną flagę w Alpine state (ignoreModal, linkAllModal,
+    ...). Zamknięcie przez ESC: x-on:keydown.escape.window.
+    Kliknięcie w backdrop: @click na półprzezroczystym overlay.
+    class="button-group" i class="button success/alert/secondary" zostają
+    — Foundation CSS dalej je styluje przez compat layer.
+    {% endcomment %}
 
     <!-- Modal: ignore -->
     <div x-show="ignoreModal" x-cloak
