@@ -63,7 +63,9 @@ Przeanalizuj wysłane dane JSON oraz otrzymany błąd i wskaż:
 3. Jak poprawić dane, aby eksport się powiódł?
 
 # DOKUMENTACJA
-Dokumentacja API PBN jest dostępna pod adresem: https://pbn.nauka.gov.pl/api/
+Specyfikacja OpenAPI / Swagger dla PBN API v3:
+https://pbn.nauka.gov.pl/api/v3/api-docs
+(zawiera definicje wszystkich endpointów, schematy JSON, kody błędów)
 
 Proszę o szczegółową analizę i konkretne wskazówki naprawcze.
 """
