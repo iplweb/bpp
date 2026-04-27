@@ -371,6 +371,9 @@ FROM python:${PYTHON_VERSION}-slim-${DEBIAN_VERSION} AS runtime
 ARG GIT_SHA=unknown
 ARG BPP_BUILD_FLAVOR=dev
 ARG BPP_IMAGE_TAG=unknown
+# Sanityzowana nazwa source brancha (alias) — workflow ustawia tylko dla
+# pull_request eventów. Dla master/feature push pozostaje pusty.
+ARG BPP_BRANCH_TAG=
 
 RUN sed -i s/http/https/g /etc/apt/sources.list.d/debian.sources
 
@@ -407,7 +410,8 @@ ENV PATH="/app/.venv/bin:$PATH" \
     STATIC_ROOT=/app/staticroot \
     BPP_GIT_SHA=${GIT_SHA} \
     BPP_BUILD_FLAVOR=${BPP_BUILD_FLAVOR} \
-    BPP_IMAGE_TAG=${BPP_IMAGE_TAG}
+    BPP_IMAGE_TAG=${BPP_IMAGE_TAG} \
+    BPP_BRANCH_TAG=${BPP_BRANCH_TAG}
 
 WORKDIR /app
 

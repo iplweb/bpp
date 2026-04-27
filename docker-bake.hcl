@@ -43,6 +43,12 @@ variable "BPP_IMAGE_TAG" {
   default = "unknown"
 }
 
+# Alias = nazwa source brancha PR-a (sanityzowana). Empty dla master/non-PR
+# pushy. Workflow przekazuje z steps.tag.outputs.branch_tag.
+variable "BPP_BRANCH_TAG" {
+  default = ""
+}
+
 variable "TAG_LATEST" {
   default = "true"
 }
@@ -84,6 +90,7 @@ target "base" {
     GIT_SHA          = GIT_SHA
     BPP_BUILD_FLAVOR = BPP_BUILD_FLAVOR
     BPP_IMAGE_TAG    = BPP_IMAGE_TAG
+    BPP_BRANCH_TAG   = BPP_BRANCH_TAG
   }
   tags = TAG_LATEST == "true" ? [
     "iplweb/bpp_base:${DOCKER_VERSION}",
