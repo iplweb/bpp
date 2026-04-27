@@ -1,8 +1,10 @@
 {% if cancelled %}
-    <div class="callout warning" data-closable>
+    {# Closable callout: Foundation data-closable -> Alpine x-show. #}
+    <div x-data="{ open: true }" x-show="open" data-closable
+         class="callout warning">
         Sesja importu została anulowana.
-        <button class="close-button" data-close
-                type="button" aria-label="Zamknij">
+        <button class="close-button" type="button" aria-label="Zamknij"
+                @click="open = false">
             <span aria-hidden="true">&times;</span>
         </button>
     </div>
