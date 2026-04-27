@@ -121,7 +121,7 @@ def test_helpers_wysylka_z_uid_uczelni(
     assert any("y zaktualizowane" in str(m) for m in msg)
 
     # Po refaktoryzacji: endpoint repo zwraca body jako lista [js]; autorzy
-    # po ``convert_js_with_statements_to_no_statements`` używają pola
+    # po ``convert_json_with_statements_to_no_statements`` używają pola
     # ``firstName`` zamiast ``givenNames`` (konwersja w adapterze).
     iv = pbn_client.transport.input_values[PBN_POST_PUBLICATION_NO_STATEMENTS_URL]
     body = iv["body"][0]
@@ -203,3 +203,18 @@ def test_helpers_wysylka_bez_uid_uczelni(
         body["institutions"][pbn_jednostka.pbn_uid_id]["objectId"]
         == pbn_jednostka.pbn_uid_id
     )
+
+
+def test_convert_json_with_statements_to_no_statements_removes_statements(
+    pbn_client,
+):
+    js = {"authors": [], "statements": [{"type": "AUTHOR"}]}
+    out = pbn_client.convert_json_with_statements_to_no_statements(js)
+    assert "statements" not in out
+
+
+def test_convert_json_with_statements_to_no_statements_no_statements_key(
+    pbn_client,
+):
+    js = {"authors": []}
+    pbn_client.convert_json_with_statements_to_no_statements(js)

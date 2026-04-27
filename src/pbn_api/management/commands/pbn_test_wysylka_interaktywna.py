@@ -237,12 +237,12 @@ class Command(PBNBaseCommand):
         )
         self._info(
             f"Opcja [2]: POST {PBN_POST_PUBLICATION_NO_STATEMENTS_URL} "
-            f"(wymusza JSON bez oświadczeń — convert_js_with_statements_to_no_statements)"
+            f"(wymusza JSON bez oświadczeń — convert_json_with_statements_to_no_statements)"
         )
         if not bez_oswiadczen:
             self._warn(
                 "UWAGA: JSON zawiera klucz 'statements'. Opcja [2] wyrzuci go "
-                "z JSON przez convert_js_with_statements_to_no_statements. "
+                "z JSON przez convert_json_with_statements_to_no_statements. "
                 "PBN w obu przypadkach zaakceptuje dokument zgodny ze spec."
             )
         while True:
@@ -264,14 +264,12 @@ class Command(PBNBaseCommand):
             label = "post_publication (all-in-one)"
         else:
             url = PBN_POST_PUBLICATION_NO_STATEMENTS_URL
-            # Endpoint repozytoryjny nie przyjmuje oświadczeń w ciele, a spec
-            # PBN zaakceptuje JSON bez klucza `statements`. Usuwamy go jawnie
-            # — `convert_js_with_statements_to_no_statements` przekształca
-            # inne pola (givenNames→firstName itd.), ale samego klucza
-            # `statements` nie dotyka.
-            body_js = dict(js)
-            body_js.pop("statements", None)
-            body_js = pbn_client.convert_js_with_statements_to_no_statements(body_js)
+            # `convert_json_with_statements_to_no_statements` usuwa klucz
+            # `statements` (endpoint repo go nie przyjmuje) oraz konwertuje
+            # pola (givenNames→firstName, abstracts do roota itd.). `dict(js)`
+            # — bo `js` jest współdzielone z gałęzią `publications`, mutowanie
+            # in-place złamałoby pozostałe kroki flow.
+            body_js = pbn_client.convert_json_with_statements_to_no_statements(dict(js))
             body = [body_js]
             label = "post_publication_no_statements (repozytorium)"
 

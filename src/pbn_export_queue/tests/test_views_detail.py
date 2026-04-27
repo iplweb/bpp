@@ -222,6 +222,7 @@ def test_build_ai_prompt(admin_user, wydawnictwo_ciagle):
         '\'{"message": "Validation failed", "description": "Invalid data"}\')'
     )
     sent_data.api_response_status = 400
+    sent_data.api_url = "https://pbn-test.example.org/api/v1/repositorium/publications"
 
     request = RequestFactory().get("/")
     request.user = admin_user
@@ -238,3 +239,39 @@ def test_build_ai_prompt(admin_user, wydawnictwo_ciagle):
     assert '{"test": "data"}' in result
     assert "# KONTEKST" in result
     assert "# ZADANIE" in result
+    assert "https://pbn-test.example.org/api/v1/repositorium/publications" in result
+    assert "Endpoint:" in result
+
+
+@pytest.mark.django_db
+def test_build_ai_prompt_fallback_endpoint_z_uczelni(
+    admin_user, wydawnictwo_ciagle, uczelnia
+):
+    """Gdy sent_data.api_url jest puste, prompt korzysta z aktualnej konfiguracji Uczelni."""
+    from unittest.mock import Mock
+
+    uczelnia.pbn_api_root = "https://pbn-fallback.example.org"
+    uczelnia.save()
+
+    queue_item = baker.make(
+        PBN_Export_Queue,
+        rekord_do_wysylki=wydawnictwo_ciagle,
+        zamowil=admin_user,
+        komunikat="",
+    )
+
+    sent_data = Mock()
+    sent_data.exception = None
+    sent_data.api_response_status = None
+    sent_data.api_url = None
+
+    request = RequestFactory().get("/")
+    request.user = admin_user
+
+    view = PBNExportQueueDetailView()
+    view.request = request
+    view.object = queue_item
+
+    result = view._build_ai_prompt(sent_data, "Test Title", "{}")
+
+    assert "https://pbn-fallback.example.org/api/v1/repositorium/publications" in result

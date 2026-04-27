@@ -44,6 +44,8 @@ Próbuję wysłać publikację do PBN API, ale otrzymuję błąd. Potrzebuję ws
 co jest nie tak z wysyłanymi danymi.
 
 # DANE WYSŁANE DO PBN API
+- Endpoint: {api_endpoint}
+- Dane JSON:
 ```json
 {json_data}
 ```

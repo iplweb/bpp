@@ -43,7 +43,12 @@ logger = logging.getLogger(__name__)
 class PublicationSyncMixin:
     """Mixin providing publication synchronization methods."""
 
-    def convert_js_with_statements_to_no_statements(self, json):
+    def convert_json_with_statements_to_no_statements(self, json):
+        # Endpoint repozytoryjny `/api/v1/repositorium/publications` nie
+        # przyjmuje klucza `statements` w body — oświadczenia synchronizujemy
+        # osobno przez `/api/v2/institution-profile/statements`.
+        json.pop("statements", None)
+
         # PBN zmienił givenNames na firstName
         for elem in json.get("authors", []):
             elem["firstName"] = elem.pop("givenNames")
@@ -155,7 +160,7 @@ class PublicationSyncMixin:
     def _prepare_publication_json(self, rec, export_pk_zero, always_affiliate_to_uid):
         """Przygotowuje JSON publikacji do wysyłki przez endpoint repozytoryjny.
 
-        Zawsze wywołuje ``convert_js_with_statements_to_no_statements``, bo
+        Zawsze wywołuje ``convert_json_with_statements_to_no_statements``, bo
         ``upload_publication`` używa teraz wyłącznie endpointu repo
         ``/api/v1/repositorium/publications``, który nie przyjmuje klucza
         ``statements`` w payload i wymaga konwersji formatu (``givenNames``
@@ -167,7 +172,7 @@ class PublicationSyncMixin:
             always_affiliate_to_uid=always_affiliate_to_uid,
         ).pbn_get_json()
 
-        js = self.convert_js_with_statements_to_no_statements(js)
+        js = self.convert_json_with_statements_to_no_statements(js)
         return js
 
     def _check_upload_needed(self, rec, js, force_upload):
@@ -219,7 +224,8 @@ class PublicationSyncMixin:
         self._check_upload_needed(rec, js, force_upload)
 
         # Create or update SentData record BEFORE API call
-        SentData.objects.create_or_update_before_upload(rec, js)
+        api_url = self.transport.base_url + PBN_POST_PUBLICATION_NO_STATEMENTS_URL
+        SentData.objects.create_or_update_before_upload(rec, js, api_url=api_url)
 
         try:
             ret, objectId = self._post_publication_data(js)

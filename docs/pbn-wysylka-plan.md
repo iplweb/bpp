@@ -37,7 +37,7 @@ Wstępny zamysł — do weryfikacji przez Fazę 1:
 
 1. POST publikacji przez endpoint **repozytoryjny**
    `POST /api/v1/repositorium/publications` (JSON bez klucza `statements`,
-   przepuszczony przez `convert_js_with_statements_to_no_statements()`).
+   przepuszczony przez `convert_json_with_statements_to_no_statements()`).
    - FAIL ⇒ zwróć błąd, nie ruszamy oświadczeń. Stan w PBN nietknięty.
    - OK ⇒ mamy `objectId`.
 2. GET oświadczeń publikacji w PBN
@@ -93,7 +93,7 @@ dostępnych kroków:
    pokaż czy JSON zawiera klucz `statements`.
 3. **Wybierz endpoint publikacji** — `/api/v1/publications` (all-in-one,
    z oświadczeniami jeśli są w JSON) albo `/api/v1/repositorium/publications`
-   (wymusza JSON bez oświadczeń przez `convert_js_with_statements_to_no_statements`).
+   (wymusza JSON bez oświadczeń przez `convert_json_with_statements_to_no_statements`).
 4. **Wyślij POST publikacji** — pokaż URL, body, po wysyłce status i JSON
    odpowiedzi; wyciągnij `objectId`.
 5. **Pobierz aktualne oświadczenia z PBN** —
@@ -210,7 +210,7 @@ po q).
    (all-in-one, wysyła razem z oświadczeniami jeśli są w JSON) albo
    `[2]` `/api/v1/repositorium/publications` (narzędzie usuwa klucz
    `statements` i przepuszcza JSON przez
-   `convert_js_with_statements_to_no_statements` — zgodnie ze
+   `convert_json_with_statements_to_no_statements` — zgodnie ze
    specyfikacją PBN endpoint repozytoryjny nie przyjmuje oświadczeń).
 4. **KROK 4/8** — POST publikacji. Narzędzie wypisze URL, body i prosi
    o potwierdzenie. Po sukcesie wyciąga `objectId` z odpowiedzi PBN.
@@ -304,7 +304,7 @@ aktualna `sync_publication` ma tą samą logikę wewnętrznie.
 
 1. `upload_publication(rec, ...)` → ZAWSZE `POST /api/v1/repositorium/publications`
    (`post_publication_no_statements`), niezależnie od obecności oświadczeń
-   w JSON. Konwersja przez `convert_js_with_statements_to_no_statements()`.
+   w JSON. Konwersja przez `convert_json_with_statements_to_no_statements()`.
 2. `download_publication(objectId)` + update `SentData.pbn_uid`.
 3. Obsługa zmiany/konfliktu PBN UID (`_handle_uid_change`/`_conflict`).
 4. `_download_statements_with_retry()` — best effort odświeżenie lokalnego

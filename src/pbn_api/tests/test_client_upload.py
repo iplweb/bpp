@@ -34,7 +34,7 @@ def test_PBNClient_test_upload_publication_nie_trzeba(
     js = WydawnictwoPBNAdapter(
         pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina
     ).pbn_get_json()
-    js = pbn_client.convert_js_with_statements_to_no_statements(js)
+    js = pbn_client.convert_json_with_statements_to_no_statements(js)
     SentData.objects.create_or_update_before_upload(
         pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina, js
     )
@@ -76,6 +76,13 @@ def test_PBNClient_test_upload_publication_wszystko_ok(
     assert objectId == pbn_publication.pk
     # Po refaktoryzacji ``bez_oswiadczen`` zawsze True (endpoint repo)
     assert bez_oswiadczen is True
+
+    # SentData powinien mieć zapisany pełny URL endpointu (domena + ścieżka)
+    sent_data = SentData.objects.get_for_rec(
+        pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina
+    )
+    assert sent_data.api_url is not None
+    assert sent_data.api_url.endswith(PBN_POST_PUBLICATION_NO_STATEMENTS_URL)
 
 
 @pytest.mark.django_db
