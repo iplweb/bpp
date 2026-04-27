@@ -58,7 +58,7 @@ endif
 all:	prepare-developer-machine release ## UWAGA: pełna konfiguracja + release (uruchamia release!)
 
 prepare-developer-machine-macos: ## Zainstaluj zależności systemowe na macOS (brew + uv sync)
-	uv sync --all-extras
+	uv sync --frozen --no-install-project --all-extras
 	brew install cairo pango gdk-pixbuf libffi gobject-introspection gtk+3
 	sudo ln -sf /opt/homebrew/opt/glib/lib/libgobject-2.0.0.dylib /usr/local/lib/gobject-2.0
 	sudo ln -sf /opt/homebrew/opt/pango/lib/libpango-1.0.dylib /usr/local/lib/pango-1.0
@@ -68,10 +68,10 @@ prepare-developer-machine-macos: ## Zainstaluj zależności systemowe na macOS (
 
 prepare-developer-machine-linux: ## Zainstaluj zależności systemowe na Linuksie (apt + uv sync)
 	sudo apt update
-	sudo apt install -y yarnpkg python3-dev libpq-dev postgresql-client \
+	sudo apt install -y yarnpkg python3-dev libpq-dev \
 		libcairo2-dev libpango1.0-dev libgdk-pixbuf2.0-dev libffi-dev \
 		libgirepository1.0-dev libgtk-3-dev
-	uv sync --all-extras
+	uv sync --frozen --no-install-project --all-extras
 
 prepare-developer-machine: ## Zainstaluj zależności systemowe (auto-detekcja macOS/Linux)
 ifeq ($(OS),Darwin)
@@ -251,7 +251,7 @@ coveralls-upload: ## Wyślij raport pokrycia do Coveralls
 	uv run coveralls
 
 uv-sync: ## uv sync --all-extras (synchronizacja zależności Pythona)
-	uv sync --all-extras
+	uv sync --no-install-project --all-extras
 
 tests: clean-pycache clean-coverage uv-sync tests-without-playwright tests-only-playwright combine-coverage js-tests coveralls-upload ## Pełny test suite (coverage + JS + Coveralls)
 
@@ -345,6 +345,30 @@ uv-lock: ## uv lock + commit uv.lock
 	uv lock
 	-git commit -m "Update lockfile" uv.lock
 
+# Defense-in-depth do Dependabot cooldown (.github/dependabot.yml). Gdy
+# manualnie odpalasz `uv lock` (np. po dodaniu nowej dep) - ten target
+# wymusza wykluczenie pakietow opublikowanych w ostatnich 3 dniach.
+# Chroni przed atakami typu LiteLLM (zlosliwa wersja przez ~2.5h zanim
+# PyPI quarantine zadziala). Praktyka #2 z pypi-security-best-practices.
+#
+# Wyjatki (--exclude-newer-package <pkg>=<future date>): pakiety in-house
+# *-iplweb publikowane przez ten sam team co BPP. Cooldown na nie nie ma
+# sensu (jakby konto bylo skompromitowane, atakujacy uderzylby tez tutaj),
+# a swieze releasy sa czesto load-bearing.
+#
+# Override cutoff przez env var: make uv-lock-cooldown CUTOFF=2026-04-20T00:00:00Z
+uv-lock-cooldown: ## uv lock z 3-dniowym cooldownem (defense-in-depth)
+	@CUTOFF=$${CUTOFF:-$$(date -u -v-3d +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -d '3 days ago' +%Y-%m-%dT%H:%M:%SZ)}; \
+	FAR=2099-01-01T00:00:00Z; \
+	echo "Excluding packages newer than $$CUTOFF (in-house *-iplweb exempt)"; \
+	uv lock --exclude-newer "$$CUTOFF" \
+		--exclude-newer-package "django-denorm-iplweb=$$FAR" \
+		--exclude-newer-package "django-password-policies-iplweb=$$FAR" \
+		--exclude-newer-package "MOAI-iplweb=$$FAR" \
+		--exclude-newer-package "django_redis_iplweb=$$FAR" \
+		--exclude-newer-package "pymed-iplweb=$$FAR" \
+		--exclude-newer-package "django-dbtemplates-iplweb=$$FAR"
+
 ##@ GitHub Actions
 
 gh-run-watch: ## `gh run watch` — obserwuj najnowszy run CI
@@ -415,7 +439,7 @@ loc: clean ## Pokaż statystyki liczby linii (pygount)
 	pygount -N ... -F "...,staticroot,migrations,fixtures" src --format=summary
 
 
-DOCKER_VERSION=202604.1363
+DOCKER_VERSION=202604.1364
 
 # Cache configuration for docker buildx bake
 # - local: use local cache (default for local builds)

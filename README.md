@@ -45,9 +45,30 @@ Oprogramowanie dystrybuowane jest na zasadach otwartoźródłowej
 
 ## Instalacja
 
-Instrukcja instalacji i wdrożenia dostępna jest na stronie
-[bpp.iplweb.pl/zrodla](https://bpp.iplweb.pl/zrodla) oraz w repozytorium
-**[bpp-deploy](https://github.com/iplweb/bpp-deploy)**.
+> **Wdrożenie produkcyjne BPP odbywa się przez repozytorium
+> [bpp-deploy](https://github.com/iplweb/bpp-deploy).** Tam znajdziesz
+> kompletny zestaw plików `docker compose`, konfiguracji nginx i skryptów
+> uruchomieniowych przygotowanych pod realny serwer.
+
+Dwa podstawowe źródła informacji o instalacji:
+
+- **[github.com/iplweb/bpp-deploy](https://github.com/iplweb/bpp-deploy)** —
+  gotowe pliki deploymentu (Docker Compose, nginx, named volumes,
+  upgrade workflow).
+- **[bpp.iplweb.pl/zrodla](https://bpp.iplweb.pl/zrodla)** — opis
+  procesu wdrożeniowego krok po kroku.
+
+Oficjalne obrazy Dockera publikowane są pod `iplweb/bpp_appserver`
+i `iplweb/bpp_dbserver` (status buildu — zobacz badge „Docker" na
+górze strony).
+
+Jeśli zamiast wdrożenia chcesz **rozwijać kod BPP lokalnie**, przejdź
+do sekcji [Praca nad kodem (Linux)](#praca-nad-kodem-linux) poniżej.
+
+## Wersja demo
+
+Live-demo serwisu dostępne jest na żądanie — prosimy o kontakt
+pod adresem e-mail michal.dtz@gmail.com.
 
 ## Praca nad kodem (Linux)
 
@@ -73,14 +94,11 @@ cd bpp
 ### 2. Zainstaluj zależności Pythona i Playwright
 
 ```bash
-sudo apt install -y postgresql-client
 uv sync --extra=dev
 uv run playwright install
 sudo playwright install-deps
 ```
 
-`postgresql-client` jest potrzebny m.in. do `manage.py dbshell` oraz
-narzędzi pomocniczych (`psql`, `pg_dump`).
 `uv sync --extra=dev` instaluje pakiety potrzebne do pracy
 i testów (pytest, pytest-django, model-bakery, ruff, pre-commit, …).
 `uv run playwright install` pobiera przeglądarki używane w testach E2E
@@ -149,16 +167,10 @@ make prepare-developer-machine-linux
 ```
 
 Instaluje przez `apt` pakiety `yarnpkg`, `python3-dev`, `libpq-dev`,
-`postgresql-client`, `libcairo2-dev`, `libpango1.0-dev`,
-`libgdk-pixbuf2.0-dev`, `libffi-dev`, `libgirepository1.0-dev`,
-`libgtk-3-dev`, a następnie woła `uv sync --all-extras`. Po nim nadal
-trzeba ręcznie wywołać `uv run playwright install` oraz
-`sudo playwright install-deps`.
-
-## Wersja demo
-
-Live-demo serwisu dostępne jest na żądanie — prosimy o kontakt
-pod adresem e-mail michal.dtz@gmail.com.
+`libcairo2-dev`, `libpango1.0-dev`, `libgdk-pixbuf2.0-dev`, `libffi-dev`,
+`libgirepository1.0-dev`, `libgtk-3-dev`, a następnie woła
+`uv sync --all-extras`. Po nim nadal trzeba ręcznie wywołać
+`uv run playwright install` oraz `sudo playwright install-deps`.
 
 ## Technologie
 
@@ -176,6 +188,9 @@ pod adresem e-mail michal.dtz@gmail.com.
   [support.iplweb.pl](https://support.iplweb.pl/)
 - **Społeczność** — zgłoszenia na GitHub:
   [github.com/iplweb/bpp/issues](https://github.com/iplweb/bpp/issues)
+- **Luki bezpieczeństwa** — *nie* otwieraj publicznego issue. Zob.
+  [SECURITY.md](SECURITY.md) — preferowany kanał:
+  [GitHub Security Advisory](https://github.com/iplweb/bpp/security/advisories/new).
 
 ## Dokumentacja
 

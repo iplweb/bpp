@@ -1,6 +1,6 @@
 [project]
 name = "bpp_iplweb"
-version = "202604.1363"
+version = "202604.1364"
 description = ""
 authors = [
     { name = "Michał Pasternak", email = "michal.dtz@gmail.com" }
@@ -9,15 +9,15 @@ requires-python = ">=3.11,<3.15"
 dependencies = [
     "Django>=5.2,<5.3",
     "arrow>=1.3,<2",
-    "numpy>=2.1.2",
+    "numpy>=2.4.4",
     "pygad>=3.6.0",
     "django-denorm-iplweb>=1.10.2",
     "django-tabular-permissions==2.9.3",
-    "simplejson>=4.0.1,<5",
+    "simplejson>=4.1.1,<5",
     "django-reversion>=6,<7",
-    "django-reversion-compare>=0.17.0",
+    "django-reversion-compare>=0.19.2",
     "channels[daphne]>=4.3.2,<5",
-    "uvicorn[standard]>=0.44.0",
+    "uvicorn[standard]>=0.46.0",
     "channels-redis>=4,<5",
     "django-flexible-reports>=0.2.12",
     "django-group-by==0.3.1",
@@ -27,7 +27,7 @@ dependencies = [
     "django-dirtyfields==1.9.9",
     "django-messages-extends==0.6.3",
     "django-autoslug==1.9.9",
-    "django-autocomplete-light==3.12.1",
+    "django-autocomplete-light==4.0.0",
     "django-admin-tools==0.9.3",
     "xlrd==2.0.2",
     "celery>=5.6.3",
@@ -41,8 +41,8 @@ dependencies = [
     "django-crispy-forms>=2.6,<3",
     "crispy-forms-foundation>=1.1.0,<2",
     "django-compressor==4.6.0",
-    "nh3>=0.3.4",
-    "django-session-security>=2.6.7",
+    "nh3>=0.3.5",
+    "django-session-security>=2.6.8",
     "django-password-policies-iplweb==0.9.0",
     "dj-pagination==2.5.0",
     "requests>=2.32.4",
@@ -82,7 +82,7 @@ dependencies = [
     "django-weasyprint>=2.5.0",
     "django-templated-email>=3.0.0",
     "django-formtools>=2.5.1,<3",
-    "pathspec>=0.9.0",
+    "pathspec>=1.1.1",
     "django-environ>=0.13.0",
     "django-celery-email>=3.0.0",
     "django-easy-audit>=1.3.9a2,<2",
@@ -105,7 +105,7 @@ dependencies = [
     "rollbar>=1.3.0",
     "django-prometheus>=2.4.1",
     "ortools>=9.15.6755",
-    "psycopg2>=2.9.11", # ZOSTAW psycopg2 dla django-denorm
+    "psycopg2>=2.9.12", # ZOSTAW psycopg2 dla django-denorm
     "amqp>=5.2.0", # RabbitMQ support for Celery
     "python-docx>=1.1.0", # Post-processing DOCX dla page breaks
     "questionary>=2.0.0", # Interactive CLI menus
@@ -145,8 +145,8 @@ dev = [
     "pytest-xdist>=2.3.0",
     "pytest-timeout>=2.1.0",
     "pyparsing>=3.3.2",
-    "ruff>=0.15.10",
-    "pre-commit>=4.5.1",
+    "ruff>=0.15.12",
+    "pre-commit>=4.6.0",
     "twine>=5.1.0",
     "ipdb>=0.13.9",
     "ipython>=8.2.0",
@@ -157,11 +157,11 @@ dev = [
     "testcontainers[postgres]>=4.14.2"
 ]
 
-[project.scripts]
-"bpp-manage.py" = "django_bpp.manage_command:entry_point"
-
-[project.entry-points."pytest11"]
-testcontainers_bpp = "testcontainers_bpp.plugin"
+# [project.scripts] i [project.entry-points] usuniete - BPP nie jest
+# instalowany jako package (uv sync --no-install-project wszedzie).
+# Plugin testcontainers_bpp ladowany przez `-p testcontainers_bpp.plugin`
+# w pytest.ini addopts. Skrypt `bpp-manage.py` byl dead code (Makefile/
+# Dockerfile uzywaja `python src/manage.py` bezposrednio).
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -211,7 +211,7 @@ include = [
 ]
 
 [tool.bumpver]
-current_version = "v202604.1363"
+current_version = "v202604.1364"
 version_pattern = "vYYYY0M.BUILD[-TAGNUM]"
 commit_message = "bump version {old_version} -> {new_version}"
 commit = true
@@ -220,6 +220,41 @@ push = false
 
 [tool.uv]
 environments = ["python_version >= '3.10' and python_version < '3.15' and platform_python_implementation != 'PyPy'"]
+
+# Polityka: KAZDA NOWA zewnetrzna zaleznosc powinna miec prebuilt wheel dla
+# naszej macierzy (Linux x86_64 + macOS arm64, Python 3.10-3.14). Sdist
+# wykonuje `setup.py` podczas instalacji - klasyczny wektor supply-chain
+# (zlosliwy kod uruchomiony przez `uv sync`). Praktyka #1 z lirantal/
+# pypi-security-best-practices.
+#
+# Pre-existing exceptions (sdist-only, accepted risk - audit kwiecien 2026):
+# crispy-forms-foundation, cssmin, django-autocomplete-light, django-columns,
+# django-static-sitemaps, django-tabular-permissions, langdetect, pylatexenc,
+# pyoai, python-ldap, wsgiutils. Wymiana na wheel-publishing alternatywy
+# tracked w follow-up. Patrz docs/SECURITY_PRACTICES.md.
+#
+# Egzekwowanie: brak hard-gate (`uv` nie ma czystego "wheel-only with
+# exceptions" trybu - albo no-build globalnie, albo nic). Polegamy na:
+# 1. PR review (PULL_REQUEST_TEMPLATE.md ma checkbox dla nowych dep)
+# 2. Trivy CVE scan w docker-bake build (Faza 2 build-docker-images.yml)
+# 3. uv-secure CVE scan w dependency-audit.yml workflow
+#
+# Workspace package (bpp-iplweb) NIE jest instalowany - `uv sync` wszedzie
+# uzywa --no-install-project. Pytest plugin testcontainers_bpp ladowany
+# przez `-p testcontainers_bpp.plugin` w pytest.ini addopts.
+#
+# Gdy nowa dep nie ma wheel: znajdz alternatywe LUB zglos wheel u
+# maintainera. NIE dodawaj do listy wyjatkow bez review.
+
+# Jawne zadeklarowanie indeksu PyPI jako jedynego, domyslnego zrodla
+# pakietow. Chroni przed dependency confusion: gdyby kiedys pojawil sie
+# prywatny indeks, ten wpis musi pozostac jawnie default = true a nowy
+# indeks dodawany jako pierwszy z `explicit = true` aby tylko wybrane
+# pakiety byly z niego pobierane. Patrz docs/SECURITY_PRACTICES.md.
+[[tool.uv.index]]
+name = "pypi"
+url = "https://pypi.org/simple"
+default = true
 
 [tool.bumpver.file_patterns]
 "pyproject.toml" = ['current_version = "{version}"',
@@ -307,7 +342,7 @@ directory = "cov_html"
 output = "cov.xml"
 
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
+requires = ["setuptools>=82.0.1", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [dependency-groups]
@@ -318,7 +353,7 @@ dev = [
 
 [tool.towncrier]
 package = "bpp"
-version = "202604.1363"
+version = "202604.1364"
 package_dir = "src"
 filename = "HISTORY.rst"
 

@@ -1,6 +1,6 @@
 {
     "name": "bpp-iplweb",
-    "version": "v202604.1363",
+    "version": "v202604.1364",
     "license": "MIT",
     "devDependencies": {
         "@tailwindcss/cli": "^4.1.0",
@@ -10,7 +10,7 @@
         "grunt-contrib-watch": "^1.1.0",
         "grunt-sass": "^4.0.0",
         "grunt-shell": "^4.0.0",
-        "sass": "^1.91.0",
+        "sass": "~1.99.0",
         "tailwindcss": "^4.1.0"
     },
     "dependencies": {
