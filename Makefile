@@ -345,6 +345,30 @@ uv-lock: ## uv lock + commit uv.lock
 	uv lock
 	-git commit -m "Update lockfile" uv.lock
 
+# Defense-in-depth do Dependabot cooldown (.github/dependabot.yml). Gdy
+# manualnie odpalasz `uv lock` (np. po dodaniu nowej dep) - ten target
+# wymusza wykluczenie pakietow opublikowanych w ostatnich 3 dniach.
+# Chroni przed atakami typu LiteLLM (zlosliwa wersja przez ~2.5h zanim
+# PyPI quarantine zadziala). Praktyka #2 z pypi-security-best-practices.
+#
+# Wyjatki (--exclude-newer-package <pkg>=<future date>): pakiety in-house
+# *-iplweb publikowane przez ten sam team co BPP. Cooldown na nie nie ma
+# sensu (jakby konto bylo skompromitowane, atakujacy uderzylby tez tutaj),
+# a swieze releasy sa czesto load-bearing.
+#
+# Override cutoff przez env var: make uv-lock-cooldown CUTOFF=2026-04-20T00:00:00Z
+uv-lock-cooldown: ## uv lock z 3-dniowym cooldownem (defense-in-depth)
+	@CUTOFF=$${CUTOFF:-$$(date -u -v-3d +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -d '3 days ago' +%Y-%m-%dT%H:%M:%SZ)}; \
+	FAR=2099-01-01T00:00:00Z; \
+	echo "Excluding packages newer than $$CUTOFF (in-house *-iplweb exempt)"; \
+	uv lock --exclude-newer "$$CUTOFF" \
+		--exclude-newer-package "django-denorm-iplweb=$$FAR" \
+		--exclude-newer-package "django-password-policies-iplweb=$$FAR" \
+		--exclude-newer-package "MOAI-iplweb=$$FAR" \
+		--exclude-newer-package "django_redis_iplweb=$$FAR" \
+		--exclude-newer-package "pymed-iplweb=$$FAR" \
+		--exclude-newer-package "django-dbtemplates-iplweb=$$FAR"
+
 ##@ GitHub Actions
 
 gh-run-watch: ## `gh run watch` — obserwuj najnowszy run CI
