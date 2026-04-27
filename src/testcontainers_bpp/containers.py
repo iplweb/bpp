@@ -25,6 +25,18 @@ _REDIS_NAME = "bpp-tc-redis"
 _RABBITMQ_NAME = "bpp-tc-rabbitmq"
 
 
+class DockerNotRunningError(RuntimeError):
+    """Raised when the Docker daemon is not reachable."""
+
+
+def _check_docker_daemon() -> None:
+    """Verify Docker daemon is reachable; raise DockerNotRunningError if not."""
+    try:
+        docker.from_env().ping()
+    except docker.errors.DockerException as exc:
+        raise DockerNotRunningError(str(exc)) from exc
+
+
 @dataclass
 class BppContainers:
     """Holds references to running containers and their resolved addresses."""
@@ -172,6 +184,7 @@ def start_containers(reuse: bool = False) -> BppContainers:
     after pytest exits.  On the next run they are detected and reused
     instead of being recreated.
     """
+    _check_docker_daemon()
     print(  # noqa: T201
         f"[testcontainers-bpp] Starting containers (reuse={reuse}) ...",
         file=sys.stderr,
