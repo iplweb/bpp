@@ -12,6 +12,7 @@ Polityka zgłaszania luk bezpieczeństwa: [SECURITY.md](../SECURITY.md).
 - [Cooldown przed instalacją](#cooldown-przed-instalacją)
 - [Eksplicytny indeks PyPI](#eksplicytny-indeks-pypi)
 - [SHA-pinning GitHub Actions](#sha-pinning-github-actions)
+- [Sekrety i `.env`](#sekrety-i-env)
 
 ---
 
@@ -117,6 +118,93 @@ commit. Wszystkie runy używające `@v6` dostają kompromat natychmiast
 **Update workflow**: Dependabot z `github-actions` ekosystemu
 automatycznie podbija SHA gdy wyjdzie nowa wersja akcji (z 3-dniowym
 cooldownem).
+
+## Sekrety i `.env`
+
+**Reguła**: Sekrety produkcyjne (hasła do bazy, klucze API, `SECRET_KEY`)
+NIE są commitowane do repozytorium. `.env` jest w `.gitignore`. Dev-owe
+`.env*` zawierają wyłącznie placeholders / non-prod credentials.
+
+**Dlaczego**: złośliwy pakiet PyPI (lub backdoor w skompromitowanej
+zależności) może łatwo eksfiltrować zmienne środowiska. Trzymanie
+prawdziwych sekretów w plaintext `.env` zwiększa ich ekspozycję — przy
+kompromisie konta deva atakujący dostaje wszystko za darmo.
+
+### Lokalny dev
+
+`.env.example` (committed) — szablon ze wszystkimi zmiennymi i
+placeholder values. Dev kopiuje do `.env` (gitignored) i wypełnia
+własnymi wartościami:
+
+```sh
+cp .env.example .env
+$EDITOR .env  # wypełnij placeholderami z dev-owej DB / dev klucza Sentry / itp.
+```
+
+`.env.docker` — devowe ustawienia dla `docker compose up` (gitignored
+output: `.env.local` jest preferowany dla overrideów).
+
+**Nigdy** nie umieszczaj prawdziwych produkcyjnych sekretów w lokalnym
+`.env` — nawet jeśli `.gitignore` chroni przed accidental commit, plik
+jest read-able przez każdy proces deva (i każdą złośliwą dep).
+
+### Rekomendowany pattern dla devów dotykających prawdziwych sekretów
+
+Użyj secret managera (1Password, Infisical, Bitwarden, vault), który
+przechowuje **referencje**, nie wartości:
+
+```sh
+# .env (committed jako .env.example, kopiowany do .env)
+DATABASE_PASSWORD=op://Personal/bpp-prod/database/password
+SENTRY_DSN=op://Personal/bpp-prod/sentry/dsn
+
+# Uruchomienie:
+op run -- uv run python src/manage.py shell
+# (op CLI rozwija op:// referencje przed uruchomieniem komendy)
+```
+
+Korzyści:
+
+1. Plaintext `.env` zawiera tylko **referencje**, nie wartości — exfil
+   dostaje string `op://...`, niezdatny do uzytku bez sesji 1Password.
+2. Audit trail w secret managerze (kto, kiedy, gdzie używał).
+3. Rotacja sekretów = jedna zmiana w vault, nie deploymentowy ritual.
+
+### Produkcja
+
+`bpp-deploy` (orkiestracja produkcyjna) nie używa plików `.env` — sekrety
+są wstrzykiwane jako env vars przez orkiestrator (k8s Secrets, Docker
+Swarm secrets, `op run`-style injection). Nie ma plaintext sekretów na
+dyskach produkcyjnych poza ramą tymczasową procesu.
+
+### Audit `.env*` files
+
+Przed commitem nowego `.env*.example` lub modyfikacją istniejącego:
+
+```sh
+# Sprawdz że nie ma prawdziwych sekretów (powinny być placeholders):
+grep -E "(password|secret|key|token)" .env.example | \
+    grep -vE "(YOUR_|placeholder|example|ZMIEN_|<your)"
+# Output powinien być pusty lub same komentarze.
+```
+
+`SECRET_KEY` dla Django w `.env.docker`: `ZMIEN_KONIECZNIE_PRZED_URUCHOMIENIEM_PRODUKCJI`
+(jawny placeholder z polskim ostrzeżeniem). Produkcyjny SECRET_KEY
+generowany przez `bpp-deploy` przy pierwszym setupie.
+
+### Co robić gdy sekret wycieknie
+
+1. **Natychmiast** rotacja na zaatakowanym secret managerze / vault.
+2. Audyt git history przez `trufflehog` (już mamy w pre-commit) i
+   `gitleaks` żeby sprawdzić czy gdzieś indziej nie wyciekł:
+   ```sh
+   trufflehog git file://. --only-verified
+   ```
+3. Jeśli sekret był w commit history — `git filter-repo` (NIE `git rebase`)
+   + force-push + invalidacja kluczy na poziomie usługi (klucz API,
+   sesja, cache).
+4. Wpis w `HISTORY.rst` jako security-relevant zmiana (bez ujawniania
+   wartości oczywiście).
 
 ---
 

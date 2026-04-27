@@ -1,0 +1,1 @@
+Dokument ``docs/SECURITY_PRACTICES.md`` rozszerzony o sekcję "Sekrety i .env" — opisuje politykę: prawdziwe sekrety nigdy w plaintext ``.env``, rekomendowany pattern z secret managerem (1Password ``op run``), produkcyjny flow przez ``bpp-deploy`` z env-injection, oraz procedurę reagowania na wyciek sekretu.
