@@ -138,6 +138,94 @@ wymiany Foundation 6 CSS/JS.
    smoke-testuj klikalnie.
 8. **Commit**: `migrate(<obszar>): replace Foundation classes with Tailwind`.
 
+## Worked examples
+
+Konkretne migracje już zrobione w tej gałęzi — kopiuj wzorzec.
+
+### `base_footer.html` — pełna migracja małego szablonu
+
+**Przed** (Foundation):
+
+```html
+<div class="cell">
+    <div class="hide-for-print cell">
+        <div class="footer__content">...</div>
+    </div>
+    <div class="show-for-print footer__print">
+        <div class="text-right"><small>...</small></div>
+    </div>
+</div>
+```
+
+**Po** (Tailwind):
+
+```html
+<div class="w-full">
+    <div class="w-full print:hidden">
+        <div class="footer__content">...</div>
+    </div>
+    <div class="hidden print:block footer__print">
+        <div class="text-right"><small>...</small></div>
+    </div>
+</div>
+```
+
+Co się stało linia-po-linii:
+- `cell` (1× pełna szerokość) → `w-full`. `cell` w Foundation defaultuje
+  do `flex: 0 0 auto; width: 100%`, a tu rodzicem jest `grid-x`
+  (`flex flex-wrap`), więc `w-full` daje ten sam efekt. Po dalszej
+  migracji rodzica można sprawdzić, czy `flex-none w-full` nie pasuje
+  lepiej do oryginału.
+- `hide-for-print` → `print:hidden` (Tailwind print modifier — ukrywa
+  w `@media print`).
+- `show-for-print` → `hidden print:block` (mobile-first: ukryte w
+  screen, widoczne w print).
+- BEM-classy (`footer__content`, `footer__print`, `footer__test-copyright`)
+  oraz `text-right` zostają bez zmian — pochodzą z `base_footer.scss`
+  (custom) i Foundation typography. Nie ma sensu ich migrować w tym
+  kroku.
+
+### `base.html` — `password_change_required` block
+
+**Przed**:
+
+```html
+<div class="grid-x align-center">
+    <div class="large-6 medium-8 small-12 cell">
+        <div class="callout primary">Twoje hasło uległo przeterminowaniu...</div>
+        <form>...</form>
+    </div>
+</div>
+```
+
+**Po**:
+
+```html
+<div class="flex flex-wrap justify-center">
+    <div class="w-full md:w-2/3 lg:w-1/2">
+        <div class="my-0 mb-4 p-4 border border-black/25 bg-primary/10 text-black">
+          Twoje hasło uległo przeterminowaniu...
+        </div>
+        <form>...</form>
+    </div>
+</div>
+```
+
+Co się stało:
+- `grid-x align-center` → `flex flex-wrap justify-center` (w Foundation
+  XY Grid `align-center` to `justify-content: center`, mylnie sugeruje
+  `align-items` ale to nie tak).
+- `large-6 medium-8 small-12 cell` → `w-full md:w-2/3 lg:w-1/2`. Mobile-
+  first: `small-12` to default 100%, w Tailwind `w-full`. `medium-8`
+  (8/12 = 2/3) → `md:w-2/3`. `large-6` (50%) → `lg:w-1/2`. Pomijamy
+  `cell` bo `w-full` już daje box-sizing: border-box i flex-wrap default.
+- `callout primary` → utility classes pasujące do compat layer w
+  `_components.css`: `my-0 mb-4 p-4 border border-black/25 bg-primary/10
+  text-black`. Można alternatywnie użyć
+  `{% include "components/callout.html" with variant="primary" body="..." %}`
+  jeśli body to prosty string. Tutaj body to multiline z encodowanymi
+  znakami specjalnymi, więc utility classes są wygodniejsze.
+
 ## Build i dev
 
 ```bash

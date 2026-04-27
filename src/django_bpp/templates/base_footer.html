@@ -1,5 +1,10 @@
-<div class="cell">
-    <div class="hide-for-print cell">
+{# Migrated to Tailwind utilities (Foundation .cell/.hide-for-print/.show-for-print
+   replaced). Custom BEM classes (.footer__content, .footer__print,
+   .footer__test-copyright) and .text-right come from base_footer.scss /
+   Foundation typography and stay untouched. See docs/TAILWIND_MIGRATION.md
+   for the worked example walkthrough. #}
+<div class="w-full">
+    <div class="w-full print:hidden">
         <div class="footer__content">
             {% if uczelnia.pokazuj_deklaracje_dostepnosci == 1 %}
                 <a href="{{ uczelnia.deklaracja_dostepnosci_url }}">deklaracja dostępności</a> |
@@ -20,7 +25,7 @@
             </div>
         </div>
     </div>
-    <div class="show-for-print footer__print">
+    <div class="hidden print:block footer__print">
         <div class="text-right">
             <small>
                 Dokument wygenerowano przy pomocy systemu Bibliografia Publikacji Pracowników w

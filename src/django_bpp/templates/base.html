@@ -251,10 +251,14 @@
                         {% include "test_server_detection.html" %}
 
                         {% if password_change_required %}
-                            <div class="grid-x align-center">
-                                <div class="large-6 medium-8 small-12 cell">
+                            {# Migrated to Tailwind: grid-x align-center -> flex flex-wrap justify-center;
+                               large-6 medium-8 small-12 cell -> w-full md:w-2/3 lg:w-1/2;
+                               callout primary -> Tailwind utilities matching the compat layer. #}
+                            <div class="flex flex-wrap justify-center">
+                                <div class="w-full md:w-2/3 lg:w-1/2">
 
-                                    <div class='callout primary'>Twoje hasło uległo przeterminowaniu.
+                                    <div class="my-0 mb-4 p-4 border border-black/25 bg-primary/10 text-black">
+                                        Twoje hasło uległo przeterminowaniu.
                                         Proszę, zmień je używając poniższego formularza.
                                     </div>
                                     <form action="." method="post">{% csrf_token %}
