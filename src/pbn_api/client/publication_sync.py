@@ -236,6 +236,71 @@ class PublicationSyncMixin:
 
         return ret, objectId
 
+    def _pre_upload_clear_pbn_statements_if_any(self, rec):
+        """Wycofaj oświadczenia z PBN PRZED wysyłką pracy bez-oświadczeniowej.
+
+        Sytuacja docelowa: praca lokalnie ma już 0 dyscyplin (np. ostatnia
+        została skasowana), a PBN nadal trzyma stare oświadczenia. POST
+        do ``/v1/repositorium/publications`` może odrzucić publikację gdy
+        ma już oświadczenia po stronie PBN — kasujemy je upfront.
+
+        Algorytm (best-effort):
+
+        - Brak ``pbn_uid_id`` → praca jeszcze nie ma odpowiednika w PBN,
+          nie ma czego kasować.
+        - GET ``/page/statements`` z PBN. Gdy zawiedzie — log warning
+          i kontynuujemy (``upload_publication`` rzuci czytelny błąd
+          POST jeśli problem rzeczywiście blokuje wysyłkę).
+        - Gdy PBN puste — nie ma czego kasować, return.
+        - W przeciwnym razie DELETE selektywnie/batch (wg
+          ``Uczelnia.pbn_kasuj_dyscypliny_selektywnie``). DELETE failure
+          rzucamy w górę (``StatementsResendFailedException``) bo nie
+          chcemy wysłać publikacji do API które za chwilę odrzuci nas
+          z powodu pozostałych oświadczeń.
+        """
+        from bpp.models import Uczelnia
+
+        pbn_uid = rec.pbn_uid_id
+        if not pbn_uid:
+            return
+
+        publication_pk = rec.pk
+        try:
+            pbn_statements = list(
+                self.get_institution_statements_of_single_publication(
+                    str(pbn_uid), 5120
+                )
+            )
+        except Exception as e:
+            logger.warning(
+                "Pre-upload GET oświadczeń PBN dla %s nieudany (%s). "
+                "Kontynuuję wysyłkę — POST może rzucić błąd jeśli PBN "
+                "ma stare statements.",
+                pbn_uid,
+                e,
+            )
+            return
+
+        if not pbn_statements:
+            return
+
+        uczelnia = Uczelnia.objects.get_default()
+        kasuj_selektywnie = (
+            uczelnia.pbn_kasuj_dyscypliny_selektywnie if uczelnia else True
+        )
+
+        if kasuj_selektywnie:
+            self._delete_statements_selective(
+                str(pbn_uid), pbn_statements, publication_pk
+            )
+        else:
+            try:
+                self._delete_statements_batch(str(pbn_uid), publication_pk)
+            except CannotDeleteStatementsException:
+                # PBN mówi, że nie ma oświadczeń — akceptowalne (race
+                # między naszym GET-em a kasowaniem przez kogoś innego).
+                pass
+
     def upload_publication(
         self,
         rec,
@@ -264,12 +329,22 @@ class PublicationSyncMixin:
         lokalnym brakiem statements — kasuje pozostałe stare statements
         z PBN, jeśli były.
 
+        Dla ścieżki repo dodatkowo wykonujemy **pre-upload clear**
+        (``_pre_upload_clear_pbn_statements_if_any``): gdy praca ma
+        ``pbn_uid_id`` i PBN ma jakieś oświadczenia — kasujemy je PRZED
+        POST. Powód: endpoint ``/v1/repositorium/publications`` może
+        odrzucić publikację gdy PBN ma istniejące oświadczenia, a my
+        chcemy je usunąć (bo BPP nie ma intencji ich wysłania).
+
         Zwraca ``(objectId, ret, js, bez_oswiadczen)``.
         """
         js, bez_oswiadczen = self._prepare_publication_json(
             rec, export_pk_zero, always_affiliate_to_uid
         )
         self._check_upload_needed(rec, js, force_upload)
+
+        if bez_oswiadczen:
+            self._pre_upload_clear_pbn_statements_if_any(rec)
 
         endpoint_path = (
             PBN_POST_PUBLICATION_NO_STATEMENTS_URL

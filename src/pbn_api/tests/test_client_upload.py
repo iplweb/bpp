@@ -10,6 +10,10 @@ import pytest
 from model_bakery import baker
 
 from pbn_api.adapters.wydawnictwo import WydawnictwoPBNAdapter
+from pbn_api.client import (
+    PBN_DELETE_PUBLICATION_STATEMENT,
+    PBN_GET_INSTITUTION_STATEMENTS,
+)
 from pbn_api.const import (
     PBN_POST_PUBLICATION_NO_STATEMENTS_URL,
     PBN_POST_PUBLICATIONS_URL,
@@ -188,3 +192,151 @@ def test_PBNClient_post_publication_no_statements(
     )
     ret = pbn_client.sync_publication(pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina)
     assert ret
+
+
+# ============================================================
+# Pre-upload clear: kasowanie PBN statements PRZED POST do
+# /v1/repositorium/publications gdy BPP intent jest pusty
+# ============================================================
+
+
+@pytest.mark.django_db
+def test_pre_upload_clear_kasuje_pbn_statements_przed_post_repo(
+    pbn_client,
+    pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina,
+    pbn_publication,
+    pbn_autor,
+    pbn_jednostka,
+    uczelnia,
+):
+    """Praca z pbn_uid_id + PBN ma statements + BPP nie ma → DELETE PRZED POST."""
+    from fixtures.pbn_api import pbn_pageable_json
+
+    uczelnia.pbn_wysylaj_bez_oswiadczen = True
+    uczelnia.pbn_kasuj_dyscypliny_selektywnie = True
+    uczelnia.save()
+
+    # BPP: praca bez dyscyplin lokalnych
+    pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.pbn_uid = pbn_publication
+    pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.save()
+    pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.autorzy_set.all().update(
+        dyscyplina_naukowa=None
+    )
+
+    # PBN: ma 1 oświadczenie do skasowania
+    pbn_uid = str(pbn_publication.pk)
+    pbn_client.transport.return_values[
+        PBN_GET_INSTITUTION_STATEMENTS + f"?publicationId={pbn_uid}&size=5120"
+    ] = pbn_pageable_json(
+        [
+            {
+                "id": "aaa",
+                "personId": pbn_autor.pbn_uid_id,
+                "area": "301",
+                "type": "AUTHOR",
+                "institutionId": pbn_jednostka.pbn_uid_id,
+            }
+        ]
+    )
+    url_delete = PBN_DELETE_PUBLICATION_STATEMENT.format(publicationId=pbn_uid)
+    pbn_client.transport.return_values[url_delete] = []
+    pbn_client.transport.return_values[PBN_POST_PUBLICATION_NO_STATEMENTS_URL] = [
+        {"id": pbn_publication.pk}
+    ]
+
+    pbn_client.upload_publication(pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina)
+
+    # DELETE wykonany (selektywny, per autor) PRZED POST publikacji
+    assert url_delete in pbn_client.transport.input_values
+    body = pbn_client.transport.input_values[url_delete]["body"]
+    assert body["statementsOfPersons"][0]["personId"] == pbn_autor.pbn_uid_id
+    # POST do repo wykonany
+    assert PBN_POST_PUBLICATION_NO_STATEMENTS_URL in pbn_client.transport.input_values
+
+
+@pytest.mark.django_db
+def test_pre_upload_clear_pomija_gdy_pbn_puste(
+    pbn_client,
+    pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina,
+    pbn_publication,
+    uczelnia,
+):
+    """PBN puste → tylko GET, brak DELETE."""
+    from fixtures.pbn_api import pbn_pageable_json
+
+    uczelnia.pbn_wysylaj_bez_oswiadczen = True
+    uczelnia.save()
+
+    pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.pbn_uid = pbn_publication
+    pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.save()
+    pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.autorzy_set.all().update(
+        dyscyplina_naukowa=None
+    )
+
+    pbn_uid = str(pbn_publication.pk)
+    pbn_client.transport.return_values[
+        PBN_GET_INSTITUTION_STATEMENTS + f"?publicationId={pbn_uid}&size=5120"
+    ] = pbn_pageable_json([])
+    pbn_client.transport.return_values[PBN_POST_PUBLICATION_NO_STATEMENTS_URL] = [
+        {"id": pbn_publication.pk}
+    ]
+
+    pbn_client.upload_publication(pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina)
+
+    url_delete = PBN_DELETE_PUBLICATION_STATEMENT.format(publicationId=pbn_uid)
+    assert url_delete not in pbn_client.transport.input_values
+    assert PBN_POST_PUBLICATION_NO_STATEMENTS_URL in pbn_client.transport.input_values
+
+
+@pytest.mark.django_db
+def test_pre_upload_clear_pomija_bez_pbn_uid(
+    pbn_client, pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina, uczelnia
+):
+    """Bez pbn_uid_id → ani GET ani DELETE (PBN nie ma odpowiednika pracy)."""
+    uczelnia.pbn_wysylaj_bez_oswiadczen = True
+    uczelnia.save()
+
+    # Praca bez pbn_uid + bez dyscyplin
+    assert pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.pbn_uid_id is None
+    pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.autorzy_set.all().update(
+        dyscyplina_naukowa=None
+    )
+
+    pbn_client.transport.return_values[PBN_POST_PUBLICATION_NO_STATEMENTS_URL] = [
+        {"id": "new-uid-123"}
+    ]
+
+    pbn_client.upload_publication(pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina)
+
+    # Brak GET statements (URL nie został wywołany)
+    assert all(
+        PBN_GET_INSTITUTION_STATEMENTS not in url
+        for url in pbn_client.transport.input_values
+    )
+
+
+@pytest.mark.django_db
+def test_pre_upload_clear_pomija_dla_v1_publications_z_statements(
+    pbn_client, pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina, pbn_publication
+):
+    """Ścieżka /v1/publications (z statements w body) → brak pre-clear.
+
+    Statements idą razem z payloadem, więc nie kasujemy ich upfront.
+    Drift wykrywa post-upload sync.
+    """
+    pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.pbn_uid = pbn_publication
+    pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.save()
+
+    pbn_client.transport.return_values[PBN_POST_PUBLICATIONS_URL] = {
+        "objectId": pbn_publication.pk
+    }
+
+    pbn_client.upload_publication(pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina)
+
+    # Brak GET (pre-clear nie odpalił się dla all-in-one path)
+    assert all(
+        PBN_GET_INSTITUTION_STATEMENTS not in url
+        for url in pbn_client.transport.input_values
+    )
+    # POST do /v1/publications wykonany
+    assert PBN_POST_PUBLICATIONS_URL in pbn_client.transport.input_values
