@@ -1,0 +1,95 @@
+/*
+ * Pagination styling shared by templates/pagination/*.html. Pulled out of
+ * pagination_with_anchor.html (where it lived as inline <style>) because
+ * that partial ships through HTMX innerHTML-swap; minify-html applied to
+ * fragments could rewrite the embedded <style>/DOM and break layout.
+ */
+
+a[name="pager"] {
+    display: block;
+    padding-top: 200px;
+    margin-top: -200px;
+    visibility: hidden;
+}
+
+.pagination {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    margin: 1.5rem 0;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    display: flex !important;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.pagination li {
+    margin: 0;
+}
+
+.pagination li a,
+.pagination li span {
+    background: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 0.5rem 0.75rem;
+    margin: 0 0.25rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    color: #007bff;
+}
+
+.pagination li a:hover {
+    background: #007bff;
+    color: #fff;
+    border-color: #007bff;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 123, 255, 0.3);
+}
+
+.pagination li.current a,
+.pagination li.current span {
+    background: #007bff;
+    color: #fff;
+    border-color: #007bff;
+    font-weight: 600;
+}
+
+.pagination li.disabled a,
+.pagination li.disabled span {
+    background: #e9ecef;
+    color: #6c757d;
+    border-color: #dee2e6;
+    cursor: not-allowed;
+}
+
+.pagination li.ellipsis span {
+    background: transparent;
+    border: none;
+    color: #6c757d;
+    padding: 0 0.5rem;
+}
+
+.pagination .pagination-previous a,
+.pagination .pagination-next a {
+    background: #28a745;
+    color: #fff;
+    border-color: #28a745;
+    font-weight: 600;
+}
+
+.pagination .pagination-previous a:hover,
+.pagination .pagination-next a:hover {
+    background: #218838;
+    border-color: #218838;
+}
+
+.pagination .pagination-previous.disabled a,
+.pagination .pagination-next.disabled a {
+    background: #e9ecef;
+    color: #6c757d;
+    border-color: #dee2e6;
+}

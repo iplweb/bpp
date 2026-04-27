@@ -146,6 +146,7 @@ dev = [
     "pytest-timeout>=2.1.0",
     "pyparsing>=3.3.2",
     "ruff>=0.15.12",
+    "djlint>=1.36,<2",
     "pre-commit>=4.6.0",
     "twine>=5.1.0",
     "ipdb>=0.13.9",
@@ -306,6 +307,29 @@ line-ending = "auto"
 [tool.ruff.lint.isort]
 known-first-party = ["bpp", "django_bpp"]
 split-on-trailing-comma = true
+
+[tool.djlint]
+# Walidacja templatów Django pod kątem strukturalnych pułapek minifikatora
+# HTML (django-minify-html). Zakres celowo wąski — egzekwujemy reguły
+# które bezpośrednio łapią bugi rozjeżdżające layout (puste/niezamknięte
+# tagi), ignorujemy kosmetykę (formatowanie, indentacja, alt-text)
+# żeby nie blokować pre-commit-u na istniejącym codebase.
+profile = "django"
+extension = "html"
+# Reguły aktywne (przykłady):
+#   H020 - empty tag pair (puste <li></li>, <span></span> itd.)
+#   H025 - orphan/unmatched tag
+#   T001 - variables not wrapped in spacing
+# Reguły wyciszone (głośne na obecnym codebase, niezwiązane z minify bugiem):
+#   H006 - img alt attribute (accessibility, do osobnego sprintu)
+#   H013 - img alt attribute (alias H006)
+#   H019 - http -> https w atrybutach
+#   H021 - inline styles (mamy historyczne)
+#   H023 - entity references (czyste &amp;)
+#   H030/H031 - meta description / og tags
+#   T002/T003 - quote style w {% %} tagach
+#   D018/J018 - django/jinja link patterns
+ignore = "H006,H008,H013,H014,H019,H021,H023,H030,H031,T001,T002,T003,D018,J018"
 
 [tool.coverage.run]
 # Support for parallel test runners

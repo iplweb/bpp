@@ -32,6 +32,16 @@ class BppMinifyHtmlMiddleware(MinifyHtmlMiddleware):
         "keep_closing_tags": True,
     }
 
+    def should_minify(self, request, response):
+        # HTMX swap-uje fragmenty przez hx-swap="innerHTML"; minify-html jest
+        # zaprojektowane do pełnych dokumentów (z <html>/<body>) i na samych
+        # fragmentach potrafi rozjechać strukturę DOM (m.in. usuwa puste
+        # elementy, restrukturyzuje listy). Skutek: stopka strony lądowała
+        # między pagerem a tabelą po htmx-owym refreshu /pbn_export_queue.
+        if request.headers.get("HX-Request") == "true":
+            return False
+        return super().should_minify(request, response)
+
 
 MIDDLEWARE = [
     "django_bpp.settings.production.BppMinifyHtmlMiddleware",
