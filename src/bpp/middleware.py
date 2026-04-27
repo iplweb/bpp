@@ -19,7 +19,7 @@ class MaliciousRequestBlockingMiddleware(MiddlewareMixin):
     - Database dumps and log files
     - Common CMS admin panel probes (WordPress, phpMyAdmin, etc.)
     - Paths exceeding 1024 characters
-    - Full URLs (path + query string) exceeding 2048 characters
+    - Full URLs (path + query string) exceeding 8192 characters
     - Nested ``?next=`` redirect chains produced by scanner bots
 
     Returns HTTP 444 (No Response) for blocked requests.
@@ -27,8 +27,12 @@ class MaliciousRequestBlockingMiddleware(MiddlewareMixin):
 
     # Maximum length of the full request URL (path + query string).
     # Path alone is capped at 1024 (see process_request); the query string can
-    # legitimately carry a single ``next=`` redirect, so we allow more headroom.
-    MAX_FULL_PATH_LENGTH = 2048
+    # legitimately carry a single ``next=`` redirect, plus DataTables AJAX
+    # requests percent-encode column metadata (``columns%5B0%5D%5Bdata%5D=…``)
+    # which for ~10 columns approaches 3 KB. 8192 matches nginx's default
+    # ``large_client_header_buffers`` and Apache's ``LimitRequestLine`` while
+    # still catching exponentially growing ``?next=`` scanner chains.
+    MAX_FULL_PATH_LENGTH = 8192
 
     # Blocked file extensions (case-insensitive)
     BLOCKED_EXTENSIONS = (

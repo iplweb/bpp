@@ -1,9 +1,16 @@
+import random
+import time
 from datetime import timedelta
 from uuid import uuid4
 
 import pytest
 from django.apps import apps
 from django.contrib import auth
+from django.core.management import call_command
+from django.core.management.base import CommandError
+from django.db import connections
+from django.db.utils import OperationalError
+from django.test import TransactionTestCase
 from django.test.client import Client, RequestFactory
 from django.utils import timezone
 from model_bakery import baker
@@ -45,6 +52,76 @@ pytest_plugins = [
 # Baseline test-DB monkey-patch is installed by
 # ``django_pg_baseline.apps.DjangoPgBaselineConfig.ready()`` (the app
 # lives in INSTALLED_APPS + settings.PG_BASELINE).
+
+
+# =============================================================================
+# Monkey-patch TransactionTestCase._fixture_teardown to allow TRUNCATE CASCADE.
+#
+# Niezarządzane przez Django tabele (np. ``bpp_rekord_mat``, ``bpp_autorzy_mat``)
+# mają realne FK do tabel zarządzanych (``bpp_charakter_formalny`` itd.) — bez
+# CASCADE Django flush() crashuje na ``cannot truncate a table referenced in a
+# foreign key constraint``. Poza tym przy równoległym xdist okazjonalnie łapiemy
+# deadlock-i, więc dorzucamy retry z exponential backoff.
+#
+# Patch MUSI siedzieć w ``src/conftest.py`` (auto-loadowane dla wszystkich
+# testów w ``testpaths=src``); ``src/fixtures/conftest.py`` jest siostrzanym
+# katalogiem i pytest go NIE ładuje dla testów spoza ``src/fixtures/``.
+# =============================================================================
+
+
+def _fixture_teardown(self):
+    # Allow TRUNCATE ... CASCADE and don't emit the post_migrate signal
+    # when flushing only a subset of the apps
+    for db_name in self._databases_names(include_mirrors=False):
+        # Flush the database
+        inhibit_post_migrate = self.available_apps is not None or (
+            # Inhibit the post_migrate signal when using serialized rollback
+            # to avoid trying to recreate the serialized data.
+            self.serialized_rollback
+            and hasattr(connections[db_name], "_test_serialized_contents")
+        )
+
+        # Add retry logic for deadlock handling
+        max_retries = 5
+        for attempt in range(max_retries):
+            try:
+                call_command(
+                    "flush",
+                    verbosity=0,
+                    interactive=False,
+                    database=db_name,
+                    reset_sequences=False,
+                    # In the real TransactionTestCase this is conditionally set to False.
+                    allow_cascade=True,
+                    inhibit_post_migrate=inhibit_post_migrate,
+                )
+                break  # Success, exit retry loop
+            except (OperationalError, CommandError) as e:
+                # Check for deadlock in both the exception and its cause
+                error_msg = str(e).lower()
+                is_deadlock = (
+                    "deadlock detected" in error_msg or "zakleszczenie" in error_msg
+                )
+
+                # Also check the chained exception (CommandError wraps OperationalError)
+                if not is_deadlock and hasattr(e, "__cause__") and e.__cause__:
+                    cause_msg = str(e.__cause__).lower()
+                    is_deadlock = (
+                        "deadlock detected" in cause_msg or "zakleszczenie" in cause_msg
+                    )
+
+                if is_deadlock and attempt < max_retries - 1:
+                    # Exponential backoff with jitter
+                    base_delay = 0.5 * (2**attempt)
+                    jitter = random.uniform(0, base_delay)
+                    time.sleep(base_delay + jitter)
+                    continue
+                else:
+                    # Re-raise if not a deadlock or max retries exceeded
+                    raise
+
+
+TransactionTestCase._fixture_teardown = _fixture_teardown
 
 # =============================================================================
 # Fixtures użytkowników i klientów (przeniesione z tests_legacy/conftest.py)
