@@ -78,7 +78,6 @@ _OGR_KATALOGI_TEKST = (
     " strony wydawcy, wpisu w katalogu Biblioteki Narodowej (bn.org.pl) lub"
     " katalogu NUKAT (nukat.edu.pl)."
 )
-_POZOSTALE_PBN_NOTE = "Materiałów konferencyjnych nie wysyłamy do PBN."
 
 # Mapowanie (rodzaj, forma_dostepu) → tekst pomocniczy pola `strona_www`.
 STRONA_WWW_HELP_TEXT = {
@@ -88,8 +87,8 @@ STRONA_WWW_HELP_TEXT = {
     ("MONOGRAFIA", "OGRANICZONY"): f"{_PBN_PREFIX} {_OGR_KATALOGI_TEKST}",
     ("ROZDZIAL", "OTWARTY"): f"{_PBN_PREFIX} {_OA_TEKST}",
     ("ROZDZIAL", "OGRANICZONY"): f"{_PBN_PREFIX} {_OGR_KATALOGI_TEKST}",
-    ("POZOSTALE", "OTWARTY"): f"{_OA_TEKST} {_POZOSTALE_PBN_NOTE}",
-    ("POZOSTALE", "OGRANICZONY"): f"{_OGR_INFO_TEKST} {_POZOSTALE_PBN_NOTE}",
+    ("POZOSTALE", "OTWARTY"): "",
+    ("POZOSTALE", "OGRANICZONY"): _OGR_INFO_TEKST,
 }
 
 

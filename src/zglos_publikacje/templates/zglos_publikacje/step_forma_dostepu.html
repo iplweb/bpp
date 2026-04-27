@@ -5,7 +5,14 @@
 {% block wizard_content %}
     <h3>Wybierz formę dostępu</h3>
 
-    <div class="tile-grid">
+    {% if wybrany_rodzaj_label %}
+        <div class="wizard-wybor-info">
+            <span class="wizard-wybor-ikona">{{ wybrany_rodzaj_ikona }}</span>
+            <span class="wizard-wybor-label">{{ wybrany_rodzaj_label }}</span>
+        </div>
+    {% endif %}
+
+    <div class="tile-grid tile-grid--stacked">
         {% for choice in wizard.form.forma_dostepu %}
             <label class="tile-card"
                    data-value="{{ choice.data.value }}">

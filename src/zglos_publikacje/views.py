@@ -313,6 +313,12 @@ class Zgloszenie_PublikacjiWizard(UczelniaSettingRequiredMixin, SessionWizardVie
         "ROZDZIAL": "rozdział",
         "POZOSTALE": "inną publikację",
     }
+    RODZAJ_IKONY = {
+        "ARTYKUL": "📄",
+        "MONOGRAFIA": "📚",
+        "ROZDZIAL": "📖",
+        "POZOSTALE": "📎",
+    }
     FORMA_ETYKIETY = {
         "OTWARTY": "w otwartym dostępie",
         "OGRANICZONY": "w ograniczonym dostępie",
@@ -360,6 +366,15 @@ class Zgloszenie_PublikacjiWizard(UczelniaSettingRequiredMixin, SessionWizardVie
             kwargs["rok"] = self.request.session.get(const.SESSION_KEY)
         kwargs["tytul_strony"] = self._tytul_strony()
         kwargs["wizard_breadcrumbs"] = self._wizard_breadcrumbs()
+        if self.steps.current == "1":
+            step0 = self.get_cleaned_data_for_step("0") or {}
+            rodzaj = step0.get("rodzaj")
+            if rodzaj:
+                rodzaj_choices = dict(
+                    RodzajPublikacjiForm.base_fields["rodzaj"].choices
+                )
+                kwargs["wybrany_rodzaj_ikona"] = self.RODZAJ_IKONY.get(rodzaj, "")
+                kwargs["wybrany_rodzaj_label"] = rodzaj_choices.get(rodzaj, rodzaj)
         return super().get_context_data(form, **kwargs)
 
     @transaction.atomic

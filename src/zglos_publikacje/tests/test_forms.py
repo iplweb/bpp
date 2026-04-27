@@ -61,7 +61,10 @@ def test_help_text_strona_www_zalezny_od_kombinacji(rodzaj, forma_dostepu):
     expected = STRONA_WWW_HELP_TEXT[(rodzaj, forma_dostepu)]
     assert form.fields["strona_www"].help_text == expected
     if rodzaj == "POZOSTALE":
-        assert "PBN" in expected and "Pole wymagane" not in expected
+        assert "PBN" not in expected
+        assert "Pole wymagane" not in expected
+        if forma_dostepu == "OTWARTY":
+            assert expected == ""
     else:
         assert expected.startswith("Pole wymagane")
 
