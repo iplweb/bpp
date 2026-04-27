@@ -49,7 +49,8 @@
         <div class="medium-3 columns text-right">
             {% if user.is_staff %}
                 {% if not status_generowania.w_trakcie %}
-                    <button class="button primary" data-open="generowanie-modal">
+                    <button class="button primary" type="button"
+                            onclick="window.dispatchEvent(new CustomEvent('open-generowanie-modal'))">
                         <span class="fi-play"></span> Uruchom generowanie
                     </button>
                 {% else %}

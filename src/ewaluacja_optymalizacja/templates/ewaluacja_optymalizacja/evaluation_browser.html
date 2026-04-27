@@ -146,20 +146,29 @@
             <p><em>Ładowanie publikacji...</em></p>
         </div>
 
-        <!-- Modal przeliczania -->
-        <div class="reveal" id="recalc-modal" data-reveal
-             data-close-on-click="false" data-close-on-esc="false"
-             role="dialog"
-             aria-modal="true"
-             aria-labelledby="recalcModalTitle" aria-hidden="true">
-            <h2 id="recalcModalTitle" class="sr-only">Przeliczanie ewaluacji</h2>
-            <div id="recalc-modal-content"
-                 aria-live="assertive"
-                 aria-busy="false">
-                <!-- Domyślny throbber podczas ładowania HTMX -->
-                <div class="callout secondary modal-loading">
-                    <span class="fi-loop" aria-hidden="true"></span>
-                    <p>Przygotowywanie...</p>
+        {# Modal przeliczania: Foundation Reveal -> Alpine. Sticky modal —
+           NIE zamykany kliknięciem w backdrop ani ESC (data-close-on-click
+           /data-close-on-esc=false w Foundation). HTMX wstrzykuje content
+           do #recalc-modal-content i zamyka modal po wykryciu markera
+           [data-recalc-complete=true] (patrz htmx:afterSettle handler). #}
+        <div x-data="{ open: false }"
+             x-show="open" x-cloak
+             x-on:open-modal.window="if ($event.detail.id === 'recalc-modal') open = true"
+             x-on:close-modal.window="if ($event.detail.id === 'recalc-modal') open = false"
+             id="recalc-modal" role="dialog" aria-modal="true" aria-labelledby="recalcModalTitle" aria-hidden="true"
+             class="fixed inset-0 z-50 flex items-center justify-center">
+            <div class="fixed inset-0 bg-black/50"></div>{# brak @click — sticky modal #}
+            <div x-show="open" x-transition
+                 class="relative bg-white border border-black/25 shadow-lg max-w-2xl w-full mx-4 p-6 max-h-[90vh] overflow-y-auto">
+                <h2 id="recalcModalTitle" class="sr-only">Przeliczanie ewaluacji</h2>
+                <div id="recalc-modal-content"
+                     aria-live="assertive"
+                     aria-busy="false">
+                    <!-- Domyślny throbber podczas ładowania HTMX -->
+                    <div class="callout secondary modal-loading">
+                        <span class="fi-loop" aria-hidden="true"></span>
+                        <p>Przygotowywanie...</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -215,35 +224,29 @@ document.body.addEventListener('htmx:afterSwap', function(evt) {
     }
 });
 
-// Obsługa zakończenia przeliczania
+// Obsługa zakończenia przeliczania (Alpine event zamiast Foundation API)
 document.body.addEventListener('htmx:afterSettle', function(evt) {
     if (evt.detail.target.id === 'recalc-modal-content') {
-        var modal = document.getElementById('recalc-modal');
         var content = evt.detail.target;
         var completeMarker = content.querySelector('[data-recalc-complete="true"]');
 
         if (completeMarker) {
             // Zamknij modal po 1.5s i odśwież dane
             setTimeout(function() {
-                if (typeof $ !== 'undefined') {
-                    $('#recalc-modal').foundation('close');
-                } else {
-                    modal.style.display = 'none';
-                    modal.setAttribute('aria-hidden', 'true');
-                }
+                window.dispatchEvent(new CustomEvent('close-modal', {detail: {id: 'recalc-modal'}}));
+                // Reset modal content do throbbera (na potrzeby następnego otwarcia).
+                // Wcześniej obsługiwane przez `closed.zf.reveal` event Foundation;
+                // teraz wprost po dispatchu zamknięcia, bo Alpine nie emituje
+                // własnego eventu close.
+                document.getElementById('recalc-modal-content').innerHTML =
+                    '<div class="callout secondary modal-loading">' +
+                    '<span class="fi-loop" aria-hidden="true"></span>' +
+                    '<p>Przygotowywanie...</p>' +
+                    '</div>';
                 htmx.trigger(document.body, 'recalcComplete');
             }, 1500);
         }
     }
-});
-
-// Reset modala po zamknięciu (przywróć throbber dla następnego użycia)
-$(document).on('closed.zf.reveal', '#recalc-modal', function() {
-    var defaultContent = '<div class="callout secondary modal-loading">' +
-        '<span class="fi-loop" aria-hidden="true"></span>' +
-        '<p>Przygotowywanie...</p>' +
-        '</div>';
-    $('#recalc-modal-content').html(defaultContent);
 });
 </script>
 {% endblock %}

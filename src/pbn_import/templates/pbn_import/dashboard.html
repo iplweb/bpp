@@ -119,9 +119,20 @@
     </div>
 </div>
 
-<!-- Import Configuration Modal -->
-<div class="reveal" id="import-config-modal" data-reveal>
-    <h2><span class="fi-widget"></span> Konfiguracja importu</h2>
+{# Modal: Foundation Reveal -> Alpine. Trigger: dispatch 'open-import-config-modal'
+   z kodu JS po wyborze presetu (linia ~297). Select2 dropdownParent zostaje
+   #import-config-modal — element jest w DOM, tylko visibility kontroluje Alpine. #}
+<div x-data="{ open: false }"
+     x-show="open" x-cloak
+     x-on:keydown.escape.window="open = false"
+     x-on:open-import-config-modal.window="open = true"
+     x-on:close-import-config-modal.window="open = false"
+     id="import-config-modal" role="dialog" aria-modal="true" aria-labelledby="import-config-modal-title"
+     class="fixed inset-0 z-50 flex items-center justify-center">
+    <div class="fixed inset-0 bg-black/50" @click="open = false"></div>
+    <div x-show="open" x-transition
+         class="relative bg-white border border-black/25 shadow-lg max-w-2xl w-full mx-4 p-6 max-h-[90vh] overflow-y-auto">
+    <h2 id="import-config-modal-title" class="mt-0 mb-4"><span class="fi-widget"></span> Konfiguracja importu</h2>
 
     <form method="post" action="{% url 'pbn_import:start' %}" id="import-config-form">
         {% csrf_token %}
@@ -188,7 +199,7 @@
         </div>
 
         <div class="button-group align-right">
-            <button type="button" class="button secondary" data-close>
+            <button type="button" class="button secondary" @click="open = false">
                 <span class="fi-x"></span> Anuluj
             </button>
             <button type="submit" class="button primary">
@@ -197,10 +208,12 @@
         </div>
     </form>
 
-    <button class="close-button" data-close aria-label="Zamknij" type="button">
+    <button type="button" @click="open = false" aria-label="Zamknij"
+            class="absolute top-2 right-4 text-2xl leading-none text-dark-gray hover:text-black bg-transparent border-0 cursor-pointer">
         <span aria-hidden="true">&times;</span>
     </button>
-</div>
+    </div>{# /modal panel #}
+</div>{# /Alpine modal wrapper #}
 
 <!-- Removed rocket per user request -->
 
@@ -292,9 +305,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         applyPresetConfig(preset.config);
                     }
 
-                    // Auto-open modal immediately
+                    // Auto-open modal immediately (przez Alpine event dispatch)
                     setTimeout(() => {
-                        $('#import-config-modal').foundation('open');
+                        window.dispatchEvent(new CustomEvent('open-import-config-modal'));
                     }, 300);
                 });
             });

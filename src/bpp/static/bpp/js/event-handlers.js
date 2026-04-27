@@ -212,14 +212,24 @@
 
   /**
    * Handler for data-action="open-modal".
-   * Opens Foundation reveal modal by ID specified in data-modal-id.
+   * Dispatches a window 'open-modal' CustomEvent (Alpine modals listen for
+   * it via x-on:open-modal.window with detail.id check). Falls back to
+   * Foundation Reveal API for any modal still using `data-reveal` (during
+   * the Foundation -> Alpine migration).
    */
   document.addEventListener("click", function (e) {
     var target = e.target.closest('[data-action="open-modal"]');
     if (target) {
       var modalId = target.dataset.modalId;
-      if (modalId && typeof $ !== "undefined" && $.fn.foundation) {
-        $("#" + modalId).foundation("open");
+      if (modalId) {
+        window.dispatchEvent(
+          new CustomEvent("open-modal", {detail: {id: modalId}})
+        );
+        var modalEl = document.getElementById(modalId);
+        if (modalEl && modalEl.hasAttribute("data-reveal") &&
+            typeof $ !== "undefined" && $.fn.foundation) {
+          $("#" + modalId).foundation("open");
+        }
       }
     }
   });
