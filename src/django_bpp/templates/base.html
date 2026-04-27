@@ -63,11 +63,25 @@
         });
     </script>
     {% load notifications %}
+    {% comment %}
+    Mustache template ponizej (verbatim block). bppNotifications.addMessage
+    z notifications.js renderuje go przez Mustache.render i appenduje do
+    #messagesPlaceholder. Alpine v3 ma MutationObserver — nowe x-data
+    dodane przez Mustache zostaja automatycznie zainicjalizowane.
+
+    Foundation data-closable + data-close zastapione Alpine x-data +
+    @click. AJAX-on-close (kiedys Foundation closed.zf event handler)
+    odbywa sie w @click przyciskiem (fetch jesli closeUrl ustawiony).
+    Atrybut data-closable na divie zostawiony bo flash_messages.scss
+    ma na nim `.callout[data-closable] { padding-right: 48px }`.
+    {% endcomment %}
     <div id="messageTemplate">
     {% verbatim messageTemplate %}
-    <div data-closable
-         data-url="{{ closeURL }}"
-         class="ajax-on-close callout primary {{ cssClass }}{{^cssClass}}info{{/cssClass}}">
+    <div x-data="{ open: true, closeUrl: '{{ closeURL }}' }"
+         x-show="open"
+         x-transition.opacity
+         data-closable
+         class="callout primary {{ cssClass }}{{^cssClass}}info{{/cssClass}}">
     {{#clickURL}}
         <a href="{{ clickURL }}">
         {{/clickURL}}
@@ -77,7 +91,7 @@
                 type="button"
                 class="close-button"
                 aria-label="Zamknij powiadomienie"
-                data-close>
+                @click="open = false; if (closeUrl) fetch(closeUrl, {credentials: 'same-origin'})">
              <span aria-hidden="true">&times;</span>
              </button>
 
@@ -161,14 +175,11 @@
             $(document).ready(function () {
                 bppNotifications.init(document.getElementById('extra-channels').textContent);
 
-                $(document).on('closed.zf', function (event) {
-                    if ($(event.target).hasClass("ajax-on-close")) {
-                        var url = $(event.target).data("url");
-                        if (url) {
-                            $.get(url);
-                        }
-                    }
-                });
+                {% comment %}
+                closed.zf jQuery handler usuniety — AJAX-on-close
+                zrobiony bezposrednio w @click w messageTemplate
+                (fetch jesli closeUrl ustawiony).
+                {% endcomment %}
 
                 {% if messages %}
                     {% for message in messages %}
