@@ -3,13 +3,24 @@
 Starts PostgreSQL (custom iplweb/bpp_dbserver image), Redis, and RabbitMQ
 containers with random ports.  The calling code injects the resolved
 host:port into ``os.environ`` so Django settings pick them up transparently.
+
+Baseline preload: when ``baseline.sql`` is present (default location
+``src/baseline-sql/baseline.sql``, override via ``BPP_BASELINE_SQL_PATH``)
+and a fresh PG container is being started, the file is mounted into
+``/docker-entrypoint-initdb.d/`` so Postgres' own entrypoint loads it
+inside the container — no host ``psql`` required. Combined with
+``DATABASES['default']['TEST']['TEMPLATE'] = 'bpp'`` (set up by the
+plugin via env), Django then creates ``test_bpp`` via fast in-server
+``CREATE DATABASE … WITH TEMPLATE bpp`` instead of replaying the dump.
 """
 
 from __future__ import annotations
 
 import logging
+import os
 import sys
 from dataclasses import dataclass
+from pathlib import Path
 
 from testcontainers.core.container import DockerContainer
 from testcontainers.core.wait_strategies import LogMessageWaitStrategy
@@ -23,6 +34,35 @@ logger = logging.getLogger(__name__)
 _PG_NAME = "bpp-tc-pg"
 _REDIS_NAME = "bpp-tc-redis"
 _RABBITMQ_NAME = "bpp-tc-rabbitmq"
+
+
+def find_baseline_sql() -> Path | None:
+    """Locate ``baseline.sql`` for in-container preload.
+
+    Resolution order:
+    1. ``$BPP_BASELINE_SQL_PATH`` if set and pointing to an existing file.
+    2. Convention: ``<src>/baseline-sql/baseline.sql`` relative to this
+       file (``src/testcontainers_bpp/containers.py`` → up one →
+       ``src/baseline-sql/baseline.sql``).
+
+    Returns ``None`` when nothing usable is found — caller falls back to
+    creating an empty Postgres container.
+    """
+    override = os.environ.get("BPP_BASELINE_SQL_PATH", "").strip()
+    if override:
+        candidate = Path(override)
+        if candidate.is_file():
+            return candidate
+        logger.warning(
+            "BPP_BASELINE_SQL_PATH=%s is set but does not point to a file; "
+            "falling back to convention",
+            override,
+        )
+
+    convention = Path(__file__).resolve().parents[1] / "baseline-sql" / "baseline.sql"
+    if convention.is_file():
+        return convention
+    return None
 
 
 class DockerNotRunningError(RuntimeError):
@@ -116,6 +156,21 @@ def _start_pg(reuse: bool) -> tuple[PostgresContainer | None, str, int]:
             "com.docker.compose.version": "",
         }
     )
+
+    baseline_sql = find_baseline_sql()
+    if baseline_sql is not None:
+        # Postgres' entrypoint (docker-entrypoint.sh) replays every
+        # ``*.sql`` in /docker-entrypoint-initdb.d/ on first cluster
+        # init, before TCP starts accepting connections. testcontainers
+        # waits for ``psql -c 'select version()'`` on TCP (see
+        # PostgresContainer._connect / ExecWaitStrategy), so by the time
+        # pg.start() returns the dump is already loaded.
+        pg.with_volume_mapping(
+            str(baseline_sql),
+            "/docker-entrypoint-initdb.d/01-baseline.sql",
+            "ro",
+        )
+        logger.info("Mounting baseline %s into PG init scripts", baseline_sql)
 
     pg.start()
 

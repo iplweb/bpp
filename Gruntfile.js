@@ -9,7 +9,16 @@ module.exports = function (grunt) {
                 implementation: sass,
                 api: 'modern-compiler',
                 style: 'compressed',
-		silenceDeprecations: ['global-builtin', 'import'],
+                // Wyciszone deprecation warnings z Dart Sass:
+                //   'global-builtin', 'if-function' — wewnętrzne wywołania
+                //     w foundation-sites 6.9.0 (util/_value.scss, _breakpoint.scss,
+                //     _color.scss, _flex.scss, _math.scss). Foundation przeszedł
+                //     w tryb maintenance, fix nie nadejdzie z upstreamu.
+                //   'import' — nasze entrypointy (app-{blue,green,orange}.scss,
+                //     admin-themes.scss, common.scss) używają starego @import.
+                //     Migracja do @use/@forward zaplanowana osobno (sass-migrator
+                //     module --migrate-deps) — wymaga regresji wizualnej.
+                silenceDeprecations: ['global-builtin', 'if-function', 'import'],
                 loadPaths: [
                     'node_modules/foundation-sites/scss'
                 ]

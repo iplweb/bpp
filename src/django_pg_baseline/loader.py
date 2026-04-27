@@ -3,6 +3,15 @@
 This module is intentionally Django-free at import time so it can run
 from the ``_create_test_db`` monkey patch before ``django.setup()``
 completes. stdlib only — shells out to ``psql``.
+
+When tests run against a Postgres testcontainer started by
+``testcontainers_bpp``, the baseline is loaded **inside** the container
+at startup (via Postgres' ``/docker-entrypoint-initdb.d/`` mechanism)
+and ``test_bpp`` is created with ``CREATE DATABASE ... WITH TEMPLATE
+bpp``, so this module's host ``psql`` path is **not** invoked. It still
+runs for the ``baseline_load`` management command and for the
+``--no-testcontainers`` test scenario, where a host ``psql`` is
+expected to be available.
 """
 
 from __future__ import annotations

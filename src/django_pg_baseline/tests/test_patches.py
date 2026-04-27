@@ -173,6 +173,91 @@ def test_patch_skips_load_when_db_already_populated(config_with_sql, monkeypatch
     assert load_calls == []
 
 
+class FakeNodbCursor:
+    def __init__(self, log: list[tuple[str, list]]):
+        self._log = log
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_):
+        return False
+
+    def execute(self, sql, params=None):
+        self._log.append((sql, list(params) if params else []))
+
+
+class FakeCreationWithTemplate:
+    """FakeCreation analogue exercising the WITH TEMPLATE code path."""
+
+    def __init__(self, executed_sql: list[tuple[str, list]]):
+        self.executed = executed_sql
+        self.connection = SimpleNamespace(
+            settings_dict={
+                "HOST": "localhost",
+                "PORT": 5432,
+                "USER": "bpp",
+                "PASSWORD": "p",
+                "NAME": "main",
+                "TEST": {"TEMPLATE": "main"},
+            },
+            close=lambda: executed_sql.append(("close", [])),
+            close_pool=lambda: executed_sql.append(("close_pool", [])),
+        )
+
+    def _nodb_cursor(self):
+        return FakeNodbCursor(self.executed)
+
+
+def test_patch_terminates_template_connections_when_using_template(
+    config_with_sql, monkeypatch
+):
+    from django.db.backends.base import creation as _creation
+
+    create_calls = []
+
+    def fake_original(self, verbosity, autoclobber, keepdb=False):
+        create_calls.append("create")
+        return "test_main"
+
+    monkeypatch.setattr(
+        _creation.BaseDatabaseCreation, "_create_test_db", fake_original
+    )
+
+    fake_psy = FakePsycopg2Module(fetch_result=("django_migrations",))
+    monkeypatch.setitem(__import__("sys").modules, "psycopg2", fake_psy)
+
+    load_calls = []
+    monkeypatch.setattr(
+        patches_module,
+        "load_baseline",
+        lambda dsn, path: load_calls.append((dsn, path)),
+    )
+
+    install_test_db_patch(config_with_sql)
+
+    executed: list[tuple[str, list]] = []
+    fake = FakeCreationWithTemplate(executed)
+    result = _creation.BaseDatabaseCreation._create_test_db(fake, 1, False, False)
+
+    assert result == "test_main"
+    # Connection was closed before CREATE DATABASE WITH TEMPLATE.
+    assert ("close", []) in executed
+    assert ("close_pool", []) in executed
+    # pg_terminate_backend was issued against the template DB.
+    sql_strings = [item[0] for item in executed if isinstance(item[0], str)]
+    assert any("pg_terminate_backend" in s for s in sql_strings)
+    # …with the template name as the parameter, not the test DB.
+    terminate_call = next(
+        item for item in executed if "pg_terminate_backend" in item[0]
+    )
+    assert terminate_call[1] == ["main"]
+    # The CREATE DATABASE itself happened (delegated to original).
+    assert create_calls == ["create"]
+    # Template path → DB already populated (from clone) → no psql reload.
+    assert load_calls == []
+
+
 def test_patch_handles_operational_error(config_with_sql, monkeypatch):
     from django.db.backends.base import creation as _creation
 
