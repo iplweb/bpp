@@ -79,35 +79,46 @@
 {% endblock %}
 
 {% block content %}
-<div class="row">
-    <div class="large-12 columns">
+<div class="flex flex-wrap -mx-2">
+    <div class="w-full px-2">
         <h2><span class="fi-wrench"></span> Optymalizacja publikacji</h2>
 
         {% include "ewaluacja_optymalizuj_publikacje/partials/content_wrapper.html" %}
     </div>
 </div>
 
-<!-- Modal dla statusu generowania -->
-<div class="reveal" id="status-modal" data-reveal>
-    <h3><span class="fi-graph-bar"></span> Status generowania metryk</h3>
-    <div id="status-content" class="ewaluacja-optymalizuj__modal-content">
-        <p class="ewaluacja-optymalizuj__modal-loading">
-            <span class="fi-refresh ewaluacja-optymalizuj__modal-loading-icon"></span><br>
-            Ładowanie...
-        </p>
+{# Modal: Foundation Reveal -> Alpine x-show. Triggerowany przez window
+   event `status-modal-open` (dispatchowany z window-funkcji
+   pokazStatusGenerowania w skrypcie ponizej). DOM-injection do
+   #status-content dalej przez jQuery (krotka generacja HTML w
+   builder-ze pozostaje bez zmian). #}
+<div x-data="{ open: false }"
+     x-show="open" x-cloak
+     x-on:keydown.escape.window="open = false"
+     x-on:status-modal-open.window="open = true"
+     id="status-modal" role="dialog" aria-modal="true" aria-labelledby="status-modal-title"
+     class="fixed inset-0 z-50 flex items-center justify-center">
+    <div class="fixed inset-0 bg-black/50" @click="open = false"></div>
+    <div x-show="open" x-transition
+         class="relative bg-white border border-black/25 shadow-lg max-w-2xl w-full mx-4 p-6 max-h-[90vh] overflow-y-auto">
+        <h3 id="status-modal-title" class="mt-0 mb-4"><span class="fi-graph-bar"></span> Status generowania metryk</h3>
+        <div id="status-content" class="ewaluacja-optymalizuj__modal-content">
+            <p class="ewaluacja-optymalizuj__modal-loading">
+                <span class="fi-refresh ewaluacja-optymalizuj__modal-loading-icon"></span><br>
+                Ładowanie...
+            </p>
+        </div>
+        <button type="button" @click="open = false"
+                class="absolute top-2 right-4 text-2xl leading-none text-dark-gray hover:text-black bg-transparent border-0 cursor-pointer"
+                aria-label="Zamknij modal">&times;</button>
     </div>
-    <button class="close-button" data-close aria-label="Zamknij modal" type="button">
-        <span aria-hidden="true">&times;</span>
-    </button>
 </div>
 
 <script>
 function pokazStatusGenerowania() {
-    const modal = new Foundation.Reveal($('#status-modal'));
-
-    // Pokaż modal z komunikatem ładowania
+    // Reset content do loading state, otworz modal przez Alpine event.
     $('#status-content').html('<p class="ewaluacja-optymalizuj__modal-loading"><span class="fi-refresh ewaluacja-optymalizuj__modal-loading-icon"></span><br>Ładowanie...</p>');
-    modal.open();
+    window.dispatchEvent(new CustomEvent('status-modal-open'));
 
     // Pobierz JSON ze statusem
     fetch("{% url 'ewaluacja_metryki:status_generowania' %}")
