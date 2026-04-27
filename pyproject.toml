@@ -342,7 +342,7 @@ directory = "cov_html"
 output = "cov.xml"
 
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
+requires = ["setuptools>=82.0.1", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [dependency-groups]
