@@ -157,11 +157,11 @@ dev = [
     "testcontainers[postgres]>=4.14.2"
 ]
 
-[project.scripts]
-"bpp-manage.py" = "django_bpp.manage_command:entry_point"
-
-[project.entry-points."pytest11"]
-testcontainers_bpp = "testcontainers_bpp.plugin"
+# [project.scripts] i [project.entry-points] usuniete - BPP nie jest
+# instalowany jako package (uv sync --no-install-project wszedzie).
+# Plugin testcontainers_bpp ladowany przez `-p testcontainers_bpp.plugin`
+# w pytest.ini addopts. Skrypt `bpp-manage.py` byl dead code (Makefile/
+# Dockerfile uzywaja `python src/manage.py` bezposrednio).
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -221,19 +221,30 @@ push = false
 [tool.uv]
 environments = ["python_version >= '3.10' and python_version < '3.15' and platform_python_implementation != 'PyPy'"]
 
-# Polityka: KAZDA zewnetrzna zaleznosc musi miec prebuilt wheel dla naszej
-# macierzy (Linux x86_64 + macOS arm64, Python 3.10-3.14). Sdist wykonuje
-# `setup.py` podczas instalacji - klasyczny wektor supply-chain (zlosliwy
-# kod uruchomiony przez `uv sync`). Praktyka #1 z lirantal/pypi-security-
-# best-practices.
+# Polityka: KAZDA NOWA zewnetrzna zaleznosc powinna miec prebuilt wheel dla
+# naszej macierzy (Linux x86_64 + macOS arm64, Python 3.10-3.14). Sdist
+# wykonuje `setup.py` podczas instalacji - klasyczny wektor supply-chain
+# (zlosliwy kod uruchomiony przez `uv sync`). Praktyka #1 z lirantal/
+# pypi-security-best-practices.
 #
-# Egzekwowanie: pre-commit hook 'uv-lock-no-build' uruchamia
-# `uv lock --check --no-build` - failuje jesli ktorakolwiek dep wymaga
-# build z source. Globalnego `no-build = true` NIE mozemy ustawic, bo
-# blokuje editable install workspace roota (bpp-iplweb).
+# Pre-existing exceptions (sdist-only, accepted risk - audit kwiecien 2026):
+# crispy-forms-foundation, cssmin, django-autocomplete-light, django-columns,
+# django-static-sitemaps, django-tabular-permissions, langdetect, pylatexenc,
+# pyoai, python-ldap, wsgiutils. Wymiana na wheel-publishing alternatywy
+# tracked w follow-up. Patrz docs/SECURITY_PRACTICES.md.
+#
+# Egzekwowanie: brak hard-gate (`uv` nie ma czystego "wheel-only with
+# exceptions" trybu - albo no-build globalnie, albo nic). Polegamy na:
+# 1. PR review (PULL_REQUEST_TEMPLATE.md ma checkbox dla nowych dep)
+# 2. Trivy CVE scan w docker-bake build (Faza 2 build-docker-images.yml)
+# 3. uv-secure CVE scan w dependency-audit.yml workflow
+#
+# Workspace package (bpp-iplweb) NIE jest instalowany - `uv sync` wszedzie
+# uzywa --no-install-project. Pytest plugin testcontainers_bpp ladowany
+# przez `-p testcontainers_bpp.plugin` w pytest.ini addopts.
 #
 # Gdy nowa dep nie ma wheel: znajdz alternatywe LUB zglos wheel u
-# maintainera. NIE obchodz tej polityki dla wygody.
+# maintainera. NIE dodawaj do listy wyjatkow bez review.
 
 [tool.bumpver.file_patterns]
 "pyproject.toml" = ['current_version = "{version}"',

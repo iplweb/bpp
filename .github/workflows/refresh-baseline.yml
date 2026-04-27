@@ -43,7 +43,7 @@ jobs:
         uses: astral-sh/setup-uv@v7
 
       - name: Install Python deps (with baseline-rebuild extra)
-        run: uv sync --frozen --extra baseline-rebuild
+        run: uv sync --frozen --no-install-project --extra baseline-rebuild
 
       - name: Pre-pull dbserver image
         run: docker pull iplweb/bpp_dbserver:psql-16.13 || true

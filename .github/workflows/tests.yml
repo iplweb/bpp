@@ -129,7 +129,7 @@ jobs:
       # full INSTALLED_APPS. No DB connection needed — it reads
       # src/baseline-sql/baseline.meta.json and counts migration files.
       # --frozen is intentional: uv.lock is the single source of truth.
-      run: uv sync --frozen
+      run: uv sync --frozen --no-install-project
 
     - name: Check baseline freshness
       # Fail loudly if migrations have outpaced the baseline pg_dump by
