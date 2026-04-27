@@ -4,6 +4,13 @@ When pytest-django (or plain Django) creates a test database, we run
 ``psql -f baseline.sql`` against the freshly-empty DB so migrate only
 applies the small delta of migrations added after the baseline was
 dumped.
+
+When ``DATABASES['default']['TEST']['TEMPLATE']`` is set (e.g. by
+``testcontainers_bpp`` after mounting baseline.sql into the PG init
+scripts), Django runs ``CREATE DATABASE … WITH TEMPLATE`` instead.
+The patch then sees a populated ``test_*`` database and skips the
+``psql`` reload — but it first kicks any other sessions off the
+template database so Postgres allows the WITH TEMPLATE clone.
 """
 
 from __future__ import annotations
@@ -27,11 +34,32 @@ def install_test_db_patch(config: BaselineConfig) -> None:
     original = _creation.BaseDatabaseCreation._create_test_db
 
     def _create_test_db_with_baseline(self, verbosity, autoclobber, keepdb=False):
+        # If the test database is to be cloned via ``CREATE DATABASE …
+        # WITH TEMPLATE bpp`` (typical when ``testcontainers_bpp`` mounts
+        # baseline.sql into the PG init scripts), Postgres requires no
+        # other sessions on the source database. Boot the default
+        # Django connection off bpp and kick any leftover backends
+        # (e.g. autovacuum, lingering wait-strategy connection) before
+        # delegating to Django's CREATE DATABASE.
+        dsn = self.connection.settings_dict
+        template = (dsn.get("TEST") or {}).get("TEMPLATE")
+        if template:
+            self.connection.close()
+            close_pool = getattr(self.connection, "close_pool", None)
+            if callable(close_pool):
+                close_pool()
+            with self._nodb_cursor() as cursor:
+                cursor.execute(
+                    "SELECT pg_terminate_backend(pid) "
+                    "FROM pg_stat_activity "
+                    "WHERE datname = %s AND pid <> pg_backend_pid()",
+                    [template],
+                )
+
         test_database_name = original(self, verbosity, autoclobber, keepdb)
 
         import psycopg2
 
-        dsn = self.connection.settings_dict
         try:
             inspect = psycopg2.connect(
                 host=dsn.get("HOST") or "localhost",

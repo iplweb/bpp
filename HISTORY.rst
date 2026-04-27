@@ -4,6 +4,44 @@ Historia zmian
 
 .. towncrier release notes start
 
+bpp 202604.1363 (2026-04-27)
+============================
+
+Usprawnienie
+------------
+
+- Workerzy Celery emituja teraz eventy lifecycle (``worker-online``,
+  ``worker-heartbeat``, ``worker-offline``) oraz eventy zadan
+  (``task-received``, ``task-started``, ``task-succeeded``,
+  ``task-failed``) na RabbitMQ. Dzieki temu Flower poprawnie pokazuje
+  status workerow (online/offline) oraz historie wykonywanych zadan.
+  Wczesniej workerzy startowali z ``task events: OFF`` i Flower nie
+  widzial ich w ogole.
+
+
+bpp 202604.1362 (2026-04-26)
+============================
+
+Naprawione
+----------
+
+- Zaktualizowano zależności bezpieczeństwa wskazane przez Dependabot:
+  ``werkzeug`` ``3.1.3`` → ``3.1.8`` (naprawa ``safe_join()`` dla
+  nazw urządzeń specjalnych Windows; transient dep przez
+  ``pytest-httpserver``) oraz ``sqlparse`` ``0.5.3`` → ``0.5.5``
+  (DoS przy formatowaniu list krotek; transient dep przez Django).
+
+
+Usunięto
+--------
+
+- Usunięto nieużywaną zależność deweloperską ``PyPDF2`` z
+  ``pyproject.toml``. Testy PDF korzystają z pakietu ``pypdf``,
+  który trafia do środowiska jako zależność tranzytywna
+  ``xhtml2pdf``. ``PyPDF2`` jest nieutrzymywany i posiadał alert
+  bezpieczeństwa Dependabot bez dostępnej poprawki.
+
+
 bpp 202604.1361 (2026-04-21)
 ============================
 

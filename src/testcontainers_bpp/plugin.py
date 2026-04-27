@@ -103,7 +103,7 @@ def pytest_load_initial_conftests(early_config, parser, args):  # noqa: ARG001
     global _containers, _reuse  # noqa: PLW0603
 
     try:
-        from .containers import start_containers
+        from .containers import DockerNotRunningError, start_containers
     except ImportError as exc:
         raise RuntimeError(
             "testcontainers is required (enabled by default). "
@@ -116,7 +116,18 @@ def pytest_load_initial_conftests(early_config, parser, args):  # noqa: ARG001
         "true",
         "yes",
     }
-    _containers = start_containers(reuse=_reuse)
+    try:
+        _containers = start_containers(reuse=_reuse)
+    except DockerNotRunningError as exc:
+        raise pytest.UsageError(
+            "[testcontainers-bpp] Docker daemon is not reachable. "
+            "Is Docker Desktop running?\n"
+            "  - Start Docker Desktop and re-run pytest, OR\n"
+            "  - Disable testcontainers: set BPP_USE_TESTCONTAINERS=0 "
+            "or pass --no-testcontainers (requires docker-compose "
+            "services running locally).\n"
+            f"Underlying error: {exc}"
+        ) from None
 
     # Safety net: pytest_unconfigure nie odpala się przy abrupt-exit
     # (sys.exit z fixture, nieprzechwycony wyjątek, OOM killer na pytest).
@@ -132,6 +143,12 @@ def pytest_load_initial_conftests(early_config, parser, args):  # noqa: ARG001
     os.environ["DJANGO_BPP_DB_USER"] = "bpp"
     os.environ["DJANGO_BPP_DB_PASSWORD"] = "password"
     os.environ["DJANGO_BPP_DB_NAME"] = "bpp"
+
+    # Baseline jest ładowane do bazy `bpp` wewnątrz kontenera przez
+    # /docker-entrypoint-initdb.d/. Mówimy Django, żeby tworzył
+    # `test_bpp` jako klon `bpp` przez CREATE DATABASE ... WITH TEMPLATE
+    # bpp — to natywna operacja Postgresa, instant, bez psql.
+    os.environ["DJANGO_BPP_TEST_TEMPLATE"] = "bpp"
 
     os.environ["DJANGO_BPP_REDIS_HOST"] = _containers.redis_host
     os.environ["DJANGO_BPP_REDIS_PORT"] = str(_containers.redis_port)

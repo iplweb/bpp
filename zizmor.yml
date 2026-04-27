@@ -1,0 +1,54 @@
+# Konfiguracja zizmor (security audyt workflowów GitHub Actions).
+# Zob. https://docs.zizmor.sh/configuration/
+#
+# Ten PR (#7 z serii pypi-security-best-practices) wprowadza zizmor jako
+# pre-commit hook po to, zeby wylapywac REGRESJE - np. dodanie nowego
+# `uses: foo/bar@v1` zamiast SHA-pin. Aktualne, pre-existing findings
+# uznane za tech-debt i adresowane w osobnych follow-up PR-ach.
+#
+# Po rozwiazaniu kazdego findingu wpis ponizej powinien byc usuniety
+# (zizmor.yml staje sie konfiguracja minimalna).
+
+rules:
+  # Pre-existing: workflow_run trigger w coveralls-finish.yml. workflow_run
+  # jest "potencjalnie niebezpieczny" gdy job pisze do PR-a danymi z forka,
+  # ale ten konkretny workflow tylko zamyka coveralls parallel build na
+  # podstawie metadanych. TODO: review w follow-up i potwierdzic ze dane
+  # z events.workflow_run nie są używane do execution.
+  dangerous-triggers:
+    ignore:
+      - coveralls-finish.yml
+
+  # Pre-existing: actions/checkout bez `persist-credentials: false`.
+  # Niskie ryzyko (Token z lokalnego runa, nie wycieka do artefaktow w
+  # naszym zastosowaniu), ale warto ujednolicic. TODO: follow-up PR doda
+  # `persist-credentials: false` wszedzie poza refresh-baseline.yml
+  # (ktory MUSI miec creds dla git push).
+  artipacked:
+    ignore:
+      - build-docker-images.yml
+      - claude.yml
+      - coveralls-finish.yml
+      - refresh-baseline.yml
+      - sync-dockerhub.yml
+      - tests.yml
+
+  # Pre-existing: brak top-level `permissions:` block w wiekszosci
+  # workflowow. Default GITHUB_TOKEN ma write na contents/checks/actions
+  # itd. Nie wykorzystujemy tego, ale formalnie scope mozna zwęzić.
+  # TODO: follow-up PR doda `permissions: contents: read` na poziomie
+  # job (z elevation tylko gdzie potrzebne).
+  excessive-permissions:
+    ignore:
+      - build-docker-images.yml
+      - claude.yml
+      - coveralls-finish.yml
+      - refresh-baseline.yml
+      - sync-dockerhub.yml
+      - tests.yml
+
+  # Adresowany w PR #175 (security/dependabot-cooldown) - po jego mergeu
+  # ten ignore powinien znikac.
+  dependabot-cooldown:
+    ignore:
+      - dependabot.yml
