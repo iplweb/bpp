@@ -9,6 +9,15 @@
 {% endblock %}
 
 {% block content %}
+{# Alpine wrapper obejmuje content + modale — całe state (open flags, dane
+   wybranego naukowca/autora) żyje w `Alpine.data('importerAutorowPbn')`
+   zarejestrowanym w skrypcie poniżej. Triggery wywołują metody (openIgnore,
+   openLink itp.), confirm-buttony — confirmIgnore / confirmLink / ...
+   które trzymają jQuery AJAX (CSRF, error handling identyczne jak wcześniej)
+   i ustawiają flagi modali na false po sukcesie. Foundation `data-reveal`
+   wycofany; jQuery `$('#xxx').foundation('open/close')` zastąpione mutacją
+   stanu Alpine. #}
+<div x-data="importerAutorowPbn">
     <div class="row">
         <div class="large-12 columns">
             <h1>Importer autorów PBN</h1>
@@ -91,12 +100,14 @@
                             <h5><i class="fi-widget"></i> Akcje masowe</h5>
                             <div class="button-group">
                                 {% if total_with_matches > 0 %}
-                                    <button class="button success" id="link-all-btn">
+                                    <button class="button success" type="button"
+                                            @click="linkAllModal = true">
                                         <i class="fi-link"></i> Powiąż wszystkich z dopasowaniem ({{ total_with_matches }})
                                     </button>
                                 {% endif %}
                                 {% if total_unmatched > total_with_matches %}
-                                    <button class="button warning" id="create-all-unmatched-btn">
+                                    <button class="button warning" type="button"
+                                            @click="createAllModal = true">
                                         <i class="fi-plus"></i> Utwórz wszystkich bez dopasowania ({{ total_unmatched|add:"-"|add:total_with_matches }})
                                     </button>
                                 {% endif %}
@@ -157,10 +168,8 @@
                                                 {{ scientist.match_suggestion }}
                                             </a>
                                             <br>
-                                            <button class="button tiny success link-to-existing"
-                                                    data-scientist-id="{{ scientist.mongoId }}"
-                                                    data-autor-id="{{ scientist.match_suggestion.pk }}"
-                                                    data-autor-name="{{ scientist.match_suggestion }}">
+                                            <button class="button tiny success" type="button"
+                                                    @click="openLink('{{ scientist.mongoId }}', '{{ scientist.match_suggestion.pk }}', '{{ scientist.match_suggestion|escapejs }}')">
                                                 <i class="fi-link"></i> Powiąż
                                             </button>
                                         </div>
@@ -176,9 +185,8 @@
                                            title="Utwórz nowego autora w BPP">
                                             <i class="fi-plus"></i> Utwórz w BPP
                                         </a>
-                                        <button class="button alert ignore-forever"
-                                                data-scientist-id="{{ scientist.mongoId }}"
-                                                data-scientist-name="{{ scientist.lastName }} {{ scientist.name }}"
+                                        <button class="button alert" type="button"
+                                                @click="openIgnore('{{ scientist.mongoId }}', '{{ scientist.lastName|escapejs }} {{ scientist.name|escapejs }}')"
                                                 title="Ignoruj tego naukowca na zawsze">
                                             <i class="fi-x"></i> Ignoruj
                                         </button>
@@ -239,71 +247,109 @@
         </div>
     </div>
 
-    <!-- Modal for ignore confirmation -->
-    <div class="reveal" id="ignoreModal" data-reveal>
-        <h3>Ignoruj naukowca</h3>
-        <p>Czy na pewno chcesz zignorować naukowca <strong id="ignore-scientist-name"></strong>?</p>
-        <p>Naukowiec nie będzie więcej pokazywany na liście nieprzypisanych.</p>
-        <form id="ignore-form">
-            <label>Powód (opcjonalny):
-                <textarea name="reason" rows="3"></textarea>
-            </label>
-            <input type="hidden" id="ignore-scientist-id" name="scientist_id">
-        </form>
-        <div class="button-group">
-            <button class="button alert" id="confirm-ignore">Ignoruj</button>
-            <button class="button secondary" data-close>Anuluj</button>
+    {# Modale: Foundation `data-reveal` zastąpione przez Alpine x-show.
+       Każdy modal ma własną flagę w Alpine state (ignoreModal, linkAllModal,
+       ...). Zamknięcie przez ESC: x-on:keydown.escape.window.
+       Kliknięcie w backdrop: @click na półprzezroczystym overlay.
+       `class="button-group"` i `class="button success/alert/secondary"` zostają
+       — Foundation CSS dalej je styluje przez compat layer. #}
+
+    <!-- Modal: ignore -->
+    <div x-show="ignoreModal" x-cloak
+         x-on:keydown.escape.window="ignoreModal = false"
+         id="ignoreModal" role="dialog" aria-modal="true" aria-labelledby="ignoreModal-title"
+         class="fixed inset-0 z-50 flex items-center justify-center">
+        <div class="fixed inset-0 bg-black/50" @click="ignoreModal = false"></div>
+        <div x-show="ignoreModal" x-transition
+             class="relative bg-white border border-black/25 shadow-lg max-w-2xl w-full mx-4 p-6 max-h-[90vh] overflow-y-auto">
+            <h3 id="ignoreModal-title" class="mt-0 mb-4">Ignoruj naukowca</h3>
+            <p>Czy na pewno chcesz zignorować naukowca <strong x-text="ignoreScientist.name"></strong>?</p>
+            <p>Naukowiec nie będzie więcej pokazywany na liście nieprzypisanych.</p>
+            <form @submit.prevent="confirmIgnore()">
+                <label>Powód (opcjonalny):
+                    <textarea x-model="ignoreReason" rows="3"></textarea>
+                </label>
+            </form>
+            <div class="button-group">
+                <button class="button alert" type="button" @click="confirmIgnore()">Ignoruj</button>
+                <button class="button secondary" type="button" @click="ignoreModal = false">Anuluj</button>
+            </div>
+            <button type="button" @click="ignoreModal = false"
+                    class="absolute top-2 right-4 text-2xl leading-none text-dark-gray hover:text-black bg-transparent border-0 cursor-pointer"
+                    aria-label="Zamknij">&times;</button>
         </div>
-        <button class="close-button" data-close aria-label="Zamknij" type="button">
-            <span aria-hidden="true">&times;</span>
-        </button>
     </div>
 
-    <!-- Modal for bulk link confirmation -->
-    <div class="reveal" id="linkAllModal" data-reveal>
-        <h3>Powiąż wszystkich naukowców z dopasowaniem</h3>
-        <p>Czy na pewno chcesz automatycznie powiązać <strong>{{ total_with_matches }}</strong> naukowców PBN z ich sugerowanymi odpowiednikami w BPP?</p>
-        <div class="callout warning">
-            <p><strong>Uwaga:</strong> Ta operacja powiąże wszystkich naukowców, którzy mają sugerowane dopasowanie.</p>
+    <!-- Modal: bulk link -->
+    <div x-show="linkAllModal" x-cloak
+         x-on:keydown.escape.window="linkAllModal = false"
+         id="linkAllModal" role="dialog" aria-modal="true" aria-labelledby="linkAllModal-title"
+         class="fixed inset-0 z-50 flex items-center justify-center">
+        <div class="fixed inset-0 bg-black/50" @click="linkAllModal = false"></div>
+        <div x-show="linkAllModal" x-transition
+             class="relative bg-white border border-black/25 shadow-lg max-w-2xl w-full mx-4 p-6 max-h-[90vh] overflow-y-auto">
+            <h3 id="linkAllModal-title" class="mt-0 mb-4">Powiąż wszystkich naukowców z dopasowaniem</h3>
+            <p>Czy na pewno chcesz automatycznie powiązać <strong>{{ total_with_matches }}</strong> naukowców PBN z ich sugerowanymi odpowiednikami w BPP?</p>
+            <div class="callout warning">
+                <p><strong>Uwaga:</strong> Ta operacja powiąże wszystkich naukowców, którzy mają sugerowane dopasowanie.</p>
+            </div>
+            <div class="button-group">
+                <button class="button success" type="button"
+                        :disabled="linkAllInProgress"
+                        @click="confirmLinkAll()"
+                        x-text="linkAllInProgress ? 'Powiązywanie...' : 'Powiąż wszystkich'">Powiąż wszystkich</button>
+                <button class="button secondary" type="button" @click="linkAllModal = false">Anuluj</button>
+            </div>
+            <button type="button" @click="linkAllModal = false"
+                    class="absolute top-2 right-4 text-2xl leading-none text-dark-gray hover:text-black bg-transparent border-0 cursor-pointer"
+                    aria-label="Zamknij">&times;</button>
         </div>
-        <div class="button-group">
-            <button class="button success" id="confirm-link-all">Powiąż wszystkich</button>
-            <button class="button secondary" data-close>Anuluj</button>
-        </div>
-        <button class="close-button" data-close aria-label="Zamknij" type="button">
-            <span aria-hidden="true">&times;</span>
-        </button>
     </div>
 
-    <!-- Modal for bulk create confirmation -->
-    <div class="reveal" id="createAllModal" data-reveal>
-        <h3>Utwórz wszystkich naukowców bez dopasowania</h3>
-        <p>Czy na pewno chcesz automatycznie utworzyć <strong>{{ total_unmatched|add:"-"|add:total_with_matches }}</strong> nowych autorów w BPP?</p>
-        <div class="callout warning">
-            <p><strong>Uwaga:</strong> Ta operacja utworzy nowych autorów dla wszystkich naukowców, którzy nie mają sugerowanego dopasowania.</p>
+    <!-- Modal: bulk create -->
+    <div x-show="createAllModal" x-cloak
+         x-on:keydown.escape.window="createAllModal = false"
+         id="createAllModal" role="dialog" aria-modal="true" aria-labelledby="createAllModal-title"
+         class="fixed inset-0 z-50 flex items-center justify-center">
+        <div class="fixed inset-0 bg-black/50" @click="createAllModal = false"></div>
+        <div x-show="createAllModal" x-transition
+             class="relative bg-white border border-black/25 shadow-lg max-w-2xl w-full mx-4 p-6 max-h-[90vh] overflow-y-auto">
+            <h3 id="createAllModal-title" class="mt-0 mb-4">Utwórz wszystkich naukowców bez dopasowania</h3>
+            <p>Czy na pewno chcesz automatycznie utworzyć <strong>{{ total_unmatched|add:"-"|add:total_with_matches }}</strong> nowych autorów w BPP?</p>
+            <div class="callout warning">
+                <p><strong>Uwaga:</strong> Ta operacja utworzy nowych autorów dla wszystkich naukowców, którzy nie mają sugerowanego dopasowania.</p>
+            </div>
+            <div class="button-group">
+                <button class="button warning" type="button"
+                        :disabled="createAllInProgress"
+                        @click="confirmCreateAll()"
+                        x-text="createAllInProgress ? 'Tworzenie...' : 'Utwórz wszystkich'">Utwórz wszystkich</button>
+                <button class="button secondary" type="button" @click="createAllModal = false">Anuluj</button>
+            </div>
+            <button type="button" @click="createAllModal = false"
+                    class="absolute top-2 right-4 text-2xl leading-none text-dark-gray hover:text-black bg-transparent border-0 cursor-pointer"
+                    aria-label="Zamknij">&times;</button>
         </div>
-        <div class="button-group">
-            <button class="button warning" id="confirm-create-all">Utwórz wszystkich</button>
-            <button class="button secondary" data-close>Anuluj</button>
-        </div>
-        <button class="close-button" data-close aria-label="Zamknij" type="button">
-            <span aria-hidden="true">&times;</span>
-        </button>
     </div>
 
-    <!-- Modal for link confirmation -->
-    <div class="reveal" id="linkModal" data-reveal>
-        <h3>Powiąż naukowca z autorem</h3>
-        <p>Czy na pewno chcesz powiązać naukowca PBN z autorem <strong id="link-autor-name"></strong>?</p>
-        <input type="hidden" id="link-scientist-id">
-        <input type="hidden" id="link-autor-id">
-        <div class="button-group">
-            <button class="button success" id="confirm-link">Powiąż</button>
-            <button class="button secondary" data-close>Anuluj</button>
+    <!-- Modal: link single -->
+    <div x-show="linkModal" x-cloak
+         x-on:keydown.escape.window="linkModal = false"
+         id="linkModal" role="dialog" aria-modal="true" aria-labelledby="linkModal-title"
+         class="fixed inset-0 z-50 flex items-center justify-center">
+        <div class="fixed inset-0 bg-black/50" @click="linkModal = false"></div>
+        <div x-show="linkModal" x-transition
+             class="relative bg-white border border-black/25 shadow-lg max-w-2xl w-full mx-4 p-6 max-h-[90vh] overflow-y-auto">
+            <h3 id="linkModal-title" class="mt-0 mb-4">Powiąż naukowca z autorem</h3>
+            <p>Czy na pewno chcesz powiązać naukowca PBN z autorem <strong x-text="linkData.autorName"></strong>?</p>
+            <div class="button-group">
+                <button class="button success" type="button" @click="confirmLink()">Powiąż</button>
+                <button class="button secondary" type="button" @click="linkModal = false">Anuluj</button>
+            </div>
+            <button type="button" @click="linkModal = false"
+                    class="absolute top-2 right-4 text-2xl leading-none text-dark-gray hover:text-black bg-transparent border-0 cursor-pointer"
+                    aria-label="Zamknij">&times;</button>
         </div>
-        <button class="close-button" data-close aria-label="Zamknij" type="button">
-            <span aria-hidden="true">&times;</span>
-        </button>
     </div>
 
     <style>
@@ -328,10 +374,8 @@
     </style>
 
     <script>
+        // pokaz-wszystkich checkbox — bez modali, zostaje jako jQuery (URL nav).
         $(document).ready(function() {
-            var csrftoken = $('[name=csrfmiddlewaretoken]').val();
-
-            // Handle "show all institutions" checkbox change
             $('#pokaz-wszystkich-checkbox').on('change', function() {
                 var currentUrl = new URL(window.location.href);
                 if (this.checked) {
@@ -343,147 +387,129 @@
                 currentUrl.searchParams.delete('page');
                 window.location.href = currentUrl.toString();
             });
+        });
 
-            // Handle ignore button click
-            $('.ignore-forever').on('click', function() {
-                var scientistId = $(this).data('scientist-id');
-                var scientistName = $(this).data('scientist-name');
+        // Alpine component: state + AJAX dla 4 modali. AJAX dalej leci przez
+        // jQuery $.ajax (CSRF + error handling identyczne jak wcześniej);
+        // Alpine zarządza tylko stanem widoczności + danymi formularza.
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('importerAutorowPbn', () => ({
+                ignoreModal: false,
+                linkAllModal: false,
+                createAllModal: false,
+                linkModal: false,
+                ignoreScientist: { id: '', name: '' },
+                ignoreReason: '',
+                linkData: { scientistId: '', autorId: '', autorName: '' },
+                linkAllInProgress: false,
+                createAllInProgress: false,
 
-                $('#ignore-scientist-id').val(scientistId);
-                $('#ignore-scientist-name').text(scientistName);
-                $('#ignoreModal').foundation('open');
-            });
+                get csrf() {
+                    return $('[name=csrfmiddlewaretoken]').val();
+                },
 
-            // Confirm ignore
-            $('#confirm-ignore').on('click', function() {
-                var scientistId = $('#ignore-scientist-id').val();
-                var reason = $('textarea[name="reason"]').val();
+                openIgnore(id, name) {
+                    this.ignoreScientist = { id: id, name: name };
+                    this.ignoreReason = '';
+                    this.ignoreModal = true;
+                },
 
-                $.ajax({
-                    url: '{% url "importer_autorow_pbn:ignore_scientist" "PLACEHOLDER" %}'.replace('PLACEHOLDER', scientistId),
-                    type: 'POST',
-                    data: {
-                        'reason': reason,
-                        'csrfmiddlewaretoken': csrftoken
-                    },
-                    success: function(response) {
-                        if (response.status === 'success') {
-                            // Remove the row
-                            $('tr[data-scientist-id="' + scientistId + '"]').fadeOut();
-                            $('#ignoreModal').foundation('close');
-                            // Show success message
-                            alert('Naukowiec został zignorowany.');
-                        } else if (response.status === 'already_ignored') {
-                            alert('Ten naukowiec jest już ignorowany.');
-                        }
-                    },
-                    error: function() {
-                        alert('Wystąpił błąd podczas ignorowania naukowca.');
-                    }
-                });
-            });
+                openLink(scientistId, autorId, autorName) {
+                    this.linkData = { scientistId: scientistId, autorId: autorId, autorName: autorName };
+                    this.linkModal = true;
+                },
 
-            // Handle link button click
-            $('.link-to-existing').on('click', function() {
-                var scientistId = $(this).data('scientist-id');
-                var autorId = $(this).data('autor-id');
-                var autorName = $(this).data('autor-name');
-
-                $('#link-scientist-id').val(scientistId);
-                $('#link-autor-id').val(autorId);
-                $('#link-autor-name').text(autorName);
-                $('#linkModal').foundation('open');
-            });
-
-            // Confirm link
-            $('#confirm-link').on('click', function() {
-                var scientistId = $('#link-scientist-id').val();
-                var autorId = $('#link-autor-id').val();
-
-                $.ajax({
-                    url: '{% url "importer_autorow_pbn:link_scientist" "PLACEHOLDER" %}'.replace('PLACEHOLDER', scientistId),
-                    type: 'POST',
-                    data: {
-                        'autor_id': autorId,
-                        'csrfmiddlewaretoken': csrftoken
-                    },
-                    success: function(response) {
-                        if (response.status === 'success') {
-                            // Reload the page to show updated data
-                            location.reload();
-                        } else {
-                            alert('Błąd: ' + response.message);
-                        }
-                    },
-                    error: function() {
-                        alert('Wystąpił błąd podczas powiązywania naukowca.');
-                    }
-                });
-            });
-
-            // Handle link all button
-            $('#link-all-btn').on('click', function() {
-                $('#linkAllModal').foundation('open');
-            });
-
-            // Confirm link all
-            $('#confirm-link-all').on('click', function() {
-                $(this).prop('disabled', true).text('Powiązywanie...');
-
-                $.ajax({
-                    url: '{% url "importer_autorow_pbn:link_all_scientists" %}',
-                    type: 'POST',
-                    data: {
-                        'csrfmiddlewaretoken': csrftoken
-                    },
-                    success: function(response) {
-                        if (response.status === 'success') {
-                            if (response.errors && response.errors.length > 0) {
-                                alert('Powiązano ' + response.linked_count + ' naukowców.\n\nBłędy:\n' + response.errors.join('\n'));
-                            } else {
-                                alert('Pomyślnie powiązano ' + response.linked_count + ' naukowców.');
+                confirmIgnore() {
+                    const sid = this.ignoreScientist.id;
+                    const reason = this.ignoreReason;
+                    const self = this;
+                    $.ajax({
+                        url: '{% url "importer_autorow_pbn:ignore_scientist" "PLACEHOLDER" %}'.replace('PLACEHOLDER', sid),
+                        type: 'POST',
+                        data: { 'reason': reason, 'csrfmiddlewaretoken': self.csrf },
+                        success: function(response) {
+                            if (response.status === 'success') {
+                                $('tr[data-scientist-id="' + sid + '"]').fadeOut();
+                                self.ignoreModal = false;
+                                alert('Naukowiec został zignorowany.');
+                            } else if (response.status === 'already_ignored') {
+                                alert('Ten naukowiec jest już ignorowany.');
                             }
-                            location.reload();
+                        },
+                        error: function() {
+                            alert('Wystąpił błąd podczas ignorowania naukowca.');
                         }
-                    },
-                    error: function() {
-                        alert('Wystąpił błąd podczas powiązywania naukowców.');
-                        $('#confirm-link-all').prop('disabled', false).text('Powiąż wszystkich');
-                    }
-                });
-            });
+                    });
+                },
 
-            // Handle create all button
-            $('#create-all-unmatched-btn').on('click', function() {
-                $('#createAllModal').foundation('open');
-            });
-
-            // Confirm create all
-            $('#confirm-create-all').on('click', function() {
-                $(this).prop('disabled', true).text('Tworzenie...');
-
-                $.ajax({
-                    url: '{% url "importer_autorow_pbn:create_all_unmatched" %}',
-                    type: 'POST',
-                    data: {
-                        'csrfmiddlewaretoken': csrftoken
-                    },
-                    success: function(response) {
-                        if (response.status === 'success') {
-                            if (response.errors && response.errors.length > 0) {
-                                alert('Utworzono ' + response.created_count + ' autorów.\n\nBłędy:\n' + response.errors.join('\n'));
+                confirmLink() {
+                    const self = this;
+                    $.ajax({
+                        url: '{% url "importer_autorow_pbn:link_scientist" "PLACEHOLDER" %}'.replace('PLACEHOLDER', self.linkData.scientistId),
+                        type: 'POST',
+                        data: { 'autor_id': self.linkData.autorId, 'csrfmiddlewaretoken': self.csrf },
+                        success: function(response) {
+                            if (response.status === 'success') {
+                                location.reload();
                             } else {
-                                alert('Pomyślnie utworzono ' + response.created_count + ' autorów.');
+                                alert('Błąd: ' + response.message);
                             }
-                            location.reload();
+                        },
+                        error: function() {
+                            alert('Wystąpił błąd podczas powiązywania naukowca.');
                         }
-                    },
-                    error: function() {
-                        alert('Wystąpił błąd podczas tworzenia autorów.');
-                        $('#confirm-create-all').prop('disabled', false).text('Utwórz wszystkich');
-                    }
-                });
-            });
+                    });
+                },
+
+                confirmLinkAll() {
+                    this.linkAllInProgress = true;
+                    const self = this;
+                    $.ajax({
+                        url: '{% url "importer_autorow_pbn:link_all_scientists" %}',
+                        type: 'POST',
+                        data: { 'csrfmiddlewaretoken': self.csrf },
+                        success: function(response) {
+                            if (response.status === 'success') {
+                                if (response.errors && response.errors.length > 0) {
+                                    alert('Powiązano ' + response.linked_count + ' naukowców.\n\nBłędy:\n' + response.errors.join('\n'));
+                                } else {
+                                    alert('Pomyślnie powiązano ' + response.linked_count + ' naukowców.');
+                                }
+                                location.reload();
+                            }
+                        },
+                        error: function() {
+                            alert('Wystąpił błąd podczas powiązywania naukowców.');
+                            self.linkAllInProgress = false;
+                        }
+                    });
+                },
+
+                confirmCreateAll() {
+                    this.createAllInProgress = true;
+                    const self = this;
+                    $.ajax({
+                        url: '{% url "importer_autorow_pbn:create_all_unmatched" %}',
+                        type: 'POST',
+                        data: { 'csrfmiddlewaretoken': self.csrf },
+                        success: function(response) {
+                            if (response.status === 'success') {
+                                if (response.errors && response.errors.length > 0) {
+                                    alert('Utworzono ' + response.created_count + ' autorów.\n\nBłędy:\n' + response.errors.join('\n'));
+                                } else {
+                                    alert('Pomyślnie utworzono ' + response.created_count + ' autorów.');
+                                }
+                                location.reload();
+                            }
+                        },
+                        error: function() {
+                            alert('Wystąpił błąd podczas tworzenia autorów.');
+                            self.createAllInProgress = false;
+                        }
+                    });
+                }
+            }));
         });
     </script>
+</div>
 {% endblock %}
