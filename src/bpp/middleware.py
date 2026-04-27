@@ -19,9 +19,16 @@ class MaliciousRequestBlockingMiddleware(MiddlewareMixin):
     - Database dumps and log files
     - Common CMS admin panel probes (WordPress, phpMyAdmin, etc.)
     - Paths exceeding 1024 characters
+    - Full URLs (path + query string) exceeding 2048 characters
+    - Nested ``?next=`` redirect chains produced by scanner bots
 
     Returns HTTP 444 (No Response) for blocked requests.
     """
+
+    # Maximum length of the full request URL (path + query string).
+    # Path alone is capped at 1024 (see process_request); the query string can
+    # legitimately carry a single ``next=`` redirect, so we allow more headroom.
+    MAX_FULL_PATH_LENGTH = 2048
 
     # Blocked file extensions (case-insensitive)
     BLOCKED_EXTENSIONS = (
@@ -132,6 +139,21 @@ class MaliciousRequestBlockingMiddleware(MiddlewareMixin):
         # Block excessively long paths (potential buffer overflow attempts)
         if len(path) > 1024:
             return self._block_request(request, "path_too_long", path[:100])
+
+        # Block excessively long full URLs (path + query string). Catches
+        # scanner bots that follow login redirects without cookies and end up
+        # accumulating exponentially growing percent-encoded ``?next=`` chains.
+        full_path = request.get_full_path()
+        if len(full_path) > self.MAX_FULL_PATH_LENGTH:
+            return self._block_request(request, "url_too_long", full_path[:100])
+
+        # Block nested ``?next=`` redirect chains. Django decodes one level of
+        # percent-encoding when parsing query string, so a legitimate single
+        # redirect target (e.g. ``next=/foo/``) never contains ``?next=`` —
+        # but a re-redirected scanner trail does (``next=/login/?next=/foo``).
+        next_param = request.GET.get("next", "")
+        if next_param and "?next=" in next_param.lower():
+            return self._block_request(request, "nested_next", next_param[:100])
 
         # Check pagination parameter for SQL injection
         page_param = request.GET.get("page", "")
