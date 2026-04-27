@@ -234,12 +234,17 @@ jobs:
           DOCKER_VERSION: ${{ steps.tag.outputs.staging_tag }}
           TAG_LATEST: "false"
           PUSH: "true"
+          # Wynikiem ekspresji jest literal "release" albo "dev" — nie ma
+          # tu untrusted input z github.event.*. Ref name jest weryfikowane
+          # przez równość z literałem, więc nie ma ryzyka injection.
+          BPP_BUILD_FLAVOR: ${{ github.ref_name == 'master' && 'release' || 'dev' }}
         run: |
           docker buildx bake \
             base appserver workerserver \
             beatserver authserver denorm-queue \
             --file docker-bake.hcl \
             --set "base.args.GIT_SHA=${GIT_SHA}" \
+            --set "base.args.BPP_BUILD_FLAVOR=${BPP_BUILD_FLAVOR}" \
             --set '*.platform=linux/amd64' \
             --allow=fs.read=/tmp \
             --allow=fs.write=/tmp

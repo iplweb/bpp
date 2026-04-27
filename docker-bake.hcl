@@ -28,6 +28,14 @@ variable "GIT_SHA" {
   default = "unknown"
 }
 
+# Rozróżnienie release vs developer build. Master release -> "release"
+# (stopka pokazuje tylko numer wersji); PR/feature/lokalne -> "dev"
+# (stopka dokleja `(commit XXXXXXX)` po wersji, dla łatwego namierzenia
+# którego commitu dotyczy obraz, gdy tag jest niejednoznaczny).
+variable "BPP_BUILD_FLAVOR" {
+  default = "dev"
+}
+
 variable "TAG_LATEST" {
   default = "true"
 }
@@ -66,7 +74,8 @@ target "base" {
   dockerfile = "docker/bpp_base/Dockerfile"
   context    = "."
   args = {
-    GIT_SHA = GIT_SHA
+    GIT_SHA          = GIT_SHA
+    BPP_BUILD_FLAVOR = BPP_BUILD_FLAVOR
   }
   tags = TAG_LATEST == "true" ? [
     "iplweb/bpp_base:${DOCKER_VERSION}",
