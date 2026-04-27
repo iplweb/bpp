@@ -433,6 +433,79 @@ class TestMaliciousRequestBlockingMiddleware:
         response = self.middleware.process_request(request)
         assert response is None
 
+    # Full URL Length (path + query string)
+    def test_excessively_long_full_url_blocked(self):
+        """Test: Full URL (path + query) exceeding MAX_FULL_PATH_LENGTH blocked.
+
+        Models the recursive ``?next=`` redirect-chain pattern produced by
+        scanner bots that follow login redirects without cookies.
+        """
+        long_next = "/accounts/login/" + "a" * 2100
+        request = self.factory.get(f"/admin/login/?next={long_next}")
+        response = self.middleware.process_request(request)
+        assert response is not None
+        assert response.status_code == 444
+
+    def test_full_url_just_under_limit_allowed(self):
+        """Test: Full URL just under the full-path limit should pass."""
+        # 1500 bytes of next= keeps full URL under 2048 limit
+        normal_next = "/accounts/login/" + "a" * 1400
+        request = self.factory.get(f"/admin/login/?next={normal_next}")
+        response = self.middleware.process_request(request)
+        assert response is None
+
+    def test_url_too_long_logs_reason(self, caplog):
+        """Test: Oversized full URL block should log ``url_too_long``."""
+        caplog.set_level(logging.WARNING)
+        long_next = "/x" + "a" * 2100
+        request = self.factory.get(f"/admin/login/?next={long_next}")
+        self.middleware.process_request(request)
+        assert "url_too_long" in caplog.text
+
+    # Nested ?next= chains
+    def test_nested_next_blocked(self):
+        """Test: Nested ``?next=`` redirect chain should be blocked."""
+        # Django decodes one URL-encoding level of the query string,
+        # so this ends up as next=/accounts/login/?next=/foo/
+        request = self.factory.get(
+            "/admin/login/?next=/accounts/login/%3Fnext%3D/foo/"
+        )
+        response = self.middleware.process_request(request)
+        assert response is not None
+        assert response.status_code == 444
+
+    def test_nested_next_literal_blocked(self):
+        """Test: Literal nested ``?next=`` should be blocked."""
+        request = self.factory.get(
+            "/admin/login/", {"next": "/accounts/login/?next=/foo/"}
+        )
+        response = self.middleware.process_request(request)
+        assert response is not None
+        assert response.status_code == 444
+
+    def test_simple_next_allowed(self):
+        """Test: Single-level ``next=`` redirect target should pass."""
+        request = self.factory.get(
+            "/accounts/login/", {"next": "/bpp/rekord/wydawnictwo_zwarte,42/"}
+        )
+        response = self.middleware.process_request(request)
+        assert response is None
+
+    def test_no_next_parameter_allowed(self):
+        """Test: Login URL without ``next`` parameter should pass."""
+        request = self.factory.get("/accounts/login/")
+        response = self.middleware.process_request(request)
+        assert response is None
+
+    def test_nested_next_logs_reason(self, caplog):
+        """Test: Nested ``?next=`` block should log ``nested_next``."""
+        caplog.set_level(logging.WARNING)
+        request = self.factory.get(
+            "/admin/login/", {"next": "/accounts/login/?next=/foo/"}
+        )
+        self.middleware.process_request(request)
+        assert "nested_next" in caplog.text
+
     # Legitimate Paths (Should NOT Be Blocked)
     def test_django_admin_allowed(self):
         """Test: Django admin should be allowed"""

@@ -38,21 +38,6 @@ services:
     volumes:
       - redis_data:/data
 
-  rabbitmq:
-    image: rabbitmq:management-alpine
-    environment:
-      RABBITMQ_NODE_PORT: ${DJANGO_BPP_RABBITMQ_PORT:-5672}
-      RABBITMQ_DEFAULT_USER: ${DJANGO_BPP_RABBITMQ_USER:-bpp}
-      RABBITMQ_DEFAULT_PASS: ${DJANGO_BPP_RABBITMQ_PASS:-bpp}
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "ping"]
-      start_period: 30s
-      interval: 10s
-      timeout: 10s
-      retries: 5
-    volumes:
-      - rabbitmq_data:/var/lib/rabbitmq
-
   test-runner:
     build:
       context: .
@@ -74,7 +59,6 @@ services:
     depends_on:
       db: { condition: service_healthy }
       redis: { condition: service_healthy }
-      rabbitmq: { condition: service_started }
     environment:
       DJANGO_BPP_DB_HOST: db
       DJANGO_BPP_DB_PORT: 5432
@@ -84,17 +68,12 @@ services:
       DJANGO_BPP_DB_DISABLE_SSL: 1
       DJANGO_BPP_REDIS_HOST: redis
       DJANGO_BPP_REDIS_PORT: 6379
-      DJANGO_BPP_RABBITMQ_HOST: rabbitmq
-      DJANGO_BPP_RABBITMQ_PORT: 5672
-      DJANGO_BPP_RABBITMQ_USER: bpp
-      DJANGO_BPP_RABBITMQ_PASS: bpp
-      # Wyłącz testcontainers — w CI serwisy (db, redis, rabbitmq) są
-      # uruchamiane przez docker-compose, nie przez testcontainers.
-      # Testcontainers z wnętrza kontenera wymagałyby Docker-in-Docker.
+      # Wyłącz testcontainers — w CI serwisy (db, redis) są uruchamiane
+      # przez docker-compose, nie przez testcontainers. Testcontainers
+      # z wnętrza kontenera wymagałyby Docker-in-Docker.
       BPP_USE_TESTCONTAINERS: 0
 
 volumes:
   postgresql_data:
   redis_data:
-  rabbitmq_data:
   playwright_cache:

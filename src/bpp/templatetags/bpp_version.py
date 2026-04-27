@@ -54,3 +54,20 @@ def bpp_image_tag():
     if not tag or tag == "unknown":
         return ""
     return tag
+
+
+@register.simple_tag
+def bpp_branch_tag():
+    """Alias = sanityzowana nazwa source brancha PR-a (np.
+    "feature-nowe-zglos-publikacje").
+
+    Workflow ustawia tylko dla pull_request eventów; dla master/feature
+    push bez PR pozostaje pusty (final_tag = nazwa brancha, więc
+    duplikacja byłaby zbędna). Master release zwraca pusty string.
+    """
+    if _is_release():
+        return ""
+    tag = os.environ.get("BPP_BRANCH_TAG", "")
+    if not tag:
+        return ""
+    return tag
