@@ -17,8 +17,18 @@ services:
       - POSTGRESQL_UNSAFE_BUT_FAST=1
       # Zachowawczo — CI zwykle nie odpala tak wielu workerów jak lokal.
       - POSTGRESQL_MAX_LOCKS_PER_TRANSACTION=128
+    # PGDATA na tmpfs — z fsync=off i tak prawie nic nie jest zapisywane
+    # synchronicznie, ale tmpfs eliminuje całą ścieżkę kernel writeback.
+    # Dane bazy testowej są ulotne (czyszczone przez `compose down -v`),
+    # więc trwałość nie jest potrzebna.
+    tmpfs:
+      - /var/lib/postgresql/data
     volumes:
-      - postgresql_data:/var/lib/postgresql/data
+      # Baseline pg_dump ładowany przez postgresowy entrypoint przy
+      # pierwszej inicjalizacji bazy (tj. zawsze, bo PGDATA na tmpfs).
+      # Połączone z DJANGO_BPP_TEST_TEMPLATE=bpp poniżej daje template-clone
+      # zamiast `psql -f baseline.sql` per worker xdista.
+      - ./src/baseline-sql/baseline.sql:/docker-entrypoint-initdb.d/01-baseline.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DJANGO_BPP_DB_USER:-bpp}"]
       start_period: 10s
@@ -73,7 +83,13 @@ services:
       # przez docker-compose, nie przez testcontainers. Testcontainers
       # z wnętrza kontenera wymagałyby Docker-in-Docker.
       BPP_USE_TESTCONTAINERS: 0
+      # Baseline jest ładowany przez postgresowy entrypoint (mount
+      # /docker-entrypoint-initdb.d/01-baseline.sql w servisie db). Tutaj
+      # mówimy Django, że ma tworzyć test_bpp_gwN jako klon `bpp` przez
+      # CREATE DATABASE … WITH TEMPLATE bpp — natywna operacja Postgresa,
+      # instant per worker, zamiast `psql -f baseline.sql` per worker.
+      # Patrz: src/django_pg_baseline/patches.py.
+      DJANGO_BPP_TEST_TEMPLATE: bpp
 
 volumes:
-  postgresql_data:
   redis_data:
