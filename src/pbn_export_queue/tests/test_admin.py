@@ -10,6 +10,7 @@ from pbn_api.tests.utils import middleware
 from pbn_export_queue.admin import PBN_Export_QueueAdmin
 from pbn_export_queue.models import PBN_Export_Queue
 
+from django.contrib import admin
 from django.contrib.admin.sites import AdminSite
 from django.contrib.auth import get_user_model
 from django.utils import timezone
@@ -182,7 +183,7 @@ def test_pbn_export_queue_admin_response_change_normal(
             "pbn_export_queue.tasks.task_sprobuj_wyslac_do_pbn.delay"
         ) as mock_task:
             with patch.object(
-                admin_instance.__class__.__bases__[1], "response_change"
+                admin.ModelAdmin, "response_change"
             ) as mock_super:
                 mock_super.return_value = "super_response"
 

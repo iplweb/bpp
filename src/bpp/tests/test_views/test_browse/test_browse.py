@@ -168,6 +168,7 @@ def test_artykuly(uczelnia, client):
     a = Article.objects.create(
         title=TYTUL, article_body="456", status=Article.STATUS.draft, slug="1"
     )
+    a.uczelnie.set([uczelnia])
 
     res = client.get(reverse("bpp:browse_uczelnia", args=(uczelnia.slug,)))
     assert TYTUL.encode("utf-8") not in res.content
@@ -189,6 +190,7 @@ def test_artykul_ze_skrotem(uczelnia, client):
         status=Article.STATUS.published,
         slug="1",
     )
+    a.uczelnie.set([uczelnia])
     # Invalidate cacheops cache for get_uczelnia_context_data
     invalidate_all()
 

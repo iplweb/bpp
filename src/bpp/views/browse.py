@@ -395,14 +395,9 @@ class JednostkiView(Browser):
     paginate_by = 150
 
     def get_paginate_by(self, queryset):
-        uczelnia = None
-
-        if hasattr(self, "request") and self.request is not None:
-            uczelnia = Uczelnia.objects.get_for_request(self.request)
-
+        uczelnia = Uczelnia.objects.get_for_request(getattr(self, "request", None))
         if uczelnia is None:
             return self.paginate_by
-
         return uczelnia.ilosc_jednostek_na_strone
 
     def get_queryset(self):

@@ -53,7 +53,7 @@ class AutorAutocompleteBase(
                 )
             )
 
-        uczelnia = getattr(self.request, "_uczelnia", None)
+        uczelnia = getattr(getattr(self, "request", None), "_uczelnia", None)
         if uczelnia:
             qs = qs.filter(aktualna_jednostka__uczelnia=uczelnia)
 
