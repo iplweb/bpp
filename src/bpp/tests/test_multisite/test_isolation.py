@@ -59,6 +59,29 @@ def test_article_on_all_uczelnie_when_both_assigned(uczelnia1, uczelnia2):
 
 
 @pytest.mark.django_db
+def test_article_with_empty_m2m_visible_on_all_uczelnie(uczelnia1, uczelnia2):
+    """Pusty M2M ``uczelnie`` = artykuł widoczny wszędzie (lazy resolution)."""
+    from bpp.views.browse import get_uczelnia_context_data
+    from miniblog.models import Article
+
+    article = baker.make(
+        Article,
+        title="Universal Article",
+        article_body="Body text",
+        status=Article.STATUS.published,
+    )
+    # Celowo brak article.uczelnie.set(...) — pusty M2M.
+
+    get_uczelnia_context_data.invalidate()
+
+    ctx1 = get_uczelnia_context_data(uczelnia1)
+    ctx2 = get_uczelnia_context_data(uczelnia2)
+
+    assert article in ctx1["miniblog"]
+    assert article in ctx2["miniblog"]
+
+
+@pytest.mark.django_db
 def test_staff_cannot_see_other_uczelnia_jednostki_in_admin(
     site1,
     site2,

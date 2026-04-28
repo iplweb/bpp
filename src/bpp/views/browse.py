@@ -55,12 +55,12 @@ def get_uczelnia_context_data(uczelnia, article_slug=None):
 
     if article_slug:
         context["article"] = get_object_or_404(
-            Article, slug=article_slug, uczelnie=uczelnia
+            Article.objects.visible_on(uczelnia), slug=article_slug
         )
     else:
-        # Artykuły przypisane do tej uczelni
-        context["miniblog"] = Article.objects.filter(
-            status=Article.STATUS.published, uczelnie=uczelnia
+        # Artykuły przypisane do tej uczelni (pusty M2M = wszędzie)
+        context["miniblog"] = Article.objects.visible_on(uczelnia).filter(
+            status=Article.STATUS.published
         )[:5]
 
         # Rekordy z autorami z jednostek tej uczelni

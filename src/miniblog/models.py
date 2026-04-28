@@ -1,6 +1,7 @@
 # Create your models here.
 from django.conf import settings
 from django.db import models
+from django.db.models import Q
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.urls.base import reverse
@@ -14,6 +15,16 @@ from model_utils.models import StatusModel, TimeStampedModel
 from bpp.models.struktura import Uczelnia
 
 SPLIT_MARKER = getattr(settings, "SPLIT_MARKER", "WTF")
+
+
+class ArticleManager(models.Manager):
+    def visible_on(self, uczelnia):
+        """Artykuły widoczne na danej uczelni.
+
+        Pusty M2M ``uczelnie`` = artykuł widoczny na wszystkich uczelniach
+        (lazy resolution). Niepusty = tylko na wybranych.
+        """
+        return self.filter(Q(uczelnie=uczelnia) | Q(uczelnie__isnull=True)).distinct()
 
 
 class Article(TimeStampedModel, StatusModel):
@@ -42,6 +53,8 @@ class Article(TimeStampedModel, StatusModel):
             "Leave empty for all universities."
         ),
     )
+
+    objects = ArticleManager()
 
     class Meta:
         verbose_name_plural = _("Articles")
