@@ -1,7 +1,9 @@
 import datetime
+from pathlib import Path
 
 import nh3
 from django import shortcuts
+from django.conf import settings
 
 try:
     pass
@@ -9,9 +11,9 @@ except ImportError:
     pass
 
 from django.http import JsonResponse
-from django.http.response import HttpResponse
+from django.http.response import HttpResponse, HttpResponseServerError
 from django.views.decorators.csrf import csrf_exempt
-from django.views.defaults import page_not_found, permission_denied, server_error
+from django.views.defaults import page_not_found, permission_denied
 from django_sendfile import sendfile
 
 from bpp.models import Uczelnia
@@ -120,7 +122,23 @@ def handler403(request, exception=None):
 
 
 def handler500(request):
-    return server_error(request, template_name="50x.html")
+    # Serwuje pre-renderowany 500.html z STATIC_ROOT (generuje go
+    # `generate_500_page` w fazie 2 entrypointu kontenera).
+    # Renderowanie 50x.html w runtime było rekurencyjne: Django stdlib
+    # `server_error()` woła `template.render()` bez request, więc context
+    # processory nie odpalają, `THEME_NAME` jest pusty, kompresor próbuje
+    # otworzyć STATIC_ROOT jako plik → IsADirectoryError.
+    static_500 = Path(settings.STATIC_ROOT) / "500.html"
+    try:
+        body = static_500.read_text(encoding="utf-8")
+    except OSError:
+        body = (
+            "<!doctype html><html lang='pl'><meta charset='utf-8'>"
+            "<title>Błąd 500</title>"
+            "<h1>Wystąpił błąd serwera</h1>"
+            "<p>Spróbuj ponownie za chwilę.</p>"
+        )
+    return HttpResponseServerError(body, content_type="text/html; charset=utf-8")
 
 
 def robots_txt(request):
