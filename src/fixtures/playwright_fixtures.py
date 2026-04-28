@@ -80,7 +80,7 @@ def preauth_asgi_page(preauth_page: Page, channels_live_server, transactional_db
     wait_for_page_load(page)
     wait_for_websocket_connection(page)
     page.evaluate("Cookielaw.accept();")
-    import time
-
-    time.sleep(1)
+    # Cookielaw.accept() removes #CookielawBanner synchronously; wait for
+    # the DOM to reflect that instead of sleeping a fixed second.
+    page.wait_for_selector("#CookielawBanner", state="detached", timeout=2000)
     return page
