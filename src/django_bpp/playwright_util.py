@@ -53,40 +53,35 @@ def select_select2_autocomplete(
         value_before_enter: Deprecated, not used
         timeout: Timeout in milliseconds (default 10000)
     """
-    # Wait for Select2 container to be present
-    container_selector = f"#select2-{element_id}-container"
-    try:
-        page.wait_for_selector(container_selector, timeout=timeout)
-    except Exception:
-        # Fallback - try to find the select2 element directly
-        container_selector = f"#{element_id} + .select2-container"
-        page.wait_for_selector(container_selector, timeout=timeout)
+    # Wait for Select2 to be initialized. Two markup variants coexist:
+    #   - django-autocomplete-light: ``<select> + .select2-container`` (sibling)
+    #   - vanilla django-admin: ``#select2-{id}-container`` (rendered span)
+    # Both are usually present after init. Wait for either to appear, then
+    # always click on ``.select2-selection`` (inside the sibling container)
+    # — that's the element Select2 actually wires the dropdown toggle to.
+    id_selector = f"#select2-{element_id}-container"
+    sibling_selector = f"#{element_id} + .select2-container"
+    selection_selector = f"#{element_id} + .select2-container .select2-selection"
+    page.wait_for_selector(f"{id_selector}, {sibling_selector}", timeout=timeout)
 
     # Get the underlying select element's current value
     select_selector = f"#{element_id}"
     old_select_value = page.locator(select_selector).input_value()
 
-    # Click on the select2 element to open dropdown
-    # Try different methods to open the dropdown
+    # Open the dropdown by clicking on the selection element. Fall back to
+    # JS-triggered click if the locator click fails (e.g. element is
+    # off-screen on a tall admin form).
     try:
-        # Method 1: Click on the container directly
-        page.locator(container_selector).click()
+        page.locator(selection_selector).click(timeout=5000)
     except Exception:
-        try:
-            # Method 2: Click on the select2 selection element
-            page.locator(
-                f"#{element_id} + .select2-container .select2-selection"
-            ).click()
-        except Exception:
-            # Method 3: Use JavaScript to trigger the dropdown
-            page.locator(select_selector).evaluate(
-                """element => {
-                    const sibling = element.nextElementSibling;
-                    if (sibling && sibling.classList.contains('select2-container')) {
-                        sibling.querySelector('.select2-selection').click();
-                    }
-                }"""
-            )
+        page.locator(select_selector).evaluate(
+            """element => {
+                const sibling = element.nextElementSibling;
+                if (sibling && sibling.classList.contains('select2-container')) {
+                    sibling.querySelector('.select2-selection').click();
+                }
+            }"""
+        )
 
     # Wait for dropdown to open
     page.wait_for_selector(".select2-dropdown", state="visible", timeout=timeout)

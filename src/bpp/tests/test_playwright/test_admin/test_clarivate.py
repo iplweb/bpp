@@ -1,5 +1,6 @@
 """Playwright tests for Clarivate/WOS integration in admin forms."""
 
+import time
 from unittest.mock import Mock
 
 import pytest
@@ -7,6 +8,22 @@ from django.urls import reverse
 from playwright.sync_api import Page
 
 pytestmark = [pytest.mark.slow, pytest.mark.playwright]
+
+
+def _wait_for_dialog(page, predicate, timeout: float = 5.0, interval_ms: int = 50):
+    """Pump Playwright's event loop until ``predicate`` becomes truthy.
+
+    For dialog-based polling we must use ``page.wait_for_timeout`` (not
+    ``time.sleep``) — the dialog event handler only fires when Playwright's
+    sync API pumps its internal event loop, so sleeping in plain Python
+    starves the handler and the predicate never becomes true.
+    """
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if predicate():
+            return True
+        page.wait_for_timeout(interval_ms)
+    return predicate()
 
 
 @pytest.fixture(scope="function")
@@ -42,7 +59,7 @@ def test_admin_get_wos_information_clarivate_brak_danych(page_z_wydawnictwem, de
     elem.click()
 
     # Wait for dialog
-    page.wait_for_timeout(1000)
+    _wait_for_dialog(page, lambda: len(dialog_messages) > 0)
 
     # Verify the dialog mentions DOI
     assert len(dialog_messages) > 0
@@ -106,7 +123,7 @@ def test_admin_get_wos_information_clarivate_err(uczelnia, page_z_wydawnictwem, 
     elem.click()
 
     # Wait for dialog
-    page.wait_for_timeout(1000)
+    _wait_for_dialog(page, lambda: len(dialog_messages) > 0)
 
     # Verify the dialog shows internal error message
     assert len(dialog_messages) > 0
@@ -141,7 +158,7 @@ def test_admin_get_wos_information_clarivate_misconfigured(
     elem.click()
 
     # Wait for dialog about missing username
-    page.wait_for_timeout(1000)
+    _wait_for_dialog(page, lambda: len(dialog_messages) > 0)
     assert len(dialog_messages) > 0
     assert "Brak użytkownika API" in dialog_messages[0]
 
@@ -153,6 +170,6 @@ def test_admin_get_wos_information_clarivate_misconfigured(
     elem.click()
 
     # Wait for dialog about missing password
-    page.wait_for_timeout(1000)
+    _wait_for_dialog(page, lambda: len(dialog_messages) > 1)
     assert len(dialog_messages) > 1
     assert "Brak hasła do API" in dialog_messages[1]

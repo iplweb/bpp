@@ -1,3 +1,5 @@
+import time
+
 import pytest
 from django.db import transaction
 from django.urls import reverse
@@ -7,6 +9,28 @@ from bpp.models.zrodlo import Punktacja_Zrodla
 from bpp.tests import any_autor, any_jednostka
 from bpp.tests.util import CURRENT_YEAR, any_zrodlo
 from django_bpp.playwright_util import select_select2_autocomplete
+
+
+def _wait_until(predicate, page=None, timeout: float = 5.0, interval_ms: int = 50):
+    """Poll ``predicate`` until truthy or ``timeout`` (s) elapses.
+
+    When polling depends on Playwright-side events (dialog handlers,
+    page-driven state), pass ``page`` so the loop pumps Playwright's event
+    loop via ``page.wait_for_timeout``. A plain ``time.sleep`` blocks the
+    main thread and can starve user-registered callbacks like dialog
+    handlers. For pure Python state (e.g. DB queries) ``page`` can be
+    omitted.
+    """
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        result = predicate()
+        if result:
+            return result
+        if page is not None:
+            page.wait_for_timeout(interval_ms)
+        else:
+            time.sleep(interval_ms / 1000)
+    return predicate()
 
 
 @pytest.mark.django_db(transaction=True)
@@ -33,24 +57,23 @@ def test_automatycznie_uzupelnij_punkty(admin_page: Page, channels_live_server):
     # Click button without selecting source
     admin_page.click("#id_wypelnij_pola_punktacji_button")
 
-    # Wait for dialog to be handled
-    admin_page.wait_for_timeout(1000)
+    # Wait for dialog to be handled (pump Playwright event loop so the
+    # ``handle_dialog`` callback can fire)
+    _wait_until(lambda: len(dialog_messages) > 0, page=admin_page)
     assert len(dialog_messages) > 0
     assert "Najpierw wybierz jakie" in dialog_messages[0]
 
-    # Select source using select2 autocomplete
+    # Select source using select2 autocomplete (helper waits for the
+    # underlying select to receive the new value, so no extra sleep needed)
     select_select2_autocomplete(
         admin_page, "id_zrodlo", "FOO", wait_for_new_value=True, timeout=30000
     )
-
-    # Wait for select2 to fully update
-    admin_page.wait_for_timeout(1000)
 
     # Click button again
     admin_page.click("#id_wypelnij_pola_punktacji_button")
 
     # Wait for second dialog
-    admin_page.wait_for_timeout(1000)
+    _wait_until(lambda: len(dialog_messages) > 1, page=admin_page)
     assert len(dialog_messages) > 1
     assert "Uzupełnij pole" in dialog_messages[1]
 
@@ -181,12 +204,8 @@ def test_upload_punkty(admin_page: Page, channels_live_server):
     elem.scroll_into_view_if_needed()
     elem.click()
 
-    # Wait for Punktacja_Zrodla to be created
-    admin_page.wait_for_function(
-        "() => { return true; }",  # Dummy wait, actual check below
-        timeout=5000,
-    )
-    admin_page.wait_for_timeout(1000)
+    # Wait for Punktacja_Zrodla to be created (button does an AJAX POST)
+    _wait_until(lambda: Punktacja_Zrodla.objects.count() == 1)
     assert Punktacja_Zrodla.objects.count() == 1
     assert Punktacja_Zrodla.objects.all()[0].impact_factor == 1
 
@@ -203,13 +222,14 @@ def test_upload_punkty(admin_page: Page, channels_live_server):
 
     admin_page.click("#id_dodaj_punktacje_do_zrodla_button")
 
-    # Wait for dialog to appear
-    admin_page.wait_for_timeout(1000)
+    # Wait for dialog to appear (pump Playwright event loop)
+    _wait_until(lambda: len(dialog_messages) > 0, page=admin_page)
     assert len(dialog_messages) > 0
     assert "Punktacja dla tego roku już istnieje" in dialog_messages[0]
 
-    # Wait for the punktacja to be updated
-    admin_page.wait_for_timeout(1000)
+    # Wait for the punktacja to be updated (re-fetch each iteration to bypass
+    # the ORM-level cache)
+    _wait_until(lambda: Punktacja_Zrodla.objects.all()[0].impact_factor == 2)
     assert Punktacja_Zrodla.objects.all()[0].impact_factor == 2
 
     admin_page.evaluate("window.onbeforeunload = function(e) {};")
