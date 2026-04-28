@@ -5,7 +5,6 @@ on:
     branches:
       - dev
       - master
-      - experiment/tests-single-sharded
   pull_request:
     branches:
       - dev
@@ -199,12 +198,25 @@ jobs:
         cache-to: type=registry,ref=${{ env.IMAGE_REPO }}:cache,mode=max
 
   tests:
-    # EXPERIMENT v2: single sharded job, single pytest invocation per
-    # shard. No marker filter — everything (playwright + non-playwright
-    # + serial) runs together under -n auto, sharded across 4 runners.
-    # Risk: @pytest.mark.serial tests may race against xdist workers
-    # within the same shard; if any flake, we'll need xdist_group
-    # annotations or a separate serial job.
+    # Single sharded job covering the full suite (playwright +
+    # non-playwright + serial) under `pytest -n auto`. Earlier the
+    # workflow split this into three specialised jobs (parallel /
+    # serial / playwright); shard-then-mix is faster end-to-end because
+    # the per-shard fixed cost (image pull, PG init + baseline load,
+    # Redis startup) is paid once instead of three times.
+    #
+    # @pytest.mark.serial tests are deliberately mixed in here. They
+    # don't actually depend on running outside xdist — the marker is
+    # used by callers that want to opt out of parallelism, but the
+    # tests themselves pass under -n auto. If that ever changes, gate
+    # serial tests with @pytest.mark.xdist_group(name="serial") so
+    # `--dist=loadgroup` keeps them on a single worker.
+    #
+    # DB setup: docker-compose.test.yml mounts baseline.sql into
+    # /docker-entrypoint-initdb.d/ and sets DJANGO_BPP_TEST_TEMPLATE=bpp,
+    # so xdist worker DBs are created via `CREATE DATABASE … WITH
+    # TEMPLATE bpp` (instant in-server clone) instead of replaying
+    # `psql -f baseline.sql` per worker.
     name: Tests (sharded)
     needs: prepare-image
     if: |
