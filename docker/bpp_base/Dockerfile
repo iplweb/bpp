@@ -281,10 +281,14 @@ RUN --mount=type=cache,target=/root/.npm,id=npm-cache \
 # (~1 min × N jobs) on every invocation. Local dev keeps the bind
 # mount and rebuilds assets on demand.
 #
-# `COPY . /src` invalidates only this layer when source changes; all
-# preceding layers (apt, uv sync, playwright, yarn install) survive
-# the registry-mode buildx cache, so warm rebuilds are seconds.
-COPY . /src
+# Granular COPYs (instead of `COPY . /src`) keep this layer cached
+# whenever the change is outside the listed paths — edits to
+# .github/, docker/, docker-compose*.yml, .pre-commit-config.yaml,
+# etc. don't invalidate the source layer or the grunt/compilemessages
+# steps below it. Only changes inside src/ or the listed top-level
+# config files force a rebuild of the assets.
+COPY src/ /src/src/
+COPY conftest.py pytest.ini Makefile pyproject.toml uv.lock /src/
 
 RUN npx grunt build-non-interactive
 RUN /opt/venv/bin/python src/manage.py compilemessages -v0 -l pl --traceback
