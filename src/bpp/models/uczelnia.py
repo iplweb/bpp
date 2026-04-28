@@ -83,8 +83,6 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         "sites.Site",
         verbose_name="Strona (domena)",
         on_delete=models.PROTECT,
-        null=True,
-        blank=True,
         related_name="uczelnia",
         help_text="Powiązanie z obiektem Site (domena internetowa tej uczelni).",
     )

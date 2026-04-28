@@ -17,6 +17,7 @@ from bpp.tests.util import (
     any_doktorat,
     any_habilitacja,
     any_jednostka,
+    any_uczelnia,
 )
 from bpp.util import rebuild_contenttypes
 from bpp.views.browse import AutorView, AutorzyView
@@ -42,14 +43,14 @@ def test_root_empty(setup_group, logged_in_client):
 
 @pytest.mark.django_db
 def test_root_with_uczelnia(setup_group, logged_in_client):
-    Uczelnia.objects.create(nazwa="uczelnia 123", skrot="uu123")
+    any_uczelnia(nazwa="uczelnia 123", skrot="uu123")
     res = logged_in_client.get("/", follow=False)
     assert b"uczelnia 123" in res.content
 
 
 @pytest.mark.django_db
 def test_browse_wydzial(setup_group, logged_in_client):
-    u = Uczelnia.objects.create(nazwa="uczelnia", skrot="uu")
+    u = any_uczelnia(nazwa="uczelnia", skrot="uu")
     Wydzial.objects.create(nazwa="wydzial", uczelnia=u)
     res = logged_in_client.get(reverse("bpp:browse_uczelnia", args=("uu",)))
     assert res.status_code == 200
@@ -59,7 +60,7 @@ def test_browse_wydzial(setup_group, logged_in_client):
 @pytest.mark.django_db
 def test_wydzial_with_single_jednostka_redirects(setup_group, logged_in_client):
     """Wydzial z jedną jednostką przekierowuje na stronę jednostki."""
-    u = Uczelnia.objects.create(nazwa="uczelnia", skrot="uu")
+    u = any_uczelnia(nazwa="uczelnia", skrot="uu")
     w = Wydzial.objects.create(nazwa="wydzial", uczelnia=u)
     j = Jednostka.objects.create(
         nazwa="jedyna jednostka",
@@ -80,7 +81,7 @@ def test_wydzial_with_single_jednostka_redirects(setup_group, logged_in_client):
 @pytest.mark.django_db
 def test_wydzial_with_multiple_jednostki_shows_page(setup_group, logged_in_client):
     """Wydzial z wieloma jednostkami wyświetla stronę wydziału."""
-    u = Uczelnia.objects.create(nazwa="uczelnia", skrot="uu")
+    u = any_uczelnia(nazwa="uczelnia", skrot="uu")
     w = Wydzial.objects.create(nazwa="wydzial", uczelnia=u)
     Jednostka.objects.create(
         nazwa="jednostka 1",
@@ -108,7 +109,7 @@ def test_wydzial_with_multiple_jednostki_shows_page(setup_group, logged_in_clien
 @pytest.mark.django_db
 def test_wydzial_with_single_kolo_naukowe_redirects(setup_group, logged_in_client):
     """Wydzial z jednym kołem naukowym przekierowuje na stronę koła."""
-    u = Uczelnia.objects.create(nazwa="uczelnia", skrot="uu")
+    u = any_uczelnia(nazwa="uczelnia", skrot="uu")
     w = Wydzial.objects.create(nazwa="wydzial", uczelnia=u)
     j = Jednostka.objects.create(
         nazwa="koło naukowe",
@@ -129,7 +130,7 @@ def test_wydzial_with_single_kolo_naukowe_redirects(setup_group, logged_in_clien
 
 @pytest.mark.django_db
 def test_browse_jednostka(setup_group, logged_in_client):
-    u = Uczelnia.objects.create(nazwa="uczelnia", skrot="uu")
+    u = any_uczelnia(nazwa="uczelnia", skrot="uu")
     w = Wydzial.objects.create(nazwa="wydzial", uczelnia=u)
     j = Jednostka.objects.create(nazwa="jednostka", wydzial=w, uczelnia=u)
 
@@ -285,7 +286,7 @@ def test_oai_list_records(oai_data):
 def test_autorzy_view_empty_page_redirects(client, setup_group):
     """Test: AutorzyView redirects to page 1 when EmptyPage occurs."""
     # Create test data - need 100+ authors for 2+ pages (paginate_by=50)
-    Uczelnia.objects.create(nazwa="Test University", skrot="TU")
+    any_uczelnia(nazwa="Test University", skrot="TU")
     baker.make(Autor, nazwisko="Test", imiona="Autor", pokazuj=True, _quantity=100)
 
     # Try to access non-existent page (we have 2 pages, try page 10)
@@ -306,7 +307,7 @@ def test_autorzy_view_empty_page_redirects(client, setup_group):
 @pytest.mark.django_db
 def test_autorzy_view_empty_page_preserves_search(client, setup_group):
     """Test: Redirect preserves search parameter."""
-    Uczelnia.objects.create(nazwa="Test University", skrot="TU")
+    any_uczelnia(nazwa="Test University", skrot="TU")
     baker.make(Autor, nazwisko="Test", imiona="Autor", pokazuj=True, _quantity=100)
 
     url = reverse("bpp:browse_autorzy") + "?page=10&search=Test"
@@ -321,7 +322,7 @@ def test_autorzy_view_empty_page_preserves_search(client, setup_group):
 @pytest.mark.django_db
 def test_autorzy_view_empty_page_preserves_literka_in_path(client, setup_group):
     """Test: Redirect preserves literka in URL path."""
-    Uczelnia.objects.create(nazwa="Test University", skrot="TU")
+    any_uczelnia(nazwa="Test University", skrot="TU")
     # Create 100 authors starting with 'A'
     baker.make(Autor, nazwisko="Atest", imiona="Autor", pokazuj=True, _quantity=100)
 
@@ -337,7 +338,7 @@ def test_autorzy_view_empty_page_preserves_literka_in_path(client, setup_group):
 @pytest.mark.django_db
 def test_autorzy_view_page_not_integer_redirects(client, setup_group):
     """Test: Non-integer page values redirect to page 1."""
-    Uczelnia.objects.create(nazwa="Test University", skrot="TU")
+    any_uczelnia(nazwa="Test University", skrot="TU")
     baker.make(Autor, nazwisko="Test", imiona="Autor", pokazuj=True, _quantity=100)
 
     url = reverse("bpp:browse_autorzy") + "?page=abc"

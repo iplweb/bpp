@@ -89,7 +89,7 @@ class UczelniaSetupView(FormView):
 
     def form_valid(self, form):
         # Create the Uczelnia
-        uczelnia = form.save()
+        uczelnia = form.save(request=self.request)
 
         messages.success(
             self.request,

@@ -274,6 +274,11 @@ class UczelniaAdmin(
     ]
 
     def save_model(self, request, obj, form, change):
+        if obj.site_id is None and not change:
+            from django.contrib.sites.shortcuts import get_current_site
+
+            obj.site = get_current_site(request)
+
         ret = super().save_model(request, obj, form, change)
 
         if obj.pbn_integracja:

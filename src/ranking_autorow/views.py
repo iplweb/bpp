@@ -49,6 +49,7 @@ class RankingAutorowFormularz(FormView):
     def get_form_kwargs(self, **kw):
         data = FormView.get_form_kwargs(self, **kw)
         data["lata"] = self.get_lata()
+        data["request"] = self.request
         return data
 
     def get_raport_arguments(self, form):

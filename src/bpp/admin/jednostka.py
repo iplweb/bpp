@@ -121,7 +121,7 @@ class JednostkaAdmin(
         # Zobacz na komentarz do Jednostka.uczelnia.default
         data = super().get_changeform_initial_data(request)
         if "uczelnia" not in data:
-            data["uczelnia"] = Uczelnia.objects.first()
+            data["uczelnia"] = Uczelnia.objects.get_for_request(request)
         return data
 
     def changelist_view(self, request, *args, **kwargs):
