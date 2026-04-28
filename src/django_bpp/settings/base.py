@@ -92,6 +92,9 @@ env = environ.Env(
     # Konfiguracja Django
     #
     DJANGO_BPP_HOSTNAME=(str, "localhost"),
+    # Multi-hosted: comma-separated lista nazw hostów (np. "u1.example,u2.example").
+    # Pusta wartość = używaj DJANGO_BPP_HOSTNAME (single-host, backward compat).
+    DJANGO_BPP_HOSTNAMES=(str, ""),
     DJANGO_BPP_DB_NAME=(str, "bpp"),
     DJANGO_BPP_DB_USER=(str, "bpp"),
     DJANGO_BPP_DB_PASSWORD=(str, "password"),
@@ -575,17 +578,29 @@ COMPRESS_OFFLINE_CONTEXT = [
     },
 ]
 
-DJANGO_BPP_HOSTNAME = env("DJANGO_BPP_HOSTNAME")
+# Lista hostów obsługiwanych przez deployment.
+# Preferowany sposób (multi-hosted): DJANGO_BPP_HOSTNAMES jako CSV.
+# Backward-compat (single-host): DJANGO_BPP_HOSTNAME (jedna nazwa).
+# Jeśli oba są ustawione, HOSTNAMES wygrywa; HOSTNAME staje się ignorowany.
+_hostnames_csv = env("DJANGO_BPP_HOSTNAMES")
+if _hostnames_csv:
+    DJANGO_BPP_HOSTNAMES = [h.strip() for h in _hostnames_csv.split(",") if h.strip()]
+else:
+    DJANGO_BPP_HOSTNAMES = [env("DJANGO_BPP_HOSTNAME")]
+
+# Canonical/primary hostname — pierwszy z listy. Używany m.in. przez
+# Rollbar (identyfikacja deployment'u w raportach błędów).
+DJANGO_BPP_HOSTNAME = DJANGO_BPP_HOSTNAMES[0] if DJANGO_BPP_HOSTNAMES else "localhost"
 
 ALLOWED_HOSTS = [
     "127.0.0.1",
     "appserver",
     "appserver:8000",
     "test.unexistenttld",
-    DJANGO_BPP_HOSTNAME,
+    *DJANGO_BPP_HOSTNAMES,
 ]
 
-CSRF_TRUSTED_ORIGINS = ["https://" + DJANGO_BPP_HOSTNAME]
+CSRF_TRUSTED_ORIGINS = ["https://" + h for h in DJANGO_BPP_HOSTNAMES]
 
 # Optional extra CSRF origins for dev with non-standard ports
 # (comma-separated, e.g. "https://bpp.localnet:10443,https://localhost:10443")

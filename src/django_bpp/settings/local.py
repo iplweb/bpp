@@ -15,6 +15,7 @@ setenv_default("DJANGO_BPP_SECRET_KEY", "0xdeadbeef 2")
 from .base import *  # noqa
 from .base import (  # noqa
     DATABASES,
+    DJANGO_BPP_HOSTNAMES,
     INSTALLED_APPS,
     MIDDLEWARE,
     REDIS_HOST,
@@ -46,7 +47,7 @@ ALLOWED_HOSTS = [
     "mac.iplweb",
     "publikacje-test",
     "test.unexistenttld",
-    env("DJANGO_BPP_HOSTNAME"),  # noqa
+    *DJANGO_BPP_HOSTNAMES,
 ]
 
 CELERY_ALWAYS_EAGER = False
