@@ -70,13 +70,8 @@ def _strip_restrict_tokens(sql_path: Path) -> None:
     sql_path.write_text("".join(kept), encoding="utf-8")
 
 
-def _register_temp_alias(
-    host: str, port: int, user: str, password: str, db: str
-) -> str:
-    from django.db import connections
-
-    alias = "pg_baseline_rebuild"
-    connections.databases[alias] = {
+def _build_db_settings(host: str, port: int, user: str, password: str, db: str) -> dict:
+    return {
         "ENGINE": "django.db.backends.postgresql",
         "NAME": db,
         "USER": user,
@@ -91,8 +86,6 @@ def _register_temp_alias(
         "TIME_ZONE": None,
         "TEST": {},
     }
-    connections[alias].ensure_connection()
-    return alias
 
 
 def rebuild_baseline(config: BaselineConfig) -> None:
@@ -117,12 +110,33 @@ def rebuild_baseline(config: BaselineConfig) -> None:
     with container as pg:
         host = pg.get_container_host_ip()
         port = int(pg.get_exposed_port(5432))
-        alias = _register_temp_alias(host, port, "bpp", "password", "bpp_baseline")
+
+        # Redirect the ``default`` connection at the testcontainer for the
+        # duration of migrate.  Many BPP migrations call helpers like
+        # ``load_custom_sql`` which grab ``from django.db import connection``
+        # — that always returns the *default* connection, ignoring the
+        # ``database=alias`` arg passed to call_command. Without this swap,
+        # those RunPython operations would silently execute against the
+        # developer's local ``bpp`` DB and corrupt it (or, when ``pl_PL``
+        # already exists there, fail the rebuild outright).
+        original_default = connections.databases["default"]
+        try:
+            connections["default"].close()
+        except Exception as exc:  # noqa: BLE001
+            print(f"[baseline] warning: could not close prior default: {exc}")
+        # Evict the cached DatabaseWrapper so the next access rebuilds it
+        # against the new settings_dict; otherwise migrate would still talk
+        # to the developer's local bpp DB despite the dict swap.
+        if hasattr(connections._connections, "default"):
+            delattr(connections._connections, "default")
+        connections.databases["default"] = _build_db_settings(
+            host, port, "bpp", "password", "bpp_baseline"
+        )
 
         try:
-            call_command("migrate", database=alias, interactive=False, verbosity=1)
-            _freeze_timestamps(alias, config)
-            connections[alias].close()
+            call_command("migrate", interactive=False, verbosity=1)
+            _freeze_timestamps("default", config)
+            connections["default"].close()
 
             dsn = {
                 "HOST": host,
@@ -136,7 +150,9 @@ def rebuild_baseline(config: BaselineConfig) -> None:
             write_meta(config.meta_path)
         finally:
             try:
-                connections[alias].close()
+                connections["default"].close()
             except Exception as exc:  # noqa: BLE001
-                print(f"[baseline] warning: could not close alias: {exc}")
-            connections.databases.pop(alias, None)
+                print(f"[baseline] warning: could not close default: {exc}")
+            if hasattr(connections._connections, "default"):
+                delattr(connections._connections, "default")
+            connections.databases["default"] = original_default
