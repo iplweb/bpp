@@ -199,16 +199,12 @@ jobs:
         cache-to: type=registry,ref=${{ env.IMAGE_REPO }}:cache,mode=max
 
   tests:
-    # EXPERIMENT: single sharded job replacing tests-parallel +
-    # tests-serial + tests-playwright. Each shard runs the full suite
-    # (playwright + non-playwright + serial) end-to-end. Goal is to
-    # measure whether one large sharded job is faster than three
-    # specialised jobs once you account for fixed per-shard overhead
-    # (image pull, service startup, fixtures).
-    #
-    # Within each shard we run a serial pass first (no xdist), then a
-    # parallel pass for everything else, so @pytest.mark.serial tests
-    # don't race against xdist workers on the same shard.
+    # EXPERIMENT v2: single sharded job, single pytest invocation per
+    # shard. No marker filter — everything (playwright + non-playwright
+    # + serial) runs together under -n auto, sharded across 4 runners.
+    # Risk: @pytest.mark.serial tests may race against xdist workers
+    # within the same shard; if any flake, we'll need xdist_group
+    # annotations or a separate serial job.
     name: Tests (sharded)
     needs: prepare-image
     if: |
@@ -267,21 +263,7 @@ jobs:
           sleep 2
         done
 
-    - name: Tests serial (shard ${{ matrix.shard }}/${{ env.NUM_SHARDS }})
-      timeout-minutes: 10
-      env:
-        SHARD_ID: ${{ matrix.shard }}
-      run: |
-        docker compose $COMPOSE_FILES run --rm \
-          -e SHARD_ID \
-          test-runner uv run pytest \
-            -m "serial" \
-            --shard-id "$SHARD_ID" --num-shards "$NUM_SHARDS" \
-            --timeout 300 \
-            --cov=src/ --cov-branch \
-            --cov-report=xml:/ci-output/cov-serial.xml
-
-    - name: Tests parallel (shard ${{ matrix.shard }}/${{ env.NUM_SHARDS }})
+    - name: Tests (shard ${{ matrix.shard }}/${{ env.NUM_SHARDS }})
       timeout-minutes: 25
       env:
         SHARD_ID: ${{ matrix.shard }}
@@ -289,7 +271,7 @@ jobs:
         docker compose $COMPOSE_FILES run --rm \
           -e SHARD_ID \
           test-runner uv run pytest \
-            -m "not serial" -n auto \
+            -n auto \
             --shard-id "$SHARD_ID" --num-shards "$NUM_SHARDS" \
             --timeout 300 \
             --cov=src/ --cov-branch \
