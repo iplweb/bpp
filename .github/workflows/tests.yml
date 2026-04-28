@@ -129,6 +129,32 @@ jobs:
     steps:
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
+    # baseline_check is repo-state-only — it doesn't need the
+    # test-runner image, the database, or any baked artefacts. Running
+    # it here (instead of inside a test job) means a baseline drift
+    # fails fast and skips the expensive image build below.
+    - name: Install system build deps (for uv sync)
+      run: |
+        sudo apt-get update
+        xargs -a docker/bpp_base/build.txt sudo apt-get install -y
+
+    - name: Install uv (for baseline_check)
+      # No setup-uv cache here — this job pushes images to GHCR, and
+      # zizmor flags cache+publish combos as a poisoning vector. The
+      # cache hit would shave a few seconds off a one-shot uv sync,
+      # not worth the audit smell.
+      uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
+      with:
+        enable-cache: false
+
+    - name: Install project deps (for baseline_check)
+      run: uv sync --frozen --no-install-project
+
+    - name: Check baseline freshness
+      env:
+        DJANGO_BPP_SKIP_DOTENV: "1"
+      run: uv run python src/manage.py baseline_check --max-delta 50
+
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
       with:
@@ -199,39 +225,13 @@ jobs:
 
     env:
       TEST_RUNNER_IMAGE: ${{ needs.prepare-image.outputs.image }}
+      # Compose stack (base + CI override). The override drops the
+      # source bind mount and exposes ./ci-output as the only writable
+      # volume, so coverage XML survives `compose run --rm`.
+      COMPOSE_FILES: -f docker-compose.test.yml -f docker-compose.test.ci.yml
 
     steps:
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-    - name: Install system build deps (for uv sync)
-      # Only shard 0 runs baseline_check, but every shard needs the
-      # native headers if anything else triggers a host-side `uv sync`
-      # (currently only baseline_check does, but we keep the apt step
-      # uniform across shards so a future host-side step doesn't
-      # silently fail on shards 1/2).
-      if: matrix.shard == 0
-      run: |
-        sudo apt-get update
-        xargs -a docker/bpp_base/build.txt sudo apt-get install -y
-
-    - name: Install uv (for baseline_check)
-      if: matrix.shard == 0
-      uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
-      with:
-        enable-cache: true
-
-    - name: Install project deps (for baseline_check)
-      if: matrix.shard == 0
-      run: uv sync --frozen --no-install-project
-
-    - name: Check baseline freshness
-      # Run only on shard 0 — baseline drift is a deterministic, repo-
-      # global property; running the check three times wastes ~15s per
-      # shard and gives no extra signal.
-      if: matrix.shard == 0
-      env:
-        DJANGO_BPP_SKIP_DOTENV: "1"
-      run: uv run python src/manage.py baseline_check --max-delta 50
 
     - name: Log in to GHCR
       uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
@@ -240,46 +240,44 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
+    - name: Prepare ci-output dir
+      # Bind-mounted into the container at /ci-output so pytest can
+      # write cov.xml somewhere the runner can read after `--rm`.
+      run: mkdir -p ci-output
+
     - name: Pull test-runner image
-      run: docker compose -f docker-compose.test.yml pull test-runner
+      run: docker compose $COMPOSE_FILES pull test-runner
 
     - name: Start services
-      run: |
-        docker compose -f docker-compose.test.yml up -d db redis
+      run: docker compose $COMPOSE_FILES up -d db redis
 
     - name: Wait for services
       timeout-minutes: 2
       run: |
-        until docker compose -f docker-compose.test.yml exec db \
+        until docker compose $COMPOSE_FILES exec db \
             pg_isready -U bpp; do
           echo "Waiting for PostgreSQL..."
           sleep 2
         done
-        until docker compose -f docker-compose.test.yml exec redis \
+        until docker compose $COMPOSE_FILES exec redis \
             redis-cli ping; do
           echo "Waiting for Redis..."
           sleep 2
         done
-
-    - name: Build assets
-      timeout-minutes: 10
-      run: |
-        docker compose -f docker-compose.test.yml run --rm \
-          test-runner uv run make assets
 
     - name: Tests (parallel, shard ${{ matrix.shard }}/3)
       timeout-minutes: 20
       env:
         SHARD_ID: ${{ matrix.shard }}
       run: |
-        docker compose -f docker-compose.test.yml run --rm \
+        docker compose $COMPOSE_FILES run --rm \
           -e SHARD_ID \
           test-runner uv run pytest \
             -m "not playwright and not serial" -n auto \
             --shard-id "$SHARD_ID" --num-shards 3 \
             --timeout 300 \
             --cov=src/ --cov-branch \
-            --cov-report=xml:cov.xml
+            --cov-report=xml:/ci-output/cov.xml
 
     - name: Upload coverage to Coveralls (parallel)
       if: always()
@@ -288,12 +286,11 @@ jobs:
         github-token: ${{ secrets.GITHUB_TOKEN }}
         flag-name: tests-parallel-${{ matrix.shard }}
         parallel: true
-        file: cov.xml
+        file: ci-output/cov.xml
 
     - name: Cleanup
       if: always()
-      run: |
-        docker compose -f docker-compose.test.yml down -v
+      run: docker compose $COMPOSE_FILES down -v
 
   tests-serial:
     # Tests tagged @pytest.mark.serial share state that xdist workers
@@ -314,6 +311,7 @@ jobs:
 
     env:
       TEST_RUNNER_IMAGE: ${{ needs.prepare-image.outputs.image }}
+      COMPOSE_FILES: -f docker-compose.test.yml -f docker-compose.test.ci.yml
 
     steps:
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -325,42 +323,38 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
+    - name: Prepare ci-output dir
+      run: mkdir -p ci-output
+
     - name: Pull test-runner image
-      run: docker compose -f docker-compose.test.yml pull test-runner
+      run: docker compose $COMPOSE_FILES pull test-runner
 
     - name: Start services
-      run: |
-        docker compose -f docker-compose.test.yml up -d db redis
+      run: docker compose $COMPOSE_FILES up -d db redis
 
     - name: Wait for services
       timeout-minutes: 2
       run: |
-        until docker compose -f docker-compose.test.yml exec db \
+        until docker compose $COMPOSE_FILES exec db \
             pg_isready -U bpp; do
           echo "Waiting for PostgreSQL..."
           sleep 2
         done
-        until docker compose -f docker-compose.test.yml exec redis \
+        until docker compose $COMPOSE_FILES exec redis \
             redis-cli ping; do
           echo "Waiting for Redis..."
           sleep 2
         done
 
-    - name: Build assets
-      timeout-minutes: 10
-      run: |
-        docker compose -f docker-compose.test.yml run --rm \
-          test-runner uv run make assets
-
     - name: Tests (serial, no xdist)
       timeout-minutes: 10
       run: |
-        docker compose -f docker-compose.test.yml run --rm \
+        docker compose $COMPOSE_FILES run --rm \
           test-runner uv run pytest \
             -m "serial and not playwright" \
             --timeout 300 \
             --cov=src/ --cov-branch \
-            --cov-report=xml:cov.xml
+            --cov-report=xml:/ci-output/cov.xml
 
     - name: Upload coverage to Coveralls (parallel)
       if: always()
@@ -369,12 +363,11 @@ jobs:
         github-token: ${{ secrets.GITHUB_TOKEN }}
         flag-name: tests-serial
         parallel: true
-        file: cov.xml
+        file: ci-output/cov.xml
 
     - name: Cleanup
       if: always()
-      run: |
-        docker compose -f docker-compose.test.yml down -v
+      run: docker compose $COMPOSE_FILES down -v
 
   tests-playwright:
     # Playwright (browser) tests, runs concurrently with tests-fast.
@@ -413,6 +406,7 @@ jobs:
 
     env:
       TEST_RUNNER_IMAGE: ${{ needs.prepare-image.outputs.image }}
+      COMPOSE_FILES: -f docker-compose.test.yml -f docker-compose.test.ci.yml
 
     steps:
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -424,46 +418,42 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
+    - name: Prepare ci-output dir
+      run: mkdir -p ci-output
+
     - name: Pull test-runner image
-      run: docker compose -f docker-compose.test.yml pull test-runner
+      run: docker compose $COMPOSE_FILES pull test-runner
 
     - name: Start services
-      run: |
-        docker compose -f docker-compose.test.yml up -d db redis
+      run: docker compose $COMPOSE_FILES up -d db redis
 
     - name: Wait for services
       timeout-minutes: 2
       run: |
-        until docker compose -f docker-compose.test.yml exec db \
+        until docker compose $COMPOSE_FILES exec db \
             pg_isready -U bpp; do
           echo "Waiting for PostgreSQL..."
           sleep 2
         done
-        until docker compose -f docker-compose.test.yml exec redis \
+        until docker compose $COMPOSE_FILES exec redis \
             redis-cli ping; do
           echo "Waiting for Redis..."
           sleep 2
         done
-
-    - name: Build assets
-      timeout-minutes: 10
-      run: |
-        docker compose -f docker-compose.test.yml run --rm \
-          test-runner uv run make assets
 
     - name: Tests (Playwright, shard ${{ matrix.shard }}/3)
       timeout-minutes: 25
       env:
         SHARD_ID: ${{ matrix.shard }}
       run: |
-        docker compose -f docker-compose.test.yml run --rm \
+        docker compose $COMPOSE_FILES run --rm \
           -e SHARD_ID \
           test-runner uv run pytest \
             -m "playwright" -n auto \
             --shard-id "$SHARD_ID" --num-shards 3 \
             --timeout 300 \
             --cov=src/ --cov-branch \
-            --cov-report=xml:cov.xml
+            --cov-report=xml:/ci-output/cov.xml
 
     - name: Upload coverage to Coveralls (parallel)
       if: always()
@@ -472,9 +462,8 @@ jobs:
         github-token: ${{ secrets.GITHUB_TOKEN }}
         flag-name: tests-playwright-${{ matrix.shard }}
         parallel: true
-        file: cov.xml
+        file: ci-output/cov.xml
 
     - name: Cleanup
       if: always()
-      run: |
-        docker compose -f docker-compose.test.yml down -v
+      run: docker compose $COMPOSE_FILES down -v

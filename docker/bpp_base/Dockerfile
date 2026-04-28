@@ -264,7 +264,30 @@ RUN PLAYWRIGHT_BROWSERS_PATH=/opt/playwright \
     /opt/venv/bin/playwright install chromium chromium-headless-shell
 ENV PLAYWRIGHT_BROWSERS_PATH=/opt/playwright
 
+# Yarn deps + grunt CLI (needed for `make assets`). Mirrors the
+# testserver stage so CI gets a pre-built test-runner image with the
+# same toolchain available offline.
 WORKDIR /src
+COPY package.json yarn.lock Gruntfile.js ./
+RUN --mount=type=cache,target=/root/.npm,id=npm-cache \
+    --mount=type=cache,target=/root/.yarn,id=yarn-cache \
+    npx yarn install --dev --ignore-optional && \
+    npx yarn add grunt
+
+# Snapshot the source tree and bake the frontend assets + .mo
+# translations into the image. CI consumes this through the
+# docker-compose.test.ci.yml override (no bind mount), so each test
+# job pulls a ready-to-run image instead of running `make assets`
+# (~1 min × N jobs) on every invocation. Local dev keeps the bind
+# mount and rebuilds assets on demand.
+#
+# `COPY . /src` invalidates only this layer when source changes; all
+# preceding layers (apt, uv sync, playwright, yarn install) survive
+# the registry-mode buildx cache, so warm rebuilds are seconds.
+COPY . /src
+
+RUN npx grunt build-non-interactive
+RUN /opt/venv/bin/python src/manage.py compilemessages -v0 -l pl --traceback
 
 ##############################################################################
 # TESTSERVER: lokalny obraz developerski (NIE jest publikowany do registry)
