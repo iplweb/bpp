@@ -50,11 +50,6 @@ services:
     volumes:
       - .:/src
       - /var/run/docker.sock:/var/run/docker.sock
-      # Persist Playwright browser cache between ephemeral `compose run --rm`
-      # invocations. Without this, `playwright install` from the setup step
-      # disappears with the container, and the later Tests (Playwright) step
-      # hits "BrowserType.launch: Executable doesn't exist".
-      - playwright_cache:/root/.cache/ms-playwright
     working_dir: /src
     depends_on:
       db: { condition: service_healthy }
@@ -76,4 +71,3 @@ services:
 volumes:
   postgresql_data:
   redis_data:
-  playwright_cache:

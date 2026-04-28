@@ -252,6 +252,18 @@ RUN --mount=type=cache,target=/root/.cache/uv,id=uv-cache \
     uv sync --frozen --all-extras \
         --all-groups --no-install-project
 
+# Playwright browser binaries baked into the image so the CI workflow
+# doesn't have to run `playwright install` per build (saves ~30-60s and
+# obviates the docker volume that previously persisted the cache between
+# `compose run --rm` invocations). Cache key: this layer is invalidated
+# whenever uv.lock changes, which already happens when playwright is
+# bumped — so the image always ships browsers matching the pinned
+# Python wheel. System libs were already installed via
+# `npx playwright install-deps chromium` above.
+RUN PLAYWRIGHT_BROWSERS_PATH=/opt/playwright \
+    /opt/venv/bin/playwright install chromium chromium-headless-shell
+ENV PLAYWRIGHT_BROWSERS_PATH=/opt/playwright
+
 WORKDIR /src
 
 ##############################################################################
