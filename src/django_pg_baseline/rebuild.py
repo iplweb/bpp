@@ -34,39 +34,58 @@ def _freeze_timestamps(alias: str, config: BaselineConfig) -> None:
             )
 
 
-def _run_pg_dump(dsn: dict, config: BaselineConfig) -> None:
+def _run_pg_dump(container_id: str, db: dict, config: BaselineConfig) -> None:
+    """Run ``pg_dump`` *inside* the testcontainer.
+
+    The host's pg_dump may be a different major version than the server
+    inside the container — and pg_dump emits version-specific preamble
+    (e.g. PG17 adds ``SET transaction_timeout = 0;``) which then makes
+    the dump unrestorable on the older PG major we actually target.
+    Running pg_dump in-container guarantees client/server version match.
+    """
     cmd = [
+        "docker",
+        "exec",
+        "-e",
+        f"PGPASSWORD={db.get('PASSWORD') or ''}",
+        container_id,
         "pg_dump",
         "-h",
-        str(dsn["HOST"]),
+        "localhost",
         "-p",
-        str(dsn["PORT"]),
+        "5432",
         "-U",
-        str(dsn["USER"]),
+        str(db["USER"]),
         "-d",
-        str(dsn["NAME"]),
+        str(db["NAME"]),
         "--format=plain",
         "--encoding=UTF8",
         *config.pg_dump_extra_args,
     ]
-    env = {"PGPASSWORD": str(dsn.get("PASSWORD") or "")}
-    import os
-
-    full_env = {**os.environ, **env}
     config.sql_path.parent.mkdir(parents=True, exist_ok=True)
     with config.sql_path.open("wb") as fh:
-        subprocess.run(cmd, env=full_env, check=True, stdout=fh)
+        subprocess.run(cmd, check=True, stdout=fh)
 
 
-def _strip_restrict_tokens(sql_path: Path) -> None:
-    """Remove non-deterministic ``\\restrict`` / ``\\unrestrict`` lines.
+def _scrub_dump(sql_path: Path) -> None:
+    """Remove lines that break determinism or PG16 compatibility.
 
-    Newer pg_dump emits these psql meta-commands with random tokens,
-    which break determinism. The lines are harmless to strip.
+    - ``\\restrict`` / ``\\unrestrict``: psql meta-commands with random
+      tokens emitted by newer pg_dump — non-deterministic, harmless to drop.
+    - ``SET transaction_timeout = 0;``: emitted by pg_dump >= 17 but
+      unknown to PostgreSQL 16, which we still target as the baseline
+      runtime. Leaving it in makes the dump unrestorable on PG16.
     """
-    pattern = re.compile(r"^\\(un)?restrict ")
+    drop_patterns = [
+        re.compile(r"^\\(un)?restrict "),
+        re.compile(r"^SET transaction_timeout = "),
+    ]
     text = sql_path.read_text(encoding="utf-8")
-    kept = [line for line in text.splitlines(keepends=True) if not pattern.match(line)]
+    kept = [
+        line
+        for line in text.splitlines(keepends=True)
+        if not any(p.match(line) for p in drop_patterns)
+    ]
     sql_path.write_text("".join(kept), encoding="utf-8")
 
 
@@ -138,15 +157,14 @@ def rebuild_baseline(config: BaselineConfig) -> None:
             _freeze_timestamps("default", config)
             connections["default"].close()
 
-            dsn = {
-                "HOST": host,
-                "PORT": port,
+            db = {
                 "USER": "bpp",
                 "PASSWORD": "password",
                 "NAME": "bpp_baseline",
             }
-            _run_pg_dump(dsn, config)
-            _strip_restrict_tokens(config.sql_path)
+            container_id = pg.get_wrapped_container().id
+            _run_pg_dump(container_id, db, config)
+            _scrub_dump(config.sql_path)
             write_meta(config.meta_path)
         finally:
             try:

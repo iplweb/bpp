@@ -17,9 +17,18 @@ def pytest_configure(config):
     (e.g. `compilemessages`) from re-syncing and stripping dev extras
     like `testcontainers` from the venv. Tests are expected to run in
     a venv pre-synced with `uv sync --all-extras`.
+
+    BPP_SKIP_ASSETS_BUILD=1 pomija ten krok. Używane w CI: obraz
+    test-runner ma zapieczone CSS + .mo (Dockerfile, stage test-runner),
+    więc każdy z N shardów odpalający `make assets` to tylko narzut —
+    a w praktyce robi pełny `yarn install` + `grunt build`, bo Dockerfile
+    nie zostawia w obrazie sentinela `node_modules/.installed`.
     """
     import os
     import sys
+
+    if os.environ.get("BPP_SKIP_ASSETS_BUILD"):
+        return
 
     repo_root = Path(__file__).parent
     env = {**os.environ, "UV_NO_SYNC": "1"}

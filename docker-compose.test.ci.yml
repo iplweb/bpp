@@ -24,3 +24,10 @@ services:
     # tested locally with `docker compose config` and confirmed.
     volumes: !override
       - ./ci-output:/ci-output
+    environment:
+      # CSS + .mo są zapieczone w obrazie test-runner (Dockerfile,
+      # stage test-runner: `npx grunt build-non-interactive` +
+      # `compilemessages`). conftest.py odpala `make assets` jako
+      # safety net dla developera lokalnego — w CI to czysty narzut
+      # × N shardów, dlatego tu wyłączamy.
+      BPP_SKIP_ASSETS_BUILD: "1"
