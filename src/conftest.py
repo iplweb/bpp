@@ -25,7 +25,10 @@ from bpp.tests.helpers import (  # noqa: F401 - re-export helpers
     ciagle_publikacja,
     zwarte_publikacja,
 )
-from channels_live_server import channels_live_server  # noqa: F401
+from channels_live_server import (  # noqa: F401
+    channels_live_server,
+    channels_live_server_per_test,
+)
 
 # pytest_plugins: rejestrujemy fixture'owe moduły jako pluginy, żeby
 # pytest zastosował assert-rewriting zanim je zaimportuje. Bez tej
@@ -507,7 +510,9 @@ def dyscyplina2(db, pbn_dyscyplina2):
 # Import Playwright fixtures
 from fixtures.playwright_fixtures import (  # noqa
     admin_page,
+    admin_page_per_test,
     preauth_asgi_page,
+    preauth_asgi_page_per_test,
     preauth_page,
 )
 

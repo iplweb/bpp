@@ -148,8 +148,8 @@ def select_charakter_formalny(admin_page):
     "klass", ["wydawnictwo_ciagle", "wydawnictwo_zwarte", "patent"]
 )
 def test_procent_odpowiedzialnosci_baseModel_AutorFormset_jeden_autor(  # noqa: C901
-    channels_live_server,
-    admin_page: Page,
+    channels_live_server_per_test,
+    admin_page_per_test: Page,
     transactional_db,
     klass,
 ):
@@ -157,6 +157,8 @@ def test_procent_odpowiedzialnosci_baseModel_AutorFormset_jeden_autor(  # noqa: 
 
     Uses explicit COMMIT to make data visible to live server.
     """
+    channels_live_server = channels_live_server_per_test
+    admin_page = admin_page_per_test
     # Create system fixtures and commit
     create_and_commit_fixtures()
 
@@ -317,12 +319,14 @@ def test_procent_odpowiedzialnosci_baseModel_AutorFormset_problem_jeden_autor(  
     "klass", ["wydawnictwo_ciagle", "wydawnictwo_zwarte", "patent"]
 )
 def test_procent_odpowiedzialnosci_baseModel_AutorFormset_dwoch_autorow(  # noqa: C901
-    channels_live_server,
-    admin_page: Page,
+    channels_live_server_per_test,
+    admin_page_per_test: Page,
     transactional_db,
     klass,
 ):
     """Test two authors with 50%+50% responsibility validates correctly."""
+    channels_live_server = channels_live_server_per_test
+    admin_page = admin_page_per_test
     # Create system fixtures and commit
     create_and_commit_fixtures()
 
@@ -545,14 +549,16 @@ def test_procent_odpowiedzialnosci_baseModel_AutorFormset_problem_dwoch_autorow(
     "klass", ["wydawnictwo_ciagle", "wydawnictwo_zwarte", "patent"]
 )
 def test_procent_odpowiedzialnosci_baseModel_AutorFormset_dobrze_potem_zle_dwoch_autorow(  # noqa: C901, E501
-    channels_live_server,
-    admin_page: Page,
+    channels_live_server_per_test,
+    admin_page_per_test: Page,
     transactional_db,
     klass,
 ):
     """Test valid submission followed by invalid edit (good then bad)."""
     from django.apps import apps
 
+    channels_live_server = channels_live_server_per_test
+    admin_page = admin_page_per_test
     # Create system fixtures and commit
     create_and_commit_fixtures()
 
