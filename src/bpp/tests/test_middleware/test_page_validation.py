@@ -89,7 +89,7 @@ class TestMaliciousRequestBlockingMiddleware:
         """Test: Original malicious string from user's traceback should be blocked"""
         # This is the actual string from the user's traceback
         malicious_page = (
-            "                                94\" AND ANd/**/1373=(seLEcT/**/uPPeR(XMlTYpE(chr(60)||CHr(58)||"
+            '                                94" AND ANd/**/1373=(seLEcT/**/uPPeR(XMlTYpE(chr(60)||CHr(58)||'
             "%27~%27||(SELECt/**/(cASe/**/when/**/(1373=1373)/**/TheN/**/1/**/eLse/**/0/**/End)/**/fROM/**/"
             "DuaL)||%27~%27||Chr(62)))/**/FROM/**/DUal)-- -"
         )
@@ -440,7 +440,7 @@ class TestMaliciousRequestBlockingMiddleware:
         Models the recursive ``?next=`` redirect-chain pattern produced by
         scanner bots that follow login redirects without cookies.
         """
-        long_next = "/accounts/login/" + "a" * 2100
+        long_next = "/accounts/login/" + "a" * 8200
         request = self.factory.get(f"/admin/login/?next={long_next}")
         response = self.middleware.process_request(request)
         assert response is not None
@@ -448,28 +448,87 @@ class TestMaliciousRequestBlockingMiddleware:
 
     def test_full_url_just_under_limit_allowed(self):
         """Test: Full URL just under the full-path limit should pass."""
-        # 1500 bytes of next= keeps full URL under 2048 limit
-        normal_next = "/accounts/login/" + "a" * 1400
+        # 7000 bytes of next= keeps full URL under 8192 limit
+        normal_next = "/accounts/login/" + "a" * 7000
         request = self.factory.get(f"/admin/login/?next={normal_next}")
         response = self.middleware.process_request(request)
         assert response is None
 
+    def test_datatables_ajax_url_allowed(self):
+        """Test: DataTables AJAX URL with many encoded columns must pass.
+
+        DataTables sends ``columns[i][data]``, ``columns[i][searchable]``,
+        ``columns[i][orderable]``, ``columns[i][search][value]`` etc. for
+        each column. For ~10 columns, the percent-encoded query string
+        crosses 2 KB but stays well under 8 KB. Blocking it would break
+        legitimate widgets in admin/import views.
+        """
+        column_names = [
+            "nazwisko",
+            "imiona",
+            "jednostka",
+            "wydzial",
+            "dyscyplina",
+            "procent_dyscypliny",
+            "subdyscyplina",
+            "procent_subdyscypliny",
+            "info",
+        ]
+        params = ["draw=1", "start=0", "length=10"]
+        for i, name in enumerate(column_names):
+            params.extend(
+                [
+                    f"columns%5B{i}%5D%5Bdata%5D={name}",
+                    f"columns%5B{i}%5D%5Bname%5D=",
+                    f"columns%5B{i}%5D%5Bsearchable%5D=true",
+                    f"columns%5B{i}%5D%5Borderable%5D=true",
+                    f"columns%5B{i}%5D%5Bsearch%5D%5Bvalue%5D=",
+                    f"columns%5B{i}%5D%5Bsearch%5D%5Bregex%5D=false",
+                ]
+            )
+        params.extend(
+            [
+                "order%5B0%5D%5Bcolumn%5D=0",
+                "order%5B0%5D%5Bdir%5D=asc",
+                "search%5Bvalue%5D=",
+                "search%5Bregex%5D=false",
+                "_=1234567890123",
+            ]
+        )
+        url = "/import_dyscyplin/api/nie_do_integracji/1/?" + "&".join(params)
+        request = self.factory.get(url)
+        response = self.middleware.process_request(request)
+        assert response is None, f"DataTables URL ({len(url)} chars) was blocked"
+
     def test_url_too_long_logs_reason(self, caplog):
         """Test: Oversized full URL block should log ``url_too_long``."""
         caplog.set_level(logging.WARNING)
-        long_next = "/x" + "a" * 2100
+        long_next = "/x" + "a" * 8200
         request = self.factory.get(f"/admin/login/?next={long_next}")
         self.middleware.process_request(request)
         assert "url_too_long" in caplog.text
+
+    def test_long_url_on_api_path_allowed(self):
+        """Test: ``/api/`` paths are exempt from the full-URL length cap.
+
+        DataTables serializes verbose per-column metadata into the query
+        string (``columns[N][data]``, ``[search][value]``, …) which can
+        exceed the cap on tables with many columns.
+        """
+        # Simulate a DataTables AJAX request that comfortably exceeds the
+        # full-URL cap.
+        bloat = "&columns%5B0%5D%5Bdata%5D=nazwisko" * 200
+        request = self.factory.get(f"/import_dyscyplin/api/foo/1/?draw=1{bloat}")
+        assert len(request.get_full_path()) > 4096
+        response = self.middleware.process_request(request)
+        assert response is None
 
     # Nested ?next= chains
     def test_nested_next_blocked(self):
         """Test: Nested ``?next=`` redirect chain should be blocked."""
         # Django decodes one URL-encoding level of the query string,
         # so this ends up as next=/accounts/login/?next=/foo/
-        request = self.factory.get(
-            "/admin/login/?next=/accounts/login/%3Fnext%3D/foo/"
-        )
+        request = self.factory.get("/admin/login/?next=/accounts/login/%3Fnext%3D/foo/")
         response = self.middleware.process_request(request)
         assert response is not None
         assert response.status_code == 444

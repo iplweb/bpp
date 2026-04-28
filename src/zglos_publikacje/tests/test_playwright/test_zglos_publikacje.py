@@ -105,9 +105,9 @@ def test_zglos_publikacje_z_plikiem_drugi_autor_dyscyplina(
     admin_page.click("#add-form")
     admin_page.wait_for_selector(f"#id_2-{n}-autor", state="attached", timeout=10000)
 
-    # Scroll the form into view to ensure Select2 is visible
+    # Scroll the form into view to ensure Select2 is visible. The select2
+    # helper internally waits for the container — no extra sleep needed.
     admin_page.locator(f"#id_2-{n}-autor").scroll_into_view_if_needed()
-    admin_page.wait_for_timeout(500)  # Small delay for Select2 to initialize
 
     select_select2_autocomplete(admin_page, f"id_2-{n}-autor", "Kowal", timeout=30000)
 

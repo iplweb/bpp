@@ -171,12 +171,9 @@ def _visit_page(page, url, visited, http_errors, base_url):
             http_errors.append({"url": url, "status": response.status})
             return []
 
-        # Wait for page to stabilize
-        try:
-            page.wait_for_load_state("networkidle", timeout=10000)
-        except Exception:
-            # networkidle may timeout due to long-polling, continue anyway
-            pass
+        # No networkidle wait — the BPP frontend keeps long-polling /
+        # WebSocket connections open, so networkidle never fires and we
+        # used to burn the full 10s timeout per crawled URL.
 
         # Accept cookies if banner exists
         try:

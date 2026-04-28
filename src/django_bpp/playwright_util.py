@@ -53,40 +53,35 @@ def select_select2_autocomplete(
         value_before_enter: Deprecated, not used
         timeout: Timeout in milliseconds (default 10000)
     """
-    # Wait for Select2 container to be present
-    container_selector = f"#select2-{element_id}-container"
-    try:
-        page.wait_for_selector(container_selector, timeout=timeout)
-    except Exception:
-        # Fallback - try to find the select2 element directly
-        container_selector = f"#{element_id} + .select2-container"
-        page.wait_for_selector(container_selector, timeout=timeout)
+    # Wait for Select2 to be initialized. Two markup variants coexist:
+    #   - django-autocomplete-light: ``<select> + .select2-container`` (sibling)
+    #   - vanilla django-admin: ``#select2-{id}-container`` (rendered span)
+    # Both are usually present after init. Wait for either to appear, then
+    # always click on ``.select2-selection`` (inside the sibling container)
+    # — that's the element Select2 actually wires the dropdown toggle to.
+    id_selector = f"#select2-{element_id}-container"
+    sibling_selector = f"#{element_id} + .select2-container"
+    selection_selector = f"#{element_id} + .select2-container .select2-selection"
+    page.wait_for_selector(f"{id_selector}, {sibling_selector}", timeout=timeout)
 
     # Get the underlying select element's current value
     select_selector = f"#{element_id}"
     old_select_value = page.locator(select_selector).input_value()
 
-    # Click on the select2 element to open dropdown
-    # Try different methods to open the dropdown
+    # Open the dropdown by clicking on the selection element. Fall back to
+    # JS-triggered click if the locator click fails (e.g. element is
+    # off-screen on a tall admin form).
     try:
-        # Method 1: Click on the container directly
-        page.locator(container_selector).click()
+        page.locator(selection_selector).click(timeout=5000)
     except Exception:
-        try:
-            # Method 2: Click on the select2 selection element
-            page.locator(
-                f"#{element_id} + .select2-container .select2-selection"
-            ).click()
-        except Exception:
-            # Method 3: Use JavaScript to trigger the dropdown
-            page.locator(select_selector).evaluate(
-                """element => {
-                    const sibling = element.nextElementSibling;
-                    if (sibling && sibling.classList.contains('select2-container')) {
-                        sibling.querySelector('.select2-selection').click();
-                    }
-                }"""
-            )
+        page.locator(select_selector).evaluate(
+            """element => {
+                const sibling = element.nextElementSibling;
+                if (sibling && sibling.classList.contains('select2-container')) {
+                    sibling.querySelector('.select2-selection').click();
+                }
+            }"""
+        )
 
     # Wait for dropdown to open
     page.wait_for_selector(".select2-dropdown", state="visible", timeout=timeout)
@@ -118,16 +113,14 @@ def select_select2_autocomplete(
     # Press Enter to select the first/highlighted result
     search_input.press("Enter")
 
-    # Wait for selection to propagate (increased from 500ms to 750ms for stability)
-    page.wait_for_timeout(750)
-
-    # Verify dropdown is closed after selection to ensure clean state for next operation
+    # Wait for the actual signals that selection propagated:
+    # (1) Select2 closes the dropdown after Enter, (2) underlying <select>
+    # value changes. Both are event-driven — no need for a fixed sleep.
     try:
         page.wait_for_selector(".select2-dropdown", state="hidden", timeout=2000)
     except Exception:
         # Force close if still open
         page.evaluate("django.jQuery('.select2-hidden-accessible').select2('close')")
-        page.wait_for_timeout(200)
 
     if wait_for_new_value:
         # Wait for the underlying select value to change
@@ -136,6 +129,12 @@ def select_select2_autocomplete(
             f"'{old_select_value}'",
             timeout=timeout,
         )
+    else:
+        # No event-driven signal available — small polishing wait so the
+        # next interaction starts after Select2's internal change handlers
+        # finish (jQuery 'change' listeners run synchronously, but custom
+        # widgets may queue setTimeout(0) callbacks).
+        page.wait_for_timeout(50)
 
 
 def close_all_select2_dropdowns(page: Page):

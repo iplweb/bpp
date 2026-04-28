@@ -42,7 +42,10 @@ def test_data_confirm_shows_single_dialog(
     # Przejdź do strony ewaluacja_optymalizacja
     url = channels_live_server.url + reverse("ewaluacja_optymalizacja:index")
     admin_page.goto(url)
-    admin_page.wait_for_load_state("networkidle")
+    # Brak networkidle — strona ewaluacji ma stale otwarte połączenie
+    # WebSocket, więc czekanie do bezczynności sieci nigdy się nie kończy
+    # i marnowało domyślny 30 s timeout. Następujący `expect(...).to_be_visible()`
+    # i tak ma własny auto-wait na element przycisku.
 
     # Zamknij banner cookie, jeśli istnieje (blokuje kliknięcia)
     admin_page.evaluate("if(window.Cookielaw) Cookielaw.accept()")
@@ -101,7 +104,10 @@ def test_data_confirm_cancel_prevents_action(
     # Przejdź do strony
     url = channels_live_server.url + reverse("ewaluacja_optymalizacja:index")
     admin_page.goto(url)
-    admin_page.wait_for_load_state("networkidle")
+    # Brak networkidle — strona ewaluacji ma stale otwarte połączenie
+    # WebSocket, więc czekanie do bezczynności sieci nigdy się nie kończy
+    # i marnowało domyślny 30 s timeout. Następujący `expect(...).to_be_visible()`
+    # i tak ma własny auto-wait na element przycisku.
 
     # Zamknij banner cookie, jeśli istnieje (blokuje kliknięcia)
     admin_page.evaluate("if(window.Cookielaw) Cookielaw.accept()")

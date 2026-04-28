@@ -113,16 +113,16 @@ def test_channels_live_server(preauth_asgi_page: Page):
 
 
 @pytest.mark.django_db(transaction=True)
-def test_bpp_notifications(preauth_asgi_page: Page):
+def test_bpp_notifications(preauth_asgi_page_per_test: Page):
     """Sprawdz, czy notyfikacje dochodza.
     Wymaga uruchomionego staging-server.
     """
     s = "test notyfikacji 123 456"
-    page = preauth_asgi_page
+    page = preauth_asgi_page_per_test
     expect(page.locator("body")).not_to_contain_text(s)
     call_command(
         "send_notification",
-        preauth_asgi_page.authorized_user.username,
+        preauth_asgi_page_per_test.authorized_user.username,
         s,
         verbosity=0,
     )
