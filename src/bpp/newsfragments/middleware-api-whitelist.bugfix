@@ -1,0 +1,18 @@
+``MaliciousRequestBlockingMiddleware`` blokował legalne żądania
+DataTables AJAX, jeśli tabela miała wiele kolumn — biblioteka
+serializuje per-kolumnowe metadane (``columns[N][data]``,
+``[search][value]``, …) do query stringu, który łatwo przekraczał
+limit 2048 znaków. Konsekwencja: kontrolki DataTables na widokach
+``/api/...`` zwracały HTTP 444 zamiast danych, a integracyjne testy
+Playwright (m.in. ``import_dyscyplin``) timeout'owały się czekając
+na dane, których serwer odmówił.
+
+Dwie zmiany:
+
+- Limit ``MAX_FULL_PATH_LENGTH`` podniesiony 2048 → 4096 znaków
+  (mieści typowy DataTables-payload bez otwierania drzwi rekurencyjnym
+  ``?next=`` od skanerów, bo te i tak obsługuje osobny check).
+- Ścieżki zawierające ``/api/`` są zwolnione z check'u długości pełnego
+  URL — endpointy API legalnie generują wzdęte query stringi, a
+  scanner-boty z rekurencyjnymi przekierowaniami i tak nie kierują
+  swoich łańcuchów na ``/api/``.

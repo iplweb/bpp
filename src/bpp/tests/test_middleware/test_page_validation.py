@@ -440,7 +440,7 @@ class TestMaliciousRequestBlockingMiddleware:
         Models the recursive ``?next=`` redirect-chain pattern produced by
         scanner bots that follow login redirects without cookies.
         """
-        long_next = "/accounts/login/" + "a" * 2100
+        long_next = "/accounts/login/" + "a" * 4200
         request = self.factory.get(f"/admin/login/?next={long_next}")
         response = self.middleware.process_request(request)
         assert response is not None
@@ -448,8 +448,8 @@ class TestMaliciousRequestBlockingMiddleware:
 
     def test_full_url_just_under_limit_allowed(self):
         """Test: Full URL just under the full-path limit should pass."""
-        # 1500 bytes of next= keeps full URL under 2048 limit
-        normal_next = "/accounts/login/" + "a" * 1400
+        # 3500 bytes of next= keeps full URL under 4096 limit
+        normal_next = "/accounts/login/" + "a" * 3400
         request = self.factory.get(f"/admin/login/?next={normal_next}")
         response = self.middleware.process_request(request)
         assert response is None
@@ -457,10 +457,25 @@ class TestMaliciousRequestBlockingMiddleware:
     def test_url_too_long_logs_reason(self, caplog):
         """Test: Oversized full URL block should log ``url_too_long``."""
         caplog.set_level(logging.WARNING)
-        long_next = "/x" + "a" * 2100
+        long_next = "/x" + "a" * 4200
         request = self.factory.get(f"/admin/login/?next={long_next}")
         self.middleware.process_request(request)
         assert "url_too_long" in caplog.text
+
+    def test_long_url_on_api_path_allowed(self):
+        """Test: ``/api/`` paths are exempt from the full-URL length cap.
+
+        DataTables serializes verbose per-column metadata into the query
+        string (``columns[N][data]``, ``[search][value]``, …) which can
+        exceed the cap on tables with many columns.
+        """
+        # Simulate a DataTables AJAX request that comfortably exceeds the
+        # full-URL cap.
+        bloat = "&columns%5B0%5D%5Bdata%5D=nazwisko" * 200
+        request = self.factory.get(f"/import_dyscyplin/api/foo/1/?draw=1{bloat}")
+        assert len(request.get_full_path()) > 4096
+        response = self.middleware.process_request(request)
+        assert response is None
 
     # Nested ?next= chains
     def test_nested_next_blocked(self):
