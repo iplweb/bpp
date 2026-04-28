@@ -117,19 +117,30 @@ def django_db_setup(django_db_setup, django_db_blocker):
             f"[conftest] bump sekwencji, seed random.getstate() hash="
             f"{hash(random.getstate()) & 0xFFFF_FFFF:#010x}"
         )
+        # Wcześniej: 2 kwerendy per sekwencja (~408 round-tripów dla ~204
+        # sekwencji = ~190 ms). Teraz: jedna kwerenda zbiorcza po
+        # wartościach + jedna multi-statement do ALTERów (~17 ms łącznie).
         with connection.cursor() as cursor:
             cursor.execute(
                 "SELECT schemaname, sequencename FROM pg_sequences "
                 "WHERE schemaname = 'public'"
             )
-            for schema, name in cursor.fetchall():
-                cursor.execute(
-                    f'SELECT last_value, is_called FROM "{schema}"."{name}"'
+            sequences = cursor.fetchall()
+            if sequences:
+                # Pojedyncza kwerenda UNION ALL pobiera last_value + is_called
+                # ze wszystkich sekwencji jednym round-tripem.
+                values_sql = " UNION ALL ".join(
+                    f"SELECT '{name}' AS sn, last_value, is_called "
+                    f'FROM "{schema}"."{name}"'
+                    for schema, name in sequences
                 )
-                last_value, is_called = cursor.fetchone()
-                next_val = last_value + (1 if is_called else 0)
-                offset = random.randint(50_000, 500_000)
-                cursor.execute(
-                    f'ALTER SEQUENCE "{schema}"."{name}" '
-                    f"RESTART WITH {next_val + offset}"
-                )
+                cursor.execute(values_sql)
+                rows = cursor.fetchall()
+                alter_stmts = [
+                    f'ALTER SEQUENCE "public"."{sn}" '
+                    f"RESTART WITH {lv + (1 if ic else 0) + random.randint(50_000, 500_000)};"
+                    for sn, lv, ic in rows
+                ]
+                # Wszystkie ALTER-y w jednym batchu (psycopg dopuszcza
+                # multi-statement w surowym SQL-u).
+                cursor.execute("\n".join(alter_stmts))
