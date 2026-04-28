@@ -1,5 +1,6 @@
 from django import forms
 from django.contrib import admin, messages
+from django.core.exceptions import ImproperlyConfigured
 from reversion.admin import VersionAdmin
 
 from ewaluacja_liczba_n.models import LiczbaNDlaUczelni
@@ -282,8 +283,18 @@ class UczelniaAdmin(
         ret = super().save_model(request, obj, form, change)
 
         if obj.pbn_integracja:
+            try:
+                client = obj.pbn_client()
+            except ImproperlyConfigured as e:
+                messages.warning(
+                    request,
+                    f"Integracja z PBN jest włączona, ale konfiguracja jest niekompletna: {e}. "
+                    f"Uzupełnij brakujące dane (nazwa aplikacji i token) lub wyłącz "
+                    f"integrację z PBN w sekcji „Integracja z PBN API”.",
+                )
+                return ret
+
             # Wykonaj próbne pobranie rekordu z PBNu
-            client = obj.pbn_client()
             try:
                 client.get_languages()
             except PraceSerwisoweException:

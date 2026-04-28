@@ -3,7 +3,6 @@ from collections.abc import Iterable
 from json import JSONDecodeError
 
 from django.contrib import admin, messages
-from django.contrib.sites.models import Site
 from django.http import HttpResponseRedirect
 from django.urls import path, reverse
 from djangoql.admin import DjangoQLSearchMixin
@@ -13,6 +12,7 @@ from import_export.fields import Field
 from bpp.admin.core import DynamicAdminFilterMixin
 from bpp.admin.helpers import link_do_obiektu
 from bpp.admin.xlsx_export.mixins import EksportDanychMixin
+from bpp.util import site_url_for_request
 from rozbieznosci_dyscyplin.admin_utils import (
     CachingPaginator,
     DyscyplinaAutoraUstawionaFilter,
@@ -192,9 +192,13 @@ class RozbieznosciViewResource(resources.ModelResource):
             "bpp_strona_url",
         )
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.request = kwargs.get("request")
+
     def get_site_url(self):
-        """Get the base site URL."""
-        return "https://" + Site.objects.all().first().domain
+        """Get the base site URL (per-request w multi-hosted)."""
+        return site_url_for_request(self.request)
 
     def dehydrate_bpp_strona_url(self, obj):
         """Generate BPP work page URL."""
@@ -253,13 +257,17 @@ class RozbieznosciZrodelViewResource(resources.ModelResource):
             return "; ".join(disciplines.values_list("dyscyplina__nazwa", flat=True))
         return ""
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.request = kwargs.get("request")
+
     def dehydrate_zrodlo_strona_url(self, obj):
         """Generate BPP source page URL."""
         return self.get_site_url() + reverse("bpp:browse_zrodlo", args=[obj.zrodlo.pk])
 
     def get_site_url(self):
-        """Get the base site URL."""
-        return "https://" + Site.objects.all().first().domain
+        """Get the base site URL (per-request w multi-hosted)."""
+        return site_url_for_request(self.request)
 
     def dehydrate_bpp_strona_url(self, obj):
         """Generate BPP work page URL."""

@@ -5,7 +5,6 @@ from enum import Enum
 from typing import Any
 
 import openpyxl.worksheet.worksheet
-from django.contrib.sites.models import Site
 from django.utils.functional import cached_property
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.table import TableColumn
@@ -30,7 +29,7 @@ class SHUFFLE_TYPE(Enum):
     RANDOM = 4
 
 
-import random
+import random  # noqa: E402
 
 
 def shuffle_array(
@@ -45,19 +44,19 @@ def shuffle_array(
         i = random.randint(1, 3)
 
     if i == SHUFFLE_TYPE.BEGIN:
-        for a in range(no_shuffles):
+        for _ in range(no_shuffles):
             random.shuffle(first)
     elif i == SHUFFLE_TYPE.MIDDLE:
-        for a in range(no_shuffles):
+        for _ in range(no_shuffles):
             random.shuffle(second)
     elif i == SHUFFLE_TYPE.END:
-        for a in range(no_shuffles):
+        for _ in range(no_shuffles):
             random.shuffle(third)
 
     return first + second + third
 
 
-def output_table_to_xlsx(
+def output_table_to_xlsx(  # noqa: C901  # builder funkcja: opcjonalne kolumny i formatowanie scalone w jednej procedurze
     ws: openpyxl.worksheet.worksheet.Worksheet,
     title: str,
     headers: list[str],
@@ -97,7 +96,12 @@ def output_table_to_xlsx(
 
     first_table_row = ws.max_row
 
-    site_name = Site.objects.first().domain
+    # CLI/Celery context — brak requestu. Helper fallbackuje do
+    # Uczelnia.objects.get_default().site lub Site.objects.first().
+    from bpp.util import site_url_for_request
+
+    site_url = site_url_for_request()
+    site_name = site_url.removeprefix("https://").removeprefix("http://")
     url = first_column_url.format(site_name=site_name)
     autor_url = f"https://{site_name}/bpp/autor/"
     for row in dataset:
@@ -148,7 +152,7 @@ def output_table_to_xlsx(
         ws.column_dimensions[letter].bestFit = True
 
     dont_resize_those_columns = []
-    for ncol, col in enumerate(ws.columns):
+    for ncol, _ in enumerate(ws.columns):
         if headers[ncol] in totals:
             dont_resize_those_columns.append(ncol)
 
@@ -250,13 +254,13 @@ def float_or_string_or_int_or_none_to_decimal(i, decimal_places=4):
     raise NotImplementedError(f"Type {type(i)} not supported.")
 
 
-import os
-import zipfile
+import os  # noqa: E402
+import zipfile  # noqa: E402
 
 
 def zipdir(path, ziph):
     # https://stackoverflow.com/a/1855118/401516
-    for root, dirs, files in os.walk(path):
+    for root, _, files in os.walk(path):
         for file in files:
             ziph.write(
                 os.path.join(root, file),
