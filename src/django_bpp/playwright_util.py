@@ -113,16 +113,14 @@ def select_select2_autocomplete(
     # Press Enter to select the first/highlighted result
     search_input.press("Enter")
 
-    # Wait for selection to propagate (increased from 500ms to 750ms for stability)
-    page.wait_for_timeout(750)
-
-    # Verify dropdown is closed after selection to ensure clean state for next operation
+    # Wait for the actual signals that selection propagated:
+    # (1) Select2 closes the dropdown after Enter, (2) underlying <select>
+    # value changes. Both are event-driven — no need for a fixed sleep.
     try:
         page.wait_for_selector(".select2-dropdown", state="hidden", timeout=2000)
     except Exception:
         # Force close if still open
         page.evaluate("django.jQuery('.select2-hidden-accessible').select2('close')")
-        page.wait_for_timeout(200)
 
     if wait_for_new_value:
         # Wait for the underlying select value to change
@@ -131,6 +129,12 @@ def select_select2_autocomplete(
             f"'{old_select_value}'",
             timeout=timeout,
         )
+    else:
+        # No event-driven signal available — small polishing wait so the
+        # next interaction starts after Select2's internal change handlers
+        # finish (jQuery 'change' listeners run synchronously, but custom
+        # widgets may queue setTimeout(0) callbacks).
+        page.wait_for_timeout(50)
 
 
 def close_all_select2_dropdowns(page: Page):
