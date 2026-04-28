@@ -13,6 +13,11 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
+# Default minimum permissions; per-job overrides below where extra
+# scopes are needed (notably `packages:` for the GHCR push/pull flow).
+permissions:
+  contents: read
+
 jobs:
   lint:
     # Lint only Python files changed in this push/PR. The repo's
@@ -91,17 +96,96 @@ jobs:
           FILES: ${{ steps.files.outputs.list }}
         run: uv run --extra dev ruff format --check --force-exclude $FILES
 
-  tests-fast:
-    # Non-Playwright tests (parallel + serial). Runs concurrently with
-    # `tests-playwright` so the slow browser suite doesn't block the
-    # fast feedback loop.
-    name: Tests (fast)
-    # Skip this job if it's a "Merge tag" commit on the dev branch
+  prepare-image:
+    # Build the test-runner image once and push it to GHCR with two
+    # tags: `:sha-<commit>` (consumed by downstream test jobs) and
+    # `:cache` (registry-mode buildx cache, auto-merged across builds).
+    # All test jobs `needs:` this step so the image is built once per
+    # workflow run instead of N times per matrix runner.
+    name: Build test-runner image
     if: |
       !(github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, 'Merge tag'))
 
     runs-on: ubuntu-latest
     timeout-minutes: 30
+
+    permissions:
+      contents: read
+      # GHCR push needs `packages: write`. GITHUB_TOKEN inherits this
+      # scope only when the job declares it explicitly.
+      packages: write
+
+    outputs:
+      image: ${{ steps.tag.outputs.image }}
+
+    env:
+      PYTHON_VERSION: "3.12"
+      DEBIAN_VERSION: trixie
+      NODEJS_VERSION: "20"
+      # Lowercase repo owner, since GHCR rejects mixed-case namespaces.
+      # GitHub Actions ${{ github.repository_owner }} preserves case.
+      IMAGE_REPO: ghcr.io/iplweb/bpp-test-runner
+
+    steps:
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
+      with:
+        driver: docker-container
+
+    - name: Log in to GHCR
+      uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Compute image tag
+      id: tag
+      env:
+        SHA: ${{ github.sha }}
+      run: |
+        echo "image=${IMAGE_REPO}:sha-${SHA}" >> "$GITHUB_OUTPUT"
+
+    - name: Build & push test-runner image
+      uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
+      with:
+        context: .
+        file: docker/bpp_base/Dockerfile
+        target: test-runner
+        push: true
+        # Two tags: immutable sha-pinned (consumed by tests jobs) and
+        # the registry-cache helper used to seed `cache-from` next time.
+        tags: |
+          ${{ steps.tag.outputs.image }}
+        build-args: |
+          PYTHON_VERSION=${{ env.PYTHON_VERSION }}
+          DEBIAN_VERSION=${{ env.DEBIAN_VERSION }}
+          NODEJS_VERSION=${{ env.NODEJS_VERSION }}
+        # Registry-mode cache. mode=max stores all intermediate layers,
+        # so subsequent builds where uv.lock/Dockerfile/build.txt are
+        # unchanged finish in seconds. The first run after rolling out
+        # this workflow has no cache and pays the full ~3 min build —
+        # warm cache afterwards.
+        cache-from: type=registry,ref=${{ env.IMAGE_REPO }}:cache
+        cache-to: type=registry,ref=${{ env.IMAGE_REPO }}:cache,mode=max
+
+  tests-fast:
+    # Non-Playwright tests (parallel + serial). Runs concurrently with
+    # `tests-playwright` so the slow browser suite doesn't block the
+    # fast feedback loop.
+    name: Tests (fast)
+    needs: prepare-image
+    if: |
+      !(github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, 'Merge tag'))
+
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    permissions:
+      contents: read
+      packages: read
 
     strategy:
       max-parallel: 4
@@ -111,14 +195,17 @@ jobs:
         # aren't spending runner minutes on a build we expect to fail.
         python-version: ["3.12"]
 
+    env:
+      TEST_RUNNER_IMAGE: ${{ needs.prepare-image.outputs.image }}
+
     steps:
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
     - name: Install system build deps (for uv sync)
-      # uv sync --frozen builds native wheels (pycairo, psycopg2, lxml,
-      # cryptography) that need header libraries not present on the
-      # default runner image. Reuse docker/bpp_base/build.txt so the
-      # package list stays in sync with the runtime/test images.
+      # baseline_check below runs `uv sync` directly on the host runner
+      # and several wheels (pycairo, psycopg2, lxml, cryptography) need
+      # native headers. Reuse docker/bpp_base/build.txt so the package
+      # list stays in sync with the test-runner image.
       run: |
         sudo apt-get update
         xargs -a docker/bpp_base/build.txt sudo apt-get install -y
@@ -129,53 +216,25 @@ jobs:
         enable-cache: true
 
     - name: Install project deps (for baseline_check)
-      # baseline_check is a Django management command that loads the
-      # full INSTALLED_APPS. No DB connection needed — it reads
-      # src/baseline-sql/baseline.meta.json and counts migration files.
-      # --frozen is intentional: uv.lock is the single source of truth.
       run: uv sync --frozen --no-install-project
 
     - name: Check baseline freshness
       # Fail loudly if migrations have outpaced the baseline pg_dump by
-      # more than --max-delta. When this fails, the fix is to run
-      # `make rebuild-baseline` locally and commit the refreshed files.
-      # Only runs in tests-fast (not tests-playwright) — fail-fast on
-      # baseline drift, no need to duplicate the check.
+      # more than --max-delta. Only runs here (not in tests-playwright)
+      # — fail-fast on baseline drift, no need to duplicate the check.
       env:
         DJANGO_BPP_SKIP_DOTENV: "1"
       run: uv run python src/manage.py baseline_check --max-delta 50
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
+    - name: Log in to GHCR
+      uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
       with:
-        driver: docker-container
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Cache Docker layers
-      # Shared cache key with tests-playwright — both jobs build the
-      # same test-runner image, so the second job to run (whichever it
-      # is) will hit the buildx layer cache and finish the build in
-      # seconds rather than rebuilding from scratch.
-      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
-      with:
-        path: /tmp/.buildx-cache
-        key: >-
-          ${{ runner.os }}-buildx-${{ matrix.python-version }}-${{
-            hashFiles(
-              'docker/bpp_base/Dockerfile',
-              'docker/bpp_base/*.txt',
-              'uv.lock'
-            )
-          }}
-        restore-keys: |
-          ${{ runner.os }}-buildx-${{ matrix.python-version }}-
-
-    - name: Build test-runner image
-      env:
-        PYTHON_VERSION: ${{ matrix.python-version }}
-        COMPOSE_DOCKER_CLI_BUILD: 1
-        DOCKER_BUILDKIT: 1
-      run: |
-        docker compose -f docker-compose.test.yml build test-runner
+    - name: Pull test-runner image
+      run: docker compose -f docker-compose.test.yml pull test-runner
 
     - name: Start services
       run: |
@@ -241,14 +300,20 @@ jobs:
 
   tests-playwright:
     # Playwright (browser) tests, runs concurrently with tests-fast.
-    # Re-uses the same buildx layer cache (same key), so the test-runner
-    # image rebuild is essentially a cache pull on the second runner.
+    # Image is pulled from GHCR (built once by prepare-image), so each
+    # shard runner only pays the pull cost (~30s) instead of a full
+    # rebuild.
     name: Tests (Playwright)
+    needs: prepare-image
     if: |
       !(github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, 'Merge tag'))
 
     runs-on: ubuntu-latest
     timeout-minutes: 30
+
+    permissions:
+      contents: read
+      packages: read
 
     strategy:
       # Shard the Playwright suite across N runners. pytest-shard splits
@@ -268,41 +333,21 @@ jobs:
         python-version: ["3.12"]
         shard: [0, 1, 2]
 
+    env:
+      TEST_RUNNER_IMAGE: ${{ needs.prepare-image.outputs.image }}
+
     steps:
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-    - name: Install system build deps (for uv sync)
-      run: |
-        sudo apt-get update
-        xargs -a docker/bpp_base/build.txt sudo apt-get install -y
-
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
+    - name: Log in to GHCR
+      uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
       with:
-        driver: docker-container
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Cache Docker layers
-      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
-      with:
-        path: /tmp/.buildx-cache
-        key: >-
-          ${{ runner.os }}-buildx-${{ matrix.python-version }}-${{
-            hashFiles(
-              'docker/bpp_base/Dockerfile',
-              'docker/bpp_base/*.txt',
-              'uv.lock'
-            )
-          }}
-        restore-keys: |
-          ${{ runner.os }}-buildx-${{ matrix.python-version }}-
-
-    - name: Build test-runner image
-      env:
-        PYTHON_VERSION: ${{ matrix.python-version }}
-        COMPOSE_DOCKER_CLI_BUILD: 1
-        DOCKER_BUILDKIT: 1
-      run: |
-        docker compose -f docker-compose.test.yml build test-runner
+    - name: Pull test-runner image
+      run: docker compose -f docker-compose.test.yml pull test-runner
 
     - name: Start services
       run: |
