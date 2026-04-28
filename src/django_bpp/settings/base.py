@@ -579,18 +579,49 @@ COMPRESS_OFFLINE_CONTEXT = [
 ]
 
 # Lista hostów obsługiwanych przez deployment.
-# Preferowany sposób (multi-hosted): DJANGO_BPP_HOSTNAMES jako CSV.
-# Backward-compat (single-host): DJANGO_BPP_HOSTNAME (jedna nazwa).
-# Jeśli oba są ustawione, HOSTNAMES wygrywa; HOSTNAME staje się ignorowany.
-_hostnames_csv = env("DJANGO_BPP_HOSTNAMES")
+# Konfiguracja jawnie XOR: ustaw ALBO DJANGO_BPP_HOSTNAME (single, bez
+# przecinka), ALBO DJANGO_BPP_HOSTNAMES (multi-host, CSV z minimum dwoma
+# hostami). Ustawienie obu = ImproperlyConfigured (intencja niejasna).
+_hostname = os.environ.get("DJANGO_BPP_HOSTNAME", "").strip()
+_hostnames_csv = os.environ.get("DJANGO_BPP_HOSTNAMES", "").strip()
+
+if _hostname and _hostnames_csv:
+    raise ImproperlyConfigured(
+        "Ustaw albo DJANGO_BPP_HOSTNAME (single host, bez przecinka), albo "
+        "DJANGO_BPP_HOSTNAMES (multi-host, comma-separated, minimum dwa). "
+        "Oba naraz są niejednoznaczne — wybierz jedno."
+    )
+
 if _hostnames_csv:
+    if "," not in _hostnames_csv:
+        raise ImproperlyConfigured(
+            f"DJANGO_BPP_HOSTNAMES musi zawierać minimum dwa hosty "
+            f"oddzielone przecinkiem (otrzymano: {_hostnames_csv!r}). "
+            f"Dla single-host użyj DJANGO_BPP_HOSTNAME."
+        )
     DJANGO_BPP_HOSTNAMES = [h.strip() for h in _hostnames_csv.split(",") if h.strip()]
+    if len(DJANGO_BPP_HOSTNAMES) < 2:
+        raise ImproperlyConfigured(
+            f"DJANGO_BPP_HOSTNAMES po sparsowaniu daje mniej niż dwa hosty "
+            f"(otrzymano: {DJANGO_BPP_HOSTNAMES!r}). "
+            f"Dla single-host użyj DJANGO_BPP_HOSTNAME."
+        )
+elif _hostname:
+    if "," in _hostname:
+        raise ImproperlyConfigured(
+            f"DJANGO_BPP_HOSTNAME nie może zawierać przecinka "
+            f"(otrzymano: {_hostname!r}). Dla multi-host użyj "
+            f"DJANGO_BPP_HOSTNAMES."
+        )
+    DJANGO_BPP_HOSTNAMES = [_hostname]
 else:
+    # Żadne nie ustawione — fallback do default ("localhost") z env declaration
     DJANGO_BPP_HOSTNAMES = [env("DJANGO_BPP_HOSTNAME")]
 
 # Canonical/primary hostname — pierwszy z listy. Używany m.in. przez
-# Rollbar (identyfikacja deployment'u w raportach błędów).
-DJANGO_BPP_HOSTNAME = DJANGO_BPP_HOSTNAMES[0] if DJANGO_BPP_HOSTNAMES else "localhost"
+# Rollbar jako identyfikacja deployment'u (oznaczenie instalacji); per-request
+# vhost gdzie padło zgłoszenie ma osobny klucz w extra_data middleware'u.
+DJANGO_BPP_HOSTNAME = DJANGO_BPP_HOSTNAMES[0]
 
 ALLOWED_HOSTS = [
     "127.0.0.1",

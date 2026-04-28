@@ -330,10 +330,29 @@ class SiteResolutionMiddleware(MiddlewareMixin):
 class CustomRollbarNotifierMiddleware(RollbarNotifierMiddleware):
     def get_extra_data(self, request, exc):
         from django.conf import settings
+        from django.core.exceptions import DisallowedHost
 
-        return {
+        data = {
+            # Identyfikacja instalacji (canonical hostname, pierwsza pozycja
+            # z DJANGO_BPP_HOSTNAMES). W single-host = pełna informacja.
             "DJANGO_BPP_HOSTNAME": settings.DJANGO_BPP_HOSTNAME,
         }
+
+        if request is not None:
+            try:
+                data["request_host"] = request.get_host()
+            except DisallowedHost:
+                # request.get_host() może rzucić DisallowedHost — być może
+                # to właśnie ten exception już raportujemy. Nie blokuj
+                # wzbogacania payloadu, zaznacz informacją.
+                data["request_host"] = "<DisallowedHost>"
+
+            uczelnia = getattr(request, "_uczelnia", None)
+            if uczelnia is not None:
+                data["uczelnia_skrot"] = getattr(uczelnia, "skrot", None)
+                data["uczelnia_pk"] = uczelnia.pk
+
+        return data
 
     def get_payload_data(self, request, exc):
         payload_data = dict()
