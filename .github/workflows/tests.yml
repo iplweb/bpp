@@ -219,16 +219,16 @@ jobs:
 
     strategy:
       fail-fast: false
-      max-parallel: 6
+      max-parallel: 8
       matrix:
         python-version: ["3.12"]
         # 0-indexed; bump alongside NUM_SHARDS below if you change it.
-        shard: [0, 1, 2, 3]
+        shard: [0, 1, 2, 3, 4, 5, 6, 7]
 
     env:
       TEST_RUNNER_IMAGE: ${{ needs.prepare-image.outputs.image }}
       COMPOSE_FILES: -f docker-compose.test.yml -f docker-compose.test.ci.yml
-      NUM_SHARDS: "4"
+      NUM_SHARDS: "8"
 
     steps:
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
