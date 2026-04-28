@@ -57,7 +57,9 @@ def test_import_crossref_doi_author_modal_single_open(
     page = importer_page
     url = live_server.url + reverse("importer_publikacji:index")
     page.goto(url)
-    page.wait_for_load_state("networkidle")
+    # No networkidle — the page has long-polling/WebSocket connections
+    # so the network never becomes idle. The locator-based interactions
+    # below auto-wait for their target elements.
 
     # Dismiss cookie consent banner
     page.evaluate("Cookielaw.accept();")

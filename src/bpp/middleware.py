@@ -34,6 +34,14 @@ class MaliciousRequestBlockingMiddleware(MiddlewareMixin):
     # still catching exponentially growing ``?next=`` scanner chains.
     MAX_FULL_PATH_LENGTH = 8192
 
+    # Path substrings exempt from the full-URL length check entirely.
+    # DataTables serializes per-column metadata into the query string
+    # (``columns[N][data]``, ``[search][value]`` × N columns); on tables
+    # with many columns this can exceed even the headroom above. The
+    # length check exists to stop scanner-bot redirect chains, which
+    # never target ``/api/``, so exempting API endpoints is safe.
+    URL_LENGTH_WHITELIST_SUBSTRINGS = ("/api/",)
+
     # Blocked file extensions (case-insensitive)
     BLOCKED_EXTENSIONS = (
         # Script files (not used in Django)
@@ -147,9 +155,12 @@ class MaliciousRequestBlockingMiddleware(MiddlewareMixin):
         # Block excessively long full URLs (path + query string). Catches
         # scanner bots that follow login redirects without cookies and end up
         # accumulating exponentially growing percent-encoded ``?next=`` chains.
-        full_path = request.get_full_path()
-        if len(full_path) > self.MAX_FULL_PATH_LENGTH:
-            return self._block_request(request, "url_too_long", full_path[:100])
+        # Skip the check for whitelisted paths (e.g. ``/api/`` endpoints which
+        # legitimately carry verbose DataTables query params).
+        if not any(s in path for s in self.URL_LENGTH_WHITELIST_SUBSTRINGS):
+            full_path = request.get_full_path()
+            if len(full_path) > self.MAX_FULL_PATH_LENGTH:
+                return self._block_request(request, "url_too_long", full_path[:100])
 
         # Block nested ``?next=`` redirect chains. Django decodes one level of
         # percent-encoding when parsing query string, so a legitimate single

@@ -91,13 +91,17 @@ jobs:
           FILES: ${{ steps.files.outputs.list }}
         run: uv run --extra dev ruff format --check --force-exclude $FILES
 
-  build:
+  tests-fast:
+    # Non-Playwright tests (parallel + serial). Runs concurrently with
+    # `tests-playwright` so the slow browser suite doesn't block the
+    # fast feedback loop.
+    name: Tests (fast)
     # Skip this job if it's a "Merge tag" commit on the dev branch
     if: |
       !(github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, 'Merge tag'))
 
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 30
 
     strategy:
       max-parallel: 4
@@ -135,6 +139,8 @@ jobs:
       # Fail loudly if migrations have outpaced the baseline pg_dump by
       # more than --max-delta. When this fails, the fix is to run
       # `make rebuild-baseline` locally and commit the refreshed files.
+      # Only runs in tests-fast (not tests-playwright) — fail-fast on
+      # baseline drift, no need to duplicate the check.
       env:
         DJANGO_BPP_SKIP_DOTENV: "1"
       run: uv run python src/manage.py baseline_check --max-delta 50
@@ -145,6 +151,10 @@ jobs:
         driver: docker-container
 
     - name: Cache Docker layers
+      # Shared cache key with tests-playwright — both jobs build the
+      # same test-runner image, so the second job to run (whichever it
+      # is) will hit the buildx layer cache and finish the build in
+      # seconds rather than rebuilding from scratch.
       uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
       with:
         path: /tmp/.buildx-cache
@@ -215,14 +225,104 @@ jobs:
             --cov=src/ --cov-branch --cov-append \
             --cov-report=xml:cov.xml
 
+    - name: Upload coverage to Coveralls (parallel)
+      if: always()
+      uses: coverallsapp/github-action@5cbfd81b66ca5d10c19b062c04de0199c215fb6e # v2.3.7
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        flag-name: tests-fast
+        parallel: true
+        file: cov.xml
+
+    - name: Cleanup
+      if: always()
+      run: |
+        docker compose -f docker-compose.test.yml down -v
+
+  tests-playwright:
+    # Playwright (browser) tests, runs concurrently with tests-fast.
+    # Re-uses the same buildx layer cache (same key), so the test-runner
+    # image rebuild is essentially a cache pull on the second runner.
+    name: Tests (Playwright)
+    if: |
+      !(github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, 'Merge tag'))
+
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    strategy:
+      max-parallel: 4
+      matrix:
+        python-version: ["3.12"]
+
+    steps:
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+    - name: Install system build deps (for uv sync)
+      run: |
+        sudo apt-get update
+        xargs -a docker/bpp_base/build.txt sudo apt-get install -y
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
+      with:
+        driver: docker-container
+
+    - name: Cache Docker layers
+      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+      with:
+        path: /tmp/.buildx-cache
+        key: >-
+          ${{ runner.os }}-buildx-${{ matrix.python-version }}-${{
+            hashFiles(
+              'docker/bpp_base/Dockerfile',
+              'docker/bpp_base/*.txt',
+              'uv.lock'
+            )
+          }}
+        restore-keys: |
+          ${{ runner.os }}-buildx-${{ matrix.python-version }}-
+
+    - name: Build test-runner image
+      env:
+        PYTHON_VERSION: ${{ matrix.python-version }}
+        COMPOSE_DOCKER_CLI_BUILD: 1
+        DOCKER_BUILDKIT: 1
+      run: |
+        docker compose -f docker-compose.test.yml build test-runner
+
+    - name: Start services
+      run: |
+        docker compose -f docker-compose.test.yml up -d db redis
+
+    - name: Wait for services
+      timeout-minutes: 2
+      run: |
+        until docker compose -f docker-compose.test.yml exec db \
+            pg_isready -U bpp; do
+          echo "Waiting for PostgreSQL..."
+          sleep 2
+        done
+        until docker compose -f docker-compose.test.yml exec redis \
+            redis-cli ping; do
+          echo "Waiting for Redis..."
+          sleep 2
+        done
+
+    - name: Build assets
+      timeout-minutes: 10
+      run: |
+        docker compose -f docker-compose.test.yml run --rm \
+          test-runner uv run make assets
+
     - name: Tests (Playwright)
-      timeout-minutes: 20
+      timeout-minutes: 25
       run: |
         docker compose -f docker-compose.test.yml run --rm \
           test-runner uv run pytest \
             -m "playwright" -n auto \
             --timeout 300 \
-            --cov=src/ --cov-branch --cov-append \
+            --cov=src/ --cov-branch \
             --cov-report=xml:cov.xml
 
     - name: Upload coverage to Coveralls (parallel)
@@ -230,7 +330,7 @@ jobs:
       uses: coverallsapp/github-action@5cbfd81b66ca5d10c19b062c04de0199c215fb6e # v2.3.7
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}
-        flag-name: tests
+        flag-name: tests-playwright
         parallel: true
         file: cov.xml
 

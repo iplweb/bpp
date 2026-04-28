@@ -508,6 +508,21 @@ class TestMaliciousRequestBlockingMiddleware:
         self.middleware.process_request(request)
         assert "url_too_long" in caplog.text
 
+    def test_long_url_on_api_path_allowed(self):
+        """Test: ``/api/`` paths are exempt from the full-URL length cap.
+
+        DataTables serializes verbose per-column metadata into the query
+        string (``columns[N][data]``, ``[search][value]``, …) which can
+        exceed the cap on tables with many columns.
+        """
+        # Simulate a DataTables AJAX request that comfortably exceeds the
+        # full-URL cap.
+        bloat = "&columns%5B0%5D%5Bdata%5D=nazwisko" * 200
+        request = self.factory.get(f"/import_dyscyplin/api/foo/1/?draw=1{bloat}")
+        assert len(request.get_full_path()) > 4096
+        response = self.middleware.process_request(request)
+        assert response is None
+
     # Nested ?next= chains
     def test_nested_next_blocked(self):
         """Test: Nested ``?next=`` redirect chain should be blocked."""

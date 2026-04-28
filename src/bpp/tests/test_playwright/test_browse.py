@@ -48,13 +48,11 @@ def test_autorzy_literki(autorzy_page: Page):
 
     # Click on letter A (using the letter pill selector from the modern template)
     page.locator("a.autorzy-letter-pill.autorzy-letter-single", has_text="A").click()
-    page.wait_for_load_state("networkidle")
     expect(page.locator("body")).to_contain_text("Atest")
     expect(page.locator("body")).not_to_contain_text("Btest")
 
     # Click on letter B
     page.locator("a.autorzy-letter-pill.autorzy-letter-single", has_text="B").click()
-    page.wait_for_load_state("networkidle")
     expect(page.locator("body")).to_contain_text("Btest")
     expect(page.locator("body")).not_to_contain_text("Atest")
 
@@ -86,13 +84,11 @@ def test_zrodla_literki(zrodla_page: Page):
 
     # Click on letter A (using the letter pill selector from the template)
     page.locator("a.letter-pill.letter-single", has_text="A").click()
-    page.wait_for_load_state("networkidle")
     expect(page.locator("body")).to_contain_text("Atest")
     expect(page.locator("body")).not_to_contain_text("Btest")
 
     # Click on letter B
     page.locator("a.letter-pill.letter-single", has_text="B").click()
-    page.wait_for_load_state("networkidle")
     expect(page.locator("body")).to_contain_text("Btest")
     expect(page.locator("body")).not_to_contain_text("Atest")
 
