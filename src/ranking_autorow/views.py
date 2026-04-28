@@ -370,7 +370,7 @@ class RankingAutorow(ExportMixin, SingleTableView):
             subtitle_parts.append(", ".join([x.nazwa for x in jednostki]))
 
         # Check if uczelnia uses wydzialy and handle them
-        uczelnia = Uczelnia.objects.first()
+        uczelnia = Uczelnia.objects.get_for_request(self.request)
         if uczelnia and uczelnia.uzywaj_wydzialow:
             wydzialy = self.get_wydzialy()
             context["wydzialy"] = wydzialy if wydzialy else []
@@ -403,7 +403,7 @@ class RankingAutorow(ExportMixin, SingleTableView):
         return context
 
     def get_table_kwargs(self):
-        uczelnia = Uczelnia.objects.all().first()
+        uczelnia = Uczelnia.objects.get_for_request(self.request)
         pokazuj = uczelnia.pokazuj_liczbe_cytowan_w_rankingu
 
         if pokazuj == OpcjaWyswietlaniaField.POKAZUJ_NIGDY or (
