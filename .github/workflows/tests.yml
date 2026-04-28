@@ -197,19 +197,33 @@ jobs:
         cache-from: type=registry,ref=${{ env.IMAGE_REPO }}:cache
         cache-to: type=registry,ref=${{ env.IMAGE_REPO }}:cache,mode=max
 
-  tests-parallel:
-    # Non-Playwright, non-serial pytest, sharded across 3 runners.
-    # Each shard still uses `-n auto` (xdist) within the runner, so
-    # effective parallelism is 3 shards × 4 xdist workers ≈ 12 tests
-    # in flight at peak. Previously this was a single job (`tests-fast`)
-    # that took ~2× as long as the slowest Playwright shard.
-    name: Tests (parallel)
+  tests:
+    # Single sharded job covering the full suite (playwright +
+    # non-playwright + serial) under `pytest -n auto`. Earlier the
+    # workflow split this into three specialised jobs (parallel /
+    # serial / playwright); shard-then-mix is faster end-to-end because
+    # the per-shard fixed cost (image pull, PG init + baseline load,
+    # Redis startup) is paid once instead of three times.
+    #
+    # @pytest.mark.serial tests are deliberately mixed in here. They
+    # don't actually depend on running outside xdist — the marker is
+    # used by callers that want to opt out of parallelism, but the
+    # tests themselves pass under -n auto. If that ever changes, gate
+    # serial tests with @pytest.mark.xdist_group(name="serial") so
+    # `--dist=loadgroup` keeps them on a single worker.
+    #
+    # DB setup: docker-compose.test.yml mounts baseline.sql into
+    # /docker-entrypoint-initdb.d/ and sets DJANGO_BPP_TEST_TEMPLATE=bpp,
+    # so xdist worker DBs are created via `CREATE DATABASE … WITH
+    # TEMPLATE bpp` (instant in-server clone) instead of replaying
+    # `psql -f baseline.sql` per worker.
+    name: Tests (sharded)
     needs: prepare-image
     if: |
       !(github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, 'Merge tag'))
 
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
 
     permissions:
       contents: read
@@ -217,101 +231,16 @@ jobs:
 
     strategy:
       fail-fast: false
-      max-parallel: 4
+      max-parallel: 8
       matrix:
         python-version: ["3.12"]
-        # 0-indexed for pytest-shard, same convention as tests-playwright.
-        shard: [0, 1, 2]
-
-    env:
-      TEST_RUNNER_IMAGE: ${{ needs.prepare-image.outputs.image }}
-      # Compose stack (base + CI override). The override drops the
-      # source bind mount and exposes ./ci-output as the only writable
-      # volume, so coverage XML survives `compose run --rm`.
-      COMPOSE_FILES: -f docker-compose.test.yml -f docker-compose.test.ci.yml
-
-    steps:
-    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-    - name: Log in to GHCR
-      uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
-      with:
-        registry: ghcr.io
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: Prepare ci-output dir
-      # Bind-mounted into the container at /ci-output so pytest can
-      # write cov.xml somewhere the runner can read after `--rm`.
-      run: mkdir -p ci-output
-
-    - name: Pull test-runner image
-      run: docker compose $COMPOSE_FILES pull test-runner
-
-    - name: Start services
-      run: docker compose $COMPOSE_FILES up -d db redis
-
-    - name: Wait for services
-      timeout-minutes: 2
-      run: |
-        until docker compose $COMPOSE_FILES exec db \
-            pg_isready -U bpp; do
-          echo "Waiting for PostgreSQL..."
-          sleep 2
-        done
-        until docker compose $COMPOSE_FILES exec redis \
-            redis-cli ping; do
-          echo "Waiting for Redis..."
-          sleep 2
-        done
-
-    - name: Tests (parallel, shard ${{ matrix.shard }}/3)
-      timeout-minutes: 20
-      env:
-        SHARD_ID: ${{ matrix.shard }}
-      run: |
-        docker compose $COMPOSE_FILES run --rm \
-          -e SHARD_ID \
-          test-runner uv run pytest \
-            -m "not playwright and not serial" -n auto \
-            --shard-id "$SHARD_ID" --num-shards 3 \
-            --timeout 300 \
-            --cov=src/ --cov-branch \
-            --cov-report=xml:/ci-output/cov.xml
-
-    - name: Upload coverage to Coveralls (parallel)
-      if: always()
-      uses: coverallsapp/github-action@5cbfd81b66ca5d10c19b062c04de0199c215fb6e # v2.3.7
-      with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
-        flag-name: tests-parallel-${{ matrix.shard }}
-        parallel: true
-        file: ci-output/cov.xml
-
-    - name: Cleanup
-      if: always()
-      run: docker compose $COMPOSE_FILES down -v
-
-  tests-serial:
-    # Tests tagged @pytest.mark.serial share state that xdist workers
-    # shouldn't race on (e.g. PG connections that flake when another
-    # worker recycles the DB). Run them sequentially in a single
-    # process; the suite is small (~30 s), so we don't shard it.
-    name: Tests (serial)
-    needs: prepare-image
-    if: |
-      !(github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, 'Merge tag'))
-
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-
-    permissions:
-      contents: read
-      packages: read
+        # 0-indexed; bump alongside NUM_SHARDS below if you change it.
+        shard: [0, 1, 2, 3, 4, 5, 6, 7]
 
     env:
       TEST_RUNNER_IMAGE: ${{ needs.prepare-image.outputs.image }}
       COMPOSE_FILES: -f docker-compose.test.yml -f docker-compose.test.ci.yml
+      NUM_SHARDS: "8"
 
     steps:
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -346,102 +275,7 @@ jobs:
           sleep 2
         done
 
-    - name: Tests (serial, no xdist)
-      timeout-minutes: 10
-      run: |
-        docker compose $COMPOSE_FILES run --rm \
-          test-runner uv run pytest \
-            -m "serial and not playwright" \
-            --timeout 300 \
-            --cov=src/ --cov-branch \
-            --cov-report=xml:/ci-output/cov.xml
-
-    - name: Upload coverage to Coveralls (parallel)
-      if: always()
-      uses: coverallsapp/github-action@5cbfd81b66ca5d10c19b062c04de0199c215fb6e # v2.3.7
-      with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
-        flag-name: tests-serial
-        parallel: true
-        file: ci-output/cov.xml
-
-    - name: Cleanup
-      if: always()
-      run: docker compose $COMPOSE_FILES down -v
-
-  tests-playwright:
-    # Playwright (browser) tests, runs concurrently with tests-fast.
-    # Image is pulled from GHCR (built once by prepare-image), so each
-    # shard runner only pays the pull cost (~30s) instead of a full
-    # rebuild.
-    name: Tests (Playwright)
-    needs: prepare-image
-    if: |
-      !(github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, 'Merge tag'))
-
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-
-    permissions:
-      contents: read
-      packages: read
-
-    strategy:
-      # Shard the Playwright suite across N runners. pytest-shard splits
-      # by nodeid hash, so parametrized tests land on different shards
-      # (each parameter is a separate nodeid). fail-fast=false keeps
-      # the others running when one shard fails — useful for diagnosing
-      # whether a failure is shard-specific or systemic.
-      #
-      # Shard ids are 0-indexed (shard_num must be < num_shards), so for
-      # 3 shards we use [0, 1, 2]. An earlier iteration used [1, 2, 3]
-      # and the third runner blew up on import; consequently shard 0
-      # (a third of the suite) never ran and coverage was incomplete
-      # even on green runs.
-      fail-fast: false
-      max-parallel: 4
-      matrix:
-        python-version: ["3.12"]
-        shard: [0, 1, 2]
-
-    env:
-      TEST_RUNNER_IMAGE: ${{ needs.prepare-image.outputs.image }}
-      COMPOSE_FILES: -f docker-compose.test.yml -f docker-compose.test.ci.yml
-
-    steps:
-    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-    - name: Log in to GHCR
-      uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
-      with:
-        registry: ghcr.io
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: Prepare ci-output dir
-      run: mkdir -p ci-output
-
-    - name: Pull test-runner image
-      run: docker compose $COMPOSE_FILES pull test-runner
-
-    - name: Start services
-      run: docker compose $COMPOSE_FILES up -d db redis
-
-    - name: Wait for services
-      timeout-minutes: 2
-      run: |
-        until docker compose $COMPOSE_FILES exec db \
-            pg_isready -U bpp; do
-          echo "Waiting for PostgreSQL..."
-          sleep 2
-        done
-        until docker compose $COMPOSE_FILES exec redis \
-            redis-cli ping; do
-          echo "Waiting for Redis..."
-          sleep 2
-        done
-
-    - name: Tests (Playwright, shard ${{ matrix.shard }}/3)
+    - name: Tests (shard ${{ matrix.shard }}/${{ env.NUM_SHARDS }})
       timeout-minutes: 25
       env:
         SHARD_ID: ${{ matrix.shard }}
@@ -449,8 +283,8 @@ jobs:
         docker compose $COMPOSE_FILES run --rm \
           -e SHARD_ID \
           test-runner uv run pytest \
-            -m "playwright" -n auto \
-            --shard-id "$SHARD_ID" --num-shards 3 \
+            -n auto \
+            --shard-id "$SHARD_ID" --num-shards "$NUM_SHARDS" \
             --timeout 300 \
             --cov=src/ --cov-branch \
             --cov-report=xml:/ci-output/cov.xml
@@ -460,7 +294,7 @@ jobs:
       uses: coverallsapp/github-action@5cbfd81b66ca5d10c19b062c04de0199c215fb6e # v2.3.7
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}
-        flag-name: tests-playwright-${{ matrix.shard }}
+        flag-name: tests-${{ matrix.shard }}
         parallel: true
         file: ci-output/cov.xml
 
