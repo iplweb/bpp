@@ -28,7 +28,19 @@ class MaliciousRequestBlockingMiddleware(MiddlewareMixin):
     # Maximum length of the full request URL (path + query string).
     # Path alone is capped at 1024 (see process_request); the query string can
     # legitimately carry a single ``next=`` redirect, so we allow more headroom.
-    MAX_FULL_PATH_LENGTH = 2048
+    # 4096 fits a single legitimate ``next=`` chain plus reasonable extras
+    # without re-allowing the recursive scanner-bot pattern (which compounds
+    # exponentially and blows past any sensible cap).
+    MAX_FULL_PATH_LENGTH = 4096
+
+    # Path substrings exempt from the full-URL length check. DataTables
+    # serializes per-column metadata into the query string
+    # (``columns[N][data]``, ``[name]``, ``[searchable]``, ``[orderable]``,
+    # ``[search][value]``, ``[search][regex]`` × N columns), which can
+    # legitimately exceed the cap above on tables with many columns. The
+    # length check exists to stop scanner-bot redirect chains, which never
+    # hit ``/api/`` paths — so exempting API endpoints is safe.
+    URL_LENGTH_WHITELIST_SUBSTRINGS = ("/api/",)
 
     # Blocked file extensions (case-insensitive)
     BLOCKED_EXTENSIONS = (
@@ -143,9 +155,12 @@ class MaliciousRequestBlockingMiddleware(MiddlewareMixin):
         # Block excessively long full URLs (path + query string). Catches
         # scanner bots that follow login redirects without cookies and end up
         # accumulating exponentially growing percent-encoded ``?next=`` chains.
-        full_path = request.get_full_path()
-        if len(full_path) > self.MAX_FULL_PATH_LENGTH:
-            return self._block_request(request, "url_too_long", full_path[:100])
+        # Skip the check for whitelisted paths (e.g. ``/api/`` endpoints which
+        # legitimately carry verbose DataTables query params).
+        if not any(s in path for s in self.URL_LENGTH_WHITELIST_SUBSTRINGS):
+            full_path = request.get_full_path()
+            if len(full_path) > self.MAX_FULL_PATH_LENGTH:
+                return self._block_request(request, "url_too_long", full_path[:100])
 
         # Block nested ``?next=`` redirect chains. Django decodes one level of
         # percent-encoding when parsing query string, so a legitimate single

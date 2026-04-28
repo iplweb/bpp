@@ -1,3 +1,5 @@
+import time
+
 import pytest
 from django.urls import reverse
 from playwright.sync_api import Page
@@ -45,8 +47,13 @@ def test_change_form_pubmed_brak_takiej_pracy(
     # Click the button
     admin_page.click("#id_pubmed_id_get")
 
-    # Wait for dialog to be handled
-    admin_page.wait_for_timeout(500)
+    # Wait for dialog to be captured by the handler. We must use Playwright's
+    # ``wait_for_timeout`` (not ``time.sleep``) because the dialog handler
+    # only fires when Playwright's internal event loop is pumped — a plain
+    # Python sleep blocks the loop and the handler never sees the event.
+    deadline = time.monotonic() + 5
+    while time.monotonic() < deadline and not dialog_message:
+        admin_page.wait_for_timeout(50)
 
     # Assert the dialog message contains the expected text
     assert len(dialog_message) > 0, "No dialog appeared"

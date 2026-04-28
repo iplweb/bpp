@@ -386,9 +386,6 @@ def test_procent_odpowiedzialnosci_baseModel_AutorFormset_dwoch_autorow(  # noqa
         )
     admin_page.fill("#id_autorzy_set-0-procent", "50.00")
 
-    # Stabilization wait before adding second author to let DOM fully settle
-    admin_page.wait_for_timeout(500)
-
     # Add second author inline (50%)
     add_buttons = admin_page.locator(".grp-add-handler").all()
     for button in add_buttons:
@@ -502,9 +499,6 @@ def test_procent_odpowiedzialnosci_baseModel_AutorFormset_problem_dwoch_autorow(
             "#id_autorzy_set-0-typ_odpowiedzialnosci", label="autor"
         )
     admin_page.fill("#id_autorzy_set-0-procent", "50.00")
-
-    # Stabilization wait before adding second author to let DOM fully settle
-    admin_page.wait_for_timeout(500)
 
     # Add second author inline (50.01% - INVALID, total exceeds 100%)
     add_buttons = admin_page.locator(".grp-add-handler").all()
@@ -625,9 +619,6 @@ def test_procent_odpowiedzialnosci_baseModel_AutorFormset_dobrze_potem_zle_dwoch
                 "#id_autorzy_set-0-typ_odpowiedzialnosci", label="autor"
             )
         admin_page.fill("#id_autorzy_set-0-procent", "50.00")
-
-        # Stabilization wait
-        admin_page.wait_for_timeout(500)
 
         # Add second author with 50% responsibility
         add_buttons = admin_page.locator(".grp-add-handler").all()

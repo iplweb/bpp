@@ -1,0 +1,39 @@
+Pełen suite testów Playwright zostaje przyspieszony z ~3:50 do ~2:24
+(−85 s, −38 %) bez utraty pokrycia.
+
+Główne źródło zysku — naprawa ukrytego buga w
+``django_bpp.playwright_util.select_select2_autocomplete``: pierwszy
+``wait_for_selector`` na ``#select2-{id}-container`` trafiał w pełen
+30-sekundowy timeout w testach gdzie ten wariant markupu nie istnieje
+(formularze inline django-grappelli admin), zanim wpadał do bloku
+``except`` z fallbackowym selektorem siostrzanym. Helper jest używany
+w 64 miejscach — każde wywołanie traciło ~30 s. Najwolniejsze testy
+jak ``test_changeform_add_full_flow`` (3 wywołania select2) traciły
+~90 s na samych timeoutach.
+
+Naprawa: race obu selektorów przez listę ``", "`` w jednym
+``wait_for_selector`` — zwracamy się do ``.select2-selection`` (zawsze
+klikalny element) zamiast container'a. Efekt:
+- ``test_changeform_add_full_flow``: 97 s → 8 s
+- ``test_admin_wydawnictwo_ciagle_dowolnie_zapisane_nazwisko``:
+  67 s → 8 s
+- ``test_procent_odpowiedzialnosci_*_dwoch_autorow`` cluster:
+  37–48 s → 12–18 s
+
+Drugi front — eliminacja antywzorców ``wait_for_load_state(networkidle)``
+i sztywnych ``wait_for_timeout()`` w testach Playwright, zastępowane
+warunkowymi waitami (``expect(...).to_have_value()``,
+``page.expect_navigation``, polling DB/listy dialogów):
+- ``test_integracyjny`` (import dyscyplin): 75 s → 13 s — usunięte
+  sztywne sleepy i ``networkidle`` na stronie z otwartym WebSocketem
+- ``test_multiseek_*`` (6 testów): 30+ s → ~2 s — ``expect_navigation``
+  zamiast ``networkidle`` po klikach search
+- ``test_smoke`` crawler: usunięty ``networkidle`` w pętli (zawsze
+  trafiał w 10 s timeout bo strony BPP mają long-polling)
+- ``test_toz_tamze``, ``test_admin_forms``, ``test_clarivate``,
+  ``test_change_form_pbn_isbn_doi_etc``, ``test_change_form_pubmed``,
+  ``test_crossref_api_sync_playwright`` — sztywne ``wait_for_timeout``
+  zamienione na polling licznika rekordów / listy dialogów / wartości
+  pól; w przypadku dialog handlerów polling musi pompować event loop
+  przez ``page.wait_for_timeout`` (a nie ``time.sleep``), bo handler
+  odpala się tylko gdy Playwright przetwarza eventy.

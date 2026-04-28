@@ -1,4 +1,5 @@
 import base64
+import time
 
 import pytest
 from django.urls import reverse
@@ -6,6 +7,16 @@ from model_bakery import baker
 from playwright.sync_api import Page
 
 from bpp.models import Autor, Wydawnictwo_Ciagle
+
+
+def _poll_until(predicate, timeout: float = 10.0, interval: float = 0.1) -> bool:
+    """Poll ``predicate`` until truthy or timeout elapses; return last result."""
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if predicate():
+            return True
+        time.sleep(interval)
+    return predicate()
 
 
 @pytest.fixture
@@ -42,11 +53,8 @@ def test_crossref_api_autor_sync(
             autor_m.refresh_from_db()
             return autor_m.orcid == "0000-0003-2575-3642"
 
-        # Poll until ORCID is updated (max 10 seconds)
-        for _ in range(20):
-            if check_orcid():
-                break
-            admin_page.wait_for_timeout(500)
+        # Poll until ORCID is updated (max 10 seconds, 100ms granularity).
+        _poll_until(check_orcid)
 
         assert check_orcid(), (
             f"Expected ORCID to be '0000-0003-2575-3642', got '{autor_m.orcid}'"
@@ -103,15 +111,12 @@ def test_crossref_api_strony_sync_browser(
     # Click the button
     admin_page_strona_porownania.click(f"#{id_przycisku}")
 
-    # Poll until attribute is updated in database (max 10 seconds)
+    # Poll until attribute is updated in database (max 10 seconds).
     def check_attribute():
         wydawnictwo_ciagle_jehs_2022.refresh_from_db()
         return getattr(wydawnictwo_ciagle_jehs_2022, atrybut, None) == wynik
 
-    for _ in range(20):
-        if check_attribute():
-            break
-        admin_page_strona_porownania.wait_for_timeout(500)
+    _poll_until(check_attribute)
 
     assert check_attribute(), (
         f"Expected {atrybut} to be '{wynik}', "
@@ -130,14 +135,11 @@ def test_crossref_api_streszczenie_sync_browser(
     # Click the streszczenie button
     admin_page_strona_porownania.click("#id_ustaw_streszczenie_button")
 
-    # Poll until streszczenie is created in database (max 10 seconds)
+    # Poll until streszczenie is created in database (max 10 seconds).
     def check_streszczenie():
         wydawnictwo_ciagle_jehs_2022.refresh_from_db()
         return wydawnictwo_ciagle_jehs_2022.streszczenia.exists()
 
-    for _ in range(20):
-        if check_streszczenie():
-            break
-        admin_page_strona_porownania.wait_for_timeout(500)
+    _poll_until(check_streszczenie)
 
     assert check_streszczenie(), "Expected streszczenie to be created"
