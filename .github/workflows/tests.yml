@@ -256,11 +256,17 @@ jobs:
       # (each parameter is a separate nodeid). fail-fast=false keeps
       # the others running when one shard fails — useful for diagnosing
       # whether a failure is shard-specific or systemic.
+      #
+      # Shard ids are 0-indexed (shard_num must be < num_shards), so for
+      # 3 shards we use [0, 1, 2]. An earlier iteration used [1, 2, 3]
+      # and the third runner blew up on import; consequently shard 0
+      # (a third of the suite) never ran and coverage was incomplete
+      # even on green runs.
       fail-fast: false
       max-parallel: 4
       matrix:
         python-version: ["3.12"]
-        shard: [1, 2, 3]
+        shard: [0, 1, 2]
 
     steps:
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
