@@ -171,11 +171,13 @@ jobs:
         cache-from: type=registry,ref=${{ env.IMAGE_REPO }}:cache
         cache-to: type=registry,ref=${{ env.IMAGE_REPO }}:cache,mode=max
 
-  tests-fast:
-    # Non-Playwright tests (parallel + serial). Runs concurrently with
-    # `tests-playwright` so the slow browser suite doesn't block the
-    # fast feedback loop.
-    name: Tests (fast)
+  tests-parallel:
+    # Non-Playwright, non-serial pytest, sharded across 3 runners.
+    # Each shard still uses `-n auto` (xdist) within the runner, so
+    # effective parallelism is 3 shards × 4 xdist workers ≈ 12 tests
+    # in flight at peak. Previously this was a single job (`tests-fast`)
+    # that took ~2× as long as the slowest Playwright shard.
+    name: Tests (parallel)
     needs: prepare-image
     if: |
       !(github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, 'Merge tag'))
@@ -188,12 +190,12 @@ jobs:
       packages: read
 
     strategy:
+      fail-fast: false
       max-parallel: 4
       matrix:
-        # Django 5.2 officially tests on CPython 3.10–3.13; Python 3.14
-        # is not supported upstream yet. Keep the matrix to 3.12 so we
-        # aren't spending runner minutes on a build we expect to fail.
         python-version: ["3.12"]
+        # 0-indexed for pytest-shard, same convention as tests-playwright.
+        shard: [0, 1, 2]
 
     env:
       TEST_RUNNER_IMAGE: ${{ needs.prepare-image.outputs.image }}
@@ -202,26 +204,31 @@ jobs:
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
     - name: Install system build deps (for uv sync)
-      # baseline_check below runs `uv sync` directly on the host runner
-      # and several wheels (pycairo, psycopg2, lxml, cryptography) need
-      # native headers. Reuse docker/bpp_base/build.txt so the package
-      # list stays in sync with the test-runner image.
+      # Only shard 0 runs baseline_check, but every shard needs the
+      # native headers if anything else triggers a host-side `uv sync`
+      # (currently only baseline_check does, but we keep the apt step
+      # uniform across shards so a future host-side step doesn't
+      # silently fail on shards 1/2).
+      if: matrix.shard == 0
       run: |
         sudo apt-get update
         xargs -a docker/bpp_base/build.txt sudo apt-get install -y
 
     - name: Install uv (for baseline_check)
+      if: matrix.shard == 0
       uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
       with:
         enable-cache: true
 
     - name: Install project deps (for baseline_check)
+      if: matrix.shard == 0
       run: uv sync --frozen --no-install-project
 
     - name: Check baseline freshness
-      # Fail loudly if migrations have outpaced the baseline pg_dump by
-      # more than --max-delta. Only runs here (not in tests-playwright)
-      # — fail-fast on baseline drift, no need to duplicate the check.
+      # Run only on shard 0 — baseline drift is a deterministic, repo-
+      # global property; running the check three times wastes ~15s per
+      # shard and gives no extra signal.
+      if: matrix.shard == 0
       env:
         DJANGO_BPP_SKIP_DOTENV: "1"
       run: uv run python src/manage.py baseline_check --max-delta 50
@@ -260,28 +267,18 @@ jobs:
         docker compose -f docker-compose.test.yml run --rm \
           test-runner uv run make assets
 
-    - name: Tests (without Playwright, parallel)
+    - name: Tests (parallel, shard ${{ matrix.shard }}/3)
       timeout-minutes: 20
+      env:
+        SHARD_ID: ${{ matrix.shard }}
       run: |
         docker compose -f docker-compose.test.yml run --rm \
+          -e SHARD_ID \
           test-runner uv run pytest \
             -m "not playwright and not serial" -n auto \
+            --shard-id "$SHARD_ID" --num-shards 3 \
             --timeout 300 \
             --cov=src/ --cov-branch \
-            --cov-report=xml:cov.xml
-
-    - name: Tests (serial, no xdist)
-      # Tests tagged @pytest.mark.serial share state that xdist
-      # workers shouldn't race on (e.g. PG connections that flake when
-      # another worker recycles the DB). Run them sequentially in a
-      # single process; --cov-append keeps coverage merged.
-      timeout-minutes: 5
-      run: |
-        docker compose -f docker-compose.test.yml run --rm \
-          test-runner uv run pytest \
-            -m "serial and not playwright" \
-            --timeout 300 \
-            --cov=src/ --cov-branch --cov-append \
             --cov-report=xml:cov.xml
 
     - name: Upload coverage to Coveralls (parallel)
@@ -289,7 +286,88 @@ jobs:
       uses: coverallsapp/github-action@5cbfd81b66ca5d10c19b062c04de0199c215fb6e # v2.3.7
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}
-        flag-name: tests-fast
+        flag-name: tests-parallel-${{ matrix.shard }}
+        parallel: true
+        file: cov.xml
+
+    - name: Cleanup
+      if: always()
+      run: |
+        docker compose -f docker-compose.test.yml down -v
+
+  tests-serial:
+    # Tests tagged @pytest.mark.serial share state that xdist workers
+    # shouldn't race on (e.g. PG connections that flake when another
+    # worker recycles the DB). Run them sequentially in a single
+    # process; the suite is small (~30 s), so we don't shard it.
+    name: Tests (serial)
+    needs: prepare-image
+    if: |
+      !(github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, 'Merge tag'))
+
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    permissions:
+      contents: read
+      packages: read
+
+    env:
+      TEST_RUNNER_IMAGE: ${{ needs.prepare-image.outputs.image }}
+
+    steps:
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+    - name: Log in to GHCR
+      uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Pull test-runner image
+      run: docker compose -f docker-compose.test.yml pull test-runner
+
+    - name: Start services
+      run: |
+        docker compose -f docker-compose.test.yml up -d db redis
+
+    - name: Wait for services
+      timeout-minutes: 2
+      run: |
+        until docker compose -f docker-compose.test.yml exec db \
+            pg_isready -U bpp; do
+          echo "Waiting for PostgreSQL..."
+          sleep 2
+        done
+        until docker compose -f docker-compose.test.yml exec redis \
+            redis-cli ping; do
+          echo "Waiting for Redis..."
+          sleep 2
+        done
+
+    - name: Build assets
+      timeout-minutes: 10
+      run: |
+        docker compose -f docker-compose.test.yml run --rm \
+          test-runner uv run make assets
+
+    - name: Tests (serial, no xdist)
+      timeout-minutes: 10
+      run: |
+        docker compose -f docker-compose.test.yml run --rm \
+          test-runner uv run pytest \
+            -m "serial and not playwright" \
+            --timeout 300 \
+            --cov=src/ --cov-branch \
+            --cov-report=xml:cov.xml
+
+    - name: Upload coverage to Coveralls (parallel)
+      if: always()
+      uses: coverallsapp/github-action@5cbfd81b66ca5d10c19b062c04de0199c215fb6e # v2.3.7
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        flag-name: tests-serial
         parallel: true
         file: cov.xml
 
