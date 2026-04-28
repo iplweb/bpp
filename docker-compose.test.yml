@@ -39,6 +39,12 @@ services:
       - redis_data:/data
 
   test-runner:
+    # Local dev (`make tests-in-docker`): TEST_RUNNER_IMAGE unset →
+    # compose falls back to `build:` and bakes the image on demand.
+    # CI: prepare-image job pushes ghcr.io/iplweb/bpp-test-runner:sha-<SHA>
+    # and exports TEST_RUNNER_IMAGE so test jobs `compose pull` instead
+    # of rebuilding (saves ~3 min per job × 7 jobs).
+    image: ${TEST_RUNNER_IMAGE:-bpp-test-runner:local}
     build:
       context: .
       dockerfile: docker/bpp_base/Dockerfile
