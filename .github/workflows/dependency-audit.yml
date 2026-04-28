@@ -13,6 +13,10 @@
 # - HIGH/CRITICAL z dostepnym fix-em: failure (musi byc PR podbijajacy dep)
 # - LOW/MEDIUM: warning w job summary, nie blokuje
 # - --ignore-unfixed: nie blokujemy na CVE bez fix-a (nie da sie nic zrobic)
+#
+# Defense-in-depth: drugi job (multi-scanner) odpala OSV-Scanner, Grype
+# i Trivy na SBOM-ie wygenerowanym z uv.lock. Wszystkie report-only -
+# uv-secure pozostaje jedynym gate-em release-u.
 
 name: Dependency vulnerability scan
 
@@ -72,3 +76,140 @@ jobs:
               uv.lock || true
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
+
+  # Defense-in-depth: trzy dodatkowe skanery (OSV/Grype/Trivy) na SBOM
+  # wygenerowanym z uv.lock. Kazdy z innej bazy CVE - lapia rozne
+  # rzeczy niz uv-secure (osv.dev, anchore, aquasecurity vs PyPA-DB).
+  # WSZYSTKIE w trybie report-only (continue-on-error: true) - jedynym
+  # gate-em release-u pozostaje uv-secure powyzej. Multi-scanner ma dac
+  # WIDOCZNOSC, nie zablokowac merga falszywym pozytywem z roznicy baz.
+  multi-scanner:
+    name: Multi-scanner (OSV / Grype / Trivy) — report-only
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
+
+      - name: Generate SBOM (CycloneDX, prod-only)
+        run: |
+          mkdir -p /tmp/sbom
+          uv export --no-dev --format requirements-txt --no-hashes --quiet \
+            -o /tmp/sbom/requirements.txt
+          uvx --quiet --from cyclonedx-bom cyclonedx-py requirements \
+            /tmp/sbom/requirements.txt \
+            --output-reproducible \
+            --output-format JSON \
+            --output-file /tmp/sbom/sbom.json \
+            --pyproject pyproject.toml
+          echo "Pakietow w SBOM: $(jq '.components | length' /tmp/sbom/sbom.json)"
+
+      - name: Install scanners
+        run: |
+          # OSV-Scanner (Google) - binarka GitHub release
+          curl -sSL -o /usr/local/bin/osv-scanner \
+            https://github.com/google/osv-scanner/releases/latest/download/osv-scanner_linux_amd64
+          chmod +x /usr/local/bin/osv-scanner
+
+          # Grype (Anchore) - oficjalny installer
+          curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh \
+            | sh -s -- -b /usr/local/bin
+
+          # Trivy (Aqua) - oficjalny installer
+          curl -sSfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
+            | sh -s -- -b /usr/local/bin
+
+      - name: OSV-Scanner — wszystkie findings
+        continue-on-error: true
+        run: |
+          osv-scanner scan source --sbom=/tmp/sbom/sbom.json \
+            --format=json --output=/tmp/sbom/osv.json 2>/dev/null || true
+          {
+            echo "## OSV-Scanner (Google)"
+            echo ""
+            count=$(jq '[.results[]?.packages[]?.vulnerabilities[]?] | length' \
+              /tmp/sbom/osv.json 2>/dev/null || echo 0)
+            if [ "$count" -gt 0 ]; then
+              echo "Znaleziono **$count** vulnerabilities."
+              echo ""
+              echo '| Pakiet | CVE |'
+              echo '|---|---|'
+              jq -r '
+                .results[]? | .packages[]? | . as $p |
+                .vulnerabilities[]? |
+                "| \($p.package.name)@\($p.package.version) | \(.id) |"
+              ' /tmp/sbom/osv.json | sort -u
+            else
+              echo "Brak findings."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Grype — HIGH/CRITICAL
+        continue-on-error: true
+        run: |
+          grype "sbom:/tmp/sbom/sbom.json" -o json --file /tmp/sbom/grype.json \
+            >/dev/null 2>&1 || true
+          {
+            echo "## Grype (Anchore)"
+            echo ""
+            count=$(jq '[.matches[]? | select(.vulnerability.severity | test("^(High|Critical)$"; "i"))] | length' \
+              /tmp/sbom/grype.json 2>/dev/null || echo 0)
+            if [ "$count" -gt 0 ]; then
+              echo "Znaleziono **$count** HIGH/CRITICAL."
+              echo ""
+              echo '| Pakiet | CVE | Severity | Fix |'
+              echo '|---|---|---|---|'
+              jq -r '
+                .matches[]? |
+                select(.vulnerability.severity | test("^(High|Critical)$"; "i")) |
+                "| \(.artifact.name)@\(.artifact.version) | \(.vulnerability.id) | \(.vulnerability.severity) | \(.vulnerability.fix.versions[]? // "no-fix") |"
+              ' /tmp/sbom/grype.json | sort -u
+            else
+              echo "Brak findings (HIGH/CRITICAL)."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Trivy — HIGH/CRITICAL z fix-em
+        continue-on-error: true
+        run: |
+          # --ignore-unfixed: wyciszamy CVE bez dostepnego fixa (jak w
+          #   build-docker-images.yml - nic nie mozna zrobic, samo szum).
+          # --severity HIGH,CRITICAL: bez tego Trivy zglasza wszystko
+          #   ze swojej bardzo agresywnej DB - filter sprowadza to do
+          #   realnie waznych rzeczy.
+          trivy sbom /tmp/sbom/sbom.json \
+            --severity HIGH,CRITICAL \
+            --ignore-unfixed \
+            --format json \
+            --output /tmp/sbom/trivy.json \
+            --quiet 2>/dev/null || true
+          {
+            echo "## Trivy (Aqua Security)"
+            echo ""
+            count=$(jq '[.Results[]?.Vulnerabilities[]?] | length' \
+              /tmp/sbom/trivy.json 2>/dev/null || echo 0)
+            if [ "$count" -gt 0 ]; then
+              echo "Znaleziono **$count** HIGH/CRITICAL z dostepnym fixem."
+              echo ""
+              echo '| Pakiet | CVE | Severity | Fix |'
+              echo '|---|---|---|---|'
+              jq -r '
+                .Results[]? | .Vulnerabilities[]? |
+                "| \(.PkgName)@\(.InstalledVersion) | \(.VulnerabilityID) | \(.Severity) | \(.FixedVersion // "no-fix") |"
+              ' /tmp/sbom/trivy.json | sort -u
+            else
+              echo "Brak findings (HIGH/CRITICAL z fix-em)."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload SBOM + raporty (artifact, retention 30d)
+        if: always()
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: dependency-scan-${{ github.run_id }}
+          path: /tmp/sbom/
+          retention-days: 30

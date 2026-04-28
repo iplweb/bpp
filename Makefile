@@ -392,7 +392,10 @@ generate-500-page: ## Wygeneruj statyczną stronę 500.html z szablonu 50x.html
 
 ##@ Wersjonowanie i release
 
-new-release: uv-lock upgrade-version sleep-3 gh-run-watch-docker-images ## Pełny pipeline release'u (uv-lock + bumpver + watch CI)
+scan-deps: ## Skan zaleznosci (SBOM + OSV/Grype/Trivy) - blokuje przy HIGH/CRITICAL
+	./bin/scan-deps.sh
+
+new-release: scan-deps uv-lock upgrade-version sleep-3 gh-run-watch-docker-images ## Pełny pipeline release'u (skan deps + uv-lock + bumpver + watch CI)
 
 check-clean-tree: ## Zawołaj błąd, jeśli working tree brudne (pre-release guard)
 	@if [ -n "$$(git status --porcelain)" ]; then \
