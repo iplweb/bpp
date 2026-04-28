@@ -17,5 +17,10 @@
 
 services:
   test-runner:
-    volumes: !reset
+    # `!override` (Compose 2.24+) replaces the volumes list from
+    # the base file wholesale — that's how we drop `.:/src` while
+    # still attaching ./ci-output. `!reset` would zero out the list
+    # entirely and our own entries below would be discarded too;
+    # tested locally with `docker compose config` and confirmed.
+    volumes: !override
       - ./ci-output:/ci-output
