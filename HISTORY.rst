@@ -4,6 +4,74 @@ Historia zmian
 
 .. towncrier release notes start
 
+bpp 202604.1369 (2026-04-28)
+============================
+
+Naprawione
+----------
+
+- Naprawiono generowanie ``src/baseline-sql/baseline.sql``: komenda
+  ``baseline_rebuild`` uruchamia teraz ``pg_dump`` *wewnątrz*
+  testcontenera (``docker exec``) zamiast używać klienta z hosta.
+  Gdy host miał nowszy major PostgreSQL niż obraz bazowy
+  (``iplweb/bpp_dbserver:psql-16.13``), ``pg_dump`` w wersji 17
+  wstawiał do dumpa dyrektywę ``SET transaction_timeout = 0;``,
+  której PostgreSQL 16 nie zna — przez co odtworzenie baseline'u
+  na docelowej wersji się wywalało. Klient i serwer są teraz
+  zawsze w tym samym majorze. Dodatkowo scrubber wycina takie
+  linie jako safety net na wypadek przyszłych nowych dyrektyw.
+- Naprawiono komunikat o przeterminowanym haśle, który pojawiał się
+  użytkownikom zalogowanym przez Microsoft (``microsoft_auth``) lub
+  ORCID (``orcid_integration``) bez formularza zmiany hasła. Hasłem
+  takich kont zarządza zewnętrzny IdP, więc polityka wygasania nie
+  powinna ich w ogóle obejmować — middleware
+  ``ConditionalPasswordChangeMiddleware`` już to respektował, ale
+  context processor ``password_status`` z ``django-password-policies``
+  nadal sprawdzał wiek hasła w bazie i ustawiał
+  ``password_change_required = True`` w kontekście szablonu, przez co
+  ``base.html`` renderował callout bez formularza (zmienna ``form``
+  istnieje tylko w widoku zmiany hasła, do którego middleware słusznie
+  nie przekierowywał). Dodano
+  ``django_bpp.context_processors.conditional_password_status``,
+  który symetrycznie pomija sprawdzenie dla backendów OAuth z
+  ``EXTERNAL_AUTH_BACKENDS`` i deleguje do oryginalnego context
+  processora wyłącznie dla zwykłego logowania ``ModelBackend``.
+
+
+Usprawnienie
+------------
+
+- CI: shardy ``pytest`` w workflow ``Tests`` nie odpalają już ``make
+  assets`` przy starcie. Obraz ``test-runner`` ma zapieczone CSS i ``.mo``
+  z buildu obrazu (stage ``test-runner`` w ``docker/bpp_base/Dockerfile``),
+  więc ``conftest.py`` honoruje teraz zmienną ``BPP_SKIP_ASSETS_BUILD=1``
+  ustawioną w ``docker-compose.test.ci.yml``.
+
+  Wcześniej każdy z ośmiu równoległych shardów wpadał w
+  ``pytest_configure`` i — z powodu braku sentinela
+  ``node_modules/.installed`` w obrazie — odpalał pełny ``yarn install`` +
+  ``grunt build`` przed pierwszym testem. Lokalny dev nie jest zmieniony:
+  bez tej zmiennej ``conftest.py`` nadal uruchamia ``make assets`` jako
+  safety net.
+- Pipeline release-u (``make new-release`` oraz ``make release``)
+  weryfikuje teraz zaleznosci pod katem znanych CVE PRZED zbumpieniem
+  wersji i wystartowaniem builda. Nowy target ``make scan-deps``
+  generuje SBOM (CycloneDX) z ``uv.lock`` przez ``uv export --no-dev``
+  i puszcza go przez OSV-Scanner, Grype oraz Trivy. Jezeli ktorykolwiek
+  skaner znajdzie HIGH/CRITICAL CVE, ``make`` zatrzyma sie z exit 1 i
+  release nie ruszy — zeby pominac (na wlasna odpowiedzialnosc), uzyj
+  ``./bin/scan-deps.sh --no-gate``. Wymagane narzedzia: ``brew install
+  osv-scanner grype trivy``.
+
+  Workflow ``dependency-audit.yml`` rozszerzony o drugi job
+  ``multi-scanner``, ktory na CI generuje ten sam SBOM i odpala te
+  same trzy skanery jako defense-in-depth obok istniejacego gate-u
+  ``uv-secure``. Nowe skanery sa report-only (zapisuja markdown do
+  ``GITHUB_STEP_SUMMARY``, nie blokuja merga) — chodzi o widocznosc
+  findings, ktorych nie wykryla baza ``uv-secure``, bez ryzyka
+  zablokowania PR-a falszywym pozytywem z innej bazy CVE.
+
+
 bpp 202604.1368 (2026-04-28)
 ============================
 

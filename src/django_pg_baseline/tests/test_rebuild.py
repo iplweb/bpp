@@ -11,7 +11,7 @@ from django_pg_baseline.conf import BaselineConfig
 from django_pg_baseline.rebuild import (
     _freeze_timestamps,
     _run_pg_dump,
-    _strip_restrict_tokens,
+    _scrub_dump,
     rebuild_baseline,
 )
 
@@ -31,48 +31,51 @@ from django_pg_baseline.rebuild import (
             "\\restrict xyz\n",
             "",
         ),
+        (
+            "SET transaction_timeout = 0;\nCREATE TABLE foo;\n",
+            "CREATE TABLE foo;\n",
+        ),
     ],
 )
-def test_strip_restrict_tokens(tmp_path, input_text, expected):
+def test_scrub_dump(tmp_path, input_text, expected):
     sql = tmp_path / "dump.sql"
     sql.write_text(input_text, encoding="utf-8")
-    _strip_restrict_tokens(sql)
+    _scrub_dump(sql)
     assert sql.read_text(encoding="utf-8") == expected
 
 
-def test_strip_restrict_tokens_preserves_non_restrict_backslash_lines(tmp_path):
+def test_scrub_dump_preserves_non_restrict_backslash_lines(tmp_path):
     sql = tmp_path / "dump.sql"
     sql.write_text("\\connect bpp\nSELECT 1;\n", encoding="utf-8")
-    _strip_restrict_tokens(sql)
+    _scrub_dump(sql)
     assert sql.read_text(encoding="utf-8") == "\\connect bpp\nSELECT 1;\n"
 
 
-def test_run_pg_dump_invokes_subprocess(tmp_path, monkeypatch):
+def test_run_pg_dump_invokes_docker_exec(tmp_path, monkeypatch):
     cfg = BaselineConfig(baseline_dir=tmp_path / "out")
-    dsn = {
-        "HOST": "localhost",
-        "PORT": 5432,
+    db = {
         "USER": "bpp",
         "PASSWORD": "pw",
         "NAME": "bpp_baseline",
     }
     captured = {}
 
-    def fake_run(cmd, env, check, stdout):
+    def fake_run(cmd, check, stdout):
         captured["cmd"] = cmd
-        captured["env"] = env
         captured["check"] = check
         stdout.write(b"-- dumped\n")
 
     monkeypatch.setattr(rebuild_module.subprocess, "run", fake_run)
 
-    _run_pg_dump(dsn, cfg)
+    _run_pg_dump("container-abc123", db, cfg)
 
     assert captured["check"] is True
-    assert captured["cmd"][0] == "pg_dump"
+    assert captured["cmd"][0] == "docker"
+    assert "container-abc123" in captured["cmd"]
+    assert "pg_dump" in captured["cmd"]
     assert "bpp_baseline" in captured["cmd"]
     assert "--format=plain" in captured["cmd"]
-    assert captured["env"]["PGPASSWORD"] == "pw"
+    assert "PGPASSWORD=pw" in captured["cmd"]
     assert cfg.sql_path.exists()
     assert cfg.sql_path.read_bytes() == b"-- dumped\n"
 

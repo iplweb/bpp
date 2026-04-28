@@ -27,7 +27,6 @@ class Migration(migrations.Migration):
                 ('article_body', model_utils.fields.SplitField(help_text='Use the split marker "&lt;!-- tutaj --&gt;" in case you want to displaythe shorter version of the article body', verbose_name='Article body')),
                 ('published_on', models.DateTimeField(default=django.utils.timezone.now, verbose_name='Published on')),
                 ('slug', models.SlugField(unique=True)),
-                ('_article_body_excerpt', models.TextField(editable=False)),
             ],
             options={
                 'verbose_name': 'Article',
