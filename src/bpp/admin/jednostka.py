@@ -4,6 +4,7 @@ from django import forms
 from django.contrib import admin
 from django.utils.html import format_html
 from djangoql.admin import DjangoQLSearchMixin
+from import_export.admin import ImportMixin
 from mptt.admin import DraggableMPTTAdmin
 
 from bpp.models import Autor_Jednostka, Uczelnia
@@ -15,6 +16,7 @@ from .helpers import LimitingFormset
 from .helpers.fieldsets import ADNOTACJE_FIELDSET
 from .helpers.mixins import ZapiszZAdnotacjaMixin
 from .helpers.site_filtered import SiteFilteredAdminMixin
+from .jednostka_import import JednostkaImportResource
 
 
 class Jednostka_WydzialInline(admin.TabularInline):
@@ -38,6 +40,7 @@ class Autor_JednostkaInline(admin.TabularInline):
 
 
 class JednostkaAdmin(
+    ImportMixin,
     SiteFilteredAdminMixin,
     DjangoQLSearchMixin,
     RestrictDeletionToAdministracjaGroupMixin,
@@ -48,6 +51,8 @@ class JednostkaAdmin(
     uczelnia_field_path = "uczelnia"
     djangoql_completion_enabled_by_default = False
     djangoql_completion = True
+
+    resource_classes = [JednostkaImportResource]
 
     change_list_template = "admin/grappelli_mptt_change_list.html"
 
