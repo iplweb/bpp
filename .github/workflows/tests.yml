@@ -251,9 +251,16 @@ jobs:
     timeout-minutes: 30
 
     strategy:
+      # Shard the Playwright suite across N runners. pytest-shard splits
+      # by nodeid hash, so parametrized tests land on different shards
+      # (each parameter is a separate nodeid). fail-fast=false keeps
+      # the others running when one shard fails — useful for diagnosing
+      # whether a failure is shard-specific or systemic.
+      fail-fast: false
       max-parallel: 4
       matrix:
         python-version: ["3.12"]
+        shard: [1, 2, 3]
 
     steps:
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -315,12 +322,16 @@ jobs:
         docker compose -f docker-compose.test.yml run --rm \
           test-runner uv run make assets
 
-    - name: Tests (Playwright)
+    - name: Tests (Playwright, shard ${{ matrix.shard }}/3)
       timeout-minutes: 25
+      env:
+        SHARD_ID: ${{ matrix.shard }}
       run: |
         docker compose -f docker-compose.test.yml run --rm \
+          -e SHARD_ID \
           test-runner uv run pytest \
             -m "playwright" -n auto \
+            --shard-id "$SHARD_ID" --num-shards 3 \
             --timeout 300 \
             --cov=src/ --cov-branch \
             --cov-report=xml:cov.xml
@@ -330,7 +341,7 @@ jobs:
       uses: coverallsapp/github-action@5cbfd81b66ca5d10c19b062c04de0199c215fb6e # v2.3.7
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}
-        flag-name: tests-playwright
+        flag-name: tests-playwright-${{ matrix.shard }}
         parallel: true
         file: cov.xml
 

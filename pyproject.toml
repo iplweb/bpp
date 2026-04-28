@@ -142,6 +142,7 @@ dev = [
     "pytest-cov>=7.1.0",
     "pytest-mock>=3.7.0",
     "pytest-xdist>=2.3.0",
+    "pytest-shard>=0.1.2",
     "pytest-timeout>=2.1.0",
     "pyparsing>=3.3.2",
     "ruff>=0.15.12",
