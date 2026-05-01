@@ -1,0 +1,119 @@
+"""Analiza pary autorów na bazie wyłącznie meta-cache (bez SQL).
+
+Mirror'uje wagi punktowe z ``utils/analysis.py:analiza_duplikatow`` żeby
+zachować spójność scoringu między fazą PBN i general.
+Pomija tylko analizę płci (która w wersji DB-owej używa
+``Autor.plec`` + heurystyki na imieniu — nie potrzebne w v1 trybu general).
+"""
+
+
+def _common_initials(imiona_a: list[str], imiona_b: list[str]) -> int:
+    initials_a = {x[0] for x in imiona_a if x}
+    initials_b = {x[0] for x in imiona_b if x}
+    return len(initials_a & initials_b)
+
+
+def analiza_pary_meta(a: dict, b: dict) -> tuple[int, list[str]]:  # noqa: C901
+    """Zwraca (score, reasons) dla pary (a, b) na bazie meta-cache."""
+    score = 0
+    reasons: list[str] = []
+
+    pubs_b = b["publikacje_count"]
+    if pubs_b <= 5:
+        score += 10
+        reasons.append(f"mało publikacji ({pubs_b}) - prawdopodobny duplikat")
+    elif pubs_b <= 10:
+        score -= 10
+        reasons.append(f"średnio publikacji ({pubs_b}) - możliwy duplikat")
+    else:
+        score -= 20
+        reasons.append(f"wiele publikacji ({pubs_b}) - mało prawdopodobny duplikat")
+
+    if not b["ma_tytul"] and a["ma_tytul"]:
+        score += 15
+        reasons.append("brak tytułu naukowego u kandydata - prawdopodobny duplikat")
+    elif b["ma_tytul"] and a["ma_tytul"]:
+        if a.get("tytul_id") == b.get("tytul_id"):
+            score += 10
+            reasons.append("identyczny tytuł naukowy")
+        else:
+            score -= 15
+            reasons.append("różny tytuł naukowy")
+
+    if not b["ma_orcid"] and a["ma_orcid"]:
+        score += 15
+        reasons.append("brak ORCID u kandydata - prawdopodobny duplikat")
+    elif b["ma_orcid"] and a["ma_orcid"]:
+        if a.get("orcid_value") == b.get("orcid_value"):
+            score += 50
+            reasons.append("identyczny ORCID - to ten sam autor")
+        else:
+            score -= 50
+            reasons.append("różny ORCID - to różni autorzy")
+
+    if a["nazwisko_norm"] and b["nazwisko_norm"]:
+        if a["nazwisko_norm"] == b["nazwisko_norm"]:
+            score += 40
+            reasons.append("identyczne nazwisko")
+        elif (
+            a["nazwisko_norm"] in b["nazwisko_norm"]
+            or b["nazwisko_norm"] in a["nazwisko_norm"]
+        ):
+            score += 30
+            reasons.append("podobne nazwisko (zawieranie)")
+
+    if (
+        a["nazwisko_norm"]
+        and b["nazwisko_norm"]
+        and a["imiona_norm"]
+        and b["imiona_norm"]
+    ):
+        if (a["nazwisko_norm"] in b["imiona_norm"]) and (
+            b["nazwisko_norm"] in a["imiona_norm"]
+        ):
+            score += 50
+            reasons.append("wykryto pełną zamianę imienia z nazwiskiem")
+
+    common = set(a["imiona_norm"]) & set(b["imiona_norm"])
+    if common:
+        score += 30 * len(common)
+        reasons.append(f"wspólne imię ({len(common)})")
+
+    similar = 0
+    for ia in a["imiona_norm"]:
+        for ib in b["imiona_norm"]:
+            if len(ia) >= 3 and len(ib) >= 3 and ia != ib:
+                if ia.startswith(ib[:3]) or ib.startswith(ia[:3]):
+                    similar += 1
+    if similar:
+        score += 15 * similar
+        reasons.append(f"podobne imię ({similar})")
+
+    init_count = _common_initials(a["imiona_norm"], b["imiona_norm"])
+    if init_count:
+        score += 5 * init_count
+        reasons.append(f"pasujące inicjały ({init_count})")
+
+    if not b["imiona_norm"] and a["imiona_norm"]:
+        score += 10
+        reasons.append("brak imion u kandydata")
+
+    common_lata = a["lata_publikacji"] & b["lata_publikacji"]
+    if common_lata:
+        score += 20
+        reasons.append(f"wspólne lata publikacji: {sorted(common_lata)}")
+    elif a["lata_publikacji"] and b["lata_publikacji"]:
+        min_dist = min(
+            abs(ra - rb) for ra in a["lata_publikacji"] for rb in b["lata_publikacji"]
+        )
+        if min_dist <= 2:
+            score += 15
+            reasons.append(f"bliskie lata publikacji (różnica {min_dist})")
+        elif min_dist <= 7:
+            score -= 5
+            reasons.append(f"średnia odległość lat publikacji ({min_dist})")
+        else:
+            score -= 20
+            reasons.append(f"duża odległość lat publikacji ({min_dist})")
+
+    return score, reasons
