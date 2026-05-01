@@ -78,8 +78,21 @@ def build_autor_meta() -> dict[int, dict]:
     Łącznie 6 zapytań, niezależnie od liczby autorów.
     """
     autorzy_meta: dict[int, dict] = {}
+    # NOTE: include `poprzednie_nazwiska`, `pokazuj_poprzednie_nazwiska`
+    # and `pseudonim` because Autor.__str__ reads them — without them
+    # `str(autor)` (used by callers such as
+    # ``_run_general_phase``) triggers a deferred field load per author
+    # (2+ queries per author = O(N) hot-path SQL).
     autor_qs = Autor.objects.only(
-        "pk", "nazwisko", "imiona", "orcid", "pbn_uid_id", "tytul_id"
+        "pk",
+        "nazwisko",
+        "imiona",
+        "orcid",
+        "pbn_uid_id",
+        "tytul_id",
+        "poprzednie_nazwiska",
+        "pokazuj_poprzednie_nazwiska",
+        "pseudonim",
     )
     for a in autor_qs.iterator():
         autorzy_meta[a.pk] = {

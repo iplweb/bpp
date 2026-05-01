@@ -97,6 +97,42 @@ def test_general_respects_not_a_duplicate():
 
 
 @pytest.mark.django_db
+def test_general_phase_no_sql_per_candidate():
+    """_run_general_phase nie robi SQL per candidate (meta-cache)."""
+    from django.db import connection
+    from django.test.utils import CaptureQueriesContext
+
+    # 5 par z dwoma autorami każda → 5 candidates
+    for nazwisko in ["Aaa", "Bbb", "Ccc", "Ddd", "Eee"]:
+        baker.make("bpp.Autor", nazwisko=nazwisko, imiona="Jan")
+        baker.make("bpp.Autor", nazwisko=nazwisko, imiona="Jan")
+
+    scan = DuplicateScanRun.objects.create()
+    with CaptureQueriesContext(connection) as ctx:
+        _run_general_phase(scan, min_confidence=50)
+    n5 = len(ctx.captured_queries)
+
+    # Drugi run z 10 par
+    for nazwisko in ["Fff", "Ggg", "Hhh", "Iii", "Jjj"]:
+        baker.make("bpp.Autor", nazwisko=nazwisko, imiona="Jan")
+        baker.make("bpp.Autor", nazwisko=nazwisko, imiona="Jan")
+
+    scan2 = DuplicateScanRun.objects.create()
+    with CaptureQueriesContext(connection) as ctx:
+        _run_general_phase(scan2, min_confidence=50)
+    n10 = len(ctx.captured_queries)
+
+    # Liczba zapytań nie powinna rosnąć liniowo z liczbą candidates.
+    # Bulk_create może tworzyć 1-2 dodatkowych SAVEPOINT/INSERT, ale
+    # nie 5+ per candidate.
+    diff = n10 - n5
+    assert diff <= 5, (
+        f"Per-candidate SQL detected: 5 candidates → {n5} queries, "
+        f"10 candidates → {n10} queries (diff={diff})"
+    )
+
+
+@pytest.mark.django_db
 def test_general_transitive_cluster():
     """Trzech 'Linker Jan' tworzy klaster {A,B,C} → 2 pary z jednym main."""
     a = baker.make("bpp.Autor", nazwisko="Linker", imiona="Jan")

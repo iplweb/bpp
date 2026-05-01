@@ -102,9 +102,10 @@ def export_duplicates_to_xlsx():
     """
     site_domain = _get_site_domain()
 
-    # JEDNO zapytanie zamiast tysięcy!
-    # Pobierz wszystkich kandydatów ze statusem PENDING
-    candidates = (
+    # JEDNO zapytanie zamiast tysięcy! Materializujemy raz, żeby Counter
+    # i list-comprehension nie wykonywały dwóch iteracji po queryset
+    # (każda iteracja = ponowny SQL).
+    candidates = list(
         DuplicateCandidate.objects.filter(status=DuplicateCandidate.Status.PENDING)
         .select_related(
             "main_autor",

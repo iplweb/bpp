@@ -138,6 +138,24 @@ def test_view_partial_completed_shows_banner(auth_client):
 
 
 @pytest.mark.django_db
+def test_scan_status_view_finished_for_partial_completed(auth_client):
+    """scan_status_view zwraca finished=True dla PARTIAL_COMPLETED."""
+    scan = DuplicateScanRun.objects.create(
+        status=DuplicateScanRun.Status.PARTIAL_COMPLETED,
+        finished_at=timezone.now(),
+        total_authors_to_scan=10,
+        authors_scanned=10,
+    )
+    response = auth_client.get(
+        reverse("deduplikator_autorow:scan_status", kwargs={"scan_id": scan.pk})
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["finished"] is True
+    assert data["status"] == "partial_completed"
+
+
+@pytest.mark.django_db
 def test_view_mode_filter_radio_present(auth_client, scan_with_both_modes):
     """Mode-filter radio widoczny w HTML."""
     response = auth_client.get(reverse("deduplikator_autorow:duplicate_authors"))

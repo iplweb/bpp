@@ -860,6 +860,7 @@ def scan_status_view(request, scan_id):
                 "finished": scan_run.status
                 in [
                     DuplicateScanRun.Status.COMPLETED,
+                    DuplicateScanRun.Status.PARTIAL_COMPLETED,
                     DuplicateScanRun.Status.CANCELLED,
                     DuplicateScanRun.Status.FAILED,
                 ],
@@ -909,8 +910,13 @@ def _get_next_candidate_group(scan_run, skip_count=0, mode="both"):
     if mode != "both":
         qs = qs.filter(scan_mode=mode)
 
-    # PBN-first ordering when mode=both
-    distinct_main_autor_ids = (
+    # Annotate then iterate to dedupe in stable order. PostgreSQL's
+    # DISTINCT + ORDER BY semantics require ordering columns in SELECT,
+    # which Django's .values_list().distinct() may strip when an
+    # annotation is involved — leading to runtime errors or
+    # non-deterministic ordering. Materialize to Python and dedupe
+    # explicitly: simple, deterministic, side-effect free.
+    rows = (
         qs.annotate(
             mode_order=Case(
                 When(scan_mode="pbn", then=Value(0)),
@@ -921,11 +927,15 @@ def _get_next_candidate_group(scan_run, skip_count=0, mode="both"):
         )
         .order_by("mode_order", "-priority", "-confidence_score", "main_autor_id")
         .values_list("main_autor_id", flat=True)
-        .distinct()
     )
 
-    # Convert to list to enable indexing
-    main_autor_ids = list(distinct_main_autor_ids)
+    # Stable dedupe preserving order of first occurrence.
+    seen: set[int] = set()
+    main_autor_ids: list[int] = []
+    for pk in rows:
+        if pk not in seen:
+            seen.add(pk)
+            main_autor_ids.append(pk)
 
     if not main_autor_ids:
         return None, None, 0

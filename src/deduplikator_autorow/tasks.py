@@ -56,6 +56,33 @@ def _get_user_by_id(user_id):
         return None
 
 
+def _calculate_priority_from_meta(meta_entry: dict) -> int:
+    """Computes priority from meta dict (no SQL).
+
+    Mirrors :func:`calculate_author_priority` but uses cached fields
+    from the meta dict produced by ``build_autor_meta``. Avoids
+    per-candidate SQL on the hot path of ``_run_general_phase``.
+
+    Priority values:
+        100 - has 2022-2025 publications WITH disciplines
+        50 - has 2022-2025 publications (any)
+        0 - no recent publications
+
+    TODO: ``calculate_author_priority`` checks disciplines specifically
+    in 2022-2025 (``Autor_Dyscyplina.objects.filter(rok__gte=2022,
+    rok__lte=2025)``). The meta-cache only stores ``ma_dyscypline``
+    (any year), so this is an approximation. Acceptable for v1 since
+    priority is a sort hint, not a correctness invariant. To achieve
+    exact parity, store year-filtered discipline data in meta.
+    """
+    recent_lata = {rok for rok in meta_entry["lata_publikacji"] if 2022 <= rok <= 2025}
+    if not recent_lata:
+        return 0
+    if meta_entry["ma_dyscypline"]:
+        return 100
+    return 50
+
+
 def calculate_author_priority(autor):
     """
     Calculate priority based on publication dates and disciplines.
@@ -283,7 +310,7 @@ def _run_general_phase(scan_run, min_confidence=MIN_CONFIDENCE_TO_STORE):
                     confidence_score=score,
                     confidence_percent=normalize_confidence(score),
                     reasons=reasons,
-                    priority=calculate_author_priority(dup_obj),
+                    priority=_calculate_priority_from_meta(meta[dup_pk]),
                     main_autor_name=str(main_obj),
                     duplicate_autor_name=str(dup_obj),
                     main_publications_count=meta[main_pk]["publikacje_count"],
