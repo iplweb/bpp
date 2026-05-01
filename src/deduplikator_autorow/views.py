@@ -343,6 +343,9 @@ def duplicate_authors_view(request):  # noqa: C901
         duplikaty_z_publikacjami.append(pub_data)
 
     context["duplikaty_z_publikacjami"] = duplikaty_z_publikacjami
+    context["first_candidate"] = (
+        candidates_for_author.first() if candidates_for_author else None
+    )
 
     # Get main author's publications and disciplines
     context["glowny_autor_dyscypliny"] = (

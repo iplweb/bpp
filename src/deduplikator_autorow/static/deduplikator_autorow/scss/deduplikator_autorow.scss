@@ -481,3 +481,41 @@
 .deduplikator-autorow__confidence-low {
   color: red;
 }
+
+// Mode badges, partial-completed banner, mode filter, scan phase
+.deduplikator-autorow {
+  &__badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 0.75em;
+    font-weight: 600;
+    color: #fff;
+    margin-left: 0.5em;
+
+    &--pbn {
+      background-color: #2196f3;
+    }
+
+    &--general {
+      background-color: #ff9800;
+    }
+  }
+
+  &__partial-banner {
+    margin: 1em 0;
+  }
+
+  &__mode-filter {
+    margin: 1em 0;
+
+    label {
+      margin-right: 1.5em;
+    }
+  }
+
+  &__scan-phase {
+    margin-top: 0.5em;
+    font-style: italic;
+  }
+}

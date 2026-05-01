@@ -122,3 +122,30 @@ def test_view_partial_completed_scan_used(auth_client):
     # (the field is named completed_scan in the existing view but its semantics are
     # "scan with usable results")
     assert response.context.get("completed_scan") is not None
+
+
+@pytest.mark.django_db
+def test_view_partial_completed_shows_banner(auth_client):
+    """View renderuje banner ostrzegający przy PARTIAL_COMPLETED scan."""
+    DuplicateScanRun.objects.create(
+        status=DuplicateScanRun.Status.PARTIAL_COMPLETED,
+        finished_at=timezone.now(),
+    )
+    response = auth_client.get(reverse("deduplikator_autorow:duplicate_authors"))
+    assert response.status_code == 200
+    content = response.content.decode()
+    assert "Częściowo zakończone" in content or "anulowana" in content.lower()
+
+
+@pytest.mark.django_db
+def test_view_mode_filter_radio_present(auth_client, scan_with_both_modes):
+    """Mode-filter radio widoczny w HTML."""
+    response = auth_client.get(reverse("deduplikator_autorow:duplicate_authors"))
+    assert response.status_code == 200
+    content = response.content.decode()
+    # Radio "PBN", "Ogólny", "Oba" są w widoku
+    assert "PBN" in content
+    assert "Ogólny" in content
+    # Counters w widoku
+    assert response.context["pending_pbn_count"] == 1
+    assert response.context["pending_general_count"] == 1

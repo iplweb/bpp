@@ -46,6 +46,11 @@
                                     <p id="scan-eta-text" class="deduplikator-autorow__status-text--muted">
                                         <span class="fi-clock"></span> ETA: obliczanie...
                                     </p>
+                                    {% if running_scan.phase %}
+                                      <div class="deduplikator-autorow__scan-phase">
+                                        Faza: <strong>{{ running_scan.get_phase_display|default:running_scan.phase }}</strong>
+                                      </div>
+                                    {% endif %}
                                     <form method="post" action="{% url 'deduplikator_autorow:cancel_scan' %}" class="deduplikator-autorow__form">
                                         {% csrf_token %}
                                         <button type="submit" class="button alert expanded small"
@@ -384,6 +389,40 @@
             <!-- Local messages placeholder that respects sidebar layout -->
             <div id="localMessagesPlaceholder" class="deduplikator-autorow__messages"></div>
 
+            {% if completed_scan and completed_scan.status == "partial_completed" %}
+              <div class="callout warning deduplikator-autorow__partial-banner">
+                <strong>Skanowanie częściowo zakończone:</strong>
+                Faza ogólna została anulowana. Wyniki PBN są dostępne, ale duplikaty
+                ogólne nie zostały przeskanowane. Uruchom skan ponownie, aby zobaczyć
+                wszystkie duplikaty.
+              </div>
+            {% endif %}
+
+            {# Mode filter #}
+            <div class="row deduplikator-autorow__mode-filter">
+              <div class="small-12 columns">
+                <strong>Pokaż wyniki:</strong>
+                <label>
+                  <input type="radio" name="mode" value="pbn"
+                         {% if mode == "pbn" %}checked{% endif %}
+                         onchange="location.href='?mode=pbn'">
+                  PBN ({{ pending_pbn_count }})
+                </label>
+                <label>
+                  <input type="radio" name="mode" value="general"
+                         {% if mode == "general" %}checked{% endif %}
+                         onchange="location.href='?mode=general'">
+                  Ogólny ({{ pending_general_count }})
+                </label>
+                <label>
+                  <input type="radio" name="mode" value="both"
+                         {% if mode == "both" or not mode %}checked{% endif %}
+                         onchange="location.href='?mode=both'">
+                  Oba
+                </label>
+              </div>
+            </div>
+
             {% include "includes/pbn_freshness_warning.html" with custom_message="Analiza duplikatów opiera się na lokalnej kopii danych autorów z PBN. Wyniki mogą być nieaktualne." %}
 
             <div class="grid-x grid-padding-x align-middle deduplikator-autorow__header">
@@ -452,6 +491,11 @@
                     <p id="main-scan-eta-text" class="deduplikator-autorow__status-text--medium">
                         <span class="fi-clock"></span> ETA: obliczanie...
                     </p>
+                    {% if running_scan.phase %}
+                      <div class="deduplikator-autorow__scan-phase">
+                        Faza: <strong>{{ running_scan.get_phase_display|default:running_scan.phase }}</strong>
+                      </div>
+                    {% endif %}
                     <p>Strona odświeży się automatycznie po zakończeniu skanowania.</p>
                 </div>
             {% elif not glowny_autor %}
@@ -470,7 +514,7 @@
             {% else %}
                 {% if glowny_autor %}
                     <div class="callout primary">
-                        <h3>Główny rekord autora</h3>
+                        <h3>Główny rekord autora{% if first_candidate %}{% if first_candidate.scan_mode == "pbn" %}<span class="deduplikator-autorow__badge deduplikator-autorow__badge--pbn">PBN</span>{% else %}<span class="deduplikator-autorow__badge deduplikator-autorow__badge--general">OGÓLNY</span>{% endif %}{% endif %}</h3>
                         <div class="grid-x grid-padding-x">
                             <div class="cell medium-4">
                                 <strong>Imię i nazwisko:</strong><br>
