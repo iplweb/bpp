@@ -217,6 +217,103 @@ def _process_author_duplicates(osoba_z_instytucji, scan_run, min_confidence):
     return candidates
 
 
+def _run_general_phase(scan_run, min_confidence=MIN_CONFIDENCE_TO_STORE):
+    """Faza 2 skanu — duplikaty general (no SQL on hot path).
+
+    Algorytm:
+    1. build_autor_meta + build_buckets — pre-load wszystkich autorów.
+    2. Read IgnoredAuthor / NotADuplicate exclusions.
+    3. generate_pairs — pary score >= min_confidence.
+    4. find_clusters — connected components.
+    5. Cluster-skip jeśli ktokolwiek w klastrze ma OsobaZInstytucji.
+    6. Pick main przez hierarchię B; emit pary (main, dup) jako
+       DuplicateCandidate(scan_mode='general').
+    7. Sprawdza scan_run.status == CANCELLED między batchami.
+    """
+    from .models import (
+        DuplicateCandidate,
+        DuplicateScanRun,
+        IgnoredAuthor,
+        NotADuplicate,
+    )
+    from .utils.analysis_meta import analiza_pary_meta
+    from .utils.cluster import find_clusters
+    from .utils.main_selection import pick_main_pk
+    from .utils.meta import build_autor_meta, build_buckets
+    from .utils.search_general import generate_pairs
+
+    logger.info("General phase: building meta cache...")
+    meta = build_autor_meta()
+    buckets = build_buckets(meta)
+    logger.info("General phase: %d autorów, %d bucketów", len(meta), len(buckets))
+
+    ignored_pks = set(IgnoredAuthor.objects.values_list("autor_id", flat=True))
+    notadup_pks = set(NotADuplicate.objects.values_list("autor_id", flat=True))
+
+    pairs_data: dict[tuple[int, int], tuple[int, list[str]]] = {}
+    for pk_a, pk_b, score, reasons in generate_pairs(
+        buckets, meta, ignored_pks, notadup_pks, min_confidence
+    ):
+        pairs_data[(pk_a, pk_b)] = (score, reasons)
+    logger.info("General phase: znaleziono %d par", len(pairs_data))
+
+    clusters = find_clusters(list(pairs_data.keys()))
+    logger.info("General phase: %d klastrów wstępnych", len(clusters))
+
+    skipped_count = 0
+    candidates_to_create: list[DuplicateCandidate] = []
+    for cluster in clusters:
+        if any(meta[pk]["ma_osoba_z_instytucji"] for pk in cluster):
+            skipped_count += 1
+            continue
+        main_pk = pick_main_pk(cluster, meta)
+        for dup_pk in cluster - {main_pk}:
+            key = (min(main_pk, dup_pk), max(main_pk, dup_pk))
+            if key in pairs_data:
+                score, reasons = pairs_data[key]
+            else:
+                score, reasons = analiza_pary_meta(meta[main_pk], meta[dup_pk])
+            main_obj = meta[main_pk]["obj"]
+            dup_obj = meta[dup_pk]["obj"]
+            candidates_to_create.append(
+                DuplicateCandidate(
+                    scan_run=scan_run,
+                    main_autor=main_obj,
+                    duplicate_autor=dup_obj,
+                    confidence_score=score,
+                    confidence_percent=normalize_confidence(score),
+                    reasons=reasons,
+                    priority=calculate_author_priority(dup_obj),
+                    main_autor_name=str(main_obj),
+                    duplicate_autor_name=str(dup_obj),
+                    main_publications_count=meta[main_pk]["publikacje_count"],
+                    duplicate_publications_count=meta[dup_pk]["publikacje_count"],
+                    scan_mode="general",
+                )
+            )
+            if len(candidates_to_create) >= 1000:
+                with transaction.atomic():
+                    DuplicateCandidate.objects.bulk_create(
+                        candidates_to_create, ignore_conflicts=True
+                    )
+                candidates_to_create = []
+                scan_run.refresh_from_db()
+                if scan_run.status == DuplicateScanRun.Status.CANCELLED:
+                    logger.info("General phase cancelled mid-batch")
+                    return
+
+    if candidates_to_create:
+        with transaction.atomic():
+            DuplicateCandidate.objects.bulk_create(
+                candidates_to_create, ignore_conflicts=True
+            )
+
+    logger.info(
+        "General phase: %d klastrów pominiętych (z OsobaZInstytucji)",
+        skipped_count,
+    )
+
+
 @shared_task(bind=True, name="deduplikator_autorow.scan_for_duplicates")
 def scan_for_duplicates(self, user_id=None, min_confidence=MIN_CONFIDENCE_TO_STORE):
     """
