@@ -11,21 +11,7 @@ from pathlib import Path
 
 from django.core.management.base import BaseCommand, CommandError
 
-
-def _detect_dump_format(path: Path) -> str | None:
-    """Zwraca 'sql' / 'sql.gz' / 'pgdump' lub None.
-
-    Detekcja po extension, case-insensitive. Helper przeniesiony do
-    _run_site_helpers.restore w Task 2.1 — tu duplikat dla skeleton-u.
-    """
-    name = path.name.lower()
-    if name.endswith(".sql.gz"):
-        return "sql.gz"
-    if name.endswith(".sql"):
-        return "sql"
-    if name.endswith(".dump") or name.endswith(".pgdump"):
-        return "pgdump"
-    return None
+from ._run_site_helpers.restore import detect_dump_format
 
 
 class Command(BaseCommand):
@@ -88,7 +74,7 @@ class Command(BaseCommand):
         path = Path(dump).expanduser().resolve()
         if not path.is_file():
             raise CommandError(f"Plik dump-a nie istnieje: {path}")
-        if _detect_dump_format(path) is None:
+        if detect_dump_format(path) is None:
             raise CommandError(
                 f"Nieobsługiwany format pliku {path.name}. "
                 f"Użyj .sql, .sql.gz, .dump lub .pgdump."
