@@ -146,3 +146,46 @@ def test_banner_dump_label_path():
         dump_label="/path/to/dump.sql.gz",
     )
     assert "/path/to/dump.sql.gz" in text
+
+
+def test_find_free_port_returns_int_in_range():
+    from bpp.management.commands._run_site_helpers.processes import find_free_port
+
+    port = find_free_port()
+    assert isinstance(port, int)
+    assert 1024 <= port <= 65535
+
+
+def test_find_free_port_unique_calls():
+    """Dwa wywołania zwracają różne porty (statystycznie pewne)."""
+    from bpp.management.commands._run_site_helpers.processes import find_free_port
+
+    ports = {find_free_port() for _ in range(5)}
+    assert len(ports) >= 3
+
+
+def test_python_executable_is_path():
+    from bpp.management.commands._run_site_helpers.processes import _python_executable
+
+    exe = _python_executable()
+    assert exe  # non-empty
+    assert "python" in exe.lower()
+
+
+def test_src_dir_resolves_to_src():
+    from bpp.management.commands._run_site_helpers.processes import _src_dir
+
+    p = _src_dir()
+    assert p.name == "src"
+    assert (p / "manage.py").exists()
+
+
+def test_wait_terminate_already_exited():
+    """wait_terminate na już-zakończonym procesie nie crashuje."""
+    import subprocess
+    from bpp.management.commands._run_site_helpers.processes import wait_terminate
+
+    proc = subprocess.Popen(["python", "-c", "pass"])
+    proc.wait()
+    # Nie powinno rzucić — proc.poll() zwraca returncode
+    wait_terminate(proc)
