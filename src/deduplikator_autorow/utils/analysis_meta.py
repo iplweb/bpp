@@ -61,6 +61,22 @@ def analiza_pary_meta(a: dict, b: dict) -> tuple[int, list[str]]:  # noqa: C901
         ):
             score += 30
             reasons.append("podobne nazwisko (zawieranie)")
+        else:
+            parts_a = set(a.get("nazwisko_parts") or [])
+            parts_b = set(b.get("nazwisko_parts") or [])
+            common_parts = parts_a & parts_b
+            if common_parts and (len(parts_a) > 1 or len(parts_b) > 1):
+                if parts_a == parts_b:
+                    # Pełny zestaw członów się zgadza (np. permutacja
+                    # 'gal-cisoń' ↔ 'cisoń-gal').
+                    score += 35
+                    reasons.append("identyczne człony nazwiska złożonego (permutacja)")
+                else:
+                    score += 20
+                    reasons.append(
+                        f"wspólny człon nazwiska złożonego "
+                        f"({', '.join(sorted(common_parts))})"
+                    )
 
     if (
         a["nazwisko_norm"]
