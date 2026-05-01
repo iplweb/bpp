@@ -240,7 +240,7 @@ def scan_for_duplicates(self, user_id=None, min_confidence=MIN_CONFIDENCE_TO_STO
     """
     from pbn_api.models import OsobaZInstytucji
 
-    from .models import DuplicateCandidate, DuplicateScanRun, IgnoredAuthor
+    from .models import DuplicateCandidate, DuplicateScanRun, IgnoredScientist
 
     logger.info("Starting duplicate scan task...")
 
@@ -257,7 +257,7 @@ def scan_for_duplicates(self, user_id=None, min_confidence=MIN_CONFIDENCE_TO_STO
         logger.info(f"Deleted {deleted_count} existing candidates")
 
         ignored_scientist_ids = set(
-            IgnoredAuthor.objects.values_list("scientist_id", flat=True)
+            IgnoredScientist.objects.values_list("scientist_id", flat=True)
         )
 
         osoby_query = OsobaZInstytucji.objects.select_related("personId").all()

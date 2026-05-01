@@ -9,7 +9,7 @@ from pbn_api.models import Scientist
 from .models import (
     DuplicateCandidate,
     DuplicateScanRun,
-    IgnoredAuthor,
+    IgnoredScientist,
     LogScalania,
     NotADuplicate,
 )
@@ -76,8 +76,8 @@ class NotADuplicateAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
     get_author_last_name.admin_order_field = "scientist_pk"
 
 
-@admin.register(IgnoredAuthor)
-class IgnoredAuthorAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
+@admin.register(IgnoredScientist)
+class IgnoredScientistAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
     list_display = [
         "get_scientist_display",
         "get_autor_display",

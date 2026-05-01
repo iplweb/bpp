@@ -30,8 +30,8 @@ class NotADuplicate(models.Model):
         return f"Autor {self.autor} (not duplicate) - {self.created_by}"
 
 
-class IgnoredAuthor(models.Model):
-    """Authors that should be completely ignored in the deduplication process"""
+class IgnoredScientist(models.Model):
+    """Scientists from PBN that should be completely ignored in deduplication"""
 
     scientist = models.OneToOneField(
         "pbn_api.Scientist",
@@ -66,8 +66,8 @@ class IgnoredAuthor(models.Model):
     )
 
     class Meta:
-        verbose_name = "Ignorowany autor"
-        verbose_name_plural = "Ignorowani autorzy"
+        verbose_name = "Ignorowany Scientist (PBN)"
+        verbose_name_plural = "Ignorowani Scientist (PBN)"
         ordering = ["-created_on"]
 
     def __str__(self):

@@ -22,7 +22,7 @@ from pbn_downloader_app.models import PbnDownloadTask
 from .models import (
     DuplicateCandidate,
     DuplicateScanRun,
-    IgnoredAuthor,
+    IgnoredScientist,
     LogScalania,
     NotADuplicate,
 )
@@ -200,7 +200,7 @@ def duplicate_authors_view(request):  # noqa: C901
 
     # Common context
     not_duplicate_count = NotADuplicate.objects.count()
-    ignored_authors_count = IgnoredAuthor.objects.count()
+    ignored_authors_count = IgnoredScientist.objects.count()
     latest_pbn_download = PbnDownloadTask.get_latest_task()
 
     # Check PBN people data freshness
@@ -510,7 +510,7 @@ def ignore_author(request):
         scientist = Scientist.objects.get(pk=scientist_id)
 
         # Check if already ignored
-        if IgnoredAuthor.objects.filter(scientist=scientist).exists():
+        if IgnoredScientist.objects.filter(scientist=scientist).exists():
             messages.warning(
                 request, f"Autor {scientist} jest już oznaczony jako ignorowany."
             )
@@ -520,7 +520,7 @@ def ignore_author(request):
             if hasattr(scientist, "rekord_w_bpp"):
                 autor = scientist.rekord_w_bpp
 
-            IgnoredAuthor.objects.create(
+            IgnoredScientist.objects.create(
                 scientist=scientist, autor=autor, reason=reason, created_by=request.user
             )
             messages.success(
@@ -543,8 +543,8 @@ def reset_ignored_authors(request):
     """
     Remove all ignored author markings.
     """
-    count = IgnoredAuthor.objects.count()
-    IgnoredAuthor.objects.all().delete()
+    count = IgnoredScientist.objects.count()
+    IgnoredScientist.objects.all().delete()
     messages.success(request, f"Zresetowano {count} ignorowanych autorów.")
     return redirect("deduplikator_autorow:duplicate_authors")
 
