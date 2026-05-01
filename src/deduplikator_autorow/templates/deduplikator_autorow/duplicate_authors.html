@@ -318,7 +318,7 @@
                                    target="_blank">
                                     <span class="fi-list"></span> Zobacz listę
                                 </a>
-                                <form method="post" action="{% url 'deduplikator_autorow:reset_ignored_authors' %}" class="deduplikator-autorow__form">
+                                <form method="post" action="{% url 'deduplikator_autorow:reset_ignored_scientists' %}" class="deduplikator-autorow__form">
                                     {% csrf_token %}
                                     <button type="submit"
                                             class="button alert expanded small"
@@ -397,7 +397,7 @@
                                 <a href="{% url 'deduplikator_autorow:duplicate_authors' %}?skip_count={{ skip_count|add:"-1" }}"
                                    class="button secondary"><span class="fi-arrow-left"></span> Poprzedni autor</a>
                             {% endif %}
-                            <form method="post" action="{% url 'deduplikator_autorow:ignore_author' %}" class="deduplikator-autorow__form--inline">
+                            <form method="post" action="{% url 'deduplikator_autorow:ignore_scientist' %}" class="deduplikator-autorow__form--inline">
                                 {% csrf_token %}
                                 <input type="hidden" name="scientist_id" value="{{ scientist.pk }}">
                                 <input type="hidden" name="reason" value="Pominięty przez użytkownika">
