@@ -33,6 +33,7 @@ from .utils import (
     search_author_by_lastname,
     znajdz_pierwszego_autora_z_duplikatami,
 )
+from .utils.counters import get_latest_usable_scan
 
 # Minimalny próg pewności do wyświetlania duplikatów
 # Duplikaty z pewnością poniżej tego progu nie będą pokazywane
@@ -196,7 +197,12 @@ def duplicate_authors_view(request):  # noqa: C901
 
     # Get scan status
     running_scan = get_running_scan()
-    completed_scan = get_latest_completed_scan()
+    completed_scan = get_latest_usable_scan()
+
+    # Filter mode: pbn|general|both (default both)
+    mode = request.GET.get("mode", "both")
+    if mode not in ("pbn", "general", "both"):
+        mode = "both"
 
     # Common context
     not_duplicate_count = NotADuplicate.objects.count()
@@ -232,6 +238,10 @@ def duplicate_authors_view(request):  # noqa: C901
         "completed_scan": completed_scan,
         "no_scan_available": not completed_scan and not running_scan,
         "pending_candidates_count": 0,
+        "pending_pbn_count": 0,
+        "pending_general_count": 0,
+        # Filter mode (pbn|general|both)
+        "mode": mode,
         # Navigation
         "skip_count": 0,
         # PBN data freshness
@@ -257,6 +267,16 @@ def duplicate_authors_view(request):  # noqa: C901
     ).count()
     context["pending_candidates_count"] = pending_count
     context["total_authors_with_duplicates"] = pending_count
+    context["pending_pbn_count"] = DuplicateCandidate.objects.filter(
+        scan_run=completed_scan,
+        status=DuplicateCandidate.Status.PENDING,
+        scan_mode="pbn",
+    ).count()
+    context["pending_general_count"] = DuplicateCandidate.objects.filter(
+        scan_run=completed_scan,
+        status=DuplicateCandidate.Status.PENDING,
+        scan_mode="general",
+    ).count()
 
     # Handle search by lastname
     search_lastname = request.GET.get("search_lastname", "").strip()
@@ -273,6 +293,8 @@ def duplicate_authors_view(request):  # noqa: C901
             .select_related("main_autor", "duplicate_autor")
             .order_by("-priority", "-confidence_score")
         )
+        if mode != "both":
+            candidates = candidates.filter(scan_mode=mode)
 
         context["search_results_count"] = (
             candidates.values("main_autor").distinct().count()
@@ -294,7 +316,7 @@ def duplicate_authors_view(request):  # noqa: C901
 
         # Get next author with pending duplicates using offset
         glowny_autor, candidates_for_author, skip_count = _get_next_candidate_group(
-            completed_scan, skip_count=skip_count
+            completed_scan, skip_count=skip_count, mode=mode
         )
         context["skip_count"] = skip_count
 
@@ -640,15 +662,6 @@ def download_duplicates_xlsx(request):
         return redirect("deduplikator_autorow:duplicate_authors")
 
 
-def get_latest_completed_scan():
-    """Get the most recent completed scan run."""
-    return (
-        DuplicateScanRun.objects.filter(status=DuplicateScanRun.Status.COMPLETED)
-        .order_by("-finished_at")
-        .first()
-    )
-
-
 def get_running_scan():
     """Get the currently running scan, if any."""
     return DuplicateScanRun.objects.filter(
@@ -777,26 +790,41 @@ def _get_pending_candidates_for_main_autor(main_autor_id, scan_run):
     )
 
 
-def _get_next_candidate_group(scan_run, skip_count=0):
+def _get_next_candidate_group(scan_run, skip_count=0, mode="both"):
     """
     Get the next group of candidates (all for the same main author).
-    Returns (main_autor, candidates_queryset, skip_count) or (None, None, 0) if no more pending.
+    Returns (main_autor, candidates_queryset, skip_count) or (None, None, 0)
+    if no more pending.
 
     Args:
         scan_run: The scan run to get candidates from
         skip_count: Number of main authors to skip (offset)
+        mode: Filter by scan_mode ("pbn", "general", or "both"). When "both",
+            PBN candidates are sorted before general (PBN is canonical).
 
     Returns:
         Tuple of (main_autor, candidates_queryset, current_skip_count)
     """
-    # Get distinct main authors with pending candidates, ordered by priority then confidence
-    # We need to find distinct main_autor_ids in priority/confidence order
+    from django.db.models import Case, IntegerField, Value, When
+
+    qs = DuplicateCandidate.objects.filter(
+        scan_run=scan_run,
+        status=DuplicateCandidate.Status.PENDING,
+    )
+    if mode != "both":
+        qs = qs.filter(scan_mode=mode)
+
+    # PBN-first ordering when mode=both
     distinct_main_autor_ids = (
-        DuplicateCandidate.objects.filter(
-            scan_run=scan_run,
-            status=DuplicateCandidate.Status.PENDING,
+        qs.annotate(
+            mode_order=Case(
+                When(scan_mode="pbn", then=Value(0)),
+                When(scan_mode="general", then=Value(1)),
+                default=Value(2),
+                output_field=IntegerField(),
+            )
         )
-        .order_by("-priority", "-confidence_score", "main_autor_id")
+        .order_by("mode_order", "-priority", "-confidence_score", "main_autor_id")
         .values_list("main_autor_id", flat=True)
         .distinct()
     )
