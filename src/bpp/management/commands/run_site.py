@@ -100,7 +100,12 @@ class Command(BaseCommand):
         celery_proc = None
         try:
             try:
-                containers = start_containers(reuse=opts["reuse"])
+                # Suppress baseline gdy user dał własny dump — pg_restore
+                # walczy z FK cascade gdy baseline już zaimportowany.
+                containers = start_containers(
+                    reuse=opts["reuse"],
+                    load_baseline=(dump_path is None),
+                )
             except DockerNotRunningError as exc:
                 raise CommandError(f"Docker daemon nie jest dostępny: {exc}") from exc
 

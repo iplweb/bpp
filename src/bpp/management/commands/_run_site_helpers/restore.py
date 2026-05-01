@@ -59,15 +59,20 @@ def build_restore_command(
         ]
         return cmd, format == "sql.gz"
     if format == "pgdump":
+        # Brak --clean / --if-exists: zakładamy pustą bazę (caller suppressuje
+        # baseline). --clean by tu walczył z FK cascade (constraint dependencies
+        # na pbn_api_publication_pkey, bpp_autor_pkey itp.).
+        # --no-owner: ignoruje ALTER OWNER z dump-a (user "bpp" może nie
+        # mieć permission do ról istniejących na production source DB).
+        # --exit-on-error: pierwszy błąd kończy proces.
         cmd = [
             "docker",
             "exec",
             "-i",
             container_id,
             "pg_restore",
-            "--clean",
-            "--if-exists",
             "--no-owner",
+            "--exit-on-error",
             "-U",
             db_user,
             "-d",

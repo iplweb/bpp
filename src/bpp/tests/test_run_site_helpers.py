@@ -78,8 +78,11 @@ def test_build_restore_command_pgdump_uses_pg_restore():
     )
     assert decompress is False
     assert "pg_restore" in cmd
-    assert "--clean" in cmd
-    assert "--if-exists" in cmd
+    # Brak --clean / --if-exists — zakładamy pustą bazę (caller suppressuje baseline).
+    assert "--clean" not in cmd
+    assert "--if-exists" not in cmd
+    assert "--no-owner" in cmd
+    assert "--exit-on-error" in cmd
 
 
 def test_build_restore_command_unknown_raises():
