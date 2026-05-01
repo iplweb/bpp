@@ -80,3 +80,69 @@ def test_build_restore_command_unknown_raises():
         build_restore_command(
             format="tar", container_id="x", db_user="bpp", db_name="bpp"
         )
+
+
+def test_banner_includes_all_endpoints():
+    from bpp.management.commands._run_site_helpers.banner import format_banner
+
+    text = format_banner(
+        appserver_url="http://localhost:54321",
+        admin_url="http://localhost:54321/admin/",
+        admin_user="admin",
+        admin_pass="admin",
+        pg_host="127.0.0.1",
+        pg_port=54322,
+        redis_host="127.0.0.1",
+        redis_port=54323,
+        with_celery=False,
+        dump_label="baseline",
+    )
+    assert "http://localhost:54321" in text
+    assert "/admin/" in text
+    assert "admin" in text
+    assert "127.0.0.1:54322" in text
+    assert "127.0.0.1:54323" in text
+    assert "baseline" in text
+
+
+def test_banner_celery_running_label():
+    from bpp.management.commands._run_site_helpers.banner import format_banner
+
+    text = format_banner(
+        appserver_url="http://localhost:1",
+        admin_url="http://localhost:1/admin/",
+        admin_user="admin",
+        admin_pass="admin",
+        pg_host="x", pg_port=1, redis_host="x", redis_port=2,
+        with_celery=True,
+        dump_label="baseline",
+    )
+    assert "running" in text.lower()
+
+
+def test_banner_celery_disabled_label():
+    from bpp.management.commands._run_site_helpers.banner import format_banner
+
+    text = format_banner(
+        appserver_url="http://localhost:1",
+        admin_url="http://localhost:1/admin/",
+        admin_user="admin",
+        admin_pass="admin",
+        pg_host="x", pg_port=1, redis_host="x", redis_port=2,
+        with_celery=False,
+        dump_label="baseline",
+    )
+    assert "disabled" in text.lower() or "wyłączone" in text.lower()
+
+
+def test_banner_dump_label_path():
+    from bpp.management.commands._run_site_helpers.banner import format_banner
+
+    text = format_banner(
+        appserver_url="x", admin_url="y",
+        admin_user="a", admin_pass="b",
+        pg_host="x", pg_port=1, redis_host="y", redis_port=2,
+        with_celery=False,
+        dump_label="/path/to/dump.sql.gz",
+    )
+    assert "/path/to/dump.sql.gz" in text
