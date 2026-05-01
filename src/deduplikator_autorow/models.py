@@ -259,6 +259,10 @@ class DuplicateScanRun(models.Model):
         PENDING = "pending", "Oczekuje"
         RUNNING = "running", "W trakcie"
         COMPLETED = "completed", "Zakończone"
+        PARTIAL_COMPLETED = (
+            "partial_completed",
+            "Częściowo zakończone (faza PBN OK, general anulowana)",
+        )
         CANCELLED = "cancelled", "Anulowane"
         FAILED = "failed", "Błąd"
 
@@ -305,6 +309,13 @@ class DuplicateScanRun(models.Model):
         "ID zadania Celery",
         max_length=255,
         blank=True,
+    )
+
+    phase = models.CharField(
+        "Aktualna faza",
+        max_length=20,
+        blank=True,
+        choices=[("pbn", "Faza PBN"), ("general", "Faza ogólna")],
     )
 
     class Meta:
@@ -385,6 +396,14 @@ class DuplicateCandidate(models.Model):
         help_text="Priorytet wyświetlania: 100=prace 2022-2025 z dyscyplinami, 50=prace 2022-2025, 0=inne",
     )
 
+    scan_mode = models.CharField(
+        "Tryb skanowania",
+        max_length=20,
+        choices=[("pbn", "PBN"), ("general", "Ogólny")],
+        default="pbn",
+        db_index=True,
+    )
+
     # Status tracking
     status = models.CharField(
         "Status",
@@ -435,11 +454,12 @@ class DuplicateCandidate(models.Model):
             models.Index(fields=["scan_run", "status"]),
             models.Index(fields=["main_autor", "status"]),
             models.Index(fields=["priority", "confidence_score"]),
+            models.Index(fields=["scan_run", "scan_mode", "status"]),
         ]
         constraints = [
             models.UniqueConstraint(
-                fields=["scan_run", "main_autor", "duplicate_autor"],
-                name="unique_scan_main_duplicate",
+                fields=["scan_run", "scan_mode", "main_autor", "duplicate_autor"],
+                name="unique_scan_mode_main_duplicate",
             ),
         ]
 
