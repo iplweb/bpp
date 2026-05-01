@@ -34,6 +34,13 @@ def test_detect_format_pgdump_alt(tmp_path):
     assert detect_dump_format(p) == "pgdump"
 
 
+def test_detect_format_pg_dump_underscore(tmp_path):
+    """pg_dump produkuje też pliki z extension .pg_dump (z underscore)."""
+    p = tmp_path / "db-backup.pg_dump"
+    p.write_bytes(b"")
+    assert detect_dump_format(p) == "pgdump"
+
+
 def test_detect_format_uppercase_extension(tmp_path):
     p = tmp_path / "X.SQL.GZ"
     p.write_bytes(b"")

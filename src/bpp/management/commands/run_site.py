@@ -159,7 +159,7 @@ class Command(BaseCommand):
         if detect_dump_format(path) is None:
             raise CommandError(
                 f"Nieobsługiwany format pliku {path.name}. "
-                f"Użyj .sql, .sql.gz, .dump lub .pgdump."
+                f"Użyj .sql, .sql.gz, .dump, .pgdump lub .pg_dump."
             )
         return path
 

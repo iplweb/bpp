@@ -21,7 +21,7 @@ def detect_dump_format(path: Path) -> str | None:
         return "sql.gz"
     if name.endswith(".sql"):
         return "sql"
-    if name.endswith(".dump") or name.endswith(".pgdump"):
+    if name.endswith(".dump") or name.endswith(".pgdump") or name.endswith(".pg_dump"):
         return "pgdump"
     return None
 
