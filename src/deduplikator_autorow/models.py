@@ -76,6 +76,39 @@ class IgnoredScientist(models.Model):
         return f"Ignorowany: Scientist #{self.scientist.pk}"
 
 
+class IgnoredAuthor(models.Model):
+    """BPP authors (without PBN-Scientist link) that should be ignored in deduplication."""
+
+    autor = models.OneToOneField(
+        "bpp.Autor",
+        on_delete=models.CASCADE,
+        db_index=True,
+        verbose_name="Autor (BPP)",
+        help_text="Autor BPP do ignorowania w deduplikacji ogólnej",
+    )
+
+    reason = models.CharField(
+        max_length=500,
+        blank=True,
+        verbose_name="Powód ignorowania",
+    )
+
+    created_on = models.DateTimeField("Data utworzenia", default=timezone.now)
+    created_by = models.ForeignKey(
+        BppUser,
+        on_delete=models.CASCADE,
+        verbose_name="Utworzył",
+    )
+
+    class Meta:
+        verbose_name = "Ignorowany autor (BPP)"
+        verbose_name_plural = "Ignorowani autorzy (BPP)"
+        ordering = ["-created_on"]
+
+    def __str__(self):
+        return f"Ignorowany autor: {self.autor}"
+
+
 class LogScalania(models.Model):
     """Log of author merge operations with detailed tracking"""
 
