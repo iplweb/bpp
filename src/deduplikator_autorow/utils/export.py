@@ -57,6 +57,7 @@ def _build_candidate_row(candidate, site_domain, duplicate_counts):
         _create_pbn_url(dup.pbn_uid_id),
         round(candidate.confidence_percent, 2),
         duplicate_counts[candidate.main_autor_id],
+        "PBN" if candidate.scan_mode == "pbn" else "Ogólny",
     ]
 
 
@@ -94,6 +95,7 @@ def export_duplicates_to_xlsx():
     - Kolumna J: PBN URL duplikatu (kliknij link)
     - Kolumna K: Pewność podobieństwa (0.0-1.0)
     - Kolumna L: Ilość duplikatów
+    - Kolumna M: Tryb (PBN / Ogólny)
 
     Returns:
         bytes: Zawartość pliku XLSX
@@ -138,6 +140,7 @@ def export_duplicates_to_xlsx():
         "PBN URL duplikatu",
         "Pewność podobieństwa",
         "Ilość duplikatów",
+        "Tryb",
     ]
 
     ws.append(headers)

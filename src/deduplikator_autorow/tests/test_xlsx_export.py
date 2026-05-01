@@ -3,6 +3,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.test import RequestFactory
 from django.urls import reverse
+from model_bakery import baker
 
 from bpp.const import GR_WPROWADZANIE_DANYCH
 from deduplikator_autorow.utils import export_duplicates_to_xlsx
@@ -23,7 +24,7 @@ def test_export_duplicates_to_xlsx_basic():
         assert len(result) > 1000  # At least 1KB for headers and structure
     except Exception as e:
         # Function should not crash even with no data
-        raise AssertionError(f"export_duplicates_to_xlsx crashed: {e}")
+        raise AssertionError(f"export_duplicates_to_xlsx crashed: {e}") from e
 
 
 @pytest.mark.django_db
@@ -47,7 +48,7 @@ def test_download_duplicates_xlsx_view():
         assert response.status_code in [200, 302]
     except Exception as e:
         # Should not crash on valid request
-        raise AssertionError(f"download_duplicates_xlsx view crashed: {e}")
+        raise AssertionError(f"download_duplicates_xlsx view crashed: {e}") from e
 
 
 @pytest.mark.django_db
@@ -107,7 +108,7 @@ def test_xlsx_content_type():
 
 
 @pytest.mark.django_db
-def test_xlsx_structure_and_format():
+def test_xlsx_structure_and_format():  # noqa: C901
     """Test that XLSX has correct structure with new columns and formatting"""
     from io import BytesIO
 
@@ -202,5 +203,53 @@ def test_xlsx_structure_and_format():
         # This test might fail due to missing test data, but should not crash on structure
         # Only fail if it's a structural issue, not data issue
         if "no attribute" in str(e).lower() or "nonetype" in str(e).lower():
-            raise AssertionError(f"XLSX structure test failed: {e}")
+            raise AssertionError(f"XLSX structure test failed: {e}") from e
         # Otherwise, pass - might be due to missing test data
+
+
+@pytest.mark.django_db
+def test_xlsx_export_includes_tryb_column():
+    from io import BytesIO
+
+    from openpyxl import load_workbook
+
+    from deduplikator_autorow.models import DuplicateCandidate, DuplicateScanRun
+    from deduplikator_autorow.utils.export import export_duplicates_to_xlsx
+
+    scan = DuplicateScanRun.objects.create(status=DuplicateScanRun.Status.COMPLETED)
+    a1 = baker.make("bpp.Autor", nazwisko="X", imiona="A")
+    a2 = baker.make("bpp.Autor", nazwisko="X", imiona="A")
+    b1 = baker.make("bpp.Autor", nazwisko="Y", imiona="B")
+    b2 = baker.make("bpp.Autor", nazwisko="Y", imiona="B")
+    DuplicateCandidate.objects.create(
+        scan_run=scan,
+        main_autor=a1,
+        duplicate_autor=a2,
+        confidence_score=80,
+        confidence_percent=0.6,
+        main_autor_name="X A",
+        duplicate_autor_name="X A",
+        scan_mode="pbn",
+    )
+    DuplicateCandidate.objects.create(
+        scan_run=scan,
+        main_autor=b1,
+        duplicate_autor=b2,
+        confidence_score=80,
+        confidence_percent=0.6,
+        main_autor_name="Y B",
+        duplicate_autor_name="Y B",
+        scan_mode="general",
+    )
+    content = export_duplicates_to_xlsx()
+    wb = load_workbook(BytesIO(content))
+    ws = wb.active
+    headers = [c.value for c in ws[1]]
+    assert "Tryb" in headers, f"Headers do not include 'Tryb': {headers}"
+
+    tryb_col_idx = headers.index("Tryb") + 1
+    tryby = {
+        ws.cell(row=r, column=tryb_col_idx).value for r in range(2, ws.max_row + 1)
+    }
+    assert "PBN" in tryby
+    assert "Ogólny" in tryby
