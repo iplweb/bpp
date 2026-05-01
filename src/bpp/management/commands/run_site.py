@@ -206,23 +206,25 @@ class Command(BaseCommand):
             raise CommandError(f"manage.py migrate failed (rc={rc})")
 
     def _create_superuser(self, env):
+        """Utwórz lub nadpisz superusera + skasuj wymóg zmiany hasła.
+
+        Idempotentne: gdy user "admin" już istnieje (np. po restore dump-a
+        z prod-u), hasło i flagi (is_active/is_staff/is_superuser) są
+        nadpisywane. Wpisy w ``password_policies.PasswordChangeRequired``
+        są kasowane, żeby admin nie dostawał propozycji zmiany hasła
+        zaraz po zalogowaniu.
+        """
         self.stdout.write(
             f"[run_site] Superuser: {_SUPERUSER_USERNAME} / {_SUPERUSER_PASSWORD}"
         )
         cmd = [
             _python_executable(),
             str(_src_dir() / "manage.py"),
-            "createsuperuser",
-            "--noinput",
+            "runsite_setup_admin",
         ]
         rc = run_subprocess_blocking(cmd, env=env, cwd=str(_src_dir()))
         if rc != 0:
-            self.stdout.write(
-                self.style.WARNING(
-                    "[run_site] createsuperuser zwrócił błąd "
-                    "(prawdopodobnie user już istnieje — kontynuuję)"
-                )
-            )
+            raise CommandError(f"runsite_setup_admin failed (rc={rc})")
 
     def _print_banner(
         self, *, appserver_url, admin_url, containers, with_celery, dump_path
