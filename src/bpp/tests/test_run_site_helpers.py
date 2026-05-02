@@ -1,12 +1,19 @@
 """Testy helperów run_site (bez Dockera)."""
 
-from pathlib import Path
+import json
+from unittest.mock import patch
 
 import pytest
 
+from bpp.management.commands._run_site_helpers.pbn_token import (
+    PbnTokenSource,
+    _read_cache,
+    _write_cache,
+    fetch_pbn_token_via_ssh,
+)
 from bpp.management.commands._run_site_helpers.restore import (
-    detect_dump_format,
     build_restore_command,
+    detect_dump_format,
 )
 
 
@@ -74,7 +81,11 @@ def test_build_restore_command_sql_gz_decompresses():
 
 def test_build_restore_command_pgdump_uses_pg_restore():
     cmd, decompress = build_restore_command(
-        format="pgdump", container_id="abc123", db_user="bpp", db_name="bpp"
+        format="pgdump",
+        container_id="abc123",
+        db_user="bpp",
+        db_name="bpp",
+        dump_in_container="/tmp/x.pgdump",
     )
     assert decompress is False
     assert "pg_restore" in cmd
@@ -83,6 +94,37 @@ def test_build_restore_command_pgdump_uses_pg_restore():
     assert "--if-exists" not in cmd
     assert "--no-owner" in cmd
     assert "--exit-on-error" in cmd
+    # Plik musi być pozytywnym argumentem (pg_restore -j wymaga seekable file).
+    assert cmd[-1] == "/tmp/x.pgdump"
+
+
+def test_build_restore_command_pgdump_jobs_1_omits_dash_j():
+    cmd, _ = build_restore_command(
+        format="pgdump",
+        container_id="abc",
+        dump_in_container="/tmp/x.pgdump",
+        jobs=1,
+    )
+    assert "-j" not in cmd
+
+
+def test_build_restore_command_pgdump_jobs_gt_1_adds_parallel_flag():
+    cmd, _ = build_restore_command(
+        format="pgdump",
+        container_id="abc",
+        dump_in_container="/tmp/x.pgdump",
+        jobs=8,
+    )
+    assert "-j" in cmd
+    j_idx = cmd.index("-j")
+    assert cmd[j_idx + 1] == "8"
+    # -j musi być przed pozytywnym argumentem (plik na końcu).
+    assert j_idx + 1 < len(cmd) - 1
+
+
+def test_build_restore_command_pgdump_requires_dump_path():
+    with pytest.raises(ValueError, match="dump_in_container"):
+        build_restore_command(format="pgdump", container_id="abc")
 
 
 def test_build_restore_command_unknown_raises():
@@ -90,6 +132,37 @@ def test_build_restore_command_unknown_raises():
         build_restore_command(
             format="tar", container_id="x", db_user="bpp", db_name="bpp"
         )
+
+
+def test_resolve_jobs_uses_env_override(monkeypatch):
+    from bpp.management.commands._run_site_helpers.restore import _resolve_jobs
+
+    monkeypatch.setenv("BPP_RESTORE_JOBS", "12")
+    assert _resolve_jobs() == 12
+
+
+def test_resolve_jobs_clamps_to_minimum_1(monkeypatch):
+    from bpp.management.commands._run_site_helpers.restore import _resolve_jobs
+
+    monkeypatch.setenv("BPP_RESTORE_JOBS", "0")
+    assert _resolve_jobs() == 1
+
+
+def test_resolve_jobs_invalid_env_falls_back_to_default(monkeypatch):
+    from bpp.management.commands._run_site_helpers.restore import _resolve_jobs
+
+    monkeypatch.setenv("BPP_RESTORE_JOBS", "not-a-number")
+    n = _resolve_jobs()
+    assert n >= 1
+    assert n <= 8
+
+
+def test_resolve_jobs_default_is_capped(monkeypatch):
+    from bpp.management.commands._run_site_helpers.restore import _resolve_jobs
+
+    monkeypatch.delenv("BPP_RESTORE_JOBS", raising=False)
+    n = _resolve_jobs()
+    assert 1 <= n <= 8
 
 
 def test_banner_includes_all_endpoints():
@@ -199,3 +272,323 @@ def test_wait_terminate_already_exited():
     proc.wait()
     # Nie powinno rzucić — proc.poll() zwraca returncode
     wait_terminate(proc)
+
+
+# ── log_multiplexer ─────────────────────────────────────────────────────
+
+
+def test_log_multiplexer_writes_lines_with_prefix():
+    import io
+    from bpp.management.commands._run_site_helpers.log_multiplexer import (
+        COLOR_CYAN,
+        LogMultiplexer,
+    )
+
+    out = io.StringIO()
+    mux = LogMultiplexer(output=out, use_color=False)
+    stream = io.BytesIO(b"hello\nworld\n")
+    mux.add_stream("web", COLOR_CYAN, stream)
+    mux.join(timeout=2.0)
+
+    text = out.getvalue()
+    assert "web | hello\n" in text
+    assert "web | world\n" in text
+
+
+def test_log_multiplexer_pads_names_to_widest():
+    import io
+    from bpp.management.commands._run_site_helpers.log_multiplexer import (
+        COLOR_CYAN,
+        COLOR_GREEN,
+        LogMultiplexer,
+    )
+
+    out = io.StringIO()
+    mux = LogMultiplexer(output=out, use_color=False)
+    # Add szerszą nazwę PRZED czytaniem — żeby wszystkie linie miały tę samą
+    # szerokość kolumny od początku.
+    mux.add_stream("celery", COLOR_GREEN, io.BytesIO(b""))
+    mux.add_stream("web", COLOR_CYAN, io.BytesIO(b"hi\n"))
+    mux.join(timeout=2.0)
+
+    text = out.getvalue()
+    # "web" powinno być wyrównane do 6 znaków (długość "celery").
+    assert "web    | hi\n" in text
+
+
+def test_log_multiplexer_emits_color_when_enabled():
+    import io
+    from bpp.management.commands._run_site_helpers.log_multiplexer import (
+        COLOR_CYAN,
+        COLOR_RESET,
+        LogMultiplexer,
+    )
+
+    out = io.StringIO()
+    mux = LogMultiplexer(output=out, use_color=True)
+    mux.add_stream("web", COLOR_CYAN, io.BytesIO(b"x\n"))
+    mux.join(timeout=2.0)
+
+    text = out.getvalue()
+    assert COLOR_CYAN in text
+    assert COLOR_RESET in text
+
+
+def test_log_multiplexer_no_color_when_disabled():
+    import io
+    from bpp.management.commands._run_site_helpers.log_multiplexer import (
+        COLOR_CYAN,
+        COLOR_RESET,
+        LogMultiplexer,
+    )
+
+    out = io.StringIO()
+    mux = LogMultiplexer(output=out, use_color=False)
+    mux.add_stream("web", COLOR_CYAN, io.BytesIO(b"x\n"))
+    mux.join(timeout=2.0)
+
+    text = out.getvalue()
+    assert COLOR_CYAN not in text
+    assert COLOR_RESET not in text
+
+
+def test_log_multiplexer_handles_invalid_utf8():
+    """Linie z nieprawidłowym UTF-8 nie crashują czytnika."""
+    import io
+    from bpp.management.commands._run_site_helpers.log_multiplexer import (
+        COLOR_CYAN,
+        LogMultiplexer,
+    )
+
+    out = io.StringIO()
+    mux = LogMultiplexer(output=out, use_color=False)
+    mux.add_stream("pg", COLOR_CYAN, io.BytesIO(b"ok\n\xff\xfe\nzzz\n"))
+    mux.join(timeout=2.0)
+
+    text = out.getvalue()
+    assert "pg | ok\n" in text
+    assert "pg | zzz\n" in text
+
+
+def test_spawn_pg_logs_invokes_docker_logs_follow():
+    """spawn_pg_logs woła `docker logs -f --tail 0 <id>`."""
+    import subprocess
+    from unittest.mock import patch
+    from bpp.management.commands._run_site_helpers.processes import spawn_pg_logs
+
+    with patch.object(subprocess, "Popen") as mock_popen:
+        spawn_pg_logs("abc123")
+        cmd = mock_popen.call_args[0][0]
+        assert cmd == ["docker", "logs", "-f", "--tail", "0", "abc123"]
+        kwargs = mock_popen.call_args[1]
+        assert kwargs.get("stdout") == subprocess.PIPE
+        assert kwargs.get("stderr") == subprocess.STDOUT
+
+
+def test_spawn_runserver_sets_pythonunbuffered():
+    """spawn_runserver wymusza PYTHONUNBUFFERED=1, inaczej multiplekser
+    nie widzi linii dopóki bufor 4KB się nie zapełni."""
+    import subprocess
+    from unittest.mock import patch
+    from bpp.management.commands._run_site_helpers.processes import spawn_runserver
+
+    with patch.object(subprocess, "Popen") as mock_popen:
+        spawn_runserver(8000, env={"FOO": "bar"})
+        kwargs = mock_popen.call_args[1]
+        assert kwargs["env"]["PYTHONUNBUFFERED"] == "1"
+        assert kwargs["env"]["FOO"] == "bar"
+        assert kwargs["stdout"] == subprocess.PIPE
+
+
+def test_spawn_celery_uses_pipe_and_unbuffered():
+    """spawn_celery odpina logi na PIPE (czytane przez multiplekser)."""
+    import subprocess
+    from unittest.mock import patch
+    from bpp.management.commands._run_site_helpers.processes import spawn_celery
+
+    with patch.object(subprocess, "Popen") as mock_popen:
+        spawn_celery(env={"X": "y"})
+        kwargs = mock_popen.call_args[1]
+        assert kwargs["env"]["PYTHONUNBUFFERED"] == "1"
+        assert kwargs["stdout"] == subprocess.PIPE
+        assert kwargs["stderr"] == subprocess.STDOUT
+        cmd = mock_popen.call_args[0][0]
+        assert "--pool=solo" in cmd
+
+
+# ── PBN token cache ────────────────────────────────────────────────────
+
+
+def _src() -> PbnTokenSource:
+    return PbnTokenSource(django_username="alice", ssh_host="prod")
+
+
+def test_read_cache_returns_none_when_path_is_none():
+    logs: list[str] = []
+    assert _read_cache(None, _src(), logs.append) is None
+    assert logs == []
+
+
+def test_read_cache_returns_none_when_file_missing(tmp_path):
+    logs: list[str] = []
+    assert _read_cache(tmp_path / "nope", _src(), logs.append) is None
+    assert logs == []
+
+
+def test_read_cache_returns_payload_when_user_matches(tmp_path):
+    payload = json.dumps(
+        {"username": "alice", "pbn_token": "tok", "pbn_token_updated": None}
+    )
+    cache = tmp_path / ".saved_pbn_token"
+    cache.write_text(payload)
+    logs: list[str] = []
+    result = _read_cache(cache, _src(), logs.append)
+    assert result == payload
+    assert any("wczytuję z cache" in m for m in logs)
+
+
+def test_read_cache_skips_when_user_mismatches(tmp_path):
+    cache = tmp_path / ".saved_pbn_token"
+    cache.write_text(
+        json.dumps(
+            {"username": "bob", "pbn_token": "tok", "pbn_token_updated": None}
+        )
+    )
+    logs: list[str] = []
+    assert _read_cache(cache, _src(), logs.append) is None
+    assert any("'bob'" in m and "'alice'" in m for m in logs)
+
+
+def test_read_cache_skips_when_json_invalid(tmp_path):
+    cache = tmp_path / ".saved_pbn_token"
+    cache.write_text("{not json")
+    logs: list[str] = []
+    assert _read_cache(cache, _src(), logs.append) is None
+    assert any("nieprawidłowy" in m.lower() for m in logs)
+
+
+def test_write_cache_creates_file_with_chmod_600(tmp_path):
+    cache = tmp_path / ".saved_pbn_token"
+    payload = json.dumps({"username": "alice", "pbn_token": "tok"})
+    logs: list[str] = []
+    _write_cache(cache, payload, logs.append)
+    assert cache.read_text() == payload
+    # chmod może nie zadziałać na egzotycznych FS, ale na lokalnym tmp_path tak
+    mode = cache.stat().st_mode & 0o777
+    assert mode == 0o600
+    assert any("zapisany do cache" in m for m in logs)
+
+
+def test_write_cache_noop_when_path_is_none():
+    logs: list[str] = []
+    _write_cache(None, "{}", logs.append)
+    assert logs == []
+
+
+def test_fetch_uses_cache_and_skips_ssh(tmp_path):
+    """Gdy cache ma poprawnego usera, SSH NIE jest odpalany."""
+    cache = tmp_path / ".saved_pbn_token"
+    cache.write_text(
+        json.dumps(
+            {"username": "alice", "pbn_token": "tok", "pbn_token_updated": None}
+        )
+    )
+
+    logs: list[str] = []
+
+    def fake_run(cmd, *args, **kwargs):
+        # Tylko load_pbn_token powinien być wywołany — ssh nie.
+        assert "ssh" not in cmd[0].lower(), f"unexpected ssh call: {cmd}"
+
+        class _R:
+            returncode = 0
+            stdout = ""
+            stderr = ""
+
+        return _R()
+
+    with patch(
+        "bpp.management.commands._run_site_helpers.pbn_token.subprocess.run",
+        side_effect=fake_run,
+    ):
+        ok = fetch_pbn_token_via_ssh(
+            _src(),
+            remote_deploy_path="~/bpp-deploy",
+            remote_compose_service="appserver",
+            local_env={},
+            log=logs.append,
+            cache_path=cache,
+        )
+    assert ok is True
+
+
+def test_fetch_writes_cache_after_successful_ssh(tmp_path):
+    """Po pierwszym SSH cache zostaje zapisany."""
+    cache = tmp_path / ".saved_pbn_token"
+    assert not cache.exists()
+
+    payload = json.dumps(
+        {"username": "alice", "pbn_token": "tok", "pbn_token_updated": None}
+    )
+
+    calls = []
+
+    def fake_run(cmd, *args, **kwargs):
+        calls.append(cmd)
+
+        class _R:
+            returncode = 0
+            stderr = ""
+
+        if cmd[0] == "ssh":
+            _R.stdout = payload + "\n"
+        else:
+            _R.stdout = ""
+        return _R()
+
+    logs: list[str] = []
+    with patch(
+        "bpp.management.commands._run_site_helpers.pbn_token.subprocess.run",
+        side_effect=fake_run,
+    ):
+        ok = fetch_pbn_token_via_ssh(
+            _src(),
+            remote_deploy_path="~/bpp-deploy",
+            remote_compose_service="appserver",
+            local_env={},
+            log=logs.append,
+            cache_path=cache,
+        )
+    assert ok is True
+    assert cache.is_file()
+    assert json.loads(cache.read_text())["pbn_token"] == "tok"
+    # Najpierw SSH, potem load — nie odwrotnie.
+    assert calls[0][0] == "ssh"
+
+
+def test_fetch_does_not_write_cache_when_ssh_fails(tmp_path):
+    cache = tmp_path / ".saved_pbn_token"
+
+    def fake_run(cmd, *args, **kwargs):
+        class _R:
+            returncode = 1
+            stdout = ""
+            stderr = "boom"
+
+        return _R()
+
+    logs: list[str] = []
+    with patch(
+        "bpp.management.commands._run_site_helpers.pbn_token.subprocess.run",
+        side_effect=fake_run,
+    ):
+        ok = fetch_pbn_token_via_ssh(
+            _src(),
+            remote_deploy_path="~/bpp-deploy",
+            remote_compose_service="appserver",
+            local_env={},
+            log=logs.append,
+            cache_path=cache,
+        )
+    assert ok is False
+    assert not cache.exists()

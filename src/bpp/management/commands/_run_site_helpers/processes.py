@@ -31,10 +31,24 @@ def _python_executable() -> str:
     return sys.executable
 
 
-def spawn_runserver(port: int, env: dict[str, str]) -> subprocess.Popen:
-    """Spawn `manage.py runserver 127.0.0.1:port` w foreground.
+def _env_with_unbuffered(env: dict[str, str]) -> dict[str, str]:
+    """Wymuś line-buffering na child Pythonie — bez tego pipe-owany stdout
+    jest block-buffered i logi nie pojawiają się dopóki bufor (~4 KB) się
+    nie zapełni. Dla multipleksera to katastrofa — kolejność linii
+    runserver/celery byłaby losowa."""
+    out = dict(env)
+    out.setdefault("PYTHONUNBUFFERED", "1")
+    return out
 
-    Caller czeka via `proc.wait()`. NIE przekazujemy stdin.
+
+def spawn_runserver(port: int, env: dict[str, str]) -> subprocess.Popen:
+    """Spawn `manage.py runserver 127.0.0.1:port` z stdout/stderr → PIPE.
+
+    Caller czyta stdout (multiplexer), ``proc.wait()`` blokuje do końca.
+    NIE przekazujemy stdin. Reload zostaje włączony (default Django) — z
+    autoreload child dziedziczy ten sam pipe, a ponieważ nasze linie logów
+    nie przekraczają ``PIPE_BUF`` (4 KB), POSIX gwarantuje atomic writes
+    przez co dwa procesy nie sklejają sobie linii.
     """
     src = _src_dir()
     cmd = [
@@ -44,29 +58,57 @@ def spawn_runserver(port: int, env: dict[str, str]) -> subprocess.Popen:
         f"127.0.0.1:{port}",
     ]
     logger.info("Spawn runserver: %s", " ".join(cmd))
-    return subprocess.Popen(cmd, env=env, cwd=str(src))
+    return subprocess.Popen(
+        cmd,
+        env=_env_with_unbuffered(env),
+        cwd=str(src),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
 
 
 def spawn_celery(env: dict[str, str]) -> subprocess.Popen:
-    """Spawn celery worker w background (stdout/stderr → DEVNULL)."""
+    """Spawn celery worker z stdout/stderr → PIPE (czytane przez multiplexer).
+
+    Używamy ``--pool=solo`` żeby uniknąć segfaultów przy fork() na macOS
+    (psycopg2/numpy/lxml + Apple's malloc-after-fork checks). Dla dev
+    pojedynczy worker w jednym wątku jest wystarczający.
+    """
     src = _src_dir()
     cmd = [
         _python_executable(),
         "-m",
         "celery",
         "-A",
-        "django_bpp.tasks",
+        "django_bpp.celery_tasks",
         "worker",
+        "--pool=solo",
         "-l",
         "info",
     ]
     logger.info("Spawn celery: %s", " ".join(cmd))
     return subprocess.Popen(
         cmd,
-        env=env,
+        env=_env_with_unbuffered(env),
         cwd=str(src),
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
+
+
+def spawn_pg_logs(container_id: str) -> subprocess.Popen:
+    """Spawn ``docker logs -f --tail 0 <id>`` żeby strumieniować logi PG.
+
+    ``--tail 0`` żeby nie wypluć całej historii startu kontenera (testcontainers
+    już to przed chwilą zalogował przy starcie). ``-f`` (follow) blokuje aż
+    ktoś zabije proces — robi to caller w cleanup-ie przez ``wait_terminate``.
+    """
+    cmd = ["docker", "logs", "-f", "--tail", "0", container_id]
+    logger.info("Spawn pg-logs: %s", " ".join(cmd))
+    return subprocess.Popen(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
     )
 
 
