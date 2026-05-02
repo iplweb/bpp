@@ -17,6 +17,7 @@ from pathlib import Path
 from django.core.management.base import BaseCommand, CommandError
 
 from ._run_site_helpers.banner import format_banner
+from ._run_site_helpers.pbn_token import PbnTokenSource, fetch_pbn_token_via_ssh
 from ._run_site_helpers.processes import (
     _python_executable,
     _src_dir,
@@ -78,6 +79,39 @@ class Command(BaseCommand):
             help="Reuse named containers zamiast tworzyć nowe.",
         )
         parser.add_argument(
+            "--get-pbn-token-from",
+            type=str,
+            default=None,
+            metavar="USERNAME@SSH-HOST",
+            help=(
+                "Po migracji pobierz token PBN z hosta SSH przez "
+                "dump_pbn_token | load_pbn_token. USERNAME = nazwa "
+                "użytkownika Django (taka sama lokalnie i zdalnie); "
+                "SSH-HOST = alias z ~/.ssh/config (z wpisanym ssh-userem)."
+            ),
+        )
+        parser.add_argument(
+            "--remote-deploy-path",
+            type=str,
+            default="~/bpp-deploy",
+            metavar="PATH",
+            help=(
+                "Ścieżka do checkoutu bpp-deploy (z plikami docker-compose) "
+                "na zdalnym hoście; używana razem z --get-pbn-token-from. "
+                "Default: ~/bpp-deploy."
+            ),
+        )
+        parser.add_argument(
+            "--remote-compose-service",
+            type=str,
+            default="appserver",
+            metavar="SERVICE",
+            help=(
+                "Nazwa serwisu w docker compose, w którym odpalić "
+                "dump_pbn_token. Default: appserver."
+            ),
+        )
+        parser.add_argument(
             "--dry-run",
             action="store_true",
             default=False,
@@ -86,6 +120,9 @@ class Command(BaseCommand):
 
     def handle(self, *args, **opts):  # noqa: C901
         dump_path = self._validate_dump_arg(opts.get("from_dump"))
+        pbn_token_source = self._validate_pbn_token_source(
+            opts.get("get_pbn_token_from")
+        )
         if opts.get("dry_run"):
             self.stdout.write(self.style.SUCCESS("dry-run OK"))
             return
@@ -113,6 +150,14 @@ class Command(BaseCommand):
             self._restore_dump_if_needed(dump_path, containers)
             self._migrate(env)
             self._create_superuser(env)
+            if pbn_token_source is not None:
+                fetch_pbn_token_via_ssh(
+                    pbn_token_source,
+                    remote_deploy_path=opts["remote_deploy_path"],
+                    remote_compose_service=opts["remote_compose_service"],
+                    local_env=env,
+                    log=self.stdout.write,
+                )
 
             port = opts.get("port") or find_free_port()
             appserver_url = f"http://127.0.0.1:{port}"
@@ -154,6 +199,14 @@ class Command(BaseCommand):
                     logger.exception("[run_site] Failed to stop containers")
 
     # ── helpers ─────────────────────────────────────────────────────────
+
+    def _validate_pbn_token_source(self, raw):
+        if raw is None:
+            return None
+        try:
+            return PbnTokenSource.parse(raw)
+        except ValueError as exc:
+            raise CommandError(str(exc)) from exc
 
     def _validate_dump_arg(self, dump):
         if dump is None:
