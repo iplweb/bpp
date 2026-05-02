@@ -64,8 +64,11 @@ def test_is_superuser_superuser_gets_ok_with_headers(superuser):
     assert "X-WEBAUTH-NAME" in response
 
 
-def test_auth_server_health_endpoint():
-    """Test that health endpoint returns ok."""
+@pytest.mark.django_db
+def test_auth_server_health_endpoint_ok():
+    """Healthy DB + Redis returns 200 with status ok."""
+    import json
+
     from django_bpp.health import health_check
 
     rf = RequestFactory()
@@ -73,7 +76,46 @@ def test_auth_server_health_endpoint():
     response = health_check(request)
 
     assert response.status_code == 200
-    assert response.content == b"ok"
+    assert json.loads(response.content) == {"status": "ok"}
+
+
+def test_health_check_returns_503_when_db_down(monkeypatch):
+    """If DB ping fails, return 503 with the failing component."""
+    import json
+
+    from django_bpp import health
+
+    def boom():
+        raise RuntimeError("connection refused")
+
+    monkeypatch.setattr(health.connection, "ensure_connection", boom)
+    monkeypatch.setattr(health, "_check_redis", lambda: None)
+
+    rf = RequestFactory()
+    response = health.health_check(rf.get("/health/"))
+
+    assert response.status_code == 503
+    body = json.loads(response.content)
+    assert body["status"] == "error"
+    assert any("db" in f for f in body["failures"])
+
+
+def test_health_check_returns_503_when_redis_down(monkeypatch):
+    """If Redis ping fails, return 503 with the failing component."""
+    import json
+
+    from django_bpp import health
+
+    monkeypatch.setattr(health, "_check_db", lambda: None)
+    monkeypatch.setattr(health, "_check_redis", lambda: "redis: ConnectionError")
+
+    rf = RequestFactory()
+    response = health.health_check(rf.get("/health/"))
+
+    assert response.status_code == 503
+    body = json.loads(response.content)
+    assert body["status"] == "error"
+    assert any("redis" in f for f in body["failures"])
 
 
 def test_health_check_log_filter():

@@ -19,7 +19,7 @@ from bpp.tests.util import (
     any_jednostka,
 )
 from bpp.util import rebuild_contenttypes
-from bpp.views.browse import AutorView, AutorzyView
+from bpp.views.browse import AutorView, AutorzyView, get_available_letters
 
 
 class FakeUnauthenticatedUser:
@@ -349,3 +349,54 @@ def test_autorzy_view_page_not_integer_redirects(client, setup_group):
     messages_list = list(response.context['messages'])
     assert len(messages_list) == 1
     assert "Podana strona nie istnieje" in str(messages_list[0])
+
+
+# =============================================================================
+# get_available_letters: pojedyncze zapytanie zamiast N+1.
+# Patrz ANALYSIS.md #4 (2026-05-02).
+# =============================================================================
+
+
+@pytest.mark.django_db
+def test_get_available_letters_polish_diacritics_canonical():
+    """Polskie znaki diakrytyczne mapują się na kanoniczną literkę."""
+    Uczelnia.objects.create(nazwa="X", skrot="X")
+    baker.make(Autor, nazwisko="Ąbrowski", pokazuj=True)
+    baker.make(Autor, nazwisko="ćwiek", pokazuj=True)
+    baker.make(Autor, nazwisko="Łyk", pokazuj=True)
+    baker.make(Autor, nazwisko="Ñowak", pokazuj=True)  # nie z LITERKI
+
+    letters = get_available_letters(Autor.objects.all(), "nazwisko")
+
+    assert "A" in letters
+    assert "C" in letters
+    assert "L" in letters
+    # Ñ nie jest w LITERKI ani PODWOJNE → pomijane
+    assert "N" not in letters
+
+
+@pytest.mark.django_db
+def test_get_available_letters_runs_single_query(django_assert_num_queries):
+    """Regresja: jedno zapytanie, niezależnie od liczby liter."""
+    Uczelnia.objects.create(nazwa="X", skrot="X")
+    baker.make(Autor, nazwisko="Adam", pokazuj=True)
+    baker.make(Autor, nazwisko="Bartek", pokazuj=True)
+    baker.make(Autor, nazwisko="Cezary", pokazuj=True)
+
+    with django_assert_num_queries(1):
+        letters = get_available_letters(Autor.objects.all(), "nazwisko")
+
+    assert {"A", "B", "C"} <= letters
+
+
+@pytest.mark.django_db
+def test_get_available_letters_respects_queryset_filter():
+    """Pre-filtry queryseta są zachowane (nie pokazujemy ukrytych autorów)."""
+    Uczelnia.objects.create(nazwa="X", skrot="X")
+    baker.make(Autor, nazwisko="Adam", pokazuj=True)
+    baker.make(Autor, nazwisko="Bartek", pokazuj=False)
+
+    letters = get_available_letters(
+        Autor.objects.filter(pokazuj=True), "nazwisko"
+    )
+    assert letters == {"A"}
