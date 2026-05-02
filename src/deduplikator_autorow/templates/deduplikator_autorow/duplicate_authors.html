@@ -1,7 +1,8 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block extra_css %}
+{% block extrahead %}
+{{ block.super }}
 <link rel="stylesheet"
       href="{% static 'deduplikator_autorow/css/deduplikator_autorow.css' %}">
 {% endblock %}
@@ -241,13 +242,13 @@
                     <!-- Nie-duplikaty: obejrzenie + reset w jednym panelu -->
                     <li class="accordion-item {% if not_duplicate_count > 0 %}is-active{% endif %}" data-accordion-item>
                         <a class="accordion-title" href="#" {% if not_duplicate_count > 0 %}aria-expanded="true"{% endif %}>
-                            <span class="fi-eye" aria-hidden="true"></span> Nie-duplikaty {% if not_duplicate_count > 0 %}({{ not_duplicate_count }}){% endif %}
+                            <span class="fi-eye" aria-hidden="true"></span> Nie-duplikaty {% if not_duplicate_count > 0 %}(<span id="not-duplicate-count" data-count="{{ not_duplicate_count }}">{{ not_duplicate_count }}</span>){% else %}<span id="not-duplicate-count" data-count="0" style="display:none"></span>{% endif %}
                         </a>
                         <div class="accordion-content{% if not_duplicate_count > 0 %} deduplikator-autorow__accordion-content{% endif %}" data-tab-content>
                             {% if not_duplicate_count > 0 %}
                                 <p class="deduplikator-autorow__status-text--spaced">Autorzy oznaczeni jako nie będący duplikatami.</p>
                                 <p class="deduplikator-autorow__status-warning deduplikator-autorow__status-text--spaced">
-                                    <span class="fi-alert"></span> Obecnie: {{ not_duplicate_count }} oznaczonych
+                                    <span class="fi-alert"></span> Obecnie: <span id="not-duplicate-count-text">{{ not_duplicate_count }}</span> oznaczonych
                                 </p>
                                 <a href="/admin/deduplikator_autorow/notaduplicate/"
                                    class="button secondary expanded small deduplikator-autorow__button-margin-bottom"
@@ -370,7 +371,6 @@
             {% if glowny_autor or search_lastname %}
             <div class="deduplikator-autorow__top-bar">
               <div class="deduplikator-autorow__mode-filter">
-                <span class="deduplikator-autorow__mode-filter-label">Pokaż wyniki:</span>
                 <div class="button-group deduplikator-autorow__mode-buttons" role="tablist" aria-label="Filtr trybu wyników">
                   <a href="?mode=pbn{% if q_search %}&amp;search_lastname={{ q_search }}{% endif %}"
                      role="tab"
@@ -419,7 +419,7 @@
                          autocomplete="off">
                   <datalist id="lastname-suggestions"></datalist>
                   <div class="input-group-button">
-                    <button type="submit" class="button primary">Szukaj</button>
+                    <button type="submit" class="button primary{% if q_search %} deduplikator-autorow__search-btn-flat-right{% endif %}">Szukaj</button>
                   </div>
                   {% if q_search %}
                   <div class="input-group-button">
@@ -529,6 +529,15 @@
                     <p>Strona odświeży się automatycznie po zakończeniu skanowania.</p>
                 </div>
             {% elif not glowny_autor %}
+                {% if search_lastname %}
+                <div class="callout warning deduplikator-autorow__callout-centered">
+                    <h3><span class="fi-magnifying-glass"></span> Nie znaleziono takich autorów</h3>
+                    <p>Nie znaleziono kandydatów dla nazwiska „{{ search_lastname }}".</p>
+                    <a href="?mode={{ mode }}" class="button secondary deduplikator-autorow__callout-margin-top">
+                        <span class="fi-x"></span> Wyczyść wyszukiwanie
+                    </a>
+                </div>
+                {% else %}
                 <div class="callout success deduplikator-autorow__callout-centered">
                     <h3><span class="fi-check"></span> Gratulacje!</h3>
                     <p><strong>Wszystkie duplikaty zostały już przetworzone.</strong></p>
@@ -541,6 +550,7 @@
                         </button>
                     </form>
                 </div>
+                {% endif %}
             {% else %}
                 {% if glowny_autor %}
                     <div class="callout primary">
@@ -1478,6 +1488,17 @@
                                 text: response.message,
                                 sound: false
                             });
+                        }
+                        {# Aktualizuj licznik nie-duplikatów w sidebarze #}
+                        var ndBadge = document.getElementById('not-duplicate-count');
+                        var ndText = document.getElementById('not-duplicate-count-text');
+                        if (ndBadge) {
+                            var ndCount = parseInt(ndBadge.dataset.count || '0') + 1;
+                            ndBadge.dataset.count = ndCount;
+                            ndBadge.textContent = ndCount;
+                        }
+                        if (ndText) {
+                            ndText.textContent = (parseInt(ndText.textContent) || 0) + 1;
                         }
                         if (card) {
                             $(card).fadeOut(400, function() {

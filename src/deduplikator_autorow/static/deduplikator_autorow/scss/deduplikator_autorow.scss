@@ -263,6 +263,16 @@
   color: #666;
 }
 
+.deduplikator-autorow__search-btn-flat-right {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.deduplikator-autorow__search-btn-flat-right + .input-group-button .button {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
 // =============================================================================
 // DISCIPLINE TABLE
 // =============================================================================
@@ -317,25 +327,21 @@
 .deduplikator-autorow__publication-list {
   max-height: 300px;
   overflow-y: auto;
-  border: 1px solid #e1e1e1;
-  padding: 10px;
+  padding: 0;
 }
 
 .deduplikator-autorow__publication-list--short {
   max-height: 250px;
-  background-color: #f9f9f9;
 }
 
 .deduplikator-autorow__publication-item {
-  margin-bottom: 8px;
-  padding: 5px;
-  border-left: 3px solid #1779ba;
+  margin-bottom: 4px;
+  padding: 0;
 }
 
 .deduplikator-autorow__publication-item--duplicate {
-  margin-bottom: 6px;
-  padding: 3px;
-  border-left: 2px solid #8a8a8a;
+  margin-bottom: 2px;
+  padding: 0;
 }
 
 .deduplikator-autorow__publication-link {
@@ -564,23 +570,19 @@
     margin: 1em 0;
   }
 
-  // Top bar — filtr trybu po lewej, szybkie wyszukiwanie po prawej.
-  // Wymuszamy jeden wiersz (nowrap); search ma flex 1 + min-width: 0,
-  // żeby mógł zwężać się poniżej intrinsic width na wąskich ekranach,
-  // zamiast wyskakiwać do nowej linii i rozciągać się na 100% szerokości.
+  // Top bar — przyciski trybu po lewej, wyszukiwarka po prawej.
   &__top-bar {
     display: flex;
     align-items: center;
-    justify-content: flex-start;
+    justify-content: space-between;
     gap: 1em;
     margin: 1em 0;
     flex-wrap: nowrap;
   }
 
   &__top-search {
-    flex: 1 1 280px;
-    min-width: 0;
-    max-width: 420px;
+    flex: 0 1 auto;
+    min-width: 200px;
     margin: 0;
   }
 
@@ -694,18 +696,12 @@
   // Opisy bibliograficzne renderują <b>/<strong> wokół tytułów — to jest OK,
   // tytuł ma być boldem. Problem: Foundation daje .callout a:not(.close-button)
   // { font-weight: bolder }, więc cały tekst w <a> wewnątrz .callout jest
-  // bold. Resetujemy font-weight na <a> w obrębie itemów publikacji, ale
-  // zostawiamy <b>/<strong> z ich domyślnym bold, żeby tytuł nadal był
-  // wytłuszczony.
-  &__publication-list,
-  &__publication-item,
-  &__publication-item--duplicate,
-  &__publication-description {
-    font-weight: normal;
-  }
-
-  &__publication-item a,
-  &__publication-item--duplicate a {
+  // bold. Resetujemy font-weight na <a> w obrębie itemów publikacji z
+  // wyższą specyficznością niż .callout a:not(.close-button), żeby wygrać
+  // kaskadę. Zostawiamy <b>/<strong> z ich domyślnym bold, żeby tytuł nadal
+  // był wytłuszczony.
+  .callout &__publication-item a,
+  .callout &__publication-item--duplicate a {
     font-weight: normal;
   }
 
