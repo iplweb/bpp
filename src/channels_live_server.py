@@ -69,6 +69,39 @@ def set_database_connection():
     # Patrz docstring _restore_django_ensure_connection.
     _restore_django_ensure_connection()
 
+    # Per-request invalidation cache'ów które session-scoped subprocess
+    # trzyma w pamięci a które są wadliwe po `transactional_db` TRUNCATE
+    # między testami. Bez tego: KeyError / ForeignKeyViolation gdy w
+    # subprocesie zostaje stary mapping content_type_id → object,
+    # a w bazie nowy test dostał inne id.
+    _wire_per_request_cache_invalidation()
+
+
+def _wire_per_request_cache_invalidation():
+    """Wpina signal handler który czyści cache'y per request.
+
+    ``ContentType.objects.clear_cache()`` jest najistotniejsze — Django
+    cachuje mapowanie ``id``/``app_label``/``model`` → ``ContentType``
+    instancja, a po ``transactional_db`` TRUNCATE w teście ID-y
+    content_types w bazie się zmieniają. Stary cache w session-scoped
+    Daphne process powoduje:
+
+    - ``KeyError: '6'`` w ``ContentTypeManager.get_for_id`` (np.
+      ``test_global_search_in_admin``).
+    - ``ForeignKeyViolation`` przy zapisie do ``django_admin_log`` z
+      ``content_type_id=70`` którego już nie ma w bazie (np.
+      ``test_Wydawnictwo_Zwarte_Autor_Admin_forwarding_works``).
+
+    Overhead clear_cache to single dict.clear() — pomijalny.
+    """
+    from django.contrib.contenttypes.models import ContentType
+    from django.core.signals import request_started
+
+    def _clear_caches(sender, **kwargs):
+        ContentType.objects.clear_cache()
+
+    request_started.connect(_clear_caches, weak=False)
+
 
 class _ChannelsLiveServer:
     def __init__(self, host, port):
