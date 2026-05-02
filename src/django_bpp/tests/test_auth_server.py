@@ -85,10 +85,20 @@ def test_health_check_returns_503_when_db_down(monkeypatch):
 
     from django_bpp import health
 
-    def boom():
-        raise RuntimeError("connection refused")
-
-    monkeypatch.setattr(health.connection, "ensure_connection", boom)
+    # NIE patchujemy `health.connection.ensure_connection` — `connection` to
+    # `ConnectionProxy` z `django.db`, którego `__setattr__` przekierowuje
+    # zapis na realny `DatabaseWrapper` w `connections[default]`. Pytest
+    # ``monkeypatch`` przy teardownie odtwarza „starą" wartość pobraną
+    # przez ``getattr`` przez proxy — w teście bez ``@django_db`` to bound
+    # ``pytest_django._blocking_wrapper``. ``setattr`` na proxy wstrzykuje
+    # ten bound wrapper do ``connections[default].__dict__``, co nadpisuje
+    # class-level patch i czyni ``django_db_blocker.unblock()``
+    # nieskutecznym dla kolejnych testów na tym workerze (instance attr
+    # ma priorytet) — pierwszy następny test używający DB pada na
+    # ``RuntimeError: Database access not allowed`` w ``setup_databases``.
+    # Patchujemy funkcję wyższego poziomu ``_check_db`` (symetrycznie do
+    # ``test_health_check_returns_503_when_redis_down``).
+    monkeypatch.setattr(health, "_check_db", lambda: "db: RuntimeError")
     monkeypatch.setattr(health, "_check_redis", lambda: None)
 
     rf = RequestFactory()
