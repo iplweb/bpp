@@ -178,3 +178,7 @@ dump.rdb
 # Local TODO / audit notes (not committed)
 TODO-*.txt
 TODO-*.md
+
+# Cache tokenu PBN tworzony przez `run_site --get-pbn-token-from ...`
+# Zawiera wrażliwy token, NIGDY nie commitować.
+.saved_pbn_token

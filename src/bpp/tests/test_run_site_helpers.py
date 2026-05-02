@@ -1,12 +1,19 @@
 """Testy helperów run_site (bez Dockera)."""
 
-from pathlib import Path
+import json
+from unittest.mock import patch
 
 import pytest
 
+from bpp.management.commands._run_site_helpers.pbn_token import (
+    PbnTokenSource,
+    _read_cache,
+    _write_cache,
+    fetch_pbn_token_via_ssh,
+)
 from bpp.management.commands._run_site_helpers.restore import (
-    detect_dump_format,
     build_restore_command,
+    detect_dump_format,
 )
 
 
@@ -199,3 +206,180 @@ def test_wait_terminate_already_exited():
     proc.wait()
     # Nie powinno rzucić — proc.poll() zwraca returncode
     wait_terminate(proc)
+
+# ── PBN token cache ────────────────────────────────────────────────────
+
+
+def _src() -> PbnTokenSource:
+    return PbnTokenSource(django_username="alice", ssh_host="prod")
+
+
+def test_read_cache_returns_none_when_path_is_none():
+    logs: list[str] = []
+    assert _read_cache(None, _src(), logs.append) is None
+    assert logs == []
+
+
+def test_read_cache_returns_none_when_file_missing(tmp_path):
+    logs: list[str] = []
+    assert _read_cache(tmp_path / "nope", _src(), logs.append) is None
+    assert logs == []
+
+
+def test_read_cache_returns_payload_when_user_matches(tmp_path):
+    payload = json.dumps(
+        {"username": "alice", "pbn_token": "tok", "pbn_token_updated": None}
+    )
+    cache = tmp_path / ".saved_pbn_token"
+    cache.write_text(payload)
+    logs: list[str] = []
+    result = _read_cache(cache, _src(), logs.append)
+    assert result == payload
+    assert any("wczytuję z cache" in m for m in logs)
+
+
+def test_read_cache_skips_when_user_mismatches(tmp_path):
+    cache = tmp_path / ".saved_pbn_token"
+    cache.write_text(
+        json.dumps(
+            {"username": "bob", "pbn_token": "tok", "pbn_token_updated": None}
+        )
+    )
+    logs: list[str] = []
+    assert _read_cache(cache, _src(), logs.append) is None
+    assert any("'bob'" in m and "'alice'" in m for m in logs)
+
+
+def test_read_cache_skips_when_json_invalid(tmp_path):
+    cache = tmp_path / ".saved_pbn_token"
+    cache.write_text("{not json")
+    logs: list[str] = []
+    assert _read_cache(cache, _src(), logs.append) is None
+    assert any("nieprawidłowy" in m.lower() for m in logs)
+
+
+def test_write_cache_creates_file_with_chmod_600(tmp_path):
+    cache = tmp_path / ".saved_pbn_token"
+    payload = json.dumps({"username": "alice", "pbn_token": "tok"})
+    logs: list[str] = []
+    _write_cache(cache, payload, logs.append)
+    assert cache.read_text() == payload
+    # chmod może nie zadziałać na egzotycznych FS, ale na lokalnym tmp_path tak
+    mode = cache.stat().st_mode & 0o777
+    assert mode == 0o600
+    assert any("zapisany do cache" in m for m in logs)
+
+
+def test_write_cache_noop_when_path_is_none():
+    logs: list[str] = []
+    _write_cache(None, "{}", logs.append)
+    assert logs == []
+
+
+def test_fetch_uses_cache_and_skips_ssh(tmp_path):
+    """Gdy cache ma poprawnego usera, SSH NIE jest odpalany."""
+    cache = tmp_path / ".saved_pbn_token"
+    cache.write_text(
+        json.dumps(
+            {"username": "alice", "pbn_token": "tok", "pbn_token_updated": None}
+        )
+    )
+
+    logs: list[str] = []
+
+    def fake_run(cmd, *args, **kwargs):
+        # Tylko load_pbn_token powinien być wywołany — ssh nie.
+        assert "ssh" not in cmd[0].lower(), f"unexpected ssh call: {cmd}"
+
+        class _R:
+            returncode = 0
+            stdout = ""
+            stderr = ""
+
+        return _R()
+
+    with patch(
+        "bpp.management.commands._run_site_helpers.pbn_token.subprocess.run",
+        side_effect=fake_run,
+    ):
+        ok = fetch_pbn_token_via_ssh(
+            _src(),
+            remote_deploy_path="~/bpp-deploy",
+            remote_compose_service="appserver",
+            local_env={},
+            log=logs.append,
+            cache_path=cache,
+        )
+    assert ok is True
+
+
+def test_fetch_writes_cache_after_successful_ssh(tmp_path):
+    """Po pierwszym SSH cache zostaje zapisany."""
+    cache = tmp_path / ".saved_pbn_token"
+    assert not cache.exists()
+
+    payload = json.dumps(
+        {"username": "alice", "pbn_token": "tok", "pbn_token_updated": None}
+    )
+
+    calls = []
+
+    def fake_run(cmd, *args, **kwargs):
+        calls.append(cmd)
+
+        class _R:
+            returncode = 0
+            stderr = ""
+
+        if cmd[0] == "ssh":
+            _R.stdout = payload + "\n"
+        else:
+            _R.stdout = ""
+        return _R()
+
+    logs: list[str] = []
+    with patch(
+        "bpp.management.commands._run_site_helpers.pbn_token.subprocess.run",
+        side_effect=fake_run,
+    ):
+        ok = fetch_pbn_token_via_ssh(
+            _src(),
+            remote_deploy_path="~/bpp-deploy",
+            remote_compose_service="appserver",
+            local_env={},
+            log=logs.append,
+            cache_path=cache,
+        )
+    assert ok is True
+    assert cache.is_file()
+    assert json.loads(cache.read_text())["pbn_token"] == "tok"
+    # Najpierw SSH, potem load — nie odwrotnie.
+    assert calls[0][0] == "ssh"
+
+
+def test_fetch_does_not_write_cache_when_ssh_fails(tmp_path):
+    cache = tmp_path / ".saved_pbn_token"
+
+    def fake_run(cmd, *args, **kwargs):
+        class _R:
+            returncode = 1
+            stdout = ""
+            stderr = "boom"
+
+        return _R()
+
+    logs: list[str] = []
+    with patch(
+        "bpp.management.commands._run_site_helpers.pbn_token.subprocess.run",
+        side_effect=fake_run,
+    ):
+        ok = fetch_pbn_token_via_ssh(
+            _src(),
+            remote_deploy_path="~/bpp-deploy",
+            remote_compose_service="appserver",
+            local_env={},
+            log=logs.append,
+            cache_path=cache,
+        )
+    assert ok is False
+    assert not cache.exists()

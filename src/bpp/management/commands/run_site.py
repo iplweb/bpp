@@ -38,6 +38,8 @@ _SUPERUSER_EMAIL = "admin@example.com"
 
 _BROWSER_OPEN_DELAY_SECONDS = 2.0
 
+_PBN_TOKEN_CACHE_FILENAME = ".saved_pbn_token"
+
 
 class Command(BaseCommand):
     help = (
@@ -87,7 +89,9 @@ class Command(BaseCommand):
                 "Po migracji pobierz token PBN z hosta SSH przez "
                 "dump_pbn_token | load_pbn_token. USERNAME = nazwa "
                 "użytkownika Django (taka sama lokalnie i zdalnie); "
-                "SSH-HOST = alias z ~/.ssh/config (z wpisanym ssh-userem)."
+                "SSH-HOST = alias z ~/.ssh/config (z wpisanym ssh-userem). "
+                "Pierwszy fetch jest cache'owany w .saved_pbn_token w "
+                "korzeniu repo — usuń ten plik aby wymusić ponowne SSH."
             ),
         )
         parser.add_argument(
@@ -157,6 +161,7 @@ class Command(BaseCommand):
                     remote_compose_service=opts["remote_compose_service"],
                     local_env=env,
                     log=self.stdout.write,
+                    cache_path=_src_dir().parent / _PBN_TOKEN_CACHE_FILENAME,
                 )
 
             port = opts.get("port") or find_free_port()
