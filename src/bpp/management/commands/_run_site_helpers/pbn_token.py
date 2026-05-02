@@ -138,6 +138,18 @@ def _write_cache(cache_path: Path | None, payload_json: str, log) -> None:
     log(f"[run_site] PBN token: zapisany do cache {cache_path}")
 
 
+def _quote_remote_path(path: str) -> str:
+    # shlex.quote("~/foo") → "'~/foo'", a bash nie rozwija ~ wewnątrz
+    # cudzysłowów. Zostawiamy wiodące ~/ lub ~ poza quotem, resztę
+    # quotujemy normalnie.
+    if path == "~" or path.startswith("~/"):
+        head, _, tail = path.partition("/")
+        if not tail:
+            return head
+        return f"{head}/{shlex.quote(tail)}"
+    return shlex.quote(path)
+
+
 def _dump_via_ssh(
     source: PbnTokenSource,
     *,
@@ -147,7 +159,7 @@ def _dump_via_ssh(
 ) -> str | None:
     """Odpal SSH dump_pbn_token i zwróć stdout (JSON) lub None przy błędzie."""
     remote_cmd = (
-        f"cd {shlex.quote(remote_deploy_path)} && "
+        f"cd {_quote_remote_path(remote_deploy_path)} && "
         f"docker compose exec -T {shlex.quote(remote_compose_service)} "
         f"python src/manage.py dump_pbn_token "
         f"--user={shlex.quote(source.django_username)}"

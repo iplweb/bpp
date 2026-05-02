@@ -7,6 +7,7 @@ import pytest
 
 from bpp.management.commands._run_site_helpers.pbn_token import (
     PbnTokenSource,
+    _quote_remote_path,
     _read_cache,
     _write_cache,
     fetch_pbn_token_via_ssh,
@@ -592,3 +593,57 @@ def test_fetch_does_not_write_cache_when_ssh_fails(tmp_path):
         )
     assert ok is False
     assert not cache.exists()
+
+
+@pytest.mark.parametrize(
+    "raw,expected",
+    [
+        ("~/bpp-deploy", "~/bpp-deploy"),
+        ("~", "~"),
+        ("~/path with space", "~/'path with space'"),
+        ("/abs/path", "/abs/path"),
+        ("/path with space", "'/path with space'"),
+        ("relative", "relative"),
+    ],
+)
+def test_quote_remote_path_preserves_tilde(raw, expected):
+    # Bash nie rozwija ~ wewnątrz cudzysłowów — wiodące ~/ musi
+    # zostać poza quotem, inaczej cd na zdalnym hoście pójdzie do
+    # dosłownego katalogu o nazwie ~/bpp-deploy.
+    assert _quote_remote_path(raw) == expected
+
+
+def test_dump_via_ssh_does_not_quote_leading_tilde():
+    """Regresja: shlex.quote("~/x") tworzyło '~/x' i bash nie rozwijał ~."""
+    captured: list[list[str]] = []
+
+    def fake_run(cmd, *args, **kwargs):
+        captured.append(cmd)
+
+        class _R:
+            returncode = 0
+            stdout = ""
+            stderr = "boom"
+
+        return _R()
+
+    logs: list[str] = []
+    with patch(
+        "bpp.management.commands._run_site_helpers.pbn_token.subprocess.run",
+        side_effect=fake_run,
+    ):
+        fetch_pbn_token_via_ssh(
+            _src(),
+            remote_deploy_path="~/bpp-deploy",
+            remote_compose_service="appserver",
+            local_env={},
+            log=logs.append,
+            cache_path=None,
+        )
+
+    assert captured, "ssh nie został wywołany"
+    ssh_cmd = captured[0]
+    assert ssh_cmd[0] == "ssh"
+    remote = ssh_cmd[2]
+    assert "cd ~/" in remote
+    assert "'~/bpp-deploy'" not in remote
