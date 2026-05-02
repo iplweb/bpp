@@ -254,6 +254,11 @@ def start_containers(reuse: bool = False, load_baseline: bool = True) -> BppCont
     init scripts. Use case: caller chce zrobić własny restore (np.
     ``pg_restore`` z user-supplied dump-a) na pustej bazie.
     """
+    if reuse:
+        from testcontainers.core import testcontainers_config
+
+        testcontainers_config.ryuk_disabled = True
+
     _check_docker_daemon()
     print(  # noqa: T201
         f"[testcontainers-bpp] Starting containers "
