@@ -5,6 +5,44 @@ from django.db import DEFAULT_DB_ALIAS
 # This resolves the AttributeError: 'VCRHTTPConnection' has no attribute 'debuglevel'
 
 
+def _restore_django_ensure_connection():
+    """Cofnij monkey-patch ``pytest_django._blocking_wrapper`` w subprocesie.
+
+    Daphne (``channels_live_server`` fixture, session-scoped od commit-a
+    ``bafd8f209``) jest forkowany z pytest worker process-u. Dziedziczy
+    monkey-patch na ``BaseDatabaseWrapper.ensure_connection``, który
+    rzuca ``RuntimeError: Database access not allowed`` na każde
+    zapytanie spoza testu z markerem ``django_db``.
+
+    Konsekwencja: middleware używające DB w ``process_request``
+    (``django_countdown``, ``bpp_setup_wizard``, etc.) crashują na
+    KAŻDYM żądaniu obsłużonym przez Daphne → 500 → puste strony →
+    Playwright timeouts.
+
+    Subprocess Daphne to dedykowany serwer testowy z własnym połączeniem
+    do PG; nie odpalają się w nim żadne testy pytest, więc blocker nie
+    chroni tu niczego — przeciwnie, sabotuje legitymalne żądania.
+    Przywracamy oryginalną implementację ``ensure_connection`` z Django
+    (bit-for-bit kopia z ``django.db.backends.base.base``).
+    """
+    from django.core.exceptions import ImproperlyConfigured  # noqa: F401
+    from django.db.backends.base.base import BaseDatabaseWrapper
+
+    def ensure_connection(self):
+        """Guarantee that a connection to the database is established."""
+        if self.connection is None:
+            if self.in_atomic_block and self.closed_in_transaction:
+                from django.db import ProgrammingError
+
+                raise ProgrammingError(
+                    "Cannot open a new connection in an atomic block."
+                )
+            with self.wrap_database_errors:
+                self.connect()
+
+    BaseDatabaseWrapper.ensure_connection = ensure_connection
+
+
 def set_database_connection():
     import os
 
@@ -26,6 +64,10 @@ def set_database_connection():
     settings.CELERY_ALWAYS_EAGER = True
 
     settings.TESTING = True
+
+    # Subprocess Daphne dziedziczy patch pytest-django blokujący DB.
+    # Patrz docstring _restore_django_ensure_connection.
+    _restore_django_ensure_connection()
 
 
 class _ChannelsLiveServer:
