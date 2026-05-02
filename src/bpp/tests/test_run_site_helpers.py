@@ -81,7 +81,11 @@ def test_build_restore_command_sql_gz_decompresses():
 
 def test_build_restore_command_pgdump_uses_pg_restore():
     cmd, decompress = build_restore_command(
-        format="pgdump", container_id="abc123", db_user="bpp", db_name="bpp"
+        format="pgdump",
+        container_id="abc123",
+        db_user="bpp",
+        db_name="bpp",
+        dump_in_container="/tmp/x.pgdump",
     )
     assert decompress is False
     assert "pg_restore" in cmd
@@ -90,6 +94,37 @@ def test_build_restore_command_pgdump_uses_pg_restore():
     assert "--if-exists" not in cmd
     assert "--no-owner" in cmd
     assert "--exit-on-error" in cmd
+    # Plik musi być pozytywnym argumentem (pg_restore -j wymaga seekable file).
+    assert cmd[-1] == "/tmp/x.pgdump"
+
+
+def test_build_restore_command_pgdump_jobs_1_omits_dash_j():
+    cmd, _ = build_restore_command(
+        format="pgdump",
+        container_id="abc",
+        dump_in_container="/tmp/x.pgdump",
+        jobs=1,
+    )
+    assert "-j" not in cmd
+
+
+def test_build_restore_command_pgdump_jobs_gt_1_adds_parallel_flag():
+    cmd, _ = build_restore_command(
+        format="pgdump",
+        container_id="abc",
+        dump_in_container="/tmp/x.pgdump",
+        jobs=8,
+    )
+    assert "-j" in cmd
+    j_idx = cmd.index("-j")
+    assert cmd[j_idx + 1] == "8"
+    # -j musi być przed pozytywnym argumentem (plik na końcu).
+    assert j_idx + 1 < len(cmd) - 1
+
+
+def test_build_restore_command_pgdump_requires_dump_path():
+    with pytest.raises(ValueError, match="dump_in_container"):
+        build_restore_command(format="pgdump", container_id="abc")
 
 
 def test_build_restore_command_unknown_raises():
@@ -97,6 +132,37 @@ def test_build_restore_command_unknown_raises():
         build_restore_command(
             format="tar", container_id="x", db_user="bpp", db_name="bpp"
         )
+
+
+def test_resolve_jobs_uses_env_override(monkeypatch):
+    from bpp.management.commands._run_site_helpers.restore import _resolve_jobs
+
+    monkeypatch.setenv("BPP_RESTORE_JOBS", "12")
+    assert _resolve_jobs() == 12
+
+
+def test_resolve_jobs_clamps_to_minimum_1(monkeypatch):
+    from bpp.management.commands._run_site_helpers.restore import _resolve_jobs
+
+    monkeypatch.setenv("BPP_RESTORE_JOBS", "0")
+    assert _resolve_jobs() == 1
+
+
+def test_resolve_jobs_invalid_env_falls_back_to_default(monkeypatch):
+    from bpp.management.commands._run_site_helpers.restore import _resolve_jobs
+
+    monkeypatch.setenv("BPP_RESTORE_JOBS", "not-a-number")
+    n = _resolve_jobs()
+    assert n >= 1
+    assert n <= 8
+
+
+def test_resolve_jobs_default_is_capped(monkeypatch):
+    from bpp.management.commands._run_site_helpers.restore import _resolve_jobs
+
+    monkeypatch.delenv("BPP_RESTORE_JOBS", raising=False)
+    n = _resolve_jobs()
+    assert 1 <= n <= 8
 
 
 def test_banner_includes_all_endpoints():
@@ -206,6 +272,149 @@ def test_wait_terminate_already_exited():
     proc.wait()
     # Nie powinno rzucić — proc.poll() zwraca returncode
     wait_terminate(proc)
+
+
+# ── log_multiplexer ─────────────────────────────────────────────────────
+
+
+def test_log_multiplexer_writes_lines_with_prefix():
+    import io
+    from bpp.management.commands._run_site_helpers.log_multiplexer import (
+        COLOR_CYAN,
+        LogMultiplexer,
+    )
+
+    out = io.StringIO()
+    mux = LogMultiplexer(output=out, use_color=False)
+    stream = io.BytesIO(b"hello\nworld\n")
+    mux.add_stream("web", COLOR_CYAN, stream)
+    mux.join(timeout=2.0)
+
+    text = out.getvalue()
+    assert "web | hello\n" in text
+    assert "web | world\n" in text
+
+
+def test_log_multiplexer_pads_names_to_widest():
+    import io
+    from bpp.management.commands._run_site_helpers.log_multiplexer import (
+        COLOR_CYAN,
+        COLOR_GREEN,
+        LogMultiplexer,
+    )
+
+    out = io.StringIO()
+    mux = LogMultiplexer(output=out, use_color=False)
+    # Add szerszą nazwę PRZED czytaniem — żeby wszystkie linie miały tę samą
+    # szerokość kolumny od początku.
+    mux.add_stream("celery", COLOR_GREEN, io.BytesIO(b""))
+    mux.add_stream("web", COLOR_CYAN, io.BytesIO(b"hi\n"))
+    mux.join(timeout=2.0)
+
+    text = out.getvalue()
+    # "web" powinno być wyrównane do 6 znaków (długość "celery").
+    assert "web    | hi\n" in text
+
+
+def test_log_multiplexer_emits_color_when_enabled():
+    import io
+    from bpp.management.commands._run_site_helpers.log_multiplexer import (
+        COLOR_CYAN,
+        COLOR_RESET,
+        LogMultiplexer,
+    )
+
+    out = io.StringIO()
+    mux = LogMultiplexer(output=out, use_color=True)
+    mux.add_stream("web", COLOR_CYAN, io.BytesIO(b"x\n"))
+    mux.join(timeout=2.0)
+
+    text = out.getvalue()
+    assert COLOR_CYAN in text
+    assert COLOR_RESET in text
+
+
+def test_log_multiplexer_no_color_when_disabled():
+    import io
+    from bpp.management.commands._run_site_helpers.log_multiplexer import (
+        COLOR_CYAN,
+        COLOR_RESET,
+        LogMultiplexer,
+    )
+
+    out = io.StringIO()
+    mux = LogMultiplexer(output=out, use_color=False)
+    mux.add_stream("web", COLOR_CYAN, io.BytesIO(b"x\n"))
+    mux.join(timeout=2.0)
+
+    text = out.getvalue()
+    assert COLOR_CYAN not in text
+    assert COLOR_RESET not in text
+
+
+def test_log_multiplexer_handles_invalid_utf8():
+    """Linie z nieprawidłowym UTF-8 nie crashują czytnika."""
+    import io
+    from bpp.management.commands._run_site_helpers.log_multiplexer import (
+        COLOR_CYAN,
+        LogMultiplexer,
+    )
+
+    out = io.StringIO()
+    mux = LogMultiplexer(output=out, use_color=False)
+    mux.add_stream("pg", COLOR_CYAN, io.BytesIO(b"ok\n\xff\xfe\nzzz\n"))
+    mux.join(timeout=2.0)
+
+    text = out.getvalue()
+    assert "pg | ok\n" in text
+    assert "pg | zzz\n" in text
+
+
+def test_spawn_pg_logs_invokes_docker_logs_follow():
+    """spawn_pg_logs woła `docker logs -f --tail 0 <id>`."""
+    import subprocess
+    from unittest.mock import patch
+    from bpp.management.commands._run_site_helpers.processes import spawn_pg_logs
+
+    with patch.object(subprocess, "Popen") as mock_popen:
+        spawn_pg_logs("abc123")
+        cmd = mock_popen.call_args[0][0]
+        assert cmd == ["docker", "logs", "-f", "--tail", "0", "abc123"]
+        kwargs = mock_popen.call_args[1]
+        assert kwargs.get("stdout") == subprocess.PIPE
+        assert kwargs.get("stderr") == subprocess.STDOUT
+
+
+def test_spawn_runserver_sets_pythonunbuffered():
+    """spawn_runserver wymusza PYTHONUNBUFFERED=1, inaczej multiplekser
+    nie widzi linii dopóki bufor 4KB się nie zapełni."""
+    import subprocess
+    from unittest.mock import patch
+    from bpp.management.commands._run_site_helpers.processes import spawn_runserver
+
+    with patch.object(subprocess, "Popen") as mock_popen:
+        spawn_runserver(8000, env={"FOO": "bar"})
+        kwargs = mock_popen.call_args[1]
+        assert kwargs["env"]["PYTHONUNBUFFERED"] == "1"
+        assert kwargs["env"]["FOO"] == "bar"
+        assert kwargs["stdout"] == subprocess.PIPE
+
+
+def test_spawn_celery_uses_pipe_and_unbuffered():
+    """spawn_celery odpina logi na PIPE (czytane przez multiplekser)."""
+    import subprocess
+    from unittest.mock import patch
+    from bpp.management.commands._run_site_helpers.processes import spawn_celery
+
+    with patch.object(subprocess, "Popen") as mock_popen:
+        spawn_celery(env={"X": "y"})
+        kwargs = mock_popen.call_args[1]
+        assert kwargs["env"]["PYTHONUNBUFFERED"] == "1"
+        assert kwargs["stdout"] == subprocess.PIPE
+        assert kwargs["stderr"] == subprocess.STDOUT
+        cmd = mock_popen.call_args[0][0]
+        assert "--pool=solo" in cmd
+
 
 # ── PBN token cache ────────────────────────────────────────────────────
 

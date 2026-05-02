@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 import os
+import secrets
 import threading
 import time
 import webbrowser
@@ -16,7 +17,18 @@ from pathlib import Path
 
 from django.core.management.base import BaseCommand, CommandError
 
+from django_bpp.views_run_site_autologin import (
+    AUTOLOGIN_ENV_VAR,
+    AUTOLOGIN_URL_PATH,
+)
+
 from ._run_site_helpers.banner import format_banner
+from ._run_site_helpers.log_multiplexer import (
+    COLOR_CYAN,
+    COLOR_GREEN,
+    COLOR_YELLOW,
+    LogMultiplexer,
+)
 from ._run_site_helpers.pbn_token import PbnTokenSource, fetch_pbn_token_via_ssh
 from ._run_site_helpers.processes import (
     _python_executable,
@@ -24,6 +36,7 @@ from ._run_site_helpers.processes import (
     find_free_port,
     run_subprocess_blocking,
     spawn_celery,
+    spawn_pg_logs,
     spawn_runserver,
     wait_terminate,
 )
@@ -37,6 +50,7 @@ _SUPERUSER_PASSWORD = "admin"  # noqa: S105 — dev tool, intencjonalnie hardcod
 _SUPERUSER_EMAIL = "admin@example.com"
 
 _BROWSER_OPEN_DELAY_SECONDS = 2.0
+_AUTOLOGIN_TOKEN_BYTES = 32
 
 _PBN_TOKEN_CACHE_FILENAME = ".saved_pbn_token"
 
@@ -59,8 +73,14 @@ class Command(BaseCommand):
         parser.add_argument(
             "--with-celery",
             action="store_true",
-            default=False,
-            help="Dodatkowo odpal celery worker.",
+            default=True,
+            help="Odpal celery worker (default; --pool=solo). Backward-compat.",
+        )
+        parser.add_argument(
+            "--no-celery",
+            action="store_false",
+            dest="with_celery",
+            help="Nie uruchamiaj celery worker.",
         )
         parser.add_argument(
             "--no-browser",
@@ -150,7 +170,8 @@ class Command(BaseCommand):
             except DockerNotRunningError as exc:
                 raise CommandError(f"Docker daemon nie jest dostępny: {exc}") from exc
 
-            env = self._build_env(containers)
+            autologin_token = secrets.token_urlsafe(_AUTOLOGIN_TOKEN_BYTES)
+            env = self._build_env(containers, autologin_token=autologin_token)
             self._restore_dump_if_needed(dump_path, containers)
             self._migrate(env)
             self._create_superuser(env)
@@ -165,7 +186,9 @@ class Command(BaseCommand):
                 )
 
             port = opts.get("port") or find_free_port()
-            appserver_url = f"http://127.0.0.1:{port}"
+            # Używamy `localhost` zamiast `127.0.0.1`, żeby uniknąć HSTS
+            # cache w Safari upgrade'ującego http://127.0.0.1 do https://.
+            appserver_url = f"http://localhost:{port}"
             admin_url = f"{appserver_url}/admin/"
 
             self._print_banner(
@@ -176,24 +199,36 @@ class Command(BaseCommand):
                 dump_path=dump_path,
             )
 
-            if opts["with_celery"]:
-                celery_proc = spawn_celery(env)
-
             if not opts["no_browser"]:
-                self._open_browser(admin_url)
+                self._open_browser(
+                    f"{appserver_url}/{AUTOLOGIN_URL_PATH}?token={autologin_token}"
+                )
 
             self.stdout.write(
                 self.style.SUCCESS(
-                    f"\nrunserver: {appserver_url}/  (Ctrl-C aby zakończyć)"
+                    f"\nrunserver: {appserver_url}/  (Ctrl-C aby zakończyć)\n"
                 )
             )
 
+            mux = LogMultiplexer()
+
             runserver_proc = spawn_runserver(port, env)
+            mux.add_stream("web", COLOR_CYAN, runserver_proc.stdout)
+
+            if opts["with_celery"]:
+                celery_proc = spawn_celery(env)
+                mux.add_stream("celery", COLOR_GREEN, celery_proc.stdout)
+
+            pg_logs_proc = self._maybe_spawn_pg_logs(containers, mux)
+
             try:
                 runserver_proc.wait()
             except KeyboardInterrupt:
                 self.stdout.write("\n[run_site] Przerwane (Ctrl-C)")
                 wait_terminate(runserver_proc)
+            finally:
+                if pg_logs_proc is not None:
+                    wait_terminate(pg_logs_proc)
         finally:
             if celery_proc is not None:
                 wait_terminate(celery_proc)
@@ -226,7 +261,7 @@ class Command(BaseCommand):
             )
         return path
 
-    def _build_env(self, containers) -> dict[str, str]:
+    def _build_env(self, containers, *, autologin_token: str) -> dict[str, str]:
         env = os.environ.copy()
         env["DJANGO_BPP_DB_HOST"] = containers.pg_host
         env["DJANGO_BPP_DB_PORT"] = str(containers.pg_port)
@@ -236,6 +271,7 @@ class Command(BaseCommand):
         env["DJANGO_SUPERUSER_USERNAME"] = _SUPERUSER_USERNAME
         env["DJANGO_SUPERUSER_PASSWORD"] = _SUPERUSER_PASSWORD
         env["DJANGO_SUPERUSER_EMAIL"] = _SUPERUSER_EMAIL
+        env[AUTOLOGIN_ENV_VAR] = autologin_token
         return env
 
     def _restore_dump_if_needed(self, dump_path, containers):
@@ -285,7 +321,13 @@ class Command(BaseCommand):
             raise CommandError(f"runsite_setup_admin failed (rc={rc})")
 
     def _print_banner(
-        self, *, appserver_url, admin_url, containers, with_celery, dump_path
+        self,
+        *,
+        appserver_url,
+        admin_url,
+        containers,
+        with_celery,
+        dump_path,
     ):
         text = format_banner(
             appserver_url=appserver_url,
@@ -301,6 +343,37 @@ class Command(BaseCommand):
         )
         self.stdout.write("")
         self.stdout.write(text)
+
+    def _maybe_spawn_pg_logs(self, containers, mux):
+        """Podpina ``docker logs -f`` dla PG do multipleksera.
+
+        Gdy reuse'ujemy istniejący kontener, ``containers.pg`` jest None —
+        odczytujemy ID po nazwie ``bpp-tc-pg`` (best-effort; jeśli się nie
+        uda, po prostu nie strumieniujemy logów, web/celery wystarczą).
+        """
+        container_id = None
+        if containers.pg is not None:
+            try:
+                container_id = containers.pg.get_wrapped_container().id
+            except Exception:
+                logger.exception("[run_site] nie mogę odczytać ID PG containera")
+        else:
+            try:
+                import docker
+
+                container_id = docker.from_env().containers.get("bpp-tc-pg").id
+            except Exception:
+                logger.warning("[run_site] reuse PG: nie znaleziono bpp-tc-pg do logs")
+
+        if container_id is None:
+            return None
+        try:
+            proc = spawn_pg_logs(container_id)
+        except FileNotFoundError:
+            logger.warning("[run_site] 'docker' nie znaleziony w PATH — bez logów PG")
+            return None
+        mux.add_stream("pg", COLOR_YELLOW, proc.stdout)
+        return proc
 
     def _open_browser(self, url):
         def _delayed():
