@@ -4,6 +4,46 @@ Historia zmian
 
 .. towncrier release notes start
 
+bpp 202605.1370 (2026-05-02)
+============================
+
+Naprawione
+----------
+
+- Importer publikacji wywalał się z ``TypeError: '>' not supported between
+  instances of 'NoneType' and 'int'`` przy próbie utworzenia rekordu, gdy
+  dane źródłowe (np. BibTeX) nie zawierały roku publikacji. Po stronie
+  ``ISlot`` dodano obsługę ``rok=None`` (zwracane jest ``CannotAdapt``,
+  sloty nie są liczone), a w samym imporcie ``_create_publication``
+  waliduje obecność roku i zgłasza czytelny komunikat zamiast pełnego
+  tracebacku.
+- Naprawa testów Playwright (Chromium) padających na CI od commit-a ``bafd8f209`` (session-scoped ``channels_live_server``). Daphne subprocess fork-uje z pytest worker process-u i dziedziczy monkey-patch ``pytest_django._blocking_wrapper`` na ``BaseDatabaseWrapper.ensure_connection``, przez co każde zapytanie do DB w middleware (``django_countdown``, ``bpp_setup_wizard``) crashowało z ``RuntimeError: Database access not allowed`` → 500 → puste strony → timeout-y Playwright. Fix: ``set_database_connection`` w subprocesie Daphne przywraca oryginalną implementację ``ensure_connection``.
+
+
+Usprawnienie
+------------
+
+- Dodano polecenia ``dump_pbn_token`` i ``load_pbn_token`` do
+  przenoszenia tokenu PBN użytkownika między instancjami BPP — bez
+  zrzutu całej bazy. ``dump_pbn_token --user=<nazwa>`` wypisuje JSON
+  z tokenem i datą jego ostatniej aktualizacji na stdout, a
+  ``load_pbn_token --user=<nazwa>`` czyta ten JSON ze stdin i ustawia
+  te same wartości lokalnemu użytkownikowi.
+
+  W ``run_site`` dodano flagę ``--get-pbn-token-from
+  USERNAME@SSH-HOST``, która automatyzuje ten transfer — łączy się po
+  SSH ze wskazanym hostem (alias z ``~/.ssh/config``), uruchamia
+  ``dump_pbn_token`` w kontenerze ``appserver`` z katalogu
+  ``bpp-deploy`` i wynik wgrywa do lokalnej bazy. Domyślne ścieżki i
+  nazwę serwisu można nadpisać flagami ``--remote-deploy-path`` i
+  ``--remote-compose-service``.
+- Nowa komenda ``manage.py run_site`` — uruchamia dev stack BPP w testcontainerach
+  na losowych portach (PG + Redis), opcjonalnie odtwarza dump bazy
+  (``--from-dump path``, autodetect ``.sql`` / ``.sql.gz`` / ``.dump``), tworzy
+  superusera ``admin/admin``, odpala ``runserver`` i otwiera przeglądarkę.
+  Eliminuje konflikty portów przy wielu konfiguracjach BPP na jednym serwerze.
+
+
 bpp 202604.1369 (2026-04-28)
 ============================
 
