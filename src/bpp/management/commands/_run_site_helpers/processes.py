@@ -6,6 +6,7 @@ import logging
 import socket
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -16,6 +17,66 @@ def find_free_port() -> int:
     with socket.socket() as s:
         s.bind(("", 0))
         return s.getsockname()[1]
+
+
+def wait_for_listen(
+    host: str,
+    port: int,
+    *,
+    timeout: float = 60.0,
+    poll_interval: float = 0.1,
+) -> bool:
+    """Czeka aż ``host:port`` zacznie akceptować TCP — zwraca True/False."""
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        try:
+            with socket.create_connection((host, port), timeout=0.5):
+                return True
+        except OSError:
+            time.sleep(poll_interval)
+    return False
+
+
+def wait_for_http(
+    url: str,
+    *,
+    timeout: float = 60.0,
+    poll_interval: float = 0.2,
+    accept_below_status: int = 500,
+) -> bool:
+    """Czeka aż ``url`` odpowie statusem HTTP < ``accept_below_status``.
+
+    Mocniejszy gate niż ``wait_for_listen``: TCP accept zachodzi w momencie
+    ``bind()+listen()`` runservera — *zanim* Django dokończy ładowanie
+    URLConf/middleware. Pierwszy żywy request wymusza dopiero to ładowanie
+    (lazy URL resolver), więc gdy otworzymy przeglądarkę zaraz po TCP-up,
+    Safari trafia w stronę-w-rozruchu i potrafi zacachować błąd.
+
+    Probe HTTP-em najpierw "rozgrzewa" Django (przejście przez handler
+    wymusza zaimportowanie URLConf), potem otwieramy browser. Każdy status
+    < 500 (200, 301, 302, 404) traktujemy jako sygnał gotowości — Django
+    odpowiedział, a o to chodzi. 5xx sugeruje że apka wstała ale crashuje
+    (np. brak migracji) i czekamy dalej do timeout-u.
+    """
+    import urllib.error
+    import urllib.request
+
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        try:
+            with urllib.request.urlopen(url, timeout=2.0) as resp:
+                if resp.status < accept_below_status:
+                    return True
+        except urllib.error.HTTPError as exc:
+            # Django odpowiedział, ale 4xx/5xx. 4xx = ready (np. 404 pod
+            # nieznanym URL — routing działa). 5xx = nie ready, retry.
+            if exc.code < accept_below_status:
+                return True
+        except (urllib.error.URLError, OSError):
+            # Connection refused / DNS / timeout — retry.
+            pass
+        time.sleep(poll_interval)
+    return False
 
 
 def _src_dir() -> Path:

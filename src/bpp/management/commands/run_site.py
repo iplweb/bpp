@@ -11,7 +11,6 @@ import logging
 import os
 import secrets
 import threading
-import time
 import webbrowser
 from pathlib import Path
 
@@ -38,6 +37,7 @@ from ._run_site_helpers.processes import (
     spawn_celery,
     spawn_pg_logs,
     spawn_runserver,
+    wait_for_http,
     wait_terminate,
 )
 from ._run_site_helpers.restore import detect_dump_format, restore_dump
@@ -49,7 +49,7 @@ _SUPERUSER_USERNAME = "admin"
 _SUPERUSER_PASSWORD = "admin"  # noqa: S105 — dev tool, intencjonalnie hardcoded
 _SUPERUSER_EMAIL = "admin@example.com"
 
-_BROWSER_OPEN_DELAY_SECONDS = 2.0
+_BROWSER_OPEN_TIMEOUT_SECONDS = 60.0
 _AUTOLOGIN_TOKEN_BYTES = 32
 
 _PBN_TOKEN_CACHE_FILENAME = ".saved_pbn_token"
@@ -98,7 +98,14 @@ class Command(BaseCommand):
             "--reuse",
             action="store_true",
             default=False,
-            help="Reuse named containers zamiast tworzyć nowe.",
+            help=(
+                "Persystencja kontenerów PG/Redis między uruchomieniami: "
+                "pierwszy run inicjuje (baseline / --from-dump / migracje), "
+                "kolejne podpinają się do istniejącego kontenera (running "
+                "lub stopped) i pomijają inicjalizację. Kontenery NIE są "
+                "zatrzymywane na exit. Aby zacząć od zera: "
+                "docker rm -f bpp-tc-pg bpp-tc-redis."
+            ),
         )
         parser.add_argument(
             "--get-pbn-token-from",
@@ -186,9 +193,14 @@ class Command(BaseCommand):
                 )
 
             port = opts.get("port") or find_free_port()
-            # Używamy `localhost` zamiast `127.0.0.1`, żeby uniknąć HSTS
-            # cache w Safari upgrade'ującego http://127.0.0.1 do https://.
+            # ZAWSZE http:// — runserver nie ma SSL-a, https:// = błąd
+            # połączenia. Używamy `localhost` zamiast `127.0.0.1`, żeby
+            # uniknąć HSTS cache w Safari upgrade'ującego http://127.0.0.1
+            # do https://.
             appserver_url = f"http://localhost:{port}"
+            assert appserver_url.startswith("http://"), (
+                "appserver_url musi być http:// — runserver nie obsługuje SSL"
+            )
             admin_url = f"{appserver_url}/admin/"
 
             self._print_banner(
@@ -198,11 +210,6 @@ class Command(BaseCommand):
                 with_celery=opts["with_celery"],
                 dump_path=dump_path,
             )
-
-            if not opts["no_browser"]:
-                self._open_browser(
-                    f"{appserver_url}/{AUTOLOGIN_URL_PATH}?token={autologin_token}"
-                )
 
             self.stdout.write(
                 self.style.SUCCESS(
@@ -214,6 +221,15 @@ class Command(BaseCommand):
 
             runserver_proc = spawn_runserver(port, env)
             mux.add_stream("web", COLOR_CYAN, runserver_proc.stdout)
+
+            if not opts["no_browser"]:
+                self._open_browser_when_ready(
+                    host="127.0.0.1",
+                    port=port,
+                    url=(
+                        f"{appserver_url}/{AUTOLOGIN_URL_PATH}?token={autologin_token}"
+                    ),
+                )
 
             if opts["with_celery"]:
                 celery_proc = spawn_celery(env)
@@ -278,9 +294,16 @@ class Command(BaseCommand):
         if dump_path is None:
             return
         if containers.pg is None:
+            # --reuse + istniejący kontener: ma już dane, nie nadpisujemy
+            # (restore mógłby zostawić bazę w połowicznym stanie albo
+            # walczyć z FK cascade). User musi jawnie wyczyścić.
             raise CommandError(
-                "Reuse=True nie ma kontenera do restore — "
-                "uruchom raz bez --reuse aby zaimportować dump."
+                "Kontener bpp-tc-pg już istnieje z danymi — --from-dump "
+                "nie zostanie zaaplikowane (nie nadpisuję istniejącej "
+                "bazy). Aby zacząć od zera: "
+                "docker rm -f bpp-tc-pg bpp-tc-redis, potem "
+                "run_site --reuse --from-dump <dump>. Aby skorzystać "
+                "z istniejących danych: pomiń --from-dump."
             )
         container_id = containers.pg.get_wrapped_container().id
         self.stdout.write(f"[run_site] Restore: {dump_path} → PG container...")
@@ -375,12 +398,28 @@ class Command(BaseCommand):
         mux.add_stream("pg", COLOR_YELLOW, proc.stdout)
         return proc
 
-    def _open_browser(self, url):
-        def _delayed():
+    def _open_browser_when_ready(self, *, host: str, port: int, url: str):
+        """Otwórz przeglądarkę dopiero gdy Django realnie odpowiada HTTP-em.
+
+        TCP-only check (``wait_for_listen``) zwracał True w momencie
+        ``bind()+listen()`` runservera — zanim Django dokończył ładowanie
+        URLConf/middleware. Safari trafiało w warming app i cachował błąd.
+        Probe HTTP-em pod ``/admin/login/`` rozgrzewa URL resolver — gdy
+        odpowiedź wraca z statusem < 500, Django jest naprawdę gotowy.
+        """
+        probe_url = f"http://{host}:{port}/admin/login/"
+
+        def _wait_and_open():
             try:
-                time.sleep(_BROWSER_OPEN_DELAY_SECONDS)
+                if not wait_for_http(probe_url, timeout=_BROWSER_OPEN_TIMEOUT_SECONDS):
+                    logger.warning(
+                        "[run_site] runserver nie odpowiedział HTTP-em w %.0fs — "
+                        "pomijam otwarcie przeglądarki",
+                        _BROWSER_OPEN_TIMEOUT_SECONDS,
+                    )
+                    return
                 webbrowser.open(url)
             except Exception:
                 logger.exception("[run_site] Otwarcie przeglądarki nie powiodło się")
 
-        threading.Thread(target=_delayed, daemon=True).start()
+        threading.Thread(target=_wait_and_open, daemon=True).start()

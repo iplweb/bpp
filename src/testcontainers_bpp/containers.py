@@ -88,20 +88,49 @@ class BppContainers:
     redis_host: str
     redis_port: int
 
-    # Whether containers were reused (skip stop on cleanup).
-    _reused: bool = False
+    # When True, ``stop_containers`` is a no-op — the user asked the
+    # containers to persist between runs (``reuse=True``). Set independently
+    # of whether containers were actually found pre-existing, so first-run
+    # ``--reuse`` also leaves containers running on exit.
+    _persist_on_exit: bool = False
 
 
-def _find_running_container(name: str) -> docker.models.containers.Container | None:
-    """Return a running Docker container by name, or ``None``."""
+def _find_existing_container(name: str) -> docker.models.containers.Container | None:
+    """Return a Docker container by name, starting it if stopped.
+
+    Returns ``None`` only when no container with this name exists. For an
+    ``exited``/``created``/``paused`` container, attempts to bring it back
+    to ``running`` so the caller can read its (preserved) port mapping.
+
+    Raises ``RuntimeError`` if a container exists but cannot be started —
+    most commonly when the host port it was originally bound to is now
+    occupied by another process.
+    """
     try:
         client = docker.from_env()
         container = client.containers.get(name)
-        if container.status == "running":
-            return container
-    except (docker.errors.NotFound, docker.errors.APIError):
-        pass
-    return None
+    except docker.errors.NotFound:
+        return None
+    except docker.errors.APIError:
+        logger.exception("Failed to query Docker for container %s", name)
+        return None
+
+    if container.status == "running":
+        return container
+
+    logger.info("Starting existing container %s (status=%s)", name, container.status)
+    try:
+        container.start()
+        # Refresh attrs so callers reading NetworkSettings.Ports see the
+        # current (post-start) mapping rather than stale cached metadata.
+        container.reload()
+    except docker.errors.APIError as exc:
+        raise RuntimeError(
+            f"Nie udało się wystartować istniejącego kontenera {name!r}: {exc}\n"
+            f"Najczęściej winowajcą jest konflikt portu (host port zajęty "
+            f"przez inny proces). Aby zacząć od zera: docker rm -f {name}"
+        ) from exc
+    return container
 
 
 def _get_host_port(
@@ -131,7 +160,7 @@ def _start_pg(
             ``--clean`` walczy z istniejącymi FK.
     """
     if reuse:
-        existing = _find_running_container(_PG_NAME)
+        existing = _find_existing_container(_PG_NAME)
         if existing:
             host, port = _get_host_port(existing, 5432)
             logger.info(
@@ -193,7 +222,7 @@ def _start_pg(
 def _start_redis(reuse: bool) -> tuple[DockerContainer | None, str, int]:
     """Start Redis container or reuse an existing one."""
     if reuse:
-        existing = _find_running_container(_REDIS_NAME)
+        existing = _find_existing_container(_REDIS_NAME)
         if existing:
             host, port = _get_host_port(existing, 6379)
             logger.info("Reusing Redis container %s at %s:%d", _REDIS_NAME, host, port)
@@ -234,7 +263,6 @@ def start_containers(reuse: bool = False, load_baseline: bool = True) -> BppCont
     pg, pg_host, pg_port = _start_pg(reuse, load_baseline=load_baseline)
     redis, redis_host, redis_port = _start_redis(reuse)
 
-    reused = pg is None and redis is None
     print(  # noqa: T201
         "[testcontainers-bpp] Containers ready: "
         f"pg={pg_host}:{pg_port} "
@@ -248,13 +276,17 @@ def start_containers(reuse: bool = False, load_baseline: bool = True) -> BppCont
         pg_port=pg_port,
         redis_host=redis_host,
         redis_port=redis_port,
-        _reused=reused,
+        # reuse=True ⇒ persist on exit, niezależnie od tego czy znaleźliśmy
+        # istniejące kontenery, czy stworzyliśmy świeże. Pierwsze uruchomienie
+        # z --reuse też zostawia kontenery przy życiu, żeby kolejne mogły je
+        # podpiąć.
+        _persist_on_exit=reuse,
     )
 
 
 def stop_containers(containers: BppContainers) -> None:
-    """Stop containers that were started by us (not reused)."""
-    if containers._reused:
+    """Stop containers unless caller asked them to persist (``reuse=True``)."""
+    if containers._persist_on_exit:
         return
     for name, container in [
         ("PostgreSQL", containers.pg),
