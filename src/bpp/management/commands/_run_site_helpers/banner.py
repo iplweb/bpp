@@ -52,3 +52,28 @@ def format_banner(
         celery_label=celery_label,
         dump_label=_shorten_path(dump_label, 50),
     )
+
+
+def format_agent_help(*, appserver_url: str, token_path: str) -> str:
+    """Snippet copy-paste dla agenta kodującego (WebFetch / curl).
+
+    Drukowany poniżej banera. Brak box-drawing chars (terminale czasem
+    je mangą przy zaznaczaniu — fragment ma być prosto kopiowalny).
+    """
+    return (
+        "─── Auto-login dla agenta (WebFetch / curl) "
+        "──────────────────────────────\n"
+        f"  Token sesji admina znajdziesz w: {token_path}\n"
+        "  (gitignored, chmod 600, kasowany na exit run_site)\n"
+        "\n"
+        "  Pobranie zalogowanej strony bez wpisywania hasła:\n"
+        f'    T=$(cat "{token_path}")\n'
+        "    J=$(mktemp)\n"
+        f'    curl -sc "$J" -L "{appserver_url}/__run_site_autologin__/?token=$T" '
+        ">/dev/null\n"
+        f'    curl -sb "$J" "{appserver_url}/<path>"\n'
+        '    rm "$J"\n'
+        "\n"
+        '  Szczegóły dla agenta: patrz CLAUDE.md → "Autologin dla agentów".\n'
+        "──────────────────────────────────────────────────────────────────────\n"
+    )

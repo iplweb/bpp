@@ -197,7 +197,10 @@ def test_banner_celery_running_label():
         admin_url="http://localhost:1/admin/",
         admin_user="admin",
         admin_pass="admin",
-        pg_host="x", pg_port=1, redis_host="x", redis_port=2,
+        pg_host="x",
+        pg_port=1,
+        redis_host="x",
+        redis_port=2,
         with_celery=True,
         dump_label="baseline",
     )
@@ -212,7 +215,10 @@ def test_banner_celery_disabled_label():
         admin_url="http://localhost:1/admin/",
         admin_user="admin",
         admin_pass="admin",
-        pg_host="x", pg_port=1, redis_host="x", redis_port=2,
+        pg_host="x",
+        pg_port=1,
+        redis_host="x",
+        redis_port=2,
         with_celery=False,
         dump_label="baseline",
     )
@@ -223,13 +229,55 @@ def test_banner_dump_label_path():
     from bpp.management.commands._run_site_helpers.banner import format_banner
 
     text = format_banner(
-        appserver_url="x", admin_url="y",
-        admin_user="a", admin_pass="b",
-        pg_host="x", pg_port=1, redis_host="y", redis_port=2,
+        appserver_url="x",
+        admin_url="y",
+        admin_user="a",
+        admin_pass="b",
+        pg_host="x",
+        pg_port=1,
+        redis_host="y",
+        redis_port=2,
         with_celery=False,
         dump_label="/path/to/dump.sql.gz",
     )
     assert "/path/to/dump.sql.gz" in text
+
+
+def test_format_agent_help_contains_token_path_and_url():
+    from bpp.management.commands._run_site_helpers.banner import (
+        format_agent_help,
+    )
+
+    text = format_agent_help(
+        appserver_url="http://localhost:54321",
+        token_path="/tmp/foo/.run_site_token",
+    )
+    assert "/tmp/foo/.run_site_token" in text
+    assert "http://localhost:54321" in text
+    assert "__run_site_autologin__" in text
+    assert "curl" in text
+
+
+def test_format_agent_help_no_box_drawing_chars_in_snippet():
+    """Snippet do skopiowania (linie zaczynające się od ' ' x4) — bez box chars.
+
+    Box-drawing chars dopuszczamy tylko w nagłówku/separatorze, ale nie
+    w samym kodzie do copy-paste (terminale czasem mangą je przy
+    zaznaczaniu i kopiowanie się sypie).
+    """
+    from bpp.management.commands._run_site_helpers.banner import (
+        format_agent_help,
+    )
+
+    text = format_agent_help(
+        appserver_url="http://localhost:8080",
+        token_path=".run_site_token",
+    )
+    snippet_lines = [line for line in text.splitlines() if line.startswith("    ")]
+    assert snippet_lines, "agent help musi zawierać snippet z 4-spacjowym wcięciem"
+    for line in snippet_lines:
+        for ch in line:
+            assert ord(ch) < 0x80, f"non-ASCII char w copy-paste snippet: {line!r}"
 
 
 def test_find_free_port_returns_int_in_range():
@@ -267,6 +315,7 @@ def test_src_dir_resolves_to_src():
 def test_wait_terminate_already_exited():
     """wait_terminate na już-zakończonym procesie nie crashuje."""
     import subprocess
+
     from bpp.management.commands._run_site_helpers.processes import wait_terminate
 
     proc = subprocess.Popen(["python", "-c", "pass"])
@@ -280,6 +329,7 @@ def test_wait_terminate_already_exited():
 
 def test_log_multiplexer_writes_lines_with_prefix():
     import io
+
     from bpp.management.commands._run_site_helpers.log_multiplexer import (
         COLOR_CYAN,
         LogMultiplexer,
@@ -298,6 +348,7 @@ def test_log_multiplexer_writes_lines_with_prefix():
 
 def test_log_multiplexer_pads_names_to_widest():
     import io
+
     from bpp.management.commands._run_site_helpers.log_multiplexer import (
         COLOR_CYAN,
         COLOR_GREEN,
@@ -319,6 +370,7 @@ def test_log_multiplexer_pads_names_to_widest():
 
 def test_log_multiplexer_emits_color_when_enabled():
     import io
+
     from bpp.management.commands._run_site_helpers.log_multiplexer import (
         COLOR_CYAN,
         COLOR_RESET,
@@ -337,6 +389,7 @@ def test_log_multiplexer_emits_color_when_enabled():
 
 def test_log_multiplexer_no_color_when_disabled():
     import io
+
     from bpp.management.commands._run_site_helpers.log_multiplexer import (
         COLOR_CYAN,
         COLOR_RESET,
@@ -356,6 +409,7 @@ def test_log_multiplexer_no_color_when_disabled():
 def test_log_multiplexer_handles_invalid_utf8():
     """Linie z nieprawidłowym UTF-8 nie crashują czytnika."""
     import io
+
     from bpp.management.commands._run_site_helpers.log_multiplexer import (
         COLOR_CYAN,
         LogMultiplexer,
@@ -375,6 +429,7 @@ def test_spawn_pg_logs_invokes_docker_logs_follow():
     """spawn_pg_logs woła `docker logs -f --tail 0 <id>`."""
     import subprocess
     from unittest.mock import patch
+
     from bpp.management.commands._run_site_helpers.processes import spawn_pg_logs
 
     with patch.object(subprocess, "Popen") as mock_popen:
@@ -391,6 +446,7 @@ def test_spawn_runserver_sets_pythonunbuffered():
     nie widzi linii dopóki bufor 4KB się nie zapełni."""
     import subprocess
     from unittest.mock import patch
+
     from bpp.management.commands._run_site_helpers.processes import spawn_runserver
 
     with patch.object(subprocess, "Popen") as mock_popen:
@@ -405,6 +461,7 @@ def test_spawn_celery_uses_pipe_and_unbuffered():
     """spawn_celery odpina logi na PIPE (czytane przez multiplekser)."""
     import subprocess
     from unittest.mock import patch
+
     from bpp.management.commands._run_site_helpers.processes import spawn_celery
 
     with patch.object(subprocess, "Popen") as mock_popen:
@@ -451,9 +508,7 @@ def test_read_cache_returns_payload_when_user_matches(tmp_path):
 def test_read_cache_skips_when_user_mismatches(tmp_path):
     cache = tmp_path / ".saved_pbn_token"
     cache.write_text(
-        json.dumps(
-            {"username": "bob", "pbn_token": "tok", "pbn_token_updated": None}
-        )
+        json.dumps({"username": "bob", "pbn_token": "tok", "pbn_token_updated": None})
     )
     logs: list[str] = []
     assert _read_cache(cache, _src(), logs.append) is None
@@ -490,9 +545,7 @@ def test_fetch_uses_cache_and_skips_ssh(tmp_path):
     """Gdy cache ma poprawnego usera, SSH NIE jest odpalany."""
     cache = tmp_path / ".saved_pbn_token"
     cache.write_text(
-        json.dumps(
-            {"username": "alice", "pbn_token": "tok", "pbn_token_updated": None}
-        )
+        json.dumps({"username": "alice", "pbn_token": "tok", "pbn_token_updated": None})
     )
 
     logs: list[str] = []
