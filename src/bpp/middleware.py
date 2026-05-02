@@ -19,9 +19,28 @@ class MaliciousRequestBlockingMiddleware(MiddlewareMixin):
     - Database dumps and log files
     - Common CMS admin panel probes (WordPress, phpMyAdmin, etc.)
     - Paths exceeding 1024 characters
+    - Full URLs (path + query string) exceeding 8192 characters
+    - Nested ``?next=`` redirect chains produced by scanner bots
 
     Returns HTTP 444 (No Response) for blocked requests.
     """
+
+    # Maximum length of the full request URL (path + query string).
+    # Path alone is capped at 1024 (see process_request); the query string can
+    # legitimately carry a single ``next=`` redirect, plus DataTables AJAX
+    # requests percent-encode column metadata (``columns%5B0%5D%5Bdata%5D=…``)
+    # which for ~10 columns approaches 3 KB. 8192 matches nginx's default
+    # ``large_client_header_buffers`` and Apache's ``LimitRequestLine`` while
+    # still catching exponentially growing ``?next=`` scanner chains.
+    MAX_FULL_PATH_LENGTH = 8192
+
+    # Path substrings exempt from the full-URL length check entirely.
+    # DataTables serializes per-column metadata into the query string
+    # (``columns[N][data]``, ``[search][value]`` × N columns); on tables
+    # with many columns this can exceed even the headroom above. The
+    # length check exists to stop scanner-bot redirect chains, which
+    # never target ``/api/``, so exempting API endpoints is safe.
+    URL_LENGTH_WHITELIST_SUBSTRINGS = ("/api/",)
 
     # Blocked file extensions (case-insensitive)
     BLOCKED_EXTENSIONS = (
@@ -132,6 +151,24 @@ class MaliciousRequestBlockingMiddleware(MiddlewareMixin):
         # Block excessively long paths (potential buffer overflow attempts)
         if len(path) > 1024:
             return self._block_request(request, "path_too_long", path[:100])
+
+        # Block excessively long full URLs (path + query string). Catches
+        # scanner bots that follow login redirects without cookies and end up
+        # accumulating exponentially growing percent-encoded ``?next=`` chains.
+        # Skip the check for whitelisted paths (e.g. ``/api/`` endpoints which
+        # legitimately carry verbose DataTables query params).
+        if not any(s in path for s in self.URL_LENGTH_WHITELIST_SUBSTRINGS):
+            full_path = request.get_full_path()
+            if len(full_path) > self.MAX_FULL_PATH_LENGTH:
+                return self._block_request(request, "url_too_long", full_path[:100])
+
+        # Block nested ``?next=`` redirect chains. Django decodes one level of
+        # percent-encoding when parsing query string, so a legitimate single
+        # redirect target (e.g. ``next=/foo/``) never contains ``?next=`` —
+        # but a re-redirected scanner trail does (``next=/login/?next=/foo``).
+        next_param = request.GET.get("next", "")
+        if next_param and "?next=" in next_param.lower():
+            return self._block_request(request, "nested_next", next_param[:100])
 
         # Check pagination parameter for SQL injection
         page_param = request.GET.get("page", "")

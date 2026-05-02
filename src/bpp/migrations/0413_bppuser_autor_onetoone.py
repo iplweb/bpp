@@ -19,6 +19,12 @@ def convert_nulls_to_empty_strings(apps, schema_editor):
 
 class Migration(migrations.Migration):
 
+    # Bez atomic, ponieważ RunPython convert_nulls_to_empty_strings odpala
+    # deferred triggery (denorm) na bpp_bppuser, a kolejne AlterField próbują
+    # ALTER TABLE tej samej tabeli — Postgres odmawia z błędem
+    # "cannot ALTER TABLE ... because it has pending trigger events".
+    atomic = False
+
     dependencies = [
         ("bpp", "0412_uczelnia_orcid_staff_only"),
     ]

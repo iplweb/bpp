@@ -1,3 +1,5 @@
+import time
+
 import pytest
 from django.urls import reverse
 from playwright.sync_api import Page, expect
@@ -7,6 +9,16 @@ from bpp.models.patent import Patent
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
 from bpp.tests import any_ciagle
 from bpp.tests.util import any_patent, any_zwarte
+
+
+def _wait_for(predicate, timeout: float = 5.0, interval: float = 0.05) -> bool:
+    """Poll ``predicate`` until truthy or timeout elapses."""
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if predicate():
+            return True
+        time.sleep(interval)
+    return predicate()
 
 
 @pytest.mark.django_db(transaction=True)
@@ -125,7 +137,7 @@ def test_admin_wydawnictwo_zwarte_toz(live_server, admin_page: Page):
     ), f"Expected dialog with 'Utworzysz kopię tego rekordu', got: {dialog_text}"
 
     # Wait for the new record to be created
-    admin_page.wait_for_timeout(2000)
+    _wait_for(lambda: wcc() == 2)
     assert wcc() == 2, f"Expected 2 records, got {wcc()}"
 
 
@@ -171,7 +183,7 @@ def test_admin_wydawnictwo_ciagle_toz(live_server, admin_page: Page):
     ), f"Expected dialog with 'Utworzysz kopię tego rekordu', got: {dialog_text}"
 
     # Wait for the new record to be created
-    admin_page.wait_for_timeout(2000)
+    _wait_for(lambda: wcc() == 2)
     assert wcc() == 2, f"Expected 2 Wydawnictwo_Ciagle records, got {wcc()}"
 
 
@@ -218,7 +230,7 @@ def test_admin_patent_toz(live_server, admin_page: Page):
     admin_page.wait_for_selector("#navigation-menu", timeout=10000)
 
     # Wait for the new record to be created
-    admin_page.wait_for_timeout(2000)
+    _wait_for(lambda: wcc() == 2)
     assert wcc() == 2, f"Expected 2 Patent records, got {wcc()}"
 
 

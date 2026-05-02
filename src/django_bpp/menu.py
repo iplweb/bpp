@@ -145,7 +145,6 @@ DOCKER_SERVICES_MENU = [
     ("Grafana", "/grafana/"),
     ("Dozzle (logi)", "/dozzle/"),
     ("Flower (Celery)", "/flower/"),
-    ("RabbitMQ", "/rabbitmq/"),
 ]
 
 

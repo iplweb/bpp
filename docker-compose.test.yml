@@ -17,8 +17,18 @@ services:
       - POSTGRESQL_UNSAFE_BUT_FAST=1
       # Zachowawczo — CI zwykle nie odpala tak wielu workerów jak lokal.
       - POSTGRESQL_MAX_LOCKS_PER_TRANSACTION=128
+    # PGDATA na tmpfs — z fsync=off i tak prawie nic nie jest zapisywane
+    # synchronicznie, ale tmpfs eliminuje całą ścieżkę kernel writeback.
+    # Dane bazy testowej są ulotne (czyszczone przez `compose down -v`),
+    # więc trwałość nie jest potrzebna.
+    tmpfs:
+      - /var/lib/postgresql/data
     volumes:
-      - postgresql_data:/var/lib/postgresql/data
+      # Baseline pg_dump ładowany przez postgresowy entrypoint przy
+      # pierwszej inicjalizacji bazy (tj. zawsze, bo PGDATA na tmpfs).
+      # Połączone z DJANGO_BPP_TEST_TEMPLATE=bpp poniżej daje template-clone
+      # zamiast `psql -f baseline.sql` per worker xdista.
+      - ./src/baseline-sql/baseline.sql:/docker-entrypoint-initdb.d/01-baseline.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DJANGO_BPP_DB_USER:-bpp}"]
       start_period: 10s
@@ -38,22 +48,13 @@ services:
     volumes:
       - redis_data:/data
 
-  rabbitmq:
-    image: rabbitmq:management-alpine
-    environment:
-      RABBITMQ_NODE_PORT: ${DJANGO_BPP_RABBITMQ_PORT:-5672}
-      RABBITMQ_DEFAULT_USER: ${DJANGO_BPP_RABBITMQ_USER:-bpp}
-      RABBITMQ_DEFAULT_PASS: ${DJANGO_BPP_RABBITMQ_PASS:-bpp}
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "ping"]
-      start_period: 30s
-      interval: 10s
-      timeout: 10s
-      retries: 5
-    volumes:
-      - rabbitmq_data:/var/lib/rabbitmq
-
   test-runner:
+    # Local dev (`make tests-in-docker`): TEST_RUNNER_IMAGE unset →
+    # compose falls back to `build:` and bakes the image on demand.
+    # CI: prepare-image job pushes ghcr.io/iplweb/bpp-test-runner:sha-<SHA>
+    # and exports TEST_RUNNER_IMAGE so test jobs `compose pull` instead
+    # of rebuilding (saves ~3 min per job × 7 jobs).
+    image: ${TEST_RUNNER_IMAGE:-bpp-test-runner:local}
     build:
       context: .
       dockerfile: docker/bpp_base/Dockerfile
@@ -65,16 +66,10 @@ services:
     volumes:
       - .:/src
       - /var/run/docker.sock:/var/run/docker.sock
-      # Persist Playwright browser cache between ephemeral `compose run --rm`
-      # invocations. Without this, `playwright install` from the setup step
-      # disappears with the container, and the later Tests (Playwright) step
-      # hits "BrowserType.launch: Executable doesn't exist".
-      - playwright_cache:/root/.cache/ms-playwright
     working_dir: /src
     depends_on:
       db: { condition: service_healthy }
       redis: { condition: service_healthy }
-      rabbitmq: { condition: service_started }
     environment:
       DJANGO_BPP_DB_HOST: db
       DJANGO_BPP_DB_PORT: 5432
@@ -84,17 +79,17 @@ services:
       DJANGO_BPP_DB_DISABLE_SSL: 1
       DJANGO_BPP_REDIS_HOST: redis
       DJANGO_BPP_REDIS_PORT: 6379
-      DJANGO_BPP_RABBITMQ_HOST: rabbitmq
-      DJANGO_BPP_RABBITMQ_PORT: 5672
-      DJANGO_BPP_RABBITMQ_USER: bpp
-      DJANGO_BPP_RABBITMQ_PASS: bpp
-      # Wyłącz testcontainers — w CI serwisy (db, redis, rabbitmq) są
-      # uruchamiane przez docker-compose, nie przez testcontainers.
-      # Testcontainers z wnętrza kontenera wymagałyby Docker-in-Docker.
+      # Wyłącz testcontainers — w CI serwisy (db, redis) są uruchamiane
+      # przez docker-compose, nie przez testcontainers. Testcontainers
+      # z wnętrza kontenera wymagałyby Docker-in-Docker.
       BPP_USE_TESTCONTAINERS: 0
+      # Baseline jest ładowany przez postgresowy entrypoint (mount
+      # /docker-entrypoint-initdb.d/01-baseline.sql w servisie db). Tutaj
+      # mówimy Django, że ma tworzyć test_bpp_gwN jako klon `bpp` przez
+      # CREATE DATABASE … WITH TEMPLATE bpp — natywna operacja Postgresa,
+      # instant per worker, zamiast `psql -f baseline.sql` per worker.
+      # Patrz: src/django_pg_baseline/patches.py.
+      DJANGO_BPP_TEST_TEMPLATE: bpp
 
 volumes:
-  postgresql_data:
   redis_data:
-  rabbitmq_data:
-  playwright_cache:

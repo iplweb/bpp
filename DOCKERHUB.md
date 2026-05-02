@@ -26,7 +26,7 @@ Używany przez biblioteki naukowe i uniwersyteckie w Polsce do zarządzania
 dorobkiem publikacyjnym, ewaluacji i integracji z PBN / ORCID / CrossRef.
 
 Ten obraz jest **częścią stacku mikroserwisów BPP** — nie jest samodzielną
-aplikacją. Pełne wdrożenie (PostgreSQL, Redis, RabbitMQ, nginx, wszystkie serwisy)
+aplikacją. Pełne wdrożenie (PostgreSQL, Redis, nginx, wszystkie serwisy)
 opisane w [iplweb/bpp-deploy](https://github.com/iplweb/bpp-deploy).
 
 ## Obrazy stacku BPP
@@ -78,8 +78,7 @@ Nie mieszaj tagów między serwisami.
 ## Wymagania stacku
 
 - PostgreSQL (użyj [`iplweb/bpp_dbserver`](https://hub.docker.com/r/iplweb/bpp_dbserver) — ma `plpython3u`, ICU `pl-PL` i autotune)
-- Redis (cache / Channels)
-- RabbitMQ (Celery broker)
+- Redis (cache / Celery broker / Channels)
 - nginx (reverse proxy)
 
 Pełna lista z wersjami — [bpp-deploy/docker-compose.yml](https://github.com/iplweb/bpp-deploy/blob/main/docker-compose.yml).
@@ -90,7 +89,7 @@ Pełna lista z wersjami — [bpp-deploy/docker-compose.yml](https://github.com/i
 |---|---|
 | **Backend** | Python 3.12+, Django 4.2, Celery, Django Channels |
 | **Baza danych** | PostgreSQL 16/17/18 (via `iplweb/bpp_dbserver`) |
-| **Cache / broker** | Redis, RabbitMQ |
+| **Cache / broker** | Redis |
 | **Frontend** | Foundation CSS, jQuery, HTMX, Select2 |
 | **Infrastruktura** | Docker, nginx, Prometheus, Grafana |
 

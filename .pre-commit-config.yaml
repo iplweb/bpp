@@ -30,6 +30,12 @@ repos:
       rev: 'v6.0.0'
       hooks:
         -   id: check-yaml
+            # docker-compose.test.ci.yml uses Compose's `!reset` YAML
+            # tag (Compose 2.4+) to drop volumes inherited from the
+            # base file. PyYAML's safe loader doesn't know
+            # Compose-specific tags, so check-yaml chokes on a file
+            # that `docker compose config` parses fine.
+            exclude: ^docker-compose\.test\.ci\.yml$
         -   id: check-toml
         -   id: end-of-file-fixer
             exclude: ^src/baseline-sql/baseline\.sql$

@@ -66,10 +66,11 @@ def test_global_search_user(
 
 @pytest.mark.serial
 def test_global_search_logged_in(
-    channels_live_server,
-    admin_page: Page,
+    channels_live_server_per_test,
+    admin_page_per_test: Page,
     transactional_db,
 ):
+    admin_page = admin_page_per_test
     rec = None
     try:
         # Create a unique title to avoid conflicts with other tests
@@ -89,7 +90,7 @@ def test_global_search_logged_in(
             f"Record with title '{unique_title}' not found in Rekord cache after refresh"
         )
 
-        admin_page.goto(channels_live_server.url)
+        admin_page.goto(channels_live_server_per_test.url)
         wait_for_page_load(admin_page)
 
         # Accept cookies if needed

@@ -11,12 +11,23 @@ def test_wyrzuc(wydawnictwo_zwarte, page: Page, live_server):
     page.goto(live_server.url + reverse("multiseek:index"))
     page.evaluate("Cookielaw.accept()")
 
-    # Load results into iframe using the preview button
-    page.click("#sendQueryButton")
-    page.wait_for_load_state("networkidle")
+    # Load results into iframe using the preview button (POSTs to
+    # ./live-results/ targeting the list_frame iframe). Wait for the POST
+    # response so we know the iframe is about to navigate.
+    with page.expect_response(
+        lambda r: "live-results" in r.url and r.request.method == "POST"
+    ):
+        page.click("#sendQueryButton")
 
-    # Get iframe containing results
+    # Get the iframe and wait for the navigation triggered by the POST to
+    # complete. ``domcontentloaded`` on the frame returns once the new
+    # document is parsed — ``.evaluate`` would otherwise race the previous
+    # execution context being torn down by the navigation.
     iframe_frame = page.frame(name="list_frame")
+    iframe_frame.wait_for_load_state("domcontentloaded")
+
+    # Then wait for the actual result element to render
+    iframe_frame.locator(".multiseek-element").first.wait_for(timeout=15000)
 
     # Call removeFromResults in iframe context (element is in iframe)
     rekord_pk = Rekord.objects.all().first().js_safe_pk
@@ -46,8 +57,12 @@ def test_szukaj(page: Page, live_server):
     page.goto(live_server.url + reverse("multiseek:index"))
     page.evaluate("Cookielaw.accept()")
 
-    page.click("#multiseek-szukaj")
-    page.wait_for_load_state("networkidle")
+    # #multiseek-szukaj (submit-mine) POSTs to ./results/ and navigates the
+    # parent window. Use expect_navigation so we block until that nav
+    # completes — without it, the assertions below could pass on the
+    # pre-search page (which has no error message either).
+    with page.expect_navigation(wait_until="domcontentloaded"):
+        page.click("#multiseek-szukaj")
 
     # Check for both lowercase and uppercase error messages
     expect(page.locator("body")).not_to_contain_text("błąd serwera")
@@ -66,11 +81,12 @@ def test_multiseek_sortowanie_wg_zrodlo_lub_nadrzedne(
 ):
     page.goto(live_server.url + reverse("multiseek:index"))
     page.evaluate("Cookielaw.accept()")
-    page.wait_for_load_state("networkidle")
+    # Wait until the form is ready instead of for networkidle.
+    page.wait_for_selector("#multiseek-szukaj", state="visible")
 
     page.select_option("#id_ordering_0", "9")  # wyd. nadrzedne/zrodlo
-    page.click("#multiseek-szukaj")
-    page.wait_for_load_state("networkidle")
+    with page.expect_navigation(wait_until="domcontentloaded"):
+        page.click("#multiseek-szukaj")
 
     expect(page.locator("body")).not_to_contain_text("Błąd serwera")
     expect(page.locator("body")).not_to_contain_text("błąd serwera")
@@ -79,11 +95,11 @@ def test_multiseek_sortowanie_wg_zrodlo_lub_nadrzedne(
 def test_multiseek_tabelka_wyswietlanie(page: Page, live_server):
     page.goto(live_server.url + reverse("multiseek:index"))
     page.evaluate("Cookielaw.accept()")
-    page.wait_for_load_state("networkidle")
+    page.wait_for_selector("#multiseek-szukaj", state="visible")
 
     page.select_option("#id_report_type", "1")  # tabela
-    page.click("#multiseek-szukaj")
-    page.wait_for_load_state("networkidle")
+    with page.expect_navigation(wait_until="domcontentloaded"):
+        page.click("#multiseek-szukaj")
 
     expect(page.locator("body")).not_to_contain_text("błąd serwera")
     expect(page.locator("body")).not_to_contain_text("Błąd serwera")

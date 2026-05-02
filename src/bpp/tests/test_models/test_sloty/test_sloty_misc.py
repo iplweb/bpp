@@ -37,6 +37,24 @@ def test_ISlot_patent(patent):
         ISlot(patent)
 
 
+@pytest.mark.django_db
+def test_ISlot_rok_none_wydawnictwo_ciagle(wydawnictwo_ciagle):
+    # Regression: importer mógł utworzyć rekord z rok=None (np. brak year w
+    # BibTeX). denorm pre_save dla cached_punkty_dyscyplin wołał ISlot zanim
+    # baza odrzuciła INSERT na NOT NULL → wybuchało TypeError zamiast czytelnego
+    # CannotAdapt.
+    wydawnictwo_ciagle.rok = None
+    with pytest.raises(CannotAdapt):
+        ISlot(wydawnictwo_ciagle)
+
+
+@pytest.mark.django_db
+def test_ISlot_rok_none_wydawnictwo_zwarte(wydawnictwo_zwarte):
+    wydawnictwo_zwarte.rok = None
+    with pytest.raises(CannotAdapt):
+        ISlot(wydawnictwo_zwarte)
+
+
 @pytest.mark.parametrize("akcja", ["wszystko", None])
 @pytest.mark.django_db
 def test_autor_Autor_zbieraj_sloty(zwarte_z_dyscyplinami, akcja, denorms, rok):
