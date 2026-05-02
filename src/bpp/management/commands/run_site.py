@@ -296,15 +296,25 @@ class Command(BaseCommand):
         if containers.pg is None:
             # --reuse + istniejący kontener: ma już dane, nie nadpisujemy
             # (restore mógłby zostawić bazę w połowicznym stanie albo
-            # walczyć z FK cascade). User musi jawnie wyczyścić.
-            raise CommandError(
-                "Kontener bpp-tc-pg już istnieje z danymi — --from-dump "
-                "nie zostanie zaaplikowane (nie nadpisuję istniejącej "
-                "bazy). Aby zacząć od zera: "
-                "docker rm -f bpp-tc-pg bpp-tc-redis, potem "
-                "run_site --reuse --from-dump <dump>. Aby skorzystać "
-                "z istniejących danych: pomiń --from-dump."
+            # walczyć z FK cascade). Ale użycie --reuse + --from-dump
+            # w tym samym wywołaniu to też normalny workflow ("pierwszy
+            # raz przywieź dump, potem reuse na bieżącym stanie") —
+            # więc tylko ostrzegamy zamiast wywalać CommandError.
+            self.stderr.write(
+                self.style.ERROR(
+                    "[run_site] OSTRZEŻENIE: --from-dump zignorowane — "
+                    "kontener bpp-tc-pg już istnieje z danymi i nie "
+                    "nadpisuję istniejącej bazy."
+                )
             )
+            self.stderr.write(
+                self.style.ERROR(
+                    "[run_site] Aby załadować nowy dump: "
+                    "docker rm -f bpp-tc-pg bpp-tc-redis, "
+                    "potem run_site --reuse --from-dump <dump>."
+                )
+            )
+            return
         container_id = containers.pg.get_wrapped_container().id
         self.stdout.write(f"[run_site] Restore: {dump_path} → PG container...")
         restore_dump(dump_path, container_id)
