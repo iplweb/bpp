@@ -242,6 +242,16 @@ class Command(BaseCommand):
             except KeyboardInterrupt:
                 self.stdout.write("\n[run_site] Przerwane (Ctrl-C)")
                 wait_terminate(runserver_proc)
+                if opts["reuse"]:
+                    from testcontainers_bpp.containers import (
+                        _PG_NAME,
+                        _REDIS_NAME,
+                    )
+
+                    self.stdout.write(
+                        f"[run_site] Kontenery wciąż działają. "
+                        f"Usuń ręcznie: docker rm -f {_PG_NAME} {_REDIS_NAME}"
+                    )
             finally:
                 if pg_logs_proc is not None:
                     wait_terminate(pg_logs_proc)
